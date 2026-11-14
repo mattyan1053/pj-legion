@@ -104,18 +104,68 @@ func test_no_targets_when_every_cell_around_is_taken() -> void:
 # --- CPU ---
 
 
-func test_cpu_cuts_the_line_of_a_sniper_aiming_at_its_king() -> void:
+func test_cpu_cuts_the_line_of_an_aimed_sniper() -> void:
+	# 構えたスナイパーは、動くと照準が外れる。射線に盾を置けば、2 倍の一撃は飛んでこない。
 	var battle := Maps.battle(OPEN_ROWS)
 	battle.board.hq_cells = [HQ1, HQ2]
 	var king := battle.add_unit(UnitKind.Id.KING, P1, HQ1)
 	battle.add_unit(UnitKind.Id.KING, P2, HQ2)
-	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(2, 3))
-	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 4))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, HQ1 + Vector2i(1, -1))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, HQ1 + Vector2i(7, 0))
+	Statuses.add(sniper, Status.Type.AIM, 2)
 	assert_true(Combat.can_attack(battle, sniper, king))
-	var first := CpuPlayer.new().next_action(battle) as UseSkillAction
-	assert_true(first != null, "盾を置かなかった")
-	assert_eq(first.unit_id, trooper.id)
-	assert_true(battle.apply(first).accepted)
+	var uses := _skill_uses(_play_phase(battle))
+	assert_eq(uses.size(), 1, "盾を置かなかった")
+	assert_eq(uses[0].unit_id, trooper.id)
+	assert_false(Combat.can_attack(battle, sniper, king), "射線が切れていない")
+
+
+## 壁の口（4, 2）の手前に、行動済みの味方のスナイパーがいる。敵のコマンドーは、口まで来れば殴れる。
+func _corridor_battle() -> Battle:
+	var rows: Array[String] = [
+		"....#.......",
+		"....#.......",
+		"............",
+		"....#.......",
+		"....#.......",
+	]
+	var battle := Maps.battle(rows)
+	battle.board.hq_cells = [Vector2i(0, 4), Vector2i(11, 0)]
+	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(11, 0))
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(3, 2)).acted = true
+	battle.add_unit(UnitKind.Id.COMMANDO, P2, Vector2i(9, 2))
+	return battle
+
+
+func test_cpu_holds_a_corridor_with_its_body_instead_of_a_barricade() -> void:
+	# 前衛は、口に立つだけで道をふさげる（駒は通れず、ZOC で止まる）。同じことに盾は使わない。
+	var battle := _corridor_battle()
+	var sniper := battle.units[2]
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(3, 1))
+	var cpu := CpuPlayer.new()
+	assert_eq(cpu.danger(battle, sniper.id, sniper.cell), battle.units[3].power(), "口まで来て、スナイパーを殴れる")
+	var actions := _play_phase(battle)
+	assert_true(_skill_uses(actions).is_empty(), "立つだけでふさげる口に、盾を置いた")
+	battle.apply(EndPhaseAction.new())
+	battle.apply(EndPhaseAction.new())
+	assert_eq(cpu.danger(battle, sniper.id, sniper.cell), 0, "もう届かない")
+
+
+func test_cpu_walks_to_where_it_can_cut_the_line() -> void:
+	# 置ける位置にいなければ、置けるマスまで歩いてから置く（スキルを使うために立つマスを探す）。
+	var battle := Maps.battle(OPEN_ROWS)
+	battle.board.hq_cells = [HQ1, HQ2]
+	var king := battle.add_unit(UnitKind.Id.KING, P1, HQ1)
+	battle.add_unit(UnitKind.Id.KING, P2, HQ2)
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, HQ1 + Vector2i(1, -3))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, HQ1 + Vector2i(7, 0))
+	Statuses.add(sniper, Status.Type.AIM, 2)
+	var actions := _play_phase(battle)
+	assert_true(actions[0] is MoveAction, "歩かなかった")
+	var uses := _skill_uses(actions)
+	assert_eq(uses.size(), 1, "盾を置かなかった")
+	assert_eq(uses[0].unit_id, trooper.id)
 	assert_false(Combat.can_attack(battle, sniper, king), "射線が切れていない")
 
 
