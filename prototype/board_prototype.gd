@@ -6,6 +6,7 @@ extends Node3D
 ## 本実装が始まったら捨てる。
 
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
+const UnitView := preload("res://prototype/unit_view.gd")
 
 enum Terrain { NORMAL, OBSTACLE, FOREST, FONT }
 
@@ -13,11 +14,20 @@ const MAP_SIZE := Vector2i(30, 30)
 const TILE_HEIGHT := 0.2
 const TILE_GAP := 0.04
 const TERRAIN_SEED := 20261114
+const SQUAD: Array[String] = ["knight", "barbarian", "mage", "rogue", "knight"]
+const SQUAD_OFFSETS: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(2, -1), Vector2i(1, -2),
+]
 
-const COLOR_NORMAL := Color("7fb069")
-const COLOR_FOREST := Color("4f8a4b")
-const COLOR_OBSTACLE_GROUND := Color("8a8f98")
-const COLOR_FONT := Color("5ec8d8")
+## 手前の障害物をどこまで透かすか（0 = 不透明、1 = 見えない）と、その速さ。
+const OCCLUDER_FADE := 0.75
+const OCCLUDER_FADE_SPEED := 5.0
+
+const COLOR_UNDERSIDE := Color("26331f")
+const COLOR_NORMAL := Color("5f9f4e")
+const COLOR_FOREST := Color("457a40")
+const COLOR_OBSTACLE_GROUND := Color("767b84")
+const COLOR_FONT := Color("3fa9bd")
 const COLOR_TREE := Color("2f6b3a")
 const COLOR_ROCK := Color("6b7078")
 const COLOR_CRYSTAL := Color("9ff3ff")
@@ -26,7 +36,9 @@ const COLOR_P2 := Color("d64545")
 const COLOR_NEUTRAL := Color("e0b83a")
 
 var _terrain: Array[int] = []
-var _units := {}  # Vector2i -> MeshInstance3D
+var _units := {}  # Vector2i -> UnitView
+var _occluders := {}  # Vector2i -> MeshInstance3D（岩と木。手前にあると駒を隠す）
+var _hover_cell := Vector2i(-1, -1)
 var _selected_cell := Vector2i(-1, -1)
 var _moving := false
 
@@ -44,9 +56,10 @@ func _ready() -> void:
 	_build_help()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# カメラが動くとマウスの下のマスも変わるので、マウスの動きではなく毎フレーム追う。
 	_update_cursor()
+	_update_occlusion(delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -107,13 +120,18 @@ func _build_terrain() -> void:
 
 	var crystal_mesh := CylinderMesh.new()
 	crystal_mesh.top_radius = 0.0
-	crystal_mesh.bottom_radius = 0.22
-	crystal_mesh.height = 0.7
+	crystal_mesh.bottom_radius = 0.1
+	crystal_mesh.height = 0.4
 	crystal_mesh.radial_segments = 4
 	var crystal_material := _material(COLOR_CRYSTAL)
 	crystal_material.emission_enabled = true
 	crystal_material.emission = COLOR_CRYSTAL
 	crystal_material.emission_energy_multiplier = 1.5
+
+	# マスの隙間から背景が透けて黒い線に見えないよう、盤面の下に板を敷く。
+	var underside_mesh := BoxMesh.new()
+	underside_mesh.size = Vector3(MAP_SIZE.x, 0.1, MAP_SIZE.y)
+	_add_mesh(underside_mesh, _material(COLOR_UNDERSIDE), Vector3(MAP_SIZE.x / 2.0, -0.2, MAP_SIZE.y / 2.0))
 
 	for y in MAP_SIZE.y:
 		for x in MAP_SIZE.x:
@@ -133,37 +151,40 @@ func _build_terrain() -> void:
 					var jitter := Vector3(rng.randf_range(-0.12, 0.12), 0.0, rng.randf_range(-0.12, 0.12))
 					var tree := _add_mesh(tree_mesh, tree_material, center + jitter + Vector3(0.0, 0.45, 0.0))
 					tree.scale = Vector3.ONE * rng.randf_range(0.85, 1.15)
+					_occluders[cell] = tree
 				Terrain.OBSTACLE:
-					_add_mesh(rock_mesh, rock_material, center + Vector3(0.0, 0.45, 0.0))
+					_occluders[cell] = _add_mesh(rock_mesh, rock_material, center + Vector3(0.0, 0.45, 0.0))
 				Terrain.FONT:
-					_add_mesh(crystal_mesh, crystal_material, center + Vector3(0.0, 0.35, 0.0))
+					# 駒が上に立っても結晶泉だと分かるよう、結晶はマスの四隅に置く。
+					for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+						var at := center + Vector3(corner.x * 0.36, 0.2, corner.y * 0.36)
+						var crystal := _add_mesh(crystal_mesh, crystal_material, at)
+						crystal.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func _build_units() -> void:
-	var mesh := CapsuleMesh.new()
-	mesh.radius = 0.28
-	mesh.height = 0.95
+	var toward_enemy := _cell_center(_hq_cell(1)) - _cell_center(_hq_cell(0))
+	for i in SQUAD.size():
+		_add_unit(SQUAD[i], COLOR_P1, _hq_cell(0) + SQUAD_OFFSETS[i], toward_enemy)
+		_add_unit(SQUAD[i], COLOR_P2, _hq_cell(1) - SQUAD_OFFSETS[i], -toward_enemy)
 
-	var p1 := _material(COLOR_P1)
-	var p2 := _material(COLOR_P2)
-	var neutral := _material(COLOR_NEUTRAL)
-
-	for offset: Vector2i in [Vector2i(1, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(2, -1), Vector2i(1, -2)]:
-		_add_unit(mesh, p1, _hq_cell(0) + offset)
-		_add_unit(mesh, p2, _hq_cell(1) - offset)
-
-	# 結晶泉の上には中立の駒を置く。
+	# 結晶泉の上には中立の駒を置く（まだ仮の形）。
 	for y in MAP_SIZE.y:
 		for x in MAP_SIZE.x:
 			var cell := Vector2i(x, y)
 			if _terrain[_index(cell)] == Terrain.FONT:
-				_add_unit(mesh, neutral, cell)
+				_add_unit("neutral", COLOR_NEUTRAL, cell, Vector3.BACK)
 
 
-func _add_unit(mesh: Mesh, material: Material, cell: Vector2i) -> void:
+func _add_unit(kind: String, team_color: Color, cell: Vector2i, facing: Vector3) -> void:
 	if _units.has(cell):
 		return
-	_units[cell] = _add_mesh(mesh, material, _unit_position(cell))
+	var unit: UnitView = UnitView.new()
+	unit.position = _cell_center(cell)
+	add_child(unit)
+	unit.setup(kind, team_color)
+	unit.face(facing)
+	_units[cell] = unit
 
 
 # ---- 光・カメラ・目印 ----
@@ -175,7 +196,7 @@ func _build_environment() -> void:
 	environment.background_color = Color("1b2430")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("b8c4d6")
-	environment.ambient_light_energy = 0.6
+	environment.ambient_light_energy = 0.45
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.ssao_enabled = true
 
@@ -245,25 +266,62 @@ func _select(cell: Vector2i) -> void:
 
 
 func _move_selected_to(cell: Vector2i) -> void:
-	var unit: MeshInstance3D = _units[_selected_cell]
+	var unit: UnitView = _units[_selected_cell]
 	_units.erase(_selected_cell)
 	_units[cell] = unit
 	_select(Vector2i(-1, -1))
 
+	var target := _cell_center(cell)
+	var duration := clampf(unit.position.distance_to(target) * 0.12, 0.25, 1.2)
 	_moving = true
+	unit.face(target - unit.position)
+	unit.play_run()
 	var tween := create_tween()
-	tween.tween_property(unit, "position", _unit_position(cell), 0.25) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(unit, "position", target, duration)
 	await tween.finished
+	unit.play_idle()
 	_moving = false
 	_select(cell)
 
 
 func _update_cursor() -> void:
-	var cell := _cell_under_mouse()
-	_cursor.visible = _in_bounds(cell)
+	_hover_cell = _cell_under_mouse()
+	_cursor.visible = _in_bounds(_hover_cell)
 	if _cursor.visible:
-		_cursor.position = _cell_center(cell) + Vector3(0.0, 0.015, 0.0)
+		_cursor.position = _cell_center(_hover_cell) + Vector3(0.0, 0.015, 0.0)
+
+
+## 駒やカーソルの手前（カメラ側）にある岩と木を透かす。
+func _update_occlusion(delta: float) -> void:
+	var camera: Camera3D = _rig.camera
+	var toward_camera := camera.global_position - _rig.global_position
+	toward_camera.y = 0.0
+
+	var faded := {}
+	if toward_camera.length() > 0.01:
+		var step := toward_camera.normalized()
+		# 見下ろす角度が浅いほど、遠くの障害物まで駒に重なる。
+		var forward_y := -camera.global_transform.basis.z.y  # 真下を向くほど -1 に近い
+		var reach := 1
+		if forward_y > -0.65:
+			reach = 3
+		elif forward_y > -0.85:
+			reach = 2
+
+		var targets: Array = _units.keys()
+		if _in_bounds(_hover_cell):
+			targets.append(_hover_cell)
+		for cell: Vector2i in targets:
+			# k = 0 は自分のマス（森に立つ駒、岩の上のカーソル）。
+			var from := _cell_center(cell)
+			for k in range(0, reach + 1):
+				var p := from + step * float(k)
+				faded[Vector2i(floori(p.x), floori(p.z))] = true
+
+	for cell: Vector2i in _occluders:
+		var occluder: MeshInstance3D = _occluders[cell]
+		var target := OCCLUDER_FADE if faded.has(cell) else 0.0
+		occluder.transparency = move_toward(occluder.transparency, target, OCCLUDER_FADE_SPEED * delta)
 
 
 func _cell_under_mouse() -> Vector2i:
@@ -304,10 +362,6 @@ func _near_hq(cell: Vector2i) -> bool:
 
 func _cell_center(cell: Vector2i) -> Vector3:
 	return Vector3(cell.x + 0.5, 0.0, cell.y + 0.5)
-
-
-func _unit_position(cell: Vector2i) -> Vector3:
-	return _cell_center(cell) + Vector3(0.0, 0.475, 0.0)
 
 
 func _material(color: Color) -> StandardMaterial3D:
