@@ -11,6 +11,13 @@
 機能を 1 つ入れる PR は、ふつう「その機能の文書 1 つ + コード + テスト」になる。
 他の機能の文書には触らないので、並行する PR が衝突しない。
 
+## テスト
+
+`tests/` の下に `test_*.gd` を置く。書き方は `tests/base_test.gd` の先頭に書いてある。
+`tools/check.sh` が全部を実行する（CI も同じ）。テストだけなら次で動く。
+
+    godot --headless --path . -s res://tools/run_tests.gd
+
 ## 参照元
 
 仕様の出どころは `mattyan1053/pj-region` の `openspec/specs/`（非公開）。
