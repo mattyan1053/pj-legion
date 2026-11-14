@@ -3,7 +3,7 @@ extends "res://tests/base_test.gd"
 
 
 func test_every_kind_has_stats() -> void:
-	for id in UnitKind.Id.values():
+	for id: UnitKind.Id in UnitKind.Id.values():
 		assert_true(UnitKind.max_hp(id) > 0, UnitKind.display_name(id))
 		assert_true(UnitKind.move_range(id) > 0, UnitKind.display_name(id))
 		assert_true(UnitKind.attack_range(id) > 0, UnitKind.display_name(id))
@@ -48,6 +48,6 @@ func test_neutrals() -> void:
 
 
 func test_only_vanguards_exert_zoc() -> void:
-	for id in UnitKind.Id.values():
+	for id: UnitKind.Id in UnitKind.Id.values():
 		var expected: bool = id == UnitKind.Id.SHIELD_TROOPER or id == UnitKind.Id.PALADIN
 		assert_eq(UnitKind.exerts_zoc(id), expected, UnitKind.display_name(id))
