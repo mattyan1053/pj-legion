@@ -143,6 +143,7 @@ func test_attacks_the_enemy_standing_on_own_hq_first() -> void:
 	# もっと近くに、HP の少ない敵もいる。それでも、本陣に乗っている敵を先に叩く。
 	var other := battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(6, 2))
 	other.hp = 10
+	other.skill_cooldown = 3  # ファイアボールが届くと、本陣のそばは倒されうるマスになる（その場面は、ここでは見ない）
 	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(4, 2))
 	_play_phase(battle)
 	assert_true(occupier.hp < occupier.max_hp(), "本陣の占拠を放置した")

@@ -9,9 +9,11 @@ extends SceneTree
 ##   --max-turns=T   このターンを超えたら打ち切る（既定 60）
 ##   --decks=auto    編成。auto = CPU の編成（CpuDeck。予算に収まる）、even = 両軍とも同じ役割の 6 体・装備なし（予算は見ない）
 ##   --pairings=all  軍の組み合わせ。all = 4 通りを順に、mixed = 軍の違う 2 通り（先手を入れ替える）だけ
+##   --rival=PATH    別の版の CPU（スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
-## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない。
+## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
+## （--rival を付けたら、その倍の 24 の倍数。mixed なら 12 の倍数）。
 ## 同じ引数なら、いつも同じ結果になる（考える時間の欄を除く）。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
@@ -111,6 +113,17 @@ func _initialize() -> void:
 	var slowest := 0.0
 	var rejected := 0
 	var cpu := CpuPlayer.new()
+	var rival: RefCounted = null
+	if args.has("rival"):
+		var script: GDScript = load(args["rival"])
+		if script == null:
+			printerr("--rival のスクリプトを読めない: %s" % args["rival"])
+			quit(1)
+			return
+		rival = script.new()
+	# いまの CPU と別の版の対戦の [いまの CPU の勝ち, 別の版の勝ち, 決着しなかった局]。全体と、ステージごと。
+	var versus: Array[int] = [0, 0, 0]
+	var versus_by_stage: Dictionary[int, Array] = {}
 	var started := Time.get_ticks_msec()
 
 	for game in games:
@@ -122,7 +135,17 @@ func _initialize() -> void:
 		var armies: Array[UnitKind.Army] = [ARMIES[pairing % 2], ARMIES[(pairing % 2) ^ (0 if pairing >= 2 else 1)]]
 		var decks: Array[Deck] = [_deck(armies[0], deck_mode), _deck(armies[1], deck_mode)]
 		var battle := CpuMatch.create(stage, first_seed + game, decks)
-		var outcome := CpuMatch.play(battle, max_turns, cpu)
+		var outcome: CpuMatch.Outcome
+		if rival == null:
+			outcome = CpuMatch.play(battle, max_turns, cpu)
+		else:
+			# 別の版が動かす側。ステージと軍の組み合わせを一巡するごとに入れ替える。
+			@warning_ignore("integer_division")
+			var rival_side := (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2
+			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu)
+			var slot := 2 if outcome.winner < 0 else (1 if outcome.winner == rival_side else 0)
+			versus[slot] += 1
+			versus_by_stage.get_or_add(stage, [0, 0, 0])[slot] += 1
 
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
@@ -179,6 +202,14 @@ func _initialize() -> void:
 		mixed_games, army_wins[UnitKind.Army.MILITARY], army_wins[UnitKind.Army.FANTASY],
 		100.0 * army_wins[UnitKind.Army.MILITARY] / maxi(1, mixed_decided),
 	])
+	if rival != null:
+		print("")
+		print("いまの CPU 対 別の版（%s）: いまの CPU %d 勝、別の版 %d 勝、決着なし %d（いまの CPU の勝率 %.1f%%）" % [
+			args["rival"], versus[0], versus[1], versus[2], 100.0 * versus[0] / maxi(1, versus[0] + versus[1]),
+		])
+		for stage: int in versus_by_stage:
+			var row: Array = versus_by_stage[stage]
+			print("  ステージ %s: いまの CPU %d 勝、別の版 %d 勝、決着なし %d" % [STAGE_NAMES[stage], row[0], row[1], row[2]])
 	print("")
 	print("雇った駒 %d 体（1 局あたり %.1f 体）のうち" % [hired, float(hired) / games])
 	print("  レベル 2 以上に届いた: %5.1f%%" % (100.0 * reached["lv2"] / hired))

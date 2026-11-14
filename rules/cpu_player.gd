@@ -97,12 +97,12 @@ const BARRICADE_COVER_RATE := 0.75
 ## 聖域: 中に、減っている味方がこの数だけいれば置く。1 体が回復すると見込むのは、聖域の回復の何回ぶんまでか。
 const SANCTUARY_MIN_UNITS := 2
 const SANCTUARY_EXPECTED_HEALS := 2
-## 煙幕: 中に、離れた敵に狙われている味方がこの数だけいれば置く。
-## 狙っている敵 1 体を防ぐ価値は、その敵の攻撃 1 回ぶんのダメージの価値の何倍か（敵は隣まで寄れば当てられるので、1 より小さい）。
+## 煙幕: 中に、離れたところからしか届かない攻撃に狙われている味方がこの数だけいれば置く。
+## 防げるダメージの価値の何倍を見込むか（敵は狙いを替えられるので、1 より小さい）。
 const SMOKE_MIN_UNITS := 2
 const SMOKE_COVER_RATE := 0.75
-## バリア: 次の相手の番に自分を攻撃できる敵のうち、いちばん強い 1 体の攻撃を防ぐと見込む。
-## その価値は、その攻撃 1 回ぶんのダメージの価値の何倍か（敵は弱い攻撃で先にはがせるので、1 より小さい）。
+## バリア: 次の相手の番に自分に届く攻撃のうち、いちばん弱い 1 回を防ぐと見込む（敵は弱い攻撃で先にはがす）。
+## その価値は、その攻撃 1 回ぶんのダメージの価値の何倍か（攻撃されないまま期限で消えることもあるので、1 より小さい）。
 const BARRIER_COVER_RATE := 0.75
 ## 照準: 次の自分の番に、強めた攻撃を当てられそうな敵 1 体への、その攻撃の価値の何倍を見込むか。
 ## いま伸びた射程の中にいる敵（AIM_RATE）と、1 回動けば入ってくる敵（AIM_WATCH_RATE）。
@@ -113,6 +113,16 @@ const AIM_WATCH_RATE := 0.2
 ## （回数に限りがあるので、倒せる・将を殴れるくらいの手に取っておく）。見込む価値は、その手の価値の何倍か。
 const ADRENALINE_MIN_VALUE := 30.0
 const ADRENALINE_RATE := 0.75
+
+## 敵のバリアをはがす価値: このあとに動ける味方が、その敵に当てられそうな攻撃 1 回ぶんのダメージの価値の何倍か。
+## 続ける味方がいなければ BARRIER_STRIP_VALUE だけ（バリアは使わせたが、ダメージにはつながらない）。
+const BARRIER_STRIP_RATE := 0.6
+const BARRIER_STRIP_VALUE := 2.0
+## 相手のスキル -> 次の相手の番に、そのスキルで届くマスを危険に足すメソッド（相手の駒と、動けるマスを受け取る）。
+const SKILL_THREATS := {
+	Skill.Id.FIREBALL: &"_fireball_threat",
+	Skill.Id.SHADOW_STEP: &"_shadow_step_threat",
+}
 
 const _GOAL := 0
 const _DANGER := 1
@@ -139,8 +149,12 @@ var _foe: Unit.Side
 ## 自分と相手の本陣のマス。本陣の無い盤面（テスト用）では Board.NO_CELL。
 var _my_hq := Board.NO_CELL
 var _foe_hq := Board.NO_CELL
-## マス -> そこを次の相手の番に攻撃できる敵（駒の番号 -> 攻撃力）。
+## マス -> そこを次の相手の番に攻撃できる敵（駒の番号 -> 受けうるダメージ）。
 var _threats: Dictionary[Vector2i, Dictionary] = {}
+## 同じ形で、煙幕に防がれない攻撃だけ（隣まで寄っての攻撃と、スキルのダメージ）。自分の煙幕の中のマスは、こちらで見る。
+var _close_threats: Dictionary[Vector2i, Dictionary] = {}
+## 自分の煙幕の中のマス。
+var _smoked: Dictionary[Vector2i, bool] = {}
 var _threats_ready := false
 ## いま考えている駒の目標までの歩数の表、そこまで近づけば足りる歩数、役割ごとの重み、離れて立つか。
 var _goal_steps := PackedInt32Array()
@@ -169,6 +183,19 @@ func next_action(battle: Battle) -> BattleAction:
 	if action != null and battle.can_apply(action):
 		return action
 	return _fallback(battle)
+
+
+## いまのフェーズのプレイヤーの駒 unit_id が cell に立っているとして、次の相手の番（と中立のフェーズ）に受けうるダメージの見積もり。
+## CPU が立つマスを選ぶのに使っている値（docs/cpu-ai.md の「危険の見積もり」）。対戦の状態は変えない。
+func danger(battle: Battle, unit_id: int, cell: Vector2i) -> int:
+	var unit := battle.unit_by_id(unit_id)
+	if unit == null or unit.side != battle.phase or battle.phase == Unit.Side.NEUTRAL or battle.is_over():
+		return 0
+	_begin(battle)
+	_build_threats()
+	var result := _threat_at(unit, cell, 0)
+	_battle = null
+	return result
 
 
 func _decide() -> BattleAction:
@@ -200,6 +227,8 @@ func _begin(battle: Battle) -> void:
 	_me = battle.phase
 	_foe = (1 - _me) as Unit.Side
 	_threats = {}
+	_close_threats = {}
+	_smoked = {}
 	_threats_ready = false
 	var board := battle.board
 	var has_hqs := board.hq_cells.size() >= 2
@@ -456,6 +485,11 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 		if chipped != null:
 			value += BARRICADE_DAMAGE_VALUE * chipped.amount
 			continue
+		var stripped := event as StatusRemovedEvent
+		if stripped != null:
+			if stripped.reason == StatusRemovedEvent.Reason.CONSUMED and Status.blocks_damage(stripped.status):
+				value += _barrier_strip_value(stripped.unit_id, sim)
+			continue
 		var removed := event as FieldEffectRemovedEvent
 		if removed != null:
 			if removed.reason == FieldEffectRemovedEvent.Reason.DESTROYED:
@@ -490,6 +524,26 @@ func _damage_value(victim: Unit, hp_after: int) -> float:
 	if hp_after == 0:
 		return value + kill
 	return maxf(1.0, value - REMAINING_HP_PENALTY * hp_after)
+
+
+## 駒 victim_id のバリアが外れた価値（sim は、外れたあとの複製）。敵のバリアをはがしたなら、このあとに動ける味方のうち、
+## その敵に届きそうな駒（移動力 + 射程の歩数の中。目安）のいちばん強い攻撃 1 回ぶんを見込む。味方のバリアなら、同じだけ引く。
+func _barrier_strip_value(victim_id: int, sim: Battle) -> float:
+	var victim := sim.unit_by_id(victim_id)
+	if victim == null or victim.side == Unit.Side.NEUTRAL:
+		return 0.0
+	if victim.side == _me:
+		return -BARRIER_STRIP_VALUE
+	var strongest := 0
+	for friend in sim.units:
+		if friend.side != _me or not sim.can_act(friend) or friend.id == sim.acting_unit_id:
+			continue
+		if UnitKind.role(friend.kind) == UnitKind.Role.HEALER:
+			continue
+		if Combat.distance(friend.cell, victim.cell) <= friend.move_range() + friend.attack_range():
+			strongest = maxi(strongest, Combat.attack_power(friend))
+	var rate := KING_DAMAGE_VALUE if victim.kind == UnitKind.Id.KING else DAMAGE_VALUE
+	return BARRIER_STRIP_VALUE + BARRIER_STRIP_RATE * rate * mini(strongest, victim.hp)
 
 
 # ---- スキルの価値 ----
@@ -529,44 +583,40 @@ func _sanctuary_value(used: SkillUsedEvent, sim: Battle) -> float:
 	return HEAL_VALUE * total if wounded >= SANCTUARY_MIN_UNITS else 0.0
 
 
-## 煙幕を置いた価値。中にいる味方（もう自分の煙幕の中にいる駒は除く）のうち、次の相手の番に
-## 離れた攻撃（射程 2 以上の敵）に狙われうる駒を数え、その敵の攻撃を防ぐぶんを見込む。
+## 煙幕を置いた価値。中にいる味方（もう自分の煙幕の中にいる駒は除く）のうち、次の相手の番に、煙幕が防ぐ攻撃
+## （離れたところからしか届かない攻撃）に狙われうる駒を数え、防げるダメージを見込む。
+## 隣まで寄れる敵の攻撃と、スキルのダメージは防げないので数えない（_close_threats）。
 ## 狙われている味方が SMOKE_MIN_UNITS 体に満たなければ 0。
 func _smoke_value(used: SkillUsedEvent, sim: Battle) -> float:
 	_build_threats()
 	var cells := Skills.by_id(used.skill).affected_cells(sim, sim.unit_by_id(used.unit_id), used.target)
 	var covered := 0
 	var value := 0.0
-	for unit in _battle.units:
-		if unit.side != _me or not cells.has(unit.cell) or FieldEffects.smoke_of(_battle, unit) != null:
+	for unit in sim.units:
+		if unit.side != _me or not cells.has(unit.cell) or _smoked.has(unit.cell):
 			continue
-		if not _threats.has(unit.cell):
-			continue
-		var rate := KING_DAMAGE_VALUE if unit.kind == UnitKind.Id.KING else DAMAGE_VALUE
-		var worth := 0.0
-		var by: Dictionary = _threats[unit.cell]
+		var by: Dictionary = _threats.get(unit.cell, {})
+		var close: Dictionary = _close_threats.get(unit.cell, {})
+		var saved := 0
 		for enemy_id: int in by:
-			var enemy := _battle.unit_by_id(enemy_id)
-			if enemy != null and enemy.attack_range() >= Combat.RANGED_DISTANCE:
-				worth += SMOKE_COVER_RATE * rate * mini(by[enemy_id], unit.hp)
-		if worth > 0.0:
+			saved += by[enemy_id] - close.get(enemy_id, 0)
+		if saved > 0:
+			var rate := KING_DAMAGE_VALUE if unit.kind == UnitKind.Id.KING else DAMAGE_VALUE
 			covered += 1
-			value += worth
+			value += SMOKE_COVER_RATE * rate * mini(saved, unit.hp)
 	return value if covered >= SMOKE_MIN_UNITS else 0.0
 
 
-## バリアを付けた価値。次の相手の番に、いまのマスの自分を攻撃できる敵がいれば、いちばん強い 1 体の攻撃を防ぐぶんを見込む。
-## 攻撃されそうになければ 0（バリアは期限で消える）。
-func _barrier_value(used: SkillUsedEvent, _sim: Battle) -> float:
+## バリアを付けた価値。次の相手の番に、いまのマスの自分を攻撃できる敵がいれば、防げる 1 回ぶんを見込む
+## （相手は弱い攻撃で先にはがすので、届く攻撃のうち、いちばん弱いもの）。攻撃されそうになければ 0（バリアは期限で消える）。
+func _barrier_value(used: SkillUsedEvent, sim: Battle) -> float:
 	_build_threats()
 	var unit := _battle.unit_by_id(used.unit_id)
-	if Statuses.has(unit, Status.Type.BARRIER) or not _threats.has(unit.cell):
+	if Statuses.blocking(unit) != -1:
 		return 0.0
-	var strongest := 0
-	var by: Dictionary = _threats[unit.cell]
-	for enemy_id: int in by:
-		strongest = maxi(strongest, by[enemy_id])
-	return BARRIER_COVER_RATE * DAMAGE_VALUE * mini(strongest, unit.hp)
+	var shielded := sim.unit_by_id(used.unit_id)
+	var saved := _threat_at(unit, shielded.cell, 0) - _threat_at(shielded, shielded.cell, 0)
+	return BARRIER_COVER_RATE * DAMAGE_VALUE * mini(saved, unit.hp)
 
 
 ## 照準を付けた価値。次の自分の番に、構えたマスから強めた攻撃を当てられそうな敵のうち、いちばん価値の高い 1 体ぶん。
@@ -653,12 +703,7 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 			value += HQ_HOLD_VALUE * _battle.capture_turns[_me]
 	if cell == _my_hq and _hq_in_danger and UnitKind.role(unit.kind) != UnitKind.Role.RAIDER:
 		value += HQ_GUARD_VALUE
-	var threat := 0
-	if _threats.has(cell):
-		var by: Dictionary = _threats[cell]
-		for enemy_id: int in by:
-			if enemy_id != ignored_id:
-				threat += by[enemy_id]
+	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
 		value -= _lethal_penalty
@@ -755,30 +800,74 @@ func _friend_to_follow(unit: Unit) -> Unit:
 # ---- 危険なマス ----
 
 
-## 次の相手の番（と中立のフェーズ）に、敵が攻撃できるマスを調べる。
-## 相手の動けるマスは、複製の上で自分のフェーズを終え、相手の番になった状態の Battle.options() に聞く。
-## そこから攻撃の届くマスは目安（動けるマスから射程の歩数まで。地形は見ない）。中立の駒は、いまの位置から移動力 + 射程まで。
+## unit が cell に立っているときに、次の相手の番（と中立のフェーズ）に受けうるダメージの合計。
+## ignored_id の敵は数えない。_build_threats のあとに呼ぶ。
+## - 自分の煙幕の中のマスでは、煙幕に防がれない攻撃だけを数える
+## - unit にバリアが付いていれば、いちばん弱い 1 回ぶんを引く（相手は、弱い攻撃で先にはがす）
+func _threat_at(unit: Unit, cell: Vector2i, ignored_id: int) -> int:
+	var by: Dictionary = (_close_threats if _smoked.has(cell) else _threats).get(cell, {})
+	var total := 0
+	var weakest := _FAR
+	for enemy_id: int in by:
+		if enemy_id != ignored_id:
+			total += by[enemy_id]
+			weakest = mini(weakest, by[enemy_id])
+	if total > 0 and Statuses.blocking(unit) != -1:
+		total -= weakest
+	return total
+
+
+## 次の相手の番（と中立のフェーズ）に、敵が攻撃できるマスを調べる（_threats、_close_threats）。
+## - 相手の動けるマス、そのときの射程と攻撃力（構えた相手の確定クリティカルも）、スキルを使えるかは、
+##   複製の上で自分のフェーズを終え、相手の番になった状態に聞く
+## - 動くと外れる状態（照準）の付いた相手は、いまのマスからは伸びた射程と強めた攻撃力で、ほかのマスからはもとの値で数える
+## - そこから攻撃の届くマスは目安（動けるマスから射程の歩数まで。地形は見ない）。盾のあるときだけ、間の盾をルールに聞く
+## - 相手のスキルで届くマスは SKILL_THREATS のメソッドが足す
+## - 中立の駒は、いまの位置から移動力 + 射程まで
 func _build_threats() -> void:
 	if _threats_ready:
 		return
 	_threats_ready = true
+	for effect in _board.field_effects:
+		if effect.type == FieldEffect.Type.SMOKE and effect.side == _me:
+			for cell in effect.cells:
+				_smoked[cell] = true
 	var sim := _battle.clone()
 	var next_phase := sim.apply(EndPhaseAction.new()).accepted and not sim.is_over()
 	for enemy in _battle.units:
-		if enemy.side == _me or UnitKind.role(enemy.kind) == UnitKind.Role.HEALER:
+		if enemy.side == _me:
 			continue
-		var from: Array[Vector2i] = [enemy.cell]
-		var reach := enemy.move_range() + enemy.attack_range()
-		if enemy.side == _foe:
-			if not next_phase or sim.unit_by_id(enemy.id) == null:
-				continue
-			from.assign(sim.options(enemy.id).move_cells.keys())
-			reach = enemy.attack_range()
-		_spread_threat(enemy.id, enemy.power(), from, reach)
+		if enemy.side == Unit.Side.NEUTRAL:
+			# 中立の駒は動けるマスを聞けないので、いまの位置から広げる。隣まで寄れる距離も、移動力のぶん広い。
+			var reach := enemy.move_range() + enemy.attack_range()
+			_spread_threat(sim, enemy.id, enemy.power(), [enemy.cell], reach, false, enemy.move_range() + Combat.RANGED_DISTANCE - 1)
+			continue
+		var foe := sim.unit_by_id(enemy.id) if next_phase else null
+		if foe == null:
+			continue
+		var moves: Array[Vector2i] = []
+		moves.assign(sim.options(foe.id).move_cells.keys())
+		if UnitKind.role(foe.kind) != UnitKind.Role.HEALER:
+			# 動いたあとの相手（動くと外れる状態を外した写し）。
+			var moved := foe.copy()
+			Statuses.displace(moved)
+			_spread_threat(sim, foe.id, Combat.attack_power(moved), moves, moved.attack_range())
+			if Combat.attack_power(foe) != Combat.attack_power(moved) or foe.attack_range() != moved.attack_range():
+				_spread_threat(sim, foe.id, Combat.attack_power(foe), [foe.cell], foe.attack_range())
+		var skill := Skills.of(foe)
+		if skill != null and SKILL_THREATS.has(skill.id()) and Skills.can_use(sim, foe):
+			call(SKILL_THREATS[skill.id()], sim, foe, moves)
 
 
-## from のマスから reach 歩までのマスに、敵 enemy_id の攻撃（power）が届くと書き込む。
-func _spread_threat(enemy_id: int, power: int, from: Array[Vector2i], reach: int) -> void:
+## from のマスから reach 歩までのマスに、敵 enemy_id の攻撃（power）が届くと書き込む（同じ敵は、強いほうを残す）。
+## from から close_reach 歩まで（既定は、隣 = Combat.RANGED_DISTANCE より近く）は、煙幕に防がれない攻撃として
+## _close_threats にも書く。unblockable なら、どの距離でも書く。
+## 盤に盾があり、離れた攻撃（射程 2 以上）なら、間に盾があって届かないマスを除く（sim のルールに聞く）。
+func _spread_threat(
+	sim: Battle, enemy_id: int, power: int, from: Array[Vector2i], reach: int, unblockable := false,
+	close_reach := Combat.RANGED_DISTANCE - 1
+) -> void:
+	var check_lines := not unblockable and reach >= Combat.RANGED_DISTANCE and sim.board.has_barricades()
 	var seen: Dictionary[Vector2i, bool] = {}
 	var frontier := from
 	for cell in from:
@@ -786,9 +875,10 @@ func _spread_threat(enemy_id: int, power: int, from: Array[Vector2i], reach: int
 	for step in reach + 1:
 		var next: Array[Vector2i] = []
 		for cell in frontier:
-			if not _threats.has(cell):
-				_threats[cell] = {}
-			_threats[cell][enemy_id] = power
+			if not check_lines or _reaches_from_any(sim, from, cell, reach):
+				_note_threat(_threats, cell, enemy_id, power)
+				if unblockable or step <= close_reach:
+					_note_threat(_close_threats, cell, enemy_id, power)
 			if step == reach:
 				continue
 			for direction in Board.DIRECTIONS:
@@ -797,6 +887,48 @@ func _spread_threat(enemy_id: int, power: int, from: Array[Vector2i], reach: int
 					seen[near] = true
 					next.append(near)
 		frontier = next
+
+
+func _note_threat(table: Dictionary[Vector2i, Dictionary], cell: Vector2i, enemy_id: int, power: int) -> void:
+	if not table.has(cell):
+		table[cell] = {}
+	var by: Dictionary = table[cell]
+	by[enemy_id] = maxi(power, by.get(enemy_id, 0))
+
+
+## from のどれかのマスから at へ、射程 reach の攻撃が届くか（間の盾はルールに聞く。Combat.reaches）。
+func _reaches_from_any(sim: Battle, from: Array[Vector2i], at: Vector2i, reach: int) -> bool:
+	for cell in from:
+		if Combat.reaches(sim, cell, at, reach):
+			return true
+	return false
+
+
+## ファイアボールを使える相手: 動けるマスから「中心までの距離 + 十字の腕」まで、スキルのダメージが届く。
+## 煙幕にも盾にも防がれない（docs/skills/fireball.md）。
+func _fireball_threat(sim: Battle, foe: Unit, moves: Array[Vector2i]) -> void:
+	_spread_threat(sim, foe.id, FireballSkill.DAMAGE, moves, FireballSkill.CENTER_RANGE + FireballSkill.ARM, true)
+
+
+## シャドウステップを使える相手: 動けるマスから縦・横・斜めに跳んだ先（入れるマス）から、もう一度攻撃が届く。
+## 跳べる向きと距離は目安（スキルの調整値を読む。駒のいるマスへも跳べるものとして広めに数える）。
+func _shadow_step_threat(sim: Battle, foe: Unit, moves: Array[Vector2i]) -> void:
+	var landings: Dictionary[Vector2i, bool] = {}
+	var width := _board.size.x
+	for cell in moves:
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if dx == 0 and dy == 0:
+					continue
+				for steps in range(1, ShadowStepSkill.RANGE + 1):
+					var landing := cell + Vector2i(dx, dy) * steps
+					if _board.in_bounds(landing) and _walkable[landing.y * width + landing.x] == 1:
+						landings[landing] = true
+	var from: Array[Vector2i] = []
+	from.assign(landings.keys())
+	var moved := foe.copy()
+	Statuses.displace(moved)
+	_spread_threat(sim, foe.id, Combat.attack_power(moved), from, moved.attack_range())
 
 
 # ---- 歩数の表 ----
