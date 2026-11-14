@@ -42,7 +42,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	events.append_array(Statuses.after_attack(attacker))
 	for victim in victims:
 		if victim.hp == 0:
-			events.append(battle.remove_unit(victim))
+			events.append_array(battle.remove_unit(victim, attacker))
 	# 攻撃した駒が自分の爆発で倒れたら、行動を終えるイベントは出ない。
 	if battle.units.has(attacker):
 		events.append(battle.finish_action(attacker))

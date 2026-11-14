@@ -541,6 +541,7 @@ static func event_players() -> Dictionary:
 		EvolutionOfferedEvent: &"_play_evolution_offered",
 		UnitEvolvedEvent: &"_play_evolved",
 		UnitDefeatedEvent: &"_play_defeated",
+		MidBossDefeatedEvent: &"_play_mid_boss_defeated",
 		UnitSpawnedEvent: &"_play_spawned",
 		BarrelExplodedEvent: &"_play_barrel_exploded",
 		BarricadePlacedEvent: &"_play_field_effect_placed",
@@ -879,7 +880,20 @@ func _play_defeated(event: UnitDefeatedEvent) -> void:
 	await view.play_death()
 
 
-## 中立の駒が結晶泉に湧いた。光とともに、小さい形から大きくする。
+## 中ボスが倒れた（駒が消えるのは UnitDefeatedEvent が見せた）。倒した陣営を、その色で知らせる。
+func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
+	var at := BoardView.cell_center(event.cell)
+	var side := "左" if event.boss_index == 0 else "右"
+	if event.slayer_side < 0:
+		_pop_number(at, "%sの中ボスが倒れた" % side)
+		return
+	var color: Color = TEAM_COLORS[event.slayer_side]
+	_flash(at + Vector3(0.0, 0.6, 0.0), color, 2.4)
+	_pop_number(at, "%s が%sの中ボスを倒した" % [_side_name(event.slayer_side as Unit.Side), side], color.lightened(0.4))
+	await get_tree().create_timer(0.6).timeout
+
+
+## 中立の駒が結晶泉に湧いた（中ボスが現れた）。光とともに、小さい形から大きくする。
 func _play_spawned(event: UnitSpawnedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
 	var view: UnitView = UnitView.new()

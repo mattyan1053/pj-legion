@@ -21,6 +21,8 @@ const HIT_EXPERIENCE := 10
 const DEFEAT_EXPERIENCE := 50
 ## 攻撃で中立の駒を倒したとき（同上）。
 const NEUTRAL_DEFEAT_EXPERIENCE := 30
+## 攻撃で中ボス（エリートミニオン）を倒したとき（同上。docs/neutral-mid-boss.md）。
+const MID_BOSS_DEFEAT_EXPERIENCE := 60
 ## 味方を回復したとき（回復した量によらない）。
 const HEAL_EXPERIENCE := 20
 ## 1 レベル上がるのに要る経験値（どのレベルでも同じ）。
@@ -84,11 +86,13 @@ static func attack_experience(battle: Battle, attacker: Unit, target: Unit) -> i
 
 
 ## 相手 target（ダメージを受ける前の状態）の HP を hp_after まで減らしたときに入る経験値。
-## 当たって生き残れば HIT_EXPERIENCE、倒せば DEFEAT_EXPERIENCE（中立の駒なら NEUTRAL_DEFEAT_EXPERIENCE）。
+## 当たって生き残れば HIT_EXPERIENCE、倒せば DEFEAT_EXPERIENCE（中立の駒なら NEUTRAL_DEFEAT_EXPERIENCE、中ボスなら MID_BOSS_DEFEAT_EXPERIENCE）。
 ## 駒の攻撃（attack_experience）とダメージのあるスキル（Skills.deal_damage）が使う。
 static func damage_experience(target: Unit, hp_after: int) -> int:
 	if hp_after > 0:
 		return HIT_EXPERIENCE
+	if target.kind == UnitKind.Id.ELITE_MINION:
+		return MID_BOSS_DEFEAT_EXPERIENCE
 	return NEUTRAL_DEFEAT_EXPERIENCE if target.side == Unit.Side.NEUTRAL else DEFEAT_EXPERIENCE
 
 

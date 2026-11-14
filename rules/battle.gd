@@ -41,6 +41,10 @@ var armies: Array[UnitKind.Army] = [UnitKind.Army.NONE, UnitKind.Army.NONE]
 var ult_gauge: Array[int] = [0, 0]
 var ult_uses: Array[int] = [0, 0]
 
+## 倒れた中ボス -> 倒した陣営（docs/neutral-mid-boss.md）。キーは中ボスの番号（Board.mid_boss_cells の添字）。
+## 値は MidBossDefeatedEvent.slayer_side と同じ（止めを刺した駒がいなければ -1）。倒れた中ボスは湧き直さない。
+var mid_boss_slayers: Dictionary[int, int] = {}
+
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
 
@@ -83,13 +87,33 @@ func add_unit(
 	return unit
 
 
-## 倒れた駒を盤から取り除く。
-func remove_unit(unit: Unit) -> UnitDefeatedEvent:
+## 倒れた駒を盤から取り除く。by は止めを刺した駒（攻撃した駒、スキルを使った駒、爆発した樽を攻撃した駒）。
+## 返すのは UnitDefeatedEvent。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）。
+func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 	units.erase(unit)
 	if acting_unit_id == unit.id:
 		acting_unit_id = 0
 	Ults.charge_defeat(self, unit)
-	return UnitDefeatedEvent.new(unit)
+	var events: Array[BattleEvent] = [UnitDefeatedEvent.new(unit)]
+	var boss_index := mid_boss_index(unit)
+	if boss_index != -1:
+		var slayer := by if by != null and by.side != Unit.Side.NEUTRAL else null
+		var event := MidBossDefeatedEvent.new(boss_index, unit, slayer)
+		mid_boss_slayers[boss_index] = event.slayer_side
+		events.append(event)
+	return events
+
+
+## 駒が中ボスなら、その番号（Board.mid_boss_cells の添字）。中ボスでなければ -1。
+func mid_boss_index(unit: Unit) -> int:
+	if unit.kind != UnitKind.Id.ELITE_MINION:
+		return -1
+	return board.mid_boss_cells.find(unit.home_cell)
+
+
+## 中ボスが倒れたか。
+func is_mid_boss_defeated(boss_index: int) -> bool:
+	return mid_boss_slayers.has(boss_index)
 
 
 func unit_at(cell: Vector2i) -> Unit:

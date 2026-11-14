@@ -4,8 +4,8 @@ extends RefCounted
 ##
 ## 同じステージ・同じシードからは、いつも同じ盤面ができる。
 ## どのステージでも、次を守る。
-## - 本陣の周り（チェビシェフ距離 3 以内）と結晶泉のマスには、障害物も森も置かない
-## - 両陣営の本陣どうしは、障害物を避けて歩いてつながっている
+## - 本陣の周り（チェビシェフ距離 3 以内）と結晶泉のマス、中ボスの周り（チェビシェフ距離 1 以内）には、障害物も森も置かない
+## - 両陣営の本陣どうしは、障害物を避けて歩いてつながっている。中ボスのマスにも、本陣から歩いて行ける
 ##
 ## 地形のあとに、ステージごとの環境オブジェクトを置く（中央平原に起爆樽、迷宮回廊に回復の泉、双子結晶にポータル）。
 ## 置くのは、本陣の周りと結晶泉を除く平地で、本陣から歩いて行けるマスだけ。
@@ -21,6 +21,12 @@ const DEFAULT_SIZE := Vector2i(30, 30)
 ## （双子結晶の中央の壁は中心から左右 5 マスで、右の結晶泉（x = 幅 - 5）にかからないには幅 22 が要る）。
 const MIN_SIZE := Vector2i(22, 22)
 const PROTECT_RADIUS := 3
+## 中ボスの周りの、地形もオブジェクトも置かない広さ（チェビシェフ距離）。
+const MID_BOSS_CLEARING := 1
+## 上下の本陣のステージ（中央平原・迷宮回廊）で、中ボスを本陣の列から左右へ離す量。
+const MID_BOSS_SPREAD := 8
+## 双子結晶で、中ボスを盤の角から離す量（左上と右下の角から、縦横にこのマス数）。
+const MID_BOSS_CORNER_INSET := 6
 const WALL_RATIO := 0.10
 const FOREST_RATIO := 0.15
 ## 連結しない盤面ができたら、シードをずらして作り直す回数。尽きたら壁を削ってつなぐ。
@@ -56,6 +62,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 		]
 	for cell in board.font_cells:
 		board.set_terrain(cell, Terrain.Type.FONT)
+	board.mid_boss_cells = mid_boss_cells_for(stage, size)
 
 	var protected := protected_cells(board)
 	for attempt in MAX_ATTEMPTS:
@@ -72,7 +79,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 				_scatter(board, protected, rng)
 				# 中央の横長の帯（30 x 30 なら x:10〜20, y:12〜18）を壁でふさぐ。
 				_fill_rect(board, protected, Rect2i(center - Vector2i(5, 3), Vector2i(11, 7)), Terrain.Type.OBSTACLE)
-		if _hqs_connected(board):
+		if _hqs_connected(board) and _mid_bosses_reachable(board):
 			_place_objects(board, stage, map_seed, protected)
 			return board
 
@@ -85,8 +92,24 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 			_fill_rect(board, protected, rect, Terrain.Type.NORMAL)
 	else:
 		carve_corridor(board)
+	for cell in board.mid_boss_cells:
+		if not board.is_reachable(board.hq_cells[0], cell):
+			carve_corridor(board, cell)
 	_place_objects(board, stage, map_seed, protected)
 	return board
+
+
+## ステージの中ボスのマス（0 = 左、1 = 右）。両方のプレイヤーに公平になるように置く（docs/neutral-mid-boss.md）。
+## - 中央平原・迷宮回廊: 盤の真ん中の行の高さで、本陣の列から左右へ MID_BOSS_SPREAD。
+##   本陣どうしを入れ替える点対称（盤の行の数が偶数なので、真ん中の行は 2 つある）で、左右の中ボスが入れ替わる
+## - 双子結晶: 左上と右下の角の近く。どちらの中ボスも、両方の本陣から同じ歩数（マンハッタン距離）
+static func mid_boss_cells_for(stage: Stage, size: Vector2i) -> Array[Vector2i]:
+	if stage == Stage.TWIN_SPRINGS:
+		var inset := MID_BOSS_CORNER_INSET
+		return [Vector2i(inset, inset), size - Vector2i(inset + 1, inset + 1)]
+	var hq_x := (size / 2).x - 1
+	var upper := ((size - Vector2i.ONE) / 2).y
+	return [Vector2i(hq_x - MID_BOSS_SPREAD, upper), Vector2i(hq_x + MID_BOSS_SPREAD, size.y - 1 - upper)]
 
 
 ## 地形を置いてはいけないマス（本陣の周りと結晶泉）。Vector2i -> true。
@@ -100,13 +123,20 @@ static func protected_cells(board: Board) -> Dictionary:
 					cells[cell] = true
 	for cell in board.font_cells:
 		cells[cell] = true
+	for boss in board.mid_boss_cells:
+		for dy in range(-MID_BOSS_CLEARING, MID_BOSS_CLEARING + 1):
+			for dx in range(-MID_BOSS_CLEARING, MID_BOSS_CLEARING + 1):
+				var cell := boss + Vector2i(dx, dy)
+				if board.in_bounds(cell):
+					cells[cell] = true
 	return cells
 
 
-## 壁を無視した最短の道で本陣どうしを結び、その道の上の壁を平地にする。
-static func carve_corridor(board: Board) -> void:
+## 壁を無視した最短の道で、プレイヤー1 の本陣と to（既定はプレイヤー2 の本陣）を結び、その道の上の壁を平地にする。
+static func carve_corridor(board: Board, to := Board.NO_CELL) -> void:
 	var from := board.hq_cells[0]
-	var to := board.hq_cells[1]
+	if to == Board.NO_CELL:
+		to = board.hq_cells[1]
 	var parent := {from: from}
 	var queue: Array[Vector2i] = [from]
 	var head := 0
@@ -234,6 +264,13 @@ static func _shuffle(cells: Array[Vector2i], rng: RandomNumberGenerator) -> void
 
 static func _hqs_connected(board: Board) -> bool:
 	return board.is_reachable(board.hq_cells[0], board.hq_cells[1])
+
+
+static func _mid_bosses_reachable(board: Board) -> bool:
+	for cell in board.mid_boss_cells:
+		if not board.is_reachable(board.hq_cells[0], cell):
+			return false
+	return true
 
 
 ## 守るマス以外を、障害物・森・平地に塗り直す。

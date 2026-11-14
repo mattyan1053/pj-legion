@@ -33,7 +33,9 @@ class Outcome:
 	## 倒した中立の駒、倒されたプレイヤーの駒（将を除く）。
 	var neutral_kills: Array[int] = [0, 0]
 	var losses: Array[int] = [0, 0]
-	## 駒の番号 -> [当てた回数, プレイヤーの駒を倒した回数, 中立の駒を倒した回数, 回復した回数]（経験値が入ったものだけ）。
+	## 倒れた中ボス。[倒れたターン, 倒した陣営（いなければ -1）] の列（docs/neutral-mid-boss.md）。
+	var mid_boss_kills: Array[Array] = []
+	## 駒の番号 -> [当てた回数, プレイヤーの駒を倒した回数, 中立の駒を倒した回数, 回復した回数, 中ボスを倒した回数]（経験値が入ったものだけ）。
 	var gains: Dictionary[int, Array] = {}
 	## 雇った駒（将を除く）の数。
 	var hired: Array[int] = [0, 0]
@@ -51,6 +53,8 @@ class Outcome:
 	var last_attacked_id := 0
 	## いちばん最近に倒れた駒が中立だったか（撃破の経験値が、どちらの撃破のものかを見分ける）。
 	var last_defeated_neutral := false
+	## いちばん最近に倒れた駒が中ボスだったか。
+	var last_defeated_mid_boss := false
 	## スキル -> 使った回数。
 	var skill_uses: Dictionary[Skill.Id, int] = {}
 	## いまの行動でスキルのダメージを受けた駒 -> 使った駒（同じスキルで何体も同時に倒れるので、撃破をここから数える）。
@@ -147,6 +151,7 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 		if outcome.skill_hits.has(defeated.unit_id) and defeated.side != Unit.Side.NEUTRAL:
 			outcome.skill_defeated_player = true
 		outcome.last_defeated_neutral = defeated.side == Unit.Side.NEUTRAL and not outcome.skill_defeated_player
+		outcome.last_defeated_mid_boss = outcome.last_defeated_neutral and defeated.kind == UnitKind.Id.ELITE_MINION
 		var killer := 0
 		if outcome.last_attacked_id == defeated.unit_id:
 			killer = outcome.last_attacker_id
@@ -160,14 +165,19 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 		elif defeated.kind != UnitKind.Id.KING:
 			outcome.losses[defeated.side] += 1
 			_bump(outcome, defeated.unit_id, 1, 1)
+	elif event is MidBossDefeatedEvent:
+		outcome.mid_boss_kills.append([battle.turn, (event as MidBossDefeatedEvent).slayer_side])
 	elif event is ExperienceGainedEvent:
 		var gained := event as ExperienceGainedEvent
-		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0])
+		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0, 0])
 		match gained.reason:
 			ExperienceGainedEvent.Reason.HIT:
 				tally[0] += 1
 			ExperienceGainedEvent.Reason.DEFEAT:
-				tally[2 if outcome.last_defeated_neutral else 1] += 1
+				if outcome.last_defeated_mid_boss:
+					tally[4] += 1
+				else:
+					tally[2 if outcome.last_defeated_neutral else 1] += 1
 			ExperienceGainedEvent.Reason.HEAL:
 				tally[3] += 1
 	elif event is UnitActedEvent:
