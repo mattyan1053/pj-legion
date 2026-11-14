@@ -5,6 +5,7 @@ extends RefCounted
 ## 全部の駒が行動を終えても、フェーズは自動では終わらない。未行動の駒が残っていても終えてよい。
 ## 行動の途中の駒がいれば、待機したことにして終える。
 ## プレイヤー2 のあとの中立のフェーズは、続けてこの中で進め、次のターンのプレイヤー1 のフェーズまで進む。
+## フェーズを終える前に、敵の本陣の占拠を数える。それで勝ちが決まれば、次のフェーズへは進まない。
 
 func is_valid(battle: Battle) -> bool:
 	return battle.phase != Unit.Side.NEUTRAL
@@ -15,6 +16,9 @@ func execute(battle: Battle) -> Array:
 	var acting := battle.unit_by_id(battle.acting_unit_id)
 	if acting != null:
 		events.append(battle.finish_action(acting))
+	events.append_array(battle.count_capture(battle.phase))
+	if battle.is_over():
+		return events
 
 	if battle.phase == Unit.Side.PLAYER1:
 		events.append_array(_start_phase(battle, Unit.Side.PLAYER2))

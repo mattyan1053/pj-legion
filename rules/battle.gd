@@ -16,6 +16,13 @@ var turn := 1
 var phase := Unit.Side.PLAYER1
 ## 行動の途中（動いたが、攻撃も待機もしていない）の駒の番号。いなければ 0。
 var acting_unit_id := 0
+## 勝った陣営（Unit.Side の値）。決着していなければ -1。決着したあとは、どの行動も受け付けない。
+var winner := -1
+## プレイヤーごとの、敵の本陣を占拠し続けたフェーズの数。添字がプレイヤー番号。
+var capture_turns: Array[int] = [0, 0]
+
+## 敵の本陣をこの回数だけ自分のフェーズの終わりまで占拠し続けたら勝ち。
+const CAPTURE_TURNS_TO_WIN := 3
 
 var _next_unit_id := 1
 
@@ -39,7 +46,7 @@ func remove_unit(unit: Unit) -> UnitDefeatedEvent:
 	units.erase(unit)
 	if acting_unit_id == unit.id:
 		acting_unit_id = 0
-	return UnitDefeatedEvent.new(unit.id, unit.cell)
+	return UnitDefeatedEvent.new(unit)
 
 
 func unit_at(cell: Vector2i) -> Unit:
@@ -89,8 +96,53 @@ func finish_action(unit: Unit) -> UnitActedEvent:
 	return UnitActedEvent.new(unit.id)
 
 
+func is_over() -> bool:
+	return winner != -1
+
+
+## player が敵の本陣に自分の駒を乗せているか。
+func occupies_enemy_hq(player: Unit.Side) -> bool:
+	if board.hq_cells.size() < 2:
+		return false
+	var occupant := unit_at(board.hq_cells[1 - player])
+	return occupant != null and occupant.side == player
+
+
+## player のフェーズの終わりに、敵の本陣の占拠を数える。乗せていれば 1 進め、いなければ 0 に戻す。
+## 数が変わったときだけイベントを出す。規定の回数に達したら勝ち。
+func count_capture(player: Unit.Side) -> Array:
+	var before := capture_turns[player]
+	capture_turns[player] = before + 1 if occupies_enemy_hq(player) else 0
+	var events: Array = []
+	if capture_turns[player] != before:
+		events.append(CaptureProgressEvent.new(player, capture_turns[player]))
+	if capture_turns[player] >= CAPTURE_TURNS_TO_WIN:
+		winner = player
+		events.append(GameWonEvent.new(player, GameWonEvent.Reason.HQ_CAPTURED))
+	return events
+
+
 ## 行動を受け付けて状態を進め、起きたことを返す。受け付けられなければ空の列。
 func apply(action: Variant) -> Array:
-	if not action.is_valid(self):
+	if is_over() or not action.is_valid(self):
 		return []
-	return action.execute(self)
+	var events: Array = action.execute(self)
+	events.append_array(_after_action(events))
+	return events
+
+
+## 行動のあとに決まること。
+## - 将が倒れたら、相手のプレイヤーの勝ち
+## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
+func _after_action(events: Array) -> Array:
+	var extra: Array = []
+	for event in events:
+		if event is UnitDefeatedEvent and event.kind == UnitKind.Id.KING and not is_over():
+			if event.side == Unit.Side.PLAYER1 or event.side == Unit.Side.PLAYER2:
+				winner = 1 - event.side
+				extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.KING_DEFEATED))
+	for player in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if capture_turns[player] > 0 and not occupies_enemy_hq(player):
+			capture_turns[player] = 0
+			extra.append(CaptureProgressEvent.new(player, 0))
+	return extra
