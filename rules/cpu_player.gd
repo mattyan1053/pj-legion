@@ -338,11 +338,13 @@ func _follow_up(unit: Unit) -> BattleAction:
 	_moved_reach = unit.attack_range()
 	var here: Dictionary[Vector2i, float] = {unit.cell: 0.0}
 	var wanted := _wanted_skill_targets(unit, here)
+	var skill := Skills.of(unit)
+	var limited := skill != null and SKILL_TARGETS.has(skill.id())
 	for action in _battle.options(unit.id).actions():
 		if action is MoveAction or action is WaitAction or action is UndoMoveAction:
 			continue
 		var skill_use := action as UseSkillAction
-		if skill_use != null and not wanted.is_empty() and not wanted.has(skill_use.target):
+		if skill_use != null and limited and not wanted.has(skill_use.target):
 			continue
 		var sim := _battle.clone()
 		var value := _outcome_value(sim, sim.apply(action).events)
@@ -479,7 +481,7 @@ func _skill_candidates(unit: Unit, options: UnitOptions, positions: Dictionary[V
 
 
 ## unit のスキルの、対象に選ぶ価値のありそうなマス（SKILL_TARGETS のメソッドの答え）。
-## スキルを持たない・いま使えない駒と、SKILL_TARGETS に載せていないスキルでは空（空なら、絞らない）。
+## スキルを持たない・いま使えない駒と、SKILL_TARGETS に載せていないスキルでは空（載せていないスキルは、呼ぶ側が絞らずに全部試す）。
 ## cells は、unit が立つかもしれないマス（_plan では通常の移動で止まれるマス、_follow_up ではいまのマスだけ）。
 func _wanted_skill_targets(unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var skill := Skills.of(unit)
