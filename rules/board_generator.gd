@@ -6,6 +6,9 @@ extends RefCounted
 ## どのステージでも、次を守る。
 ## - 本陣の周り（チェビシェフ距離 3 以内）と結晶泉のマスには、障害物も森も置かない
 ## - 両陣営の本陣どうしは、障害物を避けて歩いてつながっている
+##
+## 地形のあとに、ステージごとの環境オブジェクトを置く（中央平原に起爆樽、迷宮回廊に回復の泉、双子結晶にポータル）。
+## 置くのは、本陣の周りと結晶泉を除く平地で、本陣から歩いて行けるマスだけ。
 
 enum Stage {
 	PLAIN = 1,  ## 中央平原: 障害物は少なめ、中央は空ける
@@ -22,6 +25,13 @@ const WALL_RATIO := 0.10
 const FOREST_RATIO := 0.15
 ## 連結しない盤面ができたら、シードをずらして作り直す回数。尽きたら壁を削ってつなぐ。
 const MAX_ATTEMPTS := 10
+## 中央平原の起爆樽の数。
+const MIN_BARRELS := 4
+const MAX_BARRELS := 6
+## 回復の泉・ポータルを置きたいマスが使えないとき、近くを探す広さ（チェビシェフ距離）。
+const OBJECT_SEARCH_RADIUS := 3
+## オブジェクトの配置に使う乱数のシードを、地形のシードからずらす量。
+const OBJECT_SEED_OFFSET := 1_000_003
 
 
 ## size が MIN_SIZE より小さいときは作らずに null を返す。
@@ -63,6 +73,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 				# 中央の横長の帯（30 x 30 なら x:10〜20, y:12〜18）を壁でふさぐ。
 				_fill_rect(board, protected, Rect2i(center - Vector2i(5, 3), Vector2i(11, 7)), Terrain.Type.OBSTACLE)
 		if _hqs_connected(board):
+			_place_objects(board, stage, map_seed, protected)
 			return board
 
 	if stage == Stage.TWIN_SPRINGS:
@@ -74,6 +85,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 			_fill_rect(board, protected, rect, Terrain.Type.NORMAL)
 	else:
 		carve_corridor(board)
+	_place_objects(board, stage, map_seed, protected)
 	return board
 
 
@@ -112,6 +124,112 @@ static func carve_corridor(board: Board) -> void:
 		if board.terrain_at(cell) == Terrain.Type.OBSTACLE:
 			board.set_terrain(cell, Terrain.Type.NORMAL)
 		cell = parent[cell]
+
+
+## ステージごとの環境オブジェクトを置く。地形とは別の乱数を使う（地形は、オブジェクトの有無で変わらない）。
+static func _place_objects(board: Board, stage: Stage, map_seed: int, protected: Dictionary) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = map_seed + OBJECT_SEED_OFFSET
+	var center := board.size / 2
+	match stage:
+		Stage.PLAIN:
+			_place_barrels(board, protected, rng)
+		Stage.LABYRINTH:
+			# 中央の左右の要所に 1 つずつ。半々の確率で、中央にもう 1 つ。
+			var spots: Array[Vector2i] = [center + Vector2i(-6, 0), center + Vector2i(6, 0)]
+			if rng.randf() < 0.5:
+				spots.append(center)
+			for spot in spots:
+				var cell := _free_cell_near(board, protected, spot)
+				if cell != Board.NO_CELL:
+					board.add_spring(cell)
+		Stage.TWIN_SPRINGS:
+			# 左右の道それぞれに、上の端寄りと下の端寄りを結ぶ対を 1 組ずつ。
+			for x: int in [5, board.size.x - 6]:
+				var top := _free_cell_near(board, protected, Vector2i(x, 4))
+				var bottom := _free_cell_near(board, protected, Vector2i(x, board.size.y - 5))
+				if top != Board.NO_CELL and bottom != Board.NO_CELL:
+					board.add_portal_pair(top, bottom)
+
+
+## 起爆樽を、中央の左右の帯（30 x 30 なら x:8〜10 と x:20〜22、y:10〜20）に、左右交互に置く。
+## 樽は通れないので、通れる場所が分かれてしまう置き方（道をふさぐ置き方）はしない。
+static func _place_barrels(board: Board, protected: Dictionary, rng: RandomNumberGenerator) -> void:
+	var center := board.size / 2
+	var zones: Array[Array] = []
+	for left: int in [center.x - 7, center.x + 5]:
+		var cells: Array[Vector2i] = []
+		for y in range(center.y - 5, center.y + 6):
+			for x in range(left, left + 3):
+				cells.append(Vector2i(x, y))
+		_shuffle(cells, rng)
+		zones.append(cells)
+	var wanted := rng.randi_range(MIN_BARRELS, MAX_BARRELS)
+	var open_cells := _reachable_count(board)
+	var placed := 0
+	var side := 0
+	while placed < wanted and not (zones[0].is_empty() and zones[1].is_empty()):
+		var zone: Array = zones[side]
+		side = 1 - side
+		while not zone.is_empty():
+			var cell: Vector2i = zone.pop_back()
+			if not _is_free(board, protected, cell):
+				continue
+			board.add_barrel(cell)
+			if _reachable_count(board) == open_cells - 1:
+				open_cells -= 1
+				placed += 1
+				break
+			board.remove_barrel(cell)
+
+
+## spot にいちばん近い、オブジェクトを置けるマス（spot 自身を含む）。本陣から歩いて行けるものだけ。
+## 近い順（チェビシェフ距離）に、上の行から、左の列から探す。無ければ Board.NO_CELL。
+static func _free_cell_near(board: Board, protected: Dictionary, spot: Vector2i) -> Vector2i:
+	for radius in OBJECT_SEARCH_RADIUS + 1:
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dy)) != radius:
+					continue
+				var cell := spot + Vector2i(dx, dy)
+				if _is_free(board, protected, cell) and board.is_reachable(board.hq_cells[0], cell):
+					return cell
+	return Board.NO_CELL
+
+
+## オブジェクトを置いてよいマスか（守るマスでない平地で、まだ何も置かれていない）。
+static func _is_free(board: Board, protected: Dictionary, cell: Vector2i) -> bool:
+	return (
+		board.in_bounds(cell)
+		and not protected.has(cell)
+		and board.terrain_at(cell) == Terrain.Type.NORMAL
+		and board.can_place_object(cell)
+	)
+
+
+## プレイヤー1 の本陣から歩いて行けるマスの数。
+static func _reachable_count(board: Board) -> int:
+	var visited := {board.hq_cells[0]: true}
+	var queue: Array[Vector2i] = [board.hq_cells[0]]
+	var head := 0
+	while head < queue.size():
+		var cell := queue[head]
+		head += 1
+		for direction in Board.DIRECTIONS:
+			var next := cell + direction
+			if not visited.has(next) and board.is_walkable(next):
+				visited[next] = true
+				queue.append(next)
+	return queue.size()
+
+
+## 渡した乱数で並べ替える（Array.shuffle() は全体の乱数を使うので、シードで固定できない）。
+static func _shuffle(cells: Array[Vector2i], rng: RandomNumberGenerator) -> void:
+	for i in range(cells.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var kept := cells[i]
+		cells[i] = cells[j]
+		cells[j] = kept
 
 
 static func _hqs_connected(board: Board) -> bool:

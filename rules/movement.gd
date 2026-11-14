@@ -3,11 +3,13 @@ extends RefCounted
 ## 駒の移動範囲と、そこまでの道。
 ##
 ## - 入るのに使う移動力は地形で決まる（平地・結晶泉 1、森 2）。合計が移動力以下のマスへ行ける
-## - 障害物と、敵の駒のいるマスは通れない
+## - 障害物、起爆樽、敵の駒のいるマスは通れない
 ## - 味方の駒のいるマスは通り抜けられるが、そこで止まることはできない
 ## - 敵の支配領域（ZOC）のマスには入れるが、そこで止まる（その先へは進めない）。
 ##   ただし、いま立っているマスが敵の ZOC でも、最初の 1 歩は踏み出せる
 ## - 巡航（攻撃を諦める移動）は移動力が 2 倍
+## - ポータルのマスからは、対になるポータルへ移動力を使わずに移れる（行き先に駒がいなければ）。
+##   道の中でポータルの対が続けて並んでいたら、そこは転移（Battle.portal_exit で見分ける）
 
 
 ## 移動に使える移動力。
@@ -72,14 +74,20 @@ static func _search(battle: Battle, unit: Unit, limit: int) -> Dictionary:
 		# 敵の ZOC に入ったマスからは先へ進めない（出発したマスだけは別）。
 		if cell != unit.cell and battle.is_in_enemy_zoc(cell, unit.side):
 			continue
+		# 行き先。ポータルの転移（移動力 0）を先に、そのあと上下左右。
+		var steps: Array[Vector2i] = []
+		var exit := battle.portal_exit(cell)
+		if exit != Board.NO_CELL:
+			steps.append(exit)
 		for direction in Board.DIRECTIONS:
-			var next := cell + direction
+			steps.append(cell + direction)
+		for next in steps:
 			if not battle.board.is_walkable(next):
 				continue
 			var occupant := battle.unit_at(next)
 			if occupant != null and occupant.is_enemy_of(unit):
 				continue
-			var next_cost: int = cost[cell] + battle.board.move_cost(next)
+			var next_cost: int = cost[cell] + (0 if next == exit else battle.board.move_cost(next))
 			if next_cost > limit or (cost.has(next) and cost[next] <= next_cost):
 				continue
 			cost[next] = next_cost

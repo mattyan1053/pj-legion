@@ -177,3 +177,99 @@ func _terrain_dump(board: Board) -> String:
 			row += str(board.terrain_at(Vector2i(x, y)))
 		rows.append(row)
 	return "\n".join(rows)
+
+
+# --- 環境オブジェクトの配置 ---
+
+const OBJECT_SEEDS := 30
+
+
+func test_plain_gets_four_to_six_barrels_in_the_side_bands() -> void:
+	for map_seed in range(1, OBJECT_SEEDS + 1):
+		var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, map_seed)
+		assert_between(board.barrel_cells.size(), 4, 6, "seed %d" % map_seed)
+		assert_eq(board.spring_cells.size(), 0)
+		assert_eq(board.portal_exits.size(), 0)
+		for cell in board.barrel_cells:
+			assert_true((cell.x >= 8 and cell.x <= 10) or (cell.x >= 20 and cell.x <= 22), "seed %d %s" % [map_seed, cell])
+			assert_between(cell.y, 10, 20, "seed %d %s" % [map_seed, cell])
+
+
+func test_labyrinth_gets_two_or_three_springs() -> void:
+	var counts := {}
+	for map_seed in range(1, OBJECT_SEEDS + 1):
+		var board := BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, map_seed)
+		assert_between(board.spring_cells.size(), 2, 3, "seed %d" % map_seed)
+		assert_eq(board.barrel_cells.size(), 0)
+		assert_eq(board.portal_exits.size(), 0)
+		counts[board.spring_cells.size()] = true
+	assert_eq(counts.size(), 2, "2 つの盤面も 3 つの盤面もある")
+
+
+func test_twin_springs_gets_a_portal_pair_on_each_flank() -> void:
+	for map_seed in range(1, OBJECT_SEEDS + 1):
+		var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, map_seed)
+		assert_eq(board.portal_exits.size(), 4, "seed %d" % map_seed)
+		assert_eq(board.barrel_cells.size(), 0)
+		assert_eq(board.spring_cells.size(), 0)
+		var flanks := {"left": 0, "right": 0}
+		for cell: Vector2i in board.portal_exits:
+			var exit := board.portal_exit(cell)
+			assert_eq(board.portal_exit(exit), cell, "seed %d %s" % [map_seed, cell])
+			assert_true(cell.x <= 9 or cell.x >= 21, "seed %d %s" % [map_seed, cell])
+			assert_eq(cell.x <= 9, exit.x <= 9, "対は同じ側の道にある（seed %d %s）" % [map_seed, cell])
+			assert_true(absi(cell.y - exit.y) >= 15, "対は上下の端寄りを結ぶ（seed %d %s）" % [map_seed, cell])
+			flanks["left" if cell.x <= 9 else "right"] += 1
+		assert_eq(flanks, {"left": 2, "right": 2}, "seed %d" % map_seed)
+
+
+func test_objects_keep_off_protected_cells_and_rough_terrain() -> void:
+	for stage in STAGES:
+		for map_seed in range(1, OBJECT_SEEDS + 1):
+			var board := BoardGenerator.generate(stage, map_seed)
+			var protected := BoardGenerator.protected_cells(board)
+			var cells: Array[Vector2i] = []
+			cells.append_array(board.barrel_cells)
+			cells.append_array(board.spring_cells)
+			cells.append_array(board.portal_exits.keys())
+			for cell in cells:
+				var where := "stage %d seed %d %s" % [stage, map_seed, cell]
+				assert_false(protected.has(cell), where)
+				assert_eq(board.terrain_at(cell), Terrain.Type.NORMAL, where)
+				assert_ne(board.object_at(cell), MapObject.Type.NONE, where)
+
+
+func test_springs_and_portals_can_be_reached() -> void:
+	for stage: BoardGenerator.Stage in [BoardGenerator.Stage.LABYRINTH, BoardGenerator.Stage.TWIN_SPRINGS]:
+		for map_seed in range(1, OBJECT_SEEDS + 1):
+			var board := BoardGenerator.generate(stage, map_seed)
+			var cells: Array[Vector2i] = board.spring_cells.duplicate()
+			cells.append_array(board.portal_exits.keys())
+			for cell in cells:
+				assert_true(board.is_reachable(board.hq_cells[0], cell), "stage %d seed %d %s" % [stage, map_seed, cell])
+
+
+func test_barrels_do_not_cut_the_board() -> void:
+	for map_seed in range(1, OBJECT_SEEDS + 1):
+		var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, map_seed)
+		assert_true(board.is_reachable(board.hq_cells[0], board.hq_cells[1]), "seed %d" % map_seed)
+		var with_barrels := BoardGenerator._reachable_count(board)
+		var barrels := board.barrel_cells.size()
+		board.barrel_cells.clear()
+		assert_eq(BoardGenerator._reachable_count(board), with_barrels + barrels, "seed %d" % map_seed)
+
+
+func test_same_seed_gives_same_objects() -> void:
+	for stage in STAGES:
+		var a := BoardGenerator.generate(stage, 99)
+		var b := BoardGenerator.generate(stage, 99)
+		assert_eq(a.barrel_cells, b.barrel_cells, "stage %d" % stage)
+		assert_eq(a.spring_cells, b.spring_cells, "stage %d" % stage)
+		assert_eq(a.portal_exits, b.portal_exits, "stage %d" % stage)
+
+
+func test_other_sizes_get_objects_too() -> void:
+	for size: Vector2i in [BoardGenerator.MIN_SIZE, Vector2i(40, 40)]:
+		assert_between(BoardGenerator.generate(BoardGenerator.Stage.PLAIN, 7, size).barrel_cells.size(), 4, 6, str(size))
+		assert_between(BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, 7, size).spring_cells.size(), 2, 3, str(size))
+		assert_eq(BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, 7, size).portal_exits.size(), 4, str(size))

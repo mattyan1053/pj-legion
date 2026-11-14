@@ -20,8 +20,11 @@ var turn := 1
 var phase := Unit.Side.PLAYER1
 ## 行動の途中（動いたが、攻撃も待機もしていない）の駒の番号。いなければ 0。
 var acting_unit_id := 0
-## 勝った陣営（Unit.Side の値）。決着していなければ -1。決着したあとは、どの行動も受け付けない。
+## 勝った陣営（Unit.Side の値）。決着していないか、引き分けなら -1。
+## 決着したか（is_over）と、引き分けか（is_draw）は別に見る。決着したあとは、どの行動も受け付けない。
 var winner := -1
+## 引き分けで決着したか（両方の将が同時に倒れた）。
+var drawn := false
 ## プレイヤーごとの、敵の本陣を占拠し続けたフェーズの数。添字がプレイヤー番号。
 var capture_turns: Array[int] = [0, 0]
 ## 行動の途中の駒が動く前の capture_turns。移動を取り消したときに戻す。
@@ -125,8 +128,22 @@ func finish_action(unit: Unit) -> UnitActedEvent:
 	return UnitActedEvent.new(unit.id)
 
 
+## 決着したか（どちらかが勝ったか、引き分け）。
 func is_over() -> bool:
-	return winner != -1
+	return winner != -1 or drawn
+
+
+## 引き分けで決着したか。
+func is_draw() -> bool:
+	return drawn
+
+
+## そのマスのポータルから移れる先。ポータルでないか、行き先にほかの駒（陣営を問わない）がいれば Board.NO_CELL。
+func portal_exit(cell: Vector2i) -> Vector2i:
+	var exit := board.portal_exit(cell)
+	if exit != Board.NO_CELL and unit_at(exit) != null:
+		return Board.NO_CELL
+	return exit
 
 
 ## player が敵の本陣に自分の駒を乗せているか。
@@ -166,17 +183,23 @@ func apply(action: BattleAction) -> ActionResult:
 
 
 ## 行動のあとに決まること。
-## - 将が倒れたら、相手のプレイヤーの勝ち
+## - 将が倒れたら、相手のプレイヤーの勝ち。両方の将が同じ行動で倒れたら、引き分け
 ## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
 func _after_action(events: Array[BattleEvent]) -> Array[BattleEvent]:
 	var extra: Array[BattleEvent] = []
+	var fallen: Array[Unit.Side] = []  # 将が倒れたプレイヤー
 	for event in events:
 		var defeated := event as UnitDefeatedEvent
-		if defeated == null or defeated.kind != UnitKind.Id.KING or is_over():
+		if defeated == null or defeated.kind != UnitKind.Id.KING:
 			continue
-		if defeated.side == Unit.Side.PLAYER1 or defeated.side == Unit.Side.PLAYER2:
-			winner = 1 - defeated.side
-			extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.KING_DEFEATED))
+		if defeated.side != Unit.Side.NEUTRAL and not fallen.has(defeated.side):
+			fallen.append(defeated.side)
+	if not is_over() and fallen.size() == 2:
+		drawn = true
+		extra.append(GameDrawnEvent.new(GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED))
+	elif not is_over() and fallen.size() == 1:
+		winner = 1 - fallen[0]
+		extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.KING_DEFEATED))
 	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		if capture_turns[player] > 0 and not occupies_enemy_hq(player):
 			capture_turns[player] = 0
