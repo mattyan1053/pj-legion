@@ -8,10 +8,12 @@ extends BattleEvent
 ##
 ## - HealerHealedEvent: 回復役の回復（healer_id）
 ## - SpringHealedEvent: 回復の泉（cell）
+## - RegenerationHealedEvent: 進化先の特性の再生（固有の値は無い）
 
 enum Cause {
 	HEAL,  ## 回復役の回復
 	SPRING,  ## 回復の泉
+	REGENERATION,  ## 進化先の特性の再生
 }
 
 var unit_id: int

@@ -12,6 +12,7 @@ extends RefCounted
 ## 1 ターンは プレイヤー1 → プレイヤー2 → 中立 のフェーズで進む。
 ## プレイヤーのフェーズでは、そのプレイヤーの駒が 1 体ずつ「移動 → 攻撃か待機」で行動する。
 ## 行動中の駒がいる間は、ほかの駒は行動を始められない。
+## レベルが上限に届いた駒がいたら、持ち主が進化先を選ぶ（EvolveAction）まで、ほかの行動は受け付けない。
 
 var board: Board
 var units: Array[Unit] = []
@@ -96,10 +97,11 @@ func unit_by_id(unit_id: int) -> Unit:
 
 
 ## そのマスが、side から見て敵の支配領域（ZOC）に入っているか。
-## ZOC は前衛の駒の周り 8 マス（駒のいるマスそのものは含まない）。
+## ZOC は、ZOC を作る駒（Unit.exerts_zoc）の周り 8 マス（駒のいるマスそのものは含まない）。
+## ZOC で止まらない駒（Unit.ignores_zoc）にとっての判定は、移動の側（Movement）が見る。
 func is_in_enemy_zoc(cell: Vector2i, side: Unit.Side) -> bool:
 	for unit in units:
-		if unit.side == side or not UnitKind.exerts_zoc(unit.kind):
+		if unit.side == side or not unit.exerts_zoc():
 			continue
 		var d := (cell - unit.cell).abs()
 		if maxi(d.x, d.y) == 1:
@@ -107,7 +109,16 @@ func is_in_enemy_zoc(cell: Vector2i, side: Unit.Side) -> bool:
 	return false
 
 
-## その駒が、いま行動できるか（自分のフェーズで、行動済みでなく、ほかの駒が行動の途中でない）。
+## 進化先を選ぶのを待っている駒。いなければ null。
+## いる間は、その駒の EvolveAction のほかは受け付けない（can_apply）。選ぶのは、その駒の持ち主（いまのフェーズのプレイヤー）。
+func evolving_unit() -> Unit:
+	for unit in units:
+		if unit.evolution_ready:
+			return unit
+	return null
+
+
+## その駒が、いま行動できるか（自分のフェーズで、行動済みでなく、ほかの駒が行動の途中でなく、進化先を選ぶ途中でもない）。
 func can_act(unit: Unit) -> bool:
 	return (
 		unit != null
@@ -115,6 +126,7 @@ func can_act(unit: Unit) -> bool:
 		and phase != Unit.Side.NEUTRAL
 		and not unit.acted
 		and (acting_unit_id == 0 or acting_unit_id == unit.id)
+		and evolving_unit() == null
 	)
 
 
@@ -168,7 +180,7 @@ func count_capture(player: Unit.Side) -> Array[BattleEvent]:
 	return events
 
 
-## 駒がいま選べること（動けるマス、攻撃・回復できる相手、待機・取り消し）。状態は変えない。
+## 駒がいま選べること（動けるマス、攻撃・回復できる相手、待機・取り消し、進化先）。状態は変えない。
 ## can_apply() が受け付ける行動と一致する。行動できない駒・いない駒では、すべて空。
 func options(unit_id: int) -> UnitOptions:
 	return UnitOptions.of(self, unit_id)
@@ -176,7 +188,11 @@ func options(unit_id: int) -> UnitOptions:
 
 ## いまの状態で、その行動を受け付けるか。状態は変えない。
 func can_apply(action: BattleAction) -> bool:
-	return not is_over() and action.is_valid(self)
+	if is_over():
+		return false
+	if evolving_unit() != null and not action is EvolveAction:
+		return false  # 進化先を選ぶまで、ほかの行動は待たせる
+	return action.is_valid(self)
 
 
 ## 行動を受け付けて状態を進め、起きたことを返す。受け付けられなければ、何も変えずに断る。

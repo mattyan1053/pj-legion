@@ -2,11 +2,13 @@ class_name Movement
 extends RefCounted
 ## 駒の移動範囲と、そこまでの道。
 ##
-## - 入るのに使う移動力は地形で決まる（平地・結晶泉 1、森 2）。合計が移動力以下のマスへ行ける
+## - 入るのに使う移動力は地形で決まる（平地・結晶泉 1、森 2）。合計が移動力以下のマスへ行ける。
+##   森を歩く特性の駒は、森にも 1 で入る（Unit.move_cost）
 ## - 障害物、起爆樽、敵の駒のいるマスは通れない
 ## - 味方の駒のいるマスは通り抜けられるが、そこで止まることはできない
 ## - 敵の支配領域（ZOC）のマスには入れるが、そこで止まる（その先へは進めない）。
-##   ただし、いま立っているマスが敵の ZOC でも、最初の 1 歩は踏み出せる
+##   ただし、いま立っているマスが敵の ZOC でも、最初の 1 歩は踏み出せる。
+##   ZOC で止まらない特性の駒（Unit.ignores_zoc）は、敵の ZOC を無いものとして進む
 ## - 巡航（攻撃を諦める移動）は移動力が 2 倍
 ## - ポータルのマスからは、対になるポータルへ移動力を使わずに移れる（行き先に駒がいなければ）。
 ##   道の中でポータルの対が続けて並んでいたら、そこは転移（Battle.portal_exit で見分ける）
@@ -73,11 +75,12 @@ static func _search(battle: Battle, unit: Unit, limit: int) -> Search:
 	var found := Search.new()
 	var board := battle.board
 	var enemy_zoc: Dictionary[Vector2i, bool] = {}
+	var stopped_by_zoc := not unit.ignores_zoc()
 	for other in battle.units:
 		if other == unit:
 			continue
 		found.occupied[other.cell] = other
-		if other.side != unit.side and UnitKind.exerts_zoc(other.kind):
+		if stopped_by_zoc and other.side != unit.side and other.exerts_zoc():
 			for dy in range(-1, 2):
 				for dx in range(-1, 2):
 					if dx != 0 or dy != 0:
@@ -114,7 +117,7 @@ static func _search(battle: Battle, unit: Unit, limit: int) -> Search:
 				var next := exit if i == 0 else cell + Board.DIRECTIONS[i - 1]
 				if done.has(next):
 					continue  # もう広げたマス。これより安くは入れない
-				var step := board.move_cost(next)
+				var step := unit.move_cost(board, next)
 				if step < 0:
 					continue
 				var occupant: Unit = occupied.get(next)

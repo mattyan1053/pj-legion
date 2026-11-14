@@ -118,6 +118,7 @@ var _kind: UnitKind.Id
 var _team_color: Color
 var _max_hp := 1
 var _level := 1
+var _evolved := false
 ## いま札に出している HP。検査用。
 var shown_hp := 0
 var _height := 1.3  # 札を出す高さ
@@ -226,11 +227,19 @@ func set_hp(hp: int) -> void:
 	_tag.text = ("%s %d" % [mark, hp]).strip_edges()
 	if _level > 1:
 		_tag.text += "  Lv%d" % _level
+	if _evolved:
+		_tag.text += "★"
 
 
 ## レベルと最大 HP を変える（レベルアップ）。札は次の set_hp で描き直す。
 func set_growth(level: int, max_hp: int) -> void:
 	_level = level
+	_max_hp = max_hp
+
+
+## 進化した駒の札に印（★）を付け、最大 HP を変える。札は次の set_hp で描き直す。
+func set_evolved(max_hp: int) -> void:
+	_evolved = true
 	_max_hp = max_hp
 
 

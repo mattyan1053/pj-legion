@@ -27,6 +27,7 @@ const COLOR_TARGET := Color(1.0, 0.2, 0.15, 0.7)
 const COLOR_BLAST := Color(1.0, 0.55, 0.1, 0.6)
 const COLOR_EXPERIENCE := Color("9fd8ff")
 const COLOR_LEVEL_UP := Color("ffd34a")
+const COLOR_EVOLUTION := Color("d9a6ff")
 const COLOR_INSPECT := Color(1.0, 1.0, 1.0, 0.28)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 
@@ -77,6 +78,7 @@ func _ready() -> void:
 	_hud.cancel_pressed.connect(cancel)
 	_hud.end_turn_pressed.connect(press_end_turn)
 	_hud.restart_pressed.connect(_on_restart_pressed)
+	_hud.evolution_chosen.connect(choose_evolution)
 
 	var autoplay := OS.get_cmdline_user_args().has("--autoplay")
 	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする。
@@ -110,6 +112,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				press_wait()
 			KEY_ENTER, KEY_KP_ENTER:
 				press_end_turn()
+			KEY_1, KEY_KP_1:
+				choose_evolution(0)
+			KEY_2, KEY_KP_2:
+				choose_evolution(1)
 			KEY_F1:
 				start_battle(BoardGenerator.Stage.PLAIN, map_seed + 1)
 			KEY_F2:
@@ -164,6 +170,9 @@ func _add_view(unit: Unit) -> void:
 	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp, unit.max_hp())
 	if unit.level > 1:
 		view.set_growth(unit.level, unit.max_hp())
+		view.set_hp(unit.hp)
+	if unit.evolution != Evolution.Id.NONE:
+		view.set_evolved(unit.max_hp())
 		view.set_hp(unit.hp)
 	# 敵の本陣のほうを向いて立つ。
 	var enemy_hq := battle.board.hq_cells[1 - unit.side] if unit.side != Unit.Side.NEUTRAL else unit.cell + Vector2i.DOWN
@@ -249,9 +258,26 @@ func cancel() -> void:
 		_select(0)
 
 
-## ターンを終える。未行動の駒が残っていれば、もう一度押すまで終えない。
-func press_end_turn() -> void:
+## 進化先を選ぶ（index は選択肢の何番目か）。進化先を選ぶのを待っている駒がいるときだけ。
+func choose_evolution(index: int) -> void:
 	if _busy or battle.is_over():
+		return
+	var unit := battle.evolving_unit()
+	if unit == null:
+		return
+	var choices := battle.options(unit.id).evolutions
+	if index >= 0 and index < choices.size():
+		_do(EvolveAction.new(unit.id, choices[index]))
+
+
+## 進化先の選択肢を出しているか。検査用。
+func is_choosing_evolution() -> bool:
+	return _hud.is_evolution_shown()
+
+
+## ターンを終える。未行動の駒が残っていれば、もう一度押すまで終えない。進化先を選ぶ途中は終えられない。
+func press_end_turn() -> void:
+	if _busy or battle.is_over() or battle.evolving_unit() != null:
 		return
 	if Queries.unacted_count(battle) > 0 and not _confirming_end:
 		_confirming_end = true
@@ -277,11 +303,15 @@ func _do(action: BattleAction) -> void:
 	_selection_ring.visible = false
 	_hud.set_actions(false, false, false)
 	_hud.set_end_turn(false, "ターン終了")
+	_hud.hide_evolution()
 	for event in result.events:
 		await _play(event)
 	_busy = false
 
-	if battle.acting_unit_id != 0:
+	var evolving := battle.evolving_unit()
+	if evolving != null and not battle.is_over():
+		_selected_id = evolving.id  # 進化先を選ぶまで、この駒を見せる。
+	elif battle.acting_unit_id != 0:
 		_selected_id = battle.acting_unit_id  # 動いたあと。続けて攻撃・待機・取り消しを選ぶ。
 	elif not action is UndoMoveAction:
 		_selected_id = 0
@@ -302,8 +332,11 @@ static func event_players() -> Dictionary:
 		ExplosionDamagedEvent: &"_play_explosion_damaged",
 		HealerHealedEvent: &"_play_healer_healed",
 		SpringHealedEvent: &"_play_spring_healed",
+		RegenerationHealedEvent: &"_play_regeneration_healed",
 		ExperienceGainedEvent: &"_play_experience_gained",
 		LevelUpEvent: &"_play_level_up",
+		EvolutionOfferedEvent: &"_play_evolution_offered",
+		UnitEvolvedEvent: &"_play_evolved",
 		UnitDefeatedEvent: &"_play_defeated",
 		UnitSpawnedEvent: &"_play_spawned",
 		BarrelExplodedEvent: &"_play_barrel_exploded",
@@ -398,6 +431,11 @@ func _play_spring_healed(event: SpringHealedEvent) -> void:
 	await _play_heal(event, true)
 
 
+## 再生（進化先の特性。フェーズの始め）も、光と数を出す。
+func _play_regeneration_healed(event: RegenerationHealedEvent) -> void:
+	await _play_heal(event, true)
+
+
 func _play_heal(event: UnitHealedEvent, glow: bool) -> void:
 	var view := _view(event.unit_id)
 	view.set_hp(event.hp)
@@ -422,6 +460,24 @@ func _play_level_up(event: LevelUpEvent) -> void:
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_LEVEL_UP, 1.4)
 	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "レベル %d！" % event.level, COLOR_LEVEL_UP)
 	await get_tree().create_timer(0.5).timeout
+
+
+## 進化先を選べるようになった。光と知らせだけ（選択肢は、再生が終わったあとに _refresh が出す）。
+func _play_evolution_offered(event: EvolutionOfferedEvent) -> void:
+	var view := _view(event.unit_id)
+	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.6)
+	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "進化できる！", COLOR_EVOLUTION)
+	await get_tree().create_timer(0.4).timeout
+
+
+## 進化した。札に印を付け、HP のバーを新しい最大 HP で描き直し、進化先の名前を出す。
+func _play_evolved(event: UnitEvolvedEvent) -> void:
+	var view := _view(event.unit_id)
+	view.set_evolved(event.max_hp)
+	view.set_hp(event.hp)
+	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.8)
+	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Evolution.display_name(event.evolution), COLOR_EVOLUTION)
+	await get_tree().create_timer(0.6).timeout
 
 
 ## 攻撃の動きのあと、樽を消して、爆発の届いたマスを塗る（続くダメージの再生の間も塗ったまま）。
@@ -591,11 +647,20 @@ func _refresh() -> void:
 
 	_refresh_status(battle.turn, battle.phase)
 	_refresh_hint(unit)
+	var evolving := battle.evolving_unit()
+	if evolving != null and not battle.is_over():
+		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
+		var texts: Array[String] = []
+		for choice in battle.options(evolving.id).evolutions:
+			texts.append(BattleHud.evolution_text(choice, healer))
+		_hud.show_evolution("%s の進化先を選ぶ" % UnitKind.display_name(evolving.kind), texts)
+	else:
+		_hud.hide_evolution()
 	var unacted := Queries.unacted_count(battle)
 	if _confirming_end:
 		_hud.set_end_turn(true, "未行動 %d 体。もう一度で終了" % unacted)
 	else:
-		_hud.set_end_turn(not battle.is_over(), "ターン終了")
+		_hud.set_end_turn(not battle.is_over() and evolving == null, "ターン終了")
 	var can_act := unit != null and not battle.is_over() and battle.can_act(unit)
 	_hud.set_actions(can_act, unit != null and not battle.is_over(), unit != null and unit.has_moved)
 	_update_info()
@@ -611,6 +676,8 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 func _refresh_hint(unit: Unit) -> void:
 	if battle.is_over():
 		_hud.set_hint("決着")
+	elif battle.evolving_unit() != null:
+		_hud.set_hint("進化先を選ぶ（上のボタンか、1・2 のキー）。選ぶまで、ほかの操作はできない")
 	elif unit == null:
 		_hud.set_hint("駒をクリックして選ぶ。相手の駒を選ぶと、動ける範囲が見える")
 	elif not battle.can_act(unit):
