@@ -27,6 +27,8 @@ const COLOR_PATH := Color(1.0, 1.0, 1.0, 0.75)
 const COLOR_TARGET := Color(1.0, 0.2, 0.15, 0.7)
 const COLOR_HEAL := Color(0.3, 0.95, 0.45, 0.7)
 const COLOR_BLAST := Color(1.0, 0.55, 0.1, 0.6)
+const COLOR_SKILL := Color(0.55, 0.25, 0.95, 0.7)
+const COLOR_SKILL_AREA := Color(1.0, 0.55, 0.9, 0.85)
 const COLOR_EXPERIENCE := Color("9fd8ff")
 const COLOR_LEVEL_UP := Color("ffd34a")
 const COLOR_EVOLUTION := Color("d9a6ff")
@@ -78,6 +80,9 @@ var _targets: Array[Unit] = []
 var _barrel_targets: Array[Vector2i] = []
 var _barricade_targets: Array[Vector2i] = []
 var _heal_targets: Array[Unit] = []
+var _skill_cells: Array[Vector2i] = []
+## スキルの対象を選んでいる途中か。この間は、塗るのはスキルの対象のマスだけで、クリックはスキルの対象を選ぶ。
+var _skill_mode := false
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
 var played := {}
 var _players := event_players()
@@ -93,6 +98,7 @@ func _ready() -> void:
 	add_child(_hud)
 	_hud.setup(TEAM_COLORS)
 	_hud.wait_pressed.connect(press_wait)
+	_hud.skill_pressed.connect(press_skill)
 	_hud.cancel_pressed.connect(cancel)
 	_hud.end_turn_pressed.connect(press_end_turn)
 	_hud.restart_pressed.connect(_on_restart_pressed)
@@ -131,6 +137,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				cancel()
 			KEY_SPACE:
 				press_wait()
+			KEY_F:
+				press_skill()
 			KEY_ENTER, KEY_KP_ENTER:
 				press_end_turn()
 			KEY_1, KEY_KP_1:
@@ -180,6 +188,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_rig.bounds = Rect2(Vector2.ZERO, Vector2(battle.board.size))
 	_rig.position = _camera_point(Unit.Side.PLAYER1)
 	_selected_id = 0
+	_skill_mode = false
 	_confirming_end = false
 	_hud.hide_result()
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
@@ -284,8 +293,16 @@ func result_title() -> String:
 
 
 ## 盤面のマスを選ぶ。選んでいる駒の攻撃できる相手・樽なら攻撃、回復できる味方なら回復、動けるマスなら移動、駒なら選び直す。
+## スキルの対象を選んでいる途中なら、対象のマスでスキルを使い、ほかのマスでは選ぶのをやめる。
 func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
+		return
+	if _skill_mode:
+		if _skill_cells.has(cell):
+			_do(UseSkillAction.new(_selected_id, cell))
+		else:
+			_skill_mode = false
+			_refresh()
 		return
 	var clicked := battle.unit_at(cell)
 	if clicked != null and _targets.has(clicked):
@@ -310,9 +327,35 @@ func press_wait() -> void:
 		_do(WaitAction.new(_selected_id))
 
 
-## 動いたあとなら移動を取り消す。そうでなければ選択をやめる。
+## 選んでいる駒のスキルの対象を選び始める。もう選んでいる途中なら、やめる。対象のマスが無ければ何もしない。
+func press_skill() -> void:
+	if is_busy() or battle.is_over() or _skill_cells.is_empty():
+		return
+	_skill_mode = not _skill_mode
+	_refresh()
+
+
+## スキルの対象を選んでいる途中か。検査用。
+func is_choosing_skill_target() -> bool:
+	return _skill_mode
+
+
+## スキルのボタンに出している文字と、押せるか。検査用。
+func skill_button_text() -> String:
+	return _hud.skill_button_text()
+
+
+func is_skill_enabled() -> bool:
+	return _hud.is_skill_enabled()
+
+
+## スキルの対象を選んでいる途中なら、それをやめる。動いたあとなら移動を取り消す。そうでなければ選択をやめる。
 func cancel() -> void:
 	if is_busy():
+		return
+	if _skill_mode:
+		_skill_mode = false
+		_refresh()
 		return
 	if battle.acting_unit_id != 0:
 		_do(UndoMoveAction.new(battle.acting_unit_id))
@@ -350,12 +393,13 @@ func press_end_turn() -> void:
 
 func _select(unit_id: int) -> void:
 	_selected_id = unit_id
+	_skill_mode = false
 	_confirming_end = false
 	_refresh()
 
 
 ## 行動の外でルールに起きたことを再生する（検査用）。
-## 盤の上の効果を置く操作（スキル）はまだ無いので、検査はルールの FieldEffects.place_* で置いて、その結果をここで再生する。
+## スキルのまだ無い盤の上の効果（煙幕）も通すため、検査はルールの FieldEffects.place_* で置いて、その結果をここで再生する。
 func play_events(events: Array[BattleEvent]) -> void:
 	_busy = true
 	for event in events:
@@ -370,10 +414,12 @@ func _do(action: BattleAction) -> bool:
 	if not result.accepted:
 		return false
 	_busy = true
+	_skill_mode = false
 	_confirming_end = false
 	_board_view.show_cells({})
 	_selection_ring.visible = false
 	_hud.set_actions(false, false, false)
+	_hud.set_skill("スキル", false, false)
 	_hud.set_end_turn(false, "ターン終了")
 	_hud.hide_evolution()
 	for event in result.events:
@@ -455,6 +501,8 @@ static func event_players() -> Dictionary:
 		BarricadeDamagedEvent: &"_play_barricade_damaged",
 		SmokeBlockedEvent: &"_play_smoke_blocked",
 		SanctuaryHealedEvent: &"_play_sanctuary_healed",
+		SkillUsedEvent: &"_play_skill_used",
+		SkillReadyEvent: &"_play_skill_ready",
 		UnitActedEvent: &"_play_acted",
 		PhaseStartedEvent: &"_play_phase_started",
 		CaptureProgressEvent: &"_play_capture",
@@ -668,6 +716,21 @@ func _play_sanctuary_healed(event: SanctuaryHealedEvent) -> void:
 	await _play_heal(event, true)
 
 
+## スキルを使った。対象のほうを向いて手を振り、スキルの名前を出す（効果は、続くイベントが見せる）。
+func _play_skill_used(event: SkillUsedEvent) -> void:
+	var view := _view(event.unit_id)
+	var at := BoardView.cell_center(event.target)
+	if not at.is_equal_approx(view.position):
+		view.face(at - view.position)
+	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Skills.by_id(event.skill).display_name(), Color("dcc4ff"))
+	await get_tree().create_timer(view.play_attack()).timeout
+
+
+## スキルをまた使えるようになった。描き方は変えない（残りは駒の情報とスキルのボタンに出る）。
+func _play_skill_ready(_event: SkillReadyEvent) -> void:
+	pass
+
+
 func _play_acted(event: UnitActedEvent) -> void:
 	_view(event.unit_id).set_acted(true)
 
@@ -799,10 +862,16 @@ func _refresh() -> void:
 	_barrel_targets = Queries.barrel_targets(battle, unit)
 	_barricade_targets = Queries.barricade_targets(battle, unit)
 	_heal_targets = Queries.heal_targets(battle, unit)
+	_skill_cells = Queries.skill_cells(battle, unit)
+	if _skill_cells.is_empty():
+		_skill_mode = false
 
 	_painted = {}
 	if unit != null and not battle.is_over():
-		if battle.can_act(unit):
+		if _skill_mode:
+			for cell in _skill_cells:
+				_painted[cell] = COLOR_SKILL
+		elif battle.can_act(unit):
 			for cell: Vector2i in _move_cells:
 				_painted[cell] = COLOR_CRUISE if _move_cells[cell] else COLOR_MOVE
 			for target in _targets:
@@ -843,7 +912,20 @@ func _refresh() -> void:
 		_hud.set_end_turn(not battle.is_over() and evolving == null, "ターン終了")
 	var can_act := unit != null and not battle.is_over() and battle.can_act(unit) and not cpu_turn
 	_hud.set_actions(can_act, unit != null and not battle.is_over() and not cpu_turn, unit != null and unit.has_moved)
+	_hud.set_skill(_skill_button_text(unit), can_act and not _skill_cells.is_empty(), _skill_mode)
 	_update_info()
+
+
+## スキルのボタンの文字。スキルの名前と、使えない理由（クールダウン、対象が無い）。
+func _skill_button_text(unit: Unit) -> String:
+	var skill := Skills.of(unit)
+	if skill == null:
+		return "スキル（なし）"
+	if unit.skill_cooldown > 0:
+		return "%s（あと %d ターン）" % [skill.display_name(), unit.skill_cooldown]
+	if _skill_cells.is_empty() and battle.can_act(unit):
+		return "%s（いまは使えない）" % skill.display_name()
+	return "%s [F]" % skill.display_name()
 
 
 func _refresh_status(turn: int, phase: Unit.Side) -> void:
@@ -862,6 +944,8 @@ func _refresh_hint(unit: Unit) -> void:
 		_hud.set_hint("進化先を選ぶ（上のボタンか、1・2 のキー）。選ぶまで、ほかの操作はできない")
 	elif unit == null:
 		_hud.set_hint("駒をクリックして選ぶ。相手の駒を選ぶと、動ける範囲が見える")
+	elif _skill_mode:
+		_hud.set_hint("%s: 紫のマスをクリックで使う（行動を終える）。ほかのマスか Esc でやめる" % Skills.of(unit).display_name())
 	elif not battle.can_act(unit):
 		_hud.set_hint("この駒はいま動かせない（白いマスは移動範囲）")
 	elif unit.has_moved:
@@ -885,7 +969,12 @@ func _refresh_hint(unit: Unit) -> void:
 func _show_painted() -> void:
 	var colors := _painted
 	var unit := selected_unit()
-	if unit != null and not _busy and _barrel_targets.has(_hover_cell):
+	if unit != null and not _busy and _skill_mode:
+		if _skill_cells.has(_hover_cell):
+			colors = _painted.duplicate()
+			for cell in Skills.of(unit).affected_cells(battle, unit, _hover_cell):
+				colors[cell] = COLOR_SKILL_AREA
+	elif unit != null and not _busy and _barrel_targets.has(_hover_cell):
 		colors = _painted.duplicate()
 		for cell in MapObject.blast_cells(battle.board, _hover_cell):
 			colors[cell] = COLOR_BLAST
@@ -929,6 +1018,15 @@ func _update_info() -> void:
 	if shown == null:
 		_hud.show_unit(null, "", "")
 		return
+	if _skill_mode:
+		# スキルの対象を選んでいる間は、使う駒と、マウスの下のマスに使ったときの見込みを出す。
+		var user := selected_unit()
+		var skill := Skills.of(user)
+		var skill_text := skill.summary()
+		if _skill_cells.has(_hover_cell):
+			skill_text += "\n" + _skill_forecast(user, _hover_cell)
+		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill_text)
+		return
 	if hovered == null and _barrel_targets.has(_hover_cell):
 		_hud.show_unit(shown, "樽を狙っている", _blast_forecast(shown, _hover_cell))
 		return
@@ -962,6 +1060,33 @@ func _update_info() -> void:
 		if growth.gained > 0:
 			forecast += "\n経験 +%d%s" % [growth.gained, "（レベルアップ）" if growth.levels_gained > 0 else ""]
 	_hud.show_unit(shown, state, forecast)
+
+
+## スキルを target に使ったときの見込み。実際に使うのと同じ処理（Skills.preview）の結果から、起きることを並べる。
+## どのスキルにも同じ読み方を使う（置かれる効果、ダメージ、回復）。
+func _skill_forecast(user: Unit, target: Vector2i) -> String:
+	var lines: Array[String] = []
+	for event in Skills.preview(battle, user.id, target):
+		var placed := event as FieldEffectPlacedEvent
+		var damaged := event as UnitDamagedEvent
+		var healed := event as UnitHealedEvent
+		if placed != null:
+			var line: String = "%s を置く" % BattleHud.FIELD_EFFECT_NAMES[placed.type]
+			if placed.cells.size() > 1:
+				var inside := 0
+				for unit in battle.units:
+					if unit.side == user.side and placed.cells.has(unit.cell):
+						inside += 1
+				line += "（中の味方 %d 体）" % inside
+			lines.append(line)
+		elif damaged != null:
+			var victim := battle.unit_by_id(damaged.unit_id)
+			lines.append("%s に %d ダメージ → %s" % [
+				victim.display_name(), damaged.amount, "倒せる" if damaged.hp == 0 else "残り HP %d" % damaged.hp,
+			])
+		elif healed != null:
+			lines.append("%s が +%d → HP %d" % [battle.unit_by_id(healed.unit_id).display_name(), healed.amount, healed.hp])
+	return "\n".join(lines)
 
 
 ## マスにある環境オブジェクトと盤の上の効果の説明（無ければ空）。

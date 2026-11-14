@@ -55,6 +55,13 @@ static func barricade_targets(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	return battle.options(unit.id).barricade_cells
 
 
+## その駒がいまの位置からスキルの対象に選べるマス（スキルを使えない駒・行動できない駒・巡航で動いた駒では空）。
+static func skill_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
+	if unit == null:
+		return []
+	return battle.options(unit.id).skill_cells
+
+
 ## 駒の移動範囲（巡航なし）。行動できない駒や相手の駒を選んで眺めるときに使う。
 static func inspect_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []

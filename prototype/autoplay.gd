@@ -2,7 +2,7 @@ extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、中立の駒、レベルアップ、進化、
+## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル、中立の駒、レベルアップ、進化、
 ## 回復役の回復、CPU の番の場面を通し、盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ## 途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
@@ -58,6 +58,7 @@ func _process(_delta: float) -> void:
 			_queue_capture_scene()
 			_queue_barrel_draw_scene()
 			_queue_field_effect_scene()
+			_queue_skill_scene()
 			_queue_neutral_scene()
 			_queue_level_up_scene()
 			_queue_evolution_scene()
@@ -276,6 +277,70 @@ func _queue_field_effect_scene() -> void:
 		_expect(_scene.played.get(healed, 0) == 1, "聖域で回復しなかった")
 		_expect(king1.hp == king1.max_hp() - 10 + FieldEffects.SANCTUARY_HEAL, "聖域の回復量が違う")
 		_expect(battle.board.field_effects.size() == 2, "煙幕と聖域が残っていない"))
+
+
+## スキルのボタンから、対象を選んで使う（盾を置く、聖域を置く）。選ぶのをやめる操作と、クールダウンが明けるまで。
+func _queue_skill_scene() -> void:
+	var board := _small_board(Vector2i(7, 5))
+	var battle := Battle.new(board)
+	var king1 := battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 2))
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, Unit.Side.PLAYER1, Vector2i(1, 3))
+	var wall := Vector2i(3, 2)
+	var center := Vector2i(1, 4)
+	var used: Script = SkillUsedEvent
+	var ready: Script = SkillReadyEvent
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		_scene.click_cell(king1.cell)
+		_expect(not _scene.is_skill_enabled(), "スキルの無い駒で、スキルのボタンが押せる")
+		_scene.press_skill()
+		_expect(not _scene.is_choosing_skill_target(), "スキルの無い駒で、対象を選び始めた")
+		_scene.click_cell(trooper.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.is_skill_enabled(), "スキルのボタンが押せない")
+		_scene.press_skill()
+		_expect(_scene.is_choosing_skill_target(), "スキルの対象を選び始めなかった")
+		# 対象でないマスを選ぶと、選ぶのをやめる（駒は動かない）。
+		_scene.click_cell(Vector2i(5, 2))
+		_expect(not _scene.is_choosing_skill_target() and _scene.selected_unit() == trooper, "対象でないマスで、やめなかった")
+		_expect(trooper.cell == Vector2i(2, 2) and not trooper.has_moved, "スキルの対象を選ぶ途中のクリックで、駒が動いた")
+		_scene.press_skill()
+		_scene.cancel()
+		_expect(not _scene.is_choosing_skill_target() and _scene.selected_unit() == trooper, "戻す操作で、やめなかった")
+		_scene.press_skill()
+		_scene.played.erase(used)
+		_scene.click_cell(wall))
+	_scripted.append(func() -> void:
+		_expect(battle.board.barricade_at(wall) != null, "盾を置けなかった")
+		_expect(trooper.acted and trooper.skill_cooldown > 0, "スキルを使っても、行動が終わっていない")
+		_expect(_scene.played.get(used, 0) == 1, "スキルを再生しなかった")
+		_scene.click_cell(trooper.cell)
+		_expect(not _scene.is_skill_enabled(), "クールダウンの間に、スキルのボタンが押せる")
+		_expect(_scene.skill_button_text().contains("あと"), "クールダウンの残りが出ていない")
+		# 動いたあとでも使える。
+		_scene.click_cell(priest.cell))
+	_scripted.append(func() -> void: _scene.click_cell(Vector2i(2, 3)))
+	_scripted.append(func() -> void:
+		_scene.press_skill()
+		_expect(_scene.is_choosing_skill_target(), "動いたあとに、スキルの対象を選べない")
+		_scene.click_cell(center))
+	_scripted.append(func() -> void:
+		_expect(battle.board.field_effects.size() == 2, "聖域を置けなかった")
+		_expect(priest.acted and priest.cell == Vector2i(2, 3), "聖域を置いても、行動が終わっていない")
+		_scene.played.erase(ready))
+	for i in TacticalBarricadeSkill.COOLDOWN * 2:
+		_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		_expect(trooper.skill_cooldown == 0, "クールダウンが明けなかった")
+		_expect(_scene.played.get(ready, 0) >= 1, "クールダウンが明けたことを再生しなかった")
+		_scene.click_cell(trooper.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.is_skill_enabled(), "クールダウンが明けても、スキルのボタンが押せない"))
 
 
 ## 結晶泉にエナジー・コアが湧き、次の中立のフェーズで隣の駒を襲う。

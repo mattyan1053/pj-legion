@@ -145,3 +145,19 @@ func test_no_barrel_targets_for_units_that_cannot_attack() -> void:
 	assert_eq(Queries.barrel_targets(battle, healer).size(), 0, "回復役")
 	battle.apply(MoveAction.new(runner.id, Vector2i(2, 1), true))
 	assert_eq(Queries.barrel_targets(battle, runner).size(), 0, "巡航で動いた駒")
+
+
+func test_skill_cells_are_what_the_rules_accept() -> void:
+	var battle := _battle()
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(3, 1))
+	var enemy := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P2, Vector2i(8, 1))
+	assert_true(Queries.skill_cells(battle, null).is_empty())
+	assert_true(Queries.skill_cells(battle, enemy).is_empty(), "相手の番の駒")
+	var cells := Queries.skill_cells(battle, trooper)
+	assert_false(cells.is_empty())
+	for y in battle.board.size.y:
+		for x in battle.board.size.x:
+			var cell := Vector2i(x, y)
+			assert_eq(cells.has(cell), battle.can_apply(UseSkillAction.new(trooper.id, cell)), "スキルの対象 %s" % cell)
+	battle.apply(UseSkillAction.new(trooper.id, cells[0]))
+	assert_true(Queries.skill_cells(battle, trooper).is_empty(), "使ったあと")
