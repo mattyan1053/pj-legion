@@ -8,11 +8,11 @@ extends Skill
 
 # ---- 調整値 ----
 
-const COOLDOWN := 3
+const COOLDOWN := 4
 ## 中心に選べるマスまでの距離（マンハッタン距離。0 は自分のマス）。
 const CENTER_RANGE := 3
 ## 範囲の駒 1 体ずつへのダメージ（固定。攻撃力にも森にもよらない）。
-const DAMAGE := 10
+const DAMAGE := 8
 ## 範囲の広がり（中心からの、上下左右のマス数。1 なら十字 5 マス）。
 const ARM := 1
 
