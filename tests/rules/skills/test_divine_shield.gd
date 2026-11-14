@@ -138,3 +138,27 @@ func test_cpu_does_not_raise_it_with_no_enemy_near() -> void:
 	var battle := _cpu_battle()
 	battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 3))
 	assert_eq(_skill_uses_in_phase(battle).size(), 0)
+
+
+func test_cpu_strips_the_enemy_barrier_and_then_hits() -> void:
+	var battle := _cpu_battle()
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(8, 2))
+	Statuses.add(paladin, BARRIER, 2)
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(6, 2))
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(4, 2))
+	_skill_uses_in_phase(battle)
+	# 後衛が先に動いてバリアをはがし、続く前衛の攻撃が通る。
+	assert_false(Statuses.has(paladin, BARRIER))
+	assert_eq(paladin.hp, paladin.max_hp() - trooper.power())
+
+
+func test_cpu_does_not_waste_a_hit_on_a_barrier_nobody_can_follow() -> void:
+	var battle := _cpu_battle()
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(8, 2))
+	Statuses.add(paladin, BARRIER, 2)
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, P2, Vector2i(8, 3))
+	battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(5, 3))
+	_skill_uses_in_phase(battle)
+	# 続く味方がいないなら、バリアの無い相手を殴る。
+	assert_true(Statuses.has(paladin, BARRIER))
+	assert_true(priest.hp < priest.max_hp())
