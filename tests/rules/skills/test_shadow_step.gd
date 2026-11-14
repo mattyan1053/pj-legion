@@ -313,6 +313,23 @@ func test_cpu_steps_through_a_wall_to_finish_an_enemy() -> void:
 	assert_eq(battle.unit_by_id(sniper.id), null)
 
 
+func test_cpu_walks_and_then_steps_to_reach_a_far_sniper() -> void:
+	# 歩いて 6 + 攻撃 1 では届かない。歩いた先から跳べば届く（スキルを使うために立つマスを探す）。
+	var battle := _cpu_battle()
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 1))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(10, 1))
+	assert_true(Combat.distance(blade.cell, sniper.cell) > blade.move_range() + blade.attack_range())
+	var cpu := CpuPlayer.new()
+	var kinds: Array[String] = []
+	while battle.phase == P1 and not battle.is_over() and kinds.size() < 10:
+		var action := cpu.next_action(battle)
+		assert_true(battle.apply(action).accepted)
+		if action.get("unit_id") == blade.id:
+			kinds.append(action.get_script().resource_path.get_file())
+	assert_eq(kinds, ["move_action.gd", "use_skill_action.gd", "attack_action.gd"] as Array[String])
+	assert_eq(battle.unit_by_id(sniper.id), null, "倒せなかった")
+
+
 func test_cpu_does_not_step_when_there_is_nothing_to_attack() -> void:
 	var battle := _cpu_battle()
 	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(2, 5))

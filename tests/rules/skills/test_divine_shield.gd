@@ -162,3 +162,15 @@ func test_cpu_does_not_waste_a_hit_on_a_barrier_nobody_can_follow() -> void:
 	# 続く味方がいないなら、バリアの無い相手を殴る。
 	assert_true(Statuses.has(paladin, BARRIER))
 	assert_true(priest.hp < priest.max_hp())
+
+
+func test_cpu_stops_short_and_raises_it_instead_of_cruising_into_fire() -> void:
+	# 巡航で寄ると、バリアを張れないまま撃たれる。通常の移動で届くマスに止まって張る手と比べる。
+	var battle := _cpu_battle()
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(3, 2))
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(12, 2))
+	var uses := _skill_uses_in_phase(battle)
+	assert_eq(uses.size(), 1, "バリアを張らなかった")
+	assert_true(Statuses.has(paladin, BARRIER))
+	assert_ne(paladin.cell, Vector2i(3, 2), "前へ出なかった")
+	assert_false(paladin.cruised)

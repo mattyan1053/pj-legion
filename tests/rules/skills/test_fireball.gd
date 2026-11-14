@@ -289,3 +289,23 @@ func test_cpu_does_not_waste_it_on_allies_only() -> void:
 		var action := cpu.next_action(battle)
 		assert_false(action is UseSkillAction and (action as UseSkillAction).unit_id == sorcerer.id, "当てる敵がいないのに使った")
 		battle.apply(action)
+
+
+func test_cpu_walks_to_where_it_can_hit_two_enemies() -> void:
+	# いまのマスからは中心が届かない。3 歩寄れば、2 体の間に落とせる（スキルを使うために立つマスを探す）。
+	var battle := _cpu_battle()
+	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, P1, Vector2i(1, 2))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(7, 1))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(7, 3))
+	var cpu := CpuPlayer.new()
+	var first := cpu.next_action(battle)
+	assert_true(first is MoveAction and first.get("unit_id") == sorcerer.id, "歩かなかった")
+	assert_true(battle.apply(first).accepted)
+	var second := cpu.next_action(battle) as UseSkillAction
+	assert_true(second != null, "ファイアボールを使わなかった")
+	assert_true(battle.apply(second).accepted)
+	var hit := 0
+	for unit in battle.units:
+		if unit.side == P2 and unit.hp < unit.max_hp():
+			hit += 1
+	assert_eq(hit, 2, "2 体に当てていない")
