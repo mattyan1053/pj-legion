@@ -8,9 +8,10 @@ extends SceneTree
 ##   --seed=S        最初の局のシード（既定 1）。局ごとに 1 ずつ増える
 ##   --max-turns=T   このターンを超えたら打ち切る（既定 60）
 ##   --decks=auto    編成。auto = CPU の編成（CpuDeck。予算に収まる）、even = 両軍とも同じ役割の 6 体・装備なし（予算は見ない）
+##   --pairings=all  軍の組み合わせ。all = 4 通りを順に、mixed = 軍の違う 2 通り（先手を入れ替える）だけ
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
-## ステージ（3 種）と軍の組み合わせ（4 通り）を順に回すので、12 の倍数にすると偏らない。
+## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない。
 ## 同じ引数なら、いつも同じ結果になる（考える時間の欄を除く）。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
@@ -37,7 +38,9 @@ class Tally:
 	var level_ups := 0
 	var evolutions := 0
 	var games_with_evolution := 0
-	var first_evolution_turns := 0
+	var first_evolution_turns: Array[int] = []
+	## 軍の違う対戦で、[MILITARY の勝ち, FANTASY の勝ち]。
+	var army_wins: Array[int] = [0, 0]
 	var neutral_kills := 0
 	var losses := 0
 
@@ -52,7 +55,7 @@ class Tally:
 		evolutions += evolved
 		if evolved > 0:
 			games_with_evolution += 1
-			first_evolution_turns += outcome.first_evolution_turn
+			first_evolution_turns.append(outcome.first_evolution_turn)
 		neutral_kills += outcome.neutral_kills[0] + outcome.neutral_kills[1]
 		losses += outcome.losses[0] + outcome.losses[1]
 
@@ -64,13 +67,23 @@ class Tally:
 			total += value
 		@warning_ignore("integer_division")
 		var median: int = sorted[sorted.size() / 2]
-		return "%-22s %4d 局  ターン 平均 %5.1f 中央 %3d（%d〜%d）  将 %3d 本陣 %3d 引分 %2d 打切 %2d  先手 %3d 後手 %3d  Lv↑ %5.2f 進化 %5.2f（%3d%% の局。最初は平均ターン %4.1f）  中立撃破 %5.2f  撃破 %5.2f" % [
+		var first := first_evolution_turns.duplicate()
+		first.sort()
+		var first_total := 0
+		for value: int in first:
+			first_total += value
+		@warning_ignore("integer_division")
+		var first_median: int = 0 if first.is_empty() else first[first.size() / 2]
+		var text := "%-22s %4d 局  ターン 平均 %5.1f 中央 %3d（%d〜%d）  将 %3d 本陣 %3d 引分 %2d 打切 %2d  先手 %3d 後手 %3d  Lv↑ %5.2f 進化 %5.2f（%3d%% の局。最初は平均ターン %4.1f、中央 %2d）  中立撃破 %5.2f  撃破 %5.2f" % [
 			name, games, float(total) / games, median, sorted[0], sorted[-1],
 			endings["king"], endings["hq"], endings["draw"], endings["cutoff"], wins[0], wins[1],
 			float(level_ups) / games, float(evolutions) / games, roundi(100.0 * games_with_evolution / games),
-			float(first_evolution_turns) / maxi(1, games_with_evolution),
+			float(first_total) / maxi(1, first.size()), first_median,
 			float(neutral_kills) / games, float(losses) / games,
 		]
+		if army_wins[0] + army_wins[1] > 0:
+			text += "  M %d 勝 F %d 勝（M %.0f%%）" % [army_wins[0], army_wins[1], 100.0 * army_wins[0] / (army_wins[0] + army_wins[1])]
+		return text
 
 
 func _initialize() -> void:
@@ -79,6 +92,7 @@ func _initialize() -> void:
 	var first_seed: int = args.get("seed", "1").to_int()
 	var max_turns: int = args.get("max-turns", "60").to_int()
 	var deck_mode: String = args.get("decks", "auto")
+	var mixed_only: bool = args.get("pairings", "all") == "mixed"
 	var what_if_hit: int = args.get("hit", "15").to_int()
 	var what_if_level: int = args.get("level", "80").to_int()
 
@@ -89,6 +103,7 @@ func _initialize() -> void:
 	var mixed_games := 0
 	var hired := 0
 	var gains: Array[int] = [0, 0, 0, 0]  # 当てた、倒した、中立を倒した、回復した 回数
+	var by_kind: Dictionary[UnitKind.Id, Array] = {}
 	var reached := {"lv2": 0, "lv3": 0, "lv3_hit": 0, "lv3_level": 0, "lv3_both": 0}
 	var actions := 0
 	var think := 0.0
@@ -101,6 +116,8 @@ func _initialize() -> void:
 		var stage := CpuMatch.STAGES[game % CpuMatch.STAGES.size()]
 		@warning_ignore("integer_division")
 		var pairing := (game / CpuMatch.STAGES.size()) % 4
+		if mixed_only:
+			pairing %= 2
 		var armies: Array[UnitKind.Army] = [ARMIES[pairing % 2], ARMIES[(pairing % 2) ^ (0 if pairing >= 2 else 1)]]
 		var decks: Array[Deck] = [_deck(armies[0], deck_mode), _deck(armies[1], deck_mode)]
 		var battle := CpuMatch.create(stage, first_seed + game, decks)
@@ -114,6 +131,11 @@ func _initialize() -> void:
 			mixed_games += 1
 			if outcome.winner >= 0:
 				army_wins[armies[outcome.winner]] += 1
+				by_stage[stage].army_wins[ARMIES.find(armies[outcome.winner])] += 1
+		for kind in outcome.by_kind:
+			var row: Array = by_kind.get_or_add(kind, [0, 0, 0, 0, 0])
+			for i in row.size():
+				row[i] += outcome.by_kind[kind][i]
 		hired += outcome.hired[0] + outcome.hired[1]
 		for unit_id in outcome.gains:
 			var tally: Array = outcome.gains[unit_id]
@@ -172,6 +194,17 @@ func _initialize() -> void:
 		100.0 * sources[0] / maxi(1, earned), float(gains[0]) / games, 100.0 * sources[1] / maxi(1, earned), float(gains[1]) / games,
 		100.0 * sources[2] / maxi(1, earned), float(gains[2]) / games, 100.0 * sources[3] / maxi(1, earned), float(gains[3]) / games,
 	])
+	print("")
+	print("駒の種類ごと（1 体あたり。将は 1 局・1 体あたり）")
+	var kind_ids := by_kind.keys()
+	kind_ids.sort()
+	for kind: UnitKind.Id in kind_ids:
+		var row: Array = by_kind[kind]
+		var count: int = row[0] if row[0] > 0 else games * 2
+		print("  %-12s 雇った %4d 体  倒された %3.0f%%  与えたダメージ %5.1f  倒した %4.2f  進化した %3.0f%%" % [
+			UnitKind.display_name(kind), row[0], 100.0 * row[1] / count, float(row[2]) / count,
+			float(row[3]) / count, 100.0 * row[4] / count,
+		])
 	print("")
 	print("行動 %d 回。考える時間: 1 手の平均 %.1f ms、最長 %.1f ms。全体で %.1f 秒" % [
 		actions, think / maxi(1, actions), slowest, (Time.get_ticks_msec() - started) / 1000.0,

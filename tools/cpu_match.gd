@@ -37,6 +37,13 @@ class Outcome:
 	var gains: Dictionary[int, Array] = {}
 	## 雇った駒（将を除く）の数。
 	var hired: Array[int] = [0, 0]
+	## 駒の種類 -> [雇った数, 倒された数, プレイヤーの駒（将を含む）に与えたダメージ, プレイヤーの駒を倒した数, 進化した数]。
+	## 将の行も入る（雇った数は 0）。
+	var by_kind: Dictionary[UnitKind.Id, Array] = {}
+	## プレイヤーの駒の番号 -> 種類（倒れたあとも引けるように、始めに控える）。
+	var kinds: Dictionary[int, UnitKind.Id] = {}
+	## いちばん最近に倒れた駒が中立だったか（撃破の経験値が、どちらの撃破のものかを見分ける）。
+	var last_defeated_neutral := false
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
 
@@ -60,8 +67,12 @@ static func play(battle: Battle, max_turns: int, cpu: CpuPlayer = null) -> Outco
 	if cpu == null:
 		cpu = CpuPlayer.new()
 	for unit in battle.units:
-		if unit.side != Unit.Side.NEUTRAL and unit.kind != UnitKind.Id.KING:
+		if unit.side == Unit.Side.NEUTRAL:
+			continue
+		outcome.kinds[unit.id] = unit.kind
+		if unit.kind != UnitKind.Id.KING:
 			outcome.hired[unit.side] += 1
+			_kind_row(outcome, unit.kind)[0] += 1
 	while not battle.is_over() and battle.turn <= max_turns:
 		var mover := battle.phase
 		var started := Time.get_ticks_usec()
@@ -93,12 +104,21 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 		outcome.evolutions[mover] += 1
 		if outcome.first_evolution_turn == 0:
 			outcome.first_evolution_turn = battle.turn
+		var evolved := event as UnitEvolvedEvent
+		if outcome.kinds.has(evolved.unit_id):
+			_kind_row(outcome, outcome.kinds[evolved.unit_id])[4] += 1
+	elif event is AttackDamagedEvent:
+		var hit := event as AttackDamagedEvent
+		if outcome.kinds.has(hit.attacker_id) and outcome.kinds.has(hit.unit_id):
+			_kind_row(outcome, outcome.kinds[hit.attacker_id])[2] += hit.amount
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
+		outcome.last_defeated_neutral = defeated.side == Unit.Side.NEUTRAL
 		if defeated.side == Unit.Side.NEUTRAL:
 			outcome.neutral_kills[mover] += 1
 		elif defeated.kind != UnitKind.Id.KING:
 			outcome.losses[defeated.side] += 1
+			_kind_row(outcome, defeated.kind)[1] += 1
 	elif event is ExperienceGainedEvent:
 		var gained := event as ExperienceGainedEvent
 		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0])
@@ -106,9 +126,16 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 			ExperienceGainedEvent.Reason.HIT:
 				tally[0] += 1
 			ExperienceGainedEvent.Reason.DEFEAT:
-				tally[2 if gained.amount == Growth.NEUTRAL_DEFEAT_EXPERIENCE else 1] += 1
+				var neutral := outcome.last_defeated_neutral
+				tally[2 if neutral else 1] += 1
+				if not neutral and outcome.kinds.has(gained.unit_id):
+					_kind_row(outcome, outcome.kinds[gained.unit_id])[3] += 1
 			ExperienceGainedEvent.Reason.HEAL:
 				tally[3] += 1
 	elif event is GameWonEvent:
 		var won := event as GameWonEvent
 		outcome.ending = "king" if won.reason == GameWonEvent.Reason.KING_DEFEATED else "hq"
+
+
+static func _kind_row(outcome: Outcome, kind: UnitKind.Id) -> Array:
+	return outcome.by_kind.get_or_add(kind, [0, 0, 0, 0, 0])
