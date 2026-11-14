@@ -96,6 +96,11 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	_info_stats.text = "HP %d / %d\n%s %d   移動 %d   射程 %d" % [
 		unit.hp, unit.max_hp(), power_name, unit.power(), unit.move_range(), unit.attack_range(),
 	]
+	if Growth.can_grow(unit):
+		if unit.level >= Growth.MAX_LEVEL:
+			_info_stats.text += "\nレベル %d（最大）" % unit.level
+		else:
+			_info_stats.text += "\nレベル %d   経験 %d / %d" % [unit.level, unit.experience, Growth.EXPERIENCE_PER_LEVEL]
 	_info_state.text = state
 	_info_forecast.text = forecast
 	_info_forecast.visible = forecast != ""

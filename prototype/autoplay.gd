@@ -53,6 +53,7 @@ func _process(_delta: float) -> void:
 			_queue_capture_scene()
 			_queue_barrel_draw_scene()
 			_queue_neutral_scene()
+			_queue_level_up_scene()
 			return
 		_game += 1
 		if _game >= STAGES.size():
@@ -226,6 +227,28 @@ func _queue_neutral_scene() -> void:
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった"))
+
+
+## あと 10 でレベルが上がる駒が敵を倒し、経験値が入ってレベルが上がる。
+func _queue_level_up_scene() -> void:
+	var board := _small_board(Vector2i(6, 4))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 3))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(5, 0))
+	var raider := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER1, Vector2i(2, 2))
+	raider.experience = Growth.EXPERIENCE_PER_LEVEL - Growth.HIT_EXPERIENCE
+	var victim := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(3, 2))
+	victim.hp = 1
+	raider.hp -= 5
+
+	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.click_cell(raider.cell))
+	_scripted.append(func() -> void: _scene.click_cell(victim.cell))
+	_scripted.append(func() -> void:
+		_expect(battle.unit_by_id(victim.id) == null, "敵を倒せなかった")
+		_expect(raider.level == 2, "レベルが上がらなかった")
+		_expect(raider.hp == raider.max_hp() - 5, "最大 HP が伸びたぶん HP が増えなかった")
+		_expect(_scene.played.get(LevelUpEvent, 0) > 0, "レベルアップを再生しなかった"))
 
 
 ## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。

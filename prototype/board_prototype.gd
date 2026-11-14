@@ -25,6 +25,8 @@ const COLOR_CRUISE := Color(1.0, 0.82, 0.3, 0.4)
 const COLOR_PATH := Color(1.0, 1.0, 1.0, 0.75)
 const COLOR_TARGET := Color(1.0, 0.2, 0.15, 0.7)
 const COLOR_BLAST := Color(1.0, 0.55, 0.1, 0.6)
+const COLOR_EXPERIENCE := Color("9fd8ff")
+const COLOR_LEVEL_UP := Color("ffd34a")
 const COLOR_INSPECT := Color(1.0, 1.0, 1.0, 0.28)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 
@@ -160,6 +162,9 @@ func _add_view(unit: Unit) -> void:
 	view.position = BoardView.cell_center(unit.cell)
 	add_child(view)
 	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp, unit.max_hp())
+	if unit.level > 1:
+		view.set_growth(unit.level, unit.max_hp())
+		view.set_hp(unit.hp)
 	# 敵の本陣のほうを向いて立つ。
 	var enemy_hq := battle.board.hq_cells[1 - unit.side] if unit.side != Unit.Side.NEUTRAL else unit.cell + Vector2i.DOWN
 	view.face(BoardView.cell_center(enemy_hq) - view.position)
@@ -297,6 +302,8 @@ static func event_players() -> Dictionary:
 		ExplosionDamagedEvent: &"_play_explosion_damaged",
 		HealerHealedEvent: &"_play_healer_healed",
 		SpringHealedEvent: &"_play_spring_healed",
+		ExperienceGainedEvent: &"_play_experience_gained",
+		LevelUpEvent: &"_play_level_up",
 		UnitDefeatedEvent: &"_play_defeated",
 		UnitSpawnedEvent: &"_play_spawned",
 		BarrelExplodedEvent: &"_play_barrel_exploded",
@@ -398,6 +405,23 @@ func _play_heal(event: UnitHealedEvent, glow: bool) -> void:
 	if glow:
 		_flash(view.position, BoardView.COLOR_SPRING_CROSS, 0.8)
 	await get_tree().create_timer(0.35).timeout
+
+
+## 経験値が入った。数を小さく出すだけ（たまった量は左下の駒の情報に出る）。
+func _play_experience_gained(event: ExperienceGainedEvent) -> void:
+	var view := _view(event.unit_id)
+	_pop_number(view.position + Vector3(0.0, 0.35, 0.0), "経験 +%d" % event.amount, COLOR_EXPERIENCE)
+	await get_tree().create_timer(0.2).timeout
+
+
+## レベルが上がった。札のレベルと HP のバーを描き直し、光と知らせを出す。
+func _play_level_up(event: LevelUpEvent) -> void:
+	var view := _view(event.unit_id)
+	view.set_growth(event.level, event.max_hp)
+	view.set_hp(event.hp)
+	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_LEVEL_UP, 1.4)
+	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "レベル %d！" % event.level, COLOR_LEVEL_UP)
+	await get_tree().create_timer(0.5).timeout
 
 
 ## 攻撃の動きのあと、樽を消して、爆発の届いたマスを塗る（続くダメージの再生の間も塗ったまま）。
@@ -663,6 +687,10 @@ func _update_info() -> void:
 		var amount := Combat.damage(battle, attacker, hovered)
 		var left := maxi(0, hovered.hp - amount)
 		forecast = "攻撃すると %d ダメージ → %s" % [amount, "倒せる" if left == 0 else "残り HP %d" % left]
+		# 経験値の見込みも、実際と同じ計算（Growth）を状態を変えずに使う。
+		var growth := Growth.preview(attacker, Growth.attack_experience(battle, attacker, hovered))
+		if growth.gained > 0:
+			forecast += "\n経験 +%d%s" % [growth.gained, "（レベルアップ）" if growth.levels_gained > 0 else ""]
 	_hud.show_unit(shown, state, forecast)
 
 

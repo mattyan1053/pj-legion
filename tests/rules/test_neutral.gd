@@ -316,7 +316,10 @@ func test_players_can_attack_cores() -> void:
 	var core := _core(battle, Vector2i(1, 0))
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
 	var events := battle.apply(AttackAction.new(commando.id, core.id)).events
-	assert_eq(_types(events), [AttackDamagedEvent, UnitDefeatedEvent, UnitActedEvent] as Array[Script])
+	assert_eq(
+		_types(events),
+		[AttackDamagedEvent, UnitDefeatedEvent, ExperienceGainedEvent, UnitActedEvent] as Array[Script]
+	)
 
 
 func test_players_cannot_move_cores() -> void:

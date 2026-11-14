@@ -26,10 +26,11 @@
 - 行動できる駒が、いまの位置から攻撃する。動いたあとでも、動かずにでもよい。**巡航で動いた駒は攻撃できない。**
 - 攻撃すると行動を終える。
 - 返すイベントは順に、`UnitDamagedEvent`（与えたダメージと、受けたあとの HP）、
-  倒れたなら `UnitDefeatedEvent`、最後に `UnitActedEvent`。
+  倒れたなら `UnitDefeatedEvent`、攻撃した駒が育つなら経験値（`ExperienceGainedEvent`、上がれば `LevelUpEvent`。
+  `docs/experience-levelup.md`）、最後に `UnitActedEvent`。
 - `UnitDamagedEvent` のダメージは計算した値（残り HP より大きくてもそのまま）。`cause` は `ATTACK`。
 
 ## まだ入れていないもの
 
-確定クリティカル、被ダメージを無効にするバリア、範囲魔法、煙幕、盾（バリケード）、経験値は、
-それぞれのスキル・成長の仕様と一緒に入れる。
+確定クリティカル、被ダメージを無効にするバリア、範囲魔法、煙幕、盾（バリケード）は、
+それぞれのスキルの仕様と一緒に入れる。
