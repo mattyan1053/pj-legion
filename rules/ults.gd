@@ -15,13 +15,13 @@ extends RefCounted
 ## ゲージのいっぱいの値。画面には 100% として出す（percent）。
 const GAUGE_MAX := 1000
 ## 自分のフェーズの始めにたまる量。
-const PHASE_GAIN := 30
+const PHASE_GAIN := 25
 ## 自分の駒が敵（相手の駒、中立の駒）に与えたダメージ 1 につき、たまる量。
-const DEALT_GAIN := 2
+const DEALT_GAIN := 1
 ## 自分の駒が敵（相手の駒、中立の駒）から受けたダメージ 1 につき、たまる量。与えたときより多い（押されている側が早くたまる）。
-const TAKEN_GAIN := 6
+const TAKEN_GAIN := 5
 ## 自分の駒（将を除く）が倒れたときにたまる量。
-const DEFEAT_GAIN := 100
+const DEFEAT_GAIN := 80
 
 ## すべての必殺技。足すときは、ここに 1 つ並べる。
 static var ALL: Array[Ult] = [
