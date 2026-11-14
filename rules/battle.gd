@@ -136,12 +136,14 @@ func apply(action: Variant) -> Array:
 ## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
 func _after_action(events: Array) -> Array:
 	var extra: Array = []
-	for event in events:
-		if event is UnitDefeatedEvent and event.kind == UnitKind.Id.KING and not is_over():
-			if event.side == Unit.Side.PLAYER1 or event.side == Unit.Side.PLAYER2:
-				winner = 1 - event.side
-				extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.KING_DEFEATED))
-	for player in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+	for event: Variant in events:
+		var defeated := event as UnitDefeatedEvent
+		if defeated == null or defeated.kind != UnitKind.Id.KING or is_over():
+			continue
+		if defeated.side == Unit.Side.PLAYER1 or defeated.side == Unit.Side.PLAYER2:
+			winner = 1 - defeated.side
+			extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.KING_DEFEATED))
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		if capture_turns[player] > 0 and not occupies_enemy_hq(player):
 			capture_turns[player] = 0
 			extra.append(CaptureProgressEvent.new(player, 0))

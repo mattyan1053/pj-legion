@@ -86,7 +86,7 @@ func test_holding_the_enemy_hq_for_three_phases_wins() -> void:
 	assert_eq(won.winner, P1)
 	assert_eq(won.reason, GameWonEvent.Reason.HQ_CAPTURED)
 	assert_eq(battle.phase, P1)  # 決着したので次のフェーズへは進まない
-	for event in events:
+	for event: Variant in events:
 		assert_false(event is PhaseStartedEvent)
 
 
