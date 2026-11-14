@@ -3,7 +3,7 @@
 コード: `rules/skill.gd`（スキル 1 つの定義の親）、`rules/skills.gd`（共通の決まり。スキルの並び）、`rules/skills/`（スキルごとの中身）、
 `rules/actions/use_skill_action.gd`、`rules/events/skill_used_event.gd`、`rules/events/skill_ready_event.gd`、
 `rules/events/skill_damaged_event.gd`、
-`rules/unit.gd`（`skill_cooldown`）。
+`rules/unit.gd`（`skill_cooldown`、`skill_uses`、`move_locked`）、`rules/battle.gd`（`hold_action`）。
 テスト: `tests/rules/test_skills.gd`（共通の決まり）、`tests/rules/skills/`（スキルごと）。
 
 駒の種類ごとに 1 つ持つ、クールダウンのある行動。**ここにあるのは、どのスキルにも共通の決まりだけ。**
@@ -15,6 +15,7 @@
 - 将と中立の駒は持たない。まだスキルの入っていない種類も、持たない（`null`）。
 - スキルの定義は `Skill` の子のクラスで、状態を持たない。名前（`display_name`）、1 行の説明（`summary`）、
   クールダウン（`cooldown`）、対象のマス（`target_cells`）、効果が及ぶマス（`affected_cells`）、効果（`apply`）を持つ。
+  要るスキルだけが、行動を終えるか（`ends_action`）、回数の上限（`max_uses`）、スキルだけの条件（`is_ready`）を書く。
 
 ## 行動の流れの中での位置
 
@@ -23,7 +24,28 @@
 - **スキルを使うと、行動を終える**（攻撃・回復・待機のかわり。`UnitActedEvent`）。使ったあとは、移動の取り消しもできない。
 - **動いたあとでも、動かずにでも使える。巡航で動いた駒は使えない**（攻撃・回復と同じ扱い）。
 - 使えるのは、自分のフェーズの、行動済みでない駒（`Battle.can_act`）で、クールダウンが 0 のとき。
-- スキルだけの条件（動いていないこと、残りの回数など）が要るものは、そのスキルが `Skill.is_ready` で足す。
+- スキルだけの条件（動いていないこと、など）が要るものは、そのスキルが `Skill.is_ready` で足す。
+
+### 行動を終えないスキル
+
+`Skill.ends_action()` が偽のスキル（いまはシャドウステップ）は、**使っても行動を終えない**。1 回の行動が
+「移動（1 回まで）→ **スキル** → 攻撃・待機のどれか」になる。
+
+- 使ったあとの駒は、**動いたあとと同じ「行動の途中」**になる（`Battle.hold_action`）。もう動けず、続けて攻撃（駒・樽・盾）か待機で行動を終える。
+  ほかの駒は、その間は行動を始められない。行動の途中のままフェーズを終えると、待機したことになる。
+- **移動の取り消しはできない**（`Unit.move_locked`。`UndoMoveAction` を断り、`options()` の `can_undo` が偽）。
+  歩いてからスキルを使った駒も、歩く前には戻れない。スキルを使う前の状態（クールダウン、相手の位置）には戻せないため。
+- `UseSkillAction` のイベントは `SkillUsedEvent` と効果のイベントだけで、`UnitActedEvent` は出ない。
+- クールダウンは、ほかのスキルと同じに付く（同じ行動の中で 2 回は使えない）。
+- 順番は「移動 → スキル」だけ。スキルのあとには動けない。
+
+### 回数に上限のあるスキル
+
+`Skill.max_uses()` が 1 以上のスキル（いまはアドレナリン注射）は、**1 体の駒が、対戦中にその回数までしか使えない**。
+
+- 使った回数は駒が持つ（`Unit.skill_uses`。どのスキルでも数える）。残りは `Skills.uses_left(駒)`（上限の無いスキルでは -1）。
+- 使い切った駒は、クールダウンが 0 でも使えない（`skill_cells` が空）。`SkillReadyEvent` も出ない。
+- クールダウンも、ほかのスキルと同じに付く。
 
 ## クールダウン
 
@@ -52,7 +74,7 @@
 
 1. `SkillUsedEvent`（使った駒、スキル（`Skill.Id`）、対象のマス、付いたクールダウン）
 2. スキルの効果のイベント（盾が置かれた、など。スキルごとの文書）
-3. `UnitActedEvent`
+3. `UnitActedEvent`（行動を終えないスキルでは出ない）
 
 | イベント | 中身 |
 | --- | --- |
@@ -107,14 +129,10 @@
 1. `Skill.Id` に 1 つ足す。
 2. `rules/skills/` に `Skill` の子のクラスを書く（調整値は、そのファイルの先頭に置く）。
 3. `Skills.ALL` に 1 つ並べる。
-4. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`board_prototype.gd` の `event_players()`）に載せる。
+4. 行動を終えないなら `ends_action` を、回数に上限があるなら `max_uses` を書く（面倒は `Skills` が見る）。
+5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`board_prototype.gd` の `event_players()`）に載せる。
    駒へのダメージは `Skills.deal_damage` を呼べば足り、イベントを足さなくてよい。
-5. イベントだけで価値が決まらなければ、`CpuPlayer.SKILL_VALUES` に 1 行と、見積もるメソッドを足す。
-6. `docs/skills/` に文書、`tests/rules/skills/` にテストを置く。
+6. イベントだけで価値が決まらなければ、`CpuPlayer.SKILL_VALUES` に 1 行と、見積もるメソッドを足す。
+7. `docs/skills/` に文書、`tests/rules/skills/` にテストを置く。
 
 画面の操作（スキルのボタン、対象を選ぶ、見込み）と、選べること、複製、クールダウンは、足したスキルにそのまま効く。
-
-## まだ決めていないこと
-
-- **行動を終えないスキル**: 仕様のシャドウステップは、ワープのあとに攻撃できる。いまの土台は「使うと行動を終える」だけなので、
-  そのスキルを入れるときに、`Skills.use` に例外の入口を足す（Issue #8 の「決めること 6」）。
