@@ -3,7 +3,8 @@ extends RefCounted
 ## 駒の移動範囲と、そこまでの道。
 ##
 ## - 入るのに使う移動力は地形で決まる（平地・結晶泉 1、森 2）。合計が移動力以下のマスへ行ける
-## - 障害物と、ほかの駒（敵も味方も）のいるマスは通れない
+## - 障害物と、敵の駒のいるマスは通れない
+## - 味方の駒のいるマスは通り抜けられるが、そこで止まることはできない
 ## - 敵の支配領域（ZOC）のマスには入れるが、そこで止まる（その先へは進めない）。
 ##   ただし、いま立っているマスが敵の ZOC でも、最初の 1 歩は踏み出せる
 ## - 巡航（攻撃を諦める移動）は移動力が 2 倍
@@ -14,9 +15,14 @@ static func budget(unit: Unit, cruise: bool) -> int:
 	return unit.move_range() * (2 if cruise else 1)
 
 
-## 行けるマスと、そこまでに使う移動力の最小値。Vector2i -> int。いまのマス（0）も含む。
+## 止まれるマスと、そこまでに使う移動力の最小値。Vector2i -> int。いまのマス（0）も含む。
 static func reachable(battle: Battle, unit: Unit, cruise := false) -> Dictionary:
-	return _search(battle, unit, budget(unit, cruise))["cost"]
+	var cost: Dictionary = _search(battle, unit, budget(unit, cruise))["cost"]
+	var result := {}
+	for cell: Vector2i in cost:
+		if _can_stop(battle, unit, cell):
+			result[cell] = cost[cell]
+	return result
 
 
 ## いまのマスから to までの道（両端を含む）。行けなければ空。
@@ -24,7 +30,7 @@ static func reachable(battle: Battle, unit: Unit, cruise := false) -> Dictionary
 static func path_to(battle: Battle, unit: Unit, to: Vector2i, cruise := false) -> Array[Vector2i]:
 	var result := _search(battle, unit, budget(unit, cruise))
 	var path: Array[Vector2i] = []
-	if not result["cost"].has(to):
+	if not result["cost"].has(to) or not _can_stop(battle, unit, to):
 		return path
 	var parent: Dictionary = result["parent"]
 	var cell := to
@@ -36,7 +42,13 @@ static func path_to(battle: Battle, unit: Unit, to: Vector2i, cruise := false) -
 	return path
 
 
-## 移動力の少ない順にマスを広げる（ダイクストラ法）。
+## そのマスで止まれるか（自分のいるマスか、誰もいないマス）。
+static func _can_stop(battle: Battle, unit: Unit, cell: Vector2i) -> bool:
+	var occupant := battle.unit_at(cell)
+	return occupant == null or occupant == unit
+
+
+## 通れるマスを、移動力の少ない順に広げる（ダイクストラ法）。味方のいるマスも通る。
 ## 同じ移動力のマスは見つけた順に広げるので、結果は毎回同じになる。
 static func _search(battle: Battle, unit: Unit, limit: int) -> Dictionary:
 	var cost := {unit.cell: 0}
@@ -62,7 +74,10 @@ static func _search(battle: Battle, unit: Unit, limit: int) -> Dictionary:
 			continue
 		for direction in Board.DIRECTIONS:
 			var next := cell + direction
-			if not battle.board.is_walkable(next) or battle.unit_at(next) != null:
+			if not battle.board.is_walkable(next):
+				continue
+			var occupant := battle.unit_at(next)
+			if occupant != null and occupant.is_enemy_of(unit):
 				continue
 			var next_cost: int = cost[cell] + battle.board.move_cost(next)
 			if next_cost > limit or (cost.has(next) and cost[next] <= next_cost):

@@ -53,12 +53,26 @@ func test_cannot_pass_through_enemies() -> void:
 	assert_eq(cells.size(), 1)
 
 
-func test_cannot_pass_through_allies_either() -> void:
+func test_can_pass_through_allies_but_not_stop_on_them() -> void:
 	var battle := Maps.battle(["....."])
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 0))
 	var cells := Movement.reachable(battle, sniper)
-	assert_eq(cells.size(), 1)
+	assert_false(cells.has(Vector2i(1, 0)))
+	assert_eq(cells[Vector2i(2, 0)], 2)
+	assert_eq(cells[Vector2i(3, 0)], 3)
+	assert_eq(
+		Movement.path_to(battle, sniper, Vector2i(3, 0)),
+		[Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)] as Array[Vector2i]
+	)
+	assert_eq(Movement.path_to(battle, sniper, Vector2i(1, 0)), [] as Array[Vector2i])
+
+
+func test_neutrals_are_enemies_of_both_players() -> void:
+	var battle := Maps.battle(["....."])
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
+	battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(1, 0))
+	assert_eq(Movement.reachable(battle, sniper).size(), 1)
 
 
 func test_enemy_zoc_stops_movement() -> void:
