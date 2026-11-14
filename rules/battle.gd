@@ -30,7 +30,7 @@ var capture_turns_before_move: Array[int] = [0, 0]
 ## 敵の本陣をこの回数だけ自分のフェーズの終わりまで占拠し続けたら勝ち。
 const CAPTURE_TURNS_TO_WIN := 3
 
-## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、種を固定しても結果がそろわない。
+## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
 
 var _next_unit_id := 1
