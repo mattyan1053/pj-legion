@@ -312,8 +312,9 @@ func _update_occlusion(delta: float) -> void:
 		if _in_bounds(_hover_cell):
 			targets.append(_hover_cell)
 		for cell: Vector2i in targets:
+			# k = 0 は自分のマス（森に立つ駒、岩の上のカーソル）。
 			var from := _cell_center(cell)
-			for k in range(1, reach + 1):
+			for k in range(0, reach + 1):
 				var p := from + step * float(k)
 				faded[Vector2i(floori(p.x), floori(p.z))] = true
 
