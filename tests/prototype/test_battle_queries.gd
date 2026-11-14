@@ -161,3 +161,11 @@ func test_skill_cells_are_what_the_rules_accept() -> void:
 			assert_eq(cells.has(cell), battle.can_apply(UseSkillAction.new(trooper.id, cell)), "スキルの対象 %s" % cell)
 	battle.apply(UseSkillAction.new(trooper.id, cells[0]))
 	assert_true(Queries.skill_cells(battle, trooper).is_empty(), "使ったあと")
+
+
+func test_threat_cells_are_the_threat_range_of_the_rules() -> void:
+	var battle := _battle()
+	var enemy := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(8, 1))
+	assert_eq(Queries.threat_cells(battle, enemy), Threat.of(battle, enemy.id).cells())
+	assert_true(Queries.threat_cells(battle, enemy).has(Vector2i(2, 1)), "移動 3 + 射程 4")
+	assert_true(Queries.threat_cells(battle, null).is_empty())

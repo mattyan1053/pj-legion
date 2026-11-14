@@ -24,6 +24,13 @@ static func reachable(battle: Battle, unit: Unit, cruise := false) -> Dictionary
 	return _search(battle, unit, budget(unit, cruise)).stops()
 
 
+## starts のどのマスからでも動き出せるとしたときに、止まれるマスと、そこまでに使う移動力の最小値（starts のマスは 0）。
+## 「どこかで止まったあと、もう一度動く」ときの範囲を、1 回の探索で出す（脅威範囲。docs/threat-range.md）。
+## starts のどのマスでも、いまのマスと同じに扱う（敵の ZOC でも最初の 1 歩は踏み出せる）。駒のいまのマスは空いているものとする。
+static func reachable_from_any(battle: Battle, unit: Unit, starts: Array[Vector2i], cruise := false) -> Dictionary:
+	return _search(battle, unit, budget(unit, cruise), starts).stops()
+
+
 ## いまのマスから to までの道（両端を含む）。行けなければ空。
 ## 同じ移動力で行ける道がいくつかあるときも、毎回同じ道を返す。
 static func path_to(battle: Battle, unit: Unit, to: Vector2i, cruise := false) -> Array[Vector2i]:
@@ -71,7 +78,7 @@ class Search:
 ## 移動力は小さい整数なので、候補は移動力ごとの列に入れる。列の中は見つけた順に並ぶので、
 ## 「移動力の小さい順、同じなら見つけた順」に取り出すことになる。
 ## 駒の位置と敵の支配領域は、始めに 1 回だけ表にする（マスごとに全部の駒を調べない）。
-static func _search(battle: Battle, unit: Unit, limit: int) -> Search:
+static func _search(battle: Battle, unit: Unit, limit: int, from: Array[Vector2i] = []) -> Search:
 	var found := Search.new()
 	var board := battle.board
 	var enemy_zoc: Dictionary[Vector2i, bool] = {}
@@ -88,13 +95,16 @@ static func _search(battle: Battle, unit: Unit, limit: int) -> Search:
 	var occupied := found.occupied
 	var cost := found.cost
 	var parent := found.parent
-	var start := unit.cell
-	cost[start] = 0
+	var starts: Dictionary[Vector2i, bool] = {}
+	for cell in (from if not from.is_empty() else [unit.cell] as Array[Vector2i]):
+		starts[cell] = true
 	var done: Dictionary[Vector2i, bool] = {}
 	var queues: Array[Array] = []
 	for i in limit + 1:
 		queues.append([] as Array[Vector2i])
-	queues[0].append(start)
+	for cell in starts:
+		cost[cell] = 0
+		queues[0].append(cell)
 	for spent in limit + 1:
 		var queue: Array[Vector2i] = queues[spent]
 		var head := 0
@@ -106,12 +116,12 @@ static func _search(battle: Battle, unit: Unit, limit: int) -> Search:
 				continue
 			done[cell] = true
 			# 敵の ZOC に入ったマスからは先へ進めない（出発したマスだけは別）。
-			if cell != start and enemy_zoc.has(cell):
+			if not starts.has(cell) and enemy_zoc.has(cell):
 				continue
 			# 行き先。ポータルの転移（移動力 0）を先に、そのあと上下左右。
 			# 転移できるのは、行き先に駒（陣営を問わない。自分も含む）がいないときだけ（Battle.portal_exit と同じ）。
 			var exit := board.portal_exit(cell)
-			if exit == start or occupied.has(exit):
+			if starts.has(exit) or occupied.has(exit):
 				exit = Board.NO_CELL
 			for i in range(0 if exit != Board.NO_CELL else 1, 5):
 				var next := exit if i == 0 else cell + Board.DIRECTIONS[i - 1]

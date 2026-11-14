@@ -178,11 +178,6 @@ const ADRENALINE_RATE := 0.75
 ## 続ける味方がいなければ BARRIER_STRIP_VALUE だけ（バリアは使わせたが、ダメージにはつながらない）。
 const BARRIER_STRIP_RATE := 0.6
 const BARRIER_STRIP_VALUE := 2.0
-## 相手のスキル -> 次の相手の番に、そのスキルで届くマスを危険に足すメソッド（相手の駒と、動けるマスを受け取る）。
-const SKILL_THREATS := {
-	Skill.Id.FIREBALL: &"_fireball_threat",
-	Skill.Id.SHADOW_STEP: &"_shadow_step_threat",
-}
 
 ## 必殺技 -> いま使うかを決めるメソッド（docs/tactical-ult.md の「CPU」）。真を返したら、駒を動かす前に使う。
 const ULT_USES := {
@@ -236,9 +231,6 @@ var _stand := Board.NO_CELL
 var _threats_ready := false
 ## 立つマス -> いま考えている駒がそこへ動いただけの盤面の、危険の表 [threats, close]（盾の見積もりが使う）。
 var _moved_threats: Dictionary[Vector2i, Array] = {}
-## _fill_threats が、いま書き込んでいる表。
-var _filling: Dictionary[Vector2i, Dictionary] = {}
-var _filling_close: Dictionary[Vector2i, Dictionary] = {}
 ## いま考えている駒の目標までの歩数の表、そこまで近づけば足りる歩数、役割ごとの重み、離れて立つか。
 var _goal_steps := PackedInt32Array()
 var _goal_reach := 0
@@ -1472,12 +1464,7 @@ func _danger_in(
 
 
 ## 次の相手の番（と中立のフェーズ）に、敵が攻撃できるマスを調べる（_threats、_close_threats）。
-## - 相手の動けるマス、そのときの射程と攻撃力（構えた相手の確定クリティカルも）、スキルを使えるかは、
-##   複製の上で自分のフェーズを終え、相手の番になった状態に聞く
-## - 動くと外れる状態（照準）の付いた相手は、いまのマスからは伸びた射程と強めた攻撃力で、ほかのマスからはもとの値で数える
-## - そこから攻撃の届くマスは目安（動けるマスから射程の歩数まで。地形は見ない）。盾のあるときだけ、間の盾をルールに聞く
-## - 相手のスキルで届くマスは SKILL_THREATS のメソッドが足す
-## - 中立の駒は、縄張りの中で止まれるマスから射程まで（中ボスも同じ）
+## 敵の脅威範囲（Threat.against。docs/threat-range.md）をそのまま使う。
 func _build_threats() -> void:
 	if _threats_ready:
 		return
@@ -1495,114 +1482,10 @@ func _fill_threats(
 	state: Battle, threats: Dictionary[Vector2i, Dictionary], close: Dictionary[Vector2i, Dictionary],
 	stops: Dictionary[Vector2i, bool]
 ) -> void:
-	var sim := state.clone()
-	var next_phase := sim.apply(EndPhaseAction.new()).accepted and not sim.is_over()
-	if next_phase and Ults.can_use(sim):
-		sim.apply(UseUltAction.new())  # 相手は、必殺技を使えるなら使ってくるものとして数える
-	_filling = threats
-	_filling_close = close
-	for enemy in state.units:
-		if enemy.side == _me:
-			continue
-		if enemy.side == Unit.Side.NEUTRAL:
-			# 中立の駒は、縄張りの中の止まれるマス（Neutral.destination が選ぶ先）から攻撃する。
-			var posts: Array[Vector2i] = []
-			for cell: Vector2i in Movement.reachable(state, enemy, false):
-				if Neutral.in_territory(enemy, cell):
-					posts.append(cell)
-			if not posts.has(enemy.cell):
-				posts.append(enemy.cell)
-			_spread_threat(sim, enemy.id, enemy.power(), posts, enemy.attack_range())
-			continue
-		var foe := sim.unit_by_id(enemy.id) if next_phase else null
-		if foe == null:
-			continue
-		var moves: Array[Vector2i] = []
-		moves.assign(sim.options(foe.id).move_cells.keys())
-		if UnitKind.role(foe.kind) != UnitKind.Role.HEALER:
-			for cell in moves:
-				stops[cell] = true
-			# 動いたあとの相手（動くと外れる状態を外した写し）。
-			var moved := foe.copy()
-			Statuses.displace(moved)
-			_spread_threat(sim, foe.id, Combat.attack_power(moved), moves, moved.attack_range())
-			if Combat.attack_power(foe) != Combat.attack_power(moved) or foe.attack_range() != moved.attack_range():
-				_spread_threat(sim, foe.id, Combat.attack_power(foe), [foe.cell], foe.attack_range())
-		var skill := Skills.of(foe)
-		if skill != null and SKILL_THREATS.has(skill.id()) and Skills.can_use(sim, foe):
-			call(SKILL_THREATS[skill.id()], sim, foe, moves)
-
-
-## from のマスから reach 歩までのマスに、敵 enemy_id の攻撃（power）が届くと書き込む（同じ敵は、強いほうを残す）。
-## from から close_reach 歩まで（既定は、隣 = Combat.RANGED_DISTANCE より近く）は、煙幕に防がれない攻撃として
-## _close_threats にも書く。unblockable なら、どの距離でも書く。
-## 盤に盾があり、離れた攻撃（射程 2 以上）なら、間に盾があって届かないマスを除く（sim のルールに聞く）。
-func _spread_threat(
-	sim: Battle, enemy_id: int, power: int, from: Array[Vector2i], reach: int, unblockable := false,
-	close_reach := Combat.RANGED_DISTANCE - 1
-) -> void:
-	var check_lines := not unblockable and reach >= Combat.RANGED_DISTANCE and sim.board.has_barricades()
-	var seen: Dictionary[Vector2i, bool] = {}
-	var frontier := from
-	for cell in from:
-		seen[cell] = true
-	for step in reach + 1:
-		var next: Array[Vector2i] = []
-		for cell in frontier:
-			if not check_lines or _reaches_from_any(sim, from, cell, reach):
-				_note_threat(_filling, cell, enemy_id, power)
-				if unblockable or step <= close_reach:
-					_note_threat(_filling_close, cell, enemy_id, power)
-			if step == reach:
-				continue
-			for direction in Board.DIRECTIONS:
-				var near := cell + direction
-				if not seen.has(near) and _board.in_bounds(near):
-					seen[near] = true
-					next.append(near)
-		frontier = next
-
-
-func _note_threat(table: Dictionary[Vector2i, Dictionary], cell: Vector2i, enemy_id: int, power: int) -> void:
-	if not table.has(cell):
-		table[cell] = {}
-	var by: Dictionary = table[cell]
-	by[enemy_id] = maxi(power, by.get(enemy_id, 0))
-
-
-## from のどれかのマスから at へ、射程 reach の攻撃が届くか（間の盾はルールに聞く。Combat.reaches）。
-func _reaches_from_any(sim: Battle, from: Array[Vector2i], at: Vector2i, reach: int) -> bool:
-	for cell in from:
-		if Combat.reaches(sim, cell, at, reach):
-			return true
-	return false
-
-
-## ファイアボールを使える相手: 動けるマスから「中心までの距離 + 十字の腕」まで、スキルのダメージが届く。
-## 煙幕にも盾にも防がれない（docs/skills/fireball.md）。
-func _fireball_threat(sim: Battle, foe: Unit, moves: Array[Vector2i]) -> void:
-	_spread_threat(sim, foe.id, FireballSkill.DAMAGE, moves, FireballSkill.CENTER_RANGE + FireballSkill.ARM, true)
-
-
-## シャドウステップを使える相手: 動けるマスから縦・横・斜めに跳んだ先（入れるマス）から、もう一度攻撃が届く。
-## 跳べる向きと距離は目安（スキルの調整値を読む。駒のいるマスへも跳べるものとして広めに数える）。
-func _shadow_step_threat(sim: Battle, foe: Unit, moves: Array[Vector2i]) -> void:
-	var landings: Dictionary[Vector2i, bool] = {}
-	var width := _board.size.x
-	for cell in moves:
-		for dy in range(-1, 2):
-			for dx in range(-1, 2):
-				if dx == 0 and dy == 0:
-					continue
-				for steps in range(1, ShadowStepSkill.RANGE + 1):
-					var landing := cell + Vector2i(dx, dy) * steps
-					if _board.in_bounds(landing) and _walkable[landing.y * width + landing.x] == 1:
-						landings[landing] = true
-	var from: Array[Vector2i] = []
-	from.assign(landings.keys())
-	var moved := foe.copy()
-	Statuses.displace(moved)
-	_spread_threat(sim, foe.id, Combat.attack_power(moved), from, moved.attack_range())
+	var map := Threat.against(state, _me)
+	threats.merge(map.hits)
+	close.merge(map.close)
+	stops.merge(map.stops)
 
 
 # ---- 歩数の表 ----

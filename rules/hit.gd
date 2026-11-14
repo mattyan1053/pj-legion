@@ -20,6 +20,8 @@ var cause: UnitDamagedEvent.Cause
 var amount := 0
 ## 確定クリティカルの攻撃か。
 var critical := false
+## 森の軽減が掛かったか（駒の攻撃だけ。amount は軽減したあとの量）。
+var forest := false
 ## ダメージを 0 にした、受ける側の状態（Status.Type）。無ければ -1。
 var blocked_by := -1
 ## 駒の攻撃を阻んだ煙幕（ダメージは 0。受ける側の状態までは届かないので、バリアは残る）。無ければ null。

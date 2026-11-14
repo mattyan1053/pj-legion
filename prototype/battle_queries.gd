@@ -70,6 +70,13 @@ static func inspect_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	return result
 
 
+## 駒の脅威範囲（次の自分の番に攻撃・スキルが届くマス。Threat）。相手の駒を選んで眺めるときに使う。
+static func threat_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
+	if unit == null:
+		return []
+	return Threat.of(battle, unit.id).cells()
+
+
 ## いまのフェーズの陣営の、行動済みでない駒の数。
 static func unacted_count(battle: Battle) -> int:
 	var count := 0

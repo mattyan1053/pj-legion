@@ -85,9 +85,9 @@ static func use(battle: Battle) -> Array[BattleEvent]:
 	return events
 
 
-## いまのフェーズのプレイヤーが必殺技を使ったら起きること（予測）。状態は変えない。使えなければ空。
+## いまのフェーズのプレイヤーが必殺技を使ったら起きること（戦闘予測。Forecast）のイベントの列。状態は変えない。使えなければ空。
 static func preview(battle: Battle) -> Array[BattleEvent]:
-	return battle.clone().apply(UseUltAction.new()).events
+	return Forecast.of(battle, UseUltAction.new()).events
 
 
 # ---- ためる ----

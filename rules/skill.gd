@@ -69,6 +69,19 @@ func affected_cells(_battle: Battle, _unit: Unit, target: Vector2i) -> Array[Vec
 	return [target]
 
 
+## 脅威範囲（docs/threat-range.md）が読む: unit がいまの位置からこのスキルを使ったら、ダメージが届きうるマスと、その量。
+## Vector2i -> int。煙幕にも防がれないものとして数える。ダメージの無いスキルでは空（既定）。
+## 状態は変えない。unit は盤にいない写し（動いた先に置いた駒）のこともある。
+func threat_damage(_battle: Battle, _unit: Unit) -> Dictionary[Vector2i, int]:
+	return {}
+
+
+## 脅威範囲が読む: unit がいまの位置からこのスキルを使ったあと、同じ行動の中で攻撃できるマス（移った先）。
+## 行動を終えるスキルと、駒が移らないスキルでは空（既定）。状態は変えない。threat_damage と同じく、unit は写しのこともある。
+func threat_origins(_battle: Battle, _unit: Unit) -> Array[Vector2i]:
+	return []
+
+
 ## 効果を起こし、起きたことを返す。target は target_cells のどれか（Skills が確かめてから呼ぶ）。
 ## クールダウン、使った回数、行動の終わり（終えないスキルなら、行動の続き）は Skills が面倒を見るので、ここでは触らない。
 @abstract func apply(battle: Battle, unit: Unit, target: Vector2i) -> Array[BattleEvent]

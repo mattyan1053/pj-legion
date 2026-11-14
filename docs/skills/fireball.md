@@ -28,6 +28,10 @@
 `SkillUsedEvent`、当てた駒ごとの `SkillDamagedEvent`（上の行から、左の列から）、倒れた駒の `UnitDefeatedEvent`（同じ並び）、
 `ExperienceGainedEvent`（と、上がれば `LevelUpEvent`）、`UnitActedEvent`。
 
+### 脅威範囲
+
+`docs/threat-range.md`。選べる中心のどれかの十字に入るマスすべてに、このダメージが届きうる（`threat_damage`。煙幕に防がれない）。
+
 ## 調整値
 
 | 値 | いま | 場所 |

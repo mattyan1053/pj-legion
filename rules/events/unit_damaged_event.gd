@@ -23,6 +23,8 @@ var hp: int
 var cause: Cause
 ## 確定クリティカルの攻撃だったか（駒の攻撃だけ。amount は倍率を掛けたあとの量）。
 var critical := false
+## 森の軽減が掛かったか（駒の攻撃だけ。amount は軽減したあとの量）。
+var forest := false
 ## ダメージを 0 にした、受けた駒の状態（Status.Type。バリア）。防がれていなければ -1。
 ## 防がれたときは amount が 0 で、このあとに、その状態が外れる StatusRemovedEvent が続く。
 var blocked_by := -1
@@ -35,6 +37,7 @@ func _fill(hit: Hit) -> void:
 	hp = hit.hp_after
 	cause = hit.cause
 	critical = hit.critical
+	forest = hit.forest
 	blocked_by = hit.blocked_by
 
 

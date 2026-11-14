@@ -133,10 +133,9 @@ static func deal_damage(battle: Battle, user: Unit, hits: Array[Array]) -> Array
 	return events
 
 
-## 駒 unit_id が target にスキルを使ったら起きること（戦闘予測）。状態は変えない。使えなければ空。
-## 実際に使うのと同じ処理を、複製の上で走らせる。
+## 駒 unit_id が target にスキルを使ったら起きること（戦闘予測。Forecast）のイベントの列。状態は変えない。使えなければ空。
 static func preview(battle: Battle, unit_id: int, target: Vector2i) -> Array[BattleEvent]:
-	return battle.clone().apply(UseSkillAction.new(unit_id, target)).events
+	return Forecast.of(battle, UseSkillAction.new(unit_id, target)).events
 
 
 ## side のフェーズの始めに、side の駒のクールダウンが 1 減る（EndPhaseAction が、盤の上の効果のあとに呼ぶ）。
