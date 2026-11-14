@@ -12,6 +12,7 @@ const BoardView := preload("res://prototype/board_view.gd")
 const BattleHud := preload("res://prototype/battle_hud.gd")
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 const Queries := preload("res://prototype/battle_queries.gd")
+const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
 
 const NO_CELL := Vector2i(-1, -1)
@@ -34,6 +35,7 @@ const COLOR_LEVEL_UP := Color("ffd34a")
 const COLOR_EVOLUTION := Color("d9a6ff")
 const COLOR_RELIC := Color("ffe08a")
 const COLOR_INSPECT := Color(1.0, 1.0, 1.0, 0.28)
+const COLOR_THREAT := Color(1.0, 0.35, 0.3, 0.3)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 
 ## CPU が動かすプレイヤー（相手を CPU にしているとき）。
@@ -1052,6 +1054,10 @@ func _refresh() -> void:
 			for cell in _barricade_targets:
 				_painted[cell] = COLOR_TARGET
 		else:
+			# 相手の駒（中立も）は、次の番に攻撃・スキルが届くマス（脅威範囲）を薄い赤で。その上に移動範囲を白で。
+			if unit.side != battle.phase:
+				for cell in Queries.threat_cells(battle, unit):
+					_painted[cell] = COLOR_THREAT
 			for cell in Queries.inspect_cells(battle, unit):
 				_painted[cell] = COLOR_INSPECT
 	_show_painted()
@@ -1166,14 +1172,17 @@ func _refresh_hint(unit: Unit) -> void:
 	elif _confirming_ult:
 		_hud.set_hint("%s: もう一度（G）で使う。取り消せない（駒の行動は使わない）。Esc でやめる" % Ults.of(battle, battle.phase).display_name())
 	elif unit == null:
-		_hud.set_hint("駒をクリックして選ぶ。相手の駒を選ぶと、動ける範囲が見える")
+		_hud.set_hint("駒をクリックして選ぶ。相手の駒を選ぶと、動ける範囲（白）と、次の番に攻撃が届くマス（薄い赤）が見える")
 	elif _skill_mode and _is_self_skill(unit):
 		_hud.set_hint("%s: 自分に使う。この駒（紫のマス）をクリックで使う（行動を終える）。ほかのマスか Esc でやめる" % Skills.of(unit).display_name())
 	elif _skill_mode:
 		var after := "行動を終える" if Skills.of(unit).ends_action() else "続けて攻撃できる。取り消せない"
 		_hud.set_hint("%s: 紫のマスをクリックで使う（%s）。ほかのマスか Esc でやめる" % [Skills.of(unit).display_name(), after])
 	elif not battle.can_act(unit):
-		_hud.set_hint("この駒はいま動かせない（白いマスは移動範囲）")
+		if unit.side != battle.phase:
+			_hud.set_hint("相手の駒は動かせない（白: 移動範囲　薄い赤: 次の番に攻撃が届くマス）")
+		else:
+			_hud.set_hint("この駒はいま動かせない（白いマスは移動範囲）")
 	elif unit.move_locked:
 		if _targets.is_empty() and _barrel_targets.is_empty() and _barricade_targets.is_empty():
 			_hud.set_hint("スキルを使った。攻撃できる相手がいない。待機する（取り消せない）")
@@ -1262,13 +1271,12 @@ func _update_info() -> void:
 		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill_text)
 		return
 	if hovered == null and _barrel_targets.has(_hover_cell):
-		_hud.show_unit(shown, "樽を狙っている", _blast_forecast(shown, _hover_cell))
+		var barrel := Forecast.of(battle, AttackBarrelAction.new(shown.id, _hover_cell))
+		_hud.show_unit(shown, "樽を狙っている", "樽を爆発させる（%d ダメージ）\n%s" % [MapObject.BLAST_DAMAGE, ForecastText.describe(battle, barrel, shown)])
 		return
 	if hovered == null and _barricade_targets.has(_hover_cell):
-		# 実際の攻撃と同じ計算（FieldEffects.barricade_damage）を使う。
-		var left := battle.board.barricade_at(_hover_cell).durability
-		var after := maxi(0, left - FieldEffects.barricade_damage(shown))
-		_hud.show_unit(shown, "盾を狙っている", "盾を攻撃 → 耐久 %d → %s" % [left, "壊せる" if after == 0 else str(after)])
+		var barricade := Forecast.of(battle, AttackBarricadeAction.new(shown.id, _hover_cell))
+		_hud.show_unit(shown, "盾を狙っている", ForecastText.describe(battle, barricade, shown))
 		return
 	var state := "行動済み" if shown.acted else "未行動"
 	if shown.has_moved:
@@ -1277,81 +1285,17 @@ func _update_info() -> void:
 		state = "行動の途中（スキルを使った）"
 	var forecast := ""
 	var attacker := selected_unit()
+	# 攻撃・回復の見込み。実際と同じ処理を、状態を変えずに走らせる（Forecast）。
 	if hovered != null and _targets.has(hovered):
-		# 攻撃の見込み。実際の攻撃と同じ計算（Combat.hit）を、状態を変えずに使う。
-		var hit := Combat.hit(battle, attacker, hovered)
-		forecast = "攻撃すると %s%d ダメージ → %s" % [
-			"クリティカルで " if hit.critical else "", hit.amount, "倒せる" if hit.hp_after == 0 else "残り HP %d" % hit.hp_after,
-		]
-		if hit.smoke != null:
-			forecast = "煙幕に阻まれて 0 ダメージ（隣からなら当たる）"
-		elif hit.blocked_by != -1:
-			forecast = "%s に防がれて 0 ダメージ（%s は消える）" % [
-				Status.display_name(hit.blocked_by as Status.Type), Status.display_name(hit.blocked_by as Status.Type),
-			]
-		# 経験値の見込みも、実際と同じ計算（Growth）を状態を変えずに使う。
-		var growth := Growth.preview(attacker, Growth.attack_experience(battle, attacker, hovered))
-		if growth.gained > 0:
-			forecast += "\n経験 +%d%s" % [growth.gained, "（レベルアップ）" if growth.levels_gained > 0 else ""]
+		forecast = ForecastText.describe(battle, Forecast.of(battle, AttackAction.new(attacker.id, hovered.id)), attacker)
 	elif hovered != null and _heal_targets.has(hovered):
-		# 回復の見込み。実際の回復と同じ計算（Healing.amount、Growth）を、状態を変えずに使う。
-		var amount := Healing.amount(attacker, hovered)
-		forecast = "回復すると +%d → HP %d / %d" % [amount, hovered.hp + amount, hovered.max_hp()]
-		var growth := Growth.preview(attacker, Growth.heal_experience())
-		if growth.gained > 0:
-			forecast += "\n経験 +%d%s" % [growth.gained, "（レベルアップ）" if growth.levels_gained > 0 else ""]
+		forecast = ForecastText.describe(battle, Forecast.of(battle, HealAction.new(attacker.id, hovered.id)), attacker)
 	_hud.show_unit(shown, state, forecast)
 
 
-## スキルを target に使ったときの見込み。実際に使うのと同じ処理（Skills.preview）の結果から、起きることを並べる。
-## どのスキルにも同じ読み方を使う（置かれる効果、ダメージ、回復）。
+## スキルを target に使ったときの見込み（戦闘予測。Forecast）。
 func _skill_forecast(user: Unit, target: Vector2i) -> String:
-	var lines: Array[String] = []
-	for event in Skills.preview(battle, user.id, target):
-		var placed := event as FieldEffectPlacedEvent
-		var damaged := event as UnitDamagedEvent
-		var healed := event as UnitHealedEvent
-		if placed != null:
-			var line: String = "%s を置く" % BattleHud.FIELD_EFFECT_NAMES[placed.type]
-			if placed.cells.size() > 1:
-				var inside := 0
-				for unit in battle.units:
-					if unit.side == user.side and placed.cells.has(unit.cell):
-						inside += 1
-				line += "（中の味方 %d 体）" % inside
-			lines.append(line)
-		elif damaged != null and damaged.is_blocked():
-			lines.append("%s は %s で防ぐ（0 ダメージ）" % [
-				battle.unit_by_id(damaged.unit_id).display_name(), Status.display_name(damaged.blocked_by as Status.Type),
-			])
-		elif event is StatusAppliedEvent:
-			var applied := event as StatusAppliedEvent
-			lines.append("%s に %s（%d ターン）" % [
-				battle.unit_by_id(applied.unit_id).display_name(), Status.display_name(applied.status), applied.turns,
-			])
-		elif damaged != null:
-			var victim := battle.unit_by_id(damaged.unit_id)
-			lines.append("%s に %d ダメージ → %s" % [
-				victim.display_name(), damaged.amount, "倒せる" if damaged.hp == 0 else "残り HP %d" % damaged.hp,
-			])
-		elif healed != null:
-			lines.append("%s が +%d → HP %d" % [battle.unit_by_id(healed.unit_id).display_name(), healed.amount, healed.hp])
-		elif event is UnitTeleportedEvent:
-			lines.append("ここへ跳ぶ（続けて攻撃できる）")
-		elif event is UnitsSwappedEvent:
-			lines.append("%s と入れ替わる（続けて攻撃できる）" % battle.unit_by_id((event as UnitsSwappedEvent).other_id).display_name())
-		elif event is StatusRemovedEvent and (event as StatusRemovedEvent).reason == StatusRemovedEvent.Reason.MOVED:
-			var removed := event as StatusRemovedEvent
-			lines.append("%s の %s が解ける" % [battle.unit_by_id(removed.unit_id).display_name(), Status.display_name(removed.status)])
-		elif event is UnitReactivatedEvent:
-			lines.append("%s がもう一度行動できる" % battle.unit_by_id((event as UnitReactivatedEvent).unit_id).display_name())
-		elif event is ExperienceGainedEvent:
-			lines.append("経験 +%d" % (event as ExperienceGainedEvent).amount)
-		elif event is LevelUpEvent:
-			lines.append("（レベルアップ）")
-	if lines.is_empty():
-		lines.append("何も起きない")
-	return "\n".join(lines)
+	return ForecastText.describe(battle, Forecast.of(battle, UseSkillAction.new(user.id, target)), user)
 
 
 ## マスにある環境オブジェクトと盤の上の効果の説明（無ければ空）。
@@ -1368,38 +1312,6 @@ func _object_text(cell: Vector2i) -> String:
 		text += " → (%d, %d)" % [exit.x, exit.y]
 		if battle.portal_exit(cell) == Board.NO_CELL:
 			text += "（行き先に駒がいて、いまは使えない）"
-	return text
-
-
-## 樽を攻撃したときの見込み。実際の爆発と同じ計算（MapObject.blast_victims / blast_damage）を使う。
-func _blast_forecast(attacker: Unit, barrel: Vector2i) -> String:
-	var counts := {"敵": 0, "味方": 0}
-	var falls := {"敵": 0, "味方": 0}
-	var kings: Array[String] = []
-	var blocked := 0
-	for victim in MapObject.blast_victims(battle, barrel):
-		var who := "味方" if victim.side == attacker.side else "敵"
-		counts[who] += 1
-		var hit := MapObject.blast_hit(victim)
-		if hit.blocked_by != -1:
-			blocked += 1
-		if hit.hp_after == 0:
-			falls[who] += 1
-			if victim.kind == UnitKind.Id.KING:
-				kings.append(who)
-	var parts: Array[String] = []
-	for who: String in counts:
-		if counts[who] > 0:
-			parts.append("%s %d 体" % [who, counts[who]] + ("（%d 体倒れる）" % falls[who] if falls[who] > 0 else ""))
-	if parts.is_empty():
-		return "樽を爆発させる（巻き込む駒はいない）"
-	var text := "樽を爆発させる → %d ダメージ: %s" % [MapObject.BLAST_DAMAGE, "、".join(parts)]
-	if blocked > 0:
-		text += "\nバリアの駒 %d 体には 0 ダメージ" % blocked
-	if MapObject.blast_cells(battle.board, barrel).has(attacker.cell):
-		text += "\n自分も巻き込まれる"
-	for who in kings:
-		text += "\n%sの将が倒れる" % who
 	return text
 
 
