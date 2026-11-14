@@ -26,7 +26,8 @@ Godot で**ゲーム性はそのまま、見た目を俯瞰 3D に**作り直す
 tools/check.sh /path/to/godot
 ```
 
-画面なしでプロジェクトを取り込み、メインシーンを少し動かして、スクリプトのエラーが無いことを確かめる。
+画面なしでプロジェクトを取り込み、テスト（`tests/`）を回し、メインシーンを少し動かして、スクリプトのエラーが無いことを確かめる。
+テストの書き方は [`docs/testing.md`](./docs/testing.md)。
 CI（`.github/workflows/ci.yml`）も同じスクリプトを回す。
 
 作業の決まりごとは [`CLAUDE.md`](./CLAUDE.md)、文書の置き方は [`docs/README.md`](./docs/README.md)。
