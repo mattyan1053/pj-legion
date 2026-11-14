@@ -9,7 +9,21 @@ const ROOT := "res://tests"
 const TestCase := preload("res://tests/test_case.gd")
 
 
+## テストの途中で出たエンジンのエラー（実行時エラー、push_error）を数える。
+## 実行時エラーはメソッドを黙って打ち切るので、数えないと成功に見えてしまう。
+class ErrorCounter:
+	extends Logger
+	var count := 0
+
+	func _log_error(_function: String, _file: String, _line: int, _code: String, _rationale: String,
+			_editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type != ERROR_TYPE_WARNING:
+			count += 1
+
+
 func _initialize() -> void:
+	var errors := ErrorCounter.new()
+	OS.add_logger(errors)
 	var files := _find_test_files(ROOT)
 	files.sort()
 	var ran := 0
@@ -27,8 +41,11 @@ func _initialize() -> void:
 			continue
 		for method in names:
 			var case: TestCase = script.new()
+			var errors_before := errors.count
 			case.call(method)
 			ran += 1
+			if errors.count > errors_before:
+				case.failures.append("実行中にエラーが出た（上のログを見る）")
 			if not case.failures.is_empty():
 				failed += 1
 				for failure in case.failures:
