@@ -343,11 +343,11 @@ func _select(unit_id: int) -> void:
 	_refresh()
 
 
-## 行動をルールに渡し、起きたことを再生する。断られたら何もしない。
-func _do(action: BattleAction) -> void:
+## 行動をルールに渡し、起きたことを再生する。断られたら何もしない。受け付けられたかを返す。
+func _do(action: BattleAction) -> bool:
 	var result := battle.apply(action)
 	if not result.accepted:
-		return
+		return false
 	_busy = true
 	_confirming_end = false
 	_board_view.show_cells({})
@@ -370,6 +370,7 @@ func _do(action: BattleAction) -> void:
 		_selected_id = 0
 	_refresh()
 	_run_cpu()
+	return true
 
 
 # ---- CPU の番 ----
@@ -393,11 +394,14 @@ func _run_cpu() -> void:
 		if unit != null and not unit.has_moved and not idle and not action is EvolveAction:
 			_rig.focus_on(_view(unit.id).position)
 			await get_tree().create_timer(CPU_FOCUS_TIME).timeout
+		if not await _do(action):
+			break  # CPU の行動は必ず受け付けられるはず。そうでなければ、同じ行動を繰り返さずに手を止める。
 		cpu_actions += 1
-		await _do(action)
-		if not (action is MoveAction or action is EndPhaseAction or idle):
+		if not (action is MoveAction or action is EndPhaseAction or idle or battle.is_over()):
 			await get_tree().create_timer(CPU_PAUSE).timeout
 	_cpu_running = false
+	# 番の途中で相手を人に切り替えたら、動いたあとの駒を選んだ状態で引き渡す。
+	_selected_id = battle.acting_unit_id
 	_refresh()
 
 
