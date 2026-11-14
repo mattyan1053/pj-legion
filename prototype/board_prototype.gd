@@ -7,6 +7,15 @@ extends Node3D
 
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 const UnitView := preload("res://prototype/unit_view.gd")
+const CrystalMesh := preload("res://prototype/crystal_mesh.gd")
+const FOREST_SCENES: Array[PackedScene] = [
+	preload("res://assets/kaykit/medieval-hexagon/trees_A_small.gltf"),
+	preload("res://assets/kaykit/medieval-hexagon/trees_B_small.gltf"),
+]
+const OBSTACLE_SCENE := preload("res://assets/kaykit/medieval-hexagon/mountain_A.gltf")
+## 元は六角形のマス（差し渡し約 1.8）用なので、四角いマスに収まるよう縮める。
+const FOREST_SCALE := 0.62
+const OBSTACLE_SCALE := 0.56
 
 enum Terrain { NORMAL, OBSTACLE, FOREST, FONT }
 
@@ -15,6 +24,8 @@ const TILE_HEIGHT := 0.2
 const TILE_GAP := 0.04
 const TERRAIN_SEED := 20261114
 const SQUAD: Array[String] = ["knight", "barbarian", "mage", "rogue", "knight"]
+## エリートミニオンの位置。点対称（両陣営から見て同じ距離）にする。
+const ELITE_CELLS: Array[Vector2i] = [Vector2i(6, 6), Vector2i(23, 23)]
 const SQUAD_OFFSETS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(2, -1), Vector2i(1, -2),
 ]
@@ -28,16 +39,14 @@ const COLOR_NORMAL := Color("5f9f4e")
 const COLOR_FOREST := Color("457a40")
 const COLOR_OBSTACLE_GROUND := Color("767b84")
 const COLOR_FONT := Color("3fa9bd")
-const COLOR_TREE := Color("2f6b3a")
-const COLOR_ROCK := Color("6b7078")
-const COLOR_CRYSTAL := Color("9ff3ff")
+const COLOR_CRYSTAL := Color("4fd8f0")
 const COLOR_P1 := Color("3a7bd5")
 const COLOR_P2 := Color("d64545")
 const COLOR_NEUTRAL := Color("e0b83a")
 
 var _terrain: Array[int] = []
 var _units := {}  # Vector2i -> UnitView
-var _occluders := {}  # Vector2i -> MeshInstance3D（岩と木。手前にあると駒を隠す）
+var _occluders := {}  # Vector2i -> Array[GeometryInstance3D]（岩山と木立。手前にあると駒を隠す）
 var _hover_cell := Vector2i(-1, -1)
 var _selected_cell := Vector2i(-1, -1)
 var _moving := false
@@ -107,26 +116,12 @@ func _build_terrain() -> void:
 	}
 	var hq_materials := [_material(COLOR_P1.lightened(0.3)), _material(COLOR_P2.lightened(0.3))]
 
-	var tree_mesh := CylinderMesh.new()
-	tree_mesh.top_radius = 0.0
-	tree_mesh.bottom_radius = 0.32
-	tree_mesh.height = 0.9
-	tree_mesh.radial_segments = 6
-	var tree_material := _material(COLOR_TREE)
-
-	var rock_mesh := BoxMesh.new()
-	rock_mesh.size = Vector3(0.86, 0.9, 0.86)
-	var rock_material := _material(COLOR_ROCK)
-
-	var crystal_mesh := CylinderMesh.new()
-	crystal_mesh.top_radius = 0.0
-	crystal_mesh.bottom_radius = 0.1
-	crystal_mesh.height = 0.4
-	crystal_mesh.radial_segments = 4
+	var crystal_mesh := CrystalMesh.build()
 	var crystal_material := _material(COLOR_CRYSTAL)
 	crystal_material.emission_enabled = true
 	crystal_material.emission = COLOR_CRYSTAL
-	crystal_material.emission_energy_multiplier = 1.5
+	crystal_material.emission_energy_multiplier = 0.35
+	crystal_material.roughness = 0.25
 
 	# マスの隙間から背景が透けて黒い線に見えないよう、盤面の下に板を敷く。
 	var underside_mesh := BoxMesh.new()
@@ -148,18 +143,26 @@ func _build_terrain() -> void:
 
 			match terrain:
 				Terrain.FOREST:
-					var jitter := Vector3(rng.randf_range(-0.12, 0.12), 0.0, rng.randf_range(-0.12, 0.12))
-					var tree := _add_mesh(tree_mesh, tree_material, center + jitter + Vector3(0.0, 0.45, 0.0))
-					tree.scale = Vector3.ONE * rng.randf_range(0.85, 1.15)
-					_occluders[cell] = tree
+					var scene: PackedScene = FOREST_SCENES[rng.randi() % FOREST_SCENES.size()]
+					_occluders[cell] = _add_prop(scene, center, FOREST_SCALE * rng.randf_range(0.9, 1.05), rng)
 				Terrain.OBSTACLE:
-					_occluders[cell] = _add_mesh(rock_mesh, rock_material, center + Vector3(0.0, 0.45, 0.0))
+					_occluders[cell] = _add_prop(OBSTACLE_SCENE, center, OBSTACLE_SCALE, rng)
 				Terrain.FONT:
-					# 駒が上に立っても結晶泉だと分かるよう、結晶はマスの四隅に置く。
+					# 駒が上に立っても結晶泉だと分かるよう、結晶はマスの四隅に、外へ傾けて置く。
 					for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
-						var at := center + Vector3(corner.x * 0.36, 0.2, corner.y * 0.36)
-						var crystal := _add_mesh(crystal_mesh, crystal_material, at)
-						crystal.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+						var outward := Vector3(corner.x, 0.0, corner.y).normalized()
+						var base := center + outward * 0.47
+						for k in 2:
+							var crystal := _add_mesh(crystal_mesh, crystal_material, base)
+							var height := 0.32 if k == 0 else 0.18
+							crystal.scale = Vector3(0.065, height, 0.065) * (1.0 if k == 0 else 0.8)
+							# 傾ける軸は「外向き」と直交する水平の軸。
+							var axis := outward.cross(Vector3.UP).normalized()
+							crystal.rotate(axis, -deg_to_rad(18.0 + 22.0 * k))
+							crystal.rotate_y(rng.randf_range(0.0, TAU))
+							if k == 1:
+								crystal.position += outward.rotated(Vector3.UP, 0.9) * 0.1
+							crystal.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func _build_units() -> void:
@@ -168,12 +171,19 @@ func _build_units() -> void:
 		_add_unit(SQUAD[i], COLOR_P1, _hq_cell(0) + SQUAD_OFFSETS[i], toward_enemy)
 		_add_unit(SQUAD[i], COLOR_P2, _hq_cell(1) - SQUAD_OFFSETS[i], -toward_enemy)
 
-	# 結晶泉の上には中立の駒を置く（まだ仮の形）。
+	# 中立の駒。エナジー・コアは結晶泉の隣のマスに、エリートは盤の左右に 1 体ずつ。
 	for y in MAP_SIZE.y:
 		for x in MAP_SIZE.x:
-			var cell := Vector2i(x, y)
-			if _terrain[_index(cell)] == Terrain.FONT:
-				_add_unit("neutral", COLOR_NEUTRAL, cell, Vector3.BACK)
+			var font := Vector2i(x, y)
+			if _terrain[_index(font)] != Terrain.FONT:
+				continue
+			for offset: Vector2i in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0)]:
+				var cell := font + offset
+				if _in_bounds(cell) and _terrain[_index(cell)] == Terrain.NORMAL and not _units.has(cell):
+					_add_unit("core", COLOR_NEUTRAL, cell, Vector3.BACK)
+					break
+	for cell in ELITE_CELLS:
+		_add_unit("elite", COLOR_NEUTRAL, cell, Vector3.BACK)
 
 
 func _add_unit(kind: String, team_color: Color, cell: Vector2i, facing: Vector3) -> void:
@@ -319,9 +329,9 @@ func _update_occlusion(delta: float) -> void:
 				faded[Vector2i(floori(p.x), floori(p.z))] = true
 
 	for cell: Vector2i in _occluders:
-		var occluder: MeshInstance3D = _occluders[cell]
 		var target := OCCLUDER_FADE if faded.has(cell) else 0.0
-		occluder.transparency = move_toward(occluder.transparency, target, OCCLUDER_FADE_SPEED * delta)
+		for part: GeometryInstance3D in _occluders[cell]:
+			part.transparency = move_toward(part.transparency, target, OCCLUDER_FADE_SPEED * delta)
 
 
 func _cell_under_mouse() -> Vector2i:
@@ -352,10 +362,15 @@ func _hq_cell(player: int) -> Vector2i:
 	return p1 if player == 0 else MAP_SIZE - Vector2i.ONE - p1
 
 
+## 地形を置かない場所（HQ の周り 3 マスと、エリートのマスとその周り）。
 func _near_hq(cell: Vector2i) -> bool:
 	for player in 2:
 		var d := (cell - _hq_cell(player)).abs()
 		if maxi(d.x, d.y) <= 3:
+			return true
+	for elite in ELITE_CELLS:
+		var d := (cell - elite).abs()
+		if maxi(d.x, d.y) <= 1:
 			return true
 	return false
 
@@ -377,6 +392,20 @@ func _overlay_material(color: Color) -> StandardMaterial3D:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return material
+
+
+## 素材のシーンをマスの中央に置き、向きを 60 度刻みでばらす（元が六角形のマス用のため）。
+## 透かすときに使うので、中の形（GeometryInstance3D）をすべて返す。
+func _add_prop(scene: PackedScene, at: Vector3, size: float, rng: RandomNumberGenerator) -> Array[GeometryInstance3D]:
+	var prop: Node3D = scene.instantiate()
+	prop.position = at
+	prop.scale = Vector3.ONE * size
+	prop.rotation.y = deg_to_rad(60.0 * rng.randi_range(0, 5))
+	add_child(prop)
+	var parts: Array[GeometryInstance3D] = []
+	for node in prop.find_children("*", "GeometryInstance3D", true, false):
+		parts.append(node)
+	return parts
 
 
 func _add_mesh(mesh: Mesh, material: Material, at: Vector3) -> MeshInstance3D:

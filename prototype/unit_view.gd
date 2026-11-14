@@ -3,6 +3,9 @@ extends Node3D
 ##
 ## KayKit のキャラクターは、持ちうる武器や盾がすべて付いた状態で入っているので、
 ## 種類ごとに使わないものを隠す。陣営の色は、足元の円盤と、服の差し色（マント・帽子など）で出す。
+## 中立の駒（"core" / "elite"）は、素材を使わずコードで組み立てる、宙に浮く結晶のコア。
+
+const CrystalMesh := preload("res://prototype/crystal_mesh.gd")
 
 const MODEL_SCALE := 0.5
 const BLEND_TIME := 0.15
@@ -39,18 +42,40 @@ const KINDS := {
 ## 塗り替えたマテリアルの使い回し（"種類:色" -> StandardMaterial3D）。
 static var _team_materials := {}
 
+## 中立の駒の形。size は全体の大きさ、rings は周りを回る輪の数、shards は周りを回る欠片の数。
+const CORES := {
+	"core": {"size": 1.0, "rings": 1, "shards": 0},
+	"elite": {"size": 1.45, "rings": 2, "shards": 3},
+}
+const CORE_HEIGHT := 0.55
+const CORE_RING_COLOR := Color("8a6a2c")
+
 var _player: AnimationPlayer
 var _idle: StringName = &"Idle"
+var _core: Node3D  # 浮いて回る部分（中立の駒だけ）
+var _core_phase := 0.0
+var _core_time := 0.0
 
 
-## kind が KINDS に無ければ、仮の形（カプセル）で出す。
+## kind が KINDS にも CORES にも無ければ、仮の形（カプセル）で出す。
 func setup(kind: String, team_color: Color) -> void:
 	_add_base(team_color)
 	if KINDS.has(kind):
 		_add_model(kind, team_color)
+	elif CORES.has(kind):
+		_add_core(CORES[kind], team_color)
 	else:
 		_add_placeholder(team_color)
 	play_idle()
+
+
+func _process(delta: float) -> void:
+	if _core == null:
+		return
+	_core_time += delta
+	var t := _core_time + _core_phase
+	_core.position.y = CORE_HEIGHT * _core.scale.y + sin(t * 2.0) * 0.05
+	_core.rotation.y = t * 0.8
 
 
 func play_idle() -> void:
@@ -134,6 +159,53 @@ func _team_material(kind_name: String, source: Material, team_color: Color) -> M
 	material.albedo_texture = ImageTexture.create_from_image(image)
 	_team_materials[key] = material
 	return material
+
+
+func _add_core(shape: Dictionary, color: Color) -> void:
+	var glow := StandardMaterial3D.new()
+	glow.albedo_color = color
+	glow.emission_enabled = true
+	glow.emission = color
+	glow.emission_energy_multiplier = 0.3
+	glow.roughness = 0.3
+	var metal := StandardMaterial3D.new()
+	metal.albedo_color = CORE_RING_COLOR
+	metal.metallic = 0.6
+	metal.roughness = 0.4
+
+	_core = Node3D.new()
+	_core.scale = Vector3.ONE * float(shape["size"])
+	add_child(_core)
+	# 駒ごとに揺れの位相をずらす（全部が揃って動かないように）。位置から決めるので毎回同じ。
+	_core_phase = fposmod(global_position.x * 1.7 + global_position.z * 3.1, TAU)
+
+	var body := MeshInstance3D.new()
+	body.mesh = CrystalMesh.octahedron()
+	body.material_override = glow
+	body.scale = Vector3(0.2, 0.28, 0.2)
+	_core.add_child(body)
+
+	var ring_mesh := TorusMesh.new()
+	ring_mesh.inner_radius = 0.27
+	ring_mesh.outer_radius = 0.31
+	ring_mesh.rings = 24
+	ring_mesh.ring_segments = 6
+	for i in int(shape["rings"]):
+		var ring := MeshInstance3D.new()
+		ring.mesh = ring_mesh
+		ring.material_override = metal
+		ring.rotation = Vector3(deg_to_rad(70.0), deg_to_rad(90.0 * i), 0.0)
+		_core.add_child(ring)
+
+	var shard_mesh := CrystalMesh.build()
+	for i in int(shape["shards"]):
+		var angle := TAU * i / float(shape["shards"])
+		var shard := MeshInstance3D.new()
+		shard.mesh = shard_mesh
+		shard.material_override = glow
+		shard.scale = Vector3(0.04, 0.12, 0.04)
+		shard.position = Vector3(cos(angle) * 0.42, -0.06, sin(angle) * 0.42)
+		_core.add_child(shard)
 
 
 func _add_placeholder(team_color: Color) -> void:
