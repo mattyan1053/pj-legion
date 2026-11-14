@@ -83,6 +83,8 @@ var _heal_targets: Array[Unit] = []
 var _skill_cells: Array[Vector2i] = []
 ## スキルの対象を選んでいる途中か。この間は、塗るのはスキルの対象のマスだけで、クリックはスキルの対象を選ぶ。
 var _skill_mode := false
+## 必殺技を使うかを、もう一度押して確かめている途中か（対象を選ばず、取り消せないので、1 回では使わない）。
+var _confirming_ult := false
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
 var played := {}
 var _players := event_players()
@@ -99,6 +101,7 @@ func _ready() -> void:
 	_hud.setup(TEAM_COLORS)
 	_hud.wait_pressed.connect(press_wait)
 	_hud.skill_pressed.connect(press_skill)
+	_hud.ult_pressed.connect(press_ult)
 	_hud.cancel_pressed.connect(cancel)
 	_hud.end_turn_pressed.connect(press_end_turn)
 	_hud.restart_pressed.connect(_on_restart_pressed)
@@ -139,6 +142,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				press_wait()
 			KEY_F:
 				press_skill()
+			KEY_G:
+				press_ult()
 			KEY_ENTER, KEY_KP_ENTER:
 				press_end_turn()
 			KEY_1, KEY_KP_1:
@@ -190,6 +195,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_selected_id = 0
 	_skill_mode = false
 	_confirming_end = false
+	_confirming_ult = false
 	_hud.hide_result()
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
 	_refresh()
@@ -297,6 +303,7 @@ func result_title() -> String:
 func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
 		return
+	_confirming_ult = false
 	if _skill_mode:
 		if _skill_cells.has(cell):
 			_do(UseSkillAction.new(_selected_id, cell))
@@ -335,6 +342,37 @@ func press_skill() -> void:
 	_refresh()
 
 
+## いまの番のプレイヤーの必殺技を使う。対象を選ばず、取り消せないので、1 回目は確かめるだけで、もう一度押すと使う。
+## ゲージがいっぱいでなければ何もしない。駒を選んでいなくても、駒が行動の途中でも使える。
+func press_ult() -> void:
+	if is_busy() or not battle.can_apply(UseUltAction.new()):
+		return
+	if not _confirming_ult:
+		_confirming_ult = true
+		_skill_mode = false
+		_refresh()
+		return
+	_do(UseUltAction.new())
+
+
+## 必殺技を使うかを確かめている途中か。検査用。
+func is_confirming_ult() -> bool:
+	return _confirming_ult
+
+
+## 必殺技のボタンに出している文字と、押せるか。上の帯のゲージの文字。検査用。
+func ult_button_text() -> String:
+	return _hud.ult_button_text()
+
+
+func is_ult_enabled() -> bool:
+	return _hud.is_ult_enabled()
+
+
+func ult_gauge_text(player: int) -> String:
+	return _hud.ult_gauge_text(player)
+
+
 ## スキルの対象を選んでいる途中か。検査用。
 func is_choosing_skill_target() -> bool:
 	return _skill_mode
@@ -349,9 +387,13 @@ func is_skill_enabled() -> bool:
 	return _hud.is_skill_enabled()
 
 
-## スキルの対象を選んでいる途中なら、それをやめる。動いたあとなら移動を取り消す。そうでなければ選択をやめる。
+## 必殺技を確かめている途中か、スキルの対象を選んでいる途中なら、それをやめる。動いたあとなら移動を取り消す。そうでなければ選択をやめる。
 func cancel() -> void:
 	if is_busy():
+		return
+	if _confirming_ult:
+		_confirming_ult = false
+		_refresh()
 		return
 	if _skill_mode:
 		_skill_mode = false
@@ -395,6 +437,7 @@ func _select(unit_id: int) -> void:
 	_selected_id = unit_id
 	_skill_mode = false
 	_confirming_end = false
+	_confirming_ult = false
 	_refresh()
 
 
@@ -416,10 +459,12 @@ func _do(action: BattleAction) -> bool:
 	_busy = true
 	_skill_mode = false
 	_confirming_end = false
+	_confirming_ult = false
 	_board_view.show_cells({})
 	_selection_ring.visible = false
 	_hud.set_actions(false, false, false)
 	_hud.set_skill("スキル", false, false)
+	_hud.set_ult_button(_hud.ult_button_text(), false, _ult_summary())
 	_hud.set_end_turn(false, "ターン終了")
 	_hud.hide_evolution()
 	for event in result.events:
@@ -433,8 +478,8 @@ func _do(action: BattleAction) -> bool:
 		_selected_id = evolving.id  # 進化先を選ぶまで、この駒を見せる。
 	elif battle.acting_unit_id != 0:
 		_selected_id = battle.acting_unit_id  # 動いたあと。続けて攻撃・回復・待機・取り消しを選ぶ。
-	elif not action is UndoMoveAction:
-		_selected_id = 0
+	elif not (action is UndoMoveAction or action is UseUltAction):
+		_selected_id = 0  # 必殺技は駒の行動ではないので、選んでいた駒はそのまま。
 	_refresh()
 	_run_cpu()
 	return true
@@ -507,6 +552,8 @@ static func event_players() -> Dictionary:
 		SanctuaryHealedEvent: &"_play_sanctuary_healed",
 		SkillUsedEvent: &"_play_skill_used",
 		SkillReadyEvent: &"_play_skill_ready",
+		UltUsedEvent: &"_play_ult_used",
+		UltReadyEvent: &"_play_ult_ready",
 		StatusAppliedEvent: &"_play_status_applied",
 		StatusRemovedEvent: &"_play_status_removed",
 		UnitActedEvent: &"_play_acted",
@@ -785,6 +832,18 @@ func _play_skill_ready(_event: SkillReadyEvent) -> void:
 	pass
 
 
+## 必殺技を使った。必殺技の名前を大きく出す（効果は、続くイベントが見せる）。飾らない最小の形。
+func _play_ult_used(event: UltUsedEvent) -> void:
+	_refresh_status(battle.turn, battle.phase)
+	_hud.show_banner("%s　必殺技: %s!!" % [_side_name(event.side), Ults.by_id(event.ult).display_name()], BattleHud.ULT_COLORS[event.ult])
+	await get_tree().create_timer(0.7).timeout
+
+
+## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
+func _play_ult_ready(_event: UltReadyEvent) -> void:
+	_refresh_status(battle.turn, battle.phase)
+
+
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。
 func _play_status_applied(event: StatusAppliedEvent) -> void:
 	_pop_number(_view(event.unit_id).position, Status.display_name(event.status), Color("9fd8ff"))
@@ -923,6 +982,8 @@ func _view(unit_id: int) -> UnitView:
 
 ## いまの状態と選択から、塗るマス・メニュー・文字を作り直す。
 func _refresh() -> void:
+	if _cpu_running or not battle.can_apply(UseUltAction.new()):
+		_confirming_ult = false
 	var unit := selected_unit()
 	if unit == null:
 		_selected_id = 0
@@ -983,7 +1044,34 @@ func _refresh() -> void:
 	var can_undo := unit != null and unit.has_moved and not unit.move_locked
 	_hud.set_actions(can_act, unit != null and not battle.is_over() and not cpu_turn, can_undo)
 	_hud.set_skill(_skill_button_text(unit), can_act and not _skill_cells.is_empty(), _skill_mode)
+	_hud.set_ult_button(_ult_button_text(), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary())
 	_update_info()
+
+
+## 必殺技のボタンが、どのプレイヤーのものか。いまの番のプレイヤー（CPU の番と中立の番では、プレイヤー1）。
+func _ult_side() -> Unit.Side:
+	if battle.phase == Unit.Side.NEUTRAL or _cpu_running or _is_cpu_turn():
+		return Unit.Side.PLAYER1
+	return battle.phase
+
+
+## 必殺技のボタンの上に出す説明。
+func _ult_summary() -> String:
+	var ult := Ults.of(battle, _ult_side())
+	return ult.summary() if ult != null else ""
+
+
+## 必殺技のボタンの文字。
+func _ult_button_text() -> String:
+	var side := _ult_side()
+	var ult := Ults.of(battle, side)
+	if ult == null:
+		return "必殺技（なし）"
+	if _confirming_ult:
+		return "もう一度で %s 発動 [G]" % ult.display_name()
+	if Ults.is_ready(battle, side):
+		return "必殺技: %s [G]" % ult.display_name()
+	return "必殺技: %s（%d%%）" % [ult.display_name(), Ults.percent(battle, side)]
 
 
 ## 選べる対象が自分のマスだけのスキル（自分に使うスキル）を、選んでいるか。
@@ -1013,6 +1101,13 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		Queries.unit_count(battle, Unit.Side.PLAYER1), Queries.unit_count(battle, Unit.Side.PLAYER2),
 	]
 	_hud.set_status(turn, phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN)
+	var percents: Array[int] = []
+	var names: Array[String] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		var ult := Ults.of(battle, side)
+		percents.append(Ults.percent(battle, side))
+		names.append(ult.display_name() if ult != null else "")
+	_hud.set_ult_gauges(percents, names)
 
 
 func _refresh_hint(unit: Unit) -> void:
@@ -1022,6 +1117,8 @@ func _refresh_hint(unit: Unit) -> void:
 		_hud.set_hint("CPU が考えている…（F4 で、相手を人に切り替える）")
 	elif battle.evolving_unit() != null:
 		_hud.set_hint("進化先を選ぶ（上のボタンか、1・2 のキー）。選ぶまで、ほかの操作はできない")
+	elif _confirming_ult:
+		_hud.set_hint("%s: もう一度（G）で使う。取り消せない（駒の行動は使わない）。Esc でやめる" % Ults.of(battle, battle.phase).display_name())
 	elif unit == null:
 		_hud.set_hint("駒をクリックして選ぶ。相手の駒を選ぶと、動ける範囲が見える")
 	elif _skill_mode and _is_self_skill(unit):

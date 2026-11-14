@@ -6,6 +6,8 @@ extends CanvasLayer
 signal wait_pressed
 ## スキルのボタンが押された（対象を選び始める・やめるのは呼ぶ側が決める）。
 signal skill_pressed
+## 必殺技のボタンが押された（確かめる・使うのは呼ぶ側が決める）。
+signal ult_pressed
 ## 「移動を取り消す」と「選択をやめる」は同じボタン（どちらになるかは呼ぶ側が決める）。
 signal cancel_pressed
 signal end_turn_pressed
@@ -63,12 +65,21 @@ const STAGE_NAMES := {
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 const COLOR_FORECAST := Color("ffd76a")
+## 必殺技の知らせの色（軍ごと）。
+const ULT_COLORS := {
+	Ult.Id.ALL_OUT_ASSAULT: Color("ff5a4a"),
+	Ult.Id.MANA_ERUPTION: Color("9a7bff"),
+}
 
 var _team_colors: Array[Color] = []
 
 var _turn_label: Label
 var _phase_label: Label
 var _side_labels: Array[Label] = []
+var _ult_bars: Array[ProgressBar] = []
+var _ult_labels: Array[Label] = []
+var _ult_button: Button
+var _ult_summary: Label
 var _info_panel: PanelContainer
 var _info_name: Label
 var _info_side: Label
@@ -110,6 +121,37 @@ func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array
 	for player in 2:
 		var pips := "●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player])
 		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [("青" if player == 0 else "赤"), counts[player], pips]
+
+
+## 必殺技のゲージ（上の帯。添字がプレイヤー番号）。percents は 0〜100。names は必殺技の名前（持たなければ空で、ゲージを出さない）。
+func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
+	for player in 2:
+		_ult_bars[player].visible = names[player] != ""
+		_ult_labels[player].visible = names[player] != ""
+		_ult_bars[player].value = percents[player]
+		_ult_labels[player].text = "READY" if percents[player] >= 100 else "%d%%" % percents[player]
+		_ult_bars[player].tooltip_text = names[player]
+
+
+## いちばん上の帯に出ている、必殺技のゲージの文字（"62%" か "READY"。出ていなければ空）。検査用。
+func ult_gauge_text(player: int) -> String:
+	return _ult_labels[player].text if _ult_labels[player].visible else ""
+
+
+## 必殺技のボタン（右下）。text はボタンの文字、enabled は押せるか。summary はボタンの上に出す説明（必殺技が無ければ空）。
+func set_ult_button(text: String, enabled: bool, summary: String) -> void:
+	_ult_button.text = text
+	_ult_button.disabled = not enabled
+	_ult_summary.text = summary
+	_ult_summary.visible = summary != ""
+
+
+func ult_button_text() -> String:
+	return _ult_button.text
+
+
+func is_ult_enabled() -> bool:
+	return not _ult_button.disabled
 
 
 ## 駒の情報を出す。unit が null なら消す。forecast は攻撃の見込み（無ければ空）。
@@ -297,6 +339,24 @@ func _build_top_bar() -> void:
 		label.add_theme_color_override("font_color", _team_colors[player].lightened(0.4))
 		row.add_child(label)
 		_side_labels.append(label)
+		# 必殺技のゲージ（飾らない棒と数字）。軍の色で塗る。
+		var bar := ProgressBar.new()
+		bar.custom_minimum_size = Vector2(96.0, 22.0)
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.show_percentage = false
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = _team_colors[player].lightened(0.2)
+		bar.add_theme_stylebox_override("fill", fill)
+		row.add_child(bar)
+		_ult_bars.append(bar)
+		# 数字は棒の上に重ねる（上の帯の幅を取らない）。
+		var percent := _label(14)
+		percent.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		percent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		percent.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		percent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.add_child(percent)
+		_ult_labels.append(percent)
 	_opponent_button = _button("", opponent_pressed)
 	_opponent_button.custom_minimum_size = Vector2(170.0, 34.0)
 	_opponent_button.add_theme_font_size_override("font_size", 15)
@@ -369,6 +429,28 @@ func _build_bottom() -> void:
 	_end_turn_button.custom_minimum_size = Vector2(270.0, 48.0)
 	row.add_child(_end_turn_button)
 
+	# 必殺技のボタンは、下の帯の上（ターン終了のボタンの上）に置く。駒を選んでいなくても押せる。
+	var ult_panel := _panel()
+	ult_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	ult_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	ult_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	ult_panel.offset_left = -12.0
+	ult_panel.offset_right = -12.0
+	ult_panel.offset_top = -104.0
+	ult_panel.offset_bottom = -104.0
+	add_child(ult_panel)
+	var ult_column := VBoxContainer.new()
+	ult_panel.add_child(ult_column)
+	_ult_summary = _label(13)
+	_ult_summary.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	_ult_summary.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	_ult_summary.custom_minimum_size = Vector2(270.0, 0.0)
+	ult_column.add_child(_ult_summary)
+	_ult_button = _button("必殺技", ult_pressed)
+	_ult_button.custom_minimum_size = Vector2(270.0, 44.0)
+	_ult_button.disabled = true
+	ult_column.add_child(_ult_button)
+
 	var help_panel := _panel()
 	help_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -378,7 +460,7 @@ func _build_bottom() -> void:
 	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(help_panel)
 	var help := _label(13)
-	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / F スキル / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）/ F4 相手を人・CPU に切り替え"
+	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / F スキル / G 必殺技 / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）/ F4 相手を人・CPU に切り替え"
 	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	help_panel.add_child(help)

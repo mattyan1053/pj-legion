@@ -117,6 +117,7 @@ static func deal_damage(battle: Battle, user: Unit, hits: Array[Array]) -> Array
 		var victim: Unit = hit[0]
 		var resolved := Hit.resolve(user, victim, hit[1], UnitDamagedEvent.Cause.SKILL)
 		after.append_array(resolved.apply())
+		Ults.charge_hit(battle, resolved)
 		events.append(SkillDamagedEvent.new(skill, resolved))
 		var gained := Growth.damage_experience(victim, victim.hp)
 		if gained > experience:

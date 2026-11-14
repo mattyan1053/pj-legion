@@ -34,6 +34,13 @@ var capture_turns_before_move: Array[int] = [0, 0]
 ## 敵の本陣をこの回数だけ自分のフェーズの終わりまで占拠し続けたら勝ち。
 const CAPTURE_TURNS_TO_WIN := 3
 
+## プレイヤーごとの軍（添字がプレイヤー番号）。必殺技は軍で決まる（docs/tactical-ult.md）。
+## 軍を盤に置くとき（Deployment）に決まる。決まっていなければ、最初に置いた、軍に属する駒の軍になる（add_unit）。
+var armies: Array[UnitKind.Army] = [UnitKind.Army.NONE, UnitKind.Army.NONE]
+## プレイヤーごとの必殺技のゲージ（0 から Ults.GAUGE_MAX）と、使った回数。ためる・使うのは Ults だけ。
+var ult_gauge: Array[int] = [0, 0]
+var ult_uses: Array[int] = [0, 0]
+
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
 
@@ -71,6 +78,8 @@ func add_unit(
 	var unit := Unit.new(_next_unit_id, kind, side, cell, equipment)
 	_next_unit_id += 1
 	units.append(unit)
+	if side != Unit.Side.NEUTRAL and armies[side] == UnitKind.Army.NONE:
+		armies[side] = UnitKind.army(kind)
 	return unit
 
 
@@ -79,6 +88,7 @@ func remove_unit(unit: Unit) -> UnitDefeatedEvent:
 	units.erase(unit)
 	if acting_unit_id == unit.id:
 		acting_unit_id = 0
+	Ults.charge_defeat(self, unit)
 	return UnitDefeatedEvent.new(unit)
 
 
@@ -210,8 +220,13 @@ func can_apply(action: BattleAction) -> bool:
 func apply(action: BattleAction) -> ActionResult:
 	if not can_apply(action):
 		return ActionResult.rejected()
+	var ready: Array[bool] = [Ults.is_ready(self, Unit.Side.PLAYER1), Ults.is_ready(self, Unit.Side.PLAYER2)]
 	var events := action.execute(self)
 	events.append_array(settle(events))
+	# 必殺技のゲージは、ダメージ・撃破・フェーズの始めにたまる。この行動でいっぱいになったら、最後に知らせる。
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if not ready[side] and Ults.is_ready(self, side) and not is_over():
+			events.append(UltReadyEvent.new(side, Ults.of(self, side).id()))
 	return ActionResult.new(true, events)
 
 

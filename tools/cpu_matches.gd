@@ -107,6 +107,9 @@ func _initialize() -> void:
 	var gains: Array[int] = [0, 0, 0, 0]  # 当てた、倒した、中立を倒した、回復した 回数
 	var by_kind: Dictionary[UnitKind.Id, Array] = {}
 	var skill_uses: Dictionary[Skill.Id, int] = {}
+	# 軍 -> [出た回数, 必殺技を使った回数, 使った側の数, そのうち勝った数, 使わなかった側の数, そのうち勝った数, 最初に使ったターンの合計, 1 回でも使った側の数]。
+	# 勝ちの数は、決着した局だけ（使った側・使わなかった側の数も同じ）。
+	var ults: Dictionary[UnitKind.Army, Array] = {}
 	var reached := {"lv2": 0, "lv3": 0, "lv3_hit": 0, "lv3_level": 0, "lv3_both": 0}
 	var actions := 0
 	var think := 0.0
@@ -168,6 +171,16 @@ func _initialize() -> void:
 			var row: Array = by_kind.get_or_add(kind, [0, 0, 0, 0, 0])
 			for i in row.size():
 				row[i] += outcome.by_kind[kind][i]
+		for side in 2:
+			var row: Array = ults.get_or_add(armies[side], [0, 0, 0, 0, 0, 0, 0, 0])
+			row[0] += 1
+			row[1] += outcome.ult_uses[side]
+			row[6] += outcome.first_ult_turn[side]
+			row[7] += 1 if outcome.ult_uses[side] > 0 else 0
+			if outcome.winner >= 0:
+				var used := 2 if outcome.ult_uses[side] > 0 else 4
+				row[used] += 1
+				row[used + 1] += 1 if outcome.winner == side else 0
 		for skill in outcome.skill_uses:
 			skill_uses[skill] = skill_uses.get(skill, 0) + outcome.skill_uses[skill]
 		hired += outcome.hired[0] + outcome.hired[1]
@@ -249,6 +262,15 @@ func _initialize() -> void:
 	for skill in Skills.ALL:
 		var row: Array = by_kind.get(skill.kind(), [0])
 		print("  %-12s %5d 回（%4.2f）" % [skill.display_name(), skill_uses.get(skill.id(), 0), float(skill_uses.get(skill.id(), 0)) / maxi(1, row[0])])
+	print("")
+	print("必殺技（軍ごと。1 局・1 軍あたり。勝率は決着した局だけ）")
+	for army in ARMIES:
+		var row: Array = ults.get(army, [0, 0, 0, 0, 0, 0, 0, 0])
+		print("  %-9s %-6s 使った %4d 回（%4.2f。使った側は %3.0f%%）  最初に使ったターン 平均 %4.1f  使った側 %3d 勝 / %3d（%3.0f%%）  使わなかった側 %3d 勝 / %3d（%3.0f%%）" % [
+			ARMY_NAMES[army], Ults.of_army(army).display_name(), row[1], float(row[1]) / maxi(1, row[0]), 100.0 * row[7] / maxi(1, row[0]),
+			float(row[6]) / maxi(1, row[7]), row[3], row[2], 100.0 * row[3] / maxi(1, row[2]),
+			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]),
+		])
 	print("")
 	print("行動 %d 回。考える時間: 1 手の平均 %.1f ms、最長 %.1f ms。全体で %.1f 秒" % [
 		actions, think / maxi(1, actions), slowest, (Time.get_ticks_msec() - started) / 1000.0,

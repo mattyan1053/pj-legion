@@ -2,7 +2,7 @@ extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル（行動を終えないもの、行動済みの駒を戻すものも）、中立の駒、レベルアップ、進化、
+## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル（行動を終えないもの、行動済みの駒を戻すものも）、必殺技、中立の駒、レベルアップ、進化、
 ## 回復役の回復、CPU の番の場面を通し、盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ## 途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
@@ -61,6 +61,7 @@ func _process(_delta: float) -> void:
 			_queue_skill_scene()
 			_queue_status_scene()
 			_queue_extra_action_scene()
+			_queue_ult_scene()
 			_queue_neutral_scene()
 			_queue_level_up_scene()
 			_queue_evolution_scene()
@@ -613,6 +614,63 @@ func _queue_cpu_scene() -> void:
 		_expect(wounded.hp == 10 + priest.power(), "CPU の回復役が回復しなかった")
 		_expect(bait.hp < bait.max_hp(), "CPU の駒が攻撃しなかった")
 		_scene.set_opponent(false))
+
+
+## 必殺技。ゲージがいっぱいになるまでボタンは押せず、1 回目は確かめるだけで、もう一度押すと使う。使っても駒の行動は残る。
+func _queue_ult_scene() -> void:
+	var board := _small_board(Vector2i(7, 5))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(1, 3))
+	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(5, 1))
+	sorcerer.skill_cooldown = 4
+	var used: Script = UltUsedEvent
+	var ready: Script = UltReadyEvent
+	var power := trooper.power()
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		_expect(not _scene.is_ult_enabled(), "ゲージが空なのに、必殺技のボタンが押せる")
+		_expect(_scene.ult_gauge_text(0) == "0%", "ゲージの数字が出ていない")
+		_scene.press_ult()
+		_expect(not _scene.is_confirming_ult(), "ゲージが空なのに、必殺技を確かめ始めた")
+		battle.ult_gauge[Unit.Side.PLAYER1] = Ults.GAUGE_MAX
+		_scene.click_cell(trooper.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.is_ult_enabled(), "ゲージがいっぱいなのに、必殺技のボタンが押せない")
+		_expect(_scene.ult_gauge_text(0) == "READY", "ゲージが READY になっていない")
+		_scene.press_ult()
+		_expect(_scene.is_confirming_ult() and battle.ult_uses[0] == 0, "1 回押しただけで、必殺技を使った")
+		_scene.cancel()
+		_expect(not _scene.is_confirming_ult() and _scene.selected_unit() == trooper, "戻す操作で、確かめるのをやめなかった")
+		_scene.press_ult()
+		_scene.played.erase(used)
+		_scene.press_ult())
+	_scripted.append(func() -> void:
+		_expect(battle.ult_uses[0] == 1 and battle.ult_gauge[0] == 0, "必殺技を使えなかった")
+		_expect(_scene.played.get(used, 0) == 1, "必殺技を再生しなかった")
+		_expect(trooper.power() == power + AllOutAssaultUlt.POWER_BONUS, "総員突撃が付いていない")
+		_expect(not _scene.is_ult_enabled() and _scene.ult_gauge_text(0) == "0%", "使ったあとに、ゲージが空になっていない")
+		_expect(_scene.selected_unit() == trooper and not trooper.acted, "必殺技で、駒の行動を使った")
+		# 伸びた移動力（3 + 2）で動ける。
+		_scene.click_cell(Vector2i(6, 3)))
+	_scripted.append(func() -> void:
+		_expect(trooper.cell == Vector2i(6, 3), "伸びた移動力で動けなかった")
+		_scene.press_wait())
+	_scripted.append(func() -> void:
+		battle.ult_gauge[Unit.Side.PLAYER2] = Ults.GAUGE_MAX - 1
+		_scene.played.erase(ready)
+		_end_turn())
+	_scripted.append(func() -> void:
+		_expect(_scene.played.get(ready, 0) == 1, "ゲージがいっぱいになったことを再生しなかった")
+		_expect(_scene.ult_gauge_text(1) == "READY" and _scene.is_ult_enabled(), "プレイヤー2 の番に、必殺技のボタンが押せない")
+		_scene.press_ult()
+		_scene.press_ult())
+	_scripted.append(func() -> void:
+		_expect(sorcerer.skill_cooldown == 0, "魔力解放でクールダウンが 0 にならなかった"))
 
 
 ## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。

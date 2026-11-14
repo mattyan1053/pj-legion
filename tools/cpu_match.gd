@@ -57,6 +57,9 @@ class Outcome:
 	var skill_hits: Dictionary[int, int] = {}
 	## いまの行動のスキルで、プレイヤーの駒が倒れたか（スキルの経験値は、いちばん多い 1 体ぶん = プレイヤーの駒の撃破になる）。
 	var skill_defeated_player := false
+	## 必殺技を使った回数（プレイヤー番号ごと）と、最初に使ったターン（使わなければ 0）。
+	var ult_uses: Array[int] = [0, 0]
+	var first_ult_turn: Array[int] = [0, 0]
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
 
@@ -173,6 +176,11 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 	elif event is SkillUsedEvent:
 		var used := event as SkillUsedEvent
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
+	elif event is UltUsedEvent:
+		var fired := event as UltUsedEvent
+		outcome.ult_uses[fired.side] += 1
+		if outcome.first_ult_turn[fired.side] == 0:
+			outcome.first_ult_turn[fired.side] = battle.turn
 	elif event is GameWonEvent:
 		var won := event as GameWonEvent
 		outcome.ending = "king" if won.reason == GameWonEvent.Reason.KING_DEFEATED else "hq"

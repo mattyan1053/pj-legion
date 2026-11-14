@@ -28,6 +28,7 @@ static func deploy(battle: Battle, side: Unit.Side, deck: Deck) -> Array[Unit]:
 	if king == null:
 		return placed
 	placed.append(king)
+	battle.armies[side] = deck.army
 	for entry in deck.entries:
 		var cell := _free_cell(battle, hq)
 		if cell == NO_CELL:
