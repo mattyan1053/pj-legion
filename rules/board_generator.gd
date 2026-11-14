@@ -14,6 +14,9 @@ enum Stage {
 }
 
 const DEFAULT_SIZE := Vector2i(30, 30)
+## これより小さいと、本陣・結晶泉・中央の壁が盤からはみ出したり重なったりする
+## （双子結晶の中央の壁は中心から左右 5 マスで、右の結晶泉（x = 幅 - 5）にかからないには幅 22 が要る）。
+const MIN_SIZE := Vector2i(22, 22)
 const PROTECT_RADIUS := 3
 const WALL_RATIO := 0.10
 const FOREST_RATIO := 0.15
@@ -21,7 +24,10 @@ const FOREST_RATIO := 0.15
 const MAX_ATTEMPTS := 10
 
 
+## size が MIN_SIZE より小さいときは作らずに null を返す。
 static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board:
+	if size.x < MIN_SIZE.x or size.y < MIN_SIZE.y:
+		return null
 	var board := Board.new(size)
 	var center := size / 2
 	if stage == Stage.TWIN_SPRINGS:

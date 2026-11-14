@@ -23,6 +23,17 @@ func test_other_sizes_work() -> void:
 		assert_true(board.is_reachable(board.hq_cells[0], board.hq_cells[1]), "stage %d" % stage)
 
 
+func test_too_small_sizes_are_refused() -> void:
+	for stage in STAGES:
+		assert_eq(BoardGenerator.generate(stage, 1, Vector2i(4, 4)), null, "stage %d" % stage)
+		assert_eq(BoardGenerator.generate(stage, 1, Vector2i(30, 19)), null, "stage %d" % stage)
+		var smallest := BoardGenerator.generate(stage, 1, BoardGenerator.MIN_SIZE)
+		assert_true(smallest != null, "stage %d" % stage)
+		if smallest != null:
+			for cell in smallest.font_cells:
+				assert_true(smallest.is_reachable(smallest.hq_cells[0], cell), "stage %d %s" % [stage, cell])
+
+
 func test_same_seed_gives_same_board() -> void:
 	for stage in STAGES:
 		var a := BoardGenerator.generate(stage, 99)
