@@ -225,8 +225,11 @@ func set_opponent(cpu: bool) -> void:
 	cpu_opponent = cpu
 	_hud.set_opponent("相手: CPU（F4 で人に）" if cpu else "相手: 人（F4 で CPU に）")
 	if battle != null and not is_busy():
-		_select(0)
-		_run_cpu()
+		if _is_cpu_turn():
+			_select(0)
+			_run_cpu()
+		else:
+			_refresh()  # 自分の番の途中なら、選んでいる駒（動いたあとの駒）はそのまま。
 
 
 func toggle_opponent() -> void:

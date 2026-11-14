@@ -332,6 +332,10 @@ func _queue_heal_scene() -> void:
 		_scene.click_cell(Vector2i(3, 1)))
 	_scripted.append(func() -> void:
 		_expect(Queries.heal_targets(battle, medic) == ([wounded] as Array[Unit]), "回復できる味方が違う")
+		# 動いたあとに相手を切り替えても、その駒を選んだままで、続きができる。
+		_scene.set_opponent(true)
+		_expect(_scene.selected_unit() == medic, "相手を切り替えたら、動いたあとの駒の選択が外れた")
+		_scene.set_opponent(false)
 		_scene.played.erase(healed)
 		_scene.click_cell(wounded.cell))
 	_scripted.append(func() -> void:
