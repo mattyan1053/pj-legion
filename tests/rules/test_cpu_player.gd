@@ -164,6 +164,69 @@ func test_raider_takes_the_empty_enemy_hq_and_holds_it() -> void:
 	assert_eq(battle.capture_turns[P1], 2)
 
 
+func test_raider_stays_off_an_enemy_hq_where_it_would_be_defeated() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.KING, P1, HQ1)
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(15, 4))
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(13, 4))
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(10, 0))
+	var cpu := CpuPlayer.new()
+	assert_true(cpu.danger(battle, commando.id, HQ2) >= commando.hp)
+	_play_phase(battle)
+	assert_ne(commando.cell, HQ2, "倒されうる本陣に乗った")
+
+
+func test_raider_does_not_run_ahead_of_its_army() -> void:
+	var battle := _battle_with_kings()
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 2))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(1, 3))
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(14, 2))
+	_play_phase(battle)
+	# 巡航なら 12 マス進めるが、前衛から離れすぎない。
+	assert_true(commando.cell.x > 1, "前へ出なかった")
+	assert_true(Combat.distance(commando.cell, trooper.cell) <= CpuPlayer.SUPPORT_DISTANCE, "味方から離れすぎた")
+
+
+func test_raider_heads_for_the_soft_units_first() -> void:
+	var battle := _battle_with_kings()
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 2))
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(1, 3))
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(11, 0))
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, P2, Vector2i(13, 4))
+	_play_phase(battle)
+	# 前衛のほうが近いが、回復役のいる側へ寄る。
+	assert_true(Combat.distance(commando.cell, priest.cell) < Combat.distance(Vector2i(1, 2), priest.cell))
+	assert_eq(commando.cell.y, 4, "やわらかい駒のいる側へ寄らなかった（%s）" % commando.cell)
+	assert_true(paladin.hp == paladin.max_hp())
+
+
+func test_raider_strikes_a_unit_it_can_defeat_even_far_from_its_army() -> void:
+	var battle := _battle_with_kings()
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 2))
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(0, 2)).acted = true
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(8, 2))
+	_play_phase(battle)
+	assert_eq(battle.unit_by_id(sniper.id), null, "倒せる後衛を倒さなかった")
+	assert_true(commando.acted)
+
+
+func test_fighters_act_before_raiders() -> void:
+	# 奇襲は、前衛と後衛が動いたあとに動く（敵が減ったあとの危険を見て、踏み込む先を選べる）。
+	var battle := _battle_with_kings()
+	battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 1))
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 2))
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(1, 3))
+	battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(1, 4))
+	var order: Array[UnitKind.Id] = []
+	for action in _play_phase(battle):
+		var unit := battle.unit_by_id(action.get("unit_id")) if action.get("unit_id") != null else null
+		if unit != null and not order.has(unit.kind):
+			order.append(unit.kind)
+	assert_eq(order, [
+		UnitKind.Id.SNIPER, UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC, UnitKind.Id.KING,
+	] as Array[UnitKind.Id])
+
+
 func test_advances_toward_the_enemy_when_nothing_is_in_reach() -> void:
 	var battle := _battle_with_kings()
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 2))
