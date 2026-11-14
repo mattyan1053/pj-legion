@@ -10,8 +10,8 @@
   返ってきた `ActionResult.events` を順に再生する（`board_prototype.gd` の `_do` と `_play`）。
 - 再生している間は、操作を受け付けない。再生が終わったら、対戦の状態と選んでいる駒から、
   塗るマス・ボタン・文字を作り直す（`_refresh`）。
-- 選べること（動けるマス、攻撃できる相手、攻撃できる樽）は `battle_queries.gd` が、ルールの公開の関数を組み合わせて出す。
-  どれも `Battle.can_apply()` が受け付けるものと一致する（テストで固定している）。
+- 選べること（動けるマス、攻撃できる相手、攻撃できる樽）は、ルールの問い合わせ `Battle.options()`（`docs/battle.md`）に聞き、
+  `battle_queries.gd` が画面の使いやすい形にする。どれも `Battle.can_apply()` が受け付けるものと一致する（テストで固定している）。
 - 攻撃の見込み（ダメージと残り HP）は、実際の攻撃と同じ `Combat.damage()` で出す。
   樽の爆発の見込み（届くマス、巻き込む駒）は `MapObject.blast_cells` / `blast_victims` / `blast_damage` で出す。
 - イベントの種類と再生するメソッドの対応は `board_prototype.gd` の `event_players()` に並べる。
@@ -19,11 +19,13 @@
 
 | イベント | 再生 |
 | --- | --- |
-| `UnitMovedEvent` | 道順を 1 マスずつ補間して走らせる（巡航は速く） |
+| `UnitMovedEvent` | 道順を 1 マスずつ補間して走らせる（`cruise` が真なら速く） |
 | `UnitWarpedEvent` | 入ったポータルで縮んで消え、出たポータルに現れる。カメラを出た先へ寄せる |
 | `MoveUndoneEvent` | 動く前のマスへ戻す |
-| `UnitDamagedEvent` | 攻撃の動き → 被弾の動き、ダメージの数、HP のバーの更新。爆発のダメージ（`cause` が `EXPLOSION`）は被弾だけを続けて見せる |
-| `UnitHealedEvent` | 回復の数、HP のバーの更新。回復の泉（`cause` が `SPRING`）は光も出す |
+| `AttackDamagedEvent` | 攻撃の動き → 被弾の動き、ダメージの数、HP のバーの更新 |
+| `ExplosionDamagedEvent` | 被弾の動き、ダメージの数、HP のバーの更新だけを、駒ごとに続けて見せる |
+| `HealerHealedEvent` | 回復の数、HP のバーの更新（操作がまだ無いので、自動の対戦では再生されない） |
+| `SpringHealedEvent` | 回復の数、HP のバーの更新、光 |
 | `BarrelExplodedEvent` | 攻撃の動き → 樽を消し、爆発の届いたマスを橙に塗る（続くダメージの再生の間も塗ったまま） |
 | `UnitDefeatedEvent` | 倒れる動きのあと、駒を取り除く |
 | `UnitActedEvent` | 駒を暗くする（行動済み） |
@@ -73,4 +75,4 @@
 （ポータルを通る移動とその取り消し、回復の泉、本陣の占拠、樽の爆発による引き分け）を通し、
 盤面を作り直して残りのステージも少し動かす。
 途中で画面と対戦の状態（駒の数・位置・HP、樽のマス）が食い違えば失敗。
-どの種類のイベントも 1 回は再生したことを確かめて、最後に `autoplay: OK` を出す。`tools/check.sh` がこれを回す。
+どの種類のイベントも（操作がまだ無い `HealerHealedEvent` を除いて）1 回は再生したことを確かめて、最後に `autoplay: OK` を出す。`tools/check.sh` がこれを回す。

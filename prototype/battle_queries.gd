@@ -1,7 +1,8 @@
 extends RefCounted
-## 画面に出す「いま選べること」を、ルールの公開の関数を組み合わせて求める。
+## 画面に出す「いま選べること」を、画面が使いやすい形にする。
 ##
-## ルールは持たない。どれも Battle.can_apply() が受け付けるものだけを返す（テストで確かめている）。
+## ルールは持たない。選べることはルールの問い合わせ（Battle.options）に聞き、
+## どれも Battle.can_apply() が受け付けるものだけを返す（テストで確かめている）。
 ## ノードに依存しない。
 
 
@@ -9,12 +10,14 @@ extends RefCounted
 ## 行動できない駒・もう動いた駒では空。
 static func move_cells(battle: Battle, unit: Unit) -> Dictionary:
 	var result := {}
-	if unit == null or battle.is_over() or not battle.can_act(unit) or unit.has_moved:
+	if unit == null:
 		return result
-	var normal := Movement.reachable(battle, unit, false)
-	for cell: Vector2i in Movement.reachable(battle, unit, true):
+	var options := battle.options(unit.id)
+	for cell in options.move_cells:
 		if cell != unit.cell:
-			result[cell] = not normal.has(cell)
+			result[cell] = false
+	for cell in options.cruise_cells:
+		result[cell] = true
 	return result
 
 
@@ -23,21 +26,16 @@ static func attack_targets(battle: Battle, unit: Unit) -> Array[Unit]:
 	var result: Array[Unit] = []
 	if unit == null:
 		return result
-	for target in Combat.targets(battle, unit):
-		if battle.can_apply(AttackAction.new(unit.id, target.id)):
-			result.append(target)
+	for target_id in battle.options(unit.id).attack_target_ids:
+		result.append(battle.unit_by_id(target_id))
 	return result
 
 
 ## その駒がいまの位置から攻撃できる起爆樽のマス（行動できない駒・巡航で動いた駒・回復役では空）。
 static func barrel_targets(battle: Battle, unit: Unit) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
 	if unit == null:
-		return result
-	for cell in MapObject.barrel_targets(battle, unit):
-		if battle.can_apply(AttackBarrelAction.new(unit.id, cell)):
-			result.append(cell)
-	return result
+		return []
+	return battle.options(unit.id).barrel_cells
 
 
 ## 駒の移動範囲（巡航なし）。行動できない駒や相手の駒を選んで眺めるときに使う。

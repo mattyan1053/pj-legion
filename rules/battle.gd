@@ -168,6 +168,12 @@ func count_capture(player: Unit.Side) -> Array[BattleEvent]:
 	return events
 
 
+## 駒がいま選べること（動けるマス、攻撃・回復できる相手、待機・取り消し）。状態は変えない。
+## can_apply() が受け付ける行動と一致する。行動できない駒・いない駒では、すべて空。
+func options(unit_id: int) -> UnitOptions:
+	return UnitOptions.of(self, unit_id)
+
+
 ## いまの状態で、その行動を受け付けるか。状態は変えない。
 func can_apply(action: BattleAction) -> bool:
 	return not is_over() and action.is_valid(self)
