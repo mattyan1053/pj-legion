@@ -169,6 +169,7 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 		var from: Array[Vector2i] = []
 		from.assign(origins.keys())
 		_attacks(sim, unit.id, moved, from, map)
+		_barrels(sim, unit.id, moved, moved, from, map)  # 跳んだ先から樽も撃てる
 
 
 ## unit の写し。at がいまのマスでなければ、動くと外れる状態を外す（動いたあとの駒）。tired なら反動を付ける。

@@ -276,3 +276,13 @@ func test_threat_does_not_change_the_battle() -> void:
 	assert_eq(battle.ult_gauge, before.ult_gauge)
 	assert_eq(battle.units.size(), before.units.size())
 	assert_eq(battle.rng.state, before.rng.state)
+
+
+func test_barrel_shot_after_shadow_step_is_in_the_threat() -> void:
+	var battle := Maps.battle(["................"])
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(15, 0))
+	battle.board.add_barrel(Vector2i(5, 0))
+	# 歩いて (9, 0)、跳んで (6, 0)、樽を撃てば (4, 0) まで爆発が届く。
+	assert_eq(Threat.of(battle, blade.id).at(Vector2i(4, 0)), {blade.id: MapObject.BLAST_DAMAGE})
+	blade.skill_cooldown = 2
+	assert_false(Threat.of(battle, blade.id).has(Vector2i(4, 0)), "跳べなければ届かない")
