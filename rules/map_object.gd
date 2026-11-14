@@ -28,13 +28,13 @@ static func is_walkable(type: Type) -> bool:
 	return type != Type.BARREL
 
 
-## attacker がいまの位置から cell の起爆樽を攻撃できるか。射程の測り方は駒への攻撃と同じ。
+## attacker がいまの位置から cell の起爆樽を攻撃できるか。射程の測り方は駒への攻撃と同じ（間に盾があれば届かない）。
 static func can_attack_barrel(battle: Battle, attacker: Unit, cell: Vector2i) -> bool:
 	if attacker == null or battle.board.object_at(cell) != Type.BARREL:
 		return false
 	if UnitKind.role(attacker.kind) == UnitKind.Role.HEALER:
 		return false
-	return Combat.distance(attacker.cell, cell) <= attacker.attack_range()
+	return Combat.reaches(battle, attacker.cell, cell, attacker.attack_range())
 
 
 ## いまの位置から攻撃できる起爆樽のマス。並びは盤面の上の行から、左の列から。

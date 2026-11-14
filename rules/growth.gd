@@ -76,7 +76,10 @@ static func preview(unit: Unit, amount: int) -> Outcome:
 
 
 ## attacker が target を攻撃したときに入る経験値。状態は変えない（倒せるかは Combat.damage で見る）。
+## 煙幕に阻まれる攻撃（docs/field-effects.md）では入らない。
 static func attack_experience(battle: Battle, attacker: Unit, target: Unit) -> int:
+	if FieldEffects.smoke_covering(battle, attacker.cell, target) != null:
+		return 0
 	if Combat.damage(battle, attacker, target) < target.hp:
 		return HIT_EXPERIENCE
 	return NEUTRAL_DEFEAT_EXPERIENCE if target.side == Unit.Side.NEUTRAL else DEFEAT_EXPERIENCE

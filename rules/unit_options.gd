@@ -17,6 +17,8 @@ var cruise_cells: Dictionary[Vector2i, int] = {}
 var attack_target_ids: Array[int] = []
 ## いまの位置から攻撃できる起爆樽のマス（同じ並び）。
 var barrel_cells: Array[Vector2i] = []
+## いまの位置から攻撃できる盾のマス（同じ並び）。相手の盾だけ。
+var barricade_cells: Array[Vector2i] = []
 ## いまの位置から回復できる味方の番号（同じ並び）。回復役だけ。巡航で動いた駒では空。
 var heal_target_ids: Array[int] = []
 ## 選べる進化先（A、B の順）。進化先を選ぶのを待っている駒だけ。
@@ -54,6 +56,7 @@ static func of(battle: Battle, for_unit_id: int) -> UnitOptions:
 		for target in Combat.targets(battle, unit):
 			options.attack_target_ids.append(target.id)
 		options.barrel_cells = MapObject.barrel_targets(battle, unit)
+		options.barricade_cells = FieldEffects.barricade_targets(battle, unit)
 		for target in Healing.targets(battle, unit):
 			options.heal_target_ids.append(target.id)
 	return options
@@ -70,7 +73,7 @@ func can_move_to(cell: Vector2i) -> bool:
 
 
 ## 選べる行動を、そのまま Battle.apply() に渡せる形で並べる。
-## 並びは、進化、移動（通常、巡航）、攻撃、樽の攻撃、回復、待機、取り消し。毎回同じ並びになる。
+## 並びは、進化、移動（通常、巡航）、攻撃、樽の攻撃、盾の攻撃、回復、待機、取り消し。毎回同じ並びになる。
 ## 通常の移動で届くマスへの巡航は並べない（受け付けはするが、攻撃を諦めるだけで得が無い）。
 func actions() -> Array[BattleAction]:
 	var result: Array[BattleAction] = []
@@ -84,6 +87,8 @@ func actions() -> Array[BattleAction]:
 		result.append(AttackAction.new(unit_id, target_id))
 	for cell in barrel_cells:
 		result.append(AttackBarrelAction.new(unit_id, cell))
+	for cell in barricade_cells:
+		result.append(AttackBarricadeAction.new(unit_id, cell))
 	for target_id in heal_target_ids:
 		result.append(HealAction.new(unit_id, target_id))
 	if can_wait:

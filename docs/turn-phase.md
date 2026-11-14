@@ -16,6 +16,7 @@
 - フェーズが始まるたびに `PhaseStartedEvent`（ターン番号と、どの陣営の番か）が出る。
 - プレイヤーのフェーズの始めに、回復の泉に乗っているそのプレイヤーの駒が HP を 12 回復する（`docs/map-objects.md`）。
   続けて、再生の特性を持つ進化先の駒が回復する（`docs/branch-evolution.md`）。
+  そのあと、そのプレイヤーの聖域の中の駒が回復し、そのプレイヤーの煙幕・聖域の残りのターン数が 1 減る（`docs/field-effects.md`）。
 
 ## 駒の行動
 
@@ -24,7 +25,7 @@
   - **待機**（`WaitAction`）: 行動を終え、行動済みになる（`UnitActedEvent`）。
   - **移動の取り消し**（`UndoMoveAction`）: 動いたあと、攻撃も回復も待機もしていなければ、動く前のマスへ戻り、行動前に戻る（`MoveUndoneEvent`）。
   - **攻撃**（`AttackAction`）: 射程内の敵 1 体を攻撃し、行動済みになる（`docs/combat.md`）。巡航で動いた駒は攻撃できない。
-    射程内の起爆樽も攻撃できる（`AttackBarrelAction`。`docs/map-objects.md`）。
+    射程内の起爆樽も攻撃できる（`AttackBarrelAction`。`docs/map-objects.md`）。相手の盾も同じ（`AttackBarricadeAction`。`docs/field-effects.md`）。
   - **回復**（`HealAction`）: 回復役が射程内の味方 1 体を回復し、行動済みになる（`docs/healer-role.md`）。巡航で動いた駒は回復できない。
 - 駒が動いてから行動を終えるまでの間（行動の途中）は、ほかの駒は行動を始められない。
 - 行動の途中の駒がいるままフェーズを終えると、その駒は待機したことになる。

@@ -5,6 +5,7 @@ extends BattleAction
 ## 動かずに攻撃してもよい。巡航で動いた駒は攻撃できない。
 ## HP が 0 になった駒は倒れ、盤から取り除かれる。
 ## 攻撃した駒には経験値が入る（Growth。倒したかどうかで量が違う）。
+## 煙幕に阻まれた攻撃（ダメージ 0。SmokeBlockedEvent）でも行動は終わる。経験値は入らない。
 
 var unit_id: int
 var target_id: int
@@ -25,12 +26,8 @@ func is_valid(battle: Battle) -> bool:
 func execute(battle: Battle) -> Array[BattleEvent]:
 	var attacker := battle.unit_by_id(unit_id)
 	var target := battle.unit_by_id(target_id)
-	var amount := Combat.damage(battle, attacker, target)
 	var experience := Growth.attack_experience(battle, attacker, target)
-	target.hp = maxi(0, target.hp - amount)
-	var events: Array[BattleEvent] = [AttackDamagedEvent.new(attacker.id, target.id, amount, target.hp)]
-	if target.hp == 0:
-		events.append(battle.remove_unit(target))
+	var events := Combat.strike(battle, attacker, target)
 	var reason := ExperienceGainedEvent.Reason.DEFEAT if target.hp == 0 else ExperienceGainedEvent.Reason.HIT
 	events.append_array(Growth.gain(attacker, experience, reason))
 	events.append(battle.finish_action(attacker))

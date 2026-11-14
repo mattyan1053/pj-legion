@@ -128,7 +128,7 @@ static func attack_target_of(battle: Battle, unit: Unit, target: Unit) -> Unit:
 
 
 ## 中立の駒 1 体の行動: 動いて（UnitMovedEvent。ポータルを通れば UnitWarpedEvent も）、
-## 攻撃できれば攻撃する（AttackDamagedEvent、倒れたら UnitDefeatedEvent）。
+## 攻撃できれば攻撃する（AttackDamagedEvent、倒れたら UnitDefeatedEvent。煙幕に阻まれたら SmokeBlockedEvent。Combat.strike）。
 ## 中立の駒は「行動済み」を持たないので、UnitActedEvent は出さない。
 static func _act(battle: Battle, unit: Unit) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
@@ -140,11 +140,7 @@ static func _act(battle: Battle, unit: Unit) -> Array[BattleEvent]:
 		unit.cell = to
 	var victim := attack_target_of(battle, unit, target)
 	if victim != null:
-		var amount := Combat.damage(battle, unit, victim)
-		victim.hp = maxi(0, victim.hp - amount)
-		events.append(AttackDamagedEvent.new(unit.id, victim.id, amount, victim.hp))
-		if victim.hp == 0:
-			events.append(battle.remove_unit(victim))
+		events.append_array(Combat.strike(battle, unit, victim))
 	return events
 
 

@@ -55,6 +55,9 @@ const INTRUDER_RATE := 1.5
 ## 自分の本陣に乗っている敵。ダメージの価値を OCCUPIER_RATE 倍にし、倒す価値に OCCUPIER_KILL_BONUS を足す。
 const OCCUPIER_RATE := 2.0
 const OCCUPIER_KILL_BONUS := 100.0
+## 相手の盾を削る価値（耐久力 1 あたり）と、壊す価値。駒を攻撃できないときに、道をふさぐ盾を壊しに行く程度。
+const BARRICADE_DAMAGE_VALUE := 0.5
+const BARRICADE_BREAK_VALUE := 10.0
 ## 味方を巻き込むダメージ（樽の爆発）は、同じ量の敵へのダメージの何倍の損とみるか。
 const FRIENDLY_FIRE_RATE := 1.5
 ## 回復 1 の価値、回復すること自体の価値、将を回復する上乗せ、減っている割合（0〜1）に掛ける上乗せ。
@@ -88,7 +91,7 @@ const _FAR := 9999
 # ---- 覚えておくもの（盤面が同じ間だけ使い回す） ----
 
 var _board: Board
-var _barrel_count := -1
+var _walkable_revision := -1
 ## 駒が乗っているポータルのマス（その対は、いまは通れないものとして歩数を数える）。
 var _blocked_portals: Array[Vector2i] = []
 ## 歩けるマスなら 1。添字は y * 幅 + x。
@@ -180,10 +183,10 @@ func _begin(battle: Battle) -> void:
 	for cell in board.portal_exits:
 		if battle.unit_at(cell) != null:
 			blocked.append(cell)
-	if board != _board or board.barrel_cells.size() != _barrel_count or blocked != _blocked_portals:
-		# 盤面が替わったか、樽が減った（樽のあったマスが歩けるようになった）か、ふさがったポータルが変わった。
+	if board != _board or board.walkable_revision != _walkable_revision or blocked != _blocked_portals:
+		# 盤面が替わったか、入れるマスが変わった（樽が消えた、盾が置かれた・消えた）か、ふさがったポータルが変わった。
 		_board = board
-		_barrel_count = board.barrel_cells.size()
+		_walkable_revision = board.walkable_revision
 		_blocked_portals = blocked
 		_steps = {}
 		_walkable.resize(board.size.x * board.size.y)
@@ -228,7 +231,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 	var best: BattleAction = WaitAction.new(unit.id)
 	var best_value := 0.0
 	for action in _battle.options(unit.id).actions():
-		if not (action is AttackAction or action is AttackBarrelAction or action is HealAction):
+		if not (action is AttackAction or action is AttackBarrelAction or action is AttackBarricadeAction or action is HealAction):
 			continue
 		var sim := _battle.clone()
 		var value := _outcome_value(sim, sim.apply(action).events)
@@ -272,7 +275,7 @@ func _plan(unit: Unit) -> BattleAction:
 		var action: BattleAction = candidate[0]
 		var at: Vector2i = candidate[1]
 		var target_id: int = candidate[2]
-		var from := _best_cell_in_reach(unit, positions, at, 0, target_id == 0)
+		var from := _best_cell_in_reach(unit, positions, at, target_id, 0, action is AttackBarrelAction)
 		if from == Board.NO_CELL:
 			continue
 		# その手を複製の上で実際にやってみて、起きたことから価値を読む。
@@ -287,7 +290,7 @@ func _plan(unit: Unit) -> BattleAction:
 			continue
 		if target_id != 0 and sim.unit_by_id(target_id) == null:
 			# 相手を倒せる。その相手からの反撃は無いものとして、立つマスを選び直す。
-			from = _best_cell_in_reach(unit, positions, at, target_id, false)
+			from = _best_cell_in_reach(unit, positions, at, target_id, target_id, false)
 			value += _position_value(unit, from, target_id, true)
 		else:
 			value += _position_value(unit, from, 0, true)
@@ -304,7 +307,7 @@ func _plan(unit: Unit) -> BattleAction:
 	return WaitAction.new(unit.id)
 
 
-## 攻撃・回復の候補。[行動, 相手のマス, 相手の駒の番号（樽は 0）] の列。
+## 攻撃・回復の候補。[行動, 相手のマス, 相手の駒の番号（樽と盾は 0）] の列。
 ## cells（通常の移動で止まれるマス。ポータルの先も含む）のどれかから、射程の歩数の中にいる相手を並べる。
 ## 広めに並べるだけで、届くかどうかはルールに聞く（_plan が複製の上で確かめる）。
 func _candidates(unit: Unit, cells: Dictionary[Vector2i, float]) -> Array[Array]:
@@ -322,6 +325,9 @@ func _candidates(unit: Unit, cells: Dictionary[Vector2i, float]) -> Array[Array]
 		for cell in _battle.board.barrel_cells:
 			if _in_reach(unit, cells, cell):
 				result.append([AttackBarrelAction.new(unit.id, cell), cell, 0])
+		for effect in _battle.board.field_effects:
+			if effect.type == FieldEffect.Type.BARRICADE and effect.side != _me and _in_reach(unit, cells, effect.center):
+				result.append([AttackBarricadeAction.new(unit.id, effect.center), effect.center, 0])
 	return result
 
 
@@ -334,16 +340,24 @@ func _in_reach(unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i) -> 
 	return false
 
 
-## cells（通常の移動で止まれるマス）のうち、at に手が届きそうで、そこで手を出すのにいちばん良いマス。無ければ Board.NO_CELL。
+## cells（通常の移動で止まれるマス）のうち、at に手が届き、そこで手を出すのにいちばん良いマス。無ければ Board.NO_CELL。
+## 攻撃は、間に盾があるマスと、相手（target_id の駒。樽と盾なら 0）が煙幕に守られるマスを除く（ルールの問い合わせで見る）。
 ## ignored_id の敵からの危険は数えない。avoid_blast が真なら、at の周り 8 マス（樽の爆発が届く）をなるべく避ける。
 func _best_cell_in_reach(
-	unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i, ignored_id: int, avoid_blast: bool
+	unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i, target_id: int, ignored_id: int, avoid_blast: bool
 ) -> Vector2i:
 	var reach := unit.attack_range()
+	var healer := UnitKind.role(unit.kind) == UnitKind.Role.HEALER
+	var target := _battle.unit_by_id(target_id)
 	var best := Board.NO_CELL
 	var best_value := -INF
 	for cell in cells:
-		if Combat.distance(cell, at) > reach:
+		if healer:
+			if Combat.distance(cell, at) > reach:
+				continue
+		elif not Combat.reaches(_battle, cell, at, reach):
+			continue
+		elif target != null and FieldEffects.smoke_covering(_battle, cell, target) != null:
 			continue
 		var value := _position_value(unit, cell, ignored_id, true)
 		if avoid_blast and maxi(absi(cell.x - at.x), absi(cell.y - at.y)) <= 1:
@@ -379,6 +393,15 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 			value += WOUNDED_BONUS * (1.0 - float(target.hp) / target.max_hp())
 			if target.kind == UnitKind.Id.KING:
 				value += KING_HEAL_BONUS
+			continue
+		var chipped := event as BarricadeDamagedEvent
+		if chipped != null:
+			value += BARRICADE_DAMAGE_VALUE * chipped.amount
+			continue
+		var removed := event as FieldEffectRemovedEvent
+		if removed != null:
+			if removed.reason == FieldEffectRemovedEvent.Reason.DESTROYED:
+				value += BARRICADE_BREAK_VALUE
 			continue
 		var gained := event as ExperienceGainedEvent
 		if gained != null:
