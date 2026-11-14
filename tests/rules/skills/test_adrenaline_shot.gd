@@ -1,11 +1,10 @@
 extends "res://tests/base_test.gd"
-## アドレナリン注射（docs/skills/adrenaline-shot.md）。回数の上限と、高揚 → 反動の決まりもここ。
+## アドレナリン注射（docs/skills/adrenaline-shot.md）。回数の上限と、反動の決まりもここ。
 
 const Maps := preload("res://tests/support/maps.gd")
 
 const P1 := Unit.Side.PLAYER1
 const P2 := Unit.Side.PLAYER2
-const RUSH := Status.Type.ADRENALINE
 const FATIGUE := Status.Type.FATIGUE
 const PENALTY := AdrenalineShotSkill.POWER_PENALTY
 
@@ -55,6 +54,7 @@ func test_shot_lets_the_friend_act_again_in_the_same_phase() -> void:
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 1))
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 1))
 	var enemy := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(4, 1))
+	var base := commando.power()
 	battle.apply(MoveAction.new(commando.id, Vector2i(3, 1)))
 	battle.apply(AttackAction.new(commando.id, enemy.id))
 	battle.apply(MoveAction.new(medic.id, Vector2i(2, 1)))
@@ -62,42 +62,35 @@ func test_shot_lets_the_friend_act_again_in_the_same_phase() -> void:
 	assert_true(events[0] is SkillUsedEvent)
 	assert_eq((events[1] as UnitReactivatedEvent).unit_id, commando.id)
 	var applied := events[2] as StatusAppliedEvent
-	assert_eq([applied.unit_id, applied.status, applied.turns], [commando.id, RUSH, AdrenalineShotSkill.RUSH_TURNS])
+	assert_eq([applied.unit_id, applied.status, applied.turns], [commando.id, FATIGUE, AdrenalineShotSkill.FATIGUE_TURNS])
 	assert_eq((events[3] as UnitActedEvent).unit_id, medic.id)
 	assert_true(medic.acted)
 	assert_false(commando.acted)
-	assert_eq(commando.power(), UnitKind.power(UnitKind.Id.COMMANDO), "もう一度の行動は、もとの攻撃力")
+	assert_eq(commando.power(), base - PENALTY, "もう一度の行動から、攻撃力が下がる")
+	assert_eq(commando.base_stat(Unit.Stat.POWER), base, "もとの値は書き換えない")
 	# 移動からやり直せる。
 	assert_true(battle.apply(MoveAction.new(commando.id, Vector2i(3, 0))).accepted)
-	assert_true(battle.apply(MoveAction.new(commando.id, Vector2i(3, 0))).accepted == false, "移動は 1 回")
+	assert_false(battle.apply(MoveAction.new(commando.id, Vector2i(3, 0))).accepted, "移動は 1 回")
 	battle.apply(UndoMoveAction.new(commando.id))
 	assert_true(battle.apply(AttackAction.new(commando.id, enemy.id)).accepted)
-	assert_eq(enemy.hp, enemy.max_hp() - 2 * commando.power())
+	assert_eq(enemy.hp, enemy.max_hp() - base - (base - PENALTY))
 	assert_true(commando.acted)
 
 
-func test_fatigue_comes_next_turn_and_lasts_that_turn() -> void:
+func test_fatigue_lasts_through_the_next_own_turn() -> void:
 	var battle := _battle()
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 1))
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 1))
 	var base := commando.power()
 	battle.apply(WaitAction.new(commando.id))
 	battle.apply(UseSkillAction.new(medic.id, commando.cell))
+	_end_turn(battle)
+	assert_eq(commando.power(), base - PENALTY, "次の自分の番の間も、下がったまま")
 	battle.apply(EndPhaseAction.new())
-	assert_eq(commando.power(), base, "相手の番の間は、まだ下がらない")
-	assert_true(Statuses.has(commando, RUSH))
+	assert_eq(commando.power(), base - PENALTY, "続く相手の番の間も残る")
 	var events := battle.apply(EndPhaseAction.new()).events
-	var changes: Array[BattleEvent] = events.filter(func(event: BattleEvent) -> bool:
-		return event is StatusRemovedEvent or event is StatusAppliedEvent)
-	var removed := changes[0] as StatusRemovedEvent
-	var applied := changes[1] as StatusAppliedEvent
-	assert_eq([removed.unit_id, removed.status, removed.reason], [commando.id, RUSH, StatusRemovedEvent.Reason.EXPIRED])
-	assert_eq([applied.unit_id, applied.status, applied.turns], [commando.id, FATIGUE, AdrenalineShotSkill.FATIGUE_TURNS])
-	assert_eq(commando.power(), base - PENALTY)
-	assert_eq(commando.base_stat(Unit.Stat.POWER), base, "もとの値は書き換えない")
-	battle.apply(EndPhaseAction.new())
-	assert_eq(commando.power(), base - PENALTY, "相手の番の間も残る")
-	battle.apply(EndPhaseAction.new())
+	var removed: Array[BattleEvent] = events.filter(func(event: BattleEvent) -> bool: return event is StatusRemovedEvent)
+	assert_eq((removed[0] as StatusRemovedEvent).reason, StatusRemovedEvent.Reason.EXPIRED)
 	assert_false(Statuses.has(commando, FATIGUE))
 	assert_eq(commando.power(), base)
 
@@ -110,8 +103,7 @@ func test_fatigue_never_drops_the_power_below_zero() -> void:
 	assert_eq(core.power(), 0)
 
 
-func test_a_new_shot_during_the_fatigue_keeps_both_in_step() -> void:
-	# 反動の番にもう一度打つ。反動はその番の間だけ続き、次の番に、新しい反動が付く。
+func test_a_second_shot_renews_the_fatigue_without_stacking() -> void:
 	var battle := _battle()
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 1))
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 1))
@@ -119,14 +111,8 @@ func test_a_new_shot_during_the_fatigue_keeps_both_in_step() -> void:
 	Statuses.add(commando, FATIGUE, 1)
 	battle.apply(WaitAction.new(commando.id))
 	battle.apply(UseSkillAction.new(medic.id, commando.cell))
-	assert_eq(commando.power(), base - PENALTY, "反動の間のもう一度の行動は、下がったまま")
-	_end_turn(battle)
-	assert_true(Statuses.has(commando, FATIGUE))
-	assert_false(Statuses.has(commando, RUSH))
-	assert_eq(commando.statuses[FATIGUE], AdrenalineShotSkill.FATIGUE_TURNS)
-	assert_eq(commando.power(), base - PENALTY, "補正は重ならない")
-	_end_turn(battle)
-	assert_eq(commando.power(), base)
+	assert_eq(commando.statuses[FATIGUE], AdrenalineShotSkill.FATIGUE_TURNS, "残りのターン数を付け直す")
+	assert_eq(commando.power(), base - PENALTY, "下がる量は重ならない")
 
 
 func test_uses_are_limited_per_medic() -> void:
@@ -184,7 +170,6 @@ func test_shot_restores_a_healer_and_cuts_its_heal_next_turn() -> void:
 	var base := other.power()
 	battle.apply(WaitAction.new(other.id))
 	battle.apply(UseSkillAction.new(medic.id, other.cell))
-	_end_turn(battle)
 	assert_eq(other.power(), base - PENALTY, "回復役は、回復量が下がる")
 
 

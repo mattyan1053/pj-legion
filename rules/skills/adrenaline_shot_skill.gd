@@ -4,7 +4,7 @@ extends Skill
 ##
 ## - 対象は、回復と同じ射程の中の、行動済みの味方（自分は選べない）
 ## - 対象は、このフェーズにもう一度、移動から行動できる
-## - 対象に高揚（Status.Type.ADRENALINE）が付く。次の自分の番の始めに反動（FATIGUE。攻撃力が下がる）に変わり、その番の間だけ続く
+## - 対象に反動（Status.Type.FATIGUE。攻撃力が下がる）が付く。もう一度の行動から、次の自分の番の終わりまで続く
 ## - 1 体の衛生兵が、対戦中に使える回数に上限がある（Skill.max_uses）
 
 # ---- 調整値 ----
@@ -12,10 +12,8 @@ extends Skill
 const COOLDOWN := 3
 ## 1 体の衛生兵が、対戦中に使える回数。
 const MAX_USES := 2
-## 高揚の残りのターン数（付けたときの値）。1 なら、次の自分の番の始めに反動に変わる。
-const RUSH_TURNS := 1
-## 反動の残りのターン数。1 なら、変わった番の間だけ続き、その次の自分の番の始めに消える。
-const FATIGUE_TURNS := 1
+## 反動の残りのターン数（付けたときの値）。2 なら、もう一度の行動と次の自分の番の間は残り、その次の自分の番の始めに消える。
+const FATIGUE_TURNS := 2
 ## 反動の間に下がる攻撃力（回復役なら回復量）。
 const POWER_PENALTY := 3
 
@@ -33,7 +31,7 @@ func display_name() -> String:
 
 
 func summary() -> String:
-	return "行動済みの味方 1 体を、もう一度行動できるようにする。その駒は次の自分の番、攻撃力 -%d（対戦中 %d 回まで）" % [
+	return "行動済みの味方 1 体を、もう一度行動できるようにする。その駒は次の自分の番の終わりまで、攻撃力 -%d（対戦中 %d 回まで）" % [
 		POWER_PENALTY, MAX_USES,
 	]
 
@@ -59,4 +57,4 @@ func target_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 func apply(battle: Battle, _unit: Unit, target: Vector2i) -> Array[BattleEvent]:
 	var friend := battle.unit_at(target)
 	friend.reset_action()
-	return [UnitReactivatedEvent.new(friend.id), Statuses.add(friend, Status.Type.ADRENALINE, RUSH_TURNS)]
+	return [UnitReactivatedEvent.new(friend.id), Statuses.add(friend, Status.Type.FATIGUE, FATIGUE_TURNS)]

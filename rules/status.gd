@@ -10,13 +10,11 @@ extends RefCounted
 ## - 受けるダメージを 0 にする（blocks_damage）。1 回で外れる。ダメージの解決（Hit.resolve）が見る
 ## - 攻撃を確定クリティカルにする（critical_percent）。攻撃 1 回で外れる。Combat.hit が見る
 ## - 動くと外れる（breaks_on_move）
-## - 期限で外れると、別の状態に変わる（follow_up）
 
 enum Type {
 	BARRIER,  ## バリア。次に受けるダメージを 1 回だけ 0 にする（ディバインシールド）
 	AIM,  ## 照準。射程が伸び、次の攻撃が確定クリティカルになる。動くと外れる（精密照準）
-	ADRENALINE,  ## 高揚。それ自体は何もしない。期限で外れると、反動に変わる（アドレナリン注射）
-	FATIGUE,  ## 反動。攻撃力が下がる（アドレナリン注射のあと）
+	FATIGUE,  ## 反動。攻撃力が下がる（アドレナリン注射を受けた駒）
 }
 
 ## クリティカルでない攻撃の倍率（%）。
@@ -29,8 +27,6 @@ static func display_name(type: Type) -> String:
 			return "バリア"
 		Type.AIM:
 			return "照準"
-		Type.ADRENALINE:
-			return "高揚"
 		Type.FATIGUE:
 			return "反動"
 	return ""
@@ -43,14 +39,6 @@ static func bonus(type: Type) -> Dictionary:
 	if type == Type.FATIGUE:
 		return {Unit.Stat.POWER: -AdrenalineShotSkill.POWER_PENALTY}
 	return {}
-
-
-## 期限で外れたときに、続けて付く状態（[種類, 残りのターン数]）。無ければ空。
-## 期限のほかの外れ方（使い切った、動いた）では付かない。
-static func follow_up(type: Type) -> Array:
-	if type == Type.ADRENALINE:
-		return [Type.FATIGUE, AdrenalineShotSkill.FATIGUE_TURNS]
-	return []
 
 
 ## 受けるダメージを 0 にして、外れるか。
