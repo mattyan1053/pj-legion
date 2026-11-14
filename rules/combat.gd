@@ -133,5 +133,5 @@ static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[Battle
 	events.append_array(after)
 	events.append_array(Statuses.after_attack(attacker))
 	if target.hp == 0:
-		events.append(battle.remove_unit(target))
+		events.append_array(battle.remove_unit(target, attacker))
 	return events

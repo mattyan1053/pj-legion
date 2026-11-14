@@ -17,6 +17,8 @@ var size: Vector2i
 ## プレイヤーごとの本陣のマス。添字がプレイヤー番号（0 = プレイヤー1、1 = プレイヤー2）。
 var hq_cells: Array[Vector2i] = []
 var font_cells: Array[Vector2i] = []
+## 中ボス（エリートミニオン）を置くマス。添字が中ボスの番号（0 = 左、1 = 右。docs/neutral-mid-boss.md）。
+var mid_boss_cells: Array[Vector2i] = []
 ## 起爆樽のマス。爆発した樽はここから消える。
 var barrel_cells: Array[Vector2i] = []
 ## 回復の泉のマス。

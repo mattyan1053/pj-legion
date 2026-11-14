@@ -47,6 +47,10 @@ const KILL_VALUE := 60.0
 const KILL_VALUE_PER_COST := 10.0
 const HEALER_KILL_BONUS := 10.0
 const NEUTRAL_KILL_VALUE := 15.0
+## 中ボス（docs/neutral-mid-boss.md）へのダメージ 1 の価値と、倒す価値。
+## 削っただけでは、止めを相手に取られることがある。価値の大半を止めに置く。
+const MID_BOSS_DAMAGE_VALUE := 0.5
+const MID_BOSS_KILL_VALUE := 60.0
 ## 倒せなかった相手に残る HP 1 の減点（HP の少ない相手を先に狙う）。
 const REMAINING_HP_PENALTY := 0.2
 ## 自分の本陣からこの距離までに入った敵は「侵入者」。与えるダメージの価値を INTRUDER_RATE 倍にする。
@@ -679,7 +683,10 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 func _damage_value(victim: Unit, hp_after: int) -> float:
 	var rate := DAMAGE_VALUE
 	var kill := KILL_VALUE + KILL_VALUE_PER_COST * UnitKind.cost(victim.kind)
-	if victim.side == Unit.Side.NEUTRAL:
+	if victim.kind == UnitKind.Id.ELITE_MINION:
+		rate = MID_BOSS_DAMAGE_VALUE
+		kill = MID_BOSS_KILL_VALUE
+	elif victim.side == Unit.Side.NEUTRAL:
 		rate = NEUTRAL_DAMAGE_VALUE
 		kill = NEUTRAL_KILL_VALUE
 	elif victim.kind == UnitKind.Id.KING:
@@ -1241,7 +1248,7 @@ func _danger_in(
 ## - 動くと外れる状態（照準）の付いた相手は、いまのマスからは伸びた射程と強めた攻撃力で、ほかのマスからはもとの値で数える
 ## - そこから攻撃の届くマスは目安（動けるマスから射程の歩数まで。地形は見ない）。盾のあるときだけ、間の盾をルールに聞く
 ## - 相手のスキルで届くマスは SKILL_THREATS のメソッドが足す
-## - 中立の駒は、いまの位置から移動力 + 射程まで
+## - 中立の駒は、縄張りの中で止まれるマスから射程まで（中ボスも同じ）
 func _build_threats() -> void:
 	if _threats_ready:
 		return
@@ -1269,9 +1276,14 @@ func _fill_threats(
 		if enemy.side == _me:
 			continue
 		if enemy.side == Unit.Side.NEUTRAL:
-			# 中立の駒は動けるマスを聞けないので、いまの位置から広げる。隣まで寄れる距離も、移動力のぶん広い。
-			var reach := enemy.move_range() + enemy.attack_range()
-			_spread_threat(sim, enemy.id, enemy.power(), [enemy.cell], reach, false, enemy.move_range() + Combat.RANGED_DISTANCE - 1)
+			# 中立の駒は、縄張りの中の止まれるマス（Neutral.destination が選ぶ先）から攻撃する。
+			var posts: Array[Vector2i] = []
+			for cell: Vector2i in Movement.reachable(state, enemy, false):
+				if Neutral.in_territory(enemy, cell):
+					posts.append(cell)
+			if not posts.has(enemy.cell):
+				posts.append(enemy.cell)
+			_spread_threat(sim, enemy.id, enemy.power(), posts, enemy.attack_range())
 			continue
 		var foe := sim.unit_by_id(enemy.id) if next_phase else null
 		if foe == null:

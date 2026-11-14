@@ -127,7 +127,7 @@ static func deal_damage(battle: Battle, user: Unit, hits: Array[Array]) -> Array
 	for hit in hits:
 		var victim: Unit = hit[0]
 		if victim.hp == 0 and battle.units.has(victim):
-			events.append(battle.remove_unit(victim))
+			events.append_array(battle.remove_unit(victim, user))
 	var reason := ExperienceGainedEvent.Reason.DEFEAT if defeated else ExperienceGainedEvent.Reason.HIT
 	events.append_array(Growth.gain(user, experience, reason))
 	return events

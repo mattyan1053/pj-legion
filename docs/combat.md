@@ -34,7 +34,7 @@
 - 攻撃すると行動を終える。
 - 返すイベントは順に、`UnitDamagedEvent`（与えたダメージと、受けたあとの HP。`critical`、`blocked_by`）、
   バリアが防いだなら守る側の `StatusRemovedEvent`、照準で撃ったなら攻撃側の `StatusRemovedEvent`、
-  倒れたなら `UnitDefeatedEvent`、攻撃した駒が育つなら経験値（`ExperienceGainedEvent`、上がれば `LevelUpEvent`。
+  倒れたなら `UnitDefeatedEvent`（中ボスなら続けて `MidBossDefeatedEvent`。`docs/neutral-mid-boss.md`）、攻撃した駒が育つなら経験値（`ExperienceGainedEvent`、上がれば `LevelUpEvent`。
   `docs/experience-levelup.md`）、最後に `UnitActedEvent`。
 - `UnitDamagedEvent` のダメージは計算した値（残り HP より大きくてもそのまま）。`cause` は `ATTACK`。
 - 煙幕に阻まれた攻撃は、`UnitDamagedEvent` のかわりに `SmokeBlockedEvent`。経験値は入らず、`UnitActedEvent` で終わる。

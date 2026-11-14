@@ -1,12 +1,12 @@
 class_name Neutral
 extends RefCounted
-## 中立のフェーズ: 中立の駒（エナジー・コア）が動き、近くのプレイヤーの駒を襲い、結晶泉に新しく湧く。
+## 中立のフェーズ: 中立の駒（エナジー・コアと中ボス）が動き、近くのプレイヤーの駒を襲い、結晶泉と中ボスの場所に新しく湧く。
 ##
 ## 中立の駒はどちらのプレイヤーにも操作されない。中立のフェーズに、ここが 1 体ずつ動かす。
 ## 移動・攻撃は、プレイヤーの駒と同じ計算（Movement、Combat）と同じイベントを通す。
 ## 確率は Battle.rng だけを使う。
 ##
-## 中立の駒は「家」（Unit.home_cell。エナジー・コアなら、湧いた結晶泉）の周りの縄張りを守る:
+## 中立の駒は「家」（Unit.home_cell。エナジー・コアなら湧いた結晶泉、中ボスなら置かれた場所）の周りの縄張りを守る:
 ## - 縄張りは、家からマンハッタン距離 TERRITORY_RADIUS 以内のマス。縄張りの外には止まらない
 ## - 狙うのは、縄張りから攻撃が届くプレイヤーの駒（家からの距離が TERRITORY_RADIUS + 射程 以内）
 ## - 狙う相手がいなければ、家へ戻る
@@ -22,11 +22,14 @@ const TERRITORY_RADIUS := 4
 const RESPAWN_CHANCE_PERCENT := 35
 ## 結晶泉に湧く中立の駒の種類。
 const SPAWN_KIND := UnitKind.Id.MINION
+## 中ボス（docs/neutral-mid-boss.md）の種類と、現れるターン（このターンの中立のフェーズ。場所が空くまで待つ）。
+const MID_BOSS_KIND := UnitKind.Id.ELITE_MINION
+const MID_BOSS_SPAWN_TURN := 1
 
 
 ## 中立のフェーズの中身（PhaseStartedEvent のあと）。起きたことを起きた順に返す。
 ## 1. いまいる中立の駒が、番号の順に 1 体ずつ動いて攻撃する（湧いたばかりの駒は、次のフェーズから動く）
-## 2. 空いている結晶泉に湧く（盤面の font_cells の順）
+## 2. 空いている結晶泉に湧く（盤面の font_cells の順）。続けて、中ボスが現れる（mid_boss_cells の順）
 ## 駒 1 体の行動のたびに Battle.settle() を呼ぶ。決着したら、そこで止める。
 static func play_phase(battle: Battle) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
@@ -43,6 +46,7 @@ static func play_phase(battle: Battle) -> Array[BattleEvent]:
 		if battle.is_over():
 			return events
 	events.append_array(spawn(battle))
+	events.append_array(spawn_mid_bosses(battle))
 	return events
 
 
@@ -61,6 +65,26 @@ static func spawn(battle: Battle) -> Array[BattleEvent]:
 			continue
 		var unit := battle.add_unit(SPAWN_KIND, Unit.Side.NEUTRAL, font)
 		unit.home_cell = font
+		events.append(UnitSpawnedEvent.new(unit))
+	return events
+
+
+## 中ボスを、盤面の中ボスの場所（Board.mid_boss_cells）に 1 体ずつ置く（UnitSpawnedEvent）。
+## - MID_BOSS_SPAWN_TURN から。確率は使わない
+## - 倒れた中ボスは、二度と現れない（Battle.is_mid_boss_defeated）。生きている間も、もう 1 体は置かない
+## - 場所にほかの駒が乗っている間は、現れない（空いた中立のフェーズに現れる）
+static func spawn_mid_bosses(battle: Battle) -> Array[BattleEvent]:
+	var events: Array[BattleEvent] = []
+	if battle.turn < MID_BOSS_SPAWN_TURN:
+		return events
+	for index in battle.board.mid_boss_cells.size():
+		var cell := battle.board.mid_boss_cells[index]
+		if battle.is_mid_boss_defeated(index) or guardian_of(battle, cell) != null:
+			continue
+		var unit := battle.add_unit(MID_BOSS_KIND, Unit.Side.NEUTRAL, cell)
+		if unit == null:
+			continue  # 駒が乗っているか、入れないマス
+		unit.home_cell = cell
 		events.append(UnitSpawnedEvent.new(unit))
 	return events
 

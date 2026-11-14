@@ -60,3 +60,27 @@ func test_a_second_cpu_can_play_player_two() -> void:
 	assert_eq(paired.turns, alone.turns)
 	assert_eq(paired.actions, alone.actions)
 	assert_eq(paired.winner, alone.winner)
+
+
+func test_skill_kill_of_a_mid_boss_and_a_unit_counts_the_bigger_reward() -> void:
+	# ファイアボール 1 発で中ボスとプレイヤーの駒が倒れたら、入る経験値（いちばん多い 1 体ぶん）は中ボスの撃破。
+	for boss_first: bool in [true, false]:
+		var battle := Maps.battle(["........", "........", "........"])
+		var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER1, Vector2i(1, 1))
+		var boss_cell := Vector2i(4, 1) if boss_first else Vector2i(5, 1)
+		var victim_cell := Vector2i(5, 1) if boss_first else Vector2i(4, 1)
+		var boss := battle.add_unit(UnitKind.Id.ELITE_MINION, Unit.Side.NEUTRAL, boss_cell)
+		battle.board.mid_boss_cells = [boss_cell]
+		boss.home_cell = boss_cell
+		boss.hp = 1
+		var victim := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, victim_cell)
+		victim.hp = 1
+		var outcome := CpuMatch.Outcome.new()
+		outcome.kinds[sorcerer.id] = sorcerer.kind
+		outcome.sides[sorcerer.id] = sorcerer.side
+		var result := battle.apply(UseSkillAction.new(sorcerer.id, Vector2i(4, 1)))
+		assert_true(result.accepted)
+		for event in result.events:
+			CpuMatch._count(outcome, battle, Unit.Side.PLAYER1, event)
+		assert_eq(outcome.gains[sorcerer.id], [0, 0, 0, 0, 1], "中ボスが先: %s" % boss_first)
+		assert_eq(outcome.mid_boss_kills.size(), 1)

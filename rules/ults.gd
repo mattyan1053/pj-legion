@@ -108,11 +108,13 @@ static func charge_phase(battle: Battle, side: Unit.Side) -> void:
 ## 適用したダメージ（Hit）のぶんをためる。駒の攻撃（Combat.strike）とスキルのダメージ（Skills.deal_damage）が呼ぶ。
 ## 数えるのは実際に減った HP（Hit.lost）。防がれたダメージと、残りの HP を超えたぶんは数えない。
 ## 与えた駒のいないダメージ（起爆樽の爆発）と、味方へのダメージは数えない。
+## 中ボスから受けたダメージも数えない（中ボスは自分から狩りに行く相手。受けたぶんでためると、狩りがゲージの稼ぎ場になる）。
 static func charge_hit(battle: Battle, hit: Hit) -> void:
 	if hit.source == null or hit.lost <= 0 or not hit.source.is_enemy_of(hit.target):
 		return
 	charge(battle, hit.source.side, hit.lost * DEALT_GAIN)
-	charge(battle, hit.target.side, hit.lost * TAKEN_GAIN)
+	if hit.source.kind != UnitKind.Id.ELITE_MINION:
+		charge(battle, hit.target.side, hit.lost * TAKEN_GAIN)
 
 
 ## 駒が倒れた（Battle.remove_unit が呼ぶ）。原因は問わない。将は数えない（倒れたら決着する）。

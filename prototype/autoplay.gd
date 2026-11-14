@@ -63,6 +63,7 @@ func _process(_delta: float) -> void:
 			_queue_extra_action_scene()
 			_queue_ult_scene()
 			_queue_neutral_scene()
+			_queue_mid_boss_scene()
 			_queue_level_up_scene()
 			_queue_evolution_scene()
 			_queue_heal_scene()
@@ -492,6 +493,33 @@ func _queue_neutral_scene() -> void:
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった"))
+
+
+## 中ボスが現れ、弱った別の中ボスに止めを刺すと、倒した陣営が知らされる。
+func _queue_mid_boss_scene() -> void:
+	var board := _small_board(Vector2i(8, 5))
+	board.mid_boss_cells = [Vector2i(2, 2), Vector2i(6, 2)]
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var weak := battle.add_unit(UnitKind.Id.ELITE_MINION, Unit.Side.NEUTRAL, board.mid_boss_cells[0])
+	weak.home_cell = weak.cell
+	weak.hp = 1
+	var raider := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER1, Vector2i(2, 4))
+
+	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.click_cell(raider.cell))
+	_scripted.append(func() -> void: _scene.click_cell(Vector2i(2, 3)))
+	_scripted.append(func() -> void: _scene.click_cell(weak.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.played.get(MidBossDefeatedEvent, 0) == 1, "中ボスを倒したことを再生しなかった")
+		_expect(battle.mid_boss_slayers.get(0, -1) == Unit.Side.PLAYER1, "倒した陣営が控えられていない"))
+	_scripted.append(_end_turn)
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		var boss := battle.unit_at(board.mid_boss_cells[1])
+		_expect(boss != null and boss.kind == UnitKind.Id.ELITE_MINION, "中ボスが現れなかった")
+		_expect(battle.unit_at(board.mid_boss_cells[0]) == null, "倒れた中ボスがまた現れた"))
 
 
 ## あと 10 でレベルが上がる駒が敵を倒し、経験値が入ってレベルが上がる。

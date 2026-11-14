@@ -1,6 +1,6 @@
 class_name UnitSpawnedEvent
 extends BattleEvent
-## 駒が盤に現れた（中立のフェーズに、結晶泉にエナジー・コアが湧いた）。
+## 駒が盤に現れた（中立のフェーズに、結晶泉にエナジー・コアが湧いた。中ボスが現れた）。
 ## 見た目は、この値だけで駒を作って置ける。home_cell はその駒が守る場所（docs/neutral-minion.md）。
 
 var unit_id: int

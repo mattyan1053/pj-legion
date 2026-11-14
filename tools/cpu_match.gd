@@ -33,7 +33,9 @@ class Outcome:
 	## 倒した中立の駒、倒されたプレイヤーの駒（将を除く）。
 	var neutral_kills: Array[int] = [0, 0]
 	var losses: Array[int] = [0, 0]
-	## 駒の番号 -> [当てた回数, プレイヤーの駒を倒した回数, 中立の駒を倒した回数, 回復した回数]（経験値が入ったものだけ）。
+	## 倒れた中ボス。[倒れたターン, 倒した陣営（いなければ -1）] の列（docs/neutral-mid-boss.md）。
+	var mid_boss_kills: Array[Array] = []
+	## 駒の番号 -> [当てた回数, プレイヤーの駒を倒した回数, 中立の駒を倒した回数, 回復した回数, 中ボスを倒した回数]（経験値が入ったものだけ）。
 	var gains: Dictionary[int, Array] = {}
 	## 雇った駒（将を除く）の数。
 	var hired: Array[int] = [0, 0]
@@ -49,14 +51,15 @@ class Outcome:
 	## 経験値のイベントは、育ちきった駒と将には出ないので、そこからは数えない。
 	var last_attacker_id := 0
 	var last_attacked_id := 0
-	## いちばん最近に倒れた駒が中立だったか（撃破の経験値が、どちらの撃破のものかを見分ける）。
-	var last_defeated_neutral := false
+	## 次の撃破の経験値が、どの撃破のものか（gains の列: 1 = プレイヤーの駒、2 = 中立の駒、4 = 中ボス）。
+	## 駒の攻撃では、いちばん最近に倒れた駒。スキルでは、その行動で倒れた駒のうち、経験値のいちばん多いもの（Skills.deal_damage と同じ）。
+	var defeat_column := 1
 	## スキル -> 使った回数。
 	var skill_uses: Dictionary[Skill.Id, int] = {}
 	## いまの行動でスキルのダメージを受けた駒 -> 使った駒（同じスキルで何体も同時に倒れるので、撃破をここから数える）。
 	var skill_hits: Dictionary[int, int] = {}
-	## いまの行動のスキルで、プレイヤーの駒が倒れたか（スキルの経験値は、いちばん多い 1 体ぶん = プレイヤーの駒の撃破になる）。
-	var skill_defeated_player := false
+	## いまの行動のスキルで倒れた駒のうち、経験値のいちばん多いものの列（無ければ 0）。
+	var skill_defeat_column := 0
 	## 必殺技を使った回数（プレイヤー番号ごと）と、最初に使ったターン（使わなければ 0）。
 	var ult_uses: Array[int] = [0, 0]
 	var first_ult_turn: Array[int] = [0, 0]
@@ -144,9 +147,16 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 			_bump(outcome, burned.user_id, 2, burned.amount)
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
-		if outcome.skill_hits.has(defeated.unit_id) and defeated.side != Unit.Side.NEUTRAL:
-			outcome.skill_defeated_player = true
-		outcome.last_defeated_neutral = defeated.side == Unit.Side.NEUTRAL and not outcome.skill_defeated_player
+		var column := 1
+		if defeated.kind == UnitKind.Id.ELITE_MINION:
+			column = 4
+		elif defeated.side == Unit.Side.NEUTRAL:
+			column = 2
+		if outcome.skill_hits.has(defeated.unit_id):
+			if _defeat_experience(column) > _defeat_experience(outcome.skill_defeat_column):
+				outcome.skill_defeat_column = column
+			column = outcome.skill_defeat_column
+		outcome.defeat_column = column
 		var killer := 0
 		if outcome.last_attacked_id == defeated.unit_id:
 			killer = outcome.last_attacker_id
@@ -160,19 +170,21 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 		elif defeated.kind != UnitKind.Id.KING:
 			outcome.losses[defeated.side] += 1
 			_bump(outcome, defeated.unit_id, 1, 1)
+	elif event is MidBossDefeatedEvent:
+		outcome.mid_boss_kills.append([battle.turn, (event as MidBossDefeatedEvent).slayer_side])
 	elif event is ExperienceGainedEvent:
 		var gained := event as ExperienceGainedEvent
-		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0])
+		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0, 0])
 		match gained.reason:
 			ExperienceGainedEvent.Reason.HIT:
 				tally[0] += 1
 			ExperienceGainedEvent.Reason.DEFEAT:
-				tally[2 if outcome.last_defeated_neutral else 1] += 1
+				tally[outcome.defeat_column] += 1
 			ExperienceGainedEvent.Reason.HEAL:
 				tally[3] += 1
 	elif event is UnitActedEvent:
 		outcome.skill_hits.clear()
-		outcome.skill_defeated_player = false
+		outcome.skill_defeat_column = 0
 	elif event is SkillUsedEvent:
 		var used := event as SkillUsedEvent
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
@@ -194,3 +206,15 @@ static func _bump(outcome: Outcome, unit_id: int, column: int, amount: int) -> v
 	var kind := outcome.kinds[unit_id]
 	outcome.by_kind.get_or_add(kind, [0, 0, 0, 0, 0])[column] += amount
 	outcome.by_side_kind[outcome.sides[unit_id]].get_or_add(kind, [0, 0, 0, 0, 0])[column] += amount
+
+
+## gains の列（撃破の種類）の、撃破の経験値。0（倒れていない）は 0。
+static func _defeat_experience(column: int) -> int:
+	match column:
+		1:
+			return Growth.DEFEAT_EXPERIENCE
+		2:
+			return Growth.NEUTRAL_DEFEAT_EXPERIENCE
+		4:
+			return Growth.MID_BOSS_DEFEAT_EXPERIENCE
+	return 0

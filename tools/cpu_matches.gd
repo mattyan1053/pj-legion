@@ -45,6 +45,12 @@ class Tally:
 	var army_wins: Array[int] = [0, 0]
 	var neutral_kills := 0
 	var losses := 0
+	## 中ボス: 1 体でも倒れた局の数、倒れた数、倒れたターン、倒した側が勝った数・負けた数（決着した局だけ）。
+	var boss_games := 0
+	var boss_kills := 0
+	var boss_turns: Array[int] = []
+	var boss_slayer_wins := 0
+	var boss_slayer_losses := 0
 
 	func add(outcome: CpuMatch.Outcome) -> void:
 		games += 1
@@ -60,6 +66,30 @@ class Tally:
 			first_evolution_turns.append(outcome.first_evolution_turn)
 		neutral_kills += outcome.neutral_kills[0] + outcome.neutral_kills[1]
 		losses += outcome.losses[0] + outcome.losses[1]
+		if not outcome.mid_boss_kills.is_empty():
+			boss_games += 1
+		for kill: Array in outcome.mid_boss_kills:
+			boss_kills += 1
+			boss_turns.append(kill[0])
+			if outcome.winner >= 0 and kill[1] >= 0:
+				if kill[1] == outcome.winner:
+					boss_slayer_wins += 1
+				else:
+					boss_slayer_losses += 1
+
+	func boss_line(name: String) -> String:
+		var sorted := boss_turns.duplicate()
+		sorted.sort()
+		var total := 0
+		for value: int in sorted:
+			total += value
+		@warning_ignore("integer_division")
+		var median: int = 0 if sorted.is_empty() else sorted[sorted.size() / 2]
+		return "%-22s 倒れた局 %3.0f%%  1 局あたり %4.2f 体  倒れたターン 平均 %4.1f 中央 %2d  倒した側 %3d 勝 %3d 敗（%3.0f%%）" % [
+			name, 100.0 * boss_games / maxi(1, games), float(boss_kills) / maxi(1, games),
+			float(total) / maxi(1, sorted.size()), median,
+			boss_slayer_wins, boss_slayer_losses, 100.0 * boss_slayer_wins / maxi(1, boss_slayer_wins + boss_slayer_losses),
+		]
 
 	func line(name: String) -> String:
 		var sorted := turns.duplicate()
@@ -104,7 +134,7 @@ func _initialize() -> void:
 	var army_wins := {UnitKind.Army.MILITARY: 0, UnitKind.Army.FANTASY: 0}
 	var mixed_games := 0
 	var hired := 0
-	var gains: Array[int] = [0, 0, 0, 0]  # 当てた、倒した、中立を倒した、回復した 回数
+	var gains: Array[int] = [0, 0, 0, 0, 0]  # 当てた、倒した、中立を倒した、回復した、中ボスを倒した 回数
 	var by_kind: Dictionary[UnitKind.Id, Array] = {}
 	var skill_uses: Dictionary[Skill.Id, int] = {}
 	# 軍 -> [出た回数, 必殺技を使った回数, 使った側の数, そのうち勝った数, 使わなかった側の数, そのうち勝った数, 最初に使ったターンの合計, 1 回でも使った側の数]。
@@ -186,7 +216,7 @@ func _initialize() -> void:
 		hired += outcome.hired[0] + outcome.hired[1]
 		for unit_id in outcome.gains:
 			var tally: Array = outcome.gains[unit_id]
-			for i in 4:
+			for i in 5:
 				gains[i] += tally[i]
 			var need := Growth.EXPERIENCE_PER_LEVEL
 			if _experience(tally, Growth.HIT_EXPERIENCE) >= need:
@@ -216,6 +246,12 @@ func _initialize() -> void:
 	for match_name in by_match:
 		print(by_match[match_name].line(match_name))
 	print("")
+	print("")
+	print("中ボス（倒した側の勝ち負けは、決着した局だけ）")
+	print(all.boss_line("全体"))
+	for stage: int in by_stage:
+		print(by_stage[stage].boss_line("ステージ " + STAGE_NAMES[stage]))
+	print("")
 	var decided := all.wins[0] + all.wins[1]
 	print("先手（プレイヤー1）の勝率: %.1f%%（決着した %d 局のうち）" % [100.0 * all.wins[0] / maxi(1, decided), decided])
 	var mixed_decided: int = army_wins[UnitKind.Army.MILITARY] + army_wins[UnitKind.Army.FANTASY]
@@ -242,12 +278,14 @@ func _initialize() -> void:
 	var sources: Array[int] = [
 		gains[0] * Growth.HIT_EXPERIENCE, gains[1] * Growth.DEFEAT_EXPERIENCE,
 		gains[2] * Growth.NEUTRAL_DEFEAT_EXPERIENCE, gains[3] * Growth.HEAL_EXPERIENCE,
+		gains[4] * Growth.MID_BOSS_DEFEAT_EXPERIENCE,
 	]
-	var earned := sources[0] + sources[1] + sources[2] + sources[3]
+	var earned := sources[0] + sources[1] + sources[2] + sources[3] + sources[4]
 	print("入った経験値: 1 局あたり %.0f（雇った駒 1 体あたり %.0f）" % [float(earned) / games, float(earned) / hired])
-	print("  内訳: 当たり %.0f%%（%.1f 回）、撃破 %.0f%%（%.1f 回）、中立の撃破 %.0f%%（%.1f 回）、回復 %.0f%%（%.1f 回）。回数は 1 局あたり" % [
+	print("  内訳: 当たり %.0f%%（%.1f 回）、撃破 %.0f%%（%.1f 回）、中立の撃破 %.0f%%（%.1f 回）、回復 %.0f%%（%.1f 回）、中ボスの撃破 %.0f%%（%.2f 回）。回数は 1 局あたり" % [
 		100.0 * sources[0] / maxi(1, earned), float(gains[0]) / games, 100.0 * sources[1] / maxi(1, earned), float(gains[1]) / games,
 		100.0 * sources[2] / maxi(1, earned), float(gains[2]) / games, 100.0 * sources[3] / maxi(1, earned), float(gains[3]) / games,
+		100.0 * sources[4] / maxi(1, earned), float(gains[4]) / games,
 	])
 	print("")
 	print("駒の種類ごと（1 体あたり。将は 1 局・1 体あたり）")
@@ -299,6 +337,7 @@ func _experience(tally: Array, hit: int) -> int:
 	return (
 		tally[0] * hit + tally[1] * Growth.DEFEAT_EXPERIENCE
 		+ tally[2] * Growth.NEUTRAL_DEFEAT_EXPERIENCE + tally[3] * Growth.HEAL_EXPERIENCE
+		+ tally[4] * Growth.MID_BOSS_DEFEAT_EXPERIENCE
 	)
 
 
