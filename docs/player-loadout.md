@@ -47,6 +47,7 @@
    持っている装備のぶんを足す（`Unit.base_stat`）。
 2. **聖遺物**: `Unit.relic_bonus`（能力値 → 足す量）。
 3. **一時的な補正**: `Unit.temporary_bonus`（能力値 → 足す量。負の値もある）。
+   駒に付いている状態（`docs/unit-statuses.md`）の補正の合計。状態を付ける・外す処理（`Statuses`）が足し引きし、状態と一緒に期限が来る。
 
 - ルールは `Unit.max_hp()` / `power()` / `move_range()` / `attack_range()` を使う。種類の表を直に読まない。
 - 実効値は、最大 HP は 1、ほかは 0 を下回らない。

@@ -42,7 +42,7 @@ func test_shield_trooper_has_it() -> void:
 	var skill := Skills.of_kind(UnitKind.Id.SHIELD_TROOPER)
 	assert_eq(skill.id(), Skill.Id.TACTICAL_BARRICADE)
 	assert_eq(skill.cooldown(), TacticalBarricadeSkill.COOLDOWN)
-	assert_eq(Skills.of_kind(UnitKind.Id.PALADIN), null, "もう一方の前衛は持たない")
+	assert_ne(Skills.of_kind(UnitKind.Id.PALADIN).id(), Skill.Id.TACTICAL_BARRICADE, "もう一方の前衛は持たない")
 
 
 func test_targets_are_the_free_cells_around_the_unit() -> void:

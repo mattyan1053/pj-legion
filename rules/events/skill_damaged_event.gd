@@ -9,10 +9,7 @@ var user_id: int
 var skill: Skill.Id
 
 
-func _init(by_unit_id: int, used: Skill.Id, damaged_unit_id: int, damage: int, hp_after: int) -> void:
-	user_id = by_unit_id
+func _init(used: Skill.Id, hit: Hit) -> void:
+	user_id = hit.source.id
 	skill = used
-	unit_id = damaged_unit_id
-	amount = damage
-	hp = hp_after
-	cause = Cause.SKILL
+	_fill(hit)

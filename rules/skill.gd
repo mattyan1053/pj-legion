@@ -17,6 +17,8 @@ enum Id {
 	SAINT_PLACE,  ## セイントプレイス（プリースト）
 	SMOKE_GRENADE,  ## スモークグレネード（コマンドー）
 	FIREBALL,  ## ファイアボール（ソーサラー）
+	DIVINE_SHIELD,  ## ディバインシールド（パラディン）
+	PRECISION_AIM,  ## 精密照準（スナイパー）
 }
 
 

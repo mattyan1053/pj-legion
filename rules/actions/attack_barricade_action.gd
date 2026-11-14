@@ -30,5 +30,6 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	if barricade.durability == 0:
 		battle.board.remove_field_effect(barricade)
 		events.append(FieldEffectRemovedEvent.new(barricade, FieldEffectRemovedEvent.Reason.DESTROYED))
+	events.append_array(Statuses.after_attack(attacker))
 	events.append(battle.finish_action(attacker))
 	return events

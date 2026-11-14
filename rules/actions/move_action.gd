@@ -4,6 +4,7 @@ extends BattleAction
 ##
 ## 行動できる駒が、1 回の行動につき 1 回だけ動ける。いまのマスを行き先にしてもよい（動かない移動）。
 ## 道がポータルを通るときは、歩いた区間ごとの UnitMovedEvent の間に UnitWarpedEvent が入る。
+## ほかのマスへ動くと、動くと外れる状態（照準）が外れる（StatusRemovedEvent。移動のイベントのあと）。動かない移動では外れない。
 ## 動いたあとは、攻撃・待機・移動の取り消しのどれかで行動を続ける。
 
 var unit_id: int
@@ -32,7 +33,11 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	unit.has_moved = true
 	unit.move_origin = unit.cell
 	unit.cruised = cruise
+	var moved := to != unit.cell
 	unit.cell = to
+	unit.statuses_before_move = {}
+	if moved:
+		events.append_array(Statuses.after_move(unit))
 	return events
 
 

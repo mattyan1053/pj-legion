@@ -87,6 +87,8 @@ const SKILL_VALUES := {
 	Skill.Id.TACTICAL_BARRICADE: &"_barricade_value",
 	Skill.Id.SAINT_PLACE: &"_sanctuary_value",
 	Skill.Id.SMOKE_GRENADE: &"_smoke_value",
+	Skill.Id.DIVINE_SHIELD: &"_barrier_value",
+	Skill.Id.PRECISION_AIM: &"_aim_value",
 }
 ## 盾: 敵の射線を 1 本切る価値は、その敵の攻撃 1 回ぶんのダメージの価値の何倍か（敵は回り込めるので、1 より小さい）。
 const BARRICADE_COVER_RATE := 0.75
@@ -97,6 +99,14 @@ const SANCTUARY_EXPECTED_HEALS := 2
 ## 狙っている敵 1 体を防ぐ価値は、その敵の攻撃 1 回ぶんのダメージの価値の何倍か（敵は隣まで寄れば当てられるので、1 より小さい）。
 const SMOKE_MIN_UNITS := 2
 const SMOKE_COVER_RATE := 0.75
+## バリア: 次の相手の番に自分を攻撃できる敵のうち、いちばん強い 1 体の攻撃を防ぐと見込む。
+## その価値は、その攻撃 1 回ぶんのダメージの価値の何倍か（敵は弱い攻撃で先にはがせるので、1 より小さい）。
+const BARRIER_COVER_RATE := 0.75
+## 照準: 次の自分の番に、強めた攻撃を当てられそうな敵 1 体への、その攻撃の価値の何倍を見込むか。
+## いま伸びた射程の中にいる敵（AIM_RATE）と、1 回動けば入ってくる敵（AIM_WATCH_RATE）。
+## いまの位置から攻撃できる敵は数えない（構えるより、いま撃つほうが早い）。
+const AIM_RATE := 0.4
+const AIM_WATCH_RATE := 0.2
 
 const _GOAL := 0
 const _DANGER := 1
@@ -136,6 +146,8 @@ var _idle_danger_weight := 0.0
 var _hq_in_danger := false
 var _lethal_penalty := 0.0
 var _stand_off := false
+## いま考えている駒が、ほかのマスへ動いたあとの射程（動くと外れる状態で伸びた射程は、動くと戻る）。
+var _moved_reach := 0
 ## いま考えている駒が、戦える駒のいなくなった軍の将か。
 var _lone_king := false
 
@@ -266,6 +278,7 @@ func _plan(unit: Unit) -> BattleAction:
 	var options := _battle.options(unit.id)
 	_set_goal(unit)
 	_build_threats()
+	_moved_reach = Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
 
 	# 動くだけ（待機）の手。
 	var best_cell := unit.cell
@@ -363,11 +376,15 @@ func _candidates(unit: Unit, cells: Dictionary[Vector2i, float]) -> Array[Array]
 
 ## cells のどれかから、at が射程の歩数の中にあるか。
 func _in_reach(unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i) -> bool:
-	var reach := unit.attack_range()
 	for cell in cells:
-		if Combat.distance(cell, at) <= reach:
+		if Combat.distance(cell, at) <= _reach_from(unit, cell):
 			return true
 	return false
+
+
+## unit が cell から手を出すときの射程。いまのマスなら、いまの射程。ほかのマスなら、動いたあとの射程。
+func _reach_from(unit: Unit, cell: Vector2i) -> int:
+	return unit.attack_range() if cell == unit.cell else _moved_reach
 
 
 ## cells（通常の移動で止まれるマス）のうち、at に手が届き、そこで手を出すのにいちばん良いマス。無ければ Board.NO_CELL。
@@ -376,12 +393,12 @@ func _in_reach(unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i) -> 
 func _best_cell_in_reach(
 	unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i, target_id: int, ignored_id: int, avoid_blast: bool
 ) -> Vector2i:
-	var reach := unit.attack_range()
 	var healer := UnitKind.role(unit.kind) == UnitKind.Role.HEALER
 	var target := _battle.unit_by_id(target_id)
 	var best := Board.NO_CELL
 	var best_value := -INF
 	for cell in cells:
+		var reach := _reach_from(unit, cell)
 		if healer:
 			if Combat.distance(cell, at) > reach:
 				continue
@@ -530,6 +547,44 @@ func _smoke_value(used: SkillUsedEvent, sim: Battle) -> float:
 			covered += 1
 			value += worth
 	return value if covered >= SMOKE_MIN_UNITS else 0.0
+
+
+## バリアを付けた価値。次の相手の番に、いまのマスの自分を攻撃できる敵がいれば、いちばん強い 1 体の攻撃を防ぐぶんを見込む。
+## 攻撃されそうになければ 0（バリアは期限で消える）。
+func _barrier_value(used: SkillUsedEvent, _sim: Battle) -> float:
+	_build_threats()
+	var unit := _battle.unit_by_id(used.unit_id)
+	if Statuses.has(unit, Status.Type.BARRIER) or not _threats.has(unit.cell):
+		return 0.0
+	var strongest := 0
+	var by: Dictionary = _threats[unit.cell]
+	for enemy_id: int in by:
+		strongest = maxi(strongest, by[enemy_id])
+	return BARRIER_COVER_RATE * DAMAGE_VALUE * mini(strongest, unit.hp)
+
+
+## 照準を付けた価値。次の自分の番に、構えたマスから強めた攻撃を当てられそうな敵のうち、いちばん価値の高い 1 体ぶん。
+## 当てたときのダメージは、構えたあとの複製（sim）のルールの答え（Combat.damage。確定クリティカル、森、煙幕、バリアを通る）。
+## - いまの位置から攻撃できる敵は数えない
+## - 伸びた射程の中にいる敵は AIM_RATE、相手が 1 回動けば入ってくる距離の敵は AIM_WATCH_RATE（距離は目安。地形は見ない）
+func _aim_value(used: SkillUsedEvent, sim: Battle) -> float:
+	var unit := _battle.unit_by_id(used.unit_id)
+	var aimed := sim.unit_by_id(used.unit_id)
+	var best := 0.0
+	if Statuses.has(unit, Status.Type.AIM):
+		return best  # もう構えている
+	for enemy in _battle.units:
+		if enemy.side != _foe or Combat.can_attack(_battle, unit, enemy):
+			continue
+		var rate := AIM_WATCH_RATE
+		if Combat.can_attack(sim, aimed, sim.unit_by_id(enemy.id)):
+			rate = AIM_RATE
+		elif Combat.distance(unit.cell, enemy.cell) > aimed.attack_range() + enemy.move_range():
+			continue
+		var amount := Combat.damage(sim, aimed, sim.unit_by_id(enemy.id))
+		if amount > 0:
+			best = maxf(best, rate * _damage_value(enemy, maxi(0, enemy.hp - amount)))
+	return best
 
 
 # ---- 位置の価値 ----

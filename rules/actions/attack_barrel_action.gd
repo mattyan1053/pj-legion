@@ -32,10 +32,14 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	]
 	battle.board.remove_barrel(cell)
 	# 爆発は同時に当たる。全員のダメージを先に並べ、倒れた駒はそのあとにまとめて取り除く。
+	# バリアで防いだ駒の状態が外れるイベントは、全員のダメージのあとに並べる。
+	var after: Array[BattleEvent] = []
 	for victim in victims:
-		var amount := MapObject.blast_damage(victim)
-		victim.hp = maxi(0, victim.hp - amount)
-		events.append(ExplosionDamagedEvent.new(cell, victim.id, amount, victim.hp))
+		var hit := MapObject.blast_hit(victim)
+		after.append_array(hit.apply())
+		events.append(ExplosionDamagedEvent.new(cell, hit))
+	events.append_array(after)
+	events.append_array(Statuses.after_attack(attacker))
 	for victim in victims:
 		if victim.hp == 0:
 			events.append(battle.remove_unit(victim))

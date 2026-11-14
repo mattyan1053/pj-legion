@@ -3,6 +3,7 @@ class_name UnitDamagedEvent
 extends BattleEvent
 ## 駒がダメージを受けた。amount は減った HP、hp は受けたあとの HP。
 ##
+## 中身は、解決したダメージ（Hit）から写す。
 ## 実際に出るのは、原因ごとの子のクラス。原因に固有の値（攻撃した駒など）は、子のクラスだけが持つ。
 ## HP の変化だけを追うなら、このクラスとして読めば足りる（`event as UnitDamagedEvent`）。
 ##
@@ -20,3 +21,23 @@ var unit_id: int
 var amount: int
 var hp: int
 var cause: Cause
+## 確定クリティカルの攻撃だったか（駒の攻撃だけ。amount は倍率を掛けたあとの量）。
+var critical := false
+## ダメージを 0 にした、受けた駒の状態（Status.Type。バリア）。防がれていなければ -1。
+## 防がれたときは amount が 0 で、このあとに、その状態が外れる StatusRemovedEvent が続く。
+var blocked_by := -1
+
+
+## 解決したダメージ（適用したあとの Hit）の中身を写す。子のクラスの _init が呼ぶ。
+func _fill(hit: Hit) -> void:
+	unit_id = hit.target.id
+	amount = hit.amount
+	hp = hit.hp_after
+	cause = hit.cause
+	critical = hit.critical
+	blocked_by = hit.blocked_by
+
+
+## 受けた駒の状態に防がれて、ダメージが 0 になったか。
+func is_blocked() -> bool:
+	return blocked_by != -1

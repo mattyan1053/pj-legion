@@ -9,9 +9,6 @@ extends UnitDamagedEvent
 var barrel_cell: Vector2i
 
 
-func _init(exploded_cell: Vector2i, damaged_unit_id: int, damage: int, hp_after: int) -> void:
+func _init(exploded_cell: Vector2i, hit: Hit) -> void:
 	barrel_cell = exploded_cell
-	unit_id = damaged_unit_id
-	amount = damage
-	hp = hp_after
-	cause = Cause.EXPLOSION
+	_fill(hit)

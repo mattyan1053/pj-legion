@@ -55,6 +55,7 @@
   - 攻撃できるのは、盾の持ち主でない陣営の駒。回復役は攻撃できない。巡航で動いた駒は攻撃できない。動いたあとでも、動かずにでもよい。
   - 届くかどうかは駒への攻撃と同じ（射程と、間の盾）。
   - 耐久力が攻撃力のぶん減る（`FieldEffects.barricade_damage`）。森の軽減は無い（駒ではない）。
+    照準の駒の攻撃なら、確定クリティカルの倍率が掛かり、照準は消える（`docs/unit-statuses.md`）。
   - 耐久力が 0 になったら、盾は消える。そのマスはまた通れて、射線も通る。
   - 攻撃すると行動を終える。**経験値は入らない**（駒に何かをしたのではない。`docs/experience-levelup.md`）。
   - 返すイベントは順に、`BarricadeDamagedEvent`（攻撃した駒、盾、減った量、あとの耐久力）、
@@ -99,7 +100,8 @@
 **スキルのクールダウンも、同じ数え方（持ち主のフェーズの始めに 1 減る）**（`docs/active-skills.md`）。
 
 フェーズの始めに起きることの順は、`PhaseStartedEvent`、回復の泉、再生の特性（`docs/turn-phase.md`）、聖域の回復、
-効果の残りが減る（`FieldEffectTickedEvent`。0 になったものは、かわりに `FieldEffectRemovedEvent`（`EXPIRED`））、スキルのクールダウン。
+効果の残りが減る（`FieldEffectTickedEvent`。0 になったものは、かわりに `FieldEffectRemovedEvent`（`EXPIRED`））、
+駒に付いている状態の期限（`docs/unit-statuses.md`）、スキルのクールダウン。
 同じフェーズの始めの効果どうしは、効果の番号の順。
 
 ## イベント
