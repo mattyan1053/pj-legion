@@ -2,7 +2,7 @@ extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、中立の駒、レベルアップ、進化、
+## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、中立の駒、レベルアップ、進化、
 ## 回復役の回復、CPU の番の場面を通し、盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ## 途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
@@ -57,6 +57,7 @@ func _process(_delta: float) -> void:
 			_queue_portal_and_spring_scene()
 			_queue_capture_scene()
 			_queue_barrel_draw_scene()
+			_queue_field_effect_scene()
 			_queue_neutral_scene()
 			_queue_level_up_scene()
 			_queue_evolution_scene()
@@ -228,6 +229,53 @@ func _queue_barrel_draw_scene() -> void:
 		_expect(_scene.result_title() == "引き分け", "引き分けの結果が出ていない")
 		_expect(guard.hp == guard.max_hp() - MapObject.BLAST_DAMAGE, "爆発に巻き込まれなかった")
 		_expect(_scene.barrel_view_cells() == ([Vector2i(0, 0)] as Array[Vector2i]), "爆発した樽が画面に残っている"))
+
+
+## 盤の上の効果。ルールの入口（FieldEffects.place_*）で盾・煙幕・聖域を置いて再生し、
+## 盾越しには撃てないこと、盾を壊せること、煙幕が離れたところからの攻撃を防ぐこと、聖域の回復と期間の進みを通す。
+func _queue_field_effect_scene() -> void:
+	var board := _small_board(Vector2i(7, 5))
+	var battle := Battle.new(board)
+	var king1 := battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
+	king1.hp -= 10
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 2))
+	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER1, Vector2i(2, 0))
+	var guard := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(5, 2))
+	var hidden := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(4, 0))
+	var wall := Vector2i(3, 2)
+	var blocked: Script = SmokeBlockedEvent
+	var healed: Script = SanctuaryHealedEvent
+
+	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		var events := FieldEffects.place_barricade(battle, Unit.Side.PLAYER2, wall)
+		events.append_array(FieldEffects.place_smoke(battle, Unit.Side.PLAYER2, Vector2i(4, 1)))
+		events.append_array(FieldEffects.place_sanctuary(battle, Unit.Side.PLAYER1, Vector2i(1, 3)))
+		_expect(events.size() == 3, "盤の上の効果を置けなかった")
+		battle.board.barricade_at(wall).durability = 5  # 1 回の攻撃で壊れるように
+		_scene.play_events(events))
+	_scripted.append(func() -> void: _scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void:
+		_expect(not Queries.attack_targets(battle, sniper).has(guard), "盾越しに撃てる")
+		_expect(Queries.barricade_targets(battle, sniper) == ([wall] as Array[Vector2i]), "狙える盾が違う")
+		_scene.click_cell(wall))
+	_scripted.append(func() -> void:
+		_expect(battle.board.barricade_at(wall) == null, "盾が壊れなかった")
+		_scene.click_cell(sorcerer.cell))
+	_scripted.append(func() -> void:
+		_scene.played.erase(blocked)
+		_scene.click_cell(hidden.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.played.get(blocked, 0) == 1 and hidden.hp == hidden.max_hp(), "煙幕が攻撃を防がなかった")
+		_scene.played.erase(healed))
+	_scripted.append(_end_turn)
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "ターンが進まなかった")
+		_expect(_scene.played.get(healed, 0) == 1, "聖域で回復しなかった")
+		_expect(king1.hp == king1.max_hp() - 10 + FieldEffects.SANCTUARY_HEAL, "聖域の回復量が違う")
+		_expect(battle.board.field_effects.size() == 2, "煙幕と聖域が残っていない"))
 
 
 ## 結晶泉にエナジー・コアが湧き、次の中立のフェーズで隣の駒を襲う。
@@ -452,6 +500,12 @@ func _mismatch(battle: Battle) -> String:
 	expected.sort()
 	if barrels != expected:
 		return "樽（画面 %s、状態 %s）" % [barrels, expected]
+	var effect_ids: Array[int] = []
+	for effect in battle.board.field_effects:
+		effect_ids.append(effect.id)
+	effect_ids.sort()
+	if _scene.field_effect_view_ids() != effect_ids:
+		return "盤の上の効果（画面 %s、状態 %s）" % [_scene.field_effect_view_ids(), effect_ids]
 	return ""
 
 

@@ -36,6 +36,11 @@ const OBJECT_NAMES := {
 	MapObject.Type.SPRING: "回復の泉（自分の番の始めに、乗っている駒が %d 回復）" % MapObject.SPRING_HEAL,
 	MapObject.Type.PORTAL: "ポータル",
 }
+const FIELD_EFFECT_NAMES := {
+	FieldEffect.Type.BARRICADE: "盾",
+	FieldEffect.Type.SMOKE: "煙幕",
+	FieldEffect.Type.SANCTUARY: "聖域",
+}
 const STAT_NAMES := {
 	Unit.Stat.MAX_HP: "最大 HP",
 	Unit.Stat.POWER: "攻撃",
@@ -441,3 +446,17 @@ func _button(text: String, to: Signal) -> Button:
 	if not to.is_null():
 		button.pressed.connect(to.emit)
 	return button
+
+
+## マスの説明に出す、盤の上の効果の種類と簡易説明（持ち主、残り、効果）。
+static func field_effect_text(effect: FieldEffect) -> String:
+	var owner: String = SIDE_NAMES[effect.side]
+	match effect.type:
+		FieldEffect.Type.BARRICADE:
+			return "盾（%s。耐久 %d / 通行・射撃を遮断）" % [owner, effect.durability]
+		FieldEffect.Type.SMOKE:
+			return "煙幕（%s。残り %d ターン / 中の味方への、離れたところからの攻撃を無効）" % [owner, effect.turns_left]
+		_:
+			return "聖域（%s。残り %d ターン / 自分の番の始めに中の味方が HP %d 回復）" % [
+				owner, effect.turns_left, FieldEffects.SANCTUARY_HEAL,
+			]

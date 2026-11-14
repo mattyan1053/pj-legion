@@ -76,6 +76,7 @@ var _confirming_end := false
 var _move_cells := {}  # マス -> 巡航でしか届かないか
 var _targets: Array[Unit] = []
 var _barrel_targets: Array[Vector2i] = []
+var _barricade_targets: Array[Vector2i] = []
 var _heal_targets: Array[Unit] = []
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
 var played := {}
@@ -272,6 +273,11 @@ func barrel_view_cells() -> Array[Vector2i]:
 	return _board_view.barrel_cells()
 
 
+## 画面に描かれている盤の上の効果の番号（小さい順）。検査用。
+func field_effect_view_ids() -> Array[int]:
+	return _board_view.field_effect_ids()
+
+
 ## いま出ている結果の見出し（出ていなければ空）。検査用。
 func result_title() -> String:
 	return _hud.result_title()
@@ -288,6 +294,8 @@ func click_cell(cell: Vector2i) -> void:
 		_do(HealAction.new(_selected_id, clicked.id))
 	elif _barrel_targets.has(cell):
 		_do(AttackBarrelAction.new(_selected_id, cell))
+	elif _barricade_targets.has(cell):
+		_do(AttackBarricadeAction.new(_selected_id, cell))
 	elif battle.acting_unit_id != 0:
 		pass  # 動いたあとは、攻撃・回復・待機・取り消しのどれかを選ぶ。
 	elif _move_cells.has(cell):
@@ -343,6 +351,16 @@ func press_end_turn() -> void:
 func _select(unit_id: int) -> void:
 	_selected_id = unit_id
 	_confirming_end = false
+	_refresh()
+
+
+## 行動の外でルールに起きたことを再生する（検査用）。
+## 盤の上の効果を置く操作（スキル）はまだ無いので、検査はルールの FieldEffects.place_* で置いて、その結果をここで再生する。
+func play_events(events: Array[BattleEvent]) -> void:
+	_busy = true
+	for event in events:
+		await _play(event)
+	_busy = false
 	_refresh()
 
 
@@ -430,6 +448,13 @@ static func event_players() -> Dictionary:
 		UnitDefeatedEvent: &"_play_defeated",
 		UnitSpawnedEvent: &"_play_spawned",
 		BarrelExplodedEvent: &"_play_barrel_exploded",
+		BarricadePlacedEvent: &"_play_field_effect_placed",
+		AreaEffectPlacedEvent: &"_play_field_effect_placed",
+		FieldEffectTickedEvent: &"_play_field_effect_ticked",
+		FieldEffectRemovedEvent: &"_play_field_effect_removed",
+		BarricadeDamagedEvent: &"_play_barricade_damaged",
+		SmokeBlockedEvent: &"_play_smoke_blocked",
+		SanctuaryHealedEvent: &"_play_sanctuary_healed",
 		UnitActedEvent: &"_play_acted",
 		PhaseStartedEvent: &"_play_phase_started",
 		CaptureProgressEvent: &"_play_capture",
@@ -591,6 +616,58 @@ func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
 	await get_tree().create_timer(0.3).timeout
 
 
+## 盤の上に効果が置かれた。描いて、中心に光を出す。
+func _play_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
+	_board_view.add_field_effect(event.effect_id, event.type, event.side, event.cells)
+	var at := BoardView.cell_center(event.center)
+	_flash(at + Vector3(0.0, 0.3, 0.0), TEAM_COLORS[event.side], 1.2 if event.type == FieldEffect.Type.BARRICADE else 2.4)
+	_pop_number(at, BattleHud.FIELD_EFFECT_NAMES[event.type], TEAM_COLORS[event.side].lightened(0.4))
+	await get_tree().create_timer(0.3).timeout
+
+
+## 煙幕・聖域の残りが減った。描き方は変えない（残りはマスの説明に出る）。
+func _play_field_effect_ticked(_event: FieldEffectTickedEvent) -> void:
+	pass
+
+
+## 盤の上の効果が消えた（期間が尽きた・盾が壊れた）。
+func _play_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
+	_board_view.remove_field_effect(event.effect_id)
+	if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED:
+		var at := BoardView.cell_center(event.cells[0])
+		_flash(at + Vector3(0.0, 0.3, 0.0), Color("d8d0c0"), 1.4)
+		_pop_number(at, "盾が壊れた", Color("d8d0c0"))
+		await get_tree().create_timer(0.3).timeout
+
+
+## 盾を攻撃した。攻撃の動きのあと、減った耐久を出す。
+func _play_barricade_damaged(event: BarricadeDamagedEvent) -> void:
+	var at := BoardView.cell_center(event.cell)
+	var attacker := _view(event.attacker_id)
+	attacker.face(at - attacker.position)
+	await get_tree().create_timer(attacker.play_attack()).timeout
+	_pop_number(at, "耐久 -%d" % event.amount, Color("ffe9a8"))
+	await get_tree().create_timer(0.3).timeout
+
+
+## 攻撃が煙幕に阻まれた。攻撃の動きのあと、相手に灰色の光と「防いだ」を出す（HP は変わらない）。
+func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
+	var target := _view(event.target_id)
+	var attacker := _view(event.attacker_id)
+	_follow_neutral(event.attacker_id)
+	attacker.face(target.position - attacker.position)
+	target.face(attacker.position - target.position)
+	await get_tree().create_timer(attacker.play_attack()).timeout
+	_flash(target.position + Vector3(0.0, 0.3, 0.0), BoardView.COLOR_SMOKE, 1.2)
+	_pop_number(target.position, "煙幕で防いだ", Color("d0d4da"))
+	await get_tree().create_timer(0.4).timeout
+
+
+## 聖域（フェーズの始め）も、光と数を出す。
+func _play_sanctuary_healed(event: SanctuaryHealedEvent) -> void:
+	await _play_heal(event, true)
+
+
 func _play_acted(event: UnitActedEvent) -> void:
 	_view(event.unit_id).set_acted(true)
 
@@ -720,6 +797,7 @@ func _refresh() -> void:
 	_move_cells = Queries.move_cells(battle, unit)
 	_targets = Queries.attack_targets(battle, unit)
 	_barrel_targets = Queries.barrel_targets(battle, unit)
+	_barricade_targets = Queries.barricade_targets(battle, unit)
 	_heal_targets = Queries.heal_targets(battle, unit)
 
 	_painted = {}
@@ -732,6 +810,8 @@ func _refresh() -> void:
 			for target in _heal_targets:
 				_painted[target.cell] = COLOR_HEAL
 			for cell in _barrel_targets:
+				_painted[cell] = COLOR_TARGET
+			for cell in _barricade_targets:
 				_painted[cell] = COLOR_TARGET
 		else:
 			for cell in Queries.inspect_cells(battle, unit):
@@ -791,7 +871,7 @@ func _refresh_hint(unit: Unit) -> void:
 			_hud.set_hint("緑のマスの味方をクリックで回復。または待機、移動の取り消し")
 		elif UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
 			_hud.set_hint("回復できる味方がいない。待機するか、移動を取り消す")
-		elif _targets.is_empty() and _barrel_targets.is_empty():
+		elif _targets.is_empty() and _barrel_targets.is_empty() and _barricade_targets.is_empty():
 			_hud.set_hint("攻撃できる相手がいない。待機するか、移動を取り消す")
 		else:
 			_hud.set_hint("赤いマスの相手か樽をクリックで攻撃。または待機、移動の取り消し")
@@ -852,6 +932,12 @@ func _update_info() -> void:
 	if hovered == null and _barrel_targets.has(_hover_cell):
 		_hud.show_unit(shown, "樽を狙っている", _blast_forecast(shown, _hover_cell))
 		return
+	if hovered == null and _barricade_targets.has(_hover_cell):
+		# 実際の攻撃と同じ計算（FieldEffects.barricade_damage）を使う。
+		var left := battle.board.barricade_at(_hover_cell).durability
+		var after := maxi(0, left - FieldEffects.barricade_damage(shown))
+		_hud.show_unit(shown, "盾を狙っている", "盾を攻撃 → 耐久 %d → %s" % [left, "壊せる" if after == 0 else str(after)])
+		return
 	var state := "行動済み" if shown.acted else "未行動"
 	if shown.has_moved:
 		state = "行動の途中（巡航で移動した）" if shown.cruised else "行動の途中（移動した）"
@@ -862,6 +948,8 @@ func _update_info() -> void:
 		var amount := Combat.damage(battle, attacker, hovered)
 		var left := maxi(0, hovered.hp - amount)
 		forecast = "攻撃すると %d ダメージ → %s" % [amount, "倒せる" if left == 0 else "残り HP %d" % left]
+		if FieldEffects.smoke_covering(battle, attacker.cell, hovered) != null:
+			forecast = "煙幕に阻まれて 0 ダメージ（隣からなら当たる）"
 		# 経験値の見込みも、実際と同じ計算（Growth）を状態を変えずに使う。
 		var growth := Growth.preview(attacker, Growth.attack_experience(battle, attacker, hovered))
 		if growth.gained > 0:
@@ -876,12 +964,15 @@ func _update_info() -> void:
 	_hud.show_unit(shown, state, forecast)
 
 
-## マスにある環境オブジェクトの説明（無ければ空）。
+## マスにある環境オブジェクトと盤の上の効果の説明（無ければ空）。
 func _object_text(cell: Vector2i) -> String:
+	var text := ""
+	for effect in battle.board.field_effects_at(cell):
+		text += "　" + BattleHud.field_effect_text(effect)
 	var type := battle.board.object_at(cell)
 	if type == MapObject.Type.NONE:
-		return ""
-	var text: String = "　" + BattleHud.OBJECT_NAMES[type]
+		return text
+	text += "　" + BattleHud.OBJECT_NAMES[type]
 	if type == MapObject.Type.PORTAL:
 		var exit := battle.board.portal_exit(cell)
 		text += " → (%d, %d)" % [exit.x, exit.y]
