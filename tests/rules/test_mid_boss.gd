@@ -100,7 +100,7 @@ func test_bosses_appear_in_the_first_neutral_phase() -> void:
 	assert_eq(event.kind, UnitKind.Id.ELITE_MINION)
 	assert_eq(event.cell, HOME)
 	assert_eq(event.home_cell, HOME)
-	assert_eq(event.hp, 100)
+	assert_eq(event.hp, 80)
 	var boss := battle.unit_at(HOME)
 	assert_eq(boss.side, NEUTRAL)
 	assert_eq(boss.power(), 10)

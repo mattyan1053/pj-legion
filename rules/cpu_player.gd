@@ -47,10 +47,40 @@ const KILL_VALUE := 60.0
 const KILL_VALUE_PER_COST := 10.0
 const HEALER_KILL_BONUS := 10.0
 const NEUTRAL_KILL_VALUE := 15.0
-## 中ボス（docs/neutral-mid-boss.md）へのダメージ 1 の価値と、倒す価値。
-## 削っただけでは、止めを相手に取られることがある。価値の大半を止めに置く。
-const MID_BOSS_DAMAGE_VALUE := 0.5
-const MID_BOSS_KILL_VALUE := 60.0
+## 狩ると決めた中ボス（docs/relic-buff.md の「CPU」）へのダメージ 1 の価値。削っただけでは、止めを相手に取られることがある。
+## 価値の大半を止めに置く。狩ると決めていない中ボスを削る手は、MID_BOSS_IDLE_PENALTY を引く（当たりの経験値の価値より大きい。選ばない）。
+const HUNT_DAMAGE_VALUE := 1.0
+const MID_BOSS_IDLE_PENALTY := 10.0
+## 中ボスを倒す価値 = 聖遺物の価値（docs/relic-buff.md の「CPU」）。RELIC_BASE_VALUE（必殺技のゲージと、相手に渡さないぶん）に、
+## 自分の駒 1 体につき RELIC_UNIT_VALUE（効果は駒の数だけ掛かる）を足す。
+const RELIC_BASE_VALUE := 40.0
+const RELIC_UNIT_VALUE := 12.0
+## 中ボスを狩る条件（_build_hunts。docs/relic-buff.md の「CPU」）。HUNT_FROM_TURN ターンから。
+## 中ボスから HUNT_RADIUS 歩以内の自分の戦う駒（狩りに加われる駒）が、着いた順に毎ターン殴るとして、
+## - HUNT_TURNS ターンのうちに倒せる。倒すのに要るダメージは、残りの HP の HUNT_MARGIN 倍で見積もる
+##   （殴り返されて下がる駒が出るので、全員が毎ターンは殴れない）
+## - 倒しきるまでに着ける相手の戦う駒（そのターン数 × 移動力 + 射程の中）の攻撃力の合計の、HUNT_SUPERIORITY 倍以上の攻撃力がある
+## 加われる駒の全部で満たせば、届いた駒が削る。手の空いている駒（HUNT_ENGAGE_DISTANCE マス以内に相手の駒がいない）だけで
+## 満たせば、手の空いている駒が中ボスへ向かう。加われる駒の全部で HUNT_COMMIT_TURNS ターンのうちに倒せるところまで来たら、
+## 手の空いていない駒も向かう。自分の本陣の近く（GUARD_RADIUS 以内）に相手がいる間は、狩らない。
+const HUNT_RADIUS := 14
+const HUNT_FROM_TURN := 6
+const HUNT_ENGAGE_DISTANCE := 5
+const HUNT_TURNS := 6
+const HUNT_COMMIT_TURNS := 2
+const HUNT_MARGIN := 1.25
+const HUNT_SUPERIORITY := 1.0
+## 相手が狩っているとみなす距離（中ボスからこの距離の中の相手の戦う駒が、削った中ボスを HUNT_TURNS ターンで倒せる）。
+const HUNT_RIVAL_RADIUS := 10
+## 止めを相手に渡す削り（削ったあとの HP が、次の相手の番に届く相手の攻撃力の合計以下で、
+## このフェーズに自分の残りの駒では削り切れない）の減点。
+const MID_BOSS_FEED_PENALTY := 60.0
+## 相手が中ボスを狩っている（削っていて、そばの駒で HUNT_TURNS ターンのうちに倒せる）とき、中ボスから DENY_RADIUS マス以内の
+## 前衛・後衛は、狩りの最中の相手の駒を DENY_PULL マスぶん近いものとして追う。
+const DENY_RADIUS := 16
+const DENY_PULL := 6
+## 相手が狩っている中ボスの HP がここまで減ったら、DENY_RADIUS マス以内の後衛と奇襲は、止めを横取りしに向かう。
+const STEAL_HP := 40
 ## 倒せなかった相手に残る HP 1 の減点（HP の少ない相手を先に狙う）。
 const REMAINING_HP_PENALTY := 0.2
 ## 自分の本陣からこの距離までに入った敵は「侵入者」。与えるダメージの価値を INTRUDER_RATE 倍にする。
@@ -225,6 +255,16 @@ var _support: Array[Vector2i] = []
 var _moved_reach := 0
 ## いま考えている駒が、戦える駒のいなくなった軍の将か。
 var _lone_king := false
+## いま考えている駒の番号（止めを相手に渡す削りかを見るときに、このあとに動ける味方から除く）。
+var _thinking_id := 0
+## 中ボスの読み（_build_hunts）。狩ると決めた中ボス（駒の番号）、相手が狩っている中ボス、
+## 中ボス -> 次の相手の番に届きそうな相手の攻撃力の合計。
+var _hunts_ready := false
+var _hunted: Dictionary[int, bool] = {}  # 値は、もう削り切れるところまで来ているか
+## 削ってよい中ボス（狩りに加われる駒の全部でなら倒せる。届いた駒が、ほかに良い手が無ければ削る）。
+var _chipped: Dictionary[int, bool] = {}
+var _rival_hunts: Dictionary[int, bool] = {}
+var _rival_strike: Dictionary[int, int] = {}
 
 
 ## いまのフェーズのプレイヤーの、次の行動。決着のあとと中立のフェーズでは null。
@@ -290,6 +330,8 @@ func _begin(battle: Battle) -> void:
 	_moved_threats = {}
 	_stand = Board.NO_CELL
 	_threats_ready = false
+	_hunts_ready = false
+	_thinking_id = 0
 	var board := battle.board
 	var has_hqs := board.hq_cells.size() >= 2
 	_my_hq = board.hq_cells[_me] if has_hqs else Board.NO_CELL
@@ -401,6 +443,7 @@ func _next_unit() -> Unit:
 func _follow_up(unit: Unit) -> BattleAction:
 	var best: BattleAction = WaitAction.new(unit.id)
 	var best_value := 0.0
+	_thinking_id = unit.id
 	_build_threats()
 	_set_goal(unit)
 	_moved_reach = unit.attack_range()
@@ -429,6 +472,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 ## 動く先を決めたら、そこで何をするかは次の呼び出し（_follow_up）がもう一度決める（同じ見積もりを使うので、同じ結論になる）。
 func _plan(unit: Unit) -> BattleAction:
 	var options := _battle.options(unit.id)
+	_thinking_id = unit.id
 	_build_threats()
 	_set_goal(unit)
 	_moved_reach = Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
@@ -684,8 +728,7 @@ func _damage_value(victim: Unit, hp_after: int) -> float:
 	var rate := DAMAGE_VALUE
 	var kill := KILL_VALUE + KILL_VALUE_PER_COST * UnitKind.cost(victim.kind)
 	if victim.kind == UnitKind.Id.ELITE_MINION:
-		rate = MID_BOSS_DAMAGE_VALUE
-		kill = MID_BOSS_KILL_VALUE
+		return _mid_boss_damage_value(victim, hp_after)
 	elif victim.side == Unit.Side.NEUTRAL:
 		rate = NEUTRAL_DAMAGE_VALUE
 		kill = NEUTRAL_KILL_VALUE
@@ -703,6 +746,170 @@ func _damage_value(victim: Unit, hp_after: int) -> float:
 	if hp_after == 0:
 		return value + kill
 	return maxf(1.0, value - REMAINING_HP_PENALTY * hp_after)
+
+
+## 中ボス boss の HP を hp_after まで減らす価値。倒す価値は、聖遺物の価値（_relic_value）。
+## 削る価値は、狩ると決めた中ボスだけ（HUNT_DAMAGE_VALUE）。狩ると決めていない中ボスは、削らない（MID_BOSS_IDLE_PENALTY を引く。
+## 倒しきれないのに削ると、殴り返されるうえに、止めを相手に渡す）。止めを相手に渡す削りは、MID_BOSS_FEED_PENALTY を引く。
+func _mid_boss_damage_value(boss: Unit, hp_after: int) -> float:
+	_build_hunts()
+	if hp_after == 0:
+		return HUNT_DAMAGE_VALUE * boss.hp + _relic_value()
+	if not _chipped.has(boss.id):
+		return -MID_BOSS_IDLE_PENALTY
+	var value := HUNT_DAMAGE_VALUE * (boss.hp - hp_after)
+	if hp_after <= _rival_strike.get(boss.id, 0) and _follow_up_strike(boss) < hp_after:
+		value -= MID_BOSS_FEED_PENALTY
+	return value
+
+
+## 聖遺物を受け取る価値（どちらの聖遺物も同じに見る）。効果は自分の駒の数だけ掛かる。
+func _relic_value() -> float:
+	var count := 0
+	for unit in _battle.units:
+		if unit.side == _me:
+			count += 1
+	return RELIC_BASE_VALUE + RELIC_UNIT_VALUE * count
+
+
+## このフェーズに、いま考えている駒のあとで boss に届きそうな味方（まだ行動していない戦う駒。移動力 + 射程の中。目安）の攻撃力の合計。
+func _follow_up_strike(boss: Unit) -> int:
+	var total := 0
+	for friend in _battle.units:
+		if friend.side != _me or friend.id == _thinking_id or friend.acted or _is_healer(friend):
+			continue
+		if Combat.distance(friend.cell, boss.cell) <= friend.move_range() + friend.attack_range():
+			total += friend.power()
+	return total
+
+
+func _is_healer(unit: Unit) -> bool:
+	return UnitKind.role(unit.kind) == UnitKind.Role.HEALER
+
+
+## 中ボスごとに、狩るか（_hunted。値は、もう削り切れるところまで来ているか）、相手が狩っているか（_rival_hunts）、
+## 次の相手の番に届きそうな相手の攻撃力（_rival_strike）を読む。条件は、調整値の HUNT_* のところ。
+## 距離は目安（自分の駒は歩数、相手の駒はマンハッタン距離。地形は見ない）。
+func _build_hunts() -> void:
+	if _hunts_ready:
+		return
+	_hunts_ready = true
+	_hunted = {}
+	_chipped = {}
+	_rival_hunts = {}
+	_rival_strike = {}
+	var home_threat := false
+	if _my_hq != Board.NO_CELL:
+		for foe in _battle.units:
+			if foe.side == _foe and Combat.distance(foe.cell, _my_hq) <= GUARD_RADIUS:
+				home_threat = true
+	var width := _board.size.x
+	for boss in _battle.units:
+		if boss.kind != UnitKind.Id.ELITE_MINION:
+			continue
+		var steps := _steps_from(boss.cell)
+		# 狩りに加われる自分の駒の [着くまでのターン数, 攻撃力]。全部と、手の空いている駒だけ。
+		var squad: Array[Vector2i] = []
+		var free_squad: Array[Vector2i] = []
+		var foes: Array[Unit] = []
+		var strike := 0
+		var near_rivals := 0
+		for other in _battle.units:
+			if other.side == Unit.Side.NEUTRAL or _is_healer(other):
+				continue
+			if other.side == _foe:
+				var apart := Combat.distance(other.cell, boss.cell)
+				if apart <= other.move_range() + other.attack_range():
+					strike += other.power()
+				if other.kind != UnitKind.Id.KING:
+					foes.append(other)
+					if apart <= HUNT_RIVAL_RADIUS:
+						near_rivals += other.power()
+			elif other.kind != UnitKind.Id.KING:
+				var away := steps[other.cell.y * width + other.cell.x]
+				if away > HUNT_RADIUS:
+					continue
+				var member := Vector2i(ceili(float(maxi(0, away - other.attack_range())) / maxi(1, other.move_range())), other.power())
+				squad.append(member)
+				if _nearest_foe_distance(other) > HUNT_ENGAGE_DISTANCE:
+					free_squad.append(member)
+		_rival_strike[boss.id] = strike
+		if near_rivals > 0 and boss.hp < boss.max_hp() and near_rivals * HUNT_TURNS >= boss.hp:
+			_rival_hunts[boss.id] = true
+		if home_threat or _battle.turn < HUNT_FROM_TURN:
+			continue
+		var need := ceili(boss.hp * HUNT_MARGIN)
+		# 加われる駒の全部で倒せるなら、届いた駒は削ってよい。
+		if _outguns_rivals(boss, squad, foes, _kill_turns(squad, need, HUNT_TURNS)):
+			_chipped[boss.id] = true
+		# 向かうのは、手の空いている駒だけで倒せるとき。もう削り切れるところまで来ていれば、全部の駒が向かう。
+		if _outguns_rivals(boss, squad, foes, _kill_turns(squad, need, HUNT_COMMIT_TURNS)):
+			_hunted[boss.id] = true
+		elif _outguns_rivals(boss, free_squad, foes, _kill_turns(free_squad, need, HUNT_TURNS)):
+			_hunted[boss.id] = false
+
+
+## squad が turns ターンで boss を倒しきるまでに、ここへ着ける相手の戦う駒（foes のうち、turns × 移動力 + 射程の中）の
+## 攻撃力の合計の HUNT_SUPERIORITY 倍以上の攻撃力が、squad にあるか。turns が 0（倒せない）なら偽。
+func _outguns_rivals(boss: Unit, squad: Array[Vector2i], foes: Array[Unit], turns: int) -> bool:
+	if turns == 0:
+		return false
+	var power := 0
+	for member in squad:
+		power += member.y
+	var rivals := 0
+	for foe in foes:
+		if Combat.distance(foe.cell, boss.cell) <= turns * foe.move_range() + foe.attack_range():
+			rivals += foe.power()
+	return power >= HUNT_SUPERIORITY * rivals
+
+
+## squad（[着くまでのターン数, 攻撃力] の列）が、着いた順に毎ターン殴って、合わせて need のダメージを与えるまでのターン数。
+## limit ターンでは足りなければ 0。
+func _kill_turns(squad: Array[Vector2i], need: int, limit: int) -> int:
+	for turns in range(1, limit + 1):
+		var dealt := 0
+		for member in squad:
+			dealt += member.y * maxi(0, turns - member.x)
+		if dealt >= need:
+			return turns
+	return 0
+
+
+## unit が狩りに向かう中ボス（いなければ null）。狩ると決めた中ボスのうち、HUNT_RADIUS 歩以内で、いちばん近いもの。
+## 手の空いていない駒（HUNT_ENGAGE_DISTANCE マス以内に相手の駒がいる）は、もう削り切れるところまで来た中ボスにだけ向かう。
+func _boss_to_hunt(unit: Unit) -> Unit:
+	_build_hunts()
+	if _hunted.is_empty():
+		return null
+	var engaged := _nearest_foe_distance(unit) <= HUNT_ENGAGE_DISTANCE
+	var best: Unit = null
+	var best_steps := HUNT_RADIUS + 1
+	var from := _steps_from(unit.cell)
+	for boss_id in _hunted:
+		if engaged and not _hunted[boss_id]:
+			continue
+		var boss := _battle.unit_by_id(boss_id)
+		var steps := from[boss.cell.y * _board.size.x + boss.cell.x]
+		if steps < best_steps:
+			best = boss
+			best_steps = steps
+	return best
+
+
+## unit が止めを横取りしに向かう中ボス（いなければ null）。相手が狩っていて、HP が STEAL_HP まで減った中ボスのうち、
+## DENY_RADIUS マス以内で、いちばん近いもの。向かうのは、後衛と奇襲だけ（離れて撃てるか、速い）。
+func _boss_to_steal(unit: Unit) -> Unit:
+	_build_hunts()
+	var best: Unit = null
+	var best_distance := DENY_RADIUS + 1
+	for boss_id in _rival_hunts:
+		var boss := _battle.unit_by_id(boss_id)
+		var apart := Combat.distance(unit.cell, boss.cell)
+		if boss.hp <= STEAL_HP and apart < best_distance:
+			best = boss
+			best_distance = apart
+	return best
 
 
 ## 駒 victim_id のバリアが外れた価値（sim は、外れたあとの複製）。敵のバリアをはがしたなら、このあとに動ける味方のうち、
@@ -1106,8 +1313,14 @@ func _set_goal(unit: Unit) -> void:
 		pass
 	elif role == UnitKind.Role.RAIDER:
 		var prey := _prey(unit)
+		var boss := _boss_to_hunt(unit)
+		if boss == null:
+			boss = _boss_to_steal(unit)
 		if _can_raid_hq(unit):
 			goal = _foe_hq
+		elif boss != null:
+			goal = boss.cell
+			_goal_reach = unit.attack_range()
 		elif prey != null:
 			goal = prey.cell
 			_goal_reach = unit.attack_range()
@@ -1121,7 +1334,13 @@ func _set_goal(unit: Unit) -> void:
 			_goal_reach = unit.attack_range()
 	else:
 		var enemy := _enemy_to_chase(unit)
-		if enemy != null:
+		var boss: Unit = null if _lone_king else _boss_to_hunt(unit)
+		if boss == null and role == UnitKind.Role.REARGUARD:
+			boss = _boss_to_steal(unit)
+		if boss != null:
+			goal = boss.cell
+			_goal_reach = unit.attack_range()
+		elif enemy != null:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
 	_goal_steps = _steps_from(goal)
@@ -1180,11 +1399,21 @@ func _enemy_to_chase(unit: Unit) -> Unit:
 		if other.side != _foe:
 			continue
 		var intruder := _my_hq != Board.NO_CELL and Combat.distance(other.cell, _my_hq) <= DEFENSE_RADIUS
-		var key := Vector2i(0 if intruder else 1, Combat.distance(unit.cell, other.cell))
+		var key := Vector2i(0 if intruder else 1, Combat.distance(unit.cell, other.cell) - _poacher_pull(unit, other))
 		if key < best_key:
 			best = other
 			best_key = key
 	return best
+
+
+## 相手が狩っている中ボスのそばの相手の駒（狩りの最中）は、DENY_PULL マスぶん近いものとして追う（取らせない）。
+func _poacher_pull(unit: Unit, foe: Unit) -> int:
+	_build_hunts()
+	for boss_id in _rival_hunts:
+		var boss := _battle.unit_by_id(boss_id)
+		if Combat.distance(foe.cell, boss.cell) <= HUNT_RIVAL_RADIUS and Combat.distance(unit.cell, boss.cell) <= DENY_RADIUS:
+			return DENY_PULL
+	return 0
 
 
 ## 回復役がついて行く味方。

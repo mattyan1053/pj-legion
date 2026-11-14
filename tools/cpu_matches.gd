@@ -10,6 +10,8 @@ extends SceneTree
 ##   --decks=auto    編成。auto = CPU の編成（CpuDeck。予算に収まる）、even = 両軍とも同じ役割の 6 体・装備なし（予算は見ない）
 ##   --pairings=all  軍の組み合わせ。all = 4 通りを順に、mixed = 軍の違う 2 通り（先手を入れ替える）だけ
 ##   --rival=PATH    別の版の CPU（スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
+##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、ステージ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
+##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
 ## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
@@ -140,6 +142,8 @@ func _initialize() -> void:
 	# 軍 -> [出た回数, 必殺技を使った回数, 使った側の数, そのうち勝った数, 使わなかった側の数, そのうち勝った数, 最初に使ったターンの合計, 1 回でも使った側の数]。
 	# 勝ちの数は、決着した局だけ（使った側・使わなかった側の数も同じ）。
 	var ults: Dictionary[UnitKind.Army, Array] = {}
+	# 軍 -> [出た回数, 聖遺物を取った局, 英知の数, 勇気の数, 取った局のうち決着した数, そのうち勝った数, 相手だけが取った局のうち決着した数, そのうち勝った数]。
+	var relics: Dictionary[UnitKind.Army, Array] = {}
 	var reached := {"lv2": 0, "lv3": 0, "lv3_hit": 0, "lv3_level": 0, "lv3_both": 0}
 	var actions := 0
 	var think := 0.0
@@ -188,6 +192,14 @@ func _initialize() -> void:
 					for i in row.size():
 						row[i] += outcome.by_side_kind[side][kind][i]
 
+		if args.get("list", "0") == "1":
+			var kills: Array[String] = []
+			for kill: Array in outcome.mid_boss_kills:
+				kills.append("%d:%d:%d" % [kill[0], kill[1], kill[2]])
+			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s" % [
+				first_seed + game, stage, ARMY_NAMES[armies[0]], ARMY_NAMES[armies[1]], outcome.winner, outcome.ending,
+				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills),
+			])
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
 		var match_name := "%s 対 %s" % [ARMY_NAMES[armies[0]], ARMY_NAMES[armies[1]]]
@@ -211,6 +223,24 @@ func _initialize() -> void:
 				var used := 2 if outcome.ult_uses[side] > 0 else 4
 				row[used] += 1
 				row[used + 1] += 1 if outcome.winner == side else 0
+		for side in 2:
+			var row: Array = relics.get_or_add(armies[side], [0, 0, 0, 0, 0, 0, 0, 0])
+			var mine := 0
+			var theirs := 0
+			for kill: Array in outcome.mid_boss_kills:
+				if kill[1] == side:
+					mine += 1
+					row[2 + (1 if Relics.of_boss(kill[2]) == Relics.Id.COURAGE else 0)] += 1
+				elif kill[1] >= 0:
+					theirs += 1
+			row[0] += 1
+			row[1] += 1 if mine > 0 else 0
+			if outcome.winner >= 0 and mine > 0:
+				row[4] += 1
+				row[5] += 1 if outcome.winner == side else 0
+			elif outcome.winner >= 0 and theirs > 0:
+				row[6] += 1
+				row[7] += 1 if outcome.winner == side else 0
 		for skill in outcome.skill_uses:
 			skill_uses[skill] = skill_uses.get(skill, 0) + outcome.skill_uses[skill]
 		hired += outcome.hired[0] + outcome.hired[1]
@@ -247,10 +277,18 @@ func _initialize() -> void:
 		print(by_match[match_name].line(match_name))
 	print("")
 	print("")
-	print("中ボス（倒した側の勝ち負けは、決着した局だけ）")
+	print("中ボス（倒した側の勝ち負けは、決着した局だけ。倒した側は、その中ボスの聖遺物を受け取る）")
 	print(all.boss_line("全体"))
 	for stage: int in by_stage:
 		print(by_stage[stage].boss_line("ステージ " + STAGE_NAMES[stage]))
+	print("")
+	print("聖遺物（軍ごと。勝率は決着した局だけ。「相手だけ」は、自分は取らず、相手が取った局）")
+	for army in ARMIES:
+		var row: Array = relics.get(army, [0, 0, 0, 0, 0, 0, 0, 0])
+		print("  %-9s 取った局 %3d / %3d（%3.0f%%）  英知 %3d  勇気 %3d  取った局の勝率 %3d 勝 / %3d（%3.0f%%）  相手だけが取った局の勝率 %3d 勝 / %3d（%3.0f%%）" % [
+			ARMY_NAMES[army], row[1], row[0], 100.0 * row[1] / maxi(1, row[0]), row[2], row[3],
+			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]), row[7], row[6], 100.0 * row[7] / maxi(1, row[6]),
+		])
 	print("")
 	var decided := all.wins[0] + all.wins[1]
 	print("先手（プレイヤー1）の勝率: %.1f%%（決着した %d 局のうち）" % [100.0 * all.wins[0] / maxi(1, decided), decided])
