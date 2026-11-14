@@ -44,10 +44,13 @@ func _ready() -> void:
 	_build_help()
 
 
+func _process(_delta: float) -> void:
+	# カメラが動くとマウスの下のマスも変わるので、マウスの動きではなく毎フレーム追う。
+	_update_cursor()
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		_update_cursor()
-	elif event is InputEventMouseButton and event.pressed:
+	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_click(_cell_under_mouse())
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
