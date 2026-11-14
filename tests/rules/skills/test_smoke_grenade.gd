@@ -114,12 +114,25 @@ func test_cpu_covers_allies_under_a_snipers_aim() -> void:
 		assert_true(FieldEffects.smoke_of(battle, unit) != null, "狙われている味方が煙幕の外")
 
 
-func test_cpu_does_not_smoke_a_single_ally() -> void:
+func test_cpu_does_not_smoke_a_single_ally_under_one_shot() -> void:
 	var battle := _cpu_battle()
 	battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(3, 2))
 	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(5, 2)).acted = true
 	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(10, 2))
 	assert_true(_skill_uses_in_phase(battle).is_empty())
+
+
+func test_cpu_smokes_a_single_ally_under_heavy_fire() -> void:
+	var battle := _cpu_battle()
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(3, 2))
+	var ally := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(5, 2))
+	ally.acted = true
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(10, 1))
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(10, 3))
+	var uses := _skill_uses_in_phase(battle)
+	assert_eq(uses.size(), 1, "2 体に狙われた味方を、煙幕で守らなかった")
+	assert_eq(uses[0].unit_id, commando.id)
+	assert_true(FieldEffects.smoke_of(battle, ally) != null)
 
 
 func test_cpu_does_not_smoke_against_melee_only() -> void:

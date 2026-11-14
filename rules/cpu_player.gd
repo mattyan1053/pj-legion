@@ -18,7 +18,7 @@ extends RefCounted
 
 ## 駒を動かす順（役割）。奇襲 → 後衛 → 前衛 → 回復 → 将。
 const ROLE_ORDER: Array[UnitKind.Role] = [
-	UnitKind.Role.RAIDER, UnitKind.Role.REARGUARD, UnitKind.Role.VANGUARD, UnitKind.Role.HEALER, UnitKind.Role.NONE,
+	UnitKind.Role.REARGUARD, UnitKind.Role.VANGUARD, UnitKind.Role.RAIDER, UnitKind.Role.HEALER, UnitKind.Role.NONE,
 ]
 ## 役割 -> [目標へ 1 マス近づく価値, 受けうるダメージ 1 の重さ（攻撃・回復する手）, 同（動くだけの手）, 倒されうるマスの減点]。
 ## 動くだけの手のほうが重い: 手を出さずに敵の届くマスへ入ると、先に殴られるだけになる。前衛は構わず前へ出て、盾になる。
@@ -26,7 +26,7 @@ const STYLES := {
 	UnitKind.Role.NONE: [8.0, 1.0, 1.0, 5000.0],  # 将。倒されうるマスには立たない。それ以外は本陣を空けない
 	UnitKind.Role.VANGUARD: [4.0, 0.15, 0.15, 10.0],
 	UnitKind.Role.REARGUARD: [4.0, 0.5, 1.5, 25.0],
-	UnitKind.Role.RAIDER: [4.0, 0.35, 1.0, 20.0],
+	UnitKind.Role.RAIDER: [4.0, 0.35, 1.0, 60.0],
 	UnitKind.Role.HEALER: [3.0, 0.8, 1.5, 30.0],
 }
 ## 戦える駒（前衛・後衛・奇襲）が 1 体も残っていないときの将。待っていても勝てないので、自分で敵へ向かう。
@@ -75,6 +75,13 @@ const HQ_HOLD_VALUE := 400.0
 ## 将のいない自分の本陣のマスに立つ価値（敵が GUARD_RADIUS 以内にいるとき。乗っていれば、敵は占拠できない）。
 const HQ_GUARD_VALUE := 80.0
 const GUARD_RADIUS := 10
+## 奇襲が、空いている敵の本陣へ乗りに行く距離（歩数）。これより遠ければ、敵の駒を狙う。
+const RAID_STEPS := 12
+## 奇襲は、敵の駒を狙う間、味方の前衛・後衛のいちばん近い駒から SUPPORT_DISTANCE マスより離れない。
+## 離れた 1 マスにつき ISOLATION_WEIGHT を引く（目標へ 1 マス近づく価値より大きい。倒せる手なら、離れても踏み込む）。
+const SUPPORT_ROLES: Array[UnitKind.Role] = [UnitKind.Role.VANGUARD, UnitKind.Role.REARGUARD]
+const SUPPORT_DISTANCE := 4
+const ISOLATION_WEIGHT := 5.0
 ## 巡航の減点（同じ良さなら、巡航しない）。
 const CRUISE_PENALTY := 0.5
 ## 後衛が、狙う相手から 1 マス離れている価値（射程の中で、なるべく遠くに立つ）。
@@ -100,6 +107,7 @@ const SANCTUARY_EXPECTED_HEALS := 2
 ## 煙幕: 中に、離れたところからしか届かない攻撃に狙われている味方がこの数だけいれば置く。
 ## 防げるダメージの価値の何倍を見込むか（敵は狙いを替えられるので、1 より小さい）。
 const SMOKE_MIN_UNITS := 2
+const SMOKE_MIN_VALUE := 20.0
 const SMOKE_COVER_RATE := 0.75
 ## バリア: 次の相手の番に自分に届く攻撃のうち、いちばん弱い 1 回を防ぐと見込む（敵は弱い攻撃で先にはがす）。
 ## その価値は、その攻撃 1 回ぶんのダメージの価値の何倍か（攻撃されないまま期限で消えることもあるので、1 より小さい）。
@@ -166,6 +174,8 @@ var _idle_danger_weight := 0.0
 var _hq_in_danger := false
 var _lethal_penalty := 0.0
 var _stand_off := false
+## いま考えている駒（奇襲）が離れすぎないようにする味方（前衛・後衛）のマス。空なら、見ない。
+var _support: Array[Vector2i] = []
 ## いま考えている駒が、ほかのマスへ動いたあとの射程（動くと外れる状態で伸びた射程は、動くと戻る）。
 var _moved_reach := 0
 ## いま考えている駒が、戦える駒のいなくなった軍の将か。
@@ -311,8 +321,8 @@ func _follow_up(unit: Unit) -> BattleAction:
 ## 動く先を決めたら、そこで何をするかは次の呼び出し（_follow_up）がもう一度決める（同じ見積もりを使うので、同じ結論になる）。
 func _plan(unit: Unit) -> BattleAction:
 	var options := _battle.options(unit.id)
-	_set_goal(unit)
 	_build_threats()
+	_set_goal(unit)
 	_moved_reach = Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
 
 	# 動くだけ（待機）の手。
@@ -604,7 +614,7 @@ func _smoke_value(used: SkillUsedEvent, sim: Battle) -> float:
 			var rate := KING_DAMAGE_VALUE if unit.kind == UnitKind.Id.KING else DAMAGE_VALUE
 			covered += 1
 			value += SMOKE_COVER_RATE * rate * mini(saved, unit.hp)
-	return value if covered >= SMOKE_MIN_UNITS else 0.0
+	return value if covered >= SMOKE_MIN_UNITS or value >= SMOKE_MIN_VALUE else 0.0
 
 
 ## バリアを付けた価値。次の相手の番に、いまのマスの自分を攻撃できる敵がいれば、防げる 1 回ぶんを見込む
@@ -650,8 +660,8 @@ func _aim_value(used: SkillUsedEvent, sim: Battle) -> float:
 ## - 自分の本陣に乗っている敵と入れ替わる（占拠が途切れる。OCCUPIER_KILL_BONUS を足す）
 func _shadow_step_value(used: SkillUsedEvent, sim: Battle) -> float:
 	var unit := _battle.unit_by_id(used.unit_id)
-	_set_goal(unit)
 	_build_threats()
+	_set_goal(unit)
 	var best := 0.0
 	var killed_id := 0
 	for action in sim.options(used.unit_id).actions():
@@ -703,6 +713,11 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 			value += HQ_HOLD_VALUE * _battle.capture_turns[_me]
 	if cell == _my_hq and _hq_in_danger and UnitKind.role(unit.kind) != UnitKind.Role.RAIDER:
 		value += HQ_GUARD_VALUE
+	if not _support.is_empty():
+		var apart := _FAR
+		for friend_cell in _support:
+			apart = mini(apart, Combat.distance(cell, friend_cell))
+		value -= ISOLATION_WEIGHT * maxi(0, apart - SUPPORT_DISTANCE)
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
@@ -725,15 +740,21 @@ func _set_goal(unit: Unit) -> void:
 	_idle_danger_weight = lerpf(style[_IDLE_DANGER], minf(style[_DANGER], style[_IDLE_DANGER]), bold)
 	_lethal_penalty = style[_LETHAL]
 	_stand_off = role == UnitKind.Role.REARGUARD
+	_support = []
 	var goal := _my_hq if _my_hq != Board.NO_CELL else unit.cell
 	_goal_reach = 0
 	if unit.kind == UnitKind.Id.KING and not _lone_king:
 		pass
-	elif role == UnitKind.Role.RAIDER and _foe_hq != Board.NO_CELL:
-		goal = _foe_hq
-		var occupant := _battle.unit_at(goal)
-		if occupant != null and occupant != unit:
+	elif role == UnitKind.Role.RAIDER:
+		var prey := _prey(unit)
+		if _can_raid_hq(unit):
+			goal = _foe_hq
+		elif prey != null:
+			goal = prey.cell
 			_goal_reach = unit.attack_range()
+			for other in _battle.units:
+				if other.side == _me and other != unit and UnitKind.role(other.kind) in SUPPORT_ROLES:
+					_support.append(other.cell)
 	elif role == UnitKind.Role.HEALER:
 		var friend := _friend_to_follow(unit)
 		if friend != null:
@@ -753,6 +774,43 @@ func _has_fighters() -> bool:
 		if other.side == _me and other.kind != UnitKind.Id.KING and UnitKind.role(other.kind) != UnitKind.Role.HEALER:
 			return true
 	return false
+
+
+## 奇襲が、敵の本陣へ乗りに行くか。もう乗っているか、本陣が空いていて、RAID_STEPS 歩以内で、
+## いまそこに立っても倒されない（危険の見積もりが HP より小さい）とき。_build_threats のあとに呼ぶ。
+func _can_raid_hq(unit: Unit) -> bool:
+	if _foe_hq == Board.NO_CELL:
+		return false
+	if unit.cell == _foe_hq:
+		return true
+	if _battle.unit_at(_foe_hq) != null:
+		return false
+	if _steps_from(_foe_hq)[unit.cell.y * _board.size.x + unit.cell.x] > RAID_STEPS:
+		return false
+	return _threat_at(unit, _foe_hq, 0) < unit.hp
+
+
+## 奇襲が狙う敵。やわらかい駒（後衛・回復）を先に、次に奇襲、最後に前衛と将。同じなら、歩数の近いもの。
+func _prey(unit: Unit) -> Unit:
+	var from := _steps_from(unit.cell)
+	var width := _board.size.x
+	var best: Unit = null
+	var best_key := Vector2i(_FAR, _FAR)
+	for other in _battle.units:
+		if other.side != _foe:
+			continue
+		var rank := 2
+		match UnitKind.role(other.kind):
+			UnitKind.Role.REARGUARD, UnitKind.Role.HEALER:
+				rank = 0
+			UnitKind.Role.RAIDER:
+				rank = 1
+		# 駒のいるマスは歩数の表で通れるので、そのマスまでの歩数で測る。
+		var key := Vector2i(rank, from[other.cell.y * width + other.cell.x])
+		if key < best_key:
+			best = other
+			best_key = key
+	return best
 
 
 ## 前衛・後衛（と、戦える駒のいなくなった軍の将）が向かう敵（プレイヤーの駒）。侵入者を先に、その中でいちばん近いもの（マンハッタン距離）。

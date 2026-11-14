@@ -40,8 +40,11 @@ class Outcome:
 	## 駒の種類 -> [雇った数, 倒された数, プレイヤーの駒（将を含む）に与えたダメージ, プレイヤーの駒（将を含む）を倒した数, 進化した数]。
 	## 将の行も入る（雇った数は 0）。
 	var by_kind: Dictionary[UnitKind.Id, Array] = {}
-	## プレイヤーの駒の番号 -> 種類（倒れたあとも引けるように、始めに控える）。
+	## 同じ表を、プレイヤー番号ごとに分けたもの（別の版の CPU と対戦させたときに、どちらの駒かを分けて見る）。
+	var by_side_kind: Array[Dictionary] = [{}, {}]
+	## プレイヤーの駒の番号 -> 種類、持ち主（倒れたあとも引けるように、始めに控える）。
 	var kinds: Dictionary[int, UnitKind.Id] = {}
+	var sides: Dictionary[int, Unit.Side] = {}
 	## いちばん最近の攻撃のダメージ（攻撃した駒、受けた駒）。撃破を、攻撃した駒の種類に数えるのに使う。
 	## 経験値のイベントは、育ちきった駒と将には出ないので、そこからは数えない。
 	var last_attacker_id := 0
@@ -84,9 +87,10 @@ static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second:
 		if unit.side == Unit.Side.NEUTRAL:
 			continue
 		outcome.kinds[unit.id] = unit.kind
+		outcome.sides[unit.id] = unit.side
 		if unit.kind != UnitKind.Id.KING:
 			outcome.hired[unit.side] += 1
-			_kind_row(outcome, unit.kind)[0] += 1
+			_bump(outcome, unit.id, 0, 1)
 	while not battle.is_over() and battle.turn <= max_turns:
 		var mover := battle.phase
 		var started := Time.get_ticks_usec()
@@ -120,22 +124,21 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 		if outcome.first_evolution_turn == 0:
 			outcome.first_evolution_turn = battle.turn
 		var evolved := event as UnitEvolvedEvent
-		if outcome.kinds.has(evolved.unit_id):
-			_kind_row(outcome, outcome.kinds[evolved.unit_id])[4] += 1
+		_bump(outcome, evolved.unit_id, 4, 1)
 	elif event is AttackDamagedEvent:
 		var hit := event as AttackDamagedEvent
 		outcome.last_attacker_id = hit.attacker_id
 		outcome.last_attacked_id = hit.unit_id
-		if outcome.kinds.has(hit.attacker_id) and outcome.kinds.has(hit.unit_id):
-			_kind_row(outcome, outcome.kinds[hit.attacker_id])[2] += hit.amount
+		if outcome.kinds.has(hit.unit_id):
+			_bump(outcome, hit.attacker_id, 2, hit.amount)
 	elif event is ExplosionDamagedEvent:
 		outcome.last_attacked_id = 0  # 樽の爆発で倒れた駒は、誰の撃破にも数えない
 	elif event is SkillDamagedEvent:
 		var burned := event as SkillDamagedEvent
 		outcome.last_attacked_id = 0
 		outcome.skill_hits[burned.unit_id] = burned.user_id
-		if outcome.kinds.has(burned.user_id) and outcome.kinds.has(burned.unit_id):
-			_kind_row(outcome, outcome.kinds[burned.user_id])[2] += burned.amount
+		if outcome.kinds.has(burned.unit_id):
+			_bump(outcome, burned.user_id, 2, burned.amount)
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
 		if outcome.skill_hits.has(defeated.unit_id) and defeated.side != Unit.Side.NEUTRAL:
@@ -146,14 +149,14 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 			killer = outcome.last_attacker_id
 		elif outcome.skill_hits.has(defeated.unit_id):
 			killer = outcome.skill_hits[defeated.unit_id]  # 同じスキルで、同時に何体も倒れる
-		if defeated.side != Unit.Side.NEUTRAL and outcome.kinds.has(killer):
-			_kind_row(outcome, outcome.kinds[killer])[3] += 1
+		if defeated.side != Unit.Side.NEUTRAL:
+			_bump(outcome, killer, 3, 1)
 		outcome.last_attacked_id = 0
 		if defeated.side == Unit.Side.NEUTRAL:
 			outcome.neutral_kills[mover] += 1
 		elif defeated.kind != UnitKind.Id.KING:
 			outcome.losses[defeated.side] += 1
-			_kind_row(outcome, defeated.kind)[1] += 1
+			_bump(outcome, defeated.unit_id, 1, 1)
 	elif event is ExperienceGainedEvent:
 		var gained := event as ExperienceGainedEvent
 		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0])
@@ -175,5 +178,11 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 		outcome.ending = "king" if won.reason == GameWonEvent.Reason.KING_DEFEATED else "hq"
 
 
-static func _kind_row(outcome: Outcome, kind: UnitKind.Id) -> Array:
-	return outcome.by_kind.get_or_add(kind, [0, 0, 0, 0, 0])
+## プレイヤーの駒 unit_id の種類の行（by_kind と、持ち主ごとの by_side_kind）の column 番目に amount を足す。
+## プレイヤーの駒でなければ（中立の駒、0）何もしない。
+static func _bump(outcome: Outcome, unit_id: int, column: int, amount: int) -> void:
+	if not outcome.kinds.has(unit_id):
+		return
+	var kind := outcome.kinds[unit_id]
+	outcome.by_kind.get_or_add(kind, [0, 0, 0, 0, 0])[column] += amount
+	outcome.by_side_kind[outcome.sides[unit_id]].get_or_add(kind, [0, 0, 0, 0, 0])[column] += amount
