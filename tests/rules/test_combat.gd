@@ -87,15 +87,15 @@ func test_forest_cuts_damage_by_20_percent_rounding_down() -> void:
 func test_attack_reduces_hp_and_ends_the_action() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
-	var target := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(4, 0))  # HP 40
+	var target := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(4, 0))  # HP 52
 	var events := battle.apply(AttackAction.new(sniper.id, target.id)).events
-	assert_eq(target.hp, 31)
+	assert_eq(target.hp, 43)
 	assert_eq(events.size(), 3)
 	var damaged := events[0] as AttackDamagedEvent
 	assert_eq(damaged.attacker_id, sniper.id)
 	assert_eq(damaged.unit_id, target.id)
 	assert_eq(damaged.amount, 9)
-	assert_eq(damaged.hp, 31)
+	assert_eq(damaged.hp, 43)
 	assert_eq(damaged.cause, UnitDamagedEvent.Cause.ATTACK)
 	assert_true(events[1] is ExperienceGainedEvent)  # docs/experience-levelup.md
 	assert_eq((events[2] as UnitActedEvent).unit_id, sniper.id)
@@ -124,7 +124,7 @@ func test_out_of_range_attack_is_rejected() -> void:
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))
 	var target := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(5, 0))
 	assert_false(battle.apply(AttackAction.new(paladin.id, target.id)).accepted)
-	assert_eq(target.hp, 16)
+	assert_eq(target.hp, 12)
 	assert_false(paladin.acted)
 
 

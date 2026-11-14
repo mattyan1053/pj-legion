@@ -14,7 +14,7 @@ func test_sniper() -> void:
 	assert_eq(UnitKind.role(id), UnitKind.Role.REARGUARD)
 	assert_eq(UnitKind.army(id), UnitKind.Army.MILITARY)
 	assert_eq(UnitKind.cost(id), 3)
-	assert_eq(UnitKind.max_hp(id), 16)
+	assert_eq(UnitKind.max_hp(id), 12)
 	assert_eq(UnitKind.power(id), 9)
 	assert_eq(UnitKind.move_range(id), 3)
 	assert_eq(UnitKind.attack_range(id), 4)

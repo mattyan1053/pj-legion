@@ -20,11 +20,11 @@ const HIT_EXPERIENCE := 10
 ## 攻撃でプレイヤーの駒を倒したとき（当たったぶんの HIT_EXPERIENCE は足さない）。
 const DEFEAT_EXPERIENCE := 50
 ## 攻撃で中立の駒を倒したとき（同上）。
-const NEUTRAL_DEFEAT_EXPERIENCE := 80
+const NEUTRAL_DEFEAT_EXPERIENCE := 30
 ## 味方を回復したとき（回復した量によらない）。
 const HEAL_EXPERIENCE := 20
 ## 1 レベル上がるのに要る経験値（どのレベルでも同じ）。
-const EXPERIENCE_PER_LEVEL := 100
+const EXPERIENCE_PER_LEVEL := 120
 ## これより上には上がらない。
 const MAX_LEVEL := 3
 ## 役割 -> 1 レベルごとに伸びる量（Unit.Stat -> int）。POWER は攻撃力、回復役では回復量。

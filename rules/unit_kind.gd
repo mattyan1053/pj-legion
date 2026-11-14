@@ -28,13 +28,13 @@ enum Army { NONE, MILITARY, FANTASY }
 const _TABLE := {
 	Id.KING: ["将", Role.NONE, Army.NONE, 0, 30, 8, 4, 1],
 	Id.SHIELD_TROOPER: ["シールドトルーパー", Role.VANGUARD, Army.MILITARY, 4, 44, 6, 3, 1],
-	Id.SNIPER: ["スナイパー", Role.REARGUARD, Army.MILITARY, 3, 16, 9, 3, 4],
+	Id.SNIPER: ["スナイパー", Role.REARGUARD, Army.MILITARY, 3, 12, 9, 3, 4],
 	Id.COMMANDO: ["コマンドー", Role.RAIDER, Army.MILITARY, 3, 16, 12, 6, 1],
 	Id.MEDIC: ["衛生兵", Role.HEALER, Army.MILITARY, 3, 20, 15, 4, 1],
-	Id.PALADIN: ["パラディン", Role.VANGUARD, Army.FANTASY, 4, 40, 7, 3, 1],
-	Id.SORCERER: ["ソーサラー", Role.REARGUARD, Army.FANTASY, 3, 16, 8, 3, 2],
-	Id.SPELLBLADE: ["スペルブレード", Role.RAIDER, Army.FANTASY, 3, 18, 11, 5, 1],
-	Id.PRIEST: ["プリースト", Role.HEALER, Army.FANTASY, 3, 18, 12, 4, 2],
+	Id.PALADIN: ["パラディン", Role.VANGUARD, Army.FANTASY, 4, 52, 8, 3, 1],
+	Id.SORCERER: ["ソーサラー", Role.REARGUARD, Army.FANTASY, 3, 20, 11, 3, 2],
+	Id.SPELLBLADE: ["スペルブレード", Role.RAIDER, Army.FANTASY, 3, 22, 12, 6, 1],
+	Id.PRIEST: ["プリースト", Role.HEALER, Army.FANTASY, 3, 22, 14, 4, 2],
 	Id.MINION: ["エナジー・コア", Role.NONE, Army.NONE, 0, 12, 4, 2, 1],
 	Id.ELITE_MINION: ["エリートミニオン", Role.NONE, Army.NONE, 0, 100, 10, 2, 1],
 }
