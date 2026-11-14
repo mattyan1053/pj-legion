@@ -1,5 +1,6 @@
 extends Node3D
-## 盤面の見た目。ルールの盤面（Board）を受け取って、マス・木立・岩山・結晶泉・本陣の旗を組み立てる。
+## 盤面の見た目。ルールの盤面（Board）を受け取って、マス・木立・岩山・結晶泉・本陣の旗と、
+## 環境オブジェクト（起爆樽・回復の泉・ポータル）を組み立てる。
 ##
 ## マスの色分け（移動範囲・攻撃できる相手など）と、マウスの下のマスの印もここで出す。
 ## 何を塗るかは呼ぶ側が決める（ここはルールを持たない）。
@@ -28,9 +29,18 @@ const COLOR_FOREST := Color("457a40")
 const COLOR_OBSTACLE_GROUND := Color("767b84")
 const COLOR_FONT := Color("3fa9bd")
 const COLOR_CRYSTAL := Color("4fd8f0")
+const COLOR_BARREL := Color("8a5a2b")
+const COLOR_BARREL_BAND := Color("3a3a3e")
+const COLOR_BARREL_MARK := Color("e8452e")
+const COLOR_SPRING_STONE := Color("b9bcc0")
+const COLOR_SPRING_WATER := Color("2f8fe0")
+const COLOR_SPRING_CROSS := Color("2fd66b")
+## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
+const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 
 var board: Board
 
+var _barrels := {}  # Vector2i -> Node3D（爆発したら取り除く）
 var _occluders := {}  # Vector2i -> Array[GeometryInstance3D]（岩山と木立。手前にあると駒を隠す）
 var _cursor: MeshInstance3D
 var _highlight: MultiMesh
@@ -84,7 +94,40 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> vo
 				Terrain.Type.FONT:
 					_add_crystals(crystal_mesh, crystal_material, center, rng)
 
+	for cell in board.barrel_cells:
+		_add_barrel(cell, rng)
+	for cell in board.spring_cells:
+		_add_spring(cell)
+	for cell: Vector2i in board.portal_exits:
+		_add_portal(cell, portal_color(board, cell))
+
 	_build_markers()
+
+
+## ポータルの色。対の 2 つは同じ色になる（対を、上の行・左の列にあるほうの順に数えて色を割り当てる）。
+static func portal_color(battle_board: Board, cell: Vector2i) -> Color:
+	var firsts: Array[Vector2i] = []
+	for portal: Vector2i in battle_board.portal_exits:
+		if Board.in_reading_order(portal, battle_board.portal_exits[portal]):
+			firsts.append(portal)
+	firsts.sort_custom(Board.in_reading_order)
+	var exit := battle_board.portal_exit(cell)
+	var index := firsts.find(cell if Board.in_reading_order(cell, exit) else exit)
+	return PORTAL_COLORS[maxi(index, 0) % PORTAL_COLORS.size()]
+
+
+## 樽が描かれているマス。検査用。
+func barrel_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	cells.assign(_barrels.keys())
+	return cells
+
+
+## 爆発した樽を取り除く。
+func remove_barrel(cell: Vector2i) -> void:
+	if _barrels.has(cell):
+		_barrels[cell].queue_free()
+		_barrels.erase(cell)
 
 
 static func cell_center(cell: Vector2i) -> Vector3:
@@ -162,6 +205,102 @@ func _build_markers() -> void:
 	_cursor.visible = false
 
 
+## 起爆樽。入れないマスなので、マスの中央に立てる。ふたの赤い印で、ただの樽でないと分かるようにする。
+func _add_barrel(cell: Vector2i, rng: RandomNumberGenerator) -> void:
+	var root := Node3D.new()
+	root.position = cell_center(cell)
+	root.rotation.y = rng.randf_range(0.0, TAU)
+	add_child(root)
+	_barrels[cell] = root
+
+	var body := CylinderMesh.new()
+	body.top_radius = 0.24
+	body.bottom_radius = 0.24
+	body.height = 0.6
+	body.radial_segments = 12
+	_add_part(root, body, _material(COLOR_BARREL), Vector3(0.0, 0.3, 0.0))
+	var band := CylinderMesh.new()
+	band.top_radius = 0.255
+	band.bottom_radius = 0.255
+	band.height = 0.05
+	band.radial_segments = 12
+	for y: float in [0.1, 0.5]:
+		_add_part(root, band, _material(COLOR_BARREL_BAND), Vector3(0.0, y, 0.0))
+	var mark := CylinderMesh.new()
+	mark.top_radius = 0.15
+	mark.bottom_radius = 0.15
+	mark.height = 0.03
+	mark.radial_segments = 12
+	var mark_material := _flat_material(COLOR_BARREL_MARK)
+	_add_part(root, mark, mark_material, Vector3(0.0, 0.61, 0.0))
+	_add_part(root, band, mark_material, Vector3(0.0, 0.3, 0.0))
+
+
+## 回復の泉。駒が上に立つので平たく作る（石の縁と水面）。駒が乗っていても分かるよう、隅に緑の十字の札を立てる。
+func _add_spring(cell: Vector2i) -> void:
+	var center := cell_center(cell)
+	var rim := TorusMesh.new()
+	rim.inner_radius = 0.36
+	rim.outer_radius = 0.46
+	rim.rings = 20
+	rim.ring_segments = 8
+	var rim_instance := _add_mesh(rim, _material(COLOR_SPRING_STONE), center + Vector3(0.0, 0.02, 0.0))
+	rim_instance.scale = Vector3(1.0, 0.7, 1.0)
+	var water := CylinderMesh.new()
+	water.top_radius = 0.38
+	water.bottom_radius = 0.38
+	water.height = 0.02
+	_add_mesh(water, _flat_material(COLOR_SPRING_WATER), center + Vector3(0.0, 0.02, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+	var foot := center + Vector3(-0.4, 0.0, -0.4)
+	var post := CylinderMesh.new()
+	post.top_radius = 0.025
+	post.bottom_radius = 0.025
+	post.height = 1.0
+	_add_mesh(post, _material(COLOR_SPRING_STONE), foot + Vector3(0.0, 0.5, 0.0))
+	var bar := BoxMesh.new()
+	bar.size = Vector3(0.3, 0.1, 0.05)
+	var cross := _flat_material(COLOR_SPRING_CROSS)
+	_add_mesh(bar, cross, foot + Vector3(0.0, 1.1, 0.0))
+	_add_mesh(bar, cross, foot + Vector3(0.0, 1.1, 0.0)).rotation.z = PI / 2.0
+
+
+## ポータル。駒が上に立つので平たく作る（色の輪と薄い面）。駒が乗っていても分かるよう、両脇に柱を立てる。
+## 色は対ごとに変える。
+func _add_portal(cell: Vector2i, color: Color) -> void:
+	var center := cell_center(cell)
+	var glow := _flat_material(color)
+	for radius: float in [0.42, 0.26]:
+		var ring := TorusMesh.new()
+		ring.inner_radius = radius - 0.035
+		ring.outer_radius = radius + 0.035
+		ring.rings = 24
+		ring.ring_segments = 6
+		var instance := _add_mesh(ring, glow, center + Vector3(0.0, 0.025, 0.0))
+		instance.scale = Vector3(1.0, 0.4, 1.0)
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var disc := CylinderMesh.new()
+	disc.top_radius = 0.4
+	disc.bottom_radius = 0.4
+	disc.height = 0.01
+	_add_mesh(disc, _overlay_material(Color(color, 0.45)), center + Vector3(0.0, 0.015, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pillar := CylinderMesh.new()
+	pillar.top_radius = 0.02
+	pillar.bottom_radius = 0.05
+	pillar.height = 0.9
+	pillar.radial_segments = 6
+	for side: float in [-0.44, 0.44]:
+		_add_mesh(pillar, glow, center + Vector3(side, 0.45, 0.0))
+
+
+func _add_part(parent: Node3D, mesh: Mesh, material: Material, at: Vector3) -> void:
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.material_override = material
+	instance.position = at
+	parent.add_child(instance)
+
+
 ## 本陣の旗。駒が乗っても見えるよう、マスの隅に立てる。
 func _add_flag(center: Vector3, color: Color) -> void:
 	var pole_mesh := CylinderMesh.new()
@@ -201,6 +340,14 @@ func _material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.roughness = 0.9
+	return material
+
+
+## 光に左右されない、決まった色（どの描画方式でも同じ色に見える）。
+func _flat_material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return material
 
 

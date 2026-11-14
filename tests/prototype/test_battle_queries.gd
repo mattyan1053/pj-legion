@@ -94,3 +94,34 @@ func test_counts_and_king() -> void:
 	assert_eq(Queries.unacted_count(battle), 1)
 	battle.apply(EndPhaseAction.new())
 	assert_eq(Queries.unacted_count(battle), 1, "プレイヤー2 の番")
+
+
+func test_barrel_targets_are_exactly_what_the_rules_accept() -> void:
+	var battle := Maps.battle([
+		"..B.......",
+		"......B...",
+		"..........",
+		"B.........",
+	])
+	var unit := battle.add_unit(UnitKind.Id.SORCERER, P1, Vector2i(2, 2))  # 射程 2
+	var targets := Queries.barrel_targets(battle, unit)
+	assert_eq(targets, [Vector2i(2, 0)] as Array[Vector2i])
+	for y in battle.board.size.y:
+		for x in battle.board.size.x:
+			var cell := Vector2i(x, y)
+			assert_eq(targets.has(cell), battle.can_apply(AttackBarrelAction.new(unit.id, cell)), "狙えるかどうか %s" % cell)
+
+
+func test_no_barrel_targets_for_units_that_cannot_attack() -> void:
+	var battle := Maps.battle([
+		".B....",
+		"......",
+	])
+	var enemy := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(0, 0))
+	var healer := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(1, 1))
+	var runner := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(5, 1))
+	assert_eq(Queries.barrel_targets(battle, null).size(), 0)
+	assert_eq(Queries.barrel_targets(battle, enemy).size(), 0, "相手の番の駒")
+	assert_eq(Queries.barrel_targets(battle, healer).size(), 0, "回復役")
+	battle.apply(MoveAction.new(runner.id, Vector2i(2, 1), true))
+	assert_eq(Queries.barrel_targets(battle, runner).size(), 0, "巡航で動いた駒")

@@ -27,6 +27,11 @@ const TERRAIN_NAMES := {
 	Terrain.Type.FOREST: "森（移動 2・受けるダメージ 0.8 倍）",
 	Terrain.Type.FONT: "結晶泉",
 }
+const OBJECT_NAMES := {
+	MapObject.Type.BARREL: "起爆樽（入れない。攻撃すると爆発し、周り 8 マスの駒すべてに %d ダメージ）" % MapObject.BLAST_DAMAGE,
+	MapObject.Type.SPRING: "回復の泉（自分の番の始めに、乗っている駒が %d 回復）" % MapObject.SPRING_HEAL,
+	MapObject.Type.PORTAL: "ポータル",
+}
 const STAGE_NAMES := {
 	BoardGenerator.Stage.PLAIN: "1 中央平原",
 	BoardGenerator.Stage.LABYRINTH: "2 迷宮回廊",
@@ -137,6 +142,19 @@ func show_result(winner: Unit.Side, reason: String) -> void:
 	_result_title.add_theme_color_override("font_color", _side_color(winner).lightened(0.4))
 	_result_reason.text = reason
 	_result.visible = true
+
+
+## 引き分けの結果を出す。
+func show_draw(reason: String) -> void:
+	_result_title.text = "引き分け"
+	_result_title.add_theme_color_override("font_color", Color("e6e6e6"))
+	_result_reason.text = reason
+	_result.visible = true
+
+
+## いま出ている結果の見出し（出ていなければ空）。検査用。
+func result_title() -> String:
+	return _result_title.text if _result.visible else ""
 
 
 func hide_result() -> void:
