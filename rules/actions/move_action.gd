@@ -25,6 +25,7 @@ func execute(battle: Battle) -> Array:
 	var unit := battle.unit_by_id(unit_id)
 	var path := Movement.path_to(battle, unit, to, cruise)
 	battle.acting_unit_id = unit.id
+	battle.capture_turns_before_move = battle.capture_turns.duplicate()
 	unit.has_moved = true
 	unit.move_origin = unit.cell
 	unit.cruised = cruise

@@ -1,6 +1,7 @@
 class_name UndoMoveAction
 extends RefCounted
 ## 動いたあと、攻撃も待機もしていない駒を、動く前のマスへ戻す。駒は行動前の状態に戻る。
+## 動いたことで本陣の占拠の数が 0 に戻っていたら、それも動く前の数へ戻す。
 
 var unit_id: int
 
@@ -21,4 +22,10 @@ func execute(battle: Battle) -> Array:
 	unit.has_moved = false
 	unit.cruised = false
 	battle.acting_unit_id = 0
-	return [MoveUndoneEvent.new(unit.id, from, unit.cell)]
+	var events: Array = [MoveUndoneEvent.new(unit.id, from, unit.cell)]
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		var before := battle.capture_turns_before_move[player]
+		if battle.capture_turns[player] != before:
+			battle.capture_turns[player] = before
+			events.append(CaptureProgressEvent.new(player, before))
+	return events
