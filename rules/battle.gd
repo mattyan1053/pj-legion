@@ -2,8 +2,12 @@ class_name Battle
 extends RefCounted
 ## 1 回の対戦の状態（盤面と、盤上の駒）。
 ##
-## 状態を変えるのは apply() だけ。行動（Action）を受け取り、起きたこと（イベント）の列を返す。
-## 見た目の側はイベントを順に再生する。受け付けられない行動には空の列を返し、状態は変えない。
+## 状態を変えるのは apply() だけ。行動（BattleAction）を受け取り、結果（ActionResult）を返す。
+## 結果は、受け付けたかどうかと、起きたこと（BattleEvent）の列。見た目の側はイベントを順に再生する。
+## 断った行動では、状態は何も変わらない。
+##
+## clone() で複製できる。複製に apply() しても元は変わらない（戦闘予測や CPU の先読みに使う）。
+## 確率で決まるルールは、rng だけを使う（同じシードなら同じ結果になり、複製も元と同じ続きを引く）。
 ##
 ## 1 ターンは プレイヤー1 → プレイヤー2 → 中立 のフェーズで進む。
 ## プレイヤーのフェーズでは、そのプレイヤーの駒が 1 体ずつ「移動 → 攻撃か待機」で行動する。
@@ -26,11 +30,27 @@ var capture_turns_before_move: Array[int] = [0, 0]
 ## 敵の本陣をこの回数だけ自分のフェーズの終わりまで占拠し続けたら勝ち。
 const CAPTURE_TURNS_TO_WIN := 3
 
+## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、種を固定しても結果がそろわない。
+var rng := RandomNumberGenerator.new()
+
 var _next_unit_id := 1
 
 
-func _init(battle_board: Board) -> void:
+func _init(battle_board: Board, rng_seed := 0) -> void:
 	board = battle_board
+	rng.seed = rng_seed
+
+
+## 状態を丸ごと複製する。複製と元は、どちらに apply() してももう片方に影響しない。
+## 駒の番号は元と同じなので、同じ行動をどちらにも渡せる。乱数は元と同じ続きを引く。
+func clone() -> Battle:
+	var copy := Battle.new(board.copy())
+	StateCopy.copy_fields(self, copy, [&"board", &"units", &"rng"])
+	for unit in units:
+		copy.units.append(unit.copy())
+	copy.rng.seed = rng.seed
+	copy.rng.state = rng.state
+	return copy
 
 
 ## 駒を置く（対戦の準備用）。置けないマスなら null。
@@ -112,10 +132,10 @@ func occupies_enemy_hq(player: Unit.Side) -> bool:
 
 ## player のフェーズの終わりに、敵の本陣の占拠を数える。乗せていれば 1 進め、いなければ 0 に戻す。
 ## 数が変わったときだけイベントを出す。規定の回数に達したら勝ち。
-func count_capture(player: Unit.Side) -> Array:
+func count_capture(player: Unit.Side) -> Array[BattleEvent]:
 	var before := capture_turns[player]
 	capture_turns[player] = before + 1 if occupies_enemy_hq(player) else 0
-	var events: Array = []
+	var events: Array[BattleEvent] = []
 	if capture_turns[player] != before:
 		events.append(CaptureProgressEvent.new(player, capture_turns[player]))
 	if capture_turns[player] >= CAPTURE_TURNS_TO_WIN:
@@ -124,21 +144,26 @@ func count_capture(player: Unit.Side) -> Array:
 	return events
 
 
-## 行動を受け付けて状態を進め、起きたことを返す。受け付けられなければ空の列。
-func apply(action: Variant) -> Array:
-	if is_over() or not action.is_valid(self):
-		return []
-	var events: Array = action.execute(self)
+## いまの状態で、その行動を受け付けるか。状態は変えない。
+func can_apply(action: BattleAction) -> bool:
+	return not is_over() and action.is_valid(self)
+
+
+## 行動を受け付けて状態を進め、起きたことを返す。受け付けられなければ、何も変えずに断る。
+func apply(action: BattleAction) -> ActionResult:
+	if not can_apply(action):
+		return ActionResult.rejected()
+	var events := action.execute(self)
 	events.append_array(_after_action(events))
-	return events
+	return ActionResult.new(true, events)
 
 
 ## 行動のあとに決まること。
 ## - 将が倒れたら、相手のプレイヤーの勝ち
 ## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
-func _after_action(events: Array) -> Array:
-	var extra: Array = []
-	for event: Variant in events:
+func _after_action(events: Array[BattleEvent]) -> Array[BattleEvent]:
+	var extra: Array[BattleEvent] = []
+	for event in events:
 		var defeated := event as UnitDefeatedEvent
 		if defeated == null or defeated.kind != UnitKind.Id.KING or is_over():
 			continue

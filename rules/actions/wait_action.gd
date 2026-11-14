@@ -1,5 +1,5 @@
 class_name WaitAction
-extends RefCounted
+extends BattleAction
 ## 駒の行動を終える（待機）。動かずに待機してもよい。
 
 var unit_id: int
@@ -13,5 +13,5 @@ func is_valid(battle: Battle) -> bool:
 	return battle.can_act(battle.unit_by_id(unit_id))
 
 
-func execute(battle: Battle) -> Array:
+func execute(battle: Battle) -> Array[BattleEvent]:
 	return [battle.finish_action(battle.unit_by_id(unit_id))]

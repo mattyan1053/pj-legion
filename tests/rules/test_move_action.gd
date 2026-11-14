@@ -14,7 +14,7 @@ func _battle() -> Battle:
 func test_move_updates_the_unit_and_reports_the_path() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
-	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(2, 1)))
+	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(2, 1))).events
 	assert_eq(sniper.cell, Vector2i(2, 1))
 	assert_eq(battle.unit_at(Vector2i(2, 1)), sniper)
 	assert_eq(battle.unit_at(Vector2i(0, 0)), null)
@@ -30,15 +30,16 @@ func test_move_updates_the_unit_and_reports_the_path() -> void:
 func test_out_of_range_is_rejected() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
-	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(5, 0)))
-	assert_eq(events, [])
+	var result := battle.apply(MoveAction.new(sniper.id, Vector2i(5, 0)))
+	assert_false(result.accepted)
+	assert_eq(result.events.size(), 0)
 	assert_eq(sniper.cell, Vector2i(0, 0))
 
 
 func test_cruise_reaches_twice_as_far() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
-	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(6, 0), true))
+	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(6, 0), true)).events
 	assert_eq(events.size(), 1)
 	assert_eq(sniper.cell, Vector2i(6, 0))
 
@@ -47,20 +48,20 @@ func test_occupied_destination_is_rejected() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
 	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 1))
-	assert_eq(battle.apply(MoveAction.new(sniper.id, Vector2i(1, 1))), [])
+	assert_false(battle.apply(MoveAction.new(sniper.id, Vector2i(1, 1))).accepted)
 
 
 func test_staying_put_is_allowed() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(3, 0))
-	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(3, 0)))
+	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(3, 0))).events
 	assert_eq(events.size(), 1)
 	assert_eq((events[0] as UnitMovedEvent).path, [Vector2i(3, 0)] as Array[Vector2i])
 
 
 func test_unknown_unit_is_rejected() -> void:
 	var battle := _battle()
-	assert_eq(battle.apply(MoveAction.new(999, Vector2i(0, 0))), [])
+	assert_false(battle.apply(MoveAction.new(999, Vector2i(0, 0))).accepted)
 
 
 func test_units_cannot_be_placed_on_obstacles_or_each_other() -> void:

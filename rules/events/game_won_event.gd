@@ -1,5 +1,5 @@
 class_name GameWonEvent
-extends RefCounted
+extends BattleEvent
 ## 決着した。winner が勝った陣営。
 
 enum Reason {

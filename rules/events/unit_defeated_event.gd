@@ -1,5 +1,5 @@
 class_name UnitDefeatedEvent
-extends RefCounted
+extends BattleEvent
 ## 駒が倒れ、盤から取り除かれた。cell は倒れたマス。
 
 var unit_id: int

@@ -1,5 +1,5 @@
 class_name EndPhaseAction
-extends RefCounted
+extends BattleAction
 ## いまのプレイヤーのフェーズを終え、次のフェーズへ進める（「ターン終了」）。
 ##
 ## 全部の駒が行動を終えても、フェーズは自動では終わらない。未行動の駒が残っていても終えてよい。
@@ -11,8 +11,8 @@ func is_valid(battle: Battle) -> bool:
 	return battle.phase != Unit.Side.NEUTRAL
 
 
-func execute(battle: Battle) -> Array:
-	var events: Array = []
+func execute(battle: Battle) -> Array[BattleEvent]:
+	var events: Array[BattleEvent] = []
 	var acting := battle.unit_by_id(battle.acting_unit_id)
 	if acting != null:
 		events.append(battle.finish_action(acting))
@@ -30,7 +30,7 @@ func execute(battle: Battle) -> Array:
 	return events
 
 
-static func _start_phase(battle: Battle, side: Unit.Side) -> Array:
+static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	battle.phase = side
 	for unit in battle.units:
 		if unit.side == side:

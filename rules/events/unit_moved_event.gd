@@ -1,5 +1,5 @@
 class_name UnitMovedEvent
-extends RefCounted
+extends BattleEvent
 ## 駒が動いた。path は出発したマスから着いたマスまで（両端を含む）。見た目はこの道どおりに歩かせる。
 
 var unit_id: int
