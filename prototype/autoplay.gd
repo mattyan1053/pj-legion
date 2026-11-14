@@ -279,7 +279,7 @@ func _queue_field_effect_scene() -> void:
 		_expect(battle.board.field_effects.size() == 2, "煙幕と聖域が残っていない"))
 
 
-## スキルのボタンから、対象を選んで使う（盾を置く、聖域を置く）。選ぶのをやめる操作と、クールダウンが明けるまで。
+## スキルのボタンから、対象を選んで使う（盾を置く、聖域を置く、ファイアボールで敵を焼く）。選ぶのをやめる操作と、クールダウンが明けるまで。
 func _queue_skill_scene() -> void:
 	var board := _small_board(Vector2i(7, 5))
 	var battle := Battle.new(board)
@@ -287,6 +287,9 @@ func _queue_skill_scene() -> void:
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
 	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 2))
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, Unit.Side.PLAYER1, Vector2i(1, 3))
+	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER1, Vector2i(1, 1))
+	var burned := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(4, 1))
+	var damaged: Script = SkillDamagedEvent
 	var wall := Vector2i(3, 2)
 	var center := Vector2i(1, 4)
 	var used: Script = SkillUsedEvent
@@ -332,6 +335,15 @@ func _queue_skill_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(battle.board.field_effects.size() == 2, "聖域を置けなかった")
 		_expect(priest.acted and priest.cell == Vector2i(2, 3), "聖域を置いても、行動が終わっていない")
+		_scene.click_cell(sorcerer.cell))
+	_scripted.append(func() -> void:
+		_scene.press_skill()
+		_expect(_scene.is_choosing_skill_target(), "ファイアボールの対象を選び始めなかった")
+		_scene.played.erase(damaged)
+		_scene.click_cell(burned.cell))
+	_scripted.append(func() -> void:
+		_expect(burned.hp == burned.max_hp() - FireballSkill.DAMAGE, "ファイアボールが当たらなかった")
+		_expect(_scene.played.get(damaged, 0) == 1, "スキルのダメージを再生しなかった")
 		_scene.played.erase(ready))
 	for i in TacticalBarricadeSkill.COOLDOWN * 2:
 		_scripted.append(_end_turn)

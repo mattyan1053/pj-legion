@@ -2,6 +2,7 @@
 
 コード: `rules/skill.gd`（スキル 1 つの定義の親）、`rules/skills.gd`（共通の決まり。スキルの並び）、`rules/skills/`（スキルごとの中身）、
 `rules/actions/use_skill_action.gd`、`rules/events/skill_used_event.gd`、`rules/events/skill_ready_event.gd`、
+`rules/events/skill_damaged_event.gd`、
 `rules/unit.gd`（`skill_cooldown`）。
 テスト: `tests/rules/test_skills.gd`（共通の決まり）、`tests/rules/skills/`（スキルごと）。
 
@@ -57,6 +58,20 @@
 | --- | --- |
 | `SkillUsedEvent` | 駒がスキルを使った。効果のイベントは、このあとに続く |
 | `SkillReadyEvent` | 駒のクールダウンが 0 になった（駒、スキル）。持ち主のフェーズの始め |
+| `SkillDamagedEvent` | 駒がスキルでダメージを受けた（`UnitDamagedEvent` の子。`cause` は `SKILL`。使った駒、スキル） |
+
+## ダメージのあるスキル
+
+駒にダメージを与えるスキルは、効果（`Skill.apply`）の中で共通の入口 `Skills.deal_damage(対戦, 使った駒, [[駒, 量], ...])` を呼ぶ。
+どの駒にいくつ与えるか（範囲、敵だけか、量）はスキルが決め、与え方はここで決める。
+
+- 並べた駒の全員に**同時に**当たる。駒ごとの `SkillDamagedEvent` が、並べた順に、間にほかのイベントをはさまずに続く。
+  量は、残りの HP より多くてもそのまま（攻撃と同じ）。
+- HP が 0 になった駒は、全員のダメージのあとに、同じ並びで取り除く（`UnitDefeatedEvent`）。将が倒れたときの決着は、ほかの行動と同じ。
+- 使った駒に経験値が入る。相手ごとに駒の攻撃と同じ表（`Growth.damage_experience`: 当たって生き残れば 10、倒せば 50、中立の駒は 30）で数え、
+  **いちばん多く入る 1 体ぶんだけ**（何体に当てても 1 回）。誰にも当たらなければ入らない。
+- 予測（`Skills.preview`）、画面の見込みと再生、CPU は、`SkillDamagedEvent` を `UnitDamagedEvent` として読むので、
+  ダメージのあるスキルを足しても、そのまま乗る。
 
 ## 選べること
 
@@ -85,6 +100,7 @@
 2. `rules/skills/` に `Skill` の子のクラスを書く（調整値は、そのファイルの先頭に置く）。
 3. `Skills.ALL` に 1 つ並べる。
 4. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`board_prototype.gd` の `event_players()`）に載せる。
+   駒へのダメージは `Skills.deal_damage` を呼べば足り、イベントを足さなくてよい。
 5. イベントだけで価値が決まらなければ、`CpuPlayer.SKILL_VALUES` に 1 行と、見積もるメソッドを足す。
 6. `docs/skills/` に文書、`tests/rules/skills/` にテストを置く。
 

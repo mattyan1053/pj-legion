@@ -86,12 +86,17 @@ const HEALER_SEARCH_STEPS := 12
 const SKILL_VALUES := {
 	Skill.Id.TACTICAL_BARRICADE: &"_barricade_value",
 	Skill.Id.SAINT_PLACE: &"_sanctuary_value",
+	Skill.Id.SMOKE_GRENADE: &"_smoke_value",
 }
 ## 盾: 敵の射線を 1 本切る価値は、その敵の攻撃 1 回ぶんのダメージの価値の何倍か（敵は回り込めるので、1 より小さい）。
 const BARRICADE_COVER_RATE := 0.75
 ## 聖域: 中に、減っている味方がこの数だけいれば置く。1 体が回復すると見込むのは、聖域の回復の何回ぶんまでか。
 const SANCTUARY_MIN_UNITS := 2
 const SANCTUARY_EXPECTED_HEALS := 2
+## 煙幕: 中に、離れた敵に狙われている味方がこの数だけいれば置く。
+## 狙っている敵 1 体を防ぐ価値は、その敵の攻撃 1 回ぶんのダメージの価値の何倍か（敵は隣まで寄れば当てられるので、1 より小さい）。
+const SMOKE_MIN_UNITS := 2
+const SMOKE_COVER_RATE := 0.75
 
 const _GOAL := 0
 const _DANGER := 1
@@ -499,6 +504,32 @@ func _sanctuary_value(used: SkillUsedEvent, sim: Battle) -> float:
 			wounded += 1
 			total += mini(missing, FieldEffects.SANCTUARY_HEAL * SANCTUARY_EXPECTED_HEALS)
 	return HEAL_VALUE * total if wounded >= SANCTUARY_MIN_UNITS else 0.0
+
+
+## 煙幕を置いた価値。中にいる味方（もう自分の煙幕の中にいる駒は除く）のうち、次の相手の番に
+## 離れた攻撃（射程 2 以上の敵）に狙われうる駒を数え、その敵の攻撃を防ぐぶんを見込む。
+## 狙われている味方が SMOKE_MIN_UNITS 体に満たなければ 0。
+func _smoke_value(used: SkillUsedEvent, sim: Battle) -> float:
+	_build_threats()
+	var cells := Skills.by_id(used.skill).affected_cells(sim, sim.unit_by_id(used.unit_id), used.target)
+	var covered := 0
+	var value := 0.0
+	for unit in _battle.units:
+		if unit.side != _me or not cells.has(unit.cell) or FieldEffects.smoke_of(_battle, unit) != null:
+			continue
+		if not _threats.has(unit.cell):
+			continue
+		var rate := KING_DAMAGE_VALUE if unit.kind == UnitKind.Id.KING else DAMAGE_VALUE
+		var worth := 0.0
+		var by: Dictionary = _threats[unit.cell]
+		for enemy_id: int in by:
+			var enemy := _battle.unit_by_id(enemy_id)
+			if enemy != null and enemy.attack_range() >= Combat.RANGED_DISTANCE:
+				worth += SMOKE_COVER_RATE * rate * mini(by[enemy_id], unit.hp)
+		if worth > 0.0:
+			covered += 1
+			value += worth
+	return value if covered >= SMOKE_MIN_UNITS else 0.0
 
 
 # ---- 位置の価値 ----

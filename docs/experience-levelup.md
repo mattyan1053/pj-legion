@@ -22,7 +22,9 @@
 | 攻撃で中立の駒を倒した | 30（同上） |
 | 味方を回復した | 20（回復した量によらない） |
 
-- 入るのは、駒が自分の行動（`AttackAction`、`HealAction`）で相手に何かをしたときだけ。
+- 入るのは、駒が自分の行動（`AttackAction`、`HealAction`、ダメージのあるスキル）で相手に何かをしたときだけ。
+- **ダメージのあるスキル**（ファイアボール）は、当てた相手ごとに上の表で数え、いちばん多く入る 1 体ぶんだけが入る
+  （何体に当てても 1 回。`docs/active-skills.md` の「ダメージのあるスキル」）。
 - **起爆樽の爆発では入らない**（樽を攻撃した駒にも、巻き込まれて倒れた駒のぶんも）。回復の泉、中立の駒の攻撃でも入らない。
 - **煙幕に阻まれた攻撃と、盾への攻撃でも入らない**（相手に何もしていない。`docs/field-effects.md`）。聖域の回復でも入らない。
 - 森の軽減で相手が生き残れば、「当たった」の 10。
@@ -51,6 +53,7 @@
 
 - 攻撃: `AttackDamagedEvent`、（倒れたら）`UnitDefeatedEvent`、`ExperienceGainedEvent`、（上がったら）`LevelUpEvent`、`UnitActedEvent`
 - 回復: `HealerHealedEvent`、`ExperienceGainedEvent`、（上がったら）`LevelUpEvent`、`UnitActedEvent`
+- ダメージのあるスキル: `SkillUsedEvent`、`SkillDamagedEvent`（当てた数だけ）、（倒れたら）`UnitDefeatedEvent`、`ExperienceGainedEvent`、（上がったら）`LevelUpEvent`、`UnitActedEvent`
 - レベル 3 に届いた `LevelUpEvent` のすぐあとには、`EvolutionOfferedEvent` が入る（`docs/branch-evolution.md`）。
 
 | イベント | 値 |
@@ -64,6 +67,7 @@
 
 - `Growth.attack_experience(対戦, 攻撃する駒, 攻撃される駒)`: その攻撃で入る量（倒せるかは `Combat.damage` で見る）。
 - `Growth.heal_experience()`: 回復で入る量。
+- `Growth.damage_experience(相手, あとの HP)`: 相手の HP をそこまで減らしたときに入る量（攻撃とスキルが同じ表を使う）。
 - `Growth.preview(駒, 量)`: 実際に入る量、足したあとのレベルとためた量、上がるレベルの数、進化先を選ぶことになるか（`Growth.Outcome`）。
 
 適用は `Growth.gain(駒, 量, 理由)` で、同じ計算を通してイベントを返す。複製（`Battle.clone()`）は、レベル・経験値・成長の層も駒ごとに写す。
