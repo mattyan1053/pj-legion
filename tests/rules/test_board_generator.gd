@@ -49,7 +49,7 @@ func test_different_seeds_give_different_boards() -> void:
 
 
 func test_hqs_at_top_and_bottom_center() -> void:
-	for stage in [BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH]:
+	for stage: BoardGenerator.Stage in [BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH]:
 		var board := BoardGenerator.generate(stage, 1)
 		assert_eq(board.hq_cells[0], Vector2i(14, 29), "stage %d の P1" % stage)
 		assert_eq(board.hq_cells[1], Vector2i(14, 0), "stage %d の P2" % stage)
@@ -62,7 +62,7 @@ func test_twin_springs_hqs_on_the_diagonal() -> void:
 
 
 func test_four_fonts_around_the_center() -> void:
-	for stage in [BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH]:
+	for stage: BoardGenerator.Stage in [BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH]:
 		var board := BoardGenerator.generate(stage, 1)
 		assert_eq(board.font_cells.size(), 4)
 		for cell in board.font_cells:
