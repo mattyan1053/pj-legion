@@ -298,6 +298,7 @@ static func event_players() -> Dictionary:
 		HealerHealedEvent: &"_play_healer_healed",
 		SpringHealedEvent: &"_play_spring_healed",
 		UnitDefeatedEvent: &"_play_defeated",
+		UnitSpawnedEvent: &"_play_spawned",
 		BarrelExplodedEvent: &"_play_barrel_exploded",
 		UnitActedEvent: &"_play_acted",
 		PhaseStartedEvent: &"_play_phase_started",
@@ -320,6 +321,7 @@ func _play_moved(event: UnitMovedEvent) -> void:
 	if event.path.size() < 2:
 		return
 	var view := _view(event.unit_id)
+	_follow_neutral(event.unit_id)
 	var step_time := CRUISE_STEP_TIME if event.cruise else STEP_TIME
 	view.play_run()
 	for i in range(1, event.path.size()):
@@ -359,6 +361,7 @@ func _play_warped(event: UnitWarpedEvent) -> void:
 func _play_attack_damaged(event: AttackDamagedEvent) -> void:
 	var target := _view(event.unit_id)
 	var attacker := _view(event.attacker_id)
+	_follow_neutral(event.attacker_id)
 	attacker.face(target.position - attacker.position)
 	target.face(attacker.position - target.position)
 	await get_tree().create_timer(attacker.play_attack()).timeout
@@ -434,10 +437,37 @@ func _play_defeated(event: UnitDefeatedEvent) -> void:
 	await view.play_death()
 
 
+## 中立の駒が結晶泉に湧いた。光とともに、小さい形から大きくする。
+func _play_spawned(event: UnitSpawnedEvent) -> void:
+	var at := BoardView.cell_center(event.cell)
+	var view: UnitView = UnitView.new()
+	view.position = at
+	add_child(view)
+	view.setup(event.kind, TEAM_COLORS[event.side], event.hp, event.max_hp)
+	view.face(BoardView.cell_center(event.cell + Vector2i.DOWN) - at)
+	_views[event.unit_id] = view
+	_rig.focus_on(at)
+	_flash(at + Vector3(0.0, 0.4, 0.0), TEAM_COLORS[event.side], 1.6)
+	view.scale = Vector3.ONE * 0.05
+	var grow := create_tween()
+	grow.tween_property(view, "scale", Vector3.ONE, 0.3)
+	await grow.finished
+
+
+## 中立の駒が動く・攻撃するときは、カメラをその駒へ寄せる（どの駒の番かが分かるように）。
+func _follow_neutral(unit_id: int) -> void:
+	var unit := battle.unit_by_id(unit_id)
+	if unit != null and unit.side == Unit.Side.NEUTRAL:
+		_rig.focus_on(_view(unit_id).position)
+
+
 func _play_phase_started(event: PhaseStartedEvent) -> void:
 	_refresh_status(event.turn, event.side)
 	if event.side == Unit.Side.NEUTRAL:
-		return  # 中立の駒の動きはまだ無いので、何も見せずに通り過ぎる。
+		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは動く駒を追う（_follow_neutral）。
+		_hud.show_banner("ターン %d　%s の番" % [event.turn, BattleHud.SIDE_NAMES[event.side]], TEAM_COLORS[event.side])
+		await get_tree().create_timer(0.5).timeout
+		return
 	for unit in battle.units:
 		if unit.side == event.side:
 			_view(unit.id).set_acted(false)

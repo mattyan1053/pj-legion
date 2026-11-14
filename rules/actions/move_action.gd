@@ -26,7 +26,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var unit := battle.unit_by_id(unit_id)
 	var path := Movement.path_to(battle, unit, to, cruise)
 	# 転移かどうかは駒を動かす前の盤で見る（行き先が空いているポータルだけが使える）。
-	var events := _events_along(battle, unit_id, path, cruise)
+	var events := events_along(battle, unit_id, path, cruise)
 	battle.acting_unit_id = unit.id
 	battle.capture_turns_before_move = battle.capture_turns.duplicate()
 	unit.has_moved = true
@@ -38,7 +38,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 
 ## 道を、歩いた区間（UnitMovedEvent）とポータルの転移（UnitWarpedEvent）に分けて並べる。
 ## 転移の前後の、1 歩も歩いていない区間は出さない。ポータルを通らない移動は、UnitMovedEvent が 1 つ。
-static func _events_along(
+static func events_along(
 	battle: Battle, moving_unit_id: int, path: Array[Vector2i], is_cruise: bool
 ) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []

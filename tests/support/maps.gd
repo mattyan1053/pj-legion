@@ -1,7 +1,7 @@
 extends RefCounted
 ## テスト用に、文字で書いた地図から盤面を作る。
 ##
-##   . 平地   # 障害物   F 森   * 結晶泉
+##   . 平地   # 障害物   F 森   * 結晶泉（盤面の font_cells にも入る）
 ##   B 起爆樽   S 回復の泉   1〜9 ポータル（同じ数字の 2 マスが対になる）。どれも地形は平地
 ##
 ##   var board := Maps.board([
@@ -27,6 +27,8 @@ static func board(rows: Array[String]) -> Board:
 			var c := rows[y][x]
 			if CHARS.has(c):
 				result.set_terrain(cell, CHARS[c])
+				if c == "*":
+					result.font_cells.append(cell)
 			elif c == "B":
 				result.add_barrel(cell)
 			elif c == "S":
