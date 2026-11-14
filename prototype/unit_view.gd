@@ -117,6 +117,8 @@ var _core_time := 0.0
 var _kind: UnitKind.Id
 var _team_color: Color
 var _max_hp := 1
+## いま札に出している HP。検査用。
+var shown_hp := 0
 var _height := 1.3  # 札を出す高さ
 var _acted := false
 var _dying := false
@@ -207,6 +209,7 @@ func face(direction: Vector3) -> void:
 
 
 func set_hp(hp: int) -> void:
+	shown_hp = hp
 	var image := Image.create_empty(BAR_SIZE.x, BAR_SIZE.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0.05, 0.05, 0.07, 0.9))
 	var inner := BAR_SIZE - Vector2i(2, 2)

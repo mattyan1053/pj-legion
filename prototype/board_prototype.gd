@@ -24,12 +24,17 @@ const COLOR_MOVE := Color(0.35, 0.65, 1.0, 0.5)
 const COLOR_CRUISE := Color(1.0, 0.82, 0.3, 0.4)
 const COLOR_PATH := Color(1.0, 1.0, 1.0, 0.75)
 const COLOR_TARGET := Color(1.0, 0.2, 0.15, 0.7)
+const COLOR_BLAST := Color(1.0, 0.55, 0.1, 0.6)
 const COLOR_INSPECT := Color(1.0, 1.0, 1.0, 0.28)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 
 const WIN_REASONS := {
 	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
 	GameWonEvent.Reason.HQ_CAPTURED: "敵の本陣を占拠し続けた",
+}
+
+const DRAW_REASONS := {
+	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "両方の将が同時に倒れた",
 }
 
 var battle: Battle
@@ -51,6 +56,10 @@ var _confirming_end := false
 ## いまの選択で選べること（_refresh が作り直す）。
 var _move_cells := {}  # マス -> 巡航でしか届かないか
 var _targets: Array[Unit] = []
+var _barrel_targets: Array[Vector2i] = []
+## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
+var played := {}
+var _players := event_players()
 var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる前のもの）
 
 
@@ -114,9 +123,16 @@ func _unhandled_input(event: InputEvent) -> void:
 func start_battle(battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
 	if _busy:
 		return
+	start_with(TrialSetup.create(battle_stage, battle_seed), battle_stage, battle_seed)
+
+
+## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中なら何もしない。
+func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
+	if _busy:
+		return
 	stage = battle_stage
 	map_seed = battle_seed
-	battle = TrialSetup.create(stage, map_seed)
+	battle = new_battle
 
 	if _board_view != null:
 		_board_view.queue_free()
@@ -177,13 +193,33 @@ func view_cells() -> Dictionary:
 	return cells
 
 
-## 盤面のマスを選ぶ。選んでいる駒の攻撃できる相手なら攻撃、動けるマスなら移動、駒なら選び直す。
+## 画面の駒が札に出している HP（駒の番号 -> HP）。検査用。
+func view_hps() -> Dictionary:
+	var hps := {}
+	for unit_id: int in _views:
+		hps[unit_id] = _views[unit_id].shown_hp
+	return hps
+
+
+## 画面に樽が描かれているマス。検査用。
+func barrel_view_cells() -> Array[Vector2i]:
+	return _board_view.barrel_cells()
+
+
+## いま出ている結果の見出し（出ていなければ空）。検査用。
+func result_title() -> String:
+	return _hud.result_title()
+
+
+## 盤面のマスを選ぶ。選んでいる駒の攻撃できる相手・樽なら攻撃、動けるマスなら移動、駒なら選び直す。
 func click_cell(cell: Vector2i) -> void:
 	if _busy or battle.is_over() or not battle.board.in_bounds(cell):
 		return
 	var clicked := battle.unit_at(cell)
 	if clicked != null and _targets.has(clicked):
 		_do(AttackAction.new(_selected_id, clicked.id))
+	elif _barrel_targets.has(cell):
+		_do(AttackBarrelAction.new(_selected_id, cell))
 	elif battle.acting_unit_id != 0:
 		pass  # 動いたあとは、攻撃・待機・取り消しのどれかを選ぶ。
 	elif _move_cells.has(cell):
@@ -250,28 +286,32 @@ func _do(action: BattleAction) -> void:
 # ---- イベントの再生 ----
 
 
+## イベントの種類（スクリプト）-> 再生するメソッドの名前。
+## rules/events/ のイベントは、すべてここに載せる（載っていない種類があると、テストが落ちる）。
+static func event_players() -> Dictionary:
+	return {
+		UnitMovedEvent: &"_play_moved",
+		UnitWarpedEvent: &"_play_warped",
+		MoveUndoneEvent: &"_play_undone",
+		UnitDamagedEvent: &"_play_damaged",
+		UnitHealedEvent: &"_play_healed",
+		UnitDefeatedEvent: &"_play_defeated",
+		BarrelExplodedEvent: &"_play_barrel_exploded",
+		UnitActedEvent: &"_play_acted",
+		PhaseStartedEvent: &"_play_phase_started",
+		CaptureProgressEvent: &"_play_capture",
+		GameWonEvent: &"_play_won",
+		GameDrawnEvent: &"_play_drawn",
+	}
+
+
 func _play(event: BattleEvent) -> void:
-	if event is UnitMovedEvent:
-		await _play_moved(event)
-	elif event is MoveUndoneEvent:
-		await _play_undone(event)
-	elif event is UnitDamagedEvent:
-		await _play_damaged(event)
-	elif event is UnitHealedEvent:
-		# 回復の操作は、まだ画面に無い。イベントが来たら、HP の表示だけは合わせる。
-		_view(event.unit_id).set_hp(event.hp)
-		_pop_number(_view(event.unit_id).position, "+%d" % event.amount, Color("9cf09c"))
-	elif event is UnitDefeatedEvent:
-		await _play_defeated(event)
-	elif event is UnitActedEvent:
-		_view(event.unit_id).set_acted(true)
-	elif event is PhaseStartedEvent:
-		await _play_phase_started(event)
-	elif event is CaptureProgressEvent:
-		_play_capture(event)
-	elif event is GameWonEvent:
-		await get_tree().create_timer(0.4).timeout
-		_hud.show_result(event.winner, WIN_REASONS[event.reason])
+	var kind: Script = event.get_script()
+	if not _players.has(kind):
+		push_error("再生できないイベント: %s" % kind.resource_path)
+		return
+	played[kind] = played.get(kind, 0) + 1
+	await call(_players[kind], event)
 
 
 func _play_moved(event: UnitMovedEvent) -> void:
@@ -298,16 +338,77 @@ func _play_undone(event: MoveUndoneEvent) -> void:
 	await tween.finished
 
 
+## 道順どおりに歩いたあとの、ポータルの転移。入ったポータルで縮んで消え、出たポータルに現れる。
+func _play_warped(event: UnitWarpedEvent) -> void:
+	var view := _view(event.unit_id)
+	var color := BoardView.portal_color(battle.board, event.from)
+	var to := BoardView.cell_center(event.to)
+	_flash(BoardView.cell_center(event.from), color, 0.9)
+	var shrink := create_tween()
+	shrink.tween_property(view, "scale", Vector3.ONE * 0.05, 0.16)
+	await shrink.finished
+	view.position = to
+	_rig.focus_on(to)  # 行き先が画面の外でも、どこへ出たかが見えるようにする。
+	_flash(to, color, 0.9)
+	var grow := create_tween()
+	grow.tween_property(view, "scale", Vector3.ONE, 0.16)
+	await grow.finished
+
+
+## 駒の攻撃なら、攻撃の動きのあとに被弾。爆発のダメージ（攻撃した駒がいない）は、被弾だけを続けて見せる。
 func _play_damaged(event: UnitDamagedEvent) -> void:
-	var attacker := _view(event.attacker_id)
 	var target := _view(event.unit_id)
-	attacker.face(target.position - attacker.position)
-	target.face(attacker.position - target.position)
-	await get_tree().create_timer(attacker.play_attack()).timeout
+	var by_attack := event.cause == UnitDamagedEvent.Cause.ATTACK and _views.has(event.attacker_id)
+	if by_attack:
+		var attacker := _view(event.attacker_id)
+		attacker.face(target.position - attacker.position)
+		target.face(attacker.position - target.position)
+		await get_tree().create_timer(attacker.play_attack()).timeout
 	target.play_hit()
 	target.set_hp(event.hp)
-	_pop_number(target.position, "-%d" % event.amount)
-	await get_tree().create_timer(0.45).timeout
+	_pop_number(target.position, "-%d" % event.amount, Color("ffe9a8") if by_attack else Color("ffb14a"))
+	await get_tree().create_timer(0.45 if by_attack else 0.15).timeout
+
+
+## 回復役の回復の操作は、まだ画面に無い。回復の泉（フェーズの始め）は、光と数を出す。
+func _play_healed(event: UnitHealedEvent) -> void:
+	var view := _view(event.unit_id)
+	view.set_hp(event.hp)
+	_pop_number(view.position, "+%d" % event.amount, Color("9cf09c"))
+	if event.cause == UnitHealedEvent.Cause.SPRING:
+		_flash(view.position, BoardView.COLOR_SPRING_CROSS, 0.8)
+	await get_tree().create_timer(0.35).timeout
+
+
+## 攻撃の動きのあと、樽を消して、爆発の届いたマスを塗る（続くダメージの再生の間も塗ったまま）。
+func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
+	var at := BoardView.cell_center(event.cell)
+	if _views.has(event.attacker_id):
+		var attacker := _view(event.attacker_id)
+		attacker.face(at - attacker.position)
+		await get_tree().create_timer(attacker.play_attack()).timeout
+	_board_view.remove_barrel(event.cell)
+	var colors := {event.cell: COLOR_BLAST}
+	for cell in event.blast_cells:
+		colors[cell] = COLOR_BLAST
+	_board_view.show_cells(colors)
+	_flash(at + Vector3(0.0, 0.3, 0.0), Color("ff8a2a"), 2.6)
+	_pop_number(at, "爆発", Color("ff8a2a"))
+	await get_tree().create_timer(0.3).timeout
+
+
+func _play_acted(event: UnitActedEvent) -> void:
+	_view(event.unit_id).set_acted(true)
+
+
+func _play_won(event: GameWonEvent) -> void:
+	await get_tree().create_timer(0.4).timeout
+	_hud.show_result(event.winner, WIN_REASONS[event.reason])
+
+
+func _play_drawn(event: GameDrawnEvent) -> void:
+	await get_tree().create_timer(0.4).timeout
+	_hud.show_draw(DRAW_REASONS[event.reason])
 
 
 func _play_defeated(event: UnitDefeatedEvent) -> void:
@@ -333,6 +434,25 @@ func _play_capture(event: CaptureProgressEvent) -> void:
 	var hq := battle.board.hq_cells[1 - event.player]
 	var text := "占拠 %d / %d" % [event.turns, Battle.CAPTURE_TURNS_TO_WIN] if event.turns > 0 else "占拠が途切れた"
 	_pop_number(BoardView.cell_center(hq), text, TEAM_COLORS[event.player].lightened(0.4))
+
+
+## 広がって消える光の球（爆発、転移、泉の回復）。size は広がりきったときの直径。
+func _flash(at: Vector3, color: Color, size: float) -> void:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(color, 0.7)
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var ball := MeshInstance3D.new()
+	ball.mesh = SphereMesh.new()
+	ball.material_override = material
+	ball.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ball.position = at
+	ball.scale = Vector3.ONE * size * 0.2
+	add_child(ball)
+	var tween := create_tween()
+	tween.tween_property(ball, "scale", Vector3.ONE * size, 0.35).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.35)
+	tween.tween_callback(ball.queue_free)
 
 
 ## 盤面の上に、浮かんで消える文字を出す（ダメージの数など）。
@@ -378,6 +498,7 @@ func _refresh() -> void:
 		_selected_id = 0
 	_move_cells = Queries.move_cells(battle, unit)
 	_targets = Queries.attack_targets(battle, unit)
+	_barrel_targets = Queries.barrel_targets(battle, unit)
 
 	_painted = {}
 	if unit != null and not battle.is_over():
@@ -386,6 +507,8 @@ func _refresh() -> void:
 				_painted[cell] = COLOR_CRUISE if _move_cells[cell] else COLOR_MOVE
 			for target in _targets:
 				_painted[target.cell] = COLOR_TARGET
+			for cell in _barrel_targets:
+				_painted[cell] = COLOR_TARGET
 		else:
 			for cell in Queries.inspect_cells(battle, unit):
 				_painted[cell] = COLOR_INSPECT
@@ -424,19 +547,23 @@ func _refresh_hint(unit: Unit) -> void:
 	elif unit.has_moved:
 		if unit.cruised:
 			_hud.set_hint("巡航で動いたので攻撃できない。待機するか、移動を取り消す")
-		elif _targets.is_empty():
+		elif _targets.is_empty() and _barrel_targets.is_empty():
 			_hud.set_hint("攻撃できる相手がいない。待機するか、移動を取り消す")
 		else:
-			_hud.set_hint("赤いマスの相手をクリックで攻撃。または待機、移動の取り消し")
+			_hud.set_hint("赤いマスの相手か樽をクリックで攻撃。または待機、移動の取り消し")
 	else:
-		_hud.set_hint("青: 移動　黄: 巡航（2 倍動けるが攻撃できない）　赤: 攻撃できる相手")
+		_hud.set_hint("青: 移動　黄: 巡航（2 倍動けるが攻撃できない）　赤: 攻撃（相手・樽）")
 
 
-## 塗ったマスに、マウスの下のマスまでの道を重ねて出す。
+## 塗ったマスに、マウスの下のマスまでの道か、マウスの下の樽の爆発が届くマスを重ねて出す。
 func _show_painted() -> void:
 	var colors := _painted
 	var unit := selected_unit()
-	if unit != null and not _busy and _move_cells.has(_hover_cell):
+	if unit != null and not _busy and _barrel_targets.has(_hover_cell):
+		colors = _painted.duplicate()
+		for cell in MapObject.blast_cells(battle.board, _hover_cell):
+			colors[cell] = COLOR_BLAST
+	elif unit != null and not _busy and _move_cells.has(_hover_cell):
 		colors = _painted.duplicate()
 		for cell in Movement.path_to(battle, unit, _hover_cell, _move_cells[_hover_cell]):
 			if cell != unit.cell:
@@ -469,11 +596,15 @@ func _update_info() -> void:
 		var hq_owner := battle.board.hq_owner(_hover_cell)
 		if hq_owner >= 0:
 			cell_text += "　%s の本陣" % BattleHud.SIDE_NAMES[hq_owner]
+		cell_text += _object_text(_hover_cell)
 	_hud.show_cell(cell_text)
 
 	var shown := hovered if hovered != null else selected_unit()
 	if shown == null:
 		_hud.show_unit(null, "", "")
+		return
+	if hovered == null and _barrel_targets.has(_hover_cell):
+		_hud.show_unit(shown, "樽を狙っている", _blast_forecast(shown, _hover_cell))
 		return
 	var state := "行動済み" if shown.acted else "未行動"
 	if shown.has_moved:
@@ -486,6 +617,46 @@ func _update_info() -> void:
 		var left := maxi(0, hovered.hp - amount)
 		forecast = "攻撃すると %d ダメージ → %s" % [amount, "倒せる" if left == 0 else "残り HP %d" % left]
 	_hud.show_unit(shown, state, forecast)
+
+
+## マスにある環境オブジェクトの説明（無ければ空）。
+func _object_text(cell: Vector2i) -> String:
+	var type := battle.board.object_at(cell)
+	if type == MapObject.Type.NONE:
+		return ""
+	var text: String = "　" + BattleHud.OBJECT_NAMES[type]
+	if type == MapObject.Type.PORTAL:
+		var exit := battle.board.portal_exit(cell)
+		text += " → (%d, %d)" % [exit.x, exit.y]
+		if battle.portal_exit(cell) == Board.NO_CELL:
+			text += "（行き先に駒がいて、いまは使えない）"
+	return text
+
+
+## 樽を攻撃したときの見込み。実際の爆発と同じ計算（MapObject.blast_victims / blast_damage）を使う。
+func _blast_forecast(attacker: Unit, barrel: Vector2i) -> String:
+	var counts := {"敵": 0, "味方": 0}
+	var falls := {"敵": 0, "味方": 0}
+	var kings: Array[String] = []
+	for victim in MapObject.blast_victims(battle, barrel):
+		var who := "味方" if victim.side == attacker.side else "敵"
+		counts[who] += 1
+		if victim.hp <= MapObject.blast_damage(victim):
+			falls[who] += 1
+			if victim.kind == UnitKind.Id.KING:
+				kings.append(who)
+	var parts: Array[String] = []
+	for who: String in counts:
+		if counts[who] > 0:
+			parts.append("%s %d 体" % [who, counts[who]] + ("（%d 体倒れる）" % falls[who] if falls[who] > 0 else ""))
+	if parts.is_empty():
+		return "樽を爆発させる（巻き込む駒はいない）"
+	var text := "樽を爆発させる → %d ダメージ: %s" % [MapObject.BLAST_DAMAGE, "、".join(parts)]
+	if MapObject.blast_cells(battle.board, barrel).has(attacker.cell):
+		text += "\n自分も巻き込まれる"
+	for who in kings:
+		text += "\n%sの将が倒れる" % who
+	return text
 
 
 func _cell_under_mouse() -> Vector2i:

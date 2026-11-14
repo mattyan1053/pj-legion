@@ -29,6 +29,17 @@ static func attack_targets(battle: Battle, unit: Unit) -> Array[Unit]:
 	return result
 
 
+## その駒がいまの位置から攻撃できる起爆樽のマス（行動できない駒・巡航で動いた駒・回復役では空）。
+static func barrel_targets(battle: Battle, unit: Unit) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if unit == null:
+		return result
+	for cell in MapObject.barrel_targets(battle, unit):
+		if battle.can_apply(AttackBarrelAction.new(unit.id, cell)):
+			result.append(cell)
+	return result
+
+
 ## 駒の移動範囲（巡航なし）。行動できない駒や相手の駒を選んで眺めるときに使う。
 static func inspect_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
