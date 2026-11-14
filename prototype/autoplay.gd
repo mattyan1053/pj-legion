@@ -2,7 +2,7 @@ extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）を通し、
+## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）と中立の駒の場面を通し、
 ## 盤面を作り直してほかのステージも少し動かす。途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
@@ -52,6 +52,7 @@ func _process(_delta: float) -> void:
 			_queue_portal_and_spring_scene()
 			_queue_capture_scene()
 			_queue_barrel_draw_scene()
+			_queue_neutral_scene()
 			return
 		_game += 1
 		if _game >= STAGES.size():
@@ -202,6 +203,29 @@ func _queue_barrel_draw_scene() -> void:
 		_expect(_scene.result_title() == "引き分け", "引き分けの結果が出ていない")
 		_expect(guard.hp == guard.max_hp() - MapObject.BLAST_DAMAGE, "爆発に巻き込まれなかった")
 		_expect(_scene.barrel_view_cells() == ([Vector2i(0, 0)] as Array[Vector2i]), "爆発した樽が画面に残っている"))
+
+
+## 結晶泉にエナジー・コアが湧き、次の中立のフェーズで隣の駒を襲う。
+func _queue_neutral_scene() -> void:
+	var board := _small_board(Vector2i(8, 5))
+	var font := Vector2i(3, 2)
+	board.set_terrain(font, Terrain.Type.FONT)
+	board.font_cells = [font]
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var bait := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(5, 2))
+
+	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(_end_turn)
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		var core := battle.unit_at(font)
+		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった"))
+	_scripted.append(_end_turn)
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった"))
 
 
 ## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。

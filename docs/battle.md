@@ -34,7 +34,8 @@
 - `accepted` が偽: 行動は断られた。状態は何も変わらず、`events` は空。
 - `accepted` が真: 行動を受け付けた。`events` に起きたことが起きた順に並ぶ。
   受け付けたが何も起きなかった行動では、`events` が空になる（断られた行動とは `accepted` で見分ける）。
-- 決着したあとは、どの行動も断る（`docs/win-conditions.md`）。
+- 決着したあとは、どの行動も断る（`docs/win-conditions.md`）。将が倒れたか・本陣の占拠が途切れたかは `Battle.settle` が見る。
+  `apply` が行動のあとに呼び、中立のフェーズ（`docs/neutral-minion.md`）は駒 1 体の行動ごとに呼ぶ。
 - `Battle.can_apply(行動)` は、状態を変えずに、いま受け付けるかだけを答える。
 
 ## 選べること

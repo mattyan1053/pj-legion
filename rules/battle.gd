@@ -184,14 +184,16 @@ func apply(action: BattleAction) -> ActionResult:
 	if not can_apply(action):
 		return ActionResult.rejected()
 	var events := action.execute(self)
-	events.append_array(_after_action(events))
+	events.append_array(settle(events))
 	return ActionResult.new(true, events)
 
 
-## 行動のあとに決まること。
+## 起きたこと（events）のあとに決まること。決まったことのイベントを返す。
+## apply() が行動のあとに呼ぶ。中立のフェーズは駒 1 体の行動ごとに呼ぶ（決着したら、その先へ進まない）。
+## 同じイベントで 2 度呼んでも、2 度目は何も起きない。
 ## - 将が倒れたら、相手のプレイヤーの勝ち。両方の将が同じ行動で倒れたら、引き分け
 ## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
-func _after_action(events: Array[BattleEvent]) -> Array[BattleEvent]:
+func settle(events: Array[BattleEvent]) -> Array[BattleEvent]:
 	var extra: Array[BattleEvent] = []
 	var fallen: Array[Unit.Side] = []  # 将が倒れたプレイヤー
 	for event in events:

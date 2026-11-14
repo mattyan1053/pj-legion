@@ -4,7 +4,8 @@ extends BattleAction
 ##
 ## 全部の駒が行動を終えても、フェーズは自動では終わらない。未行動の駒が残っていても終えてよい。
 ## 行動の途中の駒がいれば、待機したことにして終える。
-## プレイヤー2 のあとの中立のフェーズは、続けてこの中で進め、次のターンのプレイヤー1 のフェーズまで進む。
+## プレイヤー2 のあとの中立のフェーズ（Neutral.play_phase）は、続けてこの中で進め、次のターンのプレイヤー1 のフェーズまで進む。
+## 中立のフェーズで決着したら、そこで止まる。
 ## プレイヤーのフェーズの始めに、回復の泉に乗っているそのプレイヤーの駒が回復する。
 ## フェーズを終える前に、敵の本陣の占拠を数える。それで勝ちが決まれば、次のフェーズへは進まない。
 
@@ -25,7 +26,9 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 		events.append_array(_start_phase(battle, Unit.Side.PLAYER2))
 	else:
 		events.append_array(_start_phase(battle, Unit.Side.NEUTRAL))
-		# 中立の駒の動きは、中立の仕様で入れる。いまは何もせずに通り過ぎる。
+		events.append_array(Neutral.play_phase(battle))
+		if battle.is_over():
+			return events  # 中立の駒の攻撃で将が倒れた
 		battle.turn += 1
 		events.append_array(_start_phase(battle, Unit.Side.PLAYER1))
 	return events
