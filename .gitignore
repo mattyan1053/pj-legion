@@ -1,0 +1,12 @@
+# Godot が生成するキャッシュ（エディタが開くたびに作り直す）
+.godot/
+*.translation
+
+# 書き出したビルド
+/build/
+/export/
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+*.tmp
