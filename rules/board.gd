@@ -23,6 +23,13 @@ func _init(board_size: Vector2i) -> void:
 	_terrain.fill(Terrain.Type.NORMAL)
 
 
+## 同じ盤面を作る（Battle.clone() が使う）。
+func copy() -> Board:
+	var result := Board.new(size)
+	StateCopy.copy_fields(self, result)
+	return result
+
+
 func in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < size.x and cell.y < size.y
 

@@ -28,6 +28,13 @@ func _init(unit_id: int, unit_kind: UnitKind.Id, unit_side: Unit.Side, at: Vecto
 	hp = UnitKind.max_hp(kind)
 
 
+## 同じ状態の駒を作る（Battle.clone() が使う）。
+func copy() -> Unit:
+	var result := Unit.new(id, kind, side, cell)
+	StateCopy.copy_fields(self, result)
+	return result
+
+
 ## フェーズの始めに、行動前の状態へ戻す。
 func reset_action() -> void:
 	acted = false

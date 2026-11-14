@@ -1,5 +1,5 @@
 class_name PhaseStartedEvent
-extends RefCounted
+extends BattleEvent
 ## フェーズが始まった。side はどの陣営の番か。
 
 var turn: int

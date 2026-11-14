@@ -1,5 +1,5 @@
 class_name UnitDamagedEvent
-extends RefCounted
+extends BattleEvent
 ## 駒が攻撃を受けた。hp は受けたあとの HP。
 
 var attacker_id: int

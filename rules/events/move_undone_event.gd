@@ -1,5 +1,5 @@
 class_name MoveUndoneEvent
-extends RefCounted
+extends BattleEvent
 ## 移動が取り消され、駒が from から to（動く前のマス）へ戻った。
 
 var unit_id: int

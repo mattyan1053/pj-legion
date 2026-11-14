@@ -1,5 +1,5 @@
 class_name UnitActedEvent
-extends RefCounted
+extends BattleEvent
 ## 駒がこのフェーズの行動を終えた（行動済みになった）。
 
 var unit_id: int

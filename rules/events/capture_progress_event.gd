@@ -1,5 +1,5 @@
 class_name CaptureProgressEvent
-extends RefCounted
+extends BattleEvent
 ## プレイヤーの、敵の本陣の占拠の数が変わった（または数え直した）。turns は占拠し続けたフェーズの数（0 なら途切れた）。
 
 var player: Unit.Side

@@ -88,7 +88,7 @@ func test_attack_reduces_hp_and_ends_the_action() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	var target := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(4, 0))  # HP 40
-	var events := battle.apply(AttackAction.new(sniper.id, target.id))
+	var events := battle.apply(AttackAction.new(sniper.id, target.id)).events
 	assert_eq(target.hp, 31)
 	assert_eq(events.size(), 2)
 	var damaged := events[0] as UnitDamagedEvent
@@ -105,7 +105,7 @@ func test_attack_after_moving() -> void:
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))
 	var target := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 0))
 	battle.apply(MoveAction.new(paladin.id, Vector2i(3, 0)))
-	assert_eq(battle.apply(AttackAction.new(paladin.id, target.id)).size(), 2)
+	assert_eq(battle.apply(AttackAction.new(paladin.id, target.id)).events.size(), 2)
 
 
 func test_no_attack_after_cruise() -> void:
@@ -113,15 +113,15 @@ func test_no_attack_after_cruise() -> void:
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))
 	var target := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(5, 0))
 	battle.apply(MoveAction.new(paladin.id, Vector2i(4, 0), true))
-	assert_eq(battle.apply(AttackAction.new(paladin.id, target.id)), [])
-	assert_eq(battle.apply(WaitAction.new(paladin.id)).size(), 1)
+	assert_false(battle.apply(AttackAction.new(paladin.id, target.id)).accepted)
+	assert_eq(battle.apply(WaitAction.new(paladin.id)).events.size(), 1)
 
 
 func test_out_of_range_attack_is_rejected() -> void:
 	var battle := _battle()
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))
 	var target := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(5, 0))
-	assert_eq(battle.apply(AttackAction.new(paladin.id, target.id)), [])
+	assert_false(battle.apply(AttackAction.new(paladin.id, target.id)).accepted)
 	assert_eq(target.hp, 16)
 	assert_false(paladin.acted)
 
@@ -131,14 +131,14 @@ func test_acted_units_cannot_attack() -> void:
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	var target := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(1, 0))
 	battle.apply(AttackAction.new(sniper.id, target.id))
-	assert_eq(battle.apply(AttackAction.new(sniper.id, target.id)), [])
+	assert_false(battle.apply(AttackAction.new(sniper.id, target.id)).accepted)
 
 
 func test_zero_hp_defeats_and_removes_the_unit() -> void:
 	var battle := _battle()
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))  # 攻撃力 12
 	var minion := battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(1, 0))  # HP 12
-	var events := battle.apply(AttackAction.new(commando.id, minion.id))
+	var events := battle.apply(AttackAction.new(commando.id, minion.id)).events
 	assert_eq(events.size(), 3)
 	assert_eq((events[0] as UnitDamagedEvent).hp, 0)
 	var defeated := events[1] as UnitDefeatedEvent
@@ -154,6 +154,6 @@ func test_overkill_stops_hp_at_zero() -> void:
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
 	var minion := battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(1, 0))
 	minion.hp = 3
-	var events := battle.apply(AttackAction.new(commando.id, minion.id))
+	var events := battle.apply(AttackAction.new(commando.id, minion.id)).events
 	assert_eq((events[0] as UnitDamagedEvent).hp, 0)
 	assert_eq((events[0] as UnitDamagedEvent).amount, 12)
