@@ -14,6 +14,7 @@ extends RefCounted
 enum Type {
 	BARRIER,  ## バリア。次に受けるダメージを 1 回だけ 0 にする（ディバインシールド）
 	AIM,  ## 照準。射程が伸び、次の攻撃が確定クリティカルになる。動くと外れる（精密照準）
+	FATIGUE,  ## 反動。攻撃力が下がる（アドレナリン注射を受けた駒）
 }
 
 ## クリティカルでない攻撃の倍率（%）。
@@ -26,6 +27,8 @@ static func display_name(type: Type) -> String:
 			return "バリア"
 		Type.AIM:
 			return "照準"
+		Type.FATIGUE:
+			return "反動"
 	return ""
 
 
@@ -33,6 +36,8 @@ static func display_name(type: Type) -> String:
 static func bonus(type: Type) -> Dictionary:
 	if type == Type.AIM:
 		return {Unit.Stat.ATTACK_RANGE: PrecisionAimSkill.RANGE_BONUS}
+	if type == Type.FATIGUE:
+		return {Unit.Stat.POWER: -AdrenalineShotSkill.POWER_PENALTY}
 	return {}
 
 

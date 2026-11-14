@@ -89,6 +89,8 @@ const SKILL_VALUES := {
 	Skill.Id.SMOKE_GRENADE: &"_smoke_value",
 	Skill.Id.DIVINE_SHIELD: &"_barrier_value",
 	Skill.Id.PRECISION_AIM: &"_aim_value",
+	Skill.Id.SHADOW_STEP: &"_shadow_step_value",
+	Skill.Id.ADRENALINE_SHOT: &"_adrenaline_value",
 }
 ## 盾: 敵の射線を 1 本切る価値は、その敵の攻撃 1 回ぶんのダメージの価値の何倍か（敵は回り込めるので、1 より小さい）。
 const BARRICADE_COVER_RATE := 0.75
@@ -107,6 +109,10 @@ const BARRIER_COVER_RATE := 0.75
 ## いまの位置から攻撃できる敵は数えない（構えるより、いま撃つほうが早い）。
 const AIM_RATE := 0.4
 const AIM_WATCH_RATE := 0.2
+## アドレナリン注射: 対象が、いまの位置からもう一度手を出したときの価値（いちばん良い攻撃・回復）が、この値以上なら使う
+## （回数に限りがあるので、倒せる・将を殴れるくらいの手に取っておく）。見込む価値は、その手の価値の何倍か。
+const ADRENALINE_MIN_VALUE := 30.0
+const ADRENALINE_RATE := 0.75
 
 const _GOAL := 0
 const _DANGER := 1
@@ -585,6 +591,48 @@ func _aim_value(used: SkillUsedEvent, sim: Battle) -> float:
 		if amount > 0:
 			best = maxf(best, rate * _damage_value(enemy, maxi(0, enemy.hp - amount)))
 	return best
+
+
+## シャドウステップで跳んだ価値。跳んだ先から続けてできる攻撃（駒・樽・盾）のうち、いちばん良いものの価値に、
+## 立つマスの価値の差（跳んだ先 − いまのマス）を足す。続けてできる攻撃は、跳んだあとの複製（sim）のルールに聞く。
+## 攻撃できる相手がいなければ 0（跳ぶだけの手は選ばない）。ただし、次の 2 つは攻撃できなくても数える。
+## - 敵の本陣のマスに着く（立つマスの価値に入っている）
+## - 自分の本陣に乗っている敵と入れ替わる（占拠が途切れる。OCCUPIER_KILL_BONUS を足す）
+func _shadow_step_value(used: SkillUsedEvent, sim: Battle) -> float:
+	var unit := _battle.unit_by_id(used.unit_id)
+	_set_goal(unit)
+	_build_threats()
+	var best := 0.0
+	var killed_id := 0
+	for action in sim.options(used.unit_id).actions():
+		if not (action is AttackAction or action is AttackBarrelAction or action is AttackBarricadeAction):
+			continue
+		var after := sim.clone()
+		var value := _outcome_value(after, after.apply(action).events)
+		if value > best:
+			best = value
+			var attack := action as AttackAction
+			killed_id = attack.target_id if attack != null and after.unit_by_id(attack.target_id) == null else 0
+	var swapped := _battle.unit_at(used.target)
+	if swapped != null and swapped.side == _foe and used.target == _my_hq:
+		best += OCCUPIER_KILL_BONUS
+	if best <= 0.0 and used.target != _foe_hq:
+		return 0.0
+	return best + _position_value(unit, used.target, killed_id, true) - _position_value(unit, unit.cell, 0, true)
+
+
+## アドレナリン注射を使った価値。対象が、いまの位置からもう一度手を出したとき（攻撃・樽・盾・回復。動く手とスキルは見ない）の、
+## いちばん良い手の価値の ADRENALINE_RATE 倍。その手の価値が ADRENALINE_MIN_VALUE に満たなければ 0。
+## できる手は、使ったあとの複製（sim）のルールに聞く。
+func _adrenaline_value(used: SkillUsedEvent, sim: Battle) -> float:
+	var friend := sim.unit_at(used.target)
+	var best := 0.0
+	for action in sim.options(friend.id).actions():
+		if action is MoveAction or action is WaitAction or action is UndoMoveAction or action is UseSkillAction:
+			continue
+		var after := sim.clone()
+		best = maxf(best, _outcome_value(after, after.apply(action).events))
+	return ADRENALINE_RATE * best if best >= ADRENALINE_MIN_VALUE else 0.0
 
 
 # ---- 位置の価値 ----

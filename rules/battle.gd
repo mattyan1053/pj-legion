@@ -135,9 +135,20 @@ func finish_action(unit: Unit) -> UnitActedEvent:
 	unit.acted = true
 	unit.has_moved = false
 	unit.cruised = false
+	unit.move_locked = false
 	if acting_unit_id == unit.id:
 		acting_unit_id = 0
 	return UnitActedEvent.new(unit.id)
+
+
+## 駒を、行動の途中のままにする（行動を終えないスキルを使ったあと。Skills.use）。
+## 動いたあとと同じ扱いになる: もう動けず、攻撃・待機で行動を終える。ほかの駒は行動を始められない。
+## ただし、移動の取り消しはできない（スキルを使う前には戻れない）。
+func hold_action(unit: Unit) -> void:
+	acting_unit_id = unit.id
+	unit.has_moved = true
+	unit.move_origin = unit.cell
+	unit.move_locked = true
 
 
 ## 決着したか（どちらかが勝ったか、引き分け）。

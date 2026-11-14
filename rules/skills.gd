@@ -7,7 +7,9 @@ extends RefCounted
 ##
 ## - スキルは駒の種類で決まる（of）。将と中立の駒は持たない
 ## - 使えるのは、クールダウンが 0 で、巡航で動いていない駒（can_use）。動いたあとでも、動かずにでもよい
-## - 使うと、クールダウンが付き、行動を終える（攻撃・回復・待機のかわり）
+## - 使うと、クールダウンが付き、行動を終える（攻撃・回復・待機のかわり）。
+##   行動を終えないスキル（Skill.ends_action が偽）は、行動の途中のままで、続けて攻撃・待機ができる
+## - 回数に上限のあるスキル（Skill.max_uses）は、使い切ったら使えない
 ## - クールダウンは、持ち主のフェーズの始めに 1 減る（盤の上の効果の期間と同じ数え方）
 
 ## すべてのスキル。足すときは、ここに 1 つ並べる。
@@ -18,6 +20,8 @@ static var ALL: Array[Skill] = [
 	FireballSkill.new(),
 	DivineShieldSkill.new(),
 	PrecisionAimSkill.new(),
+	ShadowStepSkill.new(),
+	AdrenalineShotSkill.new(),
 ]
 
 static var _by_kind: Dictionary[UnitKind.Id, Skill] = {}
@@ -53,9 +57,17 @@ static func by_id(id: Skill.Id) -> Skill:
 ## 自分の番か・行動済みでないか（Battle.can_act）は、行動の側（UseSkillAction）が見る。
 static func can_use(battle: Battle, unit: Unit) -> bool:
 	var skill := of(unit)
-	if skill == null or unit.skill_cooldown > 0 or unit.cruised:
+	if skill == null or unit.skill_cooldown > 0 or unit.cruised or uses_left(unit) == 0:
 		return false
 	return skill.is_ready(battle, unit)
+
+
+## unit がスキルをあと何回使えるか。回数に上限の無いスキルと、スキルを持たない駒では -1。
+static func uses_left(unit: Unit) -> int:
+	var skill := of(unit)
+	if skill == null or skill.max_uses() <= 0:
+		return -1
+	return maxi(0, skill.max_uses() - unit.skill_uses)
 
 
 ## unit がいまの位置からスキルの対象に選べるマス。上の行から、左の列から。使えない駒では空。
@@ -74,12 +86,17 @@ static func can_target(battle: Battle, unit: Unit, target: Vector2i) -> bool:
 
 ## unit が target にスキルを使う（使えるかどうかは呼ぶ側が確かめる）。起きたことを返す。
 ## SkillUsedEvent、スキルの効果のイベント、UnitActedEvent の順。
+## 行動を終えないスキル（Skill.ends_action が偽）では、UnitActedEvent は出ず、駒は行動の途中になる（Battle.hold_action）。
 static func use(battle: Battle, unit: Unit, target: Vector2i) -> Array[BattleEvent]:
 	var skill := of(unit)
 	unit.skill_cooldown = skill.cooldown()
+	unit.skill_uses += 1
 	var events: Array[BattleEvent] = [SkillUsedEvent.new(unit.id, skill.id(), target, unit.skill_cooldown)]
 	events.append_array(skill.apply(battle, unit, target))
-	events.append(battle.finish_action(unit))
+	if skill.ends_action():
+		events.append(battle.finish_action(unit))
+	else:
+		battle.hold_action(unit)
 	return events
 
 
@@ -122,13 +139,13 @@ static func preview(battle: Battle, unit_id: int, target: Vector2i) -> Array[Bat
 
 
 ## side のフェーズの始めに、side の駒のクールダウンが 1 減る（EndPhaseAction が、盤の上の効果のあとに呼ぶ）。
-## 0 になった駒には SkillReadyEvent。駒の番号の順。
+## 0 になった駒には SkillReadyEvent（回数を使い切った駒には出ない）。駒の番号の順。
 static func start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	for unit in battle.units:
 		if unit.side != side or unit.skill_cooldown <= 0:
 			continue
 		unit.skill_cooldown -= 1
-		if unit.skill_cooldown == 0:
+		if unit.skill_cooldown == 0 and uses_left(unit) != 0:
 			events.append(SkillReadyEvent.new(unit.id, of(unit).id()))
 	return events

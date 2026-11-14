@@ -19,6 +19,8 @@ enum Id {
 	FIREBALL,  ## ファイアボール（ソーサラー）
 	DIVINE_SHIELD,  ## ディバインシールド（パラディン）
 	PRECISION_AIM,  ## 精密照準（スナイパー）
+	SHADOW_STEP,  ## シャドウステップ（スペルブレード）
+	ADRENALINE_SHOT,  ## アドレナリン注射（衛生兵）
 }
 
 
@@ -41,7 +43,18 @@ enum Id {
 @abstract func cooldown() -> int
 
 
-## 共通の条件（クールダウン、巡航）のほかに、このスキルだけの条件があれば、ここで見る。
+## 使うと行動を終えるか（ふつうは終える）。
+## 偽なら、使ったあとも行動の途中のままで、続けて攻撃・待機ができる。もう動けず、移動の取り消しもできない（Skills.use）。
+func ends_action() -> bool:
+	return true
+
+
+## 1 体の駒が、対戦中に使える回数の上限。0 なら上限なし。使った回数は駒が持つ（Unit.skill_uses）。
+func max_uses() -> int:
+	return 0
+
+
+## 共通の条件（クールダウン、巡航、回数）のほかに、このスキルだけの条件があれば、ここで見る。
 func is_ready(_battle: Battle, _unit: Unit) -> bool:
 	return true
 
@@ -57,5 +70,5 @@ func affected_cells(_battle: Battle, _unit: Unit, target: Vector2i) -> Array[Vec
 
 
 ## 効果を起こし、起きたことを返す。target は target_cells のどれか（Skills が確かめてから呼ぶ）。
-## クールダウンと行動の終わりは Skills が面倒を見るので、ここでは触らない。
+## クールダウン、使った回数、行動の終わり（終えないスキルなら、行動の続き）は Skills が面倒を見るので、ここでは触らない。
 @abstract func apply(battle: Battle, unit: Unit, target: Vector2i) -> Array[BattleEvent]

@@ -27,7 +27,7 @@ var skill_cells: Array[Vector2i] = []
 var evolutions: Array[Evolution.Id] = []
 ## 待機できるか。
 var can_wait := false
-## 移動を取り消せるか。
+## 移動を取り消せるか。動いたあとで、行動を終えないスキルをまだ使っていない駒だけ。
 var can_undo := false
 
 
@@ -44,7 +44,7 @@ static func of(battle: Battle, for_unit_id: int) -> UnitOptions:
 	if not battle.can_act(unit):
 		return options
 	options.can_wait = true
-	options.can_undo = unit.has_moved
+	options.can_undo = unit.has_moved and not unit.move_locked
 	if not unit.has_moved:
 		# 巡航の範囲を 1 回だけ探す。通常の移動で届くのは、そのうち移動力が通常の範囲に収まるマス。
 		var stops := Movement.search(battle, unit, true).stops()

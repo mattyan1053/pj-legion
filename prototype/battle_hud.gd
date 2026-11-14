@@ -185,9 +185,13 @@ func is_skill_enabled() -> bool:
 	return not _skill_button.disabled
 
 
-## 駒のスキルの状態（使えるか、あと何ターンか）。
+## 駒のスキルの状態（使えるか、あと何ターンか。回数に上限があれば、残りの回数）。
 static func skill_state_text(unit: Unit) -> String:
-	return "使える" if unit.skill_cooldown == 0 else "あと %d ターン" % unit.skill_cooldown
+	var uses := Skills.uses_left(unit)
+	if uses == 0:
+		return "使い切った"
+	var state := "使える" if unit.skill_cooldown == 0 else "あと %d ターン" % unit.skill_cooldown
+	return state if uses < 0 else "%s。残り %d 回" % [state, uses]
 
 
 ## 画面の中央に、しばらくだけ大きな文字を出す。

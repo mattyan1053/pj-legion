@@ -52,6 +52,13 @@ func test_every_skill_has_its_own_id_and_kind() -> void:
 	assert_eq(ids.size(), Skill.Id.size(), "Skills.ALL に載っていないスキルがある")
 
 
+func test_every_hireable_kind_has_a_skill() -> void:
+	for kind: UnitKind.Id in UnitKind.Id.values():
+		if UnitKind.role(kind) != UnitKind.Role.NONE:
+			assert_true(Skills.of_kind(kind) != null, UnitKind.display_name(kind))
+	assert_eq(Skills.ALL.size(), 8)
+
+
 func test_king_and_neutral_units_have_no_skill() -> void:
 	for kind: UnitKind.Id in [UnitKind.Id.KING, UnitKind.Id.MINION, UnitKind.Id.ELITE_MINION]:
 		assert_eq(Skills.of_kind(kind), null)
