@@ -203,6 +203,22 @@ func test_does_not_wait_in_front_of_a_blocked_portal() -> void:
 	assert_true(paladin.cell.y > 0, "ふさがったポータルの前から動かなかった")
 
 
+func test_reaches_a_target_through_a_portal() -> void:
+	# ポータルを通れば届く相手は、元の距離が「移動力 + 射程」より遠くても見落とさない。
+	var battle := _battle([
+		"................",
+		"................",
+		"..1..........1..",
+		"................",
+		"................",
+	])
+	battle.add_unit(UnitKind.Id.KING, P1, HQ1)
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(14, 2)).hp = 5
+	battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 2))
+	_play_phase(battle)
+	assert_eq(battle.winner, P1)
+
+
 func test_healer_never_attacks() -> void:
 	var battle := _battle_with_kings()
 	battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(3, 2))

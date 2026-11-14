@@ -268,7 +268,7 @@ func _plan(unit: Unit) -> BattleAction:
 			best_value = value
 
 	# 動いて（動かずに）攻撃・回復する手。
-	for candidate in _candidates(unit):
+	for candidate in _candidates(unit, positions):
 		var action: BattleAction = candidate[0]
 		var at: Vector2i = candidate[1]
 		var target_id: int = candidate[2]
@@ -305,13 +305,13 @@ func _plan(unit: Unit) -> BattleAction:
 
 
 ## 攻撃・回復の候補。[行動, 相手のマス, 相手の駒の番号（樽は 0）] の列。
-## 相手になりうるものを広めに並べるだけで、届くかどうかはルールに聞く（_plan が複製の上で確かめる）。
-func _candidates(unit: Unit) -> Array[Array]:
+## cells（通常の移動で止まれるマス。ポータルの先も含む）のどれかから、射程の歩数の中にいる相手を並べる。
+## 広めに並べるだけで、届くかどうかはルールに聞く（_plan が複製の上で確かめる）。
+func _candidates(unit: Unit, cells: Dictionary[Vector2i, float]) -> Array[Array]:
 	var result: Array[Array] = []
-	var reach := unit.move_range() + unit.attack_range()
 	var healer := UnitKind.role(unit.kind) == UnitKind.Role.HEALER
 	for other in _battle.units:
-		if other == unit or Combat.distance(unit.cell, other.cell) > reach:
+		if other == unit or not _in_reach(unit, cells, other.cell):
 			continue
 		if healer:
 			if other.side == _me and other.hp < other.max_hp():
@@ -320,9 +320,18 @@ func _candidates(unit: Unit) -> Array[Array]:
 			result.append([AttackAction.new(unit.id, other.id), other.cell, other.id])
 	if not healer:
 		for cell in _battle.board.barrel_cells:
-			if Combat.distance(unit.cell, cell) <= reach:
+			if _in_reach(unit, cells, cell):
 				result.append([AttackBarrelAction.new(unit.id, cell), cell, 0])
 	return result
+
+
+## cells のどれかから、at が射程の歩数の中にあるか。
+func _in_reach(unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i) -> bool:
+	var reach := unit.attack_range()
+	for cell in cells:
+		if Combat.distance(cell, at) <= reach:
+			return true
+	return false
 
 
 ## cells（通常の移動で止まれるマス）のうち、at に手が届きそうで、そこで手を出すのにいちばん良いマス。無ければ Board.NO_CELL。
