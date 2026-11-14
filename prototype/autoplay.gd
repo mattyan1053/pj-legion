@@ -2,8 +2,9 @@ extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、中立の駒、レベルアップ、進化の場面を通し、
-## 盤面を作り直してほかのステージも少し動かす。途中で画面と対戦の状態が食い違ったら失敗にする。
+## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、中立の駒、レベルアップ、進化、
+## 回復役の回復、CPU の番の場面を通し、盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
+## 途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
 const Queries := preload("res://prototype/battle_queries.gd")
@@ -12,6 +13,8 @@ const Queries := preload("res://prototype/battle_queries.gd")
 const MAX_TURNS := 80
 ## 2 戦目からは、このターンまで動かしたら次へ進む。
 const SHORT_GAME_TURNS := 2
+## この番号の対戦は、相手（プレイヤー2）を CPU にする。
+const CPU_GAME := 1
 const STAGES: Array[BoardGenerator.Stage] = [
 	BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.TWIN_SPRINGS, BoardGenerator.Stage.LABYRINTH,
 ]
@@ -24,6 +27,8 @@ var _finished := false
 ## 決まった手順で進める場面の、残りの手（画面が操作を受け付けるたびに、先頭から 1 つずつ実行する）。
 var _scripted: Array[Callable] = []
 var _scenes_done := false
+## CPU を相手にした対戦を始めたときの、CPU の行動の数。
+var _cpu_actions_before := 0
 
 
 func _init(scene: Node) -> void:
@@ -55,12 +60,19 @@ func _process(_delta: float) -> void:
 			_queue_neutral_scene()
 			_queue_level_up_scene()
 			_queue_evolution_scene()
+			_queue_heal_scene()
+			_queue_cpu_scene()
+			return
+		if _game == CPU_GAME and _scene.cpu_actions == _cpu_actions_before:
+			_finish("autoplay: CPU の番を、CPU が進めなかった", 1)
 			return
 		_game += 1
 		if _game >= STAGES.size():
 			_finish_if_all_played()
 			return
 		_undone.clear()
+		_cpu_actions_before = _scene.cpu_actions
+		_scene.set_opponent(_game == CPU_GAME)
 		_scene.start_battle(STAGES[_game], _scene.map_seed + 1)
 		return
 	if battle.turn > MAX_TURNS:
@@ -76,10 +88,13 @@ func _step(battle: Battle) -> void:
 		return
 	var acting := battle.unit_by_id(battle.acting_unit_id)
 	if acting != null:
-		# 動いたあと: 攻撃できれば攻撃、できなければ待機。駒ごとに 1 回、移動の取り消しも試す。
+		# 動いたあと: 攻撃・回復できればする、できなければ待機。駒ごとに 1 回、移動の取り消しも試す。
 		var targets := Queries.attack_targets(battle, acting)
+		var heals := Queries.heal_targets(battle, acting)
 		if not targets.is_empty():
 			_scene.click_cell(_pick_target(targets).cell)
+		elif not heals.is_empty():
+			_scene.click_cell(heals[0].cell)
 		elif not _undone.has(acting.id) and acting.id % 3 == 0:
 			_undone[acting.id] = true
 			_scene.cancel()
@@ -105,6 +120,10 @@ func _step(battle: Battle) -> void:
 	var targets := Queries.attack_targets(battle, unit)
 	if not targets.is_empty():
 		_scene.click_cell(_pick_target(targets).cell)
+		return
+	var heals := Queries.heal_targets(battle, unit)
+	if not heals.is_empty():
+		_scene.click_cell(heals[0].cell)
 		return
 	var cell := _best_move(battle, unit)
 	if cell == unit.cell:
@@ -293,12 +312,73 @@ func _queue_evolution_scene() -> void:
 		_expect(paladin.hp == seen["hp"] + Evolution.REGENERATION_HEAL, "再生で回復しなかった"))
 
 
+## 回復役が動いて、減っている味方を回復する（人の操作で）。
+func _queue_heal_scene() -> void:
+	var board := _small_board(Vector2i(7, 4))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 3))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
+	var medic := battle.add_unit(UnitKind.Id.MEDIC, Unit.Side.PLAYER1, Vector2i(1, 1))
+	var wounded := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(4, 1))
+	wounded.hp = 10
+	var healed: Script = HealerHealedEvent
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.click_cell(medic.cell))
+	_scripted.append(func() -> void:
+		_expect(Queries.heal_targets(battle, medic).is_empty(), "届かない味方を回復できることになっている")
+		_scene.click_cell(Vector2i(3, 1)))
+	_scripted.append(func() -> void:
+		_expect(Queries.heal_targets(battle, medic) == ([wounded] as Array[Unit]), "回復できる味方が違う")
+		# 動いたあとに相手を切り替えても、その駒を選んだままで、続きができる。
+		_scene.set_opponent(true)
+		_expect(_scene.selected_unit() == medic, "相手を切り替えたら、動いたあとの駒の選択が外れた")
+		_scene.set_opponent(false)
+		_scene.played.erase(healed)
+		_scene.click_cell(wounded.cell))
+	_scripted.append(func() -> void:
+		_expect(wounded.hp == 10 + medic.power(), "回復しなかった")
+		_expect(medic.acted, "回復しても行動が終わっていない")
+		_expect(_scene.played.get(healed, 0) == 1, "回復を再生しなかった"))
+
+
+## 相手を CPU にして、ターンを終える。CPU が自分の番を進め（回復役が回復し、戦う駒が攻撃する）、こちらの番に戻る。
+func _queue_cpu_scene() -> void:
+	var board := _small_board(Vector2i(8, 5))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var bait := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(3, 2))
+	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(6, 2))
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, Unit.Side.PLAYER2, Vector2i(7, 2))
+	var wounded := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(6, 1))
+	wounded.hp = 10
+	var seen := {"actions": 0}
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(true)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		seen["actions"] = _scene.cpu_actions
+		_end_turn()
+		# CPU の番の間は、操作を受け付けない。
+		_scene.click_cell(sorcerer.cell)
+		_expect(_scene.selected_unit() == null, "CPU の番に駒を選べた")
+		_scene.press_end_turn())
+	_scripted.append(func() -> void:
+		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "CPU が自分の番を終えなかった")
+		_expect(_scene.cpu_actions > seen["actions"], "CPU が行動しなかった")
+		_expect(wounded.hp == 10 + priest.power(), "CPU の回復役が回復しなかった")
+		_expect(bait.hp < bait.max_hp(), "CPU の駒が攻撃しなかった")
+		_scene.set_opponent(false))
+
+
 ## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。
 func _finish_if_all_played() -> void:
 	var players: Dictionary = _scene.event_players()
 	for kind: Script in players:
-		if kind == HealerHealedEvent:
-			continue  # 回復役の回復の操作は、まだ画面に無い（docs/battle-view.md の「仮のもの」）
 		if _scene.played.get(kind, 0) == 0:
 			_finish("autoplay: 1 回も再生しなかったイベント: %s" % kind.resource_path, 1)
 			return

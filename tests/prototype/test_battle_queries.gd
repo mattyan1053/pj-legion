@@ -62,6 +62,26 @@ func test_attack_targets_are_what_the_rules_accept() -> void:
 	assert_true(Queries.attack_targets(battle, null).is_empty())
 
 
+func test_heal_targets_are_exactly_what_the_rules_accept() -> void:
+	var battle := _battle()
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(3, 2))  # 射程 2
+	var near := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(5, 2))
+	near.hp -= 5
+	battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(3, 3))  # 減っていない
+	battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(8, 2)).hp -= 5  # 届かない
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 2)).hp -= 5  # 敵
+	assert_eq(Queries.heal_targets(battle, priest), [near] as Array[Unit])
+	for unit in battle.units:
+		assert_eq(
+			Queries.heal_targets(battle, priest).has(unit), battle.can_apply(HealAction.new(priest.id, unit.id)),
+			"回復できるかどうか %s" % unit.cell,
+		)
+	assert_true(Queries.heal_targets(battle, near).is_empty(), "回復役でない駒")
+	assert_true(Queries.heal_targets(battle, null).is_empty())
+	battle.apply(MoveAction.new(priest.id, Vector2i(3, 1), true))
+	assert_true(Queries.heal_targets(battle, priest).is_empty(), "巡航で動いた駒")
+
+
 func test_no_attack_targets_after_cruising() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 2))
