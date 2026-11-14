@@ -35,7 +35,13 @@ var equipment: Array[Equipment.Id] = []
 ## 聖遺物で足す量（層 2）。Stat -> int。無い能力値は 0。
 var relic_bonus := {}
 ## 一時的な補正で足す量（層 3）。Stat -> int。無い能力値は 0。負の値もある。
+## 付いている状態（statuses）の補正の合計で、Statuses が状態を付ける・外すときに足し引きする。
 var temporary_bonus := {}
+## 付いている状態（docs/unit-statuses.md）。Status.Type -> 残りのターン数。自分のフェーズの始めに 1 減り、0 で外れる。
+## 付ける・外すのは Statuses だけ（補正の足し引きがずれないように）。
+var statuses := {}
+## いまの行動で動く前の statuses（動くと外れる状態を、移動の取り消しで戻すため）。
+var statuses_before_move := {}
 
 ## このフェーズの行動を終えたか。自分のフェーズの始めに戻る。
 var acted := false

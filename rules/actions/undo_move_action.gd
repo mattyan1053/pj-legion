@@ -1,6 +1,7 @@
 class_name UndoMoveAction
 extends BattleAction
 ## 動いたあと、攻撃も待機もしていない駒を、動く前のマスへ戻す。駒は行動前の状態に戻る。
+## 動いたことで外れた状態（照準）は、残りのターン数ごと戻る（StatusAppliedEvent）。
 ## 動いたことで本陣の占拠の数が 0 に戻っていたら、それも動く前の数へ戻す。
 
 var unit_id: int
@@ -23,6 +24,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	unit.cruised = false
 	battle.acting_unit_id = 0
 	var events: Array[BattleEvent] = [MoveUndoneEvent.new(unit.id, from, unit.cell)]
+	events.append_array(Statuses.restore_after_undo(unit))
 	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var before := battle.capture_turns_before_move[player]
 		if battle.capture_turns[player] != before:

@@ -68,9 +68,15 @@ static func blast_victims(battle: Battle, cell: Vector2i) -> Array[Unit]:
 	return result
 
 
-## 爆発が unit に与えるダメージ（予測にも使う）。
-static func blast_damage(_unit: Unit) -> int:
-	return BLAST_DAMAGE
+## 爆発が unit に当たったら、どうなるか（ダメージの解決。Hit）。状態は変えない。
+## 量は固定（攻撃力にも地形にもよらない）。バリアには防がれる。
+static func blast_hit(unit: Unit) -> Hit:
+	return Hit.resolve(null, unit, BLAST_DAMAGE, UnitDamagedEvent.Cause.EXPLOSION)
+
+
+## 爆発が unit に与えるダメージ（予測にも使う）。バリアに防がれるなら 0。
+static func blast_damage(unit: Unit) -> int:
+	return blast_hit(unit).amount
 
 
 ## side のフェーズの始めに、回復の泉で回復する駒（HP が減っているものだけ）。上の行から、左の列から。

@@ -128,6 +128,8 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	var skill := Skills.of(unit)
 	if skill != null:
 		_info_stats.text += "\nスキル: %s（%s）" % [skill.display_name(), skill_state_text(unit)]
+	for type in Statuses.types_of(unit):
+		_info_stats.text += "\n状態: %s（あと %d ターン）" % [Status.display_name(type), unit.statuses[type]]
 	if Growth.can_grow(unit):
 		if unit.level >= Growth.MAX_LEVEL:
 			_info_stats.text += "\nレベル %d（最大）" % unit.level

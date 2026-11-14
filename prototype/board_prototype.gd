@@ -504,6 +504,8 @@ static func event_players() -> Dictionary:
 		SanctuaryHealedEvent: &"_play_sanctuary_healed",
 		SkillUsedEvent: &"_play_skill_used",
 		SkillReadyEvent: &"_play_skill_ready",
+		StatusAppliedEvent: &"_play_status_applied",
+		StatusRemovedEvent: &"_play_status_removed",
 		UnitActedEvent: &"_play_acted",
 		PhaseStartedEvent: &"_play_phase_started",
 		CaptureProgressEvent: &"_play_capture",
@@ -586,7 +588,12 @@ func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
 	var target := _view(event.unit_id)
 	target.play_hit()
 	target.set_hp(event.hp)
-	_pop_number(target.position, "-%d" % event.amount, color)
+	if event.is_blocked():
+		_pop_number(target.position, "%s が防いだ" % Status.display_name(event.blocked_by as Status.Type), Color("9fd8ff"))
+	elif event.critical:
+		_pop_number(target.position, "クリティカル -%d" % event.amount, Color("ff5a4a"))
+	else:
+		_pop_number(target.position, "-%d" % event.amount, color)
 	await get_tree().create_timer(wait).timeout
 
 
@@ -735,6 +742,21 @@ func _play_skill_used(event: SkillUsedEvent) -> void:
 ## スキルをまた使えるようになった。描き方は変えない（残りは駒の情報とスキルのボタンに出る）。
 func _play_skill_ready(_event: SkillReadyEvent) -> void:
 	pass
+
+
+## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。
+func _play_status_applied(event: StatusAppliedEvent) -> void:
+	_pop_number(_view(event.unit_id).position, Status.display_name(event.status), Color("9fd8ff"))
+	await get_tree().create_timer(0.25).timeout
+
+
+## 駒の状態が外れた。使い切ったときは、ダメージや攻撃の再生が見せているので、ここでは何も出さない。
+func _play_status_removed(event: StatusRemovedEvent) -> void:
+	if event.reason == StatusRemovedEvent.Reason.CONSUMED:
+		return
+	var why := "が解けた" if event.reason == StatusRemovedEvent.Reason.MOVED else "が消えた"
+	_pop_number(_view(event.unit_id).position, Status.display_name(event.status) + why, Color("b8c4d0"))
+	await get_tree().create_timer(0.2).timeout
 
 
 func _play_acted(event: UnitActedEvent) -> void:
@@ -922,6 +944,11 @@ func _refresh() -> void:
 	_update_info()
 
 
+## 選べる対象が自分のマスだけのスキル（自分に使うスキル）を、選んでいるか。
+func _is_self_skill(unit: Unit) -> bool:
+	return unit != null and _skill_cells.size() == 1 and _skill_cells[0] == unit.cell
+
+
 ## スキルのボタンの文字。スキルの名前と、使えない理由（クールダウン、対象が無い）。
 func _skill_button_text(unit: Unit) -> String:
 	var skill := Skills.of(unit)
@@ -950,6 +977,8 @@ func _refresh_hint(unit: Unit) -> void:
 		_hud.set_hint("進化先を選ぶ（上のボタンか、1・2 のキー）。選ぶまで、ほかの操作はできない")
 	elif unit == null:
 		_hud.set_hint("駒をクリックして選ぶ。相手の駒を選ぶと、動ける範囲が見える")
+	elif _skill_mode and _is_self_skill(unit):
+		_hud.set_hint("%s: 自分に使う。この駒（紫のマス）をクリックで使う（行動を終える）。ほかのマスか Esc でやめる" % Skills.of(unit).display_name())
 	elif _skill_mode:
 		_hud.set_hint("%s: 紫のマスをクリックで使う（行動を終える）。ほかのマスか Esc でやめる" % Skills.of(unit).display_name())
 	elif not battle.can_act(unit):
@@ -1029,7 +1058,10 @@ func _update_info() -> void:
 		var user := selected_unit()
 		var skill := Skills.of(user)
 		var skill_text := skill.summary()
-		if _skill_cells.has(_hover_cell):
+		# 自分に使うスキルは、対象が 1 つなので、マウスを乗せなくても見込みを出す。
+		if _is_self_skill(user):
+			skill_text += "\n" + _skill_forecast(user, user.cell)
+		elif _skill_cells.has(_hover_cell):
 			skill_text += "\n" + _skill_forecast(user, _hover_cell)
 		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill_text)
 		return
@@ -1048,12 +1080,17 @@ func _update_info() -> void:
 	var forecast := ""
 	var attacker := selected_unit()
 	if hovered != null and _targets.has(hovered):
-		# 攻撃の見込み。実際の攻撃と同じ計算（Combat.damage）を、状態を変えずに使う。
-		var amount := Combat.damage(battle, attacker, hovered)
-		var left := maxi(0, hovered.hp - amount)
-		forecast = "攻撃すると %d ダメージ → %s" % [amount, "倒せる" if left == 0 else "残り HP %d" % left]
-		if FieldEffects.smoke_covering(battle, attacker.cell, hovered) != null:
+		# 攻撃の見込み。実際の攻撃と同じ計算（Combat.hit）を、状態を変えずに使う。
+		var hit := Combat.hit(battle, attacker, hovered)
+		forecast = "攻撃すると %s%d ダメージ → %s" % [
+			"クリティカルで " if hit.critical else "", hit.amount, "倒せる" if hit.hp_after == 0 else "残り HP %d" % hit.hp_after,
+		]
+		if hit.smoke != null:
 			forecast = "煙幕に阻まれて 0 ダメージ（隣からなら当たる）"
+		elif hit.blocked_by != -1:
+			forecast = "%s に防がれて 0 ダメージ（%s は消える）" % [
+				Status.display_name(hit.blocked_by as Status.Type), Status.display_name(hit.blocked_by as Status.Type),
+			]
 		# 経験値の見込みも、実際と同じ計算（Growth）を状態を変えずに使う。
 		var growth := Growth.preview(attacker, Growth.attack_experience(battle, attacker, hovered))
 		if growth.gained > 0:
@@ -1085,6 +1122,15 @@ func _skill_forecast(user: Unit, target: Vector2i) -> String:
 						inside += 1
 				line += "（中の味方 %d 体）" % inside
 			lines.append(line)
+		elif damaged != null and damaged.is_blocked():
+			lines.append("%s は %s で防ぐ（0 ダメージ）" % [
+				battle.unit_by_id(damaged.unit_id).display_name(), Status.display_name(damaged.blocked_by as Status.Type),
+			])
+		elif event is StatusAppliedEvent:
+			var applied := event as StatusAppliedEvent
+			lines.append("%s に %s（%d ターン）" % [
+				battle.unit_by_id(applied.unit_id).display_name(), Status.display_name(applied.status), applied.turns,
+			])
 		elif damaged != null:
 			var victim := battle.unit_by_id(damaged.unit_id)
 			lines.append("%s に %d ダメージ → %s" % [
@@ -1123,10 +1169,14 @@ func _blast_forecast(attacker: Unit, barrel: Vector2i) -> String:
 	var counts := {"敵": 0, "味方": 0}
 	var falls := {"敵": 0, "味方": 0}
 	var kings: Array[String] = []
+	var blocked := 0
 	for victim in MapObject.blast_victims(battle, barrel):
 		var who := "味方" if victim.side == attacker.side else "敵"
 		counts[who] += 1
-		if victim.hp <= MapObject.blast_damage(victim):
+		var hit := MapObject.blast_hit(victim)
+		if hit.blocked_by != -1:
+			blocked += 1
+		if hit.hp_after == 0:
 			falls[who] += 1
 			if victim.kind == UnitKind.Id.KING:
 				kings.append(who)
@@ -1137,6 +1187,8 @@ func _blast_forecast(attacker: Unit, barrel: Vector2i) -> String:
 	if parts.is_empty():
 		return "樽を爆発させる（巻き込む駒はいない）"
 	var text := "樽を爆発させる → %d ダメージ: %s" % [MapObject.BLAST_DAMAGE, "、".join(parts)]
+	if blocked > 0:
+		text += "\nバリアの駒 %d 体には 0 ダメージ" % blocked
 	if MapObject.blast_cells(battle.board, barrel).has(attacker.cell):
 		text += "\n自分も巻き込まれる"
 	for who in kings:

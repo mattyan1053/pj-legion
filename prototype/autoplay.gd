@@ -59,6 +59,7 @@ func _process(_delta: float) -> void:
 			_queue_barrel_draw_scene()
 			_queue_field_effect_scene()
 			_queue_skill_scene()
+			_queue_status_scene()
 			_queue_neutral_scene()
 			_queue_level_up_scene()
 			_queue_evolution_scene()
@@ -353,6 +354,54 @@ func _queue_skill_scene() -> void:
 		_scene.click_cell(trooper.cell))
 	_scripted.append(func() -> void:
 		_expect(_scene.is_skill_enabled(), "クールダウンが明けても、スキルのボタンが押せない"))
+
+
+## 自分に使うスキルと、駒に付く状態。バリアを張って攻撃を防ぎ、構えて、次の番に伸びた射程からクリティカルを当てる。
+func _queue_status_scene() -> void:
+	var board := _small_board(Vector2i(9, 3))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 2))
+	var king2 := battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(8, 0))
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(2, 1))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 0))
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER2, Vector2i(3, 1))
+	var applied: Script = StatusAppliedEvent
+	var removed: Script = StatusRemovedEvent
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void:
+		_scene.press_skill()
+		_expect(_scene.is_choosing_skill_target(), "自分に使うスキルの対象を選び始めなかった")
+		_scene.played.erase(applied)
+		_scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void:
+		_expect(Statuses.has(paladin, Status.Type.BARRIER) and paladin.acted, "バリアを張れなかった")
+		_expect(_scene.played.get(applied, 0) == 1, "状態が付いたことを再生しなかった")
+		_scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void:
+		_scene.press_skill()
+		_scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void:
+		_expect(Statuses.has(sniper, Status.Type.AIM), "構えられなかった")
+		_end_turn())
+	_scripted.append(func() -> void: _scene.click_cell(commando.cell))
+	_scripted.append(func() -> void:
+		_scene.played.erase(removed)
+		_scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void:
+		_expect(paladin.hp == paladin.max_hp(), "バリアが攻撃を防がなかった")
+		_expect(not Statuses.has(paladin, Status.Type.BARRIER), "バリアが残っている")
+		_expect(_scene.played.get(removed, 0) == 1, "状態が外れたことを再生しなかった")
+		_end_turn())
+	_scripted.append(func() -> void: _scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void: _scene.click_cell(king2.cell))
+	_scripted.append(func() -> void:
+		var doubled := sniper.power() * PrecisionAimSkill.CRITICAL_PERCENT / 100
+		_expect(king2.hp == king2.max_hp() - doubled, "伸びた射程からのクリティカルが当たらなかった")
+		_expect(not Statuses.has(sniper, Status.Type.AIM), "照準が残っている"))
 
 
 ## 結晶泉にエナジー・コアが湧き、次の中立のフェーズで隣の駒を襲う。

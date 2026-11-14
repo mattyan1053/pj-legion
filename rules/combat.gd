@@ -5,7 +5,8 @@ extends RefCounted
 ## - 射程はマンハッタン距離（上下左右の歩数）。地形は射程を遮らない（壁越しに撃てる）
 ## - ただし、攻撃する駒と相手の間のマス（cells_between）に盾があると届かない（docs/field-effects.md）
 ## - 攻撃できるのは敵（違う陣営）の駒だけ。中立の駒は両プレイヤーの敵
-## - ダメージは攻撃側の攻撃力。守る側が森にいれば 0.8 倍（端数切り捨て）
+## - ダメージは攻撃側の攻撃力（確定クリティカルなら倍率を掛ける）。守る側が森にいれば 0.8 倍（端数切り捨て）
+## - 受ける側にバリアがあれば 0（Hit。駒の HP を減らすものは、どれも Hit を通す）
 ## - 煙幕の中の持ち主の駒への、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃は、ダメージが 0 になる（FieldEffects.smoke_covering）
 ## - 回復役（衛生兵・プリースト）は攻撃しない（かわりに味方を回復する。Healing）
 
@@ -90,28 +91,46 @@ static func targets(battle: Battle, attacker: Unit) -> Array[Unit]:
 	return result
 
 
-## attacker がいまの位置から target に与えるダメージ（予測にも使う）。煙幕に阻まれるなら 0。
-static func damage(battle: Battle, attacker: Unit, target: Unit) -> int:
-	if FieldEffects.smoke_covering(battle, attacker.cell, target) != null:
-		return 0
-	var amount := attacker.power()
+## attacker の、いまの攻撃 1 回の攻撃力。確定クリティカルの状態（照準）なら、その倍率を掛けた値。
+## 駒への攻撃と、盾への攻撃が使う。
+static func attack_power(attacker: Unit) -> int:
+	return attacker.power() * Statuses.critical_percent(attacker) / Status.NORMAL_PERCENT
+
+
+## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
+## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、森の軽減、受ける側の状態（バリア）。
+## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
+static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
+	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
+	if smoke != null:
+		return Hit.smoked(attacker, target, smoke)
+	var amount := attack_power(attacker)
 	if battle.board.terrain_at(target.cell) == Terrain.Type.FOREST:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
-	return amount
+	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
+	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
+	return result
+
+
+## attacker がいまの位置から target に与えるダメージ（予測にも使う）。煙幕かバリアに防がれるなら 0。
+static func damage(battle: Battle, attacker: Unit, target: Unit) -> int:
+	return hit(battle, attacker, target).amount
 
 
 ## attacker が target を攻撃する（届くかどうかは呼ぶ側が確かめる）。起きたことを返す。
-## 煙幕に阻まれたら SmokeBlockedEvent だけ。そうでなければ AttackDamagedEvent と、倒れたら UnitDefeatedEvent。
+## 煙幕に阻まれたら SmokeBlockedEvent。そうでなければ AttackDamagedEvent と、防いだ状態（バリア）が外れる StatusRemovedEvent。
+## 続けて、攻撃で外れる攻撃側の状態（照準）の StatusRemovedEvent、倒れたら UnitDefeatedEvent。
 ## プレイヤーの駒の攻撃（AttackAction）と中立の駒の攻撃（Neutral）が同じものを使う。経験値と行動の終わりは呼ぶ側。
 static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[BattleEvent]:
-	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
+	var resolved := hit(battle, attacker, target)
+	var after := resolved.apply()
 	var events: Array[BattleEvent] = []
-	if smoke != null:
-		events.append(SmokeBlockedEvent.new(attacker.id, target.id, smoke.id))
-		return events
-	var amount := damage(battle, attacker, target)
-	target.hp = maxi(0, target.hp - amount)
-	events.append(AttackDamagedEvent.new(attacker.id, target.id, amount, target.hp))
+	if resolved.smoke != null:
+		events.append(SmokeBlockedEvent.new(attacker.id, target.id, resolved.smoke.id))
+	else:
+		events.append(AttackDamagedEvent.new(resolved))
+	events.append_array(after)
+	events.append_array(Statuses.after_attack(attacker))
 	if target.hp == 0:
 		events.append(battle.remove_unit(target))
 	return events

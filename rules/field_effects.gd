@@ -116,9 +116,9 @@ static func barricade_targets(battle: Battle, attacker: Unit) -> Array[Vector2i]
 	return result
 
 
-## attacker の攻撃で、盾の耐久力が減る量（予測にも使う）。攻撃力のぶん。森の軽減は無い（駒ではない）。
+## attacker の攻撃で、盾の耐久力が減る量（予測にも使う）。攻撃力のぶん（確定クリティカルなら倍率を掛ける）。森の軽減は無い（駒ではない）。
 static func barricade_damage(attacker: Unit) -> int:
-	return attacker.power()
+	return Combat.attack_power(attacker)
 
 
 # ---- 煙幕 ----
