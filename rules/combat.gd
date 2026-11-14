@@ -21,7 +21,7 @@ static func can_attack(battle: Battle, attacker: Unit, target: Unit) -> bool:
 		return false
 	if not battle.units.has(target):
 		return false
-	return distance(attacker.cell, target.cell) <= UnitKind.attack_range(attacker.kind)
+	return distance(attacker.cell, target.cell) <= attacker.attack_range()
 
 
 ## いまの位置から攻撃できる駒。並びは盤面の上の行から、左の列から。
@@ -37,7 +37,7 @@ static func targets(battle: Battle, attacker: Unit) -> Array[Unit]:
 
 ## attacker が target に与えるダメージ（予測にも使う）。
 static func damage(battle: Battle, attacker: Unit, target: Unit) -> int:
-	var amount := UnitKind.power(attacker.kind)
+	var amount := attacker.power()
 	if battle.board.terrain_at(target.cell) == Terrain.Type.FOREST:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
 	return amount
