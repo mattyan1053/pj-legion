@@ -48,6 +48,8 @@ class Outcome:
 	var last_attacked_id := 0
 	## いちばん最近に倒れた駒が中立だったか（撃破の経験値が、どちらの撃破のものかを見分ける）。
 	var last_defeated_neutral := false
+	## スキル -> 使った回数。
+	var skill_uses: Dictionary[Skill.Id, int] = {}
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
 
@@ -143,6 +145,9 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 				tally[2 if outcome.last_defeated_neutral else 1] += 1
 			ExperienceGainedEvent.Reason.HEAL:
 				tally[3] += 1
+	elif event is SkillUsedEvent:
+		var used := event as SkillUsedEvent
+		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
 	elif event is GameWonEvent:
 		var won := event as GameWonEvent
 		outcome.ending = "king" if won.reason == GameWonEvent.Reason.KING_DEFEATED else "hq"
