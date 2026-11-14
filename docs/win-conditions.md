@@ -1,14 +1,23 @@
 # 勝ち負け
 
-コード: `rules/battle.gd`（`winner`、`capture_turns`、`count_capture`）、`rules/actions/end_phase_action.gd`、
-`rules/events/game_won_event.gd`、`rules/events/capture_progress_event.gd`。
-テスト: `tests/rules/test_victory.gd`。
+コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`）、`rules/actions/end_phase_action.gd`、
+`rules/events/game_won_event.gd`、`rules/events/game_drawn_event.gd`、`rules/events/capture_progress_event.gd`。
+テスト: `tests/rules/test_victory.gd`、引き分けは `tests/rules/test_map_objects.gd`。
 
 どちらかが満たされた時点で決着し、`GameWonEvent`（勝った陣営と理由）が出る。決着したあとは、どの行動も受け付けない。
+
+- 決着したかは `Battle.is_over()`、勝った陣営は `Battle.winner`（決着していないか、引き分けなら -1）。
 
 ## 敵の将を倒す
 
 - 将が倒れたら、その相手のプレイヤーの勝ち。倒した行動の結果の最後に `GameWonEvent` が付く。
+- 誰が倒したかは問わない。起爆樽の爆発（`docs/map-objects.md`）で自分の将を倒したら、相手の勝ち。
+
+## 引き分け
+
+- **1 つの行動で両方の将が倒れたら、引き分け**（起爆樽の爆発に両方の将が巻き込まれたとき）。
+- `GameWonEvent` のかわりに、行動の結果の最後に `GameDrawnEvent`（理由）が付く。
+- `Battle.is_over()` と `Battle.is_draw()` が真になり、`Battle.winner` は -1 のまま。決着なので、どの行動も受け付けない。
 
 ## 敵の本陣を占拠し続ける
 

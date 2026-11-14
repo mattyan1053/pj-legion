@@ -5,6 +5,7 @@ extends BattleAction
 ## 全部の駒が行動を終えても、フェーズは自動では終わらない。未行動の駒が残っていても終えてよい。
 ## 行動の途中の駒がいれば、待機したことにして終える。
 ## プレイヤー2 のあとの中立のフェーズは、続けてこの中で進め、次のターンのプレイヤー1 のフェーズまで進む。
+## プレイヤーのフェーズの始めに、回復の泉に乗っているそのプレイヤーの駒が回復する。
 ## フェーズを終える前に、敵の本陣の占拠を数える。それで勝ちが決まれば、次のフェーズへは進まない。
 
 func is_valid(battle: Battle) -> bool:
@@ -35,4 +36,9 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	for unit in battle.units:
 		if unit.side == side:
 			unit.reset_action()
-	return [PhaseStartedEvent.new(battle.turn, side)]
+	var events: Array[BattleEvent] = [PhaseStartedEvent.new(battle.turn, side)]
+	for unit in MapObject.spring_targets(battle, side):
+		var amount := MapObject.spring_heal(unit)
+		unit.hp += amount
+		events.append(UnitHealedEvent.new(0, unit.id, amount, unit.hp, UnitHealedEvent.Cause.SPRING))
+	return events
