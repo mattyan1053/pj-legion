@@ -44,6 +44,9 @@ var ult_uses: Array[int] = [0, 0]
 ## 倒れた中ボス -> 倒した陣営（docs/neutral-mid-boss.md）。キーは中ボスの番号（Board.mid_boss_cells の添字）。
 ## 値は MidBossDefeatedEvent.slayer_side と同じ（止めを刺した駒がいなければ -1）。倒れた中ボスは湧き直さない。
 var mid_boss_slayers: Dictionary[int, int] = {}
+## プレイヤーごとの、持っている聖遺物（Relics.Id の並び。受け取った順）。添字がプレイヤー番号。docs/relic-buff.md。
+## 足すのは Relics.grant だけ（駒の聖遺物の層と、そろえて変える）。
+var relics: Array[Array] = [[], []]
 
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
@@ -84,11 +87,13 @@ func add_unit(
 	units.append(unit)
 	if side != Unit.Side.NEUTRAL and armies[side] == UnitKind.Army.NONE:
 		armies[side] = UnitKind.army(kind)
+	Relics.equip(self, unit)  # 聖遺物を取ったあとに置かれた駒にも、効果が掛かる
 	return unit
 
 
 ## 倒れた駒を盤から取り除く。by は止めを刺した駒（攻撃した駒、スキルを使った駒、爆発した樽を攻撃した駒）。
-## 返すのは UnitDefeatedEvent。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）。
+## 返すのは UnitDefeatedEvent。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）と、
+## 倒した陣営がいれば RelicGainedEvent（その中ボスの聖遺物を受け取る。Relics.grant）。
 func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 	units.erase(unit)
 	if acting_unit_id == unit.id:
@@ -101,6 +106,9 @@ func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 		var event := MidBossDefeatedEvent.new(boss_index, unit, slayer)
 		mid_boss_slayers[boss_index] = event.slayer_side
 		events.append(event)
+		var relic := Relics.of_boss(boss_index)
+		if slayer != null and relic != -1:
+			events.append_array(Relics.grant(self, slayer.side, relic as Relics.Id, boss_index))
 	return events
 
 

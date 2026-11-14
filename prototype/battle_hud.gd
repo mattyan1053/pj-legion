@@ -76,6 +76,7 @@ var _team_colors: Array[Color] = []
 var _turn_label: Label
 var _phase_label: Label
 var _side_labels: Array[Label] = []
+var _relic_texts: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []
 var _ult_labels: Array[Label] = []
 var _ult_button: Button
@@ -121,6 +122,18 @@ func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array
 	for player in 2:
 		var pips := "●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player])
 		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [("青" if player == 0 else "赤"), counts[player], pips]
+		if _relic_texts[player] != "":
+			_side_labels[player].text += "  聖遺物 " + _relic_texts[player]
+
+
+## 陣営ごとの、持っている聖遺物の名前（上の帯。添字がプレイヤー番号。持っていなければ空）。次の set_status で出る。
+func set_relics(texts: Array[String]) -> void:
+	_relic_texts = texts
+
+
+## 上の帯に出ている、陣営の聖遺物の文字（持っていなければ空）。検査用。
+func relic_text(player: int) -> String:
+	return _relic_texts[player] if _side_labels[player].text.contains("聖遺物") else ""
 
 
 ## 必殺技のゲージ（上の帯。添字がプレイヤー番号）。percents は 0〜100。names は必殺技の名前（持たなければ空で、ゲージを出さない）。

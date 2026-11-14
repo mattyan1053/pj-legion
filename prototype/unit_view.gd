@@ -237,6 +237,11 @@ func set_growth(level: int, max_hp: int) -> void:
 	_max_hp = max_hp
 
 
+## 最大 HP だけを変える（聖遺物）。札は次の set_hp で描き直す。
+func set_max_hp(max_hp: int) -> void:
+	_max_hp = max_hp
+
+
 ## 進化した駒の札に印（★）を付け、最大 HP を変える。札は次の set_hp で描き直す。
 func set_evolved(max_hp: int) -> void:
 	_evolved = true

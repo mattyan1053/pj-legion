@@ -32,6 +32,7 @@ const COLOR_SKILL_AREA := Color(1.0, 0.55, 0.9, 0.85)
 const COLOR_EXPERIENCE := Color("9fd8ff")
 const COLOR_LEVEL_UP := Color("ffd34a")
 const COLOR_EVOLUTION := Color("d9a6ff")
+const COLOR_RELIC := Color("ffe08a")
 const COLOR_INSPECT := Color(1.0, 1.0, 1.0, 0.28)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 
@@ -373,6 +374,11 @@ func ult_gauge_text(player: int) -> String:
 	return _hud.ult_gauge_text(player)
 
 
+## 上の帯に出ている、陣営の聖遺物の文字（持っていなければ空）。検査用。
+func relic_text(player: int) -> String:
+	return _hud.relic_text(player)
+
+
 ## スキルの対象を選んでいる途中か。検査用。
 func is_choosing_skill_target() -> bool:
 	return _skill_mode
@@ -542,6 +548,7 @@ static func event_players() -> Dictionary:
 		UnitEvolvedEvent: &"_play_evolved",
 		UnitDefeatedEvent: &"_play_defeated",
 		MidBossDefeatedEvent: &"_play_mid_boss_defeated",
+		RelicGainedEvent: &"_play_relic_gained",
 		UnitSpawnedEvent: &"_play_spawned",
 		BarrelExplodedEvent: &"_play_barrel_exploded",
 		BarricadePlacedEvent: &"_play_field_effect_placed",
@@ -893,6 +900,24 @@ func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	await get_tree().create_timer(0.6).timeout
 
 
+## 陣営が聖遺物を受け取った。控えめに見せる: 上の帯に聖遺物の名前を出し、効果の掛かった駒の HP のバーを描き直し、
+## 駒の上に小さい光と、効果（最大 HP +N など）を出す。画面を覆う演出はしない。
+func _play_relic_gained(event: RelicGainedEvent) -> void:
+	_refresh_status(battle.turn, battle.phase)
+	var color: Color = TEAM_COLORS[event.side]
+	var text := Relics.summary(event.relic).trim_prefix("軍の全員の")
+	for unit_id in event.unit_ids:
+		if not _views.has(unit_id):
+			continue
+		var view := _view(unit_id)
+		view.set_max_hp(event.max_hp[unit_id])
+		view.set_hp(event.hp[unit_id])
+		_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_RELIC, 1.0)
+		_pop_number(view.position + Vector3(0.0, 0.5, 0.0), text, COLOR_RELIC)
+	_hud.show_banner("%s　%s を手に入れた（%s）" % [_side_name(event.side), Relics.display_name(event.relic), Relics.summary(event.relic)], color)
+	await get_tree().create_timer(0.7).timeout
+
+
 ## 中立の駒が結晶泉に湧いた（中ボスが現れた）。光とともに、小さい形から大きくする。
 func _play_spawned(event: UnitSpawnedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
@@ -1114,6 +1139,13 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	var counts: Array[int] = [
 		Queries.unit_count(battle, Unit.Side.PLAYER1), Queries.unit_count(battle, Unit.Side.PLAYER2),
 	]
+	var relics: Array[String] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		var names: Array[String] = []
+		for relic in Relics.held(battle, side):
+			names.append(Relics.display_name(relic).trim_suffix("の聖遺物"))
+		relics.append("・".join(names))
+	_hud.set_relics(relics)
 	_hud.set_status(turn, phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN)
 	var percents: Array[int] = []
 	var names: Array[String] = []
