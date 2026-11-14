@@ -205,10 +205,12 @@ func test_level_3_is_the_cap() -> void:
 	sniper.level = 2
 	sniper.experience = 90
 	var events := Growth.gain(sniper, 50, ExperienceGainedEvent.Reason.DEFEAT)
-	assert_eq(_types(events), [ExperienceGainedEvent, LevelUpEvent] as Array[Script])
+	# 上限に届くと、進化先を選ぶことになる（docs/branch-evolution.md）。
+	assert_eq(_types(events), [ExperienceGainedEvent, LevelUpEvent, EvolutionOfferedEvent] as Array[Script])
 	assert_eq(sniper.level, 3)
 	assert_eq(sniper.experience, 0)  # 上が無いので、余りは捨てる
 	assert_eq((events[1] as LevelUpEvent).experience, 0)
+	battle.apply(EvolveAction.new(sniper.id, Evolution.Id.SCOUT))
 	var target := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(3, 0))
 	events = battle.apply(AttackAction.new(sniper.id, target.id)).events
 	assert_eq(_types(events), [AttackDamagedEvent, UnitActedEvent] as Array[Script])
@@ -220,7 +222,7 @@ func test_a_big_gain_can_level_up_twice() -> void:
 	var battle := _battle()
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(0, 0))
 	var events := Growth.gain(priest, 250, ExperienceGainedEvent.Reason.HEAL)
-	assert_eq(_types(events), [ExperienceGainedEvent, LevelUpEvent, LevelUpEvent] as Array[Script])
+	assert_eq(_types(events), [ExperienceGainedEvent, LevelUpEvent, LevelUpEvent, EvolutionOfferedEvent] as Array[Script])
 	assert_eq((events[1] as LevelUpEvent).level, 2)
 	assert_eq((events[1] as LevelUpEvent).experience, 150)
 	assert_eq((events[2] as LevelUpEvent).level, 3)

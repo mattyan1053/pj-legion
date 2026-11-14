@@ -3,7 +3,7 @@ extends RefCounted
 ## 盤上の駒 1 体。種類・陣営・位置と、いまの状態を持つ。
 ##
 ## 能力値（最大 HP・攻撃力・移動力・射程）は、次の層を順に重ねた実効値で使う。
-##   1. 基礎 + 成長 + 装備（種類の基本の値に、レベルアップで伸びたぶんと、持っている装備のぶんを足す）
+##   1. 基礎 + 成長 + 進化 + 装備（種類の基本の値に、レベルアップで伸びたぶん、進化先の増減、持っている装備のぶんを足す）
 ##   2. 聖遺物（relic_bonus）
 ##   3. 一時的な補正（temporary_bonus）
 ## ルールは UnitKind の値を直に読まず、駒の max_hp() / power() / move_range() / attack_range() を使う。
@@ -26,6 +26,10 @@ var level := 1
 var experience := 0
 ## レベルアップで伸びた量（層 1）。Stat -> int。無い能力値は 0。種類の基本の値は書き換えない。
 var growth_bonus := {}
+## 進化先（層 1）。進化していなければ Evolution.Id.NONE。docs/branch-evolution.md。
+var evolution := Evolution.Id.NONE
+## レベルが上限に届き、進化先を選ぶのを待っているか（選ぶまで、対戦はほかの行動を受け付けない）。
+var evolution_ready := false
 ## 持っている装備（層 1）。対戦の途中では変わらない。
 var equipment: Array[Equipment.Id] = []
 ## 聖遺物で足す量（層 2）。Stat -> int。無い能力値は 0。
@@ -72,7 +76,7 @@ func reset_action() -> void:
 	cruised = false
 
 
-## 層 1（基礎 + 成長 + 装備）の値。
+## 層 1（基礎 + 成長 + 進化 + 装備）の値。
 func base_stat(which: Stat) -> int:
 	var value := 0
 	match which:
@@ -84,7 +88,8 @@ func base_stat(which: Stat) -> int:
 			value = UnitKind.move_range(kind)
 		Stat.ATTACK_RANGE:
 			value = UnitKind.attack_range(kind)
-	return value + growth_bonus.get(which, 0) + Equipment.total_bonus(equipment, which)
+	value += growth_bonus.get(which, 0) + Evolution.bonus(evolution, which)
+	return value + Equipment.total_bonus(equipment, which)
 
 
 ## 成長（層 1）を足す。最大 HP が増えたら、増えたぶんだけ HP も増える（follow_max_hp）。
@@ -92,6 +97,38 @@ func add_growth(which: Stat, amount: int) -> void:
 	var before := max_hp()
 	growth_bonus[which] = growth_bonus.get(which, 0) + amount
 	follow_max_hp(before)
+
+
+## 進化する（層 1）。進化先の能力値の増減と特性が、すぐに効く。最大 HP が増えたら、増えたぶんだけ HP も増える。
+func evolve(to: Evolution.Id) -> void:
+	var before := max_hp()
+	evolution = to
+	evolution_ready = false
+	follow_max_hp(before)
+
+
+## 駒の呼び名。進化していれば進化先の名前、していなければ種類の名前。
+func display_name() -> String:
+	return UnitKind.display_name(kind) if evolution == Evolution.Id.NONE else Evolution.display_name(evolution)
+
+
+## 周り 8 マスに支配領域（ZOC）を作るか。前衛と、その特性を持つ進化先。
+func exerts_zoc() -> bool:
+	return UnitKind.exerts_zoc(kind) or Evolution.has_trait(evolution, Evolution.Trait.EXERTS_ZOC)
+
+
+## 敵の支配領域（ZOC）で止まらずに進めるか。
+func ignores_zoc() -> bool:
+	return Evolution.has_trait(evolution, Evolution.Trait.IGNORES_ZOC)
+
+
+## into に入るのに使う移動力。入れないマスなら負の値（Board.move_cost と同じ）。
+## 森を歩く特性の駒は、森にも平地と同じ移動力で入る。
+func move_cost(board: Board, into: Vector2i) -> int:
+	var cost := board.move_cost(into)
+	if cost > 1 and Evolution.has_trait(evolution, Evolution.Trait.FOREST_WALK):
+		return 1
+	return cost
 
 
 ## 最大 HP の実効値が before から変わったあとに、HP を合わせる。

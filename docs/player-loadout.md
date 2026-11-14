@@ -42,7 +42,8 @@
 
 駒の能力値（最大 HP・攻撃力・移動力・射程）は、次の層を順に足した実効値で使う。
 
-1. **基礎 + 成長 + 装備**: 種類の基本の値に、レベルアップで伸びたぶん（`Unit.growth_bonus`。`docs/experience-levelup.md`）と、
+1. **基礎 + 成長 + 進化 + 装備**: 種類の基本の値に、レベルアップで伸びたぶん（`Unit.growth_bonus`。`docs/experience-levelup.md`）、
+   進化先の増減（`Unit.evolution`。`docs/branch-evolution.md`）と、
    持っている装備のぶんを足す（`Unit.base_stat`）。
 2. **聖遺物**: `Unit.relic_bonus`（能力値 → 足す量）。
 3. **一時的な補正**: `Unit.temporary_bonus`（能力値 → 足す量。負の値もある）。
@@ -54,7 +55,7 @@
 - 駒は、最大 HP の実効値と同じ HP で盤に置かれる。
 - 対戦の途中で最大 HP の実効値が変わったら（成長、聖遺物、一時的な補正のどれでも）、HP を合わせる（`Unit.follow_max_hp`）:
   増えたら、増えたぶんだけ HP も増やす（受けているダメージの量は変わらない）。減ったら、新しい最大 HP を超えないように切り詰める。
-- `Battle.clone()` は、装備と成長と 2 つの補正も駒ごとに複製する。
+- `Battle.clone()` は、装備と成長と進化先と 2 つの補正も駒ごとに複製する。
 
 ## 軍を盤に置く
 

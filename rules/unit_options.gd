@@ -4,6 +4,7 @@ extends RefCounted
 ##
 ## ここに載るものは、Battle.can_apply() が受け付ける行動と一致する（載っていない行動は断られる）。
 ## 行動できない駒（相手の番、行動済み、ほかの駒が行動の途中、決着のあと、いない駒）では、すべて空になる。
+## 進化先を選ぶのを待っている駒がいる間は、その駒の evolutions だけが載り、ほかはすべて空になる。
 ## 作った時点の写しなので、状態が進んだら作り直す。駒は番号で指すので、複製した Battle にもそのまま使える。
 ## 画面（選べるマスを塗る）と CPU（選べる行動を並べる）の両方が使う。
 
@@ -18,6 +19,8 @@ var attack_target_ids: Array[int] = []
 var barrel_cells: Array[Vector2i] = []
 ## いまの位置から回復できる味方の番号（同じ並び）。回復役だけ。巡航で動いた駒では空。
 var heal_target_ids: Array[int] = []
+## 選べる進化先（A、B の順）。進化先を選ぶのを待っている駒だけ。
+var evolutions: Array[Evolution.Id] = []
 ## 待機できるか。
 var can_wait := false
 ## 移動を取り消せるか。
@@ -29,7 +32,12 @@ static func of(battle: Battle, for_unit_id: int) -> UnitOptions:
 	var options := UnitOptions.new()
 	options.unit_id = for_unit_id
 	var unit := battle.unit_by_id(for_unit_id)
-	if battle.is_over() or not battle.can_act(unit):
+	if battle.is_over():
+		return options
+	if unit != null and unit == battle.evolving_unit():
+		options.evolutions = Evolution.options_for(unit.kind)
+		return options
+	if not battle.can_act(unit):
 		return options
 	options.can_wait = true
 	options.can_undo = unit.has_moved
@@ -53,7 +61,7 @@ static func of(battle: Battle, for_unit_id: int) -> UnitOptions:
 
 ## 何も選べないか。
 func is_empty() -> bool:
-	return not can_wait
+	return not can_wait and evolutions.is_empty()
 
 
 ## cell へ動けるか（通常の移動か、巡航で）。
@@ -62,10 +70,12 @@ func can_move_to(cell: Vector2i) -> bool:
 
 
 ## 選べる行動を、そのまま Battle.apply() に渡せる形で並べる。
-## 並びは、移動（通常、巡航）、攻撃、樽の攻撃、回復、待機、取り消し。毎回同じ並びになる。
+## 並びは、進化、移動（通常、巡航）、攻撃、樽の攻撃、回復、待機、取り消し。毎回同じ並びになる。
 ## 通常の移動で届くマスへの巡航は並べない（受け付けはするが、攻撃を諦めるだけで得が無い）。
 func actions() -> Array[BattleAction]:
 	var result: Array[BattleAction] = []
+	for evolution in evolutions:
+		result.append(EvolveAction.new(unit_id, evolution))
 	for cell in move_cells:
 		result.append(MoveAction.new(unit_id, cell, false))
 	for cell in cruise_cells:

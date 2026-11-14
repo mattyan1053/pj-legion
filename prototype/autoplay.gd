@@ -1,8 +1,8 @@
 extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
-## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）と中立の駒の場面を通し、
+## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
+## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、中立の駒、レベルアップ、進化の場面を通し、
 ## 盤面を作り直してほかのステージも少し動かす。途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
@@ -54,6 +54,7 @@ func _process(_delta: float) -> void:
 			_queue_barrel_draw_scene()
 			_queue_neutral_scene()
 			_queue_level_up_scene()
+			_queue_evolution_scene()
 			return
 		_game += 1
 		if _game >= STAGES.size():
@@ -69,6 +70,10 @@ func _process(_delta: float) -> void:
 
 
 func _step(battle: Battle) -> void:
+	var evolving := battle.evolving_unit()
+	if evolving != null:
+		_scene.choose_evolution(evolving.id % 2)  # 駒によって A と B を選び分ける
+		return
 	var acting := battle.unit_by_id(battle.acting_unit_id)
 	if acting != null:
 		# 動いたあと: 攻撃できれば攻撃、できなければ待機。駒ごとに 1 回、移動の取り消しも試す。
@@ -249,6 +254,43 @@ func _queue_level_up_scene() -> void:
 		_expect(raider.level == 2, "レベルが上がらなかった")
 		_expect(raider.hp == raider.max_hp() - 5, "最大 HP が伸びたぶん HP が増えなかった")
 		_expect(_scene.played.get(LevelUpEvent, 0) > 0, "レベルアップを再生しなかった"))
+
+
+## あと 10 で上限のレベルに届く駒が攻撃を当て、進化先を選び、次の自分の番の始めに再生で回復する。
+func _queue_evolution_scene() -> void:
+	var board := _small_board(Vector2i(6, 4))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 3))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(5, 0))
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(2, 2))
+	paladin.level = Growth.MAX_LEVEL - 1
+	paladin.experience = Growth.EXPERIENCE_PER_LEVEL - Growth.HIT_EXPERIENCE
+	paladin.hp -= 20
+	var wall := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER2, Vector2i(3, 2))
+	var seen := {"hp": 0}  # 手順をまたいで覚えておく値（ラムダは外の変数を書き換えられない）
+
+	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void: _scene.click_cell(wall.cell))
+	_scripted.append(func() -> void:
+		_expect(paladin.level == Growth.MAX_LEVEL, "上限のレベルに届かなかった")
+		_expect(battle.evolving_unit() == paladin, "進化先を選ぶのを待っていない")
+		_expect(_scene.is_choosing_evolution(), "進化先の選択肢が出ていない")
+		_end_turn())
+	_scripted.append(func() -> void:
+		_expect(battle.phase == Unit.Side.PLAYER1, "進化先を選ぶ前にターンが終わった")
+		seen["hp"] = paladin.hp
+		_scene.choose_evolution(0))
+	_scripted.append(func() -> void:
+		_expect(paladin.evolution == Evolution.Id.SACRED, "進化しなかった")
+		_expect(paladin.hp == seen["hp"] + Evolution.bonus(Evolution.Id.SACRED, Unit.Stat.MAX_HP), "最大 HP が伸びたぶん HP が増えなかった")
+		_expect(not _scene.is_choosing_evolution(), "進化先の選択肢が残っている")
+		seen["hp"] = paladin.hp
+		_end_turn())
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "ターンが進まなかった")
+		_expect(paladin.hp == seen["hp"] + Evolution.REGENERATION_HEAL, "再生で回復しなかった"))
 
 
 ## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。

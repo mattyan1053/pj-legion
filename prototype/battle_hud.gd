@@ -7,6 +7,8 @@ signal wait_pressed
 ## 「移動を取り消す」と「選択をやめる」は同じボタン（どちらになるかは呼ぶ側が決める）。
 signal cancel_pressed
 signal end_turn_pressed
+## 進化先を選んだ。index は、出している選択肢の何番目か（0 が A、1 が B）。
+signal evolution_chosen(index: int)
 ## stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でやり直す（stage は見ない）。
 signal restart_pressed(stage: int, new_board: bool)
 
@@ -31,6 +33,18 @@ const OBJECT_NAMES := {
 	MapObject.Type.BARREL: "起爆樽（入れない。攻撃すると爆発し、周り 8 マスの駒すべてに %d ダメージ）" % MapObject.BLAST_DAMAGE,
 	MapObject.Type.SPRING: "回復の泉（自分の番の始めに、乗っている駒が %d 回復）" % MapObject.SPRING_HEAL,
 	MapObject.Type.PORTAL: "ポータル",
+}
+const STAT_NAMES := {
+	Unit.Stat.MAX_HP: "最大 HP",
+	Unit.Stat.POWER: "攻撃",
+	Unit.Stat.MOVE_RANGE: "移動",
+	Unit.Stat.ATTACK_RANGE: "射程",
+}
+const TRAIT_TEXTS := {
+	Evolution.Trait.EXERTS_ZOC: "周り 8 マスに支配領域を作る（敵はそこで止まる）",
+	Evolution.Trait.IGNORES_ZOC: "敵の支配領域で止まらない",
+	Evolution.Trait.FOREST_WALK: "森を平地と同じ移動力で歩く",
+	Evolution.Trait.REGENERATION: "自分の番の始めに %d 回復" % Evolution.REGENERATION_HEAL,
 }
 const STAGE_NAMES := {
 	BoardGenerator.Stage.PLAIN: "1 中央平原",
@@ -60,6 +74,9 @@ var _cancel_button: Button
 var _banner: Label
 var _banner_tween: Tween
 var _result: Control
+var _evolution: Control
+var _evolution_title: Label
+var _evolution_buttons: Array[Button] = []
 var _result_title: Label
 var _result_reason: Label
 
@@ -71,6 +88,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_bottom()
 	_build_banner()
 	_build_result()
+	_build_evolution()
 
 
 ## counts は陣営ごとの駒の数、captures は本陣の占拠の数（どちらも添字がプレイヤー番号）。
@@ -89,7 +107,7 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	if unit == null:
 		return
 	var role: String = ROLE_NAMES.get(UnitKind.role(unit.kind), "")
-	_info_name.text = UnitKind.display_name(unit.kind) + ("（%s）" % role if role else "")
+	_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
 	_info_side.text = SIDE_NAMES[unit.side]
 	var power_name := "回復" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "攻撃"
@@ -99,6 +117,8 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	if Growth.can_grow(unit):
 		if unit.level >= Growth.MAX_LEVEL:
 			_info_stats.text += "\nレベル %d（最大）" % unit.level
+			for which in Evolution.traits(unit.evolution):
+				_info_stats.text += "\n★ %s" % TRAIT_TEXTS[which]
 		else:
 			_info_stats.text += "\nレベル %d   経験 %d / %d" % [unit.level, unit.experience, Growth.EXPERIENCE_PER_LEVEL]
 	_info_state.text = state
@@ -164,6 +184,39 @@ func result_title() -> String:
 
 func hide_result() -> void:
 	_result.visible = false
+
+
+## 進化先の説明（名前、能力値の増減、特性）。healer なら、攻撃の欄を「回復」と書く。
+static func evolution_text(id: Evolution.Id, healer: bool) -> String:
+	var parts: Array[String] = []
+	var bonuses := Evolution.bonuses(id)
+	for which: Unit.Stat in STAT_NAMES:
+		if bonuses.has(which):
+			var stat_name: String = "回復" if healer and which == Unit.Stat.POWER else STAT_NAMES[which]
+			parts.append("%s %+d" % [stat_name, bonuses[which]])
+	var text := "%s\n%s" % [Evolution.display_name(id), "　".join(parts)]
+	for which in Evolution.traits(id):
+		text += "\n★ %s" % TRAIT_TEXTS[which]
+	return text
+
+
+## 進化先の選択肢を出す。texts は選択肢ごとの説明（evolution_text）。
+func show_evolution(title: String, texts: Array[String]) -> void:
+	_evolution_title.text = title
+	for i in _evolution_buttons.size():
+		_evolution_buttons[i].visible = i < texts.size()
+		if i < texts.size():
+			_evolution_buttons[i].text = "[%d] %s" % [i + 1, texts[i]]
+	_evolution.visible = true
+
+
+func hide_evolution() -> void:
+	_evolution.visible = false
+
+
+## 進化先の選択肢を出しているか。検査用。
+func is_evolution_shown() -> bool:
+	return _evolution.visible
 
 
 ## マウスがボタンやパネルの上にあるか（盤面のクリックと取り違えないため）。
@@ -267,7 +320,7 @@ func _build_bottom() -> void:
 	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(help_panel)
 	var help := _label(13)
-	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / Esc・右クリック 戻す / Enter ターン終了\nF1〜F3 新しい盤面（ステージ 1〜3）"
+	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）"
 	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	help_panel.add_child(help)
@@ -320,6 +373,32 @@ func _build_result() -> void:
 		var button := _button(STAGE_NAMES[stage], Signal())
 		button.pressed.connect(func() -> void: restart_pressed.emit(stage, true))
 		row.add_child(button)
+
+
+## 進化先の選択肢（飾らない 2 つのボタン）。盤面が見えるよう、画面の上寄りに出す。
+func _build_evolution() -> void:
+	var panel := _panel()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.position.y = 70.0
+	panel.visible = false
+	add_child(panel)
+	_evolution = panel
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	panel.add_child(column)
+	_evolution_title = _label(22)
+	_evolution_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_evolution_title)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	column.add_child(row)
+	for i in 2:
+		var button := _button("", Signal())
+		button.custom_minimum_size = Vector2(330.0, 110.0)
+		button.pressed.connect(func() -> void: evolution_chosen.emit(i))
+		row.add_child(button)
+		_evolution_buttons.append(button)
 
 
 func _panel() -> PanelContainer:

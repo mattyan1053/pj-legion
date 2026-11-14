@@ -11,7 +11,7 @@ extends RefCounted
 ## 計算（preview、attack_experience、heal_experience）は状態を変えない。戦闘予測は、これで
 ## 「この攻撃でいくつ入り、レベルが上がるか」を知る。適用（gain）も同じ計算を通す。
 ##
-## 進化（branch-evolution）は level_up() のあとに差し込む（レベルが MAX_LEVEL に届いたとき）。
+## レベルが MAX_LEVEL に届いた駒は、進化先を選べるようになる（Evolution。docs/branch-evolution.md）。
 
 # ---- 調整値（docs/experience-levelup.md の「調整値」） ----
 
@@ -46,6 +46,8 @@ class Outcome:
 	var experience := 0
 	## 上がるレベルの数。
 	var levels_gained := 0
+	## これで最大のレベルに届き、進化先を選ぶことになるか。
+	var evolution_ready := false
 
 
 ## その駒が経験値を受け取り、育つか。軍に属する駒（役割を持つ駒）だけ。
@@ -69,6 +71,7 @@ static func preview(unit: Unit, amount: int) -> Outcome:
 		result.levels_gained += 1
 	if result.level >= MAX_LEVEL:
 		result.experience = 0
+		result.evolution_ready = Evolution.can_evolve(unit)
 	return result
 
 
@@ -85,7 +88,7 @@ static func heal_experience() -> int:
 
 
 ## 経験値を足し、レベルが上がればそのぶん能力値を伸ばす。起きたことを返す:
-## ExperienceGainedEvent、上がったレベルごとの LevelUpEvent。入らなければ（preview の gained が 0）、何も返さない。
+## ExperienceGainedEvent、上がったレベルごとの LevelUpEvent、最大のレベルに届いたら EvolutionOfferedEvent。入らなければ（preview の gained が 0）、何も返さない。
 ## 結果は preview と同じになる。
 static func gain(unit: Unit, amount: int, reason: ExperienceGainedEvent.Reason) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
@@ -96,6 +99,8 @@ static func gain(unit: Unit, amount: int, reason: ExperienceGainedEvent.Reason) 
 	events.append(ExperienceGainedEvent.new(unit.id, gained, reason, unit.experience))
 	while unit.experience >= EXPERIENCE_PER_LEVEL and unit.level < MAX_LEVEL:
 		events.append(level_up(unit))
+	if unit.evolution_ready:
+		events.append(EvolutionOfferedEvent.new(unit.id, Evolution.options_for(unit.kind)))
 	if unit.level >= MAX_LEVEL:
 		unit.experience = 0
 	return events
@@ -103,12 +108,13 @@ static func gain(unit: Unit, amount: int, reason: ExperienceGainedEvent.Reason) 
 
 ## レベルを 1 つ上げ、たまった経験値から EXPERIENCE_PER_LEVEL を差し引き（余りは繰り越す）、役割ごとの量だけ能力値を伸ばす。
 ## 最大 HP が伸びたぶんは、いまの HP も増える。最大のレベルに届いたら、ためた経験値は 0 にする。
-## 進化（branch-evolution）は、ここで MAX_LEVEL に届いたときに、このイベントのあとへ差し込む。
+## 最大のレベルに届いた駒は、進化先を選ぶのを待つ（Unit.evolution_ready。知らせの EvolutionOfferedEvent は gain が足す）。
 static func level_up(unit: Unit) -> LevelUpEvent:
 	unit.experience = maxi(0, unit.experience - EXPERIENCE_PER_LEVEL)
 	unit.level += 1
 	if unit.level >= MAX_LEVEL:
 		unit.experience = 0
+		unit.evolution_ready = Evolution.can_evolve(unit)
 	var gains: Dictionary = GAINS[UnitKind.role(unit.kind)]
 	for which: Unit.Stat in gains:
 		unit.add_growth(which, gains[which])

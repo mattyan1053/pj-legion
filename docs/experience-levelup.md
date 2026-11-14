@@ -31,6 +31,7 @@
 - 経験値が **100** たまるとレベルが 1 つ上がり、100 を差し引く。**余りは繰り越す**（必要な量はどのレベルでも 100）。
 - 1 回で 200 以上入れば、そのぶん続けて上がる（いまの量では起きない）。
 - レベル 3 に届いたら、ためた経験値は 0 にする。レベル 3 の駒には、もう入らない（イベントも出ない）。
+- レベル 3 に届いた駒は、進化先を選ぶ（`docs/branch-evolution.md`）。
 - 伸びる量は役割で決まる（1 レベルごと）。
 
   | 役割 | 最大 HP | 攻撃力（回復役は回復量） |
@@ -49,6 +50,7 @@
 
 - 攻撃: `AttackDamagedEvent`、（倒れたら）`UnitDefeatedEvent`、`ExperienceGainedEvent`、（上がったら）`LevelUpEvent`、`UnitActedEvent`
 - 回復: `HealerHealedEvent`、`ExperienceGainedEvent`、（上がったら）`LevelUpEvent`、`UnitActedEvent`
+- レベル 3 に届いた `LevelUpEvent` のすぐあとには、`EvolutionOfferedEvent` が入る（`docs/branch-evolution.md`）。
 
 | イベント | 値 |
 | --- | --- |
@@ -61,14 +63,15 @@
 
 - `Growth.attack_experience(対戦, 攻撃する駒, 攻撃される駒)`: その攻撃で入る量（倒せるかは `Combat.damage` で見る）。
 - `Growth.heal_experience()`: 回復で入る量。
-- `Growth.preview(駒, 量)`: 実際に入る量、足したあとのレベルとためた量、上がるレベルの数（`Growth.Outcome`）。
+- `Growth.preview(駒, 量)`: 実際に入る量、足したあとのレベルとためた量、上がるレベルの数、進化先を選ぶことになるか（`Growth.Outcome`）。
 
 適用は `Growth.gain(駒, 量, 理由)` で、同じ計算を通してイベントを返す。複製（`Battle.clone()`）は、レベル・経験値・成長の層も駒ごとに写す。
 
 ## 進化とのつなぎ
 
-進化（`branch-evolution`）は、`Growth.level_up` でレベルが `Growth.MAX_LEVEL` に届いたときに、その `LevelUpEvent` のあとへ差し込む。
-伸びる量（`Growth.GAINS`）は役割ごとの表なので、進化先ごとの伸びを足すなら、ここを駒ごとに引けるように広げる。
+`Growth.level_up` でレベルが `Growth.MAX_LEVEL` に届いた駒は、進化先を選ぶのを待つ状態になり（`Unit.evolution_ready`）、
+`Growth.gain` がその `LevelUpEvent` のあとに `EvolutionOfferedEvent` を足す。その先は `docs/branch-evolution.md`。
+伸びる量（`Growth.GAINS`）は役割ごとの表のまま。進化先ごとの能力値の増減は、進化の側（`Evolution`）が別に持つ。
 
 ## 調整値
 
@@ -82,7 +85,7 @@
 | `HEAL_EXPERIENCE` | 20 | 仕様の 10 から上げた。回復役は攻撃しないので撃破のぶんが入らない。5 回の回復でレベル 2 になり、攻撃役と同じくらいの速さで育つ。満タンの味方は回復できないので、空回しでは稼げない |
 | `EXPERIENCE_PER_LEVEL` | 100、どのレベルでも同じ | 仕様のまま。必要な量を増やさないかわりに、上限を 3 にして差を抑える |
 | 繰り越し | する。レベル 3 に届いたら捨てる | 撃破のような大きい獲得が無駄にならない。上限の先にためても使い道が無い |
-| `MAX_LEVEL` | 3 | 仕様のまま。進化（`branch-evolution`）がここに差し込む |
+| `MAX_LEVEL` | 3 | 仕様のまま。届いた駒は進化先を選ぶ（`docs/branch-evolution.md`） |
 | `GAINS`（伸びる量） | 上の表 | 1 レベルで、最大 HP は基本の値の 1〜2 割、攻撃力は 1 割ほど。レベル 3 でも、ほかの駒を 1 回で倒せるようになる伸びは無い（奇襲の攻撃力 12 → 14 に対し、後衛の HP 16 → 22）。前衛は HP を厚く、回復役は回復量を厚くした |
 | 将は育たない | 将には入らない | 将は守る駒。将が撃破で育つと、将を前に出すほど強くなり、守る形が崩れる |
 | 中立の駒は育たない | 入らない | プレイヤーの駒を倒すほど強くなる中立は、狩りの的として扱いにくい |
