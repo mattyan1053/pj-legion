@@ -49,8 +49,12 @@ var acted := false
 var has_moved := false
 var move_origin: Vector2i
 var cruised := false
+## いまの行動で、移動の取り消しがもうできないか（行動を終えないスキルを使ったあと。docs/active-skills.md）。
+var move_locked := false
 ## スキルをまた使えるまでの残り（docs/active-skills.md）。0 なら使える。自分のフェーズの始めに 1 減る。
 var skill_cooldown := 0
+## この対戦でスキルを使った回数。回数に上限のあるスキル（Skill.max_uses）が見る。
+var skill_uses := 0
 ## 中立の駒が守る場所（エナジー・コアなら、湧いた結晶泉）。プレイヤーの駒では Board.NO_CELL。
 var home_cell := Board.NO_CELL
 
@@ -82,6 +86,7 @@ func reset_action() -> void:
 	acted = false
 	has_moved = false
 	cruised = false
+	move_locked = false
 
 
 ## 層 1（基礎 + 成長 + 進化 + 装備）の値。

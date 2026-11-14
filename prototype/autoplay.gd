@@ -2,7 +2,7 @@ extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル、中立の駒、レベルアップ、進化、
+## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル（行動を終えないもの、行動済みの駒を戻すものも）、中立の駒、レベルアップ、進化、
 ## 回復役の回復、CPU の番の場面を通し、盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ## 途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
@@ -60,6 +60,7 @@ func _process(_delta: float) -> void:
 			_queue_field_effect_scene()
 			_queue_skill_scene()
 			_queue_status_scene()
+			_queue_extra_action_scene()
 			_queue_neutral_scene()
 			_queue_level_up_scene()
 			_queue_evolution_scene()
@@ -402,6 +403,71 @@ func _queue_status_scene() -> void:
 		var doubled := sniper.power() * PrecisionAimSkill.CRITICAL_PERCENT / 100
 		_expect(king2.hp == king2.max_hp() - doubled, "伸びた射程からのクリティカルが当たらなかった")
 		_expect(not Statuses.has(sniper, Status.Type.AIM), "照準が残っている"))
+
+
+## 行動の流れを変えるスキル。シャドウステップで敵と入れ替わってから攻撃し、アドレナリン注射で、行動済みの駒をもう一度動かす。
+func _queue_extra_action_scene() -> void:
+	var board := _small_board(Vector2i(9, 4))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 3))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(8, 0))
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, Unit.Side.PLAYER1, Vector2i(2, 1))
+	# 衛生兵は、入れ替わったあとのパラディンの支配領域を通らずに、スペルブレードの隣へ行ける位置に置く。
+	var medic := battle.add_unit(UnitKind.Id.MEDIC, Unit.Side.PLAYER1, Vector2i(3, 3))
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(4, 1))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(5, 1))
+	var swapped: Script = UnitsSwappedEvent
+	var teleported: Script = UnitTeleportedEvent
+	var reactivated: Script = UnitReactivatedEvent
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.click_cell(blade.cell))
+	_scripted.append(func() -> void:
+		_scene.press_skill()
+		_expect(_scene.is_choosing_skill_target(), "シャドウステップの対象を選び始めなかった")
+		_scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.played.get(swapped, 0) == 1, "入れ替わりを再生しなかった")
+		_expect(blade.cell == Vector2i(4, 1) and paladin.cell == Vector2i(2, 1), "入れ替わらなかった")
+		_expect(not blade.acted and _scene.selected_unit() == blade, "跳んだあとに、続けて行動できない")
+		_expect(not _scene.is_skill_enabled(), "跳んだあとに、スキルのボタンが押せる")
+		# 戻す操作では、跳ぶ前には戻れない。
+		_scene.cancel()
+		_expect(blade.cell == Vector2i(4, 1) and _scene.selected_unit() == blade, "跳んだあとに、取り消せた")
+		_scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void:
+		_expect(sniper.hp < sniper.max_hp() or battle.unit_by_id(sniper.id) == null, "跳んだあとに、攻撃できなかった")
+		_expect(blade.acted, "攻撃しても、行動が終わっていない")
+		_scene.click_cell(medic.cell))
+	_scripted.append(func() -> void: _scene.click_cell(Vector2i(4, 2)))
+	_scripted.append(func() -> void:
+		_expect(_scene.skill_button_text().contains("あと %d 回" % AdrenalineShotSkill.MAX_USES), "残りの回数が出ていない")
+		_scene.press_skill()
+		_scene.click_cell(blade.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.played.get(reactivated, 0) == 1, "もう一度行動できることを再生しなかった")
+		_expect(medic.acted and not blade.acted, "アドレナリン注射で、行動前に戻らなかった")
+		_scene.click_cell(blade.cell))
+	_scripted.append(func() -> void: _scene.click_cell(Vector2i(4, 0)))
+	_scripted.append(func() -> void:
+		_expect(blade.cell == Vector2i(4, 0), "もう一度の行動で、動けなかった")
+		_scene.press_wait())
+	_scripted.append(func() -> void:
+		_expect(blade.acted, "もう一度の行動が終わらなかった")
+		_end_turn())
+	_scripted.append(_end_turn)
+	for i in ShadowStepSkill.COOLDOWN * 2 - 2:
+		_scripted.append(_end_turn)
+	_scripted.append(func() -> void: _scene.click_cell(blade.cell))
+	_scripted.append(func() -> void:
+		_expect(blade.power() == UnitKind.power(UnitKind.Id.SPELLBLADE), "反動が消えていない")
+		_scene.press_skill()
+		_scene.click_cell(Vector2i(4, 3)))
+	_scripted.append(func() -> void:
+		_expect(_scene.played.get(teleported, 0) == 1, "跳んだことを再生しなかった")
+		_expect(blade.cell == Vector2i(4, 3), "空いたマスへ跳べなかった"))
 
 
 ## 結晶泉にエナジー・コアが湧き、次の中立のフェーズで隣の駒を襲う。

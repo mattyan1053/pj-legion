@@ -100,6 +100,12 @@ static func stat_after_move(unit: Unit, which: Unit.Stat) -> int:
 ## 外す前の状態は unit.statuses_before_move に残し、移動を取り消したら戻す（restore_after_undo）。
 static func after_move(unit: Unit) -> Array[BattleEvent]:
 	unit.statuses_before_move = unit.statuses.duplicate()
+	return displace(unit)
+
+
+## unit が、移動のほかの形でほかのマスへ移った（スキルで跳んだ、入れ替えられた）。動くと外れる状態を外す。
+## 移動の取り消しでは戻らない（外す前の状態を覚えない）。
+static func displace(unit: Unit) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	for type in types_of(unit):
 		if Status.breaks_on_move(type):
@@ -125,13 +131,20 @@ static func restore_after_undo(unit: Unit) -> Array[BattleEvent]:
 
 ## side のフェーズの始めに、side の駒の状態の残りのターン数が 1 減る（EndPhaseAction が、盤の上の効果のあとに呼ぶ）。
 ## 0 になった状態は外れる（StatusRemovedEvent。駒の番号の順、種類の番号の順）。
+## 期限で外れると別の状態に変わるもの（Status.follow_up。高揚 → 反動）は、その駒の期限を全部進めたあとに、続きの状態が付く
+## （StatusAppliedEvent。付いたばかりの状態は、このフェーズの始めには減らない）。
 static func start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	for unit in battle.units:
 		if unit.side != side:
 			continue
+		var next: Array[Array] = []
 		for type in types_of(unit):
 			unit.statuses[type] -= 1
 			if unit.statuses[type] <= 0:
 				events.append(remove(unit, type, StatusRemovedEvent.Reason.EXPIRED))
+				if not Status.follow_up(type).is_empty():
+					next.append(Status.follow_up(type))
+		for follow in next:
+			events.append(add(unit, follow[0], follow[1]))
 	return events

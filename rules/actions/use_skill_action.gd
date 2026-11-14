@@ -1,9 +1,9 @@
 class_name UseSkillAction
 extends BattleAction
-## 駒がいまの位置から、スキルを使う（docs/active-skills.md）。使うと行動を終える。
+## 駒がいまの位置から、スキルを使う（docs/active-skills.md）。使うと行動を終える（終えないスキルもある。Skill.ends_action）。
 ##
 ## どのスキルかは駒の種類で決まる。対象はマスで指す（自分に使うスキルは自分のマス、駒を選ぶスキルはその駒のマス）。
-## 動かずに使ってもよい。巡航で動いた駒と、クールダウンが残っている駒は使えない。
+## 動かずに使ってもよい。巡航で動いた駒と、クールダウンが残っている駒、回数を使い切った駒は使えない。
 
 var unit_id: int
 var target: Vector2i

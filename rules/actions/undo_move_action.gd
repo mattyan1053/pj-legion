@@ -1,6 +1,7 @@
 class_name UndoMoveAction
 extends BattleAction
 ## 動いたあと、攻撃も待機もしていない駒を、動く前のマスへ戻す。駒は行動前の状態に戻る。
+## 行動を終えないスキル（シャドウステップ）を使ったあとは、取り消せない（Unit.move_locked）。
 ## 動いたことで外れた状態（照準）は、残りのターン数ごと戻る（StatusAppliedEvent）。
 ## 動いたことで本陣の占拠の数が 0 に戻っていたら、それも動く前の数へ戻す。
 
@@ -13,7 +14,7 @@ func _init(moved_unit_id: int) -> void:
 
 func is_valid(battle: Battle) -> bool:
 	var unit := battle.unit_by_id(unit_id)
-	return battle.can_act(unit) and unit.has_moved
+	return battle.can_act(unit) and unit.has_moved and not unit.move_locked
 
 
 func execute(battle: Battle) -> Array[BattleEvent]:

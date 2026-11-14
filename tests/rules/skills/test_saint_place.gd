@@ -29,7 +29,6 @@ func test_priest_has_it() -> void:
 	var skill := Skills.of_kind(UnitKind.Id.PRIEST)
 	assert_eq(skill.id(), Skill.Id.SAINT_PLACE)
 	assert_eq(skill.cooldown(), SaintPlaceSkill.COOLDOWN)
-	assert_eq(Skills.of_kind(UnitKind.Id.MEDIC), null, "もう一方の回復役は持たない")
 
 
 func test_center_can_be_any_cell_within_range_including_the_own_cell() -> void:

@@ -481,6 +481,9 @@ static func event_players() -> Dictionary:
 	return {
 		UnitMovedEvent: &"_play_moved",
 		UnitWarpedEvent: &"_play_warped",
+		UnitTeleportedEvent: &"_play_teleported",
+		UnitsSwappedEvent: &"_play_swapped",
+		UnitReactivatedEvent: &"_play_reactivated",
 		MoveUndoneEvent: &"_play_undone",
 		AttackDamagedEvent: &"_play_attack_damaged",
 		ExplosionDamagedEvent: &"_play_explosion_damaged",
@@ -724,6 +727,44 @@ func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
 	await get_tree().create_timer(0.4).timeout
 
 
+## スキルで跳んだ（シャドウステップ）。その場で縮んで消え、着いたマスに現れる。
+func _play_teleported(event: UnitTeleportedEvent) -> void:
+	await _blink([[_view(event.unit_id), event.to]])
+
+
+## 2 体の位置が入れ替わった（シャドウステップ）。2 体とも同時に消えて、互いのマスに現れる。
+func _play_swapped(event: UnitsSwappedEvent) -> void:
+	await _blink([[_view(event.unit_id), event.other_from], [_view(event.other_id), event.from]])
+
+
+## 駒を、間を通さずに別のマスへ移す。moves は [駒の見た目, 行き先のマス] の列（同時に移す）。
+func _blink(moves: Array[Array]) -> void:
+	var color := Color("b98cff")
+	var shrink := create_tween().set_parallel()
+	for move in moves:
+		var view: UnitView = move[0]
+		_flash(view.position, color, 0.9)
+		shrink.tween_property(view, "scale", Vector3.ONE * 0.05, 0.14)
+	await shrink.finished
+	var grow := create_tween().set_parallel()
+	for move in moves:
+		var view: UnitView = move[0]
+		view.position = BoardView.cell_center(move[1])
+		_flash(view.position, color, 0.9)
+		grow.tween_property(view, "scale", Vector3.ONE, 0.14)
+	_rig.focus_on((moves[0][0] as UnitView).position)
+	await grow.finished
+
+
+## 行動済みの駒が、行動前に戻った（アドレナリン注射）。行動済みの見た目を戻し、光と知らせを出す。
+func _play_reactivated(event: UnitReactivatedEvent) -> void:
+	var view := _view(event.unit_id)
+	view.set_acted(false)
+	_flash(view.position, Color("ffd24a"), 0.9)
+	_pop_number(view.position + Vector3(0.0, 0.3, 0.0), "もう一度行動できる", Color("ffd24a"))
+	await get_tree().create_timer(0.25).timeout
+
+
 ## 聖域（フェーズの始め）も、光と数を出す。
 func _play_sanctuary_healed(event: SanctuaryHealedEvent) -> void:
 	await _play_heal(event, true)
@@ -939,7 +980,8 @@ func _refresh() -> void:
 	else:
 		_hud.set_end_turn(not battle.is_over() and evolving == null, "ターン終了")
 	var can_act := unit != null and not battle.is_over() and battle.can_act(unit) and not cpu_turn
-	_hud.set_actions(can_act, unit != null and not battle.is_over() and not cpu_turn, unit != null and unit.has_moved)
+	var can_undo := unit != null and unit.has_moved and not unit.move_locked
+	_hud.set_actions(can_act, unit != null and not battle.is_over() and not cpu_turn, can_undo)
 	_hud.set_skill(_skill_button_text(unit), can_act and not _skill_cells.is_empty(), _skill_mode)
 	_update_info()
 
@@ -956,8 +998,13 @@ func _skill_button_text(unit: Unit) -> String:
 		return "スキル（なし）"
 	if unit.skill_cooldown > 0:
 		return "%s（あと %d ターン）" % [skill.display_name(), unit.skill_cooldown]
+	var uses := Skills.uses_left(unit)
+	if uses == 0:
+		return "%s（使い切った）" % skill.display_name()
 	if _skill_cells.is_empty() and battle.can_act(unit):
 		return "%s（いまは使えない）" % skill.display_name()
+	if uses > 0:
+		return "%s（あと %d 回）[F]" % [skill.display_name(), uses]
 	return "%s [F]" % skill.display_name()
 
 
@@ -980,9 +1027,15 @@ func _refresh_hint(unit: Unit) -> void:
 	elif _skill_mode and _is_self_skill(unit):
 		_hud.set_hint("%s: 自分に使う。この駒（紫のマス）をクリックで使う（行動を終える）。ほかのマスか Esc でやめる" % Skills.of(unit).display_name())
 	elif _skill_mode:
-		_hud.set_hint("%s: 紫のマスをクリックで使う（行動を終える）。ほかのマスか Esc でやめる" % Skills.of(unit).display_name())
+		var after := "行動を終える" if Skills.of(unit).ends_action() else "続けて攻撃できる。取り消せない"
+		_hud.set_hint("%s: 紫のマスをクリックで使う（%s）。ほかのマスか Esc でやめる" % [Skills.of(unit).display_name(), after])
 	elif not battle.can_act(unit):
 		_hud.set_hint("この駒はいま動かせない（白いマスは移動範囲）")
+	elif unit.move_locked:
+		if _targets.is_empty() and _barrel_targets.is_empty() and _barricade_targets.is_empty():
+			_hud.set_hint("スキルを使った。攻撃できる相手がいない。待機する（取り消せない）")
+		else:
+			_hud.set_hint("スキルを使った。赤いマスの相手か樽をクリックで攻撃。または待機（取り消せない）")
 	elif unit.has_moved:
 		if unit.cruised:
 			_hud.set_hint("巡航で動いたので攻撃できない。待機するか、移動を取り消す")
@@ -1077,6 +1130,8 @@ func _update_info() -> void:
 	var state := "行動済み" if shown.acted else "未行動"
 	if shown.has_moved:
 		state = "行動の途中（巡航で移動した）" if shown.cruised else "行動の途中（移動した）"
+	if shown.move_locked:
+		state = "行動の途中（スキルを使った）"
 	var forecast := ""
 	var attacker := selected_unit()
 	if hovered != null and _targets.has(hovered):
@@ -1138,6 +1193,15 @@ func _skill_forecast(user: Unit, target: Vector2i) -> String:
 			])
 		elif healed != null:
 			lines.append("%s が +%d → HP %d" % [battle.unit_by_id(healed.unit_id).display_name(), healed.amount, healed.hp])
+		elif event is UnitTeleportedEvent:
+			lines.append("ここへ跳ぶ（続けて攻撃できる）")
+		elif event is UnitsSwappedEvent:
+			lines.append("%s と入れ替わる（続けて攻撃できる）" % battle.unit_by_id((event as UnitsSwappedEvent).other_id).display_name())
+		elif event is StatusRemovedEvent and (event as StatusRemovedEvent).reason == StatusRemovedEvent.Reason.MOVED:
+			var removed := event as StatusRemovedEvent
+			lines.append("%s の %s が解ける" % [battle.unit_by_id(removed.unit_id).display_name(), Status.display_name(removed.status)])
+		elif event is UnitReactivatedEvent:
+			lines.append("%s がもう一度行動できる" % battle.unit_by_id((event as UnitReactivatedEvent).unit_id).display_name())
 		elif event is ExperienceGainedEvent:
 			lines.append("経験 +%d" % (event as ExperienceGainedEvent).amount)
 		elif event is LevelUpEvent:
