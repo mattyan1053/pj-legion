@@ -89,8 +89,7 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	_info_side.text = SIDE_NAMES[unit.side]
 	var power_name := "回復" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "攻撃"
 	_info_stats.text = "HP %d / %d\n%s %d   移動 %d   射程 %d" % [
-		unit.hp, UnitKind.max_hp(unit.kind), power_name, UnitKind.power(unit.kind),
-		UnitKind.move_range(unit.kind), UnitKind.attack_range(unit.kind),
+		unit.hp, unit.max_hp(), power_name, unit.power(), unit.move_range(), unit.attack_range(),
 	]
 	_info_state.text = state
 	_info_forecast.text = forecast

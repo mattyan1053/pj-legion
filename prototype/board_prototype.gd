@@ -143,7 +143,7 @@ func _add_view(unit: Unit) -> void:
 	var view: UnitView = UnitView.new()
 	view.position = BoardView.cell_center(unit.cell)
 	add_child(view)
-	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp)
+	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp, unit.max_hp())
 	# 敵の本陣のほうを向いて立つ。
 	var enemy_hq := battle.board.hq_cells[1 - unit.side] if unit.side != Unit.Side.NEUTRAL else unit.cell + Vector2i.DOWN
 	view.face(BoardView.cell_center(enemy_hq) - view.position)
@@ -257,6 +257,10 @@ func _play(event: BattleEvent) -> void:
 		await _play_undone(event)
 	elif event is UnitDamagedEvent:
 		await _play_damaged(event)
+	elif event is UnitHealedEvent:
+		# 回復の操作は、まだ画面に無い。イベントが来たら、HP の表示だけは合わせる。
+		_view(event.unit_id).set_hp(event.hp)
+		_pop_number(_view(event.unit_id).position, "+%d" % event.amount, Color("9cf09c"))
 	elif event is UnitDefeatedEvent:
 		await _play_defeated(event)
 	elif event is UnitActedEvent:

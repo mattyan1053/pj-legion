@@ -127,10 +127,10 @@ var _bar: Sprite3D
 var _tag: Label3D
 
 
-func setup(kind: UnitKind.Id, team_color: Color, hp: int) -> void:
+func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int) -> void:
 	_kind = kind
 	_team_color = team_color
-	_max_hp = UnitKind.max_hp(kind)
+	_max_hp = max_hp
 	_add_base(team_color)
 	if KINDS.has(kind):
 		_add_model(KINDS[kind])
