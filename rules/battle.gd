@@ -34,6 +34,14 @@ func add_unit(kind: UnitKind.Id, side: Unit.Side, cell: Vector2i) -> Unit:
 	return unit
 
 
+## 倒れた駒を盤から取り除く。
+func remove_unit(unit: Unit) -> UnitDefeatedEvent:
+	units.erase(unit)
+	if acting_unit_id == unit.id:
+		acting_unit_id = 0
+	return UnitDefeatedEvent.new(unit.id, unit.cell)
+
+
 func unit_at(cell: Vector2i) -> Unit:
 	for unit in units:
 		if unit.cell == cell:
