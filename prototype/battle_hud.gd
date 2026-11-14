@@ -192,6 +192,7 @@ func _build_info_panel() -> void:
 	_info_panel.visible = false
 	add_child(_info_panel)
 	var column := VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 入れ物は既定でマウスを拾うので、こちらも素通しにする
 	_info_panel.add_child(column)
 	_info_name = _label(20)
 	column.add_child(_info_name)
