@@ -89,12 +89,15 @@ static func total_bonus(battle: Battle, side: Unit.Side) -> Dictionary:
 
 ## side が聖遺物 id を受け取る（boss_index の中ボスを倒した）。RelicGainedEvent を返す。
 ## - 対戦に控え、陣営の駒すべて（将も）の聖遺物の層に足す。最大 HP が増えたぶんは、いまの HP も増える（Unit.follow_max_hp）
+##   同じ行動で倒れた駒（HP が 0 で、取り除かれるのを待っている）には掛けない
 ## - 必殺技のゲージに ULT_GAIN をためる（いっぱいになったことは、Battle.apply が UltReadyEvent で知らせる）
 static func grant(battle: Battle, side: Unit.Side, id: Id, boss_index: int) -> Array[BattleEvent]:
 	battle.relics[side].append(id)
 	var affected: Array[Unit] = []
 	for unit in battle.units:
-		if unit.side == side:
+		# HP が 0 の駒は、同じ行動で倒れて、取り除かれるのを待っている（爆発やスキルは、全員のダメージを先に当てる）。
+		# 効果を掛けると HP が増えて、倒れなくなってしまう。
+		if unit.side == side and unit.hp > 0:
 			_add(unit, bonus(id))
 			affected.append(unit)
 	var before := Ults.gauge(battle, side)

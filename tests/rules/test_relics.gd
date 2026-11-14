@@ -147,6 +147,33 @@ func test_skill_kill_grants_the_relic_to_the_users_side() -> void:
 	assert_eq(Relics.held(battle, P1), [WISDOM] as Array[Relics.Id])
 
 
+func test_units_falling_in_the_same_blast_are_not_saved_by_wisdom() -> void:
+	# 樽の爆発が、左の中ボスと、そのあとに並ぶ味方（将も）を同時に倒す。英知の +HP で、倒れた駒が生き残ってはいけない。
+	var battle := Maps.battle([
+		"................",
+		"................",
+		"....B...........",
+		"................",
+		"................",
+	] as Array[String])
+	battle.board.mid_boss_cells = [Vector2i(3, 1), RIGHT]
+	var boss := _weak_boss(battle, Vector2i(3, 1))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(5, 3))
+	var king := battle.add_unit(UnitKind.Id.KING, P1, Vector2i(4, 3))
+	king.hp = 3
+	var shooter := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(8, 2))
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(15, 4))
+	var events := battle.apply(AttackBarrelAction.new(shooter.id, Vector2i(4, 2))).events
+	assert_true(battle.unit_by_id(boss.id) == null)
+	assert_true(Relics.has(battle, P1, WISDOM), "樽を撃った駒の陣営が受け取る")
+	assert_true(battle.unit_by_id(sniper.id) == null, "同じ爆発で倒れた駒は、倒れる")
+	assert_true(battle.unit_by_id(king.id) == null, "将も倒れる")
+	assert_eq(battle.winner, P2)
+	var gained := _of_type(events, RelicGainedEvent)[0] as RelicGainedEvent
+	assert_eq(gained.unit_ids, [shooter.id] as Array[int], "倒れた駒には掛からない")
+	assert_eq(shooter.max_hp(), UnitKind.max_hp(UnitKind.Id.SNIPER) + Relics.WISDOM_MAX_HP)
+
+
 func test_boss_falling_without_a_slayer_grants_nothing() -> void:
 	var battle := _battle()
 	var boss := _weak_boss(battle, LEFT)
