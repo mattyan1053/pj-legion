@@ -7,6 +7,7 @@ extends BattleAction
 ## プレイヤー2 のあとの中立のフェーズ（Neutral.play_phase）は、続けてこの中で進め、次のターンのプレイヤー1 のフェーズまで進む。
 ## 中立のフェーズで決着したら、そこで止まる。
 ## プレイヤーのフェーズの始めに、回復の泉に乗っているそのプレイヤーの駒が回復し、続けて再生の特性の駒が回復する。
+## そのあと、そのプレイヤーの盤の上の効果が働き、期間が進む（聖域の回復、煙幕・聖域の残りのターン数。FieldEffects.start_phase）。
 ## フェーズを終える前に、敵の本陣の占拠を数える。それで勝ちが決まれば、次のフェーズへは進まない。
 
 func is_valid(battle: Battle) -> bool:
@@ -48,4 +49,5 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 		var amount := Evolution.regeneration_heal(unit)
 		unit.hp += amount
 		events.append(RegenerationHealedEvent.new(unit.id, amount, unit.hp))
+	events.append_array(FieldEffects.start_phase(battle, side))
 	return events

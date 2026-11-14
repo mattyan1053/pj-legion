@@ -1,6 +1,6 @@
 extends Node3D
 ## 盤面の見た目。ルールの盤面（Board）を受け取って、マス・木立・岩山・結晶泉・本陣の旗と、
-## 環境オブジェクト（起爆樽・回復の泉・ポータル）を組み立てる。
+## 環境オブジェクト（起爆樽・回復の泉・ポータル）を組み立てる。盤の上の効果（盾・煙幕・聖域）も描く。
 ##
 ## マスの色分け（移動範囲・攻撃できる相手など）と、マウスの下のマスの印もここで出す。
 ## 何を塗るかは呼ぶ側が決める（ここはルールを持たない）。
@@ -37,10 +37,13 @@ const COLOR_SPRING_WATER := Color("2f8fe0")
 const COLOR_SPRING_CROSS := Color("2fd66b")
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
+const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
 
 var board: Board
 
 var _barrels := {}  # Vector2i -> Node3D（爆発したら取り除く）
+var _field_effects := {}  # 効果の番号 -> Node3D（消えたら取り除く）
+var _team_colors: Array[Color] = []
 var _occluders := {}  # Vector2i -> Array[GeometryInstance3D]（岩山と木立。手前にあると駒を隠す）
 var _cursor: MeshInstance3D
 var _highlight: MultiMesh
@@ -49,6 +52,7 @@ var _highlight: MultiMesh
 ## look_seed は見た目だけに使う（木の種類・向き・大きさ）。team_colors は本陣の色（添字がプレイヤー番号）。
 func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> void:
 	board = battle_board
+	_team_colors = team_colors
 	var rng := RandomNumberGenerator.new()
 	rng.seed = look_seed
 
@@ -100,6 +104,8 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> vo
 		_add_spring(cell)
 	for cell: Vector2i in board.portal_exits:
 		_add_portal(cell, portal_color(board, cell))
+	for effect in board.field_effects:
+		add_field_effect(effect.id, effect.type, effect.side, effect.cells)
 
 	_build_markers()
 
@@ -128,6 +134,62 @@ func remove_barrel(cell: Vector2i) -> void:
 	if _barrels.has(cell):
 		_barrels[cell].queue_free()
 		_barrels.erase(cell)
+
+
+## 盤の上の効果を描く。盾は持ち主の色の堅い板、煙幕は灰色の靄、聖域は持ち主の色の淡い光の床。
+## どれもマスの上、駒の下（聖域と煙幕の床は駒の足元より低く、煙幕の靄は駒を包む高さで薄く）。
+func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, cells: Array[Vector2i]) -> void:
+	remove_field_effect(effect_id)
+	var root := Node3D.new()
+	add_child(root)
+	_field_effects[effect_id] = root
+	var color: Color = _team_colors[side] if side < _team_colors.size() else Color.WHITE
+	match type:
+		FieldEffect.Type.BARRICADE:
+			var wall := BoxMesh.new()
+			wall.size = Vector3(0.86, 0.7, 0.86)
+			var post := BoxMesh.new()
+			post.size = Vector3(0.94, 0.08, 0.94)
+			for cell in cells:
+				_add_part(root, wall, _material(color.darkened(0.15)), cell_center(cell) + Vector3(0.0, 0.35, 0.0))
+				_add_part(root, post, _material(color.lightened(0.35)), cell_center(cell) + Vector3(0.0, 0.72, 0.0))
+		FieldEffect.Type.SMOKE:
+			var floor_mesh := BoxMesh.new()
+			floor_mesh.size = Vector3(1.0, 0.02, 1.0)
+			var puff := SphereMesh.new()
+			puff.radius = 0.42
+			puff.height = 0.5
+			var haze := _overlay_material(COLOR_SMOKE)
+			var thin := _overlay_material(Color(COLOR_SMOKE, 0.25))
+			for cell in cells:
+				_add_part(root, floor_mesh, haze, cell_center(cell) + Vector3(0.0, 0.02, 0.0))
+				_add_part(root, puff, thin, cell_center(cell) + Vector3(0.0, 0.35, 0.0))
+		FieldEffect.Type.SANCTUARY:
+			var floor_mesh := BoxMesh.new()
+			floor_mesh.size = Vector3(1.0, 0.02, 1.0)
+			var glow := _overlay_material(Color(color.lightened(0.5), 0.35))
+			glow.emission_enabled = true
+			glow.emission = color.lightened(0.5)
+			for cell in cells:
+				_add_part(root, floor_mesh, glow, cell_center(cell) + Vector3(0.0, 0.015, 0.0))
+	if type != FieldEffect.Type.BARRICADE:
+		for part: GeometryInstance3D in root.get_children():
+			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## 消えた効果を取り除く。
+func remove_field_effect(effect_id: int) -> void:
+	if _field_effects.has(effect_id):
+		_field_effects[effect_id].queue_free()
+		_field_effects.erase(effect_id)
+
+
+## 描かれている効果の番号（小さい順）。検査用。
+func field_effect_ids() -> Array[int]:
+	var ids: Array[int] = []
+	ids.assign(_field_effects.keys())
+	ids.sort()
+	return ids
 
 
 static func cell_center(cell: Vector2i) -> Vector3:
