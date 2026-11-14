@@ -2,33 +2,42 @@ extends Node3D
 ## 駒 1 体の見た目。
 ##
 ## KayKit のキャラクターは、持ちうる武器や盾がすべて付いた状態で入っているので、
-## 種類ごとに使わないものを隠す。足元の円盤が陣営の色。
+## 種類ごとに使わないものを隠す。陣営の色は、足元の円盤と、服の差し色（マント・帽子など）で出す。
 
-const MODEL_SCALE := 0.42
+const MODEL_SCALE := 0.5
 const BLEND_TIME := 0.15
+## テクスチャは 128 x 256 の色見本を並べたもの。"accent" に挙げた見本（列, 行）を陣営の色に塗り替える。
+const SWATCH_SIZE := Vector2i(128, 256)
 
 const KINDS := {
 	"knight": {
 		"scene": "res://assets/kaykit/adventurers/Knight.glb",
 		"hide": ["1H_Sword_Offhand", "Rectangle_Shield", "Round_Shield", "Spike_Shield", "2H_Sword"],
 		"idle": "Idle",
+		"accent": [Vector2i(0, 1), Vector2i(2, 2)],
 	},
 	"barbarian": {
 		"scene": "res://assets/kaykit/adventurers/Barbarian.glb",
 		"hide": ["1H_Axe_Offhand", "Barbarian_Round_Shield", "1H_Axe", "Mug"],
 		"idle": "2H_Melee_Idle",
+		"accent": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 2)],
 	},
 	"mage": {
 		"scene": "res://assets/kaykit/adventurers/Mage.glb",
 		"hide": ["Spellbook", "Spellbook_open", "1H_Wand"],
 		"idle": "Idle",
+		"accent": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(7, 1), Vector2i(2, 1), Vector2i(1, 2)],
 	},
 	"rogue": {
 		"scene": "res://assets/kaykit/adventurers/Rogue.glb",
 		"hide": ["Knife_Offhand", "1H_Crossbow", "Knife", "Throwable"],
 		"idle": "Idle",
+		"accent": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 2)],
 	},
 }
+
+## 塗り替えたマテリアルの使い回し（"種類:色" -> StandardMaterial3D）。
+static var _team_materials := {}
 
 var _player: AnimationPlayer
 var _idle: StringName = &"Idle"
@@ -38,7 +47,7 @@ var _idle: StringName = &"Idle"
 func setup(kind: String, team_color: Color) -> void:
 	_add_base(team_color)
 	if KINDS.has(kind):
-		_add_model(KINDS[kind])
+		_add_model(kind, team_color)
 	else:
 		_add_placeholder(team_color)
 	play_idle()
@@ -77,11 +86,18 @@ func _add_base(team_color: Color) -> void:
 	add_child(base)
 
 
-func _add_model(kind: Dictionary) -> void:
+func _add_model(kind_name: String, team_color: Color) -> void:
+	var kind: Dictionary = KINDS[kind_name]
 	var scene: PackedScene = load(kind["scene"])
 	var model: Node3D = scene.instantiate()
 	model.scale = Vector3.ONE * MODEL_SCALE
 	add_child(model)
+
+	var material: Material = null
+	for mesh: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		if material == null:
+			material = _team_material(kind_name, mesh.mesh.surface_get_material(0), team_color)
+		mesh.material_override = material
 
 	for node_name: String in kind["hide"]:
 		var part := model.find_child(node_name, true, false) as Node3D
@@ -90,6 +106,34 @@ func _add_model(kind: Dictionary) -> void:
 
 	_idle = kind["idle"]
 	_player = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+
+
+## キャラクターのマテリアルを、差し色だけ陣営の色にしたものに差し替える。
+## 明るさの濃淡は元のまま残し、色相と彩度だけを変える。
+func _team_material(kind_name: String, source: Material, team_color: Color) -> Material:
+	var key := "%s:%s" % [kind_name, team_color.to_html()]
+	if _team_materials.has(key):
+		return _team_materials[key]
+
+	var material := source.duplicate() as StandardMaterial3D
+	var image := material.albedo_texture.get_image()
+	if image.is_compressed():
+		image.decompress()
+	image.clear_mipmaps()
+	image.convert(Image.FORMAT_RGBA8)
+
+	for swatch: Vector2i in KINDS[kind_name]["accent"]:
+		var origin := swatch * SWATCH_SIZE
+		for y in SWATCH_SIZE.y:
+			for x in SWATCH_SIZE.x:
+				var c := image.get_pixel(origin.x + x, origin.y + y)
+				c = Color.from_hsv(team_color.h, maxf(c.s, team_color.s * 0.8), c.v, c.a)
+				image.set_pixel(origin.x + x, origin.y + y, c)
+
+	image.generate_mipmaps()
+	material.albedo_texture = ImageTexture.create_from_image(image)
+	_team_materials[key] = material
+	return material
 
 
 func _add_placeholder(team_color: Color) -> void:

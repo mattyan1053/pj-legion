@@ -23,6 +23,7 @@ const SQUAD_OFFSETS: Array[Vector2i] = [
 const OCCLUDER_FADE := 0.75
 const OCCLUDER_FADE_SPEED := 5.0
 
+const COLOR_UNDERSIDE := Color("26331f")
 const COLOR_NORMAL := Color("5f9f4e")
 const COLOR_FOREST := Color("457a40")
 const COLOR_OBSTACLE_GROUND := Color("767b84")
@@ -126,6 +127,11 @@ func _build_terrain() -> void:
 	crystal_material.emission_enabled = true
 	crystal_material.emission = COLOR_CRYSTAL
 	crystal_material.emission_energy_multiplier = 1.5
+
+	# マスの隙間から背景が透けて黒い線に見えないよう、盤面の下に板を敷く。
+	var underside_mesh := BoxMesh.new()
+	underside_mesh.size = Vector3(MAP_SIZE.x, 0.1, MAP_SIZE.y)
+	_add_mesh(underside_mesh, _material(COLOR_UNDERSIDE), Vector3(MAP_SIZE.x / 2.0, -0.2, MAP_SIZE.y / 2.0))
 
 	for y in MAP_SIZE.y:
 		for x in MAP_SIZE.x:
