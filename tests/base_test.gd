@@ -46,7 +46,7 @@ func _same(a: Variant, b: Variant) -> bool:
 
 func _fail(what: String, message: String) -> void:
 	var where := ""
-	for frame in get_stack():
+	for frame: Dictionary in get_stack():
 		if not String(frame["source"]).ends_with("base_test.gd"):
 			where = "%s:%d" % [String(frame["source"]).get_file(), frame["line"]]
 			break

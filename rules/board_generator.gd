@@ -67,7 +67,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 
 	if stage == Stage.TWIN_SPRINGS:
 		# 中央を貫くとステージの形が崩れるので、盤の外周を空けてつなぐ。
-		for rect in [
+		for rect: Rect2i in [
 			Rect2i(0, 0, size.x, 1), Rect2i(0, size.y - 1, size.x, 1),
 			Rect2i(0, 0, 1, size.y), Rect2i(size.x - 1, 0, 1, size.y),
 		]:
