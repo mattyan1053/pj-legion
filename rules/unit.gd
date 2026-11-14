@@ -12,6 +12,13 @@ var side: Unit.Side
 var cell: Vector2i
 var hp: int
 
+## このフェーズの行動を終えたか。自分のフェーズの始めに戻る。
+var acted := false
+## いまの行動で、もう動いたか。動いたなら、動く前のマスと、巡航だったか。
+var has_moved := false
+var move_origin: Vector2i
+var cruised := false
+
 
 func _init(unit_id: int, unit_kind: UnitKind.Id, unit_side: Unit.Side, at: Vector2i) -> void:
 	id = unit_id
@@ -19,6 +26,13 @@ func _init(unit_id: int, unit_kind: UnitKind.Id, unit_side: Unit.Side, at: Vecto
 	side = unit_side
 	cell = at
 	hp = UnitKind.max_hp(kind)
+
+
+## フェーズの始めに、行動前の状態へ戻す。
+func reset_action() -> void:
+	acted = false
+	has_moved = false
+	cruised = false
 
 
 func move_range() -> int:
