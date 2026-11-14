@@ -135,6 +135,16 @@ func test_own_smoke_keeps_out_ranged_attacks_but_not_close_ones() -> void:
 	assert_eq(cpu.danger(battle, 1, Vector2i(3, 2)), commando.power() + FireballSkill.DAMAGE)
 
 
+func test_own_smoke_does_not_keep_out_a_neutral_that_can_walk_up() -> void:
+	var battle := _battle()
+	var minion := battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, HERE + Vector2i(3, 0))
+	FieldEffects.place_smoke(battle, P1, HERE)
+	assert_eq(minion.move_range() + minion.attack_range(), 3)
+	assert_eq(_danger(battle), minion.power(), "中立の駒は、隣まで寄って殴る")
+	minion.cell = HERE + Vector2i(4, 0)
+	assert_eq(_danger(battle), 0)
+
+
 func test_danger_does_not_change_the_battle() -> void:
 	var battle := _battle()
 	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(7, 2))

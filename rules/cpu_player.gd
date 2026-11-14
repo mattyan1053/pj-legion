@@ -838,7 +838,9 @@ func _build_threats() -> void:
 		if enemy.side == _me:
 			continue
 		if enemy.side == Unit.Side.NEUTRAL:
-			_spread_threat(sim, enemy.id, enemy.power(), [enemy.cell], enemy.move_range() + enemy.attack_range())
+			# 中立の駒は動けるマスを聞けないので、いまの位置から広げる。隣まで寄れる距離も、移動力のぶん広い。
+			var reach := enemy.move_range() + enemy.attack_range()
+			_spread_threat(sim, enemy.id, enemy.power(), [enemy.cell], reach, false, enemy.move_range() + Combat.RANGED_DISTANCE - 1)
 			continue
 		var foe := sim.unit_by_id(enemy.id) if next_phase else null
 		if foe == null:
@@ -858,10 +860,12 @@ func _build_threats() -> void:
 
 
 ## from のマスから reach 歩までのマスに、敵 enemy_id の攻撃（power）が届くと書き込む（同じ敵は、強いほうを残す）。
-## 隣（Combat.RANGED_DISTANCE より近く）まで寄っての攻撃は、_close_threats にも書く。unblockable なら、どの距離でも書く。
+## from から close_reach 歩まで（既定は、隣 = Combat.RANGED_DISTANCE より近く）は、煙幕に防がれない攻撃として
+## _close_threats にも書く。unblockable なら、どの距離でも書く。
 ## 盤に盾があり、離れた攻撃（射程 2 以上）なら、間に盾があって届かないマスを除く（sim のルールに聞く）。
 func _spread_threat(
-	sim: Battle, enemy_id: int, power: int, from: Array[Vector2i], reach: int, unblockable := false
+	sim: Battle, enemy_id: int, power: int, from: Array[Vector2i], reach: int, unblockable := false,
+	close_reach := Combat.RANGED_DISTANCE - 1
 ) -> void:
 	var check_lines := not unblockable and reach >= Combat.RANGED_DISTANCE and sim.board.has_barricades()
 	var seen: Dictionary[Vector2i, bool] = {}
@@ -873,7 +877,7 @@ func _spread_threat(
 		for cell in frontier:
 			if not check_lines or _reaches_from_any(sim, from, cell, reach):
 				_note_threat(_threats, cell, enemy_id, power)
-				if unblockable or step < Combat.RANGED_DISTANCE:
+				if unblockable or step <= close_reach:
 					_note_threat(_close_threats, cell, enemy_id, power)
 			if step == reach:
 				continue
