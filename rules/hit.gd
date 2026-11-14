@@ -26,6 +26,8 @@ var blocked_by := -1
 var smoke: FieldEffect
 ## 適用したあとの、受けた駒の HP（apply が入れる）。
 var hp_after := 0
+## 適用で実際に減った HP（apply が入れる。amount が残りの HP より多ければ、残りの HP まで）。必殺技のゲージが数える。
+var lost := 0
 
 
 ## source が target に、割り込む前の量 base_amount のダメージを与えたらどうなるか。状態は変えない。
@@ -61,7 +63,8 @@ func apply() -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	if smoke != null:
 		return events
-	target.hp = maxi(0, target.hp - amount)
+	lost = mini(amount, target.hp)
+	target.hp -= lost
 	hp_after = target.hp
 	if blocked_by != -1:
 		events.append(Statuses.remove(target, blocked_by as Status.Type, StatusRemovedEvent.Reason.CONSUMED))

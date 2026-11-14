@@ -9,7 +9,8 @@ extends BattleAction
 ## プレイヤーのフェーズの始めに、回復の泉に乗っているそのプレイヤーの駒が回復し、続けて再生の特性の駒が回復する。
 ## そのあと、そのプレイヤーの盤の上の効果が働き、期間が進む（聖域の回復、煙幕・聖域の残りのターン数。FieldEffects.start_phase）。
 ## 続けて、そのプレイヤーの駒の状態の残りのターン数が 1 減り、0 になった状態は外れる（Statuses.start_phase）。
-## 最後に、そのプレイヤーの駒のスキルのクールダウンが 1 減る（Skills.start_phase）。
+## 続けて、そのプレイヤーの駒のスキルのクールダウンが 1 減る（Skills.start_phase）。
+## 最後に、そのプレイヤーの必殺技のゲージがたまる（Ults.charge_phase）。
 ## フェーズを終える前に、敵の本陣の占拠を数える。それで勝ちが決まれば、次のフェーズへは進まない。
 
 func is_valid(battle: Battle) -> bool:
@@ -54,4 +55,5 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	events.append_array(FieldEffects.start_phase(battle, side))
 	events.append_array(Statuses.start_phase(battle, side))
 	events.append_array(Skills.start_phase(battle, side))
+	Ults.charge_phase(battle, side)
 	return events

@@ -15,6 +15,7 @@ enum Type {
 	BARRIER,  ## バリア。次に受けるダメージを 1 回だけ 0 にする（ディバインシールド）
 	AIM,  ## 照準。射程が伸び、次の攻撃が確定クリティカルになる。動くと外れる（精密照準）
 	FATIGUE,  ## 反動。攻撃力が下がる（アドレナリン注射を受けた駒）
+	ASSAULT,  ## 突撃。移動力と攻撃力が上がる（必殺技の総員突撃）
 }
 
 ## クリティカルでない攻撃の倍率（%）。
@@ -29,6 +30,8 @@ static func display_name(type: Type) -> String:
 			return "照準"
 		Type.FATIGUE:
 			return "反動"
+		Type.ASSAULT:
+			return "突撃"
 	return ""
 
 
@@ -38,6 +41,8 @@ static func bonus(type: Type) -> Dictionary:
 		return {Unit.Stat.ATTACK_RANGE: PrecisionAimSkill.RANGE_BONUS}
 	if type == Type.FATIGUE:
 		return {Unit.Stat.POWER: -AdrenalineShotSkill.POWER_PENALTY}
+	if type == Type.ASSAULT:
+		return {Unit.Stat.MOVE_RANGE: AllOutAssaultUlt.MOVE_BONUS, Unit.Stat.POWER: AllOutAssaultUlt.POWER_BONUS}
 	return {}
 
 

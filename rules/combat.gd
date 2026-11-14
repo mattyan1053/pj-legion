@@ -124,6 +124,7 @@ static func damage(battle: Battle, attacker: Unit, target: Unit) -> int:
 static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[BattleEvent]:
 	var resolved := hit(battle, attacker, target)
 	var after := resolved.apply()
+	Ults.charge_hit(battle, resolved)
 	var events: Array[BattleEvent] = []
 	if resolved.smoke != null:
 		events.append(SmokeBlockedEvent.new(attacker.id, target.id, resolved.smoke.id))

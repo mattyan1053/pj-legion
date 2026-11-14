@@ -150,6 +150,20 @@ const SKILL_THREATS := {
 	Skill.Id.SHADOW_STEP: &"_shadow_step_threat",
 }
 
+## 必殺技 -> いま使うかを決めるメソッド（docs/tactical-ult.md の「CPU」）。真を返したら、駒を動かす前に使う。
+const ULT_USES := {
+	Ult.Id.ALL_OUT_ASSAULT: &"_assault_pays",
+	Ult.Id.MANA_ERUPTION: &"_eruption_pays",
+}
+## 総員突撃: まだ行動していない戦う駒のうち、伸びた移動力で敵の駒に攻撃が届きそうな駒が、この数だけいれば使う
+## （戦う駒がこれより少なければ、その全員）。
+const ASSAULT_MIN_UNITS := 3
+## 魔力解放: まだ行動していない駒のうち、クールダウンがこのターン数以上残っていて、敵の駒がこの距離の中にいる駒が、
+## ERUPTION_MIN_UNITS 体いれば使う（スキルを持つ駒がこれより少なければ、その全員）。
+const ERUPTION_MIN_COOLDOWN := 2
+const ERUPTION_RADIUS := 6
+const ERUPTION_MIN_UNITS := 2
+
 const _GOAL := 0
 const _DANGER := 1
 const _IDLE_DANGER := 2
@@ -239,6 +253,8 @@ func _decide() -> BattleAction:
 	var evolving := _battle.evolving_unit()
 	if evolving != null:
 		return _choose_evolution(evolving)
+	if Ults.can_use(_battle) and call(ULT_USES[Ults.of(_battle, _me).id()]):
+		return UseUltAction.new()
 	var acting := _battle.unit_by_id(_battle.acting_unit_id)
 	if acting != null:
 		return _follow_up(acting)
@@ -307,6 +323,54 @@ func _choose_evolution(unit: Unit) -> BattleAction:
 	if choices.is_empty():
 		return null
 	return EvolveAction.new(unit.id, choices[(unit.id + _battle.turn) % choices.size()])
+
+
+# ---- 必殺技 ----
+
+
+## いちばん近い敵の駒（中立を除く）までの距離（マンハッタン距離。地形は見ない目安）。いなければ _FAR。
+func _nearest_foe_distance(unit: Unit) -> int:
+	var nearest := _FAR
+	for other in _battle.units:
+		if other.side == _foe:
+			nearest = mini(nearest, Combat.distance(unit.cell, other.cell))
+	return nearest
+
+
+## 総員突撃を、いま使うか。まだ行動していない戦う駒（前衛・後衛・奇襲。1 体もいなければ将）のうち、
+## 伸びた移動力 + 射程の中に敵の駒がいる駒を数える。
+func _assault_pays() -> bool:
+	var fighters := 0
+	var ready := 0
+	var lone := not _has_fighters()
+	for unit in _battle.units:
+		if unit.side != _me:
+			continue
+		var role := UnitKind.role(unit.kind)
+		if role == UnitKind.Role.HEALER or (unit.kind == UnitKind.Id.KING and not lone):
+			continue
+		fighters += 1
+		if unit.acted or unit.has_moved:
+			continue
+		var reach := unit.move_range() + AllOutAssaultUlt.MOVE_BONUS + Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
+		if _nearest_foe_distance(unit) <= reach:
+			ready += 1
+	return ready > 0 and ready >= mini(ASSAULT_MIN_UNITS, fighters)
+
+
+## 魔力解放を、いま使うか。まだ行動していない駒のうち、クールダウンが長く残っていて、敵の駒が近くにいる駒を数える。
+func _eruption_pays() -> bool:
+	var holders := 0
+	var waiting := 0
+	for unit in _battle.units:
+		if unit.side != _me or Skills.of(unit) == null or Skills.uses_left(unit) == 0:
+			continue
+		holders += 1
+		if unit.acted or unit.cruised or unit.skill_cooldown < ERUPTION_MIN_COOLDOWN:
+			continue
+		if _nearest_foe_distance(unit) <= ERUPTION_RADIUS:
+			waiting += 1
+	return waiting > 0 and waiting >= mini(ERUPTION_MIN_UNITS, holders)
 
 
 # ---- 駒を選ぶ ----
@@ -1197,6 +1261,8 @@ func _fill_threats(
 ) -> void:
 	var sim := state.clone()
 	var next_phase := sim.apply(EndPhaseAction.new()).accepted and not sim.is_over()
+	if next_phase and Ults.can_use(sim):
+		sim.apply(UseUltAction.new())  # 相手は、必殺技を使えるなら使ってくるものとして数える
 	_filling = threats
 	_filling_close = close
 	for enemy in state.units:
