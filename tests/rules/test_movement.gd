@@ -306,3 +306,26 @@ static func _reference_search(battle: Battle, unit: Unit, limit: int) -> Diction
 			frontier.append([next_cost, order, next])
 			order += 1
 	return {"cost": cost, "parent": parent}
+
+
+func test_reachable_from_any_is_the_union_of_each_start() -> void:
+	var battle := Maps.battle([
+		"..#.F...1.",
+		"..#.F.....",
+		"....#..F..",
+		"1...#.....",
+	])
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P2, Vector2i(6, 3))  # ZOC
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(3, 2))  # 味方（止まれない）
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
+	var starts: Array[Vector2i] = [Vector2i(0, 0), Vector2i(5, 2), Vector2i(7, 2), Vector2i(1, 3)]
+	var union := {}
+	for start in starts:
+		unit.cell = start
+		for cell: Vector2i in Movement.reachable(battle, unit):
+			union[cell] = mini(union.get(cell, 99), Movement.reachable(battle, unit)[cell])
+	unit.cell = Vector2i(0, 0)
+	var found := Movement.reachable_from_any(battle, unit, starts)
+	assert_eq(found.size(), union.size())
+	for cell: Vector2i in union:
+		assert_eq(found.get(cell, -1), union[cell], "%s" % cell)

@@ -105,7 +105,8 @@
 ## 予測（計算と適用の分離）
 
 - `Skills.preview(対戦, 駒の番号, 対象)` は、使ったら起きることをイベントの列で返す。**状態は変えない**（乱数も進めない）。
-  実際に使うのと同じ処理を、複製（`Battle.clone()`）の上で走らせるので、結果は必ず実際と一致する。使えなければ空。
+  中身は戦闘予測（`Forecast.of`。`docs/battle-forecast.md`）で、実際に使うのと同じ処理を複製の上で走らせるので、結果は必ず実際と一致する。
+  使えなければ空。駒ごとにまとめた形（ダメージ、状態、移る先）が要るなら `Forecast` を直に使う。
 - ダメージや回復のあるスキルは、返ってきた `UnitDamagedEvent` / `UnitHealedEvent` を読めば、相手ごとの量とあとの HP が分かる。
 - 画面の見込み（`docs/battle-view.md`）と CPU（下）が、これと同じ読み方を使う。
 
@@ -134,6 +135,8 @@
 5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`board_prototype.gd` の `event_players()`）に載せる。
    駒へのダメージは `Skills.deal_damage` を呼べば足り、イベントを足さなくてよい。
 6. イベントだけで価値が決まらなければ、`CpuPlayer.SKILL_VALUES` に 1 行と、見積もるメソッドを足す。
+   ダメージを届けるか、使ったあとに移った先から攻撃できるなら、`threat_damage` / `threat_origins` を書く
+   （脅威範囲と CPU の危険の見積もりが読む。`docs/threat-range.md`）。
 7. `docs/skills/` に文書、`tests/rules/skills/` にテストを置く。
 
 画面の操作（スキルのボタン、対象を選ぶ、見込み）と、選べること、複製、クールダウンは、足したスキルにそのまま効く。

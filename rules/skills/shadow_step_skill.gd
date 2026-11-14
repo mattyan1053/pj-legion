@@ -51,6 +51,11 @@ func target_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	return result
 
 
+## 跳んだ先から、続けて攻撃できる。
+func threat_origins(battle: Battle, unit: Unit) -> Array[Vector2i]:
+	return target_cells(battle, unit)
+
+
 ## cell に着けるか。駒が立てるマス（盤の中で、障害物・樽・盾でない）で、空いているか、敵がいること。
 static func _can_land(battle: Battle, unit: Unit, cell: Vector2i) -> bool:
 	if not battle.board.is_walkable(cell):

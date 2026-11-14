@@ -105,10 +105,12 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	if smoke != null:
 		return Hit.smoked(attacker, target, smoke)
 	var amount := attack_power(attacker)
-	if battle.board.terrain_at(target.cell) == Terrain.Type.FOREST:
+	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
+	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
 	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
+	result.forest = forest
 	return result
 
 

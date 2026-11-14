@@ -58,6 +58,15 @@ func affected_cells(battle: Battle, _unit: Unit, target: Vector2i) -> Array[Vect
 	return result
 
 
+## 選べる中心のどれかの範囲に入るマスすべてに DAMAGE（味方のいるマスも含む。だれが立つかで当たるかが変わるため）。
+func threat_damage(battle: Battle, unit: Unit) -> Dictionary[Vector2i, int]:
+	var result: Dictionary[Vector2i, int] = {}
+	for center in target_cells(battle, unit):
+		for cell in affected_cells(battle, unit, center):
+			result[cell] = DAMAGE
+	return result
+
+
 func apply(battle: Battle, unit: Unit, target: Vector2i) -> Array[BattleEvent]:
 	var hits: Array[Array] = []
 	for cell in affected_cells(battle, unit, target):
