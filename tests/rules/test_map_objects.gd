@@ -134,12 +134,16 @@ func test_attacking_a_barrel_blows_it_up() -> void:
 	assert_eq(exploded.attacker_id, sniper.id)
 	assert_eq(exploded.cell, BARREL)
 	assert_eq(exploded.blast_cells.size(), 8)
+	# どの駒が巻き込まれたかは、爆発のイベントが先に知らせる（続くダメージと同じ並び）。
+	assert_eq(exploded.victim_ids, [enemy.id, ally.id, minion.id] as Array[int])
 	var hit_ids: Array[int] = []
 	for i in range(1, 4):
-		var damaged := events[i] as UnitDamagedEvent
+		# 爆発のダメージは、攻撃した駒を持たない。かわりに、どの樽の爆発かを持つ。
+		var damaged := events[i] as ExplosionDamagedEvent
 		hit_ids.append(damaged.unit_id)
 		assert_eq(damaged.amount, 15)
-		assert_eq(damaged.attacker_id, 0)
+		assert_false(&"attacker_id" in damaged)
+		assert_eq(damaged.barrel_cell, BARREL)
 		assert_eq(damaged.cause, UnitDamagedEvent.Cause.EXPLOSION)
 	assert_eq(hit_ids, [enemy.id, ally.id, minion.id] as Array[int])
 	assert_eq((events[2] as UnitDamagedEvent).hp, 25)
@@ -298,9 +302,11 @@ func test_springs_heal_at_the_start_of_the_owners_phase() -> void:
 	assert_eq(off.hp, 10)
 	assert_eq(events.size(), 2)
 	assert_eq((events[0] as PhaseStartedEvent).side, P2)
-	var healed := events[1] as UnitHealedEvent
+	# 泉の回復は、回復した駒を持たない。かわりに、泉のマスを持つ。
+	var healed := events[1] as SpringHealedEvent
 	assert_eq(healed.unit_id, theirs.id)
-	assert_eq(healed.healer_id, 0)
+	assert_false(&"healer_id" in healed)
+	assert_eq(healed.cell, theirs.cell)
 	assert_eq(healed.amount, 12)
 	assert_eq(healed.hp, 22)
 	assert_eq(healed.cause, UnitHealedEvent.Cause.SPRING)
@@ -383,6 +389,7 @@ func test_a_move_through_a_portal_is_walk_warp_walk() -> void:
 	assert_eq(warped.unit_id, paladin.id)
 	assert_eq(warped.from, PORTAL_A)
 	assert_eq(warped.to, PORTAL_B)
+	assert_false(warped.cruise)
 	assert_eq((events[2] as UnitMovedEvent).path, [PORTAL_B, Vector2i(9, 0)] as Array[Vector2i])
 
 
@@ -470,3 +477,13 @@ func test_walking_past_an_ally_on_the_exit_is_not_a_warp() -> void:
 	var events := battle.apply(MoveAction.new(commando.id, Vector2i(4, 0))).events
 	assert_eq(events.size(), 1)
 	assert_eq((events[0] as UnitMovedEvent).path.size(), 5)
+
+
+func test_cruising_through_a_portal_marks_every_event_as_cruise() -> void:
+	var battle := _portal_battle()
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))
+	var events := battle.apply(MoveAction.new(paladin.id, Vector2i(9, 0), true)).events
+	assert_eq(events.size(), 3)
+	assert_true((events[0] as UnitMovedEvent).cruise)
+	assert_true((events[1] as UnitWarpedEvent).cruise)
+	assert_true((events[2] as UnitMovedEvent).cruise)

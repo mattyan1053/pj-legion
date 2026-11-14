@@ -40,5 +40,5 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	for unit in MapObject.spring_targets(battle, side):
 		var amount := MapObject.spring_heal(unit)
 		unit.hp += amount
-		events.append(UnitHealedEvent.new(0, unit.id, amount, unit.hp, UnitHealedEvent.Cause.SPRING))
+		events.append(SpringHealedEvent.new(unit.cell, unit.id, amount, unit.hp))
 	return events

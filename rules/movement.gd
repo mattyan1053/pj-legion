@@ -19,79 +19,111 @@ static func budget(unit: Unit, cruise: bool) -> int:
 
 ## 止まれるマスと、そこまでに使う移動力の最小値。Vector2i -> int。いまのマス（0）も含む。
 static func reachable(battle: Battle, unit: Unit, cruise := false) -> Dictionary:
-	var cost: Dictionary = _search(battle, unit, budget(unit, cruise))["cost"]
-	var result := {}
-	for cell: Vector2i in cost:
-		if _can_stop(battle, unit, cell):
-			result[cell] = cost[cell]
-	return result
+	return _search(battle, unit, budget(unit, cruise)).stops()
 
 
 ## いまのマスから to までの道（両端を含む）。行けなければ空。
 ## 同じ移動力で行ける道がいくつかあるときも、毎回同じ道を返す。
 static func path_to(battle: Battle, unit: Unit, to: Vector2i, cruise := false) -> Array[Vector2i]:
-	var result := _search(battle, unit, budget(unit, cruise))
+	var found := _search(battle, unit, budget(unit, cruise))
 	var path: Array[Vector2i] = []
-	if not result["cost"].has(to) or not _can_stop(battle, unit, to):
+	if not found.cost.has(to) or not found.can_stop(to):
 		return path
-	var parent: Dictionary = result["parent"]
 	var cell := to
 	path.append(cell)
 	while cell != unit.cell:
-		cell = parent[cell]
+		cell = found.parent[cell]
 		path.append(cell)
 	path.reverse()
 	return path
 
 
-## そのマスで止まれるか（自分のいるマスか、誰もいないマス）。
-static func _can_stop(battle: Battle, unit: Unit, cell: Vector2i) -> bool:
-	var occupant := battle.unit_at(cell)
-	return occupant == null or occupant == unit
+## 移動範囲の探索の結果そのもの（止まれないマスと、道の親も含む）。
+## 通常の移動と巡航の範囲を 1 回の探索で分けたいときに使う（UnitOptions）。
+static func search(battle: Battle, unit: Unit, cruise := false) -> Search:
+	return _search(battle, unit, budget(unit, cruise))
+
+
+## 探索の結果。cost は通れるマス（味方のいるマスも含む）までの移動力の最小値、parent は道の 1 つ前のマス。
+class Search:
+	var cost: Dictionary[Vector2i, int] = {}
+	var parent: Dictionary[Vector2i, Vector2i] = {}
+	## ほかの駒のいるマス（通れても、止まれない）。
+	var occupied: Dictionary[Vector2i, Unit] = {}
+
+	func can_stop(cell: Vector2i) -> bool:
+		return not occupied.has(cell)
+
+	## 止まれるマスと、そこまでの移動力。
+	func stops() -> Dictionary:
+		var result := {}
+		for cell in cost:
+			if not occupied.has(cell):
+				result[cell] = cost[cell]
+		return result
 
 
 ## 通れるマスを、移動力の少ない順に広げる（ダイクストラ法）。味方のいるマスも通る。
 ## 同じ移動力のマスは見つけた順に広げるので、結果は毎回同じになる。
-static func _search(battle: Battle, unit: Unit, limit: int) -> Dictionary:
-	var cost := {unit.cell: 0}
-	var parent := {}
-	var done := {}
-	# [移動力, 見つけた順, マス] を移動力・見つけた順の小さい順に取り出す。
-	var frontier: Array = [[0, 0, unit.cell]]
-	var order := 1
-	while not frontier.is_empty():
-		var best := 0
-		for i in range(1, frontier.size()):
-			if frontier[i][0] < frontier[best][0] or (
-				frontier[i][0] == frontier[best][0] and frontier[i][1] < frontier[best][1]
-			):
-				best = i
-		var entry: Array = frontier.pop_at(best)
-		var cell: Vector2i = entry[2]
-		if done.has(cell):
+##
+## 移動力は小さい整数なので、候補は移動力ごとの列に入れる。列の中は見つけた順に並ぶので、
+## 「移動力の小さい順、同じなら見つけた順」に取り出すことになる。
+## 駒の位置と敵の支配領域は、始めに 1 回だけ表にする（マスごとに全部の駒を調べない）。
+static func _search(battle: Battle, unit: Unit, limit: int) -> Search:
+	var found := Search.new()
+	var board := battle.board
+	var enemy_zoc: Dictionary[Vector2i, bool] = {}
+	for other in battle.units:
+		if other == unit:
 			continue
-		done[cell] = true
-		# 敵の ZOC に入ったマスからは先へ進めない（出発したマスだけは別）。
-		if cell != unit.cell and battle.is_in_enemy_zoc(cell, unit.side):
-			continue
-		# 行き先。ポータルの転移（移動力 0）を先に、そのあと上下左右。
-		var steps: Array[Vector2i] = []
-		var exit := battle.portal_exit(cell)
-		if exit != Board.NO_CELL:
-			steps.append(exit)
-		for direction in Board.DIRECTIONS:
-			steps.append(cell + direction)
-		for next in steps:
-			if not battle.board.is_walkable(next):
+		found.occupied[other.cell] = other
+		if other.side != unit.side and UnitKind.exerts_zoc(other.kind):
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if dx != 0 or dy != 0:
+						enemy_zoc[other.cell + Vector2i(dx, dy)] = true
+	var occupied := found.occupied
+	var cost := found.cost
+	var parent := found.parent
+	var start := unit.cell
+	cost[start] = 0
+	var done: Dictionary[Vector2i, bool] = {}
+	var queues: Array[Array] = []
+	for i in limit + 1:
+		queues.append([] as Array[Vector2i])
+	queues[0].append(start)
+	for spent in limit + 1:
+		var queue: Array[Vector2i] = queues[spent]
+		var head := 0
+		# 転移（移動力 0）は、いま見ている列の後ろに足される。
+		while head < queue.size():
+			var cell := queue[head]
+			head += 1
+			if done.has(cell):
 				continue
-			var occupant := battle.unit_at(next)
-			if occupant != null and occupant.is_enemy_of(unit):
+			done[cell] = true
+			# 敵の ZOC に入ったマスからは先へ進めない（出発したマスだけは別）。
+			if cell != start and enemy_zoc.has(cell):
 				continue
-			var next_cost: int = cost[cell] + (0 if next == exit else battle.board.move_cost(next))
-			if next_cost > limit or (cost.has(next) and cost[next] <= next_cost):
-				continue
-			cost[next] = next_cost
-			parent[next] = cell
-			frontier.append([next_cost, order, next])
-			order += 1
-	return {"cost": cost, "parent": parent}
+			# 行き先。ポータルの転移（移動力 0）を先に、そのあと上下左右。
+			# 転移できるのは、行き先に駒（陣営を問わない。自分も含む）がいないときだけ（Battle.portal_exit と同じ）。
+			var exit := board.portal_exit(cell)
+			if exit == start or occupied.has(exit):
+				exit = Board.NO_CELL
+			for i in range(0 if exit != Board.NO_CELL else 1, 5):
+				var next := exit if i == 0 else cell + Board.DIRECTIONS[i - 1]
+				if done.has(next):
+					continue  # もう広げたマス。これより安くは入れない
+				var step := board.move_cost(next)
+				if step < 0:
+					continue
+				var occupant: Unit = occupied.get(next)
+				if occupant != null and occupant.is_enemy_of(unit):
+					continue
+				var next_cost := spent if next == exit else spent + step
+				if next_cost > limit or cost.get(next, limit + 1) <= next_cost:
+					continue
+				cost[next] = next_cost
+				parent[next] = cell
+				queues[next_cost].append(next)
+	return found

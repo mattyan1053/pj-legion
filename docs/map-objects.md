@@ -2,7 +2,8 @@
 
 コード: `rules/map_object.gd`（種類と、効果の計算）、`rules/board.gd`（どこに何があるか）、
 `rules/board_generator.gd`（ステージごとの配置）、`rules/actions/attack_barrel_action.gd`、
-`rules/events/`（`barrel_exploded_event.gd`、`unit_warped_event.gd`、`game_drawn_event.gd`）。
+`rules/events/`（`barrel_exploded_event.gd`、`explosion_damaged_event.gd`、`spring_healed_event.gd`、`unit_warped_event.gd`、
+`game_drawn_event.gd`）。
 泉の回復は `rules/actions/end_phase_action.gd`、ポータルは `rules/movement.gd` と `rules/actions/move_action.gd`。
 テスト: `tests/rules/test_map_objects.gd`、配置は `tests/rules/test_board_generator.gd`。
 
@@ -35,12 +36,15 @@
 
 返すイベントは順に、
 
-1. `BarrelExplodedEvent`（攻撃した駒、樽のマス、爆発の届いたマス）
-2. 巻き込まれた駒ごとの `UnitDamagedEvent`（盤面の上の行から、左の列から。`cause` が `EXPLOSION`、`attacker_id` は 0）
+1. `BarrelExplodedEvent`（攻撃した駒、樽のマス、爆発の届いたマス、巻き込まれた駒の番号 `victim_ids`）
+2. 巻き込まれた駒ごとの `ExplosionDamagedEvent`（盤面の上の行から、左の列から。`victim_ids` と同じ並びで、同じ数。
+   `barrel_cell` が樽のマス。攻撃した駒は持たない。`docs/battle.md`）
 3. 倒れた駒ごとの `UnitDefeatedEvent`（同じ並び）
 4. `UnitActedEvent`（攻撃した駒が自分の爆発で倒れたときは出ない）
 
 爆発は同時に当たるので、全員のダメージを先に並べ、撃破はそのあとにまとめる。
+1 つの爆発に属するダメージは、`BarrelExplodedEvent` のすぐあとに `victim_ids` の数だけ続くもの（どれも `barrel_cell` が同じ）。
+同時に見せたい画面は、爆発のイベントを見た時点で、何体ぶん先を読めばよいかが分かる。
 
 状態を変えない計算（戦闘予測も同じものを使う）: `MapObject.can_attack_barrel`、`barrel_targets`（いまの位置から攻撃できる樽）、
 `blast_cells`（爆発の届くマス）、`blast_victims`（巻き込まれる駒）、`blast_damage`（駒ごとのダメージ）。
@@ -51,7 +55,8 @@
   最大 HP の実効値は超えない。
 - 相手のフェーズと中立のフェーズでは回復しない。中立の駒は回復しない。
 - 対戦の最初のフェーズ（ターン 1 のプレイヤー1）では起きない（誰の HP も減っていない）。
-- `PhaseStartedEvent` のあとに、回復した駒ごとの `UnitHealedEvent`（上の行から、左の列から。`cause` が `SPRING`、`healer_id` は 0）が続く。
+- `PhaseStartedEvent` のあとに、回復した駒ごとの `SpringHealedEvent`（上の行から、左の列から。`cell` が泉のマス。
+  回復した駒は持たない。`docs/battle.md`）が続く。
   HP が満タンの駒には、イベントは出ない。
 - 状態を変えない計算: `MapObject.spring_targets`（そのフェーズの始めに回復する駒）、`spring_heal`（実際に増える HP）。
 
@@ -72,7 +77,7 @@
 - `Battle.portal_exit(マス)` が、いま転移できる先を返す（ポータルでないか、行き先がふさがっていれば `Board.NO_CELL`）。
 
 ポータルを通った移動のイベントは、歩いた区間ごとの `UnitMovedEvent` の間に `UnitWarpedEvent`（入ったポータル、出たポータル）が入る。
-`UnitMovedEvent` の道には、隣り合うマスだけが並ぶ。
+`UnitMovedEvent` の道には、隣り合うマスだけが並ぶ。巡航かどうか（`cruise`）は、どのイベントも同じ値を持つ。
 
 - ポータルまで歩き、転移し、その先を歩く: `UnitMovedEvent`、`UnitWarpedEvent`、`UnitMovedEvent`
 - 転移した先で止まる: `UnitMovedEvent`、`UnitWarpedEvent`

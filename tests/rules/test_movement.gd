@@ -199,3 +199,110 @@ func test_no_path_when_unreachable() -> void:
 	var battle := Maps.battle([".#."])
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	assert_eq(Movement.path_to(battle, sniper, Vector2i(2, 0)), [] as Array[Vector2i])
+
+
+func test_tied_paths_are_chosen_the_same_way_as_before() -> void:
+	# 同じ移動力の道がいくつもある行き先。どれを選ぶかは決まっていて、探索の作り（速くする工夫）を変えても変わらない。
+	# 先に見つけた道が残る。隣は 右・左・下・上 の順に見るので、開けた場所では「先に横、あとで縦」に寄った道になる。
+	var battle := _open(7)
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(3, 3))  # 移動力 6
+	assert_eq(_path_text(battle, commando, Vector2i(5, 5)), "3,3 4,3 5,3 5,4 5,5")
+	assert_eq(_path_text(battle, commando, Vector2i(1, 1)), "3,3 2,3 1,3 1,2 1,1")
+	assert_eq(_path_text(battle, commando, Vector2i(6, 0)), "3,3 4,3 5,3 6,3 6,2 6,1 6,0")
+	# 森（移動力 2）と味方、ポータルが混ざっても同じ。
+	var mixed := Maps.battle([
+		"...F...",
+		".F.1.F.",
+		"...#...",
+		".F...1.",
+		".......",
+	])
+	var walker := mixed.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
+	mixed.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(2, 0))
+	assert_eq(_path_text(mixed, walker, Vector2i(4, 2)), "0,0 1,0 2,0 2,1 3,1 4,1 4,2")
+	assert_eq(_path_text(mixed, walker, Vector2i(6, 4)), "0,0 1,0 2,0 2,1 3,1 5,3 6,3 6,4")
+	assert_eq(_path_text(mixed, walker, Vector2i(2, 4)), "0,0 1,0 2,0 2,1 2,2 2,3 2,4")
+
+
+func _path_text(battle: Battle, unit: Unit, to: Vector2i) -> String:
+	var cells: Array[String] = []
+	for cell in Movement.path_to(battle, unit, to):
+		cells.append("%d,%d" % [cell.x, cell.y])
+	return " ".join(cells)
+
+
+func test_search_matches_the_plain_reference_search() -> void:
+	# 速くした探索が、素朴な探索（候補を毎回ぜんぶ見て、いちばん小さいものを取る）と、
+	# 届くマス・移動力・道の 1 つ前のマスのすべてで一致すること。生成した盤面に、駒をでたらめに置いて確かめる。
+	for stage: BoardGenerator.Stage in BoardGenerator.Stage.values():
+		var battle := Battle.new(BoardGenerator.generate(stage, 7))
+		var rng := RandomNumberGenerator.new()
+		rng.seed = stage
+		var kinds: Array[UnitKind.Id] = [
+			UnitKind.Id.COMMANDO, UnitKind.Id.PALADIN, UnitKind.Id.SNIPER, UnitKind.Id.SHIELD_TROOPER,
+			UnitKind.Id.SPELLBLADE,
+		]
+		for i in 10:
+			var cell := Vector2i(rng.randi_range(4, 25), rng.randi_range(4, 25))
+			battle.add_unit(kinds[i % kinds.size()], (i % 2) as Unit.Side, cell)  # 置けないマスなら置かれないだけ
+		for cell: Vector2i in battle.board.portal_exits.keys().slice(0, 2):
+			battle.add_unit(UnitKind.Id.COMMANDO, P1, cell)  # ポータルの上から始まる駒と、ふさがった行き先
+		assert_true(battle.units.size() >= 6, "ステージ %d に駒を置けていない" % stage)
+		for unit in battle.units:
+			for cruise: bool in [false, true]:
+				var found := Movement.search(battle, unit, cruise)
+				var expected := _reference_search(battle, unit, Movement.budget(unit, cruise))
+				var message := "ステージ %d の %s（巡航 %s）" % [stage, unit.cell, cruise]
+				assert_eq(found.cost.size(), expected["cost"].size(), message)
+				assert_eq(found.parent.size(), expected["parent"].size(), message)
+				for cell: Vector2i in expected["cost"]:
+					assert_eq(found.cost.get(cell, -1), expected["cost"][cell], "%s の %s の移動力" % [message, cell])
+				for cell: Vector2i in expected["parent"]:
+					assert_eq(
+						found.parent.get(cell, Board.NO_CELL), expected["parent"][cell],
+						"%s の %s の 1 つ前" % [message, cell]
+					)
+
+
+## 比べる相手の、素朴な探索。Battle の問い合わせ（unit_at、is_in_enemy_zoc、portal_exit）だけで書いてある。
+static func _reference_search(battle: Battle, unit: Unit, limit: int) -> Dictionary:
+	var cost := {unit.cell: 0}
+	var parent := {}
+	var done := {}
+	# [移動力, 見つけた順, マス] を移動力・見つけた順の小さい順に取り出す。
+	var frontier: Array = [[0, 0, unit.cell]]
+	var order := 1
+	while not frontier.is_empty():
+		var best := 0
+		for i in range(1, frontier.size()):
+			if frontier[i][0] < frontier[best][0] or (
+				frontier[i][0] == frontier[best][0] and frontier[i][1] < frontier[best][1]
+			):
+				best = i
+		var entry: Array = frontier.pop_at(best)
+		var cell: Vector2i = entry[2]
+		if done.has(cell):
+			continue
+		done[cell] = true
+		if cell != unit.cell and battle.is_in_enemy_zoc(cell, unit.side):
+			continue
+		var steps: Array[Vector2i] = []
+		var exit := battle.portal_exit(cell)
+		if exit != Board.NO_CELL:
+			steps.append(exit)
+		for direction in Board.DIRECTIONS:
+			steps.append(cell + direction)
+		for next in steps:
+			if not battle.board.is_walkable(next):
+				continue
+			var occupant := battle.unit_at(next)
+			if occupant != null and occupant.is_enemy_of(unit):
+				continue
+			var next_cost: int = cost[cell] + (0 if next == exit else battle.board.move_cost(next))
+			if next_cost > limit or (cost.has(next) and cost[next] <= next_cost):
+				continue
+			cost[next] = next_cost
+			parent[next] = cell
+			frontier.append([next_cost, order, next])
+			order += 1
+	return {"cost": cost, "parent": parent}

@@ -91,11 +91,12 @@ func test_attack_reduces_hp_and_ends_the_action() -> void:
 	var events := battle.apply(AttackAction.new(sniper.id, target.id)).events
 	assert_eq(target.hp, 31)
 	assert_eq(events.size(), 2)
-	var damaged := events[0] as UnitDamagedEvent
+	var damaged := events[0] as AttackDamagedEvent
 	assert_eq(damaged.attacker_id, sniper.id)
 	assert_eq(damaged.unit_id, target.id)
 	assert_eq(damaged.amount, 9)
 	assert_eq(damaged.hp, 31)
+	assert_eq(damaged.cause, UnitDamagedEvent.Cause.ATTACK)
 	assert_eq((events[1] as UnitActedEvent).unit_id, sniper.id)
 	assert_true(sniper.acted)
 
