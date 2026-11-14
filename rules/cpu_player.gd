@@ -819,7 +819,8 @@ func _aim_targets(unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary
 
 
 ## シャドウステップで跳ぶ価値のありそうなマス:
-## - 歩いては攻撃が届かない敵を、攻撃できるマス（歩いて届く敵は、歩いて攻撃する手が比べている）
+## - 歩いては攻撃が届かない敵（相手のプレイヤーの駒）を、攻撃できるマス（歩いて届く敵は、歩いて攻撃する手が比べている）。
+##   中立の駒を殴るためには跳ばない（跳べるのは数ターンに 1 回。相手の駒のために取っておく）
 ## - 空いている敵の本陣
 ## - 自分の本陣に乗っている敵のマス（入れ替わって、占拠を切る）
 func _shadow_step_targets(unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
