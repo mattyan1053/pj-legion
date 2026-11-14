@@ -1,9 +1,18 @@
 class_name Unit
 extends RefCounted
 ## 盤上の駒 1 体。種類・陣営・位置と、いまの状態を持つ。
+##
+## 能力値（最大 HP・攻撃力・移動力・射程）は、次の層を順に重ねた実効値で使う。
+##   1. 基礎 + 装備（種類の基本の値に、持っている装備のぶんを足す）
+##   2. 聖遺物（relic_bonus）
+##   3. 一時的な補正（temporary_bonus）
+## ルールは UnitKind の値を直に読まず、駒の max_hp() / power() / move_range() / attack_range() を使う。
 
 ## 陣営。PLAYER1 / PLAYER2 の値は Board.hq_cells の添字と同じ。
 enum Side { PLAYER1 = 0, PLAYER2 = 1, NEUTRAL = 2 }
+
+## 層を重ねて決まる能力値。POWER は攻撃力（回復役は回復量）。
+enum Stat { MAX_HP, POWER, MOVE_RANGE, ATTACK_RANGE }
 
 ## 戦いの中で駒を指す番号。Battle が振る。
 var id: int
@@ -11,6 +20,13 @@ var kind: UnitKind.Id
 var side: Unit.Side
 var cell: Vector2i
 var hp: int
+
+## 持っている装備（層 1）。対戦の途中では変わらない。
+var equipment: Array[Equipment.Id] = []
+## 聖遺物で足す量（層 2）。Stat -> int。無い能力値は 0。
+var relic_bonus := {}
+## 一時的な補正で足す量（層 3）。Stat -> int。無い能力値は 0。負の値もある。
+var temporary_bonus := {}
 
 ## このフェーズの行動を終えたか。自分のフェーズの始めに戻る。
 var acted := false
@@ -20,12 +36,19 @@ var move_origin: Vector2i
 var cruised := false
 
 
-func _init(unit_id: int, unit_kind: UnitKind.Id, unit_side: Unit.Side, at: Vector2i) -> void:
+func _init(
+	unit_id: int,
+	unit_kind: UnitKind.Id,
+	unit_side: Unit.Side,
+	at: Vector2i,
+	unit_equipment: Array[Equipment.Id] = [],
+) -> void:
 	id = unit_id
 	kind = unit_kind
 	side = unit_side
 	cell = at
-	hp = UnitKind.max_hp(kind)
+	equipment = unit_equipment.duplicate()
+	hp = max_hp()
 
 
 ## 同じ状態の駒を作る（Battle.clone() が使う）。
@@ -42,8 +65,44 @@ func reset_action() -> void:
 	cruised = false
 
 
+## 層 1（基礎 + 装備）の値。
+func base_stat(which: Stat) -> int:
+	var value := 0
+	match which:
+		Stat.MAX_HP:
+			value = UnitKind.max_hp(kind)
+		Stat.POWER:
+			value = UnitKind.power(kind)
+		Stat.MOVE_RANGE:
+			value = UnitKind.move_range(kind)
+		Stat.ATTACK_RANGE:
+			value = UnitKind.attack_range(kind)
+	return value + Equipment.total_bonus(equipment, which)
+
+
+## 実効値。層 1 に、聖遺物、一時的な補正の順で足す。最大 HP は 1、ほかは 0 を下回らない。
+func stat(which: Stat) -> int:
+	var value := base_stat(which)
+	value += relic_bonus.get(which, 0)
+	value += temporary_bonus.get(which, 0)
+	return maxi(value, 1 if which == Stat.MAX_HP else 0)
+
+
+func max_hp() -> int:
+	return stat(Stat.MAX_HP)
+
+
+## 攻撃力（回復役は回復量）。
+func power() -> int:
+	return stat(Stat.POWER)
+
+
 func move_range() -> int:
-	return UnitKind.move_range(kind)
+	return stat(Stat.MOVE_RANGE)
+
+
+func attack_range() -> int:
+	return stat(Stat.ATTACK_RANGE)
 
 
 func is_enemy_of(other: Unit) -> bool:
