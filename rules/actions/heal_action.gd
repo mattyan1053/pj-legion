@@ -3,6 +3,7 @@ extends BattleAction
 ## 回復役がいまの位置から、射程内の味方 1 体を回復する。回復すると行動を終える。
 ##
 ## 動かずに回復してもよい。巡航で動いた駒は回復できない（攻撃と同じ扱い）。
+## 回復した駒には経験値が入る（Growth）。
 
 var unit_id: int
 var target_id: int
@@ -25,4 +26,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var target := battle.unit_by_id(target_id)
 	var amount := Healing.amount(healer, target)
 	target.hp += amount
-	return [HealerHealedEvent.new(healer.id, target.id, amount, target.hp), battle.finish_action(healer)]
+	var events: Array[BattleEvent] = [HealerHealedEvent.new(healer.id, target.id, amount, target.hp)]
+	events.append_array(Growth.gain(healer, Growth.heal_experience(), ExperienceGainedEvent.Reason.HEAL))
+	events.append(battle.finish_action(healer))
+	return events

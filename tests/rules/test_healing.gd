@@ -113,14 +113,15 @@ func test_heal_restores_hp_and_ends_the_action() -> void:
 	var result := battle.apply(HealAction.new(medic.id, ally.id))
 	assert_true(result.accepted)
 	assert_eq(ally.hp, 25)
-	assert_eq(result.events.size(), 2)
+	assert_eq(result.events.size(), 3)
 	var healed := result.events[0] as HealerHealedEvent
 	assert_eq(healed.healer_id, medic.id)
 	assert_eq(healed.unit_id, ally.id)
 	assert_eq(healed.amount, 15)
 	assert_eq(healed.hp, 25)
 	assert_eq(healed.cause, UnitHealedEvent.Cause.HEAL)
-	assert_eq((result.events[1] as UnitActedEvent).unit_id, medic.id)
+	assert_true(result.events[1] is ExperienceGainedEvent)  # docs/experience-levelup.md
+	assert_eq((result.events[2] as UnitActedEvent).unit_id, medic.id)
 	assert_true(medic.acted)
 	assert_false(battle.apply(HealAction.new(medic.id, ally.id)).accepted)
 	assert_false(battle.apply(WaitAction.new(medic.id)).accepted)

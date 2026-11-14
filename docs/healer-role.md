@@ -35,7 +35,8 @@
 - 行動できる回復役が、いまの位置から回復する。動いたあとでも、動かずにでもよい。
   **巡航で動いた駒は回復できない**（攻撃と同じ扱い）。
 - 回復すると行動を終える。
-- 返すイベントは順に、`UnitHealedEvent`（実際に増えた HP と、受けたあとの HP。`cause` は `HEAL`）、`UnitActedEvent`。
+- 返すイベントは順に、`UnitHealedEvent`（実際に増えた HP と、受けたあとの HP。`cause` は `HEAL`）、
+  経験値（`ExperienceGainedEvent`、上がれば `LevelUpEvent`。`docs/experience-levelup.md`）、`UnitActedEvent`。
 - 回復する相手がいなくても、待機（`WaitAction`）はできる。
 
 ## まだ入れていないもの

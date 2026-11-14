@@ -3,7 +3,7 @@ extends RefCounted
 ## 盤上の駒 1 体。種類・陣営・位置と、いまの状態を持つ。
 ##
 ## 能力値（最大 HP・攻撃力・移動力・射程）は、次の層を順に重ねた実効値で使う。
-##   1. 基礎 + 装備（種類の基本の値に、持っている装備のぶんを足す）
+##   1. 基礎 + 成長 + 装備（種類の基本の値に、レベルアップで伸びたぶんと、持っている装備のぶんを足す）
 ##   2. 聖遺物（relic_bonus）
 ##   3. 一時的な補正（temporary_bonus）
 ## ルールは UnitKind の値を直に読まず、駒の max_hp() / power() / move_range() / attack_range() を使う。
@@ -21,6 +21,11 @@ var side: Unit.Side
 var cell: Vector2i
 var hp: int
 
+## レベル（1 から Growth.MAX_LEVEL まで）と、いまのレベルでためた経験値。docs/experience-levelup.md。
+var level := 1
+var experience := 0
+## レベルアップで伸びた量（層 1）。Stat -> int。無い能力値は 0。種類の基本の値は書き換えない。
+var growth_bonus := {}
 ## 持っている装備（層 1）。対戦の途中では変わらない。
 var equipment: Array[Equipment.Id] = []
 ## 聖遺物で足す量（層 2）。Stat -> int。無い能力値は 0。
@@ -67,7 +72,7 @@ func reset_action() -> void:
 	cruised = false
 
 
-## 層 1（基礎 + 装備）の値。
+## 層 1（基礎 + 成長 + 装備）の値。
 func base_stat(which: Stat) -> int:
 	var value := 0
 	match which:
@@ -79,7 +84,25 @@ func base_stat(which: Stat) -> int:
 			value = UnitKind.move_range(kind)
 		Stat.ATTACK_RANGE:
 			value = UnitKind.attack_range(kind)
-	return value + Equipment.total_bonus(equipment, which)
+	return value + growth_bonus.get(which, 0) + Equipment.total_bonus(equipment, which)
+
+
+## 成長（層 1）を足す。最大 HP が増えたら、増えたぶんだけ HP も増える（follow_max_hp）。
+func add_growth(which: Stat, amount: int) -> void:
+	var before := max_hp()
+	growth_bonus[which] = growth_bonus.get(which, 0) + amount
+	follow_max_hp(before)
+
+
+## 最大 HP の実効値が before から変わったあとに、HP を合わせる。
+## 増えたら、増えたぶんだけ HP も増やす（受けているダメージの量は変わらない）。
+## 減ったら、HP は新しい最大 HP を超えないように切り詰める。
+## どの層の変化でも（成長、聖遺物、一時的な補正）、最大 HP を変えたルールがこれを呼ぶ。
+func follow_max_hp(before: int) -> void:
+	var after := max_hp()
+	if after > before:
+		hp += after - before
+	hp = mini(hp, after)
 
 
 ## 実効値。層 1 に、聖遺物、一時的な補正の順で足す。最大 HP は 1、ほかは 0 を下回らない。

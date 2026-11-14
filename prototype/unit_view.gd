@@ -117,6 +117,7 @@ var _core_time := 0.0
 var _kind: UnitKind.Id
 var _team_color: Color
 var _max_hp := 1
+var _level := 1
 ## いま札に出している HP。検査用。
 var shown_hp := 0
 var _height := 1.3  # 札を出す高さ
@@ -223,6 +224,14 @@ func set_hp(hp: int) -> void:
 	if _kind == UnitKind.Id.KING:
 		mark = "将"
 	_tag.text = ("%s %d" % [mark, hp]).strip_edges()
+	if _level > 1:
+		_tag.text += "  Lv%d" % _level
+
+
+## レベルと最大 HP を変える（レベルアップ）。札は次の set_hp で描き直す。
+func set_growth(level: int, max_hp: int) -> void:
+	_level = level
+	_max_hp = max_hp
 
 
 ## 行動済みの駒を暗くする。
