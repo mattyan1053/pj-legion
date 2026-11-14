@@ -31,6 +31,16 @@ static func attack_targets(battle: Battle, unit: Unit) -> Array[Unit]:
 	return result
 
 
+## その駒がいまの位置から回復できる味方（回復役だけ。行動できない駒・巡航で動いた駒では空）。
+static func heal_targets(battle: Battle, unit: Unit) -> Array[Unit]:
+	var result: Array[Unit] = []
+	if unit == null:
+		return result
+	for target_id in battle.options(unit.id).heal_target_ids:
+		result.append(battle.unit_by_id(target_id))
+	return result
+
+
 ## その駒がいまの位置から攻撃できる起爆樽のマス（行動できない駒・巡航で動いた駒・回復役では空）。
 static func barrel_targets(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	if unit == null:

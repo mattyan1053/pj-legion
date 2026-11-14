@@ -9,6 +9,8 @@ signal cancel_pressed
 signal end_turn_pressed
 ## 進化先を選んだ。index は、出している選択肢の何番目か（0 が A、1 が B）。
 signal evolution_chosen(index: int)
+## 相手（プレイヤー2）を人にするか CPU にするかの切り替えが押された。
+signal opponent_pressed
 ## stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でやり直す（stage は見ない）。
 signal restart_pressed(stage: int, new_board: bool)
 
@@ -69,6 +71,7 @@ var _info_forecast: Label
 var _cell_label: Label
 var _hint_label: Label
 var _end_turn_button: Button
+var _opponent_button: Button
 var _wait_button: Button
 var _cancel_button: Button
 var _banner: Label
@@ -138,6 +141,11 @@ func set_hint(text: String) -> void:
 func set_end_turn(enabled: bool, text: String) -> void:
 	_end_turn_button.disabled = not enabled
 	_end_turn_button.text = text
+
+
+## 相手を切り替えるボタンの文字（いまの相手を書く）。
+func set_opponent(text: String) -> void:
+	_opponent_button.text = text
 
 
 ## 選んでいる駒の行動のボタン。can_wait は待機できるか、can_cancel は戻せるか、
@@ -251,6 +259,10 @@ func _build_top_bar() -> void:
 		label.add_theme_color_override("font_color", _team_colors[player].lightened(0.4))
 		row.add_child(label)
 		_side_labels.append(label)
+	_opponent_button = _button("", opponent_pressed)
+	_opponent_button.custom_minimum_size = Vector2(170.0, 34.0)
+	_opponent_button.add_theme_font_size_override("font_size", 15)
+	row.add_child(_opponent_button)
 
 
 func _build_info_panel() -> void:
@@ -320,7 +332,7 @@ func _build_bottom() -> void:
 	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(help_panel)
 	var help := _label(13)
-	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）"
+	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）/ F4 相手を人・CPU に切り替え"
 	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	help_panel.add_child(help)
