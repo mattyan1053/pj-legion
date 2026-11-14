@@ -4,6 +4,8 @@ extends CanvasLayer
 ## 何を出すかは呼ぶ側が決める。ここはルールを持たず、押されたことを signal で知らせるだけ。
 
 signal wait_pressed
+## スキルのボタンが押された（対象を選び始める・やめるのは呼ぶ側が決める）。
+signal skill_pressed
 ## 「移動を取り消す」と「選択をやめる」は同じボタン（どちらになるかは呼ぶ側が決める）。
 signal cancel_pressed
 signal end_turn_pressed
@@ -78,6 +80,7 @@ var _hint_label: Label
 var _end_turn_button: Button
 var _opponent_button: Button
 var _wait_button: Button
+var _skill_button: Button
 var _cancel_button: Button
 var _banner: Label
 var _banner_tween: Tween
@@ -122,6 +125,9 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	_info_stats.text = "HP %d / %d\n%s %d   移動 %d   射程 %d" % [
 		unit.hp, unit.max_hp(), power_name, unit.power(), unit.move_range(), unit.attack_range(),
 	]
+	var skill := Skills.of(unit)
+	if skill != null:
+		_info_stats.text += "\nスキル: %s（%s）" % [skill.display_name(), skill_state_text(unit)]
 	if Growth.can_grow(unit):
 		if unit.level >= Growth.MAX_LEVEL:
 			_info_stats.text += "\nレベル %d（最大）" % unit.level
@@ -159,6 +165,27 @@ func set_actions(can_wait: bool, can_cancel: bool, moved: bool) -> void:
 	_wait_button.disabled = not can_wait
 	_cancel_button.disabled = not can_cancel
 	_cancel_button.text = "移動を取り消す" if moved else "選択をやめる"
+
+
+## スキルのボタン。text はボタンの文字、enabled は押せるか、choosing は対象を選んでいる途中か（押すとやめる）。
+func set_skill(text: String, enabled: bool, choosing: bool) -> void:
+	_skill_button.text = "スキルをやめる" if choosing else text
+	_skill_button.disabled = not enabled
+
+
+## スキルのボタンの文字（出ている文字）。検査用。
+func skill_button_text() -> String:
+	return _skill_button.text
+
+
+## スキルのボタンが押せるか。検査用。
+func is_skill_enabled() -> bool:
+	return not _skill_button.disabled
+
+
+## 駒のスキルの状態（使えるか、あと何ターンか）。
+static func skill_state_text(unit: Unit) -> String:
+	return "使える" if unit.skill_cooldown == 0 else "あと %d ターン" % unit.skill_cooldown
 
 
 ## 画面の中央に、しばらくだけ大きな文字を出す。
@@ -298,6 +325,8 @@ func _build_info_panel() -> void:
 	column.add_child(_info_state)
 	_info_forecast = _label(17)
 	_info_forecast.add_theme_color_override("font_color", COLOR_FORECAST)
+	# スキルの説明のように長い文は、パネルの幅で折り返す（パネルを横に広げて盤面を隠さない）。
+	_info_forecast.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	column.add_child(_info_forecast)
 
 
@@ -312,9 +341,11 @@ func _build_bottom() -> void:
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(column)
-	# 文が長くても、ボタンを画面の外へ押し出さない。
+	# 文が長いときは 2 行まで折り返す（ボタンを画面の外へ押し出さない）。
 	_hint_label = _label(17)
-	_hint_label.clip_text = true
+	_hint_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	_hint_label.max_lines_visible = 2
+	_hint_label.custom_minimum_size = Vector2(200.0, 0.0)
 	column.add_child(_hint_label)
 	_cell_label = _label(14)
 	_cell_label.clip_text = true
@@ -322,6 +353,10 @@ func _build_bottom() -> void:
 	column.add_child(_cell_label)
 	_wait_button = _button("待機", wait_pressed)
 	row.add_child(_wait_button)
+	_skill_button = _button("スキル", skill_pressed)
+	_skill_button.custom_minimum_size = Vector2(230.0, 48.0)
+	_skill_button.disabled = true
+	row.add_child(_skill_button)
 	_cancel_button = _button("選択をやめる", cancel_pressed)
 	row.add_child(_cancel_button)
 	_end_turn_button = _button("ターン終了", end_turn_pressed)
@@ -337,7 +372,7 @@ func _build_bottom() -> void:
 	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(help_panel)
 	var help := _label(13)
-	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）/ F4 相手を人・CPU に切り替え"
+	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / F スキル / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）/ F4 相手を人・CPU に切り替え"
 	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	help_panel.add_child(help)

@@ -81,6 +81,17 @@ const CRUISE_PENALTY := 0.5
 const STAND_OFF_VALUE := 0.5
 ## 回復役が、減っている味方を探す範囲（歩数）。
 const HEALER_SEARCH_STEPS := 12
+## スキル -> 使った結果の価値を見積もるメソッド（SkillUsedEvent と、使ったあとの複製を受け取る）。
+## ダメージ・回復・経験値のイベントだけで価値が決まるスキルは、載せなくてよい（_outcome_value がそのまま読む）。
+const SKILL_VALUES := {
+	Skill.Id.TACTICAL_BARRICADE: &"_barricade_value",
+	Skill.Id.SAINT_PLACE: &"_sanctuary_value",
+}
+## 盾: 敵の射線を 1 本切る価値は、その敵の攻撃 1 回ぶんのダメージの価値の何倍か（敵は回り込めるので、1 より小さい）。
+const BARRICADE_COVER_RATE := 0.75
+## 聖域: 中に、減っている味方がこの数だけいれば置く。1 体が回復すると見込むのは、聖域の回復の何回ぶんまでか。
+const SANCTUARY_MIN_UNITS := 2
+const SANCTUARY_EXPECTED_HEALS := 2
 
 const _GOAL := 0
 const _DANGER := 1
@@ -226,12 +237,12 @@ func _next_unit() -> Unit:
 # ---- 動いたあとの行動 ----
 
 
-## 動いたあとの駒が、いまの位置からすること。得になる攻撃・回復があれば、いちばん良いもの。無ければ待機。
+## 動いたあとの駒が、いまの位置からすること。得になる攻撃・回復・スキルがあれば、いちばん良いもの。無ければ待機。
 func _follow_up(unit: Unit) -> BattleAction:
 	var best: BattleAction = WaitAction.new(unit.id)
 	var best_value := 0.0
 	for action in _battle.options(unit.id).actions():
-		if not (action is AttackAction or action is AttackBarrelAction or action is AttackBarricadeAction or action is HealAction):
+		if action is MoveAction or action is WaitAction or action is UndoMoveAction:
 			continue
 		var sim := _battle.clone()
 		var value := _outcome_value(sim, sim.apply(action).events)
@@ -296,6 +307,20 @@ func _plan(unit: Unit) -> BattleAction:
 			value += _position_value(unit, from, 0, true)
 		if value > best_value:
 			best_cell = from
+			best_cruise = false
+			best_action = action
+			best_value = value
+
+	# 動かずにスキルを使う手。動いてから使う手は並べない（動いた先で得になるなら、_follow_up が使う）。
+	for cell in options.skill_cells:
+		var action := UseSkillAction.new(unit.id, cell)
+		var sim := _battle.clone()
+		var value := _outcome_value(sim, sim.apply(action).events)
+		if value <= 0.0:
+			continue
+		value += _position_value(unit, unit.cell, 0, true)
+		if value > best_value:
+			best_cell = unit.cell
 			best_cruise = false
 			best_action = action
 			best_value = value
@@ -394,6 +419,11 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 			if target.kind == UnitKind.Id.KING:
 				value += KING_HEAL_BONUS
 			continue
+		var used := event as SkillUsedEvent
+		if used != null:
+			if SKILL_VALUES.has(used.skill):
+				value += call(SKILL_VALUES[used.skill], used, sim)
+			continue
 		var chipped := event as BarricadeDamagedEvent
 		if chipped != null:
 			value += BARRICADE_DAMAGE_VALUE * chipped.amount
@@ -432,6 +462,43 @@ func _damage_value(victim: Unit, hp_after: int) -> float:
 	if hp_after == 0:
 		return value + kill
 	return maxf(1.0, value - REMAINING_HP_PENALTY * hp_after)
+
+
+# ---- スキルの価値 ----
+
+
+## 盾を置いた価値。いま敵の離れた攻撃が味方に届いていて、盾で届かなくなる組を数える。味方の攻撃を遮るぶんは引く。
+## 届くかどうかは、置く前（_battle）と置いたあと（sim）のルールの答えを比べる。
+func _barricade_value(_used: SkillUsedEvent, sim: Battle) -> float:
+	var value := 0.0
+	for shooter in _battle.units:
+		if shooter.side == Unit.Side.NEUTRAL or shooter.attack_range() < Combat.RANGED_DISTANCE:
+			continue
+		for target in _battle.units:
+			if target.side == Unit.Side.NEUTRAL or not Combat.can_attack(_battle, shooter, target):
+				continue
+			if Combat.can_attack(sim, sim.unit_by_id(shooter.id), sim.unit_by_id(target.id)):
+				continue
+			var rate := KING_DAMAGE_VALUE if target.kind == UnitKind.Id.KING else DAMAGE_VALUE
+			var worth := BARRICADE_COVER_RATE * rate * shooter.power()
+			value += worth if target.side == _me else -worth
+	return value
+
+
+## 聖域を置いた価値。中にいる、減っている味方（もう自分の聖域の中にいる駒は除く）の、見込める回復量。
+## 減っている味方が SANCTUARY_MIN_UNITS 体に満たなければ 0（回復役は、ふつうの回復のほうが早い）。
+func _sanctuary_value(used: SkillUsedEvent, sim: Battle) -> float:
+	var cells := Skills.by_id(used.skill).affected_cells(sim, sim.unit_by_id(used.unit_id), used.target)
+	var wounded := 0
+	var total := 0
+	for unit in _battle.units:
+		if unit.side != _me or not cells.has(unit.cell) or FieldEffects.sanctuary_of(_battle, unit) != null:
+			continue
+		var missing := unit.max_hp() - unit.hp
+		if missing > 0:
+			wounded += 1
+			total += mini(missing, FieldEffects.SANCTUARY_HEAL * SANCTUARY_EXPECTED_HEALS)
+	return HEAL_VALUE * total if wounded >= SANCTUARY_MIN_UNITS else 0.0
 
 
 # ---- 位置の価値 ----

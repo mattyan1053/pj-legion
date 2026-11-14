@@ -104,6 +104,7 @@ func _initialize() -> void:
 	var hired := 0
 	var gains: Array[int] = [0, 0, 0, 0]  # 当てた、倒した、中立を倒した、回復した 回数
 	var by_kind: Dictionary[UnitKind.Id, Array] = {}
+	var skill_uses: Dictionary[Skill.Id, int] = {}
 	var reached := {"lv2": 0, "lv3": 0, "lv3_hit": 0, "lv3_level": 0, "lv3_both": 0}
 	var actions := 0
 	var think := 0.0
@@ -136,6 +137,8 @@ func _initialize() -> void:
 			var row: Array = by_kind.get_or_add(kind, [0, 0, 0, 0, 0])
 			for i in row.size():
 				row[i] += outcome.by_kind[kind][i]
+		for skill in outcome.skill_uses:
+			skill_uses[skill] = skill_uses.get(skill, 0) + outcome.skill_uses[skill]
 		hired += outcome.hired[0] + outcome.hired[1]
 		for unit_id in outcome.gains:
 			var tally: Array = outcome.gains[unit_id]
@@ -205,6 +208,11 @@ func _initialize() -> void:
 			UnitKind.display_name(kind), row[0], 100.0 * row[1] / count, float(row[2]) / count,
 			float(row[3]) / count, 100.0 * row[4] / count,
 		])
+	print("")
+	print("スキルを使った回数（その駒を雇った 1 体あたり）")
+	for skill in Skills.ALL:
+		var row: Array = by_kind.get(skill.kind(), [0])
+		print("  %-12s %5d 回（%4.2f）" % [skill.display_name(), skill_uses.get(skill.id(), 0), float(skill_uses.get(skill.id(), 0)) / maxi(1, row[0])])
 	print("")
 	print("行動 %d 回。考える時間: 1 手の平均 %.1f ms、最長 %.1f ms。全体で %.1f 秒" % [
 		actions, think / maxi(1, actions), slowest, (Time.get_ticks_msec() - started) / 1000.0,
