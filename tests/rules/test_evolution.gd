@@ -141,7 +141,7 @@ func test_healing_to_the_top_level_offers_too() -> void:
 	var ally := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 0))
 	ally.hp = 1
 	priest.level = 2
-	priest.experience = 80
+	priest.experience = Growth.EXPERIENCE_PER_LEVEL - Growth.HEAL_EXPERIENCE
 	var events := battle.apply(HealAction.new(priest.id, ally.id)).events
 	assert_eq(
 		_types(events),
@@ -153,11 +153,11 @@ func test_healing_to_the_top_level_offers_too() -> void:
 func test_lower_levels_offer_nothing() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
-	var events := Growth.gain(sniper, 100, ExperienceGainedEvent.Reason.HIT)
+	var events := Growth.gain(sniper, Growth.EXPERIENCE_PER_LEVEL, ExperienceGainedEvent.Reason.HIT)
 	assert_eq(_types(events), [ExperienceGainedEvent, LevelUpEvent] as Array[Script])
 	assert_eq(battle.evolving_unit(), null)
 	assert_false(Growth.preview(sniper, 50).evolution_ready)
-	assert_true(Growth.preview(sniper, 100).evolution_ready)
+	assert_true(Growth.preview(sniper, Growth.EXPERIENCE_PER_LEVEL).evolution_ready)
 	assert_false(sniper.evolution_ready, "見込みは状態を変えない")
 
 
@@ -210,15 +210,15 @@ func test_choosing_evolves_the_unit_and_resumes_the_battle() -> void:
 	var evolved := result.events[0] as UnitEvolvedEvent
 	assert_eq(evolved.unit_id, sniper.id)
 	assert_eq(evolved.evolution, Evolution.Id.SCOUT)
-	# スナイパー: HP 16、攻撃 9、移動 3、射程 4。ここではレベル 3 へ上がった 1 回ぶんだけ伸びている（HP +3、攻撃 +1）。
+	# スナイパー: HP 12、攻撃 9、移動 3、射程 4。ここではレベル 3 へ上がった 1 回ぶんだけ伸びている（HP +3、攻撃 +1）。
 	# スカウトで 移動 +2、HP +8。
-	assert_eq(evolved.max_hp, 27)
-	assert_eq(evolved.hp, 22, "最大 HP が伸びたぶん、HP も増える")
+	assert_eq(evolved.max_hp, 23)
+	assert_eq(evolved.hp, 18, "最大 HP が伸びたぶん、HP も増える")
 	assert_eq(evolved.power, 10)
 	assert_eq(evolved.move_range, 5)
 	assert_eq(evolved.attack_range, 4)
-	assert_eq(sniper.max_hp(), 27)
-	assert_eq(sniper.hp, 22)
+	assert_eq(sniper.max_hp(), 23)
+	assert_eq(sniper.hp, 18)
 	assert_eq(sniper.move_range(), 5)
 	assert_eq(sniper.display_name(), "スカウト")
 	assert_eq(sniper.kind, UnitKind.Id.SNIPER, "種類（役割と軍）は変わらない")
@@ -237,7 +237,7 @@ func test_an_evolved_unit_gains_nothing_more() -> void:
 	var battle: Battle = made["battle"]
 	var sniper: Unit = made["sniper"]
 	battle.apply(EvolveAction.new(sniper.id, Evolution.Id.MARKSMAN))
-	assert_eq(Growth.gain(sniper, 100, ExperienceGainedEvent.Reason.HIT), [] as Array[BattleEvent])
+	assert_eq(Growth.gain(sniper, Growth.EXPERIENCE_PER_LEVEL, ExperienceGainedEvent.Reason.HIT), [] as Array[BattleEvent])
 	assert_eq(battle.evolving_unit(), null)
 
 
@@ -248,7 +248,7 @@ func test_winning_with_the_same_attack_ends_the_game_without_a_choice() -> void:
 	var king := battle.add_unit(UnitKind.Id.KING, P2, Vector2i(3, 0))
 	king.hp = 1
 	sniper.level = 2
-	sniper.experience = 50
+	sniper.experience = Growth.EXPERIENCE_PER_LEVEL - Growth.DEFEAT_EXPERIENCE  # この攻撃で上限のレベルに届く
 	battle.apply(AttackAction.new(sniper.id, king.id))
 	assert_true(battle.is_over())
 	assert_eq(battle.winner, P1)
@@ -279,7 +279,7 @@ func test_bonuses_stack_on_growth_and_equipment() -> void:
 	var battle := _battle()
 	var boots: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS]
 	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(0, 0), boots)
-	Growth.gain(trooper, 200, ExperienceGainedEvent.Reason.HIT)  # レベル 3: HP +12、攻撃 +2
+	Growth.gain(trooper, 2 * Growth.EXPERIENCE_PER_LEVEL, ExperienceGainedEvent.Reason.HIT)  # レベル 3: HP +12、攻撃 +2
 	trooper.evolve(Evolution.Id.JUGGERNAUT)
 	assert_eq(trooper.max_hp(), 44 + 12)
 	assert_eq(trooper.power(), 6 + 2 + 2)
@@ -306,7 +306,7 @@ func test_healer_evolutions_change_the_heal() -> void:
 	var ally := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(4, 0))
 	ally.hp = 1
 	assert_true(Healing.can_heal(battle, bishop, ally), "射程 4")
-	assert_eq(Healing.amount(bishop, ally), 14)
+	assert_eq(Healing.amount(bishop, ally), 16)
 	assert_false(Healing.can_heal(battle, surgeon, ally))
 	surgeon.cell = Vector2i(4, 1)
 	assert_eq(Healing.amount(surgeon, ally), 23)
@@ -354,12 +354,12 @@ func test_a_fey_walker_crosses_forests_at_plain_cost() -> void:
 	var battle := Maps.battle([
 		".FFFFFFFF.",
 	])
-	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 0))  # 移動力 5
-	assert_false(Movement.reachable(battle, blade).has(Vector2i(3, 0)))
-	blade.evolve(Evolution.Id.FEY_WALKER)  # 移動力 7
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 0))  # 移動力 6
+	assert_false(Movement.reachable(battle, blade).has(Vector2i(4, 0)))
+	blade.evolve(Evolution.Id.FEY_WALKER)  # 移動力 8
 	var reach := Movement.reachable(battle, blade)
-	assert_eq(reach.get(Vector2i(7, 0), -1), 7)
-	assert_false(reach.has(Vector2i(8, 0)))
+	assert_eq(reach.get(Vector2i(8, 0), -1), 8)
+	assert_false(reach.has(Vector2i(9, 0)))
 	assert_eq(Movement.reachable(battle, blade, true).get(Vector2i(9, 0), -1), 9)
 
 

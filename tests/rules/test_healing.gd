@@ -33,14 +33,14 @@ func test_medic_heals_15_at_range_1() -> void:
 	assert_eq(Healing.amount(medic, near), 15)
 
 
-func test_priest_heals_12_at_range_2() -> void:
+func test_priest_heals_14_at_range_2() -> void:
 	var battle := _battle()
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(4, 1))
 	var near := _wounded(battle, UnitKind.Id.PALADIN, P1, Vector2i(5, 2), 10)  # 距離 2
 	var far := _wounded(battle, UnitKind.Id.PALADIN, P1, Vector2i(7, 1), 10)  # 距離 3
 	assert_true(Healing.can_heal(battle, priest, near))
 	assert_false(Healing.can_heal(battle, priest, far))
-	assert_eq(Healing.amount(priest, near), 12)
+	assert_eq(Healing.amount(priest, near), 14)
 
 
 func test_walls_do_not_block_healing() -> void:
@@ -130,19 +130,19 @@ func test_heal_restores_hp_and_ends_the_action() -> void:
 func test_heal_stops_at_max_hp() -> void:
 	var battle := _battle()
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(4, 0))
-	var ally := _wounded(battle, UnitKind.Id.SNIPER, P1, Vector2i(5, 0), 10)  # 最大 HP 16
+	var ally := _wounded(battle, UnitKind.Id.SNIPER, P1, Vector2i(5, 0), 6)  # 最大 HP 12
 	assert_eq(Healing.amount(medic, ally), 6)
 	var healed := battle.apply(HealAction.new(medic.id, ally.id)).events[0] as UnitHealedEvent
-	assert_eq(ally.hp, 16)
+	assert_eq(ally.hp, 12)
 	assert_eq(healed.amount, 6)
-	assert_eq(healed.hp, 16)
+	assert_eq(healed.hp, 12)
 
 
 func test_heal_uses_effective_stats() -> void:
 	var battle := _battle()
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(4, 0))
 	var ally := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(6, 0), [SHIELD] as Array[Equipment.Id])
-	ally.hp = 16  # 最大 HP は盾で 46
+	ally.hp = 16  # 最大 HP は盾で 42
 	assert_false(Healing.can_heal(battle, medic, ally))  # 距離 2
 	medic.relic_bonus[Unit.Stat.ATTACK_RANGE] = 1
 	medic.temporary_bonus[Unit.Stat.POWER] = 5
@@ -157,7 +157,7 @@ func test_heal_after_moving() -> void:
 	var ally := _wounded(battle, UnitKind.Id.SNIPER, P1, Vector2i(4, 0), 1)
 	battle.apply(MoveAction.new(medic.id, Vector2i(3, 0)))
 	assert_true(battle.apply(HealAction.new(medic.id, ally.id)).accepted)
-	assert_eq(ally.hp, 16)
+	assert_eq(ally.hp, 12)
 
 
 func test_no_heal_after_cruise() -> void:

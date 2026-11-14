@@ -112,7 +112,7 @@ func test_blast_reaches_the_eight_cells_around() -> void:
 func test_attacking_a_barrel_blows_it_up() -> void:
 	var battle := _barrel_battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(4, 3))
-	var enemy := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(3, 0))  # 斜め隣。HP 40
+	var enemy := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(3, 0))  # 斜め隣。HP 52
 	var ally := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 1))  # 森の上。軽減なし
 	var minion := battle.add_unit(UnitKind.Id.MINION, NEUTRAL, Vector2i(2, 2))  # HP 12
 	var far := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 1))  # 2 マス離れている
@@ -121,9 +121,9 @@ func test_attacking_a_barrel_blows_it_up() -> void:
 	assert_true(result.accepted)
 	assert_eq(battle.board.object_at(BARREL), MapObject.Type.NONE)
 	assert_true(battle.board.is_walkable(BARREL))
-	assert_eq(enemy.hp, 25)
-	assert_eq(ally.hp, 25)
-	assert_eq(far.hp, 16)
+	assert_eq(enemy.hp, 37)
+	assert_eq(ally.hp, 37)
+	assert_eq(far.hp, 12)
 	assert_eq(battle.unit_by_id(minion.id), null)
 	assert_true(sniper.acted)
 
@@ -146,7 +146,7 @@ func test_attacking_a_barrel_blows_it_up() -> void:
 		assert_eq(damaged.barrel_cell, BARREL)
 		assert_eq(damaged.cause, UnitDamagedEvent.Cause.EXPLOSION)
 	assert_eq(hit_ids, [enemy.id, ally.id, minion.id] as Array[int])
-	assert_eq((events[2] as UnitDamagedEvent).hp, 25)
+	assert_eq((events[2] as UnitDamagedEvent).hp, 37)
 	assert_eq((events[3] as UnitDamagedEvent).hp, 0)
 	assert_eq((events[4] as UnitDefeatedEvent).unit_id, minion.id)
 	assert_eq((events[5] as UnitActedEvent).unit_id, sniper.id)
@@ -159,7 +159,7 @@ func test_blast_victims_can_be_asked_without_changing_anything() -> void:
 	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 1))
 	assert_eq(MapObject.blast_victims(battle, BARREL), [ally, enemy] as Array[Unit])
 	assert_eq(MapObject.blast_damage(enemy), 15)
-	assert_eq(enemy.hp, 40)
+	assert_eq(enemy.hp, 52)
 	assert_eq(battle.board.object_at(BARREL), MapObject.Type.BARREL)
 
 
@@ -167,7 +167,7 @@ func test_melee_attackers_are_caught_in_their_own_blast() -> void:
 	var battle := _barrel_battle()
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(2, 2))
 	var events := battle.apply(AttackBarrelAction.new(paladin.id, BARREL)).events
-	assert_eq(paladin.hp, 25)
+	assert_eq(paladin.hp, 37)
 	assert_eq(events.size(), 3)
 	assert_eq((events[1] as UnitDamagedEvent).unit_id, paladin.id)
 	assert_true(events[2] is UnitActedEvent)
@@ -215,9 +215,9 @@ func test_exploding_a_barrel_in_a_clone_leaves_the_original_alone() -> void:
 	assert_eq(copy.board.barrel_cells, battle.board.barrel_cells)
 	assert_true(copy.apply(AttackBarrelAction.new(sniper.id, BARREL)).accepted)
 	assert_eq(copy.board.object_at(BARREL), MapObject.Type.NONE)
-	assert_eq(copy.unit_by_id(enemy.id).hp, 25)
+	assert_eq(copy.unit_by_id(enemy.id).hp, 37)
 	assert_eq(battle.board.object_at(BARREL), MapObject.Type.BARREL)
-	assert_eq(enemy.hp, 40)
+	assert_eq(enemy.hp, 52)
 	assert_false(sniper.acted)
 
 
@@ -324,10 +324,10 @@ func test_springs_do_not_heal_past_max_hp() -> void:
 	var battle := _spring_battle()
 	var hurt := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(0, 0))
 	var full := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(2, 1))
-	hurt.hp = 35
+	hurt.hp = 47  # 泉の回復量（12）より少ない 5 しか減っていない
 	var events := battle.apply(EndPhaseAction.new()).events
-	assert_eq(hurt.hp, 40)
-	assert_eq(full.hp, 40)
+	assert_eq(hurt.hp, 52)
+	assert_eq(full.hp, 52)
 	assert_eq(events.size(), 2, "満タンの駒にはイベントが出ない")
 	assert_eq((events[1] as UnitHealedEvent).amount, 5)
 
@@ -346,11 +346,11 @@ func test_spring_healing_can_be_asked_without_changing_anything() -> void:
 	var lower := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(2, 1))
 	var upper := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))
 	lower.hp = 1
-	upper.hp = 30
+	upper.hp = 42
 	assert_eq(MapObject.spring_targets(battle, P1), [upper, lower] as Array[Unit])
 	assert_eq(MapObject.spring_targets(battle, P2), [] as Array[Unit])
 	assert_eq(MapObject.spring_heal(upper), 10)
-	assert_eq(upper.hp, 30)
+	assert_eq(upper.hp, 42)
 
 
 # --- ポータル ---
