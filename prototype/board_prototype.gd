@@ -2,7 +2,7 @@ extends Node3D
 ## 見た目の試作。ルール（rules/）につないで、2 人が 1 台で交代しながら対戦する。
 ##
 ## ここはルールを持たない。操作を行動（BattleAction）にして Battle.apply() に渡し、
-## 返ってきたイベントを順に再生するだけ。選べることは Battle.can_apply() と rules/ の問い合わせで出す。
+## 返ってきたイベントを順に再生するだけ。選べることはルールの問い合わせ（Battle.options）で出す。
 ## 盤面・駒・ライト・カメラ・文字はすべてコードで組み立てる。
 
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
@@ -293,8 +293,10 @@ static func event_players() -> Dictionary:
 		UnitMovedEvent: &"_play_moved",
 		UnitWarpedEvent: &"_play_warped",
 		MoveUndoneEvent: &"_play_undone",
-		UnitDamagedEvent: &"_play_damaged",
-		UnitHealedEvent: &"_play_healed",
+		AttackDamagedEvent: &"_play_attack_damaged",
+		ExplosionDamagedEvent: &"_play_explosion_damaged",
+		HealerHealedEvent: &"_play_healer_healed",
+		SpringHealedEvent: &"_play_spring_healed",
 		UnitDefeatedEvent: &"_play_defeated",
 		BarrelExplodedEvent: &"_play_barrel_exploded",
 		UnitActedEvent: &"_play_acted",
@@ -318,9 +320,7 @@ func _play_moved(event: UnitMovedEvent) -> void:
 	if event.path.size() < 2:
 		return
 	var view := _view(event.unit_id)
-	# 巡航かどうかはイベントに無いので、駒の状態から読む（再生の時点では、まだ行動の途中）。
-	var unit := battle.unit_by_id(event.unit_id)
-	var step_time := CRUISE_STEP_TIME if unit != null and unit.cruised else STEP_TIME
+	var step_time := CRUISE_STEP_TIME if event.cruise else STEP_TIME
 	view.play_run()
 	for i in range(1, event.path.size()):
 		var target := BoardView.cell_center(event.path[i])
@@ -355,27 +355,44 @@ func _play_warped(event: UnitWarpedEvent) -> void:
 	await grow.finished
 
 
-## 駒の攻撃なら、攻撃の動きのあとに被弾。爆発のダメージ（攻撃した駒がいない）は、被弾だけを続けて見せる。
-func _play_damaged(event: UnitDamagedEvent) -> void:
+## 駒の攻撃。攻撃の動きのあとに被弾。
+func _play_attack_damaged(event: AttackDamagedEvent) -> void:
 	var target := _view(event.unit_id)
-	var by_attack := event.cause == UnitDamagedEvent.Cause.ATTACK and _views.has(event.attacker_id)
-	if by_attack:
-		var attacker := _view(event.attacker_id)
-		attacker.face(target.position - attacker.position)
-		target.face(attacker.position - target.position)
-		await get_tree().create_timer(attacker.play_attack()).timeout
+	var attacker := _view(event.attacker_id)
+	attacker.face(target.position - attacker.position)
+	target.face(attacker.position - target.position)
+	await get_tree().create_timer(attacker.play_attack()).timeout
+	await _play_hit(event, Color("ffe9a8"), 0.45)
+
+
+## 爆発のダメージ（攻撃した駒がいない）は、被弾だけを続けて見せる。
+func _play_explosion_damaged(event: ExplosionDamagedEvent) -> void:
+	await _play_hit(event, Color("ffb14a"), 0.15)
+
+
+func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
+	var target := _view(event.unit_id)
 	target.play_hit()
 	target.set_hp(event.hp)
-	_pop_number(target.position, "-%d" % event.amount, Color("ffe9a8") if by_attack else Color("ffb14a"))
-	await get_tree().create_timer(0.45 if by_attack else 0.15).timeout
+	_pop_number(target.position, "-%d" % event.amount, color)
+	await get_tree().create_timer(wait).timeout
 
 
-## 回復役の回復の操作は、まだ画面に無い。回復の泉（フェーズの始め）は、光と数を出す。
-func _play_healed(event: UnitHealedEvent) -> void:
+## 回復役の回復の操作は、まだ画面に無い。数だけを出す。
+func _play_healer_healed(event: HealerHealedEvent) -> void:
+	await _play_heal(event, false)
+
+
+## 回復の泉（フェーズの始め）は、光と数を出す。
+func _play_spring_healed(event: SpringHealedEvent) -> void:
+	await _play_heal(event, true)
+
+
+func _play_heal(event: UnitHealedEvent, glow: bool) -> void:
 	var view := _view(event.unit_id)
 	view.set_hp(event.hp)
 	_pop_number(view.position, "+%d" % event.amount, Color("9cf09c"))
-	if event.cause == UnitHealedEvent.Cause.SPRING:
+	if glow:
 		_flash(view.position, BoardView.COLOR_SPRING_CROSS, 0.8)
 	await get_tree().create_timer(0.35).timeout
 

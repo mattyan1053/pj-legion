@@ -24,17 +24,18 @@ func is_valid(battle: Battle) -> bool:
 func execute(battle: Battle) -> Array[BattleEvent]:
 	var attacker := battle.unit_by_id(unit_id)
 	var victims := MapObject.blast_victims(battle, cell)
+	var victim_ids: Array[int] = []
+	for victim in victims:
+		victim_ids.append(victim.id)
 	var events: Array[BattleEvent] = [
-		BarrelExplodedEvent.new(attacker.id, cell, MapObject.blast_cells(battle.board, cell))
+		BarrelExplodedEvent.new(attacker.id, cell, MapObject.blast_cells(battle.board, cell), victim_ids)
 	]
 	battle.board.remove_barrel(cell)
 	# 爆発は同時に当たる。全員のダメージを先に並べ、倒れた駒はそのあとにまとめて取り除く。
 	for victim in victims:
 		var amount := MapObject.blast_damage(victim)
 		victim.hp = maxi(0, victim.hp - amount)
-		events.append(
-			UnitDamagedEvent.new(0, victim.id, amount, victim.hp, UnitDamagedEvent.Cause.EXPLOSION)
-		)
+		events.append(ExplosionDamagedEvent.new(cell, victim.id, amount, victim.hp))
 	for victim in victims:
 		if victim.hp == 0:
 			events.append(battle.remove_unit(victim))

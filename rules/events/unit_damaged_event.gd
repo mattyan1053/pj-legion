@@ -1,25 +1,20 @@
+@abstract
 class_name UnitDamagedEvent
 extends BattleEvent
-## 駒がダメージを受けた。hp は受けたあとの HP。
-## 駒の攻撃でないダメージ（起爆樽の爆発）では、attacker_id は 0。
+## 駒がダメージを受けた。amount は減った HP、hp は受けたあとの HP。
+##
+## 実際に出るのは、原因ごとの子のクラス。原因に固有の値（攻撃した駒など）は、子のクラスだけが持つ。
+## HP の変化だけを追うなら、このクラスとして読めば足りる（`event as UnitDamagedEvent`）。
+##
+## - AttackDamagedEvent: 駒の攻撃（attacker_id）
+## - ExplosionDamagedEvent: 起爆樽の爆発（barrel_cell）
 
 enum Cause {
 	ATTACK,  ## 駒の攻撃
 	EXPLOSION,  ## 起爆樽の爆発
 }
 
-var attacker_id: int
 var unit_id: int
 var amount: int
 var hp: int
 var cause: Cause
-
-
-func _init(
-	by_unit_id: int, damaged_unit_id: int, damage: int, hp_after: int, why := Cause.ATTACK
-) -> void:
-	attacker_id = by_unit_id
-	unit_id = damaged_unit_id
-	amount = damage
-	hp = hp_after
-	cause = why

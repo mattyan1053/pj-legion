@@ -26,7 +26,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var target := battle.unit_by_id(target_id)
 	var amount := Combat.damage(battle, attacker, target)
 	target.hp = maxi(0, target.hp - amount)
-	var events: Array[BattleEvent] = [UnitDamagedEvent.new(attacker.id, target.id, amount, target.hp)]
+	var events: Array[BattleEvent] = [AttackDamagedEvent.new(attacker.id, target.id, amount, target.hp)]
 	if target.hp == 0:
 		events.append(battle.remove_unit(target))
 	events.append(battle.finish_action(attacker))

@@ -25,6 +25,7 @@ func test_move_updates_the_unit_and_reports_the_path() -> void:
 	assert_eq(moved.path[0], Vector2i(0, 0))
 	assert_eq(moved.path[-1], Vector2i(2, 1))
 	assert_eq(moved.path.size(), 4)
+	assert_false(moved.cruise)
 
 
 func test_out_of_range_is_rejected() -> void:
@@ -42,6 +43,17 @@ func test_cruise_reaches_twice_as_far() -> void:
 	var events := battle.apply(MoveAction.new(sniper.id, Vector2i(6, 0), true)).events
 	assert_eq(events.size(), 1)
 	assert_eq(sniper.cell, Vector2i(6, 0))
+	assert_true((events[0] as UnitMovedEvent).cruise)
+
+
+func test_moved_event_keeps_cruise_after_the_action_ends() -> void:
+	# イベントは起きた時点の値を持つ。駒の状態（Unit.cruised）は行動を終えると消えるが、イベントは変わらない。
+	var battle := _battle()
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
+	var moved := battle.apply(MoveAction.new(sniper.id, Vector2i(1, 0), true)).events[0] as UnitMovedEvent
+	battle.apply(WaitAction.new(sniper.id))
+	assert_false(sniper.cruised)
+	assert_true(moved.cruise)
 
 
 func test_occupied_destination_is_rejected() -> void:

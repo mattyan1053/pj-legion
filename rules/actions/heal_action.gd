@@ -25,4 +25,4 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var target := battle.unit_by_id(target_id)
 	var amount := Healing.amount(healer, target)
 	target.hp += amount
-	return [UnitHealedEvent.new(healer.id, target.id, amount, target.hp), battle.finish_action(healer)]
+	return [HealerHealedEvent.new(healer.id, target.id, amount, target.hp), battle.finish_action(healer)]

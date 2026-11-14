@@ -208,6 +208,8 @@ func _queue_barrel_draw_scene() -> void:
 func _finish_if_all_played() -> void:
 	var players: Dictionary = _scene.event_players()
 	for kind: Script in players:
+		if kind == HealerHealedEvent:
+			continue  # 回復役の回復の操作は、まだ画面に無い（docs/battle-view.md の「仮のもの」）
 		if _scene.played.get(kind, 0) == 0:
 			_finish("autoplay: 1 回も再生しなかったイベント: %s" % kind.resource_path, 1)
 			return
