@@ -124,6 +124,8 @@ func _initialize() -> void:
 	# いまの CPU と別の版の対戦の [いまの CPU の勝ち, 別の版の勝ち, 決着しなかった局]。全体と、ステージごと。
 	var versus: Array[int] = [0, 0, 0]
 	var versus_by_stage: Dictionary[int, Array] = {}
+	# 駒の種類ごとの表を、[いまの CPU の駒, 別の版の駒] に分けたもの。局数も同じ並び（将の行に使う）。
+	var versus_by_kind: Array[Dictionary] = [{}, {}]
 	var started := Time.get_ticks_msec()
 
 	for game in games:
@@ -146,6 +148,12 @@ func _initialize() -> void:
 			var slot := 2 if outcome.winner < 0 else (1 if outcome.winner == rival_side else 0)
 			versus[slot] += 1
 			versus_by_stage.get_or_add(stage, [0, 0, 0])[slot] += 1
+			for side in 2:
+				var table: Dictionary = versus_by_kind[1 if side == rival_side else 0]
+				for kind: UnitKind.Id in outcome.by_side_kind[side]:
+					var row: Array = table.get_or_add(kind, [0, 0, 0, 0, 0])
+					for i in row.size():
+						row[i] += outcome.by_side_kind[side][kind][i]
 
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
@@ -230,15 +238,12 @@ func _initialize() -> void:
 	])
 	print("")
 	print("駒の種類ごと（1 体あたり。将は 1 局・1 体あたり）")
-	var kind_ids := by_kind.keys()
-	kind_ids.sort()
-	for kind: UnitKind.Id in kind_ids:
-		var row: Array = by_kind[kind]
-		var count: int = row[0] if row[0] > 0 else games * 2
-		print("  %-12s 雇った %4d 体  倒された %3.0f%%  与えたダメージ %5.1f  倒した %4.2f  進化した %3.0f%%" % [
-			UnitKind.display_name(kind), row[0], 100.0 * row[1] / count, float(row[2]) / count,
-			float(row[3]) / count, 100.0 * row[4] / count,
-		])
+	_print_kinds(by_kind, games * 2)
+	if rival != null:
+		print("  うち、いまの CPU の駒")
+		_print_kinds(versus_by_kind[0], games)
+		print("  うち、別の版の駒")
+		_print_kinds(versus_by_kind[1], games)
 	print("")
 	print("スキルを使った回数（その駒を雇った 1 体あたり）")
 	for skill in Skills.ALL:
@@ -251,6 +256,20 @@ func _initialize() -> void:
 	if rejected > 0:
 		printerr("断られた行動が %d 回あった（CPU の不具合）" % rejected)
 	quit(1 if rejected > 0 else 0)
+
+
+## 駒の種類ごとの表（種類 -> [雇った数, 倒された数, 与えたダメージ, 倒した数, 進化した数]）を、1 体あたりで出す。
+## kings は、将の行を割る数（将は雇った数が 0 なので、出た局の数で割る）。
+func _print_kinds(by_kind: Dictionary, kings: int) -> void:
+	var kind_ids := by_kind.keys()
+	kind_ids.sort()
+	for kind: UnitKind.Id in kind_ids:
+		var row: Array = by_kind[kind]
+		var count: int = row[0] if row[0] > 0 else kings
+		print("  %-12s 雇った %4d 体  倒された %3.0f%%  与えたダメージ %5.1f  倒した %4.2f  進化した %3.0f%%" % [
+			UnitKind.display_name(kind), row[0], 100.0 * row[1] / count, float(row[2]) / count,
+			float(row[3]) / count, 100.0 * row[4] / count,
+		])
 
 
 ## その駒に入った経験値の合計（当たりの経験値が hit のとき）。
