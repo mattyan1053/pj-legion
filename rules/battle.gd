@@ -4,9 +4,27 @@ extends RefCounted
 ##
 ## 状態を変えるのは apply() だけ。行動（Action）を受け取り、起きたこと（イベント）の列を返す。
 ## 見た目の側はイベントを順に再生する。受け付けられない行動には空の列を返し、状態は変えない。
+##
+## 1 ターンは プレイヤー1 → プレイヤー2 → 中立 のフェーズで進む。
+## プレイヤーのフェーズでは、そのプレイヤーの駒が 1 体ずつ「移動 → 攻撃か待機」で行動する。
+## 行動中の駒がいる間は、ほかの駒は行動を始められない。
 
 var board: Board
 var units: Array[Unit] = []
+var turn := 1
+## いまのフェーズ。どの陣営の番かで表す。
+var phase := Unit.Side.PLAYER1
+## 行動の途中（動いたが、攻撃も待機もしていない）の駒の番号。いなければ 0。
+var acting_unit_id := 0
+## 勝った陣営（Unit.Side の値）。決着していなければ -1。決着したあとは、どの行動も受け付けない。
+var winner := -1
+## プレイヤーごとの、敵の本陣を占拠し続けたフェーズの数。添字がプレイヤー番号。
+var capture_turns: Array[int] = [0, 0]
+## 行動の途中の駒が動く前の capture_turns。移動を取り消したときに戻す。
+var capture_turns_before_move: Array[int] = [0, 0]
+
+## 敵の本陣をこの回数だけ自分のフェーズの終わりまで占拠し続けたら勝ち。
+const CAPTURE_TURNS_TO_WIN := 3
 
 var _next_unit_id := 1
 
@@ -23,6 +41,14 @@ func add_unit(kind: UnitKind.Id, side: Unit.Side, cell: Vector2i) -> Unit:
 	_next_unit_id += 1
 	units.append(unit)
 	return unit
+
+
+## 倒れた駒を盤から取り除く。
+func remove_unit(unit: Unit) -> UnitDefeatedEvent:
+	units.erase(unit)
+	if acting_unit_id == unit.id:
+		acting_unit_id = 0
+	return UnitDefeatedEvent.new(unit)
 
 
 func unit_at(cell: Vector2i) -> Unit:
@@ -51,8 +77,76 @@ func is_in_enemy_zoc(cell: Vector2i, side: Unit.Side) -> bool:
 	return false
 
 
+## その駒が、いま行動できるか（自分のフェーズで、行動済みでなく、ほかの駒が行動の途中でない）。
+func can_act(unit: Unit) -> bool:
+	return (
+		unit != null
+		and unit.side == phase
+		and phase != Unit.Side.NEUTRAL
+		and not unit.acted
+		and (acting_unit_id == 0 or acting_unit_id == unit.id)
+	)
+
+
+## 駒の行動を終える（行動済みにする）。
+func finish_action(unit: Unit) -> UnitActedEvent:
+	unit.acted = true
+	unit.has_moved = false
+	unit.cruised = false
+	if acting_unit_id == unit.id:
+		acting_unit_id = 0
+	return UnitActedEvent.new(unit.id)
+
+
+func is_over() -> bool:
+	return winner != -1
+
+
+## player が敵の本陣に自分の駒を乗せているか。
+func occupies_enemy_hq(player: Unit.Side) -> bool:
+	if board.hq_cells.size() < 2:
+		return false
+	var occupant := unit_at(board.hq_cells[1 - player])
+	return occupant != null and occupant.side == player
+
+
+## player のフェーズの終わりに、敵の本陣の占拠を数える。乗せていれば 1 進め、いなければ 0 に戻す。
+## 数が変わったときだけイベントを出す。規定の回数に達したら勝ち。
+func count_capture(player: Unit.Side) -> Array:
+	var before := capture_turns[player]
+	capture_turns[player] = before + 1 if occupies_enemy_hq(player) else 0
+	var events: Array = []
+	if capture_turns[player] != before:
+		events.append(CaptureProgressEvent.new(player, capture_turns[player]))
+	if capture_turns[player] >= CAPTURE_TURNS_TO_WIN:
+		winner = player
+		events.append(GameWonEvent.new(player, GameWonEvent.Reason.HQ_CAPTURED))
+	return events
+
+
 ## 行動を受け付けて状態を進め、起きたことを返す。受け付けられなければ空の列。
 func apply(action: Variant) -> Array:
-	if not action.is_valid(self):
+	if is_over() or not action.is_valid(self):
 		return []
-	return action.execute(self)
+	var events: Array = action.execute(self)
+	events.append_array(_after_action(events))
+	return events
+
+
+## 行動のあとに決まること。
+## - 将が倒れたら、相手のプレイヤーの勝ち
+## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
+func _after_action(events: Array) -> Array:
+	var extra: Array = []
+	for event: Variant in events:
+		var defeated := event as UnitDefeatedEvent
+		if defeated == null or defeated.kind != UnitKind.Id.KING or is_over():
+			continue
+		if defeated.side == Unit.Side.PLAYER1 or defeated.side == Unit.Side.PLAYER2:
+			winner = 1 - defeated.side
+			extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.KING_DEFEATED))
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if capture_turns[player] > 0 and not occupies_enemy_hq(player):
+			capture_turns[player] = 0
+			extra.append(CaptureProgressEvent.new(player, 0))
+	return extra
