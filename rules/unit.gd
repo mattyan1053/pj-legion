@@ -43,6 +43,8 @@ var acted := false
 var has_moved := false
 var move_origin: Vector2i
 var cruised := false
+## スキルをまた使えるまでの残り（docs/active-skills.md）。0 なら使える。自分のフェーズの始めに 1 減る。
+var skill_cooldown := 0
 ## 中立の駒が守る場所（エナジー・コアなら、湧いた結晶泉）。プレイヤーの駒では Board.NO_CELL。
 var home_cell := Board.NO_CELL
 

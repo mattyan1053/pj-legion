@@ -3,7 +3,7 @@ extends RefCounted
 ## 盤の上の効果（盾、煙幕、聖域。FieldEffect）を置く・消す・期間を進める処理と、効果の計算。docs/field-effects.md。
 ##
 ## どこに何があるかは Board が持つ（Board.field_effects）。ここの問い合わせは状態を変えない。
-## 状態を変えるのは place_*（スキルの行動が呼ぶ。プレイヤーの行動としてはまだ無い）、start_phase（EndPhaseAction が呼ぶ）、
+## 状態を変えるのは place_*（スキルの効果が呼ぶ。rules/skills/）、start_phase（EndPhaseAction が呼ぶ）、
 ## 盾への攻撃（AttackBarricadeAction）と、駒への攻撃（Combat.strike。煙幕が無効にする）。
 ##
 ## - 盾: 入れない（Board.is_walkable）。間に盾がある攻撃は届かない（Combat.reaches）。攻撃されると攻撃力のぶん耐久力が減る

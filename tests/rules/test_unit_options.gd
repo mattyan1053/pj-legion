@@ -46,6 +46,10 @@ func _assert_matches_rules(battle: Battle, unit_id: int, message: String) -> voi
 				options.barrel_cells.has(cell), battle.can_apply(AttackBarrelAction.new(unit_id, cell)),
 				"樽 %s %s" % [cell, message]
 			)
+			assert_eq(
+				options.skill_cells.has(cell), battle.can_apply(UseSkillAction.new(unit_id, cell)),
+				"スキル %s %s" % [cell, message]
+			)
 	assert_eq(options.can_wait, battle.can_apply(WaitAction.new(unit_id)), "待機 %s" % message)
 	assert_eq(options.can_undo, battle.can_apply(UndoMoveAction.new(unit_id)), "取り消し %s" % message)
 	assert_eq(options.is_empty(), options.actions().is_empty(), "空かどうか %s" % message)

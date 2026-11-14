@@ -8,7 +8,7 @@
 テスト: `tests/rules/test_field_effects.gd`。
 
 スキルが盤のマスに一定の間だけ置くもの。ここにあるのは効果の側の約束だけで、**誰が・いつ・どこへ置くか（スキル、クールダウン）は
-`active-skills` の移植で入れる**。いまはプレイヤーの行動として置く手段は無い。
+スキルの側が決める**（`docs/active-skills.md`、`docs/skills/`）。
 
 ## 層
 
@@ -96,10 +96,10 @@
 つまり相手のフェーズを 2 回守る。ターン 1 のプレイヤー1 が置いた聖域は、ターン 2・3・4 のプレイヤー1 の始めに回復し、
 ターン 4 の回復のあとに消える。
 
-**スキルのクールダウンも、同じ数え方（持ち主のフェーズの始めに 1 減る）にする**つもりで、ここをそろえてある。
+**スキルのクールダウンも、同じ数え方（持ち主のフェーズの始めに 1 減る）**（`docs/active-skills.md`）。
 
 フェーズの始めに起きることの順は、`PhaseStartedEvent`、回復の泉、再生の特性（`docs/turn-phase.md`）、聖域の回復、
-効果の残りが減る（`FieldEffectTickedEvent`。0 になったものは、かわりに `FieldEffectRemovedEvent`（`EXPIRED`））。
+効果の残りが減る（`FieldEffectTickedEvent`。0 になったものは、かわりに `FieldEffectRemovedEvent`（`EXPIRED`））、スキルのクールダウン。
 同じフェーズの始めの効果どうしは、効果の番号の順。
 
 ## イベント
