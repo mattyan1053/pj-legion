@@ -52,6 +52,8 @@ class Outcome:
 	var skill_uses: Dictionary[Skill.Id, int] = {}
 	## いまの行動でスキルのダメージを受けた駒 -> 使った駒（同じスキルで何体も同時に倒れるので、撃破をここから数える）。
 	var skill_hits: Dictionary[int, int] = {}
+	## いまの行動のスキルで、プレイヤーの駒が倒れたか（スキルの経験値は、いちばん多い 1 体ぶん = プレイヤーの駒の撃破になる）。
+	var skill_defeated_player := false
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
 
@@ -131,7 +133,9 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 			_kind_row(outcome, outcome.kinds[burned.user_id])[2] += burned.amount
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
-		outcome.last_defeated_neutral = defeated.side == Unit.Side.NEUTRAL
+		if outcome.skill_hits.has(defeated.unit_id) and defeated.side != Unit.Side.NEUTRAL:
+			outcome.skill_defeated_player = true
+		outcome.last_defeated_neutral = defeated.side == Unit.Side.NEUTRAL and not outcome.skill_defeated_player
 		var killer := 0
 		if outcome.last_attacked_id == defeated.unit_id:
 			killer = outcome.last_attacker_id
@@ -157,6 +161,7 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 				tally[3] += 1
 	elif event is UnitActedEvent:
 		outcome.skill_hits.clear()
+		outcome.skill_defeated_player = false
 	elif event is SkillUsedEvent:
 		var used := event as SkillUsedEvent
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
