@@ -43,7 +43,7 @@ func test_neutrals() -> void:
 	assert_true(UnitKind.is_neutral(UnitKind.Id.MINION))
 	assert_true(UnitKind.is_neutral(UnitKind.Id.ELITE_MINION))
 	assert_false(UnitKind.is_neutral(UnitKind.Id.KING))
-	assert_eq(UnitKind.max_hp(UnitKind.Id.ELITE_MINION), 100)
+	assert_eq(UnitKind.max_hp(UnitKind.Id.ELITE_MINION), 80)
 	assert_eq(UnitKind.power(UnitKind.Id.ELITE_MINION), 10)
 
 

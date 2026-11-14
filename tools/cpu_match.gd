@@ -33,7 +33,8 @@ class Outcome:
 	## 倒した中立の駒、倒されたプレイヤーの駒（将を除く）。
 	var neutral_kills: Array[int] = [0, 0]
 	var losses: Array[int] = [0, 0]
-	## 倒れた中ボス。[倒れたターン, 倒した陣営（いなければ -1）] の列（docs/neutral-mid-boss.md）。
+	## 倒れた中ボス。[倒れたターン, 倒した陣営（いなければ -1）, 中ボスの番号] の列（docs/neutral-mid-boss.md）。
+	## 倒した陣営は、その中ボスの聖遺物（Relics.of_boss）を受け取っている。
 	var mid_boss_kills: Array[Array] = []
 	## 駒の番号 -> [当てた回数, プレイヤーの駒を倒した回数, 中立の駒を倒した回数, 回復した回数, 中ボスを倒した回数]（経験値が入ったものだけ）。
 	var gains: Dictionary[int, Array] = {}
@@ -171,7 +172,8 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 			outcome.losses[defeated.side] += 1
 			_bump(outcome, defeated.unit_id, 1, 1)
 	elif event is MidBossDefeatedEvent:
-		outcome.mid_boss_kills.append([battle.turn, (event as MidBossDefeatedEvent).slayer_side])
+		var slain := event as MidBossDefeatedEvent
+		outcome.mid_boss_kills.append([battle.turn, slain.slayer_side, slain.boss_index])
 	elif event is ExperienceGainedEvent:
 		var gained := event as ExperienceGainedEvent
 		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0, 0])

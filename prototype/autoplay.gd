@@ -495,7 +495,7 @@ func _queue_neutral_scene() -> void:
 		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった"))
 
 
-## 中ボスが現れ、弱った別の中ボスに止めを刺すと、倒した陣営が知らされる。
+## 中ボスが現れ、弱った別の中ボスに止めを刺すと、倒した陣営が知らされ、その陣営が聖遺物を受け取る。
 func _queue_mid_boss_scene() -> void:
 	var board := _small_board(Vector2i(8, 5))
 	board.mid_boss_cells = [Vector2i(2, 2), Vector2i(6, 2)]
@@ -506,6 +506,7 @@ func _queue_mid_boss_scene() -> void:
 	weak.home_cell = weak.cell
 	weak.hp = 1
 	var raider := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER1, Vector2i(2, 4))
+	var raider_max_hp := raider.max_hp()
 
 	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(raider.cell))
@@ -513,7 +514,11 @@ func _queue_mid_boss_scene() -> void:
 	_scripted.append(func() -> void: _scene.click_cell(weak.cell))
 	_scripted.append(func() -> void:
 		_expect(_scene.played.get(MidBossDefeatedEvent, 0) == 1, "中ボスを倒したことを再生しなかった")
-		_expect(battle.mid_boss_slayers.get(0, -1) == Unit.Side.PLAYER1, "倒した陣営が控えられていない"))
+		_expect(battle.mid_boss_slayers.get(0, -1) == Unit.Side.PLAYER1, "倒した陣営が控えられていない")
+		_expect(_scene.played.get(RelicGainedEvent, 0) == 1, "聖遺物を受け取ったことを再生しなかった")
+		_expect(_scene.relic_text(0) == "英知" and _scene.relic_text(1) == "", "上の帯に聖遺物が出ていない")
+		_expect(raider.max_hp() == raider_max_hp + Relics.WISDOM_MAX_HP, "英知の聖遺物が効いていない")
+		_expect(_scene.view_hps()[raider.id] == raider.hp, "聖遺物で増えた HP が、駒の札に出ていない"))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
