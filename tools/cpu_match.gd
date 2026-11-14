@@ -72,10 +72,14 @@ static func create(
 
 
 ## battle を、両方のプレイヤーを CPU にして、決着するか max_turns を超えるまで進める。battle は書き換わる。
-static func play(battle: Battle, max_turns: int, cpu: CpuPlayer = null) -> Outcome:
+## cpu がプレイヤー1 を、second がプレイヤー2 を動かす（渡さなければ、どちらも同じ CpuPlayer）。
+## 別の版の CPU と対戦させるときに、片方へ渡す。next_action(対戦) を持つものなら何でもよい。
+static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second: RefCounted = null) -> Outcome:
 	var outcome := Outcome.new()
 	if cpu == null:
 		cpu = CpuPlayer.new()
+	if second == null:
+		second = cpu
 	for unit in battle.units:
 		if unit.side == Unit.Side.NEUTRAL:
 			continue
@@ -86,7 +90,8 @@ static func play(battle: Battle, max_turns: int, cpu: CpuPlayer = null) -> Outco
 	while not battle.is_over() and battle.turn <= max_turns:
 		var mover := battle.phase
 		var started := Time.get_ticks_usec()
-		var action := cpu.next_action(battle)
+		var thinker := second if mover == Unit.Side.PLAYER2 else cpu
+		var action: BattleAction = thinker.call(&"next_action", battle)
 		var spent := (Time.get_ticks_usec() - started) / 1000.0
 		outcome.think_msec += spent
 		outcome.slowest_msec = maxf(outcome.slowest_msec, spent)
