@@ -18,6 +18,9 @@ var _pivot: Node3D
 var _target_yaw := 0.0
 var _pitch_index := 1
 var _target_distance := 22.0
+## 寄っていく先（focus_on で決める）。手で動かしたら、寄るのをやめる。
+var _focus: Vector3
+var _focusing := false
 
 
 func _ready() -> void:
@@ -49,10 +52,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			_target_distance = minf(MAX_DISTANCE, _target_distance * 1.1)
 
 
+## point が画面の中央に来るよう、なめらかに寄る。
+func focus_on(point: Vector3) -> void:
+	_focus = Vector3(point.x, 0.0, point.z)
+	_focusing = true
+
+
 func _process(delta: float) -> void:
 	_pan(delta)
 
 	var weight := 1.0 - exp(-SMOOTHING * delta)
+	if _focusing:
+		position = position.lerp(_focus, weight * 0.6)
+		if position.distance_to(_focus) < 0.02:
+			_focusing = false
 	rotation.y = lerpf(rotation.y, _target_yaw, weight)
 	_pivot.rotation_degrees.x = lerpf(
 		_pivot.rotation_degrees.x, -PITCH_PRESETS[_pitch_index], weight
@@ -73,6 +86,7 @@ func _pan(delta: float) -> void:
 	if input == Vector3.ZERO:
 		return
 
+	_focusing = false
 	# 画面の上下左右に合わせて動くよう、いまの向きで回す。
 	var move := input.normalized().rotated(Vector3.UP, rotation.y)
 	position += move * PAN_SPEED * delta
