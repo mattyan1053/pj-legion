@@ -16,7 +16,7 @@
   樽の爆発の見込み（届くマス、巻き込む駒）は `MapObject.blast_cells` / `blast_victims` / `blast_damage` で出す。
   回復の見込み（回復量とあとの HP）は `Healing.amount()` で出す。
 - スキルの見込みは、`Skills.preview()`（実際に使うのと同じ処理を複製の上で走らせたイベントの列）から出す。
-  どのスキルにも同じ読み方を使う（置かれる効果、ダメージ、回復）。
+  どのスキルにも同じ読み方を使う（置かれる効果、ダメージ、回復、入る経験値。何も起きなければ「何も起きない」）。
 - イベントの種類と再生するメソッドの対応は `board_prototype.gd` の `event_players()` に並べる。
   `rules/events/` にあるのに載っていない種類があると、テスト（`tests/prototype/test_event_playback.gd`）が落ちる。
 
@@ -27,6 +27,7 @@
 | `MoveUndoneEvent` | 動く前のマスへ戻す |
 | `AttackDamagedEvent` | 攻撃の動き → 被弾の動き、ダメージの数、HP のバーの更新 |
 | `ExplosionDamagedEvent` | 被弾の動き、ダメージの数、HP のバーの更新だけを、駒ごとに続けて見せる |
+| `SkillDamagedEvent` | 爆発と同じ（使った駒の動きは `SkillUsedEvent` が見せる）。数の色だけ違う |
 | `HealerHealedEvent` | 回復役が相手のほうを向いて手を振る → 回復の数、HP のバーの更新、光 |
 | `SpringHealedEvent` | 回復の数、HP のバーの更新、光 |
 | `RegenerationHealedEvent` | 泉と同じ（回復の数、HP のバーの更新、光） |

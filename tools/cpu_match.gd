@@ -50,6 +50,8 @@ class Outcome:
 	var last_defeated_neutral := false
 	## スキル -> 使った回数。
 	var skill_uses: Dictionary[Skill.Id, int] = {}
+	## いまの行動でスキルのダメージを受けた駒 -> 使った駒（同じスキルで何体も同時に倒れるので、撃破をここから数える）。
+	var skill_hits: Dictionary[int, int] = {}
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
 
@@ -121,14 +123,22 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 			_kind_row(outcome, outcome.kinds[hit.attacker_id])[2] += hit.amount
 	elif event is ExplosionDamagedEvent:
 		outcome.last_attacked_id = 0  # 樽の爆発で倒れた駒は、誰の撃破にも数えない
+	elif event is SkillDamagedEvent:
+		var burned := event as SkillDamagedEvent
+		outcome.last_attacked_id = 0
+		outcome.skill_hits[burned.unit_id] = burned.user_id
+		if outcome.kinds.has(burned.user_id) and outcome.kinds.has(burned.unit_id):
+			_kind_row(outcome, outcome.kinds[burned.user_id])[2] += burned.amount
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
 		outcome.last_defeated_neutral = defeated.side == Unit.Side.NEUTRAL
-		if (
-			defeated.side != Unit.Side.NEUTRAL and outcome.last_attacked_id == defeated.unit_id
-			and outcome.kinds.has(outcome.last_attacker_id)
-		):
-			_kind_row(outcome, outcome.kinds[outcome.last_attacker_id])[3] += 1
+		var killer := 0
+		if outcome.last_attacked_id == defeated.unit_id:
+			killer = outcome.last_attacker_id
+		elif outcome.skill_hits.has(defeated.unit_id):
+			killer = outcome.skill_hits[defeated.unit_id]  # 同じスキルで、同時に何体も倒れる
+		if defeated.side != Unit.Side.NEUTRAL and outcome.kinds.has(killer):
+			_kind_row(outcome, outcome.kinds[killer])[3] += 1
 		outcome.last_attacked_id = 0
 		if defeated.side == Unit.Side.NEUTRAL:
 			outcome.neutral_kills[mover] += 1
@@ -145,6 +155,8 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 				tally[2 if outcome.last_defeated_neutral else 1] += 1
 			ExperienceGainedEvent.Reason.HEAL:
 				tally[3] += 1
+	elif event is UnitActedEvent:
+		outcome.skill_hits.clear()
 	elif event is SkillUsedEvent:
 		var used := event as SkillUsedEvent
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1

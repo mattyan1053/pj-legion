@@ -8,10 +8,12 @@ extends BattleEvent
 ##
 ## - AttackDamagedEvent: 駒の攻撃（attacker_id）
 ## - ExplosionDamagedEvent: 起爆樽の爆発（barrel_cell）
+## - SkillDamagedEvent: ダメージのあるスキル（user_id、skill）
 
 enum Cause {
 	ATTACK,  ## 駒の攻撃
 	EXPLOSION,  ## 起爆樽の爆発
+	SKILL,  ## ダメージのあるスキル
 }
 
 var unit_id: int

@@ -80,7 +80,14 @@ static func preview(unit: Unit, amount: int) -> Outcome:
 static func attack_experience(battle: Battle, attacker: Unit, target: Unit) -> int:
 	if FieldEffects.smoke_covering(battle, attacker.cell, target) != null:
 		return 0
-	if Combat.damage(battle, attacker, target) < target.hp:
+	return damage_experience(target, maxi(0, target.hp - Combat.damage(battle, attacker, target)))
+
+
+## 相手 target（ダメージを受ける前の状態）の HP を hp_after まで減らしたときに入る経験値。
+## 当たって生き残れば HIT_EXPERIENCE、倒せば DEFEAT_EXPERIENCE（中立の駒なら NEUTRAL_DEFEAT_EXPERIENCE）。
+## 駒の攻撃（attack_experience）とダメージのあるスキル（Skills.deal_damage）が使う。
+static func damage_experience(target: Unit, hp_after: int) -> int:
+	if hp_after > 0:
 		return HIT_EXPERIENCE
 	return NEUTRAL_DEFEAT_EXPERIENCE if target.side == Unit.Side.NEUTRAL else DEFEAT_EXPERIENCE
 

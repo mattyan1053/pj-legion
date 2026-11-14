@@ -15,6 +15,8 @@ extends RefCounted
 enum Id {
 	TACTICAL_BARRICADE,  ## 戦術バリケード（シールドトルーパー）
 	SAINT_PLACE,  ## セイントプレイス（プリースト）
+	SMOKE_GRENADE,  ## スモークグレネード（コマンドー）
+	FIREBALL,  ## ファイアボール（ソーサラー）
 }
 
 

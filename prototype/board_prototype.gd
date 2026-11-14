@@ -484,6 +484,7 @@ static func event_players() -> Dictionary:
 		MoveUndoneEvent: &"_play_undone",
 		AttackDamagedEvent: &"_play_attack_damaged",
 		ExplosionDamagedEvent: &"_play_explosion_damaged",
+		SkillDamagedEvent: &"_play_skill_damaged",
 		HealerHealedEvent: &"_play_healer_healed",
 		SpringHealedEvent: &"_play_spring_healed",
 		RegenerationHealedEvent: &"_play_regeneration_healed",
@@ -574,6 +575,11 @@ func _play_attack_damaged(event: AttackDamagedEvent) -> void:
 ## 爆発のダメージ（攻撃した駒がいない）は、被弾だけを続けて見せる。
 func _play_explosion_damaged(event: ExplosionDamagedEvent) -> void:
 	await _play_hit(event, Color("ffb14a"), 0.15)
+
+
+## スキルのダメージ（使った駒の動きは SkillUsedEvent が見せた）は、被弾だけを続けて見せる。
+func _play_skill_damaged(event: SkillDamagedEvent) -> void:
+	await _play_hit(event, Color("ff7a4a"), 0.15)
 
 
 func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
@@ -1086,6 +1092,12 @@ func _skill_forecast(user: Unit, target: Vector2i) -> String:
 			])
 		elif healed != null:
 			lines.append("%s が +%d → HP %d" % [battle.unit_by_id(healed.unit_id).display_name(), healed.amount, healed.hp])
+		elif event is ExperienceGainedEvent:
+			lines.append("経験 +%d" % (event as ExperienceGainedEvent).amount)
+		elif event is LevelUpEvent:
+			lines.append("（レベルアップ）")
+	if lines.is_empty():
+		lines.append("何も起きない")
 	return "\n".join(lines)
 
 

@@ -132,8 +132,13 @@ static func smoke_covering(battle: Battle, from: Vector2i, target: Unit) -> Fiel
 		return null
 	if Combat.distance(from, target.cell) < Combat.RANGED_DISTANCE:
 		return null
+	return smoke_of(battle, target)
+
+
+## unit のいるマスにある、unit の陣営の煙幕。いくつも重なっていれば番号のいちばん小さいもの。無ければ null。
+static func smoke_of(battle: Battle, unit: Unit) -> FieldEffect:
 	for effect in battle.board.field_effects:
-		if effect.type == FieldEffect.Type.SMOKE and effect.side == target.side and effect.cells.has(target.cell):
+		if effect.type == FieldEffect.Type.SMOKE and effect.side == unit.side and effect.cells.has(unit.cell):
 			return effect
 	return null
 

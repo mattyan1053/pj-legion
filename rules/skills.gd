@@ -14,6 +14,8 @@ extends RefCounted
 static var ALL: Array[Skill] = [
 	TacticalBarricadeSkill.new(),
 	SaintPlaceSkill.new(),
+	SmokeGrenadeSkill.new(),
+	FireballSkill.new(),
 ]
 
 static var _by_kind: Dictionary[UnitKind.Id, Skill] = {}
@@ -76,6 +78,35 @@ static func use(battle: Battle, unit: Unit, target: Vector2i) -> Array[BattleEve
 	var events: Array[BattleEvent] = [SkillUsedEvent.new(unit.id, skill.id(), target, unit.skill_cooldown)]
 	events.append_array(skill.apply(battle, unit, target))
 	events.append(battle.finish_action(unit))
+	return events
+
+
+## ダメージのあるスキルの共通の入口（スキルの apply が呼ぶ）。user のスキルが、hits の駒に、それぞれの量のダメージを同時に与える。
+## hits は [駒, 量] の列（並びのとおりにイベントが出る。ふつうは上の行から、左の列から）。起きたことを返す:
+## 1. 駒ごとの SkillDamagedEvent（同時に当たる。間にほかのイベントをはさまない。量は、残りの HP より多くてもそのまま）
+## 2. HP が 0 になった駒の UnitDefeatedEvent（同じ並び）
+## 3. user に入る経験値（Growth.damage_experience で相手ごとに数え、いちばん多く入る 1 体ぶんだけ）
+## 将が倒れたときの決着は、ほかの行動と同じに Battle.settle が決める。
+static func deal_damage(battle: Battle, user: Unit, hits: Array[Array]) -> Array[BattleEvent]:
+	var skill := of(user).id()
+	var events: Array[BattleEvent] = []
+	var experience := 0
+	var defeated := false
+	for hit in hits:
+		var victim: Unit = hit[0]
+		var amount: int = hit[1]
+		victim.hp = maxi(0, victim.hp - amount)
+		events.append(SkillDamagedEvent.new(user.id, skill, victim.id, amount, victim.hp))
+		var gained := Growth.damage_experience(victim, victim.hp)
+		if gained > experience:
+			experience = gained
+			defeated = victim.hp == 0
+	for hit in hits:
+		var victim: Unit = hit[0]
+		if victim.hp == 0 and battle.units.has(victim):
+			events.append(battle.remove_unit(victim))
+	var reason := ExperienceGainedEvent.Reason.DEFEAT if defeated else ExperienceGainedEvent.Reason.HIT
+	events.append_array(Growth.gain(user, experience, reason))
 	return events
 
 
