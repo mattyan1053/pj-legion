@@ -115,6 +115,26 @@ func test_leaving_the_hq_resets_the_count_at_once() -> void:
 	assert_eq(reset.turns, 0)
 
 
+func test_undoing_a_move_off_the_hq_restores_the_count() -> void:
+	var battle := _battle()
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(2, 2))
+	battle.apply(MoveAction.new(sniper.id, P2_HQ))
+	battle.apply(EndPhaseAction.new())
+	_skip_to_next_p1_phase(battle)
+	battle.apply(EndPhaseAction.new())
+	_skip_to_next_p1_phase(battle)
+	assert_eq(battle.capture_turns[P1], 2)
+	battle.apply(MoveAction.new(sniper.id, Vector2i(2, 1)))
+	assert_eq(battle.capture_turns[P1], 0)
+	var events := battle.apply(UndoMoveAction.new(sniper.id))
+	assert_eq(battle.capture_turns[P1], 2)
+	var restored := events[-1] as CaptureProgressEvent
+	assert_true(restored != null)
+	assert_eq(restored.turns, 2)
+	events = battle.apply(EndPhaseAction.new())
+	assert_eq(battle.winner, P1)
+
+
 func test_losing_the_occupier_resets_the_count() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(2, 2))

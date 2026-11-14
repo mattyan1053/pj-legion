@@ -20,6 +20,8 @@ var acting_unit_id := 0
 var winner := -1
 ## プレイヤーごとの、敵の本陣を占拠し続けたフェーズの数。添字がプレイヤー番号。
 var capture_turns: Array[int] = [0, 0]
+## 行動の途中の駒が動く前の capture_turns。移動を取り消したときに戻す。
+var capture_turns_before_move: Array[int] = [0, 0]
 
 ## 敵の本陣をこの回数だけ自分のフェーズの終わりまで占拠し続けたら勝ち。
 const CAPTURE_TURNS_TO_WIN := 3
