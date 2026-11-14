@@ -1,0 +1,96 @@
+extends "res://tests/base_test.gd"
+## 画面に出す「いま選べること」が、ルールの受け付けるものと一致すること。
+
+const Maps := preload("res://tests/support/maps.gd")
+const Queries := preload("res://prototype/battle_queries.gd")
+
+const P1 := Unit.Side.PLAYER1
+const P2 := Unit.Side.PLAYER2
+
+
+func _battle() -> Battle:
+	return Maps.battle([
+		"..........",
+		"..#..F....",
+		"..........",
+		"..........",
+	])
+
+
+func test_move_cells_are_exactly_what_the_rules_accept() -> void:
+	var battle := _battle()
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 1))  # 移動力 3
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(6, 2))  # 支配領域を持つ
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 2))  # 味方（止まれない）
+	var cells := Queries.move_cells(battle, unit)
+	for y in battle.board.size.y:
+		for x in battle.board.size.x:
+			var cell := Vector2i(x, y)
+			if cell == unit.cell:
+				assert_false(cells.has(cell), "いまのマスは含まない")
+				continue
+			var normal := battle.can_apply(MoveAction.new(unit.id, cell, false))
+			var cruise := battle.can_apply(MoveAction.new(unit.id, cell, true))
+			assert_eq(cells.has(cell), cruise, "行けるかどうか %s" % cell)
+			if cells.has(cell):
+				assert_eq(cells[cell], not normal, "巡航でしか届かないか %s" % cell)
+
+
+func test_no_move_cells_for_units_that_cannot_move() -> void:
+	var battle := _battle()
+	var mine := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 1))
+	var other := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 3))
+	var enemy := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(8, 1))
+	assert_true(Queries.move_cells(battle, null).is_empty())
+	assert_true(Queries.move_cells(battle, enemy).is_empty(), "相手の番の駒")
+	battle.apply(MoveAction.new(mine.id, Vector2i(1, 0)))
+	assert_true(Queries.move_cells(battle, mine).is_empty(), "もう動いた駒")
+	assert_true(Queries.move_cells(battle, other).is_empty(), "ほかの駒が行動の途中")
+	battle.apply(WaitAction.new(mine.id))
+	assert_true(Queries.move_cells(battle, mine).is_empty(), "行動済みの駒")
+	assert_false(Queries.move_cells(battle, other).is_empty())
+
+
+func test_attack_targets_are_what_the_rules_accept() -> void:
+	var battle := _battle()
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 2))  # 射程 4
+	var near := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 2))
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(9, 2))  # 届かない
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 3))  # 味方
+	assert_eq(Queries.attack_targets(battle, sniper), [near] as Array[Unit])
+	assert_true(Queries.attack_targets(battle, near).is_empty(), "相手の番の駒は攻撃できない")
+	assert_true(Queries.attack_targets(battle, null).is_empty())
+
+
+func test_no_attack_targets_after_cruising() -> void:
+	var battle := _battle()
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 2))
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 2))
+	battle.apply(MoveAction.new(sniper.id, Vector2i(1, 3), true))
+	assert_true(Queries.attack_targets(battle, sniper).is_empty())
+
+
+func test_inspect_cells_work_for_any_unit() -> void:
+	var battle := _battle()
+	var enemy := battle.add_unit(UnitKind.Id.COMMANDO, P2, Vector2i(8, 2))
+	var cells := Queries.inspect_cells(battle, enemy)
+	assert_true(cells.has(Vector2i(8, 2)))
+	assert_true(cells.has(Vector2i(2, 2)), "移動力 6")
+	assert_false(cells.has(Vector2i(1, 2)))
+	assert_true(Queries.inspect_cells(battle, null).is_empty())
+
+
+func test_counts_and_king() -> void:
+	var battle := _battle()
+	var king := battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 0))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 2))
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(8, 2))
+	assert_eq(Queries.unit_count(battle, P1), 2)
+	assert_eq(Queries.unit_count(battle, P2), 1)
+	assert_eq(Queries.king_of(battle, P1), king)
+	assert_eq(Queries.king_of(battle, P2), null)
+	assert_eq(Queries.unacted_count(battle), 2)
+	battle.apply(WaitAction.new(sniper.id))
+	assert_eq(Queries.unacted_count(battle), 1)
+	battle.apply(EndPhaseAction.new())
+	assert_eq(Queries.unacted_count(battle), 1, "プレイヤー2 の番")
