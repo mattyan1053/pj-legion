@@ -71,6 +71,7 @@ func _run() -> void:
 	for name: String in _names:
 		_scene.setup_panel().visible = false
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
+		_scene.set_camera_pitch(OrbitCamera.DEFAULT_PITCH)  # 角度を変える場面のあとも、ほかの場面は始めの角度で撮る
 		_new_battle()
 		var ok: bool = await call("_scene_" + name)
 		if not ok:

@@ -10,6 +10,8 @@ const MIN_PITCH := 30.0
 const MAX_PITCH := 85.0
 ## R で順に移る角度（度。浅い順）。
 const PITCH_PRESETS: Array[float] = [35.0, 50.0, 68.0]
+## 始めの見下ろす角度（度）。
+const DEFAULT_PITCH := 50.0
 const MIN_DISTANCE := 8.0
 const MAX_DISTANCE := 45.0
 const PAN_SPEED := 14.0
@@ -25,7 +27,7 @@ var drag_sensitivity := 0.008
 var _pivot: Node3D
 var _target_yaw := 0.0
 ## 見下ろす角度の行き先（度）。
-var _target_pitch := PITCH_PRESETS[1]
+var _target_pitch := DEFAULT_PITCH
 var _target_distance := 22.0
 ## 寄っていく先（focus_on で決める）。手で動かしたら、寄るのをやめる。
 var _focus: Vector3
