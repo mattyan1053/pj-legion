@@ -5,7 +5,8 @@ extends Node
 ## 対戦の場面は対戦の画面（battle_screen.gd）で撮り、タイトルと対戦の設定の場面は、アプリをその場面へ切り替えて撮る。
 ##
 ## 場面はどれも、種を決めた対戦（MatchSetup）を CPU どうしで進めて作る。人の操作と同じ入口で駒を選ぶので、
-## 毎回同じ絵になる。場面を足すときは、SCENES に名前と説明を足し、同じ名前の _scene_<名前>() を書く
+## 毎回同じ絵になる。場面の条件が来なければ、種を替えて作り直す（MORE_SEEDS まで）。それでも作れない場面は飛ばして、
+## 最後にまとめて失敗を報告する。場面を足すときは、SCENES に名前と説明を足し、同じ名前の _scene_<名前>() を書く
 ## （その場面まで状態を作るだけ。撮るのはこのノードがやる）。
 
 const Queries := preload("res://game/battle_queries.gd")
@@ -92,9 +93,10 @@ const SCENES := {
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
 }
-## 中ボスが倒れるまで続く対戦の種（CPU どうしで 29 ターン、プレイヤー1 がターン 20 に左の中ボスを倒す）。
+## 場面を作る対戦の最初の種。
 const SEED := 1
-## SEED の対戦で場面が来なかったときに、続けて試す種の数（ルールや数値が変わると、同じ種でも場面が来なくなるため。_advance_seeds）。
+## SEED の対戦で場面を作れなかったときに、続けて試す種の数（ルールや数値が変わると、同じ種でも場面が来なくなるため。_run）。
+## どの種でも作れなかった場面は飛ばし、ほかの場面を撮ってから、まとめて失敗にする。
 const MORE_SEEDS := 8
 ## 撮る前に待つ時間（秒）。番の知らせが消え、カメラが寄り終わるまで。
 const SETTLE := 1.8
@@ -115,7 +117,7 @@ var _stats: BattleStats
 ## _battle の始めからのログ（相手を CPU として書く）。
 var _log: BattleLog
 var _stage := BoardGenerator.Stage.PLAIN
-## いまの対戦の種（ふつうは SEED。_advance_seeds が替える）。
+## いまの対戦の種（SEED から。場面を作れなければ _run が替える）。
 var _seed := SEED
 ## 場面が、演出の途中を撮る時刻まで自分で待ったか（真なら、再生の終わりも知らせが消えるのも待たずに、すぐ撮る）。
 var _mid_animation := false
@@ -144,29 +146,20 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	var failed: Array[String] = []
 	for name: String in _names:
-		_app.system_menu().close()
-		_app.context.settings.reset_all()
-		if _app.current_id() != &"battle":
-			_app.context.match_choice.cpu_opponent = false
-			await _app.go(&"battle")
-		_scene = _app.current_scene()
-		_scene.log_panel().close()
-		_scene.setup_panel().visible = false
-		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
-		_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
-		_scene._on_menu_hovered(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
-		if _scene.is_threat_shown():
-			_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
-		_stage = BoardGenerator.Stage.PLAIN
-		_seed = SEED
-		_new_battle()
-		_aim(22.0, 0.0, OrbitCamera.DEFAULT_PITCH)  # 前の場面で動かしたカメラを戻す（ほかの場面は、始めの向きと角度で撮る）
-		_mid_animation = false
-		var ok: bool = await call("_scene_" + name)
+		var ok := false
+		for i in MORE_SEEDS + 1:
+			await _reset(SEED + i)
+			ok = await call("_scene_" + name)
+			if ok:
+				if i > 0:
+					print("screenshots: 場面 %s は種 %d で作れた" % [name, _seed])
+				break
 		if not ok:
-			_quit("screenshots: 場面 %s を作れなかった" % name, 1)
-			return
+			printerr("screenshots: 場面 %s を作れなかった（種 %d〜%d）" % [name, SEED, SEED + MORE_SEEDS])
+			failed.append(name)
+			continue
 		if _mid_animation:
 			if not await _capture(name):
 				return
@@ -182,7 +175,32 @@ func _run() -> void:
 		await _banner_gone()
 		if not await _capture(name):
 			return
+	if not failed.is_empty():
+		_quit("screenshots: 作れなかった場面: %s" % ", ".join(failed), 1)
+		return
 	_quit("screenshots: OK", 0)
+
+
+## 場面を作る前に、前の場面の状態を戻し、種 seed の新しい対戦を用意する。
+func _reset(seed: int) -> void:
+	_app.system_menu().close()
+	_app.context.settings.reset_all()
+	if _app.current_id() != &"battle":
+		_app.context.match_choice.cpu_opponent = false
+		await _app.go(&"battle")
+	_scene = _app.current_scene()
+	_scene.log_panel().close()
+	_scene.setup_panel().visible = false
+	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
+	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
+	_scene._on_menu_hovered(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
+	if _scene.is_threat_shown():
+		_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
+	_stage = BoardGenerator.Stage.PLAIN
+	_seed = seed
+	_new_battle()
+	_aim(22.0, 0.0, OrbitCamera.DEFAULT_PITCH)  # 前の場面で動かしたカメラを戻す（ほかの場面は、始めの向きと角度で撮る）
+	_mid_animation = false
 
 
 ## いまの画面を撮って書く。書けなければ終わらせて偽を返す。
@@ -634,7 +652,7 @@ func _skill_hits() -> Array:
 
 
 func _scene_forecast_skill() -> bool:
-	if not _advance_seeds(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _skill_hits().is_empty()):
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _skill_hits().is_empty()):
 		return false
 	var found := _skill_hits()
 	_show()
@@ -1149,19 +1167,6 @@ func _aim(distance: float, yaw_degrees: float, pitch: float) -> void:
 	_scene._rig._target_distance = distance
 	_scene._rig._target_yaw = deg_to_rad(yaw_degrees)
 	_scene.set_camera_pitch(pitch)
-
-
-## _advance と同じ。ただし、いまの種の対戦で until が来なければ、種を 1 つずつ替えて（MORE_SEEDS まで）新しい対戦で試す。
-func _advance_seeds(until: Callable) -> bool:
-	for i in MORE_SEEDS + 1:
-		if i > 0:
-			_seed = SEED + i
-			_new_battle()
-		if _advance(until):
-			if i > 0:
-				print("screenshots: 種 %d で場面が来た" % _seed)
-			return true
-	return false
 
 
 ## CPU どうしで行動を 1 つずつ進め、行動と行動の間で until が真になったら止めて真を返す。
