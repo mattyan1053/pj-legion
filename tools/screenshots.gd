@@ -8,6 +8,7 @@ extends Node
 
 const Queries := preload("res://prototype/battle_queries.gd")
 const TrialSetup := preload("res://prototype/trial_setup.gd")
+const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
@@ -15,6 +16,8 @@ const SCENES := {
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
 	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
 	"start": "対戦の始め（ターン 1、何も選んでいない）",
+	"pitch_low": "ドラッグで見下ろす角度をいちばん浅くした（下限）",
+	"pitch_high": "ドラッグで見下ろす角度をいちばん深くした（上限。ほぼ真上）",
 	"move": "自分の駒を選んで、移動範囲と、駒のそばのメニューが出ている",
 	"cell": "駒のいないマスをクリックして、マスの情報が出ている",
 	"menu_moved": "動いたあとのメニュー（攻撃・待機・移動を取り消す）と、攻撃できる相手",
@@ -76,7 +79,7 @@ func _run() -> void:
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 		_stage = BoardGenerator.Stage.PLAIN
 		_new_battle()
-		_aim(22.0, 0.0, 1)  # 前の場面で動かしたカメラを戻す
+		_aim(22.0, 0.0, OrbitCamera.DEFAULT_PITCH)  # 前の場面で動かしたカメラを戻す（ほかの場面は、始めの向きと角度で撮る）
 		var ok: bool = await call("_scene_" + name)
 		if not ok:
 			_quit("screenshots: 場面 %s を作れなかった" % name, 1)
@@ -123,6 +126,18 @@ func _scene_menu_note() -> bool:
 
 func _scene_start() -> bool:
 	_show()
+	return true
+
+
+func _scene_pitch_low() -> bool:
+	_show()
+	_scene.set_camera_pitch(OrbitCamera.MIN_PITCH)
+	return true
+
+
+func _scene_pitch_high() -> bool:
+	_show()
+	_scene.set_camera_pitch(OrbitCamera.MAX_PITCH)
 	return true
 
 
@@ -308,7 +323,7 @@ func _scene_wide() -> bool:
 		return false
 	_show()
 	_look_at(Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0 + 6.0))
-	_aim(45.0, 0.0, 0)
+	_aim(45.0, 0.0, OrbitCamera.MIN_PITCH)
 	return true
 
 
@@ -316,7 +331,7 @@ func _scene_board_edge() -> bool:
 	_show()
 	# 盤の左上の角の近くに立って、角の外へ向く。
 	_look_at(Vector3(1.5, 0.0, 1.5))
-	_aim(26.0, -40.0, 0)
+	_aim(26.0, -40.0, 35.0)
 	return true
 
 
@@ -325,7 +340,7 @@ func _scene_rotated() -> bool:
 		return false
 	_show()
 	_look_at(_scene._rig.position)
-	_aim(30.0, 130.0, 0)
+	_aim(30.0, 130.0, 35.0)
 	return true
 
 
@@ -347,7 +362,7 @@ func _scene_marks() -> bool:
 	var unit: Unit = hurt.call()
 	_scene.click_cell(unit.cell)
 	_look_at(Vector3(unit.cell.x + 0.5, 0.0, unit.cell.y + 0.5))
-	_aim(11.0, 0.0, 1)
+	_aim(11.0, 0.0, 50.0)
 	return true
 
 
@@ -364,7 +379,7 @@ func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 	_new_battle()
 	_show()
 	_look_at(Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0 + 1.0))
-	_aim(45.0, 0.0, 2)
+	_aim(45.0, 0.0, 68.0)
 	return true
 
 
@@ -392,11 +407,11 @@ func _look_at(point: Vector3) -> void:
 	_scene._rig.position = Vector3(point.x, 0.0, point.z)
 
 
-## カメラの距離、向き（度）、角度（OrbitCamera.PITCH_PRESETS の添字）を決める。
-func _aim(distance: float, yaw_degrees: float, pitch_index: int) -> void:
+## カメラの距離、向き（度）、見下ろす角度（度）を決める。
+func _aim(distance: float, yaw_degrees: float, pitch: float) -> void:
 	_scene._rig._target_distance = distance
 	_scene._rig._target_yaw = deg_to_rad(yaw_degrees)
-	_scene._rig._pitch_index = pitch_index
+	_scene.set_camera_pitch(pitch)
 
 
 ## CPU どうしで行動を 1 つずつ進め、行動と行動の間で until が真になったら止めて真を返す。

@@ -22,8 +22,7 @@ func test_scenery_keeps_clear_of_the_board() -> void:
 
 func test_scenery_never_rises_into_the_view_of_the_board() -> void:
 	# カメラがいちばん浅い角度で見下ろしても、盤の中を見る視線より低い。
-	var lowest: float = OrbitCamera.PITCH_PRESETS.min()
-	assert_true(Scenery.HEIGHT_PER_DISTANCE < tan(deg_to_rad(lowest)), "高さの決まりが、カメラの角度より急")
+	assert_true(Scenery.HEIGHT_PER_DISTANCE < tan(deg_to_rad(OrbitCamera.MIN_PITCH)), "高さの決まりが、カメラの角度より急")
 	for item in Scenery.layout(SIZE, 2):
 		var limit: float = item.distance * Scenery.HEIGHT_PER_DISTANCE
 		assert_true(Scenery.height_of(item) <= limit + 0.001, "高すぎる: %s" % item)

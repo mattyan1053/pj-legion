@@ -46,13 +46,12 @@ const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 ## 空と、遠くの霞の色。
 const COLOR_HAZE := Color("b4cbdc")
 ## 霞が始まる距離と、すっかり霞む距離（カメラから）。いちばん引いて盤の端から端を見ても、盤の中はほとんど霞まない。
-const FOG_BEGIN := 58.0
-const FOG_END := 104.0
+const FOG_BEGIN := 64.0
+const FOG_END := 108.0
 
-## 押してから離すまでにマウスがこれより動いたら、クリックではなくドラッグ（視点の回転）と見る（px）。
+## 押してから離すまでにマウスがこれより動いたら、クリックではなくドラッグ（視点を回す・傾ける）と見る（px）。
+## 回す速さ（感度）は OrbitCamera.drag_sensitivity。
 const DRAG_THRESHOLD := 8.0
-## ドラッグで視点を回す速さ（1 px あたりのラジアン）。
-const DRAG_ROTATE_SPEED := 0.008
 
 ## 駒のそばのメニューの項目の名前。
 const MENU_ATTACK := &"attack"
@@ -210,7 +209,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			# 押しただけでは何もしない。離すまでに動かなければクリック、動けば視点の回転（駒の上で押したときは、いつもクリック）。
+			# 押しただけでは何もしない。離すまでに動かなければクリック、動けば視点を回す・傾ける（駒の上で押したときは、いつもクリック）。
 			_pressing = true
 			_dragging = false
 			_press_position = event.position
@@ -230,7 +229,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not _dragging and event.position.distance_to(_press_position) > DRAG_THRESHOLD:
 				_dragging = true
 			if _dragging:
-				_rig.rotate_by(-event.relative.x * DRAG_ROTATE_SPEED)
+				_rig.drag(event.relative)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		cancel()
 	elif event is InputEventKey and event.pressed and not event.echo:
@@ -626,6 +625,16 @@ func camera_focus() -> Vector3:
 ## カメラの向き（回していく先。ラジアン）。検査用。
 func camera_yaw() -> float:
 	return _rig.target_yaw()
+
+
+## カメラの見下ろす角度（傾けていく先。度）。検査用。
+func camera_pitch() -> float:
+	return _rig.target_pitch()
+
+
+## カメラの見下ろす角度を pitch（度）にする（範囲に収める）。スクリーンショットの道具用。
+func set_camera_pitch(pitch: float) -> void:
+	_rig.set_pitch(pitch)
 
 
 ## 左下の情報の枠に出ている文（見出しを除く）。検査用。
