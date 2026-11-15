@@ -1,17 +1,52 @@
 extends Node
 ## 検査用の自動対戦。`-- --autoplay` を付けて起動すると、人の代わりに画面を操作する。
 ##
-## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
-## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル（行動を終えないもの、行動済みの駒を戻すものも）、必殺技、中立の駒、レベルアップ、進化、
-## 回復役の回復、CPU の番の場面を通す。
-## 長い検査（`-- --autoplay --full`）では、そのあと盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
-## 途中で画面と対戦の状態が食い違ったら失敗にする。
-## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
+## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使う。回すのは SCENES の場面で、
+## 対戦を最後まで進める場面（game）と、小さな盤面で決まった手順を通す場面（環境オブジェクト、盤の上の効果、スキル、必殺技、
+## 中立の駒、レベルアップ、進化、回復、閲覧、対戦の設定、システムメニュー、CPU の番）、最後にタイトルと部隊の編成の場面を通す場面。
+## 長い検査（`-- --autoplay --full`）では、game のあとに盤面を作り直して、ほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
+##
+## `-- --autoplay --only <名前,…>` で、選んだ場面だけを回す（名前は SCENES の名前か、GROUPS のまとまりの名前）。
+## 場面の中で確かめたことが外れたら、その場面の残りを飛ばして次の場面へ進み、最後にまとめて失敗にする。
+## イベントを再生する場面（GROUPS の events）を全部回したときは、どの種類のイベントも 1 回は再生したことを確かめる。
+## 全部が通れば "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
 const Queries := preload("res://game/battle_queries.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const NO_CELL := Vector2i(-1, -1)
+
+## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
+const SCENES := {
+	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
+	"result": "リザルトの画面（game の決着のあと）",
+	"portal_and_spring": "ポータルを通る移動と取り消し、回復の泉",
+	"capture": "敵の本陣の占拠",
+	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
+	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
+	"skill": "スキルのボタンと対象選び、クールダウン",
+	"status": "自分に使うスキルと、駒に付く状態",
+	"extra_action": "行動を終えないスキルと、行動済みの駒を戻すスキル",
+	"ult": "必殺技",
+	"neutral": "中立の駒（湧く、攻撃する、カメラが追う）",
+	"mid_boss": "中ボスと聖遺物",
+	"level_up": "レベルアップ",
+	"evolution": "進化",
+	"heal": "回復役の回復、マスの情報、クリックとドラッグ",
+	"inspection": "閲覧（行動の途中に相手の駒を見る）と、敵の全員の脅威範囲",
+	"setup": "対戦の設定画面（後手で CPU と対戦する）",
+	"system_menu": "システムメニューと設定の画面",
+	"cpu": "CPU の番（止める、ログ、カメラが追う）",
+	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦の設定を行き来する",
+	"decks": "部隊の編成",
+}
+## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
+## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
+const GROUPS := {
+	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
+		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal"],
+	"ui": ["inspection", "setup", "system_menu", "cpu", "title", "decks"],
+}
 
 ## これだけターンが進んでも決着しなければ、失敗にする。
 const MAX_TURNS := 80
@@ -23,16 +58,25 @@ const STAGES: Array[BoardGenerator.Stage] = [
 	BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.TWIN_SPRINGS, BoardGenerator.Stage.LABYRINTH,
 ]
 
+enum Phase { GAME, SCENES, STAGES, END }
+
 var _scene: Node
 ## 長い検査（`--full`）のときだけ、ほかのステージも動かす。
 var _full := OS.get_cmdline_user_args().has("--full")
+## 回す場面の名前（SCENES の順）。
+var _selected: Array[String] = []
+var _phase := Phase.GAME
+## いま回している場面の名前。
+var _current := "game"
+## 外れたこと（「場面: 何が」）。最後にまとめて出す。
+var _failures: Array[String] = []
 var _game := 0
 var _undone := {}  # 移動の取り消しを試した駒の番号
 var _confirm_tested := false
 var _finished := false
-## 決まった手順で進める場面の、残りの手（画面が操作を受け付けるたびに、先頭から 1 つずつ実行する）。
+## 決まった手順で進める場面の、残りの手（画面が操作を受け付けるたびに、先頭から 1 つずつ実行する）と、それぞれの場面の名前。
 var _scripted: Array[Callable] = []
-var _scenes_done := false
+var _scripted_names: Array[String] = []
 ## CPU を相手にした対戦を始めたときの、CPU の行動の数。
 var _cpu_actions_before := 0
 ## 最後に、対戦の場面を抜けて、タイトルと対戦の設定の場面を通している途中か（_leave_battle）。
@@ -43,68 +87,169 @@ func _init(scene: Node) -> void:
 	_scene = scene
 	# 再生の待ち時間を縮めて、検査を短く済ませる（CI は 1 分以内に収める）。
 	scene.set_time_scale_base(8.0)
+	_selected = _choose_scenes(OS.get_cmdline_user_args())
+
+
+## 回す場面を、引数の `--only <名前,…>` から決める（無ければ全部）。知らない名前があれば空にして、_ready で失敗にする。
+static func _choose_scenes(args: PackedStringArray) -> Array[String]:
+	var at := args.find("--only")
+	var wanted: Array = SCENES.keys()
+	if at >= 0:
+		wanted = []
+		for name: String in (args[at + 1] if at + 1 < args.size() else "").split(",", false):
+			if GROUPS.has(name):
+				wanted.append_array(GROUPS[name])
+			elif SCENES.has(name):
+				wanted.append(name)
+			else:
+				return []
+		if wanted.has("result") and not wanted.has("game"):
+			wanted.append("game")  # リザルトは、対戦の決着のあと
+	var result: Array[String] = []
+	for name: String in SCENES:
+		if wanted.has(name):
+			result.append(name)
+	return result
+
+
+func _ready() -> void:
+	if _selected.is_empty():
+		_finish("autoplay: --only に知らない名前がある（場面: %s、まとまり: %s）" % [", ".join(SCENES.keys()), ", ".join(GROUPS.keys())], 1)
+	elif not _selected.has("game"):
+		_queue_scenes()
 
 
 func _process(_delta: float) -> void:
 	if _finished or _leaving or _scene.is_busy():
 		return
 	var battle: Battle = _scene.battle
-	var problem := _mismatch(battle)
-	if problem == "":
-		problem = _menu_problem()
-	if problem != "":
-		_finish("autoplay: 画面と状態が食い違った: %s" % problem, 1)
-		return
+	if _phase != Phase.END and (_phase != Phase.SCENES or not _scripted.is_empty()):
+		var problem := _mismatch(battle)
+		if problem == "":
+			problem = _menu_problem()
+		if problem != "":
+			_fail("画面と状態が食い違った: %s" % problem)
+			return
 
-	if not _scripted.is_empty():
-		var step: Callable = _scripted.pop_front()
-		step.call()
+	match _phase:
+		Phase.GAME:
+			if battle.is_over():
+				_end_game(battle)
+			elif battle.turn > MAX_TURNS:
+				_fail("%d ターンでも決着しなかった" % MAX_TURNS)
+			else:
+				_step(battle)
+		Phase.SCENES:
+			if not _scripted.is_empty():
+				_current = _scripted_names.pop_front()
+				var step: Callable = _scripted.pop_front()
+				step.call()
+				return
+			_phase = Phase.STAGES if _full and _selected.has("game") else Phase.END
+			_current = "game"
+		Phase.STAGES:
+			if _game == 0 or battle.is_over() or battle.turn >= SHORT_GAME_TURNS:
+				if _game == CPU_GAME and _scene.cpu_actions == _cpu_actions_before:
+					_fail("CPU の番を、CPU が進めなかった")
+				_game += 1
+				if _game >= STAGES.size():
+					_phase = Phase.END
+					return
+				_undone.clear()
+				_cpu_actions_before = _scene.cpu_actions
+				_scene.set_opponent(_game == CPU_GAME)
+				_scene.start_battle(STAGES[_game], _scene.map_seed + 1)
+			elif battle.turn > MAX_TURNS:
+				_fail("%d ターンでも決着しなかった" % MAX_TURNS)
+				_phase = Phase.END
+			else:
+				_step(battle)
+		Phase.END:
+			_end()
+
+
+## 最初の対戦（game）の決着を確かめ、決まった手順の場面を積む。
+func _end_game(battle: Battle) -> void:
+	if battle.is_over():
+		print("autoplay: ターン %d で決着（勝者 %d）" % [battle.turn, battle.winner])
+		var stats: BattleStats = _scene.stats
+		_expect(stats.is_over() and stats.turns == battle.turn and stats.winner == battle.winner, "戦績が決着と食い違った")
+		_expect(_scene.result_stats().contains("与えたダメージ"), "決着の画面に戦績が出ていない")
+		var last: String = _scene.battle_log.entries[-1].text
+		_expect(last.contains("の勝ち") or last.begins_with("引き分け"), "ログが決着の行で終わっていない: %s" % last)
+		print(_scene.result_stats())
+	_queue_scenes()
+
+
+func _queue_scenes() -> void:
+	_phase = Phase.SCENES
+	for name in _selected:
+		if name == "game" or name == "title" or name == "decks":
+			continue
+		if name == "result" and not _scene.battle.is_over():
+			_failures.append("result: 対戦が決着しなかったので、リザルトを確かめられなかった")
+			continue
+		_current = name
+		call("_queue_%s_scene" % name)
+		while _scripted_names.size() < _scripted.size():
+			_scripted_names.append(name)
+
+
+## 条件が偽なら、いまの場面の失敗にする（場面の残りの手は飛ばす）。
+func _expect(condition: bool, what: String) -> void:
+	if not condition and not _finished:
+		_fail(what)
+
+
+## いまの場面を失敗にして、その場面の残りの手を飛ばす。最初の対戦（game）なら、対戦をやめて場面へ進む。
+func _fail(what: String) -> void:
+	var line := "%s: %s" % [_current, what]
+	if _failures.has(line):
 		return
-	if battle.is_over() or (_game > 0 and battle.turn >= SHORT_GAME_TURNS):
-		if _game == 0 and not _scenes_done:
-			print("autoplay: ターン %d で決着（勝者 %d）" % [battle.turn, battle.winner])
-			var stats: BattleStats = _scene.stats
-			_expect(stats.is_over() and stats.turns == battle.turn and stats.winner == battle.winner, "戦績が決着と食い違った")
-			_expect(_scene.result_stats().contains("与えたダメージ"), "決着の画面に戦績が出ていない")
-			var last: String = _scene.battle_log.entries[-1].text
-			_expect(last.contains("の勝ち") or last.begins_with("引き分け"), "ログが決着の行で終わっていない: %s" % last)
-			print(_scene.result_stats())
-			_scenes_done = true
-			_queue_result_checks()
-			_queue_portal_and_spring_scene()
-			_queue_capture_scene()
-			_queue_barrel_draw_scene()
-			_queue_field_effect_scene()
-			_queue_skill_scene()
-			_queue_status_scene()
-			_queue_extra_action_scene()
-			_queue_ult_scene()
-			_queue_neutral_scene()
-			_queue_mid_boss_scene()
-			_queue_level_up_scene()
-			_queue_evolution_scene()
-			_queue_heal_scene()
-			_queue_inspection_scene()
-			_queue_setup_scene()
-			_queue_system_menu_scene()
-			_queue_cpu_scene()
-			return
-		if _game == CPU_GAME and _scene.cpu_actions == _cpu_actions_before:
-			_finish("autoplay: CPU の番を、CPU が進めなかった", 1)
-			return
-		_game += 1
-		if _game >= STAGES.size() or not _full:
-			_finish_if_all_played()
-			return
-		_undone.clear()
-		_cpu_actions_before = _scene.cpu_actions
-		_scene.set_opponent(_game == CPU_GAME)
-		_scene.start_battle(STAGES[_game], _scene.map_seed + 1)
-		return
-	if battle.turn > MAX_TURNS:
-		_finish("autoplay: %d ターンでも決着しなかった" % MAX_TURNS, 1)
-		return
-	_step(battle)
+	_failures.append(line)
+	printerr("autoplay: 失敗: %s" % line)
+	while not _scripted_names.is_empty() and _scripted_names[0] == _current:
+		_scripted_names.pop_front()
+		_scripted.pop_front()
+	if _phase == Phase.GAME:
+		_queue_scenes()
+	elif _phase == Phase.STAGES:
+		_phase = Phase.END
+
+
+## いまの場面の手として、次に step を行う（待ってからやり直すとき）。
+func _push_front(step: Callable) -> void:
+	_scripted.push_front(step)
+	_scripted_names.push_front(_current)
+
+
+## 場面を回し終えたあと: イベントの再生を確かめ、タイトルと部隊の編成の場面を通して終える。
+func _end() -> void:
+	_leaving = true
+	var all_events := true
+	for name: String in GROUPS["events"]:
+		all_events = all_events and _selected.has(name)
+	if all_events:
+		_current = "events"
+		var players: Dictionary = BattlePlayback.event_players()
+		for kind: Script in players:
+			if _scene.played.get(kind, 0) == 0:
+				_fail("1 回も再生しなかったイベント: %s" % kind.resource_path)
+	var app := _scene.get_parent()
+	if (_selected.has("title") or _selected.has("decks")) and app.has_method(&"go"):
+		reparent(app)  # このノードは対戦の場面の子なので、場面が消える前にアプリの子へ移る
+		if _selected.has("title"):
+			_current = "title"
+			await _leave_battle(app)
+		if _selected.has("decks"):
+			_current = "decks"
+			if app.current_id() != &"title":
+				await app.go(&"title")
+			await _visit_decks(app)
+	if _failures.is_empty():
+		_finish("autoplay: OK", 0)
+	else:
+		_finish("autoplay: 失敗した場面がある（%d 件）:\n  %s" % [_failures.size(), "\n  ".join(_failures)], 1)
 
 
 func _step(battle: Battle) -> void:
@@ -137,7 +282,7 @@ func _step(battle: Battle) -> void:
 		_confirm_tested = true
 		_scene.press_end_turn()
 		if battle.turn != 2 or battle.phase != unit.side:
-			_finish("autoplay: 確かめずにターンが終わった", 1)
+			_fail("確かめずにターンが終わった")
 		return
 	if _scene.selected_unit() != unit:
 		_scene.click_cell(unit.cell)
@@ -159,12 +304,6 @@ func _step(battle: Battle) -> void:
 
 
 # ---- 決まった手順の場面 ----
-
-
-## 条件が偽なら、検査を失敗で終える。
-func _expect(condition: bool, what: String) -> void:
-	if not condition and not _finished:
-		_finish("autoplay: %s" % what, 1)
 
 
 ## 戦闘予測のパネルが出ていて、words をどれも含み、画面（帯の内側）に収まり、駒のそばのメニューと重ならないこと。
@@ -276,7 +415,7 @@ func _queue_barrel_draw_scene() -> void:
 
 ## リザルトの画面。出そろう前は行き先を選べず、クリックは演出を飛ばすだけ。飛ばすと全部が出て、少しして行き先を選べる。
 ## 詳しい戦績は畳んであり、ボタンで開け閉めできる。
-func _queue_result_checks() -> void:
+func _queue_result_scene() -> void:
 	var screen: Node = _scene.result_screen()
 	_expect(not screen.is_revealed() and screen.enabled_buttons().is_empty(), "出そろう前に、行き先を選べる")
 	_expect(_scene.result_title() != "", "リザルトの見出しが出ていない")
@@ -286,9 +425,9 @@ func _queue_result_checks() -> void:
 		waited[0] += 1
 		if screen.enabled_buttons().is_empty():
 			if waited[0] > 600:
-				_finish("autoplay: 飛ばしても、リザルトの行き先を選べるようにならない", 1)
+				_fail("飛ばしても、リザルトの行き先を選べるようにならない")
 				return
-			_scripted.push_front(again.bind(again))
+			_push_front(again.bind(again))
 			return
 		_expect(screen.is_revealed(), "行き先を選べるのに、出そろっていない")
 		_expect(screen.enabled_buttons().has("タイトルへ"), "行き先に「タイトルへ」が無い")
@@ -749,7 +888,10 @@ func _queue_inspection_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
+		# カメラは、場面 heal のドラッグのあとと同じ向きにする（場面を 1 つだけ回しても、同じことを確かめるため）。
+		# 既定の向き（0 度）だと、この盤面では攻撃の予測のパネルが駒のそばのメニューに重なる（直すのは別の仕事）。
+		_scene.set_camera_view(22.0, rad_to_deg(-1.2)))
 	_scripted.append(func() -> void:
 		_scene.click_cell(trooper.cell)
 		# 選んだあと: 相手の駒をクリックすると、選んだまま見る。右クリックで、見るのをやめて選んだ駒へ戻る。
@@ -1019,16 +1161,6 @@ func _queue_ult_scene() -> void:
 		_expect(sorcerer.skill_cooldown == 0, "魔力解放でクールダウンが 0 にならなかった"))
 
 
-## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。
-func _finish_if_all_played() -> void:
-	var players: Dictionary = BattlePlayback.event_players()
-	for kind: Script in players:
-		if _scene.played.get(kind, 0) == 0:
-			_finish("autoplay: 1 回も再生しなかったイベント: %s" % kind.resource_path, 1)
-			return
-	_leave_battle()
-
-
 func _next_unit(battle: Battle) -> Unit:
 	for unit in battle.units:
 		if battle.can_act(unit):
@@ -1174,13 +1306,7 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 ## 最後に、相手（CPU）の番の途中で、システムメニューの「タイトルへ戻る」を確かめてから選ぶ。対戦の場面が消えても、
 ## 止まっていた再生や CPU の番が続きを走らない（エラーが出ない）こと。そのあと、タイトルの「始める」で対戦の設定の場面へ進み、
 ## 「タイトルへ戻る」でタイトルへ戻る。このノードは対戦の場面の子なので、先にアプリの子へ移っておく。
-func _leave_battle() -> void:
-	var app := _scene.get_parent()
-	if not app.has_method(&"go"):
-		_finish("autoplay: OK", 0)
-		return
-	_leaving = true
-	reparent(app)
+func _leave_battle(app: Node) -> void:
 	var menu: Node = app.system_menu()
 	_scene.set_opponent(false)
 	_scene.start_battle(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
@@ -1221,8 +1347,6 @@ func _leave_battle() -> void:
 	app.get_viewport().push_input(right)
 	await app.scene_changed
 	_expect(app.current_id() == &"title", "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
-	await _visit_decks(app)
-	_finish("autoplay: OK", 0)
 
 
 ## 部隊の編成の場面: 組む・並べ替える・装備を持たせる・取っておく・写す・名前を変える・消す（確かめる）。

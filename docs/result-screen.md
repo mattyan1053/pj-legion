@@ -1,7 +1,7 @@
 # リザルトの画面
 
 コード: `game/result_summary.gd`（何を出すか。ノードに依存しない）、`game/result_screen.gd`（段階的に出す）。
-テスト: `tests/game/test_result_summary.gd`、自動の対戦（`game/autoplay.gd` の `_queue_result_checks`）。
+テスト: `tests/game/test_result_summary.gd`、自動の対戦（`game/autoplay.gd` の `_queue_result_scene`）。
 数えるのは `BattleStats`（`docs/battle-stats.md`）。
 
 ## 出し方

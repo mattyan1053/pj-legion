@@ -64,8 +64,11 @@ cat "$logs/import.log"
 run tests -s res://tools/run_tests.gd -- $full &
 tests_pid=$!
 # 自動の対戦。画面の描画を待たずに進める（--fixed-fps）。終わらなければ、コマ数で打ち切る。
-run autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay $full &
+# 場面を 2 つのまとまり（イベントを再生する場面と、操作の決まりの場面。game/autoplay.gd の GROUPS）に分けて、並べて回す。
+run autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay --only events $full &
 autoplay_pid=$!
+run autoplay_ui --fixed-fps 60 --quit-after 20000 -- --autoplay --only ui &
+autoplay_ui_pid=$!
 shots_pid=""
 if [ -n "$full" ]; then
   RUN_TIMEOUT=300 run shots -- --shots "$SHOTS_IN_FULL" --dry-run &
@@ -74,8 +77,9 @@ fi
 status=0
 wait "$tests_pid" || status=1
 wait "$autoplay_pid" || status=1
+wait "$autoplay_ui_pid" || status=1
 [ -z "$shots_pid" ] || wait "$shots_pid" || status=1
-cat "$logs/tests.log" "$logs/autoplay.log"
+cat "$logs/tests.log" "$logs/autoplay.log" "$logs/autoplay_ui.log"
 [ -z "$shots_pid" ] || cat "$logs/shots.log"
 [ "$status" = 0 ] || { echo "check: テストか自動の対戦（か、スクリーンショットの場面）が失敗した" >&2; exit 1; }
 
@@ -83,7 +87,7 @@ if cat "$logs"/*.log | grep -E "SCRIPT ERROR|Parse Error|^ERROR" >/dev/null; the
   echo "check: エラーが出ています" >&2
   exit 1
 fi
-if ! grep -F "autoplay: OK" "$logs/autoplay.log" >/dev/null; then
+if ! grep -F "autoplay: OK" "$logs/autoplay.log" >/dev/null || ! grep -F "autoplay: OK" "$logs/autoplay_ui.log" >/dev/null; then
   echo "check: 自動の対戦が最後まで進まなかった" >&2
   exit 1
 fi
