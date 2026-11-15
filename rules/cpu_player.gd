@@ -69,6 +69,7 @@ const HUNT_ENGAGE_DISTANCE := 5
 const HUNT_TURNS := 6
 const HUNT_COMMIT_TURNS := 2
 const HUNT_MARGIN := 1.25
+## 1.0 より小さい: 互角なら狩る（相手より少し弱くても、止めを取り合える）。はっきり負けているときは狩らない。
 const HUNT_SUPERIORITY := 0.8
 ## 相手が狩っているとみなす距離（中ボスからこの距離の中の相手の戦う駒が、削った中ボスを HUNT_TURNS ターンで倒せる）。
 const HUNT_RIVAL_RADIUS := 10
