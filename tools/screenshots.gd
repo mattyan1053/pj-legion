@@ -13,7 +13,12 @@ const TrialSetup := preload("res://prototype/trial_setup.gd")
 const SCENES := {
 	"setup": "対戦の設定画面",
 	"start": "対戦の始め（ターン 1、何も選んでいない）",
-	"move": "自分の駒を選んで、移動範囲が出ている",
+	"move": "自分の駒を選んで、移動範囲と、駒のそばのメニューが出ている",
+	"cell": "駒のいないマスをクリックして、マスの情報が出ている",
+	"menu_moved": "動いたあとのメニュー（攻撃・待機・移動を取り消す）と、攻撃できる相手",
+	"menu_attack": "メニューの「攻撃」を押して、相手を選んでいる",
+	"menu_crowd": "駒が固まっているところで出したメニュー",
+	"menu_edge": "盤の端・画面の隅にいる駒のメニュー",
 	"threat": "相手の駒を選んで、脅威範囲が出ている",
 	"skill": "スキルの対象を選んでいる",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
@@ -107,6 +112,91 @@ func _scene_move() -> bool:
 			most = count
 	_scene.click_cell(best.cell)
 	return true
+
+
+func _scene_cell() -> bool:
+	_show()
+	# 樽（無ければ森）のマスをクリックする。
+	var cell := Vector2i(-1, -1)
+	if not _battle.board.barrel_cells.is_empty():
+		cell = _battle.board.barrel_cells[0]
+	else:
+		for y in _battle.board.size.y:
+			for x in _battle.board.size.x:
+				if cell.x < 0 and _battle.board.terrain_at(Vector2i(x, y)) == Terrain.Type.FOREST:
+					cell = Vector2i(x, y)
+	_scene.click_cell(cell)
+	_scene.focus_camera(cell)
+	return _scene.info_title().begins_with("マス")
+
+
+## 動けば攻撃できる相手がいる駒と、その行き先（[駒, マス]）。無ければ空。
+func _move_then_attack() -> Array:
+	for unit in _own_units():
+		if not _battle.can_act(unit) or UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
+			continue
+		for cell: Vector2i in _battle.options(unit.id).move_cells:
+			if cell == unit.cell:
+				continue
+			var trial := _battle.clone()
+			trial.apply(MoveAction.new(unit.id, cell, false))
+			if not trial.options(unit.id).attack_target_ids.is_empty():
+				return [unit, cell]
+	return []
+
+
+func _scene_menu_moved() -> bool:
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _move_then_attack().is_empty()):
+		return false
+	var found := _move_then_attack()
+	var unit: Unit = found[0]
+	_show()
+	_scene.click_cell(unit.cell)
+	await _scene.act(MoveAction.new(unit.id, found[1], false))
+	_scene.focus_camera(unit.cell)
+	return _scene.menu_ids().has(&"attack") and _scene.menu_ids().has(&"undo")
+
+
+func _scene_menu_attack() -> bool:
+	if not await _scene_menu_moved():
+		return false
+	return _scene.press_menu(&"attack") and _scene.is_choosing_target()
+
+
+func _scene_menu_crowd() -> bool:
+	# 両軍がぶつかったあとの、周りに駒のいちばん多い自分の駒。
+	if not _advance(func() -> bool: return _battle.turn >= 4 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	var best: Unit = null
+	var most := -1
+	for unit in _own_units():
+		if not _battle.can_act(unit):
+			continue
+		var near := 0
+		for other in _battle.units:
+			if other != unit and maxi(absi(other.cell.x - unit.cell.x), absi(other.cell.y - unit.cell.y)) <= 2:
+				near += 1
+		if near > most:
+			best = unit
+			most = near
+	if best == null:
+		return false
+	_scene.click_cell(best.cell)
+	_scene.focus_camera(best.cell)
+	return not _scene.menu_ids().is_empty()
+
+
+func _scene_menu_edge() -> bool:
+	_show()
+	# 盤の下の端にいちばん近い駒を選び、カメラをずらして、その駒を画面の右下の隅に寄せる。
+	var best: Unit = null
+	for unit in _own_units():
+		if best == null or unit.cell.y > best.cell.y or (unit.cell.y == best.cell.y and unit.cell.x > best.cell.x):
+			best = unit
+	_scene.click_cell(best.cell)
+	_scene.focus_camera(best.cell + Vector2i(-11, -4))
+	return not _scene.menu_ids().is_empty()
 
 
 func _scene_threat() -> bool:

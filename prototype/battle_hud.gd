@@ -1,15 +1,16 @@
 extends CanvasLayer
-## 対戦の画面の文字とボタン（ターン、番、駒の情報、行動のメニュー、決着）。
+## 対戦の画面の文字とボタン（ターン、番、駒とマスの情報、駒のそばのメニュー、決着）。
 ##
 ## 何を出すかは呼ぶ側が決める。ここはルールを持たず、押されたことを signal で知らせるだけ。
+## 駒に属する操作（攻撃、スキル、待機…）は駒のそばのメニューに、駒に属さない操作（ターン終了、必殺技、対戦の設定）は
+## 画面の決まった場所に置く。どれもクリックだけで選べる。
 
-signal wait_pressed
-## スキルのボタンが押された（対象を選び始める・やめるのは呼ぶ側が決める）。
-signal skill_pressed
+## 駒のそばのメニューの項目が押された。id は set_menu() に渡した項目の名前。
+const TextWrap := preload("res://prototype/text_wrap.gd")
+
+signal menu_pressed(id: StringName)
 ## 必殺技のボタンが押された（確かめる・使うのは呼ぶ側が決める）。
 signal ult_pressed
-## 「移動を取り消す」と「選択をやめる」は同じボタン（どちらになるかは呼ぶ側が決める）。
-signal cancel_pressed
 signal end_turn_pressed
 ## 進化先を選んだ。index は、出している選択肢の何番目か（0 が A、1 が B）。
 signal evolution_chosen(index: int)
@@ -60,6 +61,20 @@ const TRAIT_TEXTS := {
 	Evolution.Trait.REGENERATION: "自分の番の始めに %d 回復" % Evolution.REGENERATION_HEAL,
 }
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
+## 後ろの盤面の文字が透けて読みにくくならないよう、決着の画面とメニューは透かさない。
+const COLOR_PANEL_SOLID := Color(0.09, 0.11, 0.15, 0.97)
+const COLOR_END_TURN := Color("2f6b3a")
+const COLOR_END_TURN_READY := Color("3fa24f")
+## 上の帯と下の帯の高さ（駒のそばのメニューは、この内側に置く）。
+const TOP_BAR_HEIGHT := 50.0
+const BOTTOM_BAR_HEIGHT := 92.0
+## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
+const MENU_LINE_FROM := 70.0
+## 文を折り返す幅（px）。情報の枠、必殺技の説明、決着の画面の戦績。下の帯の説明は、画面の幅からボタンのぶんを引く。
+const INFO_WIDTH := 320.0
+const ULT_SUMMARY_WIDTH := 480.0
+const RESULT_STATS_WIDTH := 760.0
+const HINT_SIDE_WIDTH := 540.0
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 const COLOR_FORECAST := Color("ffd76a")
 ## 必殺技の知らせの色（軍ごと）。
@@ -81,16 +96,26 @@ var _ult_summary: Label
 var _info_panel: PanelContainer
 var _info_name: Label
 var _info_side: Label
+var _info_hp: ProgressBar
+var _info_hp_fill: StyleBoxFlat
 var _info_stats: Label
 var _info_state: Label
 var _info_forecast: Label
 var _cell_label: Label
 var _hint_label: Label
 var _end_turn_button: Button
+var _end_turn_style: StyleBoxFlat
 var _opponent_button: Button
-var _wait_button: Button
-var _skill_button: Button
-var _cancel_button: Button
+var _ult_panel: PanelContainer
+var _ult_pinned := false
+var _menu: PanelContainer
+var _menu_line: Line2D
+var _menu_column: VBoxContainer
+## いまメニューに出している項目（[名前, 文字, 押せるか] の列）と、項目の名前 -> ボタン。
+var _menu_items: Array = []
+var _menu_buttons := {}
+## 文字の幅の覚え（"文字の大きさ:文字" -> px）。折り返しに使う。
+var _char_widths := {}
 var _banner: Label
 var _banner_tween: Tween
 var _result: Control
@@ -108,6 +133,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_info_panel()
 	_build_bottom()
 	_build_banner()
+	_build_menu()
 	_build_result()
 	_build_evolution()
 
@@ -149,12 +175,18 @@ func ult_gauge_text(player: int) -> String:
 	return _ult_labels[player].text if _ult_labels[player].visible else ""
 
 
-## 必殺技のボタン（右下）。text はボタンの文字、enabled は押せるか。summary はボタンの上に出す説明（必殺技が無ければ空）。
-func set_ult_button(text: String, enabled: bool, summary: String) -> void:
+## 必殺技のボタン（下の帯）。text はボタンの文字、enabled は押せるか。summary は必殺技の説明（必殺技が無ければ空）。
+## 説明は、ボタンにマウスを乗せている間と、pinned が真の間（使うかを確かめている間）だけ、ボタンの上に出す。
+func set_ult_button(text: String, enabled: bool, summary: String, pinned := false) -> void:
 	_ult_button.text = text
 	_ult_button.disabled = not enabled
-	_ult_summary.text = summary
-	_ult_summary.visible = summary != ""
+	_set_folded(_ult_summary, summary, ULT_SUMMARY_WIDTH)
+	_ult_pinned = pinned
+	_show_ult_summary()
+
+
+func _show_ult_summary() -> void:
+	_ult_panel.visible = _ult_summary.text != "" and (_ult_pinned or _ult_button.is_hovered())
 
 
 func ult_button_text() -> String:
@@ -165,7 +197,7 @@ func is_ult_enabled() -> bool:
 	return not _ult_button.disabled
 
 
-## 駒の情報を出す。unit が null なら消す。forecast は攻撃の見込み（無ければ空）。
+## 駒の情報を出す。unit が null なら消す。state は行動の状態と、いるマスのこと。forecast は攻撃の見込み（無ければ空）。
 func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	_info_panel.visible = unit != null
 	if unit == null:
@@ -174,8 +206,13 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
 	_info_side.text = SIDE_NAMES[unit.side]
+	_info_side.visible = true
+	var ratio := float(unit.hp) / maxf(unit.max_hp(), 1.0)
+	_info_hp.visible = true
+	_info_hp.value = ratio * 100.0
+	_info_hp_fill.bg_color = hp_color(ratio)
 	var power_name := "回復" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "攻撃"
-	_info_stats.text = "HP %d / %d\n%s %d   移動 %d   射程 %d" % [
+	_info_stats.text = "HP %d / %d\n%s %d　移動 %d　射程 %d" % [
 		unit.hp, unit.max_hp(), power_name, unit.power(), unit.move_range(), unit.attack_range(),
 	]
 	var skill := Skills.of(unit)
@@ -189,10 +226,34 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 			for which in Evolution.traits(unit.evolution):
 				_info_stats.text += "\n★ %s" % TRAIT_TEXTS[which]
 		else:
-			_info_stats.text += "\nレベル %d   経験 %d / %d" % [unit.level, unit.experience, Growth.EXPERIENCE_PER_LEVEL]
-	_info_state.text = state
-	_info_forecast.text = forecast
+			_info_stats.text += "\nレベル %d　経験 %d / %d" % [unit.level, unit.experience, Growth.EXPERIENCE_PER_LEVEL]
+	_set_folded(_info_stats, _info_stats.text, INFO_WIDTH)
+	_set_folded(_info_state, state, INFO_WIDTH)
+	_info_state.visible = state != ""
+	_set_folded(_info_forecast, forecast, INFO_WIDTH)
 	_info_forecast.visible = forecast != ""
+
+
+## クリックしたマスの情報を、駒の情報と同じ枠に出す。title は見出し（マスの位置と地形）、body は説明（行ごと）。
+func show_cell_info(title: String, body: String) -> void:
+	_info_panel.visible = true
+	_info_name.text = title
+	_info_name.add_theme_color_override("font_color", Color("e6e6e6"))
+	_info_side.visible = false
+	_info_hp.visible = false
+	_set_folded(_info_stats, body, INFO_WIDTH)
+	_info_state.visible = false
+	_info_forecast.visible = false
+
+
+## 駒の情報の枠に出している見出し（出ていなければ空）。検査用。
+func info_title() -> String:
+	return _info_name.text if _info_panel.visible else ""
+
+
+## HP の割合（0〜1）の色。半分より多ければ緑、4 分の 1 より多ければ黄、それより少なければ赤。
+static func hp_color(ratio: float) -> Color:
+	return Color("5fd35f") if ratio > 0.5 else (Color("e8c23a") if ratio > 0.25 else Color("e8503a"))
 
 
 ## マウスの下のマスの説明。盤の外なら空を渡す。
@@ -201,12 +262,18 @@ func show_cell(text: String) -> void:
 
 
 func set_hint(text: String) -> void:
-	_hint_label.text = text
+	_set_folded(_hint_label, text, _hint_label.get_viewport_rect().size.x - HINT_SIDE_WIDTH)
 
 
-func set_end_turn(enabled: bool, text: String) -> void:
+## ターン終了のボタン。ready が真なら、明るくして目立たせる（動かせる駒が残っていないとき）。
+func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 	_end_turn_button.disabled = not enabled
 	_end_turn_button.text = text
+	_end_turn_style.bg_color = COLOR_END_TURN_READY if ready else COLOR_END_TURN
+
+
+func end_turn_text() -> String:
+	return _end_turn_button.text
 
 
 ## 相手を切り替えるボタンの文字（いまの相手を書く）。
@@ -214,28 +281,90 @@ func set_opponent(text: String) -> void:
 	_opponent_button.text = text
 
 
-## 選んでいる駒の行動のボタン。can_wait は待機できるか、can_cancel は戻せるか、
-## moved は駒がもう動いたか（戻すボタンが「移動を取り消す」になる）。
-func set_actions(can_wait: bool, can_cancel: bool, moved: bool) -> void:
-	_wait_button.disabled = not can_wait
-	_cancel_button.disabled = not can_cancel
-	_cancel_button.text = "移動を取り消す" if moved else "選択をやめる"
+## 駒のそばのメニューに出す項目。items は [名前（StringName）, 文字, 押せるか] の列（上から）。空なら消す。
+## 置き場所は place_menu() で決める（項目を変えたら、大きさが変わる）。
+func set_menu(items: Array) -> void:
+	_menu.visible = not items.is_empty()
+	_menu_line.visible = false
+	if items == _menu_items:
+		return
+	_menu_items = items.duplicate(true)
+	for button: Button in _menu_buttons.values():
+		_menu_column.remove_child(button)
+		button.queue_free()
+	_menu_buttons.clear()
+	for item: Array in items:
+		var id: StringName = item[0]
+		var button := Button.new()
+		button.text = item[1]
+		button.disabled = not item[2]
+		button.focus_mode = Control.FOCUS_NONE
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_font_size_override("font_size", 17)
+		button.custom_minimum_size = Vector2(118.0, 34.0)
+		button.pressed.connect(func() -> void: menu_pressed.emit(id))
+		_menu_column.add_child(button)
+		_menu_buttons[id] = button
+	_menu.reset_size()
 
 
-## スキルのボタン。text はボタンの文字、enabled は押せるか、choosing は対象を選んでいる途中か（押すとやめる）。
-func set_skill(text: String, enabled: bool, choosing: bool) -> void:
-	_skill_button.text = "スキルをやめる" if choosing else text
-	_skill_button.disabled = not enabled
+## メニューの大きさ（出していなければ 0）。
+func menu_size() -> Vector2:
+	return _menu.get_combined_minimum_size() if _menu.visible else Vector2.ZERO
 
 
-## スキルのボタンの文字（出ている文字）。検査用。
-func skill_button_text() -> String:
-	return _skill_button.text
+## メニューを置く（左上の、画面の座標）。from は、駒の画面の上の位置。メニューが駒から離れたら、駒まで細い線を引く
+## （どの駒のメニューかが分かるように）。
+func place_menu(at: Vector2, from: Vector2) -> void:
+	_menu.position = at.round()
+	_menu.size = _menu.get_combined_minimum_size()
+	var rect := Rect2(_menu.position, _menu.size)
+	var near := Vector2(clampf(from.x, rect.position.x, rect.end.x), clampf(from.y, rect.position.y, rect.end.y))
+	_menu_line.visible = _menu.visible and near.distance_to(from) > MENU_LINE_FROM
+	_menu_line.points = PackedVector2Array([from, near])
 
 
-## スキルのボタンが押せるか。検査用。
-func is_skill_enabled() -> bool:
-	return not _skill_button.disabled
+## メニューが画面に占める四角（出していなければ大きさ 0）。検査用。
+func menu_rect() -> Rect2:
+	return Rect2(_menu.position, _menu.get_combined_minimum_size()) if _menu.visible else Rect2()
+
+
+## メニューを置いてよい範囲（画面から上の帯と下の帯を除いたところ）。
+func menu_area() -> Rect2:
+	var screen := _menu.get_viewport_rect().size
+	return Rect2(4.0, TOP_BAR_HEIGHT + 4.0, screen.x - 8.0, screen.y - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 8.0)
+
+
+## メニューが隠したくない、画面の決まった枠（駒とマスの情報）。出ていなければ大きさ 0。
+func info_rect() -> Rect2:
+	return _info_panel.get_global_rect() if _info_panel.visible else Rect2()
+
+
+## メニューの項目を押す（クリックと同じ道を通る）。出ていて押せる項目なら真を返す。
+func press_menu(id: StringName) -> bool:
+	if not is_menu_enabled(id):
+		return false
+	(_menu_buttons[id] as Button).pressed.emit()
+	return true
+
+
+## メニューに id の項目が出ていて、押せるか。
+func is_menu_enabled(id: StringName) -> bool:
+	return _menu.visible and _menu_buttons.has(id) and not (_menu_buttons[id] as Button).disabled
+
+
+## メニューに出ている id の項目の文字（出ていなければ空）。
+func menu_text(id: StringName) -> String:
+	return (_menu_buttons[id] as Button).text if _menu.visible and _menu_buttons.has(id) else ""
+
+
+## メニューに出ている項目の名前（上から）。出ていなければ空。
+func menu_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	if _menu.visible:
+		for item: Array in _menu_items:
+			ids.append(item[0])
+	return ids
 
 
 ## 駒のスキルの状態（使えるか、あと何ターンか。回数に上限があれば、残りの回数）。
@@ -285,7 +414,7 @@ func result_stats() -> String:
 
 
 func _show_stats(stats: String) -> void:
-	_result_stats.text = stats
+	_set_folded(_result_stats, stats, RESULT_STATS_WIDTH)
 	_result_stats.visible = stats != ""
 
 
@@ -318,7 +447,7 @@ func show_evolution(title: String, texts: Array[String]) -> void:
 	for i in _evolution_buttons.size():
 		_evolution_buttons[i].visible = i < texts.size()
 		if i < texts.size():
-			_evolution_buttons[i].text = "[%d] %s" % [i + 1, texts[i]]
+			_evolution_buttons[i].text = texts[i]
 	_evolution.visible = true
 
 
@@ -348,24 +477,25 @@ func _build_top_bar() -> void:
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	add_child(panel)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 28)
+	row.add_theme_constant_override("separation", 14)
 	panel.add_child(row)
-	_turn_label = _label(22)
+	_turn_label = _label(20)
 	row.add_child(_turn_label)
-	_phase_label = _label(22)
+	_phase_label = _label(20)
 	row.add_child(_phase_label)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(spacer)
 	for player in 2:
-		var label := _label(18)
+		# 陣営の欄は、残った幅を分け合う。足りなければ「…」で省く（帯が画面の幅を超えて、右端のボタンが切れないように）。
+		var label := _label(16)
 		label.add_theme_color_override("font_color", _team_colors[player].lightened(0.4))
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_child(label)
 		_side_labels.append(label)
 		# 必殺技のゲージ（飾らない棒と数字）。軍の色で塗る。
 		var bar := ProgressBar.new()
-		bar.custom_minimum_size = Vector2(96.0, 22.0)
+		bar.custom_minimum_size = Vector2(84.0, 22.0)
 		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bar.show_percentage = false
 		var fill := StyleBoxFlat.new()
@@ -382,24 +512,41 @@ func _build_top_bar() -> void:
 		bar.add_child(percent)
 		_ult_labels.append(percent)
 	_opponent_button = _button("", opponent_pressed)
-	_opponent_button.custom_minimum_size = Vector2(170.0, 34.0)
+	_opponent_button.custom_minimum_size = Vector2(0.0, 30.0)
 	_opponent_button.add_theme_font_size_override("font_size", 15)
+	_opponent_button.tooltip_text = "押すと、相手を CPU にするか人にするかを切り替える"
 	row.add_child(_opponent_button)
 	var settings := _button("対戦の設定", setup_pressed)
-	settings.custom_minimum_size = Vector2(120.0, 34.0)
+	settings.custom_minimum_size = Vector2(0.0, 30.0)
 	settings.add_theme_font_size_override("font_size", 15)
 	row.add_child(settings)
+
+	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。小さく 1 行だけ。
+	var help_panel := _panel()
+	(help_panel.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(4.0)
+	help_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	help_panel.offset_left = -6.0
+	help_panel.offset_right = -6.0
+	help_panel.offset_top = TOP_BAR_HEIGHT + 4.0
+	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(help_panel)
+	var help := _label(13)
+	help.text = "視点: ドラッグで回転　ホイールで拡大　WASD で移動"
+	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	help.add_theme_constant_override("outline_size", 0)
+	help_panel.add_child(help)
 
 
 func _build_info_panel() -> void:
 	_info_panel = _panel()
 	_info_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_info_panel.offset_left = 12.0
-	_info_panel.offset_right = 12.0
-	_info_panel.offset_top = -104.0
-	_info_panel.offset_bottom = -104.0
-	_info_panel.custom_minimum_size = Vector2(280.0, 0.0)
+	_info_panel.offset_left = 10.0
+	_info_panel.offset_right = 10.0
+	_info_panel.offset_top = -BOTTOM_BAR_HEIGHT - 8.0
+	_info_panel.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0
+	_info_panel.custom_minimum_size = Vector2(INFO_WIDTH + 20.0, 0.0)
 	# 盤面の隅に重なるので、下のマスを選べるよう、マウスは素通しにする。
 	_info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_info_panel.visible = false
@@ -412,6 +559,14 @@ func _build_info_panel() -> void:
 	_info_side = _label(14)
 	_info_side.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_info_side)
+	# HP の棒（駒の頭の上には出さないので、ここで割合が分かるようにする）。
+	_info_hp = ProgressBar.new()
+	_info_hp.custom_minimum_size = Vector2(0.0, 10.0)
+	_info_hp.show_percentage = false
+	_info_hp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_info_hp_fill = StyleBoxFlat.new()
+	_info_hp.add_theme_stylebox_override("fill", _info_hp_fill)
+	column.add_child(_info_hp)
 	_info_stats = _label(17)
 	column.add_child(_info_stats)
 	_info_state = _label(15)
@@ -419,8 +574,7 @@ func _build_info_panel() -> void:
 	column.add_child(_info_state)
 	_info_forecast = _label(17)
 	_info_forecast.add_theme_color_override("font_color", COLOR_FORECAST)
-	# スキルの説明のように長い文は、パネルの幅で折り返す（パネルを横に広げて盤面を隠さない）。
-	_info_forecast.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	# スキルの説明のように長い文は、枠の幅で折り返してから出す（_set_folded。枠を横に広げて盤面を隠さない）。
 	column.add_child(_info_forecast)
 
 
@@ -428,70 +582,76 @@ func _build_bottom() -> void:
 	var panel := _panel()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.custom_minimum_size = Vector2(0.0, BOTTOM_BAR_HEIGHT)
 	add_child(panel)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
+	row.add_theme_constant_override("separation", 16)
 	panel.add_child(row)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(column)
-	# 文が長いときは 2 行まで折り返す（ボタンを画面の外へ押し出さない）。
+	# いまできること。長ければ 2 行まで折り返す（ボタンを画面の外へ押し出さない）。
 	_hint_label = _label(17)
-	_hint_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_hint_label.max_lines_visible = 2
-	_hint_label.custom_minimum_size = Vector2(200.0, 0.0)
+	_hint_label.clip_text = true
 	column.add_child(_hint_label)
 	_cell_label = _label(14)
-	_cell_label.clip_text = true
+	_cell_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_cell_label.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_cell_label)
-	_wait_button = _button("待機", wait_pressed)
-	row.add_child(_wait_button)
-	_skill_button = _button("スキル", skill_pressed)
-	_skill_button.custom_minimum_size = Vector2(230.0, 48.0)
-	_skill_button.disabled = true
-	row.add_child(_skill_button)
-	_cancel_button = _button("選択をやめる", cancel_pressed)
-	row.add_child(_cancel_button)
+
+	# 駒に属さない操作は、いつも同じ場所（右下）に置く。
+	_ult_button = _button("必殺技", ult_pressed)
+	_ult_button.custom_minimum_size = Vector2(250.0, 48.0)
+	_ult_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_ult_button.disabled = true
+	_ult_button.mouse_entered.connect(_show_ult_summary)
+	_ult_button.mouse_exited.connect(_show_ult_summary)
+	row.add_child(_ult_button)
+	# ターン終了は、見つけやすいよう色を付けて、いちばん端に置く（駒のそばのメニューからは離れている）。
 	_end_turn_button = _button("ターン終了", end_turn_pressed)
-	_end_turn_button.custom_minimum_size = Vector2(270.0, 48.0)
+	_end_turn_button.custom_minimum_size = Vector2(230.0, 60.0)
+	_end_turn_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_end_turn_button.add_theme_font_size_override("font_size", 20)
+	_end_turn_style = StyleBoxFlat.new()
+	_end_turn_style.bg_color = COLOR_END_TURN
+	_end_turn_style.set_corner_radius_all(6)
+	_end_turn_style.set_content_margin_all(6.0)
+	_end_turn_button.add_theme_stylebox_override("normal", _end_turn_style)
+	_end_turn_button.add_theme_stylebox_override("hover", _end_turn_style)
 	row.add_child(_end_turn_button)
 
-	# 必殺技のボタンは、下の帯の上（ターン終了のボタンの上）に置く。駒を選んでいなくても押せる。
-	var ult_panel := _panel()
-	ult_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	ult_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	ult_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	ult_panel.offset_left = -12.0
-	ult_panel.offset_right = -12.0
-	ult_panel.offset_top = -104.0
-	ult_panel.offset_bottom = -104.0
-	add_child(ult_panel)
-	var ult_column := VBoxContainer.new()
-	ult_panel.add_child(ult_column)
-	_ult_summary = _label(13)
-	_ult_summary.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	_ult_summary.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	_ult_summary.custom_minimum_size = Vector2(270.0, 0.0)
-	ult_column.add_child(_ult_summary)
-	_ult_button = _button("必殺技", ult_pressed)
-	_ult_button.custom_minimum_size = Vector2(270.0, 44.0)
-	_ult_button.disabled = true
-	ult_column.add_child(_ult_button)
+	# 必殺技の説明。ボタンの上に、マウスを乗せている間と、使うかを確かめている間だけ出す。
+	_ult_panel = _panel(COLOR_PANEL_SOLID)
+	_ult_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_ult_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_ult_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ult_panel.offset_left = -10.0
+	_ult_panel.offset_right = -10.0
+	_ult_panel.offset_top = -BOTTOM_BAR_HEIGHT - 8.0
+	_ult_panel.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0
+	_ult_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ult_panel.visible = false
+	add_child(_ult_panel)
+	_ult_summary = _label(15)
+	_ult_panel.add_child(_ult_summary)
 
-	var help_panel := _panel()
-	help_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	help_panel.offset_left = -8.0
-	help_panel.offset_right = -8.0
-	help_panel.offset_top = 58.0
-	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(help_panel)
-	var help := _label(13)
-	help.text = "WASD 移動 / Q E 回転 / R 角度 / ホイール 拡大\nSpace 待機 / F スキル / G 必殺技 / Esc・右クリック 戻す / Enter ターン終了\n1・2 進化先を選ぶ\nF1〜F3 新しい盤面（ステージ 1〜3）/ F4 相手を人・CPU に切り替え"
-	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	help_panel.add_child(help)
+
+## 駒のそばのメニュー。中身は set_menu()、置き場所は place_menu() で決める。
+func _build_menu() -> void:
+	_menu_line = Line2D.new()
+	_menu_line.width = 2.0
+	_menu_line.default_color = Color(1.0, 1.0, 1.0, 0.75)
+	_menu_line.visible = false
+	add_child(_menu_line)
+	_menu = _panel(COLOR_PANEL_SOLID)
+	(_menu.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(5.0)
+	_menu.visible = false
+	add_child(_menu)
+	_menu_column = VBoxContainer.new()
+	_menu_column.add_theme_constant_override("separation", 3)
+	_menu.add_child(_menu_column)
 
 
 func _build_banner() -> void:
@@ -507,7 +667,7 @@ func _build_banner() -> void:
 
 func _build_result() -> void:
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.55)
+	shade.color = Color(0.0, 0.0, 0.0, 0.7)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.visible = false
 	add_child(shade)
@@ -515,7 +675,7 @@ func _build_result() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.add_child(center)
-	var panel := _panel()
+	var panel := _panel(COLOR_PANEL_SOLID)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 14)
@@ -528,8 +688,7 @@ func _build_result() -> void:
 	column.add_child(_result_reason)
 	_result_stats = _label(15)
 	_result_stats.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	_result_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_result_stats.custom_minimum_size = Vector2(760.0, 0.0)
+	_result_stats.custom_minimum_size = Vector2(RESULT_STATS_WIDTH, 0.0)
 	column.add_child(_result_stats)
 	var again := _button("同じ盤面でもう一度", Signal())
 	again.pressed.connect(func() -> void: restart_pressed.emit(0, false))
@@ -541,6 +700,7 @@ func _build_result() -> void:
 	column.add_child(caption)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_child(row)
 	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
 		var button := _button("%d %s" % [stage, MatchSetup.stage_name(stage)], Signal())
@@ -575,9 +735,9 @@ func _build_evolution() -> void:
 		_evolution_buttons.append(button)
 
 
-func _panel() -> PanelContainer:
+func _panel(color := COLOR_PANEL) -> PanelContainer:
 	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
+	style.bg_color = color
 	style.set_corner_radius_all(6)
 	style.set_content_margin_all(10.0)
 	var panel := PanelContainer.new()
@@ -591,6 +751,18 @@ func _label(font_size: int) -> Label:
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	return label
+
+
+## label に、width（px）で折り返した text を出す（text_wrap.gd。日本語の禁則を守る）。
+func _set_folded(label: Label, text: String, width: float) -> void:
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	label.text = TextWrap.fold(text, width, func(character: String) -> float:
+		# 文字の幅は、何度も測り直さないよう覚えておく（画面を作り直すたびに呼ばれる）。
+		var key := "%d:%s" % [font_size, character]
+		if not _char_widths.has(key):
+			_char_widths[key] = font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		return _char_widths[key])
 
 
 ## pressed を、そのまま to（この HUD の signal）として知らせるボタン。to が空なら、呼ぶ側でつなぐ。
