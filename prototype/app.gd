@@ -84,6 +84,7 @@ func go(scene: StringName) -> void:
 			push_error("app: 知らない場面: %s" % scene)
 		return
 	_changing = true
+	_fade.mouse_filter = Control.MOUSE_FILTER_STOP  # 切り替えの間のクリックは、どの場面にも届かない
 	context.system_menu.close()
 	if _current != null:
 		# 抜ける場面は止めておく（暗くなる間に、CPU の番や再生が進まないように）。
@@ -96,8 +97,12 @@ func go(scene: StringName) -> void:
 	node.connect(&"finished", _on_finished.bind(scene))
 	_current = node
 	_current_id = scene
+	# 暗転が明けるまでは、新しい場面に入力を渡さない（その間の操作は、切り替えの途中なので行き先が捨てられてしまう）。
+	node.process_mode = Node.PROCESS_MODE_DISABLED
 	add_child(node)
 	await _fade_to(0.0)
+	node.process_mode = Node.PROCESS_MODE_INHERIT
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_changing = false
 	scene_changed.emit(scene)
 
