@@ -11,6 +11,7 @@ const STAGES: Array[BoardGenerator.Stage] = [
 
 
 ## 1 局の結果。添字のある値は、プレイヤー番号（0、1）ごと。
+## 駒・陣営の戦績（ダメージ、撃破、レベル、進化、必殺技、中ボス）は、決着の画面と同じ集計（BattleStats）から写す。
 class Outcome:
 	extends RefCounted
 	## 決着したか。偽なら、ターンの上限で打ち切った。
@@ -27,6 +28,8 @@ class Outcome:
 	## 考えるのにかかった時間（ミリ秒）の合計と、いちばん長かった 1 手。
 	var think_msec := 0.0
 	var slowest_msec := 0.0
+	## 戦績（BattleStats）。下の値の多くは、ここから写したもの。
+	var stats: BattleStats
 	var level_ups: Array[int] = [0, 0]
 	var evolutions: Array[int] = [0, 0]
 	## 最初の進化が起きたターン（無ければ 0）。
@@ -41,25 +44,18 @@ class Outcome:
 	var gains: Dictionary[int, Array] = {}
 	## 雇った駒（将を除く）の数。
 	var hired: Array[int] = [0, 0]
-	## 駒の種類 -> [雇った数, 倒された数, プレイヤーの駒（将を含む）に与えたダメージ, プレイヤーの駒（将を含む）を倒した数, 進化した数]。
-	## 将の行も入る（雇った数は 0）。
+	## 駒の種類 -> [雇った数, 倒された数, 敵のプレイヤーの駒（将を含む）に与えたダメージ, 敵のプレイヤーの駒（将を含む）を倒した数, 進化した数]。
+	## 将の行も入る（雇った数と倒された数は 0）。
 	var by_kind: Dictionary[UnitKind.Id, Array] = {}
 	## 同じ表を、プレイヤー番号ごとに分けたもの（別の版の CPU と対戦させたときに、どちらの駒かを分けて見る）。
 	var by_side_kind: Array[Dictionary] = [{}, {}]
-	## プレイヤーの駒の番号 -> 種類、持ち主（倒れたあとも引けるように、始めに控える）。
-	var kinds: Dictionary[int, UnitKind.Id] = {}
-	var sides: Dictionary[int, Unit.Side] = {}
-	## いちばん最近の攻撃のダメージ（攻撃した駒、受けた駒）。撃破を、攻撃した駒の種類に数えるのに使う。
-	## 経験値のイベントは、育ちきった駒と将には出ないので、そこからは数えない。
-	var last_attacker_id := 0
-	var last_attacked_id := 0
 	## 次の撃破の経験値が、どの撃破のものか（gains の列: 1 = プレイヤーの駒、2 = 中立の駒、4 = 中ボス）。
 	## 駒の攻撃では、いちばん最近に倒れた駒。スキルでは、その行動で倒れた駒のうち、経験値のいちばん多いもの（Skills.deal_damage と同じ）。
 	var defeat_column := 1
 	## スキル -> 使った回数。
 	var skill_uses: Dictionary[Skill.Id, int] = {}
-	## いまの行動でスキルのダメージを受けた駒 -> 使った駒（同じスキルで何体も同時に倒れるので、撃破をここから数える）。
-	var skill_hits: Dictionary[int, int] = {}
+	## いまの行動でスキルのダメージを受けた駒（同じスキルで何体も同時に倒れる）。
+	var skill_hits: Dictionary[int, bool] = {}
 	## いまの行動のスキルで倒れた駒のうち、経験値のいちばん多いものの列（無ければ 0）。
 	var skill_defeat_column := 0
 	## 必殺技を使った回数（プレイヤー番号ごと）と、最初に使ったターン（使わなければ 0）。
@@ -78,14 +74,8 @@ static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second:
 		cpu = CpuPlayer.new()
 	if second == null:
 		second = cpu
-	for unit in battle.units:
-		if unit.side == Unit.Side.NEUTRAL:
-			continue
-		outcome.kinds[unit.id] = unit.kind
-		outcome.sides[unit.id] = unit.side
-		if unit.kind != UnitKind.Id.KING:
-			outcome.hired[unit.side] += 1
-			_bump(outcome, unit.id, 0, 1)
+	var stats := BattleStats.new(battle)
+	outcome.stats = stats
 	while not battle.is_over() and battle.turn <= max_turns:
 		var mover := battle.phase
 		var started := Time.get_ticks_usec()
@@ -100,40 +90,58 @@ static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second:
 			break
 		outcome.actions += 1
 		for event in result.events:
-			_count(outcome, battle, mover, event)
+			stats.feed(event)
+			_count(outcome, event)
 	outcome.turns = battle.turn
 	outcome.finished = battle.is_over()
 	outcome.winner = battle.winner
-	if battle.is_draw():
-		outcome.ending = "draw"
+	match stats.ending:
+		BattleStats.Ending.KING_DEFEATED:
+			outcome.ending = "king"
+		BattleStats.Ending.HQ_CAPTURED:
+			outcome.ending = "hq"
+		BattleStats.Ending.DRAW:
+			outcome.ending = "draw"
+	_copy_stats(outcome, stats)
 	return outcome
 
 
-static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: BattleEvent) -> void:
+## 戦績（BattleStats）から、集計に使う値を写す。
+static func _copy_stats(outcome: Outcome, stats: BattleStats) -> void:
+	for side in 2:
+		var record := stats.sides[side]
+		outcome.level_ups[side] = record.level_ups
+		outcome.evolutions[side] = record.evolutions
+		outcome.neutral_kills[side] = record.neutral_kills
+		outcome.losses[side] = record.losses
+		outcome.ult_uses[side] = record.ult_uses
+		outcome.first_ult_turn[side] = record.first_ult_turn
+	for boss: Array in stats.mid_bosses:
+		outcome.mid_boss_kills.append([boss[0], boss[2], boss[1]])
+	for record: BattleStats.UnitRecord in stats.units.values():
+		if record.side == Unit.Side.NEUTRAL:
+			continue
+		var king := record.kind == UnitKind.Id.KING
+		if not king:
+			outcome.hired[record.side] += 1
+		if record.evolved_turn > 0 and (outcome.first_evolution_turn == 0 or record.evolved_turn < outcome.first_evolution_turn):
+			outcome.first_evolution_turn = record.evolved_turn
+		var row: Array[int] = [
+			0 if king else 1, 1 if record.defeated and not king else 0, record.damage, record.kills,
+			1 if record.evolution != Evolution.Id.NONE else 0,
+		]
+		for table: Dictionary in [outcome.by_kind, outcome.by_side_kind[record.side]]:
+			var sum: Array = table.get_or_add(record.kind, [0, 0, 0, 0, 0])
+			for i in row.size():
+				sum[i] += row[i]
+
+
+## 戦績に無いもの（イベントの数、スキルごとの回数、経験値の入り方）を数える。
+static func _count(outcome: Outcome, event: BattleEvent) -> void:
 	var kind: Script = event.get_script()
 	outcome.events[kind] = outcome.events.get(kind, 0) + 1
-	if event is LevelUpEvent:
-		outcome.level_ups[mover] += 1
-	elif event is UnitEvolvedEvent:
-		outcome.evolutions[mover] += 1
-		if outcome.first_evolution_turn == 0:
-			outcome.first_evolution_turn = battle.turn
-		var evolved := event as UnitEvolvedEvent
-		_bump(outcome, evolved.unit_id, 4, 1)
-	elif event is AttackDamagedEvent:
-		var hit := event as AttackDamagedEvent
-		outcome.last_attacker_id = hit.attacker_id
-		outcome.last_attacked_id = hit.unit_id
-		if outcome.kinds.has(hit.unit_id):
-			_bump(outcome, hit.attacker_id, 2, hit.amount)
-	elif event is ExplosionDamagedEvent:
-		outcome.last_attacked_id = 0  # 樽の爆発で倒れた駒は、誰の撃破にも数えない
-	elif event is SkillDamagedEvent:
-		var burned := event as SkillDamagedEvent
-		outcome.last_attacked_id = 0
-		outcome.skill_hits[burned.unit_id] = burned.user_id
-		if outcome.kinds.has(burned.unit_id):
-			_bump(outcome, burned.user_id, 2, burned.amount)
+	if event is SkillDamagedEvent:
+		outcome.skill_hits[(event as SkillDamagedEvent).unit_id] = true
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
 		var column := 1
@@ -146,22 +154,6 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 				outcome.skill_defeat_column = column
 			column = outcome.skill_defeat_column
 		outcome.defeat_column = column
-		var killer := 0
-		if outcome.last_attacked_id == defeated.unit_id:
-			killer = outcome.last_attacker_id
-		elif outcome.skill_hits.has(defeated.unit_id):
-			killer = outcome.skill_hits[defeated.unit_id]  # 同じスキルで、同時に何体も倒れる
-		if defeated.side != Unit.Side.NEUTRAL:
-			_bump(outcome, killer, 3, 1)
-		outcome.last_attacked_id = 0
-		if defeated.side == Unit.Side.NEUTRAL:
-			outcome.neutral_kills[mover] += 1
-		elif defeated.kind != UnitKind.Id.KING:
-			outcome.losses[defeated.side] += 1
-			_bump(outcome, defeated.unit_id, 1, 1)
-	elif event is MidBossDefeatedEvent:
-		var slain := event as MidBossDefeatedEvent
-		outcome.mid_boss_kills.append([battle.turn, slain.slayer_side, slain.boss_index])
 	elif event is ExperienceGainedEvent:
 		var gained := event as ExperienceGainedEvent
 		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0, 0])
@@ -178,24 +170,6 @@ static func _count(outcome: Outcome, battle: Battle, mover: Unit.Side, event: Ba
 	elif event is SkillUsedEvent:
 		var used := event as SkillUsedEvent
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
-	elif event is UltUsedEvent:
-		var fired := event as UltUsedEvent
-		outcome.ult_uses[fired.side] += 1
-		if outcome.first_ult_turn[fired.side] == 0:
-			outcome.first_ult_turn[fired.side] = battle.turn
-	elif event is GameWonEvent:
-		var won := event as GameWonEvent
-		outcome.ending = "king" if won.reason == GameWonEvent.Reason.KING_DEFEATED else "hq"
-
-
-## プレイヤーの駒 unit_id の種類の行（by_kind と、持ち主ごとの by_side_kind）の column 番目に amount を足す。
-## プレイヤーの駒でなければ（中立の駒、0）何もしない。
-static func _bump(outcome: Outcome, unit_id: int, column: int, amount: int) -> void:
-	if not outcome.kinds.has(unit_id):
-		return
-	var kind := outcome.kinds[unit_id]
-	outcome.by_kind.get_or_add(kind, [0, 0, 0, 0, 0])[column] += amount
-	outcome.by_side_kind[outcome.sides[unit_id]].get_or_add(kind, [0, 0, 0, 0, 0])[column] += amount
 
 
 ## gains の列（撃破の種類）の、撃破の経験値。0（倒れていない）は 0。
