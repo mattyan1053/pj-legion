@@ -130,6 +130,19 @@ func follow(target: Node3D) -> void:
 	_followed = target
 
 
+## 追うのをやめ、point をすぐに画面の中央にする（盤の外でもよい）。距離と向きは set_view で決める。スクリーンショットの道具用。
+func place_at(point: Vector3) -> void:
+	follow(null)
+	focus_on(point)
+	position = Vector3(point.x, 0.0, point.z)
+
+
+## 寄っていく距離と向き（度）を決める。スクリーンショットの道具用。
+func set_view(distance: float, yaw_degrees: float) -> void:
+	_target_distance = distance
+	_target_yaw = deg_to_rad(yaw_degrees)
+
+
 ## 寄っていく先（追いかけている間は、相手のいるところ）。寄っていなければ、いまの位置。検査用。
 func focus_point() -> Vector3:
 	return _focus if _focusing else position

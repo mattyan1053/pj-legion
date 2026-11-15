@@ -741,6 +741,11 @@ func _on_roster(index: int, what: StringName) -> void:
 			_set_hover(-1)
 
 
+## 雇える駒 kind にマウスを乗せたことにする（-1 で離す）。スクリーンショットの道具用。
+func hover_kind(kind: int) -> void:
+	_set_hover(kind)
+
+
 func _set_hover(kind: int) -> void:
 	_hover_kind = kind
 	_refresh_detail()

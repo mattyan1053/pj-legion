@@ -110,6 +110,8 @@ var _app: Node
 ## いまの対戦の画面（battle_screen.gd）。アプリが対戦の場面にいる間だけ使う。
 var _scene: Node
 var _out := ""
+## 場面を作るだけで撮らない（`--dry-run`。画面なしの長い検査で、場面が作れることだけを確かめる）。
+var _dry_run := false
 var _names: Array[String] = []
 var _cpu := CpuPlayer.new()
 var _battle: Battle
@@ -133,15 +135,17 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	var shots := _arg(args, "--shots")
 	_out = _arg(args, "--out")
-	if shots == "" or _out == "":
-		_quit("screenshots: --shots と --out を指定する（場面: %s）" % ", ".join(SCENES.keys()), 1)
+	_dry_run = args.has("--dry-run")
+	if shots == "" or (_out == "" and not _dry_run):
+		_quit("screenshots: --shots と --out（か --dry-run）を指定する（場面: %s）" % ", ".join(SCENES.keys()), 1)
 		return
 	for name: String in (SCENES.keys() if shots == "all" else Array(shots.split(","))):
 		if not SCENES.has(name):
 			_quit("screenshots: 知らない場面: %s（場面: %s）" % [name, ", ".join(SCENES.keys())], 1)
 			return
 		_names.append(name)
-	DirAccess.make_dir_recursive_absolute(_out)
+	if not _dry_run:
+		DirAccess.make_dir_recursive_absolute(_out)
 	_run.call_deferred()
 
 
@@ -159,6 +163,13 @@ func _run() -> void:
 		if not ok:
 			printerr("screenshots: 場面 %s を作れなかった（種 %d〜%d）" % [name, SEED, SEED + MORE_SEEDS])
 			failed.append(name)
+			continue
+		if _dry_run:
+			print("screenshots: 場面 %s を作れた" % name)
+			if _mid_animation:
+				_scene.set_time_scale_base(1.0)
+			while _app.current_id() == &"battle" and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
+				await get_tree().process_frame
 			continue
 		if _mid_animation:
 			if not await _capture(name):
@@ -193,7 +204,7 @@ func _reset(seed: int) -> void:
 	_scene.setup_panel().visible = false
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
-	_scene._on_menu_hovered(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
+	_scene.hover_menu_item(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
 	if _scene.is_threat_shown():
 		_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
 	_stage = BoardGenerator.Stage.PLAIN
@@ -308,7 +319,7 @@ func _scene_deck_built() -> bool:
 	var screen: Node = await _deck_editor()
 	if screen == null:
 		return false
-	screen._set_hover(UnitKind.Id.SNIPER)
+	screen.hover_kind(UnitKind.Id.SNIPER)
 	return true
 
 
@@ -343,8 +354,7 @@ func _scene_setup_deck() -> bool:
 		return false
 	_park_mouse()
 	await get_tree().process_frame
-	var picker: OptionButton = panel._deck_pickers[0]
-	picker.show_popup()
+	panel.open_deck_picker(Unit.Side.PLAYER1)
 	return true
 
 
@@ -395,7 +405,7 @@ func _scene_menu_note() -> bool:
 	if not await _scene_skill():
 		return false
 	_scene.press_skill()  # 対象を選ぶのをやめて、メニューへ戻る
-	_scene._on_menu_hovered(&"skill")
+	_scene.hover_menu_item(&"skill")
 	return _scene.menu_ids().has(&"skill")
 
 
@@ -420,13 +430,11 @@ func _scene_phase_camera() -> bool:
 	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER2 and _cpu.next_action(_battle) is EndPhaseAction, watch):
 		return false
 	_show()
-	_scene._phase_focus.feed(_battle, events)  # 始めからの行動（画面を通さずに進めたぶん）
-	var focus: Unit = _scene._phase_focus.unit_for(_battle, Unit.Side.PLAYER1)
+	var focus: Unit = _scene.phase_focus_after(events, Unit.Side.PLAYER1)
 	await _scene.act(EndPhaseAction.new())
 	if focus == null or _battle.phase != Unit.Side.PLAYER1:
 		return false
-	_scene._inspect_ring.position = BoardView.cell_center(focus.cell) + Vector3(0.0, 0.04, 0.0)
-	_scene._inspect_ring.visible = true  # 寄った駒を示す（撮るためだけ）
+	_scene.mark_cell(focus.cell)  # 寄った駒を示す（撮るためだけ）
 	print("screenshots: フェーズの始めに寄った駒 %s %s" % [UnitKind.display_name(focus.kind), focus.cell])
 	return true
 
@@ -851,7 +859,7 @@ func _scene_log_long() -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var panel: Node = _scene.log_panel()
-	panel.scroll_to(int(panel._scroll.get_v_scroll_bar().max_value) - 1500)
+	panel.scroll_to(panel.scroll_max() - 1500)
 	return true
 
 
@@ -1049,7 +1057,7 @@ func _scene_rotated() -> bool:
 	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
 		return false
 	_show()
-	_look_at(_scene._rig.position)
+	_look_at(_scene.camera_center())
 	_aim(30.0, 130.0, 35.0)
 	return true
 
@@ -1146,7 +1154,7 @@ func _banner_gone() -> void:
 	if _app.current_id() != &"battle" or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open():
 		return  # 時間が止まっている（知らせは消えない）
 	var waited := 0.0
-	while _scene._hud.is_banner_shown() and waited < BANNER_WAIT:
+	while _scene.is_banner_shown() and waited < BANNER_WAIT:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 
@@ -1157,15 +1165,12 @@ func _show() -> void:
 
 ## カメラの見ている地点を point にする（寄る動きは待たない）。
 func _look_at(point: Vector3) -> void:
-	_scene._rig.follow(null)
-	_scene._rig.focus_on(point)
-	_scene._rig.position = Vector3(point.x, 0.0, point.z)
+	_scene.place_camera(point)
 
 
 ## カメラの距離、向き（度）、見下ろす角度（度）を決める。
 func _aim(distance: float, yaw_degrees: float, pitch: float) -> void:
-	_scene._rig._target_distance = distance
-	_scene._rig._target_yaw = deg_to_rad(yaw_degrees)
+	_scene.set_camera_view(distance, yaw_degrees)
 	_scene.set_camera_pitch(pitch)
 
 

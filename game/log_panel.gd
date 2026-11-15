@@ -161,6 +161,11 @@ func scroll_to(value: int) -> void:
 	_scroll.scroll_vertical = value
 
 
+## scroll_to に渡せるいちばん下の値の目安（スクロールの棒の最大）。検査とスクリーンショットの道具用。
+func scroll_max() -> int:
+	return int(_scroll.get_v_scroll_bar().max_value)
+
+
 func _clear() -> void:
 	for row in _rows:
 		_rows_box.remove_child(row)
