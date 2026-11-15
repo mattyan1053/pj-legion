@@ -39,6 +39,17 @@ static func deploy(battle: Battle, side: Unit.Side, deck: Deck) -> Array[Unit]:
 	return placed
 
 
+## 何も無い広い盤で、編成の i 番目の駒が置かれるところ（本陣から見た位置）。count 体ぶんを、編成の並びの順に返す。
+## x は本陣の列からのずれ（負が左）、y は本陣から何行前か（1 が本陣のすぐ前）。編成の画面の配置の図に使う。
+## 実際の盤では、入れないマスと駒のいるマスを飛ばすので、ここからずれることがある。
+static func open_field_slots(count: int) -> Array[Vector2i]:
+	var slots: Array[Vector2i] = []
+	var offsets := _row_offsets()
+	for i in maxi(count, 0):
+		slots.append(Vector2i(offsets[i % offsets.size()], 1 + i / offsets.size()))
+	return slots
+
+
 ## 本陣から見て前の向き（行の向き）。
 static func forward(board: Board, hq: Vector2i) -> Vector2i:
 	return Vector2i.DOWN if hq.y * 2 < board.size.y - 1 else Vector2i.UP

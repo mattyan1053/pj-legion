@@ -3,6 +3,7 @@ extends RefCounted
 ## プレイヤー 1 人の編成。選んだ軍と、雇った駒（将を除く）の並び。
 ##
 ## 将は編成に含めない。軍を盤に置くとき（Deployment.deploy）に、1 体だけ自動で加わる。
+## どの駒を雇えるか・予算・数の上限は、編成の決まり（DeckRules。既定は対戦の決まり）が決める。
 ## 雇えるのは、選んだ軍のロスターの駒だけ。軍を変えるときは、編成を作り直す。
 ## 対戦に出せる形かどうかは problems() / is_valid() で調べる（docs/deck-building.md）。
 ## 編成の途中は、通らない形（駒が 0 体、予算を超えている）にもなる。
@@ -10,55 +11,51 @@ extends RefCounted
 ## 編成が対戦に出せない理由。
 enum Problem {
 	NO_UNITS,  ## 雇った駒が 1 体もいない
-	TOO_MANY_UNITS,  ## 雇った駒が MAX_UNITS を超えている
+	TOO_MANY_UNITS,  ## 雇った駒が決まりの上限（対戦の決まりでは MAX_UNITS）を超えている
 	OVER_BUDGET,  ## 合計コストが予算を超えている
 	TOO_MUCH_EQUIPMENT,  ## 装備を持てる数を超えて持っている駒がいる
 	NOT_IN_ROSTER,  ## この軍のロスターに無い駒がいる
 }
 
-## 雇える駒の数の上限（将を除く）。
+## 対戦の決まりで雇える駒の数の上限（将を除く）。
 const MAX_UNITS := 6
-
-## 軍ごとの予算（合計コストの上限）。
-const _BUDGETS := {
-	UnitKind.Army.MILITARY: 24,
-	UnitKind.Army.FANTASY: 18,
-}
 
 var army: UnitKind.Army
 var entries: Array[DeckEntry] = []
+## この編成の決まり（ロスター、予算、数の上限）。
+var rules: DeckRules
 
 
-func _init(deck_army: UnitKind.Army) -> void:
+## deck_rules を渡さなければ、対戦の決まり（DeckRules.versus()）で組む。
+func _init(deck_army: UnitKind.Army, deck_rules: DeckRules = null) -> void:
 	army = deck_army
+	rules = deck_rules if deck_rules != null else DeckRules.versus()
 
 
-## その軍で雇える駒の種類。並びは 前衛・後衛・奇襲・回復。
+## 対戦の決まりで、その軍が雇える駒の種類。並びは 前衛・後衛・奇襲・回復。
 static func roster(of_army: UnitKind.Army) -> Array[UnitKind.Id]:
-	var result: Array[UnitKind.Id] = []
-	if of_army == UnitKind.Army.NONE:
-		return result
-	for id: UnitKind.Id in UnitKind.Id.values():
-		if UnitKind.army(id) == of_army:
-			result.append(id)
-	result.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
-		return UnitKind.role(a) < UnitKind.role(b))
-	return result
+	return DeckRules.versus().roster(of_army)
 
 
-## その軍の予算。軍でなければ 0。
+## 対戦の決まりでの、その軍の予算。軍でなければ 0。
 static func budget_of(of_army: UnitKind.Army) -> int:
-	return _BUDGETS.get(of_army, 0)
+	return DeckRules.versus().budget(of_army)
 
 
+## この編成の予算（決まりと軍で決まる）。
 func budget() -> int:
-	return budget_of(army)
+	return rules.budget(army)
+
+
+## この編成で雇える駒の種類（決まりと軍で決まる）。
+func available_kinds() -> Array[UnitKind.Id]:
+	return rules.roster(army)
 
 
 ## 駒を 1 体雇う。この軍のロスターに無い種類か、もう雇えなければ（上限に達している）、何もせず null。
 ## 予算は見ない（超えた編成は作れて、検査で分かる）。
 func add(kind: UnitKind.Id) -> DeckEntry:
-	if not _in_roster(kind) or entries.size() >= MAX_UNITS:
+	if not _in_roster(kind) or entries.size() >= rules.max_units:
 		return null
 	var entry := DeckEntry.new(kind)
 	entries.append(entry)
@@ -87,7 +84,7 @@ func problems() -> Array[Problem]:
 	var found: Array[Problem] = []
 	if entries.is_empty():
 		found.append(Problem.NO_UNITS)
-	if entries.size() > MAX_UNITS:
+	if entries.size() > rules.max_units:
 		found.append(Problem.TOO_MANY_UNITS)
 	if total_cost() > budget():
 		found.append(Problem.OVER_BUDGET)
@@ -103,5 +100,26 @@ func is_valid() -> bool:
 	return problems().is_empty()
 
 
+## 同じ決まり・軍・駒・装備の、別の編成（片方を変えても、もう片方は変わらない）。
+func copy() -> Deck:
+	var other := Deck.new(army, rules)
+	for entry in entries:
+		var twin := DeckEntry.new(entry.kind)
+		twin.equipment = entry.equipment.duplicate()
+		other.entries.append(twin)
+	return other
+
+
+## 駒の並びを入れ替える。from の駒を to の位置へ動かす（間の駒は 1 つずつずれる）。どちらかが範囲の外なら何もせず false。
+func move(from: int, to: int) -> bool:
+	if from < 0 or from >= entries.size() or to < 0 or to >= entries.size():
+		return false
+	if from != to:
+		var entry := entries[from]
+		entries.remove_at(from)
+		entries.insert(to, entry)
+	return true
+
+
 func _in_roster(kind: UnitKind.Id) -> bool:
-	return army != UnitKind.Army.NONE and UnitKind.army(kind) == army
+	return rules.allows(army, kind)
