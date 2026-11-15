@@ -151,7 +151,7 @@ func test_cpu_chips_when_a_friend_can_finish_this_phase() -> void:
 
 func test_raider_goes_to_steal_a_boss_the_foe_has_worn_down() -> void:
 	var battle := _battle()
-	var boss := _boss(battle, 30)
+	var boss := _boss(battle, 25)
 	# 相手の 3 体が中ボスを削っている。離れた奇襲が、止めを取りに寄る。
 	battle.add_unit(UnitKind.Id.PALADIN, P2, HOME + Vector2i(1, 0))
 	battle.add_unit(UnitKind.Id.PALADIN, P2, HOME + Vector2i(0, -1))
@@ -161,7 +161,7 @@ func test_raider_goes_to_steal_a_boss_the_foe_has_worn_down() -> void:
 	var before := _distance(commando, boss.cell)
 	_play_phase(battle)
 	assert_true(_distance(commando, boss.cell) < before, "中ボスへ寄る")
-	assert_eq(boss.hp, 30, "届かないうちは削らない")
+	assert_eq(boss.hp, 25, "届かないうちは削らない")
 
 
 func test_cpu_prefers_the_relic_to_a_small_hit() -> void:
