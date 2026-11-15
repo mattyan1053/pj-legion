@@ -3,6 +3,7 @@ extends Node3D
 ##
 ## 再生する側（board_prototype.gd）が、イベントの再生の中から呼ぶ。ここはルールを持たず、何をどこに出すかだけを受け取る。
 ## 演出の起点は、種類ごとに 1 つのメソッドにまとめてある（効果音を足すときは、ここに足せば全部の場面で鳴る）。
+## 効果音は、形が出る瞬間に鳴らす（play_sound。呼ぶ側が渡す。渡さなければ鳴らさない）。
 ## どれも出したら待たずに返す（呼ぶ側の待ち時間は変えない）。出したものは、消えたら自分で取り除く。
 ##
 ## 描き方は、光に左右されない色（unshaded）と透明度だけ。後処理（グロー）や画面のシェーダーには頼らない
@@ -27,6 +28,15 @@ const STYLE_COLORS := {
 	Style.PLAIN: Color("ffcf6a"),
 }
 
+## 当たり方ごとの効果音（sound_catalog.gd の名前）。当たる瞬間に鳴る。
+const STYLE_SOUNDS := {
+	Style.SLAM: &"hit_slam",
+	Style.SLASH: &"hit_slash",
+	Style.SHOT: &"hit_shot",
+	Style.MAGIC: &"hit_magic",
+	Style.PLAIN: &"hit_plain",
+}
+
 ## 飛んでいく弾の、飛ぶ時間（秒）。攻撃の動きが当たる瞬間に着くよう、その分だけ早く撃ち出す。
 const SHOT_TIME := 0.09
 const MAGIC_TIME := 0.2
@@ -44,6 +54,18 @@ const SKILL_COLORS := {
 	Skill.Id.SHADOW_STEP: Color("8a4dff"),
 	Skill.Id.ADRENALINE_SHOT: Color("b6ff4a"),
 }
+## スキルの系統ごとの効果音（sound_catalog.gd の名前）。形が対象に届いた瞬間に鳴る。
+## 8 種を全部別にはせず、系統でまとめる: 炎、守り（壁・盾）、聖、風と影（煙幕・影の移動）、集中（照準・アドレナリン）。
+const SKILL_SOUNDS := {
+	Skill.Id.FIREBALL: &"skill_fire",
+	Skill.Id.TACTICAL_BARRICADE: &"skill_guard",
+	Skill.Id.DIVINE_SHIELD: &"skill_guard",
+	Skill.Id.SAINT_PLACE: &"skill_holy",
+	Skill.Id.SMOKE_GRENADE: &"skill_wind",
+	Skill.Id.SHADOW_STEP: &"skill_wind",
+	Skill.Id.PRECISION_AIM: &"skill_focus",
+	Skill.Id.ADRENALINE_SHOT: &"skill_focus",
+}
 ## スキルの形が対象に届くまでの秒数（使った駒の手振りが終わる瞬間に届く）。呼ぶ側はこの時間だけ待ってから効果を見せる。
 const SKILL_TIME := 0.4
 ## ファイアボール・スモークグレネードが飛ぶ時間。
@@ -51,6 +73,9 @@ const THROW_TIME := 0.26
 
 ## 待機のサインの色（行動済みの駒の暗さに合わせた、落ち着いた白）。
 const COLOR_WAIT := Color("dfe6ee")
+
+## 効果音を鳴らすところ（名前を 1 つ受け取る。board_prototype.gd が context.play_sound を渡す）。
+var play_sound := Callable()
 
 ## 使い回す形（作るのは 1 回だけ）。
 static var _slash_mesh: ArrayMesh
@@ -89,6 +114,7 @@ func strike(style: Style, from: Vector3, to: Vector3, hit_in: float) -> void:
 	await _wait(hit_in)
 	if not is_inside_tree():
 		return
+	_sound(STYLE_SOUNDS[style])
 	match style:
 		Style.SLAM:
 			_ring(to + Vector3(0.0, 0.06, 0.0), color, 0.4, 2.1, 0.36)
@@ -142,6 +168,7 @@ func skill_flash(skill: Skill.Id, user: Vector3, target: Vector3) -> void:
 	await _wait(SKILL_TIME)
 	if not is_inside_tree():
 		return
+	_sound(SKILL_SOUNDS[skill])
 	match skill:
 		Skill.Id.FIREBALL:
 			_burst(target + Vector3(0.0, 0.4, 0.0), color, 2.6, 0.36)
@@ -171,6 +198,7 @@ func skill_flash(skill: Skill.Id, user: Vector3, target: Vector3) -> void:
 
 
 ## 必殺技を使った陣営の駒すべてに、同時に陣営の色の光の柱が立つ（駒ごとに順には出さない）。
+## 音はここでは鳴らさない（必殺技の音は、画面が光る瞬間に 1 回だけ鳴らし、山がこの柱に重なる。board_prototype.gd）。
 func ult_burst(points: Array[Vector3], color: Color) -> void:
 	for at in points:
 		_pillar(at, color, 0.5, 2.4, 0.45)
@@ -178,6 +206,11 @@ func ult_burst(points: Array[Vector3], color: Color) -> void:
 
 
 # ---- 形 ----
+
+
+func _sound(name: StringName) -> void:
+	if play_sound.is_valid():
+		play_sound.call(name)
 
 
 func _wait(seconds: float) -> Signal:
