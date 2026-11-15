@@ -26,6 +26,7 @@ const AppContext := preload("res://prototype/app_context.gd")
 const BattleLog := preload("res://prototype/battle_log.gd")
 const LogPanel := preload("res://prototype/log_panel.gd")
 const BattleUiState := preload("res://prototype/battle_ui_state.gd")
+const BattleTexts := preload("res://prototype/battle_texts.gd")
 const BattleEffects := preload("res://prototype/battle_effects.gd")
 const StageLook := preload("res://prototype/stage_look.gd")
 
@@ -33,7 +34,6 @@ const StageLook := preload("res://prototype/stage_look.gd")
 signal finished(outcome: StringName)
 
 const NO_CELL := Vector2i(-1, -1)
-const NOTHING_SPECIAL := "特別なものは無い"
 const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("e0b83a")]
 
 ## 1 マス歩くのにかける秒数（巡航は速く走る）。中立の駒は、目で追えるよう、ゆっくり歩かせる。
@@ -67,13 +67,13 @@ const COLOR_HAZE := Color("b4cbdc")
 const FOG_BEGIN := 64.0
 const FOG_END := 108.0
 
-## 駒のそばのメニューの項目の名前。
-const MENU_ATTACK := &"attack"
-const MENU_HEAL := &"heal"
-const MENU_SKILL := &"skill"
-const MENU_WAIT := &"wait"
-const MENU_UNDO := &"undo"
-const MENU_BACK := &"back"
+## 駒のそばのメニューの項目の名前（battle_texts.gd）。
+const MENU_ATTACK := BattleTexts.MENU_ATTACK
+const MENU_HEAL := BattleTexts.MENU_HEAL
+const MENU_SKILL := BattleTexts.MENU_SKILL
+const MENU_WAIT := BattleTexts.MENU_WAIT
+const MENU_UNDO := BattleTexts.MENU_UNDO
+const MENU_BACK := BattleTexts.MENU_BACK
 ## メニューが隠したくないものの重み（menu_placement.gd）。攻撃・回復・スキルの相手、ほかの駒、届くマス、情報の枠。
 const MENU_WEIGHT_TARGET := 12.0
 const MENU_WEIGHT_UNIT := 4.0
@@ -808,26 +808,6 @@ func _on_menu_hovered(id: StringName) -> void:
 	_ui.menu_hover_id = id
 	if not _ui.busy:
 		_update_info()
-
-
-## メニューの項目の説明（押すと何が起きるか）。マウスを乗せている間、左下の枠に出す。
-func _menu_note(id: StringName, unit: Unit) -> String:
-	match id:
-		MENU_ATTACK:
-			return "攻撃: 赤いマスの相手（樽・盾も）を選んで攻撃する。攻撃すると、この駒の行動は終わる。相手にマウスを乗せると、見込みが出る"
-		MENU_HEAL:
-			return "回復: 緑のマスの味方を選んで回復する（回復量 %d）。回復すると、この駒の行動は終わる" % unit.power()
-		MENU_SKILL:
-			var skill := Skills.of(unit)
-			var after := "使うと、この駒の行動は終わる" if skill.ends_action() else "使ったあと、続けて攻撃できる（移動は取り消せなくなる）"
-			return "%s: %s\n%s。%s" % [skill.display_name(), skill.summary(), after, BattleHud.skill_state_text(unit)]
-		MENU_WAIT:
-			return "待機: 何もせずに、この駒の行動を終える"
-		MENU_UNDO:
-			return "移動を取り消す: 動く前のマスへ戻して、選び直す"
-		MENU_BACK:
-			return "やめる: 対象を選ぶのをやめて、メニューへ戻る"
-	return ""
 
 
 func _enter_mode(mode: BattleUiState.Mode) -> void:
@@ -1806,7 +1786,9 @@ func _refresh() -> void:
 		if _views.has(shown.id):
 			_view(shown.id).set_status_mark(not Statuses.types_of(shown).is_empty())
 	_refresh_status(battle.turn, battle.phase)
-	_refresh_hint(unit)
+	_hud.set_hint(BattleTexts.hint(
+		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit)
+	))
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
 		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
@@ -1824,10 +1806,13 @@ func _refresh() -> void:
 	else:
 		var can_end := not battle.is_over() and evolving == null
 		_hud.set_end_turn(can_end, "ターン終了", can_end and unacted == 0)
-	_hud.set_menu(_menu_items(unit) if not cpu_turn and evolving == null else [])
+	_hud.set_menu(
+		BattleTexts.menu_items(battle, unit, _ui.mode, _can_attack(), not _heal_targets.is_empty(), not _skill_cells.is_empty())
+		if not cpu_turn and evolving == null else []
+	)
 	_menu_dirty = true
 	_hud.set_ult_button(
-		_ult_button_text(), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult
+		BattleTexts.ult_button_text(battle, _ult_side(), _ui.confirming_ult), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult
 	)
 	_update_info()
 
@@ -1855,26 +1840,6 @@ func _viewer_side() -> Unit.Side:
 ## 選んでいる駒が、いまの位置から攻撃できるもの（相手・樽・盾）があるか。
 func _can_attack() -> bool:
 	return not (_targets.is_empty() and _barrel_targets.is_empty() and _barricade_targets.is_empty())
-
-
-## 駒のそばのメニューに出す項目（[名前, 文字, 押せるか] の列）。いま選べるものだけを並べる。
-## スキルは、持っている駒なら、使えない間も理由を添えて出す（押せない）。行動できない駒では空。
-func _menu_items(unit: Unit) -> Array:
-	var items: Array = []
-	if unit == null or battle.is_over() or not battle.can_act(unit):
-		return items
-	if _ui.mode != Mode.NONE:
-		return [[MENU_BACK, "やめる", true]]
-	if _can_attack():
-		items.append([MENU_ATTACK, "攻撃", true])
-	if not _heal_targets.is_empty():
-		items.append([MENU_HEAL, "回復", true])
-	if Skills.of(unit) != null:
-		items.append([MENU_SKILL, _skill_button_text(unit), not _skill_cells.is_empty()])
-	items.append([MENU_WAIT, "待機", true])
-	if battle.options(unit.id).can_undo:
-		items.append([MENU_UNDO, "移動を取り消す", true])
-	return items
 
 
 ## メニューを、選んでいる駒のそばに置く。駒の位置を画面に投影し、攻撃の相手・届くマス・ほかの駒・情報の枠を
@@ -1936,39 +1901,9 @@ func _ult_summary() -> String:
 	return ult.summary() if ult != null else ""
 
 
-## 必殺技のボタンの文字。
-func _ult_button_text() -> String:
-	var side := _ult_side()
-	var ult := Ults.of(battle, side)
-	if ult == null:
-		return "必殺技（なし）"
-	if _ui.confirming_ult:
-		return "もう一度押すと %s 発動" % ult.display_name()
-	if Ults.is_ready(battle, side):
-		return "必殺技: %s（使える）" % ult.display_name()
-	return "必殺技: %s（%d%%）" % [ult.display_name(), Ults.percent(battle, side)]
-
-
 ## 選べる対象が自分のマスだけのスキル（自分に使うスキル）を、選んでいるか。
 func _is_self_skill(unit: Unit) -> bool:
 	return unit != null and _skill_cells.size() == 1 and _skill_cells[0] == unit.cell
-
-
-## メニューのスキルの項目の文字。使えるならスキルの名前（回数に上限があれば残りも）、使えないなら理由。
-func _skill_button_text(unit: Unit) -> String:
-	var skill := Skills.of(unit)
-	if skill == null:
-		return ""
-	if unit.skill_cooldown > 0:
-		return "スキル（あと %d ターン）" % unit.skill_cooldown
-	var uses := Skills.uses_left(unit)
-	if uses == 0:
-		return "スキル（使い切った）"
-	if _skill_cells.is_empty():
-		return "スキル（いまは使えない）"
-	if uses > 0:
-		return "%s（あと %d 回）" % [skill.display_name(), uses]
-	return skill.display_name()
 
 
 func _refresh_status(turn: int, phase: Unit.Side) -> void:
@@ -1997,50 +1932,6 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		percents.append(Ults.percent(battle, side))
 		names.append(ult.display_name() if ult != null else "")
 	_hud.set_ult_gauges(percents, names)
-
-
-## 下の帯の、いまできることの説明。クリックだけで進められる言い方で、短く書く。
-func _refresh_hint(unit: Unit) -> void:
-	if battle.is_over():
-		_hud.set_hint("決着")
-	elif _ui.cpu_running or _is_cpu_turn():
-		_hud.set_hint("相手（CPU）の番")
-	elif battle.evolving_unit() != null:
-		_hud.set_hint("進化先を選ぶ（上のボタン）")
-	elif _ui.confirming_ult:
-		_hud.set_hint("もう一度押すと必殺技を使う（取り消せない）。右クリックか、盤面のクリックでやめる")
-	elif inspected_unit() != null:
-		var seen := inspected_unit()
-		var ranges := "白: 動ける範囲" if seen.side == battle.phase else "白: 動ける　赤: 次の番に攻撃が届く"
-		var back := "選んでいる駒へ戻る" if unit != null else "見るのをやめる"
-		_hud.set_hint("%s を見ている（%s）\n右クリックで%s" % [seen.display_name(), ranges, back])
-	elif unit == null:
-		_hud.set_hint("駒をクリックして選ぶ。相手の駒をクリックすると、動ける範囲と攻撃の届く範囲が見える")
-	elif _ui.mode == Mode.SKILL and _is_self_skill(unit):
-		_hud.set_hint("%s: この駒（紫のマス）をクリックで使う。右クリックでやめる" % Skills.of(unit).display_name())
-	elif _ui.mode == Mode.SKILL:
-		var after := "使うと行動を終える" if Skills.of(unit).ends_action() else "使ったあと、続けて攻撃できる"
-		_hud.set_hint("%s: 紫のマスをクリックで使う（%s）。右クリックでやめる" % [Skills.of(unit).display_name(), after])
-	elif _ui.mode == Mode.ATTACK:
-		_hud.set_hint("攻撃: 赤いマスの相手をクリック。右クリックでやめる")
-	elif _ui.mode == Mode.HEAL:
-		_hud.set_hint("回復: 緑のマスの味方をクリック。右クリックでやめる")
-	elif not battle.can_act(unit):
-		if unit.side != battle.phase:
-			_hud.set_hint("相手の駒。白: 動ける範囲　赤: 次の番に攻撃が届く範囲")
-		else:
-			_hud.set_hint("この駒は行動を終えている（白: 動ける範囲）")
-	elif unit.move_locked:
-		_hud.set_hint("スキルを使った。駒のそばのメニューから、攻撃か待機を選ぶ（取り消せない）")
-	elif unit.has_moved:
-		if unit.cruised:
-			_hud.set_hint("巡航で動いたので、攻撃はできない。駒のそばのメニューから、待機か取り消しを選ぶ")
-		else:
-			_hud.set_hint("駒のそばのメニューから行動を選ぶ。右クリックで移動を取り消す")
-	elif UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
-		_hud.set_hint("青: 移動　黄: 巡航（回復できない）　緑: 回復できる味方\nマスをクリックで移動。行動は駒のそばのメニューから")
-	else:
-		_hud.set_hint("青: 移動　黄: 巡航（攻撃できない）　赤: 攻撃できる相手\nマスをクリックで移動。行動は駒のそばのメニューから")
 
 
 ## 塗ったマスに、マウスの下のマスまでの道か、マウスの下の樽の爆発が届くマスを重ねて出す。
@@ -2097,7 +1988,7 @@ func _update_info() -> void:
 	var hovered: Unit = null
 	if _hover_cell != NO_CELL:
 		hovered = battle.unit_at(_hover_cell)
-	_hud.show_cell(_cell_line(_hover_cell) if _hover_cell != NO_CELL else "")
+	_hud.show_cell(BattleTexts.cell_line(battle, _hover_cell) if _hover_cell != NO_CELL else "")
 	_hud.viewer_side = _viewer_side()
 	_update_forecast()
 
@@ -2106,7 +1997,7 @@ func _update_info() -> void:
 		shown = selected_unit()
 	if shown == null:
 		if _ui.inspected_cell != NO_CELL:
-			_hud.show_cell_info(_cell_title(_ui.inspected_cell), _cell_body(_ui.inspected_cell))
+			_hud.show_cell_info(BattleTexts.cell_title(battle, _ui.inspected_cell), BattleTexts.cell_body(battle, _ui.inspected_cell))
 		else:
 			_hud.show_unit(null, "", "")
 		return
@@ -2118,25 +2009,9 @@ func _update_info() -> void:
 		return
 	if _ui.menu_hover_id != &"" and selected_unit() != null and hovered == null and _hud.menu_ids().has(_ui.menu_hover_id):
 		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
-		_hud.show_unit(selected_unit(), "", _menu_note(_ui.menu_hover_id, selected_unit()), _ui.menu_hover_id != MENU_SKILL)
+		_hud.show_unit(selected_unit(), "", BattleTexts.menu_note(_ui.menu_hover_id, selected_unit()), _ui.menu_hover_id != MENU_SKILL)
 		return
-	_hud.show_unit(shown, _unit_state(shown), "")
-
-
-## 駒の行動の状態（いまの番の陣営の駒だけ）と、いるマスの地形（平地でなければ）。左下の枠に出す。
-func _unit_state(unit: Unit) -> String:
-	var state := ""
-	if unit.side == battle.phase:
-		state = "行動済み" if unit.acted else "未行動"
-		if unit.has_moved:
-			state = "行動の途中（巡航で移動した）" if unit.cruised else "行動の途中（移動した）"
-		if unit.move_locked:
-			state = "行動の途中（スキルを使った）"
-	# 森にいれば、受けるダメージが減る。
-	var terrain := battle.board.terrain_at(unit.cell)
-	if terrain != Terrain.Type.NORMAL:
-		state += ("\n" if state != "" else "") + "いるマス: " + BattleHud.TERRAIN_NAMES[terrain]
-	return state
+	_hud.show_unit(shown, BattleTexts.unit_state(battle, shown), "")
 
 
 ## いまマウスを乗せている対象への行動（攻撃・樽・盾・回復・スキル）と、予測のパネルの見出し。無ければ空の列。
@@ -2233,57 +2108,6 @@ func forecast_text() -> String:
 func forecast_rect() -> Rect2:
 	_place_forecast()
 	return _hud.forecast_rect()
-
-
-## マスの見出し（位置と地形の名前）。
-func _cell_title(cell: Vector2i) -> String:
-	var terrain: String = BattleHud.TERRAIN_NAMES[battle.board.terrain_at(cell)]
-	return "マス (%d, %d)　%s" % [cell.x, cell.y, terrain.get_slice("（", 0)]
-
-
-## マスの説明を、左下の枠に出す形にしたもの。「名前（説明。説明）」を、名前の行と、字下げした説明の行に分ける。
-func _cell_body(cell: Vector2i) -> String:
-	var lines: Array[String] = []
-	for note in _cell_notes(cell):
-		if not note.ends_with("）") or not note.contains("（"):
-			lines.append(note)
-			continue
-		lines.append(note.get_slice("（", 0))
-		for part in note.substr(note.find("（") + 1).trim_suffix("）").split("。", false):
-			lines.append("　" + part.strip_edges())
-	return "\n".join(lines)
-
-
-## マスの説明（行ごと）: 地形の効果、本陣、盤の上の効果、環境オブジェクト。
-func _cell_notes(cell: Vector2i) -> Array[String]:
-	var notes: Array[String] = []
-	var terrain: String = BattleHud.TERRAIN_NAMES[battle.board.terrain_at(cell)]
-	if terrain.contains("（"):
-		notes.append(terrain.get_slice("（", 1).trim_suffix("）"))
-	var hq_owner := battle.board.hq_owner(cell)
-	if hq_owner >= 0:
-		notes.append("%s の本陣" % Names.SIDE_NAMES[hq_owner])
-	for effect in battle.board.field_effects_at(cell):
-		notes.append(BattleHud.field_effect_text(effect))
-	var type := battle.board.object_at(cell)
-	if type != MapObject.Type.NONE:
-		var text: String = BattleHud.OBJECT_NAMES[type]
-		if type == MapObject.Type.PORTAL:
-			var exit := battle.board.portal_exit(cell)
-			text += " → (%d, %d)" % [exit.x, exit.y]
-			if battle.portal_exit(cell) == Board.NO_CELL:
-				text += "（行き先に駒がいて、いまは使えない）"
-		notes.append(text)
-	if notes.is_empty():
-		notes.append(NOTHING_SPECIAL)
-	return notes
-
-
-## マスの説明を 1 行にしたもの（下の帯。マウスの下のマス）。
-func _cell_line(cell: Vector2i) -> String:
-	var notes := _cell_notes(cell)
-	var title := _cell_title(cell)
-	return title if notes[0] == NOTHING_SPECIAL else "%s　%s" % [title, "　".join(notes)]
 
 
 func _cell_under_mouse() -> Vector2i:
