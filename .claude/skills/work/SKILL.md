@@ -46,6 +46,12 @@ description: 作業のセッションとして動く。メインのセッショ�
 本文の先頭にそう書き、何を見てほしいかと、exe の入手先（CI の `windows` の成果物 `pj-legion-windows`）を示す。
 返事は待たずにマージしてよい。
 
+- **スクリーンショットを本文に貼る**（人間はスマホで見ることが多い）。`tools/screenshots.sh` で撮り、
+  `tools/publish_screenshots.sh` で `screenshots` ブランチに置いて、出てきた Markdown を貼る（`docs/screenshots.md`）。
+  変わった場面を選んで数枚。無い場面は `tools/screenshots.gd` に足す。前後を比べられるなら、main で撮ったものと並べる。
+- **撮った絵を自分でも見て**、崩れ（文字の重なり、はみ出し、読めない色）が無いかを確かめる。
+- コンテナの描画は Windows の実機と違う。最終の見え方は exe で確かめてもらう、と本文に書く。
+
 ## 終わりの報告
 
 `send_message`（claude-code-remote）で、依頼してきたメインのセッション（依頼文に ID がある。`@parent` でも届く）へ短く送る。入れるもの:
