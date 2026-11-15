@@ -192,7 +192,7 @@ const ASSAULT_MIN_UNITS := 3
 ## ERUPTION_MIN_UNITS 体いれば使う（スキルを持つ駒がこれより少なければ、その全員）。
 const ERUPTION_MIN_COOLDOWN := 2
 const ERUPTION_RADIUS := 6
-const ERUPTION_MIN_UNITS := 2
+const ERUPTION_MIN_UNITS := 1
 
 const _GOAL := 0
 const _DANGER := 1
