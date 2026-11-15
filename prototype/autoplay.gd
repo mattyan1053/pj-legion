@@ -32,6 +32,8 @@ var _scripted: Array[Callable] = []
 var _scenes_done := false
 ## CPU を相手にした対戦を始めたときの、CPU の行動の数。
 var _cpu_actions_before := 0
+## 最後に、対戦の場面を抜けて、タイトルと対戦の設定の場面を通している途中か（_leave_battle）。
+var _leaving := false
 
 
 func _init(scene: Node) -> void:
@@ -41,7 +43,7 @@ func _init(scene: Node) -> void:
 
 
 func _process(_delta: float) -> void:
-	if _finished or _scene.is_busy():
+	if _finished or _leaving or _scene.is_busy():
 		return
 	var battle: Battle = _scene.battle
 	var problem := _mismatch(battle)
@@ -732,7 +734,7 @@ func _queue_system_menu_scene() -> void:
 		_expect(not menu.is_open() and _scene.selected_unit() == null, "選んでいる駒があるのに、Esc で選択をやめずにメニューを開いた")
 		_scene.press_escape()
 		_expect(menu.is_open() and _scene.is_busy() and Engine.time_scale == 0.0, "戻すものが無いのに、Esc でメニューが開かない（か、止まらない）")
-		_expect(menu.item_ids() == ([&"resume", &"settings", &"match_setup", &"quit"] as Array[StringName]), "メニューの項目が違う: %s" % [menu.item_ids()])
+		_expect(menu.item_ids() == ([&"resume", &"settings", &"match_setup", &"title", &"quit"] as Array[StringName]), "メニューの項目が違う: %s" % [menu.item_ids()])
 		_scene.click_cell(trooper.cell)
 		_expect(_scene.selected_unit() == null, "メニューを開いている間に、駒を選べた")
 		# 対戦が失われる項目は、確かめる。「やめる」で、メニューへ戻る。
@@ -878,7 +880,7 @@ func _finish_if_all_played() -> void:
 		if _scene.played.get(kind, 0) == 0:
 			_finish("autoplay: 1 回も再生しなかったイベント: %s" % kind.resource_path, 1)
 			return
-	_finish("autoplay: OK", 0)
+	_leave_battle()
 
 
 func _next_unit(battle: Battle) -> Unit:
@@ -1021,6 +1023,41 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 	event.pressed = pressed
 	event.position = at
 	_scene._unhandled_input(event)
+
+
+## 最後に、相手（CPU）の番の途中で、システムメニューの「タイトルへ戻る」を確かめてから選ぶ。対戦の場面が消えても、
+## 止まっていた再生や CPU の番が続きを走らない（エラーが出ない）こと。そのあと、タイトルの「始める」で対戦の設定の場面へ進み、
+## 「タイトルへ戻る」でタイトルへ戻る。このノードは対戦の場面の子なので、先にアプリの子へ移っておく。
+func _leave_battle() -> void:
+	var app := _scene.get_parent()
+	if not app.has_method(&"go"):
+		_finish("autoplay: OK", 0)
+		return
+	_leaving = true
+	reparent(app)
+	var menu: Node = app.system_menu()
+	_scene.set_opponent(false)
+	_scene.start_battle(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
+	_scene.set_opponent(true)
+	_scene.press_end_turn()
+	_scene.press_end_turn()
+	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
+	_scene.press_escape()
+	_expect(menu.is_open() and menu.item_ids().has(&"title"), "相手の番の途中に、タイトルへ戻る項目が出ない")
+	menu.press(&"title")
+	_expect(menu.confirming() == &"title", "対戦の途中なのに、タイトルへ戻る前に確かめない")
+	menu.accept()
+	await app.scene_changed
+	_expect(app.current_id() == &"title" and not menu.is_open() and Engine.time_scale == 1.0, "タイトルへ戻らない（か、時間が止まったまま）")
+	# 消えた対戦の場面の、止まっていた待ち時間が過ぎるのを待つ（続きを走れば、エラーが出て検査が落ちる）。
+	await get_tree().create_timer(1.0).timeout
+	app.current_scene().press_start()
+	await app.scene_changed
+	_expect(app.current_id() == &"setup", "タイトルの「始める」で、対戦の設定へ進まない")
+	app.current_scene().setup_panel().cancel()
+	await app.scene_changed
+	_expect(app.current_id() == &"title", "対戦の設定の「タイトルへ戻る」で、タイトルへ戻らない")
+	_finish("autoplay: OK", 0)
 
 
 func _finish(message: String, code: int) -> void:

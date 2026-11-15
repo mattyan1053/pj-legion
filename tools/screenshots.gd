@@ -1,6 +1,8 @@
 extends Node
 ## 試作の決まった場面を画像に撮る。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
-## 試作（board_prototype.gd）がこのノードを足す。撮り終えたら終わる。使い方は docs/screenshots.md。
+## アプリ（app.gd）が、タイトル → 対戦の設定 → 対戦 と人と同じ道で対戦に入ったところで、このノードを足す。
+## 撮り終えたら終わる。使い方は docs/screenshots.md。
+## 対戦の場面は対戦の画面（board_prototype.gd）で撮り、タイトルと対戦の設定の場面は、アプリをその場面へ切り替えて撮る。
 ##
 ## 場面はどれも、種を決めた対戦（MatchSetup）を CPU どうしで進めて作る。人の操作と同じ入口で駒を選ぶので、
 ## 毎回同じ絵になる。場面を足すときは、SCENES に名前と説明を足し、同じ名前の _scene_<名前>() を書く
@@ -12,7 +14,9 @@ const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
-	"setup": "対戦の設定画面（起動した直後）",
+	"title": "タイトルの場面（起動した直後）",
+	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
+	"setup": "対戦の設定の場面（タイトルの「始める」のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
 	"system_menu": "対戦の途中で開いたシステムメニュー（Esc か右上のボタン）",
 	"system_quit": "システムメニューで「ゲームを終える」を押して、確かめている",
@@ -47,6 +51,8 @@ const SETTLE := 1.8
 const MAX_ACTIONS := 3000
 const JPEG_QUALITY := 0.82
 
+var _app: Node
+## いまの対戦の画面（board_prototype.gd）。アプリが対戦の場面にいる間だけ使う。
 var _scene: Node
 var _out := ""
 var _names: Array[String] = []
@@ -56,8 +62,8 @@ var _stats: BattleStats
 var _stage := BoardGenerator.Stage.PLAIN
 
 
-func _init(scene: Node) -> void:
-	_scene = scene
+func _init(app: Node) -> void:
+	_app = app
 
 
 func _ready() -> void:
@@ -78,9 +84,13 @@ func _ready() -> void:
 
 func _run() -> void:
 	for name: String in _names:
+		_app.system_menu().close()
+		_app.context.settings.reset_all()
+		if _app.current_id() != &"battle":
+			_app.context.match_choice.cpu_opponent = false
+			await _app.go(&"battle")
+		_scene = _app.current_scene()
 		_scene.setup_panel().visible = false
-		_scene.system_menu().close()
-		_scene.settings.reset_all()
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 		_stage = BoardGenerator.Stage.PLAIN
 		_new_battle()
@@ -89,7 +99,7 @@ func _run() -> void:
 		if not ok:
 			_quit("screenshots: 場面 %s を作れなかった" % name, 1)
 			return
-		while _scene.is_busy() and not _scene.setup_panel().visible and not _scene.system_menu().is_open():
+		while _app.current_id() == &"battle" and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open():
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -107,11 +117,21 @@ func _run() -> void:
 # ---- 場面 ----
 
 
+func _scene_title() -> bool:
+	await _app.go(&"title")
+	return _app.current_id() == &"title"
+
+
+func _scene_title_menu() -> bool:
+	await _app.go(&"title")
+	_app.open_menu()
+	return _app.system_menu().is_open()
+
+
 func _scene_setup() -> bool:
-	_show()
-	_scene.set_opponent(true)  # 設定画面は、遊ぶときの始めと同じ（相手は CPU）で開く
-	_scene.setup_panel().open(_scene.match_choice)
-	return true
+	_app.context.match_choice = TrialSetup.new()  # 遊ぶときの始めと同じ（相手は CPU）で開く
+	await _app.go(&"setup")
+	return _app.current_id() == &"setup"
 
 
 func _scene_setup_again() -> bool:
@@ -129,7 +149,7 @@ func _open_system_menu() -> bool:
 	_show()
 	await get_tree().create_timer(SETTLE).timeout
 	_scene.press_escape()
-	return _scene.system_menu().is_open()
+	return _app.system_menu().is_open()
 
 
 func _scene_system_menu() -> bool:
@@ -139,16 +159,16 @@ func _scene_system_menu() -> bool:
 func _scene_system_quit() -> bool:
 	if not await _open_system_menu():
 		return false
-	_scene.system_menu().press(&"quit")
-	return _scene.system_menu().confirming() == &"quit"
+	_app.system_menu().press(&"quit")
+	return _app.system_menu().confirming() == &"quit"
 
 
 func _scene_settings() -> bool:
 	if not await _open_system_menu():
 		return false
-	_scene.system_menu().press(&"settings")
+	_app.system_menu().press(&"settings")
 	_scene.settings.set_value(&"mouse_sensitivity", 150)
-	return _scene.system_menu().is_settings_open()
+	return _app.system_menu().is_settings_open()
 
 
 func _scene_menu_note() -> bool:

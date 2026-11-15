@@ -1,5 +1,6 @@
 extends Node3D
-## 見た目の試作。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
+## 対戦の場面（見た目の試作）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
+## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。対戦の設定は context.match_choice から読む。
 ##
 ## 相手（プレイヤー2）を CPU にすると、その番は CpuPlayer が返す行動を、人の操作と同じ入口（_do）に 1 つずつ流す。
 ## ここはルールを持たない。操作を行動（BattleAction）にして Battle.apply() に渡し、
@@ -20,7 +21,10 @@ const MenuPlacement := preload("res://prototype/menu_placement.gd")
 const NeutralPlayback := preload("res://prototype/neutral_playback.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const Settings := preload("res://prototype/settings.gd")
-const SaveStore := preload("res://prototype/save_store.gd")
+const AppContext := preload("res://prototype/app_context.gd")
+
+## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"）。
+signal finished(outcome: StringName)
 
 const NO_CELL := Vector2i(-1, -1)
 const NOTHING_SPECIAL := "特別なものは無い"
@@ -103,12 +107,13 @@ var _setup_panel: MatchSetupPanel
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
 
-## システムメニューの項目の名前（system_menu.gd が扱う「戻る」「設定」のほか）。
+## システムメニューに足す項目の名前。
 const SYSTEM_MATCH_SETUP := &"match_setup"
-const SYSTEM_QUIT := &"quit"
 
-## 遊ぶ人ごとの設定（settings.gd）。遊ぶときは user:// から読み、設定の画面を閉じるたびに書く。
-var settings := Settings.new()
+## アプリ（app.gd）から渡されるもの。場面を作ってから木に入れる前に入る。
+var context: AppContext
+## 遊ぶ人ごとの設定（settings.gd。context が持つ）。
+var settings: Settings
 ## ふだんの時間の速さ（Engine.time_scale）。自動の対戦は、検査を短く済ませるために上げる。
 ## システムメニューを開いている間は 0（止める）、CPU の駒の番は設定の「CPU の番の速さ」を掛ける（_update_time_scale）。
 var time_scale_base := 1.0
@@ -184,7 +189,8 @@ func _ready() -> void:
 	_hud.restart_pressed.connect(_on_restart_pressed)
 	_hud.evolution_chosen.connect(choose_evolution)
 	_hud.opponent_pressed.connect(toggle_opponent)
-	_hud.setup_pressed.connect(open_setup)
+	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
+	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
 	_setup_panel.setup(TEAM_COLORS)
@@ -192,33 +198,32 @@ func _ready() -> void:
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 	_setup_panel.cancelled.connect(_refresh)
 
-	var autoplay := OS.get_cmdline_user_args().has("--autoplay")
-	var shots := OS.get_cmdline_user_args().has("--shots")
-	# 検査とスクリーンショットは、遊ぶ人の設定を読まず、書かない（いつも既定の値で同じに動く）。
-	if not (autoplay or shots):
-		settings.store = SaveStore.new()
-		settings.load_saved()
-	settings.changed.connect(func(_key: StringName) -> void: _apply_settings())
+	if context == null:
+		context = AppContext.new()  # アプリを通さずに置いたとき（既定の設定で始める）
+	settings = context.settings
+	settings.changed.connect(_on_setting_changed)
 	_apply_settings()
-	_system_menu = SystemMenu.new()
-	add_child(_system_menu)
-	_system_menu.setup(settings)
-	_system_menu.open_requested.connect(open_system_menu)
-	_system_menu.item_chosen.connect(_on_system_item)
+	_system_menu = context.system_menu
+	_system_menu.opened.connect(_on_system_menu_opened)
 	_system_menu.closed.connect(_on_system_menu_closed)
-	_system_menu.settings_closed.connect(settings.save)
-	# 検査は、人の操作の入口を両方のプレイヤーで通すところから始める（CPU の番は、検査の中で切り替えて通す）。
-	set_opponent(not (autoplay or shots))
-	_battle_started = autoplay or shots
-	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする。
-	start_battle(BoardGenerator.Stage.PLAIN, 20261114 if autoplay or shots else int(Time.get_unix_time_from_system()))
-	if autoplay:
+
+	match_choice = context.match_choice.copy()
+	cpu_opponent = match_choice.cpu_opponent
+	_show_opponent()
+	_battle_started = true
+	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする（context.battle_seed）。
+	start_battle(match_choice.stage, context.battle_seed())
+	if context.checking == AppContext.CHECK_AUTOPLAY:
 		add_child(Autoplay.new(self))
-	elif shots:
-		# スクリーンショットの道具（tools/screenshots.gd）。遊ぶときは読み込まない。
-		add_child(load("res://tools/screenshots.gd").new(self))
-	else:
-		open_setup()  # 遊ぶときは、まず対戦の設定を選ぶ（後ろの盤面は既定の設定で作っておく）
+
+
+func _exit_tree() -> void:
+	# メニューで止めた時間や、CPU の番の速さを、ほかの場面へ持ち越さない。
+	Engine.time_scale = 1.0
+
+
+## 毎フレームの終わり（_process の終わり）。再生の途中で、次のフレームまで待つのに使う。
+signal frame_passed
 
 
 func _process(delta: float) -> void:
@@ -232,6 +237,20 @@ func _process(delta: float) -> void:
 		focus_cells.append(_hover_cell)
 	_board_view.update_occlusion(_rig.camera, _rig.global_position, focus_cells, delta)
 	_place_menu()
+	frame_passed.emit()
+
+
+## seconds 秒（Engine.time_scale に従う）たったら出る signal。再生の間を置くのに使う。
+## 木の時計（SceneTree.create_timer）ではなく、この場面の子の Timer で測るので、場面を抜けて（タイトルへ戻る）このノードが消えると、
+## 待っている再生や CPU の番は続きを走らない（消えた場面に触れない）。
+func _after(seconds: float) -> Signal:
+	var timer := Timer.new()
+	timer.one_shot = true
+	timer.wait_time = maxf(seconds, 0.001)
+	timer.timeout.connect(timer.queue_free)
+	add_child(timer)
+	timer.start()
+	return timer.timeout
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -325,6 +344,7 @@ func setup_panel() -> MatchSetupPanel:
 func _on_setup_chosen(chosen: RefCounted) -> void:
 	_battle_started = true
 	match_choice = chosen
+	context.match_choice = chosen.copy()  # 次に対戦の設定の場面を開いたときも、これを出す
 	# いまの対戦の続きを CPU に渡さないよう、set_opponent は通さない（新しい対戦が、始めに CPU の番を見る）。
 	cpu_opponent = chosen.cpu_opponent
 	_show_opponent()
@@ -408,14 +428,15 @@ func press_escape() -> void:
 		open_system_menu()
 
 
-## システムメニューを開く（右上のボタン、Esc）。いつでも開ける（CPU の番や再生の途中でも）。
+## システムメニューを開く（右上のボタン、Esc）。いつでも開ける（CPU の番や再生の途中でも）。開くのはアプリ（app.gd）。
 ## 開いている間は時間を止める（再生も CPU の番も、その場で止まり、閉じると続きから進む）。
 func open_system_menu() -> void:
-	if _system_menu.is_open():
-		return
+	context.open_menu()
+
+
+func _on_system_menu_opened() -> void:
 	_pressing = false
 	_dragging = false
-	_system_menu.open(_system_items())
 	_rig.controls_enabled = false
 	_update_time_scale()
 
@@ -425,25 +446,24 @@ func system_menu() -> SystemMenu:
 	return _system_menu
 
 
-## いま並べる項目。対戦の設定画面の上で開いたら、「対戦の設定へ」は出さない（もう開いている）。
-## 決着していない対戦の途中なら、ゲームを終える前に確かめる（対戦は取っておかないので、失われる）。
-func _system_items() -> Array:
-	var on_setup := _setup_panel.visible
-	var items: Array = [[SystemMenu.ITEM_RESUME, "対戦の設定へ戻る" if on_setup else "対戦へ戻る", ""]]
-	items.append([SystemMenu.ITEM_SETTINGS, "設定", ""])
-	if not on_setup:
-		items.append([SYSTEM_MATCH_SETUP, "対戦の設定へ", ""])
-	var in_progress := _battle_started and battle != null and not battle.is_over()
-	items.append([SYSTEM_QUIT, "ゲームを終える", "ゲームを終えますか？\nいまの対戦は取っておけないので、失われる" if in_progress else ""])
-	return items
+## システムメニューの「戻る」の文字（scene_flow.gd の場面の決まり）。
+func resume_label() -> String:
+	return "対戦の設定へ戻る" if _setup_panel.visible else "対戦へ戻る"
 
 
-func _on_system_item(id: StringName) -> void:
-	match id:
-		SYSTEM_MATCH_SETUP:
-			_open_setup_when_ready()
-		SYSTEM_QUIT:
-			get_tree().quit()
+## システムメニューに足す項目。対戦の設定画面の上で開いたら、「対戦の設定へ」は出さない（もう開いている）。
+func menu_items() -> Array:
+	return [] if _setup_panel.visible else [[SYSTEM_MATCH_SETUP, "対戦の設定へ", ""]]
+
+
+## 抜けると失われるもの（決着していない対戦）があるか。あれば、タイトルへ戻る・ゲームを終える前に確かめる。
+func in_progress() -> bool:
+	return battle != null and not battle.is_over()
+
+
+func on_menu_item(id: StringName) -> void:
+	if id == SYSTEM_MATCH_SETUP:
+		_open_setup_when_ready()
 
 
 func _on_system_menu_closed() -> void:
@@ -457,9 +477,13 @@ func _open_setup_when_ready() -> void:
 	if is_busy():
 		_hud.show_banner("CPU の番が終わったら、対戦の設定を開く" if _cpu_running else "動きが終わったら、対戦の設定を開く", Color.WHITE)
 	while is_busy() and battle == played_battle and not _setup_panel.visible:
-		await get_tree().process_frame
+		await frame_passed
 	if battle == played_battle:
 		open_setup()
+
+
+func _on_setting_changed(_key: StringName) -> void:
+	_apply_settings()
 
 
 ## 設定の値を効かせる。項目を足したら、ここに 1 行足す（settings.gd）。
@@ -921,12 +945,12 @@ func _run_cpu() -> void:
 		_set_cpu_fast(not action is EndPhaseAction)
 		if unit != null and not unit.has_moved and not idle and not action is EvolveAction:
 			_rig.focus_on(_view(unit.id).position)
-			await get_tree().create_timer(CPU_FOCUS_TIME).timeout
+			await _after(CPU_FOCUS_TIME)
 		if not await _do(action):
 			break  # CPU の行動は必ず受け付けられるはず。そうでなければ、同じ行動を繰り返さずに手を止める。
 		cpu_actions += 1
 		if not (action is MoveAction or action is EndPhaseAction or idle or battle.is_over()):
-			await get_tree().create_timer(CPU_PAUSE).timeout
+			await _after(CPU_PAUSE)
 	_set_cpu_fast(false)
 	_cpu_running = false
 	# 番の途中で相手を人に切り替えたら、動いたあとの駒を選んだ状態で引き渡す。
@@ -1014,15 +1038,15 @@ func _play_neutral_phase(events: Array[BattleEvent]) -> void:
 				_beats_running += 1
 				_play_beat(beat)  # 待たずに始めて、同時に流す
 			while _beats_running > 0:
-				await get_tree().process_frame
+				await frame_passed
 			_quiet_playback = false
 			continue
 		if _views.has(first.actor_id):
 			_rig.focus_on(_view(first.actor_id).position)
-			await get_tree().create_timer(NEUTRAL_FOCUS_TIME).timeout
+			await _after(NEUTRAL_FOCUS_TIME)
 		for event in first.events:
 			await _play(event)
-		await get_tree().create_timer(NEUTRAL_PAUSE).timeout
+		await _after(NEUTRAL_PAUSE)
 
 
 func _play_beat(beat: NeutralPlayback.Beat) -> void:
@@ -1097,7 +1121,7 @@ func _play_attack_damaged(event: AttackDamagedEvent) -> void:
 	_show_strike(event.attacker_id, attacker, target)
 	attacker.face(target.position - attacker.position)
 	target.face(attacker.position - target.position)
-	await get_tree().create_timer(attacker.play_attack()).timeout
+	await _after(attacker.play_attack())
 	await _play_hit(event, Color("ffe9a8"), 0.45)
 
 
@@ -1121,7 +1145,7 @@ func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
 		_pop_number(target.position, "クリティカル -%d" % event.amount, Color("ff5a4a"))
 	else:
 		_pop_number(target.position, "-%d" % event.amount, color)
-	await get_tree().create_timer(wait).timeout
+	await _after(wait)
 
 
 ## 回復役の回復。回復役が相手のほうを向いて手を振り、相手に光と数を出す。
@@ -1129,7 +1153,7 @@ func _play_healer_healed(event: HealerHealedEvent) -> void:
 	var healer := _view(event.healer_id)
 	var target := _view(event.unit_id)
 	healer.face(target.position - healer.position)
-	await get_tree().create_timer(healer.play_attack()).timeout
+	await _after(healer.play_attack())
 	await _play_heal(event, true)
 
 
@@ -1149,14 +1173,14 @@ func _play_heal(event: UnitHealedEvent, glow: bool) -> void:
 	_pop_number(view.position, "+%d" % event.amount, Color("9cf09c"))
 	if glow:
 		_flash(view.position, BoardView.COLOR_SPRING_CROSS, 0.8)
-	await get_tree().create_timer(0.35).timeout
+	await _after(0.35)
 
 
 ## 経験値が入った。数を小さく出すだけ（たまった量は左下の駒の情報に出る）。
 func _play_experience_gained(event: ExperienceGainedEvent) -> void:
 	var view := _view(event.unit_id)
 	_pop_number(view.position + Vector3(0.0, 0.35, 0.0), "経験 +%d" % event.amount, COLOR_EXPERIENCE)
-	await get_tree().create_timer(0.2).timeout
+	await _after(0.2)
 
 
 ## レベルが上がった。札のレベルと HP のバーを描き直し、光と知らせを出す。
@@ -1166,7 +1190,7 @@ func _play_level_up(event: LevelUpEvent) -> void:
 	view.set_hp(event.hp)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_LEVEL_UP, 1.4)
 	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "レベル %d！" % event.level, COLOR_LEVEL_UP)
-	await get_tree().create_timer(0.5).timeout
+	await _after(0.5)
 
 
 ## 進化先を選べるようになった。光と知らせだけ（選択肢は、再生が終わったあとに _refresh が出す）。
@@ -1174,7 +1198,7 @@ func _play_evolution_offered(event: EvolutionOfferedEvent) -> void:
 	var view := _view(event.unit_id)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.6)
 	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "進化できる！", COLOR_EVOLUTION)
-	await get_tree().create_timer(0.4).timeout
+	await _after(0.4)
 
 
 ## 進化した。札に印を付け、HP のバーを新しい最大 HP で描き直し、進化先の名前を出す。
@@ -1184,7 +1208,7 @@ func _play_evolved(event: UnitEvolvedEvent) -> void:
 	view.set_hp(event.hp)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.8)
 	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Evolution.display_name(event.evolution), COLOR_EVOLUTION)
-	await get_tree().create_timer(0.6).timeout
+	await _after(0.6)
 
 
 ## 攻撃の動きのあと、樽を消して、爆発の届いたマスを塗る（続くダメージの再生の間も塗ったまま）。
@@ -1193,7 +1217,7 @@ func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
 	if _views.has(event.attacker_id):
 		var attacker := _view(event.attacker_id)
 		attacker.face(at - attacker.position)
-		await get_tree().create_timer(attacker.play_attack()).timeout
+		await _after(attacker.play_attack())
 	_board_view.remove_barrel(event.cell)
 	var colors := {event.cell: COLOR_BLAST}
 	for cell in event.blast_cells:
@@ -1201,7 +1225,7 @@ func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
 	_board_view.show_cells(colors)
 	_flash(at + Vector3(0.0, 0.3, 0.0), Color("ff8a2a"), 2.6)
 	_pop_number(at, "爆発", Color("ff8a2a"))
-	await get_tree().create_timer(0.3).timeout
+	await _after(0.3)
 
 
 ## 盤の上に効果が置かれた。描いて、中心に光を出す。
@@ -1210,7 +1234,7 @@ func _play_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
 	var at := BoardView.cell_center(event.center)
 	_flash(at + Vector3(0.0, 0.3, 0.0), TEAM_COLORS[event.side], 1.2 if event.type == FieldEffect.Type.BARRICADE else 2.4)
 	_pop_number(at, BattleHud.FIELD_EFFECT_NAMES[event.type], TEAM_COLORS[event.side].lightened(0.4))
-	await get_tree().create_timer(0.3).timeout
+	await _after(0.3)
 
 
 ## 煙幕・聖域の残りが減った。描き方は変えない（残りはマスの説明に出る）。
@@ -1225,7 +1249,7 @@ func _play_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
 		var at := BoardView.cell_center(event.cells[0])
 		_flash(at + Vector3(0.0, 0.3, 0.0), Color("d8d0c0"), 1.4)
 		_pop_number(at, "盾が壊れた", Color("d8d0c0"))
-		await get_tree().create_timer(0.3).timeout
+		await _after(0.3)
 
 
 ## 盾を攻撃した。攻撃の動きのあと、減った耐久を出す。
@@ -1233,9 +1257,9 @@ func _play_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
 	var attacker := _view(event.attacker_id)
 	attacker.face(at - attacker.position)
-	await get_tree().create_timer(attacker.play_attack()).timeout
+	await _after(attacker.play_attack())
 	_pop_number(at, "耐久 -%d" % event.amount, Color("ffe9a8"))
-	await get_tree().create_timer(0.3).timeout
+	await _after(0.3)
 
 
 ## 攻撃が煙幕に阻まれた。攻撃の動きのあと、相手に灰色の光と「防いだ」を出す（HP は変わらない）。
@@ -1245,10 +1269,10 @@ func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
 	_show_strike(event.attacker_id, attacker, target)
 	attacker.face(target.position - attacker.position)
 	target.face(attacker.position - target.position)
-	await get_tree().create_timer(attacker.play_attack()).timeout
+	await _after(attacker.play_attack())
 	_flash(target.position + Vector3(0.0, 0.3, 0.0), BoardView.COLOR_SMOKE, 1.2)
 	_pop_number(target.position, "煙幕で防いだ", Color("d0d4da"))
-	await get_tree().create_timer(0.4).timeout
+	await _after(0.4)
 
 
 ## スキルで跳んだ（シャドウステップ）。その場で縮んで消え、着いたマスに現れる。
@@ -1286,7 +1310,7 @@ func _play_reactivated(event: UnitReactivatedEvent) -> void:
 	view.set_acted(false)
 	_flash(view.position, Color("ffd24a"), 0.9)
 	_pop_number(view.position + Vector3(0.0, 0.3, 0.0), "もう一度行動できる", Color("ffd24a"))
-	await get_tree().create_timer(0.25).timeout
+	await _after(0.25)
 
 
 ## 聖域（フェーズの始め）も、光と数を出す。
@@ -1301,7 +1325,7 @@ func _play_skill_used(event: SkillUsedEvent) -> void:
 	if not at.is_equal_approx(view.position):
 		view.face(at - view.position)
 	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Skills.by_id(event.skill).display_name(), Color("dcc4ff"))
-	await get_tree().create_timer(view.play_attack()).timeout
+	await _after(view.play_attack())
 
 
 ## スキルをまた使えるようになった。描き方は変えない（残りは駒の情報とスキルのボタンに出る）。
@@ -1313,7 +1337,7 @@ func _play_skill_ready(_event: SkillReadyEvent) -> void:
 func _play_ult_used(event: UltUsedEvent) -> void:
 	_refresh_status(battle.turn, battle.phase)
 	_hud.show_banner("%s　必殺技: %s!!" % [_side_name(event.side), Ults.by_id(event.ult).display_name()], BattleHud.ULT_COLORS[event.ult])
-	await get_tree().create_timer(0.7).timeout
+	await _after(0.7)
 
 
 ## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
@@ -1324,7 +1348,7 @@ func _play_ult_ready(_event: UltReadyEvent) -> void:
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。
 func _play_status_applied(event: StatusAppliedEvent) -> void:
 	_pop_number(_view(event.unit_id).position, Status.display_name(event.status), Color("9fd8ff"))
-	await get_tree().create_timer(0.25).timeout
+	await _after(0.25)
 
 
 ## 駒の状態が外れた。使い切ったときは、ダメージや攻撃の再生が見せているので、ここでは何も出さない。
@@ -1333,7 +1357,7 @@ func _play_status_removed(event: StatusRemovedEvent) -> void:
 		return
 	var why := "が解けた" if event.reason == StatusRemovedEvent.Reason.MOVED else "が消えた"
 	_pop_number(_view(event.unit_id).position, Status.display_name(event.status) + why, Color("b8c4d0"))
-	await get_tree().create_timer(0.2).timeout
+	await _after(0.2)
 
 
 func _play_acted(event: UnitActedEvent) -> void:
@@ -1341,12 +1365,12 @@ func _play_acted(event: UnitActedEvent) -> void:
 
 
 func _play_won(event: GameWonEvent) -> void:
-	await get_tree().create_timer(0.4).timeout
+	await _after(0.4)
 	_hud.show_result(event.winner, WIN_REASONS[event.reason], _stats_text())
 
 
 func _play_drawn(event: GameDrawnEvent) -> void:
-	await get_tree().create_timer(0.4).timeout
+	await _after(0.4)
 	_hud.show_draw(DRAW_REASONS[event.reason], _stats_text())
 
 
@@ -1377,7 +1401,7 @@ func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	var color: Color = TEAM_COLORS[event.slayer_side]
 	_flash(at + Vector3(0.0, 0.6, 0.0), color, 2.4)
 	_pop_number(at, "%s が%sの中ボスを倒した" % [_side_name(event.slayer_side as Unit.Side), side], color.lightened(0.4))
-	await get_tree().create_timer(0.6).timeout
+	await _after(0.6)
 
 
 ## 陣営が聖遺物を受け取った。控えめに見せる: 上の帯に聖遺物の名前を出し、効果の掛かった駒の HP のバーを描き直し、
@@ -1395,7 +1419,7 @@ func _play_relic_gained(event: RelicGainedEvent) -> void:
 		_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_RELIC, 1.0)
 		_pop_number(view.position + Vector3(0.0, 0.5, 0.0), text, COLOR_RELIC)
 	_hud.show_banner("%s　%s を手に入れた（%s）" % [_side_name(event.side), Relics.display_name(event.relic), Relics.summary(event.relic)], color)
-	await get_tree().create_timer(0.7).timeout
+	await _after(0.7)
 
 
 ## 中立の駒が結晶泉に湧いた（中ボスが現れた）。光とともに、小さい形から大きくする。
@@ -1436,14 +1460,14 @@ func _play_phase_started(event: PhaseStartedEvent) -> void:
 	if event.side == Unit.Side.NEUTRAL:
 		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは、攻撃する駒だけを追う（_play_neutral_phase）。
 		_hud.show_banner("ターン %d　%s の番" % [event.turn, _side_name(event.side)], TEAM_COLORS[event.side])
-		await get_tree().create_timer(0.5).timeout
+		await _after(0.5)
 		return
 	for unit in battle.units:
 		if unit.side == event.side:
 			_view(unit.id).set_acted(false)
 	_hud.show_banner("ターン %d　%s の番" % [event.turn, _side_name(event.side)], TEAM_COLORS[event.side])
 	_rig.focus_on(_camera_point(event.side))
-	await get_tree().create_timer(0.5).timeout
+	await _after(0.5)
 
 
 func _play_capture(event: CaptureProgressEvent) -> void:
@@ -1959,6 +1983,11 @@ func _cell_at(at: Vector2) -> Vector2i:
 
 
 func _build_environment() -> void:
+	build_environment(self)
+
+
+## 空・霞・光を parent に足す（タイトルと対戦の設定の場面の背景も、同じ景色にする。backdrop.gd）。
+static func build_environment(parent: Node) -> void:
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = COLOR_HAZE
@@ -1979,14 +2008,14 @@ func _build_environment() -> void:
 
 	var world := WorldEnvironment.new()
 	world.environment = environment
-	add_child(world)
+	parent.add_child(world)
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52.0, -35.0, 0.0)
 	sun.light_energy = 1.2
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
-	add_child(sun)
+	parent.add_child(sun)
 
 
 func _build_selection_ring() -> void:
