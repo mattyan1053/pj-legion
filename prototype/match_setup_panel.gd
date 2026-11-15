@@ -6,6 +6,8 @@ extends Control
 
 ## 選んだもの（trial_setup.gd の値。呼ぶ側に渡すのは写し）。
 signal start_pressed(choice: RefCounted)
+## 何も変えずに閉じた（「対戦へ戻る」、右クリック、Esc）。いまの対戦は、そのまま続く。
+signal cancelled
 
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 
@@ -21,6 +23,11 @@ var _rows := {}
 var _deck_labels: Array[Label] = []
 var _side_row: Control
 var _side_caption: Label
+var _start_button: Button
+var _back_button: Button
+var _warning: Label
+## 閉じて、いまの対戦へ戻れるか（起動した直後の、まだ対戦を始めていないときだけ偽）。
+var _cancellable := false
 
 
 func setup(team_colors: Array[Color]) -> void:
@@ -75,19 +82,62 @@ func setup(team_colors: Array[Color]) -> void:
 	note.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(note)
-	var start := _button("対戦を始める")
-	start.custom_minimum_size = Vector2(220.0, 52.0)
-	start.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	start.pressed.connect(confirm)
-	column.add_child(start)
+	# 対戦の途中で開いたときは、始めるといまの対戦が失われることを書く。
+	_warning = _label(15)
+	_warning.text = "「新しい対戦を始める」を押すと、いまの対戦は終わる（元には戻せない）"
+	_warning.add_theme_color_override("font_color", Color("ffb86b"))
+	_warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_warning)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 16)
+	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_child(buttons)
+	_back_button = _button("対戦へ戻る")
+	_back_button.custom_minimum_size = Vector2(220.0, 52.0)
+	_back_button.pressed.connect(cancel)
+	buttons.add_child(_back_button)
+	_start_button = _button("対戦を始める")
+	_start_button.custom_minimum_size = Vector2(220.0, 52.0)
+	_start_button.pressed.connect(confirm)
+	buttons.add_child(_start_button)
 	_show_choice()
 
 
-## いまの選択を choice の写しにして、画面を出す。
-func open(choice: RefCounted) -> void:
+## いまの選択を choice の写しにして、画面を出す。開いただけでは、何も変わらない。
+## cancellable が真なら、「対戦へ戻る」（右クリック・Esc でも）で、何も変えずに閉じられる。
+## in_progress が真なら（決着していない対戦の途中）、始めるといまの対戦が失われることを書く。
+func open(choice: RefCounted, cancellable := false, in_progress := false) -> void:
 	_choice = choice.copy()
+	_cancellable = cancellable
+	_back_button.visible = cancellable
+	_warning.visible = cancellable and in_progress
+	_start_button.text = "新しい対戦を始める" if cancellable else "対戦を始める"
 	_show_choice()
 	visible = true
+
+
+## 何も変えずに閉じる（閉じられるときだけ）。
+func cancel() -> void:
+	if not visible or not _cancellable:
+		return
+	visible = false
+	cancelled.emit()
+
+
+## 閉じられるか。検査用。
+func is_cancellable() -> bool:
+	return _cancellable
+
+
+## 右クリックと Esc は、ほかの画面と同じに「戻す」（閉じられるときだけ）。開いている間は、盤面へ通さない。
+func _input(event: InputEvent) -> void:
+	if not visible:
+		return
+	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
+	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
+	if right or escape:
+		get_viewport().set_input_as_handled()
+		cancel()
 
 
 ## いま選んでいるもの（写しではない。検査用）。

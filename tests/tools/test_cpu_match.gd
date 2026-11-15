@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## CPU どうしの対戦を最後まで進める道具（tools/cpu_match.gd）。
 ## ここでは短い 1 局だけを回す（何局も回す集計は tools/cpu_matches.gd で、手元で回す）。
+## 同じ 1 局を何度も回して比べるものは時間が掛かるので、長い検査（`test_long_`）に回す。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
 const Maps := preload("res://tests/support/maps.gd")
@@ -33,7 +34,7 @@ func test_short_game_ends_and_every_action_is_accepted() -> void:
 	assert_eq(outcome.hired, [6, 5] as Array[int])
 
 
-func test_same_seed_plays_the_same_game() -> void:
+func test_long_same_seed_plays_the_same_game() -> void:
 	var a := CpuMatch.play(_small_battle(3), 60)
 	var b := CpuMatch.play(_small_battle(3), 60)
 	assert_eq(a.turns, b.turns)
@@ -43,7 +44,7 @@ func test_same_seed_plays_the_same_game() -> void:
 	assert_eq(a.level_ups, b.level_ups)
 
 
-func test_a_second_cpu_can_play_player_two() -> void:
+func test_long_a_second_cpu_can_play_player_two() -> void:
 	# 別の版の CPU と対戦させる入口。同じ CPU を渡せば、渡さないときと同じ対局になる。
 	var alone := CpuMatch.play(_small_battle(3), 60)
 	var paired := CpuMatch.play(_small_battle(3), 60, CpuPlayer.new(), CpuPlayer.new())
