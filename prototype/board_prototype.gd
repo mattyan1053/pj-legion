@@ -11,6 +11,7 @@ const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 const UnitView := preload("res://prototype/unit_view.gd")
 const BoardView := preload("res://prototype/board_view.gd")
 const BattleHud := preload("res://prototype/battle_hud.gd")
+const Names := preload("res://prototype/names.gd")
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 const MatchSetupPanel := preload("res://prototype/match_setup_panel.gd")
 const Queries := preload("res://prototype/battle_queries.gd")
@@ -635,7 +636,7 @@ func _is_cpu_turn() -> bool:
 
 ## 番の知らせに出す陣営の名前（CPU が動かすなら、そう書く）。
 func _side_name(side: Unit.Side) -> String:
-	var side_name: String = BattleHud.SIDE_NAMES[side]
+	var side_name: String = Names.SIDE_NAMES[side]
 	return side_name + " CPU" if cpu_opponent and side == match_choice.cpu_side() else side_name
 
 
@@ -1394,7 +1395,7 @@ func _play_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
 	var at := BoardView.cell_center(event.center)
 	_flash(at + Vector3(0.0, 0.3, 0.0), TEAM_COLORS[event.side], 1.2 if event.type == FieldEffect.Type.BARRICADE else 2.4)
 	if not _after_skill:
-		_pop_number(at, BattleHud.FIELD_EFFECT_NAMES[event.type], TEAM_COLORS[event.side].lightened(0.4))
+		_pop_number(at, Names.FIELD_EFFECT_NAMES[event.type], TEAM_COLORS[event.side].lightened(0.4))
 	await _after(0.3)
 
 
@@ -2261,7 +2262,7 @@ func _cell_notes(cell: Vector2i) -> Array[String]:
 		notes.append(terrain.get_slice("（", 1).trim_suffix("）"))
 	var hq_owner := battle.board.hq_owner(cell)
 	if hq_owner >= 0:
-		notes.append("%s の本陣" % BattleHud.SIDE_NAMES[hq_owner])
+		notes.append("%s の本陣" % Names.SIDE_NAMES[hq_owner])
 	for effect in battle.board.field_effects_at(cell):
 		notes.append(BattleHud.field_effect_text(effect))
 	var type := battle.board.object_at(cell)

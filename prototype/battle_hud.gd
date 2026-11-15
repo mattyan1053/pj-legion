@@ -7,6 +7,7 @@ extends CanvasLayer
 
 ## 駒のそばのメニューの項目が押された。id は set_menu() に渡した項目の名前。
 const TextWrap := preload("res://prototype/text_wrap.gd")
+const Names := preload("res://prototype/names.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const ForecastPanel := preload("res://prototype/forecast_panel.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
@@ -35,17 +36,6 @@ signal restart_pressed(stage: int, new_board: bool)
 ## 決着の画面を出した（draw なら引き分けで、winner は使わない）。決着の曲を鳴らす合図。
 signal result_shown(draw: bool, winner: Unit.Side)
 
-const SIDE_NAMES := {
-	Unit.Side.PLAYER1: "プレイヤー1（青）",
-	Unit.Side.PLAYER2: "プレイヤー2（赤）",
-	Unit.Side.NEUTRAL: "中立",
-}
-const ROLE_NAMES := {
-	UnitKind.Role.VANGUARD: "前衛",
-	UnitKind.Role.REARGUARD: "後衛",
-	UnitKind.Role.RAIDER: "奇襲",
-	UnitKind.Role.HEALER: "回復",
-}
 const TERRAIN_NAMES := {
 	Terrain.Type.NORMAL: "平地",
 	Terrain.Type.OBSTACLE: "障害物（入れない）",
@@ -56,23 +46,6 @@ const OBJECT_NAMES := {
 	MapObject.Type.BARREL: "起爆樽（入れない。攻撃すると爆発し、周り 8 マスの駒すべてに %d ダメージ）" % MapObject.BLAST_DAMAGE,
 	MapObject.Type.SPRING: "回復の泉（自分の番の始めに、乗っている駒が %d 回復）" % MapObject.SPRING_HEAL,
 	MapObject.Type.PORTAL: "ポータル",
-}
-const FIELD_EFFECT_NAMES := {
-	FieldEffect.Type.BARRICADE: "盾",
-	FieldEffect.Type.SMOKE: "煙幕",
-	FieldEffect.Type.SANCTUARY: "聖域",
-}
-const STAT_NAMES := {
-	Unit.Stat.MAX_HP: "最大 HP",
-	Unit.Stat.POWER: "攻撃",
-	Unit.Stat.MOVE_RANGE: "移動",
-	Unit.Stat.ATTACK_RANGE: "射程",
-}
-const TRAIT_TEXTS := {
-	Evolution.Trait.EXERTS_ZOC: "周り 8 マスに支配領域を作る（敵はそこで止まる）",
-	Evolution.Trait.IGNORES_ZOC: "敵の支配領域で止まらない",
-	Evolution.Trait.FOREST_WALK: "森を平地と同じ移動力で歩く",
-	Evolution.Trait.REGENERATION: "自分の番の始めに %d 回復" % Evolution.REGENERATION_HEAL,
 }
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
 ## 後ろの盤面の文字が透けて読みにくくならないよう、決着の画面とメニューは透かさない。
@@ -93,10 +66,6 @@ const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 const COLOR_FORECAST := Color("ffd76a")
 const COLOR_STATUS := Color("8fe6ff")
 const COLOR_TRAIT := Color("ffd34a")
-const ARMY_NAMES := {
-	UnitKind.Army.MILITARY: "MILITARY",
-	UnitKind.Army.FANTASY: "FANTASY",
-}
 ## 状態の効果の短い説明（駒の情報の枠に、残りの期間と一緒に出す）。
 const STATUS_TEXTS := {
 	Status.Type.BARRIER: "次に受けるダメージを 1 回だけ防ぐ",
@@ -190,11 +159,11 @@ func setup(team_colors: Array[Color]) -> void:
 ## counts は陣営ごとの駒の数、captures は本陣の占拠の数（どちらも添字がプレイヤー番号）。
 func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array[int], capture_goal: int) -> void:
 	_turn_label.text = "ターン %d" % turn
-	_phase_label.text = "%s の番" % SIDE_NAMES[phase]
+	_phase_label.text = "%s の番" % Names.SIDE_NAMES[phase]
 	_phase_label.add_theme_color_override("font_color", _side_color(phase))
 	for player in 2:
 		var pips := "●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player])
-		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [("青" if player == 0 else "赤"), counts[player], pips]
+		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [Names.SIDE_WORDS[player], counts[player], pips]
 		# 幅が足りずに省かれても読めるよう、全文をツールチップにも置く。聖遺物の効果も、ここで読める。
 		_side_labels[player].tooltip_text = _side_labels[player].text
 		if _relic_notes[player] != "":
@@ -268,7 +237,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_info_panel.visible = unit != null
 	if unit == null:
 		return
-	var role: String = ROLE_NAMES.get(UnitKind.role(unit.kind), "")
+	var role: String = Names.ROLE_NAMES.get(UnitKind.role(unit.kind), "")
 	var kind := UnitKind.display_name(unit.kind)
 	if unit.evolution != Evolution.Id.NONE:
 		# 進化した駒は、進化先の名前と、元の種類。
@@ -315,7 +284,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 
 	var traits: Array[String] = []
 	for which in Evolution.traits(unit.evolution):
-		traits.append("★ " + TRAIT_TEXTS[which])
+		traits.append("★ " + Names.TRAIT_TEXTS[which])
 	_set_shown(_info_traits, "\n".join(traits))
 	_set_shown(_info_state, state)
 	_set_shown(_info_forecast, note)
@@ -328,10 +297,10 @@ static func affiliation_text(unit: Unit, viewer: Unit.Side) -> String:
 		tag = "[自軍]"
 	elif unit.side != Unit.Side.NEUTRAL:
 		tag = "[敵軍]"
-	var parts: Array[String] = [tag, SIDE_NAMES[unit.side]]
+	var parts: Array[String] = [tag, Names.SIDE_NAMES[unit.side]]
 	var army := UnitKind.army(unit.kind)
 	if army != UnitKind.Army.NONE:
-		parts.append(ARMY_NAMES[army])
+		parts.append(Names.ARMY_NAMES[army])
 	return "　".join(parts)
 
 
@@ -581,7 +550,7 @@ func hide_banner() -> void:
 
 ## stats は戦績の要点（文字。空なら出さない）。
 func show_result(winner: Unit.Side, reason: String, stats := "") -> void:
-	_result_title.text = "%s の勝ち" % SIDE_NAMES[winner]
+	_result_title.text = "%s の勝ち" % Names.SIDE_NAMES[winner]
 	_result_title.add_theme_color_override("font_color", _side_color(winner).lightened(0.4))
 	_result_reason.text = reason
 	_show_stats(stats)
@@ -622,13 +591,13 @@ func hide_result() -> void:
 static func evolution_text(id: Evolution.Id, healer: bool) -> String:
 	var parts: Array[String] = []
 	var bonuses := Evolution.bonuses(id)
-	for which: Unit.Stat in STAT_NAMES:
+	for which: Unit.Stat in Names.STAT_NAMES:
 		if bonuses.has(which):
-			var stat_name: String = "回復" if healer and which == Unit.Stat.POWER else STAT_NAMES[which]
+			var stat_name: String = "回復" if healer and which == Unit.Stat.POWER else Names.STAT_NAMES[which]
 			parts.append("%s %+d" % [stat_name, bonuses[which]])
 	var text := "%s\n%s" % [Evolution.display_name(id), "　".join(parts)]
 	for which in Evolution.traits(id):
-		text += "\n★ %s" % TRAIT_TEXTS[which]
+		text += "\n★ %s" % Names.TRAIT_TEXTS[which]
 	return text
 
 
@@ -1052,7 +1021,7 @@ func _button(text: String, to: Signal) -> Button:
 
 ## マスの説明に出す、盤の上の効果の種類と簡易説明（持ち主、残り、効果）。
 static func field_effect_text(effect: FieldEffect) -> String:
-	var owner: String = SIDE_NAMES[effect.side]
+	var owner: String = Names.SIDE_NAMES[effect.side]
 	match effect.type:
 		FieldEffect.Type.BARRICADE:
 			return "盾（%s。耐久 %d / 通行・射撃を遮断）" % [owner, effect.durability]

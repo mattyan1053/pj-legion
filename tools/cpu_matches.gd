@@ -22,9 +22,9 @@ extends SceneTree
 ## 同じ引数なら、いつも同じ結果になる（考える時間の欄を除く）。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
+const Names := preload("res://prototype/names.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
-const ARMY_NAMES := {UnitKind.Army.MILITARY: "MILITARY", UnitKind.Army.FANTASY: "FANTASY"}
 const STAGE_NAMES := {
 	BoardGenerator.Stage.PLAIN: "1 中央平原",
 	BoardGenerator.Stage.LABYRINTH: "2 迷宮回廊",
@@ -262,7 +262,7 @@ func _initialize() -> void:
 			for kill: Array in outcome.mid_boss_kills:
 				kills.append("%d:%d:%d" % [kill[0], kill[1], kill[2]])
 			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s" % [
-				first_seed + game, stage, ARMY_NAMES[armies[0]], ARMY_NAMES[armies[1]], outcome.winner, outcome.ending,
+				first_seed + game, stage, Names.ARMY_NAMES[armies[0]], Names.ARMY_NAMES[armies[1]], outcome.winner, outcome.ending,
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills),
 			])
 			for kind: UnitKind.Id in outcome.by_kind:
@@ -283,7 +283,7 @@ func _initialize() -> void:
 				])
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
-		var match_name := "%s 対 %s" % [ARMY_NAMES[armies[0]], ARMY_NAMES[armies[1]]]
+		var match_name := "%s 対 %s" % [Names.ARMY_NAMES[armies[0]], Names.ARMY_NAMES[armies[1]]]
 		by_match.get_or_add(match_name, Tally.new()).add(outcome)
 		if armies[0] != armies[1]:
 			mixed_games += 1
@@ -351,7 +351,7 @@ func _initialize() -> void:
 		games, first_seed, first_seed + games - 1, deck_mode, max_turns,
 	])
 	for army in ARMIES:
-		print("  編成 %s: %s" % [ARMY_NAMES[army], _deck_text(_deck(army, deck_mode))])
+		print("  編成 %s: %s" % [Names.ARMY_NAMES[army], _deck_text(_deck(army, deck_mode))])
 	print("")
 	print(all.line("全体"))
 	for stage: int in by_stage:
@@ -373,7 +373,7 @@ func _initialize() -> void:
 	for army in ARMIES:
 		var row: Array = relics.get(army, [0, 0, 0, 0, 0, 0, 0, 0])
 		print("  %-9s 取った局 %3d / %3d（%3.0f%%）  英知 %3d  勇気 %3d  取った局の勝率 %3d 勝 / %3d（%3.0f%%）  相手だけが取った局の勝率 %3d 勝 / %3d（%3.0f%%）" % [
-			ARMY_NAMES[army], row[1], row[0], 100.0 * row[1] / maxi(1, row[0]), row[2], row[3],
+			Names.ARMY_NAMES[army], row[1], row[0], 100.0 * row[1] / maxi(1, row[0]), row[2], row[3],
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]), row[7], row[6], 100.0 * row[7] / maxi(1, row[6]),
 		])
 	print("")
@@ -433,7 +433,7 @@ func _initialize() -> void:
 	for army in ARMIES:
 		var row: Array = ults.get(army, [0, 0, 0, 0, 0, 0, 0, 0])
 		print("  %-9s %-6s 使った %4d 回（%4.2f。使った側は %3.0f%%）  最初に使ったターン 平均 %4.1f  使った側 %3d 勝 / %3d（%3.0f%%）  使わなかった側 %3d 勝 / %3d（%3.0f%%）" % [
-			ARMY_NAMES[army], Ults.of_army(army).display_name(), row[1], float(row[1]) / maxi(1, row[0]), 100.0 * row[7] / maxi(1, row[0]),
+			Names.ARMY_NAMES[army], Ults.of_army(army).display_name(), row[1], float(row[1]) / maxi(1, row[0]), 100.0 * row[7] / maxi(1, row[0]),
 			float(row[6]) / maxi(1, row[7]), row[3], row[2], 100.0 * row[3] / maxi(1, row[2]),
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]),
 		])

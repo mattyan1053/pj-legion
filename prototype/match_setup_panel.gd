@@ -12,8 +12,8 @@ signal cancelled
 
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 const DeckText := preload("res://prototype/deck_text.gd")
+const Names := preload("res://prototype/names.gd")
 
-const ARMY_NAMES := {UnitKind.Army.MILITARY: "MILITARY", UnitKind.Army.FANTASY: "FANTASY"}
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.92)
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
@@ -86,7 +86,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	for side in 2:
 		var names := {}
 		for army in ARMIES:
-			names[army] = ARMY_NAMES[army]
+			names[army] = Names.ARMY_NAMES[army]
 		var row := _add_row(column, "%s の軍" % ["先手（青）", "後手（赤）"][side], StringName("army%d" % side), names)
 		(row.get_child(0) as Label).add_theme_color_override("font_color", _team_colors[side].lightened(0.4))
 		var deck_row := HBoxContainer.new()
