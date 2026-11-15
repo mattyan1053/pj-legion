@@ -1,5 +1,6 @@
 extends "res://tests/base_test.gd"
-## 攻撃の当たり方（battle_effects.gd の hit_style）。駒の種類ごとに、docs/battle-view.md の「攻撃の当たり方」の表のとおり。
+## 対戦の演出の割り振り（battle_effects.gd）。攻撃の当たり方は駒の種類ごとに、docs/battle-view.md の「攻撃の当たり方」の表のとおり。
+## スキルはどれも、自分の色を持つ（「スキルの形」）。
 
 const BattleEffects := preload("res://prototype/battle_effects.gd")
 
@@ -26,3 +27,8 @@ func test_styles_follow_the_role() -> void:
 	assert_eq(expected.size(), UnitKind.Id.size(), "表に無い種類がある")
 	for kind: UnitKind.Id in expected:
 		assert_eq(BattleEffects.hit_style(kind), expected[kind], UnitKind.display_name(kind))
+
+
+func test_every_skill_has_a_color() -> void:
+	for skill: Skill.Id in Skill.Id.values():
+		assert_true(BattleEffects.SKILL_COLORS.has(skill), "スキルの色が無い: %s" % Skills.by_id(skill).display_name())

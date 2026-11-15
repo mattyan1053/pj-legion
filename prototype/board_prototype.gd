@@ -92,6 +92,8 @@ const CPU_PAUSE := 0.45
 ## 中立のフェーズで、攻撃する駒へカメラを寄せてから動き出すまでの秒数と、その駒の場面が終わってから次までの間。
 const NEUTRAL_FOCUS_TIME := 0.5
 const NEUTRAL_PAUSE := 0.5
+## 必殺技の効果を、全員にまとめて見せる時間（駒の数に依らない）。
+const ULT_EFFECTS_TIME := 0.45
 
 const WIN_REASONS := {
 	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
@@ -199,6 +201,11 @@ var played := {}
 var _players := event_players()
 ## 最後の行動の終わり（UnitActedEvent）から、攻撃・回復・スキルを見せたか。見せていなければ、次の行動の終わりは待機のサインを出す。
 var _acted_with_effect := false
+## 必殺技の効果をまとめて見せている途中か。
+var _in_ult_effects := false
+## いま再生している行動で、スキルを使ったか（使ったなら、続く効果の名前（「盾」「バリア」など）は出さない。
+## スキルの名前と、スキルごとの形が見せているので、文字を重ねない）。
+var _after_skill := false
 var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる前のもの）
 
 
@@ -1206,11 +1213,20 @@ static func event_players() -> Dictionary:
 
 ## 起きたことを、起きた順に再生する。中立のフェーズの中身だけは、見せ方の単位（場面）に分けて再生する。
 func _play_all(events: Array[BattleEvent]) -> void:
+	_after_skill = false
 	var i := 0
 	while i < events.size():
 		var event := events[i]
 		await _play(event)
 		i += 1
+		var ult := event as UltUsedEvent
+		if ult != null:
+			var effects: Array[BattleEvent] = []
+			while i < events.size() and (events[i] is StatusAppliedEvent or events[i] is SkillReadyEvent):
+				effects.append(events[i])
+				i += 1
+			await _play_ult_effects(ult.side, effects)
+			continue
 		var started := event as PhaseStartedEvent
 		if started == null or started.side != Unit.Side.NEUTRAL:
 			continue
@@ -1432,7 +1448,8 @@ func _play_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
 	_board_view.add_field_effect(event.effect_id, event.type, event.side, event.cells)
 	var at := BoardView.cell_center(event.center)
 	_flash(at + Vector3(0.0, 0.3, 0.0), TEAM_COLORS[event.side], 1.2 if event.type == FieldEffect.Type.BARRICADE else 2.4)
-	_pop_number(at, BattleHud.FIELD_EFFECT_NAMES[event.type], TEAM_COLORS[event.side].lightened(0.4))
+	if not _after_skill:
+		_pop_number(at, BattleHud.FIELD_EFFECT_NAMES[event.type], TEAM_COLORS[event.side].lightened(0.4))
 	await _after(0.3)
 
 
@@ -1517,27 +1534,51 @@ func _play_sanctuary_healed(event: SanctuaryHealedEvent) -> void:
 	await _play_heal(event, true)
 
 
-## スキルを使った。対象のほうを向いて手を振り、スキルの名前を出す（効果は、続くイベントが見せる）。
+## スキルを使った。対象のほうを向いて手を振り、スキルの名前をスキルの色で出す。足元にスキルの色の輪が広がり、
+## スキルごとの形が対象に届く（battle_effects.gd の skill_flash）。届いてから、続くイベントが効果を見せる。
 func _play_skill_used(event: SkillUsedEvent) -> void:
 	var view := _view(event.unit_id)
 	var at := BoardView.cell_center(event.target)
 	if not at.is_equal_approx(view.position):
 		view.face(at - view.position)
 	_acted_with_effect = true
-	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Skills.by_id(event.skill).display_name(), Color("dcc4ff"))
-	await _after(view.play_attack())
+	_after_skill = true
+	var color: Color = BattleEffects.SKILL_COLORS[event.skill]
+	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Skills.by_id(event.skill).display_name(), color.lightened(0.45))
+	_effects.skill_flash(event.skill, view.position, at)
+	await _after(maxf(view.play_attack(), BattleEffects.SKILL_TIME))
 
 
-## スキルをまた使えるようになった。描き方は変えない（残りは駒の情報とスキルのボタンに出る）。
-func _play_skill_ready(_event: SkillReadyEvent) -> void:
-	pass
+## スキルをまた使えるようになった。魔力解放のときだけ、駒の上に知らせる（クールダウンが明けただけのときは何も出さない。
+## 残りは駒の情報とスキルのボタンに出る）。
+func _play_skill_ready(event: SkillReadyEvent) -> void:
+	if _in_ult_effects and _views.has(event.unit_id):
+		_pop_number(_view(event.unit_id).position, "スキル使用可", BattleEffects.SKILL_COLORS[event.skill].lightened(0.45))
 
 
-## 必殺技を使った。必殺技の名前を大きく出す（効果は、続くイベントが見せる）。飾らない最小の形。
+## 必殺技を使った。画面が必殺技の色に一瞬光り、必殺技の名前を大きく出す。
+## 効果（駒ごとの状態など）は、続くイベントを _play_all がまとめて同時に見せる（_play_ult_effects）。
 func _play_ult_used(event: UltUsedEvent) -> void:
 	_refresh_status(battle.turn, battle.phase)
-	_hud.show_banner("%s　必殺技: %s!!" % [_side_name(event.side), Ults.by_id(event.ult).display_name()], BattleHud.ULT_COLORS[event.ult])
-	await _after(0.7)
+	var color: Color = BattleHud.ULT_COLORS[event.ult]
+	_hud.flash_screen(color)
+	_hud.show_banner("%s　必殺技: %s!!" % [_side_name(event.side), Ults.by_id(event.ult).display_name()], color)
+	await _after(0.5)
+
+
+## 必殺技の効果（必殺技のすぐあとに続く、状態が付いた・スキルが使えるようになった）を、駒ごとに順にではなく、全員に同時に見せる。
+## 効果の掛かった駒に陣営の色の光の柱が立ち、それぞれの知らせが一度に出る。待つのは 1 回だけ。
+func _play_ult_effects(side: Unit.Side, effects: Array[BattleEvent]) -> void:
+	var points: Array[Vector3] = []
+	_in_ult_effects = true
+	for event in effects:
+		var unit_id: int = event.get(&"unit_id")
+		if _views.has(unit_id):
+			points.append(_view(unit_id).position)
+		_play(event)  # 待たずに始めて、同時に流す
+	_in_ult_effects = false
+	_effects.ult_burst(points, TEAM_COLORS[side])
+	await _after(ULT_EFFECTS_TIME)
 
 
 ## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
@@ -1547,6 +1588,8 @@ func _play_ult_ready(_event: UltReadyEvent) -> void:
 
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。
 func _play_status_applied(event: StatusAppliedEvent) -> void:
+	if _after_skill and event.status != Status.Type.FATIGUE:
+		return  # スキルの名前と形が見せている（反動は、スキルの形では分からないので出す）
 	_pop_number(_view(event.unit_id).position, Status.display_name(event.status), Color("9fd8ff"))
 	await _after(0.25)
 
