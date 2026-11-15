@@ -80,8 +80,8 @@ const MID_BOSS_FEED_PENALTY := 60.0
 ## 前衛・後衛は、狩りの最中の相手の駒を DENY_PULL マスぶん近いものとして追う。
 const DENY_RADIUS := 16
 const DENY_PULL := 6
-## 相手が狩っている中ボスの HP がここまで減ったら、DENY_RADIUS マス以内の後衛と奇襲は、止めを横取りしに向かう。
-const STEAL_HP := 40
+## 相手が狩っている中ボスの HP が、最大 HP のこの割合（%）まで減ったら、DENY_RADIUS マス以内の後衛と奇襲は、止めを横取りしに向かう。
+const STEAL_HP_PERCENT := 50
 ## 倒せなかった相手に残る HP 1 の減点（HP の少ない相手を先に狙う）。
 const REMAINING_HP_PENALTY := 0.2
 ## 自分の本陣からこの距離までに入った敵は「侵入者」。与えるダメージの価値を INTRUDER_RATE 倍にする。
@@ -890,7 +890,7 @@ func _boss_to_hunt(unit: Unit) -> Unit:
 	return best
 
 
-## unit が止めを横取りしに向かう中ボス（いなければ null）。相手が狩っていて、HP が STEAL_HP まで減った中ボスのうち、
+## unit が止めを横取りしに向かう中ボス（いなければ null）。相手が狩っていて、HP が最大 HP の STEAL_HP_PERCENT % まで減った中ボスのうち、
 ## DENY_RADIUS マス以内で、いちばん近いもの。向かうのは、後衛と奇襲だけ（離れて撃てるか、速い）。
 func _boss_to_steal(unit: Unit) -> Unit:
 	_build_hunts()
@@ -899,7 +899,7 @@ func _boss_to_steal(unit: Unit) -> Unit:
 	for boss_id in _rival_hunts:
 		var boss := _battle.unit_by_id(boss_id)
 		var apart := Combat.distance(unit.cell, boss.cell)
-		if boss.hp <= STEAL_HP and apart < best_distance:
+		if boss.hp * 100 <= boss.max_hp() * STEAL_HP_PERCENT and apart < best_distance:
 			best = boss
 			best_distance = apart
 	return best
