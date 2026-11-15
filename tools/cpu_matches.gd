@@ -62,6 +62,8 @@ class Tally:
 	var boss_even: Array[int] = [0, 0, 0]
 	var boss_contested: Array[int] = [0, 0, 0]
 	var boss_steals: Array[int] = [0, 0, 0]
+	## 互角のうちに中ボスが倒れた局の数（1 局で 2 体倒れても 1 と数える）。
+	var boss_even_games := 0
 	## 両方のプレイヤーが削った中ボスの数。
 	var boss_shared := 0
 	## 中ボスの番号ごと、倒したプレイヤーごとの数。
@@ -92,9 +94,11 @@ class Tally:
 					boss_slayer_wins += 1
 				else:
 					boss_slayer_losses += 1
+		var even_game := false
 		for fall in outcome.boss_falls:
 			if fall.slayer_side < 0:
 				continue
+			even_game = even_game or fall.is_even()
 			boss_by_index[fall.boss_index] += 1
 			boss_by_side[fall.slayer_side] += 1
 			boss_shared += 1 if fall.slayer_damage > 0 and fall.rival_damage > 0 else 0
@@ -110,12 +114,14 @@ class Tally:
 				row[0] += 1
 				if won > 0:
 					row[won] += 1
+		if even_game:
+			boss_even_games += 1
 
 	## 中ボスの取り合いの行（互角のまま倒れたか、相手がそばにいたか、止めの横取りか）。
 	func contest_line(name: String) -> String:
 		return "%-22s 倒れた %3d 体（左 %d 右 %d、先手 %d 後手 %d）  互角のうち %3d 体（%3.0f%%。局の %3.0f%%）倒した側 %s  相手がそばに %3d 体（%3.0f%%）倒した側 %s  両方が削った %3d 体  横取り %3d 体 倒した側 %s" % [
 			name, boss_all[0], boss_by_index[0], boss_by_index[1], boss_by_side[0], boss_by_side[1],
-			boss_even[0], 100.0 * boss_even[0] / maxi(1, boss_all[0]), 100.0 * boss_even[0] / maxi(1, games), _record(boss_even),
+			boss_even[0], 100.0 * boss_even[0] / maxi(1, boss_all[0]), 100.0 * boss_even_games / maxi(1, games), _record(boss_even),
 			boss_contested[0], 100.0 * boss_contested[0] / maxi(1, boss_all[0]), _record(boss_contested),
 			boss_shared, boss_steals[0], _record(boss_steals),
 		]

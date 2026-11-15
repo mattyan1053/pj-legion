@@ -73,8 +73,10 @@ class Outcome:
 	var stepped_at: Dictionary[int, Array] = {}
 	## 倒れた中ボスの倒れ方。1 体につき 1 つ（BossFall）。
 	var boss_falls: Array[BossFall] = []
-	## 中ボスの駒の番号 -> プレイヤーごとの、その中ボスに与えたダメージ（駒の攻撃とスキル）。
+	## 中ボスの駒の番号 -> プレイヤーごとの、その中ボスから実際に減らした HP（駒の攻撃とスキル。止めの余りは数えない）。
 	var boss_damage: Dictionary[int, Array] = {}
+	## 中ボスの駒の番号 -> 最後に受けたダメージのあとの HP（止めの一撃で実際に減った HP を出すため）。
+	var boss_hp: Dictionary[int, int] = {}
 
 
 ## 倒れた中ボス 1 体の倒れ方（互角のまま取り合っているかを見る。docs/cpu-ai.md の「集計の道具」）。
@@ -89,7 +91,7 @@ class BossFall:
 	var rival_units := 0
 	## 倒れた時点で、中ボスのマスから CONTEST_RADIUS マス以内にいた相手（倒した側でないプレイヤー）の戦える駒の数。
 	var rivals_near := 0
-	## その中ボスに与えたダメージ（駒の攻撃とスキル）。倒した側と、その相手。
+	## その中ボスから実際に減らした HP（駒の攻撃とスキル。止めの余りは数えない）。倒した側と、その相手。
 	var slayer_damage := 0
 	var rival_damage := 0
 
@@ -214,8 +216,13 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			outcome.last_hit_by[hit.unit_id] = source_id
 			if outcome.stats != null and outcome.stats.units.has(hit.unit_id) and outcome.stats.units.has(source_id):
 				var source_side := outcome.stats.units[source_id].side
-				if outcome.stats.units[hit.unit_id].kind == UnitKind.Id.ELITE_MINION and source_side != Unit.Side.NEUTRAL:
-					outcome.boss_damage.get_or_add(hit.unit_id, [0, 0])[source_side] += hit.amount
+				if outcome.stats.units[hit.unit_id].kind == UnitKind.Id.ELITE_MINION:
+					# amount は残りの HP を超えても切らない量なので、倒した一撃は、その前の HP までにする。
+					var before: int = outcome.boss_hp.get(hit.unit_id, UnitKind.max_hp(UnitKind.Id.ELITE_MINION))
+					var lost := hit.amount if hit.hp > 0 else mini(hit.amount, before)
+					outcome.boss_hp[hit.unit_id] = hit.hp
+					if source_side != Unit.Side.NEUTRAL:
+						outcome.boss_damage.get_or_add(hit.unit_id, [0, 0])[source_side] += lost
 	if event is SkillDamagedEvent:
 		outcome.skill_hits[(event as SkillDamagedEvent).unit_id] = true
 	elif event is UnitDefeatedEvent:
