@@ -1,8 +1,8 @@
 # システムメニューと設定
 
 コード: `prototype/app.gd`（開く・並べる項目）、`prototype/system_menu.gd`（メニュー）、`prototype/settings_panel.gd`（設定の画面）、`prototype/settings.gd`（設定の項目と値）、
-`prototype/save_store.gd`（取っておく仕組み）。対戦の場面のつなぎは `prototype/board_prototype.gd` の「システムメニューと設定」。
-テスト: `tests/prototype/test_settings.gd`、`tests/prototype/test_orbit_camera.gd`、自動の対戦（`prototype/autoplay.gd` の `_queue_system_menu_scene`）。
+`prototype/save_store.gd`（取っておく仕組み）、`prototype/overlay_stack.gd`（重なる画面の積み上げ）。対戦の場面のつなぎは `prototype/board_prototype.gd` の「システムメニューと設定」。
+テスト: `tests/prototype/test_settings.gd`、`tests/prototype/test_overlay_stack.gd`、`tests/prototype/test_orbit_camera.gd`、自動の対戦（`prototype/autoplay.gd` の `_queue_system_menu_scene`）。
 
 ## 開き方
 
@@ -12,6 +12,16 @@
   **戻すものが何も無いときに、メニューを開く。** 右クリックは「戻す」だけで、メニューは開かない（人間が気に入っている操作。`docs/battle-view.md`）。
 - 対戦の途中で開いた対戦の設定画面の上でも開ける（Esc は、まず設定画面を閉じる）。
 - 開いている間の右クリックと Esc は「戻す」: 確かめ → 設定の画面 → メニュー の順に閉じる。
+
+### 重なる画面
+
+システムメニュー、ログ（`docs/battle-log.md`）、対戦の設定画面は、場面の上に重なる画面。開いているものは `AppContext.overlays`（`prototype/overlay_stack.gd`）に、開いた順に積む。
+
+- 開いたら積み、閉じたら降ろす（場面を抜けて消えるときも降ろす）。
+- **Esc と右クリックは、いちばん上の重なる画面だけが受ける。** 後ろ（盤面、場面）へは通さない。
+- 後ろの場面は、何かが開いているか（`is_open`）と、時間を止める重なり（システムメニューとログ）が開いているか（`pauses`）だけを見る。
+  何かが開いている間は、盤面の操作を受け付けない。時間を止める重なりが開いている間は、時間・マウスの下のマスの追跡・視点の操作も止める。
+- 重なる画面を足すときは、開く・閉じるで積み上げを通し、`_input` で `is_top` を見るだけでよい。
 
 ## 項目
 

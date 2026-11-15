@@ -118,9 +118,9 @@ func in_progress() -> bool:
 	return is_editing() and _dirty
 
 
-## 右クリックと Esc は「戻す」。システムメニューが開いている間は、メニューが受ける。
+## 右クリックと Esc は「戻す」。重なる画面（システムメニュー）が開いている間は、そちらが受ける。
 func _input(event: InputEvent) -> void:
-	if context.system_menu != null and context.system_menu.is_open():
+	if context.overlays.is_open():
 		return
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE

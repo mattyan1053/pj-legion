@@ -7,6 +7,7 @@ extends RefCounted
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 const Settings := preload("res://prototype/settings.gd")
 const DeckLibrary := preload("res://prototype/deck_library.gd")
+const OverlayStack := preload("res://prototype/overlay_stack.gd")
 
 ## システムメニューを開いてほしい（Esc、何も戻すものが無いとき）。
 signal menu_requested
@@ -23,6 +24,9 @@ const CHECK_SEED := 20261114
 var settings := Settings.new()
 ## 取っておいた部隊（編成の画面で組み、対戦の設定で選ぶ。user:// に取っておく）。
 var decks := DeckLibrary.new()
+## 開いている重なる画面（システムメニュー、ログ、対戦の設定）の積み上げ（overlay_stack.gd）。
+## 後ろの場面は、何かが開いているかを、ここだけで見る。Esc と右クリックは、いちばん上の重なる画面だけが受ける。
+var overlays := OverlayStack.new()
 ## システムメニュー（system_menu.gd）。アプリが作って入れる。
 var system_menu: Node
 ## 音を鳴らすところ（sound.gd）。アプリが作って入れる（アプリを通さずに場面を置いたときは無い）。

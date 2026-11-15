@@ -186,6 +186,8 @@ var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる�
 
 
 func _ready() -> void:
+	if context == null:
+		context = AppContext.new()  # アプリを通さずに置いたとき（既定の設定で始める）
 	_build_environment()
 	_rig = OrbitCamera.new()
 	add_child(_rig)
@@ -211,21 +213,19 @@ func _ready() -> void:
 	_hud.result_shown.connect(_on_result_shown)
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
-	_setup_panel.setup(TEAM_COLORS, context.decks if context != null else null)
+	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 	_setup_panel.cancelled.connect(_refresh)
 	_log_panel = LogPanel.new()
 	add_child(_log_panel)
-	_log_panel.setup(TEAM_COLORS)
+	_log_panel.setup(TEAM_COLORS, context.overlays)
 	_log_panel.opened.connect(_on_overlay_opened)
 	_log_panel.closed.connect(_on_log_closed)
 	_log_panel.entry_chosen.connect(_on_log_entry_chosen)
 	_log_panel.opened.connect(func() -> void: context.play_sound(&"menu_open"))
 	_log_panel.closed.connect(func() -> void: context.play_sound(&"menu_close"))
 
-	if context == null:
-		context = AppContext.new()  # アプリを通さずに置いたとき（既定の設定で始める）
 	settings = context.settings
 	settings.changed.connect(_on_setting_changed)
 	_apply_settings()
@@ -254,7 +254,7 @@ signal frame_passed
 
 func _process(delta: float) -> void:
 	# カメラが動くとマウスの下のマスも変わるので、マウスの動きではなく毎フレーム追う（メニューの後ろでは追わない）。
-	if not _system_menu.is_open() and not _log_panel.is_open():
+	if not context.overlays.pauses():
 		_update_hover()
 	var focus_cells: Array[Vector2i] = []
 	for view: UnitView in _views.values():
@@ -281,12 +281,11 @@ func _after(seconds: float) -> Signal:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _system_menu.is_open() or _log_panel.is_open():
-		return  # 開いている間の入力は、メニュー・ログが受ける（ここへ届いても、盤面には使わない）
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if _setup_panel.visible:
-		# 設定画面は、閉じられるなら Esc で閉じる（setup_panel が先に受ける）。閉じられない（起動した直後）なら、メニューを開く。
-		if escape:
+	if context.overlays.is_open():
+		# 開いている間の入力は、重なる画面（メニュー・ログ・対戦の設定）が受ける（ここへ届いても、盤面には使わない）。
+		# 対戦の設定がいちばん上なら、閉じられるときは Esc で閉じる（setup_panel が先に受ける）。閉じられない（起動した直後）なら、メニューを開く。
+		var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
+		if escape and context.overlays.is_top(_setup_panel):
 			open_system_menu()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -448,9 +447,9 @@ func _on_restart_pressed(new_stage: int, new_board: bool) -> void:
 # ---- 操作（マウス・キー・ボタンのどれからも、ここを通る） ----
 
 
-## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、対戦の設定画面・システムメニュー・ログを開いている間）。
+## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、重なる画面（対戦の設定画面・システムメニュー・ログ）を開いている間）。
 func is_busy() -> bool:
-	return _ui.busy or _ui.cpu_running or _setup_panel.visible or _system_menu.is_open() or _log_panel.is_open()
+	return _ui.busy or _ui.cpu_running or context.overlays.is_open()
 
 
 # ---- システムメニューと設定 ----
@@ -486,7 +485,7 @@ func _on_overlay_opened() -> void:
 ## ログを開く（上の帯の「ログ」）。いつでも開ける（CPU の番や再生の途中でも）。システムメニューと同じく、開いている間は時間を止める。
 ## 対戦の設定画面の上では開かない。
 func open_log() -> void:
-	if _setup_panel.visible or _system_menu.is_open() or battle_log == null:
+	if context.overlays.is_open() or battle_log == null:
 		return
 	_hud.hide_banner()
 	_log_panel.open(battle_log)
@@ -554,7 +553,7 @@ func on_menu_item(id: StringName) -> void:
 
 
 func _on_system_menu_closed() -> void:
-	_rig.controls_enabled = not _log_panel.is_open()
+	_rig.controls_enabled = not context.overlays.pauses()
 	_update_time_scale()
 
 
@@ -594,7 +593,7 @@ func set_time_scale_base(scale: float) -> void:
 
 func _update_time_scale() -> void:
 	var scale := time_scale_base
-	if (_system_menu != null and _system_menu.is_open()) or (_log_panel != null and _log_panel.is_open()):
+	if context.overlays.pauses():
 		scale = 0.0
 	elif _cpu_fast:
 		scale *= float(settings.value(Settings.CPU_PLAYBACK_SPEED))
