@@ -106,7 +106,7 @@
 - 画面はルールを持たない。操作を行動（`BattleAction`）にして `Battle.apply()` に渡し、
   返ってきた `ActionResult.events` を順に再生する（`board_prototype.gd` の `_do` と `_play`）。
 - 再生している間は、操作を受け付けない。再生が終わったら、対戦の状態と選んでいる駒から、
-  塗るマス・ボタン・文字を作り直す（`_refresh`）。
+  塗るマス・ボタン・文字を作り直す（`_refresh`）。帯・メニュー・マスの説明などの文は、ノードに依存しない `battle_texts.gd` が作る（テストは `tests/prototype/test_battle_texts.gd`）。
 - 選べること（動けるマス、攻撃できる相手、攻撃できる樽、回復できる味方、スキルの対象のマス）は、ルールの問い合わせ `Battle.options()`（`docs/battle.md`）に聞き、
   `battle_queries.gd` が画面の使いやすい形にする。どれも `Battle.can_apply()` が受け付けるものと一致する（テストで固定している）。
 - 見込み（攻撃、樽・盾への攻撃、回復、スキル）は、どれも戦闘予測 `Forecast.of()`（`docs/battle-forecast.md`。実際と同じ処理を
