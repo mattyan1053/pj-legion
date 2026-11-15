@@ -5,6 +5,7 @@ extends Node3D
 const BoardPrototype := preload("res://prototype/board_prototype.gd")
 const BoardView := preload("res://prototype/board_view.gd")
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
+const StageLook := preload("res://prototype/stage_look.gd")
 
 ## 回る速さ（ラジアン / 秒）。
 const TURN_SPEED := 0.05
@@ -17,7 +18,7 @@ var _rig: OrbitCamera
 
 
 func _ready() -> void:
-	BoardPrototype.build_environment(self)
+	StageLook.build_environment(self)
 	var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, LOOK_SEED)
 	var view := BoardView.new()
 	add_child(view)
