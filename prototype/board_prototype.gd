@@ -924,7 +924,8 @@ func _play_warped(event: UnitWarpedEvent) -> void:
 	shrink.tween_property(view, "scale", Vector3.ONE * 0.05, 0.16)
 	await shrink.finished
 	view.position = to
-	_rig.focus_on(to)  # 行き先が画面の外でも、どこへ出たかが見えるようにする。
+	if not _quiet_playback:
+		_rig.focus_on(to)  # 行き先が画面の外でも、どこへ出たかが見えるようにする（静かな場面では、カメラを動かさない）。
 	_flash(to, color, 0.9)
 	var grow := create_tween()
 	grow.tween_property(view, "scale", Vector3.ONE, 0.16)
