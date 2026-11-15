@@ -30,7 +30,7 @@
 `create_battle()` が、盤面を作り（`docs/game-board.md`）、両方の軍を本陣に置いた（`Deployment`。`docs/player-loadout.md`）、
 ターン 1・プレイヤー1 の番の対戦を返す。設定は変えないので、同じ設定から何度でも同じ対戦が作れる。
 
-**対戦はこの入口だけから作る。** 試作の画面、検査の自動の対戦（`prototype/autoplay.gd` の通しの対戦）、
+**対戦はこの入口だけから作る。** 試作の画面、検査の自動の対戦（`game/autoplay.gd` の通しの対戦）、
 CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通る。
 例外は、テストと、自動の対戦の中の場面ごとの小さな盤面（`Battle.new` で直に作る）だけ。
 
@@ -48,5 +48,5 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 ## 試作の入口
 
-試作（`prototype/`）は、対戦の前に設定画面（`docs/battle-view.md` の「対戦の設定」）で選んだものを
-`prototype/trial_setup.gd` が `MatchSetup` にして、`create_battle()` で始める。
+試作（`game/`）は、対戦の前に設定画面（`docs/battle-view.md` の「対戦の設定」）で選んだものを
+`game/trial_setup.gd` が `MatchSetup` にして、`create_battle()` で始める。

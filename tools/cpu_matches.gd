@@ -22,7 +22,7 @@ extends SceneTree
 ## 同じ引数なら、いつも同じ結果になる（考える時間の欄を除く）。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
-const Names := preload("res://prototype/names.gd")
+const Names := preload("res://game/names.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 const STAGE_NAMES := {

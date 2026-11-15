@@ -6,6 +6,6 @@
 - 取ってきた日・ライセンスを確かめた日: 2026-11-15
 - 改変: 配布元の WAV を、モノラルの Ogg Vorbis（品質 3）にし、後ろを切って短いフェードで消した
 
-| ファイル | 使う音（`prototype/sound_catalog.gd`） | 元のファイル | 長さ |
+| ファイル | 使う音（`game/sound_catalog.gd`） | 元のファイル | 長さ |
 | --- | --- | --- | --- |
 | `sword-clash-04.ogg` | `critical`（クリティカル。当たった音に重ねる） | `sfx-cc0/sword-clash-04.wav` | 1.32 → 1.0 秒 |

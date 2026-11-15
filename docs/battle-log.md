@@ -1,7 +1,7 @@
 # 対戦のログ
 
-コード: `prototype/battle_log.gd`（ログ。ノードに依存しない）、`prototype/log_panel.gd`（ログの画面）。
-テスト: `tests/prototype/test_battle_log.gd`。対戦の画面とのつなぎは `prototype/board_prototype.gd`。
+コード: `game/battle_log.gd`（ログ。ノードに依存しない）、`game/log_panel.gd`（ログの画面）。
+テスト: `tests/game/test_battle_log.gd`。対戦の画面とのつなぎは `game/battle_screen.gd`。
 
 対戦の中で起きたことを、あとから読める行の列にする。相手（CPU）の番や中立のフェーズで起きたことを見逃したときに、さかのぼって確かめる。
 ルールの挙動には関わらない（読むだけ）。保存とリプレイは無い。

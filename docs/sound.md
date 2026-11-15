@@ -1,8 +1,8 @@
 # 音（BGM と効果音）
 
-コード: `prototype/sound.gd`（鳴らすところ）、`prototype/sound_catalog.gd`（音の表）、`prototype/scene_flow.gd` の `music`（場面ごとの曲）。
-音量の設定は `prototype/settings.gd`（`docs/system-menu.md` の「設定」）。
-テスト: `tests/prototype/test_sound.gd`。
+コード: `game/sound.gd`（鳴らすところ）、`game/sound_catalog.gd`（音の表）、`game/scene_flow.gd` の `music`（場面ごとの曲）。
+音量の設定は `game/settings.gd`（`docs/system-menu.md` の「設定」）。
+テスト: `tests/game/test_sound.gd`。
 
 ## 方向
 
