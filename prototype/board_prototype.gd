@@ -17,14 +17,16 @@ const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
 const StatsText := preload("res://prototype/stats_text.gd")
 const MenuPlacement := preload("res://prototype/menu_placement.gd")
+const NeutralPlayback := preload("res://prototype/neutral_playback.gd")
 
 const NO_CELL := Vector2i(-1, -1)
 const NOTHING_SPECIAL := "特別なものは無い"
 const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("e0b83a")]
 
-## 1 マス歩くのにかける秒数（巡航は速く走る）。
+## 1 マス歩くのにかける秒数（巡航は速く走る）。中立の駒は、目で追えるよう、ゆっくり歩かせる。
 const STEP_TIME := 0.16
 const CRUISE_STEP_TIME := 0.1
+const NEUTRAL_STEP_TIME := 0.26
 
 const COLOR_MOVE := Color(0.35, 0.65, 1.0, 0.5)
 const COLOR_CRUISE := Color(1.0, 0.82, 0.3, 0.4)
@@ -68,6 +70,9 @@ enum Mode { NONE, ATTACK, HEAL, SKILL }
 ## CPU の駒が動き出す前に、カメラを寄せて見せる秒数と、1 体の行動が終わってから次の駒までの間。
 const CPU_FOCUS_TIME := 0.35
 const CPU_PAUSE := 0.45
+## 中立のフェーズで、攻撃する駒へカメラを寄せてから動き出すまでの秒数と、その駒の場面が終わってから次までの間。
+const NEUTRAL_FOCUS_TIME := 0.5
+const NEUTRAL_PAUSE := 0.5
 
 const WIN_REASONS := {
 	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
@@ -130,6 +135,12 @@ var _menu_dirty := true
 var _menu_hover_id := &""
 ## 対戦を始めたことがあるか（起動した直後の設定画面だけ偽。偽の間は、設定画面を閉じて戻る先が無い）。
 var _battle_started := false
+## 中立のフェーズの静かな場面（動いただけ、湧いただけ）をまとめて流している途中か。この間は、カメラを動かさない。
+var _quiet_playback := false
+## まとめて流している場面のうち、まだ終わっていないものの数。
+var _beats_running := 0
+## カメラが追いかけた駒の番号 -> 回数。検査用。
+var camera_follows := {}
 ## 必殺技を使うかを、もう一度押して確かめている途中か（対象を選ばず、取り消せないので、1 回では使わない）。
 var _confirming_ult := false
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
@@ -602,6 +613,11 @@ func cell_screen_position(cell: Vector2i) -> Vector2:
 	return _rig.camera.unproject_position(BoardView.cell_center(cell))
 
 
+## カメラが寄っていく先（盤面の上の点）。検査用。
+func camera_focus() -> Vector3:
+	return _rig.focus_point()
+
+
 ## カメラの向き（回していく先。ラジアン）。検査用。
 func camera_yaw() -> float:
 	return _rig.target_yaw()
@@ -678,8 +694,7 @@ func _select(unit_id: int) -> void:
 ## スキルのまだ無い盤の上の効果（煙幕）も通すため、検査はルールの FieldEffects.place_* で置いて、その結果をここで再生する。
 func play_events(events: Array[BattleEvent]) -> void:
 	_busy = true
-	for event in events:
-		await _play(event)
+	await _play_all(events)
 	_busy = false
 	_refresh()
 
@@ -712,8 +727,7 @@ func _do(action: BattleAction) -> bool:
 	_hud.set_ult_button(_hud.ult_button_text(), false, _ult_summary())
 	_hud.set_end_turn(false, _hud.end_turn_text())
 	_hud.hide_evolution()
-	for event in result.events:
-		await _play(event)
+	await _play_all(result.events)
 	_busy = false
 
 	var evolving := battle.evolving_unit()
@@ -811,6 +825,54 @@ static func event_players() -> Dictionary:
 	}
 
 
+## 起きたことを、起きた順に再生する。中立のフェーズの中身だけは、見せ方の単位（場面）に分けて再生する。
+func _play_all(events: Array[BattleEvent]) -> void:
+	var i := 0
+	while i < events.size():
+		var event := events[i]
+		await _play(event)
+		i += 1
+		var started := event as PhaseStartedEvent
+		if started == null or started.side != Unit.Side.NEUTRAL:
+			continue
+		# 中立のフェーズの中身は、次のフェーズの始まり（か決着）の手前まで。
+		var phase: Array[BattleEvent] = []
+		while i < events.size() and not (events[i] is PhaseStartedEvent or events[i] is GameWonEvent or events[i] is GameDrawnEvent):
+			phase.append(events[i])
+			i += 1
+		await _play_neutral_phase(phase)
+
+
+## 中立のフェーズを、目で追える形で再生する（neutral_playback.gd）。
+## - 動いただけ・湧いただけの駒（静かな場面）は、カメラを動かさずに、続いているものをまとめて同時に流す。
+## - 攻撃した駒（見せる場面）は、カメラを寄せてから、1 体ずつ、ゆっくり歩かせて追いかけ、攻撃を見せて、間を置く。
+## 起きた順は変えない。
+func _play_neutral_phase(events: Array[BattleEvent]) -> void:
+	for group: Array in NeutralPlayback.groups(NeutralPlayback.beats(events)):
+		var first: NeutralPlayback.Beat = group[0]
+		if first.quiet:
+			_quiet_playback = true
+			for beat: NeutralPlayback.Beat in group:
+				_beats_running += 1
+				_play_beat(beat)  # 待たずに始めて、同時に流す
+			while _beats_running > 0:
+				await get_tree().process_frame
+			_quiet_playback = false
+			continue
+		if _views.has(first.actor_id):
+			_rig.focus_on(_view(first.actor_id).position)
+			await get_tree().create_timer(NEUTRAL_FOCUS_TIME).timeout
+		for event in first.events:
+			await _play(event)
+		await get_tree().create_timer(NEUTRAL_PAUSE).timeout
+
+
+func _play_beat(beat: NeutralPlayback.Beat) -> void:
+	for event in beat.events:
+		await _play(event)
+	_beats_running -= 1
+
+
 func _play(event: BattleEvent) -> void:
 	var kind: Script = event.get_script()
 	if not _players.has(kind):
@@ -824,8 +886,15 @@ func _play_moved(event: UnitMovedEvent) -> void:
 	if event.path.size() < 2:
 		return
 	var view := _view(event.unit_id)
-	_follow_neutral(event.unit_id)
+	var unit := battle.unit_by_id(event.unit_id)
 	var step_time := CRUISE_STEP_TIME if event.cruise else STEP_TIME
+	if unit != null and unit.side == Unit.Side.NEUTRAL:
+		step_time = NEUTRAL_STEP_TIME
+	# 自分で動かしていない駒（CPU の駒、中立の駒）は、歩いている間、カメラが追いかける（長く歩いても、画面の外へ出ていかない）。
+	var followed := _camera_follows(unit)
+	if followed:
+		camera_follows[event.unit_id] = camera_follows.get(event.unit_id, 0) + 1
+		_rig.follow(view)
 	view.play_run()
 	for i in range(1, event.path.size()):
 		var target := BoardView.cell_center(event.path[i])
@@ -834,6 +903,8 @@ func _play_moved(event: UnitMovedEvent) -> void:
 		tween.tween_property(view, "position", target, step_time)
 		await tween.finished
 	view.play_idle()
+	if followed:
+		_rig.follow(null)
 
 
 func _play_undone(event: MoveUndoneEvent) -> void:
@@ -853,7 +924,8 @@ func _play_warped(event: UnitWarpedEvent) -> void:
 	shrink.tween_property(view, "scale", Vector3.ONE * 0.05, 0.16)
 	await shrink.finished
 	view.position = to
-	_rig.focus_on(to)  # 行き先が画面の外でも、どこへ出たかが見えるようにする。
+	if not _quiet_playback:
+		_rig.focus_on(to)  # 行き先が画面の外でも、どこへ出たかが見えるようにする（静かな場面では、カメラを動かさない）。
 	_flash(to, color, 0.9)
 	var grow := create_tween()
 	grow.tween_property(view, "scale", Vector3.ONE, 0.16)
@@ -864,7 +936,7 @@ func _play_warped(event: UnitWarpedEvent) -> void:
 func _play_attack_damaged(event: AttackDamagedEvent) -> void:
 	var target := _view(event.unit_id)
 	var attacker := _view(event.attacker_id)
-	_follow_neutral(event.attacker_id)
+	_show_strike(event.attacker_id, attacker, target)
 	attacker.face(target.position - attacker.position)
 	target.face(attacker.position - target.position)
 	await get_tree().create_timer(attacker.play_attack()).timeout
@@ -1012,7 +1084,7 @@ func _play_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
 	var target := _view(event.target_id)
 	var attacker := _view(event.attacker_id)
-	_follow_neutral(event.attacker_id)
+	_show_strike(event.attacker_id, attacker, target)
 	attacker.face(target.position - attacker.position)
 	target.face(attacker.position - target.position)
 	await get_tree().create_timer(attacker.play_attack()).timeout
@@ -1174,7 +1246,8 @@ func _play_spawned(event: UnitSpawnedEvent) -> void:
 	view.setup(event.kind, TEAM_COLORS[event.side], event.hp, event.max_hp)
 	view.face(BoardView.cell_center(event.cell + Vector2i.DOWN) - at)
 	_views[event.unit_id] = view
-	_rig.focus_on(at)
+	if not _quiet_playback:
+		_rig.focus_on(at)
 	_flash(at + Vector3(0.0, 0.4, 0.0), TEAM_COLORS[event.side], 1.6)
 	view.scale = Vector3.ONE * 0.05
 	var grow := create_tween()
@@ -1182,17 +1255,25 @@ func _play_spawned(event: UnitSpawnedEvent) -> void:
 	await grow.finished
 
 
-## 中立の駒が動く・攻撃するときは、カメラをその駒へ寄せる（どの駒の番かが分かるように）。
-func _follow_neutral(unit_id: int) -> void:
-	var unit := battle.unit_by_id(unit_id)
-	if unit != null and unit.side == Unit.Side.NEUTRAL:
-		_rig.focus_on(_view(unit_id).position)
+## 駒が歩く間、カメラが追いかけるか。自分で動かしていない駒（CPU の番の駒、中立の駒）だけ。
+## 中立のフェーズの静かな場面をまとめて流している間は、追わない（何体も同時に動く）。
+func _camera_follows(unit: Unit) -> bool:
+	if unit == null or _quiet_playback:
+		return false
+	return unit.side == Unit.Side.NEUTRAL or (_cpu_running and unit.side == match_choice.cpu_side())
+
+
+## 自分で動かしていない駒（CPU の番の駒、中立の駒）の攻撃は、攻撃する駒と相手の間へカメラを寄せる（どちらも見えるように）。
+func _show_strike(attacker_id: int, attacker: UnitView, target: UnitView) -> void:
+	var unit := battle.unit_by_id(attacker_id)
+	if unit != null and (unit.side == Unit.Side.NEUTRAL or (_cpu_running and unit.side == match_choice.cpu_side())):
+		_rig.focus_on((attacker.position + target.position) / 2.0)
 
 
 func _play_phase_started(event: PhaseStartedEvent) -> void:
 	_refresh_status(event.turn, event.side)
 	if event.side == Unit.Side.NEUTRAL:
-		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは動く駒を追う（_follow_neutral）。
+		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは、攻撃する駒だけを追う（_play_neutral_phase）。
 		_hud.show_banner("ターン %d　%s の番" % [event.turn, _side_name(event.side)], TEAM_COLORS[event.side])
 		await get_tree().create_timer(0.5).timeout
 		return
