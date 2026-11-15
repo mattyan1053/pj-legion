@@ -486,11 +486,10 @@ func test_cpu_uses_mana_eruption_when_skills_are_on_cooldown_near_the_enemy() ->
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(8, 2))
 	_fill(battle, P2)
 	assert_false(CpuPlayer.new().next_action(battle) is UseUltAction, "スキルはどれも使える。解放しても得が無い")
-	sorcerer.skill_cooldown = 3
-	paladin.skill_cooldown = 3
-	assert_true(CpuPlayer.new().next_action(battle) is UseUltAction)
 	paladin.skill_cooldown = 1
-	assert_false(CpuPlayer.new().next_action(battle) is UseUltAction, "待っている駒が 1 体だけなら、まだ使わない")
+	assert_false(CpuPlayer.new().next_action(battle) is UseUltAction, "クールダウンがすぐ明ける駒しかいない")
+	sorcerer.skill_cooldown = 3
+	assert_true(CpuPlayer.new().next_action(battle) is UseUltAction, "待っている駒が 1 体でもいれば、持ち越さずに使う")
 
 
 func test_cpu_counts_a_ready_enemy_ult_as_danger() -> void:
