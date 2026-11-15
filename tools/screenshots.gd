@@ -44,6 +44,11 @@ const SCENES := {
 	"inspect_moved": "自分の駒を動かしたあと（メニューが出たまま）に、相手の駒を見ている",
 	"threat_all": "自分の駒を選んで、敵の全員の脅威範囲（赤い斜線）を重ねている",
 	"skill": "スキルの対象を選んでいる",
+	"forecast_attack": "動いたあと、攻撃の相手にマウスを乗せて、戦闘予測のパネルが出ている",
+	"forecast_defeat": "倒せる相手にマウスを乗せている（予測のパネルに「倒せる！」）",
+	"forecast_skill": "範囲のスキルの対象のマスにマウスを乗せている（巻き込む駒が並ぶ）",
+	"forecast_heal": "回復役で、回復できる味方にマウスを乗せている",
+	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
 	"result": "決着の画面と戦績",
@@ -110,6 +115,7 @@ func _run() -> void:
 		_scene.log_panel().close()
 		_scene.setup_panel().visible = false
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
+		_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
 		if _scene.is_threat_shown():
 			_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
 		_stage = BoardGenerator.Stage.PLAIN
@@ -482,6 +488,99 @@ func _scene_threat_all() -> bool:
 	_scene.toggle_threat()
 	_scene.focus_camera(unit.cell)
 	return _scene.is_threat_shown()
+
+
+func _scene_forecast_attack() -> bool:
+	if not await _scene_menu_moved():
+		return false
+	var mover: Unit = _scene.selected_unit()
+	var target := _battle.unit_by_id(_battle.options(mover.id).attack_target_ids[0])
+	_scene.hover(target.cell)
+	return _scene.forecast_text() != ""
+
+
+## 行動できる自分の駒が、いまの位置から倒せる相手（[駒, 相手]）。無ければ空。
+func _defeat_now() -> Array:
+	for unit in _own_units():
+		if not _battle.can_act(unit):
+			continue
+		for target_id in _battle.options(unit.id).attack_target_ids:
+			if Forecast.of(_battle, AttackAction.new(unit.id, target_id)).defeated_ids().has(target_id):
+				return [unit, _battle.unit_by_id(target_id)]
+	return []
+
+
+func _scene_forecast_defeat() -> bool:
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _defeat_now().is_empty()):
+		return false
+	var found := _defeat_now()
+	_show()
+	_scene.click_cell(found[0].cell)
+	_look_at(BoardView.cell_center(found[1].cell))
+	_scene.hover(found[1].cell)
+	return _scene.forecast_text().contains("倒せる")
+
+
+## 行動できる自分の駒が、スキルで相手を 2 体以上巻き込めるマス（[駒, マス]）。無ければ空。
+func _skill_hits() -> Array:
+	for unit in _own_units():
+		if not _battle.can_act(unit):
+			continue
+		for cell in _battle.options(unit.id).skill_cells:
+			var forecast := Forecast.of(_battle, UseSkillAction.new(unit.id, cell))
+			var hits := 0
+			for outcome in forecast.units:
+				if outcome.hits > 0:
+					hits += 1
+			if hits >= 2:
+				return [unit, cell]
+	return []
+
+
+func _scene_forecast_skill() -> bool:
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _skill_hits().is_empty()):
+		return false
+	var found := _skill_hits()
+	_show()
+	_scene.click_cell(found[0].cell)
+	_scene.press_skill()
+	_look_at(BoardView.cell_center(found[1]))
+	_scene.hover(found[1])
+	return _scene.is_choosing_skill_target() and _scene.forecast_text() != ""
+
+
+func _scene_forecast_heal() -> bool:
+	var healer := func() -> Unit:
+		for unit in _own_units():
+			if _battle.can_act(unit) and not Queries.heal_targets(_battle, unit).is_empty():
+				return unit
+		return null
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and healer.call() != null):
+		return false
+	_show()
+	var unit: Unit = healer.call()
+	var target: Unit = Queries.heal_targets(_battle, unit)[0]
+	_scene.click_cell(unit.cell)
+	_look_at(BoardView.cell_center(target.cell))
+	_scene.hover(target.cell)
+	return _scene.forecast_text() != ""
+
+
+func _scene_info_status() -> bool:
+	if not _advance(func() -> bool: return Ults.can_use(_battle)):
+		return false
+	_show()
+	await _scene.act(UseUltAction.new())
+	# 装備を持っている駒（無ければ、将でない駒）を見る。
+	var best: Unit = null
+	for unit in _battle.units:
+		if unit.side == _battle.phase and unit.kind != UnitKind.Id.KING and (best == null or unit.equipment.size() > best.equipment.size()):
+			best = unit
+	if best == null:
+		return false
+	_look_at(BoardView.cell_center(best.cell))
+	_scene.hover(best.cell)
+	return not Statuses.types_of(best).is_empty()
 
 
 func _scene_skill() -> bool:

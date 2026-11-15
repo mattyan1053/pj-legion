@@ -169,6 +169,14 @@ var _pressing := false
 var _press_on_unit := false
 var _dragging := false
 var _menu_placement := MenuPlacement.new()
+## 戦闘予測のパネルの置き場所（対象のマスのそば）。
+var _forecast_placement := MenuPlacement.new()
+var _forecast_cell := NO_CELL
+var _forecast_camera := Transform3D()
+var _forecast_dirty := true
+var _forecast_avoid: Array[Vector2i] = []
+## 検査で、マウスを乗せたことにしているマス（hover）。NO_CELL ならマウスの位置。
+var _hover_forced := NO_CELL
 ## メニューを置いたときのカメラ（動いたら置き直す）。
 var _menu_camera := Transform3D()
 var _menu_dirty := true
@@ -262,6 +270,7 @@ func _process(delta: float) -> void:
 		focus_cells.append(_hover_cell)
 	_board_view.update_occlusion(_rig.camera, _rig.global_position, focus_cells, delta)
 	_place_menu()
+	_place_forecast()
 	frame_passed.emit()
 
 
@@ -1058,6 +1067,7 @@ func _do(action: BattleAction) -> bool:
 	_selection_ring.visible = false
 	_inspect_ring.visible = false
 	_hud.set_menu([])
+	_hud.hide_forecast()
 	_hud.set_ult_button(_hud.ult_button_text(), false, _ult_summary())
 	_hud.set_end_turn(false, _hud.end_turn_text())
 	_hud.hide_evolution()
@@ -2019,8 +2029,16 @@ func _show_painted() -> void:
 	_board_view.set_grid_emphasis(_selected_id != 0 or _inspected_id != 0 or not colors.is_empty())
 
 
+## マウスを cell に乗せたことにする（検査用。NO_CELL で、マウスの位置に戻す）。
+func hover(cell: Vector2i) -> void:
+	_hover_forced = cell
+	_update_hover()
+
+
 func _update_hover() -> void:
 	var cell := _cell_under_mouse() if not _hud.is_mouse_over_ui() else NO_CELL
+	if _hover_forced != NO_CELL:
+		cell = _hover_forced
 	if not battle.board.in_bounds(cell):
 		cell = NO_CELL
 	if cell == _hover_cell:
@@ -2032,13 +2050,15 @@ func _update_hover() -> void:
 		_update_info()
 
 
-## マウスの下の駒（いなければ選んでいる駒。それも無ければ、クリックしたマス）の情報を左下の枠に、
-## マウスの下のマスの短い説明を下の帯に出す。
+## マウスの下の駒（いなければ見ている駒、選んでいる駒。それも無ければ、クリックしたマス）の情報を左下の枠に、
+## マウスの下のマスの短い説明を下の帯に出す。行動の対象にマウスを乗せていれば、戦闘予測のパネルも出す（_update_forecast）。
 func _update_info() -> void:
 	var hovered: Unit = null
 	if _hover_cell != NO_CELL:
 		hovered = battle.unit_at(_hover_cell)
 	_hud.show_cell(_cell_line(_hover_cell) if _hover_cell != NO_CELL else "")
+	_hud.viewer_side = _viewer_side()
+	_update_forecast()
 
 	var shown := hovered if hovered != null else inspected_unit()
 	if shown == null:
@@ -2049,50 +2069,129 @@ func _update_info() -> void:
 		else:
 			_hud.show_unit(null, "", "")
 		return
-	if _mode == Mode.SKILL and (hovered == null or _skill_cells.has(_hover_cell)) and _inspected_id == 0:
-		# スキルの対象を選んでいる間は、使う駒と、マウスの下のマスに使ったときの見込みを出す。
+	if _mode == Mode.SKILL and hovered == null and _inspected_id == 0:
+		# スキルの対象を選んでいる間は、使う駒と、スキルの説明を出す（見込みは、予測のパネル）。
 		var user := selected_unit()
 		var skill := Skills.of(user)
-		var skill_text := skill.summary()
-		# 自分に使うスキルは、対象が 1 つなので、マウスを乗せなくても見込みを出す。
-		if _is_self_skill(user):
-			skill_text += "\n" + _skill_forecast(user, user.cell)
-		elif _skill_cells.has(_hover_cell):
-			skill_text += "\n" + _skill_forecast(user, _hover_cell)
-		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill_text, false)
+		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill.summary(), false)
 		return
 	if _menu_hover_id != &"" and selected_unit() != null and hovered == null and _hud.menu_ids().has(_menu_hover_id):
 		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
 		_hud.show_unit(selected_unit(), "", _menu_note(_menu_hover_id, selected_unit()), _menu_hover_id != MENU_SKILL)
 		return
-	# 見ている間は、クリックしても行動しないので、見込みは出さない。
-	var aiming := _inspected_id == 0 and (_mode == Mode.NONE or _mode == Mode.ATTACK)
-	var attacker := selected_unit()
-	if hovered == null and aiming and _barrel_targets.has(_hover_cell):
-		var barrel := Forecast.of(battle, AttackBarrelAction.new(attacker.id, _hover_cell))
-		_hud.show_unit(attacker, "樽を狙っている", "樽を爆発させる（%d ダメージ）\n%s" % [MapObject.BLAST_DAMAGE, ForecastText.describe(battle, barrel, attacker)])
-		return
-	if hovered == null and aiming and _barricade_targets.has(_hover_cell):
-		var barricade := Forecast.of(battle, AttackBarricadeAction.new(attacker.id, _hover_cell))
-		_hud.show_unit(attacker, "盾を狙っている", ForecastText.describe(battle, barricade, attacker))
-		return
-	var state := "行動済み" if shown.acted else "未行動"
-	if shown.side == Unit.Side.NEUTRAL:
-		state = ""
-	if shown.has_moved:
-		state = "行動の途中（巡航で移動した）" if shown.cruised else "行動の途中（移動した）"
-	if shown.move_locked:
-		state = "行動の途中（スキルを使った）"
-	# 駒のいるマスの地形（森にいれば、受けるダメージが減る）。平地は書かない。
-	if battle.board.terrain_at(shown.cell) != Terrain.Type.NORMAL:
-		state += ("\n" if state != "" else "") + "いるマス: " + BattleHud.TERRAIN_NAMES[battle.board.terrain_at(shown.cell)]
-	var forecast := ""
-	# 攻撃・回復の見込み。実際と同じ処理を、状態を変えずに走らせる（Forecast）。
+	_hud.show_unit(shown, _unit_state(shown), "")
+
+
+## 駒の行動の状態（いまの番の陣営の駒だけ）と、いるマスの地形（平地でなければ）。左下の枠に出す。
+func _unit_state(unit: Unit) -> String:
+	var state := ""
+	if unit.side == battle.phase:
+		state = "行動済み" if unit.acted else "未行動"
+		if unit.has_moved:
+			state = "行動の途中（巡航で移動した）" if unit.cruised else "行動の途中（移動した）"
+		if unit.move_locked:
+			state = "行動の途中（スキルを使った）"
+	# 森にいれば、受けるダメージが減る。
+	var terrain := battle.board.terrain_at(unit.cell)
+	if terrain != Terrain.Type.NORMAL:
+		state += ("\n" if state != "" else "") + "いるマス: " + BattleHud.TERRAIN_NAMES[terrain]
+	return state
+
+
+## いまマウスを乗せている対象への行動（攻撃・樽・盾・回復・スキル）と、予測のパネルの見出し。無ければ空の列。
+## 自分に使うスキルは、対象が 1 つなので、マウスを乗せなくても出す。
+func _hovered_action() -> Array:
+	var actor := selected_unit()
+	if actor == null or _inspected_id != 0 or _busy or battle.is_over() or _menu_hover_id != &"":
+		return []
+	if _mode == Mode.SKILL:
+		var skill := Skills.of(actor)
+		var target := _hover_cell if _skill_cells.has(_hover_cell) else (actor.cell if _is_self_skill(actor) else NO_CELL)
+		if target == NO_CELL:
+			return []
+		return [UseSkillAction.new(actor.id, target), skill.display_name(), target]
+	var hovered := battle.unit_at(_hover_cell) if _hover_cell != NO_CELL else null
+	var aiming := _mode == Mode.NONE or _mode == Mode.ATTACK
 	if hovered != null and aiming and _targets.has(hovered):
-		forecast = ForecastText.describe(battle, Forecast.of(battle, AttackAction.new(attacker.id, hovered.id)), attacker)
-	elif hovered != null and _inspected_id == 0 and _heal_targets.has(hovered) and (_mode == Mode.NONE or _mode == Mode.HEAL):
-		forecast = ForecastText.describe(battle, Forecast.of(battle, HealAction.new(attacker.id, hovered.id)), attacker)
-	_hud.show_unit(shown, state, forecast)
+		return [AttackAction.new(actor.id, hovered.id), "攻撃", _hover_cell]
+	if hovered != null and (_mode == Mode.NONE or _mode == Mode.HEAL) and _heal_targets.has(hovered):
+		return [HealAction.new(actor.id, hovered.id), "回復", _hover_cell]
+	if aiming and _barrel_targets.has(_hover_cell):
+		return [AttackBarrelAction.new(actor.id, _hover_cell), "樽を撃つ（爆発 %d ダメージ）" % MapObject.BLAST_DAMAGE, _hover_cell]
+	if aiming and _barricade_targets.has(_hover_cell):
+		return [AttackBarricadeAction.new(actor.id, _hover_cell), "盾を攻撃", _hover_cell]
+	return []
+
+
+## 戦闘予測のパネルを、いまの対象で作り直す（中身は Forecast.of をそのまま読む）。対象が無ければ消す。
+func _update_forecast() -> void:
+	var found := _hovered_action()
+	if found.is_empty():
+		_hud.hide_forecast()
+		_forecast_cell = NO_CELL
+		return
+	var action: BattleAction = found[0]
+	var actor := selected_unit()
+	var summary := ForecastText.summarize(battle, Forecast.of(battle, action), actor)
+	_hud.show_forecast(found[1], summary)
+	# パネルで隠したくないマス: 何かが起きる駒と、効果の及ぶマス（スキルの範囲、樽の爆発）。
+	_forecast_avoid.clear()
+	for row in summary.rows:
+		var unit := battle.unit_by_id(row.unit_id)
+		if unit != null:
+			_forecast_avoid.append(unit.cell)
+	if action is UseSkillAction:
+		_forecast_avoid.append_array(Skills.of(actor).affected_cells(battle, actor, found[2]))
+	elif action is AttackBarrelAction:
+		_forecast_avoid.append_array(MapObject.blast_cells(battle.board, found[2]))
+	if found[2] != _forecast_cell:
+		_forecast_placement.reset()
+	_forecast_cell = found[2]
+	_forecast_dirty = true
+	_place_forecast()
+
+
+## 予測のパネルを、対象のマスのそばに置く。駒のそばのメニュー、行動する駒、効果の及ぶ駒、情報の枠を隠さない側を選ぶ
+## （menu_placement.gd）。カメラが動いたら置き直す。
+func _place_forecast() -> void:
+	var size := _hud.forecast_size()
+	if size == Vector2.ZERO or _forecast_cell == NO_CELL:
+		return
+	var camera: Camera3D = _rig.camera
+	if not _forecast_dirty and camera.global_transform.is_equal_approx(_forecast_camera):
+		return
+	_forecast_dirty = false
+	_forecast_camera = camera.global_transform
+	var on := battle.unit_at(_forecast_cell)
+	var height: float = _view(on.id).height() if on != null and _views.has(on.id) else 0.3
+	var anchor := _screen_rect(BoardView.cell_center(_forecast_cell), 0.45, height)
+	var obstacles: Array = []
+	if _hud.menu_rect().has_area():
+		obstacles.append([_hud.menu_rect(), MENU_WEIGHT_TARGET])
+	if _hud.info_rect().has_area():
+		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
+	var actor := selected_unit()
+	if actor != null and _views.has(actor.id):
+		var view := _view(actor.id)
+		obstacles.append([_screen_rect(view.position, 0.4, view.height()), MENU_WEIGHT_TARGET])
+	for unit_id: int in _views:
+		if actor == null or unit_id != actor.id:
+			var other := _view(unit_id)
+			obstacles.append([_screen_rect(other.position, 0.35, other.height()), MENU_WEIGHT_UNIT])
+	for cell in _forecast_avoid:
+		if cell != _forecast_cell:
+			obstacles.append([_screen_rect(BoardView.cell_center(cell), 0.45, 0.8), MENU_WEIGHT_TARGET])
+	_hud.place_forecast(_forecast_placement.place(anchor, size, _hud.menu_area(), obstacles))
+
+
+## 戦闘予測のパネルに出している中身（出していなければ空）と、画面に占める四角。検査用。
+func forecast_text() -> String:
+	return _hud.forecast_text()
+
+
+func forecast_rect() -> Rect2:
+	_place_forecast()
+	return _hud.forecast_rect()
 
 
 ## マスの見出し（位置と地形の名前）。
@@ -2144,11 +2243,6 @@ func _cell_line(cell: Vector2i) -> String:
 	var notes := _cell_notes(cell)
 	var title := _cell_title(cell)
 	return title if notes[0] == NOTHING_SPECIAL else "%s　%s" % [title, "　".join(notes)]
-
-
-## スキルを target に使ったときの見込み（戦闘予測。Forecast）。
-func _skill_forecast(user: Unit, target: Vector2i) -> String:
-	return ForecastText.describe(battle, Forecast.of(battle, UseSkillAction.new(user.id, target)), user)
 
 
 func _cell_under_mouse() -> Vector2i:

@@ -5,6 +5,7 @@ extends RefCounted
 ## 文字を出す前にここで改行を入れる。決まり:
 ## - 行の頭に置かない文字（句読点、閉じ括弧、長音、小さい仮名など）の前と、行の末に置かない文字（開き括弧）の後では切らない。
 ## - 半角の空白の前後と、半角の文字どうしの間では切らない（「スキル 7 回」「HP 20 / 30」「Lv3」を 1 つに保つ）。
+## - カタカナ（長音も）どうしの間では切らない（「ダメージ」「シールドトルーパー」を 1 語に保つ。行より長ければ、行の末で切る）。
 ## - 切るなら、全角の空白・句読点の後と、開き括弧の前を優先する（行の半分より後ろにあれば、そこで切る）。無ければ、切れるところで切る。
 ## - 元からある改行は、そのまま残す。
 
@@ -76,7 +77,7 @@ static func _break_after(text: String, i: int) -> int:
 		return NO_BREAK
 	var here := text[i]
 	var next := text[i + 1]
-	if _is_glue(here) or _is_glue(next) or (_is_ascii(here) and _is_ascii(next)):
+	if _is_glue(here) or _is_glue(next) or (_is_ascii(here) and _is_ascii(next)) or (_is_katakana(here) and _is_katakana(next)):
 		return NO_BREAK
 	if NO_LINE_START.contains(next) or NO_LINE_END.contains(here):
 		return NO_BREAK
@@ -90,3 +91,9 @@ static func _is_glue(character: String) -> bool:
 static func _is_ascii(character: String) -> bool:
 	var code := character.unicode_at(0)
 	return code > 0x20 and code < 0x7f
+
+
+## カタカナか（長音・中黒を除く。中黒は語の区切り）。
+static func _is_katakana(character: String) -> bool:
+	var code := character.unicode_at(0)
+	return (code >= 0x30a1 and code <= 0x30fa) or code == 0x30fc
