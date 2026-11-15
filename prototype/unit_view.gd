@@ -192,7 +192,13 @@ func play_death() -> void:
 	_bar.visible = false
 	if _player != null and _player.has_animation(&"Death_A"):
 		_play(&"Death_A", false)
-		await get_tree().create_timer(0.75).timeout
+		# 木の時計ではなく自分の子の Timer で待つ（場面を抜けてこの駒が消えたら、続きを走らない）。
+		var timer := Timer.new()
+		timer.one_shot = true
+		timer.wait_time = 0.75
+		add_child(timer)
+		timer.start()
+		await timer.timeout
 	var tween := create_tween()
 	tween.tween_property(self, "scale", Vector3.ONE * 0.01, 0.3)
 	await tween.finished

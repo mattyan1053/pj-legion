@@ -12,6 +12,8 @@ const SettingsPanel := preload("res://prototype/settings_panel.gd")
 
 ## 右上のボタンが押された（開くかどうかと、何を並べるかは、呼ぶ側が決めて open() を呼ぶ）。
 signal open_requested
+## メニューを開いた（後ろの画面は、これを受けて止まる）。
+signal opened
 ## 項目が選ばれた（確かめのある項目は、確かめたあと）。ITEM_RESUME と ITEM_SETTINGS は、ここで扱ってから知らせる。
 signal item_chosen(id: StringName)
 ## メニューを閉じた（どの道で閉じても）。
@@ -42,6 +44,8 @@ var _settings_panel: SettingsPanel
 ## いま並べている項目（[名前, 文字, 確かめの文] の列）と、確かめている項目の名前。
 var _items: Array = []
 var _confirming := &""
+## 設定の画面だけを開いたか（タイトルの「設定」）。そのときは、設定の画面を閉じるとメニューごと閉じる。
+var _settings_only := false
 
 
 func setup(settings: Settings) -> void:
@@ -113,7 +117,9 @@ func setup(settings: Settings) -> void:
 
 ## メニューを開く。items は [名前, 文字, 確かめの文（要らなければ空）] の列（上から）。
 ## 名前が ITEM_RESUME の項目は閉じるだけ、ITEM_SETTINGS の項目は設定の画面を開く。ほかは item_chosen で知らせる。
-func open(items: Array) -> void:
+## settings_only が真なら、メニューを出さずに設定の画面だけを開く（閉じると、メニューへは戻らずに閉じる）。
+func open(items: Array, settings_only := false) -> void:
+	_settings_only = settings_only
 	_items = items.duplicate(true)
 	for child in _menu_column.get_children():
 		_menu_column.remove_child(child)
@@ -131,6 +137,9 @@ func open(items: Array) -> void:
 	_confirming = &""
 	_show(_menu)
 	_overlay.visible = true
+	if settings_only:
+		open_settings()
+	opened.emit()
 
 
 func is_open() -> bool:
@@ -202,6 +211,8 @@ func back() -> void:
 	if _confirm.visible:
 		_confirming = &""
 		_show(_menu)
+	elif _settings_panel.visible and _settings_only:
+		close()
 	elif _settings_panel.visible:
 		_show(_menu)
 		settings_closed.emit()

@@ -19,8 +19,10 @@ signal end_turn_pressed
 signal evolution_chosen(index: int)
 ## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
-## 対戦の設定画面を開くボタン（決着の画面の「選び直す」）が押された。
+## 決着の画面の「対戦の設定へ」が押された。
 signal setup_pressed
+## 決着の画面の「タイトルへ」が押された。
+signal title_pressed
 ## stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でやり直す（stage は見ない）。
 signal restart_pressed(stage: int, new_board: bool)
 
@@ -736,7 +738,16 @@ func _build_result() -> void:
 		var button := _button("%d %s" % [stage, MatchSetup.stage_name(stage)], Signal())
 		button.pressed.connect(func() -> void: restart_pressed.emit(stage, true))
 		row.add_child(button)
-	column.add_child(_button("軍・相手・手番を選び直す", setup_pressed))
+	var leave := HBoxContainer.new()
+	leave.add_theme_constant_override("separation", 10)
+	leave.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_child(leave)
+	var to_setup := _button("対戦の設定へ（軍・相手・手番）", setup_pressed)
+	to_setup.custom_minimum_size = Vector2(320.0, 48.0)
+	leave.add_child(to_setup)
+	var to_title := _button("タイトルへ", title_pressed)
+	to_title.custom_minimum_size = Vector2(200.0, 48.0)
+	leave.add_child(to_title)
 
 
 ## 進化先の選択肢（飾らない 2 つのボタン）。盤面が見えるよう、画面の上寄りに出す。

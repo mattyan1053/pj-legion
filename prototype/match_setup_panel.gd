@@ -106,12 +106,15 @@ func setup(team_colors: Array[Color]) -> void:
 ## いまの選択を choice の写しにして、画面を出す。開いただけでは、何も変わらない。
 ## cancellable が真なら、「対戦へ戻る」（右クリック・Esc でも）で、何も変えずに閉じられる。
 ## in_progress が真なら（決着していない対戦の途中）、始めるといまの対戦が失われることを書く。
-func open(choice: RefCounted, cancellable := false, in_progress := false) -> void:
+## back_text は閉じるボタンの文字（対戦の設定の場面では「タイトルへ戻る」）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
+## （対戦の途中から開いたとき）。
+func open(choice: RefCounted, cancellable := false, in_progress := false, back_text := "対戦へ戻る", new_battle := true) -> void:
 	_choice = choice.copy()
 	_cancellable = cancellable
 	_back_button.visible = cancellable
+	_back_button.text = back_text
 	_warning.visible = cancellable and in_progress
-	_start_button.text = "新しい対戦を始める" if cancellable else "対戦を始める"
+	_start_button.text = "新しい対戦を始める" if cancellable and new_battle else "対戦を始める"
 	_show_choice()
 	visible = true
 
