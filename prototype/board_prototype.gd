@@ -123,12 +123,16 @@ func _ready() -> void:
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 
 	var autoplay := OS.get_cmdline_user_args().has("--autoplay")
+	var shots := OS.get_cmdline_user_args().has("--shots")
 	# 検査は、人の操作の入口を両方のプレイヤーで通すところから始める（CPU の番は、検査の中で切り替えて通す）。
-	set_opponent(not autoplay)
+	set_opponent(not (autoplay or shots))
 	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする。
-	start_battle(BoardGenerator.Stage.PLAIN, 20261114 if autoplay else int(Time.get_unix_time_from_system()))
+	start_battle(BoardGenerator.Stage.PLAIN, 20261114 if autoplay or shots else int(Time.get_unix_time_from_system()))
 	if autoplay:
 		add_child(Autoplay.new(self))
+	elif shots:
+		# スクリーンショットの道具（tools/screenshots.gd）。遊ぶときは読み込まない。
+		add_child(load("res://tools/screenshots.gd").new(self))
 	else:
 		open_setup()  # 遊ぶときは、まず対戦の設定を選ぶ（後ろの盤面は既定の設定で作っておく）
 
@@ -507,6 +511,16 @@ func play_events(events: Array[BattleEvent]) -> void:
 		await _play(event)
 	_busy = false
 	_refresh()
+
+
+## 行動を、人の操作と同じ入口で行う（スクリーンショットの道具用）。受け付けられたかを返す。
+func act(action: BattleAction) -> bool:
+	return await _do(action)
+
+
+## カメラを cell のあたりへ寄せる（スクリーンショットの道具用）。
+func focus_camera(cell: Vector2i) -> void:
+	_rig.focus_on(BoardView.cell_center(cell))
 
 
 ## 行動をルールに渡し、起きたことを再生する。断られたら何もしない。受け付けられたかを返す。
