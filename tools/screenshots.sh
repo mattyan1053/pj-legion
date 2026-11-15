@@ -41,6 +41,10 @@ if [ -n "$broken" ]; then
   exit 1
 fi
 grep -E "^screenshots:|SCRIPT ERROR|Parse Error" "$log" || true
+if grep -q "^screenshots: 作れなかった場面:" "$log"; then
+  echo "screenshots.sh: 作れなかった場面がある（ほかの場面は撮った）。場面の条件か、ルールの変わり方を確かめる。" >&2
+  exit 1
+fi
 if [ "$status" != 0 ] || ! grep -qx "screenshots: OK" "$log"; then
   echo "screenshots.sh: 撮り終えられなかった（終了コード $status）。全体のログ:" >&2
   cat "$log" >&2
