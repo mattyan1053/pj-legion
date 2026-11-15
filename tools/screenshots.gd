@@ -19,6 +19,13 @@ const SCENES := {
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
 	"setup": "対戦の設定の場面（タイトルの「始める」のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
+	"setup_deck": "対戦の設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
+	"deck_list": "部隊の編成: 取っておいた部隊の一覧（出せない部隊も理由つきで並ぶ）",
+	"deck_delete": "部隊の編成: 部隊を消す前の確かめ",
+	"deck_empty": "部隊の編成: 新しく組み始めた、空の部隊",
+	"deck_built": "部隊の編成: 組んだ部隊（雇える駒にマウスを乗せて、中身を読んでいる）",
+	"deck_equip": "部隊の編成: 部隊の駒を選んで、装備を持たせている",
+	"deck_over": "部隊の編成: 予算を超えて、取っておけない",
 	"system_menu": "対戦の途中で開いたシステムメニュー（Esc か右上のボタン）",
 	"system_quit": "システムメニューで「ゲームを終える」を押して、確かめている",
 	"settings": "システムメニューから開いた設定の画面（感度を変えたところ）",
@@ -134,6 +141,113 @@ func _scene_title_menu() -> bool:
 	await _app.go(&"title")
 	_app.open_menu()
 	return _app.system_menu().is_open()
+
+
+## 部隊の一覧に、見本の部隊を入れる（検査とスクリーンショットでは、取っておく先が無いので、毎回ここで作る）。
+func _fill_decks() -> void:
+	var library: RefCounted = _app.context.decks
+	library.load_data({"decks": []})
+	var first := Deck.new(UnitKind.Army.MILITARY)
+	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC]:
+		first.add(kind)
+	first.entries[0].equip(Equipment.Id.IRON_SHIELD)
+	first.entries[0].equip(Equipment.Id.IRON_SHIELD)
+	first.entries[3].equip(Equipment.Id.SPEED_BOOTS)
+	library.add("狙撃の布陣", first)
+	var second := Deck.new(UnitKind.Army.FANTASY)
+	for kind: UnitKind.Id in [UnitKind.Id.PALADIN, UnitKind.Id.SPELLBLADE, UnitKind.Id.SPELLBLADE, UnitKind.Id.PRIEST]:
+		second.add(kind)
+	second.entries[1].equip(Equipment.Id.SPEED_BOOTS)
+	library.add("速攻の騎士団", second)
+	var third := Deck.new(UnitKind.Army.MILITARY)
+	for i in 6:
+		third.add(UnitKind.Id.SHIELD_TROOPER)
+	third.entries[0].equip(Equipment.Id.IRON_SHIELD)
+	library.add("盾の壁（予算の見直し前）", third)
+
+
+func _deck_scene() -> Node:
+	_fill_decks()
+	await _app.go(&"decks")
+	return _app.current_scene() if _app.current_id() == &"decks" else null
+
+
+func _scene_deck_list() -> bool:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return false
+	screen.select_saved(_app.context.decks.items()[2].id)
+	return screen.list_selected() != ""
+
+
+func _scene_deck_delete() -> bool:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return false
+	screen.press_delete()
+	return screen.is_dialog_open()
+
+
+func _scene_deck_empty() -> bool:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return false
+	screen.press_new()
+	return screen.is_editing()
+
+
+## 組み直す部隊（一覧の最初の部隊）を開く。
+func _deck_editor() -> Node:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return null
+	screen.select_saved(_app.context.decks.items()[0].id)
+	screen.press_edit()
+	return screen if screen.is_editing() else null
+
+
+func _scene_deck_built() -> bool:
+	var screen: Node = await _deck_editor()
+	if screen == null:
+		return false
+	screen._set_hover(UnitKind.Id.SNIPER)
+	return true
+
+
+func _scene_deck_equip() -> bool:
+	var screen: Node = await _deck_editor()
+	if screen == null:
+		return false
+	screen.select_entry(3)
+	screen.equip(Equipment.Id.SPEED_BOOTS)
+	return screen.selected_entry() == 3
+
+
+func _scene_deck_over() -> bool:
+	var screen: Node = await _deck_editor()
+	if screen == null:
+		return false
+	screen.hire(UnitKind.Id.SHIELD_TROOPER)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.SPEED_BOOTS)
+	return not screen.can_save()
+
+
+func _scene_setup_deck() -> bool:
+	_fill_decks()
+	_app.context.match_choice = TrialSetup.new()
+	await _app.go(&"setup")
+	if _app.current_id() != &"setup":
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	if not panel.choose_deck(Unit.Side.PLAYER1, _app.context.decks.items()[0].id):
+		return false
+	_park_mouse()
+	await get_tree().process_frame
+	var picker: OptionButton = panel._deck_pickers[0]
+	picker.show_popup()
+	return true
 
 
 func _scene_setup() -> bool:

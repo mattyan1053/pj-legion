@@ -21,7 +21,7 @@ func _ready() -> void:
 	add_child(layer)
 	_panel = MatchSetupPanel.new()
 	layer.add_child(_panel)
-	_panel.setup(BoardPrototype.TEAM_COLORS)
+	_panel.setup(BoardPrototype.TEAM_COLORS, context.decks)
 	_panel.start_pressed.connect(_on_start)
 	_panel.cancelled.connect(func() -> void: finished.emit(&"back"))
 	_panel.open(context.match_choice, true, false, "タイトルへ戻る", false)

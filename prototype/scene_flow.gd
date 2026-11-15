@@ -2,7 +2,7 @@ extends RefCounted
 ## 場面の種類と、その並び（どの場面が、どう終わったら、次にどの場面へ進むか）。ノードに依存しない。
 ##
 ## **場面を 1 つ足すのは、SCENES に 1 つ足すだけ**（と、その場面のスクリプト）。アプリ（app.gd）は、この表のとおりに進める。
-## 後でストーリーモード（会話の場面と戦闘を順に並べる）や、モードの選択、部隊の編成の画面を、ここへ足していく。
+## 後でストーリーモード（会話の場面と戦闘を順に並べる）や、モードの選択を、ここへ足していく。
 ##
 ## 場面のスクリプトの決まり（app.gd が使う）:
 ## - extends Node（3D の場面も 2D の場面もよい）。
@@ -17,7 +17,11 @@ extends RefCounted
 const SCENES := {
 	&"title": {
 		"script": "res://prototype/title_screen.gd",
-		"next": {&"start": &"setup"},
+		"next": {&"start": &"setup", &"decks": &"decks"},
+	},
+	&"decks": {
+		"script": "res://prototype/deck_screen.gd",
+		"next": {&"back": &"title"},
 	},
 	&"setup": {
 		"script": "res://prototype/setup_screen.gd",

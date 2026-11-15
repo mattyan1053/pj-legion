@@ -6,6 +6,7 @@ extends RefCounted
 
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 const Settings := preload("res://prototype/settings.gd")
+const DeckLibrary := preload("res://prototype/deck_library.gd")
 
 ## システムメニューを開いてほしい（Esc、何も戻すものが無いとき）。
 signal menu_requested
@@ -20,6 +21,8 @@ const CHECK_SEED := 20261114
 
 ## 遊ぶ人ごとの設定（設定の画面で変え、user:// に取っておく）。
 var settings := Settings.new()
+## 取っておいた部隊（編成の画面で組み、対戦の設定で選ぶ。user:// に取っておく）。
+var decks := DeckLibrary.new()
 ## システムメニュー（system_menu.gd）。アプリが作って入れる。
 var system_menu: Node
 ## 対戦の設定の場面で選んだもの（trial_setup.gd）。対戦の場面は、これで始める。

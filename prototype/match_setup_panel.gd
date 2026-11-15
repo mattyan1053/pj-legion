@@ -2,7 +2,8 @@ extends Control
 ## 対戦の前に、軍・ステージ・相手・手番を選ぶ、飾らない最小の画面。
 ##
 ## 選んだもの（trial_setup.gd）を持ち、「対戦を始める」で start_pressed を出す。ルールは持たない。
-## 編成は軍ごとの既定の編成で、中身を文字で見せるだけ（選べない）。
+## 人が動かすプレイヤーは、軍を選んだあと、その軍の部隊を、取っておいた部隊（deck_library.gd）か既定の編成から選ぶ。
+## 出せない部隊は、理由つきで並べ、選べなくする。CPU の編成は軍ごとの CPU の編成（中身を文字で見せる）。
 
 ## 選んだもの（trial_setup.gd の値。呼ぶ側に渡すのは写し）。
 signal start_pressed(choice: RefCounted)
@@ -10,6 +11,7 @@ signal start_pressed(choice: RefCounted)
 signal cancelled
 
 const TrialSetup := preload("res://prototype/trial_setup.gd")
+const DeckText := preload("res://prototype/deck_text.gd")
 
 const ARMY_NAMES := {UnitKind.Army.MILITARY: "MILITARY", UnitKind.Army.FANTASY: "FANTASY"}
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
@@ -21,6 +23,12 @@ var _team_colors: Array[Color] = []
 ## 選択肢の名前 -> その行のボタン（値 -> Button）。
 var _rows := {}
 var _deck_labels: Array[Label] = []
+## プレイヤーごとの、部隊を選ぶ行と、その選択肢（並びの番号 -> 部隊の id。空は既定の編成）。
+var _deck_rows: Array[Control] = []
+var _deck_pickers: Array[OptionButton] = []
+var _deck_choices: Array = [[], []]
+## 取っておいた部隊（deck_library.gd）。無ければ既定の編成だけ。
+var _library: RefCounted
 var _side_row: Control
 var _side_caption: Label
 var _start_button: Button
@@ -30,8 +38,9 @@ var _warning: Label
 var _cancellable := false
 
 
-func setup(team_colors: Array[Color]) -> void:
+func setup(team_colors: Array[Color], library: RefCounted = null) -> void:
 	_team_colors = team_colors
+	_library = library
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var shade := ColorRect.new()
@@ -72,13 +81,32 @@ func setup(team_colors: Array[Color]) -> void:
 			names[army] = ARMY_NAMES[army]
 		var row := _add_row(column, "%s の軍" % ["先手（青）", "後手（赤）"][side], StringName("army%d" % side), names)
 		(row.get_child(0) as Label).add_theme_color_override("font_color", _team_colors[side].lightened(0.4))
+		var deck_row := HBoxContainer.new()
+		deck_row.add_theme_constant_override("separation", 8)
+		column.add_child(deck_row)
+		var deck_caption := _label(18)
+		deck_caption.text = "　部隊"
+		deck_caption.custom_minimum_size = Vector2(170.0, 0.0)
+		deck_row.add_child(deck_caption)
+		var picker := OptionButton.new()
+		picker.focus_mode = Control.FOCUS_NONE
+		picker.add_theme_font_size_override("font_size", 17)
+		picker.custom_minimum_size = Vector2(470.0, 40.0)
+		picker.fit_to_longest_item = false
+		picker.clip_text = true
+		picker.get_popup().add_theme_font_size_override("font_size", 17)
+		var picked_side := side
+		picker.item_selected.connect(func(index: int) -> void: _on_deck_picked(picked_side, index))
+		deck_row.add_child(picker)
+		_deck_rows.append(deck_row)
+		_deck_pickers.append(picker)
 		var deck := _label(14)
 		deck.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 		column.add_child(deck)
 		_deck_labels.append(deck)
 
 	var note := _label(14)
-	note.text = "編成は軍ごとの既定の編成（予算どおり）。先手から動く"
+	note.text = "部隊は、タイトルの「部隊の編成」で組んで取っておける。CPU は軍ごとの編成。先手から動く"
 	note.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(note)
@@ -110,6 +138,7 @@ func setup(team_colors: Array[Color]) -> void:
 ## （対戦の途中から開いたとき）。
 func open(choice: RefCounted, cancellable := false, in_progress := false, back_text := "対戦へ戻る", new_battle := true) -> void:
 	_choice = choice.copy()
+	_choice.refresh_decks(_library)  # 編成の画面で消した・組み直した部隊に合わせる
 	_cancellable = cancellable
 	_back_button.visible = cancellable
 	_back_button.text = back_text
@@ -165,8 +194,33 @@ func choose_human_side(side: Unit.Side) -> void:
 
 
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
-	_choice.armies[side] = army
+	_choice.choose_army(side, army)
 	_show_choice()
+
+
+## side の部隊を、取っておいた部隊 id にする（空なら既定の編成）。出せない部隊・知らない id なら何もせず false。
+func choose_deck(side: Unit.Side, id: String) -> bool:
+	if id == "":
+		_choice.choose_default(side)
+		_show_choice()
+		return true
+	var item: Variant = _library.find(id) if _library != null else null
+	if item == null or not item.playable() or item.deck.rules.id != DeckRules.VERSUS:
+		return false
+	_choice.choose_deck(side, id, item.deck)
+	_show_choice()
+	return true
+
+
+## side の部隊の選択肢（[id, 文字, 選べるか] の列。並びは画面と同じ）。検査用。
+func deck_options(side: Unit.Side) -> Array:
+	return _deck_choices[side].duplicate(true)
+
+
+func _on_deck_picked(side: Unit.Side, index: int) -> void:
+	var options: Array = _deck_choices[side]
+	if index < 0 or index >= options.size() or not choose_deck(side, options[index][0]):
+		_show_choice()
 
 
 ## 「対戦を始める」。画面を閉じて、選んだものの写しを知らせる。
@@ -206,8 +260,36 @@ func _show_choice() -> void:
 	_side_caption.modulate.a = 1.0 if _choice.cpu_opponent else 0.4
 	var match_setup: MatchSetup = _choice.to_setup(0)
 	for side in 2:
-		var who := "CPU" if match_setup.is_cpu(side as Unit.Side) else "人"
-		_deck_labels[side].text = "　%s: %s" % [who, _deck_text(match_setup.decks[side])]
+		var human: bool = _choice.is_human(side as Unit.Side)
+		_deck_rows[side].visible = human
+		if human:
+			_fill_deck_picker(side as Unit.Side)
+		var who := "人" if human else "CPU の編成"
+		_deck_labels[side].text = "　%s: %s" % [who, DeckText.deck_summary(match_setup.decks[side])]
+
+
+## side の部隊の選択肢を並べ直す: 既定の編成と、その軍の取っておいた部隊（出せないものは理由つきで、選べない）。
+func _fill_deck_picker(side: Unit.Side) -> void:
+	var army: UnitKind.Army = _choice.armies[side]
+	var default_deck := MatchSetup.default_deck(army)
+	var options: Array = [["", "既定の編成（コスト %d / %d）" % [default_deck.total_cost(), default_deck.budget()], true]]
+	if _library != null:
+		for item: RefCounted in _library.for_rules(DeckRules.VERSUS, army):
+			var playable: bool = item.playable()
+			var text := "%s（コスト %d / %d）" % [item.name, item.deck.total_cost(), item.deck.budget()]
+			if not playable:
+				text = "%s — 出せない: %s" % [item.name, item.issues()[0]]
+			options.append([item.id, text, playable])
+	_deck_choices[side] = options
+	var picker := _deck_pickers[side]
+	picker.clear()
+	var chosen := 0
+	for i in options.size():
+		picker.add_item(options[i][1], i)
+		picker.set_item_disabled(i, not options[i][2])
+		if options[i][0] == _choice.deck_ids[side]:
+			chosen = i
+	picker.select(chosen)
 
 
 ## label の見出しと、values（値 -> 名前）のボタンを並べた 1 行。押すと、その値を選ぶ。
@@ -228,16 +310,6 @@ func _add_row(column: VBoxContainer, caption: String, key: StringName, values: D
 		buttons[value] = button
 	_rows[key] = buttons
 	return row
-
-
-static func _deck_text(deck: Deck) -> String:
-	var parts: Array[String] = ["将"]
-	for entry in deck.entries:
-		var text := UnitKind.display_name(entry.kind)
-		for item in entry.equipment:
-			text += "+" + Equipment.display_name(item)
-		parts.append(text)
-	return "、".join(parts)
 
 
 func _label(font_size: int) -> Label:

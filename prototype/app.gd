@@ -39,6 +39,8 @@ func _ready() -> void:
 	if context.checking == &"":
 		context.settings.store = SaveStore.new()
 		context.settings.load_saved()
+		context.decks.store = SaveStore.new()
+		context.decks.load_saved()
 
 	var menu := SystemMenu.new()
 	add_child(menu)
