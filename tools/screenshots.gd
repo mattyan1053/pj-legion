@@ -26,8 +26,13 @@ const SCENES := {
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
 	"result": "決着の画面と戦績",
+	"wide": "いちばん引いて、低い角度で、盤の全体とその向こうを見ている",
+	"board_edge": "盤の角と、その外側（低い角度で、盤の外へ向いている）",
+	"rotated": "カメラを斜めに回して、低い角度で見ている",
+	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
+	"stage_labyrinth": "迷宮回廊の全景",
+	"stage_twin_springs": "双子結晶の全景",
 }
-const STAGE := BoardGenerator.Stage.PLAIN
 ## 中ボスが倒れるまで続く対戦の種（CPU どうしで 29 ターン、プレイヤー1 がターン 20 に左の中ボスを倒す）。
 const SEED := 1
 ## 撮る前に待つ時間（秒）。番の知らせが消え、カメラが寄り終わるまで。
@@ -42,6 +47,7 @@ var _names: Array[String] = []
 var _cpu := CpuPlayer.new()
 var _battle: Battle
 var _stats: BattleStats
+var _stage := BoardGenerator.Stage.PLAIN
 
 
 func _init(scene: Node) -> void:
@@ -68,7 +74,9 @@ func _run() -> void:
 	for name: String in _names:
 		_scene.setup_panel().visible = false
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
+		_stage = BoardGenerator.Stage.PLAIN
 		_new_battle()
+		_aim(22.0, 0.0, 1)  # 前の場面で動かしたカメラを戻す
 		var ok: bool = await call("_scene_" + name)
 		if not ok:
 			_quit("screenshots: 場面 %s を作れなかった" % name, 1)
@@ -295,12 +303,77 @@ func _scene_result() -> bool:
 	return _battle.is_over()
 
 
+func _scene_wide() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	_look_at(Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0 + 6.0))
+	_aim(45.0, 0.0, 0)
+	return true
+
+
+func _scene_board_edge() -> bool:
+	_show()
+	# 盤の左上の角の近くに立って、角の外へ向く。
+	_look_at(Vector3(1.5, 0.0, 1.5))
+	_aim(26.0, -40.0, 0)
+	return true
+
+
+func _scene_rotated() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	_look_at(_scene._rig.position)
+	_aim(30.0, 130.0, 0)
+	return true
+
+
+func _scene_marks() -> bool:
+	# 行動済みの駒と、HP の減った駒が並ぶところ: 番の途中で、HP の減った自分の駒がまだ動けるとき。
+	var hurt := func() -> Unit:
+		for unit in _own_units():
+			if unit.hp < unit.max_hp() and _battle.can_act(unit) and unit.kind != UnitKind.Id.KING:
+				return unit
+		return null
+	var acted := func() -> bool:
+		for unit in _own_units():
+			if not _battle.can_act(unit):
+				return true
+		return false
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and acted.call() and hurt.call() != null):
+		return false
+	_show()
+	var unit: Unit = hurt.call()
+	_scene.click_cell(unit.cell)
+	_look_at(Vector3(unit.cell.x + 0.5, 0.0, unit.cell.y + 0.5))
+	_aim(11.0, 0.0, 1)
+	return true
+
+
+func _scene_stage_labyrinth() -> bool:
+	return _stage_overview(BoardGenerator.Stage.LABYRINTH)
+
+
+func _scene_stage_twin_springs() -> bool:
+	return _stage_overview(BoardGenerator.Stage.TWIN_SPRINGS)
+
+
+func _stage_overview(stage: BoardGenerator.Stage) -> bool:
+	_stage = stage
+	_new_battle()
+	_show()
+	_look_at(Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0 + 1.0))
+	_aim(45.0, 0.0, 2)
+	return true
+
+
 # ---- 場面を作る道具 ----
 
 
 func _new_battle() -> void:
 	var choice: RefCounted = TrialSetup.new()
-	choice.stage = STAGE
+	choice.stage = _stage
 	choice.cpu_opponent = false
 	_scene.match_choice = choice
 	_battle = choice.to_setup(SEED).create_battle()
@@ -309,7 +382,21 @@ func _new_battle() -> void:
 
 ## いまの _battle を画面に出す（駒の見た目は、いまの状態から作る）。
 func _show() -> void:
-	_scene.start_with(_battle, STAGE, SEED)
+	_scene.start_with(_battle, _stage, SEED)
+
+
+## カメラの見ている地点を point にする（寄る動きは待たない）。
+func _look_at(point: Vector3) -> void:
+	_scene._rig.follow(null)
+	_scene._rig.focus_on(point)
+	_scene._rig.position = Vector3(point.x, 0.0, point.z)
+
+
+## カメラの距離、向き（度）、角度（OrbitCamera.PITCH_PRESETS の添字）を決める。
+func _aim(distance: float, yaw_degrees: float, pitch_index: int) -> void:
+	_scene._rig._target_distance = distance
+	_scene._rig._target_yaw = deg_to_rad(yaw_degrees)
+	_scene._rig._pitch_index = pitch_index
 
 
 ## CPU どうしで行動を 1 つずつ進め、行動と行動の間で until が真になったら止めて真を返す。
