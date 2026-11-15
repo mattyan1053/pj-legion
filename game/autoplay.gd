@@ -70,6 +70,8 @@ var _phase := Phase.GAME
 var _current := "game"
 ## 外れたこと（「場面: 何が」）。最後にまとめて出す。
 var _failures: Array[String] = []
+## 失敗した場面の名前（その場面の状態は、もう確かめない。次の場面が盤面を作り直す）。
+var _failed_scenes: Array[String] = []
 var _game := 0
 var _undone := {}  # 移動の取り消しを試した駒の番号
 var _confirm_tested := false
@@ -123,7 +125,7 @@ func _process(_delta: float) -> void:
 	if _finished or _leaving or _scene.is_busy():
 		return
 	var battle: Battle = _scene.battle
-	if _phase != Phase.END and (_phase != Phase.SCENES or not _scripted.is_empty()):
+	if _phase != Phase.END and (_phase != Phase.SCENES or not _scripted.is_empty()) and not _failed_scenes.has(_current):
 		var problem := _mismatch(battle)
 		if problem == "":
 			problem = _menu_problem()
@@ -133,7 +135,9 @@ func _process(_delta: float) -> void:
 
 	match _phase:
 		Phase.GAME:
-			if battle.is_over():
+			if _failed_scenes.has("game"):
+				_queue_scenes()  # 最初の対戦で外れたら、対戦はやめて場面へ進む
+			elif battle.is_over():
 				_end_game(battle)
 			elif battle.turn > MAX_TURNS:
 				_fail("%d ターンでも決着しなかった" % MAX_TURNS)
@@ -145,8 +149,8 @@ func _process(_delta: float) -> void:
 				var step: Callable = _scripted.pop_front()
 				step.call()
 				return
-			_phase = Phase.STAGES if _full and _selected.has("game") else Phase.END
-			_current = "game"
+			_phase = Phase.STAGES if _full and _selected.has("game") and not _failed_scenes.has("game") else Phase.END
+			_current = "stages"
 		Phase.STAGES:
 			if _game == 0 or battle.is_over() or battle.turn >= SHORT_GAME_TURNS:
 				if _game == CPU_GAME and _scene.cpu_actions == _cpu_actions_before:
@@ -183,6 +187,7 @@ func _end_game(battle: Battle) -> void:
 
 func _queue_scenes() -> void:
 	_phase = Phase.SCENES
+	var current := _current
 	for name in _selected:
 		if name == "game" or name == "title" or name == "decks":
 			continue
@@ -193,6 +198,7 @@ func _queue_scenes() -> void:
 		call("_queue_%s_scene" % name)
 		while _scripted_names.size() < _scripted.size():
 			_scripted_names.append(name)
+	_current = current
 
 
 ## 条件が偽なら、いまの場面の失敗にする（場面の残りの手は飛ばす）。
@@ -201,19 +207,19 @@ func _expect(condition: bool, what: String) -> void:
 		_fail(what)
 
 
-## いまの場面を失敗にして、その場面の残りの手を飛ばす。最初の対戦（game）なら、対戦をやめて場面へ進む。
+## いまの場面を失敗にして、その場面の残りの手を飛ばす。最初の対戦（game）なら、次のフレームで対戦をやめて場面へ進む。
 func _fail(what: String) -> void:
 	var line := "%s: %s" % [_current, what]
 	if _failures.has(line):
 		return
 	_failures.append(line)
+	if not _failed_scenes.has(_current):
+		_failed_scenes.append(_current)
 	printerr("autoplay: 失敗: %s" % line)
 	while not _scripted_names.is_empty() and _scripted_names[0] == _current:
 		_scripted_names.pop_front()
 		_scripted.pop_front()
-	if _phase == Phase.GAME:
-		_queue_scenes()
-	elif _phase == Phase.STAGES:
+	if _phase == Phase.STAGES:
 		_phase = Phase.END
 
 
