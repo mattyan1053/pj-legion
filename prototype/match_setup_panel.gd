@@ -130,12 +130,13 @@ func is_cancellable() -> bool:
 
 
 ## 右クリックと Esc は、ほかの画面と同じに「戻す」（閉じられるときだけ）。開いている間は、盤面へ通さない。
+## 閉じられないとき（起動した直後）の Esc は受けない（戻すものが無いので、持ち主がシステムメニューを開く）。
 func _input(event: InputEvent) -> void:
 	if not visible:
 		return
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if right or (escape and _cancellable):
 		get_viewport().set_input_as_handled()
 		cancel()
 

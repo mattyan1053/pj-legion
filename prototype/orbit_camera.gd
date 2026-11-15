@@ -17,12 +17,19 @@ const MAX_DISTANCE := 45.0
 const PAN_SPEED := 14.0
 const SMOOTHING := 10.0
 
+## ドラッグの感度の既定の値（1 px あたりのラジアン）。設定の「マウスの感度」の 100% がこれ。
+const DEFAULT_DRAG_SENSITIVITY := 0.008
+
 ## カメラが見てよい範囲（盤面の x / z）。
 var bounds := Rect2(0.0, 0.0, 30.0, 30.0)
 var camera: Camera3D
 ## ドラッグの感度（1 px あたりのラジアン）。横（向き）にも縦（見下ろす角度）にも同じ値を使う。
-## 設定の画面から変えられるよう、外から書き換えてよい。
-var drag_sensitivity := 0.008
+## 設定の画面（settings.gd の「マウスの感度」）から変える。
+var drag_sensitivity := DEFAULT_DRAG_SENSITIVITY
+## 縦のドラッグの向きを逆にするか（設定の「縦のドラッグを逆にする」）。真なら、上へ動かすと真上に近づく。
+var invert_vertical := false
+## キー（Q・E・R、WASD・矢印）とホイールを受け付けるか。システムメニューを開いている間は偽にする。
+var controls_enabled := true
 
 var _pivot: Node3D
 var _target_yaw := 0.0
@@ -50,6 +57,8 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not controls_enabled:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
 			KEY_Q:
@@ -67,9 +76,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## マウスのドラッグで relative（px）だけ動かした。盤を掴んで動かす向きに回す。
 ## 右へ動かすと盤が右へ回り（カメラは左へ回り込む）、下へ動かすと盤の奥がこちらへ倒れる（真上からの見下ろしに近づく）。
+## invert_vertical が真なら、縦だけ逆（上へ動かすと真上に近づく）。
 func drag(relative: Vector2) -> void:
 	_target_yaw -= relative.x * drag_sensitivity
-	_target_pitch = clampf(_target_pitch + rad_to_deg(relative.y * drag_sensitivity), MIN_PITCH, MAX_PITCH)
+	var vertical := -relative.y if invert_vertical else relative.y
+	_target_pitch = clampf(_target_pitch + rad_to_deg(vertical * drag_sensitivity), MIN_PITCH, MAX_PITCH)
 
 
 ## 回していく先の向き（ラジアン）。
@@ -138,6 +149,8 @@ func _process(delta: float) -> void:
 
 
 func _pan(delta: float) -> void:
+	if not controls_enabled:
+		return
 	var input := Vector3.ZERO
 	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
 		input.z -= 1.0
