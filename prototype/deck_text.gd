@@ -2,13 +2,8 @@ extends RefCounted
 ## 編成の画面と対戦の設定に出す文（出せない理由、駒・装備の中身、編成の短い説明）。ノードに依存しない。
 ## 理由の文言は画面の側が持つ（docs/deck-building.md）。
 
-const ARMY_NAMES := {UnitKind.Army.MILITARY: "MILITARY", UnitKind.Army.FANTASY: "FANTASY", UnitKind.Army.NONE: "軍なし"}
-const ROLE_NAMES := {
-	UnitKind.Role.VANGUARD: "前衛",
-	UnitKind.Role.REARGUARD: "後衛",
-	UnitKind.Role.RAIDER: "奇襲",
-	UnitKind.Role.HEALER: "回復",
-}
+const Names := preload("res://prototype/names.gd")
+
 ## 役割ごとの、ひとことの説明。
 const ROLE_NOTES := {
 	UnitKind.Role.VANGUARD: "前に立って受け止める。周り 8 マスに支配領域を作り、敵はそこで止まる",
@@ -16,26 +11,14 @@ const ROLE_NOTES := {
 	UnitKind.Role.RAIDER: "よく動き、弱った駒や本陣を狙う",
 	UnitKind.Role.HEALER: "味方の HP を回復する（攻撃のかわりに回復）",
 }
-const STAT_NAMES := {
-	Unit.Stat.MAX_HP: "最大 HP",
-	Unit.Stat.POWER: "攻撃",
-	Unit.Stat.MOVE_RANGE: "移動",
-	Unit.Stat.ATTACK_RANGE: "射程",
-}
-const TRAIT_TEXTS := {
-	Evolution.Trait.EXERTS_ZOC: "周り 8 マスに支配領域を作る",
-	Evolution.Trait.IGNORES_ZOC: "敵の支配領域で止まらない",
-	Evolution.Trait.FOREST_WALK: "森を平地と同じ移動力で歩く",
-	Evolution.Trait.REGENERATION: "自分の番の始めに %d 回復" % Evolution.REGENERATION_HEAL,
-}
 
 
 static func army_name(army: UnitKind.Army) -> String:
-	return ARMY_NAMES.get(army, "?")
+	return Names.ARMY_NAMES.get(army, "?")
 
 
 static func role_name(kind: UnitKind.Id) -> String:
-	return ROLE_NAMES.get(UnitKind.role(kind), "")
+	return Names.ROLE_NAMES.get(UnitKind.role(kind), "")
 
 
 ## 編成が対戦に出せない理由の文（Deck.problems() の順）。空なら出せる。
@@ -89,7 +72,7 @@ static func bonus_text(bonus: Dictionary, kind := -1) -> String:
 	for stat: Unit.Stat in [Unit.Stat.MAX_HP, Unit.Stat.POWER, Unit.Stat.MOVE_RANGE, Unit.Stat.ATTACK_RANGE]:
 		var amount: int = bonus.get(stat, 0)
 		if amount != 0:
-			var name: String = STAT_NAMES[stat]
+			var name: String = Names.STAT_NAMES[stat]
 			if stat == Unit.Stat.POWER and kind != -1 and UnitKind.role(kind as UnitKind.Id) == UnitKind.Role.HEALER:
 				name = "回復"
 			parts.append("%s %+d" % [name, amount])
@@ -122,7 +105,7 @@ static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
 		if bonus != "":
 			parts.append(bonus)
 		for which in Evolution.traits(evolution):
-			parts.append(TRAIT_TEXTS[which])
+			parts.append(Names.TRAIT_TEXTS[which])
 		lines.append("%s: %s" % [Evolution.display_name(evolution), "、".join(parts)])
 	return lines
 

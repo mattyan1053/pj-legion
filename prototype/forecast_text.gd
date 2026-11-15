@@ -5,6 +5,7 @@ extends RefCounted
 ## - describe(): 同じものを文にしたもの（1 行ずつ）。
 
 const BattleHud := preload("res://prototype/battle_hud.gd")
+const Names := preload("res://prototype/names.gd")
 
 
 ## 予測のパネルの 1 行（何かが起きる駒 1 体ぶん）。
@@ -49,7 +50,7 @@ class Summary:
 static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summary:
 	var summary := Summary.new()
 	for placed in forecast.placed:
-		var line: String = "%s を置く" % BattleHud.FIELD_EFFECT_NAMES[placed.type]
+		var line: String = "%s を置く" % Names.FIELD_EFFECT_NAMES[placed.type]
 		if placed.cells.size() > 1:
 			var inside := 0
 			for unit in battle.units:
@@ -128,7 +129,7 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 		summary.lines.append("引き分けになる")
 		summary.decides = true
 	elif forecast.winner != -1:
-		summary.lines.append("%s の勝ち" % BattleHud.SIDE_NAMES[forecast.winner])
+		summary.lines.append("%s の勝ち" % Names.SIDE_NAMES[forecast.winner])
 		summary.decides = true
 	return summary
 
