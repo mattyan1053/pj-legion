@@ -87,6 +87,7 @@ const SCENES := {
 	"ult_eruption": "魔力解放の効果（全員に同時に立つ光の柱と知らせ）",
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
+	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
@@ -1084,6 +1085,18 @@ func _scene_spring() -> bool:
 
 func _scene_portal() -> bool:
 	return _close_look(BoardGenerator.Stage.TWIN_SPRINGS, func(board: Board) -> Array: return board.portal_exits.keys())
+
+
+func _scene_portal_cell() -> bool:
+	_stage = BoardGenerator.Stage.TWIN_SPRINGS
+	_new_battle()
+	_show()
+	var portals: Array = _battle.board.portal_exits.keys()
+	if portals.is_empty():
+		return false
+	_scene.click_cell(portals[0])
+	_scene.focus_camera(portals[0])
+	return _scene.info_title().begins_with("マス")
 
 
 func _stage_overview(stage: BoardGenerator.Stage) -> bool:

@@ -179,7 +179,7 @@ static func cell_body(battle: Battle, cell: Vector2i) -> String:
 
 
 ## ポータルのマスの説明。行き先の座標のあとに、括弧で添える（左下の枠では、括弧の中を「。」ごとの行にする）。
-const PORTAL_NOTE := "対のポータルへ転送する。移動の途中に通ると、移動力を使わずに移れる"
+const PORTAL_NOTE := "対のポータルへ転送する。転送に移動力は使わない"
 const PORTAL_BLOCKED := "行き先に駒がいて、いまは使えない"
 
 

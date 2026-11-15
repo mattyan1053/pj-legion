@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## CPU の思考（docs/cpu-ai.md）。
 
+const CpuGame := preload("res://tests/support/cpu_game.gd")
 const Maps := preload("res://tests/support/maps.gd")
 
 const P1 := Unit.Side.PLAYER1
@@ -351,14 +352,15 @@ func test_next_action_does_not_change_the_battle() -> void:
 
 
 func test_same_battle_gets_the_same_action() -> void:
-	var battle := CpuMatchSetup.create()
-	var first := CpuPlayer.new()
-	for i in 30:
-		# 使い回したインスタンスと、作りたてのインスタンスで、同じ行動になる（覚えているものが判断を変えない）。
-		var a := first.next_action(battle)
-		var b := CpuPlayer.new().next_action(battle.clone())
-		assert_eq(_text(a), _text(b), "%d 手目" % i)
-		battle.apply(a)
+	# 使い回したインスタンスと、作りたてのインスタンスで、同じ行動になる（覚えているものが判断を変えない）。
+	# 使い回したほうは、ほかのテストと共有する CPU どうしの 1 局（tests/support/cpu_game.gd。1 つの CpuPlayer が両方の陣営を考えた）。
+	var battle := CpuGame.start()
+	var played := CpuGame.actions()
+	assert_true(played.size() >= 30, "共有の 1 局が短すぎる")
+	for i in mini(30, played.size()):
+		var fresh := CpuPlayer.new().next_action(battle.clone())
+		assert_eq(_text(fresh), _text(played[i]), "%d 手目" % i)
+		battle.apply(played[i])
 
 
 func _snapshot(battle: Battle) -> String:

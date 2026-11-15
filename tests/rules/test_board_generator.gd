@@ -10,9 +10,21 @@ const STAGES: Array[BoardGenerator.Stage] = [
 ]
 const SEEDS: Array[int] = [1, 2, 3, 42, 1234, 20261114, 987654321]
 
+## 作った盤面の控え（[ステージ, 種] -> Board）。同じ盤面を、テストごとに作り直さない（検査の時間の多くが生成だった）。
+## 生成そのものを確かめるテスト（同じ種で同じ盤面、など）は、控えを使わずに作る。書き換えたら、元に戻す。
+static var _boards := {}
+
+
+## stage と map_seed で作った、大きさが既定の盤面（控えから。書き換えない）。
+func _board(stage: BoardGenerator.Stage, map_seed: int) -> Board:
+	var key := Vector2i(stage, map_seed)
+	if not _boards.has(key):
+		_boards[key] = BoardGenerator.generate(stage, map_seed)
+	return _boards[key]
+
 
 func test_default_size_is_30() -> void:
-	var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, 1)
+	var board := _board(BoardGenerator.Stage.PLAIN, 1)
 	assert_eq(board.size, Vector2i(30, 30))
 
 
@@ -43,34 +55,34 @@ func test_same_seed_gives_same_board() -> void:
 
 func test_different_seeds_give_different_boards() -> void:
 	for stage in STAGES:
-		var a := BoardGenerator.generate(stage, 1)
-		var b := BoardGenerator.generate(stage, 2)
+		var a := _board(stage, 1)
+		var b := _board(stage, 2)
 		assert_ne(_terrain_dump(a), _terrain_dump(b), "stage %d" % stage)
 
 
 func test_hqs_at_top_and_bottom_center() -> void:
 	for stage: BoardGenerator.Stage in [BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH]:
-		var board := BoardGenerator.generate(stage, 1)
+		var board := _board(stage, 1)
 		assert_eq(board.hq_cells[0], Vector2i(14, 29), "stage %d の P1" % stage)
 		assert_eq(board.hq_cells[1], Vector2i(14, 0), "stage %d の P2" % stage)
 
 
 func test_twin_springs_hqs_on_the_diagonal() -> void:
-	var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, 1)
+	var board := _board(BoardGenerator.Stage.TWIN_SPRINGS, 1)
 	assert_eq(board.hq_cells[0], Vector2i(4, 29))  # 左下
 	assert_eq(board.hq_cells[1], Vector2i(25, 0))  # 右上
 
 
 func test_four_fonts_around_the_center() -> void:
 	for stage: BoardGenerator.Stage in [BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH]:
-		var board := BoardGenerator.generate(stage, 1)
+		var board := _board(stage, 1)
 		assert_eq(board.font_cells.size(), 4)
 		for cell in board.font_cells:
 			assert_true((cell - Vector2i(15, 15)).length() < 4.0, "stage %d の %s" % [stage, cell])
 
 
 func test_twin_springs_fonts_on_the_flanks() -> void:
-	var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, 1)
+	var board := _board(BoardGenerator.Stage.TWIN_SPRINGS, 1)
 	assert_eq(board.font_cells.size(), 4)
 	var left := 0
 	var right := 0
@@ -86,7 +98,7 @@ func test_twin_springs_fonts_on_the_flanks() -> void:
 func test_fonts_stay_fonts() -> void:
 	for stage in STAGES:
 		for map_seed in SEEDS:
-			var board := BoardGenerator.generate(stage, map_seed)
+			var board := _board(stage, map_seed)
 			for cell in board.font_cells:
 				assert_eq(board.terrain_at(cell), Terrain.Type.FONT, "stage %d seed %d" % [stage, map_seed])
 			assert_eq(board.count_terrain(Terrain.Type.FONT), 4)
@@ -95,7 +107,7 @@ func test_fonts_stay_fonts() -> void:
 func test_around_hqs_stays_normal() -> void:
 	for stage in STAGES:
 		for map_seed in SEEDS:
-			var board := BoardGenerator.generate(stage, map_seed)
+			var board := _board(stage, map_seed)
 			for hq in board.hq_cells:
 				for dy in range(-3, 4):
 					for dx in range(-3, 4):
@@ -110,7 +122,7 @@ func test_around_hqs_stays_normal() -> void:
 func test_hqs_always_connected() -> void:
 	for stage in STAGES:
 		for map_seed in range(1, 41):
-			var board := BoardGenerator.generate(stage, map_seed)
+			var board := _board(stage, map_seed)
 			assert_true(
 				board.is_reachable(board.hq_cells[0], board.hq_cells[1]),
 				"stage %d seed %d" % [stage, map_seed]
@@ -120,7 +132,7 @@ func test_hqs_always_connected() -> void:
 func test_fonts_always_reachable() -> void:
 	for stage in STAGES:
 		for map_seed in SEEDS:
-			var board := BoardGenerator.generate(stage, map_seed)
+			var board := _board(stage, map_seed)
 			for cell in board.font_cells:
 				assert_true(
 					board.is_reachable(board.hq_cells[0], cell),
@@ -130,7 +142,7 @@ func test_fonts_always_reachable() -> void:
 
 func test_plain_has_few_walls_and_an_open_center() -> void:
 	for map_seed in SEEDS:
-		var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, map_seed)
+		var board := _board(BoardGenerator.Stage.PLAIN, map_seed)
 		var ratio := board.count_terrain(Terrain.Type.OBSTACLE) / 900.0
 		assert_between(ratio, 0.04, 0.12, "seed %d" % map_seed)
 		for y in range(12, 18):
@@ -142,7 +154,7 @@ func test_plain_has_few_walls_and_an_open_center() -> void:
 func test_plain_center_keeps_its_forests() -> void:
 	var forests := 0
 	for map_seed in SEEDS:
-		var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, map_seed)
+		var board := _board(BoardGenerator.Stage.PLAIN, map_seed)
 		for y in range(12, 18):
 			for x in range(12, 18):
 				if board.terrain_at(Vector2i(x, y)) == Terrain.Type.FOREST:
@@ -152,7 +164,7 @@ func test_plain_center_keeps_its_forests() -> void:
 
 func test_labyrinth_is_a_grid_maze() -> void:
 	for map_seed in SEEDS:
-		var board := BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, map_seed)
+		var board := _board(BoardGenerator.Stage.LABYRINTH, map_seed)
 		var ratio := board.count_terrain(Terrain.Type.OBSTACLE) / 900.0
 		assert_between(ratio, 0.25, 0.40, "seed %d" % map_seed)
 		# 壁は偶数の列か行にしか立たない（奇数 x 奇数はいつも通路）。
@@ -163,7 +175,7 @@ func test_labyrinth_is_a_grid_maze() -> void:
 
 func test_twin_springs_center_is_walled() -> void:
 	for map_seed in SEEDS:
-		var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, map_seed)
+		var board := _board(BoardGenerator.Stage.TWIN_SPRINGS, map_seed)
 		for y in range(12, 19):
 			for x in range(10, 21):
 				assert_eq(board.terrain_at(Vector2i(x, y)), Terrain.Type.OBSTACLE, "seed %d (%d, %d)" % [map_seed, x, y])
@@ -198,7 +210,7 @@ const OBJECT_SEEDS := 30
 
 func test_plain_gets_four_to_six_barrels_in_the_side_bands() -> void:
 	for map_seed in range(1, OBJECT_SEEDS + 1):
-		var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, map_seed)
+		var board := _board(BoardGenerator.Stage.PLAIN, map_seed)
 		assert_between(board.barrel_cells.size(), 4, 6, "seed %d" % map_seed)
 		assert_eq(board.spring_cells.size(), 0)
 		assert_eq(board.portal_exits.size(), 0)
@@ -209,7 +221,7 @@ func test_plain_gets_four_to_six_barrels_in_the_side_bands() -> void:
 
 func test_labyrinth_gets_a_spring_on_each_side_fair_to_both_players() -> void:
 	for map_seed in range(1, OBJECT_SEEDS + 1):
-		var board := BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, map_seed)
+		var board := _board(BoardGenerator.Stage.LABYRINTH, map_seed)
 		var label := "seed %d" % map_seed
 		assert_eq(board.spring_cells, BoardGenerator.spring_cells_for(board.size), label)
 		assert_eq(board.spring_cells.size(), 2, label)
@@ -222,7 +234,7 @@ func test_labyrinth_gets_a_spring_on_each_side_fair_to_both_players() -> void:
 func test_labyrinth_springs_are_out_of_the_bosses_reach() -> void:
 	# 泉の回復（12）は中ボスの攻撃（10）より多い。泉に立ったまま中ボスと殴り合えると、1 体で狩れてしまう。
 	# 泉は、中ボスの家から「縄張り 4 + いちばん長い射程（スナイパー 4）」より遠くに置く。
-	var board := BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, 1)
+	var board := _board(BoardGenerator.Stage.LABYRINTH, 1)
 	for spring in board.spring_cells:
 		for boss in board.mid_boss_cells:
 			assert_true(
@@ -233,7 +245,7 @@ func test_labyrinth_springs_are_out_of_the_bosses_reach() -> void:
 
 func test_twin_springs_gets_a_portal_pair_on_each_flank() -> void:
 	for map_seed in range(1, OBJECT_SEEDS + 1):
-		var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, map_seed)
+		var board := _board(BoardGenerator.Stage.TWIN_SPRINGS, map_seed)
 		assert_eq(board.portal_exits.size(), 4, "seed %d" % map_seed)
 		assert_eq(board.barrel_cells.size(), 0)
 		assert_eq(board.spring_cells.size(), 0)
@@ -251,7 +263,7 @@ func test_twin_springs_gets_a_portal_pair_on_each_flank() -> void:
 func test_objects_keep_off_protected_cells_and_rough_terrain() -> void:
 	for stage in STAGES:
 		for map_seed in range(1, OBJECT_SEEDS + 1):
-			var board := BoardGenerator.generate(stage, map_seed)
+			var board := _board(stage, map_seed)
 			var protected := BoardGenerator.protected_cells(board)
 			var cells: Array[Vector2i] = []
 			cells.append_array(board.barrel_cells)
@@ -267,7 +279,7 @@ func test_objects_keep_off_protected_cells_and_rough_terrain() -> void:
 func test_springs_and_portals_can_be_reached() -> void:
 	for stage: BoardGenerator.Stage in [BoardGenerator.Stage.LABYRINTH, BoardGenerator.Stage.TWIN_SPRINGS]:
 		for map_seed in range(1, OBJECT_SEEDS + 1):
-			var board := BoardGenerator.generate(stage, map_seed)
+			var board := _board(stage, map_seed)
 			var cells: Array[Vector2i] = board.spring_cells.duplicate()
 			cells.append_array(board.portal_exits.keys())
 			for cell in cells:
@@ -276,12 +288,14 @@ func test_springs_and_portals_can_be_reached() -> void:
 
 func test_barrels_do_not_cut_the_board() -> void:
 	for map_seed in range(1, OBJECT_SEEDS + 1):
-		var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, map_seed)
+		var board := _board(BoardGenerator.Stage.PLAIN, map_seed)
 		assert_true(board.is_reachable(board.hq_cells[0], board.hq_cells[1]), "seed %d" % map_seed)
 		var with_barrels := BoardGenerator._reachable_count(board)
-		var barrels := board.barrel_cells.size()
+		var barrels := board.barrel_cells.duplicate()
+		# 控えの盤面なので、樽を外して数えたら、元に戻す。
 		board.barrel_cells.clear()
-		assert_eq(BoardGenerator._reachable_count(board), with_barrels + barrels, "seed %d" % map_seed)
+		assert_eq(BoardGenerator._reachable_count(board), with_barrels + barrels.size(), "seed %d" % map_seed)
+		board.barrel_cells = barrels
 
 
 func test_same_seed_gives_same_objects() -> void:

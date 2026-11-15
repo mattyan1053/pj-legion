@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 戦績の集計（BattleStats。docs/battle-stats.md）。
 
+const CpuGame := preload("res://tests/support/cpu_game.gd")
 const Maps := preload("res://tests/support/maps.gd")
 
 const P1 := Unit.Side.PLAYER1
@@ -201,7 +202,20 @@ func test_mvp_is_the_non_king_that_dealt_the_most_damage() -> void:
 	assert_eq(stats.mvp(P2), null)
 
 
+## CPU どうしの 1 局（ほかのテストと共有する。tests/support/cpu_game.gd）を最後まで数える。
+## 陣営の合計が、駒ごとの戦績の和と合う。
 func test_side_totals_match_the_unit_records_in_a_cpu_game() -> void:
+	var battle := CpuGame.start()
+	var stats := BattleStats.new(battle)
+	CpuGame.replay(battle, func(result: ActionResult) -> void: stats.feed_all(result.events))
+	_assert_side_totals(stats)
+	assert_eq(stats.turns, battle.turn)
+	assert_true(stats.ending != BattleStats.Ending.NONE, "決着を数えていない")
+
+
+## 生成した盤面（中立の駒がいる）で、CPU どうしに 8 ターン進めて数える。盤面が大きく、時間が掛かるので長い検査に回す
+## （PR ごとの検査では、上の小さい盤面の 1 局と、自動の対戦の決着の画面がこの集計を通る）。
+func test_long_side_totals_match_the_unit_records_on_a_generated_stage() -> void:
 	var setup := MatchSetup.versus_cpu(
 		BoardGenerator.Stage.PLAIN, 2, MatchSetup.default_deck(UnitKind.Army.MILITARY), UnitKind.Army.FANTASY
 	)
@@ -211,6 +225,12 @@ func test_side_totals_match_the_unit_records_in_a_cpu_game() -> void:
 	var cpu := CpuPlayer.new()
 	while not battle.is_over() and battle.turn <= 8:
 		_apply(battle, stats, cpu.next_action(battle))
+	_assert_side_totals(stats)
+	assert_eq(stats.turns, battle.turn)
+
+
+## 陣営ごとに、駒の戦績の和が陣営の合計と合うこと。どちらの陣営もダメージを与えていること。
+func _assert_side_totals(stats: BattleStats) -> void:
 	for side: Unit.Side in [P1, P2]:
 		var totals := [0, 0, 0, 0, 0]
 		for record in stats.records_of(side):
@@ -223,5 +243,5 @@ func test_side_totals_match_the_unit_records_in_a_cpu_game() -> void:
 		assert_eq(totals, [
 			side_record.damage, side_record.kills, side_record.neutral_kills, side_record.healing, side_record.skill_uses,
 		])
-		assert_true(side_record.damage > 0, "8 ターンでダメージを与えていない")
-	assert_eq(stats.turns, battle.turn)
+		assert_true(side_record.damage > 0, "ダメージを与えていない")
+
