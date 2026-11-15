@@ -35,6 +35,8 @@ var _menu_dirty := true
 var _forecast_placement := MenuPlacement.new()
 var _forecast_cell := NO_CELL
 var _forecast_camera := Transform3D()
+## 予測のパネルを置いたときの、メニューの四角（メニューが動いたら置き直す）。
+var _forecast_menu := Rect2()
 var _forecast_dirty := true
 var _forecast_avoid: Array[Vector2i] = []
 
@@ -110,22 +112,24 @@ func clear_forecast() -> void:
 	_forecast_cell = NO_CELL
 
 
-## 予測のパネルを、対象のマスのそばに置く。駒のそばのメニュー、行動する駒（actor）、効果の及ぶ駒、情報の枠を隠さない側を選ぶ。
+## 予測のパネルを、対象のマスのそばに置く。駒のそばのメニューには重ねない。行動する駒（actor）、効果の及ぶ駒、情報の枠を隠さない側を選ぶ。
 func place_forecast(battle: Battle, actor: Unit) -> void:
 	var size := _hud.forecast_size()
 	if size == Vector2.ZERO or _forecast_cell == NO_CELL:
 		return
 	var camera: Camera3D = _rig.camera
-	if not _forecast_dirty and camera.global_transform.is_equal_approx(_forecast_camera):
+	var menu := _hud.menu_rect()
+	if not _forecast_dirty and camera.global_transform.is_equal_approx(_forecast_camera) and menu == _forecast_menu:
 		return
 	_forecast_dirty = false
 	_forecast_camera = camera.global_transform
+	_forecast_menu = menu
 	var on := battle.unit_at(_forecast_cell)
 	var height: float = (_views[on.id] as UnitView).height() if on != null and _views.has(on.id) else 0.3
 	var anchor := screen_rect(BoardView.cell_center(_forecast_cell), 0.45, height)
 	var obstacles: Array = []
-	if _hud.menu_rect().has_area():
-		obstacles.append([_hud.menu_rect(), MENU_WEIGHT_TARGET])
+	# メニューには重ねない（重みでなく、決まり。メニューの周りに逃がしてでも避ける）。
+	var keep_clear: Array = [menu] if menu.has_area() else []
 	if _hud.info_rect().has_area():
 		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
 	if actor != null and _views.has(actor.id):
@@ -138,7 +142,7 @@ func place_forecast(battle: Battle, actor: Unit) -> void:
 	for cell in _forecast_avoid:
 		if cell != _forecast_cell:
 			obstacles.append([screen_rect(BoardView.cell_center(cell), 0.45, 0.8), MENU_WEIGHT_TARGET])
-	_hud.place_forecast(_forecast_placement.place(anchor, size, _hud.menu_area(), obstacles))
+	_hud.place_forecast(_forecast_placement.place(anchor, size, _hud.menu_area(), obstacles, keep_clear))
 
 
 ## 盤面の上の、at を中心に半径 radius・高さ height の柱が、画面に占める四角。カメラの後ろなら、画面の外の四角。

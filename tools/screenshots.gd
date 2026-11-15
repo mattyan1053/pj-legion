@@ -54,6 +54,7 @@ const SCENES := {
 	"forecast_defeat": "倒せる相手にマウスを乗せている（予測のパネルに「倒せる！」）",
 	"forecast_skill": "範囲のスキルの対象のマスにマウスを乗せている（巻き込む駒が並ぶ）",
 	"forecast_heal": "回復役で、回復できる味方にマウスを乗せている",
+	"forecast_small": "9×5 の小さな盤で、動いたあとメニューの「攻撃」を押し、隣の相手にマウスを乗せている（縮んだメニューと予測のパネルが重ならない）",
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
@@ -669,6 +670,49 @@ func _scene_forecast_skill() -> bool:
 	_look_at(BoardView.cell_center(found[1]))
 	_scene.hover(found[1])
 	return _scene.is_choosing_skill_target() and _scene.forecast_text() != ""
+
+
+## 1 コマ進めてから、再生が終わるまで待つ。
+func _idle() -> void:
+	await get_tree().process_frame
+	while _scene.is_busy():
+		await get_tree().process_frame
+
+
+## 自動の対戦の場面 inspection と同じ盤と駒で、既定のカメラの向きのまま攻撃の予測を出す（メニューと予測のパネルが近くに並ぶ）。
+func _scene_forecast_small() -> bool:
+	var board := Board.new(Vector2i(9, 5))
+	board.hq_cells = [Vector2i(0, 4), Vector2i(8, 0)]
+	_battle = Battle.new(board)
+	_battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	_battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(8, 0))
+	var trooper := _battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(1, 2))
+	_battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(7, 2))
+	var foe := _battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER2, Vector2i(4, 2))
+	_battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(5, 4))
+	_stats = BattleStats.new(_battle)
+	# 前の対戦のマウスの下のマスが、小さな盤の外に残っていると、出した直後の情報で盤の外を読む。両方の盤にあるマスへ寄せておく。
+	_scene.hover(Vector2i.ZERO)
+	_show()
+	_scene.hover(Vector2i(-1, -1))
+	# 自動の対戦の inspection と同じ順に: 動いて取り消してから、相手の隣へ動き、メニューの「攻撃」で相手を選び始める。
+	await _idle()
+	_scene.click_cell(trooper.cell)
+	_scene.click_cell(Vector2i(2, 2))
+	await _idle()
+	_scene.cancel()  # 移動を取り消す
+	await _idle()
+	_scene.click_cell(Vector2i(3, 2))
+	await _idle()
+	if trooper.cell != Vector2i(3, 2):
+		return false
+	# カメラが寄り終わってから、メニューの「攻撃」とマウスを乗せるのを同じコマで（メニューが縮んで動いても、カメラは止まっている）。
+	for i in 120:
+		await get_tree().process_frame
+	if not _scene.press_menu(&"attack"):
+		return false
+	_scene.hover(foe.cell)
+	return _scene.forecast_text() != ""
 
 
 func _scene_forecast_heal() -> bool:
