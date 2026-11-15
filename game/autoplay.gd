@@ -894,9 +894,20 @@ func _queue_inspection_scene() -> void:
 		_expect(not threat.is_empty() and painted.size() <= threat.size() and _scene.info_title().begins_with(unit.display_name()),
 			"%s: 見ている駒の脅威範囲か情報が出ていない" % what)
 
+	# 前の対戦（もっと大きな盤）でマウスを乗せていたマスが、この小さな盤の外でも、始め直すときに持ち越さない（盤の外を読まない）。
+	# 前の場面の盤の大きさに頼らないよう、大きな盤の対戦をここで始めてから、その隅にマウスを乗せる。
+	var larger := Battle.new(_small_board(Vector2i(13, 9)))
+	larger.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 8))
+	larger.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(12, 0))
+	var outside := Vector2i(12, 8)
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(larger, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		_expect(_scene.battle == larger and not board.in_bounds(outside), "大きな盤の対戦を始められなかった")
+		_scene.hover(outside)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
+		_expect(_scene.hovered_cell() == NO_CELL, "始め直したのに、前の対戦のマウスの下のマスが残っている: %s" % _scene.hovered_cell()))
 	_scripted.append(func() -> void:
 		_scene.click_cell(trooper.cell)
 		# 選んだあと: 相手の駒をクリックすると、選んだまま見る。右クリックで、見るのをやめて選んだ駒へ戻る。

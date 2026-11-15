@@ -691,10 +691,7 @@ func _scene_forecast_small() -> bool:
 	var foe := _battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER2, Vector2i(4, 2))
 	_battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(5, 4))
 	_stats = BattleStats.new(_battle)
-	# 前の対戦のマウスの下のマスが、小さな盤の外に残っていると、出した直後の情報で盤の外を読む。両方の盤にあるマスへ寄せておく。
-	_scene.hover(Vector2i.ZERO)
 	_show()
-	_scene.hover(Vector2i(-1, -1))
 	# 自動の対戦の inspection と同じ順に: 動いて取り消してから、相手の隣へ動き、メニューの「攻撃」で相手を選び始める。
 	await _idle()
 	_scene.click_cell(trooper.cell)

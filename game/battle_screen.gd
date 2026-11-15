@@ -361,6 +361,13 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_rig.bounds = Rect2(Vector2.ZERO, Vector2(battle.board.size))
 	_rig.position = _camera_point(Unit.Side.PLAYER1)
 	_ui.clear_for_new_battle()
+	# 前の対戦のマウスの下のマス（盤の大きさが違えば、盤の外のマス）と、そこから決めた予測のパネル・メニューの置き場所を持ち越さない。
+	# マウスの下のマスは、次のコマで新しい盤から拾い直す（_update_hover）。
+	_hover_cell = NO_CELL
+	_hover_forced = NO_CELL
+	_hud.hide_forecast()
+	_layout.clear_forecast()
+	_layout.reset_menu()
 	_hud.hide_result()
 	context.resume_scene_music()  # 決着の曲のあとの「やり直す」でも、対戦の曲へ戻る
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
@@ -1305,6 +1312,11 @@ func _show_painted() -> void:
 
 
 ## マウスを cell に乗せたことにする（検査用。NO_CELL で、マウスの位置に戻す）。
+## いまマウスの下にある（ことにしている）マス。無ければ NO_CELL。検査用。
+func hovered_cell() -> Vector2i:
+	return _hover_cell
+
+
 func hover(cell: Vector2i) -> void:
 	_hover_forced = cell
 	_update_hover()
