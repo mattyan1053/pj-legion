@@ -12,6 +12,7 @@ extends SceneTree
 ##   --rival=PATH    別の版の CPU（スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
 ##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、ステージ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
 ##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
+##   --stage=N       このステージだけを回す（1〜3）。配置を見るときに、1 つのステージの標本を増やす
 ##   --relic=NAME    プレイヤー1 が、対戦の始めから聖遺物を 1 つ持つ（wisdom = 英知、courage = 勇気。ゲージは足さない）。
 ##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さの実測」）
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
@@ -212,6 +213,8 @@ func _initialize() -> void:
 
 	for game in games:
 		var stage := CpuMatch.STAGES[game % CpuMatch.STAGES.size()]
+		if args.has("stage"):
+			stage = args["stage"].to_int() as BoardGenerator.Stage
 		@warning_ignore("integer_division")
 		var pairing := (game / CpuMatch.STAGES.size()) % 4
 		if mixed_only:

@@ -24,7 +24,7 @@ const PROTECT_RADIUS := 3
 ## 中ボスの周りの、地形もオブジェクトも置かない広さ（チェビシェフ距離）。
 const MID_BOSS_CLEARING := 1
 ## 上下の本陣のステージ（中央平原・迷宮回廊）で、中ボスを本陣の列から左右へ離す量。
-const MID_BOSS_SPREAD := 8
+const MID_BOSS_SPREAD := 6
 ## 双子結晶で、中ボスを中央の壁から上下へ離す量（壁のいちばん上の行・下の行から、このマス数）。
 const MID_BOSS_WALL_GAP := 4
 ## 迷宮回廊の回復の泉を、本陣の列から左右へ離す量と、真ん中の行から自分の本陣の側へ寄せる量。

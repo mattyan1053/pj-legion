@@ -64,12 +64,12 @@ const RELIC_UNIT_VALUE := 12.0
 ## 満たせば、手の空いている駒が中ボスへ向かう。加われる駒の全部で HUNT_COMMIT_TURNS ターンのうちに倒せるところまで来たら、
 ## 手の空いていない駒も向かう。自分の本陣の近く（GUARD_RADIUS 以内）に相手がいる間は、狩らない。
 const HUNT_RADIUS := 14
-const HUNT_FROM_TURN := 6
+const HUNT_FROM_TURN := 4
 const HUNT_ENGAGE_DISTANCE := 5
 const HUNT_TURNS := 6
 const HUNT_COMMIT_TURNS := 2
 const HUNT_MARGIN := 1.25
-const HUNT_SUPERIORITY := 1.0
+const HUNT_SUPERIORITY := 0.8
 ## 相手が狩っているとみなす距離（中ボスからこの距離の中の相手の戦う駒が、削った中ボスを HUNT_TURNS ターンで倒せる）。
 const HUNT_RIVAL_RADIUS := 10
 ## 止めを相手に渡す削り（削ったあとの HP が、次の相手の番に届く相手の攻撃力の合計以下で、
