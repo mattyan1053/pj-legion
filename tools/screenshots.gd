@@ -59,6 +59,11 @@ const SCENES := {
 	"wide": "いちばん引いて、低い角度で、盤の全体とその向こうを見ている",
 	"board_edge": "盤の角と、その外側（低い角度で、盤の外へ向いている）",
 	"rotated": "カメラを斜めに回して、低い角度で見ている",
+	"hit_slam": "前衛の攻撃が当たった瞬間（相手の足元から衝撃の輪が広がる）",
+	"hit_slash": "奇襲の攻撃が当たった瞬間（斜めの白い弧）",
+	"hit_shot": "スナイパーの射撃が当たった瞬間（光の弾と、散る火花）",
+	"hit_magic": "魔法の攻撃が飛んでいるところ（光る球）",
+	"wait_sign": "駒が待機した瞬間（足元の輪が縮み、「待機」が出て消える）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
@@ -67,6 +72,8 @@ const SCENES := {
 const SEED := 1
 ## 撮る前に待つ時間（秒）。番の知らせが消え、カメラが寄り終わるまで。
 const SETTLE := 1.8
+## 番の知らせが消えるのを、SETTLE のあとさらに待つ上限（秒）。
+const BANNER_WAIT := 3.0
 ## CPU どうしで進める行動の数の上限（場面が来なければ、撮らずに失敗にする）。
 const MAX_ACTIONS := 3000
 const JPEG_QUALITY := 0.82
@@ -82,6 +89,10 @@ var _stats: BattleStats
 ## _battle の始めからのログ（相手を CPU として書く）。
 var _log: BattleLog
 var _stage := BoardGenerator.Stage.PLAIN
+## 場面が、演出の途中を撮る時刻まで自分で待ったか（真なら、再生の終わりも知らせが消えるのも待たずに、すぐ撮る）。
+var _mid_animation := false
+## 演出の途中を撮る場面は、時間をこの速さに落として進める（描画の遅い環境では 1 コマが長く、短い演出を飛び越えてしまうため）。
+const SLOW_MOTION := 0.15
 
 
 func _init(app: Node) -> void:
@@ -121,23 +132,39 @@ func _run() -> void:
 		_stage = BoardGenerator.Stage.PLAIN
 		_new_battle()
 		_aim(22.0, 0.0, OrbitCamera.DEFAULT_PITCH)  # 前の場面で動かしたカメラを戻す（ほかの場面は、始めの向きと角度で撮る）
+		_mid_animation = false
 		var ok: bool = await call("_scene_" + name)
 		if not ok:
 			_quit("screenshots: 場面 %s を作れなかった" % name, 1)
 			return
+		if _mid_animation:
+			if not await _capture(name):
+				return
+			_scene.set_time_scale_base(1.0)
+			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
+				await get_tree().process_frame
+			continue
 		while _app.current_id() == &"battle" and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
 		await get_tree().create_timer(SETTLE, true, false, true).timeout
-		await RenderingServer.frame_post_draw
-		var path := _out.path_join(name + ".jpg")
-		var error := get_viewport().get_texture().get_image().save_jpg(path, JPEG_QUALITY)
-		if error != OK:
-			_quit("screenshots: %s を書けなかった（%s）" % [path, error_string(error)], 1)
+		await _banner_gone()
+		if not await _capture(name):
 			return
-		print("screenshots: %s" % path)
 	_quit("screenshots: OK", 0)
+
+
+## いまの画面を撮って書く。書けなければ終わらせて偽を返す。
+func _capture(name: String) -> bool:
+	await RenderingServer.frame_post_draw
+	var path := _out.path_join(name + ".jpg")
+	var error := get_viewport().get_texture().get_image().save_jpg(path, JPEG_QUALITY)
+	if error != OK:
+		_quit("screenshots: %s を書けなかった（%s）" % [path, error_string(error)], 1)
+		return false
+	print("screenshots: %s" % path)
+	return true
 
 
 # ---- 場面 ----
@@ -686,6 +713,75 @@ func _scene_log_long() -> bool:
 	return true
 
 
+## kinds のどれかの駒が、動かずに攻撃できる場面まで進め、その攻撃を始めて、当たる瞬間から after 秒あとに撮る
+## （負なら、当たる前）。カメラは寄せて、相手を真ん中に置く。
+func _attack_frame(kinds: Array, after: float) -> bool:
+	var find := func() -> Array:
+		if _battle.phase == Unit.Side.NEUTRAL:
+			return []
+		for unit in _own_units():
+			if kinds.has(unit.kind) and _battle.can_act(unit):
+				var targets := _battle.options(unit.id).attack_target_ids
+				if not targets.is_empty():
+					return [unit, _battle.unit_by_id(targets[0])]
+		return []
+	if not _advance(func() -> bool: return not find.call().is_empty()):
+		return false
+	var found: Array = find.call()
+	var unit: Unit = found[0]
+	var target: Unit = found[1]
+	_show()
+	await _settle_camera(target.cell)
+	_scene.set_time_scale_base(SLOW_MOTION)
+	_scene.act(AttackAction.new(unit.id, target.id))
+	await get_tree().create_timer(0.4 + after).timeout  # 0.4 は、攻撃の動きを始めてから当たるまで（unit_view.gd の play_attack）
+	_mid_animation = true
+	return true
+
+
+## 番の知らせが消え、カメラが cell に寄り終わるまで待つ（演出の途中を撮る場面の下ごしらえ）。
+func _settle_camera(cell: Vector2i) -> void:
+	_aim(13.0, 20.0, OrbitCamera.DEFAULT_PITCH)
+	_scene.focus_camera(cell)
+	await get_tree().create_timer(SETTLE).timeout
+	await _banner_gone()
+
+
+func _scene_hit_slam() -> bool:
+	return await _attack_frame([UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN], 0.08)
+
+
+func _scene_hit_slash() -> bool:
+	return await _attack_frame([UnitKind.Id.COMMANDO, UnitKind.Id.SPELLBLADE], 0.08)
+
+
+func _scene_hit_shot() -> bool:
+	return await _attack_frame([UnitKind.Id.SNIPER], 0.06)
+
+
+func _scene_hit_magic() -> bool:
+	return await _attack_frame([UnitKind.Id.SORCERER], -0.07)
+
+
+func _scene_wait_sign() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 2 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	var unit: Unit = null
+	for candidate in _own_units():
+		if _battle.can_act(candidate) and candidate.kind != UnitKind.Id.KING:
+			unit = candidate
+			break
+	if unit == null:
+		return false
+	await _settle_camera(unit.cell)
+	_scene.set_time_scale_base(SLOW_MOTION)
+	_scene.act(WaitAction.new(unit.id))
+	await get_tree().create_timer(0.15).timeout
+	_mid_animation = true
+	return true
+
+
 func _scene_wide() -> bool:
 	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
 		return false
@@ -765,6 +861,17 @@ func _new_battle() -> void:
 
 
 ## いまの _battle を画面に出す（駒の見た目は、いまの状態から作る）。
+## 対戦の画面の中央の知らせ（番の知らせなど）が消えるまで待つ。描画の遅い環境では SETTLE のうちに消えないことがある。
+## 知らせを撮る場面のために、待つのは BANNER_WAIT 秒まで。
+func _banner_gone() -> void:
+	if _app.current_id() != &"battle" or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open():
+		return  # 時間が止まっている（知らせは消えない）
+	var waited := 0.0
+	while _scene._hud.is_banner_shown() and waited < BANNER_WAIT:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+
+
 func _show() -> void:
 	_scene.start_with(_battle, _stage, SEED)
 

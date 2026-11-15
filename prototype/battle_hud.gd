@@ -518,6 +518,11 @@ func show_banner(text: String, color: Color) -> void:
 	_banner_tween.tween_callback(_banner.hide)
 
 
+## 画面の中央の大きな文字が出ているか（スクリーンショットの道具が、消えるのを待つ）。
+func is_banner_shown() -> bool:
+	return _banner.visible
+
+
 ## 画面の中央の大きな文字を、すぐに消す（時間を止めて読む画面を開いたとき、止まったまま残らないように）。
 func hide_banner() -> void:
 	if _banner_tween != null:
