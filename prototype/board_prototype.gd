@@ -407,6 +407,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_rig.bounds = Rect2(Vector2.ZERO, Vector2(battle.board.size))
 	_rig.position = _camera_point(Unit.Side.PLAYER1)
 	_selected_id = 0
+	_inspected_id = 0  # 駒の番号は対戦ごとに 1 から振り直すので、前の対戦の番号を持ち越さない
 	_mode = Mode.NONE
 	_inspected_cell = NO_CELL
 	_pressing = false
