@@ -15,6 +15,7 @@ const MatchSetupPanel := preload("res://prototype/match_setup_panel.gd")
 const Queries := preload("res://prototype/battle_queries.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
+const StatsText := preload("res://prototype/stats_text.gd")
 
 const NO_CELL := Vector2i(-1, -1)
 const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("e0b83a")]
@@ -53,6 +54,8 @@ const DRAW_REASONS := {
 }
 
 var battle: Battle
+## いまの対戦の戦績。行動のたびに、起きたことを食わせる（決着の画面に要点を出す）。
+var stats: BattleStats
 var stage := BoardGenerator.Stage.PLAIN
 var map_seed := 0
 
@@ -216,6 +219,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	stage = battle_stage
 	map_seed = battle_seed
 	battle = new_battle
+	stats = BattleStats.new(battle)
 
 	if _board_view != null:
 		_board_view.queue_free()
@@ -340,6 +344,11 @@ func field_effect_view_ids() -> Array[int]:
 ## いま出ている結果の見出し（出ていなければ空）。検査用。
 func result_title() -> String:
 	return _hud.result_title()
+
+
+## いま出ている戦績の要点（出ていなければ空）。検査用。
+func result_stats() -> String:
+	return _hud.result_stats()
 
 
 ## 盤面のマスを選ぶ。選んでいる駒の攻撃できる相手・樽なら攻撃、回復できる味方なら回復、動けるマスなら移動、駒なら選び直す。
@@ -505,6 +514,7 @@ func _do(action: BattleAction) -> bool:
 	var result := battle.apply(action)
 	if not result.accepted:
 		return false
+	stats.feed_all(result.events)
 	_busy = true
 	_skill_mode = false
 	_confirming_end = false
@@ -916,12 +926,20 @@ func _play_acted(event: UnitActedEvent) -> void:
 
 func _play_won(event: GameWonEvent) -> void:
 	await get_tree().create_timer(0.4).timeout
-	_hud.show_result(event.winner, WIN_REASONS[event.reason])
+	_hud.show_result(event.winner, WIN_REASONS[event.reason], _stats_text())
 
 
 func _play_drawn(event: GameDrawnEvent) -> void:
 	await get_tree().create_timer(0.4).timeout
-	_hud.show_draw(DRAW_REASONS[event.reason])
+	_hud.show_draw(DRAW_REASONS[event.reason], _stats_text())
+
+
+## 決着の画面に出す戦績の要点。
+func _stats_text() -> String:
+	var names: Array[String] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		names.append(_side_name(side))
+	return StatsText.text(stats, MatchSetup.stage_name(stage), names)
 
 
 func _play_defeated(event: UnitDefeatedEvent) -> void:

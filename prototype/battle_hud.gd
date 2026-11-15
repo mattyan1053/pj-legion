@@ -99,6 +99,7 @@ var _evolution_title: Label
 var _evolution_buttons: Array[Button] = []
 var _result_title: Label
 var _result_reason: Label
+var _result_stats: Label
 
 
 func setup(team_colors: Array[Color]) -> void:
@@ -260,19 +261,32 @@ func show_banner(text: String, color: Color) -> void:
 	_banner_tween.tween_callback(_banner.hide)
 
 
-func show_result(winner: Unit.Side, reason: String) -> void:
+## stats は戦績の要点（文字。空なら出さない）。
+func show_result(winner: Unit.Side, reason: String, stats := "") -> void:
 	_result_title.text = "%s の勝ち" % SIDE_NAMES[winner]
 	_result_title.add_theme_color_override("font_color", _side_color(winner).lightened(0.4))
 	_result_reason.text = reason
+	_show_stats(stats)
 	_result.visible = true
 
 
 ## 引き分けの結果を出す。
-func show_draw(reason: String) -> void:
+func show_draw(reason: String, stats := "") -> void:
 	_result_title.text = "引き分け"
 	_result_title.add_theme_color_override("font_color", Color("e6e6e6"))
 	_result_reason.text = reason
+	_show_stats(stats)
 	_result.visible = true
+
+
+## いま出ている戦績の要点（出ていなければ空）。検査用。
+func result_stats() -> String:
+	return _result_stats.text if _result.visible and _result_stats.visible else ""
+
+
+func _show_stats(stats: String) -> void:
+	_result_stats.text = stats
+	_result_stats.visible = stats != ""
 
 
 ## いま出ている結果の見出し（出ていなければ空）。検査用。
@@ -512,6 +526,11 @@ func _build_result() -> void:
 	_result_reason = _label(20)
 	_result_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_result_reason)
+	_result_stats = _label(15)
+	_result_stats.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	_result_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_result_stats.custom_minimum_size = Vector2(760.0, 0.0)
+	column.add_child(_result_stats)
 	var again := _button("同じ盤面でもう一度", Signal())
 	again.pressed.connect(func() -> void: restart_pressed.emit(0, false))
 	column.add_child(again)

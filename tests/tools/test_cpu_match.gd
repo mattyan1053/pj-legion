@@ -66,11 +66,8 @@ func test_skill_kill_of_a_mid_boss_and_a_unit_counts_the_bigger_reward() -> void
 		var victim := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, victim_cell)
 		victim.hp = 1
 		var outcome := CpuMatch.Outcome.new()
-		outcome.kinds[sorcerer.id] = sorcerer.kind
-		outcome.sides[sorcerer.id] = sorcerer.side
 		var result := battle.apply(UseSkillAction.new(sorcerer.id, Vector2i(4, 1)))
 		assert_true(result.accepted)
 		for event in result.events:
-			CpuMatch._count(outcome, battle, Unit.Side.PLAYER1, event)
+			CpuMatch._count(outcome, event)
 		assert_eq(outcome.gains[sorcerer.id], [0, 0, 0, 0, 1], "中ボスが先: %s" % boss_first)
-		assert_eq(outcome.mid_boss_kills.size(), 1)

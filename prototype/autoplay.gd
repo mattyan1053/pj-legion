@@ -53,6 +53,10 @@ func _process(_delta: float) -> void:
 	if battle.is_over() or (_game > 0 and battle.turn >= SHORT_GAME_TURNS):
 		if _game == 0 and not _scenes_done:
 			print("autoplay: ターン %d で決着（勝者 %d）" % [battle.turn, battle.winner])
+			var stats: BattleStats = _scene.stats
+			_expect(stats.is_over() and stats.turns == battle.turn and stats.winner == battle.winner, "戦績が決着と食い違った")
+			_expect(_scene.result_stats().contains("与えたダメージ"), "決着の画面に戦績が出ていない")
+			print(_scene.result_stats())
 			_scenes_done = true
 			_queue_portal_and_spring_scene()
 			_queue_capture_scene()
