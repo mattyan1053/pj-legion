@@ -148,23 +148,34 @@ func card_stages() -> Array:
 	return _cards.keys()
 
 
-func _unhandled_input(event: InputEvent) -> void:
+## stage のカードの真ん中（画面の座標）。検査用。
+func card_center(stage: int) -> Vector2:
+	return (_cards[stage] as Control).get_global_rect().get_center()
+
+
+## 右クリックと Esc は 1 つ戻る（タイトルへ）。カードの上でも効くよう、ボタンより先に受ける。
+## 重なる画面（システムメニュー）が開いている間は、そちらが受ける。
+func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():
 		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
+	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
+	if right or escape:
+		get_viewport().set_input_as_handled()
 		context.play_sound(&"ui_back")
 		press_back()
-	elif event is InputEventKey and event.pressed and not event.echo:
-		match event.physical_keycode:
-			KEY_ESCAPE:
-				context.play_sound(&"ui_back")
-				press_back()
-			KEY_1, KEY_KP_1:
-				_choose_by_key(BoardGenerator.Stage.PLAIN)
-			KEY_2, KEY_KP_2:
-				_choose_by_key(BoardGenerator.Stage.LABYRINTH)
-			KEY_3, KEY_KP_3:
-				_choose_by_key(BoardGenerator.Stage.TWIN_SPRINGS)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if context.overlays.is_open() or not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	match event.physical_keycode:
+		KEY_1, KEY_KP_1:
+			_choose_by_key(BoardGenerator.Stage.PLAIN)
+		KEY_2, KEY_KP_2:
+			_choose_by_key(BoardGenerator.Stage.LABYRINTH)
+		KEY_3, KEY_KP_3:
+			_choose_by_key(BoardGenerator.Stage.TWIN_SPRINGS)
 
 
 func _choose_by_key(stage: BoardGenerator.Stage) -> void:

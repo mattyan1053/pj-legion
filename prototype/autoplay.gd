@@ -1210,9 +1210,15 @@ func _leave_battle() -> void:
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
 	_expect(app.current_id() == &"stage", "対戦の設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
-	app.current_scene().press_back()
+	# カードの上での右クリックでも戻る（カードのボタンに食われない）。
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.position = app.current_scene().card_center(BoardGenerator.Stage.LABYRINTH)
+	right.global_position = right.position
+	app.get_viewport().push_input(right)
 	await app.scene_changed
-	_expect(app.current_id() == &"title", "ステージ選択の「タイトルへ戻る」で、タイトルへ戻らない")
+	_expect(app.current_id() == &"title", "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
 	await _visit_decks(app)
 	_finish("autoplay: OK", 0)
 
