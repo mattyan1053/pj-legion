@@ -122,10 +122,11 @@
 - CPU は、スキルの手も、ほかの手と同じに複製の上で使ってみて、起きたイベントから価値を読む（`docs/cpu-ai.md`）。
   ダメージ・回復・経験値のイベントで価値が決まるスキルは、それだけで使えるようになる。
 - 盤に何かを置く、駒に状態を付ける（`docs/unit-statuses.md`）など、イベントだけでは価値が決まらないスキルは、
-  `CpuPlayer.SKILL_VALUES` に「スキル → 価値を見積もるメソッド」を 1 行足す。見積もり方は、スキルごとの文書に書く。
+  `rules/cpu/<スキル>_cpu.gd`（`CpuSkillEstimate` の子。1 スキル 1 ファイル）の `value` に見積もりを書く。見積もり方は、スキルごとの文書に書く。
 - スキルを使うために立つマスも探す（「どこに立って、どこを対象に使うか」の組を、動く手・攻撃する手と比べる）。
-  試す対象は、`CpuPlayer.SKILL_TARGETS` の「スキル → 選ぶ価値のありそうなマスを並べるメソッド」で絞る。
-  スキルを足すときは、ここにも 1 行足す（載せなければ、選べる対象をすべて試すので、対象の多いスキルでは遅くなる）。
+  試す対象は、同じファイルの `targets`（選ぶ価値のありそうなマス）で絞る。
+  スキルを足すときは、このファイルを作り、`CpuSkillEstimate.ESTIMATES` に 1 行足す（無ければ、選べる対象をすべて試すので、対象の多いスキルでは遅くなる。
+  `tests/rules/test_enum_tables.gd` が載せ忘れを見つける）。
 
 ## 自分に使うスキル
 
@@ -141,7 +142,8 @@
 4. 行動を終えないなら `ends_action` を、回数に上限があるなら `max_uses` を書く（面倒は `Skills` が見る）。
 5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`battle_playback.gd` の `event_players()`）に載せる。
    駒へのダメージは `Skills.deal_damage` を呼べば足り、イベントを足さなくてよい。
-6. イベントだけで価値が決まらなければ、`CpuPlayer.SKILL_VALUES` に 1 行と、見積もるメソッドを足す。
+6. CPU の見積もりを `rules/cpu/<スキル>_cpu.gd` に書き、`CpuSkillEstimate.ESTIMATES` に 1 行足す（`targets` は必ず。
+   イベントだけで価値が決まらなければ `value` も）。
    ダメージを届けるか、使ったあとに移った先から攻撃できるなら、`threat_damage` / `threat_origins` を書く
    （脅威範囲と CPU の危険の見積もりが読む。`docs/threat-range.md`）。
 7. `docs/skills/` に文書、`tests/rules/skills/` にテストを置く。

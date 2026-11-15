@@ -50,11 +50,11 @@
 
 ## CPU
 
-`CpuPlayer.SKILL_VALUES` の `_adrenaline_value`。
+`CpuAdrenalineShot.value`（`rules/cpu/adrenaline_shot_cpu.gd`）。
 
 - 打ったあとの複製の上で、対象が**いまの位置から**もう一度手を出したとき（攻撃・樽・盾・回復）の、いちばん良い手の価値を取る。
-  その 0.75 倍（`CpuPlayer.ADRENALINE_RATE`）を見込む。対象が動いてからできる手と、対象のスキルは見ない。
-- その手の価値が 30（`CpuPlayer.ADRENALINE_MIN_VALUE`）に満たなければ打たない。回数に限りがあるので、
+  その 0.75 倍（`CpuAdrenalineShot.RATE`）を見込む。対象が動いてからできる手と、対象のスキルは見ない。
+- その手の価値が 30（`CpuAdrenalineShot.MIN_VALUE`）に満たなければ打たない。回数に限りがあるので、
   もう 1 回で倒せる、将を殴れる、深手の味方をもう 1 回回復できる、くらいの手に取っておく。
 - 衛生兵は、戦う駒のあとに動く（`docs/cpu-ai.md` の「駒を動かす順」）ので、打つ時には、戦う駒は行動済みになっている。
   打たれた駒は、ほかの未行動の駒と同じに、次に動かす駒として選ばれ、ふつうに考え直して動く。
