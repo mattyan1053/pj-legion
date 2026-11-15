@@ -1,6 +1,7 @@
 class_name CpuDeck
 extends RefCounted
 ## CPU の編成（docs/cpu-ai.md）。軍を渡すと、その軍のロスターと予算に収まる、対戦に出せる編成を作る。
+## 決まり（DeckRules）を渡さなければ、対戦の決まりで組む。
 ##
 ## 乱数は使わない。同じ軍からは、いつも同じ編成になる。
 ## 1. 4 つの役割（前衛・後衛・奇襲・回復）を 1 体ずつ雇う
@@ -8,9 +9,9 @@ extends RefCounted
 ## 3. 余った予算で装備を持たせる。前衛にアイアンシールド、奇襲にスピードブーツを、1 個ずつ順に配る
 
 
-static func build(army: UnitKind.Army) -> Deck:
-	var deck := Deck.new(army)
-	var roster := Deck.roster(army)
+static func build(army: UnitKind.Army, rules: DeckRules = null) -> Deck:
+	var deck := Deck.new(army, rules)
+	var roster := deck.available_kinds()
 	if roster.is_empty():
 		return deck
 	for kind in roster:

@@ -1,11 +1,25 @@
 # 編成の検査
 
-コード: `rules/deck.gd`（`Deck.problems()`、`Deck.is_valid()`、`Deck.Problem`、`Deck.MAX_UNITS`）、
+コード: `rules/deck.gd`（`Deck.problems()`、`Deck.is_valid()`、`Deck.Problem`、`Deck.MAX_UNITS`）、`rules/deck_rules.gd`（編成の決まり）、
 `rules/deck_entry.gd`（`DeckEntry.equip`）、`rules/equipment.gd`（`Equipment.MAX_PER_UNIT`）。
-テスト: `tests/rules/test_deck_building.gd`。
+テスト: `tests/rules/test_deck_building.gd`、`tests/rules/test_deck_rules.gd`。
 
 編成そのもの（軍、ロスター、装備、コスト、予算）は `docs/player-loadout.md`。
 編成画面（操作、表示、対戦相手ごとの画面の流れ）は、ここには無い。
+
+## 編成の決まり
+
+「どの軍を選べ、それぞれの軍でどの駒を雇えるか」「予算はいくつか」「何体まで雇えるか」は、編成の決まり（`DeckRules`）が持つ。
+編成（`Deck`）は組むときに決まりを受け取り、検査も編成の画面も、その決まりで調べる。決め打ちの値を読まない。
+
+| 決まり（`DeckRules.id`） | 使うところ | 中身 |
+| --- | --- | --- |
+| `versus`（`DeckRules.versus()`） | 対戦。全員が同じ決まりで組む | 軍ごとのロスター 4 種と予算（`docs/player-loadout.md` の表）、6 体まで |
+
+- 決まりを渡さずに組んだ編成（`Deck.new(軍)`、`CpuDeck.build(軍)`）は、対戦の決まりで組む。
+- 取っておく部隊は、どの決まりで組んだか（`id`）を持つ。読み込むときに `DeckRules.by_id` で引き直す（知らない名前なら `null`）。
+- 決まりは組んだら変えない。
+- 後で、ストーリーの進み具合に応じた決まり（雇える駒が増えていく）を足す（Issue #49）。対戦用とストーリー用の部隊は、決まりの名前で分ける。
 
 ## 対戦に出せる編成
 
@@ -14,17 +28,17 @@
 | 満たさないときの理由（`Deck.Problem`） | 条件 |
 | --- | --- |
 | `NO_UNITS` | 雇った駒（将を除く）が 1 体以上いる |
-| `TOO_MANY_UNITS` | 雇った駒が 6 体（`Deck.MAX_UNITS`）以下 |
-| `OVER_BUDGET` | 合計コストが、選んだ軍の予算以下（ちょうどは通る） |
+| `TOO_MANY_UNITS` | 雇った駒が、決まりの上限以下（対戦の決まりでは 6 体。`Deck.MAX_UNITS`） |
+| `OVER_BUDGET` | 合計コストが、決まりの、選んだ軍の予算以下（ちょうどは通る） |
 | `TOO_MUCH_EQUIPMENT` | どの駒も、装備が 3 個（`Equipment.MAX_PER_UNIT`）以下 |
-| `NOT_IN_ROSTER` | どの駒も、選んだ軍のロスターの種類 |
+| `NOT_IN_ROSTER` | どの駒も、決まりの、選んだ軍のロスターの種類 |
 
 - `Deck.problems()` が、満たしていない理由を全部返す。空なら出せる。
   並びは上の表の順で、同じ理由は 1 回だけ（当てはまる駒が何体いても）。
 - `Deck.is_valid()` は、理由が 1 つも無いかどうか。
 - 検査は編成を変えない。駒や装備を足し引きしたあとは、呼び直す。
 - 理由に付ける文言は、画面の側が持つ。
-- 軍を選んでいない編成（`Army.NONE`）は、ロスターも予算も無いので、必ず通らない。
+- 軍を選んでいない編成（`Army.NONE`）と、決まりに無い軍の編成は、ロスターも予算も無いので、必ず通らない。
 
 ## 編成の途中
 
