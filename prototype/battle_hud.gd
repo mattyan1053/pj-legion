@@ -17,6 +17,8 @@ signal ult_pressed
 signal end_turn_pressed
 ## 進化先を選んだ。index は、出している選択肢の何番目か（0 が A、1 が B）。
 signal evolution_chosen(index: int)
+## 敵の全員の脅威範囲の切り替えが押された（出す・消すは呼ぶ側が決める）。
+signal threat_toggled
 ## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
 ## ログのボタンが押された。
@@ -81,7 +83,7 @@ const MENU_LINE_FROM := 70.0
 const INFO_WIDTH := 320.0
 const ULT_SUMMARY_WIDTH := 480.0
 const RESULT_STATS_WIDTH := 760.0
-const HINT_SIDE_WIDTH := 540.0
+const HINT_SIDE_WIDTH := 730.0
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 const COLOR_FORECAST := Color("ffd76a")
 ## 必殺技の知らせの色（軍ごと）。
@@ -114,6 +116,7 @@ var _hint_label: Label
 var _end_turn_button: Button
 var _end_turn_style: StyleBoxFlat
 var _opponent_button: Button
+var _threat_button: CheckButton
 var _ult_panel: PanelContainer
 var _ult_pinned := false
 var _menu: PanelContainer
@@ -301,6 +304,11 @@ func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 	_end_turn_button.disabled = not enabled
 	_end_turn_button.text = text
 	_end_turn_style.bg_color = COLOR_END_TURN_READY if ready else COLOR_END_TURN
+
+
+## 敵の全員の脅威範囲の切り替えを、出しているかに合わせる。
+func set_threat_button(shown: bool) -> void:
+	_threat_button.set_pressed_no_signal(shown)
 
 
 func end_turn_text() -> String:
@@ -649,6 +657,15 @@ func _build_bottom() -> void:
 	column.add_child(_cell_label)
 
 	# 駒に属さない操作は、いつも同じ場所（右下）に置く。
+	# 敵の全員の脅威範囲の切り替え。入・切が見て分かるよう、スイッチの形にする。
+	_threat_button = CheckButton.new()
+	_threat_button.text = "敵の攻撃範囲"
+	_threat_button.focus_mode = Control.FOCUS_NONE
+	_threat_button.add_theme_font_size_override("font_size", 17)
+	_threat_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_threat_button.tooltip_text = "敵が次の番に攻撃を届かせうるマスを、赤い斜線で重ねて出す"
+	_threat_button.pressed.connect(threat_toggled.emit)
+	row.add_child(_threat_button)
 	_ult_button = _button("必殺技", ult_pressed)
 	_ult_button.custom_minimum_size = Vector2(250.0, 48.0)
 	_ult_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER

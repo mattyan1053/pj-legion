@@ -62,7 +62,7 @@ static func skill_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	return battle.options(unit.id).skill_cells
 
 
-## 駒の移動範囲（巡航なし）。行動できない駒や相手の駒を選んで眺めるときに使う。
+## 駒の移動範囲（巡航なし）。ほかの駒を見る（閲覧）ときに使う。
 static func inspect_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	if unit != null:
@@ -70,7 +70,7 @@ static func inspect_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	return result
 
 
-## 駒の脅威範囲（次の自分の番に攻撃・スキルが届くマス。Threat）。相手の駒を選んで眺めるときに使う。
+## 駒の脅威範囲（次の自分の番に攻撃・スキルが届くマス。Threat）。相手の駒を見るときに使う。
 static func threat_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	if unit == null:
 		return []

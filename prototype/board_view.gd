@@ -50,6 +50,14 @@ const COLOR_SPRING_CROSS := Color("2fd66b")
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
+## 敵の全員の脅威範囲（show_danger）。塗りではなく、赤い斜線と、範囲の縁の線で描く。
+## 移動の青・巡航の黄の塗りの上に重ねても、下の色が見えて、どちらも読める。
+const COLOR_DANGER_STRIPE := Color(0.95, 0.12, 0.1, 0.55)
+const COLOR_DANGER_EDGE := Color(1.0, 0.25, 0.18, 0.95)
+## 斜線と縁の高さ。塗ったマス（駒の足元より上に塗るものも）より上。
+const DANGER_LIFT := 0.07
+## 縁の線の太さ（マス）。
+const DANGER_EDGE_WIDTH := 0.07
 
 var board: Board
 
@@ -60,6 +68,9 @@ var _occluders := {}  # Vector2i -> Array[GeometryInstance3D]（岩山と木立�
 var _cursor: MeshInstance3D
 var _marked: MeshInstance3D
 var _highlight: MultiMesh
+var _danger_stripes: MultiMesh
+var _danger_edges: MultiMesh
+var _danger_cells: Array[Vector2i] = []
 var _grid: ShaderMaterial
 var _grid_emphasis := 0.0
 var _grid_emphasized := false
@@ -262,6 +273,36 @@ func show_cells(colors: Dictionary, raised := {}) -> void:
 		i += 1
 
 
+## 敵の全員の脅威範囲を、赤い斜線（マスごと）と、範囲の縁の線で重ねて出す。前に出したものは消える。空を渡すと消える。
+## 塗ったマス（show_cells）とは別の層なので、塗りを作り直しても残る。
+func show_danger(cells: Array[Vector2i]) -> void:
+	_danger_cells = cells.duplicate()
+	var inside := {}
+	for cell in cells:
+		inside[cell] = true
+	_danger_stripes.instance_count = cells.size()
+	var edges: Array[Transform3D] = []
+	var across := Basis(Vector3.UP, PI / 2.0)
+	var half := 0.5 - DANGER_EDGE_WIDTH / 2.0
+	for i in cells.size():
+		var center := cell_center(cells[i]) + Vector3(0.0, DANGER_LIFT, 0.0)
+		_danger_stripes.set_instance_transform(i, Transform3D(Basis.IDENTITY, center))
+		# 隣が範囲の外なら、その辺に線を引く（範囲の内側に寄せて、どちらが内側か分かるようにする）。
+		for side: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			if inside.has(cells[i] + side):
+				continue
+			var offset := Vector3(side.x, 0.001, side.y) * half
+			edges.append(Transform3D(across if side.x != 0 else Basis.IDENTITY, center + offset))
+	_danger_edges.instance_count = edges.size()
+	for i in edges.size():
+		_danger_edges.set_instance_transform(i, edges[i])
+
+
+## 敵の全員の脅威範囲として出しているマス。検査用。
+func danger_cells() -> Array[Vector2i]:
+	return _danger_cells.duplicate()
+
+
 ## マウスの下のマスの印。盤の外なら消す。
 func set_cursor(cell: Vector2i) -> void:
 	_cursor.visible = board.in_bounds(cell)
@@ -362,6 +403,11 @@ func _build_markers() -> void:
 	highlight_instance.custom_aabb = AABB(Vector3.ZERO, Vector3(board.size.x, 1.0, board.size.y))
 	add_child(highlight_instance)
 
+	_danger_stripes = _overlay_layer(_stripe_mesh(), _stripe_material())
+	var edge_mesh := BoxMesh.new()
+	edge_mesh.size = Vector3(1.0, 0.004, DANGER_EDGE_WIDTH)
+	_danger_edges = _overlay_layer(edge_mesh, _overlay_material(COLOR_DANGER_EDGE))
+
 	_cursor = _add_mesh(cell_mesh, _overlay_material(Color(1.0, 1.0, 1.0, 0.4)), Vector3.ZERO)
 	_cursor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_cursor.visible = false
@@ -377,6 +423,46 @@ func _build_markers() -> void:
 	_marked.scale = Vector3(1.0, 0.1, 1.0)
 	_marked.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_marked.visible = false
+
+
+## 盤の上に重ねる層（同じ形をマスごとに並べる）。
+func _overlay_layer(mesh: Mesh, material: Material) -> MultiMesh:
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = mesh
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = multimesh
+	instance.material_override = material
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	instance.custom_aabb = AABB(Vector3.ZERO, Vector3(board.size.x, 1.0, board.size.y))
+	add_child(instance)
+	return multimesh
+
+
+## 1 マスぶんの、上を向いた板（斜線の絵を 1 回貼る）。
+static func _stripe_mesh() -> Mesh:
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(1.0, 1.0)
+	return plane
+
+
+## 赤い斜線の絵。マスごとに同じ絵を貼っても、隣のマスと線がつながる（周期がマスの幅を割り切る）。
+static func _stripe_material() -> StandardMaterial3D:
+	const SIZE := 64
+	const PERIOD := 16
+	const WIDTH := 5
+	var image := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
+	for y in SIZE:
+		for x in SIZE:
+			image.set_pixel(x, y, Color.WHITE if (x + y) % PERIOD < WIDTH else Color(1.0, 1.0, 1.0, 0.0))
+	image.generate_mipmaps()
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = ImageTexture.create_from_image(image)
+	material.albedo_color = COLOR_DANGER_STRIPE
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return material
 
 
 ## 起爆樽。入れないマスなので、マスの中央に立てる。ふたの赤い印で、ただの樽でないと分かるようにする。
