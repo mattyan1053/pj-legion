@@ -1209,7 +1209,10 @@ func _play_defeated(event: UnitDefeatedEvent) -> void:
 ## 中ボスが倒れた（駒が消えるのは UnitDefeatedEvent が見せた）。倒した陣営を、その色で知らせる。
 func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
-	var side := "左" if event.boss_index == 0 else "右"
+	# 中ボスは左右（中央平原・迷宮回廊）か上下（双子結晶）に 1 体ずつ。番号 0 が左か上。
+	var cells := battle.board.mid_boss_cells
+	var stacked := cells.size() == 2 and absi(cells[0].y - cells[1].y) > absi(cells[0].x - cells[1].x)
+	var side := ("上" if stacked else "左") if event.boss_index == 0 else ("下" if stacked else "右")
 	if event.slayer_side < 0:
 		_pop_number(at, "%sの中ボスが倒れた" % side)
 		return

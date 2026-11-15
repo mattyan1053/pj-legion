@@ -29,7 +29,7 @@ const MID_BOSS_SPREAD := 6
 const MID_BOSS_WALL_GAP := 4
 ## 迷宮回廊の回復の泉を、本陣の列から左右へ離す量と、真ん中の行から自分の本陣の側へ寄せる量。
 const SPRING_SPREAD := 5
-const SPRING_SETBACK := 6
+const SPRING_SETBACK := 7
 const WALL_RATIO := 0.10
 const FOREST_RATIO := 0.15
 ## 連結しない盤面ができたら、シードをずらして作り直す回数。尽きたら壁を削ってつなぐ。

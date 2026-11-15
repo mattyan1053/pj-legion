@@ -100,11 +100,12 @@ func test_squad_does_not_start_a_hunt_with_stronger_rivals_close() -> void:
 	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(4, 5))
 	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(3, 3))
 	battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(3, 5))
-	# 倒しきる前に着ける相手（攻撃力 8 + 8 + 11 + 12 = 39）のほうが強い。
-	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(18, 3))
-	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(18, 5))
-	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(19, 4))
-	battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(19, 5))
+	# 倒しきる前（3 ターン）に着ける相手（攻撃力 8 + 8 + 11 + 11 + 12 = 50）のほうが、はっきり強い（自分は 31）。
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(13, 3))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(13, 5))
+	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(14, 4))
+	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(14, 3))
+	battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(14, 5))
 	_play_phase(battle)
 	assert_eq(boss.hp, boss.max_hp(), "横取りされる狩りを始めない")
 

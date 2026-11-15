@@ -59,22 +59,36 @@ func test_each_stage_places_two_bosses_fair_to_both_players() -> void:
 			assert_eq(board.mid_boss_cells.size(), 2, label)
 			var left := board.mid_boss_cells[0]
 			var right := board.mid_boss_cells[1]
-			assert_true(left.x < right.x, "0 が左 " + label)
-			# 本陣どうしを入れ替える点対称で、左右が入れ替わる。
+			if stage == BoardGenerator.Stage.TWIN_SPRINGS:
+				assert_true(left.y < right.y, "0 が上 " + label)
+			else:
+				assert_true(left.x < right.x, "0 が左 " + label)
+			# 本陣どうしを入れ替える点対称で、2 体が入れ替わる。
 			assert_eq(right, board.hq_cells[0] + board.hq_cells[1] - left, label)
 			for cell in board.mid_boss_cells:
 				assert_eq(board.terrain_at(cell), Terrain.Type.NORMAL, label)
 				assert_true(board.can_place_object(cell), "オブジェクトが無い " + label)
 				for hq in board.hq_cells:
 					assert_true(board.is_reachable(hq, cell), "本陣から歩いて行ける %s %s" % [cell, label])
-					# 本陣の近くで序盤に事故が起きない: 縄張り + 射程よりずっと遠い。
-					assert_true(Combat.distance(hq, cell) >= 20, "本陣から遠い %s %s" % [cell, label])
+					# 本陣の近くで序盤に事故が起きない: 中ボスの届く距離（縄張り 4 + 射程 2）の 3 倍は離れている。
+					assert_true(Combat.distance(hq, cell) >= 18, "本陣から遠い %s %s" % [cell, label])
 
 
-func test_twin_springs_bosses_are_as_far_from_both_hqs() -> void:
-	var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, 1)
-	for cell in board.mid_boss_cells:
-		assert_eq(Combat.distance(cell, board.hq_cells[0]), Combat.distance(cell, board.hq_cells[1]), str(cell))
+func test_twin_springs_bosses_take_as_long_to_reach_for_both_players() -> void:
+	# 上の中ボスへ: プレイヤー2 は歩いて、プレイヤー1 は近いポータルを抜けて。下はその逆。歩数（マンハッタン）は 4 歩と違わない（ポータルは、置きたいマスが壁なら 3 マスまでずれる）。
+	for map_seed in SEEDS:
+		var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, map_seed)
+		for index in 2:
+			var boss := board.mid_boss_cells[index]
+			var walker := board.hq_cells[1 - index]
+			var jumper := board.hq_cells[index]
+			var through := 9999
+			for portal: Vector2i in board.portal_exits:
+				through = mini(through, Combat.distance(jumper, portal) + Combat.distance(board.portal_exit(portal), boss))
+			assert_true(absi(Combat.distance(walker, boss) - through) <= 4, "seed %d %s: 歩き %d、ポータル %d" % [map_seed, boss, Combat.distance(walker, boss), through])
+			# ポータルの出口のそばではない（出てすぐ狩れると、そのポータルに近い側だけのものになる）。
+			for portal: Vector2i in board.portal_exits:
+				assert_true(Combat.distance(portal, boss) > Neutral.TERRITORY_RADIUS + 2, "seed %d %s %s" % [map_seed, boss, portal])
 
 
 func test_boss_surroundings_are_kept_clear() -> void:
@@ -100,7 +114,7 @@ func test_bosses_appear_in_the_first_neutral_phase() -> void:
 	assert_eq(event.kind, UnitKind.Id.ELITE_MINION)
 	assert_eq(event.cell, HOME)
 	assert_eq(event.home_cell, HOME)
-	assert_eq(event.hp, 80)
+	assert_eq(event.hp, UnitKind.max_hp(UnitKind.Id.ELITE_MINION))
 	var boss := battle.unit_at(HOME)
 	assert_eq(boss.side, NEUTRAL)
 	assert_eq(boss.power(), 10)
