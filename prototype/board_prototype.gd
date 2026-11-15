@@ -17,7 +17,7 @@ const MatchSetupPanel := preload("res://prototype/match_setup_panel.gd")
 const Queries := preload("res://prototype/battle_queries.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
-const StatsText := preload("res://prototype/stats_text.gd")
+const ResultSummary := preload("res://prototype/result_summary.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const Settings := preload("res://prototype/settings.gd")
 const AppContext := preload("res://prototype/app_context.gd")
@@ -161,7 +161,7 @@ func _ready() -> void:
 	_playback.setup(self, _views, _rig, _hud, _effects, _ui, TEAM_COLORS, played, camera_follows)
 	_playback.refresh_status = _refresh_status
 	_playback.side_name = _side_name
-	_playback.stats_text = _stats_text
+	_playback.result_summary = _result_summary
 	_playback.camera_point = _camera_point
 	_playback.cpu_side = func() -> Unit.Side: return match_choice.cpu_side()
 	_playback.play_sound = func(name: StringName) -> void: context.play_sound(name)
@@ -179,6 +179,8 @@ func _ready() -> void:
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
 	_hud.result_shown.connect(_on_result_shown)
+	_hud.result_screen().overlays = context.overlays
+	_hud.result_screen().play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
 	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)
@@ -630,9 +632,14 @@ func result_title() -> String:
 	return _hud.result_title()
 
 
-## いま出ている戦績の要点（出ていなければ空）。検査用。
+## いま出ている詳しい戦績（出ていなければ空）。検査用。
 func result_stats() -> String:
 	return _hud.result_stats()
+
+
+## リザルトの画面（result_screen.gd）。検査とスクリーンショットの道具用。
+func result_screen() -> Control:
+	return _hud.result_screen()
 
 
 ## 盤面のマスをクリックする。選んでいる駒の攻撃できる相手・樽なら攻撃、回復できる味方なら回復、動けるマスなら移動、
@@ -1039,12 +1046,12 @@ func _run_cpu() -> void:
 # ---- 決着の画面 ----
 
 
-## 決着の画面に出す戦績の要点。
-func _stats_text() -> String:
+## リザルトの画面に出すもの（result_summary.gd）。draw なら引き分けで、winner は見ない。
+func _result_summary(draw: bool, winner: Unit.Side, reason: String) -> RefCounted:
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		names.append(_side_name(side))
-	return StatsText.text(stats, MatchSetup.stage_name(stage), names)
+	return ResultSummary.of(stats, draw, winner, reason, cpu_opponent, match_choice.human_side, names, MatchSetup.stage_name(stage))
 
 
 ## side の番が来たときにカメラが見る地点。将のいるところから、少し敵の本陣のほうへ寄せる

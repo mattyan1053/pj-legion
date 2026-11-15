@@ -69,6 +69,7 @@ func _process(_delta: float) -> void:
 			_expect(last.contains("の勝ち") or last.begins_with("引き分け"), "ログが決着の行で終わっていない: %s" % last)
 			print(_scene.result_stats())
 			_scenes_done = true
+			_queue_result_checks()
 			_queue_portal_and_spring_scene()
 			_queue_capture_scene()
 			_queue_barrel_draw_scene()
@@ -270,6 +271,32 @@ func _queue_barrel_draw_scene() -> void:
 		_expect(_scene.result_title() == "引き分け", "引き分けの結果が出ていない")
 		_expect(guard.hp == guard.max_hp() - MapObject.BLAST_DAMAGE, "爆発に巻き込まれなかった")
 		_expect(_scene.barrel_view_cells() == ([Vector2i(0, 0)] as Array[Vector2i]), "爆発した樽が画面に残っている"))
+
+
+## リザルトの画面。出そろう前は行き先を選べず、クリックは演出を飛ばすだけ。飛ばすと全部が出て、少しして行き先を選べる。
+## 詳しい戦績は畳んであり、ボタンで開け閉めできる。
+func _queue_result_checks() -> void:
+	var screen: Node = _scene.result_screen()
+	_expect(not screen.is_revealed() and screen.enabled_buttons().is_empty(), "出そろう前に、行き先を選べる")
+	_expect(_scene.result_title() != "", "リザルトの見出しが出ていない")
+	screen.skip()
+	var waited := [0]
+	var wait_revealed := func(again: Callable) -> void:
+		waited[0] += 1
+		if screen.enabled_buttons().is_empty():
+			if waited[0] > 600:
+				_finish("autoplay: 飛ばしても、リザルトの行き先を選べるようにならない", 1)
+				return
+			_scripted.push_front(again.bind(again))
+			return
+		_expect(screen.is_revealed(), "行き先を選べるのに、出そろっていない")
+		_expect(screen.enabled_buttons().has("タイトルへ"), "行き先に「タイトルへ」が無い")
+		_expect(screen.stat_lines().size() >= 2 and screen.mvp_text() != "", "戦績か MVP が出ていない")
+		_expect(not screen.is_detail_open(), "詳しい戦績が、始めから開いている")
+		screen.toggle_detail()
+		_expect(screen.is_detail_open(), "詳しい戦績が開かない")
+		screen.toggle_detail()
+	_scripted.append(wait_revealed.bind(wait_revealed))
 
 
 ## 盤の上の効果。ルールの入口（FieldEffects.place_*）で盾・煙幕・聖域を置いて再生し、

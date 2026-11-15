@@ -56,11 +56,12 @@ var _ui: BattleUiState
 ## 駒・光・文字を置くところ（場面）。
 var _stage: Node3D
 var team_colors: Array[Color] = []
-## 場面に頼むこと: 上の帯を描き直す (turn, phase)、陣営の名前 (side) -> String、戦績の要点 () -> String、
+## 場面に頼むこと: 上の帯を描き直す (turn, phase)、陣営の名前 (side) -> String、
+## リザルトの画面に出すもの (draw, winner, reason) -> result_summary.gd、
 ## side の番にカメラが見る地点 (side) -> Vector3、CPU が動かす陣営 () -> Unit.Side、効果音を鳴らす (name)。
 var refresh_status: Callable
 var side_name: Callable
-var stats_text: Callable
+var result_summary: Callable
 var camera_point: Callable
 var cpu_side: Callable
 var play_sound: Callable
@@ -587,12 +588,12 @@ func _play_acted(event: UnitActedEvent) -> void:
 
 func _play_won(event: GameWonEvent) -> void:
 	await after(0.4)
-	_hud.show_result(event.winner, WIN_REASONS[event.reason], stats_text.call())
+	_hud.show_result(result_summary.call(false, event.winner, WIN_REASONS[event.reason]))
 
 
 func _play_drawn(event: GameDrawnEvent) -> void:
 	await after(0.4)
-	_hud.show_draw(DRAW_REASONS[event.reason], stats_text.call())
+	_hud.show_result(result_summary.call(true, Unit.Side.NEUTRAL, DRAW_REASONS[event.reason]))
 
 
 func _play_defeated(event: UnitDefeatedEvent) -> void:
