@@ -50,3 +50,94 @@ func test_copy_does_not_share_the_armies() -> void:
 	other.stage = BoardGenerator.Stage.LABYRINTH
 	assert_eq(choice.armies[0], UnitKind.Army.MILITARY)
 	assert_eq(choice.stage, BoardGenerator.Stage.PLAIN)
+
+
+# --- 取っておいた部隊を選ぶ ---
+
+
+func _saved_fantasy(library: RefCounted) -> RefCounted:
+	var deck := Deck.new(UnitKind.Army.FANTASY)
+	deck.add(UnitKind.Id.SPELLBLADE).equip(Equipment.Id.SPEED_BOOTS)
+	deck.add(UnitKind.Id.PRIEST)
+	return library.add("速攻", deck)
+
+
+func test_chosen_deck_goes_into_the_match() -> void:
+	var library: RefCounted = preload("res://prototype/deck_library.gd").new()
+	var item := _saved_fantasy(library)
+	var choice := TrialSetup.new()
+	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
+	assert_eq(choice.armies[0], UnitKind.Army.FANTASY, "軍は部隊の軍になる")
+	var setup: MatchSetup = choice.to_setup(1)
+	assert_true(setup.is_valid())
+	assert_eq(setup.decks[0].entries.size(), 2)
+	assert_eq(setup.decks[0].entries[0].equipment, [Equipment.Id.SPEED_BOOTS] as Array[Equipment.Id])
+	assert_eq(setup.decks[1].entries.size(), CpuDeck.build(UnitKind.Army.FANTASY).entries.size(), "CPU はいつも CPU の編成")
+	var battle := setup.create_battle()
+	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1).size(), 3, "将 + 2 体")
+
+
+func test_both_humans_choose_their_own_decks() -> void:
+	var library: RefCounted = preload("res://prototype/deck_library.gd").new()
+	var item := _saved_fantasy(library)
+	var choice := TrialSetup.new()
+	choice.cpu_opponent = false
+	choice.choose_deck(Unit.Side.PLAYER2, item.id, item.deck)
+	var setup: MatchSetup = choice.to_setup(1)
+	assert_eq(setup.decks[0].entries.size(), MatchSetup.default_deck(UnitKind.Army.MILITARY).entries.size(), "先手は既定の編成")
+	assert_eq(setup.decks[1].entries.size(), 2, "後手は選んだ部隊")
+
+
+func test_cpu_side_ignores_a_chosen_deck() -> void:
+	var library: RefCounted = preload("res://prototype/deck_library.gd").new()
+	var item := _saved_fantasy(library)
+	var choice := TrialSetup.new()
+	choice.choose_deck(Unit.Side.PLAYER2, item.id, item.deck)  # 人どうしのときに選んでいた
+	assert_false(choice.is_human(Unit.Side.PLAYER2))
+	var setup: MatchSetup = choice.to_setup(1)
+	assert_eq(setup.decks[1].entries.size(), CpuDeck.build(UnitKind.Army.FANTASY).entries.size())
+
+
+func test_changing_the_army_drops_the_chosen_deck() -> void:
+	var library: RefCounted = preload("res://prototype/deck_library.gd").new()
+	var item := _saved_fantasy(library)
+	var choice := TrialSetup.new()
+	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
+	choice.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
+	assert_eq(choice.deck_ids[0], item.id, "同じ軍なら残る")
+	choice.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
+	assert_eq(choice.deck_ids[0], "")
+	assert_eq(choice.decks[0], null)
+
+
+func test_refresh_follows_the_library() -> void:
+	var library: RefCounted = preload("res://prototype/deck_library.gd").new()
+	var item := _saved_fantasy(library)
+	var choice := TrialSetup.new()
+	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
+	var rebuilt: Deck = item.deck.copy()
+	rebuilt.add(UnitKind.Id.PALADIN)
+	library.replace(item.id, item.name, rebuilt)
+	choice.refresh_decks(library)
+	assert_eq(choice.decks[0].entries.size(), 3, "組み直した中身になる")
+	var over: Deck = rebuilt.copy()
+	for i in 3:
+		over.add(UnitKind.Id.PALADIN)
+	library.replace(item.id, item.name, over)
+	choice.refresh_decks(library)
+	assert_eq(choice.deck_ids[0], "", "出せなくなったら既定の編成に戻す")
+	choice.choose_deck(Unit.Side.PLAYER1, item.id, rebuilt)
+	library.remove(item.id)
+	choice.refresh_decks(library)
+	assert_eq(choice.deck_ids[0], "", "消えたら既定の編成に戻す")
+
+
+func test_copy_does_not_share_the_chosen_deck() -> void:
+	var library: RefCounted = preload("res://prototype/deck_library.gd").new()
+	var item := _saved_fantasy(library)
+	var choice := TrialSetup.new()
+	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
+	var other: RefCounted = choice.copy()
+	other.decks[0].add(UnitKind.Id.PALADIN)
+	assert_eq(choice.decks[0].entries.size(), 2)
+	assert_eq(other.deck_ids[0], item.id)

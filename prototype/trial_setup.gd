@@ -1,13 +1,17 @@
 extends RefCounted
 ## 試作の対戦の設定画面（match_setup_panel.gd）で選ぶもの。選んだものから、ルールの対戦の設定（MatchSetup）を作る。
 ##
-## 選べるのは、両方のプレイヤーの軍、ステージ、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
-## 編成は軍ごとの既定の編成（MatchSetup.default_deck。予算どおり）。駒や装備を 1 つずつ選ぶ編成画面は無い。
+## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
+## 人の部隊は、取っておいた部隊（deck_library.gd）か、軍ごとの既定の編成（MatchSetup.default_deck。部隊の id が空のとき）。
+## CPU の編成は、いままでどおり CPU の編成（CpuDeck）。
 ## ここはノードに依存しない（テストから呼べる）。
 
 var stage := BoardGenerator.Stage.PLAIN
-## プレイヤー番号（0 が先手）ごとの軍。
+## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。
 var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
+## プレイヤー番号ごとの、選んだ部隊の id（空なら既定の編成）と、その中身（写し。選んだときのもの）。
+var deck_ids: Array[String] = ["", ""]
+var decks: Array[Deck] = [null, null]
 ## 相手を CPU が動かすか。偽なら、2 人が 1 台で交代する。
 var cpu_opponent := true
 ## CPU と対戦するときに、人が動かすプレイヤー（PLAYER1 = 先手、PLAYER2 = 後手）。人どうしでは見ない。
@@ -19,10 +23,58 @@ func cpu_side() -> Unit.Side:
 	return (1 - human_side) as Unit.Side
 
 
+## side が人の部隊を使うか（CPU が動かすプレイヤーは、いつも CPU の編成）。
+func is_human(side: Unit.Side) -> bool:
+	return not cpu_opponent or side == human_side
+
+
+## side の軍を選ぶ。選んでいた部隊の軍と違えば、部隊は既定の編成に戻す。
+func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
+	armies[side] = army
+	if decks[side] != null and decks[side].army != army:
+		choose_default(side)
+
+
+## side の部隊を、取っておいた部隊 id（中身 deck）にする。軍は部隊の軍になる。
+func choose_deck(side: Unit.Side, id: String, deck: Deck) -> void:
+	deck_ids[side] = id
+	decks[side] = deck.copy()
+	armies[side] = deck.army
+
+
+## side の部隊を、軍の既定の編成にする。
+func choose_default(side: Unit.Side) -> void:
+	deck_ids[side] = ""
+	decks[side] = null
+
+
+## 取っておいた部隊の一覧（deck_library.gd）に合わせ直す。選んでいた部隊が消えた・出せなくなったら、既定の編成に戻す。
+## 残っていれば、いまの中身にする（編成の画面で組み直したとき）。
+func refresh_decks(library: RefCounted) -> void:
+	for side in 2:
+		if deck_ids[side] == "":
+			continue
+		var item: Variant = library.find(deck_ids[side]) if library != null else null
+		if item == null or not item.playable() or item.deck.rules.id != DeckRules.VERSUS:
+			choose_default(side as Unit.Side)
+		else:
+			choose_deck(side as Unit.Side, item.id, item.deck)
+
+
+## side が対戦に出す編成（人なら選んだ部隊か既定の編成。CPU の編成は MatchSetup が作る）。
+func deck_for(side: Unit.Side) -> Deck:
+	if decks[side] != null:
+		return decks[side].copy()
+	return MatchSetup.default_deck(armies[side])
+
+
 func copy() -> RefCounted:
 	var other: RefCounted = get_script().new()
 	other.stage = stage
 	other.armies = armies.duplicate()
+	other.deck_ids = deck_ids.duplicate()
+	for side in 2:
+		other.decks[side] = decks[side].copy() if decks[side] != null else null
 	other.cpu_opponent = cpu_opponent
 	other.human_side = human_side
 	return other
@@ -31,9 +83,5 @@ func copy() -> RefCounted:
 ## この選択で、種 battle_seed の対戦の設定を作る。
 func to_setup(battle_seed: int) -> MatchSetup:
 	if cpu_opponent:
-		return MatchSetup.versus_cpu(
-			stage, battle_seed, MatchSetup.default_deck(armies[human_side]), armies[cpu_side()], human_side
-		)
-	return MatchSetup.versus_human(
-		stage, battle_seed, MatchSetup.default_deck(armies[0]), MatchSetup.default_deck(armies[1])
-	)
+		return MatchSetup.versus_cpu(stage, battle_seed, deck_for(human_side), armies[cpu_side()], human_side)
+	return MatchSetup.versus_human(stage, battle_seed, deck_for(Unit.Side.PLAYER1), deck_for(Unit.Side.PLAYER2))

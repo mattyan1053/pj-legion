@@ -1078,7 +1078,83 @@ func _leave_battle() -> void:
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
 	_expect(app.current_id() == &"title", "対戦の設定の「タイトルへ戻る」で、タイトルへ戻らない")
+	await _visit_decks(app)
 	_finish("autoplay: OK", 0)
+
+
+## 部隊の編成の場面: 組む・並べ替える・装備を持たせる・取っておく・写す・名前を変える・消す（確かめる）。
+## 出せない部隊は取っておけない。取っておいた部隊を、対戦の設定で選べる（出せない部隊は選べない）。
+func _visit_decks(app: Node) -> void:
+	var library: RefCounted = app.context.decks
+	app.current_scene().press_decks()
+	await app.scene_changed
+	_expect(app.current_id() == &"decks", "タイトルの「部隊の編成」で、編成の場面へ進まない")
+	var screen: Node = app.current_scene()
+	screen.press_new()
+	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty(), "「新しく組む」で、空の部隊を組めない")
+	_expect(not screen.can_save(), "空の部隊を取っておけた")
+	screen.hire(UnitKind.Id.SNIPER)
+	screen.hire(UnitKind.Id.SHIELD_TROOPER)
+	_expect(screen.selected_entry() == 1, "雇った駒が選ばれない")
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.move_entry(1, -1)
+	var deck: Deck = screen.editing_deck()
+	_expect(deck.entries[0].kind == UnitKind.Id.SHIELD_TROOPER and deck.entries[0].equipment.size() == 1 and screen.selected_entry() == 0, "並べ替えで、装備か選択がずれた")
+	for i in 4:
+		screen.hire(UnitKind.Id.SHIELD_TROOPER)
+	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
+	_expect(not screen.can_save() and deck.problems() == ([Deck.Problem.OVER_BUDGET] as Array[Deck.Problem]), "予算を超えた部隊を取っておけた")
+	screen.press_save()
+	_expect(screen.is_editing() and library.size() == 0, "出せない部隊が取っておかれた")
+	screen.remove_entry(5)
+	screen.press_back()  # 選択をやめる
+	_expect(screen.selected_entry() == -1 and screen.is_editing(), "右クリックで、選択をやめない")
+	screen.press_save()
+	_expect(not screen.is_editing() and library.size() == 1, "出せる部隊を取っておけない")
+	var id: String = screen.list_selected()
+	# 対戦の設定で選べる。
+	screen.press_duplicate()
+	_expect(library.size() == 2, "写せない")
+	screen.press_rename()
+	screen.set_dialog_input("写しの部隊")
+	screen.accept_dialog()
+	_expect(library.find(screen.list_selected()).name == "写しの部隊", "名前を変えられない")
+	screen.press_delete()
+	_expect(screen.is_dialog_open() and library.size() == 2, "消す前に確かめない")
+	screen.press_back()
+	_expect(not screen.is_dialog_open() and library.size() == 2, "確かめを、やめられない")
+	screen.press_delete()
+	screen.accept_dialog()
+	_expect(library.size() == 1, "消せない")
+	# 変えたところがあれば、取っておかずに戻る前に確かめる。
+	screen.select_saved(id)
+	screen.press_edit()
+	screen.choose_army(UnitKind.Army.FANTASY)
+	_expect(screen.is_dialog_open(), "駒のいる部隊の軍を変える前に、確かめない")
+	screen.accept_dialog()
+	_expect(screen.editing_deck().army == UnitKind.Army.FANTASY and screen.editing_deck().entries.is_empty(), "軍を変えられない")
+	screen.press_back()
+	_expect(screen.is_dialog_open(), "変えたところがあるのに、確かめずに一覧へ戻った")
+	screen.accept_dialog()
+	_expect(not screen.is_editing() and library.find(id).deck.army == UnitKind.Army.MILITARY, "取っておかずに戻ったのに、部隊が変わった")
+	screen.press_back()
+	await app.scene_changed
+	_expect(app.current_id() == &"title", "編成の一覧から、タイトルへ戻らない")
+	# 対戦の設定で、取っておいた部隊を選ぶ。
+	app.current_scene().press_start()
+	await app.scene_changed
+	var panel: Node = app.current_scene().setup_panel()
+	panel.choose_opponent(true)
+	panel.choose_human_side(Unit.Side.PLAYER1)
+	panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
+	var ids: Array = panel.deck_options(Unit.Side.PLAYER1).map(func(option: Array) -> String: return option[0])
+	_expect(ids == ["", id], "対戦の設定に、取っておいた部隊が並ばない: %s" % [ids])
+	_expect(panel.choose_deck(Unit.Side.PLAYER1, id), "取っておいた部隊を選べない")
+	var setup: MatchSetup = panel.current_choice().to_setup(1)
+	_expect(setup.is_valid() and setup.decks[0].entries.size() == 5 and setup.decks[0].entries[0].kind == UnitKind.Id.SHIELD_TROOPER, "選んだ部隊で対戦を作らない")
+	_expect(setup.decks[1].entries.size() == CpuDeck.build(setup.army_of(Unit.Side.PLAYER2)).entries.size(), "CPU の編成が変わった")
+	panel.cancel()
+	await app.scene_changed
 
 
 func _finish(message: String, code: int) -> void:

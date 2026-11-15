@@ -18,6 +18,12 @@ func test_goes_title_setup_battle_and_back() -> void:
 	assert_eq(SceneFlow.next(&"setup", &"title"), &"title")
 
 
+func test_title_opens_the_deck_screen_and_comes_back() -> void:
+	assert_eq(SceneFlow.next(&"title", &"decks"), &"decks")
+	assert_eq(SceneFlow.next(&"decks", &"back"), &"title")
+	assert_eq(SceneFlow.next(&"decks", &"title"), &"title")
+
+
 func test_undefined_transitions_go_nowhere() -> void:
 	assert_eq(SceneFlow.next(&"title", &"back"), &"")
 	assert_eq(SceneFlow.next(&"nowhere", &"start"), &"")

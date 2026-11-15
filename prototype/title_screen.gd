@@ -1,11 +1,11 @@
 extends Node
-## タイトルの場面。飾らない最小の形: 題名と、始める・設定・終える。背景は対戦と同じ景色（backdrop.gd）。
+## タイトルの場面。飾らない最小の形: 題名と、始める・部隊の編成・設定・終える。背景は対戦と同じ景色（backdrop.gd）。
 ## 場面の決まりは scene_flow.gd。
 
 const AppContext := preload("res://prototype/app_context.gd")
 const Backdrop := preload("res://prototype/backdrop.gd")
 
-## 「始める」で &"start"。
+## 「始める」で &"start"、「部隊の編成」で &"decks"。
 signal finished(outcome: StringName)
 
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
@@ -43,6 +43,7 @@ func _ready() -> void:
 	gap.custom_minimum_size = Vector2(0.0, 10.0)
 	column.add_child(gap)
 	_add_button(column, &"start", "始める", press_start)
+	_add_button(column, &"decks", "部隊の編成", press_decks)
 	_add_button(column, &"settings", "設定", press_settings)
 	_add_button(column, &"quit", "終える", press_quit)
 
@@ -50,6 +51,11 @@ func _ready() -> void:
 ## 「始める」: 対戦の設定へ。
 func press_start() -> void:
 	finished.emit(&"start")
+
+
+## 「部隊の編成」: 取っておく部隊を組む。
+func press_decks() -> void:
+	finished.emit(&"decks")
 
 
 ## 「設定」: 設定の画面だけを開く（システムメニューと同じ画面）。

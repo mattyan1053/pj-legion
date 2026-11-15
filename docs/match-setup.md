@@ -1,7 +1,7 @@
 # 対戦の設定
 
 コード: `rules/match_setup.gd`（`MatchSetup`）。テスト: `tests/rules/test_match_setup.gd`。
-シーンの遷移（タイトル、ステージ選択、編成画面、リザルト）は画面の話なので、ここには無い。
+シーンの遷移（タイトル、ステージ選択、編成の画面、リザルト）は画面の話なので、ここには無い（`docs/scene-flow.md`、`docs/deck-screen.md`）。
 
 ## 持つもの
 
@@ -18,8 +18,8 @@
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
   CPU の軍は、対戦を始める側が選ぶ。
-- **人の編成**は、渡したもの（`set_human(プレイヤー, 編成)`）。編成画面が無い間は、軍ごとの既定の編成
-  `MatchSetup.default_deck(軍)` を使う。中身は CPU の編成と同じ（予算どおり）。
+- **人の編成**は、渡したもの（`set_human(プレイヤー, 編成)`）。試作では、編成の画面で組んで取っておいた部隊か、
+  軍ごとの既定の編成 `MatchSetup.default_deck(軍)`（中身は CPU の編成と同じ。予算どおり）。
 - よく使う組み合わせ: `MatchSetup.versus_cpu(ステージ, 種, 人の編成, CPU の軍, 人のプレイヤー)`、
   `MatchSetup.versus_human(ステージ, 種, 先手の編成, 後手の編成)`。
 - 読むもの: `is_cpu(プレイヤー)`、`cpu_sides()`（CPU が動かすプレイヤー番号の並び。小さい順）、

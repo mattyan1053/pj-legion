@@ -202,7 +202,7 @@ func _ready() -> void:
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
-	_setup_panel.setup(TEAM_COLORS)
+	_setup_panel.setup(TEAM_COLORS, context.decks if context != null else null)
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 	_setup_panel.cancelled.connect(_refresh)

@@ -4,7 +4,7 @@ extends RefCounted
 ## ファイルは <dir>/<名前>.json で、中身は {"name": 名前, "version": 形式の版, "data": 中身}。
 ## 版を見て読み替えるのは、使う側（settings.gd など）の仕事。ここは、壊れたファイル・読めないファイルを
 ## 「無い」として返すだけで、起動を止めない。
-## 後で「部隊の編成を取っておく」（Issue #49）も、名前を変えて同じ形で置ける（例: "decks"）。
+## 置いているもの: 設定（"settings"。settings.gd）、取っておいた部隊（"decks"。deck_library.gd）。
 
 ## 名前に使える文字（ファイル名にそのまま使うので、英小文字・数字・_ と - だけ）。
 const NAME_PATTERN := "^[a-z0-9_-]+$"
