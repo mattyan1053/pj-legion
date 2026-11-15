@@ -8,6 +8,8 @@ extends CanvasLayer
 ## 駒のそばのメニューの項目が押された。id は set_menu() に渡した項目の名前。
 const TextWrap := preload("res://prototype/text_wrap.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
+const ForecastPanel := preload("res://prototype/forecast_panel.gd")
+const ForecastText := preload("res://prototype/forecast_text.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -86,6 +88,19 @@ const RESULT_STATS_WIDTH := 760.0
 const HINT_SIDE_WIDTH := 730.0
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 const COLOR_FORECAST := Color("ffd76a")
+const COLOR_STATUS := Color("8fe6ff")
+const COLOR_TRAIT := Color("ffd34a")
+const ARMY_NAMES := {
+	UnitKind.Army.MILITARY: "MILITARY",
+	UnitKind.Army.FANTASY: "FANTASY",
+}
+## 状態の効果の短い説明（駒の情報の枠に、残りの期間と一緒に出す）。
+const STATUS_TEXTS := {
+	Status.Type.BARRIER: "次に受けるダメージを 1 回だけ防ぐ",
+	Status.Type.AIM: "射程 +%d。次の攻撃がクリティカル（動くと解ける）" % PrecisionAimSkill.RANGE_BONUS,
+	Status.Type.FATIGUE: "攻撃 -%d" % AdrenalineShotSkill.POWER_PENALTY,
+	Status.Type.ASSAULT: "移動 +%d・攻撃 +%d" % [AllOutAssaultUlt.MOVE_BONUS, AllOutAssaultUlt.POWER_BONUS],
+}
 ## 必殺技の知らせの色（軍ごと）。
 const ULT_COLORS := {
 	Ult.Id.ALL_OUT_ASSAULT: Color("ff5a4a"),
@@ -110,6 +125,13 @@ var _info_hp: ProgressBar
 var _info_hp_fill: StyleBoxFlat
 var _info_stats: Label
 var _info_state: Label
+var _info_statuses: Label
+var _info_items: Label
+var _info_skill: Label
+var _info_skill_note: Label
+var _info_traits: Label
+## 盤を見ている人のプレイヤー（駒の情報の [自軍] [敵軍] を決める）。呼ぶ側が合わせる。
+var viewer_side := Unit.Side.PLAYER1
 var _info_forecast: Label
 var _cell_label: Label
 var _hint_label: Label
@@ -120,6 +142,7 @@ var _threat_button: CheckButton
 var _ult_panel: PanelContainer
 var _ult_pinned := false
 var _menu: PanelContainer
+var _forecast: ForecastPanel
 var _menu_line: Line2D
 var _menu_column: VBoxContainer
 ## いまメニューに出している項目（[名前, 文字, 押せるか] の列）と、項目の名前 -> ボタン。
@@ -145,6 +168,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_bottom()
 	_build_banner()
 	_build_menu()
+	_build_forecast()
 	_build_result()
 	_build_evolution()
 
@@ -215,45 +239,100 @@ func is_ult_enabled() -> bool:
 	return not _ult_button.disabled
 
 
-## 駒の情報を出す。unit が null なら消す。state は行動の状態と、いるマスのこと。forecast は攻撃の見込み（無ければ空）。
-## skill_note が真なら、スキルの説明も出す（forecast のほうにスキルの説明を出すときは、偽にして重ねない）。
-func show_unit(unit: Unit, state: String, forecast: String, skill_note := true) -> void:
+## 駒の情報を出す。unit が null なら消す。state は行動の状態と、いるマスのこと。note は、そのときに読むべき説明
+## （メニューの項目の説明、スキルの対象を選んでいるときの見込み。無ければ空）。
+## skill_note が真なら、スキルの説明も出す（note のほうにスキルの説明を出すときは、偽にして重ねない）。
+##
+## 並び（上から、大事な順）: 名前と役割 → 所属（[自軍] [敵軍] [中立]、陣営、軍） → HP の棒と数 → 能力値とレベル →
+## 状態（残りの期間と効果） → 装備 → スキル（名前と使えるか、説明） → 進化の特性 → 行動の状態といるマス → note。
+func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
 	if unit == null:
 		return
 	var role: String = ROLE_NAMES.get(UnitKind.role(unit.kind), "")
-	_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
+	var kind := UnitKind.display_name(unit.kind)
+	if unit.evolution != Evolution.Id.NONE:
+		# 進化した駒は、進化先の名前と、元の種類。
+		_info_name.text = "%s（%s から進化%s）" % [unit.display_name(), kind, "・" + role if role else ""]
+	else:
+		_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
-	_info_side.text = SIDE_NAMES[unit.side]
+	_set_folded(_info_name, _info_name.text, INFO_WIDTH)
+	_info_side.text = affiliation_text(unit, viewer_side)
+	_info_side.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.5))
 	_info_side.visible = true
 	var ratio := float(unit.hp) / maxf(unit.max_hp(), 1.0)
 	_info_hp.visible = true
 	_info_hp.value = ratio * 100.0
 	_info_hp_fill.bg_color = hp_color(ratio)
 	var power_name := "回復" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "攻撃"
-	_info_stats.text = "HP %d / %d\n%s %d　移動 %d　射程 %d" % [
+	var stats := "HP %d / %d\n%s %d　移動 %d　射程 %d" % [
 		unit.hp, unit.max_hp(), power_name, unit.power(), unit.move_range(), unit.attack_range(),
 	]
-	var skill := Skills.of(unit)
-	if skill != null:
-		_info_stats.text += "\nスキル: %s（%s）" % [skill.display_name(), skill_state_text(unit)]
-		# スキルの中身は、読んで知るもの。選んだ駒・マウスを乗せた駒のスキルの説明を、いつも出す。
-		if skill_note:
-			state += ("\n" if state != "" else "") + "%s: %s" % [skill.display_name(), skill.summary()]
-	for type in Statuses.types_of(unit):
-		_info_stats.text += "\n状態: %s（あと %d ターン）" % [Status.display_name(type), unit.statuses[type]]
 	if Growth.can_grow(unit):
 		if unit.level >= Growth.MAX_LEVEL:
-			_info_stats.text += "\nレベル %d（最大）" % unit.level
-			for which in Evolution.traits(unit.evolution):
-				_info_stats.text += "\n★ %s" % TRAIT_TEXTS[which]
+			stats += "\nレベル %d（最大）" % unit.level
 		else:
-			_info_stats.text += "\nレベル %d　経験 %d / %d" % [unit.level, unit.experience, Growth.EXPERIENCE_PER_LEVEL]
-	_set_folded(_info_stats, _info_stats.text, INFO_WIDTH)
-	_set_folded(_info_state, state, INFO_WIDTH)
-	_info_state.visible = state != ""
-	_set_folded(_info_forecast, forecast, INFO_WIDTH)
-	_info_forecast.visible = forecast != ""
+			stats += "\nレベル %d　経験 %d / %d" % [unit.level, unit.experience, Growth.EXPERIENCE_PER_LEVEL]
+	_set_folded(_info_stats, stats, INFO_WIDTH)
+
+	var statuses: Array[String] = []
+	for type in Statuses.types_of(unit):
+		statuses.append(status_text(type, unit.statuses[type]))
+	_set_shown(_info_statuses, "\n".join(statuses))
+
+	var items := ""
+	if Equipment.can_equip(unit.kind):
+		items = "装備: " + equipment_text(unit.equipment)
+	_set_shown(_info_items, items)
+
+	var skill := Skills.of(unit)
+	var skill_text := ""
+	if skill != null:
+		skill_text = "スキル: %s（%s）" % [skill.display_name(), skill_state_text(unit)]
+	_set_shown(_info_skill, skill_text)
+	# スキルの中身は、読んで知るもの。選んだ駒・マウスを乗せた駒のスキルの説明を、いつも出す。
+	_set_shown(_info_skill_note, skill.summary() if skill != null and skill_note else "")
+
+	var traits: Array[String] = []
+	for which in Evolution.traits(unit.evolution):
+		traits.append("★ " + TRAIT_TEXTS[which])
+	_set_shown(_info_traits, "\n".join(traits))
+	_set_shown(_info_state, state)
+	_set_shown(_info_forecast, note)
+
+
+## 駒の所属の文。盤を見ている人（viewer）から見た [自軍] [敵軍] [中立] と、陣営、軍（雇う駒だけ）。
+static func affiliation_text(unit: Unit, viewer: Unit.Side) -> String:
+	var tag := "[中立]"
+	if unit.side == viewer:
+		tag = "[自軍]"
+	elif unit.side != Unit.Side.NEUTRAL:
+		tag = "[敵軍]"
+	var parts: Array[String] = [tag, SIDE_NAMES[unit.side]]
+	var army := UnitKind.army(unit.kind)
+	if army != UnitKind.Army.NONE:
+		parts.append(ARMY_NAMES[army])
+	return "　".join(parts)
+
+
+## 装備の一覧（同じものは数をまとめる。「スピードブーツ ×2・アイアンシールド」）。無ければ「なし」。
+static func equipment_text(items: Array[Equipment.Id]) -> String:
+	var counts := {}
+	var order: Array[Equipment.Id] = []
+	for item in items:
+		if not counts.has(item):
+			order.append(item)
+		counts[item] = counts.get(item, 0) + 1
+	var parts: Array[String] = []
+	for item in order:
+		parts.append(Equipment.display_name(item) + (" ×%d" % counts[item] if counts[item] > 1 else ""))
+	return "・".join(parts) if not parts.is_empty() else "なし"
+
+
+## 付いている状態の文（名前、残りのターン数、効果）。
+static func status_text(type: Status.Type, turns: int) -> String:
+	return "%s（あと %d ターン）: %s" % [Status.display_name(type), turns, STATUS_TEXTS[type]]
 
 
 ## クリックしたマスの情報を、駒の情報と同じ枠に出す。title は見出し（マスの位置と地形）、body は説明（行ごと）。
@@ -264,19 +343,25 @@ func show_cell_info(title: String, body: String) -> void:
 	_info_side.visible = false
 	_info_hp.visible = false
 	_set_folded(_info_stats, body, INFO_WIDTH)
-	_info_state.visible = false
-	_info_forecast.visible = false
+	for label: Label in [_info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
+		label.visible = false
+
+
+## label に、折り返した text を出す。空なら隠す。
+func _set_shown(label: Label, text: String) -> void:
+	label.visible = text != ""
+	if label.visible:
+		_set_folded(label, text, INFO_WIDTH)
 
 
 ## 駒の情報の枠に出している文（見出しを除く。出ていなければ空）。検査用。
 func info_text() -> String:
 	if not _info_panel.visible:
 		return ""
-	var parts: Array[String] = [_info_stats.text]
-	if _info_state.visible:
-		parts.append(_info_state.text)
-	if _info_forecast.visible:
-		parts.append(_info_forecast.text)
+	var parts: Array[String] = []
+	for label: Label in [_info_side, _info_stats, _info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
+		if label.visible:
+			parts.append(label.text)
 	return "\n".join(parts)
 
 
@@ -624,13 +709,25 @@ func _build_info_panel() -> void:
 	column.add_child(_info_hp)
 	_info_stats = _label(17)
 	column.add_child(_info_stats)
-	_info_state = _label(15)
-	_info_state.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	column.add_child(_info_state)
+	# 状態は、残りの期間と効果。付いている間だけ（盤の上では、足元の水色の輪だけで分かる）。
+	_info_statuses = _info_line(column, 15, COLOR_STATUS)
+	_info_items = _info_line(column, 15, Color("e6e6e6"))
+	_info_skill = _info_line(column, 15, Color("e6e6e6"))
+	_info_skill_note = _info_line(column, 14, COLOR_TEXT_DIM)
+	_info_traits = _info_line(column, 15, COLOR_TRAIT)
+	_info_state = _info_line(column, 14, COLOR_TEXT_DIM)
 	_info_forecast = _label(17)
 	_info_forecast.add_theme_color_override("font_color", COLOR_FORECAST)
 	# スキルの説明のように長い文は、枠の幅で折り返してから出す（_set_folded。枠を横に広げて盤面を隠さない）。
 	column.add_child(_info_forecast)
+
+
+func _info_line(column: VBoxContainer, font_size: int, color: Color) -> Label:
+	var label := _label(font_size)
+	label.add_theme_color_override("font_color", color)
+	label.visible = false
+	column.add_child(label)
+	return label
 
 
 func _build_bottom() -> void:
@@ -700,6 +797,41 @@ func _build_bottom() -> void:
 	add_child(_ult_panel)
 	_ult_summary = _label(15)
 	_ult_panel.add_child(_ult_summary)
+
+
+## 戦闘予測のパネル。中身は show_forecast()、置き場所は place_forecast() で決める。
+func _build_forecast() -> void:
+	_forecast = ForecastPanel.new()
+	add_child(_forecast)
+	_forecast.setup(_team_colors, _char_width)
+
+
+## 戦闘予測のパネルを出す（title は何をするか）。
+func show_forecast(title: String, summary: ForecastText.Summary) -> void:
+	_forecast.show_summary(title, summary)
+
+
+func hide_forecast() -> void:
+	_forecast.hide_summary()
+
+
+## 戦闘予測のパネルの大きさ（出していなければ 0）。
+func forecast_size() -> Vector2:
+	return _forecast.get_combined_minimum_size() if _forecast.visible else Vector2.ZERO
+
+
+func place_forecast(at: Vector2) -> void:
+	_forecast.position = at.round()
+	_forecast.size = _forecast.get_combined_minimum_size()
+
+
+## 戦闘予測のパネルが画面に占める四角と、出している中身の文（出していなければ空）。検査用。
+func forecast_rect() -> Rect2:
+	return Rect2(_forecast.position, _forecast.size) if _forecast.visible else Rect2()
+
+
+func forecast_text() -> String:
+	return _forecast.shown_text()
 
 
 ## 駒のそばのメニュー。中身は set_menu()、置き場所は place_menu() で決める。
@@ -826,16 +958,19 @@ func _label(font_size: int) -> Label:
 	return label
 
 
+## 文字の幅（px）。何度も測り直さないよう覚えておく（画面を作り直すたびに呼ばれる）。
+func _char_width(font: Font, font_size: int, character: String) -> float:
+	var key := "%d:%s" % [font_size, character]
+	if not _char_widths.has(key):
+		_char_widths[key] = font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	return _char_widths[key]
+
+
 ## label に、width（px）で折り返した text を出す（text_wrap.gd。日本語の禁則を守る）。
 func _set_folded(label: Label, text: String, width: float) -> void:
 	var font := label.get_theme_font("font")
 	var font_size := label.get_theme_font_size("font_size")
-	label.text = TextWrap.fold(text, width, func(character: String) -> float:
-		# 文字の幅は、何度も測り直さないよう覚えておく（画面を作り直すたびに呼ばれる）。
-		var key := "%d:%s" % [font_size, character]
-		if not _char_widths.has(key):
-			_char_widths[key] = font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		return _char_widths[key])
+	label.text = TextWrap.fold(text, width, func(character: String) -> float: return _char_width(font, font_size, character))
 
 
 ## pressed を、そのまま to（この HUD の signal）として知らせるボタン。to が空なら、呼ぶ側でつなぐ。

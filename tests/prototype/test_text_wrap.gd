@@ -54,3 +54,12 @@ func test_keeps_newlines_and_indent() -> void:
 
 func test_line_count() -> void:
 	assert_eq(TextWrap.line_count("あいうえおかきくけこ", 10.0, _measure), 2)
+
+
+func test_katakana_word_stays_together() -> void:
+	# 「ダメージ」を「ダメー」と「ジ」に分けない（数とつながった「ジ 0.8 倍」だけを次の行へ送らない）。
+	var lines := _wrap("森にいると受けるダメージ 0.8 倍", 26.0)
+	assert_true(lines[1].begins_with("ダメージ"), "カタカナの語が切れた: %s" % [lines])
+	# 行より長いカタカナは、行の末で切る（はみ出さない）。
+	for line in _wrap("インフィルトレーターインフィルトレーター", 12.0):
+		assert_true(_measure(line) <= 12.0, "幅を超えた: %s" % line)

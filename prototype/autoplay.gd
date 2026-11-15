@@ -9,6 +9,7 @@ extends Node
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
 const Queries := preload("res://prototype/battle_queries.gd")
+const NO_CELL := Vector2i(-1, -1)
 
 ## これだけターンが進んでも決着しなければ、失敗にする。
 const MAX_TURNS := 80
@@ -163,6 +164,18 @@ func _expect(condition: bool, what: String) -> void:
 		_finish("autoplay: %s" % what, 1)
 
 
+## 戦闘予測のパネルが出ていて、words をどれも含み、画面（帯の内側）に収まり、駒のそばのメニューと重ならないこと。
+func _expect_forecast(words: Array, what: String) -> void:
+	var text: String = _scene.forecast_text()
+	for word: String in words:
+		_expect(text.contains(word), "%sの予測のパネルに「%s」が無い: %s" % [what, word, text.replace("\n", " / ")])
+	var rect: Rect2 = _scene.forecast_rect()
+	var area: Rect2 = _scene.menu_area()
+	_expect(area.grow(1.0).encloses(rect), "%sの予測のパネルが画面からはみ出した: %s" % [what, rect])
+	_expect(rect.size.y <= area.size.y * 0.6, "%sの予測のパネルが高すぎる: %s" % [what, rect])
+	_expect(not rect.intersects(_scene.menu_rect()), "%sの予測のパネルが、メニューに重なった" % what)
+
+
 func _small_board(size: Vector2i) -> Board:
 	var board := Board.new(size)
 	board.hq_cells = [Vector2i(0, size.y - 1), Vector2i(size.x - 1, 0)]
@@ -239,11 +252,17 @@ func _queue_barrel_draw_scene() -> void:
 	king2.hp = 10
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(3, 4))
 	var guard := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(4, 1))
+	# 爆発に 5 体を巻き込む（予測のパネルは、駒ごとに 1 行の詰めた形になり、画面に収まる）。
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 3))
+	battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER2, Vector2i(4, 3))
 
 	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(sniper.cell))
 	_scripted.append(func() -> void:
 		_expect(Queries.barrel_targets(battle, sniper) == ([Vector2i(3, 2)] as Array[Vector2i]), "狙える樽が違う")
+		_scene.hover(Vector2i(3, 2))
+		_expect_forecast(["樽を撃つ", "2 体を倒せる", "引き分け"], "樽")
+		_scene.hover(NO_CELL)
 		_scene.click_cell(Vector2i(3, 2)))
 	_scripted.append(func() -> void:
 		_expect(battle.is_draw(), "引き分けにならなかった")
@@ -359,6 +378,9 @@ func _queue_skill_scene() -> void:
 		_scene.press_skill()
 		_expect(_scene.is_choosing_skill_target(), "ファイアボールの対象を選び始めなかった")
 		_scene.played.erase(damaged)
+		_scene.hover(burned.cell)
+		_expect_forecast([Skills.of(sorcerer).display_name(), burned.display_name(), "ダメージ"], "ファイアボール")
+		_scene.hover(NO_CELL)
 		_scene.click_cell(burned.cell))
 	_scripted.append(func() -> void:
 		_expect(burned.hp == burned.max_hp() - FireballSkill.DAMAGE, "ファイアボールが当たらなかった")
@@ -666,6 +688,9 @@ func _queue_heal_scene() -> void:
 		_scene._on_menu_hovered(&"")
 		_expect(not _scene.info_text().contains("待機:"), "マウスが離れても、項目の説明が残っている")
 		_expect(_scene.press_menu(&"heal") and _scene.is_choosing_target(), "メニューの回復で、相手を選び始めなかった")
+		_scene.hover(wounded.cell)
+		_expect_forecast(["回復", wounded.display_name(), "+%d" % medic.power()], "回復")
+		_scene.hover(NO_CELL)
 		_scene.click_cell(wounded.cell))
 	_scripted.append(func() -> void:
 		_expect(wounded.hp == 10 + medic.power(), "回復しなかった")
@@ -731,6 +756,12 @@ func _queue_inspection_scene() -> void:
 		looks.call(sniper, "相手を選ぶ途中")
 		_scene.cancel()
 		_expect(_scene.is_choosing_target() and _scene.inspected_unit() == null, "見終わったあとに、相手を選ぶ途中へ戻らなかった")
+		# 相手にマウスを乗せると、そのそばに戦闘予測のパネルが出る（メニューと重ならず、画面に収まる）。離すと消える。
+		_scene.hover(foe.cell)
+		_expect_forecast(["攻撃", foe.display_name(), "ダメージ"], "攻撃")
+		_scene.hover(Vector2i(0, 0))
+		_expect(_scene.forecast_text() == "", "相手からマウスを離しても、予測のパネルが残っている")
+		_scene.hover(NO_CELL)
 		_scene.click_cell(foe.cell))
 	_scripted.append(func() -> void:
 		_expect(trooper.acted and foe.hp < foe.max_hp(), "見終わったあとに、攻撃できなかった"))
