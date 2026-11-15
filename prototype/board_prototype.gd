@@ -52,6 +52,8 @@ const COLOR_RELIC := Color("ffe08a")
 const COLOR_INSPECT := Color(0.8, 0.93, 1.0, 0.5)
 const COLOR_THREAT := Color(0.95, 0.05, 0.2, 0.62)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
+## 見ている（閲覧している）駒の足元の輪。選んでいる駒の黄の輪と見分ける。
+const COLOR_INSPECTED := Color(0.85, 0.95, 1.0, 0.95)
 ## ログの行を選んだときに示す、出来事のあったマスと、関わった駒のいまのマス。
 const COLOR_LOG_PLACE := Color(1.0, 0.82, 0.25, 0.75)
 const COLOR_LOG_UNIT := Color(0.95, 0.97, 1.0, 0.7)
@@ -113,6 +115,7 @@ var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
+var _inspect_ring: MeshInstance3D
 
 ## システムメニューに足す項目の名前。
 const SYSTEM_MATCH_SETUP := &"match_setup"
@@ -140,6 +143,11 @@ var _cpu := CpuPlayer.new()
 var _cpu_running := false
 
 var _selected_id := 0
+## 見ている（閲覧している）駒の番号。選んでいる駒（_selected_id。行動させる駒）とは別に持つ。
+## 見ている間は、その駒の動ける範囲と脅威範囲を塗り、選択・移動・対象を選ぶ途中はそのまま残す。0 なら見ていない。
+var _inspected_id := 0
+## 敵の全員の脅威範囲（Threat.against）を、盤に重ねて出しているか（下の帯の切り替え）。
+var _threat_shown := false
 var _hover_cell := NO_CELL
 ## イベントを再生している間は、操作を受け付けない。
 var _busy := false
@@ -186,7 +194,8 @@ func _ready() -> void:
 	_build_environment()
 	_rig = OrbitCamera.new()
 	add_child(_rig)
-	_build_selection_ring()
+	_selection_ring = _build_ring(COLOR_SELECTED, 0.38, 0.47)
+	_inspect_ring = _build_ring(COLOR_INSPECTED, 0.40, 0.50)
 	_hud = BattleHud.new()
 	add_child(_hud)
 	_hud.setup(TEAM_COLORS)
@@ -197,6 +206,7 @@ func _ready() -> void:
 	_hud.restart_pressed.connect(_on_restart_pressed)
 	_hud.evolution_chosen.connect(choose_evolution)
 	_hud.opponent_pressed.connect(toggle_opponent)
+	_hud.threat_toggled.connect(toggle_threat)
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
@@ -326,6 +336,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				start_battle(BoardGenerator.Stage.TWIN_SPRINGS, map_seed + 1)
 			KEY_F4:
 				toggle_opponent()
+			KEY_T:
+				toggle_threat()
 
 
 # ---- 対戦の始まり ----
@@ -508,7 +520,9 @@ func _on_log_entry_chosen(entry: BattleLog.Entry) -> void:
 	if battle.board.in_bounds(entry.cell):
 		colors[entry.cell] = COLOR_LOG_PLACE
 	_board_view.show_cells(colors)
+	_board_view.show_danger([])
 	_selection_ring.visible = false
+	_inspect_ring.visible = false
 	if battle.board.in_bounds(focus):
 		_rig.jump_to(BoardView.cell_center(focus))
 
@@ -666,8 +680,11 @@ func result_stats() -> String:
 
 
 ## 盤面のマスをクリックする。選んでいる駒の攻撃できる相手・樽なら攻撃、回復できる味方なら回復、動けるマスなら移動、
-## 駒なら選び直す。駒のいないマスなら、選ぶのをやめて、そのマスの情報を出す。
-## 対象を選んでいる途中（メニューの攻撃・回復・スキル）なら、対象のマスで行動し、ほかのマスでは選ぶのをやめる。
+## 行動できる自分の駒なら選び直す。ほかの駒（相手、中立、行動を終えた味方）なら、選択はそのままで、その駒を見る（_inspect）。
+## 駒のいないマスなら、選ぶのをやめて、そのマスの情報を出す。
+## 対象を選んでいる途中（メニューの攻撃・回復・スキル）なら、対象のマスで行動し、ほかの駒なら見て、駒のいないマスでは選ぶのをやめる。
+## 駒を見ている間のクリックは見るだけ: ほかの駒なら見る駒を替え、そのほか（駒のいないマス、見ている駒、選んでいる駒）なら見るのをやめて、
+## 元の行動の途中へ戻る（移動や攻撃はしない）。
 func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
 		return
@@ -677,9 +694,21 @@ func click_cell(cell: Vector2i) -> void:
 		_refresh()
 		return
 	var clicked := battle.unit_at(cell)
+	if _inspected_id != 0:
+		if clicked == null or clicked.id == _inspected_id or clicked.id == _selected_id:
+			_inspect(0)
+		elif _can_select(clicked) and battle.acting_unit_id == 0 and _mode == Mode.NONE:
+			_select(clicked.id)
+		else:
+			_inspect(clicked.id)
+		return
+	# 選んでいる駒のほかの駒で、行動の相手にならないもの（見るだけ）。
+	var other := clicked != null and clicked.id != _selected_id
 	if _mode == Mode.SKILL:
 		if _skill_cells.has(cell):
 			_do(UseSkillAction.new(_selected_id, cell))
+		elif other:
+			_inspect(clicked.id)
 		else:
 			_leave_mode()
 		return
@@ -691,6 +720,8 @@ func click_cell(cell: Vector2i) -> void:
 		_do(AttackBarrelAction.new(_selected_id, cell))
 	elif _barricade_targets.has(cell) and _mode != Mode.HEAL:
 		_do(AttackBarricadeAction.new(_selected_id, cell))
+	elif other and (_mode != Mode.NONE or battle.acting_unit_id != 0 or not _can_select(clicked)):
+		_inspect(clicked.id)
 	elif _mode != Mode.NONE:
 		_leave_mode()
 	elif battle.acting_unit_id != 0:
@@ -704,6 +735,49 @@ func click_cell(cell: Vector2i) -> void:
 			_refresh()
 
 
+## その駒を、行動させる駒として選べるか（いまの番の人のプレイヤーの、行動できる駒）。選べない駒は、クリックすると見るだけ。
+func _can_select(unit: Unit) -> bool:
+	return unit != null and unit.side == battle.phase and not _is_cpu_turn() and battle.can_act(unit)
+
+
+## 駒を見る（閲覧）。選んでいる駒、動いたあとの状態、対象を選ぶ途中は、そのまま残す。0 なら見るのをやめる。
+func _inspect(unit_id: int) -> void:
+	_inspected_id = unit_id
+	_confirming_end = false
+	_refresh()
+
+
+## 見ている駒（見ていなければ null）。検査用。
+func inspected_unit() -> Unit:
+	return battle.unit_by_id(_inspected_id) if _inspected_id != 0 else null
+
+
+## 敵の全員の脅威範囲を出す・消す（下の帯の切り替え、T）。いつでも切り替えられ、出したままにできる。
+func toggle_threat() -> void:
+	_threat_shown = not _threat_shown
+	if not _busy:
+		_refresh()
+
+
+## 敵の全員の脅威範囲を出しているか。検査用。
+func is_threat_shown() -> bool:
+	return _threat_shown
+
+
+## 盤に重ねて出している、敵の全員の脅威範囲のマス（出していなければ空）。検査用。
+func threat_overlay_cells() -> Array[Vector2i]:
+	return _board_view.danger_cells()
+
+
+## 見ている・選んでいる駒の脅威範囲として、塗っているマス（濃い赤）。検査用。
+func threat_painted_cells() -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for cell: Vector2i in _painted:
+		if _painted[cell] == COLOR_THREAT:
+			cells.append(cell)
+	return cells
+
+
 ## 駒のそばのメニューの項目を押す（クリックと同じ道を通る）。出ていて押せる項目なら真を返す。
 func press_menu(id: StringName) -> bool:
 	return not is_busy() and _hud.press_menu(id)
@@ -713,6 +787,7 @@ func _on_menu_pressed(id: StringName) -> void:
 	if is_busy() or battle.is_over() or _selected_id == 0:
 		return
 	_confirming_ult = false
+	_inspected_id = 0  # メニューを押したら、見るのをやめて、選んでいる駒の行動へ戻る
 	match id:
 		MENU_ATTACK:
 			_enter_mode(Mode.ATTACK)
@@ -890,6 +965,9 @@ func cancel() -> bool:
 		_confirming_ult = false
 		_refresh()
 		return true
+	if _inspected_id != 0:
+		_inspect(0)  # 見るのをやめて、元の行動の途中へ戻る
+		return true
 	if _mode != Mode.NONE:
 		_leave_mode()
 		return true
@@ -934,6 +1012,7 @@ func _select(unit_id: int) -> void:
 	if unit_id != _selected_id:
 		_menu_placement.reset()
 	_selected_id = unit_id
+	_inspected_id = 0
 	_inspected_cell = NO_CELL
 	_mode = Mode.NONE
 	_confirming_end = false
@@ -968,12 +1047,15 @@ func _do(action: BattleAction) -> bool:
 	stats.feed_all(result.events)
 	_busy = true
 	_mode = Mode.NONE
+	_inspected_id = 0
 	_inspected_cell = NO_CELL
 	_confirming_end = false
 	_confirming_ult = false
 	_board_view.show_cells({})
+	_board_view.show_danger([])
 	_board_view.set_marked(NO_CELL)
 	_selection_ring.visible = false
+	_inspect_ring.visible = false
 	_hud.set_menu([])
 	_hud.set_ult_button(_hud.ult_button_text(), false, _ult_summary())
 	_hud.set_end_turn(false, _hud.end_turn_text())
@@ -1626,9 +1708,15 @@ func _refresh() -> void:
 		_mode = Mode.NONE
 	if unit != null:
 		_inspected_cell = NO_CELL
+	var inspected := inspected_unit()
+	if inspected == null or battle.is_over() or inspected.id == _selected_id:
+		_inspected_id = 0
+		inspected = null
 
 	_painted = {}
-	if unit != null and not battle.is_over():
+	if inspected != null:
+		_paint_view(inspected)  # 見ている間は、見ている駒の範囲だけを塗る（選んでいる駒の範囲は、見終わると戻る）
+	elif unit != null and not battle.is_over():
 		if _mode == Mode.SKILL:
 			for cell in _skill_cells:
 				_painted[cell] = COLOR_SKILL
@@ -1647,17 +1735,20 @@ func _refresh() -> void:
 				for target in _heal_targets:
 					_painted[target.cell] = COLOR_HEAL
 		else:
-			# 相手の駒（中立も）は、次の番に攻撃・スキルが届くマス（脅威範囲）を赤で。その上に移動範囲を白で。
-			if unit.side != battle.phase:
-				for cell in Queries.threat_cells(battle, unit):
-					_painted[cell] = COLOR_THREAT
-			for cell in Queries.inspect_cells(battle, unit):
-				_painted[cell] = COLOR_INSPECT
+			_paint_view(unit)
 	_show_painted()
+	var threats: Array[Vector2i] = []
+	if _threat_shown and not battle.is_over():
+		threats = Threat.against(battle, _viewer_side()).cells()
+	_board_view.show_danger(threats)
+	_hud.set_threat_button(_threat_shown)
 
 	_selection_ring.visible = unit != null
 	if unit != null:
 		_selection_ring.position = BoardView.cell_center(unit.cell) + Vector3(0.0, 0.04, 0.0)
+	_inspect_ring.visible = inspected != null
+	if inspected != null:
+		_inspect_ring.position = BoardView.cell_center(inspected.cell) + Vector3(0.0, 0.04, 0.0)
 
 	_board_view.set_marked(_inspected_cell)
 	# 状態（バリア、照準など）が付いている駒は、足元の輪で分かるようにする。
@@ -1689,6 +1780,26 @@ func _refresh() -> void:
 		_ult_button_text(), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _confirming_ult
 	)
 	_update_info()
+
+
+## 見るだけの駒（相手、中立、行動を終えた駒）の範囲を塗る。相手の駒（中立も）は、次の番に攻撃・スキルが届くマス
+## （脅威範囲）を濃い赤で。その上に、動ける範囲を白で。
+func _paint_view(unit: Unit) -> void:
+	if unit.side != battle.phase:
+		for cell in Queries.threat_cells(battle, unit):
+			_painted[cell] = COLOR_THREAT
+	for cell in Queries.inspect_cells(battle, unit):
+		_painted[cell] = COLOR_INSPECT
+
+
+## 盤を見ている人のプレイヤー。CPU と対戦するときは、いつも人のプレイヤー（CPU の番の間も）。
+## 人どうしでは、いまの番のプレイヤー（中立の番では、プレイヤー1）。必殺技のボタンと、敵の全員の脅威範囲が、このプレイヤーのもの。
+func _viewer_side() -> Unit.Side:
+	if cpu_opponent:
+		return match_choice.human_side
+	if battle.phase == Unit.Side.NEUTRAL:
+		return Unit.Side.PLAYER1
+	return battle.phase
 
 
 ## 選んでいる駒が、いまの位置から攻撃できるもの（相手・樽・盾）があるか。
@@ -1764,14 +1875,9 @@ func _screen_rect(at: Vector3, radius: float, height: float) -> Rect2:
 	return rect
 
 
-## 必殺技のボタンが、どのプレイヤーのものか。CPU と対戦するときは、いつも人のプレイヤー（CPU の番の間も）。
-## 人どうしでは、いまの番のプレイヤー（中立の番では、プレイヤー1）。
+## 必殺技のボタンが、どのプレイヤーのものか（_viewer_side）。
 func _ult_side() -> Unit.Side:
-	if cpu_opponent:
-		return match_choice.human_side
-	if battle.phase == Unit.Side.NEUTRAL:
-		return Unit.Side.PLAYER1
-	return battle.phase
+	return _viewer_side()
 
 
 ## 必殺技のボタンの上に出す説明。
@@ -1851,6 +1957,11 @@ func _refresh_hint(unit: Unit) -> void:
 		_hud.set_hint("進化先を選ぶ（上のボタン）")
 	elif _confirming_ult:
 		_hud.set_hint("もう一度押すと必殺技を使う（取り消せない）。右クリックか、盤面のクリックでやめる")
+	elif inspected_unit() != null:
+		var seen := inspected_unit()
+		var ranges := "白: 動ける範囲" if seen.side == battle.phase else "白: 動ける　赤: 次の番に攻撃が届く"
+		var back := "選んでいる駒へ戻る" if unit != null else "見るのをやめる"
+		_hud.set_hint("%s を見ている（%s）\n右クリックで%s" % [seen.display_name(), ranges, back])
 	elif unit == null:
 		_hud.set_hint("駒をクリックして選ぶ。相手の駒をクリックすると、動ける範囲と攻撃の届く範囲が見える")
 	elif _mode == Mode.SKILL and _is_self_skill(unit):
@@ -1875,15 +1986,15 @@ func _refresh_hint(unit: Unit) -> void:
 		else:
 			_hud.set_hint("駒のそばのメニューから行動を選ぶ。右クリックで移動を取り消す")
 	elif UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
-		_hud.set_hint("青: 移動　黄: 巡航（遠くへ動けるが、回復できない）　緑: 回復できる味方\nマスをクリックで移動。行動は駒のそばのメニューから")
+		_hud.set_hint("青: 移動　黄: 巡航（回復できない）　緑: 回復できる味方\nマスをクリックで移動。行動は駒のそばのメニューから")
 	else:
-		_hud.set_hint("青: 移動　黄: 巡航（遠くへ動けるが、攻撃できない）　赤: 攻撃できる相手\nマスをクリックで移動。行動は駒のそばのメニューから")
+		_hud.set_hint("青: 移動　黄: 巡航（攻撃できない）　赤: 攻撃できる相手\nマスをクリックで移動。行動は駒のそばのメニューから")
 
 
 ## 塗ったマスに、マウスの下のマスまでの道か、マウスの下の樽の爆発が届くマスを重ねて出す。
 func _show_painted() -> void:
 	var colors := _painted
-	var unit := selected_unit()
+	var unit := selected_unit() if _inspected_id == 0 else null  # 見ている間は、選んでいる駒の道や効果の及ぶマスを重ねない
 	if unit != null and not _busy and _mode == Mode.SKILL:
 		if _skill_cells.has(_hover_cell):
 			colors = _painted.duplicate()
@@ -1904,7 +2015,7 @@ func _show_painted() -> void:
 		if colors[cell] in [COLOR_TARGET, COLOR_HEAL, COLOR_SKILL, COLOR_SKILL_AREA] and battle.unit_at(cell) != null:
 			raised[cell] = true
 	_board_view.show_cells(colors, raised)
-	_board_view.set_grid_emphasis(_selected_id != 0 or not colors.is_empty())
+	_board_view.set_grid_emphasis(_selected_id != 0 or _inspected_id != 0 or not colors.is_empty())
 
 
 func _update_hover() -> void:
@@ -1928,14 +2039,16 @@ func _update_info() -> void:
 		hovered = battle.unit_at(_hover_cell)
 	_hud.show_cell(_cell_line(_hover_cell) if _hover_cell != NO_CELL else "")
 
-	var shown := hovered if hovered != null else selected_unit()
+	var shown := hovered if hovered != null else inspected_unit()
+	if shown == null:
+		shown = selected_unit()
 	if shown == null:
 		if _inspected_cell != NO_CELL:
 			_hud.show_cell_info(_cell_title(_inspected_cell), _cell_body(_inspected_cell))
 		else:
 			_hud.show_unit(null, "", "")
 		return
-	if _mode == Mode.SKILL:
+	if _mode == Mode.SKILL and (hovered == null or _skill_cells.has(_hover_cell)) and _inspected_id == 0:
 		# スキルの対象を選んでいる間は、使う駒と、マウスの下のマスに使ったときの見込みを出す。
 		var user := selected_unit()
 		var skill := Skills.of(user)
@@ -1947,17 +2060,20 @@ func _update_info() -> void:
 			skill_text += "\n" + _skill_forecast(user, _hover_cell)
 		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill_text, false)
 		return
-	if _menu_hover_id != &"" and selected_unit() != null and _hud.menu_ids().has(_menu_hover_id):
+	if _menu_hover_id != &"" and selected_unit() != null and hovered == null and _hud.menu_ids().has(_menu_hover_id):
 		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
 		_hud.show_unit(selected_unit(), "", _menu_note(_menu_hover_id, selected_unit()), _menu_hover_id != MENU_SKILL)
 		return
-	if hovered == null and _barrel_targets.has(_hover_cell) and _mode != Mode.HEAL:
-		var barrel := Forecast.of(battle, AttackBarrelAction.new(shown.id, _hover_cell))
-		_hud.show_unit(shown, "樽を狙っている", "樽を爆発させる（%d ダメージ）\n%s" % [MapObject.BLAST_DAMAGE, ForecastText.describe(battle, barrel, shown)])
+	# 見ている間は、クリックしても行動しないので、見込みは出さない。
+	var aiming := _inspected_id == 0 and (_mode == Mode.NONE or _mode == Mode.ATTACK)
+	var attacker := selected_unit()
+	if hovered == null and aiming and _barrel_targets.has(_hover_cell):
+		var barrel := Forecast.of(battle, AttackBarrelAction.new(attacker.id, _hover_cell))
+		_hud.show_unit(attacker, "樽を狙っている", "樽を爆発させる（%d ダメージ）\n%s" % [MapObject.BLAST_DAMAGE, ForecastText.describe(battle, barrel, attacker)])
 		return
-	if hovered == null and _barricade_targets.has(_hover_cell) and _mode != Mode.HEAL:
-		var barricade := Forecast.of(battle, AttackBarricadeAction.new(shown.id, _hover_cell))
-		_hud.show_unit(shown, "盾を狙っている", ForecastText.describe(battle, barricade, shown))
+	if hovered == null and aiming and _barricade_targets.has(_hover_cell):
+		var barricade := Forecast.of(battle, AttackBarricadeAction.new(attacker.id, _hover_cell))
+		_hud.show_unit(attacker, "盾を狙っている", ForecastText.describe(battle, barricade, attacker))
 		return
 	var state := "行動済み" if shown.acted else "未行動"
 	if shown.side == Unit.Side.NEUTRAL:
@@ -1970,11 +2086,10 @@ func _update_info() -> void:
 	if battle.board.terrain_at(shown.cell) != Terrain.Type.NORMAL:
 		state += ("\n" if state != "" else "") + "いるマス: " + BattleHud.TERRAIN_NAMES[battle.board.terrain_at(shown.cell)]
 	var forecast := ""
-	var attacker := selected_unit()
 	# 攻撃・回復の見込み。実際と同じ処理を、状態を変えずに走らせる（Forecast）。
-	if hovered != null and _targets.has(hovered) and _mode != Mode.HEAL:
+	if hovered != null and aiming and _targets.has(hovered):
 		forecast = ForecastText.describe(battle, Forecast.of(battle, AttackAction.new(attacker.id, hovered.id)), attacker)
-	elif hovered != null and _heal_targets.has(hovered) and _mode != Mode.ATTACK:
+	elif hovered != null and _inspected_id == 0 and _heal_targets.has(hovered) and (_mode == Mode.NONE or _mode == Mode.HEAL):
 		forecast = ForecastText.describe(battle, Forecast.of(battle, HealAction.new(attacker.id, hovered.id)), attacker)
 	_hud.show_unit(shown, state, forecast)
 
@@ -2088,18 +2203,20 @@ static func build_environment(parent: Node) -> void:
 	parent.add_child(sun)
 
 
-func _build_selection_ring() -> void:
+## 駒の足元の輪（選んでいる駒、見ている駒の印）。
+func _build_ring(color: Color, inner: float, outer: float) -> MeshInstance3D:
 	var ring_mesh := TorusMesh.new()
-	ring_mesh.inner_radius = 0.38
-	ring_mesh.outer_radius = 0.47
+	ring_mesh.inner_radius = inner
+	ring_mesh.outer_radius = outer
 	var material := StandardMaterial3D.new()
-	material.albedo_color = COLOR_SELECTED
+	material.albedo_color = color
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_selection_ring = MeshInstance3D.new()
-	_selection_ring.mesh = ring_mesh
-	_selection_ring.material_override = material
-	_selection_ring.scale = Vector3(1.0, 0.15, 1.0)
-	_selection_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_selection_ring.visible = false
-	add_child(_selection_ring)
+	var ring := MeshInstance3D.new()
+	ring.mesh = ring_mesh
+	ring.material_override = material
+	ring.scale = Vector3(1.0, 0.15, 1.0)
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.visible = false
+	add_child(ring)
+	return ring

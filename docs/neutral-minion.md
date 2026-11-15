@@ -74,7 +74,7 @@
 
 ## 画面
 
-- 中立の駒を選ぶと、脅威範囲（`docs/threat-range.md`。`Threat.of()`）を赤で塗る（`docs/battle-view.md`）。
+- 中立の駒をクリックして見ると、脅威範囲（`docs/threat-range.md`。`Threat.of()`）を赤で塗る（`docs/battle-view.md`）。
   縄張りの中で止まれるマスからの射程なので、縄張りの見当も付く。
 
 ## まだ入れていないもの

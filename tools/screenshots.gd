@@ -12,6 +12,7 @@ const Queries := preload("res://prototype/battle_queries.gd")
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 const BattleLog := preload("res://prototype/battle_log.gd")
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
+const BoardView := preload("res://prototype/board_view.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
@@ -39,7 +40,9 @@ const SCENES := {
 	"menu_attack": "メニューの「攻撃」を押して、相手を選んでいる",
 	"menu_crowd": "駒が固まっているところで出したメニュー",
 	"menu_edge": "盤の端・画面の隅にいる駒のメニュー",
-	"threat": "相手の駒を選んで、脅威範囲が出ている",
+	"threat": "相手の駒をクリックして見ている（脅威範囲が出ている）",
+	"inspect_moved": "自分の駒を動かしたあと（メニューが出たまま）に、相手の駒を見ている",
+	"threat_all": "自分の駒を選んで、敵の全員の脅威範囲（赤い斜線）を重ねている",
 	"skill": "スキルの対象を選んでいる",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
@@ -107,6 +110,8 @@ func _run() -> void:
 		_scene.log_panel().close()
 		_scene.setup_panel().visible = false
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
+		if _scene.is_threat_shown():
+			_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
 		_stage = BoardGenerator.Stage.PLAIN
 		_new_battle()
 		_aim(22.0, 0.0, OrbitCamera.DEFAULT_PITCH)  # 前の場面で動かしたカメラを戻す（ほかの場面は、始めの向きと角度で撮る）
@@ -438,6 +443,45 @@ func _scene_threat() -> bool:
 	_scene.click_cell(best.cell)
 	_scene.focus_camera(best.cell)
 	return true
+
+
+func _scene_inspect_moved() -> bool:
+	if not await _scene_menu_moved():
+		return false
+	# 動いた駒にいちばん近い、攻撃の相手でない相手の駒（将と回復役は除く。相手の駒はクリックで攻撃してしまい、回復役には脅威範囲が無い）。
+	var mover: Unit = _scene.selected_unit()
+	var targets := _battle.options(mover.id).attack_target_ids
+	var best: Unit = null
+	var nearest := 1 << 30
+	for foe in _battle.units:
+		if foe.side != 1 - _battle.phase or foe.kind == UnitKind.Id.KING or targets.has(foe.id):
+			continue
+		if UnitKind.role(foe.kind) == UnitKind.Role.HEALER:
+			continue
+		if _distance(foe.cell, mover.cell) < nearest:
+			best = foe
+			nearest = _distance(foe.cell, mover.cell)
+	if best == null:
+		return false
+	_scene.click_cell(best.cell)
+	_look_at((BoardView.cell_center(best.cell) + BoardView.cell_center(mover.cell)) / 2.0)
+	_aim(26.0, 0.0, OrbitCamera.DEFAULT_PITCH)
+	return _scene.inspected_unit() == best and _scene.selected_unit() == mover
+
+
+func _scene_threat_all() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	var unit := _own_units()[0]
+	for own in _own_units():
+		if own.kind != UnitKind.Id.KING and _battle.can_act(own):
+			unit = own
+			break
+	_scene.click_cell(unit.cell)
+	_scene.toggle_threat()
+	_scene.focus_camera(unit.cell)
+	return _scene.is_threat_shown()
 
 
 func _scene_skill() -> bool:

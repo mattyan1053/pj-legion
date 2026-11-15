@@ -4,7 +4,8 @@
 テスト: `tests/rules/test_threat.gd`、`tests/prototype/test_battle_queries.gd`（試作の問い合わせ）。
 
 ある駒が、**次の自分の番に**攻撃・スキルで届くマス。状態を変えない問い合わせ。
-画面（相手の駒を選んだときの濃い赤のマス。`docs/battle-view.md`）と、CPU の危険の見積もり（`docs/cpu-ai.md`）が同じものを使う。
+画面（相手の駒を見たときの濃い赤のマスと、「敵の攻撃範囲」のスイッチで重ねる赤い斜線。`docs/battle-view.md`）と、
+CPU の危険の見積もり（`docs/cpu-ai.md`）が同じものを使う。
 
 - `Threat.of(対戦, 駒の番号)`: 1 体の脅威範囲。敵でも味方でも、中立の駒でもよい。
 - `Threat.against(対戦, 陣営)`: その陣営の敵（相手のプレイヤーの駒と、中立の駒）全員の脅威範囲を重ねたもの。

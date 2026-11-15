@@ -80,6 +80,7 @@ func _process(_delta: float) -> void:
 			_queue_level_up_scene()
 			_queue_evolution_scene()
 			_queue_heal_scene()
+			_queue_inspection_scene()
 			_queue_setup_scene()
 			_queue_system_menu_scene()
 			_queue_cpu_scene()
@@ -670,6 +671,69 @@ func _queue_heal_scene() -> void:
 		_expect(wounded.hp == 10 + medic.power(), "回復しなかった")
 		_expect(medic.acted, "回復しても行動が終わっていない")
 		_expect(_scene.played.get(healed, 0) == 1, "回復を再生しなかった"))
+
+
+## 駒を見る（閲覧）のは、選択と別。行動の途中（選んだあと、動いたあと、相手を選ぶ途中）に相手の駒を見て、
+## 脅威範囲が出て、見終わると元の行動の途中へそのまま戻る。敵の全員の脅威範囲を出し入れする。
+func _queue_inspection_scene() -> void:
+	var board := _small_board(Vector2i(9, 5))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(8, 0))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(1, 2))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(7, 2))
+	var foe := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER2, Vector2i(4, 2))
+	var neutral := battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(5, 4))
+	var looks := func(unit: Unit, what: String) -> void:
+		_expect(_scene.inspected_unit() == unit and _scene.selected_unit() == trooper, "%s: 見る駒か、選んでいる駒が違う" % what)
+		var threat: Array[Vector2i] = Threat.of(battle, unit.id).cells()
+		threat.sort()
+		var painted: Array[Vector2i] = _scene.threat_painted_cells()
+		painted.sort()
+		_expect(not threat.is_empty() and painted.size() <= threat.size() and _scene.info_title().begins_with(unit.display_name()),
+			"%s: 見ている駒の脅威範囲か情報が出ていない" % what)
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		_scene.click_cell(trooper.cell)
+		# 選んだあと: 相手の駒をクリックすると、選んだまま見る。右クリックで、見るのをやめて選んだ駒へ戻る。
+		_scene.click_cell(sniper.cell)
+		looks.call(sniper, "選んだあと")
+		_scene.click_cell(neutral.cell)
+		looks.call(neutral, "見る駒を替えた")
+		_scene.cancel()
+		_expect(_scene.inspected_unit() == null and _scene.selected_unit() == trooper and _scene.threat_painted_cells().is_empty(),
+			"右クリックで、選んだ駒へ戻らなかった")
+		# 敵の全員の脅威範囲は、出したままでも、移動のマスを選べる。
+		_scene.toggle_threat()
+		var all: Array[Vector2i] = Threat.against(battle, Unit.Side.PLAYER1).cells()
+		_expect(_scene.is_threat_shown() and _scene.threat_overlay_cells() == all and not all.is_empty(), "敵の全員の脅威範囲が出ていない")
+		_scene.click_cell(Vector2i(2, 2)))
+	_scripted.append(func() -> void:
+		_expect(trooper.cell == Vector2i(2, 2) and trooper.has_moved, "脅威範囲を出したまま、動けなかった")
+		_expect(_scene.threat_overlay_cells() == Threat.against(battle, Unit.Side.PLAYER1).cells(), "動いたあとに、敵の全員の脅威範囲を作り直していない")
+		# 動いたあと: 相手を見ても、移動は失われない。駒のいないマスのクリックで戻る（動かない）。
+		_scene.click_cell(foe.cell)
+		looks.call(foe, "動いたあと")
+		_scene.click_cell(Vector2i(2, 0))
+		_expect(_scene.inspected_unit() == null and trooper.cell == Vector2i(2, 2) and trooper.has_moved and _scene.menu_ids().has(&"undo"),
+			"見終わったあとに、動いたあとの状態へ戻らなかった")
+		_scene.toggle_threat()
+		_expect(not _scene.is_threat_shown() and _scene.threat_overlay_cells().is_empty(), "敵の全員の脅威範囲が消えない")
+		_scene.cancel())  # 移動を取り消す
+	_scripted.append(func() -> void: _scene.click_cell(Vector2i(3, 2)))
+	_scripted.append(func() -> void:
+		# 相手を選ぶ途中: 相手でない駒を見ても、選ぶ途中のまま。見終わると、続けて攻撃できる。
+		_expect(_scene.press_menu(&"attack") and _scene.is_choosing_target(), "メニューの攻撃で、相手を選び始めなかった")
+		_scene.click_cell(sniper.cell)
+		looks.call(sniper, "相手を選ぶ途中")
+		_scene.cancel()
+		_expect(_scene.is_choosing_target() and _scene.inspected_unit() == null, "見終わったあとに、相手を選ぶ途中へ戻らなかった")
+		_scene.click_cell(foe.cell))
+	_scripted.append(func() -> void:
+		_expect(trooper.acted and foe.hp < foe.max_hp(), "見終わったあとに、攻撃できなかった"))
 
 
 ## 対戦の設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とステージも選んだとおりになる。
