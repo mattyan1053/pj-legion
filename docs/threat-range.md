@@ -1,7 +1,7 @@
 # 脅威範囲
 
 コード: `rules/threat.gd`（`Threat`）、スキルごとの `threat_damage` / `threat_origins`（`rules/skill.gd` と `rules/skills/`）。
-テスト: `tests/rules/test_threat.gd`、`tests/game/test_battle_queries.gd`（試作の問い合わせ）。
+テスト: `tests/rules/test_threat.gd`、`tests/game/test_battle_queries.gd`（画面の問い合わせ）。
 
 ある駒が、**次の自分の番に**攻撃・スキルで届くマス。状態を変えない問い合わせ。
 画面（相手の駒を見たときの濃い赤のマスと、「敵の攻撃範囲」のスイッチで重ねる赤い斜線。`docs/battle-view.md`）と、

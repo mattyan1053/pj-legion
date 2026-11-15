@@ -34,7 +34,7 @@
 
 ## 画面
 
-- 試作の画面は、見込みを対象のそばの予測のパネルに出す（`forecast_panel.gd`。中身は `forecast_text.gd` の `summarize` が
+- 対戦の画面は、見込みを対象のそばの予測のパネルに出す（`forecast_panel.gd`。中身は `forecast_text.gd` の `summarize` が
   `Forecast` をそのまま読んで、駒ごとの行と駒に属さない行にまとめたもの。倒せる・自分も巻き込まれるは目立たせる）。樽の爆発が届くマスは塗る。
   どちらも `docs/battle-view.md` の「戦闘予測のパネル」。
 

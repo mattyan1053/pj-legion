@@ -18,7 +18,7 @@
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
   CPU の軍は、対戦を始める側が選ぶ。
-- **人の編成**は、渡したもの（`set_human(プレイヤー, 編成)`）。試作では、編成の画面で組んで取っておいた部隊か、
+- **人の編成**は、渡したもの（`set_human(プレイヤー, 編成)`）。画面では、編成の画面で組んで取っておいた部隊か、
   軍ごとの既定の編成 `MatchSetup.default_deck(軍)`（中身は CPU の編成と同じ。予算どおり）。
 - よく使う組み合わせ: `MatchSetup.versus_cpu(ステージ, 種, 人の編成, CPU の軍, 人のプレイヤー)`、
   `MatchSetup.versus_human(ステージ, 種, 先手の編成, 後手の編成)`。
@@ -30,7 +30,7 @@
 `create_battle()` が、盤面を作り（`docs/game-board.md`）、両方の軍を本陣に置いた（`Deployment`。`docs/player-loadout.md`）、
 ターン 1・プレイヤー1 の番の対戦を返す。設定は変えないので、同じ設定から何度でも同じ対戦が作れる。
 
-**対戦はこの入口だけから作る。** 試作の画面、検査の自動の対戦（`game/autoplay.gd` の通しの対戦）、
+**対戦はこの入口だけから作る。** 対戦の画面、検査の自動の対戦（`game/autoplay.gd` の通しの対戦）、
 CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通る。
 例外は、テストと、自動の対戦の中の場面ごとの小さな盤面（`Battle.new` で直に作る）だけ。
 
@@ -46,7 +46,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 - 例外は `ignore_budget` だけ。立てると、予算を超えた編成（`OVER_BUDGET`）を通す。ほかの理由は通さない。
   集計の道具の「両軍とも同じ役割の 6 体」（`--decks=even`）だけが使う。対戦の画面は使わない。
 
-## 試作の入口
+## 画面の入口
 
-試作（`game/`）は、対戦の前に設定画面（`docs/battle-view.md` の「対戦の設定」）で選んだものを
+画面の側（`game/`）は、対戦の前に設定画面（`docs/battle-view.md` の「対戦の設定」）で選んだものを
 `game/trial_setup.gd` が `MatchSetup` にして、`create_battle()` で始める。
