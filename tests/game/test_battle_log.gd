@@ -3,7 +3,7 @@ extends "res://tests/base_test.gd"
 
 const BattleLog := preload("res://game/battle_log.gd")
 const Maps := preload("res://tests/support/maps.gd")
-const CpuMatchTest := preload("res://tests/tools/test_cpu_match.gd")
+const CpuGame := preload("res://tests/support/cpu_game.gd")
 
 const EVENTS_DIR := "res://rules/events"
 const P1 := Unit.Side.PLAYER1
@@ -221,21 +221,11 @@ func test_take_changes_reports_rewritten_lines() -> void:
 	assert_eq(book.take_changes(), 1, "移動の行に「して待機」を書き足した")
 
 
-## CPU どうしの 1 局を、最後まで読む。どの行も文があり、決着の行で終わる。
+## CPU どうしの 1 局（ほかのテストと共有する。tests/support/cpu_game.gd）を、最後まで読む。どの行も文があり、決着の行で終わる。
 func test_whole_game_reads_without_gaps() -> void:
-	var battle: Battle = CpuMatchTest.new()._small_battle(1)
+	var battle := CpuGame.start()
 	var book := BattleLog.new(battle)
-	var cpu := CpuPlayer.new()
-	var guard := 0
-	while not battle.is_over() and battle.turn <= 60 and guard < 5000:
-		guard += 1
-		var action := cpu.next_action(battle)
-		if action == null:
-			break
-		var result := battle.apply(action)
-		if not result.accepted:
-			break
-		book.feed_all(result.events)
+	CpuGame.replay(battle, func(result: ActionResult) -> void: book.feed_all(result.events))
 	assert_true(battle.is_over(), "決着しなかった")
 	var headers := 0
 	for entry in book.entries:
