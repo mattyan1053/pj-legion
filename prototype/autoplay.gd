@@ -9,6 +9,7 @@ extends Node
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
 const Queries := preload("res://prototype/battle_queries.gd")
+const BattlePlayback := preload("res://prototype/battle_playback.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## これだけターンが進んでも決着しなければ、失敗にする。
@@ -68,6 +69,7 @@ func _process(_delta: float) -> void:
 			_expect(last.contains("の勝ち") or last.begins_with("引き分け"), "ログが決着の行で終わっていない: %s" % last)
 			print(_scene.result_stats())
 			_scenes_done = true
+			_queue_result_checks()
 			_queue_portal_and_spring_scene()
 			_queue_capture_scene()
 			_queue_barrel_draw_scene()
@@ -269,6 +271,32 @@ func _queue_barrel_draw_scene() -> void:
 		_expect(_scene.result_title() == "引き分け", "引き分けの結果が出ていない")
 		_expect(guard.hp == guard.max_hp() - MapObject.BLAST_DAMAGE, "爆発に巻き込まれなかった")
 		_expect(_scene.barrel_view_cells() == ([Vector2i(0, 0)] as Array[Vector2i]), "爆発した樽が画面に残っている"))
+
+
+## リザルトの画面。出そろう前は行き先を選べず、クリックは演出を飛ばすだけ。飛ばすと全部が出て、少しして行き先を選べる。
+## 詳しい戦績は畳んであり、ボタンで開け閉めできる。
+func _queue_result_checks() -> void:
+	var screen: Node = _scene.result_screen()
+	_expect(not screen.is_revealed() and screen.enabled_buttons().is_empty(), "出そろう前に、行き先を選べる")
+	_expect(_scene.result_title() != "", "リザルトの見出しが出ていない")
+	screen.skip()
+	var waited := [0]
+	var wait_revealed := func(again: Callable) -> void:
+		waited[0] += 1
+		if screen.enabled_buttons().is_empty():
+			if waited[0] > 600:
+				_finish("autoplay: 飛ばしても、リザルトの行き先を選べるようにならない", 1)
+				return
+			_scripted.push_front(again.bind(again))
+			return
+		_expect(screen.is_revealed(), "行き先を選べるのに、出そろっていない")
+		_expect(screen.enabled_buttons().has("タイトルへ"), "行き先に「タイトルへ」が無い")
+		_expect(screen.stat_lines().size() >= 2 and screen.mvp_text() != "", "戦績か MVP が出ていない")
+		_expect(not screen.is_detail_open(), "詳しい戦績が、始めから開いている")
+		screen.toggle_detail()
+		_expect(screen.is_detail_open(), "詳しい戦績が開かない")
+		screen.toggle_detail()
+	_scripted.append(wait_revealed.bind(wait_revealed))
 
 
 ## 盤の上の効果。ルールの入口（FieldEffects.place_*）で盾・煙幕・聖域を置いて再生し、
@@ -991,7 +1019,7 @@ func _queue_ult_scene() -> void:
 
 ## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。
 func _finish_if_all_played() -> void:
-	var players: Dictionary = _scene.event_players()
+	var players: Dictionary = BattlePlayback.event_players()
 	for kind: Script in players:
 		if _scene.played.get(kind, 0) == 0:
 			_finish("autoplay: 1 回も再生しなかったイベント: %s" % kind.resource_path, 1)
@@ -1169,10 +1197,28 @@ func _leave_battle() -> void:
 	await get_tree().create_timer(1.0).timeout
 	app.current_scene().press_start()
 	await app.scene_changed
-	_expect(app.current_id() == &"setup", "タイトルの「始める」で、対戦の設定へ進まない")
+	_expect(app.current_id() == &"stage", "タイトルの「始める」で、ステージ選択へ進まない")
+	var stages: Node = app.current_scene()
+	_expect(stages.card_stages().size() == MatchSetup.STAGE_NAMES.size(), "ステージのカードが足りない")
+	stages.hover(BoardGenerator.Stage.TWIN_SPRINGS)
+	_expect(stages.note_text().contains(MatchSetup.stage_name(BoardGenerator.Stage.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
+	stages.hover(-1)
+	stages.choose(BoardGenerator.Stage.LABYRINTH)
+	await app.scene_changed
+	_expect(app.current_id() == &"setup", "ステージ選択のカードで、対戦の設定へ進まない")
+	_expect(app.current_scene().setup_panel().current_choice().stage == BoardGenerator.Stage.LABYRINTH, "選んだステージが対戦の設定に渡らない")
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
-	_expect(app.current_id() == &"title", "対戦の設定の「タイトルへ戻る」で、タイトルへ戻らない")
+	_expect(app.current_id() == &"stage", "対戦の設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
+	# カードの上での右クリックでも戻る（カードのボタンに食われない）。
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.position = app.current_scene().card_center(BoardGenerator.Stage.LABYRINTH)
+	right.global_position = right.position
+	app.get_viewport().push_input(right)
+	await app.scene_changed
+	_expect(app.current_id() == &"title", "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
 	await _visit_decks(app)
 	_finish("autoplay: OK", 0)
 
@@ -1237,6 +1283,8 @@ func _visit_decks(app: Node) -> void:
 	_expect(app.current_id() == &"title", "編成の一覧から、タイトルへ戻らない")
 	# 対戦の設定で、取っておいた部隊を選ぶ。
 	app.current_scene().press_start()
+	await app.scene_changed
+	app.current_scene().choose(BoardGenerator.Stage.PLAIN)
 	await app.scene_changed
 	var panel: Node = app.current_scene().setup_panel()
 	panel.choose_opponent(true)

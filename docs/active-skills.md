@@ -139,7 +139,7 @@
 2. `rules/skills/` に `Skill` の子のクラスを書く（調整値は、そのファイルの先頭に置く）。
 3. `Skills.ALL` に 1 つ並べる。
 4. 行動を終えないなら `ends_action` を、回数に上限があるなら `max_uses` を書く（面倒は `Skills` が見る）。
-5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`board_prototype.gd` の `event_players()`）に載せる。
+5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`battle_playback.gd` の `event_players()`）に載せる。
    駒へのダメージは `Skills.deal_damage` を呼べば足り、イベントを足さなくてよい。
 6. イベントだけで価値が決まらなければ、`CpuPlayer.SKILL_VALUES` に 1 行と、見積もるメソッドを足す。
    ダメージを届けるか、使ったあとに移った先から攻撃できるなら、`threat_damage` / `threat_origins` を書く

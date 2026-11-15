@@ -9,10 +9,12 @@ func test_starts_at_the_title() -> void:
 	assert_true(SceneFlow.has(SceneFlow.FIRST))
 
 
-func test_goes_title_setup_battle_and_back() -> void:
-	assert_eq(SceneFlow.next(&"title", &"start"), &"setup")
+func test_goes_title_stage_setup_battle_and_back() -> void:
+	assert_eq(SceneFlow.next(&"title", &"start"), &"stage")
+	assert_eq(SceneFlow.next(&"stage", &"pick"), &"setup")
+	assert_eq(SceneFlow.next(&"stage", &"back"), &"title")
 	assert_eq(SceneFlow.next(&"setup", &"start"), &"battle")
-	assert_eq(SceneFlow.next(&"setup", &"back"), &"title")
+	assert_eq(SceneFlow.next(&"setup", &"back"), &"stage", "対戦の設定から 1 つ戻ると、ステージ選択")
 	assert_eq(SceneFlow.next(&"battle", &"setup"), &"setup")
 	assert_eq(SceneFlow.next(&"battle", &"title"), &"title", "どの場面からもタイトルへ戻れる")
 	assert_eq(SceneFlow.next(&"setup", &"title"), &"title")

@@ -3,7 +3,7 @@ extends "res://tests/base_test.gd"
 ## イベントを足したのに画面が再生しない、という状態を、ここで気付けるようにする。
 
 const EVENTS_DIR := "res://rules/events"
-const SCENE_SCRIPT := "res://prototype/board_prototype.gd"
+const SCENE_SCRIPT := "res://prototype/battle_playback.gd"
 
 
 func _event_scripts() -> Array[Script]:
