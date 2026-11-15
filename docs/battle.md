@@ -21,6 +21,7 @@
   | --- | --- | --- |
   | `UnitDamagedEvent` | `AttackDamagedEvent`（駒の攻撃） | `attacker_id` |
   | | `ExplosionDamagedEvent`（起爆樽の爆発） | `barrel_cell` |
+  | | `SkillDamagedEvent`（ダメージのあるスキル） | `user_id`、`skill` |
   | `UnitHealedEvent` | `HealerHealedEvent`（回復役の回復） | `healer_id` |
   | | `SpringHealedEvent`（回復の泉） | `cell` |
   | | `RegenerationHealedEvent`（進化先の特性の再生） | - |
@@ -62,7 +63,7 @@
 | `can_wait`、`can_undo` | 待機できるか、移動を取り消せるか（行動を終えないスキルを使ったあとは、取り消せない） |
 
 - 載っているものは、`can_apply` が受け付ける行動と一致する（載っていない行動は断られる）。
-  もう動いた駒では移動のマスが空、巡航で動いた駒では攻撃と回復の相手とスキルの対象が空になる。
+  もう動いた駒では移動のマスが空、巡航で動いた駒では攻撃（駒・樽・盾）と回復の相手とスキルの対象が空になる。
 - 行動できない駒（相手の番、行動済み、ほかの駒が行動の途中、決着のあと、いない駒）では、すべて空（`is_empty()` が真）。
 - 進化先を選ぶのを待っている駒がいる間は、その駒の `evolutions` だけが載り、ほかはどの駒でも空になる。
 - 相手の並びは、盤面の上の行から、左の列から。
