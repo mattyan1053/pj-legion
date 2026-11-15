@@ -317,11 +317,13 @@ func _expect_forecast(words: Array, what: String) -> void:
 	var text: String = _scene.forecast_text()
 	for word: String in words:
 		_expect(text.contains(word), "%sの予測のパネルに「%s」が無い: %s" % [what, word, text.replace("\n", " / ")])
+	# 画面と同じ順に置く: メニュー（中身が変わっていれば置き直す）→ 予測のパネル（メニューが動いていれば置き直す）。
+	var menu: Rect2 = _scene.menu_rect()
 	var rect: Rect2 = _scene.forecast_rect()
 	var area: Rect2 = _scene.menu_area()
 	_expect(area.grow(1.0).encloses(rect), "%sの予測のパネルが画面からはみ出した: %s" % [what, rect])
 	_expect(rect.size.y <= area.size.y * 0.6, "%sの予測のパネルが高すぎる: %s" % [what, rect])
-	_expect(not rect.intersects(_scene.menu_rect()), "%sの予測のパネルが、メニューに重なった" % what)
+	_expect(not rect.intersects(menu), "%sの予測のパネルが、メニューに重なった: %s と %s" % [what, rect, menu])
 
 
 func _small_board(size: Vector2i) -> Board:
@@ -894,10 +896,7 @@ func _queue_inspection_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
-		# カメラは、場面 heal のドラッグのあとと同じ向きにする（場面を 1 つだけ回しても、同じことを確かめるため）。
-		# 既定の向き（0 度）だと、この盤面では攻撃の予測のパネルが駒のそばのメニューに重なる（直すのは別の仕事）。
-		_scene.set_camera_view(22.0, rad_to_deg(-1.2)))
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
 	_scripted.append(func() -> void:
 		_scene.click_cell(trooper.cell)
 		# 選んだあと: 相手の駒をクリックすると、選んだまま見る。右クリックで、見るのをやめて選んだ駒へ戻る。

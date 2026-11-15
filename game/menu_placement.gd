@@ -26,6 +26,10 @@ const SHIFT_COST := 0.5
 const STAY_BONUS := 1.5
 ## 駒に重なる候補に足す重み（ほかに置けるところがあれば選ばない）。
 const ANCHOR_COST := 1000.0
+## 重ねてはいけない四角（keep_clear）に重なる候補に足す重み。駒に重なるより重い（置けるところが無いときだけ選ぶ）。
+const KEEP_CLEAR_COST := 1000000.0
+## 重ねてはいけない四角の周りに足す候補の、もとの候補より後ろに回すための重み（駒の周りに置けないときだけ選ぶ）。
+const AROUND_CLEAR_COST := 2.0
 
 ## 選んだ候補の番号（次に place() を呼ぶときに previous として渡す）。まだ選んでいなければ -1。
 var choice := -1
@@ -35,21 +39,37 @@ var position := Vector2.ZERO
 
 ## anchor は駒が画面に占める四角、size はメニューの大きさ、area はメニューを置いてよい範囲（画面から帯を除いたところ）。
 ## obstacles は、隠したくないものの四角と重み（[Rect2, float] の列）。置き場所（左上）を返し、choice と position に残す。
-func place(anchor: Rect2, size: Vector2, area: Rect2, obstacles: Array) -> Vector2:
+## keep_clear は、重ねてはいけない四角（Rect2 の列。予測のパネルから見たメニュー）。駒の周りの候補がどれも重なるときは、
+## その四角の上下左右に接する候補からも選ぶ（area に入る幅か高さが残っていれば、必ず重ならない）。
+func place(anchor: Rect2, size: Vector2, area: Rect2, obstacles: Array, keep_clear: Array = []) -> Vector2:
 	var best := -1
 	var best_cost := INF
 	var best_at := Vector2.ZERO
 	var unit := maxf(anchor.size.x, 1.0)
+	var wanted_list: Array[Vector2] = []
+	var base_costs: Array[float] = []
 	for index in DIRECTIONS.size() * 2:
 		var far := index >= DIRECTIONS.size()
 		var direction := DIRECTIONS[index % DIRECTIONS.size()]
-		var wanted := _candidate(anchor, size, direction, GAP + (unit if far else 0.0))
+		wanted_list.append(_candidate(anchor, size, direction, GAP + (unit if far else 0.0)))
+		base_costs.append((index % DIRECTIONS.size()) * DIRECTION_COST + (FAR_COST if far else 0.0))
+	var last_cost := DIRECTIONS.size() * DIRECTION_COST + FAR_COST
+	for clear: Rect2 in keep_clear:
+		for wanted in _around(clear, anchor, size):
+			wanted_list.append(wanted)
+			var center := Rect2(wanted, size).get_center()
+			base_costs.append(last_cost + AROUND_CLEAR_COST + center.distance_to(anchor.get_center()) / unit * SHIFT_COST)
+	for index in wanted_list.size():
+		var wanted := wanted_list[index]
 		var at := _clamp_into(wanted, size, area)
 		var rect := Rect2(at, size)
-		var cost := (index % DIRECTIONS.size()) * DIRECTION_COST + (FAR_COST if far else 0.0)
+		var cost := base_costs[index]
 		cost += wanted.distance_to(at) / unit * SHIFT_COST
 		if rect.intersects(anchor):
 			cost += ANCHOR_COST
+		for clear: Rect2 in keep_clear:
+			if rect.intersects(clear):
+				cost += KEEP_CLEAR_COST
 		for obstacle: Array in obstacles:
 			if rect.intersects(obstacle[0]):
 				cost += float(obstacle[1])
@@ -90,6 +110,20 @@ static func _candidate(anchor: Rect2, size: Vector2, direction: Vector2, gap: fl
 	elif direction.y < 0.0:
 		at.y = anchor.end.y - size.y
 	return at
+
+
+## 重ねてはいけない四角（clear）の右・左・下・上に、GAP だけ離して接する候補（左上）。
+## 横に接するときは、駒の高さ・四角の上の辺・下の辺にそろえたもの。縦に接するときは、駒の横の位置・四角の左の辺・右の辺にそろえたもの。
+static func _around(clear: Rect2, anchor: Rect2, size: Vector2) -> Array[Vector2]:
+	var center := anchor.get_center()
+	var result: Array[Vector2] = []
+	for x: float in [clear.end.x + GAP, clear.position.x - GAP - size.x]:
+		for y: float in [center.y - size.y / 2.0, clear.position.y, clear.end.y - size.y]:
+			result.append(Vector2(x, y))
+	for y: float in [clear.end.y + GAP, clear.position.y - GAP - size.y]:
+		for x: float in [center.x - size.x / 2.0, clear.position.x, clear.end.x - size.x]:
+			result.append(Vector2(x, y))
+	return result
 
 
 ## メニューの全体が area に入るよう、左上をずらす（area より大きければ、左上をそろえる）。
