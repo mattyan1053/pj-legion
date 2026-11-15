@@ -71,6 +71,43 @@ class Outcome:
 	var last_hit_by: Dictionary[int, int] = {}
 	## 駒の番号 -> その駒がいちばん最近にシャドウステップを使った [ターン, フェーズ]。
 	var stepped_at: Dictionary[int, Array] = {}
+	## 倒れた中ボスの倒れ方。1 体につき 1 つ（BossFall）。
+	var boss_falls: Array[BossFall] = []
+	## 中ボスの駒の番号 -> プレイヤーごとの、その中ボスに与えたダメージ（駒の攻撃とスキル）。
+	var boss_damage: Dictionary[int, Array] = {}
+
+
+## 倒れた中ボス 1 体の倒れ方（互角のまま取り合っているかを見る。docs/cpu-ai.md の「集計の道具」）。
+class BossFall:
+	extends RefCounted
+	var turn := 0
+	var boss_index := 0
+	## 倒した陣営（いなければ -1）。
+	var slayer_side := -1
+	## 倒れた時点の、戦える駒（前衛・後衛・奇襲）の数。倒した側と、その相手。
+	var slayer_units := 0
+	var rival_units := 0
+	## 倒れた時点で、中ボスのマスから CONTEST_RADIUS マス以内にいた相手（倒した側でないプレイヤー）の戦える駒の数。
+	var rivals_near := 0
+	## その中ボスに与えたダメージ（駒の攻撃とスキル）。倒した側と、その相手。
+	var slayer_damage := 0
+	var rival_damage := 0
+
+	## 決着が見える前か（戦える駒の数の差が 1 以内）。
+	func is_even() -> bool:
+		return absi(slayer_units - rival_units) <= 1
+
+	## 相手もそばにいたか。
+	func is_contested() -> bool:
+		return rivals_near > 0
+
+	## 相手が半分より多く削った中ボスの、止めだけを取ったか。
+	func is_steal() -> bool:
+		return rival_damage > slayer_damage
+
+
+## 中ボスが倒れたとき、「そばにいた」と数える距離（マンハッタン）。中ボスの届く距離（縄張り 4 + 射程 2）と同じ。
+const CONTEST_RADIUS := 6
 
 
 ## 倒された駒 1 体の倒され方（スナイパーが「何もできずに落ちる」かを見る。docs/cpu-ai.md の「集計の道具」）。
@@ -175,6 +212,10 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			elif hit is SkillDamagedEvent:
 				source_id = (hit as SkillDamagedEvent).user_id
 			outcome.last_hit_by[hit.unit_id] = source_id
+			if outcome.stats != null and outcome.stats.units.has(hit.unit_id) and outcome.stats.units.has(source_id):
+				var source_side := outcome.stats.units[source_id].side
+				if outcome.stats.units[hit.unit_id].kind == UnitKind.Id.ELITE_MINION and source_side != Unit.Side.NEUTRAL:
+					outcome.boss_damage.get_or_add(hit.unit_id, [0, 0])[source_side] += hit.amount
 	if event is SkillDamagedEvent:
 		outcome.skill_hits[(event as SkillDamagedEvent).unit_id] = true
 	elif event is UnitDefeatedEvent:
@@ -203,6 +244,27 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 				outcome.skill_defeat_column = column
 			column = outcome.skill_defeat_column
 		outcome.defeat_column = column
+	elif event is MidBossDefeatedEvent:
+		var slain := event as MidBossDefeatedEvent
+		var fall := BossFall.new()
+		fall.turn = battle.turn
+		fall.boss_index = slain.boss_index
+		fall.slayer_side = slain.slayer_side
+		if slain.slayer_side >= 0:
+			var dealt: Array = outcome.boss_damage.get(slain.unit_id, [0, 0])
+			fall.slayer_damage = dealt[slain.slayer_side]
+			fall.rival_damage = dealt[1 - slain.slayer_side]
+			for unit in battle.units:
+				var role := UnitKind.role(unit.kind)
+				if unit.side == Unit.Side.NEUTRAL or role == UnitKind.Role.NONE or role == UnitKind.Role.HEALER:
+					continue
+				if unit.side == slain.slayer_side:
+					fall.slayer_units += 1
+				else:
+					fall.rival_units += 1
+					if Combat.distance(unit.cell, slain.cell) <= CONTEST_RADIUS:
+						fall.rivals_near += 1
+		outcome.boss_falls.append(fall)
 	elif event is ExperienceGainedEvent:
 		var gained := event as ExperienceGainedEvent
 		var tally: Array = outcome.gains.get_or_add(gained.unit_id, [0, 0, 0, 0, 0])

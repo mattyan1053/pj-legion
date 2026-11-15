@@ -55,6 +55,17 @@ class Tally:
 	var boss_turns: Array[int] = []
 	var boss_slayer_wins := 0
 	var boss_slayer_losses := 0
+	## 倒した陣営のいる中ボスの倒れ方: [数, 倒した側の勝ち, 負け] を、全部・互角のうち（戦える駒の差が 1 以内）・相手がそばにいた・
+	## 相手が多く削った止めの横取り、で。勝ち負けは決着した局だけ。
+	var boss_all: Array[int] = [0, 0, 0]
+	var boss_even: Array[int] = [0, 0, 0]
+	var boss_contested: Array[int] = [0, 0, 0]
+	var boss_steals: Array[int] = [0, 0, 0]
+	## 両方のプレイヤーが削った中ボスの数。
+	var boss_shared := 0
+	## 中ボスの番号ごと、倒したプレイヤーごとの数。
+	var boss_by_index: Array[int] = [0, 0]
+	var boss_by_side: Array[int] = [0, 0]
 
 	func add(outcome: CpuMatch.Outcome) -> void:
 		games += 1
@@ -80,6 +91,36 @@ class Tally:
 					boss_slayer_wins += 1
 				else:
 					boss_slayer_losses += 1
+		for fall in outcome.boss_falls:
+			if fall.slayer_side < 0:
+				continue
+			boss_by_index[fall.boss_index] += 1
+			boss_by_side[fall.slayer_side] += 1
+			boss_shared += 1 if fall.slayer_damage > 0 and fall.rival_damage > 0 else 0
+			var won := 1 if outcome.winner == fall.slayer_side else (2 if outcome.winner >= 0 else 0)
+			var rows: Array[Array] = [boss_all]
+			if fall.is_even():
+				rows.append(boss_even)
+			if fall.is_contested():
+				rows.append(boss_contested)
+			if fall.is_steal():
+				rows.append(boss_steals)
+			for row in rows:
+				row[0] += 1
+				if won > 0:
+					row[won] += 1
+
+	## 中ボスの取り合いの行（互角のまま倒れたか、相手がそばにいたか、止めの横取りか）。
+	func contest_line(name: String) -> String:
+		return "%-22s 倒れた %3d 体（左 %d 右 %d、先手 %d 後手 %d）  互角のうち %3d 体（%3.0f%%。局の %3.0f%%）倒した側 %s  相手がそばに %3d 体（%3.0f%%）倒した側 %s  両方が削った %3d 体  横取り %3d 体 倒した側 %s" % [
+			name, boss_all[0], boss_by_index[0], boss_by_index[1], boss_by_side[0], boss_by_side[1],
+			boss_even[0], 100.0 * boss_even[0] / maxi(1, boss_all[0]), 100.0 * boss_even[0] / maxi(1, games), _record(boss_even),
+			boss_contested[0], 100.0 * boss_contested[0] / maxi(1, boss_all[0]), _record(boss_contested),
+			boss_shared, boss_steals[0], _record(boss_steals),
+		]
+
+	func _record(row: Array[int]) -> String:
+		return "%d 勝 %d 敗（%.0f%%）" % [row[1], row[2], 100.0 * row[1] / maxi(1, row[1] + row[2])]
 
 	func boss_line(name: String) -> String:
 		var sorted := boss_turns.duplicate()
@@ -220,6 +261,12 @@ func _initialize() -> void:
 				print("KIND seed=%d kind=%d hired=%d defeated=%d damage=%d kills=%d evolved=%d" % [
 					first_seed + game, kind, row[0], row[1], row[2], row[3], row[4],
 				])
+			for fall in outcome.boss_falls:
+				print("BOSS seed=%d stage=%d turn=%d index=%d side=%d units=%d rivals=%d near=%d dealt=%d rival_dealt=%d won=%d" % [
+					first_seed + game, stage, fall.turn, fall.boss_index, fall.slayer_side, fall.slayer_units, fall.rival_units,
+					fall.rivals_near, fall.slayer_damage, fall.rival_damage,
+					-1 if outcome.winner < 0 or fall.slayer_side < 0 else (1 if outcome.winner == fall.slayer_side else 0),
+				])
 			for fall in outcome.falls:
 				print("FALL seed=%d kind=%d turn=%d damage=%d hits=%d killer=%d killer_level=%d step=%d" % [
 					first_seed + game, fall.kind, fall.turn, fall.damage, fall.hits_taken, fall.killer_kind, fall.killer_level,
@@ -308,6 +355,10 @@ func _initialize() -> void:
 	print(all.boss_line("全体"))
 	for stage: int in by_stage:
 		print(by_stage[stage].boss_line("ステージ " + STAGE_NAMES[stage]))
+	print("中ボスの取り合い（互角 = 倒れた時点の戦える駒の数の差が 1 以内。そば = 中ボスから %d マス以内に相手の戦える駒。横取り = 相手のほうが多く削っていた）" % CpuMatch.CONTEST_RADIUS)
+	print(all.contest_line("全体"))
+	for stage: int in by_stage:
+		print(by_stage[stage].contest_line("ステージ " + STAGE_NAMES[stage]))
 	print("")
 	print("聖遺物（軍ごと。勝率は決着した局だけ。「相手だけ」は、自分は取らず、相手が取った局）")
 	for army in ARMIES:
