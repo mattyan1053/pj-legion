@@ -31,6 +31,20 @@ func test_forest_and_barrel_explain_themselves() -> void:
 	assert_true(body.begins_with("起爆樽\n　"), "名前の行と、字下げした説明の行に分けない: " + body)
 
 
+
+func test_portal_says_where_it_sends() -> void:
+	var battle := Maps.battle([
+		"1...1",
+	])
+	var notes := BattleTexts.cell_notes(battle, Vector2i(0, 0))
+	assert_eq(notes, ["ポータル → (4, 0)（%s）" % BattleTexts.PORTAL_NOTE] as Array[String])
+	var body := BattleTexts.cell_body(battle, Vector2i(0, 0))
+	assert_true(body.contains("\n　対のポータルへ転送する"), "転送の説明を行に分けていない: " + body)
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 0))
+	notes = BattleTexts.cell_notes(battle, Vector2i(0, 0))
+	assert_eq(notes, ["ポータル → (4, 0)（%s。%s）" % [BattleTexts.PORTAL_NOTE, BattleTexts.PORTAL_BLOCKED]] as Array[String],
+		"行き先がふさがっていることを書いていない")
+
 func test_hint_follows_the_state() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
