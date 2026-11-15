@@ -118,8 +118,8 @@ static func target_of(battle: Battle, unit: Unit) -> Unit:
 
 
 ## 中立の駒が動く先。target が null なら家へ戻る（家を持たなければ動かない）。
-## - target を攻撃できるマスがあれば、そのうち使う移動力がいちばん少ないマス
-## - 無ければ、target にいちばん近づけるマス（同じなら使う移動力の少ないマス）
+## - target を攻撃できるマス（射程に入り、間に盾が無い。Combat.reaches）があれば、そのうち使う移動力がいちばん少ないマス
+## - 無ければ、target にいちばん近づけるマス（同じなら使う移動力の少ないマス）。射程に入っても盾越しのマスは、射程の 1 歩外と同じに数える
 ## どれも縄張りの中で、通常の移動で止まれるマス（いまのマスを含む）。同点は移動範囲の探索の順で先のもの。
 static func destination(battle: Battle, unit: Unit, target: Unit) -> Vector2i:
 	var goal := unit.home_cell if target == null else target.cell
@@ -127,12 +127,12 @@ static func destination(battle: Battle, unit: Unit, target: Unit) -> Vector2i:
 		return unit.cell
 	var reach := unit.attack_range() if target != null else 0
 	var best := unit.cell
-	var best_key := Vector2i(_gap(unit.cell, goal, reach), 0)
+	var best_key := Vector2i(_gap(battle, unit.cell, goal, reach), 0)
 	var stops := Movement.reachable(battle, unit, false)
 	for cell: Vector2i in stops:
 		if not in_territory(unit, cell):
 			continue
-		var key := Vector2i(_gap(cell, goal, reach), stops[cell])
+		var key := Vector2i(_gap(battle, cell, goal, reach), stops[cell])
 		if key < best_key:
 			best = cell
 			best_key = key
@@ -186,6 +186,8 @@ static func _closest(battle: Battle, from: Vector2i, candidates: Array[Unit]) ->
 	return best[battle.rng.randi_range(0, best.size() - 1)]
 
 
-## cell から goal を射程 reach で捉えるまでに足りない距離（届いていれば 0）。
-static func _gap(cell: Vector2i, goal: Vector2i, reach: int) -> int:
-	return maxi(0, Combat.distance(cell, goal) - reach)
+## cell から goal まで、あと何マス寄れば射程 reach の攻撃が届くか（届けば 0）。射程に入っても間に盾があれば 1。
+static func _gap(battle: Battle, cell: Vector2i, goal: Vector2i, reach: int) -> int:
+	if Combat.reaches(battle, cell, goal, reach):
+		return 0
+	return maxi(1, Combat.distance(cell, goal) - reach)

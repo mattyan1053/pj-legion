@@ -438,7 +438,11 @@ func result_stats() -> String:
 func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
 		return
-	_confirming_ult = false
+	if _confirming_ult:
+		# 必殺技を確かめている途中のクリックは、確かめるのをやめるだけ（移動や攻撃はしない）。
+		_confirming_ult = false
+		_refresh()
+		return
 	var clicked := battle.unit_at(cell)
 	if _mode == Mode.SKILL:
 		if _skill_cells.has(cell):
@@ -1512,9 +1516,12 @@ func _screen_rect(at: Vector3, radius: float, height: float) -> Rect2:
 	return rect
 
 
-## 必殺技のボタンが、どのプレイヤーのものか。いまの番のプレイヤー（CPU の番と中立の番では、プレイヤー1）。
+## 必殺技のボタンが、どのプレイヤーのものか。CPU と対戦するときは、いつも人のプレイヤー（CPU の番の間も）。
+## 人どうしでは、いまの番のプレイヤー（中立の番では、プレイヤー1）。
 func _ult_side() -> Unit.Side:
-	if battle.phase == Unit.Side.NEUTRAL or _cpu_running or _is_cpu_turn():
+	if cpu_opponent:
+		return match_choice.human_side
+	if battle.phase == Unit.Side.NEUTRAL:
 		return Unit.Side.PLAYER1
 	return battle.phase
 
@@ -1595,7 +1602,7 @@ func _refresh_hint(unit: Unit) -> void:
 	elif battle.evolving_unit() != null:
 		_hud.set_hint("進化先を選ぶ（上のボタン）")
 	elif _confirming_ult:
-		_hud.set_hint("もう一度押すと必殺技を使う（取り消せない）。右クリックでやめる")
+		_hud.set_hint("もう一度押すと必殺技を使う（取り消せない）。右クリックか、盤面のクリックでやめる")
 	elif unit == null:
 		_hud.set_hint("駒をクリックして選ぶ。相手の駒をクリックすると、動ける範囲と攻撃の届く範囲が見える")
 	elif _mode == Mode.SKILL and _is_self_skill(unit):
