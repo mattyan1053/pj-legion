@@ -172,6 +172,7 @@ func _expect_forecast(words: Array, what: String) -> void:
 	var rect: Rect2 = _scene.forecast_rect()
 	var area: Rect2 = _scene.menu_area()
 	_expect(area.grow(1.0).encloses(rect), "%sの予測のパネルが画面からはみ出した: %s" % [what, rect])
+	_expect(rect.size.y <= area.size.y * 0.6, "%sの予測のパネルが高すぎる: %s" % [what, rect])
 	_expect(not rect.intersects(_scene.menu_rect()), "%sの予測のパネルが、メニューに重なった" % what)
 
 
@@ -251,6 +252,9 @@ func _queue_barrel_draw_scene() -> void:
 	king2.hp = 10
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(3, 4))
 	var guard := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(4, 1))
+	# 爆発に 5 体を巻き込む（予測のパネルは、駒ごとに 1 行の詰めた形になり、画面に収まる）。
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 3))
+	battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER2, Vector2i(4, 3))
 
 	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(sniper.cell))

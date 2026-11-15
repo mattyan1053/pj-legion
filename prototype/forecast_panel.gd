@@ -18,6 +18,8 @@ const COLOR_WARN := Color("ffa23a")
 const COLOR_HEAL := Color("6ff08a")
 const COLOR_LOSS := Color("e8503a")
 const COLOR_BAR_BACK := Color(0.2, 0.22, 0.26)
+## 何かが起きる駒がこれより多いと、駒ごとに 1 行の詰めた形にする（樽の爆発は 8 体まで巻き込むので、パネルが画面の高さを超えないように）。
+const COMPACT_FROM := 4
 
 
 ## HP の棒。前の HP と後の HP を並べて描く（減るぶんは赤、増えるぶんは緑、残りは HP の色）。
@@ -85,8 +87,12 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 		var text := "倒せる！" if summary.defeats == 1 else "%d 体を倒せる！" % summary.defeats
 		_add_label(text, 16, COLOR_DEFEAT)
 		texts.append(text)
+	var compact := summary.rows.size() >= COMPACT_FROM
 	for row in summary.rows:
 		var name := ("自分（%s）" % row.name) if row.is_actor else row.name
+		if compact:
+			texts.append(_add_compact_row(name, row))
+			continue
 		_add_label(name, 15, _side_color(row.side).lightened(0.4))
 		texts.append(name)
 		var hp := ForecastText.hp_text(row)
@@ -121,6 +127,27 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 	_shown_text = "\n".join(texts)
 	visible = true
 	reset_size()
+
+
+## 詰めた形の 1 体ぶん: 「名前: N ダメージ → 倒れる（爆発）」を 1 行に（HP の棒は描かない）。ほかに起きることは、続けて 1 行に。
+func _add_compact_row(name: String, row: ForecastText.Row) -> String:
+	var line := name
+	var hp := ForecastText.hp_text(row)
+	if hp != "":
+		line += ": " + hp
+	if not row.notes.is_empty():
+		line += "（%s）" % "・".join(row.notes)
+	var color := _side_color(row.side).lightened(0.4)
+	if row.defeated:
+		color = COLOR_DEFEAT
+	elif row.is_actor and row.damage > 0:
+		color = COLOR_WARN
+	_add_label(line, 14, color)
+	if not row.effects.is_empty():
+		var effects := "　" + "、".join(row.effects)
+		_add_label(effects, 13, COLOR_DIM)
+		line += "\n" + effects
+	return line
 
 
 func hide_summary() -> void:
