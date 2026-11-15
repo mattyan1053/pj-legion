@@ -123,58 +123,8 @@ const CRUISE_PENALTY := 0.5
 const STAND_OFF_VALUE := 0.5
 ## 回復役が、減っている味方を探す範囲（歩数）。
 const HEALER_SEARCH_STEPS := 12
-## スキル -> 使った結果の価値を見積もるメソッド（SkillUsedEvent と、使ったあとの複製を受け取る）。
-## ダメージ・回復・経験値のイベントだけで価値が決まるスキルは、載せなくてよい（_outcome_value がそのまま読む）。
-## 載せないスキルは、tests/rules/test_enum_tables.gd の除外の一覧に書く（載せ忘れを検査が見つける）。
-const SKILL_VALUES := {
-	Skill.Id.TACTICAL_BARRICADE: &"_barricade_value",
-	Skill.Id.SAINT_PLACE: &"_sanctuary_value",
-	Skill.Id.SMOKE_GRENADE: &"_smoke_value",
-	Skill.Id.DIVINE_SHIELD: &"_barrier_value",
-	Skill.Id.PRECISION_AIM: &"_aim_value",
-	Skill.Id.SHADOW_STEP: &"_shadow_step_value",
-	Skill.Id.ADRENALINE_SHOT: &"_adrenaline_value",
-}
-## スキル -> 対象に選ぶ価値のありそうなマスを並べるメソッド（駒と、通常の移動で止まれるマスを受け取り、マスの集合を返す）。
-## スキルを使う手は、ここに並んだ対象だけを、複製の上で使ってみて比べる（全部のマスを試すと、時間がかかりすぎる）。
-## 載せていないスキルは、選べる対象をすべて試す（遅くなるので、全部のスキルを載せる。tests/rules/test_enum_tables.gd が確かめる）。
-const SKILL_TARGETS := {
-	Skill.Id.TACTICAL_BARRICADE: &"_barricade_targets",
-	Skill.Id.SAINT_PLACE: &"_sanctuary_targets",
-	Skill.Id.SMOKE_GRENADE: &"_smoke_targets",
-	Skill.Id.FIREBALL: &"_fireball_targets",
-	Skill.Id.DIVINE_SHIELD: &"_barrier_targets",
-	Skill.Id.PRECISION_AIM: &"_aim_targets",
-	Skill.Id.SHADOW_STEP: &"_shadow_step_targets",
-	Skill.Id.ADRENALINE_SHOT: &"_adrenaline_targets",
-}
-## 盾: 置いたあとの盤面で危険を数え直し、味方が受けうるダメージの減るぶんの価値の何倍を見込むか
-## （敵は回り込める・盾を壊せるので、1 より小さい）。味方の離れた攻撃を遮るぶんは、同じ倍率で引く。
-const BARRICADE_COVER_RATE := 0.75
-## 盾: 1 回に試す置き場所の数の上限（危険を数え直すので、1 か所ごとに時間がかかる）。
-const BARRICADE_TRIES := 6
-## バリア: 張るために立つマスの候補の数（立つマスの価値の高い順）。
-const BARRIER_TRIES := 3
-## 聖域: 中に、減っている味方がこの数だけいれば置く。1 体が回復すると見込むのは、聖域の回復の何回ぶんまでか。
-const SANCTUARY_MIN_UNITS := 2
-const SANCTUARY_EXPECTED_HEALS := 2
-## 煙幕: 中に、離れたところからしか届かない攻撃に狙われている味方がこの数だけいれば置く。
-## 防げるダメージの価値の何倍を見込むか（敵は狙いを替えられるので、1 より小さい）。
-const SMOKE_MIN_UNITS := 2
-const SMOKE_MIN_VALUE := 20.0
-const SMOKE_COVER_RATE := 0.75
-## バリア: 次の相手の番に自分に届く攻撃のうち、いちばん弱い 1 回を防ぐと見込む（敵は弱い攻撃で先にはがす）。
-## その価値は、その攻撃 1 回ぶんのダメージの価値の何倍か（攻撃されないまま期限で消えることもあるので、1 より小さい）。
-const BARRIER_COVER_RATE := 0.75
-## 照準: 次の自分の番に、強めた攻撃を当てられそうな敵 1 体への、その攻撃の価値の何倍を見込むか。
-## いま伸びた射程の中にいる敵（AIM_RATE）と、1 回動けば入ってくる敵（AIM_WATCH_RATE）。
-## いまの位置から攻撃できる敵は数えない（構えるより、いま撃つほうが早い）。
-const AIM_RATE := 0.4
-const AIM_WATCH_RATE := 0.2
-## アドレナリン注射: 対象が、いまの位置からもう一度手を出したときの価値（いちばん良い攻撃・回復）が、この値以上なら使う
-## （回数に限りがあるので、倒せる・将を殴れるくらいの手に取っておく）。見込む価値は、その手の価値の何倍か。
-const ADRENALINE_MIN_VALUE := 30.0
-const ADRENALINE_RATE := 0.75
+## スキルを使う手の、スキルごとの見積もり（対象に選ぶ価値のありそうなマスと、使った結果の価値）は、
+## rules/cpu/ の 1 スキル 1 ファイル（CpuSkillEstimate.of）。
 
 ## 敵のバリアをはがす価値: このあとに動ける味方が、その敵に当てられそうな攻撃 1 回ぶんのダメージの価値の何倍か。
 ## 続ける味方がいなければ BARRIER_STRIP_VALUE だけ（バリアは使わせたが、ダメージにはつながらない）。
@@ -444,7 +394,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 	var here: Dictionary[Vector2i, float] = {unit.cell: 0.0}
 	var wanted := _wanted_skill_targets(unit, here)
 	var skill := Skills.of(unit)
-	var limited := skill != null and SKILL_TARGETS.has(skill.id())
+	var limited := skill != null and CpuSkillEstimate.of(skill.id()) != null
 	for action in _battle.options(unit.id).actions():
 		if action is MoveAction or action is WaitAction or action is UndoMoveAction:
 			continue
@@ -550,7 +500,7 @@ func _plan(unit: Unit) -> BattleAction:
 
 
 ## スキルを使う手の候補。[立つマス, 対象のマス] の列。対象ごとに、そこを選べるマスのうち、立つマスの価値がいちばん高いもの。
-## - 対象は、スキルごとの「選ぶ価値のありそうなマス」（SKILL_TARGETS）に絞る
+## - 対象は、スキルごとの「選ぶ価値のありそうなマス」（rules/cpu/ の targets）に絞る
 ## - いまのマスから選べる対象は Battle.options() の skill_cells。ほかのマスからは、そこへ動いた写しの駒でスキルの定義に聞く
 ##   （Skill.is_ready、Skill.target_cells）。広めに並べるだけで、使えるかどうかは _plan が複製の上で確かめる
 func _skill_candidates(unit: Unit, options: UnitOptions, positions: Dictionary[Vector2i, float]) -> Array[Array]:
@@ -558,7 +508,7 @@ func _skill_candidates(unit: Unit, options: UnitOptions, positions: Dictionary[V
 	var skill := Skills.of(unit)
 	if skill == null or not Skills.can_use(_battle, unit):
 		return result
-	var limited := SKILL_TARGETS.has(skill.id())
+	var limited := CpuSkillEstimate.of(skill.id()) != null
 	var wanted := _wanted_skill_targets(unit, positions)
 	if limited and wanted.is_empty():
 		return result
@@ -586,16 +536,16 @@ func _skill_candidates(unit: Unit, options: UnitOptions, positions: Dictionary[V
 	return result
 
 
-## unit のスキルの、対象に選ぶ価値のありそうなマス（SKILL_TARGETS のメソッドの答え）。
-## スキルを持たない・いま使えない駒と、SKILL_TARGETS に載せていないスキルでは空（載せていないスキルは、呼ぶ側が絞らずに全部試す）。
+## unit のスキルの、対象に選ぶ価値のありそうなマス（rules/cpu/ の targets の答え）。
+## スキルを持たない・いま使えない駒と、rules/cpu/ に見積もりの無いスキルでは空（載せていないスキルは、呼ぶ側が絞らずに全部試す）。
 ## cells は、unit が立つかもしれないマス（_plan では通常の移動で止まれるマス、_follow_up ではいまのマスだけ）。
 func _wanted_skill_targets(unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var skill := Skills.of(unit)
 	var wanted: Dictionary[Vector2i, bool] = {}
-	if skill == null or not SKILL_TARGETS.has(skill.id()) or not Skills.can_use(_battle, unit):
+	if skill == null or CpuSkillEstimate.of(skill.id()) == null or not Skills.can_use(_battle, unit):
 		return wanted
 	_build_threats()
-	wanted = call(SKILL_TARGETS[skill.id()], unit, cells)
+	wanted = CpuSkillEstimate.of(skill.id()).targets(self, unit, cells)
 	return wanted
 
 
@@ -692,8 +642,9 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 			continue
 		var used := event as SkillUsedEvent
 		if used != null:
-			if SKILL_VALUES.has(used.skill):
-				value += call(SKILL_VALUES[used.skill], used, sim)
+			var estimate := CpuSkillEstimate.of(used.skill)
+			if estimate != null:
+				value += estimate.value(self, used, sim)
 			continue
 		var chipped := event as BarricadeDamagedEvent
 		if chipped != null:
@@ -927,332 +878,6 @@ func _barrier_strip_value(victim_id: int, sim: Battle) -> float:
 
 
 # ---- スキルの価値 ----
-
-
-## 盾を置いた価値。置いたあとの盤面（sim）で危険を数え直して、味方が次の相手の番に受けうるダメージ（HP まで）の
-## 減るぶんを見込む。通路をふさいで敵が寄れなくなるぶんも、離れた攻撃の射線を切るぶんも、ここに入る。
-## 倒されうる味方（将を除く）が倒されなくなるなら、その駒の役割の「倒されうるマス」の重さを足す。
-## いま届いている味方の離れた攻撃が、盾で届かなくなるぶんは引く（置く前と置いたあとのルールの答えを比べる）。
-func _barricade_value(used: SkillUsedEvent, sim: Battle) -> float:
-	_build_threats()
-	var threats: Dictionary[Vector2i, Dictionary] = {}
-	var close: Dictionary[Vector2i, Dictionary] = {}
-	_fill_threats(sim, threats, close, {})
-	# 比べる相手は「同じマスに立って、盾を置かなかったとき」。動いてから置く手では、動いただけの盤面で数え直す
-	# （前衛は、立つだけでも道をふさぐ。そのぶんを盾の手柄にしない）。
-	var threats_before := _threats
-	var close_before := _close_threats
-	var user := _battle.unit_by_id(used.unit_id)
-	if _stand != Board.NO_CELL and _stand != user.cell:
-		if not _moved_threats.has(_stand):
-			var moved_state := _battle.clone()
-			moved_state.apply(MoveAction.new(user.id, _stand))
-			var moved_threats: Dictionary[Vector2i, Dictionary] = {}
-			var moved_close: Dictionary[Vector2i, Dictionary] = {}
-			_fill_threats(moved_state, moved_threats, moved_close, {})
-			_moved_threats[_stand] = [moved_threats, moved_close]
-		threats_before = _moved_threats[_stand][0]
-		close_before = _moved_threats[_stand][1]
-	var value := 0.0
-	for friend in sim.units:
-		if friend.side != _me:
-			continue
-		var before := mini(friend.hp, _danger_in(threats_before, close_before, friend, friend.cell, 0))
-		var after := mini(friend.hp, _danger_in(threats, close, friend, friend.cell, 0))
-		var rate := KING_DAMAGE_VALUE if friend.kind == UnitKind.Id.KING else DAMAGE_VALUE
-		value += BARRICADE_COVER_RATE * rate * (before - after)
-		if before >= friend.hp and after < friend.hp and friend.kind != UnitKind.Id.KING:
-			# 倒されうる味方が、倒されなくなる（将は、自分で逃げる）。その駒の「倒されうるマス」の重さを足す。
-			value += STYLES[UnitKind.role(friend.kind)][_LETHAL]
-	for shooter in _battle.units:
-		if shooter.side != _me or shooter.attack_range() < Combat.RANGED_DISTANCE:
-			continue
-		var moved := sim.unit_by_id(shooter.id)
-		if moved.cell != shooter.cell:
-			continue  # 盾を置いた駒自身（動いてから置いた）
-		for target in _battle.units:
-			if target.side != _foe or not Combat.can_attack(_battle, shooter, target):
-				continue
-			if not Combat.can_attack(sim, moved, sim.unit_by_id(target.id)):
-				var rate := KING_DAMAGE_VALUE if target.kind == UnitKind.Id.KING else DAMAGE_VALUE
-				value -= BARRICADE_COVER_RATE * rate * shooter.power()
-	return value
-
-
-## 盾を置く価値のありそうなマス。危険のある味方がいるときだけ、次の 2 通りを、unit に近い順に BARRICADE_TRIES か所まで。
-## - 次の相手の番に敵が止まれるマスのうち、通路のようなマス（上下左右の入れるマスが 2 つ以下）。ふさげば、敵が寄れなくなる
-## - 離れた敵（射程 2 以上）に狙われている味方の、その敵の側の隣のマス。射線が切れる
-func _barricade_targets(unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	var found: Dictionary[Vector2i, bool] = {}
-	var width := _board.size.x
-	var endangered := false
-	for friend in _battle.units:
-		if friend.side != _me or not _threats.has(friend.cell):
-			continue
-		endangered = true
-		var by: Dictionary = _threats[friend.cell]
-		for enemy_id: int in by:
-			var enemy := _battle.unit_by_id(enemy_id)
-			if enemy == null or enemy.attack_range() < Combat.RANGED_DISTANCE:
-				continue
-			var apart := Combat.distance(friend.cell, enemy.cell)
-			for direction in Board.DIRECTIONS:
-				var near := friend.cell + direction
-				if Combat.distance(near, enemy.cell) < apart:
-					found[near] = true
-	if not endangered:
-		return found
-	var reach := unit.move_range() + TacticalBarricadeSkill.PLACE_DISTANCE * 2
-	for cell in _foe_stops:
-		if Combat.distance(cell, unit.cell) > reach:
-			continue
-		var open := 0
-		for direction in Board.DIRECTIONS:
-			var near := cell + direction
-			if _board.in_bounds(near) and _walkable[near.y * width + near.x] == 1:
-				open += 1
-		if open <= 2:
-			found[cell] = true
-	var cells: Array[Vector2i] = []
-	cells.assign(found.keys())
-	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		var da := Combat.distance(a, unit.cell)
-		var db := Combat.distance(b, unit.cell)
-		return da < db or (da == db and Board.in_reading_order(a, b)))
-	var wanted: Dictionary[Vector2i, bool] = {}
-	for cell in cells:
-		if wanted.size() >= BARRICADE_TRIES:
-			break
-		if FieldEffects.can_place_barricade(_battle, cell) or cell == unit.cell:
-			wanted[cell] = true
-	return wanted
-
-
-## 聖域を置く価値のありそうな中心: 減っている味方（もう自分の聖域の中にいる駒は除く）を中に入れられるマス。
-func _sanctuary_targets(unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	var wanted: Dictionary[Vector2i, bool] = {}
-	var skill := Skills.of(unit)
-	for friend in _battle.units:
-		if friend.side != _me or friend.hp >= friend.max_hp() or FieldEffects.sanctuary_of(_battle, friend) != null:
-			continue
-		# 3 x 3 は対称なので、「friend を中心にしたときに効果が及ぶマス」が「friend を中に入れられる中心」になる。
-		for cell in skill.affected_cells(_battle, unit, friend.cell):
-			wanted[cell] = true
-	return wanted
-
-
-## 煙幕を置く価値のありそうな中心: 煙幕が防ぐ攻撃に狙われている味方（もう自分の煙幕の中にいる駒は除く）を中に入れられるマス。
-func _smoke_targets(unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	var wanted: Dictionary[Vector2i, bool] = {}
-	var skill := Skills.of(unit)
-	for friend in _battle.units:
-		if friend.side != _me or _smoked.has(friend.cell) or _smoke_saves(friend.cell) <= 0:
-			continue
-		for cell in skill.affected_cells(_battle, unit, friend.cell):
-			wanted[cell] = true
-	return wanted
-
-
-## ファイアボールを撃つ価値のありそうな中心: 敵（中立の駒も）のどれかに当たるマス。
-func _fireball_targets(unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	var wanted: Dictionary[Vector2i, bool] = {}
-	var skill := Skills.of(unit)
-	for other in _battle.units:
-		if other.side == _me:
-			continue
-		# 十字は対称なので、「other を中心にしたときに効果が及ぶマス」が「other に当たる中心」になる。
-		for cell in skill.affected_cells(_battle, unit, other.cell):
-			wanted[cell] = true
-	return wanted
-
-
-## バリアを張る価値のありそうなマス（自分のマスが対象）: 立てるマスのうち、次の相手の番に攻撃されうるマスを、
-## 立つマスの価値の高い順に BARRIER_TRIES か所。いまのマスは、攻撃されうるなら必ず入れる。
-func _barrier_targets(unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	var wanted: Dictionary[Vector2i, bool] = {}
-	if Statuses.blocking(unit) != -1:
-		return wanted
-	var ranked: Array[Array] = []
-	for cell in cells:
-		if _threat_at(unit, cell, 0) > 0:
-			ranked.append([_position_value(unit, cell, 0, true), cell])
-	ranked.sort_custom(func(a: Array, b: Array) -> bool:
-		return a[0] > b[0] or (a[0] == b[0] and Board.in_reading_order(a[1], b[1])))
-	for entry: Array in ranked.slice(0, BARRIER_TRIES):
-		wanted[entry[1]] = true
-	if _threat_at(unit, unit.cell, 0) > 0:
-		wanted[unit.cell] = true
-	return wanted
-
-
-## 照準は、動かずに構える（いまのマスだけ）。
-func _aim_targets(unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	return {unit.cell: true}
-
-
-## シャドウステップで跳ぶ価値のありそうなマス:
-## - 歩いては攻撃が届かない敵（相手のプレイヤーの駒）を、攻撃できるマス（歩いて届く敵は、歩いて攻撃する手が比べている）。
-##   中立の駒を殴るためには跳ばない（跳べるのは数ターンに 1 回。相手の駒のために取っておく）
-## - 空いている敵の本陣
-## - 自分の本陣に乗っている敵のマス（入れ替わって、占拠を切る）
-func _shadow_step_targets(unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	var wanted: Dictionary[Vector2i, bool] = {}
-	var reach := _moved_reach if cells.size() > 1 else unit.attack_range()
-	for other in _battle.units:
-		if other.side != _foe:
-			continue
-		if other.cell == _my_hq:
-			wanted[other.cell] = true
-		if cells.size() > 1 and _in_reach(unit, cells, other.cell):
-			continue
-		for dy in range(-reach, reach + 1):
-			for dx in range(-reach + absi(dy), reach - absi(dy) + 1):
-				wanted[other.cell + Vector2i(dx, dy)] = true
-	if _foe_hq != Board.NO_CELL and _battle.unit_at(_foe_hq) == null:
-		wanted[_foe_hq] = true
-	return wanted
-
-
-## アドレナリン注射の対象: 行動済みの味方（回復役と将も、ルールが選ばせるなら試す）。
-func _adrenaline_targets(unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
-	var wanted: Dictionary[Vector2i, bool] = {}
-	for friend in _battle.units:
-		if friend.side == _me and friend != unit and friend.acted:
-			wanted[friend.cell] = true
-	return wanted
-
-
-## 聖域を置いた価値。中にいる、減っている味方（もう自分の聖域の中にいる駒は除く）の、見込める回復量。
-## 減っている味方が SANCTUARY_MIN_UNITS 体に満たなければ 0（回復役は、ふつうの回復のほうが早い）。
-func _sanctuary_value(used: SkillUsedEvent, sim: Battle) -> float:
-	var cells := Skills.by_id(used.skill).affected_cells(sim, sim.unit_by_id(used.unit_id), used.target)
-	var wounded := 0
-	var total := 0
-	for unit in sim.units:
-		if unit.side != _me or not cells.has(unit.cell) or _in_own_sanctuary(unit.cell):
-			continue
-		var missing := unit.max_hp() - unit.hp
-		if missing > 0:
-			wounded += 1
-			total += mini(missing, FieldEffects.SANCTUARY_HEAL * SANCTUARY_EXPECTED_HEALS)
-	return HEAL_VALUE * total if wounded >= SANCTUARY_MIN_UNITS else 0.0
-
-
-## cell が、置く前から自分の聖域の中か。
-func _in_own_sanctuary(cell: Vector2i) -> bool:
-	for effect in _board.field_effects:
-		if effect.type == FieldEffect.Type.SANCTUARY and effect.side == _me and effect.cells.has(cell):
-			return true
-	return false
-
-
-## cell に立つ味方について、煙幕が防げるダメージ（離れたところからしか届かない攻撃のぶん）。
-func _smoke_saves(cell: Vector2i) -> int:
-	var by: Dictionary = _threats.get(cell, {})
-	var close: Dictionary = _close_threats.get(cell, {})
-	var saved := 0
-	for enemy_id: int in by:
-		saved += by[enemy_id] - close.get(enemy_id, 0)
-	return saved
-
-
-## 煙幕を置いた価値。中にいる味方（もう自分の煙幕の中にいる駒は除く）のうち、次の相手の番に、煙幕が防ぐ攻撃
-## （離れたところからしか届かない攻撃）に狙われうる駒を数え、防げるダメージを見込む。
-## 隣まで寄れる敵の攻撃と、スキルのダメージは防げないので数えない（_close_threats）。
-## 狙われている味方が SMOKE_MIN_UNITS 体に満たなければ 0。
-func _smoke_value(used: SkillUsedEvent, sim: Battle) -> float:
-	_build_threats()
-	var cells := Skills.by_id(used.skill).affected_cells(sim, sim.unit_by_id(used.unit_id), used.target)
-	var covered := 0
-	var value := 0.0
-	for unit in sim.units:
-		if unit.side != _me or not cells.has(unit.cell) or _smoked.has(unit.cell):
-			continue
-		var saved := _smoke_saves(unit.cell)
-		if saved > 0:
-			var rate := KING_DAMAGE_VALUE if unit.kind == UnitKind.Id.KING else DAMAGE_VALUE
-			covered += 1
-			value += SMOKE_COVER_RATE * rate * mini(saved, unit.hp)
-	return value if covered >= SMOKE_MIN_UNITS or value >= SMOKE_MIN_VALUE else 0.0
-
-
-## バリアを付けた価値。次の相手の番に、いまのマスの自分を攻撃できる敵がいれば、防げる 1 回ぶんを見込む
-## （相手は弱い攻撃で先にはがすので、届く攻撃のうち、いちばん弱いもの）。攻撃されそうになければ 0（バリアは期限で消える）。
-func _barrier_value(used: SkillUsedEvent, sim: Battle) -> float:
-	_build_threats()
-	var unit := _battle.unit_by_id(used.unit_id)
-	if Statuses.blocking(unit) != -1:
-		return 0.0
-	var shielded := sim.unit_by_id(used.unit_id)
-	var saved := _threat_at(unit, shielded.cell, 0) - _threat_at(shielded, shielded.cell, 0)
-	return BARRIER_COVER_RATE * DAMAGE_VALUE * mini(saved, unit.hp)
-
-
-## 照準を付けた価値。次の自分の番に、構えたマスから強めた攻撃を当てられそうな敵のうち、いちばん価値の高い 1 体ぶん。
-## 当てたときのダメージは、構えたあとの複製（sim）のルールの答え（Combat.damage。確定クリティカル、森、煙幕、バリアを通る）。
-## - いまの位置から攻撃できる敵は数えない
-## - 伸びた射程の中にいる敵は AIM_RATE、相手が 1 回動けば入ってくる距離の敵は AIM_WATCH_RATE（距離は目安。地形は見ない）
-func _aim_value(used: SkillUsedEvent, sim: Battle) -> float:
-	var unit := _battle.unit_by_id(used.unit_id)
-	var aimed := sim.unit_by_id(used.unit_id)
-	var best := 0.0
-	if Statuses.has(unit, Status.Type.AIM):
-		return best  # もう構えている
-	for enemy in _battle.units:
-		if enemy.side != _foe or Combat.can_attack(_battle, unit, enemy):
-			continue
-		var rate := AIM_WATCH_RATE
-		if Combat.can_attack(sim, aimed, sim.unit_by_id(enemy.id)):
-			rate = AIM_RATE
-		elif Combat.distance(unit.cell, enemy.cell) > aimed.attack_range() + enemy.move_range():
-			continue
-		var amount := Combat.damage(sim, aimed, sim.unit_by_id(enemy.id))
-		if amount > 0:
-			best = maxf(best, rate * _damage_value(enemy, maxi(0, enemy.hp - amount)))
-	return best
-
-
-## シャドウステップで跳んだ価値。跳んだ先から続けてできる攻撃（駒・樽・盾）のうち、いちばん良いものの価値に、
-## 立つマスの価値の差（跳んだ先 − いまのマス）を足す。続けてできる攻撃は、跳んだあとの複製（sim）のルールに聞く。
-## 攻撃できる相手がいなければ 0（跳ぶだけの手は選ばない）。ただし、次の 2 つは攻撃できなくても数える。
-## - 敵の本陣のマスに着く（立つマスの価値に入っている）
-## - 自分の本陣に乗っている敵と入れ替わる（占拠が途切れる。OCCUPIER_KILL_BONUS を足す）
-func _shadow_step_value(used: SkillUsedEvent, sim: Battle) -> float:
-	var unit := _battle.unit_by_id(used.unit_id)
-	_build_threats()
-	_set_goal(unit)
-	var best := 0.0
-	var killed_id := 0
-	for action in sim.options(used.unit_id).actions():
-		if not (action is AttackAction or action is AttackBarrelAction or action is AttackBarricadeAction):
-			continue
-		var after := sim.clone()
-		var value := _outcome_value(after, after.apply(action).events)
-		if value > best:
-			best = value
-			var attack := action as AttackAction
-			killed_id = attack.target_id if attack != null and after.unit_by_id(attack.target_id) == null else 0
-	var swapped := _battle.unit_at(used.target)
-	if swapped != null and swapped.side == _foe and used.target == _my_hq:
-		best += OCCUPIER_KILL_BONUS
-	if best <= 0.0 and used.target != _foe_hq:
-		return 0.0
-	var from := _stand if _stand != Board.NO_CELL else unit.cell
-	return best + _position_value(unit, used.target, killed_id, true) - _position_value(unit, from, 0, true)
-
-
-## アドレナリン注射を使った価値。対象が、いまの位置からもう一度手を出したとき（攻撃・樽・盾・回復。動く手とスキルは見ない）の、
-## いちばん良い手の価値の ADRENALINE_RATE 倍。その手の価値が ADRENALINE_MIN_VALUE に満たなければ 0。
-## できる手は、使ったあとの複製（sim）のルールに聞く。
-func _adrenaline_value(used: SkillUsedEvent, sim: Battle) -> float:
-	var friend := sim.unit_at(used.target)
-	var best := 0.0
-	for action in sim.options(friend.id).actions():
-		if action is MoveAction or action is WaitAction or action is UndoMoveAction or action is UseSkillAction:
-			continue
-		var after := sim.clone()
-		best = maxf(best, _outcome_value(after, after.apply(action).events))
-	return ADRENALINE_RATE * best if best >= ADRENALINE_MIN_VALUE else 0.0
 
 
 # ---- 位置の価値 ----

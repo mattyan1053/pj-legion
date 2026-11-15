@@ -26,15 +26,15 @@
 
 ## CPU
 
-`CpuPlayer._smoke_value`。**置く煙幕の中に、次の相手の番に、煙幕が防ぐ攻撃（離れたところからしか届かない攻撃）に
-狙われうる味方が 2 体（`CpuPlayer.SMOKE_MIN_UNITS`）以上いる**か、**1 体でも、防げるぶんの価値が 20（`CpuPlayer.SMOKE_MIN_VALUE`）以上**（離れた敵 2 体に狙われている、など）のときに置く。
+`CpuSmokeGrenade.value`（`rules/cpu/smoke_grenade_cpu.gd`）。**置く煙幕の中に、次の相手の番に、煙幕が防ぐ攻撃（離れたところからしか届かない攻撃）に
+狙われうる味方が 2 体（`CpuSmokeGrenade.MIN_UNITS`）以上いる**か、**1 体でも、防げるぶんの価値が 20（`CpuSmokeGrenade.MIN_VALUE`）以上**（離れた敵 2 体に狙われている、など）のときに置く。
 
 - 狙われうるかは、CPU の危険の見積もり（`docs/cpu-ai.md`）で見る。隣まで寄れる敵の攻撃と、スキルのダメージ（ファイアボール）は、
   煙幕では防げないので数えない。
 - もう自分の煙幕の中にいる味方は数えない（重ねない）。
-- 置くために立つマスも探す（共通の決まり。`docs/cpu-ai.md`）。試す中心は、狙われている味方を中に入れられるマス（`_smoke_targets`）。
+- 置くために立つマスも探す（共通の決まり。`docs/cpu-ai.md`）。試す中心は、狙われている味方を中に入れられるマス（`CpuSmokeGrenade.targets`）。
 - 価値は、数えた味方ごとに「防げるダメージ（その味方の HP まで）× ダメージの価値（将は 6（`CpuPlayer.KING_DAMAGE_VALUE`）、
-  ほかは 2（`CpuPlayer.DAMAGE_VALUE`））× 0.75（`CpuPlayer.SMOKE_COVER_RATE`。敵は狙いを替えられるので、1 より小さい）」の合計。
+  ほかは 2（`CpuPlayer.DAMAGE_VALUE`））× 0.75（`CpuSmokeGrenade.COVER_RATE`。敵は狙いを替えられるので、1 より小さい）」の合計。
 - 自分の煙幕の中のマスの危険の見積もりも、同じ数え方になる（煙幕の中へ下がる、煙幕の中から撃つ、を選びやすくなる）。
 - CPU が使う回数は多くない（回数は `docs/cpu-ai.md` の「いまの集計」）。相手の FANTASY の離れた駒はソーサラーだけで、射程が短く、
   隣まで寄られることが多いため。

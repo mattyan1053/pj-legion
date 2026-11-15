@@ -1,7 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 列挙の値ごとの表（rules/）。列挙の値を足したら、表にも載っていること。
 ##
-## 載せ忘れても、エラーにならずに黙って弱く・遅くなる表がある（CPU のスキルの表は、載っていないと
+## 載せ忘れても、エラーにならずに黙って弱く・遅くなる表がある（CPU のスキルの見積もり（rules/cpu/）は、無いと
 ## 「全部の対象を試す」「ダメージのイベントだけで見積もる」に落ちる）。ここで、足したときに気付けるようにする。
 
 
@@ -23,20 +23,23 @@ func _assert_methods(table: Dictionary, label: String) -> void:
 		assert_true(cpu.has_method(table[key]), "%s の %s が CpuPlayer に無い" % [label, table[key]])
 
 
-# --- CPU（rules/cpu_player.gd） ---
+# --- CPU（rules/cpu_player.gd、rules/cpu/） ---
 
 
-func test_every_skill_has_cpu_targets() -> void:
-	# 対象を絞らないと、選べるマスを全部、複製の上で試す。どのスキルでも絞る。
-	_assert_covers(CpuPlayer.SKILL_TARGETS, Skill.Id.values(), "SKILL_TARGETS")
-	_assert_methods(CpuPlayer.SKILL_TARGETS, "SKILL_TARGETS")
+func test_every_skill_has_a_cpu_estimate() -> void:
+	# 見積もりが無いと、選べるマスを全部、複製の上で試し（遅い）、イベントだけで価値を決める（盾や状態の価値が 0 になる）。
+	_assert_covers(CpuSkillEstimate.ESTIMATES, Skill.Id.values(), "CpuSkillEstimate.ESTIMATES")
+	for skill: Skill.Id in CpuSkillEstimate.ESTIMATES:
+		assert_true(CpuSkillEstimate.of(skill) is CpuSkillEstimate, "スキル %d の見積もりが CpuSkillEstimate の子でない" % skill)
 
 
-func test_every_skill_has_a_cpu_value_or_is_left_out_on_purpose() -> void:
-	# 載せないのは、ダメージ・回復・経験値のイベントだけで価値が決まるスキル（_outcome_value がそのまま読む）。
+func test_skills_left_to_their_events_are_known() -> void:
+	# 使った結果の価値（value）を書かないのは、ダメージ・回復・経験値のイベントだけで価値が決まるスキル（_outcome_value がそのまま読む）。
 	var by_events_only := [Skill.Id.FIREBALL]
-	_assert_covers(CpuPlayer.SKILL_VALUES, Skill.Id.values(), "SKILL_VALUES", by_events_only)
-	_assert_methods(CpuPlayer.SKILL_VALUES, "SKILL_VALUES")
+	for skill: Skill.Id in CpuSkillEstimate.ESTIMATES:
+		var script: Script = CpuSkillEstimate.ESTIMATES[skill]
+		var own_value := script.source_code.contains("\nfunc value(")
+		assert_eq(own_value, not by_events_only.has(skill), "スキル %d の value の有無が、除外の一覧と合わない" % skill)
 
 
 func test_every_ult_has_a_cpu_rule() -> void:

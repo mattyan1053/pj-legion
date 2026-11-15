@@ -26,10 +26,10 @@
 
 ## CPU
 
-`CpuPlayer._sanctuary_value`。**置く聖域の中に、HP の減っている味方が 2 体（`CpuPlayer.SANCTUARY_MIN_UNITS`）以上いる**ときに置く。
+`CpuSaintPlace.value`（`rules/cpu/saint_place_cpu.gd`）。**置く聖域の中に、HP の減っている味方が 2 体（`CpuSaintPlace.MIN_UNITS`）以上いる**ときに置く。
 
 - もう自分の聖域の中にいる味方は数えない（重ねない）。
-- 置くために立つマスも探す（共通の決まり。`docs/cpu-ai.md`）。試す中心は、減っている味方を中に入れられるマス（`_sanctuary_targets`）。
-- 価値は、数えた味方ごとの「減っている HP（上限は聖域の回復 2 回（`CpuPlayer.SANCTUARY_EXPECTED_HEALS`）ぶん）」の合計
+- 置くために立つマスも探す（共通の決まり。`docs/cpu-ai.md`）。試す中心は、減っている味方を中に入れられるマス（`CpuSaintPlace.targets`）。
+- 価値は、数えた味方ごとの「減っている HP（上限は聖域の回復 2 回（`CpuSaintPlace.EXPECTED_HEALS`）ぶん）」の合計
   × 回復の価値 2（`CpuPlayer.HEAL_VALUE`）。
 - 減っている味方が 1 体だけなら 0。ふつうの回復のほうが早い。
