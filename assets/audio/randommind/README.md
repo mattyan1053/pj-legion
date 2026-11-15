@@ -12,4 +12,4 @@
 | `medieval_victory_theme.ogg` | 決着: 勝ち（`victory`） | Medieval: Victory Theme — https://opengameart.org/content/medieval-victory-theme | `victory.wav`（0:32） |
 | `medieval_defeat_theme.ogg` | 決着: 負け・引き分け（`defeat`） | Medieval: Defeat Theme — https://opengameart.org/content/medieval-defeat-theme | `defeat.wav`（0:45） |
 
-どの曲をどの場面で鳴らすかは `prototype/sound_catalog.gd` と `prototype/scene_flow.gd`（`docs/sound.md`）。
+どの曲をどの場面で鳴らすかは `game/sound_catalog.gd` と `game/scene_flow.gd`（`docs/sound.md`）。

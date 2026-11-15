@@ -1,7 +1,7 @@
 # ステージ選択
 
-コード: `prototype/stage_select_screen.gd`（場面）、`prototype/stage_card_map.gd`（カードの縮図。ノードに依存しない）。
-テスト: `tests/prototype/test_stage_card_map.gd`、`tests/prototype/test_scene_flow.gd`、自動の対戦（タイトル → ステージ選択 → 対戦の設定と戻る道）。
+コード: `game/stage_select_screen.gd`（場面）、`game/stage_card_map.gd`（カードの縮図。ノードに依存しない）。
+テスト: `tests/game/test_stage_card_map.gd`、`tests/game/test_scene_flow.gd`、自動の対戦（タイトル → ステージ選択 → 対戦の設定と戻る道）。
 盤の形は `docs/game-board.md`、置かれるものは `docs/map-objects.md`。
 
 ## 場面

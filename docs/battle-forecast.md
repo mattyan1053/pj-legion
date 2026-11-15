@@ -1,7 +1,7 @@
 # 戦闘予測
 
-コード: `rules/forecast.gd`（`Forecast`）。画面の文は `prototype/forecast_text.gd`。
-テスト: `tests/rules/test_forecast.gd`、`tests/prototype/test_forecast_text.gd`。
+コード: `rules/forecast.gd`（`Forecast`）。画面の文は `game/forecast_text.gd`。
+テスト: `tests/rules/test_forecast.gd`、`tests/game/test_forecast_text.gd`。
 
 ある行動をいま行ったら何が起きるかを、状態を変えずに返す問い合わせ。`Forecast.of(対戦, 行動)`。
 攻撃、樽への攻撃、盾への攻撃、回復、スキル、必殺技のどれにも同じものを使う（`Battle.apply` に渡せる行動なら何でもよい）。

@@ -5,7 +5,7 @@
 - 取ってきた日・ライセンスを確かめた日: 2026-11-15（OpenGameArt の各ページの「License(s)」が CC0 で、zip の中の文も CC0）
 - 改変: なし（配布元の OGG のまま。ファイル名も元のまま）
 
-| ファイル | 使う音（`prototype/sound_catalog.gd`） | パック（配布元のページ） |
+| ファイル | 使う音（`game/sound_catalog.gd`） | パック（配布元のページ） |
 | --- | --- | --- |
 | `click_001.ogg` | `ui_click`（ボタン） | Interface Sounds — https://opengameart.org/content/interface-sounds （`kenney_interfaceSounds.zip` の `Audio/`） |
 | `bookOpen.ogg` | `menu_open`（メニュー・ログを開く） | 50 RPG sound effects — https://opengameart.org/content/50-rpg-sound-effects （`RPGsounds_Kenney.zip` の `OGG/`） |

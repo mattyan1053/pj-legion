@@ -8,4 +8,4 @@
   - `mountain_A`（`.gltf` + `.bin`）: 障害物のマスの岩山
   - `hexagons_medieval.png`: 上の 3 つが共通で使うテクスチャ
 
-大きさと向きは `prototype/board_prototype.gd` で合わせている（元は六角形のマス用）。
+大きさと向きは `game/battle_screen.gd` で合わせている（元は六角形のマス用）。

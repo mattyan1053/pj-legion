@@ -50,7 +50,7 @@ CPU は 1 人のプレイヤーとして、移動・攻撃・樽の攻撃・盾�
 
 試作の画面は、この順に返る行動を 1 つずつ再生する。駒が動き出す前にカメラを寄せ、1 体の行動が終わるたびに間を置く
 （動かずに待機するだけの駒には、寄らず、間も置かない）。CPU の番の間は、下の帯に「相手（CPU）の番」と出る。
-くわしくは `docs/battle-view.md` の「相手を CPU にする」（`prototype/board_prototype.gd` の `_run_cpu`）。
+くわしくは `docs/battle-view.md` の「相手を CPU にする」（`game/battle_screen.gd` の `_run_cpu`）。
 
 ## 手の選び方
 

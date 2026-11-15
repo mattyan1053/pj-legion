@@ -1,8 +1,8 @@
 # システムメニューと設定
 
-コード: `prototype/app.gd`（開く・並べる項目）、`prototype/system_menu.gd`（メニュー）、`prototype/settings_panel.gd`（設定の画面）、`prototype/settings.gd`（設定の項目と値）、
-`prototype/save_store.gd`（取っておく仕組み）、`prototype/overlay_stack.gd`（重なる画面の積み上げ）。対戦の場面のつなぎは `prototype/board_prototype.gd` の「システムメニューと設定」。
-テスト: `tests/prototype/test_settings.gd`、`tests/prototype/test_overlay_stack.gd`、`tests/prototype/test_orbit_camera.gd`、自動の対戦（`prototype/autoplay.gd` の `_queue_system_menu_scene`）。
+コード: `game/app.gd`（開く・並べる項目）、`game/system_menu.gd`（メニュー）、`game/settings_panel.gd`（設定の画面）、`game/settings.gd`（設定の項目と値）、
+`game/save_store.gd`（取っておく仕組み）、`game/overlay_stack.gd`（重なる画面の積み上げ）。対戦の場面のつなぎは `game/battle_screen.gd` の「システムメニューと設定」。
+テスト: `tests/game/test_settings.gd`、`tests/game/test_overlay_stack.gd`、`tests/game/test_orbit_camera.gd`、自動の対戦（`game/autoplay.gd` の `_queue_system_menu_scene`）。
 
 ## 開き方
 
@@ -15,7 +15,7 @@
 
 ### 重なる画面
 
-システムメニュー、ログ（`docs/battle-log.md`）、対戦の設定画面は、場面の上に重なる画面。開いているものは `AppContext.overlays`（`prototype/overlay_stack.gd`）に、開いた順に積む。
+システムメニュー、ログ（`docs/battle-log.md`）、対戦の設定画面は、場面の上に重なる画面。開いているものは `AppContext.overlays`（`game/overlay_stack.gd`）に、開いた順に積む。
 
 - 開いたら積み、閉じたら降ろす（場面を抜けて消えるときも降ろす）。
 - **Esc と右クリックは、いちばん上の重なる画面だけが受ける。** 後ろ（盤面、場面）へは通さない。
@@ -57,7 +57,7 @@
 | 効果音の音量 | 音 | 0〜100%（5% 刻み） | 80% | 操作の音。スライダーを離すと、ボタンの音を 1 つ鳴らして大きさを聞かせる |
 | 音を消す | 音 | オフ / オン | オフ | すべての音を止める（音量の値はそのまま） |
 
-- 項目は `settings.gd` の `ITEMS` に並べ、画面はそれだけを見て行を作る。**項目を足すのは、`ITEMS` に 1 つ足し、効かせる側（操作と再生は `board_prototype.gd` の `_apply_settings`、音は `sound.gd` の `apply_settings`）に 1 行足すだけ。**
+- 項目は `settings.gd` の `ITEMS` に並べ、画面はそれだけを見て行を作る。**項目を足すのは、`ITEMS` に 1 つ足し、効かせる側（操作と再生は `battle_screen.gd` の `_apply_settings`、音は `sound.gd` の `apply_settings`）に 1 行足すだけ。**
   種類は、スライダー（整数の範囲と刻み）、オン・オフ、選択肢。オン・オフも、押されているほうが色で分かるボタンを 2 つ並べる。
 - 項目が 7 つで、1280×720 の画面に収まるぎりぎり。もっと足すなら、区分ごとのタブか、縦に送れる形にする。
 
