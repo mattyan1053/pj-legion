@@ -175,14 +175,6 @@ func item_ids() -> Array[StringName]:
 	return ids
 
 
-## 並べている項目の文字（名前 -> 文字）。検査用。
-func item_text(id: StringName) -> String:
-	for item: Array in _items:
-		if item[0] == id:
-			return item[1]
-	return ""
-
-
 ## 項目を押す（ボタンと同じ道）。確かめの文があれば、まず確かめる。並べていない項目なら偽を返す。
 func press(id: StringName) -> bool:
 	if not is_open():
@@ -251,11 +243,6 @@ func open_settings() -> void:
 ## 設定の画面（検査とスクリーンショットの道具用）。
 func settings_panel() -> SettingsPanel:
 	return _settings_panel
-
-
-## 右上のボタンを出すか（検査や、ボタンを置かない画面のため）。
-func set_corner_visible(shown: bool) -> void:
-	_corner.visible = shown
 
 
 func _choose(id: StringName) -> void:

@@ -68,11 +68,6 @@ func press_quit() -> void:
 	context.quit()
 
 
-## 並べているボタンの名前（上から）。検査用。
-func button_ids() -> Array:
-	return _buttons.keys()
-
-
 ## Esc は、戻すものが無いので、システムメニューを開く（ほかの場面と同じ）。
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:

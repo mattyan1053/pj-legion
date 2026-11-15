@@ -181,11 +181,6 @@ func set_grid_emphasis(on: bool) -> void:
 	_grid_emphasized = on
 
 
-## マス目の線を濃くしているか。検査用。
-func grid_emphasized() -> bool:
-	return _grid_emphasized
-
-
 func _process(delta: float) -> void:
 	_motion_time += delta
 	_animate(_motion_time)
@@ -213,11 +208,6 @@ func _animate(t: float) -> void:
 	var pulse := 0.5 + 0.5 * sin(t * TAU / PORTAL_PULSE_PERIOD)
 	for disc: Array in _portal_discs:
 		(disc[0] as StandardMaterial3D).albedo_color.a = lerpf(0.3, 0.6, pulse)
-
-
-## 泉とポータルの動きの、いまの数（検査用）。
-func motion_counts() -> Vector3i:
-	return Vector3i(_ripples.size(), _motes.size(), _portal_discs.size())
 
 
 ## ポータルの色。対の 2 つは同じ色になる（対を、上の行・左の列にあるほうの順に数えて色を割り当てる）。
