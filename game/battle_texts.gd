@@ -178,6 +178,11 @@ static func cell_body(battle: Battle, cell: Vector2i) -> String:
 	return "\n".join(lines)
 
 
+## ポータルのマスの説明。行き先の座標のあとに、括弧で添える（左下の枠では、括弧の中を「。」ごとの行にする）。
+const PORTAL_NOTE := "対のポータルへ転送する。移動の途中に通ると、移動力を使わずに移れる"
+const PORTAL_BLOCKED := "行き先に駒がいて、いまは使えない"
+
+
 ## マスの説明（行ごと）: 地形の効果、本陣、盤の上の効果、環境オブジェクト。
 static func cell_notes(battle: Battle, cell: Vector2i) -> Array[String]:
 	var notes: Array[String] = []
@@ -194,9 +199,10 @@ static func cell_notes(battle: Battle, cell: Vector2i) -> Array[String]:
 		var text: String = BattleHud.OBJECT_NAMES[type]
 		if type == MapObject.Type.PORTAL:
 			var exit := battle.board.portal_exit(cell)
-			text += " → (%d, %d)" % [exit.x, exit.y]
+			text += " → (%d, %d)（%s" % [exit.x, exit.y, PORTAL_NOTE]
 			if battle.portal_exit(cell) == Board.NO_CELL:
-				text += "（行き先に駒がいて、いまは使えない）"
+				text += "。" + PORTAL_BLOCKED
+			text += "）"
 		notes.append(text)
 	if notes.is_empty():
 		notes.append(NOTHING_SPECIAL)
