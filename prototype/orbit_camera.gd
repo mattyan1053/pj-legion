@@ -2,7 +2,8 @@ extends Node3D
 ## 盤面を斜めに見下ろすカメラ。
 ##
 ## このノード自身が「見ている地点」で、盤面の上を平行移動する。
-## 向きは 90 度刻み、角度は 3 段階、距離はホイールで変える。
+## 向きはマウスのドラッグで好きなだけ回す（rotate_by。呼ぶ側がドラッグを見分ける）か、Q / E で 90 度ずつ回す。
+## 角度は 3 段階、距離はホイールで変える。
 
 const PITCH_PRESETS: Array[float] = [35.0, 50.0, 68.0]
 const MIN_DISTANCE := 8.0
@@ -50,6 +51,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_target_distance = maxf(MIN_DISTANCE, _target_distance * 0.9)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_target_distance = minf(MAX_DISTANCE, _target_distance * 1.1)
+
+
+## 向きを radians だけ回す（マウスのドラッグ）。
+func rotate_by(radians: float) -> void:
+	_target_yaw += radians
+
+
+## 回していく先の向き（ラジアン）。
+func target_yaw() -> float:
+	return _target_yaw
 
 
 ## point が画面の中央に来るよう、なめらかに寄る。
