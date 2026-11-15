@@ -9,6 +9,8 @@ extends CanvasLayer
 const TextWrap := preload("res://prototype/text_wrap.gd")
 
 signal menu_pressed(id: StringName)
+## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
+signal menu_hovered(id: StringName)
 ## 必殺技のボタンが押された（確かめる・使うのは呼ぶ側が決める）。
 signal ult_pressed
 signal end_turn_pressed
@@ -89,6 +91,7 @@ var _turn_label: Label
 var _phase_label: Label
 var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
+var _relic_notes: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []
 var _ult_labels: Array[Label] = []
 var _ult_button: Button
@@ -148,11 +151,18 @@ func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array
 		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [("青" if player == 0 else "赤"), counts[player], pips]
 		if _relic_texts[player] != "":
 			_side_labels[player].text += "  聖遺物 " + _relic_texts[player]
+		# 幅が足りずに省かれても読めるよう、全文をツールチップにも置く。聖遺物の効果も、ここで読める。
+		_side_labels[player].tooltip_text = _side_labels[player].text
+		if _relic_notes[player] != "":
+			_side_labels[player].tooltip_text += "
+" + _relic_notes[player]
 
 
 ## 陣営ごとの、持っている聖遺物の名前（上の帯。添字がプレイヤー番号。持っていなければ空）。次の set_status で出る。
-func set_relics(texts: Array[String]) -> void:
+## notes は、聖遺物の効果の説明（陣営の欄にマウスを乗せると出る。無ければ空）。
+func set_relics(texts: Array[String], notes: Array[String] = ["", ""]) -> void:
 	_relic_texts = texts
+	_relic_notes = notes
 
 
 ## 上の帯に出ている、陣営の聖遺物の文字（持っていなければ空）。検査用。
@@ -198,7 +208,8 @@ func is_ult_enabled() -> bool:
 
 
 ## 駒の情報を出す。unit が null なら消す。state は行動の状態と、いるマスのこと。forecast は攻撃の見込み（無ければ空）。
-func show_unit(unit: Unit, state: String, forecast: String) -> void:
+## skill_note が真なら、スキルの説明も出す（forecast のほうにスキルの説明を出すときは、偽にして重ねない）。
+func show_unit(unit: Unit, state: String, forecast: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
 	if unit == null:
 		return
@@ -218,6 +229,9 @@ func show_unit(unit: Unit, state: String, forecast: String) -> void:
 	var skill := Skills.of(unit)
 	if skill != null:
 		_info_stats.text += "\nスキル: %s（%s）" % [skill.display_name(), skill_state_text(unit)]
+		# スキルの中身は、読んで知るもの。選んだ駒・マウスを乗せた駒のスキルの説明を、いつも出す。
+		if skill_note:
+			state += ("\n" if state != "" else "") + "%s: %s" % [skill.display_name(), skill.summary()]
 	for type in Statuses.types_of(unit):
 		_info_stats.text += "\n状態: %s（あと %d ターン）" % [Status.display_name(type), unit.statuses[type]]
 	if Growth.can_grow(unit):
@@ -244,6 +258,18 @@ func show_cell_info(title: String, body: String) -> void:
 	_set_folded(_info_stats, body, INFO_WIDTH)
 	_info_state.visible = false
 	_info_forecast.visible = false
+
+
+## 駒の情報の枠に出している文（見出しを除く。出ていなければ空）。検査用。
+func info_text() -> String:
+	if not _info_panel.visible:
+		return ""
+	var parts: Array[String] = [_info_stats.text]
+	if _info_state.visible:
+		parts.append(_info_state.text)
+	if _info_forecast.visible:
+		parts.append(_info_forecast.text)
+	return "\n".join(parts)
 
 
 ## 駒の情報の枠に出している見出し（出ていなければ空）。検査用。
@@ -303,6 +329,8 @@ func set_menu(items: Array) -> void:
 		button.add_theme_font_size_override("font_size", 17)
 		button.custom_minimum_size = Vector2(118.0, 34.0)
 		button.pressed.connect(func() -> void: menu_pressed.emit(id))
+		button.mouse_entered.connect(func() -> void: menu_hovered.emit(id))
+		button.mouse_exited.connect(func() -> void: menu_hovered.emit(&""))
 		_menu_column.add_child(button)
 		_menu_buttons[id] = button
 	_menu.reset_size()

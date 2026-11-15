@@ -641,6 +641,13 @@ func _queue_heal_scene() -> void:
 		_scene.set_opponent(false)
 		_scene.played.erase(healed)
 		_expect(_scene.menu_ids() == ([&"heal", &"skill", &"wait", &"undo"] as Array[StringName]), "動いたあとのメニューの項目が違う: %s" % [_scene.menu_ids()])
+		# スキルの説明は、駒の情報にいつも出ている。メニューの項目にマウスを乗せると、押すと何が起きるかが出る。
+		var skill := Skills.of(medic)
+		_expect(_scene.info_text().replace("\n", "").contains(skill.summary()), "駒の情報に、スキルの説明が出ていない")
+		_scene._on_menu_hovered(&"wait")
+		_expect(_scene.info_text().contains("待機"), "メニューの項目の説明が出ていない")
+		_scene._on_menu_hovered(&"")
+		_expect(not _scene.info_text().contains("待機:"), "マウスが離れても、項目の説明が残っている")
 		_expect(_scene.press_menu(&"heal") and _scene.is_choosing_target(), "メニューの回復で、相手を選び始めなかった")
 		_scene.click_cell(wounded.cell))
 	_scripted.append(func() -> void:
@@ -673,6 +680,14 @@ func _queue_setup_scene() -> void:
 		_expect(_scene.cpu_actions > seen["actions"], "先手の CPU が動かなかった")
 		_expect(battle.phase == Unit.Side.PLAYER2 and battle.turn == 1, "先手の CPU が番を終えなかった")
 		var panel: Node = _scene.setup_panel()
+		# 設定画面を開いて、選び直してから閉じても、いまの対戦と設定はそのまま（始めるボタンを押すまで、何も変わらない）。
+		_scene.open_setup()
+		_expect(panel.visible and panel.is_cancellable(), "対戦の途中の設定画面を、閉じられない")
+		panel.choose_stage(BoardGenerator.Stage.LABYRINTH)
+		panel.choose_opponent(false)
+		panel.cancel()
+		_expect(not panel.visible and not _scene.is_busy(), "設定画面が閉じない")
+		_expect(_scene.battle == battle and _scene.stage == BoardGenerator.Stage.TWIN_SPRINGS and _scene.cpu_opponent, "設定画面を閉じたら、対戦か設定が変わった")
 		_scene.open_setup()
 		panel.choose_opponent(false)
 		panel.choose_human_side(Unit.Side.PLAYER1)

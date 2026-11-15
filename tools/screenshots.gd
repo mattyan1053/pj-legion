@@ -11,7 +11,9 @@ const TrialSetup := preload("res://prototype/trial_setup.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
-	"setup": "対戦の設定画面",
+	"setup": "対戦の設定画面（起動した直後）",
+	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
+	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
 	"start": "対戦の始め（ターン 1、何も選んでいない）",
 	"move": "自分の駒を選んで、移動範囲と、駒のそばのメニューが出ている",
 	"cell": "駒のいないマスをクリックして、マスの情報が出ている",
@@ -91,8 +93,24 @@ func _run() -> void:
 func _scene_setup() -> bool:
 	_show()
 	_scene.set_opponent(true)  # 設定画面は、遊ぶときの始めと同じ（相手は CPU）で開く
-	_scene.open_setup()
+	_scene.setup_panel().open(_scene.match_choice)
 	return true
+
+
+func _scene_setup_again() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	_scene.open_setup()
+	return _scene.setup_panel().is_cancellable()
+
+
+func _scene_menu_note() -> bool:
+	if not await _scene_skill():
+		return false
+	_scene.press_skill()  # 対象を選ぶのをやめて、メニューへ戻る
+	_scene._on_menu_hovered(&"skill")
+	return _scene.menu_ids().has(&"skill")
 
 
 func _scene_start() -> bool:

@@ -126,6 +126,10 @@ var _menu_placement := MenuPlacement.new()
 ## メニューを置いたときのカメラ（動いたら置き直す）。
 var _menu_camera := Transform3D()
 var _menu_dirty := true
+## マウスが乗っているメニューの項目（乗っていなければ空の名前）。その項目の説明を、左下の枠に出す。
+var _menu_hover_id := &""
+## 対戦を始めたことがあるか（起動した直後の設定画面だけ偽。偽の間は、設定画面を閉じて戻る先が無い）。
+var _battle_started := false
 ## 必殺技を使うかを、もう一度押して確かめている途中か（対象を選ばず、取り消せないので、1 回では使わない）。
 var _confirming_ult := false
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
@@ -143,6 +147,7 @@ func _ready() -> void:
 	add_child(_hud)
 	_hud.setup(TEAM_COLORS)
 	_hud.menu_pressed.connect(_on_menu_pressed)
+	_hud.menu_hovered.connect(_on_menu_hovered)
 	_hud.ult_pressed.connect(press_ult)
 	_hud.end_turn_pressed.connect(press_end_turn)
 	_hud.restart_pressed.connect(_on_restart_pressed)
@@ -154,11 +159,13 @@ func _ready() -> void:
 	_setup_panel.setup(TEAM_COLORS)
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
+	_setup_panel.cancelled.connect(_refresh)
 
 	var autoplay := OS.get_cmdline_user_args().has("--autoplay")
 	var shots := OS.get_cmdline_user_args().has("--shots")
 	# 検査は、人の操作の入口を両方のプレイヤーで通すところから始める（CPU の番は、検査の中で切り替えて通す）。
 	set_opponent(not (autoplay or shots))
+	_battle_started = autoplay or shots
 	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする。
 	start_battle(BoardGenerator.Stage.PLAIN, 20261114 if autoplay or shots else int(Time.get_unix_time_from_system()))
 	if autoplay:
@@ -250,11 +257,13 @@ func start_battle(battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
 
 
 ## 対戦の設定画面を、いまの設定で開く。再生の途中と CPU の番の間は何もしない。
+## 開いただけでは、いまの対戦は変わらない（「対戦へ戻る」・右クリック・Esc で、そのまま戻れる）。
+## 新しい対戦になるのは、設定画面で始めるボタンを押したときだけ。
 func open_setup() -> void:
 	if is_busy():
 		return
 	match_choice.cpu_opponent = cpu_opponent
-	_setup_panel.open(match_choice)
+	_setup_panel.open(match_choice, _battle_started, _battle_started and not battle.is_over())
 
 
 ## 対戦の設定画面（検査用）。
@@ -263,6 +272,7 @@ func setup_panel() -> MatchSetupPanel:
 
 
 func _on_setup_chosen(chosen: RefCounted) -> void:
+	_battle_started = true
 	match_choice = chosen
 	# いまの対戦の続きを CPU に渡さないよう、set_opponent は通さない（新しい対戦が、始めに CPU の番を見る）。
 	cpu_opponent = chosen.cpu_opponent
@@ -472,6 +482,32 @@ func _on_menu_pressed(id: StringName) -> void:
 			_leave_mode()
 
 
+func _on_menu_hovered(id: StringName) -> void:
+	_menu_hover_id = id
+	if not _busy:
+		_update_info()
+
+
+## メニューの項目の説明（押すと何が起きるか）。マウスを乗せている間、左下の枠に出す。
+func _menu_note(id: StringName, unit: Unit) -> String:
+	match id:
+		MENU_ATTACK:
+			return "攻撃: 赤いマスの相手（樽・盾も）を選んで攻撃する。攻撃すると、この駒の行動は終わる。相手にマウスを乗せると、見込みが出る"
+		MENU_HEAL:
+			return "回復: 緑のマスの味方を選んで回復する（回復量 %d）。回復すると、この駒の行動は終わる" % unit.power()
+		MENU_SKILL:
+			var skill := Skills.of(unit)
+			var after := "使うと、この駒の行動は終わる" if skill.ends_action() else "使ったあと、続けて攻撃できる（移動は取り消せなくなる）"
+			return "%s: %s\n%s。%s" % [skill.display_name(), skill.summary(), after, BattleHud.skill_state_text(unit)]
+		MENU_WAIT:
+			return "待機: 何もせずに、この駒の行動を終える"
+		MENU_UNDO:
+			return "移動を取り消す: 動く前のマスへ戻して、選び直す"
+		MENU_BACK:
+			return "やめる: 対象を選ぶのをやめて、メニューへ戻る"
+	return ""
+
+
 func _enter_mode(mode: Mode) -> void:
 	_mode = mode
 	_refresh()
@@ -569,6 +605,11 @@ func cell_screen_position(cell: Vector2i) -> Vector2:
 ## カメラの向き（回していく先。ラジアン）。検査用。
 func camera_yaw() -> float:
 	return _rig.target_yaw()
+
+
+## 左下の情報の枠に出ている文（見出しを除く）。検査用。
+func info_text() -> String:
+	return _hud.info_text()
 
 
 ## 左下の情報の枠の見出し（出ていなければ空）。検査用。
@@ -1283,6 +1324,10 @@ func _refresh() -> void:
 		_selection_ring.position = BoardView.cell_center(unit.cell) + Vector3(0.0, 0.04, 0.0)
 
 	_board_view.set_marked(_inspected_cell)
+	# 状態（バリア、照準など）が付いている駒は、足元の輪で分かるようにする。
+	for shown in battle.units:
+		if _views.has(shown.id):
+			_view(shown.id).set_status_mark(not Statuses.types_of(shown).is_empty())
 	_refresh_status(battle.turn, battle.phase)
 	_refresh_hint(unit)
 	var evolving := battle.evolving_unit()
@@ -1436,12 +1481,17 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		Queries.unit_count(battle, Unit.Side.PLAYER1), Queries.unit_count(battle, Unit.Side.PLAYER2),
 	]
 	var relics: Array[String] = []
+	var relic_notes: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var names: Array[String] = []
+		var notes: Array[String] = []
 		for relic in Relics.held(battle, side):
 			names.append(Relics.display_name(relic).trim_suffix("の聖遺物"))
+			notes.append("%s: %s" % [Relics.display_name(relic), Relics.summary(relic)])
 		relics.append("・".join(names))
-	_hud.set_relics(relics)
+		relic_notes.append("
+".join(notes))
+	_hud.set_relics(relics, relic_notes)
 	_hud.set_status(turn, phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN)
 	var percents: Array[int] = []
 	var names: Array[String] = []
@@ -1555,7 +1605,11 @@ func _update_info() -> void:
 			skill_text += "\n" + _skill_forecast(user, user.cell)
 		elif _skill_cells.has(_hover_cell):
 			skill_text += "\n" + _skill_forecast(user, _hover_cell)
-		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill_text)
+		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill_text, false)
+		return
+	if _menu_hover_id != &"" and selected_unit() != null and _hud.menu_ids().has(_menu_hover_id):
+		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
+		_hud.show_unit(selected_unit(), "", _menu_note(_menu_hover_id, selected_unit()), _menu_hover_id != MENU_SKILL)
 		return
 	if hovered == null and _barrel_targets.has(_hover_cell) and _mode != Mode.HEAL:
 		var barrel := Forecast.of(battle, AttackBarrelAction.new(shown.id, _hover_cell))

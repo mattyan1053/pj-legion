@@ -5,7 +5,8 @@ extends Node3D
 ## 種類ごとに使わないものを隠す。陣営の色は、足元の円盤と、服の差し色（マント・帽子など）で出す。
 ## 中立の駒（エナジー・コア / エリートミニオン）は、素材を使わずコードで組み立てる、宙に浮く結晶のコア。
 ## 頭の上には何も出さない（駒の情報は、クリックかマウスを乗せて、画面の枠で確かめる）。
-## 盤の上で分かるのは 2 つだけ: 行動済みの駒は暗い。HP が減っている駒は、足元に小さい棒が出る（減っていなければ出ない）。
+## 盤の上で分かるのは、足元だけ: 行動済みの駒は暗い。HP が減っている駒は、足元に小さい棒が出る（減っていなければ出ない）。
+## 進化した駒は、足元の円盤を金の輪が囲む。状態（バリア、照準など）が付いている駒は、その外に水色の細い輪が出る。
 ##
 ## ルールは持たない。何を見せるかは、呼ぶ側（イベントを再生する側）が決める。
 
@@ -99,6 +100,7 @@ const ACTED_SHADE := 0.42
 const BAR_SIZE := Vector2i(34, 5)
 const BAR_PIXEL := 0.016
 const COLOR_GOLD := Color("f2c84b")
+const COLOR_STATUS := Color("7fe3ff")
 
 ## 塗り替えたマテリアルの使い回し（"モデル:色:暗さ" -> StandardMaterial3D）。
 static var _team_materials := {}
@@ -122,6 +124,8 @@ var _model_name := ""
 var _model_meshes: Array[MeshInstance3D] = []
 var _base_material: StandardMaterial3D
 var _bar: Sprite3D
+var _evolved_ring: MeshInstance3D
+var _status_ring: MeshInstance3D
 
 
 func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int) -> void:
@@ -234,9 +238,39 @@ func set_max_hp(max_hp: int) -> void:
 	_max_hp = max_hp
 
 
-## 進化した駒の最大 HP を変える。棒は次の set_hp で描き直す（進化したことは、駒の情報に出る）。
+## 進化した駒の最大 HP を変え、足元に金の輪を付ける。棒は次の set_hp で描き直す（進化先の名前は、駒の情報に出る）。
 func set_evolved(max_hp: int) -> void:
 	_max_hp = max_hp
+	if _evolved_ring == null:
+		_evolved_ring = _add_ring(0.41, 0.49, COLOR_GOLD)
+
+
+## 状態（バリア、照準など）が付いているかを、足元の水色の輪で見せる（何の状態かは、駒の情報に出る）。
+func set_status_mark(marked: bool) -> void:
+	if marked and _status_ring == null:
+		_status_ring = _add_ring(0.52, 0.56, COLOR_STATUS)
+	if _status_ring != null:
+		_status_ring.visible = marked
+
+
+## 足元の輪（平たい輪。光に左右されない色）。
+func _add_ring(inner: float, outer: float, color: Color) -> MeshInstance3D:
+	var mesh := TorusMesh.new()
+	mesh.inner_radius = inner
+	mesh.outer_radius = outer
+	mesh.rings = 32
+	mesh.ring_segments = 6
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var ring := MeshInstance3D.new()
+	ring.mesh = mesh
+	ring.material_override = material
+	ring.scale = Vector3(1.0, 0.25, 1.0)
+	ring.position.y = 0.03
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ring)
+	return ring
 
 
 ## 行動済みの駒を暗くする。
