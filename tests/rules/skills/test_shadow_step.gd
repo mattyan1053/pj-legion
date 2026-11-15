@@ -300,6 +300,7 @@ func test_cpu_steps_through_a_wall_to_finish_an_enemy() -> void:
 	var battle := _cpu_battle()
 	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(5, 3))
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(8, 3))
+	sniper.hp = blade.power()  # 削れたスナイパー。無傷（HP 13）なら、一撃（12）では倒れない
 	# 歩いても届かないように、もう動いたことにする（動いたあとの駒は、いまの位置からできることを選ぶ）。
 	battle.apply(MoveAction.new(blade.id, blade.cell))
 	var cpu := CpuPlayer.new()
@@ -318,6 +319,7 @@ func test_cpu_walks_and_then_steps_to_reach_a_far_sniper() -> void:
 	var battle := _cpu_battle()
 	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 1))
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(10, 1))
+	sniper.hp = blade.power()  # 削れたスナイパー。無傷（HP 13）なら、一撃（12）では倒れない
 	assert_true(Combat.distance(blade.cell, sniper.cell) > blade.move_range() + blade.attack_range())
 	var cpu := CpuPlayer.new()
 	var kinds: Array[String] = []

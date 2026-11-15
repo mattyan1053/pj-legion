@@ -251,7 +251,7 @@ func test_forest_cut_comes_after_the_critical() -> void:
 	var battle := Maps.battle(["...F"])
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(3, 0))
-	sniper.add_growth(Unit.Stat.POWER, 2)  # 11 → 22 → 17（先に森なら 8 → 16）
+	sniper.add_growth(Unit.Stat.POWER, 4)  # 11 → 22 → 17（先に森なら 8 → 16）
 	Statuses.add(sniper, AIM, 2)
 	assert_eq(Combat.damage(battle, sniper, paladin), 17)
 

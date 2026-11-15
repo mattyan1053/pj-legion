@@ -28,7 +28,7 @@ enum Army { NONE, MILITARY, FANTASY }
 const _TABLE := {
 	Id.KING: ["将", Role.NONE, Army.NONE, 0, 30, 8, 4, 1],
 	Id.SHIELD_TROOPER: ["シールドトルーパー", Role.VANGUARD, Army.MILITARY, 4, 44, 6, 3, 1],
-	Id.SNIPER: ["スナイパー", Role.REARGUARD, Army.MILITARY, 3, 12, 9, 3, 4],
+	Id.SNIPER: ["スナイパー", Role.REARGUARD, Army.MILITARY, 3, 13, 7, 3, 4],
 	Id.COMMANDO: ["コマンドー", Role.RAIDER, Army.MILITARY, 3, 16, 12, 6, 1],
 	Id.MEDIC: ["衛生兵", Role.HEALER, Army.MILITARY, 3, 20, 15, 4, 1],
 	Id.PALADIN: ["パラディン", Role.VANGUARD, Army.FANTASY, 4, 52, 8, 3, 1],

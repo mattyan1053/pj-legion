@@ -168,7 +168,10 @@ func test_raider_stays_off_an_enemy_hq_where_it_would_be_defeated() -> void:
 	var battle := _battle()
 	battle.add_unit(UnitKind.Id.KING, P1, HQ1)
 	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(15, 4))
-	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(13, 4))
+	# 攻撃 9 のスナイパー（将の 8 と合わせて、コマンドーの HP 16 を超える）。HP は、コマンドーの一撃で倒れる 12。
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(13, 4))
+	sniper.add_growth(Unit.Stat.POWER, 2)
+	sniper.hp = 12
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(10, 0))
 	var cpu := CpuPlayer.new()
 	assert_true(cpu.danger(battle, commando.id, HQ2) >= commando.hp)
@@ -205,6 +208,7 @@ func test_raider_strikes_a_unit_it_can_defeat_even_far_from_its_army() -> void:
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 2))
 	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(0, 2)).acted = true
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(8, 2))
+	sniper.hp = commando.power()  # 無傷のスナイパー（HP 13）は、レベル 1 の奇襲の一撃（12）では倒れない
 	_play_phase(battle)
 	assert_eq(battle.unit_by_id(sniper.id), null, "倒せる後衛を倒さなかった")
 	assert_true(commando.acted)

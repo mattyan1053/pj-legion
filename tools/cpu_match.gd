@@ -183,7 +183,8 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			var fall := Fall.new()
 			fall.kind = defeated.kind
 			fall.turn = battle.turn
-			fall.damage = outcome.stats.units[defeated.unit_id].damage
+			if outcome.stats != null and outcome.stats.units.has(defeated.unit_id):
+				fall.damage = outcome.stats.units[defeated.unit_id].damage
 			fall.hits_taken = outcome.hits_taken.get(defeated.unit_id, 0)
 			var killer_id: int = outcome.last_hit_by.get(defeated.unit_id, 0)
 			var killer := battle.unit_by_id(killer_id)

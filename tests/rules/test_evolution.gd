@@ -210,15 +210,15 @@ func test_choosing_evolves_the_unit_and_resumes_the_battle() -> void:
 	var evolved := result.events[0] as UnitEvolvedEvent
 	assert_eq(evolved.unit_id, sniper.id)
 	assert_eq(evolved.evolution, Evolution.Id.SCOUT)
-	# スナイパー: HP 12、攻撃 9、移動 3、射程 4。ここではレベル 3 へ上がった 1 回ぶんだけ伸びている（HP +3、攻撃 +1）。
+	# スナイパー: HP 13、攻撃 7、移動 3、射程 4。ここではレベル 3 へ上がった 1 回ぶんだけ伸びている（HP +3、攻撃 +1）。
 	# スカウトで 移動 +2、HP +8。
-	assert_eq(evolved.max_hp, 23)
-	assert_eq(evolved.hp, 18, "最大 HP が伸びたぶん、HP も増える")
-	assert_eq(evolved.power, 10)
+	assert_eq(evolved.max_hp, 24)
+	assert_eq(evolved.hp, 19, "最大 HP が伸びたぶん、HP も増える")
+	assert_eq(evolved.power, 8)
 	assert_eq(evolved.move_range, 5)
 	assert_eq(evolved.attack_range, 4)
-	assert_eq(sniper.max_hp(), 23)
-	assert_eq(sniper.hp, 18)
+	assert_eq(sniper.max_hp(), 24)
+	assert_eq(sniper.hp, 19)
 	assert_eq(sniper.move_range(), 5)
 	assert_eq(sniper.display_name(), "スカウト")
 	assert_eq(sniper.kind, UnitKind.Id.SNIPER, "種類（役割と軍）は変わらない")
@@ -296,7 +296,7 @@ func test_a_longer_range_reaches_further() -> void:
 	assert_eq(marksman.move_range(), 2)
 	assert_eq(battle.options(marksman.id).attack_target_ids, [near.id] as Array[int])
 	assert_false(battle.can_apply(AttackAction.new(marksman.id, far.id)))
-	assert_eq(Combat.damage(battle, marksman, near), 11)
+	assert_eq(Combat.damage(battle, marksman, near), 9)
 
 
 func test_healer_evolutions_change_the_heal() -> void:

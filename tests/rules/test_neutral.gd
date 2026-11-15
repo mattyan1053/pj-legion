@@ -156,7 +156,7 @@ func test_core_walks_to_the_nearest_player_unit_and_attacks() -> void:
 	assert_eq(hit.attacker_id, core.id)
 	assert_eq(hit.unit_id, sniper.id)
 	assert_eq(hit.amount, 4)
-	assert_eq(sniper.hp, 8)
+	assert_eq(sniper.hp, 9)
 	assert_eq(core.cell, Vector2i(2, 0))
 
 
@@ -179,7 +179,7 @@ func test_core_uses_the_same_damage_as_players_forest_reduces_it() -> void:
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 0))
 	var events := _neutral_phase(battle)
 	assert_eq((events[0] as AttackDamagedEvent).amount, 4 * 80 / 100)
-	assert_eq(sniper.hp, 12 - 3)
+	assert_eq(sniper.hp, 13 - 3)
 
 
 func test_core_defeats_a_weak_unit() -> void:

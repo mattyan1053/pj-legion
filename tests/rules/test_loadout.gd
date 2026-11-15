@@ -191,13 +191,13 @@ func test_layers_add_up_in_order() -> void:
 	sniper.relic_bonus[Unit.Stat.POWER] = 1
 	sniper.temporary_bonus[Unit.Stat.POWER] = 5
 	sniper.temporary_bonus[Unit.Stat.MOVE_RANGE] = 2
-	assert_eq(sniper.base_stat(Unit.Stat.MAX_HP), 12 + 30, "層 1 は聖遺物を含まない")
-	assert_eq(sniper.max_hp(), 12 + 30 + 10)
-	assert_eq(sniper.power(), 9 + 1 + 5)
+	assert_eq(sniper.base_stat(Unit.Stat.MAX_HP), 13 + 30, "層 1 は聖遺物を含まない")
+	assert_eq(sniper.max_hp(), 13 + 30 + 10)
+	assert_eq(sniper.power(), 7 + 1 + 5)
 	assert_eq(sniper.move_range(), 3 + 2 + 2)
 	assert_eq(sniper.attack_range(), 4)
 	sniper.temporary_bonus.clear()
-	assert_eq(sniper.power(), 9 + 1, "一時的な補正が消えても、聖遺物は残る")
+	assert_eq(sniper.power(), 7 + 1, "一時的な補正が消えても、聖遺物は残る")
 	assert_eq(sniper.move_range(), 3 + 2)
 
 
@@ -224,7 +224,7 @@ func test_rules_use_effective_stats() -> void:
 	sniper.temporary_bonus[Unit.Stat.ATTACK_RANGE] = 2
 	assert_true(Combat.can_attack(battle, sniper, king))
 	sniper.relic_bonus[Unit.Stat.POWER] = 1
-	assert_eq(Combat.damage(battle, sniper, king), 10)
+	assert_eq(Combat.damage(battle, sniper, king), 8)
 
 
 func test_add_unit_refuses_bad_equipment() -> void:
@@ -257,15 +257,15 @@ func test_clone_copies_every_layer() -> void:
 	var copied := copy.unit_by_id(sniper.id)
 	assert_eq(copied.equipment, sniper.equipment)
 	assert_eq(copied.hp, 40)
-	assert_eq(copied.max_hp(), 42)
-	assert_eq(copied.power(), 10)
+	assert_eq(copied.max_hp(), 43)
+	assert_eq(copied.power(), 8)
 	assert_eq(copied.move_range(), 7)
 
 	copied.equipment.clear()
 	copied.relic_bonus[Unit.Stat.POWER] = 9
 	copied.temporary_bonus.clear()
 	assert_eq(sniper.equipment.size(), 2)
-	assert_eq(sniper.power(), 10)
+	assert_eq(sniper.power(), 8)
 	assert_eq(sniper.move_range(), 7)
 
 

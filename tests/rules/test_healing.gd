@@ -130,12 +130,12 @@ func test_heal_restores_hp_and_ends_the_action() -> void:
 func test_heal_stops_at_max_hp() -> void:
 	var battle := _battle()
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(4, 0))
-	var ally := _wounded(battle, UnitKind.Id.SNIPER, P1, Vector2i(5, 0), 6)  # 最大 HP 12
-	assert_eq(Healing.amount(medic, ally), 6)
+	var ally := _wounded(battle, UnitKind.Id.SNIPER, P1, Vector2i(5, 0), 6)  # 最大 HP 13
+	assert_eq(Healing.amount(medic, ally), 7)
 	var healed := battle.apply(HealAction.new(medic.id, ally.id)).events[0] as UnitHealedEvent
-	assert_eq(ally.hp, 12)
-	assert_eq(healed.amount, 6)
-	assert_eq(healed.hp, 12)
+	assert_eq(ally.hp, 13)
+	assert_eq(healed.amount, 7)
+	assert_eq(healed.hp, 13)
 
 
 func test_heal_uses_effective_stats() -> void:
@@ -157,7 +157,7 @@ func test_heal_after_moving() -> void:
 	var ally := _wounded(battle, UnitKind.Id.SNIPER, P1, Vector2i(4, 0), 1)
 	battle.apply(MoveAction.new(medic.id, Vector2i(3, 0)))
 	assert_true(battle.apply(HealAction.new(medic.id, ally.id)).accepted)
-	assert_eq(ally.hp, 12)
+	assert_eq(ally.hp, 13)
 
 
 func test_no_heal_after_cruise() -> void:
