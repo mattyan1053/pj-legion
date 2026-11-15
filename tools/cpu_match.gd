@@ -63,6 +63,30 @@ class Outcome:
 	var first_ult_turn: Array[int] = [0, 0]
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
+	## 倒されたプレイヤーの駒（将を除く）の倒され方。1 体につき 1 つ（Fall）。
+	var falls: Array[Fall] = []
+	## 駒の番号 -> ダメージを受けた回数（防がれたものは数えない）。
+	var hits_taken: Dictionary[int, int] = {}
+	## 駒の番号 -> いちばん最近にダメージを与えた駒の番号（樽の爆発は 0）。
+	var last_hit_by: Dictionary[int, int] = {}
+	## 駒の番号 -> その駒がいちばん最近にシャドウステップを使った [ターン, フェーズ]。
+	var stepped_at: Dictionary[int, Array] = {}
+
+
+## 倒された駒 1 体の倒され方（スナイパーが「何もできずに落ちる」かを見る。docs/cpu-ai.md の「集計の道具」）。
+class Fall:
+	extends RefCounted
+	var kind: UnitKind.Id
+	var turn := 0
+	## 倒されるまでに、敵のプレイヤーの駒に与えたダメージ。
+	var damage := 0
+	## 倒されるまでに、ダメージを受けた回数。1 なら、無傷か回復しきった状態から一撃で倒された。
+	var hits_taken := 0
+	## 止めを刺した駒の種類とレベル（樽の爆発など、駒でなければ -1 と 0）。
+	var killer_kind := -1
+	var killer_level := 0
+	## 止めを刺した駒が、同じフェーズにシャドウステップで跳んでいたか。
+	var after_step := false
 
 
 ## battle を、両方のプレイヤーを CPU にして、決着するか max_turns を超えるまで進める。battle は書き換わる。
@@ -91,7 +115,7 @@ static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second:
 		outcome.actions += 1
 		for event in result.events:
 			stats.feed(event)
-			_count(outcome, event)
+			_count(outcome, event, battle, mover)
 	outcome.turns = battle.turn
 	outcome.finished = battle.is_over()
 	outcome.winner = battle.winner
@@ -137,13 +161,37 @@ static func _copy_stats(outcome: Outcome, stats: BattleStats) -> void:
 
 
 ## 戦績に無いもの（イベントの数、スキルごとの回数、経験値の入り方）を数える。
-static func _count(outcome: Outcome, event: BattleEvent) -> void:
+## battle は、その行動を適用したあとの対戦。mover は、その行動をしたフェーズ。
+static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: Unit.Side) -> void:
 	var kind: Script = event.get_script()
 	outcome.events[kind] = outcome.events.get(kind, 0) + 1
+	if event is UnitDamagedEvent:
+		var hit := event as UnitDamagedEvent
+		if hit.amount > 0:
+			outcome.hits_taken[hit.unit_id] = outcome.hits_taken.get(hit.unit_id, 0) + 1
+			var source_id := 0
+			if hit is AttackDamagedEvent:
+				source_id = (hit as AttackDamagedEvent).attacker_id
+			elif hit is SkillDamagedEvent:
+				source_id = (hit as SkillDamagedEvent).user_id
+			outcome.last_hit_by[hit.unit_id] = source_id
 	if event is SkillDamagedEvent:
 		outcome.skill_hits[(event as SkillDamagedEvent).unit_id] = true
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
+		if defeated.side != Unit.Side.NEUTRAL and defeated.kind != UnitKind.Id.KING:
+			var fall := Fall.new()
+			fall.kind = defeated.kind
+			fall.turn = battle.turn
+			fall.damage = outcome.stats.units[defeated.unit_id].damage
+			fall.hits_taken = outcome.hits_taken.get(defeated.unit_id, 0)
+			var killer_id: int = outcome.last_hit_by.get(defeated.unit_id, 0)
+			var killer := battle.unit_by_id(killer_id)
+			if killer != null:
+				fall.killer_kind = killer.kind
+				fall.killer_level = killer.level
+				fall.after_step = outcome.stepped_at.get(killer_id, []) == [battle.turn, mover]
+			outcome.falls.append(fall)
 		var column := 1
 		if defeated.kind == UnitKind.Id.ELITE_MINION:
 			column = 4
@@ -170,6 +218,8 @@ static func _count(outcome: Outcome, event: BattleEvent) -> void:
 	elif event is SkillUsedEvent:
 		var used := event as SkillUsedEvent
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
+		if used.skill == Skill.Id.SHADOW_STEP:
+			outcome.stepped_at[used.unit_id] = [battle.turn, mover]
 
 
 ## gains の列（撃破の種類）の、撃破の経験値。0（倒れていない）は 0。
