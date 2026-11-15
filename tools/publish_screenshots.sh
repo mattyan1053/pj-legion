@@ -23,7 +23,8 @@ slug="$(sed -E 's#\.git$##; s#^.*[/:]([^/]+)/([^/]+)$#\1/\2#' <<<"$remote")"
 files=()
 for arg in "$@"; do
   if [ -d "$arg" ]; then
-    while IFS= read -r f; do files+=("$f"); done < <(find "$arg" -maxdepth 1 -type f \( -name '*.jpg' -o -name '*.png' -o -name '*.webp' -o -name '*.gif' \) | sort)
+    # 書いた順（tools/screenshots.gd の SCENES の順）に並べる。
+    while IFS= read -r f; do files+=("$f"); done < <(find "$arg" -maxdepth 1 -type f \( -name '*.jpg' -o -name '*.png' -o -name '*.webp' -o -name '*.gif' \) -printf '%T@ %p\n' | sort -n | cut -d' ' -f2-)
   else
     files+=("$arg")
   fi
