@@ -190,7 +190,11 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			var killer := battle.unit_by_id(killer_id)
 			if killer != null:
 				fall.killer_kind = killer.kind
+				# 止めを刺した時点のレベル。この撃破の経験値でレベルが上がっていても、対戦の駒はもう上がったあとなので、
+				# まだ LevelUpEvent を食べていない戦績（BattleStats）のほうを読む。
 				fall.killer_level = killer.level
+				if outcome.stats != null and outcome.stats.units.has(killer_id):
+					fall.killer_level = outcome.stats.units[killer_id].level
 				fall.after_step = outcome.stepped_at.get(killer_id, []) == [battle.turn, mover]
 			outcome.falls.append(fall)
 		var column := 1
