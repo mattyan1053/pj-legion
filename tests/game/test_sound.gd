@@ -178,7 +178,7 @@ func test_battle_sounds_cover_every_style_and_skill() -> void:
 		assert_true(Catalog.has_effect(BattleEffects.SKILL_SOUNDS[skill]), "スキル %d の音が表にある" % skill)
 
 
-## 試作のコードが名前で鳴らす効果音（play_sound(&"…")、_sound(&"…")）は、どれも表にある（書き間違えると黙って鳴らないため）。
+## 画面の側（game/）のコードが名前で鳴らす効果音（play_sound(&"…")、_sound(&"…")）は、どれも表にある（書き間違えると黙って鳴らないため）。
 func test_every_sound_name_in_the_code_is_listed() -> void:
 	var pattern := RegEx.create_from_string("(?:play_sound|_sound|Sound\\.play)\\(&\"([a-z_0-9]+)\"\\)")
 	var found := 0

@@ -49,4 +49,4 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 ## 画面の入口
 
 画面の側（`game/`）は、対戦の前に設定画面（`docs/battle-view.md` の「対戦の設定」）で選んだものを
-`game/trial_setup.gd` が `MatchSetup` にして、`create_battle()` で始める。
+`game/match_choice.gd` が `MatchSetup` にして、`create_battle()` で始める。

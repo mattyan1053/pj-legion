@@ -1,16 +1,16 @@
 extends Control
 ## 対戦の前に、軍・ステージ・相手・手番を選ぶ、飾らない最小の画面。
 ##
-## 選んだもの（trial_setup.gd）を持ち、「対戦を始める」で start_pressed を出す。ルールは持たない。
+## 選んだもの（match_choice.gd）を持ち、「対戦を始める」で start_pressed を出す。ルールは持たない。
 ## 人が動かすプレイヤーは、軍を選んだあと、その軍の部隊を、取っておいた部隊（deck_library.gd）か既定の編成から選ぶ。
 ## 出せない部隊は、理由つきで並べ、選べなくする。CPU の編成は軍ごとの CPU の編成（中身を文字で見せる）。
 
-## 選んだもの（trial_setup.gd の値。呼ぶ側に渡すのは写し）。
+## 選んだもの（match_choice.gd の値。呼ぶ側に渡すのは写し）。
 signal start_pressed(choice: RefCounted)
 ## 何も変えずに閉じた（「対戦へ戻る」、右クリック、Esc）。いまの対戦は、そのまま続く。
 signal cancelled
 
-const TrialSetup := preload("res://game/trial_setup.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Names := preload("res://game/names.gd")
 
@@ -18,7 +18,7 @@ const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANT
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.92)
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 
-var _choice: RefCounted = TrialSetup.new()
+var _choice: RefCounted = MatchChoice.new()
 var _team_colors: Array[Color] = []
 ## 選択肢の名前 -> その行のボタン（値 -> Button）。
 var _rows := {}

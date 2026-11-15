@@ -1,5 +1,5 @@
 extends Node3D
-## 対戦の場面（見た目の試作）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
+## 対戦の場面（俯瞰 3D の盤面と、操作・演出）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
 ## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。対戦の設定は context.match_choice から読む。
 ##
 ## 相手（プレイヤー2）を CPU にすると、その番は CpuPlayer が返す行動を、人の操作と同じ入口（_do）に 1 つずつ流す。
@@ -12,7 +12,7 @@ const UnitView := preload("res://game/unit_view.gd")
 const BoardView := preload("res://game/board_view.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 const Names := preload("res://game/names.gd")
-const TrialSetup := preload("res://game/trial_setup.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
 const MatchSetupPanel := preload("res://game/match_setup_panel.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
@@ -111,8 +111,8 @@ var _log_panel: LogPanel
 ## CPU の駒の行動を再生している途中か（設定の「CPU の番の速さ」を効かせる）。
 var _cpu_fast := false
 
-## 対戦の設定画面で選んだもの（trial_setup.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
-var match_choice: RefCounted = TrialSetup.new()
+## 対戦の設定画面で選んだもの（match_choice.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
+var match_choice: RefCounted = MatchChoice.new()
 ## 相手を CPU が動かすか。偽なら、2 人が交代で操作する。CPU が動かすのは match_choice.cpu_side()。
 var cpu_opponent := true
 ## CPU が実行した行動の数。検査用。

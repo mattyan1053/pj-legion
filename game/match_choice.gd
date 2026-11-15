@@ -1,5 +1,5 @@
 extends RefCounted
-## 試作の対戦の設定画面（match_setup_panel.gd）で選ぶもの。選んだものから、ルールの対戦の設定（MatchSetup）を作る。
+## 対戦の設定画面（match_setup_panel.gd）で選ぶもの。選んだものから、ルールの対戦の設定（MatchSetup）を作る。
 ##
 ## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
 ## 人の部隊は、取っておいた部隊（deck_library.gd）か、軍ごとの既定の編成（MatchSetup.default_deck。部隊の id が空のとき）。

@@ -4,7 +4,7 @@ extends RefCounted
 ## 場面からアプリへの頼みごと（システムメニューを開く、設定の画面を開く）も、ここの signal を通す
 ## （場面はアプリを知らなくてよい）。
 
-const TrialSetup := preload("res://game/trial_setup.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
 const Settings := preload("res://game/settings.gd")
 const DeckLibrary := preload("res://game/deck_library.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
@@ -31,8 +31,8 @@ var overlays := OverlayStack.new()
 var system_menu: Node
 ## 音を鳴らすところ（sound.gd）。アプリが作って入れる（アプリを通さずに場面を置いたときは無い）。
 var sound: Node
-## 対戦の設定の場面で選んだもの（trial_setup.gd）。対戦の場面は、これで始める。
-var match_choice: RefCounted = TrialSetup.new()
+## 対戦の設定の場面で選んだもの（match_choice.gd）。対戦の場面は、これで始める。
+var match_choice: RefCounted = MatchChoice.new()
 ## 検査として動いているなら CHECK_AUTOPLAY か CHECK_SHOTS。人が遊んでいるなら空。
 var checking := &""
 
