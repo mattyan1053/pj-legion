@@ -21,8 +21,25 @@ if [ -z "${DISPLAY:-}" ]; then
 fi
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
+# スクリプトが読み込めない（文法の誤りなど）と、Godot は終わらずに待ち続ける。ログを見て、読み込めなかったら、すぐに止める。
+timeout 600 "${cmd[@]}" >"$log" 2>&1 &
+pid=$!
+broken=""
+while kill -0 "$pid" 2>/dev/null; do
+  if grep -qE "Parse Error|Failed to load script" "$log"; then
+    broken=1
+    kill "$pid" 2>/dev/null || true
+    break
+  fi
+  sleep 0.5
+done
 status=0
-timeout 600 "${cmd[@]}" >"$log" 2>&1 || status=$?
+wait "$pid" || status=$?
+if [ -n "$broken" ]; then
+  echo "screenshots.sh: スクリプトが読み込めないので止めた。" >&2
+  grep -E -A1 "Parse Error|Failed to load script" "$log" >&2
+  exit 1
+fi
 grep -E "^screenshots:|SCRIPT ERROR|Parse Error" "$log" || true
 if [ "$status" != 0 ] || ! grep -qx "screenshots: OK" "$log"; then
   echo "screenshots.sh: 撮り終えられなかった（終了コード $status）。全体のログ:" >&2
