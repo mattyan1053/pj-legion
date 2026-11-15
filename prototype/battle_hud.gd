@@ -10,6 +10,7 @@ const TextWrap := preload("res://prototype/text_wrap.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const ForecastPanel := preload("res://prototype/forecast_panel.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
+const RelicIcon := preload("res://prototype/relic_icon.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -31,6 +32,8 @@ signal setup_pressed
 signal title_pressed
 ## stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でやり直す（stage は見ない）。
 signal restart_pressed(stage: int, new_board: bool)
+## 決着の画面を出した（draw なら引き分けで、winner は使わない）。決着の曲を鳴らす合図。
+signal result_shown(draw: bool, winner: Unit.Side)
 
 const SIDE_NAMES := {
 	Unit.Side.PLAYER1: "プレイヤー1（青）",
@@ -101,6 +104,12 @@ const STATUS_TEXTS := {
 	Status.Type.FATIGUE: "攻撃 -%d" % AdrenalineShotSkill.POWER_PENALTY,
 	Status.Type.ASSAULT: "移動 +%d・攻撃 +%d" % [AllOutAssaultUlt.MOVE_BONUS, AllOutAssaultUlt.POWER_BONUS],
 }
+## 必殺技の画面のフラッシュ（濃さと、消えるまでの秒数）。
+const FLASH_ALPHA := 0.45
+const FLASH_TIME := 0.45
+## READY の明滅（いちばん色づいたときの色と、1 回の秒数）。
+const COLOR_PULSE := Color(1.0, 0.72, 0.25)
+const PULSE_PERIOD := 1.1
 ## 必殺技の知らせの色（軍ごと）。
 const ULT_COLORS := {
 	Ult.Id.ALL_OUT_ASSAULT: Color("ff5a4a"),
@@ -113,6 +122,8 @@ var _turn_label: Label
 var _phase_label: Label
 var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
+## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
+var _relic_icons: Array[Array] = []
 var _relic_notes: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []
 var _ult_labels: Array[Label] = []
@@ -152,6 +163,8 @@ var _menu_buttons := {}
 var _char_widths := {}
 var _banner: Label
 var _banner_tween: Tween
+var _flash: ColorRect
+var _flash_tween: Tween
 var _result: Control
 var _evolution: Control
 var _evolution_title: Label
@@ -166,6 +179,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_top_bar()
 	_build_info_panel()
 	_build_bottom()
+	_build_flash()
 	_build_banner()
 	_build_menu()
 	_build_forecast()
@@ -181,8 +195,6 @@ func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array
 	for player in 2:
 		var pips := "●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player])
 		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [("青" if player == 0 else "赤"), counts[player], pips]
-		if _relic_texts[player] != "":
-			_side_labels[player].text += "  聖遺物 " + _relic_texts[player]
 		# 幅が足りずに省かれても読めるよう、全文をツールチップにも置く。聖遺物の効果も、ここで読める。
 		_side_labels[player].tooltip_text = _side_labels[player].text
 		if _relic_notes[player] != "":
@@ -192,14 +204,21 @@ func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array
 
 ## 陣営ごとの、持っている聖遺物の名前（上の帯。添字がプレイヤー番号。持っていなければ空）。次の set_status で出る。
 ## notes は、聖遺物の効果の説明（陣営の欄にマウスを乗せると出る。無ければ空）。
-func set_relics(texts: Array[String], notes: Array[String] = ["", ""]) -> void:
+## held は陣営ごとの持っている聖遺物（Relics.Id の列）。アイコンを点ける。
+func set_relics(texts: Array[String], notes: Array[String] = ["", ""], held: Array = [[], []]) -> void:
 	_relic_texts = texts
 	_relic_notes = notes
+	for player in _relic_icons.size():
+		for icon: RelicIcon in _relic_icons[player]:
+			icon.set_lit((held[player] as Array).has(icon.relic))
 
 
 ## 上の帯に出ている、陣営の聖遺物の文字（持っていなければ空）。検査用。
 func relic_text(player: int) -> String:
-	return _relic_texts[player] if _side_labels[player].text.contains("聖遺物") else ""
+	for icon: RelicIcon in _relic_icons[player]:
+		if icon.lit:
+			return _relic_texts[player]
+	return ""
 
 
 ## 必殺技のゲージ（上の帯。添字がプレイヤー番号）。percents は 0〜100。names は必殺技の名前（持たなければ空で、ゲージを出さない）。
@@ -502,6 +521,38 @@ static func skill_state_text(unit: Unit) -> String:
 	return state if uses < 0 else "%s。残り %d 回" % [state, uses]
 
 
+## 画面の全体を、color で一瞬だけ光らせる（必殺技）。強すぎないよう、薄く出してすぐ消す。
+func flash_screen(color: Color) -> void:
+	if _flash_tween != null:
+		_flash_tween.kill()
+	_flash.color = Color(color.lightened(0.2), FLASH_ALPHA)
+	_flash.visible = true
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_flash, "color:a", 0.0, FLASH_TIME).set_ease(Tween.EASE_IN)
+	_flash_tween.tween_callback(_flash.hide)
+
+
+func _build_flash() -> void:
+	_flash = ColorRect.new()
+	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.visible = false
+	add_child(_flash)
+
+
+## ゲージが READY のあいだ、上の帯のゲージと、押せる必殺技のボタンを、金色にゆっくり明滅させる。
+## 時計は実時間で測る（CPU の番の速さや、メニューで時間が止まっているのに依らない）。
+func _process(_delta: float) -> void:
+	var phase := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU / PULSE_PERIOD)
+	var tint := Color.WHITE.lerp(COLOR_PULSE, phase)
+	for player in _ult_labels.size():
+		var shade := tint if _ult_labels[player].text == "READY" else Color.WHITE
+		_ult_bars[player].self_modulate = shade
+		_ult_labels[player].self_modulate = shade
+	if _ult_button != null:
+		_ult_button.self_modulate = tint if not _ult_button.disabled else Color.WHITE
+
+
 ## 画面の中央に、しばらくだけ大きな文字を出す。
 func show_banner(text: String, color: Color) -> void:
 	_banner.text = text
@@ -514,6 +565,11 @@ func show_banner(text: String, color: Color) -> void:
 	_banner_tween.tween_interval(0.9)
 	_banner_tween.tween_property(_banner, "modulate:a", 0.0, 0.5)
 	_banner_tween.tween_callback(_banner.hide)
+
+
+## 画面の中央の大きな文字が出ているか（スクリーンショットの道具が、消えるのを待つ）。
+func is_banner_shown() -> bool:
+	return _banner.visible
 
 
 ## 画面の中央の大きな文字を、すぐに消す（時間を止めて読む画面を開いたとき、止まったまま残らないように）。
@@ -530,6 +586,7 @@ func show_result(winner: Unit.Side, reason: String, stats := "") -> void:
 	_result_reason.text = reason
 	_show_stats(stats)
 	_result.visible = true
+	result_shown.emit(false, winner)
 
 
 ## 引き分けの結果を出す。
@@ -539,6 +596,7 @@ func show_draw(reason: String, stats := "") -> void:
 	_result_reason.text = reason
 	_show_stats(stats)
 	_result.visible = true
+	result_shown.emit(true, Unit.Side.NEUTRAL)
 
 
 ## いま出ている戦績の要点（出ていなければ空）。検査用。
@@ -626,6 +684,13 @@ func _build_top_bar() -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_child(label)
 		_side_labels.append(label)
+		# 聖遺物のアイコン（持っていなければ暗い輪郭、持っていれば点く）。名前と効果は、アイコンにマウスを乗せると出る。
+		var icons: Array = []
+		for relic: Relics.Id in Relics.Id.values():
+			var icon := RelicIcon.new(relic)
+			row.add_child(icon)
+			icons.append(icon)
+		_relic_icons.append(icons)
 		# 必殺技のゲージ（飾らない棒と数字）。軍の色で塗る。
 		var bar := ProgressBar.new()
 		bar.custom_minimum_size = Vector2(84.0, 22.0)

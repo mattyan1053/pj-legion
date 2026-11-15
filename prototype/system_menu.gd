@@ -20,6 +20,8 @@ signal item_chosen(id: StringName)
 signal closed
 ## 設定の画面を閉じた（値を取っておく合図）。
 signal settings_closed
+## 閉じずに 1 つ戻った（確かめ → メニュー、設定の画面 → メニュー）。戻る音を鳴らす合図。
+signal stepped_back
 
 ## 開いたメニューを閉じるだけの項目と、設定の画面を開く項目（どちらも、ここで扱う）。
 const ITEM_RESUME := &"resume"
@@ -211,11 +213,13 @@ func back() -> void:
 	if _confirm.visible:
 		_confirming = &""
 		_show(_menu)
+		stepped_back.emit()
 	elif _settings_panel.visible and _settings_only:
 		close()
 	elif _settings_panel.visible:
 		_show(_menu)
 		settings_closed.emit()
+		stepped_back.emit()
 	else:
 		close()
 
