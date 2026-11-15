@@ -1,8 +1,8 @@
 # 部隊の編成（画面と、取っておく部隊）
 
-コード: `prototype/deck_screen.gd`（編成の場面）、`prototype/deck_library.gd`（取っておく部隊の一覧と、ファイルの読み書き）、
-`prototype/deck_text.gd`（出せない理由、駒と装備の中身の文）、`prototype/trial_setup.gd` と `prototype/match_setup_panel.gd`（対戦の設定で選ぶ）。
-テスト: `tests/prototype/test_deck_library.gd`、`tests/prototype/test_trial_setup.gd`、自動の対戦（`prototype/autoplay.gd` の `_visit_decks`）。
+コード: `game/deck_screen.gd`（編成の場面）、`game/deck_library.gd`（取っておく部隊の一覧と、ファイルの読み書き）、
+`game/deck_text.gd`（出せない理由、駒と装備の中身の文）、`game/trial_setup.gd` と `game/match_setup_panel.gd`（対戦の設定で選ぶ）。
+テスト: `tests/game/test_deck_library.gd`、`tests/game/test_trial_setup.gd`、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
 
 編成のルール（軍、ロスター、装備、予算、配置）は `docs/player-loadout.md`、検査と編成の決まりは `docs/deck-building.md`。
 
@@ -49,7 +49,7 @@
 
 - マウスだけで使える（名前を変えるときだけ、文字を打つ）。
 - 右クリックと Esc は「戻す」: 確かめ・名前の窓 → 駒の選択 → 組む画面（一覧へ）→ 一覧（タイトルへ）。
-- 文は `prototype/text_wrap.gd` で折り返す。駒の中身の欄は、長ければ欄の中で送れる。
+- 文は `game/text_wrap.gd` で折り返す。駒の中身の欄は、長ければ欄の中で送れる。
 
 ## 対戦の設定で選ぶ
 
@@ -62,7 +62,7 @@
 
 ## 取っておく形式
 
-`prototype/save_store.gd` の仕組みで、`user://decks.json` に置く（`{"name": "decks", "version": 版, "data": 中身}`）。
+`game/save_store.gd` の仕組みで、`user://decks.json` に置く（`{"name": "decks", "version": 版, "data": 中身}`）。
 いまの版は 1（`deck_library.gd` の `FORMAT_VERSION`）。中身:
 
 ```json

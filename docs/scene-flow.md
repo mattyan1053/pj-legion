@@ -1,8 +1,8 @@
 # 場面の流れ
 
-コード: `prototype/scene_flow.gd`（場面の種類と並び）、`prototype/app.gd`（入口。場面を切り替える）、`prototype/app_context.gd`（場面どうしで共有するもの）。
-場面: `prototype/title_screen.gd`、`prototype/stage_select_screen.gd`、`prototype/setup_screen.gd`、`prototype/board_prototype.gd`（対戦）。背景は `prototype/backdrop.gd`。
-テスト: `tests/prototype/test_scene_flow.gd`、自動の対戦（`prototype/autoplay.gd`。人と同じ道で対戦に入り、最後にタイトルと対戦の設定を往復する）。
+コード: `game/scene_flow.gd`（場面の種類と並び）、`game/app.gd`（入口。場面を切り替える）、`game/app_context.gd`（場面どうしで共有するもの）。
+場面: `game/title_screen.gd`、`game/stage_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）。背景は `game/backdrop.gd`。
+テスト: `tests/game/test_scene_flow.gd`、自動の対戦（`game/autoplay.gd`。人と同じ道で対戦に入り、最後にタイトルと対戦の設定を往復する）。
 
 ## いまの流れ
 
@@ -15,7 +15,7 @@
 ```
 
 - 起動するとタイトルから始まる。タイトルは、題名と「始める」「部隊の編成」「設定」「終える」だけ。
-- 「部隊の編成」は、部隊を組んで取っておく場面（`prototype/deck_screen.gd`。`docs/deck-screen.md`）。「タイトルへ戻る」（右クリック・Esc でも）でタイトルへ戻る。
+- 「部隊の編成」は、部隊を組んで取っておく場面（`game/deck_screen.gd`。`docs/deck-screen.md`）。「タイトルへ戻る」（右クリック・Esc でも）でタイトルへ戻る。
   取っておいた部隊は、対戦の設定で選ぶ。
 - ステージ選択は、3 枚のカードからステージを選ぶ場面（`docs/stage-select.md`）。選ぶと対戦の設定へ進む。「タイトルへ戻る」（右クリック・Esc でも）でタイトルへ。
 - 対戦の設定（ステージ・相手・手番・軍・部隊）は、対戦の途中で開く設定画面と同じもの（`docs/battle-view.md` の「対戦の設定」）。選んだものは次に開いたときも残る（アプリが起動している間）。「ステージ選択へ戻る」（右クリック・Esc でも）でステージ選択へ戻る。
@@ -46,9 +46,9 @@
 | --- | --- |
 | `settings` | 遊ぶ人ごとの設定（`docs/system-menu.md`） |
 | `system_menu` | システムメニュー（場面をまたいで 1 つ） |
-| `sound` | 音を鳴らすところ（`prototype/sound.gd`。場面をまたいで 1 つ。`docs/sound.md`）。アプリを通さずに置いた場面では無い |
+| `sound` | 音を鳴らすところ（`game/sound.gd`。場面をまたいで 1 つ。`docs/sound.md`）。アプリを通さずに置いた場面では無い |
 | `match_choice` | 対戦の設定の場面で選んだもの。対戦の場面は、これで始める |
-| `decks` | 取っておいた部隊（`prototype/deck_library.gd`。`docs/deck-screen.md`）。検査とスクリーンショットでは、ファイルを読み書きしない |
+| `decks` | 取っておいた部隊（`game/deck_library.gd`。`docs/deck-screen.md`）。検査とスクリーンショットでは、ファイルを読み書きしない |
 | `checking` | 検査（`autoplay`）か、スクリーンショットの道具（`shots`）として動いているか |
 
 ## 検査とスクリーンショット

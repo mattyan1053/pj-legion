@@ -6,7 +6,7 @@
 - 入れたもの: `Characters/gltf/` の `Knight.glb` / `Barbarian.glb` / `Mage.glb` / `Rogue.glb`。**無改変**
 
 各ファイルに武器・盾などの小物と 76 個のアニメーションが入っている。
-使う小物の出し分けは `prototype/unit_view.gd` でやっている。
+使う小物の出し分けは `game/unit_view.gd` でやっている。
 
 `*_texture.png` とその `.import` は、Godot が `.glb` を取り込むときに中から取り出したもの（中身は同じ）。
 エディタを開くたびに作られるので、差分が出ないようにコミットしてある。

@@ -2,19 +2,19 @@ extends Node
 ## 試作の決まった場面を画像に撮る。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
 ## アプリ（app.gd）が、タイトル → 対戦の設定 → 対戦 と人と同じ道で対戦に入ったところで、このノードを足す。
 ## 撮り終えたら終わる。使い方は docs/screenshots.md。
-## 対戦の場面は対戦の画面（board_prototype.gd）で撮り、タイトルと対戦の設定の場面は、アプリをその場面へ切り替えて撮る。
+## 対戦の場面は対戦の画面（battle_screen.gd）で撮り、タイトルと対戦の設定の場面は、アプリをその場面へ切り替えて撮る。
 ##
 ## 場面はどれも、種を決めた対戦（MatchSetup）を CPU どうしで進めて作る。人の操作と同じ入口で駒を選ぶので、
 ## 毎回同じ絵になる。場面を足すときは、SCENES に名前と説明を足し、同じ名前の _scene_<名前>() を書く
 ## （その場面まで状態を作るだけ。撮るのはこのノードがやる）。
 
-const Queries := preload("res://prototype/battle_queries.gd")
-const TrialSetup := preload("res://prototype/trial_setup.gd")
-const BattleLog := preload("res://prototype/battle_log.gd")
-const OrbitCamera := preload("res://prototype/orbit_camera.gd")
-const BoardView := preload("res://prototype/board_view.gd")
-const Names := preload("res://prototype/names.gd")
-const ResultSummary := preload("res://prototype/result_summary.gd")
+const Queries := preload("res://game/battle_queries.gd")
+const TrialSetup := preload("res://game/trial_setup.gd")
+const BattleLog := preload("res://game/battle_log.gd")
+const OrbitCamera := preload("res://game/orbit_camera.gd")
+const BoardView := preload("res://game/board_view.gd")
+const Names := preload("res://game/names.gd")
+const ResultSummary := preload("res://game/result_summary.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
@@ -104,7 +104,7 @@ const MAX_ACTIONS := 3000
 const JPEG_QUALITY := 0.82
 
 var _app: Node
-## いまの対戦の画面（board_prototype.gd）。アプリが対戦の場面にいる間だけ使う。
+## いまの対戦の画面（battle_screen.gd）。アプリが対戦の場面にいる間だけ使う。
 var _scene: Node
 var _out := ""
 var _names: Array[String] = []

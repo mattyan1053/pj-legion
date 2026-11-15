@@ -1,6 +1,6 @@
 # 対戦の画面（見た目の試作）
 
-コード: `prototype/`。テスト: `tests/prototype/`（ノードに依存しない部分）と、`tools/check.sh` の自動の対戦。
+コード: `game/`。テスト: `tests/game/`（ノードに依存しない部分）と、`tools/check.sh` の自動の対戦。
 
 1 人で CPU を相手に、または 2 人が 1 台で交代しながら、対戦を最後まで遊べる。操作の一覧はルートの `README.md`。
 
@@ -104,9 +104,9 @@
 ## ルールとのつなぎ方
 
 - 画面はルールを持たない。操作を行動（`BattleAction`）にして `Battle.apply()` に渡し、
-  返ってきた `ActionResult.events` を順に再生する（`board_prototype.gd` の `_do` と、`battle_playback.gd` の `play_all`）。
+  返ってきた `ActionResult.events` を順に再生する（`battle_screen.gd` の `_do` と、`battle_playback.gd` の `play_all`）。
 - 再生している間は、操作を受け付けない。再生が終わったら、対戦の状態と選んでいる駒から、
-  塗るマス・ボタン・文字を作り直す（`_refresh`）。帯・メニュー・マスの説明などの文は、ノードに依存しない `battle_texts.gd` が作る（テストは `tests/prototype/test_battle_texts.gd`）。
+  塗るマス・ボタン・文字を作り直す（`_refresh`）。帯・メニュー・マスの説明などの文は、ノードに依存しない `battle_texts.gd` が作る（テストは `tests/game/test_battle_texts.gd`）。
 - 選べること（動けるマス、攻撃できる相手、攻撃できる樽、回復できる味方、スキルの対象のマス）は、ルールの問い合わせ `Battle.options()`（`docs/battle.md`）に聞き、
   `battle_queries.gd` が画面の使いやすい形にする。どれも `Battle.can_apply()` が受け付けるものと一致する（テストで固定している）。
 - 見込み（攻撃、樽・盾への攻撃、回復、スキル）は、どれも戦闘予測 `Forecast.of()`（`docs/battle-forecast.md`。実際と同じ処理を
@@ -115,7 +115,7 @@
 - 相手の駒（中立の駒も）を見ると、脅威範囲（`docs/threat-range.md`。`Threat.of()`）を濃い赤で塗る。
   敵の全員の脅威範囲（`Threat.against()`）は、スイッチで斜線を重ねる（上の「敵の攻撃範囲」）。
 - イベントの種類と再生するメソッドの対応は `battle_playback.gd` の `event_players()` に並べる。
-  `rules/events/` にあるのに載っていない種類があると、テスト（`tests/prototype/test_event_playback.gd`）が落ちる。
+  `rules/events/` にあるのに載っていない種類があると、テスト（`tests/game/test_event_playback.gd`）が落ちる。
 
 | イベント | 再生 |
 | --- | --- |
@@ -194,7 +194,7 @@
 
 ### フェーズの始めのカメラ
 
-コード: `prototype/phase_focus.gd`。テスト: `tests/prototype/test_phase_focus.gd`。
+コード: `game/phase_focus.gd`。テスト: `tests/game/test_phase_focus.gd`。
 
 - 寄るのは、その陣営が**前回のフェーズで最後に行動を確定した駒**（待機・攻撃・回復・スキル・動いたままのターン終了。`UnitActedEvent`）。
   前の自分の番の続きから見られる。
