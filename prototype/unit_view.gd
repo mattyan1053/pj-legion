@@ -212,6 +212,11 @@ func face(direction: Vector3) -> void:
 	rotation.y = atan2(direction.x, direction.z)
 
 
+## 駒の種類（演出の当たり方を決める）。
+func unit_kind() -> UnitKind.Id:
+	return _kind
+
+
 ## 駒の高さ（頭の上まで）。画面に占める四角を出すのに使う。
 func height() -> float:
 	return _height

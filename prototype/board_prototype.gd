@@ -24,6 +24,7 @@ const Settings := preload("res://prototype/settings.gd")
 const AppContext := preload("res://prototype/app_context.gd")
 const BattleLog := preload("res://prototype/battle_log.gd")
 const LogPanel := preload("res://prototype/log_panel.gd")
+const BattleEffects := preload("res://prototype/battle_effects.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"）。
 signal finished(outcome: StringName)
@@ -110,6 +111,7 @@ var stage := BoardGenerator.Stage.PLAIN
 var map_seed := 0
 
 var _board_view: BoardView
+var _effects: BattleEffects
 var _views := {}  # 駒の番号 -> UnitView
 var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
@@ -195,6 +197,8 @@ var _confirming_ult := false
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
 var played := {}
 var _players := event_players()
+## 最後の行動の終わり（UnitActedEvent）から、攻撃・回復・スキルを見せたか。見せていなければ、次の行動の終わりは待機のサインを出す。
+var _acted_with_effect := false
 var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる前のもの）
 
 
@@ -202,6 +206,8 @@ func _ready() -> void:
 	_build_environment()
 	_rig = OrbitCamera.new()
 	add_child(_rig)
+	_effects = BattleEffects.new()
+	add_child(_effects)
 	_selection_ring = _build_ring(COLOR_SELECTED, 0.38, 0.47)
 	_inspect_ring = _build_ring(COLOR_INSPECTED, 0.40, 0.50)
 	_hud = BattleHud.new()
@@ -1287,7 +1293,7 @@ func _play_attack_damaged(event: AttackDamagedEvent) -> void:
 	_show_strike(event.attacker_id, attacker, target)
 	attacker.face(target.position - attacker.position)
 	target.face(attacker.position - target.position)
-	await _after(attacker.play_attack())
+	await _strike(attacker, target.position)
 	await _play_hit(event, Color("ffe9a8"), 0.45)
 
 
@@ -1319,6 +1325,7 @@ func _play_healer_healed(event: HealerHealedEvent) -> void:
 	var healer := _view(event.healer_id)
 	var target := _view(event.unit_id)
 	healer.face(target.position - healer.position)
+	_acted_with_effect = true
 	await _after(healer.play_attack())
 	await _play_heal(event, true)
 
@@ -1383,7 +1390,7 @@ func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
 	if _views.has(event.attacker_id):
 		var attacker := _view(event.attacker_id)
 		attacker.face(at - attacker.position)
-		await _after(attacker.play_attack())
+		await _strike(attacker, at)
 	_board_view.remove_barrel(event.cell)
 	var colors := {event.cell: COLOR_BLAST}
 	for cell in event.blast_cells:
@@ -1423,7 +1430,7 @@ func _play_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
 	var attacker := _view(event.attacker_id)
 	attacker.face(at - attacker.position)
-	await _after(attacker.play_attack())
+	await _strike(attacker, at)
 	_pop_number(at, "耐久 -%d" % event.amount, Color("ffe9a8"))
 	await _after(0.3)
 
@@ -1435,7 +1442,7 @@ func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
 	_show_strike(event.attacker_id, attacker, target)
 	attacker.face(target.position - attacker.position)
 	target.face(attacker.position - target.position)
-	await _after(attacker.play_attack())
+	await _strike(attacker, target.position)
 	_flash(target.position + Vector3(0.0, 0.3, 0.0), BoardView.COLOR_SMOKE, 1.2)
 	_pop_number(target.position, "煙幕で防いだ", Color("d0d4da"))
 	await _after(0.4)
@@ -1490,6 +1497,7 @@ func _play_skill_used(event: SkillUsedEvent) -> void:
 	var at := BoardView.cell_center(event.target)
 	if not at.is_equal_approx(view.position):
 		view.face(at - view.position)
+	_acted_with_effect = true
 	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Skills.by_id(event.skill).display_name(), Color("dcc4ff"))
 	await _after(view.play_attack())
 
@@ -1526,8 +1534,14 @@ func _play_status_removed(event: StatusRemovedEvent) -> void:
 	await _after(0.2)
 
 
+## 駒が行動を終えた。暗くする。攻撃・回復・スキルを見せずに終えた（待機した）なら、その瞬間に待機のサインを出す
+## （動いてから待機、巡航のあと、動いたままターンを終えたときも）。
 func _play_acted(event: UnitActedEvent) -> void:
-	_view(event.unit_id).set_acted(true)
+	var view := _view(event.unit_id)
+	view.set_acted(true)
+	if not _acted_with_effect:
+		_effects.wait_sign(view.position)
+	_acted_with_effect = false
 
 
 func _play_won(event: GameWonEvent) -> void:
@@ -1611,6 +1625,14 @@ func _camera_follows(unit: Unit) -> bool:
 	return unit.side == Unit.Side.NEUTRAL or (_cpu_running and unit.side == match_choice.cpu_side())
 
 
+## 攻撃の動きと、当たる形（駒の種類ごと。battle_effects.gd）を出し、当たる瞬間まで待つ。
+func _strike(attacker: UnitView, at: Vector3) -> void:
+	_acted_with_effect = true
+	var hit_in := attacker.play_attack()
+	_effects.strike(BattleEffects.hit_style(attacker.unit_kind()), attacker.position, at, hit_in)
+	await _after(hit_in)
+
+
 ## 自分で動かしていない駒（CPU の番の駒、中立の駒）の攻撃は、攻撃する駒と相手の間へカメラを寄せる（どちらも見えるように）。
 func _show_strike(attacker_id: int, attacker: UnitView, target: UnitView) -> void:
 	var unit := battle.unit_by_id(attacker_id)
@@ -1620,6 +1642,7 @@ func _show_strike(attacker_id: int, attacker: UnitView, target: UnitView) -> voi
 
 func _play_phase_started(event: PhaseStartedEvent) -> void:
 	_refresh_status(event.turn, event.side)
+	_acted_with_effect = false
 	if event.side == Unit.Side.NEUTRAL:
 		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは、攻撃する駒だけを追う（_play_neutral_phase）。
 		_hud.show_banner("ターン %d　%s の番" % [event.turn, _side_name(event.side)], TEAM_COLORS[event.side])
