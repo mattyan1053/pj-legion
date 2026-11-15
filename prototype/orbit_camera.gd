@@ -118,6 +118,13 @@ func focus_on(point: Vector3) -> void:
 	_focusing = true
 
 
+## point が画面の中央に来るよう、すぐに移る（時間を止めている間にも使える。ログの行を選んだとき）。
+func jump_to(point: Vector3) -> void:
+	position.x = clampf(point.x, bounds.position.x, bounds.end.x)
+	position.z = clampf(point.z, bounds.position.y, bounds.end.y)
+	_focusing = false
+
+
 ## target を追いかける（動いている駒が画面の外へ出ていかないように）。null を渡すと、追うのをやめる（その場に止まる）。
 func follow(target: Node3D) -> void:
 	_followed = target

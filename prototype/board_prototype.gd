@@ -22,6 +22,8 @@ const NeutralPlayback := preload("res://prototype/neutral_playback.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const Settings := preload("res://prototype/settings.gd")
 const AppContext := preload("res://prototype/app_context.gd")
+const BattleLog := preload("res://prototype/battle_log.gd")
+const LogPanel := preload("res://prototype/log_panel.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"）。
 signal finished(outcome: StringName)
@@ -50,6 +52,9 @@ const COLOR_RELIC := Color("ffe08a")
 const COLOR_INSPECT := Color(0.8, 0.93, 1.0, 0.5)
 const COLOR_THREAT := Color(0.95, 0.05, 0.2, 0.62)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
+## ログの行を選んだときに示す、出来事のあったマスと、関わった駒のいまのマス。
+const COLOR_LOG_PLACE := Color(1.0, 0.82, 0.25, 0.75)
+const COLOR_LOG_UNIT := Color(0.95, 0.97, 1.0, 0.7)
 ## 空と、遠くの霞の色。
 const COLOR_HAZE := Color("b4cbdc")
 ## 霞が始まる距離と、すっかり霞む距離（カメラから）。いちばん引いて盤の端から端を見ても、盤の中はほとんど霞まない。
@@ -97,6 +102,8 @@ const DRAW_REASONS := {
 var battle: Battle
 ## いまの対戦の戦績。行動のたびに、起きたことを食わせる（決着の画面に要点を出す）。
 var stats: BattleStats
+## 対戦のログ（battle_log.gd）。再生したイベントを、再生した順に食わせる。
+var battle_log: BattleLog
 var stage := BoardGenerator.Stage.PLAIN
 var map_seed := 0
 
@@ -118,6 +125,7 @@ var settings: Settings
 ## システムメニューを開いている間は 0（止める）、CPU の駒の番は設定の「CPU の番の速さ」を掛ける（_update_time_scale）。
 var time_scale_base := 1.0
 var _system_menu: SystemMenu
+var _log_panel: LogPanel
 ## CPU の駒の行動を再生している途中か（設定の「CPU の番の速さ」を効かせる）。
 var _cpu_fast := false
 
@@ -189,6 +197,7 @@ func _ready() -> void:
 	_hud.restart_pressed.connect(_on_restart_pressed)
 	_hud.evolution_chosen.connect(choose_evolution)
 	_hud.opponent_pressed.connect(toggle_opponent)
+	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
 	_setup_panel = MatchSetupPanel.new()
@@ -197,6 +206,12 @@ func _ready() -> void:
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 	_setup_panel.cancelled.connect(_refresh)
+	_log_panel = LogPanel.new()
+	add_child(_log_panel)
+	_log_panel.setup(TEAM_COLORS)
+	_log_panel.opened.connect(_on_overlay_opened)
+	_log_panel.closed.connect(_on_log_closed)
+	_log_panel.entry_chosen.connect(_on_log_entry_chosen)
 
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき（既定の設定で始める）
@@ -228,7 +243,7 @@ signal frame_passed
 
 func _process(delta: float) -> void:
 	# カメラが動くとマウスの下のマスも変わるので、マウスの動きではなく毎フレーム追う（メニューの後ろでは追わない）。
-	if not _system_menu.is_open():
+	if not _system_menu.is_open() and not _log_panel.is_open():
 		_update_hover()
 	var focus_cells: Array[Vector2i] = []
 	for view: UnitView in _views.values():
@@ -254,8 +269,8 @@ func _after(seconds: float) -> Signal:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _system_menu.is_open():
-		return  # 開いている間の入力は、メニューが受ける（ここへ届いても、盤面には使わない）
+	if _system_menu.is_open() or _log_panel.is_open():
+		return  # 開いている間の入力は、メニュー・ログが受ける（ここへ届いても、盤面には使わない）
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 	if _setup_panel.visible:
 		# 設定画面は、閉じられるなら Esc で閉じる（setup_panel が先に受ける）。閉じられない（起動した直後）なら、メニューを開く。
@@ -359,6 +374,11 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	map_seed = battle_seed
 	battle = new_battle
 	stats = BattleStats.new(battle)
+	_log_panel.close()
+	var names: Array[String] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		names.append(_side_name(side))
+	battle_log = BattleLog.new(battle, names)
 
 	if _board_view != null:
 		_board_view.queue_free()
@@ -414,9 +434,9 @@ func _on_restart_pressed(new_stage: int, new_board: bool) -> void:
 # ---- 操作（マウス・キー・ボタンのどれからも、ここを通る） ----
 
 
-## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、対戦の設定画面かシステムメニューを開いている間）。
+## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、対戦の設定画面・システムメニュー・ログを開いている間）。
 func is_busy() -> bool:
-	return _busy or _cpu_running or _setup_panel.visible or _system_menu.is_open()
+	return _busy or _cpu_running or _setup_panel.visible or _system_menu.is_open() or _log_panel.is_open()
 
 
 # ---- システムメニューと設定 ----
@@ -435,10 +455,62 @@ func open_system_menu() -> void:
 
 
 func _on_system_menu_opened() -> void:
+	_log_panel.close()  # ログの上にメニューを重ねない
+	_on_overlay_opened()
+
+
+## システムメニューかログを開いた: 押している途中の操作をやめ、視点の操作と時間を止める。
+func _on_overlay_opened() -> void:
 	_pressing = false
 	_dragging = false
 	_rig.controls_enabled = false
 	_update_time_scale()
+
+
+# ---- ログ ----
+
+
+## ログを開く（上の帯の「ログ」）。いつでも開ける（CPU の番や再生の途中でも）。システムメニューと同じく、開いている間は時間を止める。
+## 対戦の設定画面の上では開かない。
+func open_log() -> void:
+	if _setup_panel.visible or _system_menu.is_open() or battle_log == null:
+		return
+	_hud.hide_banner()
+	_log_panel.open(battle_log)
+
+
+## ログの画面（検査とスクリーンショットの道具用）。
+func log_panel() -> LogPanel:
+	return _log_panel
+
+
+func _on_log_closed() -> void:
+	_rig.controls_enabled = true
+	_update_time_scale()
+	# 行を選んで示したマスを消し、いまの番の表示に戻す。再生の途中なら、続きの再生が描く。
+	if _busy:
+		_board_view.show_cells({})
+	else:
+		_refresh()
+
+
+## ログの行を選んだ: その出来事のあったマスへカメラを移し、そこと、関わった駒のいまのマスを塗る。
+## 時間を止めているので、カメラは寄っていかずに、すぐ移る。
+func _on_log_entry_chosen(entry: BattleLog.Entry) -> void:
+	var colors := {}
+	var focus := entry.cell
+	for unit_id in entry.unit_ids:
+		var unit := battle.unit_by_id(unit_id)
+		if unit != null:
+			colors[unit.cell] = COLOR_LOG_UNIT
+			if focus == NO_CELL:
+				focus = unit.cell
+	if battle.board.in_bounds(entry.cell):
+		colors[entry.cell] = COLOR_LOG_PLACE
+	_board_view.show_cells(colors)
+	_selection_ring.visible = false
+	if battle.board.in_bounds(focus):
+		_rig.jump_to(BoardView.cell_center(focus))
 
 
 ## システムメニュー（検査とスクリーンショットの道具用）。
@@ -467,7 +539,7 @@ func on_menu_item(id: StringName) -> void:
 
 
 func _on_system_menu_closed() -> void:
-	_rig.controls_enabled = true
+	_rig.controls_enabled = not _log_panel.is_open()
 	_update_time_scale()
 
 
@@ -507,7 +579,7 @@ func set_time_scale_base(scale: float) -> void:
 
 func _update_time_scale() -> void:
 	var scale := time_scale_base
-	if _system_menu != null and _system_menu.is_open():
+	if (_system_menu != null and _system_menu.is_open()) or (_log_panel != null and _log_panel.is_open()):
 		scale = 0.0
 	elif _cpu_fast:
 		scale *= float(settings.value(Settings.CPU_PLAYBACK_SPEED))
@@ -1061,6 +1133,7 @@ func _play(event: BattleEvent) -> void:
 		push_error("再生できないイベント: %s" % kind.resource_path)
 		return
 	played[kind] = played.get(kind, 0) + 1
+	battle_log.feed(event)
 	await call(_players[kind], event)
 
 
@@ -1391,10 +1464,7 @@ func _play_defeated(event: UnitDefeatedEvent) -> void:
 ## 中ボスが倒れた（駒が消えるのは UnitDefeatedEvent が見せた）。倒した陣営を、その色で知らせる。
 func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
-	# 中ボスは左右（中央平原・迷宮回廊）か上下（双子結晶）に 1 体ずつ。番号 0 が左か上。
-	var cells := battle.board.mid_boss_cells
-	var stacked := cells.size() == 2 and absi(cells[0].y - cells[1].y) > absi(cells[0].x - cells[1].x)
-	var side := ("上" if stacked else "左") if event.boss_index == 0 else ("下" if stacked else "右")
+	var side := BattleLog.mid_boss_place(battle.board, event.boss_index)
 	if event.slayer_side < 0:
 		_pop_number(at, "%sの中ボスが倒れた" % side)
 		return
