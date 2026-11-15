@@ -312,14 +312,58 @@ func test_all_out_assault_ends_at_the_start_of_the_next_own_phase() -> void:
 	assert_true(expired)
 
 
-func test_all_out_assault_cannot_fell_a_full_health_king_in_one_blow() -> void:
-	var strongest := 0
+## 突撃した駒（種類 kind、レベル level、進化先 evolution）の、満タンの将（森の外、バリア無し）への 1 発のダメージ。
+## aimed なら照準を構えている。
+func _assault_blow(kind: UnitKind.Id, level: int, evolution: Evolution.Id, aimed: bool) -> int:
+	var battle := _battle()
+	var unit := battle.add_unit(kind, P1, Vector2i(0, 0))
+	var king := battle.add_unit(UnitKind.Id.KING, P2, Vector2i(9, 0))
+	Growth.gain(unit, (level - 1) * Growth.EXPERIENCE_PER_LEVEL, ExperienceGainedEvent.Reason.HIT)
+	if evolution != Evolution.Id.NONE:
+		unit.evolve(evolution)
+	Statuses.add(unit, ASSAULT, 1)
+	if aimed:
+		Statuses.add(unit, Status.Type.AIM, 1)
+	assert_eq(king.hp, king.max_hp())
+	return Combat.damage(battle, unit, king)
+
+
+## MILITARY の戦う駒を [種類, 進化先] で並べる。evolved なら進化先ごと（上限のレベルでは、どの駒も進化している）、そうでなければ進化しないまま。
+func _military_fighters(evolved: bool) -> Array[Array]:
+	var result: Array[Array] = []
 	for kind in Deck.roster(UnitKind.Army.MILITARY):
-		if UnitKind.role(kind) != UnitKind.Role.HEALER:
-			strongest = maxi(strongest, UnitKind.power(kind) + AllOutAssaultUlt.POWER_BONUS)
-	assert_true(strongest < UnitKind.max_hp(UnitKind.Id.KING), "いちばん強い一撃でも、将の HP に届かない")
-	var aimed := (UnitKind.power(UnitKind.Id.SNIPER) + AllOutAssaultUlt.POWER_BONUS) * PrecisionAimSkill.CRITICAL_PERCENT / 100
-	assert_true(aimed < UnitKind.max_hp(UnitKind.Id.KING), "構えたスナイパーの一撃でも届かない")
+		if UnitKind.role(kind) == UnitKind.Role.HEALER:
+			continue
+		if not evolved:
+			result.append([kind, Evolution.Id.NONE])
+			continue
+		for evolution in Evolution.options_for(kind):
+			result.append([kind, evolution])
+	return result
+
+
+func test_all_out_assault_cannot_fell_a_full_health_king_in_one_blow() -> void:
+	var king_hp := UnitKind.max_hp(UnitKind.Id.KING)
+	for fighter in _military_fighters(false):
+		var name := UnitKind.display_name(fighter[0])
+		assert_true(_assault_blow(fighter[0], 1, fighter[1], false) < king_hp, "%s の一撃は、将の HP に届かない" % name)
+		if fighter[0] == UnitKind.Id.SNIPER:
+			assert_true(_assault_blow(fighter[0], 1, fighter[1], true) < king_hp, "構えたスナイパーの一撃でも届かない")
+
+
+## 育った駒は届くことがある（docs/tactical-ult.md）。いまの数値では、突撃して構えたレベル 3 のマークスマンだけ。
+## 許すかどうかは、遊んでみて決める（Issue #47）。数値を変えてこれが変わったら、文書も直す。
+func test_all_out_assault_fells_a_full_health_king_only_with_an_aimed_grown_marksman() -> void:
+	var king_hp := UnitKind.max_hp(UnitKind.Id.KING)
+	var fellers: Array[String] = []
+	for fighter in _military_fighters(true):
+		var aims: Array[bool] = [false]
+		if fighter[0] == UnitKind.Id.SNIPER:
+			aims.append(true)
+		for aimed: bool in aims:
+			if _assault_blow(fighter[0], Growth.MAX_LEVEL, fighter[1], aimed) >= king_hp:
+				fellers.append(Evolution.display_name(fighter[1]) + ("（照準）" if aimed else ""))
+	assert_eq(fellers, ["マークスマン（照準）"] as Array[String], "レベル 3 で届くのは、構えたマークスマンだけ")
 
 
 # ---- 魔力解放（FANTASY） ----

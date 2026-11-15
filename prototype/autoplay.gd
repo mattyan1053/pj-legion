@@ -682,7 +682,9 @@ func _queue_setup_scene() -> void:
 		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
 		panel.choose_stage(BoardGenerator.Stage.TWIN_SPRINGS)
 		seen["actions"] = _scene.cpu_actions
-		panel.confirm())
+		panel.confirm()
+		# CPU（先手）の番の間も、必殺技のボタンは人（後手。MILITARY）のもの。
+		_expect(_scene.ult_button_text().contains(Ults.of_army(UnitKind.Army.MILITARY).display_name()), "CPU の番に、必殺技のボタンが CPU のものになった: %s" % _scene.ult_button_text()))
 	_scripted.append(func() -> void:
 		var battle: Battle = _scene.battle
 		_expect(not _scene.setup_panel().visible, "設定画面が閉じない")
@@ -778,6 +780,12 @@ func _queue_ult_scene() -> void:
 		_expect(_scene.is_confirming_ult() and battle.ult_uses[0] == 0, "1 回押しただけで、必殺技を使った")
 		_scene.cancel()
 		_expect(not _scene.is_confirming_ult() and _scene.selected_unit() == trooper, "戻す操作で、確かめるのをやめなかった")
+		# 盤面のクリックでやめると、やめるだけ（そのクリックで動かない）。
+		_scene.press_ult()
+		_scene.click_cell(trooper.cell + Vector2i(1, 0))
+		_expect(not _scene.is_confirming_ult(), "盤面のクリックで、確かめるのをやめなかった")
+		_expect(trooper.cell == Vector2i(1, 3) and not trooper.has_moved, "確かめるのをやめるクリックで、駒が動いた")
+		_expect(_scene.selected_unit() == trooper, "確かめるのをやめるクリックで、選択が変わった")
 		_scene.press_ult()
 		_scene.played.erase(used)
 		_scene.press_ult())

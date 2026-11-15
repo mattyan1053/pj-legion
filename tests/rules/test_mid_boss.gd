@@ -151,6 +151,31 @@ func test_boss_guards_its_place_like_a_core() -> void:
 	assert_eq(Neutral.target_of(battle, boss), null, "縄張り + 射程の外は狙わない")
 
 
+func test_boss_moves_to_a_cell_with_a_clear_line_of_fire() -> void:
+	# いまのマス (8, 2) は射程 2 に入るが、間の (9, 2) に盾がある。動かずにいると撃てないので、盾を回り込むマスへ動いて撃つ。
+	var battle := _battle()
+	var boss := _boss(battle, Vector2i(8, 2))
+	var bait := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(10, 2))
+	FieldEffects.place_barricade(battle, P2, Vector2i(9, 2))
+	assert_false(Combat.can_attack(battle, boss, bait), "いまのマスからは盾越し")
+	var to := Neutral.destination(battle, boss, bait)
+	assert_true(to != boss.cell, "盾越しのマスには留まらない")
+	assert_true(Combat.reaches(battle, to, bait.cell, boss.attack_range()), "動いた先からは届く")
+	assert_true(Neutral.in_territory(boss, to))
+	_through_neutral_phase(battle)
+	assert_eq(bait.hp, bait.max_hp() - boss.power(), "回り込んで撃つ")
+
+
+func test_boss_behind_a_barricade_with_no_clear_cell_still_closes_in() -> void:
+	# 撃てるマスへ届かなければ、盾越しのマスも、射程の 1 歩外と同じに数えて近づく（使う移動力の少ないほう）。
+	var battle := _battle()
+	var boss := _boss(battle)
+	var bait := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(10, 2))
+	FieldEffects.place_barricade(battle, P2, Vector2i(9, 2))
+	var to := Neutral.destination(battle, boss, bait)
+	assert_eq(to, Vector2i(7, 2), "(8, 2) は射程に入るが盾越し。(7, 2) と同じ近さで、移動力が少ない")
+
+
 # ---- 倒す ----
 
 

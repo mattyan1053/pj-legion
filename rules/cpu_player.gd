@@ -16,7 +16,7 @@ extends RefCounted
 
 # ---- 調整値（docs/cpu-ai.md の「調整値」） ----
 
-## 駒を動かす順（役割）。奇襲 → 後衛 → 前衛 → 回復 → 将。
+## 駒を動かす順（役割）。後衛 → 前衛 → 奇襲 → 回復 → 将。
 const ROLE_ORDER: Array[UnitKind.Role] = [
 	UnitKind.Role.REARGUARD, UnitKind.Role.VANGUARD, UnitKind.Role.RAIDER, UnitKind.Role.HEALER, UnitKind.Role.NONE,
 ]
