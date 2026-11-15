@@ -103,6 +103,12 @@ const STATUS_TEXTS := {
 	Status.Type.FATIGUE: "攻撃 -%d" % AdrenalineShotSkill.POWER_PENALTY,
 	Status.Type.ASSAULT: "移動 +%d・攻撃 +%d" % [AllOutAssaultUlt.MOVE_BONUS, AllOutAssaultUlt.POWER_BONUS],
 }
+## 必殺技の画面のフラッシュ（濃さと、消えるまでの秒数）。
+const FLASH_ALPHA := 0.45
+const FLASH_TIME := 0.45
+## READY の明滅（いちばん色づいたときの色と、1 回の秒数）。
+const COLOR_PULSE := Color(1.0, 0.72, 0.25)
+const PULSE_PERIOD := 1.1
 ## 必殺技の知らせの色（軍ごと）。
 const ULT_COLORS := {
 	Ult.Id.ALL_OUT_ASSAULT: Color("ff5a4a"),
@@ -154,6 +160,8 @@ var _menu_buttons := {}
 var _char_widths := {}
 var _banner: Label
 var _banner_tween: Tween
+var _flash: ColorRect
+var _flash_tween: Tween
 var _result: Control
 var _evolution: Control
 var _evolution_title: Label
@@ -168,6 +176,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_top_bar()
 	_build_info_panel()
 	_build_bottom()
+	_build_flash()
 	_build_banner()
 	_build_menu()
 	_build_forecast()
@@ -502,6 +511,38 @@ static func skill_state_text(unit: Unit) -> String:
 		return "使い切った"
 	var state := "使える" if unit.skill_cooldown == 0 else "あと %d ターン" % unit.skill_cooldown
 	return state if uses < 0 else "%s。残り %d 回" % [state, uses]
+
+
+## 画面の全体を、color で一瞬だけ光らせる（必殺技）。強すぎないよう、薄く出してすぐ消す。
+func flash_screen(color: Color) -> void:
+	if _flash_tween != null:
+		_flash_tween.kill()
+	_flash.color = Color(color.lightened(0.2), FLASH_ALPHA)
+	_flash.visible = true
+	_flash_tween = create_tween()
+	_flash_tween.tween_property(_flash, "color:a", 0.0, FLASH_TIME).set_ease(Tween.EASE_IN)
+	_flash_tween.tween_callback(_flash.hide)
+
+
+func _build_flash() -> void:
+	_flash = ColorRect.new()
+	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_flash.visible = false
+	add_child(_flash)
+
+
+## ゲージが READY のあいだ、上の帯のゲージと、押せる必殺技のボタンを、金色にゆっくり明滅させる。
+## 時計は実時間で測る（CPU の番の速さや、メニューで時間が止まっているのに依らない）。
+func _process(_delta: float) -> void:
+	var phase := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU / PULSE_PERIOD)
+	var tint := Color.WHITE.lerp(COLOR_PULSE, phase)
+	for player in _ult_labels.size():
+		var shade := tint if _ult_labels[player].text == "READY" else Color.WHITE
+		_ult_bars[player].self_modulate = shade
+		_ult_labels[player].self_modulate = shade
+	if _ult_button != null:
+		_ult_button.self_modulate = tint if not _ult_button.disabled else Color.WHITE
 
 
 ## 画面の中央に、しばらくだけ大きな文字を出す。

@@ -64,6 +64,16 @@ const SCENES := {
 	"hit_shot": "スナイパーの射撃が当たった瞬間（光の弾と、散る火花）",
 	"hit_magic": "魔法の攻撃が飛んでいるところ（光る球）",
 	"wait_sign": "駒が待機した瞬間（足元の輪が縮み、「待機」が出て消える）",
+	"skill_fireball": "ファイアボールが飛んで、当たったところ（スキルの色の輪と、炎の球）",
+	"skill_barricade": "戦術バリケード（盾の色の光の柱）",
+	"skill_smoke": "スモークグレネード（灰色の煙の塊）",
+	"skill_saint": "セイントプレイス（金の光の柱）",
+	"skill_shield": "ディバインシールド（駒を包む水色の泡）",
+	"skill_aim": "精密照準（相手に縮む赤い照準）",
+	"skill_shadow": "シャドウステップ（紫の煙と、消える駒）",
+	"skill_adrenaline": "アドレナリン注射（立ち昇る黄緑の光）",
+	"ult_assault": "総員突撃の発動の瞬間（画面のフラッシュと、必殺技の名前）",
+	"ult_eruption": "魔力解放の効果（全員に同時に立つ光の柱と知らせ）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
@@ -732,6 +742,7 @@ func _attack_frame(kinds: Array, after: float) -> bool:
 	var target: Unit = found[1]
 	_show()
 	await _settle_camera(target.cell)
+	_park_mouse()
 	_scene.set_time_scale_base(SLOW_MOTION)
 	_scene.act(AttackAction.new(unit.id, target.id))
 	await get_tree().create_timer(0.4 + after).timeout  # 0.4 は、攻撃の動きを始めてから当たるまで（unit_view.gd の play_attack）
@@ -775,11 +786,114 @@ func _scene_wait_sign() -> bool:
 	if unit == null:
 		return false
 	await _settle_camera(unit.cell)
+	_park_mouse()
 	_scene.set_time_scale_base(SLOW_MOTION)
 	_scene.act(WaitAction.new(unit.id))
 	await get_tree().create_timer(0.15).timeout
 	_mid_animation = true
 	return true
+
+
+## skill を持つ駒が使える場面まで進め、使って、使った瞬間から after 秒あとに撮る。
+## 対象は、駒のいるマス（自分のほか）を優先する。カメラは対象へ寄せる。
+func _skill_frame(skill: Skill.Id, after: float) -> bool:
+	var find := func() -> Array:
+		if _battle.phase == Unit.Side.NEUTRAL:
+			return []
+		for unit in _own_units():
+			if Skills.of(unit) == null or Skills.of(unit).id() != skill or not _battle.can_act(unit):
+				continue
+			var cells := Queries.skill_cells(_battle, unit)
+			if cells.is_empty():
+				continue
+			for cell in cells:
+				if cell != unit.cell and _battle.unit_at(cell) != null:
+					return [unit, cell]
+			return [unit, cells[0]]
+		return []
+	if not _advance(func() -> bool: return not find.call().is_empty()):
+		return false
+	var found: Array = find.call()
+	var unit: Unit = found[0]
+	_show()
+	await _settle_camera((unit.cell + found[1]) / 2)
+	_park_mouse()
+	_scene.set_time_scale_base(SLOW_MOTION)
+	_scene.act(UseSkillAction.new(unit.id, found[1]))
+	await get_tree().create_timer(after).timeout
+	_mid_animation = true
+	return true
+
+
+func _scene_skill_fireball() -> bool:
+	return await _skill_frame(Skill.Id.FIREBALL, 0.43)
+
+
+func _scene_skill_barricade() -> bool:
+	return await _skill_frame(Skill.Id.TACTICAL_BARRICADE, 0.47)
+
+
+func _scene_skill_smoke() -> bool:
+	return await _skill_frame(Skill.Id.SMOKE_GRENADE, 0.5)
+
+
+func _scene_skill_saint() -> bool:
+	return await _skill_frame(Skill.Id.SAINT_PLACE, 0.5)
+
+
+func _scene_skill_shield() -> bool:
+	return await _skill_frame(Skill.Id.DIVINE_SHIELD, 0.5)
+
+
+func _scene_skill_aim() -> bool:
+	return await _skill_frame(Skill.Id.PRECISION_AIM, 0.55)
+
+
+func _scene_skill_shadow() -> bool:
+	return await _skill_frame(Skill.Id.SHADOW_STEP, 0.48)
+
+
+func _scene_skill_adrenaline() -> bool:
+	return await _skill_frame(Skill.Id.ADRENALINE_SHOT, 0.58)
+
+
+## army の必殺技が使える場面まで進め、使って、使った瞬間から after 秒あとに撮る。
+func _ult_frame(army: UnitKind.Army, after: float) -> bool:
+	var ready := func() -> bool:
+		return Ults.can_use(_battle) and Ults.of(_battle, _battle.phase) != null and Ults.of(_battle, _battle.phase).army() == army
+	if not _advance(ready):
+		return false
+	_show()
+	# 効果の掛かる駒（いまの番の陣営の駒）が、いちばん多く集まっているところを見る。
+	var units := _own_units()
+	var best := units[0].cell
+	var best_count := -1
+	for unit in units:
+		var count := 0
+		for other in units:
+			if _distance(unit.cell, other.cell) <= 4:
+				count += 1
+		if count > best_count:
+			best = unit.cell
+			best_count = count
+	_aim(17.0, 0.0, OrbitCamera.DEFAULT_PITCH)
+	_scene.focus_camera(best)
+	await get_tree().create_timer(SETTLE).timeout
+	await _banner_gone()
+	_park_mouse()
+	_scene.set_time_scale_base(SLOW_MOTION)
+	_scene.act(UseUltAction.new())
+	await get_tree().create_timer(after).timeout
+	_mid_animation = true
+	return true
+
+
+func _scene_ult_assault() -> bool:
+	return await _ult_frame(UnitKind.Army.MILITARY, 0.1)
+
+
+func _scene_ult_eruption() -> bool:
+	return await _ult_frame(UnitKind.Army.FANTASY, 0.62)
 
 
 func _scene_wide() -> bool:

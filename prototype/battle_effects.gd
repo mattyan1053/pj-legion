@@ -33,6 +33,22 @@ const MAGIC_TIME := 0.2
 ## 体のどの高さに当てるか。
 const BODY_HEIGHT := 0.6
 
+## スキルごとの色（使った駒の足元の輪と、効果の形）。通常の攻撃の色とは別にする。
+const SKILL_COLORS := {
+	Skill.Id.FIREBALL: Color("ff5a1f"),
+	Skill.Id.TACTICAL_BARRICADE: Color("e8d3a0"),
+	Skill.Id.SMOKE_GRENADE: Color("9aa3ad"),
+	Skill.Id.SAINT_PLACE: Color("ffe27a"),
+	Skill.Id.DIVINE_SHIELD: Color("6fe8ff"),
+	Skill.Id.PRECISION_AIM: Color("ff3355"),
+	Skill.Id.SHADOW_STEP: Color("8a4dff"),
+	Skill.Id.ADRENALINE_SHOT: Color("b6ff4a"),
+}
+## スキルの形が対象に届くまでの秒数（使った駒の手振りが終わる瞬間に届く）。呼ぶ側はこの時間だけ待ってから効果を見せる。
+const SKILL_TIME := 0.4
+## ファイアボール・スモークグレネードが飛ぶ時間。
+const THROW_TIME := 0.26
+
 ## 待機のサインの色（行動済みの駒の暗さに合わせた、落ち着いた白）。
 const COLOR_WAIT := Color("dfe6ee")
 
@@ -41,6 +57,7 @@ static var _slash_mesh: ArrayMesh
 static var _ring_mesh: TorusMesh
 static var _ball_mesh: SphereMesh
 static var _bolt_mesh: BoxMesh
+static var _column_mesh: CylinderMesh
 
 
 ## 駒の種類ごとの当たり方。前衛と将は叩く、奇襲は斬る、射撃の後衛は撃つ、魔法の後衛・プリースト・中ボスは魔法。
@@ -108,6 +125,56 @@ func wait_sign(at: Vector3) -> void:
 	tween.tween_property(label, "position:y", at.y + 1.75, 0.6).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
 	tween.tween_callback(label.queue_free)
+
+
+## スキルを使った。使った駒の足元にスキルの色の輪が広がり（通常の攻撃と見分ける）、スキルごとの形が対象に出る。
+## user は使った駒の足元、target は対象のマスの中心。形は SKILL_TIME 秒で対象に届く（呼ぶ側は、そのあとに効果を見せる）。
+func skill_flash(skill: Skill.Id, user: Vector3, target: Vector3) -> void:
+	var color: Color = SKILL_COLORS[skill]
+	_ring(user + Vector3(0.0, 0.05, 0.0), color, 0.3, 1.7, 0.4)
+	_ring(user + Vector3(0.0, 0.07, 0.0), Color.WHITE, 0.2, 1.0, 0.25)
+	var body := target + Vector3(0.0, BODY_HEIGHT, 0.0)
+	match skill:
+		Skill.Id.FIREBALL:
+			_lob(user, target, SKILL_TIME - THROW_TIME, THROW_TIME, color, 0.5, 0.6)
+		Skill.Id.SMOKE_GRENADE:
+			_lob(user, target, SKILL_TIME - THROW_TIME, THROW_TIME, Color("4a525c"), 0.2, 1.4)
+	await _wait(SKILL_TIME)
+	if not is_inside_tree():
+		return
+	match skill:
+		Skill.Id.FIREBALL:
+			_burst(target + Vector3(0.0, 0.4, 0.0), color, 2.6, 0.36)
+			_burst(target + Vector3(0.0, 0.4, 0.0), Color("ffd84a"), 1.4, 0.24)
+			_ring(target + Vector3(0.0, 0.06, 0.0), color, 0.6, 3.4, 0.4)
+		Skill.Id.SMOKE_GRENADE:
+			for i in 5:
+				var angle := TAU * i / 5.0
+				_puff(target + Vector3(cos(angle) * 0.6, 0.3, sin(angle) * 0.6), color)
+			_puff(target + Vector3(0.0, 0.4, 0.0), color)
+		Skill.Id.TACTICAL_BARRICADE:
+			_pillar(target, color, 0.45, 1.3, 0.35)
+			_ring(target + Vector3(0.0, 0.06, 0.0), color, 0.4, 1.4, 0.3)
+		Skill.Id.SAINT_PLACE:
+			_pillar(target, color, 0.7, 3.2, 0.5)
+			_ring(target + Vector3(0.0, 0.06, 0.0), color, 0.6, 3.2, 0.5)
+		Skill.Id.DIVINE_SHIELD:
+			_bubble(body, color)
+		Skill.Id.PRECISION_AIM:
+			_reticle(body, color)
+		Skill.Id.SHADOW_STEP:
+			for i in 4:
+				var angle := TAU * i / 4.0 + 0.4
+				_puff(user + Vector3(cos(angle) * 0.35, 0.5, sin(angle) * 0.35), color)
+		Skill.Id.ADRENALINE_SHOT:
+			_rise(target, color)
+
+
+## 必殺技を使った陣営の駒すべてに、同時に陣営の色の光の柱が立つ（駒ごとに順には出さない）。
+func ult_burst(points: Array[Vector3], color: Color) -> void:
+	for at in points:
+		_pillar(at, color, 0.5, 2.4, 0.45)
+		_ring(at + Vector3(0.0, 0.05, 0.0), color, 0.3, 1.5, 0.4)
 
 
 # ---- 形 ----
@@ -210,6 +277,104 @@ func _slash(at: Vector3, from: Vector3, color: Color) -> void:
 	_burst(at, color, 0.5, 0.14)
 
 
+## 放物線で飛ぶ玉（ファイアボール、煙幕の弾）。delay 秒待ってから、from から to へ travel 秒で飛ぶ。
+func _lob(from: Vector3, to: Vector3, delay: float, travel: float, color: Color, size: float, height: float) -> void:
+	var start := from + Vector3(0.0, BODY_HEIGHT + 0.2, 0.0)
+	var end := to + Vector3(0.0, 0.4, 0.0)
+	await _wait(delay)
+	if not is_inside_tree():
+		return
+	var node := _add(_ball(), _material(color), start)
+	node.scale = Vector3.ONE * size
+	if size >= 0.4:
+		var core := _add(_ball(), _material(Color("ffe08a")), Vector3.ZERO, node)
+		core.scale = Vector3.ONE * 0.55
+	var arc := func(t: float) -> void:
+		node.position = start.lerp(end, t) + Vector3(0.0, sin(t * PI) * height, 0.0)
+	var tween := create_tween()
+	tween.tween_method(arc, 0.0, 1.0, travel)
+	tween.tween_callback(node.queue_free)
+
+
+## 灰色の煙の塊（膨らみながら薄れる）。
+func _puff(at: Vector3, color: Color) -> void:
+	var material := _material(Color(color, 0.75))
+	var node := _add(_ball(), material, at)
+	node.scale = Vector3.ONE * 0.3
+	var tween := create_tween()
+	tween.tween_property(node, "scale", Vector3.ONE * 1.1, 0.5).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(node, "position:y", at.y + 0.3, 0.5)
+	tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
+	tween.tween_callback(node.queue_free)
+
+
+## 地面から立つ光の柱（盾が立つ、聖域、必殺技）。radius は太さ、height は高さ。
+func _pillar(at: Vector3, color: Color, radius: float, height: float, time: float) -> void:
+	var material := _material(Color(color, 0.55))
+	var node := Node3D.new()  # 足元を原点にして、上へ伸ばす
+	node.position = at
+	add_child(node)
+	_add(_column(), material, Vector3(0.0, 0.5, 0.0), node)
+	node.scale = Vector3(radius, 0.05, radius)
+	var tween := create_tween()
+	tween.tween_property(node, "scale", Vector3(radius, height, radius), time * 0.4).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale:x", radius * 0.2, time * 0.6)
+	tween.parallel().tween_property(node, "scale:z", radius * 0.2, time * 0.6)
+	tween.parallel().tween_property(material, "albedo_color:a", 0.0, time * 0.6)
+	tween.tween_callback(node.queue_free)
+
+
+## 駒を包む泡（バリア）。膨らんで、しばらく残って消える。
+func _bubble(at: Vector3, color: Color) -> void:
+	var material := _material(Color(color, 0.4))
+	var node := _add(_ball(), material, at)
+	node.scale = Vector3.ONE * 0.4
+	var tween := create_tween()
+	tween.tween_property(node, "scale", Vector3.ONE * 1.5, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_interval(0.15)
+	tween.tween_property(material, "albedo_color:a", 0.0, 0.25)
+	tween.tween_callback(node.queue_free)
+	_ring(at, color.lightened(0.4), 0.5, 1.6, 0.3, true)
+
+
+## 照準（相手に向かって縮む輪と十字）。
+func _reticle(at: Vector3, color: Color) -> void:
+	var material := _material(color)
+	var node := _add(_ring_shape(), material, at)
+	var camera := get_viewport().get_camera_3d()
+	if camera != null:
+		node.look_at(camera.global_position, Vector3.UP)
+		node.rotate_object_local(Vector3.RIGHT, PI / 2.0)
+	node.scale = Vector3(2.4, 1.0, 2.4)
+	for i in 4:
+		var tick := _add(_bolt(), material, Vector3.ZERO, node)
+		tick.rotation.y = PI / 2.0 * i
+		tick.position = Vector3(sin(PI / 2.0 * i), 0.0, cos(PI / 2.0 * i)) * 0.5
+		tick.scale = Vector3(1.0, 1.0, 0.35)
+	var tween := create_tween()
+	tween.tween_property(node, "scale", Vector3(0.9, 1.0, 0.9), 0.22).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_interval(0.12)
+	tween.tween_property(material, "albedo_color:a", 0.0, 0.2)
+	tween.tween_callback(node.queue_free)
+
+
+## 足元から立ち昇る光の粒（アドレナリン注射）。
+func _rise(at: Vector3, color: Color) -> void:
+	for i in 6:
+		var angle := TAU * i / 6.0
+		var start := at + Vector3(cos(angle) * 0.3, 0.1, sin(angle) * 0.3)
+		var material := _material(color)
+		var spark := _add(_bolt(), material, start)
+		spark.rotation.x = PI / 2.0  # 縦に長い
+		spark.scale = Vector3(1.2, 1.2, 0.4)
+		var tween := create_tween()
+		tween.tween_interval(0.04 * i)
+		tween.tween_property(spark, "position:y", start.y + 1.5, 0.35).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.35).set_ease(Tween.EASE_IN)
+		tween.tween_callback(spark.queue_free)
+	_burst(at + Vector3(0.0, BODY_HEIGHT, 0.0), color, 1.0, 0.25)
+
+
 ## 弾の通った跡（撃った駒から相手までの細い光の線）。当たった瞬間に引いて、細くなりながら消える。
 func _tracer(from: Vector3, to: Vector3, color: Color) -> void:
 	var length := from.distance_to(to)
@@ -261,6 +426,20 @@ static func _bolt() -> BoxMesh:
 		_bolt_mesh = BoxMesh.new()
 		_bolt_mesh.size = Vector3(0.08, 0.08, 0.9)  # look_at の向き（-Z）に長い
 	return _bolt_mesh
+
+
+## 高さ 1 の円柱（中心が原点）。
+static func _column() -> CylinderMesh:
+	if _column_mesh == null:
+		_column_mesh = CylinderMesh.new()
+		_column_mesh.top_radius = 0.5
+		_column_mesh.bottom_radius = 0.5
+		_column_mesh.height = 1.0
+		_column_mesh.radial_segments = 16
+		_column_mesh.rings = 1
+		_column_mesh.cap_top = false
+		_column_mesh.cap_bottom = false
+	return _column_mesh
 
 
 static func _ring_shape() -> TorusMesh:
