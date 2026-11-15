@@ -1,8 +1,8 @@
 extends Node
-## アプリの入口（メインシーン）。場面（scene_flow.gd）を順に進め、場面をまたいで続くもの（設定、システムメニュー、暗転）を持つ。
+## アプリの入口（メインシーン）。場面（scene_flow.gd）を順に進め、場面をまたいで続くもの（設定、システムメニュー、音、暗転）を持つ。
 ##
 ## - 起動するとタイトルから始める。場面が finished(outcome) を出したら、scene_flow.gd の表で次の場面を決めて切り替える。
-## - 切り替えは、短い暗転（FADE_TIME）を挟むだけ。
+## - 切り替えは、短い暗転（FADE_TIME）を挟むだけ。BGM は場面の表の曲へ、フェードでつなぐ（sound.gd。同じ曲なら途切れない）。
 ## - システムメニュー（system_menu.gd）は、ここが開く。並べるのは、共通の項目（戻る、設定、タイトルへ戻る、ゲームを終える）と、
 ##   いまの場面が足すもの（menu_items）。
 ## - 検査（`-- --autoplay`）とスクリーンショットの道具（`-- --shots`）も、ここから入り、人と同じ道（タイトル → 対戦の設定 → 対戦）を通る。
@@ -11,6 +11,7 @@ const SceneFlow := preload("res://prototype/scene_flow.gd")
 const AppContext := preload("res://prototype/app_context.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const SaveStore := preload("res://prototype/save_store.gd")
+const Sound := preload("res://prototype/sound.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -42,12 +43,21 @@ func _ready() -> void:
 		context.decks.store = SaveStore.new()
 		context.decks.load_saved()
 
+	var sound := Sound.new()
+	add_child(sound)
+	context.sound = sound
+	Sound.apply_settings(context.settings)
+	context.settings.changed.connect(func(_key: StringName) -> void: Sound.apply_settings(context.settings))
+
 	var menu := SystemMenu.new()
 	add_child(menu)
 	menu.setup(context.settings)
 	menu.open_requested.connect(open_menu)
 	menu.item_chosen.connect(_on_menu_item)
 	menu.settings_closed.connect(context.settings.save)
+	menu.opened.connect(context.play_sound.bind(&"menu_open"))
+	menu.closed.connect(context.play_sound.bind(&"menu_close"))
+	menu.stepped_back.connect(context.play_sound.bind(&"ui_back"))
 	context.system_menu = menu
 	context.menu_requested.connect(open_menu)
 	context.settings_requested.connect(open_settings)
@@ -88,6 +98,7 @@ func go(scene: StringName) -> void:
 	_changing = true
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP  # 切り替えの間のクリックは、どの場面にも届かない
 	context.system_menu.close()
+	(context.sound as Sound).play_scene_music(SceneFlow.music(scene))  # 暗転と同じころに、曲もつなぐ
 	if _current != null:
 		# 抜ける場面は止めておく（暗くなる間に、CPU の番や再生が進まないように）。
 		_current.process_mode = Node.PROCESS_MODE_DISABLED
@@ -157,7 +168,7 @@ func _on_menu_item(id: StringName) -> void:
 		ITEM_TITLE:
 			go(SceneFlow.COMMON[&"title"])
 		ITEM_QUIT:
-			get_tree().quit()
+			context.quit()
 		_:
 			if _current != null and _current.has_method(&"on_menu_item"):
 				_current.call(&"on_menu_item", id)

@@ -43,6 +43,7 @@ func _ready() -> void:
 	gap.custom_minimum_size = Vector2(0.0, 10.0)
 	column.add_child(gap)
 	_add_button(column, &"start", "始める", press_start)
+	(_buttons[&"start"] as Button).set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	_add_button(column, &"decks", "部隊の編成", press_decks)
 	_add_button(column, &"settings", "設定", press_settings)
 	_add_button(column, &"quit", "終える", press_quit)
@@ -64,7 +65,7 @@ func press_settings() -> void:
 
 
 func press_quit() -> void:
-	get_tree().quit()
+	context.quit()
 
 
 ## 並べているボタンの名前（上から）。検査用。

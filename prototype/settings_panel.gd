@@ -34,7 +34,7 @@ func setup(target: Settings) -> void:
 	style.set_content_margin_all(20.0)
 	add_theme_stylebox_override("panel", style)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
+	column.add_theme_constant_override("separation", 6)  # 項目が 7 つでも 720 の高さに収まるよう詰める
 	add_child(column)
 
 	var title := _label(28)
