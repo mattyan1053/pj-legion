@@ -125,6 +125,7 @@ const STAND_OFF_VALUE := 0.5
 const HEALER_SEARCH_STEPS := 12
 ## スキル -> 使った結果の価値を見積もるメソッド（SkillUsedEvent と、使ったあとの複製を受け取る）。
 ## ダメージ・回復・経験値のイベントだけで価値が決まるスキルは、載せなくてよい（_outcome_value がそのまま読む）。
+## 載せないスキルは、tests/rules/test_enum_tables.gd の除外の一覧に書く（載せ忘れを検査が見つける）。
 const SKILL_VALUES := {
 	Skill.Id.TACTICAL_BARRICADE: &"_barricade_value",
 	Skill.Id.SAINT_PLACE: &"_sanctuary_value",
@@ -136,7 +137,7 @@ const SKILL_VALUES := {
 }
 ## スキル -> 対象に選ぶ価値のありそうなマスを並べるメソッド（駒と、通常の移動で止まれるマスを受け取り、マスの集合を返す）。
 ## スキルを使う手は、ここに並んだ対象だけを、複製の上で使ってみて比べる（全部のマスを試すと、時間がかかりすぎる）。
-## 載せていないスキルは、選べる対象をすべて試す。
+## 載せていないスキルは、選べる対象をすべて試す（遅くなるので、全部のスキルを載せる。tests/rules/test_enum_tables.gd が確かめる）。
 const SKILL_TARGETS := {
 	Skill.Id.TACTICAL_BARRICADE: &"_barricade_targets",
 	Skill.Id.SAINT_PLACE: &"_sanctuary_targets",
