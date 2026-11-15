@@ -13,6 +13,8 @@ const TrialSetup := preload("res://prototype/trial_setup.gd")
 const BattleLog := preload("res://prototype/battle_log.gd")
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 const BoardView := preload("res://prototype/board_view.gd")
+const Names := preload("res://prototype/names.gd")
+const ResultSummary := preload("res://prototype/result_summary.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
@@ -51,7 +53,13 @@ const SCENES := {
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
-	"result": "決着の画面と戦績",
+	"result_headline": "リザルト 1: 勝敗の見出しが中央に出たところ（人どうしは勝った側の名前）",
+	"result_stats": "リザルト 2: 見出しが上へ退き、戦績が 1 行ずつ出ているところ",
+	"result_mvp": "リザルト 3: MVP が拡大しながら出たところ",
+	"result": "リザルト 4: 出そろって、行き先のボタンと入力の案内が出たところ",
+	"result_detail": "リザルトで「詳しい戦績（両軍）」を開いたところ",
+	"result_victory": "CPU に勝ったときのリザルト（VICTORY）",
+	"result_defeat": "CPU に負けたときのリザルト（DEFEAT）",
 	"log_closed": "相手（CPU）の番のあと、ログを閉じている（上の帯の「ログ」のボタン）",
 	"log_open": "相手（CPU）の番のあとに、ログを開いた",
 	"log_chosen": "ログの行（相手の攻撃）を押して、その場所と駒を盤の上で示している",
@@ -672,15 +680,70 @@ func _scene_mid_boss() -> bool:
 	return true
 
 
-func _scene_result() -> bool:
-	# 決着する行動の手前まで進め、その行動だけを画面に通す（決着の演出と戦績が出る）。
+## 決着する行動の手前まで進め、その行動だけを画面に通す（決着の演出と戦績が出る）。hold が 0 以上なら、リザルトの演出をその秒で止める。
+## 負ならリザルトの演出を飛ばして、全部を出す。
+func _finish_battle(hold: float) -> bool:
 	if _advance(func() -> bool: return false):
 		return false  # 決着しなかった
 	var action := _cpu.next_action(_battle)
 	_show()
 	_scene.stats = _stats  # 始めからの戦績
 	await _scene.act(action)
-	return _battle.is_over()
+	if not _battle.is_over():
+		return false
+	var screen: Control = _scene.result_screen()
+	if hold >= 0.0:
+		await screen.hold_at(hold)
+	else:
+		screen.skip()
+	return true
+
+
+func _scene_result_headline() -> bool:
+	return await _finish_battle(0.6)
+
+
+func _scene_result_stats() -> bool:
+	return await _finish_battle(1.95)
+
+
+func _scene_result_mvp() -> bool:
+	return await _finish_battle(2.55)
+
+
+func _scene_result() -> bool:
+	return await _finish_battle(-1.0)
+
+
+func _scene_result_detail() -> bool:
+	if not await _finish_battle(-1.0):
+		return false
+	_scene.result_screen().toggle_detail()
+	return true
+
+
+## CPU 戦のリザルト。won なら人が勝った側（VICTORY）、そうでなければ負けた側（DEFEAT）を人として出し直す。
+func _cpu_result(won: bool) -> bool:
+	if not await _finish_battle(-1.0):
+		return false
+	var screen: Control = _scene.result_screen()
+	var human := _battle.winner as Unit.Side if won else (1 - _battle.winner) as Unit.Side
+	var names: Array[String] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		names.append(Names.SIDE_NAMES[side] + ("" if side == human else " CPU"))
+	var reason: String = screen.shown_summary().reason  # 人どうしの理由（決着の理由だけ）
+	var summary: RefCounted = ResultSummary.of(_stats, false, _battle.winner, reason, true, human, names, MatchSetup.stage_name(_stage))
+	screen.present(summary)
+	screen.skip()
+	return true
+
+
+func _scene_result_victory() -> bool:
+	return await _cpu_result(true)
+
+
+func _scene_result_defeat() -> bool:
+	return await _cpu_result(false)
 
 
 ## 相手（CPU）の番と中立のフェーズのあと（ターン 5 の自分の番の始め）。始めからのログを画面に渡す。
