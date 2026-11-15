@@ -37,7 +37,7 @@ var _cpu_actions_before := 0
 func _init(scene: Node) -> void:
 	_scene = scene
 	# 再生の待ち時間を縮めて、検査を短く済ませる（CI は 1 分以内に収める）。
-	Engine.time_scale = 8.0
+	scene.set_time_scale_base(8.0)
 
 
 func _process(_delta: float) -> void:
@@ -77,6 +77,7 @@ func _process(_delta: float) -> void:
 			_queue_evolution_scene()
 			_queue_heal_scene()
 			_queue_setup_scene()
+			_queue_system_menu_scene()
 			_queue_cpu_scene()
 			return
 		if _game == CPU_GAME and _scene.cpu_actions == _cpu_actions_before:
@@ -711,6 +712,56 @@ func _queue_setup_scene() -> void:
 		_expect(not _scene.cpu_opponent and _scene.match_choice.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
 
 
+## システムメニュー。Esc は、戻すもの（選択）があれば戻し、無ければメニューを開く。開いている間は盤面を操作できず、時間が止まる。
+## 設定の画面で変えた値は、その場でカメラに効く。ゲームを終える項目は、対戦の途中なら確かめる（ここでは、やめる）。
+func _queue_system_menu_scene() -> void:
+	var board := _small_board(Vector2i(6, 5))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(5, 0))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 2))
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		var menu: Node = _scene.system_menu()
+		var settings: RefCounted = _scene.settings
+		var base := Engine.time_scale
+		_scene.click_cell(trooper.cell)
+		_scene.press_escape()
+		_expect(not menu.is_open() and _scene.selected_unit() == null, "選んでいる駒があるのに、Esc で選択をやめずにメニューを開いた")
+		_scene.press_escape()
+		_expect(menu.is_open() and _scene.is_busy() and Engine.time_scale == 0.0, "戻すものが無いのに、Esc でメニューが開かない（か、止まらない）")
+		_expect(menu.item_ids() == ([&"resume", &"settings", &"match_setup", &"quit"] as Array[StringName]), "メニューの項目が違う: %s" % [menu.item_ids()])
+		_scene.click_cell(trooper.cell)
+		_expect(_scene.selected_unit() == null, "メニューを開いている間に、駒を選べた")
+		# 対戦が失われる項目は、確かめる。「やめる」で、メニューへ戻る。
+		menu.press(&"quit")
+		_expect(menu.confirming() == &"quit" and menu.confirm_text() != "", "ゲームを終える前に、確かめない")
+		menu.back()
+		_expect(menu.is_open() and menu.confirming() == &"", "確かめを、やめられない")
+		# 設定の値は、その場で効く。
+		menu.press(&"settings")
+		_expect(menu.is_settings_open(), "設定の画面が開かない")
+		settings.set_value(&"mouse_sensitivity", 200)
+		settings.set_value(&"invert_vertical_drag", true)
+		var rig: Node = _scene._rig
+		_expect(is_equal_approx(rig.drag_sensitivity, 2.0 * rig.DEFAULT_DRAG_SENSITIVITY) and rig.invert_vertical, "設定の値がカメラに効かない")
+		settings.reset_all()
+		_expect(is_equal_approx(rig.drag_sensitivity, rig.DEFAULT_DRAG_SENSITIVITY) and not rig.invert_vertical, "既定に戻せない")
+		menu.back()
+		_expect(menu.is_open() and not menu.is_settings_open(), "設定の画面から、メニューへ戻らない")
+		menu.back()
+		_expect(not menu.is_open() and not _scene.is_busy() and Engine.time_scale == base, "メニューを閉じても、元の速さに戻らない")
+		# CPU の駒の行動を再生する間だけ、設定の速さを掛ける。
+		settings.set_value(&"cpu_playback_speed", 3)
+		_scene._set_cpu_fast(true)
+		_expect(is_equal_approx(Engine.time_scale, base * 3.0), "CPU の番の速さが効かない")
+		_scene._set_cpu_fast(false)
+		settings.reset_all()
+		_expect(Engine.time_scale == base, "CPU の番の速さが残った"))
+
+
 ## 相手を CPU にして、ターンを終える。CPU が自分の番を進め（回復役が回復し、戦う駒が攻撃する）、こちらの番に戻る。
 func _queue_cpu_scene() -> void:
 	var board := _small_board(Vector2i(8, 5))
@@ -734,7 +785,14 @@ func _queue_cpu_scene() -> void:
 		# CPU の番の間は、操作を受け付けない。
 		_scene.click_cell(sorcerer.cell)
 		_expect(_scene.selected_unit() == null, "CPU の番に駒を選べた")
-		_scene.press_end_turn())
+		_scene.press_end_turn()
+		# 相手の番の途中でもシステムメニューは開け、開いている間は止まる（閉じると続きから進む）。
+		_scene.press_escape()
+		_expect(_scene.system_menu().is_open() and Engine.time_scale == 0.0, "相手の番の途中に、システムメニューで止まらない")
+		seen["paused"] = _scene.cpu_actions
+		get_tree().create_timer(0.3, true, false, true).timeout.connect(func() -> void:
+			_expect(_scene.cpu_actions == seen["paused"] and battle.phase != Unit.Side.PLAYER1, "システムメニューを開いている間に、相手の番が進んだ")
+			_scene.system_menu().close()))
 	_scripted.append(func() -> void:
 		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "CPU が自分の番を終えなかった")
 		_expect(_scene.cpu_actions > seen["actions"], "CPU が行動しなかった")

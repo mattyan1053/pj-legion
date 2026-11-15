@@ -2,11 +2,12 @@ extends CanvasLayer
 ## 対戦の画面の文字とボタン（ターン、番、駒とマスの情報、駒のそばのメニュー、決着）。
 ##
 ## 何を出すかは呼ぶ側が決める。ここはルールを持たず、押されたことを signal で知らせるだけ。
-## 駒に属する操作（攻撃、スキル、待機…）は駒のそばのメニューに、駒に属さない操作（ターン終了、必殺技、対戦の設定）は
+## 駒に属する操作（攻撃、スキル、待機…）は駒のそばのメニューに、駒に属さない操作（ターン終了、必殺技、相手の切り替え）は
 ## 画面の決まった場所に置く。どれもクリックだけで選べる。
 
 ## 駒のそばのメニューの項目が押された。id は set_menu() に渡した項目の名前。
 const TextWrap := preload("res://prototype/text_wrap.gd")
+const SystemMenu := preload("res://prototype/system_menu.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -18,7 +19,7 @@ signal end_turn_pressed
 signal evolution_chosen(index: int)
 ## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
-## 対戦の設定画面を開くボタンが押された。
+## 対戦の設定画面を開くボタン（決着の画面の「選び直す」）が押された。
 signal setup_pressed
 ## stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でやり直す（stage は見ない）。
 signal restart_pressed(stage: int, new_board: bool)
@@ -544,10 +545,11 @@ func _build_top_bar() -> void:
 	_opponent_button.add_theme_font_size_override("font_size", 15)
 	_opponent_button.tooltip_text = "押すと、相手を CPU にするか人にするかを切り替える"
 	row.add_child(_opponent_button)
-	var settings := _button("対戦の設定", setup_pressed)
-	settings.custom_minimum_size = Vector2(0.0, 30.0)
-	settings.add_theme_font_size_override("font_size", 15)
-	row.add_child(settings)
+	# 右端は、システムメニューのボタン（system_menu.gd。別の層に置く）のぶんを空けておく。
+	var corner := Control.new()
+	corner.custom_minimum_size = Vector2(SystemMenu.CORNER_BUTTON_SIZE.x + SystemMenu.CORNER_MARGIN, 0.0)
+	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(corner)
 
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。小さく 1 行だけ。
 	var help_panel := _panel()

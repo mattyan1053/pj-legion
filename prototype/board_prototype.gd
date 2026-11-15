@@ -18,6 +18,9 @@ const Autoplay := preload("res://prototype/autoplay.gd")
 const StatsText := preload("res://prototype/stats_text.gd")
 const MenuPlacement := preload("res://prototype/menu_placement.gd")
 const NeutralPlayback := preload("res://prototype/neutral_playback.gd")
+const SystemMenu := preload("res://prototype/system_menu.gd")
+const Settings := preload("res://prototype/settings.gd")
+const SaveStore := preload("res://prototype/save_store.gd")
 
 const NO_CELL := Vector2i(-1, -1)
 const NOTHING_SPECIAL := "特別なものは無い"
@@ -100,6 +103,19 @@ var _setup_panel: MatchSetupPanel
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
 
+## システムメニューの項目の名前（system_menu.gd が扱う「戻る」「設定」のほか）。
+const SYSTEM_MATCH_SETUP := &"match_setup"
+const SYSTEM_QUIT := &"quit"
+
+## 遊ぶ人ごとの設定（settings.gd）。遊ぶときは user:// から読み、設定の画面を閉じるたびに書く。
+var settings := Settings.new()
+## ふだんの時間の速さ（Engine.time_scale）。自動の対戦は、検査を短く済ませるために上げる。
+## システムメニューを開いている間は 0（止める）、CPU の駒の番は設定の「CPU の番の速さ」を掛ける（_update_time_scale）。
+var time_scale_base := 1.0
+var _system_menu: SystemMenu
+## CPU の駒の行動を再生している途中か（設定の「CPU の番の速さ」を効かせる）。
+var _cpu_fast := false
+
 ## 対戦の設定画面で選んだもの（trial_setup.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
 var match_choice: RefCounted = TrialSetup.new()
 ## 相手を CPU が動かすか。偽なら、2 人が交代で操作する。CPU が動かすのは match_choice.cpu_side()。
@@ -178,6 +194,19 @@ func _ready() -> void:
 
 	var autoplay := OS.get_cmdline_user_args().has("--autoplay")
 	var shots := OS.get_cmdline_user_args().has("--shots")
+	# 検査とスクリーンショットは、遊ぶ人の設定を読まず、書かない（いつも既定の値で同じに動く）。
+	if not (autoplay or shots):
+		settings.store = SaveStore.new()
+		settings.load_saved()
+	settings.changed.connect(func(_key: StringName) -> void: _apply_settings())
+	_apply_settings()
+	_system_menu = SystemMenu.new()
+	add_child(_system_menu)
+	_system_menu.setup(settings)
+	_system_menu.open_requested.connect(open_system_menu)
+	_system_menu.item_chosen.connect(_on_system_item)
+	_system_menu.closed.connect(_on_system_menu_closed)
+	_system_menu.settings_closed.connect(settings.save)
 	# 検査は、人の操作の入口を両方のプレイヤーで通すところから始める（CPU の番は、検査の中で切り替えて通す）。
 	set_opponent(not (autoplay or shots))
 	_battle_started = autoplay or shots
@@ -193,8 +222,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	# カメラが動くとマウスの下のマスも変わるので、マウスの動きではなく毎フレーム追う。
-	_update_hover()
+	# カメラが動くとマウスの下のマスも変わるので、マウスの動きではなく毎フレーム追う（メニューの後ろでは追わない）。
+	if not _system_menu.is_open():
+		_update_hover()
 	var focus_cells: Array[Vector2i] = []
 	for view: UnitView in _views.values():
 		focus_cells.append(BoardView.cell_of(view.position))
@@ -205,7 +235,13 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _system_menu.is_open():
+		return  # 開いている間の入力は、メニューが受ける（ここへ届いても、盤面には使わない）
+	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 	if _setup_panel.visible:
+		# 設定画面は、閉じられるなら Esc で閉じる（setup_panel が先に受ける）。閉じられない（起動した直後）なら、メニューを開く。
+		if escape:
+			open_system_menu()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
@@ -235,7 +271,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
 			KEY_ESCAPE:
-				cancel()
+				press_escape()
 			KEY_SPACE:
 				press_wait()
 			KEY_F:
@@ -358,9 +394,106 @@ func _on_restart_pressed(new_stage: int, new_board: bool) -> void:
 # ---- 操作（マウス・キー・ボタンのどれからも、ここを通る） ----
 
 
-## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、対戦の設定画面を開いている間）。
+## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、対戦の設定画面かシステムメニューを開いている間）。
 func is_busy() -> bool:
-	return _busy or _cpu_running or _setup_panel.visible
+	return _busy or _cpu_running or _setup_panel.visible or _system_menu.is_open()
+
+
+# ---- システムメニューと設定 ----
+
+
+## Esc。戻すものがあれば戻す（右クリックと同じ）。何も無ければ（再生の途中や CPU の番も）、システムメニューを開く。
+func press_escape() -> void:
+	if not cancel():
+		open_system_menu()
+
+
+## システムメニューを開く（右上のボタン、Esc）。いつでも開ける（CPU の番や再生の途中でも）。
+## 開いている間は時間を止める（再生も CPU の番も、その場で止まり、閉じると続きから進む）。
+func open_system_menu() -> void:
+	if _system_menu.is_open():
+		return
+	_pressing = false
+	_dragging = false
+	_system_menu.open(_system_items())
+	_rig.controls_enabled = false
+	_update_time_scale()
+
+
+## システムメニュー（検査とスクリーンショットの道具用）。
+func system_menu() -> SystemMenu:
+	return _system_menu
+
+
+## いま並べる項目。対戦の設定画面の上で開いたら、「対戦の設定へ」は出さない（もう開いている）。
+## 決着していない対戦の途中なら、ゲームを終える前に確かめる（対戦は取っておかないので、失われる）。
+func _system_items() -> Array:
+	var on_setup := _setup_panel.visible
+	var items: Array = [[SystemMenu.ITEM_RESUME, "対戦の設定へ戻る" if on_setup else "対戦へ戻る", ""]]
+	items.append([SystemMenu.ITEM_SETTINGS, "設定", ""])
+	if not on_setup:
+		items.append([SYSTEM_MATCH_SETUP, "対戦の設定へ", ""])
+	var in_progress := _battle_started and battle != null and not battle.is_over()
+	items.append([SYSTEM_QUIT, "ゲームを終える", "ゲームを終えますか？\nいまの対戦は取っておけないので、失われる" if in_progress else ""])
+	return items
+
+
+func _on_system_item(id: StringName) -> void:
+	match id:
+		SYSTEM_MATCH_SETUP:
+			_open_setup_when_ready()
+		SYSTEM_QUIT:
+			get_tree().quit()
+
+
+func _on_system_menu_closed() -> void:
+	_rig.controls_enabled = true
+	_update_time_scale()
+
+
+## 対戦の設定画面を開く。CPU の番や再生の途中なら、それが終わってから開く（対戦の途中で盤面を差し替えないため）。
+func _open_setup_when_ready() -> void:
+	var played_battle := battle
+	if is_busy():
+		_hud.show_banner("CPU の番が終わったら、対戦の設定を開く" if _cpu_running else "動きが終わったら、対戦の設定を開く", Color.WHITE)
+	while is_busy() and battle == played_battle and not _setup_panel.visible:
+		await get_tree().process_frame
+	if battle == played_battle:
+		open_setup()
+
+
+## 設定の値を効かせる。項目を足したら、ここに 1 行足す（settings.gd）。
+func _apply_settings() -> void:
+	_rig_settings()
+	_update_time_scale()
+
+
+func _rig_settings() -> void:
+	if _rig == null:
+		return
+	_rig.drag_sensitivity = OrbitCamera.DEFAULT_DRAG_SENSITIVITY * settings.value(Settings.MOUSE_SENSITIVITY) / 100.0
+	_rig.invert_vertical = settings.value(Settings.INVERT_VERTICAL_DRAG)
+
+
+## ふだんの時間の速さを決める（自動の対戦が上げる）。
+func set_time_scale_base(scale: float) -> void:
+	time_scale_base = scale
+	_update_time_scale()
+
+
+func _update_time_scale() -> void:
+	var scale := time_scale_base
+	if _system_menu != null and _system_menu.is_open():
+		scale = 0.0
+	elif _cpu_fast:
+		scale *= float(settings.value(Settings.CPU_PLAYBACK_SPEED))
+	Engine.time_scale = scale
+
+
+func _set_cpu_fast(fast: bool) -> void:
+	if _cpu_fast != fast:
+		_cpu_fast = fast
+		_update_time_scale()
 
 
 ## 相手（match_choice.cpu_side() のプレイヤー）を CPU にするか、人にするかを決める。対戦の途中でも切り替えられる
@@ -652,21 +785,25 @@ func info_title() -> String:
 
 
 ## 戻す（右クリック・Esc）。必殺技を確かめている途中か、対象を選んでいる途中なら、それをやめる。
-## 動いたあとなら移動を取り消す。そうでなければ選択をやめる（マスの情報も消す）。
-func cancel() -> void:
+## 動いたあとなら移動を取り消す。そうでなければ選択をやめる（マスの情報も消す）。ターン終了の確かめも、やめる。
+## 戻したものがあったかを返す（無ければ、Esc はシステムメニューを開く）。
+func cancel() -> bool:
 	if is_busy():
-		return
+		return false
 	if _confirming_ult:
 		_confirming_ult = false
 		_refresh()
-		return
+		return true
 	if _mode != Mode.NONE:
 		_leave_mode()
-		return
+		return true
 	if battle.acting_unit_id != 0:
 		_do(UndoMoveAction.new(battle.acting_unit_id))
-	else:
+		return true
+	if _selected_id != 0 or _inspected_cell != NO_CELL or _confirming_end:
 		_select(0)
+		return true
+	return false
 
 
 ## 進化先を選ぶ（index は選択肢の何番目か）。進化先を選ぶのを待っている駒がいるときだけ。
@@ -780,6 +917,8 @@ func _run_cpu() -> void:
 			break
 		var unit: Unit = battle.unit_by_id(action.get(&"unit_id")) if &"unit_id" in action else null
 		var idle := action is WaitAction and unit != null and not unit.has_moved
+		# 設定の「CPU の番の速さ」は、CPU の駒の行動にだけ効かせる（番を終えたあとの中立の番は、ふだんの速さで見せる）。
+		_set_cpu_fast(not action is EndPhaseAction)
 		if unit != null and not unit.has_moved and not idle and not action is EvolveAction:
 			_rig.focus_on(_view(unit.id).position)
 			await get_tree().create_timer(CPU_FOCUS_TIME).timeout
@@ -788,6 +927,7 @@ func _run_cpu() -> void:
 		cpu_actions += 1
 		if not (action is MoveAction or action is EndPhaseAction or idle or battle.is_over()):
 			await get_tree().create_timer(CPU_PAUSE).timeout
+	_set_cpu_fast(false)
 	_cpu_running = false
 	# 番の途中で相手を人に切り替えたら、動いたあとの駒を選んだ状態で引き渡す。
 	_selected_id = battle.acting_unit_id

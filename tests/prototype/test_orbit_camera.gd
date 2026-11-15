@@ -101,3 +101,30 @@ func test_drag_while_following_keeps_following_without_jumping() -> void:
 	assert_true(rig.target_pitch() > pitch)
 	walker.free()
 	rig.free()
+
+
+func test_inverted_vertical_drag_tilts_the_other_way() -> void:
+	# 設定の「縦のドラッグを逆にする」。横の向きは変わらない。
+	var rig := _make_rig()
+	rig.invert_vertical = true
+	var pitch := rig.target_pitch()
+	rig.drag(Vector2(0, 50))
+	assert_true(rig.target_pitch() < pitch, "逆にしても、下へのドラッグで真上に近づいた")
+	rig.drag(Vector2(50, 0))
+	assert_eq(rig.target_yaw(), -50 * rig.drag_sensitivity, "逆にすると、横の向きまで変わった")
+	rig.free()
+
+
+func test_disabled_controls_ignore_keys() -> void:
+	# システムメニューを開いている間は、キーで視点が動かない。
+	var rig := _make_rig()
+	rig.controls_enabled = false
+	var key := InputEventKey.new()
+	key.pressed = true
+	key.physical_keycode = KEY_E
+	rig._unhandled_input(key)
+	assert_eq(rig.target_yaw(), 0.0, "止めているのに、キーで回った")
+	rig.controls_enabled = true
+	rig._unhandled_input(key)
+	assert_eq(rig.target_yaw(), PI / 2.0, "キーで回らない")
+	rig.free()
