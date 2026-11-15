@@ -19,6 +19,8 @@ signal end_turn_pressed
 signal evolution_chosen(index: int)
 ## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
+## ログのボタンが押された。
+signal log_pressed
 ## 決着の画面の「対戦の設定へ」が押された。
 signal setup_pressed
 ## 決着の画面の「タイトルへ」が押された。
@@ -421,6 +423,13 @@ func show_banner(text: String, color: Color) -> void:
 	_banner_tween.tween_callback(_banner.hide)
 
 
+## 画面の中央の大きな文字を、すぐに消す（時間を止めて読む画面を開いたとき、止まったまま残らないように）。
+func hide_banner() -> void:
+	if _banner_tween != null:
+		_banner_tween.kill()
+	_banner.visible = false
+
+
 ## stats は戦績の要点（文字。空なら出さない）。
 func show_result(winner: Unit.Side, reason: String, stats := "") -> void:
 	_result_title.text = "%s の勝ち" % SIDE_NAMES[winner]
@@ -547,6 +556,12 @@ func _build_top_bar() -> void:
 	_opponent_button.add_theme_font_size_override("font_size", 15)
 	_opponent_button.tooltip_text = "押すと、相手を CPU にするか人にするかを切り替える"
 	row.add_child(_opponent_button)
+	# ログは、いつでも開ける（相手の番や中立のフェーズで起きたことを、あとから確かめる）。
+	var log_button := _button("ログ", log_pressed)
+	log_button.custom_minimum_size = Vector2(64.0, 30.0)
+	log_button.add_theme_font_size_override("font_size", 15)
+	log_button.tooltip_text = "対戦で起きたことを、ターンごとにさかのぼって読む"
+	row.add_child(log_button)
 	# 右端は、システムメニューのボタン（system_menu.gd。別の層に置く）のぶんを空けておく。
 	var corner := Control.new()
 	corner.custom_minimum_size = Vector2(SystemMenu.CORNER_BUTTON_SIZE.x + SystemMenu.CORNER_MARGIN, 0.0)

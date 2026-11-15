@@ -10,6 +10,7 @@ extends Node
 
 const Queries := preload("res://prototype/battle_queries.gd")
 const TrialSetup := preload("res://prototype/trial_setup.gd")
+const BattleLog := preload("res://prototype/battle_log.gd")
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
@@ -36,6 +37,10 @@ const SCENES := {
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
 	"result": "決着の画面と戦績",
+	"log_closed": "相手（CPU）の番のあと、ログを閉じている（上の帯の「ログ」のボタン）",
+	"log_open": "相手（CPU）の番のあとに、ログを開いた",
+	"log_chosen": "ログの行（相手の攻撃）を押して、その場所と駒を盤の上で示している",
+	"log_long": "終盤のログ（長いログ。少しさかのぼったところ）",
 	"wide": "いちばん引いて、低い角度で、盤の全体とその向こうを見ている",
 	"board_edge": "盤の角と、その外側（低い角度で、盤の外へ向いている）",
 	"rotated": "カメラを斜めに回して、低い角度で見ている",
@@ -59,6 +64,8 @@ var _names: Array[String] = []
 var _cpu := CpuPlayer.new()
 var _battle: Battle
 var _stats: BattleStats
+## _battle の始めからのログ（相手を CPU として書く）。
+var _log: BattleLog
 var _stage := BoardGenerator.Stage.PLAIN
 
 
@@ -90,6 +97,7 @@ func _run() -> void:
 			_app.context.match_choice.cpu_opponent = false
 			await _app.go(&"battle")
 		_scene = _app.current_scene()
+		_scene.log_panel().close()
 		_scene.setup_panel().visible = false
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 		_stage = BoardGenerator.Stage.PLAIN
@@ -99,7 +107,7 @@ func _run() -> void:
 		if not ok:
 			_quit("screenshots: 場面 %s を作れなかった" % name, 1)
 			return
-		while _app.current_id() == &"battle" and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open():
+		while _app.current_id() == &"battle" and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -373,6 +381,54 @@ func _scene_result() -> bool:
 	return _battle.is_over()
 
 
+## 相手（CPU）の番と中立のフェーズのあと（ターン 5 の自分の番の始め）。始めからのログを画面に渡す。
+func _after_cpu_turn() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 5 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	_scene.battle_log = _log
+	return true
+
+
+func _scene_log_closed() -> bool:
+	return _after_cpu_turn()
+
+
+func _scene_log_open() -> bool:
+	if not _after_cpu_turn():
+		return false
+	_scene.open_log()
+	return true
+
+
+func _scene_log_chosen() -> bool:
+	if not _after_cpu_turn():
+		return false
+	_scene.open_log()
+	# 相手の番の、いちばん最後の攻撃の行を押す。
+	for i in range(_log.entries.size() - 1, -1, -1):
+		var entry: BattleLog.Entry = _log.entries[i]
+		if entry.phase == Unit.Side.PLAYER2 and entry.text.contains("を攻撃"):
+			_scene.log_panel().choose(i)
+			return true
+	return false
+
+
+func _scene_log_long() -> bool:
+	if _advance(func() -> bool: return false):
+		return false  # 決着しなかった
+	_show()
+	_scene.battle_log = _log
+	var started := Time.get_ticks_usec()
+	_scene.open_log()
+	print("screenshots: ログ %d 行（ターン %d）を %.1f ms で並べた" % [_log.entries.size(), _battle.turn, (Time.get_ticks_usec() - started) / 1000.0])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var panel: Node = _scene.log_panel()
+	panel.scroll_to(int(panel._scroll.get_v_scroll_bar().max_value) - 1500)
+	return true
+
+
 func _scene_wide() -> bool:
 	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
 		return false
@@ -448,6 +504,7 @@ func _new_battle() -> void:
 	_scene.match_choice = choice
 	_battle = choice.to_setup(SEED).create_battle()
 	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
 
 
 ## いまの _battle を画面に出す（駒の見た目は、いまの状態から作る）。
@@ -485,6 +542,7 @@ func _advance(until: Callable, watch := Callable()) -> bool:
 			return false
 		var result := _battle.apply(action)
 		_stats.feed_all(result.events)
+		_log.feed_all(result.events)
 		if watch.is_valid():
 			watch.call(result.events)
 	return false

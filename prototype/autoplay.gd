@@ -63,6 +63,8 @@ func _process(_delta: float) -> void:
 			var stats: BattleStats = _scene.stats
 			_expect(stats.is_over() and stats.turns == battle.turn and stats.winner == battle.winner, "戦績が決着と食い違った")
 			_expect(_scene.result_stats().contains("与えたダメージ"), "決着の画面に戦績が出ていない")
+			var last: String = _scene.battle_log.entries[-1].text
+			_expect(last.contains("の勝ち") or last.begins_with("引き分け"), "ログが決着の行で終わっていない: %s" % last)
 			print(_scene.result_stats())
 			_scenes_done = true
 			_queue_portal_and_spring_scene()
@@ -794,7 +796,16 @@ func _queue_cpu_scene() -> void:
 		seen["paused"] = _scene.cpu_actions
 		get_tree().create_timer(0.3, true, false, true).timeout.connect(func() -> void:
 			_expect(_scene.cpu_actions == seen["paused"] and battle.phase != Unit.Side.PLAYER1, "システムメニューを開いている間に、相手の番が進んだ")
-			_scene.system_menu().close()))
+			_scene.system_menu().close()
+			# ログも、相手の番の途中に開け、開いている間は止まる。
+			_scene.open_log()
+			var panel: Node = _scene.log_panel()
+			_expect(panel.is_open() and Engine.time_scale == 0.0 and _scene.is_busy(), "相手の番の途中に、ログで止まらない")
+			seen["paused"] = _scene.cpu_actions
+			get_tree().create_timer(0.3, true, false, true).timeout.connect(func() -> void:
+				_expect(_scene.cpu_actions == seen["paused"], "ログを開いている間に、相手の番が進んだ")
+				panel.choose(panel.first_row() + panel.row_count() - 1)
+				panel.close())))
 	_scripted.append(func() -> void:
 		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "CPU が自分の番を終えなかった")
 		_expect(_scene.cpu_actions > seen["actions"], "CPU が行動しなかった")
@@ -807,6 +818,16 @@ func _queue_cpu_scene() -> void:
 			_expect(unit == null or unit.side == Unit.Side.PLAYER2, "CPU のものでない駒を、カメラが追った")
 			followed += 1
 		_expect(followed > 0, "CPU の駒が歩く間、カメラが追わなかった")
+		# CPU がしたことは、ログで読める。
+		var cpu_lines := 0
+		for entry: RefCounted in _scene.battle_log.entries:
+			if entry.side == Unit.Side.PLAYER2 and not entry.header:
+				cpu_lines += 1
+		_expect(cpu_lines >= 2, "CPU の番に起きたことが、ログに無い")
+		_scene.open_log()
+		var panel: Node = _scene.log_panel()
+		_expect(panel.first_row() + panel.row_count() == _scene.battle_log.entries.size(), "ログの画面の行が、ログの最新まで並んでいない")
+		_scene.log_panel().close()
 		_scene.set_opponent(false))
 
 
