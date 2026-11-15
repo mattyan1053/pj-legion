@@ -1,8 +1,8 @@
 # 部隊の編成（画面と、取っておく部隊）
 
 コード: `game/deck_screen.gd`（編成の場面）、`game/deck_library.gd`（取っておく部隊の一覧と、ファイルの読み書き）、
-`game/deck_text.gd`（出せない理由、駒と装備の中身の文）、`game/trial_setup.gd` と `game/match_setup_panel.gd`（対戦の設定で選ぶ）。
-テスト: `tests/game/test_deck_library.gd`、`tests/game/test_trial_setup.gd`、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
+`game/deck_text.gd`（出せない理由、駒と装備の中身の文）、`game/match_choice.gd` と `game/match_setup_panel.gd`（対戦の設定で選ぶ）。
+テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
 
 編成のルール（軍、ロスター、装備、予算、配置）は `docs/player-loadout.md`、検査と編成の決まりは `docs/deck-building.md`。
 

@@ -4,7 +4,7 @@ extends RefCounted
 ## 鳴らすのは sound.gd。場面ごとの BGM は scene_flow.gd の表（"music"）が、ここの曲の名前で決める。
 ## **音を 1 つ足すのは、素材を assets/audio/ に置き（README.md と LICENSE を書く）、ここに 1 行足すだけ。**
 ## 鳴らす側は名前で頼む（sound.gd の play）。表に無い名前・ファイルの無い名前は、黙って何もしない
-## （試作のコードが名前で鳴らす音が表にあることは、tests/game/test_sound.gd が確かめる）。
+## （画面の側（game/）のコードが名前で鳴らす音が表にあることは、tests/game/test_sound.gd が確かめる）。
 
 ## 曲（BGM と決着の曲）。
 ## - path: 素材。loop: 終わったら頭へ戻るか（場面の曲）。偽なら 1 回だけ鳴らして止まる（決着の曲）。

@@ -1,5 +1,5 @@
 extends Node
-## 試作の決まった場面を画像に撮る。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
+## ゲームの決まった場面を画像に撮る（PR に貼るため）。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
 ## アプリ（app.gd）が、タイトル → 対戦の設定 → 対戦 と人と同じ道で対戦に入ったところで、このノードを足す。
 ## 撮り終えたら終わる。使い方は docs/screenshots.md。
 ## 対戦の場面は対戦の画面（battle_screen.gd）で撮り、タイトルと対戦の設定の場面は、アプリをその場面へ切り替えて撮る。
@@ -10,7 +10,7 @@ extends Node
 ## （その場面まで状態を作るだけ。撮るのはこのノードがやる）。
 
 const Queries := preload("res://game/battle_queries.gd")
-const TrialSetup := preload("res://game/trial_setup.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
 const BattleLog := preload("res://game/battle_log.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const BoardView := preload("res://game/board_view.gd")
@@ -334,7 +334,7 @@ func _scene_deck_over() -> bool:
 
 func _scene_setup_deck() -> bool:
 	_fill_decks()
-	_app.context.match_choice = TrialSetup.new()
+	_app.context.match_choice = MatchChoice.new()
 	await _app.go(&"setup")
 	if _app.current_id() != &"setup":
 		return false
@@ -349,7 +349,7 @@ func _scene_setup_deck() -> bool:
 
 
 func _scene_setup() -> bool:
-	_app.context.match_choice = TrialSetup.new()  # 遊ぶときの始めと同じ（相手は CPU）で開く
+	_app.context.match_choice = MatchChoice.new()  # 遊ぶときの始めと同じ（相手は CPU）で開く
 	await _app.go(&"setup")
 	return _app.current_id() == &"setup"
 
@@ -1130,7 +1130,7 @@ func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 
 
 func _new_battle() -> void:
-	var choice: RefCounted = TrialSetup.new()
+	var choice: RefCounted = MatchChoice.new()
 	choice.stage = _stage
 	choice.cpu_opponent = false
 	_scene.match_choice = choice

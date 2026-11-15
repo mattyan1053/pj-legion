@@ -1,11 +1,11 @@
 extends "res://tests/base_test.gd"
-## 試作の対戦の設定画面で選ぶもの（trial_setup.gd）から、ルールの対戦の設定（MatchSetup）を作る。
+## 対戦の設定画面で選ぶもの（match_choice.gd）から、ルールの対戦の設定（MatchSetup）を作る。
 
-const TrialSetup := preload("res://game/trial_setup.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
 
 
 func test_default_is_human_first_military_against_cpu_fantasy() -> void:
-	var setup: MatchSetup = TrialSetup.new().to_setup(1)
+	var setup: MatchSetup = MatchChoice.new().to_setup(1)
 	assert_eq(setup.stage, BoardGenerator.Stage.PLAIN)
 	assert_eq(setup.controllers, [MatchSetup.Controller.HUMAN, MatchSetup.Controller.CPU] as Array[MatchSetup.Controller])
 	assert_eq(setup.army_of(Unit.Side.PLAYER1), UnitKind.Army.MILITARY)
@@ -14,7 +14,7 @@ func test_default_is_human_first_military_against_cpu_fantasy() -> void:
 
 
 func test_human_can_play_second() -> void:
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	choice.human_side = Unit.Side.PLAYER2
 	choice.armies = [UnitKind.Army.FANTASY, UnitKind.Army.MILITARY] as Array[UnitKind.Army]
 	assert_eq(choice.cpu_side(), Unit.Side.PLAYER1)
@@ -32,7 +32,7 @@ func test_two_humans_take_the_default_deck_of_each_army() -> void:
 		[UnitKind.Army.MILITARY, UnitKind.Army.MILITARY] as Array[UnitKind.Army],
 		[UnitKind.Army.FANTASY, UnitKind.Army.FANTASY] as Array[UnitKind.Army],
 	]:
-		var choice := TrialSetup.new()
+		var choice := MatchChoice.new()
 		choice.cpu_opponent = false
 		choice.human_side = Unit.Side.PLAYER2  # 人どうしでは見ない
 		choice.armies = armies
@@ -44,7 +44,7 @@ func test_two_humans_take_the_default_deck_of_each_army() -> void:
 
 
 func test_copy_does_not_share_the_armies() -> void:
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	var other: RefCounted = choice.copy()
 	other.armies[0] = UnitKind.Army.FANTASY
 	other.stage = BoardGenerator.Stage.LABYRINTH
@@ -65,7 +65,7 @@ func _saved_fantasy(library: RefCounted) -> RefCounted:
 func test_chosen_deck_goes_into_the_match() -> void:
 	var library: RefCounted = preload("res://game/deck_library.gd").new()
 	var item := _saved_fantasy(library)
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
 	assert_eq(choice.armies[0], UnitKind.Army.FANTASY, "軍は部隊の軍になる")
 	var setup: MatchSetup = choice.to_setup(1)
@@ -80,7 +80,7 @@ func test_chosen_deck_goes_into_the_match() -> void:
 func test_both_humans_choose_their_own_decks() -> void:
 	var library: RefCounted = preload("res://game/deck_library.gd").new()
 	var item := _saved_fantasy(library)
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	choice.cpu_opponent = false
 	choice.choose_deck(Unit.Side.PLAYER2, item.id, item.deck)
 	var setup: MatchSetup = choice.to_setup(1)
@@ -91,7 +91,7 @@ func test_both_humans_choose_their_own_decks() -> void:
 func test_cpu_side_ignores_a_chosen_deck() -> void:
 	var library: RefCounted = preload("res://game/deck_library.gd").new()
 	var item := _saved_fantasy(library)
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	choice.choose_deck(Unit.Side.PLAYER2, item.id, item.deck)  # 人どうしのときに選んでいた
 	assert_false(choice.is_human(Unit.Side.PLAYER2))
 	var setup: MatchSetup = choice.to_setup(1)
@@ -101,7 +101,7 @@ func test_cpu_side_ignores_a_chosen_deck() -> void:
 func test_changing_the_army_drops_the_chosen_deck() -> void:
 	var library: RefCounted = preload("res://game/deck_library.gd").new()
 	var item := _saved_fantasy(library)
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
 	choice.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
 	assert_eq(choice.deck_ids[0], item.id, "同じ軍なら残る")
@@ -113,7 +113,7 @@ func test_changing_the_army_drops_the_chosen_deck() -> void:
 func test_refresh_follows_the_library() -> void:
 	var library: RefCounted = preload("res://game/deck_library.gd").new()
 	var item := _saved_fantasy(library)
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
 	var rebuilt: Deck = item.deck.copy()
 	rebuilt.add(UnitKind.Id.PALADIN)
@@ -135,7 +135,7 @@ func test_refresh_follows_the_library() -> void:
 func test_copy_does_not_share_the_chosen_deck() -> void:
 	var library: RefCounted = preload("res://game/deck_library.gd").new()
 	var item := _saved_fantasy(library)
-	var choice := TrialSetup.new()
+	var choice := MatchChoice.new()
 	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
 	var other: RefCounted = choice.copy()
 	other.decks[0].add(UnitKind.Id.PALADIN)

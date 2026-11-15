@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 試作の決まった場面を撮る（tools/screenshots.gd）。画面の無いコンテナでは、仮想の画面（Xvfb）とソフトウェア描画で撮る。
+# ゲームの決まった場面を撮る（tools/screenshots.gd）。画面の無いコンテナでは、仮想の画面（Xvfb）とソフトウェア描画で撮る。
 # 手元（作業のセッションのコンテナ）で回すもの。CI には入れない。使い方は docs/screenshots.md。
 #
 #   tools/screenshots.sh <godot> <出力のディレクトリ> [場面,場面,…|all]

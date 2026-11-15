@@ -1,6 +1,6 @@
 extends RefCounted
 ## CPU どうしの対戦を 1 局、画面なしで最後まで進めて、起きたことを数える。
-## 対戦は、試作と同じ入口（MatchSetup.create_battle）で作ってから渡す。
+## 対戦は、ゲームの画面と同じ入口（MatchSetup.create_battle）で作ってから渡す。
 ##
 ## 集計の道具（tools/cpu_matches.gd）と、テスト（短い 1 局が最後まで終わること）が使う。
 ## ノードに依存しない。
