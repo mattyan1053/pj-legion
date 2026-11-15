@@ -896,7 +896,13 @@ func _queue_inspection_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		# 前の対戦（もっと大きな盤）でマウスを乗せていたマスが、この小さな盤の外でも、始め直すときに持ち越さない（盤の外を読まない）。
+		var before: Battle = _scene.battle
+		var outside := Vector2i(before.board.size.x - 1, before.board.size.y - 1)
+		_expect(not board.in_bounds(outside), "前の盤が、この盤より大きくない")
+		_scene.hover(outside)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
+		_expect(_scene.hovered_cell() == NO_CELL, "始め直したのに、前の対戦のマウスの下のマスが残っている: %s" % _scene.hovered_cell()))
 	_scripted.append(func() -> void:
 		_scene.click_cell(trooper.cell)
 		# 選んだあと: 相手の駒をクリックすると、選んだまま見る。右クリックで、見るのをやめて選んだ駒へ戻る。
