@@ -18,6 +18,7 @@ const Queries := preload("res://prototype/battle_queries.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
 const ResultSummary := preload("res://prototype/result_summary.gd")
+const PhaseFocus := preload("res://prototype/phase_focus.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const Settings := preload("res://prototype/settings.gd")
 const AppContext := preload("res://prototype/app_context.gd")
@@ -73,6 +74,8 @@ var battle: Battle:
 		battle = value
 		if _playback != null:
 			_playback.battle = value
+## フェーズの始めにカメラが寄る駒を決める（phase_focus.gd）。行動のたびに、起きたことを食わせる。
+var _phase_focus := PhaseFocus.new()
 ## いまの対戦の戦績。行動のたびに、起きたことを食わせる（決着の画面に要点を出す）。
 var stats: BattleStats
 ## 対戦のログ（battle_log.gd）。再生（battle_playback.gd）が、再生したイベントを、再生した順に食わせる。
@@ -334,6 +337,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	map_seed = battle_seed
 	battle = new_battle
 	stats = BattleStats.new(battle)
+	_phase_focus.clear()
 	_log_panel.close()
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
@@ -981,6 +985,7 @@ func _do(action: BattleAction) -> bool:
 	if not result.accepted:
 		return false
 	stats.feed_all(result.events)
+	_phase_focus.feed(battle, result.events)  # フェーズの始めにカメラが寄る駒（再生の中の PhaseStartedEvent より前に食わせる）
 	_ui.busy = true
 	_ui.clear_after_action()
 	_board_view.show_cells({})
@@ -1054,11 +1059,11 @@ func _result_summary(draw: bool, winner: Unit.Side, reason: String) -> RefCounte
 	return ResultSummary.of(stats, draw, winner, reason, cpu_opponent, match_choice.human_side, names, MatchSetup.stage_name(stage))
 
 
-## side の番が来たときにカメラが見る地点。将のいるところから、少し敵の本陣のほうへ寄せる
-## （将が盤の端にいると、画面の半分が盤の外になるため）。
+## side の番が来たときにカメラが見る地点。寄る駒（phase_focus.gd。前回最後に動かした駒）のいるところから、少し敵の本陣のほうへ寄せる
+## （駒が盤の端にいると、画面の半分が盤の外になるため）。駒がいなければ自分の本陣から。
 func _camera_point(side: Unit.Side) -> Vector3:
-	var king := Queries.king_of(battle, side)
-	var from := BoardView.cell_center(king.cell if king != null else battle.board.hq_cells[side])
+	var focus := _phase_focus.unit_for(battle, side)
+	var from := BoardView.cell_center(focus.cell if focus != null else battle.board.hq_cells[side])
 	var toward := BoardView.cell_center(battle.board.hq_cells[1 - side]) - from
 	return from + toward.limit_length(4.0)
 
