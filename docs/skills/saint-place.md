@@ -19,11 +19,10 @@
 | --- | --- | --- |
 | クールダウン | 4 | `SaintPlaceSkill.COOLDOWN` |
 | 中心に選べる距離（マンハッタン） | 2 | `SaintPlaceSkill.CENTER_RANGE` |
-| 聖域の期間、回復量、広さ | 3 ターン、5、3 x 3 | `FieldEffects`（`docs/field-effects.md`） |
+| 聖域の期間、回復量、広さ | 3 ターン、5、3 x 3 | `FieldEffects.SANCTUARY_TURNS`、`FieldEffects.SANCTUARY_HEAL`（`docs/field-effects.md`） |
 
 - 中心の距離は、プリーストの回復の射程（2）にそろえた。自分を聖域に入れるか、1 歩下がって前の味方だけを入れるかを選べる。
 - クールダウン 4 と期間 3 で、置き続ければ 4 ターンのうち 3 ターンは聖域がある。
-- CPU どうしの対戦（軍の違う 240 局。`docs/cpu-ai.md` の「集計の道具」）では、プリースト 1 体が 1 局に 0.8 回使う。
 
 ## CPU
 
