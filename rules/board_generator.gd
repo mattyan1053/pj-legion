@@ -74,8 +74,8 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 		match stage:
 			Stage.PLAIN:
 				_scatter(board, protected, rng)
-				# 中央 6 x 6 は空ける。
-				_fill_rect(board, protected, Rect2i(center - Vector2i(3, 3), Vector2i(6, 6)), Terrain.Type.NORMAL)
+				# 中央 6 x 6 の障害物は除く（森は残す）。
+				_clear_obstacles(board, protected, Rect2i(center - Vector2i(3, 3), Vector2i(6, 6)))
 			Stage.LABYRINTH:
 				_build_labyrinth(board, protected, rng)
 			Stage.TWIN_SPRINGS:
@@ -320,6 +320,15 @@ static func _build_labyrinth(board: Board, protected: Dictionary, rng: RandomNum
 				if rng.randf() >= opening:
 					type = Terrain.Type.OBSTACLE
 			board.set_terrain(cell, type)
+
+
+## rect の中の障害物を平地にする（森はそのまま）。
+static func _clear_obstacles(board: Board, protected: Dictionary, rect: Rect2i) -> void:
+	for y in range(rect.position.y, rect.end.y):
+		for x in range(rect.position.x, rect.end.x):
+			var cell := Vector2i(x, y)
+			if board.in_bounds(cell) and not protected.has(cell) and board.terrain_at(cell) == Terrain.Type.OBSTACLE:
+				board.set_terrain(cell, Terrain.Type.NORMAL)
 
 
 static func _fill_rect(board: Board, protected: Dictionary, rect: Rect2i, type: Terrain.Type) -> void:

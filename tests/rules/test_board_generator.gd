@@ -138,6 +138,18 @@ func test_plain_has_few_walls_and_an_open_center() -> void:
 				assert_ne(board.terrain_at(Vector2i(x, y)), Terrain.Type.OBSTACLE, "seed %d (%d, %d)" % [map_seed, x, y])
 
 
+## 中央 6 x 6 の森は残る（障害物だけを除く。docs/game-board.md）。
+func test_plain_center_keeps_its_forests() -> void:
+	var forests := 0
+	for map_seed in SEEDS:
+		var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, map_seed)
+		for y in range(12, 18):
+			for x in range(12, 18):
+				if board.terrain_at(Vector2i(x, y)) == Terrain.Type.FOREST:
+					forests += 1
+	assert_true(forests > 0, "中央にも森が散る")
+
+
 func test_labyrinth_is_a_grid_maze() -> void:
 	for map_seed in SEEDS:
 		var board := BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, map_seed)
