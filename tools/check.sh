@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # リポジトリの置き方を確かめ、プロジェクトを画面なしで取り込み、テスト（tests/）を実行し、
 # メインシーンで自動の対戦（prototype/autoplay.gd）を最後まで進めて、スクリプトのエラーが出ないことを確かめる。
-# CI と手元で同じものを使う。
+# CI と手元で同じものを使う。テストと自動の対戦は、取り込みのあと並べて回す。
 #
-#   tools/check.sh /path/to/godot
+#   tools/check.sh /path/to/godot          PR ごとの検査（CI の check）
+#   tools/check.sh --full /path/to/godot   長い検査（時間の掛かるテストと、自動の対戦のほかのステージも回す）
 set -euo pipefail
 
+full=""
+if [ "${1:-}" = "--full" ]; then
+  full="--full"
+  shift
+fi
 GODOT="${1:-godot}"
 cd "$(dirname "$0")/.."
 
@@ -38,24 +44,35 @@ done < <(git ls-files 'assets/**' | grep -vE '\.import$|/(LICENSE[^/]*|README\.m
 [ "$problems" = 0 ] || exit 1
 
 # --- Godot を使う検査 ---
-log="$(mktemp)"
-trap 'rm -f "$log"' EXIT
+logs="$(mktemp -d)"
+trap 'rm -rf "$logs"' EXIT
 
 # スクリプトが読み込めないと Godot は終わらずに待ち続けることがあるので、時間で打ち切る。
 run() {
-  timeout 120 "$GODOT" --headless --path . "$@" 2>&1 | tee -a "$log"
+  local name="$1"
+  shift
+  timeout 120 "$GODOT" --headless --path . "$@" >"$logs/$name.log" 2>&1
 }
 
-run --import
-run -s res://tools/run_tests.gd
+run import --import || { cat "$logs/import.log"; exit 1; }
+cat "$logs/import.log"
+# テストと自動の対戦は互いに関わらないので、並べて回す（ログは混ぜずに、終わってから順に出す）。
+run tests -s res://tools/run_tests.gd -- $full &
+tests_pid=$!
 # 自動の対戦。画面の描画を待たずに進める（--fixed-fps）。終わらなければ、コマ数で打ち切る。
-run --fixed-fps 60 --quit-after 20000 -- --autoplay
+run autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay $full &
+autoplay_pid=$!
+status=0
+wait "$tests_pid" || status=1
+wait "$autoplay_pid" || status=1
+cat "$logs/tests.log" "$logs/autoplay.log"
+[ "$status" = 0 ] || { echo "check: テストか自動の対戦が失敗した" >&2; exit 1; }
 
-if grep -E "SCRIPT ERROR|Parse Error|^ERROR" "$log" >/dev/null; then
+if cat "$logs"/*.log | grep -E "SCRIPT ERROR|Parse Error|^ERROR" >/dev/null; then
   echo "check: エラーが出ています" >&2
   exit 1
 fi
-if ! grep -F "autoplay: OK" "$log" >/dev/null; then
+if ! grep -F "autoplay: OK" "$logs/autoplay.log" >/dev/null; then
   echo "check: 自動の対戦が最後まで進まなかった" >&2
   exit 1
 fi
