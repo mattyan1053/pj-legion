@@ -56,7 +56,9 @@
 - つまり、クールダウン N のスキルは、**使ったターンの N ターン後にまた使える**。
   ターン 1 に使ったクールダウン 4 のスキルは、ターン 2・3・4 の始めに 3・2・1 と減り、ターン 5 の始めに 0 になって、ターン 5 に使える。
 - フェーズの始めに起きることの順は、`PhaseStartedEvent`、回復の泉、再生の特性、盤の上の効果（聖域の回復、残りが減る）、
-  最後にクールダウン（`Skills.start_phase`）。0 になった駒に `SkillReadyEvent` が出る（駒の番号の順）。
+  駒の状態の残りが減る（`Statuses.start_phase`）、クールダウン（`Skills.start_phase`）、最後に必殺技のゲージ（`EndPhaseAction`）。
+  クールダウンが 0 になった駒に `SkillReadyEvent` が出る（駒の番号の順）。
+- 必殺技（魔力解放）で、軍の全員のクールダウンが 0 になることもある（`docs/tactical-ult.md`）。
 - 倒れた駒は盤にいないので、何も起きない。
 
 ## 対象
@@ -76,6 +78,9 @@
 2. スキルの効果のイベント（盾が置かれた、など。スキルごとの文書）
 3. `UnitActedEvent`（行動を終えないスキルでは出ない）
 
+このあとに、ほかの行動と同じく、行動のあとに決まること（決着、占拠の途切れ。`Battle.settle`）と、
+必殺技のゲージがいっぱいになった知らせ（`UltReadyEvent`）が続くことがある。
+
 | イベント | 中身 |
 | --- | --- |
 | `SkillUsedEvent` | 駒がスキルを使った。効果のイベントは、このあとに続く |
@@ -92,7 +97,9 @@
 - 並べた駒の全員に**同時に**当たる。駒ごとの `SkillDamagedEvent` が、並べた順に、間にほかのイベントをはさまずに続く。
   量は、残りの HP より多くてもそのまま（攻撃と同じ）。
 - HP が 0 になった駒は、全員のダメージのあとに、同じ並びで取り除く（`UnitDefeatedEvent`）。将が倒れたときの決着は、ほかの行動と同じ。
-- 使った駒に経験値が入る。相手ごとに駒の攻撃と同じ表（`Growth.damage_experience`: 当たって生き残れば 10、倒せば 50、中立の駒は 30）で数え、
+- 必殺技のゲージは、駒の攻撃と同じに、実際に減った HP のぶんたまる（`Ults.charge_hit`。`docs/tactical-ult.md`）。
+- 使った駒に経験値が入る。相手ごとに駒の攻撃と同じ表（`Growth.damage_experience`: 当たって生き残れば 10（`Growth.HIT_EXPERIENCE`）、
+  倒せば 50（`Growth.DEFEAT_EXPERIENCE`）、中立の駒は 30（`Growth.NEUTRAL_DEFEAT_EXPERIENCE`）、中ボスは 60（`Growth.MID_BOSS_DEFEAT_EXPERIENCE`））で数え、
   **いちばん多く入る 1 体ぶんだけ**（何体に当てても 1 回）。誰にも当たらなければ入らない。
 - 予測（`Skills.preview`）、画面の見込みと再生、CPU は、`SkillDamagedEvent` を `UnitDamagedEvent` として読むので、
   ダメージのあるスキルを足しても、そのまま乗る。

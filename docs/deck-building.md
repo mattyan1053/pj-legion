@@ -1,6 +1,7 @@
 # 編成の検査
 
-コード: `rules/deck.gd`（`Deck.problems()`、`Deck.is_valid()`、`Deck.Problem`、`Deck.MAX_UNITS`）。
+コード: `rules/deck.gd`（`Deck.problems()`、`Deck.is_valid()`、`Deck.Problem`、`Deck.MAX_UNITS`）、
+`rules/deck_entry.gd`（`DeckEntry.equip`）、`rules/equipment.gd`（`Equipment.MAX_PER_UNIT`）。
 テスト: `tests/rules/test_deck_building.gd`。
 
 編成そのもの（軍、ロスター、装備、コスト、予算）は `docs/player-loadout.md`。
@@ -15,7 +16,7 @@
 | `NO_UNITS` | 雇った駒（将を除く）が 1 体以上いる |
 | `TOO_MANY_UNITS` | 雇った駒が 6 体（`Deck.MAX_UNITS`）以下 |
 | `OVER_BUDGET` | 合計コストが、選んだ軍の予算以下（ちょうどは通る） |
-| `TOO_MUCH_EQUIPMENT` | どの駒も、装備が 3 個以下 |
+| `TOO_MUCH_EQUIPMENT` | どの駒も、装備が 3 個（`Equipment.MAX_PER_UNIT`）以下 |
 | `NOT_IN_ROSTER` | どの駒も、選んだ軍のロスターの種類 |
 
 - `Deck.problems()` が、満たしていない理由を全部返す。空なら出せる。
@@ -29,10 +30,10 @@
 
 編成の途中は、対戦に出せない形にもなる。途中で断るものと、検査で分かるものを分ける。
 
-- **その場で断るもの**（編成に入らない）: ロスターに無い種類、7 体目（`Deck.add` が `null`）、
-  4 個目の装備（`DeckEntry.equip` が `false`）。
+- **その場で断るもの**（編成に入らない）: ロスターに無い種類と、上限を超える駒（`Deck.add` が `null`）、
+  上限を超える装備（`DeckEntry.equip` が `false`）。
 - **検査で分かるもの**（編成には入る）: 予算を超えている、駒が 0 体。
-  予算を超える駒や装備も足せて、外せば戻る。
+  予算を超える駒や装備も足せて、外せば（`Deck.remove`、`DeckEntry.unequip`）戻る。
 
 `TOO_MANY_UNITS`、`TOO_MUCH_EQUIPMENT`、`NOT_IN_ROSTER` は、`add` / `equip` を通していれば起きない。
 `entries` や `equipment` を直に組み立てた編成（保存したものの読み込み、自動生成）のために検査に入れている。

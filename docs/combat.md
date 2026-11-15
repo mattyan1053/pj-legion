@@ -1,7 +1,7 @@
 # 戦闘
 
 コード: `rules/combat.gd`（射程・ダメージ）、`rules/hit.gd`（ダメージの解決）、`rules/actions/attack_action.gd`（攻撃の行動）、
-`rules/events/unit_damaged_event.gd`、`rules/events/unit_defeated_event.gd`。
+`rules/events/unit_damaged_event.gd`、`rules/events/attack_damaged_event.gd`、`rules/events/smoke_blocked_event.gd`、`rules/events/unit_defeated_event.gd`。
 テスト: `tests/rules/test_combat.gd`、`tests/rules/test_statuses.gd`（解決への割り込み）。
 
 ## 攻撃できる相手
@@ -17,7 +17,7 @@
 ## ダメージ
 
 - 攻撃側の攻撃力がそのままダメージになる。
-- **確定クリティカル**: 攻撃側に照準（`docs/unit-statuses.md`）が付いていれば、攻撃力を 2 倍にする
+- **確定クリティカル**: 攻撃側に照準（`docs/unit-statuses.md`）が付いていれば、攻撃力に照準の倍率を掛ける
   （倍率は `docs/skills/precision-aim.md`）。攻撃を 1 回すると、照準は消える。
 - 守る側が森にいれば 80%（`FOREST_DAMAGE_RATE_PERCENT`）にする（端数切り捨て。クリティカルの倍率を掛けたあと）。
 - 守る側が自分の陣営の煙幕の中にいて、距離 2（`RANGED_DISTANCE`）以上から攻撃されたら 0（`docs/field-effects.md`）。
@@ -32,12 +32,14 @@
 
 - 行動できる駒が、いまの位置から攻撃する。動いたあとでも、動かずにでもよい。**巡航で動いた駒は攻撃できない。**
 - 攻撃すると行動を終える。
-- 返すイベントは順に、`UnitDamagedEvent`（与えたダメージと、受けたあとの HP。`critical`、`blocked_by`）、
-  バリアが防いだなら守る側の `StatusRemovedEvent`、照準で撃ったなら攻撃側の `StatusRemovedEvent`、
-  倒れたなら `UnitDefeatedEvent`（中ボスなら続けて `MidBossDefeatedEvent`。`docs/neutral-mid-boss.md`）、攻撃した駒が育つなら経験値（`ExperienceGainedEvent`、上がれば `LevelUpEvent`。
+- 返すイベントは順に、`AttackDamagedEvent`（`UnitDamagedEvent` の子。与えたダメージと、受けたあとの HP。`critical`、`forest`、`blocked_by`、`attacker_id`）、
+  バリアが防いだなら守る側の `StatusRemovedEvent`（`CONSUMED`）、照準で撃ったなら攻撃側の `StatusRemovedEvent`（`CONSUMED`）、
+  倒れたなら `UnitDefeatedEvent`（中ボスなら続けて `MidBossDefeatedEvent` と、聖遺物を受け取れば `RelicGainedEvent`。`docs/neutral-mid-boss.md`、`docs/relic-buff.md`）、
+  攻撃した駒が育つなら経験値（`ExperienceGainedEvent`、上がれば `LevelUpEvent`、最大のレベルに届けば `EvolutionOfferedEvent`。
   `docs/experience-levelup.md`）、最後に `UnitActedEvent`。
+  そのあとに `Battle.apply` が、決着（`GameWonEvent` など。`docs/win-conditions.md`）と `UltReadyEvent` を足す（`docs/battle.md`）。
 - `UnitDamagedEvent` のダメージは計算した値（残り HP より大きくてもそのまま）。`cause` は `ATTACK`。
-- 煙幕に阻まれた攻撃は、`UnitDamagedEvent` のかわりに `SmokeBlockedEvent`。経験値は入らず、`UnitActedEvent` で終わる。
+- 煙幕に阻まれた攻撃は、`AttackDamagedEvent` のかわりに `SmokeBlockedEvent`。照準は外れる（攻撃側の `StatusRemovedEvent`）。経験値は入らず、`UnitActedEvent` で終わる。
 - ダメージを与える処理（`Combat.strike`）は、中立の駒の攻撃と同じものを使う。
 
 ## ダメージの解決（割り込む仕組み）

@@ -1,6 +1,6 @@
 # 勝ち負け
 
-コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`）、`rules/actions/end_phase_action.gd`、
+コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`、`settle`）、`rules/actions/end_phase_action.gd`、
 `rules/events/game_won_event.gd`、`rules/events/game_drawn_event.gd`、`rules/events/capture_progress_event.gd`。
 テスト: `tests/rules/test_victory.gd`、引き分けは `tests/rules/test_map_objects.gd`。
 
@@ -23,7 +23,7 @@
 
 - 自分のフェーズの終わり（ターン終了）に、敵の本陣のマスに自分の駒が乗っていれば、占拠の数が 1 進む。
   乗っていなければ 0 に戻る。
-- 占拠の数が **3** に達したら、そのプレイヤーの勝ち。そのフェーズのあとへは進まない。
+- 占拠の数が **3**（`CAPTURE_TURNS_TO_WIN`）に達したら、そのプレイヤーの勝ち。そのフェーズのあとへは進まない。
 - 入っただけでは数えない（数えるのはフェーズの終わり）。
 - 本陣のマスから自分の駒がいなくなったら（動いた・倒された）、その時点で 0 に戻る。
   ただし、その移動を取り消したら、動く前の数に戻る。

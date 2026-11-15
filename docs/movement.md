@@ -1,20 +1,21 @@
 # 移動
 
 コード: `rules/movement.gd`（移動範囲と道）、`rules/actions/move_action.gd`（移動の行動）、
-`rules/events/unit_moved_event.gd`（移動のイベント）。支配領域の判定は `rules/battle.gd`。
+`rules/events/unit_moved_event.gd`（移動のイベント）、`rules/unit.gd`（`move_cost`、`exerts_zoc`、`ignores_zoc`）。
+支配領域は `Movement` の探索が見る（マス 1 つを問うだけなら `Battle.is_in_enemy_zoc`）。
 テスト: `tests/rules/test_movement.gd`、`tests/rules/test_move_action.gd`。
 
 通常の移動で届くマスと、巡航でだけ届くマスを一度に知りたいときは、`Battle.options`（`docs/battle.md`）を使う。
 
 ## 移動範囲
 
-- 入るのに使う移動力（地形で決まる。平地・結晶泉 1、森 2）の合計が、駒の移動力以下のマスへ行ける。
-  森歩きの特性を持つ進化先（`docs/branch-evolution.md`）は、森にも 1 で入る。
-- 障害物と、起爆樽・盾のあるマスには入れない（`docs/map-objects.md`、`docs/field-effects.md`）。煙幕と聖域のマスには入れる。回復の泉とポータルのマスには、地形どおりに入れる。
+- 入るのに使う移動力（地形で決まる。`docs/game-board.md` の地形の表）の合計が、駒の移動力以下のマスへ行ける。
+  森歩きの特性を持つ進化先（`docs/branch-evolution.md`）は、森にも平地と同じ移動力で入る。
+- 盤の外、障害物、起爆樽・盾のあるマスには入れない（`docs/map-objects.md`、`docs/field-effects.md`）。煙幕と聖域のマスには入れる。回復の泉とポータルのマスには、地形どおりに入れる。
 - 敵の駒（中立の駒は両プレイヤーの敵）のいるマスは、通り抜けも止まることもできない。
 - 味方の駒のいるマスは通り抜けられるが、そこで止まることはできない。
 - **巡航**（その行動で攻撃しないと決めて動く）なら、移動力が 2 倍になる。
-- ポータルのマスからは、対になるポータルへ移動力を使わずに移れる（`docs/map-objects.md`）。
+- ポータルのマスからは、対になるポータルへ移動力を使わずに移れる。行き先のポータルに駒（陣営を問わない）がいれば移れない（`docs/map-objects.md`）。
 - `Movement.reachable_from_any(対戦, 駒, マスの列)` は、列のどのマスからでも動き出せるとしたときの範囲（列のそれぞれから測った範囲を合わせたもの）。
   どのマスも、いまのマスと同じに扱う。「止まったあと、もう一度動く」範囲を 1 回の探索で出すのに使う（`docs/threat-range.md`）。
 
@@ -39,7 +40,8 @@
 `Battle.apply(MoveAction.new(駒の番号, 行き先, 巡航か))`。
 
 - 行き先が移動範囲の中なら、駒をそこへ動かす。結果のイベントは `UnitMovedEvent`（駒の番号、歩いた道、巡航か）が 1 つ。
-  ポータルを通ったときだけ、歩いた区間ごとの `UnitMovedEvent` と `UnitWarpedEvent` に分かれる（`docs/map-objects.md`）。
+  ポータルを通ったときだけ、歩いた区間ごとの `UnitMovedEvent` と `UnitWarpedEvent` に分かれる（1 歩も歩いていない区間の `UnitMovedEvent` は出さない。`docs/map-objects.md`）。
+  ほかのマスへ動いたら、続けて動くと外れる状態（照準）の `StatusRemovedEvent`（`docs/unit-statuses.md`）。
 - 行き先がいまのマスでもよい（動かない移動）。
-- 移動範囲の外、ほかの駒のいるマス、いない駒への行動は断る（何も変えない。`docs/battle.md`）。
+- 移動範囲の外、ほかの駒のいるマス、もう動いた駒、いない駒への行動は断る（何も変えない。`docs/battle.md`）。
 - 動けるのは、行動できる駒が 1 回の行動につき 1 回だけ（`docs/turn-phase.md`）。
