@@ -35,7 +35,8 @@ const SCENES := {
 	"system_quit": "システムメニューで「ゲームを終える」を押して、確かめている",
 	"settings": "システムメニューから開いた設定の画面（感度を変えたところ）",
 	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
-	"start": "対戦の始め（ターン 1、何も選んでいない）",
+	"start": "対戦の始め（ターン 1、何も選んでいない。カメラは味方の真ん中の駒）",
+	"phase_camera": "相手の番のあとの自分の番の始め（カメラは、前の自分の番で最後に動かした駒に寄る。白い輪で示す）",
 	"pitch_low": "ドラッグで見下ろす角度をいちばん浅くした（下限）",
 	"pitch_high": "ドラッグで見下ろす角度をいちばん深くした（上限。ほぼ真上）",
 	"move": "自分の駒を選んで、移動範囲と、駒のそばのメニューが出ている",
@@ -381,6 +382,33 @@ func _scene_menu_note() -> bool:
 
 func _scene_start() -> bool:
 	_show()
+	return true
+
+
+func _scene_phase_camera() -> bool:
+	# 相手（プレイヤー2）の番の終わりの手前まで進め、その番の終わりだけを画面に通す（中立の番のあと、自分の番の始めにカメラが寄る）。
+	# CPU は将を最後に動かすので、そのままでは将に寄るのと見分けが付かない。撮る番だけ、自分の番の始めに将を先に待機させる。
+	var events: Array[BattleEvent] = []
+	var watch := func(happened: Array[BattleEvent]) -> void: events.append_array(happened)
+	if not _advance(func() -> bool: return _battle.turn >= 4 and _battle.phase == Unit.Side.PLAYER1, watch):
+		return false
+	var king := Queries.king_of(_battle, Unit.Side.PLAYER1)
+	if king != null and _battle.can_apply(WaitAction.new(king.id)):
+		var result := _battle.apply(WaitAction.new(king.id))
+		_stats.feed_all(result.events)
+		_log.feed_all(result.events)
+		events.append_array(result.events)
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER2 and _cpu.next_action(_battle) is EndPhaseAction, watch):
+		return false
+	_show()
+	_scene._phase_focus.feed(_battle, events)  # 始めからの行動（画面を通さずに進めたぶん）
+	var focus: Unit = _scene._phase_focus.unit_for(_battle, Unit.Side.PLAYER1)
+	await _scene.act(EndPhaseAction.new())
+	if focus == null or _battle.phase != Unit.Side.PLAYER1:
+		return false
+	_scene._inspect_ring.position = BoardView.cell_center(focus.cell) + Vector3(0.0, 0.04, 0.0)
+	_scene._inspect_ring.visible = true  # 寄った駒を示す（撮るためだけ）
+	print("screenshots: フェーズの始めに寄った駒 %s %s" % [UnitKind.display_name(focus.kind), focus.cell])
 	return true
 
 
