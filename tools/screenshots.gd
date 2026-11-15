@@ -74,6 +74,8 @@ const SCENES := {
 	"skill_adrenaline": "アドレナリン注射（立ち昇る黄緑の光）",
 	"ult_assault": "総員突撃の発動の瞬間（画面のフラッシュと、必殺技の名前）",
 	"ult_eruption": "魔力解放の効果（全員に同時に立つ光の柱と知らせ）",
+	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
+	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
@@ -950,6 +952,27 @@ func _scene_stage_labyrinth() -> bool:
 
 func _scene_stage_twin_springs() -> bool:
 	return _stage_overview(BoardGenerator.Stage.TWIN_SPRINGS)
+
+
+## stage の盤で、cells の最初のマスへ寄って見る（泉・ポータルの動き）。
+func _close_look(stage: BoardGenerator.Stage, cells: Callable) -> bool:
+	_stage = stage
+	_new_battle()
+	_show()
+	var found: Array = cells.call(_battle.board)
+	if found.is_empty():
+		return false
+	_scene.focus_camera(found[0])
+	_aim(7.0, 20.0, 48.0)
+	return true
+
+
+func _scene_spring() -> bool:
+	return _close_look(BoardGenerator.Stage.LABYRINTH, func(board: Board) -> Array: return board.spring_cells)
+
+
+func _scene_portal() -> bool:
+	return _close_look(BoardGenerator.Stage.TWIN_SPRINGS, func(board: Board) -> Array: return board.portal_exits.keys())
 
 
 func _stage_overview(stage: BoardGenerator.Stage) -> bool:

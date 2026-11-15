@@ -9,6 +9,7 @@ extends Node3D
 ## 何を塗るかは呼ぶ側が決める（ここはルールを持たない）。
 
 const CrystalMesh := preload("res://prototype/crystal_mesh.gd")
+const StageLook := preload("res://prototype/stage_look.gd")
 const Scenery := preload("res://prototype/scenery.gd")
 const GROUND_SHADER := preload("res://prototype/ground.gdshader")
 const GRID_SHADER := preload("res://prototype/grid.gdshader")
@@ -36,10 +37,7 @@ const NO_CELL := Vector2i(-1, -1)
 const OCCLUDER_FADE := 0.75
 const OCCLUDER_FADE_SPEED := 5.0
 
-const COLOR_NORMAL := Color("5f9f4e")
-const COLOR_FOREST := Color("3a6c38")
-const COLOR_OBSTACLE_GROUND := Color("767b84")
-const COLOR_FONT := Color("3fa9bd")
+## 地面の色は、ステージの色合い（stage_look.gd）にある。
 const COLOR_CRYSTAL := Color("4fd8f0")
 const COLOR_BARREL := Color("8a5a2b")
 const COLOR_BARREL_BAND := Color("3a3a3e")
@@ -50,6 +48,15 @@ const COLOR_SPRING_CROSS := Color("2fd66b")
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
+## 泉の波紋（1 回の秒数、いちばん濃いときの濃さ、1 つの泉の波紋の数）。
+const RIPPLE_PERIOD := 2.2
+const RIPPLE_ALPHA := 0.75
+const RIPPLES_PER_SPRING := 2
+## ポータルの光の粒（昇りきるまでの秒数、昇る高さ、1 つのポータルの粒の数）と、面の脈の秒数。
+const MOTE_PERIOD := 1.6
+const MOTE_RISE := 0.9
+const MOTES_PER_PORTAL := 4
+const PORTAL_PULSE_PERIOD := 1.8
 ## 敵の全員の脅威範囲（show_danger）。塗りではなく、赤い斜線と、範囲の縁の線で描く。
 ## 移動の青・巡航の黄の塗りの上に重ねても、下の色が見えて、どちらも読める。
 const COLOR_DANGER_STRIPE := Color(0.95, 0.12, 0.1, 0.55)
@@ -60,6 +67,8 @@ const DANGER_LIFT := 0.07
 const DANGER_EDGE_WIDTH := 0.07
 
 var board: Board
+## ステージの色合い（stage_look.gd）。
+var look: Dictionary = StageLook.of(BoardGenerator.Stage.PLAIN)
 
 var _barrels := {}  # Vector2i -> Node3D（爆発したら取り除く）
 var _field_effects := {}  # 効果の番号 -> Node3D（消えたら取り除く）
@@ -74,12 +83,20 @@ var _danger_cells: Array[Vector2i] = []
 var _grid: ShaderMaterial
 var _grid_emphasis := 0.0
 var _grid_emphasized := false
+## 泉とポータルの動き。泉: 水面に広がる波紋（[輪, マテリアル, 位相]）。ポータル: 渦を巻いて昇る光の粒（[粒, 中心, 位相]）と、
+## 脈打つ面（[マテリアル, 色]）。
+var _ripples: Array = []
+var _motes: Array = []
+var _portal_discs: Array = []
+var _motion_time := 0.0
 static var _noise: ImageTexture
 
 
 ## look_seed は見た目だけに使う（木の種類・向き・大きさ）。team_colors は本陣の色（添字がプレイヤー番号）。
-func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> void:
+## stage は色合いを決める（stage_look.gd）。
+func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], stage: int = BoardGenerator.Stage.PLAIN) -> void:
 	board = battle_board
+	look = StageLook.of(stage)
 	_team_colors = team_colors
 	var rng := RandomNumberGenerator.new()
 	rng.seed = look_seed
@@ -126,30 +143,35 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> vo
 	_build_markers()
 
 
-## マスの地面の色（本陣は陣営の色）。
-static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color]) -> Color:
+## マスの地面の色（本陣は陣営の色）。palette はステージの色合い（stage_look.gd。省けば中央平原）。
+static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color], palette: Dictionary = {}) -> Color:
+	if palette.is_empty():
+		palette = StageLook.of(BoardGenerator.Stage.PLAIN)
 	var hq_owner := battle_board.hq_owner(cell)
 	if hq_owner >= 0:
 		return team_colors[hq_owner].lightened(0.3)
 	match battle_board.terrain_at(cell):
 		Terrain.Type.OBSTACLE:
-			return COLOR_OBSTACLE_GROUND
+			return palette[StageLook.OBSTACLE]
 		Terrain.Type.FOREST:
-			return COLOR_FOREST
+			return palette[StageLook.FOREST]
 		Terrain.Type.FONT:
-			return COLOR_FONT
-	return COLOR_NORMAL
+			return palette[StageLook.FONT]
+	return palette[StageLook.NORMAL]
 
 
 ## 地形の色の地図。1 マスが MAP_SCALE ピクセルで、周りに MAP_PAD マスぶんの平地が付く（盤の外は平地の色で続く）。
-static func terrain_image(battle_board: Board, team_colors: Array[Color]) -> Image:
+static func terrain_image(battle_board: Board, team_colors: Array[Color], palette: Dictionary = {}) -> Image:
+	if palette.is_empty():
+		palette = StageLook.of(BoardGenerator.Stage.PLAIN)
+	var normal: Color = palette[StageLook.NORMAL]
 	var cells := battle_board.size + Vector2i.ONE * 2 * MAP_PAD
 	var image := Image.create(cells.x * MAP_SCALE, cells.y * MAP_SCALE, false, Image.FORMAT_RGB8)
-	image.fill(COLOR_NORMAL)
+	image.fill(normal)
 	for y in battle_board.size.y:
 		for x in battle_board.size.x:
-			var color := ground_color(battle_board, Vector2i(x, y), team_colors)
-			if color != COLOR_NORMAL:
+			var color := ground_color(battle_board, Vector2i(x, y), team_colors, palette)
+			if color != normal:
 				image.fill_rect(Rect2i((Vector2i(x, y) + Vector2i.ONE * MAP_PAD) * MAP_SCALE, Vector2i.ONE * MAP_SCALE), color)
 	return image
 
@@ -165,10 +187,37 @@ func grid_emphasized() -> bool:
 
 
 func _process(delta: float) -> void:
+	_motion_time += delta
+	_animate(_motion_time)
 	var target := 1.0 if _grid_emphasized else 0.0
 	if _grid_emphasis != target:
 		_grid_emphasis = move_toward(_grid_emphasis, target, GRID_FADE_SPEED * delta)
 		_grid.set_shader_parameter(&"emphasis", _grid_emphasis)
+
+
+## 泉の波紋とポータルの渦を、時刻 t（秒）の形にする。泉とポータルを、止まった絵でなく動きで見分けられるようにする。
+## ゆっくり繰り返すだけで、目を引きすぎない（駒や塗ったマスより目立たせない）。
+func _animate(t: float) -> void:
+	for ripple: Array in _ripples:
+		var phase := fposmod(t / RIPPLE_PERIOD + float(ripple[2]), 1.0)
+		var node: MeshInstance3D = ripple[0]
+		node.scale = Vector3(lerpf(0.25, 1.0, phase), 0.4, lerpf(0.25, 1.0, phase))
+		(ripple[1] as StandardMaterial3D).albedo_color.a = RIPPLE_ALPHA * sin(phase * PI)
+	for mote: Array in _motes:
+		var phase := fposmod(t / MOTE_PERIOD + float(mote[2]), 1.0)
+		var angle := TAU * (phase * 1.3 + float(mote[2]))
+		var radius := lerpf(0.34, 0.1, phase)
+		var node: MeshInstance3D = mote[0]
+		node.position = (mote[1] as Vector3) + Vector3(cos(angle) * radius, 0.05 + phase * MOTE_RISE, sin(angle) * radius)
+		node.scale = Vector3.ONE * lerpf(1.0, 0.3, phase)
+	var pulse := 0.5 + 0.5 * sin(t * TAU / PORTAL_PULSE_PERIOD)
+	for disc: Array in _portal_discs:
+		(disc[0] as StandardMaterial3D).albedo_color.a = lerpf(0.3, 0.6, pulse)
+
+
+## 泉とポータルの動きの、いまの数（検査用）。
+func motion_counts() -> Vector3i:
+	return Vector3i(_ripples.size(), _motes.size(), _portal_discs.size())
 
 
 ## ポータルの色。対の 2 つは同じ色になる（対を、上の行・左の列にあるほうの順に数えて色を割り当てる）。
@@ -353,7 +402,7 @@ func _add_ground() -> void:
 
 	var ground := ShaderMaterial.new()
 	ground.shader = GROUND_SHADER
-	ground.set_shader_parameter(&"terrain_map", ImageTexture.create_from_image(terrain_image(board, _team_colors)))
+	ground.set_shader_parameter(&"terrain_map", ImageTexture.create_from_image(terrain_image(board, _team_colors, look)))
 	ground.set_shader_parameter(&"noise_map", _noise_texture())
 	ground.set_shader_parameter(&"board_size", size)
 	ground.set_shader_parameter(&"map_pad", float(MAP_PAD))
@@ -511,6 +560,17 @@ func _add_spring(cell: Vector2i) -> void:
 	water.bottom_radius = 0.38
 	water.height = 0.02
 	_add_mesh(water, _flat_material(COLOR_SPRING_WATER), center + Vector3(0.0, 0.02, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# 水面に広がる波紋（白い細い輪。ずらして重ねる）。
+	var ripple_mesh := TorusMesh.new()
+	ripple_mesh.inner_radius = 0.33
+	ripple_mesh.outer_radius = 0.36
+	ripple_mesh.rings = 24
+	ripple_mesh.ring_segments = 4
+	for i in RIPPLES_PER_SPRING:
+		var ripple_material := _overlay_material(Color(0.85, 0.95, 1.0, 0.0))
+		var ripple := _add_mesh(ripple_mesh, ripple_material, center + Vector3(0.0, 0.035, 0.0))
+		ripple.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_ripples.append([ripple, ripple_material, float(i) / RIPPLES_PER_SPRING])
 
 	var foot := center + Vector3(-0.4, 0.0, -0.4)
 	var post := CylinderMesh.new()
@@ -543,7 +603,17 @@ func _add_portal(cell: Vector2i, color: Color) -> void:
 	disc.top_radius = 0.4
 	disc.bottom_radius = 0.4
 	disc.height = 0.01
-	_add_mesh(disc, _overlay_material(Color(color, 0.45)), center + Vector3(0.0, 0.015, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var disc_material := _overlay_material(Color(color, 0.45))
+	_add_mesh(disc, disc_material, center + Vector3(0.0, 0.015, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_portal_discs.append([disc_material, color])
+	# 渦を巻いて昇る光の粒。
+	var mote_mesh := BoxMesh.new()
+	mote_mesh.size = Vector3.ONE * 0.07
+	var mote_material := _flat_material(color.lightened(0.35))
+	for i in MOTES_PER_PORTAL:
+		var mote := _add_mesh(mote_mesh, mote_material, center)
+		mote.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_motes.append([mote, center, float(i) / MOTES_PER_PORTAL])
 	var pillar := CylinderMesh.new()
 	pillar.top_radius = 0.02
 	pillar.bottom_radius = 0.05
