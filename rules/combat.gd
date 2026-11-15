@@ -92,9 +92,16 @@ static func targets(battle: Battle, attacker: Unit) -> Array[Unit]:
 
 
 ## attacker の、いまの攻撃 1 回の攻撃力。確定クリティカルの状態（照準）なら、その倍率を掛けた値。
+## 倍率は一時的な補正（突撃・注射。Unit の層 3）の前の攻撃力に掛け、一時的な補正はそのあとに足す
+## （突撃と照準を重ねても、満タンの将を 1 発で倒せないように。docs/tactical-ult.md）。
 ## 駒への攻撃と、盾への攻撃が使う。
 static func attack_power(attacker: Unit) -> int:
-	return attacker.power() * Statuses.critical_percent(attacker) / Status.NORMAL_PERCENT
+	var percent := Statuses.critical_percent(attacker)
+	if percent == Status.NORMAL_PERCENT:
+		return attacker.power()
+	var steady: int = attacker.base_stat(Unit.Stat.POWER) + attacker.relic_bonus.get(Unit.Stat.POWER, 0)
+	var temporary: int = attacker.temporary_bonus.get(Unit.Stat.POWER, 0)
+	return maxi(maxi(steady, 0) * percent / Status.NORMAL_PERCENT + temporary, 0)
 
 
 ## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
