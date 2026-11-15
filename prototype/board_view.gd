@@ -1,11 +1,17 @@
 extends Node3D
-## 盤面の見た目。ルールの盤面（Board）を受け取って、マス・木立・岩山・結晶泉・本陣の旗と、
+## 盤面の見た目。ルールの盤面（Board）を受け取って、地面・木立・岩山・結晶泉・本陣の旗と、
 ## 環境オブジェクト（起爆樽・回復の泉・ポータル）を組み立てる。盤の上の効果（盾・煙幕・聖域）も描く。
+##
+## 地面は、盤の外まで続く 1 枚の板（ground.gdshader）。マスごとの板は並べない。マス目は、その上に重ねる線（grid.gdshader）で、
+## ふだんは薄く、操作しているときとマウスの周りだけ濃くする。盤の外の景色は scenery.gd。
 ##
 ## マスの色分け（移動範囲・攻撃できる相手など）と、マウスの下のマスの印もここで出す。
 ## 何を塗るかは呼ぶ側が決める（ここはルールを持たない）。
 
 const CrystalMesh := preload("res://prototype/crystal_mesh.gd")
+const Scenery := preload("res://prototype/scenery.gd")
+const GROUND_SHADER := preload("res://prototype/ground.gdshader")
+const GRID_SHADER := preload("res://prototype/grid.gdshader")
 const FOREST_SCENES: Array[PackedScene] = [
 	preload("res://assets/kaykit/medieval-hexagon/trees_A_small.gltf"),
 	preload("res://assets/kaykit/medieval-hexagon/trees_B_small.gltf"),
@@ -15,17 +21,23 @@ const OBSTACLE_SCENE := preload("res://assets/kaykit/medieval-hexagon/mountain_A
 const FOREST_SCALE := 0.62
 const OBSTACLE_SCALE := 0.56
 
-const TILE_HEIGHT := 0.2
+## 塗ったマスどうしの隙間（マス目の線が見える）。
 const TILE_GAP := 0.04
+## 地面を盤の外へ広げる距離（マス）。霞で見えなくなるより、ずっと先まで。
+const GROUND_REACH := 400.0
+## 地形の色の地図の細かさ（1 マスのピクセル数）と、盤の周りに付ける平地の幅（マス）。
+const MAP_SCALE := 8
+const MAP_PAD := 2
+## マス目の線の濃さが変わる速さ（1 秒あたり）。
+const GRID_FADE_SPEED := 6.0
 const NO_CELL := Vector2i(-1, -1)
 
 ## 手前の障害物をどこまで透かすか（0 = 不透明、1 = 見えない）と、その速さ。
 const OCCLUDER_FADE := 0.75
 const OCCLUDER_FADE_SPEED := 5.0
 
-const COLOR_UNDERSIDE := Color("26331f")
 const COLOR_NORMAL := Color("5f9f4e")
-const COLOR_FOREST := Color("457a40")
+const COLOR_FOREST := Color("3a6c38")
 const COLOR_OBSTACLE_GROUND := Color("767b84")
 const COLOR_FONT := Color("3fa9bd")
 const COLOR_CRYSTAL := Color("4fd8f0")
@@ -48,6 +60,10 @@ var _occluders := {}  # Vector2i -> Array[GeometryInstance3D]（岩山と木立�
 var _cursor: MeshInstance3D
 var _marked: MeshInstance3D
 var _highlight: MultiMesh
+var _grid: ShaderMaterial
+var _grid_emphasis := 0.0
+var _grid_emphasized := false
+static var _noise: ImageTexture
 
 
 ## look_seed は見た目だけに使う（木の種類・向き・大きさ）。team_colors は本陣の色（添字がプレイヤー番号）。
@@ -57,19 +73,10 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> vo
 	var rng := RandomNumberGenerator.new()
 	rng.seed = look_seed
 
-	var tile_mesh := BoxMesh.new()
-	tile_mesh.size = Vector3(1.0 - TILE_GAP, TILE_HEIGHT, 1.0 - TILE_GAP)
-	var ground_materials := {
-		Terrain.Type.NORMAL: _material(COLOR_NORMAL),
-		Terrain.Type.OBSTACLE: _material(COLOR_OBSTACLE_GROUND),
-		Terrain.Type.FOREST: _material(COLOR_FOREST),
-		Terrain.Type.FONT: _material(COLOR_FONT),
-	}
-
-	# マスの隙間から背景が透けて黒い線に見えないよう、盤面の下に板を敷く。
-	var underside_mesh := BoxMesh.new()
-	underside_mesh.size = Vector3(board.size.x, 0.1, board.size.y)
-	_add_mesh(underside_mesh, _material(COLOR_UNDERSIDE), Vector3(board.size.x / 2.0, -0.2, board.size.y / 2.0))
+	_add_ground()
+	var scenery := Scenery.new()
+	add_child(scenery)
+	scenery.setup(board.size, look_seed)
 
 	var crystal_mesh := CrystalMesh.build()
 	var crystal_material := _material(COLOR_CRYSTAL)
@@ -83,12 +90,9 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> vo
 			var cell := Vector2i(x, y)
 			var terrain := board.terrain_at(cell)
 			var center := cell_center(cell)
-			var ground: Material = ground_materials[terrain]
 			var hq_owner := board.hq_owner(cell)
 			if hq_owner >= 0:
-				ground = _material(team_colors[hq_owner].lightened(0.3))
 				_add_flag(center, team_colors[hq_owner])
-			_add_mesh(tile_mesh, ground, center + Vector3(0.0, -TILE_HEIGHT / 2.0, 0.0))
 
 			match terrain:
 				Terrain.Type.FOREST:
@@ -109,6 +113,51 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color]) -> vo
 		add_field_effect(effect.id, effect.type, effect.side, effect.cells)
 
 	_build_markers()
+
+
+## マスの地面の色（本陣は陣営の色）。
+static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color]) -> Color:
+	var hq_owner := battle_board.hq_owner(cell)
+	if hq_owner >= 0:
+		return team_colors[hq_owner].lightened(0.3)
+	match battle_board.terrain_at(cell):
+		Terrain.Type.OBSTACLE:
+			return COLOR_OBSTACLE_GROUND
+		Terrain.Type.FOREST:
+			return COLOR_FOREST
+		Terrain.Type.FONT:
+			return COLOR_FONT
+	return COLOR_NORMAL
+
+
+## 地形の色の地図。1 マスが MAP_SCALE ピクセルで、周りに MAP_PAD マスぶんの平地が付く（盤の外は平地の色で続く）。
+static func terrain_image(battle_board: Board, team_colors: Array[Color]) -> Image:
+	var cells := battle_board.size + Vector2i.ONE * 2 * MAP_PAD
+	var image := Image.create(cells.x * MAP_SCALE, cells.y * MAP_SCALE, false, Image.FORMAT_RGB8)
+	image.fill(COLOR_NORMAL)
+	for y in battle_board.size.y:
+		for x in battle_board.size.x:
+			var color := ground_color(battle_board, Vector2i(x, y), team_colors)
+			if color != COLOR_NORMAL:
+				image.fill_rect(Rect2i((Vector2i(x, y) + Vector2i.ONE * MAP_PAD) * MAP_SCALE, Vector2i.ONE * MAP_SCALE), color)
+	return image
+
+
+## マス目の線を濃くする（駒を選んでいる、範囲を見せているなど、操作している間）。ふだんは薄い。
+func set_grid_emphasis(on: bool) -> void:
+	_grid_emphasized = on
+
+
+## マス目の線を濃くしているか。検査用。
+func grid_emphasized() -> bool:
+	return _grid_emphasized
+
+
+func _process(delta: float) -> void:
+	var target := 1.0 if _grid_emphasized else 0.0
+	if _grid_emphasis != target:
+		_grid_emphasis = move_toward(_grid_emphasis, target, GRID_FADE_SPEED * delta)
+		_grid.set_shader_parameter(&"emphasis", _grid_emphasis)
 
 
 ## ポータルの色。対の 2 つは同じ色になる（対を、上の行・左の列にあるほうの順に数えて色を割り当てる）。
@@ -218,6 +267,8 @@ func set_cursor(cell: Vector2i) -> void:
 	_cursor.visible = board.in_bounds(cell)
 	if _cursor.visible:
 		_cursor.position = cell_center(cell) + Vector3(0.0, 0.03, 0.0)
+	# マウスの周りは、マス目の線を濃くする。
+	_grid.set_shader_parameter(&"cursor", Vector3(cell.x + 0.5, cell.y + 0.5, 1.0 if _cursor.visible else 0.0))
 
 
 ## クリックして情報を出しているマスの印（枠）。NO_CELL なら消す。
@@ -252,6 +303,45 @@ func update_occlusion(camera: Camera3D, looking_at: Vector3, focus_cells: Array[
 		var target := OCCLUDER_FADE if faded.has(cell) else 0.0
 		for part: GeometryInstance3D in _occluders[cell]:
 			part.transparency = move_toward(part.transparency, target, OCCLUDER_FADE_SPEED * delta)
+
+
+## 地面（盤の外まで続く 1 枚の板）と、その上のマス目の線。
+func _add_ground() -> void:
+	var size := Vector2(board.size)
+	var center := Vector3(size.x / 2.0, 0.0, size.y / 2.0)
+
+	var ground := ShaderMaterial.new()
+	ground.shader = GROUND_SHADER
+	ground.set_shader_parameter(&"terrain_map", ImageTexture.create_from_image(terrain_image(board, _team_colors)))
+	ground.set_shader_parameter(&"noise_map", _noise_texture())
+	ground.set_shader_parameter(&"board_size", size)
+	ground.set_shader_parameter(&"map_pad", float(MAP_PAD))
+	var ground_mesh := PlaneMesh.new()
+	ground_mesh.size = size + Vector2.ONE * 2.0 * GROUND_REACH
+	_add_mesh(ground_mesh, ground, center).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+	_grid = ShaderMaterial.new()
+	_grid.shader = GRID_SHADER
+	_grid.set_shader_parameter(&"board_size", size)
+	# 塗ったマスや印より先に描く（線の上に色が乗る）。
+	_grid.render_priority = -1
+	var grid_mesh := PlaneMesh.new()
+	grid_mesh.size = size + Vector2.ONE * 0.2
+	_add_mesh(grid_mesh, _grid, center + Vector3(0.0, 0.006, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## つなぎ目の無い白黒のノイズ（地面のむらと、地形の境目の揺れに使う）。作るのは 1 回だけ。
+static func _noise_texture() -> ImageTexture:
+	if _noise == null:
+		var noise := FastNoiseLite.new()
+		noise.seed = 7
+		noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		noise.frequency = 0.03
+		noise.fractal_octaves = 3
+		var image := noise.get_seamless_image(256, 256)
+		image.generate_mipmaps()
+		_noise = ImageTexture.create_from_image(image)
+	return _noise
 
 
 func _build_markers() -> void:

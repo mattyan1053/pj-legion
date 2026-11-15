@@ -911,7 +911,8 @@ func _menu_problem() -> String:
 
 
 ## マウスの入口（押す・動かす・離す）で、クリックとドラッグが見分けられること。cell は駒のいないマス。
-## 動かさずに離せばそのマスのクリック（情報が出る）、動かして離せば視点の回転だけ（何も選ばない）。
+## 動かさずに離せばそのマスのクリック（情報が出る）、動かして離せば視点を回す・傾けるだけ（何も選ばない）。
+## 横の動きで向き、縦の動きで見下ろす角度が変わる。
 func _check_drag(cell: Vector2i) -> void:
 	var at: Vector2 = _scene.cell_screen_position(cell)
 	_mouse_button(at, true)
@@ -932,12 +933,26 @@ func _check_drag(cell: Vector2i) -> void:
 	_mouse_motion(at + Vector2(120, 0), false)
 	_mouse_motion(at + Vector2(180, 0), false)
 	_expect(not is_equal_approx(dragged, yaw) and is_equal_approx(_scene.camera_yaw(), dragged), "ボタンを離したあとも、視点が回り続けた")
+	# 縦のドラッグ: 下へ動かすと真上からの見下ろしに近づき、上へ動かすと浅くなる。向きは変わらない。
+	yaw = _scene.camera_yaw()
+	var pitch: float = _scene.camera_pitch()
+	_mouse_button(at, true)
+	_mouse_motion(at + Vector2(0, 40), true, Vector2(0, 40))
+	_expect(_scene.camera_pitch() > pitch and is_equal_approx(_scene.camera_yaw(), yaw), "下へのドラッグで、見下ろす角度が深くならなかった")
+	_mouse_motion(at + Vector2(0, -40), true, Vector2(0, -80))
+	_expect(_scene.camera_pitch() < pitch, "上へのドラッグで、見下ろす角度が浅くならなかった")
+	# 斜めに動かすと、向きと角度が同時に変わる。
+	pitch = _scene.camera_pitch()
+	_mouse_motion(at + Vector2(30, 0), true, Vector2(30, 40))
+	_mouse_button(at + Vector2(30, 0), false)
+	_expect(not is_equal_approx(_scene.camera_yaw(), yaw) and _scene.camera_pitch() > pitch, "斜めのドラッグで、向きと角度が同時に変わらなかった")
+	_expect(_scene.info_title() == "" and _scene.selected_unit() == null, "縦のドラッグが、クリックとして扱われた")
 
 
-func _mouse_motion(at: Vector2, held: bool) -> void:
+func _mouse_motion(at: Vector2, held: bool, relative := Vector2(60, 0)) -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.position = at
-	motion.relative = Vector2(60, 0)
+	motion.relative = relative
 	motion.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
 	_scene._unhandled_input(motion)
 
