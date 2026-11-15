@@ -8,6 +8,7 @@ extends Node
 
 const Queries := preload("res://prototype/battle_queries.gd")
 const TrialSetup := preload("res://prototype/trial_setup.gd")
+const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
@@ -15,6 +16,8 @@ const SCENES := {
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
 	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
 	"start": "対戦の始め（ターン 1、何も選んでいない）",
+	"pitch_low": "ドラッグで見下ろす角度をいちばん浅くした（下限）",
+	"pitch_high": "ドラッグで見下ろす角度をいちばん深くした（上限。ほぼ真上）",
 	"move": "自分の駒を選んで、移動範囲と、駒のそばのメニューが出ている",
 	"cell": "駒のいないマスをクリックして、マスの情報が出ている",
 	"menu_moved": "動いたあとのメニュー（攻撃・待機・移動を取り消す）と、攻撃できる相手",
@@ -68,6 +71,7 @@ func _run() -> void:
 	for name: String in _names:
 		_scene.setup_panel().visible = false
 		_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
+		_scene.set_camera_pitch(OrbitCamera.DEFAULT_PITCH)  # 角度を変える場面のあとも、ほかの場面は始めの角度で撮る
 		_new_battle()
 		var ok: bool = await call("_scene_" + name)
 		if not ok:
@@ -115,6 +119,18 @@ func _scene_menu_note() -> bool:
 
 func _scene_start() -> bool:
 	_show()
+	return true
+
+
+func _scene_pitch_low() -> bool:
+	_show()
+	_scene.set_camera_pitch(OrbitCamera.MIN_PITCH)
+	return true
+
+
+func _scene_pitch_high() -> bool:
+	_show()
+	_scene.set_camera_pitch(OrbitCamera.MAX_PITCH)
 	return true
 
 
