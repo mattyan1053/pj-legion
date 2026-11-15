@@ -18,7 +18,6 @@ const Queries := preload("res://prototype/battle_queries.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
 const StatsText := preload("res://prototype/stats_text.gd")
-const MenuPlacement := preload("res://prototype/menu_placement.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const Settings := preload("res://prototype/settings.gd")
 const AppContext := preload("res://prototype/app_context.gd")
@@ -27,6 +26,7 @@ const LogPanel := preload("res://prototype/log_panel.gd")
 const BattleUiState := preload("res://prototype/battle_ui_state.gd")
 const BattleTexts := preload("res://prototype/battle_texts.gd")
 const BattlePlayback := preload("res://prototype/battle_playback.gd")
+const PanelLayout := preload("res://prototype/panel_layout.gd")
 const BattleEffects := preload("res://prototype/battle_effects.gd")
 const StageLook := preload("res://prototype/stage_look.gd")
 
@@ -51,11 +51,6 @@ const COLOR_INSPECTED := Color(0.85, 0.95, 1.0, 0.95)
 ## ログの行を選んだときに示す、出来事のあったマスと、関わった駒のいまのマス。
 const COLOR_LOG_PLACE := Color(1.0, 0.82, 0.25, 0.75)
 const COLOR_LOG_UNIT := Color(0.95, 0.97, 1.0, 0.7)
-## 空と、遠くの霞の色。
-const COLOR_HAZE := Color("b4cbdc")
-## 霞が始まる距離と、すっかり霞む距離（カメラから）。いちばん引いて盤の端から端を見ても、盤の中はほとんど霞まない。
-const FOG_BEGIN := 64.0
-const FOG_END := 108.0
 
 ## 駒のそばのメニューの項目の名前（battle_texts.gd）。
 const MENU_ATTACK := BattleTexts.MENU_ATTACK
@@ -64,12 +59,6 @@ const MENU_SKILL := BattleTexts.MENU_SKILL
 const MENU_WAIT := BattleTexts.MENU_WAIT
 const MENU_UNDO := BattleTexts.MENU_UNDO
 const MENU_BACK := BattleTexts.MENU_BACK
-## メニューが隠したくないものの重み（menu_placement.gd）。攻撃・回復・スキルの相手、ほかの駒、届くマス、情報の枠。
-const MENU_WEIGHT_TARGET := 12.0
-const MENU_WEIGHT_UNIT := 4.0
-const MENU_WEIGHT_MOVE := 1.0
-const MENU_WEIGHT_CRUISE := 0.4
-const MENU_WEIGHT_PANEL := 6.0
 
 ## 対象を選んでいる途中か（battle_ui_state.gd）。
 const Mode := BattleUiState.Mode
@@ -138,18 +127,10 @@ var _barrel_targets: Array[Vector2i] = []
 var _barricade_targets: Array[Vector2i] = []
 var _heal_targets: Array[Unit] = []
 var _skill_cells: Array[Vector2i] = []
-var _menu_placement := MenuPlacement.new()
-## 戦闘予測のパネルの置き場所（対象のマスのそば）。
-var _forecast_placement := MenuPlacement.new()
-var _forecast_cell := NO_CELL
-var _forecast_camera := Transform3D()
-var _forecast_dirty := true
-var _forecast_avoid: Array[Vector2i] = []
+## 駒のそばのメニューと、戦闘予測のパネルの置き場所（panel_layout.gd）。
+var _layout: PanelLayout
 ## 検査で、マウスを乗せたことにしているマス（hover）。NO_CELL ならマウスの位置。
 var _hover_forced := NO_CELL
-## メニューを置いたときのカメラ（動いたら置き直す）。
-var _menu_camera := Transform3D()
-var _menu_dirty := true
 ## 対戦を始めたことがあるか（起動した直後の設定画面だけ偽。偽の間は、設定画面を閉じて戻る先が無い）。
 var _battle_started := false
 ## カメラが追いかけた駒の番号 -> 回数。検査用。
@@ -164,7 +145,7 @@ var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる�
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき（既定の設定で始める）
-	_build_environment()
+	StageLook.build_environment(self)
 	_rig = OrbitCamera.new()
 	add_child(_rig)
 	_effects = BattleEffects.new()
@@ -185,6 +166,7 @@ func _ready() -> void:
 	_playback.cpu_side = func() -> Unit.Side: return match_choice.cpu_side()
 	_playback.play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_playback.frame_passed = frame_passed
+	_layout = PanelLayout.new(_rig, _hud, _views, COLOR_MOVE, COLOR_CRUISE)
 	_hud.menu_pressed.connect(_on_menu_pressed)
 	_hud.menu_hovered.connect(_on_menu_hovered)
 	_hud.ult_pressed.connect(press_ult)
@@ -248,8 +230,8 @@ func _process(delta: float) -> void:
 	if battle.board.in_bounds(_hover_cell):
 		focus_cells.append(_hover_cell)
 	_board_view.update_occlusion(_rig.camera, _rig.global_position, focus_cells, delta)
-	_place_menu()
-	_place_forecast()
+	_layout.place_menu(selected_unit(), _painted)
+	_layout.place_forecast(battle, selected_unit())
 	frame_passed.emit()
 
 
@@ -366,7 +348,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	add_child(_board_view)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, stage)
 	_playback.set_board_view(_board_view)
-	apply_stage_look(self, _board_view.look)
+	StageLook.apply(self, _board_view.look)
 	for unit in battle.units:
 		_add_view(unit)
 
@@ -863,7 +845,7 @@ func menu_ids() -> Array[StringName]:
 
 
 func menu_rect() -> Rect2:
-	_place_menu()
+	_layout.place_menu(selected_unit(), _painted)
 	return _hud.menu_rect()
 
 
@@ -961,7 +943,7 @@ func press_end_turn() -> void:
 
 func _select(unit_id: int) -> void:
 	if _ui.select(unit_id):
-		_menu_placement.reset()
+		_layout.reset_menu()
 		if unit_id != 0:
 			context.play_sound(&"ui_confirm")  # 駒を選んだ（決める音）
 	_refresh()
@@ -1164,7 +1146,7 @@ func _refresh() -> void:
 		BattleTexts.menu_items(battle, unit, _ui.mode, _can_attack(), not _heal_targets.is_empty(), not _skill_cells.is_empty())
 		if not cpu_turn and evolving == null else []
 	)
-	_menu_dirty = true
+	_layout.mark_menu_dirty()
 	_hud.set_ult_button(
 		BattleTexts.ult_button_text(battle, _ult_side(), _ui.confirming_ult), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult
 	)
@@ -1194,54 +1176,6 @@ func _viewer_side() -> Unit.Side:
 ## 選んでいる駒が、いまの位置から攻撃できるもの（相手・樽・盾）があるか。
 func _can_attack() -> bool:
 	return not (_targets.is_empty() and _barrel_targets.is_empty() and _barricade_targets.is_empty())
-
-
-## メニューを、選んでいる駒のそばに置く。駒の位置を画面に投影し、攻撃の相手・届くマス・ほかの駒・情報の枠を
-## 隠さない側を選ぶ（menu_placement.gd）。カメラが動いたら置き直すので、回しても動かしても付いてくる。
-func _place_menu() -> void:
-	var size := _hud.menu_size()
-	var unit := selected_unit()
-	if size == Vector2.ZERO or unit == null or not _views.has(unit.id):
-		return
-	var camera: Camera3D = _rig.camera
-	if not _menu_dirty and camera.global_transform.is_equal_approx(_menu_camera):
-		return
-	_menu_dirty = false
-	_menu_camera = camera.global_transform
-	var view := _view(unit.id)
-	var anchor := _screen_rect(view.position, 0.45, view.height())
-	var obstacles: Array = []
-	for cell: Vector2i in _painted:
-		var color: Color = _painted[cell]
-		var weight := MENU_WEIGHT_TARGET
-		if color == COLOR_MOVE:
-			weight = MENU_WEIGHT_MOVE
-		elif color == COLOR_CRUISE:
-			weight = MENU_WEIGHT_CRUISE
-		if cell != unit.cell:
-			obstacles.append([_screen_rect(BoardView.cell_center(cell), 0.4, 0.0), weight])
-	for other_id: int in _views:
-		if other_id != unit.id:
-			var other := _view(other_id)
-			obstacles.append([_screen_rect(other.position, 0.35, other.height()), MENU_WEIGHT_UNIT])
-	if _hud.info_rect().has_area():
-		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
-	_hud.place_menu(_menu_placement.place(anchor, size, _hud.menu_area(), obstacles), anchor.get_center())
-
-
-## 盤面の上の、at を中心に半径 radius・高さ height の柱が、画面に占める四角。カメラの後ろなら、画面の外の四角。
-func _screen_rect(at: Vector3, radius: float, height: float) -> Rect2:
-	var camera: Camera3D = _rig.camera
-	if camera.is_position_behind(at):
-		return Rect2(-10000.0, -10000.0, 1.0, 1.0)
-	var rect := Rect2(camera.unproject_position(at), Vector2.ZERO)
-	var right := camera.global_transform.basis.x
-	var forward := right.cross(Vector3.UP)
-	for corner: Vector3 in [right, -right, forward, -forward]:
-		rect = rect.expand(camera.unproject_position(at + corner * radius))
-		if height > 0.0:
-			rect = rect.expand(camera.unproject_position(at + corner * radius + Vector3.UP * height))
-	return rect
 
 
 ## 必殺技のボタンが、どのプレイヤーのものか（_viewer_side）。
@@ -1398,60 +1332,23 @@ func _update_forecast() -> void:
 	var found := _hovered_action()
 	if found.is_empty():
 		_hud.hide_forecast()
-		_forecast_cell = NO_CELL
+		_layout.clear_forecast()
 		return
 	var action: BattleAction = found[0]
 	var actor := selected_unit()
 	var summary := ForecastText.summarize(battle, Forecast.of(battle, action), actor)
 	_hud.show_forecast(found[1], summary)
 	# パネルで隠したくないマス: 何かが起きる駒と、効果の及ぶマス（スキルの範囲、樽の爆発）。
-	_forecast_avoid.clear()
+	var avoid: Array[Vector2i] = []
 	for row in summary.rows:
 		var unit := battle.unit_by_id(row.unit_id)
 		if unit != null:
-			_forecast_avoid.append(unit.cell)
+			avoid.append(unit.cell)
 	if action is UseSkillAction:
-		_forecast_avoid.append_array(Skills.of(actor).affected_cells(battle, actor, found[2]))
+		avoid.append_array(Skills.of(actor).affected_cells(battle, actor, found[2]))
 	elif action is AttackBarrelAction:
-		_forecast_avoid.append_array(MapObject.blast_cells(battle.board, found[2]))
-	if found[2] != _forecast_cell:
-		_forecast_placement.reset()
-	_forecast_cell = found[2]
-	_forecast_dirty = true
-	_place_forecast()
-
-
-## 予測のパネルを、対象のマスのそばに置く。駒のそばのメニュー、行動する駒、効果の及ぶ駒、情報の枠を隠さない側を選ぶ
-## （menu_placement.gd）。カメラが動いたら置き直す。
-func _place_forecast() -> void:
-	var size := _hud.forecast_size()
-	if size == Vector2.ZERO or _forecast_cell == NO_CELL:
-		return
-	var camera: Camera3D = _rig.camera
-	if not _forecast_dirty and camera.global_transform.is_equal_approx(_forecast_camera):
-		return
-	_forecast_dirty = false
-	_forecast_camera = camera.global_transform
-	var on := battle.unit_at(_forecast_cell)
-	var height: float = _view(on.id).height() if on != null and _views.has(on.id) else 0.3
-	var anchor := _screen_rect(BoardView.cell_center(_forecast_cell), 0.45, height)
-	var obstacles: Array = []
-	if _hud.menu_rect().has_area():
-		obstacles.append([_hud.menu_rect(), MENU_WEIGHT_TARGET])
-	if _hud.info_rect().has_area():
-		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
-	var actor := selected_unit()
-	if actor != null and _views.has(actor.id):
-		var view := _view(actor.id)
-		obstacles.append([_screen_rect(view.position, 0.4, view.height()), MENU_WEIGHT_TARGET])
-	for unit_id: int in _views:
-		if actor == null or unit_id != actor.id:
-			var other := _view(unit_id)
-			obstacles.append([_screen_rect(other.position, 0.35, other.height()), MENU_WEIGHT_UNIT])
-	for cell in _forecast_avoid:
-		if cell != _forecast_cell:
-			obstacles.append([_screen_rect(BoardView.cell_center(cell), 0.45, 0.8), MENU_WEIGHT_TARGET])
-	_hud.place_forecast(_forecast_placement.place(anchor, size, _hud.menu_area(), obstacles))
+		avoid.append_array(MapObject.blast_cells(battle.board, found[2]))
+	_layout.set_forecast(battle, actor, found[2], avoid)
 
 
 ## 戦闘予測のパネルに出している中身（出していなければ空）と、画面に占める四角。検査用。
@@ -1460,7 +1357,7 @@ func forecast_text() -> String:
 
 
 func forecast_rect() -> Rect2:
-	_place_forecast()
+	_layout.place_forecast(battle, selected_unit())
 	return _hud.forecast_rect()
 
 
@@ -1479,55 +1376,6 @@ func _cell_at(at: Vector2) -> Vector2i:
 
 
 # ---- 光・目印 ----
-
-
-func _build_environment() -> void:
-	build_environment(self)
-
-
-## 空・霞・光を parent に足す（タイトルと対戦の設定の場面の背景も、同じ景色にする。backdrop.gd）。
-static func build_environment(parent: Node) -> void:
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = COLOR_HAZE
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("b8c4d6")
-	environment.ambient_light_energy = 0.45
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.ssao_enabled = true
-	# 遠くの地面と景色は、空の色の霞に溶かす（盤の外の端が、ぷつりと切れて見えないように）。
-	# 盤の中は、いちばん引いても霞まない距離から始める。
-	environment.fog_enabled = true
-	environment.fog_mode = Environment.FOG_MODE_DEPTH
-	environment.fog_light_color = COLOR_HAZE
-	environment.fog_sun_scatter = 0.0
-	environment.fog_depth_begin = FOG_BEGIN
-	environment.fog_depth_end = FOG_END
-	environment.fog_depth_curve = 1.6
-
-	var world := WorldEnvironment.new()
-	world.environment = environment
-	parent.add_child(world)
-
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-52.0, -35.0, 0.0)
-	sun.light_energy = 1.2
-	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 80.0
-	parent.add_child(sun)
-
-
-## ステージの色合い（stage_look.gd）の霞・空・光を、build_environment で足したものに当てる。
-static func apply_stage_look(parent: Node, look: Dictionary) -> void:
-	for node in parent.get_children():
-		var world := node as WorldEnvironment
-		if world != null:
-			world.environment.background_color = look[StageLook.HAZE]
-			world.environment.fog_light_color = look[StageLook.HAZE]
-			world.environment.ambient_light_color = look[StageLook.AMBIENT]
-		var sun := node as DirectionalLight3D
-		if sun != null:
-			sun.light_color = look[StageLook.SUN]
 
 
 ## 駒の足元の輪（選んでいる駒、見ている駒の印）。
