@@ -3,7 +3,8 @@ extends Node
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
 ## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル（行動を終えないもの、行動済みの駒を戻すものも）、必殺技、中立の駒、レベルアップ、進化、
-## 回復役の回復、CPU の番の場面を通し、盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
+## 回復役の回復、CPU の番の場面を通す。
+## 長い検査（`-- --autoplay --full`）では、そのあと盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ## 途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
@@ -20,6 +21,8 @@ const STAGES: Array[BoardGenerator.Stage] = [
 ]
 
 var _scene: Node
+## 長い検査（`--full`）のときだけ、ほかのステージも動かす。
+var _full := OS.get_cmdline_user_args().has("--full")
 var _game := 0
 var _undone := {}  # 移動の取り消しを試した駒の番号
 var _confirm_tested := false
@@ -80,7 +83,7 @@ func _process(_delta: float) -> void:
 			_finish("autoplay: CPU の番を、CPU が進めなかった", 1)
 			return
 		_game += 1
-		if _game >= STAGES.size():
+		if _game >= STAGES.size() or not _full:
 			_finish_if_all_played()
 			return
 		_undone.clear()

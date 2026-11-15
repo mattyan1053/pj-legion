@@ -57,5 +57,6 @@ tools/check.sh /path/to/godot
 
 画面なしでプロジェクトを取り込み、テスト（`tests/`）を実行し、メインシーンで自動の対戦を最後まで進めて、スクリプトのエラーが無いことを確かめる。
 CI（`.github/workflows/ci.yml`）も同じスクリプトを回す。
+`tools/check.sh --full /path/to/godot` は時間の掛かるものも含めた長い検査で、CI では main に入ったあとに回す（`docs/README.md` の「検査の分け方」）。
 
 作業の決まりごとは [`CLAUDE.md`](./CLAUDE.md)、文書の置き方は [`docs/README.md`](./docs/README.md)。

@@ -2,11 +2,15 @@ extends SceneTree
 ## tests/ の下の test_*.gd をすべて実行する。1 つでも失敗したら終了コード 1。
 ##
 ##   godot --headless --path . -s res://tools/run_tests.gd
+##   godot --headless --path . -s res://tools/run_tests.gd -- --full
+##
+## `test_long_` で始まるメソッドは時間の掛かるもので、長い検査（`-- --full`）のときだけ実行する。
 ##
 ## テストの途中でスクリプトのエラー（null の参照など）が起きた場合も失敗にする。
 ## その場合 GDScript はメソッドを途中で抜けるだけなので、ログを横取りして数える。
 
 const TEST_ROOT := "res://tests"
+const LONG_PREFIX := "test_long_"
 
 
 class ErrorCounter:
@@ -29,7 +33,9 @@ func _initialize() -> void:
 	var errors := ErrorCounter.new()
 	OS.add_logger(errors)
 
+	var full := OS.get_cmdline_user_args().has("--full")
 	var passed := 0
+	var skipped := 0
 	var failed: Array[String] = []
 	for path in _find_tests(TEST_ROOT):
 		var script: GDScript = load(path)
@@ -39,6 +45,9 @@ func _initialize() -> void:
 		for method in script.get_script_method_list():
 			var name: String = method["name"]
 			if not name.begins_with("test_"):
+				continue
+			if name.begins_with(LONG_PREFIX) and not full:
+				skipped += 1
 				continue
 			var errors_before := errors.count
 			var test: Object = script.new()
@@ -54,7 +63,7 @@ func _initialize() -> void:
 	OS.remove_logger(errors)
 	for line in failed:
 		printerr("FAIL ", line)
-	print("tests: %d passed, %d failed" % [passed, failed.size()])
+	print("tests: %d passed, %d failed, %d long ones skipped (run with -- --full)" % [passed, failed.size(), skipped])
 	quit(1 if failed.size() > 0 or passed == 0 else 0)
 
 

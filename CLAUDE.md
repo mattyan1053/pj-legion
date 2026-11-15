@@ -46,6 +46,7 @@
 ## 検査
 
 - `tools/check.sh <godot>` が通ること。CI の `check` が同じものを回す。
+- 時間の掛かる検査は `tools/check.sh --full <godot>`（長い検査）に分けてある。CI の `full-check` が main に入ったあとに回す。
 - ルールは `rules/`、テストは `tests/` に置く（書き方は `docs/README.md`）。
 - CI の `windows` が Windows 用の exe を書き出し、成果物（`pj-legion-windows`）として置く。
   人間は clone せず、これをダウンロードして見る。

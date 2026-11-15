@@ -18,6 +18,19 @@
 
     godot --headless --path . -s res://tools/run_tests.gd
 
+## 検査の分け方
+
+PR と push で回す検査は 1 分以内に収める（`CLAUDE.md`）。時間の掛かるものは「長い検査」に分ける。
+
+- `tools/check.sh <godot>`: PR ごとの検査（CI の `check`）。取り込みのあと、テストと自動の対戦を並べて回す。
+- `tools/check.sh --full <godot>`: 長い検査。上に加えて、次も回す。CI の `full-check` が main に入ったあとに回す（手でも起動できる）。
+  - 名前が `test_long_` で始まるテスト（同じ CPU どうしの対戦を何度も回して比べる、など）。
+    テストだけなら `run_tests.gd -- --full`。
+  - 自動の対戦のほかのステージ（`-- --autoplay --full`）。
+
+長い検査へ回すのは「壊れても次の PR まで気付かなくてよい」もの。ルールのテストと、全種類のイベントを 1 回は再生する通しは PR ごとの検査に残す。
+目安は、PR ごとの検査が手元で 35 秒以下。超えてきたら、遅いものを測って速くするか、長い検査へ回す。
+
 ## 参照元
 
 仕様の出どころは `mattyan1053/pj-region` の `openspec/specs/`（非公開）。

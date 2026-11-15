@@ -35,6 +35,7 @@ description: 作業のセッションとして動く。メインのセッショ�
 ## 終わりの条件
 
 - `tools/check.sh godot` が通る。PR と push で回る CI は 1 分以内に収める。
+- 見た目やルールを大きく変えたときは、長い検査 `tools/check.sh --full godot` も手元で通す。
 - ブランチを切って PR を開く。タイトルと本文は日本語、コミットは gitmoji + 英語の命令形。
 - CI（`check` と `windows`）が緑で、PR を開いたときに付く Codex のレビューの指摘に対応し終えたら、merge commit で自分でマージする。
   **再レビューは頼まない。**
