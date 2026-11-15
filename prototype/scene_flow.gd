@@ -18,7 +18,7 @@ extends RefCounted
 const SCENES := {
 	&"title": {
 		"script": "res://prototype/title_screen.gd",
-		"next": {&"start": &"setup", &"decks": &"decks"},
+		"next": {&"start": &"stage", &"decks": &"decks"},
 		"music": &"menu",
 	},
 	&"decks": {
@@ -26,9 +26,14 @@ const SCENES := {
 		"next": {&"back": &"title"},
 		"music": &"menu",
 	},
+	&"stage": {
+		"script": "res://prototype/stage_select_screen.gd",
+		"next": {&"pick": &"setup", &"back": &"title"},
+		"music": &"menu",
+	},
 	&"setup": {
 		"script": "res://prototype/setup_screen.gd",
-		"next": {&"start": &"battle", &"back": &"title"},
+		"next": {&"start": &"battle", &"back": &"stage"},
 		"music": &"menu",
 	},
 	&"battle": {
