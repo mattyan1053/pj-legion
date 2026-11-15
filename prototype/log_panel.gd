@@ -51,8 +51,13 @@ var _chosen: Control
 var _char_widths := {}
 
 
-func setup(team_colors: Array[Color]) -> void:
+## 開いている重なる画面の積み上げ（overlay_stack.gd。AppContext.overlays）。
+var _overlays: RefCounted
+
+
+func setup(team_colors: Array[Color], overlays: RefCounted) -> void:
 	_team_colors = team_colors
+	_overlays = overlays
 	layer = LAYER
 	_overlay = Control.new()
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -118,6 +123,7 @@ func open(battle_log: BattleLog) -> void:
 	else:
 		_build_from(maxi(from, _first))
 	_overlay.visible = true
+	_overlays.open(self, true)
 	opened.emit()
 	await get_tree().process_frame  # 並べ直した大きさが決まってから、いちばん下へ
 	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
@@ -127,6 +133,7 @@ func close() -> void:
 	if not is_open():
 		return
 	_overlay.visible = false
+	_overlays.close(self)
 	closed.emit()
 
 
@@ -305,7 +312,7 @@ func _on_overlay_input(event: InputEvent) -> void:
 
 ## 開いている間の右クリックと Esc は閉じる。キーは後ろ（盤面の操作）へ通さない。
 func _input(event: InputEvent) -> void:
-	if not is_open():
+	if not is_open() or not _overlays.is_top(self):
 		return
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
@@ -314,6 +321,12 @@ func _input(event: InputEvent) -> void:
 		close()
 	elif event is InputEventKey:
 		get_viewport().set_input_as_handled()
+
+
+## 場面を抜けるなどで木から抜けたら、積み上げから降ろす（開いたまま消えても、後ろの場面を止めたままにしない）。
+func _exit_tree() -> void:
+	if _overlays != null:
+		_overlays.close(self)
 
 
 func _side_color(side: int) -> Color:

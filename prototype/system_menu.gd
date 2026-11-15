@@ -48,9 +48,12 @@ var _items: Array = []
 var _confirming := &""
 ## 設定の画面だけを開いたか（タイトルの「設定」）。そのときは、設定の画面を閉じるとメニューごと閉じる。
 var _settings_only := false
+## 開いている重なる画面の積み上げ（overlay_stack.gd。AppContext.overlays）。
+var _overlays: RefCounted
 
 
-func setup(settings: Settings) -> void:
+func setup(settings: Settings, overlays: RefCounted) -> void:
+	_overlays = overlays
 	layer = LAYER
 	_corner = Button.new()
 	_corner.text = "メニュー"
@@ -139,6 +142,7 @@ func open(items: Array, settings_only := false) -> void:
 	_confirming = &""
 	_show(_menu)
 	_overlay.visible = true
+	_overlays.open(self, true)
 	if settings_only:
 		open_settings()
 	opened.emit()
@@ -233,6 +237,7 @@ func close() -> void:
 	_overlay.visible = false
 	_settings_panel.visible = false
 	_confirming = &""
+	_overlays.close(self)
 	closed.emit()
 
 
@@ -270,9 +275,9 @@ func _show(panel: Control) -> void:
 		each.visible = each == panel
 
 
-## 開いている間の右クリックと Esc は「戻す」。後ろ（盤面）へは通さない。
+## 開いている間の右クリックと Esc は「戻す」。後ろ（盤面）へは通さない。ほかの重なる画面が上にあれば、そちらが受ける。
 func _input(event: InputEvent) -> void:
-	if not is_open():
+	if not is_open() or not _overlays.is_top(self):
 		return
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
@@ -282,6 +287,12 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventKey:
 		# キーは盤面の操作（待機、視点、ターン終了…）に使われているので、開いている間は後ろへ通さない。
 		get_viewport().set_input_as_handled()
+
+
+## 場面を抜けるなどで木から抜けたら、積み上げから降ろす（開いたまま消えても、後ろの場面を止めたままにしない）。
+func _exit_tree() -> void:
+	if _overlays != null:
+		_overlays.close(self)
 
 
 func _panel() -> PanelContainer:
