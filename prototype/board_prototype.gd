@@ -19,7 +19,6 @@ const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
 const StatsText := preload("res://prototype/stats_text.gd")
 const MenuPlacement := preload("res://prototype/menu_placement.gd")
-const NeutralPlayback := preload("res://prototype/neutral_playback.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const Settings := preload("res://prototype/settings.gd")
 const AppContext := preload("res://prototype/app_context.gd")
@@ -27,6 +26,7 @@ const BattleLog := preload("res://prototype/battle_log.gd")
 const LogPanel := preload("res://prototype/log_panel.gd")
 const BattleUiState := preload("res://prototype/battle_ui_state.gd")
 const BattleTexts := preload("res://prototype/battle_texts.gd")
+const BattlePlayback := preload("res://prototype/battle_playback.gd")
 const BattleEffects := preload("res://prototype/battle_effects.gd")
 const StageLook := preload("res://prototype/stage_look.gd")
 
@@ -36,23 +36,13 @@ signal finished(outcome: StringName)
 const NO_CELL := Vector2i(-1, -1)
 const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("e0b83a")]
 
-## 1 マス歩くのにかける秒数（巡航は速く走る）。中立の駒は、目で追えるよう、ゆっくり歩かせる。
-const STEP_TIME := 0.16
-const CRUISE_STEP_TIME := 0.1
-const NEUTRAL_STEP_TIME := 0.26
-
 const COLOR_MOVE := Color(0.35, 0.65, 1.0, 0.5)
 const COLOR_CRUISE := Color(1.0, 0.82, 0.3, 0.4)
 const COLOR_PATH := Color(1.0, 1.0, 1.0, 0.75)
 const COLOR_TARGET := Color(1.0, 0.2, 0.15, 0.7)
 const COLOR_HEAL := Color(0.3, 0.95, 0.45, 0.7)
-const COLOR_BLAST := Color(1.0, 0.55, 0.1, 0.6)
 const COLOR_SKILL := Color(0.55, 0.25, 0.95, 0.7)
 const COLOR_SKILL_AREA := Color(1.0, 0.55, 0.9, 0.85)
-const COLOR_EXPERIENCE := Color("9fd8ff")
-const COLOR_LEVEL_UP := Color("ffd34a")
-const COLOR_EVOLUTION := Color("d9a6ff")
-const COLOR_RELIC := Color("ffe08a")
 const COLOR_INSPECT := Color(0.8, 0.93, 1.0, 0.5)
 const COLOR_THREAT := Color(0.95, 0.05, 0.2, 0.62)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
@@ -87,26 +77,21 @@ const Mode := BattleUiState.Mode
 ## CPU の駒が動き出す前に、カメラを寄せて見せる秒数と、1 体の行動が終わってから次の駒までの間。
 const CPU_FOCUS_TIME := 0.35
 const CPU_PAUSE := 0.45
-## 中立のフェーズで、攻撃する駒へカメラを寄せてから動き出すまでの秒数と、その駒の場面が終わってから次までの間。
-const NEUTRAL_FOCUS_TIME := 0.5
-const NEUTRAL_PAUSE := 0.5
-## 必殺技の効果を、全員にまとめて見せる時間（駒の数に依らない）。
-const ULT_EFFECTS_TIME := 0.45
 
-const WIN_REASONS := {
-	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
-	GameWonEvent.Reason.HQ_CAPTURED: "敵の本陣を占拠し続けた",
-}
-
-const DRAW_REASONS := {
-	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "両方の将が同時に倒れた",
-}
-
-var battle: Battle
+## いまの対戦。再生（battle_playback.gd）にも渡す。
+var battle: Battle:
+	set(value):
+		battle = value
+		if _playback != null:
+			_playback.battle = value
 ## いまの対戦の戦績。行動のたびに、起きたことを食わせる（決着の画面に要点を出す）。
 var stats: BattleStats
-## 対戦のログ（battle_log.gd）。再生したイベントを、再生した順に食わせる。
-var battle_log: BattleLog
+## 対戦のログ（battle_log.gd）。再生（battle_playback.gd）が、再生したイベントを、再生した順に食わせる。
+var battle_log: BattleLog:
+	set(value):
+		battle_log = value
+		if _playback != null:
+			_playback.battle_log = value
 var stage := BoardGenerator.Stage.PLAIN
 var map_seed := 0
 
@@ -167,22 +152,12 @@ var _menu_camera := Transform3D()
 var _menu_dirty := true
 ## 対戦を始めたことがあるか（起動した直後の設定画面だけ偽。偽の間は、設定画面を閉じて戻る先が無い）。
 var _battle_started := false
-## 中立のフェーズの静かな場面（動いただけ、湧いただけ）をまとめて流している途中か。この間は、カメラを動かさない。
-var _quiet_playback := false
-## まとめて流している場面のうち、まだ終わっていないものの数。
-var _beats_running := 0
 ## カメラが追いかけた駒の番号 -> 回数。検査用。
 var camera_follows := {}
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
 var played := {}
-var _players := event_players()
-## 最後の行動の終わり（UnitActedEvent）から、攻撃・回復・スキルを見せたか。見せていなければ、次の行動の終わりは待機のサインを出す。
-var _acted_with_effect := false
-## 必殺技の効果をまとめて見せている途中か。
-var _in_ult_effects := false
-## いま再生している行動で、スキルを使ったか（使ったなら、続く効果の名前（「盾」「バリア」など）は出さない。
-## スキルの名前と、スキルごとの形が見せているので、文字を重ねない）。
-var _after_skill := false
+## イベントの再生（battle_playback.gd）。
+var _playback: BattlePlayback
 var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる前のもの）
 
 
@@ -193,13 +168,23 @@ func _ready() -> void:
 	_rig = OrbitCamera.new()
 	add_child(_rig)
 	_effects = BattleEffects.new()
-	_effects.play_sound = _sound
+	_effects.play_sound = func(name: StringName) -> void: context.play_sound(name)
 	add_child(_effects)
 	_selection_ring = _build_ring(COLOR_SELECTED, 0.38, 0.47)
 	_inspect_ring = _build_ring(COLOR_INSPECTED, 0.40, 0.50)
 	_hud = BattleHud.new()
 	add_child(_hud)
 	_hud.setup(TEAM_COLORS)
+	_playback = BattlePlayback.new()
+	add_child(_playback)
+	_playback.setup(self, _views, _rig, _hud, _effects, _ui, TEAM_COLORS, played, camera_follows)
+	_playback.refresh_status = _refresh_status
+	_playback.side_name = _side_name
+	_playback.stats_text = _stats_text
+	_playback.camera_point = _camera_point
+	_playback.cpu_side = func() -> Unit.Side: return match_choice.cpu_side()
+	_playback.play_sound = func(name: StringName) -> void: context.play_sound(name)
+	_playback.frame_passed = frame_passed
 	_hud.menu_pressed.connect(_on_menu_pressed)
 	_hud.menu_hovered.connect(_on_menu_hovered)
 	_hud.ult_pressed.connect(press_ult)
@@ -266,19 +251,6 @@ func _process(delta: float) -> void:
 	_place_menu()
 	_place_forecast()
 	frame_passed.emit()
-
-
-## seconds 秒（Engine.time_scale に従う）たったら出る signal。再生の間を置くのに使う。
-## 木の時計（SceneTree.create_timer）ではなく、この場面の子の Timer で測るので、場面を抜けて（タイトルへ戻る）このノードが消えると、
-## 待っている再生や CPU の番は続きを走らない（消えた場面に触れない）。
-func _after(seconds: float) -> Signal:
-	var timer := Timer.new()
-	timer.one_shot = true
-	timer.wait_time = maxf(seconds, 0.001)
-	timer.timeout.connect(timer.queue_free)
-	add_child(timer)
-	timer.start()
-	return timer.timeout
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -393,6 +365,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_board_view = BoardView.new()
 	add_child(_board_view)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, stage)
+	_playback.set_board_view(_board_view)
 	apply_stage_look(self, _board_view.look)
 	for unit in battle.units:
 		_add_view(unit)
@@ -998,7 +971,7 @@ func _select(unit_id: int) -> void:
 ## スキルのまだ無い盤の上の効果（煙幕）も通すため、検査はルールの FieldEffects.place_* で置いて、その結果をここで再生する。
 func play_events(events: Array[BattleEvent]) -> void:
 	_ui.busy = true
-	await _play_all(events)
+	await _playback.play_all(events)
 	_ui.busy = false
 	_refresh()
 
@@ -1031,7 +1004,7 @@ func _do(action: BattleAction) -> bool:
 	_hud.set_ult_button(_hud.ult_button_text(), false, _ult_summary())
 	_hud.set_end_turn(false, _hud.end_turn_text())
 	_hud.hide_evolution()
-	await _play_all(result.events)
+	await _playback.play_all(result.events)
 	_ui.busy = false
 
 	var evolving := battle.evolving_unit()
@@ -1068,12 +1041,12 @@ func _run_cpu() -> void:
 		_set_cpu_fast(not action is EndPhaseAction)
 		if unit != null and not unit.has_moved and not idle and not action is EvolveAction:
 			_rig.focus_on(_view(unit.id).position)
-			await _after(CPU_FOCUS_TIME)
+			await _playback.after(CPU_FOCUS_TIME)
 		if not await _do(action):
 			break  # CPU の行動は必ず受け付けられるはず。そうでなければ、同じ行動を繰り返さずに手を止める。
 		cpu_actions += 1
 		if not (action is MoveAction or action is EndPhaseAction or idle or battle.is_over()):
-			await _after(CPU_PAUSE)
+			await _playback.after(CPU_PAUSE)
 	_set_cpu_fast(false)
 	_ui.cpu_running = false
 	# 番の途中で相手を人に切り替えたら、動いたあとの駒を選んだ状態で引き渡す。
@@ -1081,474 +1054,7 @@ func _run_cpu() -> void:
 	_refresh()
 
 
-# ---- イベントの再生 ----
-
-
-## イベントの種類（スクリプト）-> 再生するメソッドの名前。
-## rules/events/ のイベントは、すべてここに載せる（載っていない種類があると、テストが落ちる）。
-static func event_players() -> Dictionary:
-	return {
-		UnitMovedEvent: &"_play_moved",
-		UnitWarpedEvent: &"_play_warped",
-		UnitTeleportedEvent: &"_play_teleported",
-		UnitsSwappedEvent: &"_play_swapped",
-		UnitReactivatedEvent: &"_play_reactivated",
-		MoveUndoneEvent: &"_play_undone",
-		AttackDamagedEvent: &"_play_attack_damaged",
-		ExplosionDamagedEvent: &"_play_explosion_damaged",
-		SkillDamagedEvent: &"_play_skill_damaged",
-		HealerHealedEvent: &"_play_healer_healed",
-		SpringHealedEvent: &"_play_spring_healed",
-		RegenerationHealedEvent: &"_play_regeneration_healed",
-		ExperienceGainedEvent: &"_play_experience_gained",
-		LevelUpEvent: &"_play_level_up",
-		EvolutionOfferedEvent: &"_play_evolution_offered",
-		UnitEvolvedEvent: &"_play_evolved",
-		UnitDefeatedEvent: &"_play_defeated",
-		MidBossDefeatedEvent: &"_play_mid_boss_defeated",
-		RelicGainedEvent: &"_play_relic_gained",
-		UnitSpawnedEvent: &"_play_spawned",
-		BarrelExplodedEvent: &"_play_barrel_exploded",
-		BarricadePlacedEvent: &"_play_field_effect_placed",
-		AreaEffectPlacedEvent: &"_play_field_effect_placed",
-		FieldEffectTickedEvent: &"_play_field_effect_ticked",
-		FieldEffectRemovedEvent: &"_play_field_effect_removed",
-		BarricadeDamagedEvent: &"_play_barricade_damaged",
-		SmokeBlockedEvent: &"_play_smoke_blocked",
-		SanctuaryHealedEvent: &"_play_sanctuary_healed",
-		SkillUsedEvent: &"_play_skill_used",
-		SkillReadyEvent: &"_play_skill_ready",
-		UltUsedEvent: &"_play_ult_used",
-		UltReadyEvent: &"_play_ult_ready",
-		StatusAppliedEvent: &"_play_status_applied",
-		StatusRemovedEvent: &"_play_status_removed",
-		UnitActedEvent: &"_play_acted",
-		PhaseStartedEvent: &"_play_phase_started",
-		CaptureProgressEvent: &"_play_capture",
-		GameWonEvent: &"_play_won",
-		GameDrawnEvent: &"_play_drawn",
-	}
-
-
-## 起きたことを、起きた順に再生する。中立のフェーズの中身だけは、見せ方の単位（場面）に分けて再生する。
-func _play_all(events: Array[BattleEvent]) -> void:
-	_after_skill = false
-	var i := 0
-	while i < events.size():
-		var event := events[i]
-		await _play(event)
-		i += 1
-		var ult := event as UltUsedEvent
-		if ult != null:
-			var effects: Array[BattleEvent] = []
-			while i < events.size() and (events[i] is StatusAppliedEvent or events[i] is SkillReadyEvent):
-				effects.append(events[i])
-				i += 1
-			await _play_ult_effects(ult.side, effects)
-			continue
-		var started := event as PhaseStartedEvent
-		if started == null or started.side != Unit.Side.NEUTRAL:
-			continue
-		# 中立のフェーズの中身は、次のフェーズの始まり（か決着）の手前まで。
-		var phase: Array[BattleEvent] = []
-		while i < events.size() and not (events[i] is PhaseStartedEvent or events[i] is GameWonEvent or events[i] is GameDrawnEvent):
-			phase.append(events[i])
-			i += 1
-		await _play_neutral_phase(phase)
-
-
-## 中立のフェーズを、目で追える形で再生する（neutral_playback.gd）。
-## - 動いただけ・湧いただけの駒（静かな場面）は、カメラを動かさずに、続いているものをまとめて同時に流す。
-## - 攻撃した駒（見せる場面）は、カメラを寄せてから、1 体ずつ、ゆっくり歩かせて追いかけ、攻撃を見せて、間を置く。
-## 起きた順は変えない。
-func _play_neutral_phase(events: Array[BattleEvent]) -> void:
-	for group: Array in NeutralPlayback.groups(NeutralPlayback.beats(events)):
-		var first: NeutralPlayback.Beat = group[0]
-		if first.quiet:
-			_quiet_playback = true
-			for beat: NeutralPlayback.Beat in group:
-				_beats_running += 1
-				_play_beat(beat)  # 待たずに始めて、同時に流す
-			while _beats_running > 0:
-				await frame_passed
-			_quiet_playback = false
-			continue
-		if _views.has(first.actor_id):
-			_rig.focus_on(_view(first.actor_id).position)
-			await _after(NEUTRAL_FOCUS_TIME)
-		for event in first.events:
-			await _play(event)
-		await _after(NEUTRAL_PAUSE)
-
-
-func _play_beat(beat: NeutralPlayback.Beat) -> void:
-	for event in beat.events:
-		await _play(event)
-	_beats_running -= 1
-
-
-func _play(event: BattleEvent) -> void:
-	var kind: Script = event.get_script()
-	if not _players.has(kind):
-		push_error("再生できないイベント: %s" % kind.resource_path)
-		return
-	played[kind] = played.get(kind, 0) + 1
-	battle_log.feed(event)
-	await call(_players[kind], event)
-
-
-func _play_moved(event: UnitMovedEvent) -> void:
-	if event.path.size() < 2:
-		return
-	var view := _view(event.unit_id)
-	var unit := battle.unit_by_id(event.unit_id)
-	var step_time := CRUISE_STEP_TIME if event.cruise else STEP_TIME
-	if unit != null and unit.side == Unit.Side.NEUTRAL:
-		step_time = NEUTRAL_STEP_TIME
-	# 自分で動かしていない駒（CPU の駒、中立の駒）は、歩いている間、カメラが追いかける（長く歩いても、画面の外へ出ていかない）。
-	var followed := _camera_follows(unit)
-	if followed:
-		camera_follows[event.unit_id] = camera_follows.get(event.unit_id, 0) + 1
-		_rig.follow(view)
-	view.play_run()
-	for i in range(1, event.path.size()):
-		var target := BoardView.cell_center(event.path[i])
-		view.face(target - view.position)
-		var tween := create_tween()
-		tween.tween_property(view, "position", target, step_time)
-		await tween.finished
-	view.play_idle()
-	if followed:
-		_rig.follow(null)
-
-
-func _play_undone(event: MoveUndoneEvent) -> void:
-	var view := _view(event.unit_id)
-	var tween := create_tween()
-	tween.tween_property(view, "position", BoardView.cell_center(event.to), 0.15)
-	await tween.finished
-
-
-## 道順どおりに歩いたあとの、ポータルの転移。入ったポータルで縮んで消え、出たポータルに現れる。
-func _play_warped(event: UnitWarpedEvent) -> void:
-	var view := _view(event.unit_id)
-	var color := BoardView.portal_color(battle.board, event.from)
-	var to := BoardView.cell_center(event.to)
-	_flash(BoardView.cell_center(event.from), color, 0.9)
-	_sound(&"portal")
-	var shrink := create_tween()
-	shrink.tween_property(view, "scale", Vector3.ONE * 0.05, 0.16)
-	await shrink.finished
-	view.position = to
-	if not _quiet_playback:
-		_rig.focus_on(to)  # 行き先が画面の外でも、どこへ出たかが見えるようにする（静かな場面では、カメラを動かさない）。
-	_flash(to, color, 0.9)
-	var grow := create_tween()
-	grow.tween_property(view, "scale", Vector3.ONE, 0.16)
-	await grow.finished
-
-
-## 駒の攻撃。攻撃の動きのあとに被弾。
-func _play_attack_damaged(event: AttackDamagedEvent) -> void:
-	var target := _view(event.unit_id)
-	var attacker := _view(event.attacker_id)
-	_show_strike(event.attacker_id, attacker, target)
-	attacker.face(target.position - attacker.position)
-	target.face(attacker.position - target.position)
-	await _strike(attacker, target.position)
-	await _play_hit(event, Color("ffe9a8"), 0.45)
-
-
-## 爆発のダメージ（攻撃した駒がいない）は、被弾だけを続けて見せる。
-func _play_explosion_damaged(event: ExplosionDamagedEvent) -> void:
-	await _play_hit(event, Color("ffb14a"), 0.15)
-
-
-## スキルのダメージ（使った駒の動きは SkillUsedEvent が見せた）は、被弾だけを続けて見せる。
-func _play_skill_damaged(event: SkillDamagedEvent) -> void:
-	await _play_hit(event, Color("ff7a4a"), 0.15)
-
-
-func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
-	var target := _view(event.unit_id)
-	target.play_hit()
-	target.set_hp(event.hp)
-	if event.is_blocked():
-		_sound(&"blocked")
-		_pop_number(target.position, "%s が防いだ" % Status.display_name(event.blocked_by as Status.Type), Color("9fd8ff"))
-	elif event.critical:
-		_sound(&"critical")
-		_pop_number(target.position, "クリティカル -%d" % event.amount, Color("ff5a4a"))
-	else:
-		_pop_number(target.position, "-%d" % event.amount, color)
-	await _after(wait)
-
-
-## 回復役の回復。回復役が相手のほうを向いて手を振り、相手に光と数を出す。
-func _play_healer_healed(event: HealerHealedEvent) -> void:
-	var healer := _view(event.healer_id)
-	var target := _view(event.unit_id)
-	healer.face(target.position - healer.position)
-	_acted_with_effect = true
-	await _after(healer.play_attack())
-	await _play_heal(event, true)
-
-
-## 回復の泉（フェーズの始め）は、光と数を出す。
-func _play_spring_healed(event: SpringHealedEvent) -> void:
-	await _play_heal(event, true)
-
-
-## 再生（進化先の特性。フェーズの始め）も、光と数を出す。
-func _play_regeneration_healed(event: RegenerationHealedEvent) -> void:
-	await _play_heal(event, true)
-
-
-func _play_heal(event: UnitHealedEvent, glow: bool) -> void:
-	var view := _view(event.unit_id)
-	view.set_hp(event.hp)
-	_sound(&"heal")
-	_pop_number(view.position, "+%d" % event.amount, Color("9cf09c"))
-	if glow:
-		_flash(view.position, BoardView.COLOR_SPRING_CROSS, 0.8)
-	await _after(0.35)
-
-
-## 経験値が入った。数を小さく出すだけ（たまった量は左下の駒の情報に出る）。
-func _play_experience_gained(event: ExperienceGainedEvent) -> void:
-	var view := _view(event.unit_id)
-	_pop_number(view.position + Vector3(0.0, 0.35, 0.0), "経験 +%d" % event.amount, COLOR_EXPERIENCE)
-	await _after(0.2)
-
-
-## レベルが上がった。札のレベルと HP のバーを描き直し、光と知らせを出す。
-func _play_level_up(event: LevelUpEvent) -> void:
-	var view := _view(event.unit_id)
-	view.set_growth(event.level, event.max_hp)
-	view.set_hp(event.hp)
-	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_LEVEL_UP, 1.4)
-	_sound(&"level_up")
-	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "レベル %d！" % event.level, COLOR_LEVEL_UP)
-	await _after(0.5)
-
-
-## 進化先を選べるようになった。光と知らせだけ（選択肢は、再生が終わったあとに _refresh が出す）。
-func _play_evolution_offered(event: EvolutionOfferedEvent) -> void:
-	var view := _view(event.unit_id)
-	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.6)
-	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "進化できる！", COLOR_EVOLUTION)
-	await _after(0.4)
-
-
-## 進化した。札に印を付け、HP のバーを新しい最大 HP で描き直し、進化先の名前を出す。
-func _play_evolved(event: UnitEvolvedEvent) -> void:
-	var view := _view(event.unit_id)
-	view.set_evolved(event.max_hp)
-	view.set_hp(event.hp)
-	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.8)
-	_sound(&"evolved")
-	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Evolution.display_name(event.evolution), COLOR_EVOLUTION)
-	await _after(0.6)
-
-
-## 攻撃の動きのあと、樽を消して、爆発の届いたマスを塗る（続くダメージの再生の間も塗ったまま）。
-func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
-	var at := BoardView.cell_center(event.cell)
-	if _views.has(event.attacker_id):
-		var attacker := _view(event.attacker_id)
-		attacker.face(at - attacker.position)
-		await _strike(attacker, at)
-	_board_view.remove_barrel(event.cell)
-	var colors := {event.cell: COLOR_BLAST}
-	for cell in event.blast_cells:
-		colors[cell] = COLOR_BLAST
-	_board_view.show_cells(colors)
-	_flash(at + Vector3(0.0, 0.3, 0.0), Color("ff8a2a"), 2.6)
-	_sound(&"explosion")
-	_pop_number(at, "爆発", Color("ff8a2a"))
-	await _after(0.3)
-
-
-## 盤の上に効果が置かれた。描いて、中心に光を出す。
-func _play_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
-	_board_view.add_field_effect(event.effect_id, event.type, event.side, event.cells)
-	var at := BoardView.cell_center(event.center)
-	_flash(at + Vector3(0.0, 0.3, 0.0), TEAM_COLORS[event.side], 1.2 if event.type == FieldEffect.Type.BARRICADE else 2.4)
-	if not _after_skill:
-		_pop_number(at, Names.FIELD_EFFECT_NAMES[event.type], TEAM_COLORS[event.side].lightened(0.4))
-	await _after(0.3)
-
-
-## 煙幕・聖域の残りが減った。描き方は変えない（残りはマスの説明に出る）。
-func _play_field_effect_ticked(_event: FieldEffectTickedEvent) -> void:
-	pass
-
-
-## 盤の上の効果が消えた（期間が尽きた・盾が壊れた）。
-func _play_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
-	_board_view.remove_field_effect(event.effect_id)
-	if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED:
-		var at := BoardView.cell_center(event.cells[0])
-		_flash(at + Vector3(0.0, 0.3, 0.0), Color("d8d0c0"), 1.4)
-		_pop_number(at, "盾が壊れた", Color("d8d0c0"))
-		await _after(0.3)
-
-
-## 盾を攻撃した。攻撃の動きのあと、減った耐久を出す。
-func _play_barricade_damaged(event: BarricadeDamagedEvent) -> void:
-	var at := BoardView.cell_center(event.cell)
-	var attacker := _view(event.attacker_id)
-	attacker.face(at - attacker.position)
-	await _strike(attacker, at)
-	_pop_number(at, "耐久 -%d" % event.amount, Color("ffe9a8"))
-	await _after(0.3)
-
-
-## 攻撃が煙幕に阻まれた。攻撃の動きのあと、相手に灰色の光と「防いだ」を出す（HP は変わらない）。
-func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
-	var target := _view(event.target_id)
-	var attacker := _view(event.attacker_id)
-	_show_strike(event.attacker_id, attacker, target)
-	attacker.face(target.position - attacker.position)
-	target.face(attacker.position - target.position)
-	await _strike(attacker, target.position)
-	_flash(target.position + Vector3(0.0, 0.3, 0.0), BoardView.COLOR_SMOKE, 1.2)
-	_pop_number(target.position, "煙幕で防いだ", Color("d0d4da"))
-	await _after(0.4)
-
-
-## スキルで跳んだ（シャドウステップ）。その場で縮んで消え、着いたマスに現れる。
-func _play_teleported(event: UnitTeleportedEvent) -> void:
-	await _blink([[_view(event.unit_id), event.to]])
-
-
-## 2 体の位置が入れ替わった（シャドウステップ）。2 体とも同時に消えて、互いのマスに現れる。
-func _play_swapped(event: UnitsSwappedEvent) -> void:
-	await _blink([[_view(event.unit_id), event.other_from], [_view(event.other_id), event.from]])
-
-
-## 駒を、間を通さずに別のマスへ移す。moves は [駒の見た目, 行き先のマス] の列（同時に移す）。
-func _blink(moves: Array[Array]) -> void:
-	var color := Color("b98cff")
-	var shrink := create_tween().set_parallel()
-	for move in moves:
-		var view: UnitView = move[0]
-		_flash(view.position, color, 0.9)
-		shrink.tween_property(view, "scale", Vector3.ONE * 0.05, 0.14)
-	await shrink.finished
-	var grow := create_tween().set_parallel()
-	for move in moves:
-		var view: UnitView = move[0]
-		view.position = BoardView.cell_center(move[1])
-		_flash(view.position, color, 0.9)
-		grow.tween_property(view, "scale", Vector3.ONE, 0.14)
-	_rig.focus_on((moves[0][0] as UnitView).position)
-	await grow.finished
-
-
-## 行動済みの駒が、行動前に戻った（アドレナリン注射）。行動済みの見た目を戻し、光と知らせを出す。
-func _play_reactivated(event: UnitReactivatedEvent) -> void:
-	var view := _view(event.unit_id)
-	view.set_acted(false)
-	_flash(view.position, Color("ffd24a"), 0.9)
-	_pop_number(view.position + Vector3(0.0, 0.3, 0.0), "もう一度行動できる", Color("ffd24a"))
-	await _after(0.25)
-
-
-## 聖域（フェーズの始め）も、光と数を出す。
-func _play_sanctuary_healed(event: SanctuaryHealedEvent) -> void:
-	await _play_heal(event, true)
-
-
-## スキルを使った。対象のほうを向いて手を振り、スキルの名前をスキルの色で出す。足元にスキルの色の輪が広がり、
-## スキルごとの形が対象に届く（battle_effects.gd の skill_flash）。届いてから、続くイベントが効果を見せる。
-func _play_skill_used(event: SkillUsedEvent) -> void:
-	var view := _view(event.unit_id)
-	var at := BoardView.cell_center(event.target)
-	if not at.is_equal_approx(view.position):
-		view.face(at - view.position)
-	_acted_with_effect = true
-	_after_skill = true
-	var color: Color = BattleEffects.SKILL_COLORS[event.skill]
-	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Skills.by_id(event.skill).display_name(), color.lightened(0.45))
-	_effects.skill_flash(event.skill, view.position, at)
-	await _after(maxf(view.play_attack(), BattleEffects.SKILL_TIME))
-
-
-## スキルをまた使えるようになった。魔力解放のときだけ、駒の上に知らせる（クールダウンが明けただけのときは何も出さない。
-## 残りは駒の情報とスキルのボタンに出る）。
-func _play_skill_ready(event: SkillReadyEvent) -> void:
-	if _in_ult_effects and _views.has(event.unit_id):
-		_pop_number(_view(event.unit_id).position, "スキル使用可", BattleEffects.SKILL_COLORS[event.skill].lightened(0.45))
-
-
-## 必殺技を使った。画面が必殺技の色に一瞬光り、必殺技の名前を大きく出す。
-## 効果（駒ごとの状態など）は、続くイベントを _play_all がまとめて同時に見せる（_play_ult_effects）。
-func _play_ult_used(event: UltUsedEvent) -> void:
-	_refresh_status(battle.turn, battle.phase)
-	var color: Color = BattleHud.ULT_COLORS[event.ult]
-	_hud.flash_screen(color)
-	_sound(&"ult")  # 音の山が、続く光の柱（_play_ult_effects）に重なる
-	_hud.show_banner("%s　必殺技: %s!!" % [_side_name(event.side), Ults.by_id(event.ult).display_name()], color)
-	await _after(0.5)
-
-
-## 必殺技の効果（必殺技のすぐあとに続く、状態が付いた・スキルが使えるようになった）を、駒ごとに順にではなく、全員に同時に見せる。
-## 効果の掛かった駒に陣営の色の光の柱が立ち、それぞれの知らせが一度に出る。待つのは 1 回だけ。
-func _play_ult_effects(side: Unit.Side, effects: Array[BattleEvent]) -> void:
-	var points: Array[Vector3] = []
-	_in_ult_effects = true
-	for event in effects:
-		var unit_id: int = event.get(&"unit_id")
-		if _views.has(unit_id):
-			points.append(_view(unit_id).position)
-		_play(event)  # 待たずに始めて、同時に流す
-	_in_ult_effects = false
-	_effects.ult_burst(points, TEAM_COLORS[side])
-	await _after(ULT_EFFECTS_TIME)
-
-
-## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
-func _play_ult_ready(_event: UltReadyEvent) -> void:
-	_refresh_status(battle.turn, battle.phase)
-	_sound(&"ult_ready")
-
-
-## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。
-func _play_status_applied(event: StatusAppliedEvent) -> void:
-	if _after_skill and event.status != Status.Type.FATIGUE:
-		return  # スキルの名前と形が見せている（反動は、スキルの形では分からないので出す）
-	_pop_number(_view(event.unit_id).position, Status.display_name(event.status), Color("9fd8ff"))
-	await _after(0.25)
-
-
-## 駒の状態が外れた。使い切ったときは、ダメージや攻撃の再生が見せているので、ここでは何も出さない。
-func _play_status_removed(event: StatusRemovedEvent) -> void:
-	if event.reason == StatusRemovedEvent.Reason.CONSUMED:
-		return
-	var why := "が解けた" if event.reason == StatusRemovedEvent.Reason.MOVED else "が消えた"
-	_pop_number(_view(event.unit_id).position, Status.display_name(event.status) + why, Color("b8c4d0"))
-	await _after(0.2)
-
-
-## 駒が行動を終えた。暗くする。攻撃・回復・スキルを見せずに終えた（待機した）なら、その瞬間に待機のサインを出す
-## （動いてから待機、巡航のあと、動いたままターンを終えたときも）。
-func _play_acted(event: UnitActedEvent) -> void:
-	var view := _view(event.unit_id)
-	view.set_acted(true)
-	if not _acted_with_effect:
-		_effects.wait_sign(view.position)
-	_acted_with_effect = false
-
-
-func _play_won(event: GameWonEvent) -> void:
-	await _after(0.4)
-	_hud.show_result(event.winner, WIN_REASONS[event.reason], _stats_text())
-
-
-func _play_drawn(event: GameDrawnEvent) -> void:
-	await _after(0.4)
-	_hud.show_draw(DRAW_REASONS[event.reason], _stats_text())
+# ---- 決着の画面 ----
 
 
 ## 決着の画面に出す戦績の要点。
@@ -1557,158 +1063,6 @@ func _stats_text() -> String:
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		names.append(_side_name(side))
 	return StatsText.text(stats, MatchSetup.stage_name(stage), names)
-
-
-func _play_defeated(event: UnitDefeatedEvent) -> void:
-	var view := _view(event.unit_id)
-	_views.erase(event.unit_id)
-	_sound(&"defeated")
-	await view.play_death()
-
-
-## 中ボスが倒れた（駒が消えるのは UnitDefeatedEvent が見せた）。倒した陣営を、その色で知らせる。
-func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
-	var at := BoardView.cell_center(event.cell)
-	var side := BattleLog.mid_boss_place(battle.board, event.boss_index)
-	if event.slayer_side < 0:
-		_pop_number(at, "%sの中ボスが倒れた" % side)
-		return
-	var color: Color = TEAM_COLORS[event.slayer_side]
-	_flash(at + Vector3(0.0, 0.6, 0.0), color, 2.4)
-	_pop_number(at, "%s が%sの中ボスを倒した" % [_side_name(event.slayer_side as Unit.Side), side], color.lightened(0.4))
-	await _after(0.6)
-
-
-## 陣営が聖遺物を受け取った。控えめに見せる: 上の帯に聖遺物の名前を出し、効果の掛かった駒の HP のバーを描き直し、
-## 駒の上に小さい光と、効果（最大 HP +N など）を出す。画面を覆う演出はしない。
-func _play_relic_gained(event: RelicGainedEvent) -> void:
-	_refresh_status(battle.turn, battle.phase)
-	var color: Color = TEAM_COLORS[event.side]
-	var text := Relics.summary(event.relic).trim_prefix("軍の全員の")
-	_sound(&"relic")
-	for unit_id in event.unit_ids:
-		if not _views.has(unit_id):
-			continue
-		var view := _view(unit_id)
-		view.set_max_hp(event.max_hp[unit_id])
-		view.set_hp(event.hp[unit_id])
-		_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_RELIC, 1.0)
-		_pop_number(view.position + Vector3(0.0, 0.5, 0.0), text, COLOR_RELIC)
-	_hud.show_banner("%s　%s を手に入れた（%s）" % [_side_name(event.side), Relics.display_name(event.relic), Relics.summary(event.relic)], color)
-	await _after(0.7)
-
-
-## 中立の駒が結晶泉に湧いた（中ボスが現れた）。光とともに、小さい形から大きくする。
-func _play_spawned(event: UnitSpawnedEvent) -> void:
-	var at := BoardView.cell_center(event.cell)
-	var view: UnitView = UnitView.new()
-	view.position = at
-	add_child(view)
-	view.setup(event.kind, TEAM_COLORS[event.side], event.hp, event.max_hp)
-	view.face(BoardView.cell_center(event.cell + Vector2i.DOWN) - at)
-	_views[event.unit_id] = view
-	if not _quiet_playback:
-		_rig.focus_on(at)
-	_flash(at + Vector3(0.0, 0.4, 0.0), TEAM_COLORS[event.side], 1.6)
-	if event.kind == Neutral.MID_BOSS_KIND:
-		_sound(&"boss_roar")
-	view.scale = Vector3.ONE * 0.05
-	var grow := create_tween()
-	grow.tween_property(view, "scale", Vector3.ONE, 0.3)
-	await grow.finished
-
-
-## 駒が歩く間、カメラが追いかけるか。自分で動かしていない駒（CPU の番の駒、中立の駒）だけ。
-## 中立のフェーズの静かな場面をまとめて流している間は、追わない（何体も同時に動く）。
-func _camera_follows(unit: Unit) -> bool:
-	if unit == null or _quiet_playback:
-		return false
-	return unit.side == Unit.Side.NEUTRAL or (_ui.cpu_running and unit.side == match_choice.cpu_side())
-
-
-## 攻撃の動きと、当たる形（駒の種類ごと。battle_effects.gd）を出し、当たる瞬間まで待つ。
-func _strike(attacker: UnitView, at: Vector3) -> void:
-	_acted_with_effect = true
-	var hit_in := attacker.play_attack()
-	_effects.strike(BattleEffects.hit_style(attacker.unit_kind()), attacker.position, at, hit_in)
-	await _after(hit_in)
-
-
-## 自分で動かしていない駒（CPU の番の駒、中立の駒）の攻撃は、攻撃する駒と相手の間へカメラを寄せる（どちらも見えるように）。
-func _show_strike(attacker_id: int, attacker: UnitView, target: UnitView) -> void:
-	var unit := battle.unit_by_id(attacker_id)
-	if unit != null and (unit.side == Unit.Side.NEUTRAL or (_ui.cpu_running and unit.side == match_choice.cpu_side())):
-		_rig.focus_on((attacker.position + target.position) / 2.0)
-
-
-func _play_phase_started(event: PhaseStartedEvent) -> void:
-	_refresh_status(event.turn, event.side)
-	_acted_with_effect = false
-	if event.side == Unit.Side.NEUTRAL:
-		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは、攻撃する駒だけを追う（_play_neutral_phase）。
-		_hud.show_banner("ターン %d　%s の番" % [event.turn, _side_name(event.side)], TEAM_COLORS[event.side])
-		await _after(0.5)
-		return
-	for unit in battle.units:
-		if unit.side == event.side:
-			_view(unit.id).set_acted(false)
-	_sound(&"phase")
-	_hud.show_banner("ターン %d　%s の番" % [event.turn, _side_name(event.side)], TEAM_COLORS[event.side])
-	_rig.focus_on(_camera_point(event.side))
-	await _after(0.5)
-
-
-func _play_capture(event: CaptureProgressEvent) -> void:
-	_refresh_status(battle.turn, battle.phase)
-	var hq := battle.board.hq_cells[1 - event.player]
-	var text := "占拠 %d / %d" % [event.turns, Battle.CAPTURE_TURNS_TO_WIN] if event.turns > 0 else "占拠が途切れた"
-	if event.turns > 0:
-		_sound(&"capture")
-	_pop_number(BoardView.cell_center(hq), text, TEAM_COLORS[event.player].lightened(0.4))
-
-
-## 対戦の中の効果音（sound_catalog.gd の名前。docs/sound.md の「対戦の音」）。演出に合わせて鳴らすだけで、待ち時間は変えない。
-func _sound(name: StringName) -> void:
-	context.play_sound(name)
-
-
-## 広がって消える光の球（爆発、転移、泉の回復）。size は広がりきったときの直径。
-func _flash(at: Vector3, color: Color, size: float) -> void:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(color, 0.7)
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var ball := MeshInstance3D.new()
-	ball.mesh = SphereMesh.new()
-	ball.material_override = material
-	ball.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	ball.position = at
-	ball.scale = Vector3.ONE * size * 0.2
-	add_child(ball)
-	var tween := create_tween()
-	tween.tween_property(ball, "scale", Vector3.ONE * size, 0.35).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.35)
-	tween.tween_callback(ball.queue_free)
-
-
-## 盤面の上に、浮かんで消える文字を出す（ダメージの数など）。
-func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
-	var label := Label3D.new()
-	label.text = text
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.no_depth_test = true
-	label.pixel_size = 0.008
-	label.font_size = 64
-	label.outline_size = 16
-	label.modulate = color
-	label.render_priority = 5
-	label.outline_render_priority = 4
-	label.position = at + Vector3(0.0, 1.5, 0.0)
-	add_child(label)
-	var tween := create_tween()
-	tween.tween_property(label, "position:y", 2.4, 0.8)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.8).set_ease(Tween.EASE_IN)
-	tween.tween_callback(label.queue_free)
 
 
 ## side の番が来たときにカメラが見る地点。将のいるところから、少し敵の本陣のほうへ寄せる
@@ -1946,7 +1300,7 @@ func _show_painted() -> void:
 	elif unit != null and not _ui.busy and _barrel_targets.has(_hover_cell):
 		colors = _painted.duplicate()
 		for cell in MapObject.blast_cells(battle.board, _hover_cell):
-			colors[cell] = COLOR_BLAST
+			colors[cell] = BattlePlayback.COLOR_BLAST
 	elif unit != null and not _ui.busy and _ui.mode == Mode.NONE and _move_cells.has(_hover_cell):
 		colors = _painted.duplicate()
 		for cell in Movement.path_to(battle, unit, _hover_cell, _move_cells[_hover_cell]):
