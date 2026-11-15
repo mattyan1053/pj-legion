@@ -504,16 +504,24 @@ func _queue_neutral_scene() -> void:
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
 	var bait := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(5, 2))
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
+		_scene.camera_follows.clear())
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		var core := battle.unit_at(font)
-		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった"))
+		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった")
+		_expect(_scene.camera_follows.is_empty(), "湧いただけの中立の駒を、カメラが追った"))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
-		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった"))
+		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった")
+		# 攻撃しに歩いた中立の駒は、カメラが追いかける（湧いただけのときは、追わない）。
+		var followed := false
+		for unit in battle.units:
+			followed = followed or (unit.side == Unit.Side.NEUTRAL and _scene.camera_follows.has(unit.id))
+		_expect(followed, "攻撃しに歩いた中立の駒を、カメラが追わなかった"))
 
 
 ## 中ボスが現れ、弱った別の中ボスに止めを刺すと、倒した陣営が知らされ、その陣営が聖遺物を受け取る。
@@ -716,6 +724,7 @@ func _queue_cpu_scene() -> void:
 		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
 	_scripted.append(func() -> void:
 		seen["actions"] = _scene.cpu_actions
+		_scene.camera_follows.clear()
 		_end_turn()
 		# CPU の番の間は、操作を受け付けない。
 		_scene.click_cell(sorcerer.cell)
@@ -726,6 +735,13 @@ func _queue_cpu_scene() -> void:
 		_expect(_scene.cpu_actions > seen["actions"], "CPU が行動しなかった")
 		_expect(wounded.hp == 10 + priest.power(), "CPU の回復役が回復しなかった")
 		_expect(bait.hp < bait.max_hp(), "CPU の駒が攻撃しなかった")
+		# CPU の駒が歩く間は、カメラが追いかける（自分で動かした駒は追わない）。
+		var followed := 0
+		for unit_id: int in _scene.camera_follows:
+			var unit := battle.unit_by_id(unit_id)
+			_expect(unit == null or unit.side == Unit.Side.PLAYER2, "CPU のものでない駒を、カメラが追った")
+			followed += 1
+		_expect(followed > 0, "CPU の駒が歩く間、カメラが追わなかった")
 		_scene.set_opponent(false))
 
 

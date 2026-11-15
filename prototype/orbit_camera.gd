@@ -22,6 +22,8 @@ var _target_distance := 22.0
 ## 寄っていく先（focus_on で決める）。手で動かしたら、寄るのをやめる。
 var _focus: Vector3
 var _focusing := false
+## 追いかけている相手（follow で決める）。いる間は、毎フレームそこへ寄り続ける。手で動かしたら、追うのをやめる。
+var _followed: Node3D
 
 
 func _ready() -> void:
@@ -69,10 +71,25 @@ func focus_on(point: Vector3) -> void:
 	_focusing = true
 
 
+## target を追いかける（動いている駒が画面の外へ出ていかないように）。null を渡すと、追うのをやめる（その場に止まる）。
+func follow(target: Node3D) -> void:
+	_followed = target
+
+
+## 寄っていく先（追いかけている間は、相手のいるところ）。寄っていなければ、いまの位置。検査用。
+func focus_point() -> Vector3:
+	return _focus if _focusing else position
+
+
 func _process(delta: float) -> void:
 	_pan(delta)
 
 	var weight := 1.0 - exp(-SMOOTHING * delta)
+	if _followed != null:
+		if is_instance_valid(_followed):
+			focus_on(_followed.position)
+		else:
+			_followed = null
 	if _focusing:
 		position = position.lerp(_focus, weight * 0.6)
 		if position.distance_to(_focus) < 0.02:
@@ -98,6 +115,7 @@ func _pan(delta: float) -> void:
 		return
 
 	_focusing = false
+	_followed = null
 	# 画面の上下左右に合わせて動くよう、いまの向きで回す。
 	var move := input.normalized().rotated(Vector3.UP, rotation.y)
 	position += move * PAN_SPEED * delta
