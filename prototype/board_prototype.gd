@@ -11,6 +11,7 @@ const UnitView := preload("res://prototype/unit_view.gd")
 const BoardView := preload("res://prototype/board_view.gd")
 const BattleHud := preload("res://prototype/battle_hud.gd")
 const TrialSetup := preload("res://prototype/trial_setup.gd")
+const MatchSetupPanel := preload("res://prototype/match_setup_panel.gd")
 const Queries := preload("res://prototype/battle_queries.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
 const Autoplay := preload("res://prototype/autoplay.gd")
@@ -38,8 +39,6 @@ const COLOR_INSPECT := Color(1.0, 1.0, 1.0, 0.28)
 const COLOR_THREAT := Color(1.0, 0.35, 0.3, 0.3)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 
-## CPU が動かすプレイヤー（相手を CPU にしているとき）。
-const CPU_SIDE := Unit.Side.PLAYER2
 ## CPU の駒が動き出す前に、カメラを寄せて見せる秒数と、1 体の行動が終わってから次の駒までの間。
 const CPU_FOCUS_TIME := 0.35
 const CPU_PAUSE := 0.45
@@ -60,10 +59,13 @@ var map_seed := 0
 var _board_view: BoardView
 var _views := {}  # 駒の番号 -> UnitView
 var _hud: BattleHud
+var _setup_panel: MatchSetupPanel
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
 
-## 相手（プレイヤー2）を CPU が動かすか。偽なら、2 人が交代で操作する。
+## 対戦の設定画面で選んだもの（trial_setup.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
+var match_choice: RefCounted = TrialSetup.new()
+## 相手を CPU が動かすか。偽なら、2 人が交代で操作する。CPU が動かすのは match_choice.cpu_side()。
 var cpu_opponent := true
 ## CPU が実行した行動の数。検査用。
 var cpu_actions := 0
@@ -110,6 +112,12 @@ func _ready() -> void:
 	_hud.restart_pressed.connect(_on_restart_pressed)
 	_hud.evolution_chosen.connect(choose_evolution)
 	_hud.opponent_pressed.connect(toggle_opponent)
+	_hud.setup_pressed.connect(open_setup)
+	_setup_panel = MatchSetupPanel.new()
+	_hud.add_child(_setup_panel)
+	_setup_panel.setup(TEAM_COLORS)
+	_setup_panel.visible = false
+	_setup_panel.start_pressed.connect(_on_setup_chosen)
 
 	var autoplay := OS.get_cmdline_user_args().has("--autoplay")
 	# 検査は、人の操作の入口を両方のプレイヤーで通すところから始める（CPU の番は、検査の中で切り替えて通す）。
@@ -118,6 +126,8 @@ func _ready() -> void:
 	start_battle(BoardGenerator.Stage.PLAIN, 20261114 if autoplay else int(Time.get_unix_time_from_system()))
 	if autoplay:
 		add_child(Autoplay.new(self))
+	else:
+		open_setup()  # 遊ぶときは、まず対戦の設定を選ぶ（後ろの盤面は既定の設定で作っておく）
 
 
 func _process(delta: float) -> void:
@@ -132,6 +142,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _setup_panel.visible:
+		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			click_cell(_cell_under_mouse())
@@ -166,11 +178,35 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---- 対戦の始まり ----
 
 
-## 盤面を作り、軍を置いて、最初から始める。再生の途中と CPU の番の間は何もしない。
+## いまの設定（match_choice）のステージを battle_stage にして、盤面を作り、軍を置いて、最初から始める。
+## 対戦はルールの入口（MatchSetup.create_battle）で作る。再生の途中と CPU の番の間は何もしない。
 func start_battle(battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
 	if is_busy():
 		return
-	start_with(TrialSetup.create(battle_stage, battle_seed), battle_stage, battle_seed)
+	match_choice.stage = battle_stage
+	match_choice.cpu_opponent = cpu_opponent
+	start_with(match_choice.to_setup(battle_seed).create_battle(), battle_stage, battle_seed)
+
+
+## 対戦の設定画面を、いまの設定で開く。再生の途中と CPU の番の間は何もしない。
+func open_setup() -> void:
+	if is_busy():
+		return
+	match_choice.cpu_opponent = cpu_opponent
+	_setup_panel.open(match_choice)
+
+
+## 対戦の設定画面（検査用）。
+func setup_panel() -> MatchSetupPanel:
+	return _setup_panel
+
+
+func _on_setup_chosen(chosen: RefCounted) -> void:
+	match_choice = chosen
+	# いまの対戦の続きを CPU に渡さないよう、set_opponent は通さない（新しい対戦が、始めに CPU の番を見る）。
+	cpu_opponent = chosen.cpu_opponent
+	_show_opponent()
+	start_battle(chosen.stage, map_seed + 1)
 
 
 ## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中と CPU の番の間は何もしない。
@@ -233,16 +269,17 @@ func _on_restart_pressed(new_stage: int, new_board: bool) -> void:
 # ---- 操作（マウス・キー・ボタンのどれからも、ここを通る） ----
 
 
-## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中）。
+## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、対戦の設定画面を開いている間）。
 func is_busy() -> bool:
-	return _busy or _cpu_running
+	return _busy or _cpu_running or _setup_panel.visible
 
 
-## 相手（プレイヤー2）を CPU にするか、人にするかを決める。対戦の途中でも切り替えられる
-## （CPU にすれば、プレイヤー2 の番の続きを CPU が引き取る。人にすれば、CPU はいまの行動を最後に手を止める）。
+## 相手（match_choice.cpu_side() のプレイヤー）を CPU にするか、人にするかを決める。対戦の途中でも切り替えられる
+## （CPU にすれば、相手の番の続きを CPU が引き取る。人にすれば、CPU はいまの行動を最後に手を止める）。
 func set_opponent(cpu: bool) -> void:
 	cpu_opponent = cpu
-	_hud.set_opponent("相手: CPU（F4 で人に）" if cpu else "相手: 人（F4 で CPU に）")
+	match_choice.cpu_opponent = cpu
+	_show_opponent()
 	if battle != null and not is_busy():
 		if _is_cpu_turn():
 			_select(0)
@@ -251,19 +288,23 @@ func set_opponent(cpu: bool) -> void:
 			_refresh()  # 自分の番の途中なら、選んでいる駒（動いたあとの駒）はそのまま。
 
 
+func _show_opponent() -> void:
+	_hud.set_opponent("相手: CPU（F4 で人に）" if cpu_opponent else "相手: 人（F4 で CPU に）")
+
+
 func toggle_opponent() -> void:
 	set_opponent(not cpu_opponent)
 
 
 ## いまが、CPU が動かす番か。
 func _is_cpu_turn() -> bool:
-	return cpu_opponent and not battle.is_over() and battle.phase == CPU_SIDE
+	return cpu_opponent and not battle.is_over() and battle.phase == match_choice.cpu_side()
 
 
 ## 番の知らせに出す陣営の名前（CPU が動かすなら、そう書く）。
 func _side_name(side: Unit.Side) -> String:
 	var side_name: String = BattleHud.SIDE_NAMES[side]
-	return side_name + " CPU" if cpu_opponent and side == CPU_SIDE else side_name
+	return side_name + " CPU" if cpu_opponent and side == match_choice.cpu_side() else side_name
 
 
 func selected_unit() -> Unit:

@@ -13,8 +13,10 @@ signal cancel_pressed
 signal end_turn_pressed
 ## 進化先を選んだ。index は、出している選択肢の何番目か（0 が A、1 が B）。
 signal evolution_chosen(index: int)
-## 相手（プレイヤー2）を人にするか CPU にするかの切り替えが押された。
+## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
+## 対戦の設定画面を開くボタンが押された。
+signal setup_pressed
 ## stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でやり直す（stage は見ない）。
 signal restart_pressed(stage: int, new_board: bool)
 
@@ -56,11 +58,6 @@ const TRAIT_TEXTS := {
 	Evolution.Trait.IGNORES_ZOC: "敵の支配領域で止まらない",
 	Evolution.Trait.FOREST_WALK: "森を平地と同じ移動力で歩く",
 	Evolution.Trait.REGENERATION: "自分の番の始めに %d 回復" % Evolution.REGENERATION_HEAL,
-}
-const STAGE_NAMES := {
-	BoardGenerator.Stage.PLAIN: "1 中央平原",
-	BoardGenerator.Stage.LABYRINTH: "2 迷宮回廊",
-	BoardGenerator.Stage.TWIN_SPRINGS: "3 双子結晶",
 }
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
@@ -374,6 +371,10 @@ func _build_top_bar() -> void:
 	_opponent_button.custom_minimum_size = Vector2(170.0, 34.0)
 	_opponent_button.add_theme_font_size_override("font_size", 15)
 	row.add_child(_opponent_button)
+	var settings := _button("対戦の設定", setup_pressed)
+	settings.custom_minimum_size = Vector2(120.0, 34.0)
+	settings.add_theme_font_size_override("font_size", 15)
+	row.add_child(settings)
 
 
 func _build_info_panel() -> void:
@@ -522,10 +523,11 @@ func _build_result() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	column.add_child(row)
-	for stage: int in STAGE_NAMES:
-		var button := _button(STAGE_NAMES[stage], Signal())
+	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
+		var button := _button("%d %s" % [stage, MatchSetup.stage_name(stage)], Signal())
 		button.pressed.connect(func() -> void: restart_pressed.emit(stage, true))
 		row.add_child(button)
+	column.add_child(_button("軍・相手・手番を選び直す", setup_pressed))
 
 
 ## 進化先の選択肢（飾らない 2 つのボタン）。盤面が見えるよう、画面の上寄りに出す。

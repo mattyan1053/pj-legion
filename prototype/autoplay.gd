@@ -67,6 +67,7 @@ func _process(_delta: float) -> void:
 			_queue_level_up_scene()
 			_queue_evolution_scene()
 			_queue_heal_scene()
+			_queue_setup_scene()
 			_queue_cpu_scene()
 			return
 		if _game == CPU_GAME and _scene.cpu_actions == _cpu_actions_before:
@@ -616,6 +617,40 @@ func _queue_heal_scene() -> void:
 		_expect(wounded.hp == 10 + medic.power(), "回復しなかった")
 		_expect(medic.acted, "回復しても行動が終わっていない")
 		_expect(_scene.played.get(healed, 0) == 1, "回復を再生しなかった"))
+
+
+## 対戦の設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とステージも選んだとおりになる。
+## 最後に、既定の設定（人が先手）へ戻す。
+func _queue_setup_scene() -> void:
+	var seen := {"actions": 0}
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.open_setup()
+		var panel: Node = _scene.setup_panel()
+		_expect(panel.visible and _scene.is_busy(), "設定画面が開かない")
+		panel.choose_opponent(true)
+		panel.choose_human_side(Unit.Side.PLAYER2)
+		panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
+		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
+		panel.choose_stage(BoardGenerator.Stage.TWIN_SPRINGS)
+		seen["actions"] = _scene.cpu_actions
+		panel.confirm())
+	_scripted.append(func() -> void:
+		var battle: Battle = _scene.battle
+		_expect(not _scene.setup_panel().visible, "設定画面が閉じない")
+		_expect(_scene.stage == BoardGenerator.Stage.TWIN_SPRINGS, "選んだステージで始まらない")
+		_expect(battle.armies == ([UnitKind.Army.FANTASY, UnitKind.Army.MILITARY] as Array[UnitKind.Army]), "選んだ軍で始まらない")
+		_expect(_scene.cpu_actions > seen["actions"], "先手の CPU が動かなかった")
+		_expect(battle.phase == Unit.Side.PLAYER2 and battle.turn == 1, "先手の CPU が番を終えなかった")
+		var panel: Node = _scene.setup_panel()
+		_scene.open_setup()
+		panel.choose_opponent(false)
+		panel.choose_human_side(Unit.Side.PLAYER1)
+		panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
+		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.FANTASY)
+		panel.choose_stage(BoardGenerator.Stage.PLAIN)
+		panel.confirm()
+		_expect(not _scene.cpu_opponent and _scene.match_choice.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
 
 
 ## 相手を CPU にして、ターンを終える。CPU が自分の番を進め（回復役が回復し、戦う駒が攻撃する）、こちらの番に戻る。

@@ -172,8 +172,14 @@ func _initialize() -> void:
 		if mixed_only:
 			pairing %= 2
 		var armies: Array[UnitKind.Army] = [ARMIES[pairing % 2], ARMIES[(pairing % 2) ^ (0 if pairing >= 2 else 1)]]
-		var decks: Array[Deck] = [_deck(armies[0], deck_mode), _deck(armies[1], deck_mode)]
-		var battle := CpuMatch.create(stage, first_seed + game, decks)
+		var setup := MatchSetup.new()
+		setup.stage = stage
+		setup.battle_seed = first_seed + game
+		setup.ignore_budget = deck_mode == "even"
+		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+			setup.decks[side] = _deck(armies[side], deck_mode)
+			setup.controllers[side] = MatchSetup.Controller.CPU
+		var battle := setup.create_battle()
 		var outcome: CpuMatch.Outcome
 		if rival == null:
 			outcome = CpuMatch.play(battle, max_turns, cpu)
