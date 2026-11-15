@@ -25,8 +25,11 @@ const PROTECT_RADIUS := 3
 const MID_BOSS_CLEARING := 1
 ## 上下の本陣のステージ（中央平原・迷宮回廊）で、中ボスを本陣の列から左右へ離す量。
 const MID_BOSS_SPREAD := 8
-## 双子結晶で、中ボスを盤の角から離す量（左上と右下の角から、縦横にこのマス数）。
-const MID_BOSS_CORNER_INSET := 6
+## 双子結晶で、中ボスを中央の壁から上下へ離す量（壁のいちばん上の行・下の行から、このマス数）。
+const MID_BOSS_WALL_GAP := 4
+## 迷宮回廊の回復の泉を、本陣の列から左右へ離す量と、真ん中の行から自分の本陣の側へ寄せる量。
+const SPRING_SPREAD := 5
+const SPRING_SETBACK := 6
 const WALL_RATIO := 0.10
 const FOREST_RATIO := 0.15
 ## 連結しない盤面ができたら、シードをずらして作り直す回数。尽きたら壁を削ってつなぐ。
@@ -102,14 +105,26 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 ## ステージの中ボスのマス（0 = 左、1 = 右）。両方のプレイヤーに公平になるように置く（docs/neutral-mid-boss.md）。
 ## - 中央平原・迷宮回廊: 盤の真ん中の行の高さで、本陣の列から左右へ MID_BOSS_SPREAD。
 ##   本陣どうしを入れ替える点対称（盤の行の数が偶数なので、真ん中の行は 2 つある）で、左右の中ボスが入れ替わる
-## - 双子結晶: 左上と右下の角の近く。どちらの中ボスも、両方の本陣から同じ歩数（マンハッタン距離）
+## - 双子結晶: 中央の壁の上と下（0 = 上、1 = 下）。盤の列の真ん中で、壁から MID_BOSS_WALL_GAP。
+##   上の中ボスへは、プレイヤー1 はポータルを抜けて、プレイヤー2 は歩いて、ほぼ同じ歩数で着く（下はその逆）。
+##   ポータルの出口のそばには置かない（出た先ですぐ狩れると、そのポータルに近い側だけのものになる）
 static func mid_boss_cells_for(stage: Stage, size: Vector2i) -> Array[Vector2i]:
 	if stage == Stage.TWIN_SPRINGS:
-		var inset := MID_BOSS_CORNER_INSET
-		return [Vector2i(inset, inset), size - Vector2i(inset + 1, inset + 1)]
+		var center := size / 2
+		var top := Vector2i(center.x, center.y - 3 - MID_BOSS_WALL_GAP)
+		return [top, size - Vector2i.ONE - top]
 	var hq_x := (size / 2).x - 1
 	var upper := ((size - Vector2i.ONE) / 2).y
 	return [Vector2i(hq_x - MID_BOSS_SPREAD, upper), Vector2i(hq_x + MID_BOSS_SPREAD, size.y - 1 - upper)]
+
+
+## 迷宮回廊の回復の泉のマス。左の泉はプレイヤー1 の側、右の泉はプレイヤー2 の側に、本陣どうしを入れ替える点対称で置く
+## （どちらのプレイヤーにも、近い泉と遠い泉が 1 つずつ）。中ボスの届く範囲（縄張り + 射程）と、そこへ撃てる距離の外。
+static func spring_cells_for(size: Vector2i) -> Array[Vector2i]:
+	var hq_x := (size / 2).x - 1
+	var lower := size.y - 1 - ((size - Vector2i.ONE) / 2).y
+	var left := Vector2i(hq_x - SPRING_SPREAD, lower + SPRING_SETBACK)
+	return [left, Vector2i(2 * hq_x - left.x, size.y - 1 - left.y)]
 
 
 ## 地形を置いてはいけないマス（本陣の周りと結晶泉）。Vector2i -> true。
@@ -160,19 +175,17 @@ static func carve_corridor(board: Board, to := Board.NO_CELL) -> void:
 static func _place_objects(board: Board, stage: Stage, map_seed: int, protected: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed + OBJECT_SEED_OFFSET
-	var center := board.size / 2
 	match stage:
 		Stage.PLAIN:
 			_place_barrels(board, protected, rng)
 		Stage.LABYRINTH:
-			# 中央の左右の要所に 1 つずつ。半々の確率で、中央にもう 1 つ。
-			var spots: Array[Vector2i] = [center + Vector2i(-6, 0), center + Vector2i(6, 0)]
-			if rng.randf() < 0.5:
-				spots.append(center)
-			for spot in spots:
-				var cell := _free_cell_near(board, protected, spot)
-				if cell != Board.NO_CELL:
-					board.add_spring(cell)
+			# 左右に 1 つずつ（spring_cells_for）。壁や森なら平地にして、いつも同じ場所に置く（左右を点対称に保つ）。
+			# 迷路の乱数は引き直さないので、泉のマスのほかは、泉を動かす前と同じ盤面になる。
+			for cell in spring_cells_for(board.size):
+				board.set_terrain(cell, Terrain.Type.NORMAL)
+				if not board.is_reachable(board.hq_cells[0], cell):
+					carve_corridor(board, cell)
+				board.add_spring(cell)
 		Stage.TWIN_SPRINGS:
 			# 左右の道それぞれに、上の端寄りと下の端寄りを結ぶ対を 1 組ずつ。
 			for x: int in [5, board.size.x - 6]:
