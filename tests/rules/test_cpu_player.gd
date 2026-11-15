@@ -164,7 +164,8 @@ func test_raider_takes_the_empty_enemy_hq_and_holds_it() -> void:
 	assert_eq(battle.capture_turns[P1], 2)
 
 
-func test_raider_stays_off_an_enemy_hq_where_it_would_be_defeated() -> void:
+## 倒されうる本陣に乗る手より、そばのやわらかい駒を倒す手を選ぶ（倒されうる本陣にも乗ること自体は、決めた挙動。docs/cpu-ai.md）。
+func test_raider_takes_a_kill_over_an_enemy_hq_where_it_would_be_defeated() -> void:
 	var battle := _battle()
 	battle.add_unit(UnitKind.Id.KING, P1, HQ1)
 	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(15, 4))
@@ -176,7 +177,8 @@ func test_raider_stays_off_an_enemy_hq_where_it_would_be_defeated() -> void:
 	var cpu := CpuPlayer.new()
 	assert_true(cpu.danger(battle, commando.id, HQ2) >= commando.hp)
 	_play_phase(battle)
-	assert_ne(commando.cell, HQ2, "倒されうる本陣に乗った")
+	assert_ne(commando.cell, HQ2, "倒せる駒を倒さずに、倒されうる本陣に乗った")
+	assert_false(battle.units.has(sniper), "そばのスナイパーを倒す")
 
 
 func test_raider_does_not_run_ahead_of_its_army() -> void:
