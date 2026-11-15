@@ -1197,10 +1197,28 @@ func _leave_battle() -> void:
 	await get_tree().create_timer(1.0).timeout
 	app.current_scene().press_start()
 	await app.scene_changed
-	_expect(app.current_id() == &"setup", "タイトルの「始める」で、対戦の設定へ進まない")
+	_expect(app.current_id() == &"stage", "タイトルの「始める」で、ステージ選択へ進まない")
+	var stages: Node = app.current_scene()
+	_expect(stages.card_stages().size() == MatchSetup.STAGE_NAMES.size(), "ステージのカードが足りない")
+	stages.hover(BoardGenerator.Stage.TWIN_SPRINGS)
+	_expect(stages.note_text().contains(MatchSetup.stage_name(BoardGenerator.Stage.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
+	stages.hover(-1)
+	stages.choose(BoardGenerator.Stage.LABYRINTH)
+	await app.scene_changed
+	_expect(app.current_id() == &"setup", "ステージ選択のカードで、対戦の設定へ進まない")
+	_expect(app.current_scene().setup_panel().current_choice().stage == BoardGenerator.Stage.LABYRINTH, "選んだステージが対戦の設定に渡らない")
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
-	_expect(app.current_id() == &"title", "対戦の設定の「タイトルへ戻る」で、タイトルへ戻らない")
+	_expect(app.current_id() == &"stage", "対戦の設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
+	# カードの上での右クリックでも戻る（カードのボタンに食われない）。
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.position = app.current_scene().card_center(BoardGenerator.Stage.LABYRINTH)
+	right.global_position = right.position
+	app.get_viewport().push_input(right)
+	await app.scene_changed
+	_expect(app.current_id() == &"title", "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
 	await _visit_decks(app)
 	_finish("autoplay: OK", 0)
 
@@ -1265,6 +1283,8 @@ func _visit_decks(app: Node) -> void:
 	_expect(app.current_id() == &"title", "編成の一覧から、タイトルへ戻らない")
 	# 対戦の設定で、取っておいた部隊を選ぶ。
 	app.current_scene().press_start()
+	await app.scene_changed
+	app.current_scene().choose(BoardGenerator.Stage.PLAIN)
 	await app.scene_changed
 	var panel: Node = app.current_scene().setup_panel()
 	panel.choose_opponent(true)

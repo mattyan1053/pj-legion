@@ -20,7 +20,9 @@ const ResultSummary := preload("res://prototype/result_summary.gd")
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
-	"setup": "対戦の設定の場面（タイトルの「始める」のあと）",
+	"stage_select": "ステージ選択の場面（タイトルの「始める」のあと。3 枚のカード）",
+	"stage_hover": "ステージ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
+	"setup": "対戦の設定の場面（ステージ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
 	"setup_deck": "対戦の設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
 	"deck_list": "部隊の編成: 取っておいた部隊の一覧（出せない部隊も理由つきで並ぶ）",
@@ -199,6 +201,18 @@ func _capture(name: String) -> bool:
 func _scene_title() -> bool:
 	await _app.go(&"title")
 	return _app.current_id() == &"title"
+
+
+func _scene_stage_select() -> bool:
+	await _app.go(&"stage")
+	return _app.current_id() == &"stage"
+
+
+func _scene_stage_hover() -> bool:
+	if not await _scene_stage_select():
+		return false
+	_app.current_scene().hover(BoardGenerator.Stage.LABYRINTH)
+	return _app.current_scene().hovered_stage() == BoardGenerator.Stage.LABYRINTH
 
 
 func _scene_title_menu() -> bool:

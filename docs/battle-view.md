@@ -285,7 +285,7 @@
 
 ## 対戦の設定
 
-- 対戦の前の設定は、対戦の設定の場面（`setup_screen.gd`。タイトルの「始める」のあと。`docs/scene-flow.md`）で選ぶ。対戦の途中でも、同じ画面（`match_setup_panel.gd`）を盤面の上に開ける（下）。
+- 対戦の前の設定は、対戦の設定の場面（`setup_screen.gd`。ステージ選択のあと。`docs/scene-flow.md`）で選ぶ。対戦の途中でも、同じ画面（`match_setup_panel.gd`）を盤面の上に開ける（下）。
   選ぶもの: ステージ、相手（CPU / 人）、CPU と対戦するときの自分の手番（先手 / 後手。人どうしでは選ばない）、先手と後手の軍（MILITARY / FANTASY）、
   人が動かすプレイヤーの部隊（人どうしなら両方）。
   既定は ステージ 1、相手 CPU、自分が先手、先手 MILITARY・後手 FANTASY。
