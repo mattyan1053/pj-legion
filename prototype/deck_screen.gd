@@ -555,14 +555,18 @@ func _build_editor() -> Control:
 	troop.add_theme_constant_override("separation", 6)
 	body.add_child(troop)
 	troop.add_child(_caption("部隊（押して選ぶ。上から順に本陣の前へ置く）"))
+	troop.add_child(_king_row())
+	# 部隊の並びは、決まりの上限が大きくても画面の下へはみ出さないよう、列の残りの高さの中で送れるようにする。
+	var troop_scroll := ScrollContainer.new()
+	troop_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	troop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	troop.add_child(troop_scroll)
 	_troop_rows = VBoxContainer.new()
-	_troop_rows.add_theme_constant_override("separation", 4)
-	troop.add_child(_troop_rows)
-	var troop_fill := Control.new()
-	troop_fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	troop.add_child(troop_fill)
+	_troop_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_troop_rows.add_theme_constant_override("separation", 3)
+	troop_scroll.add_child(_troop_rows)
 	_slots = SlotMap.new()
-	_slots.custom_minimum_size = Vector2(TROOP_WIDTH, 112.0)
+	_slots.custom_minimum_size = Vector2(TROOP_WIDTH, 106.0)
 	troop.add_child(_slots)
 
 	var detail := _card()
@@ -670,7 +674,6 @@ func _refresh_editor() -> void:
 	for child in _troop_rows.get_children():
 		_troop_rows.remove_child(child)
 		child.queue_free()
-	_troop_rows.add_child(_king_row())
 	for i in count:
 		_troop_rows.add_child(_troop_row(i))
 	if count == 0:
@@ -704,11 +707,11 @@ func _troop_row(index: int) -> Control:
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	number.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(number)
-	var main := _button("", 15)
+	var main := _button("", 14)
 	main.toggle_mode = true
 	main.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	main.custom_minimum_size = Vector2(0.0, 44.0)
+	main.custom_minimum_size = Vector2(0.0, 42.0)
 	main.clip_text = true  # 装備の文が長くても、列の幅を広げない
 	var equipment := DeckText.equipment_short(entry.equipment)
 	main.text = "%s　コスト %d\n%s" % [
@@ -720,13 +723,13 @@ func _troop_row(index: int) -> Control:
 	for spec: Array in [["▲", -1, index > 0], ["▼", 1, index < _deck.entries.size() - 1]]:
 		var step: int = spec[1]
 		var move := _button(spec[0], 14)
-		move.custom_minimum_size = Vector2(36.0, 44.0)
+		move.custom_minimum_size = Vector2(36.0, 42.0)
 		move.disabled = not spec[2]
 		move.tooltip_text = "上へ（先に置く）" if step < 0 else "下へ（後に置く）"
 		move.pressed.connect(func() -> void: move_entry(index, step))
 		row.add_child(move)
 	var remove := _button("外す", 14)
-	remove.custom_minimum_size = Vector2(52.0, 44.0)
+	remove.custom_minimum_size = Vector2(52.0, 42.0)
 	remove.pressed.connect(func() -> void: remove_entry(index))
 	row.add_child(remove)
 	return row
@@ -907,10 +910,10 @@ func _frame() -> Control:
 	for side: String in ["left", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	margin.add_theme_constant_override("margin_top", 8)
-	var panel := _card(COLOR_PANEL, 18.0)
+	var panel := _card(COLOR_PANEL, 14.0)
 	margin.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 12)
+	column.add_theme_constant_override("separation", 8)
 	panel.add_child(column)
 	return margin
 
@@ -988,8 +991,8 @@ class SlotMap:
 	func _draw() -> void:
 		var font := get_theme_default_font()
 		var caption := "置かれるところ（本陣の前。入れないマスは飛ばす）"
-		draw_string(font, Vector2(0.0, 16.0), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.68, 0.72, 0.78))
-		var origin := Vector2((size.x - CELL * COLUMNS) * 0.5, 26.0)
+		draw_string(font, Vector2(0.0, 14.0), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.68, 0.72, 0.78))
+		var origin := Vector2((size.x - CELL * COLUMNS) * 0.5, 21.0)
 		var slots := Deployment.open_field_slots(_count)
 		for row in ROWS + 1:
 			for column in COLUMNS:

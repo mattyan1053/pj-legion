@@ -96,6 +96,9 @@ func to_data() -> Dictionary:
 		var record := deck_to_record(item.deck)
 		record["id"] = item.id
 		record["name"] = item.name
+		if not item.load_issues.is_empty():
+			# 読み込みで外した・読み替えたものの理由は、組み直して取っておくまで残す（書き直しで出せるようにならない）。
+			record["load_issues"] = item.load_issues.duplicate()
 		records.append(record)
 	return {"next_id": _next_id, "decks": records}
 
@@ -217,6 +220,11 @@ static func deck_to_record(deck: Deck) -> Dictionary:
 ## ファイルの 1 件から、取っておいた部隊を作る。知らない駒・装備は外し、知らない決まり・軍は理由に書く。
 static func _from_record(record: Dictionary) -> Saved:
 	var item := Saved.new()
+	var kept: Variant = record.get("load_issues")
+	if typeof(kept) == TYPE_ARRAY:
+		for issue: Variant in kept:
+			if typeof(issue) == TYPE_STRING and not item.load_issues.has(issue):
+				item.load_issues.append(issue)
 	var id: Variant = record.get("id")
 	item.id = str(int(id)) if typeof(id) in [TYPE_INT, TYPE_FLOAT] else (id if typeof(id) == TYPE_STRING else "")
 	var name: Variant = record.get("name")

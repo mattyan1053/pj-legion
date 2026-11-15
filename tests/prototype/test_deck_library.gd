@@ -174,6 +174,24 @@ func test_odd_records_are_kept_with_reasons() -> void:
 	_cleanup()
 
 
+func test_load_issues_survive_rewriting_the_file() -> void:
+	# 知らない駒を外して読んだ部隊は、ほかの部隊を変えて書き直しても、組み直して取っておくまで出せないまま。
+	_write_raw(JSON.stringify({"name": "decks", "version": 1, "data": {"decks": [
+		{"id": "1", "name": "古い", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER"}, {"kind": "LASER_TANK"}]},
+		{"id": "2", "name": "ふつう", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER"}]},
+	]}}))
+	var library := _loaded()
+	library.rename("2", "改名")
+	library.duplicate_deck("1")
+	var reloaded := _loaded()
+	assert_false(reloaded.find("1").playable(), "書き直しで出せるようになった")
+	assert_eq(reloaded.find("1").load_issues.size(), 1, "理由が重ならない")
+	assert_false(reloaded.items()[1].playable(), "写しも出せないまま")
+	reloaded.replace("1", "古い", reloaded.find("1").deck)
+	assert_true(_loaded().find("1").playable(), "組み直して取っておけば出せる")
+	_cleanup()
+
+
 func test_decks_the_rules_no_longer_allow_stay_with_reasons() -> void:
 	# 予算を超えた・雇えない駒がいる・多すぎる（決まりが変わった、手で書き換えた）部隊も、一覧に残る。
 	var units: Array = []
