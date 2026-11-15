@@ -12,6 +12,8 @@ extends SceneTree
 ##   --rival=PATH    別の版の CPU（スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
 ##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、ステージ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
 ##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
+##   --relic=NAME    プレイヤー1 が、対戦の始めから聖遺物を 1 つ持つ（wisdom = 英知、courage = 勇気。ゲージは足さない）。
+##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さの実測」）
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
 ## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
@@ -182,6 +184,11 @@ func _initialize() -> void:
 			setup.decks[side] = _deck(armies[side], deck_mode)
 			setup.controllers[side] = MatchSetup.Controller.CPU
 		var battle := setup.create_battle()
+		if args.has("relic"):
+			var relic := Relics.Id.COURAGE if args["relic"] == "courage" else Relics.Id.WISDOM
+			var gauge := battle.ult_gauge[Unit.Side.PLAYER1]
+			Relics.grant(battle, Unit.Side.PLAYER1, relic, Relics.boss_of(relic))
+			battle.ult_gauge[Unit.Side.PLAYER1] = gauge
 		var outcome: CpuMatch.Outcome
 		if rival == null:
 			outcome = CpuMatch.play(battle, max_turns, cpu)
