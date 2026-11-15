@@ -1255,4 +1255,9 @@ func _visit_decks(app: Node) -> void:
 func _finish(message: String, code: int) -> void:
 	_finished = true
 	print(message)
-	get_tree().quit(code)
+	# 音を止めて手放してから終える（鳴らしたまま終えると、終わるときにエラーが出る）。
+	var context: Variant = _scene.get(&"context") if is_instance_valid(_scene) else null
+	if context != null:
+		context.quit(code)
+	else:
+		get_tree().quit(code)

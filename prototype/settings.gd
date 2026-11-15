@@ -2,8 +2,7 @@ extends RefCounted
 ## 遊ぶ人ごとの設定（マウスの感度など）。項目の並び・範囲・既定の値と、いまの値を持つ。ノードに依存しない。
 ##
 ## 画面（settings_panel.gd）は ITEMS から行を作るので、項目を足すのは ITEMS に 1 つ足し、効かせる側
-## （board_prototype.gd の _apply_settings）に 1 行足すだけで済む。
-## 音量（BGM・効果音）は、音が入ったら、ITEMS に区分 "音" の SLIDER として足す。
+## （操作と再生は board_prototype.gd の _apply_settings、音は sound.gd の apply_settings）に 1 行足すだけで済む。
 ##
 ## 取っておくのは save_store.gd（user:// の JSON）。読めないファイル・知らない項目・型の違う値・範囲の外の値は、
 ## 既定の値に戻すか、範囲に収める（起動を止めない）。
@@ -20,6 +19,10 @@ const FORMAT_VERSION := 1
 const MOUSE_SENSITIVITY := &"mouse_sensitivity"
 const INVERT_VERTICAL_DRAG := &"invert_vertical_drag"
 const CPU_PLAYBACK_SPEED := &"cpu_playback_speed"
+const MASTER_VOLUME := &"master_volume"
+const MUSIC_VOLUME := &"music_volume"
+const EFFECTS_VOLUME := &"effects_volume"
+const MUTE := &"mute"
 
 ## 項目（画面に並べる順）。
 ## - key: 名前（ファイルにも、この名前で書く）。section: 画面の区分の見出し。label: 項目の名前。note: 短い説明。
@@ -42,6 +45,26 @@ const ITEMS: Array[Dictionary] = [
 		"key": CPU_PLAYBACK_SPEED, "section": "再生", "label": "CPU の番の速さ",
 		"note": "CPU の駒が動く・攻撃するところを見せる速さ（中立の番は変わらない）",
 		"kind": Kind.CHOICE, "choices": [[1, "ふつう"], [2, "速い"], [3, "とても速い"]], "default": 1,
+	},
+	{
+		"key": MASTER_VOLUME, "section": "音", "label": "全体の音量",
+		"note": "BGM と効果音の両方に掛かる",
+		"kind": Kind.SLIDER, "min": 0, "max": 100, "step": 5, "unit": "%", "default": 80,
+	},
+	{
+		"key": MUSIC_VOLUME, "section": "音", "label": "BGM の音量",
+		"note": "タイトル・対戦・決着の曲",
+		"kind": Kind.SLIDER, "min": 0, "max": 100, "step": 5, "unit": "%", "default": 70,
+	},
+	{
+		"key": EFFECTS_VOLUME, "section": "音", "label": "効果音の音量",
+		"note": "スライダーを離すと、ボタンの音で大きさを確かめられる",
+		"kind": Kind.SLIDER, "min": 0, "max": 100, "step": 5, "unit": "%", "default": 80,
+	},
+	{
+		"key": MUTE, "section": "音", "label": "音を消す",
+		"note": "音量はそのままで、すべての音を止める",
+		"kind": Kind.TOGGLE, "default": false,
 	},
 ]
 
