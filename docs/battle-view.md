@@ -104,7 +104,7 @@
 ## ルールとのつなぎ方
 
 - 画面はルールを持たない。操作を行動（`BattleAction`）にして `Battle.apply()` に渡し、
-  返ってきた `ActionResult.events` を順に再生する（`board_prototype.gd` の `_do` と `_play`）。
+  返ってきた `ActionResult.events` を順に再生する（`board_prototype.gd` の `_do` と、`battle_playback.gd` の `play_all`）。
 - 再生している間は、操作を受け付けない。再生が終わったら、対戦の状態と選んでいる駒から、
   塗るマス・ボタン・文字を作り直す（`_refresh`）。帯・メニュー・マスの説明などの文は、ノードに依存しない `battle_texts.gd` が作る（テストは `tests/prototype/test_battle_texts.gd`）。
 - 選べること（動けるマス、攻撃できる相手、攻撃できる樽、回復できる味方、スキルの対象のマス）は、ルールの問い合わせ `Battle.options()`（`docs/battle.md`）に聞き、
@@ -114,7 +114,7 @@
   画面は計算を持たず、それを予測のパネル（下の「戦闘予測のパネル」）に並べるだけ。樽の爆発が届くマスは `MapObject.blast_cells` で塗る。
 - 相手の駒（中立の駒も）を見ると、脅威範囲（`docs/threat-range.md`。`Threat.of()`）を濃い赤で塗る。
   敵の全員の脅威範囲（`Threat.against()`）は、スイッチで斜線を重ねる（上の「敵の攻撃範囲」）。
-- イベントの種類と再生するメソッドの対応は `board_prototype.gd` の `event_players()` に並べる。
+- イベントの種類と再生するメソッドの対応は `battle_playback.gd` の `event_players()` に並べる。
   `rules/events/` にあるのに載っていない種類があると、テスト（`tests/prototype/test_event_playback.gd`）が落ちる。
 
 | イベント | 再生 |
@@ -335,7 +335,7 @@
   カメラを動かさず、続いている静かな場面を**まとめて同時に**流す（待ち時間は、いちばん長く歩く 1 体のぶんだけ）。
 - **見せる場面**: 攻撃した、煙幕に阻まれた、倒した、など。**必ずカメラを寄せて、1 体ずつ**見せる:
   攻撃する駒へ寄せる（`NEUTRAL_FOCUS_TIME`）→ 歩く間は追いかける → 攻撃のときは相手との間へ寄せる → 間を置く（`NEUTRAL_PAUSE`）。
-- 中立の駒は、プレイヤーの駒よりゆっくり歩く（1 マスの時間は `NEUTRAL_STEP_TIME`。プレイヤーの駒は `STEP_TIME`、巡航は `CRUISE_STEP_TIME`。どれも `board_prototype.gd`）。
+- 中立の駒は、プレイヤーの駒よりゆっくり歩く（1 マスの時間は `NEUTRAL_STEP_TIME`。プレイヤーの駒は `STEP_TIME`、巡航は `CRUISE_STEP_TIME`。どれも `battle_playback.gd`）。
 - 起きた順は変えない（静かな場面をまとめるのは、間に見せる場面をはさまずに続いているものだけ）。
 
 ## 回復の操作

@@ -9,6 +9,7 @@ extends Node
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
 const Queries := preload("res://prototype/battle_queries.gd")
+const BattlePlayback := preload("res://prototype/battle_playback.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## これだけターンが進んでも決着しなければ、失敗にする。
@@ -991,7 +992,7 @@ func _queue_ult_scene() -> void:
 
 ## 対戦を通して、どの種類のイベントも 1 回は再生したことを確かめて終える。
 func _finish_if_all_played() -> void:
-	var players: Dictionary = _scene.event_players()
+	var players: Dictionary = BattlePlayback.event_players()
 	for kind: Script in players:
 		if _scene.played.get(kind, 0) == 0:
 			_finish("autoplay: 1 回も再生しなかったイベント: %s" % kind.resource_path, 1)
