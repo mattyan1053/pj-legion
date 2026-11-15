@@ -562,7 +562,8 @@ func _update_time_scale() -> void:
 	Engine.time_scale = scale
 
 
-func _set_cpu_fast(fast: bool) -> void:
+## CPU の駒の行動を再生する間だけ、設定の速さを掛ける（検査からも呼ぶ）。
+func set_cpu_fast(fast: bool) -> void:
 	if _cpu_fast != fast:
 		_cpu_fast = fast
 		_update_time_scale()
@@ -884,6 +885,53 @@ func set_camera_pitch(pitch: float) -> void:
 	_rig.set_pitch(pitch)
 
 
+## カメラの距離と向き（度）を決める。スクリーンショットの道具用。
+func set_camera_view(distance: float, yaw_degrees: float) -> void:
+	_rig.set_view(distance, yaw_degrees)
+
+
+## カメラを、すぐに point を中央に見る位置へ置く（追うのをやめる）。スクリーンショットの道具用。
+func place_camera(point: Vector3) -> void:
+	_rig.place_at(point)
+
+
+## カメラがいま見ている地点（盤面の上）。スクリーンショットの道具用。
+func camera_center() -> Vector3:
+	return _rig.position
+
+
+## ドラッグの感度と、縦のドラッグを逆にしているか（設定が効いているかを見る）。検査用。
+func camera_drag_settings() -> Array:
+	return [_rig.drag_sensitivity, _rig.invert_vertical]
+
+
+## 画面の中央の知らせ（番の知らせなど）が出ているか。スクリーンショットの道具用。
+func is_banner_shown() -> bool:
+	return _hud.is_banner_shown()
+
+
+## メニューの項目 id にマウスを乗せたことにする（空なら、離したことにする）。検査とスクリーンショットの道具用。
+func hover_menu_item(id: StringName) -> void:
+	_on_menu_hovered(id)
+
+
+## 盤面への入力を、マウスやキーと同じ道で渡す。検査用。
+func feed_input(event: InputEvent) -> void:
+	_unhandled_input(event)
+
+
+## cell に、見ている駒の白い輪を出す（駒がいなくても）。スクリーンショットの道具用。
+func mark_cell(cell: Vector2i) -> void:
+	_inspect_ring.position = BoardView.cell_center(cell) + Vector3(0.0, 0.04, 0.0)
+	_inspect_ring.visible = true
+
+
+## 画面を通さずに起きたこと events（対戦の始めから）を数えて、side の番の始めにカメラが寄る駒を返す。スクリーンショットの道具用。
+func phase_focus_after(events: Array[BattleEvent], side: Unit.Side) -> Unit:
+	_phase_focus.feed(battle, events)
+	return _phase_focus.unit_for(battle, side)
+
+
 ## 左下の情報の枠に出ている文（見出しを除く）。検査用。
 func info_text() -> String:
 	return _hud.info_text()
@@ -1027,7 +1075,7 @@ func _run_cpu() -> void:
 		var unit: Unit = battle.unit_by_id(action.get(&"unit_id")) if &"unit_id" in action else null
 		var idle := action is WaitAction and unit != null and not unit.has_moved
 		# 設定の「CPU の番の速さ」は、CPU の駒の行動にだけ効かせる（番を終えたあとの中立の番は、ふだんの速さで見せる）。
-		_set_cpu_fast(not action is EndPhaseAction)
+		set_cpu_fast(not action is EndPhaseAction)
 		if unit != null and not unit.has_moved and not idle and not action is EvolveAction:
 			_rig.focus_on(_view(unit.id).position)
 			await _playback.after(CPU_FOCUS_TIME)
@@ -1036,7 +1084,7 @@ func _run_cpu() -> void:
 		cpu_actions += 1
 		if not (action is MoveAction or action is EndPhaseAction or idle or battle.is_over()):
 			await _playback.after(CPU_PAUSE)
-	_set_cpu_fast(false)
+	set_cpu_fast(false)
 	_ui.cpu_running = false
 	# 番の途中で相手を人に切り替えたら、動いたあとの駒を選んだ状態で引き渡す。
 	_ui.selected_id = battle.acting_unit_id

@@ -10,6 +10,7 @@ extends Node
 
 const Queries := preload("res://game/battle_queries.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
+const OrbitCamera := preload("res://game/orbit_camera.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## これだけターンが進んでも決着しなければ、失敗にする。
@@ -711,9 +712,9 @@ func _queue_heal_scene() -> void:
 		# スキルの説明は、駒の情報にいつも出ている。メニューの項目にマウスを乗せると、押すと何が起きるかが出る。
 		var skill := Skills.of(medic)
 		_expect(_scene.info_text().replace("\n", "").contains(skill.summary()), "駒の情報に、スキルの説明が出ていない")
-		_scene._on_menu_hovered(&"wait")
+		_scene.hover_menu_item(&"wait")
 		_expect(_scene.info_text().contains("待機"), "メニューの項目の説明が出ていない")
-		_scene._on_menu_hovered(&"")
+		_scene.hover_menu_item(&"")
 		_expect(not _scene.info_text().contains("待機:"), "マウスが離れても、項目の説明が残っている")
 		_expect(_scene.press_menu(&"heal") and _scene.is_choosing_target(), "メニューの回復で、相手を選び始めなかった")
 		_scene.hover(wounded.cell)
@@ -872,19 +873,20 @@ func _queue_system_menu_scene() -> void:
 		_expect(menu.is_settings_open(), "設定の画面が開かない")
 		settings.set_value(&"mouse_sensitivity", 200)
 		settings.set_value(&"invert_vertical_drag", true)
-		var rig: Node = _scene._rig
-		_expect(is_equal_approx(rig.drag_sensitivity, 2.0 * rig.DEFAULT_DRAG_SENSITIVITY) and rig.invert_vertical, "設定の値がカメラに効かない")
+		var drag: Array = _scene.camera_drag_settings()
+		_expect(is_equal_approx(drag[0], 2.0 * OrbitCamera.DEFAULT_DRAG_SENSITIVITY) and drag[1], "設定の値がカメラに効かない")
 		settings.reset_all()
-		_expect(is_equal_approx(rig.drag_sensitivity, rig.DEFAULT_DRAG_SENSITIVITY) and not rig.invert_vertical, "既定に戻せない")
+		drag = _scene.camera_drag_settings()
+		_expect(is_equal_approx(drag[0], OrbitCamera.DEFAULT_DRAG_SENSITIVITY) and not drag[1], "既定に戻せない")
 		menu.back()
 		_expect(menu.is_open() and not menu.is_settings_open(), "設定の画面から、メニューへ戻らない")
 		menu.back()
 		_expect(not menu.is_open() and not _scene.is_busy() and Engine.time_scale == base, "メニューを閉じても、元の速さに戻らない")
 		# CPU の駒の行動を再生する間だけ、設定の速さを掛ける。
 		settings.set_value(&"cpu_playback_speed", 3)
-		_scene._set_cpu_fast(true)
+		_scene.set_cpu_fast(true)
 		_expect(is_equal_approx(Engine.time_scale, base * 3.0), "CPU の番の速さが効かない")
-		_scene._set_cpu_fast(false)
+		_scene.set_cpu_fast(false)
 		settings.reset_all()
 		_expect(Engine.time_scale == base, "CPU の番の速さが残った"))
 
@@ -1158,7 +1160,7 @@ func _mouse_motion(at: Vector2, held: bool, relative := Vector2(60, 0)) -> void:
 	motion.position = at
 	motion.relative = relative
 	motion.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
-	_scene._unhandled_input(motion)
+	_scene.feed_input(motion)
 
 
 func _mouse_button(at: Vector2, pressed: bool) -> void:
@@ -1166,7 +1168,7 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = pressed
 	event.position = at
-	_scene._unhandled_input(event)
+	_scene.feed_input(event)
 
 
 ## 最後に、相手（CPU）の番の途中で、システムメニューの「タイトルへ戻る」を確かめてから選ぶ。対戦の場面が消えても、

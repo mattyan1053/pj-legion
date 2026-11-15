@@ -220,6 +220,11 @@ func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
 	_show_choice()
 
 
+## side の部隊の選択肢を開く（スクリーンショットの道具用）。
+func open_deck_picker(side: Unit.Side) -> void:
+	_deck_pickers[side].show_popup()
+
+
 ## side の部隊を、取っておいた部隊 id にする（空なら既定の編成）。出せない部隊・知らない id なら何もせず false。
 func choose_deck(side: Unit.Side, id: String) -> bool:
 	if id == "":
