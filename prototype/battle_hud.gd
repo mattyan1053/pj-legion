@@ -560,7 +560,7 @@ func _build_top_bar() -> void:
 	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(help_panel)
 	var help := _label(13)
-	help.text = "視点: ドラッグで回転　ホイールで拡大　WASD で移動"
+	help.text = "視点: ドラッグで回転・傾き　ホイールで拡大　WASD で移動"
 	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	help.add_theme_constant_override("outline_size", 0)
 	help_panel.add_child(help)

@@ -2,9 +2,13 @@ extends Node3D
 ## 盤面を斜めに見下ろすカメラ。
 ##
 ## このノード自身が「見ている地点」で、盤面の上を平行移動する。
-## 向きはマウスのドラッグで好きなだけ回す（rotate_by。呼ぶ側がドラッグを見分ける）か、Q / E で 90 度ずつ回す。
-## 角度は 3 段階、距離はホイールで変える。
+## マウスのドラッグ（drag。呼ぶ側がドラッグを見分ける）で、横の動きで向きを、縦の動きで見下ろす角度を同時に変える。
+## キーでは、Q / E で 90 度ずつ回し、R で見下ろす角度を決まった段（PITCH_PRESETS）へ移す。距離はホイールで変える。
 
+## 見下ろす角度（度。水平から下へ）の範囲。浅いほうは、盤の外が見えすぎない深さ。深いほうは、ほぼ真上。
+const MIN_PITCH := 30.0
+const MAX_PITCH := 85.0
+## R で順に移る角度（度。浅い順）。
 const PITCH_PRESETS: Array[float] = [35.0, 50.0, 68.0]
 const MIN_DISTANCE := 8.0
 const MAX_DISTANCE := 45.0
@@ -14,10 +18,14 @@ const SMOOTHING := 10.0
 ## カメラが見てよい範囲（盤面の x / z）。
 var bounds := Rect2(0.0, 0.0, 30.0, 30.0)
 var camera: Camera3D
+## ドラッグの感度（1 px あたりのラジアン）。横（向き）にも縦（見下ろす角度）にも同じ値を使う。
+## 設定の画面から変えられるよう、外から書き換えてよい。
+var drag_sensitivity := 0.008
 
 var _pivot: Node3D
 var _target_yaw := 0.0
-var _pitch_index := 1
+## 見下ろす角度の行き先（度）。
+var _target_pitch := PITCH_PRESETS[1]
 var _target_distance := 22.0
 ## 寄っていく先（focus_on で決める）。手で動かしたら、寄るのをやめる。
 var _focus: Vector3
@@ -29,7 +37,7 @@ var _followed: Node3D
 func _ready() -> void:
 	_pivot = Node3D.new()
 	add_child(_pivot)
-	_pivot.rotation_degrees.x = -PITCH_PRESETS[_pitch_index]
+	_pivot.rotation_degrees.x = -_target_pitch
 
 	camera = Camera3D.new()
 	camera.fov = 35.0
@@ -47,7 +55,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_E:
 				_target_yaw += PI / 2.0
 			KEY_R:
-				_pitch_index = (_pitch_index + 1) % PITCH_PRESETS.size()
+				_target_pitch = next_pitch_preset(_target_pitch)
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_target_distance = maxf(MIN_DISTANCE, _target_distance * 0.9)
@@ -55,14 +63,40 @@ func _unhandled_input(event: InputEvent) -> void:
 			_target_distance = minf(MAX_DISTANCE, _target_distance * 1.1)
 
 
-## 向きを radians だけ回す（マウスのドラッグ）。
-func rotate_by(radians: float) -> void:
-	_target_yaw += radians
+## マウスのドラッグで relative（px）だけ動かした。盤を掴んで動かす向きに回す。
+## 右へ動かすと盤が右へ回り（カメラは左へ回り込む）、下へ動かすと盤の奥がこちらへ倒れる（真上からの見下ろしに近づく）。
+func drag(relative: Vector2) -> void:
+	_target_yaw -= relative.x * drag_sensitivity
+	_target_pitch = clampf(_target_pitch + rad_to_deg(relative.y * drag_sensitivity), MIN_PITCH, MAX_PITCH)
 
 
 ## 回していく先の向き（ラジアン）。
 func target_yaw() -> float:
 	return _target_yaw
+
+
+## 傾けていく先の見下ろす角度（度）。
+func target_pitch() -> float:
+	return _target_pitch
+
+
+## いまの見下ろす角度（度。動いている途中の値）。
+func current_pitch() -> float:
+	return -_pivot.rotation_degrees.x
+
+
+## 見下ろす角度を pitch（度）にする（範囲に収める）。スクリーンショットの道具用。
+func set_pitch(pitch: float) -> void:
+	_target_pitch = clampf(pitch, MIN_PITCH, MAX_PITCH)
+
+
+## R で移る先: pitch より深い段のうち、いちばん浅いもの。いちばん深い段より深ければ、いちばん浅い段へ戻る。
+## ドラッグで段の間にしていても、そこから次の段へ進む。
+static func next_pitch_preset(pitch: float) -> float:
+	for preset in PITCH_PRESETS:
+		if preset > pitch + 0.5:
+			return preset
+	return PITCH_PRESETS[0]
 
 
 ## point が画面の中央に来るよう、なめらかに寄る。
@@ -96,7 +130,7 @@ func _process(delta: float) -> void:
 			_focusing = false
 	rotation.y = lerpf(rotation.y, _target_yaw, weight)
 	_pivot.rotation_degrees.x = lerpf(
-		_pivot.rotation_degrees.x, -PITCH_PRESETS[_pitch_index], weight
+		_pivot.rotation_degrees.x, -_target_pitch, weight
 	)
 	camera.position.z = lerpf(camera.position.z, _target_distance, weight)
 
