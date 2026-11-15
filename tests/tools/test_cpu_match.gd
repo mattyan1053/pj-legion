@@ -43,16 +43,6 @@ func test_same_seed_plays_the_same_game() -> void:
 	assert_eq(a.level_ups, b.level_ups)
 
 
-func test_create_deploys_both_armies_on_a_generated_board() -> void:
-	var decks: Array[Deck] = [CpuDeck.build(UnitKind.Army.MILITARY), CpuDeck.build(UnitKind.Army.FANTASY)]
-	for stage in CpuMatch.STAGES:
-		var battle := CpuMatch.create(stage, 5, decks)
-		var counts := [0, 0, 0]
-		for unit in battle.units:
-			counts[unit.side] += 1
-		assert_eq(counts, [7, 6, 0], "ステージ %d" % stage)
-
-
 func test_a_second_cpu_can_play_player_two() -> void:
 	# 別の版の CPU と対戦させる入口。同じ CPU を渡せば、渡さないときと同じ対局になる。
 	var alone := CpuMatch.play(_small_battle(3), 60)

@@ -1,5 +1,6 @@
 extends RefCounted
 ## CPU どうしの対戦を 1 局、画面なしで最後まで進めて、起きたことを数える。
+## 対戦は、試作と同じ入口（MatchSetup.create_battle）で作ってから渡す。
 ##
 ## 集計の道具（tools/cpu_matches.gd）と、テスト（短い 1 局が最後まで終わること）が使う。
 ## ノードに依存しない。
@@ -66,19 +67,6 @@ class Outcome:
 	var first_ult_turn: Array[int] = [0, 0]
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
-
-
-## 決まった編成を両方のプレイヤーに置いた対戦を作る。盤面を作れなければ null。
-static func create(
-	stage: BoardGenerator.Stage, battle_seed: int, decks: Array[Deck], size := BoardGenerator.DEFAULT_SIZE
-) -> Battle:
-	var board := BoardGenerator.generate(stage, battle_seed, size)
-	if board == null:
-		return null
-	var battle := Battle.new(board, battle_seed)
-	Deployment.deploy(battle, Unit.Side.PLAYER1, decks[0])
-	Deployment.deploy(battle, Unit.Side.PLAYER2, decks[1])
-	return battle
 
 
 ## battle を、両方のプレイヤーを CPU にして、決着するか max_turns を超えるまで進める。battle は書き換わる。
