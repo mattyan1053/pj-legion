@@ -198,11 +198,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not _dragging:
 				click_cell(_cell_at(_press_position))
 			_dragging = false
-	elif event is InputEventMouseMotion and _pressing and not _press_on_unit:
-		if not _dragging and event.position.distance_to(_press_position) > DRAG_THRESHOLD:
-			_dragging = true
-		if _dragging:
-			_rig.rotate_by(-event.relative.x * DRAG_ROTATE_SPEED)
+	elif event is InputEventMouseMotion and _pressing:
+		if not event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+			# ボタンを、帯やメニューの上で離した（離したことが、ここへは届かない）。押していないのに回り続けないよう、やめる。
+			_pressing = false
+			_dragging = false
+		elif not _press_on_unit:
+			if not _dragging and event.position.distance_to(_press_position) > DRAG_THRESHOLD:
+				_dragging = true
+			if _dragging:
+				_rig.rotate_by(-event.relative.x * DRAG_ROTATE_SPEED)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		cancel()
 	elif event is InputEventKey and event.pressed and not event.echo:

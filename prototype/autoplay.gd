@@ -878,13 +878,26 @@ func _check_drag(cell: Vector2i) -> void:
 	_scene.cancel()
 	var yaw: float = _scene.camera_yaw()
 	_mouse_button(at, true)
-	var motion := InputEventMouseMotion.new()
-	motion.position = at + Vector2(60, 0)
-	motion.relative = Vector2(60, 0)
-	_scene._unhandled_input(motion)
+	_mouse_motion(at + Vector2(60, 0), true)
 	_mouse_button(at + Vector2(60, 0), false)
 	_expect(not is_equal_approx(_scene.camera_yaw(), yaw), "ドラッグで、視点が回らなかった")
 	_expect(_scene.info_title() == "" and _scene.selected_unit() == null, "ドラッグが、クリックとして扱われた")
+	# 帯やメニューの上で離すと、離したことが盤面へ届かない。ボタンを押していない動きでは、回さない。
+	yaw = _scene.camera_yaw()
+	_mouse_button(at, true)
+	_mouse_motion(at + Vector2(60, 0), true)
+	var dragged: float = _scene.camera_yaw()
+	_mouse_motion(at + Vector2(120, 0), false)
+	_mouse_motion(at + Vector2(180, 0), false)
+	_expect(not is_equal_approx(dragged, yaw) and is_equal_approx(_scene.camera_yaw(), dragged), "ボタンを離したあとも、視点が回り続けた")
+
+
+func _mouse_motion(at: Vector2, held: bool) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = at
+	motion.relative = Vector2(60, 0)
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
+	_scene._unhandled_input(motion)
 
 
 func _mouse_button(at: Vector2, pressed: bool) -> void:
