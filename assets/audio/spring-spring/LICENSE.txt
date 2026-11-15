@@ -1,0 +1,10 @@
+Sound effect by spring-spring (https://opengameart.org/users/spring-spring)
+
+  Magic Words + Healing Sound Effect  https://opengameart.org/content/magic-words-healing-sound-effect
+
+License: Creative Commons Zero (CC0 1.0 Universal)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The distribution page lists the license as CC0 (checked on 2026-11-15).
+The file here was converted from the distributed WAV file (health_restore.wav)
+to mono Ogg Vorbis and shortened with a fade-out.

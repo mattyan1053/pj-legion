@@ -19,8 +19,8 @@ const BUS_EFFECTS := &"Effects"
 const FADE_TIME := 0.8
 ## 聞こえない大きさ（フェードの端）。
 const SILENT_DB := -60.0
-## 同時に鳴らせる効果音の数。
-const EFFECT_VOICES := 6
+## 同時に鳴らせる効果音の数（対戦の中の音が重なっても、鳴っている音を途中で切らない程度）。
+const EFFECT_VOICES := 10
 ## アプリを終える前に、止めた音を手放すのを待つ秒数。
 const RELEASE_WAIT := 0.1
 ## ボタンに付ける meta の名前（効果音の名前を入れると、ボタンの音がそれに替わる）。
@@ -37,6 +37,8 @@ var _voices: Array[AudioStreamPlayer] = []
 var _next_voice := 0
 ## 名前 -> 最後に鳴らしたフレーム（同じフレームに同じ音を重ねない）。
 var _played_frame := {}
+## 名前 -> 最後に鳴らした時刻（ミリ秒）。表の gap の間は、同じ音を鳴らし直さない。
+var _played_msec := {}
 ## 弱い音（ボタン）を、フレームの終わりに鳴らすかどうか決めるために待たせている。
 var _pending_weak: Array[StringName] = []
 ## 鳴らした効果音の名前（新しい順に少しだけ。検査用）。
@@ -195,6 +197,7 @@ func _fade(slot: int, to_db: float, then_stop: bool) -> void:
 
 
 ## 効果音 name を鳴らす。表に無い名前・素材の無い名前は、何もしない。同じフレームに同じ音は 1 回だけ。
+## 表に gap（秒）がある音は、鳴らしてからその間、同じ音をもう鳴らさない（続けて起きる回復・被弾が連打に聞こえないように）。
 func play(name: StringName) -> void:
 	if not Catalog.has_effect(name):
 		return
@@ -212,10 +215,14 @@ func _play_now(name: StringName) -> void:
 	if _played_frame.get(name, -1) == frame:
 		return
 	var entry: Dictionary = Catalog.EFFECTS[name]
+	var now := Time.get_ticks_msec()
+	if _played_msec.has(name) and now - int(_played_msec[name]) < int(entry.get("gap", 0.0) * 1000.0):
+		return
 	var stream := _load(entry["path"])
 	if stream == null:
 		return
 	_played_frame[name] = frame
+	_played_msec[name] = now
 	var voice := _voices[_next_voice]
 	_next_voice = (_next_voice + 1) % _voices.size()
 	voice.stream = stream

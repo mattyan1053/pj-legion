@@ -1,0 +1,11 @@
+Sound effects from "Tinysized SFX Library" by Jan Schupke
+(OpenGameArt user "vehicle": https://opengameart.org/users/vehicle)
+https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx
+
+License: Creative Commons Zero (CC0 1.0 Universal)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The distribution page lists the license as CC0, and the zip's readme.txt says
+"Distributed under Creative Commons Zero" (checked on 2026-11-15).
+The file here was converted from the distributed WAV file to mono Ogg Vorbis
+and shortened with a fade-out.

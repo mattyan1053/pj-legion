@@ -8,6 +8,7 @@ const SceneFlow := preload("res://prototype/scene_flow.gd")
 const Settings := preload("res://prototype/settings.gd")
 const SaveStore := preload("res://prototype/save_store.gd")
 const BoardPrototype := preload("res://prototype/board_prototype.gd")
+const BattleEffects := preload("res://prototype/battle_effects.gd")
 
 
 ## 木に入れずに使う（テストはフレームを進めないので、鳴らすところまでは行かず、選んだ曲と音を見る）。
@@ -151,3 +152,41 @@ func test_volume_settings_are_saved() -> void:
 	for file in DirAccess.get_files_at(store.dir):
 		DirAccess.remove_absolute(store.dir.path_join(file))
 	DirAccess.remove_absolute(store.dir)
+
+
+func test_gap_keeps_the_same_sound_from_repeating() -> void:
+	var sound := _sound()
+	assert_true(Catalog.EFFECTS[&"heal"].get("gap", 0.0) > 0.0, "回復の音には間がある")
+	sound.play(&"heal")
+	sound._played_frame.clear()  # 次のフレームのつもり
+	sound.play(&"heal")
+	assert_eq(sound.recent, [&"heal"] as Array[StringName], "間の中では、同じ音を鳴らし直さない")
+	sound.play(&"critical")
+	assert_eq(sound.recent[0], &"critical", "ほかの音は鳴る")
+	sound._played_frame.clear()
+	sound._played_msec.clear()  # 間が過ぎたつもり
+	sound.play(&"heal")
+	assert_eq(sound.recent[0], &"heal", "間が過ぎれば、また鳴る")
+	_drop(sound)
+
+
+func test_battle_sounds_cover_every_style_and_skill() -> void:
+	for style: int in BattleEffects.Style.values():
+		assert_true(Catalog.has_effect(BattleEffects.STYLE_SOUNDS[style]), "当たり方 %d の音" % style)
+	for skill: int in Skill.Id.values():
+		assert_true(BattleEffects.SKILL_SOUNDS.has(skill), "スキル %d に音がある" % skill)
+		assert_true(Catalog.has_effect(BattleEffects.SKILL_SOUNDS[skill]), "スキル %d の音が表にある" % skill)
+
+
+## 試作のコードが名前で鳴らす効果音（play_sound(&"…")、_sound(&"…")）は、どれも表にある（書き間違えると黙って鳴らないため）。
+func test_every_sound_name_in_the_code_is_listed() -> void:
+	var pattern := RegEx.create_from_string("(?:play_sound|_sound|Sound\\.play)\\(&\"([a-z_0-9]+)\"\\)")
+	var found := 0
+	for file in DirAccess.get_files_at("res://prototype"):
+		if not file.ends_with(".gd"):
+			continue
+		var text := FileAccess.get_file_as_string("res://prototype".path_join(file))
+		for m in pattern.search_all(text):
+			found += 1
+			assert_true(Catalog.has_effect(StringName(m.get_string(1))), "%s の %s が表にある" % [file, m.get_string(1)])
+	assert_true(found >= 15, "対戦の音を名前で鳴らしている（%d か所）" % found)
