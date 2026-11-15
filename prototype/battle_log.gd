@@ -5,24 +5,9 @@ extends RefCounted
 ## 控えた駒をイベントで追いかけて知る（倒れた駒も、名前は残る）。
 ## どのイベントをどう読むかは readers() の表に載せる。載っていない種類があると、テストが落ちる。
 
+const Names := preload("res://prototype/names.gd")
+
 const NO_CELL := Vector2i(-1, -1)
-## 駒の名前の前に付ける、陣営の短い名前（中立は付けない）。
-const SIDE_WORDS := {
-	Unit.Side.PLAYER1: "青",
-	Unit.Side.PLAYER2: "赤",
-	Unit.Side.NEUTRAL: "中立",
-}
-const STAT_NAMES := {
-	Unit.Stat.MAX_HP: "最大 HP",
-	Unit.Stat.POWER: "攻撃",
-	Unit.Stat.MOVE_RANGE: "移動",
-	Unit.Stat.ATTACK_RANGE: "射程",
-}
-const FIELD_EFFECT_NAMES := {
-	FieldEffect.Type.BARRICADE: "盾",
-	FieldEffect.Type.SMOKE: "煙幕",
-	FieldEffect.Type.SANCTUARY: "聖域",
-}
 const WIN_TEXTS := {
 	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
 	GameWonEvent.Reason.HQ_CAPTURED: "敵の本陣を占拠し続けた",
@@ -74,7 +59,9 @@ class Known:
 
 var entries: Array[Entry] = []
 ## 見出しに出す陣営の名前（プレイヤー番号ごと。中立は「中立」）。
-var side_names: Array[String] = ["プレイヤー1（青）", "プレイヤー2（赤）", "中立"]
+var side_names: Array[String] = [
+	Names.SIDE_NAMES[Unit.Side.PLAYER1], Names.SIDE_NAMES[Unit.Side.PLAYER2], Names.SIDE_NAMES[Unit.Side.NEUTRAL],
+]
 
 var _board: Board
 var _turn := 1
@@ -108,7 +95,7 @@ var _undoing := false
 ## names は見出しに出す陣営の名前（プレイヤー1、プレイヤー2 の順。CPU なら、そう書いたもの）。空なら既定の名前。
 func _init(battle: Battle, names: Array[String] = []) -> void:
 	if names.size() >= 2:
-		side_names = [names[0], names[1], "中立"]
+		side_names = [names[0], names[1], Names.SIDE_NAMES[Unit.Side.NEUTRAL]]
 	_board = battle.board
 	for unit in battle.units:
 		var known := Known.new(unit.kind, unit.side, unit.cell)
@@ -197,7 +184,7 @@ func unit_name(unit_id: int) -> String:
 	if known == null:
 		return "駒"
 	var name := UnitKind.display_name(known.kind) if known.evolution == Evolution.Id.NONE else Evolution.display_name(known.evolution)
-	return name if known.side == Unit.Side.NEUTRAL else "%sの%s" % [SIDE_WORDS[known.side], name]
+	return name if known.side == Unit.Side.NEUTRAL else "%sの%s" % [Names.SIDE_WORDS[known.side], name]
 
 
 ## 中ボスの呼び方（「左の中ボス」）。中ボスは左右（中央平原・迷宮回廊）か上下（双子結晶）に 1 体ずつ。番号 0 が左か上。
@@ -431,7 +418,7 @@ func _read_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 	_group = null
 	_did_something[event.attacker_id] = true
 	var owner: int = _effects.get(event.effect_id, [FieldEffect.Type.BARRICADE, -1])[1]
-	var owner_text := "%sの" % SIDE_WORDS[owner] if owner >= 0 else ""
+	var owner_text := "%sの" % Names.SIDE_WORDS[owner] if owner >= 0 else ""
 	var text := "%s が %s盾を攻撃: %d ダメージ、" % [unit_name(event.attacker_id), owner_text, event.amount]
 	if event.durability <= 0:
 		text += "壊した"
@@ -443,14 +430,14 @@ func _read_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 
 func _read_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
 	_effects[event.effect_id] = [event.type, event.side, event.center]
-	var name: String = FIELD_EFFECT_NAMES[event.type]
+	var name: String = Names.FIELD_EFFECT_NAMES[event.type]
 	var text := ""
 	if event is BarricadePlacedEvent:
 		text = "%sを %s に置いた（耐久 %d）" % [name, cell_text(event.center), (event as BarricadePlacedEvent).durability]
 	else:
 		text = "%sを %s のまわりに張った（%d ターン）" % [name, cell_text(event.center), (event as AreaEffectPlacedEvent).turns_left]
 	if _group == null:
-		text = "%s が%s" % [SIDE_WORDS[event.side], text]
+		text = "%s が%s" % [Names.SIDE_WORDS[event.side], text]
 	_detail(text, event.side, event.center)
 
 
@@ -461,9 +448,9 @@ func _read_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
 		_noted_effects.erase(event.effect_id)
 		return
 	var owner: int = known[1]
-	var owner_text := "%sの" % SIDE_WORDS[owner] if owner >= 0 else ""
+	var owner_text := "%sの" % Names.SIDE_WORDS[owner] if owner >= 0 else ""
 	var verb := "壊れた" if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED else "消えた"
-	_line("%s%sが%s" % [owner_text, FIELD_EFFECT_NAMES[event.type], verb], owner, known[2])
+	_line("%s%sが%s" % [owner_text, Names.FIELD_EFFECT_NAMES[event.type], verb], owner, known[2])
 
 
 func _read_teleported(event: UnitTeleportedEvent) -> void:
@@ -527,12 +514,12 @@ func _read_status_applied(event: StatusAppliedEvent) -> void:
 
 
 func _read_ult_used(event: UltUsedEvent) -> void:
-	var text := "%s が必殺技「%s」を使った" % [SIDE_WORDS[event.side], Ults.by_id(event.ult).display_name()]
+	var text := "%s が必殺技「%s」を使った" % [Names.SIDE_WORDS[event.side], Ults.by_id(event.ult).display_name()]
 	_begin_group(_line(text, event.side))
 
 
 func _read_ult_ready(event: UltReadyEvent) -> void:
-	_line("%s の必殺技「%s」が使えるようになった" % [SIDE_WORDS[event.side], Ults.by_id(event.ult).display_name()], event.side)
+	_line("%s の必殺技「%s」が使えるようになった" % [Names.SIDE_WORDS[event.side], Ults.by_id(event.ult).display_name()], event.side)
 
 
 func _read_defeated(event: UnitDefeatedEvent) -> void:
@@ -549,13 +536,13 @@ func _read_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	if event.slayer_side < 0:
 		_line("%sの中ボスが倒れた" % place, -1, event.cell)
 		return
-	_line("%s が%sの中ボスを倒した" % [SIDE_WORDS[event.slayer_side], place], event.slayer_side, event.cell, [event.slayer_id])
+	_line("%s が%sの中ボスを倒した" % [Names.SIDE_WORDS[event.slayer_side], place], event.slayer_side, event.cell, [event.slayer_id])
 
 
 func _read_relic_gained(event: RelicGainedEvent) -> void:
 	_group = null
 	var text := "%s が聖遺物「%s」を手に入れた（%s）" % [
-		SIDE_WORDS[event.side], Relics.display_name(event.relic), Relics.summary(event.relic),
+		Names.SIDE_WORDS[event.side], Relics.display_name(event.relic), Relics.summary(event.relic),
 	]
 	_line(text, event.side)
 
@@ -585,9 +572,9 @@ func _read_level_up(event: LevelUpEvent) -> void:
 	var known: Known = _units.get(event.unit_id)
 	var healer := known != null and UnitKind.role(known.kind) == UnitKind.Role.HEALER
 	var gains: Array[String] = []
-	for stat: Unit.Stat in STAT_NAMES:
+	for stat: Unit.Stat in Names.STAT_NAMES:
 		if event.gains.get(stat, 0) != 0:
-			var stat_name: String = "回復" if healer and stat == Unit.Stat.POWER else STAT_NAMES[stat]
+			var stat_name: String = "回復" if healer and stat == Unit.Stat.POWER else Names.STAT_NAMES[stat]
 			gains.append("%s %+d" % [stat_name, event.gains[stat]])
 	var text := "%s が レベル %d に上がった" % [unit_name(event.unit_id), event.level]
 	if not gains.is_empty():
@@ -607,10 +594,10 @@ func _read_evolved(event: UnitEvolvedEvent) -> void:
 func _read_capture(event: CaptureProgressEvent) -> void:
 	_group = null
 	var hq := _board.hq_cells[1 - event.player] if _board.hq_cells.size() == 2 else NO_CELL
-	var enemy: String = SIDE_WORDS[1 - event.player]
-	var text := "%s が%sの本陣を占拠: %d / %d" % [SIDE_WORDS[event.player], enemy, event.turns, Battle.CAPTURE_TURNS_TO_WIN]
+	var enemy: String = Names.SIDE_WORDS[1 - event.player]
+	var text := "%s が%sの本陣を占拠: %d / %d" % [Names.SIDE_WORDS[event.player], enemy, event.turns, Battle.CAPTURE_TURNS_TO_WIN]
 	if event.turns == 0:
-		text = "%s の、%sの本陣の占拠が途切れた" % [SIDE_WORDS[event.player], enemy]
+		text = "%s の、%sの本陣の占拠が途切れた" % [Names.SIDE_WORDS[event.player], enemy]
 	_line(text, event.player, hq)
 
 

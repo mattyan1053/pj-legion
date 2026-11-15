@@ -51,7 +51,7 @@ func _ready() -> void:
 
 	var menu := SystemMenu.new()
 	add_child(menu)
-	menu.setup(context.settings)
+	menu.setup(context.settings, context.overlays)
 	menu.open_requested.connect(open_menu)
 	menu.item_chosen.connect(_on_menu_item)
 	menu.settings_closed.connect(context.settings.save)

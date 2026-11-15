@@ -12,8 +12,8 @@ signal cancelled
 
 const TrialSetup := preload("res://prototype/trial_setup.gd")
 const DeckText := preload("res://prototype/deck_text.gd")
+const Names := preload("res://prototype/names.gd")
 
-const ARMY_NAMES := {UnitKind.Army.MILITARY: "MILITARY", UnitKind.Army.FANTASY: "FANTASY"}
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.92)
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
@@ -38,9 +38,17 @@ var _warning: Label
 var _cancellable := false
 
 
-func setup(team_colors: Array[Color], library: RefCounted = null) -> void:
+## 開いている重なる画面の積み上げ（overlay_stack.gd。AppContext.overlays）。見えている間は積んでおく。
+var _overlays: RefCounted
+
+
+## overlays は、開いている重なる画面の積み上げ（AppContext.overlays）。見えている間（visible）は、時間を止めない重なりとして積む。
+func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted) -> void:
 	_team_colors = team_colors
 	_library = library
+	_overlays = overlays
+	visibility_changed.connect(_track_overlay)
+	_track_overlay()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var shade := ColorRect.new()
@@ -78,7 +86,7 @@ func setup(team_colors: Array[Color], library: RefCounted = null) -> void:
 	for side in 2:
 		var names := {}
 		for army in ARMIES:
-			names[army] = ARMY_NAMES[army]
+			names[army] = Names.ARMY_NAMES[army]
 		var row := _add_row(column, "%s の軍" % ["先手（青）", "後手（赤）"][side], StringName("army%d" % side), names)
 		(row.get_child(0) as Label).add_theme_color_override("font_color", _team_colors[side].lightened(0.4))
 		var deck_row := HBoxContainer.new()
@@ -157,6 +165,19 @@ func cancel() -> void:
 	cancelled.emit()
 
 
+## 見えているかに合わせて、重なる画面の積み上げに積む・降ろす（開く・閉じるのどの道でも、見えなくなれば降ろす）。
+func _track_overlay() -> void:
+	if visible and is_inside_tree():
+		_overlays.open(self)
+	else:
+		_overlays.close(self)
+
+
+func _exit_tree() -> void:
+	if _overlays != null:
+		_overlays.close(self)
+
+
 ## 閉じられるか。検査用。
 func is_cancellable() -> bool:
 	return _cancellable
@@ -165,7 +186,7 @@ func is_cancellable() -> bool:
 ## 右クリックと Esc は、ほかの画面と同じに「戻す」（閉じられるときだけ）。開いている間は、盤面へ通さない。
 ## 閉じられないとき（起動した直後）の Esc は受けない（戻すものが無いので、持ち主がシステムメニューを開く）。
 func _input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or not _overlays.is_top(self):
 		return
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
