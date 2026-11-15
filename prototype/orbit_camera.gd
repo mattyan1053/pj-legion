@@ -2,7 +2,8 @@ extends Node3D
 ## 盤面を斜めに見下ろすカメラ。
 ##
 ## このノード自身が「見ている地点」で、盤面の上を平行移動する。
-## 向きは 90 度刻み、角度は 3 段階、距離はホイールで変える。
+## 向きはマウスのドラッグで好きなだけ回す（rotate_by。呼ぶ側がドラッグを見分ける）か、Q / E で 90 度ずつ回す。
+## 角度は 3 段階、距離はホイールで変える。
 
 const PITCH_PRESETS: Array[float] = [35.0, 50.0, 68.0]
 const MIN_DISTANCE := 8.0
@@ -21,6 +22,8 @@ var _target_distance := 22.0
 ## 寄っていく先（focus_on で決める）。手で動かしたら、寄るのをやめる。
 var _focus: Vector3
 var _focusing := false
+## 追いかけている相手（follow で決める）。いる間は、毎フレームそこへ寄り続ける。手で動かしたら、追うのをやめる。
+var _followed: Node3D
 
 
 func _ready() -> void:
@@ -52,16 +55,41 @@ func _unhandled_input(event: InputEvent) -> void:
 			_target_distance = minf(MAX_DISTANCE, _target_distance * 1.1)
 
 
+## 向きを radians だけ回す（マウスのドラッグ）。
+func rotate_by(radians: float) -> void:
+	_target_yaw += radians
+
+
+## 回していく先の向き（ラジアン）。
+func target_yaw() -> float:
+	return _target_yaw
+
+
 ## point が画面の中央に来るよう、なめらかに寄る。
 func focus_on(point: Vector3) -> void:
 	_focus = Vector3(point.x, 0.0, point.z)
 	_focusing = true
 
 
+## target を追いかける（動いている駒が画面の外へ出ていかないように）。null を渡すと、追うのをやめる（その場に止まる）。
+func follow(target: Node3D) -> void:
+	_followed = target
+
+
+## 寄っていく先（追いかけている間は、相手のいるところ）。寄っていなければ、いまの位置。検査用。
+func focus_point() -> Vector3:
+	return _focus if _focusing else position
+
+
 func _process(delta: float) -> void:
 	_pan(delta)
 
 	var weight := 1.0 - exp(-SMOOTHING * delta)
+	if _followed != null:
+		if is_instance_valid(_followed):
+			focus_on(_followed.position)
+		else:
+			_followed = null
 	if _focusing:
 		position = position.lerp(_focus, weight * 0.6)
 		if position.distance_to(_focus) < 0.02:
@@ -87,6 +115,7 @@ func _pan(delta: float) -> void:
 		return
 
 	_focusing = false
+	_followed = null
 	# 画面の上下左右に合わせて動くよう、いまの向きで回す。
 	var move := input.normalized().rotated(Vector3.UP, rotation.y)
 	position += move * PAN_SPEED * delta

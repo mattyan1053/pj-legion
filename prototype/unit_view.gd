@@ -4,7 +4,9 @@ extends Node3D
 ## KayKit のキャラクターは、持ちうる武器や盾がすべて付いた状態で入っているので、
 ## 種類ごとに使わないものを隠す。陣営の色は、足元の円盤と、服の差し色（マント・帽子など）で出す。
 ## 中立の駒（エナジー・コア / エリートミニオン）は、素材を使わずコードで組み立てる、宙に浮く結晶のコア。
-## 頭の上に、HP のバーと、役割の 1 文字 + HP の数を出す。行動済みの駒は暗くする。
+## 頭の上には何も出さない（駒の情報は、クリックかマウスを乗せて、画面の枠で確かめる）。
+## 盤の上で分かるのは、足元だけ: 行動済みの駒は暗い。HP が減っている駒は、足元に小さい棒が出る（減っていなければ出ない）。
+## 進化した駒は、足元の円盤を金の輪が囲む。状態（バリア、照準など）が付いている駒は、その外に水色の細い輪が出る。
 ##
 ## ルールは持たない。何を見せるかは、呼ぶ側（イベントを再生する側）が決める。
 
@@ -83,26 +85,22 @@ const MODELS := {
 }
 
 ## 中立の駒の形。size は全体の大きさ、rings は周りを回る輪の数、shards は周りを回る欠片の数。
+## "color" があれば、結晶をその色にする（中ボスは、小さい中立の駒と色でも見分けられるようにする）。
+## "spikes" は、足元から外へ突き出す大きい結晶の数。
 const CORES := {
-	UnitKind.Id.MINION: {"size": 1.0, "rings": 1, "shards": 0},
-	UnitKind.Id.ELITE_MINION: {"size": 1.45, "rings": 2, "shards": 3},
+	UnitKind.Id.MINION: {"size": 1.0, "rings": 1, "shards": 0, "spikes": 0},
+	UnitKind.Id.ELITE_MINION: {"size": 1.7, "rings": 2, "shards": 4, "spikes": 5, "color": Color("a13df0")},
 }
 const CORE_HEIGHT := 0.55
 const CORE_RING_COLOR := Color("8a6a2c")
 
-## 頭の上の札に出す、役割の 1 文字。
-const ROLE_MARKS := {
-	UnitKind.Role.VANGUARD: "前",
-	UnitKind.Role.REARGUARD: "後",
-	UnitKind.Role.RAIDER: "奇",
-	UnitKind.Role.HEALER: "回",
-}
-
 ## 行動済みの駒は、この明るさまで暗くする。
 const ACTED_SHADE := 0.42
-const BAR_SIZE := Vector2i(44, 6)
-const BAR_PIXEL := 0.018
+## 足元の HP の棒（減っている駒だけ）。
+const BAR_SIZE := Vector2i(34, 5)
+const BAR_PIXEL := 0.016
 const COLOR_GOLD := Color("f2c84b")
+const COLOR_STATUS := Color("7fe3ff")
 
 ## 塗り替えたマテリアルの使い回し（"モデル:色:暗さ" -> StandardMaterial3D）。
 static var _team_materials := {}
@@ -117,18 +115,17 @@ var _core_time := 0.0
 var _kind: UnitKind.Id
 var _team_color: Color
 var _max_hp := 1
-var _level := 1
-var _evolved := false
-## いま札に出している HP。検査用。
+## いま持っている HP（減っていれば、足元の棒に出る）。検査用。
 var shown_hp := 0
-var _height := 1.3  # 札を出す高さ
+var _height := 1.3  # 駒の高さ（頭の上）
 var _acted := false
 var _dying := false
 var _model_name := ""
 var _model_meshes: Array[MeshInstance3D] = []
 var _base_material: StandardMaterial3D
 var _bar: Sprite3D
-var _tag: Label3D
+var _evolved_ring: MeshInstance3D
+var _status_ring: MeshInstance3D
 
 
 func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int) -> void:
@@ -145,7 +142,7 @@ func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int) -> void:
 		_add_placeholder(team_color)
 	if kind == UnitKind.Id.KING:
 		_add_crown()
-	_add_tag()
+	_add_bar()
 	set_hp(hp)
 	play_idle()
 
@@ -193,7 +190,6 @@ func play_hit() -> void:
 func play_death() -> void:
 	_dying = true
 	_bar.visible = false
-	_tag.visible = false
 	if _player != null and _player.has_animation(&"Death_A"):
 		_play(&"Death_A", false)
 		await get_tree().create_timer(0.75).timeout
@@ -210,42 +206,71 @@ func face(direction: Vector3) -> void:
 	rotation.y = atan2(direction.x, direction.z)
 
 
+## 駒の高さ（頭の上まで）。画面に占める四角を出すのに使う。
+func height() -> float:
+	return _height
+
+
+## HP を変える。減っていれば、足元に小さい棒を出す（満タンなら出さない）。
 func set_hp(hp: int) -> void:
 	shown_hp = hp
+	_bar.visible = hp < _max_hp and not _dying
+	if not _bar.visible:
+		return
 	var image := Image.create_empty(BAR_SIZE.x, BAR_SIZE.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0.05, 0.05, 0.07, 0.9))
 	var inner := BAR_SIZE - Vector2i(2, 2)
-	var filled := ceili(inner.x * clampf(float(hp) / _max_hp, 0.0, 1.0))
+	var ratio := clampf(float(hp) / _max_hp, 0.0, 1.0)
+	var filled := ceili(inner.x * ratio)
 	if filled > 0:
-		var ratio := float(hp) / _max_hp
 		var color := Color("5fd35f") if ratio > 0.5 else (Color("e8c23a") if ratio > 0.25 else Color("e8503a"))
 		image.fill_rect(Rect2i(1, 1, filled, inner.y), color)
 	_bar.texture = ImageTexture.create_from_image(image)
-	var mark: String = ROLE_MARKS.get(UnitKind.role(_kind), "")
-	if _kind == UnitKind.Id.KING:
-		mark = "将"
-	_tag.text = ("%s %d" % [mark, hp]).strip_edges()
-	if _level > 1:
-		_tag.text += "  Lv%d" % _level
-	if _evolved:
-		_tag.text += "★"
 
 
-## レベルと最大 HP を変える（レベルアップ）。札は次の set_hp で描き直す。
-func set_growth(level: int, max_hp: int) -> void:
-	_level = level
+## レベルと最大 HP を変える（レベルアップ）。棒は次の set_hp で描き直す。
+func set_growth(_level: int, max_hp: int) -> void:
 	_max_hp = max_hp
 
 
-## 最大 HP だけを変える（聖遺物）。札は次の set_hp で描き直す。
+## 最大 HP だけを変える（聖遺物）。棒は次の set_hp で描き直す。
 func set_max_hp(max_hp: int) -> void:
 	_max_hp = max_hp
 
 
-## 進化した駒の札に印（★）を付け、最大 HP を変える。札は次の set_hp で描き直す。
+## 進化した駒の最大 HP を変え、足元に金の輪を付ける。棒は次の set_hp で描き直す（進化先の名前は、駒の情報に出る）。
 func set_evolved(max_hp: int) -> void:
-	_evolved = true
 	_max_hp = max_hp
+	if _evolved_ring == null:
+		_evolved_ring = _add_ring(0.41, 0.49, COLOR_GOLD)
+
+
+## 状態（バリア、照準など）が付いているかを、足元の水色の輪で見せる（何の状態かは、駒の情報に出る）。
+func set_status_mark(marked: bool) -> void:
+	if marked and _status_ring == null:
+		_status_ring = _add_ring(0.52, 0.56, COLOR_STATUS)
+	if _status_ring != null:
+		_status_ring.visible = marked
+
+
+## 足元の輪（平たい輪。光に左右されない色）。
+func _add_ring(inner: float, outer: float, color: Color) -> MeshInstance3D:
+	var mesh := TorusMesh.new()
+	mesh.inner_radius = inner
+	mesh.outer_radius = outer
+	mesh.rings = 32
+	mesh.ring_segments = 6
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var ring := MeshInstance3D.new()
+	ring.mesh = mesh
+	ring.material_override = material
+	ring.scale = Vector3(1.0, 0.25, 1.0)
+	ring.position.y = 0.03
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ring)
+	return ring
 
 
 ## 行動済みの駒を暗くする。
@@ -256,7 +281,6 @@ func set_acted(acted: bool) -> void:
 	var shade := ACTED_SHADE if acted else 1.0
 	_base_material.albedo_color = _team_color.darkened(1.0 - shade) if acted else _team_color
 	_base_material.emission_energy_multiplier = 0.05 if acted else 0.4
-	_tag.modulate = Color(0.6, 0.6, 0.6) if acted else Color.WHITE
 	if not _model_meshes.is_empty():
 		var material := _team_material(_model_meshes[0].mesh.surface_get_material(0), shade)
 		for mesh in _model_meshes:
@@ -365,8 +389,8 @@ func _add_crown() -> void:
 	_height += 0.2
 
 
-## 頭の上の札（HP のバーと、役割の 1 文字 + HP の数）。いつもカメラを向き、木や岩に隠れない。
-func _add_tag() -> void:
+## 足元の HP の棒。いつもカメラを向き、木や岩に隠れない。駒の体には重ねず、マスの手前の縁に出す。
+func _add_bar() -> void:
 	_bar = Sprite3D.new()
 	_bar.pixel_size = BAR_PIXEL
 	_bar.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -374,27 +398,19 @@ func _add_tag() -> void:
 	_bar.shaded = false
 	_bar.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	_bar.render_priority = 2
-	_bar.position.y = _height
+	_bar.offset = Vector2(0.0, -BAR_SIZE.y * 2.0)
+	_bar.position.y = 0.0
+	_bar.visible = false
 	add_child(_bar)
 
-	_tag = Label3D.new()
-	_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_tag.no_depth_test = true
-	_tag.pixel_size = 0.0055
-	_tag.font_size = 52
-	_tag.outline_size = 12
-	_tag.render_priority = 3
-	_tag.outline_render_priority = 2
-	_tag.position.y = _height + 0.2
-	add_child(_tag)
 
-
-func _add_core(shape: Dictionary, color: Color) -> void:
+func _add_core(shape: Dictionary, team_color: Color) -> void:
+	var color: Color = shape.get("color", team_color)
 	var glow := StandardMaterial3D.new()
 	glow.albedo_color = color
 	glow.emission_enabled = true
 	glow.emission = color
-	glow.emission_energy_multiplier = 0.3
+	glow.emission_energy_multiplier = 0.9 if shape.has("color") else 0.3
 	glow.roughness = 0.3
 	var metal := StandardMaterial3D.new()
 	metal.albedo_color = CORE_RING_COLOR
@@ -434,6 +450,18 @@ func _add_core(shape: Dictionary, color: Color) -> void:
 		shard.scale = Vector3(0.04, 0.12, 0.04)
 		shard.position = Vector3(cos(angle) * 0.42, -0.06, sin(angle) * 0.42)
 		_core.add_child(shard)
+
+	# 足元から外へ突き出す結晶（回らない。中ボスの縄張りの主らしさ）。
+	for i in int(shape["spikes"]):
+		var angle := TAU * i / float(shape["spikes"]) + 0.3
+		var outward := Vector3(cos(angle), 0.0, sin(angle))
+		var spike := MeshInstance3D.new()
+		spike.mesh = shard_mesh
+		spike.material_override = glow
+		spike.scale = Vector3(0.09, 0.42, 0.09)
+		spike.position = outward * 0.3
+		spike.rotate(outward.cross(Vector3.UP).normalized(), -deg_to_rad(28.0))
+		add_child(spike)
 
 
 func _add_placeholder(team_color: Color) -> void:

@@ -46,6 +46,7 @@ var _field_effects := {}  # 効果の番号 -> Node3D（消えたら取り除く
 var _team_colors: Array[Color] = []
 var _occluders := {}  # Vector2i -> Array[GeometryInstance3D]（岩山と木立。手前にあると駒を隠す）
 var _cursor: MeshInstance3D
+var _marked: MeshInstance3D
 var _highlight: MultiMesh
 
 
@@ -201,11 +202,13 @@ static func cell_of(point: Vector3) -> Vector2i:
 
 
 ## マスを色で塗る（マス -> Color）。前に塗ったものは消える。空を渡すと全部消える。
-func show_cells(colors: Dictionary) -> void:
+## raised に入っているマス（マス -> 何か）は、駒の足元の円盤より上に塗る（駒が乗っていても、色が隠れない。攻撃の相手など）。
+func show_cells(colors: Dictionary, raised := {}) -> void:
 	_highlight.instance_count = colors.size()
 	var i := 0
 	for cell: Vector2i in colors:
-		_highlight.set_instance_transform(i, Transform3D(Basis.IDENTITY, cell_center(cell) + Vector3(0.0, 0.012, 0.0)))
+		var lift := 0.05 if raised.has(cell) else 0.012
+		_highlight.set_instance_transform(i, Transform3D(Basis.IDENTITY, cell_center(cell) + Vector3(0.0, lift, 0.0)))
 		_highlight.set_instance_color(i, colors[cell])
 		i += 1
 
@@ -215,6 +218,13 @@ func set_cursor(cell: Vector2i) -> void:
 	_cursor.visible = board.in_bounds(cell)
 	if _cursor.visible:
 		_cursor.position = cell_center(cell) + Vector3(0.0, 0.03, 0.0)
+
+
+## クリックして情報を出しているマスの印（枠）。NO_CELL なら消す。
+func set_marked(cell: Vector2i) -> void:
+	_marked.visible = board.in_bounds(cell)
+	if _marked.visible:
+		_marked.position = cell_center(cell) + Vector3(0.0, 0.035, 0.0)
 
 
 ## focus_cells（駒やカーソルのマス）の手前（カメラ側）にある岩と木を透かす。
@@ -265,6 +275,18 @@ func _build_markers() -> void:
 	_cursor = _add_mesh(cell_mesh, _overlay_material(Color(1.0, 1.0, 1.0, 0.4)), Vector3.ZERO)
 	_cursor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_cursor.visible = false
+
+	# クリックしたマスの印は、四角い枠（角の少ない輪を 45 度回して、マスに合わせる）。
+	var frame := TorusMesh.new()
+	frame.inner_radius = 0.6
+	frame.outer_radius = 0.68
+	frame.rings = 4
+	frame.ring_segments = 4
+	_marked = _add_mesh(frame, _overlay_material(Color(1.0, 1.0, 1.0, 0.9)), Vector3.ZERO)
+	_marked.rotation.y = PI / 4.0
+	_marked.scale = Vector3(1.0, 0.1, 1.0)
+	_marked.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_marked.visible = false
 
 
 ## 起爆樽。入れないマスなので、マスの中央に立てる。ふたの赤い印で、ただの樽でないと分かるようにする。

@@ -3,7 +3,8 @@ extends Node
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使い、対戦を最後まで進めてから、
 ## 小さな盤面で環境オブジェクトの場面（ポータルの転移、回復の泉、樽の爆発と引き分け）、盤の上の効果（盾・煙幕・聖域）、スキル（行動を終えないもの、行動済みの駒を戻すものも）、必殺技、中立の駒、レベルアップ、進化、
-## 回復役の回復、CPU の番の場面を通し、盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
+## 回復役の回復、CPU の番の場面を通す。
+## 長い検査（`-- --autoplay --full`）では、そのあと盤面を作り直してほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ## 途中で画面と対戦の状態が食い違ったら失敗にする。
 ## 最後に "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
@@ -20,6 +21,8 @@ const STAGES: Array[BoardGenerator.Stage] = [
 ]
 
 var _scene: Node
+## 長い検査（`--full`）のときだけ、ほかのステージも動かす。
+var _full := OS.get_cmdline_user_args().has("--full")
 var _game := 0
 var _undone := {}  # 移動の取り消しを試した駒の番号
 var _confirm_tested := false
@@ -42,6 +45,8 @@ func _process(_delta: float) -> void:
 		return
 	var battle: Battle = _scene.battle
 	var problem := _mismatch(battle)
+	if problem == "":
+		problem = _menu_problem()
 	if problem != "":
 		_finish("autoplay: 画面と状態が食い違った: %s" % problem, 1)
 		return
@@ -78,7 +83,7 @@ func _process(_delta: float) -> void:
 			_finish("autoplay: CPU の番を、CPU が進めなかった", 1)
 			return
 		_game += 1
-		if _game >= STAGES.size():
+		if _game >= STAGES.size() or not _full:
 			_finish_if_all_played()
 			return
 		_undone.clear()
@@ -332,8 +337,7 @@ func _queue_skill_scene() -> void:
 		_expect(trooper.acted and trooper.skill_cooldown > 0, "スキルを使っても、行動が終わっていない")
 		_expect(_scene.played.get(used, 0) == 1, "スキルを再生しなかった")
 		_scene.click_cell(trooper.cell)
-		_expect(not _scene.is_skill_enabled(), "クールダウンの間に、スキルのボタンが押せる")
-		_expect(_scene.skill_button_text().contains("あと"), "クールダウンの残りが出ていない")
+		_expect(_scene.menu_ids().is_empty(), "行動済みの駒に、メニューが出ている")
 		# 動いたあとでも使える。
 		_scene.click_cell(priest.cell))
 	_scripted.append(func() -> void: _scene.click_cell(Vector2i(2, 3)))
@@ -354,7 +358,15 @@ func _queue_skill_scene() -> void:
 		_expect(burned.hp == burned.max_hp() - FireballSkill.DAMAGE, "ファイアボールが当たらなかった")
 		_expect(_scene.played.get(damaged, 0) == 1, "スキルのダメージを再生しなかった")
 		_scene.played.erase(ready))
-	for i in TacticalBarricadeSkill.COOLDOWN * 2:
+	_scripted.append(_end_turn)
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		# 次の自分の番。クールダウンの間は、メニューのスキルの項目が押せず、残りが出る。
+		_scene.click_cell(trooper.cell)
+		_expect(trooper.skill_cooldown > 0 and not _scene.is_skill_enabled(), "クールダウンの間に、スキルの項目が押せる")
+		_expect(_scene.skill_button_text().contains("あと"), "クールダウンの残りが出ていない")
+		_expect(_scene.menu_ids() == ([&"skill", &"wait"] as Array[StringName]), "動く前のメニューの項目が違う: %s" % [_scene.menu_ids()]))
+	for i in TacticalBarricadeSkill.COOLDOWN * 2 - 2:
 		_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		_expect(trooper.skill_cooldown == 0, "クールダウンが明けなかった")
@@ -443,6 +455,13 @@ func _queue_extra_action_scene() -> void:
 		# 戻す操作では、跳ぶ前には戻れない。
 		_scene.cancel()
 		_expect(blade.cell == Vector2i(4, 1) and _scene.selected_unit() == blade, "跳んだあとに、取り消せた")
+		_expect(not _scene.menu_ids().has(&"undo"), "跳んだあとのメニューに、取り消しが出ている")
+		# メニューの「攻撃」から相手を選ぶ。選ぶ途中は「やめる」だけが出て、相手でないマスではやめる。
+		_expect(_scene.press_menu(&"attack") and _scene.is_choosing_target(), "メニューの攻撃で、相手を選び始めなかった")
+		_expect(_scene.menu_ids() == ([&"back"] as Array[StringName]), "相手を選ぶ途中のメニューが違う")
+		_scene.click_cell(Vector2i(8, 3))
+		_expect(not _scene.is_choosing_target() and _scene.selected_unit() == blade and not blade.acted, "相手でないマスで、やめなかった")
+		_scene.press_menu(&"attack")
 		_scene.click_cell(sniper.cell))
 	_scripted.append(func() -> void:
 		_expect(sniper.hp < sniper.max_hp() or battle.unit_by_id(sniper.id) == null, "跳んだあとに、攻撃できなかった")
@@ -488,16 +507,24 @@ func _queue_neutral_scene() -> void:
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
 	var bait := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(5, 2))
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
+		_scene.camera_follows.clear())
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		var core := battle.unit_at(font)
-		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった"))
+		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった")
+		_expect(_scene.camera_follows.is_empty(), "湧いただけの中立の駒を、カメラが追った"))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
-		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった"))
+		_expect(bait.hp == bait.max_hp() - UnitKind.power(UnitKind.Id.MINION), "エナジー・コアが攻撃しなかった")
+		# 攻撃しに歩いた中立の駒は、カメラが追いかける（湧いただけのときは、追わない）。
+		var followed := false
+		for unit in battle.units:
+			followed = followed or (unit.side == Unit.Side.NEUTRAL and _scene.camera_follows.has(unit.id))
+		_expect(followed, "攻撃しに歩いた中立の駒を、カメラが追わなかった"))
 
 
 ## 中ボスが現れ、弱った別の中ボスに止めを刺すと、倒した陣営が知らされ、その陣営が聖遺物を受け取る。
@@ -605,9 +632,17 @@ func _queue_heal_scene() -> void:
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
 		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
-	_scripted.append(func() -> void: _scene.click_cell(medic.cell))
+	_scripted.append(func() -> void:
+		# 駒のいないマスをクリックすると、そのマスの情報が出る。戻す操作で消える。
+		_scene.click_cell(Vector2i(5, 3))
+		_expect(_scene.selected_unit() == null and _scene.info_title().begins_with("マス (5, 3)"), "マスの情報が出ていない")
+		_scene.cancel()
+		_expect(_scene.info_title() == "", "戻す操作で、マスの情報が消えなかった")
+		_check_drag(Vector2i(5, 3))
+		_scene.click_cell(medic.cell))
 	_scripted.append(func() -> void:
 		_expect(Queries.heal_targets(battle, medic).is_empty(), "届かない味方を回復できることになっている")
+		_expect(not _scene.menu_ids().has(&"heal"), "回復できないのに、メニューに回復が出ている")
 		_scene.click_cell(Vector2i(3, 1)))
 	_scripted.append(func() -> void:
 		_expect(Queries.heal_targets(battle, medic) == ([wounded] as Array[Unit]), "回復できる味方が違う")
@@ -616,6 +651,15 @@ func _queue_heal_scene() -> void:
 		_expect(_scene.selected_unit() == medic, "相手を切り替えたら、動いたあとの駒の選択が外れた")
 		_scene.set_opponent(false)
 		_scene.played.erase(healed)
+		_expect(_scene.menu_ids() == ([&"heal", &"skill", &"wait", &"undo"] as Array[StringName]), "動いたあとのメニューの項目が違う: %s" % [_scene.menu_ids()])
+		# スキルの説明は、駒の情報にいつも出ている。メニューの項目にマウスを乗せると、押すと何が起きるかが出る。
+		var skill := Skills.of(medic)
+		_expect(_scene.info_text().replace("\n", "").contains(skill.summary()), "駒の情報に、スキルの説明が出ていない")
+		_scene._on_menu_hovered(&"wait")
+		_expect(_scene.info_text().contains("待機"), "メニューの項目の説明が出ていない")
+		_scene._on_menu_hovered(&"")
+		_expect(not _scene.info_text().contains("待機:"), "マウスが離れても、項目の説明が残っている")
+		_expect(_scene.press_menu(&"heal") and _scene.is_choosing_target(), "メニューの回復で、相手を選び始めなかった")
 		_scene.click_cell(wounded.cell))
 	_scripted.append(func() -> void:
 		_expect(wounded.hp == 10 + medic.power(), "回復しなかった")
@@ -647,6 +691,14 @@ func _queue_setup_scene() -> void:
 		_expect(_scene.cpu_actions > seen["actions"], "先手の CPU が動かなかった")
 		_expect(battle.phase == Unit.Side.PLAYER2 and battle.turn == 1, "先手の CPU が番を終えなかった")
 		var panel: Node = _scene.setup_panel()
+		# 設定画面を開いて、選び直してから閉じても、いまの対戦と設定はそのまま（始めるボタンを押すまで、何も変わらない）。
+		_scene.open_setup()
+		_expect(panel.visible and panel.is_cancellable(), "対戦の途中の設定画面を、閉じられない")
+		panel.choose_stage(BoardGenerator.Stage.LABYRINTH)
+		panel.choose_opponent(false)
+		panel.cancel()
+		_expect(not panel.visible and not _scene.is_busy(), "設定画面が閉じない")
+		_expect(_scene.battle == battle and _scene.stage == BoardGenerator.Stage.TWIN_SPRINGS and _scene.cpu_opponent, "設定画面を閉じたら、対戦か設定が変わった")
 		_scene.open_setup()
 		panel.choose_opponent(false)
 		panel.choose_human_side(Unit.Side.PLAYER1)
@@ -675,6 +727,7 @@ func _queue_cpu_scene() -> void:
 		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
 	_scripted.append(func() -> void:
 		seen["actions"] = _scene.cpu_actions
+		_scene.camera_follows.clear()
 		_end_turn()
 		# CPU の番の間は、操作を受け付けない。
 		_scene.click_cell(sorcerer.cell)
@@ -685,6 +738,13 @@ func _queue_cpu_scene() -> void:
 		_expect(_scene.cpu_actions > seen["actions"], "CPU が行動しなかった")
 		_expect(wounded.hp == 10 + priest.power(), "CPU の回復役が回復しなかった")
 		_expect(bait.hp < bait.max_hp(), "CPU の駒が攻撃しなかった")
+		# CPU の駒が歩く間は、カメラが追いかける（自分で動かした駒は追わない）。
+		var followed := 0
+		for unit_id: int in _scene.camera_follows:
+			var unit := battle.unit_by_id(unit_id)
+			_expect(unit == null or unit.side == Unit.Side.PLAYER2, "CPU のものでない駒を、カメラが追った")
+			followed += 1
+		_expect(followed > 0, "CPU の駒が歩く間、カメラが追わなかった")
 		_scene.set_opponent(false))
 
 
@@ -829,6 +889,57 @@ func _mismatch(battle: Battle) -> String:
 	if _scene.field_effect_view_ids() != effect_ids:
 		return "盤の上の効果（画面 %s、状態 %s）" % [_scene.field_effect_view_ids(), effect_ids]
 	return ""
+
+
+## 駒のそばのメニューが、置いてよい範囲（画面から上下の帯を除いたところ）からはみ出していれば、その説明を返す。
+func _menu_problem() -> String:
+	if _scene.menu_ids().is_empty():
+		return ""
+	var rect: Rect2 = _scene.menu_rect()
+	var area: Rect2 = _scene.menu_area()
+	if not area.grow(0.5).encloses(rect):
+		return "メニューが画面からはみ出した（%s が %s の外）" % [rect, area]
+	return ""
+
+
+## マウスの入口（押す・動かす・離す）で、クリックとドラッグが見分けられること。cell は駒のいないマス。
+## 動かさずに離せばそのマスのクリック（情報が出る）、動かして離せば視点の回転だけ（何も選ばない）。
+func _check_drag(cell: Vector2i) -> void:
+	var at: Vector2 = _scene.cell_screen_position(cell)
+	_mouse_button(at, true)
+	_mouse_button(at, false)
+	_expect(_scene.info_title().begins_with("マス (%d, %d)" % [cell.x, cell.y]), "クリックで、マスの情報が出なかった")
+	_scene.cancel()
+	var yaw: float = _scene.camera_yaw()
+	_mouse_button(at, true)
+	_mouse_motion(at + Vector2(60, 0), true)
+	_mouse_button(at + Vector2(60, 0), false)
+	_expect(not is_equal_approx(_scene.camera_yaw(), yaw), "ドラッグで、視点が回らなかった")
+	_expect(_scene.info_title() == "" and _scene.selected_unit() == null, "ドラッグが、クリックとして扱われた")
+	# 帯やメニューの上で離すと、離したことが盤面へ届かない。ボタンを押していない動きでは、回さない。
+	yaw = _scene.camera_yaw()
+	_mouse_button(at, true)
+	_mouse_motion(at + Vector2(60, 0), true)
+	var dragged: float = _scene.camera_yaw()
+	_mouse_motion(at + Vector2(120, 0), false)
+	_mouse_motion(at + Vector2(180, 0), false)
+	_expect(not is_equal_approx(dragged, yaw) and is_equal_approx(_scene.camera_yaw(), dragged), "ボタンを離したあとも、視点が回り続けた")
+
+
+func _mouse_motion(at: Vector2, held: bool) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = at
+	motion.relative = Vector2(60, 0)
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
+	_scene._unhandled_input(motion)
+
+
+func _mouse_button(at: Vector2, pressed: bool) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = at
+	_scene._unhandled_input(event)
 
 
 func _finish(message: String, code: int) -> void:
