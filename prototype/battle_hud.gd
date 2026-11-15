@@ -10,6 +10,7 @@ const TextWrap := preload("res://prototype/text_wrap.gd")
 const SystemMenu := preload("res://prototype/system_menu.gd")
 const ForecastPanel := preload("res://prototype/forecast_panel.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
+const RelicIcon := preload("res://prototype/relic_icon.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -121,6 +122,8 @@ var _turn_label: Label
 var _phase_label: Label
 var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
+## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
+var _relic_icons: Array[Array] = []
 var _relic_notes: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []
 var _ult_labels: Array[Label] = []
@@ -192,8 +195,6 @@ func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array
 	for player in 2:
 		var pips := "●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player])
 		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [("青" if player == 0 else "赤"), counts[player], pips]
-		if _relic_texts[player] != "":
-			_side_labels[player].text += "  聖遺物 " + _relic_texts[player]
 		# 幅が足りずに省かれても読めるよう、全文をツールチップにも置く。聖遺物の効果も、ここで読める。
 		_side_labels[player].tooltip_text = _side_labels[player].text
 		if _relic_notes[player] != "":
@@ -203,14 +204,21 @@ func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array
 
 ## 陣営ごとの、持っている聖遺物の名前（上の帯。添字がプレイヤー番号。持っていなければ空）。次の set_status で出る。
 ## notes は、聖遺物の効果の説明（陣営の欄にマウスを乗せると出る。無ければ空）。
-func set_relics(texts: Array[String], notes: Array[String] = ["", ""]) -> void:
+## held は陣営ごとの持っている聖遺物（Relics.Id の列）。アイコンを点ける。
+func set_relics(texts: Array[String], notes: Array[String] = ["", ""], held: Array = [[], []]) -> void:
 	_relic_texts = texts
 	_relic_notes = notes
+	for player in _relic_icons.size():
+		for icon: RelicIcon in _relic_icons[player]:
+			icon.set_lit((held[player] as Array).has(icon.relic))
 
 
 ## 上の帯に出ている、陣営の聖遺物の文字（持っていなければ空）。検査用。
 func relic_text(player: int) -> String:
-	return _relic_texts[player] if _side_labels[player].text.contains("聖遺物") else ""
+	for icon: RelicIcon in _relic_icons[player]:
+		if icon.lit:
+			return _relic_texts[player]
+	return ""
 
 
 ## 必殺技のゲージ（上の帯。添字がプレイヤー番号）。percents は 0〜100。names は必殺技の名前（持たなければ空で、ゲージを出さない）。
@@ -676,6 +684,13 @@ func _build_top_bar() -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_child(label)
 		_side_labels.append(label)
+		# 聖遺物のアイコン（持っていなければ暗い輪郭、持っていれば点く）。名前と効果は、アイコンにマウスを乗せると出る。
+		var icons: Array = []
+		for relic: Relics.Id in Relics.Id.values():
+			var icon := RelicIcon.new(relic)
+			row.add_child(icon)
+			icons.append(icon)
+		_relic_icons.append(icons)
 		# 必殺技のゲージ（飾らない棒と数字）。軍の色で塗る。
 		var bar := ProgressBar.new()
 		bar.custom_minimum_size = Vector2(84.0, 22.0)

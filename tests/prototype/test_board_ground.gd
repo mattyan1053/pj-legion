@@ -2,6 +2,7 @@ extends "res://tests/base_test.gd"
 ## 地面と、盤の外の景色（prototype/board_view.gd、prototype/scenery.gd）。画面を出さずに確かめられる、置き方の決まり。
 
 const BoardView := preload("res://prototype/board_view.gd")
+const StageLook := preload("res://prototype/stage_look.gd")
 const Scenery := preload("res://prototype/scenery.gd")
 const OrbitCamera := preload("res://prototype/orbit_camera.gd")
 const Maps := preload("res://tests/support/maps.gd")
@@ -54,7 +55,24 @@ func test_terrain_image_follows_the_board() -> void:
 			var expected := BoardView.ground_color(board, cell, TEAM_COLORS)
 			assert_true(image.get_pixelv(pixel).is_equal_approx(_as_stored(expected)), "マス %s の色が違う" % cell)
 	# 盤の外は、平地の色で続く。
-	assert_true(image.get_pixel(0, 0).is_equal_approx(_as_stored(BoardView.COLOR_NORMAL)))
+	assert_true(image.get_pixel(0, 0).is_equal_approx(_as_stored(StageLook.of(BoardGenerator.Stage.PLAIN)[StageLook.NORMAL])))
+
+
+func test_each_stage_has_its_own_ground() -> void:
+	# どのステージも、色合いの全部の色を持ち、平地の色と霞の色がほかのステージと違う（一目で見分けられる）。
+	var board := Maps.board([".F#*"])
+	var normals := {}
+	var hazes := {}
+	for stage: int in BoardGenerator.Stage.values():
+		var look := StageLook.of(stage)
+		for key: StringName in [StageLook.NORMAL, StageLook.FOREST, StageLook.OBSTACLE, StageLook.FONT, StageLook.HAZE, StageLook.SUN, StageLook.AMBIENT]:
+			assert_true(look.has(key), "ステージ %d に %s の色が無い" % [stage, key])
+		normals[look[StageLook.NORMAL]] = true
+		hazes[look[StageLook.HAZE]] = true
+		var image := BoardView.terrain_image(board, TEAM_COLORS, look)
+		assert_true(image.get_pixel(0, 0).is_equal_approx(_as_stored(look[StageLook.NORMAL])), "ステージ %d の盤の外の色" % stage)
+	assert_eq(normals.size(), BoardGenerator.Stage.size(), "平地の色が同じステージがある")
+	assert_eq(hazes.size(), BoardGenerator.Stage.size(), "霞の色が同じステージがある")
 
 
 ## 8 ビットに丸めた色。

@@ -25,6 +25,7 @@ const AppContext := preload("res://prototype/app_context.gd")
 const BattleLog := preload("res://prototype/battle_log.gd")
 const LogPanel := preload("res://prototype/log_panel.gd")
 const BattleEffects := preload("res://prototype/battle_effects.gd")
+const StageLook := preload("res://prototype/stage_look.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"）。
 signal finished(outcome: StringName)
@@ -425,7 +426,8 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 
 	_board_view = BoardView.new()
 	add_child(_board_view)
-	_board_view.setup(battle.board, map_seed, TEAM_COLORS)
+	_board_view.setup(battle.board, map_seed, TEAM_COLORS, stage)
+	apply_stage_look(self, _board_view.look)
 	for unit in battle.units:
 		_add_view(unit)
 
@@ -2030,7 +2032,9 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	]
 	var relics: Array[String] = []
 	var relic_notes: Array[String] = []
+	var held: Array = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		held.append(Relics.held(battle, side))
 		var names: Array[String] = []
 		var notes: Array[String] = []
 		for relic in Relics.held(battle, side):
@@ -2039,7 +2043,7 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		relics.append("・".join(names))
 		relic_notes.append("
 ".join(notes))
-	_hud.set_relics(relics, relic_notes)
+	_hud.set_relics(relics, relic_notes, held)
 	_hud.set_status(turn, phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN)
 	var percents: Array[int] = []
 	var names: Array[String] = []
@@ -2388,6 +2392,19 @@ static func build_environment(parent: Node) -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	parent.add_child(sun)
+
+
+## ステージの色合い（stage_look.gd）の霞・空・光を、build_environment で足したものに当てる。
+static func apply_stage_look(parent: Node, look: Dictionary) -> void:
+	for node in parent.get_children():
+		var world := node as WorldEnvironment
+		if world != null:
+			world.environment.background_color = look[StageLook.HAZE]
+			world.environment.fog_light_color = look[StageLook.HAZE]
+			world.environment.ambient_light_color = look[StageLook.AMBIENT]
+		var sun := node as DirectionalLight3D
+		if sun != null:
+			sun.light_color = look[StageLook.SUN]
 
 
 ## 駒の足元の輪（選んでいる駒、見ている駒の印）。
