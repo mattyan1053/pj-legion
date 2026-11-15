@@ -156,11 +156,6 @@ func choose(i: int) -> void:
 		_choose(_rows[i - _first], _log.entries[i])
 
 
-## パネルが画面に占める四角。検査用。
-func panel_rect() -> Rect2:
-	return _panel.get_global_rect()
-
-
 ## いまの位置からスクロールする（検査とスクリーンショットの道具用）。0 で、いちばん上。
 func scroll_to(value: int) -> void:
 	_scroll.scroll_vertical = value

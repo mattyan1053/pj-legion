@@ -348,14 +348,6 @@ func editing_deck() -> Deck:
 	return _deck
 
 
-func editing_name() -> String:
-	return _deck_name
-
-
-func is_dirty() -> bool:
-	return _dirty
-
-
 func selected_entry() -> int:
 	return _selected
 
@@ -808,10 +800,6 @@ func _refresh_detail() -> void:
 
 func is_dialog_open() -> bool:
 	return _dialog.visible
-
-
-func dialog_text() -> String:
-	return _dialog_text.text if _dialog.visible else ""
 
 
 ## 確かめ・名前の入力の「決める」。

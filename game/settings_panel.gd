@@ -89,11 +89,6 @@ func refresh() -> void:
 	_reset_all.disabled = not any_changed
 
 
-## 項目 key の行の操作の部品（スライダーか、値 -> ボタンの辞書）。検査とスクリーンショットの道具用。
-func control_of(key: StringName) -> Variant:
-	return _rows[key]["control"] if _rows.has(key) else null
-
-
 func _build_row(entry: Dictionary) -> Control:
 	var key: StringName = entry["key"]
 	var box := VBoxContainer.new()

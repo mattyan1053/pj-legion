@@ -869,11 +869,6 @@ func cell_screen_position(cell: Vector2i) -> Vector2:
 	return _rig.camera.unproject_position(BoardView.cell_center(cell))
 
 
-## カメラが寄っていく先（盤面の上の点）。検査用。
-func camera_focus() -> Vector3:
-	return _rig.focus_point()
-
-
 ## カメラの向き（回していく先。ラジアン）。検査用。
 func camera_yaw() -> float:
 	return _rig.target_yaw()
