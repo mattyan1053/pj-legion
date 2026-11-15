@@ -1,37 +1,36 @@
 extends "res://tests/base_test.gd"
 ## CPU どうしの対戦を最後まで進める道具（tools/cpu_match.gd）。
 ## ここでは短い 1 局だけを回す（何局も回す集計は tools/cpu_matches.gd で、手元で回す）。
+## その 1 局は、ほかのテストと共有する（tests/support/cpu_game.gd）。
 ## 同じ 1 局を何度も回して比べるものは時間が掛かるので、長い検査（`test_long_`）に回す。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
+const CpuGame := preload("res://tests/support/cpu_game.gd")
 const Maps := preload("res://tests/support/maps.gd")
 
 
 func _small_battle(battle_seed: int) -> Battle:
-	var board := Maps.board([
-		"............",
-		"............",
-		"....F..#....",
-		"..#.....*...",
-		"...*.....#..",
-		"....#..F....",
-		"............",
-		"............",
-	])
-	board.hq_cells = [Vector2i(2, 7), Vector2i(9, 0)]
-	var battle := Battle.new(board, battle_seed)
-	Deployment.deploy(battle, Unit.Side.PLAYER1, CpuDeck.build(UnitKind.Army.MILITARY))
-	Deployment.deploy(battle, Unit.Side.PLAYER2, CpuDeck.build(UnitKind.Army.FANTASY))
-	return battle
+	return CpuGame.small_battle(battle_seed)
 
 
 func test_short_game_ends_and_every_action_is_accepted() -> void:
-	var outcome := CpuMatch.play(_small_battle(1), 60)
+	var outcome := CpuGame.outcome()
 	assert_true(outcome.finished, "決着しなかった（ターン %d）" % outcome.turns)
 	assert_eq(outcome.rejected, 0)
 	assert_true(outcome.ending in ["king", "hq", "draw"])
 	assert_true(outcome.actions > 0)
 	assert_eq(outcome.hired, [6, 5] as Array[int])
+
+
+func test_replaying_the_shared_game_ends_the_same_way() -> void:
+	# 共有の 1 局（cpu_game.gd）を当て直すと、道具で回したときと同じところで同じ決着になる。
+	var outcome := CpuGame.outcome()
+	assert_eq(CpuGame.actions().size(), outcome.actions)
+	var battle := CpuGame.start()
+	CpuGame.replay(battle)
+	assert_true(battle.is_over())
+	assert_eq(battle.turn, outcome.turns)
+	assert_eq(battle.winner, outcome.winner)
 
 
 func test_long_same_seed_plays_the_same_game() -> void:
