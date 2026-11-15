@@ -12,6 +12,8 @@ extends SceneTree
 ##   --rival=PATH    別の版の CPU（スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
 ##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、ステージ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
 ##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
+##   --relic=NAME    プレイヤー1 が、対戦の始めから聖遺物を 1 つ持つ（wisdom = 英知、courage = 勇気。ゲージは足さない）。
+##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さの実測」）
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
 ## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
@@ -139,6 +141,8 @@ func _initialize() -> void:
 	var gains: Array[int] = [0, 0, 0, 0, 0]  # 当てた、倒した、中立を倒した、回復した、中ボスを倒した 回数
 	var by_kind: Dictionary[UnitKind.Id, Array] = {}
 	var skill_uses: Dictionary[Skill.Id, int] = {}
+	# 駒の種類 -> 倒された駒の倒され方（CpuMatch.Fall）の列。
+	var falls: Dictionary[UnitKind.Id, Array] = {}
 	# 軍 -> [出た回数, 必殺技を使った回数, 使った側の数, そのうち勝った数, 使わなかった側の数, そのうち勝った数, 最初に使ったターンの合計, 1 回でも使った側の数]。
 	# 勝ちの数は、決着した局だけ（使った側・使わなかった側の数も同じ）。
 	var ults: Dictionary[UnitKind.Army, Array] = {}
@@ -180,6 +184,11 @@ func _initialize() -> void:
 			setup.decks[side] = _deck(armies[side], deck_mode)
 			setup.controllers[side] = MatchSetup.Controller.CPU
 		var battle := setup.create_battle()
+		if args.has("relic"):
+			var relic := Relics.Id.COURAGE if args["relic"] == "courage" else Relics.Id.WISDOM
+			var gauge := battle.ult_gauge[Unit.Side.PLAYER1]
+			Relics.grant(battle, Unit.Side.PLAYER1, relic, Relics.boss_of(relic))
+			battle.ult_gauge[Unit.Side.PLAYER1] = gauge
 		var outcome: CpuMatch.Outcome
 		if rival == null:
 			outcome = CpuMatch.play(battle, max_turns, cpu)
@@ -206,6 +215,16 @@ func _initialize() -> void:
 				first_seed + game, stage, ARMY_NAMES[armies[0]], ARMY_NAMES[armies[1]], outcome.winner, outcome.ending,
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills),
 			])
+			for kind: UnitKind.Id in outcome.by_kind:
+				var row: Array = outcome.by_kind[kind]
+				print("KIND seed=%d kind=%d hired=%d defeated=%d damage=%d kills=%d evolved=%d" % [
+					first_seed + game, kind, row[0], row[1], row[2], row[3], row[4],
+				])
+			for fall in outcome.falls:
+				print("FALL seed=%d kind=%d turn=%d damage=%d hits=%d killer=%d killer_level=%d step=%d" % [
+					first_seed + game, fall.kind, fall.turn, fall.damage, fall.hits_taken, fall.killer_kind, fall.killer_level,
+					1 if fall.after_step else 0,
+				])
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
 		var match_name := "%s 対 %s" % [ARMY_NAMES[armies[0]], ARMY_NAMES[armies[1]]]
@@ -247,6 +266,8 @@ func _initialize() -> void:
 			elif outcome.winner >= 0 and theirs > 0:
 				row[6] += 1
 				row[7] += 1 if outcome.winner == side else 0
+		for fall in outcome.falls:
+			falls.get_or_add(fall.kind, []).append(fall)
 		for skill in outcome.skill_uses:
 			skill_uses[skill] = skill_uses.get(skill, 0) + outcome.skill_uses[skill]
 		hired += outcome.hired[0] + outcome.hired[1]
@@ -340,6 +361,9 @@ func _initialize() -> void:
 		print("  うち、別の版の駒")
 		_print_kinds(versus_by_kind[1], games)
 	print("")
+	print("倒され方（倒された駒のうち。攻撃する駒だけ）")
+	_print_falls(falls)
+	print("")
 	print("スキルを使った回数（その駒を雇った 1 体あたり）")
 	for skill in Skills.ALL:
 		var row: Array = by_kind.get(skill.kind(), [0])
@@ -373,6 +397,48 @@ func _print_kinds(by_kind: Dictionary, kings: int) -> void:
 		print("  %-12s 雇った %4d 体  倒された %3.0f%%  与えたダメージ %5.1f  倒した %4.2f  進化した %3.0f%%" % [
 			UnitKind.display_name(kind), row[0], 100.0 * row[1] / count, float(row[2]) / count,
 			float(row[3]) / count, 100.0 * row[4] / count,
+		])
+
+
+## 倒された駒の倒され方（種類 -> CpuMatch.Fall の列）を、種類ごとに出す。
+## 「何もできずに落ちた」の目安は、与えたダメージが 0 のままと、1 発ぶん（基本の攻撃力）以下のまま。
+## 「一撃で」は、ダメージを受けたのが止めの 1 回だけ。止めを刺した駒は、役割ごと（奇襲は、同じフェーズにシャドウステップで跳んでいた数も）。
+func _print_falls(falls: Dictionary) -> void:
+	var kind_ids := falls.keys()
+	kind_ids.sort()
+	for kind: UnitKind.Id in kind_ids:
+		if UnitKind.role(kind) == UnitKind.Role.HEALER:
+			continue
+		var total: int = falls[kind].size()
+		var silent := 0
+		var one_hit := 0
+		var one_shot := 0
+		var one_shot_by_fresh_raider := 0
+		var by_raider := 0
+		var by_rearguard := 0
+		var by_vanguard := 0
+		var after_step := 0
+		var turns := 0
+		for fall: CpuMatch.Fall in falls[kind]:
+			silent += 1 if fall.damage == 0 else 0
+			one_hit += 1 if fall.damage <= UnitKind.power(kind) else 0
+			one_shot += 1 if fall.hits_taken <= 1 else 0
+			turns += fall.turn
+			if fall.killer_kind < 0:
+				continue
+			match UnitKind.role(fall.killer_kind as UnitKind.Id):
+				UnitKind.Role.RAIDER:
+					by_raider += 1
+					after_step += 1 if fall.after_step else 0
+					one_shot_by_fresh_raider += 1 if fall.hits_taken <= 1 and fall.killer_level == 1 else 0
+				UnitKind.Role.REARGUARD:
+					by_rearguard += 1
+				UnitKind.Role.VANGUARD:
+					by_vanguard += 1
+		print("  %-12s 倒された %4d 体（平均ターン %4.1f）  与えたダメージ 0 のまま %3.0f%%  1 発ぶん以下 %3.0f%%  一撃で %3.0f%%（レベル 1 の奇襲の一撃 %3.0f%%）  止め: 奇襲 %3.0f%%（跳んだあと %3.0f%%） 後衛 %3.0f%% 前衛 %3.0f%%" % [
+			UnitKind.display_name(kind), total, float(turns) / total, 100.0 * silent / total, 100.0 * one_hit / total,
+			100.0 * one_shot / total, 100.0 * one_shot_by_fresh_raider / total,
+			100.0 * by_raider / total, 100.0 * after_step / total, 100.0 * by_rearguard / total, 100.0 * by_vanguard / total,
 		])
 
 

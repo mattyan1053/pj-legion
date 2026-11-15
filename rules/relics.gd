@@ -19,7 +19,7 @@ enum Id {
 ## 英知: 陣営の駒すべての最大 HP に足す量（いまの HP も同じだけ増える）。
 const WISDOM_MAX_HP := 5
 ## 勇気: 陣営の駒すべての攻撃力（回復役は回復量）に足す量。
-const COURAGE_POWER := 2
+const COURAGE_POWER := 1
 ## 聖遺物を受け取ったときに、必殺技のゲージにたまる量（Ults.GAUGE_MAX を 100% として 30%）。どの聖遺物でも同じ。
 const ULT_GAIN := 300
 

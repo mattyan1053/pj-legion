@@ -137,8 +137,8 @@ func test_cpu_does_not_set_up_the_last_hit_for_the_foe() -> void:
 
 func test_cpu_chips_when_a_friend_can_finish_this_phase() -> void:
 	var battle := _battle()
-	_boss(battle, 20)
-	# 同じ形でも、このフェーズに味方が続けて殴れば倒しきれるなら、殴る（スナイパー 9 + コマンドー 12）。
+	_boss(battle, 19)
+	# 同じ形でも、このフェーズに味方が続けて殴れば倒しきれるなら、殴る（スナイパー 7 + コマンドー 12）。
 	battle.add_unit(UnitKind.Id.COMMANDO, P1, HOME + Vector2i(-1, 0))
 	battle.add_unit(UnitKind.Id.SNIPER, P1, HOME + Vector2i(-4, 0))
 	battle.add_unit(UnitKind.Id.SPELLBLADE, P2, HOME + Vector2i(5, 0))

@@ -153,7 +153,7 @@ func test_gains_depend_on_the_role() -> void:
 	var battle := _battle()
 	var expected := {
 		UnitKind.Id.SHIELD_TROOPER: [44 + 6, 6 + 1],
-		UnitKind.Id.SNIPER: [12 + 3, 9 + 1],
+		UnitKind.Id.SNIPER: [13 + 3, 7 + 1],
 		UnitKind.Id.COMMANDO: [16 + 3, 12 + 1],
 		UnitKind.Id.MEDIC: [20 + 3, 15 + 2],  # 回復ロールは回復量が伸びる
 		UnitKind.Id.PALADIN: [52 + 6, 8 + 1],
@@ -192,11 +192,11 @@ func test_max_hp_drops_cut_the_hp() -> void:
 	var before := sniper.max_hp()
 	sniper.temporary_bonus[Unit.Stat.MAX_HP] = -6
 	sniper.follow_max_hp(before)
-	assert_eq(sniper.hp, 6)
+	assert_eq(sniper.hp, 7)
 	before = sniper.max_hp()
 	sniper.temporary_bonus.clear()
 	sniper.follow_max_hp(before)
-	assert_eq(sniper.hp, 12)
+	assert_eq(sniper.hp, 13)
 
 
 func test_level_3_is_the_cap() -> void:
@@ -241,7 +241,7 @@ func test_preview_does_not_change_the_unit_and_matches_gain() -> void:
 	assert_eq(outcome.levels_gained, 1)
 	assert_eq(sniper.level, 1)
 	assert_eq(sniper.experience, 90)
-	assert_eq(sniper.max_hp(), 12)
+	assert_eq(sniper.max_hp(), 13)
 	Growth.gain(sniper, 50, ExperienceGainedEvent.Reason.DEFEAT)
 	assert_eq([sniper.level, sniper.experience], [outcome.level, outcome.experience])
 
@@ -270,6 +270,6 @@ func test_clone_copies_the_growth() -> void:
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	Growth.gain(sniper, 150, ExperienceGainedEvent.Reason.HIT)
 	var copy := battle.clone().unit_by_id(sniper.id)
-	assert_eq([copy.level, copy.experience, copy.max_hp(), copy.power()], [2, 30, 15, 10])
+	assert_eq([copy.level, copy.experience, copy.max_hp(), copy.power()], [2, 30, 16, 8])
 	Growth.gain(copy, Growth.EXPERIENCE_PER_LEVEL, ExperienceGainedEvent.Reason.HIT)
-	assert_eq([sniper.level, sniper.max_hp()], [2, 15])  # 複製を育てても、元は変わらない
+	assert_eq([sniper.level, sniper.max_hp()], [2, 16])  # 複製を育てても、元は変わらない

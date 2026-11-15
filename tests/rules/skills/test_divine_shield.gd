@@ -168,7 +168,8 @@ func test_cpu_stops_short_and_raises_it_instead_of_cruising_into_fire() -> void:
 	# 巡航で寄ると、バリアを張れないまま撃たれる。通常の移動で届くマスに止まって張る手と比べる。
 	var battle := _cpu_battle()
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(3, 2))
-	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(12, 2))
+	# 育ったスナイパー（攻撃 9）。レベル 1 の一発（7）なら、張らずに寄るほうを選ぶ。
+	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(12, 2)).add_growth(Unit.Stat.POWER, 2)
 	var uses := _skill_uses_in_phase(battle)
 	assert_eq(uses.size(), 1, "バリアを張らなかった")
 	assert_true(Statuses.has(paladin, BARRIER))

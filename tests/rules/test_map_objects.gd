@@ -123,7 +123,7 @@ func test_attacking_a_barrel_blows_it_up() -> void:
 	assert_true(battle.board.is_walkable(BARREL))
 	assert_eq(enemy.hp, 37)
 	assert_eq(ally.hp, 37)
-	assert_eq(far.hp, 12)
+	assert_eq(far.hp, 13)
 	assert_eq(battle.unit_by_id(minion.id), null)
 	assert_true(sniper.acted)
 

@@ -14,8 +14,8 @@ func test_sniper() -> void:
 	assert_eq(UnitKind.role(id), UnitKind.Role.REARGUARD)
 	assert_eq(UnitKind.army(id), UnitKind.Army.MILITARY)
 	assert_eq(UnitKind.cost(id), 3)
-	assert_eq(UnitKind.max_hp(id), 12)
-	assert_eq(UnitKind.power(id), 9)
+	assert_eq(UnitKind.max_hp(id), 13)
+	assert_eq(UnitKind.power(id), 7)
 	assert_eq(UnitKind.move_range(id), 3)
 	assert_eq(UnitKind.attack_range(id), 4)
 
@@ -51,3 +51,12 @@ func test_only_vanguards_exert_zoc() -> void:
 	for id: UnitKind.Id in UnitKind.Id.values():
 		var expected: bool = id == UnitKind.Id.SHIELD_TROOPER or id == UnitKind.Id.PALADIN
 		assert_eq(UnitKind.exerts_zoc(id), expected, UnitKind.display_name(id))
+
+
+func test_a_fresh_raider_cannot_one_shot_a_fresh_sniper() -> void:
+	# レベル 1 どうしでは、奇襲の一撃でスナイパーは落ちない。育った奇襲（レベル 2）なら落とせる（docs/unit-roster.md）。
+	var sniper_hp := UnitKind.max_hp(UnitKind.Id.SNIPER)
+	var raider_gain: int = Growth.GAINS[UnitKind.Role.RAIDER][Unit.Stat.POWER]
+	for raider: UnitKind.Id in [UnitKind.Id.COMMANDO, UnitKind.Id.SPELLBLADE]:
+		assert_true(UnitKind.power(raider) < sniper_hp, UnitKind.display_name(raider))
+		assert_true(UnitKind.power(raider) + raider_gain >= sniper_hp, UnitKind.display_name(raider))
