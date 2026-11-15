@@ -195,15 +195,28 @@ func test_plain_gets_four_to_six_barrels_in_the_side_bands() -> void:
 			assert_between(cell.y, 10, 20, "seed %d %s" % [map_seed, cell])
 
 
-func test_labyrinth_gets_two_or_three_springs() -> void:
-	var counts := {}
+func test_labyrinth_gets_a_spring_on_each_side_fair_to_both_players() -> void:
 	for map_seed in range(1, OBJECT_SEEDS + 1):
 		var board := BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, map_seed)
-		assert_between(board.spring_cells.size(), 2, 3, "seed %d" % map_seed)
+		var label := "seed %d" % map_seed
+		assert_eq(board.spring_cells, BoardGenerator.spring_cells_for(board.size), label)
+		assert_eq(board.spring_cells.size(), 2, label)
 		assert_eq(board.barrel_cells.size(), 0)
 		assert_eq(board.portal_exits.size(), 0)
-		counts[board.spring_cells.size()] = true
-	assert_eq(counts.size(), 2, "2 つの盤面も 3 つの盤面もある")
+		# 本陣どうしを入れ替える点対称（どちらのプレイヤーにも、近い泉と遠い泉が 1 つずつ）。
+		assert_eq(board.spring_cells[1], board.hq_cells[0] + board.hq_cells[1] - board.spring_cells[0], label)
+
+
+func test_labyrinth_springs_are_out_of_the_bosses_reach() -> void:
+	# 泉の回復（12）は中ボスの攻撃（10）より多い。泉に立ったまま中ボスと殴り合えると、1 体で狩れてしまう。
+	# 泉は、中ボスの家から「縄張り 4 + いちばん長い射程（スナイパー 4）」より遠くに置く。
+	var board := BoardGenerator.generate(BoardGenerator.Stage.LABYRINTH, 1)
+	for spring in board.spring_cells:
+		for boss in board.mid_boss_cells:
+			assert_true(
+				Combat.distance(spring, boss) > Neutral.TERRITORY_RADIUS + UnitKind.attack_range(UnitKind.Id.SNIPER),
+				"%s %s" % [spring, boss],
+			)
 
 
 func test_twin_springs_gets_a_portal_pair_on_each_flank() -> void:

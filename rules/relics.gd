@@ -10,8 +10,8 @@ extends RefCounted
 ## 状態を変えるのは grant（Battle.remove_unit が、中ボスが倒れたときに呼ぶ）と equip（Battle.add_unit が呼ぶ）だけ。
 
 enum Id {
-	WISDOM,  ## 英知の聖遺物（左の中ボス）。最大 HP が上がる
-	COURAGE,  ## 勇気の聖遺物（右の中ボス）。攻撃力が上がる
+	WISDOM,  ## 英知の聖遺物（番号 0 の中ボス。左か上）。最大 HP が上がる
+	COURAGE,  ## 勇気の聖遺物（番号 1 の中ボス。右か下）。攻撃力が上がる
 }
 
 # ---- 調整値（docs/relic-buff.md の「調整値」） ----

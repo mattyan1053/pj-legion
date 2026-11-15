@@ -36,7 +36,7 @@ const _TABLE := {
 	Id.SPELLBLADE: ["スペルブレード", Role.RAIDER, Army.FANTASY, 3, 22, 12, 6, 1],
 	Id.PRIEST: ["プリースト", Role.HEALER, Army.FANTASY, 3, 22, 14, 4, 2],
 	Id.MINION: ["エナジー・コア", Role.NONE, Army.NONE, 0, 12, 4, 2, 1],
-	Id.ELITE_MINION: ["エリートミニオン", Role.NONE, Army.NONE, 0, 80, 10, 2, 2],
+	Id.ELITE_MINION: ["エリートミニオン", Role.NONE, Army.NONE, 0, 50, 10, 2, 2],
 }
 
 
