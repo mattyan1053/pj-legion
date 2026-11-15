@@ -215,6 +215,7 @@ func _ready() -> void:
 	_rig = OrbitCamera.new()
 	add_child(_rig)
 	_effects = BattleEffects.new()
+	_effects.play_sound = _sound
 	add_child(_effects)
 	_selection_ring = _build_ring(COLOR_SELECTED, 0.38, 0.47)
 	_inspect_ring = _build_ring(COLOR_INSPECTED, 0.40, 0.50)
@@ -1318,6 +1319,7 @@ func _play_warped(event: UnitWarpedEvent) -> void:
 	var color := BoardView.portal_color(battle.board, event.from)
 	var to := BoardView.cell_center(event.to)
 	_flash(BoardView.cell_center(event.from), color, 0.9)
+	_sound(&"portal")
 	var shrink := create_tween()
 	shrink.tween_property(view, "scale", Vector3.ONE * 0.05, 0.16)
 	await shrink.finished
@@ -1356,8 +1358,10 @@ func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
 	target.play_hit()
 	target.set_hp(event.hp)
 	if event.is_blocked():
+		_sound(&"blocked")
 		_pop_number(target.position, "%s が防いだ" % Status.display_name(event.blocked_by as Status.Type), Color("9fd8ff"))
 	elif event.critical:
+		_sound(&"critical")
 		_pop_number(target.position, "クリティカル -%d" % event.amount, Color("ff5a4a"))
 	else:
 		_pop_number(target.position, "-%d" % event.amount, color)
@@ -1387,6 +1391,7 @@ func _play_regeneration_healed(event: RegenerationHealedEvent) -> void:
 func _play_heal(event: UnitHealedEvent, glow: bool) -> void:
 	var view := _view(event.unit_id)
 	view.set_hp(event.hp)
+	_sound(&"heal")
 	_pop_number(view.position, "+%d" % event.amount, Color("9cf09c"))
 	if glow:
 		_flash(view.position, BoardView.COLOR_SPRING_CROSS, 0.8)
@@ -1406,6 +1411,7 @@ func _play_level_up(event: LevelUpEvent) -> void:
 	view.set_growth(event.level, event.max_hp)
 	view.set_hp(event.hp)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_LEVEL_UP, 1.4)
+	_sound(&"level_up")
 	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "レベル %d！" % event.level, COLOR_LEVEL_UP)
 	await _after(0.5)
 
@@ -1424,6 +1430,7 @@ func _play_evolved(event: UnitEvolvedEvent) -> void:
 	view.set_evolved(event.max_hp)
 	view.set_hp(event.hp)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.8)
+	_sound(&"evolved")
 	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Evolution.display_name(event.evolution), COLOR_EVOLUTION)
 	await _after(0.6)
 
@@ -1441,6 +1448,7 @@ func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
 		colors[cell] = COLOR_BLAST
 	_board_view.show_cells(colors)
 	_flash(at + Vector3(0.0, 0.3, 0.0), Color("ff8a2a"), 2.6)
+	_sound(&"explosion")
 	_pop_number(at, "爆発", Color("ff8a2a"))
 	await _after(0.3)
 
@@ -1564,6 +1572,7 @@ func _play_ult_used(event: UltUsedEvent) -> void:
 	_refresh_status(battle.turn, battle.phase)
 	var color: Color = BattleHud.ULT_COLORS[event.ult]
 	_hud.flash_screen(color)
+	_sound(&"ult")  # 音の山が、続く光の柱（_play_ult_effects）に重なる
 	_hud.show_banner("%s　必殺技: %s!!" % [_side_name(event.side), Ults.by_id(event.ult).display_name()], color)
 	await _after(0.5)
 
@@ -1586,6 +1595,7 @@ func _play_ult_effects(side: Unit.Side, effects: Array[BattleEvent]) -> void:
 ## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
 func _play_ult_ready(_event: UltReadyEvent) -> void:
 	_refresh_status(battle.turn, battle.phase)
+	_sound(&"ult_ready")
 
 
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。
@@ -1636,6 +1646,7 @@ func _stats_text() -> String:
 func _play_defeated(event: UnitDefeatedEvent) -> void:
 	var view := _view(event.unit_id)
 	_views.erase(event.unit_id)
+	_sound(&"defeated")
 	await view.play_death()
 
 
@@ -1658,6 +1669,7 @@ func _play_relic_gained(event: RelicGainedEvent) -> void:
 	_refresh_status(battle.turn, battle.phase)
 	var color: Color = TEAM_COLORS[event.side]
 	var text := Relics.summary(event.relic).trim_prefix("軍の全員の")
+	_sound(&"relic")
 	for unit_id in event.unit_ids:
 		if not _views.has(unit_id):
 			continue
@@ -1682,6 +1694,8 @@ func _play_spawned(event: UnitSpawnedEvent) -> void:
 	if not _quiet_playback:
 		_rig.focus_on(at)
 	_flash(at + Vector3(0.0, 0.4, 0.0), TEAM_COLORS[event.side], 1.6)
+	if event.kind == Neutral.MID_BOSS_KIND:
+		_sound(&"boss_roar")
 	view.scale = Vector3.ONE * 0.05
 	var grow := create_tween()
 	grow.tween_property(view, "scale", Vector3.ONE, 0.3)
@@ -1722,6 +1736,7 @@ func _play_phase_started(event: PhaseStartedEvent) -> void:
 	for unit in battle.units:
 		if unit.side == event.side:
 			_view(unit.id).set_acted(false)
+	_sound(&"phase")
 	_hud.show_banner("ターン %d　%s の番" % [event.turn, _side_name(event.side)], TEAM_COLORS[event.side])
 	_rig.focus_on(_camera_point(event.side))
 	await _after(0.5)
@@ -1731,7 +1746,14 @@ func _play_capture(event: CaptureProgressEvent) -> void:
 	_refresh_status(battle.turn, battle.phase)
 	var hq := battle.board.hq_cells[1 - event.player]
 	var text := "占拠 %d / %d" % [event.turns, Battle.CAPTURE_TURNS_TO_WIN] if event.turns > 0 else "占拠が途切れた"
+	if event.turns > 0:
+		_sound(&"capture")
 	_pop_number(BoardView.cell_center(hq), text, TEAM_COLORS[event.player].lightened(0.4))
+
+
+## 対戦の中の効果音（sound_catalog.gd の名前。docs/sound.md の「対戦の音」）。演出に合わせて鳴らすだけで、待ち時間は変えない。
+func _sound(name: StringName) -> void:
+	context.play_sound(name)
 
 
 ## 広がって消える光の球（爆発、転移、泉の回復）。size は広がりきったときの直径。

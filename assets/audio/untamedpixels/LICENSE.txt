@@ -1,0 +1,19 @@
+Sound effects from "150 Combat Sound Effects", compiled by Untamed Pixels
+(https://opengameart.org/users/untamedpixels)
+https://opengameart.org/content/150-combat-sound-effects
+
+License: Creative Commons Zero (CC0 1.0 Universal)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The distribution page lists the license as CC0 (checked on 2026-11-15).
+The zip's LICENSES.txt says (copied as is):
+
+  All 150 included WAV files are licensed under CC0 1.0 Universal.
+  [s02] Kenney - Impact Sounds            https://kenney.nl/assets/impact-sounds              CC0 1.0 Universal
+  [s06] lentikula - Basic Spell Impacts   https://lentikula.itch.io/freecc0-basic-spell-impacts-sfx  CC0 1.0 Universal
+  [s07] lentikula - Druid Spell Impacts   https://lentikula.itch.io/druid-spell-impacts       CC0 1.0 Universal
+  [s08] lentikula - Healing Spell Impacts https://lentikula.itch.io/healing-spell-impacts     CC0 1.0 Universal
+
+(Only the sources of the files used here are listed.)
+The files here were converted from the distributed WAV files to mono Ogg Vorbis
+and shortened with a fade-out.
