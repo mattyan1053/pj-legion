@@ -5,7 +5,7 @@ extends Control
 ## - 英知（最大 HP）: 菱形の宝石（水色）。
 ## - 勇気（攻撃力）: 上を向いた剣（橙）。
 
-const SIZE := 20.0
+const SIZE := 22.0
 const COLORS := {
 	Relics.Id.WISDOM: Color("7fe0ff"),
 	Relics.Id.COURAGE: Color("ffa04a"),
@@ -60,11 +60,11 @@ func _shape() -> PackedVector2Array:
 		Relics.Id.COURAGE:
 			# 上を向いた剣: 刃、鍔、柄。
 			return PackedVector2Array([
-				Vector2(s * 0.5, s * 0.04), Vector2(s * 0.62, s * 0.2), Vector2(s * 0.62, s * 0.6),
+				Vector2(s * 0.5, s * 0.02), Vector2(s * 0.66, s * 0.18), Vector2(s * 0.66, s * 0.6),
 				Vector2(s * 0.82, s * 0.6), Vector2(s * 0.82, s * 0.7), Vector2(s * 0.57, s * 0.7),
 				Vector2(s * 0.57, s * 0.96), Vector2(s * 0.43, s * 0.96), Vector2(s * 0.43, s * 0.7),
-				Vector2(s * 0.18, s * 0.7), Vector2(s * 0.18, s * 0.6), Vector2(s * 0.38, s * 0.6),
-				Vector2(s * 0.38, s * 0.2),
+				Vector2(s * 0.18, s * 0.7), Vector2(s * 0.18, s * 0.6), Vector2(s * 0.34, s * 0.6),
+				Vector2(s * 0.34, s * 0.18),
 			])
 	# 菱形の宝石（上が平たい）。
 	return PackedVector2Array([
