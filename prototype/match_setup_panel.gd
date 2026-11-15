@@ -126,6 +126,7 @@ func setup(team_colors: Array[Color], library: RefCounted = null) -> void:
 	buttons.add_child(_back_button)
 	_start_button = _button("対戦を始める")
 	_start_button.custom_minimum_size = Vector2(220.0, 52.0)
+	_start_button.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	_start_button.pressed.connect(confirm)
 	buttons.add_child(_start_button)
 	_show_choice()

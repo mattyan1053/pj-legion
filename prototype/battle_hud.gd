@@ -31,6 +31,8 @@ signal setup_pressed
 signal title_pressed
 ## stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でやり直す（stage は見ない）。
 signal restart_pressed(stage: int, new_board: bool)
+## 決着の画面を出した（draw なら引き分けで、winner は使わない）。決着の曲を鳴らす合図。
+signal result_shown(draw: bool, winner: Unit.Side)
 
 const SIDE_NAMES := {
 	Unit.Side.PLAYER1: "プレイヤー1（青）",
@@ -535,6 +537,7 @@ func show_result(winner: Unit.Side, reason: String, stats := "") -> void:
 	_result_reason.text = reason
 	_show_stats(stats)
 	_result.visible = true
+	result_shown.emit(false, winner)
 
 
 ## 引き分けの結果を出す。
@@ -544,6 +547,7 @@ func show_draw(reason: String, stats := "") -> void:
 	_result_reason.text = reason
 	_show_stats(stats)
 	_result.visible = true
+	result_shown.emit(true, Unit.Side.NEUTRAL)
 
 
 ## いま出ている戦績の要点（出ていなければ空）。検査用。

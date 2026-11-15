@@ -224,6 +224,7 @@ func _ready() -> void:
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
+	_hud.result_shown.connect(_on_result_shown)
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
 	_setup_panel.setup(TEAM_COLORS, context.decks if context != null else null)
@@ -236,6 +237,8 @@ func _ready() -> void:
 	_log_panel.opened.connect(_on_overlay_opened)
 	_log_panel.closed.connect(_on_log_closed)
 	_log_panel.entry_chosen.connect(_on_log_entry_chosen)
+	_log_panel.opened.connect(func() -> void: context.play_sound(&"menu_open"))
+	_log_panel.closed.connect(func() -> void: context.play_sound(&"menu_close"))
 
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき（既定の設定で始める）
@@ -429,6 +432,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_confirming_end = false
 	_confirming_ult = false
 	_hud.hide_result()
+	context.resume_scene_music()  # 決着の曲のあとの「やり直す」でも、対戦の曲へ戻る
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
 	_refresh()
 	_run_cpu()
@@ -450,6 +454,19 @@ func _add_view(unit: Unit) -> void:
 	view.face(BoardView.cell_center(enemy_hq) - view.position)
 	view.set_acted(unit.acted)
 	_views[unit.id] = view
+
+
+## 決着の画面が出た。決着の曲を 1 回鳴らす: 人が勝てば勝ちの曲、CPU に負けたときと引き分けは負けの曲。
+## 人どうしは、どちらかが勝っているので勝ちの曲。
+func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
+	context.play_jingle(result_music(draw, winner, cpu_opponent, match_choice.human_side))
+
+
+## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
+static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human_side: Unit.Side) -> StringName:
+	if draw or (against_cpu and winner != human_side):
+		return &"defeat"
+	return &"victory"
 
 
 func _on_restart_pressed(new_stage: int, new_board: bool) -> void:
@@ -973,8 +990,15 @@ func info_title() -> String:
 
 ## 戻す（右クリック・Esc）。必殺技を確かめている途中か、対象を選んでいる途中なら、それをやめる。
 ## 動いたあとなら移動を取り消す。そうでなければ選択をやめる（マスの情報も消す）。ターン終了の確かめも、やめる。
-## 戻したものがあったかを返す（無ければ、Esc はシステムメニューを開く）。
+## 戻したものがあったかを返す（無ければ、Esc はシステムメニューを開く）。戻したら、戻す音を鳴らす。
 func cancel() -> bool:
+	var done := _cancel()
+	if done:
+		context.play_sound(&"ui_back")
+	return done
+
+
+func _cancel() -> bool:
 	if is_busy():
 		return false
 	if _confirming_ult:
@@ -1027,6 +1051,8 @@ func press_end_turn() -> void:
 func _select(unit_id: int) -> void:
 	if unit_id != _selected_id:
 		_menu_placement.reset()
+		if unit_id != 0:
+			context.play_sound(&"ui_confirm")  # 駒を選んだ（決める音）
 	_selected_id = unit_id
 	_inspected_id = 0
 	_inspected_cell = NO_CELL

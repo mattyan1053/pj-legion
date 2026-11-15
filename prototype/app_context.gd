@@ -25,6 +25,8 @@ var settings := Settings.new()
 var decks := DeckLibrary.new()
 ## システムメニュー（system_menu.gd）。アプリが作って入れる。
 var system_menu: Node
+## 音を鳴らすところ（sound.gd）。アプリが作って入れる（アプリを通さずに場面を置いたときは無い）。
+var sound: Node
 ## 対戦の設定の場面で選んだもの（trial_setup.gd）。対戦の場面は、これで始める。
 var match_choice: RefCounted = TrialSetup.new()
 ## 検査として動いているなら CHECK_AUTOPLAY か CHECK_SHOTS。人が遊んでいるなら空。
@@ -37,6 +39,31 @@ func open_menu() -> void:
 
 func open_settings() -> void:
 	settings_requested.emit()
+
+
+## アプリを終える（音を止めて手放してから）。
+func quit(code := 0) -> void:
+	if sound != null:
+		await sound.call(&"release")
+	(Engine.get_main_loop() as SceneTree).quit(code)
+
+
+## 効果音を名前で鳴らす（sound_catalog.gd の EFFECTS。無い名前や、音を鳴らすところが無いときは何もしない）。
+func play_sound(name: StringName) -> void:
+	if sound != null:
+		sound.call(&"play", name)
+
+
+## 決着の曲を 1 回だけ鳴らす。
+func play_jingle(track: StringName) -> void:
+	if sound != null:
+		sound.call(&"play_jingle", track)
+
+
+## 場面の曲へ戻す（決着の曲のあと、新しい対戦を始めたとき）。
+func resume_scene_music() -> void:
+	if sound != null:
+		sound.call(&"resume_scene_music")
 
 
 ## 新しい対戦の種。遊ぶときは毎回違う盤面、検査では毎回同じ盤面。
