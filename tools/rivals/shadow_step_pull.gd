@@ -80,8 +80,15 @@ func _reachable_damage(sim: Battle, me: Unit.Side, king_id: int) -> int:
 			continue
 		if unit.has_moved:
 			continue
+		# 動いた先から、ルールで撃てるか（盾の射線、煙幕も）を、複製の上で動いて確かめる。
 		for cell: Vector2i in options.move_cells:
-			if Combat.distance(cell, king.cell) <= unit.attack_range():
-				total += Combat.damage(sim, unit, king)
+			if Combat.distance(cell, king.cell) > unit.attack_range():
+				continue
+			var moved := sim.clone()
+			moved.apply(MoveAction.new(unit.id, cell))
+			var mover := moved.unit_by_id(unit.id)
+			var target := moved.unit_by_id(king_id)
+			if Combat.can_attack(moved, mover, target):
+				total += Combat.damage(moved, mover, target)
 				break
 	return total
