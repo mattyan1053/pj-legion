@@ -12,6 +12,7 @@ const SystemMenu := preload("res://prototype/system_menu.gd")
 const ForecastPanel := preload("res://prototype/forecast_panel.gd")
 const ForecastText := preload("res://prototype/forecast_text.gd")
 const RelicIcon := preload("res://prototype/relic_icon.gd")
+const ResultScreen := preload("res://prototype/result_screen.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -57,10 +58,9 @@ const TOP_BAR_HEIGHT := 50.0
 const BOTTOM_BAR_HEIGHT := 92.0
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
-## 文を折り返す幅（px）。情報の枠、必殺技の説明、決着の画面の戦績。下の帯の説明は、画面の幅からボタンのぶんを引く。
+## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
 const INFO_WIDTH := 320.0
 const ULT_SUMMARY_WIDTH := 480.0
-const RESULT_STATS_WIDTH := 760.0
 const HINT_SIDE_WIDTH := 730.0
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 const COLOR_FORECAST := Color("ffd76a")
@@ -134,13 +134,10 @@ var _banner: Label
 var _banner_tween: Tween
 var _flash: ColorRect
 var _flash_tween: Tween
-var _result: Control
+var _result: ResultScreen
 var _evolution: Control
 var _evolution_title: Label
 var _evolution_buttons: Array[Button] = []
-var _result_title: Label
-var _result_reason: Label
-var _result_stats: Label
 
 
 func setup(team_colors: Array[Color]) -> void:
@@ -152,7 +149,12 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_banner()
 	_build_menu()
 	_build_forecast()
-	_build_result()
+	_result = ResultScreen.new()
+	_result.team_colors = team_colors
+	add_child(_result)
+	_result.restart_pressed.connect(restart_pressed.emit)
+	_result.setup_pressed.connect(setup_pressed.emit)
+	_result.title_pressed.connect(title_pressed.emit)
 	_build_evolution()
 
 
@@ -548,43 +550,29 @@ func hide_banner() -> void:
 	_banner.visible = false
 
 
-## stats は戦績の要点（文字。空なら出さない）。
-func show_result(winner: Unit.Side, reason: String, stats := "") -> void:
-	_result_title.text = "%s の勝ち" % Names.SIDE_NAMES[winner]
-	_result_title.add_theme_color_override("font_color", _side_color(winner).lightened(0.4))
-	_result_reason.text = reason
-	_show_stats(stats)
-	_result.visible = true
-	result_shown.emit(false, winner)
+## リザルトの画面（result_screen.gd）を、summary（result_summary.gd）で段階的に出し始める。
+func show_result(summary: RefCounted) -> void:
+	_result.present(summary)
+	result_shown.emit(summary.winner == Unit.Side.NEUTRAL, summary.winner)
 
 
-## 引き分けの結果を出す。
-func show_draw(reason: String, stats := "") -> void:
-	_result_title.text = "引き分け"
-	_result_title.add_theme_color_override("font_color", Color("e6e6e6"))
-	_result_reason.text = reason
-	_show_stats(stats)
-	_result.visible = true
-	result_shown.emit(true, Unit.Side.NEUTRAL)
+## リザルトの画面（検査と、場面が入力の取り次ぎを渡すのに使う）。
+func result_screen() -> ResultScreen:
+	return _result
 
 
-## いま出ている戦績の要点（出ていなければ空）。検査用。
+## いま出ている詳しい戦績（出ていなければ空）。検査用。
 func result_stats() -> String:
-	return _result_stats.text if _result.visible and _result_stats.visible else ""
-
-
-func _show_stats(stats: String) -> void:
-	_set_folded(_result_stats, stats, RESULT_STATS_WIDTH)
-	_result_stats.visible = stats != ""
+	return _result.detail_text()
 
 
 ## いま出ている結果の見出し（出ていなければ空）。検査用。
 func result_title() -> String:
-	return _result_title.text if _result.visible else ""
+	return _result.headline()
 
 
 func hide_result() -> void:
-	_result.visible = false
+	_result.hide_result()
 
 
 ## 進化先の説明（名前、能力値の増減、特性）。healer なら、攻撃の欄を「回復」と書く。
@@ -893,59 +881,6 @@ func _build_banner() -> void:
 	_banner.add_theme_constant_override("outline_size", 12)
 	_banner.visible = false
 	add_child(_banner)
-
-
-func _build_result() -> void:
-	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.7)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.visible = false
-	add_child(shade)
-	_result = shade
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.add_child(center)
-	var panel := _panel(COLOR_PANEL_SOLID)
-	center.add_child(panel)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 14)
-	panel.add_child(column)
-	_result_title = _label(40)
-	_result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_result_title)
-	_result_reason = _label(20)
-	_result_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_result_reason)
-	_result_stats = _label(15)
-	_result_stats.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	_result_stats.custom_minimum_size = Vector2(RESULT_STATS_WIDTH, 0.0)
-	column.add_child(_result_stats)
-	var again := _button("同じ盤面でもう一度", Signal())
-	again.pressed.connect(func() -> void: restart_pressed.emit(0, false))
-	column.add_child(again)
-	var caption := _label(15)
-	caption.text = "新しい盤面で対戦する"
-	caption.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(caption)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_child(row)
-	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
-		var button := _button("%d %s" % [stage, MatchSetup.stage_name(stage)], Signal())
-		button.pressed.connect(func() -> void: restart_pressed.emit(stage, true))
-		row.add_child(button)
-	var leave := HBoxContainer.new()
-	leave.add_theme_constant_override("separation", 10)
-	leave.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_child(leave)
-	var to_setup := _button("対戦の設定へ（軍・相手・手番）", setup_pressed)
-	to_setup.custom_minimum_size = Vector2(320.0, 48.0)
-	leave.add_child(to_setup)
-	var to_title := _button("タイトルへ", title_pressed)
-	to_title.custom_minimum_size = Vector2(200.0, 48.0)
-	leave.add_child(to_title)
 
 
 ## 進化先の選択肢（飾らない 2 つのボタン）。盤面が見えるよう、画面の上寄りに出す。
