@@ -10,6 +10,7 @@ extends Node
 
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
+const ScreenSize := preload("res://game/screen_size.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Run := preload("res://game/run.gd")
@@ -29,6 +30,8 @@ const DEFAULT_ID := ""
 ## 縮図の 1 マスの大きさ（px）。
 const MAP_CELL := 20
 const RIGHT_WIDTH := 600.0
+## 中身の大きさの上限（論理の px）。縦長・横長の画面では、これより広げずに真ん中に置く（docs/screen-size.md）。
+const MAX_SIZE := Vector2(1560.0, 820.0)
 ## 右の欄の文を折り返す幅（px）。
 const WRAP_WIDTH := RIGHT_WIDTH - 40.0
 
@@ -70,10 +73,8 @@ func _ready() -> void:
 
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.offset_left = 40.0
-	root.offset_right = -40.0
-	root.offset_top = 24.0
-	root.offset_bottom = -24.0
+	# 縦長・横長の画面では、枠を広げすぎず、真ん中にまとめる（中身の無い枠が伸びるだけになるため。docs/screen-size.md）。
+	ScreenSize.cap(root, MAX_SIZE, Vector4(40.0, 24.0, 40.0, 24.0))
 	root.add_theme_constant_override("separation", 12)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)

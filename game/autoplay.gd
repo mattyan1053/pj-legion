@@ -124,6 +124,8 @@ static func _choose_scenes(args: PackedStringArray) -> Array[String]:
 
 
 func _ready() -> void:
+	var screen := get_viewport().get_visible_rect().size
+	print("autoplay: 画面 %dx%d" % [screen.x, screen.y])
 	if _selected.is_empty():
 		_finish("autoplay: --only に知らない名前がある（場面: %s、まとまり: %s）" % [", ".join(SCENES.keys()), ", ".join(GROUPS.keys())], 1)
 	elif not _selected.has("game"):

@@ -5,6 +5,8 @@ extends "res://tests/base_test.gd"
 ## 画面への投影は、俯瞰のカメラを真似た簡単な式（ノードを使わない）。
 
 const MenuPlacement := preload("res://game/menu_placement.gd")
+const ScreenSize := preload("res://game/screen_size.gd")
+const BattleHud := preload("res://game/battle_hud.gd")
 
 ## battle_hud.gd の menu_area() と同じ（1280×720、上の帯 50、下の帯 92）。
 const AREA := Rect2(4, 54, 1272, 570)
@@ -14,6 +16,14 @@ const FORECAST_SIZES: Array[Vector2] = [Vector2(266, 170), Vector2(266, 340)]
 const BOARD := Vector2i(9, 5)
 ## 駒の高さ（マス 1 つを 1 として）。
 const UNIT_HEIGHT := 1.2
+## 1280×720 のほかに確かめる窓の大きさ（横長 21:9・32:9、16:10、4:3）。16:9 の窓は、どれも 1280×720 と同じに並ぶ。
+const OTHER_WINDOWS: Array[Vector2] = [Vector2(3440, 1440), Vector2(5120, 1440), Vector2(1280, 800), Vector2(1024, 768)]
+
+
+## 論理の大きさ screen の画面で、メニューを置いてよい範囲（battle_hud.gd の menu_area() と同じ）。
+static func _area(screen: Vector2) -> Rect2:
+	var top := BattleHud.TOP_BAR_HEIGHT
+	return Rect2(4.0, top + 4.0, screen.x - 8.0, screen.y - top - BattleHud.BOTTOM_BAR_HEIGHT - 8.0)
 
 
 ## 盤面の上の点（マスの単位。h は高さ）が画面に出る位置。yaw はカメラの向き、scale は 1 マスの px、origin は盤の中央が出る位置。
@@ -39,26 +49,39 @@ func test_forecast_never_covers_the_menu_nor_leaves_the_screen() -> void:
 	for y: int in [0, 2, 4]:
 		for x: int in [0, 4, 8]:
 			actors.append(Vector2i(x, y))
-	_sweep(actors, 1, false)
+	_sweep(actors, 1, false, AREA)
+
+
+## PR ごとの検査: ほかの縦横比の画面でも（盤の四隅と中央の駒、隣の対象、4 つの向き）。
+func test_forecast_fits_other_screen_shapes() -> void:
+	assert_eq(_area(ScreenSize.base_size()), AREA, "AREA が battle_hud.gd と食い違う")
+	var actors: Array[Vector2i] = [Vector2i(0, 0), Vector2i(8, 0), Vector2i(4, 2), Vector2i(0, 4), Vector2i(8, 4)]
+	for window in OTHER_WINDOWS:
+		var screen := ScreenSize.logical_size(window, ScreenSize.base_size(), Window.CONTENT_SCALE_ASPECT_EXPAND)
+		_sweep(actors, 1, false, _area(screen), 3)
 
 
 ## 長い検査: すべてのマスの駒と、2 マスまでの対象を、2 つの大きさのパネルで。
 func test_long_forecast_never_covers_the_menu_nor_leaves_the_screen() -> void:
-	_sweep(_cells(), 2, true)
+	_sweep(_cells(), 2, true, AREA)
+	for window in OTHER_WINDOWS:
+		var screen := ScreenSize.logical_size(window, ScreenSize.base_size(), Window.CONTENT_SCALE_ASPECT_EXPAND)
+		_sweep(_cells(), 1, false, _area(screen))
 
 
 ## 向き・1 マスの大きさ・盤の位置・駒・対象を総当たりする。対象は駒から reach マスまで。
-## every_size なら、パネルの大きさを全部試す（でなければ、組み合わせごとに 1 つを順に）。
-func _sweep(actors: Array[Vector2i], reach: int, every_size: bool) -> void:
+## every_size なら、パネルの大きさを全部試す（でなければ、組み合わせごとに 1 つを順に）。area は置いてよい範囲。
+## 向きは 30 度ずつの 12 通りを、yaw_skip おきに試す。
+func _sweep(actors: Array[Vector2i], reach: int, every_size: bool, area: Rect2, yaw_skip := 1) -> void:
 	var origins: Array[Vector2] = [
-		AREA.get_center(),
-		Vector2(AREA.position.x + 120, AREA.get_center().y), Vector2(AREA.end.x - 120, AREA.get_center().y),
-		Vector2(AREA.get_center().x, AREA.position.y + 60), Vector2(AREA.get_center().x, AREA.end.y - 20),
+		area.get_center(),
+		Vector2(area.position.x + 120, area.get_center().y), Vector2(area.end.x - 120, area.get_center().y),
+		Vector2(area.get_center().x, area.position.y + 60), Vector2(area.get_center().x, area.end.y - 20),
 	]
 	var placed := 0
 	var covered_target := 0
 	var covered_actor := 0
-	for yaw_step in 12:
+	for yaw_step in range(0, 12, yaw_skip):
 		var yaw := deg_to_rad(yaw_step * 30.0)
 		for scale: float in [55.0, 85.0]:
 			for origin in origins:
@@ -71,16 +94,16 @@ func _sweep(actors: Array[Vector2i], reach: int, every_size: bool) -> void:
 						if not every_size:
 							sizes = [FORECAST_SIZES[placed % FORECAST_SIZES.size()]]
 						for forecast_size in sizes:
-							var result := _place(actor, target, yaw, scale, origin, forecast_size)
+							var result := _place(actor, target, yaw, scale, origin, forecast_size, area)
 							var menu: Rect2 = result[0]
 							var forecast: Rect2 = result[1]
-							var what := "向き %d 度、1 マス %d px、盤の中央 %s、駒 %s、対象 %s" % [yaw_step * 30, scale, origin, actor, target]
+							var what := "画面 %s、向き %d 度、1 マス %d px、盤の中央 %s、駒 %s、対象 %s" % [area.size, yaw_step * 30, scale, origin, actor, target]
 							placed += 1
 							if forecast.intersects(menu):
 								assert_false(true, "予測のパネルがメニューに重なった: " + what)
-							if not AREA.encloses(forecast):
+							if not area.encloses(forecast):
 								assert_false(true, "予測のパネルが帯か画面の外へはみ出した: " + what)
-							if not AREA.encloses(menu):
+							if not area.encloses(menu):
 								assert_false(true, "メニューが帯か画面の外へはみ出した: " + what)
 							if forecast.intersects(result[2]):
 								covered_target += 1
@@ -122,11 +145,11 @@ func _cells() -> Array[Vector2i]:
 
 ## panel_layout.gd と同じに、メニュー（行動する駒のそば）と予測のパネル（対象のそば）を置く。
 ## [メニュー, 予測のパネル, 対象の駒, 行動する駒] の四角を返す。
-func _place(actor: Vector2i, target: Vector2i, yaw: float, scale: float, origin: Vector2, forecast_size: Vector2) -> Array:
+func _place(actor: Vector2i, target: Vector2i, yaw: float, scale: float, origin: Vector2, forecast_size: Vector2, area := AREA) -> Array:
 	var actor_rect := _unit_rect(actor, 0.45, yaw, scale, origin)
 	var target_rect := _unit_rect(target, 0.45, yaw, scale, origin)
 	var menu_obstacles: Array = [[_unit_rect(target, 0.4, yaw, scale, origin), 12.0], [_unit_rect(target, 0.35, yaw, scale, origin), 4.0]]
-	var menu := Rect2(MenuPlacement.new().place(actor_rect, MENU_SIZE, AREA, menu_obstacles), MENU_SIZE)
+	var menu := Rect2(MenuPlacement.new().place(actor_rect, MENU_SIZE, area, menu_obstacles), MENU_SIZE)
 	var forecast_obstacles: Array = [[_unit_rect(actor, 0.4, yaw, scale, origin), 12.0], [_unit_rect(target, 0.35, yaw, scale, origin), 4.0]]
-	var at := MenuPlacement.new().place(target_rect, forecast_size, AREA, forecast_obstacles, [menu])
+	var at := MenuPlacement.new().place(target_rect, forecast_size, area, forecast_obstacles, [menu])
 	return [menu, Rect2(at.round(), forecast_size), target_rect, actor_rect]
