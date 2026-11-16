@@ -9,6 +9,9 @@ extends RefCounted
 ## - 盤の外・入れないマス・駒のいるマスは飛ばす。行が埋まったら、その前の行へ送る
 ## - 編成の並びの順に置く
 ##
+## 置くマスの列（cells）を渡すと、将でない駒は、編成の並びの順に、その列のマスへ置く（戦いの定義の初期位置）。
+## 列のマスが盤の外・入れない・駒がいるなら飛ばす。列が尽きたら、残りの駒はいつもの置き方（本陣の前の行）で置く。
+##
 ## 編成が対戦に出せる形か（Deck.is_valid）は、ここでは調べない。対戦を始める側が、渡す前に調べる。
 
 ## 1 行で、本陣の列から左右に使う幅。
@@ -19,7 +22,7 @@ const NO_CELL := Vector2i(-1, -1)
 ## side の軍を盤に置き、置いた駒を返す（先頭が将、あとは編成の並びの順）。
 ## 本陣に将を置けなければ、何も置かずに空を返す。置くマスが見つからなかった駒と、
 ## 装備を持てる数を超えている駒は置かない（返す列に入らない）。
-static func deploy(battle: Battle, side: Unit.Side, deck: Deck) -> Array[Unit]:
+static func deploy(battle: Battle, side: Unit.Side, deck: Deck, cells: Array[Vector2i] = []) -> Array[Unit]:
 	var placed: Array[Unit] = []
 	if side < 0 or side >= battle.board.hq_cells.size():
 		return placed
@@ -29,8 +32,16 @@ static func deploy(battle: Battle, side: Unit.Side, deck: Deck) -> Array[Unit]:
 		return placed
 	placed.append(king)
 	battle.armies[side] = deck.army
+	var next_listed := 0
 	for entry in deck.entries:
-		var cell := _free_cell(battle, hq)
+		var cell := NO_CELL
+		while cell == NO_CELL and next_listed < cells.size():
+			var listed := cells[next_listed]
+			next_listed += 1
+			if battle.board.is_walkable(listed) and battle.unit_at(listed) == null:
+				cell = listed
+		if cell == NO_CELL:
+			cell = _free_cell(battle, hq)
 		if cell == NO_CELL:
 			continue
 		var unit := battle.add_unit(entry.kind, side, cell, entry.equipment)
