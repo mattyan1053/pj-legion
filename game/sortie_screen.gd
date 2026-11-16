@@ -3,9 +3,9 @@ extends Node
 ## 背景は話の盤（backdrop.gd）。場面の決まりは scene_flow.gd。流れ（run.gd）が {"episode": 話, "battle": 話の対戦（story_battle.gd）} を渡す。
 ##
 ## - 左: 盤の縮図。両軍の駒の初期位置に、陣営の色の点（選んだ部隊で置き直す）。
-## - 右: この話で覚えること（話の LESSON。チュートリアル）、勝ち方、敵の部隊、出撃する部隊の選択
+## - 右: この話で覚えること（話の lesson。チュートリアル）、勝ち方、敵の部隊、出撃する部隊の選択
 ##   （既定の編成と、取っておいたストーリー用の部隊。出せない部隊は理由つきで押せない）。
-##   部隊が決まっている話（話の SQUAD）は、その部隊だけを出し、「部隊を編成する」も出さない。
+##   部隊が決まっている話（話の [ally] に unit がある）は、その部隊だけを出し、「部隊を編成する」も出さない。
 ## - 「出撃」で、選んだ部隊を話の対戦に持たせて Run.NEXT（対戦へ）。選んだ部隊は覚えておき（story.gd の squad_id）、次の話でも、次に起動しても選ばれている。
 ## - 「部隊を編成する」で、部隊の編成（ストーリー用）へ寄り道する（流れに差し込む。編成の「出撃の準備へ戻る」で、ここへ戻る）。
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
@@ -21,6 +21,7 @@ const DeckText := preload("res://game/deck_text.gd")
 const Run := preload("res://game/run.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
@@ -49,8 +50,8 @@ const COLOR_BAD := Palette.DANGER
 const COLOR_ACCENT := Palette.ACCENT
 
 var context: AppContext
-## 話（game/episodes/ の 1 ファイル）と、その対戦（story_battle.gd）。
-var episode: Script
+## 話（episode.gd。game/story/episodes/ の 1 ファイル）と、その対戦（story_battle.gd）。
+var episode: Episode
 var battle_source: RefCounted
 ## 選んでいる部隊の id（DEFAULT_ID なら既定の編成）。
 var _chosen := DEFAULT_ID
@@ -67,10 +68,10 @@ func _ready() -> void:
 		context = AppContext.new()  # アプリを通さずに置いたとき
 	var given: Variant = context.run_data()
 	if given == null:
-		given = {"episode": Story.MILITARY.EPISODES[0], "battle": Story.first_battle(Story.MILITARY.EPISODES[0])}
+		given = {"episode": Story.military().episodes[0], "battle": Story.first_battle(Story.military().episodes[0])}
 	episode = given["episode"]
 	battle_source = given["battle"]
-	add_child(Backdrop.new(episode.MAP.map().make_board(), episode.LOOK))
+	add_child(Backdrop.new(episode.map.make_board(), episode.look))
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var shade := ColorRect.new()
@@ -89,7 +90,7 @@ func _ready() -> void:
 	var heading := _text(30, COLOR_TEXT)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
-	heading.text = "出撃の準備　　第 %d 話「%s」" % [Story.number_of(episode), episode.TITLE]
+	heading.text = "出撃の準備　　第 %d 話「%s」" % [Story.number_of(episode), episode.title]
 	root.add_child(heading)
 
 	var body := HBoxContainer.new()
@@ -104,7 +105,7 @@ func _ready() -> void:
 	var left_column := VBoxContainer.new()
 	left_column.add_theme_constant_override("separation", 6)
 	left.add_child(left_column)
-	left_column.add_child(_caption("マップ「%s」（点は駒の初期位置。青が味方、赤が敵）" % episode.MAP.TITLE))
+	left_column.add_child(_caption("マップ「%s」（点は駒の初期位置。青が味方、赤が敵）" % episode.map_title))
 	_map = TextureRect.new()
 	_map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_map.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
@@ -119,7 +120,7 @@ func _ready() -> void:
 	right.add_child(goal)
 	var goal_column := VBoxContainer.new()
 	goal.add_child(goal_column)
-	var lesson := StoryBattle.lesson_of(episode)
+	var lesson := episode.lesson
 	if lesson != "":
 		goal_column.add_child(_caption("この話で覚えること"))
 		goal_column.add_child(_wrapped(lesson, 17, COLOR_TEXT))
@@ -129,7 +130,7 @@ func _ready() -> void:
 	right.add_child(enemy)
 	var enemy_column := VBoxContainer.new()
 	enemy.add_child(enemy_column)
-	enemy_column.add_child(_caption("敵の部隊（%s）" % DeckText.army_name(episode.ENEMY_ARMY)))
+	enemy_column.add_child(_caption("敵の部隊（%s）" % DeckText.army_name(episode.enemy_army)))
 	enemy_column.add_child(_wrapped(DeckText.deck_summary(battle_source.scenario().fixed_decks[Unit.Side.PLAYER2]), 17, COLOR_TEXT))
 
 	var troops := _panel()
@@ -222,7 +223,7 @@ func chosen_id() -> String:
 
 func chosen_deck() -> Deck:
 	if _chosen == FIXED_ID:
-		return StoryBattle.squad_of(episode)
+		return episode.squad_deck()
 	if _chosen != DEFAULT_ID:
 		var saved: RefCounted = context.decks.find(_chosen)
 		if saved != null:
@@ -242,9 +243,9 @@ func is_option_enabled(id: String) -> bool:
 	return _option_buttons.has(id) and not (_option_buttons[id] as Button).disabled
 
 
-## 部隊が決まっている話か（話の SQUAD）。
+## 部隊が決まっている話か（話の [ally] に unit がある）。
 func is_squad_fixed() -> bool:
-	return StoryBattle.squad_of(episode) != null
+	return episode.squad_deck() != null
 
 
 ## 「出撃」: 選んだ部隊を話の対戦に持たせて、対戦へ。部隊が決まっている話では、覚えている部隊を変えない。
@@ -260,7 +261,7 @@ func press_edit_decks() -> void:
 	if context.run == null or is_squad_fixed():
 		return
 	context.story.choose_squad(_chosen)
-	context.run.insert(DECKS, {"rules": context.story.campaign.RULES_ID, "back_label": "出撃の準備へ戻る"})
+	context.run.insert(DECKS, {"rules": context.story.campaign.rules_id, "back_label": "出撃の準備へ戻る"})
 	context.start_run(context.run)
 
 
@@ -286,7 +287,7 @@ func map_image(deck: Deck) -> Image:
 	var source: RefCounted = battle_source.copy()
 	source.human_deck = deck
 	var battle: Battle = source.make_setup(1).create_battle()
-	var image := StageCardMap.draw(battle.board, episode.LOOK, BattleScreen.TEAM_COLORS, MAP_CELL)
+	var image := StageCardMap.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
 	for unit in battle.units:
 		if unit.side == Unit.Side.NEUTRAL or unit.kind == UnitKind.Id.KING:
 			continue
@@ -301,7 +302,7 @@ func _build_options() -> void:
 		_add_option(FIXED_ID, "この話の部隊", "決まっている（この話では選び直せない）", true)
 		return
 	_add_option(DEFAULT_ID, "既定の編成", "いま雇える駒で組んだもの", true)
-	for item in context.decks.for_rules(context.story.campaign.RULES_ID, context.story.campaign.ARMY):
+	for item in context.decks.for_rules(context.story.campaign.rules_id, context.story.campaign.army):
 		var issues: Array[String] = item.issues()
 		var note := "%d 体・コスト %d / %d" % [item.deck.entries.size(), item.deck.total_cost(), item.deck.budget()]
 		_add_option(item.id, item.name, note if issues.is_empty() else "出せない: " + issues[0], issues.is_empty())

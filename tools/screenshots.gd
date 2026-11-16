@@ -1579,10 +1579,10 @@ func _start_story(number := -1) -> bool:
 	if number < 0:
 		number = _main_episode()
 	for i in number:
-		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
+		_app.context.story.clear(Story.military().episodes[i].id)
 	if not await _scene_story_list():
 		return false
-	_app.current_scene().choose(Story.MILITARY.EPISODES[number])
+	_app.current_scene().choose(Story.military().episodes[number])
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.TALK
 
@@ -1598,15 +1598,15 @@ func _scene_story_campaigns() -> bool:
 func _scene_story_list() -> bool:
 	if not await _scene_story_campaigns():
 		return false
-	_app.current_scene().choose(Story.MILITARY)
+	_app.current_scene().choose(Story.military())
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.EPISODES
 
 
 ## 部隊を選ぶ最初の話（部隊が決まっていない最初の話。チュートリアルのあとの本編の 1 話目）の番号（0 から）。
 func _main_episode() -> int:
-	for i in Story.MILITARY.EPISODES.size():
-		if StoryBattle.squad_of(Story.MILITARY.EPISODES[i]) == null:
+	for i in Story.military().episodes.size():
+		if Story.military().episodes[i].squad_deck() == null:
 			return i
 	return 0
 
@@ -1614,7 +1614,7 @@ func _main_episode() -> int:
 ## 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）。
 func _scene_story_list_cleared() -> bool:
 	for i in _main_episode() + 1:
-		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
+		_app.context.story.clear(Story.military().episodes[i].id)
 	return await _scene_story_list()
 
 
@@ -1670,7 +1670,7 @@ func _scene_story_sortie_from_talk() -> bool:
 ## 出撃の準備（ストーリー用の部隊を 1 つ取っておいて、それを選んだところ）。
 func _scene_story_sortie() -> bool:
 	_app.context.decks.load_data({"decks": []})
-	var deck := Deck.new(Story.ARMY, _app.context.story.deck_rules())
+	var deck := Deck.new(Story.military().army, _app.context.story.deck_rules())
 	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.SNIPER, UnitKind.Id.MEDIC]:
 		deck.add(kind)
 	var saved: RefCounted = _app.context.decks.add("狙撃の小隊", deck)
@@ -1684,23 +1684,23 @@ func _scene_story_sortie() -> bool:
 
 ## 全部の話をクリアして、部隊の編成の「ストーリー用」で、解放した駒（コマンドー）を雇う。
 func _scene_story_unlocked_decks() -> bool:
-	for episode in Story.MILITARY.EPISODES:
-		_app.context.story.clear(episode.ID)
+	for episode in Story.military().episodes:
+		_app.context.story.clear(episode.id)
 	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
-	screen.set_mode(Story.RULES_ID)
+	screen.set_mode(Story.military().rules_id)
 	screen.press_new()
 	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC]:
 		screen.hire(kind)
 	screen.select_entry(2)
 	screen.hover_kind(UnitKind.Id.COMMANDO)
-	return screen.editing_deck().entries.size() == 4 and screen.editing_deck().budget() > DeckRules.versus().budget(Story.ARMY)
+	return screen.editing_deck().entries.size() == 4 and screen.editing_deck().budget() > DeckRules.versus().budget(Story.military().army)
 
 
 ## 第 2 話までクリアしたあとの話の一覧（持ち物が増え、コストの上限が上がった）。
 func _scene_story_list_items() -> bool:
 	for i in _main_episode() + 2:
-		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
+		_app.context.story.clear(Story.military().episodes[i].id)
 	return await _scene_story_list()
 
 
@@ -1714,10 +1714,10 @@ func _scene_story_sortie_default() -> bool:
 	return _app.current_scene().chosen_id() == ""
 
 
-## 守り切る話（HOLD_TURNS を持つ最初の話）の番号（0 から）。無ければ -1。
+## 守り切る話（(hold_turns を書いた最初の話)）の番号（0 から）。無ければ -1。
 func _hold_episode() -> int:
-	for i in Story.MILITARY.EPISODES.size():
-		if StoryBattle.hold_turns_of(Story.MILITARY.EPISODES[i]) > 0:
+	for i in Story.military().episodes.size():
+		if Story.military().episodes[i].hold_turns > 0:
 			return i
 	return -1
 
@@ -1775,10 +1775,10 @@ func _scene_story_hold_result() -> bool:
 	return false
 
 
-## 全滅させる話（WINS に全滅を持つ最初の話）の番号（0 から）。無ければ -1。
+## 全滅させる話（wins に全滅を書いた最初の話）の番号（0 から）。無ければ -1。
 func _rout_episode() -> int:
-	for i in Story.MILITARY.EPISODES.size():
-		if StoryBattle.wins_of(Story.MILITARY.EPISODES[i]).has(GameWonEvent.Reason.ROUTED):
+	for i in Story.military().episodes.size():
+		if Story.military().episodes[i].wins.has(GameWonEvent.Reason.ROUTED):
 			return i
 	return -1
 
@@ -1806,8 +1806,8 @@ func _scene_story_rout_wide() -> bool:
 
 ## 対戦の途中の会話の札（ターン 1 の台詞を持つ最初の話の、対戦の始め）。
 func _scene_story_battle_talk() -> bool:
-	for i in Story.MILITARY.EPISODES.size():
-		if StoryBattle.cues_of(Story.MILITARY.EPISODES[i]).any(func(cue: Array) -> bool: return cue[0] == BattleCues.TURN and cue[1] == 1):
+	for i in Story.military().episodes.size():
+		if Story.military().episodes[i].cues.any(func(cue: Array) -> bool: return cue[0] == BattleCues.TURN and cue[1] == 1):
 			if not await _story_battle(i):
 				return false
 			return _scene.talk_line() != null
@@ -1818,12 +1818,12 @@ func _scene_story_battle_talk() -> bool:
 func _scene_decks_story() -> bool:
 	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
-	screen.set_mode(Story.RULES_ID)
+	screen.set_mode(Story.military().rules_id)
 	screen.press_new()
 	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.MEDIC]:
 		screen.hire(kind)
 	screen.select_entry(0)  # 持ち物の欄（まだ持たせられない持ち物は、灰色の「未解放」）
-	return screen.is_editing() and screen.editing_deck().rules.id == Story.RULES_ID
+	return screen.is_editing() and screen.editing_deck().rules.id == Story.military().rules_id
 
 
 func _scene_story_start() -> bool:
@@ -1853,7 +1853,7 @@ func _scene_story_defeat() -> bool:
 	if not await _story_battle():
 		return false
 	# 既定の編成では人の側（CPU が持つ）がほぼ勝つので、負ける局を作るため、人の部隊をスナイパー 1 体にする。
-	var weak := Deck.new(Story.ARMY, _app.context.story.deck_rules())
+	var weak := Deck.new(Story.military().army, _app.context.story.deck_rules())
 	weak.add(UnitKind.Id.SNIPER)
 	_scene.source.human_deck = weak
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
@@ -1920,8 +1920,8 @@ func _scene_story_unlock() -> bool:
 
 
 func _scene_story_cleared() -> bool:
-	for episode in Story.MILITARY.EPISODES:
-		_app.context.story.clear(episode.ID)  # 「クリア済み」の印は、全部の話をクリアしたとき
+	for episode in Story.military().episodes:
+		_app.context.story.clear(episode.id)  # 「クリア済み」の印は、全部の話をクリアしたとき
 	await _app.go(SceneFlow.TITLE)
 	return _app.current_scene().story_label().contains("クリア済み")
 

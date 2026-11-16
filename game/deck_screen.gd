@@ -198,7 +198,7 @@ func leave() -> void:
 		finished.emit(&"back")
 		return
 	var saved := _library.find(_saved_in_detour)
-	if saved != null and saved.playable() and _detour.get("rules") == context.story.campaign.RULES_ID:
+	if saved != null and saved.playable() and _detour.get("rules") == context.story.campaign.rules_id:
 		context.story.choose_squad(_saved_in_detour)
 	if saved != null and saved.playable() and _detour.get("rules") == DeckRules.VERSUS and context.match_choice != null:
 		context.match_choice.choose_deck(_detour.get("side", Unit.Side.PLAYER1), saved.id, saved.deck)
@@ -221,16 +221,16 @@ func back_label() -> String:
 ## 切り替えの並び: 対戦用と、物語ごとのストーリー用（物語の RULES_ID。物語の並びの順）。
 static func modes() -> Array[StringName]:
 	var ids: Array[StringName] = [DeckRules.VERSUS]
-	for each in Story.CAMPAIGNS:
-		ids.append(each.RULES_ID)
+	for each in Story.campaigns():
+		ids.append(each.rules_id)
 	return ids
 
 
 ## 切り替えのボタンの文字: 対戦用は「対戦用」、ストーリー用は物語の名前。
 static func mode_name(rules_id: StringName) -> String:
-	for each in Story.CAMPAIGNS:
-		if each.RULES_ID == rules_id:
-			return each.TITLE
+	for each in Story.campaigns():
+		if each.rules_id == rules_id:
+			return each.title
 	return "対戦用"
 
 

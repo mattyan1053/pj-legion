@@ -1,0 +1,27 @@
+# ストーリーの物語「MILITARY の物語」。
+#
+# 物語は、軍 1 つと話の列。人はこの軍で話を進め、話をクリアすると、この軍の駒が雇えるようになる。
+# 名前と中身は仮のもの。 世界と登場人物は、まだ決まっていない（Issue #49）。
+# 書き方は docs/story.md の「物語のファイル」。
+
+[campaign]
+title = MILITARY の物語
+army = military
+rules = story
+budget = 20
+
+[start]
+unit = shield_trooper
+unit = sniper
+
+[episodes]
+drill_first_steps
+drill_sniper
+drill_medic
+drill_skills
+drill_shrine
+drill_capture
+ridge_path
+ridge_ambush
+ridge_hold
+gorge_rout

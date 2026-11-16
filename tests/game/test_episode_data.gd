@@ -1,75 +1,45 @@
 extends "res://tests/base_test.gd"
-## 話のデータ（game/episodes/ の 1 ファイル。docs/story.md の「話のデータ」）の書き間違いを、起動する前に弾く。
-## 話のデータの定数は、書き間違えると黙って無視されるもの（HOLD_TURNS・WINS・CUES は、無ければ「無い話」になる）が多いので、
-## 知らない定数の名前、無い駒・装備、置けないマス、勝ち方の列の矛盾、きっかけの値を、ここでまとめて見る。
-## 見方そのものが効くことは、わざと壊した話のデータ（_broken）で確かめる。
+## 話と物語のファイル（game/story/。docs/story.md の「話のファイル」「物語のファイル」）の書き間違いを、起動する前に弾く。
+## 読み込み（episode.gd、campaign.gd）が「ファイル:行: 何がおかしいか」を貯めるので、ここでは、それが空であることと、
+## わざと壊した文（_broken）を、正しい行で弾くことを見る。
 
 const Story := preload("res://game/story.gd")
+const Episode := preload("res://game/episode.gd")
+const Campaign := preload("res://game/campaign.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
-const BattleCues := preload("res://game/battle_cues.gd")
-const StageLook := preload("res://game/stage_look.gd")
-const SoundCatalog := preload("res://game/sound_catalog.gd")
-
-## 話のデータに書いてよい定数の名前（preload した道具の名前は除く。_problems が Script の定数を読み飛ばす）。
-const REQUIRED := [&"ID", &"TITLE", &"LOOK", &"MAP", &"UNLOCKS", &"ENEMY_ARMY", &"ENEMY", &"DEPLOY", &"SPEAKERS", &"BEFORE", &"AFTER"]
-const OPTIONAL := [
-	&"HOLD_TURNS", &"WINS", &"CUES", &"UNLOCK_ITEMS", &"BUDGET_UP", &"SQUAD", &"START_GAUGE", &"LESSON", &"HUMAN_LEADER", &"ENEMY_LEADER",
-	&"MUSIC", &"TALK_MUSIC",
-]
-## 出撃の準備に出す、覚えることの文（LESSON）の長さの上限（1〜2 行に収める）。
-const LESSON_MAX_CHARS := 48
+## 欄の説明つきのひな形（docs/story.md の「話を 1 つ足す」）。どの物語にも並ばないが、そのまま読めること。
+const TEMPLATE := "res://game/story/template.txt"
 
 
-func test_every_episode_is_well_formed() -> void:
-	for episode in Story.all_episodes():
-		assert_eq(_problems(episode), [] as Array[String], "%s の話のデータ" % episode.ID)
+func test_every_story_file_reads_without_problems() -> void:
+	assert_eq(Story.load_problems(), PackedStringArray(), "物語と話のファイルの書き間違い")
+	assert_true(Story.is_ready(Story.campaigns()[0]), "最初の物語は遊べる")
 
 
-func test_every_campaign_is_well_formed() -> void:
-	var ids: Array[StringName] = []
-	var rules_ids: Array[StringName] = [DeckRules.VERSUS]
-	var episodes: Array[Script] = []
-	for campaign in Story.CAMPAIGNS:
-		assert_false(ids.has(campaign.ID), "物語の id が重なっている: %s" % campaign.ID)
-		ids.append(campaign.ID)
-		assert_false(rules_ids.has(campaign.RULES_ID), "編成の決まりの名前が重なっている: %s" % campaign.RULES_ID)
-		rules_ids.append(campaign.RULES_ID)
-		assert_ne(campaign.TITLE, "", String(campaign.ID))
-		assert_false(campaign.STARTING_KINDS.is_empty(), "%s: 最初から雇える駒が無い" % campaign.ID)
-		for kind: UnitKind.Id in campaign.STARTING_KINDS:
-			assert_eq(UnitKind.army(kind), campaign.ARMY, "%s: 最初から雇える駒は、その物語の軍の駒" % campaign.ID)
-		for item: Variant in campaign.STARTING_ITEMS:
-			assert_true(typeof(item) == TYPE_INT and Equipment.Id.values().has(item), "%s: 無い装備 %s" % [campaign.ID, item])
-		assert_true(campaign.STARTING_BUDGET > 0, "%s: コストの上限" % campaign.ID)
-		for episode: Script in campaign.EPISODES:
-			assert_false(episodes.has(episode), "%s は 2 つの物語に入っている" % episode.ID)
-			episodes.append(episode)
-	assert_true(Story.is_ready(Story.CAMPAIGNS[0]), "最初の物語は遊べる")
+func test_every_episode_file_is_in_a_campaign() -> void:
+	var listed := {}
+	for episode: Episode in Story.all_episodes():
+		listed[String(episode.id)] = true
+	for file: String in DirAccess.get_files_at(Episode.DIR):
+		if file.ends_with(".txt"):
+			assert_true(listed.has(file.get_basename()), "どの物語の [episodes] にも並んでいない話のファイル: %s" % file)
 
 
-func test_unlocks_are_new_kinds_of_the_campaign_army_and_new_items_unlocked_once() -> void:
-	for campaign in Story.CAMPAIGNS:
-		var items: Array = campaign.STARTING_ITEMS.duplicate()
-		for episode: Script in campaign.EPISODES:
-			for item: Equipment.Id in StoryBattle.unlock_items_of(episode):
-				assert_false(items.has(item), "%s: %s はもう持たせられる" % [episode.ID, Equipment.display_name(item)])
-				items.append(item)
-		var unlocked: Array = campaign.STARTING_KINDS.duplicate()
-		for episode: Script in campaign.EPISODES:
-			for kind: UnitKind.Id in episode.UNLOCKS:
-				assert_false(unlocked.has(kind), "%s: %s はもう雇える" % [episode.ID, UnitKind.display_name(kind)])
-				assert_eq(UnitKind.army(kind), campaign.ARMY, "%s: 解放するのは、物語の軍の駒" % episode.ID)
-				unlocked.append(kind)
+func test_the_template_reads_without_problems() -> void:
+	var episode: Episode = Episode.load_file(TEMPLATE)
+	assert_eq(episode.problems, PackedStringArray(), "ひな形")
+	assert_ne(episode.title, "")
+	assert_false(episode.before.is_empty())
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
-	for episode in Story.all_episodes():
-		if StoryBattle.squad_of(episode) != null:
-			continue  # 部隊が決まっている話は、下の test_fixed_squads_are_the_campaign_army_and_placed が見る
+	for episode: Episode in Story.all_episodes():
+		if episode.has_squad():
+			continue  # 部隊が決まっている話は、下の test_fixed_squads_are_placed が見る
 		var campaign := Story.campaign_of(episode)
-		var deck := Deck.new(campaign.ARMY, Story.rules_of(Story.starting(campaign)))
+		var deck := Deck.new(campaign.army, Story.rules_of(Story.starting(campaign)))
 		for i in Deck.MAX_UNITS:
-			deck.add(campaign.STARTING_KINDS[i % campaign.STARTING_KINDS.size()])
+			deck.add(campaign.starting_kinds[i % campaign.starting_kinds.size()])
 		var setup := StoryBattle.new(episode, deck).make_setup(3)
 		setup.ignore_budget = true  # 数だけを見る（予算は出撃の準備と編成の画面が見る）
 		var battle := setup.create_battle()
@@ -77,226 +47,148 @@ func test_a_full_squad_is_placed_on_every_episode_map() -> void:
 		for unit in battle.units:
 			if unit.side != Unit.Side.NEUTRAL:
 				placed[unit.side] += 1
-		assert_eq(placed, [Deck.MAX_UNITS + 1, episode.ENEMY.size() + 1], "%s: 両軍の全員が盤に置かれる" % episode.ID)
+		assert_eq(placed, [Deck.MAX_UNITS + 1, episode.enemy.size() + 1], "%s: 両軍の全員が盤に置かれる" % episode.id)
 
 
-func test_fixed_squads_are_the_campaign_army_and_placed() -> void:
+func test_fixed_squads_are_placed() -> void:
 	var fixed := 0
-	for episode in Story.all_episodes():
-		var squad := StoryBattle.squad_of(episode)
-		if squad == null:
+	for episode: Episode in Story.all_episodes():
+		if not episode.has_squad():
 			continue
 		fixed += 1
-		var campaign := Story.campaign_of(episode)
-		for row: Array in episode.SQUAD:
-			assert_eq(UnitKind.army(row[0]), campaign.ARMY, "%s: 決まっている部隊は、物語の軍の駒" % episode.ID)
-		assert_true(squad.entries.size() <= Deck.MAX_UNITS, episode.ID)
 		var battle := Story.first_battle(episode).make_setup(3).create_battle()
 		var placed := battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1).size()
-		assert_eq(placed, episode.SQUAD.size() + 1, "%s: 決まっている部隊の全員（将を含む）が盤に置かれる" % episode.ID)
+		assert_eq(placed, episode.squad.size() + 1, "%s: 決まっている部隊の全員（将を含む）が盤に置かれる" % episode.id)
 	assert_true(fixed > 0, "部隊が決まっている話（チュートリアル）が無い")
 
 
-## わざと壊した話のデータを、見方が弾くこと。
-func test_broken_episode_data_is_caught() -> void:
+## 見本の話を読んだ中身が、書いたとおりになる（欄の読み方）。
+func test_the_probe_reads_every_field() -> void:
+	var episode: Episode = Episode.parse(PROBE.replace("look = stone_walls", "look = stone_walls\nhold_turns = 5\nwins = king_defeated, turns_held\nmusic = battle_tense"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.id, &"probe")
+	assert_eq(episode.title, "見本")
+	assert_eq(episode.map_title, "尾根の小道")
+	assert_eq(episode.hold_turns, 5)
+	assert_eq(episode.wins, [GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.TURNS_HELD] as Array[GameWonEvent.Reason])
+	assert_eq(episode.music, &"battle_tense")
+	assert_eq(episode.unlock_kinds, [UnitKind.Id.COMMANDO] as Array[UnitKind.Id])
+	assert_eq(episode.unlock_items, [Equipment.Id.SPEED_BOOTS] as Array[Equipment.Id])
+	assert_eq(episode.budget_up, 2)
+	assert_eq(episode.speakers, PackedStringArray(["隊長", "敵将"]))
+	assert_eq(episode.enemy_army, UnitKind.Army.FANTASY)
+	assert_eq(episode.enemy, [[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD, Equipment.Id.IRON_SHIELD]], [UnitKind.Id.PRIEST, []]])
+	assert_eq(episode.deploy[1], [Vector2i(8, 9), Vector2i(5, 9)] as Array[Vector2i])
+	assert_true(episode.deploy[0].is_empty())
+	assert_eq(episode.before, [[0, "いくぞ"], [1, "来い：ここだ"]], "全角の「：」でもよい。文の中の「：」はそのまま")
+	assert_eq(episode.after, [[1, "退け"]])
+	assert_eq(episode.cues, [[&"turn", 2, 0, "進め"], [&"king_half", 1, 1, "まだだ"]])
+	assert_false(episode.has_squad())
+
+
+## わざと壊した話を、書き間違いの行で弾くこと。[壊し方の名前] = [見本の中の文, 置き換える文, 弾く行]。
+func test_broken_episodes_are_caught_on_their_line() -> void:
 	var cases := {
-		"知らない定数": "const HOLD_TURN := 10",
-		"解放の書き間違い": "const UNLOCK_ITEM: Array[Equipment.Id] = []",
-		"無い装備の解放": "const UNLOCK_ITEMS := [99]",
-		"上がらないコスト": "const BUDGET_UP := 0",
-		"空の決まった部隊": "const SQUAD := []",
-		"決まった部隊に将": "const SQUAD := [[UnitKind.Id.KING, []]]",
-		"ゲージがあふれる": "const START_GAUGE := 1001",
-		"長い覚えること": "const LESSON := \"%s\"" % "あ".repeat(LESSON_MAX_CHARS + 1),
-		"守り切るのに守り切るの勝ち方が無い": "const HOLD_TURNS := 5\nconst WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]",
-		"守り切るの勝ち方なのにターン数が無い": "const WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.TURNS_HELD]",
-		"空の勝ち方": "const WINS: Array[GameWonEvent.Reason] = []",
-		"知らない曲": "const MUSIC := &\"no_such_track\"",
-		"知らない会話の曲": "const TALK_MUSIC := &\"no_such_track\"",
-		"きっかけの値": "const CUES := [[&\"king_half\", 2, 0, \"だれの将か\"]]",
-		"知らないきっかけ": "const CUES := [[&\"turn_end\", 1, 0, \"なに\"]]",
-		"ターン 0": "const CUES := [[&\"turn\", 0, 0, \"はじめ\"]]",
-		"守り切るターンの外": "const HOLD_TURNS := 5\nconst WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.TURNS_HELD]\nconst CUES := [[&\"turn\", 6, 0, \"もう遅い\"]]",
+		"知らない節": ["[unlock]", "[unlocks]", 7],
+		"知らないキー": ["budget = 2", "budjet = 2", 10],
+		"キーの重なり": ["title = 見本", "title = 見本\ntitle = 二つ目", 4],
+		"= の無い行": ["budget = 2", "budget 2", 10],
+		"知らないマップ": ["map = ridge_path", "map = ridge_paths", 4],
+		"知らない見た目": ["look = stone_walls", "look = swamp", 5],
+		"知らない曲": ["look = stone_walls", "look = stone_walls\nmusic = no_such_track", 6],
+		"知らない駒": ["unit = priest", "unit = preist", 19],
+		"将を書く": ["unit = priest", "unit = king", 19],
+		"知らない持ち物": ["paladin + iron_shield + iron_shield", "paladin + iron_shild", 18],
+		"知らない軍": ["army = fantasy", "army = elves", 17],
+		"解放の駒": ["unit = commando", "unit = comando", 8],
+		"上がらないコスト": ["budget = 2", "budget = 0", 10],
+		"整数でない": ["budget = 2", "budget = two", 10],
+		"置けないマス": ["deploy = 8,9  5,9", "deploy = -1,3  5,9", 20],
+		"マスの書き方": ["deploy = 8,9  5,9", "deploy = 8.9  5,9", 20],
+		"敵の初期位置が足りない": ["deploy = 8,9  5,9", "deploy = 8,9", 20],
+		"知らない話し手": ["隊長: いくぞ", "団長: いくぞ", 23],
+		"話し手の無い行": ["隊長: いくぞ", "いくぞ", 23],
+		"空の文": ["隊長: いくぞ", "隊長:", 23],
+		"会話が長い": ["隊長: いくぞ", "隊長: いくぞ\n".repeat(Episode.TALK_MAX_LINES + 1).strip_edges(), 22],
+		"知らないきっかけ": ["(turn 2)", "(turn_end 2)", 30],
+		"きっかけの陣営": ["(king_half enemy)", "(king_half 1)", 31],
+		"ターン 0": ["(turn 2)", "(turn 0)", 30],
+		"きっかけの書き方": ["(turn 2) 隊長: 進め", "turn 2 隊長: 進め", 30],
+		"長い台詞": ["(turn 2) 隊長: 進め", "(turn 2) 隊長: " + "あ".repeat(Episode.CUE_MAX_CHARS + 1), 30],
+		"長い覚えること": ["look = stone_walls", "look = stone_walls\nlesson = " + "あ".repeat(Episode.LESSON_MAX_CHARS + 1), 6],
+		"知らない勝ち方": ["look = stone_walls", "look = stone_walls\nwins = rout", 6],
+		"守り切るのに勝ち方が無い": ["look = stone_walls", "look = stone_walls\nhold_turns = 5\nwins = routed", 7],
+		"勝ち方なのにターン数が無い": ["look = stone_walls", "look = stone_walls\nwins = turns_held", 6],
+		"ゲージがあふれる": ["name = 隊長", "name = 隊長\nstart_gauge = 1001", 14],
+		"決まった部隊が多い": ["name = 隊長", "name = 隊長\n" + "unit = sniper\n".repeat(Deck.MAX_UNITS + 1).strip_edges(), 12],
+		"節より前の行": ["[episode]", "title = 前\n[episode]", 2],
+		"節の重なり": ["[after]", "[before]\n隊長: また\n[after]", 26],
 	}
 	for name: String in cases:
-		assert_false(_problems(_broken(cases[name])).is_empty(), "弾けない: %s" % name)
-	var swaps := {
-		"敵に将": ["[UnitKind.Id.PALADIN, []]", "[UnitKind.Id.KING, []]"],
-		"無い駒": ["[UnitKind.Id.PALADIN, []]", "[99, []]"],
-		"無い装備": ["[UnitKind.Id.PALADIN, []]", "[UnitKind.Id.PALADIN, [99]]"],
-		"置けないマス": ["const DEPLOY := [[], []]", "const DEPLOY := [[], [Vector2i(0, 0), Vector2i(-1, 3)]]"],
-		"話し手": ["[0, \"いくぞ\"]", "[2, \"いくぞ\"]"],
-		"見た目": ["StageLook.STONE_WALLS", "&\"swamp\""],
-		"将を解放": ["const UNLOCKS: Array[UnitKind.Id] = []", "const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.KING]"],
+		var case: Array = cases[name]
+		var text := PROBE.replace(case[0], case[1])
+		assert_ne(text, PROBE, "見本に「%s」が無い: %s" % [case[0], name])
+		var problems: PackedStringArray = Episode.parse(text).problems
+		assert_false(problems.is_empty(), "弾けない: %s" % name)
+		var on_line := Array(problems).any(func(problem: String) -> bool: return problem.begins_with("probe.txt:%d:" % case[2]))
+		assert_true(on_line, "%s: %d 行目で弾かない: %s" % [name, case[2], problems])
+	assert_eq(Episode.parse(PROBE).problems, PackedStringArray(), "見本そのものは正しい")
+
+
+## わざと壊した物語を弾くこと。
+func test_broken_campaigns_are_caught() -> void:
+	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
+	assert_eq(Campaign.parse(good).problems, PackedStringArray(), "見本そのものは正しい")
+	assert_eq(Campaign.parse(good).episodes.size(), 1)
+	var cases := {
+		"ほかの軍の駒から始める": ["unit = shield_trooper", "unit = paladin"],
+		"知らない軍": ["army = military", "army = elves"],
+		"上限が無い": ["budget = 20", "budget = 0"],
+		"無い話": ["ridge_path\n", "no_such_episode\n"],
+		"話の重なり": ["ridge_path\n", "ridge_path\nridge_path\n"],
+		"解放済みの駒をまた解放": ["unit = shield_trooper", "unit = shield_trooper\nunit = commando"],
+		"ほかの軍の部隊で決まっている話": ["ridge_path\n", "drill_first_steps\n"],
 	}
-	for name: String in swaps:
-		var source := BASE.replace(swaps[name][0], swaps[name][1])
-		assert_ne(source, BASE, name)
-		assert_false(_problems(_broken("", source)).is_empty(), "弾けない: %s" % name)
-	assert_eq(_problems(_broken("")), [] as Array[String], "見本そのものは正しい")
+	for name: String in cases:
+		var text := good.replace(cases[name][0], cases[name][1])
+		if name == "ほかの軍の部隊で決まっている話":
+			text = text.replace("army = military", "army = fantasy").replace("unit = shield_trooper", "unit = paladin")
+		assert_ne(text, good, name)
+		assert_false(Campaign.parse(text).problems.is_empty(), "弾けない: %s" % name)
 
 
-# ---- 見方 ----
+# ---- 見本 ----
 
+## 正しい話の見本（行の番号を、上の壊し方の表が使う。行を足したら表も直す）。
+const PROBE := """# 見本
+[episode]
+title = 見本
+map = ridge_path
+look = stone_walls
 
-## 話 episode のデータの書き間違い（空なら正しい）。
-func _problems(episode: Script) -> Array[String]:
-	var found: Array[String] = []
-	var constants := episode.get_script_constant_map()
-	for name: StringName in constants:
-		if constants[name] is Script:
-			continue  # preload した道具（マップ、見た目、きっかけ）
-		if not REQUIRED.has(name) and not OPTIONAL.has(name):
-			found.append("知らない定数 %s（書き間違いは黙って無視される）" % name)
-	for name: StringName in REQUIRED:
-		if not constants.has(name):
-			found.append("%s が無い" % name)
-	if not found.is_empty():
-		return found
-	if String(episode.ID) == "" or episode.TITLE == "":
-		found.append("id か見出しが空")
-	if not StageLook.THEMES.has(episode.LOOK):
-		found.append("知らない見た目 %s" % episode.LOOK)
-	for name: StringName in [&"MUSIC", &"TALK_MUSIC"]:
-		if constants.has(name) and not SoundCatalog.has_music(constants[name]):
-			found.append("知らない曲 %s（%s）" % [constants[name], name])
-	var map: HandMap = episode.MAP.map()
-	if not map.problems().is_empty():
-		found.append("マップを盤にできない: %s" % [map.problems()])
-		return found
-	for kind: Variant in episode.UNLOCKS:
-		if not _is_kind(kind) or kind == UnitKind.Id.KING:
-			found.append("解放できない駒 %s" % [kind])
-	if constants.has(&"UNLOCK_ITEMS"):
-		for item: Variant in episode.UNLOCK_ITEMS:
-			if typeof(item) != TYPE_INT or not Equipment.Id.values().has(item):
-				found.append("解放できない装備 %s" % [item])
-	if constants.has(&"BUDGET_UP") and (typeof(episode.BUDGET_UP) != TYPE_INT or episode.BUDGET_UP < 1):
-		found.append("BUDGET_UP は 1 以上")
-	if constants.has(&"SQUAD"):
-		if episode.SQUAD.is_empty():
-			found.append("決まっている部隊が空")
-		for row: Variant in episode.SQUAD:
-			if typeof(row) != TYPE_ARRAY or row.size() != 2 or not _is_kind(row[0]) or row[0] == UnitKind.Id.KING:
-				found.append("決まっている部隊の行が読めない: %s" % [row])
-			else:
-				for item: Variant in row[1]:
-					if typeof(item) != TYPE_INT or not Equipment.Id.values().has(item):
-						found.append("無い装備 %s" % [item])
-	if constants.has(&"START_GAUGE") and (typeof(episode.START_GAUGE) != TYPE_INT or episode.START_GAUGE < 1 or episode.START_GAUGE > Ults.GAUGE_MAX):
-		found.append("START_GAUGE は 1 から %d" % Ults.GAUGE_MAX)
-	if constants.has(&"LESSON") and (typeof(episode.LESSON) != TYPE_STRING or episode.LESSON == "" or episode.LESSON.length() > LESSON_MAX_CHARS):
-		found.append("LESSON は 1 から %d 字" % LESSON_MAX_CHARS)
-	if not UnitKind.Army.values().has(episode.ENEMY_ARMY):
-		found.append("知らない軍 %s" % [episode.ENEMY_ARMY])
-	if episode.ENEMY.is_empty():
-		found.append("敵の部隊が空")
-	for row: Array in episode.ENEMY:
-		if row.size() != 2 or not _is_kind(row[0]) or row[0] == UnitKind.Id.KING:
-			found.append("敵の駒の行が読めない: %s" % [row])
-			continue
-		for item: Variant in row[1]:
-			if typeof(item) != TYPE_INT or not Equipment.Id.values().has(item):
-				found.append("無い装備 %s" % [item])
-	found.append_array(_deploy_problems(episode, map.make_board()))
-	found.append_array(_win_problems(episode, constants))
-	found.append_array(_talk_problems(episode, constants))
-	return found
+[unlock]
+unit = commando
+item = speed_boots
+budget = 2
 
+[ally]
+name = 隊長
 
-func _is_kind(kind: Variant) -> bool:
-	return typeof(kind) == TYPE_INT and UnitKind.Id.values().has(kind)
+[enemy]
+name = 敵将
+army = fantasy
+unit = paladin + iron_shield + iron_shield
+unit = priest
+deploy = 8,9  5,9
 
+[before]
+隊長: いくぞ
+敵将：来い：ここだ
 
-func _deploy_problems(episode: Script, board: Board) -> Array[String]:
-	var found: Array[String] = []
-	if episode.DEPLOY.size() != 2:
-		return ["DEPLOY は [プレイヤー1, プレイヤー2] の 2 つ"]
-	var seen := {}
-	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		for cell: Variant in episode.DEPLOY[side]:
-			if typeof(cell) != TYPE_VECTOR2I or not board.is_walkable(cell) or board.object_at(cell) != MapObject.Type.NONE or board.hq_cells.has(cell):
-				found.append("初期位置 %s に置けない" % [cell])
-			elif seen.has(cell):
-				found.append("初期位置 %s が重なっている" % [cell])
-			seen[cell] = true
-	var enemy_cells: Array = episode.DEPLOY[Unit.Side.PLAYER2]
-	if not enemy_cells.is_empty() and enemy_cells.size() < episode.ENEMY.size():
-		found.append("敵の初期位置が足りない")
-	var human_cells: Array = episode.DEPLOY[Unit.Side.PLAYER1]
-	if not human_cells.is_empty() and human_cells.size() < Deck.MAX_UNITS:
-		found.append("人の初期位置が、部隊の数の上限より少ない")
-	return found
+[after]
+敵将: 退け
 
-
-func _win_problems(episode: Script, constants: Dictionary) -> Array[String]:
-	var found: Array[String] = []
-	var holds := constants.has(&"HOLD_TURNS")
-	if holds and (typeof(episode.HOLD_TURNS) != TYPE_INT or episode.HOLD_TURNS < 1):
-		found.append("HOLD_TURNS は 1 以上")
-	if constants.has(&"WINS"):
-		var wins: Array = episode.WINS
-		if wins.is_empty():
-			found.append("勝ち方が空（人が勝てない）")
-		for reason: Variant in wins:
-			if typeof(reason) != TYPE_INT or not GameWonEvent.Reason.values().has(reason):
-				found.append("知らない勝ち方 %s" % [reason])
-		# story_battle.gd は WINS で勝ち方を置き換える。守り切るのに TURNS_HELD が無いと、守り切っても勝てない。
-		if holds != wins.has(GameWonEvent.Reason.TURNS_HELD):
-			found.append("HOLD_TURNS と、WINS の TURNS_HELD は、両方あるか両方無いか")
-	return found
-
-
-func _talk_problems(episode: Script, constants: Dictionary) -> Array[String]:
-	var found: Array[String] = []
-	if episode.SPEAKERS.size() != 2 or episode.SPEAKERS.has(""):
-		found.append("話し手は 2 人（人の軍、敵の軍）")
-	for rows: Array in [episode.BEFORE, episode.AFTER]:
-		if rows.is_empty():
-			found.append("会話が空")
-		for row: Array in rows:
-			if row.size() != 2 or not row[0] in [0, 1] or String(row[1]) == "":
-				found.append("会話の行が読めない: %s" % [row])
-	if not constants.has(&"CUES"):
-		return found
-	for cue: Array in episode.CUES:
-		if cue.size() != 4 or not BattleCues.KINDS.has(cue[0]) or not cue[2] in [0, 1] or String(cue[3]) == "":
-			found.append("途中の会話の行が読めない: %s" % [cue])
-			continue
-		match cue[0]:
-			BattleCues.TURN:
-				if cue[1] < 1:
-					found.append("ターンは 1 から: %s" % [cue])
-				elif constants.has(&"HOLD_TURNS") and cue[1] > episode.HOLD_TURNS:
-					found.append("守り切るターンの外（出ない）: %s" % [cue])
-			BattleCues.KING_HALF, BattleCues.FALLEN, BattleCues.ULT_READY, BattleCues.RELIC:
-				if not cue[1] in [0, 1]:
-					found.append("陣営は 0 か 1: %s" % [cue])
-	return found
-
-
-# ---- わざと壊した話のデータ ----
-
-## 正しい話のデータの見本（尾根の小道のマップ）。
-const BASE := """extends RefCounted
-const RidgePath := preload("res://rules/maps/ridge_path.gd")
-const StageLook := preload("res://game/stage_look.gd")
-const ID := &"probe"
-const TITLE := "見本"
-const LOOK := StageLook.STONE_WALLS
-const MAP := RidgePath
-const UNLOCKS: Array[UnitKind.Id] = []
-const ENEMY_ARMY := UnitKind.Army.FANTASY
-const ENEMY := [[UnitKind.Id.PALADIN, []]]
-const DEPLOY := [[], []]
-const SPEAKERS := ["隊長", "敵将"]
-const BEFORE := [[0, "いくぞ"]]
-const AFTER := [[1, "退け"]]
+[cues]
+(turn 2) 隊長: 進め
+(king_half enemy) 敵将: まだだ
 """
-
-
-func _broken(extra: String, base := BASE) -> Script:
-	var script := GDScript.new()
-	script.source_code = base + extra + "\n"
-	assert_eq(script.reload(), OK, "見本のスクリプトが読めない: %s" % extra)
-	return script

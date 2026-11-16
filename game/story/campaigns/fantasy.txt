@@ -1,0 +1,19 @@
+# ストーリーの物語「FANTASY の物語」。
+#
+# 準備中。 話がまだ無い（[episodes] が空）ので、物語を選ぶ画面では「準備中」の札で、選べない。
+# 話を足すと、そのまま遊べる（game/story/episodes/ に話のファイルを置き、[episodes] に並べる）。
+# 書き方は docs/story.md の「物語のファイル」。
+
+[campaign]
+title = FANTASY の物語
+army = fantasy
+rules = story_fantasy
+budget = 15
+
+[start]
+unit = paladin
+unit = sorcerer
+unit = priest
+item = iron_shield
+
+[episodes]

@@ -44,7 +44,7 @@ func test_every_scene_is_reachable_and_loadable() -> void:
 	# 流れで入る場面（対戦の設定の「対戦を始める」の流れと、ストーリーの話の流れの場面）も、そこからたどる。
 	var reached := {SceneFlow.FIRST: true}
 	var queue: Array[StringName] = [SceneFlow.FIRST]
-	var runs: Array = [MatchChoice.new().run(), MatchChoice.deck_run(Unit.Side.PLAYER1), Story.new().run_now(Story.MILITARY.EPISODES[0])]
+	var runs: Array = [MatchChoice.new().run(), MatchChoice.deck_run(Unit.Side.PLAYER1), Story.new().run_now(Story.military().episodes[0])]
 	for run: RefCounted in runs:
 		while not run.is_done():
 			if not reached.has(run.scene()):

@@ -1,0 +1,43 @@
+# ストーリーの話「尾根の待ち伏せ」。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 1 話と同じマップ「尾根の小道」（rules/maps/ridge_path.gd）を、初期位置を変えて使い回す（Issue #49 の「マップの使い回し」）。
+# 敵は本陣の前ではなく、尾根の中ほど（中央の岩の上側）に陣取って始まる。左右どちらの道へも、すぐ出られる。
+# 人はいつもの「本陣の前」から。敵の部隊は 1 話より少し強い（docs/story.md の「敵の強さ」）。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 尾根の待ち伏せ
+map = ridge_path
+look = stone_walls
+
+[unlock]
+item = speed_boots
+budget = 2
+
+[ally]
+name = 隊長
+
+[enemy]
+name = 騎士団長
+army = fantasy
+unit = paladin + iron_shield + iron_shield
+unit = sorcerer
+unit = priest
+deploy = 8,9  5,9  11,9  3,11  13,11
+deploy = 8,7
+
+[before]
+騎士団長: 待っていたぞ。今度は尾根の真ん中で迎え撃つ。
+隊長: 先回りされたか。敵はもう、道の中ほどにいる。
+隊長: 左右どちらの道からも来られる。本陣を空けるな。
+騎士団長: 前のようにはいかない。
+
+[after]
+騎士団長: ……これほどとは。道を空けよう。
+隊長: 心強い。谷へ急ごう。
+
+[cues]
+(turn 1) 騎士団長: かかったな。尾根の上から挟み込め。
+(fallen ally) 隊長: 一人やられた。固まって進め。
