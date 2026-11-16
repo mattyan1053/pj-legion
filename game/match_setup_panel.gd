@@ -360,7 +360,8 @@ func preview_deck(side: Unit.Side) -> Deck:
 
 ## 「編成を確認」: side の部隊を札にして出す。
 func open_preview(side: Unit.Side) -> void:
-	_preview.open(who_text(side), preview_deck(side))
+	# ランダムの間は陣営が決まっていないので、あなたは青、CPU は赤で見せる。
+	_preview.open(who_text(side), preview_deck(side), side)
 
 
 ## 編成の確認の画面（検査用）。

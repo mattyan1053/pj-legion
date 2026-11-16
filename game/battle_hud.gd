@@ -15,6 +15,7 @@ const RelicIcon := preload("res://game/relic_icon.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const Minimap := preload("res://game/minimap.gd")
 const MinimapGeometry := preload("res://game/minimap_geometry.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -62,6 +63,8 @@ const BOTTOM_BAR_HEIGHT := 92.0
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
 const INFO_WIDTH := 320.0
+## 駒の情報の枠の、駒のアイコンの大きさ（px）。
+const INFO_ICON_SIZE := 48.0
 const ULT_SUMMARY_WIDTH := 480.0
 const HINT_SIDE_WIDTH := 730.0
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
@@ -109,6 +112,7 @@ var _ult_labels: Array[Label] = []
 var _ult_button: Button
 var _ult_summary: Label
 var _info_panel: PanelContainer
+var _info_icon: TextureRect
 var _info_name: Label
 var _info_side: Label
 var _info_hp: ProgressBar
@@ -285,7 +289,9 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	else:
 		_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
-	_set_folded(_info_name, _info_name.text, INFO_WIDTH)
+	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
+	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE)
+	_info_icon.visible = true
 	var army: UnitKind.Army = side_armies[unit.side] if unit.side >= 0 and unit.side < side_armies.size() else UnitKind.Army.NONE
 	_info_side.text = affiliation_text(unit, viewer_side, army)
 	_info_side.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.5))
@@ -374,6 +380,7 @@ func show_cell_info(title: String, body: String) -> void:
 	_info_panel.visible = true
 	_info_name.text = title
 	_info_name.add_theme_color_override("font_color", Color("e6e6e6"))
+	_info_icon.visible = false
 	_info_side.visible = false
 	_info_hp.visible = false
 	_set_folded(_info_stats, body, INFO_WIDTH)
@@ -839,8 +846,17 @@ func _build_info_panel() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 入れ物は既定でマウスを拾うので、こちらも素通しにする
 	_info_panel.add_child(column)
+	# 名前の左に、駒のアイコン（unit_icons.gd。陣営の色と、進化したかで変わる）。
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(head)
+	_info_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, INFO_ICON_SIZE)
+	head.add_child(_info_icon)
 	_info_name = _label(20)
-	column.add_child(_info_name)
+	_info_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_info_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_info_name)
 	_info_side = _label(14)
 	_info_side.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_info_side)

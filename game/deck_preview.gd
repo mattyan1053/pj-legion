@@ -63,15 +63,15 @@ func setup(overlays: RefCounted) -> void:
 	column.add_child(close)
 
 
-## who（「あなた」「CPU」など）の部隊 deck を出す。将を先頭に、雇った駒を並びの順に。
-func open(who: String, deck: Deck) -> void:
+## who（「あなた」「CPU」など）の部隊 deck を出す。将を先頭に、雇った駒を並びの順に。side はアイコンの陣営の色。
+func open(who: String, deck: Deck, side := 0) -> void:
 	_title.text = "%s　%s　コスト %d / %d" % [who, DeckText.army_name(deck.army), deck.total_cost(), deck.budget()]
 	for child in _cards.get_children():
 		_cards.remove_child(child)
 		child.queue_free()
-	_cards.add_child(UnitCard.build(UnitKind.Id.KING))
+	_cards.add_child(UnitCard.build(UnitKind.Id.KING, [], side))
 	for entry in deck.entries:
-		_cards.add_child(UnitCard.build(entry.kind, entry.equipment))
+		_cards.add_child(UnitCard.build(entry.kind, entry.equipment, side))
 	visible = true
 
 
