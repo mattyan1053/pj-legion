@@ -1,6 +1,8 @@
 extends RefCounted
 ## 決着の画面に出す、戦績の要点の文（BattleStats から作る）。ノードに依存しない（テストから呼べる）。
 
+const Names := preload("res://game/names.gd")
+
 const ENDINGS := {
 	BattleStats.Ending.NONE: "決着していない",
 	BattleStats.Ending.KING_DEFEATED: "将の撃破",
@@ -45,7 +47,7 @@ static func side_lines(stats: BattleStats, side: Unit.Side, side_name: String) -
 	if not record.relics.is_empty():
 		var names: Array[String] = []
 		for relic in record.relics:
-			names.append(Relics.display_name(relic))
+			names.append(Names.relic(relic))
 		parts.append("聖遺物 %s" % "・".join(names))
 	var lines: Array[String] = ["%s: %s" % [side_name, "　".join(parts)]]
 	var best := stats.mvp(side)
@@ -75,7 +77,7 @@ static func side_summary(stats: BattleStats, side: Unit.Side) -> String:
 	if not record.relics.is_empty():
 		var names: Array[String] = []
 		for relic in record.relics:
-			names.append(Relics.display_name(relic))
+			names.append(Names.relic(relic))
 		parts.append("聖遺物 %s" % "・".join(names))
 	return "　".join(parts)
 
@@ -97,7 +99,7 @@ static func table_rows(stats: BattleStats, side: Unit.Side) -> Array[Dictionary]
 
 ## 駒の名前。進化していれば、進化先の名前も付ける。レベルも付ける。
 static func unit_name(record: BattleStats.UnitRecord) -> String:
-	var kind_name := UnitKind.display_name(record.kind)
+	var kind_name := Names.kind(record.kind)
 	if record.evolution != Evolution.Id.NONE:
-		kind_name += "（%s）" % Evolution.display_name(record.evolution)
+		kind_name += "（%s）" % Names.evolution(record.evolution)
 	return "%s Lv%d" % [kind_name, record.level]

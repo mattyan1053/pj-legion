@@ -22,13 +22,13 @@ func test_every_field_has_a_key_a_board_a_look_and_card_text() -> void:
 
 func test_generated_stages_come_first_in_the_order_of_the_stages() -> void:
 	var expected: Array[StringName] = []
-	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
+	for stage: BoardGenerator.Stage in BoardGenerator.Stage.values():
 		expected.append(VersusFields.field_of_stage(stage))
 	assert_eq(VersusFields.generated_ids(), expected)
 	assert_eq(VersusFields.ids().slice(0, expected.size()), expected, "生成のステージを先に並べる（F1〜F3 と番号がいまのまま）")
 	for index in expected.size():
 		assert_eq(VersusFields.number_of(expected[index]), index + 1)
-		assert_eq(VersusFields.scenario_of(expected[index]).stage, MatchSetup.STAGE_NAMES.keys()[index])
+		assert_eq(VersusFields.scenario_of(expected[index]).stage, BoardGenerator.Stage.values()[index])
 
 
 func test_the_generated_stages_keep_their_names_and_looks() -> void:

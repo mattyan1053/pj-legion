@@ -6,7 +6,7 @@ extends RefCounted
 ## 実際のスキルは rules/skills/ の子のクラス。状態は持たない（クールダウンは駒が持つ。Unit.skill_cooldown）。
 ## 共通の決まり（誰が・いつ使えるか、クールダウン、行動の終わり）は Skills が持ち、子のクラスは次だけを書く。
 ##
-## - 誰のスキルか（kind）、名前と説明、クールダウン
+## - 誰のスキルか（kind）、説明に差し込む値（summary_args。名前と説明の文は game/text/names.csv）、クールダウン
 ## - いまの位置から選べる対象のマス（target_cells）と、対象を選んだときに効果が及ぶマス（affected_cells）
 ## - 効果（apply）。起きたことを返す
 ##
@@ -31,11 +31,10 @@ enum Id {
 @abstract func kind() -> UnitKind.Id
 
 
-@abstract func display_name() -> String
-
-
-## 画面に出す 1 行の説明。
-@abstract func summary() -> String
+## 名前と 1 行の説明は、画面の文の表（game/text/names.csv）が持つ（鍵は id の名前の小文字。game/names.gd）。
+## 説明の文に差し込む値（調整値）。無ければ空。
+func summary_args() -> Dictionary:
+	return {}
 
 
 ## 使ったときに駒に付くクールダウン。持ち主のフェーズの始めに 1 減り、0 で使える。

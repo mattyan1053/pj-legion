@@ -1,50 +1,109 @@
 extends RefCounted
-## 画面に出す名前の表（陣営、軍、役割、能力、特性、盤の上の効果）。ノードに依存しない。
-## 対戦の画面（battle_hud.gd）、ログ（battle_log.gd）、編成の画面の文（deck_text.gd）、対戦の設定（match_setup_panel.gd）、
-## 道具（tools/cpu_matches.gd）が、ここを引く。列挙の値を足したら、ここに 1 行足す（足し忘れは tests/game/test_names.gd が落ちる）。
+## ゲームの中のものの名前と説明（陣営、軍、役割、能力、特性、盤の上の効果、駒、進化先、持ち物、スキル、必殺技、状態、聖遺物、ステージ）。
+## ノードに依存しない。文は画面の文の表（game/text/names.csv。docs/text.md）にあり、ここは列挙から鍵を作って引くだけ。
+## ルール（rules/）は名前の文を持たない（列挙と、説明に差し込む値だけ）。
+##
+## 鍵は「種類.列挙の名前の小文字」（unit.shield_trooper、skill.fireball）。説明は後ろに .summary。
+## 列挙の値を足したら、表に行を足す（足し忘れは tests/game/test_names.gd が落ちる）。
+
+const Text := preload("res://game/text.gd")
+
+## 能力の並び（この順に並べて出す）。
+const STATS: Array[Unit.Stat] = [Unit.Stat.MAX_HP, Unit.Stat.POWER, Unit.Stat.MOVE_RANGE, Unit.Stat.ATTACK_RANGE]
+
+
+## 列挙 names の値 value の、鍵に使う名前（小文字）。
+static func word(names: Dictionary, value: int) -> String:
+	return String(names.find_key(value)).to_lower()
+
 
 ## 陣営の名前（見出し、番の知らせ、決着、本陣のマス）。
-const SIDE_NAMES := {
-	Unit.Side.PLAYER1: "プレイヤー1（青）",
-	Unit.Side.PLAYER2: "プレイヤー2（赤）",
-	Unit.Side.NEUTRAL: "中立",
-}
+static func side(of_side: Unit.Side) -> String:
+	return Text.t("side." + word(Unit.Side, of_side))
+
+
 ## 陣営の短い名前（ログの駒の名前の前、上の帯の陣営ごとの欄）。
-const SIDE_WORDS := {
-	Unit.Side.PLAYER1: "青",
-	Unit.Side.PLAYER2: "赤",
-	Unit.Side.NEUTRAL: "中立",
-}
+static func side_word(of_side: Unit.Side) -> String:
+	return Text.t("side.%s.short" % word(Unit.Side, of_side))
+
+
 ## 軍の名前。軍を持たない駒（将、中立）は「軍なし」。
-const ARMY_NAMES := {
-	UnitKind.Army.NONE: "軍なし",
-	UnitKind.Army.MILITARY: "MILITARY",
-	UnitKind.Army.FANTASY: "FANTASY",
-}
-## 役割の名前（役割を持たない駒（将、中立）は載せない）。
-const ROLE_NAMES := {
-	UnitKind.Role.VANGUARD: "前衛",
-	UnitKind.Role.REARGUARD: "後衛",
-	UnitKind.Role.RAIDER: "奇襲",
-	UnitKind.Role.HEALER: "回復",
-}
-## 能力の名前（この順に並べて出す）。
-const STAT_NAMES := {
-	Unit.Stat.MAX_HP: "最大 HP",
-	Unit.Stat.POWER: "攻撃",
-	Unit.Stat.MOVE_RANGE: "移動",
-	Unit.Stat.ATTACK_RANGE: "射程",
-}
+static func army(of_army: UnitKind.Army) -> String:
+	return Text.t("army." + word(UnitKind.Army, of_army))
+
+
+## 役割の名前（役割を持たない駒（将、中立）は空）。
+static func role(of_role: UnitKind.Role) -> String:
+	return "" if of_role == UnitKind.Role.NONE else Text.t("role." + word(UnitKind.Role, of_role))
+
+
+## 能力の名前。
+static func stat(of_stat: Unit.Stat) -> String:
+	return Text.t("stat." + word(Unit.Stat, of_stat))
+
+
 ## 進化先の特性の説明。
-const TRAIT_TEXTS := {
-	Evolution.Trait.EXERTS_ZOC: "周り 8 マスに支配領域を作る（敵はそこで止まる）",
-	Evolution.Trait.IGNORES_ZOC: "敵の支配領域で止まらない",
-	Evolution.Trait.FOREST_WALK: "森を平地と同じ移動力で歩く",
-	Evolution.Trait.REGENERATION: "自分の番の始めに %d 回復" % Evolution.REGENERATION_HEAL,
-}
+static func trait_text(of_trait: Evolution.Trait) -> String:
+	return Text.t("trait." + word(Evolution.Trait, of_trait), {"heal": Evolution.REGENERATION_HEAL})
+
+
 ## 盤の上の効果の名前。
-const FIELD_EFFECT_NAMES := {
-	FieldEffect.Type.BARRICADE: "盾",
-	FieldEffect.Type.SMOKE: "煙幕",
-	FieldEffect.Type.SANCTUARY: "聖域",
-}
+static func field_effect(type: FieldEffect.Type) -> String:
+	return Text.t("field_effect." + word(FieldEffect.Type, type))
+
+
+## 駒の種類の名前。
+static func kind(of_kind: UnitKind.Id) -> String:
+	return Text.t("unit." + word(UnitKind.Id, of_kind))
+
+
+## 進化先の名前。進化していなければ空。
+static func evolution(id: Evolution.Id) -> String:
+	return "" if id == Evolution.Id.NONE else Text.t("evolution." + word(Evolution.Id, id))
+
+
+## 駒の呼び名。進化していれば進化先の名前、していなければ種類の名前。
+static func unit(of_unit: Unit) -> String:
+	return kind(of_unit.kind) if of_unit.evolution == Evolution.Id.NONE else evolution(of_unit.evolution)
+
+
+## 持ち物（装備）の名前。
+static func item(id: Equipment.Id) -> String:
+	return Text.t("item." + word(Equipment.Id, id))
+
+
+## スキルの名前と、1 行の説明。
+static func skill(of_skill: Skill) -> String:
+	return Text.t("skill." + word(Skill.Id, of_skill.id()))
+
+
+static func skill_summary(of_skill: Skill) -> String:
+	return Text.t("skill.%s.summary" % word(Skill.Id, of_skill.id()), of_skill.summary_args())
+
+
+## 必殺技の名前と、1 行の説明。
+static func ult(of_ult: Ult) -> String:
+	return Text.t("ult." + word(Ult.Id, of_ult.id()))
+
+
+static func ult_summary(of_ult: Ult) -> String:
+	return Text.t("ult.%s.summary" % word(Ult.Id, of_ult.id()), of_ult.summary_args())
+
+
+## 状態の名前。
+static func status(type: Status.Type) -> String:
+	return Text.t("status." + word(Status.Type, type))
+
+
+## 聖遺物の名前と、1 行の説明。
+static func relic(id: Relics.Id) -> String:
+	return Text.t("relic." + word(Relics.Id, id))
+
+
+static func relic_summary(id: Relics.Id) -> String:
+	return Text.t("relic.%s.summary" % word(Relics.Id, id), {"amount": Relics.amount(id)})
+
+
+## 生成のステージの名前。
+static func stage(of_stage: BoardGenerator.Stage) -> String:
+	return Text.t("stage." + word(BoardGenerator.Stage, of_stage))

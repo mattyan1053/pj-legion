@@ -10,6 +10,7 @@ extends Node
 ## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
 ## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
 
+const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
@@ -139,10 +140,10 @@ func roster_text() -> String:
 	var now: RefCounted = context.story.unlocked()
 	var kinds: Array[String] = []
 	for kind: UnitKind.Id in now.kinds:
-		kinds.append(UnitKind.display_name(kind))
+		kinds.append(Names.kind(kind))
 	var items: Array[String] = []
 	for item: Equipment.Id in now.items:
-		items.append(Equipment.display_name(item))
+		items.append(Names.item(item))
 	return "いま雇える駒: %s\n持ち物: %s　　コストの上限: %d\n（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）" % [
 		"・".join(kinds), "・".join(items) if not items.is_empty() else "なし", now.budget]
 
@@ -151,9 +152,9 @@ func roster_text() -> String:
 static func rewards_text(episode: Episode) -> String:
 	var parts: Array[String] = []
 	for kind: UnitKind.Id in episode.unlock_kinds:
-		parts.append(UnitKind.display_name(kind))
+		parts.append(Names.kind(kind))
 	for item: Equipment.Id in episode.unlock_items:
-		parts.append(Equipment.display_name(item))
+		parts.append(Names.item(item))
 	if episode.budget_up > 0:
 		parts.append("コスト +%d" % episode.budget_up)
 	return "" if parts.is_empty() else "クリアで増える:\n" + "・".join(parts)

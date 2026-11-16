@@ -21,13 +21,6 @@ enum Problem {
 	NO_BOARD,  ## 盤面を作れない（盤面が小さすぎる、手で作ったマップが盤にできない）
 }
 
-## ステージの名前（画面に出すもの）。
-const STAGE_NAMES := {
-	BoardGenerator.Stage.PLAIN: "中央平原",
-	BoardGenerator.Stage.LABYRINTH: "迷宮回廊",
-	BoardGenerator.Stage.TWIN_SPRINGS: "双子結晶",
-}
-
 ## 戦いの定義。既定は、対戦モードの中央平原。
 var scenario := Scenario.versus(BoardGenerator.Stage.PLAIN)
 ## 盤面の生成と、対戦の乱数（Battle.rng）の両方に使う種。同じ設定からは、いつも同じ対戦ができる。
@@ -90,10 +83,6 @@ static func _on(defined: Scenario, with_seed: int) -> MatchSetup:
 ## 軍ごとの既定の編成（予算どおり）。人が編成を組まずに始めるときに使う。CPU の編成（CpuDeck）と同じもの。
 static func default_deck(army: UnitKind.Army) -> Deck:
 	return CpuDeck.build(army)
-
-
-static func stage_name(of_stage: BoardGenerator.Stage) -> String:
-	return STAGE_NAMES.get(of_stage, "")
 
 
 ## side を人が動かし、その編成を deck にする。

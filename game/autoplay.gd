@@ -11,6 +11,7 @@ extends Node
 ## イベントを再生する場面（GROUPS の events）を全部回したときは、どの種類のイベントも 1 回は再生したことを確かめる。
 ## 全部が通れば "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
+const Names := preload("res://game/names.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")
@@ -652,7 +653,7 @@ func _queue_skill_scene() -> void:
 		_expect(_scene.is_choosing_skill_target(), "ファイアボールの対象を選び始めなかった")
 		_scene.played.erase(damaged)
 		_scene.hover(burned.cell)
-		_expect_forecast([Skills.of(sorcerer).display_name(), burned.display_name(), "ダメージ"], "ファイアボール")
+		_expect_forecast([Names.skill(Skills.of(sorcerer)), Names.unit(burned), "ダメージ"], "ファイアボール")
 		_scene.hover(NO_CELL)
 		_scene.click_cell(burned.cell))
 	_scripted.append(func() -> void:
@@ -955,14 +956,14 @@ func _queue_heal_scene() -> void:
 		_expect(_scene.menu_ids() == ([&"heal", &"skill", &"wait", &"undo"] as Array[StringName]), "動いたあとのメニューの項目が違う: %s" % [_scene.menu_ids()])
 		# スキルの説明は、駒の情報にいつも出ている。メニューの項目にマウスを乗せると、押すと何が起きるかが出る。
 		var skill := Skills.of(medic)
-		_expect(_scene.info_text().replace("\n", "").contains(skill.summary()), "駒の情報に、スキルの説明が出ていない")
+		_expect(_scene.info_text().replace("\n", "").contains(Names.skill_summary(skill)), "駒の情報に、スキルの説明が出ていない")
 		_scene.hover_menu_item(&"wait")
 		_expect(_scene.info_text().contains("待機"), "メニューの項目の説明が出ていない")
 		_scene.hover_menu_item(&"")
 		_expect(not _scene.info_text().contains("待機:"), "マウスが離れても、項目の説明が残っている")
 		_expect(_scene.press_menu(&"heal") and _scene.is_choosing_target(), "メニューの回復で、相手を選び始めなかった")
 		_scene.hover(wounded.cell)
-		_expect_forecast(["回復", wounded.display_name(), "+%d" % medic.power()], "回復")
+		_expect_forecast(["回復", Names.unit(wounded), "+%d" % medic.power()], "回復")
 		_scene.hover(NO_CELL)
 		_scene.click_cell(wounded.cell))
 	_scripted.append(func() -> void:
@@ -988,7 +989,7 @@ func _queue_inspection_scene() -> void:
 		threat.sort()
 		var painted: Array[Vector2i] = _scene.threat_painted_cells()
 		painted.sort()
-		_expect(not threat.is_empty() and painted.size() <= threat.size() and _scene.info_title().begins_with(unit.display_name()),
+		_expect(not threat.is_empty() and painted.size() <= threat.size() and _scene.info_title().begins_with(Names.unit(unit)),
 			"%s: 見ている駒の脅威範囲か情報が出ていない" % what)
 
 	# 前の対戦（もっと大きな盤）でマウスを乗せていたマスが、この小さな盤の外でも、始め直すときに持ち越さない（盤の外を読まない）。
@@ -1042,7 +1043,7 @@ func _queue_inspection_scene() -> void:
 		_expect(_scene.is_choosing_target() and _scene.inspected_unit() == null, "見終わったあとに、相手を選ぶ途中へ戻らなかった")
 		# 相手にマウスを乗せると、そのそばに戦闘予測のパネルが出る（メニューと重ならず、画面に収まる）。離すと消える。
 		_scene.hover(foe.cell)
-		_expect_forecast(["攻撃", foe.display_name(), "ダメージ"], "攻撃")
+		_expect_forecast(["攻撃", Names.unit(foe), "ダメージ"], "攻撃")
 		_scene.hover(Vector2i(0, 0))
 		_expect(_scene.forecast_text() == "", "相手からマウスを離しても、予測のパネルが残っている")
 		_scene.hover(NO_CELL)
@@ -1097,7 +1098,7 @@ func _queue_setup_scene() -> void:
 		seen["actions"] = _scene.cpu_actions
 		panel.confirm()
 		# CPU（先手）の番の間も、必殺技のボタンは人（後手。MILITARY）のもの。
-		_expect(_scene.ult_button_text().contains(Ults.of_army(UnitKind.Army.MILITARY).display_name()), "CPU の番に、必殺技のボタンが CPU のものになった: %s" % _scene.ult_button_text()))
+		_expect(_scene.ult_button_text().contains(Names.ult(Ults.of_army(UnitKind.Army.MILITARY))), "CPU の番に、必殺技のボタンが CPU のものになった: %s" % _scene.ult_button_text()))
 	_scripted.append(func() -> void:
 		var battle: Battle = _scene.battle
 		_expect(not _scene.setup_panel().visible, "設定画面が閉じない")
@@ -1989,7 +1990,7 @@ func _visit_story(app: Node) -> void:
 	if not episode.unlock_kinds.is_empty():
 		talk.press_skip()
 		_expect(talk.line_index() == episode.after.size() and talk.speaker() == "知らせ"
-				and talk.line_text().contains(UnitKind.display_name(episode.unlock_kinds[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
+				and talk.line_text().contains(Names.kind(episode.unlock_kinds[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
 	await app.scene_changed
@@ -1998,7 +1999,7 @@ func _visit_story(app: Node) -> void:
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
 		_expect(list.is_card_enabled(Story.military().episodes[first + 1]), "前の話をクリアしたのに、次の話を選べない")
-	_expect(list.roster_text().contains(UnitKind.display_name(episode.unlock_kinds[0])) if not episode.unlock_kinds.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
+	_expect(list.roster_text().contains(Names.kind(episode.unlock_kinds[0])) if not episode.unlock_kinds.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
 	list.press_back()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "話の一覧の「物語を選び直す」で、物語を選ぶ場面へ戻らない")

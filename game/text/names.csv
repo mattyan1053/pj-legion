@@ -1,0 +1,85 @@
+keys,ja
+side.player1,プレイヤー1（青）
+side.player2,プレイヤー2（赤）
+side.neutral,中立
+side.player1.short,青
+side.player2.short,赤
+side.neutral.short,中立
+army.none,軍なし
+army.military,MILITARY
+army.fantasy,FANTASY
+role.vanguard,前衛
+role.rearguard,後衛
+role.raider,奇襲
+role.healer,回復
+stat.max_hp,最大 HP
+stat.power,攻撃
+stat.move_range,移動
+stat.attack_range,射程
+trait.exerts_zoc,周り 8 マスに支配領域を作る（敵はそこで止まる）
+trait.ignores_zoc,敵の支配領域で止まらない
+trait.forest_walk,森を平地と同じ移動力で歩く
+trait.regeneration,自分の番の始めに {heal} 回復
+field_effect.barricade,盾
+field_effect.smoke,煙幕
+field_effect.sanctuary,聖域
+unit.king,将
+unit.shield_trooper,シールドトルーパー
+unit.sniper,スナイパー
+unit.commando,コマンドー
+unit.medic,衛生兵
+unit.paladin,パラディン
+unit.sorcerer,ソーサラー
+unit.spellblade,スペルブレード
+unit.priest,プリースト
+unit.minion,エナジー・コア
+unit.elite_minion,エリートミニオン
+evolution.bulwark,ブルワーク
+evolution.juggernaut,ジャガーノート
+evolution.marksman,マークスマン
+evolution.scout,スカウト
+evolution.assault,アサルト
+evolution.infiltrator,インフィルトレーター
+evolution.surgeon,サージョン
+evolution.combat_medic,コンバットメディック
+evolution.sacred,セイクリッド
+evolution.crusader,クルセイダー
+evolution.archmage,アークメイジ
+evolution.enchanter,エンチャンター
+evolution.arc_blade,アークブレード
+evolution.fey_walker,フェイウォーカー
+evolution.bishop,ビショップ
+evolution.saint,セイント
+item.speed_boots,スピードブーツ
+item.iron_shield,アイアンシールド
+skill.adrenaline_shot,アドレナリン注射
+skill.adrenaline_shot.summary,行動済みの味方 1 体を、もう一度行動できるようにする。その駒は次の自分の番の終わりまで、攻撃力 -{penalty}（対戦中 {uses} 回まで）
+skill.divine_shield,ディバインシールド
+skill.divine_shield.summary,自分にバリア（{turns} ターン。次に受けるダメージを 1 回だけ 0 にする。攻撃・爆発・魔法のどれも）を付ける
+skill.fireball,ファイアボール
+skill.fireball.summary,{range} マス以内を中心に、十字 5 マスの敵へ {damage} ダメージ（壁越し。森で減らない）
+skill.precision_aim,精密照準
+skill.precision_aim.summary,動かずに構える。次の自分の番、このマスからの攻撃 1 回が射程 +{range}、ダメージ {times} 倍（動くと解ける）
+skill.saint_place,セイントプレイス
+skill.saint_place.summary,{range} マス以内を中心に聖域（3 x 3。{turns} ターン。自分の番の始めに中の味方が HP {heal} 回復）を置く
+skill.shadow_step,シャドウステップ
+skill.shadow_step.summary,縦・横・斜め {range} マス以内へ跳ぶ（壁も駒も越える。敵のいるマスなら入れ替わる）。続けて攻撃できる
+skill.smoke_grenade,スモークグレネード
+skill.smoke_grenade.summary,{range} マス以内を中心に煙幕（3 x 3。{turns} ターン。中の味方への、離れたところからの攻撃を無効にする）を置く
+skill.tactical_barricade,戦術バリケード
+skill.tactical_barricade.summary,周り 8 マスのどこかに盾（耐久 {durability}。通行と射撃を遮る）を置く
+ult.all_out_assault,総員突撃
+ult.all_out_assault.summary,このターンの間、軍の全員の移動力 +{move}、攻撃力（回復量）+{power}
+ult.mana_eruption,魔力解放
+ult.mana_eruption.summary,軍の全員のスキルのクールダウンを 0 にする（このターンから使える）
+status.barrier,バリア
+status.aim,照準
+status.fatigue,反動
+status.assault,突撃
+relic.wisdom,英知の聖遺物
+relic.wisdom.summary,軍の全員の最大 HP +{amount}
+relic.courage,勇気の聖遺物
+relic.courage.summary,軍の全員の攻撃力（回復量）+{amount}
+stage.plain,中央平原
+stage.labyrinth,迷宮回廊
+stage.twin_springs,双子結晶

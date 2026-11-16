@@ -19,14 +19,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.PRIEST
 
 
-func display_name() -> String:
-	return "セイントプレイス"
-
-
-func summary() -> String:
-	return "%d マス以内を中心に聖域（3 x 3。%d ターン。自分の番の始めに中の味方が HP %d 回復）を置く" % [
-		CENTER_RANGE, FieldEffects.SANCTUARY_TURNS, FieldEffects.SANCTUARY_HEAL,
-	]
+## 説明の文（game/text/names.csv の skill.saint_place.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"range": CENTER_RANGE, "turns": FieldEffects.SANCTUARY_TURNS, "heal": FieldEffects.SANCTUARY_HEAL}
 
 
 func cooldown() -> int:

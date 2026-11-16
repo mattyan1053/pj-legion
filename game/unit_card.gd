@@ -2,6 +2,7 @@ extends RefCounted
 ## 駒 1 体の札（名前、役割、コスト、能力値、持ち物）。編成の確認（deck_preview.gd）と、部隊の編成の画面で使う。
 ## 札は既定の部品（PanelContainer、Label）だけで組む。色や枠は UI のテーマ（ui_theme.gd の PANEL_CARD）が当たる。
 
+const Names := preload("res://game/names.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
@@ -29,7 +30,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 	names.add_theme_constant_override("separation", 0)
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(names)
-	var title := _label(UnitKind.display_name(kind), 17)
+	var title := _label(Names.kind(kind), 17)
 	title.name = "Name"
 	names.add_child(title)
 	var role := DeckText.role_name(kind)
@@ -42,7 +43,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 4)
 			row.add_child(ItemIcon.new(item[0], 18.0))
-			row.add_child(_label(Equipment.display_name(item[0]) + (" ×%d" % item[1] if item[1] > 1 else ""), 13))
+			row.add_child(_label(Names.item(item[0]) + (" ×%d" % item[1] if item[1] > 1 else ""), 13))
 			column.add_child(row)
 	return card
 
@@ -51,7 +52,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 static func equipment_lines(equipment: Array[Equipment.Id]) -> Array[String]:
 	var lines: Array[String] = []
 	for item: Array in grouped_equipment(equipment):
-		lines.append(Equipment.display_name(item[0]) + (" ×%d" % item[1] if item[1] > 1 else ""))
+		lines.append(Names.item(item[0]) + (" ×%d" % item[1] if item[1] > 1 else ""))
 	return lines
 
 

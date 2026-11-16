@@ -120,11 +120,6 @@ func evolve(to: Evolution.Id) -> void:
 	follow_max_hp(before)
 
 
-## 駒の呼び名。進化していれば進化先の名前、していなければ種類の名前。
-func display_name() -> String:
-	return UnitKind.display_name(kind) if evolution == Evolution.Id.NONE else Evolution.display_name(evolution)
-
-
 ## 周り 8 マスに支配領域（ZOC）を作るか。前衛と、その特性を持つ進化先。
 func exerts_zoc() -> bool:
 	return UnitKind.exerts_zoc(kind) or Evolution.has_trait(evolution, Evolution.Trait.EXERTS_ZOC)

@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## リザルトの画面に出すもの（game/result_summary.gd）。
 
+const Names := preload("res://game/names.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const Maps := preload("res://tests/support/maps.gd")
 
@@ -59,9 +60,9 @@ func test_lines_have_the_stage_turns_kills_and_relics() -> void:
 		["経過ターン", "14 ターン"],
 		["敵軍撃破", "2 体"],
 		["中立撃破", "3 体"],
-		["聖遺物", Relics.display_name(Relics.Id.WISDOM)],
+		["聖遺物", Names.relic(Relics.Id.WISDOM)],
 	], "撃破は、敵のプレイヤーの駒と中立の駒（中ボスを含む）を分けて出す")
-	assert_eq(summary.mvp_name, "%s Lv1" % UnitKind.display_name(UnitKind.Id.SNIPER))
+	assert_eq(summary.mvp_name, "%s Lv1" % Names.kind(UnitKind.Id.SNIPER))
 	assert_eq([summary.mvp_damage, summary.mvp_kills], [42, 2])
 	assert_true(summary.detail.contains("赤: 与えたダメージ"), "詳しい戦績は両方の陣営")
 

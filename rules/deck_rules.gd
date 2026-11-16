@@ -13,8 +13,6 @@ const VERSUS := &"versus"
 
 ## 決まりの名前（取っておく部隊に書く。by_id で引き直す）。
 var id: StringName
-## 画面に出す名前。
-var display_name: String
 ## 雇える駒の数の上限（将を除く）。
 var max_units: int
 ## 軍 -> 雇える駒の種類（並びは 前衛・後衛・奇襲・回復）。ここに無い軍は選べない。
@@ -28,9 +26,8 @@ static var _versus: DeckRules
 
 
 ## allowed_items: 持たせられる装備の種類。省けば（null）、どの装備も持たせられる。
-func _init(rules_id: StringName, name: String, unit_limit: int, rosters: Dictionary, budgets: Dictionary, allowed_items: Variant = null) -> void:
+func _init(rules_id: StringName, unit_limit: int, rosters: Dictionary, budgets: Dictionary, allowed_items: Variant = null) -> void:
 	id = rules_id
-	display_name = name
 	max_units = unit_limit
 	_rosters = rosters
 	_budgets = budgets
@@ -45,7 +42,7 @@ static func versus() -> DeckRules:
 		var rosters := {}
 		for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
 			rosters[army] = _army_kinds(army)
-		_versus = DeckRules.new(VERSUS, "対戦", Deck.MAX_UNITS, rosters, {
+		_versus = DeckRules.new(VERSUS, Deck.MAX_UNITS, rosters, {
 			UnitKind.Army.MILITARY: 24,
 			UnitKind.Army.FANTASY: 18,
 		})

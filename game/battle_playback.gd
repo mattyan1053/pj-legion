@@ -386,7 +386,7 @@ func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
 	target.set_hp(event.hp)
 	if event.is_blocked():
 		_sound(&"blocked")
-		_pop_number(target.position, "%s が防いだ" % Status.display_name(event.blocked_by as Status.Type), Color("9fd8ff"))
+		_pop_number(target.position, "%s が防いだ" % Names.status(event.blocked_by as Status.Type), Color("9fd8ff"))
 	elif event.critical:
 		_sound(&"critical")
 		_pop_number(target.position, "クリティカル -%d" % event.amount, Color("ff5a4a"))
@@ -458,7 +458,7 @@ func _play_evolved(event: UnitEvolvedEvent) -> void:
 	view.set_hp(event.hp)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.8)
 	_sound(&"evolved")
-	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Evolution.display_name(event.evolution), COLOR_EVOLUTION)
+	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Names.evolution(event.evolution), COLOR_EVOLUTION)
 	await after(0.6)
 
 
@@ -486,7 +486,7 @@ func _play_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
 	var at := BoardView.cell_center(event.center)
 	_flash(at + Vector3(0.0, 0.3, 0.0), team_colors[event.side], 1.2 if event.type == FieldEffect.Type.BARRICADE else 2.4)
 	if not _after_skill:
-		_pop_number(at, Names.FIELD_EFFECT_NAMES[event.type], team_colors[event.side].lightened(0.4))
+		_pop_number(at, Names.field_effect(event.type), team_colors[event.side].lightened(0.4))
 	await after(0.3)
 
 
@@ -581,7 +581,7 @@ func _play_skill_used(event: SkillUsedEvent) -> void:
 	_acted_with_effect = true
 	_after_skill = true
 	var color: Color = BattleEffects.SKILL_COLORS[event.skill]
-	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Skills.by_id(event.skill).display_name(), color.lightened(0.45))
+	_pop_number(view.position + Vector3(0.0, 0.5, 0.0), Names.skill(Skills.by_id(event.skill)), color.lightened(0.45))
 	_effects.skill_flash(event.skill, view.position, at)
 	await after(maxf(view.play_attack(), BattleEffects.SKILL_TIME))
 
@@ -600,7 +600,7 @@ func _play_ult_used(event: UltUsedEvent) -> void:
 	var color: Color = BattleHud.ULT_COLORS[event.ult]
 	_hud.flash_screen(color)
 	_sound(&"ult")  # 音の山が、続く光の柱（_play_ult_effects）に重なる
-	_hud.show_banner("%s　必殺技: %s!!" % [side_name.call(event.side), Ults.by_id(event.ult).display_name()], color)
+	_hud.show_banner("%s　必殺技: %s!!" % [side_name.call(event.side), Names.ult(Ults.by_id(event.ult))], color)
 	await after(0.5)
 
 
@@ -629,7 +629,7 @@ func _play_ult_ready(_event: UltReadyEvent) -> void:
 func _play_status_applied(event: StatusAppliedEvent) -> void:
 	if _after_skill and event.status != Status.Type.FATIGUE:
 		return  # スキルの名前と形が見せている（反動は、スキルの形では分からないので出す）
-	_pop_number(_view(event.unit_id).position, Status.display_name(event.status), Color("9fd8ff"))
+	_pop_number(_view(event.unit_id).position, Names.status(event.status), Color("9fd8ff"))
 	await after(0.25)
 
 
@@ -638,7 +638,7 @@ func _play_status_removed(event: StatusRemovedEvent) -> void:
 	if event.reason == StatusRemovedEvent.Reason.CONSUMED:
 		return
 	var why := "が解けた" if event.reason == StatusRemovedEvent.Reason.MOVED else "が消えた"
-	_pop_number(_view(event.unit_id).position, Status.display_name(event.status) + why, Color("b8c4d0"))
+	_pop_number(_view(event.unit_id).position, Names.status(event.status) + why, Color("b8c4d0"))
 	await after(0.2)
 
 
@@ -687,7 +687,7 @@ func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 func _play_relic_gained(event: RelicGainedEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)
 	var color: Color = team_colors[event.side]
-	var text := Relics.summary(event.relic).trim_prefix("軍の全員の")
+	var text := Names.relic_summary(event.relic).trim_prefix("軍の全員の")
 	_sound(&"relic")
 	for unit_id in event.unit_ids:
 		if not _views.has(unit_id):
@@ -697,7 +697,7 @@ func _play_relic_gained(event: RelicGainedEvent) -> void:
 		view.set_hp(event.hp[unit_id])
 		_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_RELIC, 1.0)
 		_pop_number(view.position + Vector3(0.0, 0.5, 0.0), text, COLOR_RELIC)
-	_hud.show_banner("%s　%s を手に入れた（%s）" % [side_name.call(event.side), Relics.display_name(event.relic), Relics.summary(event.relic)], color)
+	_hud.show_banner("%s　%s を手に入れた（%s）" % [side_name.call(event.side), Names.relic(event.relic), Names.relic_summary(event.relic)], color)
 	await after(0.7)
 
 

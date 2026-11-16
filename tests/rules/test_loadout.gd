@@ -93,7 +93,7 @@ func test_deck_removes_an_entry() -> void:
 
 func test_every_equipment_costs_one() -> void:
 	for item: Equipment.Id in Equipment.Id.values():
-		assert_eq(Equipment.cost(item), 1, Equipment.display_name(item))
+		assert_eq(Equipment.cost(item), 1, str(Equipment.Id.find_key(item)))
 
 
 func test_entry_holds_duplicates_up_to_three() -> void:
@@ -141,7 +141,7 @@ func test_cost_does_not_depend_on_the_army() -> void:
 	for kind in Deck.roster(MILITARY) + Deck.roster(FANTASY):
 		var deck := Deck.new(UnitKind.army(kind))
 		deck.add(kind)
-		assert_eq(deck.total_cost(), UnitKind.cost(kind), UnitKind.display_name(kind))
+		assert_eq(deck.total_cost(), UnitKind.cost(kind), str(UnitKind.Id.find_key(kind)))
 	assert_eq(UnitKind.cost(UnitKind.Id.KING), 0)
 
 

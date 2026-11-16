@@ -119,7 +119,7 @@ func test_hand_built_deck_with_units_outside_the_roster() -> void:
 	for kind: UnitKind.Id in [UnitKind.Id.SORCERER, UnitKind.Id.KING, UnitKind.Id.MINION]:
 		var deck := _deck(MILITARY, [UnitKind.Id.SNIPER])
 		deck.entries.append(DeckEntry.new(kind))
-		assert_eq(deck.problems(), _problems([Problem.NOT_IN_ROSTER]), UnitKind.display_name(kind))
+		assert_eq(deck.problems(), _problems([Problem.NOT_IN_ROSTER]), str(UnitKind.Id.find_key(kind)))
 
 
 func test_deck_without_an_army_is_never_valid() -> void:

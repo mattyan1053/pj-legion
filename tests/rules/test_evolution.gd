@@ -63,13 +63,13 @@ func test_every_hireable_kind_has_two_evolutions() -> void:
 	var names := {}
 	for kind in HIREABLE:
 		var options := Evolution.options_for(kind)
-		assert_eq(options.size(), 2, UnitKind.display_name(kind))
+		assert_eq(options.size(), 2, str(UnitKind.Id.find_key(kind)))
 		for id in options:
 			assert_eq(Evolution.origin(id), kind)
-			names[Evolution.display_name(id)] = true
+			names[str(Evolution.Id.find_key(id))] = true
 	assert_eq(names.size(), 16, "名前が重なっている")
 	for kind: UnitKind.Id in UnitKind.Id.values():
-		assert_false(names.has(UnitKind.display_name(kind)), "種類の名前と同じ: %s" % UnitKind.display_name(kind))
+		assert_false(names.has(str(UnitKind.Id.find_key(kind))), "種類の名前と同じ: %s" % str(UnitKind.Id.find_key(kind)))
 	assert_eq(Evolution.Id.size(), 17)  # NONE + 16
 
 
@@ -86,31 +86,31 @@ func test_the_sixteen_routes() -> void:
 	var none: Array[Evolution.Trait] = []
 	# 種類 -> [[A の名前, 増減, 特性], [B の名前, 増減, 特性]]
 	var expected := {
-		UnitKind.Id.SHIELD_TROOPER: [["ブルワーク", {HP: 18}, none], ["ジャガーノート", {MOVE: 2, POWER: 2}, none]],
-		UnitKind.Id.SNIPER: [["マークスマン", {RANGE: 2, POWER: 2, MOVE: -1}, none], ["スカウト", {MOVE: 2, HP: 8}, none]],
-		UnitKind.Id.COMMANDO: [["アサルト", {POWER: 4, HP: 6}, none], ["インフィルトレーター", {MOVE: 1}, slip]],
-		UnitKind.Id.MEDIC: [["サージョン", {POWER: 8}, none], ["コンバットメディック", {MOVE: 2, HP: 10}, none]],
-		UnitKind.Id.PALADIN: [["セイクリッド", {HP: 10}, regeneration], ["クルセイダー", {POWER: 4, MOVE: 1}, none]],
-		UnitKind.Id.SORCERER: [["アークメイジ", {POWER: 4, RANGE: 1}, none], ["エンチャンター", {HP: 8}, zoc]],
-		UnitKind.Id.SPELLBLADE: [["アークブレード", {RANGE: 1, POWER: 1}, none], ["フェイウォーカー", {MOVE: 2}, forest]],
-		UnitKind.Id.PRIEST: [["ビショップ", {RANGE: 2, POWER: 2}, none], ["セイント", {HP: 12}, regeneration]],
+		UnitKind.Id.SHIELD_TROOPER: [["BULWARK", {HP: 18}, none], ["JUGGERNAUT", {MOVE: 2, POWER: 2}, none]],
+		UnitKind.Id.SNIPER: [["MARKSMAN", {RANGE: 2, POWER: 2, MOVE: -1}, none], ["SCOUT", {MOVE: 2, HP: 8}, none]],
+		UnitKind.Id.COMMANDO: [["ASSAULT", {POWER: 4, HP: 6}, none], ["INFILTRATOR", {MOVE: 1}, slip]],
+		UnitKind.Id.MEDIC: [["SURGEON", {POWER: 8}, none], ["COMBAT_MEDIC", {MOVE: 2, HP: 10}, none]],
+		UnitKind.Id.PALADIN: [["SACRED", {HP: 10}, regeneration], ["CRUSADER", {POWER: 4, MOVE: 1}, none]],
+		UnitKind.Id.SORCERER: [["ARCHMAGE", {POWER: 4, RANGE: 1}, none], ["ENCHANTER", {HP: 8}, zoc]],
+		UnitKind.Id.SPELLBLADE: [["ARC_BLADE", {RANGE: 1, POWER: 1}, none], ["FEY_WALKER", {MOVE: 2}, forest]],
+		UnitKind.Id.PRIEST: [["BISHOP", {RANGE: 2, POWER: 2}, none], ["SAINT", {HP: 12}, regeneration]],
 	}
 	for kind: UnitKind.Id in expected:
 		var options := Evolution.options_for(kind)
 		for i in 2:
 			var route: Array = expected[kind][i]
-			assert_eq(Evolution.display_name(options[i]), route[0])
+			assert_eq(str(Evolution.Id.find_key(options[i])), route[0])
 			assert_eq(Evolution.bonuses(options[i]), route[1], route[0])
 			assert_eq(Evolution.traits(options[i]), route[2], route[0])
 
 
 func test_an_unevolved_unit_has_no_bonus_and_no_trait() -> void:
-	assert_eq(Evolution.display_name(Evolution.Id.NONE), "")
+	assert_eq(Evolution.origin(Evolution.Id.BULWARK), UnitKind.Id.SHIELD_TROOPER)
 	assert_eq(Evolution.bonus(Evolution.Id.NONE, HP), 0)
 	assert_eq(Evolution.traits(Evolution.Id.NONE), [] as Array[Evolution.Trait])
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
-	assert_eq(sniper.display_name(), "スナイパー")
+	assert_eq(sniper.evolution, Evolution.Id.NONE)
 	assert_false(sniper.exerts_zoc())
 	assert_false(sniper.ignores_zoc())
 
@@ -220,7 +220,7 @@ func test_choosing_evolves_the_unit_and_resumes_the_battle() -> void:
 	assert_eq(sniper.max_hp(), 24)
 	assert_eq(sniper.hp, 19)
 	assert_eq(sniper.move_range(), 5)
-	assert_eq(sniper.display_name(), "スカウト")
+	assert_eq(sniper.evolution, Evolution.Id.SCOUT)
 	assert_eq(sniper.kind, UnitKind.Id.SNIPER, "種類（役割と軍）は変わらない")
 	# 対戦が続く。進化した駒は、もう行動を終えている。
 	assert_eq(battle.evolving_unit(), null)

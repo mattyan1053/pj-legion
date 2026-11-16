@@ -19,14 +19,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.COMMANDO
 
 
-func display_name() -> String:
-	return "スモークグレネード"
-
-
-func summary() -> String:
-	return "%d マス以内を中心に煙幕（3 x 3。%d ターン。中の味方への、離れたところからの攻撃を無効にする）を置く" % [
-		CENTER_RANGE, FieldEffects.SMOKE_TURNS,
-	]
+## 説明の文（game/text/names.csv の skill.smoke_grenade.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"range": CENTER_RANGE, "turns": FieldEffects.SMOKE_TURNS}
 
 
 func cooldown() -> int:

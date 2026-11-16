@@ -46,7 +46,6 @@ func test_each_army_has_one_ult() -> void:
 	assert_true(Ults.of_army(UnitKind.Army.NONE) == null)
 	for ult in Ults.ALL:
 		assert_eq(Ults.by_id(ult.id()), ult)
-		assert_true(ult.display_name() != "" and ult.summary() != "")
 
 
 func test_army_comes_from_the_first_hired_unit() -> void:
@@ -347,7 +346,7 @@ func _military_fighters(evolved: bool) -> Array[Array]:
 func test_all_out_assault_cannot_fell_a_full_health_king_in_one_blow() -> void:
 	var king_hp := UnitKind.max_hp(UnitKind.Id.KING)
 	for fighter in _military_fighters(false):
-		var name := UnitKind.display_name(fighter[0])
+		var name := str(UnitKind.Id.find_key(fighter[0]))
 		assert_true(_assault_blow(fighter[0], 1, fighter[1], false) < king_hp, "%s の一撃は、将の HP に届かない" % name)
 		if fighter[0] == UnitKind.Id.SNIPER:
 			assert_true(_assault_blow(fighter[0], 1, fighter[1], true) < king_hp, "構えたスナイパーの一撃でも届かない")
@@ -362,7 +361,7 @@ func test_all_out_assault_cannot_fell_a_full_health_king_in_one_blow_even_grown(
 		if fighter[0] == UnitKind.Id.SNIPER:
 			aims.append(true)
 		for aimed: bool in aims:
-			var name := Evolution.display_name(fighter[1]) + ("（照準）" if aimed else "")
+			var name := str(Evolution.Id.find_key(fighter[1])) + ("（照準）" if aimed else "")
 			assert_true(_assault_blow(fighter[0], Growth.MAX_LEVEL, fighter[1], aimed, true) < king_hp, "%s の一撃は、将の HP に届かない" % name)
 
 

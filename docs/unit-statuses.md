@@ -74,7 +74,7 @@
 
 ## 状態を足すとき
 
-1. `Status.Type` に 1 つ足し、名前（`display_name`）と、当てはまる決まり（`bonus`、`blocks_damage`、`critical_percent`、
+1. `Status.Type` に 1 つ足し、名前を画面の文の表（`game/text/names.csv` の `status.<id>`）に書き、当てはまる決まり（`bonus`、`blocks_damage`、`critical_percent`、
    `ends_on_attack`、`breaks_on_move`）に書く。数値は、付けるスキルのファイルの調整値を読む。
 2. 付けるスキルの効果（`Skill.apply`）で `Statuses.add` を呼ぶ。
 3. ダメージの解決への新しい割り込み方が要るなら、`Hit`（`docs/combat.md` の「ダメージの解決」）に段を足す。

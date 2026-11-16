@@ -123,7 +123,7 @@ func test_each_stage_has_its_own_ground() -> void:
 
 func test_looks_are_named_and_every_versus_stage_has_one() -> void:
 	# 見た目は名前で引く。対戦モードの生成のステージは、どれも自分の見た目を持つ（OF_STAGE）。
-	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
+	for stage: BoardGenerator.Stage in BoardGenerator.Stage.values():
 		assert_true(StageLook.THEMES.has(StageLook.name_of_stage(stage)), "ステージ %d の見た目が無い" % stage)
 	assert_eq(StageLook.OF_STAGE.size(), BoardGenerator.Stage.size())
 	assert_eq(StageLook.name_of_stage(-1), StageLook.DEFAULT, "知らないステージは既定の見た目")

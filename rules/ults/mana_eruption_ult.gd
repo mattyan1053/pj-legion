@@ -14,12 +14,9 @@ func army() -> UnitKind.Army:
 	return UnitKind.Army.FANTASY
 
 
-func display_name() -> String:
-	return "魔力解放"
-
-
-func summary() -> String:
-	return "軍の全員のスキルのクールダウンを 0 にする（このターンから使える）"
+## 説明の文（game/text/names.csv の ult.mana_eruption.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {}
 
 
 func apply(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:

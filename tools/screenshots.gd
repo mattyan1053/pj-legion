@@ -618,7 +618,7 @@ func _scene_phase_camera() -> bool:
 	if focus == null or _battle.phase != Unit.Side.PLAYER1:
 		return false
 	_scene.mark_cell(focus.cell)  # 寄った駒を示す（撮るためだけ）
-	print("screenshots: フェーズの始めに寄った駒 %s %s" % [UnitKind.display_name(focus.kind), focus.cell])
+	print("screenshots: フェーズの始めに寄った駒 %s %s" % [Names.kind(focus.kind), focus.cell])
 	return true
 
 
@@ -1078,7 +1078,7 @@ func _cpu_result(won: bool) -> bool:
 	var human := _battle.winner as Unit.Side if won else (1 - _battle.winner) as Unit.Side
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		names.append(Names.SIDE_NAMES[side] + ("" if side == human else " CPU"))
+		names.append(Names.side(side) + ("" if side == human else " CPU"))
 	var reason: String = screen.shown_summary().reason  # 人どうしの理由（決着の理由だけ）
 	var summary: RefCounted = ResultSummary.of(_stats, false, _battle.winner, reason, true, human, names, VersusFields.title_of(_field))
 	screen.present(summary)

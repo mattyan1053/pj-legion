@@ -9,7 +9,7 @@ const Problem := Deck.Problem
 
 ## MILITARY だけを選べ、スナイパーと衛生兵だけを雇え、予算 7、2 体までの決まり（ストーリーの途中のような）。
 func _narrow_rules() -> DeckRules:
-	return DeckRules.new(&"narrow", "試し", 2, {
+	return DeckRules.new(&"narrow", 2, {
 		MILITARY: [UnitKind.Id.SNIPER, UnitKind.Id.MEDIC] as Array[UnitKind.Id],
 	}, {MILITARY: 7})
 
@@ -177,7 +177,7 @@ func test_rules_allow_every_item_unless_told_otherwise() -> void:
 
 
 func test_items_left_out_of_the_rules_are_a_problem() -> void:
-	var rules := DeckRules.new(&"shields", "盾だけ", 6, {MILITARY: DeckRules.versus().roster(MILITARY)}, {MILITARY: 24},
+	var rules := DeckRules.new(&"shields", 6, {MILITARY: DeckRules.versus().roster(MILITARY)}, {MILITARY: 24},
 			[Equipment.Id.IRON_SHIELD])
 	assert_eq(rules.items(), [Equipment.Id.IRON_SHIELD] as Array[Equipment.Id])
 	assert_false(rules.allows_item(Equipment.Id.SPEED_BOOTS))

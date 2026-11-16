@@ -64,7 +64,7 @@ func test_free_squad_hunts_the_boss() -> void:
 	_play_phase(battle)
 	assert_true(boss.hp < boss.max_hp(), "届く駒から殴り始める")
 	for unit in squad:
-		assert_true(_distance(unit, boss.cell) <= 4, "中ボスへ寄る: %s" % UnitKind.display_name(unit.kind))
+		assert_true(_distance(unit, boss.cell) <= 4, "中ボスへ寄る: %s" % str(UnitKind.Id.find_key(unit.kind)))
 
 
 func test_cpu_does_not_start_a_hunt_in_the_opening() -> void:

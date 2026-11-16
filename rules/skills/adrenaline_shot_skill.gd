@@ -26,14 +26,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.MEDIC
 
 
-func display_name() -> String:
-	return "アドレナリン注射"
-
-
-func summary() -> String:
-	return "行動済みの味方 1 体を、もう一度行動できるようにする。その駒は次の自分の番の終わりまで、攻撃力 -%d（対戦中 %d 回まで）" % [
-		POWER_PENALTY, MAX_USES,
-	]
+## 説明の文（game/text/names.csv の skill.adrenaline_shot.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"penalty": POWER_PENALTY, "uses": MAX_USES}
 
 
 func cooldown() -> int:

@@ -12,24 +12,20 @@ enum Id {
 ## 1 体が持てる装備の数。
 const MAX_PER_UNIT := 3
 
-## [名前, コスト, 足す能力値, 足す量]
+## [コスト, 足す能力値, 足す量]。名前は画面の文の表（game/text/names.csv の item.<id>）。
 const _TABLE := {
-	Id.SPEED_BOOTS: ["スピードブーツ", 1, Unit.Stat.MOVE_RANGE, 2],
-	Id.IRON_SHIELD: ["アイアンシールド", 1, Unit.Stat.MAX_HP, 30],
+	Id.SPEED_BOOTS: [1, Unit.Stat.MOVE_RANGE, 2],
+	Id.IRON_SHIELD: [1, Unit.Stat.MAX_HP, 30],
 }
 
 
-static func display_name(id: Id) -> String:
-	return _TABLE[id][0]
-
-
 static func cost(id: Id) -> int:
-	return _TABLE[id][1]
+	return _TABLE[id][0]
 
 
 ## その装備 1 個が stat に足す量。関係のない能力値なら 0。
 static func bonus(id: Id, stat: Unit.Stat) -> int:
-	return _TABLE[id][3] if _TABLE[id][2] == stat else 0
+	return _TABLE[id][2] if _TABLE[id][1] == stat else 0
 
 
 ## 装備の並びが stat に足す量の合計。

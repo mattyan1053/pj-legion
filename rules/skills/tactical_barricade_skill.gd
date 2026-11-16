@@ -19,12 +19,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.SHIELD_TROOPER
 
 
-func display_name() -> String:
-	return "戦術バリケード"
-
-
-func summary() -> String:
-	return "周り 8 マスのどこかに盾（耐久 %d。通行と射撃を遮る）を置く" % FieldEffects.BARRICADE_DURABILITY
+## 説明の文（game/text/names.csv の skill.tactical_barricade.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"durability": FieldEffects.BARRICADE_DURABILITY}
 
 
 func cooldown() -> int:

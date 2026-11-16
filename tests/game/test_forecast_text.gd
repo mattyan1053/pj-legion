@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 戦闘予測の文（game/forecast_text.gd）: どの行動の予測も文にでき、起きることが文に出ること。
 
+const Names := preload("res://game/names.gd")
 const Maps := preload("res://tests/support/maps.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 
@@ -46,7 +47,7 @@ func test_skill_heal_barricade_and_ult_texts() -> void:
 	FieldEffects.place_barricade(battle, P2, Vector2i(0, 2))
 	assert_true(_text(battle, AttackBarricadeAction.new(trooper.id, Vector2i(0, 2)), trooper).contains("盾: 耐久"))
 	battle.ult_gauge[P1] = Ults.GAUGE_MAX
-	assert_true(_text(battle, UseUltAction.new(), trooper).contains(Status.display_name(Status.Type.ASSAULT)))
+	assert_true(_text(battle, UseUltAction.new(), trooper).contains(Names.status(Status.Type.ASSAULT)))
 	assert_eq(_text(battle, WaitAction.new(medic.id), medic), "何も起きない")
 
 

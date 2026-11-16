@@ -50,7 +50,7 @@ class Summary:
 static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summary:
 	var summary := Summary.new()
 	for placed in forecast.placed:
-		var line: String = "%s を置く" % Names.FIELD_EFFECT_NAMES[placed.type]
+		var line: String = "%s を置く" % Names.field_effect(placed.type)
 		if placed.cells.size() > 1:
 			var inside := 0
 			for unit in battle.units:
@@ -64,7 +64,7 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 			continue
 		var row := Row.new()
 		row.unit_id = unit.id
-		row.name = unit.display_name()
+		row.name = Names.unit(unit)
 		row.side = unit.side
 		row.is_actor = unit == actor
 		row.hp_before = outcome.hp_before
@@ -77,7 +77,7 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 			row.blocked = true
 			row.notes.append("煙幕に阻まれる（隣からなら当たる）")
 		elif outcome.blocked_by != -1 and outcome.damage == 0:
-			var shield := Status.display_name(outcome.blocked_by as Status.Type)
+			var shield := Names.status(outcome.blocked_by as Status.Type)
 			row.damage = 0
 			row.blocked = true
 			row.notes.append("%s が防ぐ（%s は消える）" % [shield, shield])
@@ -94,10 +94,10 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 		if row.defeated and not row.is_actor:
 			summary.defeats += 1
 		for status: int in outcome.statuses_applied:
-			row.effects.append("%s が付く（%d ターン）" % [Status.display_name(status as Status.Type), outcome.statuses_applied[status]])
+			row.effects.append("%s が付く（%d ターン）" % [Names.status(status as Status.Type), outcome.statuses_applied[status]])
 		for status in outcome.statuses_removed:
 			if status != outcome.blocked_by:
-				row.effects.append("%s が解ける" % Status.display_name(status as Status.Type))
+				row.effects.append("%s が解ける" % Names.status(status as Status.Type))
 		if outcome.moved_to != Board.NO_CELL:
 			row.effects.append("(%d, %d) へ移る" % [outcome.moved_to.x, outcome.moved_to.y])
 		if outcome.reactivated:
@@ -107,7 +107,7 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 			if outcome.evolution_ready:
 				var names: Array[String] = []
 				for choice in Evolution.options_for(unit.kind):
-					names.append(Evolution.display_name(choice))
+					names.append(Names.evolution(choice))
 				growth = "　レベルアップ → 進化を選べる（%s）" % " / ".join(names)
 			elif outcome.levels_gained > 0:
 				growth = "　レベルアップ（Lv%d）" % (unit.level + outcome.levels_gained)
@@ -118,7 +118,7 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 			barricade.durability_before, "壊れる" if barricade.destroyed else str(barricade.durability_after),
 		])
 	for relic in forecast.relics:
-		summary.lines.append("聖遺物「%s」を得る（%s）" % [Relics.display_name(relic.relic), Relics.summary(relic.relic)])
+		summary.lines.append("聖遺物「%s」を得る（%s）" % [Names.relic(relic.relic), Names.relic_summary(relic.relic)])
 	if actor != null and actor.side != Unit.Side.NEUTRAL:
 		var side := actor.side
 		var before := _percent(forecast.gauge_before[side])
@@ -129,7 +129,7 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 		summary.lines.append("引き分けになる")
 		summary.decides = true
 	elif forecast.winner != -1:
-		summary.lines.append("%s の勝ち" % Names.SIDE_NAMES[forecast.winner])
+		summary.lines.append("%s の勝ち" % Names.side(forecast.winner))
 		summary.decides = true
 	return summary
 

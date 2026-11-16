@@ -4,9 +4,9 @@ extends "res://tests/base_test.gd"
 
 func test_every_kind_has_stats() -> void:
 	for id: UnitKind.Id in UnitKind.Id.values():
-		assert_true(UnitKind.max_hp(id) > 0, UnitKind.display_name(id))
-		assert_true(UnitKind.move_range(id) > 0, UnitKind.display_name(id))
-		assert_true(UnitKind.attack_range(id) > 0, UnitKind.display_name(id))
+		assert_true(UnitKind.max_hp(id) > 0, str(UnitKind.Id.find_key(id)))
+		assert_true(UnitKind.move_range(id) > 0, str(UnitKind.Id.find_key(id)))
+		assert_true(UnitKind.attack_range(id) > 0, str(UnitKind.Id.find_key(id)))
 
 
 func test_sniper() -> void:
@@ -50,7 +50,7 @@ func test_neutrals() -> void:
 func test_only_vanguards_exert_zoc() -> void:
 	for id: UnitKind.Id in UnitKind.Id.values():
 		var expected: bool = id == UnitKind.Id.SHIELD_TROOPER or id == UnitKind.Id.PALADIN
-		assert_eq(UnitKind.exerts_zoc(id), expected, UnitKind.display_name(id))
+		assert_eq(UnitKind.exerts_zoc(id), expected, str(UnitKind.Id.find_key(id)))
 
 
 func test_a_fresh_raider_cannot_one_shot_a_fresh_sniper() -> void:
@@ -58,5 +58,5 @@ func test_a_fresh_raider_cannot_one_shot_a_fresh_sniper() -> void:
 	var sniper_hp := UnitKind.max_hp(UnitKind.Id.SNIPER)
 	var raider_gain: int = Growth.GAINS[UnitKind.Role.RAIDER][Unit.Stat.POWER]
 	for raider: UnitKind.Id in [UnitKind.Id.COMMANDO, UnitKind.Id.SPELLBLADE]:
-		assert_true(UnitKind.power(raider) < sniper_hp, UnitKind.display_name(raider))
-		assert_true(UnitKind.power(raider) + raider_gain >= sniper_hp, UnitKind.display_name(raider))
+		assert_true(UnitKind.power(raider) < sniper_hp, str(UnitKind.Id.find_key(raider)))
+		assert_true(UnitKind.power(raider) + raider_gain >= sniper_hp, str(UnitKind.Id.find_key(raider)))

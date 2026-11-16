@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## ストーリー（game/story.gd、game/story_battle.gd、game/story/）: 話の流れ、話の対戦、クリアの記録。
 
+const Names := preload("res://game/names.gd")
 const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
@@ -160,7 +161,7 @@ func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each()
 	assert_true(first.is_valid(), "既定の編成は、出撃できる")
 	assert_eq(first.entries.size(), first.rules.max_units)
 	for kind: UnitKind.Id in Story.kinds_before(_episode(&"ridge_path")):
-		assert_eq(first.entries.filter(func(e: DeckEntry) -> bool: return e.kind == kind).size(), 2, "雇える駒を、まんべんなく雇う: %s" % UnitKind.display_name(kind))
+		assert_eq(first.entries.filter(func(e: DeckEntry) -> bool: return e.kind == kind).size(), 2, "雇える駒を、まんべんなく雇う: %s" % Names.kind(kind))
 	for episode: RefCounted in Story.military().episodes:
 		var deck := Story.default_deck(Story.unlocked_before(episode))
 		assert_true(deck.is_valid(), "%s の既定の編成は、出撃できる" % episode.title)
@@ -172,7 +173,7 @@ func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each()
 			assert_true(UnitKind.role(entry.kind) >= last_role, "並びは役割の順（前衛が前）")
 			last_role = UnitKind.role(entry.kind)
 		for kind: UnitKind.Id in Story.kinds_before(episode):
-			assert_true(deck.entries.any(func(e: DeckEntry) -> bool: return e.kind == kind), "雇える駒は、どれも 1 体は入る: %s" % UnitKind.display_name(kind))
+			assert_true(deck.entries.any(func(e: DeckEntry) -> bool: return e.kind == kind), "雇える駒は、どれも 1 体は入る: %s" % Names.kind(kind))
 
 
 func test_story_battles_offer_choosing_the_squad_again() -> void:
@@ -240,7 +241,7 @@ func test_story_rules_hire_only_unlocked_kinds_and_items_within_the_unlocked_bud
 	assert_eq(rules.max_units, DeckRules.versus().max_units)
 	assert_eq(rules.items(), Story.military().starting_items)
 	for kind: UnitKind.Id in DeckRules.versus().roster(Story.military().army):
-		assert_eq(rules.allows(Story.military().army, kind), Story.military().starting_kinds.has(kind), UnitKind.display_name(kind))
+		assert_eq(rules.allows(Story.military().army, kind), Story.military().starting_kinds.has(kind), Names.kind(kind))
 	var deck := Story.default_deck(start)
 	assert_true(deck.is_valid(), str(deck.problems()))
 	var everything := Story.starting()
@@ -293,7 +294,7 @@ func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
 	var lines: Array = run.data()["lines"]
 	assert_eq(lines.size(), episode.after.size() + Story.starting().news_of(episode).size())
 	assert_eq(lines[-1]["side"], Story.NOTICE_SIDE)
-	assert_true(lines[-1]["text"].contains(UnitKind.display_name(episode.unlock_kinds[0])), lines[-1]["text"])
+	assert_true(lines[-1]["text"].contains(Names.kind(episode.unlock_kinds[0])), lines[-1]["text"])
 	story.clear(episode.id)
 	run = story.run_now(episode)
 	for i in 3:
