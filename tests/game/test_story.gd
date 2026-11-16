@@ -202,6 +202,44 @@ func test_story_starts_from_the_first_episode_not_cleared() -> void:
 	assert_eq(story.next_episode(), Story.military().episodes[0], "全部クリアしたら、最初の話をもう一度")
 
 
+## どの物語も、話を並びの順にクリアすると、その物語の軍の駒・持ち物・コスト上限が増え、終わりには軍の駒が全部そろう。
+func test_every_campaign_unlocks_step_by_step_and_ends_with_every_kind() -> void:
+	for campaign in Story.campaigns():
+		if not Story.is_ready(campaign):
+			continue
+		var story := Story.new()
+		story.choose_campaign(campaign)
+		var budget: int = campaign.starting_budget
+		var kinds := campaign.starting_kinds.duplicate()
+		for episode: RefCounted in campaign.episodes:
+			assert_eq(Story.unlocked_before(episode).budget, budget, "%s を初めて遊ぶときのコスト上限" % episode.id)
+			assert_eq(Story.unlocked_before(episode).kinds, kinds, "%s を初めて遊ぶときの駒" % episode.id)
+			story.clear(episode.id)
+			budget += episode.budget_up
+			kinds.append_array(episode.unlock_kinds)
+		assert_eq(story.unlocked().budget, budget)
+		assert_eq(kinds.size(), DeckRules.versus().roster(campaign.army).size(), "%s: 物語の終わりには、軍の駒が全部そろう" % campaign.title)
+		assert_true(campaign.starting_budget < DeckRules.versus().budget(campaign.army), "%s: 最初は、対戦のコスト上限より低い" % campaign.title)
+
+
+## 2 つ目の物語の記録が無い古いセーブ（版 1 の形、版 2 で MILITARY の物語だけ）からも、2 つ目の物語を頭から遊べる。
+func test_an_old_save_without_the_second_campaign_starts_it_from_the_top() -> void:
+	var other: RefCounted = Story.campaigns()[1]
+	for data: Dictionary in [{"cleared": ["ridge_path"], "squad": "5"}, {"campaigns": {"military": {"cleared": ["ridge_path"]}}}]:
+		var story := Story.new()
+		story.load_data(data)
+		assert_true(story.is_cleared(&"ridge_path"), "MILITARY の物語の記録は、そのまま読む")
+		story.choose_campaign(other)
+		assert_eq(story.cleared_count(), 0)
+		assert_eq(story.squad_id, "")
+		assert_eq(story.unlocked_kinds(), other.starting_kinds)
+		assert_true(story.is_available(other.episodes[0]), "2 つ目の物語の最初の話を遊べる")
+		for later: RefCounted in other.episodes.slice(1):
+			assert_false(story.is_available(later), "%s: 前の話をクリアするまで遊べない" % later.id)
+		assert_false(story.all_cleared())
+		assert_false((story.to_data()["campaigns"] as Dictionary).has(String(other.id)), "遊んでいない物語は書かない")
+
+
 func test_kinds_items_and_budget_are_unlocked_by_clearing_episodes() -> void:
 	var story := Story.new()
 	assert_eq(story.unlocked_kinds(), Story.military().starting_kinds, "最初は、最初から雇える駒だけ")

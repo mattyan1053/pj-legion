@@ -130,7 +130,10 @@ const SCENES := {
 	"look_boulder_crag": "大岩の峠（草原の見た目）の真ん中の大岩を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag": "双子結晶の真ん中の大きな岩山を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
-	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語。FANTASY は準備中）",
+	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
+	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
+	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
+	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）",
 	"story_tutorial_list": "ストーリー: 何もクリアしていない話の一覧（頭のチュートリアルの話。番号に「（演習）」）",
@@ -1594,7 +1597,7 @@ func _start_story(number := -1) -> bool:
 	return _app.current_id() == SceneFlow.TALK
 
 
-## タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語だけ選べる。ほかは準備中）。
+## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。
 func _scene_story_campaigns() -> bool:
 	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_story()
@@ -1608,6 +1611,43 @@ func _scene_story_list() -> bool:
 	_app.current_scene().choose(Story.military())
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.EPISODES
+
+
+## 2 つ目の物語（FANTASY の物語）。
+func _fantasy() -> RefCounted:
+	return Story.campaigns()[1]
+
+
+## FANTASY の物語の話の一覧（何もクリアしていない。頭の演習）。
+func _scene_story_fantasy_list() -> bool:
+	if not await _scene_story_campaigns():
+		return false
+	_app.current_scene().choose(_fantasy())
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.EPISODES
+
+
+## FANTASY の物語の演習（第 2 話）の出撃準備: この話で覚えること、決まっている部隊。
+func _scene_story_fantasy_sortie() -> bool:
+	_app.context.story.clear(_fantasy().episodes[0].id)
+	if not await _scene_story_fantasy_list():
+		return false
+	_app.current_scene().choose(_fantasy().episodes[1])
+	await _app.scene_changed
+	if _app.current_id() != SceneFlow.TALK or not await _scene_story_sortie_from_talk():
+		return false
+	return _app.current_scene().is_squad_fixed()
+
+
+## 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて、最初から雇える駒で組む。
+func _scene_story_fantasy_decks() -> bool:
+	await _app.go(SceneFlow.DECKS)
+	var screen: Node = _app.current_scene()
+	screen.set_mode(_fantasy().rules_id)
+	screen.press_new()
+	for kind: UnitKind.Id in _fantasy().starting_kinds:
+		screen.hire(kind)
+	return screen.editing_deck().army == _fantasy().army and not screen.editing_deck().entries.is_empty()
 
 
 ## 部隊を選ぶ最初の話（部隊が決まっていない最初の話。チュートリアルのあとの本編の 1 話目）の番号（0 から）。
