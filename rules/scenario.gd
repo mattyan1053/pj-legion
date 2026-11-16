@@ -29,6 +29,10 @@ var hold_turns := 0
 ## プレイヤーごとの、対戦の始めの必殺技のゲージ（0 から Ults.GAUGE_MAX。docs/tactical-ult.md）。既定は 0。
 ## 対戦を作るとき、対戦（Battle.ult_gauge）へ写す。必殺技の使い方を教える話が、ゲージがたまる手前から始めるのに使う。
 var start_gauge: Array[int] = [0, 0]
+## プレイヤーごとの、駒の始めのレベルと経験値（[レベル, 経験値] の列。部隊の並びの順に、将でない駒へ当てる）。
+## 列が短ければ、残りの駒はいつもどおり（レベル 1、経験値 0）。既定は、どちらも空。
+## 対戦を作るとき、置いた駒へ写す（Growth.start_at）。進化の選び方を教える話が、あと少しで進化する駒から始めるのに使う。
+var start_growth: Array[Array] = [[], []]
 
 ## いまの対戦モードの勝ち方: 敵の将を倒す、敵の本陣を占拠し続ける。
 const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
@@ -89,6 +93,15 @@ func hold_for(side: Unit.Side, turns: int) -> void:
 ## side の、対戦の始めの必殺技のゲージを amount にする（0 から Ults.GAUGE_MAX に収める）。
 func set_start_gauge(side: Unit.Side, amount: int) -> void:
 	start_gauge[side] = clampi(amount, 0, Ults.GAUGE_MAX)
+
+
+## side の駒の始めのレベルと経験値を rows（[レベル, 経験値] の列。部隊の並びの順）にする。
+## 値は Growth.start_at と同じに収める（レベルは 1 から Growth.MAX_LEVEL - 1、経験値は 0 から Growth.EXPERIENCE_PER_LEVEL - 1）。
+func set_start_growth(side: Unit.Side, rows: Array) -> void:
+	var kept: Array = []
+	for row: Array in rows:
+		kept.append([Growth.start_level(row[0]), Growth.start_experience(row[1])])
+	start_growth[side] = kept
 
 
 ## side の勝ちの条件の列（写し）。

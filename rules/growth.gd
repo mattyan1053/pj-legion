@@ -133,3 +133,27 @@ static func level_up(unit: Unit) -> LevelUpEvent:
 	for which: Unit.Stat in gains:
 		unit.add_growth(which, gains[which])
 	return LevelUpEvent.new(unit, gains)
+
+
+## 対戦の始めの駒 unit を、レベル level・経験値 experience にする（戦いの定義の start_growth。docs/scenario.md）。
+## 上がったレベルのぶん、レベルアップと同じ量（GAINS）だけ能力値を伸ばし、HP も伸びたぶん増える。イベントは出さない（対戦の前なので）。
+## 進化は対戦の中で選ぶので、レベルは MAX_LEVEL - 1 まで、経験値は EXPERIENCE_PER_LEVEL - 1 までに収める。育たない駒は変えない。
+static func start_at(unit: Unit, level: int, experience: int) -> void:
+	if not can_grow(unit):
+		return
+	var gains: Dictionary = GAINS[UnitKind.role(unit.kind)]
+	for i in start_level(level) - unit.level:
+		unit.level += 1
+		for which: Unit.Stat in gains:
+			unit.add_growth(which, gains[which])
+	unit.experience = start_experience(experience)
+
+
+## 始めのレベルとして置ける値に収める（1 から MAX_LEVEL - 1）。
+static func start_level(level: int) -> int:
+	return clampi(level, 1, MAX_LEVEL - 1)
+
+
+## 始めの経験値として置ける値に収める（0 から EXPERIENCE_PER_LEVEL - 1。置いた直後にレベルが上がらない）。
+static func start_experience(experience: int) -> int:
+	return clampi(experience, 0, EXPERIENCE_PER_LEVEL - 1)
