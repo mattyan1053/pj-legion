@@ -17,6 +17,13 @@ func _store() -> RefCounted:
 	return SaveStore.new(_dir)
 
 
+## _store() で作ったディレクトリを消す（user:// に test_story_* を残さない）。_store() を使うテストの最後に呼ぶ。
+func _cleanup() -> void:
+	if _dir != "":
+		_store().remove(Story.STORE_NAME)
+		DirAccess.remove_absolute(_dir)
+
+
 func test_every_episode_has_an_id_a_title_and_short_talks() -> void:
 	var ids: Array[StringName] = []
 	for episode in Story.EPISODES:
@@ -129,6 +136,7 @@ func test_clears_are_saved_and_read_back() -> void:
 	assert_true(again.is_cleared(episode.ID))
 	assert_eq(again.cleared_count(), 1)
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": [String(episode.ID)]})
+	_cleanup()
 
 
 func test_the_chosen_squad_is_saved_with_the_clears() -> void:
@@ -146,6 +154,7 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": []}, "既定の編成に戻したら、書かない")
 	story.load_data({"cleared": [], "squad": 4})
 	assert_eq(story.squad_id, "", "形の違う部隊の記録は、既定の編成として読む")
+	_cleanup()
 
 
 func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each() -> void:
