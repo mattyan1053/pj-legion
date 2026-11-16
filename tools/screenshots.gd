@@ -111,6 +111,7 @@ const SCENES := {
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
+	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
 	"story_cleared": "ストーリー: 話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
 ## 場面を作る対戦の最初の種。
@@ -1355,6 +1356,14 @@ func _scene_story_after() -> bool:
 	screen.press_continue()
 	await _app.scene_changed
 	return _app.current_id() == &"talk"
+
+
+func _scene_story_unlock() -> bool:
+	if not await _scene_story_after():
+		return false
+	var talk: Node = _app.current_scene()
+	talk.press_skip()
+	return talk.speaker() == Story.NOTICE_NAME
 
 
 func _scene_story_cleared() -> bool:

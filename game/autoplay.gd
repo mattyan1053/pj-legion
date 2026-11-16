@@ -1623,12 +1623,17 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == &"talk", "決着の画面の「次へ」で、あとの会話へ進まない")
 	talk = app.current_scene()
-	_expect(talk.line_count() == episode.AFTER.size(), "あとの会話の文の数が違う")
-	for i: int in talk.line_count():
+	_expect(talk.line_count() == episode.AFTER.size() + episode.UNLOCKS.size(), "あとの会話の文の数が違う（最後に、解放した駒の知らせ）")
+	if not episode.UNLOCKS.is_empty():
+		talk.press_skip()
+		_expect(talk.line_index() == episode.AFTER.size() and talk.speaker() == "知らせ"
+				and talk.line_text().contains(UnitKind.display_name(episode.UNLOCKS[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
+	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
 	await app.scene_changed
 	_expect(app.current_id() == &"title" and app.context.run == null, "あとの会話を送りきっても、タイトルへ戻らない")
-	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）", "クリアしたのに、タイトルに済みの印が無い")
+	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
+	_expect(story.unlocked_kinds().has(episode.UNLOCKS[0]) if not episode.UNLOCKS.is_empty() else true, "クリアしても、駒が増えていない")
 
 
 func _finish(message: String, code: int) -> void:

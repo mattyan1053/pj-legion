@@ -19,6 +19,7 @@ extends SceneTree
 ##                   倒した側の勝率のうち、聖遺物のぶんと、もともと優勢な側が倒しているぶんを切り分ける（docs/relic-buff.md の「狩られ方」）
 ##   --episode=PATH ストーリーの話（game/episodes/ のスクリプトのパス）の対戦を、両方とも CPU で回す（人の側も CPU が持つ）。
 ##                   盤・部隊・初期位置はその話のもの（ステージと軍の組み合わせは回さない。--decks、--pairings、--stage は見ない）。
+##                   人の側は、その話を初めて遊ぶときの既定の編成（story.gd の first_battle）。
 ##                   話の敵の強さを、人の側の勝率で測る（docs/story.md の「敵の強さ」）
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
@@ -27,7 +28,7 @@ extends SceneTree
 ## 同じ引数なら、いつも同じ結果になる（考える時間の欄を除く）。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
-const StoryBattle := preload("res://game/story_battle.gd")
+const Story := preload("res://game/story.gd")
 const Names := preload("res://game/names.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
@@ -290,7 +291,7 @@ func _initialize() -> void:
 			setup.decks[side] = _deck(armies[side], deck_mode)
 		if episode != null:
 			stage = EPISODE_STAGE as BoardGenerator.Stage
-			setup = StoryBattle.new(episode).make_setup(first_seed + game)
+			setup = Story.first_battle(episode).make_setup(first_seed + game)
 			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
@@ -414,7 +415,7 @@ func _initialize() -> void:
 		games, first_seed, first_seed + games - 1, deck_mode, max_turns,
 	])
 	if episode != null:
-		var sample := StoryBattle.new(episode).make_setup(first_seed)
+		var sample := Story.first_battle(episode).make_setup(first_seed)
 		_episode_title = episode.TITLE
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			print("  プレイヤー%d（%s）: %s" % [side + 1, "人の側" if side == Unit.Side.PLAYER1 else "敵", _deck_text(sample.deck_of(side))])
