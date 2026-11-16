@@ -16,23 +16,44 @@ const OPTIONAL := [&"HOLD_TURNS", &"WINS", &"CUES", &"HUMAN_LEADER", &"ENEMY_LEA
 
 
 func test_every_episode_is_well_formed() -> void:
-	for episode in Story.EPISODES:
+	for episode in Story.all_episodes():
 		assert_eq(_problems(episode), [] as Array[String], "%s の話のデータ" % episode.ID)
 
 
-func test_unlocks_are_new_kinds_and_unlocked_once() -> void:
-	var unlocked: Array = Story.STARTING_KINDS.duplicate()
-	for episode in Story.EPISODES:
-		for kind: UnitKind.Id in episode.UNLOCKS:
-			assert_false(unlocked.has(kind), "%s: %s はもう雇える" % [episode.ID, UnitKind.display_name(kind)])
-			unlocked.append(kind)
+func test_every_campaign_is_well_formed() -> void:
+	var ids: Array[StringName] = []
+	var rules_ids: Array[StringName] = [DeckRules.VERSUS]
+	var episodes: Array[Script] = []
+	for campaign in Story.CAMPAIGNS:
+		assert_false(ids.has(campaign.ID), "物語の id が重なっている: %s" % campaign.ID)
+		ids.append(campaign.ID)
+		assert_false(rules_ids.has(campaign.RULES_ID), "編成の決まりの名前が重なっている: %s" % campaign.RULES_ID)
+		rules_ids.append(campaign.RULES_ID)
+		assert_ne(campaign.TITLE, "", String(campaign.ID))
+		assert_false(campaign.STARTING_KINDS.is_empty(), "%s: 最初から雇える駒が無い" % campaign.ID)
+		for kind: UnitKind.Id in campaign.STARTING_KINDS:
+			assert_eq(UnitKind.army(kind), campaign.ARMY, "%s: 最初から雇える駒は、その物語の軍の駒" % campaign.ID)
+		for episode: Script in campaign.EPISODES:
+			assert_false(episodes.has(episode), "%s は 2 つの物語に入っている" % episode.ID)
+			episodes.append(episode)
+	assert_true(Story.is_ready(Story.CAMPAIGNS[0]), "最初の物語は遊べる")
+
+
+func test_unlocks_are_new_kinds_of_the_campaign_army_and_unlocked_once() -> void:
+	for campaign in Story.CAMPAIGNS:
+		var unlocked: Array = campaign.STARTING_KINDS.duplicate()
+		for episode: Script in campaign.EPISODES:
+			for kind: UnitKind.Id in episode.UNLOCKS:
+				assert_false(unlocked.has(kind), "%s: %s はもう雇える" % [episode.ID, UnitKind.display_name(kind)])
+				unlocked.append(kind)
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
-	for episode in Story.EPISODES:
-		var deck := Deck.new(Story.ARMY, Story.rules_of(Story.STARTING_KINDS))
+	for episode in Story.all_episodes():
+		var campaign := Story.campaign_of(episode)
+		var deck := Deck.new(campaign.ARMY, Story.rules_of(campaign.STARTING_KINDS, campaign))
 		for i in Deck.MAX_UNITS:
-			deck.add(Story.STARTING_KINDS[i % Story.STARTING_KINDS.size()])
+			deck.add(campaign.STARTING_KINDS[i % campaign.STARTING_KINDS.size()])
 		var setup := StoryBattle.new(episode, deck).make_setup(3)
 		setup.ignore_budget = true  # 数だけを見る（予算は出撃の準備と編成の画面が見る）
 		var battle := setup.create_battle()

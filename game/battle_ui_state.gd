@@ -44,6 +44,8 @@ const CONFIRM_GUARD_MSEC := 400
 var confirming_end := false
 ## 必殺技を使うかを、もう一度押して確かめている途中か（対象を選ばず、取り消せないので、1 回では使わない）。
 var confirming_ult := false
+## このターンの残りを CPU に任せる（おまかせ）かを、もう一度押して確かめている途中か（取り消せないので、1 回では任せない）。
+var confirming_auto := false
 ## いまの確かめを始めた時刻（ミリ秒。場面が渡す時計の値）。
 var confirm_started_msec := 0
 ## マウスが乗っているメニューの項目（乗っていなければ空の名前）。その項目の説明を、左下の枠に出す。
@@ -74,6 +76,7 @@ func clear_for_new_battle() -> void:
 	mode = Mode.NONE
 	confirming_end = false
 	confirming_ult = false
+	confirming_auto = false
 	pinned_ids.clear()
 	cancel_press()
 
@@ -85,6 +88,7 @@ func clear_after_action() -> void:
 	inspected_cell = NO_CELL
 	confirming_end = false
 	confirming_ult = false
+	confirming_auto = false
 
 
 ## 行動の再生が終わったあとに、選んでいる駒を決める。
@@ -112,6 +116,7 @@ func select(unit_id: int) -> bool:
 	mode = Mode.NONE
 	confirming_end = false
 	confirming_ult = false
+	confirming_auto = false
 	return changed
 
 
@@ -130,6 +135,16 @@ func focus_selected() -> void:
 ## 必殺技を使うかを確かめ始める（対象を選ぶ途中はやめる）。now_msec は、いまの時刻（ミリ秒）。
 func start_confirming_ult(now_msec: int) -> void:
 	confirming_ult = true
+	confirming_auto = false
+	mode = Mode.NONE
+	confirm_started_msec = now_msec
+
+
+## このターンの残りを CPU に任せるかを、確かめ始める（ほかの確かめと、対象を選ぶ途中はやめる）。now_msec は、いまの時刻（ミリ秒）。
+func start_confirming_auto(now_msec: int) -> void:
+	confirming_auto = true
+	confirming_end = false
+	confirming_ult = false
 	mode = Mode.NONE
 	confirm_started_msec = now_msec
 
@@ -137,6 +152,7 @@ func start_confirming_ult(now_msec: int) -> void:
 ## 未行動の駒を残したままターンを終えるかを、確かめ始める。now_msec は、いまの時刻（ミリ秒）。
 func start_confirming_end(now_msec: int) -> void:
 	confirming_end = true
+	confirming_auto = false
 	confirm_started_msec = now_msec
 
 
@@ -152,6 +168,9 @@ func confirm_guarded(now_msec: int) -> bool:
 func back(moving: bool) -> Back:
 	if confirming_ult:
 		confirming_ult = false
+		return Back.DONE
+	if confirming_auto:
+		confirming_auto = false
 		return Back.DONE
 	if inspected_id != 0:
 		inspect(0)  # 見るのをやめて、元の行動の途中へ戻る
@@ -201,6 +220,8 @@ func reconcile(
 ) -> void:
 	if cpu_running or not can_ult:
 		confirming_ult = false
+	if cpu_running or cpu_turn:
+		confirming_auto = false
 	if not selected_exists:
 		selected_id = 0
 	if not selected_exists or over or cpu_turn or not selected_can_act:

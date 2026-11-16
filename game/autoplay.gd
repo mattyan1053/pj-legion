@@ -47,16 +47,17 @@ const SCENES := {
 	"system_menu": "システムメニューと設定の画面",
 	"minimap": "ミニマップ（押す・ドラッグで視点が移る、設定で隠す）",
 	"cpu": "CPU の番（止める、ログ、カメラが追う）",
+	"auto_turn": "自分の番のおまかせ（1 回目は確かめるだけ。2 回目で、残りの駒を CPU が動かしてターンを終える）",
 	"cpu_skip": "相手（CPU）の番の早送りとスキップ（中立のフェーズから。途中で決着したら、決着を見せる）",
 	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦の設定を行き来する",
 	"decks": "部隊の編成",
-	"story": "ストーリーの 1 話の通し（タイトル → 話の一覧 → 会話 → 出撃の準備 → 対戦 → 勝って「次へ」「部隊を選び直す」→ 会話 → 話の一覧 → タイトル、クリアの記録）",
+	"story": "ストーリーの 1 話の通し（タイトル → 物語を選ぶ → 話の一覧 → 会話 → 出撃の準備 → 対戦 → 勝って「次へ」「部隊を選び直す」→ 会話 → 話の一覧 → 物語を選ぶ → タイトル、クリアの記録）",
 }
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
 	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
-		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip"],
+		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
 	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }
 
@@ -1343,6 +1344,38 @@ func _queue_cpu_scene() -> void:
 		_scene.set_opponent(false))
 
 
+## 自分の番のおまかせ。人どうしの対戦で、プレイヤー1 の番を任せる。1 回目と、確かめた直後の 2 回目では任せず、
+## 右クリックでやめられる。任せると、未行動の駒を CPU が動かしてターンを終え、プレイヤー2（人）の番で止まる。
+func _queue_auto_turn_scene() -> void:
+	var board := _small_board(Vector2i(8, 5))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var mine := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 3))
+	var foe := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(4, 2))
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+	_scripted.append(func() -> void:
+		_expect(_scene.auto_button_state() == ["おまかせ", true], "自分の番に「おまかせ」が押せない")
+		_scene.press_auto()
+		_expect(_scene.is_confirming_auto() and _scene.auto_side() == -1, "1 回目で任せた（か、確かめにならない）")
+		_scene.press_auto()
+		_expect(_scene.auto_side() == -1, "確かめた直後の 2 回目で任せた")
+		_scene.cancel()
+		_expect(not _scene.is_confirming_auto(), "右クリックで、おまかせの確かめをやめない")
+		_scene.press_auto()
+		_scene.pass_confirm_guard()
+		_scene.press_auto()
+		_expect(_scene.auto_side() == Unit.Side.PLAYER1 and _scene.is_busy(), "2 回目で任せなかった")
+		_expect(_scene.watch_controls_state()[0], "任せている間に、早送り・スキップが出ない"))
+	_scripted.append(func() -> void:
+		_expect(battle.phase == Unit.Side.PLAYER2 and _scene.auto_side() == -1, "任せたターンが終わらなかった（か、次の番も任せた）")
+		_expect(mine.has_moved or mine.acted or foe.hp < foe.max_hp() or mine.cell != Vector2i(2, 3), "任せた駒が何もしなかった")
+		_expect(not _scene.is_busy() and _scene.auto_button_state()[1], "人の番（プレイヤー2）で止まらなかった"))
+
+
 ## 相手（CPU）の番の早送りとスキップ。人がターンを終えると、中立のフェーズから相手の番が見ているだけの番になり、
 ## 下の帯に「早送り」「スキップ」が出る。スキップすると、自分の番が来るまで見せずに進み、盤の見た目は状態と同じになる。
 ## 2 局目は、スキップの途中で CPU が人の将を倒して決着し、決着の画面が出る。
@@ -1363,8 +1396,9 @@ func _queue_cpu_skip_scene() -> void:
 	var seen_lines := {}
 
 	_scripted.append(func() -> void:
-		_scene.set_opponent(true)
-		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+		# 前の場面が相手の番で終わっていても、CPU に引き取らせないよう、先に始め直してから相手を CPU にする。
+		_scene.start_with(battle, StageLook.GRASSLAND, 1)
+		_scene.set_opponent(true))
 	_scripted.append(func() -> void:
 		_expect(not _scene.watch_controls_state()[0], "自分の番に、早送り・スキップが出ている")
 		var lines_before: int = _scene.battle_log.entries.size()
@@ -1840,11 +1874,19 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
 	app.current_scene().press_story()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.EPISODES, "タイトルの「ストーリー」で、話の一覧へ進まない")
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "タイトルの「ストーリー」で、物語を選ぶ場面へ進まない")
+	var campaigns: Node = app.current_scene()
+	_expect(campaigns.campaigns() == Story.CAMPAIGNS, "物語を選ぶ場面に、全部の物語が並んでいない")
+	for each: Script in Story.CAMPAIGNS:
+		_expect(campaigns.is_card_enabled(each) == Story.is_ready(each)
+				and (campaigns.status_text(each) == "準備中") == not Story.is_ready(each), "話の無い物語を選べる（か、ある物語を選べない）: %s" % each.TITLE)
+	campaigns.choose(Story.MILITARY)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.EPISODES and story.campaign == Story.MILITARY, "物語を選んでも、その物語の話の一覧へ進まない")
 	var list: Node = app.current_scene()
-	_expect(list.episodes().size() == Story.EPISODES.size(), "話の一覧に、全部の話が並んでいない")
-	_expect(list.is_card_enabled(Story.EPISODES[0]) and list.card_status(Story.EPISODES[0]) == "未クリア", "最初の話を選べない")
-	for later: Script in Story.EPISODES.slice(1):
+	_expect(list.episodes().size() == Story.MILITARY.EPISODES.size(), "話の一覧に、全部の話が並んでいない")
+	_expect(list.is_card_enabled(Story.MILITARY.EPISODES[0]) and list.card_status(Story.MILITARY.EPISODES[0]) == "未クリア", "最初の話を選べない")
+	for later: Script in Story.MILITARY.EPISODES.slice(1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.TITLE)
 	list.choose(episode)
 	await app.scene_changed
@@ -1908,12 +1950,16 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
 	list = app.current_scene()
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
-	if Story.EPISODES.size() > 1:
-		_expect(list.is_card_enabled(Story.EPISODES[1]), "前の話をクリアしたのに、次の話を選べない")
+	if Story.MILITARY.EPISODES.size() > 1:
+		_expect(list.is_card_enabled(Story.MILITARY.EPISODES[1]), "前の話をクリアしたのに、次の話を選べない")
 	_expect(list.roster_text().contains(UnitKind.display_name(episode.UNLOCKS[0])) if not episode.UNLOCKS.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
 	list.press_back()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.TITLE, "話の一覧の「タイトルへ戻る」で、タイトルへ戻らない")
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "話の一覧の「物語を選び直す」で、物語を選ぶ場面へ戻らない")
+	_expect(app.current_scene().status_text(Story.MILITARY) == "1 / %d 話クリア" % Story.MILITARY.EPISODES.size(), "物語のカードに、クリアした話の数が出ない")
+	app.current_scene().press_back()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.TITLE, "物語を選ぶ場面の「タイトルへ戻る」で、タイトルへ戻らない")
 	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
 	_expect(story.unlocked_kinds().has(episode.UNLOCKS[0]) if not episode.UNLOCKS.is_empty() else true, "クリアしても、駒が増えていない")
 
@@ -1938,7 +1984,7 @@ func _win_story_battle(app: Node, sortie: Node, episode: Script) -> Node:
 	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.ENEMY_ARMY, "話の敵を CPU が動かしていない")
 	# 対戦の途中の会話の札は、上の帯のすぐ下で、勝ち方の札・視点の案内・ミニマップと重ならない（いちばん長い台詞で確かめる）。
 	var longest := ""
-	for each: Script in Story.EPISODES:
+	for each: Script in Story.MILITARY.EPISODES:
 		var constants: Dictionary = each.get_script_constant_map()
 		for cue: Array in constants.get("CUES", []):
 			if (cue[3] as String).length() > longest.length():

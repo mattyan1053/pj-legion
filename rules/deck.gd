@@ -15,6 +15,7 @@ enum Problem {
 	OVER_BUDGET,  ## 合計コストが予算を超えている
 	TOO_MUCH_EQUIPMENT,  ## 装備を持てる数を超えて持っている駒がいる
 	NOT_IN_ROSTER,  ## この軍のロスターに無い駒がいる
+	ITEM_NOT_ALLOWED,  ## 決まりで持たせられない装備を持っている駒がいる
 }
 
 ## 対戦の決まりで雇える駒の数の上限（将を除く）。
@@ -92,6 +93,8 @@ func problems() -> Array[Problem]:
 		found.append(Problem.TOO_MUCH_EQUIPMENT)
 	if entries.any(func(entry: DeckEntry) -> bool: return not _in_roster(entry.kind)):
 		found.append(Problem.NOT_IN_ROSTER)
+	if entries.any(func(entry: DeckEntry) -> bool: return entry.equipment.any(func(item: Equipment.Id) -> bool: return not rules.allows_item(item))):
+		found.append(Problem.ITEM_NOT_ALLOWED)
 	return found
 
 
