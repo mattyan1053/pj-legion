@@ -29,6 +29,8 @@ signal end_turn_pressed
 signal evolution_chosen(index: int)
 ## 敵の全員の脅威範囲の切り替えが押された（出す・消すは呼ぶ側が決める）。
 signal threat_toggled
+## 駒の情報の枠の「範囲を表示したまま」のスイッチが押された。
+signal pin_toggled
 ## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
 ## ログのボタンが押された。
@@ -131,6 +133,8 @@ var viewer_side := Unit.Side.PLAYER1
 ## 陣営ごとの軍（Battle.armies。対戦の画面が入れる）。所属の欄に出す軍は、駒の種類の軍でなく、陣営の軍。
 var side_armies: Array = []
 var _info_forecast: Label
+## 見ている相手の駒の攻撃範囲を、表示したままにするスイッチ（枠のいちばん下。set_pin_switch）。
+var _info_pin: CheckButton
 var _cell_label: Label
 var _hint_label: Label
 var _end_turn_button: Button
@@ -146,6 +150,10 @@ var _menu_column: VBoxContainer
 ## いまメニューに出している項目（[名前, 文字, 押せるか] の列）と、項目の名前 -> ボタン。
 var _menu_items: Array = []
 var _menu_buttons := {}
+## メニューが届くマスに掛かっているか（set_menu_see_through）。
+var _menu_see_through := false
+## 届くマスに掛かったメニューの、マウスが乗っていない間の濃さ。
+const MENU_SEE_THROUGH_ALPHA := 0.6
 ## 文字の幅の覚え（"文字の大きさ:文字" -> px）。折り返しに使う。
 var _char_widths := {}
 var _banner: Label
@@ -281,6 +289,7 @@ func is_ult_enabled() -> bool:
 ## 状態（残りの期間と効果） → 装備 → スキル（名前と使えるか、説明） → 進化の特性 → 行動の状態といるマス → note。
 func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
+	_info_pin.visible = false  # 出すときは、このあとに set_pin_switch
 	if unit == null:
 		return
 	var role: String = Names.ROLE_NAMES.get(UnitKind.role(unit.kind), "")
@@ -380,6 +389,7 @@ static func status_text(type: Status.Type, turns: int) -> String:
 ## クリックしたマスの情報を、駒の情報と同じ枠に出す。title は見出し（マスの位置と地形）、body は説明（行ごと）。
 func show_cell_info(title: String, body: String) -> void:
 	_info_panel.visible = true
+	_info_pin.visible = false
 	_info_name.text = title
 	_info_name.add_theme_color_override("font_color", Palette.TEXT)
 	_info_icon.visible = false
@@ -388,6 +398,26 @@ func show_cell_info(title: String, body: String) -> void:
 	_set_folded(_info_stats, body, INFO_WIDTH)
 	for label: Label in [_info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
 		label.visible = false
+
+
+## 駒の情報の枠の「範囲を表示したまま」のスイッチ。shown で出すか、pinned で入っているか（show_unit のあとに呼ぶ）。
+func set_pin_switch(shown: bool, pinned: bool) -> void:
+	_info_pin.visible = shown and _info_panel.visible
+	_info_pin.set_pressed_no_signal(pinned)
+
+
+## 「範囲を表示したまま」のスイッチを出しているか、入っているか。検査用。
+func pin_switch_state() -> Array[bool]:
+	return [_info_pin.visible, _info_pin.button_pressed]
+
+
+## 「範囲を表示したまま」のスイッチを押す（クリックと同じ道）。出ていれば真。検査用。
+func press_pin_switch() -> bool:
+	if not _info_pin.visible:
+		return false
+	_info_pin.button_pressed = not _info_pin.button_pressed
+	_info_pin.pressed.emit()
+	return true
 
 
 ## label に、折り返した text を出す。空なら隠す。
@@ -499,6 +529,21 @@ func place_menu(at: Vector2, from: Vector2) -> void:
 	_menu_line.points = PackedVector2Array([from, near])
 
 
+## メニューが届くマスに掛かっているか（see_through）。掛かっている間は、マウスが乗っていなければ薄く描く（_process）。
+func set_menu_see_through(see_through: bool) -> void:
+	_menu_see_through = see_through
+
+
+## メニューの濃さ（1 で、ふつう）。検査用。
+func menu_alpha() -> float:
+	return _menu.modulate.a
+
+
+func _update_menu_alpha() -> void:
+	var faded := _menu_see_through and _menu.visible and not menu_rect().grow(6.0).has_point(get_viewport().get_mouse_position())
+	_menu.modulate.a = MENU_SEE_THROUGH_ALPHA if faded else 1.0
+
+
 ## 対戦の途中の会話の札（battle_talk.gd）を入れる。帯・駒のそばのメニュー・予測のパネル・進化の選択・決着の画面より下に描く
 ## （札はクリックを受けないので、上に描くと、隠れたボタンを押せてしまう。札は上の帯のすぐ下の真ん中にあり、帯とは重ならない）。
 ## 駒のそばのメニューか予測のパネルが札に重なったら、札を薄くする（下のメニューやパネルが読めるように）。
@@ -598,6 +643,7 @@ func _process(_delta: float) -> void:
 		_ult_labels[player].self_modulate = shade
 	if _ult_button != null:
 		_ult_button.self_modulate = tint if not _ult_button.disabled else Color.WHITE
+	_update_menu_alpha()
 
 
 ## 画面の中央に、しばらくだけ大きな文字を出す。
@@ -884,6 +930,14 @@ func _build_info_panel() -> void:
 	_info_forecast.add_theme_color_override("font_color", COLOR_FORECAST)
 	# スキルの説明のように長い文は、枠の幅で折り返してから出す（_set_folded。枠を横に広げて盤面を隠さない）。
 	column.add_child(_info_forecast)
+	# 枠は素通しだが、スイッチはクリックを受ける。いちばん下に置く（枠は下にそろうので、中身が変わってもスイッチは動かない）。
+	_info_pin = CheckButton.new()
+	_info_pin.text = "範囲を表示したまま"
+	_info_pin.focus_mode = Control.FOCUS_NONE
+	_info_pin.add_theme_font_size_override("font_size", 15)
+	_info_pin.visible = false
+	_info_pin.pressed.connect(pin_toggled.emit)
+	column.add_child(_info_pin)
 
 
 func _info_line(column: VBoxContainer, font_size: int, color: Color) -> Label:
