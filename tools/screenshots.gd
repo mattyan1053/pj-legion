@@ -32,6 +32,8 @@ const SCENES := {
 	"setup": "対戦の設定の場面（ステージ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
 	"setup_deck": "対戦の設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
+	"setup_preview": "対戦の設定で、CPU の部隊の「編成を確認」を開いたところ",
+	"setup_random": "対戦の設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
 	"deck_list": "部隊の編成: 取っておいた部隊の一覧（出せない部隊も理由つきで並ぶ）",
 	"deck_delete": "部隊の編成: 部隊を消す前の確かめ",
 	"deck_empty": "部隊の編成: 新しく組み始めた、空の部隊",
@@ -451,6 +453,29 @@ func _scene_setup_deck() -> bool:
 	_park_mouse()
 	await get_tree().process_frame
 	panel.open_deck_picker(Unit.Side.PLAYER1)
+	return true
+
+
+func _scene_setup_preview() -> bool:
+	_fill_decks()
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	panel.choose_deck(Unit.Side.PLAYER1, _app.context.decks.items()[0].id)
+	panel.open_preview(Unit.Side.PLAYER2)
+	_park_mouse()
+	return panel.preview().visible
+
+
+func _scene_setup_random() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_random_side()
+	_park_mouse()
 	return true
 
 
@@ -1516,9 +1541,7 @@ func _scene_story_sortie() -> bool:
 func _scene_story_mixed_decks() -> bool:
 	for episode in Story.EPISODES:
 		_app.context.story.clear(episode.ID)
-	await _app.go(SceneFlow.TITLE)
-	_app.current_scene().press_decks()
-	await _app.scene_changed
+	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
 	screen.set_mode(Story.RULES_ID)
 	screen.press_new()
@@ -1676,9 +1699,7 @@ func _scene_story_battle_talk() -> bool:
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。
 func _scene_decks_story() -> bool:
-	await _app.go(SceneFlow.TITLE)
-	_app.current_scene().press_decks()
-	await _app.scene_changed
+	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
 	screen.set_mode(Story.RULES_ID)
 	screen.press_new()

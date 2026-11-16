@@ -1,5 +1,6 @@
 extends Node
-## タイトルの場面。飾らない最小の形: 題名と、対戦・ストーリー・部隊の編成・設定・終える。背景は対戦と同じ景色（backdrop.gd）。
+## タイトルの場面。飾らない最小の形: 題名と、ストーリー・対戦・オプション・終了。背景は対戦と同じ景色（backdrop.gd）。
+## 部隊の編成は、各モードに入ったところから開く（対戦の設定の「部隊を編成する」、出撃の準備の「部隊を編成する」）。
 ## 場面の決まりは scene_flow.gd。
 
 const Palette := preload("res://game/ui_palette.gd")
@@ -7,7 +8,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 
-## 「対戦」で &"start"、「ストーリー」で &"story"（話の一覧へ）、「部隊の編成」で &"decks"。
+## 「対戦」で &"start"、「ストーリー」で &"story"（話の一覧へ）。
 signal finished(outcome: StringName)
 
 const COLOR_PANEL := Palette.OVERLAY
@@ -44,13 +45,20 @@ func _ready() -> void:
 	var gap := HSeparator.new()  # 題字とメニューを分ける線
 	gap.custom_minimum_size = Vector2(0.0, 10.0)
 	column.add_child(gap)
-	_add_button(column, &"start", "対戦", press_start)
-	(_buttons[&"start"] as Button).set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	_add_button(column, &"story", story_label(), press_story)
-	(_buttons[&"story"] as Button).set_meta(&"sound", &"ui_confirm")
-	_add_button(column, &"decks", "部隊の編成", press_decks)
-	_add_button(column, &"settings", "設定", press_settings)
-	_add_button(column, &"quit", "終える", press_quit)
+	(_buttons[&"story"] as Button).set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
+	_add_button(column, &"start", "対戦", press_start)
+	(_buttons[&"start"] as Button).set_meta(&"sound", &"ui_confirm")
+	_add_button(column, &"settings", "オプション", press_settings)
+	_add_button(column, &"quit", "終了", press_quit)
+
+
+## ボタンの文字の並び（上から。検査用）。
+func button_texts() -> Array[String]:
+	var texts: Array[String] = []
+	for id: StringName in _buttons:
+		texts.append((_buttons[id] as Button).text)
+	return texts
 
 
 ## 「対戦」: ステージ選択へ（そのあと対戦の設定）。
@@ -68,12 +76,7 @@ func story_label() -> String:
 	return "ストーリー（クリア済み）" if context.story.all_cleared() else "ストーリー"
 
 
-## 「部隊の編成」: 取っておく部隊を組む。
-func press_decks() -> void:
-	finished.emit(&"decks")
-
-
-## 「設定」: 設定の画面だけを開く（システムメニューと同じ画面）。
+## 「オプション」: 設定の画面だけを開く（システムメニューと同じ画面）。
 func press_settings() -> void:
 	context.open_settings()
 
