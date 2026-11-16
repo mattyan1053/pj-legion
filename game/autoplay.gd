@@ -20,6 +20,7 @@ const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
 const BattleHud := preload("res://game/battle_hud.gd")
+const ResultSummary := preload("res://game/result_summary.gd")
 
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
@@ -470,7 +471,31 @@ func _queue_result_scene() -> void:
 		screen.toggle_detail()
 		_expect(screen.is_detail_open(), "詳しい戦績が開かない")
 		screen.toggle_detail()
+		_expect(screen.enter_destination() == "タイトルへ", "対戦モードの決着の画面の Enter がタイトルへでない: %s" % screen.enter_destination())
+		# 戦績の行がいちばん多い（5 行）ときも、入力の案内が下の帯にかからない。
+		var full := ResultSummary.new()
+		full.headline = "VICTORY"
+		full.reason = "プレイヤー1（青） の勝ち　敵の将を倒した"
+		full.focus_name = "プレイヤー1（青）"
+		full.lines = [["作戦領域", "結晶の渓谷"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
+		full.mvp_name = "シールドトルーパー Lv3"
+		screen.present(full)
+	var waited_full := [0]
+	var wait_full := func(again: Callable) -> void:
+		var screen_size: Vector2 = screen.get_viewport_rect().size
+		waited_full[0] += 1
+		if not screen.is_revealed():
+			if waited_full[0] > 600:
+				_fail("戦績が 5 行の決着の画面が、出そろわない")
+				return
+			screen.skip()
+			_push_front(again.bind(again))
+			return
+		var rect: Rect2 = screen.prompt_rect()
+		_expect(rect.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
+			"戦績が 5 行のとき、決着の画面の入力の案内が下の帯にかかる: %s" % rect)
 	_scripted.append(wait_revealed.bind(wait_revealed))
+	_scripted.append(wait_full.bind(wait_full))
 
 
 ## 盤の上の効果。ルールの入口（FieldEffects.place_*）で盾・煙幕・聖域を置いて再生し、

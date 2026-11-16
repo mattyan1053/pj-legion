@@ -6,7 +6,8 @@ extends Control
 ## 3. MVP が拡大しながら出る。
 ## 4. 行き先のボタンと、入力の案内が出る。**ここまで出そろうまで、行き先は選べない。**
 ## 出そろう前のクリック（Enter・Space でも）は、演出を飛ばして全部を出すだけ（行き先は選ばない）。
-## 出そろったあとの Enter は、「次へ」を出していればそれ、無ければタイトルへ（ボタンの「タイトルへ」と同じ）。両方の陣営の詳しい戦績は畳んでおき、ボタンで開く。
+## 出そろったあとの Enter は、「次へ」を出していればそれ、「同じ盤面でもう一度」にすると決めていればそれ（ストーリーで負けたとき）、
+## どちらでもなければタイトルへ（ボタンの「タイトルへ」と同じ）。Enter で選ぶボタンは、文字を大きくして目立たせる。両方の陣営の詳しい戦績は畳んでおき、ボタンで開く。
 ##
 ## 何を出すかは呼ぶ側（result_summary.gd）が決める。ここは見せ方と、押されたことを signal で知らせるだけ。
 
@@ -36,6 +37,9 @@ const MVP_IN := 0.45
 const PROMPT_GAP := 0.3
 ## 飛ばしたあと、行き先のボタンが押せるようになるまで（飛ばしたクリックが、そのままボタンに届かないように）。
 const SKIP_GUARD := 0.25
+## 行き先のボタンの文字の大きさ（Enter で選ぶボタンは大きく）。
+const BUTTON_FONT := 17
+const BIG_FONT := 21
 ## 入力の案内の明滅の周期（秒）。
 const BLINK_PERIOD := 1.4
 
@@ -43,7 +47,10 @@ const BLINK_PERIOD := 1.4
 const HEADLINE_CENTER_Y := 290.0
 const HEADLINE_TOP_Y := 18.0
 const HEADLINE_SHRUNK := 0.62
-const BODY_TOP := 146.0
+## 戦績の行は最大 5 行（作戦領域・経過ターン・敵軍撃破・中立撃破・聖遺物）。5 行のときも、入力の案内が画面の下の帯
+## （対戦の画面の下の帯。BattleHud.BOTTOM_BAR_HEIGHT）にかからないよう、行と行の間を詰めてある。
+const BODY_TOP := 140.0
+const STAT_FONT := 22
 ## 詳しい戦績を折り返す幅（px）。
 const DETAIL_WIDTH := 760.0
 
@@ -84,6 +91,9 @@ var _stage_buttons := {}  # BoardGenerator.Stage -> Button（新しい盤面）
 var _setup_button: Button
 var _squad_button: Button
 var _continue_button: Button
+var _again_button: Button
+## Enter で「同じ盤面でもう一度」を選ぶか（set_continue）。
+var _enter_retries := false
 var _prompt: Label
 var _buttons: Array[Button] = []
 var _tween: Tween
@@ -115,7 +125,7 @@ func _ready() -> void:
 	_body = VBoxContainer.new()
 	_body.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_body.offset_top = BODY_TOP
-	_body.add_theme_constant_override("separation", 8)
+	_body.add_theme_constant_override("separation", 6)
 	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_body)
 	_build_stats()
@@ -146,7 +156,7 @@ func present(summary: RefCounted) -> void:
 		name_label.add_theme_color_override("font_color", COLOR_DIM)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		name_label.custom_minimum_size = Vector2(130.0, 0.0)
-		var value_label := _label(24)
+		var value_label := _label(STAT_FONT)
 		value_label.text = line[1]
 		_stats_grid.add_child(name_label)
 		_stats_grid.add_child(value_label)
@@ -329,6 +339,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif event.physical_keycode != KEY_SPACE and _buttons_ready():
 				if _continue_button.visible:
 					press_continue()
+				elif _enter_retries:
+					press_again()
 				else:
 					title_pressed.emit()
 			get_viewport().set_input_as_handled()
@@ -360,9 +372,31 @@ func set_destinations(stages: Array[BoardGenerator.Stage], setup: bool, squad :=
 
 
 ## 「次へ」を出すか（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める。決着の画面を出すたびに決める）。
-func set_continue(shown: bool) -> void:
+## retry は、「次へ」が無いときの Enter を「同じ盤面でもう一度」にするか（偽ならタイトルへ）。
+func set_continue(shown: bool, retry := false) -> void:
 	_continue_button.visible = shown
-	_prompt.text = "行き先を選ぶ（Enter で%s）" % ("次へ" if shown else "タイトルへ")
+	_enter_retries = retry and not shown
+	_again_button.add_theme_font_size_override("font_size", BIG_FONT if _enter_retries else BUTTON_FONT)
+	_prompt.text = "行き先を選ぶ（Enter で%s）" % enter_destination()
+
+
+## 入力の案内（「行き先を選ぶ（Enter で…）」）の、画面の上の場所。検査用。
+func prompt_rect() -> Rect2:
+	return _prompt.get_global_rect()
+
+
+## 出そろったあとの Enter で選ぶ行き先の名前（ボタンの文字）。
+func enter_destination() -> String:
+	if _continue_button.visible:
+		return _continue_button.text
+	if _enter_retries:
+		return _again_button.text
+	return "タイトルへ"
+
+
+## 「同じ盤面でもう一度」を押す。
+func press_again() -> void:
+	restart_pressed.emit(0, false)
 
 
 ## 「次へ」を出しているか。検査用。
@@ -455,7 +489,7 @@ func _build_stats() -> void:
 	_stats_grid = GridContainer.new()
 	_stats_grid.columns = 2
 	_stats_grid.add_theme_constant_override("h_separation", 18)
-	_stats_grid.add_theme_constant_override("v_separation", 2)
+	_stats_grid.add_theme_constant_override("v_separation", 0)
 	_stats_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(_stats_grid)
 
@@ -495,7 +529,7 @@ func _build_detail() -> void:
 
 func _build_actions() -> void:
 	_actions = VBoxContainer.new()
-	_actions.add_theme_constant_override("separation", 8)
+	_actions.add_theme_constant_override("separation", 6)
 	_actions.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_body.add_child(_actions)
 	var row := _row()
@@ -503,14 +537,14 @@ func _build_actions() -> void:
 	# 行を分けると、戦績の行が多いときにボタンが画面の下の帯に重なる）。
 	_continue_button = _button("次へ", 240.0)
 	_continue_button.set_meta(&"sound", &"ui_confirm")
-	_continue_button.add_theme_font_size_override("font_size", 21)
+	_continue_button.add_theme_font_size_override("font_size", BIG_FONT)
 	_continue_button.pressed.connect(press_continue)
 	_continue_button.visible = false
 	row.add_child(_continue_button)
-	var again := _button("同じ盤面でもう一度", 240.0)
-	again.set_meta(&"sound", &"ui_confirm")
-	again.pressed.connect(func() -> void: restart_pressed.emit(0, false))
-	row.add_child(again)
+	_again_button = _button("同じ盤面でもう一度", 240.0)
+	_again_button.set_meta(&"sound", &"ui_confirm")
+	_again_button.pressed.connect(press_again)
+	row.add_child(_again_button)
 	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
 		var button := _button("新しい盤面: %s" % MatchSetup.stage_name(stage), 0.0)
 		button.set_meta(&"sound", &"ui_confirm")
@@ -549,7 +583,7 @@ func _row() -> HBoxContainer:
 func _button(text: String, width: float) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.add_theme_font_size_override("font_size", 17)
+	button.add_theme_font_size_override("font_size", BUTTON_FONT)
 	button.custom_minimum_size = Vector2(width, 42.0)
 	button.focus_mode = Control.FOCUS_NONE
 	_buttons.append(button)

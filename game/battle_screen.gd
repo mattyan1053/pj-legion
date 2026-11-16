@@ -440,7 +440,7 @@ func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 	_talk.clear()  # 決着の画面に、前の台詞を残さない
 	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side()))
 	var won := cpu_opponent and not draw and winner == _human_side()
-	_hud.result_screen().set_continue(source.can_continue(won))
+	_hud.result_screen().set_continue(source.can_continue(won), source.retries_on_enter(won))
 	if won:
 		source.record_win(context)
 
