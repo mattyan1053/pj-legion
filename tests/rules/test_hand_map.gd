@@ -67,6 +67,7 @@ func test_barrels_block_the_way_between_hqs() -> void:
 func test_every_map_makes_a_board_that_fits_both_armies() -> void:
 	var maps := _all_maps()
 	assert_true(maps.has("ridge_path.gd"))
+	assert_true(maps.has("crystal_gorge.gd"))
 	for file: String in maps:
 		var script: GDScript = maps[file]
 		var map: HandMap = script.call(&"map")
@@ -133,9 +134,9 @@ func test_deploy_cells_place_units_in_deck_order_then_fall_back() -> void:
 	assert_eq(battle.unit_at(Vector2i(8, 1)).side, Unit.Side.PLAYER2)
 
 
-func _cpu_game(armies: Array, max_turns: int) -> CpuMatch.Outcome:
+func _cpu_game(armies: Array, max_turns: int, map_script: GDScript = RidgePath) -> CpuMatch.Outcome:
 	var setup := MatchSetup.new()
-	setup.scenario = Scenario.on_map(RidgePath.map(), RidgePath.TITLE)
+	setup.scenario = Scenario.on_map(map_script.call(&"map"), map_script.get(&"TITLE"))
 	setup.battle_seed = 1
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		setup.set_cpu(side, armies[side])
@@ -149,8 +150,11 @@ func test_cpu_plays_on_the_small_map() -> void:
 	assert_true(outcome.turns > 6 or outcome.finished)
 
 
-func test_long_cpu_games_on_the_small_map_finish() -> void:
-	for armies: Array in [[UnitKind.Army.MILITARY, UnitKind.Army.FANTASY], [UnitKind.Army.FANTASY, UnitKind.Army.MILITARY]]:
-		var outcome := _cpu_game(armies, 60)
-		assert_true(outcome.finished, "60 ターンまでに決着する: %s" % [armies])
-		assert_eq(outcome.rejected, 0)
+## rules/maps/ のどのマップでも、CPU どうしの対局が最後まで進む（先手と後手の軍を入れ替えて 2 局ずつ）。
+func test_long_cpu_games_on_every_map_finish() -> void:
+	var maps := _all_maps()
+	for file: String in maps:
+		for armies: Array in [[UnitKind.Army.MILITARY, UnitKind.Army.FANTASY], [UnitKind.Army.FANTASY, UnitKind.Army.MILITARY]]:
+			var outcome := _cpu_game(armies, 60, maps[file])
+			assert_true(outcome.finished, "%s: 60 ターンまでに決着する: %s" % [file, armies])
+			assert_eq(outcome.rejected, 0, file)
