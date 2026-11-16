@@ -23,12 +23,13 @@ const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
 const BattleHud := preload("res://game/battle_hud.gd")
+const BattleTexts := preload("res://game/battle_texts.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
-	"portal_and_spring": "ポータルを通る移動と取り消し、回復の泉",
+	"portal_and_spring": "ポータルに止まってメニューの「転移」、ふさがったポータル、ポータルを通る移動と取り消し、回復の泉",
 	"capture": "敵の本陣の占拠",
 	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
@@ -373,12 +374,45 @@ func _queue_portal_and_spring_scene() -> void:
 	var walker := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 1))
 	var bather := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(4, 4))
 	bather.hp -= 20
+	board.add_portal_pair(Vector2i(1, 3), Vector2i(9, 3))
+	var blocked_walker := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 3))
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(9, 3))  # 行き先のポータルをふさぐ
 	var far := Vector2i(10, 1)  # 歩けば 10 マス。ポータルを通れば移動力 3 で届く。
 	var warped: Script = UnitWarpedEvent
 	var moved: Script = UnitMovedEvent
 
 	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.CRYSTAL_FOREST, 1))
-	_scripted.append(func() -> void: _scene.click_cell(walker.cell))
+	# 人の操作のとおり（マウスで駒を選び、ポータルのマスをクリック）: ポータルに止まり、メニューの「転移」で対のポータルへ移る。
+	_scripted.append(func() -> void: _click(walker.cell))
+	_scripted.append(func() -> void:
+		var portal_color: Color = _scene.portal_paint_color(Vector2i(1, 1))
+		_expect(_scene.painted_color(Vector2i(1, 1)) == portal_color and _scene.painted_color(Vector2i(8, 1)) == portal_color,
+			"動ける範囲の塗りに、ポータルの対（入る・出る）が出ていない")
+		_click(Vector2i(1, 1)))
+	_scripted.append(func() -> void:
+		_expect(walker.cell == Vector2i(1, 1), "ポータルのマスに止まらなかった")
+		_expect(_scene.menu_ids().has(BattleTexts.MENU_WARP), "ポータルに止まっても、メニューに「転移」が出ない")
+		_expect(_scene.painted_color(Vector2i(8, 1)) == _scene.portal_paint_color(Vector2i(1, 1)), "転移の行き先を塗っていない")
+		_scene.played.erase(warped)
+		_expect(_scene.press_menu(BattleTexts.MENU_WARP), "「転移」を押せない"))
+	_scripted.append(func() -> void:
+		_expect(walker.cell == Vector2i(8, 1) and _scene.selected_unit() == walker, "「転移」で対のポータルへ移らなかった")
+		_expect(_scene.played.get(warped, 0) == 1, "転移を再生しなかった")
+		var last: String = _scene.battle_log.entries[-1].text
+		_expect(last.contains("(0, 1) → (8, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
+		_expect(not _scene.menu_ids().has(BattleTexts.MENU_WARP), "転移したあとも「転移」が出ている")
+		_scene.cancel())
+	_scripted.append(func() -> void:
+		_expect(walker.cell == Vector2i(0, 1), "転移を取り消して、動く前のマスへ戻らなかった")
+		# 行き先がふさがっているポータル: 止まれるが、「転移」は出ない。
+		_click(blocked_walker.cell))
+	_scripted.append(func() -> void: _click(Vector2i(1, 3)))
+	_scripted.append(func() -> void:
+		_expect(blocked_walker.cell == Vector2i(1, 3), "ふさがっているポータルのマスに止まれなかった")
+		_expect(not _scene.menu_ids().has(BattleTexts.MENU_WARP), "行き先がふさがっているのに「転移」が出た")
+		_scene.cancel())
+	_scripted.append(func() -> void: _scene.cancel())
+	_scripted.append(func() -> void: _click(walker.cell))
 	_scripted.append(func() -> void:
 		_scene.played.erase(warped)
 		_scene.played.erase(moved)
@@ -1474,6 +1508,13 @@ func _mouse_motion(at: Vector2, held: bool, relative := Vector2(60, 0)) -> void:
 	motion.relative = relative
 	motion.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
 	_scene.feed_input(motion)
+
+
+## マスを、マウスの左ボタンで押して離す（人がクリックするのと同じ入口）。
+func _click(cell: Vector2i) -> void:
+	var at: Vector2 = _scene.cell_screen_position(cell)
+	_mouse_button(at, true)
+	_mouse_button(at, false)
 
 
 func _mouse_button(at: Vector2, pressed: bool) -> void:
