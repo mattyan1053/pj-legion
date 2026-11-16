@@ -1778,7 +1778,7 @@ func _visit_decks(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.DECKS, "対戦の設定の「部隊を編成する」で、編成の場面へ進まない")
 	var screen: Node = app.current_scene()
-	_expect(screen.is_detour() and screen.mode() == DeckRules.VERSUS and screen.back_label() == "対戦の設定へ戻る", "対戦の設定からの編成が、対戦用でない（か、戻り先の文字が違う）")
+	_expect(screen.is_detour() and screen.mode() == DeckRules.VERSUS and screen.back_label() == "対戦設定へ戻る", "対戦の設定からの編成が、対戦用でない（か、戻り先の文字が違う）")
 	_expect(screen.listed_ids().is_empty() and screen.list_card_kinds().is_empty(), "部隊が無いのに、一覧か札が出ている")
 	screen.press_new()
 	_expect(screen.is_choosing_army() and not screen.is_editing(), "「新しい部隊」で、まず軍を選ぶ画面が出ない")
@@ -1954,7 +1954,7 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.DECKS and app.context.run != null, "出撃の準備の「部隊を編成する」で、流れを保ったまま編成へ進まない")
 	var decks: Node = app.current_scene()
-	_expect(decks.is_detour() and decks.mode() == Story.military().rules_id and decks.back_label() == "出撃の準備へ戻る", "寄り道の編成が、ストーリー用でない（か、戻り先の文字が違う）")
+	_expect(decks.is_detour() and decks.mode() == Story.military().rules_id and decks.back_label() == "出撃準備へ戻る", "寄り道の編成が、ストーリー用でない（か、戻り先の文字が違う）")
 	decks.press_new()
 	for kind: UnitKind.Id in story.unlocked_kinds():
 		decks.hire(kind)
@@ -1989,7 +1989,7 @@ func _visit_story(app: Node) -> void:
 	_expect(talk.line_count() == episode.after.size() + Story.unlocked_before(episode).news_of(episode).size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
 	if not episode.unlock_kinds.is_empty():
 		talk.press_skip()
-		_expect(talk.line_index() == episode.after.size() and talk.speaker() == "知らせ"
+		_expect(talk.line_index() == episode.after.size() and talk.speaker() == Story.notice_name()
 				and talk.line_text().contains(Names.kind(episode.unlock_kinds[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()

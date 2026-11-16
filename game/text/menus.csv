@@ -21,20 +21,20 @@ settings.mute,音を消す
 settings.mute.note,音量はそのままで、すべての音を止める
 settings.section.screen,画面
 settings.fullscreen,全画面
-settings.fullscreen.note,オフは窓で開く（端をドラッグして大きさを変えられる）。Alt+Enter でも切り替えられる
+settings.fullscreen.note,オフ: 窓で開く（端をドラッグで大きさを変えられる）。Alt+Enter でも切り替え
 settings.show_minimap,ミニマップ
-settings.show_minimap.note,対戦の画面の右上に盤の縮図を出す。押すと、その場所へ視点を移す
+settings.show_minimap.note,対戦の画面の右上に盤の縮図を表示。押すと、その場所へ視点を移す
 settings.on,オン
 settings.off,オフ
-settings.title,設定
-settings.reset_all,すべて既定に戻す
-settings.reset,既定に戻す
-menu.settings,設定
+settings.title,オプション
+settings.reset_all,すべて初期値に戻す
+settings.reset,初期値に戻す
+menu.settings,オプション
 menu.to_title,タイトルへ戻る
 menu.to_title.confirm,タイトルへ戻りますか？
-menu.quit,ゲームを終える
-menu.quit.confirm,ゲームを終えますか？
-menu.losing.battle,いまの対戦は取っておけないので、失われる
+menu.quit,ゲーム終了
+menu.quit.confirm,ゲームを終了しますか？
+menu.losing.battle,対戦の状態は失われます。
 title.subtitle,プロジェクト・レギオン
 title.button.versus,対戦
 title.button.options,オプション
@@ -42,17 +42,17 @@ title.button.quit,終了
 title.button.story_cleared,ストーリー（クリア済み）
 title.button.story,ストーリー
 menu.corner,メニュー
-menu.corner.tooltip,対戦へ戻る・設定・対戦の設定・ゲームを終える（Esc でも開く）
-menu.confirm.cancel,やめる
+menu.corner.tooltip,メニュー（Esc）
+menu.confirm.cancel,キャンセル
 menu.title,メニュー
-stage.prompt,カードにマウスを乗せると、ステージの説明が出る。クリックで選んで、対戦の設定へ進む。
-stage.row.generated,生成のステージ ─ 対戦のたびに、形が変わる
-stage.row.hand,手で作ったマップ ─ いつも同じ形
-stage.tag.generated,毎回ちがう形
-stage.tag.hand,いつも同じ形
-stage.heading,作戦領域を選ぶ
+stage.prompt,カードにマウスを乗せると説明を表示。クリックで決定
+stage.row.generated,ランダム生成 ─ 対戦のたびに形が変わる
+stage.row.hand,固定マップ ─ いつも同じ形
+stage.tag.generated,ランダム
+stage.tag.hand,固定
+stage.heading,ステージ選択
 stage.resume,ステージ選択へ戻る
-stage.choose,ステージを選ぶ
+stage.choose,ステージ選択
 field.plain.tags,広場 ・ 起爆樽
 field.plain.note,開けた平地。中央は遮るもののない広場で、まわりに岩と森が散らばる。\n中央の左右に起爆樽。正面からぶつかり合う、基本の戦場。
 field.labyrinth.tags,迷路 ・ 回復の泉
@@ -65,14 +65,14 @@ field.crystal_gorge.tags,裂け目 ・ 橋 ・ ポータル
 field.crystal_gorge.note,盤の中ほどを結晶の裂け目が横切る。渡れるのは左右の端の橋と、真ん中のポータルだけ。本陣は対角。\n遠回りの橋か、敵陣のただ中へ出る近道のポータルか。
 field.boulder_pass.tags,大岩 ・ 広い 2 本の道
 field.boulder_pass.note,草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。
-setup.back,対戦の設定へ戻る
+setup.back,対戦設定へ戻る
 stage.note_title,{number}  {title}　　{tags}　　（{shape}）
 setup.confirm,もう一度押す
-setup.stage,ステージを選び直す
-setup.warning,ステージを選び直す・新しい対戦を始めると、いまの対戦は終わる
-setup.confirm_stage,もう一度押すと、いまの対戦を終えてステージ選択へ。右クリックでやめる
-setup.confirm_start,もう一度押すと、いまの対戦を終えて新しい対戦を始める。右クリックでやめる
-setup.title,対戦の設定
+setup.stage,ステージ変更
+setup.warning,ステージ変更・新しい対戦で、いまの対戦は終わります。
+setup.confirm_stage,もう一度押すと、いまの対戦を終えてステージ選択へ（右クリック: キャンセル）
+setup.confirm_start,もう一度押すと、いまの対戦を終えて新しい対戦へ（右クリック: キャンセル）
+setup.title,対戦設定
 setup.caption.stage,ステージ
 setup.caption.opponent,相手
 setup.opponent.human,人（2 人で交代）
@@ -82,13 +82,13 @@ setup.side.second,後手（赤）
 setup.side.random,ランダム
 setup.caption.deck,部隊
 setup.cpu_deck,CPU の編成
-setup.deck_preview,編成を確認
-setup.edit_deck,部隊を編成する
+setup.deck_preview,編成確認
+setup.edit_deck,部隊編成
 setup.back_to_battle,対戦へ戻る
-setup.start,対戦を始める
-setup.start_new,新しい対戦を始める
+setup.start,対戦開始
+setup.start_new,新しい対戦
 setup.who.you,あなた
 setup.who_side,{who}・{turn}
 setup.deck.default,既定の編成（コスト {cost} / {budget}）
 setup.deck.saved,{name}（コスト {cost} / {budget}）
-setup.deck.unplayable,{name} — 出せない: {issue}
+setup.deck.unplayable,{name}（出撃不可: {issue}）

@@ -1,22 +1,22 @@
 keys,ja
-sortie.back,出撃の準備へ戻る
+sortie.back,出撃準備へ戻る
 story.campaigns.heading,ストーリー
-story.campaigns.sub,物語を選ぶ
-story.campaigns.resume,物語を選ぶ画面へ戻る
+story.campaigns.sub,物語選択
+story.campaigns.resume,物語選択へ戻る
 story.campaigns.preparing,準備中
 story.campaigns.total,全 {total} 話
 story.campaigns.all_cleared,全 {total} 話クリア
 story.campaigns.cleared,{cleared} / {total} 話クリア
-story.campaigns.army,使う軍: {army}
-story.episodes.sub,話を選ぶ
-story.episodes.back,物語を選び直す
+story.campaigns.army,軍: {army}
+story.episodes.sub,話の選択
+story.episodes.back,物語選択へ戻る
 story.episodes.resume,話の一覧へ戻る
 story.episodes.reward_budget,コスト +{amount}
 story.episodes.cleared,クリア済み
-story.episodes.locked,第 {number} 話をクリアすると遊べる
+story.episodes.locked,第 {number} 話クリアで開放
 story.episodes.not_cleared,未クリア
-sortie.heading,出撃の準備　　第 {number} 話「{title}」
-sortie.map,マップ「{map}」（点は駒の初期位置。青が味方、赤が敵）
+sortie.heading,出撃準備　　第 {number} 話「{title}」
+sortie.map,ステージ「{map}」（点は初期位置。青: 味方　赤: 敵）
 sortie.lesson,この話で覚えること
 sortie.goal,勝ち方
 sortie.enemy,敵の部隊（{army}）
@@ -24,23 +24,22 @@ sortie.troops,出撃する部隊
 story.episodes.resume_back,話の一覧へ戻る
 sortie.go,出撃
 sortie.option.fixed,この話の部隊
-sortie.option.fixed.note,決まっている（この話では選び直せない）
+sortie.option.fixed.note,固定（この話では変更不可）
 sortie.option.default,既定の編成
-sortie.option.default.note,いま雇える駒で組んだもの
+sortie.option.default.note,雇える駒で自動編成
 sortie.option.saved.note,{count} 体・コスト {cost} / {budget}
 sortie.option,{name}　　{note}
-talk.skip,飛ばす
-talk.hint,クリック・Enter で次へ ▼　右クリックで戻る
+talk.skip,スキップ
+talk.hint,クリック・Enter: 次へ ▼　右クリック: 戻る
 talk.resume,会話へ戻る
-story.episodes.roster,"いま雇える駒: {kinds}
-持ち物: {items}　　コストの上限: {budget}
-（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）"
-story.episodes.rewards,"クリアで増える:
+story.episodes.roster,"雇える駒: {kinds}
+持ち物: {items}　　コスト上限: {budget}"
+story.episodes.rewards,"クリア報酬:
 {rewards}"
 story.episodes.number_drill,第 {number} 話（演習）
 story.episodes.number,第 {number} 話
-sortie.option.unplayable,出せない: {issue}
+sortie.option.unplayable,出撃不可: {issue}
 story.news.speaker,知らせ
-story.news.unit,新しい駒「{unit}」を雇えるようになった。
-story.news.item,新しい持ち物「{item}」を持たせられるようになった。
-story.news.budget,部隊のコストの上限が {budget} になった。
+story.news.unit,新しい駒「{unit}」を雇えるようになりました。
+story.news.item,新しい持ち物「{item}」を持たせられるようになりました。
+story.news.budget,コスト上限が {budget} に上がりました。
