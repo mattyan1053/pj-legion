@@ -152,12 +152,11 @@ func _read_episode(file: RefCounted) -> void:
 		var found: Dictionary = Maps.find(entry["value"])
 		if found.is_empty():
 			file.problem(entry["line"], "知らないマップ「%s」（%s）" % [entry["value"], Maps.DIR])
+		elif not (found["problems"] as PackedStringArray).is_empty():
+			file.problem(entry["line"], "マップ「%s」に書き間違いがある: %s" % [entry["value"], " / ".join(found["problems"])])
 		else:
 			map = found["map"]
 			map_title = found["title"]
-			if not map.problems().is_empty():
-				file.problem(entry["line"], "マップ「%s」を盤にできない: %s" % [entry["value"], map.problems()])
-				map = null
 	if values.has("look"):
 		var entry: Dictionary = values["look"][0]
 		look = StringName(entry["value"])
