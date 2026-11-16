@@ -325,7 +325,7 @@ stats.level_ups,レベルアップ {count} 回
 stats.evolutions,進化 {count} 体
 stats.relics,聖遺物 {relics}
 stats.side,{side}: {parts}
-stats.mvp,　MVP {unit}　与えたダメージ {damage}　撃破 {kills}
+stats.mvp,　MVP {unit}　{numbers}
 stats.column.damage,与えたダメージ
 stats.column.damage_taken,受けたダメージ
 stats.column.kills,撃破
@@ -346,8 +346,9 @@ result.line.neutral_kills,中立撃破
 result.line.relics,聖遺物
 result.stats_title,{side}の戦績
 result.mvp_numbers,与えたダメージ {damage}　撃破 {kills}
+result.mvp_neutral_numbers,中立へのダメージ {damage}　中立撃破 {kills}
 result.mvp_none,該当なし
-result.mvp_none_note,ダメージを与えた駒なし
+result.mvp_none_note,ダメージも回復も無し
 result.new_board,新しい盤面（{board}）
 result.prompt,Enter: {destination}
 result.to_title,タイトルへ
