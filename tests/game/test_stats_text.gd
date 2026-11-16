@@ -38,3 +38,16 @@ func test_side_without_damage_has_no_mvp() -> void:
 	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
 	var stats := BattleStats.new(battle)
 	assert_eq(StatsText.side_lines(stats, Unit.Side.PLAYER1, "青").size(), 1)
+
+
+func test_mvp_numbers_show_neutral_damage_and_healing_when_no_enemy_was_hit() -> void:
+	var battle := Maps.battle(["......"])
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
+	var stats := BattleStats.new(battle)
+	var record: BattleStats.UnitRecord = stats.units[sniper.id]
+	record.neutral_damage = 30
+	record.neutral_kills = 1
+	record.healing = 4
+	assert_eq(StatsText.mvp_numbers(record), "中立へのダメージ 30　中立撃破 1　回復 4")
+	record.damage = 5
+	assert_eq(StatsText.mvp_numbers(record), "与えたダメージ 5　撃破 0", "敵へのダメージがあれば、いつもの出し方")

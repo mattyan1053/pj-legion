@@ -188,7 +188,7 @@ func present(summary: RefCounted) -> void:
 	if summary.mvp_name != "":
 		_mvp_icon.texture = UnitIcons.texture(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved)
 		_mvp_name.text = summary.mvp_name
-		_mvp_numbers.text = Text.t("result.mvp_numbers", {"damage": summary.mvp_damage, "kills": summary.mvp_kills})
+		_mvp_numbers.text = summary.mvp_numbers
 	else:
 		_mvp_name.text = Text.t("result.mvp_none")
 		_mvp_numbers.text = Text.t("result.mvp_none_note")

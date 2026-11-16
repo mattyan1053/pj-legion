@@ -189,11 +189,14 @@ func feed(event: BattleEvent) -> void:
 
 
 ## その陣営の MVP: 将を除く駒のうち、敵のプレイヤーの駒に与えたダメージがいちばん多い駒。
-## 同じなら倒した数が多いほう、それも同じなら番号の小さいほう。ダメージを与えた駒がいなければ null。
+## 同じなら倒した数、中立の駒へのダメージと回復の和、倒した中ボス、倒した中立の駒の順に多いほう、
+## それも同じなら番号の小さいほう。どれも 0 の駒しかいなければ null。
 func mvp(side: Unit.Side) -> UnitRecord:
 	var best: UnitRecord = null
 	for record: UnitRecord in units.values():
-		if record.side != side or record.kind == UnitKind.Id.KING or record.damage == 0:
+		if record.side != side or record.kind == UnitKind.Id.KING:
+			continue
+		if record.damage == 0 and record.neutral_damage == 0 and record.healing == 0:
 			continue
 		if best == null or _beats(record, best):
 			best = record
@@ -277,4 +280,10 @@ static func _beats(a: UnitRecord, b: UnitRecord) -> bool:
 		return a.damage > b.damage
 	if a.kills != b.kills:
 		return a.kills > b.kills
+	if a.neutral_damage + a.healing != b.neutral_damage + b.healing:
+		return a.neutral_damage + a.healing > b.neutral_damage + b.healing
+	if a.boss_kills != b.boss_kills:
+		return a.boss_kills > b.boss_kills
+	if a.neutral_kills != b.neutral_kills:
+		return a.neutral_kills > b.neutral_kills
 	return a.unit_id < b.unit_id
