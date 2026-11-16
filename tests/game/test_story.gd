@@ -5,7 +5,6 @@ const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
-const StageLook := preload("res://game/stage_look.gd")
 const Run := preload("res://game/run.gd")
 
 var _dir := ""
@@ -24,29 +23,14 @@ func _cleanup() -> void:
 		DirAccess.remove_absolute(_dir)
 
 
-func test_every_episode_has_an_id_a_title_and_short_talks() -> void:
+func test_every_episode_has_a_unique_id_and_short_talks() -> void:
+	# 話のデータの形（定数の名前、駒、初期位置、勝ち方、きっかけ）は test_episode_data.gd が見る。
 	var ids: Array[StringName] = []
 	for episode in Story.EPISODES:
 		assert_false(ids.has(episode.ID), "話の id が重なっている: %s" % episode.ID)
 		ids.append(episode.ID)
-		assert_ne(episode.TITLE, "")
-		assert_true(StageLook.THEMES.has(episode.LOOK), "知らない見た目: %s" % episode.LOOK)
-		var board: Board = episode.MAP.map().make_board()
-		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-			var cells: Array = episode.DEPLOY[side]
-			var seen := {}
-			for cell: Vector2i in cells:
-				assert_true(board.is_walkable(cell) and board.object_at(cell) == MapObject.Type.NONE, "%s の初期位置 %s に置けない" % [episode.ID, cell])
-				assert_false(board.hq_cells.has(cell), "%s の初期位置 %s が本陣" % [episode.ID, cell])
-				assert_false(seen.has(cell), "%s の初期位置 %s が重なっている" % [episode.ID, cell])
-				seen[cell] = true
-		if not episode.DEPLOY[Unit.Side.PLAYER2].is_empty():
-			assert_true(episode.DEPLOY[Unit.Side.PLAYER2].size() >= episode.ENEMY.size(), "%s の敵の初期位置が足りない" % episode.ID)
 		for rows: Array in [episode.BEFORE, episode.AFTER]:
 			assert_between(rows.size(), 1, 6, "会話は短く（6 行まで）: %s" % episode.ID)
-			for row: Array in rows:
-				assert_true(row[0] in [0, 1], "話し手は 0 か 1")
-				assert_ne(row[1], "")
 
 
 func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
