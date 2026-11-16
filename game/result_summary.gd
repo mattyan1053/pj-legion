@@ -5,6 +5,7 @@ extends RefCounted
 ## 誰の戦績を出すか（focus_side）は対戦の種類で決める: CPU 戦は人の側、人どうしは勝った側（引き分けならプレイヤー1）。
 
 const Names := preload("res://game/names.gd")
+const Text := preload("res://game/text.gd")
 const StatsText := preload("res://game/stats_text.gd")
 
 ## 見出しの色の種類。
@@ -57,25 +58,25 @@ static func of(stats: BattleStats, draw: bool, winner_side: Unit.Side, reason_te
 			summary.tone = Tone.DEFEAT
 	else:
 		summary.focus_side = Unit.Side.PLAYER1 if draw else winner_side
-		summary.headline = "引き分け" if draw else "%s の勝ち" % side_names[winner_side]
+		summary.headline = Text.t("stats.ending.draw") if draw else Text.t("result.won", {"side": side_names[winner_side]})
 		summary.tone = Tone.DRAW if draw else Tone.SIDE
 	summary.reason = reason_text
 	if against_cpu and not draw:
-		summary.reason = "%s の勝ち　%s" % [side_names[winner_side], reason_text]
+		summary.reason = Text.t("result.won_reason", {"side": side_names[winner_side], "reason": reason_text})
 	summary.focus_name = side_names[summary.focus_side]
 
 	var record: BattleStats.SideRecord = stats.sides[summary.focus_side]
 	if stage_name != "":
-		summary.lines.append(["作戦領域", stage_name])
-	summary.lines.append(["経過ターン", "%d ターン" % stats.turns])
-	summary.lines.append(["敵軍撃破", "%d 体" % record.kills])
+		summary.lines.append([Text.t("result.line.stage"), stage_name])
+	summary.lines.append([Text.t("result.line.turns"), Text.t("result.line.turns.value", {"count": stats.turns})])
+	summary.lines.append([Text.t("result.line.kills"), Text.t("result.line.units", {"count": record.kills})])
 	if record.neutral_kills > 0:
-		summary.lines.append(["中立撃破", "%d 体" % record.neutral_kills])
+		summary.lines.append([Text.t("result.line.neutral_kills"), Text.t("result.line.units", {"count": record.neutral_kills})])
 	if not record.relics.is_empty():
 		var names: Array[String] = []
 		for relic in record.relics:
 			names.append(Names.relic(relic))
-		summary.lines.append(["聖遺物", "・".join(names)])
+		summary.lines.append([Text.t("result.line.relics"), Text.join_dot(names)])
 
 	var best := stats.mvp(summary.focus_side)
 	if best != null:

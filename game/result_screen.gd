@@ -11,6 +11,7 @@ extends Control
 ##
 ## 何を出すかは呼ぶ側（result_summary.gd）が決める。ここは見せ方と、押されたことを signal で知らせるだけ。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
@@ -163,7 +164,7 @@ func present(summary: RefCounted) -> void:
 	_headline.text = summary.headline
 	_headline.add_theme_color_override("font_color", _headline_color(summary))
 	_reason.text = summary.reason
-	_stats_title.text = "%s の戦績" % summary.focus_name
+	_stats_title.text = Text.t("result.stats_title", {"side": summary.focus_name})
 	for row: Array in _stat_rows:
 		for label: Label in row:
 			label.queue_free()
@@ -183,10 +184,10 @@ func present(summary: RefCounted) -> void:
 	if summary.mvp_name != "":
 		_mvp_icon.texture = UnitIcons.texture(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved)
 		_mvp_name.text = summary.mvp_name
-		_mvp_numbers.text = "与えたダメージ %d　撃破 %d" % [summary.mvp_damage, summary.mvp_kills]
+		_mvp_numbers.text = Text.t("result.mvp_numbers", {"damage": summary.mvp_damage, "kills": summary.mvp_kills})
 	else:
-		_mvp_name.text = "該当なし"
-		_mvp_numbers.text = "敵にダメージを与えた駒がいない"
+		_mvp_name.text = Text.t("result.mvp_none")
+		_mvp_numbers.text = Text.t("result.mvp_none_note")
 	_detail.text = summary.detail_head
 	for side in _table_tabs.size():
 		_table_tabs[side].text = summary.tables[side]["name"] if side < summary.tables.size() else ""
@@ -398,7 +399,7 @@ func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void
 		button.visible = index < boards.size()
 		if button.visible:
 			button.set_meta(&"field", boards[index][0])
-			button.text = "新しい盤面: %s" % boards[index][1]
+			button.text = Text.t("result.new_board", {"board": boards[index][1]})
 	_setup_button.visible = setup
 	_squad_button.visible = squad
 
@@ -409,7 +410,7 @@ func set_continue(shown: bool, retry := false) -> void:
 	_continue_button.visible = shown
 	_enter_retries = retry and not shown
 	_again_button.add_theme_font_size_override("font_size", BIG_FONT if _enter_retries else BUTTON_FONT)
-	_prompt.text = "行き先を選ぶ（Enter で%s）" % enter_destination()
+	_prompt.text = Text.t("result.prompt", {"destination": enter_destination()})
 
 
 ## 入力の案内（「行き先を選ぶ（Enter で…）」）の、画面の上の場所。検査用。
@@ -423,7 +424,7 @@ func enter_destination() -> String:
 		return _continue_button.text
 	if _enter_retries:
 		return _again_button.text
-	return "タイトルへ"
+	return Text.t("result.to_title")
 
 
 ## 「同じ盤面でもう一度」を押す。
@@ -476,7 +477,7 @@ func _show_detail(open: bool) -> void:
 	_detail_panel.visible = open
 	_stats_panel.visible = not open
 	_mvp_panel.visible = not open
-	_detail_button.text = "戦績の要点へ戻る" if open else "詳しい戦績（両軍）"
+	_detail_button.text = Text.t("result.detail_back") if open else Text.t("result.detail_open")
 
 
 ## 理由の行を、見出しのすぐ下に置く（見出しの大きさに合わせる）。
@@ -597,9 +598,9 @@ func _build_detail() -> void:
 	var icon_room := Control.new()
 	icon_room.custom_minimum_size = Vector2(TABLE_ICON, 0.0)
 	header.add_child(icon_room)
-	header.add_child(_table_cell("駒", TABLE_NAME_WIDTH, true, HORIZONTAL_ALIGNMENT_LEFT))
+	header.add_child(_table_cell(Text.t("result.table.unit"), TABLE_NAME_WIDTH, true, HORIZONTAL_ALIGNMENT_LEFT))
 	for spec: Array in StatsText.COLUMNS:
-		header.add_child(_table_cell(spec[1], TABLE_NUMBER_WIDTH, true))
+		header.add_child(_table_cell(Text.t(spec[1]), TABLE_NUMBER_WIDTH, true))
 	header.add_child(_table_cell("", TABLE_STATE_WIDTH, true))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0.0, TABLE_HEIGHT)
@@ -656,7 +657,7 @@ func _table_row(row: Dictionary) -> Control:
 		var value: int = row[spec[0]]
 		var cell := _table_cell(str(value) if value != 0 else "-", TABLE_NUMBER_WIDTH)
 		line.add_child(cell)
-	line.add_child(_table_cell("倒れた" if row["defeated"] else "", TABLE_STATE_WIDTH, true))
+	line.add_child(_table_cell(Text.t("result.table.defeated") if row["defeated"] else "", TABLE_STATE_WIDTH, true))
 	if row["mvp"]:
 		for cell in line.get_children():
 			if cell is Label:
@@ -694,34 +695,34 @@ func _build_actions() -> void:
 	var row := _row()
 	# 「次へ」は「同じ盤面でもう一度」と同じ行の先頭に置く（ストーリーでは新しい盤面のボタンが出ないので、行が空く。
 	# 行を分けると、戦績の行が多いときにボタンが画面の下の帯に重なる）。
-	_continue_button = _button("次へ", 240.0)
+	_continue_button = _button(Text.t("result.next"), 240.0)
 	_continue_button.set_meta(&"sound", &"ui_confirm")
 	_continue_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_continue_button.add_theme_font_size_override("font_size", BIG_FONT)
 	_continue_button.pressed.connect(press_continue)
 	_continue_button.visible = false
 	row.add_child(_continue_button)
-	_again_button = _button("同じ盤面でもう一度", 240.0)
+	_again_button = _button(Text.t("result.again"), 240.0)
 	_again_button.set_meta(&"sound", &"ui_confirm")
 	_again_button.pressed.connect(press_again)
 	row.add_child(_again_button)
 	# 「新しい盤面」のボタンは、この行に set_destinations が足す。
 	var leave := _row()
-	_setup_button = _button("対戦の設定へ（軍・相手・手番）", 320.0)
+	_setup_button = _button(Text.t("result.setup"), 320.0)
 	_setup_button.pressed.connect(setup_pressed.emit)
 	leave.add_child(_setup_button)
-	_squad_button = _button("部隊を選び直す", 220.0)
+	_squad_button = _button(Text.t("result.squad"), 220.0)
 	_squad_button.pressed.connect(press_choose_squad)
 	_squad_button.visible = false
 	leave.add_child(_squad_button)
-	var to_title := _button("タイトルへ", 180.0)
+	var to_title := _button(Text.t("result.to_title"), 180.0)
 	to_title.pressed.connect(title_pressed.emit)
 	leave.add_child(to_title)
 	_detail_button = _button("", 220.0)
 	_detail_button.pressed.connect(toggle_detail)
 	leave.add_child(_detail_button)
 	_prompt = _label(16)
-	_prompt.text = "行き先を選ぶ（Enter でタイトルへ）"
+	_prompt.text = Text.t("result.prompt_title")
 	_prompt.add_theme_color_override("font_color", COLOR_DIM)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_actions.add_child(_prompt)

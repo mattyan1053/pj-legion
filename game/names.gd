@@ -90,9 +90,17 @@ static func ult_summary(of_ult: Ult) -> String:
 	return Text.t("ult.%s.summary" % word(Ult.Id, of_ult.id()), of_ult.summary_args())
 
 
-## 状態の名前。
+## 状態の名前と、効果の短い説明（駒の情報の枠に、残りの期間と一緒に出す）。
 static func status(type: Status.Type) -> String:
 	return Text.t("status." + word(Status.Type, type))
+
+
+static func status_summary(type: Status.Type) -> String:
+	var args := {
+		"range": PrecisionAimSkill.RANGE_BONUS, "penalty": AdrenalineShotSkill.POWER_PENALTY,
+		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS,
+	}
+	return Text.t("status.%s.summary" % word(Status.Type, type), args)
 
 
 ## 聖遺物の名前と、1 行の説明。
@@ -102,6 +110,15 @@ static func relic(id: Relics.Id) -> String:
 
 static func relic_summary(id: Relics.Id) -> String:
 	return Text.t("relic.%s.summary" % word(Relics.Id, id), {"amount": Relics.amount(id)})
+
+
+## 聖遺物の短い名前（上の帯の欄）と、駒 1 体への効果（駒の上に出す）。
+static func relic_short(id: Relics.Id) -> String:
+	return Text.t("relic.%s.short" % word(Relics.Id, id))
+
+
+static func relic_effect(id: Relics.Id) -> String:
+	return Text.t("relic.%s.effect" % word(Relics.Id, id), {"amount": Relics.amount(id)})
 
 
 ## 生成のステージの名前。

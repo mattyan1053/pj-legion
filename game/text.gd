@@ -34,3 +34,23 @@ static func _load() -> void:
 	for file: String in DirAccess.get_files_at(DIR):
 		if file.ends_with(".translation"):
 			TranslationServer.add_translation(load(DIR + file))
+
+
+## 括弧で囲む（「（…）」。表の common.paren）。
+static func paren(text: String) -> String:
+	return t("common.paren", {"text": text})
+
+
+## 注の並び（「（巡航・ポータル経由）」）。無ければ空。
+static func notes(parts: Array) -> String:
+	return "" if parts.is_empty() else paren(join_dot(parts))
+
+
+## 「・」でつなぐ（表の common.joiner.dot）。
+static func join_dot(parts: Array) -> String:
+	return t("common.joiner.dot").join(PackedStringArray(parts))
+
+
+## 「、」でつなぐ（表の common.joiner.comma）。
+static func join_comma(parts: Array) -> String:
+	return t("common.joiner.comma").join(PackedStringArray(parts))

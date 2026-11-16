@@ -5,6 +5,7 @@ extends RefCounted
 ## - describe(): 同じものを文にしたもの（1 行ずつ）。
 
 const BattleHud := preload("res://game/battle_hud.gd")
+const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 
 
@@ -50,13 +51,13 @@ class Summary:
 static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summary:
 	var summary := Summary.new()
 	for placed in forecast.placed:
-		var line: String = "%s を置く" % Names.field_effect(placed.type)
+		var line := Text.t("battle.forecast.place", {"effect": Names.field_effect(placed.type)})
 		if placed.cells.size() > 1:
 			var inside := 0
 			for unit in battle.units:
 				if unit.side == actor.side and placed.cells.has(unit.cell):
 					inside += 1
-			line += "（中の味方 %d 体）" % inside
+			line = Text.t("battle.forecast.place_area", {"effect": Names.field_effect(placed.type), "count": inside})
 		summary.lines.append(line)
 	for outcome in forecast.units:
 		var unit := battle.unit_by_id(outcome.unit_id)
@@ -75,61 +76,62 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 		if outcome.smoked:
 			row.damage = 0
 			row.blocked = true
-			row.notes.append("煙幕に阻まれる（隣からなら当たる）")
+			row.notes.append(Text.t("battle.forecast.smoked"))
 		elif outcome.blocked_by != -1 and outcome.damage == 0:
 			var shield := Names.status(outcome.blocked_by as Status.Type)
 			row.damage = 0
 			row.blocked = true
-			row.notes.append("%s が防ぐ（%s は消える）" % [shield, shield])
+			row.notes.append(Text.t("battle.forecast.blocked", {"status": shield}))
 		elif outcome.hits > 0:
 			row.damage = outcome.damage
 			if outcome.critical:
-				row.notes.append("クリティカル")
+				row.notes.append(Text.t("battle.log.note.critical"))
 			if outcome.forest:
-				row.notes.append("森で軽減")
+				row.notes.append(Text.t("battle.log.note.forest"))
 			if outcome.exploded:
-				row.notes.append("爆発")
+				row.notes.append(Text.t("battle.pop.exploded"))
 			if row.is_actor:
 				summary.hurts_actor = true
 		if row.defeated and not row.is_actor:
 			summary.defeats += 1
 		for status: int in outcome.statuses_applied:
-			row.effects.append("%s が付く（%d ターン）" % [Names.status(status as Status.Type), outcome.statuses_applied[status]])
+			row.effects.append(Text.t("battle.forecast.status_added", {"status": Names.status(status as Status.Type), "turns": outcome.statuses_applied[status]}))
 		for status in outcome.statuses_removed:
 			if status != outcome.blocked_by:
-				row.effects.append("%s が解ける" % Names.status(status as Status.Type))
+				row.effects.append(Text.t("battle.forecast.status_removed", {"status": Names.status(status as Status.Type)}))
 		if outcome.moved_to != Board.NO_CELL:
-			row.effects.append("(%d, %d) へ移る" % [outcome.moved_to.x, outcome.moved_to.y])
+			row.effects.append(Text.t("battle.forecast.moved", {"x": outcome.moved_to.x, "y": outcome.moved_to.y}))
 		if outcome.reactivated:
-			row.effects.append("もう一度行動できる")
+			row.effects.append(Text.t("battle.pop.refreshed"))
 		if outcome.experience > 0:
-			var growth := ""
+			var text := Text.t("battle.forecast.experience", {"amount": outcome.experience})
 			if outcome.evolution_ready:
 				var names: Array[String] = []
 				for choice in Evolution.options_for(unit.kind):
 					names.append(Names.evolution(choice))
-				growth = "　レベルアップ → 進化を選べる（%s）" % " / ".join(names)
+				text = Text.t("battle.forecast.experience_evolve", {"amount": outcome.experience, "choices": " / ".join(names)})
 			elif outcome.levels_gained > 0:
-				growth = "　レベルアップ（Lv%d）" % (unit.level + outcome.levels_gained)
-			row.effects.append("経験 +%d%s" % [outcome.experience, growth])
+				text = Text.t("battle.forecast.experience_level", {"amount": outcome.experience, "level": unit.level + outcome.levels_gained})
+			row.effects.append(text)
 		summary.rows.append(row)
 	for barricade in forecast.barricades:
-		summary.lines.append("盾: 耐久 %d → %s" % [
-			barricade.durability_before, "壊れる" if barricade.destroyed else str(barricade.durability_after),
-		])
+		if barricade.destroyed:
+			summary.lines.append(Text.t("battle.forecast.barricade_broken", {"before": barricade.durability_before}))
+		else:
+			summary.lines.append(Text.t("battle.forecast.barricade_hit", {"before": barricade.durability_before, "after": barricade.durability_after}))
 	for relic in forecast.relics:
-		summary.lines.append("聖遺物「%s」を得る（%s）" % [Names.relic(relic.relic), Names.relic_summary(relic.relic)])
+		summary.lines.append(Text.t("battle.forecast.relic", {"relic": Names.relic(relic.relic), "effect": Names.relic_summary(relic.relic)}))
 	if actor != null and actor.side != Unit.Side.NEUTRAL:
 		var side := actor.side
 		var before := _percent(forecast.gauge_before[side])
 		var after := _percent(forecast.gauge_after[side])
 		if forecast.accepted and after != before and Ults.of(battle, side) != null:
-			summary.lines.append("必殺技のゲージ %d%% → %d%%" % [before, mini(after, 100)])
+			summary.lines.append(Text.t("battle.forecast.gauge", {"before": before, "after": mini(after, 100)}))
 	if forecast.drawn:
-		summary.lines.append("引き分けになる")
+		summary.lines.append(Text.t("battle.forecast.draw"))
 		summary.decides = true
 	elif forecast.winner != -1:
-		summary.lines.append("%s の勝ち" % Names.side(forecast.winner))
+		summary.lines.append(Text.t("battle.forecast.win", {"side": Names.side(forecast.winner)}))
 		summary.decides = true
 	return summary
 
@@ -144,10 +146,12 @@ static func _percent(gauge: int) -> int:
 static func hp_text(row: Row) -> String:
 	if row.damage >= 0:
 		if row.blocked:
-			return "0 ダメージ"
-		return "%d ダメージ → %s" % [row.damage, "倒れる" if row.defeated else "残り HP %d" % row.hp_after]
+			return Text.t("battle.forecast.no_damage")
+		if row.defeated:
+			return Text.t("battle.forecast.damage_defeat", {"damage": row.damage})
+		return Text.t("battle.forecast.damage", {"damage": row.damage, "hp": row.hp_after})
 	if row.healed > 0:
-		return "+%d → HP %d / %d" % [row.healed, row.hp_after, row.max_hp]
+		return Text.t("battle.forecast.heal", {"amount": row.healed, "hp": row.hp_after, "max_hp": row.max_hp})
 	return ""
 
 
@@ -156,14 +160,14 @@ static func describe(battle: Battle, forecast: Forecast, actor: Unit) -> String:
 	var summary := summarize(battle, forecast, actor)
 	var lines: Array[String] = []
 	for row in summary.rows:
-		var name := "自分" if row.is_actor else row.name
+		var name := Text.t("battle.forecast.self") if row.is_actor else row.name
 		var hp := hp_text(row)
 		if hp != "":
 			var notes := " ".join(row.notes)
-			lines.append("%s: %s%s" % [name, (notes + " ") if notes != "" else "", hp])
+			lines.append(Text.t("battle.forecast.row", {"unit": name, "text": ((notes + " ") if notes != "" else "") + hp}))
 		for effect in row.effects:
-			lines.append("%s: %s" % [name, effect])
+			lines.append(Text.t("battle.forecast.row", {"unit": name, "text": effect}))
 	lines.append_array(summary.lines)
 	if lines.is_empty():
-		lines.append("何も起きない")
+		lines.append(Text.t("battle.forecast.nothing"))
 	return "\n".join(lines)

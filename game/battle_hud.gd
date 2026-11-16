@@ -6,6 +6,7 @@ extends CanvasLayer
 ## 画面の決まった場所に置く。どれもクリックだけで選べる。
 
 ## 駒のそばのメニューの項目が押された。id は set_menu() に渡した項目の名前。
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
@@ -49,17 +50,6 @@ signal restart_pressed(field: StringName, new_board: bool)
 ## 決着の画面を出した（draw なら引き分けで、winner は使わない）。決着の曲を鳴らす合図。
 signal result_shown(draw: bool, winner: Unit.Side)
 
-const TERRAIN_NAMES := {
-	Terrain.Type.NORMAL: "平地",
-	Terrain.Type.OBSTACLE: "障害物（入れない）",
-	Terrain.Type.FOREST: "森（移動 2・受けるダメージ 0.8 倍）",
-	Terrain.Type.FONT: "結晶泉",
-}
-const OBJECT_NAMES := {
-	MapObject.Type.BARREL: "起爆樽（入れない。攻撃すると爆発し、周り 8 マスの駒すべてに %d ダメージ）" % MapObject.BLAST_DAMAGE,
-	MapObject.Type.SPRING: "回復の泉（自分の番の始めに、乗っている駒が %d 回復）" % MapObject.SPRING_HEAL,
-	MapObject.Type.PORTAL: "ポータル",
-}
 const COLOR_PANEL := Palette.OVERLAY
 ## 後ろの盤面の文字が透けて読みにくくならないよう、決着の画面とメニューは透かさない。
 const COLOR_PANEL_SOLID := Palette.SOLID
@@ -84,13 +74,6 @@ const COLOR_TRAIT := Palette.ACCENT
 const COLOR_GOAL := Palette.GOAL
 const COLOR_GOAL_BORDER := Palette.GOAL_BORDER
 const COLOR_GOAL_URGENT := Palette.GOAL_URGENT
-## 状態の効果の短い説明（駒の情報の枠に、残りの期間と一緒に出す）。
-const STATUS_TEXTS := {
-	Status.Type.BARRIER: "次に受けるダメージを 1 回だけ防ぐ",
-	Status.Type.AIM: "射程 +%d。次の攻撃がクリティカル（動くと解ける）" % PrecisionAimSkill.RANGE_BONUS,
-	Status.Type.FATIGUE: "攻撃 -%d" % AdrenalineShotSkill.POWER_PENALTY,
-	Status.Type.ASSAULT: "移動 +%d・攻撃 +%d" % [AllOutAssaultUlt.MOVE_BONUS, AllOutAssaultUlt.POWER_BONUS],
-}
 ## 必殺技の画面のフラッシュ（濃さと、消えるまでの秒数）。
 const FLASH_ALPHA := 0.45
 const FLASH_TIME := 0.45
@@ -217,12 +200,13 @@ func set_status(
 	_goal_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
 	_goal_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
 	_goal_label.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
-	_phase_label.text = "%s の番" % Names.side(phase)
+	_phase_label.text = Text.t("battle.hud.phase", {"side": Names.side(phase)})
 	_phase_label.add_theme_color_override("font_color", _side_color(phase))
 	for player in 2:
-		var text := "%s  駒 %d" % [Names.side_word(player), counts[player]]
+		var text := Text.t("battle.hud.side", {"side": Names.side_word(player), "count": counts[player]})
 		if capture_shown[player]:
-			text += "  占拠 %s" % ("●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player]))
+			var marks := Text.t("battle.hud.capture_on").repeat(captures[player]) + Text.t("battle.hud.capture_off").repeat(capture_goal - captures[player])
+			text += Text.t("battle.hud.capture", {"marks": marks})
 		_side_labels[player].text = text
 		# 幅が足りずに省かれても読めるよう、全文をツールチップにも置く。聖遺物の効果も、ここで読める。
 		_side_labels[player].tooltip_text = _side_labels[player].text
@@ -307,9 +291,10 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	var kind := Names.kind(unit.kind)
 	if unit.evolution != Evolution.Id.NONE:
 		# 進化した駒は、進化先の名前と、元の種類。
-		_info_name.text = "%s（%s から進化%s）" % [Names.unit(unit), kind, "・" + role if role else ""]
+		var key := "battle.hud.name_evolved_role" if role else "battle.hud.name_evolved"
+		_info_name.text = Text.t(key, {"unit": Names.unit(unit), "kind": kind, "role": role})
 	else:
-		_info_name.text = Names.unit(unit) + ("（%s）" % role if role else "")
+		_info_name.text = Text.t("battle.hud.name_role", {"unit": Names.unit(unit), "role": role}) if role else Names.unit(unit)
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
 	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
 	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE)
@@ -322,15 +307,15 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_info_hp.visible = true
 	_info_hp.value = ratio * 100.0
 	_info_hp_fill.bg_color = hp_color(ratio)
-	var power_name := "回復" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "攻撃"
-	var stats := "HP %d / %d\n%s %d　移動 %d　射程 %d" % [
-		unit.hp, unit.max_hp(), power_name, unit.power(), unit.move_range(), unit.attack_range(),
-	]
+	var key := "battle.hud.stats_healer" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "battle.hud.stats"
+	var stats := Text.t(key, {
+		"hp": unit.hp, "max_hp": unit.max_hp(), "power": unit.power(), "move": unit.move_range(), "range": unit.attack_range(),
+	})
 	if Growth.can_grow(unit):
 		if unit.level >= Growth.MAX_LEVEL:
-			stats += "\nレベル %d（最大）" % unit.level
+			stats += "\n" + Text.t("battle.hud.level_max", {"level": unit.level})
 		else:
-			stats += "\nレベル %d　経験 %d / %d" % [unit.level, unit.experience, Growth.EXPERIENCE_PER_LEVEL]
+			stats += "\n" + Text.t("battle.hud.level", {"level": unit.level, "experience": unit.experience, "needed": Growth.EXPERIENCE_PER_LEVEL})
 	_set_folded(_info_stats, stats, INFO_WIDTH)
 
 	var statuses: Array[String] = []
@@ -340,20 +325,20 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 
 	var items := ""
 	if Equipment.can_equip(unit.kind):
-		items = "装備: " + equipment_text(unit.equipment)
+		items = Text.t("battle.hud.equipment", {"items": equipment_text(unit.equipment)})
 	_set_shown(_info_items, items)
 
 	var skill := Skills.of(unit)
 	var skill_text := ""
 	if skill != null:
-		skill_text = "スキル: %s（%s）" % [Names.skill(skill), skill_state_text(unit)]
+		skill_text = Text.t("battle.hud.skill", {"skill": Names.skill(skill), "state": skill_state_text(unit)})
 	_set_shown(_info_skill, skill_text)
 	# スキルの中身は、読んで知るもの。選んだ駒・マウスを乗せた駒のスキルの説明を、いつも出す。
 	_set_shown(_info_skill_note, Names.skill_summary(skill) if skill != null and skill_note else "")
 
 	var traits: Array[String] = []
 	for which in Evolution.traits(unit.evolution):
-		traits.append("★ " + Names.trait_text(which))
+		traits.append(Text.t("battle.hud.trait", {"trait": Names.trait_text(which)}))
 	_set_shown(_info_traits, "\n".join(traits))
 	_set_shown(_info_state, state)
 	_set_shown(_info_forecast, note)
@@ -363,19 +348,19 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 ## 軍は陣営の軍（side_army。NONE なら駒の種類の軍）。ストーリーでほかの軍の駒を雇ったときは「MILITARY（FANTASY の駒）」と並べる
 ## （駒の種類の軍だけを出すと、味方の駒に敵と同じ軍の名前が出て紛らわしい）。
 static func affiliation_text(unit: Unit, viewer: Unit.Side, side_army := UnitKind.Army.NONE) -> String:
-	var tag := "[中立]"
+	var tag := Text.t("battle.hud.tag.neutral")
 	if unit.side == viewer:
-		tag = "[自軍]"
+		tag = Text.t("battle.hud.tag.own")
 	elif unit.side != Unit.Side.NEUTRAL:
-		tag = "[敵軍]"
+		tag = Text.t("battle.hud.tag.foe")
 	var parts: Array[String] = [tag, Names.side(unit.side)]
 	var army := UnitKind.army(unit.kind)
 	if army != UnitKind.Army.NONE:
 		if side_army == UnitKind.Army.NONE or side_army == army:
 			parts.append(Names.army(army))
 		else:
-			parts.append("%s（%s の駒）" % [Names.army(side_army), Names.army(army)])
-	return "　".join(parts)
+			parts.append(Text.t("battle.hud.borrowed_army", {"army": Names.army(side_army), "origin": Names.army(army)}))
+	return Text.t("battle.hud.separator").join(parts)
 
 
 ## 装備の一覧（同じものは数をまとめる。「スピードブーツ ×2・アイアンシールド」）。無ければ「なし」。
@@ -388,13 +373,13 @@ static func equipment_text(items: Array[Equipment.Id]) -> String:
 		counts[item] = counts.get(item, 0) + 1
 	var parts: Array[String] = []
 	for item in order:
-		parts.append(Names.item(item) + (" ×%d" % counts[item] if counts[item] > 1 else ""))
-	return "・".join(parts) if not parts.is_empty() else "なし"
+		parts.append(Text.t("battle.hud.item_count", {"item": Names.item(item), "count": counts[item]}) if counts[item] > 1 else Names.item(item))
+	return Text.join_dot(parts) if not parts.is_empty() else Text.t("battle.hud.no_items")
 
 
 ## 付いている状態の文（名前、残りのターン数、効果）。
 static func status_text(type: Status.Type, turns: int) -> String:
-	return "%s（あと %d ターン）: %s" % [Names.status(type), turns, STATUS_TEXTS[type]]
+	return Text.t("battle.hud.status", {"status": Names.status(type), "turns": turns, "effect": Names.status_summary(type)})
 
 
 ## クリックしたマスの情報を、駒の情報と同じ枠に出す。title は見出し（マスの位置と地形）、body は説明（行ごと）。
@@ -483,13 +468,13 @@ func set_watch_controls(shown: bool, fast: bool, can_skip: bool) -> void:
 	_auto_button.visible = not shown
 	_fast_button.set_pressed_no_signal(fast)
 	_skip_button.disabled = not can_skip
-	_skip_button.text = "スキップ" if can_skip else "スキップ中…"
+	_skip_button.text = Text.t("battle.hud.skip") if can_skip else Text.t("battle.hud.skipping")
 
 
 ## 自分の番の「おまかせ」。confirming なら、もう一度押すと任せる、の形にする。
 func set_auto_button(enabled: bool, confirming: bool) -> void:
 	_auto_button.disabled = not enabled
-	_auto_button.text = "もう一度押す" if confirming else "おまかせ"
+	_auto_button.text = Text.t("battle.hud.auto_confirm") if confirming else Text.t("battle.hud.auto")
 
 
 ## 「おまかせ」の文字と、押せるか。検査用。
@@ -654,9 +639,9 @@ func menu_ids() -> Array[StringName]:
 static func skill_state_text(unit: Unit) -> String:
 	var uses := Skills.uses_left(unit)
 	if uses == 0:
-		return "使い切った"
-	var state := "使える" if unit.skill_cooldown == 0 else "あと %d ターン" % unit.skill_cooldown
-	return state if uses < 0 else "%s。残り %d 回" % [state, uses]
+		return Text.t("battle.hud.skill_state.used_up")
+	var state := Text.t("battle.hud.skill_state.ready") if unit.skill_cooldown == 0 else Text.t("battle.hud.skill_state.cooldown", {"turns": unit.skill_cooldown})
+	return state if uses < 0 else Text.t("battle.hud.skill_state.uses_left", {"state": state, "uses": uses})
 
 
 ## 画面の全体を、color で一瞬だけ光らせる（必殺技）。強すぎないよう、薄く出してすぐ消す。
@@ -749,11 +734,11 @@ static func evolution_text(id: Evolution.Id, healer: bool) -> String:
 	var bonuses := Evolution.bonuses(id)
 	for which: Unit.Stat in Names.STATS:
 		if bonuses.has(which):
-			var stat_name: String = "回復" if healer and which == Unit.Stat.POWER else Names.stat(which)
-			parts.append("%s %+d" % [stat_name, bonuses[which]])
-	var text := "%s\n%s" % [Names.evolution(id), "　".join(parts)]
+			var stat_name: String = Text.t("battle.log.stat_heal") if healer and which == Unit.Stat.POWER else Names.stat(which)
+			parts.append(Text.t("battle.log.stat_gain", {"stat": stat_name, "amount": "%+d" % bonuses[which]}))
+	var text := Names.evolution(id) + "\n" + Text.t("battle.hud.separator").join(parts)
 	for which in Evolution.traits(id):
-		text += "\n★ %s" % Names.trait_text(which)
+		text += "\n" + Text.t("battle.hud.trait", {"trait": Names.trait_text(which)})
 	return text
 
 
@@ -872,13 +857,13 @@ func _build_top_bar() -> void:
 	_opponent_button = _button("", opponent_pressed)
 	_opponent_button.custom_minimum_size = Vector2(0.0, 30.0)
 	_opponent_button.add_theme_font_size_override("font_size", 15)
-	_opponent_button.tooltip_text = "押すと、相手を CPU にするか人にするかを切り替える"
+	_opponent_button.tooltip_text = Text.t("battle.hud.opponent.tooltip")
 	row.add_child(_opponent_button)
 	# ログは、いつでも開ける（相手の番や中立のフェーズで起きたことを、あとから確かめる）。
-	var log_button := _button("ログ", log_pressed)
+	var log_button := _button(Text.t("battle.hud.log"), log_pressed)
 	log_button.custom_minimum_size = Vector2(64.0, 30.0)
 	log_button.add_theme_font_size_override("font_size", 15)
-	log_button.tooltip_text = "対戦で起きたことを、ターンごとにさかのぼって読む"
+	log_button.tooltip_text = Text.t("battle.hud.log.tooltip")
 	row.add_child(log_button)
 	# 右端は、システムメニューのボタン（system_menu.gd。別の層に置く）のぶんを空けておく。
 	var corner := Control.new()
@@ -919,7 +904,7 @@ func _build_top_bar() -> void:
 	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(help_panel)
 	var help := _label(13)
-	help.text = "視点: ドラッグで回転・傾き　ホイールで拡大　WASD で移動"
+	help.text = Text.t("battle.hud.camera_help")
 	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	help.add_theme_constant_override("outline_size", 0)
 	help_panel.add_child(help)
@@ -978,7 +963,7 @@ func _build_info_panel() -> void:
 	column.add_child(_info_forecast)
 	# 枠は素通しだが、スイッチはクリックを受ける。いちばん下に置く（枠は下にそろうので、中身が変わってもスイッチは動かない）。
 	_info_pin = CheckButton.new()
-	_info_pin.text = "範囲を表示したまま"
+	_info_pin.text = Text.t("battle.hud.pin")
 	_info_pin.focus_mode = Control.FOCUS_NONE
 	_info_pin.add_theme_font_size_override("font_size", 15)
 	_info_pin.visible = false
@@ -1021,11 +1006,11 @@ func _build_bottom() -> void:
 	# 駒に属さない操作は、いつも同じ場所（右下）に置く。
 	# 敵の全員の脅威範囲の切り替え。入・切が見て分かるよう、スイッチの形にする。
 	_threat_button = CheckButton.new()
-	_threat_button.text = "敵の攻撃範囲"
+	_threat_button.text = Text.t("battle.hud.threat")
 	_threat_button.focus_mode = Control.FOCUS_NONE
 	_threat_button.add_theme_font_size_override("font_size", 17)
 	_threat_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_threat_button.tooltip_text = "敵が次の番に攻撃を届かせうるマスを、赤い斜線で重ねて出す"
+	_threat_button.tooltip_text = Text.t("battle.hud.threat.tooltip")
 	_threat_button.pressed.connect(threat_toggled.emit)
 	row.add_child(_threat_button)
 	_watch_box = HBoxContainer.new()
@@ -1033,30 +1018,30 @@ func _build_bottom() -> void:
 	_watch_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_watch_box.visible = false
 	row.add_child(_watch_box)
-	_fast_button = _button("早送り", fast_forward_toggled)
+	_fast_button = _button(Text.t("battle.hud.fast"), fast_forward_toggled)
 	_fast_button.toggle_mode = true
 	_fast_button.custom_minimum_size = Vector2(120.0, 48.0)
-	_fast_button.tooltip_text = "相手の番を速く進める（入れたままなら、次の相手の番も）"
+	_fast_button.tooltip_text = Text.t("battle.hud.fast.tooltip")
 	_watch_box.add_child(_fast_button)
-	_skip_button = _button("スキップ", skip_pressed)
+	_skip_button = _button(Text.t("battle.hud.skip"), skip_pressed)
 	_skip_button.custom_minimum_size = Vector2(120.0, 48.0)
-	_skip_button.tooltip_text = "相手の番の残りを見せずに進める（起きたことはログに残る）"
+	_skip_button.tooltip_text = Text.t("battle.hud.skip.tooltip")
 	_watch_box.add_child(_skip_button)
-	_ult_button = _button("必殺技", ult_pressed)
+	_ult_button = _button(Text.t("battle.hud.ult"), ult_pressed)
 	_ult_button.custom_minimum_size = Vector2(220.0, 48.0)
 	_ult_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_ult_button.disabled = true
 	_ult_button.mouse_entered.connect(_show_ult_summary)
 	_ult_button.mouse_exited.connect(_show_ult_summary)
 	row.add_child(_ult_button)
-	_auto_button = _button("おまかせ", auto_pressed)
+	_auto_button = _button(Text.t("battle.hud.auto"), auto_pressed)
 	_auto_button.custom_minimum_size = Vector2(112.0, 48.0)
 	_auto_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_auto_button.tooltip_text = "このターンの残りの駒を CPU が動かし、ターンを終える"
+	_auto_button.tooltip_text = Text.t("battle.hud.auto.tooltip")
 	_auto_button.disabled = true
 	row.add_child(_auto_button)
 	# ターン終了は、見つけやすいよう色を付けて、いちばん端に置く（駒のそばのメニューからは離れている）。
-	_end_turn_button = _button("ターン終了", end_turn_pressed)
+	_end_turn_button = _button(Text.t("battle.hud.end_turn"), end_turn_pressed)
 	_end_turn_button.custom_minimum_size = Vector2(210.0, 60.0)
 	_end_turn_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_end_turn_button.add_theme_font_size_override("font_size", 20)
@@ -1209,16 +1194,3 @@ func _button(text: String, to: Signal) -> Button:
 		button.pressed.connect(to.emit)
 	return button
 
-
-## マスの説明に出す、盤の上の効果の種類と簡易説明（持ち主、残り、効果）。
-static func field_effect_text(effect: FieldEffect) -> String:
-	var owner: String = Names.side(effect.side)
-	match effect.type:
-		FieldEffect.Type.BARRICADE:
-			return "盾（%s。耐久 %d / 通行・射撃を遮断）" % [owner, effect.durability]
-		FieldEffect.Type.SMOKE:
-			return "煙幕（%s。残り %d ターン / 中の味方への、離れたところからの攻撃を無効）" % [owner, effect.turns_left]
-		_:
-			return "聖域（%s。残り %d ターン / 自分の番の始めに中の味方が HP %d 回復）" % [
-				owner, effect.turns_left, FieldEffects.SANCTUARY_HEAL,
-			]

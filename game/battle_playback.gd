@@ -6,6 +6,7 @@ extends Node3D
 ## 再生の待ち時間は、この場面の子の Timer で測る（after）。場面を抜けて（タイトルへ戻る）ノードが消えると、
 ## 待っている再生や CPU の番は続きを走らない（消えた場面に触れない）。
 
+const Text := preload("res://game/text.gd")
 const UnitView := preload("res://game/unit_view.gd")
 const BoardView := preload("res://game/board_view.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
@@ -32,16 +33,6 @@ const COLOR_LEVEL_UP := Color("ffd34a")
 const COLOR_EVOLUTION := Color("d9a6ff")
 const COLOR_RELIC := Color("ffe08a")
 
-const WIN_REASONS := {
-	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
-	GameWonEvent.Reason.HQ_CAPTURED: "敵の本陣を占拠し続けた",
-	GameWonEvent.Reason.TURNS_HELD: "最後まで守り切った",
-	GameWonEvent.Reason.ROUTED: "敵を全滅させた",
-}
-
-const DRAW_REASONS := {
-	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "両方の将が同時に倒れた",
-}
 
 # ---- 場面から受け取るもの（setup で入る。対戦ごとに変わるものは、場面が入れ替える） ----
 
@@ -386,10 +377,10 @@ func _play_hit(event: UnitDamagedEvent, color: Color, wait: float) -> void:
 	target.set_hp(event.hp)
 	if event.is_blocked():
 		_sound(&"blocked")
-		_pop_number(target.position, "%s が防いだ" % Names.status(event.blocked_by as Status.Type), Color("9fd8ff"))
+		_pop_number(target.position, Text.t("battle.pop.blocked", {"status": Names.status(event.blocked_by as Status.Type)}), Color("9fd8ff"))
 	elif event.critical:
 		_sound(&"critical")
-		_pop_number(target.position, "クリティカル -%d" % event.amount, Color("ff5a4a"))
+		_pop_number(target.position, Text.t("battle.pop.critical", {"amount": event.amount}), Color("ff5a4a"))
 	else:
 		_pop_number(target.position, "-%d" % event.amount, color)
 	await after(wait)
@@ -428,7 +419,7 @@ func _play_heal(event: UnitHealedEvent, glow: bool) -> void:
 ## 経験値が入った。数を小さく出すだけ（たまった量は左下の駒の情報に出る）。
 func _play_experience_gained(event: ExperienceGainedEvent) -> void:
 	var view := _view(event.unit_id)
-	_pop_number(view.position + Vector3(0.0, 0.35, 0.0), "経験 +%d" % event.amount, COLOR_EXPERIENCE)
+	_pop_number(view.position + Vector3(0.0, 0.35, 0.0), Text.t("battle.pop.experience", {"amount": event.amount}), COLOR_EXPERIENCE)
 	await after(0.2)
 
 
@@ -439,7 +430,7 @@ func _play_level_up(event: LevelUpEvent) -> void:
 	view.set_hp(event.hp)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_LEVEL_UP, 1.4)
 	_sound(&"level_up")
-	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "レベル %d！" % event.level, COLOR_LEVEL_UP)
+	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Text.t("battle.pop.level_up", {"level": event.level}), COLOR_LEVEL_UP)
 	await after(0.5)
 
 
@@ -447,7 +438,7 @@ func _play_level_up(event: LevelUpEvent) -> void:
 func _play_evolution_offered(event: EvolutionOfferedEvent) -> void:
 	var view := _view(event.unit_id)
 	_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_EVOLUTION, 1.6)
-	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), "進化できる！", COLOR_EVOLUTION)
+	_pop_number(view.position + Vector3(0.0, 0.6, 0.0), Text.t("battle.pop.evolution_ready"), COLOR_EVOLUTION)
 	await after(0.4)
 
 
@@ -476,7 +467,7 @@ func _play_barrel_exploded(event: BarrelExplodedEvent) -> void:
 	_board_view.show_cells(colors)
 	_flash(at + Vector3(0.0, 0.3, 0.0), Color("ff8a2a"), 2.6)
 	_sound(&"explosion")
-	_pop_number(at, "爆発", Color("ff8a2a"))
+	_pop_number(at, Text.t("battle.pop.exploded"), Color("ff8a2a"))
 	await after(0.3)
 
 
@@ -501,7 +492,7 @@ func _play_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
 	if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED:
 		var at := BoardView.cell_center(event.cells[0])
 		_flash(at + Vector3(0.0, 0.3, 0.0), Color("d8d0c0"), 1.4)
-		_pop_number(at, "盾が壊れた", Color("d8d0c0"))
+		_pop_number(at, Text.t("battle.pop.barricade_broken"), Color("d8d0c0"))
 		await after(0.3)
 
 
@@ -511,7 +502,7 @@ func _play_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 	var attacker := _view(event.attacker_id)
 	attacker.face(at - attacker.position)
 	await _strike(attacker, at)
-	_pop_number(at, "耐久 -%d" % event.amount, Color("ffe9a8"))
+	_pop_number(at, Text.t("battle.pop.durability", {"amount": event.amount}), Color("ffe9a8"))
 	await after(0.3)
 
 
@@ -524,7 +515,7 @@ func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
 	target.face(attacker.position - target.position)
 	await _strike(attacker, target.position)
 	_flash(target.position + Vector3(0.0, 0.3, 0.0), BoardView.COLOR_SMOKE, 1.2)
-	_pop_number(target.position, "煙幕で防いだ", Color("d0d4da"))
+	_pop_number(target.position, Text.t("battle.pop.smoked"), Color("d0d4da"))
 	await after(0.4)
 
 
@@ -562,7 +553,7 @@ func _play_reactivated(event: UnitReactivatedEvent) -> void:
 	var view := _view(event.unit_id)
 	view.set_acted(false)
 	_flash(view.position, Color("ffd24a"), 0.9)
-	_pop_number(view.position + Vector3(0.0, 0.3, 0.0), "もう一度行動できる", Color("ffd24a"))
+	_pop_number(view.position + Vector3(0.0, 0.3, 0.0), Text.t("battle.pop.refreshed"), Color("ffd24a"))
 	await after(0.25)
 
 
@@ -590,7 +581,7 @@ func _play_skill_used(event: SkillUsedEvent) -> void:
 ## 残りは駒の情報とスキルのボタンに出る）。
 func _play_skill_ready(event: SkillReadyEvent) -> void:
 	if _in_ult_effects and _views.has(event.unit_id):
-		_pop_number(_view(event.unit_id).position, "スキル使用可", BattleEffects.SKILL_COLORS[event.skill].lightened(0.45))
+		_pop_number(_view(event.unit_id).position, Text.t("battle.pop.skill_ready"), BattleEffects.SKILL_COLORS[event.skill].lightened(0.45))
 
 
 ## 必殺技を使った。画面が必殺技の色に一瞬光り、必殺技の名前を大きく出す。
@@ -600,7 +591,7 @@ func _play_ult_used(event: UltUsedEvent) -> void:
 	var color: Color = BattleHud.ULT_COLORS[event.ult]
 	_hud.flash_screen(color)
 	_sound(&"ult")  # 音の山が、続く光の柱（_play_ult_effects）に重なる
-	_hud.show_banner("%s　必殺技: %s!!" % [side_name.call(event.side), Names.ult(Ults.by_id(event.ult))], color)
+	_hud.show_banner(Text.t("battle.banner.ult", {"side": side_name.call(event.side), "ult": Names.ult(Ults.by_id(event.ult))}), color)
 	await after(0.5)
 
 
@@ -637,8 +628,8 @@ func _play_status_applied(event: StatusAppliedEvent) -> void:
 func _play_status_removed(event: StatusRemovedEvent) -> void:
 	if event.reason == StatusRemovedEvent.Reason.CONSUMED:
 		return
-	var why := "が解けた" if event.reason == StatusRemovedEvent.Reason.MOVED else "が消えた"
-	_pop_number(_view(event.unit_id).position, Names.status(event.status) + why, Color("b8c4d0"))
+	var key := "battle.pop.status_broken" if event.reason == StatusRemovedEvent.Reason.MOVED else "battle.pop.status_expired"
+	_pop_number(_view(event.unit_id).position, Text.t(key, {"status": Names.status(event.status)}), Color("b8c4d0"))
 	await after(0.2)
 
 
@@ -654,12 +645,12 @@ func _play_acted(event: UnitActedEvent) -> void:
 
 func _play_won(event: GameWonEvent) -> void:
 	await after(0.4)
-	_hud.show_result(result_summary.call(false, event.winner, WIN_REASONS[event.reason]))
+	_hud.show_result(result_summary.call(false, event.winner, Text.t(BattleLog.WIN_TEXTS[event.reason])))
 
 
 func _play_drawn(event: GameDrawnEvent) -> void:
 	await after(0.4)
-	_hud.show_result(result_summary.call(true, Unit.Side.NEUTRAL, DRAW_REASONS[event.reason]))
+	_hud.show_result(result_summary.call(true, Unit.Side.NEUTRAL, Text.t(BattleLog.DRAW_TEXTS[event.reason])))
 
 
 func _play_defeated(event: UnitDefeatedEvent) -> void:
@@ -674,11 +665,11 @@ func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
 	var side := BattleLog.mid_boss_place(battle.board, event.boss_index)
 	if event.slayer_side < 0:
-		_pop_number(at, "%sの中ボスが倒れた" % side)
+		_pop_number(at, Text.t("battle.log.boss_fell", {"place": side}))
 		return
 	var color: Color = team_colors[event.slayer_side]
 	_flash(at + Vector3(0.0, 0.6, 0.0), color, 2.4)
-	_pop_number(at, "%s が%sの中ボスを倒した" % [side_name.call(event.slayer_side as Unit.Side), side], color.lightened(0.4))
+	_pop_number(at, Text.t("battle.log.boss_slain", {"side": side_name.call(event.slayer_side as Unit.Side), "place": side}), color.lightened(0.4))
 	await after(0.6)
 
 
@@ -687,7 +678,7 @@ func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 func _play_relic_gained(event: RelicGainedEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)
 	var color: Color = team_colors[event.side]
-	var text := Names.relic_summary(event.relic).trim_prefix("軍の全員の")
+	var text := Names.relic_effect(event.relic)
 	_sound(&"relic")
 	for unit_id in event.unit_ids:
 		if not _views.has(unit_id):
@@ -697,7 +688,7 @@ func _play_relic_gained(event: RelicGainedEvent) -> void:
 		view.set_hp(event.hp[unit_id])
 		_flash(view.position + Vector3(0.0, 0.5, 0.0), COLOR_RELIC, 1.0)
 		_pop_number(view.position + Vector3(0.0, 0.5, 0.0), text, COLOR_RELIC)
-	_hud.show_banner("%s　%s を手に入れた（%s）" % [side_name.call(event.side), Names.relic(event.relic), Names.relic_summary(event.relic)], color)
+	_hud.show_banner(Text.t("battle.banner.relic", {"side": side_name.call(event.side), "relic": Names.relic(event.relic), "effect": Names.relic_summary(event.relic)}), color)
 	await after(0.7)
 
 
@@ -749,14 +740,14 @@ func _play_phase_started(event: PhaseStartedEvent) -> void:
 	_acted_with_effect = false
 	if event.side == Unit.Side.NEUTRAL:
 		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは、攻撃する駒だけを追う（_play_neutral_phase）。
-		_hud.show_banner("ターン %d　%s の番" % [event.turn, side_name.call(event.side)], team_colors[event.side])
+		_hud.show_banner(Text.t("battle.banner.phase", {"turn": event.turn, "side": side_name.call(event.side)}), team_colors[event.side])
 		await after(0.5)
 		return
 	for unit in battle.units:
 		if unit.side == event.side:
 			_view(unit.id).set_acted(false)
 	_sound(&"phase")
-	_hud.show_banner("ターン %d　%s の番" % [event.turn, side_name.call(event.side)], team_colors[event.side])
+	_hud.show_banner(Text.t("battle.banner.phase", {"turn": event.turn, "side": side_name.call(event.side)}), team_colors[event.side])
 	_rig.focus_on(camera_point.call(event.side))
 	await after(0.5)
 
@@ -764,7 +755,7 @@ func _play_phase_started(event: PhaseStartedEvent) -> void:
 func _play_capture(event: CaptureProgressEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)
 	var hq := battle.board.hq_cells[1 - event.player]
-	var text := "占拠 %d / %d" % [event.turns, Battle.CAPTURE_TURNS_TO_WIN] if event.turns > 0 else "占拠が途切れた"
+	var text := Text.t("battle.pop.capture", {"turns": event.turns, "needed": Battle.CAPTURE_TURNS_TO_WIN}) if event.turns > 0 else Text.t("battle.pop.capture_broken")
 	if event.turns > 0:
 		_sound(&"capture")
 	_pop_number(BoardView.cell_center(hq), text, team_colors[event.player].lightened(0.4))

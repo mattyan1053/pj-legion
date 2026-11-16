@@ -5,6 +5,7 @@ extends RefCounted
 const BattleHud := preload("res://game/battle_hud.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const Names := preload("res://game/names.gd")
+const Text := preload("res://game/text.gd")
 const Mode := BattleUiState.Mode
 
 ## 駒のそばのメニューの項目の名前。
@@ -17,7 +18,8 @@ const MENU_BACK := &"back"
 const MENU_WARP := &"warp"
 
 ## マスに特別なものが無いときの説明。
-const NOTHING_SPECIAL := "特別なものは無い"
+static func nothing_special() -> String:
+	return Text.t("battle.cell.nothing")
 
 
 # ---- 下の帯 ----
@@ -32,56 +34,61 @@ static func hint(
 	confirming_unacted := 0, can_warp := false, pinned := 0
 ) -> String:
 	if battle.is_over():
-		return "決着"
+		return Text.t("battle.hint.over")
 	if cpu_turn:
-		return "相手（CPU）の番"
+		return Text.t("battle.hint.cpu_turn")
 	if battle.evolving_unit() != null:
-		return "進化先を選ぶ（上のボタン）"
+		return Text.t("battle.hint.evolve")
 	if confirming_ult:
 		var ult := Ults.of(battle, battle.phase)  # 確かめるのは、人の番だけ
-		var named := "「%s」" % Names.ult(ult) if ult != null else ""
-		return "もう一度押すと必殺技%sを使う（取り消せない）。右クリックか、盤面のクリックでやめる" % named
+		if ult == null:
+			return Text.t("battle.hint.confirm_ult_unnamed")
+		return Text.t("battle.hint.confirm_ult", {"ult": Names.ult(ult)})
 	if confirming_unacted > 0 and inspected == null:
-		return "まだ行動していない駒が %d 体（足元が光っている）。もう一度押すとターン終了。右クリックでやめる" % confirming_unacted
+		return Text.t("battle.hint.confirm_end_turn", {"count": confirming_unacted})
 	if inspected != null:
-		var ranges := "白: 動ける範囲" if inspected.side == battle.phase else "白: 動ける　赤: 次の番に攻撃が届く"
+		var ranges := Text.t("battle.hint.ranges.own") if inspected.side == battle.phase else Text.t("battle.hint.ranges.foe")
 		if pinned > 0:
-			ranges += "　橙の枠: 表示したままの範囲"
-		var back := "選んでいる駒へ戻る" if unit != null else "見るのをやめる"
-		return "%s を見ている（%s）\n右クリックで%s" % [Names.unit(inspected), ranges, back]
+			ranges += Text.t("battle.hint.ranges.pinned")
+		var key := "battle.hint.inspect_back" if unit != null else "battle.hint.inspect"
+		return Text.t(key, {"unit": Names.unit(inspected), "ranges": ranges})
 	if unit == null and pinned > 0:
-		return "駒をクリックして選ぶ。橙の枠: 表示したままの相手の範囲（右クリックで全部消す）"
+		return Text.t("battle.hint.choose_pinned")
 	if unit == null:
-		return "駒をクリックして選ぶ。相手の駒をクリックすると、動ける範囲と攻撃の届く範囲が見える"
+		return Text.t("battle.hint.choose")
 	if mode == Mode.SKILL and self_skill:
-		return "%s: この駒（紫のマス）をクリックで使う。右クリックでやめる" % Names.skill(Skills.of(unit))
+		return Text.t("battle.hint.skill_self", {"skill": Names.skill(Skills.of(unit))})
 	if mode == Mode.SKILL:
-		var after := "使うと行動を終える" if Skills.of(unit).ends_action() else "使ったあと、続けて攻撃できる"
-		return "%s: 紫のマスをクリックで使う（%s）。右クリックでやめる" % [Names.skill(Skills.of(unit)), after]
+		var key := "battle.hint.skill_ends" if Skills.of(unit).ends_action() else "battle.hint.skill_then_attack"
+		return Text.t(key, {"skill": Names.skill(Skills.of(unit))})
 	if mode == Mode.ATTACK:
-		return "攻撃: 赤いマスの相手をクリック。右クリックでやめる"
+		return Text.t("battle.hint.attack")
 	if mode == Mode.HEAL:
-		return "回復: 緑のマスの味方をクリック。右クリックでやめる"
+		return Text.t("battle.hint.heal")
 	if not battle.can_act(unit):
 		if unit.side != battle.phase:
-			return "相手の駒。白: 動ける範囲　赤: 次の番に攻撃が届く範囲"
-		return "この駒は行動を終えている（白: 動ける範囲）"
+			return Text.t("battle.hint.foe_unit")
+		return Text.t("battle.hint.acted")
 	if unit.move_locked:
-		return "スキルを使った。駒のそばのメニューから、攻撃か待機を選ぶ（取り消せない）"
+		return Text.t("battle.hint.after_skill")
 	if unit.has_moved and can_warp:
-		return "ポータルの上。駒のそばのメニューの「転移」で、同じ色に塗ったマスへ移れる。右クリックで移動を取り消す"
+		return Text.t("battle.hint.on_portal")
 	if unit.has_moved:
 		if unit.cruised:
-			return "巡航で動いたので、攻撃はできない。駒のそばのメニューから、待機か取り消しを選ぶ"
-		return "駒のそばのメニューから行動を選ぶ。右クリックで移動を取り消す"
+			return Text.t("battle.hint.after_cruise")
+		return Text.t("battle.hint.after_move")
 	if UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
-		return "青: 移動　黄: 巡航（回復できない）　緑: 回復できる味方\nマスをクリックで移動。行動は駒のそばのメニューから"
-	return "青: 移動　黄: 巡航（攻撃できない）　赤: 攻撃できる相手\nマスをクリックで移動。行動は駒のそばのメニューから"
+		return Text.t("battle.hint.move_healer")
+	return Text.t("battle.hint.move")
 
 
 ## 自分の番の「おまかせ」を確かめている間と、任せている間の下の帯。
-const AUTO_CONFIRM_HINT := "おまかせ: もう一度押すと、残りの駒を CPU が動かしてターンを終える（取り消せない）。右クリックでやめる"
-const AUTO_RUNNING_HINT := "おまかせ: このターンは CPU が動かしている"
+static func auto_confirm_hint() -> String:
+	return Text.t("battle.hint.auto_confirm")
+
+
+static func auto_running_hint() -> String:
+	return Text.t("battle.hint.auto_running")
 
 
 # ---- 駒のそばのメニュー ----
@@ -99,18 +106,18 @@ static func menu_items(
 	if unit == null or battle.is_over() or not battle.can_act(unit):
 		return items
 	if mode != Mode.NONE:
-		return [[MENU_BACK, "やめる", true]]
+		return [[MENU_BACK, Text.t("battle.menu.back"), true]]
 	if warp_to != Vector2i(-1, -1):
-		items.append([MENU_WARP, "転移", true])
+		items.append([MENU_WARP, Text.t("battle.menu.warp"), true])
 	if can_attack:
-		items.append([MENU_ATTACK, "攻撃", true])
+		items.append([MENU_ATTACK, Text.t("battle.menu.attack"), true])
 	if can_heal:
-		items.append([MENU_HEAL, "回復", true])
+		items.append([MENU_HEAL, Text.t("battle.menu.heal"), true])
 	if Skills.of(unit) != null:
 		items.append([MENU_SKILL, skill_button_text(unit, can_skill), can_skill])
-	items.append([MENU_WAIT, "待機", true])
+	items.append([MENU_WAIT, Text.t("battle.menu.wait"), true])
 	if battle.options(unit.id).can_undo:
-		items.append([MENU_UNDO, "移動を取り消す", true])
+		items.append([MENU_UNDO, Text.t("battle.menu.undo"), true])
 	return items
 
 
@@ -118,21 +125,21 @@ static func menu_items(
 static func menu_note(id: StringName, unit: Unit) -> String:
 	match id:
 		MENU_ATTACK:
-			return "攻撃: 赤いマスの相手（樽・盾も）を選んで攻撃する。攻撃すると、この駒の行動は終わる。相手にマウスを乗せると、見込みが出る"
+			return Text.t("battle.menu.attack.note")
 		MENU_HEAL:
-			return "回復: 緑のマスの味方を選んで回復する（回復量 %d）。回復すると、この駒の行動は終わる" % unit.power()
+			return Text.t("battle.menu.heal.note", {"amount": unit.power()})
 		MENU_SKILL:
 			var skill := Skills.of(unit)
-			var after := "使うと、この駒の行動は終わる" if skill.ends_action() else "使ったあと、続けて攻撃できる（移動は取り消せなくなる）"
-			return "%s: %s\n%s。%s" % [Names.skill(skill), Names.skill_summary(skill), after, BattleHud.skill_state_text(unit)]
+			var key := "battle.menu.skill.note_ends" if skill.ends_action() else "battle.menu.skill.note_then_attack"
+			return Text.t(key, {"skill": Names.skill(skill), "summary": Names.skill_summary(skill), "state": BattleHud.skill_state_text(unit)})
 		MENU_WAIT:
-			return "待機: 何もせずに、この駒の行動を終える"
+			return Text.t("battle.menu.wait.note")
 		MENU_UNDO:
-			return "移動を取り消す: 動く前のマスへ戻して、選び直す"
+			return Text.t("battle.menu.undo.note")
 		MENU_BACK:
-			return "やめる: 対象を選ぶのをやめて、メニューへ戻る"
+			return Text.t("battle.menu.back.note")
 		MENU_WARP:
-			return "転移: 対のポータル（同じ色の塗り）へ移る。移動力は使わない。転移のあとも攻撃・待機を選べる"
+			return Text.t("battle.menu.warp.note")
 	return ""
 
 
@@ -143,14 +150,14 @@ static func skill_button_text(unit: Unit, can_use: bool) -> String:
 	if skill == null:
 		return ""
 	if unit.skill_cooldown > 0:
-		return "スキル（あと %d ターン）" % unit.skill_cooldown
+		return Text.t("battle.menu.skill.cooldown", {"turns": unit.skill_cooldown})
 	var uses := Skills.uses_left(unit)
 	if uses == 0:
-		return "スキル（使い切った）"
+		return Text.t("battle.menu.skill.used_up")
 	if not can_use:
-		return "スキル（いまは使えない）"
+		return Text.t("battle.menu.skill.unusable")
 	if uses > 0:
-		return "%s（あと %d 回）" % [Names.skill(skill), uses]
+		return Text.t("battle.menu.skill.uses_left", {"skill": Names.skill(skill), "uses": uses})
 	return Names.skill(skill)
 
 
@@ -158,12 +165,12 @@ static func skill_button_text(unit: Unit, can_use: bool) -> String:
 static func ult_button_text(battle: Battle, side: Unit.Side, confirming: bool) -> String:
 	var ult := Ults.of(battle, side)
 	if ult == null:
-		return "必殺技（なし）"
+		return Text.t("battle.ult_button.none")
 	if confirming:
-		return "もう一度押して発動"  # 何の必殺技かと、取り消せないことは、ボタンの上の説明と下の帯に出す
+		return Text.t("battle.ult_button.confirm")  # 何の必殺技かと、取り消せないことは、ボタンの上の説明と下の帯に出す
 	if Ults.is_ready(battle, side):
-		return "必殺技: %s（使える）" % Names.ult(ult)
-	return "必殺技: %s（%d%%）" % [Names.ult(ult), Ults.percent(battle, side)]
+		return Text.t("battle.ult_button.ready", {"ult": Names.ult(ult)})
+	return Text.t("battle.ult_button.charging", {"ult": Names.ult(ult), "percent": Ults.percent(battle, side)})
 
 
 # ---- 駒とマス ----
@@ -173,65 +180,91 @@ static func ult_button_text(battle: Battle, side: Unit.Side, confirming: bool) -
 static func unit_state(battle: Battle, unit: Unit) -> String:
 	var state := ""
 	if unit.side == battle.phase:
-		state = "行動済み" if unit.acted else "未行動"
+		state = Text.t("battle.unit.acted") if unit.acted else Text.t("battle.unit.unacted")
 		if unit.has_moved:
-			state = "行動の途中（巡航で移動した）" if unit.cruised else "行動の途中（移動した）"
+			state = Text.t("battle.unit.moving_cruised") if unit.cruised else Text.t("battle.unit.moving")
 		if unit.move_locked:
-			state = "行動の途中（スキルを使った）"
+			state = Text.t("battle.unit.moving_skilled")
 	# 森にいれば、受けるダメージが減る。
 	var terrain := battle.board.terrain_at(unit.cell)
 	if terrain != Terrain.Type.NORMAL:
-		state += ("\n" if state != "" else "") + "いるマス: " + BattleHud.TERRAIN_NAMES[terrain]
+		state += ("\n" if state != "" else "") + Text.t("battle.unit.on_cell", {"terrain": _with_note(_terrain_item(terrain))})
 	return state
 
 
 ## マスの見出し（位置と地形の名前）。
 static func cell_title(battle: Battle, cell: Vector2i) -> String:
-	var terrain: String = BattleHud.TERRAIN_NAMES[battle.board.terrain_at(cell)]
-	return "マス (%d, %d)　%s" % [cell.x, cell.y, terrain.get_slice("（", 0)]
+	return Text.t("battle.cell.title", {"x": cell.x, "y": cell.y, "terrain": _terrain_item(battle.board.terrain_at(cell))[0]})
 
 
-## マスの説明を、左下の枠に出す形にしたもの。「名前（説明。説明）」を、名前の行と、字下げした説明の行に分ける。
+## マスの説明を、左下の枠に出す形にしたもの。項目の名前の行と、説明を「。」ごとに字下げした行に分ける。
 static func cell_body(battle: Battle, cell: Vector2i) -> String:
 	var lines: Array[String] = []
-	for note in cell_notes(battle, cell):
-		if not note.ends_with("）") or not note.contains("（"):
-			lines.append(note)
-			continue
-		lines.append(note.get_slice("（", 0))
-		for part in note.substr(note.find("（") + 1).trim_suffix("）").split("。", false):
-			lines.append("　" + part.strip_edges())
+	for item: Array in cell_items(battle, cell):
+		lines.append(item[0])
+		for part in (item[1] as String).split(Text.t("common.sentence_end"), false):
+			lines.append(Text.t("battle.cell.indent", {"text": part.strip_edges()}))
 	return "\n".join(lines)
 
 
-## ポータルのマスの説明。行き先の座標のあとに、括弧で添える（左下の枠では、括弧の中を「。」ごとの行にする）。
-const PORTAL_NOTE := "止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わない"
-const PORTAL_BLOCKED := "行き先に駒がいて、いまは使えない"
+## 地形の [名前, 説明（無ければ空）]。
+static func _terrain_item(terrain: Terrain.Type) -> Array:
+	match terrain:
+		Terrain.Type.OBSTACLE:
+			return [Text.t("battle.cell.obstacle"), Text.t("battle.cell.obstacle.note")]
+		Terrain.Type.FOREST:
+			return [Text.t("battle.cell.forest"), Text.t("battle.cell.forest.note")]
+		Terrain.Type.FONT:
+			return [Text.t("battle.cell.font"), ""]
+	return [Text.t("battle.cell.plain"), ""]
 
 
-## マスの説明（行ごと）: 地形の効果、本陣、盤の上の効果、環境オブジェクト。
-static func cell_notes(battle: Battle, cell: Vector2i) -> Array[String]:
-	var notes: Array[String] = []
-	var terrain: String = BattleHud.TERRAIN_NAMES[battle.board.terrain_at(cell)]
-	if terrain.contains("（"):
-		notes.append(terrain.get_slice("（", 1).trim_suffix("）"))
+## 項目を 1 つの文にしたもの（「森（移動 2・受けるダメージ 0.8 倍）」）。
+static func _with_note(item: Array) -> String:
+	return item[0] if item[1] == "" else item[0] + Text.paren(item[1])
+
+
+## マスの説明の項目（[名前, 説明（無ければ空）] の列）: 地形の効果、本陣、盤の上の効果、環境オブジェクト。何も無ければ「特別なものは無い」。
+static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
+	var items: Array[Array] = []
+	var terrain := _terrain_item(battle.board.terrain_at(cell))
+	if terrain[1] != "":
+		items.append([terrain[1], ""])
 	var hq_owner := battle.board.hq_owner(cell)
 	if hq_owner >= 0:
-		notes.append("%s の本陣" % Names.side(hq_owner))
+		items.append([Text.t("battle.cell.hq", {"side": Names.side(hq_owner)}), ""])
 	for effect in battle.board.field_effects_at(cell):
-		notes.append(BattleHud.field_effect_text(effect))
-	var type := battle.board.object_at(cell)
-	if type != MapObject.Type.NONE:
-		var text: String = BattleHud.OBJECT_NAMES[type]
-		if type == MapObject.Type.PORTAL:
+		items.append(field_effect_item(effect))
+	match battle.board.object_at(cell):
+		MapObject.Type.BARREL:
+			items.append([Text.t("battle.cell.barrel"), Text.t("battle.cell.barrel.note", {"damage": MapObject.BLAST_DAMAGE})])
+		MapObject.Type.SPRING:
+			items.append([Text.t("battle.cell.spring"), Text.t("battle.cell.spring.note", {"heal": MapObject.SPRING_HEAL})])
+		MapObject.Type.PORTAL:
 			var exit := battle.board.portal_exit(cell)
-			text += " → (%d, %d)（%s" % [exit.x, exit.y, PORTAL_NOTE]
-			if battle.portal_exit(cell) == Board.NO_CELL:
-				text += "。" + PORTAL_BLOCKED
-			text += "）"
-		notes.append(text)
-	if notes.is_empty():
-		notes.append(NOTHING_SPECIAL)
+			var key := "battle.cell.portal.blocked_note" if battle.portal_exit(cell) == Board.NO_CELL else "battle.cell.portal.note"
+			items.append([Text.t("battle.cell.portal", {"x": exit.x, "y": exit.y}), Text.t(key)])
+	if items.is_empty():
+		items.append([nothing_special(), ""])
+	return items
+
+
+## 盤の上の効果の [名前, 説明]。
+static func field_effect_item(effect: FieldEffect) -> Array:
+	var args := {"side": Names.side(effect.side), "durability": effect.durability, "turns": effect.turns_left, "heal": FieldEffects.SANCTUARY_HEAL}
+	match effect.type:
+		FieldEffect.Type.BARRICADE:
+			return [Names.field_effect(effect.type), Text.t("battle.cell.barricade.note", args)]
+		FieldEffect.Type.SMOKE:
+			return [Names.field_effect(effect.type), Text.t("battle.cell.smoke.note", args)]
+	return [Names.field_effect(effect.type), Text.t("battle.cell.sanctuary.note", args)]
+
+
+## マスの説明（行ごと）: 項目を 1 つの文にしたもの。
+static func cell_notes(battle: Battle, cell: Vector2i) -> Array[String]:
+	var notes: Array[String] = []
+	for item: Array in cell_items(battle, cell):
+		notes.append(_with_note(item))
 	return notes
 
 
@@ -239,4 +272,4 @@ static func cell_notes(battle: Battle, cell: Vector2i) -> Array[String]:
 static func cell_line(battle: Battle, cell: Vector2i) -> String:
 	var notes := cell_notes(battle, cell)
 	var title := cell_title(battle, cell)
-	return title if notes[0] == NOTHING_SPECIAL else "%s　%s" % [title, "　".join(notes)]
+	return title if notes[0] == nothing_special() else Text.t("battle.cell.line", {"title": title, "notes": Text.t("battle.cell.separator").join(notes)})

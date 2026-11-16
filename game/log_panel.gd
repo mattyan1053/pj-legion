@@ -7,6 +7,7 @@ extends CanvasLayer
 ## - 開くたびに、前に開いてから増えた・書き換わった行だけを作り直し、いちばん下（最新）を見せる。
 ## - 行は、新しいほうから CHUNK 行ずつ作る。いちばん上までさかのぼると、その前の CHUNK 行を足す（長い対戦でも、開くのが重くならない）。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const BattleLog := preload("res://game/battle_log.gd")
@@ -84,18 +85,18 @@ func setup(team_colors: Array[Color], overlays: RefCounted) -> void:
 	var title_row := HBoxContainer.new()
 	column.add_child(title_row)
 	var title := _label(22, COLOR_TEXT)
-	title.text = "ログ"
+	title.text = Text.t("battle.log_panel.title")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
 	var close_button := Button.new()
-	close_button.text = "閉じる"
+	close_button.text = Text.t("battle.log_panel.close")
 	close_button.focus_mode = Control.FOCUS_NONE
 	close_button.add_theme_font_size_override("font_size", 16)
 	close_button.custom_minimum_size = Vector2(96.0, 34.0)
 	close_button.pressed.connect(close)
 	title_row.add_child(close_button)
 	var hint := _label(13, COLOR_TEXT_DIM)
-	hint.text = "行を押すと、その場所と駒を盤の上で示す"
+	hint.text = Text.t("battle.log_panel.hint")
 	column.add_child(hint)
 
 	_scroll = ScrollContainer.new()

@@ -6,6 +6,7 @@ extends PanelContainer
 ## （名前、HP の棒の減り方・増え方、数、内訳）→ 駒に属さないこと（置かれる効果、盾、聖遺物、必殺技のゲージ）。
 
 const Palette := preload("res://game/ui_palette.gd")
+const Text := preload("res://game/text.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 
@@ -82,15 +83,15 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 	var texts: Array[String] = [title]
 	_add_label(title, 16, COLOR_TITLE)
 	if summary.hurts_actor:
-		_add_label("自分も巻き込まれる！", 16, COLOR_WARN)
-		texts.append("自分も巻き込まれる！")
+		_add_label(Text.t("battle.forecast.self_hurt"), 16, COLOR_WARN)
+		texts.append(Text.t("battle.forecast.self_hurt"))
 	if summary.defeats > 0:
-		var text := "倒せる！" if summary.defeats == 1 else "%d 体を倒せる！" % summary.defeats
+		var text := Text.t("battle.forecast.defeats_one") if summary.defeats == 1 else Text.t("battle.forecast.defeats", {"count": summary.defeats})
 		_add_label(text, 16, COLOR_DEFEAT)
 		texts.append(text)
 	var compact := summary.rows.size() >= COMPACT_FROM
 	for row in summary.rows:
-		var name := ("自分（%s）" % row.name) if row.is_actor else row.name
+		var name := Text.t("battle.forecast.self_named", {"unit": row.name}) if row.is_actor else row.name
 		if compact:
 			texts.append(_add_compact_row(name, row))
 			continue
@@ -113,7 +114,7 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 			_add_label(hp, 17, color)
 			texts.append(hp)
 		if not row.notes.is_empty():
-			var notes := "・".join(row.notes)
+			var notes := Text.join_dot(row.notes)
 			_add_label(notes, 14, COLOR_DIM)
 			texts.append(notes)
 		for effect in row.effects:
@@ -123,8 +124,8 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 		_add_label(line, 15, COLOR_TITLE if summary.decides and line == summary.lines[-1] else Palette.TEXT)
 		texts.append(line)
 	if summary.rows.is_empty() and summary.lines.is_empty():
-		_add_label("何も起きない", 15, COLOR_DIM)
-		texts.append("何も起きない")
+		_add_label(Text.t("battle.forecast.nothing"), 15, COLOR_DIM)
+		texts.append(Text.t("battle.forecast.nothing"))
 	_shown_text = "\n".join(texts)
 	visible = true
 	reset_size()
@@ -137,7 +138,7 @@ func _add_compact_row(name: String, row: ForecastText.Row) -> String:
 	if hp != "":
 		line += ": " + hp
 	if not row.notes.is_empty():
-		line += "（%s）" % "・".join(row.notes)
+		line += Text.notes(row.notes)
 	var color := _side_color(row.side).lightened(0.4)
 	if row.defeated:
 		color = COLOR_DEFEAT
@@ -145,7 +146,7 @@ func _add_compact_row(name: String, row: ForecastText.Row) -> String:
 		color = COLOR_WARN
 	_add_label(line, 14, color)
 	if not row.effects.is_empty():
-		var effects := "　" + "、".join(row.effects)
+		var effects := Text.t("battle.log.detail", {"text": Text.join_comma(row.effects)})
 		_add_label(effects, 13, COLOR_DIM)
 		line += "\n" + effects
 	return line

@@ -42,6 +42,7 @@ func test_every_skill_ult_status_and_relic_has_a_name_and_summary() -> void:
 	_assert_keys("ult", Ult.Id)
 	_assert_keys("ult", Ult.Id, ".summary")
 	_assert_keys("status", Status.Type)
+	_assert_keys("status", Status.Type, ".summary")
 	_assert_keys("relic", Relics.Id)
 	_assert_keys("relic", Relics.Id, ".summary")
 	# 説明の文の差し込みは、どれも埋まる（{名前} が残らない）。

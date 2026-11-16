@@ -17,7 +17,9 @@
 
 | ファイル | 中身 |
 | --- | --- |
+| `common.csv` | どの画面でも使う形（括弧、「・」「、」のつなぎ、マスの座標） |
 | `names.csv` | ゲームの中のものの名前と説明（陣営、軍、役割、能力、特性、盤の上の効果、駒、進化先、持ち物、スキル、必殺技、状態、聖遺物、ステージ） |
+| `battle.csv` | 対戦の画面（上の帯 `battle.hud`、下の帯の説明 `battle.hint`、駒のそばのメニュー `battle.menu`、マスの説明 `battle.cell`、予測 `battle.forecast`、勝ち方 `battle.goal`、ログ `battle.log`、盤の上の文字 `battle.pop`、知らせ `battle.banner`）、決着の画面 `result`、戦績 `stats` |
 
 ## 鍵の名付け
 
@@ -31,7 +33,11 @@
 
 - 数や名前を差し込む文は、**名前つきの差し込み** `{名前}` で書く（`{range} マス以内を中心に、十字 5 マスの敵へ {damage} ダメージ`）。
   コードは `Text.t(鍵, {"range": 3, "damage": 8})`。語順は表の側で決める（「A が B に N ダメージ」を、文 1 つで書く）。
-- 文をつなげて組み立てない。言い回しが変わるたびに、コードを直すことになる。
+- 文をつなげて組み立てない。言い回しが変わるたびに、コードを直すことになる。文の形が場合で変わる（「倒した」「倒れた」、
+  「…すれば勝ち。」の「れば」）ときは、形ごとに鍵を分ける（`battle.log.damage.attack.defeated` / `battle.log.damage.effect.defeated`、
+  `battle.goal.win.<勝ち方>` / `battle.goal.win.<勝ち方>.last`）。
+- 「（…）」「・」「、」でつなぐ所は `Text.paren`・`Text.notes`・`Text.join_dot`・`Text.join_comma`（形は `common.csv`）。
+- 列挙から鍵を作る画面の文（勝ち方の形、終わり方の名前）は、`test_text.gd` の `SCREEN_FAMILIES` に頭と列挙を書く（表の鍵が使われているかを、そこで調べる）。
 
 ## 見張り（`test_text.gd`）
 
