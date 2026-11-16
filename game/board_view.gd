@@ -56,8 +56,8 @@ const MOTES_PER_PORTAL := 4
 const PORTAL_PULSE_PERIOD := 1.8
 ## 敵の全員の脅威範囲（show_danger）。塗りではなく、赤い斜線と、範囲の縁の線で描く。
 ## 移動の青・巡航の黄の塗りの上に重ねても、下の色が見えて、どちらも読める。
-const COLOR_DANGER_STRIPE := Color(0.95, 0.12, 0.1, 0.55)
-const COLOR_DANGER_EDGE := Color(1.0, 0.25, 0.18, 0.95)
+const COLOR_DANGER_STRIPE := Color(0.95, 0.12, 0.1, 0.3)
+const COLOR_DANGER_EDGE := Color(1.0, 0.25, 0.18, 0.7)
 ## 斜線と縁の高さ。塗ったマス（駒の足元より上に塗るものも）より上。
 const DANGER_LIFT := 0.07
 ## 縁の線の太さ（マス）。

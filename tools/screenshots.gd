@@ -58,6 +58,9 @@ const SCENES := {
 	"threat": "相手の駒をクリックして見ている（脅威範囲が出ている）",
 	"inspect_moved": "自分の駒を動かしたあと（メニューが出たまま）に、相手の駒を見ている",
 	"threat_all": "自分の駒を選んで、敵の全員の脅威範囲（赤い斜線）を重ねている",
+	"threat_mix_plain": "敵の全員の脅威範囲（斜線）を出したまま、相手の駒を見ている（その駒の範囲の赤い塗り。中央平原）",
+	"threat_mix_labyrinth": "同じく、迷宮回廊（石畳）で",
+	"threat_mix_twin_springs": "同じく、双子結晶（結晶の森）で",
 	"skill": "スキルの対象を選んでいる",
 	"forecast_attack": "動いたあと、攻撃の相手にマウスを乗せて、戦闘予測のパネルが出ている",
 	"forecast_defeat": "倒せる相手にマウスを乗せている（予測のパネルに「倒せる！」）",
@@ -755,6 +758,28 @@ func _scene_threat_all() -> bool:
 	_scene.toggle_threat()
 	_scene.focus_camera(unit.cell)
 	return _scene.is_threat_shown()
+
+
+## field のステージで、敵の全員の脅威範囲を出し、自分の駒の近くの相手の駒を見る（斜線と、見ている駒の赤い塗りが重なる）。
+func _threat_mix(field: StringName) -> bool:
+	_field = field
+	_new_battle()
+	if not await _scene_threat():
+		return false
+	_scene.toggle_threat()
+	return _scene.is_threat_shown() and not _scene.threat_painted_cells().is_empty()
+
+
+func _scene_threat_mix_plain() -> bool:
+	return await _threat_mix(VersusFields.PLAIN)
+
+
+func _scene_threat_mix_labyrinth() -> bool:
+	return await _threat_mix(VersusFields.LABYRINTH)
+
+
+func _scene_threat_mix_twin_springs() -> bool:
+	return await _threat_mix(VersusFields.TWIN_SPRINGS)
 
 
 func _scene_forecast_attack() -> bool:
