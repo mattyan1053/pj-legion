@@ -1112,6 +1112,25 @@ func _queue_setup_scene() -> void:
 		panel.cancel()
 		_expect(not panel.visible and not _scene.is_busy(), "設定画面が閉じない")
 		_expect(_scene.battle == battle and _scene.look == StageLook.CRYSTAL_FOREST and _scene.cpu_opponent, "設定画面を閉じたら、対戦か設定が変わった")
+		# 押すと対戦が終わるボタンは、2 回押させる（1 回目と、直後の 2 回目では終わらない。右クリックで確かめだけをやめる）。
+		_scene.open_setup()
+		for press: StringName in [&"press_stage", &"press_start"]:
+			panel.call(press)
+			_expect(panel.visible and panel.confirming_text() != "", "%s の 1 回目で、確かめずに進んだ" % press)
+			panel.call(press)
+			_expect(panel.visible and _scene.battle == battle, "%s の確かめの直後の 2 回目で、対戦が終わった" % press)
+			var right := InputEventMouseButton.new()
+			right.button_index = MOUSE_BUTTON_RIGHT
+			right.pressed = true
+			panel._input(right)
+			_expect(panel.visible and panel.confirming_text() == "", "右クリックで、%s の確かめがやめにならない" % press)
+		panel.press_start()
+		panel.press_stage()  # ほかのボタンを押すと、そちらの確かめに変わる
+		panel.pass_confirm_guard()
+		panel.press_start()
+		_expect(panel.visible and _scene.battle == battle, "別のボタンの確かめの間に、新しい対戦が始まった")
+		panel.cancel()
+		_expect(_scene.battle == battle and not panel.visible, "確かめの途中で閉じたら、対戦が変わった")
 		# 手で作ったマップ（対戦モードで選べるもの）でも始まる。「新しい盤面」は生成のステージだけ（同じマップは形が変わらない）。
 		# 画面に出していない（釣り合いがめやすを外れる）マップでも、入口は同じ。
 		for field in VersusFields.all_ids():
@@ -1131,7 +1150,12 @@ func _queue_setup_scene() -> void:
 		panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
 		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.FANTASY)
 		panel.choose_field(VersusFields.PLAIN)
-		panel.confirm()
+		var before: Battle = _scene.battle
+		panel.press_start()  # 対戦の途中なので、確かめてから（間を置いた 2 回目で）始める
+		_expect(_scene.battle == before, "「新しい対戦を始める」の 1 回目で、新しい対戦が始まった")
+		panel.pass_confirm_guard()
+		panel.press_start()
+		_expect(_scene.battle != before and not panel.visible, "「新しい対戦を始める」の 2 回目で、新しい対戦が始まらない")
 		_expect(not _scene.cpu_opponent and _scene.source.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
 	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、ステージ・相手・対戦の設定は選び直せない）を渡すと、選び直す入口が出ない。
 	var kept := {}
