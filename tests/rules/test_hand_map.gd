@@ -110,6 +110,7 @@ func test_deploy_cells_place_units_in_deck_order_then_fall_back() -> void:
 		Vector2i(0, 13),  # 壁: 飛ばす
 		Vector2i(3, 18),
 		Vector2i(8, 21),  # 本陣（将がいる）: 飛ばす
+		Vector2i(8, 0),  # 相手の本陣（相手の将はまだ置かれていない）: 飛ばす
 		Vector2i(13, 18),
 	]
 	scenario.set_deploy_cells(Unit.Side.PLAYER1, cells)
@@ -127,6 +128,8 @@ func test_deploy_cells_place_units_in_deck_order_then_fall_back() -> void:
 	var mine := battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1)
 	assert_eq(mine.size(), 1 + deck.entries.size())
 	# 初期位置を決めていないプレイヤーは、いつもの置き方のまま。
+	assert_eq(battle.unit_at(Vector2i(8, 0)).kind, UnitKind.Id.KING)
+	assert_eq(battle.unit_at(Vector2i(8, 0)).side, Unit.Side.PLAYER2)
 	assert_eq(battle.unit_at(Vector2i(8, 1)).side, Unit.Side.PLAYER2)
 
 

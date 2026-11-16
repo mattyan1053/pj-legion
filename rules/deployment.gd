@@ -6,11 +6,11 @@ extends RefCounted
 ## - 「前」は、本陣から見て盤の中央の側（本陣が盤の下半分にあれば上、上半分にあれば下）
 ## - 本陣の 1 つ前の行から使う。1 行は本陣の列を中心に 5 マス
 ## - 行の中は、中央 → 左 → 右 → さらに左 → さらに右 の順（左右は盤面の座標で、列の小さいほうが左）
-## - 盤の外・入れないマス・駒のいるマスは飛ばす。行が埋まったら、その前の行へ送る
+## - 盤の外・入れないマス・駒のいるマス・本陣（相手のものも）は飛ばす。行が埋まったら、その前の行へ送る
 ## - 編成の並びの順に置く
 ##
 ## 置くマスの列（cells）を渡すと、将でない駒は、編成の並びの順に、その列のマスへ置く（戦いの定義の初期位置）。
-## 列のマスが盤の外・入れない・駒がいるなら飛ばす。列が尽きたら、残りの駒はいつもの置き方（本陣の前の行）で置く。
+## 列のマスが盤の外・入れない・駒がいる・どちらかの本陣なら飛ばす。列が尽きたら、残りの駒はいつもの置き方（本陣の前の行）で置く。
 ##
 ## 編成が対戦に出せる形か（Deck.is_valid）は、ここでは調べない。対戦を始める側が、渡す前に調べる。
 
@@ -38,7 +38,7 @@ static func deploy(battle: Battle, side: Unit.Side, deck: Deck, cells: Array[Vec
 		while cell == NO_CELL and next_listed < cells.size():
 			var listed := cells[next_listed]
 			next_listed += 1
-			if battle.board.is_walkable(listed) and battle.unit_at(listed) == null:
+			if _can_place(battle, listed):
 				cell = listed
 		if cell == NO_CELL:
 			cell = _free_cell(battle, hq)
@@ -73,10 +73,16 @@ static func _free_cell(battle: Battle, hq: Vector2i) -> Vector2i:
 	while row.y >= 0 and row.y < battle.board.size.y:
 		for offset in _row_offsets():
 			var cell := row + Vector2i(offset, 0)
-			if battle.board.is_walkable(cell) and battle.unit_at(cell) == null:
+			if _can_place(battle, cell):
 				return cell
 		row += step
 	return NO_CELL
+
+
+## 将でない駒を置けるマスか（入れて、駒がいなくて、どちらの本陣でもない）。
+## 本陣は将の場所なので、相手の将がまだ置かれていなくても使わない。
+static func _can_place(battle: Battle, cell: Vector2i) -> bool:
+	return battle.board.is_walkable(cell) and battle.unit_at(cell) == null and battle.board.hq_owner(cell) == -1
 
 
 ## 行の中で試す列のずれ。0, -1, +1, -2, +2 …
