@@ -1257,10 +1257,16 @@ func _queue_minimap_scene() -> void:
 	var battle := Battle.new(board)
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 9))
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(11, 0))
+	# 軍を持たせて、上の帯に必殺技のゲージを出す（ゲージのぶん、陣営の欄が狭くなる）。
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 9))
+	battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(10, 0))
+	battle.turn = 99  # 上の帯のターンの文がいちばん長いとき
 	_scripted.append(func() -> void:
-		_scene.set_opponent(false)
+		_scene.set_opponent(true)  # 「相手: CPU」（「相手: 人」より幅を取る）。プレイヤー1 の番なので、CPU は動かない
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
+		_expect(_scene.top_bar_cut_texts().is_empty(), "上の帯の陣営の欄（駒の数と占拠）が切れている: %s" % [_scene.top_bar_cut_texts()])
+		_scene.set_opponent(false)
 		var rect: Rect2 = _scene.minimap_rect()
 		var screen: Rect2 = _scene.get_viewport().get_visible_rect()
 		_expect(rect.has_area() and screen.encloses(rect), "ミニマップが出ていないか、画面からはみ出した: %s" % rect)

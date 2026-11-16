@@ -493,6 +493,11 @@ func talk_line() -> BattleCues.Line:
 	return _talk.current()
 
 
+## 上の帯の陣営の欄のうち、幅が足りずに省かれている文（battle_hud.gd）。検査用。
+func top_bar_cut_texts() -> Array[String]:
+	return _hud.top_bar_cut_texts()
+
+
 ## 対戦の途中の会話の札が画面に占める四角と、上の帯の下の決まった枠（勝ち方の札、視点の案内）とミニマップの四角。検査用。
 func talk_card_rect() -> Rect2:
 	return _talk.card_rect()
