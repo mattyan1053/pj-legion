@@ -46,8 +46,9 @@ func retries_on_enter(won: bool) -> bool:
 	return not won
 
 
+## 決着の画面に「部隊を選び直す」を出すか（部隊が決まっている話は出さない）。
 func can_choose_squad() -> bool:
-	return true
+	return squad_of(episode) == null
 
 
 ## 話のデータの CUES（いつ・だれが・何と言うか）。無い話は台詞なし。
@@ -71,6 +72,11 @@ func copy() -> RefCounted:
 static func scenario_of(of_episode: Script) -> Scenario:
 	var defined := Scenario.on_map(of_episode.MAP.map(), of_episode.MAP.TITLE)
 	defined.fix_deck(Unit.Side.PLAYER2, enemy_deck_of(of_episode))
+	# 人の部隊が決まっている話（SQUAD。チュートリアル）は、出撃の準備で選んだ部隊のかわりに、それを置く。
+	var squad := squad_of(of_episode)
+	if squad != null:
+		defined.fix_deck(Unit.Side.PLAYER1, squad)
+	defined.set_start_gauge(Unit.Side.PLAYER1, start_gauge_of(of_episode))
 	# 初期位置（話のデータの DEPLOY。[プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」）。
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var cells: Array[Vector2i] = []
@@ -90,8 +96,12 @@ static func scenario_of(of_episode: Script) -> Scenario:
 
 ## 話 of_episode の敵の部隊（話のデータの ENEMY_ARMY と ENEMY から。決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
 static func enemy_deck_of(of_episode: Script) -> Deck:
-	var deck := Deck.new(of_episode.ENEMY_ARMY)
-	for row: Array in of_episode.ENEMY:
+	return _deck_of_rows(of_episode.ENEMY_ARMY, of_episode.ENEMY)
+
+
+static func _deck_of_rows(army: UnitKind.Army, rows: Array) -> Deck:
+	var deck := Deck.new(army)
+	for row: Array in rows:
 		var entry := DeckEntry.new(row[0])
 		for item: Equipment.Id in row[1]:
 			entry.equip(item)
@@ -117,6 +127,25 @@ static func wins_of(of_episode: Script) -> Array[GameWonEvent.Reason]:
 
 
 ## 対戦の途中の会話（CUES）。無い話は空（台詞なし）。
+## 人の部隊が決まっている話（SQUAD）の、その部隊。決まっていなければ null（出撃の準備で選ぶ）。
+## 軍は、最初の駒の軍（話の物語の軍の駒で書く。test_episode_data.gd が確かめる）。
+static func squad_of(of_episode: Script) -> Deck:
+	var rows: Array = _constant(of_episode, &"SQUAD", [])
+	if rows.is_empty():
+		return null
+	return _deck_of_rows(UnitKind.army(rows[0][0]), rows)
+
+
+## 人の必殺技のゲージを、対戦の始めにこの量にする（START_GAUGE。無ければ 0）。
+static func start_gauge_of(of_episode: Script) -> int:
+	return _constant(of_episode, &"START_GAUGE", 0)
+
+
+## 出撃の準備に出す、この話で覚えること（LESSON。無ければ空）。
+static func lesson_of(of_episode: Script) -> String:
+	return _constant(of_episode, &"LESSON", "")
+
+
 ## 話のクリアで、新しく持たせられるようになる装備（UNLOCK_ITEMS。無ければ空）。
 static func unlock_items_of(of_episode: Script) -> Array[Equipment.Id]:
 	var items: Array[Equipment.Id] = []

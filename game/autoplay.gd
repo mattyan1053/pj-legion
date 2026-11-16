@@ -14,6 +14,7 @@ extends Node
 const SceneFlow := preload("res://game/scene_flow.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
@@ -1891,9 +1892,17 @@ func _visit_decks(app: Node) -> void:
 ## ストーリーの 1 話の通し: タイトルの「ストーリー」→ 会話（送る・戻る・飛ばす）→ 話の対戦（選び直す入口が無い、手で作ったマップ、
 ## 決め打ちの敵）→ 勝って、決着の画面の「次へ」→ あとの会話（最後まで送る）→ タイトル。勝った時点でクリアを書き、タイトルに済みの印。
 ## 対戦は、話の対戦の画面に小さな盤を渡して、1 手で勝って終える（話の盤を最後まで進めると、検査が長くなる）。
+## 部隊を選んで出撃する流れを通すので、部隊の決まっている頭の話（チュートリアル）は、クリアしたことにしてから始める。
 func _visit_story(app: Node) -> void:
 	var story: RefCounted = app.context.story
+	story.choose_campaign(Story.MILITARY)
+	for each: Script in Story.MILITARY.EPISODES:
+		if StoryBattle.squad_of(each) == null:
+			break
+		story.clear(each.ID)
 	var episode: Script = story.next_episode()
+	var first := Story.MILITARY.EPISODES.find(episode)
+	_expect(first > 0 and StoryBattle.squad_of(episode) == null, "部隊を選ぶ話が無い")
 	_expect(not story.is_cleared(episode.ID), "始める前から、話をクリアしている")
 	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
 	app.current_scene().press_story()
@@ -1909,8 +1918,9 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.EPISODES and story.campaign == Story.MILITARY, "物語を選んでも、その物語の話の一覧へ進まない")
 	var list: Node = app.current_scene()
 	_expect(list.episodes().size() == Story.MILITARY.EPISODES.size(), "話の一覧に、全部の話が並んでいない")
-	_expect(list.is_card_enabled(Story.MILITARY.EPISODES[0]) and list.card_status(Story.MILITARY.EPISODES[0]) == "未クリア", "最初の話を選べない")
-	for later: Script in Story.MILITARY.EPISODES.slice(1):
+	_expect(list.is_card_enabled(Story.MILITARY.EPISODES[0]) and list.card_status(Story.MILITARY.EPISODES[0]) == "クリア済み", "クリアした最初の話を選び直せない")
+	_expect(list.is_card_enabled(episode) and list.card_status(episode) == "未クリア", "次の話を選べない")
+	for later: Script in Story.MILITARY.EPISODES.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.TITLE)
 	list.choose(episode)
 	await app.scene_changed
@@ -1963,7 +1973,7 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.TALK, "決着の画面の「次へ」で、あとの会話へ進まない")
 	talk = app.current_scene()
-	_expect(talk.line_count() == episode.AFTER.size() + episode.UNLOCKS.size(), "あとの会話の文の数が違う（最後に、解放した駒の知らせ）")
+	_expect(talk.line_count() == episode.AFTER.size() + Story.unlocked_before(episode).news_of(episode).size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
 	if not episode.UNLOCKS.is_empty():
 		talk.press_skip()
 		_expect(talk.line_index() == episode.AFTER.size() and talk.speaker() == "知らせ"
@@ -1974,13 +1984,13 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
 	list = app.current_scene()
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
-	if Story.MILITARY.EPISODES.size() > 1:
-		_expect(list.is_card_enabled(Story.MILITARY.EPISODES[1]), "前の話をクリアしたのに、次の話を選べない")
+	if Story.MILITARY.EPISODES.size() > first + 1:
+		_expect(list.is_card_enabled(Story.MILITARY.EPISODES[first + 1]), "前の話をクリアしたのに、次の話を選べない")
 	_expect(list.roster_text().contains(UnitKind.display_name(episode.UNLOCKS[0])) if not episode.UNLOCKS.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
 	list.press_back()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "話の一覧の「物語を選び直す」で、物語を選ぶ場面へ戻らない")
-	_expect(app.current_scene().status_text(Story.MILITARY) == "1 / %d 話クリア" % Story.MILITARY.EPISODES.size(), "物語のカードに、クリアした話の数が出ない")
+	_expect(app.current_scene().status_text(Story.MILITARY) == "%d / %d 話クリア" % [first + 1, Story.MILITARY.EPISODES.size()], "物語のカードに、クリアした話の数が出ない")
 	app.current_scene().press_back()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.TITLE, "物語を選ぶ場面の「タイトルへ戻る」で、タイトルへ戻らない")

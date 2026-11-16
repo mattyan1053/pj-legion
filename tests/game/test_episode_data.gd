@@ -12,7 +12,12 @@ const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 ## 話のデータに書いてよい定数の名前（preload した道具の名前は除く。_problems が Script の定数を読み飛ばす）。
 const REQUIRED := [&"ID", &"TITLE", &"LOOK", &"MAP", &"UNLOCKS", &"ENEMY_ARMY", &"ENEMY", &"DEPLOY", &"SPEAKERS", &"BEFORE", &"AFTER"]
-const OPTIONAL := [&"HOLD_TURNS", &"WINS", &"CUES", &"UNLOCK_ITEMS", &"BUDGET_UP", &"HUMAN_LEADER", &"ENEMY_LEADER", &"MUSIC", &"TALK_MUSIC"]
+const OPTIONAL := [
+	&"HOLD_TURNS", &"WINS", &"CUES", &"UNLOCK_ITEMS", &"BUDGET_UP", &"SQUAD", &"START_GAUGE", &"LESSON", &"HUMAN_LEADER", &"ENEMY_LEADER",
+	&"MUSIC", &"TALK_MUSIC",
+]
+## 出撃の準備に出す、覚えることの文（LESSON）の長さの上限（1〜2 行に収める）。
+const LESSON_MAX_CHARS := 48
 
 
 func test_every_episode_is_well_formed() -> void:
@@ -59,6 +64,8 @@ func test_unlocks_are_new_kinds_of_the_campaign_army_and_new_items_unlocked_once
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
 	for episode in Story.all_episodes():
+		if StoryBattle.squad_of(episode) != null:
+			continue  # 部隊が決まっている話は、下の test_fixed_squads_are_the_campaign_army_and_placed が見る
 		var campaign := Story.campaign_of(episode)
 		var deck := Deck.new(campaign.ARMY, Story.rules_of(Story.starting(campaign)))
 		for i in Deck.MAX_UNITS:
@@ -73,6 +80,23 @@ func test_a_full_squad_is_placed_on_every_episode_map() -> void:
 		assert_eq(placed, [Deck.MAX_UNITS + 1, episode.ENEMY.size() + 1], "%s: 両軍の全員が盤に置かれる" % episode.ID)
 
 
+func test_fixed_squads_are_the_campaign_army_and_placed() -> void:
+	var fixed := 0
+	for episode in Story.all_episodes():
+		var squad := StoryBattle.squad_of(episode)
+		if squad == null:
+			continue
+		fixed += 1
+		var campaign := Story.campaign_of(episode)
+		for row: Array in episode.SQUAD:
+			assert_eq(UnitKind.army(row[0]), campaign.ARMY, "%s: 決まっている部隊は、物語の軍の駒" % episode.ID)
+		assert_true(squad.entries.size() <= Deck.MAX_UNITS, episode.ID)
+		var battle := Story.first_battle(episode).make_setup(3).create_battle()
+		var placed := battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1).size()
+		assert_eq(placed, episode.SQUAD.size() + 1, "%s: 決まっている部隊の全員（将を含む）が盤に置かれる" % episode.ID)
+	assert_true(fixed > 0, "部隊が決まっている話（チュートリアル）が無い")
+
+
 ## わざと壊した話のデータを、見方が弾くこと。
 func test_broken_episode_data_is_caught() -> void:
 	var cases := {
@@ -80,6 +104,10 @@ func test_broken_episode_data_is_caught() -> void:
 		"解放の書き間違い": "const UNLOCK_ITEM: Array[Equipment.Id] = []",
 		"無い装備の解放": "const UNLOCK_ITEMS := [99]",
 		"上がらないコスト": "const BUDGET_UP := 0",
+		"空の決まった部隊": "const SQUAD := []",
+		"決まった部隊に将": "const SQUAD := [[UnitKind.Id.KING, []]]",
+		"ゲージがあふれる": "const START_GAUGE := 1001",
+		"長い覚えること": "const LESSON := \"%s\"" % "あ".repeat(LESSON_MAX_CHARS + 1),
 		"守り切るのに守り切るの勝ち方が無い": "const HOLD_TURNS := 5\nconst WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]",
 		"守り切るの勝ち方なのにターン数が無い": "const WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.TURNS_HELD]",
 		"空の勝ち方": "const WINS: Array[GameWonEvent.Reason] = []",
@@ -145,6 +173,20 @@ func _problems(episode: Script) -> Array[String]:
 				found.append("解放できない装備 %s" % [item])
 	if constants.has(&"BUDGET_UP") and (typeof(episode.BUDGET_UP) != TYPE_INT or episode.BUDGET_UP < 1):
 		found.append("BUDGET_UP は 1 以上")
+	if constants.has(&"SQUAD"):
+		if episode.SQUAD.is_empty():
+			found.append("決まっている部隊が空")
+		for row: Variant in episode.SQUAD:
+			if typeof(row) != TYPE_ARRAY or row.size() != 2 or not _is_kind(row[0]) or row[0] == UnitKind.Id.KING:
+				found.append("決まっている部隊の行が読めない: %s" % [row])
+			else:
+				for item: Variant in row[1]:
+					if typeof(item) != TYPE_INT or not Equipment.Id.values().has(item):
+						found.append("無い装備 %s" % [item])
+	if constants.has(&"START_GAUGE") and (typeof(episode.START_GAUGE) != TYPE_INT or episode.START_GAUGE < 1 or episode.START_GAUGE > Ults.GAUGE_MAX):
+		found.append("START_GAUGE は 1 から %d" % Ults.GAUGE_MAX)
+	if constants.has(&"LESSON") and (typeof(episode.LESSON) != TYPE_STRING or episode.LESSON == "" or episode.LESSON.length() > LESSON_MAX_CHARS):
+		found.append("LESSON は 1 から %d 字" % LESSON_MAX_CHARS)
 	if not UnitKind.Army.values().has(episode.ENEMY_ARMY):
 		found.append("知らない軍 %s" % [episode.ENEMY_ARMY])
 	if episode.ENEMY.is_empty():
@@ -227,7 +269,7 @@ func _talk_problems(episode: Script, constants: Dictionary) -> Array[String]:
 					found.append("ターンは 1 から: %s" % [cue])
 				elif constants.has(&"HOLD_TURNS") and cue[1] > episode.HOLD_TURNS:
 					found.append("守り切るターンの外（出ない）: %s" % [cue])
-			BattleCues.KING_HALF, BattleCues.FALLEN:
+			BattleCues.KING_HALF, BattleCues.FALLEN, BattleCues.ULT_READY, BattleCues.RELIC:
 				if not cue[1] in [0, 1]:
 					found.append("陣営は 0 か 1: %s" % [cue])
 	return found

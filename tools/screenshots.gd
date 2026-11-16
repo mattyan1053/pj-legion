@@ -131,10 +131,12 @@ const SCENES := {
 	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語。FANTASY は準備中）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
-	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
+	"story_list_cleared": "ストーリー: 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）",
+	"story_tutorial_list": "ストーリー: 何もクリアしていない話の一覧（頭のチュートリアルの話。番号に「（演習）」）",
+	"story_tutorial_sortie": "ストーリー: チュートリアルの話（演習「撃ち合い」）の出撃の準備（この話で覚えること、決まっている部隊）",
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
 	"story_unlocked_decks": "ストーリー: 全部の話をクリアしたあと、部隊の編成の「ストーリー用」で組むところ（解放した駒・持ち物、上がったコストの上限）",
-	"story_list_items": "ストーリー: 第 2 話までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
+	"story_list_items": "ストーリー: 本編の 2 話目までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
 	"story_sortie_default": "ストーリー: 出撃の準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
@@ -153,7 +155,7 @@ const SCENES := {
 	"story_rout_sortie": "ストーリー: 全滅させる話（第 4 話）の出撃の準備（2 つ目の手で作ったマップ「結晶の渓谷」。勝ち方は「敵を全滅させれば勝ち」だけ）",
 	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の渓谷を、双子結晶の見た目で。上の帯の勝ち方の札「勝ち: 敵の全滅（将を倒しても終わらない）」）",
 	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
-	"story_battle_talk": "ストーリー: 対戦の途中の会話（第 2 話の始めの台詞。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
+	"story_battle_talk": "ストーリー: 対戦の途中の会話（始めに台詞のある最初の話。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
 ## 場面を作る対戦の最初の種。
@@ -1572,8 +1574,10 @@ const BattleCues := preload("res://game/battle_cues.gd")
 
 
 ## タイトルの「ストーリー」で話の一覧へ進み、number 番目（0 から）の話を始める（前の会話の場面に入る）。
-## 前の話は、クリアしたことにする。
-func _start_story(number := 0) -> bool:
+## 前の話は、クリアしたことにする。number が負なら、部隊を選ぶ最初の話（チュートリアルのあとの本編の 1 話目）。
+func _start_story(number := -1) -> bool:
+	if number < 0:
+		number = _main_episode()
 	for i in number:
 		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
 	if not await _scene_story_list():
@@ -1599,10 +1603,33 @@ func _scene_story_list() -> bool:
 	return _app.current_id() == SceneFlow.EPISODES
 
 
-## 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）。
+## 部隊を選ぶ最初の話（部隊が決まっていない最初の話。チュートリアルのあとの本編の 1 話目）の番号（0 から）。
+func _main_episode() -> int:
+	for i in Story.MILITARY.EPISODES.size():
+		if StoryBattle.squad_of(Story.MILITARY.EPISODES[i]) == null:
+			return i
+	return 0
+
+
+## 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）。
 func _scene_story_list_cleared() -> bool:
-	_app.context.story.clear(Story.MILITARY.EPISODES[0].ID)
+	for i in _main_episode() + 1:
+		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
 	return await _scene_story_list()
+
+
+## 何もクリアしていない話の一覧（頭のチュートリアルの話。番号に「（演習）」）。
+func _scene_story_tutorial_list() -> bool:
+	return await _scene_story_list()
+
+
+## チュートリアルの話（第 2 話「撃ち合い」）の出撃の準備: この話で覚えること、決まっている部隊。
+func _scene_story_tutorial_sortie() -> bool:
+	if not await _start_story(1):
+		return false
+	if not await _scene_story_sortie_from_talk():
+		return false
+	return _app.current_scene().is_squad_fixed()
 
 
 func _scene_story_talk() -> bool:
@@ -1620,7 +1647,7 @@ func _scene_story_talk_menu() -> bool:
 
 
 ## 前の会話を飛ばして、話の対戦の場面に入る。
-func _story_battle(number := 0) -> bool:
+func _story_battle(number := -1) -> bool:
 	if not await _start_story(number):
 		return false
 	if not await _scene_story_sortie_from_talk():
@@ -1672,7 +1699,7 @@ func _scene_story_unlocked_decks() -> bool:
 
 ## 第 2 話までクリアしたあとの話の一覧（持ち物が増え、コストの上限が上がった）。
 func _scene_story_list_items() -> bool:
-	for i in 2:
+	for i in _main_episode() + 2:
 		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
 	return await _scene_story_list()
 

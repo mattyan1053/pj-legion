@@ -74,10 +74,29 @@ func load_data(data: Dictionary) -> void:
 	var campaigns: Variant = data.get("campaigns")
 	if typeof(campaigns) != TYPE_DICTIONARY:
 		_records[String(MILITARY.ID)] = _read_record(data)
+		_fill_earlier_clears()
 		return
 	for id: Variant in campaigns:
 		if typeof(id) in [TYPE_STRING, TYPE_STRING_NAME] and String(id) != "" and typeof(campaigns[id]) == TYPE_DICTIONARY:
 			_records[String(id)] = _read_record(campaigns[id])
+	_fill_earlier_clears()
+
+
+## 話は物語の中で一本道なので、クリアした話より前の話は、どれもクリアしたものとして読む。
+## 物語の頭に話が足された（チュートリアル）とき、前の版の記録で先へ進んでいた人が、足された話のぶん解放と本編を失わないため。
+func _fill_earlier_clears() -> void:
+	for each in CAMPAIGNS:
+		var id := String(each.ID)
+		if not _records.has(id):
+			continue
+		var cleared: Array = _records[id]["cleared"]
+		var last := -1
+		for i: int in each.EPISODES.size():
+			if cleared.has(String(each.EPISODES[i].ID)):
+				last = i
+		for i: int in last:
+			if not cleared.has(String(each.EPISODES[i].ID)):
+				cleared.append(String(each.EPISODES[i].ID))
 
 
 static func _read_record(data: Dictionary) -> Dictionary:
