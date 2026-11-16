@@ -10,7 +10,15 @@ enum Ending {
 	NONE,  ## まだ決着していない
 	KING_DEFEATED,  ## 将の撃破
 	HQ_CAPTURED,  ## 本陣の占拠
+	TURNS_HELD,  ## 守り切った
 	DRAW,  ## 引き分け（両方の将が同時に倒れた）
+}
+
+## 勝った理由 -> 決着の理由。
+const ENDING_OF := {
+	GameWonEvent.Reason.KING_DEFEATED: Ending.KING_DEFEATED,
+	GameWonEvent.Reason.HQ_CAPTURED: Ending.HQ_CAPTURED,
+	GameWonEvent.Reason.TURNS_HELD: Ending.TURNS_HELD,
 }
 
 
@@ -167,7 +175,7 @@ func feed(event: BattleEvent) -> void:
 	elif event is GameWonEvent:
 		var won := event as GameWonEvent
 		winner = won.winner
-		ending = Ending.KING_DEFEATED if won.reason == GameWonEvent.Reason.KING_DEFEATED else Ending.HQ_CAPTURED
+		ending = ENDING_OF[won.reason]
 	elif event is GameDrawnEvent:
 		ending = Ending.DRAW
 

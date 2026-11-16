@@ -21,6 +21,7 @@
 | `deploy_cells` | プレイヤーごとの初期位置。将でない駒を置くマスの列（編成の並びの順に使う）。空なら、いつもの「本陣の前」の置き方 |
 | `fixed_decks` | プレイヤーごとの決め打ちの部隊（`Deck`）。`null` なら、対戦の設定で選んだ編成を出す |
 | `win_conditions` | プレイヤーごとの勝ちの条件の列（`GameWonEvent.Reason`。`docs/win-conditions.md`）。既定は両方とも `STANDARD_WIN_CONDITIONS`（将の撃破と本陣の占拠） |
+| `hold_turns` | 「守り切る」のターン数（`docs/win-conditions.md`）。0 なら働かない |
 
 - 盤は `make_board(種)` が作る。作れなければ `null`（`can_make_board()`）。生成は、大きさが `BoardGenerator.MIN_SIZE` より小さいと作れない。
   手で作ったマップは、マップの検査（`HandMap.problems()`）を通らないと作れない。種と `board_size` は使わず、いつも同じ盤になる。
@@ -32,6 +33,7 @@
 
 - **勝ちの条件**（`set_win_conditions(プレイヤー, 条件の列)`）も、マップではなく戦いの定義が持つ。同じマップを、勝ち方を変えて使い回せる。
   対戦を作るとき（`create_battle()`）に対戦へ写す。対戦の側の列を変えても、定義は変わらない。
+  `hold_for(プレイヤー, ターン数)` は、そのプレイヤーを守る側にする（勝ちの条件に守り切るを足し、`hold_turns` を決める）。
 
 ## 作り方
 
