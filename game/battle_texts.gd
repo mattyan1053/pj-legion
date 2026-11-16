@@ -122,7 +122,8 @@ static func menu_items(
 
 
 ## メニューの項目の説明（押すと何が起きるか）。マウスを乗せている間、左下の枠に出す。
-static func menu_note(id: StringName, unit: Unit) -> String:
+## battle があれば、スキルの状態は、いま使えるか（Skills.can_use）まで見る。
+static func menu_note(id: StringName, unit: Unit, battle: Battle = null) -> String:
 	match id:
 		MENU_ATTACK:
 			return Text.t("battle.menu.attack.note")
@@ -131,7 +132,7 @@ static func menu_note(id: StringName, unit: Unit) -> String:
 		MENU_SKILL:
 			var skill := Skills.of(unit)
 			var key := "battle.menu.skill.note_ends" if skill.ends_action() else "battle.menu.skill.note_then_attack"
-			return Text.t(key, {"skill": Names.skill(skill), "summary": Names.skill_summary(skill), "state": BattleHud.skill_state_text(unit)})
+			return Text.t(key, {"skill": Names.skill(skill), "summary": Names.skill_summary(skill), "state": BattleHud.skill_state_text(unit, battle)})
 		MENU_WAIT:
 			return Text.t("battle.menu.wait.note")
 		MENU_UNDO:

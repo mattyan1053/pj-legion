@@ -52,10 +52,10 @@ func test_every_event_has_a_reading() -> void:
 
 func test_starts_with_the_current_phase_as_a_header() -> void:
 	var battle := Maps.battle(["......"])
-	var book := BattleLog.new(battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	var book := BattleLog.new(battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
 	assert_eq(book.entries.size(), 1)
 	assert_true(book.entries[0].header)
-	assert_eq(book.entries[0].text, "ターン 1　プレイヤー1（青） の番")
+	assert_eq(book.entries[0].text, "ターン 1　プレイヤー1（青）の番")
 	assert_eq(book.entries[0].side, P1)
 
 
@@ -69,7 +69,7 @@ func test_unit_names_have_the_side_and_the_evolution() -> void:
 	sniper.evolution = Evolution.Id.MARKSMAN
 	book.feed(UnitEvolvedEvent.new(sniper))
 	assert_eq(book.unit_name(sniper.id), "赤のマークスマン")
-	assert_eq(_lines(book)[-1], "赤のスナイパー が マークスマン に進化した")
+	assert_eq(_lines(book)[-1], "赤のスナイパーがマークスマンに進化した")
 
 
 func test_move_and_wait_make_one_line() -> void:
@@ -78,7 +78,7 @@ func test_move_and_wait_make_one_line() -> void:
 	var book := BattleLog.new(battle)
 	_apply(battle, book, MoveAction.new(sniper.id, Vector2i(2, 0)))
 	_apply(battle, book, WaitAction.new(sniper.id))
-	assert_eq(_lines(book), ["青のスナイパー が (0, 0) → (2, 0) へ移動して待機"] as Array[String])
+	assert_eq(_lines(book), ["青のスナイパーが (0, 0) → (2, 0) へ移動して待機"] as Array[String])
 	assert_eq(book.entries[-1].cell, Vector2i(2, 0))
 	assert_eq(book.entries[-1].unit_ids, [sniper.id] as Array[int])
 
@@ -88,7 +88,7 @@ func test_wait_without_moving() -> void:
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	var book := BattleLog.new(battle)
 	_apply(battle, book, WaitAction.new(sniper.id))
-	assert_eq(_lines(book), ["青のスナイパー は待機"] as Array[String])
+	assert_eq(_lines(book), ["青のスナイパーは待機"] as Array[String])
 
 
 func test_cruise_and_portal_are_noted_on_the_move() -> void:
@@ -103,7 +103,7 @@ func test_cruise_and_portal_are_noted_on_the_move() -> void:
 		warped = warped or event is UnitWarpedEvent
 	assert_true(warped, "ポータルを通っていない")
 	book.feed_all(result.events)
-	assert_eq(_lines(book), ["青のコマンドー が (1, 0) → (4, 0) へ移動（巡航・ポータル経由）"] as Array[String])
+	assert_eq(_lines(book), ["青のコマンドーが (1, 0) → (4, 0) へ移動（巡航・ポータル経由）"] as Array[String])
 
 
 func test_undone_move_is_removed() -> void:
@@ -125,7 +125,7 @@ func test_attack_shows_damage_and_remaining_hp() -> void:
 	var book := BattleLog.new(battle)
 	_apply(battle, book, AttackAction.new(paladin.id, sniper.id))
 	var line := _lines(book)[-1]
-	assert_true(line.begins_with("青のパラディン が 赤のスナイパー を攻撃: "), line)
+	assert_true(line.begins_with("青のパラディンが赤のスナイパーを攻撃: "), line)
 	assert_true(line.contains("残り HP %d" % sniper.hp), line)
 	assert_true(line.contains("森で軽減"), line)
 	assert_eq(_lines(book).size(), 1, "経験値と行動済みは行にしない")
@@ -153,7 +153,7 @@ func test_barrier_is_noted() -> void:
 	Statuses.add(sniper, Status.Type.BARRIER, 2)
 	var book := BattleLog.new(battle)
 	_apply(battle, book, AttackAction.new(paladin.id, sniper.id))
-	assert_eq(_lines(book)[0], "青のパラディン が 赤のスナイパー を攻撃: バリアで防がれた")
+	assert_eq(_lines(book)[0], "青のパラディンが赤のスナイパーを攻撃: バリアで防がれた")
 
 
 func test_skill_damage_is_grouped_under_the_skill() -> void:
@@ -169,10 +169,10 @@ func test_skill_damage_is_grouped_under_the_skill() -> void:
 	var book := BattleLog.new(battle)
 	_apply(battle, book, UseSkillAction.new(sorcerer.id, Vector2i(3, 1)))
 	var entry: BattleLog.Entry = book.entries[1]
-	assert_eq(entry.text, "青のソーサラー が「%s」を使った（(3, 1)）" % Names.skill(Skills.by_id(Skill.Id.FIREBALL)))
+	assert_eq(entry.text, "青のソーサラーが「%s」を使った（(3, 1)）" % Names.skill(Skills.by_id(Skill.Id.FIREBALL)))
 	assert_eq(entry.details.size(), 2, entry.full_text())
-	assert_true(entry.details[0].begins_with("赤のスナイパー に "), entry.details[0])
-	assert_true(entry.details[1].begins_with("赤のコマンドー に ") and entry.details[1].contains("倒れた"), entry.details[1])
+	assert_true(entry.details[0].begins_with("赤のスナイパーに "), entry.details[0])
+	assert_true(entry.details[1].begins_with("赤のコマンドーに ") and entry.details[1].contains("倒れた"), entry.details[1])
 	assert_true(entry.unit_ids.has(a.id) and entry.unit_ids.has(b.id))
 
 
@@ -185,7 +185,7 @@ func test_ult_statuses_are_one_detail_line() -> void:
 	for unit in battle.units:
 		book.feed(Statuses.add(unit, Status.Type.ASSAULT, 2))
 	var entry: BattleLog.Entry = book.entries[-1]
-	assert_true(entry.text.begins_with("青 が必殺技「"), entry.text)
+	assert_true(entry.text.begins_with("青が必殺技「"), entry.text)
 	assert_eq(entry.details, ["突撃（2 ターン）: 青のシールドトルーパー、青のスナイパー"] as Array[String])
 
 
@@ -198,7 +198,7 @@ func test_phase_start_makes_a_header_and_heals_are_lines() -> void:
 	assert_true(book.entries[-2].header, "プレイヤー2 のフェーズの見出し")
 	assert_eq(book.entries[-2].turn, 1)
 	assert_eq(book.entries[-2].phase, P2)
-	assert_true(book.entries[-1].text.begins_with("赤のスナイパー が回復の泉で "), book.entries[-1].text)
+	assert_true(book.entries[-1].text.begins_with("赤のスナイパーが回復の泉で "), book.entries[-1].text)
 
 
 func test_spawns_in_a_row_are_one_line() -> void:
@@ -207,7 +207,7 @@ func test_spawns_in_a_row_are_one_line() -> void:
 	battle.phase = P2
 	_apply(battle, book, EndPhaseAction.new())
 	var spawned := _lines(book).filter(func(line: String) -> bool: return line.contains("湧いた"))
-	assert_eq(spawned, ["エナジー・コア が 2 体湧いた: (0, 0)、(5, 0)"])
+	assert_eq(spawned, ["エナジー・コアが 2 体湧いた: (0, 0)、(5, 0)"])
 
 
 func test_take_changes_reports_rewritten_lines() -> void:

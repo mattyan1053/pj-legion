@@ -1898,11 +1898,12 @@ func _visit_decks(app: Node) -> void:
 	panel.open_preview(Unit.Side.PLAYER1)
 	_expect(panel.preview().visible and panel.preview().shown_kinds().size() == 6, "「編成を確認」で、選んだ部隊が出ない")
 	panel.preview().close_preview()
-	# ステージは対戦設定では選ばない。「ステージを選び直す」でステージ選択へ戻る（選んだものは残る）。
+	# ステージは対戦設定では選ばない。「ステージ選択へ戻る」で戻って選び直す（選んだものは残る）。ステージ選択へ行くボタンは 1 つ。
+	_expect(not panel.stage_button_shown(), "対戦設定に、ステージ選択へ行くボタンが 2 つある")
 	panel.choose_random_side()
-	panel.press_stage()
+	panel.cancel()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.STAGE, "「ステージを選び直す」で、ステージ選択へ戻らない")
+	_expect(app.current_id() == SceneFlow.STAGE, "「ステージ選択へ戻る」で、ステージ選択へ戻らない")
 	app.current_scene().choose(VersusFields.LABYRINTH)
 	await app.scene_changed
 	panel = app.current_scene().setup_panel()
