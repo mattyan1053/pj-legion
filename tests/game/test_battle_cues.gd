@@ -3,6 +3,7 @@ extends "res://tests/base_test.gd"
 
 const BattleCues := preload("res://game/battle_cues.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
+const BattleHud := preload("res://game/battle_hud.gd")
 const BattleLog := preload("res://game/battle_log.gd")
 const Story := preload("res://game/story.gd")
 const Maps := preload("res://tests/support/maps.gd")
@@ -141,3 +142,14 @@ func test_talk_card_shows_lines_in_order_for_real_seconds() -> void:
 
 class MatchChoiceProbe:
 	extends "res://game/match_choice.gd"
+
+
+## 札はクリックを受けないので、駒のそばのメニュー・予測のパネル・進化の選択より下に描く（隠れたボタンを押せてしまわない）。
+func test_talk_card_is_drawn_under_the_rest_of_the_hud() -> void:
+	var hud := BattleHud.new()
+	hud.setup([Color.BLUE, Color.RED, Color.GRAY] as Array[Color])
+	var card := BattleTalk.new()
+	hud.add_talk_card(card)
+	assert_eq(card.get_index(), 0, "札が、ほかの帯や枠より上に描かれる")
+	assert_true(hud.get_child_count() > 1)
+	hud.free()
