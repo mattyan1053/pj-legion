@@ -42,10 +42,11 @@ func _ready() -> void:
 	if context.checking == &"":
 		context.settings.store = SaveStore.new()
 		context.settings.load_saved()
-		context.decks.store = SaveStore.new()
-		context.decks.load_saved()
+		# ストーリーの進み具合を先に読む（取っておいたストーリー用の部隊は、いま雇える駒の決まりで読む）。
 		context.story.store = SaveStore.new()
 		context.story.load_saved()
+		context.decks.store = SaveStore.new()
+		context.decks.load_saved()
 
 	var sound := Sound.new()
 	add_child(sound)

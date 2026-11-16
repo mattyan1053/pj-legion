@@ -6,13 +6,15 @@ extends Node
 ## - 組む画面: 軍を選び、雇える駒を押して部隊に足し、部隊の駒を選んで装備を持たせる。並べ替えで、置かれるところが変わる。
 ##   予算・合計・駒の数・出せない理由はいつも出す。出せない部隊は取っておけない。
 ## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）→ 一覧 → タイトル。
-## 組む画面の決まり（雇える駒、予算、数の上限）は、外から渡す（rules。いまは対戦の決まり）。
+## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しく組む」は、選んでいる方の決まりの部隊だけ（混ざらない）。
+## 組む画面の決まり（雇える駒、予算、数の上限）は、切り替えで決まる（rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。
 
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const DeckLibrary := preload("res://game/deck_library.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const Story := preload("res://game/story.gd")
 
 ## 「タイトルへ戻る」で &"back"。
 signal finished(outcome: StringName)
@@ -32,8 +34,15 @@ const DETAIL_WIDTH := 440.0
 const ROSTER_WIDTH := 300.0
 const TROOP_WIDTH := 420.0
 
-## 組む画面で使う決まり（雇える駒、予算、数の上限）。後で、ストーリーの決まりを渡せる（Issue #49）。
+## 組む画面で使う決まり（雇える駒、予算、数の上限）。切り替え（set_mode）で変わる。
 var rules: DeckRules = DeckRules.versus()
+## 一覧の切り替え: 対戦用（DeckRules.VERSUS）かストーリー用（Story.RULES_ID）。
+const MODES: Array[StringName] = [DeckRules.VERSUS, Story.RULES_ID]
+const MODE_NAMES := {DeckRules.VERSUS: "対戦用", Story.RULES_ID: "ストーリー用"}
+const MODE_NOTES := {
+	DeckRules.VERSUS: "対戦モードの部隊。対戦の設定で、ここから選んで出撃する",
+	Story.RULES_ID: "ストーリーの部隊。出撃の準備で選ぶ。雇える駒は、話をクリアすると増える",
+}
 var context: AppContext
 
 var _library: DeckLibrary
@@ -48,6 +57,8 @@ var _list_detail_body: Label
 var _list_detail_issues: Label
 var _list_actions: Array[Button] = []
 var _list_selected := ""
+var _mode_buttons := {}
+var _mode_note: Label
 
 # ---- 組む画面 ----
 var _edit_view: Control
@@ -103,7 +114,7 @@ func _ready() -> void:
 	_dialog = _build_dialog()
 	layer.add_child(_dialog)
 	_library.changed.connect(_refresh_list)
-	show_list()
+	set_mode(DeckRules.VERSUS)
 
 
 # ==== 場面の決まり ====
@@ -142,6 +153,32 @@ func press_back() -> void:
 
 
 # ==== 一覧 ====
+
+
+## 一覧を、対戦用（DeckRules.VERSUS）かストーリー用（Story.RULES_ID）に切り替える。組む画面の決まりも替わる。
+func set_mode(rules_id: StringName) -> void:
+	rules = context.rules_of(rules_id) if MODES.has(rules_id) else DeckRules.versus()
+	for id: StringName in _mode_buttons:
+		(_mode_buttons[id] as Button).set_pressed_no_signal(id == rules.id)
+	_mode_note.text = MODE_NOTES.get(rules.id, "")
+	for army: UnitKind.Army in _army_buttons:
+		(_army_buttons[army] as Button).visible = rules.armies().has(army)
+	if _library.find(_list_selected) == null or _library.find(_list_selected).deck.rules.id != rules.id:
+		_list_selected = ""
+	show_list()
+
+
+## いまの一覧の決まりの名前（DeckRules.VERSUS か Story.RULES_ID）。
+func mode() -> StringName:
+	return rules.id
+
+
+## いまの一覧に並ぶ部隊の id（検査用）。
+func listed_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for item in _library.for_rules(rules.id):
+		ids.append(item.id)
+	return ids
 
 
 func show_list(select_id := "") -> void:
@@ -207,7 +244,22 @@ func press_delete() -> void:
 func _build_list() -> Control:
 	var root := _frame()
 	var column := root.get_child(0).get_child(0) as VBoxContainer
-	column.add_child(_header("部隊の編成", "取っておいた部隊。対戦の設定で、ここから選んで出撃する"))
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 12)
+	column.add_child(header)
+	var title := _text(26, COLOR_TEXT)
+	title.text = "部隊の編成"
+	header.add_child(title)
+	for id: StringName in MODES:
+		var button := _button(MODE_NAMES[id], 18)
+		button.toggle_mode = true
+		button.custom_minimum_size = Vector2(150.0, 42.0)
+		button.pressed.connect(func() -> void: set_mode(id))
+		header.add_child(button)
+		_mode_buttons[id] = button
+	_mode_note = _text(16, COLOR_DIM)
+	_mode_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(_mode_note)
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 20)
@@ -277,8 +329,8 @@ func _refresh_list() -> void:
 	for child in _list_rows.get_children():
 		_list_rows.remove_child(child)
 		child.queue_free()
-	var items := _library.items()
-	if _library.find(_list_selected) == null:
+	var items := _library.for_rules(rules.id)
+	if not items.any(func(item: DeckLibrary.Saved) -> bool: return item.id == _list_selected):
 		_list_selected = items[0].id if not items.is_empty() else ""
 	for item in items:
 		var button := _button("", 16)
@@ -491,7 +543,7 @@ func _build_editor() -> Control:
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(fill)
 	header.add_child(_caption("軍"))
-	for army in rules.armies():
+	for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:  # いまの決まりで選べない軍は隠す（set_mode）
 		var button := _button(DeckText.army_name(army), 17)
 		button.toggle_mode = true
 		button.custom_minimum_size = Vector2(130.0, 40.0)
@@ -920,17 +972,6 @@ func _frame() -> Control:
 	return margin
 
 
-func _header(title: String, note: String) -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
-	var label := _text(26, COLOR_TEXT)
-	label.text = title
-	row.add_child(label)
-	var sub := _text(16, COLOR_DIM)
-	sub.text = note
-	sub.size_flags_vertical = Control.SIZE_SHRINK_END
-	row.add_child(sub)
-	return row
 
 
 func _card(color := COLOR_CARD, margin := 12.0) -> PanelContainer:

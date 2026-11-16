@@ -20,6 +20,7 @@ const FORMAT_VERSION := 1
 const TALK := &"talk"
 const BATTLE := &"battle"
 const EPISODE_LIST := &"episodes"
+const SORTIE := &"sortie"
 
 ## ストーリーの編成の決まりの名前（取っておく部隊に書く）。対戦の決まり（DeckRules.VERSUS）と分ける。
 const RULES_ID := &"story"
@@ -166,7 +167,7 @@ static func _add_kinds(kinds: Array[UnitKind.Id], more: Array) -> void:
 # ---- 流れ ----
 
 
-## 話 episode を、いまの進み具合で始める流れ（run_of。人は、いま雇える駒で組んだ既定の編成）。
+## 話 episode を、いまの進み具合で始める流れ（run_of。人の部隊は、出撃の準備で選ぶまで、いま雇える駒で組んだ既定の編成）。
 func run_now(episode: Script) -> Run:
 	var newly: Array[UnitKind.Id] = []
 	if not is_cleared(episode.ID):
@@ -177,14 +178,16 @@ func run_now(episode: Script) -> Run:
 	return run_of(episode, default_deck(unlocked_kinds()), newly)
 
 
-## 話 episode の流れ（run.gd）: 会話（前）→ 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck。
+## 話 episode の流れ（run.gd）: 会話（前）→ 出撃の準備 → 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃の準備で選び直せる）。
 ## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
 ## unlocking: この話のクリアで新しく雇えるようになる駒。あとの会話の最後に、知らせの行で出す。
 static func run_of(episode: Script, human_deck: Deck, unlocking: Array[UnitKind.Id] = []) -> Run:
 	var run := Run.new()
 	run.exit = EPISODE_LIST
 	run.add(TALK, talk_of(episode, episode.BEFORE))
-	run.add(BATTLE, StoryBattle.new(episode, human_deck))
+	var battle := StoryBattle.new(episode, human_deck)
+	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃の準備で、battle の人の部隊を選び直す
+	run.add(BATTLE, battle)
 	var after := talk_of(episode, episode.AFTER)
 	for kind in unlocking:
 		after["lines"].append({"side": NOTICE_SIDE, "name": NOTICE_NAME,

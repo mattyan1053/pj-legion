@@ -42,19 +42,22 @@ func test_every_episode_has_an_id_a_title_and_short_talks() -> void:
 				assert_ne(row[1], "")
 
 
-func test_run_is_talk_then_battle_then_talk_then_the_episode_list() -> void:
+func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
 	var episode: Script = Story.EPISODES[0]
 	var run := Story.run_of(episode, Story.default_deck(Story.STARTING_KINDS))
 	assert_eq(run.scene(), &"talk")
 	assert_eq(run.data()["title"], episode.TITLE)
 	assert_eq(run.data()["lines"].size(), episode.BEFORE.size())
 	assert_eq(run.data()["lines"][0]["name"], episode.SPEAKERS[episode.BEFORE[0][0]])
+	assert_eq(run.advance(), Story.SORTIE)
+	assert_eq(run.data()["episode"], episode)
+	var battle: StoryBattle = run.data()["battle"]
 	assert_eq(run.advance(), &"battle")
-	assert_true(run.data() is StoryBattle)
+	assert_true(run.data() == battle, "出撃の準備は、対戦に渡すものの部隊を選び直す")
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["lines"].size(), episode.AFTER.size())
 	assert_eq(run.advance(), Story.EPISODE_LIST, "話を終えたら、話の一覧へ戻る")
-	for scene: StringName in [&"talk", &"battle", Story.EPISODE_LIST, &"title"]:
+	for scene: StringName in [&"talk", Story.SORTIE, &"battle", Story.EPISODE_LIST, &"title"]:
 		assert_true(SceneFlow.has(scene), "場面の表に無い: %s" % scene)
 
 
@@ -183,6 +186,7 @@ func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
 	var run := story.run_now(episode)
 	assert_eq(run.data()["lines"].size(), episode.BEFORE.size(), "前の会話には知らせを出さない")
 	run.advance()
+	run.advance()
 	assert_eq(run.data().human_deck.rules.id, Story.RULES_ID, "いま雇える駒で組んだ既定の編成")
 	run.advance()
 	var lines: Array = run.data()["lines"]
@@ -191,8 +195,8 @@ func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
 	assert_true(lines[-1]["text"].contains(UnitKind.display_name(episode.UNLOCKS[0])), lines[-1]["text"])
 	story.clear(episode.ID)
 	run = story.run_now(episode)
-	run.advance()
-	run.advance()
+	for i in 3:
+		run.advance()
 	assert_eq(run.data()["lines"].size(), episode.AFTER.size(), "クリア済みの話を遊び直しても、知らせは出さない")
 
 
@@ -231,3 +235,36 @@ func test_episodes_open_one_by_one() -> void:
 			assert_true(story.is_available(Story.EPISODES[i + 1]))
 	for episode in Story.EPISODES:
 		assert_true(story.is_available(episode), "クリアした話は遊び直せる")
+
+
+func test_story_decks_are_read_with_the_current_progress_and_never_mix_with_versus() -> void:
+	var context := preload("res://game/app_context.gd").new()
+	var deck := Deck.new(Story.ARMY, context.story.deck_rules())
+	deck.add(UnitKind.Id.SHIELD_TROOPER)
+	deck.entries.append(DeckEntry.new(UnitKind.Id.COMMANDO))  # まだ解放していない駒（読み込んだ部隊と同じく、検査で分かる形）
+	context.decks.add("先走った部隊", deck)
+	var data: Dictionary = context.decks.to_data()
+	assert_eq(data["decks"][0]["rules"], String(Story.RULES_ID))
+	var again := preload("res://game/app_context.gd").new()
+	again.decks.load_data(data)
+	var saved: RefCounted = again.decks.items()[0]
+	assert_eq(saved.deck.rules.id, Story.RULES_ID, "ストーリーの決まりとして読む（知らない決まりにしない）")
+	assert_true(saved.load_issues.is_empty(), str(saved.load_issues))
+	assert_false(saved.playable(), "まだ解放していない駒がいる")
+	assert_true(again.decks.for_rules(DeckRules.VERSUS).is_empty(), "対戦用に混ざらない")
+	assert_eq(again.decks.for_rules(Story.RULES_ID).size(), 1)
+	again.story.clear(Story.EPISODES[0].ID)  # コマンドーが増える
+	assert_true(saved.playable(), "進み具合が変わったら、決まりを引き直す: %s" % [saved.issues()])
+	var plain := preload("res://game/deck_library.gd").new()
+	plain.load_data(data)
+	assert_false(plain.items()[0].load_issues.is_empty(), "ストーリーを知らない一覧では、知らない決まり")
+
+
+func test_old_versus_save_files_still_load_as_versus() -> void:
+	var context := preload("res://game/app_context.gd").new()
+	context.decks.load_data({"next_id": 2, "decks": [{"id": "1", "name": "古い部隊", "rules": "versus", "army": "MILITARY",
+			"units": [{"kind": "SNIPER", "equipment": []}]}]})
+	var saved: RefCounted = context.decks.items()[0]
+	assert_eq(saved.deck.rules, DeckRules.versus())
+	assert_true(saved.playable())
+	assert_true(context.decks.for_rules(Story.RULES_ID).is_empty())

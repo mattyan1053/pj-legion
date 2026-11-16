@@ -40,10 +40,23 @@ var sound: Node
 var match_choice: RefCounted = MatchChoice.new()
 ## いま進めている流れ（run.gd）。流れの外の場面にいるときは null。アプリが入れ、流れの外へ出たら捨てる。
 var run: RefCounted
+## ストーリーの出撃の準備で選んだ部隊（取っておいた部隊の id。空なら既定の編成）。アプリが起動している間だけ残る。
+var story_deck_id := ""
 ## 検査として動いているなら CHECK_AUTOPLAY か CHECK_SHOTS。人が遊んでいるなら空。
 var checking := &""
 ## 自動の対戦（autoplay.gd）。最初の対戦の場面が作る。2 つ目からの対戦の場面（ストーリーの通し）は、作らない。
 var autoplay: Node
+
+
+func _init() -> void:
+	# 取っておいた部隊は、ストーリーの決まり（進み具合で雇える駒が増える）も引ける。進み具合が変わったら引き直す。
+	decks.rules_lookup = rules_of
+	story.changed.connect(decks.refresh_rules)
+
+
+## 決まりの名前から決まりを引く: ストーリーの決まりは、いまの進み具合のもの。ほかは DeckRules.by_id。
+func rules_of(rules_id: StringName) -> DeckRules:
+	return story.deck_rules() if rules_id == Story.RULES_ID else DeckRules.by_id(rules_id)
 
 
 func open_menu() -> void:
