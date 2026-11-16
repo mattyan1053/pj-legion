@@ -33,10 +33,10 @@ var controllers: Array[Controller] = [Controller.HUMAN, Controller.HUMAN]
 var ignore_budget := false
 
 
-## 戦いの定義 defined の、人（human_side）と CPU の対戦の設定。人の編成は渡したもの。
+## 戦いの定義 defined の、人（human_side）と CPU の対戦設定。人の編成は渡したもの。
 ## CPU の側の部隊を戦いの定義が決め打ちにしていれば（ストーリーの話の敵）、CPU の編成は作らない（対戦には決め打ちの部隊が出る。deck_of）。
 ## 決め打ちでなければ、CPU の編成は CpuDeck が cpu_army から作る。
-## 人と CPU の対戦の設定は、どのモードもここを通す（対戦モードは versus_cpu、ストーリーは story_battle.gd）。
+## 人と CPU の対戦設定は、どのモードもここを通す（対戦モードは versus_cpu、ストーリーは story_battle.gd）。
 static func on_scenario(
 	defined: Scenario, with_seed: int, human_side: Unit.Side, human_deck: Deck, cpu_army := UnitKind.Army.NONE,
 ) -> MatchSetup:
@@ -50,7 +50,7 @@ static func on_scenario(
 	return setup
 
 
-## 人（プレイヤー1 か 2）と CPU の対戦モードの対戦の設定。人の編成は渡したもの、CPU の編成は CpuDeck が cpu_army から作る。
+## 人（プレイヤー1 か 2）と CPU の対戦モードの対戦設定。人の編成は渡したもの、CPU の編成は CpuDeck が cpu_army から作る。
 static func versus_cpu(
 	at_stage: BoardGenerator.Stage, with_seed: int, human_deck: Deck, cpu_army: UnitKind.Army,
 	human_side := Unit.Side.PLAYER1,
@@ -58,8 +58,8 @@ static func versus_cpu(
 	return on_scenario(Scenario.versus(at_stage), with_seed, human_side, human_deck, cpu_army)
 
 
-## 戦いの定義 defined の、人どうしの対戦の設定（先手の編成 first、後手の編成 second）。
-## 人どうしの対戦の設定は、どのモードもここを通す（対戦モードの生成のステージは versus_human）。
+## 戦いの定義 defined の、人どうしの対戦設定（先手の編成 first、後手の編成 second）。
+## 人どうしの対戦設定は、どのモードもここを通す（対戦モードの生成のステージは versus_human）。
 static func humans_on(defined: Scenario, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
 	var setup := _on(defined, with_seed)
 	setup.set_human(Unit.Side.PLAYER1, first)
@@ -67,7 +67,7 @@ static func humans_on(defined: Scenario, with_seed: int, first: Deck, second: De
 	return setup
 
 
-## 人どうしの、対戦モードのステージ at_stage の対戦の設定。
+## 人どうしの、対戦モードのステージ at_stage の対戦設定。
 static func versus_human(at_stage: BoardGenerator.Stage, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
 	return humans_on(Scenario.versus(at_stage), with_seed, first, second)
 

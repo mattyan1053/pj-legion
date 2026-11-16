@@ -7,7 +7,7 @@ extends Node
 ## - 切り替えは、短い暗転（FADE_TIME）を挟むだけ。BGM は場面の表の曲へ、フェードでつなぐ（sound.gd。同じ曲なら途切れない）。
 ## - システムメニュー（system_menu.gd）は、ここが開く。並べるのは、共通の項目（戻る、設定、タイトルへ戻る、ゲームを終える）と、
 ##   いまの場面が足すもの（menu_items）。
-## - 検査（`-- --autoplay`）とスクリーンショットの道具（`-- --shots`）も、ここから入り、人と同じ道（タイトル → 対戦の設定 → 対戦）を通る。
+## - 検査（`-- --autoplay`）とスクリーンショットの道具（`-- --shots`）も、ここから入り、人と同じ道（タイトル → 対戦設定 → 対戦）を通る。
 
 const Text := preload("res://game/text.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
@@ -121,7 +121,7 @@ func go(scene: StringName) -> void:
 		return
 	_changing = true
 	if context.run != null and context.run.scene() != scene:
-		context.run = null  # 流れの外の場面へ出た（タイトルへ戻る、対戦の設定へ、など）
+		context.run = null  # 流れの外の場面へ出た（タイトルへ戻る、対戦設定へ、など）
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP  # 切り替えの間のクリックは、どの場面にも届かない
 	context.system_menu.close()
 	# 暗転と同じころに、曲もつなぐ。流れが渡すものが曲を決めていれば、その曲（対戦の盤の見た目、話の会話）。
@@ -186,7 +186,7 @@ func open_menu() -> void:
 	menu.open(menu_items())
 
 
-## 設定の画面だけを開く（タイトルの「設定」）。閉じると、メニューへは戻らずに閉じる。
+## オプションの画面だけを開く（タイトルの「オプション」）。閉じると、メニューへは戻らずに閉じる。
 func open_settings() -> void:
 	var menu := system_menu()
 	if _changing or menu.is_open():
@@ -246,8 +246,8 @@ func _fade_to(alpha: float) -> void:
 # ---- 検査 ----
 
 
-## 検査は、人と同じ道（タイトルの「対戦」→ ステージ選択のカード → 対戦の設定の「対戦を始める」）で対戦へ入る。
-## 対戦の設定では、人どうし（相手は人）を選ぶ（検査は、人の操作の入口を両方のプレイヤーで通すところから始める）。
+## 検査は、人と同じ道（タイトルの「対戦」→ ステージ選択のカード → 対戦設定の「対戦を始める」）で対戦へ入る。
+## 対戦設定では、人どうし（相手は人）を選ぶ（検査は、人の操作の入口を両方のプレイヤーで通すところから始める）。
 ## スクリーンショットの道具は、対戦に入ったところで足す（場面を撮る間に、ほかの場面へも行き来する）。
 ## 最初に対戦へ入るまでの間だけ、ここが操作する（そのあとの行き来は、検査とスクリーンショットの道具が自分でやる）。
 var _check_entered := false

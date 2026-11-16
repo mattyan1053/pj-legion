@@ -1,9 +1,9 @@
 extends "res://game/battle_source.gd"
 ## ストーリーの 1 話の対戦（docs/story.md）。対戦の画面に渡すもの（battle_source.gd）。
-## 話（episode.gd。game/story/episodes/ の 1 ファイル）から、戦いの定義（手で作ったマップ、決め打ちの敵）を持った対戦の設定を作る。
+## 話（episode.gd。game/story/episodes/ の 1 ファイル）から、戦いの定義（手で作ったマップ、決め打ちの敵）を持った対戦設定を作る。
 ##
 ## 人はいつもプレイヤー1（先手）で、渡された部隊（story.gd が、いま雇える駒で組む）。敵はプレイヤー2 で、CPU が動かす。
-## 選び直せるものは無い（ステージ、相手、対戦の設定のパネル）。やり直しは「同じ盤面でもう一度」と、出撃の準備へ戻る「部隊を選び直す」。
+## 選び直せるものは無い（ステージ、相手、対戦設定のパネル）。やり直しは「同じ盤面でもう一度」と、出撃準備へ戻る「部隊を選び直す」。
 ## 人が勝ったら、決着の画面に「次へ」を出し（流れの次の場面、あとの会話へ）、話をクリアしたと書く。
 ## ここはノードに依存しない（テストから呼べる）。
 
@@ -25,7 +25,7 @@ func make_setup(battle_seed: int) -> MatchSetup:
 	return MatchSetup.on_scenario(scenario(), battle_seed, Unit.Side.PLAYER1, human_deck)
 
 
-## 話の戦いの定義（種に依らない。マップ、決め打ちの敵、初期位置、勝ち方）。出撃の準備も、勝ち方と敵の部隊をここから読む。
+## 話の戦いの定義（種に依らない。マップ、決め打ちの敵、初期位置、勝ち方）。出撃準備も、勝ち方と敵の部隊をここから読む。
 func scenario() -> Scenario:
 	return scenario_of(episode)
 
@@ -73,7 +73,7 @@ func copy() -> RefCounted:
 static func scenario_of(of_episode: Episode) -> Scenario:
 	var defined := Scenario.on_map(of_episode.map, of_episode.map_title)
 	defined.fix_deck(Unit.Side.PLAYER2, of_episode.enemy_deck())
-	# 人の部隊が決まっている話（[ally] の unit。チュートリアル）は、出撃の準備で選んだ部隊のかわりに、それを置く。
+	# 人の部隊が決まっている話（[ally] の unit。チュートリアル）は、出撃準備で選んだ部隊のかわりに、それを置く。
 	if of_episode.has_squad():
 		defined.fix_deck(Unit.Side.PLAYER1, of_episode.squad_deck())
 	defined.set_start_gauge(Unit.Side.PLAYER1, of_episode.start_gauge)

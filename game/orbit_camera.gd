@@ -30,7 +30,7 @@ var bounds := Rect2(0.0, 0.0, 30.0, 30.0)
 var max_distance := MAX_DISTANCE
 var camera: Camera3D
 ## ドラッグの感度（1 px あたりのラジアン）。横（向き）にも縦（見下ろす角度）にも同じ値を使う。
-## 設定の画面（settings.gd の「マウスの感度」）から変える。
+## オプションの画面（settings.gd の「マウスの感度」）から変える。
 var drag_sensitivity := DEFAULT_DRAG_SENSITIVITY
 ## 縦のドラッグの向きを逆にするか（設定の「縦のドラッグを逆にする」）。真なら、上へ動かすと真上に近づく。
 var invert_vertical := false

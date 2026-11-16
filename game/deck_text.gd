@@ -1,5 +1,5 @@
 extends RefCounted
-## 編成の画面と対戦の設定に出す文（出せない理由、駒・装備の中身、編成の短い説明）。ノードに依存しない。
+## 編成の画面と対戦設定に出す文（出せない理由、駒・装備の中身、編成の短い説明）。ノードに依存しない。
 ## 理由の文言は画面の側が持つ（docs/deck-building.md）。
 
 const Text := preload("res://game/text.gd")
@@ -111,7 +111,7 @@ static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
 	return lines
 
 
-## 編成の 1 行の説明（対戦の設定に出す。「将、シールドトルーパー+アイアンシールド×2、…」。同じ装備は数をまとめる）。
+## 編成の 1 行の説明（対戦設定に出す。「将、シールドトルーパー+アイアンシールド×2、…」。同じ装備は数をまとめる）。
 static func deck_summary(deck: Deck) -> String:
 	var parts: Array[String] = [Names.kind(UnitKind.Id.KING)]
 	for entry in deck.entries:

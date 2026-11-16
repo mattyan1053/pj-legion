@@ -1,5 +1,5 @@
 extends RefCounted
-## 駒 1 体の札（名前、役割、コスト、能力値、持ち物）。編成の確認（deck_preview.gd）と、部隊の編成の画面で使う。
+## 駒 1 体の札（名前、役割、コスト、能力値、持ち物）。編成の確認（deck_preview.gd）と、部隊編成の画面で使う。
 ## 札は既定の部品（PanelContainer、Label）だけで組む。色や枠は UI のテーマ（ui_theme.gd の PANEL_CARD）が当たる。
 
 const Text := preload("res://game/text.gd")

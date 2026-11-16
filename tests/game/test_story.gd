@@ -46,7 +46,7 @@ func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
 	assert_eq(run.data()["episode"], episode)
 	var battle: StoryBattle = run.data()["battle"]
 	assert_eq(run.advance(), &"battle")
-	assert_true(run.data() == battle, "出撃の準備は、対戦に渡すものの部隊を選び直す")
+	assert_true(run.data() == battle, "出撃準備は、対戦に渡すものの部隊を選び直す")
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["lines"].size(), episode.after.size())
 	assert_eq(run.advance(), Story.EPISODE_LIST, "話を終えたら、話の一覧へ戻る")
@@ -147,7 +147,7 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 	var again := Story.new()
 	again.store = _store()
 	again.load_saved()
-	assert_eq(again.squad_id, "3", "出撃の準備で選んだ部隊は、次に起動しても選ばれている")
+	assert_eq(again.squad_id, "3", "出撃準備で選んだ部隊は、次に起動しても選ばれている")
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {"military": {"cleared": [], "squad": "3"}}})
 	again.choose_squad("")
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {}}, "既定の編成に戻したら、書かない")
@@ -272,12 +272,12 @@ func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loadi
 	var sortie := preload("res://game/sortie_screen.gd").new()
 	sortie.context = context
 	context.run = context.story.run_now(_episode(&"ridge_hold"))
-	context.run.advance()  # 出撃の準備
+	context.run.advance()  # 出撃準備
 	context.scene = Story.SORTIE
 	var root := Node.new()
 	root.add_child(sortie)
 	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
-	assert_false(sortie.is_option_enabled("1"), "出撃の準備では押せない")
+	assert_false(sortie.is_option_enabled("1"), "出撃準備では押せない")
 	assert_eq(sortie.chosen_id(), "", "覚えていた部隊が出せなければ、既定の編成")
 	root.free()
 
@@ -502,7 +502,7 @@ func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sorti
 	var context := preload("res://game/app_context.gd").new()
 	context.story.choose_squad("9")
 	context.run = context.story.run_now(_episode(&"drill_sniper"))
-	context.run.advance()  # 出撃の準備
+	context.run.advance()  # 出撃準備
 	context.scene = Story.SORTIE
 	var sortie := preload("res://game/sortie_screen.gd").new()
 	sortie.context = context

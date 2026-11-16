@@ -1,7 +1,7 @@
 extends RefCounted
-## リザルトの画面（result_screen.gd）に出すもの。BattleStats と対戦の設定から作る。ノードに依存しない（テストから呼べる）。
+## リザルトの画面（result_screen.gd）に出すもの。BattleStats と対戦設定から作る。ノードに依存しない（テストから呼べる）。
 ##
-## 段階ごとに出すもの: 勝敗の見出し → 戦績（作戦領域・経過ターン・敵軍撃破・中立撃破・聖遺物） → MVP → 行き先。
+## 段階ごとに出すもの: 勝敗の見出し → 戦績（ステージ・経過ターン・敵軍撃破・中立撃破・聖遺物） → MVP → 行き先。
 ## 誰の戦績を出すか（focus_side）は対戦の種類で決める: CPU 戦は人の側、人どうしは勝った側（引き分けならプレイヤー1）。
 
 const Names := preload("res://game/names.gd")
@@ -33,7 +33,7 @@ var mvp_side := Unit.Side.PLAYER1
 var mvp_evolved := false
 ## 両方の陣営の詳しい戦績（stats_text.gd。畳んでおき、ボタンで開く）。detail は文、tables は表（画面に出すのは表）。
 var detail := ""
-## 全体の 1 行（作戦領域・ターン・決着の仕方）。
+## 全体の 1 行（ステージ・ターン・決着の仕方）。
 var detail_head := ""
 ## プレイヤー番号ごとの {name: 陣営の名前, summary: 陣営の 1 行, rows: 駒ごとの行（StatsText.table_rows）}。
 var tables: Array[Dictionary] = []
