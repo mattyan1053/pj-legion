@@ -37,6 +37,7 @@ const SCENES := {
 	"system_menu": "対戦の途中で開いたシステムメニュー（Esc か右上のボタン）",
 	"system_quit": "システムメニューで「ゲームを終える」を押して、確かめている",
 	"settings": "システムメニューから開いた設定の画面（感度を変えたところ）",
+	"settings_screen": "設定の画面を下まで送って、区分「画面」（全画面をオンにしたところ）を見せる",
 	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
 	"start": "対戦の始め（ターン 1、何も選んでいない。カメラは味方の真ん中の駒）",
 	"phase_camera": "相手の番のあとの自分の番の始め（カメラは、前の自分の番で最後に動かした駒に寄る。白い輪で示す）",
@@ -441,6 +442,15 @@ func _scene_settings() -> bool:
 	_app.system_menu().press(&"settings")
 	_scene.settings.set_value(&"mouse_sensitivity", 150)
 	return _app.system_menu().is_settings_open()
+
+
+func _scene_settings_screen() -> bool:
+	if not await _scene_settings():
+		return false
+	_scene.settings.set_value(&"fullscreen", true)  # 撮る間は窓に触らない（app.gd）ので、値だけが変わって見える
+	await get_tree().process_frame
+	_app.system_menu().settings_panel().scroll_to_end()
+	return true
 
 
 func _scene_menu_note() -> bool:
