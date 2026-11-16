@@ -216,6 +216,25 @@ func set_status(
 " + _relic_notes[player]
 
 
+## 上の帯の陣営の欄のうち、幅が足りずに「…」で省かれる文。検査用。
+## 並べ直しを待たずに測れるよう、帯の幅から、ほかの部品の幅と間を引いた残りを、2 つの欄で分けた幅と比べる。
+func top_bar_cut_texts() -> Array[String]:
+	var row := _side_labels[0].get_parent() as HBoxContainer
+	var panel := row.get_parent() as Control
+	var room := panel.get_viewport_rect().size.x - panel.get_theme_stylebox(&"panel").get_minimum_size().x
+	var shown := row.get_children().filter(func(child: Node) -> bool: return (child as Control).visible)
+	room -= row.get_theme_constant(&"separation") * (shown.size() - 1)
+	for child: Control in shown:
+		if not (child is Label and _side_labels.has(child as Label)):
+			room -= child.get_combined_minimum_size().x
+	var cut: Array[String] = []
+	for label in _side_labels:
+		var font := label.get_theme_font(&"font")
+		if font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size(&"font_size")).x > room / _side_labels.size():
+			cut.append(label.text)
+	return cut
+
+
 ## 陣営ごとの、持っている聖遺物の名前（上の帯。添字がプレイヤー番号。持っていなければ空）。次の set_status で出る。
 ## notes は、聖遺物の効果の説明（陣営の欄にマウスを乗せると出る。無ければ空）。
 ## held は陣営ごとの持っている聖遺物（Relics.Id の列）。アイコンを点ける。
@@ -855,7 +874,8 @@ func _build_top_bar() -> void:
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	add_child(panel)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
+	# 間とゲージの幅は、相手が CPU（「相手: CPU」）で、ターンが 2 桁でも、陣営の欄（駒の数と占拠の印）が省かれずに収まる大きさ。
+	row.add_theme_constant_override("separation", 10)
 	panel.add_child(row)
 	_turn_label = _label(20)
 	row.add_child(_turn_label)
@@ -880,7 +900,7 @@ func _build_top_bar() -> void:
 		_relic_icons.append(icons)
 		# 必殺技のゲージ（飾らない棒と数字）。軍の色で塗る。
 		var bar := ProgressBar.new()
-		bar.custom_minimum_size = Vector2(84.0, 22.0)
+		bar.custom_minimum_size = Vector2(76.0, 22.0)
 		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bar.show_percentage = false
 		var fill := StyleBoxFlat.new()
