@@ -2,7 +2,8 @@
 # ゲームの決まった場面を撮る（tools/screenshots.gd）。画面の無いコンテナでは、仮想の画面（Xvfb）とソフトウェア描画で撮る。
 # 手元（作業のセッションのコンテナ）で回すもの。CI には入れない。使い方は docs/screenshots.md。
 #
-#   tools/screenshots.sh <godot> <出力のディレクトリ> [場面,場面,…|all]
+#   tools/screenshots.sh <godot> <出力のディレクトリ> [場面,場面,…|all] [--size=<幅>x<高さ>]
+#                                        --size は窓の大きさ（既定は 1280x720）。
 #   tools/screenshots.sh <godot> --list      場面の名前と説明の一覧（tools/screenshots.gd の SCENES から出す。撮らない）
 set -euo pipefail
 
@@ -17,7 +18,18 @@ if [ "${2:-}" = "--list" ]; then
   exit 0
 fi
 OUT="${2:?出力のディレクトリを指定する}"
-SHOTS="${3:-all}"
+SHOTS="all"
+SIZE="1280x720"
+for arg in "${@:3}"; do
+  case "$arg" in
+    --size=*) SIZE="${arg#--size=}" ;;
+    *) SHOTS="$arg" ;;
+  esac
+done
+if ! [[ "$SIZE" =~ ^[0-9]+x[0-9]+$ ]]; then
+  echo "screenshots.sh: --size は <幅>x<高さ>（例: --size=1920x1080）" >&2
+  exit 1
+fi
 cd "$(dirname "$0")/.."
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
@@ -25,9 +37,9 @@ OUT="$(cd "$OUT" && pwd)"
 # 取り込みが済んでいないと、素材が読めずに絵が欠ける。
 timeout 120 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
-cmd=("$GODOT" --path . --resolution 1280x720 -- --shots "$SHOTS" --out "$OUT")
+cmd=("$GODOT" --path . --resolution "$SIZE" -- --shots "$SHOTS" --out "$OUT" --size "$SIZE")
 if [ -z "${DISPLAY:-}" ]; then
-  cmd=(xvfb-run -a -s "-screen 0 1280x720x24" "${cmd[@]}")
+  cmd=(xvfb-run -a -s "-screen 0 ${SIZE}x24" "${cmd[@]}")
 fi
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
