@@ -57,6 +57,7 @@ static func side_lines(stats: BattleStats, side: Unit.Side, side_name: String) -
 ## 詳しい戦績の表の列（[鍵, 見出し]）。行は駒（table_rows）。
 const COLUMNS := [
 	[&"damage", "与えたダメージ"],
+	[&"damage_taken", "受けたダメージ"],
 	[&"kills", "撃破"],
 	[&"neutral_kills", "中立撃破"],
 	[&"healing", "回復"],
@@ -80,7 +81,7 @@ static func side_summary(stats: BattleStats, side: Unit.Side) -> String:
 
 
 ## 詳しい戦績の表の行（駒ごと。番号の小さい順 = 将から並びの順）。
-## 1 行は {kind, side, evolved, name, defeated, mvp, damage, kills, neutral_kills, healing, skill_uses}。
+## 1 行は {kind, side, evolved, name, defeated, mvp, damage, damage_taken, kills, neutral_kills, healing, skill_uses}。
 static func table_rows(stats: BattleStats, side: Unit.Side) -> Array[Dictionary]:
 	var best := stats.mvp(side)
 	var rows: Array[Dictionary] = []
@@ -88,7 +89,7 @@ static func table_rows(stats: BattleStats, side: Unit.Side) -> Array[Dictionary]
 		rows.append({
 			"kind": record.kind, "side": record.side, "evolved": record.evolution != Evolution.Id.NONE,
 			"name": unit_name(record), "defeated": record.defeated, "mvp": record == best,
-			"damage": record.damage, "kills": record.kills, "neutral_kills": record.neutral_kills,
+			"damage": record.damage, "damage_taken": record.damage_taken, "kills": record.kills, "neutral_kills": record.neutral_kills,
 			"healing": record.healing, "skill_uses": record.skill_uses,
 		})
 	return rows
