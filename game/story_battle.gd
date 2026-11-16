@@ -19,12 +19,8 @@ func _init(of_episode: Script = null, deck: Deck = null) -> void:
 
 
 func make_setup(battle_seed: int) -> MatchSetup:
-	var setup := MatchSetup.new()
-	setup.scenario = scenario()
-	setup.battle_seed = battle_seed
-	setup.set_human(Unit.Side.PLAYER1, human_deck)
-	setup.controllers[Unit.Side.PLAYER2] = MatchSetup.Controller.CPU  # 部隊は決め打ちなので、CPU の編成は作らない
-	return setup
+	# 敵の部隊は戦いの定義が決め打ちにしているので、CPU の編成は作られない（MatchSetup.on_scenario）。
+	return MatchSetup.on_scenario(scenario(), battle_seed, Unit.Side.PLAYER1, human_deck)
 
 
 ## 話の戦いの定義（種に依らない。マップ、決め打ちの敵、初期位置、勝ち方）。出撃の準備も、勝ち方と敵の部隊をここから読む。
