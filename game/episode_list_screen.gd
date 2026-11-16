@@ -1,5 +1,5 @@
 extends Node
-## 話の一覧の場面（docs/story.md）。タイトルの「ストーリー」のあと。話のカードを並べ、選んだ話の流れ（会話 → 出撃の準備 → 対戦 → 会話）を始める。
+## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（会話 → 出撃の準備 → 対戦 → 会話）を始める。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
 ## - カードには、話の番号と名前、盤の縮図（stage_card_map.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増える駒を載せる。
@@ -7,7 +7,7 @@ extends Node
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
 ## - カードのクリック（1〜9 のキーでも）で、その話を始める。
 ## - 下の欄に、いま雇える駒（クリアした話から求める）。
-## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
+## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
 
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -56,7 +56,7 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
-	var heading := _label("ストーリー", 40)
+	var heading := _label(context.story.campaign.TITLE, 40)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
@@ -69,7 +69,7 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 28)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(row)
-	for episode in Story.EPISODES:
+	for episode: Script in context.story.campaign.EPISODES:
 		var card := _build_card(episode)
 		row.add_child(card)
 		_cards[episode] = card
@@ -86,7 +86,7 @@ func _ready() -> void:
 	_roster.text = roster_text()
 
 	var back := Button.new()
-	back.text = "タイトルへ戻る"
+	back.text = "物語を選び直す"
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
@@ -106,7 +106,7 @@ func choose(episode: Script) -> void:
 	context.start_run(context.story.run_now(episode))
 
 
-## 「タイトルへ戻る」。
+## 「物語を選び直す」。
 func press_back() -> void:
 	finished.emit(&"back")
 
@@ -142,7 +142,7 @@ func status_text(episode: Script) -> String:
 	return "未クリア"
 
 
-## 右クリックと Esc は 1 つ戻る（タイトルへ）。カードの上でも効くよう、ボタンより先に受ける。
+## 右クリックと Esc は 1 つ戻る（物語を選ぶ場面へ）。カードの上でも効くよう、ボタンより先に受ける。
 ## 重なる画面（システムメニュー）が開いている間は、そちらが受ける。
 func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():
@@ -163,9 +163,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		number = event.physical_keycode - KEY_1
 	elif event.physical_keycode >= KEY_KP_1 and event.physical_keycode <= KEY_KP_9:
 		number = event.physical_keycode - KEY_KP_1
-	if number >= 0 and number < Story.EPISODES.size() and context.story.is_available(Story.EPISODES[number]):
+	var listed: Array[Script] = context.story.campaign.EPISODES
+	if number >= 0 and number < listed.size() and context.story.is_available(listed[number]):
 		context.play_sound(&"ui_confirm")
-		choose(Story.EPISODES[number])
+		choose(listed[number])
 
 
 func _build_card(episode: Script) -> Button:

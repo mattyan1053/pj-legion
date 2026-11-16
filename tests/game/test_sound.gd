@@ -60,7 +60,7 @@ func test_versus_battle_plays_the_music_of_its_look() -> void:
 
 
 func test_story_music_comes_from_the_episode() -> void:
-	for episode: Script in Story.EPISODES:
+	for episode: Script in Story.all_episodes():
 		var battle := StoryBattle.new(episode, null)
 		var track := battle.music()
 		assert_true(Catalog.has_music(track), "%s の対戦の曲 %s が表にある" % [episode.ID, track])
