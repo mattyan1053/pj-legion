@@ -91,3 +91,22 @@ func test_win_conditions_default_to_the_versus_ways_and_reach_the_battle() -> vo
 	assert_eq(battle.win_conditions[Unit.Side.PLAYER2], only_king)
 	battle.win_conditions[Unit.Side.PLAYER2].append(GameWonEvent.Reason.HQ_CAPTURED)
 	assert_eq(scenario.win_conditions_of(Unit.Side.PLAYER2), only_king, "対戦の側を変えても、定義は変わらない")
+
+
+func test_holding_side_keeps_the_usual_ways_and_reaches_the_battle() -> void:
+	var scenario := Scenario.versus(BoardGenerator.Stage.PLAIN)
+	assert_eq(scenario.hold_turns, 0)
+	scenario.hold_for(Unit.Side.PLAYER1, 8)
+	var held: Array[GameWonEvent.Reason] = [
+		GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED, GameWonEvent.Reason.TURNS_HELD
+	]
+	assert_eq(scenario.win_conditions_of(Unit.Side.PLAYER1), held)
+	assert_eq(scenario.win_conditions_of(Unit.Side.PLAYER2), Scenario.STANDARD_WIN_CONDITIONS, "攻める側は変えない")
+	var setup := MatchSetup.new()
+	setup.scenario = scenario
+	setup.set_human(Unit.Side.PLAYER1, MatchSetup.default_deck(UnitKind.Army.MILITARY))
+	setup.set_human(Unit.Side.PLAYER2, MatchSetup.default_deck(UnitKind.Army.FANTASY))
+	var battle := setup.create_battle()
+	assert_eq(battle.hold_turns, 8)
+	assert_eq(battle.turns_left(), 8)
+	assert_true(battle.wins_by(Unit.Side.PLAYER1, GameWonEvent.Reason.TURNS_HELD))

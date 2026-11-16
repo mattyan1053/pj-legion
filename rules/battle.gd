@@ -40,6 +40,9 @@ const CAPTURE_TURNS_TO_WIN := 3
 var win_conditions: Array[Array] = [
 	Scenario.STANDARD_WIN_CONDITIONS.duplicate(), Scenario.STANDARD_WIN_CONDITIONS.duplicate()
 ]
+## 「守り切る」（GameWonEvent.Reason.TURNS_HELD）のターン数。このターンの終わり（中立のフェーズのあと）まで決着しなければ、
+## 守り切るが勝ちの条件にあるプレイヤーの勝ち。対戦を作るとき、戦いの定義（Scenario.hold_turns）から写す。
+var hold_turns := 0
 
 ## プレイヤーごとの軍（添字がプレイヤー番号）。必殺技は軍で決まる（docs/tactical-ult.md）。
 ## 軍を盤に置くとき（Deployment）に決まる。決まっていなければ、最初に置いた、軍に属する駒の軍になる（add_unit）。
@@ -246,6 +249,33 @@ func count_capture(player: Unit.Side) -> Array[BattleEvent]:
 		winner = player
 		events.append(GameWonEvent.new(player, GameWonEvent.Reason.HQ_CAPTURED))
 	return events
+
+
+## 守り切るまでの残りのターン数（いまのターンを含む）。守り切るが、どちらの勝ちの条件にも無ければ -1。
+func turns_left() -> int:
+	if _holder() == -1:
+		return -1
+	return maxi(0, hold_turns - turn + 1)
+
+
+## ターンの終わり（中立のフェーズのあと。次のターンへ進む前）に決まること。
+## 守り切るターン数のターンが終わったら、守り切るが勝ちの条件にあるプレイヤーの勝ち。
+func end_turn() -> Array[BattleEvent]:
+	var holder := _holder()
+	if is_over() or holder == -1 or turn < hold_turns:
+		return []
+	winner = holder
+	return [GameWonEvent.new(holder as Unit.Side, GameWonEvent.Reason.TURNS_HELD)]
+
+
+## 守り切るが勝ちの条件にあるプレイヤー。いなければ -1。両方にあれば、プレイヤー1（両方に置く定義は作らない）。
+func _holder() -> int:
+	if hold_turns <= 0:
+		return -1
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if wins_by(player, GameWonEvent.Reason.TURNS_HELD):
+			return player
+	return -1
 
 
 ## 駒がいま選べること（動けるマス、攻撃・回復できる相手、待機・取り消し、進化先）。状態は変えない。

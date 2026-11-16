@@ -140,6 +140,7 @@ func create_battle() -> Battle:
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		Deployment.deploy(battle, side, deck_of(side), scenario.deploy_cells_of(side))
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
+	battle.hold_turns = scenario.hold_turns
 	return battle
 
 

@@ -174,6 +174,17 @@ func test_ending_winner_and_turns() -> void:
 	assert_eq(stats.sides[P2].losses, 0, "将は倒された駒に数えない")
 
 
+func test_every_win_reason_has_an_ending() -> void:
+	for reason: GameWonEvent.Reason in GameWonEvent.Reason.values():
+		var stats := BattleStats.new(Maps.battle(["......"]))
+		stats.feed(GameWonEvent.new(P2, reason))
+		assert_true(stats.ending != BattleStats.Ending.NONE)
+		assert_eq(stats.winner, P2)
+	var held := BattleStats.new(Maps.battle(["......"]))
+	held.feed(GameWonEvent.new(P2, GameWonEvent.Reason.TURNS_HELD))
+	assert_eq(held.ending, BattleStats.Ending.TURNS_HELD)
+
+
 func test_draw_has_no_winner() -> void:
 	var battle := Maps.battle(["......"])
 	var stats := BattleStats.new(battle)

@@ -23,6 +23,9 @@ var fixed_decks: Array[Deck] = [null, null]
 ## プレイヤーごとの勝ちの条件の列（GameWonEvent.Reason の値。docs/win-conditions.md）。
 ## 対戦を作るとき、対戦（Battle.win_conditions）へ写す。既定は、どちらも STANDARD_WIN_CONDITIONS。
 var win_conditions: Array[Array] = [STANDARD_WIN_CONDITIONS.duplicate(), STANDARD_WIN_CONDITIONS.duplicate()]
+## 「守り切る」（GameWonEvent.Reason.TURNS_HELD）のターン数。このターンが終わるまで決着しなければ、守り切る側の勝ち。
+## 0 なら守り切るは働かない。対戦を作るとき、対戦（Battle.hold_turns）へ写す。
+var hold_turns := 0
 
 ## いまの対戦モードの勝ち方: 敵の将を倒す、敵の本陣を占拠し続ける。
 const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
@@ -70,6 +73,15 @@ func deploy_cells_of(side: Unit.Side) -> Array[Vector2i]:
 ## side の勝ちの条件の列を conditions にする。
 func set_win_conditions(side: Unit.Side, conditions: Array[GameWonEvent.Reason]) -> void:
 	win_conditions[side] = conditions.duplicate()
+
+
+## side を「守る側」にする: turns ターンが終わるまで決着しなければ勝ち。将の撃破と本陣の占拠でも勝てる。
+## 相手（攻める側）の勝ちの条件は変えない。
+func hold_for(side: Unit.Side, turns: int) -> void:
+	var conditions := STANDARD_WIN_CONDITIONS.duplicate()
+	conditions.append(GameWonEvent.Reason.TURNS_HELD)
+	set_win_conditions(side, conditions)
+	hold_turns = turns
 
 
 ## side の勝ちの条件の列（写し）。
