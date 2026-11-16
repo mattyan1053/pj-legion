@@ -51,7 +51,7 @@ const FIELDS := [
 		TAGS: "2 本の道 ・ ポータル",
 		NOTE: "中央を大きな壁がふさぎ、戦場は左右 2 本の道に分かれる。本陣は対角。\nどちらの道にも、上下をつなぐポータル。どちらで攻め、どちらで守るか。",
 	},
-	# 手で作ったマップ（ストーリーと同じ形）。どちらも MILITARY と後手に大きく偏るので、まだ出さない（docs/cpu-ai.md の「いまの集計」）。
+	# 手で作ったマップ（ストーリーと同じ形）。まだ出さない（docs/cpu-ai.md の「いまの集計」）。
 	{
 		ID: RIDGE_PATH, MAP: RidgePath, LOOK: StageLook.STONE_WALLS, HIDDEN: true,
 		TAGS: "小さな盤 ・ 2 本の道",
