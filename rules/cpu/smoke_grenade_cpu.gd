@@ -11,10 +11,10 @@ const COVER_RATE := 0.75
 
 
 ## 煙幕を置く価値のありそうな中心: 煙幕が防ぐ攻撃に狙われている味方（もう自分の煙幕の中にいる駒は除く）を中に入れられるマス。
-func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(cpu: Variant, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var wanted: Dictionary[Vector2i, bool] = {}
 	var skill := Skills.of(unit)
-	for friend in cpu._battle.units:
+	for friend: Unit in cpu._battle.units:
 		if friend.side != cpu._me or cpu._smoked.has(friend.cell) or _smoke_saves(cpu, friend.cell) <= 0:
 			continue
 		for cell in skill.affected_cells(cpu._battle, unit, friend.cell):
@@ -26,7 +26,7 @@ func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) ->
 ## （離れたところからしか届かない攻撃）に狙われうる駒を数え、防げるダメージを見込む。
 ## 隣まで寄れる敵の攻撃と、スキルのダメージは防げないので数えない（CpuPlayer の _close_threats）。
 ## 狙われている味方が MIN_UNITS 体に満たなければ 0。
-func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
+func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	cpu._build_threats()
 	var cells := Skills.by_id(used.skill).affected_cells(sim, sim.unit_by_id(used.unit_id), used.target)
 	var covered := 0
@@ -43,7 +43,7 @@ func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
 
 
 ## cell に立つ味方について、煙幕が防げるダメージ（離れたところからしか届かない攻撃のぶん）。
-static func _smoke_saves(cpu: CpuPlayer, cell: Vector2i) -> int:
+static func _smoke_saves(cpu: Variant, cell: Vector2i) -> int:
 	var by: Dictionary = cpu._threats.get(cell, {})
 	var close: Dictionary = cpu._close_threats.get(cell, {})
 	var saved := 0
