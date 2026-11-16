@@ -268,6 +268,7 @@ func _end() -> void:
 			if app.current_id() != SceneFlow.TITLE:
 				await app.go(SceneFlow.TITLE)
 			await _visit_story(app)
+		await _nudge_screen_size()
 	if _failures.is_empty():
 		_finish("autoplay: OK", 0)
 	else:
@@ -1766,6 +1767,16 @@ func _win_story_battle(app: Node, sortie: Node, episode: Script) -> Node:
 		await get_tree().process_frame
 	_expect(result.can_continue() and result.new_board_stages().is_empty() and not result.can_go_to_setup(), "勝った話の決着の画面の行き先が違う（「次へ」が無い、か、選び直す行き先がある）")
 	return result
+
+
+## 画面の大きさを少し変えて戻す。抜けた場面の部品が、画面の大きさの合図につながったまま残っていれば、ここでエラーになる。
+func _nudge_screen_size() -> void:
+	var window := get_window()
+	var size := window.content_scale_size
+	window.content_scale_size = size + Vector2i(40, 0)
+	await get_tree().process_frame
+	window.content_scale_size = size
+	await get_tree().process_frame
 
 
 func _finish(message: String, code: int) -> void:

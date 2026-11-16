@@ -80,6 +80,11 @@ static func cap(control: Control, max_size: Vector2, margin := Vector4.ZERO) -> 
 		control.offset_top = margin.y + extra.y
 		control.offset_right = -margin.z - extra.x
 		control.offset_bottom = -margin.w - extra.y
-	control.ready.connect(func() -> void:
-		control.get_viewport().size_changed.connect(fit)
+	# 画面の大きさの合図は、木にいる間だけつなぐ（場面を抜けて部品が消えたあとに呼ばれないように）。
+	control.tree_entered.connect(func() -> void:
+		if not control.get_viewport().size_changed.is_connected(fit):
+			control.get_viewport().size_changed.connect(fit)
 		fit.call())
+	control.tree_exiting.connect(func() -> void:
+		if control.get_viewport().size_changed.is_connected(fit):
+			control.get_viewport().size_changed.disconnect(fit))
