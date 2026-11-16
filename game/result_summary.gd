@@ -1,7 +1,7 @@
 extends RefCounted
 ## リザルトの画面（result_screen.gd）に出すもの。BattleStats と対戦の設定から作る。ノードに依存しない（テストから呼べる）。
 ##
-## 段階ごとに出すもの: 勝敗の見出し → 戦績（作戦領域・経過ターン・敵軍撃破・聖遺物） → MVP → 行き先。
+## 段階ごとに出すもの: 勝敗の見出し → 戦績（作戦領域・経過ターン・敵軍撃破・中立撃破・聖遺物） → MVP → 行き先。
 ## 誰の戦績を出すか（focus_side）は対戦の種類で決める: CPU 戦は人の側、人どうしは勝った側（引き分けならプレイヤー1）。
 
 const StatsText := preload("res://game/stats_text.gd")
@@ -59,7 +59,9 @@ static func of(stats: BattleStats, draw: bool, winner_side: Unit.Side, reason_te
 	if stage_name != "":
 		summary.lines.append(["作戦領域", stage_name])
 	summary.lines.append(["経過ターン", "%d ターン" % stats.turns])
-	summary.lines.append(["敵軍撃破", "%d 体" % (record.kills + record.neutral_kills)])
+	summary.lines.append(["敵軍撃破", "%d 体" % record.kills])
+	if record.neutral_kills > 0:
+		summary.lines.append(["中立撃破", "%d 体" % record.neutral_kills])
 	if not record.relics.is_empty():
 		var names: Array[String] = []
 		for relic in record.relics:
