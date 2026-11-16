@@ -9,6 +9,7 @@ extends Node3D
 ## 返ってきたイベントを順に再生するだけ。選べることはルールの問い合わせ（Battle.options）で出す。
 ## 盤面・駒・ライト・カメラ・文字はすべてコードで組み立てる。
 
+const Palette := preload("res://game/ui_palette.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const UnitView := preload("res://game/unit_view.gd")
 const BoardView := preload("res://game/board_view.gd")
@@ -43,7 +44,7 @@ const VersusFields := preload("res://game/versus_fields.gd")
 signal finished(outcome: StringName)
 
 const NO_CELL := Vector2i(-1, -1)
-const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("e0b83a")]
+const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEAM_NEUTRAL]
 
 const COLOR_MOVE := Color(0.35, 0.65, 1.0, 0.5)
 const COLOR_CRUISE := Color(1.0, 0.82, 0.3, 0.4)
