@@ -352,6 +352,12 @@ func selected_entry() -> int:
 	return _selected
 
 
+## 部隊の index 番目の行のボタンが出している文と、マウスを乗せると出る文（検査用）。
+func troop_row_texts(index: int) -> Array[String]:
+	var main: Button = _troop_rows.get_child(index).get_child(1)
+	return [main.text, main.tooltip_text]
+
+
 ## 軍を選ぶ。駒がいれば、外れることを確かめてから変える。
 func choose_army(army: UnitKind.Army) -> void:
 	if army == _deck.army or not rules.armies().has(army):
@@ -704,11 +710,14 @@ func _troop_row(index: int) -> Control:
 	main.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main.custom_minimum_size = Vector2(0.0, 42.0)
-	main.clip_text = true  # 装備の文が長くても、列の幅を広げない
+	# 装備の文が長くても、列の幅を広げない。収まらないぶんは「…」にして、全文はマウスを乗せると出す。
+	main.clip_text = true
+	main.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var equipment := DeckText.equipment_short(entry.equipment)
 	main.text = "%s　コスト %d\n%s" % [
 		UnitKind.display_name(entry.kind), entry.cost(), equipment if equipment != "" else "装備なし",
 	]
+	main.tooltip_text = main.text
 	main.set_pressed_no_signal(index == _selected)
 	main.pressed.connect(func() -> void: select_entry(-1 if _selected == index else index))
 	row.add_child(main)
