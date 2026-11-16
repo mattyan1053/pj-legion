@@ -26,7 +26,7 @@ func _cleanup() -> void:
 func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 	# 話のデータの形（定数の名前、駒、初期位置、勝ち方、きっかけ）は test_episode_data.gd が見る。
 	var ids: Array[StringName] = []
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		assert_false(ids.has(episode.ID), "話の id が重なっている: %s" % episode.ID)
 		ids.append(episode.ID)
 		for rows: Array in [episode.BEFORE, episode.AFTER]:
@@ -34,8 +34,8 @@ func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 
 
 func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
-	var episode: Script = Story.EPISODES[0]
-	var run := Story.run_of(episode, Story.default_deck(Story.STARTING_KINDS))
+	var episode: Script = Story.MILITARY.EPISODES[0]
+	var run := Story.run_of(episode, Story.default_deck(Story.MILITARY.STARTING_KINDS))
 	assert_eq(run.scene(), &"talk")
 	assert_eq(run.data()["title"], episode.TITLE)
 	assert_eq(run.data()["lines"].size(), episode.BEFORE.size())
@@ -53,7 +53,7 @@ func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
 
 
 func test_episode_battle_is_the_hand_map_against_a_fixed_cpu_enemy() -> void:
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		var source := Story.first_battle(episode)
 		var setup := source.make_setup(7)
 		assert_true(setup.is_valid(), "%s の対戦を始められない: %s" % [episode.ID, setup.problems()])
@@ -77,7 +77,7 @@ func test_episode_battle_is_the_hand_map_against_a_fixed_cpu_enemy() -> void:
 
 
 func test_episode_battle_offers_nothing_to_choose_again() -> void:
-	var source := Story.first_battle(Story.EPISODES[0])
+	var source := Story.first_battle(Story.MILITARY.EPISODES[0])
 	assert_false(source.can_switch_opponent())
 	assert_false(source.can_open_setup())
 	assert_true(source.new_board_fields().is_empty())
@@ -87,7 +87,7 @@ func test_episode_battle_offers_nothing_to_choose_again() -> void:
 
 
 func test_only_a_win_shows_the_next_button() -> void:
-	var source := Story.first_battle(Story.EPISODES[0])
+	var source := Story.first_battle(Story.MILITARY.EPISODES[0])
 	assert_true(source.can_continue(true))
 	assert_false(source.can_continue(false))
 	var versus := preload("res://game/match_choice.gd").new()
@@ -95,7 +95,7 @@ func test_only_a_win_shows_the_next_button() -> void:
 
 
 func test_enter_retries_only_after_a_story_loss() -> void:
-	var source := Story.first_battle(Story.EPISODES[0])
+	var source := Story.first_battle(Story.MILITARY.EPISODES[0])
 	assert_true(source.retries_on_enter(false), "負けたら Enter で同じ盤面でもう一度")
 	assert_false(source.retries_on_enter(true))
 	var versus := preload("res://game/match_choice.gd").new()
@@ -103,7 +103,7 @@ func test_enter_retries_only_after_a_story_loss() -> void:
 
 
 func test_a_win_records_the_clear() -> void:
-	var episode: Script = Story.EPISODES[0]
+	var episode: Script = Story.MILITARY.EPISODES[0]
 	var context := preload("res://game/app_context.gd").new()
 	assert_false(context.story.is_cleared(episode.ID))
 	Story.first_battle(episode).record_win(context)
@@ -112,7 +112,7 @@ func test_a_win_records_the_clear() -> void:
 
 
 func test_clears_are_saved_and_read_back() -> void:
-	var episode: Script = Story.EPISODES[0]
+	var episode: Script = Story.MILITARY.EPISODES[0]
 	var story := Story.new()
 	story.store = _store()
 	story.load_saved()
@@ -127,7 +127,7 @@ func test_clears_are_saved_and_read_back() -> void:
 	again.load_saved()
 	assert_true(again.is_cleared(episode.ID))
 	assert_eq(again.cleared_count(), 1)
-	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": [String(episode.ID)]})
+	assert_eq(_store().read(Story.STORE_NAME), {"version": Story.FORMAT_VERSION, "data": {"campaigns": {"military": {"cleared": [String(episode.ID)]}}}})
 	_cleanup()
 
 
@@ -141,21 +141,21 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 	again.store = _store()
 	again.load_saved()
 	assert_eq(again.squad_id, "3", "出撃の準備で選んだ部隊は、次に起動しても選ばれている")
-	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": [], "squad": "3"})
+	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {"military": {"cleared": [], "squad": "3"}}})
 	again.choose_squad("")
-	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": []}, "既定の編成に戻したら、書かない")
+	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {}}, "既定の編成に戻したら、書かない")
 	story.load_data({"cleared": [], "squad": 4})
 	assert_eq(story.squad_id, "", "形の違う部隊の記録は、既定の編成として読む")
 	_cleanup()
 
 
 func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each() -> void:
-	var first := Story.default_deck(Story.STARTING_KINDS)
+	var first := Story.default_deck(Story.MILITARY.STARTING_KINDS)
 	assert_true(first.is_valid(), "既定の編成は、出撃できる")
 	assert_eq(first.entries.size(), first.rules.max_units)
-	for kind: UnitKind.Id in Story.STARTING_KINDS:
+	for kind: UnitKind.Id in Story.MILITARY.STARTING_KINDS:
 		assert_eq(first.entries.filter(func(e: DeckEntry) -> bool: return e.kind == kind).size(), 2, "雇える駒を、まんべんなく雇う: %s" % UnitKind.display_name(kind))
-	for episode: Script in Story.EPISODES:
+	for episode: Script in Story.MILITARY.EPISODES:
 		var deck := Story.default_deck(Story.kinds_before(episode))
 		assert_true(deck.is_valid(), "%s の既定の編成は、出撃できる" % episode.TITLE)
 		var last_role := -1
@@ -168,7 +168,7 @@ func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each()
 
 
 func test_story_battles_offer_choosing_the_squad_again() -> void:
-	assert_true(Story.first_battle(Story.EPISODES[0]).can_choose_squad(), "決着の画面に「部隊を選び直す」を出す")
+	assert_true(Story.first_battle(Story.MILITARY.EPISODES[0]).can_choose_squad(), "決着の画面に「部隊を選び直す」を出す")
 	assert_false(preload("res://game/match_choice.gd").new().can_choose_squad(), "対戦モードには出さない")
 
 
@@ -178,22 +178,25 @@ func test_broken_or_unknown_records_do_not_stop_loading() -> void:
 	assert_eq(story.cleared_count(), 0)
 	story.load_data({"cleared": [3, "", "future_episode", "future_episode"]})
 	assert_eq(story.cleared_count(), 0)
-	assert_eq(story.to_data(), {"cleared": ["future_episode"]}, "知らない話の記録は、消さずに残す")
+	assert_eq(story.to_data(), {"campaigns": {"military": {"cleared": ["future_episode"]}}}, "知らない話の記録は、消さずに残す")
+	story.load_data({"campaigns": {"future": {"cleared": ["far"], "squad": "2"}, "": {"cleared": ["x"]}, "military": "broken"}})
+	assert_eq(story.cleared_count(), 0)
+	assert_eq(story.to_data(), {"campaigns": {"future": {"cleared": ["far"], "squad": "2"}}}, "知らない物語の記録は、消さずに残す")
 
 
 func test_story_starts_from_the_first_episode_not_cleared() -> void:
 	var story := Story.new()
-	assert_eq(story.next_episode(), Story.EPISODES[0])
-	for episode in Story.EPISODES:
+	assert_eq(story.next_episode(), Story.MILITARY.EPISODES[0])
+	for episode in Story.MILITARY.EPISODES:
 		story.clear(episode.ID)
-	assert_eq(story.next_episode(), Story.EPISODES[0], "全部クリアしたら、最初の話をもう一度")
+	assert_eq(story.next_episode(), Story.MILITARY.EPISODES[0], "全部クリアしたら、最初の話をもう一度")
 
 
 func test_kinds_are_unlocked_by_clearing_episodes() -> void:
 	var story := Story.new()
-	assert_eq(story.unlocked_kinds(), Story.STARTING_KINDS, "最初は、最初から雇える駒だけ")
-	var expected := Story.STARTING_KINDS.duplicate()
-	for episode in Story.EPISODES:
+	assert_eq(story.unlocked_kinds(), Story.MILITARY.STARTING_KINDS, "最初は、最初から雇える駒だけ")
+	var expected := Story.MILITARY.STARTING_KINDS.duplicate()
+	for episode in Story.MILITARY.EPISODES:
 		assert_eq(Story.kinds_before(episode), expected, "%s を初めて遊ぶときの駒" % episode.ID)
 		for kind: UnitKind.Id in episode.UNLOCKS:
 			assert_false(expected.has(kind), "%s は、もう雇える駒を解放する" % episode.ID)
@@ -203,26 +206,27 @@ func test_kinds_are_unlocked_by_clearing_episodes() -> void:
 	var reloaded := Story.new()
 	reloaded.load_data(story.to_data())
 	assert_eq(reloaded.unlocked_kinds(), expected, "解放した駒は記録に書かず、クリアした話から求め直す")
-	assert_eq(story.to_data().keys(), ["cleared"])
+	assert_eq(story.to_data()["campaigns"].keys(), ["military"])
+	assert_eq(story.to_data()["campaigns"]["military"].keys(), ["cleared"])
 
 
 func test_story_rules_hire_only_unlocked_kinds_on_the_versus_budget() -> void:
-	var rules := Story.rules_of(Story.STARTING_KINDS)
+	var rules := Story.rules_of(Story.MILITARY.STARTING_KINDS)
 	assert_eq(rules.id, Story.RULES_ID)
 	assert_ne(rules.id, DeckRules.VERSUS, "対戦用とストーリー用の部隊は、決まりの名前で分ける")
 	assert_eq(rules.armies(), [Story.ARMY] as Array[UnitKind.Army])
 	assert_eq(rules.budget(Story.ARMY), DeckRules.versus().budget(Story.ARMY))
 	assert_eq(rules.max_units, DeckRules.versus().max_units)
 	for kind: UnitKind.Id in DeckRules.versus().roster(Story.ARMY):
-		assert_eq(rules.allows(Story.ARMY, kind), Story.STARTING_KINDS.has(kind), UnitKind.display_name(kind))
-	var deck := Story.default_deck(Story.STARTING_KINDS)
+		assert_eq(rules.allows(Story.ARMY, kind), Story.MILITARY.STARTING_KINDS.has(kind), UnitKind.display_name(kind))
+	var deck := Story.default_deck(Story.MILITARY.STARTING_KINDS)
 	assert_true(deck.is_valid(), str(deck.problems()))
 	var everything := Story.rules_of([UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC, UnitKind.Id.SNIPER, UnitKind.Id.SHIELD_TROOPER])
 	assert_eq(everything.roster(Story.ARMY), DeckRules.versus().roster(Story.ARMY), "ロスターは役割の順")
 
 
 func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
-	var episode: Script = Story.EPISODES[0]
+	var episode: Script = Story.MILITARY.EPISODES[0]
 	var story := Story.new()
 	var run := story.run_now(episode)
 	assert_eq(run.data()["lines"].size(), episode.BEFORE.size(), "前の会話には知らせを出さない")
@@ -242,7 +246,7 @@ func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
 
 
 func test_episode_deploy_cells_place_the_enemy_there() -> void:
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		var cells: Array = episode.DEPLOY[Unit.Side.PLAYER2]
 		if cells.is_empty():
 			continue
@@ -258,7 +262,7 @@ func test_episode_deploy_cells_place_the_enemy_there() -> void:
 
 func test_the_same_map_is_reused_with_other_deploy_cells() -> void:
 	var maps := {}
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		var key := [episode.MAP, str(episode.DEPLOY)]
 		assert_false(maps.has(key), "%s は、前の話と同じマップと初期位置" % episode.ID)
 		maps[key] = true
@@ -266,15 +270,15 @@ func test_the_same_map_is_reused_with_other_deploy_cells() -> void:
 
 func test_episodes_open_one_by_one() -> void:
 	var story := Story.new()
-	assert_true(story.is_available(Story.EPISODES[0]))
-	for i in range(1, Story.EPISODES.size()):
-		assert_false(story.is_available(Story.EPISODES[i]), "前の話をクリアするまで遊べない")
-	for i in Story.EPISODES.size():
-		assert_eq(Story.number_of(Story.EPISODES[i]), i + 1)
-		story.clear(Story.EPISODES[i].ID)
-		if i + 1 < Story.EPISODES.size():
-			assert_true(story.is_available(Story.EPISODES[i + 1]))
-	for episode in Story.EPISODES:
+	assert_true(story.is_available(Story.MILITARY.EPISODES[0]))
+	for i in range(1, Story.MILITARY.EPISODES.size()):
+		assert_false(story.is_available(Story.MILITARY.EPISODES[i]), "前の話をクリアするまで遊べない")
+	for i in Story.MILITARY.EPISODES.size():
+		assert_eq(Story.number_of(Story.MILITARY.EPISODES[i]), i + 1)
+		story.clear(Story.MILITARY.EPISODES[i].ID)
+		if i + 1 < Story.MILITARY.EPISODES.size():
+			assert_true(story.is_available(Story.MILITARY.EPISODES[i + 1]))
+	for episode in Story.MILITARY.EPISODES:
 		assert_true(story.is_available(episode), "クリアした話は遊び直せる")
 
 
@@ -294,7 +298,7 @@ func test_story_decks_are_read_with_the_current_progress_and_never_mix_with_vers
 	assert_false(saved.playable(), "まだ解放していない駒がいる")
 	assert_true(again.decks.for_rules(DeckRules.VERSUS).is_empty(), "対戦用に混ざらない")
 	assert_eq(again.decks.for_rules(Story.RULES_ID).size(), 1)
-	again.story.clear(Story.EPISODES[0].ID)  # コマンドーが増える
+	again.story.clear(Story.MILITARY.EPISODES[0].ID)  # コマンドーが増える
 	assert_true(saved.playable(), "進み具合が変わったら、決まりを引き直す: %s" % [saved.issues()])
 	var plain := preload("res://game/deck_library.gd").new()
 	plain.load_data(data)
@@ -312,7 +316,7 @@ func test_old_versus_save_files_still_load_as_versus() -> void:
 
 
 func test_missing_optional_constants_read_as_their_defaults() -> void:
-	var plain: Script = Story.EPISODES[0]  # 1 話: HOLD_TURNS も WINS も持たない
+	var plain: Script = Story.MILITARY.EPISODES[0]  # 1 話: HOLD_TURNS も WINS も持たない
 	assert_false(plain.get_script_constant_map().has("HOLD_TURNS"))
 	assert_eq(StoryBattle.hold_turns_of(plain), 0)
 	assert_true(StoryBattle.wins_of(plain).is_empty())
@@ -321,7 +325,7 @@ func test_missing_optional_constants_read_as_their_defaults() -> void:
 
 
 func test_the_sortie_reads_the_same_scenario_as_the_battle() -> void:
-	for episode: Script in Story.EPISODES:
+	for episode: Script in Story.MILITARY.EPISODES:
 		var source := Story.first_battle(episode)
 		var defined: Scenario = source.scenario()
 		var made := source.make_setup(9).scenario
@@ -332,7 +336,7 @@ func test_the_sortie_reads_the_same_scenario_as_the_battle() -> void:
 
 func test_hold_turns_make_the_human_side_hold_out() -> void:
 	var holding := 0
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		var battle := Story.first_battle(episode).make_setup(1).create_battle()
 		if StoryBattle.hold_turns_of(episode) > 0:
 			holding += 1
@@ -348,7 +352,7 @@ func test_hold_turns_make_the_human_side_hold_out() -> void:
 
 func test_wins_replace_the_human_side_win_conditions() -> void:
 	var routing := 0
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		if StoryBattle.wins_of(episode).is_empty():
 			continue
 		var battle := Story.first_battle(episode).make_setup(1).create_battle()
@@ -358,3 +362,53 @@ func test_wins_replace_the_human_side_win_conditions() -> void:
 			routing += 1
 			assert_false(battle.wins_by(Unit.Side.PLAYER1, GameWonEvent.Reason.KING_DEFEATED), "全滅の話は、敵の将を倒しても終わらない")
 	assert_true(routing > 0, "全滅させる話が無い")
+
+
+func test_an_old_single_story_record_is_read_as_the_military_campaign() -> void:
+	var story := Story.new()
+	story.store = _store()
+	_store().write(Story.STORE_NAME, 1, {"cleared": ["ridge_path", "ridge_ambush"], "squad": "5"})
+	story.load_saved()
+	story.choose_campaign(Story.MILITARY)
+	assert_eq(story.cleared_count(), 2, "物語が 1 つだったころの記録は、MILITARY の物語の記録")
+	assert_eq(story.squad_id, "5")
+	story.clear(Story.MILITARY.EPISODES[2].ID)
+	assert_eq(_store().read(Story.STORE_NAME), {"version": 2, "data": {"campaigns": {"military": {
+			"cleared": ["ridge_path", "ridge_ambush", "ridge_hold"], "squad": "5"}}}}, "書くときは、物語ごとの形")
+	_cleanup()
+
+
+func test_progress_is_kept_per_campaign() -> void:
+	var story := Story.new()
+	var other: Script = Story.CAMPAIGNS[1]
+	assert_ne(other, Story.MILITARY)
+	story.clear(Story.MILITARY.EPISODES[0].ID)
+	story.choose_squad("7")
+	story.choose_campaign(other)
+	assert_eq(story.campaign, other)
+	assert_eq(story.cleared_count(), 0, "ほかの物語のクリアは数えない")
+	assert_false(story.is_cleared(Story.MILITARY.EPISODES[0].ID))
+	assert_eq(story.squad_id, "", "選んだ部隊も物語ごと")
+	assert_eq(story.unlocked_kinds(), other.STARTING_KINDS)
+	assert_eq(story.deck_rules().id, other.RULES_ID)
+	assert_eq(story.deck_rules().armies(), [other.ARMY] as Array[UnitKind.Army])
+	assert_eq(story.rules_by_id(Story.MILITARY.RULES_ID).roster(Story.MILITARY.ARMY).size(), Story.MILITARY.STARTING_KINDS.size() + Story.MILITARY.EPISODES[0].UNLOCKS.size(),
+			"取っておいた部隊は、選んでいない物語の決まりでも、その物語の進み具合で引ける")
+	assert_true(story.rules_by_id(DeckRules.VERSUS) == null)
+	story.run_now(Story.MILITARY.EPISODES[1])
+	assert_eq(story.campaign, Story.MILITARY, "話を始めると、その話の物語になる")
+	assert_eq(story.squad_id, "7")
+
+
+func test_a_campaign_without_episodes_is_not_ready_and_does_not_block_all_cleared() -> void:
+	var story := Story.new()
+	for campaign in Story.CAMPAIGNS:
+		assert_eq(Story.is_ready(campaign), not campaign.EPISODES.is_empty())
+		for episode: Script in campaign.EPISODES:
+			assert_eq(Story.campaign_of(episode), campaign)
+	assert_false(story.all_cleared())
+	for campaign in Story.CAMPAIGNS:
+		story.choose_campaign(campaign)
+		for episode: Script in campaign.EPISODES:
+			story.clear(episode.ID)
+	assert_true(story.all_cleared(), "準備中の物語は、全部クリアの邪魔をしない")

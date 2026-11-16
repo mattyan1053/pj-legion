@@ -19,6 +19,7 @@ extends RefCounted
 ## 場面の名前。ほかのスクリプトは、場面を名前で指すとき、文字で書かずにこれを使う（書き漏らすと、流れが渡すものを受け取れず、
 ## エラーにならずに既定の中身で始まる）。
 const TITLE := &"title"
+const CAMPAIGNS := &"campaigns"
 const EPISODES := &"episodes"
 const DECKS := &"decks"
 const STAGE := &"stage"
@@ -32,12 +33,17 @@ const BATTLE := &"battle"
 const SCENES := {
 	TITLE: {
 		"script": "res://game/title_screen.gd",
-		"next": {&"start": STAGE, &"story": EPISODES},
+		"next": {&"start": STAGE, &"story": CAMPAIGNS},
+		"music": &"menu",
+	},
+	CAMPAIGNS: {
+		"script": "res://game/campaign_list_screen.gd",
+		"next": {&"open": EPISODES, &"back": TITLE},  # 物語を選ぶと、その物語の話の一覧へ
 		"music": &"menu",
 	},
 	EPISODES: {
 		"script": "res://game/episode_list_screen.gd",
-		"next": {&"back": TITLE},  # 話を選ぶと、話の流れ（story.gd の run_now）を始める。流れを終えたら、ここへ戻る
+		"next": {&"back": CAMPAIGNS},  # 話を選ぶと、話の流れ（story.gd の run_now）を始める。流れを終えたら、ここへ戻る
 		"music": &"menu",
 	},
 	DECKS: {
