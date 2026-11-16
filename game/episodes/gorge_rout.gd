@@ -29,9 +29,8 @@ const WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 ## 敵の部隊（将を除く）: [駒の種類, [装備, …]] の列。並びの順に、初期位置（DEPLOY）のマスへ置く。
 const ENEMY := [
-	[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD]],
+	[UnitKind.Id.PALADIN, []],
 	[UnitKind.Id.SORCERER, []],
-	[UnitKind.Id.SPELLBLADE, []],
 	[UnitKind.Id.PRIEST, []],
 ]
 
