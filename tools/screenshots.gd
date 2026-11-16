@@ -133,6 +133,7 @@ const SCENES := {
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
 	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
 	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
+	"story_fantasy_evolve": "ストーリー: FANTASY の物語の演習「分かれ道」で、あと 1 撃で進化するパラディンが盾役を攻撃し、進化先を選ぶところ",
 	"story_fantasy_main_list": "ストーリー: FANTASY の物語の演習を終え、本編の 1 話目をクリアしたあとの話の一覧（本編のカード、増えた持ち物とコスト上限）",
 	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（霧の森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
 	"story_fantasy_forest_wide": "ストーリー: 霧の森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
@@ -1656,6 +1657,39 @@ func _start_fantasy(number: int) -> bool:
 	_app.current_scene().choose(episodes[number])
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.TALK
+
+
+## FANTASY の物語の演習「分かれ道」: あと 1 撃で進化するパラディンを盾役の隣へ動かして攻撃し、進化先の選択を出す。
+func _scene_story_fantasy_evolve() -> bool:
+	var number := -1
+	for i: int in _fantasy().episodes.size():
+		if _fantasy().episodes[i].id == &"trial_evolution":
+			number = i
+	if number < 0 or not await _start_fantasy(number) or not await _scene_story_sortie_from_talk():
+		return false
+	_app.current_scene().press_sortie()
+	await _app.scene_changed
+	if _app.current_id() != SceneFlow.BATTLE:
+		return false
+	_scene = _app.current_scene()
+	var paladin: Unit = null
+	var guard: Unit = null
+	for unit: Unit in _scene.battle.units:
+		if unit.kind == UnitKind.Id.PALADIN and unit.side == Unit.Side.PLAYER1:
+			paladin = unit
+		elif unit.kind == UnitKind.Id.SHIELD_TROOPER:
+			guard = unit
+	if paladin == null or guard == null:
+		return false
+	_scene.click_cell(paladin.cell)
+	_scene.click_cell(guard.cell + Vector2i(0, 1))
+	while _scene.is_busy():
+		await get_tree().process_frame
+	_scene.press_menu(&"attack")
+	_scene.click_cell(guard.cell)
+	while _scene.is_busy():
+		await get_tree().process_frame
+	return _scene.is_choosing_evolution()
 
 
 ## 部隊を選ぶ最初の話（FANTASY の物語の本編の 1 話目）の番号（0 から）。
