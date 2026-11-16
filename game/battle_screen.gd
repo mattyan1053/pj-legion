@@ -1036,6 +1036,12 @@ func menu_rect() -> Rect2:
 	return _hud.menu_rect()
 
 
+## メニューが届くマス（青・黄）に掛かっているか。検査用。
+func menu_covers_move() -> bool:
+	_layout.place_menu(selected_unit(), _painted)
+	return _layout.menu_covers_move()
+
+
 func menu_area() -> Rect2:
 	return _hud.menu_area()
 
