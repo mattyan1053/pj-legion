@@ -25,8 +25,10 @@ const NOTHING_SPECIAL := "特別なものは無い"
 ## 下の帯の、いまできることの説明。クリックだけで進められる言い方で、短く書く。
 ## unit は選んでいる駒、inspected は見ている駒（どちらも無ければ null）。cpu_turn は CPU の番（を進めている途中）か。
 ## self_skill は、選べる対象が自分のマスだけのスキル（自分に使うスキル）を選んでいるか。
+## confirming_unacted は、ターン終了を確かめている途中なら、まだ行動していない駒の数（確かめていなければ 0）。
 static func hint(
-	battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn: bool, confirming_ult: bool, self_skill: bool
+	battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn: bool, confirming_ult: bool, self_skill: bool,
+	confirming_unacted := 0
 ) -> String:
 	if battle.is_over():
 		return "決着"
@@ -35,7 +37,11 @@ static func hint(
 	if battle.evolving_unit() != null:
 		return "進化先を選ぶ（上のボタン）"
 	if confirming_ult:
-		return "もう一度押すと必殺技を使う（取り消せない）。右クリックか、盤面のクリックでやめる"
+		var ult := Ults.of(battle, battle.phase)  # 確かめるのは、人の番だけ
+		var named := "「%s」" % ult.display_name() if ult != null else ""
+		return "もう一度押すと必殺技%sを使う（取り消せない）。右クリックか、盤面のクリックでやめる" % named
+	if confirming_unacted > 0 and inspected == null:
+		return "まだ行動していない駒が %d 体（足元が光っている）。もう一度押すとターン終了。右クリックでやめる" % confirming_unacted
 	if inspected != null:
 		var ranges := "白: 動ける範囲" if inspected.side == battle.phase else "白: 動ける　赤: 次の番に攻撃が届く"
 		var back := "選んでいる駒へ戻る" if unit != null else "見るのをやめる"
@@ -134,7 +140,7 @@ static func ult_button_text(battle: Battle, side: Unit.Side, confirming: bool) -
 	if ult == null:
 		return "必殺技（なし）"
 	if confirming:
-		return "もう一度押すと %s 発動" % ult.display_name()
+		return "もう一度押して発動"  # 何の必殺技かと、取り消せないことは、ボタンの上の説明と下の帯に出す
 	if Ults.is_ready(battle, side):
 		return "必殺技: %s（使える）" % ult.display_name()
 	return "必殺技: %s（%d%%）" % [ult.display_name(), Ults.percent(battle, side)]

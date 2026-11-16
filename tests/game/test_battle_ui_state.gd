@@ -144,3 +144,16 @@ func test_press_becomes_a_click_or_a_drag() -> void:
 	ui.press(Vector2(100, 100), false)
 	ui.cancel_press()
 	assert_false(ui.release(), "やめたのに、クリックになった")
+
+
+func test_a_quick_second_press_does_not_pass_the_confirmation() -> void:
+	# 確かめに変わった直後の 2 回目（ダブルクリック・キーの連打）は受けない。間を置けば受ける。
+	var ui := BattleUiState.new()
+	ui.start_confirming_end(1000)
+	assert_true(ui.confirming_end)
+	assert_true(ui.confirm_guarded(1000), "1 回目と同時の 2 回目を受けた")
+	assert_true(ui.confirm_guarded(1000 + BattleUiState.CONFIRM_GUARD_MSEC - 1), "直後の 2 回目を受けた")
+	assert_false(ui.confirm_guarded(1000 + BattleUiState.CONFIRM_GUARD_MSEC), "間を置いても、2 回目を受けない")
+	ui.start_confirming_ult(5000)
+	assert_true(ui.confirming_ult and ui.confirm_guarded(5100), "必殺技の確かめの直後の 2 回目を受けた")
+	assert_true(BattleUiState.CONFIRM_GUARD_MSEC >= 300 and BattleUiState.CONFIRM_GUARD_MSEC <= 500, "受けない間は 0.3〜0.5 秒")
