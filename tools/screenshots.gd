@@ -1629,6 +1629,7 @@ func _scene_story_fantasy_list() -> bool:
 
 ## FANTASY の物語の演習（第 2 話）の出撃準備: この話で覚えること、決まっている部隊。
 func _scene_story_fantasy_sortie() -> bool:
+	_app.context.story.choose_campaign(_fantasy())  # クリアは、いま選んでいる物語の記録に書く
 	_app.context.story.clear(_fantasy().episodes[0].id)
 	if not await _scene_story_fantasy_list():
 		return false
