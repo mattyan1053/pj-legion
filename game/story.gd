@@ -9,6 +9,7 @@ extends RefCounted
 ##   壊れたファイル・知らない id があっても、起動を止めない（知らない話・物語の記録は残して書き戻す）。
 ## - 負けても失うものは無い。何度でもやり直せる。
 
+const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const Run := preload("res://game/run.gd")
@@ -37,9 +38,13 @@ const DEFAULT_ITEMS := {
 	UnitKind.Role.VANGUARD: Equipment.Id.IRON_SHIELD,
 	UnitKind.Role.RAIDER: Equipment.Id.SPEED_BOOTS,
 }
-## 会話の行の、知らせ（話し手の名前の札を灰色にする。「飛ばす」でも飛ばさない。talk_screen.gd）。
+## 会話の行の、知らせ（話し手の名前の札を灰色にする。「飛ばす」でも飛ばさない。talk_screen.gd）。名前は notice_name()。
 const NOTICE_SIDE := 2
-const NOTICE_NAME := "知らせ"
+
+## 知らせの行の話し手の名前。
+static func notice_name() -> String:
+	return Text.t("story.news.speaker")
+
 
 ## 取っておく先（null なら書かない。検査・自動の対戦・スクリーンショットでは null）。
 var store: RefCounted
@@ -299,13 +304,13 @@ class Unlocked:
 		var lines: Array[Dictionary] = []
 		for kind: UnitKind.Id in episode.unlock_kinds:
 			if not kinds.has(kind):
-				lines.append({"text": "新しい駒「%s」を雇えるようになった。" % Names.kind(kind), "kind": kind})
+				lines.append({"text": Text.t("story.news.unit", {"unit": Names.kind(kind)}), "kind": kind})
 		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
-				lines.append({"text": "新しい持ち物「%s」を持たせられるようになった。" % Names.item(item)})
+				lines.append({"text": Text.t("story.news.item", {"item": Names.item(item)})})
 		var more := episode.budget_up
 		if more > 0:
-			lines.append({"text": "部隊のコストの上限が %d になった。" % (budget + more)})
+			lines.append({"text": Text.t("story.news.budget", {"budget": budget + more})})
 		return lines
 
 
@@ -433,7 +438,7 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 	run.add(BATTLE, battle)
 	var after := talk_of(episode, episode.after)
 	for news_line: Dictionary in news:
-		var line := {"side": NOTICE_SIDE, "name": NOTICE_NAME}
+		var line := {"side": NOTICE_SIDE, "name": notice_name()}
 		line.merge(news_line)
 		after["lines"].append(line)
 	run.add(TALK, after)

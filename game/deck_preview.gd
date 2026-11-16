@@ -3,6 +3,7 @@ extends Control
 ## 自分の部隊も、CPU の部隊も、同じ見え方。「閉じる」・右クリック・Esc で閉じる。
 ## 色や枠は UI のテーマ（ui_theme.gd。板は PANEL_SOLID、札は PANEL_CARD）が当たる。
 
+const Text := preload("res://game/text.gd")
 const UnitCard := preload("res://game/unit_card.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -50,7 +51,7 @@ func setup(overlays: RefCounted) -> void:
 	_cards.add_theme_constant_override("v_separation", 8)
 	scroll.add_child(_cards)
 	var close := Button.new()
-	close.text = "閉じる"
+	close.text = Text.t("common.close")
 	close.focus_mode = Control.FOCUS_NONE
 	close.add_theme_font_size_override("font_size", 17)
 	close.custom_minimum_size = Vector2(180.0, 44.0)
@@ -61,7 +62,7 @@ func setup(overlays: RefCounted) -> void:
 
 ## who（「あなた」「CPU」など）の部隊 deck を出す。将を先頭に、雇った駒を並びの順に。side はアイコンの陣営の色。
 func open(who: String, deck: Deck, side := 0) -> void:
-	_title.text = "%s　%s　コスト %d / %d" % [who, DeckText.army_name(deck.army), deck.total_cost(), deck.budget()]
+	_title.text = Text.t("deck.preview.title", {"who": who, "army": DeckText.army_name(deck.army), "cost": deck.total_cost(), "budget": deck.budget()})
 	for child in _cards.get_children():
 		_cards.remove_child(child)
 		child.queue_free()

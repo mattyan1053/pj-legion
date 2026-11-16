@@ -4,6 +4,7 @@ extends PanelContainer
 ## 値はその場で settings に入れる（すぐ効く）。行ごとに「既定に戻す」、下に「すべて既定に戻す」と「戻る」。
 ## 閉じる（戻る・右クリック・Esc）のは、持ち主（system_menu.gd）が決める。ここは closed を出すだけ。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Settings := preload("res://game/settings.gd")
@@ -43,7 +44,7 @@ func setup(target: Settings) -> void:
 
 	var title := _label(28)
 	title.theme_type_variation = UiTheme.LABEL_HEADING
-	title.text = "設定"
+	title.text = Text.t("settings.title")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 
@@ -61,7 +62,7 @@ func setup(target: Settings) -> void:
 		if entry["section"] != section:
 			section = entry["section"]
 			var heading := _label(17)
-			heading.text = section
+			heading.text = Text.t(section)
 			heading.theme_type_variation = UiTheme.LABEL_SECTION
 			rows.add_child(heading)
 		rows.add_child(_build_row(entry))
@@ -75,10 +76,10 @@ func setup(target: Settings) -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 16)
 	column.add_child(buttons)
-	_reset_all = _button("すべて既定に戻す", 17)
+	_reset_all = _button(Text.t("settings.reset_all"), 17)
 	_reset_all.pressed.connect(settings.reset_all)
 	buttons.add_child(_reset_all)
-	var back := _button("戻る", 18)
+	var back := _button(Text.t("common.back"), 18)
 	back.custom_minimum_size = Vector2(200.0, 48.0)
 	back.pressed.connect(closed.emit)
 	buttons.add_child(back)
@@ -121,7 +122,7 @@ func _build_row(entry: Dictionary) -> Control:
 	row.add_theme_constant_override("separation", 12)
 	box.add_child(row)
 	var label := _label(18)
-	label.text = entry["label"]
+	label.text = Text.t(entry["label"])
 	label.custom_minimum_size = Vector2(LABEL_WIDTH, 0.0)
 	row.add_child(label)
 
@@ -145,11 +146,11 @@ func _build_row(entry: Dictionary) -> Control:
 			control = slider
 		Settings.Kind.TOGGLE, Settings.Kind.CHOICE:
 			# オン・オフも、選択肢と同じに、押されているほうが分かるボタンを並べる（スイッチの絵は暗い背景で見えにくい）。
-			var choices: Array = [[false, "オフ"], [true, "オン"]] if entry["kind"] == Settings.Kind.TOGGLE else entry["choices"]
+			var choices: Array = [[false, "settings.off"], [true, "settings.on"]] if entry["kind"] == Settings.Kind.TOGGLE else entry["choices"]
 			var group := ButtonGroup.new()
 			var buttons := {}
 			for choice: Array in choices:
-				var button := _button(choice[1], 16)
+				var button := _button(Text.t(choice[1]), 16)
 				button.toggle_mode = true
 				button.button_group = group
 				# 押されている（選んでいる）ボタンは、テーマの「選ばれている」の形（金の縁と濃い金の地）になる。
@@ -165,7 +166,7 @@ func _build_row(entry: Dictionary) -> Control:
 	shown.custom_minimum_size = Vector2(90.0, 0.0)
 	shown.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(shown)
-	var reset := _button("既定に戻す", 15)
+	var reset := _button(Text.t("settings.reset"), 15)
 	reset.custom_minimum_size = Vector2(110.0, 34.0)
 	reset.pressed.connect(func() -> void: settings.reset(key))
 	row.add_child(reset)
@@ -174,7 +175,7 @@ func _build_row(entry: Dictionary) -> Control:
 	note.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	note.add_theme_constant_override("outline_size", 0)
 	box.add_child(note)
-	_set_folded(note, entry.get("note", ""), NOTE_WIDTH)
+	_set_folded(note, Text.t(entry["note"]) if entry.has("note") else "", NOTE_WIDTH)
 	_rows[key] = {"control": control, "value": shown, "reset": reset}
 	return box
 

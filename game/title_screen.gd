@@ -3,6 +3,7 @@ extends Node
 ## 部隊の編成は、各モードに入ったところから開く（対戦の設定の「部隊を編成する」、出撃の準備の「部隊を編成する」）。
 ## 場面の決まりは scene_flow.gd。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
@@ -39,7 +40,7 @@ func _ready() -> void:
 	title.theme_type_variation = UiTheme.LABEL_TITLE
 	title.remove_theme_constant_override("outline_size")
 	column.add_child(title)
-	var subtitle := _label("プロジェクト・レギオン", 20)
+	var subtitle := _label(Text.t("title.subtitle"), 20)
 	subtitle.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(subtitle)
 	var gap := HSeparator.new()  # 題字とメニューを分ける線
@@ -47,10 +48,10 @@ func _ready() -> void:
 	column.add_child(gap)
 	_add_button(column, &"story", story_label(), press_story)
 	(_buttons[&"story"] as Button).set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
-	_add_button(column, &"start", "対戦", press_start)
+	_add_button(column, &"start", Text.t("title.button.versus"), press_start)
 	(_buttons[&"start"] as Button).set_meta(&"sound", &"ui_confirm")
-	_add_button(column, &"settings", "オプション", press_settings)
-	_add_button(column, &"quit", "終了", press_quit)
+	_add_button(column, &"settings", Text.t("title.button.options"), press_settings)
+	_add_button(column, &"quit", Text.t("title.button.quit"), press_quit)
 
 
 ## ボタンの文字の並び（上から。検査用）。
@@ -73,7 +74,7 @@ func press_story() -> void:
 
 ## 「ストーリー」のボタンの文字。全部の話をクリアしていたら、済みの印を付ける。
 func story_label() -> String:
-	return "ストーリー（クリア済み）" if context.story.all_cleared() else "ストーリー"
+	return Text.t("title.button.story_cleared") if context.story.all_cleared() else Text.t("title.button.story")
 
 
 ## 「オプション」: 設定の画面だけを開く（システムメニューと同じ画面）。

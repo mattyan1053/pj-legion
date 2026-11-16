@@ -1,0 +1,46 @@
+keys,ja
+sortie.back,出撃の準備へ戻る
+story.campaigns.heading,ストーリー
+story.campaigns.sub,物語を選ぶ
+story.campaigns.resume,物語を選ぶ画面へ戻る
+story.campaigns.preparing,準備中
+story.campaigns.total,全 {total} 話
+story.campaigns.all_cleared,全 {total} 話クリア
+story.campaigns.cleared,{cleared} / {total} 話クリア
+story.campaigns.army,使う軍: {army}
+story.episodes.sub,話を選ぶ
+story.episodes.back,物語を選び直す
+story.episodes.resume,話の一覧へ戻る
+story.episodes.reward_budget,コスト +{amount}
+story.episodes.cleared,クリア済み
+story.episodes.locked,第 {number} 話をクリアすると遊べる
+story.episodes.not_cleared,未クリア
+sortie.heading,出撃の準備　　第 {number} 話「{title}」
+sortie.map,マップ「{map}」（点は駒の初期位置。青が味方、赤が敵）
+sortie.lesson,この話で覚えること
+sortie.goal,勝ち方
+sortie.enemy,敵の部隊（{army}）
+sortie.troops,出撃する部隊
+story.episodes.resume_back,話の一覧へ戻る
+sortie.go,出撃
+sortie.option.fixed,この話の部隊
+sortie.option.fixed.note,決まっている（この話では選び直せない）
+sortie.option.default,既定の編成
+sortie.option.default.note,いま雇える駒で組んだもの
+sortie.option.saved.note,{count} 体・コスト {cost} / {budget}
+sortie.option,{name}　　{note}
+talk.skip,飛ばす
+talk.hint,クリック・Enter で次へ ▼　右クリックで戻る
+talk.resume,会話へ戻る
+story.episodes.roster,"いま雇える駒: {kinds}
+持ち物: {items}　　コストの上限: {budget}
+（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）"
+story.episodes.rewards,"クリアで増える:
+{rewards}"
+story.episodes.number_drill,第 {number} 話（演習）
+story.episodes.number,第 {number} 話
+sortie.option.unplayable,出せない: {issue}
+story.news.speaker,知らせ
+story.news.unit,新しい駒「{unit}」を雇えるようになった。
+story.news.item,新しい持ち物「{item}」を持たせられるようになった。
+story.news.budget,部隊のコストの上限が {budget} になった。

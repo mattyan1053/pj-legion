@@ -10,6 +10,7 @@ extends Node
 ## - 「部隊を編成する」で、部隊の編成（ストーリー用）へ寄り道する（流れに差し込む。編成の「出撃の準備へ戻る」で、ここへ戻る）。
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
@@ -90,7 +91,7 @@ func _ready() -> void:
 	var heading := _text(30, COLOR_TEXT)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
-	heading.text = "出撃の準備　　第 %d 話「%s」" % [Story.number_of(episode), episode.title]
+	heading.text = Text.t("sortie.heading", {"number": Story.number_of(episode), "title": episode.title})
 	root.add_child(heading)
 
 	var body := HBoxContainer.new()
@@ -105,7 +106,7 @@ func _ready() -> void:
 	var left_column := VBoxContainer.new()
 	left_column.add_theme_constant_override("separation", 6)
 	left.add_child(left_column)
-	left_column.add_child(_caption("マップ「%s」（点は駒の初期位置。青が味方、赤が敵）" % episode.map_title))
+	left_column.add_child(_caption(Text.t("sortie.map", {"map": episode.map_title})))
 	_map = TextureRect.new()
 	_map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_map.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
@@ -122,15 +123,15 @@ func _ready() -> void:
 	goal.add_child(goal_column)
 	var lesson := episode.lesson
 	if lesson != "":
-		goal_column.add_child(_caption("この話で覚えること"))
+		goal_column.add_child(_caption(Text.t("sortie.lesson")))
 		goal_column.add_child(_wrapped(lesson, 17, COLOR_TEXT))
-	goal_column.add_child(_caption("勝ち方"))
+	goal_column.add_child(_caption(Text.t("sortie.goal")))
 	goal_column.add_child(_wrapped(win_text(), 17, COLOR_TEXT))
 	var enemy := _panel()
 	right.add_child(enemy)
 	var enemy_column := VBoxContainer.new()
 	enemy.add_child(enemy_column)
-	enemy_column.add_child(_caption("敵の部隊（%s）" % DeckText.army_name(episode.enemy_army)))
+	enemy_column.add_child(_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)})))
 	enemy_column.add_child(_wrapped(DeckText.deck_summary(battle_source.scenario().fixed_decks[Unit.Side.PLAYER2]), 17, COLOR_TEXT))
 
 	var troops := _panel()
@@ -142,10 +143,10 @@ func _ready() -> void:
 	var troops_head := HBoxContainer.new()
 	troops_head.add_theme_constant_override("separation", 12)
 	troops_column.add_child(troops_head)
-	var troops_caption := _caption("出撃する部隊")
+	var troops_caption := _caption(Text.t("sortie.troops"))
 	troops_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	troops_head.add_child(troops_caption)
-	var edit := _button("部隊を編成する", 16)
+	var edit := _button(Text.t("setup.edit_deck"), 16)
 	edit.custom_minimum_size = Vector2(180.0, 36.0)
 	edit.pressed.connect(press_edit_decks)
 	# 流れの外から置いたとき（検査）は、戻る先が無いので出さない。部隊が決まっている話も出さない。
@@ -170,11 +171,11 @@ func _ready() -> void:
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	footer.add_theme_constant_override("separation", 16)
 	root.add_child(footer)
-	var back := _button("話の一覧へ戻る", 18)
+	var back := _button(Text.t("story.episodes.resume_back"), 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
 	back.pressed.connect(press_back)
 	footer.add_child(back)
-	_sortie = _button("出撃", 22)
+	_sortie = _button(Text.t("sortie.go"), 22)
 	_sortie.custom_minimum_size = Vector2(280.0, 54.0)
 	_sortie.set_meta(&"sound", &"ui_confirm")
 	_sortie.theme_type_variation = UiTheme.BUTTON_PRIMARY
@@ -190,7 +191,7 @@ func _ready() -> void:
 
 
 func resume_label() -> String:
-	return "出撃の準備へ戻る"
+	return Text.t("sortie.back")
 
 
 ## 勝ち方の文（話の戦いの定義の勝ちの条件から。人はプレイヤー1。win_text.gd、docs/win-conditions.md）。
@@ -261,7 +262,7 @@ func press_edit_decks() -> void:
 	if context.run == null or is_squad_fixed():
 		return
 	context.story.choose_squad(_chosen)
-	context.run.insert(DECKS, {"rules": context.story.campaign.rules_id, "back_label": "出撃の準備へ戻る"})
+	context.run.insert(DECKS, {"rules": context.story.campaign.rules_id, "back_label": "sortie.back"})
 	context.start_run(context.run)
 
 
@@ -299,17 +300,17 @@ func map_image(deck: Deck) -> Image:
 
 func _build_options() -> void:
 	if is_squad_fixed():
-		_add_option(FIXED_ID, "この話の部隊", "決まっている（この話では選び直せない）", true)
+		_add_option(FIXED_ID, Text.t("sortie.option.fixed"), Text.t("sortie.option.fixed.note"), true)
 		return
-	_add_option(DEFAULT_ID, "既定の編成", "いま雇える駒で組んだもの", true)
+	_add_option(DEFAULT_ID, Text.t("sortie.option.default"), Text.t("sortie.option.default.note"), true)
 	for item in context.decks.for_rules(context.story.campaign.rules_id, context.story.campaign.army):
 		var issues: Array[String] = item.issues()
-		var note := "%d 体・コスト %d / %d" % [item.deck.entries.size(), item.deck.total_cost(), item.deck.budget()]
-		_add_option(item.id, item.name, note if issues.is_empty() else "出せない: " + issues[0], issues.is_empty())
+		var note := Text.t("sortie.option.saved.note", {"count": item.deck.entries.size(), "cost": item.deck.total_cost(), "budget": item.deck.budget()})
+		_add_option(item.id, item.name, note if issues.is_empty() else Text.t("sortie.option.unplayable", {"issue": issues[0]}), issues.is_empty())
 
 
 func _add_option(id: String, name: String, note: String, enabled: bool) -> void:
-	var button := _button("%s　　%s" % [name, note], 16)
+	var button := _button(Text.t("sortie.option", {"name": name, "note": note}), 16)
 	button.toggle_mode = true
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.custom_minimum_size = Vector2(0.0, 40.0)

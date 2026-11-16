@@ -6,6 +6,7 @@ extends Node
 ## - 右クリックで 1 つ前の文へ戻る。Esc はシステムメニュー（ほかの場面と同じ）。
 ## - 「飛ばす」で、残りを読まずに Run.NEXT で終える。知らせの行（side 2。駒の解放など）は飛ばさず、そこで止まる。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const AppContext := preload("res://game/app_context.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
@@ -99,7 +100,7 @@ func _ready() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(spacer)
 	_skip = Button.new()
-	_skip.text = "飛ばす"
+	_skip.text = Text.t("talk.skip")
 	_skip.focus_mode = Control.FOCUS_NONE
 	_skip.add_theme_font_size_override("font_size", 17)
 	_skip.custom_minimum_size = Vector2(110.0, 36.0)
@@ -150,7 +151,7 @@ func _ready() -> void:
 	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(_count)
 	_hint = _label(15, COLOR_DIM)
-	_hint.text = "クリック・Enter で次へ ▼　右クリックで戻る"
+	_hint.text = Text.t("talk.hint")
 	foot.add_child(_hint)
 
 	_show_line(0)
@@ -183,7 +184,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## システムメニューの「戻る」の文字（ほかの場面と同じく、行き先を書く）。
 func resume_label() -> String:
-	return "会話へ戻る"
+	return Text.t("talk.resume")
 
 
 ## 次へ: 文が出きる前なら出しきる。出ていたら次の文へ。最後の文のあとは、会話を終える。

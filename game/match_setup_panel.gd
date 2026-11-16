@@ -19,6 +19,7 @@ signal stage_pressed(choice: RefCounted)
 ## 「部隊を編成する」。いまの選択（写し）と、部隊を組むプレイヤーを渡す。持ち主が部隊の編成へ寄り道する。
 signal decks_pressed(choice: RefCounted, side: Unit.Side)
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
@@ -37,11 +38,11 @@ const PICKER_WIDTH := 330.0
 ## 手番の「ランダム」のボタンの値（Unit.Side の値と重ならない）。
 const RANDOM_SIDE := -1
 ## 確かめの間のボタンの文字と、下の文（理由）。
-const CONFIRM_TEXT := "もう一度押す"
-const STAGE_TEXT := "ステージを選び直す"
-const WARNING_TEXT := "ステージを選び直す・新しい対戦を始めると、いまの対戦は終わる"
-const CONFIRM_STAGE_TEXT := "もう一度押すと、いまの対戦を終えてステージ選択へ。右クリックでやめる"
-const CONFIRM_START_TEXT := "もう一度押すと、いまの対戦を終えて新しい対戦を始める。右クリックでやめる"
+const CONFIRM_TEXT := "setup.confirm"
+const STAGE_TEXT := "setup.stage"
+const WARNING_TEXT := "setup.warning"
+const CONFIRM_STAGE_TEXT := "setup.confirm_stage"
+const CONFIRM_START_TEXT := "setup.confirm_start"
 
 var _choice: RefCounted = MatchChoice.new()
 var _team_colors: Array[Color] = []
@@ -73,7 +74,7 @@ var _in_progress := false
 var _confirming: Button
 var _confirm_started_msec := 0
 ## 始めるボタンのいまの文字（確かめをやめたら戻す）。
-var _start_text := "対戦を始める"
+var _start_text := ""
 
 
 ## 開いている重なる画面の積み上げ（overlay_stack.gd。AppContext.overlays）。見えている間は積んでおく。
@@ -107,23 +108,23 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
 	var title := _label(30)
 	title.theme_type_variation = UiTheme.LABEL_HEADING
-	title.text = "対戦の設定"
+	title.text = Text.t("setup.title")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 
-	var stage_row := _caption_row(column, "ステージ")
+	var stage_row := _caption_row(column, Text.t("setup.caption.stage"))
 	_stage_name = _label(18)
 	_stage_name.custom_minimum_size = Vector2(PICKER_WIDTH, 0.0)
 	_stage_name.clip_text = true
 	_stage_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stage_row.add_child(_stage_name)
-	_stage_button = _button(STAGE_TEXT)
+	_stage_button = _button(Text.t(STAGE_TEXT))
 	_stage_button.custom_minimum_size = Vector2(200.0, 40.0)
 	_stage_button.pressed.connect(press_stage)
 	stage_row.add_child(_stage_button)
-	_add_row(column, "相手", &"opponent", {true: "CPU", false: "人（2 人で交代）"})
-	var side_row := _add_row(column, "手番", &"human_side", {
-		Unit.Side.PLAYER1: "先手（青）", Unit.Side.PLAYER2: "後手（赤）", RANDOM_SIDE: "ランダム",
+	_add_row(column, Text.t("setup.caption.opponent"), &"opponent", {true: "CPU", false: Text.t("setup.opponent.human")})
+	var side_row := _add_row(column, Text.t("setup.caption.side"), &"human_side", {
+		Unit.Side.PLAYER1: Text.t("setup.side.first"), Unit.Side.PLAYER2: Text.t("setup.side.second"), RANDOM_SIDE: Text.t("setup.side.random"),
 	})
 	_side_caption = side_row.get_child(0) as Label
 	for side in 2:
@@ -133,7 +134,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 			names[army] = Names.army(army)
 		var row := _add_row(column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)
-		var deck_row := _caption_row(column, "部隊")
+		var deck_row := _caption_row(column, Text.t("setup.caption.deck"))
 		var picker := OptionButton.new()
 		picker.focus_mode = Control.FOCUS_NONE
 		picker.add_theme_font_size_override("font_size", 17)
@@ -146,15 +147,15 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		deck_row.add_child(picker)
 		_deck_pickers.append(picker)
 		var cpu_label := _label(18)
-		cpu_label.text = "CPU の編成"
+		cpu_label.text = Text.t("setup.cpu_deck")
 		cpu_label.custom_minimum_size = Vector2(PICKER_WIDTH, 40.0)
 		cpu_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		deck_row.add_child(cpu_label)
 		_cpu_labels.append(cpu_label)
-		var look := _button("編成を確認")
+		var look := _button(Text.t("setup.deck_preview"))
 		look.pressed.connect(func() -> void: open_preview(picked_side))
 		deck_row.add_child(look)
-		var edit := _button("部隊を編成する")
+		var edit := _button(Text.t("setup.edit_deck"))
 		edit.custom_minimum_size = Vector2(170.0, 40.0)
 		edit.pressed.connect(func() -> void: press_edit_decks(picked_side))
 		deck_row.add_child(edit)
@@ -163,7 +164,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 
 	# 対戦の途中で開いたときは、始めるといまの対戦が失われることを書く。
 	_warning = _label(15)
-	_warning.text = WARNING_TEXT
+	_warning.text = Text.t(WARNING_TEXT)
 	_warning.add_theme_color_override("font_color", Palette.WARN)
 	_warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_warning)
@@ -171,11 +172,11 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	buttons.add_theme_constant_override("separation", 16)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_child(buttons)
-	_back_button = _button("対戦へ戻る")
+	_back_button = _button(Text.t("setup.back_to_battle"))
 	_back_button.custom_minimum_size = Vector2(220.0, 52.0)
 	_back_button.pressed.connect(cancel)
 	buttons.add_child(_back_button)
-	_start_button = _button("対戦を始める")
+	_start_button = _button(Text.t("setup.start"))
 	_start_button.custom_minimum_size = Vector2(220.0, 52.0)
 	_start_button.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	_start_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
@@ -192,7 +193,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 ## in_progress が真なら（決着していない対戦の途中）、始めるといまの対戦が失われることを書く。
 ## back_text は閉じるボタンの文字（対戦の設定の場面では「ステージ選択へ戻る」）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
 ## （対戦の途中から開いたとき）。対戦の途中から開いたときは「部隊を編成する」を出さない（対戦の設定の場面だけ）。
-func open(choice: RefCounted, cancellable := false, in_progress := false, back_text := "対戦へ戻る", new_battle := true) -> void:
+func open(choice: RefCounted, cancellable := false, in_progress := false, back_text := "", new_battle := true) -> void:
 	_choice = choice.copy()
 	_can_edit_decks = not (cancellable and new_battle)
 	_preview.close_preview()
@@ -200,9 +201,9 @@ func open(choice: RefCounted, cancellable := false, in_progress := false, back_t
 	_cancellable = cancellable
 	_in_progress = cancellable and in_progress
 	_back_button.visible = cancellable
-	_back_button.text = back_text
+	_back_button.text = back_text if back_text != "" else Text.t("setup.back_to_battle")
 	_warning.visible = _in_progress
-	_start_text = "新しい対戦を始める" if cancellable and new_battle else "対戦を始める"
+	_start_text = Text.t("setup.start_new") if cancellable and new_battle else Text.t("setup.start")
 	_confirming = null
 	_show_choice()
 	visible = true
@@ -336,9 +337,9 @@ func _press_or_confirm(button: Button, do: Callable) -> void:
 		stop_confirm()
 		_confirming = button
 		_confirm_started_msec = Time.get_ticks_msec()
-		button.text = CONFIRM_TEXT
+		button.text = Text.t(CONFIRM_TEXT)
 		button.theme_type_variation = UiTheme.BUTTON_DANGER
-		_warning.text = CONFIRM_STAGE_TEXT if button == _stage_button else CONFIRM_START_TEXT
+		_warning.text = Text.t(CONFIRM_STAGE_TEXT) if button == _stage_button else Text.t(CONFIRM_START_TEXT)
 		return
 	if Time.get_ticks_msec() - _confirm_started_msec < BattleUiState.CONFIRM_GUARD_MSEC:
 		return
@@ -348,11 +349,11 @@ func _press_or_confirm(button: Button, do: Callable) -> void:
 ## 確かめをやめる（ボタンと下の文を戻す）。確かめていなければ何もしない。
 func stop_confirm() -> void:
 	_confirming = null
-	_stage_button.text = STAGE_TEXT
+	_stage_button.text = Text.t(STAGE_TEXT)
 	_stage_button.theme_type_variation = &""
 	_start_button.text = _start_text
 	_start_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
-	_warning.text = WARNING_TEXT
+	_warning.text = Text.t(WARNING_TEXT)
 
 
 ## 確かめの途中なら、下に出している理由の文（確かめていなければ空）。検査用。
@@ -413,11 +414,11 @@ func _show_choice() -> void:
 
 ## side の行の見出し。CPU 戦なら「あなた」「CPU」と手番、人どうしなら手番だけ。
 func who_text(side: Unit.Side) -> String:
-	var turn: String = ["先手（青）", "後手（赤）"][side]
+	var turn: String = [Text.t("setup.side.first"), Text.t("setup.side.second")][side]
 	if not _choice.cpu_opponent:
 		return turn
-	var who := "あなた" if _choice.is_human(side) else "CPU"
-	return who if _choice.random_side else "%s・%s" % [who, turn]
+	var who := Text.t("setup.who.you") if _choice.is_human(side) else "CPU"
+	return who if _choice.random_side else Text.t("setup.who_side", {"who": who, "turn": turn})
 
 
 ## side の部隊（「編成を確認」で出すもの）。人なら選んだ部隊か既定の編成、CPU なら軍ごとの CPU の編成。
@@ -465,13 +466,13 @@ func can_edit_decks() -> bool:
 func _fill_deck_picker(side: Unit.Side) -> void:
 	var army: UnitKind.Army = _choice.armies[side]
 	var default_deck := MatchSetup.default_deck(army)
-	var options: Array = [["", "既定の編成（コスト %d / %d）" % [default_deck.total_cost(), default_deck.budget()], true]]
+	var options: Array = [["", Text.t("setup.deck.default", {"cost": default_deck.total_cost(), "budget": default_deck.budget()}), true]]
 	if _library != null:
 		for item: RefCounted in _library.for_rules(DeckRules.VERSUS, army):
 			var playable: bool = item.playable()
-			var text := "%s（コスト %d / %d）" % [item.name, item.deck.total_cost(), item.deck.budget()]
+			var text := Text.t("setup.deck.saved", {"name": item.name, "cost": item.deck.total_cost(), "budget": item.deck.budget()})
 			if not playable:
-				text = "%s — 出せない: %s" % [item.name, item.issues()[0]]
+				text = Text.t("setup.deck.unplayable", {"name": item.name, "issue": item.issues()[0]})
 			options.append([item.id, text, playable])
 	_deck_choices[side] = options
 	var picker := _deck_pickers[side]

@@ -90,7 +90,7 @@ func run() -> Run:
 ## 寄り道で取っておいた部隊は、戻った対戦の設定で side の部隊に選ばれる（deck_screen.gd の leave）。
 static func deck_run(side: Unit.Side) -> Run:
 	var detour := Run.new()
-	detour.add(SceneFlow.DECKS, {"rules": DeckRules.VERSUS, "back_label": "対戦の設定へ戻る", "side": side})
+	detour.add(SceneFlow.DECKS, {"rules": DeckRules.VERSUS, "back_label": "setup.back", "side": side})
 	detour.add(SceneFlow.SETUP)
 	return detour
 

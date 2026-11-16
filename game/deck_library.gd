@@ -7,6 +7,7 @@ extends RefCounted
 ##   出せない理由（load_issues）を付ける。決まりが変わって検査を通らなくなった部隊も、一覧に「出せない」と理由つきで残す。
 ## - 一覧を変える関数（add、replace、duplicate_deck、rename、remove）は、変えたあと書く（store が null なら書かない）。
 
+const Text := preload("res://game/text.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const DeckText := preload("res://game/deck_text.gd")
 
@@ -172,7 +173,7 @@ func duplicate_deck(id: String) -> Saved:
 	var original := _items[index]
 	var item := Saved.new()
 	item.id = _take_id()
-	item.name = clean_name("%s の写し" % original.name, original.name)
+	item.name = clean_name(Text.t("deck.name.copy", {"name": original.name}), original.name)
 	item.deck = original.deck.copy()
 	item.load_issues = original.load_issues.duplicate()
 	_items.insert(index + 1, item)
@@ -203,9 +204,9 @@ func remove(id: String) -> bool:
 ## まだ使っていない「部隊 N」の名前。
 func default_name() -> String:
 	var n := _items.size() + 1
-	while _items.any(func(item: Saved) -> bool: return item.name == "部隊 %d" % n):
+	while _items.any(func(item: Saved) -> bool: return item.name == Text.t("deck.name.default", {"number": n})):
 		n += 1
-	return "部隊 %d" % n
+	return Text.t("deck.name.default", {"number": n})
 
 
 ## 名前を整える（前後の空白と改行を落とし、長さを切り詰める）。空になったら fallback。
@@ -242,29 +243,29 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 	var id: Variant = record.get("id")
 	item.id = str(int(id)) if typeof(id) in [TYPE_INT, TYPE_FLOAT] else (id if typeof(id) == TYPE_STRING else "")
 	var name: Variant = record.get("name")
-	item.name = clean_name(name if typeof(name) == TYPE_STRING else "", "名前の無い部隊")
+	item.name = clean_name(name if typeof(name) == TYPE_STRING else "", Text.t("deck.name.unnamed"))
 	var rules_name: Variant = record.get("rules")
 	var rules: DeckRules = lookup.call(StringName(rules_name)) if typeof(rules_name) == TYPE_STRING else null
 	if rules == null:
-		item.load_issues.append("知らない決まり（%s）で組んである" % [rules_name if typeof(rules_name) == TYPE_STRING else "無し"])
+		item.load_issues.append(Text.t("deck.load.unknown_rules", {"name": _shown(rules_name)}))
 		rules = DeckRules.versus()
 	var army_name: Variant = record.get("army")
 	var army := UnitKind.Army.NONE
 	if typeof(army_name) == TYPE_STRING and UnitKind.Army.has(army_name):
 		army = UnitKind.Army[army_name]
 	if army == UnitKind.Army.NONE:
-		item.load_issues.append("軍が読めない（%s）" % [army_name if typeof(army_name) == TYPE_STRING else "無し"])
+		item.load_issues.append(Text.t("deck.load.unknown_army", {"name": _shown(army_name)}))
 	item.deck = Deck.new(army, rules)
 	var units: Variant = record.get("units")
 	if typeof(units) != TYPE_ARRAY:
 		units = []
 	for unit: Variant in units:
 		if typeof(unit) != TYPE_DICTIONARY:
-			item.load_issues.append("読めない駒を外した")
+			item.load_issues.append(Text.t("deck.load.unreadable_unit"))
 			continue
 		var kind_name: Variant = unit.get("kind")
 		if typeof(kind_name) != TYPE_STRING or not UnitKind.Id.has(kind_name):
-			item.load_issues.append("知らない駒（%s）を外した" % [kind_name if typeof(kind_name) == TYPE_STRING else "無し"])
+			item.load_issues.append(Text.t("deck.load.unknown_unit", {"name": _shown(kind_name)}))
 			continue
 		# 検査（Deck.problems）で分かるよう、ロスターや数の上限は見ずに、そのまま並べる。
 		var entry := DeckEntry.new(UnitKind.Id[kind_name])
@@ -274,7 +275,7 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 				if typeof(equipment_name) == TYPE_STRING and Equipment.Id.has(equipment_name):
 					entry.equipment.append(Equipment.Id[equipment_name])
 				else:
-					item.load_issues.append("知らない装備（%s）を外した" % [equipment_name if typeof(equipment_name) == TYPE_STRING else "無し"])
+					item.load_issues.append(Text.t("deck.load.unknown_item", {"name": _shown(equipment_name)}))
 		item.deck.entries.append(entry)
 	return item
 
@@ -305,3 +306,8 @@ func _index_of(id: String) -> int:
 		if _items[i].id == id:
 			return i
 	return -1
+
+
+## 読めなかった値を、理由の文に出す形（文字でなければ「無し」）。
+static func _shown(value: Variant) -> String:
+	return value if typeof(value) == TYPE_STRING else Text.t("deck.load.none")

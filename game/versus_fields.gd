@@ -13,6 +13,7 @@ extends RefCounted
 ## 対戦モードの画面に出すのは、CPU どうしの釣り合い（docs/cpu-ai.md の「いまの集計」）が対戦モードのめやすに入るものだけ。
 ## めやすを外れるものは HIDDEN を立てて一覧に残す（画面には出さない。集計の道具の --stage では測れる）。
 
+const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const Maps := preload("res://game/maps.gd")
@@ -39,35 +40,35 @@ const DEFAULT := PLAIN
 const FIELDS := [
 	{
 		ID: PLAIN, STAGE: BoardGenerator.Stage.PLAIN,
-		TAGS: "広場 ・ 起爆樽",
-		NOTE: "開けた平地。中央は遮るもののない広場で、まわりに岩と森が散らばる。\n中央の左右に起爆樽。正面からぶつかり合う、基本の戦場。",
+		TAGS: "field.plain.tags",
+		NOTE: "field.plain.note",
 	},
 	{
 		ID: LABYRINTH, STAGE: BoardGenerator.Stage.LABYRINTH,
-		TAGS: "迷路 ・ 回復の泉",
-		NOTE: "格子に並んだ壁が通路を作る迷路。射線が通りにくく、本陣へは回り道になる。\n左右に回復の泉。遠くから撃つより、角を曲がって近づく駒が強い。",
+		TAGS: "field.labyrinth.tags",
+		NOTE: "field.labyrinth.note",
 	},
 	{
 		ID: TWIN_SPRINGS, STAGE: BoardGenerator.Stage.TWIN_SPRINGS,
-		TAGS: "2 本の道 ・ ポータル",
-		NOTE: "中央を大きな壁がふさぎ、戦場は左右 2 本の道に分かれる。本陣は対角。\nどちらの道にも、上下をつなぐポータル。どちらで攻め、どちらで守るか。",
+		TAGS: "field.twin_springs.tags",
+		NOTE: "field.twin_springs.note",
 	},
 	# 手で作ったマップ（ストーリーと同じ形）。部隊を変えた CPU どうしの釣り合いがめやすに入る（docs/cpu-ai.md の「いまの集計」）。
 	{
 		ID: RIDGE_PATH, MAP: "ridge_path", LOOK: StageLook.STONE_WALLS,
-		TAGS: "小さな盤 ・ 2 本の道",
-		NOTE: "細長い小さな盤。真ん中の岩が尾根を左右 2 本の道に分け、どちらの道にも結晶泉と中ボス。\n本陣どうしが近く、すぐにぶつかる。押し込むか、道をふさいで迎え撃つか。",
+		TAGS: "field.ridge_path.tags",
+		NOTE: "field.ridge_path.note",
 	},
 	{
 		ID: CRYSTAL_GORGE, MAP: "crystal_gorge", LOOK: StageLook.CRYSTAL_FOREST,
-		TAGS: "裂け目 ・ 橋 ・ ポータル",
-		NOTE: "盤の中ほどを結晶の裂け目が横切る。渡れるのは左右の端の橋と、真ん中のポータルだけ。本陣は対角。\n遠回りの橋か、敵陣のただ中へ出る近道のポータルか。",
+		TAGS: "field.crystal_gorge.tags",
+		NOTE: "field.crystal_gorge.note",
 	},
 	# 手で作ったマップ（対戦モードのために作ったもの）。
 	{
 		ID: BOULDER_PASS, MAP: "boulder_pass", LOOK: StageLook.GRASSLAND,
-		TAGS: "大岩 ・ 広い 2 本の道",
-		NOTE: "草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。",
+		TAGS: "field.boulder_pass.tags",
+		NOTE: "field.boulder_pass.note",
 	},
 ]
 
@@ -134,11 +135,11 @@ static func title_of(id: StringName) -> String:
 
 
 static func tags_of(id: StringName) -> String:
-	return _field(id).get(TAGS, "")
+	return Text.t(_field(id)[TAGS]) if _field(id).has(TAGS) else ""
 
 
 static func note_of(id: StringName) -> String:
-	return _field(id).get(NOTE, "")
+	return Text.t(_field(id)[NOTE]) if _field(id).has(NOTE) else ""
 
 
 ## 盤の見た目（stage_look.gd の名前）。

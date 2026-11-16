@@ -37,6 +37,11 @@ static func role(of_role: UnitKind.Role) -> String:
 	return "" if of_role == UnitKind.Role.NONE else Text.t("role." + word(UnitKind.Role, of_role))
 
 
+## 役割の、ひとことの説明（役割を持たない駒は空）。
+static func role_summary(of_role: UnitKind.Role) -> String:
+	return "" if of_role == UnitKind.Role.NONE else Text.t("role.%s.summary" % word(UnitKind.Role, of_role))
+
+
 ## 能力の名前。
 static func stat(of_stat: Unit.Stat) -> String:
 	return Text.t("stat." + word(Unit.Stat, of_stat))

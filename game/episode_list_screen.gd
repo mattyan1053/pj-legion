@@ -10,6 +10,7 @@ extends Node
 ## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
 ## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
 
+const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -59,7 +60,7 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
-	var sub := _label("話を選ぶ", 18)
+	var sub := _label(Text.t("story.episodes.sub"), 18)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	root.add_child(sub)
 
@@ -96,7 +97,7 @@ func _ready() -> void:
 	_roster.text = roster_text()
 
 	var back := Button.new()
-	back.text = "物語を選び直す"
+	back.text = Text.t("story.episodes.back")
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
@@ -106,7 +107,7 @@ func _ready() -> void:
 
 
 func resume_label() -> String:
-	return "話の一覧へ戻る"
+	return Text.t("story.episodes.resume")
 
 
 ## 話 episode を始める（会話（前）から）。遊べない話なら何もしない。
@@ -144,8 +145,9 @@ func roster_text() -> String:
 	var items: Array[String] = []
 	for item: Equipment.Id in now.items:
 		items.append(Names.item(item))
-	return "いま雇える駒: %s\n持ち物: %s　　コストの上限: %d\n（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）" % [
-		"・".join(kinds), "・".join(items) if not items.is_empty() else "なし", now.budget]
+	return Text.t("story.episodes.roster", {
+		"kinds": Text.join_dot(kinds), "items": Text.join_dot(items) if not items.is_empty() else Text.t("battle.hud.no_items"), "budget": now.budget,
+	})
 
 
 ## 話 episode のクリアで増えるものの短い文（無ければ空）。カードに出す。
@@ -156,17 +158,17 @@ static func rewards_text(episode: Episode) -> String:
 	for item: Equipment.Id in episode.unlock_items:
 		parts.append(Names.item(item))
 	if episode.budget_up > 0:
-		parts.append("コスト +%d" % episode.budget_up)
-	return "" if parts.is_empty() else "クリアで増える:\n" + "・".join(parts)
+		parts.append(Text.t("story.episodes.reward_budget", {"amount": episode.budget_up}))
+	return "" if parts.is_empty() else Text.t("story.episodes.rewards", {"rewards": Text.join_dot(parts)})
 
 
 ## 話 episode の状態の文。
 func status_text(episode: Episode) -> String:
 	if context.story.is_cleared(episode.id):
-		return "クリア済み"
+		return Text.t("story.episodes.cleared")
 	if not context.story.is_available(episode):
-		return "第 %d 話をクリアすると遊べる" % (Story.number_of(episode) - 1)
-	return "未クリア"
+		return Text.t("story.episodes.locked", {"number": (Story.number_of(episode) - 1)})
+	return Text.t("story.episodes.not_cleared")
 
 
 ## 右クリックと Esc は 1 つ戻る（物語を選ぶ場面へ）。カードの上でも効くよう、ボタンより先に受ける。
@@ -215,7 +217,7 @@ func _build_card(episode: Episode) -> Button:
 	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(column)
-	var number := _label(("第 %d 話（演習）" if episode.lesson != "" else "第 %d 話") % Story.number_of(episode), 16)
+	var number := _label(Text.t("story.episodes.number_drill" if episode.lesson != "" else "story.episodes.number", {"number": Story.number_of(episode)}), 16)
 	number.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(number)
 	column.add_child(_label(episode.title, 24))
