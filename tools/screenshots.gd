@@ -114,7 +114,7 @@ const SCENES := {
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
-	"story_cleared": "ストーリー: 話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
+	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
 ## 場面を作る対戦の最初の種。
 const SEED := 1
@@ -1383,7 +1383,8 @@ func _scene_story_unlock() -> bool:
 
 
 func _scene_story_cleared() -> bool:
-	_app.context.story.clear(Story.EPISODES[0].ID)
+	for episode in Story.EPISODES:
+		_app.context.story.clear(episode.ID)  # 「クリア済み」の印は、全部の話をクリアしたとき
 	await _app.go(&"title")
 	return _app.current_scene().story_label().contains("クリア済み")
 
