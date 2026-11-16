@@ -1793,6 +1793,7 @@ func _visit_decks(app: Node) -> void:
 	screen.press_new()
 	screen.choose_new_army(UnitKind.Army.MILITARY)
 	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty() and screen.editing_deck().army == UnitKind.Army.MILITARY, "選んだ軍で、空の部隊を組めない")
+	_expect(not screen.is_choosing_army(), "軍を選んで組む画面へ進んでも、軍を選ぶ画面が後ろに残っている")
 	_expect(not screen.can_save(), "空の部隊を取っておけた")
 	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.SHIELD_TROOPER)
@@ -1811,6 +1812,9 @@ func _visit_decks(app: Node) -> void:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
 	_expect(not screen.can_save() and deck.problems() == ([Deck.Problem.OVER_BUDGET] as Array[Deck.Problem]), "予算を超えた部隊を取っておけた")
+	await screen.get_tree().process_frame
+	await screen.get_tree().process_frame
+	_expect(screen.issues_shown_whole(), "出撃不可の理由が、途中で切れている")
 	screen.press_save()
 	_expect(screen.is_editing() and library.size() == 0, "出せない部隊が取っておかれた")
 	screen.remove_entry(5)
@@ -1836,6 +1840,9 @@ func _visit_decks(app: Node) -> void:
 	# 変えたところがあれば、取っておかずに戻る前に確かめる。
 	screen.select_saved(id)
 	_expect(screen.list_card_kinds().size() == library.find(id).deck.entries.size() + 1, "一覧の右に、選んだ部隊の駒の札が並ばない")
+	await screen.get_tree().process_frame
+	await screen.get_tree().process_frame
+	_expect(screen.list_card_cut_texts().is_empty(), "一覧の右の駒の札の文が切れている: %s" % [screen.list_card_cut_texts()])
 	screen.press_edit()
 	screen.remove_entry(0)
 	screen.press_back()
