@@ -22,6 +22,10 @@ const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
 const Run := preload("res://game/run.gd")
 const UnitCard := preload("res://game/unit_card.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
+const ItemIcon := preload("res://game/item_icon.gd")
+## 雇える駒・部隊の駒の行に出す、駒のアイコンの大きさ（px）。
+const ICON_SIZE := 44
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
@@ -96,6 +100,7 @@ var _troop_rows: VBoxContainer
 var _slots: Control
 var _detail_card: PanelContainer
 var _detail_title: Label
+var _detail_icon: TextureRect
 var _detail_body: Label
 var _equip_box: PanelContainer
 var _equip_title: Label
@@ -488,7 +493,7 @@ func _build_army_picker() -> Control:
 	center.add_child(row)
 	for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
 		var card := _card_button("", 18)
-		card.custom_minimum_size = Vector2(400.0, 300.0)
+		card.custom_minimum_size = Vector2(400.0, 380.0)
 		card.pressed.connect(func() -> void: choose_new_army(army))
 		var inside := VBoxContainer.new()
 		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 18)
@@ -501,6 +506,12 @@ func _build_army_picker() -> Control:
 		var budget := _text(17, COLOR_DIM)
 		budget.text = "予算 %d" % Deck.budget_of(army)
 		inside.add_child(budget)
+		var faces := HBoxContainer.new()
+		faces.add_theme_constant_override("separation", 4)
+		inside.add_child(faces)
+		faces.add_child(UnitIcons.rect(UnitKind.Id.KING, 0, false, 64.0))
+		for kind in Deck.roster(army):
+			faces.add_child(UnitIcons.rect(kind, 0, false, 64.0))
 		var roster := _text(17, COLOR_TEXT)
 		var names: Array[String] = []
 		for kind in Deck.roster(army):
@@ -512,7 +523,7 @@ func _build_army_picker() -> Control:
 			var ult_label := _text(15, COLOR_DIM)
 			_fold(ult_label, "必殺技: %s\n%s" % [ult.display_name(), ult.summary()], 360.0)
 			inside.add_child(ult_label)
-		for label in inside.get_children():
+		for label in inside.find_children("*", "Control", true, false):
 			(label as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(card)
 		_army_cards[army] = card
@@ -701,6 +712,7 @@ func _build_editor() -> Control:
 		var button := _card_button("", 15)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.custom_minimum_size = Vector2(ROSTER_WIDTH, 62.0)
+		button.add_theme_constant_override("icon_max_width", ICON_SIZE)
 		button.pressed.connect(func() -> void: _on_roster(i, &"press"))
 		button.mouse_entered.connect(func() -> void: _on_roster(i, &"enter"))
 		button.mouse_exited.connect(func() -> void: _on_roster(i, &"exit"))
@@ -746,8 +758,14 @@ func _build_editor() -> Control:
 	detail_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_column.add_theme_constant_override("separation", 6)
 	detail_scroll.add_child(detail_column)
+	var detail_head := HBoxContainer.new()
+	detail_head.add_theme_constant_override("separation", 8)
+	detail_column.add_child(detail_head)
+	_detail_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, 64.0)
+	detail_head.add_child(_detail_icon)
 	_detail_title = _text(22, COLOR_TEXT)
-	detail_column.add_child(_detail_title)
+	_detail_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	detail_head.add_child(_detail_title)
 	_detail_body = _text(15, COLOR_TEXT)
 	detail_column.add_child(_detail_body)
 	_equip_box = _card()
@@ -761,6 +779,7 @@ func _build_editor() -> Control:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		equip_column.add_child(row)
+		row.add_child(ItemIcon.new(item, 32.0))
 		var info := VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		info.add_theme_constant_override("separation", 0)
@@ -839,6 +858,8 @@ func _refresh_editor() -> void:
 		if i >= kinds.size():
 			continue
 		var kind := kinds[i]
+		button.icon = UnitIcons.texture(kind)
+		button.set_meta(&"kind", kind)
 		button.text = "%s　%s　コスト %d\n%s" % [
 			UnitKind.display_name(kind), DeckText.role_name(kind), UnitKind.cost(kind), DeckText.stats_line(kind),
 		]
@@ -866,9 +887,14 @@ func _refresh_editor() -> void:
 
 func _king_row() -> Control:
 	var row := _card()
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	row.add_child(line)
+	line.add_child(UnitIcons.rect(UnitKind.Id.KING, 0, false, 32.0))
 	var label := _text(16, COLOR_DIM)
 	label.text = "将　%s" % DeckText.stats_line(UnitKind.Id.KING)
-	row.add_child(label)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(label)
 	return row
 
 
@@ -888,6 +914,8 @@ func _troop_row(index: int) -> Control:
 	main.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main.custom_minimum_size = Vector2(0.0, 46.0)
+	main.icon = UnitIcons.texture(entry.kind)
+	main.add_theme_constant_override("icon_max_width", 28)
 	# 持ち物の文が長くても、列の幅を広げない。収まらないぶんは「…」にして、全文はマウスを乗せると出す。
 	main.clip_text = true
 	main.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -955,6 +983,7 @@ func _refresh_detail() -> void:
 	if entry != null:
 		title = "%d. %s" % [_selected + 1, title]
 	_detail_title.text = title
+	_detail_icon.texture = UnitIcons.texture(unit_kind)
 	var role := UnitKind.role(unit_kind)
 	var lines: Array[String] = [
 		"%s　コスト %d" % [DeckText.role_name(unit_kind), UnitKind.cost(unit_kind)],

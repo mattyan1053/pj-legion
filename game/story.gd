@@ -333,7 +333,7 @@ static func run_of(episode: Script, human_deck: Deck, unlocking: Array[UnitKind.
 	run.add(BATTLE, battle)
 	var after := talk_of(episode, episode.AFTER)
 	for kind in unlocking:
-		after["lines"].append({"side": NOTICE_SIDE, "name": NOTICE_NAME,
+		after["lines"].append({"side": NOTICE_SIDE, "name": NOTICE_NAME, "kind": kind,
 				"text": "新しい駒「%s」を雇えるようになった。" % UnitKind.display_name(kind)})
 	run.add(TALK, after)
 	return run

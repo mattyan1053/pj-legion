@@ -11,6 +11,7 @@ extends Node
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
@@ -53,6 +54,7 @@ var _map: TextureRect
 var _options: VBoxContainer
 var _option_buttons := {}  # id -> Button
 var _deck_line: Label
+var _deck_faces: HFlowContainer
 var _sortie: Button
 
 
@@ -147,6 +149,10 @@ func _ready() -> void:
 	_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_options.add_theme_constant_override("separation", 4)
 	scroll.add_child(_options)
+	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。
+	_deck_faces = HFlowContainer.new()
+	_deck_faces.add_theme_constant_override("h_separation", 2)
+	troops_column.add_child(_deck_faces)
 	_deck_line = _wrapped("", 15, COLOR_DIM)
 	troops_column.add_child(_deck_line)
 
@@ -188,6 +194,12 @@ func choose(id: String) -> void:
 		(_option_buttons[key] as Button).set_pressed_no_signal(key == id)
 	var deck := chosen_deck()
 	_fold(_deck_line, DeckText.deck_summary(deck))
+	for face in _deck_faces.get_children():
+		_deck_faces.remove_child(face)
+		face.queue_free()
+	_deck_faces.add_child(UnitIcons.rect(UnitKind.Id.KING, 0, false, 44.0))
+	for entry in deck.entries:
+		_deck_faces.add_child(UnitIcons.rect(entry.kind, 0, false, 44.0))
 	_map.texture = ImageTexture.create_from_image(map_image(deck))
 
 

@@ -17,6 +17,7 @@ const RelicIcon := preload("res://game/relic_icon.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const Minimap := preload("res://game/minimap.gd")
 const MinimapGeometry := preload("res://game/minimap_geometry.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -28,6 +29,9 @@ signal end_turn_pressed
 signal evolution_chosen(index: int)
 ## 敵の全員の脅威範囲の切り替えが押された（出す・消すは呼ぶ側が決める）。
 signal threat_toggled
+## 相手の番の「早送り」「スキップ」が押された。
+signal fast_forward_toggled
+signal skip_pressed
 ## 駒の情報の枠の「範囲を表示したまま」のスイッチが押された。
 signal pin_toggled
 ## 相手を人にするか CPU にするかの切り替えが押された。
@@ -66,6 +70,8 @@ const BOTTOM_BAR_HEIGHT := 92.0
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
 const INFO_WIDTH := 320.0
+## 駒の情報の枠の、駒のアイコンの大きさ（px）。
+const INFO_ICON_SIZE := 48.0
 const ULT_SUMMARY_WIDTH := 480.0
 const HINT_SIDE_WIDTH := 730.0
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
@@ -113,6 +119,7 @@ var _ult_labels: Array[Label] = []
 var _ult_button: Button
 var _ult_summary: Label
 var _info_panel: PanelContainer
+var _info_icon: TextureRect
 var _info_name: Label
 var _info_side: Label
 var _info_hp: ProgressBar
@@ -137,6 +144,10 @@ var _end_turn_button: Button
 var _end_turn_style: StyleBoxFlat
 var _opponent_button: Button
 var _threat_button: CheckButton
+## 相手の番（見ているだけの番）に、必殺技のボタンの代わりに出す「早送り」「スキップ」（set_watch_controls）。
+var _watch_box: HBoxContainer
+var _fast_button: Button
+var _skip_button: Button
 var _ult_panel: PanelContainer
 var _ult_pinned := false
 var _menu: PanelContainer
@@ -296,7 +307,9 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	else:
 		_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
-	_set_folded(_info_name, _info_name.text, INFO_WIDTH)
+	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
+	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE)
+	_info_icon.visible = true
 	var army: UnitKind.Army = side_armies[unit.side] if unit.side >= 0 and unit.side < side_armies.size() else UnitKind.Army.NONE
 	_info_side.text = affiliation_text(unit, viewer_side, army)
 	_info_side.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.5))
@@ -386,6 +399,7 @@ func show_cell_info(title: String, body: String) -> void:
 	_info_pin.visible = false
 	_info_name.text = title
 	_info_name.add_theme_color_override("font_color", Palette.TEXT)
+	_info_icon.visible = false
 	_info_side.visible = false
 	_info_hp.visible = false
 	_set_folded(_info_stats, body, INFO_WIDTH)
@@ -455,6 +469,29 @@ func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 	_end_turn_button.disabled = not enabled
 	_end_turn_button.text = text
 	_end_turn_style.bg_color = COLOR_END_TURN_READY if ready else COLOR_END_TURN
+
+
+## 相手の番の「早送り」「スキップ」を出すか（出している間は、必殺技のボタンを隠す）。fast は早送りが入っているか、
+## can_skip はスキップを押せるか（スキップの途中は「スキップ中…」にして押せない）。
+func set_watch_controls(shown: bool, fast: bool, can_skip: bool) -> void:
+	_watch_box.visible = shown
+	_ult_button.visible = not shown
+	_fast_button.set_pressed_no_signal(fast)
+	_skip_button.disabled = not can_skip
+	_skip_button.text = "スキップ" if can_skip else "スキップ中…"
+
+
+## 相手の番の「早送り」「スキップ」: [出ているか, 早送りが入っているか]。検査用。
+func watch_controls_state() -> Array[bool]:
+	return [_watch_box.visible, _fast_button.button_pressed]
+
+
+## 相手の番の「スキップ」を押す（クリックと同じ道）。出ていて押せれば真。検査用。
+func press_skip() -> bool:
+	if not _watch_box.visible or _skip_button.disabled:
+		return false
+	_skip_button.pressed.emit()
+	return true
 
 
 ## 敵の全員の脅威範囲の切り替えを、出しているかに合わせる。
@@ -888,8 +925,17 @@ func _build_info_panel() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 入れ物は既定でマウスを拾うので、こちらも素通しにする
 	_info_panel.add_child(column)
+	# 名前の左に、駒のアイコン（unit_icons.gd。陣営の色と、進化したかで変わる）。
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(head)
+	_info_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, INFO_ICON_SIZE)
+	head.add_child(_info_icon)
 	_info_name = _label(20)
-	column.add_child(_info_name)
+	_info_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_info_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_info_name)
 	_info_side = _label(14)
 	_info_side.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_info_side)
@@ -966,6 +1012,20 @@ func _build_bottom() -> void:
 	_threat_button.tooltip_text = "敵が次の番に攻撃を届かせうるマスを、赤い斜線で重ねて出す"
 	_threat_button.pressed.connect(threat_toggled.emit)
 	row.add_child(_threat_button)
+	_watch_box = HBoxContainer.new()
+	_watch_box.add_theme_constant_override("separation", 8)
+	_watch_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_watch_box.visible = false
+	row.add_child(_watch_box)
+	_fast_button = _button("早送り", fast_forward_toggled)
+	_fast_button.toggle_mode = true
+	_fast_button.custom_minimum_size = Vector2(120.0, 48.0)
+	_fast_button.tooltip_text = "相手の番を速く進める（入れたままなら、次の相手の番も）"
+	_watch_box.add_child(_fast_button)
+	_skip_button = _button("スキップ", skip_pressed)
+	_skip_button.custom_minimum_size = Vector2(120.0, 48.0)
+	_skip_button.tooltip_text = "相手の番の残りを見せずに進める（起きたことはログに残る）"
+	_watch_box.add_child(_skip_button)
 	_ult_button = _button("必殺技", ult_pressed)
 	_ult_button.custom_minimum_size = Vector2(250.0, 48.0)
 	_ult_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
