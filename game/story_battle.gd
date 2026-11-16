@@ -19,28 +19,17 @@ func _init(of_episode: Script = null, deck: Deck = null) -> void:
 
 
 func make_setup(battle_seed: int) -> MatchSetup:
-	var scenario := Scenario.on_map(episode.MAP.map(), episode.MAP.TITLE)
-	scenario.fix_deck(Unit.Side.PLAYER2, enemy_deck_of(episode))
-	# 初期位置（話のデータの DEPLOY。[プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」）。
-	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		var cells: Array[Vector2i] = []
-		cells.assign(episode.DEPLOY[side])
-		if not cells.is_empty():
-			scenario.set_deploy_cells(side, cells)
-	# 勝ち方（docs/win-conditions.md）。話のデータの HOLD_TURNS があれば、人がそのターン数を守り切れば勝ち。
-	if _has(episode, &"HOLD_TURNS"):
-		scenario.hold_for(Unit.Side.PLAYER1, episode.HOLD_TURNS)
-	# 話のデータの WINS。あれば、人の勝ち方はその列だけ（たとえば全滅だけ。敵の将を倒しても終わらない）。
-	if _has(episode, &"WINS"):
-		var wins: Array[GameWonEvent.Reason] = []
-		wins.assign(episode.WINS)
-		scenario.set_win_conditions(Unit.Side.PLAYER1, wins)
 	var setup := MatchSetup.new()
-	setup.scenario = scenario
+	setup.scenario = scenario()
 	setup.battle_seed = battle_seed
 	setup.set_human(Unit.Side.PLAYER1, human_deck)
 	setup.controllers[Unit.Side.PLAYER2] = MatchSetup.Controller.CPU  # 部隊は決め打ちなので、CPU の編成は作らない
 	return setup
+
+
+## 話の戦いの定義（種に依らない。マップ、決め打ちの敵、初期位置、勝ち方）。出撃の準備も、勝ち方と敵の部隊をここから読む。
+func scenario() -> Scenario:
+	return scenario_of(episode)
 
 
 func look() -> StringName:
@@ -62,9 +51,10 @@ func can_choose_squad() -> bool:
 
 ## 話のデータの CUES（いつ・だれが・何と言うか）。無い話は台詞なし。
 func talk_cues() -> RefCounted:
-	if not _has(episode, &"CUES"):
+	var cues := cues_of(episode)
+	if cues.is_empty():
 		return BattleCues.new()
-	return BattleCues.new(episode.CUES, episode.SPEAKERS)
+	return BattleCues.new(cues, episode.SPEAKERS)
 
 
 func record_win(context: RefCounted) -> void:
@@ -74,6 +64,27 @@ func record_win(context: RefCounted) -> void:
 
 func copy() -> RefCounted:
 	return get_script().new(episode, human_deck)
+
+
+## 話 of_episode の戦いの定義（種に依らない）。
+static func scenario_of(of_episode: Script) -> Scenario:
+	var defined := Scenario.on_map(of_episode.MAP.map(), of_episode.MAP.TITLE)
+	defined.fix_deck(Unit.Side.PLAYER2, enemy_deck_of(of_episode))
+	# 初期位置（話のデータの DEPLOY。[プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」）。
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		var cells: Array[Vector2i] = []
+		cells.assign(of_episode.DEPLOY[side])
+		if not cells.is_empty():
+			defined.set_deploy_cells(side, cells)
+	# 勝ち方（docs/win-conditions.md）。HOLD_TURNS があれば、人がそのターン数を守り切れば勝ち。
+	var hold := hold_turns_of(of_episode)
+	if hold > 0:
+		defined.hold_for(Unit.Side.PLAYER1, hold)
+	# WINS があれば、人の勝ち方はその列だけ（たとえば全滅だけ。敵の将を倒しても終わらない）。
+	var wins := wins_of(of_episode)
+	if not wins.is_empty():
+		defined.set_win_conditions(Unit.Side.PLAYER1, wins)
+	return defined
 
 
 ## 話 of_episode の敵の部隊（話のデータの ENEMY_ARMY と ENEMY から。決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
@@ -87,6 +98,27 @@ static func enemy_deck_of(of_episode: Script) -> Deck:
 	return deck
 
 
-## 話のデータに、無くてもよい定数 name（HOLD_TURNS、WINS、CUES）があるか。
-static func _has(of_episode: Script, name: StringName) -> bool:
-	return of_episode.get_script_constant_map().has(name)
+# ---- 話のデータの、無くてもよい定数の読み口（docs/story.md の「話のデータ」） ----
+# 話のデータを読む側（画面、自動の対戦、スクリーンショットの道具、テスト）は、定数の有る無しを自分で調べず、ここを通す。
+# 既定の値（無い話の値）も、ここだけに持つ。
+
+
+## 人が守り切るターン数（HOLD_TURNS）。無い話は 0（守り切るは無い）。
+static func hold_turns_of(of_episode: Script) -> int:
+	return _constant(of_episode, &"HOLD_TURNS", 0)
+
+
+## 人の勝ち方の列（WINS）。無い話は空（いつもの勝ち方のまま）。
+static func wins_of(of_episode: Script) -> Array[GameWonEvent.Reason]:
+	var wins: Array[GameWonEvent.Reason] = []
+	wins.assign(_constant(of_episode, &"WINS", []))
+	return wins
+
+
+## 対戦の途中の会話（CUES）。無い話は空（台詞なし）。
+static func cues_of(of_episode: Script) -> Array:
+	return _constant(of_episode, &"CUES", [])
+
+
+static func _constant(of_episode: Script, name: StringName, fallback: Variant) -> Variant:
+	return of_episode.get_script_constant_map().get(name, fallback)
