@@ -1257,10 +1257,16 @@ func _queue_minimap_scene() -> void:
 	var battle := Battle.new(board)
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 9))
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(11, 0))
+	# 軍を持たせて、上の帯に必殺技のゲージを出す（ゲージのぶん、陣営の欄が狭くなる）。
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 9))
+	battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(10, 0))
+	battle.turn = 99  # 上の帯のターンの文がいちばん長いとき
 	_scripted.append(func() -> void:
-		_scene.set_opponent(false)
+		_scene.set_opponent(true)  # 「相手: CPU」（「相手: 人」より幅を取る）。プレイヤー1 の番なので、CPU は動かない
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
+		_expect(_scene.top_bar_cut_texts().is_empty(), "上の帯の陣営の欄（駒の数と占拠）が切れている: %s" % [_scene.top_bar_cut_texts()])
+		_scene.set_opponent(false)
 		var rect: Rect2 = _scene.minimap_rect()
 		var screen: Rect2 = _scene.get_viewport().get_visible_rect()
 		_expect(rect.has_area() and screen.encloses(rect), "ミニマップが出ていないか、画面からはみ出した: %s" % rect)
@@ -1548,6 +1554,7 @@ func _queue_ult_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(_scene.played.get(ready, 0) == 1, "ゲージがいっぱいになったことを再生しなかった")
 		_expect(_scene.ult_gauge_text(1) == "READY" and _scene.is_ult_enabled(), "プレイヤー2 の番に、必殺技のボタンが押せない")
+		_expect(_scene.hint_cut_lines().is_empty(), "必殺技のボタンが広がって、下の帯の案内が切れた: %s" % [_scene.hint_cut_lines()])
 		_scene.press_ult()
 		_scene.pass_confirm_guard()
 		_scene.press_ult())
@@ -1787,6 +1794,7 @@ func _visit_decks(app: Node) -> void:
 	screen.press_new()
 	screen.choose_new_army(UnitKind.Army.MILITARY)
 	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty() and screen.editing_deck().army == UnitKind.Army.MILITARY, "選んだ軍で、空の部隊を組めない")
+	_expect(not screen.is_choosing_army(), "軍を選んで組む画面へ進んでも、軍を選ぶ画面が後ろに残っている")
 	_expect(not screen.can_save(), "空の部隊を取っておけた")
 	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.SHIELD_TROOPER)
@@ -1805,6 +1813,9 @@ func _visit_decks(app: Node) -> void:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
 	_expect(not screen.can_save() and deck.problems() == ([Deck.Problem.OVER_BUDGET] as Array[Deck.Problem]), "予算を超えた部隊を取っておけた")
+	await screen.get_tree().process_frame
+	await screen.get_tree().process_frame
+	_expect(screen.issues_shown_whole(), "出撃不可の理由が、途中で切れている")
 	screen.press_save()
 	_expect(screen.is_editing() and library.size() == 0, "出せない部隊が取っておかれた")
 	screen.remove_entry(5)
@@ -1830,6 +1841,9 @@ func _visit_decks(app: Node) -> void:
 	# 変えたところがあれば、取っておかずに戻る前に確かめる。
 	screen.select_saved(id)
 	_expect(screen.list_card_kinds().size() == library.find(id).deck.entries.size() + 1, "一覧の右に、選んだ部隊の駒の札が並ばない")
+	await screen.get_tree().process_frame
+	await screen.get_tree().process_frame
+	_expect(screen.list_card_cut_texts().is_empty(), "一覧の右の駒の札の文が切れている: %s" % [screen.list_card_cut_texts()])
 	screen.press_edit()
 	screen.remove_entry(0)
 	screen.press_back()
