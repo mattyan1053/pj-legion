@@ -308,3 +308,18 @@ func test_old_versus_save_files_still_load_as_versus() -> void:
 	assert_eq(saved.deck.rules, DeckRules.versus())
 	assert_true(saved.playable())
 	assert_true(context.decks.for_rules(Story.RULES_ID).is_empty())
+
+
+func test_hold_turns_make_the_human_side_hold_out() -> void:
+	var holding := 0
+	for episode in Story.EPISODES:
+		var battle := Story.first_battle(episode).make_setup(1).create_battle()
+		if episode.get_script_constant_map().has("HOLD_TURNS"):
+			holding += 1
+			assert_eq(battle.hold_turns, episode.HOLD_TURNS)
+			assert_true(battle.wins_by(Unit.Side.PLAYER1, GameWonEvent.Reason.TURNS_HELD))
+			assert_eq(battle.win_conditions[Unit.Side.PLAYER2], Scenario.STANDARD_WIN_CONDITIONS, "敵はいつもの勝ち方で攻める")
+		else:
+			assert_eq(battle.turns_left(), -1, "%s は守り切るの話でない" % episode.ID)
+			assert_eq(battle.win_conditions[Unit.Side.PLAYER1], Scenario.STANDARD_WIN_CONDITIONS)
+	assert_true(holding > 0, "守り切るの話が無い")

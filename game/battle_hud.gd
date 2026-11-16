@@ -167,14 +167,24 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_evolution()
 
 
+## turn_text はターンの文（「ターン 3」、守り切るがあれば「ターン 3 / 10」。win_text.gd）。
 ## counts は陣営ごとの駒の数、captures は本陣の占拠の数（どちらも添字がプレイヤー番号）。
-func set_status(turn: int, phase: Unit.Side, counts: Array[int], captures: Array[int], capture_goal: int) -> void:
-	_turn_label.text = "ターン %d" % turn
+## capture_shown は陣営ごとの、占拠の数を出すか（本陣の占拠が勝ちの条件に無い陣営は出さない）。
+## turn_note は、ターンの文にマウスを乗せると出る説明（守り切るの決まり。無ければ空）。
+func set_status(
+	turn_text: String, phase: Unit.Side, counts: Array[int], captures: Array[int], capture_goal: int,
+	capture_shown: Array[bool] = [true, true], turn_note := "",
+) -> void:
+	_turn_label.text = turn_text
+	_turn_label.tooltip_text = turn_note
+	_turn_label.mouse_filter = Control.MOUSE_FILTER_STOP if turn_note != "" else Control.MOUSE_FILTER_IGNORE
 	_phase_label.text = "%s の番" % Names.SIDE_NAMES[phase]
 	_phase_label.add_theme_color_override("font_color", _side_color(phase))
 	for player in 2:
-		var pips := "●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player])
-		_side_labels[player].text = "%s  駒 %d  占拠 %s" % [Names.SIDE_WORDS[player], counts[player], pips]
+		var text := "%s  駒 %d" % [Names.SIDE_WORDS[player], counts[player]]
+		if capture_shown[player]:
+			text += "  占拠 %s" % ("●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player]))
+		_side_labels[player].text = text
 		# 幅が足りずに省かれても読めるよう、全文をツールチップにも置く。聖遺物の効果も、ここで読める。
 		_side_labels[player].tooltip_text = _side_labels[player].text
 		if _relic_notes[player] != "":

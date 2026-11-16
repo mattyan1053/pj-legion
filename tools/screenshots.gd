@@ -121,6 +121,9 @@ const SCENES := {
 	"story_decks_detour": "ストーリー: 出撃の準備の「部隊を編成する」で開いた編成（ストーリー用だけ。「出撃の準備へ戻る」）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
+	"story_hold_sortie": "ストーリー: 守り切る話（第 3 話）の出撃の準備（勝ち方の文の先頭に「N ターン目の終わりまで守り切る」）",
+	"story_hold_battle": "ストーリー: 守り切る話の対戦の途中（上の帯に「ターン 3 / N」。N は守り切るターン数）",
+	"story_hold_result": "ストーリー: 守り切る話で、最後のターンの終わりまで持ちこたえて勝った決着の画面（「最後まで守り切った」）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
 ## 場面を作る対戦の最初の種。
@@ -1290,11 +1293,14 @@ func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 const Story := preload("res://game/story.gd")
 
 
-## タイトルの「ストーリー」で話の一覧へ進み、最初の話を始める（前の会話の場面に入る）。
-func _start_story() -> bool:
+## タイトルの「ストーリー」で話の一覧へ進み、number 番目（0 から）の話を始める（前の会話の場面に入る）。
+## 前の話は、クリアしたことにする。
+func _start_story(number := 0) -> bool:
+	for i in number:
+		_app.context.story.clear(Story.EPISODES[i].ID)
 	if not await _scene_story_list():
 		return false
-	_app.current_scene().choose(Story.EPISODES[0])
+	_app.current_scene().choose(Story.EPISODES[number])
 	await _app.scene_changed
 	return _app.current_id() == &"talk"
 
@@ -1320,8 +1326,8 @@ func _scene_story_talk() -> bool:
 
 
 ## 前の会話を飛ばして、話の対戦の場面に入る。
-func _story_battle() -> bool:
-	if not await _start_story():
+func _story_battle(number := 0) -> bool:
+	if not await _start_story(number):
 		return false
 	if not await _scene_story_sortie_from_talk():
 		return false
@@ -1415,6 +1421,63 @@ func _scene_story_sortie_default() -> bool:
 	if not await _scene_story_sortie_from_talk():
 		return false
 	return _app.current_scene().chosen_id() == ""
+
+
+## 守り切る話（HOLD_TURNS を持つ最初の話）の番号（0 から）。無ければ -1。
+func _hold_episode() -> int:
+	for i in Story.EPISODES.size():
+		if Story.EPISODES[i].get_script_constant_map().has("HOLD_TURNS"):
+			return i
+	return -1
+
+
+func _scene_story_hold_sortie() -> bool:
+	var number := _hold_episode()
+	if number == -1 or not await _start_story(number):
+		return false
+	return await _scene_story_sortie_from_talk()
+
+
+## 守り切る話の対戦を、CPU どうしで until まで進めて画面に出す。until が無ければ、決着の手前まで進める。
+func _hold_battle_until(until := Callable()) -> bool:
+	var number := _hold_episode()
+	if number == -1 or not await _story_battle(number):
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	var reached := _advance(until if until.is_valid() else func() -> bool: return false)
+	if reached != until.is_valid():
+		return false
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	_scene.battle_log = _log
+	return true
+
+
+func _scene_story_hold_battle() -> bool:
+	return await _hold_battle_until(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1)
+
+
+## 守り切る話で、最後のターンの終わりまで持ちこたえた決着の画面（守り切りで勝つ種だけ）。
+## 最後の手は敵（CPU）のターン終了なので、画面に出すと、画面の CPU がそのまま指す。
+func _scene_story_hold_result() -> bool:
+	if not await _hold_battle_until():
+		return false
+	if not _battle.is_over():
+		var action := _cpu.next_action(_battle)
+		if action == null or not await _scene.act(action):
+			return false
+	while not _battle.is_over():
+		await get_tree().process_frame
+	var held := _battle.turn == _battle.hold_turns and _battle.capture_turns[Unit.Side.PLAYER1] < Battle.CAPTURE_TURNS_TO_WIN
+	for unit in _battle.units:
+		if unit.side == Unit.Side.PLAYER2 and unit.kind == UnitKind.Id.KING:
+			held = held and _battle.winner == Unit.Side.PLAYER1
+			_scene.result_screen().skip()
+			return held
+	return false
 
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。

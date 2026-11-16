@@ -33,6 +33,7 @@ const PanelLayout := preload("res://game/panel_layout.gd")
 const BattleEffects := preload("res://game/battle_effects.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const Run := preload("res://game/run.gd")
+const WinText := preload("res://game/win_text.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"。
 ## 「次へ」（渡されたものが許したときだけ出る。ストーリー）は Run.NEXT）。
@@ -1385,7 +1386,10 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		relic_notes.append("
 ".join(notes))
 	_hud.set_relics(relics, relic_notes, held)
-	_hud.set_status(turn, phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN)
+	var shown: Array[bool] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		shown.append(battle.wins_by(side, GameWonEvent.Reason.HQ_CAPTURED))
+	_hud.set_status(WinText.turn_text(battle, turn), phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN, shown, WinText.turn_note(battle, turn))
 	var percents: Array[int] = []
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:

@@ -16,6 +16,7 @@ const Run := preload("res://game/run.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
+const WinText := preload("res://game/win_text.gd")
 
 signal finished(outcome: StringName)
 
@@ -165,9 +166,9 @@ func resume_label() -> String:
 	return "出撃の準備へ戻る"
 
 
-## 勝ち方の文（いまの勝ち方は、どの話も対戦と同じ。docs/win-conditions.md）。
-static func win_text() -> String:
-	return "敵の将を倒すか、敵の本陣を %d ターン占拠し続ければ勝ち。\n味方の将が倒されるか、味方の本陣を占拠され続けると負け。" % Battle.CAPTURE_TURNS_TO_WIN
+## 勝ち方の文（話の戦いの定義の勝ちの条件から。人はプレイヤー1。win_text.gd、docs/win-conditions.md）。
+func win_text() -> String:
+	return WinText.of_scenario(battle_source.make_setup(0).scenario, Unit.Side.PLAYER1)
 
 
 ## 部隊 id（DEFAULT_ID なら既定の編成）を選ぶ。出せない部隊なら何もしない。
