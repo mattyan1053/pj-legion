@@ -221,6 +221,14 @@ func portal_exit(cell: Vector2i) -> Vector2i:
 	return exit
 
 
+## side の駒が盤に残っているか。
+func _has_units(side: Unit.Side) -> bool:
+	for unit in units:
+		if unit.side == side:
+			return true
+	return false
+
+
 ## player が、その勝ち方（GameWonEvent.Reason）で勝てるか。
 func wins_by(player: Unit.Side, condition: GameWonEvent.Reason) -> bool:
 	return win_conditions[player].has(condition)
@@ -312,6 +320,7 @@ func apply(action: BattleAction) -> ActionResult:
 ## 同じイベントで 2 度呼んでも、2 度目は何も起きない。
 ## - 将が倒れたら、相手のプレイヤーの勝ち。両方の将が同じ行動で倒れたら、引き分け。
 ##   将の撃破が勝ちの条件に無いプレイヤーは、相手の将を倒しても勝たない
+## - 全滅が勝ちの条件にあるプレイヤーは、相手の駒が盤に 1 体も残っていなければ勝ち（将の撃破のあとに見る）
 ## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
 func settle(events: Array[BattleEvent]) -> Array[BattleEvent]:
 	var extra: Array[BattleEvent] = []
@@ -330,6 +339,10 @@ func settle(events: Array[BattleEvent]) -> Array[BattleEvent]:
 	elif not is_over() and fallen.size() == 1:
 		winner = 1 - fallen[0]
 		extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.KING_DEFEATED))
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if not is_over() and wins_by(player, GameWonEvent.Reason.ROUTED) and not _has_units((1 - player) as Unit.Side):
+			winner = player
+			extra.append(GameWonEvent.new(player, GameWonEvent.Reason.ROUTED))
 	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		if capture_turns[player] > 0 and not occupies_enemy_hq(player):
 			capture_turns[player] = 0

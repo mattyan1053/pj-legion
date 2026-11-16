@@ -45,7 +45,7 @@
 
 | 値 | 中身 |
 | --- | --- |
-| `ending` | 決着の理由（`NONE` = まだ、`KING_DEFEATED`、`HQ_CAPTURED`、`TURNS_HELD`、`DRAW`） |
+| `ending` | 決着の理由（`NONE` = まだ、`KING_DEFEATED`、`HQ_CAPTURED`、`TURNS_HELD`、`ROUTED`、`DRAW`） |
 | `winner` | 勝った陣営（決着していないか、引き分けなら -1） |
 | `turns` | 決着したターン（決着していなければ、いまのターン） |
 | `mid_bosses` | 倒れた中ボスの `[ターン, 中ボスの番号, 倒した陣営（いなければ -1）]` |

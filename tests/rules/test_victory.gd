@@ -277,3 +277,34 @@ func test_no_side_holds_without_the_condition_or_the_turns() -> void:
 	battle = _battle()
 	battle.win_conditions[P2].append(GameWonEvent.Reason.TURNS_HELD)
 	assert_eq(battle.turns_left(), -1, "ターン数が 0")
+
+
+func test_routing_needs_every_enemy_unit_down_not_just_the_king() -> void:
+	var battle := _battle()
+	var only_rout: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]
+	battle.win_conditions[P1] = only_rout
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 1))
+	var king := battle.add_unit(UnitKind.Id.KING, P2, Vector2i(1, 0))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(2, 1))
+	king.hp = 5
+	battle.apply(AttackAction.new(commando.id, king.id))
+	assert_false(battle.is_over(), "将を倒しても、ほかの駒が残っている")
+	battle.apply(EndPhaseAction.new())
+	battle.apply(EndPhaseAction.new())
+	sniper.hp = 5
+	var events := battle.apply(AttackAction.new(commando.id, sniper.id)).events
+	var won := events[-1] as GameWonEvent
+	assert_true(won != null)
+	assert_eq(won.winner, P1)
+	assert_eq(won.reason, GameWonEvent.Reason.ROUTED)
+
+
+func test_king_defeat_comes_before_rout_when_both_apply() -> void:
+	var battle := _battle()
+	battle.win_conditions[P1].append(GameWonEvent.Reason.ROUTED)
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 1))
+	var king := battle.add_unit(UnitKind.Id.KING, P2, Vector2i(1, 0))
+	king.hp = 5
+	var events := battle.apply(AttackAction.new(commando.id, king.id)).events
+	assert_eq((events[-1] as GameWonEvent).reason, GameWonEvent.Reason.KING_DEFEATED)
+	assert_eq(events.filter(func(e: BattleEvent) -> bool: return e is GameWonEvent).size(), 1)
