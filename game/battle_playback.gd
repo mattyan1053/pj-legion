@@ -761,10 +761,9 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 			live.append([(other as Label3D).position, (other as Label3D).text.length()])
 	_pops = still
 	var camera := _rig.camera if _rig != null else null
-	var height := at.y + POP_HEIGHT
+	label.position = Vector3(at.x, at.y + POP_HEIGHT, at.z)
 	if camera != null and camera.is_inside_tree():
-		height = pop_start_height(Vector3(at.x, height, at.z), text.length(), live, camera.unproject_position)
-	label.position = Vector3(at.x, height, at.z)
+		label.position = pop_start_position(label.position, text.length(), live, camera.unproject_position, camera.global_basis.y)
 	_stage.add_child(label)
 	_pops.append(label)
 	var tween := create_tween()
@@ -773,19 +772,19 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	tween.tween_callback(label.queue_free)
 
 
-## start に出したい length 文字の浮かぶ文字の、重ならない高さ（start.y か、それより低い）。
+## start に出したい length 文字の浮かぶ文字の、重ならない位置（start か、そこから画面の下へずらしたところ）。
 ## live は、いま浮かんでいる文字の [位置, 文字数] の列。project は盤の上の点を画面の点にする（カメラの unproject_position）。
-## 画面の上で横に重なり、縦にも行の間隔より近い文字があれば、その 1 行下まで下げる（下げるだけなので、必ず止まる）。
+## up はカメラの上の向き（浮かぶ文字は、いつもカメラへ向くので、文字の縦はこの向き。真上から見下ろしても、画面の縦と合う）。
+## 画面の上で横に重なり、縦にも行の間隔より近い文字があれば、その 1 行下まで up の逆へずらす（下げるだけなので、必ず止まる）。
 ## 文字の幅は、1 文字を文字の高さと同じとみなす（全角の目安）。
-static func pop_start_height(start: Vector3, length: int, live: Array, project: Callable) -> float:
+static func pop_start_position(start: Vector3, length: int, live: Array, project: Callable, up: Vector3) -> Vector3:
 	var glyph := POP_FONT_SIZE * POP_PIXEL_SIZE
-	var height := start.y
+	var at := start
 	for attempt in live.size() + 1:
-		var at := Vector3(start.x, height, start.z)
 		var screen: Vector2 = project.call(at)
-		var line: float = absf((project.call(at + Vector3(0.0, glyph, 0.0)) as Vector2).y - screen.y)
+		var line: float = ((project.call(at + up * glyph) as Vector2) - screen).length()
 		if line <= 0.0:
-			return height
+			return at
 		var lowest := screen.y
 		for entry: Array in live:
 			var other: Vector2 = project.call(entry[0])
@@ -793,6 +792,6 @@ static func pop_start_height(start: Vector3, length: int, live: Array, project: 
 			if absf(other.x - screen.x) < half_widths and absf(other.y - screen.y) < line * POP_LINE_SPACING:
 				lowest = maxf(lowest, other.y + line * POP_LINE_SPACING)  # 画面の y は下へ増える
 		if lowest <= screen.y:
-			return height
-		height -= (lowest - screen.y) / line * glyph
-	return height
+			return at
+		at -= up * ((lowest - screen.y) / line * glyph)
+	return at
