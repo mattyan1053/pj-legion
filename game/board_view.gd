@@ -9,6 +9,7 @@ extends Node3D
 ## 何を塗るかは呼ぶ側が決める（ここはルールを持たない）。
 
 const CrystalMesh := preload("res://game/crystal_mesh.gd")
+const CragMesh := preload("res://game/crag_mesh.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const Scenery := preload("res://game/scenery.gd")
 const GROUND_SHADER := preload("res://game/ground.gdshader")
@@ -104,6 +105,9 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 
 	var crystal_mesh := CrystalMesh.build()
 	var crystal_material := StageLook.crystal_material(look[StageLook.CRYSTAL])
+	var obstacle_spec: Dictionary = look[StageLook.OBSTACLE_PROPS]
+	if obstacle_spec.style == StageLook.CRAG:
+		_add_crags(obstacle_spec, look_seed)
 
 	for y in board.size.y:
 		for x in board.size.x:
@@ -118,7 +122,8 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 				Terrain.Type.FOREST:
 					_occluders[cell] = _add_cell_props(look[StageLook.FOREST_PROPS], cell, rng)
 				Terrain.Type.OBSTACLE:
-					_occluders[cell] = _add_cell_props(look[StageLook.OBSTACLE_PROPS], cell, rng)
+					if obstacle_spec.style != StageLook.CRAG:
+						_occluders[cell] = _add_cell_props(obstacle_spec, cell, rng)
 				Terrain.Type.FONT:
 					_add_crystals(crystal_mesh, crystal_material, center, rng)
 
@@ -700,6 +705,34 @@ func _add_cell_props(spec: Dictionary, cell: Vector2i, rng: RandomNumberGenerato
 		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parts.append(part)
 	return parts
+
+
+## 岩山（StageLook.CRAG）: 辺で接する障害物のかたまりごとに 1 つの岩山（crag_mesh.gd）。形はマスごとに分かれている（透かすため）。
+func _add_crags(spec: Dictionary, look_seed: int) -> void:
+	var blocked: Array[Vector2i] = []
+	for y in board.size.y:
+		for x in board.size.x:
+			if board.terrain_at(Vector2i(x, y)) == Terrain.Type.OBSTACLE:
+				blocked.append(Vector2i(x, y))
+	var colors := {CragMesh.LOW: spec.low, CragMesh.CLIFF: spec.cliff, CragMesh.TOP: spec.top}
+	if spec.has("crystals"):
+		colors[CragMesh.CRYSTAL] = spec.crystals
+	var rock := StandardMaterial3D.new()
+	rock.vertex_color_use_as_albedo = true
+	rock.vertex_color_is_srgb = true
+	rock.albedo_color = spec.tint
+	rock.roughness = 0.95
+	var crystal: Material = StageLook.crystal_material(spec.crystals) if spec.has("crystals") else null
+	var meshes := CragMesh.new(blocked, board.size, look_seed).build(colors)
+	for cell: Vector2i in meshes:
+		var mesh: ArrayMesh = meshes[cell]
+		var instance := MeshInstance3D.new()
+		instance.mesh = mesh
+		instance.set_surface_override_material(0, rock)
+		if mesh.get_surface_count() > 1:
+			instance.set_surface_override_material(1, crystal)
+		add_child(instance)
+		_occluders[cell] = [instance] as Array[GeometryInstance3D]
 
 
 ## 石の壁（StageLook.WALL）: マスの真ん中の柱と、右・下の障害物のマスへつなぐ壁。
