@@ -70,3 +70,13 @@ func test_every_scene_is_reachable_and_loadable() -> void:
 		for property: Dictionary in script.get_script_property_list():
 			properties.append(property["name"])
 		assert_true(properties.has("context"), "%s に context が無い" % scene)
+
+
+func test_every_scene_but_the_title_names_where_the_menu_returns() -> void:
+	# システムメニューの「戻る」は、行き先を書く（「対戦へ戻る」「会話へ戻る」など）。タイトルの上で開いたときだけ「戻る」のまま。
+	for scene: StringName in SceneFlow.SCENES:
+		if scene == SceneFlow.FIRST:
+			continue
+		var script: Script = load(SceneFlow.SCENES[scene]["script"])
+		var names: Array = script.get_script_method_list().map(func(method: Dictionary) -> String: return method["name"])
+		assert_true(names.has("resume_label"), "%s の場面に resume_label が無い（メニューの閉じるボタンが「戻る」になる）" % scene)

@@ -167,6 +167,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				context.open_menu()
 
 
+## システムメニューの「戻る」の文字（ほかの場面と同じく、行き先を書く）。
+func resume_label() -> String:
+	return "会話へ戻る"
+
+
 ## 次へ: 文が出きる前なら出しきる。出ていたら次の文へ。最後の文のあとは、会話を終える。
 func press_next() -> void:
 	if not is_line_shown():
