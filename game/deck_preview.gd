@@ -1,13 +1,13 @@
 extends Control
 ## 編成の確認（対戦の設定の「編成を確認」）。1 つの部隊の駒を、札（unit_card.gd）にして並べる重なる画面。
 ## 自分の部隊も、CPU の部隊も、同じ見え方。「閉じる」・右クリック・Esc で閉じる。
-## 地と札の色は 1 つずつだけ決めてある（UI のテーマが入ったら、テーマに任せる）。
+## 色や枠は UI のテーマ（ui_theme.gd。板は PANEL_SOLID、札は PANEL_CARD）が当たる。
 
 const UnitCard := preload("res://game/unit_card.gd")
 const DeckText := preload("res://game/deck_text.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
+const Palette := preload("res://game/ui_palette.gd")
 
-## 地の色（対戦の設定のパネルと同じ。UI のテーマが入ったら、テーマに任せる）。
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.96)
 ## 1 行に並べる札の数。
 const COLUMNS := 4
 
@@ -24,18 +24,14 @@ func setup(overlays: RefCounted) -> void:
 	visible = false
 	visibility_changed.connect(_track_overlay)
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.5)
+	shade.color = Palette.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(18.0)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.theme_type_variation = UiTheme.PANEL_SOLID
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)

@@ -1,13 +1,12 @@
 extends RefCounted
 ## 駒 1 体の札（名前、役割、コスト、能力値、持ち物）。編成の確認（deck_preview.gd）と、部隊の編成の画面で使う。
-## 札は既定の部品（PanelContainer、Label）だけで組む。色や枠は UI のテーマが当たる。
+## 札は既定の部品（PanelContainer、Label）だけで組む。色や枠は UI のテーマ（ui_theme.gd の PANEL_CARD）が当たる。
 
 const DeckText := preload("res://game/deck_text.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 
 ## 札の幅（px）。並べたときに、中身で幅が変わらないように決めておく。
 const WIDTH := 220.0
-## 札の地（いまは UI のテーマが無いので、ここで 1 つだけ決める。テーマが入ったら、テーマの PanelContainer に任せる）。
-const CARD_COLOR := Color(1.0, 1.0, 1.0, 0.07)
 
 
 ## kind の駒の札。equipment は持ち物（同じものはまとめて「×2」）。将（UnitKind.Id.KING）はコストを書かない。
@@ -15,11 +14,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = []) -> Pan
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(WIDTH, 0.0)
 	card.set_meta(&"kind", kind)
-	var style := StyleBoxFlat.new()
-	style.bg_color = CARD_COLOR
-	style.set_corner_radius_all(4)
-	style.set_content_margin_all(8.0)
-	card.add_theme_stylebox_override("panel", style)
+	card.theme_type_variation = UiTheme.PANEL_CARD
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)
 	card.add_child(column)
@@ -27,7 +22,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = []) -> Pan
 	title.name = "Name"
 	column.add_child(title)
 	var role := DeckText.role_name(kind)
-	var head := ("将" if kind == UnitKind.Id.KING else "%s　コスト %d" % [role, UnitKind.cost(kind)])
+	var head := ("本陣に置く" if kind == UnitKind.Id.KING else "%s　コスト %d" % [role, UnitKind.cost(kind)])
 	column.add_child(_label(head, 13, true))
 	column.add_child(_label(DeckText.stats_line(kind, DeckText.equipment_bonus(equipment)), 13, true))
 	if not equipment.is_empty():
