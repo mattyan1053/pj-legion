@@ -36,7 +36,9 @@ const SCENES := {
 	"setup_random": "対戦の設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
 	"deck_list": "部隊の編成: 取っておいた部隊の一覧（出せない部隊も理由つきで並ぶ）",
 	"deck_delete": "部隊の編成: 部隊を消す前の確かめ",
-	"deck_empty": "部隊の編成: 新しく組み始めた、空の部隊",
+	"deck_none": "部隊の編成: 部隊がひとつも無い一覧（「編成なし」）",
+	"deck_army": "部隊の編成: 「新しい部隊」で、まず軍を選ぶ",
+	"deck_empty": "部隊の編成: 軍を選んで組み始めた、空の部隊",
 	"deck_built": "部隊の編成: 組んだ部隊（雇える駒にマウスを乗せて、中身を読んでいる）",
 	"deck_equip": "部隊の編成: 部隊の駒を選んで、装備を持たせている",
 	"deck_over": "部隊の編成: 予算を超えて、取っておけない",
@@ -390,11 +392,29 @@ func _scene_deck_delete() -> bool:
 	return screen.is_dialog_open()
 
 
+func _scene_deck_army() -> bool:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return false
+	screen.press_new()
+	return screen.is_choosing_army()
+
+
+func _scene_deck_none() -> bool:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return false
+	_app.context.decks.load_data({"decks": []})
+	screen.show_list()
+	return screen.listed_ids().is_empty()
+
+
 func _scene_deck_empty() -> bool:
 	var screen: Node = await _deck_scene()
 	if screen == null:
 		return false
 	screen.press_new()
+	screen.choose_new_army(UnitKind.Army.MILITARY)
 	return screen.is_editing()
 
 

@@ -10,7 +10,7 @@ const WIDTH := 220.0
 const CARD_COLOR := Color(1.0, 1.0, 1.0, 0.07)
 
 
-## kind の駒の札。equipment は持ち物（同じものはまとめて「×2」）。将（UnitKind.Id.KING）はコストを書かない。
+## kind の駒の札。equipment は持ち物（同じものはまとめて「×2」）。将（UnitKind.Id.KING）はコストを書かない（自動で加わる）。
 static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = []) -> PanelContainer:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(WIDTH, 0.0)
@@ -27,7 +27,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = []) -> Pan
 	title.name = "Name"
 	column.add_child(title)
 	var role := DeckText.role_name(kind)
-	var head := ("将" if kind == UnitKind.Id.KING else "%s　コスト %d" % [role, UnitKind.cost(kind)])
+	var head := ("本陣に置く" if kind == UnitKind.Id.KING else "%s　コスト %d" % [role, UnitKind.cost(kind)])
 	column.add_child(_label(head, 13, true))
 	column.add_child(_label(DeckText.stats_line(kind, DeckText.equipment_bonus(equipment)), 13, true))
 	if not equipment.is_empty():

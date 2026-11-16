@@ -2,11 +2,11 @@ extends Node
 ## 部隊の編成の場面（docs/deck-screen.md）。取っておいた部隊の一覧と、1 つの部隊を組む画面の 2 つを、切り替えて出す。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。取っておく先は context.decks（deck_library.gd）。
 ##
-## - 一覧: 部隊を選び、組み直す・写す・名前を変える・消す（確かめる）。「新しく組む」で空の部隊を組む。
-## - 組む画面: 軍を選び、雇える駒を押して部隊に足し、部隊の駒を選んで装備を持たせる。並べ替えで、置かれるところが変わる。
-##   予算・合計・駒の数・出せない理由はいつも出す。出せない部隊は取っておけない。
-## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）→ 一覧 → タイトル。
-## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しく組む」は、選んでいる方の決まりの部隊だけ（混ざらない）。
+## - 一覧: 部隊を選び（中身は駒の札で出す）、編集・複製・名前変更・削除（確かめる）。「新しい部隊」で、軍を選んでから空の部隊を組む。
+## - 組む画面: 雇える駒の札を押して部隊に足し、部隊の駒を選んで、その駒の札と持ち物の欄を出す。並べ替えで、置かれるところが変わる。
+##   予算・駒の数・出せない理由はいつも出す。出せない部隊は「編成完了」できない。
+## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）・軍の選択 → 一覧 → 戻り先。
+## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しい部隊」は、選んでいる方の決まりの部隊だけ（混ざらない）。
 ## 組む画面の決まり（雇える駒、予算、数の上限）は、切り替えで決まる（rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。
 ## - 流れ（run.gd）の中で置かれたら（出撃の準備・対戦の設定の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
 ##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備・対戦の設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
@@ -19,6 +19,7 @@ const DeckText := preload("res://game/deck_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
 const Run := preload("res://game/run.gd")
+const UnitCard := preload("res://game/unit_card.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
@@ -31,12 +32,14 @@ const COLOR_GOOD := Color("7fdc8a")
 const COLOR_BAD := Color("ff8a6b")
 const COLOR_ACCENT := Color("8fc3ff")
 const COLOR_BUDGET := Color("4f8fd8")
-## 右上のシステムメニューのボタンのぶん、見出しの右を空ける。
-const CORNER_ROOM := 120.0
+## 画面の上に空ける高さ（px）。右上のシステムメニューのボタンを、ほかの場面と同じく背景の上に置く（枠に埋もれないように）。
+const TOP_ROOM := 52.0
 ## 詳しい中身の欄の、文を折り返す幅（px）。
-const DETAIL_WIDTH := 440.0
+const DETAIL_WIDTH := 400.0
 const ROSTER_WIDTH := 300.0
 const TROOP_WIDTH := 420.0
+## 一覧の右の、駒の札を並べる数（1 行）。
+const LIST_CARD_COLUMNS := 3
 ## 画面の幅の上限（論理の px）。横長の画面では、これより広げずに真ん中に置く（docs/screen-size.md）。
 const MAX_WIDTH := 1560.0
 
@@ -45,10 +48,6 @@ var rules: DeckRules = DeckRules.versus()
 ## 一覧の切り替え: 対戦用（DeckRules.VERSUS）かストーリー用（Story.RULES_ID）。
 const MODES: Array[StringName] = [DeckRules.VERSUS, Story.RULES_ID]
 const MODE_NAMES := {DeckRules.VERSUS: "対戦用", Story.RULES_ID: "ストーリー用"}
-const MODE_NOTES := {
-	DeckRules.VERSUS: "対戦モードの部隊。対戦の設定で、ここから選んで出撃する",
-	Story.RULES_ID: "ストーリーの部隊。出撃の準備で選ぶ。雇える駒は、話をクリアすると増える",
-}
 var context: AppContext
 
 var _library: DeckLibrary
@@ -60,16 +59,21 @@ var _list_rows: VBoxContainer
 var _list_empty: Label
 var _list_detail_title: Label
 var _list_detail_body: Label
+var _list_detail_cards: GridContainer
+var _list_detail_card: Control
 var _list_detail_issues: Label
 var _list_actions: Array[Button] = []
 var _list_selected := ""
 var _mode_buttons := {}
-var _mode_note: Label
 var _back_button: Button
 ## 流れの中で置かれたときに渡されたもの（{"rules": 決まりの名前, "back_label": 戻るボタンの文字}）。流れの外なら空。
 var _detour := {}
 ## 寄り道の間に、最後に取っておいた部隊の id。
 var _saved_in_detour := ""
+
+# ---- 軍の選択（新しい部隊） ----
+var _army_view: Control
+var _army_cards := {}
 
 # ---- 組む画面 ----
 var _edit_view: Control
@@ -82,7 +86,7 @@ var _selected := -1
 ## マウスを乗せている雇える駒（無ければ -1）。
 var _hover_kind := -1
 var _name_label: Label
-var _army_buttons := {}
+var _army_label: Label
 var _budget_bar: ProgressBar
 var _budget_label: Label
 var _count_label: Label
@@ -91,12 +95,13 @@ var _roster_buttons := {}
 var _ult_label: Label
 var _troop_rows: VBoxContainer
 var _slots: Control
+var _detail_card: PanelContainer
 var _detail_title: Label
 var _detail_body: Label
-var _equip_box: VBoxContainer
+var _equip_box: PanelContainer
+var _equip_title: Label
 var _equip_rows := {}
 var _save_button: Button
-var _save_note: Label
 
 # ---- 確かめと名前の入力 ----
 var _dialog: Control
@@ -120,6 +125,8 @@ func _ready() -> void:
 	layer.add_child(shade)
 	_list_view = _build_list()
 	layer.add_child(_list_view)
+	_army_view = _build_army_picker()
+	layer.add_child(_army_view)
 	_edit_view = _build_editor()
 	layer.add_child(_edit_view)
 	_dialog = _build_dialog()
@@ -155,7 +162,7 @@ func in_progress() -> bool:
 
 ## 抜ける前の確かめに書く、失われるもの（app.gd の leave_confirm）。
 func losing_note() -> String:
-	return "組んでいる部隊の、取っておいていない変更は失われる"
+	return "編成中の変更は失われる"
 
 
 ## 右クリックと Esc は「戻す」。重なる画面（システムメニュー）が開いている間は、そちらが受ける。
@@ -169,7 +176,7 @@ func _input(event: InputEvent) -> void:
 		press_back()
 
 
-## 1 つ戻す。確かめ・名前の入力 → 駒の選択 → 組む画面 → 一覧 → タイトル の順。
+## 1 つ戻す。確かめ・名前の入力 → 駒の選択 → 組む画面・軍の選択 → 一覧 → 戻り先 の順。
 func press_back() -> void:
 	if _dialog.visible:
 		close_dialog()
@@ -177,6 +184,8 @@ func press_back() -> void:
 		select_entry(-1)
 	elif is_editing():
 		leave_editor()
+	elif is_choosing_army():
+		show_list()
 	else:
 		leave()
 
@@ -212,9 +221,8 @@ func set_mode(rules_id: StringName) -> void:
 	rules = context.rules_of(rules_id) if MODES.has(rules_id) else DeckRules.versus()
 	for id: StringName in _mode_buttons:
 		(_mode_buttons[id] as Button).set_pressed_no_signal(id == rules.id)
-	_mode_note.text = MODE_NOTES.get(rules.id, "")
-	for army: UnitKind.Army in _army_buttons:
-		(_army_buttons[army] as Button).visible = rules.armies().has(army)
+	for army: UnitKind.Army in _army_cards:
+		(_army_cards[army] as Button).visible = rules.armies().has(army)
 	if _library.find(_list_selected) == null or _library.find(_list_selected).deck.rules.id != rules.id:
 		_list_selected = ""
 	show_list()
@@ -235,6 +243,7 @@ func listed_ids() -> Array[String]:
 
 func show_list(select_id := "") -> void:
 	_edit_view.visible = false
+	_army_view.visible = false
 	_list_view.visible = true
 	if select_id != "":
 		_list_selected = select_id
@@ -255,10 +264,30 @@ func select_saved(id: String) -> void:
 	_refresh_list()
 
 
-## 「新しく組む」。空の部隊（いまの決まりの最初の軍）を組む画面へ。
+## 「新しい部隊」。まず軍を選ぶ（選べる軍が 1 つなら、選ばずにその軍で組む画面へ）。
 func press_new() -> void:
 	var armies := rules.armies()
-	_open_editor("", _library.default_name(), Deck.new(armies[0] if not armies.is_empty() else UnitKind.Army.NONE, rules))
+	if armies.size() == 1:
+		choose_new_army(armies[0])
+		return
+	if armies.is_empty():
+		choose_new_army(UnitKind.Army.NONE)
+		return
+	_list_view.visible = false
+	_edit_view.visible = false
+	_army_view.visible = true
+
+
+## 新しい部隊の軍を選ぶ画面を出しているか。
+func is_choosing_army() -> bool:
+	return _army_view.visible
+
+
+## 新しい部隊の軍を army にして、空の部隊を組む画面へ。
+func choose_new_army(army: UnitKind.Army) -> void:
+	if army != UnitKind.Army.NONE and not rules.armies().has(army):
+		return
+	_open_editor("", _library.default_name(), Deck.new(army, rules))
 
 
 ## 一覧で選んでいる部隊を組み直す。
@@ -288,7 +317,7 @@ func press_delete() -> void:
 	if item == null:
 		return
 	var id := item.id
-	_confirm("「%s」を消しますか？\n消した部隊は元に戻せない" % item.name, "消す", func() -> void:
+	_confirm("「%s」を削除しますか？" % item.name, "削除", func() -> void:
 		_library.remove(id)
 		_list_selected = "")
 
@@ -309,19 +338,15 @@ func _build_list() -> Control:
 		button.pressed.connect(func() -> void: set_mode(id))
 		header.add_child(button)
 		_mode_buttons[id] = button
-	_mode_note = _text(16, COLOR_DIM)
-	_mode_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	header.add_child(_mode_note)
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 20)
 	column.add_child(body)
 
 	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(560.0, 0.0)
+	left.custom_minimum_size = Vector2(400.0, 0.0)
 	left.add_theme_constant_override("separation", 8)
 	body.add_child(left)
-	left.add_child(_caption("部隊（押して選ぶ）"))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -330,10 +355,11 @@ func _build_list() -> Control:
 	_list_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list_rows.add_theme_constant_override("separation", 6)
 	scroll.add_child(_list_rows)
-	_list_empty = _text(17, COLOR_DIM)
-	_list_empty.text = "まだ部隊が無い。「新しく組む」で組む"
-	left.add_child(_list_empty)
-	var new_button := _button("新しく組む", 20)
+	_list_empty = _text(20, COLOR_DIM)
+	_list_empty.text = "編成なし"
+	_list_empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_list_rows.add_child(_list_empty)
+	var new_button := _button("新しい部隊", 20)
 	new_button.custom_minimum_size = Vector2(0.0, 52.0)
 	new_button.pressed.connect(press_new)
 	left.add_child(new_button)
@@ -341,26 +367,32 @@ func _build_list() -> Control:
 	var right := _card()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(right)
+	_list_detail_card = right
 	var detail := VBoxContainer.new()
 	detail.add_theme_constant_override("separation", 10)
 	right.add_child(detail)
 	_list_detail_title = _text(24, COLOR_TEXT)
 	detail.add_child(_list_detail_title)
-	_list_detail_body = _text(16, COLOR_TEXT)
+	_list_detail_body = _text(17, COLOR_TEXT)
 	detail.add_child(_list_detail_body)
+	# 駒の札（将と、雇った駒）。多ければ欄の中で送る。
+	var cards_scroll := ScrollContainer.new()
+	cards_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cards_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	detail.add_child(cards_scroll)
+	_list_detail_cards = GridContainer.new()
+	_list_detail_cards.columns = LIST_CARD_COLUMNS
+	_list_detail_cards.add_theme_constant_override("h_separation", 8)
+	_list_detail_cards.add_theme_constant_override("v_separation", 8)
+	cards_scroll.add_child(_list_detail_cards)
 	_list_detail_issues = _text(16, COLOR_BAD)
 	detail.add_child(_list_detail_issues)
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail.add_child(spacer)
-	var actions := GridContainer.new()
-	actions.columns = 2
-	actions.add_theme_constant_override("h_separation", 10)
-	actions.add_theme_constant_override("v_separation", 10)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
 	detail.add_child(actions)
-	for spec: Array in [["組み直す", press_edit], ["写す", press_duplicate], ["名前を変える", press_rename], ["消す", press_delete]]:
+	for spec: Array in [["編集", press_edit], ["複製", press_duplicate], ["名前変更", press_rename], ["削除", press_delete]]:
 		var button := _button(spec[0], 18)
-		button.custom_minimum_size = Vector2(200.0, 46.0)
+		button.custom_minimum_size = Vector2(0.0, 46.0)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(spec[1])
 		actions.add_child(button)
@@ -379,21 +411,23 @@ func _refresh_list() -> void:
 	if _list_rows == null or not _list_view.visible:
 		return
 	for child in _list_rows.get_children():
-		_list_rows.remove_child(child)
-		child.queue_free()
+		if child != _list_empty:
+			_list_rows.remove_child(child)
+			child.queue_free()
 	var items := _library.for_rules(rules.id)
 	if not items.any(func(item: DeckLibrary.Saved) -> bool: return item.id == _list_selected):
 		_list_selected = items[0].id if not items.is_empty() else ""
 	for item in items:
-		var button := _button("", 16)
+		var button := _card_button("", 16)
 		button.toggle_mode = true
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.custom_minimum_size = Vector2(0.0, 58.0)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var state := "出撃できる" if item.playable() else "出せない: " + item.issues()[0]
-		button.text = "%s\n%s・%d 体・コスト %d / %d　%s" % [
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		button.text = "%s\n%s　%d 体　コスト %d / %d%s" % [
 			item.name, DeckText.army_name(item.deck.army), item.deck.entries.size(),
-			item.deck.total_cost(), item.deck.budget(), state,
+			item.deck.total_cost(), item.deck.budget(), "" if item.playable() else "　出撃不可",
 		]
 		if not item.playable():
 			button.add_theme_color_override("font_color", COLOR_BAD)
@@ -405,31 +439,89 @@ func _refresh_list() -> void:
 		_list_rows.add_child(button)
 	_list_empty.visible = items.is_empty()
 	var chosen := _library.find(_list_selected)
+	_list_detail_card.modulate.a = 1.0 if chosen != null else 0.0  # 選んでいなければ、右の欄は空（場所は保つ）
 	for button in _list_actions:
 		button.disabled = chosen == null
+	for child in _list_detail_cards.get_children():
+		_list_detail_cards.remove_child(child)
+		child.queue_free()
 	if chosen == null:
-		_list_detail_title.text = "部隊を選ぶと、中身がここに出る"
-		_list_detail_title.add_theme_color_override("font_color", COLOR_DIM)
+		_list_detail_title.text = ""
 		_list_detail_body.text = ""
 		_list_detail_issues.text = ""
 		return
 	_list_detail_title.text = chosen.name
-	_list_detail_title.add_theme_color_override("font_color", COLOR_TEXT)
-	var lines: Array[String] = [
-		"%s（決まり: %s）　コスト %d / 予算 %d" % [
-			DeckText.army_name(chosen.deck.army), chosen.deck.rules.display_name, chosen.deck.total_cost(), chosen.deck.budget(),
-		],
-		"",
-		"将（自動で加わる）",
+	_list_detail_body.text = "%s　%d 体　コスト %d / %d" % [
+		DeckText.army_name(chosen.deck.army), chosen.deck.entries.size(), chosen.deck.total_cost(), chosen.deck.budget(),
 	]
-	for i in chosen.deck.entries.size():
-		var entry := chosen.deck.entries[i]
-		var equipment := DeckText.equipment_short(entry.equipment)
-		lines.append("%d. %s%s" % [i + 1, UnitKind.display_name(entry.kind), "（%s）" % equipment if equipment != "" else ""])
-	_fold(_list_detail_body, "\n".join(lines), DETAIL_WIDTH + 100.0)
+	_list_detail_cards.add_child(UnitCard.build(UnitKind.Id.KING))
+	for entry in chosen.deck.entries:
+		_list_detail_cards.add_child(UnitCard.build(entry.kind, entry.equipment))
 	var issues := chosen.issues()
-	_fold(_list_detail_issues, "出撃できる" if issues.is_empty() else "出せない:\n・" + "\n・".join(issues), DETAIL_WIDTH + 100.0)
-	_list_detail_issues.add_theme_color_override("font_color", COLOR_GOOD if issues.is_empty() else COLOR_BAD)
+	_fold(_list_detail_issues, "" if issues.is_empty() else "出撃不可: " + "、".join(issues), DETAIL_WIDTH + 200.0)
+
+
+## 一覧の右に出している駒の札の種類（将を含む。検査用）。
+func list_card_kinds() -> Array[UnitKind.Id]:
+	var kinds: Array[UnitKind.Id] = []
+	for card in _list_detail_cards.get_children():
+		kinds.append(card.get_meta(&"kind"))
+	return kinds
+
+
+# ==== 軍の選択 ====
+
+
+func _build_army_picker() -> Control:
+	var root := _frame()
+	root.visible = false
+	var column := root.get_child(0).get_child(0) as VBoxContainer
+	var title := _text(26, COLOR_TEXT)
+	title.text = "軍を選ぶ"
+	column.add_child(title)
+	var center := CenterContainer.new()
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(center)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	center.add_child(row)
+	for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
+		var card := _card_button("", 18)
+		card.custom_minimum_size = Vector2(400.0, 300.0)
+		card.pressed.connect(func() -> void: choose_new_army(army))
+		var inside := VBoxContainer.new()
+		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 18)
+		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inside.add_theme_constant_override("separation", 8)
+		card.add_child(inside)
+		var army_name := _text(30, COLOR_TEXT)
+		army_name.text = DeckText.army_name(army)
+		inside.add_child(army_name)
+		var budget := _text(17, COLOR_DIM)
+		budget.text = "予算 %d" % Deck.budget_of(army)
+		inside.add_child(budget)
+		var roster := _text(17, COLOR_TEXT)
+		var names: Array[String] = []
+		for kind in Deck.roster(army):
+			names.append("%s（%s）" % [UnitKind.display_name(kind), DeckText.role_name(kind)])
+		roster.text = "\n".join(names)
+		inside.add_child(roster)
+		var ult := Ults.of_army(army)
+		if ult != null:
+			var ult_label := _text(15, COLOR_DIM)
+			_fold(ult_label, "必殺技: %s\n%s" % [ult.display_name(), ult.summary()], 360.0)
+			inside.add_child(ult_label)
+		for label in inside.get_children():
+			(label as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(card)
+		_army_cards[army] = card
+	var footer := HBoxContainer.new()
+	column.add_child(footer)
+	var back := _button("戻る", 18)
+	back.custom_minimum_size = Vector2(200.0, 46.0)
+	back.pressed.connect(func() -> void: show_list())
+	footer.add_child(back)
+	return root
 
 
 # ==== 組む画面 ====
@@ -460,25 +552,6 @@ func selected_entry() -> int:
 func troop_row_texts(index: int) -> Array[String]:
 	var main: Button = _troop_rows.get_child(index).get_child(1)
 	return [main.text, main.tooltip_text]
-
-
-## 軍を選ぶ。駒がいれば、外れることを確かめてから変える。
-func choose_army(army: UnitKind.Army) -> void:
-	if army == _deck.army or not rules.armies().has(army):
-		_refresh_editor()
-		return
-	if _deck.entries.is_empty():
-		_set_army(army)
-		return
-	_refresh_editor()  # 確かめている間、ボタンは元の軍のまま
-	_confirm("軍を %s に変えますか？\nいまの駒は外れる（雇える駒が違うため）" % DeckText.army_name(army), "変える", func() -> void: _set_army(army))
-
-
-func _set_army(army: UnitKind.Army) -> void:
-	_deck = Deck.new(army, rules)
-	_selected = -1
-	_dirty = true
-	_refresh_editor()
 
 
 ## 雇える駒を押した: 部隊の最後に足して、その駒を選ぶ（装備をすぐ持たせられる）。
@@ -549,7 +622,7 @@ func can_save() -> bool:
 	return _deck != null and _deck.is_valid()
 
 
-## 「取っておく」。出せない部隊なら何もしない（理由は出ている）。取っておいたら一覧へ戻り、その部隊を選ぶ。
+## 「編成完了」。出せない部隊なら何もしない（理由は出ている）。取っておいたら一覧へ戻り、その部隊を選ぶ。
 func press_save() -> void:
 	if not can_save():
 		return
@@ -568,7 +641,7 @@ func leave_editor() -> void:
 	if not _dirty:
 		show_list(_editing_id)
 		return
-	_confirm("取っておかずに一覧へ戻りますか？\n変えたところは失われる", "戻る", func() -> void:
+	_confirm("変更を破棄して戻りますか？", "破棄", func() -> void:
 		_dirty = false
 		show_list(_editing_id))
 
@@ -577,58 +650,42 @@ func _build_editor() -> Control:
 	var root := _frame()
 	var column := root.get_child(0).get_child(0) as VBoxContainer
 
-	# 見出し: 名前、軍
+	# 見出し: 名前、軍、予算（いつも見える）
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
-	var title := _text(26, COLOR_TEXT)
-	title.text = "部隊を組む"
-	header.add_child(title)
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(10.0, 0.0)
-	header.add_child(gap)
-	_name_label = _text(22, COLOR_ACCENT)
+	_name_label = _text(24, COLOR_ACCENT)
+	_name_label.custom_minimum_size = Vector2(260.0, 0.0)
+	_name_label.clip_text = true
+	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(_name_label)
-	var rename := _button("名前を変える", 15)
+	var rename := _button("名前変更", 15)
 	rename.pressed.connect(press_rename_editing)
 	header.add_child(rename)
-	var fill := Control.new()
-	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(fill)
-	header.add_child(_caption("軍"))
-	for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:  # いまの決まりで選べない軍は隠す（set_mode）
-		var button := _button(DeckText.army_name(army), 17)
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(130.0, 40.0)
-		button.pressed.connect(func() -> void: choose_army(army))
-		header.add_child(button)
-		_army_buttons[army] = button
-	var corner := Control.new()
-	corner.custom_minimum_size = Vector2(CORNER_ROOM, 0.0)
-	header.add_child(corner)
-
-	# 予算と数と理由
-	var status := _card()
-	column.add_child(status)
-	var status_row := HBoxContainer.new()
-	status_row.add_theme_constant_override("separation", 18)
-	status.add_child(status_row)
-	_budget_label = _text(19, COLOR_TEXT)
-	_budget_label.custom_minimum_size = Vector2(190.0, 0.0)
-	status_row.add_child(_budget_label)
+	_army_label = _text(22, COLOR_TEXT)
+	_army_label.custom_minimum_size = Vector2(140.0, 0.0)
+	_army_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_child(_army_label)
+	_budget_label = _text(20, COLOR_TEXT)
+	_budget_label.custom_minimum_size = Vector2(150.0, 0.0)
+	_budget_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	header.add_child(_budget_label)
 	_budget_bar = ProgressBar.new()
 	_budget_bar.show_percentage = false
-	_budget_bar.custom_minimum_size = Vector2(220.0, 16.0)
+	_budget_bar.custom_minimum_size = Vector2(180.0, 16.0)
 	_budget_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	status_row.add_child(_budget_bar)
-	_count_label = _text(19, COLOR_TEXT)
-	_count_label.custom_minimum_size = Vector2(250.0, 0.0)
-	status_row.add_child(_count_label)
-	_issues_label = _text(17, COLOR_BAD)
+	header.add_child(_budget_bar)
+	_count_label = _text(20, COLOR_TEXT)
+	_count_label.custom_minimum_size = Vector2(110.0, 0.0)
+	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_child(_count_label)
+	_issues_label = _text(16, COLOR_BAD)
 	_issues_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status_row.add_child(_issues_label)
+	_issues_label.clip_text = true
+	_issues_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	header.add_child(_issues_label)
 
-	# 3 つの列: 雇える駒、部隊、中身
+	# 3 つの列: 雇える駒、部隊、選んだ駒（札と持ち物）
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 16)
@@ -636,11 +693,11 @@ func _build_editor() -> Control:
 
 	var roster := VBoxContainer.new()
 	roster.custom_minimum_size = Vector2(ROSTER_WIDTH, 0.0)
-	roster.add_theme_constant_override("separation", 8)
+	roster.add_theme_constant_override("separation", 6)
 	body.add_child(roster)
-	roster.add_child(_caption("雇える駒（押すと部隊の最後に入る）"))
+	roster.add_child(_caption("雇える駒"))
 	for i in 4:
-		var button := _button("", 15)
+		var button := _card_button("", 15)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.custom_minimum_size = Vector2(ROSTER_WIDTH, 62.0)
 		button.pressed.connect(func() -> void: _on_roster(i, &"press"))
@@ -657,7 +714,7 @@ func _build_editor() -> Control:
 	troop.custom_minimum_size = Vector2(TROOP_WIDTH, 0.0)
 	troop.add_theme_constant_override("separation", 6)
 	body.add_child(troop)
-	troop.add_child(_caption("部隊（押して選ぶ。上から順に本陣の前へ置く）"))
+	troop.add_child(_caption("部隊"))
 	troop.add_child(_king_row())
 	# 部隊の並びは、決まりの上限が大きくても画面の下へはみ出さないよう、列の残りの高さの中で送れるようにする。
 	var troop_scroll := ScrollContainer.new()
@@ -666,69 +723,84 @@ func _build_editor() -> Control:
 	troop.add_child(troop_scroll)
 	_troop_rows = VBoxContainer.new()
 	_troop_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_troop_rows.add_theme_constant_override("separation", 3)
+	_troop_rows.add_theme_constant_override("separation", 4)
 	troop_scroll.add_child(_troop_rows)
 	_slots = SlotMap.new()
-	_slots.custom_minimum_size = Vector2(TROOP_WIDTH, 106.0)
+	_slots.custom_minimum_size = Vector2(TROOP_WIDTH, 100.0)
 	troop.add_child(_slots)
 
-	var detail := _card()
-	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(detail)
-	# 中身が長い駒でも、画面の下へはみ出さないよう、欄の中で送れるようにする。
+	# 右: 選んだ駒の札（上）と、その駒の持ち物の欄（下）。別々の枠に分ける。
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("separation", 10)
+	body.add_child(right)
+	_detail_card = _card()
+	_detail_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(_detail_card)
+	# 中身が長い駒でも、画面の下へはみ出さないよう、札の中で送れるようにする。
 	var detail_scroll := ScrollContainer.new()
 	detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	detail.add_child(detail_scroll)
+	_detail_card.add_child(detail_scroll)
 	var detail_column := VBoxContainer.new()
 	detail_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_column.add_theme_constant_override("separation", 8)
+	detail_column.add_theme_constant_override("separation", 6)
 	detail_scroll.add_child(detail_column)
 	_detail_title = _text(22, COLOR_TEXT)
 	detail_column.add_child(_detail_title)
 	_detail_body = _text(15, COLOR_TEXT)
 	detail_column.add_child(_detail_body)
-	_equip_box = VBoxContainer.new()
-	_equip_box.add_theme_constant_override("separation", 6)
-	detail_column.add_child(_equip_box)
-	_equip_box.add_child(_caption("装備（1 体 %d 個まで。同じものを重ねて持てる）" % Equipment.MAX_PER_UNIT))
+	_equip_box = _card()
+	right.add_child(_equip_box)
+	var equip_column := VBoxContainer.new()
+	equip_column.add_theme_constant_override("separation", 6)
+	_equip_box.add_child(equip_column)
+	_equip_title = _text(17, COLOR_TEXT)
+	equip_column.add_child(_equip_title)
 	for item: Equipment.Id in Equipment.Id.values():
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		_equip_box.add_child(row)
-		var label := _text(15, COLOR_TEXT)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.text = "%s（コスト %d）　%s" % [Equipment.display_name(item), Equipment.cost(item), DeckText.equipment_effect(item)]
-		row.add_child(label)
+		equip_column.add_child(row)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_constant_override("separation", 0)
+		row.add_child(info)
+		var item_name := _text(16, COLOR_TEXT)
+		item_name.text = "%s　コスト %d" % [Equipment.display_name(item), Equipment.cost(item)]
+		info.add_child(item_name)
+		var effect := _text(14, COLOR_DIM)
+		effect.text = DeckText.equipment_effect(item)
+		info.add_child(effect)
 		var minus := _button("−", 18)
 		minus.custom_minimum_size = Vector2(40.0, 36.0)
+		minus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		minus.pressed.connect(func() -> void: unequip(item))
 		row.add_child(minus)
 		var count := _text(18, COLOR_TEXT)
 		count.custom_minimum_size = Vector2(28.0, 0.0)
 		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(count)
 		var plus := _button("＋", 18)
 		plus.custom_minimum_size = Vector2(40.0, 36.0)
+		plus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		plus.pressed.connect(func() -> void: equip(item))
 		row.add_child(plus)
 		_equip_rows[item] = [minus, count, plus]
 
-	# 下: 戻る、取っておく
+	# 下: 戻る、編成完了
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 14)
 	column.add_child(footer)
-	var back := _button("一覧へ戻る", 18)
+	var back := _button("戻る", 18)
 	back.custom_minimum_size = Vector2(200.0, 48.0)
 	back.pressed.connect(leave_editor)
 	footer.add_child(back)
 	var footer_fill := Control.new()
 	footer_fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(footer_fill)
-	_save_note = _text(16, COLOR_BAD)
-	_save_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	footer.add_child(_save_note)
-	_save_button = _button("取っておく", 20)
+	_save_button = _button("編成完了", 20)
 	_save_button.custom_minimum_size = Vector2(240.0, 48.0)
+	_save_button.set_meta(&"sound", &"ui_confirm")
 	_save_button.pressed.connect(press_save)
 	footer.add_child(_save_button)
 	return root
@@ -737,13 +809,12 @@ func _build_editor() -> Control:
 func _refresh_editor() -> void:
 	if _deck == null:
 		return
-	_name_label.text = _deck_name + ("（変更あり）" if _dirty else "")
-	for army: UnitKind.Army in _army_buttons:
-		(_army_buttons[army] as Button).set_pressed_no_signal(army == _deck.army)
+	_name_label.text = _deck_name + ("*" if _dirty else "")
+	_army_label.text = DeckText.army_name(_deck.army)
 
 	var total := _deck.total_cost()
 	var budget := _deck.budget()
-	_budget_label.text = "コスト %d / 予算 %d" % [total, budget]
+	_budget_label.text = "コスト %d / %d" % [total, budget]
 	_budget_label.add_theme_color_override("font_color", COLOR_BAD if total > budget else COLOR_TEXT)
 	_budget_bar.max_value = maxi(budget, 1)
 	_budget_bar.value = mini(total, budget)
@@ -751,10 +822,10 @@ func _refresh_editor() -> void:
 	fill.bg_color = COLOR_BAD if total > budget else COLOR_BUDGET
 	_budget_bar.add_theme_stylebox_override("fill", fill)
 	var count := _deck.entries.size()
-	_count_label.text = "駒 %d / %d 体（将は自動で加わる）" % [count, _deck.rules.max_units]
+	_count_label.text = "駒 %d / %d" % [count, _deck.rules.max_units]
 	var issues := DeckText.problem_texts(_deck)
-	_issues_label.text = "出撃できる" if issues.is_empty() else "出せない: " + "、".join(issues)
-	_issues_label.add_theme_color_override("font_color", COLOR_GOOD if issues.is_empty() else COLOR_BAD)
+	_issues_label.text = "" if issues.is_empty() else "出撃不可: " + "、".join(issues)
+	_issues_label.tooltip_text = _issues_label.text
 
 	var kinds := _deck.available_kinds()
 	var full := count >= _deck.rules.max_units
@@ -771,7 +842,7 @@ func _refresh_editor() -> void:
 		button.tooltip_text = "%d 体まで" % _deck.rules.max_units if full else ""
 	var ult := Ults.of_army(_deck.army) if _deck.army != UnitKind.Army.NONE else null
 	if ult != null:
-		_fold(_ult_label, "この軍の必殺技: %s\n%s" % [ult.display_name(), ult.summary()], ROSTER_WIDTH - 24.0)
+		_fold(_ult_label, "必殺技: %s\n%s" % [ult.display_name(), ult.summary()], ROSTER_WIDTH - 24.0)
 	_ult_label.get_parent().visible = ult != null
 
 	for child in _troop_rows.get_children():
@@ -780,26 +851,24 @@ func _refresh_editor() -> void:
 	for i in count:
 		_troop_rows.add_child(_troop_row(i))
 	if count == 0:
-		var empty := _text(15, COLOR_DIM)
-		empty.text = "左の駒を押して雇う"
+		var empty := _text(16, COLOR_DIM)
+		empty.text = "駒なし"
 		_troop_rows.add_child(empty)
 	(_slots as SlotMap).show_slots(count, _selected)
 
 	_refresh_detail()
 	_save_button.disabled = not can_save()
-	_save_note.text = "" if can_save() else "出せない部隊は取っておけない"
 
 
 func _king_row() -> Control:
-	var row := HBoxContainer.new()
-	var label := _text(15, COLOR_DIM)
-	label.text = "　　将（本陣に置く。自動で加わる。コスト 0）"
-	label.custom_minimum_size = Vector2(0.0, 24.0)
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var row := _card()
+	var label := _text(16, COLOR_DIM)
+	label.text = "将　%s" % DeckText.stats_line(UnitKind.Id.KING)
 	row.add_child(label)
 	return row
 
 
+## 部隊の index 番目の駒の行: 番号、駒の札（名前・役割・コストと持ち物。押して選ぶ）、並べ替え、外す。
 func _troop_row(index: int) -> Control:
 	var entry := _deck.entries[index]
 	var row := HBoxContainer.new()
@@ -810,17 +879,17 @@ func _troop_row(index: int) -> Control:
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	number.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(number)
-	var main := _button("", 14)
+	var main := _card_button("", 14)
 	main.toggle_mode = true
 	main.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	main.custom_minimum_size = Vector2(0.0, 42.0)
-	# 装備の文が長くても、列の幅を広げない。収まらないぶんは「…」にして、全文はマウスを乗せると出す。
+	main.custom_minimum_size = Vector2(0.0, 46.0)
+	# 持ち物の文が長くても、列の幅を広げない。収まらないぶんは「…」にして、全文はマウスを乗せると出す。
 	main.clip_text = true
 	main.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	var equipment := DeckText.equipment_short(entry.equipment)
-	main.text = "%s　コスト %d\n%s" % [
-		UnitKind.display_name(entry.kind), entry.cost(), equipment if equipment != "" else "装備なし",
+	var equipment := "、".join(UnitCard.equipment_lines(entry.equipment))
+	main.text = "%s　%s　コスト %d\n%s" % [
+		UnitKind.display_name(entry.kind), DeckText.role_name(entry.kind), entry.cost(), equipment if equipment != "" else "持ち物なし",
 	]
 	main.tooltip_text = main.text
 	main.set_pressed_no_signal(index == _selected)
@@ -829,13 +898,12 @@ func _troop_row(index: int) -> Control:
 	for spec: Array in [["▲", -1, index > 0], ["▼", 1, index < _deck.entries.size() - 1]]:
 		var step: int = spec[1]
 		var move := _button(spec[0], 14)
-		move.custom_minimum_size = Vector2(36.0, 42.0)
+		move.custom_minimum_size = Vector2(36.0, 46.0)
 		move.disabled = not spec[2]
-		move.tooltip_text = "上へ（先に置く）" if step < 0 else "下へ（後に置く）"
 		move.pressed.connect(func() -> void: move_entry(index, step))
 		row.add_child(move)
 	var remove := _button("外す", 14)
-	remove.custom_minimum_size = Vector2(52.0, 42.0)
+	remove.custom_minimum_size = Vector2(52.0, 46.0)
 	remove.pressed.connect(func() -> void: remove_entry(index))
 	row.add_child(remove)
 	return row
@@ -865,7 +933,7 @@ func _set_hover(kind: int) -> void:
 	_refresh_detail()
 
 
-## 中身の欄。マウスを乗せている雇える駒 → 選んでいる部隊の駒 の順に出す。どちらも無ければ案内。
+## 右の欄。マウスを乗せている雇える駒 → 選んでいる部隊の駒 の順に、駒の札を出す。部隊の駒なら、下に持ち物の欄も出す。
 func _refresh_detail() -> void:
 	var entry: DeckEntry = _deck.entries[_selected] if _selected != -1 else null
 	var kind := -1
@@ -875,12 +943,9 @@ func _refresh_detail() -> void:
 	elif entry != null:
 		kind = entry.kind
 	_equip_box.visible = entry != null
+	_detail_card.visible = kind != -1
 	if kind == -1:
-		_detail_title.text = "駒の中身"
-		_detail_title.add_theme_color_override("font_color", COLOR_DIM)
-		_fold(_detail_body, "雇える駒にマウスを乗せるか、部隊の駒を押すと、ここに中身が出る。\n部隊の駒を選ぶと、装備を持たせられる。", DETAIL_WIDTH)
 		return
-	_detail_title.add_theme_color_override("font_color", COLOR_TEXT)
 	var unit_kind := kind as UnitKind.Id
 	var title := UnitKind.display_name(unit_kind)
 	if entry != null:
@@ -888,14 +953,16 @@ func _refresh_detail() -> void:
 	_detail_title.text = title
 	var role := UnitKind.role(unit_kind)
 	var lines: Array[String] = [
-		"%s　コスト %d　%s" % [DeckText.role_name(unit_kind), UnitKind.cost(unit_kind), DeckText.ROLE_NOTES.get(role, "")],
+		"%s　コスト %d" % [DeckText.role_name(unit_kind), UnitKind.cost(unit_kind)],
+		DeckText.ROLE_NOTES.get(role, ""),
+		"",
 		DeckText.stats_line(unit_kind),
 	]
 	if _deck != null and UnitKind.army(unit_kind) != _deck.army:
 		# ストーリーで解放した、ほかの軍の駒（必殺技は部隊の軍のもの）。
 		lines.insert(0, "%s の駒（この部隊では %s として戦う）" % [DeckText.army_name(UnitKind.army(unit_kind)), DeckText.army_name(_deck.army)])
 	if entry != null and not entry.equipment.is_empty():
-		lines.append("装備込み: " + DeckText.stats_line(unit_kind, DeckText.equipment_bonus(entry.equipment)))
+		lines.append("持ち物込み: " + DeckText.stats_line(unit_kind, DeckText.equipment_bonus(entry.equipment)))
 	var skill := DeckText.skill_text(unit_kind)
 	if skill != "":
 		lines.append("")
@@ -903,18 +970,18 @@ func _refresh_detail() -> void:
 	var evolutions := DeckText.evolution_lines(unit_kind)
 	if not evolutions.is_empty():
 		lines.append("")
-		lines.append("進化先（レベル %d で、どちらかを選ぶ）" % Growth.MAX_LEVEL)
+		lines.append("進化（レベル %d）" % Growth.MAX_LEVEL)
 		for line in evolutions:
 			lines.append("・" + line)
 	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
 	if entry != null:
+		_equip_title.text = "持ち物　%d / %d" % [entry.equipment.size(), Equipment.MAX_PER_UNIT]
 		var full := entry.equipment.size() >= Equipment.MAX_PER_UNIT
 		for item: Equipment.Id in _equip_rows:
 			var parts: Array = _equip_rows[item]
 			(parts[0] as Button).disabled = entry.count(item) == 0
 			(parts[1] as Label).text = str(entry.count(item))
 			(parts[2] as Button).disabled = full
-			(parts[2] as Button).tooltip_text = "1 体 %d 個まで" % Equipment.MAX_PER_UNIT if full else ""
 
 
 # ==== 確かめと名前の入力 ====
@@ -1021,7 +1088,7 @@ func _frame() -> Control:
 	ScreenSize.cap(margin, Vector2(MAX_WIDTH, INF))
 	for side: String in ["left", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
-	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_top", int(TOP_ROOM))
 	var panel := _card(COLOR_PANEL, 14.0)
 	margin.add_child(panel)
 	var column := VBoxContainer.new()
@@ -1053,6 +1120,25 @@ func _text(font_size: int, color: Color) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	return label
+
+
+## 札の形のボタン（雇える駒、部隊の駒、一覧の部隊、軍）。枠の地に溶けないよう、札と同じ地を敷く
+## （UI のテーマが入ったら、テーマの Button に任せる）。
+func _card_button(text: String, font_size: int) -> Button:
+	var button := _button(text, font_size)
+	for state: String in ["normal", "hover", "pressed", "disabled", "hover_pressed"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = COLOR_CARD
+		if state == "hover":
+			style.bg_color = COLOR_CARD.lightened(0.12)
+		elif state == "pressed" or state == "hover_pressed":
+			style.bg_color = COLOR_CARD.lightened(0.06)
+			style.border_color = COLOR_ACCENT
+			style.set_border_width_all(2)
+		style.set_corner_radius_all(6)
+		style.set_content_margin_all(8.0)
+		button.add_theme_stylebox_override(state, style)
+	return button
 
 
 func _button(text: String, font_size: int) -> Button:
@@ -1091,7 +1177,7 @@ class SlotMap:
 
 	func _draw() -> void:
 		var font := get_theme_default_font()
-		var caption := "置かれるところ（本陣の前。入れないマスは飛ばす）"
+		var caption := "配置"
 		draw_string(font, Vector2(0.0, 14.0), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.68, 0.72, 0.78))
 		var origin := Vector2((size.x - CELL * COLUMNS) * 0.5, 21.0)
 		var slots := Deployment.open_field_slots(_count)
@@ -1105,7 +1191,7 @@ class SlotMap:
 		var hq := Rect2(origin + Vector2((MIDDLE) * CELL, ROWS * CELL), Vector2(CELL - 3.0, CELL - 3.0))
 		draw_string(font, hq.position + Vector2(5.0, 19.0), "将", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffd479"))
 		draw_string(font, hq.position + Vector2(CELL + 4.0, 20.0), "本陣", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.68, 0.72, 0.78))
-		draw_string(font, origin + Vector2(-58.0, 18.0), "敵の側 ↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.68, 0.72, 0.78))
+		draw_string(font, origin + Vector2(-44.0, 18.0), "前 ↑", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.68, 0.72, 0.78))
 		for i in slots.size():
 			var slot := slots[i]
 			if slot.y > ROWS:
