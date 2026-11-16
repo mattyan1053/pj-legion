@@ -56,7 +56,7 @@ run() {
 }
 # 長い検査で、撮らずに作るスクリーンショットの場面（tools/screenshots.gd）。ルールや数値が変わると作れなくなりやすいもの。
 # 全部を作ると 5 分ほど掛かるので、いくつかに絞る（全部は、撮る人が tools/screenshots.sh で確かめる）。
-SHOTS_IN_FULL="mid_boss,forecast_skill,forecast_defeat,skill_fireball,skill_shadow,ult_eruption,phase_camera,result"
+SHOTS_IN_FULL="mid_boss,forecast_skill,forecast_defeat,skill_fireball,skill_shadow,ult_eruption,phase_camera,result,story_cleared"
 
 run import --import || { cat "$logs/import.log"; exit 1; }
 cat "$logs/import.log"
