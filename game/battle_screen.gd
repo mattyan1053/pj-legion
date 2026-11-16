@@ -56,7 +56,7 @@ const COLOR_SKILL_AREA := Color(1.0, 0.55, 0.9, 0.85)
 const COLOR_INSPECT := Color(0.8, 0.93, 1.0, 0.5)
 ## ターン終了を確かめている間の、まだ行動していない駒の足元。
 const COLOR_UNACTED := Color(1.0, 0.85, 0.35, 0.6)
-const COLOR_THREAT := Color(0.95, 0.05, 0.2, 0.62)
+const COLOR_THREAT := Color(0.95, 0.1, 0.2, 0.34)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 ## 見ている（閲覧している）駒の足元の輪。選んでいる駒の黄の輪と見分ける。
 const COLOR_INSPECTED := Color(0.85, 0.95, 1.0, 0.95)
@@ -896,7 +896,7 @@ func threat_overlay_cells() -> Array[Vector2i]:
 	return _board_view.danger_cells()
 
 
-## 見ている・選んでいる駒の脅威範囲として、塗っているマス（濃い赤）。検査用。
+## 見ている・選んでいる駒の脅威範囲として、塗っているマス（薄い赤）。検査用。
 func threat_painted_cells() -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for cell: Vector2i in _painted:
@@ -1464,7 +1464,7 @@ func painted_color(cell: Vector2i) -> Color:
 
 
 ## 見るだけの駒（相手、中立、行動を終えた駒）の範囲を塗る。相手の駒（中立も）は、次の番に攻撃・スキルが届くマス
-## （脅威範囲）を濃い赤で。その上に、動ける範囲を白で。
+## （脅威範囲）を薄い赤で。その上に、動ける範囲を白で。
 func _paint_view(unit: Unit) -> void:
 	if unit.side != battle.phase:
 		for cell in Queries.threat_cells(battle, unit):
