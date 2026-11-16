@@ -148,6 +148,24 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 	assert_eq(story.squad_id, "", "形の違う部隊の記録は、既定の編成として読む")
 
 
+func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each() -> void:
+	var first := Story.default_deck(Story.STARTING_KINDS)
+	assert_true(first.is_valid(), "既定の編成は、出撃できる")
+	assert_eq(first.entries.size(), first.rules.max_units)
+	for kind: UnitKind.Id in Story.STARTING_KINDS:
+		assert_eq(first.entries.filter(func(e: DeckEntry) -> bool: return e.kind == kind).size(), 2, "雇える駒を、まんべんなく雇う: %s" % UnitKind.display_name(kind))
+	for episode: Script in Story.EPISODES:
+		var deck := Story.default_deck(Story.kinds_before(episode))
+		assert_true(deck.is_valid(), "%s の既定の編成は、出撃できる" % episode.TITLE)
+		var last_role := -1
+		for entry: DeckEntry in deck.entries:
+			assert_true(entry.equipment.size() <= 1, "装備は 1 体に 1 つまで")
+			assert_true(UnitKind.role(entry.kind) >= last_role, "並びは役割の順（前衛が前）")
+			last_role = UnitKind.role(entry.kind)
+		for kind: UnitKind.Id in Story.kinds_before(episode):
+			assert_true(deck.entries.any(func(e: DeckEntry) -> bool: return e.kind == kind), "雇える駒は、どれも 1 体は入る: %s" % UnitKind.display_name(kind))
+
+
 func test_story_battles_offer_choosing_the_squad_again() -> void:
 	assert_true(Story.first_battle(Story.EPISODES[0]).can_choose_squad(), "決着の画面に「部隊を選び直す」を出す")
 	assert_false(preload("res://game/match_choice.gd").new().can_choose_squad(), "対戦モードには出さない")
