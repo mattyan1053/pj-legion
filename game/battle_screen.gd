@@ -1,6 +1,8 @@
 extends Node3D
 ## 対戦の場面（俯瞰 3D の盤面と、操作・演出）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
-## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。対戦の設定は context.match_choice から読む。
+## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。
+## 対戦は、渡された「対戦の設定を作ってくれるもの」（battle_source.gd。流れ（run.gd）が渡す。無ければ context.match_choice）から作る。
+## どのモードの対戦かは知らない。やり直し・ステージの替え・相手の切り替え・対戦の設定のパネルは、それに聞いてから出す。
 ##
 ## 相手（プレイヤー2）を CPU にすると、その番は CpuPlayer が返す行動を、人の操作と同じ入口（_do）に 1 つずつ流す。
 ## ここはルールを持たない。操作を行動（BattleAction）にして Battle.apply() に渡し、
@@ -12,7 +14,7 @@ const UnitView := preload("res://game/unit_view.gd")
 const BoardView := preload("res://game/board_view.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 const Names := preload("res://game/names.gd")
-const MatchChoice := preload("res://game/match_choice.gd")
+const BattleSource := preload("res://game/battle_source.gd")
 const MatchSetupPanel := preload("res://game/match_setup_panel.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
@@ -86,7 +88,9 @@ var battle_log: BattleLog:
 		battle_log = value
 		if _playback != null:
 			_playback.battle_log = value
-var stage := BoardGenerator.Stage.PLAIN
+## いまの盤の見た目の名前（stage_look.gd）と、決着の画面の「作戦領域」に出す名前（戦いの定義の名前）。
+var look := StageLook.DEFAULT
+var area_name := ""
 var map_seed := 0
 
 var _board_view: BoardView
@@ -113,9 +117,10 @@ var _log_panel: LogPanel
 ## CPU の駒の行動を再生している途中か（設定の「CPU の番の速さ」を効かせる）。
 var _cpu_fast := false
 
-## 対戦の設定画面で選んだもの（match_choice.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
-var match_choice: RefCounted = MatchChoice.new()
-## 相手を CPU が動かすか。偽なら、2 人が交代で操作する。CPU が動かすのは match_choice.cpu_side()。
+## 対戦の設定を作ってくれるもの（battle_source.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
+var source: BattleSource
+## 相手を CPU が動かすか。偽なら、2 人が交代で操作する。CPU が動かすのは source.cpu_side()。
+## 対戦を作るときに、対戦の設定（MatchSetup.controllers）から決める。対戦の途中の切り替え（F4）で変わる。
 var cpu_opponent := true
 ## CPU が実行した行動の数。検査用。
 var cpu_actions := 0
@@ -168,7 +173,7 @@ func _ready() -> void:
 	_playback.side_name = _side_name
 	_playback.result_summary = _result_summary
 	_playback.camera_point = _camera_point
-	_playback.cpu_side = func() -> Unit.Side: return match_choice.cpu_side()
+	_playback.cpu_side = func() -> Unit.Side: return source.cpu_side()
 	_playback.play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_playback.frame_passed = frame_passed
 	_layout = PanelLayout.new(_rig, _hud, _views, COLOR_MOVE, COLOR_CRUISE)
@@ -209,12 +214,12 @@ func _ready() -> void:
 	_system_menu.opened.connect(_on_system_menu_opened)
 	_system_menu.closed.connect(_on_system_menu_closed)
 
-	match_choice = context.match_choice.copy()
-	cpu_opponent = match_choice.cpu_opponent
-	_show_opponent()
+	# 流れが渡すもの。流れの外から置かれた（スクリーンショットの道具など）なら、対戦の設定の場面で選んだもの。
+	var given: Variant = context.run_data(&"battle")
+	source = given if given != null else context.match_choice.copy()
 	_battle_started = true
 	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする（context.battle_seed）。
-	start_battle(match_choice.stage, context.battle_seed())
+	start_battle(context.battle_seed())
 	if context.checking == AppContext.CHECK_AUTOPLAY:
 		add_child(Autoplay.new(self))
 
@@ -286,11 +291,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2, KEY_KP_2:
 				choose_evolution(1)
 			KEY_F1:
-				start_battle(BoardGenerator.Stage.PLAIN, map_seed + 1)
+				start_on_stage(BoardGenerator.Stage.PLAIN, map_seed + 1)
 			KEY_F2:
-				start_battle(BoardGenerator.Stage.LABYRINTH, map_seed + 1)
+				start_on_stage(BoardGenerator.Stage.LABYRINTH, map_seed + 1)
 			KEY_F3:
-				start_battle(BoardGenerator.Stage.TWIN_SPRINGS, map_seed + 1)
+				start_on_stage(BoardGenerator.Stage.TWIN_SPRINGS, map_seed + 1)
 			KEY_F4:
 				toggle_opponent()
 			KEY_T:
@@ -300,24 +305,35 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---- 対戦の始まり ----
 
 
-## いまの設定（match_choice）のステージを battle_stage にして、盤面を作り、軍を置いて、最初から始める。
-## 対戦はルールの入口（MatchSetup.create_battle）で作る。再生の途中と CPU の番の間は何もしない。
-func start_battle(battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
+## 渡されたもの（source）が作る種 battle_seed の対戦の設定で、盤面を作り、軍を置いて、最初から始める。
+## 対戦はルールの入口（MatchSetup.create_battle）で作る。相手を CPU が動かすかも、その設定から決める。
+## 再生の途中と CPU の番の間は何もしない。
+func start_battle(battle_seed: int) -> void:
 	if is_busy():
 		return
-	match_choice.stage = battle_stage
-	match_choice.cpu_opponent = cpu_opponent
-	start_with(match_choice.to_setup(battle_seed).create_battle(), battle_stage, battle_seed)
+	var setup := source.make_setup(battle_seed)
+	cpu_opponent = setup.is_cpu(source.cpu_side())
+	_show_opponent()
+	start_with(setup.create_battle(), source.look(), battle_seed, setup.scenario.title)
+
+
+## ステージを battle_stage に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
+## 渡されたものが、そのステージを選べない（source.stages() に無い）なら何もしない。
+func start_on_stage(battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
+	if is_busy() or not source.stages().has(battle_stage):
+		return
+	source.choose_stage(battle_stage)
+	start_battle(battle_seed)
 
 
 ## 対戦の設定画面を、いまの設定で開く。再生の途中と CPU の番の間は何もしない。
 ## 開いただけでは、いまの対戦は変わらない（「対戦へ戻る」・右クリック・Esc で、そのまま戻れる）。
 ## 新しい対戦になるのは、設定画面で始めるボタンを押したときだけ。
+## 渡されたものが対戦の設定のパネルを開けない（source.can_open_setup() が偽）なら何もしない。
 func open_setup() -> void:
-	if is_busy():
+	if is_busy() or not source.can_open_setup():
 		return
-	match_choice.cpu_opponent = cpu_opponent
-	_setup_panel.open(match_choice, _battle_started, _battle_started and not battle.is_over())
+	_setup_panel.open(source, _battle_started, _battle_started and not battle.is_over())
 
 
 ## 対戦の設定画面（検査用）。
@@ -327,19 +343,19 @@ func setup_panel() -> MatchSetupPanel:
 
 func _on_setup_chosen(chosen: RefCounted) -> void:
 	_battle_started = true
-	match_choice = chosen
+	source = chosen
 	context.match_choice = chosen.copy()  # 次に対戦の設定の場面を開いたときも、これを出す
 	# いまの対戦の続きを CPU に渡さないよう、set_opponent は通さない（新しい対戦が、始めに CPU の番を見る）。
-	cpu_opponent = chosen.cpu_opponent
-	_show_opponent()
-	start_battle(chosen.stage, map_seed + 1)
+	start_battle(map_seed + 1)
 
 
 ## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中と CPU の番の間は何もしない。
-func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
+## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「作戦領域」（空なら出さない）。
+func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, battle_area := "") -> void:
 	if is_busy():
 		return
-	stage = battle_stage
+	look = battle_look
+	area_name = battle_area
 	map_seed = battle_seed
 	battle = new_battle
 	stats = BattleStats.new(battle)
@@ -358,8 +374,8 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 
 	_board_view = BoardView.new()
 	add_child(_board_view)
-	_board_view.setup(battle.board, map_seed, TEAM_COLORS, stage)
-	_hud.minimap().show_board(battle.board, stage)
+	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
+	_hud.minimap().show_board(battle.board, look)
 	_playback.set_board_view(_board_view)
 	StageLook.apply(self, _board_view.look)
 	for unit in battle.units:
@@ -376,6 +392,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_layout.clear_forecast()
 	_layout.reset_menu()
 	_hud.hide_result()
+	_hud.result_screen().set_destinations(source.stages(), source.can_open_setup())
 	context.resume_scene_music()  # 決着の曲のあとの「やり直す」でも、対戦の曲へ戻る
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
 	_refresh()
@@ -403,7 +420,7 @@ func _add_view(unit: Unit) -> void:
 ## 決着の画面が出た。決着の曲を 1 回鳴らす: 人が勝てば勝ちの曲、CPU に負けたときと引き分けは負けの曲。
 ## 人どうしは、どちらかが勝っているので勝ちの曲。
 func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
-	context.play_jingle(result_music(draw, winner, cpu_opponent, match_choice.human_side))
+	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side()))
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
@@ -415,9 +432,9 @@ static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human
 
 func _on_restart_pressed(new_stage: int, new_board: bool) -> void:
 	if new_board:
-		start_battle(new_stage as BoardGenerator.Stage, map_seed + 1)
+		start_on_stage(new_stage as BoardGenerator.Stage, map_seed + 1)
 	else:
-		start_battle(stage, map_seed)
+		start_battle(map_seed)
 
 
 # ---- 操作（マウス・キー・ボタンのどれからも、ここを通る） ----
@@ -548,8 +565,11 @@ func resume_label() -> String:
 
 
 ## システムメニューに足す項目。対戦の設定画面の上で開いたら、「対戦の設定へ」は出さない（もう開いている）。
+## 渡されたものが対戦の設定のパネルを開けないなら、出さない。
 func menu_items() -> Array:
-	return [] if _setup_panel.visible else [[SYSTEM_MATCH_SETUP, "対戦の設定へ", ""]]
+	if _setup_panel.visible or not source.can_open_setup():
+		return []
+	return [[SYSTEM_MATCH_SETUP, "対戦の設定へ", ""]]
 
 
 ## 抜けると失われるもの（決着していない対戦）があるか。あれば、タイトルへ戻る・ゲームを終える前に確かめる。
@@ -619,11 +639,12 @@ func set_cpu_fast(fast: bool) -> void:
 		_update_time_scale()
 
 
-## 相手（match_choice.cpu_side() のプレイヤー）を CPU にするか、人にするかを決める。対戦の途中でも切り替えられる
+## 相手（source.cpu_side() のプレイヤー）を CPU にするか、人にするかを決める。対戦の途中でも切り替えられる
 ## （CPU にすれば、相手の番の続きを CPU が引き取る。人にすれば、CPU はいまの行動を最後に手を止める）。
+## 次に作る対戦（やり直し）にも持ち越す（source.set_cpu_opponent）。検査とスクリーンショットの道具も、CPU を止めるのに使う。
 func set_opponent(cpu: bool) -> void:
 	cpu_opponent = cpu
-	match_choice.cpu_opponent = cpu
+	source.set_cpu_opponent(cpu)
 	_show_opponent()
 	if battle != null and not is_busy():
 		if _is_cpu_turn():
@@ -633,23 +654,39 @@ func set_opponent(cpu: bool) -> void:
 			_refresh()  # 自分の番の途中なら、選んでいる駒（動いたあとの駒）はそのまま。
 
 
+## 下の帯の「相手」のボタン。切り替えられない（source.can_switch_opponent() が偽）なら出さない。
 func _show_opponent() -> void:
+	if not source.can_switch_opponent():
+		_hud.set_opponent("")
+		return
 	_hud.set_opponent("相手: CPU" if cpu_opponent else "相手: 人")
 
 
+## 下の帯に「相手」のボタンが出ているか。検査用。
+func opponent_switch_shown() -> bool:
+	return _hud.opponent_shown()
+
+
+## 相手を人と CPU で切り替える（F4、下の帯の「相手」のボタン）。切り替えられないなら何もしない。
 func toggle_opponent() -> void:
-	set_opponent(not cpu_opponent)
+	if source.can_switch_opponent():
+		set_opponent(not cpu_opponent)
 
 
 ## いまが、CPU が動かす番か。
 func _is_cpu_turn() -> bool:
-	return cpu_opponent and not battle.is_over() and battle.phase == match_choice.cpu_side()
+	return cpu_opponent and not battle.is_over() and battle.phase == source.cpu_side()
 
 
 ## 番の知らせに出す陣営の名前（CPU が動かすなら、そう書く）。
 func _side_name(side: Unit.Side) -> String:
 	var side_name: String = Names.SIDE_NAMES[side]
-	return side_name + " CPU" if cpu_opponent and side == match_choice.cpu_side() else side_name
+	return side_name + " CPU" if cpu_opponent and side == source.cpu_side() else side_name
+
+
+## CPU と対戦するときに、人が動かすプレイヤー（相手の反対）。
+func _human_side() -> Unit.Side:
+	return (1 - source.cpu_side()) as Unit.Side
 
 
 func selected_unit() -> Unit:
@@ -1165,7 +1202,7 @@ func _result_summary(draw: bool, winner: Unit.Side, reason: String) -> RefCounte
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		names.append(_side_name(side))
-	return ResultSummary.of(stats, draw, winner, reason, cpu_opponent, match_choice.human_side, names, MatchSetup.stage_name(stage))
+	return ResultSummary.of(stats, draw, winner, reason, cpu_opponent, _human_side(), names, area_name)
 
 
 ## side の番が来たときにカメラが見る地点。寄る駒（phase_focus.gd。前回最後に動かした駒）のいるところから、少し敵の本陣のほうへ寄せる
@@ -1293,7 +1330,7 @@ func _paint_view(unit: Unit) -> void:
 ## 人どうしでは、いまの番のプレイヤー（中立の番では、プレイヤー1）。必殺技のボタンと、敵の全員の脅威範囲が、このプレイヤーのもの。
 func _viewer_side() -> Unit.Side:
 	if cpu_opponent:
-		return match_choice.human_side
+		return _human_side()
 	if battle.phase == Unit.Side.NEUTRAL:
 		return Unit.Side.PLAYER1
 	return battle.phase

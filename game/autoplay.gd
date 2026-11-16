@@ -14,6 +14,7 @@ extends Node
 const Queries := preload("res://game/battle_queries.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
+const StageLook := preload("res://game/stage_look.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
@@ -165,7 +166,7 @@ func _process(_delta: float) -> void:
 				_undone.clear()
 				_cpu_actions_before = _scene.cpu_actions
 				_scene.set_opponent(_game == CPU_GAME)
-				_scene.start_battle(STAGES[_game], _scene.map_seed + 1)
+				_scene.start_on_stage(STAGES[_game], _scene.map_seed + 1)
 			elif battle.turn > MAX_TURNS:
 				_fail("%d ターンでも決着しなかった" % MAX_TURNS)
 				_phase = Phase.END
@@ -364,7 +365,7 @@ func _queue_portal_and_spring_scene() -> void:
 	var warped: Script = UnitWarpedEvent
 	var moved: Script = UnitMovedEvent
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.TWIN_SPRINGS, 1))
+	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.TWIN_SPRINGS, 1))
 	_scripted.append(func() -> void: _scene.click_cell(walker.cell))
 	_scripted.append(func() -> void:
 		_scene.played.erase(warped)
@@ -393,7 +394,7 @@ func _queue_capture_scene() -> void:
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(5, 3))
 	var raider := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER1, Vector2i(3, 0))
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(raider.cell))
 	_scripted.append(func() -> void: _scene.click_cell(board.hq_cells[Unit.Side.PLAYER2]))
 	_scripted.append(func() -> void: _scene.press_wait())
@@ -417,7 +418,7 @@ func _queue_barrel_draw_scene() -> void:
 	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 3))
 	battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER2, Vector2i(4, 3))
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(sniper.cell))
 	_scripted.append(func() -> void:
 		_expect(Queries.barrel_targets(battle, sniper) == ([Vector2i(3, 2)] as Array[Vector2i]), "狙える樽が違う")
@@ -481,7 +482,7 @@ func _queue_field_effect_scene() -> void:
 	var blocked: Script = SmokeBlockedEvent
 	var healed: Script = SanctuaryHealedEvent
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		var events := FieldEffects.place_barricade(battle, Unit.Side.PLAYER2, wall)
 		events.append_array(FieldEffects.place_smoke(battle, Unit.Side.PLAYER2, Vector2i(4, 1)))
@@ -530,7 +531,7 @@ func _queue_skill_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		_scene.click_cell(king1.cell)
 		_expect(not _scene.is_skill_enabled(), "スキルの無い駒で、スキルのボタンが押せる")
@@ -612,7 +613,7 @@ func _queue_status_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
 	_scripted.append(func() -> void:
 		_scene.press_skill()
@@ -663,7 +664,7 @@ func _queue_extra_action_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(blade.cell))
 	_scripted.append(func() -> void:
 		_scene.press_skill()
@@ -730,7 +731,7 @@ func _queue_neutral_scene() -> void:
 	var bait := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(5, 2))
 
 	_scripted.append(func() -> void:
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
+		_scene.start_with(battle, StageLook.PLAIN, 1)
 		_scene.camera_follows.clear())
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
@@ -762,7 +763,7 @@ func _queue_mid_boss_scene() -> void:
 	var raider := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER1, Vector2i(2, 4))
 	var raider_max_hp := raider.max_hp()
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(raider.cell))
 	_scripted.append(func() -> void: _scene.click_cell(Vector2i(2, 3)))
 	_scripted.append(func() -> void: _scene.click_cell(weak.cell))
@@ -793,7 +794,7 @@ func _queue_level_up_scene() -> void:
 	victim.hp = 1
 	raider.hp -= 5
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(raider.cell))
 	_scripted.append(func() -> void: _scene.click_cell(victim.cell))
 	_scripted.append(func() -> void:
@@ -816,7 +817,7 @@ func _queue_evolution_scene() -> void:
 	var wall := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER2, Vector2i(3, 2))
 	var seen := {"hp": 0}  # 手順をまたいで覚えておく値（ラムダは外の変数を書き換えられない）
 
-	_scripted.append(func() -> void: _scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
 	_scripted.append(func() -> void: _scene.click_cell(wall.cell))
 	_scripted.append(func() -> void:
@@ -853,7 +854,7 @@ func _queue_heal_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		# 駒のいないマスをクリックすると、そのマスの情報が出る。戻す操作で消える。
 		_scene.click_cell(Vector2i(5, 3))
@@ -920,11 +921,11 @@ func _queue_inspection_scene() -> void:
 	var outside := Vector2i(12, 8)
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(larger, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(larger, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		_expect(_scene.battle == larger and not board.in_bounds(outside), "大きな盤の対戦を始められなかった")
 		_scene.hover(outside)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1)
+		_scene.start_with(battle, StageLook.PLAIN, 1)
 		_expect(_scene.hovered_cell() == NO_CELL, "始め直したのに、前の対戦のマウスの下のマスが残っている: %s" % _scene.hovered_cell()))
 	_scripted.append(func() -> void:
 		_scene.click_cell(trooper.cell)
@@ -993,7 +994,7 @@ func _queue_setup_scene() -> void:
 	_scripted.append(func() -> void:
 		var battle: Battle = _scene.battle
 		_expect(not _scene.setup_panel().visible, "設定画面が閉じない")
-		_expect(_scene.stage == BoardGenerator.Stage.TWIN_SPRINGS, "選んだステージで始まらない")
+		_expect(_scene.look == StageLook.TWIN_SPRINGS, "選んだステージで始まらない")
 		_expect(battle.armies == ([UnitKind.Army.FANTASY, UnitKind.Army.MILITARY] as Array[UnitKind.Army]), "選んだ軍で始まらない")
 		_expect(_scene.cpu_actions > seen["actions"], "先手の CPU が動かなかった")
 		_expect(battle.phase == Unit.Side.PLAYER2 and battle.turn == 1, "先手の CPU が番を終えなかった")
@@ -1005,7 +1006,7 @@ func _queue_setup_scene() -> void:
 		panel.choose_opponent(false)
 		panel.cancel()
 		_expect(not panel.visible and not _scene.is_busy(), "設定画面が閉じない")
-		_expect(_scene.battle == battle and _scene.stage == BoardGenerator.Stage.TWIN_SPRINGS and _scene.cpu_opponent, "設定画面を閉じたら、対戦か設定が変わった")
+		_expect(_scene.battle == battle and _scene.look == StageLook.TWIN_SPRINGS and _scene.cpu_opponent, "設定画面を閉じたら、対戦か設定が変わった")
 		_scene.open_setup()
 		panel.choose_opponent(false)
 		panel.choose_human_side(Unit.Side.PLAYER1)
@@ -1013,7 +1014,44 @@ func _queue_setup_scene() -> void:
 		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.FANTASY)
 		panel.choose_stage(BoardGenerator.Stage.PLAIN)
 		panel.confirm()
-		_expect(not _scene.cpu_opponent and _scene.match_choice.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
+		_expect(not _scene.cpu_opponent and _scene.source.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
+	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話はこちら）を渡すと、選び直す入口が出ない。
+	var kept := {}
+	_script_fixed_source(kept)
+
+
+func _script_fixed_source(kept: Dictionary) -> void:
+	_scripted.append(func() -> void:
+		kept["source"] = _scene.source
+		_scene.source = FixedSource.new()
+		_scene.start_battle(_scene.map_seed + 1)
+		var battle: Battle = _scene.battle
+		_expect(_scene.look == StageLook.LABYRINTH and battle.board.size == BoardGenerator.DEFAULT_SIZE, "渡したもので対戦が始まらない")
+		_expect(not _scene.cpu_opponent, "渡した対戦の設定の、誰が動かすかに従わない")
+		_expect(not _scene.opponent_switch_shown(), "切り替えられない対戦に、相手のボタンが出た")
+		_scene.toggle_opponent()
+		_expect(not _scene.cpu_opponent, "切り替えられない対戦で、相手が切り替わった")
+		_expect(_scene.menu_items().is_empty(), "対戦の設定を開けない対戦に、システムメニューの「対戦の設定へ」が出た")
+		_scene.open_setup()
+		_expect(not _scene.setup_panel().visible, "対戦の設定を開けない対戦で、設定画面が開いた")
+		_scene.start_on_stage(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
+		_expect(_scene.battle == battle, "ステージを選べない対戦で、ステージを替えてやり直した")
+		_expect(not _scene.result_screen().can_go_to_setup() and _scene.result_screen().new_board_stages().is_empty(),
+			"選び直せない対戦の決着の画面に、対戦の設定・新しい盤面のボタンがある")
+		_scene.source = kept["source"]
+		_scene.start_battle(_scene.map_seed + 1)
+		_expect(_scene.opponent_switch_shown() and _scene.result_screen().can_go_to_setup()
+			and _scene.result_screen().new_board_stages().size() == MatchSetup.STAGE_NAMES.size(), "対戦モードに戻すと、選び直す入口が戻らない"))
+
+
+## 何も選び直せない対戦を渡すもの（_script_fixed_source）。迷宮回廊の人どうし。
+class FixedSource extends "res://game/battle_source.gd":
+	func make_setup(battle_seed: int) -> MatchSetup:
+		var deck := MatchSetup.default_deck(UnitKind.Army.MILITARY)
+		return MatchSetup.versus_human(BoardGenerator.Stage.LABYRINTH, battle_seed, deck, deck.copy())
+
+	func look() -> StringName:
+		return StageLook.LABYRINTH
 
 
 ## システムメニュー。Esc は、戻すもの（選択）があれば戻し、無ければメニューを開く。開いている間は盤面を操作できず、時間が止まる。
@@ -1026,7 +1064,7 @@ func _queue_system_menu_scene() -> void:
 	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 2))
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		var menu: Node = _scene.system_menu()
 		var settings: RefCounted = _scene.settings
@@ -1076,7 +1114,7 @@ func _queue_minimap_scene() -> void:
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(11, 0))
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		var rect: Rect2 = _scene.minimap_rect()
 		var screen: Rect2 = _scene.get_viewport().get_visible_rect()
@@ -1137,7 +1175,7 @@ func _queue_cpu_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(true)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		seen["actions"] = _scene.cpu_actions
 		_scene.camera_follows.clear()
@@ -1202,7 +1240,7 @@ func _queue_ult_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
-		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+		_scene.start_with(battle, StageLook.PLAIN, 1))
 	_scripted.append(func() -> void:
 		_expect(not _scene.is_ult_enabled(), "ゲージが空なのに、必殺技のボタンが押せる")
 		_expect(_scene.ult_gauge_text(0) == "0%", "ゲージの数字が出ていない")
@@ -1403,7 +1441,7 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 func _leave_battle(app: Node) -> void:
 	var menu: Node = app.system_menu()
 	_scene.set_opponent(false)
-	_scene.start_battle(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
+	_scene.start_on_stage(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
 	_scene.set_opponent(true)
 	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")

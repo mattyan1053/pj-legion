@@ -2,7 +2,7 @@ extends Node
 ## 対戦の設定の場面。ステージ・相手・手番・軍を選ぶ（match_setup_panel.gd。対戦の途中で開く設定画面と同じもの）。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。
 ##
-## 「対戦を始める」で選んだものを context.match_choice に入れて &"start"。「ステージ選択へ戻る」（右クリック・Esc でも）で &"back"。
+## 「対戦を始める」で選んだものを context.match_choice に入れ、その選択の流れ（match_choice.gd の run。対戦の場面 1 つ）を始める。「ステージ選択へ戻る」（右クリック・Esc でも）で &"back"。
 ## ステージはステージ選択の場面で選んで来る（ここのステージの行で選び直してもよい）。
 
 const AppContext := preload("res://game/app_context.gd")
@@ -39,4 +39,4 @@ func resume_label() -> String:
 
 func _on_start(choice: RefCounted) -> void:
 	context.match_choice = choice
-	finished.emit(&"start")
+	context.start_run(choice.run())

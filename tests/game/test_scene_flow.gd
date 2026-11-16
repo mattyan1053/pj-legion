@@ -2,6 +2,7 @@ extends "res://tests/base_test.gd"
 ## 場面の並び（game/scene_flow.gd）。
 
 const SceneFlow := preload("res://game/scene_flow.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
 
 
 func test_starts_at_the_title() -> void:
@@ -13,7 +14,8 @@ func test_goes_title_stage_setup_battle_and_back() -> void:
 	assert_eq(SceneFlow.next(&"title", &"start"), &"stage")
 	assert_eq(SceneFlow.next(&"stage", &"pick"), &"setup")
 	assert_eq(SceneFlow.next(&"stage", &"back"), &"title")
-	assert_eq(SceneFlow.next(&"setup", &"start"), &"battle")
+	assert_eq(SceneFlow.next(&"setup", &"start"), &"", "対戦は、表ではなく流れ（match_choice.gd の run）で始める")
+	assert_eq(MatchChoice.new().run().scene(), &"battle")
 	assert_eq(SceneFlow.next(&"setup", &"back"), &"stage", "対戦の設定から 1 つ戻ると、ステージ選択")
 	assert_eq(SceneFlow.next(&"battle", &"setup"), &"setup")
 	assert_eq(SceneFlow.next(&"battle", &"title"), &"title", "どの場面からもタイトルへ戻れる")
@@ -34,8 +36,10 @@ func test_undefined_transitions_go_nowhere() -> void:
 
 func test_every_scene_is_reachable_and_loadable() -> void:
 	# 行き先はどれも表にあり、スクリプトは場面の決まり（context と finished）を守る。
-	var reached := {SceneFlow.FIRST: true}
-	var queue: Array[StringName] = [SceneFlow.FIRST]
+	# 流れで入る場面（対戦の設定の「対戦を始める」の流れの場面）も、そこからたどる。
+	var run_scene: StringName = MatchChoice.new().run().scene()
+	var reached := {SceneFlow.FIRST: true, run_scene: true}
+	var queue: Array[StringName] = [SceneFlow.FIRST, run_scene]
 	while not queue.is_empty():
 		var scene: StringName = queue.pop_front()
 		var table: Dictionary = SceneFlow.SCENES[scene]["next"].merged(SceneFlow.COMMON)

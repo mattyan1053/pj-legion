@@ -11,6 +11,7 @@ const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
+const StageLook := preload("res://game/stage_look.gd")
 
 signal finished(outcome: StringName)
 
@@ -223,7 +224,7 @@ func _build_card(stage: BoardGenerator.Stage) -> Button:
 	card.add_child(column)
 	var board := BoardGenerator.generate(stage, MAP_SEED)
 	var map := TextureRect.new()
-	map.texture = ImageTexture.create_from_image(StageCardMap.draw(board, stage, BattleScreen.TEAM_COLORS))
+	map.texture = ImageTexture.create_from_image(StageCardMap.draw(board, StageLook.name_of_stage(stage), BattleScreen.TEAM_COLORS))
 	map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	map.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

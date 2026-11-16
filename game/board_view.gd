@@ -64,7 +64,7 @@ const DANGER_EDGE_WIDTH := 0.07
 
 var board: Board
 ## ステージの見た目（stage_look.gd）。
-var look: Dictionary = StageLook.of(BoardGenerator.Stage.PLAIN)
+var look: Dictionary = StageLook.of(StageLook.DEFAULT)
 
 var _barrels := {}  # Vector2i -> Node3D（爆発したら取り除く）
 var _field_effects := {}  # 効果の番号 -> Node3D（消えたら取り除く）
@@ -89,10 +89,10 @@ static var _noise: ImageTexture
 
 
 ## look_seed は見た目だけに使う（木の種類・向き・大きさ）。team_colors は本陣の色（添字がプレイヤー番号）。
-## stage は見た目（地面・置物・景色）を決める（stage_look.gd）。
-func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], stage: int = BoardGenerator.Stage.PLAIN) -> void:
+## look_name は見た目（地面・置物・景色）の名前（stage_look.gd）。
+func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_name: StringName = StageLook.DEFAULT) -> void:
 	board = battle_board
-	look = StageLook.of(stage)
+	look = StageLook.of(look_name)
 	_team_colors = team_colors
 	var rng := RandomNumberGenerator.new()
 	rng.seed = look_seed
@@ -137,7 +137,7 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], stage
 ## マスの地面の色（本陣は陣営の色）。palette はステージの見た目（stage_look.gd。省けば中央平原）。
 static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color], palette: Dictionary = {}) -> Color:
 	if palette.is_empty():
-		palette = StageLook.of(BoardGenerator.Stage.PLAIN)
+		palette = StageLook.of(StageLook.DEFAULT)
 	var hq_owner := battle_board.hq_owner(cell)
 	if hq_owner >= 0:
 		return team_colors[hq_owner].lightened(0.3)
@@ -154,7 +154,7 @@ static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array
 ## 地形の色の地図。1 マスが MAP_SCALE ピクセルで、周りに MAP_PAD マスぶんの平地が付く（盤の外は平地の色で続く）。
 static func terrain_image(battle_board: Board, team_colors: Array[Color], palette: Dictionary = {}) -> Image:
 	if palette.is_empty():
-		palette = StageLook.of(BoardGenerator.Stage.PLAIN)
+		palette = StageLook.of(StageLook.DEFAULT)
 	var normal: Color = palette[StageLook.NORMAL]
 	var cells := battle_board.size + Vector2i.ONE * 2 * MAP_PAD
 	var image := Image.create(cells.x * MAP_SCALE, cells.y * MAP_SCALE, false, Image.FORMAT_RGB8)
