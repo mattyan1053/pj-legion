@@ -167,3 +167,57 @@ func test_player2_can_capture_player1_hq() -> void:
 		battle.apply(EndPhaseAction.new())  # P1 の終わり
 	assert_eq(battle.winner, P2)
 	assert_eq(battle.capture_turns[P2], 3)
+
+
+## 勝ちの条件の列（Battle.win_conditions）から、その勝ち方を外したプレイヤー。
+func _without(battle: Battle, player: Unit.Side, condition: GameWonEvent.Reason) -> void:
+	battle.win_conditions[player].erase(condition)
+
+
+func test_both_ways_to_win_are_on_by_default() -> void:
+	var battle := _battle()
+	for player: Unit.Side in [P1, P2]:
+		assert_eq(battle.win_conditions[player], Scenario.STANDARD_WIN_CONDITIONS)
+		assert_true(battle.wins_by(player, GameWonEvent.Reason.KING_DEFEATED))
+		assert_true(battle.wins_by(player, GameWonEvent.Reason.HQ_CAPTURED))
+
+
+func test_defeating_the_king_does_not_win_without_that_condition() -> void:
+	var battle := _battle()
+	_without(battle, P1, GameWonEvent.Reason.KING_DEFEATED)
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
+	var king := battle.add_unit(UnitKind.Id.KING, P2, Vector2i(1, 0))
+	king.hp = 5
+	var events := battle.apply(AttackAction.new(commando.id, king.id)).events
+	assert_eq(battle.unit_by_id(king.id), null)
+	assert_false(battle.is_over())
+	for event in events:
+		assert_false(event is GameWonEvent)
+
+
+func test_holding_the_hq_is_not_counted_without_that_condition() -> void:
+	var battle := _battle()
+	_without(battle, P1, GameWonEvent.Reason.HQ_CAPTURED)
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(2, 2))
+	battle.apply(MoveAction.new(sniper.id, P2_HQ))
+	for turn in 4:
+		var events := battle.apply(EndPhaseAction.new()).events
+		for event in events:
+			assert_false(event is CaptureProgressEvent)
+		_skip_to_next_p1_phase(battle)
+	assert_eq(battle.capture_turns[P1], 0)
+	assert_false(battle.is_over())
+
+
+func test_both_kings_falling_is_a_win_for_the_only_side_that_wins_by_kings() -> void:
+	var battle := _battle()
+	_without(battle, P2, GameWonEvent.Reason.KING_DEFEATED)
+	var kings: Array[Unit] = [
+		battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 2)), battle.add_unit(UnitKind.Id.KING, P2, Vector2i(4, 2))
+	]
+	var events: Array[BattleEvent] = []
+	for king in kings:
+		events.append_array(battle.remove_unit(king))
+	battle.settle(events)
+	assert_false(battle.is_draw())
+	assert_eq(battle.winner, P1, "プレイヤー2 は将の撃破で勝てないので、プレイヤー1 の将が倒れても負けない")

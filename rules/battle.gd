@@ -34,6 +34,13 @@ var capture_turns_before_move: Array[int] = [0, 0]
 ## 敵の本陣をこの回数だけ自分のフェーズの終わりまで占拠し続けたら勝ち。
 const CAPTURE_TURNS_TO_WIN := 3
 
+## プレイヤーごとの勝ちの条件の列（GameWonEvent.Reason の値。docs/win-conditions.md）。添字がプレイヤー番号。
+## 対戦を作るとき（MatchSetup.create_battle）に、戦いの定義（Scenario.win_conditions）から写す。
+## 既定は、いまの対戦モードの勝ち方（Scenario.STANDARD_WIN_CONDITIONS）。
+var win_conditions: Array[Array] = [
+	Scenario.STANDARD_WIN_CONDITIONS.duplicate(), Scenario.STANDARD_WIN_CONDITIONS.duplicate()
+]
+
 ## プレイヤーごとの軍（添字がプレイヤー番号）。必殺技は軍で決まる（docs/tactical-ult.md）。
 ## 軍を盤に置くとき（Deployment）に決まる。決まっていなければ、最初に置いた、軍に属する駒の軍になる（add_unit）。
 var armies: Array[UnitKind.Army] = [UnitKind.Army.NONE, UnitKind.Army.NONE]
@@ -211,6 +218,11 @@ func portal_exit(cell: Vector2i) -> Vector2i:
 	return exit
 
 
+## player が、その勝ち方（GameWonEvent.Reason）で勝てるか。
+func wins_by(player: Unit.Side, condition: GameWonEvent.Reason) -> bool:
+	return win_conditions[player].has(condition)
+
+
 ## player が敵の本陣に自分の駒を乗せているか。
 func occupies_enemy_hq(player: Unit.Side) -> bool:
 	if board.hq_cells.size() < 2:
@@ -221,7 +233,10 @@ func occupies_enemy_hq(player: Unit.Side) -> bool:
 
 ## player のフェーズの終わりに、敵の本陣の占拠を数える。乗せていれば 1 進め、いなければ 0 に戻す。
 ## 数が変わったときだけイベントを出す。規定の回数に達したら勝ち。
+## 占拠が勝ちの条件に無いプレイヤーは数えない（数は 0 のまま。イベントも出さない）。
 func count_capture(player: Unit.Side) -> Array[BattleEvent]:
+	if not wins_by(player, GameWonEvent.Reason.HQ_CAPTURED):
+		return []
 	var before := capture_turns[player]
 	capture_turns[player] = before + 1 if occupies_enemy_hq(player) else 0
 	var events: Array[BattleEvent] = []
@@ -265,16 +280,19 @@ func apply(action: BattleAction) -> ActionResult:
 ## 起きたこと（events）のあとに決まること。決まったことのイベントを返す。
 ## apply() が行動のあとに呼ぶ。中立のフェーズは駒 1 体の行動ごとに呼ぶ（決着したら、その先へ進まない）。
 ## 同じイベントで 2 度呼んでも、2 度目は何も起きない。
-## - 将が倒れたら、相手のプレイヤーの勝ち。両方の将が同じ行動で倒れたら、引き分け
+## - 将が倒れたら、相手のプレイヤーの勝ち。両方の将が同じ行動で倒れたら、引き分け。
+##   将の撃破が勝ちの条件に無いプレイヤーは、相手の将を倒しても勝たない
 ## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
 func settle(events: Array[BattleEvent]) -> Array[BattleEvent]:
 	var extra: Array[BattleEvent] = []
-	var fallen: Array[Unit.Side] = []  # 将が倒れたプレイヤー
+	var fallen: Array[Unit.Side] = []  # 将が倒れて、負けるプレイヤー（相手が将の撃破で勝てるもの）
 	for event in events:
 		var defeated := event as UnitDefeatedEvent
 		if defeated == null or defeated.kind != UnitKind.Id.KING:
 			continue
-		if defeated.side != Unit.Side.NEUTRAL and not fallen.has(defeated.side):
+		if defeated.side == Unit.Side.NEUTRAL or fallen.has(defeated.side):
+			continue
+		if wins_by((1 - defeated.side) as Unit.Side, GameWonEvent.Reason.KING_DEFEATED):
 			fallen.append(defeated.side)
 	if not is_over() and fallen.size() == 2:
 		drawn = true

@@ -74,3 +74,20 @@ func test_side_without_a_fixed_deck_still_needs_a_valid_chosen_deck() -> void:
 	assert_eq(setup.problems(), [MatchSetup.Problem.NO_DECK] as Array[MatchSetup.Problem])
 	setup.set_human(Unit.Side.PLAYER1, Deck.new(UnitKind.Army.MILITARY))
 	assert_eq(setup.problems(), [MatchSetup.Problem.INVALID_DECK] as Array[MatchSetup.Problem])
+
+
+func test_win_conditions_default_to_the_versus_ways_and_reach_the_battle() -> void:
+	var scenario := Scenario.versus(BoardGenerator.Stage.PLAIN)
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		assert_eq(scenario.win_conditions_of(side), Scenario.STANDARD_WIN_CONDITIONS)
+	var only_king: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.KING_DEFEATED]
+	scenario.set_win_conditions(Unit.Side.PLAYER2, only_king)
+	var setup := MatchSetup.new()
+	setup.scenario = scenario
+	setup.set_human(Unit.Side.PLAYER1, MatchSetup.default_deck(UnitKind.Army.MILITARY))
+	setup.set_human(Unit.Side.PLAYER2, MatchSetup.default_deck(UnitKind.Army.FANTASY))
+	var battle := setup.create_battle()
+	assert_eq(battle.win_conditions[Unit.Side.PLAYER1], Scenario.STANDARD_WIN_CONDITIONS)
+	assert_eq(battle.win_conditions[Unit.Side.PLAYER2], only_king)
+	battle.win_conditions[Unit.Side.PLAYER2].append(GameWonEvent.Reason.HQ_CAPTURED)
+	assert_eq(scenario.win_conditions_of(Unit.Side.PLAYER2), only_king, "対戦の側を変えても、定義は変わらない")
