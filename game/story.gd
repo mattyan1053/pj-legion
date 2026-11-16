@@ -3,7 +3,7 @@ extends RefCounted
 ## ノードに依存しない。
 ##
 ## - 話は一本道。EPISODES の順に並ぶ。話の一覧（episode_list_screen.gd）で、前の話をクリアした話と、クリアした話を選べる。
-## - 書くのは、クリアした話の id の一覧だけ。壊れたファイル・知らない id があっても、起動を止めない（知らない id は残して書き戻す）。
+## - 書くのは、クリアした話の id の一覧と、出撃の準備で最後に選んだ部隊の id だけ。壊れたファイル・知らない id があっても、起動を止めない（知らない id は残して書き戻す）。
 ## - 負けても失うものは無い。何度でもやり直せる。
 
 const SaveStore := preload("res://game/save_store.gd")
@@ -41,6 +41,8 @@ const EPISODES: Array[Script] = [
 ## 取っておく先（null なら書かない。検査・自動の対戦・スクリーンショットでは null）。
 var store: RefCounted
 var _cleared: Array[String] = []
+## 出撃の準備で最後に選んだ部隊（取っておいた部隊の id。空なら既定の編成）。次に起動しても選ばれている。
+var squad_id := ""
 
 
 ## クリアした話を読む（いまの記録は捨てる）。
@@ -56,6 +58,8 @@ func load_saved() -> void:
 ## 中身（ファイルの data）から記録を作る。形の違うところは読み飛ばす。
 func load_data(data: Dictionary) -> void:
 	_cleared.clear()
+	var squad: Variant = data.get("squad")
+	squad_id = String(squad) if typeof(squad) in [TYPE_STRING, TYPE_STRING_NAME] else ""
 	var ids: Variant = data.get("cleared")
 	if typeof(ids) != TYPE_ARRAY:
 		return
@@ -66,7 +70,10 @@ func load_data(data: Dictionary) -> void:
 
 ## ファイルに書く中身。
 func to_data() -> Dictionary:
-	return {"cleared": _cleared.duplicate()}
+	var data := {"cleared": _cleared.duplicate()}
+	if squad_id != "":
+		data["squad"] = squad_id
+	return data
 
 
 func is_cleared(id: StringName) -> bool:
@@ -78,9 +85,21 @@ func clear(id: StringName) -> void:
 	if is_cleared(id):
 		return
 	_cleared.append(String(id))
+	_save()
+	changed.emit()
+
+
+## 出撃の準備で選んだ部隊 id（空なら既定の編成）を覚える（変わったときだけ書く）。
+func choose_squad(id: String) -> void:
+	if id == squad_id:
+		return
+	squad_id = id
+	_save()
+
+
+func _save() -> void:
 	if store != null:
 		store.write(STORE_NAME, FORMAT_VERSION, to_data())
-	changed.emit()
 
 
 ## 並びのうち、クリアした話の数。

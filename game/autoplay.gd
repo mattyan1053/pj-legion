@@ -1622,14 +1622,67 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == &"sortie", "会話を飛ばしても、出撃の準備へ進まない")
 	var sortie: Node = app.current_scene()
+	# 「部隊を編成する」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
+	sortie.press_edit_decks()
+	await app.scene_changed
+	_expect(app.current_id() == &"decks" and app.context.run != null, "出撃の準備の「部隊を編成する」で、流れを保ったまま編成へ進まない")
+	var decks: Node = app.current_scene()
+	_expect(decks.is_detour() and decks.mode() == Story.RULES_ID and decks.back_label() == "出撃の準備へ戻る", "寄り道の編成が、ストーリー用でない（か、戻り先の文字が違う）")
+	decks.press_new()
+	for kind: UnitKind.Id in story.unlocked_kinds():
+		decks.hire(kind)
+	_expect(decks.can_save(), "寄り道の編成で、雇える駒で組んだ部隊を取っておけない")
+	decks.press_save()
+	var made: String = decks.list_selected()
+	decks.press_back()
+	await app.scene_changed
+	_expect(app.current_id() == &"sortie", "編成の「出撃の準備へ戻る」で、出撃の準備へ戻らない")
+	sortie = app.current_scene()
+	_expect(sortie.chosen_id() == made, "寄り道で取っておいた部隊が、出撃の準備で選ばれていない")
+	sortie.choose("")
 	var options: Array[String] = sortie.option_ids()
-	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃の準備で、既定の編成が選ばれていない")
+	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃の準備で、既定の編成を選べない")
 	var story_decks: Array = app.context.decks.for_rules(Story.RULES_ID)
 	_expect(options.size() == 1 + story_decks.size(), "出撃の準備に、ストーリー用の部隊が並ばない（か、対戦用が混ざった）")
 	for item: RefCounted in story_decks:
 		_expect(sortie.is_option_enabled(item.id) == item.playable(), "出せない部隊を選べる（か、出せる部隊を選べない）: %s" % item.name)
 		if item.playable():
 			sortie.choose(item.id)
+	var result: Node = await _win_story_battle(app, sortie, episode)
+	# 「部隊を選び直す」で出撃の準備へ戻り、同じ話をもう一度勝つ。
+	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
+	result.press_choose_squad()
+	await app.scene_changed
+	_expect(app.current_id() == &"sortie" and app.context.run != null, "決着の画面の「部隊を選び直す」で、出撃の準備へ戻らない")
+	result = await _win_story_battle(app, app.current_scene(), episode)
+	result.press_continue()
+	await app.scene_changed
+	_expect(app.current_id() == &"talk", "決着の画面の「次へ」で、あとの会話へ進まない")
+	talk = app.current_scene()
+	_expect(talk.line_count() == episode.AFTER.size() + episode.UNLOCKS.size(), "あとの会話の文の数が違う（最後に、解放した駒の知らせ）")
+	if not episode.UNLOCKS.is_empty():
+		talk.press_skip()
+		_expect(talk.line_index() == episode.AFTER.size() and talk.speaker() == "知らせ"
+				and talk.line_text().contains(UnitKind.display_name(episode.UNLOCKS[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
+	for i: int in talk.line_count() - talk.line_index():
+		talk.press_next()
+	await app.scene_changed
+	_expect(app.current_id() == &"episodes" and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
+	list = app.current_scene()
+	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
+	if Story.EPISODES.size() > 1:
+		_expect(list.is_card_enabled(Story.EPISODES[1]), "前の話をクリアしたのに、次の話を選べない")
+	_expect(list.roster_text().contains(UnitKind.display_name(episode.UNLOCKS[0])) if not episode.UNLOCKS.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
+	list.press_back()
+	await app.scene_changed
+	_expect(app.current_id() == &"title", "話の一覧の「タイトルへ戻る」で、タイトルへ戻らない")
+	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
+	_expect(story.unlocked_kinds().has(episode.UNLOCKS[0]) if not episode.UNLOCKS.is_empty() else true, "クリアしても、駒が増えていない")
+
+
+## 出撃の準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
+func _win_story_battle(app: Node, sortie: Node, episode: Script) -> Node:
+	var story: RefCounted = app.context.story
 	var chosen: Deck = sortie.chosen_deck()
 	sortie.press_sortie()
 	await app.scene_changed
@@ -1668,29 +1721,7 @@ func _visit_story(app: Node) -> void:
 			break
 		await get_tree().process_frame
 	_expect(result.can_continue() and result.new_board_stages().is_empty() and not result.can_go_to_setup(), "勝った話の決着の画面の行き先が違う（「次へ」が無い、か、選び直す行き先がある）")
-	result.press_continue()
-	await app.scene_changed
-	_expect(app.current_id() == &"talk", "決着の画面の「次へ」で、あとの会話へ進まない")
-	talk = app.current_scene()
-	_expect(talk.line_count() == episode.AFTER.size() + episode.UNLOCKS.size(), "あとの会話の文の数が違う（最後に、解放した駒の知らせ）")
-	if not episode.UNLOCKS.is_empty():
-		talk.press_skip()
-		_expect(talk.line_index() == episode.AFTER.size() and talk.speaker() == "知らせ"
-				and talk.line_text().contains(UnitKind.display_name(episode.UNLOCKS[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
-	for i: int in talk.line_count() - talk.line_index():
-		talk.press_next()
-	await app.scene_changed
-	_expect(app.current_id() == &"episodes" and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
-	list = app.current_scene()
-	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
-	if Story.EPISODES.size() > 1:
-		_expect(list.is_card_enabled(Story.EPISODES[1]), "前の話をクリアしたのに、次の話を選べない")
-	_expect(list.roster_text().contains(UnitKind.display_name(episode.UNLOCKS[0])) if not episode.UNLOCKS.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
-	list.press_back()
-	await app.scene_changed
-	_expect(app.current_id() == &"title", "話の一覧の「タイトルへ戻る」で、タイトルへ戻らない")
-	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
-	_expect(story.unlocked_kinds().has(episode.UNLOCKS[0]) if not episode.UNLOCKS.is_empty() else true, "クリアしても、駒が増えていない")
+	return result
 
 
 func _finish(message: String, code: int) -> void:

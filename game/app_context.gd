@@ -40,8 +40,6 @@ var sound: Node
 var match_choice: RefCounted = MatchChoice.new()
 ## いま進めている流れ（run.gd）。流れの外の場面にいるときは null。アプリが入れ、流れの外へ出たら捨てる。
 var run: RefCounted
-## ストーリーの出撃の準備で選んだ部隊（取っておいた部隊の id。空なら既定の編成）。アプリが起動している間だけ残る。
-var story_deck_id := ""
 ## 検査として動いているなら CHECK_AUTOPLAY か CHECK_SHOTS。人が遊んでいるなら空。
 var checking := &""
 ## 自動の対戦（autoplay.gd）。最初の対戦の場面が作る。2 つ目からの対戦の場面（ストーリーの通し）は、作らない。

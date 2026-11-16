@@ -191,6 +191,7 @@ func _ready() -> void:
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
 	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
+	_hud.result_screen().squad_pressed.connect(func() -> void: finished.emit(Run.PREVIOUS))
 	_hud.result_shown.connect(_on_result_shown)
 	_hud.minimap().pointed.connect(_on_minimap_pointed)
 	_hud.result_screen().overlays = context.overlays
@@ -396,7 +397,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_layout.clear_forecast()
 	_layout.reset_menu()
 	_hud.hide_result()
-	_hud.result_screen().set_destinations(source.stages(), source.can_open_setup())
+	_hud.result_screen().set_destinations(source.stages(), source.can_open_setup(), source.can_choose_squad())
 	context.resume_scene_music()  # 決着の曲のあとの「やり直す」でも、対戦の曲へ戻る
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
 	_refresh()

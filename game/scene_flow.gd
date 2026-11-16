@@ -29,7 +29,7 @@ const SCENES := {
 	},
 	&"decks": {
 		"script": "res://game/deck_screen.gd",
-		"next": {&"back": &"title"},
+		"next": {&"back": &"title"},  # 出撃の準備からの寄り道（流れの中）なら、「出撃の準備へ戻る」は Run.NEXT
 		"music": &"menu",
 	},
 	&"stage": {
@@ -49,7 +49,7 @@ const SCENES := {
 	},
 	&"sortie": {
 		"script": "res://game/sortie_screen.gd",
-		"next": {&"back": &"episodes"},  # 流れの中でだけ使う（ストーリーの出撃の準備。「出撃」は Run.NEXT で対戦へ）
+		"next": {&"back": &"episodes"},  # 流れの中でだけ使う（ストーリーの出撃の準備。「出撃」は Run.NEXT で対戦へ。「部隊を編成する」は流れに編成を差し込む）
 		"music": &"menu",
 	},
 	&"battle": {
