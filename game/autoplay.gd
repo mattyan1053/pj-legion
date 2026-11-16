@@ -385,6 +385,7 @@ func _queue_portal_and_spring_scene() -> void:
 	# 人の操作のとおり（マウスで駒を選び、ポータルのマスをクリック）: ポータルに止まり、メニューの「転移」で対のポータルへ移る。
 	_scripted.append(func() -> void: _click(walker.cell))
 	_scripted.append(func() -> void:
+		_expect(not _scene.menu_covers_move(), "動く前のメニューが、届くマスを隠した（小さな盤で、外へ出せるのに）")
 		var portal_color: Color = _scene.portal_paint_color(Vector2i(1, 1))
 		_expect(_scene.painted_color(Vector2i(1, 1)) == portal_color and _scene.painted_color(Vector2i(8, 1)) == portal_color,
 			"動ける範囲の塗りに、ポータルの対（入る・出る）が出ていない")
