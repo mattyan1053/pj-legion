@@ -51,14 +51,14 @@ const FIELDS := [
 		TAGS: "2 本の道 ・ ポータル",
 		NOTE: "中央を大きな壁がふさぎ、戦場は左右 2 本の道に分かれる。本陣は対角。\nどちらの道にも、上下をつなぐポータル。どちらで攻め、どちらで守るか。",
 	},
-	# 手で作ったマップ（ストーリーと同じ形）。まだ出さない（docs/cpu-ai.md の「いまの集計」）。
+	# 手で作ったマップ（ストーリーと同じ形）。部隊を変えた CPU どうしの釣り合いがめやすに入る（docs/cpu-ai.md の「いまの集計」）。
 	{
-		ID: RIDGE_PATH, MAP: RidgePath, LOOK: StageLook.STONE_WALLS, HIDDEN: true,
+		ID: RIDGE_PATH, MAP: RidgePath, LOOK: StageLook.STONE_WALLS,
 		TAGS: "小さな盤 ・ 2 本の道",
 		NOTE: "細長い小さな盤。真ん中の岩が尾根を左右 2 本の道に分け、どちらの道にも結晶泉と中ボス。\n本陣どうしが近く、すぐにぶつかる。押し込むか、道をふさいで迎え撃つか。",
 	},
 	{
-		ID: CRYSTAL_GORGE, MAP: CrystalGorge, LOOK: StageLook.CRYSTAL_FOREST, HIDDEN: true,
+		ID: CRYSTAL_GORGE, MAP: CrystalGorge, LOOK: StageLook.CRYSTAL_FOREST,
 		TAGS: "裂け目 ・ 橋 ・ ポータル",
 		NOTE: "盤の中ほどを結晶の裂け目が横切る。渡れるのは左右の端の橋と、真ん中のポータルだけ。本陣は対角。\n遠回りの橋か、敵陣のただ中へ出る近道のポータルか。",
 	},
