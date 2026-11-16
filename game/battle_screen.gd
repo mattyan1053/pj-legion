@@ -203,7 +203,7 @@ func _ready() -> void:
 	_hud.result_screen().overlays = context.overlays
 	_hud.result_screen().play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_talk = BattleTalk.new()
-	_hud.add_child(_talk)
+	_hud.add_talk_card(_talk)
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
 	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)

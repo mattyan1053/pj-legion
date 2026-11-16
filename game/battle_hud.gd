@@ -471,6 +471,13 @@ func place_menu(at: Vector2, from: Vector2) -> void:
 	_menu_line.points = PackedVector2Array([from, near])
 
 
+## 対戦の途中の会話の札（battle_talk.gd）を入れる。帯・駒のそばのメニュー・予測のパネル・進化の選択・決着の画面より下に描く
+## （札はクリックを受けないので、上に描くと、隠れたボタンを押せてしまう。札は左上の、上の帯の下にあり、帯とは重ならない）。
+func add_talk_card(card: Control) -> void:
+	add_child(card)
+	move_child(card, 0)
+
+
 ## メニューが画面に占める四角（出していなければ大きさ 0）。検査用。
 func menu_rect() -> Rect2:
 	return Rect2(_menu.position, _menu.get_combined_minimum_size()) if _menu.visible else Rect2()
