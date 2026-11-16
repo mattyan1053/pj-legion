@@ -491,10 +491,20 @@ func place_menu(at: Vector2, from: Vector2) -> void:
 
 
 ## 対戦の途中の会話の札（battle_talk.gd）を入れる。帯・駒のそばのメニュー・予測のパネル・進化の選択・決着の画面より下に描く
-## （札はクリックを受けないので、上に描くと、隠れたボタンを押せてしまう。札は左上の、上の帯の下にあり、帯とは重ならない）。
+## （札はクリックを受けないので、上に描くと、隠れたボタンを押せてしまう。札は上の帯のすぐ下の真ん中にあり、帯とは重ならない）。
+## 駒のそばのメニューか予測のパネルが札に重なったら、札を薄くする（下のメニューやパネルが読めるように）。
 func add_talk_card(card: Control) -> void:
 	add_child(card)
 	move_child(card, 0)
+	card.obstacles = func() -> Array[Rect2]: return [menu_rect(), forecast_rect()]
+
+
+## 上の帯のすぐ下に出す、決まった枠（左の勝ち方の札、右の視点の案内）の四角（出ていなければ大きさ 0）。検査用。
+func top_tag_rects() -> Array[Rect2]:
+	return [
+		_goal_panel.get_global_rect() if _goal_panel.visible else Rect2(),
+		_guide_panel.get_global_rect() if _guide_panel.visible else Rect2(),
+	]
 
 
 ## メニューが画面に占める四角（出していなければ大きさ 0）。検査用。
