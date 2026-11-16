@@ -26,6 +26,9 @@ var win_conditions: Array[Array] = [STANDARD_WIN_CONDITIONS.duplicate(), STANDAR
 ## 「守り切る」（GameWonEvent.Reason.TURNS_HELD）のターン数。このターンが終わるまで決着しなければ、守り切る側の勝ち。
 ## 0 なら守り切るは働かない。対戦を作るとき、対戦（Battle.hold_turns）へ写す。
 var hold_turns := 0
+## プレイヤーごとの、対戦の始めの必殺技のゲージ（0 から Ults.GAUGE_MAX。docs/tactical-ult.md）。既定は 0。
+## 対戦を作るとき、対戦（Battle.ult_gauge）へ写す。必殺技の使い方を教える話が、ゲージがたまる手前から始めるのに使う。
+var start_gauge: Array[int] = [0, 0]
 
 ## いまの対戦モードの勝ち方: 敵の将を倒す、敵の本陣を占拠し続ける。
 const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
@@ -82,6 +85,11 @@ func hold_for(side: Unit.Side, turns: int) -> void:
 	conditions.append(GameWonEvent.Reason.TURNS_HELD)
 	set_win_conditions(side, conditions)
 	hold_turns = turns
+
+
+## side の、対戦の始めの必殺技のゲージを amount にする（0 から Ults.GAUGE_MAX に収める）。
+func set_start_gauge(side: Unit.Side, amount: int) -> void:
+	start_gauge[side] = clampi(amount, 0, Ults.GAUGE_MAX)
 
 
 ## side の勝ちの条件の列（写し）。

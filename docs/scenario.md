@@ -21,6 +21,7 @@
 | `fixed_decks` | プレイヤーごとの決め打ちの部隊（`Deck`）。`null` なら、対戦の設定で選んだ編成を出す |
 | `win_conditions` | プレイヤーごとの勝ちの条件の列（`GameWonEvent.Reason`。`docs/win-conditions.md`）。既定は両方とも `STANDARD_WIN_CONDITIONS`（将の撃破と本陣の占拠） |
 | `hold_turns` | 「守り切る」のターン数（`docs/win-conditions.md`）。0 なら働かない |
+| `start_gauge` | プレイヤーごとの、対戦の始めの必殺技のゲージ（`docs/tactical-ult.md`）。既定は 0。`set_start_gauge(プレイヤー, 量)` で決める（0 から `Ults.GAUGE_MAX` に収める）。対戦を作るときに対戦へ写す。対戦モードは使わない |
 
 - 盤は `make_board(種)` が作る。作れなければ `null`（`can_make_board()`）。生成は、大きさが `BoardGenerator.MIN_SIZE` より小さいと作れない。
   手で作ったマップは、マップの検査（`HandMap.problems()`）を通らないと作れない。種と `board_size` は使わず、いつも同じ盤になる。
