@@ -401,3 +401,67 @@ class CpuMatchSetup:
 		Deployment.deploy(battle, Unit.Side.PLAYER1, CpuDeck.build(UnitKind.Army.MILITARY))
 		Deployment.deploy(battle, Unit.Side.PLAYER2, CpuDeck.build(UnitKind.Army.FANTASY))
 		return battle
+
+
+# ---- 勝ちの条件（rules/cpu/win_conditions_cpu.gd） ----
+
+
+func test_raider_does_not_go_for_the_enemy_hq_when_capture_cannot_win() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.KING, P1, HQ1)
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(15, 4))
+	battle.win_conditions[P1].erase(GameWonEvent.Reason.HQ_CAPTURED)
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(10, 0))
+	_play_phase(battle)
+	assert_true(commando.cell != HQ2, "占拠で勝てないのに、敵の本陣へ乗った")
+
+
+func test_holding_side_waits_near_its_hq_instead_of_chasing_far_enemies() -> void:
+	var battle := _battle_with_kings()
+	battle.win_conditions[P1].append(GameWonEvent.Reason.TURNS_HELD)
+	battle.hold_turns = 8
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(2, 3))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(14, 1))
+	_play_phase(battle)
+	assert_true(Combat.distance(trooper.cell, HQ1) <= CpuWinPlan.HOLD_REACH, "守る側が、遠くの敵へ出ていった")
+
+
+func test_holding_side_still_strikes_enemies_near_its_hq() -> void:
+	var battle := _battle_with_kings()
+	battle.win_conditions[P1].append(GameWonEvent.Reason.TURNS_HELD)
+	battle.hold_turns = 8
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(2, 2))
+	var intruder := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(5, 2))
+	_play_phase(battle)
+	assert_true(intruder.hp < intruder.max_hp(), "本陣の近くの敵を放っておいた")
+
+
+func test_holding_side_chases_the_enemy_inside_the_radius_not_a_closer_one_outside() -> void:
+	var battle := _battle_with_kings()
+	battle.win_conditions[P1].append(GameWonEvent.Reason.TURNS_HELD)
+	battle.hold_turns = 8
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(11, 1))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(11, 4))  # 本陣から 11 マス。近いが、追わない
+	var inside := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(7, 1))  # 本陣から 10 マス
+	var cpu := CpuPlayer.new()
+	cpu._begin(battle)
+	assert_eq(cpu._enemy_to_hold_off(trooper), inside)
+
+
+func test_win_plan_reads_the_conditions() -> void:
+	var battle := _battle_with_kings()
+	assert_true(CpuWinPlan.raids_hq(battle, P1))
+	assert_false(CpuWinPlan.holds(battle, P2))
+	assert_false(CpuWinPlan.rushes(battle, P1))
+	battle.win_conditions[P2].append(GameWonEvent.Reason.TURNS_HELD)
+	battle.hold_turns = 6
+	assert_true(CpuWinPlan.holds(battle, P2))
+	assert_false(CpuWinPlan.rushes(battle, P1), "まだ残りのターンが多い")
+	battle.turn = 6 - CpuWinPlan.RUSH_TURNS + 1
+	assert_true(CpuWinPlan.rushes(battle, P1))
+	assert_false(CpuWinPlan.rushes(battle, P2), "守る側は急がない")
+	battle.turn = 5  # 残り 2 ターン。占拠の 3 回に届かない
+	assert_false(CpuWinPlan.raids_hq(battle, P1))
+	assert_true(CpuWinPlan.raids_hq(battle, P2), "守る側の占拠は、ターンに縛られない")
+	battle.capture_turns[P1] = 1
+	assert_true(CpuWinPlan.raids_hq(battle, P1), "もう 1 回占拠していれば、まだ間に合う")
