@@ -169,3 +169,76 @@ func test_threat_cells_are_the_threat_range_of_the_rules() -> void:
 	assert_eq(Queries.threat_cells(battle, enemy), Threat.of(battle, enemy.id).cells())
 	assert_true(Queries.threat_cells(battle, enemy).has(Vector2i(2, 1)), "移動 3 + 射程 4")
 	assert_true(Queries.threat_cells(battle, null).is_empty())
+
+
+# ---- ポータルの転移 ----
+
+
+func _portal_battle() -> Battle:
+	var battle := Maps.battle([
+		"..........",
+		"..........",
+		"..........",
+		"..........",
+	])
+	battle.board.add_portal_pair(Vector2i(1, 1), Vector2i(8, 1))
+	return battle
+
+
+## 組をルールに順に渡し、どれも受け付けられたかを返す。
+func _apply_all(battle: Battle, actions: Array[BattleAction]) -> bool:
+	for action in actions:
+		if not battle.apply(action).accepted:
+			return false
+	return true
+
+
+func test_warp_after_stepping_onto_a_portal() -> void:
+	var battle := _portal_battle()
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 1))
+	assert_eq(Queries.warp(battle, unit), [], "ポータルの上にいない")
+	battle.apply(MoveAction.new(unit.id, Vector2i(1, 1)))
+	assert_eq(Queries.warp(battle, unit), [Vector2i(8, 1), false])
+	assert_true(_apply_all(battle, Queries.warp_actions(battle, unit)), "ルールが受け付けなかった")
+	assert_eq(unit.cell, Vector2i(8, 1))
+	assert_eq(battle.acting_unit_id, unit.id, "転移のあとも、行動の途中（攻撃・待機・取り消しを選ぶ）")
+	assert_eq(Queries.warp(battle, unit), [], "もう転移した（行き先のポータルからは、戻れない）")
+
+
+func test_warp_from_a_portal_at_the_start_of_the_phase() -> void:
+	var battle := _portal_battle()
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 1))
+	assert_eq(Queries.warp(battle, unit), [Vector2i(8, 1), false])
+	assert_eq(Queries.warp_actions(battle, unit).size(), 1, "動いていなければ、移動だけ")
+	assert_true(_apply_all(battle, Queries.warp_actions(battle, unit)))
+	assert_eq(unit.cell, Vector2i(8, 1))
+
+
+func test_no_warp_when_the_exit_is_taken() -> void:
+	var battle := _portal_battle()
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 1))
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(8, 1))
+	battle.apply(MoveAction.new(unit.id, Vector2i(1, 1)))
+	assert_eq(Queries.warp(battle, unit), [])
+	assert_true(Queries.warp_actions(battle, unit).is_empty())
+
+
+func test_no_warp_from_a_portal_in_an_enemy_zone() -> void:
+	var battle := _portal_battle()
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(2, 1))  # (1, 1) は支配領域
+	battle.apply(MoveAction.new(unit.id, Vector2i(1, 1)))
+	assert_eq(Queries.warp(battle, unit), [], "敵の支配領域で止まったポータルからは、転移できない")
+
+
+func test_cruise_warp_keeps_cruising() -> void:
+	var battle := Maps.battle([
+		"..........",
+		"..........",
+	])
+	battle.board.add_portal_pair(Vector2i(5, 0), Vector2i(9, 1))
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))  # 移動力 3。巡航で 6
+	battle.apply(MoveAction.new(unit.id, Vector2i(5, 0), true))
+	assert_eq(Queries.warp(battle, unit), [Vector2i(9, 1), true])
+	assert_true(_apply_all(battle, Queries.warp_actions(battle, unit)))
+	assert_true(unit.cruised)

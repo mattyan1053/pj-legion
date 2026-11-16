@@ -178,9 +178,16 @@ static func event_players() -> Dictionary:
 
 
 ## 起きたことを、起きた順に再生する。中立のフェーズの中身だけは、見せ方の単位（場面）に分けて再生する。
-func play_all(events: Array[BattleEvent]) -> void:
+## quiet_until_warp_from がマスなら、そのポータルから出る転移（UnitWarpedEvent）より前のものは、見せずに済ませる
+## （駒は行き着いた位置へすぐ置き、ログには残す）。画面がポータルへ動いたあとの転移を「移動の取り消し + 行き先への移動」として
+## ルールに渡すときに使う（戻って歩き直すところは見せない。歩き直す道が別のポータルを通っていても、それも見せない）。
+func play_all(events: Array[BattleEvent], quiet_until_warp_from := Vector2i(-1, -1)) -> void:
 	_after_skill = false
 	var i := 0
+	if quiet_until_warp_from != Vector2i(-1, -1):
+		while i < events.size() and not (events[i] is UnitWarpedEvent and (events[i] as UnitWarpedEvent).from == quiet_until_warp_from):
+			_settle(events[i])
+			i += 1
 	while i < events.size():
 		var event := events[i]
 		await _play(event)
@@ -242,6 +249,19 @@ func _play(event: BattleEvent) -> void:
 	played[kind] = played.get(kind, 0) + 1
 	battle_log.feed(event)
 	await call(_players[kind], event)
+
+
+## 見せずに済ませる（play_all の quiet_until_warp_from）。数えてログに食わせ、動いた駒は行き着いたマスへすぐ置く。
+## そのほかの見た目（状態の印、上の帯）は、再生のあとの作り直しが今の盤から描く。
+func _settle(event: BattleEvent) -> void:
+	played[event.get_script()] = played.get(event.get_script(), 0) + 1
+	battle_log.feed(event)
+	var moved := event as UnitMovedEvent
+	var undone := event as MoveUndoneEvent
+	if moved != null and not moved.path.is_empty():
+		_view(moved.unit_id).position = BoardView.cell_center(moved.path[-1])
+	elif undone != null:
+		_view(undone.unit_id).position = BoardView.cell_center(undone.to)
 
 
 func _play_moved(event: UnitMovedEvent) -> void:
