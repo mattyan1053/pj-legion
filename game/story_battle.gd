@@ -32,6 +32,11 @@ func look() -> StringName:
 	return episode.LOOK
 
 
+## 話のデータの MUSIC があれば、その曲（守り切る話の緊迫した曲など）。無ければ、盤の見た目の曲。
+func music() -> StringName:
+	return music_of(episode)
+
+
 func can_continue(won: bool) -> bool:
 	return won
 
@@ -114,6 +119,17 @@ static func wins_of(of_episode: Script) -> Array[GameWonEvent.Reason]:
 ## 対戦の途中の会話（CUES）。無い話は空（台詞なし）。
 static func cues_of(of_episode: Script) -> Array:
 	return _constant(of_episode, &"CUES", [])
+
+
+## 話 of_episode の対戦の曲（MUSIC。無ければ、盤の見た目 LOOK の曲）。
+static func music_of(of_episode: Script) -> StringName:
+	var track: StringName = _constant(of_episode, &"MUSIC", &"")
+	return track if track != &"" else SoundCatalog.battle_music(of_episode.LOOK)
+
+
+## 話 of_episode の会話の場面の曲（TALK_MUSIC）。無ければ空（場面の表の曲。scene_flow.gd の talk）。
+static func talk_music_of(of_episode: Script) -> StringName:
+	return _constant(of_episode, &"TALK_MUSIC", &"")
 
 
 static func _constant(of_episode: Script, name: StringName, fallback: Variant) -> Variant:
