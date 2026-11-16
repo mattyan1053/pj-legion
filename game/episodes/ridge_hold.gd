@@ -9,6 +9,7 @@ extends RefCounted
 
 const RidgePath := preload("res://rules/maps/ridge_path.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
 
 ## 話の id（クリアの記録に書く。変えると、記録が外れる）。
 const ID := &"ridge_hold"
@@ -66,6 +67,12 @@ const AFTER := [
 	[0, "追っ手の残りは、谷の手前の渓谷へ逃げた。"],
 ]
 
+
+## 対戦の途中の会話（docs/story.md の「対戦の途中の会話」）: [きっかけ, 値, 話し手（0 か 1）, 文] の列。きっかけは battle_cues.gd。
+const CUES := [
+	[BattleCues.TURN, 8, 0, "援軍まで、あと 3 ターンだ。持ちこたえろ。"],
+	[BattleCues.TURN, 10, 1, "これが最後だ。全員で押し込め。"],
+]
 
 ## 敵の部隊（決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
 static func enemy_deck() -> Deck:

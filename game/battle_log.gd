@@ -200,6 +200,12 @@ static func cell_text(cell: Vector2i) -> String:
 	return "(%d, %d)" % [cell.x, cell.y]
 
 
+## 対戦の途中の会話の台詞を 1 行に書く（battle_cues.gd。イベントではないので、画面が台詞を出すときに呼ぶ）。
+func say(speaker: String, text: String, side: int) -> void:
+	_group = null
+	_line("%s「%s」" % [speaker, text], side)
+
+
 # ---- 行の足し方 ----
 
 

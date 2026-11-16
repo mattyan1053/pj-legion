@@ -9,6 +9,7 @@ extends RefCounted
 
 const RidgePath := preload("res://rules/maps/ridge_path.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
 
 ## 話の id（クリアの記録に書く。変えると、記録が外れる）。
 const ID := &"ridge_ambush"
@@ -55,6 +56,12 @@ const AFTER := [
 	[0, "心強い。谷へ急ごう。"],
 ]
 
+
+## 対戦の途中の会話（docs/story.md の「対戦の途中の会話」）: [きっかけ, 値, 話し手（0 か 1）, 文] の列。きっかけは battle_cues.gd。
+const CUES := [
+	[BattleCues.TURN, 1, 1, "かかったな。尾根の上から挟み込め。"],
+	[BattleCues.FALLEN, 0, 0, "一人やられた。固まって進め。"],
+]
 
 ## 敵の部隊（決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
 static func enemy_deck() -> Deck:

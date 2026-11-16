@@ -7,6 +7,7 @@ extends RefCounted
 ## ここはノードに依存しない（テストから呼べる）。
 
 const StageLook := preload("res://game/stage_look.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
 
 
 ## 種 battle_seed の対戦の設定。対戦の画面は、これの create_battle() で対戦を作る。
@@ -61,6 +62,12 @@ func can_continue(_won: bool) -> bool:
 ## 決着の画面に「部隊を選び直す」を出すか（押すと、流れ（run.gd）の 1 つ前の場面、出撃の準備へ戻る）。
 func can_choose_squad() -> bool:
 	return false
+
+
+## 対戦の途中の会話（battle_cues.gd）。新しい対戦を始めるたびに、新しく作る（台詞は 1 回の対戦で 1 度ずつ）。
+## 既定は台詞なし。
+func talk_cues() -> RefCounted:
+	return BattleCues.new()
 
 
 ## CPU と対戦して人が勝った（決着の画面が出たとき）。context は app_context.gd。

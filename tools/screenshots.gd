@@ -127,6 +127,7 @@ const SCENES := {
 	"story_rout_sortie": "ストーリー: 全滅させる話（第 4 話）の出撃の準備（2 つ目の手で作ったマップ「結晶の渓谷」。勝ち方は「敵を全滅させれば勝ち」だけ）",
 	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の渓谷を、双子結晶の見た目で）",
 	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
+	"story_battle_talk": "ストーリー: 対戦の途中の会話（第 2 話の始めの台詞。左上の札。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
 ## 場面を作る対戦の最初の種。
@@ -1511,6 +1512,17 @@ func _scene_story_rout_wide() -> bool:
 	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
 	_aim(OrbitCamera.max_distance_for(size), 0.0, OrbitCamera.MIN_PITCH)
 	return true
+
+
+## 対戦の途中の会話の札（ターン 1 の台詞を持つ最初の話の、対戦の始め）。
+func _scene_story_battle_talk() -> bool:
+	for i in Story.EPISODES.size():
+		var constants: Dictionary = Story.EPISODES[i].get_script_constant_map()
+		if constants.has("CUES") and constants["CUES"].any(func(cue: Array) -> bool: return cue[0] == &"turn" and cue[1] == 1):
+			if not await _story_battle(i):
+				return false
+			return _scene.talk_line() != null
+	return false
 
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。

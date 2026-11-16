@@ -55,6 +55,13 @@ func can_choose_squad() -> bool:
 	return true
 
 
+## 話のデータの CUES（いつ・だれが・何と言うか）。無い話は台詞なし。
+func talk_cues() -> RefCounted:
+	if not episode.get_script_constant_map().has(&"CUES"):
+		return BattleCues.new()
+	return BattleCues.new(episode.CUES, episode.SPEAKERS)
+
+
 func record_win(context: RefCounted) -> void:
 	if context != null and context.story != null:
 		context.story.clear(episode.ID)
