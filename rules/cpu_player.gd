@@ -191,6 +191,9 @@ var _danger_weight := 0.0
 var _idle_danger_weight := 0.0
 ## 敵が自分の本陣の近く（GUARD_RADIUS 以内）にいるか。
 var _hq_in_danger := false
+## 勝ちの条件の読み（rules/cpu/win_conditions_cpu.gd）。守る側か、攻める側で急ぐか。
+var _holding := false
+var _rushing := false
 var _lethal_penalty := 0.0
 var _stand_off := false
 ## いま考えている駒（奇襲）が離れすぎないようにする味方（前衛・後衛）のマス。空なら、見ない。
@@ -279,10 +282,13 @@ func _begin(battle: Battle) -> void:
 	var board := battle.board
 	var has_hqs := board.hq_cells.size() >= 2
 	_my_hq = board.hq_cells[_me] if has_hqs else Board.NO_CELL
-	_foe_hq = board.hq_cells[_foe] if has_hqs else Board.NO_CELL
+	# 本陣の占拠で勝てないなら、敵の本陣は目指すマスでない。
+	_foe_hq = board.hq_cells[_foe] if has_hqs and CpuWinPlan.raids_hq(battle, _me) else Board.NO_CELL
+	_holding = CpuWinPlan.holds(battle, _me)
+	_rushing = CpuWinPlan.rushes(battle, _me)
 	_hq_in_danger = false
 	var keeper := battle.unit_at(_my_hq) if has_hqs else null
-	if has_hqs and (keeper == null or keeper.kind != UnitKind.Id.KING):
+	if has_hqs and CpuWinPlan.guards_hq(battle, _me) and (keeper == null or keeper.kind != UnitKind.Id.KING):
 		for unit in battle.units:
 			if unit.side == _foe and Combat.distance(unit.cell, _my_hq) <= GUARD_RADIUS:
 				_hq_in_danger = true
@@ -781,7 +787,7 @@ func _build_hunts() -> void:
 		_rival_strike[boss.id] = strike
 		if near_rivals > 0 and boss.hp < boss.max_hp() and near_rivals * HUNT_TURNS >= boss.hp:
 			_rival_hunts[boss.id] = true
-		if home_threat or _battle.turn < HUNT_FROM_TURN:
+		if home_threat or _battle.turn < HUNT_FROM_TURN or _holding or _rushing:
 			continue
 		var need := ceili(boss.hp * HUNT_MARGIN)
 		# 加われる駒の全部で倒せるなら、届いた駒は削ってよい。
@@ -922,6 +928,8 @@ func _set_goal(unit: Unit) -> void:
 	_goal_weight = style[_GOAL]
 	_danger_weight = style[_DANGER]
 	var bold := clampf(float(_battle.turn - BOLD_FROM_TURN) / (BOLD_BY_TURN - BOLD_FROM_TURN), 0.0, 1.0)
+	if _rushing:
+		bold = 1.0  # 守り切られる前に、踏み込む
 	_idle_danger_weight = lerpf(style[_IDLE_DANGER], minf(style[_DANGER], style[_IDLE_DANGER]), bold)
 	_lethal_penalty = style[_LETHAL]
 	_stand_off = role == UnitKind.Role.REARGUARD
@@ -930,6 +938,18 @@ func _set_goal(unit: Unit) -> void:
 	_goal_reach = 0
 	if unit.kind == UnitKind.Id.KING and not _lone_king:
 		pass
+	elif _holding and role != UnitKind.Role.HEALER:
+		# 守る側: 本陣の近くに入った敵だけを追い、ほかは本陣のそばで待つ。
+		var enemy := _enemy_to_chase(unit)
+		if enemy != null and _my_hq != Board.NO_CELL and Combat.distance(enemy.cell, _my_hq) <= CpuWinPlan.HOLD_RADIUS:
+			goal = enemy.cell
+			_goal_reach = unit.attack_range()
+		else:
+			_goal_reach = CpuWinPlan.HOLD_REACH
+	elif _rushing and role != UnitKind.Role.HEALER and _foe_king() != null and not _can_raid_hq(unit):
+		# 攻める側で、残りのターンが少ない: 敵の将へ向かう。
+		goal = _foe_king().cell
+		_goal_reach = unit.attack_range()
 	elif role == UnitKind.Role.RAIDER:
 		var prey := _prey(unit)
 		var boss := _boss_to_hunt(unit)
@@ -963,6 +983,14 @@ func _set_goal(unit: Unit) -> void:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
 	_goal_steps = _steps_from(goal)
+
+
+## 相手の将。いなければ null。
+func _foe_king() -> Unit:
+	for other in _battle.units:
+		if other.side == _foe and other.kind == UnitKind.Id.KING:
+			return other
+	return null
 
 
 ## 自分の軍に、戦える駒（前衛・後衛・奇襲）が残っているか。
