@@ -37,6 +37,9 @@ func test_attack_damage_and_kill_go_to_the_attacker() -> void:
 	assert_eq(stats.sides[P1].kills, 1)
 	assert_eq(stats.sides[P2].losses, 1)
 	assert_eq(stats.sides[P2].damage, 0)
+	assert_eq(stats.units[paladin.id].damage_taken, hit.amount + last.amount)
+	assert_eq(stats.sides[P2].damage_taken, hit.amount + last.amount)
+	assert_eq(stats.sides[P1].damage_taken, 0)
 
 
 func test_neutral_damage_and_kills_are_counted_apart() -> void:
@@ -51,6 +54,21 @@ func test_neutral_damage_and_kills_are_counted_apart() -> void:
 	assert_eq(stats.units[sniper.id].neutral_kills, 1)
 	assert_eq(stats.units[sniper.id].kills, 0)
 	assert_eq(stats.sides[P1].neutral_kills, 1)
+	assert_eq(stats.units[minion.id].damage_taken, 0)
+
+
+## 受けたダメージは、敵のプレイヤーの駒からのものだけ（与えたダメージの裏返し）。中立の駒からのものは数えない。
+func test_damage_from_neutrals_is_not_counted_as_taken() -> void:
+	var battle := Maps.battle(["......"])
+	var minion := battle.add_unit(UnitKind.Id.MINION, NEUTRAL, Vector2i(0, 0))
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 0))
+	var stats := BattleStats.new(battle)
+	var hit := Hit.resolve(minion, paladin, 5, UnitDamagedEvent.Cause.ATTACK)
+	hit.apply()
+	stats.feed(AttackDamagedEvent.new(hit))
+	assert_true(paladin.hp < paladin.max_hp(), "中立の駒の攻撃が当たっていない")
+	assert_eq(stats.units[paladin.id].damage_taken, 0)
+	assert_eq(stats.sides[P1].damage_taken, 0)
 
 
 func test_barrel_blast_counts_for_the_attacker_except_on_allies() -> void:
@@ -74,6 +92,8 @@ func test_barrel_blast_counts_for_the_attacker_except_on_allies() -> void:
 	assert_eq(stats.units[sniper.id].damage, on_enemy)
 	assert_eq(stats.units[sniper.id].kills, 1)
 	assert_eq(stats.sides[P1].losses, 0)
+	assert_eq(stats.units[enemy.id].damage_taken, on_enemy)
+	assert_eq(stats.units[ally.id].damage_taken, 0)
 
 
 func test_one_fireball_can_kill_several_units() -> void:
@@ -243,8 +263,9 @@ func test_long_side_totals_match_the_unit_records_on_a_generated_stage() -> void
 ## 陣営ごとに、駒の戦績の和が陣営の合計と合うこと。どちらの陣営もダメージを与えていること。
 func _assert_side_totals(stats: BattleStats) -> void:
 	for side: Unit.Side in [P1, P2]:
-		var totals := [0, 0, 0, 0, 0]
+		var totals := [0, 0, 0, 0, 0, 0]
 		for record in stats.records_of(side):
+			totals[5] += record.damage_taken
 			totals[0] += record.damage
 			totals[1] += record.kills
 			totals[2] += record.neutral_kills
@@ -253,6 +274,9 @@ func _assert_side_totals(stats: BattleStats) -> void:
 		var side_record := stats.sides[side]
 		assert_eq(totals, [
 			side_record.damage, side_record.kills, side_record.neutral_kills, side_record.healing, side_record.skill_uses,
+			side_record.damage_taken,
 		])
 		assert_true(side_record.damage > 0, "ダメージを与えていない")
+		# 受けたダメージは、相手の与えたダメージの裏返し。
+		assert_eq(side_record.damage_taken, stats.sides[1 - side].damage)
 
