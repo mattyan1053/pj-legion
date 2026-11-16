@@ -9,7 +9,7 @@ extends SceneTree
 ##   --max-turns=T   このターンを超えたら打ち切る（既定 60）
 ##   --decks=auto    編成。auto = CPU の編成（CpuDeck。予算に収まる）、even = 両軍とも同じ役割の 6 体・装備なし（予算は見ない）
 ##   --pairings=all  軍の組み合わせ。all = 4 通りを順に、mixed = 軍の違う 2 通り（先手を入れ替える）だけ
-##   --rival=PATH    別の版の CPU（スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
+##   --rival=REV     別の版の CPU（git のリビジョンか、スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
 ##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、ステージ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
 ##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
 ##   --stage=N       このステージだけを回す（1〜3）。配置を見るときに、1 つのステージの標本を増やす
@@ -235,12 +235,11 @@ func _initialize() -> void:
 	var no_reward: bool = args.get("no-reward", "0") == "1"
 	var rival: RefCounted = null
 	if args.has("rival"):
-		var script: GDScript = load(args["rival"])
-		if script == null:
-			printerr("--rival のスクリプトを読めない: %s" % args["rival"])
+		rival = CpuMatch.load_rival(args["rival"])
+		if rival == null:
+			printerr("--rival の CPU を読めない: %s" % args["rival"])
 			quit(1)
 			return
-		rival = script.new()
 	# いまの CPU と別の版の対戦の [いまの CPU の勝ち, 別の版の勝ち, 決着しなかった局]。全体と、ステージごと。
 	var versus: Array[int] = [0, 0, 0]
 	var versus_by_stage: Dictionary[int, Array] = {}

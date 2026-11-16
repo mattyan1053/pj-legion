@@ -9,6 +9,8 @@ class_name CpuSkillEstimate
 ##
 ## スキルを足したら、ここの ESTIMATES に 1 行と、ファイルを 1 つ足す（載せ忘れは tests/rules/test_enum_tables.gd が見つける）。
 ## CpuPlayer の考えている途中の状態（危険の表、立つマスなど）を読むので、CpuPlayer の _ で始まる変数とメソッドに触る。
+## 受け取る cpu は CpuPlayer と型を付けない（Variant）。別の版の CPU（docs/cpu-ai.md の「別の版と比べる」）も、
+## 同じ見積もりを使うため。cpu から読んだ値は、受ける変数に型を書く。
 
 const ESTIMATES := {
 	Skill.Id.TACTICAL_BARRICADE: preload("res://rules/cpu/tactical_barricade_cpu.gd"),
@@ -33,10 +35,10 @@ static func of(skill: Skill.Id) -> CpuSkillEstimate:
 
 
 ## 対象に選ぶ価値のありそうなマスの集合。cells は、駒が通常の移動で止まれるマス（-> 立つマスの価値）。
-func targets(_cpu: CpuPlayer, _unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(_cpu: Variant, _unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	return {}
 
 
 ## 使った結果の、イベントだけでは決まらない価値。sim は使ったあとの複製。
-func value(_cpu: CpuPlayer, _used: SkillUsedEvent, _sim: Battle) -> float:
+func value(_cpu: Variant, _used: SkillUsedEvent, _sim: Battle) -> float:
 	return 0.0

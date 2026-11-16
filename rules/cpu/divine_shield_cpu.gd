@@ -12,7 +12,7 @@ const COVER_RATE := 0.75
 
 ## バリアを張る価値のありそうなマス（自分のマスが対象）: 立てるマスのうち、次の相手の番に攻撃されうるマスを、
 ## 立つマスの価値の高い順に TRIES か所。いまのマスは、攻撃されうるなら必ず入れる。
-func targets(cpu: CpuPlayer, unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(cpu: Variant, unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var wanted: Dictionary[Vector2i, bool] = {}
 	if Statuses.blocking(unit) != -1:
 		return wanted
@@ -31,11 +31,11 @@ func targets(cpu: CpuPlayer, unit: Unit, cells: Dictionary[Vector2i, float]) -> 
 
 ## バリアを付けた価値。次の相手の番に、いまのマスの自分を攻撃できる敵がいれば、防げる 1 回ぶんを見込む
 ## （相手は弱い攻撃で先にはがすので、届く攻撃のうち、いちばん弱いもの）。攻撃されそうになければ 0（バリアは期限で消える）。
-func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
+func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	cpu._build_threats()
-	var unit := cpu._battle.unit_by_id(used.unit_id)
+	var unit: Unit = cpu._battle.unit_by_id(used.unit_id)
 	if Statuses.blocking(unit) != -1:
 		return 0.0
 	var shielded := sim.unit_by_id(used.unit_id)
-	var saved := cpu._threat_at(unit, shielded.cell, 0) - cpu._threat_at(shielded, shielded.cell, 0)
+	var saved: int = cpu._threat_at(unit, shielded.cell, 0) - cpu._threat_at(shielded, shielded.cell, 0)
 	return COVER_RATE * CpuPlayer.DAMAGE_VALUE * mini(saved, unit.hp)
