@@ -77,6 +77,8 @@ class Outcome:
 	var boss_damage: Dictionary[int, Array] = {}
 	## 中ボスの駒の番号 -> 最後に受けたダメージのあとの HP（止めの一撃で実際に減った HP を出すため）。
 	var boss_hp: Dictionary[int, int] = {}
+	## 中ボスの駒の番号 -> 止めの一撃で実際に減った HP。
+	var boss_finish: Dictionary[int, int] = {}
 	## 中ボスの駒の番号 -> プレイヤーが初めて削った時点の [ターン, プレイヤーごとの戦力]（狩りが始まった時点。army_hp）。
 	var boss_first_hit: Dictionary[int, Array] = {}
 
@@ -96,6 +98,8 @@ class BossFall:
 	## その中ボスから実際に減らした HP（駒の攻撃とスキル。止めの余りは数えない）。倒した側と、その相手。
 	var slayer_damage := 0
 	var rival_damage := 0
+	## 止めの一撃で実際に減った HP（slayer_damage のうち。樽の爆発の止めは 0）。
+	var finish_damage := 0
 	## 倒れた時点の戦力（将を除くプレイヤーの駒の HP の合計。CpuMatch.army_hp）。倒した側と、その相手。
 	var slayer_hp := 0
 	var rival_hp := 0
@@ -124,11 +128,25 @@ class BossFall:
 	func is_steal() -> bool:
 		return rival_damage > slayer_damage
 
+	## 倒した側の、削った量の分け前（0〜1。止めの一撃を含む）。
+	func damage_share() -> float:
+		return float(slayer_damage) / maxi(1, slayer_damage + rival_damage)
+
+	## 削った量の少ない側の止めか（分け前が LOW_SHARE より小さい）。
+	func is_low_share() -> bool:
+		return damage_share() < LOW_SHARE
+
+	## 止めの一撃のほかに、倒した側が 1 も削っていないか（相手が削った中ボスの、止めだけ）。
+	func is_finish_only() -> bool:
+		return slayer_damage == finish_damage and rival_damage > 0
+
 
 ## 中ボスが倒れたとき、「そばにいた」と数える距離（マンハッタン）。中ボスの届く距離（縄張り 4 + 射程 2）と同じ。
 const CONTEST_RADIUS := 6
 ## 戦力の分け前が 0.5 からこれ以内なら「戦力が互角」と数える（BossFall.hp_share）。
 const EVEN_SHARE := 0.05
+## 倒した側の削った量の分け前がこれより小さければ、「削った量の少ない側の止め」と数える（BossFall.is_low_share）。
+const LOW_SHARE := 0.3
 
 
 ## 倒された駒 1 体の倒され方（スナイパーが「何もできずに落ちる」かを見る。docs/cpu-ai.md の「集計の道具」）。
@@ -275,6 +293,8 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 						outcome.boss_first_hit[hit.unit_id] = [battle.turn, army_hp(battle, 0), army_hp(battle, 1)]
 					if source_side != Unit.Side.NEUTRAL:
 						outcome.boss_damage.get_or_add(hit.unit_id, [0, 0])[source_side] += lost
+						if hit.hp == 0:
+							outcome.boss_finish[hit.unit_id] = lost
 	if event is SkillDamagedEvent:
 		outcome.skill_hits[(event as SkillDamagedEvent).unit_id] = true
 	elif event is UnitDefeatedEvent:
@@ -317,6 +337,7 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			var dealt: Array = outcome.boss_damage.get(slain.unit_id, [0, 0])
 			fall.slayer_damage = dealt[slain.slayer_side]
 			fall.rival_damage = dealt[1 - slain.slayer_side]
+			fall.finish_damage = outcome.boss_finish.get(slain.unit_id, 0)
 			# 聖遺物は、このイベントより前（Battle.remove_unit の中）にもう掛かっている。英知で増えた HP は、倒す前の戦力から除く。
 			var hp_now: Array[int] = [army_hp(battle, 0), army_hp(battle, 1)]
 			var relic := Relics.of_boss(slain.boss_index)

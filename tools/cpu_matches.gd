@@ -64,6 +64,10 @@ class Tally:
 	var boss_even: Array[int] = [0, 0, 0]
 	var boss_contested: Array[int] = [0, 0, 0]
 	var boss_steals: Array[int] = [0, 0, 0]
+	## 倒した側の削った量の分け前で分けた [数, 勝ち, 負け]: 3 割未満（CpuMatch.LOW_SHARE）、うち止めの一撃だけ、3 割以上。
+	var boss_low: Array[int] = [0, 0, 0]
+	var boss_finish_only: Array[int] = [0, 0, 0]
+	var boss_high: Array[int] = [0, 0, 0]
 	## 互角のうちに中ボスが倒れた局の数（1 局で 2 体倒れても 1 と数える）。
 	var boss_even_games := 0
 	## 両方のプレイヤーが削った中ボスの数。
@@ -118,6 +122,9 @@ class Tally:
 				rows.append(boss_contested)
 			if fall.is_steal():
 				rows.append(boss_steals)
+			rows.append(boss_low if fall.is_low_share() else boss_high)
+			if fall.is_low_share() and fall.is_finish_only():
+				rows.append(boss_finish_only)
 			rows.append(boss_lead[_lead(fall.hp_share())])
 			rows.append(boss_first_lead[_lead(fall.first_hp_share())])
 			boss_hunt_turns += fall.turn - fall.first_hit_turn
@@ -135,6 +142,13 @@ class Tally:
 			boss_even[0], 100.0 * boss_even[0] / maxi(1, boss_all[0]), 100.0 * boss_even_games / maxi(1, games), _record(boss_even),
 			boss_contested[0], 100.0 * boss_contested[0] / maxi(1, boss_all[0]), _record(boss_contested),
 			boss_shared, boss_steals[0], _record(boss_steals),
+		]
+
+	## 削った量の少ない側が止めで取った中ボスの行（docs/relic-buff.md の「受け取る」）。
+	func share_line(name: String) -> String:
+		return "%-22s 3 割未満 %3d 体（%3.0f%%）倒した側 %s  うち止めの一撃だけ %3d 体 倒した側 %s  3 割以上 %3d 体 倒した側 %s" % [
+			name, boss_low[0], 100.0 * boss_low[0] / maxi(1, boss_all[0]), _record(boss_low),
+			boss_finish_only[0], _record(boss_finish_only), boss_high[0], _record(boss_high),
 		]
 
 	## 戦力の分け前を、劣勢 0、互角 1、優勢 2 に分ける。
@@ -270,12 +284,13 @@ func _initialize() -> void:
 			Relics.grant(battle, Unit.Side.PLAYER1, relic, Relics.boss_of(relic))
 			battle.ult_gauge[Unit.Side.PLAYER1] = gauge
 		var outcome: CpuMatch.Outcome
+		var rival_side := -1
 		if rival == null:
 			outcome = CpuMatch.play(battle, max_turns, cpu, null, no_reward)
 		else:
 			# 別の版が動かす側。ステージと軍の組み合わせを一巡するごとに入れ替える。
 			@warning_ignore("integer_division")
-			var rival_side := (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2
+			rival_side = (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2
 			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu, no_reward)
 			var slot := 2 if outcome.winner < 0 else (1 if outcome.winner == rival_side else 0)
 			versus[slot] += 1
@@ -291,9 +306,9 @@ func _initialize() -> void:
 			var kills: Array[String] = []
 			for kill: Array in outcome.mid_boss_kills:
 				kills.append("%d:%d:%d" % [kill[0], kill[1], kill[2]])
-			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s" % [
+			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s rival=%d" % [
 				first_seed + game, stage, Names.ARMY_NAMES[armies[0]], Names.ARMY_NAMES[armies[1]], outcome.winner, outcome.ending,
-				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills),
+				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
 			])
 			for kind: UnitKind.Id in outcome.by_kind:
 				var row: Array = outcome.by_kind[kind]
@@ -301,9 +316,9 @@ func _initialize() -> void:
 					first_seed + game, kind, row[0], row[1], row[2], row[3], row[4],
 				])
 			for fall in outcome.boss_falls:
-				print("BOSS seed=%d stage=%d turn=%d index=%d side=%d units=%d rivals=%d near=%d dealt=%d rival_dealt=%d hp=%d rival_hp=%d first_turn=%d first_hp=%d first_rival_hp=%d won=%d" % [
+				print("BOSS seed=%d stage=%d turn=%d index=%d side=%d units=%d rivals=%d near=%d dealt=%d rival_dealt=%d finish=%d hp=%d rival_hp=%d first_turn=%d first_hp=%d first_rival_hp=%d won=%d" % [
 					first_seed + game, stage, fall.turn, fall.boss_index, fall.slayer_side, fall.slayer_units, fall.rival_units,
-					fall.rivals_near, fall.slayer_damage, fall.rival_damage, fall.slayer_hp, fall.rival_hp,
+					fall.rivals_near, fall.slayer_damage, fall.rival_damage, fall.finish_damage, fall.slayer_hp, fall.rival_hp,
 					fall.first_hit_turn, fall.first_slayer_hp, fall.first_rival_hp,
 					-1 if outcome.winner < 0 or fall.slayer_side < 0 else (1 if outcome.winner == fall.slayer_side else 0),
 				])
@@ -399,6 +414,10 @@ func _initialize() -> void:
 	print(all.contest_line("全体"))
 	for stage: int in by_stage:
 		print(by_stage[stage].contest_line("ステージ " + STAGE_NAMES[stage]))
+	print("倒した側の削った量の分け前（止めの一撃を含む。3 割未満 = %.1f より小さい。止めの一撃だけ = ほかに 1 も削っていない）" % CpuMatch.LOW_SHARE)
+	print(all.share_line("全体"))
+	for stage: int in by_stage:
+		print(by_stage[stage].share_line("ステージ " + STAGE_NAMES[stage]))
 	print("倒した側の戦力（将を除く駒の HP の合計）の分け前。互角 = 0.5 から %.2f 以内。狩り始め = プレイヤーが初めて削った時点" % CpuMatch.EVEN_SHARE)
 	print(all.lead_line("全体"))
 	for stage: int in by_stage:
