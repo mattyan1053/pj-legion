@@ -57,6 +57,7 @@ const SCENES := {
 	"forecast_small": "9×5 の小さな盤で、動いたあとメニューの「攻撃」を押し、隣の相手にマウスを乗せている（縮んだメニューと予測のパネルが重ならない）",
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
+	"end_confirm": "未行動の駒を残してターン終了を 1 回押し、確かめている（未行動の駒の足元が光る）",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
 	"result_headline": "リザルト 1: 勝敗の見出しが中央に出たところ（人どうしは勝った側の名前）",
 	"result_stats": "リザルト 2: 見出しが上へ退き、戦績が 1 行ずつ出ているところ",
@@ -95,6 +96,15 @@ const SCENES := {
 	"minimap_hidden": "設定でミニマップを隠した（右上に何も出ない）",
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
+	"look_plain_start": "中央平原の対戦の始め（ステージの見た目を比べる 3 枚の 1 つ目）",
+	"look_plain_wide": "中央平原を、いちばん引いて低い角度で見ている（盤の外の景色）",
+	"look_plain_close": "中央平原の盤の真ん中に寄って見ている（障害物・森・平地の見分け）",
+	"look_labyrinth_start": "迷宮回廊の対戦の始め",
+	"look_labyrinth_wide": "迷宮回廊を、いちばん引いて低い角度で見ている",
+	"look_labyrinth_close": "迷宮回廊の盤の真ん中に寄って見ている",
+	"look_twin_springs_start": "双子結晶の対戦の始め",
+	"look_twin_springs_wide": "双子結晶を、いちばん引いて低い角度で見ている",
+	"look_twin_springs_close": "双子結晶の盤の真ん中に寄って見ている",
 }
 ## 場面を作る対戦の最初の種。
 const SEED := 1
@@ -787,6 +797,14 @@ func _scene_ult() -> bool:
 	return _scene.is_confirming_ult()
 
 
+func _scene_end_confirm() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	_scene.press_end_turn()
+	return _scene.is_confirming_end()
+
+
 func _scene_mid_boss() -> bool:
 	# 中ボスが倒れたあとの、倒した陣営の番の始め（上の帯に聖遺物が出る）。残っている中ボスを選んで寄せる。
 	var slain: Array[MidBossDefeatedEvent] = []
@@ -1148,6 +1166,58 @@ func _scene_stage_labyrinth() -> bool:
 
 func _scene_stage_twin_springs() -> bool:
 	return _stage_overview(BoardGenerator.Stage.TWIN_SPRINGS)
+
+
+## ステージの見た目を比べる 3 枚（始め・引いた・寄った）。どのステージも同じ構図で撮る。
+func _stage_look(stage: BoardGenerator.Stage, view: StringName) -> bool:
+	_stage = stage
+	_new_battle()
+	_show()
+	var middle := Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0)
+	match view:
+		&"wide":
+			_look_at(middle + Vector3(0.0, 0.0, 6.0))
+			_aim(45.0, 0.0, OrbitCamera.MIN_PITCH)
+		&"close":
+			_look_at(middle)
+			_aim(12.0, 20.0, 45.0)
+	return true
+
+
+func _scene_look_plain_start() -> bool:
+	return _stage_look(BoardGenerator.Stage.PLAIN, &"start")
+
+
+func _scene_look_plain_wide() -> bool:
+	return _stage_look(BoardGenerator.Stage.PLAIN, &"wide")
+
+
+func _scene_look_plain_close() -> bool:
+	return _stage_look(BoardGenerator.Stage.PLAIN, &"close")
+
+
+func _scene_look_labyrinth_start() -> bool:
+	return _stage_look(BoardGenerator.Stage.LABYRINTH, &"start")
+
+
+func _scene_look_labyrinth_wide() -> bool:
+	return _stage_look(BoardGenerator.Stage.LABYRINTH, &"wide")
+
+
+func _scene_look_labyrinth_close() -> bool:
+	return _stage_look(BoardGenerator.Stage.LABYRINTH, &"close")
+
+
+func _scene_look_twin_springs_start() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"start")
+
+
+func _scene_look_twin_springs_wide() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"wide")
+
+
+func _scene_look_twin_springs_close() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"close")
 
 
 ## stage の盤で、cells の最初のマスへ寄って見る（泉・ポータルの動き）。

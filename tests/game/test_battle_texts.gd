@@ -53,6 +53,9 @@ func test_hint_follows_the_state() -> void:
 	assert_eq(BattleTexts.hint(battle, sniper, null, Mode.NONE, true, false, false), "相手（CPU）の番")
 	assert_true(BattleTexts.hint(battle, sniper, null, Mode.ATTACK, false, false, false).begins_with("攻撃:"))
 	assert_true(BattleTexts.hint(battle, sniper, null, Mode.NONE, false, true, false).begins_with("もう一度押すと必殺技"))
+	# ターン終了の確かめの理由（まだ行動していない駒の数）は、ボタンでなく下の帯に出す。
+	var unacted := BattleTexts.hint(battle, sniper, null, Mode.NONE, false, false, false, 2)
+	assert_true(unacted.contains("2 体") and unacted.contains("右クリックでやめる"), unacted)
 	var seen := BattleTexts.hint(battle, sniper, paladin, Mode.NONE, false, false, false)
 	assert_true(seen.contains("を見ている") and seen.contains("選んでいる駒へ戻る"), seen)
 	assert_true(BattleTexts.hint(battle, sniper, null, Mode.NONE, false, false, false).begins_with("青: 移動"))

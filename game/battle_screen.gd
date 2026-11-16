@@ -45,6 +45,8 @@ const COLOR_HEAL := Color(0.3, 0.95, 0.45, 0.7)
 const COLOR_SKILL := Color(0.55, 0.25, 0.95, 0.7)
 const COLOR_SKILL_AREA := Color(1.0, 0.55, 0.9, 0.85)
 const COLOR_INSPECT := Color(0.8, 0.93, 1.0, 0.5)
+## ターン終了を確かめている間の、まだ行動していない駒の足元。
+const COLOR_UNACTED := Color(1.0, 0.85, 0.35, 0.6)
 const COLOR_THREAT := Color(0.95, 0.05, 0.2, 0.62)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 ## 見ている（閲覧している）駒の足元の輪。選んでいる駒の黄の輪と見分ける。
@@ -851,9 +853,11 @@ func press_ult() -> void:
 	if is_busy() or not battle.can_apply(UseUltAction.new()):
 		return
 	if not _ui.confirming_ult:
-		_ui.start_confirming_ult()
+		_ui.start_confirming_ult(Time.get_ticks_msec())
 		_refresh()
 		return
+	if _ui.confirm_guarded(Time.get_ticks_msec()):
+		return  # 確かめに変わった直後の 2 回目（ダブルクリック・連打）は受けない
 	_do(UseUltAction.new())
 
 
@@ -1033,14 +1037,28 @@ func is_choosing_evolution() -> bool:
 
 
 ## ターンを終える。未行動の駒が残っていれば、もう一度押すまで終えない。進化先を選ぶ途中は終えられない。
+## 確かめに変わった直後の 2 回目（ダブルクリック・Enter の連打）は受けない（BattleUiState.CONFIRM_GUARD_MSEC）。
 func press_end_turn() -> void:
 	if is_busy() or battle.is_over() or battle.evolving_unit() != null:
 		return
-	if Queries.unacted_count(battle) > 0 and not _ui.confirming_end:
-		_ui.confirming_end = true
-		_refresh()
-		return
+	if Queries.unacted_count(battle) > 0:
+		if not _ui.confirming_end:
+			_ui.start_confirming_end(Time.get_ticks_msec())
+			_refresh()
+			return
+		if _ui.confirm_guarded(Time.get_ticks_msec()):
+			return
 	_do(EndPhaseAction.new())
+
+
+## 確かめを始めた直後の、2 回目を受けない間を、もう過ぎたことにする。検査用（人が間を置いてもう一度押すのと同じ）。
+func pass_confirm_guard() -> void:
+	_ui.confirm_started_msec -= BattleUiState.CONFIRM_GUARD_MSEC
+
+
+## ターン終了を確かめている途中か。検査用。
+func is_confirming_end() -> bool:
+	return _ui.confirming_end
 
 
 func _select(unit_id: int) -> void:
@@ -1205,6 +1223,10 @@ func _refresh() -> void:
 					_painted[target.cell] = COLOR_HEAL
 		else:
 			_paint_view(unit)
+	if _ui.confirming_end and inspected == null:
+		# ターン終了の確かめの理由（まだ行動していない駒）は、ボタンには書かず、その駒の足元を光らせて見せる。
+		for unacted in Queries.unacted_units(battle):
+			_painted[unacted.cell] = COLOR_UNACTED
 	_show_painted()
 	var threats: Array[Vector2i] = []
 	if _threat_shown and not battle.is_over():
@@ -1226,7 +1248,8 @@ func _refresh() -> void:
 			_view(shown.id).set_status_mark(not Statuses.types_of(shown).is_empty())
 	_refresh_status(battle.turn, battle.phase)
 	_hud.set_hint(BattleTexts.hint(
-		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit)
+		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit),
+		Queries.unacted_count(battle) if _ui.confirming_end else 0
 	))
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
@@ -1241,7 +1264,7 @@ func _refresh() -> void:
 	if cpu_turn:
 		_hud.set_end_turn(false, "CPU の番")
 	elif _ui.confirming_end:
-		_hud.set_end_turn(true, "未行動 %d 体。もう一度で終了" % unacted)
+		_hud.set_end_turn(true, "もう一度押して終了")
 	else:
 		var can_end := not battle.is_over() and evolving == null
 		_hud.set_end_turn(can_end, "ターン終了", can_end and unacted == 0)

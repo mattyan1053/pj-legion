@@ -3,9 +3,19 @@
 # 手元（作業のセッションのコンテナ）で回すもの。CI には入れない。使い方は docs/screenshots.md。
 #
 #   tools/screenshots.sh <godot> <出力のディレクトリ> [場面,場面,…|all]
+#   tools/screenshots.sh <godot> --list      場面の名前と説明の一覧（tools/screenshots.gd の SCENES から出す。撮らない）
 set -euo pipefail
 
 GODOT="${1:?godot のパスを指定する}"
+if [ "${2:-}" = "--list" ]; then
+  # SCENES の `"名前": "説明",` の行を、名前 + タブ + 説明で出す。
+  awk '/^const SCENES := \{/ {on=1; next} on && /^\}/ {exit}
+       on && match($0, /^\t"[^"]+": "/) {
+         line=$0; sub(/^\t"/, "", line); name=line; sub(/".*/, "", name)
+         desc=line; sub(/^[^"]+": "/, "", desc); sub(/",?$/, "", desc)
+         print name "\t" desc }' "$(dirname "$0")/screenshots.gd"
+  exit 0
+fi
 OUT="${2:?出力のディレクトリを指定する}"
 SHOTS="${3:-all}"
 cd "$(dirname "$0")/.."
