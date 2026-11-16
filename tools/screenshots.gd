@@ -138,7 +138,7 @@ const SCENES := {
 	"story_unlocked_decks": "ストーリー: 全部の話をクリアしたあと、部隊の編成の「ストーリー用」で組むところ（解放した駒・持ち物、上がったコストの上限）",
 	"story_list_items": "ストーリー: 本編の 2 話目までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
 	"story_sortie_default": "ストーリー: 出撃の準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
-	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ）",
+	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ。まだ持たせられない持ち物は「未解放」）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
@@ -1822,6 +1822,7 @@ func _scene_decks_story() -> bool:
 	screen.press_new()
 	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.MEDIC]:
 		screen.hire(kind)
+	screen.select_entry(0)  # 持ち物の欄（まだ持たせられない持ち物は、灰色の「未解放」）
 	return screen.is_editing() and screen.editing_deck().rules.id == Story.RULES_ID
 
 

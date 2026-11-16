@@ -1847,10 +1847,22 @@ func _visit_decks(app: Node) -> void:
 	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.MEDIC)
+	# まだ持たせられない持ち物（物語の解放の前）は、持たせられない。
+	screen.select_entry(0)
+	for item: Equipment.Id in Equipment.Id.values():
+		if not screen.editing_deck().rules.allows_item(item):
+			screen.equip(item)
+			_expect(screen.editing_deck().entries[0].count(item) == 0, "まだ持たせられない持ち物を持たせられた")
+	screen.select_entry(-1)
 	screen.press_save()
 	var story_id: String = screen.list_selected()
 	_expect(not screen.is_editing() and screen.listed_ids() == ([story_id] as Array[String]), "ストーリー用の部隊を取っておけない")
 	_expect(library.find(story_id).deck.rules.id == Story.RULES_ID, "ストーリー用の部隊が、ストーリーの決まりで取っておかれていない")
+	# ストーリー用は物語ごと: ほかの物語の決まりでは、その物語の軍で組み、ほかの物語の部隊は並ばない。
+	var other: Script = Story.CAMPAIGNS[1]
+	screen.set_mode(other.RULES_ID)
+	_expect(screen.mode() == other.RULES_ID and screen.rules.armies() == ([other.ARMY] as Array[UnitKind.Army]), "ほかの物語の、ストーリー用の決まりで組めない")
+	_expect(screen.listed_ids().is_empty(), "ほかの物語のストーリー用の一覧に、別の物語の部隊が混ざった")
 	screen.set_mode(DeckRules.VERSUS)
 	_expect(screen.listed_ids() == ([id] as Array[String]), "対戦用の一覧に、ストーリー用の部隊が混ざった")
 	var versus_ids: Array[String] = []
