@@ -1297,6 +1297,8 @@ func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 
 
 const Story := preload("res://game/story.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
 
 
 ## タイトルの「ストーリー」で話の一覧へ進み、number 番目（0 から）の話を始める（前の会話の場面に入る）。
@@ -1439,7 +1441,7 @@ func _scene_story_sortie_default() -> bool:
 ## 守り切る話（HOLD_TURNS を持つ最初の話）の番号（0 から）。無ければ -1。
 func _hold_episode() -> int:
 	for i in Story.EPISODES.size():
-		if Story.EPISODES[i].get_script_constant_map().has("HOLD_TURNS"):
+		if StoryBattle.hold_turns_of(Story.EPISODES[i]) > 0:
 			return i
 	return -1
 
@@ -1500,8 +1502,7 @@ func _scene_story_hold_result() -> bool:
 ## 全滅させる話（WINS に全滅を持つ最初の話）の番号（0 から）。無ければ -1。
 func _rout_episode() -> int:
 	for i in Story.EPISODES.size():
-		var constants: Dictionary = Story.EPISODES[i].get_script_constant_map()
-		if constants.has("WINS") and constants["WINS"].has(GameWonEvent.Reason.ROUTED):
+		if StoryBattle.wins_of(Story.EPISODES[i]).has(GameWonEvent.Reason.ROUTED):
 			return i
 	return -1
 
@@ -1530,8 +1531,7 @@ func _scene_story_rout_wide() -> bool:
 ## 対戦の途中の会話の札（ターン 1 の台詞を持つ最初の話の、対戦の始め）。
 func _scene_story_battle_talk() -> bool:
 	for i in Story.EPISODES.size():
-		var constants: Dictionary = Story.EPISODES[i].get_script_constant_map()
-		if constants.has("CUES") and constants["CUES"].any(func(cue: Array) -> bool: return cue[0] == &"turn" and cue[1] == 1):
+		if StoryBattle.cues_of(Story.EPISODES[i]).any(func(cue: Array) -> bool: return cue[0] == BattleCues.TURN and cue[1] == 1):
 			if not await _story_battle(i):
 				return false
 			return _scene.talk_line() != null

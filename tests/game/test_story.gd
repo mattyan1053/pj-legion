@@ -311,18 +311,37 @@ func test_old_versus_save_files_still_load_as_versus() -> void:
 	assert_true(context.decks.for_rules(Story.RULES_ID).is_empty())
 
 
+func test_missing_optional_constants_read_as_their_defaults() -> void:
+	var plain: Script = Story.EPISODES[0]  # 1 話: HOLD_TURNS も WINS も持たない
+	assert_false(plain.get_script_constant_map().has("HOLD_TURNS"))
+	assert_eq(StoryBattle.hold_turns_of(plain), 0)
+	assert_true(StoryBattle.wins_of(plain).is_empty())
+	var setup := Story.first_battle(plain).make_setup(4)
+	assert_eq(setup.scenario.win_conditions_of(Unit.Side.PLAYER1), Scenario.STANDARD_WIN_CONDITIONS)
+
+
+func test_the_sortie_reads_the_same_scenario_as_the_battle() -> void:
+	for episode: Script in Story.EPISODES:
+		var source := Story.first_battle(episode)
+		var defined: Scenario = source.scenario()
+		var made := source.make_setup(9).scenario
+		assert_eq(defined.win_conditions, made.win_conditions, episode.ID)
+		assert_eq(defined.hold_turns, made.hold_turns, episode.ID)
+		assert_eq(defined.fixed_decks[Unit.Side.PLAYER2].entries.size(), episode.ENEMY.size(), episode.ID)
+
+
 func test_hold_turns_make_the_human_side_hold_out() -> void:
 	var holding := 0
 	for episode in Story.EPISODES:
 		var battle := Story.first_battle(episode).make_setup(1).create_battle()
-		if episode.get_script_constant_map().has("HOLD_TURNS"):
+		if StoryBattle.hold_turns_of(episode) > 0:
 			holding += 1
-			assert_eq(battle.hold_turns, episode.HOLD_TURNS)
+			assert_eq(battle.hold_turns, StoryBattle.hold_turns_of(episode))
 			assert_true(battle.wins_by(Unit.Side.PLAYER1, GameWonEvent.Reason.TURNS_HELD))
 			assert_eq(battle.win_conditions[Unit.Side.PLAYER2], Scenario.STANDARD_WIN_CONDITIONS, "敵はいつもの勝ち方で攻める")
 		else:
 			assert_eq(battle.turns_left(), -1, "%s は守り切るの話でない" % episode.ID)
-			if not episode.get_script_constant_map().has("WINS"):
+			if StoryBattle.wins_of(episode).is_empty():
 				assert_eq(battle.win_conditions[Unit.Side.PLAYER1], Scenario.STANDARD_WIN_CONDITIONS)
 	assert_true(holding > 0, "守り切るの話が無い")
 
@@ -330,11 +349,10 @@ func test_hold_turns_make_the_human_side_hold_out() -> void:
 func test_wins_replace_the_human_side_win_conditions() -> void:
 	var routing := 0
 	for episode in Story.EPISODES:
-		if not episode.get_script_constant_map().has("WINS"):
+		if StoryBattle.wins_of(episode).is_empty():
 			continue
 		var battle := Story.first_battle(episode).make_setup(1).create_battle()
-		assert_false(episode.WINS.is_empty(), "%s: 勝ち方の無い話は作らない" % episode.ID)
-		assert_eq(battle.win_conditions[Unit.Side.PLAYER1], episode.WINS, "人の勝ち方は WINS だけ")
+		assert_eq(battle.win_conditions[Unit.Side.PLAYER1], StoryBattle.wins_of(episode), "人の勝ち方は WINS だけ")
 		assert_eq(battle.win_conditions[Unit.Side.PLAYER2], Scenario.STANDARD_WIN_CONDITIONS, "敵はいつもの勝ち方で攻める")
 		if episode.WINS.has(GameWonEvent.Reason.ROUTED):
 			routing += 1

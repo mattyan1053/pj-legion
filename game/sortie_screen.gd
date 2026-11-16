@@ -114,7 +114,7 @@ func _ready() -> void:
 	var enemy_column := VBoxContainer.new()
 	enemy.add_child(enemy_column)
 	enemy_column.add_child(_caption("敵の部隊（%s）" % DeckText.army_name(episode.ENEMY_ARMY)))
-	enemy_column.add_child(_wrapped(DeckText.deck_summary(StoryBattle.enemy_deck_of(episode)), 17, COLOR_TEXT))
+	enemy_column.add_child(_wrapped(DeckText.deck_summary(battle_source.scenario().fixed_decks[Unit.Side.PLAYER2]), 17, COLOR_TEXT))
 
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -169,7 +169,7 @@ func resume_label() -> String:
 
 ## 勝ち方の文（話の戦いの定義の勝ちの条件から。人はプレイヤー1。win_text.gd、docs/win-conditions.md）。
 func win_text() -> String:
-	return WinText.of_scenario(battle_source.make_setup(0).scenario, Unit.Side.PLAYER1)
+	return WinText.of_scenario(battle_source.scenario(), Unit.Side.PLAYER1)
 
 
 ## 部隊 id（DEFAULT_ID なら既定の編成）を選ぶ。出せない部隊なら何もしない。
