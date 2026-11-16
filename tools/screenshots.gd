@@ -118,6 +118,7 @@ const SCENES := {
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
 	"story_defeat": "ストーリー: 話の対戦に負けた決着の画面（Enter で「同じ盤面でもう一度」。「部隊を選び直す」で出撃の準備へ戻れる）",
+	"story_talk_menu": "ストーリー: 会話の場面で開いたシステムメニュー（閉じるボタンが「会話へ戻る」）",
 	"story_decks_detour": "ストーリー: 出撃の準備の「部隊を編成する」で開いた編成（ストーリー用だけ。「出撃の準備へ戻る」）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
@@ -1328,6 +1329,13 @@ func _scene_story_talk() -> bool:
 		return false
 	_app.current_scene().press_next()  # 2 行目（敵の将の札）
 	return true
+
+
+func _scene_story_talk_menu() -> bool:
+	if not await _scene_story_talk():
+		return false
+	_app.open_menu()
+	return _app.system_menu().is_open()
 
 
 ## 前の会話を飛ばして、話の対戦の場面に入る。
