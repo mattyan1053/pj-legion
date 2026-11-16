@@ -511,6 +511,10 @@ func _queue_result_scene() -> void:
 		_expect(not screen.is_detail_open(), "詳しい戦績が、始めから開いている")
 		screen.toggle_detail()
 		_expect(screen.is_detail_open(), "詳しい戦績が開かない")
+		var shown_side: int = screen.table_side()
+		_expect(screen.table_names().size() == _scene.stats.records_of(shown_side as Unit.Side).size(), "詳しい戦績の表に、駒の行が並ばない")
+		screen.show_table(1 - shown_side)
+		_expect(screen.table_side() == 1 - shown_side and not screen.table_names().is_empty(), "詳しい戦績の表を、もう一方の陣営に切り替えられない")
 		screen.toggle_detail()
 		_expect(screen.enter_destination() == "タイトルへ", "対戦モードの決着の画面の Enter がタイトルへでない: %s" % screen.enter_destination())
 		# 戦績の行がいちばん多い（5 行）ときも、入力の案内が下の帯にかからない。
