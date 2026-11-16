@@ -28,6 +28,9 @@ signal end_turn_pressed
 signal evolution_chosen(index: int)
 ## 敵の全員の脅威範囲の切り替えが押された（出す・消すは呼ぶ側が決める）。
 signal threat_toggled
+## 相手の番の「早送り」「スキップ」が押された。
+signal fast_forward_toggled
+signal skip_pressed
 ## 駒の情報の枠の「範囲を表示したまま」のスイッチが押された。
 signal pin_toggled
 ## 相手を人にするか CPU にするかの切り替えが押された。
@@ -137,6 +140,10 @@ var _end_turn_button: Button
 var _end_turn_style: StyleBoxFlat
 var _opponent_button: Button
 var _threat_button: CheckButton
+## 相手の番（見ているだけの番）に、必殺技のボタンの代わりに出す「早送り」「スキップ」（set_watch_controls）。
+var _watch_box: HBoxContainer
+var _fast_button: Button
+var _skip_button: Button
 var _ult_panel: PanelContainer
 var _ult_pinned := false
 var _menu: PanelContainer
@@ -455,6 +462,29 @@ func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 	_end_turn_button.disabled = not enabled
 	_end_turn_button.text = text
 	_end_turn_style.bg_color = COLOR_END_TURN_READY if ready else COLOR_END_TURN
+
+
+## 相手の番の「早送り」「スキップ」を出すか（出している間は、必殺技のボタンを隠す）。fast は早送りが入っているか、
+## can_skip はスキップを押せるか（スキップの途中は「スキップ中…」にして押せない）。
+func set_watch_controls(shown: bool, fast: bool, can_skip: bool) -> void:
+	_watch_box.visible = shown
+	_ult_button.visible = not shown
+	_fast_button.set_pressed_no_signal(fast)
+	_skip_button.disabled = not can_skip
+	_skip_button.text = "スキップ" if can_skip else "スキップ中…"
+
+
+## 相手の番の「早送り」「スキップ」: [出ているか, 早送りが入っているか]。検査用。
+func watch_controls_state() -> Array[bool]:
+	return [_watch_box.visible, _fast_button.button_pressed]
+
+
+## 相手の番の「スキップ」を押す（クリックと同じ道）。出ていて押せれば真。検査用。
+func press_skip() -> bool:
+	if not _watch_box.visible or _skip_button.disabled:
+		return false
+	_skip_button.pressed.emit()
+	return true
 
 
 ## 敵の全員の脅威範囲の切り替えを、出しているかに合わせる。
@@ -966,6 +996,20 @@ func _build_bottom() -> void:
 	_threat_button.tooltip_text = "敵が次の番に攻撃を届かせうるマスを、赤い斜線で重ねて出す"
 	_threat_button.pressed.connect(threat_toggled.emit)
 	row.add_child(_threat_button)
+	_watch_box = HBoxContainer.new()
+	_watch_box.add_theme_constant_override("separation", 8)
+	_watch_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_watch_box.visible = false
+	row.add_child(_watch_box)
+	_fast_button = _button("早送り", fast_forward_toggled)
+	_fast_button.toggle_mode = true
+	_fast_button.custom_minimum_size = Vector2(120.0, 48.0)
+	_fast_button.tooltip_text = "相手の番を速く進める（入れたままなら、次の相手の番も）"
+	_watch_box.add_child(_fast_button)
+	_skip_button = _button("スキップ", skip_pressed)
+	_skip_button.custom_minimum_size = Vector2(120.0, 48.0)
+	_skip_button.tooltip_text = "相手の番の残りを見せずに進める（起きたことはログに残る）"
+	_watch_box.add_child(_skip_button)
 	_ult_button = _button("必殺技", ult_pressed)
 	_ult_button.custom_minimum_size = Vector2(250.0, 48.0)
 	_ult_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER

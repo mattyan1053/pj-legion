@@ -79,6 +79,8 @@ const Mode := BattleUiState.Mode
 ## CPU の駒が動き出す前に、カメラを寄せて見せる秒数と、1 体の行動が終わってから次の駒までの間。
 const CPU_FOCUS_TIME := 0.35
 const CPU_PAUSE := 0.45
+## 早送り（相手の番の下の帯のボタン）の速さ。設定の「CPU の番の速さ」に、さらに掛ける。
+const FAST_FORWARD_SCALE := 4.0
 
 ## いまの対戦。再生（battle_playback.gd）にも渡す。
 var battle: Battle:
@@ -124,6 +126,8 @@ var _system_menu: SystemMenu
 var _log_panel: LogPanel
 ## CPU の駒の行動を再生している途中か（設定の「CPU の番の速さ」を効かせる）。
 var _cpu_fast := false
+## 早送りを入れているか（相手の番の下の帯の「早送り」。切り替え。入れたままなら、次の相手の番も早送り）。
+var fast_forward := false
 
 ## 対戦の設定を作ってくれるもの（battle_source.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
 var source: BattleSource
@@ -189,6 +193,7 @@ func _ready() -> void:
 	_playback.cpu_side = func() -> Unit.Side: return source.cpu_side()
 	_playback.play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_playback.frame_passed = frame_passed
+	_playback.sync_views = _sync_views
 	_layout = PanelLayout.new(_rig, _hud, _views, COLOR_MOVE, COLOR_CRUISE)
 	_hud.menu_pressed.connect(_on_menu_pressed)
 	_hud.menu_hovered.connect(_on_menu_hovered)
@@ -198,6 +203,8 @@ func _ready() -> void:
 	_hud.evolution_chosen.connect(choose_evolution)
 	_hud.opponent_pressed.connect(toggle_opponent)
 	_hud.threat_toggled.connect(toggle_threat)
+	_hud.fast_forward_toggled.connect(toggle_fast_forward)
+	_hud.skip_pressed.connect(skip_watching)
 	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
@@ -409,6 +416,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_rig.fit_board(battle.board.size)  # 見てよい範囲と、引きの上限（小さい盤ほど寄せる）
 	_rig.position = _camera_point(Unit.Side.PLAYER1)
 	_ui.clear_for_new_battle()
+	_playback.skipping = false
 	# 前の対戦のマウスの下のマス（盤の大きさが違えば、盤の外のマス）と、そこから決めた予測のパネル・メニューの置き場所を持ち越さない。
 	# マウスの下のマスは、次のコマで新しい盤から拾い直す（_update_hover）。
 	_hover_cell = NO_CELL
@@ -465,6 +473,8 @@ func _say(lines: Array[BattleCues.Line]) -> void:
 		return
 	for line in lines:
 		battle_log.say(line.name, line.text, line.side)
+	if _playback.skipping:
+		return  # スキップの途中の台詞は、ログにだけ残す
 	_talk.say(lines)
 
 
@@ -701,9 +711,75 @@ func _update_time_scale() -> void:
 	var scale := time_scale_base
 	if context.overlays.pauses():
 		scale = 0.0
-	elif _cpu_fast:
-		scale *= float(settings.value(Settings.CPU_PLAYBACK_SPEED))
+	else:
+		if _cpu_fast:
+			scale *= float(settings.value(Settings.CPU_PLAYBACK_SPEED))
+		if fast_forward and _watching_other():
+			scale *= FAST_FORWARD_SCALE
 	Engine.time_scale = scale
+
+
+## 人が見ているだけの番か（相手が CPU で、CPU の番か、中立のフェーズ）。早送りとスキップが効くのは、この間だけ。
+func _watching_other() -> bool:
+	return battle != null and cpu_opponent and not battle.is_over() and battle.phase != _human_side()
+
+
+## 相手の番の下の帯のボタン（早送り・スキップ）を出すか。見ているだけの番で、再生か CPU の番を進めている間。
+func _show_watch_controls() -> void:
+	_hud.set_watch_controls(_watching_other() and (_ui.busy or _ui.cpu_running), fast_forward, not _playback.skipping)
+
+
+## 早送りを入れる・切る（相手の番の下の帯の「早送り」）。
+func toggle_fast_forward() -> void:
+	fast_forward = not fast_forward
+	_update_time_scale()
+	_show_watch_controls()
+
+
+## 相手の番（と中立のフェーズ）の残りを、見せずに済ませる（下の帯の「スキップ」）。自分の番が来るまで続く。
+## 起きたことはログに残り、対戦の途中の台詞もログにだけ残す。途中で決着したら、決着を見せる。
+func skip_watching() -> void:
+	if not _watching_other() or not (_ui.busy or _ui.cpu_running) or _playback.skipping:
+		return
+	_playback.skipping = true
+	_talk.clear()
+	_show_watch_controls()
+
+
+## 下の帯の「スキップ」を押す（クリックと同じ道）。押せたかを返す。検査用。
+func press_skip() -> bool:
+	return _hud.press_skip()
+
+
+## スキップしている途中か。検査用。
+func is_skipping() -> bool:
+	return _playback.skipping
+
+
+## 下の帯の早送り・スキップのボタン: [出ているか, 早送りが入っているか]。検査用。
+func watch_controls_state() -> Array[bool]:
+	return _hud.watch_controls_state()
+
+
+## 見せずに済ませたあと、盤の見た目（駒・樽・盤の上の効果）を、いまの盤から作り直す。
+func _sync_views() -> void:
+	for id: int in _views.keys():
+		(_views[id] as UnitView).queue_free()
+	_views.clear()  # 再生と同じ辞書なので、作り直さずに空ける
+	for unit in battle.units:
+		_add_view(unit)
+	for cell in _board_view.barrel_cells():
+		if not battle.board.barrel_cells.has(cell):
+			_board_view.remove_barrel(cell)
+	var effect_ids: Array[int] = []
+	for effect in battle.board.field_effects:
+		effect_ids.append(effect.id)
+		if not _board_view.field_effect_ids().has(effect.id):
+			_board_view.add_field_effect(effect.id, effect.type, effect.side, effect.cells)
+	for id in _board_view.field_effect_ids():
+		if not effect_ids.has(id):
+			_board_view.remove_field_effect(id)
+	_refresh_status(battle.turn, battle.phase)
 
 
 ## CPU の駒の行動を再生する間だけ、設定の速さを掛ける（検査からも呼ぶ）。
@@ -1276,6 +1352,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 			break
 		events.append_array(result.events)
 	var action: BattleAction = actions[-1]
+	_update_time_scale()  # 相手の番・中立のフェーズに入ったなら、早送りを効かせる
 	stats.feed_all(events)
 	_phase_focus.feed(battle, events)  # フェーズの始めにカメラが寄る駒（再生の中の PhaseStartedEvent より前に食わせる）
 	_ui.busy = true
@@ -1291,8 +1368,20 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 	_hud.set_ult_button(_hud.ult_button_text(), false, _ult_summary())
 	_hud.set_end_turn(false, _hud.end_turn_text())
 	_hud.hide_evolution()
+	if _watching_other():
+		# 自分の番を終えた: 再生の間（中立のフェーズから）も、相手の番の表示にする。
+		_hud.set_end_turn(false, "CPU の番")
+		_hud.set_hint(BattleTexts.hint(battle, null, null, Mode.NONE, true, false, false))
+	_show_watch_controls()
 	await _playback.play_all(events, quiet_until_warp_from)
 	_ui.busy = false
+	if _playback.skipping and not _watching_other():
+		# 自分の番が来た（か、決着した）。番の知らせは見せずに済ませたので、ここで出し、カメラを番の始めの位置へ。
+		_playback.skipping = false
+		if not battle.is_over():
+			_rig.focus_on(_camera_point(battle.phase))
+			_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
+	_update_time_scale()
 	# 対戦の途中の会話: 起きたことを見せ終えてから出す（演出と重ねない）。決着した行動のあとは出さない（BattleCues が見る）。
 	_say(_cues.on_events(battle, events))
 
@@ -1328,16 +1417,20 @@ func _run_cpu() -> void:
 		var idle := action is WaitAction and unit != null and not unit.has_moved
 		# 設定の「CPU の番の速さ」は、CPU の駒の行動にだけ効かせる（番を終えたあとの中立の番は、ふだんの速さで見せる）。
 		set_cpu_fast(not action is EndPhaseAction)
-		if unit != null and not unit.has_moved and not idle and not action is EvolveAction:
+		if unit != null and not unit.has_moved and not idle and not action is EvolveAction and not _playback.skipping:
 			_rig.focus_on(_view(unit.id).position)
 			await _playback.after(CPU_FOCUS_TIME)
 		if not await _do(action):
 			break  # CPU の行動は必ず受け付けられるはず。そうでなければ、同じ行動を繰り返さずに手を止める。
 		cpu_actions += 1
-		if not (action is MoveAction or action is EndPhaseAction or idle or battle.is_over()):
+		if not (action is MoveAction or action is EndPhaseAction or idle or battle.is_over() or _playback.skipping):
 			await _playback.after(CPU_PAUSE)
+		elif _playback.skipping:
+			await get_tree().process_frame  # スキップの途中も、画面（「スキップ中」）が固まらないよう、1 コマずつ進める
 	set_cpu_fast(false)
 	_ui.cpu_running = false
+	if not _watching_other():
+		_playback.skipping = false
 	# 番の途中で相手を人に切り替えたら、動いたあとの駒を選んだ状態で引き渡す。
 	_ui.selected_id = battle.acting_unit_id
 	_refresh()
@@ -1473,6 +1566,7 @@ func _refresh() -> void:
 	_hud.set_ult_button(
 		BattleTexts.ult_button_text(battle, _ult_side(), _ui.confirming_ult), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult
 	)
+	_show_watch_controls()
 	_update_info()
 
 
