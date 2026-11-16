@@ -6,6 +6,7 @@ battle.log.won.routed,敵を全滅させた
 battle.log.drawn.both_kings_defeated,両方の将が同時に倒れた
 battle.log.detail,　{text}
 battle.log.unknown_unit,駒
+battle.side_cpu,CPU（{color}）
 battle.log.unit,{side}の{unit}
 battle.log.boss_place.top,上
 battle.log.boss_place.left,左
@@ -19,56 +20,56 @@ battle.log.damage.effect.defeated,{amount} ダメージ、倒れた
 battle.log.damage.left,{amount} ダメージ、残り HP {hp}
 battle.log.note.critical,クリティカル
 battle.log.note.forest,森で軽減
-battle.log.phase,ターン {turn}　{side} の番
+battle.log.phase,ターン {turn}　{side}の番
 battle.log.note.cruise,巡航
 battle.log.note.portal,ポータル経由
-battle.log.move,{unit} が {from} → {to} へ移動
-battle.log.move_and_wait,{unit} が {from} → {to} へ移動して待機
-battle.log.undo,{unit} が移動を取り消した
-battle.log.wait,{unit} は待機
-battle.log.attack,{attacker} が {target} を攻撃: {result}
-battle.log.attack_smoked,{attacker} が {target} を攻撃: 煙幕に阻まれた
-battle.log.skill,{unit} が「{skill}」を使った
-battle.log.effect_damage,{unit} に {result}
+battle.log.move,{unit}が {from} → {to} へ移動
+battle.log.move_and_wait,{unit}が {from} → {to} へ移動して待機
+battle.log.undo,{unit}が移動を取り消した
+battle.log.wait,{unit}は待機
+battle.log.attack,{attacker}が{target}を攻撃: {result}
+battle.log.attack_smoked,{attacker}が{target}を攻撃: 煙幕に阻まれた
+battle.log.skill,{unit}が「{skill}」を使った
+battle.log.effect_damage,{unit}に {result}
 battle.log.effect_blocked,{unit}: {result}
-battle.log.barrel,{attacker} が {cell} の起爆樽を攻撃: 爆発した
-battle.log.barrel_alone,{attacker} が {cell} の起爆樽を攻撃: 爆発した（巻き込まれた駒はいない）
-battle.log.barricade_hit,{attacker} が {effect}を攻撃: {amount} ダメージ、残りの耐久 {durability}
-battle.log.barricade_broken,{attacker} が {effect}を攻撃: {amount} ダメージ、壊した
+battle.log.barrel,{attacker}が {cell} の起爆樽を攻撃: 爆発した
+battle.log.barrel_alone,{attacker}が {cell} の起爆樽を攻撃: 爆発した（巻き込まれた駒はいない）
+battle.log.barricade_hit,{attacker}が{effect}を攻撃: {amount} ダメージ、残りの耐久 {durability}
+battle.log.barricade_broken,{attacker}が{effect}を攻撃: {amount} ダメージ、壊した
 battle.log.barricade_placed,{effect}を {cell} に置いた（耐久 {durability}）
-battle.log.barricade_placed_by,{side} が{effect}を {cell} に置いた（耐久 {durability}）
+battle.log.barricade_placed_by,{side}が{effect}を {cell} に置いた（耐久 {durability}）
 battle.log.area_placed,{effect}を {cell} のまわりに張った（{turns} ターン）
-battle.log.area_placed_by,{side} が{effect}を {cell} のまわりに張った（{turns} ターン）
+battle.log.area_placed_by,{side}が{effect}を {cell} のまわりに張った（{turns} ターン）
 battle.log.effect_destroyed,{effect}が壊れた
 battle.log.effect_expired,{effect}が消えた
 battle.log.effect_owned,{side}の{effect}
-battle.log.warped,{unit} が {from} → {to} へ移った
-battle.log.swapped,{unit} と {other} の位置が入れ替わった
-battle.log.refreshed,{unit} がもう一度行動できる
-battle.log.heal,{healer} が {target} を {amount} 回復（HP {hp}）
-battle.log.healed.sanctuary,{unit} が聖域で {amount} 回復（HP {hp}）
-battle.log.healed.spring,{unit} が回復の泉で {amount} 回復（HP {hp}）
-battle.log.healed.regeneration,{unit} が再生で {amount} 回復（HP {hp}）
-battle.log.status,{unit} に{status}（{turns} ターン）
+battle.log.warped,{unit}が {from} → {to} へ移った
+battle.log.swapped,{unit}と{other}の位置が入れ替わった
+battle.log.refreshed,{unit}がもう一度行動できる
+battle.log.heal,{healer}が{target}を {amount} 回復（HP {hp}）
+battle.log.healed.sanctuary,{unit}が聖域で {amount} 回復（HP {hp}）
+battle.log.healed.spring,{unit}が回復の泉で {amount} 回復（HP {hp}）
+battle.log.healed.regeneration,{unit}が再生で {amount} 回復（HP {hp}）
+battle.log.status,{unit}に{status}（{turns} ターン）
 battle.log.status_group,{status}（{turns} ターン）: {units}
 battle.log.status_self,{status}が付いた（{turns} ターン）
-battle.log.ult,{side} が必殺技「{ult}」を使った
-battle.log.ult_ready,{side} の必殺技「{ult}」が使えるようになった
-battle.log.defeated,{unit} が倒れた
+battle.log.ult,{side}が必殺技「{ult}」を使った
+battle.log.ult_ready,{side}の必殺技「{ult}」が使えるようになった
+battle.log.defeated,{unit}が倒れた
 battle.log.boss_fell,{place}の中ボスが倒れた
-battle.log.boss_slain,{side} が{place}の中ボスを倒した
-battle.log.relic,{side} が聖遺物「{relic}」を手に入れた（{effect}）
-battle.log.spawned,{unit} が {cell} に湧いた
-battle.log.appeared,{unit} が {cell} に現れた
-battle.log.spawned_many,{unit} が {count} 体湧いた: {cells}
-battle.log.appeared_many,{unit} が {count} 体現れた: {cells}
+battle.log.boss_slain,{side}が{place}の中ボスを倒した
+battle.log.relic,{side}が聖遺物「{relic}」を手に入れた（{effect}）
+battle.log.spawned,{unit}が {cell} に湧いた
+battle.log.appeared,{unit}が {cell} に現れた
+battle.log.spawned_many,{unit}が {count} 体湧いた: {cells}
+battle.log.appeared_many,{unit}が {count} 体現れた: {cells}
 battle.log.stat_heal,回復
 battle.log.stat_gain,{stat} {amount}
-battle.log.level_up,{unit} が レベル {level} に上がった
-battle.log.evolved,{unit} が {evolution} に進化した
-battle.log.capture,{side} が{enemy}の本陣を占拠: {turns} / {needed}
-battle.log.capture_broken,{side} の、{enemy}の本陣の占拠が途切れた
-battle.log.won,{side} の勝ち（{reason}）
+battle.log.level_up,{unit}がレベル {level} に上がった
+battle.log.evolved,{unit}が{evolution}に進化した
+battle.log.capture,{side}が{enemy}の本陣を占拠: {turns} / {needed}
+battle.log.capture_broken,{side}の、{enemy}の本陣の占拠が途切れた
+battle.log.won,{side}の勝ち（{reason}）
 battle.log.drawn,引き分け（{reason}）
 battle.cell.nothing,特別なものは無い
 battle.hint.over,決着
@@ -80,9 +81,9 @@ battle.hint.confirm_end_turn,未行動の駒が {count} 体（足元が光って
 battle.hint.ranges.own,白: 動ける範囲
 battle.hint.ranges.foe,白: 動ける　赤: 次の番に攻撃が届く
 battle.hint.ranges.pinned,　橙の枠: 表示したままの範囲
-battle.hint.inspect_back,"{unit} を表示中（{ranges}）
+battle.hint.inspect_back,"{unit}を表示中（{ranges}）
 右クリック: 選んでいる駒へ戻る"
-battle.hint.inspect,"{unit} を表示中（{ranges}）
+battle.hint.inspect,"{unit}を表示中（{ranges}）
 右クリック: 表示をやめる"
 battle.hint.choose_pinned,駒をクリックで選択。橙の枠: 表示したままの相手の範囲（右クリック: 全部消す）
 battle.hint.choose,駒をクリックで選択。相手の駒は移動・攻撃の届く範囲を表示
@@ -141,7 +142,7 @@ battle.cell.obstacle.note,入れない
 battle.cell.forest,森
 battle.cell.forest.note,移動 2・受けるダメージ 0.8 倍
 battle.cell.font,結晶泉
-battle.cell.hq,{side} の本陣
+battle.cell.hq,{side}の本陣
 battle.cell.barrel,起爆樽
 battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マスの駒すべてに {damage} ダメージ
 battle.cell.spring,回復の泉
@@ -154,10 +155,10 @@ battle.cell.smoke.note,{side}。残り {turns} ターン / 中の味方への、
 battle.cell.sanctuary.note,{side}。残り {turns} ターン / 自分の番の始めに中の味方が HP {heal} 回復
 battle.cell.line,{title}　{notes}
 battle.cell.separator,　
-battle.hud.phase,{side} の番
+battle.hud.phase,{side}の番
 battle.hud.skip,スキップ
 battle.hud.skipping,スキップ中…
-battle.hud.auto_confirm,もう一度押す
+battle.hud.auto_confirm,もう一度押して実行
 battle.hud.auto,おまかせ
 battle.hud.opponent.tooltip,相手を CPU と人で切り替える
 battle.hud.log,ログ
@@ -176,8 +177,8 @@ battle.hud.side,{side}  駒 {count}
 battle.hud.capture,  占拠 {marks}
 battle.hud.capture_on,●
 battle.hud.capture_off,○
-battle.hud.name_evolved_role,{unit}（{kind} から進化・{role}）
-battle.hud.name_evolved,{unit}（{kind} から進化）
+battle.hud.name_evolved_role,{unit}（{kind}から進化・{role}）
+battle.hud.name_evolved,{unit}（{kind}から進化）
 battle.hud.name_role,{unit}（{role}）
 battle.hud.stats,"HP {hp} / {max_hp}
 攻撃 {power}　移動 {move}　射程 {range}"
@@ -201,7 +202,7 @@ battle.hud.skill_state.ready,使用可
 battle.hud.skill_state.unusable,使用不可
 battle.hud.skill_state.cooldown,あと {turns} ターン
 battle.hud.skill_state.uses_left,{state}。残り {uses} 回
-battle.pop.blocked,{status} が防いだ
+battle.pop.blocked,{status}が防いだ
 battle.pop.critical,クリティカル -{amount}
 battle.pop.experience,経験 +{amount}
 battle.pop.level_up,レベル {level}！
@@ -213,8 +214,8 @@ battle.pop.smoked,煙幕で防いだ
 battle.pop.refreshed,再行動
 battle.pop.skill_ready,スキル使用可
 battle.banner.ult,{side}　必殺技: {ult}!!
-battle.banner.relic,{side}　{relic} を手に入れた（{effect}）
-battle.banner.phase,ターン {turn}　{side} の番
+battle.banner.relic,{side}　{relic}を手に入れた（{effect}）
+battle.banner.phase,ターン {turn}　{side}の番
 battle.menu_resume.setup,対戦設定へ戻る
 battle.menu_resume.battle,対戦へ戻る
 battle.system.setup,対戦設定へ
@@ -223,7 +224,7 @@ battle.banner.setup_after_moves,動きが終わったら、対戦設定を開き
 battle.hud.opponent.cpu,相手: CPU
 battle.hud.opponent.human,相手: 人
 battle.end_turn.cpu,CPU の番
-battle.evolution.title,{unit} の進化先
+battle.evolution.title,{unit}の進化先
 battle.end_turn.auto,おまかせ中
 battle.end_turn.confirm,もう一度押して終了
 battle.skill.choosing,{skill}: 対象を選択中
@@ -244,12 +245,12 @@ battle.pop.capture_broken,占拠が途切れた
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
 battle.hud.relic_missing,{relic}（持っていない）: {effect}
-battle.forecast.place,{effect} を置く
-battle.forecast.place_area,{effect} を置く（中の味方 {count} 体）
+battle.forecast.place,{effect}を置く
+battle.forecast.place_area,{effect}を置く（中の味方 {count} 体）
 battle.forecast.smoked,煙幕に阻まれる（隣からなら当たる）
-battle.forecast.blocked,{status} が防ぐ（{status} は消える）
-battle.forecast.status_added,{status} が付く（{turns} ターン）
-battle.forecast.status_removed,{status} が解ける
+battle.forecast.blocked,{status}が防ぐ（{status}は消える）
+battle.forecast.status_added,{status}が付く（{turns} ターン）
+battle.forecast.status_removed,{status}が解ける
 battle.forecast.moved,"({x}, {y}) へ移る"
 battle.forecast.experience,経験 +{amount}
 battle.forecast.experience_evolve,経験 +{amount}　レベルアップ → 進化（{choices}）
@@ -259,7 +260,7 @@ battle.forecast.barricade_hit,盾: 耐久 {before} → {after}
 battle.forecast.relic,聖遺物「{relic}」を得る（{effect}）
 battle.forecast.gauge,必殺技のゲージ {before}% → {after}%
 battle.forecast.draw,引き分けになる
-battle.forecast.win,{side} の勝ち
+battle.forecast.win,{side}の勝ち
 battle.forecast.no_damage,0 ダメージ
 battle.forecast.damage_defeat,{damage} ダメージ → 倒れる
 battle.forecast.damage,{damage} ダメージ → 残り HP {hp}
@@ -325,8 +326,8 @@ stats.column.skill_uses,スキル
 stats.boss_kills,中ボス撃破 {count}
 stats.unit_evolved,{kind}（{evolution}） Lv{level}
 stats.unit,{kind} Lv{level}
-result.won,{side} の勝ち
-result.won_reason,{side} の勝ち　{reason}
+result.won,{side}の勝ち
+result.won_reason,{side}の勝ち　{reason}
 result.line.stage,ステージ
 result.line.turns,経過ターン
 result.line.turns.value,{count} ターン
@@ -334,7 +335,7 @@ result.line.kills,敵軍撃破
 result.line.units,{count} 体
 result.line.neutral_kills,中立撃破
 result.line.relics,聖遺物
-result.stats_title,{side} の戦績
+result.stats_title,{side}の戦績
 result.mvp_numbers,与えたダメージ {damage}　撃破 {kills}
 result.mvp_none,該当なし
 result.mvp_none_note,ダメージを与えた駒なし

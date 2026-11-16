@@ -171,7 +171,7 @@ func _ready() -> void:
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	footer.add_theme_constant_override("separation", 16)
 	root.add_child(footer)
-	var back := _button(Text.t("story.episodes.resume_back"), 18)
+	var back := _button(Text.t("story.episodes.resume"), 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
 	back.pressed.connect(press_back)
 	footer.add_child(back)

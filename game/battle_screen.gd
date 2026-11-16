@@ -893,8 +893,9 @@ func auto_button_state() -> Array:
 
 ## 番の知らせに出す陣営の名前（CPU が動かすなら、そう書く）。
 func _side_name(side: Unit.Side) -> String:
-	var side_name: String = Names.side(side)
-	return side_name + " CPU" if cpu_opponent and side == source.cpu_side() else side_name
+	if cpu_opponent and side == source.cpu_side():
+		return Text.t("battle.side_cpu", {"color": Names.side_word(side)})
+	return Names.side(side)
 
 
 ## CPU と対戦するときに、人が動かすプレイヤー（相手の反対）。

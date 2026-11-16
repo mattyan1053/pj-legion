@@ -21,7 +21,6 @@ sortie.lesson,この話で覚えること
 sortie.goal,勝ち方
 sortie.enemy,敵の部隊（{army}）
 sortie.troops,出撃する部隊
-story.episodes.resume_back,話の一覧へ戻る
 sortie.go,出撃
 sortie.option.fixed,この話の部隊
 sortie.option.fixed.note,固定（この話では変更不可）
