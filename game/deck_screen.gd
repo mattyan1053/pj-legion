@@ -11,6 +11,8 @@ extends Node
 ## - 流れ（run.gd）の中で置かれたら（出撃の準備・対戦の設定の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
 ##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備・対戦の設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
@@ -24,8 +26,6 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
 ## 雇える駒・部隊の駒の行に出す、駒のアイコンの大きさ（px）。
 const ICON_SIZE := 44
-const UiTheme := preload("res://game/ui_theme.gd")
-const Palette := preload("res://game/ui_palette.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
@@ -123,7 +123,7 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var shade := ColorRect.new()
-	shade.color = Palette.SHADE
+	shade.color = Color(Palette.SHADE, 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -1051,6 +1051,7 @@ func set_dialog_input(text: String) -> void:
 func _confirm(text: String, ok_text: String, action: Callable) -> void:
 	_dialog_text.text = text
 	_dialog_ok.text = ok_text
+	_dialog_ok.theme_type_variation = UiTheme.BUTTON_DANGER  # 確かめるのは、元に戻せないこと（消す）
 	_dialog_input.visible = false
 	_dialog_action = action
 	_dialog.visible = true
@@ -1059,6 +1060,7 @@ func _confirm(text: String, ok_text: String, action: Callable) -> void:
 func _ask_name(title: String, current: String, action: Callable) -> void:
 	_dialog_text.text = "%s（%d 文字まで）" % [title, DeckLibrary.MAX_NAME_LENGTH]
 	_dialog_ok.text = "決める"
+	_dialog_ok.theme_type_variation = &""
 	_dialog_input.visible = true
 	_dialog_input.text = current
 	_dialog_action = action

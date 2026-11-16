@@ -8,6 +8,7 @@ extends Control
 ## 台詞が重なったら、順に出す（前の台詞が消えてから次）。出す長さは実際の時間で測る（CPU の番の早送りや、
 ## 自動の対戦の速さ（Engine.time_scale）で縮めない。メニューを開いて止めている間は進めない）。
 
+const Palette := preload("res://game/ui_palette.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 
@@ -26,10 +27,10 @@ const DIM_SPEED := 6.0
 ## 名前の札と文の間（px）。
 const ROW_GAP := 10
 
-const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("6b7280")]
-const COLOR_BOX := Color(0.06, 0.08, 0.11, 0.72)
-const COLOR_BORDER := Color(1.0, 1.0, 1.0, 0.14)
-const COLOR_TEXT := Color(0.95, 0.96, 0.98)
+const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Color("6b7280")]
+const COLOR_BOX := Color(Palette.PANEL, 0.72)
+const COLOR_BORDER := Color(Palette.BORDER, 0.9)
+const COLOR_TEXT := Palette.TEXT
 
 ## 札を薄くする四角（画面の座標）を返す Callable（無ければ、マウスだけを見る）。HUD が入れる（駒のそばのメニュー、予測のパネル）。
 var obstacles := Callable()
@@ -184,7 +185,6 @@ func _label(font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label

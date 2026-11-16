@@ -9,6 +9,8 @@ extends Node
 ## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだステージを context.match_choice に入れて &"pick"（対戦の設定へ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
@@ -33,12 +35,12 @@ const ROW_HAND := "手で作ったマップ ─ いつも同じ形"
 const TAG_GENERATED := "毎回ちがう形"
 const TAG_HAND := "いつも同じ形"
 
-const COLOR_CARD := Color(0.07, 0.09, 0.12, 0.88)
-const COLOR_CARD_HOVER := Color(0.16, 0.2, 0.27, 0.95)
-const COLOR_BORDER := Color(1.0, 1.0, 1.0, 0.12)
-const COLOR_BORDER_HOVER := Color("ffd76a")
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
-const COLOR_TEXT_DIM := Color(0.8, 0.83, 0.88)
+const COLOR_CARD := Palette.OVERLAY
+const COLOR_CARD_HOVER := Color(Palette.RAISED, 0.96)
+const COLOR_BORDER := Color(Palette.BORDER, 0.9)
+const COLOR_BORDER_HOVER := Palette.ACCENT
+const COLOR_PANEL := Palette.OVERLAY
+const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_TAG_GENERATED := Color("4fb8c9")
 const COLOR_TAG_HAND := Color("d9a441")
 
@@ -54,6 +56,7 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	layer.add_child(UiTheme.vignette())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 22.0
@@ -64,6 +67,8 @@ func _ready() -> void:
 	layer.add_child(root)
 
 	var heading := _label("作戦領域を選ぶ", 36)
+	heading.theme_type_variation = UiTheme.LABEL_HEADING
+	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
 	var sub := _label("SELECT BATTLEFIELD", 15)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
@@ -330,10 +335,7 @@ func _set_card_hovered(card: Button, hovered: bool) -> void:
 
 
 func _panel(color: Color) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(14.0)
+	var style := UiTheme.box(color, Color(Palette.BORDER, 0.9), 1, 8, 14.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -345,7 +347,6 @@ func _label(text: String, font_size: int) -> Label:
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
