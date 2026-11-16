@@ -255,7 +255,7 @@ func _drive_check(scene: StringName) -> void:
 		SceneFlow.TITLE:
 			_current.call(&"press_start")
 		SceneFlow.STAGE:
-			_current.call(&"choose", context.match_choice.stage)
+			_current.call(&"choose", context.match_choice.field)
 		SceneFlow.SETUP:
 			var panel: Node = _current.call(&"setup_panel")
 			panel.call(&"choose_opponent", false)

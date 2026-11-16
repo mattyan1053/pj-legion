@@ -15,8 +15,8 @@ const ResultSummary := preload("res://game/result_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 
-## 行き先のボタン。stage は BoardGenerator.Stage の値。new_board が偽なら、いまと同じ盤面でもう一度（stage は見ない）。
-signal restart_pressed(stage: int, new_board: bool)
+## 行き先のボタン。field はステージの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でもう一度（field は見ない）。
+signal restart_pressed(field: StringName, new_board: bool)
 signal setup_pressed
 signal title_pressed
 ## 「次へ」（set_continue で出したときだけ。ストーリーで勝ったとき、流れの次の場面へ）。
@@ -87,7 +87,7 @@ var _detail: Label
 var _actions: VBoxContainer
 var _detail_button: Button
 ## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
-var _stage_buttons := {}  # BoardGenerator.Stage -> Button（新しい盤面）
+var _board_buttons: Array[Button] = []  # 新しい盤面（ボタンの meta の &"field" がステージの鍵）
 var _setup_button: Button
 var _squad_button: Button
 var _continue_button: Button
@@ -362,11 +362,22 @@ func _buttons_ready() -> bool:
 
 
 ## 出す行き先を決める（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める）。
-## stages は「新しい盤面」で選べるステージ、setup は「対戦の設定へ」、squad は「部隊を選び直す」を出すか。
+## boards は「新しい盤面」で選べるステージの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦の設定へ」、squad は「部隊を選び直す」を出すか。
 ## 「同じ盤面でもう一度」と「タイトルへ」は、いつも出す。
-func set_destinations(stages: Array[BoardGenerator.Stage], setup: bool, squad := false) -> void:
-	for stage: BoardGenerator.Stage in _stage_buttons:
-		_stage_buttons[stage].visible = stages.has(stage)
+func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void:
+	while _board_buttons.size() < boards.size():
+		var button := _button("", 0.0)
+		button.set_meta(&"sound", &"ui_confirm")
+		button.mouse_filter = _again_button.mouse_filter
+		button.pressed.connect(func() -> void: restart_pressed.emit(button.get_meta(&"field"), true))
+		_again_button.get_parent().add_child(button)
+		_board_buttons.append(button)
+	for index in _board_buttons.size():
+		var button := _board_buttons[index]
+		button.visible = index < boards.size()
+		if button.visible:
+			button.set_meta(&"field", boards[index][0])
+			button.text = "新しい盤面: %s" % boards[index][1]
 	_setup_button.visible = setup
 	_squad_button.visible = squad
 
@@ -396,7 +407,7 @@ func enter_destination() -> String:
 
 ## 「同じ盤面でもう一度」を押す。
 func press_again() -> void:
-	restart_pressed.emit(0, false)
+	restart_pressed.emit(&"", false)
 
 
 ## 「次へ」を出しているか。検査用。
@@ -426,12 +437,12 @@ func press_choose_squad() -> void:
 		squad_pressed.emit()
 
 
-## 「新しい盤面」で出しているステージ。検査用。
-func new_board_stages() -> Array[BoardGenerator.Stage]:
-	var shown: Array[BoardGenerator.Stage] = []
-	for stage: BoardGenerator.Stage in _stage_buttons:
-		if _stage_buttons[stage].visible:
-			shown.append(stage)
+## 「新しい盤面」で出しているステージの鍵。検査用。
+func new_board_fields() -> Array[StringName]:
+	var shown: Array[StringName] = []
+	for button in _board_buttons:
+		if button.visible:
+			shown.append(button.get_meta(&"field"))
 	return shown
 
 
@@ -545,12 +556,7 @@ func _build_actions() -> void:
 	_again_button.set_meta(&"sound", &"ui_confirm")
 	_again_button.pressed.connect(press_again)
 	row.add_child(_again_button)
-	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
-		var button := _button("新しい盤面: %s" % MatchSetup.stage_name(stage), 0.0)
-		button.set_meta(&"sound", &"ui_confirm")
-		button.pressed.connect(func() -> void: restart_pressed.emit(stage, true))
-		row.add_child(button)
-		_stage_buttons[stage] = button
+	# 「新しい盤面」のボタンは、この行に set_destinations が足す。
 	var leave := _row()
 	_setup_button = _button("対戦の設定へ（軍・相手・手番）", 320.0)
 	_setup_button.pressed.connect(setup_pressed.emit)
