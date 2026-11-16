@@ -12,6 +12,7 @@ func test_pulse_lights_an_enabled_button_and_leaves_others_alone() -> void:
 	feel.attach(button)
 	button.mouse_entered.emit()
 	assert_true(button.self_modulate.r > 1.0, "乗ったら明るくなる")
+	button.self_modulate = Color.WHITE  # 木の中なら、光りは自分で元へ戻る
 	button.button_down.emit()
 	assert_true(button.self_modulate.r < 1.0, "押したら沈む")
 
