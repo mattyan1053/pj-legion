@@ -1,19 +1,23 @@
 # ストーリーの物語「FANTASY の物語」。
 #
-# 準備中。 話がまだ無い（[episodes] が空）ので、物語を選ぶ画面では「準備中」の札で、選べない。
-# 話を足すと、そのまま遊べる（game/story/episodes/ に話のファイルを置き、[episodes] に並べる）。
+# 物語は、軍 1 つと話の列。人はこの軍で話を進め、話をクリアすると、この軍の駒が雇えるようになる。
+# 名前と中身は仮のもの。 世界と登場人物は、まだ決まっていない（Issue #49）。
+# FANTASY は数が少なく、1 体のコストが高い（docs/unit-roster.md の「軍の釣り合い」）。最初のコスト上限は、対戦のコスト上限（18）より 4 低い。
 # 書き方は docs/story.md の「物語のファイル」。
 
 [campaign]
 title = FANTASY の物語
 army = fantasy
 rules = story_fantasy
-budget = 15
+budget = 14
 
 [start]
 unit = paladin
 unit = sorcerer
-unit = priest
-item = iron_shield
 
 [episodes]
+trial_first_steps
+trial_fireball
+trial_ward
+trial_shadow_step
+trial_eruption
