@@ -1830,6 +1830,9 @@ func _visit_decks(app: Node) -> void:
 	# 変えたところがあれば、取っておかずに戻る前に確かめる。
 	screen.select_saved(id)
 	_expect(screen.list_card_kinds().size() == library.find(id).deck.entries.size() + 1, "一覧の右に、選んだ部隊の駒の札が並ばない")
+	await screen.get_tree().process_frame
+	await screen.get_tree().process_frame
+	_expect(screen.list_card_cut_texts().is_empty(), "一覧の右の駒の札の文が切れている: %s" % [screen.list_card_cut_texts()])
 	screen.press_edit()
 	screen.remove_entry(0)
 	screen.press_back()
