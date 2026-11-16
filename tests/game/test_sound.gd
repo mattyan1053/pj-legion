@@ -9,6 +9,11 @@ const Settings := preload("res://game/settings.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const BattleEffects := preload("res://game/battle_effects.gd")
+const StageLook := preload("res://game/stage_look.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
+const Story := preload("res://game/story.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 
 
 ## 木に入れずに使う（テストはフレームを進めないので、鳴らすところまでは行かず、選んだ曲と音を見る）。
@@ -30,6 +35,63 @@ func test_each_scene_has_its_music() -> void:
 		var track := SceneFlow.music(scene)
 		assert_true(Catalog.has_music(track), "%s の曲 %s が表にある" % [scene, track])
 		assert_true(Catalog.MUSIC[track]["loop"], "場面の曲はループする（%s）" % track)
+
+
+func test_each_look_has_its_battle_music() -> void:
+	var tracks := {}
+	for look_name: StringName in StageLook.THEMES:
+		var track := Catalog.battle_music(look_name)
+		assert_true(Catalog.has_music(track), "%s の対戦の曲 %s が表にある" % [look_name, track])
+		assert_true(Catalog.MUSIC[track]["loop"], "対戦の曲はループする（%s）" % track)
+		tracks[track] = true
+	assert_eq(tracks.size(), StageLook.THEMES.size(), "見た目ごとに違う曲")
+	for look_name: StringName in Catalog.LOOK_MUSIC:
+		assert_true(StageLook.THEMES.has(look_name), "LOOK_MUSIC の鍵は見た目の名前（%s）" % look_name)
+	assert_eq(Catalog.battle_music(&"no_such_look"), &"battle", "知らない見た目は、いつもの対戦の曲")
+
+
+func test_versus_battle_plays_the_music_of_its_look() -> void:
+	for field: StringName in VersusFields.all_ids():
+		var choice := MatchChoice.new()
+		choice.field = field
+		var expected := Catalog.battle_music(VersusFields.look_of(field))
+		assert_eq(choice.music(), expected, "%s の対戦の曲" % field)
+		assert_eq(SceneFlow.music_for(SceneFlow.BATTLE, choice), expected, "対戦の場面へ入るときから、その曲")
+
+
+func test_story_music_comes_from_the_episode() -> void:
+	for episode: Script in Story.EPISODES:
+		var battle := StoryBattle.new(episode, null)
+		var track := battle.music()
+		assert_true(Catalog.has_music(track), "%s の対戦の曲 %s が表にある" % [episode.ID, track])
+		if not episode.get_script_constant_map().has(&"MUSIC"):
+			assert_eq(track, Catalog.battle_music(episode.LOOK), "%s: MUSIC が無ければ、盤の見た目の曲" % episode.ID)
+		var talk := Story.talk_of(episode, episode.BEFORE)
+		var talk_track := SceneFlow.music_for(SceneFlow.TALK, talk)
+		assert_true(Catalog.has_music(talk_track), "%s の会話の曲 %s が表にある" % [episode.ID, talk_track])
+		if not episode.get_script_constant_map().has(&"TALK_MUSIC"):
+			assert_eq(talk_track, &"talk", "%s: TALK_MUSIC が無ければ、会話の場面の曲" % episode.ID)
+	var hold: Script = load("res://game/episodes/ridge_hold.gd")
+	assert_eq(StoryBattle.new(hold, null).music(), &"battle_tense", "守り切る話は、緊迫した曲")
+
+
+func test_music_for_falls_back_to_the_scene_table() -> void:
+	assert_eq(SceneFlow.music_for(SceneFlow.TITLE, null), &"menu")
+	assert_eq(SceneFlow.music_for(SceneFlow.TALK, {"music": &""}), &"talk", "空の名前なら、場面の表の曲")
+	assert_eq(SceneFlow.music_for(SceneFlow.TALK, {"music": &"battle_tense"}), &"battle_tense")
+	assert_eq(SceneFlow.music_for(SceneFlow.SORTIE, {"episode": null}), &"menu", "曲を決めない渡すもの")
+
+
+func test_new_board_with_another_look_changes_the_music() -> void:
+	var sound := _sound()
+	sound.play_scene_music(Catalog.battle_music(StageLook.GRASSLAND))
+	var player: AudioStreamPlayer = sound._music[sound._active]
+	sound.play_scene_music(Catalog.battle_music(StageLook.GRASSLAND))
+	assert_true(sound._music[sound._active] == player, "同じ見た目でやり直すなら、鳴らし直さない")
+	sound.play_scene_music(Catalog.battle_music(StageLook.CRYSTAL_FOREST))
+	assert_eq(sound.current_track(), &"battle_crystal")
+	assert_eq(sound.scene_track(), &"battle_crystal", "決着の曲のあとは、この曲へ戻る")
+	_drop(sound)
 
 
 func test_result_music_is_played_once() -> void:

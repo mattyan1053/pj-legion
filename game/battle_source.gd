@@ -8,6 +8,7 @@ extends RefCounted
 
 const StageLook := preload("res://game/stage_look.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
+const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 
 ## 種 battle_seed の対戦の設定。対戦の画面は、これの create_battle() で対戦を作る。
@@ -19,6 +20,11 @@ func make_setup(_battle_seed: int) -> MatchSetup:
 ## 盤の見た目の名前（stage_look.gd の THEMES の鍵）。
 func look() -> StringName:
 	return StageLook.DEFAULT
+
+
+## 対戦の曲（sound_catalog.gd の MUSIC の名前）。既定は、盤の見た目の曲。
+func music() -> StringName:
+	return SoundCatalog.battle_music(look())
 
 
 ## 相手のプレイヤー: CPU が動かすプレイヤー。人どうしなら、相手を CPU に切り替えたときに CPU が動かすほう。

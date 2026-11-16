@@ -58,7 +58,7 @@ const SCENES := {
 	TALK: {
 		"script": "res://game/talk_screen.gd",
 		"next": {},  # 流れの中でだけ使う（ストーリーの会話。Run.NEXT で次へ）
-		"music": &"menu",
+		"music": &"talk",  # 話のデータが TALK_MUSIC で選び直せる（story_battle.gd の talk_music_of）
 	},
 	SORTIE: {
 		"script": "res://game/sortie_screen.gd",
@@ -68,7 +68,7 @@ const SCENES := {
 	BATTLE: {
 		"script": "res://game/battle_screen.gd",
 		"next": {&"setup": SETUP},
-		"music": &"battle",
+		"music": &"battle",  # 既定。ふつうは渡すもの（battle_source.gd の music: 盤の見た目か、話が決めた曲）が決める
 	},
 }
 ## 起動して最初に出す場面。
@@ -98,3 +98,14 @@ static func script_path(scene: StringName) -> String:
 ## scene で鳴らす曲の名前（sound_catalog.gd の MUSIC）。決まっていなければ空（曲を止める）。
 static func music(scene: StringName) -> StringName:
 	return SCENES[scene].get("music", &"") if SCENES.has(scene) else &""
+
+
+## 場面 scene を、流れが渡すもの given で始めるときの曲。given が曲を決めていれば（music() を持つもの、"music" の欄を持つ辞書）、
+## その曲。決めていない（空の名前）なら、場面の表の曲（music）。
+static func music_for(scene: StringName, given: Variant) -> StringName:
+	var track := &""
+	if given is Object and (given as Object).has_method(&"music"):
+		track = given.music()
+	elif given is Dictionary:
+		track = (given as Dictionary).get("music", &"")
+	return track if track != &"" else music(scene)
