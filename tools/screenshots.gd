@@ -27,6 +27,7 @@ const SCENES := {
 	"stage_select": "ステージ選択の場面（タイトルの「対戦」のあと。生成のステージと手で作ったマップの 2 段のカード）",
 	"stage_hover": "ステージ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
 	"versus_hand_start": "対戦モードの、手で作ったマップ（一覧の最初のもの。画面に出していないものでも）での対戦の始め",
+	"versus_hand_last_start": "対戦モードの、手で作ったマップ（一覧の最後のもの。いちばん新しく足したもの）での対戦の始め",
 	"versus_hand_result": "対戦モードの、手で作ったマップで CPU に勝ったときのリザルト（「新しい盤面」は生成のステージだけ）",
 	"setup": "対戦の設定の場面（ステージ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
@@ -303,6 +304,24 @@ func _first_hand_field() -> StringName:
 
 func _scene_versus_hand_start() -> bool:
 	_field = _first_hand_field()
+	if _field == &"":
+		return false
+	_new_battle()
+	_show()
+	return true
+
+
+## 一覧の最後の手で作ったマップ（画面に出していないものも）。無ければ空。
+func _last_hand_field() -> StringName:
+	var last: StringName = &""
+	for field in VersusFields.all_ids():
+		if not VersusFields.is_generated(field):
+			last = field
+	return last
+
+
+func _scene_versus_hand_last_start() -> bool:
+	_field = _last_hand_field()
 	if _field == &"":
 		return false
 	_new_battle()
