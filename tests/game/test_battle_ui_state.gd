@@ -202,3 +202,17 @@ func test_auto_confirmation_is_dropped_by_back_and_by_other_confirmations() -> v
 	ui.start_confirming_auto(1000)
 	ui.clear_after_action()
 	assert_false(ui.confirming_auto, "行動のあとに、おまかせの確かめが残った")
+
+
+func test_only_one_two_press_confirm_is_pending_at_a_time() -> void:
+	# 2 度押しの確かめ（ターン終了・必殺技・おまかせ）は、新しく始めたものだけが残る（2 つのボタンが同時に「もう一度押して」にならない）。
+	var ui := BattleUiState.new()
+	ui.start_confirming_ult(1000)
+	ui.start_confirming_end(2000)
+	assert_true(ui.confirming_end and not ui.confirming_ult and not ui.confirming_auto, "ターン終了の確かめで、必殺技の確かめをやめない")
+	ui.start_confirming_ult(3000)
+	assert_true(ui.confirming_ult and not ui.confirming_end and not ui.confirming_auto, "必殺技の確かめで、ターン終了の確かめをやめない")
+	ui.start_confirming_auto(4000)
+	assert_true(ui.confirming_auto and not ui.confirming_end and not ui.confirming_ult, "おまかせの確かめで、ほかの確かめをやめない")
+	ui.start_confirming_end(5000)
+	assert_true(ui.confirming_end and not ui.confirming_ult and not ui.confirming_auto, "ターン終了の確かめで、おまかせの確かめをやめない")
