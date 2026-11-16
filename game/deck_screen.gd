@@ -562,6 +562,7 @@ func _open_editor(id: String, name: String, deck: Deck) -> void:
 	_selected = -1
 	_hover_kind = -1
 	_list_view.visible = false
+	_army_view.visible = false  # 軍を選んだあとの組む画面の後ろに、軍の札を透かして残さない
 	_edit_view.visible = true
 	_refresh_editor()
 
