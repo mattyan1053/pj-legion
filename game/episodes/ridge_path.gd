@@ -4,7 +4,7 @@ extends RefCounted
 ## **会話の文は仮のもの。** ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
 ## 話の形（会話 → 対戦 → 会話）を見せるための短い文で、中身が決まったら全部差し替える。
 ##
-## 対戦は手で作ったマップ「尾根の小道」（rules/maps/ridge_path.gd）。人はプレイヤー1（先手、MILITARY の既定の編成）、
+## 対戦は手で作ったマップ「尾根の小道」（rules/maps/ridge_path.gd）。人はプレイヤー1（先手、ストーリーの部隊）、
 ## 敵はプレイヤー2（FANTASY、ENEMY の決め打ちの部隊。CPU が動かす）。
 ## 敵の部隊は「ふつうに遊べば勝てるが、雑に突っ込むと負ける」くらいを狙い、人の側を CPU に持たせた対戦の勝率で決めた（docs/story.md）。
 
@@ -19,14 +19,16 @@ const TITLE := "尾根の小道"
 const LOOK := StageLook.LABYRINTH
 const MAP := RidgePath
 
-## 人と敵の軍。
-const HUMAN_ARMY := UnitKind.Army.MILITARY
+## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。
+const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.COMMANDO]
+
+## 敵の軍（人の軍は、ストーリーで 1 つ。story.gd の ARMY）。
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 ## 敵の部隊（将を除く）: [駒の種類, [装備, …]] の列。並びの順に、本陣の前へ置く（いつもの置き方）。
 const ENEMY := [
-	[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD]],
+	[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD, Equipment.Id.IRON_SHIELD]],
 	[UnitKind.Id.SORCERER, []],
-	[UnitKind.Id.SPELLBLADE, []],
+	[UnitKind.Id.SORCERER, []],
 	[UnitKind.Id.PRIEST, []],
 ]
 

@@ -59,7 +59,7 @@ func press_start() -> void:
 
 ## 「ストーリー」: まだクリアしていない最初の話（全部クリアしていたら最初の話）を、会話から始める。
 func press_story() -> void:
-	context.start_run(Story.run_of(context.story.next_episode()))
+	context.start_run(context.story.run_now(context.story.next_episode()))
 
 
 ## 「ストーリー」のボタンの文字。全部の話をクリアしていたら、済みの印を付ける。

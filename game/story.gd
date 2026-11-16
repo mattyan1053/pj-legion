@@ -20,6 +20,16 @@ const FORMAT_VERSION := 1
 const TALK := &"talk"
 const BATTLE := &"battle"
 
+## ストーリーの編成の決まりの名前（取っておく部隊に書く）。対戦の決まり（DeckRules.VERSUS）と分ける。
+const RULES_ID := &"story"
+## ストーリーで人が使う軍（仮。Issue #49 の ★2）。
+const ARMY := UnitKind.Army.MILITARY
+## 最初から雇える駒の種類。ほかは、話をクリアすると増える（話のデータの UNLOCKS）。
+const STARTING_KINDS: Array[UnitKind.Id] = [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.MEDIC]
+## 会話の行の、知らせ（話し手の名前の札を灰色にする。「飛ばす」でも飛ばさない。talk_screen.gd）。
+const NOTICE_SIDE := 2
+const NOTICE_NAME := "知らせ"
+
 ## 話の並び（一本道。game/episodes/ の 1 ファイルが 1 話）。
 const EPISODES: Array[Script] = [
 	preload("res://game/episodes/ridge_path.gd"),
@@ -87,13 +97,85 @@ func next_episode() -> Script:
 	return EPISODES[0]
 
 
-## 話 episode の流れ（run.gd）: 会話（前）→ 対戦 → 会話（後）→ タイトル。
+# ---- 駒の解放（docs/story.md の「駒の解放」） ----
+
+
+## いま雇える駒の種類: 最初から雇える駒と、クリアした話が解放する駒（記録には書かず、その場で求める）。
+func unlocked_kinds() -> Array[UnitKind.Id]:
+	var kinds := STARTING_KINDS.duplicate()
+	for episode in EPISODES:
+		if is_cleared(episode.ID):
+			_add_kinds(kinds, episode.UNLOCKS)
+	return kinds
+
+
+## いまの進み具合の、ストーリーの編成の決まり。
+func deck_rules() -> DeckRules:
+	return rules_of(unlocked_kinds())
+
+
+## 話 episode を初めて遊ぶときに雇える駒の種類: 最初から雇える駒と、並びでその話より前の話が解放する駒。
+## 話の敵の強さは、この駒で組んだ既定の編成で測る（tools/cpu_matches.gd の --episode）。
+static func kinds_before(episode: Script) -> Array[UnitKind.Id]:
+	var kinds := STARTING_KINDS.duplicate()
+	for earlier in EPISODES:
+		if earlier == episode:
+			break
+		_add_kinds(kinds, earlier.UNLOCKS)
+	return kinds
+
+
+## 雇える駒の種類 kinds の、ストーリーの編成の決まり。予算と数の上限は対戦と同じ（Issue #49 の設計の表の 9）。
+## 解放した駒は、軍が違っても ARMY のロスターに入る。並びは役割の順（前衛・後衛・奇襲・回復）。
+static func rules_of(kinds: Array[UnitKind.Id]) -> DeckRules:
+	var roster := kinds.duplicate()
+	roster.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
+		return UnitKind.role(a) < UnitKind.role(b) or (UnitKind.role(a) == UnitKind.role(b) and a < b))
+	return DeckRules.new(RULES_ID, "ストーリー", Deck.MAX_UNITS, {ARMY: roster}, {ARMY: DeckRules.versus().budget(ARMY)})
+
+
+## 雇える駒の種類 kinds の、ストーリーの既定の編成（CPU の編成の組み方。CpuDeck）。
+static func default_deck(kinds: Array[UnitKind.Id]) -> Deck:
+	return CpuDeck.build(ARMY, rules_of(kinds))
+
+
+## 話 episode の対戦（人は、その話を初めて遊ぶときの既定の編成）。敵の強さを測る道具が使う。
+static func first_battle(episode: Script) -> StoryBattle:
+	return StoryBattle.new(episode, default_deck(kinds_before(episode)))
+
+
+static func _add_kinds(kinds: Array[UnitKind.Id], more: Array) -> void:
+	for kind: UnitKind.Id in more:
+		if not kinds.has(kind):
+			kinds.append(kind)
+
+
+# ---- 流れ ----
+
+
+## 話 episode を、いまの進み具合で始める流れ（run_of。人は、いま雇える駒で組んだ既定の編成）。
+func run_now(episode: Script) -> Run:
+	var newly: Array[UnitKind.Id] = []
+	if not is_cleared(episode.ID):
+		var kinds := unlocked_kinds()
+		for kind: UnitKind.Id in episode.UNLOCKS:
+			if not kinds.has(kind):
+				newly.append(kind)
+	return run_of(episode, default_deck(unlocked_kinds()), newly)
+
+
+## 話 episode の流れ（run.gd）: 会話（前）→ 対戦 → 会話（後）→ タイトル。人の部隊は human_deck。
 ## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
-static func run_of(episode: Script) -> Run:
+## unlocking: この話のクリアで新しく雇えるようになる駒。あとの会話の最後に、知らせの行で出す。
+static func run_of(episode: Script, human_deck: Deck, unlocking: Array[UnitKind.Id] = []) -> Run:
 	var run := Run.new()
 	run.add(TALK, talk_of(episode, episode.BEFORE))
-	run.add(BATTLE, StoryBattle.new(episode))
-	run.add(TALK, talk_of(episode, episode.AFTER))
+	run.add(BATTLE, StoryBattle.new(episode, human_deck))
+	var after := talk_of(episode, episode.AFTER)
+	for kind in unlocking:
+		after["lines"].append({"side": NOTICE_SIDE, "name": NOTICE_NAME,
+				"text": "新しい駒「%s」を雇えるようになった。" % UnitKind.display_name(kind)})
+	run.add(TALK, after)
 	return run
 
 

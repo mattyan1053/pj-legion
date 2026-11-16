@@ -2,17 +2,20 @@ extends "res://game/battle_source.gd"
 ## ストーリーの 1 話の対戦（docs/story.md）。対戦の画面に渡すもの（battle_source.gd）。
 ## 話のデータ（game/episodes/ の 1 ファイル）から、戦いの定義（手で作ったマップ、決め打ちの敵）を持った対戦の設定を作る。
 ##
-## 人はいつもプレイヤー1（先手）で、軍の既定の編成（MatchSetup.default_deck）。敵はプレイヤー2 で、CPU が動かす。
+## 人はいつもプレイヤー1（先手）で、渡された部隊（story.gd が、いま雇える駒で組む）。敵はプレイヤー2 で、CPU が動かす。
 ## 選び直せるものは無い（ステージ、相手、対戦の設定のパネル）。やり直しは「同じ盤面でもう一度」だけ。
 ## 人が勝ったら、決着の画面に「次へ」を出し（流れの次の場面、あとの会話へ）、話をクリアしたと書く。
 ## ここはノードに依存しない（テストから呼べる）。
 
 ## 話のデータ（game/episodes/ の 1 ファイル）。
 var episode: Script
+## 人の部隊。
+var human_deck: Deck
 
 
-func _init(of_episode: Script = null) -> void:
+func _init(of_episode: Script = null, deck: Deck = null) -> void:
 	episode = of_episode
+	human_deck = deck
 
 
 func make_setup(battle_seed: int) -> MatchSetup:
@@ -21,7 +24,7 @@ func make_setup(battle_seed: int) -> MatchSetup:
 	var setup := MatchSetup.new()
 	setup.scenario = scenario
 	setup.battle_seed = battle_seed
-	setup.set_human(Unit.Side.PLAYER1, MatchSetup.default_deck(episode.HUMAN_ARMY))
+	setup.set_human(Unit.Side.PLAYER1, human_deck)
 	setup.controllers[Unit.Side.PLAYER2] = MatchSetup.Controller.CPU  # 部隊は決め打ちなので、CPU の編成は作らない
 	return setup
 
@@ -40,4 +43,4 @@ func record_win(context: RefCounted) -> void:
 
 
 func copy() -> RefCounted:
-	return get_script().new(episode)
+	return get_script().new(episode, human_deck)

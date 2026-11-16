@@ -4,7 +4,7 @@ extends Node
 ##
 ## - クリック・Enter・Space で次の文へ。文が出きる前なら、出しきるだけ。最後の文のあとは Run.NEXT で終える（流れの次の場面へ）。
 ## - 右クリックで 1 つ前の文へ戻る。Esc はシステムメニュー（ほかの場面と同じ）。
-## - 「飛ばす」で、残りを読まずに Run.NEXT で終える。
+## - 「飛ばす」で、残りを読まずに Run.NEXT で終える。知らせの行（side 2。駒の解放など）は飛ばさず、そこで止まる。
 
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
@@ -19,8 +19,10 @@ const BOX_HEIGHT := 150.0
 const BOX_BOTTOM := 40.0
 ## 送りの印の明滅の周期（秒）。
 const BLINK_PERIOD := 1.2
-## 陣営の色（battle_screen.gd の TEAM_COLORS と同じ。0 = 人の軍、1 = 敵の軍）。
-const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545")]
+## 名前の札の色（0 = 人の軍、1 = 敵の軍は battle_screen.gd の TEAM_COLORS と同じ。2 = 知らせ）。
+const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("6b7280")]
+## 知らせの行の side（story.gd の NOTICE_SIDE）。
+const NOTICE_SIDE := 2
 
 const COLOR_BOX := Color(0.06, 0.08, 0.11, 0.9)
 const COLOR_BORDER := Color(1.0, 1.0, 1.0, 0.14)
@@ -188,8 +190,13 @@ func press_back() -> void:
 	_text.visible_characters = -1
 
 
-## 「飛ばす」: 残りを読まずに会話を終える。
+## 「飛ばす」: 残りを読まずに会話を終える。この先に知らせの行があれば、そこへ飛ぶ（知らせは読ませる）。
 func press_skip() -> void:
+	for index in range(_index + 1, line_count()):
+		if int(talk["lines"][index].get("side", 0)) == NOTICE_SIDE:
+			context.play_sound(&"ui_click")
+			_show_line(index)
+			return
 	_end()
 
 
