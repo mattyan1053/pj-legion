@@ -1,6 +1,6 @@
 class_name DeckRules
 extends RefCounted
-## 編成の決まり: どの軍を選べ、それぞれの軍でどの駒を雇え、予算はいくつか、何体まで雇えるか（docs/deck-building.md）。
+## 編成の決まり: どの軍を選べ、それぞれの軍でどの駒を雇え、どの装備を持たせられ、予算はいくつか、何体まで雇えるか（docs/deck-building.md）。
 ##
 ## 編成（Deck）と、その検査（Deck.problems）、編成の画面は、決まりを外から受け取る。
 ## いまある決まりは対戦の決まり（versus()。全員同じ）だけ。後で、ストーリーの進み具合に応じた決まり
@@ -21,16 +21,22 @@ var max_units: int
 var _rosters: Dictionary = {}
 ## 軍 -> 予算（合計コストの上限）。
 var _budgets: Dictionary = {}
+## 持たせられる装備の種類（並びは Equipment.Id の順）。
+var _items: Array[Equipment.Id] = []
 
 static var _versus: DeckRules
 
 
-func _init(rules_id: StringName, name: String, unit_limit: int, rosters: Dictionary, budgets: Dictionary) -> void:
+## allowed_items: 持たせられる装備の種類。省けば（null）、どの装備も持たせられる。
+func _init(rules_id: StringName, name: String, unit_limit: int, rosters: Dictionary, budgets: Dictionary, allowed_items: Variant = null) -> void:
 	id = rules_id
 	display_name = name
 	max_units = unit_limit
 	_rosters = rosters
 	_budgets = budgets
+	for item: Equipment.Id in Equipment.Id.values():
+		if allowed_items == null or (allowed_items as Array).has(item):
+			_items.append(item)
 
 
 ## 対戦の決まり。軍ごとに、その軍の 4 種を雇える。予算は軍ごとの値（MILITARY 24、FANTASY 18。docs/player-loadout.md）。
@@ -74,6 +80,16 @@ func roster(army: UnitKind.Army) -> Array[UnitKind.Id]:
 ## その軍の予算。選べない軍なら 0。
 func budget(army: UnitKind.Army) -> int:
 	return _budgets.get(army, 0)
+
+
+## 持たせられる装備の種類（並びは Equipment.Id の順）。
+func items() -> Array[Equipment.Id]:
+	return _items.duplicate()
+
+
+## その装備を持たせられるか。
+func allows_item(item: Equipment.Id) -> bool:
+	return _items.has(item)
 
 
 ## その軍で、その種類の駒を雇えるか。
