@@ -5,23 +5,21 @@ extends RefCounted
 ## 盤は鍵（StringName）で持つ。ストーリーの話（game/story/episodes/ のファイルの名前）や見た目（stage_look.gd の名前）と同じ持ち方。
 ## 盤の出どころは 2 つ:
 ## - 生成のステージ（STAGE。BoardGenerator.Stage）: 対戦を始めるたびに、種から形を作り直す。見た目は StageLook.OF_STAGE。
-## - 手で作ったマップ（MAP。rules/maps/ のスクリプト）: 種によらず、いつも同じ形。見た目は LOOK。
+## - 手で作ったマップ（MAP。game/maps/ のファイルの id。maps.gd）: 種によらず、いつも同じ形。見た目は LOOK。
 ## どちらも、勝ち方は対戦モードのいつもの 2 つ、初期位置はいつもの「本陣の前」、部隊は両方とも対戦の設定で選ぶ（予算と 6 体）。
 ##
-## **盤を 1 つ足すには、FIELDS に 1 つ足すだけ**（手で作ったマップなら、rules/maps/ のファイルと）。
+## **盤を 1 つ足すには、FIELDS に 1 つ足すだけ**（手で作ったマップなら、game/maps/ のファイルと）。
 ## 並びが画面の並び（番号、1〜9 のキー、F1〜F3）。生成のステージを先に並べる。
 ## 対戦モードの画面に出すのは、CPU どうしの釣り合い（docs/cpu-ai.md の「いまの集計」）が対戦モードのめやすに入るものだけ。
 ## めやすを外れるものは HIDDEN を立てて一覧に残す（画面には出さない。集計の道具の --stage では測れる）。
 
 const StageLook := preload("res://game/stage_look.gd")
-const RidgePath := preload("res://rules/maps/ridge_path.gd")
-const CrystalGorge := preload("res://rules/maps/crystal_gorge.gd")
-const BoulderPass := preload("res://rules/maps/boulder_pass.gd")
+const Maps := preload("res://game/maps.gd")
 
 ## 項目の欄の名前。
 const ID := &"id"  ## 鍵
 const STAGE := &"stage"  ## 生成のステージ（BoardGenerator.Stage）
-const MAP := &"map"  ## 手で作ったマップ（rules/maps/ のスクリプト。TITLE と map() を持つ）
+const MAP := &"map"  ## 手で作ったマップ（game/maps/ のファイルの id。maps.gd で引く）
 const LOOK := &"look"  ## 手で作ったマップの見た目（stage_look.gd の名前）
 const TAGS := &"tags"  ## カードに載せる、置かれているもの（ひとことの特徴）
 const NOTE := &"note"  ## カードにマウスを乗せると出す説明
@@ -55,18 +53,18 @@ const FIELDS := [
 	},
 	# 手で作ったマップ（ストーリーと同じ形）。部隊を変えた CPU どうしの釣り合いがめやすに入る（docs/cpu-ai.md の「いまの集計」）。
 	{
-		ID: RIDGE_PATH, MAP: RidgePath, LOOK: StageLook.STONE_WALLS,
+		ID: RIDGE_PATH, MAP: "ridge_path", LOOK: StageLook.STONE_WALLS,
 		TAGS: "小さな盤 ・ 2 本の道",
 		NOTE: "細長い小さな盤。真ん中の岩が尾根を左右 2 本の道に分け、どちらの道にも結晶泉と中ボス。\n本陣どうしが近く、すぐにぶつかる。押し込むか、道をふさいで迎え撃つか。",
 	},
 	{
-		ID: CRYSTAL_GORGE, MAP: CrystalGorge, LOOK: StageLook.CRYSTAL_FOREST,
+		ID: CRYSTAL_GORGE, MAP: "crystal_gorge", LOOK: StageLook.CRYSTAL_FOREST,
 		TAGS: "裂け目 ・ 橋 ・ ポータル",
 		NOTE: "盤の中ほどを結晶の裂け目が横切る。渡れるのは左右の端の橋と、真ん中のポータルだけ。本陣は対角。\n遠回りの橋か、敵陣のただ中へ出る近道のポータルか。",
 	},
 	# 手で作ったマップ（対戦モードのために作ったもの）。
 	{
-		ID: BOULDER_PASS, MAP: BoulderPass, LOOK: StageLook.GRASSLAND,
+		ID: BOULDER_PASS, MAP: "boulder_pass", LOOK: StageLook.GRASSLAND,
 		TAGS: "大岩 ・ 広い 2 本の道",
 		NOTE: "草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。",
 	},
@@ -130,7 +128,7 @@ static func is_generated(id: StringName) -> bool:
 static func title_of(id: StringName) -> String:
 	var field := _field(id)
 	if field.has(MAP):
-		return field[MAP].TITLE
+		return Maps.find(field[MAP])["title"]
 	return MatchSetup.stage_name(field.get(STAGE, -1))
 
 
@@ -154,7 +152,8 @@ static func look_of(id: StringName) -> StringName:
 static func scenario_of(id: StringName) -> Scenario:
 	var field := _field(id)
 	if field.has(MAP):
-		return Scenario.on_map(field[MAP].map(), field[MAP].TITLE)
+		var found: Dictionary = Maps.find(field[MAP])
+		return Scenario.on_map(found["map"], found["title"])
 	if field.has(STAGE):
 		return Scenario.versus(field[STAGE])
 	return null

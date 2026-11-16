@@ -32,8 +32,8 @@ extends SceneTree
 ##                   盤が同じなので、標本が別々の局になるよう、部隊の違いで勝率を測る（--decks は見ない）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、rules/maps/ に足さずに測る）。
-##                   ファイルは、文字の格子の行だけを並べたテキスト（docs/hand-map.md の「文字」）。--stage より優先する
+##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
+##                   ファイルは、マップのファイルと同じ書式（[rows] の節。docs/hand-map.md）か、文字の格子の行だけを並べたテキスト。--stage より優先する
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
 ## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
@@ -45,6 +45,7 @@ const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const Names := preload("res://game/names.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const Maps := preload("res://game/maps.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 const STAGE_NAMES := {
@@ -716,8 +717,10 @@ func _rules_without(names: String) -> DeckRules:
 	return DeckRules.new(&"without", "抜いた決まり", versus.max_units, rosters, budgets)
 
 
-## --map のファイルの、文字の格子の行（空の行は飛ばす）。
+## --map のファイルの、文字の格子の行（空の行は飛ばす）。マップのファイルの書式（[rows] の節がある）なら、その節の行。
 func _map_rows(path: String) -> PackedStringArray:
+	if FileAccess.get_file_as_string(path).contains("[rows]"):
+		return (Maps.load_file(path)["map"] as HandMap).rows
 	var rows := PackedStringArray()
 	for line in FileAccess.get_file_as_string(path).split("\n"):
 		if not line.strip_edges().is_empty():

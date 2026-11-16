@@ -8,6 +8,7 @@ extends RefCounted
 ## - 節の中の行は、そのまま（前後の空白を除いて）持つ。読み方は節の種類で違う:
 ##   - 値の節（values）: 「キー = 値」。同じキーを何行も書くと、その順の列になる（列にしてよいキーだけ）。
 ##   - 文の節（rows）: 1 行が 1 つ（会話の行、話の id の行など）。
+##   - そのままの節（open・parse の raw に名前を渡す。マップの文字の格子）: # で始まる行も読み飛ばさない（# は障害物の文字）。空の行だけ読み飛ばす。
 ## - 書き間違いは「ファイル:行: 何がおかしいか」の文にして problems に貯める（読み込みを止めない）。
 
 ## ファイルのパス（書き間違いの文の頭に付ける）。
@@ -19,26 +20,27 @@ var problems: PackedStringArray = []
 
 
 ## path のファイルを読む。読めなければ problems に書く。
-static func open(file_path: String) -> RefCounted:
+static func open(file_path: String, raw: Array = []) -> RefCounted:
 	var text := FileAccess.get_file_as_string(file_path)
 	if text == "" and FileAccess.get_open_error() != OK:
 		var failed: RefCounted = new()
 		failed.path = file_path
 		failed.problems.append("%s: 読めない（%s）" % [file_path, error_string(FileAccess.get_open_error())])
 		return failed
-	return parse(text, file_path)
+	return parse(text, file_path, raw)
 
 
 ## 文 text を、ファイル file_path の中身として読む（テストは、わざと壊した文を渡す）。
-static func parse(text: String, file_path := "") -> RefCounted:
+## raw: そのままの節の名前（# で始まる行を、その節の行として読む）。
+static func parse(text: String, file_path := "", raw: Array = []) -> RefCounted:
 	var file: RefCounted = new()
 	file.path = file_path
 	var current := ""
 	var number := 0
-	for raw: String in text.split("\n"):
+	for source_line: String in text.split("\n"):
 		number += 1
-		var line := raw.strip_edges()
-		if line == "" or line.begins_with("#"):
+		var line := source_line.strip_edges()
+		if line == "" or (line.begins_with("#") and not raw.has(current)):
 			continue
 		if line.begins_with("[") and line.ends_with("]"):
 			current = line.substr(1, line.length() - 2).strip_edges()

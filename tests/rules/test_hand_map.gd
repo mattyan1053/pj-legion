@@ -1,22 +1,26 @@
 extends "res://tests/base_test.gd"
-## 手で作ったマップ（HandMap、rules/maps/）と、戦いの定義の初期位置（docs/hand-map.md）。
+## 手で作ったマップ（HandMap と、game/maps/ のマップのファイル）と、戦いの定義の初期位置（docs/hand-map.md）。
+## マップのファイルを読むのは game/maps.gd（ルールはファイルを読まない）。ここでは、読んだ HandMap がルールの上で盤になることを見る。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
-const RidgePath := preload("res://rules/maps/ridge_path.gd")
-const MAPS_DIR := "res://rules/maps/"
+const Maps := preload("res://game/maps.gd")
 
 
 func _map(rows: Array[String]) -> HandMap:
 	return HandMap.new(PackedStringArray(rows))
 
 
-## rules/maps/ のマップ（ファイル名 -> スクリプト）。
+## game/maps/ のマップ（id -> Maps.find の返すもの: {"map", "title", "problems"}）。
 func _all_maps() -> Dictionary:
 	var maps := {}
-	for file in DirAccess.get_files_at(MAPS_DIR):
-		if file.ends_with(".gd"):
-			maps[file] = load(MAPS_DIR + file)
+	for id: String in Maps.ids():
+		maps[id] = Maps.find(id)
 	return maps
+
+
+## 尾根の小道（初期位置と小さい盤の CPU を見る）。
+func _ridge_path() -> Dictionary:
+	return Maps.find("ridge_path")
 
 
 func test_chars_make_the_board() -> void:
@@ -66,17 +70,17 @@ func test_barrels_block_the_way_between_hqs() -> void:
 
 func test_every_map_makes_a_board_that_fits_both_armies() -> void:
 	var maps := _all_maps()
-	assert_true(maps.has("ridge_path.gd"))
-	assert_true(maps.has("crystal_gorge.gd"))
+	assert_true(maps.has("ridge_path"))
+	assert_true(maps.has("crystal_gorge"))
 	for file: String in maps:
-		var script: GDScript = maps[file]
-		var map: HandMap = script.call(&"map")
+		var map: HandMap = maps[file]["map"]
+		assert_eq(maps[file]["problems"], PackedStringArray(), file)
 		assert_eq(map.problems(), [] as Array[HandMap.Problem], file)
-		assert_ne(script.get(&"TITLE"), "", file)
+		assert_ne(maps[file]["title"], "", file)
 		var setup := MatchSetup.versus_human(
 			BoardGenerator.Stage.PLAIN, 1, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY)
 		)
-		setup.scenario = Scenario.on_map(map, script.get(&"TITLE"))
+		setup.scenario = Scenario.on_map(map, maps[file]["title"])
 		var battle := setup.create_battle()
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			var count := battle.units.filter(func(unit: Unit) -> bool: return unit.side == side).size()
@@ -84,7 +88,7 @@ func test_every_map_makes_a_board_that_fits_both_armies() -> void:
 
 
 func test_hand_map_ignores_the_seed_and_the_board_size() -> void:
-	var scenario := Scenario.on_map(RidgePath.map(), RidgePath.TITLE)
+	var scenario := Scenario.on_map(_ridge_path()["map"], _ridge_path()["title"])
 	scenario.board_size = Vector2i.ONE
 	assert_true(scenario.can_make_board(), "大きさは生成だけのもの")
 	var a := scenario.make_board(1)
@@ -106,7 +110,7 @@ func test_invalid_hand_map_is_refused_as_no_board() -> void:
 
 
 func test_deploy_cells_place_units_in_deck_order_then_fall_back() -> void:
-	var scenario := Scenario.on_map(RidgePath.map(), RidgePath.TITLE)
+	var scenario := Scenario.on_map(_ridge_path()["map"], _ridge_path()["title"])
 	var cells: Array[Vector2i] = [
 		Vector2i(0, 13),  # 壁: 飛ばす
 		Vector2i(3, 18),
@@ -134,9 +138,10 @@ func test_deploy_cells_place_units_in_deck_order_then_fall_back() -> void:
 	assert_eq(battle.unit_at(Vector2i(8, 1)).side, Unit.Side.PLAYER2)
 
 
-func _cpu_game(armies: Array, max_turns: int, map_script: GDScript = RidgePath) -> CpuMatch.Outcome:
+func _cpu_game(armies: Array, max_turns: int, found: Dictionary = {}) -> CpuMatch.Outcome:
+	var map: Dictionary = _ridge_path() if found.is_empty() else found
 	var setup := MatchSetup.new()
-	setup.scenario = Scenario.on_map(map_script.call(&"map"), map_script.get(&"TITLE"))
+	setup.scenario = Scenario.on_map(map["map"], map["title"])
 	setup.battle_seed = 1
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		setup.set_cpu(side, armies[side])
@@ -150,7 +155,7 @@ func test_cpu_plays_on_the_small_map() -> void:
 	assert_true(outcome.turns > 6 or outcome.finished)
 
 
-## rules/maps/ のどのマップでも、CPU どうしの対局が最後まで進む（先手と後手の軍を入れ替えて 2 局ずつ）。
+## game/maps/ のどのマップでも、CPU どうしの対局が最後まで進む（先手と後手の軍を入れ替えて 2 局ずつ）。
 func test_long_cpu_games_on_every_map_finish() -> void:
 	var maps := _all_maps()
 	for file: String in maps:
@@ -158,3 +163,17 @@ func test_long_cpu_games_on_every_map_finish() -> void:
 			var outcome := _cpu_game(armies, 60, maps[file])
 			assert_true(outcome.finished, "%s: 60 ターンまでに決着する: %s" % [file, armies])
 			assert_eq(outcome.rejected, 0, file)
+
+
+## マップのファイルの書式（game/maps.gd）: [rows] の中の # は障害物の文字。書き間違いは行で言う。
+func test_map_files_read_rows_with_hash_and_report_lines() -> void:
+	var found := Maps.parse("# 説明\n[map]\ntitle = 見本\n\n[rows]\n#.2.#\n#...#\n#.1.#\n")
+	assert_eq(found["problems"], PackedStringArray())
+	assert_eq(found["title"], "見本")
+	assert_eq((found["map"] as HandMap).rows, PackedStringArray(["#.2.#", "#...#", "#.1.#"]), "# で始まる行も格子の行")
+	var ragged := Maps.parse("[map]\ntitle = 見本\n[rows]\n..2..\n...\n..1..\n")
+	assert_true(Array(ragged["problems"]).any(func(problem: String) -> bool: return problem.begins_with("probe.txt:5:")), "長さの違う行: %s" % [ragged["problems"]])
+	var untitled := Maps.parse("[map]\n[rows]\n2\n1\n")
+	assert_false((untitled["problems"] as PackedStringArray).is_empty(), "title が無い")
+	var no_hq := Maps.parse("[map]\ntitle = 見本\n[rows]\n...\n.1.\n")
+	assert_false((no_hq["problems"] as PackedStringArray).is_empty(), "本陣が 1 つ")
