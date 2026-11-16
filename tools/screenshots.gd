@@ -133,6 +133,9 @@ const SCENES := {
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
 	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
 	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
+	"story_fantasy_main_list": "ストーリー: FANTASY の物語の演習を終え、本編の 1 話目をクリアしたあとの話の一覧（本編のカード、増えた持ち物とコスト上限）",
+	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（霧の森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
+	"story_fantasy_forest_wide": "ストーリー: 霧の森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）",
@@ -1638,6 +1641,60 @@ func _scene_story_fantasy_sortie() -> bool:
 	if _app.current_id() != SceneFlow.TALK or not await _scene_story_sortie_from_talk():
 		return false
 	return _app.current_scene().is_squad_fixed()
+
+
+## FANTASY の物語の number 番目（0 から。負なら最後）の話を始める（前の会話の場面に入る）。前の話は、クリアしたことにする。
+func _start_fantasy(number: int) -> bool:
+	var episodes: Array = _fantasy().episodes
+	if number < 0:
+		number = episodes.size() - 1
+	_app.context.story.choose_campaign(_fantasy())  # クリアは、いま選んでいる物語の記録に書く
+	for i: int in number:
+		_app.context.story.clear(episodes[i].id)
+	if not await _scene_story_fantasy_list():
+		return false
+	_app.current_scene().choose(episodes[number])
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.TALK
+
+
+## 部隊を選ぶ最初の話（FANTASY の物語の本編の 1 話目）の番号（0 から）。
+func _fantasy_main_episode() -> int:
+	for i: int in _fantasy().episodes.size():
+		if _fantasy().episodes[i].squad_deck() == null:
+			return i
+	return 0
+
+
+## FANTASY の物語の本編の 1 話目をクリアしたあとの話の一覧。
+func _scene_story_fantasy_main_list() -> bool:
+	_app.context.story.choose_campaign(_fantasy())
+	for i: int in _fantasy_main_episode() + 1:
+		_app.context.story.clear(_fantasy().episodes[i].id)
+	return await _scene_story_fantasy_list()
+
+
+## FANTASY の物語の最後の話の出撃準備（既定の編成）。
+func _scene_story_fantasy_forest_sortie() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	if not await _start_fantasy(-1):
+		return false
+	return await _scene_story_sortie_from_talk()
+
+
+## FANTASY の物語の最後の話の対戦の始めを、いちばん引いて見る。
+func _scene_story_fantasy_forest_wide() -> bool:
+	if not await _scene_story_fantasy_forest_sortie():
+		return false
+	_app.current_scene().press_sortie()
+	await _app.scene_changed
+	if _app.current_id() != SceneFlow.BATTLE:
+		return false
+	_scene = _app.current_scene()
+	var size: Vector2i = _scene.battle.board.size
+	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
+	_aim(OrbitCamera.max_distance_for(size), 0.0, OrbitCamera.MIN_PITCH)
+	return true
 
 
 ## 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて、最初から雇える駒で組む。

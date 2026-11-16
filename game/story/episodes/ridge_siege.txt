@@ -1,0 +1,38 @@
+# ストーリーの話「尾根の砦」。FANTASY の物語の本編 2 話目。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 手で作ったマップ「尾根の小道」（game/maps/ridge_path.txt）。MILITARY の物語の 1〜3 話と同じマップを、勝ち方を変えて使い回す。
+# 人の勝ち方は本陣の占拠だけ（wins）。敵の将を倒しても終わらない。敵は盾役と衛生兵の 2 体で、本陣の前から始まる。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 尾根の砦
+map = ridge_path
+look = stone_walls
+wins = hq_captured
+
+[unlock]
+budget = 2
+
+[ally]
+name = 騎士長
+
+[enemy]
+name = 砦の守備隊長
+army = military
+unit = shield_trooper
+unit = medic
+
+[before]
+騎士長: 尾根の上に、機械の軍の砦がある。あれを取れば、道が開ける。
+砦の守備隊長: 砦は渡さない。守りを固めろ。
+騎士長: 砦の本陣に、3 ターン乗り続けろ。将を倒しても、砦は落ちない。
+
+[after]
+砦の守備隊長: ……砦が落ちたか。
+騎士長: 尾根は押さえた。ここを足場にする。
+
+[cues]
+(turn 1) 騎士長: 本陣は、敵の将の足元のマスだ。
+(king_half enemy) 騎士長: 将を倒しても終わらない。本陣に乗り続けろ。

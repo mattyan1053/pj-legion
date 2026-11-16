@@ -1,0 +1,49 @@
+# ストーリーの話「古戦場の夜」。FANTASY の物語の本編 3 話目。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 手で作ったマップ「古戦場」（game/maps/old_battlefield.txt）。MILITARY の物語の 11・12 話と同じマップを、勝ち方と敵を変えて使い回す。
+# 人は守る側: 決められたターンが終わるまで、将と本陣を守り切れば勝ち（hold_turns）。
+# 敵は混成: MILITARY の軍に、骨の群れ（魔物）が付いている。軍があるので、敵は必殺技（総員突撃）も使う。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 古戦場の夜
+map = old_battlefield
+look = stone_walls
+music = battle_tense
+hold_turns = 8
+
+[unlock]
+budget = 2
+
+[ally]
+name = 騎士長
+
+[enemy]
+name = 死霊使いの軍曹
+army = military
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton_archer
+unit = skeleton_archer
+unit = commando
+unit = skeleton_brute
+
+[before]
+騎士長: 古戦場で夜を越す。……骨の音がする。
+死霊使いの軍曹: 魔法使いども、骨と一緒に眠らせてやる。
+騎士長: 機械の軍が、骨を操っている。夜明けまで持ちこたえれば、援軍が来る。
+騎士長: 8 ターン、将と本陣を守り切れ。
+
+[after]
+死霊使いの軍曹: 夜が明けた……退くぞ。
+騎士長: 骨を操る兵か。機械の軍も、ただの軍ではないな。
+
+[cues]
+(turn 1) 騎士長: 骨は数で来る。固まった所へ、ファイアボールを撃て。
+(turn 7) 騎士長: 夜明けまで、あと 2 ターンだ。

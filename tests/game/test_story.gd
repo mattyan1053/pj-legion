@@ -202,7 +202,7 @@ func test_story_starts_from_the_first_episode_not_cleared() -> void:
 	assert_eq(story.next_episode(), Story.military().episodes[0], "全部クリアしたら、最初の話をもう一度")
 
 
-## どの物語も、話を並びの順にクリアすると、その物語の軍の駒・持ち物・コスト上限が増え、終わりには軍の駒が全部そろう。
+## どの物語も、話を並びの順にクリアすると、その物語の軍の駒・持ち物・コスト上限が増え、終わりには軍の駒が全部そろい、対戦のコスト上限を超える。
 func test_every_campaign_unlocks_step_by_step_and_ends_with_every_kind() -> void:
 	for campaign in Story.campaigns():
 		if not Story.is_ready(campaign):
@@ -219,6 +219,7 @@ func test_every_campaign_unlocks_step_by_step_and_ends_with_every_kind() -> void
 			kinds.append_array(episode.unlock_kinds)
 		assert_eq(story.unlocked().budget, budget)
 		assert_eq(kinds.size(), DeckRules.versus().roster(campaign.army).size(), "%s: 物語の終わりには、軍の駒が全部そろう" % campaign.title)
+		assert_true(budget > DeckRules.versus().budget(campaign.army), "%s: 物語の終わりには、対戦のコスト上限を超える" % campaign.title)
 		assert_true(campaign.starting_budget < DeckRules.versus().budget(campaign.army), "%s: 最初は、対戦のコスト上限より低い" % campaign.title)
 
 

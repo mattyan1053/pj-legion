@@ -21,3 +21,8 @@ trial_fireball
 trial_ward
 trial_shadow_step
 trial_eruption
+gorge_crossing
+ridge_siege
+barrow_vigil
+boulder_warden
+mist_forest

@@ -1,0 +1,43 @@
+# ストーリーの話「峠の番人」。FANTASY の物語の本編 4 話目。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 手で作ったマップ「大岩の峠」（game/maps/boulder_pass.txt。対戦モードのために作ったマップを、ストーリーでも使う）。
+# 人の勝ち方は中ボスの撃破だけ（wins）。敵の将を倒しても終わらない。敵はいつもの勝ち方（将の撃破、本陣の占拠）で攻めてくる。
+# 中ボスを先に狩るか、敵を退けてから狩るかを選ぶ話。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 峠の番人
+map = boulder_pass
+look = grassland
+wins = boss_slain
+
+[unlock]
+budget = 2
+
+[ally]
+name = 騎士長
+
+[enemy]
+name = 峠の守備隊長
+army = military
+unit = shield_trooper
+unit = sniper
+unit = sniper
+unit = commando
+unit = medic
+
+[before]
+騎士長: 大岩の峠には、古い番人（中ボス）が眠っている。
+騎士長: 番人を倒せば、その力（聖遺物）が手に入る。峠を越えるには、それが要る。
+峠の守備隊長: 番人は渡さない。魔法使いどもを追い払え。
+騎士長: 敵の将を倒しても、番人は眠ったままだ。番人を狩れ。
+
+[after]
+騎士長: 番人の力を得た。峠の先へ進もう。
+峠の守備隊長: ……番人が倒れたか。本隊へ戻るぞ。
+
+[cues]
+(turn 1) 騎士長: 番人は大岩の脇にいる。近いほうを狙え。
+(turn 5) 騎士長: 敵に構いすぎるな。番人を倒せば、こちらの勝ちだ。
