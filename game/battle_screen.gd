@@ -445,7 +445,7 @@ func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 		source.record_win(context)
 
 
-## 対戦の途中の会話の台詞を、画面の左上の札に順に出し、ログにも書く。
+## 対戦の途中の会話の台詞を、上の帯のすぐ下の札に順に出し、ログにも書く。
 func _say(lines: Array[BattleCues.Line]) -> void:
 	if lines.is_empty():
 		return
@@ -457,6 +457,22 @@ func _say(lines: Array[BattleCues.Line]) -> void:
 ## いま画面に出ている、対戦の途中の会話の台詞（無ければ null。検査とスクリーンショットの道具用）。
 func talk_line() -> BattleCues.Line:
 	return _talk.current()
+
+
+## 対戦の途中の会話の札が画面に占める四角と、上の帯の下の決まった枠（勝ち方の札、視点の案内）とミニマップの四角。検査用。
+func talk_card_rect() -> Rect2:
+	return _talk.card_rect()
+
+
+func talk_card_neighbors() -> Array[Rect2]:
+	var rects := _hud.top_tag_rects()
+	rects.append(minimap_rect())
+	return rects
+
+
+## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の CUES から出す）。
+func say_for_check(lines: Array[BattleCues.Line]) -> void:
+	_talk.say(lines)
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。

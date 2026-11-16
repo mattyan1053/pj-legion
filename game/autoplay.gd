@@ -13,6 +13,7 @@ extends Node
 
 const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
@@ -1723,6 +1724,21 @@ func _win_story_battle(app: Node, sortie: Node, episode: Script) -> Node:
 			placed += 1
 	_expect(placed == chosen.entries.size() and source.human_deck.entries.size() == chosen.entries.size(), "出撃の準備で選んだ部隊で、対戦が始まらない")
 	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.ENEMY_ARMY, "話の敵を CPU が動かしていない")
+	# 対戦の途中の会話の札は、上の帯のすぐ下で、勝ち方の札・視点の案内・ミニマップと重ならない（いちばん長い台詞で確かめる）。
+	var longest := ""
+	for each: Script in Story.EPISODES:
+		var constants: Dictionary = each.get_script_constant_map()
+		for cue: Array in constants.get("CUES", []):
+			if (cue[3] as String).length() > longest.length():
+				longest = cue[3]
+	screen.say_for_check([BattleCues.Line.new(1, episode.ENEMY_LEADER, longest)] as Array[BattleCues.Line])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var card: Rect2 = screen.talk_card_rect()
+	_expect(card.has_area() and card.position.y >= BattleHud.TOP_BAR_HEIGHT, "対戦の途中の会話の札が出ないか、上の帯に重なる: %s" % card)
+	_expect(card.size.y <= 64.0, "対戦の途中の会話の札が、細い帯でない（2 行を超える高さ）: %s" % card)
+	for other: Rect2 in screen.talk_card_neighbors():
+		_expect(not card.intersects(other), "対戦の途中の会話の札が、勝ち方の札・視点の案内・ミニマップに重なる: %s と %s" % [card, other])
 	# 小さな盤で、1 手で将を倒して勝つ。
 	var board := _small_board(Vector2i(5, 4))
 	var battle := Battle.new(board)
