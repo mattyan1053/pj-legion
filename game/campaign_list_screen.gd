@@ -19,11 +19,6 @@ signal finished(outcome: StringName)
 const CARD_SIZE := Vector2(320.0, 200.0)
 
 ## 色は話の一覧（episode_list_screen.gd）とそろえる。
-const COLOR_CARD := Palette.OVERLAY
-const COLOR_CARD_HOVER := Color(Palette.RAISED, 0.96)
-const COLOR_CARD_LOCKED := Color(Palette.INK, 0.72)
-const COLOR_BORDER := Color(Palette.BORDER, 0.9)
-const COLOR_BORDER_HOVER := Palette.ACCENT
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_CLEARED := Palette.ACCENT
 const COLOR_NEW := Palette.INFO
@@ -157,14 +152,7 @@ func _build_card(campaign: Script) -> Button:
 	card.custom_minimum_size = CARD_SIZE
 	card.disabled = not ready
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
-	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
-		var hovered := state != "normal" and state != "disabled"
-		var style := StyleBoxFlat.new()
-		style.bg_color = COLOR_CARD_LOCKED if state == "disabled" else (COLOR_CARD_HOVER if hovered else COLOR_CARD)
-		style.border_color = COLOR_BORDER_HOVER if hovered else COLOR_BORDER
-		style.set_border_width_all(3 if hovered else 2)
-		style.set_corner_radius_all(8)
-		card.add_theme_stylebox_override(state, style)
+	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）
 	card.pressed.connect(choose.bind(campaign))
 
 	var column := VBoxContainer.new()

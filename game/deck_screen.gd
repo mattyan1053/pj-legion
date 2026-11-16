@@ -48,9 +48,7 @@ const MAX_WIDTH := 1560.0
 
 ## 組む画面で使う決まり（雇える駒、予算、数の上限）。切り替え（set_mode）で変わる。
 var rules: DeckRules = DeckRules.versus()
-## 一覧の切り替え: 対戦用（DeckRules.VERSUS）かストーリー用（Story.RULES_ID）。
-const MODES: Array[StringName] = [DeckRules.VERSUS, Story.RULES_ID]
-const MODE_NAMES := {DeckRules.VERSUS: "対戦用", Story.RULES_ID: "ストーリー用"}
+## 一覧の切り替え: 対戦用（DeckRules.VERSUS）か、物語ごとのストーリー用（物語の RULES_ID）。名前は modes() と mode_name()。
 var context: AppContext
 
 var _library: DeckLibrary
@@ -200,7 +198,7 @@ func leave() -> void:
 		finished.emit(&"back")
 		return
 	var saved := _library.find(_saved_in_detour)
-	if saved != null and saved.playable() and _detour.get("rules") == Story.RULES_ID:
+	if saved != null and saved.playable() and _detour.get("rules") == context.story.campaign.RULES_ID:
 		context.story.choose_squad(_saved_in_detour)
 	if saved != null and saved.playable() and _detour.get("rules") == DeckRules.VERSUS and context.match_choice != null:
 		context.match_choice.choose_deck(_detour.get("side", Unit.Side.PLAYER1), saved.id, saved.deck)
@@ -220,9 +218,26 @@ func back_label() -> String:
 # ==== 一覧 ====
 
 
-## 一覧を、対戦用（DeckRules.VERSUS）かストーリー用（Story.RULES_ID）に切り替える。組む画面の決まりも替わる。
+## 切り替えの並び: 対戦用と、物語ごとのストーリー用（物語の RULES_ID。物語の並びの順）。
+static func modes() -> Array[StringName]:
+	var ids: Array[StringName] = [DeckRules.VERSUS]
+	for each in Story.CAMPAIGNS:
+		ids.append(each.RULES_ID)
+	return ids
+
+
+## 切り替えのボタンの文字: 対戦用は「対戦用」、ストーリー用は物語の名前。
+static func mode_name(rules_id: StringName) -> String:
+	for each in Story.CAMPAIGNS:
+		if each.RULES_ID == rules_id:
+			return each.TITLE
+	return "対戦用"
+
+
+## 一覧を、対戦用（DeckRules.VERSUS）か、ある物語のストーリー用（物語の RULES_ID）に切り替える。組む画面の決まりも替わる
+## （ストーリー用は、その物語のいまの進み具合の決まり）。
 func set_mode(rules_id: StringName) -> void:
-	rules = context.rules_of(rules_id) if MODES.has(rules_id) else DeckRules.versus()
+	rules = context.rules_of(rules_id) if modes().has(rules_id) else DeckRules.versus()
 	for id: StringName in _mode_buttons:
 		(_mode_buttons[id] as Button).set_pressed_no_signal(id == rules.id)
 	for army: UnitKind.Army in _army_cards:
@@ -232,7 +247,7 @@ func set_mode(rules_id: StringName) -> void:
 	show_list()
 
 
-## いまの一覧の決まりの名前（DeckRules.VERSUS か Story.RULES_ID）。
+## いまの一覧の決まりの名前（DeckRules.VERSUS か、物語の RULES_ID）。
 func mode() -> StringName:
 	return rules.id
 
@@ -335,8 +350,8 @@ func _build_list() -> Control:
 	var title := _text(26, COLOR_TEXT)
 	title.text = "部隊の編成"
 	header.add_child(title)
-	for id: StringName in MODES:
-		var button := _button(MODE_NAMES[id], 18)
+	for id: StringName in modes():
+		var button := _button(mode_name(id), 18)
 		button.toggle_mode = true
 		button.custom_minimum_size = Vector2(150.0, 42.0)
 		button.pressed.connect(func() -> void: set_mode(id))
@@ -606,8 +621,9 @@ func move_entry(index: int, step: int) -> void:
 
 
 ## 選んでいる駒に装備を 1 個持たせる。
+## 持ち物 item を、選んでいる駒に持たせる。決まりが許さない持ち物（ストーリーで、まだ解放していない）は持たせない。
 func equip(item: Equipment.Id) -> void:
-	if _selected == -1 or not _deck.entries[_selected].equip(item):
+	if _selected == -1 or not _deck.rules.allows_item(item) or not _deck.entries[_selected].equip(item):
 		return
 	_dirty = true
 	_refresh_editor()
@@ -785,7 +801,6 @@ func _build_editor() -> Control:
 		info.add_theme_constant_override("separation", 0)
 		row.add_child(info)
 		var item_name := _text(16, COLOR_TEXT)
-		item_name.text = "%s　コスト %d" % [Equipment.display_name(item), Equipment.cost(item)]
 		info.add_child(item_name)
 		var effect := _text(14, COLOR_DIM)
 		effect.text = DeckText.equipment_effect(item)
@@ -805,7 +820,7 @@ func _build_editor() -> Control:
 		plus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		plus.pressed.connect(func() -> void: equip(item))
 		row.add_child(plus)
-		_equip_rows[item] = [minus, count, plus]
+		_equip_rows[item] = [minus, count, plus, item_name, effect, row]
 
 	# 下: 戻る、編成完了
 	var footer := HBoxContainer.new()
@@ -1012,9 +1027,18 @@ func _refresh_detail() -> void:
 		var full := entry.equipment.size() >= Equipment.MAX_PER_UNIT
 		for item: Equipment.Id in _equip_rows:
 			var parts: Array = _equip_rows[item]
+			var allowed := _deck.rules.allows_item(item)
 			(parts[0] as Button).disabled = entry.count(item) == 0
 			(parts[1] as Label).text = str(entry.count(item))
-			(parts[2] as Button).disabled = full
+			(parts[2] as Button).disabled = full or not allowed
+			# まだ持たせられない持ち物（ストーリーで未解放）は、灰色で「未解放」。持たせているものは「−」で外せる。
+			var item_name := parts[3] as Label
+			item_name.text = "%s　コスト %d" % [Equipment.display_name(item), Equipment.cost(item)]
+			if not allowed:
+				item_name.text += "　未解放"
+			item_name.add_theme_color_override("font_color", COLOR_TEXT if allowed else COLOR_DIM)
+			(parts[5] as Control).modulate = Color.WHITE if allowed else Color(1, 1, 1, 0.55)
+			(parts[5] as Control).tooltip_text = "" if allowed else "ストーリーを進めると持たせられる"
 
 
 # ==== 確かめと名前の入力 ====
