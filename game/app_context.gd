@@ -40,6 +40,8 @@ var sound: Node
 var match_choice: RefCounted = MatchChoice.new()
 ## いま進めている流れ（run.gd）。流れの外の場面にいるときは null。アプリが入れ、流れの外へ出たら捨てる。
 var run: RefCounted
+## いまの場面の名前（scene_flow.gd の SCENES の鍵）。アプリ（app.gd）が、場面を作る前に入れる。run_data が使う。
+var scene := &""
 ## 検査として動いているなら CHECK_AUTOPLAY か CHECK_SHOTS。人が遊んでいるなら空。
 var checking := &""
 ## 自動の対戦（autoplay.gd）。最初の対戦の場面が作る。2 つ目からの対戦の場面（ストーリーの通し）は、作らない。
@@ -70,8 +72,9 @@ func start_run(a_run: RefCounted) -> void:
 	run_requested.emit(a_run)
 
 
-## 場面 scene に、流れが渡すもの。scene がいまの流れの場面でなければ null（場面は、自分の既定で始める）。
-func run_data(scene: StringName) -> Variant:
+## いまの場面（scene）に、流れが渡すもの。いまの場面が流れの場面でなければ null（場面は、自分の既定で始める）。
+## 場面は自分の名前を書かずに呼ぶ（名前はアプリが入れる。書き間違えて、黙って既定の中身で始まることが無いように）。
+func run_data() -> Variant:
 	if run == null or run.scene() != scene:
 		return null
 	return run.data()

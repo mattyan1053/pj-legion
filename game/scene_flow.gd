@@ -10,59 +10,71 @@ extends RefCounted
 ## - var context（app_context.gd）を持つ。アプリが、作ってから木に入れる前に入れる。
 ## - signal finished(outcome: StringName) を持つ。outcome は、SCENES の next か COMMON の名前か、流れの中なら Run.NEXT。
 ## - 次のものは、あれば使う（無くてよい）:
+## - 流れが渡すものは context.run_data() で受け取る（アプリが、いまの場面の名前を context に入れてある）。
 ##   - resume_label() -> String: システムメニューの「戻る」の文字（既定は「戻る」）。
 ##   - menu_items() -> Array: システムメニューに足す項目（[名前, 文字, 確かめの文] の列）。選ばれたら on_menu_item(名前)。
 ##   - in_progress() -> bool: 抜けると失われるものがあるか（あれば、タイトルへ戻る・ゲームを終える前に確かめる）。
 ##   - losing_note() -> String: 確かめの文に書く、失われるもの（既定は「いまの対戦は取っておけないので、失われる」）。
 
+## 場面の名前。ほかのスクリプトは、場面を名前で指すとき、文字で書かずにこれを使う（書き漏らすと、流れが渡すものを受け取れず、
+## エラーにならずに既定の中身で始まる）。
+const TITLE := &"title"
+const EPISODES := &"episodes"
+const DECKS := &"decks"
+const STAGE := &"stage"
+const SETUP := &"setup"
+const TALK := &"talk"
+const SORTIE := &"sortie"
+const BATTLE := &"battle"
+
 ## 場面の名前 -> {script: スクリプト, next: {終わり方 -> 次の場面}, music: その場面で鳴らす曲（sound_catalog.gd の名前。無ければ鳴らさない）}。
 ## 同じ曲の場面どうしを行き来しても、曲は途切れない（sound.gd）。
 const SCENES := {
-	&"title": {
+	TITLE: {
 		"script": "res://game/title_screen.gd",
-		"next": {&"start": &"stage", &"story": &"episodes", &"decks": &"decks"},
+		"next": {&"start": STAGE, &"story": EPISODES, &"decks": DECKS},
 		"music": &"menu",
 	},
-	&"episodes": {
+	EPISODES: {
 		"script": "res://game/episode_list_screen.gd",
-		"next": {&"back": &"title"},  # 話を選ぶと、話の流れ（story.gd の run_now）を始める。流れを終えたら、ここへ戻る
+		"next": {&"back": TITLE},  # 話を選ぶと、話の流れ（story.gd の run_now）を始める。流れを終えたら、ここへ戻る
 		"music": &"menu",
 	},
-	&"decks": {
+	DECKS: {
 		"script": "res://game/deck_screen.gd",
-		"next": {&"back": &"title"},  # 出撃の準備からの寄り道（流れの中）なら、「出撃の準備へ戻る」は Run.NEXT
+		"next": {&"back": TITLE},  # 出撃の準備からの寄り道（流れの中）なら、「出撃の準備へ戻る」は Run.NEXT
 		"music": &"menu",
 	},
-	&"stage": {
+	STAGE: {
 		"script": "res://game/stage_select_screen.gd",
-		"next": {&"pick": &"setup", &"back": &"title"},
+		"next": {&"pick": SETUP, &"back": TITLE},
 		"music": &"menu",
 	},
-	&"setup": {
+	SETUP: {
 		"script": "res://game/setup_screen.gd",
-		"next": {&"back": &"stage"},  # 「対戦を始める」は、対戦の流れ（run.gd）を始める（setup_screen.gd）
+		"next": {&"back": STAGE},  # 「対戦を始める」は、対戦の流れ（run.gd）を始める（setup_screen.gd）
 		"music": &"menu",
 	},
-	&"talk": {
+	TALK: {
 		"script": "res://game/talk_screen.gd",
 		"next": {},  # 流れの中でだけ使う（ストーリーの会話。Run.NEXT で次へ）
 		"music": &"menu",
 	},
-	&"sortie": {
+	SORTIE: {
 		"script": "res://game/sortie_screen.gd",
-		"next": {&"back": &"episodes"},  # 流れの中でだけ使う（ストーリーの出撃の準備。「出撃」は Run.NEXT で対戦へ。「部隊を編成する」は流れに編成を差し込む）
+		"next": {&"back": EPISODES},  # 流れの中でだけ使う（ストーリーの出撃の準備。「出撃」は Run.NEXT で対戦へ。「部隊を編成する」は流れに編成を差し込む）
 		"music": &"menu",
 	},
-	&"battle": {
+	BATTLE: {
 		"script": "res://game/battle_screen.gd",
-		"next": {&"setup": &"setup"},
+		"next": {&"setup": SETUP},
 		"music": &"battle",
 	},
 }
 ## 起動して最初に出す場面。
-const FIRST := &"title"
+const FIRST := TITLE
 ## どの場面からでも行ける行き先（終わり方 -> 場面）。システムメニューの「タイトルへ戻る」と、決着の画面の「タイトルへ」。
-const COMMON := {&"title": &"title"}
+const COMMON := {&"title": TITLE}
 
 
 static func has(scene: StringName) -> bool:

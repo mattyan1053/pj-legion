@@ -9,6 +9,7 @@ extends Node
 ## 最後にまとめて失敗を報告する。場面を足すときは、SCENES に名前と説明を足し、同じ名前の _scene_<名前>() を書く
 ## （その場面まで状態を作るだけ。撮るのはこのノードがやる）。
 
+const SceneFlow := preload("res://game/scene_flow.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 const BattleLog := preload("res://game/battle_log.gd")
@@ -207,7 +208,7 @@ func _run() -> void:
 			print("screenshots: 場面 %s を作れた" % name)
 			if _mid_animation:
 				_scene.set_time_scale_base(1.0)
-			while _app.current_id() == &"battle" and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
+			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
 				await get_tree().process_frame
 			continue
 		if _mid_animation:
@@ -217,7 +218,7 @@ func _run() -> void:
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
 			continue
-		while _app.current_id() == &"battle" and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
+		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -236,10 +237,10 @@ func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	_app.context.settings.reset_all()
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
-	if _app.current_id() != &"battle" or _app.context.run != null:
+	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:
 		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
 		_app.context.match_choice.cpu_opponent = false
-		await _app.go(&"battle")
+		await _app.go(SceneFlow.BATTLE)
 	_scene = _app.current_scene()
 	_scene.log_panel().close()
 	_scene.setup_panel().visible = false
@@ -271,13 +272,13 @@ func _capture(name: String) -> bool:
 
 
 func _scene_title() -> bool:
-	await _app.go(&"title")
-	return _app.current_id() == &"title"
+	await _app.go(SceneFlow.TITLE)
+	return _app.current_id() == SceneFlow.TITLE
 
 
 func _scene_stage_select() -> bool:
-	await _app.go(&"stage")
-	return _app.current_id() == &"stage"
+	await _app.go(SceneFlow.STAGE)
+	return _app.current_id() == SceneFlow.STAGE
 
 
 func _scene_stage_hover() -> bool:
@@ -288,7 +289,7 @@ func _scene_stage_hover() -> bool:
 
 
 func _scene_title_menu() -> bool:
-	await _app.go(&"title")
+	await _app.go(SceneFlow.TITLE)
 	_app.open_menu()
 	return _app.system_menu().is_open()
 
@@ -318,8 +319,8 @@ func _fill_decks() -> void:
 
 func _deck_scene() -> Node:
 	_fill_decks()
-	await _app.go(&"decks")
-	return _app.current_scene() if _app.current_id() == &"decks" else null
+	await _app.go(SceneFlow.DECKS)
+	return _app.current_scene() if _app.current_id() == SceneFlow.DECKS else null
 
 
 func _scene_deck_list() -> bool:
@@ -387,8 +388,8 @@ func _scene_deck_over() -> bool:
 func _scene_setup_deck() -> bool:
 	_fill_decks()
 	_app.context.match_choice = MatchChoice.new()
-	await _app.go(&"setup")
-	if _app.current_id() != &"setup":
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
 		return false
 	var panel: Node = _app.current_scene().setup_panel()
 	if not panel.choose_deck(Unit.Side.PLAYER1, _app.context.decks.items()[0].id):
@@ -401,8 +402,8 @@ func _scene_setup_deck() -> bool:
 
 func _scene_setup() -> bool:
 	_app.context.match_choice = MatchChoice.new()  # 遊ぶときの始めと同じ（相手は CPU）で開く
-	await _app.go(&"setup")
-	return _app.current_id() == &"setup"
+	await _app.go(SceneFlow.SETUP)
+	return _app.current_id() == SceneFlow.SETUP
 
 
 func _scene_setup_again() -> bool:
@@ -1310,14 +1311,14 @@ func _start_story(number := 0) -> bool:
 		return false
 	_app.current_scene().choose(Story.EPISODES[number])
 	await _app.scene_changed
-	return _app.current_id() == &"talk"
+	return _app.current_id() == SceneFlow.TALK
 
 
 func _scene_story_list() -> bool:
-	await _app.go(&"title")
+	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_story()
 	await _app.scene_changed
-	return _app.current_id() == &"episodes"
+	return _app.current_id() == SceneFlow.EPISODES
 
 
 ## 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）。
@@ -1348,7 +1349,7 @@ func _story_battle(number := 0) -> bool:
 		return false
 	_app.current_scene().press_sortie()
 	await _app.scene_changed
-	if _app.current_id() != &"battle":
+	if _app.current_id() != SceneFlow.BATTLE:
 		return false
 	_scene = _app.current_scene()
 	return true
@@ -1358,7 +1359,7 @@ func _story_battle(number := 0) -> bool:
 func _scene_story_sortie_from_talk() -> bool:
 	_app.current_scene().press_skip()
 	await _app.scene_changed
-	return _app.current_id() == &"sortie"
+	return _app.current_id() == SceneFlow.SORTIE
 
 
 ## 出撃の準備（ストーリー用の部隊を 1 つ取っておいて、それを選んだところ）。
@@ -1380,7 +1381,7 @@ func _scene_story_sortie() -> bool:
 func _scene_story_mixed_decks() -> bool:
 	for episode in Story.EPISODES:
 		_app.context.story.clear(episode.ID)
-	await _app.go(&"title")
+	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_decks()
 	await _app.scene_changed
 	var screen: Node = _app.current_scene()
@@ -1540,7 +1541,7 @@ func _scene_story_battle_talk() -> bool:
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。
 func _scene_decks_story() -> bool:
-	await _app.go(&"title")
+	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_decks()
 	await _app.scene_changed
 	var screen: Node = _app.current_scene()
@@ -1570,7 +1571,7 @@ func _scene_story_decks_detour() -> bool:
 		return false
 	_app.current_scene().press_edit_decks()
 	await _app.scene_changed
-	return _app.current_id() == &"decks" and _app.current_scene().is_detour()
+	return _app.current_id() == SceneFlow.DECKS and _app.current_scene().is_detour()
 
 
 ## 話の対戦を、CPU どうしで決着の手前まで進め、最後の手を画面で指して負ける（敵 = プレイヤー2 が勝つ種だけ）。
@@ -1629,7 +1630,7 @@ func _scene_story_after() -> bool:
 		await get_tree().process_frame
 	screen.press_continue()
 	await _app.scene_changed
-	return _app.current_id() == &"talk"
+	return _app.current_id() == SceneFlow.TALK
 
 
 func _scene_story_unlock() -> bool:
@@ -1643,7 +1644,7 @@ func _scene_story_unlock() -> bool:
 func _scene_story_cleared() -> bool:
 	for episode in Story.EPISODES:
 		_app.context.story.clear(episode.ID)  # 「クリア済み」の印は、全部の話をクリアしたとき
-	await _app.go(&"title")
+	await _app.go(SceneFlow.TITLE)
 	return _app.current_scene().story_label().contains("クリア済み")
 
 
@@ -1661,7 +1662,7 @@ func _new_battle() -> void:
 ## 対戦の画面の中央の知らせ（番の知らせなど）が消えるまで待つ。描画の遅い環境では SETTLE のうちに消えないことがある。
 ## 知らせを撮る場面のために、待つのは BANNER_WAIT 秒まで。
 func _banner_gone() -> void:
-	if _app.current_id() != &"battle" or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open():
+	if _app.current_id() != SceneFlow.BATTLE or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open():
 		return  # 時間が止まっている（知らせは消えない）
 	var waited := 0.0
 	while _scene.is_banner_shown() and waited < BANNER_WAIT:

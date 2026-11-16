@@ -227,7 +227,7 @@ func _ready() -> void:
 	_system_menu.closed.connect(_on_system_menu_closed)
 
 	# 流れが渡すもの。流れの外から置かれた（スクリーンショットの道具など）なら、対戦の設定の場面で選んだもの。
-	var given: Variant = context.run_data(&"battle")
+	var given: Variant = context.run_data()
 	source = given if given != null else context.match_choice.copy()
 	_battle_started = true
 	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする（context.battle_seed）。

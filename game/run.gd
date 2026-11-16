@@ -11,9 +11,10 @@ extends RefCounted
 const NEXT := &"next"
 ## 流れの中の場面が「1 つ前の場面へ」で終わるときの終わり方（ストーリーの決着の画面の「部隊を選び直す」→ 出撃の準備）。
 const PREVIOUS := &"previous"
+const SceneFlow := preload("res://game/scene_flow.gd")
 
 ## 列を終えたら行く場面。
-var exit := &"title"
+var exit := SceneFlow.TITLE
 ## いま何番目か（0 から）。
 var index := 0
 var _steps: Array[Dictionary] = []  # {scene: StringName, data: Variant}

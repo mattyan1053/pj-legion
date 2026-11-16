@@ -9,6 +9,7 @@ extends "res://game/battle_source.gd"
 ## ここはノードに依存しない（テストから呼べる）。
 
 const Run := preload("res://game/run.gd")
+const SceneFlow := preload("res://game/scene_flow.gd")
 
 var stage := BoardGenerator.Stage.PLAIN
 ## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。
@@ -63,7 +64,7 @@ func can_open_setup() -> bool:
 ## （対戦の途中でステージや相手を替えても、対戦の設定の場面に戻ったときの選択は変えない）。
 func run() -> Run:
 	var battle_run := Run.new()
-	battle_run.add(&"battle", copy())
+	battle_run.add(SceneFlow.BATTLE, copy())
 	return battle_run
 
 

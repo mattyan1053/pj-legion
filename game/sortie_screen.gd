@@ -16,13 +16,14 @@ const Run := preload("res://game/run.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
+const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const WinText := preload("res://game/win_text.gd")
 
 signal finished(outcome: StringName)
 
 ## 部隊の編成の場面の名前（scene_flow.gd）。
-const DECKS := &"decks"
+const DECKS := SceneFlow.DECKS
 ## 部隊の選択肢の、既定の編成の id（取っておいた部隊の id は数字の文字なので重ならない）。
 const DEFAULT_ID := ""
 ## 縮図の 1 マスの大きさ（px）。
@@ -53,7 +54,7 @@ var _sortie: Button
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき
-	var given: Variant = context.run_data(&"sortie")
+	var given: Variant = context.run_data()
 	if given == null:
 		given = {"episode": Story.EPISODES[0], "battle": Story.first_battle(Story.EPISODES[0])}
 	episode = given["episode"]

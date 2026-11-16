@@ -11,6 +11,7 @@ extends Node
 ## イベントを再生する場面（GROUPS の events）を全部回したときは、どの種類のイベントも 1 回は再生したことを確かめる。
 ## 全部が通れば "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
+const SceneFlow := preload("res://game/scene_flow.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
@@ -257,13 +258,13 @@ func _end() -> void:
 			await _leave_battle(app)
 		if _selected.has("decks"):
 			_current = "decks"
-			if app.current_id() != &"title":
-				await app.go(&"title")
+			if app.current_id() != SceneFlow.TITLE:
+				await app.go(SceneFlow.TITLE)
 			await _visit_decks(app)
 		if _selected.has("story"):
 			_current = "story"
-			if app.current_id() != &"title":
-				await app.go(&"title")
+			if app.current_id() != SceneFlow.TITLE:
+				await app.go(SceneFlow.TITLE)
 			await _visit_story(app)
 	if _failures.is_empty():
 		_finish("autoplay: OK", 0)
@@ -1484,12 +1485,12 @@ func _leave_battle(app: Node) -> void:
 	_expect(menu.confirming() == &"title", "対戦の途中なのに、タイトルへ戻る前に確かめない")
 	menu.accept()
 	await app.scene_changed
-	_expect(app.current_id() == &"title" and not menu.is_open() and Engine.time_scale == 1.0, "タイトルへ戻らない（か、時間が止まったまま）")
+	_expect(app.current_id() == SceneFlow.TITLE and not menu.is_open() and Engine.time_scale == 1.0, "タイトルへ戻らない（か、時間が止まったまま）")
 	# 消えた対戦の場面の、止まっていた待ち時間が過ぎるのを待つ（続きを走れば、エラーが出て検査が落ちる）。
 	await get_tree().create_timer(1.0).timeout
 	app.current_scene().press_start()
 	await app.scene_changed
-	_expect(app.current_id() == &"stage", "タイトルの「対戦」で、ステージ選択へ進まない")
+	_expect(app.current_id() == SceneFlow.STAGE, "タイトルの「対戦」で、ステージ選択へ進まない")
 	var stages: Node = app.current_scene()
 	_expect(stages.card_stages().size() == MatchSetup.STAGE_NAMES.size(), "ステージのカードが足りない")
 	stages.hover(BoardGenerator.Stage.TWIN_SPRINGS)
@@ -1497,11 +1498,11 @@ func _leave_battle(app: Node) -> void:
 	stages.hover(-1)
 	stages.choose(BoardGenerator.Stage.LABYRINTH)
 	await app.scene_changed
-	_expect(app.current_id() == &"setup", "ステージ選択のカードで、対戦の設定へ進まない")
+	_expect(app.current_id() == SceneFlow.SETUP, "ステージ選択のカードで、対戦の設定へ進まない")
 	_expect(app.current_scene().setup_panel().current_choice().stage == BoardGenerator.Stage.LABYRINTH, "選んだステージが対戦の設定に渡らない")
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
-	_expect(app.current_id() == &"stage", "対戦の設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
+	_expect(app.current_id() == SceneFlow.STAGE, "対戦の設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
 	# カードの上での右クリックでも戻る（カードのボタンに食われない）。
 	var right := InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
@@ -1510,7 +1511,7 @@ func _leave_battle(app: Node) -> void:
 	right.global_position = right.position
 	app.get_viewport().push_input(right)
 	await app.scene_changed
-	_expect(app.current_id() == &"title", "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
+	_expect(app.current_id() == SceneFlow.TITLE, "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
 
 
 ## 部隊の編成の場面: 組む・並べ替える・装備を持たせる・取っておく・写す・名前を変える・消す（確かめる）。
@@ -1519,7 +1520,7 @@ func _visit_decks(app: Node) -> void:
 	var library: RefCounted = app.context.decks
 	app.current_scene().press_decks()
 	await app.scene_changed
-	_expect(app.current_id() == &"decks", "タイトルの「部隊の編成」で、編成の場面へ進まない")
+	_expect(app.current_id() == SceneFlow.DECKS, "タイトルの「部隊の編成」で、編成の場面へ進まない")
 	var screen: Node = app.current_scene()
 	screen.press_new()
 	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty(), "「新しく組む」で、空の部隊を組めない")
@@ -1598,7 +1599,7 @@ func _visit_decks(app: Node) -> void:
 	_expect(not versus_ids.has(story_id), "対戦の設定で選べる部隊に、ストーリー用の部隊が混ざった")
 	screen.press_back()
 	await app.scene_changed
-	_expect(app.current_id() == &"title", "編成の一覧から、タイトルへ戻らない")
+	_expect(app.current_id() == SceneFlow.TITLE, "編成の一覧から、タイトルへ戻らない")
 	# 対戦の設定で、取っておいた部隊を選ぶ。
 	app.current_scene().press_start()
 	await app.scene_changed
@@ -1628,7 +1629,7 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
 	app.current_scene().press_story()
 	await app.scene_changed
-	_expect(app.current_id() == &"episodes", "タイトルの「ストーリー」で、話の一覧へ進まない")
+	_expect(app.current_id() == SceneFlow.EPISODES, "タイトルの「ストーリー」で、話の一覧へ進まない")
 	var list: Node = app.current_scene()
 	_expect(list.episodes().size() == Story.EPISODES.size(), "話の一覧に、全部の話が並んでいない")
 	_expect(list.is_card_enabled(Story.EPISODES[0]) and list.card_status(Story.EPISODES[0]) == "未クリア", "最初の話を選べない")
@@ -1636,7 +1637,7 @@ func _visit_story(app: Node) -> void:
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.TITLE)
 	list.choose(episode)
 	await app.scene_changed
-	_expect(app.current_id() == &"talk", "話の一覧で話を選んでも、会話の場面へ進まない")
+	_expect(app.current_id() == SceneFlow.TALK, "話の一覧で話を選んでも、会話の場面へ進まない")
 	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.BEFORE.size() and talk.line_index() == 0, "前の会話の文の数が違う")
 	_expect(talk.speaker() == episode.SPEAKERS[episode.BEFORE[0][0]] and talk.line_text() == episode.BEFORE[0][1], "最初の文が出ていない")
@@ -1646,12 +1647,12 @@ func _visit_story(app: Node) -> void:
 	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
 	talk.press_skip()
 	await app.scene_changed
-	_expect(app.current_id() == &"sortie", "会話を飛ばしても、出撃の準備へ進まない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "会話を飛ばしても、出撃の準備へ進まない")
 	var sortie: Node = app.current_scene()
 	# 「部隊を編成する」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
 	sortie.press_edit_decks()
 	await app.scene_changed
-	_expect(app.current_id() == &"decks" and app.context.run != null, "出撃の準備の「部隊を編成する」で、流れを保ったまま編成へ進まない")
+	_expect(app.current_id() == SceneFlow.DECKS and app.context.run != null, "出撃の準備の「部隊を編成する」で、流れを保ったまま編成へ進まない")
 	var decks: Node = app.current_scene()
 	_expect(decks.is_detour() and decks.mode() == Story.RULES_ID and decks.back_label() == "出撃の準備へ戻る", "寄り道の編成が、ストーリー用でない（か、戻り先の文字が違う）")
 	decks.press_new()
@@ -1662,7 +1663,7 @@ func _visit_story(app: Node) -> void:
 	var made: String = decks.list_selected()
 	decks.press_back()
 	await app.scene_changed
-	_expect(app.current_id() == &"sortie", "編成の「出撃の準備へ戻る」で、出撃の準備へ戻らない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "編成の「出撃の準備へ戻る」で、出撃の準備へ戻らない")
 	sortie = app.current_scene()
 	_expect(sortie.chosen_id() == made, "寄り道で取っておいた部隊が、出撃の準備で選ばれていない")
 	sortie.choose("")
@@ -1679,11 +1680,11 @@ func _visit_story(app: Node) -> void:
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
 	result.press_choose_squad()
 	await app.scene_changed
-	_expect(app.current_id() == &"sortie" and app.context.run != null, "決着の画面の「部隊を選び直す」で、出撃の準備へ戻らない")
+	_expect(app.current_id() == SceneFlow.SORTIE and app.context.run != null, "決着の画面の「部隊を選び直す」で、出撃の準備へ戻らない")
 	result = await _win_story_battle(app, app.current_scene(), episode)
 	result.press_continue()
 	await app.scene_changed
-	_expect(app.current_id() == &"talk", "決着の画面の「次へ」で、あとの会話へ進まない")
+	_expect(app.current_id() == SceneFlow.TALK, "決着の画面の「次へ」で、あとの会話へ進まない")
 	talk = app.current_scene()
 	_expect(talk.line_count() == episode.AFTER.size() + episode.UNLOCKS.size(), "あとの会話の文の数が違う（最後に、解放した駒の知らせ）")
 	if not episode.UNLOCKS.is_empty():
@@ -1693,7 +1694,7 @@ func _visit_story(app: Node) -> void:
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
 	await app.scene_changed
-	_expect(app.current_id() == &"episodes" and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
+	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
 	list = app.current_scene()
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.EPISODES.size() > 1:
@@ -1701,7 +1702,7 @@ func _visit_story(app: Node) -> void:
 	_expect(list.roster_text().contains(UnitKind.display_name(episode.UNLOCKS[0])) if not episode.UNLOCKS.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
 	list.press_back()
 	await app.scene_changed
-	_expect(app.current_id() == &"title", "話の一覧の「タイトルへ戻る」で、タイトルへ戻らない")
+	_expect(app.current_id() == SceneFlow.TITLE, "話の一覧の「タイトルへ戻る」で、タイトルへ戻らない")
 	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
 	_expect(story.unlocked_kinds().has(episode.UNLOCKS[0]) if not episode.UNLOCKS.is_empty() else true, "クリアしても、駒が増えていない")
 
@@ -1712,7 +1713,7 @@ func _win_story_battle(app: Node, sortie: Node, episode: Script) -> Node:
 	var chosen: Deck = sortie.chosen_deck()
 	sortie.press_sortie()
 	await app.scene_changed
-	_expect(app.current_id() == &"battle", "出撃の準備の「出撃」で、対戦へ進まない")
+	_expect(app.current_id() == SceneFlow.BATTLE, "出撃の準備の「出撃」で、対戦へ進まない")
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
