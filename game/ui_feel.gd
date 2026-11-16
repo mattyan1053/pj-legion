@@ -21,21 +21,27 @@ func _ready() -> void:
 
 func _on_node_added(node: Node) -> void:
 	if node is BaseButton:
-		var button := node as BaseButton
-		button.mouse_entered.connect(_pulse.bind(button, HOVER_GLOW, HOVER_TIME))
-		button.button_down.connect(_pulse.bind(button, PRESS_DIM, PRESS_TIME))
+		attach(node as BaseButton)
+
+
+## button に動きを付ける（乗ったら光る、押したら沈む）。
+func attach(button: BaseButton) -> void:
+	button.mouse_entered.connect(_pulse.bind(button, HOVER_GLOW, HOVER_TIME))
+	button.button_down.connect(_pulse.bind(button, PRESS_DIM, PRESS_TIME))
 
 
 ## button の色を level 倍にして、seconds 秒で元へ戻す。押せないボタンは動かさない。
 func _pulse(button: BaseButton, level: float, seconds: float) -> void:
-	if button.disabled or not button.is_inside_tree():
+	if button.disabled:
 		return
-	var running: Tween = button.get_meta(TWEEN_META, null)
+	var running: Tween = button.get_meta(TWEEN_META) if button.has_meta(TWEEN_META) else null
 	if running != null and running.is_valid():
 		running.kill()
 	elif button.self_modulate != Color.WHITE:
 		return  # 画面の側が色を付けているボタン（必殺技の READY の明滅など）には重ねない
 	button.self_modulate = Color(level, level, level, 1.0)
+	if not button.is_inside_tree():
+		return  # 木の外では戻す動きを作れない（合図は木の中でしか来ないので、テストのときだけ）
 	var tween := button.create_tween()
 	tween.tween_property(button, "self_modulate", Color.WHITE, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	button.set_meta(TWEEN_META, tween)
