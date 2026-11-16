@@ -232,6 +232,7 @@ func _initialize() -> void:
 	var slowest := 0.0
 	var rejected := 0
 	var cpu := CpuPlayer.new()
+	var no_reward: bool = args.get("no-reward", "0") == "1"
 	var rival: RefCounted = null
 	if args.has("rival"):
 		var script: GDScript = load(args["rival"])
@@ -271,12 +272,12 @@ func _initialize() -> void:
 			battle.ult_gauge[Unit.Side.PLAYER1] = gauge
 		var outcome: CpuMatch.Outcome
 		if rival == null:
-			outcome = CpuMatch.play(battle, max_turns, cpu, null, args.get("no-reward", "0") == "1")
+			outcome = CpuMatch.play(battle, max_turns, cpu, null, no_reward)
 		else:
 			# 別の版が動かす側。ステージと軍の組み合わせを一巡するごとに入れ替える。
 			@warning_ignore("integer_division")
 			var rival_side := (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2
-			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu)
+			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu, no_reward)
 			var slot := 2 if outcome.winner < 0 else (1 if outcome.winner == rival_side else 0)
 			versus[slot] += 1
 			versus_by_stage.get_or_add(stage, [0, 0, 0])[slot] += 1

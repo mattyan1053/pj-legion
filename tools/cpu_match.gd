@@ -244,7 +244,8 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 					var before: int = outcome.boss_hp.get(hit.unit_id, UnitKind.max_hp(UnitKind.Id.ELITE_MINION))
 					var lost := hit.amount if hit.hp > 0 else mini(hit.amount, before)
 					outcome.boss_hp[hit.unit_id] = hit.hp
-					if source_side != Unit.Side.NEUTRAL and not outcome.boss_first_hit.has(hit.unit_id):
+					# 止めの一撃が最初の一撃なら、ここでは控えない（聖遺物がもう掛かっている。倒れたときに、掛かる前の値で控える）。
+					if source_side != Unit.Side.NEUTRAL and hit.hp > 0 and not outcome.boss_first_hit.has(hit.unit_id):
 						outcome.boss_first_hit[hit.unit_id] = [battle.turn, army_hp(battle, 0), army_hp(battle, 1)]
 					if source_side != Unit.Side.NEUTRAL:
 						outcome.boss_damage.get_or_add(hit.unit_id, [0, 0])[source_side] += lost
@@ -290,9 +291,15 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			var dealt: Array = outcome.boss_damage.get(slain.unit_id, [0, 0])
 			fall.slayer_damage = dealt[slain.slayer_side]
 			fall.rival_damage = dealt[1 - slain.slayer_side]
-			fall.slayer_hp = army_hp(battle, slain.slayer_side)
-			fall.rival_hp = army_hp(battle, 1 - slain.slayer_side)
-			var first: Array = outcome.boss_first_hit.get(slain.unit_id, [battle.turn, army_hp(battle, 0), army_hp(battle, 1)])
+			# 聖遺物は、このイベントより前（Battle.remove_unit の中）にもう掛かっている。英知で増えた HP は、倒す前の戦力から除く。
+			var hp_now: Array[int] = [army_hp(battle, 0), army_hp(battle, 1)]
+			var relic := Relics.of_boss(slain.boss_index)
+			if relic != -1:
+				var gained: int = Relics.bonus(relic as Relics.Id).get(Unit.Stat.MAX_HP, 0)
+				hp_now[slain.slayer_side] -= gained * army_size(battle, slain.slayer_side)
+			fall.slayer_hp = hp_now[slain.slayer_side]
+			fall.rival_hp = hp_now[1 - slain.slayer_side]
+			var first: Array = outcome.boss_first_hit.get(slain.unit_id, [battle.turn, hp_now[0], hp_now[1]])
 			fall.first_hit_turn = first[0]
 			fall.first_slayer_hp = first[1 + slain.slayer_side]
 			fall.first_rival_hp = first[2 - slain.slayer_side]
@@ -348,6 +355,15 @@ static func army_hp(battle: Battle, side: int) -> int:
 		if unit.side == side and unit.kind != UnitKind.Id.KING and unit.hp > 0:
 			total += unit.hp
 	return total
+
+
+## 将を除く、その陣営の盤にいる駒の数（army_hp と同じ駒）。
+static func army_size(battle: Battle, side: int) -> int:
+	var count := 0
+	for unit in battle.units:
+		if unit.side == side and unit.kind != UnitKind.Id.KING and unit.hp > 0:
+			count += 1
+	return count
 
 
 ## gains の列（撃破の種類）の、撃破の経験値。0（倒れていない）は 0。

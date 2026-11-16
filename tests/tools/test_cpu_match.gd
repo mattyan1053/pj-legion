@@ -84,3 +84,26 @@ func test_taking_back_a_relic_restores_the_side() -> void:
 		CpuMatch._take_back(battle, events[0] as RelicGainedEvent)
 		assert_eq([unit.hp, unit.max_hp(), unit.power(), Ults.gauge(battle, Unit.Side.PLAYER1)], before, "聖遺物 %d" % relic)
 		assert_false(Relics.has(battle, Unit.Side.PLAYER1, relic))
+
+
+func test_army_hp_at_a_mid_boss_kill_leaves_out_the_new_relic() -> void:
+	# 英知の聖遺物は、倒した行動の中で掛かる。倒れた時点の戦力は、掛かる前の HP で数える。
+	var battle := Maps.battle(["........", "........"])
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(1, 1))
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var boss := battle.add_unit(UnitKind.Id.ELITE_MINION, Unit.Side.NEUTRAL, Vector2i(2, 1))
+	battle.board.mid_boss_cells = [Vector2i(2, 1)]
+	boss.home_cell = Vector2i(2, 1)
+	boss.hp = 1
+	var before := paladin.hp
+	var outcome := CpuMatch.Outcome.new()
+	outcome.stats = BattleStats.new(battle)
+	var result := battle.apply(AttackAction.new(paladin.id, boss.id))
+	assert_true(result.accepted)
+	for event in result.events:
+		outcome.stats.feed(event)
+		CpuMatch._count(outcome, event, battle, Unit.Side.PLAYER1)
+	assert_eq(paladin.hp, before + Relics.WISDOM_MAX_HP)
+	assert_eq(outcome.boss_falls.size(), 1)
+	assert_eq(outcome.boss_falls[0].slayer_hp, before)
+	assert_eq(outcome.boss_falls[0].first_slayer_hp, before)
