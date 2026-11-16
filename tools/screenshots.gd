@@ -18,13 +18,16 @@ const BoardView := preload("res://game/board_view.gd")
 const Names := preload("res://game/names.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
-	"stage_select": "ステージ選択の場面（タイトルの「対戦」のあと。3 枚のカード）",
+	"stage_select": "ステージ選択の場面（タイトルの「対戦」のあと。生成のステージと手で作ったマップの 2 段のカード）",
 	"stage_hover": "ステージ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
+	"versus_hand_start": "対戦モードの、手で作ったマップ（一覧の最初のもの。画面に出していないものでも）での対戦の始め",
+	"versus_hand_result": "対戦モードの、手で作ったマップで CPU に勝ったときのリザルト（「新しい盤面」は生成のステージだけ）",
 	"setup": "対戦の設定の場面（ステージ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
 	"setup_deck": "対戦の設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
@@ -159,7 +162,8 @@ var _battle: Battle
 var _stats: BattleStats
 ## _battle の始めからのログ（相手を CPU として書く）。
 var _log: BattleLog
-var _stage := BoardGenerator.Stage.PLAIN
+## いまの対戦のステージ（versus_fields.gd の鍵）。
+var _field: StringName = VersusFields.PLAIN
 ## いまの対戦の種（SEED から。場面を作れなければ _run が替える）。
 var _seed := SEED
 ## 場面が、演出の途中を撮る時刻まで自分で待ったか（真なら、再生の終わりも知らせが消えるのも待たずに、すぐ撮る）。
@@ -250,7 +254,7 @@ func _reset(seed: int) -> void:
 	_scene.hover_menu_item(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
 	if _scene.is_threat_shown():
 		_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
-	_stage = BoardGenerator.Stage.PLAIN
+	_field = VersusFields.PLAIN
 	_seed = seed
 	_new_battle()
 	_aim(22.0, 0.0, OrbitCamera.DEFAULT_PITCH)  # 前の場面で動かしたカメラを戻す（ほかの場面は、始めの向きと角度で撮る）
@@ -285,8 +289,33 @@ func _scene_stage_select() -> bool:
 func _scene_stage_hover() -> bool:
 	if not await _scene_stage_select():
 		return false
-	_app.current_scene().hover(BoardGenerator.Stage.LABYRINTH)
-	return _app.current_scene().hovered_stage() == BoardGenerator.Stage.LABYRINTH
+	_app.current_scene().hover(VersusFields.LABYRINTH)
+	return _app.current_scene().hovered_field() == VersusFields.LABYRINTH
+
+
+## 一覧の最初の手で作ったマップ（画面に出していないものも）。無ければ空。
+func _first_hand_field() -> StringName:
+	for field in VersusFields.all_ids():
+		if not VersusFields.is_generated(field):
+			return field
+	return &""
+
+
+func _scene_versus_hand_start() -> bool:
+	_field = _first_hand_field()
+	if _field == &"":
+		return false
+	_new_battle()
+	_show()
+	return true
+
+
+func _scene_versus_hand_result() -> bool:
+	_field = _first_hand_field()
+	if _field == &"":
+		return false
+	_new_battle()
+	return await _cpu_result(true)
 
 
 func _scene_title_menu() -> bool:
@@ -916,7 +945,7 @@ func _cpu_result(won: bool) -> bool:
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		names.append(Names.SIDE_NAMES[side] + ("" if side == human else " CPU"))
 	var reason: String = screen.shown_summary().reason  # 人どうしの理由（決着の理由だけ）
-	var summary: RefCounted = ResultSummary.of(_stats, false, _battle.winner, reason, true, human, names, MatchSetup.stage_name(_stage))
+	var summary: RefCounted = ResultSummary.of(_stats, false, _battle.winner, reason, true, human, names, VersusFields.title_of(_field))
 	screen.present(summary)
 	screen.skip()
 	return true
@@ -1209,7 +1238,7 @@ func _scene_stage_twin_springs() -> bool:
 
 ## ステージの見た目を比べる 3 枚（始め・引いた・寄った）。どのステージも同じ構図で撮る。
 func _stage_look(stage: BoardGenerator.Stage, view: StringName) -> bool:
-	_stage = stage
+	_field = VersusFields.field_of_stage(stage)
 	_new_battle()
 	_show()
 	var middle := Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0)
@@ -1261,7 +1290,7 @@ func _scene_look_twin_springs_close() -> bool:
 
 ## stage の盤で、cells の最初のマスへ寄って見る（泉・ポータルの動き）。
 func _close_look(stage: BoardGenerator.Stage, cells: Callable) -> bool:
-	_stage = stage
+	_field = VersusFields.field_of_stage(stage)
 	_new_battle()
 	_show()
 	var found: Array = cells.call(_battle.board)
@@ -1281,7 +1310,7 @@ func _scene_portal() -> bool:
 
 
 func _scene_portal_cell() -> bool:
-	_stage = BoardGenerator.Stage.TWIN_SPRINGS
+	_field = VersusFields.TWIN_SPRINGS
 	_new_battle()
 	_show()
 	var portals: Array = _battle.board.portal_exits.keys()
@@ -1293,7 +1322,7 @@ func _scene_portal_cell() -> bool:
 
 
 func _stage_overview(stage: BoardGenerator.Stage) -> bool:
-	_stage = stage
+	_field = VersusFields.field_of_stage(stage)
 	_new_battle()
 	_show()
 	_look_at(Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0 + 1.0))
@@ -1660,7 +1689,7 @@ func _scene_story_cleared() -> bool:
 
 func _new_battle() -> void:
 	var choice: RefCounted = MatchChoice.new()
-	choice.stage = _stage
+	choice.field = _field
 	choice.cpu_opponent = false
 	_scene.source = choice
 	_battle = choice.to_setup(_seed).create_battle()
@@ -1681,7 +1710,7 @@ func _banner_gone() -> void:
 
 
 func _show() -> void:
-	_scene.start_with(_battle, StageLook.name_of_stage(_stage), _seed, MatchSetup.stage_name(_stage))
+	_scene.start_with(_battle, VersusFields.look_of(_field), _seed, VersusFields.title_of(_field))
 
 
 ## カメラの見ている地点を point にする（寄る動きは待たない）。
