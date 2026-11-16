@@ -5,10 +5,10 @@ class_name CpuFireball
 
 
 ## ファイアボールを撃つ価値のありそうな中心: 敵（中立の駒も）のどれかに当たるマス。
-func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(cpu: Variant, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var wanted: Dictionary[Vector2i, bool] = {}
 	var skill := Skills.of(unit)
-	for other in cpu._battle.units:
+	for other: Unit in cpu._battle.units:
 		if other.side == cpu._me:
 			continue
 		# 十字は対称なので、「other を中心にしたときに効果が及ぶマス」が「other に当たる中心」になる。

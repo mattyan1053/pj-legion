@@ -13,17 +13,17 @@ const TRIES := 6
 ## 盾を置く価値のありそうなマス。危険のある味方がいるときだけ、次の 2 通りを、unit に近い順に TRIES か所まで。
 ## - 次の相手の番に敵が止まれるマスのうち、通路のようなマス（上下左右の入れるマスが 2 つ以下）。ふさげば、敵が寄れなくなる
 ## - 離れた敵（射程 2 以上）に狙われている味方の、その敵の側の隣のマス。射線が切れる
-func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(cpu: Variant, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var found: Dictionary[Vector2i, bool] = {}
-	var width := cpu._board.size.x
+	var width: int = cpu._board.size.x
 	var endangered := false
-	for friend in cpu._battle.units:
+	for friend: Unit in cpu._battle.units:
 		if friend.side != cpu._me or not cpu._threats.has(friend.cell):
 			continue
 		endangered = true
 		var by: Dictionary = cpu._threats[friend.cell]
 		for enemy_id: int in by:
-			var enemy := cpu._battle.unit_by_id(enemy_id)
+			var enemy: Unit = cpu._battle.unit_by_id(enemy_id)
 			if enemy == null or enemy.attack_range() < Combat.RANGED_DISTANCE:
 				continue
 			var apart := Combat.distance(friend.cell, enemy.cell)
@@ -34,7 +34,7 @@ func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) ->
 	if not endangered:
 		return found
 	var reach := unit.move_range() + TacticalBarricadeSkill.PLACE_DISTANCE * 2
-	for cell in cpu._foe_stops:
+	for cell: Vector2i in cpu._foe_stops:
 		if Combat.distance(cell, unit.cell) > reach:
 			continue
 		var open := 0
@@ -63,23 +63,23 @@ func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) ->
 ## 減るぶんを見込む。通路をふさいで敵が寄れなくなるぶんも、離れた攻撃の射線を切るぶんも、ここに入る。
 ## 倒されうる味方（将を除く）が倒されなくなるなら、その駒の役割の「倒されうるマス」の重さを足す。
 ## いま届いている味方の離れた攻撃が、盾で届かなくなるぶんは引く（置く前と置いたあとのルールの答えを比べる）。
-func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
+func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	cpu._build_threats()
 	var threats: Dictionary[Vector2i, Dictionary] = {}
 	var close: Dictionary[Vector2i, Dictionary] = {}
-	cpu._fill_threats(sim, threats, close, {})
+	cpu._fill_threats(sim, threats, close, {} as Dictionary[Vector2i, bool])
 	# 比べる相手は「同じマスに立って、盾を置かなかったとき」。動いてから置く手では、動いただけの盤面で数え直す
 	# （前衛は、立つだけでも道をふさぐ。そのぶんを盾の手柄にしない）。
-	var threats_before := cpu._threats
-	var close_before := cpu._close_threats
-	var user := cpu._battle.unit_by_id(used.unit_id)
+	var threats_before: Dictionary[Vector2i, Dictionary] = cpu._threats
+	var close_before: Dictionary[Vector2i, Dictionary] = cpu._close_threats
+	var user: Unit = cpu._battle.unit_by_id(used.unit_id)
 	if cpu._stand != Board.NO_CELL and cpu._stand != user.cell:
 		if not cpu._moved_threats.has(cpu._stand):
-			var moved_state := cpu._battle.clone()
+			var moved_state: Battle = cpu._battle.clone()
 			moved_state.apply(MoveAction.new(user.id, cpu._stand))
 			var moved_threats: Dictionary[Vector2i, Dictionary] = {}
 			var moved_close: Dictionary[Vector2i, Dictionary] = {}
-			cpu._fill_threats(moved_state, moved_threats, moved_close, {})
+			cpu._fill_threats(moved_state, moved_threats, moved_close, {} as Dictionary[Vector2i, bool])
 			cpu._moved_threats[cpu._stand] = [moved_threats, moved_close]
 		threats_before = cpu._moved_threats[cpu._stand][0]
 		close_before = cpu._moved_threats[cpu._stand][1]
@@ -94,13 +94,13 @@ func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
 		if before >= friend.hp and after < friend.hp and friend.kind != UnitKind.Id.KING:
 			# 倒されうる味方が、倒されなくなる（将は、自分で逃げる）。その駒の「倒されうるマス」の重さを足す。
 			worth += CpuPlayer.STYLES[UnitKind.role(friend.kind)][CpuPlayer._LETHAL]
-	for shooter in cpu._battle.units:
+	for shooter: Unit in cpu._battle.units:
 		if shooter.side != cpu._me or shooter.attack_range() < Combat.RANGED_DISTANCE:
 			continue
 		var moved := sim.unit_by_id(shooter.id)
 		if moved.cell != shooter.cell:
 			continue  # 盾を置いた駒自身（動いてから置いた）
-		for target in cpu._battle.units:
+		for target: Unit in cpu._battle.units:
 			if target.side != cpu._foe or not Combat.can_attack(cpu._battle, shooter, target):
 				continue
 			if not Combat.can_attack(sim, moved, sim.unit_by_id(target.id)):

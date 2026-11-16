@@ -152,6 +152,32 @@ class Fall:
 ## 別の版の CPU と対戦させるときに、片方へ渡す。next_action(対戦) を持つものなら何でもよい。
 ## no_reward なら、聖遺物の効果とゲージを受け取った直後に取り消す（倒した側の勝率のうち、聖遺物のぶんを切り分けるための比べ。
 ## CPU は、聖遺物がもらえるつもりのまま狩る）。
+## 別の版の CPU を作る（docs/cpu-ai.md の「別の版と比べる」。tools/cpu_matches.gd の --rival）。読めなければ null。
+## spec が .gd で終わればスクリプトのファイル、そうでなければ git のリビジョン（その版の rules/cpu_player.gd）。
+static func load_rival(spec: String) -> RefCounted:
+	var source := ""
+	if spec.ends_with(".gd"):
+		source = FileAccess.get_file_as_string(spec)
+	else:
+		var output := []
+		var root := ProjectSettings.globalize_path("res://")
+		if OS.execute("git", ["-C", root, "show", "%s:rules/cpu_player.gd" % spec], output, true) == 0:
+			source = output[0]
+	if source.is_empty():
+		return null
+	return rival_from_source(source)
+
+
+## スクリプトの中身から、別の版の CPU を作る。class_name の行は除く（いまの CpuPlayer と名前がぶつからないように）。
+## rules/cpu/ の見積もりは、いまの版のものを使う（別の版が、見積もりの読む変数とメソッドを持っていれば動く）。
+static func rival_from_source(source: String) -> RefCounted:
+	var script := GDScript.new()
+	script.source_code = RegEx.create_from_string("(?m)^class_name\\b.*$").sub(source, "", true)
+	if script.reload() != OK or not script.can_instantiate():
+		return null
+	return script.new()
+
+
 static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second: RefCounted = null, no_reward := false) -> Outcome:
 	var outcome := Outcome.new()
 	if cpu == null:

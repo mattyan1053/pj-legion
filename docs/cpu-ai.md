@@ -366,20 +366,23 @@ CPU どうしの対戦を画面なしで何局も回して、数値の見積も�
 
 ### 別の版と比べる
 
-CPU を直したときは、直す前の版と対戦させて、強くなったかを見る。直す前の `rules/cpu_player.gd` を、
-`class_name` の行を除いてリポジトリの外に書き出し、`--rival` に渡す。
+CPU を直したときは、直す前の版と対戦させて、強くなったかを見る。`--rival` に git のリビジョンを渡すと、
+その版の `rules/cpu_player.gd` を別の版として読む（`class_name` の行は道具が除く）。
 
-    git show main:rules/cpu_player.gd | sed '/^class_name/d' > /tmp/old_cpu.gd
-    godot --headless --path . -s res://tools/cpu_matches.gd -- --games=96 --pairings=mixed --rival=/tmp/old_cpu.gd
+    godot --headless --path . -s res://tools/cpu_matches.gd -- --games=96 --pairings=mixed --rival=main
 
 - 同じ編成・同じ盤面で、いまの CPU と別の版が 1 局ずつ先手・後手を持つ（ステージと軍の組み合わせを一巡するごとに入れ替わる。
   `--pairings=mixed` なら 12 局、`all` なら 24 局で一巡）。
 - 出すもの: いまの CPU の勝ち数、別の版の勝ち数、決着しなかった局（全体と、ステージごと）。
   駒の種類ごとの表は、全体のあとに「いまの CPU の駒」「別の版の駒」に分けても出す（どの駒の使い方が変わったかを見る）。
   ほかの欄は、両方の CPU の駒を合わせた数。
-- 別の版は `next_action(対戦)` を持つスクリプトなら何でもよい。ルールが変わっていて古い版が動かないときは、比べられない。
+- `--rival` には、`.gd` で終わるスクリプトのパスも渡せる（`next_action(対戦)` を持つものなら何でもよい。`class_name` の行があれば除く）。
+- 別の版に入れ替わるのは `rules/cpu_player.gd` だけで、スキルごとの見積もり（`rules/cpu/`）は、いまの版のものを使う。
+  見積もりが読む変数とメソッドを別の版が持っていないときと、ルールが変わっていて古い版が動かないときは、比べられない。
 - 人の手での悪用を測るための版（ある手を狙って使う CPU）は `tools/rivals/` に置く。いまあるのは、シャドウステップで将を引きずり出す版
   （`shadow_step_pull.gd`。`docs/skills/shadow-step.md`）。
 
 PR ごとの検査（`tools/check.sh`）に入っているのは、小さな盤面の短い 1 局が最後まで終わることだけ（`tests/tools/test_cpu_match.gd`）。
-同じ 1 局を回し直して同じ結果になること、別の版の CPU を渡す入口は、長い検査（`tools/check.sh --full`）で確かめる。
+その 1 局は、プレイヤー2 を別の版の入口（`CpuMatch.load_rival`）で読んだ `rules/cpu_player.gd` が指す（中身は同じなので、同じ局になる）。
+git のリビジョンから読めることも、PR ごとの検査で確かめる。
+同じ 1 局を回し直して同じ結果になることは、長い検査（`tools/check.sh --full`）で確かめる。

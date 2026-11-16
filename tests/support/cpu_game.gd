@@ -20,15 +20,19 @@ static var _outcome: CpuMatch.Outcome
 static var _actions: Array[BattleAction] = []
 
 
-## CPU の考えた行動を控える。考えるのは、使い回す 1 つの CpuPlayer（両方の陣営）。
+## CPU の考えた行動を控える。プレイヤー1 は CpuPlayer。プレイヤー2 は、同じ rules/cpu_player.gd を
+## 別の版の入口（CpuMatch.load_rival。docs/cpu-ai.md の「別の版と比べる」）で読んだもの。
+## 中身は同じなので同じ手を指し、その入口が黙って壊れていないことも、この 1 局で確かめる。
 class Recorder:
 	extends RefCounted
 
 	var cpu := CpuPlayer.new()
+	var rival := CpuMatch.load_rival("res://rules/cpu_player.gd")
 	var actions: Array[BattleAction] = []
 
 	func next_action(battle: Battle) -> BattleAction:
-		var action := cpu.next_action(battle)
+		var thinker: RefCounted = rival if battle.phase == Unit.Side.PLAYER2 else cpu
+		var action: BattleAction = thinker.call(&"next_action", battle)
 		if action != null:
 			actions.append(action)
 		return action

@@ -52,6 +52,16 @@ func test_long_a_second_cpu_can_play_player_two() -> void:
 	assert_eq(paired.winner, alone.winner)
 
 
+func test_a_rival_can_be_read_from_a_git_revision() -> void:
+	# --rival=HEAD のように、git のリビジョンを渡す入口（docs/cpu-ai.md の「別の版と比べる」）。
+	# 対局は、共有の 1 局（cpu_game.gd）のプレイヤー2 が、同じ入口でファイルから読んだ版で回している。
+	var rival := CpuMatch.load_rival("HEAD")
+	assert_true(rival != null, "HEAD の rules/cpu_player.gd を読めない")
+	assert_false(rival is CpuPlayer)
+	assert_true(rival.has_method(&"next_action"))
+	assert_true(CpuMatch.load_rival("no-such-revision") == null)
+
+
 func test_skill_kill_of_a_mid_boss_and_a_unit_counts_the_bigger_reward() -> void:
 	# ファイアボール 1 発で中ボスとプレイヤーの駒が倒れたら、入る経験値（いちばん多い 1 体ぶん）は中ボスの撃破。
 	for boss_first: bool in [true, false]:

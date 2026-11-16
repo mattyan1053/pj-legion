@@ -9,10 +9,10 @@ const EXPECTED_HEALS := 2
 
 
 ## 聖域を置く価値のありそうな中心: 減っている味方（もう自分の聖域の中にいる駒は除く）を中に入れられるマス。
-func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(cpu: Variant, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var wanted: Dictionary[Vector2i, bool] = {}
 	var skill := Skills.of(unit)
-	for friend in cpu._battle.units:
+	for friend: Unit in cpu._battle.units:
 		if friend.side != cpu._me or friend.hp >= friend.max_hp() or FieldEffects.sanctuary_of(cpu._battle, friend) != null:
 			continue
 		# 3 x 3 は対称なので、「friend を中心にしたときに効果が及ぶマス」が「friend を中に入れられる中心」になる。
@@ -23,7 +23,7 @@ func targets(cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) ->
 
 ## 聖域を置いた価値。中にいる、減っている味方（もう自分の聖域の中にいる駒は除く）の、見込める回復量。
 ## 減っている味方が MIN_UNITS 体に満たなければ 0（回復役は、ふつうの回復のほうが早い）。
-func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
+func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	var cells := Skills.by_id(used.skill).affected_cells(sim, sim.unit_by_id(used.unit_id), used.target)
 	var wounded := 0
 	var total := 0
@@ -38,8 +38,8 @@ func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
 
 
 ## cell が、置く前から自分の聖域の中か。
-static func _in_own_sanctuary(cpu: CpuPlayer, cell: Vector2i) -> bool:
-	for effect in cpu._board.field_effects:
+static func _in_own_sanctuary(cpu: Variant, cell: Vector2i) -> bool:
+	for effect: FieldEffect in cpu._board.field_effects:
 		if effect.type == FieldEffect.Type.SANCTUARY and effect.side == cpu._me and effect.cells.has(cell):
 			return true
 	return false
