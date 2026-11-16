@@ -12,7 +12,7 @@ const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 ## 話のデータに書いてよい定数の名前（preload した道具の名前は除く。_problems が Script の定数を読み飛ばす）。
 const REQUIRED := [&"ID", &"TITLE", &"LOOK", &"MAP", &"UNLOCKS", &"ENEMY_ARMY", &"ENEMY", &"DEPLOY", &"SPEAKERS", &"BEFORE", &"AFTER"]
-const OPTIONAL := [&"HOLD_TURNS", &"WINS", &"CUES", &"HUMAN_LEADER", &"ENEMY_LEADER", &"MUSIC", &"TALK_MUSIC"]
+const OPTIONAL := [&"HOLD_TURNS", &"WINS", &"CUES", &"UNLOCK_ITEMS", &"BUDGET_UP", &"HUMAN_LEADER", &"ENEMY_LEADER", &"MUSIC", &"TALK_MUSIC"]
 
 
 func test_every_episode_is_well_formed() -> void:
@@ -33,25 +33,34 @@ func test_every_campaign_is_well_formed() -> void:
 		assert_false(campaign.STARTING_KINDS.is_empty(), "%s: 最初から雇える駒が無い" % campaign.ID)
 		for kind: UnitKind.Id in campaign.STARTING_KINDS:
 			assert_eq(UnitKind.army(kind), campaign.ARMY, "%s: 最初から雇える駒は、その物語の軍の駒" % campaign.ID)
+		for item: Variant in campaign.STARTING_ITEMS:
+			assert_true(typeof(item) == TYPE_INT and Equipment.Id.values().has(item), "%s: 無い装備 %s" % [campaign.ID, item])
+		assert_true(campaign.STARTING_BUDGET > 0, "%s: コストの上限" % campaign.ID)
 		for episode: Script in campaign.EPISODES:
 			assert_false(episodes.has(episode), "%s は 2 つの物語に入っている" % episode.ID)
 			episodes.append(episode)
 	assert_true(Story.is_ready(Story.CAMPAIGNS[0]), "最初の物語は遊べる")
 
 
-func test_unlocks_are_new_kinds_of_the_campaign_army_and_unlocked_once() -> void:
+func test_unlocks_are_new_kinds_of_the_campaign_army_and_new_items_unlocked_once() -> void:
 	for campaign in Story.CAMPAIGNS:
+		var items: Array = campaign.STARTING_ITEMS.duplicate()
+		for episode: Script in campaign.EPISODES:
+			for item: Equipment.Id in StoryBattle.unlock_items_of(episode):
+				assert_false(items.has(item), "%s: %s はもう持たせられる" % [episode.ID, Equipment.display_name(item)])
+				items.append(item)
 		var unlocked: Array = campaign.STARTING_KINDS.duplicate()
 		for episode: Script in campaign.EPISODES:
 			for kind: UnitKind.Id in episode.UNLOCKS:
 				assert_false(unlocked.has(kind), "%s: %s はもう雇える" % [episode.ID, UnitKind.display_name(kind)])
+				assert_eq(UnitKind.army(kind), campaign.ARMY, "%s: 解放するのは、物語の軍の駒" % episode.ID)
 				unlocked.append(kind)
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
 	for episode in Story.all_episodes():
 		var campaign := Story.campaign_of(episode)
-		var deck := Deck.new(campaign.ARMY, Story.rules_of(campaign.STARTING_KINDS, campaign))
+		var deck := Deck.new(campaign.ARMY, Story.rules_of(Story.starting(campaign)))
 		for i in Deck.MAX_UNITS:
 			deck.add(campaign.STARTING_KINDS[i % campaign.STARTING_KINDS.size()])
 		var setup := StoryBattle.new(episode, deck).make_setup(3)
@@ -68,6 +77,9 @@ func test_a_full_squad_is_placed_on_every_episode_map() -> void:
 func test_broken_episode_data_is_caught() -> void:
 	var cases := {
 		"知らない定数": "const HOLD_TURN := 10",
+		"解放の書き間違い": "const UNLOCK_ITEM: Array[Equipment.Id] = []",
+		"無い装備の解放": "const UNLOCK_ITEMS := [99]",
+		"上がらないコスト": "const BUDGET_UP := 0",
 		"守り切るのに守り切るの勝ち方が無い": "const HOLD_TURNS := 5\nconst WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]",
 		"守り切るの勝ち方なのにターン数が無い": "const WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.TURNS_HELD]",
 		"空の勝ち方": "const WINS: Array[GameWonEvent.Reason] = []",
@@ -127,6 +139,12 @@ func _problems(episode: Script) -> Array[String]:
 	for kind: Variant in episode.UNLOCKS:
 		if not _is_kind(kind) or kind == UnitKind.Id.KING:
 			found.append("解放できない駒 %s" % [kind])
+	if constants.has(&"UNLOCK_ITEMS"):
+		for item: Variant in episode.UNLOCK_ITEMS:
+			if typeof(item) != TYPE_INT or not Equipment.Id.values().has(item):
+				found.append("解放できない装備 %s" % [item])
+	if constants.has(&"BUDGET_UP") and (typeof(episode.BUDGET_UP) != TYPE_INT or episode.BUDGET_UP < 1):
+		found.append("BUDGET_UP は 1 以上")
 	if not UnitKind.Army.values().has(episode.ENEMY_ARMY):
 		found.append("知らない軍 %s" % [episode.ENEMY_ARMY])
 	if episode.ENEMY.is_empty():

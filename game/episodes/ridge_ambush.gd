@@ -19,10 +19,12 @@ const TITLE := "尾根の待ち伏せ"
 const LOOK := StageLook.STONE_WALLS
 const MAP := RidgePath
 
-## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。ほかの軍の駒も解放できる。
-const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.PALADIN]
+## クリアで増えるもの（docs/story.md の「解放」）: 雇える駒の種類、持たせられる装備、部隊のコストの上限の上がり幅。
+const UNLOCKS: Array[UnitKind.Id] = []
+const UNLOCK_ITEMS: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS]
+const BUDGET_UP := 2
 
-## 敵の軍（人の軍は、ストーリーで 1 つ。story.gd の ARMY）。
+## 敵の軍（人の軍は、話の物語の軍。game/campaigns/ の ARMY）。
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 ## 敵の部隊（将を除く）: [駒の種類, [装備, …]] の列。並びの順に、初期位置（DEPLOY）のマスへ置く。
 const ENEMY := [
@@ -51,7 +53,7 @@ const BEFORE := [
 	[1, "前のようにはいかない。"],
 ]
 const AFTER := [
-	[1, "……これほどとは。我らの盾を、貸そう。"],
+	[1, "……これほどとは。道を空けよう。"],
 	[0, "心強い。谷へ急ごう。"],
 ]
 

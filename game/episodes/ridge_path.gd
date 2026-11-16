@@ -20,10 +20,10 @@ const TITLE := "尾根の小道"
 const LOOK := StageLook.STONE_WALLS
 const MAP := RidgePath
 
-## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。
+## クリアで増えるもの（docs/story.md の「解放」）: 雇える駒の種類。
 const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.COMMANDO]
 
-## 敵の軍（人の軍は、ストーリーで 1 つ。story.gd の ARMY）。
+## 敵の軍（人の軍は、話の物語の軍。game/campaigns/ の ARMY）。
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 ## 敵の部隊（将を除く）: [駒の種類, [装備, …]] の列。並びの順に、本陣の前へ置く（いつもの置き方）。
 const ENEMY := [

@@ -133,8 +133,8 @@ const SCENES := {
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
-	"story_mixed_decks": "ストーリー: ほかの軍の駒（パラディン）を、部隊の編成の「ストーリー用」で雇うところ",
-	"story_mixed_info": "ストーリー: ほかの軍の駒（パラディン）を混ぜた部隊の対戦で、その駒の情報を見ている",
+	"story_unlocked_decks": "ストーリー: 全部の話をクリアしたあと、部隊の編成の「ストーリー用」で組むところ（解放した駒・持ち物、上がったコストの上限）",
+	"story_list_items": "ストーリー: 第 2 話までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
 	"story_sortie_default": "ストーリー: 出撃の準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
@@ -1655,54 +1655,26 @@ func _scene_story_sortie() -> bool:
 	return _app.current_scene().chosen_id() == saved.id
 
 
-## 全部の話をクリアして（パラディンを解放して）、部隊の編成の「ストーリー用」でパラディンを雇う。
-func _scene_story_mixed_decks() -> bool:
+## 全部の話をクリアして、部隊の編成の「ストーリー用」で、解放した駒（コマンドー）を雇う。
+func _scene_story_unlocked_decks() -> bool:
 	for episode in Story.MILITARY.EPISODES:
 		_app.context.story.clear(episode.ID)
 	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
 	screen.set_mode(Story.RULES_ID)
 	screen.press_new()
-	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN, UnitKind.Id.SNIPER]:
+	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC]:
 		screen.hire(kind)
-	screen.select_entry(1)
-	screen.hover_kind(UnitKind.Id.PALADIN)
-	return screen.editing_deck().entries.size() == 3
+	screen.select_entry(2)
+	screen.hover_kind(UnitKind.Id.COMMANDO)
+	return screen.editing_deck().entries.size() == 4 and screen.editing_deck().budget() > DeckRules.versus().budget(Story.ARMY)
 
 
-## 全部の話をクリアして、既定の編成（パラディン入り）で 1 話の対戦を、until まで CPU どうしで進めて画面に出す。
-func _story_mixed(until: Callable) -> bool:
-	_app.context.decks.load_data({"decks": []})
-	for episode in Story.MILITARY.EPISODES:
-		_app.context.story.clear(episode.ID)
-	if not await _story_battle():
-		return false
-	var setup: MatchSetup = _scene.source.make_setup(_seed)
-	_battle = setup.create_battle()
-	_stats = BattleStats.new(_battle)
-	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
-	if not _advance(until):
-		return false
-	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
-	_scene.stats = _stats
-	_scene.battle_log = _log
-	return true
-
-
-func _mixed_paladin() -> Unit:
-	for unit in _battle.units:
-		if unit.side == Unit.Side.PLAYER1 and unit.kind == UnitKind.Id.PALADIN:
-			return unit
-	return null
-
-
-func _scene_story_mixed_info() -> bool:
-	if not await _story_mixed(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1 and _mixed_paladin() != null):
-		return false
-	var unit := _mixed_paladin()
-	_look_at(BoardView.cell_center(unit.cell))
-	_scene.hover(unit.cell)
-	return true
+## 第 2 話までクリアしたあとの話の一覧（持ち物が増え、コストの上限が上がった）。
+func _scene_story_list_items() -> bool:
+	for i in 2:
+		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
+	return await _scene_story_list()
 
 
 ## 出撃の準備で、既定の編成を選んでいるところ（取っておいた部隊は無い）。
@@ -1852,6 +1824,10 @@ func _scene_story_decks_detour() -> bool:
 func _scene_story_defeat() -> bool:
 	if not await _story_battle():
 		return false
+	# 既定の編成では人の側（CPU が持つ）がほぼ勝つので、負ける局を作るため、人の部隊をスナイパー 1 体にする。
+	var weak := Deck.new(Story.ARMY, _app.context.story.deck_rules())
+	weak.add(UnitKind.Id.SNIPER)
+	_scene.source.human_deck = weak
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)

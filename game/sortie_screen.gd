@@ -213,7 +213,7 @@ func chosen_deck() -> Deck:
 		var saved: RefCounted = context.decks.find(_chosen)
 		if saved != null:
 			return saved.deck.copy()
-	return Story.default_deck(context.story.unlocked_kinds(), context.story.campaign)
+	return Story.default_deck(context.story.unlocked())
 
 
 ## 選択肢の id の並び（既定の編成が先頭）と、押せるか（検査用）。

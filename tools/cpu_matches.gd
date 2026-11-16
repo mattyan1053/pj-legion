@@ -725,12 +725,14 @@ func _map_rows(path: String) -> PackedStringArray:
 
 
 ## --squads=random の、人の側の部隊。その話を初めて遊ぶときに雇える駒から、種で決まる順に、数の上限まで予算の中で雇う。
+## 予算と持たせられる装備も、その話を初めて遊ぶときのもの（story.gd の unlocked_before）。
 ## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.DEFAULT_ITEMS）。
 func _random_squad(episode: Script, squad_seed: int) -> Deck:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = squad_seed
-	var kinds := Story.kinds_before(episode)
-	var deck := Deck.new(Story.ARMY, Story.rules_of(kinds))
+	var given := Story.unlocked_before(episode)
+	var kinds := given.kinds
+	var deck := Deck.new(given.campaign.ARMY, Story.rules_of(given))
 	var hired: Array[UnitKind.Id] = []
 	var cost := 0
 	while hired.size() < deck.rules.max_units:
@@ -745,7 +747,7 @@ func _random_squad(episode: Script, squad_seed: int) -> Deck:
 		deck.add(kind)
 	for entry in deck.entries:
 		var item := Story.DEFAULT_ITEMS.get(UnitKind.role(entry.kind), -1) as int
-		if item != -1 and deck.total_cost() + Equipment.cost(item as Equipment.Id) <= deck.budget():
+		if item != -1 and deck.rules.allows_item(item as Equipment.Id) and deck.total_cost() + Equipment.cost(item as Equipment.Id) <= deck.budget():
 			entry.equip(item as Equipment.Id)
 	return deck
 

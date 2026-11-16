@@ -21,13 +21,14 @@ const MAP := RidgePath
 ## 対戦の曲（sound_catalog.gd の MUSIC。無ければ盤の見た目の曲）。押し寄せる敵を守り切る話なので、緊迫した曲。
 const MUSIC := &"battle_tense"
 
-## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。
+## クリアで増えるもの（docs/story.md の「解放」）: 雇える駒の種類、持たせられる装備、部隊のコストの上限の上がり幅。
 const UNLOCKS: Array[UnitKind.Id] = []
+const BUDGET_UP := 2
 
 ## 人の側（プレイヤー1）が守り切るターン数。このターンが終わるまで決着しなければ、人の勝ち。
 const HOLD_TURNS := 10
 
-## 敵の軍（人の軍は、ストーリーで 1 つ。story.gd の ARMY）。
+## 敵の軍（人の軍は、話の物語の軍。game/campaigns/ の ARMY）。
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 ## 敵の部隊（将を除く）: [駒の種類, [装備, …]] の列。並びの順に、初期位置（DEPLOY）のマスへ置く。
 const ENEMY := [
@@ -36,9 +37,7 @@ const ENEMY := [
 	[UnitKind.Id.SORCERER, []],
 	[UnitKind.Id.SORCERER, []],
 	[UnitKind.Id.SPELLBLADE, []],
-	[UnitKind.Id.SPELLBLADE, []],
 	[UnitKind.Id.PRIEST, []],
-	[UnitKind.Id.SORCERER, []],
 ]
 
 ## 初期位置（将でない駒を置くマスの列）: [プレイヤー1, プレイヤー2]。空なら、いつもの「本陣の前」。

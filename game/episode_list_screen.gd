@@ -2,11 +2,11 @@ extends Node
 ## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（会話 → 出撃の準備 → 対戦 → 会話）を始める。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
-## - カードには、話の番号と名前、盤の縮図（stage_card_map.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増える駒を載せる。
+## - カードには、話の番号と名前、盤の縮図（stage_card_map.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
 ## - カードのクリック（1〜9 のキーでも）で、その話を始める。
-## - 下の欄に、いま雇える駒（クリアした話から求める）。
+## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
 ## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
 
 const Palette := preload("res://game/ui_palette.gd")
@@ -16,6 +16,7 @@ const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
 const Story := preload("res://game/story.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
 
 signal finished(outcome: StringName)
 
@@ -125,12 +126,29 @@ func card_status(episode: Script) -> String:
 	return status_text(episode)
 
 
-## 下の欄の文: いま雇える駒。
+## 下の欄の文: いま雇える駒、持たせられる持ち物、部隊のコストの上限（話をクリアすると増える）。
 func roster_text() -> String:
-	var names: Array[String] = []
-	for kind in context.story.unlocked_kinds():
-		names.append(UnitKind.display_name(kind))
-	return "いま雇える駒: %s（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）" % "・".join(names)
+	var now: RefCounted = context.story.unlocked()
+	var kinds: Array[String] = []
+	for kind: UnitKind.Id in now.kinds:
+		kinds.append(UnitKind.display_name(kind))
+	var items: Array[String] = []
+	for item: Equipment.Id in now.items:
+		items.append(Equipment.display_name(item))
+	return "いま雇える駒: %s\n持ち物: %s　　コストの上限: %d\n（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）" % [
+		"・".join(kinds), "・".join(items) if not items.is_empty() else "なし", now.budget]
+
+
+## 話 episode のクリアで増えるものの短い文（無ければ空）。カードに出す。
+static func rewards_text(episode: Script) -> String:
+	var parts: Array[String] = []
+	for kind: UnitKind.Id in episode.UNLOCKS:
+		parts.append(UnitKind.display_name(kind))
+	for item: Equipment.Id in StoryBattle.unlock_items_of(episode):
+		parts.append(Equipment.display_name(item))
+	if StoryBattle.budget_up_of(episode) > 0:
+		parts.append("コスト +%d" % StoryBattle.budget_up_of(episode))
+	return "" if parts.is_empty() else "クリアで増える:\n" + "・".join(parts)
 
 
 ## 話 episode の状態の文。
@@ -173,7 +191,7 @@ func _build_card(episode: Script) -> Button:
 	var available: bool = context.story.is_available(episode)
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
-	card.custom_minimum_size = Vector2(CARD_WIDTH, MAP_HEIGHT + 150.0)
+	card.custom_minimum_size = Vector2(CARD_WIDTH, MAP_HEIGHT + 170.0)
 	card.disabled = not available
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
@@ -213,11 +231,8 @@ func _build_card(episode: Script) -> Button:
 	var cleared: bool = context.story.is_cleared(episode.ID)
 	status.add_theme_color_override("font_color", COLOR_CLEARED if cleared else (COLOR_NEW if available else COLOR_LOCKED))
 	column.add_child(status)
-	if not episode.UNLOCKS.is_empty():
-		var names: Array[String] = []
-		for kind: UnitKind.Id in episode.UNLOCKS:
-			names.append(UnitKind.display_name(kind))
-		var unlocks := _label("クリアで増える駒: %s" % "・".join(names), 15)
+	if rewards_text(episode) != "":
+		var unlocks := _label(rewards_text(episode), 15)
 		unlocks.add_theme_color_override("font_color", COLOR_TEXT_DIM if available else COLOR_LOCKED)
 		column.add_child(unlocks)
 	return card
