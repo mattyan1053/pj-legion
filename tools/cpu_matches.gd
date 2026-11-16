@@ -725,9 +725,6 @@ func _map_rows(path: String) -> PackedStringArray:
 	return rows
 
 
-## --squads=random の、人の側の部隊。その話を初めて遊ぶときに雇える駒から、種で決まる順に、数の上限まで予算の中で雇う。
-## 予算と持たせられる装備も、その話を初めて遊ぶときのもの（story.gd の unlocked_before）。
-## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.DEFAULT_ITEMS）。
 ## 話 id（ファイルのパスなら、その名前）の話。物語に並んでいなければ null。
 func _find_episode(given: String) -> RefCounted:
 	var id := StringName(given.get_file().get_basename())
@@ -737,6 +734,9 @@ func _find_episode(given: String) -> RefCounted:
 	return null
 
 
+## --squads=random の、人の側の部隊。その話を初めて遊ぶときに雇える駒から、種で決まる順に、数の上限まで予算の中で雇う。
+## 予算と持たせられる装備も、その話を初めて遊ぶときのもの（story.gd の unlocked_before）。
+## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.DEFAULT_ITEMS）。
 func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = squad_seed
