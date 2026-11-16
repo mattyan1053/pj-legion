@@ -60,11 +60,16 @@ func test_episode_battle_is_the_hand_map_against_a_fixed_cpu_enemy() -> void:
 		assert_eq(setup.controllers, [MatchSetup.Controller.HUMAN, MatchSetup.Controller.CPU] as Array[MatchSetup.Controller])
 		assert_eq(source.cpu_side(), Unit.Side.PLAYER2)
 		assert_true(setup.scenario.is_fixed(Unit.Side.PLAYER2))
-		assert_false(setup.scenario.is_fixed(Unit.Side.PLAYER1))
 		assert_eq(setup.army_of(Unit.Side.PLAYER1), Story.ARMY)
 		assert_eq(setup.army_of(Unit.Side.PLAYER2), episode.ENEMY_ARMY)
-		assert_eq(setup.deck_of(Unit.Side.PLAYER1), source.human_deck, "人は渡された部隊")
-		assert_eq(setup.deck_of(Unit.Side.PLAYER1).rules.id, Story.RULES_ID, "初めて遊ぶときの、ストーリーの既定の編成")
+		if StoryBattle.squad_of(episode) != null:
+			assert_true(setup.scenario.is_fixed(Unit.Side.PLAYER1), "%s: 部隊の決まっている話は、その部隊" % episode.ID)
+			assert_eq(setup.deck_of(Unit.Side.PLAYER1).entries.size(), episode.SQUAD.size())
+		else:
+			assert_false(setup.scenario.is_fixed(Unit.Side.PLAYER1))
+			assert_eq(setup.deck_of(Unit.Side.PLAYER1), source.human_deck, "人は渡された部隊")
+			assert_eq(setup.deck_of(Unit.Side.PLAYER1).rules.id, Story.RULES_ID, "初めて遊ぶときの、ストーリーの既定の編成")
+		assert_eq(setup.scenario.start_gauge[Unit.Side.PLAYER1], StoryBattle.start_gauge_of(episode))
 		assert_eq(setup.scenario.title, episode.MAP.TITLE)
 		var battle := setup.create_battle()
 		var placed := [0, 0]
@@ -150,10 +155,10 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 
 
 func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each() -> void:
-	var first := Story.default_deck(Story.starting())
+	var first := Story.default_deck(Story.unlocked_before(_episode(&"ridge_path")))  # 部隊を選ぶ最初の話
 	assert_true(first.is_valid(), "既定の編成は、出撃できる")
 	assert_eq(first.entries.size(), first.rules.max_units)
-	for kind: UnitKind.Id in Story.MILITARY.STARTING_KINDS:
+	for kind: UnitKind.Id in Story.kinds_before(_episode(&"ridge_path")):
 		assert_eq(first.entries.filter(func(e: DeckEntry) -> bool: return e.kind == kind).size(), 2, "雇える駒を、まんべんなく雇う: %s" % UnitKind.display_name(kind))
 	for episode: Script in Story.MILITARY.EPISODES:
 		var deck := Story.default_deck(Story.unlocked_before(episode))
@@ -170,7 +175,8 @@ func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each()
 
 
 func test_story_battles_offer_choosing_the_squad_again() -> void:
-	assert_true(Story.first_battle(Story.MILITARY.EPISODES[0]).can_choose_squad(), "決着の画面に「部隊を選び直す」を出す")
+	assert_true(Story.first_battle(_episode(&"ridge_path")).can_choose_squad(), "決着の画面に「部隊を選び直す」を出す")
+	assert_false(Story.first_battle(_episode(&"drill_first_steps")).can_choose_squad(), "部隊が決まっている話には出さない")
 	assert_false(preload("res://game/match_choice.gd").new().can_choose_squad(), "対戦モードには出さない")
 
 
@@ -263,7 +269,7 @@ func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loadi
 	assert_true(saved.issues().size() > 0)
 	var sortie := preload("res://game/sortie_screen.gd").new()
 	sortie.context = context
-	context.run = context.story.run_now(Story.MILITARY.EPISODES[2])
+	context.run = context.story.run_now(_episode(&"ridge_hold"))
 	context.run.advance()  # 出撃の準備
 	context.scene = Story.SORTIE
 	var root := Node.new()
@@ -275,7 +281,7 @@ func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loadi
 
 
 func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
-	var episode: Script = Story.MILITARY.EPISODES[0]
+	var episode: Script = _episode(&"drill_medic")  # 衛生兵が増える
 	var story := Story.new()
 	var run := story.run_now(episode)
 	assert_eq(run.data()["lines"].size(), episode.BEFORE.size(), "前の会話には知らせを出さない")
@@ -309,10 +315,10 @@ func test_episode_deploy_cells_place_the_enemy_there() -> void:
 		assert_eq(placed, expected, "%s の敵が、初期位置の順に置かれていない" % episode.ID)
 
 
-func test_the_same_map_is_reused_with_other_deploy_cells() -> void:
+func test_the_same_map_is_reused_with_other_deploy_cells_enemies_or_wins() -> void:
 	var maps := {}
 	for episode in Story.MILITARY.EPISODES:
-		var key := [episode.MAP, str(episode.DEPLOY)]
+		var key := [episode.MAP, str(episode.DEPLOY), str(episode.ENEMY), str(StoryBattle.wins_of(episode)), StoryBattle.hold_turns_of(episode)]
 		assert_false(maps.has(key), "%s は、前の話と同じマップと初期位置" % episode.ID)
 		maps[key] = true
 
@@ -347,7 +353,7 @@ func test_story_decks_are_read_with_the_current_progress_and_never_mix_with_vers
 	assert_false(saved.playable(), "まだ解放していない駒がいる")
 	assert_true(again.decks.for_rules(DeckRules.VERSUS).is_empty(), "対戦用に混ざらない")
 	assert_eq(again.decks.for_rules(Story.RULES_ID).size(), 1)
-	again.story.clear(Story.MILITARY.EPISODES[0].ID)  # コマンドーが増える
+	again.story.clear(&"ridge_path")  # コマンドーが増える
 	assert_true(saved.playable(), "進み具合が変わったら、決まりを引き直す: %s" % [saved.issues()])
 	var plain := preload("res://game/deck_library.gd").new()
 	plain.load_data(data)
@@ -421,7 +427,7 @@ func test_an_old_single_story_record_is_read_as_the_military_campaign() -> void:
 	story.choose_campaign(Story.MILITARY)
 	assert_eq(story.cleared_count(), 2, "物語が 1 つだったころの記録は、MILITARY の物語の記録")
 	assert_eq(story.squad_id, "5")
-	story.clear(Story.MILITARY.EPISODES[2].ID)
+	story.clear(&"ridge_hold")
 	assert_eq(_store().read(Story.STORE_NAME), {"version": 2, "data": {"campaigns": {"military": {
 			"cleared": ["ridge_path", "ridge_ambush", "ridge_hold"], "squad": "5"}}}}, "書くときは、物語ごとの形")
 	_cleanup()
@@ -471,9 +477,42 @@ const UNLOCK_ITEMS: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS, Equipment.I
 const BUDGET_UP := 3
 """
 	assert_eq(episode.reload(), OK)
-	var news := Story.starting().news_of(episode)
+	var given := Story.starting()
+	given.items.assign([Equipment.Id.IRON_SHIELD])
+	var news := given.news_of(episode)
 	assert_eq(news, [
 		{"text": "新しい駒「コマンドー」を雇えるようになった。", "kind": UnitKind.Id.COMMANDO},
 		{"text": "新しい持ち物「スピードブーツ」を持たせられるようになった。"},
 		{"text": "部隊のコストの上限が %d になった。" % (Story.MILITARY.STARTING_BUDGET + 3)},
 	] as Array[Dictionary], "もう使えるもの（スナイパー、アイアンシールド）は知らせない。駒の知らせはアイコンを出す（kind）")
+
+
+
+## MILITARY の物語の、id の話。
+func _episode(id: StringName) -> Script:
+	for episode: Script in Story.MILITARY.EPISODES:
+		if episode.ID == id:
+			return episode
+	assert_true(false, "話が無い: %s" % id)
+	return null
+
+
+func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sortie() -> void:
+	var context := preload("res://game/app_context.gd").new()
+	context.story.choose_squad("9")
+	context.run = context.story.run_now(_episode(&"drill_sniper"))
+	context.run.advance()  # 出撃の準備
+	context.scene = Story.SORTIE
+	var sortie := preload("res://game/sortie_screen.gd").new()
+	sortie.context = context
+	var root := Node.new()
+	root.add_child(sortie)
+	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
+	assert_true(sortie.is_squad_fixed())
+	assert_eq(sortie.option_ids(), ["fixed"] as Array[String], "選べるのは、この話の部隊だけ")
+	assert_eq(sortie.chosen_deck().entries.size(), _episode(&"drill_sniper").SQUAD.size())
+	sortie.press_edit_decks()
+	assert_eq(context.run.scene(), Story.SORTIE, "部隊が決まっている話は、編成へ寄り道しない")
+	sortie.press_sortie()
+	assert_eq(context.story.squad_id, "9", "決まっている部隊で出撃しても、覚えている部隊は変えない")
+	root.free()

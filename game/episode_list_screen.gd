@@ -3,6 +3,7 @@ extends Node
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
 ## - カードには、話の番号と名前、盤の縮図（stage_card_map.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
+## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（LESSON のある話）の番号には「（演習）」を付ける。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
 ## - カードのクリック（1〜9 のキーでも）で、その話を始める。
@@ -65,15 +66,26 @@ func _ready() -> void:
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	root.add_child(sub)
 
+	# 話が多いと横に並びきらないので、横に送れる枠に入れる（マウスのホイールでも送れる）。
+	# 開いたときは、次に遊ぶ話のカードが見えるところまで送っておく。
+	var scroll := ScrollContainer.new()
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0.0, MAP_HEIGHT + 172.0)
+	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	root.add_child(scroll)
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scroll.add_child(center)
 	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 28)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(row)
+	center.add_child(row)
 	for episode: Script in context.story.campaign.EPISODES:
 		var card := _build_card(episode)
 		row.add_child(card)
 		_cards[episode] = card
+	scroll.ensure_control_visible.call_deferred(_cards[context.story.next_episode()])
 
 	var note := _panel(COLOR_PANEL)
 	note.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -213,7 +225,7 @@ func _build_card(episode: Script) -> Button:
 	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(column)
-	var number := _label("第 %d 話" % Story.number_of(episode), 16)
+	var number := _label(("第 %d 話（演習）" if StoryBattle.lesson_of(episode) != "" else "第 %d 話") % Story.number_of(episode), 16)
 	number.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(number)
 	column.add_child(_label(episode.TITLE, 24))

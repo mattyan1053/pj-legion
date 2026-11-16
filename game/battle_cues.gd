@@ -10,7 +10,9 @@ extends RefCounted
 const TURN := &"turn"  ## 値 = ターン N。人の番（プレイヤー1 のフェーズ）の始め
 const KING_HALF := &"king_half"  ## 値 = 陣営（0 か 1）。その陣営の将の HP が半分を切った
 const FALLEN := &"fallen"  ## 値 = 陣営（0 か 1）。その陣営の駒（将を除く）が初めて倒れた
-const KINDS: Array[StringName] = [TURN, KING_HALF, FALLEN]
+const ULT_READY := &"ult_ready"  ## 値 = 陣営（0 か 1）。その陣営の必殺技のゲージがたまった（UltReadyEvent）
+const RELIC := &"relic"  ## 値 = 陣営（0 か 1）。その陣営が聖遺物を受け取った（中ボスを倒した。RelicGainedEvent）
+const KINDS: Array[StringName] = [TURN, KING_HALF, FALLEN, ULT_READY, RELIC]
 
 
 ## 出す台詞 1 つ。
@@ -83,4 +85,8 @@ func _fires(battle: Battle, events: Array[BattleEvent], at_start: bool, kind: St
 		FALLEN:
 			return events.any(func(e: BattleEvent) -> bool:
 				return e is UnitDefeatedEvent and e.side == value and e.kind != UnitKind.Id.KING)
+		ULT_READY:
+			return events.any(func(e: BattleEvent) -> bool: return e is UltReadyEvent and e.side == value)
+		RELIC:
+			return events.any(func(e: BattleEvent) -> bool: return e is RelicGainedEvent and e.side == value)
 	return false
