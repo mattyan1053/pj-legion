@@ -132,6 +132,32 @@ func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 				assert_true(shown.has(found.get_string(1)), "%s: 画面に無い呼び方「%s」: %s" % [episode.id, found.get_string(1), text])
 
 
+## 駒の行の「,」のあとに、始めのレベルと経験値を書ける（進化の選び方を教える話）。書かない駒は [1, 0]。
+## 戦いの定義の start_growth へ写り、対戦の駒がそのレベルと経験値で始まる。
+func test_unit_rows_can_start_grown() -> void:
+	var text := PROBE.replace("name = 隊長", "name = 隊長\nunit = sorcerer, level 2, exp 110\nunit = paladin + iron_shield\nunit = priest, exp 30")
+	text = text.replace("unit = priest\ndeploy", "unit = priest, level 2\ndeploy")
+	var episode: Episode = Episode.parse(text)
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.squad, [[UnitKind.Id.SORCERER, []], [UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD]], [UnitKind.Id.PRIEST, []]], "「,」のあとは駒と持ち物に混ざらない")
+	assert_eq(episode.growth[0], [[2, 110], [1, 0], [1, 30]])
+	assert_eq(episode.growth[1], [[1, 0], [2, 0]])
+	assert_true(episode.has_growth(0) and episode.has_growth(1))
+	var battle := StoryBattle.new(episode, null).make_setup(1).create_battle()
+	var grown := {}
+	for unit in battle.units:
+		if unit.kind != UnitKind.Id.KING:
+			grown[[unit.side, unit.kind]] = [unit.level, unit.experience]
+	assert_eq(grown[[Unit.Side.PLAYER1, UnitKind.Id.SORCERER]], [2, 110])
+	assert_eq(grown[[Unit.Side.PLAYER1, UnitKind.Id.PALADIN]], [1, 0])
+	assert_eq(grown[[Unit.Side.PLAYER1, UnitKind.Id.PRIEST]], [1, 30])
+	assert_eq(grown[[Unit.Side.PLAYER2, UnitKind.Id.PRIEST]], [2, 0])
+	# 書かない話は、戦いの定義も空のまま（いつもどおり）。
+	var plain: Episode = Episode.parse(PROBE)
+	assert_false(plain.has_growth(0) or plain.has_growth(1))
+	assert_eq(StoryBattle.scenario_of(plain).start_growth, [[], []] as Array[Array])
+
+
 ## わざと壊した話を、書き間違いの行で弾くこと。[壊し方の名前] = [見本の中の文, 置き換える文, 弾く行]。
 func test_broken_episodes_are_caught_on_their_line() -> void:
 	var cases := {
@@ -144,6 +170,11 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"知らない曲": ["look = stone_walls", "look = stone_walls\nmusic = no_such_track", 6],
 		"知らない駒": ["unit = priest", "unit = preist", 19],
 		"将を書く": ["unit = priest", "unit = king", 19],
+		"知らない育ち": ["unit = priest", "unit = priest, lv 2", 19],
+		"育ちが数でない": ["unit = priest", "unit = priest, level two", 19],
+		"進化のレベル": ["unit = priest", "unit = priest, level %d" % Growth.MAX_LEVEL, 19],
+		"上がる経験値": ["unit = priest", "unit = priest, exp %d" % Growth.EXPERIENCE_PER_LEVEL, 19],
+		"育たない駒": ["unit = priest", "unit = elite_minion, level 2", 19],
 		"知らない持ち物": ["paladin + iron_shield + iron_shield", "paladin + iron_shild", 18],
 		"魔物に持ち物": ["unit = priest", "unit = skeleton + iron_shield", 19],
 		"知らない軍": ["army = fantasy", "army = elves", 17],

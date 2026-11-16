@@ -77,6 +77,10 @@ static func scenario_of(of_episode: Episode) -> Scenario:
 	if of_episode.has_squad():
 		defined.fix_deck(Unit.Side.PLAYER1, of_episode.squad_deck())
 	defined.set_start_gauge(Unit.Side.PLAYER1, of_episode.start_gauge)
+	# 駒の始めのレベルと経験値（駒の行の「level」「exp」。進化の選び方を教える話）。
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if of_episode.has_growth(side):
+			defined.set_start_growth(side, of_episode.growth[side])
 	# 初期位置（話のファイルの deploy。空の列は、いつもの「本陣の前」）。
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var cells: Array[Vector2i] = []

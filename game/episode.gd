@@ -53,6 +53,9 @@ var enemy_army := UnitKind.Army.FANTASY
 var enemy: Array = []
 ## 初期位置: [プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」。
 var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
+## 駒の始めのレベルと経験値: [人の部隊の列, 敵の部隊の列]。どちらも [レベル, 経験値] の列で、部隊（squad、enemy）と同じ並び。
+## 駒の行に書かなければ [1, 0]（いつもどおり）。戦いの定義の start_growth へ写す（story_battle.gd）。
+var growth: Array = [[], []]
 ## 話し手の名前: [人の軍, 敵の軍]。
 var speakers: PackedStringArray = ["", ""]
 ## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文] の列。
@@ -230,10 +233,13 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if speakers[side] == "":
 		file.problem(file.line_of(section), "[%s] に話し手の name が無い" % section)
 	var rows: Array = []
+	var grown: Array = []
 	for entry: Dictionary in values.get("unit", []):
 		var row := _unit_row(file, entry)
 		if not row.is_empty():
 			rows.append(row)
+			grown.append(_growth_of(file, entry, row[0]))
+	growth[side] = grown
 	var cells: Array[Vector2i] = []
 	for entry: Dictionary in values.get("deploy", []):
 		cells.append_array(file.cells(entry))
@@ -265,14 +271,20 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 			# 軍の無い敵に軍の駒を混ぜると、盤に置いたときにその駒の軍（と必殺技）が付く（Battle.add_unit）。混ぜさせない。
 			if enemy_army == UnitKind.Army.NONE:
 				for unit_entry: Dictionary in values.get("unit", []):
-					var kind := StoryFile.enum_value(UnitKind.Id, (unit_entry["value"] as String).split("+")[0])
+					var kind := StoryFile.enum_value(UnitKind.Id, (unit_entry["value"] as String).split(",")[0].split("+")[0])
 					if kind >= 0 and UnitKind.army(kind as UnitKind.Id) != UnitKind.Army.NONE:
 						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
 
 
+## side の部隊に、始めのレベルか経験値を決めた駒がいるか。
+func has_growth(side: int) -> bool:
+	return growth[side].any(func(row: Array) -> bool: return row != [1, 0])
+
+
 ## 駒の行（「paladin + iron_shield + iron_shield」）を [駒の種類, [装備, …]] に。読めなければ空。
+## 「,」のあとの始めのレベルと経験値（「sorcerer, level 2, exp 100」）は _growth_of が読む。
 func _unit_row(file: RefCounted, entry: Dictionary) -> Array:
-	var words := (entry["value"] as String).split("+")
+	var words := (entry["value"] as String).split(",")[0].split("+")
 	var kind := _kind(file, entry, words[0])
 	var items: Array[Equipment.Id] = []
 	for i in range(1, words.size()):
@@ -285,6 +297,30 @@ func _unit_row(file: RefCounted, entry: Dictionary) -> Array:
 		file.problem(entry["line"], "%s は持ち物を持てない（軍に属する駒だけが持てる）" % words[0].strip_edges())
 		return []
 	return [kind, items]
+
+
+## 駒の行の「,」のあと（「level 2」「exp 100」。どちらも無くてよい）を [レベル, 経験値] に。無ければ [1, 0]。
+## レベルは 1 から Growth.MAX_LEVEL - 1（進化は対戦の中で選ぶ）、経験値は 0 から Growth.EXPERIENCE_PER_LEVEL - 1。
+func _growth_of(file: RefCounted, entry: Dictionary, kind: int) -> Array:
+	var result := [1, 0]
+	var parts := (entry["value"] as String).split(",")
+	for i in range(1, parts.size()):
+		var words := parts[i].strip_edges().split(" ", false)
+		var at := ["level", "exp"].find(words[0] if words.size() == 2 else "")
+		if at < 0 or not words[1].is_valid_int():
+			file.problem(entry["line"], "駒の行の「,」のあとは「level 数」か「exp 数」: %s" % parts[i].strip_edges())
+			continue
+		result[at] = words[1].to_int()
+	if result == [1, 0]:
+		return result
+	if not Growth.GAINS.has(UnitKind.role(kind as UnitKind.Id)):
+		file.problem(entry["line"], "%s は育たない（レベルと経験値は書けない）" % parts[0].strip_edges())
+		return [1, 0]
+	if result[0] != Growth.start_level(result[0]):
+		file.problem(entry["line"], "level は 1 から %d（進化は対戦の中で選ぶ）" % (Growth.MAX_LEVEL - 1))
+	if result[1] != Growth.start_experience(result[1]):
+		file.problem(entry["line"], "exp は 0 から %d" % (Growth.EXPERIENCE_PER_LEVEL - 1))
+	return [Growth.start_level(result[0]), Growth.start_experience(result[1])]
 
 
 ## 駒の種類（将は書けない）。読めなければ -1。

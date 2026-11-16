@@ -151,11 +151,19 @@ func create_battle() -> Battle:
 		return null
 	var battle := Battle.new(board, battle_seed)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		Deployment.deploy(battle, side, deck_of(side), scenario.deploy_cells_of(side))
+		var placed := Deployment.deploy(battle, side, deck_of(side), scenario.deploy_cells_of(side))
+		_apply_start_growth(placed, scenario.start_growth[side])
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
 	battle.hold_turns = scenario.hold_turns
 	return battle
+
+
+## 置いた駒 placed（将が先頭、あとは部隊の並びの順）に、始めのレベルと経験値 rows を当てる。
+static func _apply_start_growth(placed: Array[Unit], rows: Array) -> void:
+	var units := placed.filter(func(unit: Unit) -> bool: return unit.kind != UnitKind.Id.KING)
+	for i in mini(units.size(), rows.size()):
+		Growth.start_at(units[i], rows[i][0], rows[i][1])
 
 
 func _deck_passes(deck: Deck) -> bool:

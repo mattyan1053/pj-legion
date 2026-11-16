@@ -273,3 +273,19 @@ func test_clone_copies_the_growth() -> void:
 	assert_eq([copy.level, copy.experience, copy.max_hp(), copy.power()], [2, 30, 16, 8])
 	Growth.gain(copy, Growth.EXPERIENCE_PER_LEVEL, ExperienceGainedEvent.Reason.HIT)
 	assert_eq([sniper.level, sniper.max_hp()], [2, 16])  # 複製を育てても、元は変わらない
+
+
+## 対戦の始めのレベルと経験値（Growth.start_at。戦いの定義の start_growth）: イベントを出さず、レベルアップと同じだけ伸ばす。
+func test_start_at_grows_like_level_ups_without_events() -> void:
+	var battle := _battle()
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))
+	var leveled := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 0))
+	Growth.start_at(paladin, 2, 50)
+	Growth.gain(leveled, Growth.EXPERIENCE_PER_LEVEL + 50, ExperienceGainedEvent.Reason.HIT)
+	assert_eq([paladin.level, paladin.experience], [leveled.level, leveled.experience], "同じだけ経験値を得た駒と同じ")
+	assert_eq([paladin.max_hp(), paladin.hp, paladin.power()], [leveled.max_hp(), leveled.hp, leveled.power()])
+	Growth.start_at(paladin, Growth.MAX_LEVEL, Growth.EXPERIENCE_PER_LEVEL)
+	assert_eq([paladin.level, paladin.experience], [Growth.MAX_LEVEL - 1, Growth.EXPERIENCE_PER_LEVEL - 1], "進化の手前に収める")
+	var king := battle.add_unit(UnitKind.Id.KING, P1, Vector2i(2, 0))
+	Growth.start_at(king, 2, 10)
+	assert_eq([king.level, king.experience], [1, 0], "育たない駒は変えない")
