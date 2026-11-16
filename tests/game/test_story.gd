@@ -24,6 +24,17 @@ func test_every_episode_has_an_id_a_title_and_short_talks() -> void:
 		ids.append(episode.ID)
 		assert_ne(episode.TITLE, "")
 		assert_true(StageLook.THEMES.has(episode.LOOK), "知らない見た目: %s" % episode.LOOK)
+		var board: Board = episode.MAP.map().make_board()
+		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+			var cells: Array = episode.DEPLOY[side]
+			var seen := {}
+			for cell: Vector2i in cells:
+				assert_true(board.is_walkable(cell) and board.object_at(cell) == MapObject.Type.NONE, "%s の初期位置 %s に置けない" % [episode.ID, cell])
+				assert_false(board.hq_cells.has(cell), "%s の初期位置 %s が本陣" % [episode.ID, cell])
+				assert_false(seen.has(cell), "%s の初期位置 %s が重なっている" % [episode.ID, cell])
+				seen[cell] = true
+		if not episode.DEPLOY[Unit.Side.PLAYER2].is_empty():
+			assert_true(episode.DEPLOY[Unit.Side.PLAYER2].size() >= episode.ENEMY.size(), "%s の敵の初期位置が足りない" % episode.ID)
 		for rows: Array in [episode.BEFORE, episode.AFTER]:
 			assert_between(rows.size(), 1, 6, "会話は短く（6 行まで）: %s" % episode.ID)
 			for row: Array in rows:
@@ -31,7 +42,7 @@ func test_every_episode_has_an_id_a_title_and_short_talks() -> void:
 				assert_ne(row[1], "")
 
 
-func test_run_is_talk_then_battle_then_talk_then_title() -> void:
+func test_run_is_talk_then_battle_then_talk_then_the_episode_list() -> void:
 	var episode: Script = Story.EPISODES[0]
 	var run := Story.run_of(episode, Story.default_deck(Story.STARTING_KINDS))
 	assert_eq(run.scene(), &"talk")
@@ -42,8 +53,8 @@ func test_run_is_talk_then_battle_then_talk_then_title() -> void:
 	assert_true(run.data() is StoryBattle)
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["lines"].size(), episode.AFTER.size())
-	assert_eq(run.advance(), &"title")
-	for scene: StringName in [&"talk", &"battle", &"title"]:
+	assert_eq(run.advance(), Story.EPISODE_LIST, "話を終えたら、話の一覧へ戻る")
+	for scene: StringName in [&"talk", &"battle", Story.EPISODE_LIST, &"title"]:
 		assert_true(SceneFlow.has(scene), "場面の表に無い: %s" % scene)
 
 
@@ -113,7 +124,7 @@ func test_clears_are_saved_and_read_back() -> void:
 	again.store = _store()
 	again.load_saved()
 	assert_true(again.is_cleared(episode.ID))
-	assert_true(again.all_cleared())
+	assert_eq(again.cleared_count(), 1)
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": [String(episode.ID)]})
 
 
@@ -183,3 +194,40 @@ func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
 	run.advance()
 	run.advance()
 	assert_eq(run.data()["lines"].size(), episode.AFTER.size(), "クリア済みの話を遊び直しても、知らせは出さない")
+
+
+func test_episode_deploy_cells_place_the_enemy_there() -> void:
+	for episode in Story.EPISODES:
+		var cells: Array = episode.DEPLOY[Unit.Side.PLAYER2]
+		if cells.is_empty():
+			continue
+		var battle := Story.first_battle(episode).make_setup(1).create_battle()
+		var placed: Array[Vector2i] = []
+		for unit in battle.units:
+			if unit.side == Unit.Side.PLAYER2 and unit.kind != UnitKind.Id.KING:
+				placed.append(unit.cell)
+		var expected: Array[Vector2i] = []
+		expected.assign(cells.slice(0, episode.ENEMY.size()))
+		assert_eq(placed, expected, "%s の敵が、初期位置の順に置かれていない" % episode.ID)
+
+
+func test_the_same_map_is_reused_with_other_deploy_cells() -> void:
+	var maps := {}
+	for episode in Story.EPISODES:
+		var key := [episode.MAP, str(episode.DEPLOY)]
+		assert_false(maps.has(key), "%s は、前の話と同じマップと初期位置" % episode.ID)
+		maps[key] = true
+
+
+func test_episodes_open_one_by_one() -> void:
+	var story := Story.new()
+	assert_true(story.is_available(Story.EPISODES[0]))
+	for i in range(1, Story.EPISODES.size()):
+		assert_false(story.is_available(Story.EPISODES[i]), "前の話をクリアするまで遊べない")
+	for i in Story.EPISODES.size():
+		assert_eq(Story.number_of(Story.EPISODES[i]), i + 1)
+		story.clear(Story.EPISODES[i].ID)
+		if i + 1 < Story.EPISODES.size():
+			assert_true(story.is_available(Story.EPISODES[i + 1]))
+	for episode in Story.EPISODES:
+		assert_true(story.is_available(episode), "クリアした話は遊び直せる")

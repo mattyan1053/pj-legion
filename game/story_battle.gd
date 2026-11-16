@@ -21,6 +21,12 @@ func _init(of_episode: Script = null, deck: Deck = null) -> void:
 func make_setup(battle_seed: int) -> MatchSetup:
 	var scenario := Scenario.on_map(episode.MAP.map(), episode.MAP.TITLE)
 	scenario.fix_deck(Unit.Side.PLAYER2, episode.enemy_deck())
+	# 初期位置（話のデータの DEPLOY。[プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」）。
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		var cells: Array[Vector2i] = []
+		cells.assign(episode.DEPLOY[side])
+		if not cells.is_empty():
+			scenario.set_deploy_cells(side, cells)
 	var setup := MatchSetup.new()
 	setup.scenario = scenario
 	setup.battle_seed = battle_seed

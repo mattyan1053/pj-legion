@@ -12,6 +12,7 @@ extends Node
 ## 全部が通れば "autoplay: OK" を出して終わる（tools/check.sh がこの行を確かめる）。
 
 const Queries := preload("res://game/battle_queries.gd")
+const Story := preload("res://game/story.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
@@ -1442,7 +1443,7 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 
 
 ## 最後に、相手（CPU）の番の途中で、システムメニューの「タイトルへ戻る」を確かめてから選ぶ。対戦の場面が消えても、
-## 止まっていた再生や CPU の番が続きを走らない（エラーが出ない）こと。そのあと、タイトルの「始める」で対戦の設定の場面へ進み、
+## 止まっていた再生や CPU の番が続きを走らない（エラーが出ない）こと。そのあと、タイトルの「対戦」で対戦の設定の場面へ進み、
 ## 「タイトルへ戻る」でタイトルへ戻る。このノードは対戦の場面の子なので、先にアプリの子へ移っておく。
 func _leave_battle(app: Node) -> void:
 	var menu: Node = app.system_menu()
@@ -1462,7 +1463,7 @@ func _leave_battle(app: Node) -> void:
 	await get_tree().create_timer(1.0).timeout
 	app.current_scene().press_start()
 	await app.scene_changed
-	_expect(app.current_id() == &"stage", "タイトルの「始める」で、ステージ選択へ進まない")
+	_expect(app.current_id() == &"stage", "タイトルの「対戦」で、ステージ選択へ進まない")
 	var stages: Node = app.current_scene()
 	_expect(stages.card_stages().size() == MatchSetup.STAGE_NAMES.size(), "ステージのカードが足りない")
 	stages.hover(BoardGenerator.Stage.TWIN_SPRINGS)
@@ -1579,7 +1580,15 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
 	app.current_scene().press_story()
 	await app.scene_changed
-	_expect(app.current_id() == &"talk", "タイトルの「ストーリー」で、会話の場面へ進まない")
+	_expect(app.current_id() == &"episodes", "タイトルの「ストーリー」で、話の一覧へ進まない")
+	var list: Node = app.current_scene()
+	_expect(list.episodes().size() == Story.EPISODES.size(), "話の一覧に、全部の話が並んでいない")
+	_expect(list.is_card_enabled(Story.EPISODES[0]) and list.card_status(Story.EPISODES[0]) == "未クリア", "最初の話を選べない")
+	for later: Script in Story.EPISODES.slice(1):
+		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.TITLE)
+	list.choose(episode)
+	await app.scene_changed
+	_expect(app.current_id() == &"talk", "話の一覧で話を選んでも、会話の場面へ進まない")
 	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.BEFORE.size() and talk.line_index() == 0, "前の会話の文の数が違う")
 	_expect(talk.speaker() == episode.SPEAKERS[episode.BEFORE[0][0]] and talk.line_text() == episode.BEFORE[0][1], "最初の文が出ていない")
@@ -1631,7 +1640,15 @@ func _visit_story(app: Node) -> void:
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
 	await app.scene_changed
-	_expect(app.current_id() == &"title" and app.context.run == null, "あとの会話を送りきっても、タイトルへ戻らない")
+	_expect(app.current_id() == &"episodes" and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
+	list = app.current_scene()
+	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
+	if Story.EPISODES.size() > 1:
+		_expect(list.is_card_enabled(Story.EPISODES[1]), "前の話をクリアしたのに、次の話を選べない")
+	_expect(list.roster_text().contains(UnitKind.display_name(episode.UNLOCKS[0])) if not episode.UNLOCKS.is_empty() else true, "話の一覧の、いま雇える駒が増えていない")
+	list.press_back()
+	await app.scene_changed
+	_expect(app.current_id() == &"title", "話の一覧の「タイトルへ戻る」で、タイトルへ戻らない")
 	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
 	_expect(story.unlocked_kinds().has(episode.UNLOCKS[0]) if not episode.UNLOCKS.is_empty() else true, "クリアしても、駒が増えていない")
 

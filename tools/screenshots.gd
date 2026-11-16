@@ -22,7 +22,7 @@ const StageLook := preload("res://game/stage_look.gd")
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
-	"stage_select": "ステージ選択の場面（タイトルの「始める」のあと。3 枚のカード）",
+	"stage_select": "ステージ選択の場面（タイトルの「対戦」のあと。3 枚のカード）",
 	"stage_hover": "ステージ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
 	"setup": "対戦の設定の場面（ステージ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
@@ -106,7 +106,9 @@ const SCENES := {
 	"look_twin_springs_start": "双子結晶の対戦の始め",
 	"look_twin_springs_wide": "双子結晶を、いちばん引いて低い角度で見ている",
 	"look_twin_springs_close": "双子結晶の盤の真ん中に寄って見ている",
-	"story_talk": "ストーリー: タイトルの「ストーリー」で始まる、対戦の前の会話（名前の札と文の枠）",
+	"story_list": "ストーリー: タイトルの「ストーリー」のあとの話の一覧（最初の話だけ選べる）",
+	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
+	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
@@ -1281,12 +1283,26 @@ func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 const Story := preload("res://game/story.gd")
 
 
-## タイトルの「ストーリー」で、話の流れを始める（前の会話の場面に入る）。
+## タイトルの「ストーリー」で話の一覧へ進み、最初の話を始める（前の会話の場面に入る）。
 func _start_story() -> bool:
+	if not await _scene_story_list():
+		return false
+	_app.current_scene().choose(Story.EPISODES[0])
+	await _app.scene_changed
+	return _app.current_id() == &"talk"
+
+
+func _scene_story_list() -> bool:
 	await _app.go(&"title")
 	_app.current_scene().press_story()
 	await _app.scene_changed
-	return _app.current_id() == &"talk"
+	return _app.current_id() == &"episodes"
+
+
+## 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）。
+func _scene_story_list_cleared() -> bool:
+	_app.context.story.clear(Story.EPISODES[0].ID)
+	return await _scene_story_list()
 
 
 func _scene_story_talk() -> bool:

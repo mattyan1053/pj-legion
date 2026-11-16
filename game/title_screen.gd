@@ -1,12 +1,11 @@
 extends Node
-## タイトルの場面。飾らない最小の形: 題名と、始める・ストーリー・部隊の編成・設定・終える。背景は対戦と同じ景色（backdrop.gd）。
+## タイトルの場面。飾らない最小の形: 題名と、対戦・ストーリー・部隊の編成・設定・終える。背景は対戦と同じ景色（backdrop.gd）。
 ## 場面の決まりは scene_flow.gd。
 
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
-const Story := preload("res://game/story.gd")
 
-## 「始める」で &"start"、「部隊の編成」で &"decks"。「ストーリー」は、話の流れを始める（context.start_run）。
+## 「対戦」で &"start"、「ストーリー」で &"story"（話の一覧へ）、「部隊の編成」で &"decks"。
 signal finished(outcome: StringName)
 
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
@@ -43,7 +42,7 @@ func _ready() -> void:
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0.0, 10.0)
 	column.add_child(gap)
-	_add_button(column, &"start", "始める", press_start)
+	_add_button(column, &"start", "対戦", press_start)
 	(_buttons[&"start"] as Button).set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	_add_button(column, &"story", story_label(), press_story)
 	(_buttons[&"story"] as Button).set_meta(&"sound", &"ui_confirm")
@@ -52,14 +51,14 @@ func _ready() -> void:
 	_add_button(column, &"quit", "終える", press_quit)
 
 
-## 「始める」: 対戦の設定へ。
+## 「対戦」: ステージ選択へ（そのあと対戦の設定）。
 func press_start() -> void:
 	finished.emit(&"start")
 
 
-## 「ストーリー」: まだクリアしていない最初の話（全部クリアしていたら最初の話）を、会話から始める。
+## 「ストーリー」: 話の一覧へ。
 func press_story() -> void:
-	context.start_run(context.story.run_now(context.story.next_episode()))
+	finished.emit(&"story")
 
 
 ## 「ストーリー」のボタンの文字。全部の話をクリアしていたら、済みの印を付ける。
