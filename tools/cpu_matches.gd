@@ -15,6 +15,8 @@ extends SceneTree
 ##   --stage=N       このステージだけを回す（1〜3）。配置を見るときに、1 つのステージの標本を増やす
 ##   --relic=NAME    プレイヤー1 が、対戦の始めから聖遺物を 1 つ持つ（wisdom = 英知、courage = 勇気。ゲージは足さない）。
 ##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さ」）
+##   --no-reward=1   中ボスを倒しても、聖遺物の効果とゲージを取り消す（CPU は、もらえるつもりのまま狩る）。
+##                   倒した側の勝率のうち、聖遺物のぶんと、もともと優勢な側が倒しているぶんを切り分ける（docs/relic-buff.md の「狩られ方」）
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
 ## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
@@ -69,6 +71,12 @@ class Tally:
 	## 中ボスの番号ごと、倒したプレイヤーごとの数。
 	var boss_by_index: Array[int] = [0, 0]
 	var boss_by_side: Array[int] = [0, 0]
+	## 倒した側の戦力（将を除く駒の HP の合計）の分け前で分けた [数, 勝ち, 負け]。0 = 劣勢、1 = 互角、2 = 優勢
+	## （互角 = 分け前が 0.5 から CpuMatch.EVEN_SHARE 以内）。倒れた時点と、狩りが始まった時点（初めて削られた時点）。
+	var boss_lead: Array[Array] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+	var boss_first_lead: Array[Array] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+	## 削られ始めてから倒れるまでのターンの合計。
+	var boss_hunt_turns := 0
 
 	func add(outcome: CpuMatch.Outcome) -> void:
 		games += 1
@@ -110,6 +118,9 @@ class Tally:
 				rows.append(boss_contested)
 			if fall.is_steal():
 				rows.append(boss_steals)
+			rows.append(boss_lead[_lead(fall.hp_share())])
+			rows.append(boss_first_lead[_lead(fall.first_hp_share())])
+			boss_hunt_turns += fall.turn - fall.first_hit_turn
 			for row in rows:
 				row[0] += 1
 				if won > 0:
@@ -126,7 +137,26 @@ class Tally:
 			boss_shared, boss_steals[0], _record(boss_steals),
 		]
 
-	func _record(row: Array[int]) -> String:
+	## 戦力の分け前を、劣勢 0、互角 1、優勢 2 に分ける。
+	static func _lead(share: float) -> int:
+		if share < 0.5 - CpuMatch.EVEN_SHARE:
+			return 0
+		return 2 if share > 0.5 + CpuMatch.EVEN_SHARE else 1
+
+	## 倒した側が、もともと優勢だったか（戦力の分け前で分けた勝ち負け）。残った中ボスの数も。
+	func lead_line(name: String) -> String:
+		var parts: Array[String] = []
+		for rows: Array[Array] in [boss_first_lead, boss_lead]:
+			var cells: Array[String] = []
+			for i in 3:
+				cells.append("%s %3d 体 %s" % [["劣勢", "互角", "優勢"][i], rows[i][0], _record(rows[i])])
+			parts.append("  ".join(cells))
+		return "%-22s 狩り始め: %s ／ 倒れた時: %s  削られてから倒れるまで 平均 %.1f ターン  最後まで残った中ボス %d 体 / %d（%3.0f%%）" % [
+			name, parts[0], parts[1], float(boss_hunt_turns) / maxi(1, boss_all[0]),
+			games * 2 - boss_kills, games * 2, 100.0 * (games * 2 - boss_kills) / maxi(1, games * 2),
+		]
+
+	func _record(row: Array) -> String:
 		return "%d 勝 %d 敗（%.0f%%）" % [row[1], row[2], 100.0 * row[1] / maxi(1, row[1] + row[2])]
 
 	func boss_line(name: String) -> String:
@@ -202,6 +232,7 @@ func _initialize() -> void:
 	var slowest := 0.0
 	var rejected := 0
 	var cpu := CpuPlayer.new()
+	var no_reward: bool = args.get("no-reward", "0") == "1"
 	var rival: RefCounted = null
 	if args.has("rival"):
 		var script: GDScript = load(args["rival"])
@@ -241,12 +272,12 @@ func _initialize() -> void:
 			battle.ult_gauge[Unit.Side.PLAYER1] = gauge
 		var outcome: CpuMatch.Outcome
 		if rival == null:
-			outcome = CpuMatch.play(battle, max_turns, cpu)
+			outcome = CpuMatch.play(battle, max_turns, cpu, null, no_reward)
 		else:
 			# 別の版が動かす側。ステージと軍の組み合わせを一巡するごとに入れ替える。
 			@warning_ignore("integer_division")
 			var rival_side := (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2
-			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu)
+			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu, no_reward)
 			var slot := 2 if outcome.winner < 0 else (1 if outcome.winner == rival_side else 0)
 			versus[slot] += 1
 			versus_by_stage.get_or_add(stage, [0, 0, 0])[slot] += 1
@@ -271,9 +302,10 @@ func _initialize() -> void:
 					first_seed + game, kind, row[0], row[1], row[2], row[3], row[4],
 				])
 			for fall in outcome.boss_falls:
-				print("BOSS seed=%d stage=%d turn=%d index=%d side=%d units=%d rivals=%d near=%d dealt=%d rival_dealt=%d won=%d" % [
+				print("BOSS seed=%d stage=%d turn=%d index=%d side=%d units=%d rivals=%d near=%d dealt=%d rival_dealt=%d hp=%d rival_hp=%d first_turn=%d first_hp=%d first_rival_hp=%d won=%d" % [
 					first_seed + game, stage, fall.turn, fall.boss_index, fall.slayer_side, fall.slayer_units, fall.rival_units,
-					fall.rivals_near, fall.slayer_damage, fall.rival_damage,
+					fall.rivals_near, fall.slayer_damage, fall.rival_damage, fall.slayer_hp, fall.rival_hp,
+					fall.first_hit_turn, fall.first_slayer_hp, fall.first_rival_hp,
 					-1 if outcome.winner < 0 or fall.slayer_side < 0 else (1 if outcome.winner == fall.slayer_side else 0),
 				])
 			for fall in outcome.falls:
@@ -368,6 +400,10 @@ func _initialize() -> void:
 	print(all.contest_line("全体"))
 	for stage: int in by_stage:
 		print(by_stage[stage].contest_line("ステージ " + STAGE_NAMES[stage]))
+	print("倒した側の戦力（将を除く駒の HP の合計）の分け前。互角 = 0.5 から %.2f 以内。狩り始め = プレイヤーが初めて削った時点" % CpuMatch.EVEN_SHARE)
+	print(all.lead_line("全体"))
+	for stage: int in by_stage:
+		print(by_stage[stage].lead_line("ステージ " + STAGE_NAMES[stage]))
 	print("")
 	print("聖遺物（軍ごと。勝率は決着した局だけ。「相手だけ」は、自分は取らず、相手が取った局）")
 	for army in ARMIES:
