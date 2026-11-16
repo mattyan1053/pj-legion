@@ -51,6 +51,11 @@ func can_continue(won: bool) -> bool:
 	return won
 
 
+## 負けたら（引き分けも）、Enter は「同じ盤面でもう一度」（話を進めるには勝つしかないので、まずはそのまま挑み直す）。
+func retries_on_enter(won: bool) -> bool:
+	return not won
+
+
 func can_choose_squad() -> bool:
 	return true
 

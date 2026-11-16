@@ -59,6 +59,11 @@ func can_continue(_won: bool) -> bool:
 	return false
 
 
+## 決着の画面の Enter を「同じ盤面でもう一度」にするか（偽なら、「次へ」があればそれ、無ければタイトルへ）。won は can_continue と同じ。
+func retries_on_enter(_won: bool) -> bool:
+	return false
+
+
 ## 決着の画面に「部隊を選び直す」を出すか（押すと、流れ（run.gd）の 1 つ前の場面、出撃の準備へ戻る）。
 func can_choose_squad() -> bool:
 	return false
