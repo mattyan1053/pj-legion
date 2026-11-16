@@ -132,9 +132,10 @@ func focus_selected() -> void:
 	inspected_id = 0
 
 
-## 必殺技を使うかを確かめ始める（対象を選ぶ途中はやめる）。now_msec は、いまの時刻（ミリ秒）。
+## 必殺技を使うかを確かめ始める（ほかの確かめと、対象を選ぶ途中はやめる）。now_msec は、いまの時刻（ミリ秒）。
 func start_confirming_ult(now_msec: int) -> void:
 	confirming_ult = true
+	confirming_end = false
 	confirming_auto = false
 	mode = Mode.NONE
 	confirm_started_msec = now_msec
@@ -149,9 +150,10 @@ func start_confirming_auto(now_msec: int) -> void:
 	confirm_started_msec = now_msec
 
 
-## 未行動の駒を残したままターンを終えるかを、確かめ始める。now_msec は、いまの時刻（ミリ秒）。
+## 未行動の駒を残したままターンを終えるかを、確かめ始める（ほかの確かめはやめる）。now_msec は、いまの時刻（ミリ秒）。
 func start_confirming_end(now_msec: int) -> void:
 	confirming_end = true
+	confirming_ult = false
 	confirming_auto = false
 	confirm_started_msec = now_msec
 

@@ -1,7 +1,7 @@
-# リザルトの画面
+# 決着の画面
 
-コード: `game/result_summary.gd`（何を出すか。ノードに依存しない）、`game/result_screen.gd`（段階的に出す）。
-テスト: `tests/game/test_result_summary.gd`、自動の対戦（`game/autoplay.gd` の `_queue_result_scene`）。
+コード: `game/result_summary.gd`（何を出すか。ノードに依存しない）、`game/stats_text.gd`（陣営の 1 行と表の列）、`game/result_screen.gd`（段階的に出す）。
+テスト: `tests/game/test_result_summary.gd`、`tests/game/test_stats_text.gd`、自動の対戦（`game/autoplay.gd` の `_queue_result_scene`）。
 数えるのは `BattleStats`（`docs/battle-stats.md`）。
 
 ## 出し方
@@ -16,7 +16,7 @@
 3. **MVP** が拡大しながら出る（鈴の音）。名前（進化先・レベル）と、与えたダメージ・撃破。ダメージを与えた駒がいなければ「該当なし」。
 4. **行き先のボタン**と、明滅する入力の案内が出る。
 
-全部が出るまで、約 3.4 秒。
+全部が出るまでの時間は、戦績の行の数で変わる（`_stage`）。
 
 - **出そろうまで、行き先は選べない。** その間のクリック（Enter・Space でも）は、演出を飛ばして全部を出すだけ。
   飛ばした直後の少しの間（`SKIP_GUARD`）もボタンは押せない（飛ばしたクリックが、そのまま行き先を選ばないように）。
@@ -42,6 +42,6 @@
 
 - 「次へ」は、ストーリーの話の対戦で、人が勝ったときだけ、「同じ盤面で再戦」の左に出す（流れの次の場面、あとの会話へ。`docs/story.md`）。
   出すかは対戦の画面が、渡されたもの（`docs/battle-source.md` の `can_continue`）に聞いて、決着の画面を出すたびに決める。
-- 「同じ盤面で再戦」、「新しい盤面: <ステージ>」（どちらも、いまの設定のまま。同じ対戦の場面で始め直す。新しい盤面は生成のステージだけ。手で作ったマップは形が変わらないので出さない。`docs/stage-select.md`）、
-  「対戦設定へ（軍・相手・手番）」（対戦設定の場面へ）、「タイトルへ」。遷移は `docs/scene-flow.md`。
+- 「同じ盤面で再戦」、「新しい盤面（<ステージ>）」（どちらも、いまの設定のまま。同じ対戦の場面で始め直す。新しい盤面は生成のステージだけ。手で作ったマップは形が変わらないので出さない。`docs/stage-select.md`）、
+  「対戦設定へ」（対戦設定の場面へ）、「タイトルへ」。遷移は `docs/scene-flow.md`。
 - 「部隊変更」は、ストーリーの話の対戦で、勝っても負けても「タイトルへ」の左に出す（出撃準備へ戻る。`docs/battle-source.md` の `can_choose_squad`）。
