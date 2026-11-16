@@ -223,7 +223,7 @@ static func _key(prop: Dictionary) -> String:
 	return str(prop.get("scene", prop.get("crystal")))
 
 
-## 空・霞・光を parent に足す（タイトルと対戦の設定の場面の背景も、同じ景色にする。backdrop.gd）。
+## 空・霞・光を parent に足す（タイトルと対戦設定の場面の背景も、同じ景色にする。backdrop.gd）。
 ## 色と光の向きは、中央平原のもの。ステージの見た目は apply で当てる。
 static func build_environment(parent: Node) -> void:
 	var environment := Environment.new()

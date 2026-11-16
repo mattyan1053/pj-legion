@@ -1,12 +1,12 @@
 extends RefCounted
-## 対戦モードで選べる盤の一覧（docs/stage-select.md の「選べる盤」）。ステージ選択のカード、対戦の設定のパネルのステージの行、
+## 対戦モードで選べる盤の一覧（docs/stage-select.md の「選べる盤」）。ステージ選択のカード、対戦設定のパネルのステージの行、
 ## 決着の画面の「新しい盤面」、F1〜F3、集計の道具（tools/cpu_matches.gd の --stage）が、ここを引く。ノードに依存しない。
 ##
 ## 盤は鍵（StringName）で持つ。ストーリーの話（game/story/episodes/ のファイルの名前）や見た目（stage_look.gd の名前）と同じ持ち方。
 ## 盤の出どころは 2 つ:
 ## - 生成のステージ（STAGE。BoardGenerator.Stage）: 対戦を始めるたびに、種から形を作り直す。見た目は StageLook.OF_STAGE。
 ## - 手で作ったマップ（MAP。game/maps/ のファイルの id。maps.gd）: 種によらず、いつも同じ形。見た目は LOOK。
-## どちらも、勝ち方は対戦モードのいつもの 2 つ、初期位置はいつもの「本陣の前」、部隊は両方とも対戦の設定で選ぶ（予算と 6 体）。
+## どちらも、勝ち方は対戦モードのいつもの 2 つ、初期位置はいつもの「本陣の前」、部隊は両方とも対戦設定で選ぶ（予算と 6 体）。
 ##
 ## **盤を 1 つ足すには、FIELDS に 1 つ足すだけ**（手で作ったマップなら、game/maps/ のファイルと）。
 ## 並びが画面の並び（番号、1〜9 のキー、F1〜F3）。生成のステージを先に並べる。
@@ -34,7 +34,7 @@ const RIDGE_PATH := &"ridge_path"
 const CRYSTAL_GORGE := &"crystal_gorge"
 const BOULDER_PASS := &"boulder_pass"
 
-## 対戦の設定の既定。
+## 対戦設定の既定。
 const DEFAULT := PLAIN
 
 const FIELDS := [
@@ -116,7 +116,7 @@ static func has(id: StringName) -> bool:
 	return _find(id) != -1
 
 
-## 画面に出す並びの番号（1 から。出さないものは 0）。カードと対戦の設定のパネルに出す番号、ステージ選択のキー。
+## 画面に出す並びの番号（1 から。出さないものは 0）。カードと対戦設定のパネルに出す番号、ステージ選択のキー。
 static func number_of(id: StringName) -> int:
 	return ids().find(id) + 1
 

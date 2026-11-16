@@ -1,12 +1,12 @@
 extends Node
-## ステージ選択の場面（タイトルの「対戦」のあと、対戦の設定の前）。カードから、戦うステージを選ぶ（docs/stage-select.md）。
+## ステージ選択の場面（タイトルの「対戦」のあと、対戦設定の前）。カードから、戦うステージを選ぶ（docs/stage-select.md）。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。選べるステージの一覧は versus_fields.gd。
 ##
 ## - カードは 2 段: 上の段が生成のステージ（毎回形が変わる）、下の段が手で作ったマップ（いつも同じ形）。
 ##   段に収まらないほど増えたら、その段を横に送れる（ホイールでも）。
 ## - カードには、そのステージの盤の縮図（stage_card_map.gd。盤はルールが作る）、番号と名前、置かれているもの、形の札を載せる。
 ## - マウスを乗せたカードは明るくなり、少し大きくなって、下の欄にステージの説明が出る。
-## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだステージを context.match_choice に入れて &"pick"（対戦の設定へ）。
+## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだステージを context.match_choice に入れて &"pick"（対戦設定へ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
 const Text := preload("res://game/text.gd")
@@ -149,7 +149,7 @@ func resume_label() -> String:
 	return Text.t("stage.resume")
 
 
-## field（versus_fields.gd の鍵）を選んで、対戦の設定へ進む。
+## field（versus_fields.gd の鍵）を選んで、対戦設定へ進む。
 func choose(field: StringName) -> void:
 	context.match_choice.field = field
 	finished.emit(&"pick")

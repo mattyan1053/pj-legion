@@ -1,5 +1,5 @@
 extends RefCounted
-## 駒 1 体の札（名前、役割、コスト、能力値、持ち物）。編成の確認（deck_preview.gd）と、部隊の編成の画面で使う。
+## 駒 1 体の札（名前、役割、コスト、能力値、持ち物）。編成の確認（deck_preview.gd）と、部隊編成の画面で使う。
 ## 札は既定の部品（PanelContainer、Label）だけで組む。色や枠は UI のテーマ（ui_theme.gd の PANEL_CARD）が当たる。
 
 const Text := preload("res://game/text.gd")
@@ -31,7 +31,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 	names.add_theme_constant_override("separation", 0)
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(names)
-	var title := _label(Names.kind(kind), 17)
+	var title := _label(Names.kind(kind), 16)  # いちばん長い名前（シールドトルーパー）が札の幅に収まる大きさ
 	title.name = "Name"
 	names.add_child(title)
 	var role := DeckText.role_name(kind)
@@ -44,7 +44,9 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 4)
 			row.add_child(ItemIcon.new(item[0], 18.0))
-			row.add_child(_label(Names.item(item[0]) + (" ×%d" % item[1] if item[1] > 1 else ""), 13))
+			var item_label := _label(Names.item(item[0]) + (" ×%d" % item[1] if item[1] > 1 else ""), 13)
+			item_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # 切る文は幅を求めないので、広げないと幅 0 で消える
+			row.add_child(item_label)
 			column.add_child(row)
 	return card
 
@@ -67,6 +69,17 @@ static func grouped_equipment(equipment: Array[Equipment.Id]) -> Array:
 		seen.append(item)
 		groups.append([item, equipment.count(item)])
 	return groups
+
+
+## 札の中の文のうち、割り当てられた幅に収まらずに切れているもの（検査用。並べ終わったあとに呼ぶ）。
+static func cut_texts(card: Control) -> Array[String]:
+	var cut: Array[String] = []
+	for label: Label in card.find_children("*", "Label", true, false):
+		var font := label.get_theme_font(&"font")
+		var width := font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size(&"font_size")).x
+		if width > label.size.x + 0.5:
+			cut.append(label.text)
+	return cut
 
 
 static func _label(text: String, font_size: int, dim := false) -> Label:

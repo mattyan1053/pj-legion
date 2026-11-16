@@ -1,5 +1,5 @@
 extends Node
-## 部隊の編成の場面（docs/deck-screen.md）。取っておいた部隊の一覧と、1 つの部隊を組む画面の 2 つを、切り替えて出す。
+## 部隊編成の場面（docs/deck-screen.md）。取っておいた部隊の一覧と、1 つの部隊を組む画面の 2 つを、切り替えて出す。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。取っておく先は context.decks（deck_library.gd）。
 ##
 ## - 一覧: 部隊を選び（中身は駒の札で出す）、編集・複製・名前変更・削除（確かめる）。「新しい部隊」で、軍を選んでから空の部隊を組む。
@@ -8,8 +8,8 @@ extends Node
 ## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）・軍の選択 → 一覧 → 戻り先。
 ## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しい部隊」は、選んでいる方の決まりの部隊だけ（混ざらない）。
 ## 組む画面の決まり（雇える駒、予算、数の上限）は、切り替えで決まる（rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。
-## - 流れ（run.gd）の中で置かれたら（出撃の準備・対戦の設定の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
-##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備・対戦の設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
+## - 流れ（run.gd）の中で置かれたら（出撃準備・対戦設定の「部隊編成」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
+##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃準備・対戦設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
 
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
@@ -144,7 +144,7 @@ func _ready() -> void:
 			(_mode_buttons[id] as Button).visible = id == _detour.get("rules", DeckRules.VERSUS)
 	set_mode(_detour.get("rules", DeckRules.VERSUS))
 	if not _detour.is_empty():
-		# 寄り道のもとで選んでいる部隊を、一覧で選んでおく（ストーリーは出撃の準備、対戦は対戦の設定の、その側の部隊）。
+		# 寄り道のもとで選んでいる部隊を、一覧で選んでおく（ストーリーは出撃準備、対戦は対戦設定の、その側の部隊）。
 		var current: String = context.story.squad_id
 		if _detour.get("rules") == DeckRules.VERSUS:
 			current = context.match_choice.deck_ids[_detour.get("side", Unit.Side.PLAYER1)]
@@ -194,7 +194,7 @@ func press_back() -> void:
 		leave()
 
 
-## 一覧から抜ける: タイトルへ（流れの中なら、流れの次の場面 = 出撃の準備へ。寄り道の間に取っておいた部隊を選ぶ）。
+## 一覧から抜ける: タイトルへ（流れの中なら、流れの次の場面 = 出撃準備へ。寄り道の間に取っておいた部隊を選ぶ）。
 func leave() -> void:
 	if _detour.is_empty():
 		finished.emit(&"back")
@@ -207,7 +207,7 @@ func leave() -> void:
 	finished.emit(Run.NEXT)
 
 
-## 流れの中（出撃の準備からの寄り道）で置かれたか。
+## 流れの中（出撃準備からの寄り道）で置かれたか。
 func is_detour() -> bool:
 	return not _detour.is_empty()
 
@@ -490,6 +490,14 @@ func list_card_kinds() -> Array[UnitKind.Id]:
 	return kinds
 
 
+## 一覧の右の駒の札のうち、札に収まらずに切れている文（検査用）。
+func list_card_cut_texts() -> Array[String]:
+	var cut: Array[String] = []
+	for card: Control in _list_detail_cards.get_children():
+		cut.append_array(UnitCard.cut_texts(card))
+	return cut
+
+
 # ==== 軍の選択 ====
 
 
@@ -562,6 +570,7 @@ func _open_editor(id: String, name: String, deck: Deck) -> void:
 	_selected = -1
 	_hover_kind = -1
 	_list_view.visible = false
+	_army_view.visible = false  # 軍を選んだあとの組む画面の後ろに、軍の札を透かして残さない
 	_edit_view.visible = true
 	_refresh_editor()
 
@@ -678,7 +687,7 @@ func _build_editor() -> Control:
 	var root := _frame()
 	var column := root.get_child(0).get_child(0) as VBoxContainer
 
-	# 見出し: 名前、軍、予算（いつも見える）
+	# 見出し: 名前、軍、コスト、駒の数（いつも見える）
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
@@ -707,11 +716,9 @@ func _build_editor() -> Control:
 	_count_label.custom_minimum_size = Vector2(110.0, 0.0)
 	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(_count_label)
-	_issues_label = _text(16, COLOR_BAD)
-	_issues_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_issues_label.clip_text = true
-	_issues_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	header.add_child(_issues_label)
+	var header_fill := Control.new()
+	header_fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(header_fill)
 
 	# 3 つの列: 雇える駒、部隊、選んだ駒（札と持ち物）
 	var body := HBoxContainer.new()
@@ -830,9 +837,14 @@ func _build_editor() -> Control:
 	back.custom_minimum_size = Vector2(200.0, 48.0)
 	back.pressed.connect(leave_editor)
 	footer.add_child(back)
-	var footer_fill := Control.new()
-	footer_fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(footer_fill)
+	# 出撃不可の理由は、押せない「編成完了」の左に出す（見出しの行は、名前・軍・コスト・駒の数で埋まり、理由が切れるため）。
+	_issues_label = _text(16, COLOR_BAD)
+	_issues_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_issues_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_issues_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_issues_label.clip_text = true
+	_issues_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	footer.add_child(_issues_label)
 	_save_button = _button(Text.t("deck.edit.save"), 20)
 	_save_button.custom_minimum_size = Vector2(240.0, 48.0)
 	_save_button.set_meta(&"sound", &"ui_confirm")
@@ -840,6 +852,13 @@ func _build_editor() -> Control:
 	_save_button.pressed.connect(press_save)
 	footer.add_child(_save_button)
 	return root
+
+
+## 出撃不可の理由が、切れずに全部見えているか。検査用。
+func issues_shown_whole() -> bool:
+	var font := _issues_label.get_theme_font(&"font")
+	var width := font.get_string_size(_issues_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _issues_label.get_theme_font_size(&"font_size")).x
+	return _issues_label.is_visible_in_tree() and width <= _issues_label.size.x + 0.5
 
 
 func _refresh_editor() -> void:

@@ -1,7 +1,7 @@
 extends "res://game/battle_source.gd"
-## 対戦の設定画面（match_setup_panel.gd）で選ぶもの。選んだものから、ルールの対戦の設定（MatchSetup）を作る。
+## 対戦設定画面（match_setup_panel.gd）で選ぶもの。選んだものから、ルールの対戦設定（MatchSetup）を作る。
 ## 対戦モードの対戦の画面に渡すもの（battle_source.gd）でもある。ステージを替えてやり直せ、相手を切り替えられ、
-## 対戦の途中で対戦の設定のパネルを開ける。
+## 対戦の途中で対戦設定のパネルを開ける。
 ##
 ## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ（versus_fields.gd の鍵。生成のステージか手で作ったマップ）、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
 ## 人の部隊は、取っておいた部隊（deck_library.gd）か、軍ごとの既定の編成（MatchSetup.default_deck。部隊の id が空のとき）。
@@ -65,7 +65,7 @@ func set_cpu_opponent(cpu: bool) -> void:
 
 
 ## 「新しい盤面」で選べるステージ: 生成のステージ（ステージ選択のカードと同じ並び）。
-## 手で作ったマップは、種を替えても同じ形なので入れない（同じマップは「同じ盤面でもう一度」、ほかのマップは対戦の設定から）。
+## 手で作ったマップは、種を替えても同じ形なので入れない（同じマップは「同じ盤面でもう一度」、ほかのマップは対戦設定から）。
 func new_board_fields() -> Array[StringName]:
 	return VersusFields.generated_ids()
 
@@ -79,15 +79,15 @@ func can_open_setup() -> bool:
 
 
 ## この選択で始める流れ（run.gd）: 対戦の場面 1 つ。対戦の場面には、この選択の写しを渡す
-## （対戦の途中でステージや相手を替えても、対戦の設定の場面に戻ったときの選択は変えない）。
+## （対戦の途中でステージや相手を替えても、対戦設定の場面に戻ったときの選択は変えない）。
 func run() -> Run:
 	var battle_run := Run.new()
 	battle_run.add(SceneFlow.BATTLE, copy())
 	return battle_run
 
 
-## 対戦の設定の「部隊を編成する」で始める流れ（run.gd）: 部隊の編成（対戦用。side の部隊を組む寄り道）→ 対戦の設定。
-## 寄り道で取っておいた部隊は、戻った対戦の設定で side の部隊に選ばれる（deck_screen.gd の leave）。
+## 対戦設定の「部隊編成」で始める流れ（run.gd）: 部隊編成（対戦用。side の部隊を組む寄り道）→ 対戦設定。
+## 寄り道で取っておいた部隊は、戻った対戦設定で side の部隊に選ばれる（deck_screen.gd の leave）。
 static func deck_run(side: Unit.Side) -> Run:
 	var detour := Run.new()
 	detour.add(SceneFlow.DECKS, {"rules": DeckRules.VERSUS, "back_label": "setup.back", "side": side})
@@ -168,7 +168,7 @@ func copy() -> RefCounted:
 	return other
 
 
-## この選択で、種 battle_seed の対戦の設定を作る。戦いの定義は、選んだステージの対戦モードのもの（versus_fields.gd）。
+## この選択で、種 battle_seed の対戦設定を作る。戦いの定義は、選んだステージの対戦モードのもの（versus_fields.gd）。
 ## 手番が「ランダム」なら、ここで種から引いた側を drawn_side に入れる（cpu_side() がそれを返す）。
 func to_setup(battle_seed: int) -> MatchSetup:
 	var defined := VersusFields.scenario_of(field)

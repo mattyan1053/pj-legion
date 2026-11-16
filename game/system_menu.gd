@@ -1,11 +1,11 @@
 extends CanvasLayer
-## システムメニュー。画面の右上の「メニュー」のボタンと、開いたときのメニュー・確かめ・設定の画面。
+## システムメニュー。画面の右上の「メニュー」のボタンと、開いたときのメニュー・確かめ・オプションの画面。
 ##
 ## どの画面の上にも重なる（layer が高い）。何を並べるかは開く側が open() に渡す。ここはルールを持たない。
 ## - 開いている間は、画面の全体を覆って、クリック・ドラッグ・ホイールを後ろへ通さない。
-## - 右クリックと Esc は「戻す」: 確かめ → 設定の画面 → メニュー の順に閉じる。
+## - 右クリックと Esc は「戻す」: 確かめ → オプションの画面 → メニュー の順に閉じる。
 ## - 確かめの文（confirm）を持つ項目は、押すと「本当に？」を挟む（対戦が失われる項目）。
-## - 「設定」（ITEM_SETTINGS）は、ここで設定の画面（settings_panel.gd）に切り替える。閉じると settings_closed を出す。
+## - 「設定」（ITEM_SETTINGS）は、ここでオプションの画面（settings_panel.gd）に切り替える。閉じると settings_closed を出す。
 
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -21,12 +21,12 @@ signal opened
 signal item_chosen(id: StringName)
 ## メニューを閉じた（どの道で閉じても）。
 signal closed
-## 設定の画面を閉じた（値を取っておく合図）。
+## オプションの画面を閉じた（値を取っておく合図）。
 signal settings_closed
-## 閉じずに 1 つ戻った（確かめ → メニュー、設定の画面 → メニュー）。戻る音を鳴らす合図。
+## 閉じずに 1 つ戻った（確かめ → メニュー、オプションの画面 → メニュー）。戻る音を鳴らす合図。
 signal stepped_back
 
-## 開いたメニューを閉じるだけの項目と、設定の画面を開く項目（どちらも、ここで扱う）。
+## 開いたメニューを閉じるだけの項目と、オプションの画面を開く項目（どちらも、ここで扱う）。
 const ITEM_RESUME := &"resume"
 const ITEM_SETTINGS := &"settings"
 
@@ -49,7 +49,7 @@ var _settings_panel: SettingsPanel
 ## いま並べている項目（[名前, 文字, 確かめの文] の列）と、確かめている項目の名前。
 var _items: Array = []
 var _confirming := &""
-## 設定の画面だけを開いたか（タイトルの「設定」）。そのときは、設定の画面を閉じるとメニューごと閉じる。
+## オプションの画面だけを開いたか（タイトルの「オプション」）。そのときは、オプションの画面を閉じるとメニューごと閉じる。
 var _settings_only := false
 ## 開いている重なる画面の積み上げ（overlay_stack.gd。AppContext.overlays）。
 var _overlays: RefCounted
@@ -125,8 +125,8 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 
 
 ## メニューを開く。items は [名前, 文字, 確かめの文（要らなければ空）] の列（上から）。
-## 名前が ITEM_RESUME の項目は閉じるだけ、ITEM_SETTINGS の項目は設定の画面を開く。ほかは item_chosen で知らせる。
-## settings_only が真なら、メニューを出さずに設定の画面だけを開く（閉じると、メニューへは戻らずに閉じる）。
+## 名前が ITEM_RESUME の項目は閉じるだけ、ITEM_SETTINGS の項目はオプションの画面を開く。ほかは item_chosen で知らせる。
+## settings_only が真なら、メニューを出さずにオプションの画面だけを開く（閉じると、メニューへは戻らずに閉じる）。
 func open(items: Array, settings_only := false) -> void:
 	_settings_only = settings_only
 	_items = items.duplicate(true)
@@ -207,7 +207,7 @@ func accept() -> bool:
 	return true
 
 
-## 1 つ戻す（右クリック・Esc・「やめる」・設定の「戻る」）: 確かめ → 設定の画面 → メニュー の順に閉じる。
+## 1 つ戻す（右クリック・Esc・「やめる」・設定の「戻る」）: 確かめ → オプションの画面 → メニュー の順に閉じる。
 func back() -> void:
 	if not is_open():
 		return
@@ -225,7 +225,7 @@ func back() -> void:
 		close()
 
 
-## メニューを閉じる（設定の画面を開いていれば、それも閉じて取っておく合図を出す）。
+## メニューを閉じる（オプションの画面を開いていれば、それも閉じて取っておく合図を出す）。
 func close() -> void:
 	if not is_open():
 		return
@@ -238,14 +238,14 @@ func close() -> void:
 	closed.emit()
 
 
-## 設定の画面を開く（メニューの「設定」と同じ）。
+## オプションの画面を開く（メニューの「設定」と同じ）。
 func open_settings() -> void:
 	if is_open():
 		_show(_settings_panel)
 		_settings_panel.refresh()
 
 
-## 設定の画面（検査とスクリーンショットの道具用）。
+## オプションの画面（検査とスクリーンショットの道具用）。
 func settings_panel() -> SettingsPanel:
 	return _settings_panel
 
@@ -281,8 +281,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## 設定の画面を開いたままウィンドウを閉じても、変えた設定を取っておく（閉じたときと同じ合図を出す）。
-## 設定は動かしたときに効くが、取っておくのは設定の画面を閉じたときなので、ここで閉じずに終わると、次の起動で戻ってしまう。
+## オプションの画面を開いたままウィンドウを閉じても、変えた設定を取っておく（閉じたときと同じ合図を出す）。
+## 設定は動かしたときに効くが、取っておくのはオプションの画面を閉じたときなので、ここで閉じずに終わると、次の起動で戻ってしまう。
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_settings_open():
 		settings_closed.emit()
