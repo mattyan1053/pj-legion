@@ -133,6 +133,7 @@ const SCENES := {
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
 	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
 	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
+	"story_fantasy_evolve_sortie": "ストーリー: FANTASY の物語の演習「分かれ道」の出撃準備（レベル 2 から始まるパラディンとソーサラーに、レベルが出る）",
 	"story_fantasy_evolve": "ストーリー: FANTASY の物語の演習「分かれ道」で、あと 1 撃で進化するパラディンが盾役を攻撃し、進化先を選ぶところ",
 	"story_fantasy_main_list": "ストーリー: FANTASY の物語の演習を終え、本編の 1 話目をクリアしたあとの話の一覧（本編のカード、増えた持ち物とコスト上限）",
 	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（霧の森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
@@ -1657,6 +1658,14 @@ func _start_fantasy(number: int) -> bool:
 	_app.current_scene().choose(episodes[number])
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.TALK
+
+
+func _scene_story_fantasy_evolve_sortie() -> bool:
+	var number := -1
+	for i: int in _fantasy().episodes.size():
+		if _fantasy().episodes[i].id == &"trial_evolution":
+			number = i
+	return number >= 0 and await _start_fantasy(number) and await _scene_story_sortie_from_talk()
 
 
 ## FANTASY の物語の演習「分かれ道」: あと 1 撃で進化するパラディンを盾役の隣へ動かして攻撃し、進化先の選択を出す。

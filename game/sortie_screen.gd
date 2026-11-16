@@ -132,7 +132,8 @@ func _ready() -> void:
 	var enemy_column := VBoxContainer.new()
 	enemy.add_child(enemy_column)
 	enemy_column.add_child(_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)})))
-	enemy_column.add_child(_wrapped(DeckText.deck_summary(battle_source.scenario().fixed_decks[Unit.Side.PLAYER2]), 17, COLOR_TEXT))
+	enemy_column.add_child(_wrapped(DeckText.deck_summary(
+		battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], start_levels(Unit.Side.PLAYER2)), 17, COLOR_TEXT))
 
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -207,14 +208,38 @@ func choose(id: String) -> void:
 	for key: String in _option_buttons:
 		(_option_buttons[key] as Button).set_pressed_no_signal(key == id)
 	var deck := chosen_deck()
-	_fold(_deck_line, DeckText.deck_summary(deck))
+	var levels := start_levels(Unit.Side.PLAYER1)
+	_fold(_deck_line, DeckText.deck_summary(deck, levels))
 	for face in _deck_faces.get_children():
 		_deck_faces.remove_child(face)
 		face.queue_free()
 	_deck_faces.add_child(UnitIcons.rect(UnitKind.Id.KING, 0, false, 44.0))
-	for entry in deck.entries:
-		_deck_faces.add_child(UnitIcons.rect(entry.kind, 0, false, 44.0))
+	for i in deck.entries.size():
+		var face := UnitIcons.rect(deck.entries[i].kind, 0, false, 44.0)
+		var level: int = levels[i] if i < levels.size() else 1
+		if level > 1:
+			# 始めのレベルが 1 でない駒（進化を教える話など）は、アイコンの右下にレベル。
+			var tag := _text(13, COLOR_ACCENT)
+			tag.text = Text.t("sortie.level", {"level": level})
+			tag.add_theme_constant_override("outline_size", 4)
+			tag.add_theme_color_override("font_outline_color", Palette.OUTLINE)
+			tag.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE)
+			tag.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+			tag.grow_vertical = Control.GROW_DIRECTION_BEGIN
+			face.add_child(tag)
+		_deck_faces.add_child(face)
 	_map.texture = ImageTexture.create_from_image(map_image(deck))
+
+
+## side の部隊の並びの順の、駒の始めのレベル（話の戦いの定義の start_growth。決めていなければ空）。
+## 人の側は、部隊が決まっている話だけ（選んだ部隊には当てない）。
+func start_levels(side: Unit.Side) -> Array:
+	var levels: Array = []
+	if side == Unit.Side.PLAYER1 and _chosen != FIXED_ID:
+		return levels
+	for row: Array in battle_source.scenario().start_growth[side]:
+		levels.append(row[0])
+	return levels
 
 
 ## 選んでいる部隊の id（DEFAULT_ID なら既定の編成）と、その部隊（写し）。

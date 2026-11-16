@@ -2,6 +2,7 @@ extends "res://tests/base_test.gd"
 ## ストーリー（game/story.gd、game/story_battle.gd、game/story/）: 話の流れ、話の対戦、クリアの記録。
 
 const Names := preload("res://game/names.gd")
+const DeckText := preload("res://game/deck_text.gd")
 const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
@@ -530,9 +531,10 @@ func test_news_tell_each_new_kind_item_and_the_new_budget() -> void:
 
 ## MILITARY の物語の、id の話。
 func _episode(id: StringName) -> RefCounted:
-	for episode: RefCounted in Story.military().episodes:
-		if episode.id == id:
-			return episode
+	for campaign: RefCounted in Story.campaigns():
+		for episode: RefCounted in campaign.episodes:
+			if episode.id == id:
+				return episode
 	assert_true(false, "話が無い: %s" % id)
 	return null
 
@@ -555,6 +557,26 @@ func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sorti
 	assert_eq(context.run.scene(), Story.SORTIE, "部隊が決まっている話は、編成へ寄り道しない")
 	sortie.press_sortie()
 	assert_eq(context.story.squad_id, "9", "決まっている部隊で出撃しても、覚えている部隊は変えない")
+	root.free()
+
+
+## 始めのレベルが 1 でない駒（「分かれ道」のパラディンとソーサラー）は、出撃準備の部隊の並びにレベルが出る。
+func test_the_sortie_shows_start_levels_above_one() -> void:
+	var context := preload("res://game/app_context.gd").new()
+	context.story.choose_campaign(Story.campaigns()[1])
+	context.run = context.story.run_now(_episode(&"trial_evolution"))
+	context.run.advance()  # 出撃準備
+	context.scene = Story.SORTIE
+	var sortie := preload("res://game/sortie_screen.gd").new()
+	sortie.context = context
+	var root := Node.new()
+	root.add_child(sortie)
+	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
+	assert_eq(sortie.start_levels(Unit.Side.PLAYER1), [2, 2, 1])
+	assert_eq(sortie.start_levels(Unit.Side.PLAYER2), [], "敵は始めのレベルを決めていない")
+	var line := DeckText.deck_summary(sortie.chosen_deck(), sortie.start_levels(Unit.Side.PLAYER1))
+	assert_true(line.contains("%s Lv2" % Names.kind(UnitKind.Id.PALADIN)), line)
+	assert_false(line.contains("Lv1"), "レベル 1 の駒には出さない: %s" % line)
 	root.free()
 
 
