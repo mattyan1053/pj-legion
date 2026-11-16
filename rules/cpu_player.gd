@@ -940,13 +940,16 @@ func _set_goal(unit: Unit) -> void:
 		pass
 	elif _holding and role != UnitKind.Role.HEALER:
 		# 守る側: 本陣の近くに入った敵だけを追い、ほかは本陣のそばで待つ。
-		var enemy := _enemy_to_chase(unit)
-		if enemy != null and _my_hq != Board.NO_CELL and Combat.distance(enemy.cell, _my_hq) <= CpuWinPlan.HOLD_RADIUS:
+		var enemy := _enemy_to_hold_off(unit)
+		if enemy != null:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
 		else:
 			_goal_reach = CpuWinPlan.HOLD_REACH
-	elif _rushing and role != UnitKind.Role.HEALER and _foe_king() != null and not _can_raid_hq(unit):
+	elif (
+		_rushing and role != UnitKind.Role.HEALER and _foe_king() != null
+		and not (role == UnitKind.Role.RAIDER and _can_raid_hq(unit))
+	):
 		# 攻める側で、残りのターンが少ない: 敵の将へ向かう。
 		goal = _foe_king().cell
 		_goal_reach = unit.attack_range()
@@ -983,6 +986,24 @@ func _set_goal(unit: Unit) -> void:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
 	_goal_steps = _steps_from(goal)
+
+
+## 守る側の前衛・後衛・奇襲が追う敵: 自分の本陣から CpuWinPlan.HOLD_RADIUS 以内の敵のうち、侵入者を先に、その中でいちばん近いもの。
+## いなければ null（本陣のそばで待つ）。
+func _enemy_to_hold_off(unit: Unit) -> Unit:
+	if _my_hq == Board.NO_CELL:
+		return null
+	var best: Unit = null
+	var best_key := Vector2i(_FAR, _FAR)
+	for other in _battle.units:
+		if other.side != _foe or Combat.distance(other.cell, _my_hq) > CpuWinPlan.HOLD_RADIUS:
+			continue
+		var intruder := Combat.distance(other.cell, _my_hq) <= DEFENSE_RADIUS
+		var key := Vector2i(0 if intruder else 1, Combat.distance(unit.cell, other.cell))
+		if key < best_key:
+			best = other
+			best_key = key
+	return best
 
 
 ## 相手の将。いなければ null。

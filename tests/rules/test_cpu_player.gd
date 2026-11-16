@@ -436,6 +436,18 @@ func test_holding_side_still_strikes_enemies_near_its_hq() -> void:
 	assert_true(intruder.hp < intruder.max_hp(), "本陣の近くの敵を放っておいた")
 
 
+func test_holding_side_chases_the_enemy_inside_the_radius_not_a_closer_one_outside() -> void:
+	var battle := _battle_with_kings()
+	battle.win_conditions[P1].append(GameWonEvent.Reason.TURNS_HELD)
+	battle.hold_turns = 8
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(11, 1))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(11, 4))  # 本陣から 11 マス。近いが、追わない
+	var inside := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(7, 1))  # 本陣から 10 マス
+	var cpu := CpuPlayer.new()
+	cpu._begin(battle)
+	assert_eq(cpu._enemy_to_hold_off(trooper), inside)
+
+
 func test_win_plan_reads_the_conditions() -> void:
 	var battle := _battle_with_kings()
 	assert_true(CpuWinPlan.raids_hq(battle, P1))
