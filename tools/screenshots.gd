@@ -31,6 +31,7 @@ const SCENES := {
 	"versus_hand_result": "対戦モードの、手で作ったマップで CPU に勝ったときのリザルト（「新しい盤面」は生成のステージだけ）",
 	"setup": "対戦の設定の場面（ステージ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
+	"setup_confirm": "対戦の途中で開いた対戦の設定画面で「ステージを選び直す」を 1 回押し、確かめている",
 	"setup_deck": "対戦の設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
 	"setup_preview": "対戦の設定で、CPU の部隊の「編成を確認」を開いたところ",
 	"setup_random": "対戦の設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
@@ -519,6 +520,13 @@ func _scene_setup_again() -> bool:
 	_show()
 	_scene.open_setup()
 	return _scene.setup_panel().is_cancellable()
+
+
+func _scene_setup_confirm() -> bool:
+	if not _scene_setup_again():
+		return false
+	_scene.setup_panel().press_stage()
+	return _scene.setup_panel().confirming_text() != ""
 
 
 ## 対戦の途中の盤面を出し、カメラが落ち着いてからシステムメニューを開く（開くと時間が止まる）。

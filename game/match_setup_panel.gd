@@ -7,6 +7,8 @@ extends Control
 ## 出せない部隊は、理由つきで並べ、選べなくする。CPU の編成は軍ごとの CPU の編成。
 ## 部隊の中身は、パネルに文で並べず、「編成を確認」で開く（deck_preview.gd。自分の部隊も CPU の部隊も同じ見え方）。
 ## パネルの大きさは、選んだものに依らず同じ（部隊の名前は決まった幅で切る）。
+## 対戦の途中で開いたときは、押すといまの対戦が終わるボタン（「ステージを選び直す」「新しい対戦を始める」）を 2 回押させる
+## （ターン終了・必殺技の確かめと同じ。docs/battle-view.md）。1 回目でボタンが「もう一度押す」になり、理由は下の文に出す。
 
 ## 選んだもの（match_choice.gd の値。呼ぶ側に渡すのは写し）。
 signal start_pressed(choice: RefCounted)
@@ -24,6 +26,7 @@ const VersusFields := preload("res://game/versus_fields.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const DeckPreview := preload("res://game/deck_preview.gd")
 const Names := preload("res://game/names.gd")
+const BattleUiState := preload("res://game/battle_ui_state.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 ## パネルの中身の幅（px）。選んだものに依らず、この幅に固定する。
@@ -33,6 +36,12 @@ const CAPTION_WIDTH := 190.0
 const PICKER_WIDTH := 330.0
 ## 手番の「ランダム」のボタンの値（Unit.Side の値と重ならない）。
 const RANDOM_SIDE := -1
+## 確かめの間のボタンの文字と、下の文（理由）。
+const CONFIRM_TEXT := "もう一度押す"
+const STAGE_TEXT := "ステージを選び直す"
+const WARNING_TEXT := "ステージを選び直す・新しい対戦を始めると、いまの対戦は終わる"
+const CONFIRM_STAGE_TEXT := "もう一度押すと、いまの対戦を終えてステージ選択へ。右クリックでやめる"
+const CONFIRM_START_TEXT := "もう一度押すと、いまの対戦を終えて新しい対戦を始める。右クリックでやめる"
 
 var _choice: RefCounted = MatchChoice.new()
 var _team_colors: Array[Color] = []
@@ -58,6 +67,13 @@ var _back_button: Button
 var _warning: Label
 ## 閉じて、いまの対戦へ戻れるか（起動した直後の、まだ対戦を始めていないときだけ偽）。
 var _cancellable := false
+## 決着していない対戦の途中で開いたか（押すと対戦が終わるボタンを 2 回押させる）。
+var _in_progress := false
+## 2 回目を待っているボタン（無ければ null）と、確かめを始めた時刻（ミリ秒）。
+var _confirming: Button
+var _confirm_started_msec := 0
+## 始めるボタンのいまの文字（確かめをやめたら戻す）。
+var _start_text := "対戦を始める"
 
 
 ## 開いている重なる画面の積み上げ（overlay_stack.gd。AppContext.overlays）。見えている間は積んでおく。
@@ -101,7 +117,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	_stage_name.clip_text = true
 	_stage_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stage_row.add_child(_stage_name)
-	_stage_button = _button("ステージを選び直す")
+	_stage_button = _button(STAGE_TEXT)
 	_stage_button.custom_minimum_size = Vector2(200.0, 40.0)
 	_stage_button.pressed.connect(press_stage)
 	stage_row.add_child(_stage_button)
@@ -147,7 +163,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 
 	# 対戦の途中で開いたときは、始めるといまの対戦が失われることを書く。
 	_warning = _label(15)
-	_warning.text = "ステージを選び直す・新しい対戦を始めると、いまの対戦は終わる"
+	_warning.text = WARNING_TEXT
 	_warning.add_theme_color_override("font_color", Palette.WARN)
 	_warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_warning)
@@ -163,7 +179,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	_start_button.custom_minimum_size = Vector2(220.0, 52.0)
 	_start_button.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	_start_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
-	_start_button.pressed.connect(confirm)
+	_start_button.pressed.connect(press_start)
 	buttons.add_child(_start_button)
 	_preview = DeckPreview.new()
 	add_child(_preview)
@@ -182,10 +198,12 @@ func open(choice: RefCounted, cancellable := false, in_progress := false, back_t
 	_preview.close_preview()
 	_choice.refresh_decks(_library)  # 編成の画面で消した・組み直した部隊に合わせる
 	_cancellable = cancellable
+	_in_progress = cancellable and in_progress
 	_back_button.visible = cancellable
 	_back_button.text = back_text
-	_warning.visible = cancellable and in_progress
-	_start_button.text = "新しい対戦を始める" if cancellable and new_battle else "対戦を始める"
+	_warning.visible = _in_progress
+	_start_text = "新しい対戦を始める" if cancellable and new_battle else "対戦を始める"
+	_confirming = null
 	_show_choice()
 	visible = true
 
@@ -217,13 +235,17 @@ func is_cancellable() -> bool:
 
 
 ## 右クリックと Esc は、ほかの画面と同じに「戻す」（閉じられるときだけ）。開いている間は、盤面へ通さない。
+## 確かめの途中なら、閉じずに確かめだけをやめる。
 ## 閉じられないとき（起動した直後）の Esc は受けない（戻すものが無いので、持ち主がシステムメニューを開く）。
 func _input(event: InputEvent) -> void:
 	if not visible or not _overlays.is_top(self):
 		return
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or (escape and _cancellable):
+	if (right or escape) and _confirming != null:
+		get_viewport().set_input_as_handled()
+		stop_confirm()
+	elif right or (escape and _cancellable):
 		get_viewport().set_input_as_handled()
 		cancel()
 
@@ -291,10 +313,56 @@ func _on_deck_picked(side: Unit.Side, index: int) -> void:
 		_show_choice()
 
 
-## 「対戦を始める」。画面を閉じて、選んだものの写しを知らせる。
+## 「対戦を始める」のボタン。対戦の途中なら、1 回目は確かめるだけで、もう一度押すと始める（_press_or_confirm）。
+func press_start() -> void:
+	_press_or_confirm(_start_button, confirm)
+
+
+## 対戦を始める（確かめずに）。画面を閉じて、選んだものの写しを知らせる。
 func confirm() -> void:
+	stop_confirm()
 	visible = false
 	start_pressed.emit(_choice.copy())
+
+
+## 押すといまの対戦が終わるボタン。対戦の途中でなければ、すぐ do。対戦の途中なら、1 回目はボタンを「もう一度押す」にして
+## 理由を下の文に出すだけ。同じボタンをもう一度押すと do。確かめに変わった直後（BattleUiState.CONFIRM_GUARD_MSEC）の
+## 2 回目は受けない（ダブルクリックで確かめを飛ばさない）。ほかの操作、右クリック・Esc で確かめをやめる。
+func _press_or_confirm(button: Button, do: Callable) -> void:
+	if not _in_progress:
+		do.call()
+		return
+	if _confirming != button:
+		stop_confirm()
+		_confirming = button
+		_confirm_started_msec = Time.get_ticks_msec()
+		button.text = CONFIRM_TEXT
+		button.theme_type_variation = UiTheme.BUTTON_DANGER
+		_warning.text = CONFIRM_STAGE_TEXT if button == _stage_button else CONFIRM_START_TEXT
+		return
+	if Time.get_ticks_msec() - _confirm_started_msec < BattleUiState.CONFIRM_GUARD_MSEC:
+		return
+	do.call()
+
+
+## 確かめをやめる（ボタンと下の文を戻す）。確かめていなければ何もしない。
+func stop_confirm() -> void:
+	_confirming = null
+	_stage_button.text = STAGE_TEXT
+	_stage_button.theme_type_variation = &""
+	_start_button.text = _start_text
+	_start_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
+	_warning.text = WARNING_TEXT
+
+
+## 確かめの途中なら、下に出している理由の文（確かめていなければ空）。検査用。
+func confirming_text() -> String:
+	return "" if _confirming == null else _warning.text
+
+
+## 確かめを始めた直後の、2 回目を受けない間を、もう過ぎたことにする。検査用（人が間を置いてもう一度押すのと同じ）。
+func pass_confirm_guard() -> void:
+	_confirm_started_msec -= BattleUiState.CONFIRM_GUARD_MSEC
 
 
 func _choose(key: StringName, value: Variant) -> void:
@@ -315,6 +383,7 @@ func _choose(key: StringName, value: Variant) -> void:
 func _show_choice() -> void:
 	if _rows.is_empty():
 		return
+	stop_confirm()  # 選び直したら、確かめはやめる
 	var side_value: int = RANDOM_SIDE if _choice.random_side else _choice.human_side
 	var current := {
 		&"opponent": _choice.cpu_opponent, &"human_side": side_value,
@@ -360,6 +429,7 @@ func preview_deck(side: Unit.Side) -> Deck:
 
 ## 「編成を確認」: side の部隊を札にして出す。
 func open_preview(side: Unit.Side) -> void:
+	stop_confirm()
 	# ランダムの間は陣営が決まっていないので、あなたは青、CPU は赤で見せる。
 	_preview.open(who_text(side), preview_deck(side), side)
 
@@ -369,8 +439,13 @@ func preview() -> DeckPreview:
 	return _preview
 
 
-## 「ステージを選び直す」。
+## 「ステージを選び直す」。対戦の途中なら、1 回目は確かめるだけで、もう一度押すとステージ選択へ（_press_or_confirm）。
 func press_stage() -> void:
+	_press_or_confirm(_stage_button, _leave_for_stage)
+
+
+func _leave_for_stage() -> void:
+	stop_confirm()
 	visible = false
 	stage_pressed.emit(_choice.copy())
 

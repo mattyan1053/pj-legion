@@ -71,3 +71,37 @@ func test_random_side_labels_the_rows_by_who_plays() -> void:
 	assert_false(panel.current_choice().random_side)
 	assert_eq(panel.who_text(Unit.Side.PLAYER2), "あなた・後手（赤）")
 	panel.free()
+
+
+## 対戦の途中で開いたら、押すと対戦が終わるボタン（ステージを選び直す・新しい対戦を始める）は 2 回押させる。
+## 1 回目はボタンが「もう一度押す」になって理由を下に出し、直後の 2 回目は受けない。選び直すと確かめはやめる。
+## 対戦の途中でなければ（対戦の設定の場面、決着のあと）、1 回で進む。
+func test_buttons_that_end_the_battle_ask_twice_in_a_battle() -> void:
+	var holder := Control.new()
+	Engine.get_main_loop().root.add_child(holder)
+	var panel := MatchSetupPanel.new()
+	holder.add_child(panel)
+	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
+	var started := [0]
+	var staged := [0]
+	panel.start_pressed.connect(func(_choice: RefCounted) -> void: started[0] += 1)
+	panel.stage_pressed.connect(func(_choice: RefCounted) -> void: staged[0] += 1)
+	for press: StringName in [&"press_start", &"press_stage"]:
+		var count: Array = started if press == &"press_start" else staged
+		panel.open(MatchChoice.new(), true, true)
+		panel.call(press)
+		assert_eq(count[0], 0, "%s の 1 回目で進んだ" % press)
+		assert_true(panel.confirming_text().contains("もう一度押すと"), panel.confirming_text())
+		panel.call(press)
+		assert_eq(count[0], 0, "%s の確かめの直後の 2 回目で進んだ" % press)
+		panel.choose_opponent(false)
+		assert_eq(panel.confirming_text(), "", "選び直しても、確かめがやめにならない")
+		panel.call(press)
+		panel.pass_confirm_guard()
+		panel.call(press)
+		assert_eq(count[0], 1, "%s の間を置いた 2 回目で進まない" % press)
+		assert_true(not panel.visible)
+		panel.open(MatchChoice.new(), true, false)
+		panel.call(press)
+		assert_eq(count[0], 2, "決着のあとの %s が、1 回で進まない" % press)
+	holder.free()
