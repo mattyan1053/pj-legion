@@ -16,6 +16,7 @@ extends RefCounted
 const StageLook := preload("res://game/stage_look.gd")
 const RidgePath := preload("res://rules/maps/ridge_path.gd")
 const CrystalGorge := preload("res://rules/maps/crystal_gorge.gd")
+const BoulderPass := preload("res://rules/maps/boulder_pass.gd")
 
 ## 項目の欄の名前。
 const ID := &"id"  ## 鍵
@@ -31,6 +32,7 @@ const LABYRINTH := &"labyrinth"
 const TWIN_SPRINGS := &"twin_springs"
 const RIDGE_PATH := &"ridge_path"
 const CRYSTAL_GORGE := &"crystal_gorge"
+const BOULDER_PASS := &"boulder_pass"
 
 ## 対戦の設定の既定。
 const DEFAULT := PLAIN
@@ -61,6 +63,12 @@ const FIELDS := [
 		ID: CRYSTAL_GORGE, MAP: CrystalGorge, LOOK: StageLook.CRYSTAL_FOREST,
 		TAGS: "裂け目 ・ 橋 ・ ポータル",
 		NOTE: "盤の中ほどを結晶の裂け目が横切る。渡れるのは左右の端の橋と、真ん中のポータルだけ。本陣は対角。\n遠回りの橋か、敵陣のただ中へ出る近道のポータルか。",
+	},
+	# 手で作ったマップ（対戦モードのために作ったもの）。
+	{
+		ID: BOULDER_PASS, MAP: BoulderPass, LOOK: StageLook.GRASSLAND,
+		TAGS: "大岩 ・ 広い 2 本の道",
+		NOTE: "草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。",
 	},
 ]
 
