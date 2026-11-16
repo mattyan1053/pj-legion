@@ -8,6 +8,7 @@ extends RefCounted
 
 const SaveStore := preload("res://game/save_store.gd")
 const Run := preload("res://game/run.gd")
+const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 
 ## クリアした話が増えた。
@@ -17,10 +18,10 @@ signal changed
 const STORE_NAME := "story"
 const FORMAT_VERSION := 1
 ## 会話の場面と、対戦の場面と、話の一覧の場面の名前（scene_flow.gd）。
-const TALK := &"talk"
-const BATTLE := &"battle"
-const EPISODE_LIST := &"episodes"
-const SORTIE := &"sortie"
+const TALK := SceneFlow.TALK
+const BATTLE := SceneFlow.BATTLE
+const EPISODE_LIST := SceneFlow.EPISODES
+const SORTIE := SceneFlow.SORTIE
 
 ## ストーリーの編成の決まりの名前（取っておく部隊に書く）。対戦の決まり（DeckRules.VERSUS）と分ける。
 const RULES_ID := &"story"

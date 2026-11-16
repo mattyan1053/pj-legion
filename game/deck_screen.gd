@@ -122,7 +122,7 @@ func _ready() -> void:
 	_dialog = _build_dialog()
 	layer.add_child(_dialog)
 	_library.changed.connect(_refresh_list)
-	var given: Variant = context.run_data(&"decks")
+	var given: Variant = context.run_data()
 	if given is Dictionary:
 		_detour = given
 		_back_button.text = _detour.get("back_label", "戻る")

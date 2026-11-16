@@ -115,6 +115,7 @@ func go(scene: StringName) -> void:
 		remove_child(_current)
 		_current.queue_free()
 	var node: Node = load(SceneFlow.script_path(scene)).new()
+	context.scene = scene  # 場面が run_data() で、流れが渡すものを受け取れるように
 	node.set(&"context", context)
 	node.connect(&"finished", _on_finished.bind(scene))
 	_current = node
@@ -238,15 +239,15 @@ func _drive_check(scene: StringName) -> void:
 	if _check_entered:
 		return
 	match scene:
-		&"title":
+		SceneFlow.TITLE:
 			_current.call(&"press_start")
-		&"stage":
+		SceneFlow.STAGE:
 			_current.call(&"choose", context.match_choice.stage)
-		&"setup":
+		SceneFlow.SETUP:
 			var panel: Node = _current.call(&"setup_panel")
 			panel.call(&"choose_opponent", false)
 			panel.call(&"confirm")
-		&"battle":
+		SceneFlow.BATTLE:
 			_check_entered = true
 			if context.checking == AppContext.CHECK_SHOTS:
 				# スクリーンショットの道具（tools/screenshots.gd）。遊ぶときは読み込まない。

@@ -47,7 +47,7 @@ var _skip: Button
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき
-	var given: Variant = context.run_data(&"talk")
+	var given: Variant = context.run_data()
 	if given != null:
 		talk = given
 	add_child(Backdrop.new(talk.get("board"), talk.get("look", &"")))

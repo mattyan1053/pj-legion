@@ -80,3 +80,30 @@ func test_every_scene_but_the_title_names_where_the_menu_returns() -> void:
 		var script: Script = load(SceneFlow.SCENES[scene]["script"])
 		var names: Array = script.get_script_method_list().map(func(method: Dictionary) -> String: return method["name"])
 		assert_true(names.has("resume_label"), "%s の場面に resume_label が無い（メニューの閉じるボタンが「戻る」になる）" % scene)
+
+
+func test_scene_names_are_written_only_in_the_scene_flow() -> void:
+	# 場面の名前（&"battle" など）を文字で書くのは scene_flow.gd だけ。ほかは SceneFlow の定数を使う（書き漏らすと、流れが渡すものを受け取れない）。
+	# 終わり方（finished の outcome）や曲の名前は場面の名前と同じ文字のことがあるので、場面を指す書き方（流れに足す・場面へ行く・流れが渡すもの）だけを探す。
+	var patterns: Array[String] = []
+	for scene: StringName in SceneFlow.SCENES:
+		for call: String in ["run_data(&\"%s\")", ".add(&\"%s\"", ".insert(&\"%s\"", "go(&\"%s\")", "current_id() == &\"%s\"", "current_id() != &\"%s\""]:
+			patterns.append(call % scene)
+	var paths := _scripts("res://game")
+	paths.append_array(_scripts("res://tools"))
+	for path: String in paths:
+		if path.ends_with("scene_flow.gd"):
+			continue
+		var text := FileAccess.get_file_as_string(path)
+		for pattern in patterns:
+			assert_false(text.contains(pattern), "%s に場面の名前の直書き: %s" % [path, pattern.strip_edges()])
+
+
+func _scripts(dir: String) -> Array[String]:
+	var found: Array[String] = []
+	for file in DirAccess.get_files_at(dir):
+		if file.ends_with(".gd"):
+			found.append(dir.path_join(file))
+	for sub in DirAccess.get_directories_at(dir):
+		found.append_array(_scripts(dir.path_join(sub)))
+	return found
