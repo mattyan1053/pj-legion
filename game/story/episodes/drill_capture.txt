@@ -1,0 +1,39 @@
+# ストーリーの話「本陣を取れ」。MILITARY の物語のチュートリアル（6 / 6）。1 話 1 ファイル。
+#
+# チュートリアルの話は、1 つの話で 1〜2 個だけ教える（docs/story.md の「チュートリアル」）。
+# 部隊は決まっていて（[ally] の unit）、敵は少なく、まず負けない。教え方は、出撃の準備の文（lesson）と、対戦の途中の台詞（[cues]）。
+# 話し手と会話の文は仮のもの（遊び方を伝える文として書いた。世界と登場人物は、まだ決まっていない。Issue #49）。
+# 教えること: 本陣の占拠（敵の本陣に乗り続けて勝つ）。この話は、敵の将を倒しても終わらない（wins）。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 本陣を取れ
+map = drill_field
+look = stone_walls
+lesson = 敵の本陣のマスに 3 ターン乗り続ければ勝ち。この演習は、将を倒しても終わらない。
+wins = hq_captured
+
+[ally]
+name = 教官
+unit = shield_trooper
+unit = shield_trooper
+unit = sniper
+unit = sniper
+unit = medic
+
+[enemy]
+name = 演習相手
+army = fantasy
+unit = paladin
+unit = sorcerer
+
+[before]
+教官: 敵の本陣のマスに、3 ターン続けて乗っていれば勝ちだ。
+教官: この演習では、将を倒しても終わらない。本陣を取れ。
+
+[after]
+教官: 演習はここまでだ。実戦へ向かうぞ。
+
+[cues]
+(turn 1) 教官: 本陣は、敵の将の足元のマスだ。周りを片付けて乗り込め。
+(king_half enemy) 教官: 将を倒しても終わらない。本陣のマスに乗り続けろ。

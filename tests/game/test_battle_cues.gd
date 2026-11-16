@@ -83,30 +83,30 @@ func test_several_cues_at_once_keep_their_order() -> void:
 	var battle := _battle()
 	var cues := BattleCues.new([[BattleCues.KING_HALF, 1, 1, "二"], [BattleCues.TURN, 1, 0, "一"]], NAMES)
 	_king(battle, Unit.Side.PLAYER2).hp = 1
-	assert_eq(_texts(cues.on_start(battle)), ["二", "一"] as Array[String], "CUES の並びの順")
+	assert_eq(_texts(cues.on_start(battle)), ["二", "一"] as Array[String], "[cues] の並びの順")
 
 
 func test_every_episode_cue_is_well_formed() -> void:
 	var with_cues := 0
 	for episode in Story.all_episodes():
-		var cues := StoryBattle.cues_of(episode)
+		var cues := episode.cues
 		if cues.is_empty():
 			continue
 		with_cues += 1
-		assert_between(cues.size(), 1, 3, "%s: 途中の会話は少なく" % episode.ID)
+		assert_between(cues.size(), 1, 3, "%s: 途中の会話は少なく" % episode.id)
 		for cue: Array in cues:
-			assert_eq(cue.size(), 4, episode.ID)
-			assert_true(BattleCues.KINDS.has(cue[0]), "%s: 知らないきっかけ %s" % [episode.ID, cue[0]])
+			assert_eq(cue.size(), 4, episode.id)
+			assert_true(BattleCues.KINDS.has(cue[0]), "%s: 知らないきっかけ %s" % [episode.id, cue[0]])
 			assert_true(cue[2] in [0, 1], "話し手は 0 か 1")
 			assert_ne(cue[3], "")
-			assert_true(String(cue[3]).length() <= 40, "%s: 札に収まる短さ（1〜2 行）" % episode.ID)
-			if cue[0] == BattleCues.TURN and StoryBattle.hold_turns_of(episode) > 0:
-				assert_true(cue[1] <= StoryBattle.hold_turns_of(episode), "守り切るターンの中")
-	assert_true(with_cues >= Story.MILITARY.EPISODES.size(), "どの話にも、使い方の例を 1 つ以上")
+			assert_true(String(cue[3]).length() <= 40, "%s: 札に収まる短さ（1〜2 行）" % episode.id)
+			if cue[0] == BattleCues.TURN and episode.hold_turns > 0:
+				assert_true(cue[1] <= episode.hold_turns, "守り切るターンの中")
+	assert_true(with_cues >= Story.military().episodes.size(), "どの話にも、使い方の例を 1 つ以上")
 
 
 func test_story_battles_hand_their_cues_to_the_battle_screen() -> void:
-	var episode: Script = Story.MILITARY.EPISODES[0]
+	var episode: RefCounted = Story.military().episodes[0]
 	var cues: BattleCues = Story.first_battle(episode).talk_cues()
 	assert_false(cues.is_empty())
 	assert_true(MatchChoiceProbe.new().talk_cues().is_empty(), "対戦モードは台詞なし")

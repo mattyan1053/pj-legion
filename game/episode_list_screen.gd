@@ -3,7 +3,7 @@ extends Node
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
 ## - カードには、話の番号と名前、盤の縮図（stage_card_map.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
-## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（LESSON のある話）の番号には「（演習）」を付ける。
+## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（lesson のある話）の番号には「（演習）」を付ける。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
 ## - カードのクリック（1〜9 のキーでも）で、その話を始める。
@@ -16,6 +16,7 @@ const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
+const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 
@@ -33,7 +34,7 @@ const COLOR_NEW := Palette.INFO
 const COLOR_LOCKED := Palette.TEXT_OFF
 
 var context: AppContext
-## 話（Script）-> カード（Button）。
+## 話（episode.gd）-> カード（Button）。
 var _cards := {}
 var _roster: Label
 
@@ -53,7 +54,7 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
-	var heading := _label(context.story.campaign.TITLE, 40)
+	var heading := _label(context.story.campaign.title, 40)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
@@ -76,7 +77,7 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 28)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(row)
-	for episode: Script in context.story.campaign.EPISODES:
+	for episode: Episode in context.story.campaign.episodes:
 		var card := _build_card(episode)
 		row.add_child(card)
 		_cards[episode] = card
@@ -108,7 +109,7 @@ func resume_label() -> String:
 
 
 ## 話 episode を始める（会話（前）から）。遊べない話なら何もしない。
-func choose(episode: Script) -> void:
+func choose(episode: Episode) -> void:
 	if not context.story.is_available(episode):
 		return
 	context.start_run(context.story.run_now(episode))
@@ -124,12 +125,12 @@ func episodes() -> Array:
 	return _cards.keys()
 
 
-func is_card_enabled(episode: Script) -> bool:
+func is_card_enabled(episode: Episode) -> bool:
 	return not (_cards[episode] as Button).disabled
 
 
 ## 話 episode のカードの状態の文（「クリア済み」など。検査用）。
-func card_status(episode: Script) -> String:
+func card_status(episode: Episode) -> String:
 	return status_text(episode)
 
 
@@ -147,20 +148,20 @@ func roster_text() -> String:
 
 
 ## 話 episode のクリアで増えるものの短い文（無ければ空）。カードに出す。
-static func rewards_text(episode: Script) -> String:
+static func rewards_text(episode: Episode) -> String:
 	var parts: Array[String] = []
-	for kind: UnitKind.Id in episode.UNLOCKS:
+	for kind: UnitKind.Id in episode.unlock_kinds:
 		parts.append(UnitKind.display_name(kind))
-	for item: Equipment.Id in StoryBattle.unlock_items_of(episode):
+	for item: Equipment.Id in episode.unlock_items:
 		parts.append(Equipment.display_name(item))
-	if StoryBattle.budget_up_of(episode) > 0:
-		parts.append("コスト +%d" % StoryBattle.budget_up_of(episode))
+	if episode.budget_up > 0:
+		parts.append("コスト +%d" % episode.budget_up)
 	return "" if parts.is_empty() else "クリアで増える:\n" + "・".join(parts)
 
 
 ## 話 episode の状態の文。
-func status_text(episode: Script) -> String:
-	if context.story.is_cleared(episode.ID):
+func status_text(episode: Episode) -> String:
+	if context.story.is_cleared(episode.id):
 		return "クリア済み"
 	if not context.story.is_available(episode):
 		return "第 %d 話をクリアすると遊べる" % (Story.number_of(episode) - 1)
@@ -188,13 +189,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		number = event.physical_keycode - KEY_1
 	elif event.physical_keycode >= KEY_KP_1 and event.physical_keycode <= KEY_KP_9:
 		number = event.physical_keycode - KEY_KP_1
-	var listed: Array[Script] = context.story.campaign.EPISODES
+	var listed: Array[Episode] = context.story.campaign.episodes
 	if number >= 0 and number < listed.size() and context.story.is_available(listed[number]):
 		context.play_sound(&"ui_confirm")
 		choose(listed[number])
 
 
-func _build_card(episode: Script) -> Button:
+func _build_card(episode: Episode) -> Button:
 	var available: bool = context.story.is_available(episode)
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
@@ -213,10 +214,10 @@ func _build_card(episode: Script) -> Button:
 	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(column)
-	var number := _label(("第 %d 話（演習）" if StoryBattle.lesson_of(episode) != "" else "第 %d 話") % Story.number_of(episode), 16)
+	var number := _label(("第 %d 話（演習）" if episode.lesson != "" else "第 %d 話") % Story.number_of(episode), 16)
 	number.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(number)
-	column.add_child(_label(episode.TITLE, 24))
+	column.add_child(_label(episode.title, 24))
 	var map := TextureRect.new()
 	map.texture = ImageTexture.create_from_image(map_image(episode))
 	map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -228,7 +229,7 @@ func _build_card(episode: Script) -> Button:
 		map.modulate = Color(0.45, 0.45, 0.45)
 	column.add_child(map)
 	var status := _label(status_text(episode), 18)
-	var cleared: bool = context.story.is_cleared(episode.ID)
+	var cleared: bool = context.story.is_cleared(episode.id)
 	status.add_theme_color_override("font_color", COLOR_CLEARED if cleared else (COLOR_NEW if available else COLOR_LOCKED))
 	column.add_child(status)
 	if rewards_text(episode) != "":
@@ -239,9 +240,9 @@ func _build_card(episode: Script) -> Button:
 
 
 ## 話 episode の盤の縮図。両軍の駒の初期位置（初めて遊ぶときの既定の編成で置いたもの）に、陣営の色の点を打つ。
-static func map_image(episode: Script) -> Image:
+static func map_image(episode: Episode) -> Image:
 	var battle := Story.first_battle(episode).make_setup(1).create_battle()
-	var image := StageCardMap.draw(battle.board, episode.LOOK, BattleScreen.TEAM_COLORS, MAP_CELL)
+	var image := StageCardMap.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
 	for unit in battle.units:
 		if unit.side == Unit.Side.NEUTRAL or unit.kind == UnitKind.Id.KING:
 			continue

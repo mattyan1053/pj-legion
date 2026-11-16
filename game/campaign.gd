@@ -1,0 +1,170 @@
+extends RefCounted
+## ストーリーの物語 1 つ（docs/story.md の「物語」）。game/story/campaigns/ の 1 ファイルを読んだもの。ノードに依存しない。
+##
+## 物語は、軍 1 つと話の列。話は [episodes] に id を並べ、game/story/episodes/ のファイルから読む（episode.gd）。
+## 読むときに、物語と話の書き間違い（知らない軍・駒・装備、ほかの軍の駒の解放、同じものの 2 度目の解放、話のファイルの書き間違い）を
+## 「ファイル:行: 何がおかしいか」で problems に貯める。書き間違いのある話は、並びから外す（遊べない）。
+
+const StoryFile := preload("res://game/story_file.gd")
+const Episode := preload("res://game/episode.gd")
+
+## 物語のファイルを置く所（ファイルの名前が物語の id）と、物語の並びのファイル。
+const DIR := "res://game/story/campaigns/"
+const ORDER_FILE := "res://game/story/campaigns.txt"
+const SECTIONS := ["campaign", "start", "episodes"]
+
+## 物語の id（クリアの記録に書く。変えると記録が外れる）。ファイルの名前と同じ。
+var id := &""
+## 物語を選ぶ場面と、話の一覧の見出しに出す名前。
+var title := ""
+## 人が使う軍。
+var army := UnitKind.Army.MILITARY
+## この物語の編成の決まりの名前（取っておく部隊に書く。物語ごとに違う）。
+var rules_id := &""
+## 最初から雇える駒・持たせられる装備・部隊のコストの上限（話のクリアで増える。docs/story.md の「解放」）。
+var starting_kinds: Array[UnitKind.Id] = []
+var starting_items: Array[Equipment.Id] = []
+var starting_budget := 0
+## 話の並び（一本道）。
+var episodes: Array[Episode] = []
+var path := ""
+var problems: PackedStringArray = []
+
+
+## 物語の並び（ORDER_FILE の [campaigns] の順）を読む。書き間違いは、どれかの物語の problems か、並びの problems に入る。
+## 返すもの: {"campaigns": [物語, …], "problems": 並びのファイルの書き間違い}。
+static func load_all() -> Dictionary:
+	var file: RefCounted = StoryFile.open(ORDER_FILE)
+	file.check_sections(["campaigns"])
+	var found: Array = []
+	var ids := {}
+	var rules_ids := {DeckRules.VERSUS: 0}
+	var episode_ids := {}
+	for row: Dictionary in file.rows("campaigns"):
+		var campaign_id: String = row["text"]
+		if ids.has(campaign_id):
+			file.problem(row["line"], "物語「%s」が 2 度ある" % campaign_id)
+			continue
+		ids[campaign_id] = true
+		if not FileAccess.file_exists(DIR + campaign_id + ".txt"):
+			file.problem(row["line"], "物語のファイルが無い: %s%s.txt" % [DIR, campaign_id])
+			continue
+		var campaign: RefCounted = load_file(DIR + campaign_id + ".txt")
+		if rules_ids.has(campaign.rules_id):
+			campaign.problems.append("%s: 編成の決まりの名前「%s」が、ほかの物語か対戦と重なっている" % [campaign.path, campaign.rules_id])
+		rules_ids[campaign.rules_id] = true
+		for episode: RefCounted in campaign.episodes:
+			if episode_ids.has(episode.id):
+				campaign.problems.append("%s: 話「%s」は 2 つの物語に入っている" % [campaign.path, episode.id])
+			episode_ids[episode.id] = true
+		found.append(campaign)
+	if found.is_empty():
+		file.problem(1, "物語が 1 つも無い")
+	return {"campaigns": found, "problems": file.problems}
+
+
+static func load_file(file_path: String) -> RefCounted:
+	return read(StoryFile.open(file_path))
+
+
+## 文 text を、ファイル file_path の中身として読む（テストは、わざと壊した文を渡す）。
+static func parse(text: String, file_path := "probe.txt") -> RefCounted:
+	return read(StoryFile.parse(text, file_path))
+
+
+static func read(file: RefCounted) -> RefCounted:
+	var campaign: RefCounted = new()
+	campaign._read(file)
+	return campaign
+
+
+## 遊べるか（話が 1 つ以上ある）。話の無い物語は「準備中」。
+func is_ready() -> bool:
+	return not episodes.is_empty()
+
+
+## 話 episode_id（無ければ null）。
+func find_episode(episode_id: StringName) -> RefCounted:
+	for each: RefCounted in episodes:
+		if each.id == episode_id:
+			return each
+	return null
+
+
+func _read(file: RefCounted) -> void:
+	path = file.path
+	id = StringName(path.get_file().get_basename())
+	file.check_sections(SECTIONS)
+	if not file.has("campaign"):
+		file.problem(1, "[campaign] の節が無い")
+	var at: int = file.line_of("campaign")
+	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget"])
+	for key: String in ["title", "army", "rules", "budget"]:
+		if file.has("campaign") and not values.has(key):
+			file.problem(at, "[campaign] に「%s」が無い" % key)
+	if values.has("title"):
+		title = values["title"][0]["value"]
+	if values.has("rules"):
+		rules_id = StringName(values["rules"][0]["value"])
+	if values.has("army"):
+		var entry: Dictionary = values["army"][0]
+		var found := StoryFile.enum_value(UnitKind.Army, entry["value"])
+		if found < 0 or found == UnitKind.Army.NONE:
+			file.problem(entry["line"], "知らない軍「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Army, [UnitKind.Army.NONE])])
+		else:
+			army = found as UnitKind.Army
+	if values.has("budget"):
+		starting_budget = file.integer(values["budget"][0])
+		if starting_budget < 1:
+			file.problem(values["budget"][0]["line"], "budget は 1 以上")
+	var start: Dictionary = file.values("start", ["unit", "item"], ["unit", "item"])
+	for entry: Dictionary in start.get("unit", []):
+		var kind := StoryFile.enum_value(UnitKind.Id, entry["value"])
+		if kind < 0 or UnitKind.army(kind as UnitKind.Id) != army:
+			file.problem(entry["line"], "最初から雇える駒は、物語の軍（%s）の駒: %s" % [UnitKind.Army.keys()[army].to_lower(), entry["value"]])
+		elif not starting_kinds.has(kind):
+			starting_kinds.append(kind as UnitKind.Id)
+	if starting_kinds.is_empty():
+		file.problem(maxi(file.line_of("start"), 1), "最初から雇える駒（[start] の unit）が無い")
+	for entry: Dictionary in start.get("item", []):
+		var item := StoryFile.enum_value(Equipment.Id, entry["value"])
+		if item < 0:
+			file.problem(entry["line"], "知らない持ち物「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(Equipment.Id)])
+		elif not starting_items.has(item):
+			starting_items.append(item as Equipment.Id)
+	problems.append_array(file.problems)
+	_read_episodes(file)
+
+
+## 話を読み、物語の中での決まり（解放は物語の軍の駒・まだ使えないものだけ、決まっている部隊は物語の軍）を確かめる。
+func _read_episodes(file: RefCounted) -> void:
+	var kinds: Array = starting_kinds.duplicate()
+	var items: Array = starting_items.duplicate()
+	for row: Dictionary in file.rows("episodes"):
+		var episode_id: String = row["text"]
+		var where := "%s:%d" % [path, row["line"]]
+		if not FileAccess.file_exists(Episode.DIR + episode_id + ".txt"):
+			problems.append("%s: 話のファイルが無い: %s%s.txt" % [where, Episode.DIR, episode_id])
+			continue
+		var loaded: RefCounted = Episode.load_id(episode_id)
+		if find_episode(loaded.id) != null:
+			problems.append("%s: 話「%s」が 2 度ある" % [where, episode_id])
+			continue
+		for kind: UnitKind.Id in loaded.unlock_kinds:
+			if UnitKind.army(kind) != army:
+				loaded.problems.append("%s: 解放するのは、物語の軍（%s）の駒: %s" % [loaded.path, UnitKind.Army.keys()[army].to_lower(), UnitKind.Id.keys()[kind].to_lower()])
+			elif kinds.has(kind):
+				loaded.problems.append("%s: %s は、この話の前から雇える" % [loaded.path, UnitKind.Id.keys()[kind].to_lower()])
+			kinds.append(kind)
+		for item: Equipment.Id in loaded.unlock_items:
+			if items.has(item):
+				loaded.problems.append("%s: %s は、この話の前から持たせられる" % [loaded.path, Equipment.Id.keys()[item].to_lower()])
+			items.append(item)
+		for squad_row: Array in loaded.squad:
+			if UnitKind.army(squad_row[0]) != army:
+				loaded.problems.append("%s: 決まっている部隊は、物語の軍（%s）の駒" % [loaded.path, UnitKind.Army.keys()[army].to_lower()])
+				break
+		if not loaded.problems.is_empty():
+			problems.append_array(loaded.problems)
+			continue  # 書き間違いのある話は並べない（遊べない）
+		episodes.append(loaded)

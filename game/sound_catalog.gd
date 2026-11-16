@@ -2,7 +2,7 @@ extends RefCounted
 ## 鳴らす音の表（名前 -> 素材のファイルと、鳴らし方）。ノードに依存しない。
 ##
 ## 鳴らすのは sound.gd。場面ごとの BGM は scene_flow.gd の表（"music"）が、ここの曲の名前で決める。
-## 対戦の曲は、盤の見た目ごと（LOOK_MUSIC）。ストーリーの話は、話のデータで選び直せる（docs/sound.md）。
+## 対戦の曲は、盤の見た目ごと（LOOK_MUSIC）。ストーリーの話は、話のファイルで選び直せる（docs/sound.md）。
 ## **音を 1 つ足すのは、素材を assets/audio/ に置き（README.md と LICENSE を書く）、ここに 1 行足すだけ。**
 ## 鳴らす側は名前で頼む（sound.gd の play）。表に無い名前・ファイルの無い名前は、黙って何もしない
 ## （画面の側（game/）のコードが名前で鳴らす音が表にあることは、tests/game/test_sound.gd が確かめる）。
@@ -21,7 +21,7 @@ const MUSIC := {
 	&"battle_ruins": {"path": "res://assets/audio/randommind/medieval_the_bards_tale_loop.ogg", "loop": true, "volume_db": -9.5},
 	## 対戦（結晶の森。夜風の静かな曲）。
 	&"battle_crystal": {"path": "res://assets/audio/randommind/fantasy_rising_moon.ogg", "loop": true, "volume_db": -7.5},
-	## 緊迫した戦い（ストーリーの守り切る話など。話のデータの MUSIC で選ぶ）。
+	## 緊迫した戦い（ストーリーの守り切る話など。話のファイルの music で選ぶ）。
 	&"battle_tense": {"path": "res://assets/audio/randommind/medieval_battle.ogg", "loop": true, "volume_db": -8.0},
 	## ストーリーの会話。
 	&"talk": {"path": "res://assets/audio/randommind/medieval_the_old_tower_inn_loop.ogg", "loop": true, "volume_db": -2.5},

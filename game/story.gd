@@ -2,8 +2,8 @@ extends RefCounted
 ## ストーリー（docs/story.md）: 物語の並びと、物語ごとの進み具合（クリアした話、選んだ部隊）。読み書きは save_store.gd（user://story.json）。
 ## ノードに依存しない。
 ##
-## - 物語は、軍 1 つと話の列（game/campaigns/ の 1 ファイル）。CAMPAIGNS の順に並ぶ。物語を選んでから、その物語の話を選ぶ。
-## - 話は物語の中で一本道。物語の EPISODES の順に並ぶ。話の一覧（episode_list_screen.gd）で、前の話をクリアした話と、クリアした話を選べる。
+## - 物語は、軍 1 つと話の列（game/story/campaigns/ の 1 ファイル。campaign.gd）。game/story/campaigns.txt の順に並ぶ。物語を選んでから、その物語の話を選ぶ。
+## - 話は物語の中で一本道（game/story/episodes/ の 1 ファイル。episode.gd）。物語の [episodes] の順に並ぶ。話の一覧（episode_list_screen.gd）で、前の話をクリアした話と、クリアした話を選べる。
 ## - 進み具合（クリア、選んだ部隊、雇える駒）は物語ごと。名前に物語の付かない関数は、いま選んでいる物語（campaign）の進み具合を読む。
 ## - 書くのは、物語ごとの、クリアした話の id の一覧と、出撃の準備で最後に選んだ部隊の id だけ。
 ##   壊れたファイル・知らない id があっても、起動を止めない（知らない話・物語の記録は残して書き戻す）。
@@ -13,6 +13,8 @@ const SaveStore := preload("res://game/save_store.gd")
 const Run := preload("res://game/run.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
+const Campaign := preload("res://game/campaign.gd")
+const Episode := preload("res://game/episode.gd")
 
 ## クリアした話が増えた。
 signal changed
@@ -27,15 +29,8 @@ const BATTLE := SceneFlow.BATTLE
 const EPISODE_LIST := SceneFlow.EPISODES
 const SORTIE := SceneFlow.SORTIE
 
-## 物語の並び（game/campaigns/ の 1 ファイルが 1 物語）。話の無い物語は「準備中」で、選べない。
-const MILITARY := preload("res://game/campaigns/military.gd")
-const CAMPAIGNS: Array[Script] = [
-	MILITARY,
-	preload("res://game/campaigns/fantasy.gd"),
-]
-## MILITARY の物語の、編成の決まりの名前と軍（部隊の編成の画面の「ストーリー用」は、いまこの物語の決まり）。
-const RULES_ID := MILITARY.RULES_ID
-const ARMY := MILITARY.ARMY
+## 最初の物語の id。版 1 の記録（物語が 1 つだったころ）は、この物語の記録として読む。
+const MILITARY_ID := &"military"
 ## 既定の編成で、役割ごとに 1 つ持たせる装備（無い役割は持たせない）。
 const DEFAULT_ITEMS := {
 	UnitKind.Role.VANGUARD: Equipment.Id.IRON_SHIELD,
@@ -48,7 +43,7 @@ const NOTICE_NAME := "知らせ"
 ## 取っておく先（null なら書かない。検査・自動の対戦・スクリーンショットでは null）。
 var store: RefCounted
 ## いま選んでいる物語（物語を選ぶ画面で選ぶ。記録には書かない）。
-var campaign: Script = MILITARY
+var campaign: Campaign = military()
 ## 物語の id（String）-> {"cleared": [話の id（String）, …], "squad": 部隊の id（空なら既定の編成）}。知らない物語の記録も残す。
 var _records := {}
 ## 出撃の準備で最後に選んだ部隊（いまの物語の。取っておいた部隊の id。空なら既定の編成）。次に起動しても選ばれている。
@@ -71,32 +66,32 @@ func load_saved() -> void:
 ## 版 1 の形（{"cleared", "squad"}。物語が 1 つだったころ）は、MILITARY の物語の記録として読む。
 func load_data(data: Dictionary) -> void:
 	_records.clear()
-	var campaigns: Variant = data.get("campaigns")
-	if typeof(campaigns) != TYPE_DICTIONARY:
-		_records[String(MILITARY.ID)] = _read_record(data)
+	var saved_campaigns: Variant = data.get("campaigns")
+	if typeof(saved_campaigns) != TYPE_DICTIONARY:
+		_records[String(MILITARY_ID)] = _read_record(data)
 		_fill_earlier_clears()
 		return
-	for id: Variant in campaigns:
-		if typeof(id) in [TYPE_STRING, TYPE_STRING_NAME] and String(id) != "" and typeof(campaigns[id]) == TYPE_DICTIONARY:
-			_records[String(id)] = _read_record(campaigns[id])
+	for id: Variant in saved_campaigns:
+		if typeof(id) in [TYPE_STRING, TYPE_STRING_NAME] and String(id) != "" and typeof(saved_campaigns[id]) == TYPE_DICTIONARY:
+			_records[String(id)] = _read_record(saved_campaigns[id])
 	_fill_earlier_clears()
 
 
 ## 話は物語の中で一本道なので、クリアした話より前の話は、どれもクリアしたものとして読む。
 ## 物語の頭に話が足された（チュートリアル）とき、前の版の記録で先へ進んでいた人が、足された話のぶん解放と本編を失わないため。
 func _fill_earlier_clears() -> void:
-	for each in CAMPAIGNS:
-		var id := String(each.ID)
+	for each: Campaign in campaigns():
+		var id := String(each.id)
 		if not _records.has(id):
 			continue
 		var cleared: Array = _records[id]["cleared"]
 		var last := -1
-		for i: int in each.EPISODES.size():
-			if cleared.has(String(each.EPISODES[i].ID)):
+		for i: int in each.episodes.size():
+			if cleared.has(String(each.episodes[i].id)):
 				last = i
 		for i: int in last:
-			if not cleared.has(String(each.EPISODES[i].ID)):
-				cleared.append(String(each.EPISODES[i].ID))
+			if not cleared.has(String(each.episodes[i].id)):
+				cleared.append(String(each.episodes[i].id))
 
 
 static func _read_record(data: Dictionary) -> Dictionary:
@@ -113,55 +108,94 @@ static func _read_record(data: Dictionary) -> Dictionary:
 ## ファイルに書く中身: {"campaigns": {物語の id: {"cleared": [話の id, …], "squad": 部隊の id（既定の編成なら書かない）}}}。
 ## クリアも部隊も無い物語は書かない。
 func to_data() -> Dictionary:
-	var campaigns := {}
+	var written_campaigns := {}
 	for id: String in _records:
 		var record: Dictionary = _records[id]
 		var written := {"cleared": (record["cleared"] as Array).duplicate()}
 		if record["squad"] != "":
 			written["squad"] = record["squad"]
 		if not (written["cleared"] as Array).is_empty() or written.has("squad"):
-			campaigns[id] = written
-	return {"campaigns": campaigns}
+			written_campaigns[id] = written
+	return {"campaigns": written_campaigns}
 
 
 ## 物語 of_campaign の記録（無ければ空の記録を作る）。
-func _record(of_campaign: Script) -> Dictionary:
-	var id := String(of_campaign.ID)
+func _record(of_campaign: Campaign) -> Dictionary:
+	var id := String(of_campaign.id)
 	if not _records.has(id):
 		_records[id] = {"cleared": [] as Array[String], "squad": ""}
 	return _records[id]
 
 
-func _cleared_in(of_campaign: Script) -> Array:
+func _cleared_in(of_campaign: Campaign) -> Array:
 	return _record(of_campaign)["cleared"]
 
 
 # ---- 物語 ----
 
+## 読み込んだ物語の並び（最初に使うときに game/story/ から読む）と、読み込みの書き間違い。
+static var _campaigns: Array[Campaign] = []
+static var _problems: PackedStringArray = []
+static var _loaded := false
+
+
+## 物語の並び（game/story/campaigns.txt の順）。話の無い物語は「準備中」で、選べない。
+## 書き間違いのある話は並ばない（読み込みの書き間違いは load_problems() と、エラーの出力）。
+static func campaigns() -> Array[Campaign]:
+	if not _loaded:
+		_loaded = true
+		var found: Dictionary = Campaign.load_all()
+		_campaigns.assign(found["campaigns"])
+		_problems = found["problems"]
+		for each: Campaign in _campaigns:
+			_problems.append_array(each.problems)
+		for problem: String in _problems:
+			push_error("ストーリーのデータの書き間違い: " + problem)
+	return _campaigns
+
+
+## 物語と話のファイルの書き間違い（空なら正しい。test_episode_data.gd が見る）。
+static func load_problems() -> PackedStringArray:
+	campaigns()
+	return _problems
+
+
+## 物語 id（無ければ null）。
+static func campaign_by_id(id: StringName) -> Campaign:
+	for each: Campaign in campaigns():
+		if each.id == id:
+			return each
+	return null
+
+
+## 最初の物語（MILITARY の物語）。
+static func military() -> Campaign:
+	return campaign_by_id(MILITARY_ID)
+
 
 ## 物語 of_campaign を選ぶ（話の一覧・出撃の準備・選んだ部隊・雇える駒は、この物語のものになる）。
-func choose_campaign(of_campaign: Script) -> void:
+func choose_campaign(of_campaign: Campaign) -> void:
 	campaign = of_campaign
 
 
 ## 物語 of_campaign を遊べるか（話が 1 つ以上ある）。話の無い物語は「準備中」。
-static func is_ready(of_campaign: Script) -> bool:
-	return not of_campaign.EPISODES.is_empty()
+static func is_ready(of_campaign: Campaign) -> bool:
+	return of_campaign.is_ready()
 
 
 ## 話 episode の物語（どの物語にも無ければ null）。
-static func campaign_of(episode: Script) -> Script:
-	for each in CAMPAIGNS:
-		if each.EPISODES.has(episode):
+static func campaign_of(episode: Episode) -> Campaign:
+	for each: Campaign in campaigns():
+		if each.episodes.has(episode):
 			return each
 	return null
 
 
 ## どの物語の話も、物語の順・話の順に並べたもの。
-static func all_episodes() -> Array[Script]:
-	var episodes: Array[Script] = []
-	for each in CAMPAIGNS:
-		episodes.append_array(each.EPISODES)
+static func all_episodes() -> Array[Episode]:
+	var episodes: Array[Episode] = []
+	for each: Campaign in campaigns():
+		episodes.append_array(each.episodes)
 	return episodes
 
 
@@ -196,80 +230,79 @@ func _save() -> void:
 
 
 ## 物語 of_campaign（省けば、いまの物語）の話のうち、クリアした話の数。
-func cleared_count(of_campaign: Script = null) -> int:
-	var at: Script = campaign if of_campaign == null else of_campaign
+func cleared_count(of_campaign: Campaign = null) -> int:
+	var at: Campaign = campaign if of_campaign == null else of_campaign
 	var cleared := _cleared_in(at)
-	return at.EPISODES.filter(func(episode: Script) -> bool: return cleared.has(String(episode.ID))).size()
+	return at.episodes.filter(func(episode: Episode) -> bool: return cleared.has(String(episode.id))).size()
 
 
 ## 遊べる物語を、どれも全部クリアしたか（タイトルの「ストーリー（クリア済み）」）。
 func all_cleared() -> bool:
-	for each in CAMPAIGNS:
-		if is_ready(each) and cleared_count(each) < each.EPISODES.size():
+	for each: Campaign in campaigns():
+		if is_ready(each) and cleared_count(each) < each.episodes.size():
 			return false
 	return true
 
 
 ## 話 episode を遊べるか（いまの物語の話で）: 並びの最初の話か、1 つ前の話をクリアしている（一本道）。クリアした話は、いつでも遊び直せる。
-func is_available(episode: Script) -> bool:
-	var index: int = campaign.EPISODES.find(episode)
-	return index == 0 or (index > 0 and is_cleared(campaign.EPISODES[index - 1].ID))
+func is_available(episode: Episode) -> bool:
+	var index: int = campaign.episodes.find(episode)
+	return index == 0 or (index > 0 and is_cleared(campaign.episodes[index - 1].id))
 
 
 ## 話 episode の、その物語の並びの番号（1 から。どの物語にも無ければ 0）。
-static func number_of(episode: Script) -> int:
+static func number_of(episode: Episode) -> int:
 	var of_campaign := campaign_of(episode)
-	return 0 if of_campaign == null else of_campaign.EPISODES.find(episode) + 1
+	return 0 if of_campaign == null else of_campaign.episodes.find(episode) + 1
 
 
 ## 次に遊ぶ話（いまの物語で）: まだクリアしていない最初の話。全部クリアしていたら最初の話。
-func next_episode() -> Script:
-	for episode: Script in campaign.EPISODES:
-		if not is_cleared(episode.ID):
+func next_episode() -> Episode:
+	for episode: Episode in campaign.episodes:
+		if not is_cleared(episode.id):
 			return episode
-	return campaign.EPISODES[0]
+	return campaign.episodes[0]
 
 
 # ---- 解放（docs/story.md の「解放」） ----
 
 
 ## 物語の中で、いま使えるもの: 雇える駒の種類、持たせられる装備、部隊のコストの上限。
-## 物語の最初の値（物語の STARTING_KINDS・STARTING_ITEMS・STARTING_BUDGET）に、クリアした話の解放
-## （話の UNLOCKS・UNLOCK_ITEMS・BUDGET_UP）を足したもの。記録には書かず、その場で求める。
+## 物語の最初の値（物語のファイルの [start] と budget）に、クリアした話の解放（話のファイルの [unlock]）を足したもの。記録には書かず、その場で求める。
 class Unlocked:
 	extends RefCounted
-	var campaign: Script
+	var campaign: Campaign
 	var kinds: Array[UnitKind.Id] = []
 	var items: Array[Equipment.Id] = []
 	var budget := 0
 
-	func _init(of_campaign: Script) -> void:
+	func _init(of_campaign: Campaign) -> void:
 		campaign = of_campaign
-		kinds.assign(of_campaign.STARTING_KINDS)
-		items.assign(of_campaign.STARTING_ITEMS)
-		budget = of_campaign.STARTING_BUDGET
+		kinds.assign(of_campaign.starting_kinds)
+		items.assign(of_campaign.starting_items)
+		budget = of_campaign.starting_budget
 
 	## 話 episode のクリアで増えるものを足す。
-	func add(episode: Script) -> void:
-		for kind: UnitKind.Id in episode.UNLOCKS:
+	func add(episode: Episode) -> void:
+		for kind: UnitKind.Id in episode.unlock_kinds:
 			if not kinds.has(kind):
 				kinds.append(kind)
-		for item: Equipment.Id in StoryBattle.unlock_items_of(episode):
+		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
 				items.append(item)
-		budget += StoryBattle.budget_up_of(episode)
+		budget += episode.budget_up
 
 	## 話 episode のクリアで、これより新しく増えるものの知らせ（増えるものが無ければ空）。
 	## 1 つが {"text": 文} で、駒なら "kind" も持つ（会話の場面が、文の左に駒のアイコンを出す）。
-	func news_of(episode: Script) -> Array[Dictionary]:
+	func news_of(episode: Episode) -> Array[Dictionary]:
 		var lines: Array[Dictionary] = []
-		for kind: UnitKind.Id in episode.UNLOCKS:
+		for kind: UnitKind.Id in episode.unlock_kinds:
 			if not kinds.has(kind):
 				lines.append({"text": "新しい駒「%s」を雇えるようになった。" % UnitKind.display_name(kind), "kind": kind})
-		for item: Equipment.Id in StoryBattle.unlock_items_of(episode):
+		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
 				lines.append({"text": "新しい持ち物「%s」を持たせられるようになった。" % Equipment.display_name(item)})
-		var more := StoryBattle.budget_up_of(episode)
+		var more := episode.budget_up
 		if more > 0:
 			lines.append({"text": "部隊のコストの上限が %d になった。" % (budget + more)})
 		return lines
@@ -285,11 +318,11 @@ func unlocked_kinds() -> Array[UnitKind.Id]:
 	return unlocked().kinds
 
 
-func _unlocked_in(of_campaign: Script) -> Unlocked:
+func _unlocked_in(of_campaign: Campaign) -> Unlocked:
 	var result := Unlocked.new(of_campaign)
 	var cleared := _cleared_in(of_campaign)
-	for episode: Script in of_campaign.EPISODES:
-		if cleared.has(String(episode.ID)):
+	for episode: Episode in of_campaign.episodes:
+		if cleared.has(String(episode.id)):
 			result.add(episode)
 	return result
 
@@ -302,18 +335,18 @@ func deck_rules() -> DeckRules:
 ## 決まりの名前 rules_id の物語の、いまの進み具合の編成の決まり（どの物語の名前でもなければ null）。
 ## 取っておいた部隊を読むときに使う（app_context.gd）。
 func rules_by_id(rules_id: StringName) -> DeckRules:
-	for each in CAMPAIGNS:
-		if each.RULES_ID == rules_id:
+	for each: Campaign in campaigns():
+		if each.rules_id == rules_id:
 			return rules_of(_unlocked_in(each))
 	return null
 
 
 ## 話 episode を初めて遊ぶときに使えるもの: その物語の最初の値と、並びでその話より前の話の解放。
 ## 話の敵の強さは、これで組んだ既定の編成で測る（tools/cpu_matches.gd の --episode）。
-static func unlocked_before(episode: Script) -> Unlocked:
+static func unlocked_before(episode: Episode) -> Unlocked:
 	var of_campaign := campaign_of(episode)
 	var result := Unlocked.new(of_campaign)
-	for earlier: Script in of_campaign.EPISODES:
+	for earlier: Episode in of_campaign.episodes:
 		if earlier == episode:
 			break
 		result.add(earlier)
@@ -321,18 +354,18 @@ static func unlocked_before(episode: Script) -> Unlocked:
 
 
 ## 話 episode を初めて遊ぶときに雇える駒の種類。
-static func kinds_before(episode: Script) -> Array[UnitKind.Id]:
+static func kinds_before(episode: Episode) -> Array[UnitKind.Id]:
 	return unlocked_before(episode).kinds
 
 
-## 使えるもの given の、ストーリーの編成の決まり（名前は物語の RULES_ID）。
+## 使えるもの given の、ストーリーの編成の決まり（名前は物語の rules_id）。
 ## 数の上限は対戦と同じ。予算は、物語と進み具合で決まる（対戦の予算を超えてもよい）。並びは役割の順（前衛・後衛・奇襲・回復）。
 static func rules_of(given: Unlocked) -> DeckRules:
 	var roster := given.kinds.duplicate()
 	roster.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
 		return UnitKind.role(a) < UnitKind.role(b) or (UnitKind.role(a) == UnitKind.role(b) and a < b))
-	var army: UnitKind.Army = given.campaign.ARMY
-	return DeckRules.new(given.campaign.RULES_ID, "ストーリー", Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items)
+	var army: UnitKind.Army = given.campaign.army
+	return DeckRules.new(given.campaign.rules_id, "ストーリー", Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items)
 
 
 ## 使えるもの given の、ストーリーの既定の編成。初めて遊ぶ人が出撃の準備で見て納得できる、素直な形にする:
@@ -341,7 +374,7 @@ static func rules_of(given: Unlocked) -> DeckRules:
 ## 並びは役割の順（同じ種類はまとめる）。並びの順に初期位置へ置かれるので、前衛が前に出る。
 static func default_deck(given: Unlocked) -> Deck:
 	var rules := rules_of(given)
-	var deck := Deck.new(given.campaign.ARMY, rules)
+	var deck := Deck.new(given.campaign.army, rules)
 	var roster := deck.available_kinds()
 	var hired: Array[UnitKind.Id] = []
 	var cost := 0
@@ -363,13 +396,13 @@ static func default_deck(given: Unlocked) -> Deck:
 	return deck
 
 
-## 物語 of_campaign の、まだ何もクリアしていないときに使えるもの。
-static func starting(of_campaign: Script = MILITARY) -> Unlocked:
-	return Unlocked.new(of_campaign)
+## 物語 of_campaign（省けば最初の物語）の、まだ何もクリアしていないときに使えるもの。
+static func starting(of_campaign: Campaign = null) -> Unlocked:
+	return Unlocked.new(military() if of_campaign == null else of_campaign)
 
 
 ## 話 episode の対戦（人は、その話を初めて遊ぶときの既定の編成）。敵の強さを測る道具が使う。
-static func first_battle(episode: Script) -> StoryBattle:
+static func first_battle(episode: Episode) -> StoryBattle:
 	return StoryBattle.new(episode, default_deck(unlocked_before(episode)))
 
 
@@ -378,11 +411,11 @@ static func first_battle(episode: Script) -> StoryBattle:
 
 ## 話 episode を、いまの進み具合で始める流れ（run_of。人の部隊は、出撃の準備で選ぶまで、いま使えるもので組んだ既定の編成）。
 ## 話の物語を、いまの物語にする。初めてクリアする話なら、あとの会話の最後に、増えるものの知らせを出す。
-func run_now(episode: Script) -> Run:
+func run_now(episode: Episode) -> Run:
 	choose_campaign(campaign_of(episode))
 	var now := unlocked()
 	var news: Array[Dictionary] = []
-	if not is_cleared(episode.ID):
+	if not is_cleared(episode.id):
 		news = now.news_of(episode)
 	return run_of(episode, default_deck(now), news)
 
@@ -390,14 +423,14 @@ func run_now(episode: Script) -> Run:
 ## 話 episode の流れ（run.gd）: 会話（前）→ 出撃の準備 → 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃の準備で選び直せる）。
 ## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」「部隊を選び直す」（出撃の準備へ）か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
 ## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。あとの会話の最後に、知らせの行で出す。
-static func run_of(episode: Script, human_deck: Deck, news: Array[Dictionary] = []) -> Run:
+static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = []) -> Run:
 	var run := Run.new()
 	run.exit = EPISODE_LIST
-	run.add(TALK, talk_of(episode, episode.BEFORE))
+	run.add(TALK, talk_of(episode, episode.before))
 	var battle := StoryBattle.new(episode, human_deck)
 	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃の準備で、battle の人の部隊を選び直す
 	run.add(BATTLE, battle)
-	var after := talk_of(episode, episode.AFTER)
+	var after := talk_of(episode, episode.after)
 	for news_line: Dictionary in news:
 		var line := {"side": NOTICE_SIDE, "name": NOTICE_NAME}
 		line.merge(news_line)
@@ -407,10 +440,10 @@ static func run_of(episode: Script, human_deck: Deck, news: Array[Dictionary] = 
 
 
 ## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "name": 話し手, "text": 文}, …],
-## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲（話のデータの TALK_MUSIC。空なら場面の表の曲）}。
-static func talk_of(episode: Script, rows: Array) -> Dictionary:
+## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲（話のファイルの talk_music。空なら場面の表の曲）}。
+static func talk_of(episode: Episode, rows: Array) -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row: Array in rows:
-		lines.append({"side": row[0], "name": episode.SPEAKERS[row[0]], "text": row[1]})
-	return {"title": episode.TITLE, "lines": lines, "board": episode.MAP.map().make_board(), "look": episode.LOOK,
-			"music": StoryBattle.talk_music_of(episode)}
+		lines.append({"side": row[0], "name": episode.speakers[row[0]], "text": row[1]})
+	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
+			"music": episode.talk_music}

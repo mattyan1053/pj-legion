@@ -1,0 +1,47 @@
+# ストーリーの話「尾根の籠城」。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 1・2 話と同じマップ「尾根の小道」（rules/maps/ridge_path.gd）を、勝ち方を変えて使い回す（Issue #49 の「マップの使い回し」）。
+# 人は守る側: 決められたターンが終わるまで、将と本陣を守り切れば勝ち（hold_turns。docs/win-conditions.md の「守り切る」）。
+# 敵は数で押す。尾根の中ほどから始まり、いつもの勝ち方（将の撃破、本陣の占拠）で攻めてくる。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 尾根の籠城
+map = ridge_path
+look = stone_walls
+music = battle_tense
+hold_turns = 10
+
+[unlock]
+budget = 2
+
+[ally]
+name = 隊長
+
+[enemy]
+name = 追撃隊長
+army = fantasy
+unit = paladin + iron_shield
+unit = paladin + iron_shield
+unit = sorcerer
+unit = sorcerer
+unit = spellblade
+unit = priest
+deploy = 8,9  5,9  11,9  3,11  13,11
+deploy = 8,7  6,7  10,7  8,5
+
+[before]
+隊長: 追っ手だ。数が多すぎる。
+隊長: 援軍が着くまで、ここを守り切る。本陣を空けるな。
+追撃隊長: 尾根ごと押しつぶしてやれ。
+
+[after]
+隊長: ……持ちこたえた。援軍の旗が見える。
+追撃隊長: 退け。今日はここまでだ。
+隊長: 追っ手の残りは、谷の手前の渓谷へ逃げた。
+
+[cues]
+(turn 8) 隊長: 援軍まで、あと 3 ターンだ。持ちこたえろ。
+(turn 10) 追撃隊長: これが最後だ。全員で押し込め。

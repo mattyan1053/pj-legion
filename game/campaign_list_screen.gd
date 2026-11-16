@@ -12,6 +12,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const DeckText := preload("res://game/deck_text.gd")
+const Campaign := preload("res://game/campaign.gd")
 const Story := preload("res://game/story.gd")
 
 signal finished(outcome: StringName)
@@ -25,7 +26,7 @@ const COLOR_NEW := Palette.INFO
 const COLOR_LOCKED := Palette.TEXT_OFF
 
 var context: AppContext
-## 物語（Script）-> カード（Button）。
+## 物語（campaign.gd）-> カード（Button）。
 var _cards := {}
 
 
@@ -61,7 +62,7 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 28)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(row)
-	for campaign in Story.CAMPAIGNS:
+	for campaign in Story.campaigns():
 		var card := _build_card(campaign)
 		row.add_child(card)
 		_cards[campaign] = card
@@ -85,7 +86,7 @@ func resume_label() -> String:
 
 
 ## 物語 campaign を選んで、その話の一覧へ。準備中の物語なら何もしない。
-func choose(campaign: Script) -> void:
+func choose(campaign: Campaign) -> void:
 	if not Story.is_ready(campaign):
 		return
 	context.story.choose_campaign(campaign)
@@ -102,15 +103,15 @@ func campaigns() -> Array:
 	return _cards.keys()
 
 
-func is_card_enabled(campaign: Script) -> bool:
+func is_card_enabled(campaign: Campaign) -> bool:
 	return not (_cards[campaign] as Button).disabled
 
 
 ## 物語 campaign の状態の文（検査用にも）: 「準備中」「全 N 話」「M / N 話クリア」「全 N 話クリア」。
-func status_text(campaign: Script) -> String:
+func status_text(campaign: Campaign) -> String:
 	if not Story.is_ready(campaign):
 		return "準備中"
-	var total: int = campaign.EPISODES.size()
+	var total: int = campaign.episodes.size()
 	var cleared: int = context.story.cleared_count(campaign)
 	if cleared == 0:
 		return "全 %d 話" % total
@@ -140,12 +141,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		number = event.physical_keycode - KEY_1
 	elif event.physical_keycode >= KEY_KP_1 and event.physical_keycode <= KEY_KP_9:
 		number = event.physical_keycode - KEY_KP_1
-	if number >= 0 and number < Story.CAMPAIGNS.size() and Story.is_ready(Story.CAMPAIGNS[number]):
+	if number >= 0 and number < Story.campaigns().size() and Story.is_ready(Story.campaigns()[number]):
 		context.play_sound(&"ui_confirm")
-		choose(Story.CAMPAIGNS[number])
+		choose(Story.campaigns()[number])
 
 
-func _build_card(campaign: Script) -> Button:
+func _build_card(campaign: Campaign) -> Button:
 	var ready := Story.is_ready(campaign)
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
@@ -165,15 +166,15 @@ func _build_card(campaign: Script) -> Button:
 	column.add_theme_constant_override("separation", 10)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(column)
-	var title := _label(campaign.TITLE, 26)
+	var title := _label(campaign.title, 26)
 	if not ready:
 		title.add_theme_color_override("font_color", COLOR_LOCKED)
 	column.add_child(title)
-	var army := _label("使う軍: %s" % DeckText.army_name(campaign.ARMY), 16)
+	var army := _label("使う軍: %s" % DeckText.army_name(campaign.army), 16)
 	army.add_theme_color_override("font_color", COLOR_TEXT_DIM if ready else COLOR_LOCKED)
 	column.add_child(army)
 	var status := _label(status_text(campaign), 18)
-	var all_cleared: bool = ready and context.story.cleared_count(campaign) == campaign.EPISODES.size()
+	var all_cleared: bool = ready and context.story.cleared_count(campaign) == campaign.episodes.size()
 	status.add_theme_color_override("font_color", COLOR_CLEARED if all_cleared else (COLOR_NEW if ready else COLOR_LOCKED))
 	column.add_child(status)
 	return card

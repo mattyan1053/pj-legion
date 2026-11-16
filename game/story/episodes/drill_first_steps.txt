@@ -1,0 +1,35 @@
+# ストーリーの話「はじめの一歩」。MILITARY の物語のチュートリアル（1 / 6）。1 話 1 ファイル。
+#
+# チュートリアルの話は、1 つの話で 1〜2 個だけ教える（docs/story.md の「チュートリアル」）。
+# 部隊は決まっていて（[ally] の unit）、敵は少なく、まず負けない。教え方は、出撃の準備の文（lesson）と、対戦の途中の台詞（[cues]）。
+# 話し手と会話の文は仮のもの（遊び方を伝える文として書いた。世界と登場人物は、まだ決まっていない。Issue #49）。
+# 教えること: 駒を動かして、敵を攻撃する。敵の将を倒せば勝ち。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = はじめの一歩
+map = drill_field
+look = stone_walls
+lesson = 駒を押して動かし、隣の敵を攻撃する。敵の将を倒せば勝ち。
+
+[ally]
+name = 教官
+unit = shield_trooper
+unit = shield_trooper
+
+[enemy]
+name = 演習相手
+army = fantasy
+unit = sorcerer
+
+[before]
+教官: 演習を始める。まずは駒の動かし方からだ。
+教官: 敵の将を倒せば、こちらの勝ちになる。
+
+[after]
+教官: いい動きだ。次は、離れた所からの撃ち合いを覚えよう。
+
+[cues]
+(turn 1) 教官: 自分の駒を押すと、動ける青いマスが出る。
+(turn 2) 教官: 敵の隣で、赤いマスの敵を押せば攻撃だ。
+(fallen enemy) 教官: よし。残るは敵の将だ。

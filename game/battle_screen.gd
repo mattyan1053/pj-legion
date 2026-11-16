@@ -503,7 +503,7 @@ func talk_card_neighbors() -> Array[Rect2]:
 	return rects
 
 
-## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の CUES から出す）。
+## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の [cues] から出す）。
 func say_for_check(lines: Array[BattleCues.Line]) -> void:
 	_talk.say(lines)
 

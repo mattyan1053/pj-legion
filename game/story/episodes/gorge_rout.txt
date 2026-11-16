@@ -1,0 +1,42 @@
+# ストーリーの話「渓谷の掃討」。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 2 つ目の手で作ったマップ「結晶の渓谷」（rules/maps/crystal_gorge.gd）。見た目は双子結晶（結晶の森）のテーマ。
+# 人の勝ち方は「敵を全滅させる」だけ（wins。docs/win-conditions.md の「全滅させる」）。敵の将を倒しても、残りの駒を倒しきるまで終わらない。
+# 敵はいつもの勝ち方（将の撃破、本陣の占拠）で攻めてくる。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 渓谷の掃討
+map = crystal_gorge
+look = crystal_forest
+wins = routed
+
+[unlock]
+budget = 2
+
+[ally]
+name = 隊長
+
+[enemy]
+name = 追撃隊長
+army = fantasy
+unit = paladin
+unit = sorcerer
+unit = priest
+
+[before]
+隊長: 追っ手は、結晶の渓谷に逃げ込んだ。
+隊長: 一人でも逃せば、また追ってくる。残らず倒す。
+隊長: 裂け目を渡るのは、両端の橋か、真ん中の門だ。
+追撃隊長: しつこい連中だ。ここで迎え撃つ。
+
+[after]
+追撃隊長: ……ここまでか。
+隊長: 追っ手は片付いた。谷へ下りよう。
+隊長: （ここまでが 4 話。続きは、まだ無い）
+
+[cues]
+(fallen enemy) 追撃隊長: 一人やられたか。散るな、固まって迎え撃て。
+(king_half enemy) 隊長: 隊長格は弱っている。だが、残りも逃がすな。

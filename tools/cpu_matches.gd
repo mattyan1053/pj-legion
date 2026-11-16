@@ -19,7 +19,8 @@ extends SceneTree
 ##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さ」）
 ##   --no-reward=1   中ボスを倒しても、聖遺物の効果とゲージを取り消す（CPU は、もらえるつもりのまま狩る）。
 ##                   倒した側の勝率のうち、聖遺物のぶんと、もともと優勢な側が倒しているぶんを切り分ける（docs/relic-buff.md の「狩られ方」）
-##   --episode=PATH ストーリーの話（game/episodes/ のスクリプトのパス）の対戦を、両方とも CPU で回す（人の側も CPU が持つ）。
+##   --episode=ID   ストーリーの話（game/story/episodes/ のファイルの名前。ridge_hold など。ファイルのパスでもよい）の対戦を、
+##                   両方とも CPU で回す（人の側も CPU が持つ）。物語の [episodes] に並んでいる話だけ。
 ##                   盤・部隊・初期位置はその話のもの（ステージと軍の組み合わせは回さない。--decks、--pairings、--stage は見ない）。
 ##                   人の側は、その話を初めて遊ぶときの既定の編成（story.gd の first_battle）。
 ##                   話の敵の強さを、人の側の勝率で測る（docs/story.md の「敵の強さ」）
@@ -288,7 +289,7 @@ func _initialize() -> void:
 	var versus_by_stage: Dictionary[int, Array] = {}
 	# 駒の種類ごとの表を、[いまの CPU の駒, 別の版の駒] に分けたもの。局数も同じ並び（将の行に使う）。
 	var versus_by_kind: Array[Dictionary] = [{}, {}]
-	var episode: Script = load(args["episode"]) if args.has("episode") else null
+	var episode: RefCounted = _find_episode(args["episode"]) if args.has("episode") else null
 	if args.has("episode") and episode == null:
 		printerr("--episode の話を読めない: %s" % args["episode"])
 		quit(1)
@@ -481,7 +482,7 @@ func _initialize() -> void:
 	])
 	if episode != null:
 		var sample := Story.first_battle(episode).make_setup(first_seed)
-		_episode_title = episode.TITLE
+		_episode_title = episode.title
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			print("  プレイヤー%d（%s）: %s" % [side + 1, "人の側" if side == Unit.Side.PLAYER1 else "敵", _deck_text(sample.deck_of(side))])
 	elif random_squads:
@@ -727,12 +728,21 @@ func _map_rows(path: String) -> PackedStringArray:
 ## --squads=random の、人の側の部隊。その話を初めて遊ぶときに雇える駒から、種で決まる順に、数の上限まで予算の中で雇う。
 ## 予算と持たせられる装備も、その話を初めて遊ぶときのもの（story.gd の unlocked_before）。
 ## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.DEFAULT_ITEMS）。
-func _random_squad(episode: Script, squad_seed: int) -> Deck:
+## 話 id（ファイルのパスなら、その名前）の話。物語に並んでいなければ null。
+func _find_episode(given: String) -> RefCounted:
+	var id := StringName(given.get_file().get_basename())
+	for each: RefCounted in Story.all_episodes():
+		if each.id == id:
+			return each
+	return null
+
+
+func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = squad_seed
 	var given := Story.unlocked_before(episode)
 	var kinds := given.kinds
-	var deck := Deck.new(given.campaign.ARMY, Story.rules_of(given))
+	var deck := Deck.new(given.campaign.army, Story.rules_of(given))
 	var hired: Array[UnitKind.Id] = []
 	var cost := 0
 	while hired.size() < deck.rules.max_units:
