@@ -112,10 +112,15 @@ static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
 
 
 ## 編成の 1 行の説明（対戦設定に出す。「将、シールドトルーパー+アイアンシールド×2、…」。同じ装備は数をまとめる）。
-static func deck_summary(deck: Deck) -> String:
+## levels: 部隊の並びの順の、駒の始めのレベル（戦いの定義の start_growth。ストーリーの話）。1 でない駒は、名前の後ろにレベルを出す。
+static func deck_summary(deck: Deck, levels: Array = []) -> String:
 	var parts: Array[String] = [Names.kind(UnitKind.Id.KING)]
-	for entry in deck.entries:
+	for i in deck.entries.size():
+		var entry := deck.entries[i]
 		var text := Names.kind(entry.kind)
+		var level: int = levels[i] if i < levels.size() else 1
+		if level > 1:
+			text = Text.t("deck.summary.level", {"kind": text, "level": level})
 		var counted: Array[Equipment.Id] = []
 		for item in entry.equipment:
 			if counted.has(item):
