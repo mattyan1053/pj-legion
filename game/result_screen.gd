@@ -20,6 +20,8 @@ signal setup_pressed
 signal title_pressed
 ## 「次へ」（set_continue で出したときだけ。ストーリーで勝ったとき、流れの次の場面へ）。
 signal continue_pressed
+## 「部隊を選び直す」（set_destinations で出したときだけ。ストーリーで、出撃の準備へ戻る）。
+signal squad_pressed
 ## 全部が出そろった（行き先を選べるようになった）。
 signal revealed
 
@@ -80,6 +82,7 @@ var _detail_button: Button
 ## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
 var _stage_buttons := {}  # BoardGenerator.Stage -> Button（新しい盤面）
 var _setup_button: Button
+var _squad_button: Button
 var _continue_button: Button
 var _prompt: Label
 var _buttons: Array[Button] = []
@@ -347,11 +350,13 @@ func _buttons_ready() -> bool:
 
 
 ## 出す行き先を決める（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める）。
-## stages は「新しい盤面」で選べるステージ、setup は「対戦の設定へ」を出すか。「同じ盤面でもう一度」と「タイトルへ」は、いつも出す。
-func set_destinations(stages: Array[BoardGenerator.Stage], setup: bool) -> void:
+## stages は「新しい盤面」で選べるステージ、setup は「対戦の設定へ」、squad は「部隊を選び直す」を出すか。
+## 「同じ盤面でもう一度」と「タイトルへ」は、いつも出す。
+func set_destinations(stages: Array[BoardGenerator.Stage], setup: bool, squad := false) -> void:
 	for stage: BoardGenerator.Stage in _stage_buttons:
 		_stage_buttons[stage].visible = stages.has(stage)
 	_setup_button.visible = setup
+	_squad_button.visible = squad
 
 
 ## 「次へ」を出すか（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める。決着の画面を出すたびに決める）。
@@ -374,6 +379,17 @@ func press_continue() -> void:
 ## 「対戦の設定へ」を出しているか。検査用。
 func can_go_to_setup() -> bool:
 	return _setup_button.visible
+
+
+## 「部隊を選び直す」を出しているか。検査用。
+func can_choose_squad() -> bool:
+	return _squad_button.visible
+
+
+## 「部隊を選び直す」を押す（出していなければ何もしない）。
+func press_choose_squad() -> void:
+	if _squad_button.visible:
+		squad_pressed.emit()
 
 
 ## 「新しい盤面」で出しているステージ。検査用。
@@ -505,6 +521,10 @@ func _build_actions() -> void:
 	_setup_button = _button("対戦の設定へ（軍・相手・手番）", 320.0)
 	_setup_button.pressed.connect(setup_pressed.emit)
 	leave.add_child(_setup_button)
+	_squad_button = _button("部隊を選び直す", 220.0)
+	_squad_button.pressed.connect(press_choose_squad)
+	_squad_button.visible = false
+	leave.add_child(_squad_button)
 	var to_title := _button("タイトルへ", 180.0)
 	to_title.pressed.connect(title_pressed.emit)
 	leave.add_child(to_title)

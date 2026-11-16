@@ -146,6 +146,9 @@ func _on_finished(outcome: StringName, scene: StringName) -> void:
 			context.run = null
 		go(following)
 		return
+	if outcome == Run.PREVIOUS and context.run != null and context.run.scene() == scene:
+		go(context.run.back())
+		return
 	var next := SceneFlow.next(scene, outcome)
 	if next == &"":
 		push_error("app: 場面 %s の終わり方 %s の行き先が決まっていない" % [scene, outcome])

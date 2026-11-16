@@ -8,6 +8,8 @@ extends Node
 ## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）→ 一覧 → タイトル。
 ## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しく組む」は、選んでいる方の決まりの部隊だけ（混ざらない）。
 ## 組む画面の決まり（雇える駒、予算、数の上限）は、切り替えで決まる（rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。
+## - 流れ（run.gd）の中で置かれたら（出撃の準備の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
+##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備へ戻る）。寄り道の間に取っておいた部隊を、出撃の準備で選ぶ。
 
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
@@ -15,8 +17,9 @@ const DeckLibrary := preload("res://game/deck_library.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
+const Run := preload("res://game/run.gd")
 
-## 「タイトルへ戻る」で &"back"。
+## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
 
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.94)
@@ -59,6 +62,11 @@ var _list_actions: Array[Button] = []
 var _list_selected := ""
 var _mode_buttons := {}
 var _mode_note: Label
+var _back_button: Button
+## 流れの中で置かれたときに渡されたもの（{"rules": 決まりの名前, "back_label": 戻るボタンの文字}）。流れの外なら空。
+var _detour := {}
+## 寄り道の間に、最後に取っておいた部隊の id。
+var _saved_in_detour := ""
 
 # ---- 組む画面 ----
 var _edit_view: Control
@@ -114,7 +122,17 @@ func _ready() -> void:
 	_dialog = _build_dialog()
 	layer.add_child(_dialog)
 	_library.changed.connect(_refresh_list)
-	set_mode(DeckRules.VERSUS)
+	var given: Variant = context.run_data(&"decks")
+	if given is Dictionary:
+		_detour = given
+		_back_button.text = _detour.get("back_label", "戻る")
+		for id: StringName in _mode_buttons:
+			(_mode_buttons[id] as Button).visible = id == _detour.get("rules", DeckRules.VERSUS)
+	set_mode(_detour.get("rules", DeckRules.VERSUS))
+	if not _detour.is_empty():
+		var current: String = context.story.squad_id
+		if _library.find(current) != null and _library.find(current).deck.rules.id == rules.id:
+			select_saved(current)
 
 
 # ==== 場面の決まり ====
@@ -149,7 +167,28 @@ func press_back() -> void:
 	elif is_editing():
 		leave_editor()
 	else:
+		leave()
+
+
+## 一覧から抜ける: タイトルへ（流れの中なら、流れの次の場面 = 出撃の準備へ。寄り道の間に取っておいた部隊を選ぶ）。
+func leave() -> void:
+	if _detour.is_empty():
 		finished.emit(&"back")
+		return
+	var saved := _library.find(_saved_in_detour)
+	if saved != null and saved.playable() and _detour.get("rules") == Story.RULES_ID:
+		context.story.choose_squad(_saved_in_detour)
+	finished.emit(Run.NEXT)
+
+
+## 流れの中（出撃の準備からの寄り道）で置かれたか。
+func is_detour() -> bool:
+	return not _detour.is_empty()
+
+
+## 一覧の「戻る」のボタンの文字（検査用）。
+func back_label() -> String:
+	return _back_button.text
 
 
 # ==== 一覧 ====
@@ -316,10 +355,10 @@ func _build_list() -> Control:
 
 	var footer := HBoxContainer.new()
 	column.add_child(footer)
-	var back := _button("タイトルへ戻る", 18)
-	back.custom_minimum_size = Vector2(220.0, 46.0)
-	back.pressed.connect(func() -> void: finished.emit(&"back"))
-	footer.add_child(back)
+	_back_button = _button("タイトルへ戻る", 18)
+	_back_button.custom_minimum_size = Vector2(220.0, 46.0)
+	_back_button.pressed.connect(leave)
+	footer.add_child(_back_button)
 	return root
 
 
@@ -507,6 +546,7 @@ func press_save() -> void:
 	else:
 		_library.replace(id, _deck_name, _deck)
 	_dirty = false
+	_saved_in_detour = id
 	show_list(id)
 
 
