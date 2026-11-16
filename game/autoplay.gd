@@ -1441,6 +1441,12 @@ func _visit_decks(app: Node) -> void:
 	screen.move_entry(1, -1)
 	var deck: Deck = screen.editing_deck()
 	_expect(deck.entries[0].kind == UnitKind.Id.SHIELD_TROOPER and deck.entries[0].equipment.size() == 1 and screen.selected_entry() == 0, "並べ替えで、装備か選択がずれた")
+	# 装備の文が行に収まらなくても、マウスを乗せれば全部読める。
+	screen.equip(Equipment.Id.SPEED_BOOTS)
+	var row_texts: Array[String] = screen.troop_row_texts(0)
+	_expect(row_texts[1] == row_texts[0] and row_texts[1].contains("スピードブーツ") and row_texts[1].contains("アイアンシールド"),
+		"部隊の行の装備の文を、マウスを乗せても読めない: %s" % [row_texts])
+	screen.unequip(Equipment.Id.SPEED_BOOTS)
 	for i in 4:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
