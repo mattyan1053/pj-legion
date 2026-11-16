@@ -69,6 +69,13 @@ func test_goal_tag_says_the_king_does_not_end_a_rout() -> void:
 	assert_true(WinText.goal_note(battle, P1).contains("敵の将を倒しても"))
 
 
+func test_boss_hunt_reads_as_a_boss_hunt() -> void:
+	var battle := Maps.battle(["....."])
+	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 中ボスの撃破（将を倒しても終わらない）", false])
+	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "中ボスを倒せば勝ち。敵の将を倒しても終わらない。")
+
+
 func test_every_win_condition_has_a_place_in_the_text() -> void:
 	for condition: GameWonEvent.Reason in GameWonEvent.Reason.values():
 		assert_true(WinText.ORDER.has(condition), "ORDER に %d が無い" % condition)

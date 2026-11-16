@@ -23,7 +23,8 @@ look = stone_walls
 # 無くてよい: 人がこのターンの終わりまで守り切れば勝ち。
 # hold_turns = 10
 # 無くてよい: 人の勝ち方（「,」で区切る。書けば、いつもの勝ち方を置き換える）。
-#   king_defeated（将の撃破）, hq_captured（本陣の占拠）, turns_held（守り切る。hold_turns と組で書く）, routed（全滅させる）
+#   king_defeated（将の撃破）, hq_captured（本陣の占拠）, turns_held（守り切る。hold_turns と組で書く）, routed（全滅させる）,
+#   boss_slain（どちらかの中ボスを倒す）
 # wins = routed
 
 # 無くてよい節: クリアで増えるもの（docs/story.md の「解放」）。unit と item は何行でも。
