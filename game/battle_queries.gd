@@ -79,11 +79,16 @@ static func threat_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 
 ## いまのフェーズの陣営の、行動済みでない駒の数。
 static func unacted_count(battle: Battle) -> int:
-	var count := 0
+	return unacted_units(battle).size()
+
+
+## いまの番の陣営の、まだ行動を終えていない駒（ターン終了の確かめで、足元を光らせる）。
+static func unacted_units(battle: Battle) -> Array[Unit]:
+	var units: Array[Unit] = []
 	for unit in battle.units:
 		if unit.side == battle.phase and not unit.acted:
-			count += 1
-	return count
+			units.append(unit)
+	return units
 
 
 ## side の駒の数。

@@ -287,11 +287,18 @@ func _step(battle: Battle) -> void:
 		_scene.press_end_turn()
 		return
 	if battle.turn == 2 and not _confirm_tested:
-		# 未行動の駒を残したままのターン終了は、1 回目では終わらない。
+		# 未行動の駒を残したままのターン終了は、1 回目では終わらない。素早い 2 回目（ダブルクリック・連打）でも終わらない。
 		_confirm_tested = true
 		_scene.press_end_turn()
+		_scene.press_end_turn()
 		if battle.turn != 2 or battle.phase != unit.side:
-			_fail("確かめずにターンが終わった")
+			_fail("確かめずにターンが終わった（素早い 2 回押しで、確かめを飛ばした）")
+		elif not _scene.is_confirming_end():
+			_fail("未行動の駒が残っているのに、ターン終了を確かめない")
+		else:
+			_scene.cancel()
+			if _scene.is_confirming_end():
+				_fail("戻す操作で、ターン終了の確かめをやめなかった")
 		return
 	if _scene.selected_unit() != unit:
 		_scene.click_cell(unit.cell)
@@ -335,9 +342,10 @@ func _small_board(size: Vector2i) -> Board:
 	return board
 
 
-## ターンを終える（未行動の駒が残っていれば、確かめの 2 回目まで押す）。
+## ターンを終える（未行動の駒が残っていれば、間を置いて、確かめの 2 回目まで押す）。
 func _end_turn() -> void:
 	_scene.press_end_turn()
+	_scene.pass_confirm_guard()
 	_scene.press_end_turn()
 
 
@@ -1217,6 +1225,10 @@ func _queue_ult_scene() -> void:
 		_expect(_scene.selected_unit() == trooper, "確かめるのをやめるクリックで、選択が変わった")
 		_scene.press_ult()
 		_scene.played.erase(used)
+		# 確かめに変わった直後の 2 回目（ダブルクリック・連打）では使わない。間を置いてから押すと使う。
+		_scene.press_ult()
+		_expect(_scene.is_confirming_ult() and battle.ult_uses[0] == 0, "素早い 2 回押しで、必殺技の確かめを飛ばした")
+		_scene.pass_confirm_guard()
 		_scene.press_ult())
 	_scripted.append(func() -> void:
 		_expect(battle.ult_uses[0] == 1 and battle.ult_gauge[0] == 0, "必殺技を使えなかった")
@@ -1237,6 +1249,7 @@ func _queue_ult_scene() -> void:
 		_expect(_scene.played.get(ready, 0) == 1, "ゲージがいっぱいになったことを再生しなかった")
 		_expect(_scene.ult_gauge_text(1) == "READY" and _scene.is_ult_enabled(), "プレイヤー2 の番に、必殺技のボタンが押せない")
 		_scene.press_ult()
+		_scene.pass_confirm_guard()
 		_scene.press_ult())
 	_scripted.append(func() -> void:
 		_expect(sorcerer.skill_cooldown == 0, "魔力解放でクールダウンが 0 にならなかった"))
@@ -1392,8 +1405,7 @@ func _leave_battle(app: Node) -> void:
 	_scene.set_opponent(false)
 	_scene.start_battle(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
 	_scene.set_opponent(true)
-	_scene.press_end_turn()
-	_scene.press_end_turn()
+	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
 	_scene.press_escape()
 	_expect(menu.is_open() and menu.item_ids().has(&"title"), "相手の番の途中に、タイトルへ戻る項目が出ない")

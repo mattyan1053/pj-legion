@@ -57,6 +57,7 @@ const SCENES := {
 	"forecast_small": "9×5 の小さな盤で、動いたあとメニューの「攻撃」を押し、隣の相手にマウスを乗せている（縮んだメニューと予測のパネルが重ならない）",
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
+	"end_confirm": "未行動の駒を残してターン終了を 1 回押し、確かめている（未行動の駒の足元が光る）",
 	"mid_boss": "中ボスを倒して、上の帯に聖遺物が出ている",
 	"result_headline": "リザルト 1: 勝敗の見出しが中央に出たところ（人どうしは勝った側の名前）",
 	"result_stats": "リザルト 2: 見出しが上へ退き、戦績が 1 行ずつ出ているところ",
@@ -794,6 +795,14 @@ func _scene_ult() -> bool:
 	_show()
 	_scene.press_ult()
 	return _scene.is_confirming_ult()
+
+
+func _scene_end_confirm() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	_scene.press_end_turn()
+	return _scene.is_confirming_end()
 
 
 func _scene_mid_boss() -> bool:

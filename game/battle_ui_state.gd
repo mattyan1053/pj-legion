@@ -32,10 +32,16 @@ var inspected_id := 0
 ## クリックして情報を出しているマス（駒のいないマス。無ければ NO_CELL）。
 var inspected_cell := NO_CELL
 var mode := Mode.NONE
+## 確かめ（ターン終了・必殺技）を始めてから、この間（ミリ秒）は 2 回目を受け付けない。
+## ダブルクリックや、キーの連打で、確かめを飛ばさないため。
+const CONFIRM_GUARD_MSEC := 400
+
 ## 未行動の駒を残したままターンを終えるかを、もう一度押して確かめている途中か。
 var confirming_end := false
 ## 必殺技を使うかを、もう一度押して確かめている途中か（対象を選ばず、取り消せないので、1 回では使わない）。
 var confirming_ult := false
+## いまの確かめを始めた時刻（ミリ秒。場面が渡す時計の値）。
+var confirm_started_msec := 0
 ## マウスが乗っているメニューの項目（乗っていなければ空の名前）。その項目の説明を、左下の枠に出す。
 ## 画面（battle_hud.gd）が知らせるマウスの位置を写すだけなので、消す単位には入れない。
 var menu_hover_id := &""
@@ -116,10 +122,22 @@ func focus_selected() -> void:
 	inspected_id = 0
 
 
-## 必殺技を使うかを確かめ始める（対象を選ぶ途中はやめる）。
-func start_confirming_ult() -> void:
+## 必殺技を使うかを確かめ始める（対象を選ぶ途中はやめる）。now_msec は、いまの時刻（ミリ秒）。
+func start_confirming_ult(now_msec: int) -> void:
 	confirming_ult = true
 	mode = Mode.NONE
+	confirm_started_msec = now_msec
+
+
+## 未行動の駒を残したままターンを終えるかを、確かめ始める。now_msec は、いまの時刻（ミリ秒）。
+func start_confirming_end(now_msec: int) -> void:
+	confirming_end = true
+	confirm_started_msec = now_msec
+
+
+## 確かめを始めた直後で、2 回目をまだ受け付けないか（CONFIRM_GUARD_MSEC）。
+func confirm_guarded(now_msec: int) -> bool:
+	return now_msec - confirm_started_msec < CONFIRM_GUARD_MSEC
 
 
 ## 戻す（右クリック・Esc）。必殺技の確かめ、閲覧、対象を選ぶ途中の順に、1 つだけやめる。
