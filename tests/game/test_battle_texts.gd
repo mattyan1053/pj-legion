@@ -39,7 +39,7 @@ func test_portal_says_where_it_sends() -> void:
 	var notes := BattleTexts.cell_notes(battle, Vector2i(0, 0))
 	assert_eq(notes, ["ポータル → (4, 0)（%s）" % BattleTexts.PORTAL_NOTE] as Array[String])
 	var body := BattleTexts.cell_body(battle, Vector2i(0, 0))
-	assert_true(body.contains("\n　対のポータルへ転送する"), "転送の説明を行に分けていない: " + body)
+	assert_true(body.contains("\n　止まると、駒のそばのメニューの「転移」で"), "転送の説明を行に分けていない: " + body)
 	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 0))
 	notes = BattleTexts.cell_notes(battle, Vector2i(0, 0))
 	assert_eq(notes, ["ポータル → (4, 0)（%s。%s）" % [BattleTexts.PORTAL_NOTE, BattleTexts.PORTAL_BLOCKED]] as Array[String],
@@ -72,12 +72,14 @@ func test_menu_lists_only_what_can_be_done() -> void:
 	assert_eq(choosing, [[BattleTexts.MENU_BACK, "やめる", true]], "対象を選ぶ途中は「やめる」だけ")
 	var enemy := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 0))
 	assert_eq(BattleTexts.menu_items(battle, enemy, Mode.NONE, true, false, true), [], "相手の駒にメニューを出した")
+	var warp := BattleTexts.menu_items(battle, sniper, Mode.NONE, false, false, true, Vector2i(3, 0))
+	assert_eq(warp[0], [BattleTexts.MENU_WARP, "転移", true], "転移できるなら、いちばん上に「転移」")
 
 
 func test_every_menu_item_has_a_note() -> void:
 	var battle := _battle()
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(0, 0))
-	for id: StringName in [BattleTexts.MENU_ATTACK, BattleTexts.MENU_HEAL, BattleTexts.MENU_SKILL, BattleTexts.MENU_WAIT, BattleTexts.MENU_UNDO, BattleTexts.MENU_BACK]:
+	for id: StringName in [BattleTexts.MENU_ATTACK, BattleTexts.MENU_HEAL, BattleTexts.MENU_SKILL, BattleTexts.MENU_WAIT, BattleTexts.MENU_UNDO, BattleTexts.MENU_BACK, BattleTexts.MENU_WARP]:
 		assert_ne(BattleTexts.menu_note(id, priest), "", "項目 %s に説明が無い" % id)
 
 
