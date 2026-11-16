@@ -61,7 +61,7 @@ func _ready() -> void:
 		context = AppContext.new()  # アプリを通さずに置いたとき
 	var given: Variant = context.run_data()
 	if given == null:
-		given = {"episode": Story.EPISODES[0], "battle": Story.first_battle(Story.EPISODES[0])}
+		given = {"episode": Story.MILITARY.EPISODES[0], "battle": Story.first_battle(Story.MILITARY.EPISODES[0])}
 	episode = given["episode"]
 	battle_source = given["battle"]
 	add_child(Backdrop.new(episode.MAP.map().make_board(), episode.LOOK))
@@ -201,7 +201,7 @@ func chosen_deck() -> Deck:
 		var saved: RefCounted = context.decks.find(_chosen)
 		if saved != null:
 			return saved.deck.copy()
-	return Story.default_deck(context.story.unlocked_kinds())
+	return Story.default_deck(context.story.unlocked_kinds(), context.story.campaign)
 
 
 ## 選択肢の id の並び（既定の編成が先頭）と、押せるか（検査用）。
@@ -228,7 +228,7 @@ func press_edit_decks() -> void:
 	if context.run == null:
 		return
 	context.story.choose_squad(_chosen)
-	context.run.insert(DECKS, {"rules": Story.RULES_ID, "back_label": "出撃の準備へ戻る"})
+	context.run.insert(DECKS, {"rules": context.story.campaign.RULES_ID, "back_label": "出撃の準備へ戻る"})
 	context.start_run(context.run)
 
 
@@ -266,7 +266,7 @@ func map_image(deck: Deck) -> Image:
 
 func _build_options() -> void:
 	_add_option(DEFAULT_ID, "既定の編成", "いま雇える駒で組んだもの", true)
-	for item in context.decks.for_rules(Story.RULES_ID, Story.ARMY):
+	for item in context.decks.for_rules(context.story.campaign.RULES_ID, context.story.campaign.ARMY):
 		var issues: Array[String] = item.issues()
 		var note := "%d 体・コスト %d / %d" % [item.deck.entries.size(), item.deck.total_cost(), item.deck.budget()]
 		_add_option(item.id, item.name, note if issues.is_empty() else "出せない: " + issues[0], issues.is_empty())
