@@ -62,7 +62,7 @@ func test_broken_episode_data_is_caught() -> void:
 		"無い装備": ["[UnitKind.Id.PALADIN, []]", "[UnitKind.Id.PALADIN, [99]]"],
 		"置けないマス": ["const DEPLOY := [[], []]", "const DEPLOY := [[], [Vector2i(0, 0), Vector2i(-1, 3)]]"],
 		"話し手": ["[0, \"いくぞ\"]", "[2, \"いくぞ\"]"],
-		"見た目": ["StageLook.LABYRINTH", "&\"swamp\""],
+		"見た目": ["StageLook.STONE_WALLS", "&\"swamp\""],
 		"将を解放": ["const UNLOCKS: Array[UnitKind.Id] = []", "const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.KING]"],
 	}
 	for name: String in swaps:
@@ -196,7 +196,7 @@ const RidgePath := preload("res://rules/maps/ridge_path.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const ID := &"probe"
 const TITLE := "見本"
-const LOOK := StageLook.LABYRINTH
+const LOOK := StageLook.STONE_WALLS
 const MAP := RidgePath
 const UNLOCKS: Array[UnitKind.Id] = []
 const ENEMY_ARMY := UnitKind.Army.FANTASY

@@ -17,7 +17,7 @@ const ID := &"ridge_path"
 ## 会話の見出しに出す名前。
 const TITLE := "尾根の小道"
 ## 盤の見た目（stage_look.gd の THEMES の鍵）。岩の尾根が壁のように続くので、石の壁の見た目にした。
-const LOOK := StageLook.LABYRINTH
+const LOOK := StageLook.STONE_WALLS
 const MAP := RidgePath
 
 ## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。

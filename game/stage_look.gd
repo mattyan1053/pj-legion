@@ -94,22 +94,23 @@ const KEYS: Array[StringName] = [
 ## 盤の外の景色に掛ける色の、どのテーマにも共通の分（盤の上の木立や岩山より沈ませる）。
 const SCENERY_SHADE := Color(0.84, 0.88, 0.86)
 
-## 見た目の名前。
-const PLAIN := &"plain"  ## 中央平原
-const LABYRINTH := &"labyrinth"  ## 迷宮回廊
-const TWIN_SPRINGS := &"twin_springs"  ## 双子結晶
+## 見た目の名前。対戦モードのステージの名前とは別の名前の空間（ステージ → 見た目は OF_STAGE、ストーリーの話 → 見た目は話の LOOK）。
+## 同じ見た目を、いくつものステージや話で使い回せる。ステージの見た目を替えるときは OF_STAGE を書き換え、見た目そのものは替えない。
+const GRASSLAND := &"grassland"  ## 草原（中央平原）
+const STONE_WALLS := &"stone_walls"  ## 石の壁（迷宮回廊、ストーリーの尾根の小道）
+const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶、ストーリーの結晶の渓谷）
 ## 名前を渡されないとき・知らない名前のときの見た目。
-const DEFAULT := PLAIN
+const DEFAULT := GRASSLAND
 ## 対戦モードの生成のステージ（BoardGenerator.Stage）-> 見た目の名前。
 const OF_STAGE := {
-	BoardGenerator.Stage.PLAIN: PLAIN,
-	BoardGenerator.Stage.LABYRINTH: LABYRINTH,
-	BoardGenerator.Stage.TWIN_SPRINGS: TWIN_SPRINGS,
+	BoardGenerator.Stage.PLAIN: GRASSLAND,
+	BoardGenerator.Stage.LABYRINTH: STONE_WALLS,
+	BoardGenerator.Stage.TWIN_SPRINGS: CRYSTAL_FOREST,
 }
 
 const THEMES := {
 	# 中央平原: いつもの草原。明るい若草色、昼の白い光。森と岩山。
-	PLAIN: {
+	GRASSLAND: {
 		NORMAL: Color("5f9f4e"), FOREST: Color("3a6c38"), OBSTACLE: Color("767b84"), FONT: Color("3fa9bd"),
 		HAZE: Color("b4cbdc"), SUN: Color("ffffff"), AMBIENT: Color("b8c4d6"),
 		SUN_PITCH: -52.0, SUN_YAW: -35.0, SUN_ENERGY: 1.2, AMBIENT_ENERGY: 0.45,
@@ -121,7 +122,7 @@ const THEMES := {
 	},
 	# 迷宮回廊: 遺跡。石畳の乾いた地面に、石の壁と柱が続く。盤の外は崩れた石組みと柱、枯れた木、砂色の岩山。
 	# 夕方寄りの低い金色の光と、砂ぼこりの霞。
-	LABYRINTH: {
+	STONE_WALLS: {
 		NORMAL: Color("9a8f74"), FOREST: Color("5d7c38"), OBSTACLE: Color("5a5246"), FONT: Color("3fa9bd"),
 		HAZE: Color("d9c9a6"), SUN: Color("ffdcaa"), AMBIENT: Color("c8b8a0"),
 		SUN_PITCH: -42.0, SUN_YAW: -62.0, SUN_ENERGY: 1.25, AMBIENT_ENERGY: 0.5,
@@ -138,7 +139,7 @@ const THEMES := {
 	},
 	# 双子結晶: 結晶の森。夜明けの薄紫の霞と、低い桃色の光。苔むした暗い青緑の地面に、紫の結晶を生やした暗い岩、
 	# 暗い針葉樹の森。盤の外にも結晶が光る。
-	TWIN_SPRINGS: {
+	CRYSTAL_FOREST: {
 		NORMAL: Color("3c6f68"), FOREST: Color("1d4440"), OBSTACLE: Color("4a4468"), FONT: Color("46bcd6"),
 		HAZE: Color("b4a3cf"), SUN: Color("ffc8b8"), AMBIENT: Color("8f9ad0"),
 		SUN_PITCH: -30.0, SUN_YAW: 40.0, SUN_ENERGY: 1.1, AMBIENT_ENERGY: 0.55,

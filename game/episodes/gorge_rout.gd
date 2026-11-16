@@ -16,7 +16,7 @@ const ID := &"gorge_rout"
 ## 会話の見出しに出す名前。
 const TITLE := "渓谷の掃討"
 ## 盤の見た目。結晶の岩と光る森の、双子結晶のテーマ。
-const LOOK := StageLook.TWIN_SPRINGS
+const LOOK := StageLook.CRYSTAL_FOREST
 const MAP := CrystalGorge
 
 ## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。

@@ -155,7 +155,7 @@ func test_as_battle_source_makes_the_same_setup_and_names_the_look() -> void:
 	assert_eq(setup.scenario.stage, BoardGenerator.Stage.LABYRINTH)
 	assert_eq(setup.battle_seed, 7)
 	assert_eq(setup.scenario.title, MatchSetup.stage_name(BoardGenerator.Stage.LABYRINTH), "作戦領域は戦いの定義の名前")
-	assert_eq(choice.look(), StageLook.LABYRINTH)
+	assert_eq(choice.look(), StageLook.STONE_WALLS)
 	assert_true(setup.is_cpu(choice.cpu_side()))
 
 

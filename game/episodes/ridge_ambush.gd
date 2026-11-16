@@ -16,7 +16,7 @@ const ID := &"ridge_ambush"
 ## 会話の見出しに出す名前。
 const TITLE := "尾根の待ち伏せ"
 ## 盤の見た目（1 話と同じ）。
-const LOOK := StageLook.LABYRINTH
+const LOOK := StageLook.STONE_WALLS
 const MAP := RidgePath
 
 ## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。ほかの軍の駒も解放できる。
