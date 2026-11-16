@@ -20,18 +20,17 @@ const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
 const Run := preload("res://game/run.gd")
 const UnitCard := preload("res://game/unit_card.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
+const Palette := preload("res://game/ui_palette.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
 
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.94)
-const COLOR_CARD := Color(0.12, 0.15, 0.2, 1.0)
-const COLOR_TEXT := Color(0.93, 0.94, 0.96)
-const COLOR_DIM := Color(0.68, 0.72, 0.78)
-const COLOR_GOOD := Color("7fdc8a")
-const COLOR_BAD := Color("ff8a6b")
-const COLOR_ACCENT := Color("8fc3ff")
-const COLOR_BUDGET := Color("4f8fd8")
+## 色は UI のテーマの役割の色（ui_palette.gd）を引く。枠と札の形は UI のテーマ（ui_theme.gd）が当たる。
+const COLOR_TEXT := Palette.TEXT
+const COLOR_DIM := Palette.TEXT_DIM
+const COLOR_BAD := Palette.DANGER
+const COLOR_ACCENT := Palette.ACCENT
 ## 画面の上に空ける高さ（px）。右上のシステムメニューのボタンを、ほかの場面と同じく背景の上に置く（枠に埋もれないように）。
 const TOP_ROOM := 52.0
 ## 詳しい中身の欄の、文を折り返す幅（px）。
@@ -119,7 +118,7 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.45)
+	shade.color = Palette.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -395,6 +394,8 @@ func _build_list() -> Control:
 		button.custom_minimum_size = Vector2(0.0, 46.0)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(spec[1])
+		if spec[0] == "削除":
+			button.theme_type_variation = UiTheme.BUTTON_DANGER
 		actions.add_child(button)
 		_list_actions.append(button)
 
@@ -801,6 +802,7 @@ func _build_editor() -> Control:
 	_save_button = _button("編成完了", 20)
 	_save_button.custom_minimum_size = Vector2(240.0, 48.0)
 	_save_button.set_meta(&"sound", &"ui_confirm")
+	_save_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_save_button.pressed.connect(press_save)
 	footer.add_child(_save_button)
 	return root
@@ -818,9 +820,11 @@ func _refresh_editor() -> void:
 	_budget_label.add_theme_color_override("font_color", COLOR_BAD if total > budget else COLOR_TEXT)
 	_budget_bar.max_value = maxi(budget, 1)
 	_budget_bar.value = mini(total, budget)
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = COLOR_BAD if total > budget else COLOR_BUDGET
-	_budget_bar.add_theme_stylebox_override("fill", fill)
+	# 予算を超えたら、棒を危険の色にする（超えていなければ、テーマの棒のまま）。
+	if total > budget:
+		_budget_bar.add_theme_stylebox_override("fill", UiTheme.box(Palette.DANGER, Palette.DANGER, 0))
+	else:
+		_budget_bar.remove_theme_stylebox_override("fill")
 	var count := _deck.entries.size()
 	_count_label.text = "駒 %d / %d" % [count, _deck.rules.max_units]
 	var issues := DeckText.problem_texts(_deck)
@@ -888,8 +892,8 @@ func _troop_row(index: int) -> Control:
 	main.clip_text = true
 	main.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var equipment := "、".join(UnitCard.equipment_lines(entry.equipment))
-	main.text = "%s　%s　コスト %d\n%s" % [
-		UnitKind.display_name(entry.kind), DeckText.role_name(entry.kind), entry.cost(), equipment if equipment != "" else "持ち物なし",
+	main.text = "%s　コスト %d\n%s" % [
+		UnitKind.display_name(entry.kind), entry.cost(), equipment if equipment != "" else "持ち物なし",
 	]
 	main.tooltip_text = main.text
 	main.set_pressed_no_signal(index == _selected)
@@ -1040,13 +1044,14 @@ func _build_dialog() -> Control:
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.visible = false
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.55)
+	shade.color = Palette.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
-	var panel := _card(Color(0.09, 0.11, 0.15, 0.98), 24.0)
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = UiTheme.PANEL_SOLID
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 16)
@@ -1089,7 +1094,8 @@ func _frame() -> Control:
 	for side: String in ["left", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	margin.add_theme_constant_override("margin_top", int(TOP_ROOM))
-	var panel := _card(COLOR_PANEL, 14.0)
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = UiTheme.PANEL_SOLID
 	margin.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
@@ -1097,15 +1103,10 @@ func _frame() -> Control:
 	return margin
 
 
-
-
-func _card(color := COLOR_CARD, margin := 12.0) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(margin)
+## 枠の中の区切り（UI のテーマの札）。
+func _card() -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", style)
+	panel.theme_type_variation = UiTheme.PANEL_CARD
 	return panel
 
 
@@ -1122,22 +1123,10 @@ func _text(font_size: int, color: Color) -> Label:
 	return label
 
 
-## 札の形のボタン（雇える駒、部隊の駒、一覧の部隊、軍）。枠の地に溶けないよう、札と同じ地を敷く
-## （UI のテーマが入ったら、テーマの Button に任せる）。
+## 札の形のボタン（雇える駒、部隊の駒、一覧の部隊、軍）。UI のテーマのカード（乗ると金の縁）。
 func _card_button(text: String, font_size: int) -> Button:
 	var button := _button(text, font_size)
-	for state: String in ["normal", "hover", "pressed", "disabled", "hover_pressed"]:
-		var style := StyleBoxFlat.new()
-		style.bg_color = COLOR_CARD
-		if state == "hover":
-			style.bg_color = COLOR_CARD.lightened(0.12)
-		elif state == "pressed" or state == "hover_pressed":
-			style.bg_color = COLOR_CARD.lightened(0.06)
-			style.border_color = COLOR_ACCENT
-			style.set_border_width_all(2)
-		style.set_corner_radius_all(6)
-		style.set_content_margin_all(8.0)
-		button.add_theme_stylebox_override(state, style)
+	button.theme_type_variation = UiTheme.BUTTON_CARD
 	return button
 
 
