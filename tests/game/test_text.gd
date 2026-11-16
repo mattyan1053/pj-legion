@@ -106,7 +106,7 @@ func test_the_table_has_unique_keys_with_text() -> void:
 		for key: String in _table()[file]:
 			assert_false(seen.has(key), "鍵 %s が %s と %s の 2 か所にある" % [key, seen.get(key), file])
 			seen[key] = file
-			assert_ne(Text.t(key), key, "%s の %s の文が空か、表が読み込まれていない（取り込み済みの *.translation が game/text/ に無い）" % [file, key])
+			assert_ne(Text.t(key), key, "%s の %s の文が空か、表が読み込まれていない" % [file, key])
 	assert_true(seen.size() > 0)
 
 
@@ -124,6 +124,14 @@ func test_no_space_between_a_name_and_kana() -> void:
 			var row := csv.get_csv_line()
 			if row.size() >= 2:
 				assert_true(after.search(row[1]) == null and before.search(row[1]) == null, "%s の %s: 名前の前後に空白（%s）" % [file, row[0], row[1]])
+
+
+## 表の CSV は Godot の翻訳の取り込みに乗せない（取り込みが並べて取り込むところで落ちることがあった。docs/text.md）。
+func test_the_tables_are_kept_as_they_are_not_imported() -> void:
+	for file: String in _table():
+		var settings := ConfigFile.new()
+		assert_eq(settings.load(TEXT_DIR + file + ".import"), OK, "%s.import が無い" % file)
+		assert_eq(settings.get_value("remap", "importer", ""), "keep", "%s.import の importer が keep でない" % file)
 
 
 func test_every_key_in_code_is_in_the_table() -> void:
