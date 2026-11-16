@@ -27,10 +27,8 @@ const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.COMMANDO]
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 ## 敵の部隊（将を除く）: [駒の種類, [装備, …]] の列。並びの順に、本陣の前へ置く（いつもの置き方）。
 const ENEMY := [
-	[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD]],
 	[UnitKind.Id.PALADIN, []],
 	[UnitKind.Id.SORCERER, []],
-	[UnitKind.Id.PRIEST, []],
 ]
 
 ## 初期位置（将でない駒を置くマスの列）: [プレイヤー1, プレイヤー2]。空なら、いつもの「本陣の前」。
