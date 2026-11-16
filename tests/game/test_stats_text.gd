@@ -23,7 +23,7 @@ func test_text_has_the_ending_the_stage_and_both_sides() -> void:
 	stats.ending = BattleStats.Ending.HQ_CAPTURED
 	stats.turns = 12
 	var text := StatsText.text(stats, "迷宮回廊", NAMES)
-	assert_true(text.begins_with("作戦領域: 迷宮回廊　ターン 12　本陣の占拠"), text)
+	assert_true(text.begins_with("ステージ: 迷宮回廊　ターン 12　本陣の占拠"), text)
 	assert_true(text.contains("青: 与えたダメージ 42　敵軍撃破 2 体"), text)
 	assert_true(text.contains("聖遺物 %s" % Names.relic(Relics.Id.WISDOM)), text)
 	assert_true(text.contains("MVP %s（%s） Lv3　与えたダメージ 42　撃破 2" % [

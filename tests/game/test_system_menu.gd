@@ -39,13 +39,13 @@ func test_closing_the_window_elsewhere_saves_nothing() -> void:
 	menu.free()
 
 
-## 抜けると失われるものがある場面は、場面ごとの文で確かめる（編成の画面で「いまの対戦は…」と出さない）。
+## 抜けると失われるものがある場面は、場面ごとの文で確かめる（編成の画面で「対戦の状態は…」と出さない）。
 func test_leaving_confirms_with_what_the_scene_loses() -> void:
 	var idle := LeavingScene.new(false)
 	var battle := LeavingScene.new(true)
 	var decks := NotedScene.new(true)
 	assert_eq(App.leave_confirm(idle, "終えますか？"), "", "失われるものが無いのに確かめた")
-	assert_eq(App.leave_confirm(battle, "終えますか？"), "終えますか？\nいまの対戦は取っておけないので、失われる", "既定は対戦")
+	assert_eq(App.leave_confirm(battle, "終えますか？"), "終えますか？\n対戦の状態は失われます。", "既定は対戦")
 	assert_eq(App.leave_confirm(decks, "終えますか？"), "終えますか？\n部隊の変更は失われる", "場面の文を使わない")
 	for scene: Node in [idle, battle, decks]:
 		scene.free()

@@ -20,9 +20,9 @@
 | `common.csv` | どの画面でも使う形（括弧、「・」「、」のつなぎ、マスの座標） |
 | `names.csv` | ゲームの中のものの名前と説明（陣営、軍、役割、能力、特性、盤の上の効果、駒、進化先、持ち物、スキル、必殺技、状態、聖遺物、ステージ） |
 | `battle.csv` | 対戦の画面（上の帯 `battle.hud`、下の帯の説明 `battle.hint`、駒のそばのメニュー `battle.menu`、マスの説明 `battle.cell`、予測 `battle.forecast`、勝ち方 `battle.goal`、ログ `battle.log`、盤の上の文字 `battle.pop`、知らせ `battle.banner`）、決着の画面 `result`、戦績 `stats` |
-| `menus.csv` | タイトル `title`、システムメニュー `menu`、設定 `settings`、ステージ選択 `stage`、対戦モードの盤の説明 `field`、対戦の設定 `setup` |
-| `deck.csv` | 部隊の編成 `deck`（一覧、組む画面、出せない理由 `deck.problem`、読めなかった部隊 `deck.load`） |
-| `story.csv` | 物語を選ぶ・話の一覧 `story`、出撃の準備 `sortie`、会話の場面 `talk`、解放の知らせ `story.news` |
+| `menus.csv` | タイトル `title`、システムメニュー `menu`、設定 `settings`、ステージ選択 `stage`、対戦モードの盤の説明 `field`、対戦設定 `setup` |
+| `deck.csv` | 部隊編成 `deck`（一覧、組む画面、出せない理由 `deck.problem`、読めなかった部隊 `deck.load`） |
+| `story.csv` | 物語を選ぶ・話の一覧 `story`、出撃準備 `sortie`、会話の場面 `talk`、解放の知らせ `story.news` |
 
 ## 鍵の名付け
 

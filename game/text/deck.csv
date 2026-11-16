@@ -4,21 +4,21 @@ deck.list.duplicate,複製
 deck.list.rename,名前変更
 deck.list.delete,削除
 deck.detail.evolution_line,・{line}
-deck.resume,編成へ戻る
-deck.losing,編成中の変更は失われる
+deck.resume,部隊編成へ戻る
+deck.losing,編集中の変更は失われます。
 deck.mode.versus,対戦用
 deck.name.title,部隊の名前
 deck.delete.confirm,「{name}」を削除しますか？
-deck.title,部隊の編成
+deck.title,部隊編成
 deck.list.empty,編成なし
-deck.list.new,新しい部隊
+deck.list.new,新規編成
 deck.list.detail,{army}　{count} 体　コスト {cost} / {budget}
 deck.army.title,軍を選ぶ
-deck.army.budget,予算 {budget}
+deck.army.budget,コスト上限 {budget}
 deck.army.unit,{unit}（{role}）
 deck.ult,"必殺技: {name}
 {summary}"
-deck.leave.confirm,変更を破棄して戻りますか？
+deck.leave.confirm,変更を破棄しますか？
 deck.leave.discard,破棄
 deck.edit.roster,雇える駒
 deck.edit.troop,部隊
@@ -39,8 +39,8 @@ deck.edit.item,{name}　コスト {cost}
 deck.edit.item_locked,　未解放
 deck.edit.item_locked.tooltip,ストーリーを進めると持たせられる
 deck.name.prompt,{title}（{max} 文字まで）
-deck.dialog.ok,決める
-deck.dialog.cancel,やめる
+deck.dialog.ok,決定
+deck.dialog.cancel,キャンセル
 deck.edit.deploy,配置
 deck.deploy.king,将
 deck.deploy.hq,本陣
@@ -56,13 +56,13 @@ deck.edit.no_items,持ち物なし
 deck.detail.with_items,持ち物込み: {stats}
 deck.detail.skill,スキル: {skill}
 deck.edit.remove,外す
-deck.problem.no_units,駒が 1 体もいない
-deck.problem.too_many_units,駒が多すぎる（{max} 体まで）
-deck.problem.over_budget,予算を {over} 超えている
-deck.problem.too_much_equipment,装備を持たせすぎた駒がいる（1 体 {max} 個まで）
-deck.problem.not_in_roster,この軍では雇えない駒がいる
-deck.problem.item_not_allowed,まだ持たせられない装備を持った駒がいる
-deck.problem.other,出せない
+deck.problem.no_units,駒なし
+deck.problem.too_many_units,駒の数が上限超過（{max} 体まで）
+deck.problem.over_budget,コスト上限を {over} 超過
+deck.problem.too_much_equipment,持ち物の数が上限超過の駒あり（1 体 {max} 個まで）
+deck.problem.not_in_roster,この軍で雇えない駒あり
+deck.problem.item_not_allowed,未解放の持ち物あり
+deck.problem.other,出撃不可
 deck.skill,"{name}（クールダウン {cooldown} ターン）
 {summary}"
 deck.stats,HP {hp}　攻撃 {power}　移動 {move}　射程 {range}
@@ -77,7 +77,7 @@ deck.load.unknown_rules,知らない決まり（{name}）で組んである
 deck.load.unknown_army,軍が読めない（{name}）
 deck.load.unreadable_unit,読めない駒を外した
 deck.load.unknown_unit,知らない駒（{name}）を外した
-deck.load.unknown_item,知らない装備（{name}）を外した
+deck.load.unknown_item,知らない持ち物（{name}）を外した
 deck.load.none,無し
 deck.preview.title,{who}　{army}　コスト {cost} / {budget}
-deck.card.king,本陣に置く
+deck.card.king,本陣に配置

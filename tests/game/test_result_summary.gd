@@ -56,7 +56,7 @@ func test_local_match_names_the_winner_and_shows_the_winners_record() -> void:
 func test_lines_have_the_stage_turns_kills_and_relics() -> void:
 	var summary: RefCounted = ResultSummary.of(_stats(), false, P1, "", true, P1, NAMES, "双子結晶")
 	assert_eq(summary.lines, [
-		["作戦領域", "双子結晶"],
+		["ステージ", "双子結晶"],
 		["経過ターン", "14 ターン"],
 		["敵軍撃破", "2 体"],
 		["中立撃破", "3 体"],

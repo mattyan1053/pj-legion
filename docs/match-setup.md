@@ -1,4 +1,4 @@
-# 対戦の設定
+# 対戦設定
 
 コード: `rules/match_setup.gd`（`MatchSetup`）。テスト: `tests/rules/test_match_setup.gd`。
 シーンの遷移（タイトル、ステージ選択、編成の画面、リザルト）は画面の話なので、ここには無い（`docs/scene-flow.md`、`docs/deck-screen.md`）。
@@ -18,7 +18,7 @@
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
   CPU の軍は、対戦を始める側が選ぶ。
 - **人の編成**は、渡したもの（`set_human(プレイヤー, 編成)`）。対戦モードの画面では、編成の画面で組んで取っておいた部隊か、
-  軍ごとの既定の編成 `MatchSetup.default_deck(軍)`（中身は CPU の編成と同じ。予算どおり）。ストーリーでは、出撃の準備で選んだ部隊か、ストーリーの既定の編成（`docs/story.md`）。
+  軍ごとの既定の編成 `MatchSetup.default_deck(軍)`（中身は CPU の編成と同じ。予算どおり）。ストーリーでは、出撃準備で選んだ部隊か、ストーリーの既定の編成（`docs/story.md`）。
 - 人と CPU の対戦は `MatchSetup.on_scenario(戦いの定義, 種, 人のプレイヤー, 人の編成, CPU の軍)` から作る（どのモードもここを通す）。
   CPU の側の部隊を戦いの定義が決め打ちにしていれば（ストーリーの話の敵）、CPU の編成は作らない（CPU の軍は要らない）。
 - よく使う組み合わせ: `MatchSetup.versus_cpu(ステージ, 種, 人の編成, CPU の軍, 人のプレイヤー)`（`on_scenario` に対戦モードのステージの戦いの定義を渡す）、
@@ -52,6 +52,6 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 ## 画面の入口
 
-画面の側（`game/`）は、対戦モードでは、対戦の前に設定画面（`docs/battle-view.md` の「対戦の設定」）で選んだものを
+画面の側（`game/`）は、対戦モードでは、対戦の前に設定画面（`docs/battle-view.md` の「対戦設定」）で選んだものを
 `game/match_choice.gd` が `MatchSetup` にし、ストーリーでは話のデータから `game/story_battle.gd` が作って、`create_battle()` で始める。対戦の画面は `MatchChoice` を直に読まず、
 「`MatchSetup` を作ってくれるもの」（`game/battle_source.gd`。`docs/battle-source.md`）として受け取る。

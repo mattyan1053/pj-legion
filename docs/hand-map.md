@@ -25,7 +25,7 @@
 
 ## 検査
 
-`HandMap.problems()` が空でないマップは盤にしない（`make_board()` が `null`。対戦の設定では `NO_BOARD`）。
+`HandMap.problems()` が空でないマップは盤にしない（`make_board()` が `null`。対戦設定では `NO_BOARD`）。
 
 | 理由（`HandMap.Problem`） | 条件 |
 | --- | --- |
@@ -58,7 +58,7 @@ title = 練兵場
 ....1....
 ```
 
-- 書式は話のファイルと同じ（`game/story_file.gd`）。`[map]` に名前（`title`。戦いの定義の名前、決着の画面の「作戦領域」）、`[rows]` に文字の格子。
+- 書式は話のファイルと同じ（`game/story_file.gd`）。`[map]` に名前（`title`。戦いの定義の名前、決着の画面の「ステージ」）、`[rows]` に文字の格子。
   **`[rows]` の中では `#` で始まる行も読み飛ばさない**（`#` は障害物の文字）。説明は `[map]` より前に書く。
 - 読むのは `game/maps.gd`（ルールはファイルを読まない。読んだ `HandMap` を戦いの定義に渡す）。書き間違い（`title` が無い、行の長さの違い、上の「検査」の理由）は「ファイル:行:」で出す。
 - 書き出した exe に入れるため、`export_presets.cfg` の `include_filter` に `game/maps/*` がある。
