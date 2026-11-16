@@ -3,7 +3,7 @@ extends "res://game/battle_source.gd"
 ## 話のデータ（game/episodes/ の 1 ファイル）から、戦いの定義（手で作ったマップ、決め打ちの敵）を持った対戦の設定を作る。
 ##
 ## 人はいつもプレイヤー1（先手）で、渡された部隊（story.gd が、いま雇える駒で組む）。敵はプレイヤー2 で、CPU が動かす。
-## 選び直せるものは無い（ステージ、相手、対戦の設定のパネル）。やり直しは「同じ盤面でもう一度」だけ。
+## 選び直せるものは無い（ステージ、相手、対戦の設定のパネル）。やり直しは「同じ盤面でもう一度」と、出撃の準備へ戻る「部隊を選び直す」。
 ## 人が勝ったら、決着の画面に「次へ」を出し（流れの次の場面、あとの会話へ）、話をクリアしたと書く。
 ## ここはノードに依存しない（テストから呼べる）。
 
@@ -41,6 +41,10 @@ func look() -> StringName:
 
 func can_continue(won: bool) -> bool:
 	return won
+
+
+func can_choose_squad() -> bool:
+	return true
 
 
 func record_win(context: RefCounted) -> void:

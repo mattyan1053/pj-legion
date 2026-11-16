@@ -9,6 +9,8 @@ extends RefCounted
 
 ## 流れの中の場面が「次へ」で終わるときの終わり方。
 const NEXT := &"next"
+## 流れの中の場面が「1 つ前の場面へ」で終わるときの終わり方（ストーリーの決着の画面の「部隊を選び直す」→ 出撃の準備）。
+const PREVIOUS := &"previous"
 
 ## 列を終えたら行く場面。
 var exit := &"title"
@@ -36,6 +38,18 @@ func data() -> Variant:
 func advance() -> StringName:
 	index = mini(index + 1, _steps.size())
 	return scene() if index < _steps.size() else exit
+
+
+## 1 つ前の場面へ戻り、その名前を返す（最初の場面なら、そのまま）。
+func back() -> StringName:
+	index = clampi(index - 1, 0, maxi(_steps.size() - 1, 0))
+	return scene()
+
+
+## 場面 step_scene（渡すもの step_data）を、いまの場面の前に差し込み、そこを「いま」にする。
+## 差し込んだ場面が NEXT で終わると、もとの場面へ戻る（出撃の準備から、部隊の編成へ寄り道する）。
+func insert(step_scene: StringName, step_data: Variant = null) -> void:
+	_steps.insert(index, {"scene": step_scene, "data": step_data})
 
 
 func is_done() -> bool:

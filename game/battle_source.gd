@@ -58,6 +58,11 @@ func can_continue(_won: bool) -> bool:
 	return false
 
 
+## 決着の画面に「部隊を選び直す」を出すか（押すと、流れ（run.gd）の 1 つ前の場面、出撃の準備へ戻る）。
+func can_choose_squad() -> bool:
+	return false
+
+
 ## CPU と対戦して人が勝った（決着の画面が出たとき）。context は app_context.gd。
 func record_win(_context: RefCounted) -> void:
 	pass

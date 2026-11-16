@@ -131,6 +131,28 @@ func test_clears_are_saved_and_read_back() -> void:
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": [String(episode.ID)]})
 
 
+func test_the_chosen_squad_is_saved_with_the_clears() -> void:
+	var story := Story.new()
+	story.store = _store()
+	story.load_saved()
+	assert_eq(story.squad_id, "", "記録が無ければ、既定の編成")
+	story.choose_squad("3")
+	var again := Story.new()
+	again.store = _store()
+	again.load_saved()
+	assert_eq(again.squad_id, "3", "出撃の準備で選んだ部隊は、次に起動しても選ばれている")
+	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": [], "squad": "3"})
+	again.choose_squad("")
+	assert_eq(_store().read(Story.STORE_NAME)["data"], {"cleared": []}, "既定の編成に戻したら、書かない")
+	story.load_data({"cleared": [], "squad": 4})
+	assert_eq(story.squad_id, "", "形の違う部隊の記録は、既定の編成として読む")
+
+
+func test_story_battles_offer_choosing_the_squad_again() -> void:
+	assert_true(Story.first_battle(Story.EPISODES[0]).can_choose_squad(), "決着の画面に「部隊を選び直す」を出す")
+	assert_false(preload("res://game/match_choice.gd").new().can_choose_squad(), "対戦モードには出さない")
+
+
 func test_broken_or_unknown_records_do_not_stop_loading() -> void:
 	var story := Story.new()
 	story.load_data({"cleared": "ridge_path"})

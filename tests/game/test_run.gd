@@ -31,3 +31,26 @@ func test_ends_at_the_exit() -> void:
 
 func test_an_empty_run_is_done() -> void:
 	assert_true(Run.new().is_done())
+
+
+func test_goes_back_to_the_previous_scene() -> void:
+	var run := Run.new()
+	run.add(&"sortie", "準備")
+	run.add(&"battle", 3)
+	run.advance()
+	assert_eq(run.back(), &"sortie", "決着の画面の「部隊を選び直す」で、出撃の準備へ戻る")
+	assert_eq(run.data(), "準備")
+	assert_eq(run.back(), &"sortie", "最初の場面より前へは戻らない")
+	assert_eq(run.advance(), &"battle")
+
+
+func test_an_inserted_scene_returns_to_the_current_one() -> void:
+	var run := Run.new()
+	run.add(&"sortie", "準備")
+	run.add(&"battle", 3)
+	run.insert(&"decks", "編成")
+	assert_eq(run.scene(), &"decks", "差し込んだ場面が、いまの場面になる")
+	assert_eq(run.data(), "編成")
+	assert_eq(run.advance(), &"sortie", "差し込んだ場面を NEXT で終えると、もとの場面へ戻る")
+	assert_eq(run.data(), "準備")
+	assert_eq(run.advance(), &"battle")

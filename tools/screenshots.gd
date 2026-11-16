@@ -114,6 +114,8 @@ const SCENES := {
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
+	"story_defeat": "ストーリー: 話の対戦に負けた決着の画面（「部隊を選び直す」で出撃の準備へ戻れる）",
+	"story_decks_detour": "ストーリー: 出撃の準備の「部隊を編成する」で開いた編成（ストーリー用だけ。「出撃の準備へ戻る」）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
@@ -222,7 +224,6 @@ func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	_app.context.settings.reset_all()
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
-	_app.context.story_deck_id = ""
 	if _app.current_id() != &"battle" or _app.context.run != null:
 		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
 		_app.context.match_choice.cpu_opponent = false
@@ -1374,6 +1375,37 @@ func _scene_story_wide() -> bool:
 	var size: Vector2i = _scene.battle.board.size
 	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
 	_aim(OrbitCamera.max_distance_for(size), 0.0, OrbitCamera.MIN_PITCH)
+	return true
+
+
+## 出撃の準備の「部隊を編成する」で、編成（ストーリー用）へ寄り道したところ。
+func _scene_story_decks_detour() -> bool:
+	if not await _scene_story_sortie():
+		return false
+	_app.current_scene().press_edit_decks()
+	await _app.scene_changed
+	return _app.current_id() == &"decks" and _app.current_scene().is_detour()
+
+
+## 話の対戦を、CPU どうしで決着の手前まで進め、最後の手を画面で指して負ける（敵 = プレイヤー2 が勝つ種だけ）。
+func _scene_story_defeat() -> bool:
+	if not await _story_battle():
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	if _advance(func() -> bool: return false):
+		return false
+	var action := _cpu.next_action(_battle)
+	if _battle.phase != Unit.Side.PLAYER2:
+		return false  # 人の側の手で決着する種
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	await _scene.act(action)
+	if not _battle.is_over() or _battle.winner != Unit.Side.PLAYER2:
+		return false
+	_scene.result_screen().skip()
 	return true
 
 

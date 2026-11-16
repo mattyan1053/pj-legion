@@ -4,7 +4,8 @@ extends Node
 ##
 ## - 左: 盤の縮図。両軍の駒の初期位置に、陣営の色の点（選んだ部隊で置き直す）。
 ## - 右: 勝ち方、敵の部隊、出撃する部隊の選択（既定の編成と、取っておいたストーリー用の部隊。出せない部隊は理由つきで押せない）。
-## - 「出撃」で、選んだ部隊を話の対戦に持たせて Run.NEXT（対戦へ）。選んだ部隊は、アプリが起動している間、次の話でも選ばれている。
+## - 「出撃」で、選んだ部隊を話の対戦に持たせて Run.NEXT（対戦へ）。選んだ部隊は覚えておき（story.gd の squad_id）、次の話でも、次に起動しても選ばれている。
+## - 「部隊を編成する」で、部隊の編成（ストーリー用）へ寄り道する（流れに差し込む。編成の「出撃の準備へ戻る」で、ここへ戻る）。
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
 
 const AppContext := preload("res://game/app_context.gd")
@@ -17,6 +18,8 @@ const Story := preload("res://game/story.gd")
 
 signal finished(outcome: StringName)
 
+## 部隊の編成の場面の名前（scene_flow.gd）。
+const DECKS := &"decks"
 ## 部隊の選択肢の、既定の編成の id（取っておいた部隊の id は数字の文字なので重ならない）。
 const DEFAULT_ID := ""
 ## 縮図の 1 マスの大きさ（px）。
@@ -114,7 +117,17 @@ func _ready() -> void:
 	var troops_column := VBoxContainer.new()
 	troops_column.add_theme_constant_override("separation", 6)
 	troops.add_child(troops_column)
-	troops_column.add_child(_caption("出撃する部隊（「部隊の編成」の「ストーリー用」で組める）"))
+	var troops_head := HBoxContainer.new()
+	troops_head.add_theme_constant_override("separation", 12)
+	troops_column.add_child(troops_head)
+	var troops_caption := _caption("出撃する部隊")
+	troops_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	troops_head.add_child(troops_caption)
+	var edit := _button("部隊を編成する", 16)
+	edit.custom_minimum_size = Vector2(180.0, 36.0)
+	edit.pressed.connect(press_edit_decks)
+	edit.visible = context.run != null  # 流れの外から置いたとき（検査）は、戻る先が無いので出さない
+	troops_head.add_child(edit)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -141,7 +154,7 @@ func _ready() -> void:
 	footer.add_child(_sortie)
 
 	_build_options()
-	var remembered: String = context.story_deck_id
+	var remembered: String = context.story.squad_id
 	choose(remembered if _option_buttons.has(remembered) and not (_option_buttons[remembered] as Button).disabled else DEFAULT_ID)
 
 
@@ -194,8 +207,17 @@ func is_option_enabled(id: String) -> bool:
 ## 「出撃」: 選んだ部隊を話の対戦に持たせて、対戦へ。
 func press_sortie() -> void:
 	battle_source.human_deck = chosen_deck()
-	context.story_deck_id = _chosen
+	context.story.choose_squad(_chosen)
 	finished.emit(Run.NEXT)
+
+
+## 「部隊を編成する」: 部隊の編成（ストーリー用）へ寄り道する。編成の「出撃の準備へ戻る」で、ここへ戻る（選んでいた部隊は覚えておく）。
+func press_edit_decks() -> void:
+	if context.run == null:
+		return
+	context.story.choose_squad(_chosen)
+	context.run.insert(DECKS, {"rules": Story.RULES_ID, "back_label": "出撃の準備へ戻る"})
+	context.start_run(context.run)
 
 
 ## 「話の一覧へ戻る」。
