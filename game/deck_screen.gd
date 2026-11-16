@@ -915,7 +915,7 @@ func _troop_row(index: int) -> Control:
 	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main.custom_minimum_size = Vector2(0.0, 46.0)
 	main.icon = UnitIcons.texture(entry.kind)
-	main.add_theme_constant_override("icon_max_width", 36)
+	main.add_theme_constant_override("icon_max_width", 28)
 	# 持ち物の文が長くても、列の幅を広げない。収まらないぶんは「…」にして、全文はマウスを乗せると出す。
 	main.clip_text = true
 	main.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
