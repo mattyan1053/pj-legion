@@ -1462,6 +1462,7 @@ func _update_info() -> void:
 		hovered = battle.unit_at(_hover_cell)
 	_hud.show_cell(BattleTexts.cell_line(battle, _hover_cell) if _hover_cell != NO_CELL else "")
 	_hud.viewer_side = _viewer_side()
+	_hud.side_armies = battle.armies
 	_update_forecast()
 
 	var shown := hovered if hovered != null else inspected_unit()
