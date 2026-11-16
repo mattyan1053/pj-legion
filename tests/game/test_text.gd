@@ -133,7 +133,7 @@ func test_the_table_has_unique_keys_with_text() -> void:
 		for key: String in _table()[file]:
 			assert_false(seen.has(key), "鍵 %s が %s と %s の 2 か所にある" % [key, seen.get(key), file])
 			seen[key] = file
-			assert_ne(Text.t(key), key, "%s の %s の文が空か、表が読み込まれていない（project.godot の locale/translations）" % [file, key])
+			assert_ne(Text.t(key), key, "%s の %s の文が空か、表が読み込まれていない（取り込み済みの *.translation が game/text/ に無い）" % [file, key])
 	assert_true(seen.size() > 0)
 
 

@@ -10,8 +10,9 @@
 
 - Godot の翻訳の仕組み（CSV から取り込む `Translation`）に乗せる。`game/text/` に、まとまりごとの CSV を置く。
   1 行目は `keys,ja`、そのあと 1 行に「鍵,文」。文の中に `,` や `"` があれば、文を `"` で囲む（`"` は `""`）。
-- 取り込みで `<名前>.ja.translation` ができる（コミットしない。`.gitignore`）。`project.godot` の `internationalization/locale/translations` に並べる。
-  **CSV を足したら、ここに 1 つ足す。** 言語は `locale/fallback` の `ja`（どの言語の環境でも、この表を使う）。
+- 取り込みで `<名前>.ja.translation` ができる（コミットしない。`.gitignore`）。`game/text.gd` が、最初に文を引くときに、
+  `game/text/` の `*.translation` をすべて読み込む（CSV を足すだけでよい）。`project.godot` の `locale/translations` には並べない
+  （まっさらな取り出しの最初の取り込みで、まだ無いファイルを開こうとしてエラーになるため）。言語は `locale/fallback` の `ja`（どの言語の環境でも、この表を使う）。
 - 1 つの鍵は、1 つのファイルにだけ置く（テストが確かめる）。
 
 | ファイル | 中身 |
