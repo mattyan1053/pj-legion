@@ -56,13 +56,17 @@ const HEADLINE_SHRUNK := 0.62
 const BODY_TOP := 140.0
 const STAT_FONT := 22
 ## 詳しい戦績の表: 駒の名前の列の幅、数の列の幅、行の高さ、送れる部分の高さ（px）。
-const TABLE_NAME_WIDTH := 280.0
-const TABLE_NUMBER_WIDTH := 104.0
+## 名前の列は、いちばん長い進化先の名前（MVP の印と Lv 込み）が、数の列は見出しが切れずに収まる幅（tests/game/test_result_table.gd）。
+const TABLE_NAME_WIDTH := 316.0
+const TABLE_NUMBER_WIDTH := 98.0
 const TABLE_ROW_HEIGHT := 34.0
 const TABLE_ICON := 30.0
 const TABLE_HEIGHT := 210.0
 ## 倒れた駒の印の列の幅（px）。
 const TABLE_STATE_WIDTH := 64.0
+## 表の駒の名前と、見出しの文字の大きさ。
+const TABLE_NAME_FONT := 15
+const TABLE_HEADING_FONT := 14
 
 const COLOR_SHADE := Color(Palette.SHADE, 0.78)
 const COLOR_PANEL := Palette.SOLID
@@ -675,7 +679,7 @@ func _table_line() -> HBoxContainer:
 
 
 func _table_cell(text: String, width: float, dim := false, align := HORIZONTAL_ALIGNMENT_RIGHT) -> Label:
-	var label := _label(16 if not dim else 14)
+	var label := _label(TABLE_NAME_FONT if not dim else TABLE_HEADING_FONT)
 	label.text = text
 	label.custom_minimum_size = Vector2(width, 0.0)
 	label.clip_text = true  # 列の幅を中身で広げない（見出しと数の列がずれないように）
