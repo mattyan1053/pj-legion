@@ -123,7 +123,7 @@ class Tally:
 			if fall.is_steal():
 				rows.append(boss_steals)
 			rows.append(boss_low if fall.is_low_share() else boss_high)
-			if fall.is_finish_only():
+			if fall.is_low_share() and fall.is_finish_only():
 				rows.append(boss_finish_only)
 			rows.append(boss_lead[_lead(fall.hp_share())])
 			rows.append(boss_first_lead[_lead(fall.first_hp_share())])
