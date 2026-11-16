@@ -114,6 +114,9 @@ const SCENES := {
 	"look_twin_springs_start": "双子結晶の対戦の始め",
 	"look_twin_springs_wide": "双子結晶を、いちばん引いて低い角度で見ている",
 	"look_twin_springs_close": "双子結晶の盤の真ん中に寄って見ている",
+	"look_boulder_crag": "大岩の峠（草原の見た目）の真ん中の大岩を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
+	"look_twin_springs_crag": "双子結晶の真ん中の大きな岩山を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
+	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
 	"story_list": "ストーリー: タイトルの「ストーリー」のあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
@@ -1270,6 +1273,12 @@ func _stage_look(stage: BoardGenerator.Stage, view: StringName) -> bool:
 		&"close":
 			_look_at(middle)
 			_aim(12.0, 20.0, 45.0)
+		&"crag":
+			_look_at(middle)
+			_aim(22.0, 140.0, 42.0)
+		&"crag_low":
+			_look_at(middle + Vector3(0.0, 0.0, 5.0))
+			_aim(16.0, 0.0, OrbitCamera.MIN_PITCH)
 	return true
 
 
@@ -1307,6 +1316,23 @@ func _scene_look_twin_springs_wide() -> bool:
 
 func _scene_look_twin_springs_close() -> bool:
 	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"close")
+
+
+func _scene_look_boulder_crag() -> bool:
+	_field = VersusFields.BOULDER_PASS
+	_new_battle()
+	_show()
+	_look_at(Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0))
+	_aim(20.0, 140.0, 42.0)
+	return true
+
+
+func _scene_look_twin_springs_crag() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"crag")
+
+
+func _scene_look_twin_springs_crag_low() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"crag_low")
 
 
 ## stage の盤で、cells の最初のマスへ寄って見る（泉・ポータルの動き）。
