@@ -109,6 +109,8 @@ const SCENES := {
 	"story_list": "ストーリー: タイトルの「ストーリー」のあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
+	"story_mixed_decks": "ストーリー: ほかの軍の駒（パラディン）を、部隊の編成の「ストーリー用」で雇うところ",
+	"story_mixed_info": "ストーリー: ほかの軍の駒（パラディン）を混ぜた部隊の対戦で、その駒の情報を見ている",
 	"story_sortie_default": "ストーリー: 出撃の準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
@@ -1351,6 +1353,58 @@ func _scene_story_sortie() -> bool:
 		return false
 	_app.current_scene().choose(saved.id)
 	return _app.current_scene().chosen_id() == saved.id
+
+
+## 全部の話をクリアして（パラディンを解放して）、部隊の編成の「ストーリー用」でパラディンを雇う。
+func _scene_story_mixed_decks() -> bool:
+	for episode in Story.EPISODES:
+		_app.context.story.clear(episode.ID)
+	await _app.go(&"title")
+	_app.current_scene().press_decks()
+	await _app.scene_changed
+	var screen: Node = _app.current_scene()
+	screen.set_mode(Story.RULES_ID)
+	screen.press_new()
+	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN, UnitKind.Id.SNIPER]:
+		screen.hire(kind)
+	screen.select_entry(1)
+	screen.hover_kind(UnitKind.Id.PALADIN)
+	return screen.editing_deck().entries.size() == 3
+
+
+## 全部の話をクリアして、既定の編成（パラディン入り）で 1 話の対戦を、until まで CPU どうしで進めて画面に出す。
+func _story_mixed(until: Callable) -> bool:
+	_app.context.decks.load_data({"decks": []})
+	for episode in Story.EPISODES:
+		_app.context.story.clear(episode.ID)
+	if not await _story_battle():
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	if not _advance(until):
+		return false
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	_scene.battle_log = _log
+	return true
+
+
+func _mixed_paladin() -> Unit:
+	for unit in _battle.units:
+		if unit.side == Unit.Side.PLAYER1 and unit.kind == UnitKind.Id.PALADIN:
+			return unit
+	return null
+
+
+func _scene_story_mixed_info() -> bool:
+	if not await _story_mixed(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1 and _mixed_paladin() != null):
+		return false
+	var unit := _mixed_paladin()
+	_look_at(BoardView.cell_center(unit.cell))
+	_scene.hover(unit.cell)
+	return true
 
 
 ## 出撃の準備で、既定の編成を選んでいるところ（取っておいた部隊は無い）。
