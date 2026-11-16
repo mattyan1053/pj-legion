@@ -7,6 +7,7 @@ const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
 const Campaign := preload("res://game/campaign.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
+const Text := preload("res://game/text.gd")
 ## 欄の説明つきのひな形（docs/story.md の「話を 1 つ足す」）。どの物語にも並ばないが、そのまま読めること。
 const TEMPLATE := "res://game/story/template.txt"
 
@@ -105,6 +106,30 @@ func test_monsters_are_not_for_the_player() -> void:
 	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
 	var campaign: Campaign = Campaign.parse(good.replace("unit = shield_trooper", "unit = skeleton"))
 	assert_false(campaign.problems.is_empty(), "最初から雇える駒に魔物")
+
+
+## 会話・台詞・覚えることで「」に括った言葉は、いまの画面に出る名前（駒・スキル・必殺技・持ち物・進化先の名前、
+## 駒のそばのメニューの項目、必殺技のボタン）のどれか。言葉を直したあとに、演習の台詞が古い呼び方のまま残らないように。
+## （メニューのスキルの項目は、スキルの名前で出る。「スキル」という項目は無い）
+func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
+	var shown := {Text.t("battle.hud.ult"): true}
+	for key: String in ["battle.menu.attack", "battle.menu.heal", "battle.menu.wait", "battle.menu.undo", "battle.menu.warp", "battle.menu.back"]:
+		shown[Text.t(key)] = true
+	var names := FileAccess.get_file_as_string("res://game/text/names.csv")
+	for row: String in names.split("\n"):
+		var cells := row.split(",", true, 1)
+		if cells.size() == 2 and cells[0].get_slice_count(".") == 2 and cells[0].get_slice(".", 0) in ["unit", "skill", "ult", "item", "evolution"]:
+			shown[cells[1].strip_edges()] = true
+	var quoted := RegEx.create_from_string("「([^」]*)」")
+	for episode: Episode in Story.all_episodes():
+		var texts: Array[String] = [episode.lesson]
+		for line: Array in episode.before + episode.after:
+			texts.append(line[1])
+		for cue: Array in episode.cues:
+			texts.append(cue[3])
+		for text in texts:
+			for found in quoted.search_all(text):
+				assert_true(shown.has(found.get_string(1)), "%s: 画面に無い呼び方「%s」: %s" % [episode.id, found.get_string(1), text])
 
 
 ## 駒の行の「,」のあとに、始めのレベルと経験値を書ける（進化の選び方を教える話）。書かない駒は [1, 0]。
