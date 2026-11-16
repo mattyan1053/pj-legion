@@ -1,5 +1,5 @@
 extends Node3D
-## 盤面の見た目。ルールの盤面（Board）を受け取って、地面・木立・岩山・結晶泉・本陣の旗と、
+## 盤面の見た目。ルールの盤面（Board）を受け取って、地面・障害物と森の置物（ステージの見た目のもの）・結晶泉・本陣の旗と、
 ## 環境オブジェクト（起爆樽・回復の泉・ポータル）を組み立てる。盤の上の効果（盾・煙幕・聖域）も描く。
 ##
 ## 地面は、盤の外まで続く 1 枚の板（ground.gdshader）。マスごとの板は並べない。マス目は、その上に重ねる線（grid.gdshader）で、
@@ -13,14 +13,13 @@ const StageLook := preload("res://game/stage_look.gd")
 const Scenery := preload("res://game/scenery.gd")
 const GROUND_SHADER := preload("res://game/ground.gdshader")
 const GRID_SHADER := preload("res://game/grid.gdshader")
-const FOREST_SCENES: Array[PackedScene] = [
-	preload("res://assets/kaykit/medieval-hexagon/trees_A_small.gltf"),
-	preload("res://assets/kaykit/medieval-hexagon/trees_B_small.gltf"),
-]
-const OBSTACLE_SCENE := preload("res://assets/kaykit/medieval-hexagon/mountain_A.gltf")
-## 元は六角形のマス（差し渡し約 1.8）用なので、四角いマスに収まるよう縮める。
-const FOREST_SCALE := 0.62
-const OBSTACLE_SCALE := 0.56
+## 障害物と森のマスに置くもの、地面の色と模様、泉の石と結晶の色は、ステージの見た目（stage_look.gd）が決める。
+## 石の壁（StageLook.WALL）の柱と壁の幅（マス）。柱は壁より少し太い。
+const WALL_PILLAR_WIDTH := 0.62
+const WALL_THICKNESS := 0.46
+## 壁の高さ（柱に対して）と、崩れた壁にする割合。
+const WALL_HEIGHT := 0.82
+const WALL_BROKEN_SHARE := 0.25
 
 ## 塗ったマスどうしの隙間（マス目の線が見える）。
 const TILE_GAP := 0.04
@@ -37,12 +36,9 @@ const NO_CELL := Vector2i(-1, -1)
 const OCCLUDER_FADE := 0.75
 const OCCLUDER_FADE_SPEED := 5.0
 
-## 地面の色は、ステージの色合い（stage_look.gd）にある。
-const COLOR_CRYSTAL := Color("4fd8f0")
 const COLOR_BARREL := Color("8a5a2b")
 const COLOR_BARREL_BAND := Color("3a3a3e")
 const COLOR_BARREL_MARK := Color("e8452e")
-const COLOR_SPRING_STONE := Color("b9bcc0")
 const COLOR_SPRING_WATER := Color("2f8fe0")
 const COLOR_SPRING_CROSS := Color("2fd66b")
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
@@ -67,7 +63,7 @@ const DANGER_LIFT := 0.07
 const DANGER_EDGE_WIDTH := 0.07
 
 var board: Board
-## ステージの色合い（stage_look.gd）。
+## ステージの見た目（stage_look.gd）。
 var look: Dictionary = StageLook.of(BoardGenerator.Stage.PLAIN)
 
 var _barrels := {}  # Vector2i -> Node3D（爆発したら取り除く）
@@ -93,7 +89,7 @@ static var _noise: ImageTexture
 
 
 ## look_seed は見た目だけに使う（木の種類・向き・大きさ）。team_colors は本陣の色（添字がプレイヤー番号）。
-## stage は色合いを決める（stage_look.gd）。
+## stage は見た目（地面・置物・景色）を決める（stage_look.gd）。
 func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], stage: int = BoardGenerator.Stage.PLAIN) -> void:
 	board = battle_board
 	look = StageLook.of(stage)
@@ -104,14 +100,10 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], stage
 	_add_ground()
 	var scenery := Scenery.new()
 	add_child(scenery)
-	scenery.setup(board.size, look_seed)
+	scenery.setup(board.size, look_seed, look)
 
 	var crystal_mesh := CrystalMesh.build()
-	var crystal_material := _material(COLOR_CRYSTAL)
-	crystal_material.emission_enabled = true
-	crystal_material.emission = COLOR_CRYSTAL
-	crystal_material.emission_energy_multiplier = 0.35
-	crystal_material.roughness = 0.25
+	var crystal_material := StageLook.crystal_material(look[StageLook.CRYSTAL])
 
 	for y in board.size.y:
 		for x in board.size.x:
@@ -124,10 +116,9 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], stage
 
 			match terrain:
 				Terrain.Type.FOREST:
-					var scene: PackedScene = FOREST_SCENES[rng.randi() % FOREST_SCENES.size()]
-					_occluders[cell] = _add_prop(scene, center, FOREST_SCALE * rng.randf_range(0.9, 1.05), rng)
+					_occluders[cell] = _add_cell_props(look[StageLook.FOREST_PROPS], cell, rng)
 				Terrain.Type.OBSTACLE:
-					_occluders[cell] = _add_prop(OBSTACLE_SCENE, center, OBSTACLE_SCALE, rng)
+					_occluders[cell] = _add_cell_props(look[StageLook.OBSTACLE_PROPS], cell, rng)
 				Terrain.Type.FONT:
 					_add_crystals(crystal_mesh, crystal_material, center, rng)
 
@@ -143,7 +134,7 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], stage
 	_build_markers()
 
 
-## マスの地面の色（本陣は陣営の色）。palette はステージの色合い（stage_look.gd。省けば中央平原）。
+## マスの地面の色（本陣は陣営の色）。palette はステージの見た目（stage_look.gd。省けば中央平原）。
 static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color], palette: Dictionary = {}) -> Color:
 	if palette.is_empty():
 		palette = StageLook.of(BoardGenerator.Stage.PLAIN)
@@ -396,6 +387,8 @@ func _add_ground() -> void:
 	ground.set_shader_parameter(&"noise_map", _noise_texture())
 	ground.set_shader_parameter(&"board_size", size)
 	ground.set_shader_parameter(&"map_pad", float(MAP_PAD))
+	ground.set_shader_parameter(&"paving", float(look[StageLook.PAVING]))
+	ground.set_shader_parameter(&"dry", float(look[StageLook.DRY]))
 	var ground_mesh := PlaneMesh.new()
 	ground_mesh.size = size + Vector2.ONE * 2.0 * GROUND_REACH
 	_add_mesh(ground_mesh, ground, center).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -543,7 +536,7 @@ func _add_spring(cell: Vector2i) -> void:
 	rim.outer_radius = 0.46
 	rim.rings = 20
 	rim.ring_segments = 8
-	var rim_instance := _add_mesh(rim, _material(COLOR_SPRING_STONE), center + Vector3(0.0, 0.02, 0.0))
+	var rim_instance := _add_mesh(rim, _material(look[StageLook.SPRING_STONE]), center + Vector3(0.0, 0.02, 0.0))
 	rim_instance.scale = Vector3(1.0, 0.7, 1.0)
 	var water := CylinderMesh.new()
 	water.top_radius = 0.38
@@ -567,7 +560,7 @@ func _add_spring(cell: Vector2i) -> void:
 	post.top_radius = 0.025
 	post.bottom_radius = 0.025
 	post.height = 1.0
-	_add_mesh(post, _material(COLOR_SPRING_STONE), foot + Vector3(0.0, 0.5, 0.0))
+	_add_mesh(post, _material(look[StageLook.SPRING_STONE]), foot + Vector3(0.0, 0.5, 0.0))
 	var bar := BoxMesh.new()
 	bar.size = Vector3(0.3, 0.1, 0.05)
 	var cross := _flat_material(COLOR_SPRING_CROSS)
@@ -679,18 +672,67 @@ func _overlay_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
-## 素材のシーンをマスの中央に置き、向きを 60 度刻みでばらす（元が六角形のマス用のため）。
-## 透かすときに使うので、中の形（GeometryInstance3D）をすべて返す。
-func _add_prop(scene: PackedScene, at: Vector3, size: float, rng: RandomNumberGenerator) -> Array[GeometryInstance3D]:
-	var prop: Node3D = scene.instantiate()
-	prop.position = at
-	prop.scale = Vector3.ONE * size
-	prop.rotation.y = deg_to_rad(60.0 * rng.randi_range(0, 5))
-	add_child(prop)
+## 障害物か森のマスに、ステージの見た目の置き方（StageLook.OBSTACLE_PROPS・FOREST_PROPS）で置く。
+## 手前にあると駒を隠すので、透かすときに使う形をすべて返す。
+func _add_cell_props(spec: Dictionary, cell: Vector2i, rng: RandomNumberGenerator) -> Array[GeometryInstance3D]:
+	var props: Array = spec.props
+	var tint: Color = spec.tint
+	var center := cell_center(cell)
 	var parts: Array[GeometryInstance3D] = []
-	for node in prop.find_children("*", "GeometryInstance3D", true, false):
-		parts.append(node)
+	var top := 0.0
+	match spec.style:
+		StageLook.WALL:
+			parts.append_array(_add_wall(props, tint, cell, float(spec.height), rng))
+			top = float(spec.height)
+		_:
+			# 元は六角形のマス用なので、向きを 60 度刻みでばらす。
+			var prop: Dictionary = props[rng.randi() % props.size()]
+			var size := float(spec.scale) * rng.randf_range(0.9, 1.05)
+			var turned := Basis(Vector3.UP, deg_to_rad(60.0 * rng.randi_range(0, 5))).scaled(Vector3.ONE * size)
+			parts.append(_add_prop(prop, tint, Transform3D(turned, center)))
+			top = float(prop.height) * size
+	if spec.has("crystals"):
+		# 置いたものの上から、光る結晶の群れが生える。
+		var crystal := {"crystal": spec.crystals, "height": 1.0}
+		var turned := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(0.62, rng.randf_range(0.85, 1.05), 0.62))
+		var at := center + Vector3(rng.randf_range(-0.08, 0.08), top * 0.4, rng.randf_range(-0.08, 0.08))
+		var part := _add_prop(crystal, Color.WHITE, Transform3D(turned, at))
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		parts.append(part)
 	return parts
+
+
+## 石の壁（StageLook.WALL）: マスの真ん中の柱と、右・下の障害物のマスへつなぐ壁。
+## 素材の柱（幅 1.5・高さ 4）と壁（長さ 4・厚さ 1・高さ 4）を、マスに合わせて伸び縮みさせる。
+func _add_wall(props: Array, tint: Color, cell: Vector2i, height: float, rng: RandomNumberGenerator) -> Array[GeometryInstance3D]:
+	var parts: Array[GeometryInstance3D] = []
+	var pillar: Dictionary = props[0]
+	var center := cell_center(cell)
+	var pillar_height := height * rng.randf_range(0.94, 1.06)
+	var width := WALL_PILLAR_WIDTH / 1.5
+	var pillar_basis := Basis.from_scale(Vector3(width, pillar_height / float(pillar.height), width))
+	parts.append(_add_prop(pillar, tint, Transform3D(pillar_basis, center)))
+	for side: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN]:
+		if not board.in_bounds(cell + side) or board.terrain_at(cell + side) != Terrain.Type.OBSTACLE:
+			continue
+		var wall: Dictionary = props[1]
+		if props.size() > 2 and rng.randf() < WALL_BROKEN_SHARE:
+			wall = props[2]
+		var along := Basis(Vector3.UP, 0.0 if side.x != 0 else PI / 2.0)
+		var stretched := along * Basis.from_scale(Vector3(0.25, height * WALL_HEIGHT / float(wall.height), WALL_THICKNESS))
+		var at := center + Vector3(side.x, 0.0, side.y) * 0.5
+		parts.append(_add_prop(wall, tint, Transform3D(stretched, at)))
+	return parts
+
+
+## 素材を 1 つ、place に置く。
+func _add_prop(prop: Dictionary, tint: Color, place: Transform3D) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	instance.mesh = StageLook.mesh_of(prop)
+	instance.material_override = StageLook.material_of(prop, tint)
+	instance.transform = place
+	add_child(instance)
+	return instance
 
 
 func _add_mesh(mesh: Mesh, material: Material, at: Vector3) -> MeshInstance3D:
