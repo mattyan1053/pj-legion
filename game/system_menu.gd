@@ -7,6 +7,8 @@ extends CanvasLayer
 ## - 確かめの文（confirm）を持つ項目は、押すと「本当に？」を挟む（対戦が失われる項目）。
 ## - 「設定」（ITEM_SETTINGS）は、ここで設定の画面（settings_panel.gd）に切り替える。閉じると settings_closed を出す。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const Settings := preload("res://game/settings.gd")
 const SettingsPanel := preload("res://game/settings_panel.gd")
 
@@ -28,8 +30,8 @@ const ITEM_RESUME := &"resume"
 const ITEM_SETTINGS := &"settings"
 
 const LAYER := 20
-const COLOR_PANEL := Color(0.09, 0.11, 0.15, 0.97)
-const COLOR_WARNING := Color("ffb86b")
+
+const COLOR_WARNING := Palette.WARN
 const BUTTON_WIDTH := 300.0
 ## 右上のボタンの大きさ。上の帯（battle_hud.gd）は、このぶんを右端に空けておく。
 const CORNER_BUTTON_SIZE := Vector2(104.0, 34.0)
@@ -75,7 +77,7 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 	_overlay.visible = false
 	add_child(_overlay)
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.5)
+	shade.color = Palette.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.add_child(shade)
@@ -109,6 +111,7 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 	keep.pressed.connect(back)
 	confirm_buttons.add_child(keep)
 	_confirm_ok = _button("")
+	_confirm_ok.theme_type_variation = UiTheme.BUTTON_DANGER  # 確かめるのは、対戦の状態が失われる行き先だけ
 	_confirm_ok.custom_minimum_size = Vector2(180.0, 48.0)
 	_confirm_ok.pressed.connect(func() -> void: _choose(_confirming))
 	confirm_buttons.add_child(_confirm_ok)
@@ -130,6 +133,7 @@ func open(items: Array, settings_only := false) -> void:
 		_menu_column.remove_child(child)
 		child.queue_free()
 	var title := _label(26)
+	title.theme_type_variation = UiTheme.LABEL_HEADING
 	title.text = "メニュー"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_menu_column.add_child(title)
@@ -290,10 +294,7 @@ func _exit_tree() -> void:
 
 
 func _panel() -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(20.0)
+	var style := UiTheme.solid_box(20.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	return panel
@@ -302,7 +303,6 @@ func _panel() -> PanelContainer:
 func _label(font_size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	return label
 

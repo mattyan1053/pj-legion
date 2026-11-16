@@ -4,17 +4,19 @@ extends PanelContainer
 ## 値はその場で settings に入れる（すぐ効く）。行ごとに「既定に戻す」、下に「すべて既定に戻す」と「戻る」。
 ## 閉じる（戻る・右クリック・Esc）のは、持ち主（system_menu.gd）が決める。ここは closed を出すだけ。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const Settings := preload("res://game/settings.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 
 ## 「戻る」が押された。
 signal closed
 
-const COLOR_PANEL := Color(0.09, 0.11, 0.15, 0.97)
-const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
-const COLOR_SECTION := Color("ffd76a")
+
+const COLOR_TEXT_DIM := Palette.TEXT_DIM
+
 ## 選んでいる選択肢のボタンの色。
-const COLOR_CHOSEN := Color("3a7bd5")
+
 ## 項目の名前の列の幅と、説明を折り返す幅（px）。
 const LABEL_WIDTH := 230.0
 const NOTE_WIDTH := 560.0
@@ -33,16 +35,14 @@ var _scroll: ScrollContainer
 
 func setup(target: Settings) -> void:
 	settings = target
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(20.0)
+	var style := UiTheme.solid_box(20.0)
 	add_theme_stylebox_override("panel", style)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
 	add_child(column)
 
 	var title := _label(28)
+	title.theme_type_variation = UiTheme.LABEL_HEADING
 	title.text = "設定"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
@@ -62,7 +62,7 @@ func setup(target: Settings) -> void:
 			section = entry["section"]
 			var heading := _label(17)
 			heading.text = section
-			heading.add_theme_color_override("font_color", COLOR_SECTION)
+			heading.theme_type_variation = UiTheme.LABEL_SECTION
 			rows.add_child(heading)
 		rows.add_child(_build_row(entry))
 	var rows_size := rows.get_combined_minimum_size()
@@ -152,11 +152,7 @@ func _build_row(entry: Dictionary) -> Control:
 				var button := _button(choice[1], 16)
 				button.toggle_mode = true
 				button.button_group = group
-				# 押されている（選んでいる）ボタンは、明るい色で塗って、どれを選んでいるかを一目で分かるようにする。
-				button.add_theme_stylebox_override("pressed", _chosen_style())
-				button.add_theme_stylebox_override("hover_pressed", _chosen_style())
-				button.add_theme_color_override("font_pressed_color", Color.WHITE)
-				button.add_theme_color_override("font_hover_pressed_color", Color.WHITE)
+				# 押されている（選んでいる）ボタンは、テーマの「選ばれている」の形（金の縁と濃い金の地）になる。
 				button.custom_minimum_size = Vector2(0.0, 36.0)
 				button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				var choice_value: Variant = choice[0]
@@ -183,18 +179,9 @@ func _build_row(entry: Dictionary) -> Control:
 	return box
 
 
-static func _chosen_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_CHOSEN
-	style.set_corner_radius_all(4)
-	style.set_content_margin_all(6.0)
-	return style
-
-
 func _label(font_size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	return label
 

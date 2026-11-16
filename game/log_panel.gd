@@ -7,6 +7,8 @@ extends CanvasLayer
 ## - 開くたびに、前に開いてから増えた・書き換わった行だけを作り直し、いちばん下（最新）を見せる。
 ## - 行は、新しいほうから CHUNK 行ずつ作る。いちばん上までさかのぼると、その前の CHUNK 行を足す（長い対戦でも、開くのが重くならない）。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const BattleLog := preload("res://game/battle_log.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 
@@ -30,11 +32,11 @@ const TOP_GAP := 84.0
 const TEXT_WIDTH := PANEL_WIDTH - 72.0
 const FONT_SIZE := 15
 const HEADER_FONT_SIZE := 16
-const COLOR_PANEL := Color(0.08, 0.1, 0.13, 0.95)
-const COLOR_ROW_HOVER := Color(1.0, 1.0, 1.0, 0.07)
-const COLOR_ROW_CHOSEN := Color(1.0, 0.85, 0.35, 0.16)
-const COLOR_TEXT := Color(0.9, 0.92, 0.95)
-const COLOR_TEXT_DIM := Color(0.72, 0.75, 0.8)
+const COLOR_PANEL := Color(Palette.PANEL, 0.95)
+const COLOR_ROW_HOVER := Palette.WASH
+const COLOR_ROW_CHOSEN := Color(Palette.ACCENT, 0.16)
+const COLOR_TEXT := Palette.TEXT
+const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_NEUTRAL := Color(0.78, 0.78, 0.74)
 
 var _team_colors: Array[Color] = []
@@ -66,10 +68,7 @@ func setup(team_colors: Array[Color], overlays: RefCounted) -> void:
 	_overlay.gui_input.connect(_on_overlay_input)
 	add_child(_overlay)
 
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(12.0)
+	var style := UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 6, 12.0)
 	_panel = PanelContainer.new()
 	_panel.add_theme_stylebox_override("panel", style)
 	_panel.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
@@ -207,7 +206,7 @@ func _row(entry: BattleLog.Entry, index: int) -> Control:
 			box.add_child(gap)
 			if previous_turn != entry.turn:
 				var line := ColorRect.new()
-				line.color = Color(1.0, 1.0, 1.0, 0.18)
+				line.color = Color(Palette.BORDER, 0.8)
 				line.custom_minimum_size = Vector2(0.0, 1.0)
 				line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				box.add_child(line)

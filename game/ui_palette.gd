@@ -23,6 +23,9 @@ const SHADE := Color(0.02, 0.03, 0.06, 0.6)
 ## 盤の上に重ねる板の濃さ（半透明）と、ダイアログの板の濃さ（ほぼ不透明）。
 const ALPHA_OVERLAY := 0.88
 const ALPHA_SOLID := 0.97
+## 盤の上に重ねる板の地（半透明）と、ダイアログの板の地（ほぼ不透明）。
+const OVERLAY := Color(PANEL, ALPHA_OVERLAY)
+const SOLID := Color(PANEL, ALPHA_SOLID)
 
 # ---- 枠 ----
 
@@ -64,6 +67,9 @@ const WARN := Color("ffb86b")
 const DANGER := Color("ff8a6b")
 ## 危険なボタンの地。
 const DANGER_FILL := Color("6b2a24")
+## 進める（ターン終了）の地。未行動の駒が残っていないときは、明るいほう。
+const GO := Color("2f6b3a")
+const GO_READY := Color("3fa24f")
 ## 知らせ・新しいもの（状態、まだ読んでいない話）。
 const INFO := Color("8fe3ff")
 
@@ -84,16 +90,6 @@ const GOAL_URGENT := Color(0.62, 0.2, 0.1, 0.95)
 const HP_HIGH := Color("5fd35f")
 const HP_MID := Color("e8c23a")
 const HP_LOW := Color("e8503a")
-
-
-## 盤の上に重ねる板の地（半透明）。
-static func overlay() -> Color:
-	return Color(PANEL, ALPHA_OVERLAY)
-
-
-## ダイアログの板の地（ほぼ不透明）。
-static func solid() -> Color:
-	return Color(PANEL, ALPHA_SOLID)
 
 
 ## HP の残りの割合（0〜1）に合う棒の色。
