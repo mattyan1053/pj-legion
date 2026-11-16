@@ -16,6 +16,7 @@ const Run := preload("res://game/run.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
 const WinText := preload("res://game/win_text.gd")
 
 signal finished(outcome: StringName)
@@ -113,7 +114,7 @@ func _ready() -> void:
 	var enemy_column := VBoxContainer.new()
 	enemy.add_child(enemy_column)
 	enemy_column.add_child(_caption("敵の部隊（%s）" % DeckText.army_name(episode.ENEMY_ARMY)))
-	enemy_column.add_child(_wrapped(DeckText.deck_summary(episode.enemy_deck()), 17, COLOR_TEXT))
+	enemy_column.add_child(_wrapped(DeckText.deck_summary(StoryBattle.enemy_deck_of(episode)), 17, COLOR_TEXT))
 
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
