@@ -945,13 +945,13 @@ func _leave_mode() -> void:
 
 ## 選んでいる駒を、いまのポータルから対のポータルへ転移させる（メニューの「転移」）。
 ## ポータルへ動いたあとなら、ルールには「移動の取り消し」と「行き先への移動」として渡す（Queries.warp_actions）。
-## 見せるのは転移だけ（戻って歩き直すところは見せない。BattlePlayback.play_all の quiet_until_warp）。
+## 見せるのは転移だけ（戻って歩き直すところは見せない。BattlePlayback.play_all の quiet_until_warp_from）。
 func press_warp() -> void:
 	if is_busy() or _ui.selected_id == 0:
 		return
 	var actions := Queries.warp_actions(battle, selected_unit())
 	if not actions.is_empty():
-		_do_all(actions, true)
+		_do_all(actions, selected_unit().cell)
 
 
 ## 選んでいる駒を待機させる（メニューの「待機」）。
@@ -1211,9 +1211,9 @@ func _do(action: BattleAction) -> bool:
 
 
 ## 行動の組を順にルールに渡し、起きたことをまとめて再生する。先頭が断られたら何もしない。途中で断られたら、そこまでを再生する。
-## quiet_until_warp なら、最初の転移より前に起きたこと（移動の取り消しと、歩き直し）は見せずに済ませる（ログには残る）。
+## quiet_until_warp_from がマスなら、そのポータルから出る転移より前に起きたこと（移動の取り消しと、歩き直し）は見せずに済ませる（ログには残る）。
 ## 受け付けられたかを返す（全部が受け付けられたとき真）。
-func _do_all(actions: Array[BattleAction], quiet_until_warp := false) -> bool:
+func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> bool:
 	var events: Array[BattleEvent] = []
 	var accepted := true
 	for i in actions.size():
@@ -1240,7 +1240,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp := false) -> bool:
 	_hud.set_ult_button(_hud.ult_button_text(), false, _ult_summary())
 	_hud.set_end_turn(false, _hud.end_turn_text())
 	_hud.hide_evolution()
-	await _playback.play_all(events, quiet_until_warp)
+	await _playback.play_all(events, quiet_until_warp_from)
 	_ui.busy = false
 	# 対戦の途中の会話: 起きたことを見せ終えてから出す（演出と重ねない）。決着した行動のあとは出さない（BattleCues が見る）。
 	_say(_cues.on_events(battle, events))
