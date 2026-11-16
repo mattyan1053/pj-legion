@@ -14,6 +14,7 @@ const BattleScreen := preload("res://game/battle_screen.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Run := preload("res://game/run.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
 
 signal finished(outcome: StringName)
@@ -25,6 +26,8 @@ const DEFAULT_ID := ""
 ## 縮図の 1 マスの大きさ（px）。
 const MAP_CELL := 20
 const RIGHT_WIDTH := 600.0
+## 右の欄の文を折り返す幅（px）。
+const WRAP_WIDTH := RIGHT_WIDTH - 40.0
 
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.9)
 const COLOR_TEXT := Color(0.93, 0.94, 0.96)
@@ -175,7 +178,7 @@ func choose(id: String) -> void:
 	for key: String in _option_buttons:
 		(_option_buttons[key] as Button).set_pressed_no_signal(key == id)
 	var deck := chosen_deck()
-	_deck_line.text = DeckText.deck_summary(deck)
+	_fold(_deck_line, DeckText.deck_summary(deck))
 	_map.texture = ImageTexture.create_from_image(map_image(deck))
 
 
@@ -291,12 +294,20 @@ func _caption(text: String) -> Label:
 	return label
 
 
+## 右の欄の幅で折り返す文の札（Label の自動の折り返しは語の途中で切るので、text_wrap.gd で折り返す）。
 func _wrapped(text: String, font_size: int, color: Color) -> Label:
 	var label := _text(font_size, color)
-	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size = Vector2(RIGHT_WIDTH - 40.0, 0.0)
+	label.custom_minimum_size = Vector2(WRAP_WIDTH, 0.0)
+	_fold(label, text)
 	return label
+
+
+## 札 label の文を text にする（右の欄の幅で折り返す）。
+func _fold(label: Label, text: String) -> void:
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	label.text = TextWrap.fold(text, WRAP_WIDTH, func(character: String) -> float:
+		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
 
 
 func _text(font_size: int, color: Color) -> Label:
