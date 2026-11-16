@@ -42,6 +42,7 @@ const EPISODES: Array[Script] = [
 	preload("res://game/episodes/ridge_path.gd"),
 	preload("res://game/episodes/ridge_ambush.gd"),
 	preload("res://game/episodes/ridge_hold.gd"),
+	preload("res://game/episodes/gorge_rout.gd"),
 ]
 
 ## 取っておく先（null なら書かない。検査・自動の対戦・スクリーンショットでは null）。

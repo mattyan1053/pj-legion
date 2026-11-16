@@ -21,6 +21,9 @@ extends SceneTree
 ##                   盤・部隊・初期位置はその話のもの（ステージと軍の組み合わせは回さない。--decks、--pairings、--stage は見ない）。
 ##                   人の側は、その話を初めて遊ぶときの既定の編成（story.gd の first_battle）。
 ##                   話の敵の強さを、人の側の勝率で測る（docs/story.md の「敵の強さ」）
+##   --squads=random  --episode のとき、人の側の部隊を、局ごとに変える（その話で雇える駒から、種で決まる組み合わせで、
+##                   数の上限まで予算の中で雇う。装備は既定の編成と同じ決まり）。中立の駒の湧き直しが起きない話は、
+##                   盤の上に乱数が無く、どの種でも同じ 1 局になるので、部隊の違いで勝率を測る
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
 ## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
@@ -29,6 +32,7 @@ extends SceneTree
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
 const Story := preload("res://game/story.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
 const Names := preload("res://game/names.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
@@ -295,7 +299,10 @@ func _initialize() -> void:
 			setup.decks[side] = _deck(armies[side], deck_mode)
 		if episode != null:
 			stage = EPISODE_STAGE as BoardGenerator.Stage
-			setup = Story.first_battle(episode).make_setup(first_seed + game)
+			if args.get("squads", "") == "random":
+				setup = StoryBattle.new(episode, _random_squad(episode, first_seed + game)).make_setup(first_seed + game)
+			else:
+				setup = Story.first_battle(episode).make_setup(first_seed + game)
 			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
@@ -332,6 +339,8 @@ func _initialize() -> void:
 				first_seed + game, stage, Names.ARMY_NAMES[armies[0]], Names.ARMY_NAMES[armies[1]], outcome.winner, outcome.ending,
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
 			])
+			if episode != null and args.get("squads", "") == "random":
+				print("SQUAD seed=%d %s" % [first_seed + game, _deck_text(setup.deck_of(Unit.Side.PLAYER1))])
 			for kind: UnitKind.Id in outcome.by_kind:
 				var row: Array = outcome.by_kind[kind]
 				print("KIND seed=%d kind=%d hired=%d defeated=%d damage=%d kills=%d evolved=%d" % [
@@ -600,6 +609,32 @@ func _deck(army: UnitKind.Army, mode: String) -> Deck:
 	var roster := Deck.roster(army)
 	for slot in EVEN_SLOTS:
 		deck.add(roster[slot])
+	return deck
+
+
+## --squads=random の、人の側の部隊。その話を初めて遊ぶときに雇える駒から、種で決まる順に、数の上限まで予算の中で雇う。
+## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.DEFAULT_ITEMS）。
+func _random_squad(episode: Script, squad_seed: int) -> Deck:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = squad_seed
+	var kinds := Story.kinds_before(episode)
+	var deck := Deck.new(Story.ARMY, Story.rules_of(kinds))
+	var hired: Array[UnitKind.Id] = []
+	var cost := 0
+	while hired.size() < deck.rules.max_units:
+		var affordable := kinds.filter(func(kind: UnitKind.Id) -> bool: return cost + UnitKind.cost(kind) <= deck.budget())
+		if affordable.is_empty():
+			break
+		var kind: UnitKind.Id = affordable[rng.randi_range(0, affordable.size() - 1)]
+		hired.append(kind)
+		cost += UnitKind.cost(kind)
+	hired.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool: return UnitKind.role(a) < UnitKind.role(b))
+	for kind in hired:
+		deck.add(kind)
+	for entry in deck.entries:
+		var item := Story.DEFAULT_ITEMS.get(UnitKind.role(entry.kind), -1) as int
+		if item != -1 and deck.total_cost() + Equipment.cost(item as Equipment.Id) <= deck.budget():
+			entry.equip(item as Equipment.Id)
 	return deck
 
 

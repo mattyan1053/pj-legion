@@ -124,6 +124,9 @@ const SCENES := {
 	"story_hold_sortie": "ストーリー: 守り切る話（第 3 話）の出撃の準備（勝ち方の文の先頭に「N ターン目の終わりまで守り切る」）",
 	"story_hold_battle": "ストーリー: 守り切る話の対戦の途中（上の帯に「ターン 3 / N」。N は守り切るターン数）",
 	"story_hold_result": "ストーリー: 守り切る話で、最後のターンの終わりまで持ちこたえて勝った決着の画面（「最後まで守り切った」）",
+	"story_rout_sortie": "ストーリー: 全滅させる話（第 4 話）の出撃の準備（2 つ目の手で作ったマップ「結晶の渓谷」。勝ち方は「敵を全滅させれば勝ち」だけ）",
+	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の渓谷を、双子結晶の見た目で）",
+	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
 ## 場面を作る対戦の最初の種。
@@ -1478,6 +1481,36 @@ func _scene_story_hold_result() -> bool:
 			_scene.result_screen().skip()
 			return held
 	return false
+
+
+## 全滅させる話（WINS に全滅を持つ最初の話）の番号（0 から）。無ければ -1。
+func _rout_episode() -> int:
+	for i in Story.EPISODES.size():
+		var constants: Dictionary = Story.EPISODES[i].get_script_constant_map()
+		if constants.has("WINS") and constants["WINS"].has(GameWonEvent.Reason.ROUTED):
+			return i
+	return -1
+
+
+func _scene_story_rout_sortie() -> bool:
+	var number := _rout_episode()
+	if number == -1 or not await _start_story(number):
+		return false
+	return await _scene_story_sortie_from_talk()
+
+
+func _scene_story_rout_start() -> bool:
+	var number := _rout_episode()
+	return number != -1 and await _story_battle(number)
+
+
+func _scene_story_rout_wide() -> bool:
+	if not await _scene_story_rout_start():
+		return false
+	var size: Vector2i = _scene.battle.board.size
+	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
+	_aim(OrbitCamera.max_distance_for(size), 0.0, OrbitCamera.MIN_PITCH)
+	return true
 
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。

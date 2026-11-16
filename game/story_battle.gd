@@ -27,9 +27,14 @@ func make_setup(battle_seed: int) -> MatchSetup:
 		cells.assign(episode.DEPLOY[side])
 		if not cells.is_empty():
 			scenario.set_deploy_cells(side, cells)
-	# 勝ち方（話のデータの HOLD_TURNS。あれば、人がそのターン数を守り切れば勝ち。docs/win-conditions.md）。
+	# 勝ち方（docs/win-conditions.md）。話のデータの HOLD_TURNS があれば、人がそのターン数を守り切れば勝ち。
 	if episode.get_script_constant_map().has(&"HOLD_TURNS"):
 		scenario.hold_for(Unit.Side.PLAYER1, episode.HOLD_TURNS)
+	# 話のデータの WINS。あれば、人の勝ち方はその列だけ（たとえば全滅だけ。敵の将を倒しても終わらない）。
+	if episode.get_script_constant_map().has(&"WINS"):
+		var wins: Array[GameWonEvent.Reason] = []
+		wins.assign(episode.WINS)
+		scenario.set_win_conditions(Unit.Side.PLAYER1, wins)
 	var setup := MatchSetup.new()
 	setup.scenario = scenario
 	setup.battle_seed = battle_seed

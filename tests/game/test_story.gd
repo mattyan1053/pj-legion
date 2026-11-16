@@ -330,5 +330,21 @@ func test_hold_turns_make_the_human_side_hold_out() -> void:
 			assert_eq(battle.win_conditions[Unit.Side.PLAYER2], Scenario.STANDARD_WIN_CONDITIONS, "敵はいつもの勝ち方で攻める")
 		else:
 			assert_eq(battle.turns_left(), -1, "%s は守り切るの話でない" % episode.ID)
-			assert_eq(battle.win_conditions[Unit.Side.PLAYER1], Scenario.STANDARD_WIN_CONDITIONS)
+			if not episode.get_script_constant_map().has("WINS"):
+				assert_eq(battle.win_conditions[Unit.Side.PLAYER1], Scenario.STANDARD_WIN_CONDITIONS)
 	assert_true(holding > 0, "守り切るの話が無い")
+
+
+func test_wins_replace_the_human_side_win_conditions() -> void:
+	var routing := 0
+	for episode in Story.EPISODES:
+		if not episode.get_script_constant_map().has("WINS"):
+			continue
+		var battle := Story.first_battle(episode).make_setup(1).create_battle()
+		assert_false(episode.WINS.is_empty(), "%s: 勝ち方の無い話は作らない" % episode.ID)
+		assert_eq(battle.win_conditions[Unit.Side.PLAYER1], episode.WINS, "人の勝ち方は WINS だけ")
+		assert_eq(battle.win_conditions[Unit.Side.PLAYER2], Scenario.STANDARD_WIN_CONDITIONS, "敵はいつもの勝ち方で攻める")
+		if episode.WINS.has(GameWonEvent.Reason.ROUTED):
+			routing += 1
+			assert_false(battle.wins_by(Unit.Side.PLAYER1, GameWonEvent.Reason.KING_DEFEATED), "全滅の話は、敵の将を倒しても終わらない")
+	assert_true(routing > 0, "全滅させる話が無い")
