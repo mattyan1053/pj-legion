@@ -22,12 +22,30 @@ var decks: Array[Deck] = [null, null]
 ## 相手を CPU が動かすか。偽なら、2 人が 1 台で交代する。
 var cpu_opponent := true
 ## CPU と対戦するときに、人が動かすプレイヤー（PLAYER1 = 先手、PLAYER2 = 後手）。人どうしでは見ない。
+## random_side が真なら見ない（対戦を作るたびに、種から引いた側。drawn_side）。
 var human_side := Unit.Side.PLAYER1
+## 手番を「ランダム」にしたか。真なら、対戦を作るとき（to_setup）に、種から先手・後手を引く。
+var random_side := false
+## 手番が「ランダム」のとき、最後に作った対戦で引いた、人が動かす側。
+var drawn_side := Unit.Side.PLAYER1
+
+
+## CPU と対戦するときに、人が動かすプレイヤー（ランダムなら、最後に作った対戦で引いた側）。
+func human_side_now() -> Unit.Side:
+	return drawn_side if random_side else human_side
 
 
 ## CPU が動かすプレイヤー（cpu_opponent が偽でも、CPU に切り替えたときに動かすほう）。
 func cpu_side() -> Unit.Side:
-	return (1 - human_side) as Unit.Side
+	return (1 - human_side_now()) as Unit.Side
+
+
+## 手番が「ランダム」のとき、種 battle_seed の対戦で人が動かす側。対戦の乱数とは別に引く（盤や対戦の進みを変えない）。
+## 同じ種なら同じ側（「同じ盤面でもう一度」は同じ手番で始め直す）。
+static func draw_side(battle_seed: int) -> Unit.Side:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([&"human_side", battle_seed])
+	return rng.randi_range(0, 1) as Unit.Side
 
 
 func look() -> StringName:
@@ -68,9 +86,32 @@ func run() -> Run:
 	return battle_run
 
 
+## 対戦の設定の「部隊を編成する」で始める流れ（run.gd）: 部隊の編成（対戦用。side の部隊を組む寄り道）→ 対戦の設定。
+## 寄り道で取っておいた部隊は、戻った対戦の設定で side の部隊に選ばれる（deck_screen.gd の leave）。
+static func deck_run(side: Unit.Side) -> Run:
+	var detour := Run.new()
+	detour.add(SceneFlow.DECKS, {"rules": DeckRules.VERSUS, "back_label": "対戦の設定へ戻る", "side": side})
+	detour.add(SceneFlow.SETUP)
+	return detour
+
+
 ## side が人の部隊を使うか（CPU が動かすプレイヤーは、いつも CPU の編成）。
+## 手番が「ランダム」なら、人の部隊は先手・後手のどちらに付くか決まっていないので、選ぶのは先手の行（PLAYER1）だけにする
+## （対戦を作るとき、引いた側へ人の部隊を、もう一方へ CPU の編成を付ける）。
 func is_human(side: Unit.Side) -> bool:
-	return not cpu_opponent or side == human_side
+	if not cpu_opponent:
+		return true
+	return side == (Unit.Side.PLAYER1 if random_side else human_side)
+
+
+## 人の部隊の行（CPU 戦）。ランダムなら先手の行（is_human を参照）。
+func human_row() -> Unit.Side:
+	return Unit.Side.PLAYER1 if random_side else human_side
+
+
+## CPU の編成の行（CPU 戦）。ランダムなら後手の行。
+func cpu_row() -> Unit.Side:
+	return (1 - human_row()) as Unit.Side
 
 
 ## side の軍を選ぶ。選んでいた部隊の軍と違えば、部隊は既定の編成に戻す。
@@ -122,12 +163,17 @@ func copy() -> RefCounted:
 		other.decks[side] = decks[side].copy() if decks[side] != null else null
 	other.cpu_opponent = cpu_opponent
 	other.human_side = human_side
+	other.random_side = random_side
+	other.drawn_side = drawn_side
 	return other
 
 
 ## この選択で、種 battle_seed の対戦の設定を作る。戦いの定義は、選んだステージの対戦モードのもの（versus_fields.gd）。
+## 手番が「ランダム」なら、ここで種から引いた側を drawn_side に入れる（cpu_side() がそれを返す）。
 func to_setup(battle_seed: int) -> MatchSetup:
 	var defined := VersusFields.scenario_of(field)
+	if random_side:
+		drawn_side = draw_side(battle_seed)
 	if cpu_opponent:
-		return MatchSetup.on_scenario(defined, battle_seed, human_side, deck_for(human_side), armies[cpu_side()])
+		return MatchSetup.on_scenario(defined, battle_seed, human_side_now(), deck_for(human_row()), armies[cpu_row()])
 	return MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1), deck_for(Unit.Side.PLAYER2))

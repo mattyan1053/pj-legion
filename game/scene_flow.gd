@@ -32,7 +32,7 @@ const BATTLE := &"battle"
 const SCENES := {
 	TITLE: {
 		"script": "res://game/title_screen.gd",
-		"next": {&"start": STAGE, &"story": EPISODES, &"decks": DECKS},
+		"next": {&"start": STAGE, &"story": EPISODES},
 		"music": &"menu",
 	},
 	EPISODES: {
@@ -42,7 +42,7 @@ const SCENES := {
 	},
 	DECKS: {
 		"script": "res://game/deck_screen.gd",
-		"next": {&"back": TITLE},  # 出撃の準備からの寄り道（流れの中）なら、「出撃の準備へ戻る」は Run.NEXT
+		"next": {&"back": TITLE},  # 対戦の設定・出撃の準備からの寄り道（流れの中）で開く。戻るのは Run.NEXT
 		"music": &"menu",
 	},
 	STAGE: {
@@ -67,7 +67,7 @@ const SCENES := {
 	},
 	BATTLE: {
 		"script": "res://game/battle_screen.gd",
-		"next": {&"setup": SETUP},
+		"next": {&"setup": SETUP, &"stage": STAGE},  # 「ステージを選び直す」（対戦の途中で開いた対戦の設定）は、ステージ選択へ
 		"music": &"battle",
 	},
 }

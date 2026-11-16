@@ -1542,10 +1542,23 @@ func _on_screen(control: Control) -> bool:
 ## 出せない部隊は取っておけない。取っておいた部隊を、対戦の設定で選べる（出せない部隊は選べない）。
 func _visit_decks(app: Node) -> void:
 	var library: RefCounted = app.context.decks
-	app.current_scene().press_decks()
+	_expect(app.current_scene().button_texts() == (["ストーリー", "対戦", "オプション", "終了"] as Array[String]),
+		"タイトルのメニューの並びが違う: %s" % [app.current_scene().button_texts()])
+	# 部隊の編成は、対戦の設定の「部隊を編成する」から開く（タイトルには無い）。
+	app.current_scene().press_start()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.DECKS, "タイトルの「部隊の編成」で、編成の場面へ進まない")
+	app.current_scene().choose(VersusFields.PLAIN)
+	await app.scene_changed
+	var setup_panel: Node = app.current_scene().setup_panel()
+	setup_panel.choose_opponent(true)
+	setup_panel.choose_human_side(Unit.Side.PLAYER1)
+	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
+	_expect(setup_panel.can_edit_decks(), "対戦の設定に「部隊を編成する」が無い")
+	setup_panel.press_edit_decks(Unit.Side.PLAYER1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.DECKS, "対戦の設定の「部隊を編成する」で、編成の場面へ進まない")
 	var screen: Node = app.current_scene()
+	_expect(screen.is_detour() and screen.mode() == DeckRules.VERSUS and screen.back_label() == "対戦の設定へ戻る", "対戦の設定からの編成が、対戦用でない（か、戻り先の文字が違う）")
 	screen.press_new()
 	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty(), "「新しく組む」で、空の部隊を組めない")
 	_expect(not screen.can_save(), "空の部隊を取っておけた")
@@ -1621,21 +1634,31 @@ func _visit_decks(app: Node) -> void:
 	for item: RefCounted in library.for_rules(DeckRules.VERSUS):
 		versus_ids.append(item.id)
 	_expect(not versus_ids.has(story_id), "対戦の設定で選べる部隊に、ストーリー用の部隊が混ざった")
+	screen.select_saved(id)
+	screen.press_edit()
+	screen.press_save()  # 寄り道の間に最後に取っておいた部隊が、戻った対戦の設定で選ばれる
 	screen.press_back()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.TITLE, "編成の一覧から、タイトルへ戻らない")
-	# 対戦の設定で、取っておいた部隊を選ぶ。
-	app.current_scene().press_start()
-	await app.scene_changed
-	app.current_scene().choose(VersusFields.PLAIN)
-	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.SETUP, "編成の一覧から、対戦の設定へ戻らない")
 	var panel: Node = app.current_scene().setup_panel()
-	panel.choose_opponent(true)
-	panel.choose_human_side(Unit.Side.PLAYER1)
-	panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
+	_expect(panel.current_choice().deck_ids[0] == id, "寄り道で取っておいた部隊が、対戦の設定で選ばれていない")
 	var ids: Array = panel.deck_options(Unit.Side.PLAYER1).map(func(option: Array) -> String: return option[0])
 	_expect(ids == ["", id], "対戦の設定に、取っておいた部隊が並ばない: %s" % [ids])
 	_expect(panel.choose_deck(Unit.Side.PLAYER1, id), "取っておいた部隊を選べない")
+	panel.open_preview(Unit.Side.PLAYER1)
+	_expect(panel.preview().visible and panel.preview().shown_kinds().size() == 6, "「編成を確認」で、選んだ部隊が出ない")
+	panel.preview().close_preview()
+	# ステージは対戦の設定では選ばない。「ステージを選び直す」でステージ選択へ戻る（選んだものは残る）。
+	panel.choose_random_side()
+	panel.press_stage()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.STAGE, "「ステージを選び直す」で、ステージ選択へ戻らない")
+	app.current_scene().choose(VersusFields.LABYRINTH)
+	await app.scene_changed
+	panel = app.current_scene().setup_panel()
+	_expect(panel.current_choice().field == VersusFields.LABYRINTH and panel.current_choice().random_side and panel.current_choice().deck_ids[0] == id,
+		"ステージを選び直したら、ほかの選択が失われた")
+	panel.choose_human_side(Unit.Side.PLAYER1)
 	var setup: MatchSetup = panel.current_choice().to_setup(1)
 	_expect(setup.is_valid() and setup.decks[0].entries.size() == 5 and setup.decks[0].entries[0].kind == UnitKind.Id.SHIELD_TROOPER, "選んだ部隊で対戦を作らない")
 	_expect(setup.decks[1].entries.size() == CpuDeck.build(setup.army_of(Unit.Side.PLAYER2)).entries.size(), "CPU の編成が変わった")
