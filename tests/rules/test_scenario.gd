@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 戦いの定義（Scenario）と、対戦の設定（MatchSetup）がそれを読むところ（docs/scenario.md）。
+## 戦いの定義（Scenario）と、対戦設定（MatchSetup）がそれを読むところ（docs/scenario.md）。
 
 
 ## 編成の決まりの検査を通らない部隊（9 体。対戦のロスターに無い駒と、予算を超える数）。

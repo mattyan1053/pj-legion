@@ -38,7 +38,7 @@ func test_goes_back_to_the_previous_scene() -> void:
 	run.add(&"sortie", "準備")
 	run.add(&"battle", 3)
 	run.advance()
-	assert_eq(run.back(), &"sortie", "決着の画面の「部隊を選び直す」で、出撃の準備へ戻る")
+	assert_eq(run.back(), &"sortie", "決着の画面の「部隊を選び直す」で、出撃準備へ戻る")
 	assert_eq(run.data(), "準備")
 	assert_eq(run.back(), &"sortie", "最初の場面より前へは戻らない")
 	assert_eq(run.advance(), &"battle")

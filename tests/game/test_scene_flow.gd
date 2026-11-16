@@ -17,19 +17,19 @@ func test_goes_title_stage_setup_battle_and_back() -> void:
 	assert_eq(SceneFlow.next(&"stage", &"back"), &"title")
 	assert_eq(SceneFlow.next(&"setup", &"start"), &"", "対戦は、表ではなく流れ（match_choice.gd の run）で始める")
 	assert_eq(MatchChoice.new().run().scene(), &"battle")
-	assert_eq(SceneFlow.next(&"setup", &"back"), &"stage", "対戦の設定から 1 つ戻ると、ステージ選択")
+	assert_eq(SceneFlow.next(&"setup", &"back"), &"stage", "対戦設定から 1 つ戻ると、ステージ選択")
 	assert_eq(SceneFlow.next(&"battle", &"setup"), &"setup")
-	assert_eq(SceneFlow.next(&"battle", &"stage"), &"stage", "対戦の途中の対戦の設定の「ステージを選び直す」")
+	assert_eq(SceneFlow.next(&"battle", &"stage"), &"stage", "対戦の途中の対戦設定の「ステージを選び直す」")
 	assert_eq(SceneFlow.next(&"battle", &"title"), &"title", "どの場面からもタイトルへ戻れる")
 	assert_eq(SceneFlow.next(&"setup", &"title"), &"title")
 
 
 func test_the_deck_screen_opens_from_the_match_setup_not_the_title() -> void:
-	assert_eq(SceneFlow.next(&"title", &"decks"), &"", "部隊の編成は、タイトルから直には開かない")
+	assert_eq(SceneFlow.next(&"title", &"decks"), &"", "部隊編成は、タイトルから直には開かない")
 	var run: RefCounted = MatchChoice.deck_run(Unit.Side.PLAYER2)
 	assert_eq(run.scene(), &"decks")
 	assert_eq(run.data()["side"], Unit.Side.PLAYER2)
-	assert_eq(run.advance(), &"setup", "編成から戻ると、対戦の設定")
+	assert_eq(run.advance(), &"setup", "編成から戻ると、対戦設定")
 	assert_eq(SceneFlow.next(&"decks", &"title"), &"title")
 
 
@@ -41,7 +41,7 @@ func test_undefined_transitions_go_nowhere() -> void:
 
 func test_every_scene_is_reachable_and_loadable() -> void:
 	# 行き先はどれも表にあり、スクリプトは場面の決まり（context と finished）を守る。
-	# 流れで入る場面（対戦の設定の「対戦を始める」の流れと、ストーリーの話の流れの場面）も、そこからたどる。
+	# 流れで入る場面（対戦設定の「対戦を始める」の流れと、ストーリーの話の流れの場面）も、そこからたどる。
 	var reached := {SceneFlow.FIRST: true}
 	var queue: Array[StringName] = [SceneFlow.FIRST]
 	var runs: Array = [MatchChoice.new().run(), MatchChoice.deck_run(Unit.Side.PLAYER1), Story.new().run_now(Story.military().episodes[0])]

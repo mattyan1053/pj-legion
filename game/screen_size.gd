@@ -71,7 +71,7 @@ static func apply_for_check(window: Window, size: Vector2i) -> void:
 
 ## 画面いっぱいに広げた部品（anchors が全体）を、max_size より大きく広げない。画面がそれより広い（高い）ときは、
 ## はみ出すぶんを左右（上下）の余白に分けて、真ん中に置く。margin は、いつも空けておく余白（左、上、右、下）。
-## 画面の大きさが変わるたびに置き直す。横長や縦長の画面で、まとまっていたほうが見やすい場面（部隊の編成など）に使う。
+## 画面の大きさが変わるたびに置き直す。横長や縦長の画面で、まとまっていたほうが見やすい場面（部隊編成など）に使う。
 static func cap(control: Control, max_size: Vector2, margin := Vector4.ZERO) -> void:
 	var fit := func() -> void:
 		var screen := control.get_viewport_rect().size

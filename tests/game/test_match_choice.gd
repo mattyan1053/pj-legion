@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 対戦の設定画面で選ぶもの（match_choice.gd）から、ルールの対戦の設定（MatchSetup）を作る。
+## 対戦設定画面で選ぶもの（match_choice.gd）から、ルールの対戦設定（MatchSetup）を作る。
 
 const Names := preload("res://game/names.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
@@ -175,7 +175,7 @@ func test_as_battle_source_makes_the_same_setup_and_names_the_look() -> void:
 	var setup: MatchSetup = choice.make_setup(7)
 	assert_eq(setup.scenario.stage, BoardGenerator.Stage.LABYRINTH)
 	assert_eq(setup.battle_seed, 7)
-	assert_eq(setup.scenario.title, Names.stage(BoardGenerator.Stage.LABYRINTH), "作戦領域は戦いの定義の名前")
+	assert_eq(setup.scenario.title, Names.stage(BoardGenerator.Stage.LABYRINTH), "ステージは戦いの定義の名前")
 	assert_eq(choice.look(), StageLook.STONE_WALLS)
 	assert_true(setup.is_cpu(choice.cpu_side()))
 
@@ -223,9 +223,9 @@ func test_a_hand_map_makes_the_same_board_on_any_seed_with_the_versus_rules() ->
 		choice.field = field
 		var setup: MatchSetup = choice.make_setup(1)
 		assert_true(setup.is_valid(), str(field))
-		assert_eq(setup.scenario.title, VersusFields.title_of(field), "作戦領域はマップの名前")
+		assert_eq(setup.scenario.title, VersusFields.title_of(field), "ステージはマップの名前")
 		assert_eq(setup.scenario.win_conditions_of(Unit.Side.PLAYER1), Scenario.STANDARD_WIN_CONDITIONS, "勝ち方は対戦モードのいつもの 2 つ")
-		assert_false(setup.scenario.is_fixed(Unit.Side.PLAYER2), "部隊は対戦の設定で選ぶ（決め打ちにしない）")
+		assert_false(setup.scenario.is_fixed(Unit.Side.PLAYER2), "部隊は対戦設定で選ぶ（決め打ちにしない）")
 		assert_true(setup.decks[Unit.Side.PLAYER2].is_valid(), "CPU の編成は予算どおり")
 		var first := setup.create_battle()
 		var other := choice.make_setup(99).create_battle()

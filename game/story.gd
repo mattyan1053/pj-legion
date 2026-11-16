@@ -5,7 +5,7 @@ extends RefCounted
 ## - 物語は、軍 1 つと話の列（game/story/campaigns/ の 1 ファイル。campaign.gd）。game/story/campaigns.txt の順に並ぶ。物語を選んでから、その物語の話を選ぶ。
 ## - 話は物語の中で一本道（game/story/episodes/ の 1 ファイル。episode.gd）。物語の [episodes] の順に並ぶ。話の一覧（episode_list_screen.gd）で、前の話をクリアした話と、クリアした話を選べる。
 ## - 進み具合（クリア、選んだ部隊、雇える駒）は物語ごと。名前に物語の付かない関数は、いま選んでいる物語（campaign）の進み具合を読む。
-## - 書くのは、物語ごとの、クリアした話の id の一覧と、出撃の準備で最後に選んだ部隊の id だけ。
+## - 書くのは、物語ごとの、クリアした話の id の一覧と、出撃準備で最後に選んだ部隊の id だけ。
 ##   壊れたファイル・知らない id があっても、起動を止めない（知らない話・物語の記録は残して書き戻す）。
 ## - 負けても失うものは無い。何度でもやり直せる。
 
@@ -52,7 +52,7 @@ var store: RefCounted
 var campaign: Campaign = military()
 ## 物語の id（String）-> {"cleared": [話の id（String）, …], "squad": 部隊の id（空なら既定の編成）}。知らない物語の記録も残す。
 var _records := {}
-## 出撃の準備で最後に選んだ部隊（いまの物語の。取っておいた部隊の id。空なら既定の編成）。次に起動しても選ばれている。
+## 出撃準備で最後に選んだ部隊（いまの物語の。取っておいた部隊の id。空なら既定の編成）。次に起動しても選ばれている。
 var squad_id: String:
 	get:
 		return _record(campaign)["squad"]
@@ -179,7 +179,7 @@ static func military() -> Campaign:
 	return campaign_by_id(MILITARY_ID)
 
 
-## 物語 of_campaign を選ぶ（話の一覧・出撃の準備・選んだ部隊・雇える駒は、この物語のものになる）。
+## 物語 of_campaign を選ぶ（話の一覧・出撃準備・選んだ部隊・雇える駒は、この物語のものになる）。
 func choose_campaign(of_campaign: Campaign) -> void:
 	campaign = of_campaign
 
@@ -222,7 +222,7 @@ func clear(id: StringName) -> void:
 	changed.emit()
 
 
-## 出撃の準備で選んだ部隊 id（空なら既定の編成）を、いまの物語に覚える（変わったときだけ書く）。
+## 出撃準備で選んだ部隊 id（空なら既定の編成）を、いまの物語に覚える（変わったときだけ書く）。
 func choose_squad(id: String) -> void:
 	if id == squad_id:
 		return
@@ -374,7 +374,7 @@ static func rules_of(given: Unlocked) -> DeckRules:
 	return DeckRules.new(given.campaign.rules_id, Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items)
 
 
-## 使えるもの given の、ストーリーの既定の編成。初めて遊ぶ人が出撃の準備で見て納得できる、素直な形にする:
+## 使えるもの given の、ストーリーの既定の編成。初めて遊ぶ人が出撃準備で見て納得できる、素直な形にする:
 ## 1. 雇える駒を、役割の順（前衛・後衛・奇襲・回復）に 1 体ずつ、数の上限まで繰り返して雇う（予算に収まるかぎり。まんべんなく）
 ## 2. 余った予算で、前衛にアイアンシールド、奇襲にスピードブーツを、1 体に 1 つまで持たせる（持たせられる装備だけ）
 ## 並びは役割の順（同じ種類はまとめる）。並びの順に初期位置へ置かれるので、前衛が前に出る。
@@ -415,7 +415,7 @@ static func first_battle(episode: Episode) -> StoryBattle:
 # ---- 流れ ----
 
 
-## 話 episode を、いまの進み具合で始める流れ（run_of。人の部隊は、出撃の準備で選ぶまで、いま使えるもので組んだ既定の編成）。
+## 話 episode を、いまの進み具合で始める流れ（run_of。人の部隊は、出撃準備で選ぶまで、いま使えるもので組んだ既定の編成）。
 ## 話の物語を、いまの物語にする。初めてクリアする話なら、あとの会話の最後に、増えるものの知らせを出す。
 func run_now(episode: Episode) -> Run:
 	choose_campaign(campaign_of(episode))
@@ -426,15 +426,15 @@ func run_now(episode: Episode) -> Run:
 	return run_of(episode, default_deck(now), news)
 
 
-## 話 episode の流れ（run.gd）: 会話（前）→ 出撃の準備 → 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃の準備で選び直せる）。
-## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」「部隊を選び直す」（出撃の準備へ）か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
+## 話 episode の流れ（run.gd）: 会話（前）→ 出撃準備 → 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃準備で選び直せる）。
+## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」「部隊を選び直す」（出撃準備へ）か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
 ## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。あとの会話の最後に、知らせの行で出す。
 static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = []) -> Run:
 	var run := Run.new()
 	run.exit = EPISODE_LIST
 	run.add(TALK, talk_of(episode, episode.before))
 	var battle := StoryBattle.new(episode, human_deck)
-	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃の準備で、battle の人の部隊を選び直す
+	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃準備で、battle の人の部隊を選び直す
 	run.add(BATTLE, battle)
 	var after := talk_of(episode, episode.after)
 	for news_line: Dictionary in news:
