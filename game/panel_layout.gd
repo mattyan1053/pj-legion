@@ -1,6 +1,7 @@
 extends RefCounted
 ## 駒のそばのメニューと、戦闘予測のパネルの置き場所（docs/battle-view.md の「駒のそばのメニュー」「戦闘予測のパネル」）。
 ## 盤面の上のものを画面に投影し、隠したくないもの（相手、届くマス、ほかの駒、情報の枠）を避ける側を選ぶ（menu_placement.gd）。
+## ミニマップには重ねない（重ねてはいけない四角として渡す）。
 ## カメラが動いたら置き直すので、回しても動かしても付いてくる。対戦の場面（battle_screen.gd）が 1 つ持ち、毎フレーム place_* を呼ぶ。
 
 const MenuPlacement := preload("res://game/menu_placement.gd")
@@ -31,12 +32,16 @@ var _menu_placement := MenuPlacement.new()
 ## メニューを置いたときのカメラ（動いたら置き直す）。
 var _menu_camera := Transform3D()
 var _menu_dirty := true
+## メニューを置いたときの、ミニマップの四角（出し入れしたら置き直す）。
+var _menu_minimap := Rect2()
 ## 戦闘予測のパネルの置き場所（対象のマスのそば）。
 var _forecast_placement := MenuPlacement.new()
 var _forecast_cell := NO_CELL
 var _forecast_camera := Transform3D()
 ## 予測のパネルを置いたときの、メニューの四角（メニューが動いたら置き直す）。
 var _forecast_menu := Rect2()
+## 予測のパネルを置いたときの、ミニマップの四角（出し入れしたら置き直す）。
+var _forecast_minimap := Rect2()
 var _forecast_dirty := true
 var _forecast_avoid: Array[Vector2i] = []
 
@@ -68,10 +73,12 @@ func place_menu(unit: Unit, painted: Dictionary) -> void:
 	if size == Vector2.ZERO or unit == null or not _views.has(unit.id):
 		return
 	var camera: Camera3D = _rig.camera
-	if not _menu_dirty and camera.global_transform.is_equal_approx(_menu_camera):
+	var minimap := _hud.minimap_rect()
+	if not _menu_dirty and camera.global_transform.is_equal_approx(_menu_camera) and minimap == _menu_minimap:
 		return
 	_menu_dirty = false
 	_menu_camera = camera.global_transform
+	_menu_minimap = minimap
 	var view: UnitView = _views[unit.id]
 	var anchor := screen_rect(view.position, 0.45, view.height())
 	var obstacles: Array = []
@@ -90,7 +97,9 @@ func place_menu(unit: Unit, painted: Dictionary) -> void:
 			obstacles.append([screen_rect(other.position, 0.35, other.height()), MENU_WEIGHT_UNIT])
 	if _hud.info_rect().has_area():
 		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
-	_hud.place_menu(_menu_placement.place(anchor, size, _hud.menu_area(), obstacles), anchor.get_center())
+	# ミニマップには重ねない（押せる場所を隠さない）。
+	var keep_clear: Array = [minimap] if minimap.has_area() else []
+	_hud.place_menu(_menu_placement.place(anchor, size, _hud.menu_area(), obstacles, keep_clear), anchor.get_center())
 
 
 # ---- 戦闘予測のパネル ----
@@ -119,17 +128,22 @@ func place_forecast(battle: Battle, actor: Unit) -> void:
 		return
 	var camera: Camera3D = _rig.camera
 	var menu := _hud.menu_rect()
-	if not _forecast_dirty and camera.global_transform.is_equal_approx(_forecast_camera) and menu == _forecast_menu:
+	var minimap := _hud.minimap_rect()
+	if not _forecast_dirty and camera.global_transform.is_equal_approx(_forecast_camera) and menu == _forecast_menu and minimap == _forecast_minimap:
 		return
 	_forecast_dirty = false
 	_forecast_camera = camera.global_transform
 	_forecast_menu = menu
+	_forecast_minimap = minimap
 	var on := battle.unit_at(_forecast_cell)
 	var height: float = (_views[on.id] as UnitView).height() if on != null and _views.has(on.id) else 0.3
 	var anchor := screen_rect(BoardView.cell_center(_forecast_cell), 0.45, height)
 	var obstacles: Array = []
-	# メニューには重ねない（重みでなく、決まり。メニューの周りに逃がしてでも避ける）。
-	var keep_clear: Array = [menu] if menu.has_area() else []
+	# メニューとミニマップには重ねない（重みでなく、決まり。その周りに逃がしてでも避ける）。
+	var keep_clear: Array = []
+	for clear: Rect2 in [menu, minimap]:
+		if clear.has_area():
+			keep_clear.append(clear)
 	if _hud.info_rect().has_area():
 		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
 	if actor != null and _views.has(actor.id):

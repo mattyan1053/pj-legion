@@ -91,6 +91,8 @@ const SCENES := {
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
+	"minimap_pointed": "ミニマップで相手の本陣のあたりを押して、視点がそこへ移った（右上の白い枠が見ている範囲）",
+	"minimap_hidden": "設定でミニマップを隠した（右上に何も出ない）",
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
 }
@@ -412,6 +414,21 @@ func _scene_menu_note() -> bool:
 
 func _scene_start() -> bool:
 	_show()
+	return true
+
+
+func _scene_minimap_pointed() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	var hq: Vector2i = _battle.board.hq_cells[Unit.Side.PLAYER2]
+	_scene.point_minimap(Vector2(hq) + Vector2(0.5, 3.5))
+	return _scene.minimap_rect().has_area()
+
+
+func _scene_minimap_hidden() -> bool:
+	_show()
+	_scene.settings.set_value(&"show_minimap", false)
 	return true
 
 

@@ -13,6 +13,8 @@ const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
+const Minimap := preload("res://game/minimap.gd")
+const MinimapGeometry := preload("res://game/minimap_geometry.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -135,6 +137,10 @@ var _banner_tween: Tween
 var _flash: ColorRect
 var _flash_tween: Tween
 var _result: ResultScreen
+var _guide_panel: PanelContainer
+var _minimap: Minimap
+## ミニマップを出すか（設定の「ミニマップ」）。
+var _minimap_wanted := true
 var _evolution: Control
 var _evolution_title: Label
 var _evolution_buttons: Array[Button] = []
@@ -149,6 +155,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_banner()
 	_build_menu()
 	_build_forecast()
+	_build_minimap()
 	_result = ResultScreen.new()
 	_result.team_colors = team_colors
 	add_child(_result)
@@ -617,7 +624,41 @@ func _side_color(side: Unit.Side) -> Color:
 	return _team_colors[side] if side < _team_colors.size() else Color.WHITE
 
 
+# ---- ミニマップ ----
+
+
+## ミニマップ（盤を描かせる・押されたことを受ける）。
+func minimap() -> Minimap:
+	return _minimap
+
+
+## ミニマップを出すか（設定の「ミニマップ」）。決着の画面を出している間は、出さない。
+func set_minimap_shown(shown: bool) -> void:
+	_minimap_wanted = shown
+	_minimap.visible = shown and not _result.visible
+
+
+## ミニマップを、視点の案内の下・画面の右の端に置く。
+func place_minimap() -> void:
+	_minimap.visible = _minimap_wanted and not _result.visible
+	var top := _guide_panel.get_global_rect().end.y if _guide_panel.size.y > 0.0 else TOP_BAR_HEIGHT + 30.0
+	var rect := MinimapGeometry.place(_minimap.get_viewport_rect().size, _minimap.board_size(), top)
+	_minimap.position = rect.position
+
+
+## ミニマップが画面に占める四角（出していなければ大きさ 0）。駒のそばのメニューと予測のパネルは、ここに重ねない。
+func minimap_rect() -> Rect2:
+	return Rect2(_minimap.position, _minimap.size) if _minimap.visible else Rect2()
+
+
 # ---- 組み立て ----
+
+
+func _build_minimap() -> void:
+	_minimap = Minimap.new()
+	_minimap.team_colors = _team_colors
+	add_child(_minimap)
+
 
 
 func _build_top_bar() -> void:
@@ -685,6 +726,7 @@ func _build_top_bar() -> void:
 
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。小さく 1 行だけ。
 	var help_panel := _panel()
+	_guide_panel = help_panel
 	(help_panel.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(4.0)
 	help_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	help_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
