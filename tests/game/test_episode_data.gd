@@ -95,6 +95,9 @@ func test_an_enemy_without_an_army_reads() -> void:
 	assert_eq(episode.enemy, [[UnitKind.Id.SKELETON_BRUTE, []], [UnitKind.Id.SKELETON_ARCHER, []]])
 	var deck := episode.enemy_deck()
 	assert_eq(deck.army, UnitKind.Army.NONE)
+	# 軍の駒を混ぜると、置いたときにその軍の必殺技が付いてしまうので弾く。
+	var mixed: Episode = Episode.parse(text.replace("unit = skeleton_archer", "unit = paladin"))
+	assert_true(Array(mixed.problems).any(func(problem: String) -> bool: return problem.begins_with("probe.txt:19:")), "軍の無い敵に軍の駒: %s" % mixed.problems)
 
 
 ## 人の側（決まった部隊、解放）に魔物は書けない（物語の軍の駒だけ。campaign.gd が確かめる）。

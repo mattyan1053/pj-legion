@@ -262,6 +262,12 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 			file.problem(entry["line"], "知らない軍「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Army)])
 		else:
 			enemy_army = army as UnitKind.Army
+			# 軍の無い敵に軍の駒を混ぜると、盤に置いたときにその駒の軍（と必殺技）が付く（Battle.add_unit）。混ぜさせない。
+			if enemy_army == UnitKind.Army.NONE:
+				for unit_entry: Dictionary in values.get("unit", []):
+					var kind := StoryFile.enum_value(UnitKind.Id, (unit_entry["value"] as String).split("+")[0])
+					if kind >= 0 and UnitKind.army(kind as UnitKind.Id) != UnitKind.Army.NONE:
+						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
 
 
 ## 駒の行（「paladin + iron_shield + iron_shield」）を [駒の種類, [装備, …]] に。読めなければ空。
