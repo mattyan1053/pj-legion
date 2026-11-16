@@ -1,0 +1,49 @@
+# ストーリーの話「墓守の騎士」。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 前の話（barrow_rout）と同じマップ「古戦場」を、敵の初期位置と勝ち方を変えて使い回す。
+# 敵は軍に属さない魔物の群れ（army = none）。前の話より多く、盤の中ほどの霊廟のまわりから始まる。
+# 勝ち方はいつもどおり（将の撃破、本陣の占拠）。群れを相手にせず、敵の将（墓守の騎士）を狙ってもよい。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 墓守の騎士
+map = old_battlefield
+look = stone_walls
+music = battle_tense
+
+[unlock]
+budget = 2
+
+[ally]
+name = 隊長
+
+[enemy]
+name = 墓守の騎士
+army = none
+unit = skeleton_brute
+unit = skeleton_brute
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+deploy = 8,7  6,7  10,7  4,5  12,5
+deploy = 2,9  14,9  8,5  6,5
+
+[before]
+隊長: 骨が、また起き上がった。数も増えている。
+墓守の騎士: 何度来ても同じこと。ここで眠れ。
+隊長: 墓守の騎士を倒さない限り、終わらない。狙うは将ひとりだ。
+
+[after]
+墓守の騎士: ……ようやく、眠れる。
+隊長: 古戦場は静かになった。谷へ下りよう。
+隊長: （ここまでが本編 6 話。続きは、まだ無い）
+
+[cues]
+(turn 1) 隊長: 骨の群れに足を取られるな。墓守の騎士を探せ。
+(king_half enemy) 墓守の騎士: 骨よ、我を守れ。

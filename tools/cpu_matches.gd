@@ -420,7 +420,7 @@ func _initialize() -> void:
 		by_match.get_or_add(match_name, Tally.new()).add(outcome)
 		if armies[0] != armies[1]:
 			mixed_games += 1
-			if outcome.winner >= 0:
+			if outcome.winner >= 0 and ARMIES.has(armies[outcome.winner]):  # 軍の無い敵（魔物の群れ）の勝ちは、軍ごとに数えない
 				army_wins[armies[outcome.winner]] += 1
 				by_stage[stage].army_wins[ARMIES.find(armies[outcome.winner])] += 1
 		for kind in outcome.by_kind:

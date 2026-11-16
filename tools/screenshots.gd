@@ -158,6 +158,10 @@ const SCENES := {
 	"story_boss_sortie": "ストーリー: 中ボスを倒す演習（「結晶の番人」）の出撃準備（勝ち方は「中ボスを倒せば勝ち。敵の将を倒しても終わらない。」だけ）",
 	"story_boss_start": "ストーリー: 中ボスを倒す演習の対戦の始め（上の帯の勝ち方の札「勝ち: 中ボスの撃破（将を倒しても終わらない）」）",
 	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
+	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守の騎士」の札）",
+	"story_monster_sortie": "ストーリー: 魔物の群れの話（軍に属さない敵）の出撃準備（敵の部隊は「軍なし」の骸骨）",
+	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
+	"story_monster_info": "ストーリー: 魔物の群れの話で、骸骨重兵にマウスを乗せた駒の情報（所属は「魔物」。スキル・持ち物の欄は無い）",
 	"story_battle_talk": "ストーリー: 対戦の途中の会話（始めに台詞のある最初の話。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
@@ -1825,6 +1829,58 @@ func _scene_story_rout_wide() -> bool:
 	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
 	_aim(OrbitCamera.max_distance_for(size), 0.0, OrbitCamera.MIN_PITCH)
 	return true
+
+
+## 魔物の群れの話（敵の軍が無い最初の話）の番号（0 から）。無ければ -1。
+func _monster_episode() -> int:
+	for i in Story.military().episodes.size():
+		if Story.military().episodes[i].enemy_army == UnitKind.Army.NONE:
+			return i
+	return -1
+
+
+func _scene_story_monster_talk() -> bool:
+	var number := _monster_episode()
+	if number == -1 or not await _start_story(number):
+		return false
+	for i in 2:
+		_app.current_scene().press_next()  # 3 行目（敵の将の札）
+	return true
+
+
+func _scene_story_monster_sortie() -> bool:
+	var number := _monster_episode()
+	if number == -1 or not await _start_story(number):
+		return false
+	return await _scene_story_sortie_from_talk()
+
+
+func _scene_story_monster_start() -> bool:
+	var number := _monster_episode()
+	if number == -1 or not await _story_battle(number):
+		return false
+	var brute := _first_unit_of(UnitKind.Id.SKELETON_BRUTE)
+	if brute == null:
+		return false
+	_look_at(BoardView.cell_center(brute.cell))
+	_aim(9.0, 0.0, 50.0)
+	return true
+
+
+func _scene_story_monster_info() -> bool:
+	if not await _scene_story_monster_start():
+		return false
+	var brute := _first_unit_of(UnitKind.Id.SKELETON_BRUTE)
+	_scene.hover(brute.cell)
+	return true
+
+
+## 盤の上の、その種類の最初の駒。いなければ null。
+func _first_unit_of(kind: UnitKind.Id) -> Unit:
+	for unit: Unit in _scene.battle.units:
+		if unit.kind == kind:
+			return unit
+	return null
 
 
 ## 対戦の途中の会話の札（ターン 1 の台詞を持つ最初の話の、対戦の始め）。

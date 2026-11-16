@@ -25,3 +25,5 @@ ridge_path
 ridge_ambush
 ridge_hold
 gorge_rout
+barrow_rout
+barrow_knight

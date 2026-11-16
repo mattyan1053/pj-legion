@@ -1,0 +1,48 @@
+# ストーリーの話「古戦場の亡者」。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 敵は軍に属さない魔物の群れ（army = none。必殺技は無い。docs/unit-roster.md の「魔物」）。
+# 手で作ったマップ「古戦場」（game/maps/old_battlefield.txt）。見た目は石の壁（崩れた壁と柱）のテーマ。
+# 人の勝ち方は「敵を全滅させる」だけ（wins）。骨の群れを倒しきるまで終わらない。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 古戦場の亡者
+map = old_battlefield
+look = stone_walls
+wins = routed
+
+[unlock]
+budget = 2
+
+[ally]
+name = 隊長
+
+[enemy]
+name = 墓守の騎士
+army = none
+unit = skeleton_brute
+unit = skeleton_brute
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+
+[before]
+隊長: 谷へ下りる道は、古い戦場を抜ける。
+隊長: ……妙だ。倒れた兵の骨が、起き上がっている。
+墓守の騎士: ここは眠る者たちの地。生きた者は通さぬ。
+隊長: 旗も持たない連中だ。残らず倒して、道を開ける。
+
+[after]
+墓守の騎士: ……骨は、また起き上がる。
+隊長: 墓守がいる限り、ということか。
+
+[cues]
+(turn 1) 隊長: 骸骨兵は脆いが数が多い。囲まれるな。
+(fallen enemy) 隊長: 大盾の骸骨は遅い。先に射手を狙え。
