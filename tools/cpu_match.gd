@@ -18,7 +18,7 @@ class Outcome:
 	var finished := false
 	## 勝ったプレイヤー。引き分けと打ち切りでは -1。
 	var winner := -1
-	## "king"（将の撃破）、"hq"（本陣の占拠）、"held"（守り切り）、"draw"（引き分け）、"cutoff"（打ち切り）。
+	## "king"（将の撃破）、"hq"（本陣の占拠）、"held"（守り切り）、"routed"（全滅）、"draw"（引き分け）、"cutoff"（打ち切り）。
 	var ending := "cutoff"
 	## 終わったときのターン。
 	var turns := 0
@@ -232,6 +232,8 @@ static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second:
 			outcome.ending = "hq"
 		BattleStats.Ending.TURNS_HELD:
 			outcome.ending = "held"
+		BattleStats.Ending.ROUTED:
+			outcome.ending = "routed"
 		BattleStats.Ending.DRAW:
 			outcome.ending = "draw"
 	_copy_stats(outcome, stats)

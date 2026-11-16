@@ -6,6 +6,7 @@ enum Reason {
 	KING_DEFEATED,  ## 敵の将を倒した
 	HQ_CAPTURED,  ## 敵の本陣を占拠し続けた
 	TURNS_HELD,  ## 決められたターンが終わるまで、守り切った
+	ROUTED,  ## 敵の駒を（将も含めて）全部倒した
 }
 
 var winner: Unit.Side
