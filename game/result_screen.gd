@@ -16,6 +16,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 ## 行き先のボタン。field はステージの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でもう一度（field は見ない）。
 signal restart_pressed(field: StringName, new_board: bool)
@@ -83,6 +84,7 @@ var _stat_rows: Array = []
 var _mvp_panel: PanelContainer
 var _mvp_head: Label
 var _mvp_name: Label
+var _mvp_icon: TextureRect
 var _mvp_numbers: Label
 var _detail_panel: PanelContainer
 var _detail: Label
@@ -164,7 +166,9 @@ func present(summary: RefCounted) -> void:
 		_stats_grid.add_child(name_label)
 		_stats_grid.add_child(value_label)
 		_stat_rows.append([name_label, value_label])
+	_mvp_icon.visible = summary.mvp_name != ""
 	if summary.mvp_name != "":
+		_mvp_icon.texture = UnitIcons.texture(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved)
 		_mvp_name.text = summary.mvp_name
 		_mvp_numbers.text = "与えたダメージ %d　撃破 %d" % [summary.mvp_damage, summary.mvp_kills]
 	else:
@@ -521,13 +525,24 @@ func _build_mvp() -> void:
 	_mvp_head.add_theme_color_override("font_color", COLOR_MVP)
 	_mvp_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_mvp_head)
+	# アイコン（左）と、名前・数（右）を 1 段に並べる（アイコンのぶん、枠を高くしない）。
+	var mvp_row := HBoxContainer.new()
+	mvp_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mvp_row.add_theme_constant_override("separation", 10)
+	column.add_child(mvp_row)
+	_mvp_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, 64.0)
+	mvp_row.add_child(_mvp_icon)
+	var mvp_lines := VBoxContainer.new()
+	mvp_lines.add_theme_constant_override("separation", 0)
+	mvp_lines.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	mvp_row.add_child(mvp_lines)
 	_mvp_name = _label(28)
 	_mvp_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_mvp_name)
+	mvp_lines.add_child(_mvp_name)
 	_mvp_numbers = _label(19)
 	_mvp_numbers.add_theme_color_override("font_color", COLOR_DIM)
 	_mvp_numbers.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_mvp_numbers)
+	mvp_lines.add_child(_mvp_numbers)
 
 
 func _build_detail() -> void:
