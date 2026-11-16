@@ -24,6 +24,7 @@ const MUSIC_VOLUME := &"music_volume"
 const EFFECTS_VOLUME := &"effects_volume"
 const MUTE := &"mute"
 const SHOW_MINIMAP := &"show_minimap"
+const FULLSCREEN := &"fullscreen"
 
 ## 項目（画面に並べる順）。
 ## - key: 名前（ファイルにも、この名前で書く）。section: 画面の区分の見出し。label: 項目の名前。note: 短い説明。
@@ -65,6 +66,11 @@ const ITEMS: Array[Dictionary] = [
 	{
 		"key": MUTE, "section": "音", "label": "音を消す",
 		"note": "音量はそのままで、すべての音を止める",
+		"kind": Kind.TOGGLE, "default": false,
+	},
+	{
+		"key": FULLSCREEN, "section": "画面", "label": "全画面",
+		"note": "オフは窓で開く（端をドラッグして大きさを変えられる）。Alt+Enter でも切り替えられる",
 		"kind": Kind.TOGGLE, "default": false,
 	},
 	{
