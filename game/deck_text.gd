@@ -41,6 +41,8 @@ static func problem_text(problem: Deck.Problem, deck: Deck) -> String:
 			return "装備を持たせすぎた駒がいる（1 体 %d 個まで）" % Equipment.MAX_PER_UNIT
 		Deck.Problem.NOT_IN_ROSTER:
 			return "この軍では雇えない駒がいる"
+		Deck.Problem.ITEM_NOT_ALLOWED:
+			return "まだ持たせられない装備を持った駒がいる"
 	return "出せない"
 
 

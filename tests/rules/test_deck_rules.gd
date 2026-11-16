@@ -164,3 +164,37 @@ func test_open_field_slots_match_deployment_on_an_open_board() -> void:
 			assert_eq(placed[i + 1].cell, hq + Vector2i(slots[i].x, 0) + forward * slots[i].y, "%d 番目（本陣 %s）" % [i, hq])
 	assert_eq(Deployment.open_field_slots(2), [Vector2i(0, 1), Vector2i(-1, 1)] as Array[Vector2i])
 	assert_eq(Deployment.open_field_slots(6)[5], Vector2i(0, 2))
+
+
+# --- 持たせられる装備 ---
+
+
+func test_rules_allow_every_item_unless_told_otherwise() -> void:
+	assert_eq(DeckRules.versus().items(), _all_items())
+	for item: Equipment.Id in Equipment.Id.values():
+		assert_true(DeckRules.versus().allows_item(item))
+		assert_true(_narrow_rules().allows_item(item), "渡さなければ、どの装備も")
+
+
+func test_items_left_out_of_the_rules_are_a_problem() -> void:
+	var rules := DeckRules.new(&"shields", "盾だけ", 6, {MILITARY: DeckRules.versus().roster(MILITARY)}, {MILITARY: 24},
+			[Equipment.Id.IRON_SHIELD])
+	assert_eq(rules.items(), [Equipment.Id.IRON_SHIELD] as Array[Equipment.Id])
+	assert_false(rules.allows_item(Equipment.Id.SPEED_BOOTS))
+	var deck := Deck.new(MILITARY, rules)
+	var entry := deck.add(UnitKind.Id.COMMANDO)
+	entry.equip(Equipment.Id.IRON_SHIELD)
+	assert_true(deck.is_valid(), str(deck.problems()))
+	assert_true(entry.equip(Equipment.Id.SPEED_BOOTS), "装備は決まりを知らないので、持たせられる（検査で分かる）")
+	assert_eq(deck.problems(), _problems([Problem.ITEM_NOT_ALLOWED]))
+	entry.unequip(Equipment.Id.SPEED_BOOTS)
+	assert_true(deck.is_valid())
+	var versus := Deck.new(MILITARY)
+	versus.add(UnitKind.Id.COMMANDO).equip(Equipment.Id.SPEED_BOOTS)
+	assert_true(versus.is_valid(), "対戦の決まりは、どの装備も持たせられる")
+
+
+func _all_items() -> Array[Equipment.Id]:
+	var items: Array[Equipment.Id] = []
+	items.assign(Equipment.Id.values())
+	return items
