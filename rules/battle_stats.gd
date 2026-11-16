@@ -11,6 +11,7 @@ enum Ending {
 	KING_DEFEATED,  ## 将の撃破
 	HQ_CAPTURED,  ## 本陣の占拠
 	TURNS_HELD,  ## 守り切った
+	ROUTED,  ## 全滅させた
 	DRAW,  ## 引き分け（両方の将が同時に倒れた）
 }
 
@@ -19,6 +20,7 @@ const ENDING_OF := {
 	GameWonEvent.Reason.KING_DEFEATED: Ending.KING_DEFEATED,
 	GameWonEvent.Reason.HQ_CAPTURED: Ending.HQ_CAPTURED,
 	GameWonEvent.Reason.TURNS_HELD: Ending.TURNS_HELD,
+	GameWonEvent.Reason.ROUTED: Ending.ROUTED,
 }
 
 

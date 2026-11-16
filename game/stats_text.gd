@@ -6,6 +6,7 @@ const ENDINGS := {
 	BattleStats.Ending.KING_DEFEATED: "将の撃破",
 	BattleStats.Ending.HQ_CAPTURED: "本陣の占拠",
 	BattleStats.Ending.TURNS_HELD: "守り切り",
+	BattleStats.Ending.ROUTED: "全滅",
 	BattleStats.Ending.DRAW: "引き分け",
 }
 

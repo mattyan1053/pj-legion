@@ -36,6 +36,7 @@ const WIN_REASONS := {
 	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
 	GameWonEvent.Reason.HQ_CAPTURED: "敵の本陣を占拠し続けた",
 	GameWonEvent.Reason.TURNS_HELD: "最後まで守り切った",
+	GameWonEvent.Reason.ROUTED: "敵を全滅させた",
 }
 
 const DRAW_REASONS := {
