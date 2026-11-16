@@ -490,6 +490,14 @@ func list_card_kinds() -> Array[UnitKind.Id]:
 	return kinds
 
 
+## 一覧の右の駒の札のうち、札に収まらずに切れている文（検査用）。
+func list_card_cut_texts() -> Array[String]:
+	var cut: Array[String] = []
+	for card: Control in _list_detail_cards.get_children():
+		cut.append_array(UnitCard.cut_texts(card))
+	return cut
+
+
 # ==== 軍の選択 ====
 
 
