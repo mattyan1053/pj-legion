@@ -147,6 +147,11 @@ func in_progress() -> bool:
 	return is_editing() and _dirty
 
 
+## 抜ける前の確かめに書く、失われるもの（app.gd の leave_confirm）。
+func losing_note() -> String:
+	return "組んでいる部隊の、取っておいていない変更は失われる"
+
+
 ## 右クリックと Esc は「戻す」。重なる画面（システムメニュー）が開いている間は、そちらが受ける。
 func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():

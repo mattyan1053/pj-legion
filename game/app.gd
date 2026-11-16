@@ -182,11 +182,21 @@ func menu_items() -> Array:
 	var items: Array = [[SystemMenu.ITEM_RESUME, resume, ""], [SystemMenu.ITEM_SETTINGS, "設定", ""]]
 	if scene.has_method(&"menu_items"):
 		items.append_array(scene.call(&"menu_items"))
-	var losing: bool = scene.has_method(&"in_progress") and scene.call(&"in_progress")
 	if _current_id != SceneFlow.FIRST:
-		items.append([ITEM_TITLE, "タイトルへ戻る", "タイトルへ戻りますか？\nいまの対戦は取っておけないので、失われる" if losing else ""])
-	items.append([ITEM_QUIT, "ゲームを終える", "ゲームを終えますか？\nいまの対戦は取っておけないので、失われる" if losing else ""])
+		items.append([ITEM_TITLE, "タイトルへ戻る", leave_confirm(scene, "タイトルへ戻りますか？")])
+	items.append([ITEM_QUIT, "ゲームを終える", leave_confirm(scene, "ゲームを終えますか？")])
 	return items
+
+
+## 場面 scene を抜ける前の確かめの文（question のあとに、失われるもの）。抜けても失われるものが無ければ空（確かめない）。
+## 失われるものの文は、場面の losing_note()（無ければ、決着していない対戦）。
+static func leave_confirm(scene: Node, question: String) -> String:
+	if not (scene.has_method(&"in_progress") and scene.call(&"in_progress")):
+		return ""
+	var losing := "いまの対戦は取っておけないので、失われる"
+	if scene.has_method(&"losing_note"):
+		losing = scene.call(&"losing_note")
+	return "%s\n%s" % [question, losing]
 
 
 func _on_menu_item(id: StringName) -> void:
