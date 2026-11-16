@@ -47,6 +47,7 @@ const SCENES := {
 	"system_menu": "システムメニューと設定の画面",
 	"minimap": "ミニマップ（押す・ドラッグで視点が移る、設定で隠す）",
 	"cpu": "CPU の番（止める、ログ、カメラが追う）",
+	"auto_turn": "自分の番のおまかせ（1 回目は確かめるだけ。2 回目で、残りの駒を CPU が動かしてターンを終える）",
 	"cpu_skip": "相手（CPU）の番の早送りとスキップ（中立のフェーズから。途中で決着したら、決着を見せる）",
 	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦の設定を行き来する",
 	"decks": "部隊の編成",
@@ -56,7 +57,7 @@ const SCENES := {
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
 	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
-		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip"],
+		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
 	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }
 
@@ -1343,6 +1344,38 @@ func _queue_cpu_scene() -> void:
 		_scene.set_opponent(false))
 
 
+## 自分の番のおまかせ。人どうしの対戦で、プレイヤー1 の番を任せる。1 回目と、確かめた直後の 2 回目では任せず、
+## 右クリックでやめられる。任せると、未行動の駒を CPU が動かしてターンを終え、プレイヤー2（人）の番で止まる。
+func _queue_auto_turn_scene() -> void:
+	var board := _small_board(Vector2i(8, 5))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var mine := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(2, 3))
+	var foe := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(4, 2))
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+	_scripted.append(func() -> void:
+		_expect(_scene.auto_button_state() == ["おまかせ", true], "自分の番に「おまかせ」が押せない")
+		_scene.press_auto()
+		_expect(_scene.is_confirming_auto() and _scene.auto_side() == -1, "1 回目で任せた（か、確かめにならない）")
+		_scene.press_auto()
+		_expect(_scene.auto_side() == -1, "確かめた直後の 2 回目で任せた")
+		_scene.cancel()
+		_expect(not _scene.is_confirming_auto(), "右クリックで、おまかせの確かめをやめない")
+		_scene.press_auto()
+		_scene.pass_confirm_guard()
+		_scene.press_auto()
+		_expect(_scene.auto_side() == Unit.Side.PLAYER1 and _scene.is_busy(), "2 回目で任せなかった")
+		_expect(_scene.watch_controls_state()[0], "任せている間に、早送り・スキップが出ない"))
+	_scripted.append(func() -> void:
+		_expect(battle.phase == Unit.Side.PLAYER2 and _scene.auto_side() == -1, "任せたターンが終わらなかった（か、次の番も任せた）")
+		_expect(mine.has_moved or mine.acted or foe.hp < foe.max_hp() or mine.cell != Vector2i(2, 3), "任せた駒が何もしなかった")
+		_expect(not _scene.is_busy() and _scene.auto_button_state()[1], "人の番（プレイヤー2）で止まらなかった"))
+
+
 ## 相手（CPU）の番の早送りとスキップ。人がターンを終えると、中立のフェーズから相手の番が見ているだけの番になり、
 ## 下の帯に「早送り」「スキップ」が出る。スキップすると、自分の番が来るまで見せずに進み、盤の見た目は状態と同じになる。
 ## 2 局目は、スキップの途中で CPU が人の将を倒して決着し、決着の画面が出る。
@@ -1363,8 +1396,9 @@ func _queue_cpu_skip_scene() -> void:
 	var seen_lines := {}
 
 	_scripted.append(func() -> void:
-		_scene.set_opponent(true)
-		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+		# 前の場面が相手の番で終わっていても、CPU に引き取らせないよう、先に始め直してから相手を CPU にする。
+		_scene.start_with(battle, StageLook.GRASSLAND, 1)
+		_scene.set_opponent(true))
 	_scripted.append(func() -> void:
 		_expect(not _scene.watch_controls_state()[0], "自分の番に、早送り・スキップが出ている")
 		var lines_before: int = _scene.battle_log.entries.size()
