@@ -397,9 +397,15 @@ func end_turn_text() -> String:
 	return _end_turn_button.text
 
 
-## 相手を切り替えるボタンの文字（いまの相手を書く）。
+## 相手を切り替えるボタンの文字（いまの相手を書く）。空なら、ボタンを出さない（切り替えられない対戦）。
 func set_opponent(text: String) -> void:
 	_opponent_button.text = text
+	_opponent_button.visible = text != ""
+
+
+## 相手を切り替えるボタンを出しているか。検査用。
+func opponent_shown() -> bool:
+	return _opponent_button.visible
 
 
 ## 駒のそばのメニューに出す項目。items は [名前（StringName）, 文字, 押せるか] の列（上から）。空なら消す。

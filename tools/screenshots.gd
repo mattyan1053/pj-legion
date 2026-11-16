@@ -16,6 +16,7 @@ const OrbitCamera := preload("res://game/orbit_camera.gd")
 const BoardView := preload("res://game/board_view.gd")
 const Names := preload("res://game/names.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
+const StageLook := preload("res://game/stage_look.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
@@ -1269,7 +1270,7 @@ func _new_battle() -> void:
 	var choice: RefCounted = MatchChoice.new()
 	choice.stage = _stage
 	choice.cpu_opponent = false
-	_scene.match_choice = choice
+	_scene.source = choice
 	_battle = choice.to_setup(_seed).create_battle()
 	_stats = BattleStats.new(_battle)
 	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
@@ -1288,7 +1289,7 @@ func _banner_gone() -> void:
 
 
 func _show() -> void:
-	_scene.start_with(_battle, _stage, _seed)
+	_scene.start_with(_battle, StageLook.name_of_stage(_stage), _seed, MatchSetup.stage_name(_stage))
 
 
 ## カメラの見ている地点を point にする（寄る動きは待たない）。

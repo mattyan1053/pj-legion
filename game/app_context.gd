@@ -13,6 +13,8 @@ const OverlayStack := preload("res://game/overlay_stack.gd")
 signal menu_requested
 ## 設定の画面だけを開いてほしい（タイトルの「設定」）。
 signal settings_requested
+## 流れ（run.gd）を始めてほしい（流れの最初の場面へ切り替える）。
+signal run_requested(run: RefCounted)
 
 ## 検査として動いているか（空なら、人が遊んでいる）。
 const CHECK_AUTOPLAY := &"autoplay"
@@ -33,6 +35,8 @@ var system_menu: Node
 var sound: Node
 ## 対戦の設定の場面で選んだもの（match_choice.gd）。対戦の場面は、これで始める。
 var match_choice: RefCounted = MatchChoice.new()
+## いま進めている流れ（run.gd）。流れの外の場面にいるときは null。アプリが入れ、流れの外へ出たら捨てる。
+var run: RefCounted
 ## 検査として動いているなら CHECK_AUTOPLAY か CHECK_SHOTS。人が遊んでいるなら空。
 var checking := &""
 
@@ -43,6 +47,18 @@ func open_menu() -> void:
 
 func open_settings() -> void:
 	settings_requested.emit()
+
+
+## 流れ a_run を始める（アプリが、いまの場面を抜けて、流れの最初の場面へ切り替える）。
+func start_run(a_run: RefCounted) -> void:
+	run_requested.emit(a_run)
+
+
+## 場面 scene に、流れが渡すもの。scene がいまの流れの場面でなければ null（場面は、自分の既定で始める）。
+func run_data(scene: StringName) -> Variant:
+	if run == null or run.scene() != scene:
+		return null
+	return run.data()
 
 
 ## アプリを終える（音を止めて手放してから）。

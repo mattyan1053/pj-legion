@@ -37,11 +37,11 @@ func _init() -> void:
 	tooltip_text = "クリックかドラッグで、その場所へ視点を移す"
 
 
-## 盤 board（ステージ stage）を描き始める。盤の大きさに合わせて、自分の大きさも決める。
-func show_board(board: Board, stage: int) -> void:
+## 盤 board（見た目 look_name。stage_look.gd の名前）を描き始める。盤の大きさに合わせて、自分の大きさも決める。
+func show_board(board: Board, look_name: StringName) -> void:
 	_board = board
 	var px := Geometry.cell_px(board.size)
-	_texture = ImageTexture.create_from_image(StageCardMap.draw(board, stage, team_colors, px, false))
+	_texture = ImageTexture.create_from_image(StageCardMap.draw(board, look_name, team_colors, px, false))
 	size = Geometry.map_size(board.size)
 	_dots.clear()
 	_view = PackedVector2Array()

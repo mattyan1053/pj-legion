@@ -1,8 +1,8 @@
 # 場面の流れ
 
-コード: `game/scene_flow.gd`（場面の種類と並び）、`game/app.gd`（入口。場面を切り替える）、`game/app_context.gd`（場面どうしで共有するもの）。
+コード: `game/scene_flow.gd`（場面の種類と並び）、`game/run.gd`（流れ）、`game/app.gd`（入口。場面を切り替える）、`game/app_context.gd`（場面どうしで共有するもの）。
 場面: `game/title_screen.gd`、`game/stage_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）。背景は `game/backdrop.gd`。
-テスト: `tests/game/test_scene_flow.gd`、自動の対戦（`game/autoplay.gd`。人と同じ道で対戦に入り、最後にタイトルと対戦の設定を往復する）。
+テスト: `tests/game/test_scene_flow.gd`、`tests/game/test_run.gd`、自動の対戦（`game/autoplay.gd`。人と同じ道で対戦に入り、最後にタイトルと対戦の設定を往復する）。
 
 ## いまの流れ
 
@@ -28,12 +28,25 @@
 
 場面の種類と並びは `scene_flow.gd` の `SCENES` の表だけにある。**場面を 1 つ足すのは、`SCENES` に 1 行（スクリプトと、終わり方ごとの次の場面）足すだけ**。
 アプリ（`app.gd`）は表のとおりに進め、場面の名前を決め打ちしない（検査の道を除く）。どの場面からでも行ける行き先（タイトル）は `COMMON` に置く。
-後で、ストーリーモード（会話の場面と戦闘を順に並べる）、モードの選択を、ここへ足す（Issue #49）。
+モードの選択は、ここへ足す（Issue #49）。
+
+## 流れ
+
+表は「場面 + 終わり方 → 次の場面」なので、同じ場面を、違うものを渡して順に使えない（ストーリーの 1 話の「会話 → 対戦 → 会話」）。
+それは**流れ**（`run.gd`）で並べる。流れは「場面の名前と、その場面に渡すもの」の列と、いま何番目か。
+
+- 場面が `context.start_run(流れ)` で始める。アプリは、流れを `context.run` に置いて、最初の場面へ切り替える。
+- 流れの中の場面は、渡すものを `context.run_data(自分の場面の名前)` で受け取る。流れの外から置かれたら null（場面は自分の既定で始める）。
+- 流れの中の場面が `Run.NEXT` で終わったら、流れの次の場面へ。列を終えたら、流れの `exit`（既定はタイトル）へ。
+- ほかの終わり方は表で進む。流れの外の場面へ切り替えたら（タイトルへ戻る、対戦の設定へ、など）、流れは捨てる。
+- 流れの中の場面にも、`SCENES` の 1 行（スクリプトと、流れの外へ出る終わり方）は要る。
+- いま流れを作るのは、対戦の設定の「対戦を始める」だけ。選んだものの写しを渡す、対戦の場面 1 つの流れ（`match_choice.gd` の `run`）。
+  対戦の場面は、渡されたもので対戦を作る（`docs/battle-source.md`）。
 
 ### 場面の決まり
 
 - `extends Node`（3D の場面も 2D の場面もよい）。アプリが作り、木に入れる前に `context`（`app_context.gd`）を入れる。
-- `signal finished(outcome: StringName)` を持ち、終わるときに出す。outcome は、その場面の `next` か `COMMON` にある名前。表に無い終わり方は進まない（エラーを出す）。
+- `signal finished(outcome: StringName)` を持ち、終わるときに出す。outcome は、その場面の `next` か `COMMON` にある名前か、流れの中なら `Run.NEXT`。表に無い終わり方は進まない（エラーを出す）。
 - あれば使うもの: `resume_label()`（システムメニューの「戻る」の文字）、`menu_items()` と `on_menu_item(id)`（システムメニューに足す項目）、
   `in_progress()`（抜けると失われるものがあるか。あれば、タイトルへ戻る・ゲームを終える前に確かめる）。
 - 場面からアプリへの頼みごと（システムメニューを開く、設定の画面を開く）は `context.open_menu()` と `context.open_settings()`。場面はアプリを知らない。
@@ -47,7 +60,8 @@
 | `settings` | 遊ぶ人ごとの設定（`docs/system-menu.md`） |
 | `system_menu` | システムメニュー（場面をまたいで 1 つ） |
 | `sound` | 音を鳴らすところ（`game/sound.gd`。場面をまたいで 1 つ。`docs/sound.md`）。アプリを通さずに置いた場面では無い |
-| `match_choice` | 対戦の設定の場面で選んだもの。対戦の場面は、これで始める |
+| `match_choice` | 対戦の設定の場面で選んだもの。次に対戦の設定を開いたときも、これを出す。流れの外から置かれた対戦の場面は、これで始める |
+| `run` | いま進めている流れ（`run.gd`）。流れの外の場面にいるときは null |
 | `decks` | 取っておいた部隊（`game/deck_library.gd`。`docs/deck-screen.md`）。検査とスクリーンショットでは、ファイルを読み書きしない |
 | `checking` | 検査（`autoplay`）か、スクリーンショットの道具（`shots`）として動いているか |
 

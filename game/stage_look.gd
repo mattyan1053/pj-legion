@@ -1,5 +1,5 @@
 extends RefCounted
-## ステージの見た目（テーマ）。ステージごとに 1 つの定義（THEMES の 1 項目）で、次をまとめて決める。
+## ステージの見た目（テーマ）。見た目ごとに 1 つの定義（THEMES の 1 項目。鍵は見た目の名前）で、次をまとめて決める。
 ## - 地面: 色（平地・森・岩場・結晶泉）と模様（石畳、乾き）。ground.gdshader に渡す。
 ## - 盤の上の置物: 障害物と森のマスに置くもの（素材か、コードで作った結晶）。泉の石と、結晶泉の結晶の色。board_view.gd が使う。
 ## - 盤の外の景色: 大きいもの（岩山など）・小さいもの（木など）・散らばるもの（石など）の候補。scenery.gd が並べる。
@@ -8,6 +8,8 @@ extends RefCounted
 ##
 ## ステージを足す・素材を替えるときは、THEMES に定義を 1 つ書く（または書き換える）だけにする。
 ## 盤の形はルール（BoardGenerator）が決める。ここは見た目だけ。
+## 見た目は名前で引く（ステージの番号では引かない）。どの見た目で描くかは、対戦の画面に渡すもの（battle_source.gd の look）が決める。
+## 対戦モードの生成のステージは、OF_STAGE で見た目の名前に直す。
 ##
 ## 守ること（遊びやすさが先）:
 ## - マスの種類（通れない・森・平地）が、どのテーマでもひと目で見分けられる。障害物は背の高い硬いもの（岩・壁・結晶の岩）、
@@ -92,9 +94,22 @@ const KEYS: Array[StringName] = [
 ## 盤の外の景色に掛ける色の、どのテーマにも共通の分（盤の上の木立や岩山より沈ませる）。
 const SCENERY_SHADE := Color(0.84, 0.88, 0.86)
 
+## 見た目の名前。
+const PLAIN := &"plain"  ## 中央平原
+const LABYRINTH := &"labyrinth"  ## 迷宮回廊
+const TWIN_SPRINGS := &"twin_springs"  ## 双子結晶
+## 名前を渡されないとき・知らない名前のときの見た目。
+const DEFAULT := PLAIN
+## 対戦モードの生成のステージ（BoardGenerator.Stage）-> 見た目の名前。
+const OF_STAGE := {
+	BoardGenerator.Stage.PLAIN: PLAIN,
+	BoardGenerator.Stage.LABYRINTH: LABYRINTH,
+	BoardGenerator.Stage.TWIN_SPRINGS: TWIN_SPRINGS,
+}
+
 const THEMES := {
 	# 中央平原: いつもの草原。明るい若草色、昼の白い光。森と岩山。
-	BoardGenerator.Stage.PLAIN: {
+	PLAIN: {
 		NORMAL: Color("5f9f4e"), FOREST: Color("3a6c38"), OBSTACLE: Color("767b84"), FONT: Color("3fa9bd"),
 		HAZE: Color("b4cbdc"), SUN: Color("ffffff"), AMBIENT: Color("b8c4d6"),
 		SUN_PITCH: -52.0, SUN_YAW: -35.0, SUN_ENERGY: 1.2, AMBIENT_ENERGY: 0.45,
@@ -106,7 +121,7 @@ const THEMES := {
 	},
 	# 迷宮回廊: 遺跡。石畳の乾いた地面に、石の壁と柱が続く。盤の外は崩れた石組みと柱、枯れた木、砂色の岩山。
 	# 夕方寄りの低い金色の光と、砂ぼこりの霞。
-	BoardGenerator.Stage.LABYRINTH: {
+	LABYRINTH: {
 		NORMAL: Color("9a8f74"), FOREST: Color("5d7c38"), OBSTACLE: Color("5a5246"), FONT: Color("3fa9bd"),
 		HAZE: Color("d9c9a6"), SUN: Color("ffdcaa"), AMBIENT: Color("c8b8a0"),
 		SUN_PITCH: -42.0, SUN_YAW: -62.0, SUN_ENERGY: 1.25, AMBIENT_ENERGY: 0.5,
@@ -123,7 +138,7 @@ const THEMES := {
 	},
 	# 双子結晶: 結晶の森。夜明けの薄紫の霞と、低い桃色の光。苔むした暗い青緑の地面に、紫の結晶を生やした暗い岩、
 	# 暗い針葉樹の森。盤の外にも結晶が光る。
-	BoardGenerator.Stage.TWIN_SPRINGS: {
+	TWIN_SPRINGS: {
 		NORMAL: Color("3c6f68"), FOREST: Color("1d4440"), OBSTACLE: Color("4a4468"), FONT: Color("46bcd6"),
 		HAZE: Color("b4a3cf"), SUN: Color("ffc8b8"), AMBIENT: Color("8f9ad0"),
 		SUN_PITCH: -30.0, SUN_YAW: 40.0, SUN_ENERGY: 1.1, AMBIENT_ENERGY: 0.55,
@@ -144,9 +159,14 @@ static var _meshes := {}  # 素材の定義の文字列 -> Mesh
 static var _materials := {}  # [素材, 色] -> Material
 
 
-## ステージの見た目。知らないステージなら、中央平原。
-static func of(stage: int) -> Dictionary:
-	return THEMES.get(stage, THEMES[BoardGenerator.Stage.PLAIN])
+## 名前 look_name の見た目。知らない名前なら、既定（DEFAULT）。
+static func of(look_name: StringName) -> Dictionary:
+	return THEMES.get(look_name, THEMES[DEFAULT])
+
+
+## 対戦モードの生成のステージ stage の見た目の名前。知らないステージなら、既定（DEFAULT）。
+static func name_of_stage(stage: int) -> StringName:
+	return OF_STAGE.get(stage, DEFAULT)
 
 
 ## 素材の形（シーンの中の形はどれも 1 つで、原点に置いてある）。結晶の群れはコードで作る。1 回だけ読む。
@@ -217,7 +237,7 @@ static func build_environment(parent: Node) -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	parent.add_child(sun)
-	apply(parent, of(BoardGenerator.Stage.PLAIN))
+	apply(parent, of(DEFAULT))
 
 
 ## ステージの見た目（of）の霞・空・光を、build_environment で足したものに当てる。

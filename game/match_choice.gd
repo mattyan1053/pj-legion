@@ -1,10 +1,14 @@
-extends RefCounted
+extends "res://game/battle_source.gd"
 ## 対戦の設定画面（match_setup_panel.gd）で選ぶもの。選んだものから、ルールの対戦の設定（MatchSetup）を作る。
+## 対戦モードの対戦の画面に渡すもの（battle_source.gd）でもある。ステージを替えてやり直せ、相手を切り替えられ、
+## 対戦の途中で対戦の設定のパネルを開ける。
 ##
 ## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
 ## 人の部隊は、取っておいた部隊（deck_library.gd）か、軍ごとの既定の編成（MatchSetup.default_deck。部隊の id が空のとき）。
 ## CPU の編成は、いままでどおり CPU の編成（CpuDeck）。
 ## ここはノードに依存しない（テストから呼べる）。
+
+const Run := preload("res://game/run.gd")
 
 var stage := BoardGenerator.Stage.PLAIN
 ## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。
@@ -21,6 +25,46 @@ var human_side := Unit.Side.PLAYER1
 ## CPU が動かすプレイヤー（cpu_opponent が偽でも、CPU に切り替えたときに動かすほう）。
 func cpu_side() -> Unit.Side:
 	return (1 - human_side) as Unit.Side
+
+
+func look() -> StringName:
+	return StageLook.name_of_stage(stage)
+
+
+func make_setup(battle_seed: int) -> MatchSetup:
+	return to_setup(battle_seed)
+
+
+func can_switch_opponent() -> bool:
+	return true
+
+
+func set_cpu_opponent(cpu: bool) -> void:
+	cpu_opponent = cpu
+
+
+## 対戦モードで選べるステージ（ステージ選択のカードと同じ並び）。
+func stages() -> Array[BoardGenerator.Stage]:
+	var all: Array[BoardGenerator.Stage] = []
+	for each: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
+		all.append(each)
+	return all
+
+
+func choose_stage(to_stage: BoardGenerator.Stage) -> void:
+	stage = to_stage
+
+
+func can_open_setup() -> bool:
+	return true
+
+
+## この選択で始める流れ（run.gd）: 対戦の場面 1 つ。対戦の場面には、この選択の写しを渡す
+## （対戦の途中でステージや相手を替えても、対戦の設定の場面に戻ったときの選択は変えない）。
+func run() -> Run:
+	var battle_run := Run.new()
+	battle_run.add(&"battle", copy())
+	return battle_run
 
 
 ## side が人の部隊を使うか（CPU が動かすプレイヤーは、いつも CPU の編成）。

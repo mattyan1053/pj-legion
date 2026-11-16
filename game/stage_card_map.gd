@@ -17,11 +17,11 @@ const COLOR_PORTAL := Color("d9a6ff")
 const CHECKER := 0.05
 
 
-## stage の盤 board の縮図。team_colors はプレイヤー番号ごとの色。cell_size は 1 マスの大きさ（px）。
+## 見た目 look_name（stage_look.gd の名前）で描いた、盤 board の縮図。team_colors はプレイヤー番号ごとの色。cell_size は 1 マスの大きさ（px）。
 ## objects が偽なら、地面と本陣だけを塗り、市松の明るさの差も付けない（中ボス・樽・泉・ポータルは描かない。対戦の画面の
 ## ミニマップは小さいので、市松はざらついて見える。対戦の途中で変わるものは、上から描き足す。minimap.gd）。
-static func draw(board: Board, stage: int, team_colors: Array[Color], cell_size := CELL, objects := true) -> Image:
-	var look := StageLook.of(stage)
+static func draw(board: Board, look_name: StringName, team_colors: Array[Color], cell_size := CELL, objects := true) -> Image:
+	var look := StageLook.of(look_name)
 	var image := Image.create(board.size.x * cell_size, board.size.y * cell_size, false, Image.FORMAT_RGB8)
 	for y in board.size.y:
 		for x in board.size.x:

@@ -75,6 +75,9 @@ var _detail_panel: PanelContainer
 var _detail: Label
 var _actions: VBoxContainer
 var _detail_button: Button
+## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
+var _stage_buttons := {}  # BoardGenerator.Stage -> Button（新しい盤面）
+var _setup_button: Button
 var _prompt: Label
 var _buttons: Array[Button] = []
 var _tween: Tween
@@ -337,6 +340,28 @@ func _buttons_ready() -> bool:
 	return not _buttons.is_empty() and _buttons[0].mouse_filter != Control.MOUSE_FILTER_IGNORE
 
 
+## 出す行き先を決める（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める）。
+## stages は「新しい盤面」で選べるステージ、setup は「対戦の設定へ」を出すか。「同じ盤面でもう一度」と「タイトルへ」は、いつも出す。
+func set_destinations(stages: Array[BoardGenerator.Stage], setup: bool) -> void:
+	for stage: BoardGenerator.Stage in _stage_buttons:
+		_stage_buttons[stage].visible = stages.has(stage)
+	_setup_button.visible = setup
+
+
+## 「対戦の設定へ」を出しているか。検査用。
+func can_go_to_setup() -> bool:
+	return _setup_button.visible
+
+
+## 「新しい盤面」で出しているステージ。検査用。
+func new_board_stages() -> Array[BoardGenerator.Stage]:
+	var shown: Array[BoardGenerator.Stage] = []
+	for stage: BoardGenerator.Stage in _stage_buttons:
+		if _stage_buttons[stage].visible:
+			shown.append(stage)
+	return shown
+
+
 func _set_buttons_enabled(enabled: bool) -> void:
 	for button in _buttons:
 		button.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
@@ -444,10 +469,11 @@ func _build_actions() -> void:
 		button.set_meta(&"sound", &"ui_confirm")
 		button.pressed.connect(func() -> void: restart_pressed.emit(stage, true))
 		row.add_child(button)
+		_stage_buttons[stage] = button
 	var leave := _row()
-	var to_setup := _button("対戦の設定へ（軍・相手・手番）", 320.0)
-	to_setup.pressed.connect(setup_pressed.emit)
-	leave.add_child(to_setup)
+	_setup_button = _button("対戦の設定へ（軍・相手・手番）", 320.0)
+	_setup_button.pressed.connect(setup_pressed.emit)
+	leave.add_child(_setup_button)
 	var to_title := _button("タイトルへ", 180.0)
 	to_title.pressed.connect(title_pressed.emit)
 	leave.add_child(to_title)

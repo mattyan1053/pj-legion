@@ -2,6 +2,7 @@ extends Node
 ## アプリの入口（メインシーン）。場面（scene_flow.gd）を順に進め、場面をまたいで続くもの（設定、システムメニュー、音、暗転）を持つ。
 ##
 ## - 起動するとタイトルから始める。場面が finished(outcome) を出したら、scene_flow.gd の表で次の場面を決めて切り替える。
+##   流れ（run.gd）の中の場面が「次へ」（Run.NEXT）で終わったら、流れの次の場面へ。流れは、場面が context.start_run で始める。
 ## - 切り替えは、短い暗転（FADE_TIME）を挟むだけ。BGM は場面の表の曲へ、フェードでつなぐ（sound.gd。同じ曲なら途切れない）。
 ## - システムメニュー（system_menu.gd）は、ここが開く。並べるのは、共通の項目（戻る、設定、タイトルへ戻る、ゲームを終える）と、
 ##   いまの場面が足すもの（menu_items）。
@@ -12,6 +13,7 @@ const AppContext := preload("res://game/app_context.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const Sound := preload("res://game/sound.gd")
+const Run := preload("res://game/run.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -61,6 +63,7 @@ func _ready() -> void:
 	context.system_menu = menu
 	context.menu_requested.connect(open_menu)
 	context.settings_requested.connect(open_settings)
+	context.run_requested.connect(start_run)
 
 	var layer := CanvasLayer.new()
 	layer.layer = FADE_LAYER
@@ -96,6 +99,8 @@ func go(scene: StringName) -> void:
 			push_error("app: 知らない場面: %s" % scene)
 		return
 	_changing = true
+	if context.run != null and context.run.scene() != scene:
+		context.run = null  # 流れの外の場面へ出た（タイトルへ戻る、対戦の設定へ、など）
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP  # 切り替えの間のクリックは、どの場面にも届かない
 	context.system_menu.close()
 	(context.sound as Sound).play_scene_music(SceneFlow.music(scene))  # 暗転と同じころに、曲もつなぐ
@@ -120,9 +125,24 @@ func go(scene: StringName) -> void:
 	scene_changed.emit(scene)
 
 
+## 流れ run を、最初の場面から始める。切り替えの途中なら何もしない。
+func start_run(run: Run) -> void:
+	if _changing or run.is_done():
+		return
+	context.run = run
+	go(run.scene())
+
+
 func _on_finished(outcome: StringName, scene: StringName) -> void:
 	if scene != _current_id:
 		return  # もう抜けた場面から届いた
+	if outcome == Run.NEXT and context.run != null and context.run.scene() == scene:
+		var run: Run = context.run
+		var following := run.advance()
+		if run.is_done():
+			context.run = null
+		go(following)
+		return
 	var next := SceneFlow.next(scene, outcome)
 	if next == &"":
 		push_error("app: 場面 %s の終わり方 %s の行き先が決まっていない" % [scene, outcome])
