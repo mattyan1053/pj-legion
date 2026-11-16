@@ -16,8 +16,6 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const StatsText := preload("res://game/stats_text.gd")
-const UiTheme := preload("res://game/ui_theme.gd")
-const Palette := preload("res://game/ui_palette.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 
 ## 行き先のボタン。field はステージの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でもう一度（field は見ない）。
