@@ -47,6 +47,7 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	layer.add_child(UiTheme.vignette())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 36.0
@@ -57,6 +58,7 @@ func _ready() -> void:
 
 	var heading := _label("ストーリー", 40)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
+	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
 	var sub := _label("話を選ぶ", 18)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)

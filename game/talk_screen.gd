@@ -21,7 +21,7 @@ const BOX_BOTTOM := 40.0
 ## 送りの印の明滅の周期（秒）。
 const BLINK_PERIOD := 1.2
 ## 名前の札の色（0 = 人の軍、1 = 敵の軍は battle_screen.gd の TEAM_COLORS と同じ。2 = 知らせ）。
-const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("6b7280")]
+const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Color("6b7280")]
 ## 知らせの行の side（story.gd の NOTICE_SIDE）。
 const NOTICE_SIDE := 2
 

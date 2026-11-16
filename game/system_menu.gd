@@ -111,6 +111,7 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 	keep.pressed.connect(back)
 	confirm_buttons.add_child(keep)
 	_confirm_ok = _button("")
+	_confirm_ok.theme_type_variation = UiTheme.BUTTON_DANGER  # 確かめるのは、対戦の状態が失われる行き先だけ
 	_confirm_ok.custom_minimum_size = Vector2(180.0, 48.0)
 	_confirm_ok.pressed.connect(func() -> void: _choose(_confirming))
 	confirm_buttons.add_child(_confirm_ok)

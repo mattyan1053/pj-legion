@@ -206,7 +206,7 @@ func _row(entry: BattleLog.Entry, index: int) -> Control:
 			box.add_child(gap)
 			if previous_turn != entry.turn:
 				var line := ColorRect.new()
-				line.color = Color(1.0, 1.0, 1.0, 0.18)
+				line.color = Color(Palette.BORDER, 0.8)
 				line.custom_minimum_size = Vector2(0.0, 1.0)
 				line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				box.add_child(line)

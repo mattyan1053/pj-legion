@@ -69,7 +69,7 @@ const HINT_SIDE_WIDTH := 730.0
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
 const COLOR_STATUS := Palette.INFO
-const COLOR_TRAIT := Color("ffd34a")
+const COLOR_TRAIT := Palette.ACCENT
 ## 勝ち方の札の地と枠（いつもと、最後のターンのように急ぐとき）。
 const COLOR_GOAL := Palette.GOAL
 const COLOR_GOAL_BORDER := Palette.GOAL_BORDER
@@ -85,7 +85,7 @@ const STATUS_TEXTS := {
 const FLASH_ALPHA := 0.45
 const FLASH_TIME := 0.45
 ## READY の明滅（いちばん色づいたときの色と、1 回の秒数）。
-const COLOR_PULSE := Color(1.0, 0.72, 0.25)
+const COLOR_PULSE := Palette.WARN
 const PULSE_PERIOD := 1.1
 ## 必殺技の知らせの色（軍ごと）。
 const ULT_COLORS := {

@@ -68,7 +68,7 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.35)
+	shade.color = Color(Palette.SHADE, 0.35)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -82,6 +82,7 @@ func _ready() -> void:
 	layer.add_child(root)
 	var heading := _text(30, COLOR_TEXT)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
+	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	heading.text = "出撃の準備　　第 %d 話「%s」" % [Story.number_of(episode), episode.TITLE]
 	root.add_child(heading)
 

@@ -116,7 +116,7 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.45)
+	shade.color = Color(Palette.SHADE, 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -948,6 +948,7 @@ func set_dialog_input(text: String) -> void:
 func _confirm(text: String, ok_text: String, action: Callable) -> void:
 	_dialog_text.text = text
 	_dialog_ok.text = ok_text
+	_dialog_ok.theme_type_variation = UiTheme.BUTTON_DANGER  # 確かめるのは、元に戻せないこと（消す）
 	_dialog_input.visible = false
 	_dialog_action = action
 	_dialog.visible = true
@@ -956,6 +957,7 @@ func _confirm(text: String, ok_text: String, action: Callable) -> void:
 func _ask_name(title: String, current: String, action: Callable) -> void:
 	_dialog_text.text = "%s（%d 文字まで）" % [title, DeckLibrary.MAX_NAME_LENGTH]
 	_dialog_ok.text = "決める"
+	_dialog_ok.theme_type_variation = &""
 	_dialog_input.visible = true
 	_dialog_input.text = current
 	_dialog_action = action
