@@ -35,7 +35,7 @@ func test_cpu_match_says_victory_or_defeat_for_the_human() -> void:
 	var lost: RefCounted = ResultSummary.of(_stats(), false, P1, "敵の将を倒した", true, P2, NAMES, "中央平原")
 	assert_eq(lost.headline, "DEFEAT", "人が後手で、先手（CPU）が勝った")
 	assert_eq(lost.focus_side, P2, "戦績は人の側")
-	assert_true(lost.reason.begins_with("青 の勝ち"), lost.reason)
+	assert_true(lost.reason.begins_with("青の勝ち"), lost.reason)
 	var draw: RefCounted = ResultSummary.of(_stats(), true, Unit.Side.NEUTRAL, "両方の将", true, P1, NAMES, "")
 	assert_eq(draw.headline, "DRAW")
 	assert_eq(draw.winner, Unit.Side.NEUTRAL)
@@ -43,7 +43,7 @@ func test_cpu_match_says_victory_or_defeat_for_the_human() -> void:
 
 func test_local_match_names_the_winner_and_shows_the_winners_record() -> void:
 	var summary: RefCounted = ResultSummary.of(_stats(), false, P2, "敵の本陣を占拠し続けた", false, P1, NAMES, "迷宮回廊")
-	assert_eq(summary.headline, "赤 の勝ち")
+	assert_eq(summary.headline, "赤の勝ち")
 	assert_eq(summary.tone, ResultSummary.Tone.SIDE)
 	assert_eq(summary.focus_side, P2, "人どうしは勝った側の戦績")
 	assert_eq(summary.lines[2], ["敵軍撃破", "1 体"])

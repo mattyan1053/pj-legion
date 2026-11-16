@@ -2,8 +2,9 @@ extends Node
 ## 対戦設定の場面。ステージ・相手・手番・軍を選ぶ（match_setup_panel.gd。対戦の途中で開く設定画面と同じもの）。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。
 ##
-## 「対戦を始める」で選んだものを context.match_choice に入れ、その選択の流れ（match_choice.gd の run。対戦の場面 1 つ）を始める。「ステージ選択へ戻る」（右クリック・Esc でも）で &"back"。
-## ステージはステージ選択の場面で選んで来る。ここでは出すだけで、「ステージを選び直す」で &"back"（選んだものは残す）。
+## 「対戦を始める」で選んだものを context.match_choice に入れ、その選択の流れ（match_choice.gd の run。対戦の場面 1 つ）を始める。
+## ステージはステージ選択の場面で選んで来る。ここでは出すだけで、選び直すときは「ステージ選択へ戻る」（右クリック・Esc でも）で
+## &"back"（選んだものは残す）。
 ## 「部隊編成」は、部隊編成へ寄り道する流れ（編成 → 対戦設定）を始める。寄り道で取っておいた部隊が選ばれて戻る。
 
 const Text := preload("res://game/text.gd")
@@ -26,9 +27,8 @@ func _ready() -> void:
 	layer.add_child(_panel)
 	_panel.setup(BattleScreen.TEAM_COLORS, context.decks, context.overlays)
 	_panel.start_pressed.connect(_on_start)
-	_panel.cancelled.connect(func() -> void: finished.emit(&"back"))
-	_panel.stage_pressed.connect(func(choice: RefCounted) -> void:
-		context.match_choice = choice
+	_panel.cancelled.connect(func() -> void:
+		context.match_choice = _panel.current_choice().copy()
 		finished.emit(&"back"))
 	_panel.decks_pressed.connect(_on_edit_decks)
 	_panel.open(context.match_choice, true, false, Text.t("stage.resume"), false)

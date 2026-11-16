@@ -6,9 +6,10 @@ extends Node
 ## - 組む画面: 雇える駒の札を押して部隊に足し、部隊の駒を選んで、その駒の札と持ち物の欄を出す。並べ替えで、置かれるところが変わる。
 ##   予算・駒の数・出せない理由はいつも出す。出せない部隊は「編成完了」できない。
 ## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）・軍の選択 → 一覧 → 戻り先。
-## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しい部隊」は、選んでいる方の決まりの部隊だけ（混ざらない）。
-## 組む画面の決まり（雇える駒、予算、数の上限）は、切り替えで決まる（rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。
-## - 流れ（run.gd）の中で置かれたら（出撃準備・対戦設定の「部隊編成」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
+## - 一覧は「対戦用」か「ストーリー用」の 1 つの決まりの部隊だけを出す（見出しの横に決まりの名前。切り替えのボタンは置かない）。
+## 一覧と「新しい部隊」は、その決まりの部隊だけ（混ざらない）。組む画面の決まり（雇える駒、予算、数の上限）も同じ
+## （rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。流れの外で置いたとき（道具）は、set_mode で替える。
+## - 流れ（run.gd）の中で置かれたら（出撃準備・対戦設定の「部隊編成」）、渡された決まりの一覧を出し、
 ##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃準備・対戦設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
 
 const Text := preload("res://game/text.gd")
@@ -67,7 +68,8 @@ var _list_detail_card: Control
 var _list_detail_issues: Label
 var _list_actions: Array[Button] = []
 var _list_selected := ""
-var _mode_buttons := {}
+## 一覧の見出しの横の、どの決まりの一覧か（「対戦用」か物語の名前）。切り替えのボタンは置かない（寄り道で開くので、決まりは開いたもとが決める）。
+var _mode_label: Label
 var _back_button: Button
 ## 流れの中で置かれたときに渡されたもの（{"rules": 決まりの名前, "back_label": 戻るボタンの文字}）。流れの外なら空。
 var _detour := {}
@@ -140,8 +142,6 @@ func _ready() -> void:
 	if given is Dictionary:
 		_detour = given
 		_back_button.text = Text.t(_detour.get("back_label", "common.back"))
-		for id: StringName in _mode_buttons:
-			(_mode_buttons[id] as Button).visible = id == _detour.get("rules", DeckRules.VERSUS)
 	set_mode(_detour.get("rules", DeckRules.VERSUS))
 	if not _detour.is_empty():
 		# 寄り道のもとで選んでいる部隊を、一覧で選んでおく（ストーリーは出撃準備、対戦は対戦設定の、その側の部隊）。
@@ -228,7 +228,7 @@ static func modes() -> Array[StringName]:
 	return ids
 
 
-## 切り替えのボタンの文字: 対戦用は「対戦用」、ストーリー用は物語の名前。
+## 一覧の決まりの名前: 対戦用は「対戦用」、ストーリー用は物語の名前。
 static func mode_name(rules_id: StringName) -> String:
 	for each in Story.campaigns():
 		if each.rules_id == rules_id:
@@ -240,8 +240,7 @@ static func mode_name(rules_id: StringName) -> String:
 ## （ストーリー用は、その物語のいまの進み具合の決まり）。
 func set_mode(rules_id: StringName) -> void:
 	rules = context.rules_of(rules_id) if modes().has(rules_id) else DeckRules.versus()
-	for id: StringName in _mode_buttons:
-		(_mode_buttons[id] as Button).set_pressed_no_signal(id == rules.id)
+	_mode_label.text = mode_name(rules.id)
 	for army: UnitKind.Army in _army_cards:
 		(_army_cards[army] as Button).visible = rules.armies().has(army)
 	if _library.find(_list_selected) == null or _library.find(_list_selected).deck.rules.id != rules.id:
@@ -352,13 +351,9 @@ func _build_list() -> Control:
 	var title := _text(26, COLOR_TEXT)
 	title.text = Text.t("deck.title")
 	header.add_child(title)
-	for id: StringName in modes():
-		var button := _button(mode_name(id), 18)
-		button.toggle_mode = true
-		button.custom_minimum_size = Vector2(150.0, 42.0)
-		button.pressed.connect(func() -> void: set_mode(id))
-		header.add_child(button)
-		_mode_buttons[id] = button
+	_mode_label = _text(18, COLOR_DIM)
+	_mode_label.size_flags_vertical = Control.SIZE_SHRINK_END
+	header.add_child(_mode_label)
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 20)

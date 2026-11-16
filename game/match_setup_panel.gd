@@ -37,8 +37,9 @@ const CAPTION_WIDTH := 190.0
 const PICKER_WIDTH := 330.0
 ## 手番の「ランダム」のボタンの値（Unit.Side の値と重ならない）。
 const RANDOM_SIDE := -1
-## 確かめの間のボタンの文字と、下の文（理由）。
-const CONFIRM_TEXT := "setup.confirm"
+## 確かめの間のボタンの文字（「ステージ変更」と、始めるボタン）と、下の文（理由）。
+const CONFIRM_STAGE_BUTTON := "setup.confirm.stage"
+const CONFIRM_START_BUTTON := "setup.confirm.start"
 const STAGE_TEXT := "setup.stage"
 const WARNING_TEXT := "setup.warning"
 const CONFIRM_STAGE_TEXT := "setup.confirm_stage"
@@ -191,7 +192,8 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 ## いまの選択を choice の写しにして、画面を出す。開いただけでは、何も変わらない。
 ## cancellable が真なら、「対戦へ戻る」（右クリック・Esc でも）で、何も変えずに閉じられる。
 ## in_progress が真なら（決着していない対戦の途中）、始めるといまの対戦が失われることを書く。
-## back_text は閉じるボタンの文字（対戦設定の場面では「ステージ選択へ戻る」）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
+## back_text は閉じるボタンの文字（対戦設定の場面では「ステージ選択へ戻る」）。閉じるボタンがステージ選択へ行くときは、
+## 「ステージ変更」を出さない（同じ所へ行くボタンを 2 つ並べない）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
 ## （対戦の途中から開いたとき）。対戦の途中から開いたときは「部隊編成」を出さない（対戦設定の場面だけ）。
 func open(choice: RefCounted, cancellable := false, in_progress := false, back_text := "", new_battle := true) -> void:
 	_choice = choice.copy()
@@ -202,6 +204,7 @@ func open(choice: RefCounted, cancellable := false, in_progress := false, back_t
 	_in_progress = cancellable and in_progress
 	_back_button.visible = cancellable
 	_back_button.text = back_text if back_text != "" else Text.t("setup.back_to_battle")
+	_stage_button.visible = back_text == ""
 	_warning.visible = _in_progress
 	_start_text = Text.t("setup.start_new") if cancellable and new_battle else Text.t("setup.start")
 	_confirming = null
@@ -337,7 +340,7 @@ func _press_or_confirm(button: Button, do: Callable) -> void:
 		stop_confirm()
 		_confirming = button
 		_confirm_started_msec = Time.get_ticks_msec()
-		button.text = Text.t(CONFIRM_TEXT)
+		button.text = Text.t(CONFIRM_STAGE_BUTTON) if button == _stage_button else Text.t(CONFIRM_START_BUTTON)
 		button.theme_type_variation = UiTheme.BUTTON_DANGER
 		_warning.text = Text.t(CONFIRM_STAGE_TEXT) if button == _stage_button else Text.t(CONFIRM_START_TEXT)
 		return
@@ -455,6 +458,11 @@ func _leave_for_stage() -> void:
 func press_edit_decks(side: Unit.Side) -> void:
 	visible = false
 	decks_pressed.emit(_choice.copy(), side)
+
+
+## 「ステージ変更」が出ているか（検査用）。
+func stage_button_shown() -> bool:
+	return _stage_button.visible
 
 
 ## 「部隊編成」が出ているか（検査用）。
