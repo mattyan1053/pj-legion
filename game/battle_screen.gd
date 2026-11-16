@@ -505,9 +505,9 @@ func _on_log_entry_chosen(entry: BattleLog.Entry) -> void:
 
 
 ## ミニマップの上で押した・ドラッグした（point は盤の座標 x / z）: そこを画面の中央にする（すぐに移る。駒を追うのもやめる）。
-## システムメニューと対戦の設定画面を開いている間は動かさない（ログの上からは動かせる）。
+## 重なる画面（システムメニュー・ログ・対戦の設定画面）を開いている間は動かさない（どれもミニマップを覆う）。
 func _on_minimap_pointed(point: Vector2) -> void:
-	if context.overlays.is_open() and not context.overlays.is_top(_log_panel):
+	if context.overlays.is_open():
 		return
 	point_minimap(point)
 
