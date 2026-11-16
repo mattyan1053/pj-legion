@@ -19,13 +19,14 @@ const TITLE := "渓谷の掃討"
 const LOOK := StageLook.CRYSTAL_FOREST
 const MAP := CrystalGorge
 
-## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。
-const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.SORCERER]
+## クリアで増えるもの（docs/story.md の「解放」）: 雇える駒の種類、持たせられる装備、部隊のコストの上限の上がり幅。
+const UNLOCKS: Array[UnitKind.Id] = []
+const BUDGET_UP := 2
 
 ## 人の側（プレイヤー1）の勝ち方（GameWonEvent.Reason の列）。無い話は、いつもの勝ち方（将の撃破、本陣の占拠）。
 const WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]
 
-## 敵の軍（人の軍は、ストーリーで 1 つ。story.gd の ARMY）。
+## 敵の軍（人の軍は、話の物語の軍。game/campaigns/ の ARMY）。
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 ## 敵の部隊（将を除く）: [駒の種類, [装備, …]] の列。並びの順に、初期位置（DEPLOY）のマスへ置く。
 const ENEMY := [

@@ -9,5 +9,8 @@ const TITLE := "FANTASY の物語"
 const ARMY := UnitKind.Army.FANTASY
 const RULES_ID := &"story_fantasy"
 const STARTING_KINDS: Array[UnitKind.Id] = [UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.PRIEST]
+const STARTING_ITEMS: Array[Equipment.Id] = [Equipment.Id.IRON_SHIELD]
+## 仮（話を作るときに決める）。対戦の予算は 18。
+const STARTING_BUDGET := 15
 
 const EPISODES: Array[Script] = []

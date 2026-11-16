@@ -35,7 +35,7 @@ func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 
 func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
 	var episode: Script = Story.MILITARY.EPISODES[0]
-	var run := Story.run_of(episode, Story.default_deck(Story.MILITARY.STARTING_KINDS))
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
 	assert_eq(run.scene(), &"talk")
 	assert_eq(run.data()["title"], episode.TITLE)
 	assert_eq(run.data()["lines"].size(), episode.BEFORE.size())
@@ -150,17 +150,19 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 
 
 func test_default_squad_hires_unlocked_kinds_evenly_with_at_most_one_item_each() -> void:
-	var first := Story.default_deck(Story.MILITARY.STARTING_KINDS)
+	var first := Story.default_deck(Story.starting())
 	assert_true(first.is_valid(), "既定の編成は、出撃できる")
 	assert_eq(first.entries.size(), first.rules.max_units)
 	for kind: UnitKind.Id in Story.MILITARY.STARTING_KINDS:
 		assert_eq(first.entries.filter(func(e: DeckEntry) -> bool: return e.kind == kind).size(), 2, "雇える駒を、まんべんなく雇う: %s" % UnitKind.display_name(kind))
 	for episode: Script in Story.MILITARY.EPISODES:
-		var deck := Story.default_deck(Story.kinds_before(episode))
+		var deck := Story.default_deck(Story.unlocked_before(episode))
 		assert_true(deck.is_valid(), "%s の既定の編成は、出撃できる" % episode.TITLE)
 		var last_role := -1
 		for entry: DeckEntry in deck.entries:
 			assert_true(entry.equipment.size() <= 1, "装備は 1 体に 1 つまで")
+			for item: Equipment.Id in entry.equipment:
+				assert_true(Story.unlocked_before(episode).items.has(item), "持たせられる装備だけ")
 			assert_true(UnitKind.role(entry.kind) >= last_role, "並びは役割の順（前衛が前）")
 			last_role = UnitKind.role(entry.kind)
 		for kind: UnitKind.Id in Story.kinds_before(episode):
@@ -192,37 +194,83 @@ func test_story_starts_from_the_first_episode_not_cleared() -> void:
 	assert_eq(story.next_episode(), Story.MILITARY.EPISODES[0], "全部クリアしたら、最初の話をもう一度")
 
 
-func test_kinds_are_unlocked_by_clearing_episodes() -> void:
+func test_kinds_items_and_budget_are_unlocked_by_clearing_episodes() -> void:
 	var story := Story.new()
 	assert_eq(story.unlocked_kinds(), Story.MILITARY.STARTING_KINDS, "最初は、最初から雇える駒だけ")
-	var expected := Story.MILITARY.STARTING_KINDS.duplicate()
+	assert_eq(story.unlocked().items, Story.MILITARY.STARTING_ITEMS)
+	assert_eq(story.unlocked().budget, Story.MILITARY.STARTING_BUDGET)
+	var kinds := Story.MILITARY.STARTING_KINDS.duplicate()
+	var items := Story.MILITARY.STARTING_ITEMS.duplicate()
+	var budget: int = Story.MILITARY.STARTING_BUDGET
 	for episode in Story.MILITARY.EPISODES:
-		assert_eq(Story.kinds_before(episode), expected, "%s を初めて遊ぶときの駒" % episode.ID)
-		for kind: UnitKind.Id in episode.UNLOCKS:
-			assert_false(expected.has(kind), "%s は、もう雇える駒を解放する" % episode.ID)
+		var before := Story.unlocked_before(episode)
+		assert_eq(before.kinds, kinds, "%s を初めて遊ぶときの駒" % episode.ID)
+		assert_eq(before.items, items, "%s を初めて遊ぶときの持ち物" % episode.ID)
+		assert_eq(before.budget, budget, "%s を初めて遊ぶときのコストの上限" % episode.ID)
 		story.clear(episode.ID)
-		expected.append_array(episode.UNLOCKS)
-		assert_eq(story.unlocked_kinds(), expected)
+		kinds.append_array(episode.UNLOCKS)
+		items.append_array(StoryBattle.unlock_items_of(episode))
+		budget += StoryBattle.budget_up_of(episode)
+		assert_eq(story.unlocked_kinds(), kinds)
+		assert_eq(story.unlocked().items, items)
+		assert_eq(story.unlocked().budget, budget)
+	assert_true(budget > DeckRules.versus().budget(Story.ARMY), "物語の終わりには、対戦の予算を超える")
 	var reloaded := Story.new()
 	reloaded.load_data(story.to_data())
-	assert_eq(reloaded.unlocked_kinds(), expected, "解放した駒は記録に書かず、クリアした話から求め直す")
+	assert_eq(reloaded.unlocked_kinds(), kinds, "解放したものは記録に書かず、クリアした話から求め直す")
+	assert_eq(reloaded.unlocked().budget, budget)
 	assert_eq(story.to_data()["campaigns"].keys(), ["military"])
 	assert_eq(story.to_data()["campaigns"]["military"].keys(), ["cleared"])
 
 
-func test_story_rules_hire_only_unlocked_kinds_on_the_versus_budget() -> void:
-	var rules := Story.rules_of(Story.MILITARY.STARTING_KINDS)
+func test_story_rules_hire_only_unlocked_kinds_and_items_within_the_unlocked_budget() -> void:
+	var start := Story.starting()
+	var rules := Story.rules_of(start)
 	assert_eq(rules.id, Story.RULES_ID)
 	assert_ne(rules.id, DeckRules.VERSUS, "対戦用とストーリー用の部隊は、決まりの名前で分ける")
 	assert_eq(rules.armies(), [Story.ARMY] as Array[UnitKind.Army])
-	assert_eq(rules.budget(Story.ARMY), DeckRules.versus().budget(Story.ARMY))
+	assert_eq(rules.budget(Story.ARMY), Story.MILITARY.STARTING_BUDGET)
 	assert_eq(rules.max_units, DeckRules.versus().max_units)
+	assert_eq(rules.items(), Story.MILITARY.STARTING_ITEMS)
 	for kind: UnitKind.Id in DeckRules.versus().roster(Story.ARMY):
 		assert_eq(rules.allows(Story.ARMY, kind), Story.MILITARY.STARTING_KINDS.has(kind), UnitKind.display_name(kind))
-	var deck := Story.default_deck(Story.MILITARY.STARTING_KINDS)
+	var deck := Story.default_deck(start)
 	assert_true(deck.is_valid(), str(deck.problems()))
-	var everything := Story.rules_of([UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC, UnitKind.Id.SNIPER, UnitKind.Id.SHIELD_TROOPER])
-	assert_eq(everything.roster(Story.ARMY), DeckRules.versus().roster(Story.ARMY), "ロスターは役割の順")
+	var everything := Story.starting()
+	everything.kinds.assign([UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC, UnitKind.Id.SNIPER, UnitKind.Id.SHIELD_TROOPER])
+	assert_eq(Story.rules_of(everything).roster(Story.ARMY), DeckRules.versus().roster(Story.ARMY), "ロスターは役割の順")
+	var booted := Deck.new(Story.ARMY, rules)
+	booted.add(UnitKind.Id.SNIPER).equip(Equipment.Id.SPEED_BOOTS)
+	assert_eq(booted.problems(), [Deck.Problem.ITEM_NOT_ALLOWED] as Array[Deck.Problem], "まだ持たせられない持ち物は、出せない理由になる")
+
+
+func test_campaigns_unlock_only_their_own_army() -> void:
+	for campaign in Story.CAMPAIGNS:
+		for episode: Script in campaign.EPISODES:
+			for kind: UnitKind.Id in episode.UNLOCKS:
+				assert_eq(UnitKind.army(kind), campaign.ARMY, "%s: ほかの軍の駒は解放しない" % episode.ID)
+
+
+func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loading() -> void:
+	# パラディン（FANTASY の駒）を解放していたころに取っておいた、ストーリー用の部隊。
+	var context := preload("res://game/app_context.gd").new()
+	context.story.load_data({"cleared": ["ridge_path", "ridge_ambush"], "squad": "1"})
+	context.decks.load_data({"next_id": 2, "decks": [{"id": "1", "name": "パラディン入り", "rules": "story", "army": "MILITARY",
+			"units": [{"kind": "PALADIN", "equipment": ["IRON_SHIELD"]}, {"kind": "SNIPER", "equipment": []}]}]})
+	var saved: RefCounted = context.decks.items()[0]
+	assert_eq(saved.deck.rules.id, Story.RULES_ID, "部隊は読める（消さない）")
+	assert_false(saved.playable(), "雇えない駒がいるので、出せない（理由つきで一覧に残る）")
+	assert_true(saved.issues().size() > 0)
+	var sortie := preload("res://game/sortie_screen.gd").new()
+	sortie.context = context
+	context.run = context.story.run_now(Story.MILITARY.EPISODES[2])
+	context.run.advance()  # 出撃の準備
+	context.scene = Story.SORTIE
+	var root := Node.new()
+	root.add_child(sortie)
+	assert_false(sortie.is_option_enabled("1"), "出撃の準備では押せない")
+	assert_eq(sortie.chosen_id(), "", "覚えていた部隊が出せなければ、既定の編成")
+	root.free()
 
 
 func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
@@ -235,7 +283,7 @@ func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
 	assert_eq(run.data().human_deck.rules.id, Story.RULES_ID, "いま雇える駒で組んだ既定の編成")
 	run.advance()
 	var lines: Array = run.data()["lines"]
-	assert_eq(lines.size(), episode.AFTER.size() + episode.UNLOCKS.size())
+	assert_eq(lines.size(), episode.AFTER.size() + Story.starting().news_of(episode).size())
 	assert_eq(lines[-1]["side"], Story.NOTICE_SIDE)
 	assert_true(lines[-1]["text"].contains(UnitKind.display_name(episode.UNLOCKS[0])), lines[-1]["text"])
 	story.clear(episode.ID)
@@ -412,3 +460,19 @@ func test_a_campaign_without_episodes_is_not_ready_and_does_not_block_all_cleare
 		for episode: Script in campaign.EPISODES:
 			story.clear(episode.ID)
 	assert_true(story.all_cleared(), "準備中の物語は、全部クリアの邪魔をしない")
+
+
+func test_news_tell_each_new_kind_item_and_the_new_budget() -> void:
+	var episode := GDScript.new()
+	episode.source_code = """extends RefCounted
+const UNLOCKS: Array[UnitKind.Id] = [UnitKind.Id.COMMANDO, UnitKind.Id.SNIPER]
+const UNLOCK_ITEMS: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS, Equipment.Id.IRON_SHIELD]
+const BUDGET_UP := 3
+"""
+	assert_eq(episode.reload(), OK)
+	var news := Story.starting().news_of(episode)
+	assert_eq(news, [
+		"新しい駒「コマンドー」を雇えるようになった。",
+		"新しい持ち物「スピードブーツ」を持たせられるようになった。",
+		"部隊のコストの上限が %d になった。" % (Story.MILITARY.STARTING_BUDGET + 3),
+	] as Array[String], "もう使えるもの（スナイパー、アイアンシールド）は知らせない")

@@ -117,6 +117,18 @@ static func wins_of(of_episode: Script) -> Array[GameWonEvent.Reason]:
 
 
 ## 対戦の途中の会話（CUES）。無い話は空（台詞なし）。
+## 話のクリアで、新しく持たせられるようになる装備（UNLOCK_ITEMS。無ければ空）。
+static func unlock_items_of(of_episode: Script) -> Array[Equipment.Id]:
+	var items: Array[Equipment.Id] = []
+	items.assign(_constant(of_episode, &"UNLOCK_ITEMS", []))
+	return items
+
+
+## 話のクリアで、部隊のコストの上限が上がる量（BUDGET_UP。無ければ 0）。
+static func budget_up_of(of_episode: Script) -> int:
+	return _constant(of_episode, &"BUDGET_UP", 0)
+
+
 static func cues_of(of_episode: Script) -> Array:
 	return _constant(of_episode, &"CUES", [])
 
