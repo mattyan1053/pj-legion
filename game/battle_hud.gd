@@ -114,6 +114,8 @@ var _info_skill_note: Label
 var _info_traits: Label
 ## 盤を見ている人のプレイヤー（駒の情報の [自軍] [敵軍] を決める）。呼ぶ側が合わせる。
 var viewer_side := Unit.Side.PLAYER1
+## 陣営ごとの軍（Battle.armies。対戦の画面が入れる）。所属の欄に出す軍は、駒の種類の軍でなく、陣営の軍。
+var side_armies: Array = []
 var _info_forecast: Label
 var _cell_label: Label
 var _hint_label: Label
@@ -255,7 +257,8 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 		_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
 	_set_folded(_info_name, _info_name.text, INFO_WIDTH)
-	_info_side.text = affiliation_text(unit, viewer_side)
+	var army: UnitKind.Army = side_armies[unit.side] if unit.side >= 0 and unit.side < side_armies.size() else UnitKind.Army.NONE
+	_info_side.text = affiliation_text(unit, viewer_side, army)
 	_info_side.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.5))
 	_info_side.visible = true
 	var ratio := float(unit.hp) / maxf(unit.max_hp(), 1.0)
@@ -300,7 +303,9 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 
 
 ## 駒の所属の文。盤を見ている人（viewer）から見た [自軍] [敵軍] [中立] と、陣営、軍（雇う駒だけ）。
-static func affiliation_text(unit: Unit, viewer: Unit.Side) -> String:
+## 軍は陣営の軍（side_army。NONE なら駒の種類の軍）。ストーリーでほかの軍の駒を雇ったときは「MILITARY（FANTASY の駒）」と並べる
+## （駒の種類の軍だけを出すと、味方の駒に敵と同じ軍の名前が出て紛らわしい）。
+static func affiliation_text(unit: Unit, viewer: Unit.Side, side_army := UnitKind.Army.NONE) -> String:
 	var tag := "[中立]"
 	if unit.side == viewer:
 		tag = "[自軍]"
@@ -309,7 +314,10 @@ static func affiliation_text(unit: Unit, viewer: Unit.Side) -> String:
 	var parts: Array[String] = [tag, Names.SIDE_NAMES[unit.side]]
 	var army := UnitKind.army(unit.kind)
 	if army != UnitKind.Army.NONE:
-		parts.append(Names.ARMY_NAMES[army])
+		if side_army == UnitKind.Army.NONE or side_army == army:
+			parts.append(Names.ARMY_NAMES[army])
+		else:
+			parts.append("%s（%s の駒）" % [Names.ARMY_NAMES[side_army], Names.ARMY_NAMES[army]])
 	return "　".join(parts)
 
 

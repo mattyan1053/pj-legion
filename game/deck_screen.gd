@@ -878,6 +878,9 @@ func _refresh_detail() -> void:
 		"%s　コスト %d　%s" % [DeckText.role_name(unit_kind), UnitKind.cost(unit_kind), DeckText.ROLE_NOTES.get(role, "")],
 		DeckText.stats_line(unit_kind),
 	]
+	if _deck != null and UnitKind.army(unit_kind) != _deck.army:
+		# ストーリーで解放した、ほかの軍の駒（必殺技は部隊の軍のもの）。
+		lines.insert(0, "%s の駒（この部隊では %s として戦う）" % [DeckText.army_name(UnitKind.army(unit_kind)), DeckText.army_name(_deck.army)])
 	if entry != null and not entry.equipment.is_empty():
 		lines.append("装備込み: " + DeckText.stats_line(unit_kind, DeckText.equipment_bonus(entry.equipment)))
 	var skill := DeckText.skill_text(unit_kind)
