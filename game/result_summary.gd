@@ -29,8 +29,12 @@ var mvp_kills := 0
 var mvp_kind := UnitKind.Id.KING
 var mvp_side := Unit.Side.PLAYER1
 var mvp_evolved := false
-## 両方の陣営の詳しい戦績（stats_text.gd。畳んでおき、ボタンで開く）。
+## 両方の陣営の詳しい戦績（stats_text.gd。畳んでおき、ボタンで開く）。detail は文、tables は表（画面に出すのは表）。
 var detail := ""
+## 全体の 1 行（作戦領域・ターン・決着の仕方）。
+var detail_head := ""
+## プレイヤー番号ごとの {name: 陣営の名前, summary: 陣営の 1 行, rows: 駒ごとの行（StatsText.table_rows）}。
+var tables: Array[Dictionary] = []
 
 
 ## stats: 決着した対戦の戦績。draw なら引き分けで winner は見ない。reason: 決着の理由の文。
@@ -81,4 +85,9 @@ static func of(stats: BattleStats, draw: bool, winner_side: Unit.Side, reason_te
 		summary.mvp_side = best.side
 		summary.mvp_evolved = best.evolution != Evolution.Id.NONE
 	summary.detail = StatsText.text(stats, stage_name, side_names)
+	summary.detail_head = summary.detail.get_slice("\n", 0)
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		summary.tables.append({
+			"name": side_names[side], "summary": StatsText.side_summary(stats, side), "rows": StatsText.table_rows(stats, side),
+		})
 	return summary

@@ -13,7 +13,9 @@ extends Control
 
 const ResultSummary := preload("res://game/result_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
-const TextWrap := preload("res://game/text_wrap.gd")
+const StatsText := preload("res://game/stats_text.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
+const Palette := preload("res://game/ui_palette.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 
 ## 行き先のボタン。field はステージの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でもう一度（field は見ない）。
@@ -52,8 +54,14 @@ const HEADLINE_SHRUNK := 0.62
 ## （対戦の画面の下の帯。BattleHud.BOTTOM_BAR_HEIGHT）にかからないよう、行と行の間を詰めてある。
 const BODY_TOP := 140.0
 const STAT_FONT := 22
-## 詳しい戦績を折り返す幅（px）。
-const DETAIL_WIDTH := 760.0
+## 詳しい戦績の表: 駒の名前の列の幅、数の列の幅、行の高さ、送れる部分の高さ（px）。
+const TABLE_NAME_WIDTH := 280.0
+const TABLE_NUMBER_WIDTH := 104.0
+const TABLE_ROW_HEIGHT := 34.0
+const TABLE_ICON := 30.0
+const TABLE_HEIGHT := 210.0
+## 倒れた駒の印の列の幅（px）。
+const TABLE_STATE_WIDTH := 64.0
 
 const COLOR_SHADE := Color(0.0, 0.0, 0.0, 0.78)
 const COLOR_PANEL := Color(0.09, 0.11, 0.15, 0.97)
@@ -86,6 +94,13 @@ var _mvp_icon: TextureRect
 var _mvp_numbers: Label
 var _detail_panel: PanelContainer
 var _detail: Label
+## 詳しい戦績の表: 陣営の切り替え、陣営の 1 行、表の行の入れ物、いま出している陣営。
+var _table_tabs: Array[Button] = []
+var _table_summary: Label
+var _table_rows: VBoxContainer
+var _table_side := 0
+## 詳しい戦績の文（stats_text.gd。画面には表で出す。検査用）。
+var _detail_text := ""
 var _actions: VBoxContainer
 var _detail_button: Button
 ## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
@@ -171,10 +186,11 @@ func present(summary: RefCounted) -> void:
 	else:
 		_mvp_name.text = "該当なし"
 		_mvp_numbers.text = "敵にダメージを与えた駒がいない"
-	var font := _detail.get_theme_font("font")
-	var font_size := _detail.get_theme_font_size("font_size")
-	_detail.text = TextWrap.fold(summary.detail, DETAIL_WIDTH,
-		func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	_detail.text = summary.detail_head
+	for side in _table_tabs.size():
+		_table_tabs[side].text = summary.tables[side]["name"] if side < summary.tables.size() else ""
+	show_table(summary.focus_side if summary.focus_side >= 0 and summary.focus_side < 2 else 0)
+	_detail_text = summary.detail
 	_show_detail(false)
 
 	# 始めの形: 見出しは中央で透明、ほかは場所を取ったまま透明（出るときに配置が動かないように）。
@@ -285,7 +301,7 @@ func headline() -> String:
 
 ## いま出している詳しい戦績（出ていなければ空。畳んでいても返す）。検査用。
 func detail_text() -> String:
-	return _detail.text if visible else ""
+	return _detail_text if visible else ""
 
 
 ## 戦績の行の文字（[項目, 値] の列）。検査用。
@@ -542,15 +558,131 @@ func _build_mvp() -> void:
 	mvp_lines.add_child(_mvp_numbers)
 
 
+## 詳しい戦績（両軍）: 全体の 1 行、陣営の切り替え、陣営の 1 行、駒ごとの表（行が駒、列が数。長ければ縦に送る）。
 func _build_detail() -> void:
 	_detail_panel = _panel()
 	_detail_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_detail_panel.visible = false
 	_body.add_child(_detail_panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 4)
+	_detail_panel.add_child(column)
 	_detail = _label(15)
 	_detail.add_theme_color_override("font_color", COLOR_DIM)
-	_detail.custom_minimum_size = Vector2(DETAIL_WIDTH, 0.0)
-	_detail_panel.add_child(_detail)
+	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_detail)
+	var tabs := HBoxContainer.new()
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	tabs.add_theme_constant_override("separation", 8)
+	column.add_child(tabs)
+	for side in 2:
+		var tab := Button.new()
+		tab.toggle_mode = true
+		tab.focus_mode = Control.FOCUS_NONE
+		tab.custom_minimum_size = Vector2(220.0, 34.0)
+		tab.add_theme_font_size_override("font_size", 16)
+		tab.pressed.connect(func() -> void: show_table(side))
+		tabs.add_child(tab)
+		_table_tabs.append(tab)
+	_table_summary = _label(15)
+	_table_summary.add_theme_color_override("font_color", COLOR_DIM)
+	_table_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_table_summary)
+	var header_box := PanelContainer.new()
+	header_box.add_theme_stylebox_override("panel", UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, UiTheme.CORNER, 2.0))
+	column.add_child(header_box)
+	var header := _table_line()
+	header_box.add_child(header)
+	var icon_room := Control.new()
+	icon_room.custom_minimum_size = Vector2(TABLE_ICON, 0.0)
+	header.add_child(icon_room)
+	header.add_child(_table_cell("駒", TABLE_NAME_WIDTH, true, HORIZONTAL_ALIGNMENT_LEFT))
+	for spec: Array in StatsText.COLUMNS:
+		header.add_child(_table_cell(spec[1], TABLE_NUMBER_WIDTH, true))
+	header.add_child(_table_cell("", TABLE_STATE_WIDTH, true))
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0.0, TABLE_HEIGHT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	_table_rows = VBoxContainer.new()
+	_table_rows.add_theme_constant_override("separation", 2)
+	scroll.add_child(_table_rows)
+
+
+## 詳しい戦績の表に、side の陣営の駒を出す（切り替えのボタンと同じ）。
+func show_table(side: int) -> void:
+	if _summary == null or _summary.tables.size() <= side:
+		return
+	_table_side = side
+	for i in _table_tabs.size():
+		_table_tabs[i].set_pressed_no_signal(i == side)
+	var table: Dictionary = _summary.tables[side]
+	_table_summary.text = table["summary"]
+	for child in _table_rows.get_children():
+		_table_rows.remove_child(child)
+		child.queue_free()
+	for row: Dictionary in table["rows"]:
+		_table_rows.add_child(_table_row(row))
+
+
+## いま表に出している陣営と、その行の駒の名前（検査用）。
+func table_side() -> int:
+	return _table_side
+
+
+func table_names() -> Array[String]:
+	var names: Array[String] = []
+	for row in _table_rows.get_children():
+		if not row.is_queued_for_deletion():
+			names.append((row.get_child(0).get_child(1) as Label).text)
+	return names
+
+
+## 表の 1 行（駒）。MVP の行は札の地と金の文字、倒れた駒は「撃破された」の印。
+func _table_row(row: Dictionary) -> Control:
+	# どの行も同じ余白の地（MVP の行だけ薄く塗る）にして、列の位置をそろえる。
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiTheme.box(Palette.WASH if row["mvp"] else Color.TRANSPARENT, Color.TRANSPARENT, 0, UiTheme.CORNER, 2.0))
+	var line := _table_line()
+	panel.add_child(line)
+	var icon := UnitIcons.rect(row["kind"], row["side"], row["evolved"], TABLE_ICON)
+	line.add_child(icon)
+	var name_label := _table_cell(("★ " if row["mvp"] else "") + row["name"], TABLE_NAME_WIDTH, false, HORIZONTAL_ALIGNMENT_LEFT)
+	name_label.clip_text = true
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	line.add_child(name_label)
+	for spec: Array in StatsText.COLUMNS:
+		var value: int = row[spec[0]]
+		var cell := _table_cell(str(value) if value != 0 else "-", TABLE_NUMBER_WIDTH)
+		line.add_child(cell)
+	line.add_child(_table_cell("倒れた" if row["defeated"] else "", TABLE_STATE_WIDTH, true))
+	if row["mvp"]:
+		for cell in line.get_children():
+			if cell is Label:
+				(cell as Label).add_theme_color_override("font_color", COLOR_MVP)
+	if row["defeated"]:
+		icon.modulate.a = 0.45
+	return panel
+
+
+func _table_line() -> HBoxContainer:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 6)
+	line.custom_minimum_size = Vector2(0.0, TABLE_ROW_HEIGHT - 4.0)
+	return line
+
+
+func _table_cell(text: String, width: float, dim := false, align := HORIZONTAL_ALIGNMENT_RIGHT) -> Label:
+	var label := _label(16 if not dim else 14)
+	label.text = text
+	label.custom_minimum_size = Vector2(width, 0.0)
+	label.clip_text = true  # 列の幅を中身で広げない（見出しと数の列がずれないように）
+	label.horizontal_alignment = align
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_vertical = Control.SIZE_FILL
+	if dim:
+		label.add_theme_color_override("font_color", COLOR_DIM)
+	return label
 
 
 func _build_actions() -> void:
