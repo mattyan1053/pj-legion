@@ -2,6 +2,7 @@ extends RefCounted
 ## 駒 1 体の札（名前、役割、コスト、能力値、持ち物）。編成の確認（deck_preview.gd）と、部隊の編成の画面で使う。
 ## 札は既定の部品（PanelContainer、Label）だけで組む。色や枠は UI のテーマ（ui_theme.gd の PANEL_CARD）が当たる。
 
+const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
@@ -34,7 +35,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 	title.name = "Name"
 	names.add_child(title)
 	var role := DeckText.role_name(kind)
-	var head := ("本陣に置く" if kind == UnitKind.Id.KING else "%s　コスト %d" % [role, UnitKind.cost(kind)])
+	var head := Text.t("deck.card.king") if kind == UnitKind.Id.KING else Text.t("deck.detail.role", {"role": role, "cost": UnitKind.cost(kind)})
 	names.add_child(_label(head, 13, true))
 	column.add_child(_label(DeckText.stats_line(kind, DeckText.equipment_bonus(equipment)), 13, true))
 	if not equipment.is_empty():

@@ -9,6 +9,7 @@ extends Node
 ## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだステージを context.match_choice に入れて &"pick"（対戦の設定へ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
@@ -28,12 +29,12 @@ const CARD_GAP := 20
 ## マウスを乗せたカードの大きさ。
 const HOVER_SCALE := 1.04
 const HOVER_TIME := 0.12
-const PROMPT := "カードにマウスを乗せると、ステージの説明が出る。クリックで選んで、対戦の設定へ進む。"
+const PROMPT := "stage.prompt"
 ## 段の見出しと、カードの形の札（生成のステージ / 手で作ったマップ）。
-const ROW_GENERATED := "生成のステージ ─ 対戦のたびに、形が変わる"
-const ROW_HAND := "手で作ったマップ ─ いつも同じ形"
-const TAG_GENERATED := "毎回ちがう形"
-const TAG_HAND := "いつも同じ形"
+const ROW_GENERATED := "stage.row.generated"
+const ROW_HAND := "stage.row.hand"
+const TAG_GENERATED := "stage.tag.generated"
+const TAG_HAND := "stage.tag.hand"
 
 const COLOR_CARD := Palette.OVERLAY
 const COLOR_CARD_HOVER := Color(Palette.RAISED, 0.96)
@@ -66,7 +67,7 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
-	var heading := _label("作戦領域を選ぶ", 36)
+	var heading := _label(Text.t("stage.heading"), 36)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
@@ -81,7 +82,7 @@ func _ready() -> void:
 	for group: Array[StringName] in [generated, hand]:
 		if group.is_empty():
 			continue
-		var caption := _label(ROW_GENERATED if group == generated else ROW_HAND, 17)
+		var caption := _label(Text.t(ROW_GENERATED if group == generated else ROW_HAND), 17)
 		caption.add_theme_color_override("font_color", (COLOR_TAG_GENERATED if group == generated else COLOR_TAG_HAND).lightened(0.3))
 		# 背景の景色の上でも読めるよう、暗い札に載せる。
 		var caption_panel := _panel(COLOR_PANEL)
@@ -109,7 +110,7 @@ func _ready() -> void:
 	note_column.add_child(_note)
 
 	var back := Button.new()
-	back.text = "タイトルへ戻る"
+	back.text = Text.t("menu.to_title")
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 18)
 	back.custom_minimum_size = Vector2(220.0, 44.0)
@@ -145,7 +146,7 @@ func _card_row(fields: Array[StringName]) -> ScrollContainer:
 
 
 func resume_label() -> String:
-	return "ステージ選択へ戻る"
+	return Text.t("stage.resume")
 
 
 ## field（versus_fields.gd の鍵）を選んで、対戦の設定へ進む。
@@ -229,17 +230,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _show_note(field: StringName) -> void:
 	if field == &"":
-		_note_title.text = "ステージを選ぶ"
-		_note.text = PROMPT
+		_note_title.text = Text.t("stage.choose")
+		_note.text = Text.t(PROMPT)
 		return
-	_note_title.text = "%d  %s　　%s　　（%s）" % [
-		VersusFields.number_of(field), VersusFields.title_of(field), VersusFields.tags_of(field), _shape_tag(field),
-	]
+	_note_title.text = Text.t("stage.note_title", {
+		"number": VersusFields.number_of(field), "title": VersusFields.title_of(field), "tags": VersusFields.tags_of(field), "shape": _shape_tag(field),
+	})
 	_note.text = VersusFields.note_of(field)
 
 
 func _shape_tag(field: StringName) -> String:
-	return TAG_GENERATED if VersusFields.is_generated(field) else TAG_HAND
+	return Text.t(TAG_GENERATED if VersusFields.is_generated(field) else TAG_HAND)
 
 
 ## 横に送れる段で、カードが見えるところまで送る（キーやスクリーンショットの道具で、はみ出たカードに乗せたとき）。

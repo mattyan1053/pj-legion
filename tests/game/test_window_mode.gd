@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 窓の扱い（game/window_mode.gd）と、設定の「全画面」。
 
+const Text := preload("res://game/text.gd")
 const WindowMode := preload("res://game/window_mode.gd")
 const Settings := preload("res://game/settings.gd")
 
@@ -26,7 +27,7 @@ func test_alt_enter_toggles_and_nothing_else_does() -> void:
 
 func test_fullscreen_is_a_screen_setting_that_starts_windowed() -> void:
 	var entry := Settings.item(Settings.FULLSCREEN)
-	assert_eq(entry.get("section"), "画面")
+	assert_eq(Text.t(entry.get("section")), "画面")
 	assert_eq(entry.get("kind"), Settings.Kind.TOGGLE)
 	assert_eq(Settings.new().value(Settings.FULLSCREEN), false, "初めは窓で開く")
 

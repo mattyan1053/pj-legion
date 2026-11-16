@@ -7,6 +7,8 @@ extends RefCounted
 ## 取っておくのは save_store.gd（user:// の JSON）。読めないファイル・知らない項目・型の違う値・範囲の外の値は、
 ## 既定の値に戻すか、範囲に収める（起動を止めない）。
 
+const Text := preload("res://game/text.gd")
+
 ## 値が変わった（key は項目の名前）。
 signal changed(key: StringName)
 
@@ -34,48 +36,48 @@ const FULLSCREEN := &"fullscreen"
 ## - default: 既定の値。
 const ITEMS: Array[Dictionary] = [
 	{
-		"key": MOUSE_SENSITIVITY, "section": "操作", "label": "マウスの感度",
-		"note": "ドラッグで視点を回す・傾ける速さ",
+		"key": MOUSE_SENSITIVITY, "section": "settings.section.control", "label": "settings.mouse_sensitivity",
+		"note": "settings.mouse_sensitivity.note",
 		"kind": Kind.SLIDER, "min": 25, "max": 300, "step": 5, "unit": "%", "default": 100,
 	},
 	{
-		"key": INVERT_VERTICAL_DRAG, "section": "操作", "label": "縦のドラッグを逆にする",
-		"note": "オフ: 下へ動かすと真上から見下ろす。オン: 上へ動かすと真上から見下ろす",
+		"key": INVERT_VERTICAL_DRAG, "section": "settings.section.control", "label": "settings.invert_vertical_drag",
+		"note": "settings.invert_vertical_drag.note",
 		"kind": Kind.TOGGLE, "default": false,
 	},
 	{
-		"key": CPU_PLAYBACK_SPEED, "section": "再生", "label": "CPU の番の速さ",
-		"note": "CPU の駒が動く・攻撃するところを見せる速さ（中立の番は変わらない）",
-		"kind": Kind.CHOICE, "choices": [[1, "ふつう"], [2, "速い"], [3, "とても速い"]], "default": 1,
+		"key": CPU_PLAYBACK_SPEED, "section": "settings.section.playback", "label": "settings.cpu_playback_speed",
+		"note": "settings.cpu_playback_speed.note",
+		"kind": Kind.CHOICE, "choices": [[1, "settings.cpu_playback_speed.normal"], [2, "settings.cpu_playback_speed.fast"], [3, "settings.cpu_playback_speed.faster"]], "default": 1,
 	},
 	{
-		"key": MASTER_VOLUME, "section": "音", "label": "全体の音量",
-		"note": "BGM と効果音の両方に掛かる",
+		"key": MASTER_VOLUME, "section": "settings.section.sound", "label": "settings.master_volume",
+		"note": "settings.master_volume.note",
 		"kind": Kind.SLIDER, "min": 0, "max": 100, "step": 5, "unit": "%", "default": 80,
 	},
 	{
-		"key": MUSIC_VOLUME, "section": "音", "label": "BGM の音量",
-		"note": "タイトル・対戦・決着の曲",
+		"key": MUSIC_VOLUME, "section": "settings.section.sound", "label": "settings.music_volume",
+		"note": "settings.music_volume.note",
 		"kind": Kind.SLIDER, "min": 0, "max": 100, "step": 5, "unit": "%", "default": 70,
 	},
 	{
-		"key": EFFECTS_VOLUME, "section": "音", "label": "効果音の音量",
-		"note": "スライダーを離すと、ボタンの音で大きさを確かめられる",
+		"key": EFFECTS_VOLUME, "section": "settings.section.sound", "label": "settings.effects_volume",
+		"note": "settings.effects_volume.note",
 		"kind": Kind.SLIDER, "min": 0, "max": 100, "step": 5, "unit": "%", "default": 80,
 	},
 	{
-		"key": MUTE, "section": "音", "label": "音を消す",
-		"note": "音量はそのままで、すべての音を止める",
+		"key": MUTE, "section": "settings.section.sound", "label": "settings.mute",
+		"note": "settings.mute.note",
 		"kind": Kind.TOGGLE, "default": false,
 	},
 	{
-		"key": FULLSCREEN, "section": "画面", "label": "全画面",
-		"note": "オフは窓で開く（端をドラッグして大きさを変えられる）。Alt+Enter でも切り替えられる",
+		"key": FULLSCREEN, "section": "settings.section.screen", "label": "settings.fullscreen",
+		"note": "settings.fullscreen.note",
 		"kind": Kind.TOGGLE, "default": false,
 	},
 	{
-		"key": SHOW_MINIMAP, "section": "画面", "label": "ミニマップ",
-		"note": "対戦の画面の右上に盤の縮図を出す。押すと、その場所へ視点を移す",
+		"key": SHOW_MINIMAP, "section": "settings.section.screen", "label": "settings.show_minimap",
+		"note": "settings.show_minimap.note",
 		"kind": Kind.TOGGLE, "default": true,
 	},
 ]
@@ -166,11 +168,11 @@ static func value_text(entry: Dictionary, shown: Variant) -> String:
 		Kind.SLIDER:
 			return "%d%s" % [shown, entry.get("unit", "")]
 		Kind.TOGGLE:
-			return "オン" if shown else "オフ"
+			return Text.t("settings.on") if shown else Text.t("settings.off")
 		Kind.CHOICE:
 			for choice: Array in entry["choices"]:
 				if choice[0] == shown:
-					return choice[1]
+					return Text.t(choice[1])
 	return str(shown)
 
 

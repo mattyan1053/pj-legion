@@ -6,6 +6,7 @@ extends Node
 ## ステージはステージ選択の場面で選んで来る。ここでは出すだけで、「ステージを選び直す」で &"back"（選んだものは残す）。
 ## 「部隊を編成する」は、部隊の編成へ寄り道する流れ（編成 → 対戦の設定）を始める。寄り道で取っておいた部隊が選ばれて戻る。
 
+const Text := preload("res://game/text.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const MatchSetupPanel := preload("res://game/match_setup_panel.gd")
@@ -30,7 +31,7 @@ func _ready() -> void:
 		context.match_choice = choice
 		finished.emit(&"back"))
 	_panel.decks_pressed.connect(_on_edit_decks)
-	_panel.open(context.match_choice, true, false, "ステージ選択へ戻る", false)
+	_panel.open(context.match_choice, true, false, Text.t("stage.resume"), false)
 
 
 ## 対戦の設定のパネル（検査とスクリーンショットの道具用）。
@@ -39,7 +40,7 @@ func setup_panel() -> MatchSetupPanel:
 
 
 func resume_label() -> String:
-	return "対戦の設定へ戻る"
+	return Text.t("setup.back")
 
 
 func _on_start(choice: RefCounted) -> void:

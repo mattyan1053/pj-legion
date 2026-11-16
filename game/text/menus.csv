@@ -1,0 +1,94 @@
+keys,ja
+settings.section.control,操作
+settings.mouse_sensitivity,マウスの感度
+settings.mouse_sensitivity.note,ドラッグで視点を回す・傾ける速さ
+settings.invert_vertical_drag,縦のドラッグを逆にする
+settings.invert_vertical_drag.note,オフ: 下へ動かすと真上から見下ろす。オン: 上へ動かすと真上から見下ろす
+settings.section.playback,再生
+settings.cpu_playback_speed,CPU の番の速さ
+settings.cpu_playback_speed.note,CPU の駒が動く・攻撃するところを見せる速さ（中立の番は変わらない）
+settings.cpu_playback_speed.normal,ふつう
+settings.cpu_playback_speed.fast,速い
+settings.cpu_playback_speed.faster,とても速い
+settings.section.sound,音
+settings.master_volume,全体の音量
+settings.master_volume.note,BGM と効果音の両方に掛かる
+settings.music_volume,BGM の音量
+settings.music_volume.note,タイトル・対戦・決着の曲
+settings.effects_volume,効果音の音量
+settings.effects_volume.note,スライダーを離すと、ボタンの音で大きさを確かめられる
+settings.mute,音を消す
+settings.mute.note,音量はそのままで、すべての音を止める
+settings.section.screen,画面
+settings.fullscreen,全画面
+settings.fullscreen.note,オフは窓で開く（端をドラッグして大きさを変えられる）。Alt+Enter でも切り替えられる
+settings.show_minimap,ミニマップ
+settings.show_minimap.note,対戦の画面の右上に盤の縮図を出す。押すと、その場所へ視点を移す
+settings.on,オン
+settings.off,オフ
+settings.title,設定
+settings.reset_all,すべて既定に戻す
+settings.reset,既定に戻す
+menu.settings,設定
+menu.to_title,タイトルへ戻る
+menu.to_title.confirm,タイトルへ戻りますか？
+menu.quit,ゲームを終える
+menu.quit.confirm,ゲームを終えますか？
+menu.losing.battle,いまの対戦は取っておけないので、失われる
+title.subtitle,プロジェクト・レギオン
+title.button.versus,対戦
+title.button.options,オプション
+title.button.quit,終了
+title.button.story_cleared,ストーリー（クリア済み）
+title.button.story,ストーリー
+menu.corner,メニュー
+menu.corner.tooltip,対戦へ戻る・設定・対戦の設定・ゲームを終える（Esc でも開く）
+menu.confirm.cancel,やめる
+menu.title,メニュー
+stage.prompt,カードにマウスを乗せると、ステージの説明が出る。クリックで選んで、対戦の設定へ進む。
+stage.row.generated,生成のステージ ─ 対戦のたびに、形が変わる
+stage.row.hand,手で作ったマップ ─ いつも同じ形
+stage.tag.generated,毎回ちがう形
+stage.tag.hand,いつも同じ形
+stage.heading,作戦領域を選ぶ
+stage.resume,ステージ選択へ戻る
+stage.choose,ステージを選ぶ
+field.plain.tags,広場 ・ 起爆樽
+field.plain.note,開けた平地。中央は遮るもののない広場で、まわりに岩と森が散らばる。\n中央の左右に起爆樽。正面からぶつかり合う、基本の戦場。
+field.labyrinth.tags,迷路 ・ 回復の泉
+field.labyrinth.note,格子に並んだ壁が通路を作る迷路。射線が通りにくく、本陣へは回り道になる。\n左右に回復の泉。遠くから撃つより、角を曲がって近づく駒が強い。
+field.twin_springs.tags,2 本の道 ・ ポータル
+field.twin_springs.note,中央を大きな壁がふさぎ、戦場は左右 2 本の道に分かれる。本陣は対角。\nどちらの道にも、上下をつなぐポータル。どちらで攻め、どちらで守るか。
+field.ridge_path.tags,小さな盤 ・ 2 本の道
+field.ridge_path.note,細長い小さな盤。真ん中の岩が尾根を左右 2 本の道に分け、どちらの道にも結晶泉と中ボス。\n本陣どうしが近く、すぐにぶつかる。押し込むか、道をふさいで迎え撃つか。
+field.crystal_gorge.tags,裂け目 ・ 橋 ・ ポータル
+field.crystal_gorge.note,盤の中ほどを結晶の裂け目が横切る。渡れるのは左右の端の橋と、真ん中のポータルだけ。本陣は対角。\n遠回りの橋か、敵陣のただ中へ出る近道のポータルか。
+field.boulder_pass.tags,大岩 ・ 広い 2 本の道
+field.boulder_pass.note,草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。
+setup.back,対戦の設定へ戻る
+stage.note_title,{number}  {title}　　{tags}　　（{shape}）
+setup.confirm,もう一度押す
+setup.stage,ステージを選び直す
+setup.warning,ステージを選び直す・新しい対戦を始めると、いまの対戦は終わる
+setup.confirm_stage,もう一度押すと、いまの対戦を終えてステージ選択へ。右クリックでやめる
+setup.confirm_start,もう一度押すと、いまの対戦を終えて新しい対戦を始める。右クリックでやめる
+setup.title,対戦の設定
+setup.caption.stage,ステージ
+setup.caption.opponent,相手
+setup.opponent.human,人（2 人で交代）
+setup.caption.side,手番
+setup.side.first,先手（青）
+setup.side.second,後手（赤）
+setup.side.random,ランダム
+setup.caption.deck,部隊
+setup.cpu_deck,CPU の編成
+setup.deck_preview,編成を確認
+setup.edit_deck,部隊を編成する
+setup.back_to_battle,対戦へ戻る
+setup.start,対戦を始める
+setup.start_new,新しい対戦を始める
+setup.who.you,あなた
+setup.who_side,{who}・{turn}
+setup.deck.default,既定の編成（コスト {cost} / {budget}）
+setup.deck.saved,{name}（コスト {cost} / {budget}）
+setup.deck.unplayable,{name} — 出せない: {issue}

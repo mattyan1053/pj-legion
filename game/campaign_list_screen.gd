@@ -7,6 +7,7 @@ extends Node
 ## - カードのクリック（1〜9 のキーでも）で、その物語を選んで &"open"（その物語の話の一覧へ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
@@ -45,11 +46,11 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
-	var heading := _label("ストーリー", 40)
+	var heading := _label(Text.t("story.campaigns.heading"), 40)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
-	var sub := _label("物語を選ぶ", 18)
+	var sub := _label(Text.t("story.campaigns.sub"), 18)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	root.add_child(sub)
 
@@ -72,7 +73,7 @@ func _ready() -> void:
 	root.add_child(spacer_below)
 
 	var back := Button.new()
-	back.text = "タイトルへ戻る"
+	back.text = Text.t("menu.to_title")
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
@@ -82,7 +83,7 @@ func _ready() -> void:
 
 
 func resume_label() -> String:
-	return "物語を選ぶ画面へ戻る"
+	return Text.t("story.campaigns.resume")
 
 
 ## 物語 campaign を選んで、その話の一覧へ。準備中の物語なら何もしない。
@@ -110,14 +111,14 @@ func is_card_enabled(campaign: Campaign) -> bool:
 ## 物語 campaign の状態の文（検査用にも）: 「準備中」「全 N 話」「M / N 話クリア」「全 N 話クリア」。
 func status_text(campaign: Campaign) -> String:
 	if not Story.is_ready(campaign):
-		return "準備中"
+		return Text.t("story.campaigns.preparing")
 	var total: int = campaign.episodes.size()
 	var cleared: int = context.story.cleared_count(campaign)
 	if cleared == 0:
-		return "全 %d 話" % total
+		return Text.t("story.campaigns.total", {"total": total})
 	if cleared == total:
-		return "全 %d 話クリア" % total
-	return "%d / %d 話クリア" % [cleared, total]
+		return Text.t("story.campaigns.all_cleared", {"total": total})
+	return Text.t("story.campaigns.cleared", {"cleared": cleared, "total": total})
 
 
 ## 右クリックと Esc は 1 つ戻る（タイトルへ）。カードの上でも効くよう、ボタンより先に受ける。
@@ -170,7 +171,7 @@ func _build_card(campaign: Campaign) -> Button:
 	if not ready:
 		title.add_theme_color_override("font_color", COLOR_LOCKED)
 	column.add_child(title)
-	var army := _label("使う軍: %s" % DeckText.army_name(campaign.army), 16)
+	var army := _label(Text.t("story.campaigns.army", {"army": DeckText.army_name(campaign.army)}), 16)
 	army.add_theme_color_override("font_color", COLOR_TEXT_DIM if ready else COLOR_LOCKED)
 	column.add_child(army)
 	var status := _label(status_text(campaign), 18)

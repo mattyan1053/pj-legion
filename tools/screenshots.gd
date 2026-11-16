@@ -1916,7 +1916,7 @@ func _scene_story_unlock() -> bool:
 		return false
 	var talk: Node = _app.current_scene()
 	talk.press_skip()
-	return talk.speaker() == Story.NOTICE_NAME
+	return talk.speaker() == Story.notice_name()
 
 
 func _scene_story_cleared() -> bool:

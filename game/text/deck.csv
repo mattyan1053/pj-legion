@@ -1,0 +1,83 @@
+keys,ja
+deck.list.edit,編集
+deck.list.duplicate,複製
+deck.list.rename,名前変更
+deck.list.delete,削除
+deck.detail.evolution_line,・{line}
+deck.resume,編成へ戻る
+deck.losing,編成中の変更は失われる
+deck.mode.versus,対戦用
+deck.name.title,部隊の名前
+deck.delete.confirm,「{name}」を削除しますか？
+deck.title,部隊の編成
+deck.list.empty,編成なし
+deck.list.new,新しい部隊
+deck.list.detail,{army}　{count} 体　コスト {cost} / {budget}
+deck.army.title,軍を選ぶ
+deck.army.budget,予算 {budget}
+deck.army.unit,{unit}（{role}）
+deck.ult,"必殺技: {name}
+{summary}"
+deck.leave.confirm,変更を破棄して戻りますか？
+deck.leave.discard,破棄
+deck.edit.roster,雇える駒
+deck.edit.troop,部隊
+deck.edit.plus,＋
+deck.edit.save,編成完了
+deck.edit.cost,コスト {total} / {budget}
+deck.edit.count,駒 {count} / {max}
+deck.edit.roster_unit,"{unit}　{role}　コスト {cost}
+{stats}"
+deck.edit.full,{max} 体まで
+deck.edit.no_units,駒なし
+deck.edit.king,将　{stats}
+deck.detail.role,{role}　コスト {cost}
+deck.detail.borrowed,{origin} の駒（この部隊では {army} として戦う）
+deck.detail.evolution,進化（レベル {level}）
+deck.edit.items,持ち物　{count} / {max}
+deck.edit.item,{name}　コスト {cost}
+deck.edit.item_locked,　未解放
+deck.edit.item_locked.tooltip,ストーリーを進めると持たせられる
+deck.name.prompt,{title}（{max} 文字まで）
+deck.dialog.ok,決める
+deck.dialog.cancel,やめる
+deck.edit.deploy,配置
+deck.deploy.king,将
+deck.deploy.hq,本陣
+deck.deploy.front,前 ↑
+deck.list.row,"{name}
+{army}　{count} 体　コスト {cost} / {budget}"
+deck.list.row_unplayable,"{name}
+{army}　{count} 体　コスト {cost} / {budget}　出撃不可"
+deck.unplayable,出撃不可: {issues}
+deck.edit.troop_unit,"{unit}　コスト {cost}
+{items}"
+deck.edit.no_items,持ち物なし
+deck.detail.with_items,持ち物込み: {stats}
+deck.detail.skill,スキル: {skill}
+deck.edit.remove,外す
+deck.problem.no_units,駒が 1 体もいない
+deck.problem.too_many_units,駒が多すぎる（{max} 体まで）
+deck.problem.over_budget,予算を {over} 超えている
+deck.problem.too_much_equipment,装備を持たせすぎた駒がいる（1 体 {max} 個まで）
+deck.problem.not_in_roster,この軍では雇えない駒がいる
+deck.problem.item_not_allowed,まだ持たせられない装備を持った駒がいる
+deck.problem.other,出せない
+deck.skill,"{name}（クールダウン {cooldown} ターン）
+{summary}"
+deck.stats,HP {hp}　攻撃 {power}　移動 {move}　射程 {range}
+deck.stats_healer,HP {hp}　回復 {power}　移動 {move}　射程 {range}
+deck.summary.item,+{item}
+deck.summary.item_many,+{item}×{count}
+deck.evolution_line,{name}: {parts}
+deck.name.copy,{name} の写し
+deck.name.default,部隊 {number}
+deck.name.unnamed,名前の無い部隊
+deck.load.unknown_rules,知らない決まり（{name}）で組んである
+deck.load.unknown_army,軍が読めない（{name}）
+deck.load.unreadable_unit,読めない駒を外した
+deck.load.unknown_unit,知らない駒（{name}）を外した
+deck.load.unknown_item,知らない装備（{name}）を外した
+deck.load.none,無し
+deck.preview.title,{who}　{army}　コスト {cost} / {budget}
+deck.card.king,本陣に置く

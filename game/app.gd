@@ -9,6 +9,7 @@ extends Node
 ##   いまの場面が足すもの（menu_items）。
 ## - 検査（`-- --autoplay`）とスクリーンショットの道具（`-- --shots`）も、ここから入り、人と同じ道（タイトル → 対戦の設定 → 対戦）を通る。
 
+const Text := preload("res://game/text.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const AppContext := preload("res://game/app_context.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
@@ -197,15 +198,15 @@ func open_settings() -> void:
 ## 抜けると失われるもの（決着していない対戦）があれば、タイトルへ戻る・ゲームを終える前に確かめる。
 func menu_items() -> Array:
 	var scene := _current
-	var resume := "戻る"
+	var resume := Text.t("common.back")
 	if scene.has_method(&"resume_label"):
 		resume = scene.call(&"resume_label")
-	var items: Array = [[SystemMenu.ITEM_RESUME, resume, ""], [SystemMenu.ITEM_SETTINGS, "設定", ""]]
+	var items: Array = [[SystemMenu.ITEM_RESUME, resume, ""], [SystemMenu.ITEM_SETTINGS, Text.t("menu.settings"), ""]]
 	if scene.has_method(&"menu_items"):
 		items.append_array(scene.call(&"menu_items"))
 	if _current_id != SceneFlow.FIRST:
-		items.append([ITEM_TITLE, "タイトルへ戻る", leave_confirm(scene, "タイトルへ戻りますか？")])
-	items.append([ITEM_QUIT, "ゲームを終える", leave_confirm(scene, "ゲームを終えますか？")])
+		items.append([ITEM_TITLE, Text.t("menu.to_title"), leave_confirm(scene, Text.t("menu.to_title.confirm"))])
+	items.append([ITEM_QUIT, Text.t("menu.quit"), leave_confirm(scene, Text.t("menu.quit.confirm"))])
 	return items
 
 
@@ -214,7 +215,7 @@ func menu_items() -> Array:
 static func leave_confirm(scene: Node, question: String) -> String:
 	if not (scene.has_method(&"in_progress") and scene.call(&"in_progress")):
 		return ""
-	var losing := "いまの対戦は取っておけないので、失われる"
+	var losing := Text.t("menu.losing.battle")
 	if scene.has_method(&"losing_note"):
 		losing = scene.call(&"losing_note")
 	return "%s\n%s" % [question, losing]

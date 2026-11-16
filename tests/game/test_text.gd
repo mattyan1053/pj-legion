@@ -16,36 +16,16 @@ const NOT_SHOWN := [
 	"res://game/episode.gd",
 	"res://game/campaign.gd",
 	"res://game/maps.gd",
+	"res://game/text_wrap.gd",  # 折り返しの決まり（行頭・行末に置かない文字の並び。画面の文ではない）
 ]
 ## まだ表へ移していないファイルと、そこに残っている直書きの日本語の数（これより増えたら落ちる）。移したら行を消す。
 const PENDING := {
-	"res://game/app.gd": 7,
-	"res://game/campaign_list_screen.gd": 9,
-	"res://game/deck_library.gd": 13,
-	"res://game/deck_preview.gd": 2,
-	"res://game/deck_screen.gd": 66,
-	"res://game/deck_text.gd": 21,
-	"res://game/episode_list_screen.gd": 15,
-	"res://game/match_choice.gd": 1,
-	"res://game/match_setup_panel.gd": 30,
-	"res://game/settings.gd": 32,
-	"res://game/settings_panel.gd": 6,
-	"res://game/setup_screen.gd": 2,
-	"res://game/sortie_screen.gd": 18,
-	"res://game/stage_select_screen.gd": 10,
-	"res://game/story.gd": 4,
-	"res://game/system_menu.gd": 4,
-	"res://game/talk_screen.gd": 3,
-	"res://game/text_wrap.gd": 5,
-	"res://game/title_screen.gd": 6,
-	"res://game/unit_card.gd": 2,
-	"res://game/versus_fields.gd": 12,
 }
 ## names.gd が列挙から作る鍵の頭と、その列挙（表の鍵が、どれかの列挙の値に当たること）。
 const FAMILIES := {
 	"side": [Unit.Side, ["", ".short"]],
 	"army": [UnitKind.Army, [""]],
-	"role": [UnitKind.Role, [""]],
+	"role": [UnitKind.Role, ["", ".summary"]],
 	"stat": [Unit.Stat, [""]],
 	"trait": [Evolution.Trait, [""]],
 	"field_effect": [FieldEffect.Type, [""]],

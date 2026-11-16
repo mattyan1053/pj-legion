@@ -7,6 +7,7 @@ extends CanvasLayer
 ## - 確かめの文（confirm）を持つ項目は、押すと「本当に？」を挟む（対戦が失われる項目）。
 ## - 「設定」（ITEM_SETTINGS）は、ここで設定の画面（settings_panel.gd）に切り替える。閉じると settings_closed を出す。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Settings := preload("res://game/settings.gd")
@@ -58,10 +59,10 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 	_overlays = overlays
 	layer = LAYER
 	_corner = Button.new()
-	_corner.text = "メニュー"
+	_corner.text = Text.t("menu.corner")
 	_corner.focus_mode = Control.FOCUS_NONE
 	_corner.add_theme_font_size_override("font_size", 16)
-	_corner.tooltip_text = "対戦へ戻る・設定・対戦の設定・ゲームを終える（Esc でも開く）"
+	_corner.tooltip_text = Text.t("menu.corner.tooltip")
 	_corner.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_corner.offset_left = -CORNER_BUTTON_SIZE.x - CORNER_MARGIN
 	_corner.offset_right = -CORNER_MARGIN
@@ -106,7 +107,7 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 	confirm_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	confirm_buttons.add_theme_constant_override("separation", 16)
 	confirm_column.add_child(confirm_buttons)
-	var keep := _button("やめる")
+	var keep := _button(Text.t("menu.confirm.cancel"))
 	keep.custom_minimum_size = Vector2(180.0, 48.0)
 	keep.pressed.connect(back)
 	confirm_buttons.add_child(keep)
@@ -134,7 +135,7 @@ func open(items: Array, settings_only := false) -> void:
 		child.queue_free()
 	var title := _label(26)
 	title.theme_type_variation = UiTheme.LABEL_HEADING
-	title.text = "メニュー"
+	title.text = Text.t("menu.title")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_menu_column.add_child(title)
 	for item: Array in _items:
