@@ -153,7 +153,7 @@ func test_older_or_newer_files_keep_the_known_items() -> void:
 
 
 func test_store_keeps_separate_collections() -> void:
-	# 設定のほかのまとまり（後で部隊の編成など）も、名前を変えて同じ仕組みで置ける。
+	# 設定のほかのまとまり（後で部隊編成など）も、名前を変えて同じ仕組みで置ける。
 	var store := _store()
 	assert_true(store.write("settings", 1, {"a": 1}))
 	assert_true(store.write("decks", 3, {"list": [{"name": "x"}]}))

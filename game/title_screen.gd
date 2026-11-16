@@ -1,6 +1,6 @@
 extends Node
 ## タイトルの場面。飾らない最小の形: 題名と、ストーリー・対戦・オプション・終了。背景は対戦と同じ景色（backdrop.gd）。
-## 部隊の編成は、各モードに入ったところから開く（対戦の設定の「部隊を編成する」、出撃の準備の「部隊を編成する」）。
+## 部隊編成は、各モードに入ったところから開く（対戦設定の「部隊編成」、出撃準備の「部隊編成」）。
 ## 場面の決まりは scene_flow.gd。
 
 const Text := preload("res://game/text.gd")
@@ -62,7 +62,7 @@ func button_texts() -> Array[String]:
 	return texts
 
 
-## 「対戦」: ステージ選択へ（そのあと対戦の設定）。
+## 「対戦」: ステージ選択へ（そのあと対戦設定）。
 func press_start() -> void:
 	finished.emit(&"start")
 
@@ -77,7 +77,7 @@ func story_label() -> String:
 	return Text.t("title.button.story_cleared") if context.story.all_cleared() else Text.t("title.button.story")
 
 
-## 「オプション」: 設定の画面だけを開く（システムメニューと同じ画面）。
+## 「オプション」: オプションの画面だけを開く（システムメニューと同じ画面）。
 func press_settings() -> void:
 	context.open_settings()
 

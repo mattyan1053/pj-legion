@@ -15,7 +15,7 @@ const Maps := preload("res://game/maps.gd")
 const DIR := "res://game/story/episodes/"
 ## 書ける節。
 const SECTIONS := ["episode", "unlock", "ally", "enemy", "before", "after", "cues"]
-## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃の準備に出す覚えることの長さの上限。
+## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃準備に出す覚えることの長さの上限。
 const TALK_MAX_LINES := 6
 const CUES_MAX := 3
 const CUE_MAX_CHARS := 40
@@ -27,7 +27,7 @@ const SIDE_WORDS := {"ally": 0, "enemy": 1}
 var id := &""
 ## 会話の見出しと、話の一覧のカードに出す名前。
 var title := ""
-## 盤（手で作ったマップ）と、その名前（戦いの定義の名前。決着の画面の「作戦領域」）。
+## 盤（手で作ったマップ）と、その名前（戦いの定義の名前。決着の画面の「ステージ」）。
 var map: HandMap
 var map_title := ""
 ## 盤の見た目（stage_look.gd の THEMES の鍵）。
@@ -35,7 +35,7 @@ var look := &""
 ## 対戦の曲（無ければ盤の見た目の曲）と、会話の曲（無ければ空 = 会話の場面の曲）。
 var music := &""
 var talk_music := &""
-## 出撃の準備に出す、この話で覚えること（チュートリアルだけ。無ければ空）。
+## 出撃準備に出す、この話で覚えること（チュートリアルだけ。無ければ空）。
 var lesson := ""
 ## クリアで増えるもの: 雇える駒、持たせられる装備、部隊のコストの上限の上がり幅。
 var unlock_kinds: Array[UnitKind.Id] = []
@@ -44,7 +44,7 @@ var budget_up := 0
 ## 人（プレイヤー1）の勝ち方: 守り切るターン数（0 なら無し）と、勝ち方の列（空ならいつもの勝ち方）。
 var hold_turns := 0
 var wins: Array[GameWonEvent.Reason] = []
-## 人の部隊が決まっている話の、その部隊（[駒の種類, [装備, …]] の列。空なら出撃の準備で選ぶ）と、必殺技のゲージの始めの量。
+## 人の部隊が決まっている話の、その部隊（[駒の種類, [装備, …]] の列。空なら出撃準備で選ぶ）と、必殺技のゲージの始めの量。
 var squad: Array = []
 var start_gauge := 0
 ## 敵の軍と部隊（将を除く。[駒の種類, [装備, …]] の列。並びの順に初期位置へ置く）。

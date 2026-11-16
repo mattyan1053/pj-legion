@@ -29,7 +29,7 @@ func test_pausing_follows_what_is_open() -> void:
 	var log_panel := RefCounted.new()
 	stack.open(setup)
 	assert_true(stack.is_open())
-	assert_false(stack.pauses(), "対戦の設定は時間を止めない")
+	assert_false(stack.pauses(), "対戦設定は時間を止めない")
 	stack.open(log_panel, true)
 	assert_true(stack.pauses())
 	stack.close(log_panel)

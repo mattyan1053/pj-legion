@@ -9,7 +9,7 @@ extends RefCounted
 
 ## 流れの中の場面が「次へ」で終わるときの終わり方。
 const NEXT := &"next"
-## 流れの中の場面が「1 つ前の場面へ」で終わるときの終わり方（ストーリーの決着の画面の「部隊を選び直す」→ 出撃の準備）。
+## 流れの中の場面が「1 つ前の場面へ」で終わるときの終わり方（ストーリーの決着の画面の「部隊を選び直す」→ 出撃準備）。
 const PREVIOUS := &"previous"
 const SceneFlow := preload("res://game/scene_flow.gd")
 
@@ -48,7 +48,7 @@ func back() -> StringName:
 
 
 ## 場面 step_scene（渡すもの step_data）を、いまの場面の前に差し込み、そこを「いま」にする。
-## 差し込んだ場面が NEXT で終わると、もとの場面へ戻る（出撃の準備から、部隊の編成へ寄り道する）。
+## 差し込んだ場面が NEXT で終わると、もとの場面へ戻る（出撃準備から、部隊編成へ寄り道する）。
 func insert(step_scene: StringName, step_data: Variant = null) -> void:
 	_steps.insert(index, {"scene": step_scene, "data": step_data})
 

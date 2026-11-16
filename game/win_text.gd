@@ -1,5 +1,5 @@
 extends RefCounted
-## 勝ち方の文（出撃の準備の「勝ち方」、上の帯の勝ち方の札）。勝ちの条件の列（docs/win-conditions.md）から作る。
+## 勝ち方の文（出撃準備の「勝ち方」、上の帯の勝ち方の札）。勝ちの条件の列（docs/win-conditions.md）から作る。
 ## ノードに依存しない（テストから呼べる）。
 
 const Names := preload("res://game/names.gd")

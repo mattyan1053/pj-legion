@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 対戦の設定（MatchSetup）と、そこから対戦を作る入口（docs/match-setup.md）。
+## 対戦設定（MatchSetup）と、そこから対戦を作る入口（docs/match-setup.md）。
 
 const STAGES: Array[BoardGenerator.Stage] = [
 	BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH, BoardGenerator.Stage.TWIN_SPRINGS,
