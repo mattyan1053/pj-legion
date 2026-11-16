@@ -14,6 +14,7 @@ const WIN_TEXTS := {
 	GameWonEvent.Reason.HQ_CAPTURED: "battle.log.won.hq_captured",
 	GameWonEvent.Reason.TURNS_HELD: "battle.log.won.turns_held",
 	GameWonEvent.Reason.ROUTED: "battle.log.won.routed",
+	GameWonEvent.Reason.BOSS_SLAIN: "battle.log.won.boss_slain",
 }
 const DRAW_TEXTS := {
 	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "battle.log.drawn.both_kings_defeated",

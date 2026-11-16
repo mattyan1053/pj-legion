@@ -18,6 +18,8 @@ static func goal(conditions: Array[Array], hold_turns: int, side: Unit.Side) -> 
 		# 全滅させるが勝ち方にあって、将の撃破が無いなら、将を倒しても終わらないことを言い添える（いつもは将の撃破で終わるので）。
 		if conditions[side].has(GameWonEvent.Reason.ROUTED) and not conditions[side].has(GameWonEvent.Reason.KING_DEFEATED):
 			line += Text.t("battle.goal.rout_note")
+		elif conditions[side].has(GameWonEvent.Reason.BOSS_SLAIN) and not conditions[side].has(GameWonEvent.Reason.KING_DEFEATED):
+			line += Text.t("battle.goal.boss_note")
 		lines.append(line)
 	var losses := _in_order(conditions[1 - side])
 	if not losses.is_empty():
@@ -36,7 +38,7 @@ static func _joined(conditions: Array[GameWonEvent.Reason], prefix: String, args
 
 ## 文に並べる順。その戦いならではの勝ち方（守り切る、全滅）を先に、いつもの勝ち方をあとに。
 const ORDER: Array[GameWonEvent.Reason] = [
-	GameWonEvent.Reason.TURNS_HELD, GameWonEvent.Reason.ROUTED,
+	GameWonEvent.Reason.TURNS_HELD, GameWonEvent.Reason.ROUTED, GameWonEvent.Reason.BOSS_SLAIN,
 	GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED,
 ]
 
@@ -62,6 +64,7 @@ static func turn_text(turn: int) -> String:
 ## - 守り切る: 守る側は「あと 8 ターン守り切れば勝ち」、攻める側は「あと 8 ターンで決着しなければ負け」（いまのターンを含めて数える）。
 ##   最後のターンは「最後のターン: …」にして目立たせる。
 ## - 全滅させる: 「勝ち: 敵の全滅（将を倒しても終わらない）」。
+## - 中ボスの撃破: 「勝ち: 中ボスの撃破（将を倒しても終わらない）」。
 static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 	var own: Array = battle.win_conditions[side]
 	var foe: Array = battle.win_conditions[1 - side]
@@ -79,6 +82,8 @@ static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 			parts.append(Text.t("battle.goal.tag.attack", {"left": left}))
 	if own.has(GameWonEvent.Reason.ROUTED):
 		parts.append(Text.t("battle.goal.tag.rout_or_king") if own.has(GameWonEvent.Reason.KING_DEFEATED) else Text.t("battle.goal.tag.rout"))
+	if own.has(GameWonEvent.Reason.BOSS_SLAIN):
+		parts.append(Text.t("battle.goal.tag.boss_or_king") if own.has(GameWonEvent.Reason.KING_DEFEATED) else Text.t("battle.goal.tag.boss"))
 	if foe.has(GameWonEvent.Reason.ROUTED):
 		parts.append(Text.t("battle.goal.tag.routed"))
 	return [Text.t("battle.hud.separator").join(parts), last]

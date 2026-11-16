@@ -2,7 +2,7 @@
 
 コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`、`settle`、`hold_turns`、`turns_left`、`end_turn`）、`rules/actions/end_phase_action.gd`、
 `rules/events/game_won_event.gd`、`rules/events/game_drawn_event.gd`、`rules/events/capture_progress_event.gd`。
-テスト: `tests/rules/test_victory.gd`、`tests/rules/test_scenario.gd`（勝ちの条件の列）、`tests/game/test_win_text.gd`（画面の勝ち方の文）、引き分けは `tests/rules/test_map_objects.gd`。
+テスト: `tests/rules/test_victory.gd`、`tests/rules/test_relics.gd`（中ボスの撃破）、`tests/rules/test_scenario.gd`（勝ちの条件の列）、`tests/game/test_win_text.gd`（画面の勝ち方の文）、引き分けは `tests/rules/test_map_objects.gd`。
 
 プレイヤーごとに**勝ちの条件の列**を持ち、そのどれかが満たされた時点で決着し、`GameWonEvent`（勝った陣営と理由）が出る。決着したあとは、どの行動も受け付けない。
 
@@ -11,9 +11,11 @@
 - 列は戦いの定義（`Scenario.win_conditions`。`docs/scenario.md`）がプレイヤーごとに持ち、対戦を作るときに `Battle.win_conditions` へ写す。
   条件は、決着の理由と同じ値（`GameWonEvent.Reason`）で表す。そのプレイヤーがその勝ち方で勝てるかは `Battle.wins_by(プレイヤー, 条件)`。
 - 既定（`Scenario.STANDARD_WIN_CONDITIONS`）は、両方とも「敵の将を倒す」「敵の本陣を占拠し続ける」。対戦モードはいつもこれ。
-- 勝ち方は、敵の将を倒す（`KING_DEFEATED`）、敵の本陣を占拠し続ける（`HQ_CAPTURED`）、守り切る（`TURNS_HELD`）、全滅させる（`ROUTED`）。
+- 勝ち方は、敵の将を倒す（`KING_DEFEATED`）、敵の本陣を占拠し続ける（`HQ_CAPTURED`）、守り切る（`TURNS_HELD`）、全滅させる（`ROUTED`）、
+  中ボスを倒す（`BOSS_SLAIN`）。
 - 画面で勝ち方を知らせる文（出撃準備の「勝ち方」、上の帯の勝ち方の札）は `game/win_text.gd` が列から作る。
   全滅させるがあって将の撃破が無い列では、「敵の将を倒しても、ほかの駒が残っていれば終わらない。」を言い添える。
+  中ボスの撃破があって将の撃破が無い列では、「敵の将を倒しても終わらない。」を言い添える。
 - 列に無い勝ち方では勝たない。
   - 「敵の将を倒す」が無いプレイヤーは、相手の将を倒しても勝たない（将は盤から消え、対戦は続く）。
   - 「敵の本陣を占拠し続ける」が無いプレイヤーは、占拠を数えない（数は 0 のまま、`CaptureProgressEvent` も出ない）。
@@ -65,3 +67,13 @@
 
 - 見るのは行動のあと（`Battle.settle`）。将の撃破のあとに見るので、列に将の撃破もあれば、将を倒した時点で将の撃破の勝ちになる。
   「将だけでなく全部を倒す」戦いは、列を全滅だけにする（`Scenario.set_win_conditions(プレイヤー, [ROUTED])`）。
+
+## 中ボスを倒す
+
+ストーリーの話が選べる勝ち方（対戦モードには無い）。中立と聖遺物を教える演習（`drill_shrine`）が、人の勝ち方をこれだけにする
+（将を倒しても終わらないので、中ボスを狩らずには終われない）。
+
+- この勝ち方が列にあるプレイヤーが、どちらかの中ボス（`docs/neutral-mid-boss.md`）に止めを刺したら、そのプレイヤーの勝ち。
+  理由は `GameWonEvent.Reason.BOSS_SLAIN`。`GameWonEvent` は、聖遺物を受け取った（`RelicGainedEvent`）あと、行動の結果の最後に付く。
+- 見るのは `Battle.settle`（将の撃破・全滅のあと）。止めを刺した駒がいない中ボスの撃破では勝たない。
+- CPU の手は、この勝ち方を読まない（いつもどおり、中ボスを狩る条件で狩る。`docs/relic-buff.md` の「CPU」）。

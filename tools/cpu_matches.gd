@@ -53,7 +53,7 @@ const STAGE_NAMES := {
 	BoardGenerator.Stage.LABYRINTH: "2 迷宮回廊",
 	BoardGenerator.Stage.TWIN_SPRINGS: "3 双子結晶",
 }
-const ENDINGS := {"king": "将の撃破", "hq": "本陣の占拠", "held": "守り切り", "routed": "全滅", "draw": "引き分け", "cutoff": "打ち切り"}
+const ENDINGS := {"king": "将の撃破", "hq": "本陣の占拠", "held": "守り切り", "routed": "全滅", "boss": "中ボスの撃破", "draw": "引き分け", "cutoff": "打ち切り"}
 ## --episode のときの、集計の「ステージ」の欄の鍵（生成のステージと重ならない値）。名前は話の名前。
 const EPISODE_STAGE := -1
 var _episode_title := ""
@@ -68,7 +68,7 @@ const EVEN_SLOTS: Array[int] = [0, 0, 1, 1, 2, 3]
 class Tally:
 	extends RefCounted
 	var games := 0
-	var endings := {"king": 0, "hq": 0, "held": 0, "routed": 0, "draw": 0, "cutoff": 0}
+	var endings := {"king": 0, "hq": 0, "held": 0, "routed": 0, "boss": 0, "draw": 0, "cutoff": 0}
 	var wins: Array[int] = [0, 0]
 	var turns: Array[int] = []
 	var level_ups := 0
@@ -240,6 +240,8 @@ class Tally:
 			text += "  守り切り %d" % endings["held"]
 		if endings["routed"] > 0:
 			text += "  全滅 %d" % endings["routed"]
+		if endings["boss"] > 0:
+			text += "  中ボス %d" % endings["boss"]
 		if army_wins[0] + army_wins[1] > 0:
 			text += "  M %d 勝 F %d 勝（M %.0f%%）" % [army_wins[0], army_wins[1], 100.0 * army_wins[0] / (army_wins[0] + army_wins[1])]
 		return text

@@ -155,6 +155,8 @@ const SCENES := {
 	"story_hold_result": "ストーリー: 守り切る話で、最後のターンの終わりまで持ちこたえて勝った決着の画面（「最後まで守り切った」）",
 	"story_rout_sortie": "ストーリー: 全滅させる話（第 4 話）の出撃準備（2 つ目の手で作ったマップ「結晶の渓谷」。勝ち方は「敵を全滅させれば勝ち」だけ）",
 	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の渓谷を、双子結晶の見た目で。上の帯の勝ち方の札「勝ち: 敵の全滅（将を倒しても終わらない）」）",
+	"story_boss_sortie": "ストーリー: 中ボスを倒す演習（「結晶の番人」）の出撃準備（勝ち方は「中ボスを倒せば勝ち。敵の将を倒しても終わらない。」だけ）",
+	"story_boss_start": "ストーリー: 中ボスを倒す演習の対戦の始め（上の帯の勝ち方の札「勝ち: 中ボスの撃破（将を倒しても終わらない）」）",
 	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
 	"story_battle_talk": "ストーリー: 対戦の途中の会話（始めに台詞のある最初の話。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
@@ -1782,6 +1784,26 @@ func _rout_episode() -> int:
 		if Story.military().episodes[i].wins.has(GameWonEvent.Reason.ROUTED):
 			return i
 	return -1
+
+
+## 勝ち方が中ボスの撃破の話（「結晶の番人」）の番号（0 から）。無ければ -1。
+func _boss_episode() -> int:
+	for i in Story.military().episodes.size():
+		if Story.military().episodes[i].wins.has(GameWonEvent.Reason.BOSS_SLAIN):
+			return i
+	return -1
+
+
+func _scene_story_boss_sortie() -> bool:
+	var number := _boss_episode()
+	if number == -1 or not await _start_story(number):
+		return false
+	return await _scene_story_sortie_from_talk()
+
+
+func _scene_story_boss_start() -> bool:
+	var number := _boss_episode()
+	return number != -1 and await _story_battle(number)
 
 
 func _scene_story_rout_sortie() -> bool:
