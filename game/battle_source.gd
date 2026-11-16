@@ -1,9 +1,9 @@
 extends RefCounted
-## 対戦の画面（battle_screen.gd）に渡す、「対戦の設定（MatchSetup）を作ってくれるもの」（docs/battle-source.md）。
+## 対戦の画面（battle_screen.gd）に渡す、「対戦設定（MatchSetup）を作ってくれるもの」（docs/battle-source.md）。
 ## 対戦の画面は、どのモードの対戦かを知らない。対戦を作るのも、やり直すのも、ここに聞く。
 ##
 ## ここに書いてあるのは、どれも既定の答え（何も選び直せない対戦）。モードごとに継いで、答えを書き換える。
-## いまあるのは、対戦モード（match_choice.gd。対戦の設定のパネルで選んだもの）と、ストーリーの 1 話（story_battle.gd）。
+## いまあるのは、対戦モード（match_choice.gd。対戦設定のパネルで選んだもの）と、ストーリーの 1 話（story_battle.gd）。
 ## ここはノードに依存しない（テストから呼べる）。
 
 const StageLook := preload("res://game/stage_look.gd")
@@ -11,7 +11,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 
-## 種 battle_seed の対戦の設定。対戦の画面は、これの create_battle() で対戦を作る。
+## 種 battle_seed の対戦設定。対戦の画面は、これの create_battle() で対戦を作る。
 ## 同じ種なら同じ対戦になる（「同じ盤面でもう一度」）。
 func make_setup(_battle_seed: int) -> MatchSetup:
 	return null
@@ -38,7 +38,7 @@ func can_switch_opponent() -> bool:
 	return false
 
 
-## 相手を CPU にするか人にするかを、次に作る対戦の設定（make_setup）に覚えておく。切り替えられないなら何もしない。
+## 相手を CPU にするか人にするかを、次に作る対戦設定（make_setup）に覚えておく。切り替えられないなら何もしない。
 func set_cpu_opponent(_cpu: bool) -> void:
 	pass
 
@@ -49,12 +49,12 @@ func new_board_fields() -> Array[StringName]:
 	return []
 
 
-## 次に作る対戦の設定のステージを field にする（new_board_fields() にあるものだけ）。
+## 次に作る対戦設定のステージを field にする（new_board_fields() にあるものだけ）。
 func choose_field(_field: StringName) -> void:
 	pass
 
 
-## 対戦の途中と決着の画面から、対戦の設定のパネル（match_setup_panel.gd）を開けるか。
+## 対戦の途中と決着の画面から、対戦設定のパネル（match_setup_panel.gd）を開けるか。
 ## 開けるなら、パネルは、これを match_choice.gd として読む。
 func can_open_setup() -> bool:
 	return false
@@ -70,7 +70,7 @@ func retries_on_enter(_won: bool) -> bool:
 	return false
 
 
-## 決着の画面に「部隊を選び直す」を出すか（押すと、流れ（run.gd）の 1 つ前の場面、出撃の準備へ戻る）。
+## 決着の画面に「部隊を選び直す」を出すか（押すと、流れ（run.gd）の 1 つ前の場面、出撃準備へ戻る）。
 func can_choose_squad() -> bool:
 	return false
 

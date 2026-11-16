@@ -16,7 +16,7 @@ signal start_pressed(choice: RefCounted)
 signal cancelled
 ## 「ステージを選び直す」。いまの選択（写し）を渡す。持ち主がステージ選択の場面へ進む。
 signal stage_pressed(choice: RefCounted)
-## 「部隊を編成する」。いまの選択（写し）と、部隊を組むプレイヤーを渡す。持ち主が部隊の編成へ寄り道する。
+## 「部隊編成」。いまの選択（写し）と、部隊を組むプレイヤーを渡す。持ち主が部隊編成へ寄り道する。
 signal decks_pressed(choice: RefCounted, side: Unit.Side)
 
 const Text := preload("res://game/text.gd")
@@ -48,7 +48,7 @@ var _choice: RefCounted = MatchChoice.new()
 var _team_colors: Array[Color] = []
 ## 選択肢の名前 -> その行のボタン（値 -> Button）。
 var _rows := {}
-## プレイヤーごとの、軍の行の見出し（「あなた」「CPU」など）、部隊を選ぶ欄、CPU の編成の欄、「部隊を編成する」、その選択肢
+## プレイヤーごとの、軍の行の見出し（「あなた」「CPU」など）、部隊を選ぶ欄、CPU の編成の欄、「部隊編成」、その選択肢
 ## （並びの番号 -> 部隊の id。空は既定の編成）。
 var _who_labels: Array[Label] = []
 var _deck_pickers: Array[OptionButton] = []
@@ -58,7 +58,7 @@ var _deck_choices: Array = [[], []]
 var _stage_name: Label
 var _stage_button: Button
 var _preview: DeckPreview
-## 「部隊を編成する」を出すか（対戦の設定の場面だけ。対戦の途中では出さない）。
+## 「部隊編成」を出すか（対戦設定の場面だけ。対戦の途中では出さない）。
 var _can_edit_decks := false
 ## 取っておいた部隊（deck_library.gd）。無ければ既定の編成だけ。
 var _library: RefCounted
@@ -191,8 +191,8 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 ## いまの選択を choice の写しにして、画面を出す。開いただけでは、何も変わらない。
 ## cancellable が真なら、「対戦へ戻る」（右クリック・Esc でも）で、何も変えずに閉じられる。
 ## in_progress が真なら（決着していない対戦の途中）、始めるといまの対戦が失われることを書く。
-## back_text は閉じるボタンの文字（対戦の設定の場面では「ステージ選択へ戻る」）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
-## （対戦の途中から開いたとき）。対戦の途中から開いたときは「部隊を編成する」を出さない（対戦の設定の場面だけ）。
+## back_text は閉じるボタンの文字（対戦設定の場面では「ステージ選択へ戻る」）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
+## （対戦の途中から開いたとき）。対戦の途中から開いたときは「部隊編成」を出さない（対戦設定の場面だけ）。
 func open(choice: RefCounted, cancellable := false, in_progress := false, back_text := "", new_battle := true) -> void:
 	_choice = choice.copy()
 	_can_edit_decks = not (cancellable and new_battle)
@@ -451,13 +451,13 @@ func _leave_for_stage() -> void:
 	stage_pressed.emit(_choice.copy())
 
 
-## 「部隊を編成する」（side の部隊を組む）。
+## 「部隊編成」（side の部隊を組む）。
 func press_edit_decks(side: Unit.Side) -> void:
 	visible = false
 	decks_pressed.emit(_choice.copy(), side)
 
 
-## 「部隊を編成する」が出ているか（検査用）。
+## 「部隊編成」が出ているか（検査用）。
 func can_edit_decks() -> bool:
 	return _can_edit_decks
 

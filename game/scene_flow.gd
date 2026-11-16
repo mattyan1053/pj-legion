@@ -48,7 +48,7 @@ const SCENES := {
 	},
 	DECKS: {
 		"script": "res://game/deck_screen.gd",
-		"next": {&"back": TITLE},  # 対戦の設定・出撃の準備からの寄り道（流れの中）で開く。戻るのは Run.NEXT
+		"next": {&"back": TITLE},  # 対戦設定・出撃準備からの寄り道（流れの中）で開く。戻るのは Run.NEXT
 		"music": &"menu",
 	},
 	STAGE: {
@@ -68,12 +68,12 @@ const SCENES := {
 	},
 	SORTIE: {
 		"script": "res://game/sortie_screen.gd",
-		"next": {&"back": EPISODES},  # 流れの中でだけ使う（ストーリーの出撃の準備。「出撃」は Run.NEXT で対戦へ。「部隊を編成する」は流れに編成を差し込む）
+		"next": {&"back": EPISODES},  # 流れの中でだけ使う（ストーリーの出撃準備。「出撃」は Run.NEXT で対戦へ。「部隊編成」は流れに編成を差し込む）
 		"music": &"menu",
 	},
 	BATTLE: {
 		"script": "res://game/battle_screen.gd",
-		"next": {&"setup": SETUP, &"stage": STAGE},  # 「ステージを選び直す」（対戦の途中で開いた対戦の設定）は、ステージ選択へ
+		"next": {&"setup": SETUP, &"stage": STAGE},  # 「ステージを選び直す」（対戦の途中で開いた対戦設定）は、ステージ選択へ
 		"music": &"battle",  # 既定。ふつうは渡すもの（battle_source.gd の music: 盤の見た目か、話が決めた曲）が決める
 	},
 }

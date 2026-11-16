@@ -41,7 +41,7 @@ func test_a_full_squad_is_placed_on_every_episode_map() -> void:
 		for i in Deck.MAX_UNITS:
 			deck.add(campaign.starting_kinds[i % campaign.starting_kinds.size()])
 		var setup := StoryBattle.new(episode, deck).make_setup(3)
-		setup.ignore_budget = true  # 数だけを見る（予算は出撃の準備と編成の画面が見る）
+		setup.ignore_budget = true  # 数だけを見る（予算は出撃準備と編成の画面が見る）
 		var battle := setup.create_battle()
 		var placed := [0, 0]
 		for unit in battle.units:

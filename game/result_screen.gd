@@ -2,7 +2,7 @@ extends Control
 ## リザルトの画面。決着したら、対戦の画面（盤面）の上に重ねて、段階的に出す（result_summary.gd の中身）。
 ##
 ## 1. 勝敗の見出し（VICTORY / DEFEAT、人どうしは勝った側の名前）が中央に大きく出て、上へ退く。
-## 2. 戦績（作戦領域・経過ターン・敵軍撃破・中立撃破・聖遺物）が 1 行ずつ出る。
+## 2. 戦績（ステージ・経過ターン・敵軍撃破・中立撃破・聖遺物）が 1 行ずつ出る。
 ## 3. MVP が拡大しながら出る。
 ## 4. 行き先のボタンと、入力の案内が出る。**ここまで出そろうまで、行き先は選べない。**
 ## 出そろう前のクリック（Enter・Space でも）は、演出を飛ばして全部を出すだけ（行き先は選ばない）。
@@ -25,7 +25,7 @@ signal setup_pressed
 signal title_pressed
 ## 「次へ」（set_continue で出したときだけ。ストーリーで勝ったとき、流れの次の場面へ）。
 signal continue_pressed
-## 「部隊を選び直す」（set_destinations で出したときだけ。ストーリーで、出撃の準備へ戻る）。
+## 「部隊を選び直す」（set_destinations で出したときだけ。ストーリーで、出撃準備へ戻る）。
 signal squad_pressed
 ## 全部が出そろった（行き先を選べるようになった）。
 signal revealed
@@ -51,18 +51,22 @@ const BLINK_PERIOD := 1.4
 const HEADLINE_CENTER_Y := 290.0
 const HEADLINE_TOP_Y := 18.0
 const HEADLINE_SHRUNK := 0.62
-## 戦績の行は最大 5 行（作戦領域・経過ターン・敵軍撃破・中立撃破・聖遺物）。5 行のときも、入力の案内が画面の下の帯
+## 戦績の行は最大 5 行（ステージ・経過ターン・敵軍撃破・中立撃破・聖遺物）。5 行のときも、入力の案内が画面の下の帯
 ## （対戦の画面の下の帯。BattleHud.BOTTOM_BAR_HEIGHT）にかからないよう、行と行の間を詰めてある。
 const BODY_TOP := 140.0
 const STAT_FONT := 22
 ## 詳しい戦績の表: 駒の名前の列の幅、数の列の幅、行の高さ、送れる部分の高さ（px）。
-const TABLE_NAME_WIDTH := 280.0
-const TABLE_NUMBER_WIDTH := 104.0
+## 名前の列は、いちばん長い進化先の名前（MVP の印と Lv 込み）が、数の列は見出しが切れずに収まる幅（tests/game/test_result_table.gd）。
+const TABLE_NAME_WIDTH := 316.0
+const TABLE_NUMBER_WIDTH := 98.0
 const TABLE_ROW_HEIGHT := 34.0
 const TABLE_ICON := 30.0
 const TABLE_HEIGHT := 210.0
 ## 倒れた駒の印の列の幅（px）。
 const TABLE_STATE_WIDTH := 64.0
+## 表の駒の名前と、見出しの文字の大きさ。
+const TABLE_NAME_FONT := 15
+const TABLE_HEADING_FONT := 14
 
 const COLOR_SHADE := Color(Palette.SHADE, 0.78)
 const COLOR_PANEL := Palette.SOLID
@@ -384,7 +388,7 @@ func _buttons_ready() -> bool:
 
 
 ## 出す行き先を決める（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める）。
-## boards は「新しい盤面」で選べるステージの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦の設定へ」、squad は「部隊を選び直す」を出すか。
+## boards は「新しい盤面」で選べるステージの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦設定へ」、squad は「部隊を選び直す」を出すか。
 ## 「同じ盤面でもう一度」と「タイトルへ」は、いつも出す。
 func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void:
 	while _board_buttons.size() < boards.size():
@@ -443,7 +447,7 @@ func press_continue() -> void:
 		continue_pressed.emit()
 
 
-## 「対戦の設定へ」を出しているか。検査用。
+## 「対戦設定へ」を出しているか。検査用。
 func can_go_to_setup() -> bool:
 	return _setup_button.visible
 
@@ -675,7 +679,7 @@ func _table_line() -> HBoxContainer:
 
 
 func _table_cell(text: String, width: float, dim := false, align := HORIZONTAL_ALIGNMENT_RIGHT) -> Label:
-	var label := _label(16 if not dim else 14)
+	var label := _label(TABLE_NAME_FONT if not dim else TABLE_HEADING_FONT)
 	label.text = text
 	label.custom_minimum_size = Vector2(width, 0.0)
 	label.clip_text = true  # 列の幅を中身で広げない（見出しと数の列がずれないように）
