@@ -16,6 +16,7 @@ const BattleLog := preload("res://game/battle_log.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const BoardView := preload("res://game/board_view.gd")
 const Names := preload("res://game/names.gd")
+const Text := preload("res://game/text.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
@@ -1080,7 +1081,7 @@ func _cpu_result(won: bool) -> bool:
 	var human := _battle.winner as Unit.Side if won else (1 - _battle.winner) as Unit.Side
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		names.append(Names.side(side) + ("" if side == human else " CPU"))
+		names.append(Names.side(side) if side == human else Text.t("battle.side_cpu", {"color": Names.side_word(side)}))
 	var reason: String = screen.shown_summary().reason  # 人どうしの理由（決着の理由だけ）
 	var summary: RefCounted = ResultSummary.of(_stats, false, _battle.winner, reason, true, human, names, VersusFields.title_of(_field))
 	screen.present(summary)
@@ -1739,7 +1740,7 @@ func _hold_battle_until(until := Callable()) -> bool:
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
-	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
 	var reached := _advance(until if until.is_valid() else func() -> bool: return false)
 	if reached != until.is_valid():
 		return false
@@ -1881,7 +1882,7 @@ func _scene_story_defeat() -> bool:
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
-	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
 	if _advance(func() -> bool: return false):
 		return false
 	var action := _cpu.next_action(_battle)
@@ -1903,7 +1904,7 @@ func _story_win() -> bool:
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
-	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
 	if _advance(func() -> bool: return false):
 		return false
 	var action := _cpu.next_action(_battle)
@@ -1955,7 +1956,7 @@ func _new_battle() -> void:
 	_scene.source = choice
 	_battle = choice.to_setup(_seed).create_battle()
 	_stats = BattleStats.new(_battle)
-	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
 
 
 ## いまの _battle を画面に出す（駒の見た目は、いまの状態から作る）。

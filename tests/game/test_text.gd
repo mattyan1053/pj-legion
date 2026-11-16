@@ -110,6 +110,22 @@ func test_the_table_has_unique_keys_with_text() -> void:
 	assert_true(seen.size() > 0)
 
 
+## 差し込んだ名前（駒・陣営・スキルなど）と、前後の かな・漢字 の間に空白を置かない（docs/wording.md の 8。「スペルブレード を表示中」にしない）。
+## 英字や数で終わりうる名前（軍の名前 {army}・{origin}、部隊の名前 {name}）と、数・マスの座標は見ない。
+func test_no_space_between_a_name_and_kana() -> void:
+	var names := "unit|attacker|target|healer|other|side|effect|status|enemy|evolution|ult|relic|skill|place|kind|role"
+	var after := RegEx.create_from_string("\\{(" + names + ")\\} [\\x{3041}-\\x{30ff}\\x{4e00}-\\x{9fff}]")
+	var before := RegEx.create_from_string("[\\x{3041}-\\x{30ff}\\x{4e00}-\\x{9fff}] \\{(" + names + ")\\}")
+	for file: String in DirAccess.get_files_at(TEXT_DIR):
+		if not file.ends_with(".csv"):
+			continue
+		var csv := FileAccess.open(TEXT_DIR + file, FileAccess.READ)
+		while not csv.eof_reached():
+			var row := csv.get_csv_line()
+			if row.size() >= 2:
+				assert_true(after.search(row[1]) == null and before.search(row[1]) == null, "%s の %s: 名前の前後に空白（%s）" % [file, row[0], row[1]])
+
+
 ## 表の CSV は Godot の翻訳の取り込みに乗せない（取り込みが並べて取り込むところで落ちることがあった。docs/text.md）。
 func test_the_tables_are_kept_as_they_are_not_imported() -> void:
 	for file: String in _table():

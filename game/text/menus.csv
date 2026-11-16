@@ -67,7 +67,8 @@ field.boulder_pass.tags,大岩 ・ 広い 2 本の道
 field.boulder_pass.note,草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。
 setup.back,対戦設定へ戻る
 stage.note_title,{number}  {title}　　{tags}　　（{shape}）
-setup.confirm,もう一度押す
+setup.confirm.stage,もう一度押して変更
+setup.confirm.start,もう一度押して開始
 setup.stage,ステージ変更
 setup.warning,ステージ変更・新しい対戦で、いまの対戦は終わります。
 setup.confirm_stage,もう一度押すと、いまの対戦を終えてステージ選択へ（右クリック: キャンセル）
