@@ -34,7 +34,7 @@ func test_scenery_never_rises_into_the_view_of_the_board() -> void:
 
 
 func test_scenery_is_the_same_for_the_same_seed() -> void:
-	var scenery := _scenery(StageLook.PLAIN)
+	var scenery := _scenery(StageLook.GRASSLAND)
 	assert_eq(Scenery.layout(SIZE, 5, scenery), Scenery.layout(SIZE, 5, scenery))
 	assert_ne(Scenery.layout(SIZE, 5, scenery), Scenery.layout(SIZE, 6, scenery))
 
