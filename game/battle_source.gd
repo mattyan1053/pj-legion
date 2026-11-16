@@ -3,7 +3,7 @@ extends RefCounted
 ## 対戦の画面は、どのモードの対戦かを知らない。対戦を作るのも、やり直すのも、ここに聞く。
 ##
 ## ここに書いてあるのは、どれも既定の答え（何も選び直せない対戦）。モードごとに継いで、答えを書き換える。
-## いまあるのは、対戦モード（match_choice.gd。対戦の設定のパネルで選んだもの）だけ。
+## いまあるのは、対戦モード（match_choice.gd。対戦の設定のパネルで選んだもの）と、ストーリーの 1 話（story_battle.gd）。
 ## ここはノードに依存しない（テストから呼べる）。
 
 const StageLook := preload("res://game/stage_look.gd")
@@ -51,6 +51,16 @@ func choose_stage(_stage: BoardGenerator.Stage) -> void:
 ## 開けるなら、パネルは、これを match_choice.gd として読む。
 func can_open_setup() -> bool:
 	return false
+
+
+## 決着の画面に「次へ」を出すか（押すと、流れ（run.gd）の次の場面へ進む）。won は、CPU と対戦して人が勝ったか。
+func can_continue(_won: bool) -> bool:
+	return false
+
+
+## CPU と対戦して人が勝った（決着の画面が出たとき）。context は app_context.gd。
+func record_win(_context: RefCounted) -> void:
+	pass
 
 
 func copy() -> RefCounted:

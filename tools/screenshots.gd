@@ -106,6 +106,12 @@ const SCENES := {
 	"look_twin_springs_start": "双子結晶の対戦の始め",
 	"look_twin_springs_wide": "双子結晶を、いちばん引いて低い角度で見ている",
 	"look_twin_springs_close": "双子結晶の盤の真ん中に寄って見ている",
+	"story_talk": "ストーリー: タイトルの「ストーリー」で始まる、対戦の前の会話（名前の札と文の枠）",
+	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
+	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
+	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
+	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
+	"story_cleared": "ストーリー: 話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
 ## 場面を作る対戦の最初の種。
 const SEED := 1
@@ -210,7 +216,9 @@ func _run() -> void:
 func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	_app.context.settings.reset_all()
-	if _app.current_id() != &"battle":
+	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
+	if _app.current_id() != &"battle" or _app.context.run != null:
+		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
 		_app.context.match_choice.cpu_opponent = false
 		await _app.go(&"battle")
 	_scene = _app.current_scene()
@@ -1264,6 +1272,95 @@ func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 
 
 # ---- 場面を作る道具 ----
+
+
+# ---- ストーリー ----
+
+
+const Story := preload("res://game/story.gd")
+
+
+## タイトルの「ストーリー」で、話の流れを始める（前の会話の場面に入る）。
+func _start_story() -> bool:
+	await _app.go(&"title")
+	_app.current_scene().press_story()
+	await _app.scene_changed
+	return _app.current_id() == &"talk"
+
+
+func _scene_story_talk() -> bool:
+	if not await _start_story():
+		return false
+	_app.current_scene().press_next()  # 2 行目（敵の将の札）
+	return true
+
+
+## 前の会話を飛ばして、話の対戦の場面に入る。
+func _story_battle() -> bool:
+	if not await _start_story():
+		return false
+	_app.current_scene().press_skip()
+	await _app.scene_changed
+	if _app.current_id() != &"battle":
+		return false
+	_scene = _app.current_scene()
+	return true
+
+
+func _scene_story_start() -> bool:
+	return await _story_battle()
+
+
+func _scene_story_wide() -> bool:
+	if not await _story_battle():
+		return false
+	var size: Vector2i = _scene.battle.board.size
+	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
+	_aim(OrbitCamera.max_distance_for(size), 0.0, OrbitCamera.MIN_PITCH)
+	return true
+
+
+## 話の対戦を、CPU どうしで決着の手前まで進め、最後の手を画面で指して勝つ（人の側 = プレイヤー1 が勝つ種だけ）。
+func _story_win() -> bool:
+	if not await _story_battle():
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤） CPU"] as Array[String])
+	if _advance(func() -> bool: return false):
+		return false
+	var action := _cpu.next_action(_battle)
+	if _battle.phase != Unit.Side.PLAYER1:
+		return false  # 敵の手で決着する（人の側が負ける）種
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	await _scene.act(action)
+	if not _battle.is_over() or _battle.winner != Unit.Side.PLAYER1:
+		return false
+	_scene.result_screen().skip()
+	return true
+
+
+func _scene_story_result() -> bool:
+	return await _story_win()
+
+
+func _scene_story_after() -> bool:
+	if not await _story_win():
+		return false
+	var screen: Control = _scene.result_screen()
+	while screen.enabled_buttons().is_empty():
+		await get_tree().process_frame
+	screen.press_continue()
+	await _app.scene_changed
+	return _app.current_id() == &"talk"
+
+
+func _scene_story_cleared() -> bool:
+	_app.context.story.clear(Story.EPISODES[0].ID)
+	await _app.go(&"title")
+	return _app.current_scene().story_label().contains("クリア済み")
 
 
 func _new_battle() -> void:

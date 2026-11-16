@@ -7,6 +7,7 @@ extends RefCounted
 const MatchChoice := preload("res://game/match_choice.gd")
 const Settings := preload("res://game/settings.gd")
 const DeckLibrary := preload("res://game/deck_library.gd")
+const Story := preload("res://game/story.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 
 ## システムメニューを開いてほしい（Esc、何も戻すものが無いとき）。
@@ -26,6 +27,8 @@ const CHECK_SEED := 20261114
 var settings := Settings.new()
 ## 取っておいた部隊（編成の画面で組み、対戦の設定で選ぶ。user:// に取っておく）。
 var decks := DeckLibrary.new()
+## ストーリーの進み具合（クリアした話。user:// に取っておく）。
+var story := Story.new()
 ## 開いている重なる画面（システムメニュー、ログ、対戦の設定）の積み上げ（overlay_stack.gd）。
 ## 後ろの場面は、何かが開いているかを、ここだけで見る。Esc と右クリックは、いちばん上の重なる画面だけが受ける。
 var overlays := OverlayStack.new()
@@ -39,6 +42,8 @@ var match_choice: RefCounted = MatchChoice.new()
 var run: RefCounted
 ## 検査として動いているなら CHECK_AUTOPLAY か CHECK_SHOTS。人が遊んでいるなら空。
 var checking := &""
+## 自動の対戦（autoplay.gd）。最初の対戦の場面が作る。2 つ目からの対戦の場面（ストーリーの通し）は、作らない。
+var autoplay: Node
 
 
 func open_menu() -> void:

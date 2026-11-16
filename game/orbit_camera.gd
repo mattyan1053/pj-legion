@@ -14,6 +14,10 @@ const PITCH_PRESETS: Array[float] = [35.0, 50.0, 68.0]
 const DEFAULT_PITCH := 50.0
 const MIN_DISTANCE := 8.0
 const MAX_DISTANCE := 45.0
+## 盤の大きさに合わせた引きの上限（fit_board）: 長い辺が REFERENCE_SIDE マスの盤で MAX_DISTANCE。小さい盤ほど縮めるが、
+## MIN_MAX_DISTANCE より縮めない（小さな盤の検査の場面で、いつもの距離を保つ）。
+const REFERENCE_SIDE := 30.0
+const MIN_MAX_DISTANCE := 24.0
 const PAN_SPEED := 14.0
 const SMOOTHING := 10.0
 
@@ -22,6 +26,8 @@ const DEFAULT_DRAG_SENSITIVITY := 0.008
 
 ## カメラが見てよい範囲（盤面の x / z）。
 var bounds := Rect2(0.0, 0.0, 30.0, 30.0)
+## ホイールで引ける上限（fit_board で、盤の大きさに合わせる）。
+var max_distance := MAX_DISTANCE
 var camera: Camera3D
 ## ドラッグの感度（1 px あたりのラジアン）。横（向き）にも縦（見下ろす角度）にも同じ値を使う。
 ## 設定の画面（settings.gd の「マウスの感度」）から変える。
@@ -71,7 +77,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_target_distance = maxf(MIN_DISTANCE, _target_distance * 0.9)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_target_distance = minf(MAX_DISTANCE, _target_distance * 1.1)
+			_target_distance = minf(max_distance, _target_distance * 1.1)
+
+
+## 見てよい範囲と引きの上限を、大きさ board_size（マス）の盤に合わせる。いまの距離が上限を超えていれば、上限まで寄せる。
+func fit_board(board_size: Vector2i) -> void:
+	bounds = Rect2(Vector2.ZERO, Vector2(board_size))
+	max_distance = max_distance_for(board_size)
+	_target_distance = minf(_target_distance, max_distance)
+
+
+## 大きさ board_size の盤で引ける上限。
+static func max_distance_for(board_size: Vector2i) -> float:
+	var side := float(maxi(board_size.x, board_size.y))
+	return clampf(MAX_DISTANCE * side / REFERENCE_SIDE, MIN_MAX_DISTANCE, MAX_DISTANCE)
 
 
 ## マウスのドラッグで relative（px）だけ動かした。盤を掴んで動かす向きに回す。

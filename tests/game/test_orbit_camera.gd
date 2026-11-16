@@ -128,3 +128,23 @@ func test_disabled_controls_ignore_keys() -> void:
 	rig._unhandled_input(key)
 	assert_eq(rig.target_yaw(), PI / 2.0, "キーで回らない")
 	rig.free()
+
+
+func test_the_farthest_view_follows_the_board_size() -> void:
+	assert_eq(OrbitCamera.max_distance_for(Vector2i(30, 30)), OrbitCamera.MAX_DISTANCE, "いつもの盤は、これまでと同じだけ引ける")
+	assert_eq(OrbitCamera.max_distance_for(Vector2i(40, 36)), OrbitCamera.MAX_DISTANCE, "大きい盤でも、上限は超えない")
+	assert_between(OrbitCamera.max_distance_for(Vector2i(17, 22)), 30.0, 36.0, "小さい盤は、盤の大きさに合わせて寄せる")
+	assert_eq(OrbitCamera.max_distance_for(Vector2i(6, 4)), OrbitCamera.MIN_MAX_DISTANCE)
+	var rig := _make_rig()
+	rig.set_view(OrbitCamera.MAX_DISTANCE, 0.0)
+	rig.fit_board(Vector2i(17, 22))
+	assert_eq(rig.max_distance, OrbitCamera.max_distance_for(Vector2i(17, 22)))
+	assert_eq(rig.bounds, Rect2(0.0, 0.0, 17.0, 22.0))
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	for i in 20:
+		rig._unhandled_input(wheel)
+	_step(rig, 600)
+	assert_between(rig.camera.position.z, rig.max_distance - 0.05, rig.max_distance + 0.05, "ホイールで、盤に合わせた上限より引けた")
+	rig.free()
