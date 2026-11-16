@@ -7,7 +7,8 @@
 - ライセンス: SIL Open Font License 1.1（`LICENSE-ZenKakuGothicNew.txt`、`LICENSE-ZenOldMincho.txt`。配布元の `OFL.txt` をそのまま写した）。
   ゲームに同梱しての再配布ができる。フォントだけを売ることはできない。Reserved Font Name の指定は無い
   - CC0 ではない。OFL が求めるのは、著作権の表示とライセンスの文を一緒に配ること（この 2 つの `LICENSE-*.txt` がそれ）。
-    ゲームの画面にクレジットを出すことは求められていない
+    ゲームの画面にクレジットを出すことは求められていない。
+    書き出した exe にも入るよう、`export_presets.cfg` の `include_filter` に `assets/fonts/*/LICENSE*` を入れてある
 - 取ってきた日・ライセンスを確かめた日: 2026-11-16（配布元の `OFL.txt` と、各ディレクトリの `METADATA.pb` の `license: "OFL"`）
 - 改変: なし（配布元の TTF のまま。ファイル名も元のまま）
 
