@@ -1805,6 +1805,9 @@ func _visit_decks(app: Node) -> void:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
 	_expect(not screen.can_save() and deck.problems() == ([Deck.Problem.OVER_BUDGET] as Array[Deck.Problem]), "予算を超えた部隊を取っておけた")
+	await screen.get_tree().process_frame
+	await screen.get_tree().process_frame
+	_expect(screen.issues_shown_whole(), "出撃不可の理由が、途中で切れている")
 	screen.press_save()
 	_expect(screen.is_editing() and library.size() == 0, "出せない部隊が取っておかれた")
 	screen.remove_entry(5)
