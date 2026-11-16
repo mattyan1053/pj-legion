@@ -32,6 +32,8 @@ signal threat_toggled
 ## 相手の番の「早送り」「スキップ」が押された。
 signal fast_forward_toggled
 signal skip_pressed
+## 自分の番の「おまかせ」が押された。
+signal auto_pressed
 ## 駒の情報の枠の「範囲を表示したまま」のスイッチが押された。
 signal pin_toggled
 ## 相手を人にするか CPU にするかの切り替えが押された。
@@ -73,7 +75,7 @@ const INFO_WIDTH := 320.0
 ## 駒の情報の枠の、駒のアイコンの大きさ（px）。
 const INFO_ICON_SIZE := 48.0
 const ULT_SUMMARY_WIDTH := 480.0
-const HINT_SIDE_WIDTH := 730.0
+const HINT_SIDE_WIDTH := 800.0
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
 const COLOR_STATUS := Palette.INFO
@@ -148,6 +150,8 @@ var _threat_button: CheckButton
 var _watch_box: HBoxContainer
 var _fast_button: Button
 var _skip_button: Button
+## 自分の番の残りを CPU に任せるボタン（ターン終了の左。set_auto_button）。
+var _auto_button: Button
 var _ult_panel: PanelContainer
 var _ult_pinned := false
 var _menu: PanelContainer
@@ -476,9 +480,21 @@ func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 func set_watch_controls(shown: bool, fast: bool, can_skip: bool) -> void:
 	_watch_box.visible = shown
 	_ult_button.visible = not shown
+	_auto_button.visible = not shown
 	_fast_button.set_pressed_no_signal(fast)
 	_skip_button.disabled = not can_skip
 	_skip_button.text = "スキップ" if can_skip else "スキップ中…"
+
+
+## 自分の番の「おまかせ」。confirming なら、もう一度押すと任せる、の形にする。
+func set_auto_button(enabled: bool, confirming: bool) -> void:
+	_auto_button.disabled = not enabled
+	_auto_button.text = "もう一度押す" if confirming else "おまかせ"
+
+
+## 「おまかせ」の文字と、押せるか。検査用。
+func auto_button_state() -> Array:
+	return [_auto_button.text, not _auto_button.disabled]
 
 
 ## 相手の番の「早送り」「スキップ」: [出ているか, 早送りが入っているか]。検査用。
@@ -1027,15 +1043,21 @@ func _build_bottom() -> void:
 	_skip_button.tooltip_text = "相手の番の残りを見せずに進める（起きたことはログに残る）"
 	_watch_box.add_child(_skip_button)
 	_ult_button = _button("必殺技", ult_pressed)
-	_ult_button.custom_minimum_size = Vector2(250.0, 48.0)
+	_ult_button.custom_minimum_size = Vector2(220.0, 48.0)
 	_ult_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_ult_button.disabled = true
 	_ult_button.mouse_entered.connect(_show_ult_summary)
 	_ult_button.mouse_exited.connect(_show_ult_summary)
 	row.add_child(_ult_button)
+	_auto_button = _button("おまかせ", auto_pressed)
+	_auto_button.custom_minimum_size = Vector2(112.0, 48.0)
+	_auto_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_auto_button.tooltip_text = "このターンの残りの駒を CPU が動かし、ターンを終える"
+	_auto_button.disabled = true
+	row.add_child(_auto_button)
 	# ターン終了は、見つけやすいよう色を付けて、いちばん端に置く（駒のそばのメニューからは離れている）。
 	_end_turn_button = _button("ターン終了", end_turn_pressed)
-	_end_turn_button.custom_minimum_size = Vector2(230.0, 60.0)
+	_end_turn_button.custom_minimum_size = Vector2(210.0, 60.0)
 	_end_turn_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_end_turn_button.add_theme_font_size_override("font_size", 20)
 	_end_turn_style = UiTheme.box(COLOR_END_TURN, COLOR_END_TURN_READY.lightened(0.3), 1, 6, 6.0, 3)

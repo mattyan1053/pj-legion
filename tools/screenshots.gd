@@ -82,6 +82,7 @@ const SCENES := {
 	"result_detail": "リザルトで「詳しい戦績（両軍）」を開いたところ",
 	"result_victory": "CPU に勝ったときのリザルト（VICTORY）",
 	"result_defeat": "CPU に負けたときのリザルト（DEFEAT）",
+	"auto_confirm": "自分の番の「おまかせ」を 1 回押して、確かめている（もう一度押すと、残りの駒を CPU が動かしてターンを終える）",
 	"cpu_watch": "相手（CPU）の番の途中。下の帯に「早送り」「スキップ」が出ている（必殺技のボタンの代わり）",
 	"log_closed": "相手（CPU）の番のあと、ログを閉じている（上の帯の「ログ」のボタン）",
 	"log_open": "相手（CPU）の番のあとに、ログを開いた",
@@ -1180,6 +1181,15 @@ func _scene_hit_shot() -> bool:
 
 func _scene_hit_magic() -> bool:
 	return await _attack_frame([UnitKind.Id.SORCERER], -0.07)
+
+
+func _scene_auto_confirm() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 2 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	await _idle()
+	_scene.press_auto()
+	return _scene.is_confirming_auto()
 
 
 func _scene_cpu_watch() -> bool:
