@@ -8,9 +8,11 @@ extends Node
 ## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）→ 一覧 → タイトル。
 ## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しく組む」は、選んでいる方の決まりの部隊だけ（混ざらない）。
 ## 組む画面の決まり（雇える駒、予算、数の上限）は、切り替えで決まる（rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。
-## - 流れ（run.gd）の中で置かれたら（出撃の準備の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
-##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備へ戻る）。寄り道の間に取っておいた部隊を、出撃の準備で選ぶ。
+## - 流れ（run.gd）の中で置かれたら（出撃の準備・対戦の設定の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
+##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備・対戦の設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
@@ -23,14 +25,14 @@ const Run := preload("res://game/run.gd")
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
 
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.94)
-const COLOR_CARD := Color(0.12, 0.15, 0.2, 1.0)
-const COLOR_TEXT := Color(0.93, 0.94, 0.96)
-const COLOR_DIM := Color(0.68, 0.72, 0.78)
-const COLOR_GOOD := Color("7fdc8a")
-const COLOR_BAD := Color("ff8a6b")
-const COLOR_ACCENT := Color("8fc3ff")
-const COLOR_BUDGET := Color("4f8fd8")
+const COLOR_PANEL := Color(Palette.PANEL, 0.94)
+const COLOR_CARD := Color(Palette.RAISED, 0.6)
+const COLOR_TEXT := Palette.TEXT
+const COLOR_DIM := Palette.TEXT_DIM
+const COLOR_GOOD := Palette.GOOD
+const COLOR_BAD := Palette.DANGER
+const COLOR_ACCENT := Palette.ACCENT
+const COLOR_BUDGET := Palette.GOLD
 ## 右上のシステムメニューのボタンのぶん、見出しの右を空ける。
 const CORNER_ROOM := 120.0
 ## 詳しい中身の欄の、文を折り返す幅（px）。
@@ -114,7 +116,7 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.45)
+	shade.color = Color(Palette.SHADE, 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -133,7 +135,10 @@ func _ready() -> void:
 			(_mode_buttons[id] as Button).visible = id == _detour.get("rules", DeckRules.VERSUS)
 	set_mode(_detour.get("rules", DeckRules.VERSUS))
 	if not _detour.is_empty():
+		# 寄り道のもとで選んでいる部隊を、一覧で選んでおく（ストーリーは出撃の準備、対戦は対戦の設定の、その側の部隊）。
 		var current: String = context.story.squad_id
+		if _detour.get("rules") == DeckRules.VERSUS:
+			current = context.match_choice.deck_ids[_detour.get("side", Unit.Side.PLAYER1)]
 		if _library.find(current) != null and _library.find(current).deck.rules.id == rules.id:
 			select_saved(current)
 
@@ -186,6 +191,8 @@ func leave() -> void:
 	var saved := _library.find(_saved_in_detour)
 	if saved != null and saved.playable() and _detour.get("rules") == Story.RULES_ID:
 		context.story.choose_squad(_saved_in_detour)
+	if saved != null and saved.playable() and _detour.get("rules") == DeckRules.VERSUS and context.match_choice != null:
+		context.match_choice.choose_deck(_detour.get("side", Unit.Side.PLAYER1), saved.id, saved.deck)
 	finished.emit(Run.NEXT)
 
 
@@ -946,6 +953,7 @@ func set_dialog_input(text: String) -> void:
 func _confirm(text: String, ok_text: String, action: Callable) -> void:
 	_dialog_text.text = text
 	_dialog_ok.text = ok_text
+	_dialog_ok.theme_type_variation = UiTheme.BUTTON_DANGER  # 確かめるのは、元に戻せないこと（消す）
 	_dialog_input.visible = false
 	_dialog_action = action
 	_dialog.visible = true
@@ -954,6 +962,7 @@ func _confirm(text: String, ok_text: String, action: Callable) -> void:
 func _ask_name(title: String, current: String, action: Callable) -> void:
 	_dialog_text.text = "%s（%d 文字まで）" % [title, DeckLibrary.MAX_NAME_LENGTH]
 	_dialog_ok.text = "決める"
+	_dialog_ok.theme_type_variation = &""
 	_dialog_input.visible = true
 	_dialog_input.text = current
 	_dialog_action = action
@@ -968,13 +977,13 @@ func _build_dialog() -> Control:
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.visible = false
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.55)
+	shade.color = Palette.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
-	var panel := _card(Color(0.09, 0.11, 0.15, 0.98), 24.0)
+	var panel := _card(Palette.SOLID, 24.0)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 16)
@@ -1028,10 +1037,7 @@ func _frame() -> Control:
 
 
 func _card(color := COLOR_CARD, margin := 12.0) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(margin)
+	var style := UiTheme.box(color, Color(Palette.BORDER, 0.7), 1, 6, margin)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	return panel

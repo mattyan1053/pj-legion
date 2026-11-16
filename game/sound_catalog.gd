@@ -2,6 +2,7 @@ extends RefCounted
 ## 鳴らす音の表（名前 -> 素材のファイルと、鳴らし方）。ノードに依存しない。
 ##
 ## 鳴らすのは sound.gd。場面ごとの BGM は scene_flow.gd の表（"music"）が、ここの曲の名前で決める。
+## 対戦の曲は、盤の見た目ごと（LOOK_MUSIC）。ストーリーの話は、話のデータで選び直せる（docs/sound.md）。
 ## **音を 1 つ足すのは、素材を assets/audio/ に置き（README.md と LICENSE を書く）、ここに 1 行足すだけ。**
 ## 鳴らす側は名前で頼む（sound.gd の play）。表に無い名前・ファイルの無い名前は、黙って何もしない
 ## （画面の側（game/）のコードが名前で鳴らす音が表にあることは、tests/game/test_sound.gd が確かめる）。
@@ -9,9 +10,21 @@ extends RefCounted
 ## 曲（BGM と決着の曲）。
 ## - path: 素材。loop: 終わったら頭へ戻るか（場面の曲）。偽なら 1 回だけ鳴らして止まる（決着の曲）。
 ## - volume_db: 曲ごとの大きさの釣り合い（設定の音量の前に掛ける）。
+## - 大きさは、曲の平均の大きさ（EBU R128 の積分ラウドネス）を測ってそろえた。対戦の曲は -21.5 LUFS、会話の曲は -20 LUFS ほどに
+##   なるように（volume_db = ねらい - 測った値）。耳では確かめていない。
+const StageLook := preload("res://game/stage_look.gd")
 const MUSIC := {
 	&"menu": {"path": "res://assets/audio/randommind/medieval_exploration.ogg", "loop": true, "volume_db": -8.0},
+	## 対戦（草原。明るい踊りの曲）。盤の見た目が分からないときの対戦の曲も、これ。
 	&"battle": {"path": "res://assets/audio/randommind/medieval_minstrel_dance_loop.ogg", "loop": true, "volume_db": -9.0},
+	## 対戦（石の遺跡）。
+	&"battle_ruins": {"path": "res://assets/audio/randommind/medieval_the_bards_tale_loop.ogg", "loop": true, "volume_db": -9.5},
+	## 対戦（結晶の森。夜風の静かな曲）。
+	&"battle_crystal": {"path": "res://assets/audio/randommind/fantasy_rising_moon.ogg", "loop": true, "volume_db": -7.5},
+	## 緊迫した戦い（ストーリーの守り切る話など。話のデータの MUSIC で選ぶ）。
+	&"battle_tense": {"path": "res://assets/audio/randommind/medieval_battle.ogg", "loop": true, "volume_db": -8.0},
+	## ストーリーの会話。
+	&"talk": {"path": "res://assets/audio/randommind/medieval_the_old_tower_inn_loop.ogg", "loop": true, "volume_db": -2.5},
 	&"victory": {"path": "res://assets/audio/randommind/medieval_victory_theme.ogg", "loop": false, "volume_db": -6.0},
 	&"defeat": {"path": "res://assets/audio/randommind/medieval_defeat_theme.ogg", "loop": false, "volume_db": -6.0},
 }
@@ -77,6 +90,19 @@ const EFFECTS := {
 	## 陣営の番が始まった（中立の番は鳴らさない）。
 	&"phase": {"path": "res://assets/audio/rubberduck/gong_01.ogg", "volume_db": -14.0},
 }
+
+
+## 盤の見た目（stage_look.gd の THEMES の鍵）-> 対戦の曲。表に無い見た目は battle。
+const LOOK_MUSIC := {
+	StageLook.GRASSLAND: &"battle",
+	StageLook.STONE_WALLS: &"battle_ruins",
+	StageLook.CRYSTAL_FOREST: &"battle_crystal",
+}
+
+
+## 盤の見た目 look_name の対戦の曲。
+static func battle_music(look_name: StringName) -> StringName:
+	return LOOK_MUSIC.get(look_name, &"battle")
 
 
 static func has_music(track: StringName) -> bool:

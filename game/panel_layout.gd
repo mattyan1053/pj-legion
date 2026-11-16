@@ -15,7 +15,7 @@ const NO_CELL := Vector2i(-1, -1)
 ## メニューが隠したくないものの重み（menu_placement.gd）。攻撃・回復・スキルの相手、ほかの駒、届くマス、情報の枠。
 const MENU_WEIGHT_TARGET := 12.0
 const MENU_WEIGHT_UNIT := 4.0
-const MENU_WEIGHT_MOVE := 1.0
+const MENU_WEIGHT_MOVE := 2.0
 const MENU_WEIGHT_CRUISE := 0.4
 const MENU_WEIGHT_PANEL := 6.0
 
@@ -34,6 +34,7 @@ var _menu_camera := Transform3D()
 var _menu_dirty := true
 ## メニューを置いたときの、ミニマップの四角（出し入れしたら置き直す）。
 var _menu_minimap := Rect2()
+var _menu_covers_move := false
 ## 戦闘予測のパネルの置き場所（対象のマスのそば）。
 var _forecast_placement := MenuPlacement.new()
 var _forecast_cell := NO_CELL
@@ -82,6 +83,8 @@ func place_menu(unit: Unit, painted: Dictionary) -> void:
 	var view: UnitView = _views[unit.id]
 	var anchor := screen_rect(view.position, 0.45, view.height())
 	var obstacles: Array = []
+	var move_rects: Array[Rect2] = []
+	var region := Rect2()
 	for cell: Vector2i in painted:
 		var color: Color = painted[cell]
 		var weight := MENU_WEIGHT_TARGET
@@ -89,8 +92,14 @@ func place_menu(unit: Unit, painted: Dictionary) -> void:
 			weight = MENU_WEIGHT_MOVE
 		elif color == cruise_color:
 			weight = MENU_WEIGHT_CRUISE
-		if cell != unit.cell:
-			obstacles.append([screen_rect(BoardView.cell_center(cell), 0.4, 0.0), weight])
+		if cell == unit.cell:
+			continue
+		var rect := screen_rect(BoardView.cell_center(cell), 0.4, 0.0)
+		obstacles.append([rect, weight])
+		if color == move_color or color == cruise_color:
+			move_rects.append(rect)
+		if color == move_color:
+			region = rect if not region.has_area() else region.merge(rect)
 	for other_id: int in _views:
 		if other_id != unit.id:
 			var other: UnitView = _views[other_id]
@@ -99,7 +108,20 @@ func place_menu(unit: Unit, painted: Dictionary) -> void:
 		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
 	# ミニマップには重ねない（押せる場所を隠さない）。
 	var keep_clear: Array = [minimap] if minimap.has_area() else []
-	_hud.place_menu(_menu_placement.place(anchor, size, _hud.menu_area(), obstacles, keep_clear), anchor.get_center())
+	_hud.place_menu(_menu_placement.place(anchor, size, _hud.menu_area(), obstacles, keep_clear, region), anchor.get_center())
+	# それでも届くマス（青・黄）に掛かるときは、マウスが乗っていない間、メニューを薄くする（下のマスが読める）。
+	var menu := _hud.menu_rect()
+	_menu_covers_move = false
+	for rect in move_rects:
+		if rect.intersects(menu):
+			_menu_covers_move = true
+			break
+	_hud.set_menu_see_through(_menu_covers_move)
+
+
+## メニューが、届くマス（青・黄）に掛かっているか（いちばん最近置いたとき）。検査用。
+func menu_covers_move() -> bool:
+	return _menu_covers_move
 
 
 # ---- 戦闘予測のパネル ----

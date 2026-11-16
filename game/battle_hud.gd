@@ -6,6 +6,8 @@ extends CanvasLayer
 ## 画面の決まった場所に置く。どれもクリックだけで選べる。
 
 ## 駒のそばのメニューの項目が押された。id は set_menu() に渡した項目の名前。
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Names := preload("res://game/names.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
@@ -50,11 +52,11 @@ const OBJECT_NAMES := {
 	MapObject.Type.SPRING: "回復の泉（自分の番の始めに、乗っている駒が %d 回復）" % MapObject.SPRING_HEAL,
 	MapObject.Type.PORTAL: "ポータル",
 }
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
+const COLOR_PANEL := Palette.OVERLAY
 ## 後ろの盤面の文字が透けて読みにくくならないよう、決着の画面とメニューは透かさない。
-const COLOR_PANEL_SOLID := Color(0.09, 0.11, 0.15, 0.97)
-const COLOR_END_TURN := Color("2f6b3a")
-const COLOR_END_TURN_READY := Color("3fa24f")
+const COLOR_PANEL_SOLID := Palette.SOLID
+const COLOR_END_TURN := Palette.GO
+const COLOR_END_TURN_READY := Palette.GO_READY
 ## 上の帯と下の帯の高さ（駒のそばのメニューは、この内側に置く）。
 const TOP_BAR_HEIGHT := 50.0
 const BOTTOM_BAR_HEIGHT := 92.0
@@ -64,14 +66,14 @@ const MENU_LINE_FROM := 70.0
 const INFO_WIDTH := 320.0
 const ULT_SUMMARY_WIDTH := 480.0
 const HINT_SIDE_WIDTH := 730.0
-const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
-const COLOR_FORECAST := Color("ffd76a")
-const COLOR_STATUS := Color("8fe6ff")
-const COLOR_TRAIT := Color("ffd34a")
+const COLOR_TEXT_DIM := Palette.TEXT_DIM
+const COLOR_FORECAST := Palette.ACCENT
+const COLOR_STATUS := Palette.INFO
+const COLOR_TRAIT := Palette.ACCENT
 ## 勝ち方の札の地と枠（いつもと、最後のターンのように急ぐとき）。
-const COLOR_GOAL := Color(0.25, 0.2, 0.08, 0.9)
-const COLOR_GOAL_BORDER := Color("8a7230")
-const COLOR_GOAL_URGENT := Color(0.62, 0.2, 0.1, 0.95)
+const COLOR_GOAL := Palette.GOAL
+const COLOR_GOAL_BORDER := Palette.GOAL_BORDER
+const COLOR_GOAL_URGENT := Palette.GOAL_URGENT
 ## 状態の効果の短い説明（駒の情報の枠に、残りの期間と一緒に出す）。
 const STATUS_TEXTS := {
 	Status.Type.BARRIER: "次に受けるダメージを 1 回だけ防ぐ",
@@ -83,7 +85,7 @@ const STATUS_TEXTS := {
 const FLASH_ALPHA := 0.45
 const FLASH_TIME := 0.45
 ## READY の明滅（いちばん色づいたときの色と、1 回の秒数）。
-const COLOR_PULSE := Color(1.0, 0.72, 0.25)
+const COLOR_PULSE := Palette.WARN
 const PULSE_PERIOD := 1.1
 ## 必殺技の知らせの色（軍ごと）。
 const ULT_COLORS := {
@@ -140,6 +142,10 @@ var _menu_column: VBoxContainer
 ## いまメニューに出している項目（[名前, 文字, 押せるか] の列）と、項目の名前 -> ボタン。
 var _menu_items: Array = []
 var _menu_buttons := {}
+## メニューが届くマスに掛かっているか（set_menu_see_through）。
+var _menu_see_through := false
+## 届くマスに掛かったメニューの、マウスが乗っていない間の濃さ。
+const MENU_SEE_THROUGH_ALPHA := 0.6
 ## 文字の幅の覚え（"文字の大きさ:文字" -> px）。折り返しに使う。
 var _char_widths := {}
 var _banner: Label
@@ -373,7 +379,7 @@ static func status_text(type: Status.Type, turns: int) -> String:
 func show_cell_info(title: String, body: String) -> void:
 	_info_panel.visible = true
 	_info_name.text = title
-	_info_name.add_theme_color_override("font_color", Color("e6e6e6"))
+	_info_name.add_theme_color_override("font_color", Palette.TEXT)
 	_info_side.visible = false
 	_info_hp.visible = false
 	_set_folded(_info_stats, body, INFO_WIDTH)
@@ -406,7 +412,7 @@ func info_title() -> String:
 
 ## HP の割合（0〜1）の色。半分より多ければ緑、4 分の 1 より多ければ黄、それより少なければ赤。
 static func hp_color(ratio: float) -> Color:
-	return Color("5fd35f") if ratio > 0.5 else (Color("e8c23a") if ratio > 0.25 else Color("e8503a"))
+	return Palette.hp(ratio)
 
 
 ## マウスの下のマスの説明。盤の外なら空を渡す。
@@ -488,6 +494,21 @@ func place_menu(at: Vector2, from: Vector2) -> void:
 	var near := Vector2(clampf(from.x, rect.position.x, rect.end.x), clampf(from.y, rect.position.y, rect.end.y))
 	_menu_line.visible = _menu.visible and near.distance_to(from) > MENU_LINE_FROM
 	_menu_line.points = PackedVector2Array([from, near])
+
+
+## メニューが届くマスに掛かっているか（see_through）。掛かっている間は、マウスが乗っていなければ薄く描く（_process）。
+func set_menu_see_through(see_through: bool) -> void:
+	_menu_see_through = see_through
+
+
+## メニューの濃さ（1 で、ふつう）。検査用。
+func menu_alpha() -> float:
+	return _menu.modulate.a
+
+
+func _update_menu_alpha() -> void:
+	var faded := _menu_see_through and _menu.visible and not menu_rect().grow(6.0).has_point(get_viewport().get_mouse_position())
+	_menu.modulate.a = MENU_SEE_THROUGH_ALPHA if faded else 1.0
 
 
 ## 対戦の途中の会話の札（battle_talk.gd）を入れる。帯・駒のそばのメニュー・予測のパネル・進化の選択・決着の画面より下に描く
@@ -589,6 +610,7 @@ func _process(_delta: float) -> void:
 		_ult_labels[player].self_modulate = shade
 	if _ult_button != null:
 		_ult_button.self_modulate = tint if not _ult_button.disabled else Color.WHITE
+	_update_menu_alpha()
 
 
 ## 画面の中央に、しばらくだけ大きな文字を出す。
@@ -723,6 +745,7 @@ func _build_minimap() -> void:
 
 func _build_top_bar() -> void:
 	var panel := _panel()
+	panel.add_theme_stylebox_override("panel", UiTheme.band_box(true))
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	add_child(panel)
 	var row := HBoxContainer.new()
@@ -856,8 +879,8 @@ func _build_info_panel() -> void:
 	column.add_child(_info_stats)
 	# 状態は、残りの期間と効果。付いている間だけ（盤の上では、足元の水色の輪だけで分かる）。
 	_info_statuses = _info_line(column, 15, COLOR_STATUS)
-	_info_items = _info_line(column, 15, Color("e6e6e6"))
-	_info_skill = _info_line(column, 15, Color("e6e6e6"))
+	_info_items = _info_line(column, 15, Palette.TEXT)
+	_info_skill = _info_line(column, 15, Palette.TEXT)
 	_info_skill_note = _info_line(column, 14, COLOR_TEXT_DIM)
 	_info_traits = _info_line(column, 15, COLOR_TRAIT)
 	_info_state = _info_line(column, 14, COLOR_TEXT_DIM)
@@ -877,6 +900,7 @@ func _info_line(column: VBoxContainer, font_size: int, color: Color) -> Label:
 
 func _build_bottom() -> void:
 	var panel := _panel()
+	panel.add_theme_stylebox_override("panel", UiTheme.band_box(false))
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.custom_minimum_size = Vector2(0.0, BOTTOM_BAR_HEIGHT)
@@ -920,10 +944,7 @@ func _build_bottom() -> void:
 	_end_turn_button.custom_minimum_size = Vector2(230.0, 60.0)
 	_end_turn_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_end_turn_button.add_theme_font_size_override("font_size", 20)
-	_end_turn_style = StyleBoxFlat.new()
-	_end_turn_style.bg_color = COLOR_END_TURN
-	_end_turn_style.set_corner_radius_all(6)
-	_end_turn_style.set_content_margin_all(6.0)
+	_end_turn_style = UiTheme.box(COLOR_END_TURN, COLOR_END_TURN_READY.lightened(0.3), 1, 6, 6.0, 3)
 	_end_turn_button.add_theme_stylebox_override("normal", _end_turn_style)
 	_end_turn_button.add_theme_stylebox_override("hover", _end_turn_style)
 	row.add_child(_end_turn_button)
@@ -1033,10 +1054,7 @@ func _build_evolution() -> void:
 
 
 func _panel(color := COLOR_PANEL) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(10.0)
+	var style := UiTheme.box(color, Color(Palette.BORDER, 0.9), 1, 6, 10.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	return panel
@@ -1045,7 +1063,6 @@ func _panel(color := COLOR_PANEL) -> PanelContainer:
 func _label(font_size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	return label
 

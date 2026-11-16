@@ -12,7 +12,7 @@ extends RefCounted
 ## 対戦モードの生成のステージは、OF_STAGE で見た目の名前に直す。
 ##
 ## 守ること（遊びやすさが先）:
-## - マスの種類（通れない・森・平地）が、どのテーマでもひと目で見分けられる。障害物は背の高い硬いもの（岩・壁・結晶の岩）、
+## - マスの種類（通れない・森・平地）が、どのテーマでもひと目で見分けられる。障害物は背の高い硬いもの（岩山・壁）、
 ##   森は木、平地は何も置かない。地面の色も 3 つで明るさを変える。
 ## - 本陣の陣営の色、マスの塗り分け、駒、HP の棒、起爆樽とポータルの色は、どのテーマでも変えない（読み方を変えないため）。
 
@@ -57,9 +57,12 @@ const TINT := &"tint"
 ##   SINGLE: マスごとに props から 1 つを選んで、素材の大きさの scale 倍で置く。向きは 60 度刻みでばらす。
 ##   WALL: マスの真ん中に柱（props[0]）を立て、右と下のマスも同じ種類なら、間を壁（props[1]、ときどき props[2]）でつなぐ。
 ##         続いた障害物が、1 本の石の壁に見える。height は柱の高さ（マス）。
-## crystals があれば、その色の結晶の群れを、置いたものの上に生やす（光る）。
+##   CRAG: 辺で接する障害物のかたまりを、1 つの岩山に見せる（crag_mesh.gd がコードで形を作る。props は使わない）。
+##         内側ほど高く、縁は低い崖。low・cliff・top は面の色（崖の下・崖の上・上を向いた面）。
+## crystals があれば、その色の結晶の群れを、置いたものの上に生やす（光る。CRAG は、かたまりの内側のところどころに）。
 const SINGLE := &"single"
 const WALL := &"wall"
+const CRAG := &"crag"
 
 ## 素材: {scene: パス, height: 大きさ 1 のときの高さ} か、{crystal: Color, height: 1.0}（コードで作る結晶の群れ。crystal_mesh.gd）。
 ## size があれば、景色に置くときの大きさに掛ける（大きく・小さく見せたいもの）。height は検査が素材と突き合わせる。
@@ -73,7 +76,6 @@ const MOUNTAIN_B := {"scene": HEX + "mountain_B.gltf", "height": 1.77}
 const MOUNTAIN_C := {"scene": HEX + "mountain_C.gltf", "height": 1.51}
 const ROCK_A := {"scene": HEX + "rock_single_A.gltf", "height": 0.07}
 const ROCK_C := {"scene": HEX + "rock_single_C.gltf", "height": 0.19}
-const ROCK_E := {"scene": HEX + "rock_single_E.gltf", "height": 0.19}
 const PILLAR := {"scene": DUNGEON + "pillar.glb", "height": 4.0}
 const STONE_WALL := {"scene": DUNGEON + "wall.glb", "height": 4.0}
 const STONE_WALL_BROKEN := {"scene": DUNGEON + "wall_broken.glb", "height": 4.0}
@@ -83,6 +85,8 @@ const BARRIER := {"scene": DUNGEON + "barrier_column.glb", "height": 1.4}
 const RUBBLE := {"scene": DUNGEON + "rubble_half.glb", "height": 3.5}
 const RUBBLE_LARGE := {"scene": DUNGEON + "rubble_large.glb", "height": 3.5}
 const CRYSTAL_VIOLET := {"crystal": Color("9465f0"), "height": 1.0}
+## 盤の上の結晶の岩山の結晶。ポータル（紫 b06cff）・中ボス（紫）・結晶泉（水色）と見分けられる青。
+const CRAG_CRYSTAL := Color("4f63e8")
 const CRYSTAL_CYAN := {"crystal": Color("5fe0f5"), "height": 1.0}
 
 ## どのステージの見た目も持つ項目（検査が確かめる）。
@@ -109,14 +113,17 @@ const OF_STAGE := {
 }
 
 const THEMES := {
-	# 中央平原: いつもの草原。明るい若草色、昼の白い光。森と岩山。
+	# 中央平原: いつもの草原。明るい若草色、昼の白い光。森と、灰色の岩山（固まった障害物は 1 つの岩山に）。
 	GRASSLAND: {
 		NORMAL: Color("5f9f4e"), FOREST: Color("3a6c38"), OBSTACLE: Color("767b84"), FONT: Color("3fa9bd"),
 		HAZE: Color("b4cbdc"), SUN: Color("ffffff"), AMBIENT: Color("b8c4d6"),
 		SUN_PITCH: -52.0, SUN_YAW: -35.0, SUN_ENERGY: 1.2, AMBIENT_ENERGY: 0.45,
 		PAVING: 0.0, DRY: 0.45,
 		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("b9bcc0"),
-		OBSTACLE_PROPS: {"style": SINGLE, "props": [MOUNTAIN_A], "scale": 0.56, "tint": Color.WHITE},
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE,
+			"low": Color("464a52"), "cliff": Color("6c717b"), "top": Color("878d80"),
+		},
 		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_B], "scale": 0.62, "tint": Color.WHITE},
 		SCENERY: {BIG: [MOUNTAIN_A], SMALL: [TREES_A, TREES_B], SCATTER: [], TINT: Color.WHITE},
 	},
@@ -137,7 +144,7 @@ const THEMES := {
 			TINT: Color("e8d8b8"),
 		},
 	},
-	# 双子結晶: 結晶の森。夜明けの薄紫の霞と、低い桃色の光。苔むした暗い青緑の地面に、紫の結晶を生やした暗い岩、
+	# 双子結晶: 結晶の森。夜明けの薄紫の霞と、低い桃色の光。苔むした暗い青緑の地面に、青い結晶の生えた暗い紫の岩山、
 	# 暗い針葉樹の森。盤の外にも結晶が光る。
 	CRYSTAL_FOREST: {
 		NORMAL: Color("3c6f68"), FOREST: Color("1d4440"), OBSTACLE: Color("4a4468"), FONT: Color("46bcd6"),
@@ -145,7 +152,10 @@ const THEMES := {
 		SUN_PITCH: -30.0, SUN_YAW: 40.0, SUN_ENERGY: 1.1, AMBIENT_ENERGY: 0.55,
 		PAVING: 0.0, DRY: 0.0,
 		CRYSTAL: Color("5fe0f5"), SPRING_STONE: Color("8c8aa8"),
-		OBSTACLE_PROPS: {"style": SINGLE, "props": [ROCK_E, ROCK_C], "scale": 2.5, "tint": Color("8a86b0"), "crystals": Color("9465f0")},
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE, "crystals": CRAG_CRYSTAL,
+			"low": Color("1f1d2e"), "cliff": Color("3f3b5a"), "top": Color("5b5a7c"),
+		},
 		FOREST_PROPS: {"style": SINGLE, "props": [TREES_B, TREES_A], "scale": 0.64, "tint": Color("6a9aa8")},
 		SCENERY: {
 			BIG: [MOUNTAIN_B, {"crystal": Color("9465f0"), "height": 1.0, "size": 0.6}],

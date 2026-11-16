@@ -11,6 +11,8 @@ extends Control
 ##
 ## 何を出すかは呼ぶ側（result_summary.gd）が決める。ここは見せ方と、押されたことを signal で知らせるだけ。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
@@ -54,13 +56,13 @@ const STAT_FONT := 22
 ## 詳しい戦績を折り返す幅（px）。
 const DETAIL_WIDTH := 760.0
 
-const COLOR_SHADE := Color(0.0, 0.0, 0.0, 0.78)
-const COLOR_PANEL := Color(0.09, 0.11, 0.15, 0.97)
-const COLOR_DIM := Color(0.75, 0.78, 0.82)
-const COLOR_VICTORY := Color("ffcf4a")
+const COLOR_SHADE := Color(Palette.SHADE, 0.78)
+const COLOR_PANEL := Palette.SOLID
+const COLOR_DIM := Palette.TEXT_DIM
+const COLOR_VICTORY := Palette.ACCENT
 const COLOR_DEFEAT := Color("9cc8ff")
-const COLOR_DRAW := Color("e6e6e6")
-const COLOR_MVP := Color("ffd76a")
+const COLOR_DRAW := Palette.TEXT
+const COLOR_MVP := Palette.ACCENT
 
 ## 盤を見ている人の画面の、開いている重なる画面（システムメニューなど）。開いている間は、ここの Enter とクリックを使わない。
 var overlays: OverlayStack
@@ -113,6 +115,7 @@ func _ready() -> void:
 	add_child(_shade)
 
 	_headline = _label(76)
+	_headline.theme_type_variation = UiTheme.LABEL_HEADING
 	_headline.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_headline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_headline.add_theme_constant_override("outline_size", 14)
@@ -548,6 +551,7 @@ func _build_actions() -> void:
 	# 行を分けると、戦績の行が多いときにボタンが画面の下の帯に重なる）。
 	_continue_button = _button("次へ", 240.0)
 	_continue_button.set_meta(&"sound", &"ui_confirm")
+	_continue_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_continue_button.add_theme_font_size_override("font_size", BIG_FONT)
 	_continue_button.pressed.connect(press_continue)
 	_continue_button.visible = false
@@ -597,10 +601,7 @@ func _button(text: String, width: float) -> Button:
 
 
 func _panel() -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(12.0)
+	var style := UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 6, 12.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -610,7 +611,6 @@ func _panel() -> PanelContainer:
 func _label(font_size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label

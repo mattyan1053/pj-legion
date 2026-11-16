@@ -17,6 +17,8 @@ const Sound := preload("res://game/sound.gd")
 const Run := preload("res://game/run.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
 const WindowMode := preload("res://game/window_mode.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
+const UiFeel := preload("res://game/ui_feel.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -37,6 +39,7 @@ var _window_mode: WindowMode
 
 
 func _ready() -> void:
+	UiTheme.install()  # どの画面を作るよりも前に、UI のテーマを当てる
 	var args := OS.get_cmdline_user_args()
 	if args.has("--autoplay"):
 		context.checking = AppContext.CHECK_AUTOPLAY
@@ -55,6 +58,7 @@ func _ready() -> void:
 		context.decks.store = SaveStore.new()
 		context.decks.load_saved()
 
+	add_child(UiFeel.new())  # ボタンにマウスが乗ったとき・押したときの小さな動き
 	var sound := Sound.new()
 	add_child(sound)
 	context.sound = sound
@@ -119,7 +123,9 @@ func go(scene: StringName) -> void:
 		context.run = null  # 流れの外の場面へ出た（タイトルへ戻る、対戦の設定へ、など）
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP  # 切り替えの間のクリックは、どの場面にも届かない
 	context.system_menu.close()
-	(context.sound as Sound).play_scene_music(SceneFlow.music(scene))  # 暗転と同じころに、曲もつなぐ
+	# 暗転と同じころに、曲もつなぐ。流れが渡すものが曲を決めていれば、その曲（対戦の盤の見た目、話の会話）。
+	var given: Variant = context.run.data() if context.run != null else null
+	(context.sound as Sound).play_scene_music(SceneFlow.music_for(scene, given))
 	if _current != null:
 		# 抜ける場面は止めておく（暗くなる間に、CPU の番や再生が進まないように）。
 		_current.process_mode = Node.PROCESS_MODE_DISABLED

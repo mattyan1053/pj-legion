@@ -32,6 +32,8 @@ const SCENES := {
 	"setup": "対戦の設定の場面（ステージ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦の設定画面（閉じて戻れる）",
 	"setup_deck": "対戦の設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
+	"setup_preview": "対戦の設定で、CPU の部隊の「編成を確認」を開いたところ",
+	"setup_random": "対戦の設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
 	"deck_list": "部隊の編成: 取っておいた部隊の一覧（出せない部隊も理由つきで並ぶ）",
 	"deck_delete": "部隊の編成: 部隊を消す前の確かめ",
 	"deck_empty": "部隊の編成: 新しく組み始めた、空の部隊",
@@ -98,6 +100,8 @@ const SCENES := {
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
+	"portal_range": "ポータルへ届く駒を選んで、動ける範囲の中のポータルの対（入る・出る）が同じ色で塗られている（双子結晶）",
+	"portal_menu": "ポータルのマスへ動いて、メニューに「転移」が出ている（行き先のポータルが塗られている。双子結晶）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"minimap_pointed": "ミニマップで相手の本陣のあたりを押して、視点がそこへ移った（右上の白い枠が見ている範囲）",
 	"minimap_hidden": "設定でミニマップを隠した（右上に何も出ない）",
@@ -112,6 +116,9 @@ const SCENES := {
 	"look_twin_springs_start": "双子結晶の対戦の始め",
 	"look_twin_springs_wide": "双子結晶を、いちばん引いて低い角度で見ている",
 	"look_twin_springs_close": "双子結晶の盤の真ん中に寄って見ている",
+	"look_boulder_crag": "大岩の峠（草原の見た目）の真ん中の大岩を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
+	"look_twin_springs_crag": "双子結晶の真ん中の大きな岩山を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
+	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
 	"story_list": "ストーリー: タイトルの「ストーリー」のあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
@@ -446,6 +453,29 @@ func _scene_setup_deck() -> bool:
 	_park_mouse()
 	await get_tree().process_frame
 	panel.open_deck_picker(Unit.Side.PLAYER1)
+	return true
+
+
+func _scene_setup_preview() -> bool:
+	_fill_decks()
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	panel.choose_deck(Unit.Side.PLAYER1, _app.context.decks.items()[0].id)
+	panel.open_preview(Unit.Side.PLAYER2)
+	_park_mouse()
+	return panel.preview().visible
+
+
+func _scene_setup_random() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_random_side()
+	_park_mouse()
 	return true
 
 
@@ -1268,6 +1298,12 @@ func _stage_look(stage: BoardGenerator.Stage, view: StringName) -> bool:
 		&"close":
 			_look_at(middle)
 			_aim(12.0, 20.0, 45.0)
+		&"crag":
+			_look_at(middle)
+			_aim(22.0, 140.0, 42.0)
+		&"crag_low":
+			_look_at(middle + Vector3(0.0, 0.0, 5.0))
+			_aim(16.0, 0.0, OrbitCamera.MIN_PITCH)
 	return true
 
 
@@ -1307,6 +1343,23 @@ func _scene_look_twin_springs_close() -> bool:
 	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"close")
 
 
+func _scene_look_boulder_crag() -> bool:
+	_field = VersusFields.BOULDER_PASS
+	_new_battle()
+	_show()
+	_look_at(Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0))
+	_aim(20.0, 140.0, 42.0)
+	return true
+
+
+func _scene_look_twin_springs_crag() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"crag")
+
+
+func _scene_look_twin_springs_crag_low() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"crag_low")
+
+
 ## stage の盤で、cells の最初のマスへ寄って見る（泉・ポータルの動き）。
 func _close_look(stage: BoardGenerator.Stage, cells: Callable) -> bool:
 	_field = VersusFields.field_of_stage(stage)
@@ -1338,6 +1391,55 @@ func _scene_portal_cell() -> bool:
 	_scene.click_cell(portals[0])
 	_scene.focus_camera(portals[0])
 	return _scene.info_title().begins_with("マス")
+
+
+## いまの番の駒のうち、歩いて（転移せずに）ポータルに止まれて、そこから転移できる駒と、そのポータル（[駒, マス]）。無ければ空。
+func _portal_walker() -> Array:
+	for unit in _own_units():
+		if not _battle.can_act(unit):
+			continue
+		var cells := Queries.move_cells(_battle, unit)
+		for portal: Vector2i in _battle.board.portal_exits:
+			var exit := _battle.portal_exit(portal)
+			if not cells.has(portal) or cells[portal] or exit == Board.NO_CELL or not cells.has(exit):
+				continue
+			if not Movement.path_to(_battle, unit, portal).has(exit):  # ポータルへは歩いて行く（転移して着くのではない）
+				return [unit, portal]
+	return []
+
+
+func _scene_portal_range() -> bool:
+	_field = VersusFields.TWIN_SPRINGS
+	_new_battle()
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _portal_walker().is_empty()):
+		return false
+	_show()
+	var found := _portal_walker()
+	var unit: Unit = found[0]
+	var portal: Vector2i = found[1]
+	_scene.click_cell(unit.cell)
+	_look_at(BoardView.cell_center(portal) + (BoardView.cell_center(_battle.portal_exit(portal)) - BoardView.cell_center(portal)) * 0.4)
+	_aim(44.0, 0.0, 72.0)
+	_scene.hover(portal)
+	return _scene.painted_color(_battle.portal_exit(portal)) == _scene.portal_paint_color(portal)
+
+
+func _scene_portal_menu() -> bool:
+	_field = VersusFields.TWIN_SPRINGS
+	_new_battle()
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _portal_walker().is_empty()):
+		return false
+	_show()
+	var found := _portal_walker()
+	var unit: Unit = found[0]
+	var portal: Vector2i = found[1]
+	await _idle()
+	_scene.click_cell(unit.cell)
+	_scene.click_cell(portal)
+	await _idle()
+	_look_at(BoardView.cell_center(portal) + (BoardView.cell_center(_battle.portal_exit(portal)) - BoardView.cell_center(portal)) * 0.4)
+	_aim(44.0, 0.0, 72.0)
+	return unit.cell == portal and _scene.menu_ids().has(&"warp")
 
 
 func _stage_overview(stage: BoardGenerator.Stage) -> bool:
@@ -1439,9 +1541,7 @@ func _scene_story_sortie() -> bool:
 func _scene_story_mixed_decks() -> bool:
 	for episode in Story.EPISODES:
 		_app.context.story.clear(episode.ID)
-	await _app.go(SceneFlow.TITLE)
-	_app.current_scene().press_decks()
-	await _app.scene_changed
+	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
 	screen.set_mode(Story.RULES_ID)
 	screen.press_new()
@@ -1599,9 +1699,7 @@ func _scene_story_battle_talk() -> bool:
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。
 func _scene_decks_story() -> bool:
-	await _app.go(SceneFlow.TITLE)
-	_app.current_scene().press_decks()
-	await _app.scene_changed
+	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
 	screen.set_mode(Story.RULES_ID)
 	screen.press_new()
