@@ -2131,8 +2131,11 @@ func _scene_story_unlock() -> bool:
 
 
 func _scene_story_cleared() -> bool:
-	for episode in Story.military().episodes:
-		_app.context.story.clear(episode.id)  # 「クリア済み」の印は、全部の話をクリアしたとき
+	# 「クリア済み」の印は、遊べる物語の全部の話をクリアしたとき。クリアは、いま選んでいる物語の記録に書く。
+	for campaign: RefCounted in Story.campaigns():
+		_app.context.story.choose_campaign(campaign)
+		for episode: RefCounted in campaign.episodes:
+			_app.context.story.clear(episode.id)
 	await _app.go(SceneFlow.TITLE)
 	return _app.current_scene().story_label().contains("クリア済み")
 
