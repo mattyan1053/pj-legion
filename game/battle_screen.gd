@@ -36,6 +36,7 @@ const Run := preload("res://game/run.gd")
 const WinText := preload("res://game/win_text.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"。
 ## 「次へ」（渡されたものが許したときだけ出る。ストーリー）は Run.NEXT）。
@@ -303,12 +304,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				choose_evolution(0)
 			KEY_2, KEY_KP_2:
 				choose_evolution(1)
-			KEY_F1:
-				start_on_stage(BoardGenerator.Stage.PLAIN, map_seed + 1)
-			KEY_F2:
-				start_on_stage(BoardGenerator.Stage.LABYRINTH, map_seed + 1)
-			KEY_F3:
-				start_on_stage(BoardGenerator.Stage.TWIN_SPRINGS, map_seed + 1)
+			KEY_F1, KEY_F2, KEY_F3:
+				_start_on_nth_field(event.physical_keycode - KEY_F1)
 			KEY_F4:
 				toggle_opponent()
 			KEY_T:
@@ -330,13 +327,20 @@ func start_battle(battle_seed: int) -> void:
 	start_with(setup.create_battle(), source.look(), battle_seed, setup.scenario.title)
 
 
-## ステージを battle_stage に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
-## 渡されたものが、そのステージを選べない（source.stages() に無い）なら何もしない。
-func start_on_stage(battle_stage: BoardGenerator.Stage, battle_seed: int) -> void:
-	if is_busy() or not source.stages().has(battle_stage):
+## ステージを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
+## 渡されたものが、そのステージを選べない（source.new_board_fields() に無い）なら何もしない。
+func start_on_field(field: StringName, battle_seed: int) -> void:
+	if is_busy() or not source.new_board_fields().has(field):
 		return
-	source.choose_stage(battle_stage)
+	source.choose_field(field)
 	start_battle(battle_seed)
+
+
+## F1〜F3: 「新しい盤面」で選べるステージの index 番目で、新しい対戦を始める（無ければ何もしない）。
+func _start_on_nth_field(index: int) -> void:
+	var fields := source.new_board_fields()
+	if index < fields.size():
+		start_on_field(fields[index], map_seed + 1)
 
 
 ## 対戦の設定画面を、いまの設定で開く。再生の途中と CPU の番の間は何もしない。
@@ -405,7 +409,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_layout.clear_forecast()
 	_layout.reset_menu()
 	_hud.hide_result()
-	_hud.result_screen().set_destinations(source.stages(), source.can_open_setup(), source.can_choose_squad())
+	_hud.result_screen().set_destinations(_new_boards(), source.can_open_setup(), source.can_choose_squad())
 	context.resume_scene_music()  # 決着の曲のあとの「やり直す」でも、対戦の曲へ戻る
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
 	_cues = source.talk_cues()
@@ -482,11 +486,19 @@ static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human
 	return &"victory"
 
 
-func _on_restart_pressed(new_stage: int, new_board: bool) -> void:
+func _on_restart_pressed(field: StringName, new_board: bool) -> void:
 	if new_board:
-		start_on_stage(new_stage as BoardGenerator.Stage, map_seed + 1)
+		start_on_field(field, map_seed + 1)
 	else:
 		start_battle(map_seed)
+
+
+## 決着の画面の「新しい盤面」のボタン: [鍵, 名前] の列。
+func _new_boards() -> Array[Array]:
+	var boards: Array[Array] = []
+	for field in source.new_board_fields():
+		boards.append([field, VersusFields.title_of(field)])
+	return boards
 
 
 # ---- 操作（マウス・キー・ボタンのどれからも、ここを通る） ----

@@ -80,7 +80,7 @@ func test_episode_battle_offers_nothing_to_choose_again() -> void:
 	var source := Story.first_battle(Story.EPISODES[0])
 	assert_false(source.can_switch_opponent())
 	assert_false(source.can_open_setup())
-	assert_true(source.stages().is_empty())
+	assert_true(source.new_board_fields().is_empty())
 	assert_true(source.copy() is StoryBattle)
 	assert_eq(source.copy().episode, source.episode)
 	assert_eq(source.copy().human_deck, source.human_deck, "やり直しも同じ部隊")

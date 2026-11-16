@@ -18,6 +18,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
@@ -63,9 +64,7 @@ const MAX_TURNS := 80
 const SHORT_GAME_TURNS := 2
 ## この番号の対戦は、相手（プレイヤー2）を CPU にする。
 const CPU_GAME := 1
-const STAGES: Array[BoardGenerator.Stage] = [
-	BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.TWIN_SPRINGS, BoardGenerator.Stage.LABYRINTH,
-]
+const STAGES: Array[StringName] = [VersusFields.PLAIN, VersusFields.TWIN_SPRINGS, VersusFields.LABYRINTH]
 
 enum Phase { GAME, SCENES, STAGES, END }
 
@@ -173,7 +172,7 @@ func _process(_delta: float) -> void:
 				_undone.clear()
 				_cpu_actions_before = _scene.cpu_actions
 				_scene.set_opponent(_game == CPU_GAME)
-				_scene.start_on_stage(STAGES[_game], _scene.map_seed + 1)
+				_scene.start_on_field(STAGES[_game], _scene.map_seed + 1)
 			elif battle.turn > MAX_TURNS:
 				_fail("%d ターンでも決着しなかった" % MAX_TURNS)
 				_phase = Phase.END
@@ -1023,7 +1022,7 @@ func _queue_setup_scene() -> void:
 		panel.choose_human_side(Unit.Side.PLAYER2)
 		panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
 		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
-		panel.choose_stage(BoardGenerator.Stage.TWIN_SPRINGS)
+		panel.choose_field(VersusFields.TWIN_SPRINGS)
 		seen["actions"] = _scene.cpu_actions
 		panel.confirm()
 		# CPU（先手）の番の間も、必殺技のボタンは人（後手。MILITARY）のもの。
@@ -1039,17 +1038,30 @@ func _queue_setup_scene() -> void:
 		# 設定画面を開いて、選び直してから閉じても、いまの対戦と設定はそのまま（始めるボタンを押すまで、何も変わらない）。
 		_scene.open_setup()
 		_expect(panel.visible and panel.is_cancellable(), "対戦の途中の設定画面を、閉じられない")
-		panel.choose_stage(BoardGenerator.Stage.LABYRINTH)
+		panel.choose_field(VersusFields.LABYRINTH)
 		panel.choose_opponent(false)
 		panel.cancel()
 		_expect(not panel.visible and not _scene.is_busy(), "設定画面が閉じない")
 		_expect(_scene.battle == battle and _scene.look == StageLook.CRYSTAL_FOREST and _scene.cpu_opponent, "設定画面を閉じたら、対戦か設定が変わった")
+		# 手で作ったマップ（対戦モードで選べるもの）でも始まる。「新しい盤面」は生成のステージだけ（同じマップは形が変わらない）。
+		# 画面に出していない（釣り合いがめやすを外れる）マップでも、入口は同じ。
+		for field in VersusFields.all_ids():
+			if VersusFields.is_generated(field):
+				continue
+			_scene.open_setup()
+			panel.choose_field(field)
+			panel.choose_opponent(false)  # 先手の CPU が動き出すと、次の設定画面が開けない
+			panel.confirm()
+			var expected := VersusFields.card_board(field, 0)
+			_expect(_scene.battle.board.size == expected.size and _scene.battle.board.hq_cells == expected.hq_cells, "手で作ったマップで始まらない: %s" % field)
+			_expect(_scene.look == VersusFields.look_of(field), "手で作ったマップの見た目にならない: %s" % field)
+			_expect(_scene.source.new_board_fields() == VersusFields.generated_ids(), "手で作ったマップの対戦の「新しい盤面」が、生成のステージでない")
 		_scene.open_setup()
 		panel.choose_opponent(false)
 		panel.choose_human_side(Unit.Side.PLAYER1)
 		panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
 		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.FANTASY)
-		panel.choose_stage(BoardGenerator.Stage.PLAIN)
+		panel.choose_field(VersusFields.PLAIN)
 		panel.confirm()
 		_expect(not _scene.cpu_opponent and _scene.source.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
 	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、ステージ・相手・対戦の設定は選び直せない）を渡すと、選び直す入口が出ない。
@@ -1071,14 +1083,14 @@ func _script_fixed_source(kept: Dictionary) -> void:
 		_expect(_scene.menu_items().is_empty(), "対戦の設定を開けない対戦に、システムメニューの「対戦の設定へ」が出た")
 		_scene.open_setup()
 		_expect(not _scene.setup_panel().visible, "対戦の設定を開けない対戦で、設定画面が開いた")
-		_scene.start_on_stage(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
+		_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
 		_expect(_scene.battle == battle, "ステージを選べない対戦で、ステージを替えてやり直した")
-		_expect(not _scene.result_screen().can_go_to_setup() and _scene.result_screen().new_board_stages().is_empty(),
+		_expect(not _scene.result_screen().can_go_to_setup() and _scene.result_screen().new_board_fields().is_empty(),
 			"選び直せない対戦の決着の画面に、対戦の設定・新しい盤面のボタンがある")
 		_scene.source = kept["source"]
 		_scene.start_battle(_scene.map_seed + 1)
 		_expect(_scene.opponent_switch_shown() and _scene.result_screen().can_go_to_setup()
-			and _scene.result_screen().new_board_stages().size() == MatchSetup.STAGE_NAMES.size(), "対戦モードに戻すと、選び直す入口が戻らない"))
+			and _scene.result_screen().new_board_fields() == VersusFields.generated_ids(), "対戦モードに戻すと、選び直す入口が戻らない"))
 
 
 ## 何も選び直せない対戦を渡すもの（_script_fixed_source）。迷宮回廊の人どうし。
@@ -1478,7 +1490,7 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 func _leave_battle(app: Node) -> void:
 	var menu: Node = app.system_menu()
 	_scene.set_opponent(false)
-	_scene.start_on_stage(BoardGenerator.Stage.PLAIN, _scene.map_seed + 1)
+	_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
 	_scene.set_opponent(true)
 	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
@@ -1495,14 +1507,18 @@ func _leave_battle(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.STAGE, "タイトルの「対戦」で、ステージ選択へ進まない")
 	var stages: Node = app.current_scene()
-	_expect(stages.card_stages().size() == MatchSetup.STAGE_NAMES.size(), "ステージのカードが足りない")
-	stages.hover(BoardGenerator.Stage.TWIN_SPRINGS)
-	_expect(stages.note_text().contains(MatchSetup.stage_name(BoardGenerator.Stage.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
-	stages.hover(-1)
-	stages.choose(BoardGenerator.Stage.LABYRINTH)
+	await get_tree().process_frame
+	_expect(stages.card_fields() == VersusFields.ids(), "ステージのカードが一覧と合わない")
+	for field in VersusFields.ids():
+		var card: Control = stages.card_of(field)
+		_expect(card.get_global_rect().size.x > 0.0 and _on_screen(card), "ステージのカードが画面からはみ出す: %s" % field)
+	stages.hover(VersusFields.TWIN_SPRINGS)
+	_expect(stages.note_text().contains(VersusFields.title_of(VersusFields.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
+	stages.hover(&"")
+	stages.choose(VersusFields.LABYRINTH)
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.SETUP, "ステージ選択のカードで、対戦の設定へ進まない")
-	_expect(app.current_scene().setup_panel().current_choice().stage == BoardGenerator.Stage.LABYRINTH, "選んだステージが対戦の設定に渡らない")
+	_expect(app.current_scene().setup_panel().current_choice().field == VersusFields.LABYRINTH, "選んだステージが対戦の設定に渡らない")
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.STAGE, "対戦の設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
@@ -1510,11 +1526,16 @@ func _leave_battle(app: Node) -> void:
 	var right := InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
 	right.pressed = true
-	right.position = app.current_scene().card_center(BoardGenerator.Stage.LABYRINTH)
+	right.position = app.current_scene().card_center(VersusFields.LABYRINTH)
 	right.global_position = right.position
 	app.get_viewport().push_input(right)
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.TITLE, "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
+
+
+## control が画面（論理の大きさ）の中に収まっているか。
+func _on_screen(control: Control) -> bool:
+	return control.get_viewport().get_visible_rect().encloses(control.get_global_rect())
 
 
 ## 部隊の編成の場面: 組む・並べ替える・装備を持たせる・取っておく・写す・名前を変える・消す（確かめる）。
@@ -1606,7 +1627,7 @@ func _visit_decks(app: Node) -> void:
 	# 対戦の設定で、取っておいた部隊を選ぶ。
 	app.current_scene().press_start()
 	await app.scene_changed
-	app.current_scene().choose(BoardGenerator.Stage.PLAIN)
+	app.current_scene().choose(VersusFields.PLAIN)
 	await app.scene_changed
 	var panel: Node = app.current_scene().setup_panel()
 	panel.choose_opponent(true)
@@ -1720,7 +1741,7 @@ func _win_story_battle(app: Node, sortie: Node, episode: Script) -> Node:
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
-	_expect(source.stages().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
+	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
 	_expect(screen.battle.board.size == episode.MAP.map().make_board().size, "話の対戦が、話のマップで始まらない")
 	var placed := 0
 	for unit: Unit in screen.battle.units:
@@ -1765,7 +1786,7 @@ func _win_story_battle(app: Node, sortie: Node, episode: Script) -> Node:
 		if not result.enabled_buttons().is_empty():
 			break
 		await get_tree().process_frame
-	_expect(result.can_continue() and result.new_board_stages().is_empty() and not result.can_go_to_setup(), "勝った話の決着の画面の行き先が違う（「次へ」が無い、か、選び直す行き先がある）")
+	_expect(result.can_continue() and result.new_board_fields().is_empty() and not result.can_go_to_setup(), "勝った話の決着の画面の行き先が違う（「次へ」が無い、か、選び直す行き先がある）")
 	return result
 
 

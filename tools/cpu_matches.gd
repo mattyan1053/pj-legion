@@ -12,7 +12,9 @@ extends SceneTree
 ##   --rival=REV     別の版の CPU（git のリビジョンか、スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
 ##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、ステージ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
 ##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
-##   --stage=N       このステージだけを回す（1〜3）。配置を見るときに、1 つのステージの標本を増やす
+##   --stage=KEY     このステージだけを回す。KEY は対戦モードの盤の鍵（game/versus_fields.gd。plain、ridge_path など。
+##                   画面に出していない手で作ったマップも測れる）か、生成のステージの番号（1〜3）。
+##                   配置を見るときに 1 つのステージの標本を増やす。手で作ったマップを対戦モードに出せるかも、これで測る
 ##   --relic=NAME    プレイヤー1 が、対戦の始めから聖遺物を 1 つ持つ（wisdom = 英知、courage = 勇気。ゲージは足さない）。
 ##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さ」）
 ##   --no-reward=1   中ボスを倒しても、聖遺物の効果とゲージを取り消す（CPU は、もらえるつもりのまま狩る）。
@@ -34,6 +36,7 @@ const CpuMatch := preload("res://tools/cpu_match.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const Names := preload("res://game/names.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 const STAGE_NAMES := {
@@ -45,6 +48,9 @@ const ENDINGS := {"king": "将の撃破", "hq": "本陣の占拠", "held": "守�
 ## --episode のときの、集計の「ステージ」の欄の鍵（生成のステージと重ならない値）。名前は話の名前。
 const EPISODE_STAGE := -1
 var _episode_title := ""
+## --stage に手で作ったマップを選んだときの、集計の「ステージ」の欄の鍵。名前はマップの名前。
+const MAP_STAGE := -2
+var _map_title := ""
 ## 「両軍とも同じ役割」の編成（--decks=even）。Deck.roster の並び（前衛・後衛・奇襲・回復）の何番目を雇うか。
 const EVEN_SLOTS: Array[int] = [0, 0, 1, 1, 2, 3]
 
@@ -280,19 +286,36 @@ func _initialize() -> void:
 		printerr("--episode の話を読めない: %s" % args["episode"])
 		quit(1)
 		return
+	# --stage: 生成のステージ（番号か鍵）なら fixed_stage、手で作ったマップの鍵なら map_field。
+	var fixed_stage := 0
+	var map_field: StringName = &""
+	if args.has("stage"):
+		var key := StringName(args["stage"])
+		if args["stage"].is_valid_int():
+			fixed_stage = args["stage"].to_int()
+		elif not VersusFields.all_ids().has(key):
+			printerr("--stage の盤を知らない: %s（%s か 1〜3）" % [key, ", ".join(VersusFields.all_ids())])
+			quit(1)
+			return
+		elif VersusFields.is_generated(key):
+			fixed_stage = VersusFields.scenario_of(key).stage
+		else:
+			fixed_stage = MAP_STAGE
+			map_field = key
+			_map_title = VersusFields.title_of(key)
 	var started := Time.get_ticks_msec()
 
 	for game in games:
 		var stage := CpuMatch.STAGES[game % CpuMatch.STAGES.size()]
 		if args.has("stage"):
-			stage = args["stage"].to_int() as BoardGenerator.Stage
+			stage = fixed_stage as BoardGenerator.Stage
 		@warning_ignore("integer_division")
 		var pairing := (game / CpuMatch.STAGES.size()) % 4
 		if mixed_only:
 			pairing %= 2
 		var armies: Array[UnitKind.Army] = [ARMIES[pairing % 2], ARMIES[(pairing % 2) ^ (0 if pairing >= 2 else 1)]]
 		var setup := MatchSetup.new()
-		setup.scenario = Scenario.versus(stage)
+		setup.scenario = Scenario.versus(stage) if map_field == &"" else VersusFields.scenario_of(map_field)
 		setup.battle_seed = first_seed + game
 		setup.ignore_budget = deck_mode == "even"
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
@@ -639,7 +662,11 @@ func _random_squad(episode: Script, squad_seed: int) -> Deck:
 
 
 func _stage_name(stage: int) -> String:
-	return "話 " + _episode_title if stage == EPISODE_STAGE else STAGE_NAMES[stage]
+	if stage == EPISODE_STAGE:
+		return "話 " + _episode_title
+	if stage == MAP_STAGE:
+		return _map_title
+	return STAGE_NAMES[stage]
 
 
 func _deck_text(deck: Deck) -> String:

@@ -11,6 +11,7 @@ signal start_pressed(choice: RefCounted)
 signal cancelled
 
 const MatchChoice := preload("res://game/match_choice.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Names := preload("res://game/names.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
@@ -77,10 +78,10 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 
-	var stages := {}
-	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
-		stages[stage] = "%d %s" % [stage, MatchSetup.stage_name(stage)]
-	_add_row(column, "ステージ", &"stage", stages)
+	var fields := {}
+	for field in VersusFields.ids():
+		fields[field] = "%d %s" % [VersusFields.number_of(field), VersusFields.title_of(field)]
+	_add_row(column, "ステージ", &"stage", fields)
 	_add_row(column, "相手", &"opponent", {true: "CPU", false: "人（2 人で交代）"})
 	_side_row = _add_row(column, "あなたの手番", &"human_side", {
 		Unit.Side.PLAYER1: "先手（青）", Unit.Side.PLAYER2: "後手（赤）",
@@ -203,8 +204,9 @@ func current_choice() -> RefCounted:
 	return _choice
 
 
-func choose_stage(stage: BoardGenerator.Stage) -> void:
-	_choice.stage = stage
+## ステージを field（versus_fields.gd の鍵）にする。
+func choose_field(field: StringName) -> void:
+	_choice.field = field
 	_show_choice()
 
 
@@ -262,7 +264,7 @@ func confirm() -> void:
 func _choose(key: StringName, value: Variant) -> void:
 	match key:
 		&"stage":
-			choose_stage(value)
+			choose_field(value)
 		&"opponent":
 			choose_opponent(value)
 		&"human_side":
@@ -277,7 +279,7 @@ func _show_choice() -> void:
 	if _rows.is_empty():
 		return
 	var current := {
-		&"stage": _choice.stage, &"opponent": _choice.cpu_opponent, &"human_side": _choice.human_side,
+		&"stage": _choice.field, &"opponent": _choice.cpu_opponent, &"human_side": _choice.human_side,
 		&"army0": _choice.armies[0], &"army1": _choice.armies[1],
 	}
 	for key: StringName in _rows:

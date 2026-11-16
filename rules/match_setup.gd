@@ -65,12 +65,18 @@ static func versus_cpu(
 	return on_scenario(Scenario.versus(at_stage), with_seed, human_side, human_deck, cpu_army)
 
 
-## 人どうしの対戦の設定。
-static func versus_human(at_stage: BoardGenerator.Stage, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
-	var setup := _on(Scenario.versus(at_stage), with_seed)
+## 戦いの定義 defined の、人どうしの対戦の設定（先手の編成 first、後手の編成 second）。
+## 人どうしの対戦の設定は、どのモードもここを通す（対戦モードの生成のステージは versus_human）。
+static func humans_on(defined: Scenario, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
+	var setup := _on(defined, with_seed)
 	setup.set_human(Unit.Side.PLAYER1, first)
 	setup.set_human(Unit.Side.PLAYER2, second)
 	return setup
+
+
+## 人どうしの、対戦モードのステージ at_stage の対戦の設定。
+static func versus_human(at_stage: BoardGenerator.Stage, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
+	return humans_on(Scenario.versus(at_stage), with_seed, first, second)
 
 
 ## 戦いの定義と種だけを入れた設定（どちらを誰が動かすかは、呼ぶ側が入れる）。

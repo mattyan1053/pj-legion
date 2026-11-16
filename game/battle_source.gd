@@ -37,14 +37,14 @@ func set_cpu_opponent(_cpu: bool) -> void:
 	pass
 
 
-## 新しい盤面でやり直すときに選べるステージ（BoardGenerator.Stage の並び。F1〜F3、決着の画面のボタン）。
+## 新しい盤面でやり直すときに選べるステージ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しい盤面」）。
 ## 空なら、やり直しは「同じ盤面でもう一度」だけ。
-func stages() -> Array[BoardGenerator.Stage]:
+func new_board_fields() -> Array[StringName]:
 	return []
 
 
-## 次に作る対戦の設定のステージを stage にする（stages() にあるものだけ）。
-func choose_stage(_stage: BoardGenerator.Stage) -> void:
+## 次に作る対戦の設定のステージを field にする（new_board_fields() にあるものだけ）。
+func choose_field(_field: StringName) -> void:
 	pass
 
 

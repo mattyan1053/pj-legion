@@ -3,15 +3,17 @@ extends "res://game/battle_source.gd"
 ## 対戦モードの対戦の画面に渡すもの（battle_source.gd）でもある。ステージを替えてやり直せ、相手を切り替えられ、
 ## 対戦の途中で対戦の設定のパネルを開ける。
 ##
-## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
+## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ（versus_fields.gd の鍵。生成のステージか手で作ったマップ）、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
 ## 人の部隊は、取っておいた部隊（deck_library.gd）か、軍ごとの既定の編成（MatchSetup.default_deck。部隊の id が空のとき）。
 ## CPU の編成は、いままでどおり CPU の編成（CpuDeck）。
 ## ここはノードに依存しない（テストから呼べる）。
 
 const Run := preload("res://game/run.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 
-var stage := BoardGenerator.Stage.PLAIN
+## ステージ（対戦モードで選べる盤の鍵。versus_fields.gd）。
+var field: StringName = VersusFields.DEFAULT
 ## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。
 var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 ## プレイヤー番号ごとの、選んだ部隊の id（空なら既定の編成）と、その中身（写し。選んだときのもの）。
@@ -29,7 +31,7 @@ func cpu_side() -> Unit.Side:
 
 
 func look() -> StringName:
-	return StageLook.name_of_stage(stage)
+	return VersusFields.look_of(field)
 
 
 func make_setup(battle_seed: int) -> MatchSetup:
@@ -44,16 +46,14 @@ func set_cpu_opponent(cpu: bool) -> void:
 	cpu_opponent = cpu
 
 
-## 対戦モードで選べるステージ（ステージ選択のカードと同じ並び）。
-func stages() -> Array[BoardGenerator.Stage]:
-	var all: Array[BoardGenerator.Stage] = []
-	for each: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
-		all.append(each)
-	return all
+## 「新しい盤面」で選べるステージ: 生成のステージ（ステージ選択のカードと同じ並び）。
+## 手で作ったマップは、種を替えても同じ形なので入れない（同じマップは「同じ盤面でもう一度」、ほかのマップは対戦の設定から）。
+func new_board_fields() -> Array[StringName]:
+	return VersusFields.generated_ids()
 
 
-func choose_stage(to_stage: BoardGenerator.Stage) -> void:
-	stage = to_stage
+func choose_field(to_field: StringName) -> void:
+	field = to_field
 
 
 func can_open_setup() -> bool:
@@ -115,7 +115,7 @@ func deck_for(side: Unit.Side) -> Deck:
 
 func copy() -> RefCounted:
 	var other: RefCounted = get_script().new()
-	other.stage = stage
+	other.field = field
 	other.armies = armies.duplicate()
 	other.deck_ids = deck_ids.duplicate()
 	for side in 2:
@@ -125,8 +125,9 @@ func copy() -> RefCounted:
 	return other
 
 
-## この選択で、種 battle_seed の対戦の設定を作る。
+## この選択で、種 battle_seed の対戦の設定を作る。戦いの定義は、選んだステージの対戦モードのもの（versus_fields.gd）。
 func to_setup(battle_seed: int) -> MatchSetup:
+	var defined := VersusFields.scenario_of(field)
 	if cpu_opponent:
-		return MatchSetup.versus_cpu(stage, battle_seed, deck_for(human_side), armies[cpu_side()], human_side)
-	return MatchSetup.versus_human(stage, battle_seed, deck_for(Unit.Side.PLAYER1), deck_for(Unit.Side.PLAYER2))
+		return MatchSetup.on_scenario(defined, battle_seed, human_side, deck_for(human_side), armies[cpu_side()])
+	return MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1), deck_for(Unit.Side.PLAYER2))
