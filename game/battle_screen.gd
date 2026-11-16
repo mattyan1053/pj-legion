@@ -882,7 +882,7 @@ func auto_button_state() -> Array:
 
 ## 番の知らせに出す陣営の名前（CPU が動かすなら、そう書く）。
 func _side_name(side: Unit.Side) -> String:
-	var side_name: String = Names.SIDE_NAMES[side]
+	var side_name: String = Names.side(side)
 	return side_name + " CPU" if cpu_opponent and side == source.cpu_side() else side_name
 
 
@@ -1609,7 +1609,7 @@ func _refresh() -> void:
 		var texts: Array[String] = []
 		for choice in battle.options(evolving.id).evolutions:
 			texts.append(BattleHud.evolution_text(choice, healer))
-		_hud.show_evolution("%s の進化先を選ぶ" % UnitKind.display_name(evolving.kind), texts)
+		_hud.show_evolution("%s の進化先を選ぶ" % Names.kind(evolving.kind), texts)
 	else:
 		_hud.hide_evolution()
 	var unacted := Queries.unacted_count(battle)
@@ -1704,7 +1704,7 @@ func _ult_side() -> Unit.Side:
 ## 必殺技のボタンの上に出す説明。
 func _ult_summary() -> String:
 	var ult := Ults.of(battle, _ult_side())
-	return ult.summary() if ult != null else ""
+	return Names.ult_summary(ult) if ult != null else ""
 
 
 ## 選べる対象が自分のマスだけのスキル（自分に使うスキル）を、選んでいるか。
@@ -1724,8 +1724,8 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		var names: Array[String] = []
 		var notes: Array[String] = []
 		for relic in Relics.held(battle, side):
-			names.append(Relics.display_name(relic).trim_suffix("の聖遺物"))
-			notes.append("%s: %s" % [Relics.display_name(relic), Relics.summary(relic)])
+			names.append(Names.relic(relic).trim_suffix("の聖遺物"))
+			notes.append("%s: %s" % [Names.relic(relic), Names.relic_summary(relic)])
 		relics.append("・".join(names))
 		relic_notes.append("
 ".join(notes))
@@ -1742,7 +1742,7 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var ult := Ults.of(battle, side)
 		percents.append(Ults.percent(battle, side))
-		names.append(ult.display_name() if ult != null else "")
+		names.append(Names.ult(ult) if ult != null else "")
 	_hud.set_ult_gauges(percents, names)
 
 
@@ -1832,7 +1832,7 @@ func _update_info() -> void:
 		# スキルの対象を選んでいる間は、使う駒と、スキルの説明を出す（見込みは、予測のパネル）。
 		var user := selected_unit()
 		var skill := Skills.of(user)
-		_hud.show_unit(user, "%s の対象を選んでいる" % skill.display_name(), skill.summary(), false)
+		_hud.show_unit(user, "%s の対象を選んでいる" % Names.skill(skill), Names.skill_summary(skill), false)
 		return
 	if _ui.menu_hover_id != &"" and selected_unit() != null and hovered == null and _hud.menu_ids().has(_ui.menu_hover_id):
 		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
@@ -1854,7 +1854,7 @@ func _hovered_action() -> Array:
 		var target := _hover_cell if _skill_cells.has(_hover_cell) else (actor.cell if _is_self_skill(actor) else NO_CELL)
 		if target == NO_CELL:
 			return []
-		return [UseSkillAction.new(actor.id, target), skill.display_name(), target]
+		return [UseSkillAction.new(actor.id, target), Names.skill(skill), target]
 	var hovered := battle.unit_at(_hover_cell) if _hover_cell != NO_CELL else null
 	var aiming := _ui.mode == Mode.NONE or _ui.mode == Mode.ATTACK
 	if hovered != null and aiming and _targets.has(hovered):

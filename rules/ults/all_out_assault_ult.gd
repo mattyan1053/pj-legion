@@ -23,12 +23,9 @@ func army() -> UnitKind.Army:
 	return UnitKind.Army.MILITARY
 
 
-func display_name() -> String:
-	return "総員突撃"
-
-
-func summary() -> String:
-	return "このターンの間、軍の全員の移動力 +%d、攻撃力（回復量）+%d" % [MOVE_BONUS, POWER_BONUS]
+## 説明の文（game/text/names.csv の ult.all_out_assault.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"move": MOVE_BONUS, "power": POWER_BONUS}
 
 
 func apply(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:

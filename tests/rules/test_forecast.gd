@@ -117,7 +117,7 @@ func test_barrel_lists_everyone_in_the_blast_including_the_attacker() -> void:
 	Statuses.add(enemy, Status.Type.BARRIER, 2)
 	var forecast := Forecast.of(battle, AttackBarrelAction.new(commando.id, Vector2i(2, 1)))
 	for unit: Unit in [commando, friend, enemy]:
-		assert_true(forecast.outcome(unit.id).exploded, unit.display_name())
+		assert_true(forecast.outcome(unit.id).exploded, str(UnitKind.Id.find_key(unit.kind)))
 	assert_eq(forecast.outcome(commando.id).damage, MapObject.BLAST_DAMAGE, "自分も巻き込まれる")
 	assert_eq(forecast.outcome(friend.id).damage, MapObject.BLAST_DAMAGE)
 	assert_eq(forecast.outcome(friend.id).hp_after, maxi(0, friend.hp - MapObject.BLAST_DAMAGE))

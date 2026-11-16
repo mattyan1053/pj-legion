@@ -130,7 +130,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		column.add_child(HSeparator.new())
 		var names := {}
 		for army in ARMIES:
-			names[army] = Names.ARMY_NAMES[army]
+			names[army] = Names.army(army)
 		var row := _add_row(column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)
 		var deck_row := _caption_row(column, "部隊")

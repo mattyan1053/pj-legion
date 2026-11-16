@@ -81,7 +81,7 @@ func test_a_cell_the_rules_let_the_enemy_attack_is_always_in_the_threat() -> voi
 						hit = true
 						break
 				if hit:
-					assert_true(map.has(cell), "%s から %s へ届く" % [attacker.display_name(), cell])
+					assert_true(map.has(cell), "%s から %s へ届く" % [UnitKind.Id.find_key(attacker.kind), cell])
 
 
 func test_zone_of_control_stops_the_approach() -> void:

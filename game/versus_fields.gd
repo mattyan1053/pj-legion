@@ -13,6 +13,7 @@ extends RefCounted
 ## 対戦モードの画面に出すのは、CPU どうしの釣り合い（docs/cpu-ai.md の「いまの集計」）が対戦モードのめやすに入るものだけ。
 ## めやすを外れるものは HIDDEN を立てて一覧に残す（画面には出さない。集計の道具の --stage では測れる）。
 
+const Names := preload("res://game/names.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const Maps := preload("res://game/maps.gd")
 
@@ -129,7 +130,7 @@ static func title_of(id: StringName) -> String:
 	var field := _field(id)
 	if field.has(MAP):
 		return Maps.find(field[MAP])["title"]
-	return MatchSetup.stage_name(field.get(STAGE, -1))
+	return Names.stage(field.get(STAGE, -1))
 
 
 static func tags_of(id: StringName) -> String:
@@ -155,7 +156,9 @@ static func scenario_of(id: StringName) -> Scenario:
 		var found: Dictionary = Maps.find(field[MAP])
 		return Scenario.on_map(found["map"], found["title"])
 	if field.has(STAGE):
-		return Scenario.versus(field[STAGE])
+		var generated := Scenario.versus(field[STAGE])
+		generated.title = Names.stage(field[STAGE])  # 生成のステージの名前は、画面の文の表（ルールは持たない）
+		return generated
 	return null
 
 

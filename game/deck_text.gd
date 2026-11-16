@@ -14,11 +14,11 @@ const ROLE_NOTES := {
 
 
 static func army_name(army: UnitKind.Army) -> String:
-	return Names.ARMY_NAMES.get(army, "?")
+	return Names.army(army)
 
 
 static func role_name(kind: UnitKind.Id) -> String:
-	return Names.ROLE_NAMES.get(UnitKind.role(kind), "")
+	return Names.role(UnitKind.role(kind))
 
 
 ## 編成が対戦に出せない理由の文（Deck.problems() の順）。空なら出せる。
@@ -74,7 +74,7 @@ static func bonus_text(bonus: Dictionary, kind := -1) -> String:
 	for stat: Unit.Stat in [Unit.Stat.MAX_HP, Unit.Stat.POWER, Unit.Stat.MOVE_RANGE, Unit.Stat.ATTACK_RANGE]:
 		var amount: int = bonus.get(stat, 0)
 		if amount != 0:
-			var name: String = Names.STAT_NAMES[stat]
+			var name: String = Names.stat(stat)
 			if stat == Unit.Stat.POWER and kind != -1 and UnitKind.role(kind as UnitKind.Id) == UnitKind.Role.HEALER:
 				name = "回復"
 			parts.append("%s %+d" % [name, amount])
@@ -95,7 +95,7 @@ static func skill_text(kind: UnitKind.Id) -> String:
 	var skill := Skills.of_kind(kind)
 	if skill == null:
 		return ""
-	return "%s（クールダウン %d ターン）\n%s" % [skill.display_name(), skill.cooldown(), skill.summary()]
+	return "%s（クールダウン %d ターン）\n%s" % [Names.skill(skill), skill.cooldown(), Names.skill_summary(skill)]
 
 
 ## 進化先の文（1 つ 1 行。名前と、能力値の増減と、特性）。
@@ -107,8 +107,8 @@ static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
 		if bonus != "":
 			parts.append(bonus)
 		for which in Evolution.traits(evolution):
-			parts.append(Names.TRAIT_TEXTS[which])
-		lines.append("%s: %s" % [Evolution.display_name(evolution), "、".join(parts)])
+			parts.append(Names.trait_text(which))
+		lines.append("%s: %s" % [Names.evolution(evolution), "、".join(parts)])
 	return lines
 
 
@@ -116,14 +116,14 @@ static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
 static func deck_summary(deck: Deck) -> String:
 	var parts: Array[String] = ["将"]
 	for entry in deck.entries:
-		var text := UnitKind.display_name(entry.kind)
+		var text := Names.kind(entry.kind)
 		var counted: Array[Equipment.Id] = []
 		for item in entry.equipment:
 			if counted.has(item):
 				continue
 			counted.append(item)
 			var count := entry.equipment.count(item)
-			text += "+" + Equipment.display_name(item) + ("×%d" % count if count > 1 else "")
+			text += "+" + Names.item(item) + ("×%d" % count if count > 1 else "")
 		parts.append(text)
 	return "、".join(parts)
 
@@ -134,5 +134,5 @@ static func equipment_short(items: Array[Equipment.Id]) -> String:
 	for item: Equipment.Id in Equipment.Id.values():
 		var count := items.count(item)
 		if count > 0:
-			parts.append("%s ×%d" % [Equipment.display_name(item), count])
+			parts.append("%s ×%d" % [Names.item(item), count])
 	return "、".join(parts)

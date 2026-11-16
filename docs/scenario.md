@@ -42,6 +42,6 @@
 
 ## 対戦モード
 
-`Scenario.versus(ステージ)`: 名前はステージの名前（`MatchSetup.stage_name()`）、盤はそのステージの生成（大きさは既定）、
+`Scenario.versus(ステージ)`: 名前は空（画面が、ステージから画面の文の表の名前を引いて入れる。`game/versus_fields.gd`）、盤はそのステージの生成（大きさは既定）、
 決め打ちの部隊は無し（両方とも、対戦の設定で選ぶ）、勝ちの条件は既定。
 `MatchSetup.versus_cpu` / `versus_human` は、これを持った対戦の設定を作る。

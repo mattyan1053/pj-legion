@@ -166,7 +166,7 @@ func test_gains_depend_on_the_role() -> void:
 		var unit := battle.add_unit(kind, P1, Vector2i(x % 6, 2 if x >= 6 else 0))
 		x += 1
 		Growth.gain(unit, Growth.EXPERIENCE_PER_LEVEL, ExperienceGainedEvent.Reason.HIT)
-		assert_eq([unit.max_hp(), unit.power()], expected[kind], UnitKind.display_name(kind))
+		assert_eq([unit.max_hp(), unit.power()], expected[kind], str(UnitKind.Id.find_key(kind)))
 		assert_eq(unit.move_range(), UnitKind.move_range(kind))
 		assert_eq(unit.attack_range(), UnitKind.attack_range(kind))
 

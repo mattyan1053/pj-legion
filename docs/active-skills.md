@@ -13,7 +13,7 @@
 
 - スキルは駒の種類で決まる（`Skills.of_kind(種類)`、`Skills.of(駒)`）。1 種類の駒は、スキルを 1 つだけ持つ。進化しても変わらない。
 - 将と中立の駒は持たない（`null`）。
-- スキルの定義は `Skill` の子のクラスで、状態を持たない。名前（`display_name`）、1 行の説明（`summary`）、
+- スキルの定義は `Skill` の子のクラスで、状態を持たない。説明に差し込む値（`summary_args`。名前と 1 行の説明の文は、画面の文の表の `skill.<id>`。`docs/text.md`）、
   クールダウン（`cooldown`）、対象のマス（`target_cells`）、効果が及ぶマス（`affected_cells`）、効果（`apply`）を持つ。
   要るスキルだけが、行動を終えるか（`ends_action`）、回数の上限（`max_uses`）、スキルだけの条件（`is_ready`）を書く。
 
@@ -138,6 +138,7 @@
 
 1. `Skill.Id` に 1 つ足す。
 2. `rules/skills/` に `Skill` の子のクラスを書く（調整値は、そのファイルの先頭に置く）。
+   名前と 1 行の説明は、画面の文の表（`game/text/names.csv`）に `skill.<id>` と `skill.<id>.summary` の 2 行を足す（調整値は `summary_args` で `{名前}` に差し込む）。
 3. `Skills.ALL` に 1 つ並べる。
 4. 行動を終えないなら `ends_action` を、回数に上限があるなら `max_uses` を書く（面倒は `Skills` が見る）。
 5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`battle_playback.gd` の `event_players()`）に載せる。

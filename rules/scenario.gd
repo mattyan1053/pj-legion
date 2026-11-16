@@ -7,7 +7,7 @@ extends RefCounted
 ## 種、人が選んだ部隊、誰が動かすかは、対戦の設定の側にある（1 回ぶんの選択なので）。
 ## 添字のある値は、プレイヤー番号（Unit.Side.PLAYER1 = 0、PLAYER2 = 1）ごと。
 
-## 画面に出す名前。
+## 画面に出す名前（手で作ったマップの名前。生成のステージは空で、画面が stage から名前を引く。game/names.gd の stage）。
 var title := ""
 ## 盤の出どころ。hand_map があれば、手で作ったマップ（種によらず、いつも同じ盤）。
 ## 無ければ、ステージ stage を大きさ board_size で生成する。
@@ -39,7 +39,6 @@ const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
 ## 対戦モードの、ステージ at_stage の戦いの定義（盤は生成。部隊は両方とも対戦の設定で選ぶ）。
 static func versus(at_stage: BoardGenerator.Stage) -> Scenario:
 	var scenario := Scenario.new()
-	scenario.title = MatchSetup.stage_name(at_stage)
 	scenario.stage = at_stage
 	return scenario
 

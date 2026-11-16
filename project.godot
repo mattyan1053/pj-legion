@@ -27,3 +27,7 @@ gdscript/warnings/untyped_declaration=2
 gdscript/warnings/unused_variable=2
 gdscript/warnings/unused_parameter=2
 gdscript/warnings/shadowed_variable=2
+
+[internationalization]
+
+locale/fallback="ja"

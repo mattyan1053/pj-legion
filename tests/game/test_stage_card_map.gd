@@ -15,7 +15,7 @@ func _near(image: Image, cell: Vector2i, color: Color) -> bool:
 
 
 func test_every_stage_draws_its_board_cell_by_cell() -> void:
-	for stage: BoardGenerator.Stage in MatchSetup.STAGE_NAMES:
+	for stage: BoardGenerator.Stage in BoardGenerator.Stage.values():
 		var board := BoardGenerator.generate(stage, 3)
 		var image := StageCardMap.draw(board, StageLook.name_of_stage(stage), COLORS)
 		assert_eq(image.get_size(), board.size * StageCardMap.CELL, "%d" % stage)

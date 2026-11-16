@@ -24,52 +24,48 @@ enum Role { NONE, VANGUARD, REARGUARD, RAIDER, HEALER }
 enum Army { NONE, MILITARY, FANTASY }
 
 ## power は攻撃力。回復役（衛生兵・プリースト）だけは回復量。
-## [名前, 役割, 軍, コスト, 最大 HP, power, 移動力, 射程]
+## [役割, 軍, コスト, 最大 HP, power, 移動力, 射程]。名前は画面の文の表（game/text/names.csv の unit.<id>）。
 const _TABLE := {
-	Id.KING: ["将", Role.NONE, Army.NONE, 0, 30, 8, 4, 1],
-	Id.SHIELD_TROOPER: ["シールドトルーパー", Role.VANGUARD, Army.MILITARY, 4, 44, 6, 3, 1],
-	Id.SNIPER: ["スナイパー", Role.REARGUARD, Army.MILITARY, 3, 13, 7, 3, 4],
-	Id.COMMANDO: ["コマンドー", Role.RAIDER, Army.MILITARY, 3, 16, 12, 6, 1],
-	Id.MEDIC: ["衛生兵", Role.HEALER, Army.MILITARY, 3, 20, 15, 4, 1],
-	Id.PALADIN: ["パラディン", Role.VANGUARD, Army.FANTASY, 4, 52, 8, 3, 1],
-	Id.SORCERER: ["ソーサラー", Role.REARGUARD, Army.FANTASY, 3, 20, 11, 3, 2],
-	Id.SPELLBLADE: ["スペルブレード", Role.RAIDER, Army.FANTASY, 3, 22, 12, 6, 1],
-	Id.PRIEST: ["プリースト", Role.HEALER, Army.FANTASY, 3, 22, 14, 4, 2],
-	Id.MINION: ["エナジー・コア", Role.NONE, Army.NONE, 0, 12, 4, 2, 1],
-	Id.ELITE_MINION: ["エリートミニオン", Role.NONE, Army.NONE, 0, 50, 10, 2, 2],
+	Id.KING: [Role.NONE, Army.NONE, 0, 30, 8, 4, 1],
+	Id.SHIELD_TROOPER: [Role.VANGUARD, Army.MILITARY, 4, 44, 6, 3, 1],
+	Id.SNIPER: [Role.REARGUARD, Army.MILITARY, 3, 13, 7, 3, 4],
+	Id.COMMANDO: [Role.RAIDER, Army.MILITARY, 3, 16, 12, 6, 1],
+	Id.MEDIC: [Role.HEALER, Army.MILITARY, 3, 20, 15, 4, 1],
+	Id.PALADIN: [Role.VANGUARD, Army.FANTASY, 4, 52, 8, 3, 1],
+	Id.SORCERER: [Role.REARGUARD, Army.FANTASY, 3, 20, 11, 3, 2],
+	Id.SPELLBLADE: [Role.RAIDER, Army.FANTASY, 3, 22, 12, 6, 1],
+	Id.PRIEST: [Role.HEALER, Army.FANTASY, 3, 22, 14, 4, 2],
+	Id.MINION: [Role.NONE, Army.NONE, 0, 12, 4, 2, 1],
+	Id.ELITE_MINION: [Role.NONE, Army.NONE, 0, 50, 10, 2, 2],
 }
 
 
-static func display_name(id: Id) -> String:
+static func role(id: Id) -> Role:
 	return _TABLE[id][0]
 
 
-static func role(id: Id) -> Role:
+static func army(id: Id) -> Army:
 	return _TABLE[id][1]
 
 
-static func army(id: Id) -> Army:
+static func cost(id: Id) -> int:
 	return _TABLE[id][2]
 
 
-static func cost(id: Id) -> int:
+static func max_hp(id: Id) -> int:
 	return _TABLE[id][3]
 
 
-static func max_hp(id: Id) -> int:
+static func power(id: Id) -> int:
 	return _TABLE[id][4]
 
 
-static func power(id: Id) -> int:
+static func move_range(id: Id) -> int:
 	return _TABLE[id][5]
 
 
-static func move_range(id: Id) -> int:
-	return _TABLE[id][6]
-
-
 static func attack_range(id: Id) -> int:
-	return _TABLE[id][7]
+	return _TABLE[id][6]
 
 
 static func is_neutral(id: Id) -> bool:

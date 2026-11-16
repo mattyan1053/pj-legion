@@ -39,7 +39,7 @@ static func hint(
 		return "進化先を選ぶ（上のボタン）"
 	if confirming_ult:
 		var ult := Ults.of(battle, battle.phase)  # 確かめるのは、人の番だけ
-		var named := "「%s」" % ult.display_name() if ult != null else ""
+		var named := "「%s」" % Names.ult(ult) if ult != null else ""
 		return "もう一度押すと必殺技%sを使う（取り消せない）。右クリックか、盤面のクリックでやめる" % named
 	if confirming_unacted > 0 and inspected == null:
 		return "まだ行動していない駒が %d 体（足元が光っている）。もう一度押すとターン終了。右クリックでやめる" % confirming_unacted
@@ -48,16 +48,16 @@ static func hint(
 		if pinned > 0:
 			ranges += "　橙の枠: 表示したままの範囲"
 		var back := "選んでいる駒へ戻る" if unit != null else "見るのをやめる"
-		return "%s を見ている（%s）\n右クリックで%s" % [inspected.display_name(), ranges, back]
+		return "%s を見ている（%s）\n右クリックで%s" % [Names.unit(inspected), ranges, back]
 	if unit == null and pinned > 0:
 		return "駒をクリックして選ぶ。橙の枠: 表示したままの相手の範囲（右クリックで全部消す）"
 	if unit == null:
 		return "駒をクリックして選ぶ。相手の駒をクリックすると、動ける範囲と攻撃の届く範囲が見える"
 	if mode == Mode.SKILL and self_skill:
-		return "%s: この駒（紫のマス）をクリックで使う。右クリックでやめる" % Skills.of(unit).display_name()
+		return "%s: この駒（紫のマス）をクリックで使う。右クリックでやめる" % Names.skill(Skills.of(unit))
 	if mode == Mode.SKILL:
 		var after := "使うと行動を終える" if Skills.of(unit).ends_action() else "使ったあと、続けて攻撃できる"
-		return "%s: 紫のマスをクリックで使う（%s）。右クリックでやめる" % [Skills.of(unit).display_name(), after]
+		return "%s: 紫のマスをクリックで使う（%s）。右クリックでやめる" % [Names.skill(Skills.of(unit)), after]
 	if mode == Mode.ATTACK:
 		return "攻撃: 赤いマスの相手をクリック。右クリックでやめる"
 	if mode == Mode.HEAL:
@@ -124,7 +124,7 @@ static func menu_note(id: StringName, unit: Unit) -> String:
 		MENU_SKILL:
 			var skill := Skills.of(unit)
 			var after := "使うと、この駒の行動は終わる" if skill.ends_action() else "使ったあと、続けて攻撃できる（移動は取り消せなくなる）"
-			return "%s: %s\n%s。%s" % [skill.display_name(), skill.summary(), after, BattleHud.skill_state_text(unit)]
+			return "%s: %s\n%s。%s" % [Names.skill(skill), Names.skill_summary(skill), after, BattleHud.skill_state_text(unit)]
 		MENU_WAIT:
 			return "待機: 何もせずに、この駒の行動を終える"
 		MENU_UNDO:
@@ -150,8 +150,8 @@ static func skill_button_text(unit: Unit, can_use: bool) -> String:
 	if not can_use:
 		return "スキル（いまは使えない）"
 	if uses > 0:
-		return "%s（あと %d 回）" % [skill.display_name(), uses]
-	return skill.display_name()
+		return "%s（あと %d 回）" % [Names.skill(skill), uses]
+	return Names.skill(skill)
 
 
 ## 必殺技のボタンの文字（side のプレイヤーの必殺技）。confirming は、使うかを確かめている途中か。
@@ -162,8 +162,8 @@ static func ult_button_text(battle: Battle, side: Unit.Side, confirming: bool) -
 	if confirming:
 		return "もう一度押して発動"  # 何の必殺技かと、取り消せないことは、ボタンの上の説明と下の帯に出す
 	if Ults.is_ready(battle, side):
-		return "必殺技: %s（使える）" % ult.display_name()
-	return "必殺技: %s（%d%%）" % [ult.display_name(), Ults.percent(battle, side)]
+		return "必殺技: %s（使える）" % Names.ult(ult)
+	return "必殺技: %s（%d%%）" % [Names.ult(ult), Ults.percent(battle, side)]
 
 
 # ---- 駒とマス ----
@@ -217,7 +217,7 @@ static func cell_notes(battle: Battle, cell: Vector2i) -> Array[String]:
 		notes.append(terrain.get_slice("（", 1).trim_suffix("）"))
 	var hq_owner := battle.board.hq_owner(cell)
 	if hq_owner >= 0:
-		notes.append("%s の本陣" % Names.SIDE_NAMES[hq_owner])
+		notes.append("%s の本陣" % Names.side(hq_owner))
 	for effect in battle.board.field_effects_at(cell):
 		notes.append(BattleHud.field_effect_text(effect))
 	var type := battle.board.object_at(cell)

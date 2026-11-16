@@ -21,12 +21,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.PALADIN
 
 
-func display_name() -> String:
-	return "ディバインシールド"
-
-
-func summary() -> String:
-	return "自分にバリア（%d ターン。次に受けるダメージを 1 回だけ 0 にする。攻撃・爆発・魔法のどれも）を付ける" % BARRIER_TURNS
+## 説明の文（game/text/names.csv の skill.divine_shield.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"turns": BARRIER_TURNS}
 
 
 func cooldown() -> int:

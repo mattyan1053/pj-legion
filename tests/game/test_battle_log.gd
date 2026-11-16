@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 対戦のログ（game/battle_log.gd。docs/battle-book.md）。
 
+const Names := preload("res://game/names.gd")
 const BattleLog := preload("res://game/battle_log.gd")
 const Maps := preload("res://tests/support/maps.gd")
 const CpuGame := preload("res://tests/support/cpu_game.gd")
@@ -168,7 +169,7 @@ func test_skill_damage_is_grouped_under_the_skill() -> void:
 	var book := BattleLog.new(battle)
 	_apply(battle, book, UseSkillAction.new(sorcerer.id, Vector2i(3, 1)))
 	var entry: BattleLog.Entry = book.entries[1]
-	assert_eq(entry.text, "青のソーサラー が「%s」を使った（(3, 1)）" % Skills.by_id(Skill.Id.FIREBALL).display_name())
+	assert_eq(entry.text, "青のソーサラー が「%s」を使った（(3, 1)）" % Names.skill(Skills.by_id(Skill.Id.FIREBALL)))
 	assert_eq(entry.details.size(), 2, entry.full_text())
 	assert_true(entry.details[0].begins_with("赤のスナイパー に "), entry.details[0])
 	assert_true(entry.details[1].begins_with("赤のコマンドー に ") and entry.details[1].contains("倒れた"), entry.details[1])

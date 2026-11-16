@@ -61,8 +61,7 @@ func test_left_boss_holds_wisdom_and_right_boss_holds_courage() -> void:
 	assert_eq(Relics.bonus(WISDOM), {Unit.Stat.MAX_HP: Relics.WISDOM_MAX_HP})
 	assert_eq(Relics.bonus(COURAGE), {Unit.Stat.POWER: Relics.COURAGE_POWER})
 	for id: Relics.Id in [WISDOM, COURAGE]:
-		assert_ne(Relics.display_name(id), "")
-		assert_true(Relics.summary(id).contains(str(Relics.bonus(id).values()[0])), "説明に量が出る")
+		assert_eq(Relics.amount(id), Relics.bonus(id).values()[0], "説明に差し込む量は、足す量")
 
 
 # ---- 受け取る ----

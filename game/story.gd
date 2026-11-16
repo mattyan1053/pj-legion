@@ -9,6 +9,7 @@ extends RefCounted
 ##   壊れたファイル・知らない id があっても、起動を止めない（知らない話・物語の記録は残して書き戻す）。
 ## - 負けても失うものは無い。何度でもやり直せる。
 
+const Names := preload("res://game/names.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const Run := preload("res://game/run.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
@@ -298,10 +299,10 @@ class Unlocked:
 		var lines: Array[Dictionary] = []
 		for kind: UnitKind.Id in episode.unlock_kinds:
 			if not kinds.has(kind):
-				lines.append({"text": "新しい駒「%s」を雇えるようになった。" % UnitKind.display_name(kind), "kind": kind})
+				lines.append({"text": "新しい駒「%s」を雇えるようになった。" % Names.kind(kind), "kind": kind})
 		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
-				lines.append({"text": "新しい持ち物「%s」を持たせられるようになった。" % Equipment.display_name(item)})
+				lines.append({"text": "新しい持ち物「%s」を持たせられるようになった。" % Names.item(item)})
 		var more := episode.budget_up
 		if more > 0:
 			lines.append({"text": "部隊のコストの上限が %d になった。" % (budget + more)})
@@ -365,7 +366,7 @@ static func rules_of(given: Unlocked) -> DeckRules:
 	roster.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
 		return UnitKind.role(a) < UnitKind.role(b) or (UnitKind.role(a) == UnitKind.role(b) and a < b))
 	var army: UnitKind.Army = given.campaign.army
-	return DeckRules.new(given.campaign.rules_id, "ストーリー", Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items)
+	return DeckRules.new(given.campaign.rules_id, Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items)
 
 
 ## 使えるもの given の、ストーリーの既定の編成。初めて遊ぶ人が出撃の準備で見て納得できる、素直な形にする:

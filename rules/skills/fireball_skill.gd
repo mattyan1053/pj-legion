@@ -25,12 +25,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.SORCERER
 
 
-func display_name() -> String:
-	return "ファイアボール"
-
-
-func summary() -> String:
-	return "%d マス以内を中心に、十字 5 マスの敵へ %d ダメージ（壁越し。森で減らない）" % [CENTER_RANGE, DAMAGE]
+## 説明の文（game/text/names.csv の skill.fireball.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"range": CENTER_RANGE, "damage": DAMAGE}
 
 
 func cooldown() -> int:

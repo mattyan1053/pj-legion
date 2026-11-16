@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 駒の情報の枠に出す文（game/battle_hud.gd の static な関数）: 所属、装備の一覧、状態。
 
+const Names := preload("res://game/names.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 
 
@@ -26,4 +27,4 @@ func test_equipment_is_counted() -> void:
 func test_every_status_has_a_text() -> void:
 	for type: int in Status.Type.values():
 		var text := BattleHud.status_text(type as Status.Type, 2)
-		assert_true(text.begins_with(Status.display_name(type as Status.Type)) and text.contains("あと 2 ターン"), text)
+		assert_true(text.begins_with(Names.status(type as Status.Type)) and text.contains("あと 2 ターン"), text)

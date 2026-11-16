@@ -22,19 +22,6 @@ enum Type {
 const NORMAL_PERCENT := 100
 
 
-static func display_name(type: Type) -> String:
-	match type:
-		Type.BARRIER:
-			return "バリア"
-		Type.AIM:
-			return "照準"
-		Type.FATIGUE:
-			return "反動"
-		Type.ASSAULT:
-			return "突撃"
-	return ""
-
-
 ## 付いている間の能力値の補正（Unit.Stat -> 足す量）。無ければ空。
 static func bonus(type: Type) -> Dictionary:
 	if type == Type.AIM:

@@ -22,12 +22,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.SPELLBLADE
 
 
-func display_name() -> String:
-	return "シャドウステップ"
-
-
-func summary() -> String:
-	return "縦・横・斜め %d マス以内へ跳ぶ（壁も駒も越える。敵のいるマスなら入れ替わる）。続けて攻撃できる" % RANGE
+## 説明の文（game/text/names.csv の skill.shadow_step.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"range": RANGE}
 
 
 func cooldown() -> int:

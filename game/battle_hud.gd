@@ -217,10 +217,10 @@ func set_status(
 	_goal_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
 	_goal_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
 	_goal_label.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
-	_phase_label.text = "%s の番" % Names.SIDE_NAMES[phase]
+	_phase_label.text = "%s の番" % Names.side(phase)
 	_phase_label.add_theme_color_override("font_color", _side_color(phase))
 	for player in 2:
-		var text := "%s  駒 %d" % [Names.SIDE_WORDS[player], counts[player]]
+		var text := "%s  駒 %d" % [Names.side_word(player), counts[player]]
 		if capture_shown[player]:
 			text += "  占拠 %s" % ("●".repeat(captures[player]) + "○".repeat(capture_goal - captures[player]))
 		_side_labels[player].text = text
@@ -303,13 +303,13 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_info_pin.visible = false  # 出すときは、このあとに set_pin_switch
 	if unit == null:
 		return
-	var role: String = Names.ROLE_NAMES.get(UnitKind.role(unit.kind), "")
-	var kind := UnitKind.display_name(unit.kind)
+	var role: String = Names.role(UnitKind.role(unit.kind))
+	var kind := Names.kind(unit.kind)
 	if unit.evolution != Evolution.Id.NONE:
 		# 進化した駒は、進化先の名前と、元の種類。
-		_info_name.text = "%s（%s から進化%s）" % [unit.display_name(), kind, "・" + role if role else ""]
+		_info_name.text = "%s（%s から進化%s）" % [Names.unit(unit), kind, "・" + role if role else ""]
 	else:
-		_info_name.text = unit.display_name() + ("（%s）" % role if role else "")
+		_info_name.text = Names.unit(unit) + ("（%s）" % role if role else "")
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
 	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
 	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE)
@@ -346,14 +346,14 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	var skill := Skills.of(unit)
 	var skill_text := ""
 	if skill != null:
-		skill_text = "スキル: %s（%s）" % [skill.display_name(), skill_state_text(unit)]
+		skill_text = "スキル: %s（%s）" % [Names.skill(skill), skill_state_text(unit)]
 	_set_shown(_info_skill, skill_text)
 	# スキルの中身は、読んで知るもの。選んだ駒・マウスを乗せた駒のスキルの説明を、いつも出す。
-	_set_shown(_info_skill_note, skill.summary() if skill != null and skill_note else "")
+	_set_shown(_info_skill_note, Names.skill_summary(skill) if skill != null and skill_note else "")
 
 	var traits: Array[String] = []
 	for which in Evolution.traits(unit.evolution):
-		traits.append("★ " + Names.TRAIT_TEXTS[which])
+		traits.append("★ " + Names.trait_text(which))
 	_set_shown(_info_traits, "\n".join(traits))
 	_set_shown(_info_state, state)
 	_set_shown(_info_forecast, note)
@@ -368,13 +368,13 @@ static func affiliation_text(unit: Unit, viewer: Unit.Side, side_army := UnitKin
 		tag = "[自軍]"
 	elif unit.side != Unit.Side.NEUTRAL:
 		tag = "[敵軍]"
-	var parts: Array[String] = [tag, Names.SIDE_NAMES[unit.side]]
+	var parts: Array[String] = [tag, Names.side(unit.side)]
 	var army := UnitKind.army(unit.kind)
 	if army != UnitKind.Army.NONE:
 		if side_army == UnitKind.Army.NONE or side_army == army:
-			parts.append(Names.ARMY_NAMES[army])
+			parts.append(Names.army(army))
 		else:
-			parts.append("%s（%s の駒）" % [Names.ARMY_NAMES[side_army], Names.ARMY_NAMES[army]])
+			parts.append("%s（%s の駒）" % [Names.army(side_army), Names.army(army)])
 	return "　".join(parts)
 
 
@@ -388,13 +388,13 @@ static func equipment_text(items: Array[Equipment.Id]) -> String:
 		counts[item] = counts.get(item, 0) + 1
 	var parts: Array[String] = []
 	for item in order:
-		parts.append(Equipment.display_name(item) + (" ×%d" % counts[item] if counts[item] > 1 else ""))
+		parts.append(Names.item(item) + (" ×%d" % counts[item] if counts[item] > 1 else ""))
 	return "・".join(parts) if not parts.is_empty() else "なし"
 
 
 ## 付いている状態の文（名前、残りのターン数、効果）。
 static func status_text(type: Status.Type, turns: int) -> String:
-	return "%s（あと %d ターン）: %s" % [Status.display_name(type), turns, STATUS_TEXTS[type]]
+	return "%s（あと %d ターン）: %s" % [Names.status(type), turns, STATUS_TEXTS[type]]
 
 
 ## クリックしたマスの情報を、駒の情報と同じ枠に出す。title は見出し（マスの位置と地形）、body は説明（行ごと）。
@@ -747,13 +747,13 @@ func hide_result() -> void:
 static func evolution_text(id: Evolution.Id, healer: bool) -> String:
 	var parts: Array[String] = []
 	var bonuses := Evolution.bonuses(id)
-	for which: Unit.Stat in Names.STAT_NAMES:
+	for which: Unit.Stat in Names.STATS:
 		if bonuses.has(which):
-			var stat_name: String = "回復" if healer and which == Unit.Stat.POWER else Names.STAT_NAMES[which]
+			var stat_name: String = "回復" if healer and which == Unit.Stat.POWER else Names.stat(which)
 			parts.append("%s %+d" % [stat_name, bonuses[which]])
-	var text := "%s\n%s" % [Evolution.display_name(id), "　".join(parts)]
+	var text := "%s\n%s" % [Names.evolution(id), "　".join(parts)]
 	for which in Evolution.traits(id):
-		text += "\n★ %s" % Names.TRAIT_TEXTS[which]
+		text += "\n★ %s" % Names.trait_text(which)
 	return text
 
 
@@ -1212,7 +1212,7 @@ func _button(text: String, to: Signal) -> Button:
 
 ## マスの説明に出す、盤の上の効果の種類と簡易説明（持ち主、残り、効果）。
 static func field_effect_text(effect: FieldEffect) -> String:
-	var owner: String = Names.SIDE_NAMES[effect.side]
+	var owner: String = Names.side(effect.side)
 	match effect.type:
 		FieldEffect.Type.BARRICADE:
 			return "盾（%s。耐久 %d / 通行・射撃を遮断）" % [owner, effect.durability]

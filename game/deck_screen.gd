@@ -11,6 +11,7 @@ extends Node
 ## - 流れ（run.gd）の中で置かれたら（出撃の準備・対戦の設定の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
 ##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備・対戦の設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
 
+const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
@@ -530,13 +531,13 @@ func _build_army_picker() -> Control:
 		var roster := _text(17, COLOR_TEXT)
 		var names: Array[String] = []
 		for kind in Deck.roster(army):
-			names.append("%s（%s）" % [UnitKind.display_name(kind), DeckText.role_name(kind)])
+			names.append("%s（%s）" % [Names.kind(kind), DeckText.role_name(kind)])
 		roster.text = "\n".join(names)
 		inside.add_child(roster)
 		var ult := Ults.of_army(army)
 		if ult != null:
 			var ult_label := _text(15, COLOR_DIM)
-			_fold(ult_label, "必殺技: %s\n%s" % [ult.display_name(), ult.summary()], 360.0)
+			_fold(ult_label, "必殺技: %s\n%s" % [Names.ult(ult), Names.ult_summary(ult)], 360.0)
 			inside.add_child(ult_label)
 		for label in inside.find_children("*", "Control", true, false):
 			(label as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -876,13 +877,13 @@ func _refresh_editor() -> void:
 		button.icon = UnitIcons.texture(kind)
 		button.set_meta(&"kind", kind)
 		button.text = "%s　%s　コスト %d\n%s" % [
-			UnitKind.display_name(kind), DeckText.role_name(kind), UnitKind.cost(kind), DeckText.stats_line(kind),
+			Names.kind(kind), DeckText.role_name(kind), UnitKind.cost(kind), DeckText.stats_line(kind),
 		]
 		button.disabled = full
 		button.tooltip_text = "%d 体まで" % _deck.rules.max_units if full else ""
 	var ult := Ults.of_army(_deck.army) if _deck.army != UnitKind.Army.NONE else null
 	if ult != null:
-		_fold(_ult_label, "必殺技: %s\n%s" % [ult.display_name(), ult.summary()], ROSTER_WIDTH - 24.0)
+		_fold(_ult_label, "必殺技: %s\n%s" % [Names.ult(ult), Names.ult_summary(ult)], ROSTER_WIDTH - 24.0)
 	_ult_label.get_parent().visible = ult != null
 
 	for child in _troop_rows.get_children():
@@ -936,7 +937,7 @@ func _troop_row(index: int) -> Control:
 	main.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var equipment := "、".join(UnitCard.equipment_lines(entry.equipment))
 	main.text = "%s　コスト %d\n%s" % [
-		UnitKind.display_name(entry.kind), entry.cost(), equipment if equipment != "" else "持ち物なし",
+		Names.kind(entry.kind), entry.cost(), equipment if equipment != "" else "持ち物なし",
 	]
 	main.tooltip_text = main.text
 	main.set_pressed_no_signal(index == _selected)
@@ -994,7 +995,7 @@ func _refresh_detail() -> void:
 	if kind == -1:
 		return
 	var unit_kind := kind as UnitKind.Id
-	var title := UnitKind.display_name(unit_kind)
+	var title := Names.kind(unit_kind)
 	if entry != null:
 		title = "%d. %s" % [_selected + 1, title]
 	_detail_title.text = title
@@ -1033,7 +1034,7 @@ func _refresh_detail() -> void:
 			(parts[2] as Button).disabled = full or not allowed
 			# まだ持たせられない持ち物（ストーリーで未解放）は、灰色で「未解放」。持たせているものは「−」で外せる。
 			var item_name := parts[3] as Label
-			item_name.text = "%s　コスト %d" % [Equipment.display_name(item), Equipment.cost(item)]
+			item_name.text = "%s　コスト %d" % [Names.item(item), Equipment.cost(item)]
 			if not allowed:
 				item_name.text += "　未解放"
 			item_name.add_theme_color_override("font_color", COLOR_TEXT if allowed else COLOR_DIM)

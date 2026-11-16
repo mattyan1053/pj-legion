@@ -389,7 +389,7 @@ func _initialize() -> void:
 			for kill: Array in outcome.mid_boss_kills:
 				kills.append("%d:%d:%d" % [kill[0], kill[1], kill[2]])
 			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s rival=%d" % [
-				first_seed + game, stage, Names.ARMY_NAMES[armies[0]], Names.ARMY_NAMES[armies[1]], outcome.winner, outcome.ending,
+				first_seed + game, stage, Names.army(armies[0]), Names.army(armies[1]), outcome.winner, outcome.ending,
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
 			])
 			if random_squads:
@@ -414,7 +414,7 @@ func _initialize() -> void:
 				])
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
-		var match_name := "%s 対 %s" % [Names.ARMY_NAMES[armies[0]], Names.ARMY_NAMES[armies[1]]]
+		var match_name := "%s 対 %s" % [Names.army(armies[0]), Names.army(armies[1])]
 		by_match.get_or_add(match_name, Tally.new()).add(outcome)
 		if armies[0] != armies[1]:
 			mixed_games += 1
@@ -490,7 +490,7 @@ func _initialize() -> void:
 		print("  編成: 両軍とも、局ごとに変える（--squads=random）")
 	else:
 		for army in ARMIES:
-			print("  編成 %s: %s" % [Names.ARMY_NAMES[army], _deck_text(_deck(army, deck_mode, rules))])
+			print("  編成 %s: %s" % [Names.army(army), _deck_text(_deck(army, deck_mode, rules))])
 	print("")
 	print(all.line("全体"))
 	for stage: int in by_stage:
@@ -520,7 +520,7 @@ func _initialize() -> void:
 	for army in ARMIES:
 		var row: Array = relics.get(army, [0, 0, 0, 0, 0, 0, 0, 0])
 		print("  %-9s 取った局 %3d / %3d（%3.0f%%）  英知 %3d  勇気 %3d  取った局の勝率 %3d 勝 / %3d（%3.0f%%）  相手だけが取った局の勝率 %3d 勝 / %3d（%3.0f%%）" % [
-			Names.ARMY_NAMES[army], row[1], row[0], 100.0 * row[1] / maxi(1, row[0]), row[2], row[3],
+			Names.army(army), row[1], row[0], 100.0 * row[1] / maxi(1, row[0]), row[2], row[3],
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]), row[7], row[6], 100.0 * row[7] / maxi(1, row[6]),
 		])
 	print("")
@@ -574,13 +574,13 @@ func _initialize() -> void:
 	print("スキルを使った回数（その駒を雇った 1 体あたり）")
 	for skill in Skills.ALL:
 		var row: Array = by_kind.get(skill.kind(), [0])
-		print("  %-12s %5d 回（%4.2f）" % [skill.display_name(), skill_uses.get(skill.id(), 0), float(skill_uses.get(skill.id(), 0)) / maxi(1, row[0])])
+		print("  %-12s %5d 回（%4.2f）" % [Names.skill(skill), skill_uses.get(skill.id(), 0), float(skill_uses.get(skill.id(), 0)) / maxi(1, row[0])])
 	print("")
 	print("必殺技（軍ごと。1 局・1 軍あたり。勝率は決着した局だけ）")
 	for army in ARMIES:
 		var row: Array = ults.get(army, [0, 0, 0, 0, 0, 0, 0, 0])
 		print("  %-9s %-6s 使った %4d 回（%4.2f。使った側は %3.0f%%）  最初に使ったターン 平均 %4.1f  使った側 %3d 勝 / %3d（%3.0f%%）  使わなかった側 %3d 勝 / %3d（%3.0f%%）" % [
-			Names.ARMY_NAMES[army], Ults.of_army(army).display_name(), row[1], float(row[1]) / maxi(1, row[0]), 100.0 * row[7] / maxi(1, row[0]),
+			Names.army(army), Names.ult(Ults.of_army(army)), row[1], float(row[1]) / maxi(1, row[0]), 100.0 * row[7] / maxi(1, row[0]),
 			float(row[6]) / maxi(1, row[7]), row[3], row[2], 100.0 * row[3] / maxi(1, row[2]),
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]),
 		])
@@ -602,7 +602,7 @@ func _print_kinds(by_kind: Dictionary, kings: int) -> void:
 		var row: Array = by_kind[kind]
 		var count: int = row[0] if row[0] > 0 else kings
 		print("  %-12s 雇った %4d 体  倒された %3.0f%%  与えたダメージ %5.1f  倒した %4.2f  進化した %3.0f%%" % [
-			UnitKind.display_name(kind), row[0], 100.0 * row[1] / count, float(row[2]) / count,
+			Names.kind(kind), row[0], 100.0 * row[1] / count, float(row[2]) / count,
 			float(row[3]) / count, 100.0 * row[4] / count,
 		])
 
@@ -643,7 +643,7 @@ func _print_falls(falls: Dictionary) -> void:
 				UnitKind.Role.VANGUARD:
 					by_vanguard += 1
 		print("  %-12s 倒された %4d 体（平均ターン %4.1f）  与えたダメージ 0 のまま %3.0f%%  1 発ぶん以下 %3.0f%%  一撃で %3.0f%%（レベル 1 の奇襲の一撃 %3.0f%%）  止め: 奇襲 %3.0f%%（跳んだあと %3.0f%%） 後衛 %3.0f%% 前衛 %3.0f%%" % [
-			UnitKind.display_name(kind), total, float(turns) / total, 100.0 * silent / total, 100.0 * one_hit / total,
+			Names.kind(kind), total, float(turns) / total, 100.0 * silent / total, 100.0 * one_hit / total,
 			100.0 * one_shot / total, 100.0 * one_shot_by_fresh_raider / total,
 			100.0 * by_raider / total, 100.0 * after_step / total, 100.0 * by_rearguard / total, 100.0 * by_vanguard / total,
 		])
@@ -714,7 +714,7 @@ func _rules_without(names: String) -> DeckRules:
 	for army in versus.armies():
 		rosters[army] = versus.roster(army).filter(func(kind: UnitKind.Id) -> bool: return not removed.has(kind))
 		budgets[army] = versus.budget(army)
-	return DeckRules.new(&"without", "抜いた決まり", versus.max_units, rosters, budgets)
+	return DeckRules.new(&"without", versus.max_units, rosters, budgets)
 
 
 ## --map のファイルの、文字の格子の行（空の行は飛ばす）。マップのファイルの書式（[rows] の節がある）なら、その節の行。
@@ -776,9 +776,9 @@ func _stage_name(stage: int) -> String:
 func _deck_text(deck: Deck) -> String:
 	var parts: Array[String] = []
 	for entry in deck.entries:
-		var text := UnitKind.display_name(entry.kind)
+		var text := Names.kind(entry.kind)
 		for item in entry.equipment:
-			text += " + " + Equipment.display_name(item)
+			text += " + " + Names.item(item)
 		parts.append(text)
 	return "%s（コスト %d / %d）" % ["、".join(parts), deck.total_cost(), deck.budget()]
 

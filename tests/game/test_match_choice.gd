@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 対戦の設定画面で選ぶもの（match_choice.gd）から、ルールの対戦の設定（MatchSetup）を作る。
 
+const Names := preload("res://game/names.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 const BattleSource := preload("res://game/battle_source.gd")
 const StageLook := preload("res://game/stage_look.gd")
@@ -174,7 +175,7 @@ func test_as_battle_source_makes_the_same_setup_and_names_the_look() -> void:
 	var setup: MatchSetup = choice.make_setup(7)
 	assert_eq(setup.scenario.stage, BoardGenerator.Stage.LABYRINTH)
 	assert_eq(setup.battle_seed, 7)
-	assert_eq(setup.scenario.title, MatchSetup.stage_name(BoardGenerator.Stage.LABYRINTH), "作戦領域は戦いの定義の名前")
+	assert_eq(setup.scenario.title, Names.stage(BoardGenerator.Stage.LABYRINTH), "作戦領域は戦いの定義の名前")
 	assert_eq(choice.look(), StageLook.STONE_WALLS)
 	assert_true(setup.is_cpu(choice.cpu_side()))
 

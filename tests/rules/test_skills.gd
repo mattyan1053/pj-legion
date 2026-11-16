@@ -40,22 +40,20 @@ func test_every_skill_has_its_own_id_and_kind() -> void:
 	var ids := {}
 	var kinds := {}
 	for skill in Skills.ALL:
-		assert_false(ids.has(skill.id()), "番号が重なっている: %s" % skill.display_name())
-		assert_false(kinds.has(skill.kind()), "1 種類の駒にスキルが 2 つある: %s" % skill.display_name())
+		assert_false(ids.has(skill.id()), "番号が重なっている: %s" % Skill.Id.find_key(skill.id()))
+		assert_false(kinds.has(skill.kind()), "1 種類の駒にスキルが 2 つある: %s" % Skill.Id.find_key(skill.id()))
 		ids[skill.id()] = true
 		kinds[skill.kind()] = true
 		assert_eq(Skills.by_id(skill.id()), skill)
 		assert_eq(Skills.of_kind(skill.kind()), skill)
-		assert_ne(skill.display_name(), "")
-		assert_ne(skill.summary(), "")
-		assert_true(skill.cooldown() >= 1, "クールダウンが無い: %s" % skill.display_name())
+		assert_true(skill.cooldown() >= 1, "クールダウンが無い: %s" % Skill.Id.find_key(skill.id()))
 	assert_eq(ids.size(), Skill.Id.size(), "Skills.ALL に載っていないスキルがある")
 
 
 func test_every_hireable_kind_has_a_skill() -> void:
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		if UnitKind.role(kind) != UnitKind.Role.NONE:
-			assert_true(Skills.of_kind(kind) != null, UnitKind.display_name(kind))
+			assert_true(Skills.of_kind(kind) != null, str(UnitKind.Id.find_key(kind)))
 	assert_eq(Skills.ALL.size(), 8)
 
 
@@ -209,7 +207,7 @@ func test_options_list_exactly_the_cells_the_rules_accept() -> void:
 				var cell := Vector2i(x, y)
 				assert_eq(
 					options.skill_cells.has(cell), battle.can_apply(UseSkillAction.new(unit.id, cell)),
-					"%s %s" % [unit.display_name(), cell]
+					"%s %s" % [UnitKind.Id.find_key(unit.kind), cell]
 				)
 		var sorted := options.skill_cells.duplicate()
 		sorted.sort_custom(Board.in_reading_order)

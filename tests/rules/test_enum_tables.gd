@@ -75,10 +75,6 @@ func test_every_role_grows() -> void:
 	_assert_covers(Growth.GAINS, UnitKind.Role.values(), "Growth.GAINS", [UnitKind.Role.NONE])
 
 
-func test_every_stage_has_a_name() -> void:
-	_assert_covers(MatchSetup.STAGE_NAMES, BoardGenerator.Stage.values(), "MatchSetup.STAGE_NAMES")
-
-
 func test_every_relic_equipment_evolution_and_kind_is_in_its_table() -> void:
 	_assert_covers(Relics._TABLE, Relics.Id.values(), "Relics._TABLE")
 	for id: Relics.Id in Relics.Id.values():

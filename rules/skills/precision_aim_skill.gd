@@ -25,14 +25,9 @@ func kind() -> UnitKind.Id:
 	return UnitKind.Id.SNIPER
 
 
-func display_name() -> String:
-	return "精密照準"
-
-
-func summary() -> String:
-	return "動かずに構える。次の自分の番、このマスからの攻撃 1 回が射程 +%d、ダメージ %d 倍（動くと解ける）" % [
-		RANGE_BONUS, CRITICAL_PERCENT / 100,
-	]
+## 説明の文（game/text/names.csv の skill.precision_aim.summary）に差し込む値。
+func summary_args() -> Dictionary:
+	return {"range": RANGE_BONUS, "times": CRITICAL_PERCENT / 100}
 
 
 func cooldown() -> int:

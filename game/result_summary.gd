@@ -4,6 +4,7 @@ extends RefCounted
 ## 段階ごとに出すもの: 勝敗の見出し → 戦績（作戦領域・経過ターン・敵軍撃破・中立撃破・聖遺物） → MVP → 行き先。
 ## 誰の戦績を出すか（focus_side）は対戦の種類で決める: CPU 戦は人の側、人どうしは勝った側（引き分けならプレイヤー1）。
 
+const Names := preload("res://game/names.gd")
 const StatsText := preload("res://game/stats_text.gd")
 
 ## 見出しの色の種類。
@@ -73,7 +74,7 @@ static func of(stats: BattleStats, draw: bool, winner_side: Unit.Side, reason_te
 	if not record.relics.is_empty():
 		var names: Array[String] = []
 		for relic in record.relics:
-			names.append(Relics.display_name(relic))
+			names.append(Names.relic(relic))
 		summary.lines.append(["聖遺物", "・".join(names)])
 
 	var best := stats.mvp(summary.focus_side)

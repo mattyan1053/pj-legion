@@ -26,25 +26,21 @@ const ULT_GAIN := 300
 ## 中ボスの番号（Board.mid_boss_cells の添字）-> その中ボスの聖遺物。
 const OF_BOSS: Array[Id] = [Id.WISDOM, Id.COURAGE]
 
-## [名前, 1 行の説明, 足す能力値, 足す量]
+## [足す能力値, 足す量]。名前と 1 行の説明は、画面の文の表（game/text/names.csv の relic.<id>。説明の {amount} に足す量）。
 const _TABLE := {
-	Id.WISDOM: ["英知の聖遺物", "軍の全員の最大 HP +%d", Unit.Stat.MAX_HP, WISDOM_MAX_HP],
-	Id.COURAGE: ["勇気の聖遺物", "軍の全員の攻撃力（回復量）+%d", Unit.Stat.POWER, COURAGE_POWER],
+	Id.WISDOM: [Unit.Stat.MAX_HP, WISDOM_MAX_HP],
+	Id.COURAGE: [Unit.Stat.POWER, COURAGE_POWER],
 }
 
 
-static func display_name(id: Id) -> String:
-	return _TABLE[id][0]
-
-
-## 画面に出す 1 行の説明。
-static func summary(id: Id) -> String:
-	return _TABLE[id][1] % _TABLE[id][3]
+## 足す量（説明の文に差し込む）。
+static func amount(id: Id) -> int:
+	return _TABLE[id][1]
 
 
 ## その聖遺物 1 つが足す量（Unit.Stat -> int）。
 static func bonus(id: Id) -> Dictionary:
-	return {_TABLE[id][2]: _TABLE[id][3]}
+	return {_TABLE[id][0]: _TABLE[id][1]}
 
 
 ## 中ボス boss_index の聖遺物。聖遺物を持たない番号なら -1。
