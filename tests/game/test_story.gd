@@ -571,3 +571,30 @@ func test_a_save_from_before_the_tutorial_keeps_its_unlocks_and_its_place() -> v
 	var fresh := Story.new()
 	fresh.load_data({"campaigns": {"military": {"cleared": ["drill_first_steps"]}}})
 	assert_eq(fresh.cleared_count(), 1, "クリアした話より後ろは、クリアにしない")
+
+
+## 物語の途中に演習を足した（FANTASY の「分かれ道」）: 足す前の記録で、その演習より後ろの話をクリアしていた人は、
+## 足した演習もクリアしたものとして読み、本編の続きをそのまま遊べる。演習の手前までの人は、足した演習から続ける。
+func test_a_save_from_before_an_inserted_trial_keeps_its_place() -> void:
+	var fantasy: RefCounted = Story.campaigns()[1]
+	var before_trial := ["trial_first_steps", "trial_fireball", "trial_ward", "trial_shadow_step", "trial_eruption"]
+	var story := Story.new()
+	story.load_data({"campaigns": {"fantasy": {"cleared": before_trial + ["gorge_crossing"]}}})
+	story.choose_campaign(fantasy)
+	assert_true(story.is_cleared(&"trial_evolution"), "後ろの話をクリアしていれば、足した演習もクリアしたもの")
+	assert_true(story.is_available(_any_episode(&"ridge_siege")), "本編の続きを遊べる")
+	assert_eq(story.cleared_count(fantasy), before_trial.size() + 2)
+	var midway := Story.new()
+	midway.load_data({"campaigns": {"fantasy": {"cleared": before_trial}}})
+	midway.choose_campaign(fantasy)
+	assert_false(midway.is_cleared(&"trial_evolution"))
+	assert_eq(midway.next_episode().id, &"trial_evolution", "演習の手前までの人は、足した演習から")
+	assert_false(midway.is_available(_any_episode(&"gorge_crossing")))
+
+
+func _any_episode(id: StringName) -> RefCounted:
+	for episode: RefCounted in Story.all_episodes():
+		if episode.id == id:
+			return episode
+	assert_true(false, "話が無い: %s" % id)
+	return null
