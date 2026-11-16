@@ -68,6 +68,10 @@ const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
 const COLOR_FORECAST := Color("ffd76a")
 const COLOR_STATUS := Color("8fe6ff")
 const COLOR_TRAIT := Color("ffd34a")
+## 勝ち方の札の地と枠（いつもと、最後のターンのように急ぐとき）。
+const COLOR_GOAL := Color(0.25, 0.2, 0.08, 0.9)
+const COLOR_GOAL_BORDER := Color("8a7230")
+const COLOR_GOAL_URGENT := Color(0.62, 0.2, 0.1, 0.95)
 ## 状態の効果の短い説明（駒の情報の枠に、残りの期間と一緒に出す）。
 const STATUS_TEXTS := {
 	Status.Type.BARRIER: "次に受けるダメージを 1 回だけ防ぐ",
@@ -91,6 +95,10 @@ var _team_colors: Array[Color] = []
 
 var _turn_label: Label
 var _phase_label: Label
+## 勝ち方の札（勝ち方がいつもと違う戦いだけ出す。win_text.gd の goal_tag）。
+var _goal_panel: PanelContainer
+var _goal_style: StyleBoxFlat
+var _goal_label: Label
 var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
 ## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
@@ -167,17 +175,23 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_evolution()
 
 
-## turn_text はターンの文（「ターン 3」、守り切るがあれば「ターン 3 / 10」。win_text.gd）。
+## turn_text はターンの文（「ターン 3」。win_text.gd）。
 ## counts は陣営ごとの駒の数、captures は本陣の占拠の数（どちらも添字がプレイヤー番号）。
 ## capture_shown は陣営ごとの、占拠の数を出すか（本陣の占拠が勝ちの条件に無い陣営は出さない）。
-## turn_note は、ターンの文にマウスを乗せると出る説明（守り切るの決まり。無ければ空）。
+## goal_tag は勝ち方の札（[ひとことの文, 目立たせるか]。文が空なら札を出さない）、goal_note は札にマウスを乗せると出る詳しい文。
 func set_status(
 	turn_text: String, phase: Unit.Side, counts: Array[int], captures: Array[int], capture_goal: int,
-	capture_shown: Array[bool] = [true, true], turn_note := "",
+	capture_shown: Array[bool] = [true, true], goal_tag: Array = ["", false], goal_note := "",
 ) -> void:
 	_turn_label.text = turn_text
-	_turn_label.tooltip_text = turn_note
-	_turn_label.mouse_filter = Control.MOUSE_FILTER_STOP if turn_note != "" else Control.MOUSE_FILTER_IGNORE
+	_goal_panel.visible = goal_tag[0] != ""
+	_goal_label.text = goal_tag[0]
+	_goal_panel.reset_size()  # 文が短くなったら、札も縮める
+	_goal_panel.tooltip_text = goal_note
+	var urgent: bool = goal_tag[1]
+	_goal_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
+	_goal_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
+	_goal_label.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
 	_phase_label.text = "%s の番" % Names.SIDE_NAMES[phase]
 	_phase_label.add_theme_color_override("font_color", _side_color(phase))
 	for player in 2:
@@ -219,6 +233,11 @@ func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
 		_ult_bars[player].value = percents[player]
 		_ult_labels[player].text = "READY" if percents[player] >= 100 else "%d%%" % percents[player]
 		_ult_bars[player].tooltip_text = names[player]
+
+
+## 上の帯の勝ち方の札の文字（出ていなければ空）。検査用。
+func goal_tag_text() -> String:
+	return _goal_label.text if _goal_panel.visible else ""
 
 
 ## いちばん上の帯に出ている、必殺技のゲージの文字（"62%" か "READY"。出ていなければ空）。検査用。
@@ -754,6 +773,27 @@ func _build_top_bar() -> void:
 	corner.custom_minimum_size = Vector2(SystemMenu.CORNER_BUTTON_SIZE.x + SystemMenu.CORNER_MARGIN, 0.0)
 	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(corner)
+
+	# 勝ち方の札。上の帯の中は陣営の欄で埋まっているので、帯のすぐ下の左に、視点の案内（右）と並べて出す。
+	# 枠で囲んで金色の文字にし、詳しい文は、マウスを乗せると出す。
+	_goal_panel = PanelContainer.new()
+	_goal_style = StyleBoxFlat.new()
+	_goal_style.set_corner_radius_all(4)
+	_goal_style.set_border_width_all(1)
+	_goal_style.content_margin_left = 10.0
+	_goal_style.content_margin_right = 10.0
+	_goal_style.content_margin_top = 3.0
+	_goal_style.content_margin_bottom = 3.0
+	_goal_panel.add_theme_stylebox_override("panel", _goal_style)
+	_goal_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_goal_panel.offset_left = 6.0
+	_goal_panel.offset_top = TOP_BAR_HEIGHT + 4.0
+	_goal_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_goal_panel.visible = false
+	add_child(_goal_panel)
+	_goal_label = _label(17)
+	_goal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_goal_panel.add_child(_goal_label)
 
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。小さく 1 行だけ。
 	var help_panel := _panel()

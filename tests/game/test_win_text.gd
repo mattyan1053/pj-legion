@@ -35,18 +35,38 @@ func test_rout_reads_as_rout() -> void:
 	var scenario := Scenario.versus(BoardGenerator.Stage.PLAIN)
 	var rout: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]
 	scenario.set_win_conditions(P1, rout)
-	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。")
+	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。敵の将を倒しても、ほかの駒が残っていれば終わらない。")
 	assert_eq(WinText.of_scenario(scenario, P2).get_slice("\n", 1), "全滅すると負け。")
 
 
-func test_turn_text_shows_the_hold_turns_only_when_someone_holds() -> void:
+func test_turn_text_is_only_the_turn() -> void:
+	assert_eq(WinText.turn_text(3), "ターン 3")
+
+
+func test_no_goal_tag_for_the_usual_ways() -> void:
 	var battle := Maps.battle(["....."])
-	assert_eq(WinText.turn_text(battle, 3), "ターン 3")
-	assert_eq(WinText.turn_note(battle, 3), "")
+	assert_eq(WinText.goal_tag(battle, 3, P1), ["", false])
+	assert_eq(WinText.goal_tag(battle, 3, P2), ["", false])
+
+
+func test_goal_tag_counts_down_the_turns_to_hold_and_marks_the_last() -> void:
+	var battle := Maps.battle(["....."])
 	battle.win_conditions[P1].append(GameWonEvent.Reason.TURNS_HELD)
-	battle.hold_turns = 9
-	assert_eq(WinText.turn_text(battle, 3), "ターン 3 / 9")
-	assert_true(WinText.turn_note(battle, 3).contains("残り 7 ターン"))
+	battle.hold_turns = 10
+	assert_eq(WinText.goal_tag(battle, 3, P1), ["あと 8 ターン守り切れば勝ち", false])
+	assert_eq(WinText.goal_tag(battle, 9, P1), ["あと 2 ターン守り切れば勝ち", false])
+	assert_eq(WinText.goal_tag(battle, 10, P1), ["最後のターン: 守り切れば勝ち", true])
+	assert_eq(WinText.goal_tag(battle, 3, P2), ["あと 8 ターンで決着しなければ負け", false])
+	assert_eq(WinText.goal_tag(battle, 10, P2), ["最後のターン: 決着しなければ負け", true])
+	assert_true(WinText.goal_note(battle, P1).begins_with("10 ターン目の終わりまで守り切るか"))
+
+
+func test_goal_tag_says_the_king_does_not_end_a_rout() -> void:
+	var battle := Maps.battle(["....."])
+	battle.win_conditions[P1] = [GameWonEvent.Reason.ROUTED]
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 敵の全滅（将を倒しても終わらない）", false])
+	assert_eq(WinText.goal_tag(battle, 1, P2), ["全滅すると負け", false])
+	assert_true(WinText.goal_note(battle, P1).contains("敵の将を倒しても"))
 
 
 func test_every_win_condition_has_a_place_in_the_text() -> void:
