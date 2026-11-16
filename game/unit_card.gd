@@ -9,7 +9,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const WIDTH := 220.0
 
 
-## kind の駒の札。equipment は持ち物（同じものはまとめて「×2」）。将（UnitKind.Id.KING）はコストを書かない。
+## kind の駒の札。equipment は持ち物（同じものはまとめて「×2」）。将（UnitKind.Id.KING）はコストを書かない（自動で加わる）。
 static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = []) -> PanelContainer:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(WIDTH, 0.0)
