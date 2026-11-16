@@ -4,6 +4,8 @@ extends RefCounted
 ##
 ## 種類は「役割（前衛・後衛・奇襲・回復）」と「軍（MILITARY / FANTASY）」の組。
 ## 将と中立の駒は役割と軍を持たない。
+## 魔物（is_monster）は、役割を持ち、軍を持たない。ストーリーの話の敵としてだけ出る（雇えない。どの編成の決まりのロスターにも入らない）。
+## 魔物の「コスト」は雇う値ではなく、倒す価値の目安（CPU が倒す相手を選ぶときに読む）。
 ## 数値は調整値（遊んで直していく）。レベルアップや進化で変わる値は駒（Unit）の側が持つ。
 
 enum Id {
@@ -18,6 +20,9 @@ enum Id {
 	PRIEST,  ## FANTASY・回復
 	MINION,  ## 中立・エナジー・コア
 	ELITE_MINION,  ## 中立・エリートミニオン（中ボス）
+	SKELETON,  ## 魔物・奇襲。弱く、数で押す
+	SKELETON_ARCHER,  ## 魔物・後衛。離れて撃つ
+	SKELETON_BRUTE,  ## 魔物・前衛。堅くて遅い
 }
 
 enum Role { NONE, VANGUARD, REARGUARD, RAIDER, HEALER }
@@ -37,6 +42,9 @@ const _TABLE := {
 	Id.PRIEST: [Role.HEALER, Army.FANTASY, 3, 22, 14, 4, 2],
 	Id.MINION: [Role.NONE, Army.NONE, 0, 12, 4, 2, 1],
 	Id.ELITE_MINION: [Role.NONE, Army.NONE, 0, 50, 10, 2, 2],
+	Id.SKELETON: [Role.RAIDER, Army.NONE, 1, 14, 6, 4, 1],
+	Id.SKELETON_ARCHER: [Role.REARGUARD, Army.NONE, 2, 12, 6, 3, 3],
+	Id.SKELETON_BRUTE: [Role.VANGUARD, Army.NONE, 3, 64, 10, 2, 1],
 }
 
 
@@ -70,6 +78,11 @@ static func attack_range(id: Id) -> int:
 
 static func is_neutral(id: Id) -> bool:
 	return id == Id.MINION or id == Id.ELITE_MINION
+
+
+## 魔物（軍に属さない、話の敵としてだけ出る駒）か。役割を持ち、軍を持たない種類。
+static func is_monster(id: Id) -> bool:
+	return army(id) == Army.NONE and role(id) != Role.NONE
 
 
 ## 周り 8 マスに支配領域（ZOC）を作るか。戦線を張る前衛だけ。

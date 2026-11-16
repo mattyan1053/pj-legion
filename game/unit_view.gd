@@ -3,6 +3,7 @@ extends Node3D
 ##
 ## KayKit のキャラクターは、持ちうる武器や盾がすべて付いた状態で入っているので、
 ## 種類ごとに使わないものを隠す。陣営の色は、足元の円盤と、服の差し色（マント・帽子など）で出す。
+## 魔物（骸骨）は KayKit の骸骨の素材に、別の素材の武器を手の骨に付ける。
 ## 中立の駒（エナジー・コア / エリートミニオン）は、素材を使わずコードで組み立てる、宙に浮く結晶のコア。
 ## 頭の上には何も出さない（駒の情報は、クリックかマウスを乗せて、画面の枠で確かめる）。
 ## 盤の上で分かるのは、足元だけ: 行動済みの駒は暗い。HP が減っている駒は、足元に小さい棒が出る（減っていなければ出ない）。
@@ -55,6 +56,27 @@ const KINDS := {
 		"model": "mage", "show": ["Spellbook", "1H_Wand"],
 		"idle": "Idle", "attack": "Spellcast_Shoot",
 	},
+	# 魔物（docs/unit-roster.md の「魔物」）。骸骨の素材は武器を持たないので、"hold" の小物を手の骨に付ける。
+	UnitKind.Id.SKELETON: {
+		"model": "skeleton_minion", "show": [], "hold": {"handslot.r": "blade"}, "scale": 0.92,
+		"idle": "Idle", "attack": "1H_Melee_Attack_Chop",
+	},
+	UnitKind.Id.SKELETON_ARCHER: {
+		"model": "skeleton_rogue", "show": [], "hold": {"handslot.r": "crossbow"},
+		"idle": "2H_Ranged_Aiming", "attack": "2H_Ranged_Shoot",
+	},
+	UnitKind.Id.SKELETON_BRUTE: {
+		"model": "skeleton_warrior", "show": [], "hold": {"handslot.r": "axe", "handslot.l": "large_shield"}, "scale": 1.22,
+		"idle": "Idle_Combat", "attack": "1H_Melee_Attack_Chop",
+	},
+}
+
+## 骸骨の小物（手の骨に付ける別の素材）。
+const HELD_PROPS := {
+	"blade": "res://assets/kaykit/skeletons/Skeleton_Blade.gltf",
+	"crossbow": "res://assets/kaykit/skeletons/Skeleton_Crossbow.gltf",
+	"axe": "res://assets/kaykit/skeletons/Skeleton_Axe.gltf",
+	"large_shield": "res://assets/kaykit/skeletons/Skeleton_Shield_Large_A.gltf",
 }
 
 ## 素材のキャラクター。"props" は付け外しできる小物、"accent" は陣営の色に塗り替える色見本（列, 行）。
@@ -82,6 +104,9 @@ const MODELS := {
 		"props": ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Knife", "Throwable"],
 		"accent": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 2)],
 	},
+	"skeleton_minion": {"scene": "res://assets/kaykit/skeletons/Skeleton_Minion.glb", "props": [], "accent": [Vector2i(5, 0)]},
+	"skeleton_rogue": {"scene": "res://assets/kaykit/skeletons/Skeleton_Rogue.glb", "props": [], "accent": [Vector2i(2, 2)]},
+	"skeleton_warrior": {"scene": "res://assets/kaykit/skeletons/Skeleton_Warrior.glb", "props": [], "accent": [Vector2i(2, 2)]},
 }
 
 ## 中立の駒の形。size は全体の大きさ、rings は周りを回る輪の数、shards は周りを回る欠片の数。
@@ -325,6 +350,7 @@ func _add_model(kind: Dictionary) -> void:
 	model.scale = Vector3.ONE * MODEL_SCALE * size
 	_height = 1.3 * size
 	add_child(model)
+	_hold_props(model, kind.get("hold", {}))
 
 	var material: Material = null
 	for mesh: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
@@ -344,6 +370,21 @@ func _add_model(kind: Dictionary) -> void:
 	_player = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if _player != null:
 		_player.animation_finished.connect(_on_animation_finished)
+
+
+## 小物を手の骨に付ける（hold: 骨の名前 -> HELD_PROPS の名前）。
+func _hold_props(model: Node3D, hold: Dictionary) -> void:
+	if hold.is_empty():
+		return
+	var skeleton := model.find_children("*", "Skeleton3D", true, false)
+	if skeleton.is_empty():
+		return
+	for bone: String in hold:
+		var attachment := BoneAttachment3D.new()
+		attachment.bone_name = bone
+		skeleton[0].add_child(attachment)
+		var prop: PackedScene = load(HELD_PROPS[hold[bone]])
+		attachment.add_child(prop.instantiate())
 
 
 ## キャラクターのマテリアルを、差し色だけ陣営の色にしたものに差し替える。

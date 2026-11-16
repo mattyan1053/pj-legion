@@ -86,6 +86,24 @@ func test_the_probe_reads_every_field() -> void:
 	assert_false(episode.has_squad())
 
 
+## 敵が軍に属さない話（魔物の群れ）: 軍は none と書き、部隊に魔物を並べられる。必殺技は無い。
+func test_an_enemy_without_an_army_reads() -> void:
+	var text := PROBE.replace("army = fantasy", "army = none").replace("unit = paladin + iron_shield + iron_shield", "unit = skeleton_brute").replace("unit = priest", "unit = skeleton_archer")
+	var episode: Episode = Episode.parse(text)
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.enemy_army, UnitKind.Army.NONE)
+	assert_eq(episode.enemy, [[UnitKind.Id.SKELETON_BRUTE, []], [UnitKind.Id.SKELETON_ARCHER, []]])
+	var deck := episode.enemy_deck()
+	assert_eq(deck.army, UnitKind.Army.NONE)
+
+
+## 人の側（決まった部隊、解放）に魔物は書けない（物語の軍の駒だけ。campaign.gd が確かめる）。
+func test_monsters_are_not_for_the_player() -> void:
+	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
+	var campaign: Campaign = Campaign.parse(good.replace("unit = shield_trooper", "unit = skeleton"))
+	assert_false(campaign.problems.is_empty(), "最初から雇える駒に魔物")
+
+
 ## わざと壊した話を、書き間違いの行で弾くこと。[壊し方の名前] = [見本の中の文, 置き換える文, 弾く行]。
 func test_broken_episodes_are_caught_on_their_line() -> void:
 	var cases := {
@@ -99,6 +117,7 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"知らない駒": ["unit = priest", "unit = preist", 19],
 		"将を書く": ["unit = priest", "unit = king", 19],
 		"知らない持ち物": ["paladin + iron_shield + iron_shield", "paladin + iron_shild", 18],
+		"魔物に持ち物": ["unit = priest", "unit = skeleton + iron_shield", 19],
 		"知らない軍": ["army = fantasy", "army = elves", 17],
 		"解放の駒": ["unit = commando", "unit = comando", 8],
 		"上がらないコスト": ["budget = 2", "budget = 0", 10],

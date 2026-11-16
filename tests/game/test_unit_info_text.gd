@@ -16,6 +16,10 @@ func test_affiliation_from_the_viewer() -> void:
 	assert_true(BattleHud.affiliation_text(paladin, Unit.Side.PLAYER1, UnitKind.Army.MILITARY).ends_with("MILITARY（FANTASY の駒）"),
 			"ほかの軍の駒は、陣営の軍と、駒の種類の軍を並べる")
 	assert_true(BattleHud.affiliation_text(sniper, Unit.Side.PLAYER1, UnitKind.Army.MILITARY).ends_with("MILITARY"), "同じ軍なら 1 つだけ")
+	var skeleton := Unit.new(4, UnitKind.Id.SKELETON, Unit.Side.PLAYER2, Vector2i.ZERO)
+	var monster := BattleHud.affiliation_text(skeleton, Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
+	assert_true(monster.begins_with("[敵軍]") and monster.ends_with("魔物"), "魔物は軍の名前のかわりに「魔物」: %s" % monster)
+	assert_false(monster.contains("FANTASY"), "魔物に陣営の軍の名前を付けない")
 
 
 func test_equipment_is_counted() -> void:

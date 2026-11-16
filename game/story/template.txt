@@ -51,9 +51,10 @@ name = 隊長
 [enemy]
 # 会話の話し手の名前（名前の札は赤）。
 name = 敵将
-# 敵の軍（military, fantasy）。必殺技はこの軍のもの。
+# 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない敵（魔物の群れ。必殺技もゲージも無い）。
 army = fantasy
-# 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。持ち物は「+」でつなぐ。将は書かない（いつも本陣に置く）。
+# 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。持ち物は「+」でつなぐ（魔物は持てない）。将は書かない（いつも本陣に置く）。
+# 魔物（skeleton, skeleton_archer, skeleton_brute）も書ける（docs/unit-roster.md の「魔物」）。
 unit = paladin + iron_shield
 unit = sorcerer
 unit = priest

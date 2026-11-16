@@ -48,6 +48,7 @@ var wins: Array[GameWonEvent.Reason] = []
 var squad: Array = []
 var start_gauge := 0
 ## 敵の軍と部隊（将を除く。[駒の種類, [装備, …]] の列。並びの順に初期位置へ置く）。
+## 軍が none（Army.NONE）なら、敵は軍に属さない（必殺技もゲージも無い）。魔物の群れの話に使う（docs/story.md）。
 var enemy_army := UnitKind.Army.FANTASY
 var enemy: Array = []
 ## 初期位置: [プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」。
@@ -257,8 +258,8 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 	else:
 		var entry: Dictionary = values["army"][0]
 		var army := StoryFile.enum_value(UnitKind.Army, entry["value"])
-		if army < 0 or army == UnitKind.Army.NONE:
-			file.problem(entry["line"], "知らない軍「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Army, [UnitKind.Army.NONE])])
+		if army < 0:
+			file.problem(entry["line"], "知らない軍「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Army)])
 		else:
 			enemy_army = army as UnitKind.Army
 
@@ -273,6 +274,9 @@ func _unit_row(file: RefCounted, entry: Dictionary) -> Array:
 		if item >= 0:
 			items.append(item as Equipment.Id)
 	if kind < 0:
+		return []
+	if not items.is_empty() and not Equipment.can_equip(kind as UnitKind.Id):
+		file.problem(entry["line"], "%s は持ち物を持てない（軍に属する駒だけが持てる）" % words[0].strip_edges())
 		return []
 	return [kind, items]
 

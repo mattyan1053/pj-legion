@@ -365,7 +365,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_set_shown(_info_forecast, note)
 
 
-## 駒の所属の文。盤を見ている人（viewer）から見た [自軍] [敵軍] [中立] と、陣営、軍（雇う駒だけ）。
+## 駒の所属の文。盤を見ている人（viewer）から見た [自軍] [敵軍] [中立] と、陣営、軍（雇う駒だけ。魔物は「魔物」）。
 ## 軍は陣営の軍（side_army。NONE なら駒の種類の軍）。ストーリーでほかの軍の駒を雇ったときは「MILITARY（FANTASY の駒）」と並べる
 ## （駒の種類の軍だけを出すと、味方の駒に敵と同じ軍の名前が出て紛らわしい）。
 static func affiliation_text(unit: Unit, viewer: Unit.Side, side_army := UnitKind.Army.NONE) -> String:
@@ -376,7 +376,9 @@ static func affiliation_text(unit: Unit, viewer: Unit.Side, side_army := UnitKin
 		tag = Text.t("battle.hud.tag.foe")
 	var parts: Array[String] = [tag, Names.side(unit.side)]
 	var army := UnitKind.army(unit.kind)
-	if army != UnitKind.Army.NONE:
+	if UnitKind.is_monster(unit.kind):
+		parts.append(Text.t("battle.hud.monster"))  # 魔物は軍を持たない（陣営の軍の名前は出さない）
+	elif army != UnitKind.Army.NONE:
 		if side_army == UnitKind.Army.NONE or side_army == army:
 			parts.append(Names.army(army))
 		else:
