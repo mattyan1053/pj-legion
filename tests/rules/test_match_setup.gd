@@ -95,7 +95,7 @@ func test_too_small_board_is_refused() -> void:
 	var setup := MatchSetup.versus_cpu(
 		BoardGenerator.Stage.PLAIN, 1, MatchSetup.default_deck(UnitKind.Army.MILITARY), UnitKind.Army.FANTASY
 	)
-	setup.board_size = BoardGenerator.MIN_SIZE - Vector2i.ONE
+	setup.scenario.board_size = BoardGenerator.MIN_SIZE - Vector2i.ONE
 	assert_eq(setup.problems(), [MatchSetup.Problem.NO_BOARD] as Array[MatchSetup.Problem])
 	assert_eq(setup.create_battle(), null)
 

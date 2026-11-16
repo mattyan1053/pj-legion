@@ -1,7 +1,8 @@
 class_name MatchSetup
 extends RefCounted
 ## 1 回の対戦を始めるのに要るものを 1 つにまとめた値（docs/match-setup.md）。
-## ステージ、盤面と対戦の種、両方のプレイヤーの編成（軍を含む）、どちらを人が動かし、どちらを CPU が動かすか。
+## 戦いの定義（Scenario。盤の出どころと決め打ちの部隊）、盤面と対戦の種、両方のプレイヤーの編成（軍を含む）、
+## どちらを人が動かし、どちらを CPU が動かすか。
 ##
 ## 対戦（Battle）は create_battle() だけから作る。対戦の画面、検査の自動の対戦、集計の道具が同じ入口を通る。
 ## 添字のある値は、プレイヤー番号（Unit.Side.PLAYER1 = 0 が先手、PLAYER2 = 1 が後手）ごと。
@@ -27,10 +28,11 @@ const STAGE_NAMES := {
 	BoardGenerator.Stage.TWIN_SPRINGS: "双子結晶",
 }
 
-var stage := BoardGenerator.Stage.PLAIN
+## 戦いの定義。既定は、対戦モードの中央平原。
+var scenario := Scenario.versus(BoardGenerator.Stage.PLAIN)
 ## 盤面の生成と、対戦の乱数（Battle.rng）の両方に使う種。同じ設定からは、いつも同じ対戦ができる。
 var battle_seed := 0
-var board_size := BoardGenerator.DEFAULT_SIZE
+## プレイヤーごとの選んだ編成。戦いの定義が部隊を決め打ちにしているプレイヤーの分は使わない（deck_of）。
 var decks: Array[Deck] = [null, null]
 var controllers: Array[Controller] = [Controller.HUMAN, Controller.HUMAN]
 ## 予算を超えた編成も通す。集計の道具の「両軍とも同じ役割の 6 体」（tools/cpu_matches.gd の --decks=even）だけが使う。
@@ -44,7 +46,7 @@ static func versus_cpu(
 	human_side := Unit.Side.PLAYER1,
 ) -> MatchSetup:
 	var setup := MatchSetup.new()
-	setup.stage = at_stage
+	setup.scenario = Scenario.versus(at_stage)
 	setup.battle_seed = with_seed
 	setup.set_human(human_side, human_deck)
 	setup.set_cpu((1 - human_side) as Unit.Side, cpu_army)
@@ -54,7 +56,7 @@ static func versus_cpu(
 ## 人どうしの対戦の設定。
 static func versus_human(at_stage: BoardGenerator.Stage, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
 	var setup := MatchSetup.new()
-	setup.stage = at_stage
+	setup.scenario = Scenario.versus(at_stage)
 	setup.battle_seed = with_seed
 	setup.set_human(Unit.Side.PLAYER1, first)
 	setup.set_human(Unit.Side.PLAYER2, second)
@@ -95,19 +97,29 @@ func cpu_sides() -> Array[Unit.Side]:
 	return sides
 
 
+## side が対戦に出す編成。戦いの定義の決め打ちの部隊があればそれ、無ければ選んだ編成（無ければ null）。
+func deck_of(side: Unit.Side) -> Deck:
+	return scenario.fixed_decks[side] if scenario.is_fixed(side) else decks[side]
+
+
 ## そのプレイヤーの軍。編成が無ければ Army.NONE。
 func army_of(side: Unit.Side) -> UnitKind.Army:
-	return decks[side].army if decks[side] != null else UnitKind.Army.NONE
+	var deck := deck_of(side)
+	return deck.army if deck != null else UnitKind.Army.NONE
 
 
 ## 対戦を始められない理由の一覧。空なら始められる。並びは Problem の順で、同じ理由は 1 回だけ。
 func problems() -> Array[Problem]:
 	var found: Array[Problem] = []
-	if decks.has(null):
+	var chosen: Array[Deck] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if not scenario.is_fixed(side):
+			chosen.append(decks[side])
+	if chosen.has(null):
 		found.append(Problem.NO_DECK)
-	if decks.any(func(deck: Deck) -> bool: return deck != null and not _deck_passes(deck)):
+	if chosen.any(func(deck: Deck) -> bool: return deck != null and not _deck_passes(deck)):
 		found.append(Problem.INVALID_DECK)
-	if board_size.x < BoardGenerator.MIN_SIZE.x or board_size.y < BoardGenerator.MIN_SIZE.y:
+	if not scenario.can_make_board():
 		found.append(Problem.NO_BOARD)
 	return found
 
@@ -117,16 +129,16 @@ func is_valid() -> bool:
 
 
 ## 盤面を作り、両方の軍を本陣に置いた、始まる前の対戦。始められない設定（problems() が空でない）なら null。
-## 設定は変えない。同じ設定から何度でも、同じ対戦を作れる。
+## 戦いの定義を読むのは、ここだけ。設定は変えない。同じ設定から何度でも、同じ対戦を作れる。
 func create_battle() -> Battle:
 	if not is_valid():
 		return null
-	var board := BoardGenerator.generate(stage, battle_seed, board_size)
+	var board := scenario.make_board(battle_seed)
 	if board == null:
 		return null
 	var battle := Battle.new(board, battle_seed)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		Deployment.deploy(battle, side, decks[side])
+		Deployment.deploy(battle, side, deck_of(side))
 	return battle
 
 

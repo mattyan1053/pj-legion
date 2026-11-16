@@ -9,10 +9,9 @@
 
 | 値 | 中身 |
 | --- | --- |
-| `stage` | ステージ（`BoardGenerator.Stage`）。名前は `MatchSetup.stage_name()`（中央平原・迷宮回廊・双子結晶） |
+| `scenario` | 戦いの定義（`Scenario`。盤の出どころと、決め打ちの部隊。`docs/scenario.md`）。既定は対戦モードの中央平原 |
 | `battle_seed` | 盤面の生成と、対戦の乱数（`Battle.rng`）の両方に使う種 |
-| `board_size` | 盤面の大きさ（既定は `BoardGenerator.DEFAULT_SIZE`） |
-| `decks` | プレイヤーごとの編成（`Deck`。軍を含む） |
+| `decks` | プレイヤーごとの選んだ編成（`Deck`。軍を含む）。戦いの定義が部隊を決め打ちにしているプレイヤーの分は使わない |
 | `controllers` | プレイヤーごとに、人（`HUMAN`）が動かすか CPU（`CPU`）が動かすか |
 
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
@@ -21,13 +20,15 @@
 - **人の編成**は、渡したもの（`set_human(プレイヤー, 編成)`）。画面では、編成の画面で組んで取っておいた部隊か、
   軍ごとの既定の編成 `MatchSetup.default_deck(軍)`（中身は CPU の編成と同じ。予算どおり）。
 - よく使う組み合わせ: `MatchSetup.versus_cpu(ステージ, 種, 人の編成, CPU の軍, 人のプレイヤー)`、
-  `MatchSetup.versus_human(ステージ, 種, 先手の編成, 後手の編成)`。
+  `MatchSetup.versus_human(ステージ, 種, 先手の編成, 後手の編成)`。どちらも、戦いの定義は対戦モードのそのステージ（`Scenario.versus`）。
+  ステージの名前は `MatchSetup.stage_name()`（中央平原・迷宮回廊・双子結晶）。
 - 読むもの: `is_cpu(プレイヤー)`、`cpu_sides()`（CPU が動かすプレイヤー番号の並び。小さい順）、
-  `army_of(プレイヤー)`（編成が無ければ `Army.NONE`）。
+  `deck_of(プレイヤー)`（対戦に出す編成。決め打ちの部隊があればそれ、無ければ選んだ編成）、
+  `army_of(プレイヤー)`（`deck_of` の軍。編成が無ければ `Army.NONE`）。
 
 ## 対戦を作る
 
-`create_battle()` が、盤面を作り（`docs/game-board.md`）、両方の軍を本陣に置いた（`Deployment`。`docs/player-loadout.md`）、
+`create_battle()` が、戦いの定義から盤面を作り（`docs/game-board.md`）、両方の軍（`deck_of`）を本陣に置いた（`Deployment`。`docs/player-loadout.md`）、
 ターン 1・プレイヤー1 の番の対戦を返す。設定は変えないので、同じ設定から何度でも同じ対戦が作れる。
 
 **対戦はこの入口だけから作る。** 対戦の画面、検査の自動の対戦（`game/autoplay.gd` の通しの対戦）、
@@ -38,11 +39,12 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 | 理由（`MatchSetup.Problem`） | 条件 |
 | --- | --- |
-| `NO_DECK` | 編成の無いプレイヤーがいる |
-| `INVALID_DECK` | 編成の検査（`Deck.problems()`。`docs/deck-building.md`）を通らないプレイヤーがいる |
-| `NO_BOARD` | 盤面が小さすぎて作れない（`BoardGenerator.MIN_SIZE` より小さい） |
+| `NO_DECK` | 編成の無いプレイヤーがいる（決め打ちの部隊のあるプレイヤーは数えない） |
+| `INVALID_DECK` | 編成の検査（`Deck.problems()`。`docs/deck-building.md`）を通らないプレイヤーがいる（同じ） |
+| `NO_BOARD` | 戦いの定義の盤を作れない（`Scenario.can_make_board()`） |
 
-- 編成の検査を通ったものだけを対戦に出す（人の編成も CPU の編成も同じ）。
+- 選んだ編成は、検査を通ったものだけを対戦に出す（人の編成も CPU の編成も同じ）。
+  戦いの定義の決め打ちの部隊は、検査を通さない（`docs/scenario.md`）。
 - 例外は `ignore_budget` だけ。立てると、予算を超えた編成（`OVER_BUDGET`）を通す。ほかの理由は通さない。
   集計の道具の「両軍とも同じ役割の 6 体」（`--decks=even`）だけが使う。対戦の画面は使わない。
 
