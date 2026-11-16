@@ -1,21 +1,32 @@
 # 勝ち負け
 
-コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`、`settle`）、`rules/actions/end_phase_action.gd`、
+コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`、`settle`、`hold_turns`、`turns_left`、`end_turn`）、`rules/actions/end_phase_action.gd`、
 `rules/events/game_won_event.gd`、`rules/events/game_drawn_event.gd`、`rules/events/capture_progress_event.gd`。
 テスト: `tests/rules/test_victory.gd`、引き分けは `tests/rules/test_map_objects.gd`。
 
-どちらかが満たされた時点で決着し、`GameWonEvent`（勝った陣営と理由）が出る。決着したあとは、どの行動も受け付けない。
+プレイヤーごとに**勝ちの条件の列**を持ち、そのどれかが満たされた時点で決着し、`GameWonEvent`（勝った陣営と理由）が出る。決着したあとは、どの行動も受け付けない。
+
+## 勝ちの条件の列
+
+- 列は戦いの定義（`Scenario.win_conditions`。`docs/scenario.md`）がプレイヤーごとに持ち、対戦を作るときに `Battle.win_conditions` へ写す。
+  条件は、決着の理由と同じ値（`GameWonEvent.Reason`）で表す。そのプレイヤーがその勝ち方で勝てるかは `Battle.wins_by(プレイヤー, 条件)`。
+- 既定（`Scenario.STANDARD_WIN_CONDITIONS`）は、両方とも「敵の将を倒す」「敵の本陣を占拠し続ける」。対戦モードはいつもこれ。
+- 勝ち方は、敵の将を倒す（`KING_DEFEATED`）、敵の本陣を占拠し続ける（`HQ_CAPTURED`）、守り切る（`TURNS_HELD`）。
+- 列に無い勝ち方では勝たない。
+  - 「敵の将を倒す」が無いプレイヤーは、相手の将を倒しても勝たない（将は盤から消え、対戦は続く）。
+  - 「敵の本陣を占拠し続ける」が無いプレイヤーは、占拠を数えない（数は 0 のまま、`CaptureProgressEvent` も出ない）。
 
 - 決着したかは `Battle.is_over()`、勝った陣営は `Battle.winner`（決着していないか、引き分けなら -1）。
 
 ## 敵の将を倒す
 
-- 将が倒れたら、その相手のプレイヤーの勝ち。倒した行動の結果の最後に `GameWonEvent` が付く。
+- 将が倒れたら、その相手のプレイヤーの勝ち（相手の列にこの勝ち方があるとき）。倒した行動の結果の最後に `GameWonEvent` が付く。
 - 誰が倒したかは問わない。起爆樽の爆発（`docs/map-objects.md`）で自分の将を倒したら、相手の勝ち。
 
 ## 引き分け
 
 - **1 つの行動で両方の将が倒れたら、引き分け**（起爆樽の爆発に両方の将が巻き込まれたとき）。
+  片方だけが「敵の将を倒す」を持つなら、引き分けではなく、そのプレイヤーの勝ち。
 - `GameWonEvent` のかわりに、行動の結果の最後に `GameDrawnEvent`（理由）が付く。
 - `Battle.is_over()` と `Battle.is_draw()` が真になり、`Battle.winner` は -1 のまま。決着なので、どの行動も受け付けない。
 
@@ -32,3 +43,15 @@
   跳んで（入れ替わって）敵の本陣に乗っても、数えるのはフェーズの終わり。
 - 占拠の数が変わったときに `CaptureProgressEvent`（プレイヤーと、いまの数）が出る。
 - 自分の本陣に乗っても数えない。
+
+## 守り切る
+
+ストーリーの話が選べる勝ち方（対戦モードには無い）。決められたターン数（`Battle.hold_turns`。戦いの定義の `hold_turns` から写す）の
+ターンが終わるまで決着しなければ、守り切るが勝ちの条件にあるプレイヤー（守る側）の勝ち。
+
+- 「ターンが終わる」のは、そのターンの中立のフェーズのあと、次のターンへ進む前（`Battle.end_turn`）。決着したら、次のターンへは進まない。
+  理由は `GameWonEvent.Reason.TURNS_HELD`。
+- 守る側を作るのは `Scenario.hold_for(プレイヤー, ターン数)`: 守る側の列は、いつもの 2 つに守り切るを足したもの（相手の将を倒しても、
+  本陣を占拠し続けても勝てる）。攻める側の列は変えない（守り切られる前に、将を倒すか本陣を占拠し続ければ勝ち）。
+- 残りのターン数（いまのターンを含む）は `Battle.turns_left()`。守り切るが、どちらの列にも無ければ -1。
+- `hold_turns` が 0 なら、守り切るは働かない。両方の列に置く定義は作らない（置いたら、プレイヤー1 が守る側）。

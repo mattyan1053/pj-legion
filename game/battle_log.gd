@@ -11,6 +11,7 @@ const NO_CELL := Vector2i(-1, -1)
 const WIN_TEXTS := {
 	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
 	GameWonEvent.Reason.HQ_CAPTURED: "敵の本陣を占拠し続けた",
+	GameWonEvent.Reason.TURNS_HELD: "最後まで守り切った",
 }
 const DRAW_TEXTS := {
 	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "両方の将が同時に倒れた",

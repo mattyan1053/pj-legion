@@ -5,7 +5,8 @@ extends BattleAction
 ## 全部の駒が行動を終えても、フェーズは自動では終わらない。未行動の駒が残っていても終えてよい。
 ## 行動の途中の駒がいれば、待機したことにして終える。
 ## プレイヤー2 のあとの中立のフェーズ（Neutral.play_phase）は、続けてこの中で進め、次のターンのプレイヤー1 のフェーズまで進む。
-## 中立のフェーズで決着したら、そこで止まる。
+## 中立のフェーズで決着したら、そこで止まる。中立のフェーズのあと、ターンの終わりに決まること（守り切る。Battle.end_turn）で
+## 決着しても、そこで止まる（次のターンへは進まない）。
 ## プレイヤーのフェーズの始めに、回復の泉に乗っているそのプレイヤーの駒が回復し、続けて再生の特性の駒が回復する。
 ## そのあと、そのプレイヤーの盤の上の効果が働き、期間が進む（聖域の回復、煙幕・聖域の残りのターン数。FieldEffects.start_phase）。
 ## 続けて、そのプレイヤーの駒の状態の残りのターン数が 1 減り、0 になった状態は外れる（Statuses.start_phase）。
@@ -33,6 +34,9 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 		events.append_array(Neutral.play_phase(battle))
 		if battle.is_over():
 			return events  # 中立の駒の攻撃で将が倒れた
+		events.append_array(battle.end_turn())
+		if battle.is_over():
+			return events  # 守り切った
 		battle.turn += 1
 		events.append_array(_start_phase(battle, Unit.Side.PLAYER1))
 	return events
