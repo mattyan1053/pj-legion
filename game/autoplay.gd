@@ -1787,6 +1787,7 @@ func _visit_decks(app: Node) -> void:
 	screen.press_new()
 	screen.choose_new_army(UnitKind.Army.MILITARY)
 	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty() and screen.editing_deck().army == UnitKind.Army.MILITARY, "選んだ軍で、空の部隊を組めない")
+	_expect(not screen.is_choosing_army(), "軍を選んで組む画面へ進んでも、軍を選ぶ画面が後ろに残っている")
 	_expect(not screen.can_save(), "空の部隊を取っておけた")
 	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.SHIELD_TROOPER)
