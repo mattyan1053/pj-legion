@@ -1,0 +1,86 @@
+extends RefCounted
+## 対戦の途中の会話（docs/story.md の「対戦の途中の会話」）。話のデータの CUES（いつ・だれが・何と言うか）を持ち、
+## 行動ごとに、ルールが返した出来事の列（BattleEvent）と盤の状態から、いま出す台詞を選ぶ。ノードに依存しない。
+##
+## ルール（rules/）には入れない。台詞は勝ち負けに関わらないので、画面の側だけで見る。
+## どの台詞も、1 回の対戦で 1 度だけ出す（「同じ盤面でもう一度」で作り直せば、また出る）。
+## 決着した行動のあとは、何も出さない（決着の画面と重ねない）。
+
+## きっかけ（CUES の行の先頭）。
+const TURN := &"turn"  ## 値 = ターン N。人の番（プレイヤー1 のフェーズ）の始め
+const KING_HALF := &"king_half"  ## 値 = 陣営（0 か 1）。その陣営の将の HP が半分を切った
+const FALLEN := &"fallen"  ## 値 = 陣営（0 か 1）。その陣営の駒（将を除く）が初めて倒れた
+const KINDS: Array[StringName] = [TURN, KING_HALF, FALLEN]
+
+
+## 出す台詞 1 つ。
+class Line:
+	extends RefCounted
+	var side: int
+	var name: String
+	var text: String
+
+	func _init(side_: int, name_: String, text_: String) -> void:
+		side = side_
+		name = name_
+		text = text_
+
+
+## [きっかけ, 値, 話し手（0 か 1）, 文] の列。
+var _cues: Array = []
+## 話し手の名前（0 = 人の軍、1 = 敵の軍）。
+var _names: Array = []
+## 出した台詞（CUES の何番目か）。
+var _said := {}
+
+
+func _init(cues: Array = [], speakers: Array = []) -> void:
+	_cues = cues
+	_names = speakers
+
+
+func is_empty() -> bool:
+	return _cues.is_empty()
+
+
+## 対戦の始めに出す台詞（ターン 1 の人の番の始め）。
+func on_start(battle: Battle) -> Array[Line]:
+	return _take(battle, [], true)
+
+
+## 行動 1 つのあとに出す台詞。events はその行動でルールが返した出来事の列。
+func on_events(battle: Battle, events: Array[BattleEvent]) -> Array[Line]:
+	return _take(battle, events, false)
+
+
+func _take(battle: Battle, events: Array[BattleEvent], at_start: bool) -> Array[Line]:
+	var lines: Array[Line] = []
+	if battle == null or battle.is_over():
+		return lines
+	for i in _cues.size():
+		if _said.has(i):
+			continue
+		var cue: Array = _cues[i]
+		if _fires(battle, events, at_start, cue[0], cue[1]):
+			_said[i] = true
+			var side: int = cue[2]
+			lines.append(Line.new(side, _names[side] if side < _names.size() else "", cue[3]))
+	return lines
+
+
+func _fires(battle: Battle, events: Array[BattleEvent], at_start: bool, kind: StringName, value: int) -> bool:
+	match kind:
+		TURN:
+			if at_start:
+				return battle.turn == value and battle.phase == Unit.Side.PLAYER1
+			return events.any(func(e: BattleEvent) -> bool:
+				return e is PhaseStartedEvent and e.turn == value and e.side == Unit.Side.PLAYER1)
+		KING_HALF:
+			for unit in battle.units:
+				if unit.kind == UnitKind.Id.KING and unit.side == value:
+					return unit.hp * 2 < unit.max_hp()
+			return false
+		FALLEN:
+			return events.any(func(e: BattleEvent) -> bool:
+				return e is UnitDefeatedEvent and e.side == value and e.kind != UnitKind.Id.KING)
+	return false

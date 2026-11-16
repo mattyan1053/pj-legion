@@ -34,6 +34,8 @@ const BattleEffects := preload("res://game/battle_effects.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const Run := preload("res://game/run.gd")
 const WinText := preload("res://game/win_text.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
+const BattleTalk := preload("res://game/battle_talk.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"。
 ## 「次へ」（渡されたものが許したときだけ出る。ストーリー）は Run.NEXT）。
@@ -130,6 +132,9 @@ var cpu_actions := 0
 var _cpu := CpuPlayer.new()
 ## 操作の状態（選んでいる駒、見ている駒、対象を選ぶ途中、確かめ、押している途中、再生と CPU の番の途中）。battle_ui_state.gd。
 var _ui := BattleUiState.new()
+## 対戦の途中の会話（battle_cues.gd）と、その札（battle_talk.gd）。台詞は渡すもの（source.talk_cues）が持つ。
+var _cues: BattleCues
+var _talk: BattleTalk
 ## 敵の全員の脅威範囲（Threat.against）を、盤に重ねて出しているか（下の帯の切り替え）。
 var _threat_shown := false
 var _hover_cell := NO_CELL
@@ -197,6 +202,8 @@ func _ready() -> void:
 	_hud.minimap().pointed.connect(_on_minimap_pointed)
 	_hud.result_screen().overlays = context.overlays
 	_hud.result_screen().play_sound = func(name: StringName) -> void: context.play_sound(name)
+	_talk = BattleTalk.new()
+	_hud.add_child(_talk)
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
 	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)
@@ -401,6 +408,9 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_hud.result_screen().set_destinations(source.stages(), source.can_open_setup(), source.can_choose_squad())
 	context.resume_scene_music()  # 決着の曲のあとの「やり直す」でも、対戦の曲へ戻る
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
+	_cues = source.talk_cues()
+	_talk.clear()
+	_say(_cues.on_start(battle))
 	_refresh()
 	_run_cpu()
 
@@ -427,11 +437,26 @@ func _add_view(unit: Unit) -> void:
 ## 人どうしは、どちらかが勝っているので勝ちの曲。
 ## 渡されたもの（source）が許せば「次へ」を出し、人が勝ったことを知らせる（ストーリーのクリアの記録）。
 func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
+	_talk.clear()  # 決着の画面に、前の台詞を残さない
 	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side()))
 	var won := cpu_opponent and not draw and winner == _human_side()
 	_hud.result_screen().set_continue(source.can_continue(won))
 	if won:
 		source.record_win(context)
+
+
+## 対戦の途中の会話の台詞を、画面の左上の札に順に出し、ログにも書く。
+func _say(lines: Array[BattleCues.Line]) -> void:
+	if lines.is_empty():
+		return
+	for line in lines:
+		battle_log.say(line.name, line.text, line.side)
+	_talk.say(lines)
+
+
+## いま画面に出ている、対戦の途中の会話の台詞（無ければ null。検査とスクリーンショットの道具用）。
+func talk_line() -> BattleCues.Line:
+	return _talk.current()
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
@@ -1157,6 +1182,8 @@ func _do(action: BattleAction) -> bool:
 	_hud.hide_evolution()
 	await _playback.play_all(result.events)
 	_ui.busy = false
+	# 対戦の途中の会話: 起きたことを見せ終えてから出す（演出と重ねない）。決着した行動のあとは出さない（BattleCues が見る）。
+	_say(_cues.on_events(battle, result.events))
 
 	var evolving := battle.evolving_unit()
 	_ui.settle_after_action(
