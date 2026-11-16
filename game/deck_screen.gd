@@ -13,6 +13,7 @@ extends Node
 
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
+const ScreenSize := preload("res://game/screen_size.gd")
 const DeckLibrary := preload("res://game/deck_library.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
@@ -36,6 +37,8 @@ const CORNER_ROOM := 120.0
 const DETAIL_WIDTH := 440.0
 const ROSTER_WIDTH := 300.0
 const TROOP_WIDTH := 420.0
+## 画面の幅の上限（論理の px）。横長の画面では、これより広げずに真ん中に置く（docs/screen-size.md）。
+const MAX_WIDTH := 1560.0
 
 ## 組む画面で使う決まり（雇える駒、予算、数の上限）。切り替え（set_mode）で変わる。
 var rules: DeckRules = DeckRules.versus()
@@ -1009,6 +1012,8 @@ func _build_dialog() -> Control:
 func _frame() -> Control:
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# 横長の画面では、横に広げすぎない（項目と説明が離れて読みにくくなる。docs/screen-size.md）。
+	ScreenSize.cap(margin, Vector2(MAX_WIDTH, INF))
 	for side: String in ["left", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 20)
 	margin.add_theme_constant_override("margin_top", 8)

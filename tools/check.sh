@@ -69,6 +69,9 @@ run autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay --only events $full
 autoplay_pid=$!
 run autoplay_ui --fixed-fps 60 --quit-after 20000 -- --autoplay --only ui &
 autoplay_ui_pid=$!
+# 操作の決まりの場面は、横長の画面（3440x1440 の窓。docs/screen-size.md）でも回す（部品が重ならない・はみ出さないこと）。
+run autoplay_ui_wide --fixed-fps 60 --quit-after 20000 -- --autoplay --only ui --size 3440x1440 &
+autoplay_ui_wide_pid=$!
 shots_pid=""
 if [ -n "$full" ]; then
   RUN_TIMEOUT=300 run shots -- --shots "$SHOTS_IN_FULL" --dry-run &
@@ -78,8 +81,9 @@ status=0
 wait "$tests_pid" || status=1
 wait "$autoplay_pid" || status=1
 wait "$autoplay_ui_pid" || status=1
+wait "$autoplay_ui_wide_pid" || status=1
 [ -z "$shots_pid" ] || wait "$shots_pid" || status=1
-cat "$logs/tests.log" "$logs/autoplay.log" "$logs/autoplay_ui.log"
+cat "$logs/tests.log" "$logs/autoplay.log" "$logs/autoplay_ui.log" "$logs/autoplay_ui_wide.log"
 [ -z "$shots_pid" ] || cat "$logs/shots.log"
 [ "$status" = 0 ] || { echo "check: テストか自動の対戦（か、スクリーンショットの場面）が失敗した" >&2; exit 1; }
 
@@ -87,7 +91,8 @@ if cat "$logs"/*.log | grep -E "SCRIPT ERROR|Parse Error|^ERROR" >/dev/null; the
   echo "check: エラーが出ています" >&2
   exit 1
 fi
-if ! grep -F "autoplay: OK" "$logs/autoplay.log" >/dev/null || ! grep -F "autoplay: OK" "$logs/autoplay_ui.log" >/dev/null; then
+if ! grep -F "autoplay: OK" "$logs/autoplay.log" >/dev/null || ! grep -F "autoplay: OK" "$logs/autoplay_ui.log" >/dev/null \
+  || ! grep -F "autoplay: OK" "$logs/autoplay_ui_wide.log" >/dev/null; then
   echo "check: 自動の対戦が最後まで進まなかった" >&2
   exit 1
 fi

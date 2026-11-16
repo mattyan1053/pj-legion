@@ -6,6 +6,7 @@ const MenuPlacement := preload("res://game/menu_placement.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const Settings := preload("res://game/settings.gd")
+const ScreenSize := preload("res://game/screen_size.gd")
 
 const SCREEN := Vector2(1280, 720)
 ## 視点の案内の下の端（battle_hud.gd の上の帯の下に、1 行の案内）。
@@ -33,14 +34,20 @@ func test_a_cell_is_a_whole_number_of_pixels_that_fits_the_largest_side() -> voi
 
 
 func test_it_sits_at_the_right_edge_below_the_guide_and_stays_on_screen() -> void:
-	for board_size: Vector2i in [BoardGenerator.DEFAULT_SIZE, BoardGenerator.MIN_SIZE, Vector2i(9, 5)]:
-		var rect := Geometry.place(SCREEN, board_size, GUIDE_BOTTOM)
-		assert_true(Rect2(Vector2.ZERO, SCREEN).encloses(rect), "画面に収まる（%s）" % board_size)
-		assert_true(is_equal_approx(rect.end.x, SCREEN.x - Geometry.MARGIN), "右の端に寄せる")
-		assert_true(rect.position.y > GUIDE_BOTTOM, "視点の案内より下")
-		# 上の帯・下の帯に重ならない。
-		assert_true(rect.position.y >= BattleHud.TOP_BAR_HEIGHT)
-		assert_true(rect.end.y <= SCREEN.y - BattleHud.BOTTOM_BAR_HEIGHT)
+	# 1280×720 と、ほかの縦横比の画面（横長 21:9・32:9、16:10、4:3 の窓の、論理の大きさ）。
+	var screens: Array[Vector2] = [SCREEN]
+	for window: Vector2 in [Vector2(3440, 1440), Vector2(5120, 1440), Vector2(1280, 800), Vector2(1024, 768)]:
+		screens.append(ScreenSize.logical_size(window, ScreenSize.base_size(), Window.CONTENT_SCALE_ASPECT_EXPAND))
+	for screen in screens:
+		for board_size: Vector2i in [BoardGenerator.DEFAULT_SIZE, BoardGenerator.MIN_SIZE, Vector2i(9, 5)]:
+			var rect := Geometry.place(screen, board_size, GUIDE_BOTTOM)
+			var what := "画面 %s、盤 %s" % [screen, board_size]
+			assert_true(Rect2(Vector2.ZERO, screen).encloses(rect), "画面に収まる（%s）" % what)
+			assert_true(is_equal_approx(rect.end.x, screen.x - Geometry.MARGIN), "右の端に寄せる（%s）" % what)
+			assert_true(rect.position.y > GUIDE_BOTTOM, "視点の案内より下（%s）" % what)
+			# 上の帯・下の帯に重ならない。
+			assert_true(rect.position.y >= BattleHud.TOP_BAR_HEIGHT, what)
+			assert_true(rect.end.y <= screen.y - BattleHud.BOTTOM_BAR_HEIGHT, what)
 
 
 func test_board_and_map_points_go_both_ways() -> void:

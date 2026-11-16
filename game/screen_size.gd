@@ -67,3 +67,24 @@ static func apply_for_check(window: Window, size: Vector2i) -> void:
 		window.content_scale_size = Vector2i(logical_size(wanted, base_size(), project_aspect()).round())
 	elif size != Vector2i.ZERO:
 		window.size = size
+
+
+## 画面いっぱいに広げた部品（anchors が全体）を、max_size より大きく広げない。画面がそれより広い（高い）ときは、
+## はみ出すぶんを左右（上下）の余白に分けて、真ん中に置く。margin は、いつも空けておく余白（左、上、右、下）。
+## 画面の大きさが変わるたびに置き直す。横長や縦長の画面で、まとまっていたほうが見やすい場面（部隊の編成など）に使う。
+static func cap(control: Control, max_size: Vector2, margin := Vector4.ZERO) -> void:
+	var fit := func() -> void:
+		var screen := control.get_viewport_rect().size
+		var extra := ((screen - max_size) / 2.0).max(Vector2.ZERO)
+		control.offset_left = margin.x + extra.x
+		control.offset_top = margin.y + extra.y
+		control.offset_right = -margin.z - extra.x
+		control.offset_bottom = -margin.w - extra.y
+	# 画面の大きさの合図は、木にいる間だけつなぐ（場面を抜けて部品が消えたあとに呼ばれないように）。
+	control.tree_entered.connect(func() -> void:
+		if not control.get_viewport().size_changed.is_connected(fit):
+			control.get_viewport().size_changed.connect(fit)
+		fit.call())
+	control.tree_exiting.connect(func() -> void:
+		if control.get_viewport().size_changed.is_connected(fit):
+			control.get_viewport().size_changed.disconnect(fit))

@@ -27,3 +27,4 @@ func test_expand_widens_or_heightens_from_the_base() -> void:
 	assert_true(ScreenSize.logical_size(Vector2(1024, 768), BASE, expand).is_equal_approx(Vector2(1280, 960)))
 	assert_eq(ScreenSize.logical_size(Vector2(3440, 1440), BASE, Window.CONTENT_SCALE_ASPECT_KEEP), BASE)
 	assert_eq(ScreenSize.logical_size(Vector2.ZERO, BASE, expand), BASE, "大きさの無い窓は基準のまま")
+
