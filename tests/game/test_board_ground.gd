@@ -55,7 +55,12 @@ func test_each_theme_is_complete() -> void:
 			assert_true(look.has(key), "見た目 %s の見た目に %s が無い" % [stage, key])
 		for key: StringName in [StageLook.OBSTACLE_PROPS, StageLook.FOREST_PROPS]:
 			var spec: Dictionary = look[key]
-			assert_true(spec.style in [StageLook.SINGLE, StageLook.WALL], "見た目 %s の %s の置き方" % [stage, key])
+			assert_true(spec.style in [StageLook.SINGLE, StageLook.WALL, StageLook.CRAG], "見た目 %s の %s の置き方" % [stage, key])
+			if spec.style == StageLook.CRAG:
+				# 岩山は形をコードで作る。面の色だけ持つ。
+				for color: String in ["low", "cliff", "top"]:
+					assert_true(spec.get(color) is Color, "見た目 %s の %s の岩山の色 %s" % [stage, key, color])
+				continue
 			assert_true(spec.props.size() >= (3 if spec.style == StageLook.WALL else 1), "見た目 %s の %s の素材" % [stage, key])
 			assert_true(spec.has("scale" if spec.style == StageLook.SINGLE else "height"), "見た目 %s の %s の大きさ" % [stage, key])
 		var scenery: Dictionary = look[StageLook.SCENERY]
