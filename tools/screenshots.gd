@@ -109,6 +109,7 @@ const SCENES := {
 	"story_list": "ストーリー: タイトルの「ストーリー」のあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
+	"story_sortie_default": "ストーリー: 出撃の準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
@@ -1350,6 +1351,16 @@ func _scene_story_sortie() -> bool:
 		return false
 	_app.current_scene().choose(saved.id)
 	return _app.current_scene().chosen_id() == saved.id
+
+
+## 出撃の準備で、既定の編成を選んでいるところ（取っておいた部隊は無い）。
+func _scene_story_sortie_default() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	if not await _start_story():
+		return false
+	if not await _scene_story_sortie_from_talk():
+		return false
+	return _app.current_scene().chosen_id() == ""
 
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。
