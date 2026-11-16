@@ -743,7 +743,7 @@ func _update_time_scale() -> void:
 func _watching_other() -> bool:
 	if battle == null or battle.is_over():
 		return false
-	return _watch_playback or (cpu_opponent and battle.phase != _human_side()) or battle.phase == _auto_side
+	return _watch_playback or (cpu_opponent and battle.phase != _human_side()) or _auto_running()
 
 
 ## 相手の番の下の帯のボタン（早送り・スキップ）を出すか。見ているだけの番で、再生か CPU の番を進めている間。
@@ -849,13 +849,19 @@ func toggle_opponent() -> void:
 func _is_cpu_turn() -> bool:
 	if battle.is_over():
 		return false
-	return (cpu_opponent and battle.phase == source.cpu_side()) or battle.phase == _auto_side
+	return (cpu_opponent and battle.phase == source.cpu_side()) or _auto_running()
+
+
+## おまかせの番を CPU が進めているか。任せた側の駒が進化先を選ぶのを待っている間は、人に選ばせるので止まる
+## （選ぶと、続きを CPU が進める）。
+func _auto_running() -> bool:
+	return battle.phase == _auto_side and battle.evolving_unit() == null
 
 
 ## 自分の番の残りを CPU に任せる（下の帯の「おまかせ」）。取り消せないので、1 回目は確かめるだけで、もう一度押すと任せる
 ## （確かめに変わった直後の 2 回目は受けない。ターン終了と同じ）。駒が行動の途中・進化先を選ぶ途中は押せない。
 ## 任せると、未行動の駒を CPU の考え（相手の CPU と同じもの）で動かし、ターンを終える。そのあいだは相手の番と同じに見るだけ
-## （早送り・スキップも効く）。
+## （早送り・スキップも効く）。ただし、駒の進化先は人が選ぶ（_auto_running）。
 func press_auto() -> void:
 	if not _can_auto():
 		return
@@ -1447,8 +1453,14 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 	_ui.busy = false
 	if _playback.skipping and not _watching_other():
 		# 自分の番が来た（か、決着した）。番の知らせは見せずに済ませたので、ここで出し、カメラを番の始めの位置へ。
+		# おまかせの途中で進化先を選ぶために止まったときは、番の途中なので知らせは出さず、進化する駒に寄る。
 		_playback.skipping = false
-		if not battle.is_over():
+		var waiting := battle.evolving_unit()
+		if battle.is_over():
+			pass
+		elif battle.phase == _auto_side and waiting != null:
+			_rig.focus_on(_view(waiting.id).position)
+		else:
 			_rig.focus_on(_camera_point(battle.phase))
 			_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_update_time_scale()
@@ -1613,7 +1625,7 @@ func _refresh() -> void:
 	))
 	if _ui.confirming_auto:
 		_hud.set_hint(BattleTexts.auto_confirm_hint())
-	elif _auto_side >= 0 and battle.phase == _auto_side:
+	elif _auto_running():
 		_hud.set_hint(BattleTexts.auto_running_hint())
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
