@@ -6,6 +6,9 @@ extends RefCounted
 ## - 行の頭に置かない文字（句読点、閉じ括弧、長音、小さい仮名など）の前と、行の末に置かない文字（開き括弧）の後では切らない。
 ## - 半角の空白の前後と、半角の文字どうしの間では切らない（「スキル 7 回」「HP 20 / 30」「Lv3」を 1 つに保つ）。
 ## - カタカナ（長音も）どうしの間では切らない（「ダメージ」「シールドトルーパー」を 1 語に保つ。行より長ければ、行の末で切る）。
+## - 漢字どうしの間（「表示」「攻撃力」）と、漢字・カタカナの後のひらがな（送り仮名と助詞。「届く」「範囲を」「ダメージを」）の前は、
+##   ほかに切れる所が無いときだけ切る（「表 / 示」のように語の途中で 1 文字だけ次の行へ送らない。ふつうは、ひらがなの後に
+##   漢字・カタカナが来る所などの、語の切れ目で切る）。
 ## - 切るなら、全角の空白・句読点の後と、開き括弧の前を優先する（行の半分より後ろにあれば、そこで切る）。無ければ、切れるところで切る。
 ## - 元からある改行は、そのまま残す。
 
@@ -15,7 +18,8 @@ const STRONG_BREAK_AFTER := "　。、"
 ## 優先する切れ目が、行の幅のこの割合より後ろにあれば、そこで切る。
 const STRONG_BREAK_RATIO := 0.5
 
-enum { NO_BREAK, WEAK, STRONG }
+## LOOSE は、語の途中だが、ほかに切れる所が無いときだけ切ってよい所（漢字どうしの間など）。
+enum { NO_BREAK, LOOSE, WEAK, STRONG }
 
 
 ## text を、どの行も width に収まるように折り返す。measure は、1 文字を渡すと幅を返す Callable
@@ -36,6 +40,7 @@ static func _fold_paragraph(text: String, width: float, measure: Callable) -> Ar
 	var lines: Array[String] = []
 	var start := 0
 	while start < text.length():
+		var loose := -1
 		var weak := -1
 		var strong := -1
 		var strong_width := 0.0
@@ -50,6 +55,8 @@ static func _fold_paragraph(text: String, width: float, measure: Callable) -> Ar
 					end = strong
 				elif weak > start:
 					end = weak
+				elif loose > start:
+					end = loose
 				break
 			var kind := _break_after(text, i)
 			if kind == STRONG:
@@ -58,6 +65,8 @@ static func _fold_paragraph(text: String, width: float, measure: Callable) -> Ar
 				weak = i + 1
 			elif kind == WEAK:
 				weak = i + 1
+			elif kind == LOOSE:
+				loose = i + 1
 		var line := text.substr(start, end - start)
 		# 折り返したところの全角の空白は、行の末と次の行の頭から落とす（段落の頭の字下げは残す）。
 		if end < text.length():
@@ -81,6 +90,8 @@ static func _break_after(text: String, i: int) -> int:
 		return NO_BREAK
 	if NO_LINE_START.contains(next) or NO_LINE_END.contains(here):
 		return NO_BREAK
+	if (_is_kanji(here) or _is_katakana(here)) and (_is_kanji(next) or _is_hiragana(next)):
+		return LOOSE
 	return STRONG if STRONG_BREAK_AFTER.contains(here) or NO_LINE_END.contains(next) else WEAK
 
 
@@ -91,6 +102,18 @@ static func _is_glue(character: String) -> bool:
 static func _is_ascii(character: String) -> bool:
 	var code := character.unicode_at(0)
 	return code > 0x20 and code < 0x7f
+
+
+## 漢字か（「々」も）。
+static func _is_kanji(character: String) -> bool:
+	var code := character.unicode_at(0)
+	return (code >= 0x4e00 and code <= 0x9fff) or code == 0x3005
+
+
+## ひらがなか。
+static func _is_hiragana(character: String) -> bool:
+	var code := character.unicode_at(0)
+	return code >= 0x3041 and code <= 0x3096
 
 
 ## カタカナか（長音・中黒を除く。中黒は語の区切り）。

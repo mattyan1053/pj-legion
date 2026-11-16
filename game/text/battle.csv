@@ -200,6 +200,7 @@ battle.hud.no_items,なし
 battle.hud.status,{status}（あと {turns} ターン）: {effect}
 battle.hud.skill_state.used_up,使用済み
 battle.hud.skill_state.ready,使用可
+battle.hud.skill_state.unusable,使用不可
 battle.hud.skill_state.cooldown,あと {turns} ターン
 battle.hud.skill_state.uses_left,{state}。残り {uses} 回
 battle.pop.blocked,{status}が防いだ

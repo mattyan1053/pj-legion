@@ -1829,6 +1829,7 @@ func _update_info() -> void:
 	_hud.show_cell(BattleTexts.cell_line(battle, _hover_cell) if _hover_cell != NO_CELL else "")
 	_hud.viewer_side = _viewer_side()
 	_hud.side_armies = battle.armies
+	_hud.battle = battle
 	_update_forecast()
 
 	var shown := hovered if hovered != null else inspected_unit()
@@ -1848,7 +1849,7 @@ func _update_info() -> void:
 		return
 	if _ui.menu_hover_id != &"" and selected_unit() != null and hovered == null and _hud.menu_ids().has(_ui.menu_hover_id):
 		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
-		_hud.show_unit(selected_unit(), "", BattleTexts.menu_note(_ui.menu_hover_id, selected_unit()), _ui.menu_hover_id != MENU_SKILL)
+		_hud.show_unit(selected_unit(), "", BattleTexts.menu_note(_ui.menu_hover_id, selected_unit(), battle), _ui.menu_hover_id != MENU_SKILL)
 		return
 	_hud.show_unit(shown, BattleTexts.unit_state(battle, shown), "")
 	# 見ている（クリックした）相手の駒なら、その範囲を表示したままにするスイッチを出す。
