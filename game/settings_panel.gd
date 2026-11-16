@@ -28,6 +28,7 @@ var settings: Settings
 ## 項目の名前 -> その行の部品（"control"、"value"、"reset"）。
 var _rows := {}
 var _reset_all: Button
+var _scroll: ScrollContainer
 
 
 func setup(target: Settings) -> void:
@@ -48,6 +49,7 @@ func setup(target: Settings) -> void:
 
 	# 項目は、縦に送れる枠に並べる（720 の高さに収まらなければ、ホイールか右の棒で送る。見出しと下のボタンは送らない）。
 	var scroll := ScrollContainer.new()
+	_scroll = scroll
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
 	var rows := VBoxContainer.new()
@@ -86,6 +88,11 @@ func setup(target: Settings) -> void:
 
 
 ## いまの値を、画面の部品に写す（値を外から変えたときも、これで追いつく）。
+## 項目の枠を、いちばん下まで送る（スクリーンショットの道具が、下の区分を見せるため）。
+func scroll_to_end() -> void:
+	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+
+
 func refresh() -> void:
 	var any_changed := false
 	for key: StringName in _rows:

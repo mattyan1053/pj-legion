@@ -16,6 +16,7 @@ const SaveStore := preload("res://game/save_store.gd")
 const Sound := preload("res://game/sound.gd")
 const Run := preload("res://game/run.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
+const WindowMode := preload("res://game/window_mode.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -32,6 +33,7 @@ var _current: Node
 var _current_id := &""
 var _changing := false
 var _fade: ColorRect
+var _window_mode: WindowMode
 
 
 func _ready() -> void:
@@ -82,6 +84,12 @@ func _ready() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_fade)
 
+	# 全画面と窓（設定の「全画面」と Alt+Enter）。検査とスクリーンショットは、窓に触らない。
+	_window_mode = WindowMode.new()
+	add_child(_window_mode)
+	_window_mode.setup(context.settings, context.checking == &"")
+	_window_mode.toggled.connect(context.settings.save)
+
 	if context.checking != &"":
 		scene_changed.connect(_drive_check)
 	go(SceneFlow.FIRST)
@@ -127,6 +135,7 @@ func go(scene: StringName) -> void:
 	# 暗転が明けるまでは、新しい場面に入力を渡さない（その間の操作は、切り替えの途中なので行き先が捨てられてしまう）。
 	node.process_mode = Node.PROCESS_MODE_DISABLED
 	add_child(node)
+	move_child(_window_mode, -1)  # Alt+Enter は、場面より先に受ける（入力は、子の後ろから順に届く）
 	await _fade_to(0.0)
 	node.process_mode = Node.PROCESS_MODE_INHERIT
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
