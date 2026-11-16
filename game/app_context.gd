@@ -25,7 +25,7 @@ const CHECK_SEED := 20261114
 
 ## 遊ぶ人ごとの設定（設定の画面で変え、user:// に取っておく）。
 var settings := Settings.new()
-## 取っておいた部隊（編成の画面で組み、対戦の設定で選ぶ。user:// に取っておく）。
+## 取っておいた部隊（編成の画面で組み、対戦用は対戦の設定で、ストーリー用は出撃の準備で選ぶ。user:// に取っておく）。
 var decks := DeckLibrary.new()
 ## ストーリーの進み具合（クリアした話。user:// に取っておく）。
 var story := Story.new()

@@ -44,7 +44,7 @@ const SCENES := {
 	"cpu": "CPU の番（止める、ログ、カメラが追う）",
 	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦の設定を行き来する",
 	"decks": "部隊の編成",
-	"story": "ストーリーの 1 話の通し（タイトル → 会話 → 対戦 → 勝って「次へ」→ 会話 → タイトル、クリアの記録）",
+	"story": "ストーリーの 1 話の通し（タイトル → 話の一覧 → 会話 → 出撃の準備 → 対戦 → 勝って「次へ」「部隊を選び直す」→ 会話 → 話の一覧 → タイトル、クリアの記録）",
 }
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
@@ -1022,7 +1022,7 @@ func _queue_setup_scene() -> void:
 		panel.choose_stage(BoardGenerator.Stage.PLAIN)
 		panel.confirm()
 		_expect(not _scene.cpu_opponent and _scene.source.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
-	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話はこちら）を渡すと、選び直す入口が出ない。
+	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、ステージ・相手・対戦の設定は選び直せない）を渡すと、選び直す入口が出ない。
 	var kept := {}
 	_script_fixed_source(kept)
 
