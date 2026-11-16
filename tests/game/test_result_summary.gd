@@ -72,3 +72,24 @@ func test_no_relics_and_no_mvp_are_left_out() -> void:
 	var summary: RefCounted = ResultSummary.of(BattleStats.new(battle), false, P1, "", true, P1, NAMES, "")
 	assert_eq(summary.lines.size(), 2, "作戦領域・中立撃破・聖遺物は、無ければ出さない")
 	assert_eq(summary.mvp_name, "")
+
+
+func test_tables_have_a_row_per_unit_and_mark_the_mvp() -> void:
+	var battle := Maps.battle(["......"])
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
+	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(1, 0))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(5, 0))
+	var stats := BattleStats.new(battle)
+	stats.units[sniper.id].damage = 30
+	stats.units[medic.id].healing = 12
+	stats.units[medic.id].defeated = true
+	var summary: RefCounted = ResultSummary.of(stats, false, P1, "", false, P1, NAMES, "")
+	assert_eq(summary.tables.size(), 2, "両方の陣営の表")
+	var rows: Array = summary.tables[0]["rows"]
+	assert_eq(rows.size(), 2, "駒ごとに 1 行")
+	assert_true(rows[0]["mvp"] and not rows[1]["mvp"], "MVP の行に印")
+	assert_eq(rows[0]["damage"], 30)
+	assert_eq(rows[1]["healing"], 12)
+	assert_true(rows[1]["defeated"])
+	assert_eq(summary.tables[1]["rows"].size(), 1)
+	assert_eq(summary.tables[1]["name"], "赤")
