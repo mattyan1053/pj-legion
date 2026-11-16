@@ -17,6 +17,7 @@ const Sound := preload("res://game/sound.gd")
 const Run := preload("res://game/run.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
 const WindowMode := preload("res://game/window_mode.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -37,6 +38,7 @@ var _window_mode: WindowMode
 
 
 func _ready() -> void:
+	UiTheme.install()  # どの画面を作るよりも前に、UI のテーマを当てる
 	var args := OS.get_cmdline_user_args()
 	if args.has("--autoplay"):
 		context.checking = AppContext.CHECK_AUTOPLAY
