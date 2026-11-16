@@ -128,6 +128,9 @@ var _log_panel: LogPanel
 var _cpu_fast := false
 ## 早送りを入れているか（相手の番の下の帯の「早送り」。切り替え。入れたままなら、次の相手の番も早送り）。
 var fast_forward := false
+## いま再生している行動が、見ているだけの番のものか（行動の前か後のどちらかが見ているだけの番）。
+## CPU が番を終える行動は、ルールの上ではもう人の番だが、再生の中身（中立のフェーズ）は見ているだけの番なので、これで見る。
+var _watch_playback := false
 
 ## 対戦の設定を作ってくれるもの（battle_source.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
 var source: BattleSource
@@ -417,6 +420,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_rig.position = _camera_point(Unit.Side.PLAYER1)
 	_ui.clear_for_new_battle()
 	_playback.skipping = false
+	_watch_playback = false
 	# 前の対戦のマウスの下のマス（盤の大きさが違えば、盤の外のマス）と、そこから決めた予測のパネル・メニューの置き場所を持ち越さない。
 	# マウスの下のマスは、次のコマで新しい盤から拾い直す（_update_hover）。
 	_hover_cell = NO_CELL
@@ -721,7 +725,9 @@ func _update_time_scale() -> void:
 
 ## 人が見ているだけの番か（相手が CPU で、CPU の番か、中立のフェーズ）。早送りとスキップが効くのは、この間だけ。
 func _watching_other() -> bool:
-	return battle != null and cpu_opponent and not battle.is_over() and battle.phase != _human_side()
+	if battle == null or battle.is_over():
+		return false
+	return _watch_playback or (cpu_opponent and battle.phase != _human_side())
 
 
 ## 相手の番の下の帯のボタン（早送り・スキップ）を出すか。見ているだけの番で、再生か CPU の番を進めている間。
@@ -1342,6 +1348,7 @@ func _do(action: BattleAction) -> bool:
 func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> bool:
 	var events: Array[BattleEvent] = []
 	var accepted := true
+	var was_watching := _watching_other()
 	for i in actions.size():
 		var result := battle.apply(actions[i])
 		if not result.accepted:
@@ -1352,6 +1359,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 			break
 		events.append_array(result.events)
 	var action: BattleAction = actions[-1]
+	_watch_playback = was_watching or _watching_other()
 	_update_time_scale()  # 相手の番・中立のフェーズに入ったなら、早送りを効かせる
 	stats.feed_all(events)
 	_phase_focus.feed(battle, events)  # フェーズの始めにカメラが寄る駒（再生の中の PhaseStartedEvent より前に食わせる）
@@ -1374,6 +1382,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 		_hud.set_hint(BattleTexts.hint(battle, null, null, Mode.NONE, true, false, false))
 	_show_watch_controls()
 	await _playback.play_all(events, quiet_until_warp_from)
+	_watch_playback = false
 	_ui.busy = false
 	if _playback.skipping and not _watching_other():
 		# 自分の番が来た（か、決着した）。番の知らせは見せずに済ませたので、ここで出し、カメラを番の始めの位置へ。
@@ -1427,6 +1436,9 @@ func _run_cpu() -> void:
 			await _playback.after(CPU_PAUSE)
 		elif _playback.skipping:
 			await get_tree().process_frame  # スキップの途中も、画面（「スキップ中」）が固まらないよう、1 コマずつ進める
+		# メニューやログを開いている間は止まる（ふだんは再生の時計が止まって待つ。スキップの途中は待つものが無いので、ここで待つ）。
+		while context.overlays.pauses() and is_inside_tree():
+			await get_tree().process_frame
 	set_cpu_fast(false)
 	_ui.cpu_running = false
 	if not _watching_other():

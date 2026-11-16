@@ -1370,10 +1370,23 @@ func _queue_cpu_skip_scene() -> void:
 		_scene.toggle_fast_forward()
 		_expect(Engine.time_scale > normal * 2.0 and _scene.watch_controls_state()[1], "早送りで、速くならない")
 		_expect(_scene.press_skip() and _scene.is_skipping(), "スキップを押せない")
-		seen_lines["before"] = lines_before)
+		seen_lines["before"] = lines_before
+		seen_lines["base"] = _scene.cpu_actions
+		# スキップの途中でも、ログを開いている間は止まる（CPU が 1 つ行動したところで開く）。
+		var open_once := func() -> void:
+			if seen_lines.has("paused") or _scene.cpu_actions == seen_lines["base"] or not _scene.is_skipping():
+				return
+			_scene.open_log()
+			seen_lines["paused"] = _scene.cpu_actions
+			get_tree().create_timer(0.5, true, false, true).timeout.connect(func() -> void:
+				_expect(_scene.cpu_actions <= seen_lines["paused"] + 1 and battle.phase != Unit.Side.PLAYER1,
+					"スキップの途中に、ログを開いている間も相手の番が進んだ")
+				_scene.log_panel().close())
+		_scene.frame_passed.connect(open_once))
 	_scripted.append(func() -> void:
+		_expect(seen_lines.has("paused"), "スキップの途中に、ログを開けなかった")
 		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1 and not _scene.is_skipping(), "スキップのあと、自分の番で止まらなかった")
-		_expect(_scene.cpu_actions > 0 and bait.hp < bait.max_hp(), "スキップしても、CPU が行動していない")
+		_expect(_scene.cpu_actions > seen_lines["base"] and bait.hp < bait.max_hp(), "スキップしても、CPU が行動していない")
 		var problem := _mismatch(battle)
 		_expect(problem == "", "スキップのあと、盤の見た目が状態と違う: " + problem)
 		_expect(_scene.battle_log.entries.size() > seen_lines["before"] + 2, "スキップした番のことが、ログに残っていない")
@@ -1383,9 +1396,30 @@ func _queue_cpu_skip_scene() -> void:
 	_scripted.append(func() -> void:
 		_end_turn()
 		_scene.press_skip())
+	# 3 局目: スキップせずに見る。CPU が番を終えたあとの中立のフェーズ（ルールの上では、もう人の番）の再生の間も、ボタンが出ている。
+	var watch := Battle.new(_small_board(Vector2i(8, 5)))
+	watch.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	watch.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
+	watch.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(3, 2))
+	var neutral_seen := {}
 	_scripted.append(func() -> void:
 		_expect(lost.is_over() and _scene.result_screen().visible, "スキップの途中の決着で、決着の画面が出ない")
 		_scene.toggle_fast_forward()
+		_scene.set_opponent(false)
+		_scene.start_with(watch, StageLook.GRASSLAND, 1)
+		_scene.set_opponent(true))
+	_scripted.append(func() -> void:
+		var look := func() -> void:
+			if _scene.battle == watch and watch.turn == 2 and watch.phase == Unit.Side.PLAYER1 and _scene.is_busy():
+				neutral_seen["busy"] = true
+				neutral_seen["shown"] = neutral_seen.get("shown", true) and _scene.watch_controls_state()[0]
+		_scene.frame_passed.connect(look)
+		_end_turn())
+	_scripted.append(func() -> void:
+		_expect(watch.turn == 2 and watch.phase == Unit.Side.PLAYER1, "3 局目で、自分の番に戻らなかった")
+		_expect(neutral_seen.get("busy", false) and neutral_seen.get("shown", false),
+			"CPU が番を終えたあとの中立のフェーズの再生の間に、早送り・スキップが出ていない")
+		_expect(not _scene.watch_controls_state()[0], "自分の番に戻っても、早送り・スキップが出ている")
 		_scene.set_opponent(false))
 
 
