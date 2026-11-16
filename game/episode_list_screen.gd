@@ -24,7 +24,7 @@ signal finished(outcome: StringName)
 const CARD_WIDTH := 280.0
 ## 縮図の 1 マスの大きさ（px）と、縮図を置く枠の高さ。
 const MAP_CELL := 8
-const MAP_HEIGHT := 200.0
+const MAP_HEIGHT := 180.0
 
 const COLOR_CARD := Palette.OVERLAY
 const COLOR_CARD_HOVER := Color(Palette.RAISED, 0.96)
