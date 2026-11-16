@@ -6,7 +6,7 @@ const MatchChoice := preload("res://game/match_choice.gd")
 
 func test_default_is_human_first_military_against_cpu_fantasy() -> void:
 	var setup: MatchSetup = MatchChoice.new().to_setup(1)
-	assert_eq(setup.stage, BoardGenerator.Stage.PLAIN)
+	assert_eq(setup.scenario.stage, BoardGenerator.Stage.PLAIN)
 	assert_eq(setup.controllers, [MatchSetup.Controller.HUMAN, MatchSetup.Controller.CPU] as Array[MatchSetup.Controller])
 	assert_eq(setup.army_of(Unit.Side.PLAYER1), UnitKind.Army.MILITARY)
 	assert_eq(setup.army_of(Unit.Side.PLAYER2), UnitKind.Army.FANTASY)

@@ -271,7 +271,7 @@ func _initialize() -> void:
 			pairing %= 2
 		var armies: Array[UnitKind.Army] = [ARMIES[pairing % 2], ARMIES[(pairing % 2) ^ (0 if pairing >= 2 else 1)]]
 		var setup := MatchSetup.new()
-		setup.stage = stage
+		setup.scenario = Scenario.versus(stage)
 		setup.battle_seed = first_seed + game
 		setup.ignore_budget = deck_mode == "even"
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
