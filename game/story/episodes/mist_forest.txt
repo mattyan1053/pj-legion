@@ -1,0 +1,44 @@
+# ストーリーの話「霧の森」。FANTASY の物語の本編 5 話目。
+#
+# 会話の文は仮のもの。ストーリーの中身（世界、登場人物）は、まだ決まっていない（Issue #49）。
+#
+# 手で作ったマップ「霧の森」（game/maps/mist_forest.txt。森の多い盤）。勝ち方はいつもどおり（将の撃破、本陣の占拠）。
+# 敵は MILITARY の本隊（5 体。盾役 2・スナイパー 2・衛生兵）。森が遠くからの撃ち合いを鈍らせる。
+# 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
+
+[episode]
+title = 霧の森
+map = mist_forest
+look = crystal_forest
+music = battle_tense
+
+[unlock]
+budget = 2
+
+[ally]
+name = 騎士長
+
+[enemy]
+name = 機械の軍の隊長
+army = military
+unit = shield_trooper
+unit = shield_trooper
+unit = sniper
+unit = sniper
+unit = medic
+
+[before]
+騎士長: 霧の森まで、追い込まれた。……いや、ここはわれらの森だ。
+機械の軍の隊長: 森ごと焼き払ってやる。撃て。
+騎士長: 森の中では、遠くからの弾は当たりにくい。木を盾に寄せろ。
+騎士長: 敵の将を倒すか、本陣を取り続ければ、森は守れる。
+
+[after]
+機械の軍の隊長: ……森が、魔法使いの味方をした。退け。
+騎士長: 森は守った。だが、戦はまだ続く。
+騎士長: （ここまでが本編 5 話。続きは、まだ無い）
+
+[cues]
+(turn 1) 騎士長: 森に入った駒は、受けるダメージが減る。
+(fallen ally) 騎士長: 1 体の重みを忘れるな。下がって立て直せ。
+(king_half enemy) 機械の軍の隊長: まだだ。撃ち続けろ。
