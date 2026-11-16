@@ -473,7 +473,7 @@ const BUDGET_UP := 3
 	assert_eq(episode.reload(), OK)
 	var news := Story.starting().news_of(episode)
 	assert_eq(news, [
-		"新しい駒「コマンドー」を雇えるようになった。",
-		"新しい持ち物「スピードブーツ」を持たせられるようになった。",
-		"部隊のコストの上限が %d になった。" % (Story.MILITARY.STARTING_BUDGET + 3),
-	] as Array[String], "もう使えるもの（スナイパー、アイアンシールド）は知らせない")
+		{"text": "新しい駒「コマンドー」を雇えるようになった。", "kind": UnitKind.Id.COMMANDO},
+		{"text": "新しい持ち物「スピードブーツ」を持たせられるようになった。"},
+		{"text": "部隊のコストの上限が %d になった。" % (Story.MILITARY.STARTING_BUDGET + 3)},
+	] as Array[Dictionary], "もう使えるもの（スナイパー、アイアンシールド）は知らせない。駒の知らせはアイコンを出す（kind）")
