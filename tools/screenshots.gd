@@ -58,6 +58,8 @@ const SCENES := {
 	"threat": "相手の駒をクリックして見ている（脅威範囲が出ている）",
 	"inspect_moved": "自分の駒を動かしたあと（メニューが出たまま）に、相手の駒を見ている",
 	"threat_all": "自分の駒を選んで、敵の全員の脅威範囲（赤い斜線）を重ねている",
+	"threat_pin_switch": "相手の駒をクリックして見ている。左下の枠のいちばん下に「範囲を表示したまま」のスイッチ（入れたところ）",
+	"threat_pinned": "相手の駒 2 体の範囲を表示したまま（橙の枠）、敵の全員の脅威範囲（赤い斜線）も出している",
 	"threat_mix_plain": "敵の全員の脅威範囲（斜線）を出したまま、相手の駒を見ている（その駒の範囲の赤い塗り。中央平原）",
 	"threat_mix_labyrinth": "同じく、迷宮回廊（石畳）で",
 	"threat_mix_twin_springs": "同じく、双子結晶（結晶の森）で",
@@ -758,6 +760,32 @@ func _scene_threat_all() -> bool:
 	_scene.toggle_threat()
 	_scene.focus_camera(unit.cell)
 	return _scene.is_threat_shown()
+
+
+func _scene_threat_pin_switch() -> bool:
+	if not await _scene_threat():
+		return false
+	var shown: Array[bool] = _scene.pin_switch_state()
+	return shown[0] and _scene.press_pin_switch() and _scene.pin_switch_state()[1]
+
+
+func _scene_threat_pinned() -> bool:
+	if not await _scene_threat_pin_switch():
+		return false
+	var first: Unit = _scene.inspected_unit()
+	# もう 1 体: 留めた駒にいちばん近い、ほかの相手の駒（将は除く）。
+	var second: Unit = null
+	for foe in _battle.units:
+		if foe.side == first.side and foe != first and foe.kind != UnitKind.Id.KING:
+			if second == null or _distance(foe.cell, first.cell) < _distance(second.cell, first.cell):
+				second = foe
+	if second == null:
+		return false
+	_scene.click_cell(second.cell)
+	_scene.press_pin_switch()
+	_scene.cancel()  # 見るのをやめる（範囲は残る）
+	_scene.toggle_threat()
+	return _scene.pinned_ids().size() == 2 and _scene.is_threat_shown()
 
 
 ## field のステージで、敵の全員の脅威範囲を出し、自分の駒の近くの相手の駒を見る（斜線と、見ている駒の赤い塗りが重なる）。

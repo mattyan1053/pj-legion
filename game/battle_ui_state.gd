@@ -22,6 +22,7 @@ enum Back {
 	DONE,  ## ここで戻した（確かめ・閲覧・対象を選ぶ途中をやめた）。場面は表示を作り直す
 	UNDO_MOVE,  ## 動いたあと。場面が移動の取り消しを行う
 	DESELECT,  ## 選択（とマスの情報、ターン終了の確かめ）をやめる。場面が select(0) を通す
+	UNPIN_ALL,  ## 表示したままにしている範囲（pinned_ids）を、ここで全部外した。場面は表示を作り直す
 }
 
 ## 選んでいる駒（行動させる駒）の番号。0 なら選んでいない。
@@ -31,6 +32,9 @@ var selected_id := 0
 var inspected_id := 0
 ## クリックして情報を出しているマス（駒のいないマス。無ければ NO_CELL）。
 var inspected_cell := NO_CELL
+## 攻撃範囲を表示したままにしている（ピン留めした）駒の番号（留めた順）。行動や番が変わっても残る。
+## 倒れた駒は、場面が外す（drop_missing_pins）。
+var pinned_ids: Array[int] = []
 var mode := Mode.NONE
 ## 確かめ（ターン終了・必殺技）を始めてから、この間（ミリ秒）は 2 回目を受け付けない。
 ## ダブルクリックや、キーの連打で、確かめを飛ばさないため。
@@ -70,6 +74,7 @@ func clear_for_new_battle() -> void:
 	mode = Mode.NONE
 	confirming_end = false
 	confirming_ult = false
+	pinned_ids.clear()
 	cancel_press()
 
 
@@ -142,6 +147,7 @@ func confirm_guarded(now_msec: int) -> bool:
 
 ## 戻す（右クリック・Esc）。必殺技の確かめ、閲覧、対象を選ぶ途中の順に、1 つだけやめる。
 ## そのどれでもなければ、動いたあと（moving）なら移動の取り消し、選択・マスの情報・ターン終了の確かめがあれば選ぶのをやめる。
+## それも無ければ、表示したままにしている範囲を全部外す。
 ## 何をするか（Back）を返す。DONE のときは、ここでもうやめている。
 func back(moving: bool) -> Back:
 	if confirming_ult:
@@ -157,7 +163,27 @@ func back(moving: bool) -> Back:
 		return Back.UNDO_MOVE
 	if selected_id != 0 or inspected_cell != NO_CELL or confirming_end:
 		return Back.DESELECT
+	if not pinned_ids.is_empty():
+		pinned_ids.clear()
+		return Back.UNPIN_ALL
 	return Back.NOTHING
+
+
+# ---- 範囲のピン留め ----
+
+
+## 駒 unit_id の範囲を、表示したままにする・やめる（切り替え）。留めたかを返す。
+func toggle_pin(unit_id: int) -> bool:
+	if pinned_ids.has(unit_id):
+		pinned_ids.erase(unit_id)
+		return false
+	pinned_ids.append(unit_id)
+	return true
+
+
+## もう盤にいない駒（倒れた駒）のピンを外す。exists は、駒の番号を受けて、盤にいるかを返す。
+func drop_missing_pins(exists: Callable) -> void:
+	pinned_ids = pinned_ids.filter(func(id: int) -> bool: return exists.call(id))
 
 
 # ---- 組み合わせの決まり ----

@@ -157,3 +157,33 @@ func test_a_quick_second_press_does_not_pass_the_confirmation() -> void:
 	ui.start_confirming_ult(5000)
 	assert_true(ui.confirming_ult and ui.confirm_guarded(5100), "必殺技の確かめの直後の 2 回目を受けた")
 	assert_true(BattleUiState.CONFIRM_GUARD_MSEC >= 300 and BattleUiState.CONFIRM_GUARD_MSEC <= 500, "受けない間は 0.3〜0.5 秒")
+
+
+func test_pins_toggle_and_go_last_on_back() -> void:
+	var ui := BattleUiState.new()
+	assert_true(ui.toggle_pin(4))
+	assert_true(ui.toggle_pin(7))
+	assert_false(ui.toggle_pin(4), "もう一度で外す")
+	assert_eq(ui.pinned_ids, [7] as Array[int])
+	ui.select(3)
+	ui.inspect(7)
+	assert_eq(ui.back(false), Back.DONE, "まず見るのをやめる（ピンは残す）")
+	assert_eq(ui.back(false), Back.DESELECT, "次に選ぶのをやめる（ピンは残す）")
+	ui.select(0)
+	assert_eq(ui.pinned_ids, [7] as Array[int])
+	assert_eq(ui.back(false), Back.UNPIN_ALL, "ほかに戻すものが無ければ、ピンを全部外す")
+	assert_true(ui.pinned_ids.is_empty())
+	assert_eq(ui.back(false), Back.NOTHING)
+
+
+func test_pins_survive_actions_but_not_a_new_battle() -> void:
+	var ui := BattleUiState.new()
+	ui.toggle_pin(2)
+	ui.toggle_pin(9)
+	ui.clear_after_action()
+	ui.settle_after_action(false, 0, 0, false)
+	assert_eq(ui.pinned_ids, [2, 9] as Array[int], "行動でピンが外れた")
+	ui.drop_missing_pins(func(id: int) -> bool: return id != 2)
+	assert_eq(ui.pinned_ids, [9] as Array[int], "倒れた駒のピンが残った")
+	ui.clear_for_new_battle()
+	assert_true(ui.pinned_ids.is_empty(), "新しい対戦にピンを持ち越した")
