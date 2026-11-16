@@ -73,13 +73,3 @@ const CUES := [
 	[BattleCues.TURN, 8, 0, "援軍まで、あと 3 ターンだ。持ちこたえろ。"],
 	[BattleCues.TURN, 10, 1, "これが最後だ。全員で押し込め。"],
 ]
-
-## 敵の部隊（決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
-static func enemy_deck() -> Deck:
-	var deck := Deck.new(ENEMY_ARMY)
-	for row: Array in ENEMY:
-		var entry := DeckEntry.new(row[0])
-		for item: Equipment.Id in row[1]:
-			entry.equip(item)
-		deck.entries.append(entry)
-	return deck

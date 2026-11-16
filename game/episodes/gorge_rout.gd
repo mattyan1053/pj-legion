@@ -62,13 +62,3 @@ const CUES := [
 	[BattleCues.FALLEN, 1, 1, "一人やられたか。散るな、固まって迎え撃て。"],
 	[BattleCues.KING_HALF, 1, 0, "隊長格は弱っている。だが、残りも逃がすな。"],
 ]
-
-## 敵の部隊（決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
-static func enemy_deck() -> Deck:
-	var deck := Deck.new(ENEMY_ARMY)
-	for row: Array in ENEMY:
-		var entry := DeckEntry.new(row[0])
-		for item: Equipment.Id in row[1]:
-			entry.equip(item)
-		deck.entries.append(entry)
-	return deck

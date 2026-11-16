@@ -20,7 +20,7 @@ func _init(of_episode: Script = null, deck: Deck = null) -> void:
 
 func make_setup(battle_seed: int) -> MatchSetup:
 	var scenario := Scenario.on_map(episode.MAP.map(), episode.MAP.TITLE)
-	scenario.fix_deck(Unit.Side.PLAYER2, episode.enemy_deck())
+	scenario.fix_deck(Unit.Side.PLAYER2, enemy_deck_of(episode))
 	# 初期位置（話のデータの DEPLOY。[プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」）。
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var cells: Array[Vector2i] = []
@@ -28,10 +28,10 @@ func make_setup(battle_seed: int) -> MatchSetup:
 		if not cells.is_empty():
 			scenario.set_deploy_cells(side, cells)
 	# 勝ち方（docs/win-conditions.md）。話のデータの HOLD_TURNS があれば、人がそのターン数を守り切れば勝ち。
-	if episode.get_script_constant_map().has(&"HOLD_TURNS"):
+	if _has(episode, &"HOLD_TURNS"):
 		scenario.hold_for(Unit.Side.PLAYER1, episode.HOLD_TURNS)
 	# 話のデータの WINS。あれば、人の勝ち方はその列だけ（たとえば全滅だけ。敵の将を倒しても終わらない）。
-	if episode.get_script_constant_map().has(&"WINS"):
+	if _has(episode, &"WINS"):
 		var wins: Array[GameWonEvent.Reason] = []
 		wins.assign(episode.WINS)
 		scenario.set_win_conditions(Unit.Side.PLAYER1, wins)
@@ -57,7 +57,7 @@ func can_choose_squad() -> bool:
 
 ## 話のデータの CUES（いつ・だれが・何と言うか）。無い話は台詞なし。
 func talk_cues() -> RefCounted:
-	if not episode.get_script_constant_map().has(&"CUES"):
+	if not _has(episode, &"CUES"):
 		return BattleCues.new()
 	return BattleCues.new(episode.CUES, episode.SPEAKERS)
 
@@ -69,3 +69,19 @@ func record_win(context: RefCounted) -> void:
 
 func copy() -> RefCounted:
 	return get_script().new(episode, human_deck)
+
+
+## 話 of_episode の敵の部隊（話のデータの ENEMY_ARMY と ENEMY から。決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
+static func enemy_deck_of(of_episode: Script) -> Deck:
+	var deck := Deck.new(of_episode.ENEMY_ARMY)
+	for row: Array in of_episode.ENEMY:
+		var entry := DeckEntry.new(row[0])
+		for item: Equipment.Id in row[1]:
+			entry.equip(item)
+		deck.entries.append(entry)
+	return deck
+
+
+## 話のデータに、無くてもよい定数 name（HOLD_TURNS、WINS、CUES）があるか。
+static func _has(of_episode: Script, name: StringName) -> bool:
+	return of_episode.get_script_constant_map().has(name)

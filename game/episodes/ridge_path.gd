@@ -60,13 +60,3 @@ const AFTER := [
 const CUES := [
 	[BattleCues.KING_HALF, 1, 1, "まだだ。この程度で道は譲らん。"],
 ]
-
-## 敵の部隊（決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
-static func enemy_deck() -> Deck:
-	var deck := Deck.new(ENEMY_ARMY)
-	for row: Array in ENEMY:
-		var entry := DeckEntry.new(row[0])
-		for item: Equipment.Id in row[1]:
-			entry.equip(item)
-		deck.entries.append(entry)
-	return deck
