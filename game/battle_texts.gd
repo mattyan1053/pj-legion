@@ -14,6 +14,7 @@ const MENU_SKILL := &"skill"
 const MENU_WAIT := &"wait"
 const MENU_UNDO := &"undo"
 const MENU_BACK := &"back"
+const MENU_WARP := &"warp"
 
 ## マスに特別なものが無いときの説明。
 const NOTHING_SPECIAL := "特別なものは無い"
@@ -28,7 +29,7 @@ const NOTHING_SPECIAL := "特別なものは無い"
 ## confirming_unacted は、ターン終了を確かめている途中なら、まだ行動していない駒の数（確かめていなければ 0）。
 static func hint(
 	battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn: bool, confirming_ult: bool, self_skill: bool,
-	confirming_unacted := 0
+	confirming_unacted := 0, can_warp := false
 ) -> String:
 	if battle.is_over():
 		return "決着"
@@ -63,6 +64,8 @@ static func hint(
 		return "この駒は行動を終えている（白: 動ける範囲）"
 	if unit.move_locked:
 		return "スキルを使った。駒のそばのメニューから、攻撃か待機を選ぶ（取り消せない）"
+	if unit.has_moved and can_warp:
+		return "ポータルの上。駒のそばのメニューの「転移」で、同じ色に塗ったマスへ移れる。右クリックで移動を取り消す"
 	if unit.has_moved:
 		if unit.cruised:
 			return "巡航で動いたので、攻撃はできない。駒のそばのメニューから、待機か取り消しを選ぶ"
@@ -78,12 +81,18 @@ static func hint(
 ## 駒のそばのメニューに出す項目（[名前, 文字, 押せるか] の列）。いま選べるものだけを並べる。
 ## スキルは、持っている駒なら、使えない間も理由を添えて出す（押せない）。行動できない駒では空。
 ## can_attack・can_heal・can_skill は、選んでいる駒がいまの位置から攻撃・回復・スキルの対象を選べるか。
-static func menu_items(battle: Battle, unit: Unit, mode: Mode, can_attack: bool, can_heal: bool, can_skill: bool) -> Array:
+## warp_to は、いまのポータルから転移できる行き先（できなければ NO_CELL）。転移は、出ていればいちばん上に置く
+## （ポータルへ動いた直後に、いちばん選びそうなもの）。
+static func menu_items(
+	battle: Battle, unit: Unit, mode: Mode, can_attack: bool, can_heal: bool, can_skill: bool, warp_to := Vector2i(-1, -1)
+) -> Array:
 	var items: Array = []
 	if unit == null or battle.is_over() or not battle.can_act(unit):
 		return items
 	if mode != Mode.NONE:
 		return [[MENU_BACK, "やめる", true]]
+	if warp_to != Vector2i(-1, -1):
+		items.append([MENU_WARP, "転移", true])
 	if can_attack:
 		items.append([MENU_ATTACK, "攻撃", true])
 	if can_heal:
@@ -113,6 +122,8 @@ static func menu_note(id: StringName, unit: Unit) -> String:
 			return "移動を取り消す: 動く前のマスへ戻して、選び直す"
 		MENU_BACK:
 			return "やめる: 対象を選ぶのをやめて、メニューへ戻る"
+		MENU_WARP:
+			return "転移: 対のポータル（同じ色の塗り）へ移る。移動力は使わない。転移のあとも攻撃・待機を選べる"
 	return ""
 
 
@@ -185,7 +196,7 @@ static func cell_body(battle: Battle, cell: Vector2i) -> String:
 
 
 ## ポータルのマスの説明。行き先の座標のあとに、括弧で添える（左下の枠では、括弧の中を「。」ごとの行にする）。
-const PORTAL_NOTE := "対のポータルへ転送する。転送に移動力は使わない"
+const PORTAL_NOTE := "止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わない"
 const PORTAL_BLOCKED := "行き先に駒がいて、いまは使えない"
 
 
