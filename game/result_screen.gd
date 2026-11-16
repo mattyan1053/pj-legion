@@ -2,7 +2,7 @@ extends Control
 ## リザルトの画面。決着したら、対戦の画面（盤面）の上に重ねて、段階的に出す（result_summary.gd の中身）。
 ##
 ## 1. 勝敗の見出し（VICTORY / DEFEAT、人どうしは勝った側の名前）が中央に大きく出て、上へ退く。
-## 2. 戦績（作戦領域・経過ターン・敵軍撃破・聖遺物）が 1 行ずつ出る。
+## 2. 戦績（作戦領域・経過ターン・敵軍撃破・中立撃破・聖遺物）が 1 行ずつ出る。
 ## 3. MVP が拡大しながら出る。
 ## 4. 行き先のボタンと、入力の案内が出る。**ここまで出そろうまで、行き先は選べない。**
 ## 出そろう前のクリック（Enter・Space でも）は、演出を飛ばして全部を出すだけ（行き先は選ばない）。
@@ -357,7 +357,6 @@ func set_destinations(stages: Array[BoardGenerator.Stage], setup: bool) -> void:
 ## 「次へ」を出すか（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める。決着の画面を出すたびに決める）。
 func set_continue(shown: bool) -> void:
 	_continue_button.visible = shown
-	_continue_button.get_parent().visible = shown  # 出さないときは、行ごと詰める
 	_prompt.text = "行き先を選ぶ（Enter で%s）" % ("次へ" if shown else "タイトルへ")
 
 
@@ -483,16 +482,15 @@ func _build_actions() -> void:
 	_actions.add_theme_constant_override("separation", 8)
 	_actions.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_body.add_child(_actions)
-	var forward := _row()
-	_continue_button = _button("次へ", 280.0)
+	var row := _row()
+	# 「次へ」は「同じ盤面でもう一度」と同じ行の先頭に置く（ストーリーでは新しい盤面のボタンが出ないので、行が空く。
+	# 行を分けると、戦績の行が多いときにボタンが画面の下の帯に重なる）。
+	_continue_button = _button("次へ", 240.0)
 	_continue_button.set_meta(&"sound", &"ui_confirm")
 	_continue_button.add_theme_font_size_override("font_size", 21)
-	_continue_button.custom_minimum_size.y = 50.0
 	_continue_button.pressed.connect(press_continue)
 	_continue_button.visible = false
-	forward.visible = false
-	forward.add_child(_continue_button)
-	var row := _row()
+	row.add_child(_continue_button)
 	var again := _button("同じ盤面でもう一度", 240.0)
 	again.set_meta(&"sound", &"ui_confirm")
 	again.pressed.connect(func() -> void: restart_pressed.emit(0, false))

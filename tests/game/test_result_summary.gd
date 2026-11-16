@@ -57,9 +57,10 @@ func test_lines_have_the_stage_turns_kills_and_relics() -> void:
 	assert_eq(summary.lines, [
 		["作戦領域", "双子結晶"],
 		["経過ターン", "14 ターン"],
-		["敵軍撃破", "5 体"],
+		["敵軍撃破", "2 体"],
+		["中立撃破", "3 体"],
 		["聖遺物", Relics.display_name(Relics.Id.WISDOM)],
-	], "撃破は敵のプレイヤーの駒と中立の駒の合計")
+	], "撃破は、敵のプレイヤーの駒と中立の駒（中ボスを含む）を分けて出す")
 	assert_eq(summary.mvp_name, "%s Lv1" % UnitKind.display_name(UnitKind.Id.SNIPER))
 	assert_eq([summary.mvp_damage, summary.mvp_kills], [42, 2])
 	assert_true(summary.detail.contains("赤: 与えたダメージ"), "詳しい戦績は両方の陣営")
@@ -69,5 +70,5 @@ func test_no_relics_and_no_mvp_are_left_out() -> void:
 	var battle := Maps.battle(["......"])
 	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	var summary: RefCounted = ResultSummary.of(BattleStats.new(battle), false, P1, "", true, P1, NAMES, "")
-	assert_eq(summary.lines.size(), 2, "作戦領域と聖遺物は、無ければ出さない")
+	assert_eq(summary.lines.size(), 2, "作戦領域・中立撃破・聖遺物は、無ければ出さない")
 	assert_eq(summary.mvp_name, "")
