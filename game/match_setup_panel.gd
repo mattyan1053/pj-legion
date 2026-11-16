@@ -13,10 +13,13 @@ signal cancelled
 const MatchChoice := preload("res://game/match_choice.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Names := preload("res://game/names.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.92)
 const COLOR_TEXT_DIM := Color(0.75, 0.78, 0.82)
+## 部隊の中身の行を折り返す幅（px）。長い編成でも、パネルを広げない（1280 の画面に収める）。
+const DECK_LINE_WIDTH := 1080.0
 
 var _choice: RefCounted = MatchChoice.new()
 var _team_colors: Array[Color] = []
@@ -292,7 +295,7 @@ func _show_choice() -> void:
 		if human:
 			_fill_deck_picker(side as Unit.Side)
 		var who := "人" if human else "CPU の編成"
-		_deck_labels[side].text = "　%s: %s" % [who, DeckText.deck_summary(match_setup.decks[side])]
+		_set_folded(_deck_labels[side], "　%s: %s" % [who, DeckText.deck_summary(match_setup.decks[side])], DECK_LINE_WIDTH)
 
 
 ## side の部隊の選択肢を並べ直す: 既定の編成と、その軍の取っておいた部隊（出せないものは理由つきで、選べない）。
@@ -354,3 +357,16 @@ func _button(text: String) -> Button:
 	button.custom_minimum_size = Vector2(150.0, 40.0)
 	button.focus_mode = Control.FOCUS_NONE
 	return button
+
+
+## 部隊の中身の行（検査用）。
+func deck_line(side: Unit.Side) -> Label:
+	return _deck_labels[side]
+
+
+## label に、width（px）で折り返した text を出す（text_wrap.gd。日本語の禁則を守る）。
+static func _set_folded(label: Label, text: String, width: float) -> void:
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	label.text = TextWrap.fold(text, width, func(character: String) -> float:
+		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
