@@ -2,6 +2,7 @@ extends "res://tests/base_test.gd"
 ## 場面の並び（game/scene_flow.gd）。
 
 const SceneFlow := preload("res://game/scene_flow.gd")
+const Story := preload("res://game/story.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 
 
@@ -36,10 +37,16 @@ func test_undefined_transitions_go_nowhere() -> void:
 
 func test_every_scene_is_reachable_and_loadable() -> void:
 	# 行き先はどれも表にあり、スクリプトは場面の決まり（context と finished）を守る。
-	# 流れで入る場面（対戦の設定の「対戦を始める」の流れの場面）も、そこからたどる。
-	var run_scene: StringName = MatchChoice.new().run().scene()
-	var reached := {SceneFlow.FIRST: true, run_scene: true}
-	var queue: Array[StringName] = [SceneFlow.FIRST, run_scene]
+	# 流れで入る場面（対戦の設定の「対戦を始める」の流れと、ストーリーの話の流れの場面）も、そこからたどる。
+	var reached := {SceneFlow.FIRST: true}
+	var queue: Array[StringName] = [SceneFlow.FIRST]
+	var runs: Array = [MatchChoice.new().run(), Story.run_of(Story.EPISODES[0])]
+	for run: RefCounted in runs:
+		while not run.is_done():
+			if not reached.has(run.scene()):
+				reached[run.scene()] = true
+				queue.append(run.scene())
+			run.advance()
 	while not queue.is_empty():
 		var scene: StringName = queue.pop_front()
 		var table: Dictionary = SceneFlow.SCENES[scene]["next"].merged(SceneFlow.COMMON)

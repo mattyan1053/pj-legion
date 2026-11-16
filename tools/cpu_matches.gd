@@ -17,6 +17,9 @@ extends SceneTree
 ##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さ」）
 ##   --no-reward=1   中ボスを倒しても、聖遺物の効果とゲージを取り消す（CPU は、もらえるつもりのまま狩る）。
 ##                   倒した側の勝率のうち、聖遺物のぶんと、もともと優勢な側が倒しているぶんを切り分ける（docs/relic-buff.md の「狩られ方」）
+##   --episode=PATH ストーリーの話（game/episodes/ のスクリプトのパス）の対戦を、両方とも CPU で回す（人の側も CPU が持つ）。
+##                   盤・部隊・初期位置はその話のもの（ステージと軍の組み合わせは回さない。--decks、--pairings、--stage は見ない）。
+##                   話の敵の強さを、人の側の勝率で測る（docs/story.md の「敵の強さ」）
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
 ## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
@@ -24,6 +27,7 @@ extends SceneTree
 ## 同じ引数なら、いつも同じ結果になる（考える時間の欄を除く）。
 
 const CpuMatch := preload("res://tools/cpu_match.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
 const Names := preload("res://game/names.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
@@ -33,6 +37,9 @@ const STAGE_NAMES := {
 	BoardGenerator.Stage.TWIN_SPRINGS: "3 双子結晶",
 }
 const ENDINGS := {"king": "将の撃破", "hq": "本陣の占拠", "draw": "引き分け", "cutoff": "打ち切り"}
+## --episode のときの、集計の「ステージ」の欄の鍵（生成のステージと重ならない値）。名前は話の名前。
+const EPISODE_STAGE := -1
+var _episode_title := ""
 ## 「両軍とも同じ役割」の編成（--decks=even）。Deck.roster の並び（前衛・後衛・奇襲・回復）の何番目を雇うか。
 const EVEN_SLOTS: Array[int] = [0, 0, 1, 1, 2, 3]
 
@@ -259,6 +266,11 @@ func _initialize() -> void:
 	var versus_by_stage: Dictionary[int, Array] = {}
 	# 駒の種類ごとの表を、[いまの CPU の駒, 別の版の駒] に分けたもの。局数も同じ並び（将の行に使う）。
 	var versus_by_kind: Array[Dictionary] = [{}, {}]
+	var episode: Script = load(args["episode"]) if args.has("episode") else null
+	if args.has("episode") and episode == null:
+		printerr("--episode の話を読めない: %s" % args["episode"])
+		quit(1)
+		return
 	var started := Time.get_ticks_msec()
 
 	for game in games:
@@ -276,6 +288,11 @@ func _initialize() -> void:
 		setup.ignore_budget = deck_mode == "even"
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.decks[side] = _deck(armies[side], deck_mode)
+		if episode != null:
+			stage = EPISODE_STAGE as BoardGenerator.Stage
+			setup = StoryBattle.new(episode).make_setup(first_seed + game)
+			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
+		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
 		var battle := setup.create_battle()
 		if args.has("relic"):
@@ -396,12 +413,18 @@ func _initialize() -> void:
 	print("CPU どうしの対戦 %d 局（シード %d〜%d、編成 %s、打ち切り %d ターン）" % [
 		games, first_seed, first_seed + games - 1, deck_mode, max_turns,
 	])
-	for army in ARMIES:
-		print("  編成 %s: %s" % [Names.ARMY_NAMES[army], _deck_text(_deck(army, deck_mode))])
+	if episode != null:
+		var sample := StoryBattle.new(episode).make_setup(first_seed)
+		_episode_title = episode.TITLE
+		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+			print("  プレイヤー%d（%s）: %s" % [side + 1, "人の側" if side == Unit.Side.PLAYER1 else "敵", _deck_text(sample.deck_of(side))])
+	else:
+		for army in ARMIES:
+			print("  編成 %s: %s" % [Names.ARMY_NAMES[army], _deck_text(_deck(army, deck_mode))])
 	print("")
 	print(all.line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].line("ステージ " + STAGE_NAMES[stage]))
+		print(by_stage[stage].line("ステージ " + _stage_name(stage)))
 	for match_name in by_match:
 		print(by_match[match_name].line(match_name))
 	print("")
@@ -409,19 +432,19 @@ func _initialize() -> void:
 	print("中ボス（倒した側の勝ち負けは、決着した局だけ。倒した側は、その中ボスの聖遺物を受け取る）")
 	print(all.boss_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].boss_line("ステージ " + STAGE_NAMES[stage]))
+		print(by_stage[stage].boss_line("ステージ " + _stage_name(stage)))
 	print("中ボスの取り合い（互角 = 倒れた時点の戦える駒の数の差が 1 以内。そば = 中ボスから %d マス以内に相手の戦える駒。横取り = 相手のほうが多く削っていた）" % CpuMatch.CONTEST_RADIUS)
 	print(all.contest_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].contest_line("ステージ " + STAGE_NAMES[stage]))
+		print(by_stage[stage].contest_line("ステージ " + _stage_name(stage)))
 	print("倒した側の削った量の分け前（止めの一撃を含む。3 割未満 = %.1f より小さい。止めの一撃だけ = ほかに 1 も削っていない）" % CpuMatch.LOW_SHARE)
 	print(all.share_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].share_line("ステージ " + STAGE_NAMES[stage]))
+		print(by_stage[stage].share_line("ステージ " + _stage_name(stage)))
 	print("倒した側の戦力（将を除く駒の HP の合計）の分け前。互角 = 0.5 から %.2f 以内。狩り始め = プレイヤーが初めて削った時点" % CpuMatch.EVEN_SHARE)
 	print(all.lead_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].lead_line("ステージ " + STAGE_NAMES[stage]))
+		print(by_stage[stage].lead_line("ステージ " + _stage_name(stage)))
 	print("")
 	print("聖遺物（軍ごと。勝率は決着した局だけ。「相手だけ」は、自分は取らず、相手が取った局）")
 	for army in ARMIES:
@@ -445,7 +468,7 @@ func _initialize() -> void:
 		])
 		for stage: int in versus_by_stage:
 			var row: Array = versus_by_stage[stage]
-			print("  ステージ %s: いまの CPU %d 勝、別の版 %d 勝、決着なし %d" % [STAGE_NAMES[stage], row[0], row[1], row[2]])
+			print("  ステージ %s: いまの CPU %d 勝、別の版 %d 勝、決着なし %d" % [_stage_name(stage), row[0], row[1], row[2]])
 	print("")
 	print("雇った駒 %d 体（1 局あたり %.1f 体）のうち" % [hired, float(hired) / games])
 	print("  レベル 2 以上に届いた: %5.1f%%" % (100.0 * reached["lv2"] / hired))
@@ -573,6 +596,10 @@ func _deck(army: UnitKind.Army, mode: String) -> Deck:
 	for slot in EVEN_SLOTS:
 		deck.add(roster[slot])
 	return deck
+
+
+func _stage_name(stage: int) -> String:
+	return "話 " + _episode_title if stage == EPISODE_STAGE else STAGE_NAMES[stage]
 
 
 func _deck_text(deck: Deck) -> String:

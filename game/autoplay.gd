@@ -43,13 +43,14 @@ const SCENES := {
 	"cpu": "CPU の番（止める、ログ、カメラが追う）",
 	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦の設定を行き来する",
 	"decks": "部隊の編成",
+	"story": "ストーリーの 1 話の通し（タイトル → 会話 → 対戦 → 勝って「次へ」→ 会話 → タイトル、クリアの記録）",
 }
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
 	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
 		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal"],
-	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks"],
+	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }
 
 ## これだけターンが進んでも決着しなければ、失敗にする。
@@ -193,7 +194,7 @@ func _queue_scenes() -> void:
 	_phase = Phase.SCENES
 	var current := _current
 	for name in _selected:
-		if name == "game" or name == "title" or name == "decks":
+		if name == "game" or name == "title" or name == "decks" or name == "story":
 			continue
 		if name == "result" and not _scene.battle.is_over():
 			_failures.append("result: 対戦が決着しなかったので、リザルトを確かめられなかった")
@@ -246,7 +247,7 @@ func _end() -> void:
 			if _scene.played.get(kind, 0) == 0:
 				_fail("1 回も再生しなかったイベント: %s" % kind.resource_path)
 	var app := _scene.get_parent()
-	if (_selected.has("title") or _selected.has("decks")) and app.has_method(&"go"):
+	if (_selected.has("title") or _selected.has("decks") or _selected.has("story")) and app.has_method(&"go"):
 		reparent(app)  # このノードは対戦の場面の子なので、場面が消える前にアプリの子へ移る
 		if _selected.has("title"):
 			_current = "title"
@@ -256,6 +257,11 @@ func _end() -> void:
 			if app.current_id() != &"title":
 				await app.go(&"title")
 			await _visit_decks(app)
+		if _selected.has("story"):
+			_current = "story"
+			if app.current_id() != &"title":
+				await app.go(&"title")
+			await _visit_story(app)
 	if _failures.is_empty():
 		_finish("autoplay: OK", 0)
 	else:
@@ -1561,6 +1567,68 @@ func _visit_decks(app: Node) -> void:
 	_expect(setup.decks[1].entries.size() == CpuDeck.build(setup.army_of(Unit.Side.PLAYER2)).entries.size(), "CPU の編成が変わった")
 	panel.cancel()
 	await app.scene_changed
+
+
+## ストーリーの 1 話の通し: タイトルの「ストーリー」→ 会話（送る・戻る・飛ばす）→ 話の対戦（選び直す入口が無い、手で作ったマップ、
+## 決め打ちの敵）→ 勝って、決着の画面の「次へ」→ あとの会話（最後まで送る）→ タイトル。勝った時点でクリアを書き、タイトルに済みの印。
+## 対戦は、話の対戦の画面に小さな盤を渡して、1 手で勝って終える（話の盤を最後まで進めると、検査が長くなる）。
+func _visit_story(app: Node) -> void:
+	var story: RefCounted = app.context.story
+	var episode: Script = story.next_episode()
+	_expect(not story.is_cleared(episode.ID), "始める前から、話をクリアしている")
+	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
+	app.current_scene().press_story()
+	await app.scene_changed
+	_expect(app.current_id() == &"talk", "タイトルの「ストーリー」で、会話の場面へ進まない")
+	var talk: Node = app.current_scene()
+	_expect(talk.line_count() == episode.BEFORE.size() and talk.line_index() == 0, "前の会話の文の数が違う")
+	_expect(talk.speaker() == episode.SPEAKERS[episode.BEFORE[0][0]] and talk.line_text() == episode.BEFORE[0][1], "最初の文が出ていない")
+	talk.press_next()
+	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
+	talk.press_back()
+	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
+	talk.press_skip()
+	await app.scene_changed
+	_expect(app.current_id() == &"battle", "会話を飛ばしても、対戦へ進まない")
+	var screen: Node = app.current_scene()
+	screen.set_time_scale_base(8.0)
+	var source: RefCounted = screen.source
+	_expect(source.stages().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
+	_expect(screen.battle.board.size == episode.MAP.map().make_board().size, "話の対戦が、話のマップで始まらない")
+	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.ENEMY_ARMY, "話の敵を CPU が動かしていない")
+	# 小さな盤で、1 手で将を倒して勝つ。
+	var board := _small_board(Vector2i(5, 4))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, board.hq_cells[0])
+	var foe := battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, board.hq_cells[1])
+	foe.hp = 1
+	var striker := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER1, board.hq_cells[1] + Vector2i(-1, 0))
+	screen.start_with(battle, episode.LOOK, 1, episode.MAP.TITLE)
+	screen.click_cell(striker.cell)
+	screen.click_cell(foe.cell)
+	var result: Node = screen.result_screen()
+	for i in 1200:
+		if not screen.is_busy() and result.visible:
+			break
+		await get_tree().process_frame
+	_expect(battle.is_over() and battle.winner == Unit.Side.PLAYER1, "話の対戦で、勝てなかった")
+	_expect(story.is_cleared(episode.ID), "話の対戦に勝っても、クリアを書かない")
+	result.skip()
+	for i in 600:
+		if not result.enabled_buttons().is_empty():
+			break
+		await get_tree().process_frame
+	_expect(result.can_continue() and result.new_board_stages().is_empty() and not result.can_go_to_setup(), "勝った話の決着の画面の行き先が違う（「次へ」が無い、か、選び直す行き先がある）")
+	result.press_continue()
+	await app.scene_changed
+	_expect(app.current_id() == &"talk", "決着の画面の「次へ」で、あとの会話へ進まない")
+	talk = app.current_scene()
+	_expect(talk.line_count() == episode.AFTER.size(), "あとの会話の文の数が違う")
+	for i: int in talk.line_count():
+		talk.press_next()
+	await app.scene_changed
+	_expect(app.current_id() == &"title" and app.context.run == null, "あとの会話を送りきっても、タイトルへ戻らない")
+	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）", "クリアしたのに、タイトルに済みの印が無い")
 
 
 func _finish(message: String, code: int) -> void:

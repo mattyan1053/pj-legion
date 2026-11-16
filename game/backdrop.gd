@@ -1,6 +1,7 @@
 extends Node3D
 ## タイトルと対戦の設定の場面の背景。対戦と同じ景色（空、霞、光、盤と盤の外の景色）を、駒を置かずに、ゆっくり回りながら見せる。
 ## 素材は足さない（対戦の画面の部品をそのまま使う）。
+## 盤と見た目を渡さなければ、中央平原の生成の盤（いつも同じ）。ストーリーの会話は、話の盤と見た目を渡す。
 
 const BattleScreen := preload("res://game/battle_screen.gd")
 const BoardView := preload("res://game/board_view.gd")
@@ -15,14 +16,22 @@ const DISTANCE := 30.0
 const PITCH := 38.0
 
 var _rig: OrbitCamera
+var _board: Board
+var _look: StringName
+
+
+func _init(board: Board = null, look := StageLook.DEFAULT) -> void:
+	_board = board
+	_look = look
 
 
 func _ready() -> void:
 	StageLook.build_environment(self)
-	var board := BoardGenerator.generate(BoardGenerator.Stage.PLAIN, LOOK_SEED)
+	var board := _board if _board != null else BoardGenerator.generate(BoardGenerator.Stage.PLAIN, LOOK_SEED)
 	var view := BoardView.new()
 	add_child(view)
-	view.setup(board, LOOK_SEED, BattleScreen.TEAM_COLORS)
+	view.setup(board, LOOK_SEED, BattleScreen.TEAM_COLORS, _look)
+	StageLook.apply(self, view.look)
 	_rig = OrbitCamera.new()
 	add_child(_rig)
 	_rig.controls_enabled = false  # 背景なので、キーとホイールでは動かさない

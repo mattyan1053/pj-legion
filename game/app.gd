@@ -44,6 +44,8 @@ func _ready() -> void:
 		context.settings.load_saved()
 		context.decks.store = SaveStore.new()
 		context.decks.load_saved()
+		context.story.store = SaveStore.new()
+		context.story.load_saved()
 
 	var sound := Sound.new()
 	add_child(sound)

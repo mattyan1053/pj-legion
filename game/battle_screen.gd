@@ -32,8 +32,10 @@ const BattlePlayback := preload("res://game/battle_playback.gd")
 const PanelLayout := preload("res://game/panel_layout.gd")
 const BattleEffects := preload("res://game/battle_effects.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const Run := preload("res://game/run.gd")
 
-## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"）。
+## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"。
+## 「次へ」（渡されたものが許したときだけ出る。ストーリー）は Run.NEXT）。
 signal finished(outcome: StringName)
 
 const NO_CELL := Vector2i(-1, -1)
@@ -188,6 +190,7 @@ func _ready() -> void:
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
+	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
 	_hud.result_shown.connect(_on_result_shown)
 	_hud.minimap().pointed.connect(_on_minimap_pointed)
 	_hud.result_screen().overlays = context.overlays
@@ -220,8 +223,9 @@ func _ready() -> void:
 	_battle_started = true
 	# 検査では毎回同じ対戦にする。遊ぶときは毎回違う盤面にする（context.battle_seed）。
 	start_battle(context.battle_seed())
-	if context.checking == AppContext.CHECK_AUTOPLAY:
-		add_child(Autoplay.new(self))
+	if context.checking == AppContext.CHECK_AUTOPLAY and not is_instance_valid(context.autoplay):
+		context.autoplay = Autoplay.new(self)
+		add_child(context.autoplay)
 
 
 func _exit_tree() -> void:
@@ -381,7 +385,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	for unit in battle.units:
 		_add_view(unit)
 
-	_rig.bounds = Rect2(Vector2.ZERO, Vector2(battle.board.size))
+	_rig.fit_board(battle.board.size)  # 見てよい範囲と、引きの上限（小さい盤ほど寄せる）
 	_rig.position = _camera_point(Unit.Side.PLAYER1)
 	_ui.clear_for_new_battle()
 	# 前の対戦のマウスの下のマス（盤の大きさが違えば、盤の外のマス）と、そこから決めた予測のパネル・メニューの置き場所を持ち越さない。
@@ -419,8 +423,13 @@ func _add_view(unit: Unit) -> void:
 
 ## 決着の画面が出た。決着の曲を 1 回鳴らす: 人が勝てば勝ちの曲、CPU に負けたときと引き分けは負けの曲。
 ## 人どうしは、どちらかが勝っているので勝ちの曲。
+## 渡されたもの（source）が許せば「次へ」を出し、人が勝ったことを知らせる（ストーリーのクリアの記録）。
 func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side()))
+	var won := cpu_opponent and not draw and winner == _human_side()
+	_hud.result_screen().set_continue(source.can_continue(won))
+	if won:
+		source.record_win(context)
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。

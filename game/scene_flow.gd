@@ -19,7 +19,7 @@ extends RefCounted
 const SCENES := {
 	&"title": {
 		"script": "res://game/title_screen.gd",
-		"next": {&"start": &"stage", &"decks": &"decks"},
+		"next": {&"start": &"stage", &"decks": &"decks"},  # 「ストーリー」は、話の流れ（story.gd の run_of）を始める（title_screen.gd）
 		"music": &"menu",
 	},
 	&"decks": {
@@ -35,6 +35,11 @@ const SCENES := {
 	&"setup": {
 		"script": "res://game/setup_screen.gd",
 		"next": {&"back": &"stage"},  # 「対戦を始める」は、対戦の流れ（run.gd）を始める（setup_screen.gd）
+		"music": &"menu",
+	},
+	&"talk": {
+		"script": "res://game/talk_screen.gd",
+		"next": {},  # 流れの中でだけ使う（ストーリーの会話。Run.NEXT で次へ）
 		"music": &"menu",
 	},
 	&"battle": {

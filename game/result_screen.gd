@@ -6,7 +6,7 @@ extends Control
 ## 3. MVP が拡大しながら出る。
 ## 4. 行き先のボタンと、入力の案内が出る。**ここまで出そろうまで、行き先は選べない。**
 ## 出そろう前のクリック（Enter・Space でも）は、演出を飛ばして全部を出すだけ（行き先は選ばない）。
-## 出そろったあとの Enter はタイトルへ（ボタンの「タイトルへ」と同じ）。両方の陣営の詳しい戦績は畳んでおき、ボタンで開く。
+## 出そろったあとの Enter は、「次へ」を出していればそれ、無ければタイトルへ（ボタンの「タイトルへ」と同じ）。両方の陣営の詳しい戦績は畳んでおき、ボタンで開く。
 ##
 ## 何を出すかは呼ぶ側（result_summary.gd）が決める。ここは見せ方と、押されたことを signal で知らせるだけ。
 
@@ -18,6 +18,8 @@ const TextWrap := preload("res://game/text_wrap.gd")
 signal restart_pressed(stage: int, new_board: bool)
 signal setup_pressed
 signal title_pressed
+## 「次へ」（set_continue で出したときだけ。ストーリーで勝ったとき、流れの次の場面へ）。
+signal continue_pressed
 ## 全部が出そろった（行き先を選べるようになった）。
 signal revealed
 
@@ -78,6 +80,7 @@ var _detail_button: Button
 ## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
 var _stage_buttons := {}  # BoardGenerator.Stage -> Button（新しい盤面）
 var _setup_button: Button
+var _continue_button: Button
 var _prompt: Label
 var _buttons: Array[Button] = []
 var _tween: Tween
@@ -321,7 +324,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not _revealed:
 				skip()
 			elif event.physical_keycode != KEY_SPACE and _buttons_ready():
-				title_pressed.emit()
+				if _continue_button.visible:
+					press_continue()
+				else:
+					title_pressed.emit()
 			get_viewport().set_input_as_handled()
 
 
@@ -346,6 +352,24 @@ func set_destinations(stages: Array[BoardGenerator.Stage], setup: bool) -> void:
 	for stage: BoardGenerator.Stage in _stage_buttons:
 		_stage_buttons[stage].visible = stages.has(stage)
 	_setup_button.visible = setup
+
+
+## 「次へ」を出すか（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める。決着の画面を出すたびに決める）。
+func set_continue(shown: bool) -> void:
+	_continue_button.visible = shown
+	_continue_button.get_parent().visible = shown  # 出さないときは、行ごと詰める
+	_prompt.text = "行き先を選ぶ（Enter で%s）" % ("次へ" if shown else "タイトルへ")
+
+
+## 「次へ」を出しているか。検査用。
+func can_continue() -> bool:
+	return _continue_button.visible
+
+
+## 「次へ」を押す（出していなければ何もしない）。
+func press_continue() -> void:
+	if _continue_button.visible:
+		continue_pressed.emit()
 
 
 ## 「対戦の設定へ」を出しているか。検査用。
@@ -459,6 +483,15 @@ func _build_actions() -> void:
 	_actions.add_theme_constant_override("separation", 8)
 	_actions.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_body.add_child(_actions)
+	var forward := _row()
+	_continue_button = _button("次へ", 280.0)
+	_continue_button.set_meta(&"sound", &"ui_confirm")
+	_continue_button.add_theme_font_size_override("font_size", 21)
+	_continue_button.custom_minimum_size.y = 50.0
+	_continue_button.pressed.connect(press_continue)
+	_continue_button.visible = false
+	forward.visible = false
+	forward.add_child(_continue_button)
 	var row := _row()
 	var again := _button("同じ盤面でもう一度", 240.0)
 	again.set_meta(&"sound", &"ui_confirm")
