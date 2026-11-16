@@ -3,6 +3,7 @@ extends Control
 ## クリックとドラッグで、その場所を知らせる（カメラを動かすのは呼ぶ側）。
 ## 置き場所・座標・見ている範囲の計算は minimap_geometry.gd、地面の塗り分けは stage_card_map.gd（ステージ選択のカードと同じ）。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const Geometry := preload("res://game/minimap_geometry.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
@@ -35,7 +36,7 @@ var _pressing := false
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	tooltip_text = "クリックかドラッグで、その場所へ視点を移す"
+	tooltip_text = Text.t("battle.minimap.tooltip")
 
 
 ## 盤 board（見た目 look_name。stage_look.gd の名前）を描き始める。盤の大きさに合わせて、自分の大きさも決める。

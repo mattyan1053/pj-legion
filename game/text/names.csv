@@ -83,3 +83,11 @@ relic.courage.summary,軍の全員の攻撃力（回復量）+{amount}
 stage.plain,中央平原
 stage.labyrinth,迷宮回廊
 stage.twin_springs,双子結晶
+status.barrier.summary,次に受けるダメージを 1 回だけ防ぐ
+status.aim.summary,射程 +{range}。次の攻撃がクリティカル（動くと解ける）
+status.fatigue.summary,攻撃 -{penalty}
+status.assault.summary,移動 +{move}・攻撃 +{power}
+relic.wisdom.short,英知
+relic.wisdom.effect,最大 HP +{amount}
+relic.courage.short,勇気
+relic.courage.effect,攻撃力（回復量）+{amount}

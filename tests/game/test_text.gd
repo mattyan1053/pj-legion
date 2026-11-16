@@ -20,33 +20,19 @@ const NOT_SHOWN := [
 ## まだ表へ移していないファイルと、そこに残っている直書きの日本語の数（これより増えたら落ちる）。移したら行を消す。
 const PENDING := {
 	"res://game/app.gd": 7,
-	"res://game/battle_effects.gd": 1,
-	"res://game/battle_hud.gd": 60,
-	"res://game/battle_log.gd": 85,
-	"res://game/battle_playback.gd": 27,
-	"res://game/battle_screen.gd": 22,
-	"res://game/battle_texts.gd": 80,
 	"res://game/campaign_list_screen.gd": 9,
 	"res://game/deck_library.gd": 13,
 	"res://game/deck_preview.gd": 2,
 	"res://game/deck_screen.gd": 66,
 	"res://game/deck_text.gd": 21,
 	"res://game/episode_list_screen.gd": 15,
-	"res://game/forecast_panel.gd": 12,
-	"res://game/forecast_text.gd": 26,
-	"res://game/log_panel.gd": 3,
 	"res://game/match_choice.gd": 1,
 	"res://game/match_setup_panel.gd": 30,
-	"res://game/minimap.gd": 1,
-	"res://game/relic_icon.gd": 3,
-	"res://game/result_screen.gd": 17,
-	"res://game/result_summary.gd": 12,
 	"res://game/settings.gd": 32,
 	"res://game/settings_panel.gd": 6,
 	"res://game/setup_screen.gd": 2,
 	"res://game/sortie_screen.gd": 18,
 	"res://game/stage_select_screen.gd": 10,
-	"res://game/stats_text.gd": 36,
 	"res://game/story.gd": 4,
 	"res://game/system_menu.gd": 4,
 	"res://game/talk_screen.gd": 3,
@@ -54,7 +40,6 @@ const PENDING := {
 	"res://game/title_screen.gd": 6,
 	"res://game/unit_card.gd": 2,
 	"res://game/versus_fields.gd": 12,
-	"res://game/win_text.gd": 28,
 }
 ## names.gd が列挙から作る鍵の頭と、その列挙（表の鍵が、どれかの列挙の値に当たること）。
 const FAMILIES := {
@@ -69,9 +54,15 @@ const FAMILIES := {
 	"item": [Equipment.Id, [""]],
 	"skill": [Skill.Id, ["", ".summary"]],
 	"ult": [Ult.Id, ["", ".summary"]],
-	"status": [Status.Type, [""]],
-	"relic": [Relics.Id, ["", ".summary"]],
+	"status": [Status.Type, ["", ".summary"]],
+	"relic": [Relics.Id, ["", ".summary", ".short", ".effect"]],
 	"stage": [BoardGenerator.Stage, [""]],
+}
+## 画面の文のうち、列挙から鍵を作るもの（頭 -> [列挙, 欄]。鍵は「頭.列挙の名前の小文字[.欄]」）。
+const SCREEN_FAMILIES := {
+	"battle.goal.win": [GameWonEvent.Reason, ["", ".last"]],
+	"battle.goal.lose": [GameWonEvent.Reason, ["", ".last"]],
+	"stats.ending": [BattleStats.Ending, [""]],
 }
 
 
@@ -109,10 +100,12 @@ func _code_files() -> Array[String]:
 	return files
 
 
-## コードが文字で書いた鍵（Text.t("鍵"）。
-func _literal_keys() -> Dictionary:
+## コードが文字で書いた鍵。all が偽なら Text.t("鍵") の形だけ、真なら鍵の形の文字の値すべて
+## （表の鍵を、いったん定数の表に置いてから Text.t に渡すもの。勝ち方の理由など）。
+func _literal_keys(all := false) -> Dictionary:
 	var keys := {}
-	var pattern := RegEx.create_from_string("Text\\.(?:t|has)\\(\"([a-z0-9_]+(?:\\.[a-z0-9_]+)+)\"")
+	var head := "\"" if all else "Text\\.(?:t|has)\\(\""
+	var pattern := RegEx.create_from_string(head + "([a-z0-9_]+(?:\\.[a-z0-9_]+)+)\"")
 	for file: String in _code_files() + _tool_files():
 		for found in pattern.search_all(FileAccess.get_file_as_string(file)):
 			keys[found.get_string(1)] = file
@@ -144,14 +137,20 @@ func test_every_key_in_code_is_in_the_table() -> void:
 
 
 func test_every_key_in_the_table_is_used() -> void:
-	var literal := _literal_keys()
+	var literal := _literal_keys(true)
 	for file: String in _table():
 		for key: String in _table()[file]:
 			assert_true(literal.has(key) or _is_family_key(key), "%s の鍵 %s を、どのコードも引いていない" % [file, key])
 
 
-## names.gd が列挙から作る鍵か（頭.列挙の名前の小文字[.欄]）。
+## names.gd や画面が列挙から作る鍵か（頭.列挙の名前の小文字[.欄]）。
 func _is_family_key(key: String) -> bool:
+	for head: String in SCREEN_FAMILIES:
+		if key.begins_with(head + "."):
+			var rest := key.trim_prefix(head + ".").split(".")
+			var enum_names: Dictionary = SCREEN_FAMILIES[head][0]
+			var field := "" if rest.size() == 1 else "." + ".".join(rest.slice(1))
+			return enum_names.has(rest[0].to_upper()) and (SCREEN_FAMILIES[head][1] as Array).has(field)
 	var parts := key.split(".")
 	if not FAMILIES.has(parts[0]) or parts.size() < 2:
 		return false

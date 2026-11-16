@@ -30,5 +30,5 @@ gdscript/warnings/shadowed_variable=2
 
 [internationalization]
 
-locale/translations=PackedStringArray("res://game/text/names.ja.translation")
+locale/translations=PackedStringArray("res://game/text/common.ja.translation", "res://game/text/names.ja.translation", "res://game/text/battle.ja.translation")
 locale/fallback="ja"

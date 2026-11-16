@@ -5,6 +5,7 @@ extends Control
 ## - 英知（最大 HP）: 菱形の宝石（水色）。
 ## - 勇気（攻撃力）: 上を向いた剣（橙）。
 
+const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 
 const SIZE := 22.0
@@ -42,7 +43,8 @@ func set_lit(on: bool) -> void:
 
 
 func _update_tooltip() -> void:
-	tooltip_text = "%s（%s）: %s" % [Names.relic(relic), "持っている" if lit else "持っていない", Names.relic_summary(relic)]
+	var key := "battle.hud.relic_held" if lit else "battle.hud.relic_missing"
+	tooltip_text = Text.t(key, {"relic": Names.relic(relic), "effect": Names.relic_summary(relic)})
 
 
 func _draw() -> void:

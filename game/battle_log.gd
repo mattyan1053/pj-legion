@@ -5,17 +5,18 @@ extends RefCounted
 ## 控えた駒をイベントで追いかけて知る（倒れた駒も、名前は残る）。
 ## どのイベントをどう読むかは readers() の表に載せる。載っていない種類があると、テストが落ちる。
 
+const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 
 const NO_CELL := Vector2i(-1, -1)
 const WIN_TEXTS := {
-	GameWonEvent.Reason.KING_DEFEATED: "敵の将を倒した",
-	GameWonEvent.Reason.HQ_CAPTURED: "敵の本陣を占拠し続けた",
-	GameWonEvent.Reason.TURNS_HELD: "最後まで守り切った",
-	GameWonEvent.Reason.ROUTED: "敵を全滅させた",
+	GameWonEvent.Reason.KING_DEFEATED: "battle.log.won.king_defeated",
+	GameWonEvent.Reason.HQ_CAPTURED: "battle.log.won.hq_captured",
+	GameWonEvent.Reason.TURNS_HELD: "battle.log.won.turns_held",
+	GameWonEvent.Reason.ROUTED: "battle.log.won.routed",
 }
 const DRAW_TEXTS := {
-	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "両方の将が同時に倒れた",
+	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "battle.log.drawn.both_kings_defeated",
 }
 
 
@@ -41,7 +42,7 @@ class Entry:
 	func full_text() -> String:
 		var lines: Array[String] = [text]
 		for detail in details:
-			lines.append("　" + detail)
+			lines.append(Text.t("battle.log.detail", {"text": detail}))
 		return "\n".join(lines)
 
 
@@ -180,30 +181,39 @@ func take_changes() -> int:
 	return from
 
 
+## 盤の上の効果の名前（「青の盾」。だれのものか分からなければ「盾」）。
+func _effect_name(type: FieldEffect.Type, owner: int) -> String:
+	if owner < 0:
+		return Names.field_effect(type)
+	return Text.t("battle.log.effect_owned", {"side": Names.side_word(owner as Unit.Side), "effect": Names.field_effect(type)})
+
+
 ## 駒の名前（「青のパラディン」。進化していれば進化先の名前。中立の駒には陣営を付けない）。知らない駒は「駒」。
 func unit_name(unit_id: int) -> String:
 	var known: Known = _units.get(unit_id)
 	if known == null:
-		return "駒"
+		return Text.t("battle.log.unknown_unit")
 	var name := Names.kind(known.kind) if known.evolution == Evolution.Id.NONE else Names.evolution(known.evolution)
-	return name if known.side == Unit.Side.NEUTRAL else "%sの%s" % [Names.side_word(known.side), name]
+	return name if known.side == Unit.Side.NEUTRAL else Text.t("battle.log.unit", {"side": Names.side_word(known.side), "unit": name})
 
 
 ## 中ボスの呼び方（「左の中ボス」）。中ボスは左右（中央平原・迷宮回廊）か上下（双子結晶）に 1 体ずつ。番号 0 が左か上。
 static func mid_boss_place(board: Board, boss_index: int) -> String:
 	var cells := board.mid_boss_cells
 	var stacked := cells.size() == 2 and absi(cells[0].y - cells[1].y) > absi(cells[0].x - cells[1].x)
-	return ("上" if stacked else "左") if boss_index == 0 else ("下" if stacked else "右")
+	if boss_index == 0:
+		return Text.t("battle.log.boss_place.top") if stacked else Text.t("battle.log.boss_place.left")
+	return Text.t("battle.log.boss_place.bottom") if stacked else Text.t("battle.log.boss_place.right")
 
 
 static func cell_text(cell: Vector2i) -> String:
-	return "(%d, %d)" % [cell.x, cell.y]
+	return Text.t("common.cell", {"x": cell.x, "y": cell.y})
 
 
 ## 対戦の途中の会話の台詞を 1 行に書く（battle_cues.gd。イベントではないので、画面が台詞を出すときに呼ぶ）。
 func say(speaker: String, text: String, side: int) -> void:
 	_group = null
-	_line("%s「%s」" % [speaker, text], side)
+	_line(Text.t("battle.log.say", {"speaker": speaker, "text": text}), side)
 
 
 # ---- 行の足し方 ----
@@ -260,24 +270,23 @@ func _set_cell(unit_id: int, cell: Vector2i) -> void:
 		known.cell = cell
 
 
-## 「12 ダメージ、残り HP 8」。倒れたら「12 ダメージ、倒した」（defeat_word）。防がれたら「バリアで防がれた」。
-func _damage_text(hit: UnitDamagedEvent, defeat_word: String, blocked_word: String) -> String:
+## 「12 ダメージ、残り HP 8」。倒れたら「12 ダメージ、倒した」（攻撃した側から。by_attack が偽なら「倒れた」）。防がれたら「バリアで防がれた」（「防いだ」）。
+func _damage_text(hit: UnitDamagedEvent, by_attack: bool) -> String:
 	if hit.is_blocked():
-		return "%sで%s" % [Names.status(hit.blocked_by as Status.Type), blocked_word]
-	var text := "%d ダメージ、" % hit.amount
+		var blocked := "battle.log.damage.attack.blocked" if by_attack else "battle.log.damage.effect.blocked"
+		return Text.t(blocked, {"status": Names.status(hit.blocked_by as Status.Type)})
+	var text := ""
 	if hit.hp <= 0:
-		text += defeat_word
+		text = Text.t("battle.log.damage.attack.defeated" if by_attack else "battle.log.damage.effect.defeated", {"amount": hit.amount})
 		_noted_defeats[hit.unit_id] = true
 	else:
-		text += "残り HP %d" % hit.hp
+		text = Text.t("battle.log.damage.left", {"amount": hit.amount, "hp": hit.hp})
 	var notes: Array[String] = []
 	if hit.critical:
-		notes.append("クリティカル")
+		notes.append(Text.t("battle.log.note.critical"))
 	if hit.forest:
-		notes.append("森で軽減")
-	if not notes.is_empty():
-		text += "（%s）" % "・".join(notes)
-	return text
+		notes.append(Text.t("battle.log.note.forest"))
+	return text + Text.notes(notes)
 
 
 # ---- 読み方 ----
@@ -298,7 +307,7 @@ func _start_phase(turn: int, side: Unit.Side) -> void:
 	_group = null
 	_moves.clear()
 	_did_something.clear()
-	var entry := _line("ターン %d　%s の番" % [turn, side_names[side]], side)
+	var entry := _line(Text.t("battle.log.phase", {"turn": turn, "side": side_names[side]}), side)
 	entry.header = true
 
 
@@ -320,7 +329,7 @@ func _read_moved(event: UnitMovedEvent) -> void:
 	if event.path.size() < 2:
 		return
 	var entry := _line("", _side_of(event.unit_id), to, [event.unit_id])
-	_moves[event.unit_id] = [entry, event.path[0], event.cruise, false]
+	_moves[event.unit_id] = [entry, event.path[0], event.cruise, false, false]
 	_redo_move(event.unit_id, to)
 
 
@@ -331,7 +340,7 @@ func _read_warped(event: UnitWarpedEvent) -> void:
 	if move.is_empty() or (move[0] as Entry).cell != event.from:
 		# 歩かずにポータルへ入った（ポータルのマスから動き出した）。
 		var entry := _line("", _side_of(event.unit_id), event.to, [event.unit_id])
-		move = [entry, event.from, event.cruise, true]
+		move = [entry, event.from, event.cruise, true, false]
 		_moves[event.unit_id] = move
 	move[3] = true
 	_redo_move(event.unit_id, event.to)
@@ -344,13 +353,12 @@ func _redo_move(unit_id: int, to: Vector2i, waited := false) -> void:
 	entry.cell = to
 	var notes: Array[String] = []
 	if move[2]:
-		notes.append("巡航")
+		notes.append(Text.t("battle.log.note.cruise"))
 	if move[3]:
-		notes.append("ポータル経由")
-	var waited_text := "して待機" if waited or entry.text.contains("して待機") else ""
-	entry.text = "%s が %s → %s へ移動%s" % [unit_name(unit_id), cell_text(move[1]), cell_text(to), waited_text]
-	if not notes.is_empty():
-		entry.text += "（%s）" % "・".join(notes)
+		notes.append(Text.t("battle.log.note.portal"))
+	move[4] = move[4] or waited  # 一度「して待機」と書いたら、書き直しても残す
+	var key := "battle.log.move_and_wait" if move[4] else "battle.log.move"
+	entry.text = Text.t(key, {"unit": unit_name(unit_id), "from": cell_text(move[1]), "to": cell_text(to)}) + Text.notes(notes)
 	_touch(entry)
 
 
@@ -362,7 +370,7 @@ func _read_undone(event: MoveUndoneEvent) -> void:
 	_moves.erase(event.unit_id)
 	var index := entries.rfind(move[0]) if not move.is_empty() else -1
 	if index < 0:
-		_line("%s が移動を取り消した" % unit_name(event.unit_id), _side_of(event.unit_id), event.to, [event.unit_id])
+		_line(Text.t("battle.log.undo", {"unit": unit_name(event.unit_id)}), _side_of(event.unit_id), event.to, [event.unit_id])
 		return
 	entries.remove_at(index)
 	_changed_from = mini(_changed_from, index)
@@ -377,7 +385,7 @@ func _read_acted(event: UnitActedEvent) -> void:
 			var move: Array = _moves[unit_id]
 			_redo_move(unit_id, (move[0] as Entry).cell, true)
 		else:
-			_line("%s は待機" % unit_name(unit_id), _side_of(unit_id), _cell_of(unit_id), [unit_id])
+			_line(Text.t("battle.log.wait", {"unit": unit_name(unit_id)}), _side_of(unit_id), _cell_of(unit_id), [unit_id])
 	_moves.erase(unit_id)
 	_did_something.erase(unit_id)
 
@@ -385,40 +393,38 @@ func _read_acted(event: UnitActedEvent) -> void:
 func _read_attack_damaged(event: AttackDamagedEvent) -> void:
 	_group = null
 	_did_something[event.attacker_id] = true
-	var text := "%s が %s を攻撃: %s" % [
-		unit_name(event.attacker_id), unit_name(event.unit_id), _damage_text(event, "倒した", "防がれた"),
-	]
+	var text := Text.t("battle.log.attack", {
+		"attacker": unit_name(event.attacker_id), "target": unit_name(event.unit_id), "result": _damage_text(event, true),
+	})
 	_line(text, _side_of(event.attacker_id), _cell_of(event.unit_id), [event.attacker_id, event.unit_id])
 
 
 func _read_smoke_blocked(event: SmokeBlockedEvent) -> void:
 	_group = null
 	_did_something[event.attacker_id] = true
-	var text := "%s が %s を攻撃: 煙幕に阻まれた" % [unit_name(event.attacker_id), unit_name(event.target_id)]
+	var text := Text.t("battle.log.attack_smoked", {"attacker": unit_name(event.attacker_id), "target": unit_name(event.target_id)})
 	_line(text, _side_of(event.attacker_id), _cell_of(event.target_id), [event.attacker_id, event.target_id])
 
 
 func _read_skill_used(event: SkillUsedEvent) -> void:
 	_did_something[event.unit_id] = true
-	var text := "%s が「%s」を使った" % [unit_name(event.unit_id), Names.skill(Skills.by_id(event.skill))]
+	var text := Text.t("battle.log.skill", {"unit": unit_name(event.unit_id), "skill": Names.skill(Skills.by_id(event.skill))})
 	if event.target != _cell_of(event.unit_id):
-		text += "（%s）" % cell_text(event.target)
+		text += Text.paren(cell_text(event.target))
 	_begin_group(_line(text, _side_of(event.unit_id), event.target, [event.unit_id]), event.unit_id)
 
 
 ## スキル・樽の爆発のダメージ。まとめ先（スキルの行、爆発の行）の続きに書く。
 func _read_effect_damaged(event: UnitDamagedEvent) -> void:
-	var text := "%s に %s" % [unit_name(event.unit_id), _damage_text(event, "倒れた", "防いだ")]
-	if event.is_blocked():
-		text = "%s: %s" % [unit_name(event.unit_id), _damage_text(event, "", "防いだ")]
+	var key := "battle.log.effect_blocked" if event.is_blocked() else "battle.log.effect_damage"
+	var text := Text.t(key, {"unit": unit_name(event.unit_id), "result": _damage_text(event, false)})
 	_detail(text, _side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
 
 func _read_barrel_exploded(event: BarrelExplodedEvent) -> void:
 	_did_something[event.attacker_id] = true
-	var text := "%s が %s の起爆樽を攻撃: 爆発した" % [unit_name(event.attacker_id), cell_text(event.cell)]
-	if event.victim_ids.is_empty():
-		text += "（巻き込まれた駒はいない）"
+	var key := "battle.log.barrel_alone" if event.victim_ids.is_empty() else "battle.log.barrel"
+	var text := Text.t(key, {"attacker": unit_name(event.attacker_id), "cell": cell_text(event.cell)})
 	_begin_group(_line(text, _side_of(event.attacker_id), event.cell, [event.attacker_id]))
 
 
@@ -426,26 +432,26 @@ func _read_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 	_group = null
 	_did_something[event.attacker_id] = true
 	var owner: int = _effects.get(event.effect_id, [FieldEffect.Type.BARRICADE, -1])[1]
-	var owner_text := "%sの" % Names.side_word(owner) if owner >= 0 else ""
-	var text := "%s が %s盾を攻撃: %d ダメージ、" % [unit_name(event.attacker_id), owner_text, event.amount]
+	var args := {"attacker": unit_name(event.attacker_id), "effect": _effect_name(FieldEffect.Type.BARRICADE, owner),
+			"amount": event.amount, "durability": event.durability}
+	var text := Text.t("battle.log.barricade_hit", args)
 	if event.durability <= 0:
-		text += "壊した"
+		text = Text.t("battle.log.barricade_broken", args)
 		_noted_effects[event.effect_id] = true
-	else:
-		text += "残りの耐久 %d" % event.durability
 	_line(text, _side_of(event.attacker_id), event.cell, [event.attacker_id])
 
 
 func _read_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
 	_effects[event.effect_id] = [event.type, event.side, event.center]
-	var name: String = Names.field_effect(event.type)
-	var text := ""
+	var args := {"side": Names.side_word(event.side), "effect": Names.field_effect(event.type), "cell": cell_text(event.center)}
+	# まとめ先（スキルの行）が無ければ、だれが置いたかを書く（_by）。
+	var key := "battle.log.area_placed" if _group != null else "battle.log.area_placed_by"
 	if event is BarricadePlacedEvent:
-		text = "%sを %s に置いた（耐久 %d）" % [name, cell_text(event.center), (event as BarricadePlacedEvent).durability]
+		key = "battle.log.barricade_placed" if _group != null else "battle.log.barricade_placed_by"
+		args["durability"] = (event as BarricadePlacedEvent).durability
 	else:
-		text = "%sを %s のまわりに張った（%d ターン）" % [name, cell_text(event.center), (event as AreaEffectPlacedEvent).turns_left]
-	if _group == null:
-		text = "%s が%s" % [Names.side_word(event.side), text]
+		args["turns"] = (event as AreaEffectPlacedEvent).turns_left
+	var text := Text.t(key, args)
 	_detail(text, event.side, event.center)
 
 
@@ -456,45 +462,44 @@ func _read_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
 		_noted_effects.erase(event.effect_id)
 		return
 	var owner: int = known[1]
-	var owner_text := "%sの" % Names.side_word(owner) if owner >= 0 else ""
-	var verb := "壊れた" if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED else "消えた"
-	_line("%s%sが%s" % [owner_text, Names.field_effect(event.type), verb], owner, known[2])
+	var key := "battle.log.effect_destroyed" if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED else "battle.log.effect_expired"
+	_line(Text.t(key, {"effect": _effect_name(event.type, owner)}), owner, known[2])
 
 
 func _read_teleported(event: UnitTeleportedEvent) -> void:
 	_set_cell(event.unit_id, event.to)
-	_detail("%s が %s → %s へ移った" % [unit_name(event.unit_id), cell_text(event.from), cell_text(event.to)],
+	_detail(Text.t("battle.log.warped", {"unit": unit_name(event.unit_id), "from": cell_text(event.from), "to": cell_text(event.to)}),
 		_side_of(event.unit_id), event.to, [event.unit_id])
 
 
 func _read_swapped(event: UnitsSwappedEvent) -> void:
 	_set_cell(event.unit_id, event.other_from)
 	_set_cell(event.other_id, event.from)
-	_detail("%s と %s の位置が入れ替わった" % [unit_name(event.unit_id), unit_name(event.other_id)],
+	_detail(Text.t("battle.log.swapped", {"unit": unit_name(event.unit_id), "other": unit_name(event.other_id)}),
 		_side_of(event.unit_id), event.other_from, [event.unit_id, event.other_id])
 
 
 func _read_reactivated(event: UnitReactivatedEvent) -> void:
 	_moves.erase(event.unit_id)
 	_did_something.erase(event.unit_id)
-	_detail("%s がもう一度行動できる" % unit_name(event.unit_id), _side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
+	_detail(Text.t("battle.log.refreshed", {"unit": unit_name(event.unit_id)}), _side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
 
 func _read_healer_healed(event: HealerHealedEvent) -> void:
 	_group = null
 	_did_something[event.healer_id] = true
-	var text := "%s が %s を %d 回復（HP %d）" % [unit_name(event.healer_id), unit_name(event.unit_id), event.amount, event.hp]
+	var text := Text.t("battle.log.heal", {"healer": unit_name(event.healer_id), "target": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp})
 	_line(text, _side_of(event.healer_id), _cell_of(event.unit_id), [event.healer_id, event.unit_id])
 
 
 ## フェーズの始めの回復（泉・再生・聖域）。
 func _read_healed(event: UnitHealedEvent) -> void:
-	var source := "聖域"
+	var key := "battle.log.healed.sanctuary"
 	if event is SpringHealedEvent:
-		source = "回復の泉"
+		key = "battle.log.healed.spring"
 	elif event is RegenerationHealedEvent:
-		source = "再生"
-	_line("%s が%sで %d 回復（HP %d）" % [unit_name(event.unit_id), source, event.amount, event.hp],
+		key = "battle.log.healed.regeneration"
+	_line(Text.t(key, {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
 
@@ -504,7 +509,7 @@ func _read_status_applied(event: StatusAppliedEvent) -> void:
 		return  # 移動を取り消して、元に戻っただけ
 	var name := Names.status(event.status)
 	if _group == null:
-		_line("%s に%s（%d ターン）" % [unit_name(event.unit_id), name, event.turns], _side_of(event.unit_id),
+		_line(Text.t("battle.log.status", {"unit": unit_name(event.unit_id), "status": name, "turns": event.turns}), _side_of(event.unit_id),
 			_cell_of(event.unit_id), [event.unit_id])
 		return
 	var known: Array = _group_statuses.get(event.status, [])
@@ -513,21 +518,21 @@ func _read_status_applied(event: StatusAppliedEvent) -> void:
 		_group.details.append("")
 		_group_statuses[event.status] = known
 	(known[1] as Array[String]).append(unit_name(event.unit_id))
-	_group.details[known[0]] = "%s（%d ターン）: %s" % [name, known[2], "、".join(known[1])]
+	_group.details[known[0]] = Text.t("battle.log.status_group", {"status": name, "turns": known[2], "units": Text.join_comma(known[1])})
 	if _group_user != 0 and known[1] == [unit_name(_group_user)]:
-		_group.details[known[0]] = "%sが付いた（%d ターン）" % [name, known[2]]  # 使った駒が自分に付けた
+		_group.details[known[0]] = Text.t("battle.log.status_self", {"status": name, "turns": known[2]})  # 使った駒が自分に付けた
 	if not _group.unit_ids.has(event.unit_id):
 		_group.unit_ids.append(event.unit_id)
 	_touch(_group)
 
 
 func _read_ult_used(event: UltUsedEvent) -> void:
-	var text := "%s が必殺技「%s」を使った" % [Names.side_word(event.side), Names.ult(Ults.by_id(event.ult))]
+	var text := Text.t("battle.log.ult", {"side": Names.side_word(event.side), "ult": Names.ult(Ults.by_id(event.ult))})
 	_begin_group(_line(text, event.side))
 
 
 func _read_ult_ready(event: UltReadyEvent) -> void:
-	_line("%s の必殺技「%s」が使えるようになった" % [Names.side_word(event.side), Names.ult(Ults.by_id(event.ult))], event.side)
+	_line(Text.t("battle.log.ult_ready", {"side": Names.side_word(event.side), "ult": Names.ult(Ults.by_id(event.ult))}), event.side)
 
 
 func _read_defeated(event: UnitDefeatedEvent) -> void:
@@ -535,23 +540,23 @@ func _read_defeated(event: UnitDefeatedEvent) -> void:
 	if _noted_defeats.has(event.unit_id):
 		_noted_defeats.erase(event.unit_id)  # ダメージの行に「倒した」と書いた
 		return
-	_detail("%s が倒れた" % unit_name(event.unit_id), event.side, event.cell, [event.unit_id])
+	_detail(Text.t("battle.log.defeated", {"unit": unit_name(event.unit_id)}), event.side, event.cell, [event.unit_id])
 
 
 func _read_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	_group = null
 	var place := mid_boss_place(_board, event.boss_index)
 	if event.slayer_side < 0:
-		_line("%sの中ボスが倒れた" % place, -1, event.cell)
+		_line(Text.t("battle.log.boss_fell", {"place": place}), -1, event.cell)
 		return
-	_line("%s が%sの中ボスを倒した" % [Names.side_word(event.slayer_side), place], event.slayer_side, event.cell, [event.slayer_id])
+	_line(Text.t("battle.log.boss_slain", {"side": Names.side_word(event.slayer_side), "place": place}), event.slayer_side, event.cell, [event.slayer_id])
 
 
 func _read_relic_gained(event: RelicGainedEvent) -> void:
 	_group = null
-	var text := "%s が聖遺物「%s」を手に入れた（%s）" % [
-		Names.side_word(event.side), Names.relic(event.relic), Names.relic_summary(event.relic),
-	]
+	var text := Text.t("battle.log.relic", {
+		"side": Names.side_word(event.side), "relic": Names.relic(event.relic), "effect": Names.relic_summary(event.relic),
+	})
 	_line(text, event.side)
 
 
@@ -560,20 +565,20 @@ func _read_spawned(event: UnitSpawnedEvent) -> void:
 	_group = null
 	_units[event.unit_id] = Known.new(event.kind, event.side, event.cell)
 	var name := Names.kind(event.kind)
-	var verb := "現れた" if event.kind == UnitKind.Id.ELITE_MINION else "湧いた"
+	var elite := event.kind == UnitKind.Id.ELITE_MINION  # 中ボスは「現れた」、雑兵は「湧いた」
 	if _spawn_kind == event.kind and not entries.is_empty():
 		var entry := entries[-1]
 		_spawn_cells.append(event.cell)
 		var cells: Array[String] = []
 		for cell in _spawn_cells:
 			cells.append(cell_text(cell))
-		entry.text = "%s が %d 体%s: %s" % [name, _spawn_cells.size(), verb, "、".join(cells)]
+		entry.text = Text.t("battle.log.appeared_many" if elite else "battle.log.spawned_many", {"unit": name, "count": _spawn_cells.size(), "cells": Text.join_comma(cells)})
 		entry.unit_ids.append(event.unit_id)
 		_touch(entry)
 		return
 	_spawn_kind = event.kind
 	_spawn_cells = [event.cell]
-	_line("%s が %s に%s" % [name, cell_text(event.cell), verb], event.side, event.cell, [event.unit_id])
+	_line(Text.t("battle.log.appeared" if elite else "battle.log.spawned", {"unit": name, "cell": cell_text(event.cell)}), event.side, event.cell, [event.unit_id])
 
 
 func _read_level_up(event: LevelUpEvent) -> void:
@@ -582,11 +587,9 @@ func _read_level_up(event: LevelUpEvent) -> void:
 	var gains: Array[String] = []
 	for stat: Unit.Stat in Names.STATS:
 		if event.gains.get(stat, 0) != 0:
-			var stat_name: String = "回復" if healer and stat == Unit.Stat.POWER else Names.stat(stat)
-			gains.append("%s %+d" % [stat_name, event.gains[stat]])
-	var text := "%s が レベル %d に上がった" % [unit_name(event.unit_id), event.level]
-	if not gains.is_empty():
-		text += "（%s）" % "・".join(gains)
+			var stat_name: String = Text.t("battle.log.stat_heal") if healer and stat == Unit.Stat.POWER else Names.stat(stat)
+			gains.append(Text.t("battle.log.stat_gain", {"stat": stat_name, "amount": "%+d" % event.gains[stat]}))
+	var text := Text.t("battle.log.level_up", {"unit": unit_name(event.unit_id), "level": event.level}) + Text.notes(gains)
 	_line(text, _side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
 
@@ -595,7 +598,7 @@ func _read_evolved(event: UnitEvolvedEvent) -> void:
 	var known: Known = _units.get(event.unit_id)
 	if known != null:
 		known.evolution = event.evolution
-	_line("%s が %s に進化した" % [before, Names.evolution(event.evolution)], _side_of(event.unit_id),
+	_line(Text.t("battle.log.evolved", {"unit": before, "evolution": Names.evolution(event.evolution)}), _side_of(event.unit_id),
 		_cell_of(event.unit_id), [event.unit_id])
 
 
@@ -603,17 +606,18 @@ func _read_capture(event: CaptureProgressEvent) -> void:
 	_group = null
 	var hq := _board.hq_cells[1 - event.player] if _board.hq_cells.size() == 2 else NO_CELL
 	var enemy: String = Names.side_word(1 - event.player)
-	var text := "%s が%sの本陣を占拠: %d / %d" % [Names.side_word(event.player), enemy, event.turns, Battle.CAPTURE_TURNS_TO_WIN]
+	var args := {"side": Names.side_word(event.player), "enemy": enemy, "turns": event.turns, "needed": Battle.CAPTURE_TURNS_TO_WIN}
+	var text := Text.t("battle.log.capture", args)
 	if event.turns == 0:
-		text = "%s の、%sの本陣の占拠が途切れた" % [Names.side_word(event.player), enemy]
+		text = Text.t("battle.log.capture_broken", args)
 	_line(text, event.player, hq)
 
 
 func _read_won(event: GameWonEvent) -> void:
 	_group = null
-	_line("%s の勝ち（%s）" % [side_names[event.winner], WIN_TEXTS[event.reason]], event.winner)
+	_line(Text.t("battle.log.won", {"side": side_names[event.winner], "reason": Text.t(WIN_TEXTS[event.reason])}), event.winner)
 
 
 func _read_drawn(event: GameDrawnEvent) -> void:
 	_group = null
-	_line("引き分け（%s）" % DRAW_TEXTS[event.reason], -1)
+	_line(Text.t("battle.log.drawn", {"reason": Text.t(DRAW_TEXTS[event.reason])}), -1)

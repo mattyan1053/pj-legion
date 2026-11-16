@@ -9,6 +9,7 @@ extends Node3D
 ## 返ってきたイベントを順に再生するだけ。選べることはルールの問い合わせ（Battle.options）で出す。
 ## 盤面・駒・ライト・カメラ・文字はすべてコードで組み立てる。
 
+const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const UnitView := preload("res://game/unit_view.gd")
@@ -438,7 +439,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	# 対戦の曲（盤の見た目か、話が決めた曲。battle_source.gd の music）。決着の曲のあとの「やり直す」でも、対戦の曲へ戻る。
 	# 新しい盤面で見た目が替われば、曲も替わる。同じ曲なら鳴らし直さない。
 	context.play_scene_music(source.music())
-	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
+	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_cues = source.talk_cues()
 	_talk.clear()
 	_say(_cues.on_start(battle))
@@ -654,7 +655,7 @@ func system_menu() -> SystemMenu:
 
 ## システムメニューの「戻る」の文字（scene_flow.gd の場面の決まり）。
 func resume_label() -> String:
-	return "対戦の設定へ戻る" if _setup_panel.visible else "対戦へ戻る"
+	return Text.t("battle.menu_resume.setup") if _setup_panel.visible else Text.t("battle.menu_resume.battle")
 
 
 ## システムメニューに足す項目。対戦の設定画面の上で開いたら、「対戦の設定へ」は出さない（もう開いている）。
@@ -662,7 +663,7 @@ func resume_label() -> String:
 func menu_items() -> Array:
 	if _setup_panel.visible or not source.can_open_setup():
 		return []
-	return [[SYSTEM_MATCH_SETUP, "対戦の設定へ", ""]]
+	return [[SYSTEM_MATCH_SETUP, Text.t("battle.system.setup"), ""]]
 
 
 ## 抜けると失われるもの（決着していない対戦）があるか。あれば、タイトルへ戻る・ゲームを終える前に確かめる。
@@ -684,7 +685,7 @@ func _on_system_menu_closed() -> void:
 func _open_setup_when_ready() -> void:
 	var played_battle := battle
 	if is_busy():
-		_hud.show_banner("CPU の番が終わったら、対戦の設定を開く" if _ui.cpu_running else "動きが終わったら、対戦の設定を開く", Color.WHITE)
+		_hud.show_banner(Text.t("battle.banner.setup_after_cpu") if _ui.cpu_running else Text.t("battle.banner.setup_after_moves"), Color.WHITE)
 	while is_busy() and battle == played_battle and not _setup_panel.visible:
 		await frame_passed
 	if battle == played_battle:
@@ -820,7 +821,7 @@ func _show_opponent() -> void:
 	if not source.can_switch_opponent():
 		_hud.set_opponent("")
 		return
-	_hud.set_opponent("相手: CPU" if cpu_opponent else "相手: 人")
+	_hud.set_opponent(Text.t("battle.hud.opponent.cpu") if cpu_opponent else Text.t("battle.hud.opponent.human"))
 
 
 ## 下の帯に「相手」のボタンが出ているか。検査用。
@@ -1427,7 +1428,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 	_hud.hide_evolution()
 	if _watching_other():
 		# 自分の番を終えた: 再生の間（中立のフェーズから）も、相手の番の表示にする。
-		_hud.set_end_turn(false, "CPU の番")
+		_hud.set_end_turn(false, Text.t("battle.end_turn.cpu"))
 		_hud.set_hint(BattleTexts.hint(battle, null, null, Mode.NONE, true, false, false))
 	_show_watch_controls()
 	await _playback.play_all(events, quiet_until_warp_from)
@@ -1438,7 +1439,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 		_playback.skipping = false
 		if not battle.is_over():
 			_rig.focus_on(_camera_point(battle.phase))
-			_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
+			_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_update_time_scale()
 	# 対戦の途中の会話: 起きたことを見せ終えてから出す（演出と重ねない）。決着した行動のあとは出さない（BattleCues が見る）。
 	_say(_cues.on_events(battle, events))
@@ -1600,16 +1601,16 @@ func _refresh() -> void:
 		Queries.unacted_count(battle) if _ui.confirming_end else 0, not _warp.is_empty(), _ui.pinned_ids.size()
 	))
 	if _ui.confirming_auto:
-		_hud.set_hint(BattleTexts.AUTO_CONFIRM_HINT)
+		_hud.set_hint(BattleTexts.auto_confirm_hint())
 	elif _auto_side >= 0 and battle.phase == _auto_side:
-		_hud.set_hint(BattleTexts.AUTO_RUNNING_HINT)
+		_hud.set_hint(BattleTexts.auto_running_hint())
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
 		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
 		var texts: Array[String] = []
 		for choice in battle.options(evolving.id).evolutions:
 			texts.append(BattleHud.evolution_text(choice, healer))
-		_hud.show_evolution("%s の進化先を選ぶ" % Names.kind(evolving.kind), texts)
+		_hud.show_evolution(Text.t("battle.evolution.title", {"unit": Names.kind(evolving.kind)}), texts)
 	else:
 		_hud.hide_evolution()
 	var unacted := Queries.unacted_count(battle)
@@ -1618,12 +1619,12 @@ func _refresh() -> void:
 		_ui.confirming_auto
 	)
 	if cpu_turn:
-		_hud.set_end_turn(false, "おまかせ中" if battle.phase == _auto_side else "CPU の番")
+		_hud.set_end_turn(false, Text.t("battle.end_turn.auto") if battle.phase == _auto_side else Text.t("battle.end_turn.cpu"))
 	elif _ui.confirming_end:
-		_hud.set_end_turn(true, "もう一度押して終了")
+		_hud.set_end_turn(true, Text.t("battle.end_turn.confirm"))
 	else:
 		var can_end := not battle.is_over() and evolving == null
-		_hud.set_end_turn(can_end, "ターン終了", can_end and unacted == 0)
+		_hud.set_end_turn(can_end, Text.t("battle.hud.end_turn"), can_end and unacted == 0)
 	_hud.set_menu(
 		BattleTexts.menu_items(
 			battle, unit, _ui.mode, _can_attack(), not _heal_targets.is_empty(), not _skill_cells.is_empty(),
@@ -1724,9 +1725,9 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		var names: Array[String] = []
 		var notes: Array[String] = []
 		for relic in Relics.held(battle, side):
-			names.append(Names.relic(relic).trim_suffix("の聖遺物"))
-			notes.append("%s: %s" % [Names.relic(relic), Names.relic_summary(relic)])
-		relics.append("・".join(names))
+			names.append(Names.relic_short(relic))
+			notes.append(Text.t("battle.hud.relic_note", {"relic": Names.relic(relic), "effect": Names.relic_summary(relic)}))
+		relics.append(Text.join_dot(names))
 		relic_notes.append("
 ".join(notes))
 	_hud.set_relics(relics, relic_notes, held)
@@ -1832,7 +1833,7 @@ func _update_info() -> void:
 		# スキルの対象を選んでいる間は、使う駒と、スキルの説明を出す（見込みは、予測のパネル）。
 		var user := selected_unit()
 		var skill := Skills.of(user)
-		_hud.show_unit(user, "%s の対象を選んでいる" % Names.skill(skill), Names.skill_summary(skill), false)
+		_hud.show_unit(user, Text.t("battle.skill.choosing", {"skill": Names.skill(skill)}), Names.skill_summary(skill), false)
 		return
 	if _ui.menu_hover_id != &"" and selected_unit() != null and hovered == null and _hud.menu_ids().has(_ui.menu_hover_id):
 		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
@@ -1858,13 +1859,13 @@ func _hovered_action() -> Array:
 	var hovered := battle.unit_at(_hover_cell) if _hover_cell != NO_CELL else null
 	var aiming := _ui.mode == Mode.NONE or _ui.mode == Mode.ATTACK
 	if hovered != null and aiming and _targets.has(hovered):
-		return [AttackAction.new(actor.id, hovered.id), "攻撃", _hover_cell]
+		return [AttackAction.new(actor.id, hovered.id), Text.t("battle.menu.attack"), _hover_cell]
 	if hovered != null and (_ui.mode == Mode.NONE or _ui.mode == Mode.HEAL) and _heal_targets.has(hovered):
-		return [HealAction.new(actor.id, hovered.id), "回復", _hover_cell]
+		return [HealAction.new(actor.id, hovered.id), Text.t("battle.menu.heal"), _hover_cell]
 	if aiming and _barrel_targets.has(_hover_cell):
-		return [AttackBarrelAction.new(actor.id, _hover_cell), "樽を撃つ（爆発 %d ダメージ）" % MapObject.BLAST_DAMAGE, _hover_cell]
+		return [AttackBarrelAction.new(actor.id, _hover_cell), Text.t("battle.forecast.barrel", {"damage": MapObject.BLAST_DAMAGE}), _hover_cell]
 	if aiming and _barricade_targets.has(_hover_cell):
-		return [AttackBarricadeAction.new(actor.id, _hover_cell), "盾を攻撃", _hover_cell]
+		return [AttackBarricadeAction.new(actor.id, _hover_cell), Text.t("battle.forecast.barricade"), _hover_cell]
 	return []
 
 

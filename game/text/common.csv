@@ -1,0 +1,6 @@
+keys,ja
+common.cell,"({x}, {y})"
+common.paren,（{text}）
+common.joiner.dot,・
+common.joiner.comma,、
+common.sentence_end,。

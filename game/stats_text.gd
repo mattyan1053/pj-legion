@@ -2,23 +2,19 @@ extends RefCounted
 ## 決着の画面に出す、戦績の要点の文（BattleStats から作る）。ノードに依存しない（テストから呼べる）。
 
 const Names := preload("res://game/names.gd")
+const Text := preload("res://game/text.gd")
 
-const ENDINGS := {
-	BattleStats.Ending.NONE: "決着していない",
-	BattleStats.Ending.KING_DEFEATED: "将の撃破",
-	BattleStats.Ending.HQ_CAPTURED: "本陣の占拠",
-	BattleStats.Ending.TURNS_HELD: "守り切り",
-	BattleStats.Ending.ROUTED: "全滅",
-	BattleStats.Ending.DRAW: "引き分け",
-}
+## 終わり方の名前（鍵は stats.ending.<終わり方の名前の小文字>）。
+static func ending(of: BattleStats.Ending) -> String:
+	return Text.t("stats.ending." + String(BattleStats.Ending.find_key(of)).to_lower())
 
 
 ## 全体の 1 行、陣営ごとの 2 行（数と MVP）。side_names はプレイヤー番号ごとの名前。
 static func text(stats: BattleStats, stage_name: String, side_names: Array[String]) -> String:
 	var lines: Array[String] = []
-	var head := "ターン %d　%s" % [stats.turns, ENDINGS[stats.ending]]
+	var head := Text.t("stats.head", {"turns": stats.turns, "ending": ending(stats.ending)})
 	if stage_name != "":
-		head = "作戦領域: %s　%s" % [stage_name, head]
+		head = Text.t("stats.head_stage", {"stage": stage_name, "turns": stats.turns, "ending": ending(stats.ending)})
 	lines.append(head)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		lines.append("")
@@ -29,57 +25,61 @@ static func text(stats: BattleStats, stage_name: String, side_names: Array[Strin
 static func side_lines(stats: BattleStats, side: Unit.Side, side_name: String) -> Array[String]:
 	var record := stats.sides[side]
 	var parts: Array[String] = [
-		"与えたダメージ %d" % record.damage,
-		"敵軍撃破 %d 体" % record.kills,
-		"倒された %d 体" % record.losses,
+		Text.t("stats.damage", {"count": record.damage}),
+		Text.t("stats.kills", {"count": record.kills}),
+		Text.t("stats.losses", {"count": record.losses}),
 	]
 	if record.neutral_kills > 0:
-		var boss := "（中ボス %d）" % record.boss_kills if record.boss_kills > 0 else ""
-		parts.append("中立撃破 %d 体%s" % [record.neutral_kills, boss])
+		if record.boss_kills > 0:
+			parts.append(Text.t("stats.neutral_kills_boss", {"count": record.neutral_kills, "boss": record.boss_kills}))
+		else:
+			parts.append(Text.t("stats.neutral_kills", {"count": record.neutral_kills}))
 	if record.healing > 0:
-		parts.append("回復 %d" % record.healing)
-	parts.append("スキル %d 回" % record.skill_uses)
-	parts.append("必殺技 %d 回" % record.ult_uses)
+		parts.append(Text.t("stats.healing", {"count": record.healing}))
+	parts.append(Text.t("stats.skill_uses", {"count": record.skill_uses}))
+	parts.append(Text.t("stats.ult_uses", {"count": record.ult_uses}))
 	if record.level_ups > 0:
-		parts.append("レベルアップ %d 回" % record.level_ups)
+		parts.append(Text.t("stats.level_ups", {"count": record.level_ups}))
 	if record.evolutions > 0:
-		parts.append("進化 %d 体" % record.evolutions)
+		parts.append(Text.t("stats.evolutions", {"count": record.evolutions}))
 	if not record.relics.is_empty():
-		var names: Array[String] = []
-		for relic in record.relics:
-			names.append(Names.relic(relic))
-		parts.append("聖遺物 %s" % "・".join(names))
-	var lines: Array[String] = ["%s: %s" % [side_name, "　".join(parts)]]
+		parts.append(Text.t("stats.relics", {"relics": _relic_names(record)}))
+	var lines: Array[String] = [Text.t("stats.side", {"side": side_name, "parts": Text.t("battle.hud.separator").join(parts)})]
 	var best := stats.mvp(side)
 	if best != null:
-		lines.append("　MVP %s　与えたダメージ %d　撃破 %d" % [unit_name(best), best.damage, best.kills])
+		lines.append(Text.t("stats.mvp", {"unit": unit_name(best), "damage": best.damage, "kills": best.kills}))
 	return lines
 
 
-## 詳しい戦績の表の列（[鍵, 見出し]）。行は駒（table_rows）。
+## 詳しい戦績の表の列（[鍵, 見出しの表の鍵]）。行は駒（table_rows）。
 const COLUMNS := [
-	[&"damage", "与えたダメージ"],
-	[&"damage_taken", "受けたダメージ"],
-	[&"kills", "撃破"],
-	[&"neutral_kills", "中立撃破"],
-	[&"healing", "回復"],
-	[&"skill_uses", "スキル"],
+	[&"damage", "stats.column.damage"],
+	[&"damage_taken", "stats.column.damage_taken"],
+	[&"kills", "stats.column.kills"],
+	[&"neutral_kills", "stats.column.neutral_kills"],
+	[&"healing", "stats.column.healing"],
+	[&"skill_uses", "stats.column.skill_uses"],
 ]
 
 
 ## 陣営の 1 行の要点（表の上に出す。「敵軍撃破 3 体　倒された 2 体　必殺技 1 回」など）。
 static func side_summary(stats: BattleStats, side: Unit.Side) -> String:
 	var record := stats.sides[side]
-	var parts: Array[String] = ["敵軍撃破 %d 体" % record.kills, "倒された %d 体" % record.losses]
+	var parts: Array[String] = [Text.t("stats.kills", {"count": record.kills}), Text.t("stats.losses", {"count": record.losses})]
 	if record.boss_kills > 0:
-		parts.append("中ボス撃破 %d" % record.boss_kills)
-	parts.append("必殺技 %d 回" % record.ult_uses)
+		parts.append(Text.t("stats.boss_kills", {"count": record.boss_kills}))
+	parts.append(Text.t("stats.ult_uses", {"count": record.ult_uses}))
 	if not record.relics.is_empty():
-		var names: Array[String] = []
-		for relic in record.relics:
-			names.append(Names.relic(relic))
-		parts.append("聖遺物 %s" % "・".join(names))
-	return "　".join(parts)
+		parts.append(Text.t("stats.relics", {"relics": _relic_names(record)}))
+	return Text.t("battle.hud.separator").join(parts)
+
+
+## 持っている聖遺物の名前を「・」でつないだもの。
+static func _relic_names(record: BattleStats.SideRecord) -> String:
+	var names: Array[String] = []
+	for relic in record.relics:
+		names.append(Names.relic(relic))
+	return Text.join_dot(names)
 
 
 ## 詳しい戦績の表の行（駒ごと。番号の小さい順 = 将から並びの順）。
@@ -99,7 +99,6 @@ static func table_rows(stats: BattleStats, side: Unit.Side) -> Array[Dictionary]
 
 ## 駒の名前。進化していれば、進化先の名前も付ける。レベルも付ける。
 static func unit_name(record: BattleStats.UnitRecord) -> String:
-	var kind_name := Names.kind(record.kind)
 	if record.evolution != Evolution.Id.NONE:
-		kind_name += "（%s）" % Names.evolution(record.evolution)
-	return "%s Lv%d" % [kind_name, record.level]
+		return Text.t("stats.unit_evolved", {"kind": Names.kind(record.kind), "evolution": Names.evolution(record.evolution), "level": record.level})
+	return Text.t("stats.unit", {"kind": Names.kind(record.kind), "level": record.level})

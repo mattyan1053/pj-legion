@@ -19,7 +19,7 @@ func _battle() -> Battle:
 
 func test_plain_cell_is_just_its_title() -> void:
 	var battle := _battle()
-	assert_eq(BattleTexts.cell_notes(battle, Vector2i(0, 0)), [BattleTexts.NOTHING_SPECIAL] as Array[String])
+	assert_eq(BattleTexts.cell_notes(battle, Vector2i(0, 0)), [BattleTexts.nothing_special()] as Array[String])
 	assert_eq(BattleTexts.cell_line(battle, Vector2i(0, 0)), "マス (0, 0)　平地")
 
 
@@ -37,12 +37,12 @@ func test_portal_says_where_it_sends() -> void:
 		"1...1",
 	])
 	var notes := BattleTexts.cell_notes(battle, Vector2i(0, 0))
-	assert_eq(notes, ["ポータル → (4, 0)（%s）" % BattleTexts.PORTAL_NOTE] as Array[String])
+	assert_eq(notes, ["ポータル → (4, 0)（止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わない）"] as Array[String])
 	var body := BattleTexts.cell_body(battle, Vector2i(0, 0))
 	assert_true(body.contains("\n　止まると、駒のそばのメニューの「転移」で"), "転送の説明を行に分けていない: " + body)
 	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 0))
 	notes = BattleTexts.cell_notes(battle, Vector2i(0, 0))
-	assert_eq(notes, ["ポータル → (4, 0)（%s。%s）" % [BattleTexts.PORTAL_NOTE, BattleTexts.PORTAL_BLOCKED]] as Array[String],
+	assert_eq(notes, ["ポータル → (4, 0)（止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わない。行き先に駒がいて、いまは使えない）"] as Array[String],
 		"行き先がふさがっていることを書いていない")
 
 func test_hint_follows_the_state() -> void:

@@ -9,6 +9,8 @@ extends Node3D
 ## 描き方は、光に左右されない色（unshaded）と透明度だけ。後処理（グロー）や画面のシェーダーには頼らない
 ## （コンテナのソフトウェア描画でも、実機の Vulkan でも同じに見えるように）。
 
+const Text := preload("res://game/text.gd")
+
 ## 攻撃の当たり方。駒の種類から決まる（hit_style）。
 enum Style {
 	SLAM,  ## 叩く（前衛・将）: 相手の足元から、地面を這う衝撃の輪が広がる。
@@ -136,7 +138,7 @@ func strike(style: Style, from: Vector3, to: Vector3, hit_in: float) -> void:
 func wait_sign(at: Vector3) -> void:
 	_ring(at + Vector3(0.0, 0.05, 0.0), COLOR_WAIT, 1.1, 0.5, 0.35)
 	var label := Label3D.new()
-	label.text = "待機"
+	label.text = Text.t("battle.menu.wait")
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.pixel_size = 0.006
