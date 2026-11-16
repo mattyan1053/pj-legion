@@ -119,6 +119,8 @@ var _info_traits: Label
 var viewer_side := Unit.Side.PLAYER1
 ## 陣営ごとの軍（Battle.armies。対戦の画面が入れる）。所属の欄に出す軍は、駒の種類の軍でなく、陣営の軍。
 var side_armies: Array = []
+## いまの対戦（対戦の画面が入れる）。スキルが、いま使える状態か（動いたら使えない、など）を見るのに使う。
+var battle: Battle
 var _info_forecast: Label
 ## 見ている相手の駒の攻撃範囲を、表示したままにするスイッチ（枠のいちばん下。set_pin_switch）。
 var _info_pin: CheckButton
@@ -352,7 +354,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	var skill := Skills.of(unit)
 	var skill_text := ""
 	if skill != null:
-		skill_text = Text.t("battle.hud.skill", {"skill": Names.skill(skill), "state": skill_state_text(unit)})
+		skill_text = Text.t("battle.hud.skill", {"skill": Names.skill(skill), "state": skill_state_text(unit, battle)})
 	_set_shown(_info_skill, skill_text)
 	# スキルの中身は、読んで知るもの。選んだ駒・マウスを乗せた駒のスキルの説明を、いつも出す。
 	_set_shown(_info_skill_note, Names.skill_summary(skill) if skill != null and skill_note else "")
@@ -611,14 +613,22 @@ func menu_size() -> Vector2:
 
 
 ## メニューを置く（左上の、画面の座標）。from は、駒の画面の上の位置。メニューが駒から離れたら、駒まで細い線を引く
-## （どの駒のメニューかが分かるように）。
+## （どの駒のメニューかが分かるように）。駒が下の帯の後ろにいるときは、線を帯の上の縁で止める（帯の文字の上に引かない）。
 func place_menu(at: Vector2, from: Vector2) -> void:
 	_menu.position = at.round()
 	_menu.size = _menu.get_combined_minimum_size()
 	var rect := Rect2(_menu.position, _menu.size)
 	var near := Vector2(clampf(from.x, rect.position.x, rect.end.x), clampf(from.y, rect.position.y, rect.end.y))
 	_menu_line.visible = _menu.visible and near.distance_to(from) > MENU_LINE_FROM
-	_menu_line.points = PackedVector2Array([from, near])
+	_menu_line.points = PackedVector2Array([menu_line_start(from, near, _menu.get_viewport_rect().size.y - BOTTOM_BAR_HEIGHT), near])
+
+
+## メニューと駒を結ぶ線の、駒の側の端。駒（from）が下の帯（上の縁が bar_top）の後ろにいれば、メニューの側の端（near）へ向かう
+## 線が帯の上の縁と交わる所。帯の上にいれば from のまま。
+static func menu_line_start(from: Vector2, near: Vector2, bar_top: float) -> Vector2:
+	if from.y <= bar_top or near.y >= bar_top:
+		return from
+	return from.lerp(near, (from.y - bar_top) / (from.y - near.y))
 
 
 ## メニューが届くマスに掛かっているか（see_through）。掛かっている間は、マウスが乗っていなければ薄く描く（_process）。
@@ -697,11 +707,17 @@ func menu_ids() -> Array[StringName]:
 
 
 ## 駒のスキルの状態（使えるか、あと何ターンか。回数に上限があれば、残りの回数）。
-static func skill_state_text(unit: Unit) -> String:
+## in_battle があれば、クールダウンのほかの条件（動いたら使えない、巡航した、など。Skills.can_use）も見て、使えなければ「使用不可」
+## （メニューの「スキル（使用不可）」とそろえる）。見るのは、その駒の陣営の番の間だけ（相手の番には、動いたかどうかは次の番に戻る）。
+static func skill_state_text(unit: Unit, in_battle: Battle = null) -> String:
 	var uses := Skills.uses_left(unit)
 	if uses == 0:
 		return Text.t("battle.hud.skill_state.used_up")
-	var state := Text.t("battle.hud.skill_state.ready") if unit.skill_cooldown == 0 else Text.t("battle.hud.skill_state.cooldown", {"turns": unit.skill_cooldown})
+	var state := Text.t("battle.hud.skill_state.ready")
+	if unit.skill_cooldown > 0:
+		state = Text.t("battle.hud.skill_state.cooldown", {"turns": unit.skill_cooldown})
+	elif in_battle != null and in_battle.phase == unit.side and not Skills.can_use(in_battle, unit):
+		state = Text.t("battle.hud.skill_state.unusable")
 	return state if uses < 0 else Text.t("battle.hud.skill_state.uses_left", {"state": state, "uses": uses})
 
 

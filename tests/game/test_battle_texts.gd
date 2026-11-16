@@ -3,6 +3,7 @@ extends "res://tests/base_test.gd"
 
 const Maps := preload("res://tests/support/maps.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
+const BattleHud := preload("res://game/battle_hud.gd")
 const Mode := BattleTexts.Mode
 
 const P1 := Unit.Side.PLAYER1
@@ -81,6 +82,21 @@ func test_every_menu_item_has_a_note() -> void:
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(0, 0))
 	for id: StringName in [BattleTexts.MENU_ATTACK, BattleTexts.MENU_HEAL, BattleTexts.MENU_SKILL, BattleTexts.MENU_WAIT, BattleTexts.MENU_UNDO, BattleTexts.MENU_BACK, BattleTexts.MENU_WARP]:
 		assert_ne(BattleTexts.menu_note(id, priest), "", "項目 %s に説明が無い" % id)
+
+
+## 左下の枠のスキルの状態は、メニューと同じに、動いたら使えない（精密照準）ことまで見る（Issue #46）。
+func test_skill_state_matches_the_menu_after_moving() -> void:
+	var battle := _battle()
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
+	assert_eq(BattleHud.skill_state_text(sniper, battle), "使用可")
+	sniper.has_moved = true
+	sniper.move_origin = Vector2i(0, 0)
+	sniper.cell = Vector2i(2, 0)
+	assert_eq(BattleHud.skill_state_text(sniper, battle), "使用不可", "動いたスナイパーの精密照準を「使用可」と出した")
+	assert_eq(BattleTexts.skill_button_text(sniper, Skills.can_use(battle, sniper)), "スキル（使用不可）")
+	assert_true(BattleTexts.menu_note(BattleTexts.MENU_SKILL, sniper, battle).contains("使用不可"))
+	battle.phase = P2
+	assert_eq(BattleHud.skill_state_text(sniper, battle), "使用可", "相手の番に、前の番に動いたことで「使用不可」と出した")
 
 
 func test_skill_button_gives_the_reason_it_cannot_be_used() -> void:

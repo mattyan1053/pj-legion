@@ -63,3 +63,14 @@ func test_katakana_word_stays_together() -> void:
 	# 行より長いカタカナは、行の末で切る（はみ出さない）。
 	for line in _wrap("インフィルトレーターインフィルトレーター", 12.0):
 		assert_true(_measure(line) <= 12.0, "幅を超えた: %s" % line)
+
+
+func test_kanji_words_and_their_kana_stay_together() -> void:
+	# 「表示」を「表 / 示」にしない。漢字・カタカナの後の送り仮名と助詞（「届く」「範囲を」「ダメージを」）も、前の語から離さない。
+	var text := "攻撃の届く範囲を表示中。ダメージを受ける"
+	for width: float in [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0, 26.0, 30.0]:
+		var lines := _wrap(text, width)
+		assert_eq("".join(lines), text, "文字が変わった（幅 %s）" % width)
+		for i in range(1, lines.size()):
+			var tail := lines[i - 1].right(1) + lines[i].left(1)
+			assert_false(tail in ["表示", "示中", "範囲", "囲を", "届く", "ジを", "攻撃", "撃の"], "語の途中で切った: %s（幅 %s）" % [lines, width])
