@@ -65,7 +65,6 @@ const INFO_WIDTH := 320.0
 ## 駒の情報の枠の、駒のアイコンの大きさ（px）。
 const INFO_ICON_SIZE := 48.0
 const ULT_SUMMARY_WIDTH := 480.0
-const HINT_SIDE_WIDTH := 800.0
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
 const COLOR_STATUS := Palette.INFO
@@ -125,6 +124,8 @@ var _info_forecast: Label
 var _info_pin: CheckButton
 var _cell_label: Label
 var _hint_label: Label
+## 下の帯の案内の、折り返す前の文。
+var _hint_text := ""
 var _end_turn_button: Button
 var _end_turn_style: StyleBoxFlat
 var _opponent_button: Button
@@ -262,6 +263,7 @@ func set_ult_button(text: String, enabled: bool, summary: String, pinned := fals
 	_set_folded(_ult_summary, summary, ULT_SUMMARY_WIDTH)
 	_ult_pinned = pinned
 	_show_ult_summary()
+	_fold_hint()
 
 
 func _show_ult_summary() -> void:
@@ -450,7 +452,42 @@ func show_cell(text: String) -> void:
 
 
 func set_hint(text: String) -> void:
-	_set_folded(_hint_label, text, _hint_label.get_viewport_rect().size.x - HINT_SIDE_WIDTH)
+	_hint_text = text
+	_fold_hint()
+
+
+## 案内を、いま使える幅で折り返し直す。右のボタンの文字や出し入れが変わると、使える幅も変わるので、そのたびに呼ぶ。
+func _fold_hint() -> void:
+	if _hint_label != null:
+		_set_folded(_hint_label, _hint_text, _hint_room())
+
+
+## 下の帯の案内のうち、案内に使える幅に収まらない行（3 行目からは、収まっていても切れる）。検査用。
+func hint_cut_lines() -> Array[String]:
+	var font := _hint_label.get_theme_font(&"font")
+	var font_size := _hint_label.get_theme_font_size(&"font_size")
+	var room := _hint_room()
+	var cut: Array[String] = []
+	var lines := _hint_label.text.split("\n")
+	for i in lines.size():
+		if i >= _hint_label.max_lines_visible or font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > room + 0.5:
+			cut.append(lines[i])
+	return cut
+
+
+## 下の帯で、案内に使える幅: 帯の幅から、右のボタンとスイッチ（出ているもの）の幅と間を引いた残り。
+## 並べ直しを待たずに求める（ボタンの文字が変わった直後にも正しい）。
+func _hint_room() -> float:
+	var column := _hint_label.get_parent() as Control
+	var row := column.get_parent() as HBoxContainer
+	var panel := row.get_parent() as Control
+	var room := panel.get_viewport_rect().size.x - panel.get_theme_stylebox(&"panel").get_minimum_size().x
+	var shown := row.get_children().filter(func(child: Node) -> bool: return (child as Control).visible)
+	room -= row.get_theme_constant(&"separation") * (shown.size() - 1)
+	for child: Control in shown:
+		if child != column:
+			room -= child.get_combined_minimum_size().x
+	return room
 
 
 ## ターン終了のボタン。ready が真なら、明るくして目立たせる（動かせる駒が残っていないとき）。
@@ -458,6 +495,7 @@ func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 	_end_turn_button.disabled = not enabled
 	_end_turn_button.text = text
 	_end_turn_style.bg_color = COLOR_END_TURN_READY if ready else COLOR_END_TURN
+	_fold_hint()
 
 
 ## 相手の番の「早送り」「スキップ」を出すか（出している間は、必殺技のボタンを隠す）。fast は早送りが入っているか、
@@ -469,12 +507,14 @@ func set_watch_controls(shown: bool, fast: bool, can_skip: bool) -> void:
 	_fast_button.set_pressed_no_signal(fast)
 	_skip_button.disabled = not can_skip
 	_skip_button.text = Text.t("battle.hud.skip") if can_skip else Text.t("battle.hud.skipping")
+	_fold_hint()
 
 
 ## 自分の番の「おまかせ」。confirming なら、もう一度押すと任せる、の形にする。
 func set_auto_button(enabled: bool, confirming: bool) -> void:
 	_auto_button.disabled = not enabled
 	_auto_button.text = Text.t("battle.hud.auto_confirm") if confirming else Text.t("battle.hud.auto")
+	_fold_hint()
 
 
 ## 「おまかせ」の文字と、押せるか。検査用。
@@ -498,6 +538,7 @@ func press_skip() -> bool:
 ## 敵の全員の脅威範囲の切り替えを、出しているかに合わせる。
 func set_threat_button(shown: bool) -> void:
 	_threat_button.set_pressed_no_signal(shown)
+	_fold_hint()
 
 
 func end_turn_text() -> String:
@@ -508,6 +549,7 @@ func end_turn_text() -> String:
 func set_opponent(text: String) -> void:
 	_opponent_button.text = text
 	_opponent_button.visible = text != ""
+	_fold_hint()
 
 
 ## 相手を切り替えるボタンを出しているか。検査用。

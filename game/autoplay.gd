@@ -1548,6 +1548,7 @@ func _queue_ult_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(_scene.played.get(ready, 0) == 1, "ゲージがいっぱいになったことを再生しなかった")
 		_expect(_scene.ult_gauge_text(1) == "READY" and _scene.is_ult_enabled(), "プレイヤー2 の番に、必殺技のボタンが押せない")
+		_expect(_scene.hint_cut_lines().is_empty(), "必殺技のボタンが広がって、下の帯の案内が切れた: %s" % [_scene.hint_cut_lines()])
 		_scene.press_ult()
 		_scene.pass_confirm_guard()
 		_scene.press_ult())

@@ -493,6 +493,11 @@ func talk_line() -> BattleCues.Line:
 	return _talk.current()
 
 
+## 下の帯の案内のうち、案内に使える幅に収まらない行（3 行目からは、収まっていても切れる）。検査用。
+func hint_cut_lines() -> Array[String]:
+	return _hud.hint_cut_lines()
+
+
 ## 対戦の途中の会話の札が画面に占める四角と、上の帯の下の決まった枠（勝ち方の札、視点の案内）とミニマップの四角。検査用。
 func talk_card_rect() -> Rect2:
 	return _talk.card_rect()
