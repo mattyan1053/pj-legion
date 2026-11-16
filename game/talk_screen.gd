@@ -30,7 +30,7 @@ const COLOR_TEXT := Color(0.95, 0.96, 0.98)
 const COLOR_DIM := Color(0.78, 0.81, 0.86)
 
 var context: AppContext
-## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …]}）。
+## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目}。story.gd の talk_of）。
 var talk := {}
 var _index := 0
 var _shown := 0.0  # いまの文の、出した文字数

@@ -228,7 +228,7 @@ func run_now(episode: Script) -> Run:
 
 
 ## 話 episode の流れ（run.gd）: 会話（前）→ 出撃の準備 → 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃の準備で選び直せる）。
-## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
+## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」「部隊を選び直す」（出撃の準備へ）か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
 ## unlocking: この話のクリアで新しく雇えるようになる駒。あとの会話の最後に、知らせの行で出す。
 static func run_of(episode: Script, human_deck: Deck, unlocking: Array[UnitKind.Id] = []) -> Run:
 	var run := Run.new()

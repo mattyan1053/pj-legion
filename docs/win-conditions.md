@@ -2,7 +2,7 @@
 
 コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`、`settle`、`hold_turns`、`turns_left`、`end_turn`）、`rules/actions/end_phase_action.gd`、
 `rules/events/game_won_event.gd`、`rules/events/game_drawn_event.gd`、`rules/events/capture_progress_event.gd`。
-テスト: `tests/rules/test_victory.gd`、引き分けは `tests/rules/test_map_objects.gd`。
+テスト: `tests/rules/test_victory.gd`、`tests/rules/test_scenario.gd`（勝ちの条件の列）、`tests/game/test_win_text.gd`（画面の勝ち方の文）、引き分けは `tests/rules/test_map_objects.gd`。
 
 プレイヤーごとに**勝ちの条件の列**を持ち、そのどれかが満たされた時点で決着し、`GameWonEvent`（勝った陣営と理由）が出る。決着したあとは、どの行動も受け付けない。
 
