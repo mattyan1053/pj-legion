@@ -111,6 +111,7 @@ const SCENES := {
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
 	"story_mixed_decks": "ストーリー: ほかの軍の駒（パラディン）を、部隊の編成の「ストーリー用」で雇うところ",
 	"story_mixed_info": "ストーリー: ほかの軍の駒（パラディン）を混ぜた部隊の対戦で、その駒の情報を見ている",
+	"story_sortie_default": "ストーリー: 出撃の準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
@@ -1404,6 +1405,16 @@ func _scene_story_mixed_info() -> bool:
 	_look_at(BoardView.cell_center(unit.cell))
 	_scene.hover(unit.cell)
 	return true
+
+
+## 出撃の準備で、既定の編成を選んでいるところ（取っておいた部隊は無い）。
+func _scene_story_sortie_default() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	if not await _start_story():
+		return false
+	if not await _scene_story_sortie_from_talk():
+		return false
+	return _app.current_scene().chosen_id() == ""
 
 
 ## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。

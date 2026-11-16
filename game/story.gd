@@ -28,6 +28,11 @@ const RULES_ID := &"story"
 const ARMY := UnitKind.Army.MILITARY
 ## 最初から雇える駒の種類。ほかは、話をクリアすると増える（話のデータの UNLOCKS）。
 const STARTING_KINDS: Array[UnitKind.Id] = [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.MEDIC]
+## 既定の編成で、役割ごとに 1 つ持たせる装備（無い役割は持たせない）。
+const DEFAULT_ITEMS := {
+	UnitKind.Role.VANGUARD: Equipment.Id.IRON_SHIELD,
+	UnitKind.Role.RAIDER: Equipment.Id.SPEED_BOOTS,
+}
 ## 会話の行の、知らせ（話し手の名前の札を灰色にする。「飛ばす」でも飛ばさない。talk_screen.gd）。
 const NOTICE_SIDE := 2
 const NOTICE_NAME := "知らせ"
@@ -167,9 +172,32 @@ static func rules_of(kinds: Array[UnitKind.Id]) -> DeckRules:
 	return DeckRules.new(RULES_ID, "ストーリー", Deck.MAX_UNITS, {ARMY: roster}, {ARMY: DeckRules.versus().budget(ARMY)})
 
 
-## 雇える駒の種類 kinds の、ストーリーの既定の編成（CPU の編成の組み方。CpuDeck）。
+## 雇える駒の種類 kinds の、ストーリーの既定の編成。初めて遊ぶ人が出撃の準備で見て納得できる、素直な形にする:
+## 1. 雇える駒を、役割の順（前衛・後衛・奇襲・回復）に 1 体ずつ、数の上限まで繰り返して雇う（予算に収まるかぎり。まんべんなく）
+## 2. 余った予算で、前衛にアイアンシールド、奇襲にスピードブーツを、1 体に 1 つまで持たせる
+## 並びは役割の順（同じ種類はまとめる）。並びの順に初期位置へ置かれるので、前衛が前に出る。
 static func default_deck(kinds: Array[UnitKind.Id]) -> Deck:
-	return CpuDeck.build(ARMY, rules_of(kinds))
+	var rules := rules_of(kinds)
+	var deck := Deck.new(ARMY, rules)
+	var roster := deck.available_kinds()
+	var hired: Array[UnitKind.Id] = []
+	var cost := 0
+	var adding := not roster.is_empty()
+	while adding:
+		adding = false
+		for kind in roster:
+			if hired.size() < rules.max_units and cost + UnitKind.cost(kind) <= deck.budget():
+				hired.append(kind)
+				cost += UnitKind.cost(kind)
+				adding = true
+	hired.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool: return roster.find(a) < roster.find(b))
+	for kind in hired:
+		deck.add(kind)
+	for entry in deck.entries:
+		var item := DEFAULT_ITEMS.get(UnitKind.role(entry.kind), -1) as int
+		if item != -1 and deck.total_cost() + Equipment.cost(item as Equipment.Id) <= deck.budget():
+			entry.equip(item as Equipment.Id)
+	return deck
 
 
 ## 話 episode の対戦（人は、その話を初めて遊ぶときの既定の編成）。敵の強さを測る道具が使う。
