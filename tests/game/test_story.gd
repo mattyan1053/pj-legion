@@ -268,6 +268,7 @@ func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loadi
 	context.scene = Story.SORTIE
 	var root := Node.new()
 	root.add_child(sortie)
+	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
 	assert_false(sortie.is_option_enabled("1"), "出撃の準備では押せない")
 	assert_eq(sortie.chosen_id(), "", "覚えていた部隊が出せなければ、既定の編成")
 	root.free()
