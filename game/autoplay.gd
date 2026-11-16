@@ -42,7 +42,7 @@ const SCENES := {
 	"level_up": "レベルアップ",
 	"evolution": "進化",
 	"heal": "回復役の回復、マスの情報、クリックとドラッグ",
-	"inspection": "閲覧（行動の途中に相手の駒を見る）と、敵の全員の脅威範囲",
+	"inspection": "閲覧（行動の途中に相手の駒を見る）と、敵の全員の脅威範囲、相手の駒の範囲を表示したまま（ピン留め）",
 	"setup": "対戦の設定画面（後手で CPU と対戦する）",
 	"system_menu": "システムメニューと設定の画面",
 	"minimap": "ミニマップ（押す・ドラッグで視点が移る、設定で隠す）",
@@ -1041,7 +1041,36 @@ func _queue_inspection_scene() -> void:
 		_scene.hover(NO_CELL)
 		_scene.click_cell(foe.cell))
 	_scripted.append(func() -> void:
-		_expect(trooper.acted and foe.hp < foe.max_hp(), "見終わったあとに、攻撃できなかった"))
+		_expect(trooper.acted and foe.hp < foe.max_hp(), "見終わったあとに、攻撃できなかった")
+		# 相手の駒の範囲を、表示したままにする（ピン留め）。何も選んでいないときにクリックして、情報の枠のスイッチで留める。
+		_scene.click_cell(sniper.cell)
+		_expect(_scene.pin_switch_state() == ([true, false] as Array[bool]), "相手の駒を見ても、「範囲を表示したまま」が出ない")
+		_expect(_scene.press_pin_switch() and _scene.pinned_ids() == ([sniper.id] as Array[int]), "スイッチで留められなかった")
+		_scene.click_cell(neutral.cell)
+		_scene.press_pin_switch()
+		_scene.cancel()  # 見るのをやめる（ピンは残る）
+		_expect(_scene.pinned_ids() == ([sniper.id, neutral.id] as Array[int]) and _scene.pinned_sets().size() == 2, "2 体の範囲を表示したままにできない")
+		_expect(_scene.pinned_sets()[0] == Threat.of(battle, sniper.id).cells(), "留めた範囲が、その駒の脅威範囲でない")
+		# 全体のスイッチと両立する。
+		_scene.toggle_threat()
+		_expect(not _scene.threat_overlay_cells().is_empty() and _scene.pinned_sets().size() == 2, "全体の範囲と、留めた範囲が両立しない")
+		_scene.toggle_threat()
+		# 自分の駒には出さない。
+		_scene.click_cell(trooper.cell)
+		_expect(not _scene.pin_switch_state()[0], "自分の駒に「範囲を表示したまま」が出た")
+		_scene.cancel())
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		# 留めた駒が動くと、範囲も付いていく。
+		_expect(battle.phase == Unit.Side.PLAYER2, "相手の番にならなかった")
+		_scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void: _scene.click_cell(Vector2i(7, 4)))
+	_scripted.append(func() -> void: _scene.press_wait())
+	_scripted.append(func() -> void:
+		_expect(sniper.cell == Vector2i(7, 4), "留めた駒が動かなかった")
+		_expect(not _scene.pinned_sets().is_empty() and _scene.pinned_sets()[0] == Threat.of(battle, sniper.id).cells(), "留めた駒が動いても、範囲が付いていかない")
+		# 右クリックで、ほかに戻すものが無ければ、全部外す。
+		_expect(_scene.cancel() and _scene.pinned_ids().is_empty() and _scene.pinned_sets().is_empty(), "右クリックで、留めた範囲を全部外せない"))
 
 
 ## 対戦の設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とステージも選んだとおりになる。
