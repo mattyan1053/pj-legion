@@ -8,10 +8,11 @@ const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 ## 話のデータに書いてよい定数の名前（preload した道具の名前は除く。_problems が Script の定数を読み飛ばす）。
 const REQUIRED := [&"ID", &"TITLE", &"LOOK", &"MAP", &"UNLOCKS", &"ENEMY_ARMY", &"ENEMY", &"DEPLOY", &"SPEAKERS", &"BEFORE", &"AFTER"]
-const OPTIONAL := [&"HOLD_TURNS", &"WINS", &"CUES", &"HUMAN_LEADER", &"ENEMY_LEADER"]
+const OPTIONAL := [&"HOLD_TURNS", &"WINS", &"CUES", &"HUMAN_LEADER", &"ENEMY_LEADER", &"MUSIC", &"TALK_MUSIC"]
 
 
 func test_every_episode_is_well_formed() -> void:
@@ -49,6 +50,8 @@ func test_broken_episode_data_is_caught() -> void:
 		"守り切るのに守り切るの勝ち方が無い": "const HOLD_TURNS := 5\nconst WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]",
 		"守り切るの勝ち方なのにターン数が無い": "const WINS: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.TURNS_HELD]",
 		"空の勝ち方": "const WINS: Array[GameWonEvent.Reason] = []",
+		"知らない曲": "const MUSIC := &\"no_such_track\"",
+		"知らない会話の曲": "const TALK_MUSIC := &\"no_such_track\"",
 		"きっかけの値": "const CUES := [[&\"king_half\", 2, 0, \"だれの将か\"]]",
 		"知らないきっかけ": "const CUES := [[&\"turn_end\", 1, 0, \"なに\"]]",
 		"ターン 0": "const CUES := [[&\"turn\", 0, 0, \"はじめ\"]]",
@@ -93,6 +96,9 @@ func _problems(episode: Script) -> Array[String]:
 		found.append("id か見出しが空")
 	if not StageLook.THEMES.has(episode.LOOK):
 		found.append("知らない見た目 %s" % episode.LOOK)
+	for name: StringName in [&"MUSIC", &"TALK_MUSIC"]:
+		if constants.has(name) and not SoundCatalog.has_music(constants[name]):
+			found.append("知らない曲 %s（%s）" % [constants[name], name])
 	var map: HandMap = episode.MAP.map()
 	if not map.problems().is_empty():
 		found.append("マップを盤にできない: %s" % [map.problems()])
