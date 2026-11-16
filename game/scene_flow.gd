@@ -19,7 +19,12 @@ extends RefCounted
 const SCENES := {
 	&"title": {
 		"script": "res://game/title_screen.gd",
-		"next": {&"start": &"stage", &"decks": &"decks"},  # 「ストーリー」は、話の流れ（story.gd の run_of）を始める（title_screen.gd）
+		"next": {&"start": &"stage", &"story": &"episodes", &"decks": &"decks"},
+		"music": &"menu",
+	},
+	&"episodes": {
+		"script": "res://game/episode_list_screen.gd",
+		"next": {&"back": &"title"},  # 話を選ぶと、話の流れ（story.gd の run_now）を始める。流れを終えたら、ここへ戻る
 		"music": &"menu",
 	},
 	&"decks": {

@@ -2,7 +2,7 @@ extends RefCounted
 ## ストーリー（docs/story.md）: 話の並びと、進み具合（クリアした話）。読み書きは save_store.gd（user://story.json）。
 ## ノードに依存しない。
 ##
-## - 話は一本道。EPISODES の順に並ぶ。タイトルの「ストーリー」は、まだクリアしていない最初の話を始める（全部クリアしたら最初の話）。
+## - 話は一本道。EPISODES の順に並ぶ。話の一覧（episode_list_screen.gd）で、前の話をクリアした話と、クリアした話を選べる。
 ## - 書くのは、クリアした話の id の一覧だけ。壊れたファイル・知らない id があっても、起動を止めない（知らない id は残して書き戻す）。
 ## - 負けても失うものは無い。何度でもやり直せる。
 
@@ -16,9 +16,10 @@ signal changed
 ## save_store.gd で置くまとまりの名前と、中身の形の版。
 const STORE_NAME := "story"
 const FORMAT_VERSION := 1
-## 会話の場面と、対戦の場面の名前（scene_flow.gd）。
+## 会話の場面と、対戦の場面と、話の一覧の場面の名前（scene_flow.gd）。
 const TALK := &"talk"
 const BATTLE := &"battle"
+const EPISODE_LIST := &"episodes"
 
 ## ストーリーの編成の決まりの名前（取っておく部隊に書く）。対戦の決まり（DeckRules.VERSUS）と分ける。
 const RULES_ID := &"story"
@@ -33,6 +34,7 @@ const NOTICE_NAME := "知らせ"
 ## 話の並び（一本道。game/episodes/ の 1 ファイルが 1 話）。
 const EPISODES: Array[Script] = [
 	preload("res://game/episodes/ridge_path.gd"),
+	preload("res://game/episodes/ridge_ambush.gd"),
 ]
 
 ## 取っておく先（null なら書かない。検査・自動の対戦・スクリーンショットでは null）。
@@ -89,7 +91,18 @@ func all_cleared() -> bool:
 	return cleared_count() == EPISODES.size()
 
 
-## タイトルの「ストーリー」で始める話: まだクリアしていない最初の話。全部クリアしていたら最初の話。
+## 話 episode を遊べるか: 並びの最初の話か、1 つ前の話をクリアしている（一本道）。クリアした話は、いつでも遊び直せる。
+func is_available(episode: Script) -> bool:
+	var index := EPISODES.find(episode)
+	return index == 0 or (index > 0 and is_cleared(EPISODES[index - 1].ID))
+
+
+## 話 episode の、並びの番号（1 から。並びに無ければ 0）。
+static func number_of(episode: Script) -> int:
+	return EPISODES.find(episode) + 1
+
+
+## 次に遊ぶ話: まだクリアしていない最初の話。全部クリアしていたら最初の話。
 func next_episode() -> Script:
 	for episode in EPISODES:
 		if not is_cleared(episode.ID):
@@ -164,11 +177,12 @@ func run_now(episode: Script) -> Run:
 	return run_of(episode, default_deck(unlocked_kinds()), newly)
 
 
-## 話 episode の流れ（run.gd）: 会話（前）→ 対戦 → 会話（後）→ タイトル。人の部隊は human_deck。
+## 話 episode の流れ（run.gd）: 会話（前）→ 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck。
 ## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
 ## unlocking: この話のクリアで新しく雇えるようになる駒。あとの会話の最後に、知らせの行で出す。
 static func run_of(episode: Script, human_deck: Deck, unlocking: Array[UnitKind.Id] = []) -> Run:
 	var run := Run.new()
+	run.exit = EPISODE_LIST
 	run.add(TALK, talk_of(episode, episode.BEFORE))
 	run.add(BATTLE, StoryBattle.new(episode, human_deck))
 	var after := talk_of(episode, episode.AFTER)
