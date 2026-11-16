@@ -315,10 +315,10 @@ func test_episode_deploy_cells_place_the_enemy_there() -> void:
 		assert_eq(placed, expected, "%s の敵が、初期位置の順に置かれていない" % episode.ID)
 
 
-func test_the_same_map_is_reused_with_other_deploy_cells_enemies_or_wins() -> void:
+func test_the_same_map_is_reused_with_other_deploy_cells_enemies_squads_or_wins() -> void:
 	var maps := {}
 	for episode in Story.MILITARY.EPISODES:
-		var key := [episode.MAP, str(episode.DEPLOY), str(episode.ENEMY), str(StoryBattle.wins_of(episode)), StoryBattle.hold_turns_of(episode)]
+		var key := [episode.MAP, str(episode.DEPLOY), str(episode.ENEMY), str(StoryBattle.wins_of(episode)), StoryBattle.hold_turns_of(episode), str(episode.get_script_constant_map().get(&"SQUAD", []))]
 		assert_false(maps.has(key), "%s は、前の話と同じマップと初期位置" % episode.ID)
 		maps[key] = true
 
