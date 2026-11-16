@@ -49,8 +49,36 @@ func test_neutrals() -> void:
 
 func test_only_vanguards_exert_zoc() -> void:
 	for id: UnitKind.Id in UnitKind.Id.values():
-		var expected: bool = id == UnitKind.Id.SHIELD_TROOPER or id == UnitKind.Id.PALADIN
+		var expected: bool = id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN, UnitKind.Id.SKELETON_BRUTE]
 		assert_eq(UnitKind.exerts_zoc(id), expected, str(UnitKind.Id.find_key(id)))
+
+
+## 魔物は役割を持ち、軍を持たない。将と中立の駒は魔物ではない。
+func test_monsters_have_a_role_but_no_army() -> void:
+	var monsters: Array[UnitKind.Id] = [UnitKind.Id.SKELETON, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON_BRUTE]
+	for id: UnitKind.Id in UnitKind.Id.values():
+		assert_eq(UnitKind.is_monster(id), monsters.has(id), str(UnitKind.Id.find_key(id)))
+	for id in monsters:
+		assert_eq(UnitKind.army(id), UnitKind.Army.NONE)
+		assert_ne(UnitKind.role(id), UnitKind.Role.NONE)
+		assert_false(UnitKind.is_neutral(id))
+		assert_false(Equipment.can_equip(id), "魔物は持ち物を持てない")
+
+
+## 魔物はどの軍のロスターにも入らない（雇えない）。
+func test_monsters_are_not_in_any_roster() -> void:
+	var rules := DeckRules.versus()
+	for army in rules.armies():
+		for kind in rules.roster(army):
+			assert_false(UnitKind.is_monster(kind), str(UnitKind.Id.find_key(kind)))
+
+
+## 種類ごとの特徴: 骸骨兵は弱く速い、骸骨射手は射程がある、骸骨重兵は堅くて遅い（docs/unit-roster.md の「魔物」）。
+func test_each_monster_has_its_own_edge() -> void:
+	assert_true(UnitKind.max_hp(UnitKind.Id.SKELETON) < UnitKind.max_hp(UnitKind.Id.SNIPER) + 2, "骸骨兵は脆い")
+	assert_true(UnitKind.attack_range(UnitKind.Id.SKELETON_ARCHER) > 1)
+	assert_true(UnitKind.max_hp(UnitKind.Id.SKELETON_BRUTE) > UnitKind.max_hp(UnitKind.Id.PALADIN), "骸骨重兵はパラディンより堅い")
+	assert_true(UnitKind.move_range(UnitKind.Id.SKELETON_BRUTE) < UnitKind.move_range(UnitKind.Id.PALADIN), "骸骨重兵はパラディンより遅い")
 
 
 func test_a_fresh_raider_cannot_one_shot_a_fresh_sniper() -> void:

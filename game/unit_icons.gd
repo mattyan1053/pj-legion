@@ -13,18 +13,24 @@ const NEUTRAL := 2
 static var _cache := {}
 
 
-## 写す組み合わせ（[種類, 陣営, 進化したか] の列）。人の駒（将と雇える駒）は青と赤、進化は将を除く。中立の駒は中立の色だけ。
+## 写す組み合わせ（[種類, 陣営, 進化したか] の列）。人の駒（将と雇える駒）と魔物は青と赤、進化は進化する駒だけ（将と魔物を除く）。
+## 中立の駒は中立の色だけ。
 static func variants() -> Array:
 	var list: Array = []
 	for kind: UnitKind.Id in UnitKind.Id.values():
-		if UnitKind.army(kind) == UnitKind.Army.NONE and kind != UnitKind.Id.KING:
+		if UnitKind.is_neutral(kind):
 			list.append([kind, NEUTRAL, false])
 			continue
 		for side in 2:
 			list.append([kind, side, false])
-			if kind != UnitKind.Id.KING:
+			if _evolves(kind):
 				list.append([kind, side, true])
 	return list
+
+
+## 進化する種類か（進化後のアイコンがあるか）。
+static func _evolves(kind: UnitKind.Id) -> bool:
+	return kind != UnitKind.Id.KING and not UnitKind.is_monster(kind)
 
 
 static func file_name(kind: UnitKind.Id, side: int, evolved := false) -> String:
@@ -34,8 +40,8 @@ static func file_name(kind: UnitKind.Id, side: int, evolved := false) -> String:
 ## kind の駒のアイコン。side は陣営（Unit.Side の値。中立の駒は何を渡しても中立の色）。evolved は進化したか（足元に金の輪）。
 ## 無ければ null（呼ぶ側は、絵を出さずに文字だけにする）。
 static func texture(kind: UnitKind.Id, side := 0, evolved := false) -> Texture2D:
-	var neutral := UnitKind.army(kind) == UnitKind.Army.NONE and kind != UnitKind.Id.KING
-	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), evolved and not neutral and kind != UnitKind.Id.KING)
+	var neutral := UnitKind.is_neutral(kind)
+	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), evolved and not neutral and _evolves(kind))
 	if not _cache.has(key):
 		var path := "%s/%s" % [DIR, key]
 		_cache[key] = load(path) if ResourceLoader.exists(path) else null

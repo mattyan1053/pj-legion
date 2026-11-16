@@ -34,6 +34,9 @@ unit.spellblade,スペルブレード
 unit.priest,プリースト
 unit.minion,エナジー・コア
 unit.elite_minion,エリートミニオン
+unit.skeleton,骸骨兵
+unit.skeleton_archer,骸骨射手
+unit.skeleton_brute,骸骨重兵
 evolution.bulwark,ブルワーク
 evolution.juggernaut,ジャガーノート
 evolution.marksman,マークスマン
