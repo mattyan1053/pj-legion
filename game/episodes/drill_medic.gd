@@ -31,7 +31,6 @@ const SQUAD := [
 const ENEMY_ARMY := UnitKind.Army.FANTASY
 const ENEMY := [
 	[UnitKind.Id.SORCERER, []],
-	[UnitKind.Id.SPELLBLADE, []],
 ]
 
 const DEPLOY := [[], []]
