@@ -5,19 +5,20 @@ extends PanelContainer
 ## 一目で分かることを上に置く: 見出し（何をするか）→ 目立つ知らせ（倒せる、自分も巻き込まれる、決着）→ 駒ごとの行
 ## （名前、HP の棒の減り方・増え方、数、内訳）→ 駒に属さないこと（置かれる効果、盾、聖遺物、必殺技のゲージ）。
 
+const Palette := preload("res://game/ui_palette.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 
 ## 中身の幅（px）。盤を隠しすぎないよう、情報の枠（320）より狭くする。
 const WIDTH := 250.0
-const COLOR_BACK := Color(0.09, 0.11, 0.15, 0.95)
-const COLOR_TITLE := Color("ffd76a")
-const COLOR_DIM := Color(0.75, 0.78, 0.82)
-const COLOR_DEFEAT := Color("ff6b5a")
-const COLOR_WARN := Color("ffa23a")
-const COLOR_HEAL := Color("6ff08a")
-const COLOR_LOSS := Color("e8503a")
-const COLOR_BAR_BACK := Color(0.2, 0.22, 0.26)
+const COLOR_BACK := Palette.SOLID
+const COLOR_TITLE := Palette.ACCENT
+const COLOR_DIM := Palette.TEXT_DIM
+const COLOR_DEFEAT := Palette.DANGER
+const COLOR_WARN := Palette.WARN
+const COLOR_HEAL := Palette.GOOD
+const COLOR_LOSS := Palette.HP_LOW
+const COLOR_BAR_BACK := Palette.INK
 ## 何かが起きる駒がこれより多いと、駒ごとに 1 行の詰めた形にする（樽の爆発は 8 体まで巻き込むので、パネルが画面の高さを超えないように）。
 const COMPACT_FROM := 4
 
@@ -40,7 +41,7 @@ class HpChange:
 		var top := maxi(before, after)
 		var low := mini(before, after)
 		var ratio := float(after) / maxf(float(max_hp), 1.0)
-		var color := Color("5fd35f") if ratio > 0.5 else (Color("e8c23a") if ratio > 0.25 else Color("e8503a"))
+		var color := Palette.hp(ratio)
 		draw_rect(Rect2(0.0, 0.0, full * low / maxf(max_hp, 1.0), height), color)
 		if top > low:
 			var change := COLOR_HEAL if after > before else COLOR_LOSS.lightened(0.15)
@@ -119,7 +120,7 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 			_add_label(effect, 14, COLOR_DIM)
 			texts.append(effect)
 	for line in summary.lines:
-		_add_label(line, 15, COLOR_TITLE if summary.decides and line == summary.lines[-1] else Color("e6e6e6"))
+		_add_label(line, 15, COLOR_TITLE if summary.decides and line == summary.lines[-1] else Palette.TEXT)
 		texts.append(line)
 	if summary.rows.is_empty() and summary.lines.is_empty():
 		_add_label("何も起きない", 15, COLOR_DIM)
@@ -164,7 +165,6 @@ func _add_label(text: String, font_size: int, color: Color) -> void:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var font := label.get_theme_font("font")
