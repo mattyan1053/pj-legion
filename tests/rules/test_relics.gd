@@ -314,3 +314,37 @@ func test_preview_on_a_clone_shows_the_relic_without_changing_the_battle() -> vo
 	assert_eq(_of_type(events, RelicGainedEvent).size(), 1)
 	assert_true(Relics.held(battle, P1).is_empty())
 	assert_eq(slayer.max_hp(), UnitKind.max_hp(UnitKind.Id.COMMANDO))
+
+
+## 勝ち方「中ボスの撃破」（GameWonEvent.Reason.BOSS_SLAIN。docs/win-conditions.md）: 列にあるプレイヤーは、どちらかの中ボスに
+## 止めを刺したら勝ち（聖遺物を受け取ったあと）。列に無ければ、倒しても勝たない。将を倒しても、その勝ち方が列に無ければ終わらない。
+func test_slaying_a_mid_boss_wins_when_it_is_a_win_condition() -> void:
+	var battle := _battle()
+	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
+	var slayer := battle.add_unit(UnitKind.Id.COMMANDO, P1, RIGHT + Vector2i(-1, 0))
+	_weak_boss(battle, RIGHT)
+	var events := battle.apply(AttackAction.new(slayer.id, battle.unit_at(RIGHT).id)).events
+	assert_true(battle.is_over())
+	assert_eq(battle.winner, P1)
+	var won := _of_type(events, GameWonEvent)
+	assert_eq(won.size(), 1)
+	assert_eq((won[0] as GameWonEvent).reason, GameWonEvent.Reason.BOSS_SLAIN)
+	assert_true(_index_of(events, RelicGainedEvent) < _index_of(events, GameWonEvent), "聖遺物を受け取ってから勝つ")
+
+
+func test_slaying_a_mid_boss_does_not_win_by_default() -> void:
+	var battle := _battle()
+	var slayer := battle.add_unit(UnitKind.Id.COMMANDO, P1, LEFT + Vector2i(1, 0))
+	_weak_boss(battle, LEFT)
+	battle.apply(AttackAction.new(slayer.id, battle.unit_at(LEFT).id))
+	assert_false(battle.is_over(), "対戦モードの勝ち方では、中ボスを倒しても終わらない")
+
+
+func test_the_king_does_not_end_a_boss_hunt() -> void:
+	var battle := _battle()
+	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
+	var king := battle.add_unit(UnitKind.Id.KING, P2, Vector2i(1, 0))
+	king.hp = 1
+	battle.apply(AttackAction.new(commando.id, king.id))
+	assert_false(battle.is_over(), "中ボスの撃破だけが勝ち方なのに、将を倒して終わった")

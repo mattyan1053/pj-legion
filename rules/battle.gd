@@ -321,6 +321,7 @@ func apply(action: BattleAction) -> ActionResult:
 ## - 将が倒れたら、相手のプレイヤーの勝ち。両方の将が同じ行動で倒れたら、引き分け。
 ##   将の撃破が勝ちの条件に無いプレイヤーは、相手の将を倒しても勝たない
 ## - 全滅が勝ちの条件にあるプレイヤーは、相手の駒が盤に 1 体も残っていなければ勝ち（将の撃破のあとに見る）
+## - 中ボスの撃破が勝ちの条件にあるプレイヤーは、どちらかの中ボスに止めを刺したら勝ち（聖遺物を受け取ったあと。全滅のあとに見る）
 ## - 敵の本陣から自分の駒がいなくなったら、占拠の数を 0 に戻す（フェーズの終わりを待たない）
 func settle(events: Array[BattleEvent]) -> Array[BattleEvent]:
 	var extra: Array[BattleEvent] = []
@@ -343,6 +344,13 @@ func settle(events: Array[BattleEvent]) -> Array[BattleEvent]:
 		if not is_over() and wins_by(player, GameWonEvent.Reason.ROUTED) and not _has_units((1 - player) as Unit.Side):
 			winner = player
 			extra.append(GameWonEvent.new(player, GameWonEvent.Reason.ROUTED))
+	for event in events:
+		var slain := event as MidBossDefeatedEvent
+		if is_over() or slain == null or slain.slayer_side < 0:
+			continue
+		if wins_by(slain.slayer_side as Unit.Side, GameWonEvent.Reason.BOSS_SLAIN):
+			winner = slain.slayer_side
+			extra.append(GameWonEvent.new(winner, GameWonEvent.Reason.BOSS_SLAIN))
 	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		if capture_turns[player] > 0 and not occupies_enemy_hq(player):
 			capture_turns[player] = 0
