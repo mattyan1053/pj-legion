@@ -276,6 +276,13 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## 設定の画面を開いたままウィンドウを閉じても、変えた設定を取っておく（閉じたときと同じ合図を出す）。
+## 設定は動かしたときに効くが、取っておくのは設定の画面を閉じたときなので、ここで閉じずに終わると、次の起動で戻ってしまう。
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_settings_open():
+		settings_closed.emit()
+
+
 ## 場面を抜けるなどで木から抜けたら、積み上げから降ろす（開いたまま消えても、後ろの場面を止めたままにしない）。
 func _exit_tree() -> void:
 	if _overlays != null:
