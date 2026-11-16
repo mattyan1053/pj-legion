@@ -13,7 +13,8 @@ const SHOW_PER_CHAR := 0.07
 ## 出てくる・消えるときのフェード（秒）。
 const FADE := 0.25
 const WIDTH := 460.0
-const TOP := 64.0
+## 上の帯の下の、勝ち方の札（battle_hud.gd。守り切る・全滅させる話で出る）より下。
+const TOP := 94.0
 const LEFT := 16.0
 
 const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("6b7280")]

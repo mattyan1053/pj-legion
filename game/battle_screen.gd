@@ -1416,7 +1416,10 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	var shown: Array[bool] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		shown.append(battle.wins_by(side, GameWonEvent.Reason.HQ_CAPTURED))
-	_hud.set_status(WinText.turn_text(battle, turn), phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN, shown, WinText.turn_note(battle, turn))
+	_hud.set_status(
+		WinText.turn_text(turn), phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN, shown,
+		WinText.goal_tag(battle, turn, _viewer_side()), WinText.goal_note(battle, _viewer_side()),
+	)
 	var percents: Array[int] = []
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:

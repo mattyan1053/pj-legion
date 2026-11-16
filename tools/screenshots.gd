@@ -122,10 +122,11 @@ const SCENES := {
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
 	"story_hold_sortie": "ストーリー: 守り切る話（第 3 話）の出撃の準備（勝ち方の文の先頭に「N ターン目の終わりまで守り切る」）",
-	"story_hold_battle": "ストーリー: 守り切る話の対戦の途中（上の帯に「ターン 3 / N」。N は守り切るターン数）",
+	"story_hold_battle": "ストーリー: 守り切る話の対戦の途中（上の帯の勝ち方の札に「あと N ターン守り切れば勝ち」）",
+	"story_hold_last": "ストーリー: 守り切る話の最後のターン（勝ち方の札が「最後のターン: 守り切れば勝ち」で、赤く目立つ）",
 	"story_hold_result": "ストーリー: 守り切る話で、最後のターンの終わりまで持ちこたえて勝った決着の画面（「最後まで守り切った」）",
 	"story_rout_sortie": "ストーリー: 全滅させる話（第 4 話）の出撃の準備（2 つ目の手で作ったマップ「結晶の渓谷」。勝ち方は「敵を全滅させれば勝ち」だけ）",
-	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の渓谷を、双子結晶の見た目で）",
+	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の渓谷を、双子結晶の見た目で。上の帯の勝ち方の札「勝ち: 敵の全滅（将を倒しても終わらない）」）",
 	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
 	"story_battle_talk": "ストーリー: 対戦の途中の会話（第 2 話の始めの台詞。左上の札。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
@@ -1462,6 +1463,10 @@ func _hold_battle_until(until := Callable()) -> bool:
 
 func _scene_story_hold_battle() -> bool:
 	return await _hold_battle_until(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1)
+
+
+func _scene_story_hold_last() -> bool:
+	return await _hold_battle_until(func() -> bool: return _battle.turn >= _battle.hold_turns and _battle.phase == Unit.Side.PLAYER1)
 
 
 ## 守り切る話で、最後のターンの終わりまで持ちこたえた決着の画面（守り切りで勝つ種だけ）。
