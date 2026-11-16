@@ -1381,6 +1381,12 @@ func _update_hover() -> void:
 ## マウスの下の駒（いなければ見ている駒、選んでいる駒。それも無ければ、クリックしたマス）の情報を左下の枠に、
 ## マウスの下のマスの短い説明を下の帯に出す。行動の対象にマウスを乗せていれば、戦闘予測のパネルも出す（_update_forecast）。
 func _update_info() -> void:
+	if battle.is_over():
+		# 決着のあとは、リザルトの画面が前に出る。後ろの盤の駒やマスの情報は出さない（左下の枠が、リザルトのボタンに重なる）。
+		_hud.show_cell("")
+		_hud.hide_forecast()
+		_hud.show_unit(null, "", "")
+		return
 	var hovered: Unit = null
 	if _hover_cell != NO_CELL:
 		hovered = battle.unit_at(_hover_cell)

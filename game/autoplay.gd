@@ -430,6 +430,13 @@ func _queue_result_scene() -> void:
 	var screen: Node = _scene.result_screen()
 	_expect(not screen.is_revealed() and screen.enabled_buttons().is_empty(), "出そろう前に、行き先を選べる")
 	_expect(_scene.result_title() != "", "リザルトの見出しが出ていない")
+	# 決着のあとは、後ろの盤の駒にマウスを乗せても、左下の枠（駒の情報）を出さない（リザルトのボタンに重なる）。
+	var survivor: Unit = null
+	for unit: Unit in _scene.battle.units:
+		survivor = unit
+	_scene.hover(survivor.cell)
+	_expect(_scene.info_title() == "", "決着のあとに、駒の情報を出している: %s" % _scene.info_title())
+	_scene.hover(NO_CELL)
 	screen.skip()
 	var waited := [0]
 	var wait_revealed := func(again: Callable) -> void:
