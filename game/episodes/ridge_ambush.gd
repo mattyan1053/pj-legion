@@ -28,7 +28,6 @@ const ENEMY_ARMY := UnitKind.Army.FANTASY
 const ENEMY := [
 	[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD, Equipment.Id.IRON_SHIELD]],
 	[UnitKind.Id.SORCERER, []],
-	[UnitKind.Id.SORCERER, []],
 	[UnitKind.Id.PRIEST, []],
 ]
 
