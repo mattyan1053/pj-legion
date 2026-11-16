@@ -56,7 +56,7 @@ const COLOR_SKILL_AREA := Color(1.0, 0.55, 0.9, 0.85)
 const COLOR_INSPECT := Color(0.8, 0.93, 1.0, 0.5)
 ## ターン終了を確かめている間の、まだ行動していない駒の足元。
 const COLOR_UNACTED := Color(1.0, 0.85, 0.35, 0.6)
-const COLOR_THREAT := Color(0.95, 0.05, 0.2, 0.62)
+const COLOR_THREAT := Color(0.95, 0.1, 0.2, 0.34)
 const COLOR_SELECTED := Color(1.0, 0.9, 0.3, 0.9)
 ## 見ている（閲覧している）駒の足元の輪。選んでいる駒の黄の輪と見分ける。
 const COLOR_INSPECTED := Color(0.85, 0.95, 1.0, 0.95)
@@ -198,6 +198,7 @@ func _ready() -> void:
 	_hud.evolution_chosen.connect(choose_evolution)
 	_hud.opponent_pressed.connect(toggle_opponent)
 	_hud.threat_toggled.connect(toggle_threat)
+	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
@@ -886,6 +887,41 @@ func toggle_threat() -> void:
 		_refresh()
 
 
+## 駒 unit_id（見ている相手の駒）の攻撃範囲を、表示したままにする・やめる（情報の枠のスイッチ）。
+## 盤を見ている人のプレイヤーの駒は留めない。
+func toggle_pin(unit_id: int) -> void:
+	var unit := battle.unit_by_id(unit_id)
+	if unit == null or not _can_pin(unit):
+		return
+	_ui.toggle_pin(unit_id)
+	context.play_sound(&"ui_confirm")
+	if not _ui.busy:
+		_refresh()
+
+
+## 範囲を表示したままにできる駒か（盤を見ている人のプレイヤーの敵: 相手の駒と中立の駒）。
+func _can_pin(unit: Unit) -> bool:
+	return unit.side != _viewer_side()
+
+
+## 範囲を表示したままにしている駒の番号（留めた順）と、盤に出している範囲（駒ごとのマスの列）。検査用。
+func pinned_ids() -> Array[int]:
+	return _ui.pinned_ids.duplicate()
+
+
+func pinned_sets() -> Array:
+	return _board_view.pinned_sets()
+
+
+## 情報の枠の「範囲を表示したまま」のスイッチ: [出ているか, 入っているか]。press_pin_switch で押す。検査用。
+func pin_switch_state() -> Array[bool]:
+	return _hud.pin_switch_state()
+
+
+func press_pin_switch() -> bool:
+	return _hud.press_pin_switch()
+
+
 ## 敵の全員の脅威範囲を出しているか。検査用。
 func is_threat_shown() -> bool:
 	return _threat_shown
@@ -896,7 +932,7 @@ func threat_overlay_cells() -> Array[Vector2i]:
 	return _board_view.danger_cells()
 
 
-## 見ている・選んでいる駒の脅威範囲として、塗っているマス（濃い赤）。検査用。
+## 見ている・選んでいる駒の脅威範囲として、塗っているマス（薄い赤）。検査用。
 func threat_painted_cells() -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for cell: Vector2i in _painted:
@@ -1143,6 +1179,8 @@ func _cancel() -> bool:
 			_do(UndoMoveAction.new(battle.acting_unit_id))
 		BattleUiState.Back.DESELECT:
 			_select(0)
+		BattleUiState.Back.UNPIN_ALL:
+			_refresh()
 		_:
 			return false
 	return true
@@ -1244,6 +1282,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 	_ui.clear_after_action()
 	_board_view.show_cells({})
 	_board_view.show_danger([])
+	_board_view.show_pinned([])
 	_board_view.set_marked(NO_CELL)
 	_selection_ring.visible = false
 	_inspect_ring.visible = false
@@ -1382,6 +1421,12 @@ func _refresh() -> void:
 		threats = Threat.against(battle, _viewer_side()).cells()
 	_board_view.show_danger(threats)
 	_hud.set_threat_button(_threat_shown)
+	_ui.drop_missing_pins(func(id: int) -> bool: return battle.unit_by_id(id) != null)
+	var pinned: Array = []
+	if not battle.is_over():
+		for id in _ui.pinned_ids:
+			pinned.append(Queries.threat_cells(battle, battle.unit_by_id(id)))
+	_board_view.show_pinned(pinned)
 
 	_selection_ring.visible = unit != null
 	if unit != null:
@@ -1398,7 +1443,7 @@ func _refresh() -> void:
 	_refresh_status(battle.turn, battle.phase)
 	_hud.set_hint(BattleTexts.hint(
 		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit),
-		Queries.unacted_count(battle) if _ui.confirming_end else 0, not _warp.is_empty()
+		Queries.unacted_count(battle) if _ui.confirming_end else 0, not _warp.is_empty(), _ui.pinned_ids.size()
 	))
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
@@ -1464,7 +1509,7 @@ func painted_color(cell: Vector2i) -> Color:
 
 
 ## 見るだけの駒（相手、中立、行動を終えた駒）の範囲を塗る。相手の駒（中立も）は、次の番に攻撃・スキルが届くマス
-## （脅威範囲）を濃い赤で。その上に、動ける範囲を白で。
+## （脅威範囲）を薄い赤で。その上に、動ける範囲を白で。
 func _paint_view(unit: Unit) -> void:
 	if unit.side != battle.phase:
 		for cell in Queries.threat_cells(battle, unit):
@@ -1631,6 +1676,8 @@ func _update_info() -> void:
 		_hud.show_unit(selected_unit(), "", BattleTexts.menu_note(_ui.menu_hover_id, selected_unit()), _ui.menu_hover_id != MENU_SKILL)
 		return
 	_hud.show_unit(shown, BattleTexts.unit_state(battle, shown), "")
+	# 見ている（クリックした）相手の駒なら、その範囲を表示したままにするスイッチを出す。
+	_hud.set_pin_switch(shown.id == _ui.inspected_id and _can_pin(shown), _ui.pinned_ids.has(shown.id))
 
 
 ## いまマウスを乗せている対象への行動（攻撃・樽・盾・回復・スキル）と、予測のパネルの見出し。無ければ空の列。
