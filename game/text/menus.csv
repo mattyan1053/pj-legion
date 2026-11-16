@@ -14,7 +14,7 @@ settings.section.sound,音
 settings.master_volume,全体の音量
 settings.master_volume.note,BGM と効果音の両方に掛かる
 settings.music_volume,BGM の音量
-settings.music_volume.note,タイトル・対戦・決着の曲
+settings.music_volume.note,タイトル・会話・対戦・決着の曲
 settings.effects_volume,効果音の音量
 settings.effects_volume.note,スライダーを離すと、ボタンの音で大きさを確かめられる
 settings.mute,音を消す
