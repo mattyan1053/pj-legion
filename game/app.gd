@@ -15,6 +15,7 @@ const SystemMenu := preload("res://game/system_menu.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const Sound := preload("res://game/sound.gd")
 const Run := preload("res://game/run.gd")
+const ScreenSize := preload("res://game/screen_size.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -39,6 +40,9 @@ func _ready() -> void:
 		context.checking = AppContext.CHECK_AUTOPLAY
 	elif args.has("--shots"):
 		context.checking = AppContext.CHECK_SHOTS
+	if context.checking != &"":
+		# 検査とスクリーンショットは、決めた画面の大きさで回す（`--size <幅>x<高さ>`。無ければ基準の 1280×720）。
+		ScreenSize.apply_for_check(get_window(), ScreenSize.requested(args))
 	# 検査とスクリーンショットは、遊ぶ人の設定を読まず、書かない（いつも既定の値で同じに動く）。
 	if context.checking == &"":
 		context.settings.store = SaveStore.new()
