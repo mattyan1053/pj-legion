@@ -18,6 +18,7 @@ const Run := preload("res://game/run.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
 const WindowMode := preload("res://game/window_mode.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const UiFeel := preload("res://game/ui_feel.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -57,6 +58,7 @@ func _ready() -> void:
 		context.decks.store = SaveStore.new()
 		context.decks.load_saved()
 
+	add_child(UiFeel.new())  # ボタンにマウスが乗ったとき・押したときの小さな動き
 	var sound := Sound.new()
 	add_child(sound)
 	context.sound = sound

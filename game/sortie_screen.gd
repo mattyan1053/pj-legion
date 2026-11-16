@@ -8,6 +8,8 @@ extends Node
 ## - 「部隊を編成する」で、部隊の編成（ストーリー用）へ寄り道する（流れに差し込む。編成の「出撃の準備へ戻る」で、ここへ戻る）。
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
@@ -35,11 +37,11 @@ const MAX_SIZE := Vector2(1560.0, 820.0)
 ## 右の欄の文を折り返す幅（px）。
 const WRAP_WIDTH := RIGHT_WIDTH - 40.0
 
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.9)
-const COLOR_TEXT := Color(0.93, 0.94, 0.96)
-const COLOR_DIM := Color(0.75, 0.78, 0.84)
-const COLOR_BAD := Color("ff8a6b")
-const COLOR_ACCENT := Color("ffd76a")
+const COLOR_PANEL := Color(Palette.PANEL, 0.92)
+const COLOR_TEXT := Palette.TEXT
+const COLOR_DIM := Palette.TEXT_DIM
+const COLOR_BAD := Palette.DANGER
+const COLOR_ACCENT := Palette.ACCENT
 
 var context: AppContext
 ## 話（game/episodes/ の 1 ファイル）と、その対戦（story_battle.gd）。
@@ -79,6 +81,7 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 	var heading := _text(30, COLOR_TEXT)
+	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.text = "出撃の準備　　第 %d 話「%s」" % [Story.number_of(episode), episode.TITLE]
 	root.add_child(heading)
 
@@ -157,6 +160,7 @@ func _ready() -> void:
 	_sortie = _button("出撃", 22)
 	_sortie.custom_minimum_size = Vector2(280.0, 54.0)
 	_sortie.set_meta(&"sound", &"ui_confirm")
+	_sortie.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_sortie.pressed.connect(press_sortie)
 	footer.add_child(_sortie)
 
@@ -282,10 +286,7 @@ func _add_option(id: String, name: String, note: String, enabled: bool) -> void:
 
 
 func _panel() -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(14.0)
+	var style := UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 8, 14.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -318,7 +319,6 @@ func _text(font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label

@@ -3,6 +3,7 @@ extends Control
 ## クリックとドラッグで、その場所を知らせる（カメラを動かすのは呼ぶ側）。
 ## 置き場所・座標・見ている範囲の計算は minimap_geometry.gd、地面の塗り分けは stage_card_map.gd（ステージ選択のカードと同じ）。
 
+const Palette := preload("res://game/ui_palette.gd")
 const Geometry := preload("res://game/minimap_geometry.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
 const UnitView := preload("res://game/unit_view.gd")
@@ -10,7 +11,7 @@ const UnitView := preload("res://game/unit_view.gd")
 ## ミニマップの上で押した・押したまま動かした。point は盤の座標（x / z）。
 signal pointed(point: Vector2)
 
-const COLOR_BACK := Color(0.07, 0.09, 0.12, 0.82)
+const COLOR_BACK := Palette.OVERLAY
 const COLOR_MINION := Color("ffd34a")
 const COLOR_DOT_EDGE := Color(0.0, 0.0, 0.0, 0.75)
 const COLOR_VIEW := Color(1.0, 1.0, 1.0, 0.95)
@@ -85,6 +86,7 @@ func dot_count() -> int:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), COLOR_BACK)
+	draw_rect(Rect2(Vector2.ONE * 0.5, size - Vector2.ONE), Palette.BORDER, false, 1.0)
 	if _board == null:
 		return
 	var px := float(Geometry.cell_px(_board.size))

@@ -9,6 +9,8 @@ extends Node
 ## - 下の欄に、いま雇える駒（クリアした話から求める）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
@@ -22,16 +24,16 @@ const CARD_WIDTH := 280.0
 const MAP_CELL := 8
 const MAP_HEIGHT := 200.0
 
-const COLOR_CARD := Color(0.07, 0.09, 0.12, 0.88)
-const COLOR_CARD_HOVER := Color(0.16, 0.2, 0.27, 0.95)
-const COLOR_CARD_LOCKED := Color(0.05, 0.06, 0.08, 0.7)
-const COLOR_BORDER := Color(1.0, 1.0, 1.0, 0.12)
-const COLOR_BORDER_HOVER := Color("ffd76a")
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.82)
-const COLOR_TEXT_DIM := Color(0.8, 0.83, 0.88)
-const COLOR_CLEARED := Color("ffd76a")
-const COLOR_NEW := Color("8fe3ff")
-const COLOR_LOCKED := Color(0.6, 0.62, 0.66)
+const COLOR_CARD := Palette.OVERLAY
+const COLOR_CARD_HOVER := Color(Palette.RAISED, 0.96)
+const COLOR_CARD_LOCKED := Color(Palette.INK, 0.72)
+const COLOR_BORDER := Color(Palette.BORDER, 0.9)
+const COLOR_BORDER_HOVER := Palette.ACCENT
+const COLOR_PANEL := Palette.OVERLAY
+const COLOR_TEXT_DIM := Palette.TEXT_DIM
+const COLOR_CLEARED := Palette.ACCENT
+const COLOR_NEW := Palette.INFO
+const COLOR_LOCKED := Palette.TEXT_OFF
 
 var context: AppContext
 ## 話（Script）-> カード（Button）。
@@ -53,7 +55,9 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
-	root.add_child(_label("ストーリー", 40))
+	var heading := _label("ストーリー", 40)
+	heading.theme_type_variation = UiTheme.LABEL_HEADING
+	root.add_child(heading)
 	var sub := _label("話を選ぶ", 18)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	root.add_child(sub)
@@ -230,10 +234,7 @@ static func map_image(episode: Script) -> Image:
 
 
 func _panel(color: Color) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(14.0)
+	var style := UiTheme.box(color, Color(Palette.BORDER, 0.9), 1, 8, 14.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -245,7 +246,6 @@ func _label(text: String, font_size: int) -> Label:
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label

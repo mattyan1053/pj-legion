@@ -89,14 +89,45 @@ static func box(fill: Color, border: Color, border_width := 1, corner := CORNER,
 
 ## 盤の上に重ねる板（半透明）。
 static func overlay_box(margin := 12.0) -> StyleBoxFlat:
-	return box(Palette.overlay(), Color(Palette.BORDER, 0.9), 1, 8, margin, 4)
+	return box(Palette.OVERLAY, Color(Palette.BORDER, 0.9), 1, 8, margin, 4)
 
 
 ## ダイアログの板（ほぼ不透明）。
 static func solid_box(margin := 20.0) -> StyleBoxFlat:
-	var style := box(Palette.solid(), Palette.BORDER, 2, 10, margin, 10)
+	var style := box(Palette.SOLID, Palette.BORDER, 2, 10, margin, 10)
 	style.border_blend = true
 	return style
+
+
+## 画面の上の帯（top が真）と下の帯。画面の端に付くので角は丸めず、内側の辺にだけ縁を引く。
+static func band_box(top: bool, margin := 10.0) -> StyleBoxFlat:
+	var band := box(Palette.OVERLAY, Palette.BORDER, 0, 0, margin, 6)
+	band.shadow_offset = Vector2(0.0, 2.0 if top else -2.0)
+	if top:
+		band.border_width_bottom = 2
+	else:
+		band.border_width_top = 2
+	return band
+
+
+## 画面の四隅を沈める幕（景色の上に題字やカードを置く画面で、真ん中へ目を集める）。入力は通す。
+static func vignette() -> TextureRect:
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	gradient.colors = PackedColorArray([Color(Palette.INK, 0.0), Color(Palette.INK, 0.12), Color(Palette.INK, 0.62)])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 1.0)
+	texture.width = 128
+	texture.height = 128
+	var rect := TextureRect.new()
+	rect.texture = texture
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rect
 
 
 # ---- ボタン ----
@@ -125,7 +156,7 @@ func _build_buttons() -> void:
 
 	# カードのボタン: 板と同じ地に、乗ると金の縁。
 	set_type_variation(BUTTON_CARD, &"Button")
-	var card := box(Palette.overlay(), Color(Palette.BORDER, 0.9), 1, 8, 10.0, 4)
+	var card := box(Palette.OVERLAY, Color(Palette.BORDER, 0.9), 1, 8, 10.0, 4)
 	var card_hover := box(Color(Palette.RAISED, 0.96), Palette.ACCENT, 2, 8, 10.0, 6)
 	set_stylebox(&"normal", BUTTON_CARD, card)
 	set_stylebox(&"hover", BUTTON_CARD, card_hover)
@@ -205,12 +236,7 @@ func _build_panels() -> void:
 
 	# 帯: 画面の端に付くので角は丸めず、内側の辺にだけ縁を引く。
 	for top: bool in [true, false]:
-		var band := box(Palette.overlay(), Palette.BORDER, 0, 0, 8.0, 6)
-		band.shadow_offset = Vector2(0.0, 2.0 if top else -2.0)
-		if top:
-			band.border_width_bottom = 2
-		else:
-			band.border_width_top = 2
+		var band := band_box(top)
 		var type := PANEL_BAND_TOP if top else PANEL_BAND_BOTTOM
 		set_type_variation(type, &"PanelContainer")
 		set_stylebox(&"panel", type, band)
@@ -328,7 +354,7 @@ func _build_popups() -> void:
 	set_color(&"font_shadow_color", &"TooltipLabel", Color(0, 0, 0, 0))
 	set_font_size(&"font_size", &"TooltipLabel", 15)
 
-	set_stylebox(&"panel", &"PopupMenu", box(Palette.solid(), Palette.BORDER_BRIGHT, 1, 4, 6.0))
+	set_stylebox(&"panel", &"PopupMenu", box(Palette.SOLID, Palette.BORDER_BRIGHT, 1, 4, 6.0))
 	set_stylebox(&"hover", &"PopupMenu", box(Palette.RAISED_HOVER, Color(0, 0, 0, 0), 0, 3, 4.0))
 	set_color(&"font_color", &"PopupMenu", Palette.TEXT)
 	set_color(&"font_hover_color", &"PopupMenu", Palette.ACCENT)

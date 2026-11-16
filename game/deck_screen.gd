@@ -11,6 +11,8 @@ extends Node
 ## - 流れ（run.gd）の中で置かれたら（出撃の準備の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
 ##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備へ戻る）。寄り道の間に取っておいた部隊を、出撃の準備で選ぶ。
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
@@ -23,14 +25,14 @@ const Run := preload("res://game/run.gd")
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
 
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.94)
-const COLOR_CARD := Color(0.12, 0.15, 0.2, 1.0)
-const COLOR_TEXT := Color(0.93, 0.94, 0.96)
-const COLOR_DIM := Color(0.68, 0.72, 0.78)
-const COLOR_GOOD := Color("7fdc8a")
-const COLOR_BAD := Color("ff8a6b")
-const COLOR_ACCENT := Color("8fc3ff")
-const COLOR_BUDGET := Color("4f8fd8")
+const COLOR_PANEL := Color(Palette.PANEL, 0.94)
+const COLOR_CARD := Color(Palette.RAISED, 0.6)
+const COLOR_TEXT := Palette.TEXT
+const COLOR_DIM := Palette.TEXT_DIM
+const COLOR_GOOD := Palette.GOOD
+const COLOR_BAD := Palette.DANGER
+const COLOR_ACCENT := Palette.ACCENT
+const COLOR_BUDGET := Palette.GOLD
 ## 右上のシステムメニューのボタンのぶん、見出しの右を空ける。
 const CORNER_ROOM := 120.0
 ## 詳しい中身の欄の、文を折り返す幅（px）。
@@ -968,13 +970,13 @@ func _build_dialog() -> Control:
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.visible = false
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.55)
+	shade.color = Palette.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
-	var panel := _card(Color(0.09, 0.11, 0.15, 0.98), 24.0)
+	var panel := _card(Palette.SOLID, 24.0)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 16)
@@ -1028,10 +1030,7 @@ func _frame() -> Control:
 
 
 func _card(color := COLOR_CARD, margin := 12.0) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(margin)
+	var style := UiTheme.box(color, Color(Palette.BORDER, 0.7), 1, 6, margin)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	return panel

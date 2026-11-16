@@ -6,6 +6,7 @@ extends Node
 ## - 右クリックで 1 つ前の文へ戻る。Esc はシステムメニュー（ほかの場面と同じ）。
 ## - 「飛ばす」で、残りを読まずに Run.NEXT で終える。知らせの行（side 2。駒の解放など）は飛ばさず、そこで止まる。
 
+const Palette := preload("res://game/ui_palette.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
@@ -24,10 +25,10 @@ const TEAM_COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("6b72
 ## 知らせの行の side（story.gd の NOTICE_SIDE）。
 const NOTICE_SIDE := 2
 
-const COLOR_BOX := Color(0.06, 0.08, 0.11, 0.9)
-const COLOR_BORDER := Color(1.0, 1.0, 1.0, 0.14)
-const COLOR_TEXT := Color(0.95, 0.96, 0.98)
-const COLOR_DIM := Color(0.78, 0.81, 0.86)
+const COLOR_BOX := Color(Palette.PANEL, 0.92)
+const COLOR_BORDER := Palette.BORDER
+const COLOR_TEXT := Palette.TEXT
+const COLOR_DIM := Palette.TEXT_DIM
 
 var context: AppContext
 ## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目}。story.gd の talk_of）。
@@ -267,7 +268,6 @@ func _label(font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
