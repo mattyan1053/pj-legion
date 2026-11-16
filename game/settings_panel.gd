@@ -19,6 +19,10 @@ const COLOR_CHOSEN := Color("3a7bd5")
 const LABEL_WIDTH := 230.0
 const NOTE_WIDTH := 560.0
 const CONTROL_WIDTH := 300.0
+## 項目の並ぶ枠の高さの上限（px）。見出し・下のボタン・余白と合わせて、720 の高さに収まる。超えたら縦に送る。
+const ROWS_MAX_HEIGHT := 540.0
+## 縦に送るときに、送る棒のために足す幅（px）。
+const SCROLL_BAR_ROOM := 16.0
 
 var settings: Settings
 ## 項目の名前 -> その行の部品（"control"、"value"、"reset"）。
@@ -34,7 +38,7 @@ func setup(target: Settings) -> void:
 	style.set_content_margin_all(20.0)
 	add_theme_stylebox_override("panel", style)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)  # 項目が 7 つでも 720 の高さに収まるよう詰める
+	column.add_theme_constant_override("separation", 6)
 	add_child(column)
 
 	var title := _label(28)
@@ -42,6 +46,14 @@ func setup(target: Settings) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 
+	# 項目は、縦に送れる枠に並べる（720 の高さに収まらなければ、ホイールか右の棒で送る。見出しと下のボタンは送らない）。
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(scroll)
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 6)
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(rows)
 	var section := ""
 	for entry in Settings.ITEMS:
 		if entry["section"] != section:
@@ -49,8 +61,13 @@ func setup(target: Settings) -> void:
 			var heading := _label(17)
 			heading.text = section
 			heading.add_theme_color_override("font_color", COLOR_SECTION)
-			column.add_child(heading)
-		column.add_child(_build_row(entry))
+			rows.add_child(heading)
+		rows.add_child(_build_row(entry))
+	var rows_size := rows.get_combined_minimum_size()
+	var scrolls := rows_size.y > ROWS_MAX_HEIGHT
+	# 送る棒のぶんだけ幅を足す（項目の列を狭めない）。
+	scroll.custom_minimum_size = Vector2(rows_size.x + (SCROLL_BAR_ROOM if scrolls else 0.0), minf(rows_size.y, ROWS_MAX_HEIGHT))
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS if scrolls else ScrollContainer.SCROLL_MODE_DISABLED
 
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER

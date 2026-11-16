@@ -23,6 +23,7 @@ const MASTER_VOLUME := &"master_volume"
 const MUSIC_VOLUME := &"music_volume"
 const EFFECTS_VOLUME := &"effects_volume"
 const MUTE := &"mute"
+const SHOW_MINIMAP := &"show_minimap"
 
 ## 項目（画面に並べる順）。
 ## - key: 名前（ファイルにも、この名前で書く）。section: 画面の区分の見出し。label: 項目の名前。note: 短い説明。
@@ -65,6 +66,11 @@ const ITEMS: Array[Dictionary] = [
 		"key": MUTE, "section": "音", "label": "音を消す",
 		"note": "音量はそのままで、すべての音を止める",
 		"kind": Kind.TOGGLE, "default": false,
+	},
+	{
+		"key": SHOW_MINIMAP, "section": "画面", "label": "ミニマップ",
+		"note": "対戦の画面の右上に盤の縮図を出す。押すと、その場所へ視点を移す",
+		"kind": Kind.TOGGLE, "default": true,
 	},
 ]
 
