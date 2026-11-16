@@ -146,6 +146,10 @@ var _menu_column: VBoxContainer
 ## いまメニューに出している項目（[名前, 文字, 押せるか] の列）と、項目の名前 -> ボタン。
 var _menu_items: Array = []
 var _menu_buttons := {}
+## メニューが届くマスに掛かっているか（set_menu_see_through）。
+var _menu_see_through := false
+## 届くマスに掛かったメニューの、マウスが乗っていない間の濃さ。
+const MENU_SEE_THROUGH_ALPHA := 0.6
 ## 文字の幅の覚え（"文字の大きさ:文字" -> px）。折り返しに使う。
 var _char_widths := {}
 var _banner: Label
@@ -499,6 +503,21 @@ func place_menu(at: Vector2, from: Vector2) -> void:
 	_menu_line.points = PackedVector2Array([from, near])
 
 
+## メニューが届くマスに掛かっているか（see_through）。掛かっている間は、マウスが乗っていなければ薄く描く（_process）。
+func set_menu_see_through(see_through: bool) -> void:
+	_menu_see_through = see_through
+
+
+## メニューの濃さ（1 で、ふつう）。検査用。
+func menu_alpha() -> float:
+	return _menu.modulate.a
+
+
+func _update_menu_alpha() -> void:
+	var faded := _menu_see_through and _menu.visible and not menu_rect().grow(6.0).has_point(get_viewport().get_mouse_position())
+	_menu.modulate.a = MENU_SEE_THROUGH_ALPHA if faded else 1.0
+
+
 ## 対戦の途中の会話の札（battle_talk.gd）を入れる。帯・駒のそばのメニュー・予測のパネル・進化の選択・決着の画面より下に描く
 ## （札はクリックを受けないので、上に描くと、隠れたボタンを押せてしまう。札は上の帯のすぐ下の真ん中にあり、帯とは重ならない）。
 ## 駒のそばのメニューか予測のパネルが札に重なったら、札を薄くする（下のメニューやパネルが読めるように）。
@@ -598,6 +617,7 @@ func _process(_delta: float) -> void:
 		_ult_labels[player].self_modulate = shade
 	if _ult_button != null:
 		_ult_button.self_modulate = tint if not _ult_button.disabled else Color.WHITE
+	_update_menu_alpha()
 
 
 ## 画面の中央に、しばらくだけ大きな文字を出す。

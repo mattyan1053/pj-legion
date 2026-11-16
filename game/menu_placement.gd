@@ -4,6 +4,7 @@ extends RefCounted
 ## 駒の周りの候補（右・左・下・上と、その上下・左右へずらしたもの、斜め。近くと 1 つ離れたところ）を、画面に収まるようにずらしてから比べ、
 ## 隠してしまうもの（攻撃の相手、届くマス、ほかの駒、画面の帯）の重みがいちばん小さいところを選ぶ。
 ## 駒そのものには重ねない。カメラが動いても落ち着いて付いてくるよう、前に選んだ側を少しひいきする。
+## 駒の周りが届くマスで埋まっているとき（動く前）は、駒から少しずつ離したところも候補にする（region。離れるほど重い）。
 
 ## 駒とメニューの間の隙間（px）。
 const GAP := 10.0
@@ -30,6 +31,10 @@ const ANCHOR_COST := 1000.0
 const KEEP_CLEAR_COST := 1000000.0
 ## 重ねてはいけない四角の周りに足す候補の、もとの候補より後ろに回すための重み（駒の周りに置けないときだけ選ぶ）。
 const AROUND_CLEAR_COST := 2.0
+## 届くマスの範囲の中で、駒から 1 つ離すごとに足す重み（届くマス 1 つを隠すより軽く、離れすぎないよう重く）。
+const REGION_STEP_COST := 0.35
+## 届くマスの範囲の中で、駒から離す候補の、いちばん遠いもの（駒の大きさを 1 として）。
+const REGION_MAX_STEPS := 8
 
 ## 選んだ候補の番号（次に place() を呼ぶときに previous として渡す）。まだ選んでいなければ -1。
 var choice := -1
@@ -41,7 +46,9 @@ var position := Vector2.ZERO
 ## obstacles は、隠したくないものの四角と重み（[Rect2, float] の列）。置き場所（左上）を返し、choice と position に残す。
 ## keep_clear は、重ねてはいけない四角（Rect2 の列。予測のパネルから見たメニュー）。駒の周りの候補がどれも重なるときは、
 ## その四角の上下左右に接する候補からも選ぶ（area に入る幅か高さが残っていれば、必ず重ならない）。
-func place(anchor: Rect2, size: Vector2, area: Rect2, obstacles: Array, keep_clear: Array = []) -> Vector2:
+## region は、届くマスを囲む四角（動く前だけ。無ければ大きさ 0）。あれば、向きごとに駒から少しずつ離した候補も比べる
+## （駒の隣で届くマスを隠すより得なら、隠さないところまで離す。離れるほど重い）。
+func place(anchor: Rect2, size: Vector2, area: Rect2, obstacles: Array, keep_clear: Array = [], region := Rect2()) -> Vector2:
 	var best := -1
 	var best_cost := INF
 	var best_at := Vector2.ZERO
@@ -54,6 +61,15 @@ func place(anchor: Rect2, size: Vector2, area: Rect2, obstacles: Array, keep_cle
 		wanted_list.append(_candidate(anchor, size, direction, GAP + (unit if far else 0.0)))
 		base_costs.append((index % DIRECTIONS.size()) * DIRECTION_COST + (FAR_COST if far else 0.0))
 	var last_cost := DIRECTIONS.size() * DIRECTION_COST + FAR_COST
+	if region.has_area():
+		# 届くマスの範囲の中では、向きごとに少しずつ離した候補を足す（範囲の外へ出たら、その向きはそこまで）。
+		for d in DIRECTIONS.size():
+			for step in range(2, REGION_MAX_STEPS + 1):
+				var wanted := _candidate(anchor, size, DIRECTIONS[d], GAP + unit * step)
+				wanted_list.append(wanted)
+				base_costs.append(d * DIRECTION_COST + FAR_COST + (step - 1) * REGION_STEP_COST)
+				if not Rect2(wanted, size).intersects(region):
+					break
 	for clear: Rect2 in keep_clear:
 		for wanted in _around(clear, anchor, size):
 			wanted_list.append(wanted)

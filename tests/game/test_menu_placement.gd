@@ -93,3 +93,56 @@ func test_slides_along_the_side_when_the_middle_is_taken() -> void:
 	assert_eq(rect.position.x, anchor.end.x + MenuPlacement.GAP, "右隣から離れた")
 	for obstacle: Array in obstacles:
 		assert_false(rect.intersects(obstacle[0]), "隠してはいけないものを隠した")
+
+
+## 届くマス（菱形に並べた四角）。center のマスから半径 radius。マスの大きさは cell（px）。
+func _move_cells(center: Vector2, radius: int, cell: float) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
+			if (dx != 0 or dy != 0) and absi(dx) + absi(dy) <= radius:
+				rects.append(Rect2(center + Vector2(dx, dy) * cell - Vector2(cell, cell) * 0.4, Vector2(cell, cell) * 0.8))
+	return rects
+
+
+func _region(rects: Array[Rect2]) -> Rect2:
+	var region := rects[0]
+	for rect in rects:
+		region = region.merge(rect)
+	return region
+
+
+func _covered(rect: Rect2, cells: Array[Rect2]) -> int:
+	var count := 0
+	for cell in cells:
+		if rect.intersects(cell):
+			count += 1
+	return count
+
+
+func test_steps_outside_the_move_range_when_it_fills_the_neighborhood() -> void:
+	# 動く前の駒。周りは届くマスで埋まっている。範囲の外に置けるなら、届くマスを 1 つも隠さない。
+	var center := Vector2(640, 340)
+	for radius: int in [3, 4, 5]:
+		var cells := _move_cells(center, radius, 44.0)
+		var obstacles: Array = []
+		for cell in cells:
+			obstacles.append([cell, 2.0])
+		var placement := MenuPlacement.new()
+		var anchor := _anchor(center)
+		var rect := Rect2(placement.place(anchor, SIZE, AREA, obstacles, [], _region(cells)), SIZE)
+		assert_eq(_covered(rect, cells), 0, "半径 %d の届くマスを隠した（%s）" % [radius, rect])
+		assert_true(AREA.encloses(rect), "画面からはみ出した")
+
+
+func test_hides_as_few_move_cells_as_it_can_when_the_range_fills_the_screen() -> void:
+	# 範囲が画面いっぱいなら外へは出せない。それでも、駒の隣に置くより隠すマスを増やさない。
+	var center := Vector2(640, 340)
+	var cells := _move_cells(center, 16, 44.0)
+	var obstacles: Array = []
+	for cell in cells:
+		obstacles.append([cell, 2.0])
+	var near := Rect2(MenuPlacement.new().place(_anchor(center), SIZE, AREA, obstacles), SIZE)
+	var rect := Rect2(MenuPlacement.new().place(_anchor(center), SIZE, AREA, obstacles, [], _region(cells)), SIZE)
+	assert_true(_covered(rect, cells) <= _covered(near, cells), "範囲の外の候補を足して、隠すマスが増えた")
+	assert_false(rect.intersects(_anchor(center)), "駒に重なった")
