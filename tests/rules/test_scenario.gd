@@ -123,3 +123,37 @@ func test_start_gauge_reaches_the_battle_within_the_gauge() -> void:
 	var battle := setup.create_battle()
 	assert_eq(battle.ult_gauge, [800, Ults.GAUGE_MAX] as Array[int])
 	assert_eq(Scenario.versus(BoardGenerator.Stage.PLAIN).start_gauge, [0, 0] as Array[int], "対戦モードは 0 から")
+
+
+## 駒の始めのレベルと経験値（start_growth）: 部隊の並びの順に将でない駒へ当て、レベルアップと同じだけ伸ばす。既定は空。
+func test_start_growth_reaches_the_placed_units() -> void:
+	var scenario := Scenario.on_map(HandMap.new(PackedStringArray(["..2..", ".....", ".....", "..1.."])), "試し")
+	assert_eq(scenario.start_growth, [[], []] as Array[Array], "既定は空（どの駒もレベル 1・経験値 0）")
+	var deck := Deck.new(UnitKind.Army.FANTASY)
+	for kind: UnitKind.Id in [UnitKind.Id.SORCERER, UnitKind.Id.PALADIN, UnitKind.Id.PRIEST]:
+		deck.entries.append(DeckEntry.new(kind))
+	scenario.fix_deck(Unit.Side.PLAYER1, deck)
+	scenario.set_start_growth(Unit.Side.PLAYER1, [[2, 110], [Growth.MAX_LEVEL + 1, Growth.EXPERIENCE_PER_LEVEL + 5]])
+	assert_eq(scenario.start_growth[0], [[2, 110], [Growth.MAX_LEVEL - 1, Growth.EXPERIENCE_PER_LEVEL - 1]], "進化の手前に収める")
+	var setup := MatchSetup.humans_on(scenario, 1, null, MatchSetup.default_deck(UnitKind.Army.MILITARY))
+	setup.ignore_budget = true
+	var battle := setup.create_battle()
+	var by_kind := {}
+	for unit in battle.units:
+		by_kind[[unit.side, unit.kind]] = unit
+	var sorcerer: Unit = by_kind[[Unit.Side.PLAYER1, UnitKind.Id.SORCERER]]
+	assert_eq([sorcerer.level, sorcerer.experience], [2, 110])
+	var gains: Dictionary = Growth.GAINS[UnitKind.Role.REARGUARD]
+	assert_eq(sorcerer.max_hp(), UnitKind.max_hp(UnitKind.Id.SORCERER) + gains[Unit.Stat.MAX_HP], "1 レベルぶん伸びる")
+	assert_eq(sorcerer.hp, sorcerer.max_hp(), "HP も伸びたぶん増える")
+	assert_eq(sorcerer.power(), UnitKind.power(UnitKind.Id.SORCERER) + gains[Unit.Stat.POWER])
+	assert_false(sorcerer.evolution_ready, "進化は対戦の中で選ぶ")
+	var priest: Unit = by_kind[[Unit.Side.PLAYER1, UnitKind.Id.PRIEST]]
+	assert_eq([priest.level, priest.experience], [1, 0], "列より後ろの駒はいつもどおり")
+	assert_eq(by_kind[[Unit.Side.PLAYER1, UnitKind.Id.KING]].level, 1, "将には当てない")
+	for unit in battle.units:
+		if unit.side == Unit.Side.PLAYER2:
+			assert_eq([unit.level, unit.experience], [1, 0], "決めていない側はいつもどおり")
+	# 次の 1 撃で上限のレベルに届き、進化先を選ぶことになる。
+	assert_true(Growth.preview(sorcerer, Growth.HIT_EXPERIENCE).evolution_ready)
+	assert_eq(Scenario.versus(BoardGenerator.Stage.PLAIN).start_growth, [[], []] as Array[Array], "対戦モードは使わない")
