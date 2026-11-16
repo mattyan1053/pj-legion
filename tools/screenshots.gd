@@ -1824,6 +1824,10 @@ func _scene_story_decks_detour() -> bool:
 func _scene_story_defeat() -> bool:
 	if not await _story_battle():
 		return false
+	# 既定の編成では人の側（CPU が持つ）がほぼ勝つので、負ける局を作るため、人の部隊をスナイパー 1 体にする。
+	var weak := Deck.new(Story.ARMY, _app.context.story.deck_rules())
+	weak.add(UnitKind.Id.SNIPER)
+	_scene.source.human_deck = weak
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
