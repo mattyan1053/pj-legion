@@ -62,6 +62,12 @@ const COLOR_DANGER_EDGE := Color(1.0, 0.25, 0.18, 0.7)
 const DANGER_LIFT := 0.07
 ## 縁の線の太さ（マス）。
 const DANGER_EDGE_WIDTH := 0.07
+## 表示したままにしている（ピン留めした）駒の攻撃範囲（show_pinned）。駒ごとに、薄い橙の塗りと、範囲の縁の橙の線。
+## 敵の全員の脅威範囲（赤い斜線）とは別の色で、両方を出しても見分けられる。縁の線は、斜線の縁より少し内側に引く。
+const COLOR_PIN_FILL := Color(1.0, 0.55, 0.1, 0.16)
+const COLOR_PIN_EDGE := Color(1.0, 0.6, 0.15, 0.9)
+const PIN_LIFT := 0.065
+const PIN_EDGE_INSET := 0.09
 
 var board: Board
 ## ステージの見た目（stage_look.gd）。
@@ -77,6 +83,9 @@ var _highlight: MultiMesh
 var _danger_stripes: MultiMesh
 var _danger_edges: MultiMesh
 var _danger_cells: Array[Vector2i] = []
+var _pin_fill: MultiMesh
+var _pin_edges: MultiMesh
+var _pinned_sets: Array = []
 var _grid: ShaderMaterial
 var _grid_emphasis := 0.0
 var _grid_emphasized := false
@@ -333,6 +342,39 @@ func show_danger(cells: Array[Vector2i]) -> void:
 		_danger_edges.set_instance_transform(i, edges[i])
 
 
+## 表示したままにしている駒の攻撃範囲を出す。sets は駒ごとのマスの列（Array[Vector2i] の列）。前に出したものは消える。
+## 駒ごとに、範囲を薄く塗り（重なったところは濃くなる）、範囲の縁に線を引く。塗ったマス・敵の全員の脅威範囲とは別の層。
+func show_pinned(sets: Array) -> void:
+	_pinned_sets = sets.duplicate(true)
+	var fills: Array[Vector3] = []
+	var edges: Array[Transform3D] = []
+	var across := Basis(Vector3.UP, PI / 2.0)
+	var half := 0.5 - PIN_EDGE_INSET
+	for cells: Array in sets:
+		var inside := {}
+		for cell: Vector2i in cells:
+			inside[cell] = true
+		for cell: Vector2i in cells:
+			var center := cell_center(cell) + Vector3(0.0, PIN_LIFT, 0.0)
+			fills.append(center)
+			for side: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+				if inside.has(cell + side):
+					continue
+				var offset := Vector3(side.x, 0.001, side.y) * half
+				edges.append(Transform3D(across if side.x != 0 else Basis.IDENTITY, center + offset))
+	_pin_fill.instance_count = fills.size()
+	for i in fills.size():
+		_pin_fill.set_instance_transform(i, Transform3D(Basis.IDENTITY, fills[i]))
+	_pin_edges.instance_count = edges.size()
+	for i in edges.size():
+		_pin_edges.set_instance_transform(i, edges[i])
+
+
+## 表示したままにしている範囲（駒ごとのマスの列）。検査用。
+func pinned_sets() -> Array:
+	return _pinned_sets.duplicate(true)
+
+
 ## 敵の全員の脅威範囲として出しているマス。検査用。
 func danger_cells() -> Array[Vector2i]:
 	return _danger_cells.duplicate()
@@ -444,6 +486,11 @@ func _build_markers() -> void:
 	var edge_mesh := BoxMesh.new()
 	edge_mesh.size = Vector3(1.0, 0.004, DANGER_EDGE_WIDTH)
 	_danger_edges = _overlay_layer(edge_mesh, _overlay_material(COLOR_DANGER_EDGE))
+
+	_pin_fill = _overlay_layer(_stripe_mesh(), _overlay_material(COLOR_PIN_FILL))
+	var pin_edge_mesh := BoxMesh.new()
+	pin_edge_mesh.size = Vector3(1.0 - PIN_EDGE_INSET * 2.0, 0.004, DANGER_EDGE_WIDTH)
+	_pin_edges = _overlay_layer(pin_edge_mesh, _overlay_material(COLOR_PIN_EDGE))
 
 	_cursor = _add_mesh(cell_mesh, _overlay_material(Color(1.0, 1.0, 1.0, 0.4)), Vector3.ZERO)
 	_cursor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

@@ -29,7 +29,7 @@ const NOTHING_SPECIAL := "特別なものは無い"
 ## confirming_unacted は、ターン終了を確かめている途中なら、まだ行動していない駒の数（確かめていなければ 0）。
 static func hint(
 	battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn: bool, confirming_ult: bool, self_skill: bool,
-	confirming_unacted := 0, can_warp := false
+	confirming_unacted := 0, can_warp := false, pinned := 0
 ) -> String:
 	if battle.is_over():
 		return "決着"
@@ -45,8 +45,12 @@ static func hint(
 		return "まだ行動していない駒が %d 体（足元が光っている）。もう一度押すとターン終了。右クリックでやめる" % confirming_unacted
 	if inspected != null:
 		var ranges := "白: 動ける範囲" if inspected.side == battle.phase else "白: 動ける　赤: 次の番に攻撃が届く"
+		if pinned > 0:
+			ranges += "　橙の枠: 表示したままの範囲"
 		var back := "選んでいる駒へ戻る" if unit != null else "見るのをやめる"
 		return "%s を見ている（%s）\n右クリックで%s" % [inspected.display_name(), ranges, back]
+	if unit == null and pinned > 0:
+		return "駒をクリックして選ぶ。橙の枠: 表示したままの相手の範囲（右クリックで全部消す）"
 	if unit == null:
 		return "駒をクリックして選ぶ。相手の駒をクリックすると、動ける範囲と攻撃の届く範囲が見える"
 	if mode == Mode.SKILL and self_skill:

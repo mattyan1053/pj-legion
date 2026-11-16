@@ -42,7 +42,7 @@ const SCENES := {
 	"level_up": "レベルアップ",
 	"evolution": "進化",
 	"heal": "回復役の回復、マスの情報、クリックとドラッグ",
-	"inspection": "閲覧（行動の途中に相手の駒を見る）と、敵の全員の脅威範囲",
+	"inspection": "閲覧（行動の途中に相手の駒を見る）と、敵の全員の脅威範囲、相手の駒の範囲を表示したまま（ピン留め）",
 	"setup": "対戦の設定画面（後手で CPU と対戦する）",
 	"system_menu": "システムメニューと設定の画面",
 	"minimap": "ミニマップ（押す・ドラッグで視点が移る、設定で隠す）",
@@ -1041,7 +1041,36 @@ func _queue_inspection_scene() -> void:
 		_scene.hover(NO_CELL)
 		_scene.click_cell(foe.cell))
 	_scripted.append(func() -> void:
-		_expect(trooper.acted and foe.hp < foe.max_hp(), "見終わったあとに、攻撃できなかった"))
+		_expect(trooper.acted and foe.hp < foe.max_hp(), "見終わったあとに、攻撃できなかった")
+		# 相手の駒の範囲を、表示したままにする（ピン留め）。何も選んでいないときにクリックして、情報の枠のスイッチで留める。
+		_scene.click_cell(sniper.cell)
+		_expect(_scene.pin_switch_state() == ([true, false] as Array[bool]), "相手の駒を見ても、「範囲を表示したまま」が出ない")
+		_expect(_scene.press_pin_switch() and _scene.pinned_ids() == ([sniper.id] as Array[int]), "スイッチで留められなかった")
+		_scene.click_cell(neutral.cell)
+		_scene.press_pin_switch()
+		_scene.cancel()  # 見るのをやめる（ピンは残る）
+		_expect(_scene.pinned_ids() == ([sniper.id, neutral.id] as Array[int]) and _scene.pinned_sets().size() == 2, "2 体の範囲を表示したままにできない")
+		_expect(_scene.pinned_sets()[0] == Threat.of(battle, sniper.id).cells(), "留めた範囲が、その駒の脅威範囲でない")
+		# 全体のスイッチと両立する。
+		_scene.toggle_threat()
+		_expect(not _scene.threat_overlay_cells().is_empty() and _scene.pinned_sets().size() == 2, "全体の範囲と、留めた範囲が両立しない")
+		_scene.toggle_threat()
+		# 自分の駒には出さない。
+		_scene.click_cell(trooper.cell)
+		_expect(not _scene.pin_switch_state()[0], "自分の駒に「範囲を表示したまま」が出た")
+		_scene.cancel())
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		# 留めた駒が動くと、範囲も付いていく。
+		_expect(battle.phase == Unit.Side.PLAYER2, "相手の番にならなかった")
+		_scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void: _scene.click_cell(Vector2i(7, 4)))
+	_scripted.append(func() -> void: _scene.press_wait())
+	_scripted.append(func() -> void:
+		_expect(sniper.cell == Vector2i(7, 4), "留めた駒が動かなかった")
+		_expect(not _scene.pinned_sets().is_empty() and _scene.pinned_sets()[0] == Threat.of(battle, sniper.id).cells(), "留めた駒が動いても、範囲が付いていかない")
+		# 右クリックで、ほかに戻すものが無ければ、全部外す。
+		_expect(_scene.cancel() and _scene.pinned_ids().is_empty() and _scene.pinned_sets().is_empty(), "右クリックで、留めた範囲を全部外せない"))
 
 
 ## 対戦の設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とステージも選んだとおりになる。
@@ -1601,8 +1630,14 @@ func _visit_decks(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.DECKS, "対戦の設定の「部隊を編成する」で、編成の場面へ進まない")
 	var screen: Node = app.current_scene()
 	_expect(screen.is_detour() and screen.mode() == DeckRules.VERSUS and screen.back_label() == "対戦の設定へ戻る", "対戦の設定からの編成が、対戦用でない（か、戻り先の文字が違う）")
+	_expect(screen.listed_ids().is_empty() and screen.list_card_kinds().is_empty(), "部隊が無いのに、一覧か札が出ている")
 	screen.press_new()
-	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty(), "「新しく組む」で、空の部隊を組めない")
+	_expect(screen.is_choosing_army() and not screen.is_editing(), "「新しい部隊」で、まず軍を選ぶ画面が出ない")
+	screen.press_back()
+	_expect(not screen.is_choosing_army() and not screen.is_editing(), "軍を選ぶ画面から、右クリックで一覧へ戻らない")
+	screen.press_new()
+	screen.choose_new_army(UnitKind.Army.MILITARY)
+	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty() and screen.editing_deck().army == UnitKind.Army.MILITARY, "選んだ軍で、空の部隊を組めない")
 	_expect(not screen.can_save(), "空の部隊を取っておけた")
 	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.SHIELD_TROOPER)
@@ -1645,15 +1680,13 @@ func _visit_decks(app: Node) -> void:
 	_expect(library.size() == 1, "消せない")
 	# 変えたところがあれば、取っておかずに戻る前に確かめる。
 	screen.select_saved(id)
+	_expect(screen.list_card_kinds().size() == library.find(id).deck.entries.size() + 1, "一覧の右に、選んだ部隊の駒の札が並ばない")
 	screen.press_edit()
-	screen.choose_army(UnitKind.Army.FANTASY)
-	_expect(screen.is_dialog_open(), "駒のいる部隊の軍を変える前に、確かめない")
-	screen.accept_dialog()
-	_expect(screen.editing_deck().army == UnitKind.Army.FANTASY and screen.editing_deck().entries.is_empty(), "軍を変えられない")
+	screen.remove_entry(0)
 	screen.press_back()
 	_expect(screen.is_dialog_open(), "変えたところがあるのに、確かめずに一覧へ戻った")
 	screen.accept_dialog()
-	_expect(not screen.is_editing() and library.find(id).deck.army == UnitKind.Army.MILITARY, "取っておかずに戻ったのに、部隊が変わった")
+	_expect(not screen.is_editing() and library.find(id).deck.entries.size() == 5, "取っておかずに戻ったのに、部隊が変わった")
 	# ストーリー用の部隊: 切り替えると、対戦用の部隊は並ばない。雇える駒は、いま解放した駒だけ。
 	_expect(screen.mode() == DeckRules.VERSUS and screen.listed_ids() == ([id] as Array[String]), "対戦用の一覧が違う")
 	screen.set_mode(Story.RULES_ID)
