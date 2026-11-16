@@ -11,7 +11,7 @@ const WATCH_RATE := 0.2
 
 
 ## 照準は、動かずに構える（いまのマスだけ）。
-func targets(_cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(_cpu: Variant, unit: Unit, _cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	return {unit.cell: true}
 
 
@@ -19,13 +19,13 @@ func targets(_cpu: CpuPlayer, unit: Unit, _cells: Dictionary[Vector2i, float]) -
 ## 当てたときのダメージは、構えたあとの複製（sim）のルールの答え（Combat.damage。確定クリティカル、森、煙幕、バリアを通る）。
 ## - いまの位置から攻撃できる敵は数えない
 ## - 伸びた射程の中にいる敵は RATE、相手が 1 回動けば入ってくる距離の敵は WATCH_RATE（距離は目安。地形は見ない）
-func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
-	var unit := cpu._battle.unit_by_id(used.unit_id)
+func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
+	var unit: Unit = cpu._battle.unit_by_id(used.unit_id)
 	var aimed := sim.unit_by_id(used.unit_id)
 	var best := 0.0
 	if Statuses.has(unit, Status.Type.AIM):
 		return best  # もう構えている
-	for enemy in cpu._battle.units:
+	for enemy: Unit in cpu._battle.units:
 		if enemy.side != cpu._foe or Combat.can_attack(cpu._battle, unit, enemy):
 			continue
 		var rate := WATCH_RATE

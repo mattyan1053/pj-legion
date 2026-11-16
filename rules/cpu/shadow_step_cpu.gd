@@ -9,10 +9,10 @@ class_name CpuShadowStep
 ##   中立の駒を殴るためには跳ばない（跳べるのは数ターンに 1 回。相手の駒のために取っておく）
 ## - 空いている敵の本陣
 ## - 自分の本陣に乗っている敵のマス（入れ替わって、占拠を切る）
-func targets(cpu: CpuPlayer, unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
+func targets(cpu: Variant, unit: Unit, cells: Dictionary[Vector2i, float]) -> Dictionary[Vector2i, bool]:
 	var wanted: Dictionary[Vector2i, bool] = {}
-	var reach := cpu._moved_reach if cells.size() > 1 else unit.attack_range()
-	for other in cpu._battle.units:
+	var reach: int = cpu._moved_reach if cells.size() > 1 else unit.attack_range()
+	for other: Unit in cpu._battle.units:
 		if other.side != cpu._foe:
 			continue
 		if other.cell == cpu._my_hq:
@@ -32,8 +32,8 @@ func targets(cpu: CpuPlayer, unit: Unit, cells: Dictionary[Vector2i, float]) -> 
 ## 攻撃できる相手がいなければ 0（跳ぶだけの手は選ばない）。ただし、次の 2 つは攻撃できなくても数える。
 ## - 敵の本陣のマスに着く（立つマスの価値に入っている）
 ## - 自分の本陣に乗っている敵と入れ替わる（占拠が途切れる。CpuPlayer.OCCUPIER_KILL_BONUS を足す）
-func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
-	var unit := cpu._battle.unit_by_id(used.unit_id)
+func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
+	var unit: Unit = cpu._battle.unit_by_id(used.unit_id)
 	cpu._build_threats()
 	cpu._set_goal(unit)
 	var best := 0.0
@@ -42,15 +42,15 @@ func value(cpu: CpuPlayer, used: SkillUsedEvent, sim: Battle) -> float:
 		if not (action is AttackAction or action is AttackBarrelAction or action is AttackBarricadeAction):
 			continue
 		var after := sim.clone()
-		var worth := cpu._outcome_value(after, after.apply(action).events)
+		var worth: float = cpu._outcome_value(after, after.apply(action).events)
 		if worth > best:
 			best = worth
 			var attack := action as AttackAction
 			killed_id = attack.target_id if attack != null and after.unit_by_id(attack.target_id) == null else 0
-	var swapped := cpu._battle.unit_at(used.target)
+	var swapped: Unit = cpu._battle.unit_at(used.target)
 	if swapped != null and swapped.side == cpu._foe and used.target == cpu._my_hq:
 		best += CpuPlayer.OCCUPIER_KILL_BONUS
 	if best <= 0.0 and used.target != cpu._foe_hq:
 		return 0.0
-	var from := cpu._stand if cpu._stand != Board.NO_CELL else unit.cell
+	var from: Vector2i = cpu._stand if cpu._stand != Board.NO_CELL else unit.cell
 	return best + cpu._position_value(unit, used.target, killed_id, true) - cpu._position_value(unit, from, 0, true)

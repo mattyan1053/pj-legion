@@ -12,32 +12,75 @@ const TEAM_COLORS: Array[Color] = [Color.BLUE, Color.RED]
 
 
 func test_scenery_keeps_clear_of_the_board() -> void:
-	var items := Scenery.layout(SIZE, 1)
-	assert_true(items.size() > 200, "景色が少なすぎる（%d）" % items.size())
-	for item in items:
-		var at: Vector3 = item.position
-		var distance := Scenery.distance_outside(Vector2(at.x, at.z), Vector2(SIZE))
-		assert_true(distance >= Scenery.CLEAR, "盤の端のそばに置いている: %s" % at)
-		assert_true(distance <= Scenery.REACH, "霞の向こうに置いている: %s" % at)
+	for stage: int in BoardGenerator.Stage.values():
+		var items := Scenery.layout(SIZE, 1, _scenery(stage))
+		assert_true(items.size() > 200, "景色が少なすぎる（ステージ %d: %d）" % [stage, items.size()])
+		for item in items:
+			var at: Vector3 = item.position
+			var distance := Scenery.distance_outside(Vector2(at.x, at.z), Vector2(SIZE))
+			assert_true(distance >= Scenery.CLEAR, "盤の端のそばに置いている: %s" % at)
+			assert_true(distance <= Scenery.REACH, "霞の向こうに置いている: %s" % at)
 
 
 func test_scenery_never_rises_into_the_view_of_the_board() -> void:
 	# カメラがいちばん浅い角度で見下ろしても、盤の中を見る視線より低い。
 	assert_true(Scenery.HEIGHT_PER_DISTANCE < tan(deg_to_rad(OrbitCamera.MIN_PITCH)), "高さの決まりが、カメラの角度より急")
-	for item in Scenery.layout(SIZE, 2):
-		var limit: float = item.distance * Scenery.HEIGHT_PER_DISTANCE
-		assert_true(Scenery.height_of(item) <= limit + 0.001, "高すぎる: %s" % item)
+	for stage: int in BoardGenerator.Stage.values():
+		var scenery := _scenery(stage)
+		for item in Scenery.layout(SIZE, 2, scenery):
+			var limit: float = item.distance * Scenery.HEIGHT_PER_DISTANCE
+			var prop: Dictionary = scenery[item.role][item.index]
+			assert_true(float(prop.height) * float(item.scale) <= limit + 0.001, "高すぎる: %s" % item)
 
 
 func test_scenery_is_the_same_for_the_same_seed() -> void:
-	assert_eq(Scenery.layout(SIZE, 5), Scenery.layout(SIZE, 5))
-	assert_ne(Scenery.layout(SIZE, 5), Scenery.layout(SIZE, 6))
+	var scenery := _scenery(BoardGenerator.Stage.PLAIN)
+	assert_eq(Scenery.layout(SIZE, 5, scenery), Scenery.layout(SIZE, 5, scenery))
+	assert_ne(Scenery.layout(SIZE, 5, scenery), Scenery.layout(SIZE, 6, scenery))
 
 
 func test_scenery_stays_light() -> void:
 	# 置く数が増えすぎると、描画が重くなる。
-	for look_seed in 5:
-		assert_true(Scenery.layout(SIZE, look_seed).size() < 3000, "景色が多すぎる（種 %d）" % look_seed)
+	for stage: int in BoardGenerator.Stage.values():
+		for look_seed in 3:
+			var count := Scenery.layout(SIZE, look_seed, _scenery(stage)).size()
+			assert_true(count < 3000, "景色が多すぎる（ステージ %d、種 %d: %d）" % [stage, look_seed, count])
+
+
+func test_each_theme_is_complete() -> void:
+	# どのステージの見た目も、全部の項目を持つ（ステージを足すときに、書き忘れが分かる）。
+	for stage: int in BoardGenerator.Stage.values():
+		var look := StageLook.of(stage)
+		for key: StringName in StageLook.KEYS:
+			assert_true(look.has(key), "ステージ %d の見た目に %s が無い" % [stage, key])
+		for key: StringName in [StageLook.OBSTACLE_PROPS, StageLook.FOREST_PROPS]:
+			var spec: Dictionary = look[key]
+			assert_true(spec.style in [StageLook.SINGLE, StageLook.WALL], "ステージ %d の %s の置き方" % [stage, key])
+			assert_true(spec.props.size() >= (3 if spec.style == StageLook.WALL else 1), "ステージ %d の %s の素材" % [stage, key])
+			assert_true(spec.has("scale" if spec.style == StageLook.SINGLE else "height"), "ステージ %d の %s の大きさ" % [stage, key])
+		var scenery: Dictionary = look[StageLook.SCENERY]
+		for role: StringName in [StageLook.BIG, StageLook.SMALL, StageLook.SCATTER, StageLook.TINT]:
+			assert_true(scenery.has(role), "ステージ %d の景色に %s が無い" % [stage, role])
+
+
+func test_prop_heights_match_the_assets() -> void:
+	# 素材の定義に書いた高さは、素材の形の高さと合う（景色の高さの決まりは、これで守る）。
+	for prop in _all_props():
+		var top := StageLook.mesh_of(prop).get_aabb().end.y
+		assert_true(absf(top - float(prop.height)) < 0.03, "%s の高さ: 定義 %.2f、形 %.2f" % [prop.get("scene", "結晶"), prop.height, top])
+
+
+func test_each_stage_tells_the_kinds_of_cells_apart() -> void:
+	# 平地・森・障害物の地面の色は、どのステージでも、はっきり違う（置物に加えて、地面でも見分けられる）。
+	for stage: int in BoardGenerator.Stage.values():
+		var look := StageLook.of(stage)
+		var colors: Array[Color] = [look[StageLook.NORMAL], look[StageLook.FOREST], look[StageLook.OBSTACLE]]
+		for i in colors.size():
+			for j in range(i + 1, colors.size()):
+				var a := colors[i]
+				var b := colors[j]
+				var apart := Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
+				assert_true(apart > 0.15, "ステージ %d の地面の色 %d と %d が近い（%.2f）" % [stage, i, j, apart])
 
 
 func test_terrain_image_follows_the_board() -> void:
@@ -59,20 +102,35 @@ func test_terrain_image_follows_the_board() -> void:
 
 
 func test_each_stage_has_its_own_ground() -> void:
-	# どのステージも、色合いの全部の色を持ち、平地の色と霞の色がほかのステージと違う（一目で見分けられる）。
+	# どのステージも、平地の色と霞の色がほかのステージと違う（一目で見分けられる）。
 	var board := Maps.board([".F#*"])
 	var normals := {}
 	var hazes := {}
 	for stage: int in BoardGenerator.Stage.values():
 		var look := StageLook.of(stage)
-		for key: StringName in [StageLook.NORMAL, StageLook.FOREST, StageLook.OBSTACLE, StageLook.FONT, StageLook.HAZE, StageLook.SUN, StageLook.AMBIENT]:
-			assert_true(look.has(key), "ステージ %d に %s の色が無い" % [stage, key])
 		normals[look[StageLook.NORMAL]] = true
 		hazes[look[StageLook.HAZE]] = true
 		var image := BoardView.terrain_image(board, TEAM_COLORS, look)
 		assert_true(image.get_pixel(0, 0).is_equal_approx(_as_stored(look[StageLook.NORMAL])), "ステージ %d の盤の外の色" % stage)
 	assert_eq(normals.size(), BoardGenerator.Stage.size(), "平地の色が同じステージがある")
 	assert_eq(hazes.size(), BoardGenerator.Stage.size(), "霞の色が同じステージがある")
+
+
+func _scenery(stage: int) -> Dictionary:
+	return StageLook.of(stage)[StageLook.SCENERY]
+
+
+## どのステージの見た目にも出てくる素材の全部。
+func _all_props() -> Array[Dictionary]:
+	var props: Array[Dictionary] = []
+	for stage: int in BoardGenerator.Stage.values():
+		var look := StageLook.of(stage)
+		for key: StringName in [StageLook.OBSTACLE_PROPS, StageLook.FOREST_PROPS]:
+			props.append_array(look[key].props)
+		var scenery: Dictionary = look[StageLook.SCENERY]
+		for role: StringName in [StageLook.BIG, StageLook.SMALL, StageLook.SCATTER]:
+			props.append_array(scenery[role])
+	return props
 
 
 ## 8 ビットに丸めた色。
