@@ -119,7 +119,9 @@ func go(scene: StringName) -> void:
 		context.run = null  # 流れの外の場面へ出た（タイトルへ戻る、対戦の設定へ、など）
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP  # 切り替えの間のクリックは、どの場面にも届かない
 	context.system_menu.close()
-	(context.sound as Sound).play_scene_music(SceneFlow.music(scene))  # 暗転と同じころに、曲もつなぐ
+	# 暗転と同じころに、曲もつなぐ。流れが渡すものが曲を決めていれば、その曲（対戦の盤の見た目、話の会話）。
+	var given: Variant = context.run.data() if context.run != null else null
+	(context.sound as Sound).play_scene_music(SceneFlow.music_for(scene, given))
 	if _current != null:
 		# 抜ける場面は止めておく（暗くなる間に、CPU の番や再生が進まないように）。
 		_current.process_mode = Node.PROCESS_MODE_DISABLED
