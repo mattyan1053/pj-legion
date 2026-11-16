@@ -95,6 +95,15 @@ const SCENES := {
 	"minimap_hidden": "設定でミニマップを隠した（右上に何も出ない）",
 	"stage_labyrinth": "迷宮回廊の全景",
 	"stage_twin_springs": "双子結晶の全景",
+	"look_plain_start": "中央平原の対戦の始め（ステージの見た目を比べる 3 枚の 1 つ目）",
+	"look_plain_wide": "中央平原を、いちばん引いて低い角度で見ている（盤の外の景色）",
+	"look_plain_close": "中央平原の盤の真ん中に寄って見ている（障害物・森・平地の見分け）",
+	"look_labyrinth_start": "迷宮回廊の対戦の始め",
+	"look_labyrinth_wide": "迷宮回廊を、いちばん引いて低い角度で見ている",
+	"look_labyrinth_close": "迷宮回廊の盤の真ん中に寄って見ている",
+	"look_twin_springs_start": "双子結晶の対戦の始め",
+	"look_twin_springs_wide": "双子結晶を、いちばん引いて低い角度で見ている",
+	"look_twin_springs_close": "双子結晶の盤の真ん中に寄って見ている",
 }
 ## 場面を作る対戦の最初の種。
 const SEED := 1
@@ -1148,6 +1157,58 @@ func _scene_stage_labyrinth() -> bool:
 
 func _scene_stage_twin_springs() -> bool:
 	return _stage_overview(BoardGenerator.Stage.TWIN_SPRINGS)
+
+
+## ステージの見た目を比べる 3 枚（始め・引いた・寄った）。どのステージも同じ構図で撮る。
+func _stage_look(stage: BoardGenerator.Stage, view: StringName) -> bool:
+	_stage = stage
+	_new_battle()
+	_show()
+	var middle := Vector3(_battle.board.size.x / 2.0, 0.0, _battle.board.size.y / 2.0)
+	match view:
+		&"wide":
+			_look_at(middle + Vector3(0.0, 0.0, 6.0))
+			_aim(45.0, 0.0, OrbitCamera.MIN_PITCH)
+		&"close":
+			_look_at(middle)
+			_aim(12.0, 20.0, 45.0)
+	return true
+
+
+func _scene_look_plain_start() -> bool:
+	return _stage_look(BoardGenerator.Stage.PLAIN, &"start")
+
+
+func _scene_look_plain_wide() -> bool:
+	return _stage_look(BoardGenerator.Stage.PLAIN, &"wide")
+
+
+func _scene_look_plain_close() -> bool:
+	return _stage_look(BoardGenerator.Stage.PLAIN, &"close")
+
+
+func _scene_look_labyrinth_start() -> bool:
+	return _stage_look(BoardGenerator.Stage.LABYRINTH, &"start")
+
+
+func _scene_look_labyrinth_wide() -> bool:
+	return _stage_look(BoardGenerator.Stage.LABYRINTH, &"wide")
+
+
+func _scene_look_labyrinth_close() -> bool:
+	return _stage_look(BoardGenerator.Stage.LABYRINTH, &"close")
+
+
+func _scene_look_twin_springs_start() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"start")
+
+
+func _scene_look_twin_springs_wide() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"wide")
+
+
+func _scene_look_twin_springs_close() -> bool:
+	return _stage_look(BoardGenerator.Stage.TWIN_SPRINGS, &"close")
 
 
 ## stage の盤で、cells の最初のマスへ寄って見る（泉・ポータルの動き）。
