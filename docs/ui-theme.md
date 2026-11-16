@@ -5,6 +5,9 @@ UI の見た目（ボタン、板、帯、札、文字、色）は、1 つのテ
 - 色: `game/ui_palette.gd`（役割ごとの色に名前を付けて、1 か所に置く）
 - テーマ: `game/ui_theme.gd`（Godot の `Theme`。色は上だけを引いて、スクリプトで組む。絵は使わない）
 - 文字: `assets/fonts/zen/`（出どころとライセンスは、その中の `README.md`）
+- 小さな動き: `game/ui_feel.gd`（下の「小さな動き」）
+
+テスト: `tests/game/test_ui_theme.gd`（文字と地の濃淡の差）、`tests/game/test_ui_feel.gd`。
 
 アプリの入口（`app.gd`）が、起動してすぐ `UiTheme.install()` で Godot の既定のテーマに重ねる。
 だから、ふつうに作った `Button`、`PanelContainer`、`Label`、`HSlider`、ツールチップなどは、何もしなくてもこの見た目になる。
@@ -28,6 +31,7 @@ UI の見た目（ボタン、板、帯、札、文字、色）は、1 つのテ
 | 地 | `RAISED` / `RAISED_HOVER` | 浮いた所（ボタン、カード）と、マウスが乗ったとき |
 | 地 | `WASH` | 板の上の薄い塗り（マウスが乗った行、区切り） |
 | 地 | `SHADE` | ダイアログの後ろを沈める幕 |
+| 地 | `SHADOW` | ダイアログの板の影 |
 | 枠 | `BORDER` / `BORDER_BRIGHT` | ふつうの枠と、目立たせる枠（乗った、選ばれている） |
 | 文字 | `TEXT` / `TEXT_DIM` / `TEXT_OFF` | 本文、補足、押せない |
 | 文字 | `TEXT_ON_GOLD` | 金の地の上（いちばん大事なボタン） |
@@ -57,12 +61,12 @@ UI の見た目（ボタン、板、帯、札、文字、色）は、1 つのテ
 | 部品 | 種類 | いつ使う |
 | --- | --- | --- |
 | `Button` | （ふつう） | たいていのボタン。`toggle_mode` で押し込まれたままのものは、金の縁と濃い金の地で「選ばれている」になる |
-| `Button` | `BUTTON_PRIMARY` | その画面で次に押す、いちばん大事なボタン（始める、出撃、次へ）。**1 画面に 1 つ** |
-| `Button` | `BUTTON_DANGER` | 取り返しのつかないこと（消す、終える） |
+| `Button` | `BUTTON_PRIMARY` | その画面で次に押す、いちばん大事なボタン（「対戦開始」「出撃」「次へ」）。**1 画面に 1 つ** |
+| `Button` | `BUTTON_DANGER` | 取り返しのつかないこと（「削除」「破棄」、対戦を終える） |
 | `Button` | `BUTTON_ROW` | 板の上に並ぶ行（一覧の行、メニューの項目）。枠が無く、乗ると薄く塗る |
-| `Button` | `BUTTON_CARD` | カード（ステージ、話）。乗ると金の縁 |
+| `Button` | `BUTTON_CARD` | カード（ステージ、物語、話）。乗ると金の縁 |
 | `PanelContainer` | （ふつう） | 盤の上に重ねる板（情報の枠、案内）。半透明 |
-| `PanelContainer` | `PANEL_SOLID` | ダイアログ、メニュー、設定。ほぼ不透明で、太い縁と影 |
+| `PanelContainer` | `PANEL_SOLID` | ダイアログ、メニュー、オプション。ほぼ不透明で、太い縁と影 |
 | `PanelContainer` | `PANEL_BAND_TOP` / `PANEL_BAND_BOTTOM` | 画面の上の帯と下の帯 |
 | `PanelContainer` | `PANEL_CARD` | 板の中の区切り |
 | `PanelContainer` | `PANEL_TAG` | 小さな札（名前の札、印） |
@@ -96,6 +100,6 @@ UI の見た目（ボタン、板、帯、札、文字、色）は、1 つのテ
 
 ## 景色の上に置く画面
 
-- タイトル、ステージ選択、話の一覧は、景色の上に `UiTheme.vignette()`（四隅を沈める幕）を 1 枚敷いてから、板やカードを置く。
+- タイトル、ステージ選択、物語選択、話の一覧は、景色の上に `UiTheme.vignette()`（四隅を沈める幕）を 1 枚敷いてから、板やカードを置く。
 - 景色の上に直に置く見出し（`LABEL_HEADING`）は、縁取りを太くする（`outline_size` 10）。
 - 対戦の上の帯と下の帯は `UiTheme.band_box(上か)` の形（角を丸めず、内側の辺にだけ縁）。
