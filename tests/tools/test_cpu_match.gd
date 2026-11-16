@@ -117,3 +117,38 @@ func test_army_hp_at_a_mid_boss_kill_leaves_out_the_new_relic() -> void:
 	assert_eq(outcome.boss_falls.size(), 1)
 	assert_eq(outcome.boss_falls[0].slayer_hp, before)
 	assert_eq(outcome.boss_falls[0].first_slayer_hp, before)
+
+
+func test_a_finish_on_a_boss_the_rival_wore_down_counts_as_finish_only() -> void:
+	# 相手（プレイヤー2）が 40 削った中ボスを、プレイヤー1 が止めの一撃だけで倒す（集計の「削った量の分け前」）。
+	var battle := Maps.battle(["........", "........"])
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(1, 1))
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var boss := battle.add_unit(UnitKind.Id.ELITE_MINION, Unit.Side.NEUTRAL, Vector2i(2, 1))
+	battle.board.mid_boss_cells = [Vector2i(2, 1)]
+	boss.home_cell = Vector2i(2, 1)
+	boss.hp = 3
+	var outcome := CpuMatch.Outcome.new()
+	outcome.stats = BattleStats.new(battle)
+	outcome.boss_damage[boss.id] = [0, 40]
+	outcome.boss_hp[boss.id] = 3
+	var result := battle.apply(AttackAction.new(paladin.id, boss.id))
+	assert_true(result.accepted)
+	for event in result.events:
+		outcome.stats.feed(event)
+		CpuMatch._count(outcome, event, battle, Unit.Side.PLAYER1)
+	var fall := outcome.boss_falls[0]
+	assert_eq([fall.slayer_damage, fall.rival_damage, fall.finish_damage], [3, 40, 3])
+	assert_true(fall.is_finish_only())
+	assert_true(fall.is_low_share())
+	# 自分が削ってから止めを刺したなら、止めだけではない。
+	fall.slayer_damage = 20
+	assert_false(fall.is_finish_only())
+	assert_false(fall.is_low_share())
+
+
+func test_the_finish_only_rival_loads() -> void:
+	# 測るための版（tools/rivals/finish_only.gd）。--rival と同じ入口で読める。
+	var rival := CpuMatch.load_rival("res://tools/rivals/finish_only.gd")
+	assert_true(rival != null, "finish_only.gd を読めない")
+	assert_true(rival is CpuPlayer)
