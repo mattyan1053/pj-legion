@@ -425,11 +425,14 @@ func test_an_old_single_story_record_is_read_as_the_military_campaign() -> void:
 	_store().write(Story.STORE_NAME, 1, {"cleared": ["ridge_path", "ridge_ambush"], "squad": "5"})
 	story.load_saved()
 	story.choose_campaign(Story.MILITARY)
-	assert_eq(story.cleared_count(), 2, "物語が 1 つだったころの記録は、MILITARY の物語の記録")
+	assert_true(story.is_cleared(&"ridge_path") and story.is_cleared(&"ridge_ambush"), "物語が 1 つだったころの記録は、MILITARY の物語の記録")
+	assert_eq(story.cleared_count(), Story.MILITARY.EPISODES.find(_episode(&"ridge_ambush")) + 1, "前の演習もクリアしたものとして読む")
 	assert_eq(story.squad_id, "5")
 	story.clear(&"ridge_hold")
-	assert_eq(_store().read(Story.STORE_NAME), {"version": 2, "data": {"campaigns": {"military": {
-			"cleared": ["ridge_path", "ridge_ambush", "ridge_hold"], "squad": "5"}}}}, "書くときは、物語ごとの形")
+	var written: Dictionary = _store().read(Story.STORE_NAME)
+	assert_eq(written["version"], 2)
+	assert_eq(written["data"]["campaigns"]["military"]["squad"], "5", "書くときは、物語ごとの形")
+	assert_true((written["data"]["campaigns"]["military"]["cleared"] as Array).has("ridge_hold"))
 	_cleanup()
 
 
@@ -516,3 +519,18 @@ func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sorti
 	sortie.press_sortie()
 	assert_eq(context.story.squad_id, "9", "決まっている部隊で出撃しても、覚えている部隊は変えない")
 	root.free()
+
+
+func test_a_save_from_before_the_tutorial_keeps_its_unlocks_and_its_place() -> void:
+	# 演習（頭の 6 話）が入る前の記録: 本編の 1・2 話目だけをクリアしていた。
+	var story := Story.new()
+	story.load_data({"campaigns": {"military": {"cleared": ["ridge_path", "ridge_ambush"]}}})
+	for episode: Script in Story.MILITARY.EPISODES:
+		if StoryBattle.squad_of(episode) != null:
+			assert_true(story.is_cleared(episode.ID), "%s: 先の話をクリアしていれば、前の話もクリアしたもの" % episode.ID)
+	assert_true(story.unlocked_kinds().has(UnitKind.Id.MEDIC), "演習で増える衛生兵を失わない")
+	assert_true(story.unlocked().items.has(Equipment.Id.IRON_SHIELD), "演習で増える盾を失わない")
+	assert_true(story.is_available(_episode(&"ridge_hold")), "本編の続きを遊べる")
+	var fresh := Story.new()
+	fresh.load_data({"campaigns": {"military": {"cleared": ["drill_first_steps"]}}})
+	assert_eq(fresh.cleared_count(), 1, "クリアした話より後ろは、クリアにしない")
