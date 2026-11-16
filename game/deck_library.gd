@@ -42,6 +42,9 @@ class Saved:
 
 ## 取っておく先（null なら書かない。検査・自動の対戦・スクリーンショットでは null）。
 var store: RefCounted
+## 決まりの名前から決まり（DeckRules）を引くもの（名前 -> DeckRules か null）。既定は DeckRules.by_id（対戦の決まりだけ）。
+## ストーリーの決まりは進み具合で変わるので、アプリ（app_context.gd）が、ストーリーの決まりも引けるものを入れる。
+var rules_lookup: Callable = DeckRules.by_id
 var _items: Array[Saved] = []
 var _next_id := 1
 
@@ -73,7 +76,7 @@ func load_data(data: Dictionary) -> void:
 			if typeof(record) != TYPE_DICTIONARY:
 				push_warning("deck_library: 部隊の形でないものを読み飛ばした")
 				continue
-			var item := _from_record(record)
+			var item := _from_record(record, rules_lookup)
 			if item.id == "" or find(item.id) != null:
 				item.id = _take_id()
 			elif item.id.is_valid_int():
@@ -126,6 +129,16 @@ func for_rules(rules_id: StringName, army := UnitKind.Army.NONE) -> Array[Saved]
 		if item.deck.rules.id == rules_id and (army == UnitKind.Army.NONE or item.deck.army == army):
 			found.append(item)
 	return found
+
+
+## 部隊の決まりを、rules_lookup で引き直す（ストーリーの進み具合が変わって、雇える駒が増えたとき）。
+## 引けない決まり（読み込みで知らなかった決まり）の部隊は、そのまま。ファイルには書かない（決まりの名前は変わらない）。
+func refresh_rules() -> void:
+	for item in _items:
+		var rules: DeckRules = rules_lookup.call(item.deck.rules.id)
+		if rules != null:
+			item.deck.rules = rules
+	changed.emit()
 
 
 ## 新しい部隊を一覧の最後に足す（deck は写して持つ）。
@@ -218,7 +231,8 @@ static func deck_to_record(deck: Deck) -> Dictionary:
 
 
 ## ファイルの 1 件から、取っておいた部隊を作る。知らない駒・装備は外し、知らない決まり・軍は理由に書く。
-static func _from_record(record: Dictionary) -> Saved:
+## lookup は決まりの名前から決まりを引くもの（rules_lookup）。
+static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id) -> Saved:
 	var item := Saved.new()
 	var kept: Variant = record.get("load_issues")
 	if typeof(kept) == TYPE_ARRAY:
@@ -230,7 +244,7 @@ static func _from_record(record: Dictionary) -> Saved:
 	var name: Variant = record.get("name")
 	item.name = clean_name(name if typeof(name) == TYPE_STRING else "", "名前の無い部隊")
 	var rules_name: Variant = record.get("rules")
-	var rules: DeckRules = DeckRules.by_id(StringName(rules_name)) if typeof(rules_name) == TYPE_STRING else null
+	var rules: DeckRules = lookup.call(StringName(rules_name)) if typeof(rules_name) == TYPE_STRING else null
 	if rules == null:
 		item.load_issues.append("知らない決まり（%s）で組んである" % [rules_name if typeof(rules_name) == TYPE_STRING else "無し"])
 		rules = DeckRules.versus()

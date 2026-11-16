@@ -1,7 +1,7 @@
 # 場面の流れ
 
 コード: `game/scene_flow.gd`（場面の種類と並び）、`game/run.gd`（流れ）、`game/app.gd`（入口。場面を切り替える）、`game/app_context.gd`（場面どうしで共有するもの）。
-場面: `game/title_screen.gd`、`game/stage_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）、`game/episode_list_screen.gd`（ストーリーの話の一覧）、`game/talk_screen.gd`（ストーリーの会話。`docs/story.md`）。背景は `game/backdrop.gd`。
+場面: `game/title_screen.gd`、`game/stage_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）、`game/episode_list_screen.gd`（ストーリーの話の一覧）、`game/sortie_screen.gd`（出撃の準備）、`game/talk_screen.gd`（ストーリーの会話。`docs/story.md`）。背景は `game/backdrop.gd`。
 テスト: `tests/game/test_scene_flow.gd`、`tests/game/test_run.gd`、自動の対戦（`game/autoplay.gd`。人と同じ道で対戦に入り、最後にタイトルと対戦の設定を往復する）。
 
 ## いまの流れ
@@ -11,9 +11,9 @@
           ↑            │  ↑                          │                               │            ├─「対戦の設定へ」→ 対戦の設定
           ├「タイトルへ戻る」┘  └──「ステージ選択へ戻る」─────┘                               │            └─「タイトルへ」→ タイトル
           ├─「部隊の編成」→ 部隊の編成 ─「タイトルへ戻る」→ タイトル
-          ├─「ストーリー」→ 話の一覧 ─話→ 会話（前）→ 対戦 ─ 決着の画面 ─「次へ」（勝ったとき）→ 会話（後）→ 話の一覧
-          │            ↑ └「タイトルへ戻る」→ タイトル     ├─「同じ盤面でもう一度」→ 対戦（同じ場面のまま）
-          │            │                                  └─「タイトルへ」→ タイトル
+          ├─「ストーリー」→ 話の一覧 ─話→ 会話（前）→ 出撃の準備 → 対戦 ─ 決着の画面 ─「次へ」（勝ったとき）→ 会話（後）→ 話の一覧
+          │            ↑ └「タイトルへ戻る」→ タイトル                ├─「同じ盤面でもう一度」→ 対戦（同じ場面のまま）
+          │            │                                             └─「タイトルへ」→ タイトル
           └──────────── システムメニューの「タイトルへ戻る」（どの場面からでも）
 ```
 
@@ -45,9 +45,10 @@
 - ほかの終わり方は表で進む。流れの外の場面へ切り替えたら（タイトルへ戻る、対戦の設定へ、など）、流れは捨てる。
 - 流れの中の場面にも、`SCENES` の 1 行（スクリプトと、流れの外へ出る終わり方）は要る。
 - いま流れを作るのは、対戦の設定の「対戦を始める」（選んだものの写しを渡す、対戦の場面 1 つの流れ。`match_choice.gd` の `run`）と、
-  話の一覧で選んだ話（会話 → 対戦 → 会話。`story.gd` の `run_of`。`exit` は話の一覧）。
+  話の一覧で選んだ話（会話 → 出撃の準備 → 対戦 → 会話。`story.gd` の `run_of`。`exit` は話の一覧）。
   対戦の場面は、渡されたもので対戦を作る（`docs/battle-source.md`）。対戦の場面が `Run.NEXT` で終わるのは、決着の画面の「次へ」だけ。
 - 会話の場面（`talk`）は、流れの中でだけ使う（表の `next` は空。流れの外へは、システムメニューの「タイトルへ戻る」だけ）。
+  出撃の準備（`sortie`）も流れの中でだけ使う（「話の一覧へ戻る」で流れの外へ）。
 
 ### 場面の決まり
 

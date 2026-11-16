@@ -108,6 +108,8 @@ const SCENES := {
 	"look_twin_springs_close": "双子結晶の盤の真ん中に寄って見ている",
 	"story_list": "ストーリー: タイトルの「ストーリー」のあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
+	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
+	"decks_story": "部隊の編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
@@ -220,6 +222,7 @@ func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	_app.context.settings.reset_all()
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
+	_app.context.story_deck_id = ""
 	if _app.current_id() != &"battle" or _app.context.run != null:
 		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
 		_app.context.match_choice.cpu_opponent = false
@@ -1316,12 +1319,49 @@ func _scene_story_talk() -> bool:
 func _story_battle() -> bool:
 	if not await _start_story():
 		return false
-	_app.current_scene().press_skip()
+	if not await _scene_story_sortie_from_talk():
+		return false
+	_app.current_scene().press_sortie()
 	await _app.scene_changed
 	if _app.current_id() != &"battle":
 		return false
 	_scene = _app.current_scene()
 	return true
+
+
+## 前の会話を飛ばして、出撃の準備の場面に入る。
+func _scene_story_sortie_from_talk() -> bool:
+	_app.current_scene().press_skip()
+	await _app.scene_changed
+	return _app.current_id() == &"sortie"
+
+
+## 出撃の準備（ストーリー用の部隊を 1 つ取っておいて、それを選んだところ）。
+func _scene_story_sortie() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	var deck := Deck.new(Story.ARMY, _app.context.story.deck_rules())
+	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.SNIPER, UnitKind.Id.MEDIC]:
+		deck.add(kind)
+	var saved: RefCounted = _app.context.decks.add("狙撃の小隊", deck)
+	if not await _start_story():
+		return false
+	if not await _scene_story_sortie_from_talk():
+		return false
+	_app.current_scene().choose(saved.id)
+	return _app.current_scene().chosen_id() == saved.id
+
+
+## 部隊の編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。
+func _scene_decks_story() -> bool:
+	await _app.go(&"title")
+	_app.current_scene().press_decks()
+	await _app.scene_changed
+	var screen: Node = _app.current_scene()
+	screen.set_mode(Story.RULES_ID)
+	screen.press_new()
+	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.MEDIC]:
+		screen.hire(kind)
+	return screen.is_editing() and screen.editing_deck().rules.id == Story.RULES_ID
 
 
 func _scene_story_start() -> bool:

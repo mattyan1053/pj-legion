@@ -124,7 +124,7 @@ func roster_text() -> String:
 	var names: Array[String] = []
 	for kind in context.story.unlocked_kinds():
 		names.append(UnitKind.display_name(kind))
-	return "いま雇える駒: %s（話をクリアすると増える）" % "・".join(names)
+	return "いま雇える駒: %s（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）" % "・".join(names)
 
 
 ## 話 episode の状態の文。

@@ -47,6 +47,11 @@ const SCENES := {
 		"next": {},  # 流れの中でだけ使う（ストーリーの会話。Run.NEXT で次へ）
 		"music": &"menu",
 	},
+	&"sortie": {
+		"script": "res://game/sortie_screen.gd",
+		"next": {&"back": &"episodes"},  # 流れの中でだけ使う（ストーリーの出撃の準備。「出撃」は Run.NEXT で対戦へ）
+		"music": &"menu",
+	},
 	&"battle": {
 		"script": "res://game/battle_screen.gd",
 		"next": {&"setup": &"setup"},

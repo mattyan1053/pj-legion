@@ -1548,6 +1548,28 @@ func _visit_decks(app: Node) -> void:
 	_expect(screen.is_dialog_open(), "変えたところがあるのに、確かめずに一覧へ戻った")
 	screen.accept_dialog()
 	_expect(not screen.is_editing() and library.find(id).deck.army == UnitKind.Army.MILITARY, "取っておかずに戻ったのに、部隊が変わった")
+	# ストーリー用の部隊: 切り替えると、対戦用の部隊は並ばない。雇える駒は、いま解放した駒だけ。
+	_expect(screen.mode() == DeckRules.VERSUS and screen.listed_ids() == ([id] as Array[String]), "対戦用の一覧が違う")
+	screen.set_mode(Story.RULES_ID)
+	_expect(screen.listed_ids().is_empty(), "ストーリー用の一覧に、対戦用の部隊が混ざった")
+	screen.press_new()
+	_expect(screen.editing_deck().rules.id == Story.RULES_ID and screen.editing_deck().army == Story.ARMY, "ストーリー用の部隊を、ストーリーの決まりで組めない")
+	_expect(screen.editing_deck().available_kinds() == app.context.story.unlocked_kinds() or screen.editing_deck().available_kinds().size() == app.context.story.unlocked_kinds().size(), "ストーリー用の雇える駒が、いま解放した駒と違う")
+	screen.hire(UnitKind.Id.COMMANDO)
+	_expect(screen.editing_deck().entries.is_empty() or app.context.story.unlocked_kinds().has(UnitKind.Id.COMMANDO), "まだ解放していない駒を雇えた")
+	screen.hire(UnitKind.Id.SNIPER)
+	screen.hire(UnitKind.Id.SNIPER)
+	screen.hire(UnitKind.Id.MEDIC)
+	screen.press_save()
+	var story_id: String = screen.list_selected()
+	_expect(not screen.is_editing() and screen.listed_ids() == ([story_id] as Array[String]), "ストーリー用の部隊を取っておけない")
+	_expect(library.find(story_id).deck.rules.id == Story.RULES_ID, "ストーリー用の部隊が、ストーリーの決まりで取っておかれていない")
+	screen.set_mode(DeckRules.VERSUS)
+	_expect(screen.listed_ids() == ([id] as Array[String]), "対戦用の一覧に、ストーリー用の部隊が混ざった")
+	var versus_ids: Array[String] = []
+	for item: RefCounted in library.for_rules(DeckRules.VERSUS):
+		versus_ids.append(item.id)
+	_expect(not versus_ids.has(story_id), "対戦の設定で選べる部隊に、ストーリー用の部隊が混ざった")
 	screen.press_back()
 	await app.scene_changed
 	_expect(app.current_id() == &"title", "編成の一覧から、タイトルへ戻らない")
@@ -1598,12 +1620,30 @@ func _visit_story(app: Node) -> void:
 	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
 	talk.press_skip()
 	await app.scene_changed
-	_expect(app.current_id() == &"battle", "会話を飛ばしても、対戦へ進まない")
+	_expect(app.current_id() == &"sortie", "会話を飛ばしても、出撃の準備へ進まない")
+	var sortie: Node = app.current_scene()
+	var options: Array[String] = sortie.option_ids()
+	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃の準備で、既定の編成が選ばれていない")
+	var story_decks: Array = app.context.decks.for_rules(Story.RULES_ID)
+	_expect(options.size() == 1 + story_decks.size(), "出撃の準備に、ストーリー用の部隊が並ばない（か、対戦用が混ざった）")
+	for item: RefCounted in story_decks:
+		_expect(sortie.is_option_enabled(item.id) == item.playable(), "出せない部隊を選べる（か、出せる部隊を選べない）: %s" % item.name)
+		if item.playable():
+			sortie.choose(item.id)
+	var chosen: Deck = sortie.chosen_deck()
+	sortie.press_sortie()
+	await app.scene_changed
+	_expect(app.current_id() == &"battle", "出撃の準備の「出撃」で、対戦へ進まない")
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.stages().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
 	_expect(screen.battle.board.size == episode.MAP.map().make_board().size, "話の対戦が、話のマップで始まらない")
+	var placed := 0
+	for unit: Unit in screen.battle.units:
+		if unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING:
+			placed += 1
+	_expect(placed == chosen.entries.size() and source.human_deck.entries.size() == chosen.entries.size(), "出撃の準備で選んだ部隊で、対戦が始まらない")
 	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.ENEMY_ARMY, "話の敵を CPU が動かしていない")
 	# 小さな盤で、1 手で将を倒して勝つ。
 	var board := _small_board(Vector2i(5, 4))
