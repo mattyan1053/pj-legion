@@ -135,7 +135,7 @@ func roster_text() -> String:
 	var items: Array[String] = []
 	for item: Equipment.Id in now.items:
 		items.append(Equipment.display_name(item))
-	return "いま雇える駒: %s　　持ち物: %s　　コストの上限: %d\n（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）" % [
+	return "いま雇える駒: %s\n持ち物: %s　　コストの上限: %d\n（話をクリアすると増える。部隊は「部隊の編成」の「ストーリー用」で組める）" % [
 		"・".join(kinds), "・".join(items) if not items.is_empty() else "なし", now.budget]
 
 
@@ -147,8 +147,8 @@ static func rewards_text(episode: Script) -> String:
 	for item: Equipment.Id in StoryBattle.unlock_items_of(episode):
 		parts.append(Equipment.display_name(item))
 	if StoryBattle.budget_up_of(episode) > 0:
-		parts.append("コストの上限 +%d" % StoryBattle.budget_up_of(episode))
-	return "" if parts.is_empty() else "クリアで増える: " + "・".join(parts)
+		parts.append("コスト +%d" % StoryBattle.budget_up_of(episode))
+	return "" if parts.is_empty() else "クリアで増える:\n" + "・".join(parts)
 
 
 ## 話 episode の状態の文。
@@ -191,7 +191,7 @@ func _build_card(episode: Script) -> Button:
 	var available: bool = context.story.is_available(episode)
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
-	card.custom_minimum_size = Vector2(CARD_WIDTH, MAP_HEIGHT + 150.0)
+	card.custom_minimum_size = Vector2(CARD_WIDTH, MAP_HEIGHT + 170.0)
 	card.disabled = not available
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
@@ -233,8 +233,6 @@ func _build_card(episode: Script) -> Button:
 	column.add_child(status)
 	if rewards_text(episode) != "":
 		var unlocks := _label(rewards_text(episode), 15)
-		unlocks.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-		unlocks.custom_minimum_size = Vector2(CARD_WIDTH - 24.0, 0.0)
 		unlocks.add_theme_color_override("font_color", COLOR_TEXT_DIM if available else COLOR_LOCKED)
 		column.add_child(unlocks)
 	return card

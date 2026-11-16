@@ -37,9 +37,7 @@ const ENEMY := [
 	[UnitKind.Id.SORCERER, []],
 	[UnitKind.Id.SORCERER, []],
 	[UnitKind.Id.SPELLBLADE, []],
-	[UnitKind.Id.SPELLBLADE, []],
 	[UnitKind.Id.PRIEST, []],
-	[UnitKind.Id.SORCERER, []],
 ]
 
 ## 初期位置（将でない駒を置くマスの列）: [プレイヤー1, プレイヤー2]。空なら、いつもの「本陣の前」。
