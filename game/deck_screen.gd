@@ -570,6 +570,7 @@ func _open_editor(id: String, name: String, deck: Deck) -> void:
 	_selected = -1
 	_hover_kind = -1
 	_list_view.visible = false
+	_army_view.visible = false  # 軍を選んだあとの組む画面の後ろに、軍の札を透かして残さない
 	_edit_view.visible = true
 	_refresh_editor()
 
@@ -686,7 +687,7 @@ func _build_editor() -> Control:
 	var root := _frame()
 	var column := root.get_child(0).get_child(0) as VBoxContainer
 
-	# 見出し: 名前、軍、予算（いつも見える）
+	# 見出し: 名前、軍、コスト、駒の数（いつも見える）
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
@@ -715,11 +716,9 @@ func _build_editor() -> Control:
 	_count_label.custom_minimum_size = Vector2(110.0, 0.0)
 	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(_count_label)
-	_issues_label = _text(16, COLOR_BAD)
-	_issues_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_issues_label.clip_text = true
-	_issues_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	header.add_child(_issues_label)
+	var header_fill := Control.new()
+	header_fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(header_fill)
 
 	# 3 つの列: 雇える駒、部隊、選んだ駒（札と持ち物）
 	var body := HBoxContainer.new()
@@ -838,9 +837,14 @@ func _build_editor() -> Control:
 	back.custom_minimum_size = Vector2(200.0, 48.0)
 	back.pressed.connect(leave_editor)
 	footer.add_child(back)
-	var footer_fill := Control.new()
-	footer_fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	footer.add_child(footer_fill)
+	# 出撃不可の理由は、押せない「編成完了」の左に出す（見出しの行は、名前・軍・コスト・駒の数で埋まり、理由が切れるため）。
+	_issues_label = _text(16, COLOR_BAD)
+	_issues_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_issues_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_issues_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_issues_label.clip_text = true
+	_issues_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	footer.add_child(_issues_label)
 	_save_button = _button(Text.t("deck.edit.save"), 20)
 	_save_button.custom_minimum_size = Vector2(240.0, 48.0)
 	_save_button.set_meta(&"sound", &"ui_confirm")
@@ -848,6 +852,13 @@ func _build_editor() -> Control:
 	_save_button.pressed.connect(press_save)
 	footer.add_child(_save_button)
 	return root
+
+
+## 出撃不可の理由が、切れずに全部見えているか。検査用。
+func issues_shown_whole() -> bool:
+	var font := _issues_label.get_theme_font(&"font")
+	var width := font.get_string_size(_issues_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _issues_label.get_theme_font_size(&"font_size")).x
+	return _issues_label.is_visible_in_tree() and width <= _issues_label.size.x + 0.5
 
 
 func _refresh_editor() -> void:
