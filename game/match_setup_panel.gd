@@ -17,6 +17,8 @@ signal stage_pressed(choice: RefCounted)
 ## 「部隊を編成する」。いまの選択（写し）と、部隊を組むプレイヤーを渡す。持ち主が部隊の編成へ寄り道する。
 signal decks_pressed(choice: RefCounted, side: Unit.Side)
 
+const Palette := preload("res://game/ui_palette.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const DeckText := preload("res://game/deck_text.gd")
@@ -24,7 +26,6 @@ const DeckPreview := preload("res://game/deck_preview.gd")
 const Names := preload("res://game/names.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
-const COLOR_PANEL := Color(0.07, 0.09, 0.12, 0.92)
 ## パネルの中身の幅（px）。選んだものに依らず、この幅に固定する。
 const PANEL_WIDTH := 900.0
 ## 見出しの列の幅と、部隊を選ぶ欄の幅（px）。
@@ -73,16 +74,13 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var shade := ColorRect.new()
-	shade.color = Color(0.0, 0.0, 0.0, 0.55)
+	shade.color = Palette.SHADE
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(18.0)
+	var style := UiTheme.solid_box(18.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
@@ -92,6 +90,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 
 	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
 	var title := _label(30)
+	title.theme_type_variation = UiTheme.LABEL_HEADING
 	title.text = "対戦の設定"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
@@ -149,7 +148,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	# 対戦の途中で開いたときは、始めるといまの対戦が失われることを書く。
 	_warning = _label(15)
 	_warning.text = "ステージを選び直す・新しい対戦を始めると、いまの対戦は終わる"
-	_warning.add_theme_color_override("font_color", Color("ffb86b"))
+	_warning.add_theme_color_override("font_color", Palette.WARN)
 	_warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_warning)
 	var buttons := HBoxContainer.new()
@@ -163,6 +162,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	_start_button = _button("対戦を始める")
 	_start_button.custom_minimum_size = Vector2(220.0, 52.0)
 	_start_button.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
+	_start_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_start_button.pressed.connect(confirm)
 	buttons.add_child(_start_button)
 	_preview = DeckPreview.new()
@@ -440,7 +440,6 @@ func _caption_row(column: VBoxContainer, caption: String) -> HBoxContainer:
 func _label(font_size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	return label
 

@@ -17,6 +17,7 @@ func test_text_stands_out_from_every_ground() -> void:
 	for text: Color in [Palette.TEXT, Palette.ACCENT]:
 		assert_true(_contrast(text, Palette.CHOSEN) >= CONTRAST_TEXT, "選ばれているボタンの %s" % text.to_html(false))
 	assert_true(_contrast(Palette.TEXT, Palette.DANGER_FILL) >= CONTRAST_TEXT, "危険なボタンの文字")
+	assert_true(_contrast(Color.WHITE, Palette.GO_READY) >= CONTRAST_OFF, "ターン終了の文字")
 	for ground: Color in [Palette.PANEL, Palette.RAISED]:
 		for text: Color in [Palette.GOOD, Palette.WARN, Palette.DANGER, Palette.INFO,
 				Palette.team_text(Palette.TEAM_BLUE), Palette.team_text(Palette.TEAM_RED)]:
