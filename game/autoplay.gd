@@ -17,6 +17,8 @@ const OrbitCamera := preload("res://game/orbit_camera.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
+const BattleHud := preload("res://game/battle_hud.gd")
+
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
@@ -36,6 +38,7 @@ const SCENES := {
 	"inspection": "閲覧（行動の途中に相手の駒を見る）と、敵の全員の脅威範囲",
 	"setup": "対戦の設定画面（後手で CPU と対戦する）",
 	"system_menu": "システムメニューと設定の画面",
+	"minimap": "ミニマップ（押す・ドラッグで視点が移る、設定で隠す）",
 	"cpu": "CPU の番（止める、ログ、カメラが追う）",
 	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦の設定を行き来する",
 	"decks": "部隊の編成",
@@ -45,7 +48,7 @@ const SCENES := {
 const GROUPS := {
 	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
 		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal"],
-	"ui": ["inspection", "setup", "system_menu", "cpu", "title", "decks"],
+	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks"],
 }
 
 ## これだけターンが進んでも決着しなければ、失敗にする。
@@ -427,6 +430,13 @@ func _queue_result_scene() -> void:
 	var screen: Node = _scene.result_screen()
 	_expect(not screen.is_revealed() and screen.enabled_buttons().is_empty(), "出そろう前に、行き先を選べる")
 	_expect(_scene.result_title() != "", "リザルトの見出しが出ていない")
+	# 決着のあとは、後ろの盤の駒にマウスを乗せても、左下の枠（駒の情報）を出さない（リザルトのボタンに重なる）。
+	var survivor: Unit = null
+	for unit: Unit in _scene.battle.units:
+		survivor = unit
+	_scene.hover(survivor.cell)
+	_expect(_scene.info_title() == "", "決着のあとに、駒の情報を出している: %s" % _scene.info_title())
+	_scene.hover(NO_CELL)
 	screen.skip()
 	var waited := [0]
 	var wait_revealed := func(again: Callable) -> void:
@@ -1049,6 +1059,61 @@ func _queue_system_menu_scene() -> void:
 		_expect(Engine.time_scale == base, "CPU の番の速さが残った"))
 
 
+## ミニマップ: 画面に収まって帯と重ならない、押すとその場所へ視点が移る（ドラッグは付いてきて、盤の外へは出ない）、
+## 設定で隠すと消え、戻すと出る。
+func _queue_minimap_scene() -> void:
+	var board := _small_board(Vector2i(12, 10))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 9))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(11, 0))
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, BoardGenerator.Stage.PLAIN, 1))
+	_scripted.append(func() -> void:
+		var rect: Rect2 = _scene.minimap_rect()
+		var screen: Rect2 = _scene.get_viewport().get_visible_rect()
+		_expect(rect.has_area() and screen.encloses(rect), "ミニマップが出ていないか、画面からはみ出した: %s" % rect)
+		_expect(rect.position.y >= BattleHud.TOP_BAR_HEIGHT and rect.end.y <= screen.size.y - BattleHud.BOTTOM_BAR_HEIGHT, "ミニマップが上か下の帯に重なった: %s" % rect)
+		_expect(_scene.minimap_view().size() >= 3, "ミニマップに、見ている範囲が描かれていない")
+		# 真ん中を押すと、盤の真ん中を見る。
+		_minimap_button(rect.get_center(), true)
+		_minimap_button(rect.get_center(), false)
+		var center: Vector3 = _scene.camera_center()
+		_expect(Vector2(center.x, center.z).distance_to(Vector2(6.0, 5.0)) < 0.6, "ミニマップの真ん中を押しても、盤の真ん中へ移らない: %s" % center)
+		# 押したまま右下の外までドラッグすると、付いてきて、盤の端で止まる。離したあとの動きでは動かない。
+		_minimap_button(rect.get_center(), true)
+		_minimap_motion(rect.end + Vector2(40, 40), true)
+		_minimap_button(rect.end + Vector2(40, 40), false)
+		center = _scene.camera_center()
+		_expect(is_equal_approx(center.x, 12.0) and is_equal_approx(center.z, 10.0), "ミニマップのドラッグが盤の端で止まらない: %s" % center)
+		_minimap_motion(rect.position + Vector2(10, 10), false)
+		_expect(_scene.camera_center().is_equal_approx(center), "ミニマップで、押していないのに視点が動いた")
+		# 設定で隠すと消え、押せない。戻すと出る。
+		_scene.settings.set_value(&"show_minimap", false))
+	_scripted.append(func() -> void:
+		_expect(not _scene.minimap_rect().has_area(), "設定で隠しても、ミニマップが消えない")
+		_scene.settings.reset_all())
+	_scripted.append(func() -> void:
+		_expect(_scene.minimap_rect().has_area(), "設定を戻しても、ミニマップが出ない"))
+
+
+## ミニマップに、画面の位置 at でのマウスのボタンを入れる（ミニマップが受けるのと同じ道）。
+func _minimap_button(at: Vector2, pressed: bool) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = at
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	_scene.feed_minimap_input(event)
+
+
+func _minimap_motion(at: Vector2, held: bool) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = at
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
+	_scene.feed_minimap_input(event)
+
+
 ## 相手を CPU にして、ターンを終える。CPU が自分の番を進め（回復役が回復し、戦う駒が攻撃する）、こちらの番に戻る。
 func _queue_cpu_scene() -> void:
 	var board := _small_board(Vector2i(8, 5))
@@ -1383,6 +1448,12 @@ func _visit_decks(app: Node) -> void:
 	screen.move_entry(1, -1)
 	var deck: Deck = screen.editing_deck()
 	_expect(deck.entries[0].kind == UnitKind.Id.SHIELD_TROOPER and deck.entries[0].equipment.size() == 1 and screen.selected_entry() == 0, "並べ替えで、装備か選択がずれた")
+	# 装備の文が行に収まらなくても、マウスを乗せれば全部読める。
+	screen.equip(Equipment.Id.SPEED_BOOTS)
+	var row_texts: Array[String] = screen.troop_row_texts(0)
+	_expect(row_texts[1] == row_texts[0] and row_texts[1].contains("スピードブーツ") and row_texts[1].contains("アイアンシールド"),
+		"部隊の行の装備の文を、マウスを乗せても読めない: %s" % [row_texts])
+	screen.unequip(Equipment.Id.SPEED_BOOTS)
 	for i in 4:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える

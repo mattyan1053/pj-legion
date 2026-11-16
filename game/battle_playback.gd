@@ -728,21 +728,70 @@ func _flash(at: Vector3, color: Color, size: float) -> void:
 	tween.tween_callback(ball.queue_free)
 
 
-## 盤面の上に、浮かんで消える文字を出す（ダメージの数など）。
+## 浮かぶ文字の出始めの高さ（足元から）と、消えるまでに昇る高さ・時間。
+const POP_HEIGHT := 1.5
+const POP_RISE := 0.9
+const POP_TIME := 0.8
+const POP_FONT_SIZE := 64
+const POP_PIXEL_SIZE := 0.008
+## 浮かぶ文字どうしの、画面の上での行の間隔（文字の高さに対する割合。縁取りのぶんを足す）。
+const POP_LINE_SPACING := 1.3
+## いま浮かんでいる文字。
+var _pops: Array[Label3D] = []
+
+
+## 盤面の上に、浮かんで消える文字を出す（ダメージの数など）。まだ浮かんでいる文字と画面の上で重なるなら、その下から出す
+## （スキルの名前と効果の知らせのように、近い駒に続けて出しても重ならない）。
 func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	var label := Label3D.new()
 	label.text = text
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
-	label.pixel_size = 0.008
-	label.font_size = 64
+	label.pixel_size = POP_PIXEL_SIZE
+	label.font_size = POP_FONT_SIZE
 	label.outline_size = 16
 	label.modulate = color
 	label.render_priority = 5
 	label.outline_render_priority = 4
-	label.position = at + Vector3(0.0, 1.5, 0.0)
+	var still: Array[Label3D] = []
+	var live: Array = []
+	for other: Variant in _pops:
+		if is_instance_valid(other):  # 消えた文字は、配列に残っていても参照が切れている
+			still.append(other)
+			live.append([(other as Label3D).position, (other as Label3D).text.length()])
+	_pops = still
+	var camera := _rig.camera if _rig != null else null
+	label.position = Vector3(at.x, at.y + POP_HEIGHT, at.z)
+	if camera != null and camera.is_inside_tree():
+		label.position = pop_start_position(label.position, text.length(), live, camera.unproject_position, camera.global_basis.y)
 	_stage.add_child(label)
+	_pops.append(label)
 	var tween := create_tween()
-	tween.tween_property(label, "position:y", 2.4, 0.8)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.8).set_ease(Tween.EASE_IN)
+	tween.tween_property(label, "position:y", label.position.y + POP_RISE, POP_TIME)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, POP_TIME).set_ease(Tween.EASE_IN)
 	tween.tween_callback(label.queue_free)
+
+
+## start に出したい length 文字の浮かぶ文字の、重ならない位置（start か、そこから画面の下へずらしたところ）。
+## live は、いま浮かんでいる文字の [位置, 文字数] の列。project は盤の上の点を画面の点にする（カメラの unproject_position）。
+## up はカメラの上の向き（浮かぶ文字は、いつもカメラへ向くので、文字の縦はこの向き。真上から見下ろしても、画面の縦と合う）。
+## 画面の上で横に重なり、縦にも行の間隔より近い文字があれば、その 1 行下まで up の逆へずらす（下げるだけなので、必ず止まる）。
+## 文字の幅は、1 文字を文字の高さと同じとみなす（全角の目安）。
+static func pop_start_position(start: Vector3, length: int, live: Array, project: Callable, up: Vector3) -> Vector3:
+	var glyph := POP_FONT_SIZE * POP_PIXEL_SIZE
+	var at := start
+	for attempt in live.size() + 1:
+		var screen: Vector2 = project.call(at)
+		var line: float = ((project.call(at + up * glyph) as Vector2) - screen).length()
+		if line <= 0.0:
+			return at
+		var lowest := screen.y
+		for entry: Array in live:
+			var other: Vector2 = project.call(entry[0])
+			var half_widths := (length + int(entry[1])) * line / 2.0
+			if absf(other.x - screen.x) < half_widths and absf(other.y - screen.y) < line * POP_LINE_SPACING:
+				lowest = maxf(lowest, other.y + line * POP_LINE_SPACING)  # 画面の y は下へ増える
+		if lowest <= screen.y:
+			return at
+		at -= up * ((lowest - screen.y) / line * glyph)
+	return at

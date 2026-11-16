@@ -110,13 +110,18 @@ static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
 	return lines
 
 
-## 編成の 1 行の説明（対戦の設定に出す。「将、シールドトルーパー+アイアンシールド、…」）。
+## 編成の 1 行の説明（対戦の設定に出す。「将、シールドトルーパー+アイアンシールド×2、…」。同じ装備は数をまとめる）。
 static func deck_summary(deck: Deck) -> String:
 	var parts: Array[String] = ["将"]
 	for entry in deck.entries:
 		var text := UnitKind.display_name(entry.kind)
+		var counted: Array[Equipment.Id] = []
 		for item in entry.equipment:
-			text += "+" + Equipment.display_name(item)
+			if counted.has(item):
+				continue
+			counted.append(item)
+			var count := entry.equipment.count(item)
+			text += "+" + Equipment.display_name(item) + ("×%d" % count if count > 1 else "")
 		parts.append(text)
 	return "、".join(parts)
 

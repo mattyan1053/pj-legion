@@ -182,6 +182,7 @@ func _ready() -> void:
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
 	_hud.result_shown.connect(_on_result_shown)
+	_hud.minimap().pointed.connect(_on_minimap_pointed)
 	_hud.result_screen().overlays = context.overlays
 	_hud.result_screen().play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_setup_panel = MatchSetupPanel.new()
@@ -235,6 +236,9 @@ func _process(delta: float) -> void:
 	if battle.board.in_bounds(_hover_cell):
 		focus_cells.append(_hover_cell)
 	_board_view.update_occlusion(_rig.camera, _rig.global_position, focus_cells, delta)
+	_hud.place_minimap()
+	if _hud.minimap().visible:
+		_hud.minimap().refresh(battle, _views, _rig.camera, get_viewport().get_visible_rect().size)
 	_layout.place_menu(selected_unit(), _painted)
 	_layout.place_forecast(battle, selected_unit())
 	frame_passed.emit()
@@ -353,6 +357,7 @@ func start_with(new_battle: Battle, battle_stage: BoardGenerator.Stage, battle_s
 	_board_view = BoardView.new()
 	add_child(_board_view)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, stage)
+	_hud.minimap().show_board(battle.board, stage)
 	_playback.set_board_view(_board_view)
 	StageLook.apply(self, _board_view.look)
 	for unit in battle.units:
@@ -496,6 +501,40 @@ func _on_log_entry_chosen(entry: BattleLog.Entry) -> void:
 		_rig.jump_to(BoardView.cell_center(focus))
 
 
+# ---- ミニマップ ----
+
+
+## ミニマップの上で押した・ドラッグした（point は盤の座標 x / z）: そこを画面の中央にする（すぐに移る。駒を追うのもやめる）。
+## 重なる画面（システムメニュー・ログ・対戦の設定画面）を開いている間は動かさない（どれもミニマップを覆う）。
+func _on_minimap_pointed(point: Vector2) -> void:
+	if context.overlays.is_open():
+		return
+	point_minimap(point)
+
+
+## ミニマップで盤の座標 point（x / z）を指したのと同じにする（検査とスクリーンショットの道具用）。
+func point_minimap(point: Vector2) -> void:
+	_rig.follow(null)
+	_rig.jump_to(Vector3(point.x, 0.0, point.y))
+
+
+## ミニマップに、画面の座標のマウスの入力を渡す（ミニマップが受けるのと同じ道。検査用）。
+func feed_minimap_input(event: InputEventMouse) -> void:
+	var local := event.duplicate() as InputEventMouse
+	local.position = event.position - _hud.minimap_rect().position
+	_hud.minimap().take_input(local)
+
+
+## ミニマップが画面に占める四角（出していなければ大きさ 0）。検査とスクリーンショットの道具用。
+func minimap_rect() -> Rect2:
+	return _hud.minimap_rect()
+
+
+## ミニマップに描いている、カメラが見ている範囲（ミニマップの中の位置）。検査用。
+func minimap_view() -> PackedVector2Array:
+	return _hud.minimap().view_on_map()
+
+
 ## システムメニュー（検査とスクリーンショットの道具用）。
 func system_menu() -> SystemMenu:
 	return _system_menu
@@ -545,6 +584,8 @@ func _on_setting_changed(_key: StringName) -> void:
 func _apply_settings() -> void:
 	_rig_settings()
 	_update_time_scale()
+	if _hud != null:
+		_hud.set_minimap_shown(settings.value(Settings.SHOW_MINIMAP))
 
 
 func _rig_settings() -> void:
@@ -1340,6 +1381,12 @@ func _update_hover() -> void:
 ## マウスの下の駒（いなければ見ている駒、選んでいる駒。それも無ければ、クリックしたマス）の情報を左下の枠に、
 ## マウスの下のマスの短い説明を下の帯に出す。行動の対象にマウスを乗せていれば、戦闘予測のパネルも出す（_update_forecast）。
 func _update_info() -> void:
+	if battle.is_over():
+		# 決着のあとは、リザルトの画面が前に出る。後ろの盤の駒やマスの情報は出さない（左下の枠が、リザルトのボタンに重なる）。
+		_hud.show_cell("")
+		_hud.hide_forecast()
+		_hud.show_unit(null, "", "")
+		return
 	var hovered: Unit = null
 	if _hover_cell != NO_CELL:
 		hovered = battle.unit_at(_hover_cell)
