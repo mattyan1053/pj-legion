@@ -77,6 +77,8 @@ class Outcome:
 	var boss_damage: Dictionary[int, Array] = {}
 	## 中ボスの駒の番号 -> 最後に受けたダメージのあとの HP（止めの一撃で実際に減った HP を出すため）。
 	var boss_hp: Dictionary[int, int] = {}
+	## 中ボスの駒の番号 -> プレイヤーが初めて削った時点の [ターン, プレイヤーごとの戦力]（狩りが始まった時点。army_hp）。
+	var boss_first_hit: Dictionary[int, Array] = {}
 
 
 ## 倒れた中ボス 1 体の倒れ方（互角のまま取り合っているかを見る。docs/cpu-ai.md の「集計の道具」）。
@@ -94,6 +96,21 @@ class BossFall:
 	## その中ボスから実際に減らした HP（駒の攻撃とスキル。止めの余りは数えない）。倒した側と、その相手。
 	var slayer_damage := 0
 	var rival_damage := 0
+	## 倒れた時点の戦力（将を除くプレイヤーの駒の HP の合計。CpuMatch.army_hp）。倒した側と、その相手。
+	var slayer_hp := 0
+	var rival_hp := 0
+	## プレイヤーが初めてこの中ボスを削ったターンと、その時点の戦力（狩りが始まる前の形。倒した側と、その相手）。
+	var first_hit_turn := 0
+	var first_slayer_hp := 0
+	var first_rival_hp := 0
+
+	## 倒した側の、倒れた時点の戦力の分け前（0〜1。0.5 で互角）。
+	func hp_share() -> float:
+		return float(slayer_hp) / maxi(1, slayer_hp + rival_hp)
+
+	## 同じく、狩りが始まった時点（初めて削られた時点）の分け前。
+	func first_hp_share() -> float:
+		return float(first_slayer_hp) / maxi(1, first_slayer_hp + first_rival_hp)
 
 	## 決着が見える前か（戦える駒の数の差が 1 以内）。
 	func is_even() -> bool:
@@ -110,6 +127,8 @@ class BossFall:
 
 ## 中ボスが倒れたとき、「そばにいた」と数える距離（マンハッタン）。中ボスの届く距離（縄張り 4 + 射程 2）と同じ。
 const CONTEST_RADIUS := 6
+## 戦力の分け前が 0.5 からこれ以内なら「戦力が互角」と数える（BossFall.hp_share）。
+const EVEN_SHARE := 0.05
 
 
 ## 倒された駒 1 体の倒され方（スナイパーが「何もできずに落ちる」かを見る。docs/cpu-ai.md の「集計の道具」）。
@@ -131,7 +150,9 @@ class Fall:
 ## battle を、両方のプレイヤーを CPU にして、決着するか max_turns を超えるまで進める。battle は書き換わる。
 ## cpu がプレイヤー1 を、second がプレイヤー2 を動かす（渡さなければ、どちらも同じ CpuPlayer）。
 ## 別の版の CPU と対戦させるときに、片方へ渡す。next_action(対戦) を持つものなら何でもよい。
-static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second: RefCounted = null) -> Outcome:
+## no_reward なら、聖遺物の効果とゲージを受け取った直後に取り消す（倒した側の勝率のうち、聖遺物のぶんを切り分けるための比べ。
+## CPU は、聖遺物がもらえるつもりのまま狩る）。
+static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second: RefCounted = null, no_reward := false) -> Outcome:
 	var outcome := Outcome.new()
 	if cpu == null:
 		cpu = CpuPlayer.new()
@@ -155,6 +176,8 @@ static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second:
 		for event in result.events:
 			stats.feed(event)
 			_count(outcome, event, battle, mover)
+			if no_reward and event is RelicGainedEvent:
+				_take_back(battle, event as RelicGainedEvent)
 	outcome.turns = battle.turn
 	outcome.finished = battle.is_over()
 	outcome.winner = battle.winner
@@ -221,6 +244,8 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 					var before: int = outcome.boss_hp.get(hit.unit_id, UnitKind.max_hp(UnitKind.Id.ELITE_MINION))
 					var lost := hit.amount if hit.hp > 0 else mini(hit.amount, before)
 					outcome.boss_hp[hit.unit_id] = hit.hp
+					if source_side != Unit.Side.NEUTRAL and not outcome.boss_first_hit.has(hit.unit_id):
+						outcome.boss_first_hit[hit.unit_id] = [battle.turn, army_hp(battle, 0), army_hp(battle, 1)]
 					if source_side != Unit.Side.NEUTRAL:
 						outcome.boss_damage.get_or_add(hit.unit_id, [0, 0])[source_side] += lost
 	if event is SkillDamagedEvent:
@@ -265,6 +290,12 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			var dealt: Array = outcome.boss_damage.get(slain.unit_id, [0, 0])
 			fall.slayer_damage = dealt[slain.slayer_side]
 			fall.rival_damage = dealt[1 - slain.slayer_side]
+			fall.slayer_hp = army_hp(battle, slain.slayer_side)
+			fall.rival_hp = army_hp(battle, 1 - slain.slayer_side)
+			var first: Array = outcome.boss_first_hit.get(slain.unit_id, [battle.turn, army_hp(battle, 0), army_hp(battle, 1)])
+			fall.first_hit_turn = first[0]
+			fall.first_slayer_hp = first[1 + slain.slayer_side]
+			fall.first_rival_hp = first[2 - slain.slayer_side]
 			for unit in battle.units:
 				var role := UnitKind.role(unit.kind)
 				if unit.side == Unit.Side.NEUTRAL or role == UnitKind.Role.NONE or role == UnitKind.Role.HEALER:
@@ -294,6 +325,29 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
 		if used.skill == Skill.Id.SHADOW_STEP:
 			outcome.stepped_at[used.unit_id] = [battle.turn, mover]
+
+
+## 受け取った聖遺物を、効果ごと取り消す（play の no_reward）。HP は増えたぶんだけ戻す（1 は残す）。
+static func _take_back(battle: Battle, gained: RelicGainedEvent) -> void:
+	battle.relics[gained.side].erase(gained.relic)
+	for unit_id in gained.unit_ids:
+		var unit := battle.unit_by_id(unit_id)
+		if unit == null:
+			continue
+		var before := unit.max_hp()
+		for which: Unit.Stat in gained.bonus:
+			unit.relic_bonus[which] = unit.relic_bonus.get(which, 0) - gained.bonus[which]
+		unit.hp = clampi(unit.hp - (before - unit.max_hp()), 1, unit.max_hp())
+	battle.ult_gauge[gained.side] = maxi(0, battle.ult_gauge[gained.side] - gained.ult_gain)
+
+
+## 戦力の目安: 将を除く、その陣営の駒の HP の合計。
+static func army_hp(battle: Battle, side: int) -> int:
+	var total := 0
+	for unit in battle.units:
+		if unit.side == side and unit.kind != UnitKind.Id.KING and unit.hp > 0:
+			total += unit.hp
+	return total
 
 
 ## gains の列（撃破の種類）の、撃破の経験値。0（倒れていない）は 0。

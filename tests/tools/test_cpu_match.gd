@@ -71,3 +71,16 @@ func test_skill_kill_of_a_mid_boss_and_a_unit_counts_the_bigger_reward() -> void
 		for event in result.events:
 			CpuMatch._count(outcome, event, battle, Unit.Side.PLAYER1)
 		assert_eq(outcome.gains[sorcerer.id], [0, 0, 0, 0, 1], "中ボスが先: %s" % boss_first)
+
+
+func test_taking_back_a_relic_restores_the_side() -> void:
+	# 報酬なしの比べ（play の no_reward）: 受け取った聖遺物を、効果とゲージごと取り消す。
+	for relic: Relics.Id in [Relics.Id.WISDOM, Relics.Id.COURAGE]:
+		var battle := Maps.battle(["........", "........"])
+		var unit := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(1, 1))
+		unit.hp -= 3
+		var before := [unit.hp, unit.max_hp(), unit.power(), Ults.gauge(battle, Unit.Side.PLAYER1)]
+		var events := Relics.grant(battle, Unit.Side.PLAYER1, relic, Relics.boss_of(relic))
+		CpuMatch._take_back(battle, events[0] as RelicGainedEvent)
+		assert_eq([unit.hp, unit.max_hp(), unit.power(), Ults.gauge(battle, Unit.Side.PLAYER1)], before, "聖遺物 %d" % relic)
+		assert_false(Relics.has(battle, Unit.Side.PLAYER1, relic))
