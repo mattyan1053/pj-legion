@@ -18,6 +18,8 @@ const TITLE := "尾根の籠城"
 ## 盤の見た目（1 話と同じ）。
 const LOOK := StageLook.STONE_WALLS
 const MAP := RidgePath
+## 対戦の曲（sound_catalog.gd の MUSIC。無ければ盤の見た目の曲）。押し寄せる敵を守り切る話なので、緊迫した曲。
+const MUSIC := &"battle_tense"
 
 ## クリアで新しく雇えるようになる駒の種類（docs/story.md の「駒の解放」）。
 const UNLOCKS: Array[UnitKind.Id] = []

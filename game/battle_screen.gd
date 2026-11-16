@@ -413,7 +413,9 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_layout.reset_menu()
 	_hud.hide_result()
 	_hud.result_screen().set_destinations(_new_boards(), source.can_open_setup(), source.can_choose_squad())
-	context.resume_scene_music()  # 決着の曲のあとの「やり直す」でも、対戦の曲へ戻る
+	# 対戦の曲（盤の見た目か、話が決めた曲。battle_source.gd の music）。決着の曲のあとの「やり直す」でも、対戦の曲へ戻る。
+	# 新しい盤面で見た目が替われば、曲も替わる。同じ曲なら鳴らし直さない。
+	context.play_scene_music(source.music())
 	_hud.show_banner("ターン %d　%s の番" % [battle.turn, _side_name(battle.phase)], TEAM_COLORS[battle.phase])
 	_cues = source.talk_cues()
 	_talk.clear()

@@ -247,9 +247,10 @@ static func run_of(episode: Script, human_deck: Deck, unlocking: Array[UnitKind.
 
 
 ## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "name": 話し手, "text": 文}, …],
-## "board": 背景の盤（話のマップ）, "look": 盤の見た目}。
+## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲（話のデータの TALK_MUSIC。空なら場面の表の曲）}。
 static func talk_of(episode: Script, rows: Array) -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row: Array in rows:
 		lines.append({"side": row[0], "name": episode.SPEAKERS[row[0]], "text": row[1]})
-	return {"title": episode.TITLE, "lines": lines, "board": episode.MAP.map().make_board(), "look": episode.LOOK}
+	return {"title": episode.TITLE, "lines": lines, "board": episode.MAP.map().make_board(), "look": episode.LOOK,
+			"music": StoryBattle.talk_music_of(episode)}
