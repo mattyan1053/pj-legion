@@ -88,7 +88,7 @@ func test_several_cues_at_once_keep_their_order() -> void:
 
 func test_every_episode_cue_is_well_formed() -> void:
 	var with_cues := 0
-	for episode in Story.EPISODES:
+	for episode in Story.all_episodes():
 		var cues := StoryBattle.cues_of(episode)
 		if cues.is_empty():
 			continue
@@ -102,11 +102,11 @@ func test_every_episode_cue_is_well_formed() -> void:
 			assert_true(String(cue[3]).length() <= 40, "%s: 札に収まる短さ（1〜2 行）" % episode.ID)
 			if cue[0] == BattleCues.TURN and StoryBattle.hold_turns_of(episode) > 0:
 				assert_true(cue[1] <= StoryBattle.hold_turns_of(episode), "守り切るターンの中")
-	assert_true(with_cues >= Story.EPISODES.size(), "どの話にも、使い方の例を 1 つ以上")
+	assert_true(with_cues >= Story.MILITARY.EPISODES.size(), "どの話にも、使い方の例を 1 つ以上")
 
 
 func test_story_battles_hand_their_cues_to_the_battle_screen() -> void:
-	var episode: Script = Story.EPISODES[0]
+	var episode: Script = Story.MILITARY.EPISODES[0]
 	var cues: BattleCues = Story.first_battle(episode).talk_cues()
 	assert_false(cues.is_empty())
 	assert_true(MatchChoiceProbe.new().talk_cues().is_empty(), "対戦モードは台詞なし")

@@ -56,7 +56,8 @@ func _init() -> void:
 
 ## 決まりの名前から決まりを引く: ストーリーの決まりは、いまの進み具合のもの。ほかは DeckRules.by_id。
 func rules_of(rules_id: StringName) -> DeckRules:
-	return story.deck_rules() if rules_id == Story.RULES_ID else DeckRules.by_id(rules_id)
+	var rules := story.rules_by_id(rules_id)
+	return rules if rules != null else DeckRules.by_id(rules_id)
 
 
 func open_menu() -> void:

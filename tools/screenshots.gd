@@ -128,7 +128,8 @@ const SCENES := {
 	"look_boulder_crag": "大岩の峠（草原の見た目）の真ん中の大岩を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag": "双子結晶の真ん中の大きな岩山を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
-	"story_list": "ストーリー: タイトルの「ストーリー」のあとの話の一覧（最初の話だけ選べる）",
+	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語。FANTASY は準備中）",
+	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）",
 	"story_sortie": "ストーリー: 出撃の準備（マップと初期位置、勝ち方、敵の部隊、出撃する部隊を選ぶ）",
 	"story_mixed_decks": "ストーリー: ほかの軍の駒（パラディン）を、部隊の編成の「ストーリー用」で雇うところ",
@@ -1566,24 +1567,33 @@ const BattleCues := preload("res://game/battle_cues.gd")
 ## 前の話は、クリアしたことにする。
 func _start_story(number := 0) -> bool:
 	for i in number:
-		_app.context.story.clear(Story.EPISODES[i].ID)
+		_app.context.story.clear(Story.MILITARY.EPISODES[i].ID)
 	if not await _scene_story_list():
 		return false
-	_app.current_scene().choose(Story.EPISODES[number])
+	_app.current_scene().choose(Story.MILITARY.EPISODES[number])
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.TALK
 
 
-func _scene_story_list() -> bool:
+## タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語だけ選べる。ほかは準備中）。
+func _scene_story_campaigns() -> bool:
 	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_story()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.CAMPAIGNS
+
+
+func _scene_story_list() -> bool:
+	if not await _scene_story_campaigns():
+		return false
+	_app.current_scene().choose(Story.MILITARY)
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.EPISODES
 
 
 ## 最初の話をクリアしたあとの話の一覧（2 話目が選べる。いま雇える駒が増えた）。
 func _scene_story_list_cleared() -> bool:
-	_app.context.story.clear(Story.EPISODES[0].ID)
+	_app.context.story.clear(Story.MILITARY.EPISODES[0].ID)
 	return await _scene_story_list()
 
 
@@ -1639,7 +1649,7 @@ func _scene_story_sortie() -> bool:
 
 ## 全部の話をクリアして（パラディンを解放して）、部隊の編成の「ストーリー用」でパラディンを雇う。
 func _scene_story_mixed_decks() -> bool:
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		_app.context.story.clear(episode.ID)
 	await _app.go(SceneFlow.DECKS)
 	var screen: Node = _app.current_scene()
@@ -1655,7 +1665,7 @@ func _scene_story_mixed_decks() -> bool:
 ## 全部の話をクリアして、既定の編成（パラディン入り）で 1 話の対戦を、until まで CPU どうしで進めて画面に出す。
 func _story_mixed(until: Callable) -> bool:
 	_app.context.decks.load_data({"decks": []})
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		_app.context.story.clear(episode.ID)
 	if not await _story_battle():
 		return false
@@ -1699,8 +1709,8 @@ func _scene_story_sortie_default() -> bool:
 
 ## 守り切る話（HOLD_TURNS を持つ最初の話）の番号（0 から）。無ければ -1。
 func _hold_episode() -> int:
-	for i in Story.EPISODES.size():
-		if StoryBattle.hold_turns_of(Story.EPISODES[i]) > 0:
+	for i in Story.MILITARY.EPISODES.size():
+		if StoryBattle.hold_turns_of(Story.MILITARY.EPISODES[i]) > 0:
 			return i
 	return -1
 
@@ -1760,8 +1770,8 @@ func _scene_story_hold_result() -> bool:
 
 ## 全滅させる話（WINS に全滅を持つ最初の話）の番号（0 から）。無ければ -1。
 func _rout_episode() -> int:
-	for i in Story.EPISODES.size():
-		if StoryBattle.wins_of(Story.EPISODES[i]).has(GameWonEvent.Reason.ROUTED):
+	for i in Story.MILITARY.EPISODES.size():
+		if StoryBattle.wins_of(Story.MILITARY.EPISODES[i]).has(GameWonEvent.Reason.ROUTED):
 			return i
 	return -1
 
@@ -1789,8 +1799,8 @@ func _scene_story_rout_wide() -> bool:
 
 ## 対戦の途中の会話の札（ターン 1 の台詞を持つ最初の話の、対戦の始め）。
 func _scene_story_battle_talk() -> bool:
-	for i in Story.EPISODES.size():
-		if StoryBattle.cues_of(Story.EPISODES[i]).any(func(cue: Array) -> bool: return cue[0] == BattleCues.TURN and cue[1] == 1):
+	for i in Story.MILITARY.EPISODES.size():
+		if StoryBattle.cues_of(Story.MILITARY.EPISODES[i]).any(func(cue: Array) -> bool: return cue[0] == BattleCues.TURN and cue[1] == 1):
 			if not await _story_battle(i):
 				return false
 			return _scene.talk_line() != null
@@ -1898,7 +1908,7 @@ func _scene_story_unlock() -> bool:
 
 
 func _scene_story_cleared() -> bool:
-	for episode in Story.EPISODES:
+	for episode in Story.MILITARY.EPISODES:
 		_app.context.story.clear(episode.ID)  # 「クリア済み」の印は、全部の話をクリアしたとき
 	await _app.go(SceneFlow.TITLE)
 	return _app.current_scene().story_label().contains("クリア済み")
