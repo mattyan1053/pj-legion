@@ -114,3 +114,26 @@ func test_same_setup_makes_the_same_battle_every_time() -> void:
 	for y in a.board.size.y:
 		for x in a.board.size.x:
 			assert_eq(a.board.terrain_at(Vector2i(x, y)), b.board.terrain_at(Vector2i(x, y)))
+
+
+func test_on_scenario_makes_no_cpu_deck_for_a_fixed_enemy() -> void:
+	var defined := Scenario.versus(BoardGenerator.Stage.PLAIN)
+	var fixed := Deck.new(UnitKind.Army.FANTASY)
+	fixed.entries.append(DeckEntry.new(UnitKind.Id.PALADIN))
+	defined.fix_deck(Unit.Side.PLAYER2, fixed)
+	var human := MatchSetup.default_deck(UnitKind.Army.MILITARY)
+	var setup := MatchSetup.on_scenario(defined, 5, Unit.Side.PLAYER1, human)
+	assert_eq(setup.cpu_sides(), [Unit.Side.PLAYER2] as Array[Unit.Side])
+	assert_eq(setup.decks[Unit.Side.PLAYER2], null, "決め打ちの敵には、CPU の編成を作らない")
+	assert_eq(setup.deck_of(Unit.Side.PLAYER2), fixed)
+	assert_eq(setup.deck_of(Unit.Side.PLAYER1), human)
+	assert_true(setup.is_valid())
+
+
+func test_versus_cpu_goes_through_on_scenario() -> void:
+	var human := MatchSetup.default_deck(UnitKind.Army.FANTASY)
+	var versus := MatchSetup.versus_cpu(BoardGenerator.Stage.LABYRINTH, 3, human, UnitKind.Army.MILITARY, Unit.Side.PLAYER2)
+	var same := MatchSetup.on_scenario(Scenario.versus(BoardGenerator.Stage.LABYRINTH), 3, Unit.Side.PLAYER2, human, UnitKind.Army.MILITARY)
+	assert_eq(versus.cpu_sides(), same.cpu_sides())
+	assert_eq(versus.army_of(Unit.Side.PLAYER1), UnitKind.Army.MILITARY)
+	assert_eq(versus.create_battle().units.size(), same.create_battle().units.size())

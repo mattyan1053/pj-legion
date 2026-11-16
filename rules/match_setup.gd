@@ -40,26 +40,44 @@ var controllers: Array[Controller] = [Controller.HUMAN, Controller.HUMAN]
 var ignore_budget := false
 
 
-## 人（プレイヤー1 か 2）と CPU の対戦の設定。人の編成は渡したもの、CPU の編成は CpuDeck が cpu_army から作る。
+## 戦いの定義 defined の、人（human_side）と CPU の対戦の設定。人の編成は渡したもの。
+## CPU の側の部隊を戦いの定義が決め打ちにしていれば（ストーリーの話の敵）、CPU の編成は作らない（対戦には決め打ちの部隊が出る。deck_of）。
+## 決め打ちでなければ、CPU の編成は CpuDeck が cpu_army から作る。
+## 人と CPU の対戦の設定は、どのモードもここを通す（対戦モードは versus_cpu、ストーリーは story_battle.gd）。
+static func on_scenario(
+	defined: Scenario, with_seed: int, human_side: Unit.Side, human_deck: Deck, cpu_army := UnitKind.Army.NONE,
+) -> MatchSetup:
+	var setup := _on(defined, with_seed)
+	setup.set_human(human_side, human_deck)
+	var cpu_side := (1 - human_side) as Unit.Side
+	if defined.is_fixed(cpu_side):
+		setup.controllers[cpu_side] = Controller.CPU
+	else:
+		setup.set_cpu(cpu_side, cpu_army)
+	return setup
+
+
+## 人（プレイヤー1 か 2）と CPU の対戦モードの対戦の設定。人の編成は渡したもの、CPU の編成は CpuDeck が cpu_army から作る。
 static func versus_cpu(
 	at_stage: BoardGenerator.Stage, with_seed: int, human_deck: Deck, cpu_army: UnitKind.Army,
 	human_side := Unit.Side.PLAYER1,
 ) -> MatchSetup:
-	var setup := MatchSetup.new()
-	setup.scenario = Scenario.versus(at_stage)
-	setup.battle_seed = with_seed
-	setup.set_human(human_side, human_deck)
-	setup.set_cpu((1 - human_side) as Unit.Side, cpu_army)
-	return setup
+	return on_scenario(Scenario.versus(at_stage), with_seed, human_side, human_deck, cpu_army)
 
 
 ## 人どうしの対戦の設定。
 static func versus_human(at_stage: BoardGenerator.Stage, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
-	var setup := MatchSetup.new()
-	setup.scenario = Scenario.versus(at_stage)
-	setup.battle_seed = with_seed
+	var setup := _on(Scenario.versus(at_stage), with_seed)
 	setup.set_human(Unit.Side.PLAYER1, first)
 	setup.set_human(Unit.Side.PLAYER2, second)
+	return setup
+
+
+## 戦いの定義と種だけを入れた設定（どちらを誰が動かすかは、呼ぶ側が入れる）。
+static func _on(defined: Scenario, with_seed: int) -> MatchSetup:
+	var setup := MatchSetup.new()
+	setup.scenario = defined
+	setup.battle_seed = with_seed
 	return setup
 
 
