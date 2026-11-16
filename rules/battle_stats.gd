@@ -34,6 +34,9 @@ class UnitRecord:
 	## 攻撃・スキル・樽の爆発（樽を攻撃した駒のもの）を数える。量はイベントの量（残りの HP より多くてもそのまま）。
 	var damage := 0
 	var neutral_damage := 0
+	## 敵のプレイヤーの駒から受けたダメージ（damage の裏返し。数え方は damage と同じ: 樽の爆発は樽を攻撃した駒からのもの、
+	## 中立の駒から受けたものと味方から受けたものは数えない）。
+	var damage_taken := 0
 	## 倒した敵のプレイヤーの駒（将を含む）、倒した中立の駒（中ボスを含む）、そのうちの中ボスの数。
 	var kills := 0
 	var neutral_kills := 0
@@ -59,6 +62,7 @@ class SideRecord:
 	extends RefCounted
 	var damage := 0
 	var neutral_damage := 0
+	var damage_taken := 0
 	var kills := 0
 	var neutral_kills := 0
 	var boss_kills := 0
@@ -223,6 +227,8 @@ func _count_damage(hit: UnitDamagedEvent) -> void:
 	else:
 		source.damage += hit.amount
 		sides[source.side].damage += hit.amount
+		target.damage_taken += hit.amount
+		sides[target.side].damage_taken += hit.amount
 
 
 func _count_defeat(defeated: UnitDefeatedEvent) -> void:
