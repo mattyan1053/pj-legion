@@ -1,5 +1,5 @@
 extends Node
-## 部隊の編成の場面（docs/deck-screen.md）。取っておいた部隊の一覧と、1 つの部隊を組む画面の 2 つを、切り替えて出す。
+## 部隊編成の場面（docs/deck-screen.md）。取っておいた部隊の一覧と、1 つの部隊を組む画面の 2 つを、切り替えて出す。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。取っておく先は context.decks（deck_library.gd）。
 ##
 ## - 一覧: 部隊を選び（中身は駒の札で出す）、編集・複製・名前変更・削除（確かめる）。「新しい部隊」で、軍を選んでから空の部隊を組む。
@@ -8,8 +8,8 @@ extends Node
 ## - 右クリックと Esc は「戻す」: 確かめ・名前の入力 → 駒の選択 → 組む画面（変えたところがあれば確かめる）・軍の選択 → 一覧 → 戻り先。
 ## - 一覧の上の切り替えで「対戦用」と「ストーリー用」を選ぶ。一覧と「新しい部隊」は、選んでいる方の決まりの部隊だけ（混ざらない）。
 ## 組む画面の決まり（雇える駒、予算、数の上限）は、切り替えで決まる（rules。対戦の決まりか、いまの進み具合のストーリーの決まり）。
-## - 流れ（run.gd）の中で置かれたら（出撃の準備・対戦の設定の「部隊を編成する」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
-##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃の準備・対戦の設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
+## - 流れ（run.gd）の中で置かれたら（出撃準備・対戦設定の「部隊編成」）、渡された決まりの一覧だけを出し（切り替えは出さない）、
+##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃準備・対戦設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
 
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
@@ -144,7 +144,7 @@ func _ready() -> void:
 			(_mode_buttons[id] as Button).visible = id == _detour.get("rules", DeckRules.VERSUS)
 	set_mode(_detour.get("rules", DeckRules.VERSUS))
 	if not _detour.is_empty():
-		# 寄り道のもとで選んでいる部隊を、一覧で選んでおく（ストーリーは出撃の準備、対戦は対戦の設定の、その側の部隊）。
+		# 寄り道のもとで選んでいる部隊を、一覧で選んでおく（ストーリーは出撃準備、対戦は対戦設定の、その側の部隊）。
 		var current: String = context.story.squad_id
 		if _detour.get("rules") == DeckRules.VERSUS:
 			current = context.match_choice.deck_ids[_detour.get("side", Unit.Side.PLAYER1)]
@@ -194,7 +194,7 @@ func press_back() -> void:
 		leave()
 
 
-## 一覧から抜ける: タイトルへ（流れの中なら、流れの次の場面 = 出撃の準備へ。寄り道の間に取っておいた部隊を選ぶ）。
+## 一覧から抜ける: タイトルへ（流れの中なら、流れの次の場面 = 出撃準備へ。寄り道の間に取っておいた部隊を選ぶ）。
 func leave() -> void:
 	if _detour.is_empty():
 		finished.emit(&"back")
@@ -207,7 +207,7 @@ func leave() -> void:
 	finished.emit(Run.NEXT)
 
 
-## 流れの中（出撃の準備からの寄り道）で置かれたか。
+## 流れの中（出撃準備からの寄り道）で置かれたか。
 func is_detour() -> bool:
 	return not _detour.is_empty()
 

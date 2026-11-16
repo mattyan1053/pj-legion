@@ -1,8 +1,8 @@
 extends Node3D
 ## 対戦の場面（俯瞰 3D の盤面と、操作・演出）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
 ## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。
-## 対戦は、渡された「対戦の設定を作ってくれるもの」（battle_source.gd。流れ（run.gd）が渡す。無ければ context.match_choice）から作る。
-## どのモードの対戦かは知らない。やり直し・ステージの替え・相手の切り替え・対戦の設定のパネルは、それに聞いてから出す。
+## 対戦は、渡された「対戦設定を作ってくれるもの」（battle_source.gd。流れ（run.gd）が渡す。無ければ context.match_choice）から作る。
+## どのモードの対戦かは知らない。やり直し・ステージの替え・相手の切り替え・対戦設定のパネルは、それに聞いてから出す。
 ##
 ## 相手（プレイヤー2）を CPU にすると、その番は CpuPlayer が返す行動を、人の操作と同じ入口（_do）に 1 つずつ流す。
 ## ここはルールを持たない。操作を行動（BattleAction）にして Battle.apply() に渡し、
@@ -40,7 +40,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 
-## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦の設定へ」は &"setup"、「タイトルへ」は &"title"。
+## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦設定へ」は &"setup"、「タイトルへ」は &"title"。
 ## 「次へ」（渡されたものが許したときだけ出る。ストーリー）は Run.NEXT）。
 signal finished(outcome: StringName)
 
@@ -99,7 +99,7 @@ var battle_log: BattleLog:
 		battle_log = value
 		if _playback != null:
 			_playback.battle_log = value
-## いまの盤の見た目の名前（stage_look.gd）と、決着の画面の「作戦領域」に出す名前（戦いの定義の名前）。
+## いまの盤の見た目の名前（stage_look.gd）と、決着の画面の「ステージ」に出す名前（戦いの定義の名前）。
 var look := StageLook.DEFAULT
 var area_name := ""
 var map_seed := 0
@@ -133,10 +133,10 @@ var fast_forward := false
 ## CPU が番を終える行動は、ルールの上ではもう人の番だが、再生の中身（中立のフェーズ）は見ているだけの番なので、これで見る。
 var _watch_playback := false
 
-## 対戦の設定を作ってくれるもの（battle_source.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
+## 対戦設定を作ってくれるもの（battle_source.gd）。やり直し（F1〜F3、結果のボタン）も、これで始める。
 var source: BattleSource
 ## 相手を CPU が動かすか。偽なら、2 人が交代で操作する。CPU が動かすのは source.cpu_side()。
-## 対戦を作るときに、対戦の設定（MatchSetup.controllers）から決める。対戦の途中の切り替え（F4）で変わる。
+## 対戦を作るときに、対戦設定（MatchSetup.controllers）から決める。対戦の途中の切り替え（F4）で変わる。
 var cpu_opponent := true
 ## CPU が実行した行動の数。検査用。
 var cpu_actions := 0
@@ -250,7 +250,7 @@ func _ready() -> void:
 	_system_menu.opened.connect(_on_system_menu_opened)
 	_system_menu.closed.connect(_on_system_menu_closed)
 
-	# 流れが渡すもの。流れの外から置かれた（スクリーンショットの道具など）なら、対戦の設定の場面で選んだもの。
+	# 流れが渡すもの。流れの外から置かれた（スクリーンショットの道具など）なら、対戦設定の場面で選んだもの。
 	var given: Variant = context.run_data()
 	source = given if given != null else context.match_choice.copy()
 	_battle_started = true
@@ -290,8 +290,8 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if context.overlays.is_open():
-		# 開いている間の入力は、重なる画面（メニュー・ログ・対戦の設定）が受ける（ここへ届いても、盤面には使わない）。
-		# 対戦の設定がいちばん上なら、閉じられるときは Esc で閉じる（setup_panel が先に受ける）。閉じられない（起動した直後）なら、メニューを開く。
+		# 開いている間の入力は、重なる画面（メニュー・ログ・対戦設定）が受ける（ここへ届いても、盤面には使わない）。
+		# 対戦設定がいちばん上なら、閉じられるときは Esc で閉じる（setup_panel が先に受ける）。閉じられない（起動した直後）なら、メニューを開く。
 		var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 		if escape and context.overlays.is_top(_setup_panel):
 			open_system_menu()
@@ -338,7 +338,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---- 対戦の始まり ----
 
 
-## 渡されたもの（source）が作る種 battle_seed の対戦の設定で、盤面を作り、軍を置いて、最初から始める。
+## 渡されたもの（source）が作る種 battle_seed の対戦設定で、盤面を作り、軍を置いて、最初から始める。
 ## 対戦はルールの入口（MatchSetup.create_battle）で作る。相手を CPU が動かすかも、その設定から決める。
 ## 再生の途中と CPU の番の間は何もしない。
 func start_battle(battle_seed: int) -> void:
@@ -366,17 +366,17 @@ func _start_on_nth_field(index: int) -> void:
 		start_on_field(fields[index], map_seed + 1)
 
 
-## 対戦の設定画面を、いまの設定で開く。再生の途中と CPU の番の間は何もしない。
+## 対戦設定画面を、いまの設定で開く。再生の途中と CPU の番の間は何もしない。
 ## 開いただけでは、いまの対戦は変わらない（「対戦へ戻る」・右クリック・Esc で、そのまま戻れる）。
 ## 新しい対戦になるのは、設定画面で始めるボタンを押したときだけ。
-## 渡されたものが対戦の設定のパネルを開けない（source.can_open_setup() が偽）なら何もしない。
+## 渡されたものが対戦設定のパネルを開けない（source.can_open_setup() が偽）なら何もしない。
 func open_setup() -> void:
 	if is_busy() or not source.can_open_setup():
 		return
 	_setup_panel.open(source, _battle_started, _battle_started and not battle.is_over())
 
 
-## 対戦の設定画面（検査用）。
+## 対戦設定画面（検査用）。
 func setup_panel() -> MatchSetupPanel:
 	return _setup_panel
 
@@ -384,13 +384,13 @@ func setup_panel() -> MatchSetupPanel:
 func _on_setup_chosen(chosen: RefCounted) -> void:
 	_battle_started = true
 	source = chosen
-	context.match_choice = chosen.copy()  # 次に対戦の設定の場面を開いたときも、これを出す
+	context.match_choice = chosen.copy()  # 次に対戦設定の場面を開いたときも、これを出す
 	# いまの対戦の続きを CPU に渡さないよう、set_opponent は通さない（新しい対戦が、始めに CPU の番を見る）。
 	start_battle(map_seed + 1)
 
 
 ## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中と CPU の番の間は何もしない。
-## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「作戦領域」（空なら出さない）。
+## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「ステージ」（空なら出さない）。
 func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, battle_area := "") -> void:
 	if is_busy():
 		return
@@ -534,7 +534,7 @@ func _new_boards() -> Array[Array]:
 # ---- 操作（マウス・キー・ボタンのどれからも、ここを通る） ----
 
 
-## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、重なる画面（対戦の設定画面・システムメニュー・ログ）を開いている間）。
+## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、重なる画面（対戦設定画面・システムメニュー・ログ）を開いている間）。
 func is_busy() -> bool:
 	return _ui.busy or _ui.cpu_running or context.overlays.is_open()
 
@@ -570,7 +570,7 @@ func _on_overlay_opened() -> void:
 
 
 ## ログを開く（上の帯の「ログ」）。いつでも開ける（CPU の番や再生の途中でも）。システムメニューと同じく、開いている間は時間を止める。
-## 対戦の設定画面の上では開かない。
+## 対戦設定画面の上では開かない。
 func open_log() -> void:
 	if context.overlays.is_open() or battle_log == null:
 		return
@@ -618,7 +618,7 @@ func _on_log_entry_chosen(entry: BattleLog.Entry) -> void:
 
 
 ## ミニマップの上で押した・ドラッグした（point は盤の座標 x / z）: そこを画面の中央にする（すぐに移る。駒を追うのもやめる）。
-## 重なる画面（システムメニュー・ログ・対戦の設定画面）を開いている間は動かさない（どれもミニマップを覆う）。
+## 重なる画面（システムメニュー・ログ・対戦設定画面）を開いている間は動かさない（どれもミニマップを覆う）。
 func _on_minimap_pointed(point: Vector2) -> void:
 	if context.overlays.is_open():
 		return
@@ -658,8 +658,8 @@ func resume_label() -> String:
 	return Text.t("battle.menu_resume.setup") if _setup_panel.visible else Text.t("battle.menu_resume.battle")
 
 
-## システムメニューに足す項目。対戦の設定画面の上で開いたら、「対戦の設定へ」は出さない（もう開いている）。
-## 渡されたものが対戦の設定のパネルを開けないなら、出さない。
+## システムメニューに足す項目。対戦設定画面の上で開いたら、「対戦設定へ」は出さない（もう開いている）。
+## 渡されたものが対戦設定のパネルを開けないなら、出さない。
 func menu_items() -> Array:
 	if _setup_panel.visible or not source.can_open_setup():
 		return []
@@ -681,7 +681,7 @@ func _on_system_menu_closed() -> void:
 	_update_time_scale()
 
 
-## 対戦の設定画面を開く。CPU の番や再生の途中なら、それが終わってから開く（対戦の途中で盤面を差し替えないため）。
+## 対戦設定画面を開く。CPU の番や再生の途中なら、それが終わってから開く（対戦の途中で盤面を差し替えないため）。
 func _open_setup_when_ready() -> void:
 	var played_battle := battle
 	if is_busy():

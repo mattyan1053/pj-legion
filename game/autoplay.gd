@@ -3,7 +3,7 @@ extends Node
 ##
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使う。回すのは SCENES の場面で、
 ## 対戦を最後まで進める場面（game）と、小さな盤面で決まった手順を通す場面（環境オブジェクト、盤の上の効果、スキル、必殺技、
-## 中立の駒、レベルアップ、進化、回復、閲覧、対戦の設定、システムメニュー、CPU の番）、最後にタイトルと部隊の編成の場面を通す場面。
+## 中立の駒、レベルアップ、進化、回復、閲覧、対戦設定、システムメニュー、CPU の番）、最後にタイトルと部隊編成の場面を通す場面。
 ## 長い検査（`-- --autoplay --full`）では、game のあとに盤面を作り直して、ほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ##
 ## `-- --autoplay --only <名前,…>` で、選んだ場面だけを回す（名前は SCENES の名前か、GROUPS のまとまりの名前）。
@@ -45,15 +45,15 @@ const SCENES := {
 	"evolution": "進化",
 	"heal": "回復役の回復、マスの情報、クリックとドラッグ",
 	"inspection": "閲覧（行動の途中に相手の駒を見る）と、敵の全員の脅威範囲、相手の駒の範囲を表示したまま（ピン留め）",
-	"setup": "対戦の設定画面（後手で CPU と対戦する）",
-	"system_menu": "システムメニューと設定の画面",
+	"setup": "対戦設定画面（後手で CPU と対戦する）",
+	"system_menu": "システムメニューとオプションの画面",
 	"minimap": "ミニマップ（押す・ドラッグで視点が移る、設定で隠す）",
 	"cpu": "CPU の番（止める、ログ、カメラが追う）",
 	"auto_turn": "自分の番のおまかせ（1 回目は確かめるだけ。2 回目で、残りの駒を CPU が動かしてターンを終える）",
 	"cpu_skip": "相手（CPU）の番の早送りとスキップ（中立のフェーズから。途中で決着したら、決着を見せる）",
-	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦の設定を行き来する",
-	"decks": "部隊の編成",
-	"story": "ストーリーの 1 話の通し（タイトル → 物語を選ぶ → 話の一覧 → 会話 → 出撃の準備 → 対戦 → 勝って「次へ」「部隊を選び直す」→ 会話 → 話の一覧 → 物語を選ぶ → タイトル、クリアの記録）",
+	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦設定を行き来する",
+	"decks": "部隊編成",
+	"story": "ストーリーの 1 話の通し（タイトル → 物語を選ぶ → 話の一覧 → 会話 → 出撃準備 → 対戦 → 勝って「次へ」「部隊を選び直す」→ 会話 → 話の一覧 → 物語を選ぶ → タイトル、クリアの記録）",
 }
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
@@ -94,7 +94,7 @@ var _scripted: Array[Callable] = []
 var _scripted_names: Array[String] = []
 ## CPU を相手にした対戦を始めたときの、CPU の行動の数。
 var _cpu_actions_before := 0
-## 最後に、対戦の場面を抜けて、タイトルと対戦の設定の場面を通している途中か（_leave_battle）。
+## 最後に、対戦の場面を抜けて、タイトルと対戦設定の場面を通している途中か（_leave_battle）。
 var _leaving := false
 
 
@@ -244,7 +244,7 @@ func _push_front(step: Callable) -> void:
 	_scripted_names.push_front(_current)
 
 
-## 場面を回し終えたあと: イベントの再生を確かめ、タイトルと部隊の編成の場面を通して終える。
+## 場面を回し終えたあと: イベントの再生を確かめ、タイトルと部隊編成の場面を通して終える。
 func _end() -> void:
 	_leaving = true
 	var all_events := true
@@ -524,7 +524,7 @@ func _queue_result_scene() -> void:
 		full.headline = "VICTORY"
 		full.reason = "プレイヤー1（青） の勝ち　敵の将を倒した"
 		full.focus_name = "プレイヤー1（青）"
-		full.lines = [["作戦領域", "結晶の渓谷"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
+		full.lines = [["ステージ", "結晶の渓谷"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
 		full.mvp_name = "シールドトルーパー Lv3"
 		screen.present(full)
 	var waited_full := [0]
@@ -1081,7 +1081,7 @@ func _queue_inspection_scene() -> void:
 		_expect(_scene.cancel() and _scene.pinned_ids().is_empty() and _scene.pinned_sets().is_empty(), "右クリックで、留めた範囲を全部外せない"))
 
 
-## 対戦の設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とステージも選んだとおりになる。
+## 対戦設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とステージも選んだとおりになる。
 ## 最後に、既定の設定（人が先手）へ戻す。
 func _queue_setup_scene() -> void:
 	var seen := {"actions": 0}
@@ -1160,7 +1160,7 @@ func _queue_setup_scene() -> void:
 		panel.press_start()
 		_expect(_scene.battle != before and not panel.visible, "「新しい対戦を始める」の 2 回目で、新しい対戦が始まらない")
 		_expect(not _scene.cpu_opponent and _scene.source.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
-	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、ステージ・相手・対戦の設定は選び直せない）を渡すと、選び直す入口が出ない。
+	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、ステージ・相手・対戦設定は選び直せない）を渡すと、選び直す入口が出ない。
 	var kept := {}
 	_script_fixed_source(kept)
 
@@ -1172,17 +1172,17 @@ func _script_fixed_source(kept: Dictionary) -> void:
 		_scene.start_battle(_scene.map_seed + 1)
 		var battle: Battle = _scene.battle
 		_expect(_scene.look == StageLook.STONE_WALLS and battle.board.size == BoardGenerator.DEFAULT_SIZE, "渡したもので対戦が始まらない")
-		_expect(not _scene.cpu_opponent, "渡した対戦の設定の、誰が動かすかに従わない")
+		_expect(not _scene.cpu_opponent, "渡した対戦設定の、誰が動かすかに従わない")
 		_expect(not _scene.opponent_switch_shown(), "切り替えられない対戦に、相手のボタンが出た")
 		_scene.toggle_opponent()
 		_expect(not _scene.cpu_opponent, "切り替えられない対戦で、相手が切り替わった")
-		_expect(_scene.menu_items().is_empty(), "対戦の設定を開けない対戦に、システムメニューの「対戦の設定へ」が出た")
+		_expect(_scene.menu_items().is_empty(), "対戦設定を開けない対戦に、システムメニューの「対戦設定へ」が出た")
 		_scene.open_setup()
-		_expect(not _scene.setup_panel().visible, "対戦の設定を開けない対戦で、設定画面が開いた")
+		_expect(not _scene.setup_panel().visible, "対戦設定を開けない対戦で、設定画面が開いた")
 		_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
 		_expect(_scene.battle == battle, "ステージを選べない対戦で、ステージを替えてやり直した")
 		_expect(not _scene.result_screen().can_go_to_setup() and _scene.result_screen().new_board_fields().is_empty(),
-			"選び直せない対戦の決着の画面に、対戦の設定・新しい盤面のボタンがある")
+			"選び直せない対戦の決着の画面に、対戦設定・新しい盤面のボタンがある")
 		_scene.source = kept["source"]
 		_scene.start_battle(_scene.map_seed + 1)
 		_expect(_scene.opponent_switch_shown() and _scene.result_screen().can_go_to_setup()
@@ -1200,7 +1200,7 @@ class FixedSource extends "res://game/battle_source.gd":
 
 
 ## システムメニュー。Esc は、戻すもの（選択）があれば戻し、無ければメニューを開く。開いている間は盤面を操作できず、時間が止まる。
-## 設定の画面で変えた値は、その場でカメラに効く。ゲームを終える項目は、対戦の途中なら確かめる（ここでは、やめる）。
+## オプションの画面で変えた値は、その場でカメラに効く。ゲームを終える項目は、対戦の途中なら確かめる（ここでは、やめる）。
 func _queue_system_menu_scene() -> void:
 	var board := _small_board(Vector2i(6, 5))
 	var battle := Battle.new(board)
@@ -1229,7 +1229,7 @@ func _queue_system_menu_scene() -> void:
 		_expect(menu.is_open() and menu.confirming() == &"", "確かめを、やめられない")
 		# 設定の値は、その場で効く。
 		menu.press(&"settings")
-		_expect(menu.is_settings_open(), "設定の画面が開かない")
+		_expect(menu.is_settings_open(), "オプションの画面が開かない")
 		settings.set_value(&"mouse_sensitivity", 200)
 		settings.set_value(&"invert_vertical_drag", true)
 		var drag: Array = _scene.camera_drag_settings()
@@ -1238,7 +1238,7 @@ func _queue_system_menu_scene() -> void:
 		drag = _scene.camera_drag_settings()
 		_expect(is_equal_approx(drag[0], OrbitCamera.DEFAULT_DRAG_SENSITIVITY) and not drag[1], "既定に戻せない")
 		menu.back()
-		_expect(menu.is_open() and not menu.is_settings_open(), "設定の画面から、メニューへ戻らない")
+		_expect(menu.is_open() and not menu.is_settings_open(), "オプションの画面から、メニューへ戻らない")
 		menu.back()
 		_expect(not menu.is_open() and not _scene.is_busy() and Engine.time_scale == base, "メニューを閉じても、元の速さに戻らない")
 		# CPU の駒の行動を再生する間だけ、設定の速さを掛ける。
@@ -1705,7 +1705,7 @@ func _mouse_button(at: Vector2, pressed: bool) -> void:
 
 
 ## 最後に、相手（CPU）の番の途中で、システムメニューの「タイトルへ戻る」を確かめてから選ぶ。対戦の場面が消えても、
-## 止まっていた再生や CPU の番が続きを走らない（エラーが出ない）こと。そのあと、タイトルの「対戦」で対戦の設定の場面へ進み、
+## 止まっていた再生や CPU の番が続きを走らない（エラーが出ない）こと。そのあと、タイトルの「対戦」で対戦設定の場面へ進み、
 ## 「タイトルへ戻る」でタイトルへ戻る。このノードは対戦の場面の子なので、先にアプリの子へ移っておく。
 func _leave_battle(app: Node) -> void:
 	var menu: Node = app.system_menu()
@@ -1737,11 +1737,11 @@ func _leave_battle(app: Node) -> void:
 	stages.hover(&"")
 	stages.choose(VersusFields.LABYRINTH)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SETUP, "ステージ選択のカードで、対戦の設定へ進まない")
-	_expect(app.current_scene().setup_panel().current_choice().field == VersusFields.LABYRINTH, "選んだステージが対戦の設定に渡らない")
+	_expect(app.current_id() == SceneFlow.SETUP, "ステージ選択のカードで、対戦設定へ進まない")
+	_expect(app.current_scene().setup_panel().current_choice().field == VersusFields.LABYRINTH, "選んだステージが対戦設定に渡らない")
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.STAGE, "対戦の設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
+	_expect(app.current_id() == SceneFlow.STAGE, "対戦設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
 	# カードの上での右クリックでも戻る（カードのボタンに食われない）。
 	var right := InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
@@ -1758,13 +1758,13 @@ func _on_screen(control: Control) -> bool:
 	return control.get_viewport().get_visible_rect().encloses(control.get_global_rect())
 
 
-## 部隊の編成の場面: 組む・並べ替える・装備を持たせる・取っておく・写す・名前を変える・消す（確かめる）。
-## 出せない部隊は取っておけない。取っておいた部隊を、対戦の設定で選べる（出せない部隊は選べない）。
+## 部隊編成の場面: 組む・並べ替える・装備を持たせる・取っておく・写す・名前を変える・消す（確かめる）。
+## 出せない部隊は取っておけない。取っておいた部隊を、対戦設定で選べる（出せない部隊は選べない）。
 func _visit_decks(app: Node) -> void:
 	var library: RefCounted = app.context.decks
 	_expect(app.current_scene().button_texts() == (["ストーリー", "対戦", "オプション", "終了"] as Array[String]),
 		"タイトルのメニューの並びが違う: %s" % [app.current_scene().button_texts()])
-	# 部隊の編成は、対戦の設定の「部隊を編成する」から開く（タイトルには無い）。
+	# 部隊編成は、対戦設定の「部隊編成」から開く（タイトルには無い）。
 	app.current_scene().press_start()
 	await app.scene_changed
 	app.current_scene().choose(VersusFields.PLAIN)
@@ -1773,12 +1773,12 @@ func _visit_decks(app: Node) -> void:
 	setup_panel.choose_opponent(true)
 	setup_panel.choose_human_side(Unit.Side.PLAYER1)
 	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
-	_expect(setup_panel.can_edit_decks(), "対戦の設定に「部隊を編成する」が無い")
+	_expect(setup_panel.can_edit_decks(), "対戦設定に「部隊編成」が無い")
 	setup_panel.press_edit_decks(Unit.Side.PLAYER1)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.DECKS, "対戦の設定の「部隊を編成する」で、編成の場面へ進まない")
+	_expect(app.current_id() == SceneFlow.DECKS, "対戦設定の「部隊編成」で、編成の場面へ進まない")
 	var screen: Node = app.current_scene()
-	_expect(screen.is_detour() and screen.mode() == DeckRules.VERSUS and screen.back_label() == "対戦設定へ戻る", "対戦の設定からの編成が、対戦用でない（か、戻り先の文字が違う）")
+	_expect(screen.is_detour() and screen.mode() == DeckRules.VERSUS and screen.back_label() == "対戦設定へ戻る", "対戦設定からの編成が、対戦用でない（か、戻り先の文字が違う）")
 	_expect(screen.listed_ids().is_empty() and screen.list_card_kinds().is_empty(), "部隊が無いのに、一覧か札が出ている")
 	screen.press_new()
 	_expect(screen.is_choosing_army() and not screen.is_editing(), "「新しい部隊」で、まず軍を選ぶ画面が出ない")
@@ -1813,7 +1813,7 @@ func _visit_decks(app: Node) -> void:
 	screen.press_save()
 	_expect(not screen.is_editing() and library.size() == 1, "出せる部隊を取っておけない")
 	var id: String = screen.list_selected()
-	# 対戦の設定で選べる。
+	# 対戦設定で選べる。
 	screen.press_duplicate()
 	_expect(library.size() == 2, "写せない")
 	screen.press_rename()
@@ -1869,22 +1869,22 @@ func _visit_decks(app: Node) -> void:
 	var versus_ids: Array[String] = []
 	for item: RefCounted in library.for_rules(DeckRules.VERSUS):
 		versus_ids.append(item.id)
-	_expect(not versus_ids.has(story_id), "対戦の設定で選べる部隊に、ストーリー用の部隊が混ざった")
+	_expect(not versus_ids.has(story_id), "対戦設定で選べる部隊に、ストーリー用の部隊が混ざった")
 	screen.select_saved(id)
 	screen.press_edit()
-	screen.press_save()  # 寄り道の間に最後に取っておいた部隊が、戻った対戦の設定で選ばれる
+	screen.press_save()  # 寄り道の間に最後に取っておいた部隊が、戻った対戦設定で選ばれる
 	screen.press_back()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SETUP, "編成の一覧から、対戦の設定へ戻らない")
+	_expect(app.current_id() == SceneFlow.SETUP, "編成の一覧から、対戦設定へ戻らない")
 	var panel: Node = app.current_scene().setup_panel()
-	_expect(panel.current_choice().deck_ids[0] == id, "寄り道で取っておいた部隊が、対戦の設定で選ばれていない")
+	_expect(panel.current_choice().deck_ids[0] == id, "寄り道で取っておいた部隊が、対戦設定で選ばれていない")
 	var ids: Array = panel.deck_options(Unit.Side.PLAYER1).map(func(option: Array) -> String: return option[0])
-	_expect(ids == ["", id], "対戦の設定に、取っておいた部隊が並ばない: %s" % [ids])
+	_expect(ids == ["", id], "対戦設定に、取っておいた部隊が並ばない: %s" % [ids])
 	_expect(panel.choose_deck(Unit.Side.PLAYER1, id), "取っておいた部隊を選べない")
 	panel.open_preview(Unit.Side.PLAYER1)
 	_expect(panel.preview().visible and panel.preview().shown_kinds().size() == 6, "「編成を確認」で、選んだ部隊が出ない")
 	panel.preview().close_preview()
-	# ステージは対戦の設定では選ばない。「ステージを選び直す」でステージ選択へ戻る（選んだものは残る）。
+	# ステージは対戦設定では選ばない。「ステージを選び直す」でステージ選択へ戻る（選んだものは残る）。
 	panel.choose_random_side()
 	panel.press_stage()
 	await app.scene_changed
@@ -1947,12 +1947,12 @@ func _visit_story(app: Node) -> void:
 	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
 	talk.press_skip()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "会話を飛ばしても、出撃の準備へ進まない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "会話を飛ばしても、出撃準備へ進まない")
 	var sortie: Node = app.current_scene()
-	# 「部隊を編成する」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
+	# 「部隊編成」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
 	sortie.press_edit_decks()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.DECKS and app.context.run != null, "出撃の準備の「部隊を編成する」で、流れを保ったまま編成へ進まない")
+	_expect(app.current_id() == SceneFlow.DECKS and app.context.run != null, "出撃準備の「部隊編成」で、流れを保ったまま編成へ進まない")
 	var decks: Node = app.current_scene()
 	_expect(decks.is_detour() and decks.mode() == Story.military().rules_id and decks.back_label() == "出撃準備へ戻る", "寄り道の編成が、ストーリー用でない（か、戻り先の文字が違う）")
 	decks.press_new()
@@ -1963,24 +1963,24 @@ func _visit_story(app: Node) -> void:
 	var made: String = decks.list_selected()
 	decks.press_back()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "編成の「出撃の準備へ戻る」で、出撃の準備へ戻らない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "編成の「出撃準備へ戻る」で、出撃準備へ戻らない")
 	sortie = app.current_scene()
-	_expect(sortie.chosen_id() == made, "寄り道で取っておいた部隊が、出撃の準備で選ばれていない")
+	_expect(sortie.chosen_id() == made, "寄り道で取っておいた部隊が、出撃準備で選ばれていない")
 	sortie.choose("")
 	var options: Array[String] = sortie.option_ids()
-	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃の準備で、既定の編成を選べない")
+	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃準備で、既定の編成を選べない")
 	var story_decks: Array = app.context.decks.for_rules(Story.military().rules_id)
-	_expect(options.size() == 1 + story_decks.size(), "出撃の準備に、ストーリー用の部隊が並ばない（か、対戦用が混ざった）")
+	_expect(options.size() == 1 + story_decks.size(), "出撃準備に、ストーリー用の部隊が並ばない（か、対戦用が混ざった）")
 	for item: RefCounted in story_decks:
 		_expect(sortie.is_option_enabled(item.id) == item.playable(), "出せない部隊を選べる（か、出せる部隊を選べない）: %s" % item.name)
 		if item.playable():
 			sortie.choose(item.id)
 	var result: Node = await _win_story_battle(app, sortie, episode)
-	# 「部隊を選び直す」で出撃の準備へ戻り、同じ話をもう一度勝つ。
+	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ。
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
 	result.press_choose_squad()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE and app.context.run != null, "決着の画面の「部隊を選び直す」で、出撃の準備へ戻らない")
+	_expect(app.current_id() == SceneFlow.SORTIE and app.context.run != null, "決着の画面の「部隊を選び直す」で、出撃準備へ戻らない")
 	result = await _win_story_battle(app, app.current_scene(), episode)
 	result.press_continue()
 	await app.scene_changed
@@ -2011,13 +2011,13 @@ func _visit_story(app: Node) -> void:
 	_expect(story.unlocked_kinds().has(episode.unlock_kinds[0]) if not episode.unlock_kinds.is_empty() else true, "クリアしても、駒が増えていない")
 
 
-## 出撃の準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
+## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
 func _win_story_battle(app: Node, sortie: Node, episode: RefCounted) -> Node:
 	var story: RefCounted = app.context.story
 	var chosen: Deck = sortie.chosen_deck()
 	sortie.press_sortie()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.BATTLE, "出撃の準備の「出撃」で、対戦へ進まない")
+	_expect(app.current_id() == SceneFlow.BATTLE, "出撃準備の「出撃」で、対戦へ進まない")
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
@@ -2027,7 +2027,7 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted) -> Node:
 	for unit: Unit in screen.battle.units:
 		if unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING:
 			placed += 1
-	_expect(placed == chosen.entries.size() and source.human_deck.entries.size() == chosen.entries.size(), "出撃の準備で選んだ部隊で、対戦が始まらない")
+	_expect(placed == chosen.entries.size() and source.human_deck.entries.size() == chosen.entries.size(), "出撃準備で選んだ部隊で、対戦が始まらない")
 	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.enemy_army, "話の敵を CPU が動かしていない")
 	# 対戦の途中の会話の札は、上の帯のすぐ下で、勝ち方の札・視点の案内・ミニマップと重ならない（いちばん長い台詞で確かめる）。
 	var longest := ""

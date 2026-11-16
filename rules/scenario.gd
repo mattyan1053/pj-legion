@@ -3,8 +3,8 @@ extends RefCounted
 ## 戦いの定義（docs/scenario.md）。1 回の戦いの、作り置きの変わらないところ。
 ## 見た目の名前、盤の出どころ（生成か、手で作ったマップか）、プレイヤーごとの初期位置と決め打ちの部隊と勝ちの条件。
 ##
-## 対戦の設定（MatchSetup）が 1 つ持ち、対戦を作るとき（MatchSetup.create_battle）だけ読む。
-## 種、人が選んだ部隊、誰が動かすかは、対戦の設定の側にある（1 回ぶんの選択なので）。
+## 対戦設定（MatchSetup）が 1 つ持ち、対戦を作るとき（MatchSetup.create_battle）だけ読む。
+## 種、人が選んだ部隊、誰が動かすかは、対戦設定の側にある（1 回ぶんの選択なので）。
 ## 添字のある値は、プレイヤー番号（Unit.Side.PLAYER1 = 0、PLAYER2 = 1）ごと。
 
 ## 画面に出す名前（手で作ったマップの名前。生成のステージは空で、画面が stage から名前を引く。game/names.gd の stage）。
@@ -17,7 +17,7 @@ var board_size := BoardGenerator.DEFAULT_SIZE
 ## プレイヤーごとの、将でない駒を置くマスの列（編成の並びの順に使う）。空なら、いつもの置き方（本陣の前の行）。
 ## 将はいつも本陣に置く。Deployment.deploy が使う（docs/player-loadout.md）。
 var deploy_cells: Array[Array] = [[], []]
-## プレイヤーごとの決め打ちの部隊。null なら、対戦の設定で選んだ部隊（MatchSetup.decks）を出す。
+## プレイヤーごとの決め打ちの部隊。null なら、対戦設定で選んだ部隊（MatchSetup.decks）を出す。
 ## 決め打ちの部隊は、編成の決まりの検査（Deck.problems）を通さずに、書いたとおりに置く（数で押す敵を作れる）。
 var fixed_decks: Array[Deck] = [null, null]
 ## プレイヤーごとの勝ちの条件の列（GameWonEvent.Reason の値。docs/win-conditions.md）。
@@ -36,14 +36,14 @@ const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
 ]
 
 
-## 対戦モードの、ステージ at_stage の戦いの定義（盤は生成。部隊は両方とも対戦の設定で選ぶ）。
+## 対戦モードの、ステージ at_stage の戦いの定義（盤は生成。部隊は両方とも対戦設定で選ぶ）。
 static func versus(at_stage: BoardGenerator.Stage) -> Scenario:
 	var scenario := Scenario.new()
 	scenario.stage = at_stage
 	return scenario
 
 
-## 手で作ったマップ map の戦いの定義（部隊は両方とも対戦の設定で選ぶ。初期位置はいつもの置き方）。
+## 手で作ったマップ map の戦いの定義（部隊は両方とも対戦設定で選ぶ。初期位置はいつもの置き方）。
 static func on_map(map: HandMap, map_title: String) -> Scenario:
 	var scenario := Scenario.new()
 	scenario.title = map_title

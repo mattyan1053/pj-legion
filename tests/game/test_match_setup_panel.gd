@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 対戦の設定のパネル（game/match_setup_panel.gd）。
+## 対戦設定のパネル（game/match_setup_panel.gd）。
 
 const MatchSetupPanel := preload("res://game/match_setup_panel.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
@@ -75,7 +75,7 @@ func test_random_side_labels_the_rows_by_who_plays() -> void:
 
 ## 対戦の途中で開いたら、押すと対戦が終わるボタン（ステージを選び直す・新しい対戦を始める）は 2 回押させる。
 ## 1 回目はボタンが「もう一度押す」になって理由を下に出し、直後の 2 回目は受けない。選び直すと確かめはやめる。
-## 対戦の途中でなければ（対戦の設定の場面、決着のあと）、1 回で進む。
+## 対戦の途中でなければ（対戦設定の場面、決着のあと）、1 回で進む。
 func test_buttons_that_end_the_battle_ask_twice_in_a_battle() -> void:
 	var holder := Control.new()
 	Engine.get_main_loop().root.add_child(holder)

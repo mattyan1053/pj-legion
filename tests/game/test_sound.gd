@@ -27,7 +27,7 @@ func _drop(sound: Sound) -> void:
 
 func test_each_scene_has_its_music() -> void:
 	assert_eq(SceneFlow.music(&"title"), &"menu")
-	assert_eq(SceneFlow.music(&"decks"), &"menu", "タイトルから編成・対戦の設定までは同じ曲（途切れない）")
+	assert_eq(SceneFlow.music(&"decks"), &"menu", "タイトルから編成・対戦設定までは同じ曲（途切れない）")
 	assert_eq(SceneFlow.music(&"setup"), &"menu")
 	assert_eq(SceneFlow.music(&"battle"), &"battle")
 	assert_eq(SceneFlow.music(&"nowhere"), &"")

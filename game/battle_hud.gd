@@ -41,7 +41,7 @@ signal pin_toggled
 signal opponent_pressed
 ## ログのボタンが押された。
 signal log_pressed
-## 決着の画面の「対戦の設定へ」が押された。
+## 決着の画面の「対戦設定へ」が押された。
 signal setup_pressed
 ## 決着の画面の「タイトルへ」が押された。
 signal title_pressed
