@@ -214,6 +214,9 @@ func _ready() -> void:
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 	_setup_panel.cancelled.connect(_refresh)
+	_setup_panel.stage_pressed.connect(func(choice: RefCounted) -> void:
+		context.match_choice = choice
+		finished.emit(&"stage"))
 	_log_panel = LogPanel.new()
 	add_child(_log_panel)
 	_log_panel.setup(TEAM_COLORS, context.overlays)

@@ -30,6 +30,25 @@ func test_human_can_play_second() -> void:
 	assert_eq(battle.armies, [UnitKind.Army.FANTASY, UnitKind.Army.MILITARY] as Array[UnitKind.Army])
 
 
+func test_random_side_draws_from_the_seed_and_keeps_your_deck() -> void:
+	var choice := MatchChoice.new()
+	choice.random_side = true
+	choice.armies = [UnitKind.Army.FANTASY, UnitKind.Army.MILITARY] as Array[UnitKind.Army]
+	var seen := {}
+	for battle_seed in 20:
+		var setup: MatchSetup = choice.to_setup(battle_seed)
+		var human := choice.human_side_now()
+		seen[human] = true
+		assert_eq(human, MatchChoice.draw_side(battle_seed), "同じ種なら同じ手番")
+		assert_eq(setup.cpu_sides(), [choice.cpu_side()] as Array[Unit.Side])
+		assert_eq(setup.army_of(human), UnitKind.Army.FANTASY, "あなたの軍（先手の行）が、引いた側に付く")
+		assert_eq(setup.army_of(choice.cpu_side()), UnitKind.Army.MILITARY, "CPU の軍（後手の行）が、もう一方に付く")
+	assert_eq(seen.size(), 2, "先手も後手も出る")
+	assert_true(choice.is_human(Unit.Side.PLAYER1) and not choice.is_human(Unit.Side.PLAYER2), "ランダムでは、先手の行があなたの部隊")
+	var copied: RefCounted = choice.copy()
+	assert_true(copied.random_side and copied.drawn_side == choice.drawn_side)
+
+
 func test_two_humans_take_the_default_deck_of_each_army() -> void:
 	for armies: Array[UnitKind.Army] in [
 		[UnitKind.Army.MILITARY, UnitKind.Army.MILITARY] as Array[UnitKind.Army],
