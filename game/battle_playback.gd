@@ -67,6 +67,8 @@ var result_summary: Callable
 var camera_point: Callable
 var cpu_side: Callable
 var play_sound: Callable
+## 見せずに済ませた（skipping）あとに、盤の見た目（駒・樽・盤の上の効果）を、いまの盤から作り直す () -> void。
+var sync_views: Callable
 ## 毎フレームの終わりに出る signal（場面の frame_passed）。まとめて流す場面の終わりを待つのに使う。
 var frame_passed: Signal
 
@@ -87,6 +89,11 @@ var _in_ult_effects := false
 ## いま再生している行動で、スキルを使ったか（使ったなら、続く効果の名前（「盾」「バリア」など）は出さない。
 ## スキルの名前と、スキルごとの形が見せているので、文字を重ねない）。
 var _after_skill := false
+## 見せずに済ませる途中か（相手の番のスキップ）。真の間に再生するものは、見せずに数えてログに食わせるだけ（_settle）。
+## 決着（GameWonEvent・GameDrawnEvent）だけは、盤の見た目を作り直してから、ふつうに見せる。場面が立て、場面が下ろす。
+var skipping := false
+## 見せずに済ませたものがあって、盤の見た目をまだ作り直していないか。
+var _unsynced := false
 
 
 ## 場面が持つものを受け取る。views・played・follows は場面と同じ辞書を渡す。
@@ -189,6 +196,9 @@ func play_all(events: Array[BattleEvent], quiet_until_warp_from := Vector2i(-1, 
 			_settle(events[i])
 			i += 1
 	while i < events.size():
+		if skipping:
+			await _finish_skipped(events.slice(i))
+			return
 		var event := events[i]
 		await _play(event)
 		i += 1
@@ -209,6 +219,27 @@ func play_all(events: Array[BattleEvent], quiet_until_warp_from := Vector2i(-1, 
 			phase.append(events[i])
 			i += 1
 		await _play_neutral_phase(phase)
+	if _unsynced:
+		_sync()
+
+
+## スキップした: 残り（rest）を見せずに済ませ、盤の見た目を作り直してから、決着だけを見せる。
+func _finish_skipped(rest: Array[BattleEvent]) -> void:
+	var finals: Array[BattleEvent] = []
+	for event in rest:
+		if event is GameWonEvent or event is GameDrawnEvent:
+			finals.append(event)
+		else:
+			_settle(event)
+	_sync()
+	for event in finals:
+		await _play(event)
+
+
+func _sync() -> void:
+	_unsynced = false
+	if sync_views.is_valid():
+		sync_views.call()
 
 
 ## 中立のフェーズを、目で追える形で再生する（neutral_playback.gd）。
@@ -216,7 +247,17 @@ func play_all(events: Array[BattleEvent], quiet_until_warp_from := Vector2i(-1, 
 ## - 攻撃した駒（見せる場面）は、カメラを寄せてから、1 体ずつ、ゆっくり歩かせて追いかけ、攻撃を見せて、間を置く。
 ## 起きた順は変えない。
 func _play_neutral_phase(events: Array[BattleEvent]) -> void:
+	var shown := {}  # 見せた（見せ始めた）イベント
 	for group: Array in NeutralPlayback.groups(NeutralPlayback.beats(events)):
+		if skipping:
+			# 残りは見せずに済ませる（起きた順に）。盤の見た目は、play_all の終わりで作り直す。
+			for event in events:
+				if not shown.has(event):
+					_settle(event)
+			return
+		for beat: NeutralPlayback.Beat in group:
+			for event in beat.events:
+				shown[event] = true
 		var first: NeutralPlayback.Beat = group[0]
 		if first.quiet:
 			_quiet_playback = true
@@ -256,11 +297,14 @@ func _play(event: BattleEvent) -> void:
 func _settle(event: BattleEvent) -> void:
 	played[event.get_script()] = played.get(event.get_script(), 0) + 1
 	battle_log.feed(event)
+	if skipping:
+		_unsynced = true  # 駒の見た目は、まとめて作り直す
+		return
 	var moved := event as UnitMovedEvent
 	var undone := event as MoveUndoneEvent
-	if moved != null and not moved.path.is_empty():
+	if moved != null and not moved.path.is_empty() and _views.has(moved.unit_id):
 		_view(moved.unit_id).position = BoardView.cell_center(moved.path[-1])
-	elif undone != null:
+	elif undone != null and _views.has(undone.unit_id):
 		_view(undone.unit_id).position = BoardView.cell_center(undone.to)
 
 
