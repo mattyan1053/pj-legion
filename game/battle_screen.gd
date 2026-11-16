@@ -140,6 +140,9 @@ var cpu_opponent := true
 ## CPU が実行した行動の数。検査用。
 var cpu_actions := 0
 var _cpu := CpuPlayer.new()
+## 自分の番を任されている陣営（おまかせ。任されていなければ -1）と、その番を動かす CPU（相手の CPU とは別に持つ）。
+var _auto_side := -1
+var _auto_cpu := CpuPlayer.new()
 ## 操作の状態（選んでいる駒、見ている駒、対象を選ぶ途中、確かめ、押している途中、再生と CPU の番の途中）。battle_ui_state.gd。
 var _ui := BattleUiState.new()
 ## 対戦の途中の会話（battle_cues.gd）と、その札（battle_talk.gd）。台詞は渡すもの（source.talk_cues）が持つ。
@@ -193,7 +196,7 @@ func _ready() -> void:
 	_playback.side_name = _side_name
 	_playback.result_summary = _result_summary
 	_playback.camera_point = _camera_point
-	_playback.cpu_side = func() -> Unit.Side: return source.cpu_side()
+	_playback.cpu_side = func() -> Unit.Side: return _auto_side if _auto_side >= 0 else source.cpu_side()
 	_playback.play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_playback.frame_passed = frame_passed
 	_playback.sync_views = _sync_views
@@ -208,6 +211,7 @@ func _ready() -> void:
 	_hud.threat_toggled.connect(toggle_threat)
 	_hud.fast_forward_toggled.connect(toggle_fast_forward)
 	_hud.skip_pressed.connect(skip_watching)
+	_hud.auto_pressed.connect(press_auto)
 	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
@@ -421,6 +425,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_ui.clear_for_new_battle()
 	_playback.skipping = false
 	_watch_playback = false
+	_auto_side = -1
 	# 前の対戦のマウスの下のマス（盤の大きさが違えば、盤の外のマス）と、そこから決めた予測のパネル・メニューの置き場所を持ち越さない。
 	# マウスの下のマスは、次のコマで新しい盤から拾い直す（_update_hover）。
 	_hover_cell = NO_CELL
@@ -727,7 +732,7 @@ func _update_time_scale() -> void:
 func _watching_other() -> bool:
 	if battle == null or battle.is_over():
 		return false
-	return _watch_playback or (cpu_opponent and battle.phase != _human_side())
+	return _watch_playback or (cpu_opponent and battle.phase != _human_side()) or battle.phase == _auto_side
 
 
 ## 相手の番の下の帯のボタン（早送り・スキップ）を出すか。見ているだけの番で、再生か CPU の番を進めている間。
@@ -831,7 +836,48 @@ func toggle_opponent() -> void:
 
 ## いまが、CPU が動かす番か。
 func _is_cpu_turn() -> bool:
-	return cpu_opponent and not battle.is_over() and battle.phase == source.cpu_side()
+	if battle.is_over():
+		return false
+	return (cpu_opponent and battle.phase == source.cpu_side()) or battle.phase == _auto_side
+
+
+## 自分の番の残りを CPU に任せる（下の帯の「おまかせ」）。取り消せないので、1 回目は確かめるだけで、もう一度押すと任せる
+## （確かめに変わった直後の 2 回目は受けない。ターン終了と同じ）。駒が行動の途中・進化先を選ぶ途中は押せない。
+## 任せると、未行動の駒を CPU の考え（相手の CPU と同じもの）で動かし、ターンを終える。そのあいだは相手の番と同じに見るだけ
+## （早送り・スキップも効く）。
+func press_auto() -> void:
+	if not _can_auto():
+		return
+	if not _ui.confirming_auto:
+		_ui.start_confirming_auto(Time.get_ticks_msec())
+		_refresh()
+		return
+	if _ui.confirm_guarded(Time.get_ticks_msec()):
+		return
+	_ui.confirming_auto = false
+	_ui.select(0)
+	_auto_side = battle.phase
+	_run_cpu()
+
+
+## 「おまかせ」を押せるか: 人の番で、駒が行動の途中でも進化先を選ぶ途中でもないとき。
+func _can_auto() -> bool:
+	return not is_busy() and not battle.is_over() and battle.phase != Unit.Side.NEUTRAL and not _is_cpu_turn() \
+		and battle.acting_unit_id == 0 and battle.evolving_unit() == null
+
+
+## おまかせを確かめている途中か、いま任されている陣営（無ければ -1）。検査用。
+func is_confirming_auto() -> bool:
+	return _ui.confirming_auto
+
+
+func auto_side() -> int:
+	return _auto_side
+
+
+## 「おまかせ」の文字と、押せるか。検査用。
+func auto_button_state() -> Array:
+	return _hud.auto_button_state()
 
 
 ## 番の知らせに出す陣営の名前（CPU が動かすなら、そう書く）。
@@ -899,9 +945,10 @@ func result_screen() -> Control:
 func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
 		return
-	if _ui.confirming_ult:
-		# 必殺技を確かめている途中のクリックは、確かめるのをやめるだけ（移動や攻撃はしない）。
+	if _ui.confirming_ult or _ui.confirming_auto:
+		# 必殺技・おまかせを確かめている途中のクリックは、確かめるのをやめるだけ（移動や攻撃はしない）。
 		_ui.confirming_ult = false
+		_ui.confirming_auto = false
 		_refresh()
 		return
 	var clicked := battle.unit_at(cell)
@@ -1360,6 +1407,8 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 		events.append_array(result.events)
 	var action: BattleAction = actions[-1]
 	_watch_playback = was_watching or _watching_other()
+	if _auto_side >= 0 and battle.phase != _auto_side:
+		_auto_side = -1  # 任されたターンが終わった
 	_update_time_scale()  # 相手の番・中立のフェーズに入ったなら、早送りを効かせる
 	stats.feed_all(events)
 	_phase_focus.feed(battle, events)  # フェーズの始めにカメラが寄る駒（再生の中の PhaseStartedEvent より前に食わせる）
@@ -1419,7 +1468,7 @@ func _run_cpu() -> void:
 	_refresh()
 	var played_battle := battle
 	while battle == played_battle and _is_cpu_turn():
-		var action := _cpu.next_action(battle)
+		var action := (_auto_cpu if battle.phase == _auto_side else _cpu).next_action(battle)
 		if action == null:
 			break
 		var unit: Unit = battle.unit_by_id(action.get(&"unit_id")) if &"unit_id" in action else null
@@ -1550,6 +1599,10 @@ func _refresh() -> void:
 		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit),
 		Queries.unacted_count(battle) if _ui.confirming_end else 0, not _warp.is_empty(), _ui.pinned_ids.size()
 	))
+	if _ui.confirming_auto:
+		_hud.set_hint(BattleTexts.AUTO_CONFIRM_HINT)
+	elif _auto_side >= 0 and battle.phase == _auto_side:
+		_hud.set_hint(BattleTexts.AUTO_RUNNING_HINT)
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
 		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
@@ -1560,8 +1613,12 @@ func _refresh() -> void:
 	else:
 		_hud.hide_evolution()
 	var unacted := Queries.unacted_count(battle)
+	_hud.set_auto_button(
+		not cpu_turn and not battle.is_over() and battle.phase != Unit.Side.NEUTRAL and battle.acting_unit_id == 0 and evolving == null,
+		_ui.confirming_auto
+	)
 	if cpu_turn:
-		_hud.set_end_turn(false, "CPU の番")
+		_hud.set_end_turn(false, "おまかせ中" if battle.phase == _auto_side else "CPU の番")
 	elif _ui.confirming_end:
 		_hud.set_end_turn(true, "もう一度押して終了")
 	else:

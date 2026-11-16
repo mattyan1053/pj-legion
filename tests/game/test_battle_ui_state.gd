@@ -187,3 +187,18 @@ func test_pins_survive_actions_but_not_a_new_battle() -> void:
 	assert_eq(ui.pinned_ids, [9] as Array[int], "倒れた駒のピンが残った")
 	ui.clear_for_new_battle()
 	assert_true(ui.pinned_ids.is_empty(), "新しい対戦にピンを持ち越した")
+
+
+func test_auto_confirmation_is_dropped_by_back_and_by_other_confirmations() -> void:
+	var ui := BattleUiState.new()
+	ui.start_confirming_auto(1000)
+	assert_true(ui.confirming_auto)
+	assert_true(ui.confirm_guarded(1000 + BattleUiState.CONFIRM_GUARD_MSEC - 1), "確かめた直後の 2 回目を受けた")
+	assert_eq(ui.back(false), Back.DONE, "右クリックで、おまかせの確かめをやめない")
+	assert_false(ui.confirming_auto)
+	ui.start_confirming_auto(1000)
+	ui.start_confirming_end(1000)
+	assert_false(ui.confirming_auto, "ターン終了の確かめに替えても、おまかせの確かめが残った")
+	ui.start_confirming_auto(1000)
+	ui.clear_after_action()
+	assert_false(ui.confirming_auto, "行動のあとに、おまかせの確かめが残った")
