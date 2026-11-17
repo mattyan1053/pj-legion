@@ -21,6 +21,7 @@ const WindowMode := preload("res://game/window_mode.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const UiFeel := preload("res://game/ui_feel.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
+const StageLook := preload("res://game/stage_look.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -66,6 +67,12 @@ func _ready() -> void:
 		context.story.load_saved()
 		context.decks.store = SaveStore.new()
 		context.decks.load_saved()
+
+	# 画面の効果（光のにじみ、陰、色の調子）は、オプションで切れる。変えたら、いまの景色にもすぐ効く。
+	StageLook.set_effects(context.settings.value(AppContext.Settings.SCREEN_EFFECTS))
+	context.settings.changed.connect(func(key: StringName) -> void:
+		if key == AppContext.Settings.SCREEN_EFFECTS:
+			StageLook.set_effects(context.settings.value(key)))
 
 	add_child(UiFeel.new())  # ボタンにマウスが乗ったとき・押したときの小さな動き
 	var sound := Sound.new()

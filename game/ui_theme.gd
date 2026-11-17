@@ -116,10 +116,11 @@ static func band_box(top: bool, margin := 10.0) -> StyleBoxFlat:
 
 
 ## 画面の四隅を沈める幕（景色の上に題字やカードを置く画面で、真ん中へ目を集める）。入力は通す。
-static func vignette() -> TextureRect:
+## strength は濃さ（1 = 景色の上に題字やカードを置く画面。対戦の盤の上は、もっと薄くする）。
+static func vignette(strength := 1.0) -> TextureRect:
 	var gradient := Gradient.new()
 	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-	gradient.colors = PackedColorArray([Color(Palette.INK, 0.0), Color(Palette.INK, 0.12), Color(Palette.INK, 0.62)])
+	gradient.colors = PackedColorArray([Color(Palette.INK, 0.0), Color(Palette.INK, 0.12 * strength), Color(Palette.INK, 0.62 * strength)])
 	var texture := GradientTexture2D.new()
 	texture.gradient = gradient
 	texture.fill = GradientTexture2D.FILL_RADIAL

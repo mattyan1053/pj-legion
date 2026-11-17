@@ -34,6 +34,9 @@ var _time := 0.0
 
 func _ready() -> void:
 	StageLook.build_environment(self)
+	var board_sky := get_node(StageLook.SKY_NODE)  # 盤の空は使わない（裂けた空を描く）
+	remove_child(board_sky)
+	board_sky.free()
 	var board := BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, LOOK_SEED)
 	var view := BoardView.new()
 	add_child(view)
