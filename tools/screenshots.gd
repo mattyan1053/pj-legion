@@ -9,6 +9,7 @@ extends Node
 ## 最後にまとめて失敗を報告する。場面を足すときは、SCENES に名前と説明を足し、同じ名前の _scene_<名前>() を書く
 ## （その場面まで状態を作るだけ。撮るのはこのノードがやる）。
 
+const UnitLooks := preload("res://game/unit_looks.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
@@ -284,10 +285,19 @@ func _run() -> void:
 	_quit("screenshots: OK", 0)
 
 
+## 設定を既定に戻したあとも、`--unit-look <組の名前>` で選んだ駒の見た目の組は保つ（tools/screenshots.sh の --unit-look=）。
+func _keep_unit_look() -> void:
+	var args := OS.get_cmdline_user_args()
+	var at := args.find("--unit-look")
+	if at != -1 and at + 1 < args.size():
+		_app.context.settings.set_value(&"unit_look", UnitLooks.ORDER.find(StringName(args[at + 1])))
+
+
 ## 場面を作る前に、前の場面の状態を戻し、種 seed の新しい対戦を用意する。
 func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	_app.context.settings.reset_all()
+	_keep_unit_look()
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
 	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:

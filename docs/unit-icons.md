@@ -9,6 +9,7 @@
 道具が SubViewport で正面から少し見下ろして写し、透明な地の正方形の PNG（大きさは `UnitIcons.ICON_SIZE`）にして、組ごとのディレクトリ（組の定義の `icon_dir`）に置く。
 読み出すのは、いま使っている組の絵（組を替えると、アイコンもその組の絵になる）。
 
+- 組ごとのディレクトリ: `kaykit` は `assets/unit_icons/` に直に、ほかの組は `assets/unit_icons/<組の名前>/`。
 - 写す組み合わせ（`UnitIcons.variants()`）: 人の駒（将と雇える駒）と魔物は青と赤、進化する駒（将と魔物を除く）は進化の前後。中立の駒は中立の色だけ。
   将の別の姿（`unit_looks.gd` の `KING_LOOKS`。ストーリーの敵の将の骸骨の将）も青と赤（ファイル名は `king_<姿>_<陣営>.png`）。
 - 陣営の色は対戦の画面の色（`battle_screen.gd` の `TEAM_COLORS`）と同じ（テストが確かめる）。
