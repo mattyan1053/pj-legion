@@ -141,7 +141,7 @@ func test_random_squad_follows_the_battle_seed() -> void:
 	assert_eq(_kinds(setup.decks[1]), _kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, 7, Unit.Side.PLAYER2)))
 	assert_eq(_kinds(choice.drawn_deck(Unit.Side.PLAYER2)), _kinds(setup.decks[1]), "組んだ部隊を覚える")
 	assert_eq(_kinds(choice.copy().drawn_deck(Unit.Side.PLAYER2)), _kinds(setup.decks[1]), "写しにも残る（対戦の途中の設定パネル）")
-	assert_eq(_kinds(choice.to_setup(7).decks[1]), _kinds(setup.decks[1]), "同じ種（同じ盤面で再戦）なら同じ部隊")
+	assert_eq(_kinds(choice.to_setup(7).decks[1]), _kinds(setup.decks[1]), "同じ種（同じマップで再戦）なら同じ部隊")
 	var differs := false
 	for other_seed in range(8, 16):
 		differs = differs or _kinds(choice.to_setup(other_seed).decks[1]) != _kinds(setup.decks[1])
@@ -291,7 +291,7 @@ func test_a_hand_map_makes_the_same_board_on_any_seed_with_the_versus_rules() ->
 		assert_eq(first.board.size, other.board.size)
 		assert_eq(first.board.hq_cells, other.board.hq_cells, "種を変えても同じ形")
 		assert_eq(choice.look(), VersusFields.look_of(field))
-		assert_false(choice.new_board_fields().has(field), "同じ形にしかならないマップは「新しい盤面」に入れない")
+		assert_false(choice.new_board_fields().has(field), "同じ形にしかならないマップは「新しいマップ」に入れない")
 		choice.cpu_opponent = false
 		assert_true(choice.make_setup(1).cpu_sides().is_empty(), "人どうしでも遊べる")
 		assert_true(choice.make_setup(1).is_valid())

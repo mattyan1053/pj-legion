@@ -419,6 +419,11 @@ func next_episode() -> RefCounted:
 	return next
 
 
+## 「スキップ」を出しているか（検査用）。
+func is_skip_shown() -> bool:
+	return _skip.visible
+
+
 ## 行き先の選択を出しているか。
 func is_choosing() -> bool:
 	return _choice != null and _choice.visible
@@ -473,7 +478,8 @@ func _open_choice() -> void:
 		row.add_child(list)
 		_choice = center
 	_choice.visible = true
-	_hint.visible = false  # 「クリック: 次へ」は、選ぶ間は出さない
+	_hint.visible = false  # 「クリック: 次へ」と「スキップ」は、選ぶ間は出さない
+	_skip.visible = false
 	context.play_sound(&"menu_open")
 
 
@@ -482,6 +488,7 @@ func _choice_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		_choice.visible = false
 		_hint.visible = true
+		_skip.visible = true
 		context.play_sound(&"ui_back")
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo:
