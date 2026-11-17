@@ -86,7 +86,7 @@ const ULT_COLORS := {
 }
 
 var _team_colors: Array[Color] = []
-## 将の姿（陣営ごと。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
+## 将の姿（陣営ごと。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
 var king_looks: Array[StringName] = [&"", &""]
 
 var _turn_label: Label
