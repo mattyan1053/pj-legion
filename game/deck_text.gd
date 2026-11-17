@@ -59,6 +59,18 @@ static func stats_line(kind: UnitKind.Id, bonus := {}) -> String:
 	})
 
 
+## kind の駒がレベル level から始めるときに、レベル 1 より伸びている量（Unit.Stat -> 足す量。Growth.start_at と同じ）。育たない駒とレベル 1 は空。
+static func growth_bonus(kind: UnitKind.Id, level: int) -> Dictionary:
+	var role := UnitKind.role(kind)
+	if level <= 1 or not Growth.GAINS.has(role):
+		return {}
+	var bonus := {}
+	var gains: Dictionary = Growth.GAINS[role]
+	for stat: Unit.Stat in gains:
+		bonus[stat] = int(gains[stat]) * (Growth.start_level(level) - 1)
+	return bonus
+
+
 ## 装備の並びが足す量（Unit.Stat -> 足す量）。
 static func equipment_bonus(items: Array[Equipment.Id]) -> Dictionary:
 	var bonus := {}
@@ -136,7 +148,8 @@ static func item_refusal(kind: UnitKind.Id, held: Array[Equipment.Id], item: Equ
 ## 役割とコスト（将・魔物はコストを書かない）、役割の説明、能力値（持ち物込みの値も）、スキル、持ち物の効果と特性、進化先。
 ## deck_army: 部隊の軍（ほかの軍の駒なら、先頭に「FANTASY の駒（この部隊では MILITARY として戦う）」。-1 なら書かない）。
 ## with_items: 持ち物の効果の行を入れるか（部隊編成の画面は、持ち物を別の欄に出すので入れない）。
-static func detail_lines(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], deck_army := -1, with_items := true) -> Array[String]:
+## level: 始めのレベル（ストーリーの話の start_growth）。1 より上なら、能力値にレベルアップのぶん（Growth.GAINS）を足して出す。
+static func detail_lines(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], deck_army := -1, with_items := true, level := 1) -> Array[String]:
 	var lines: Array[String] = []
 	if deck_army != -1 and UnitKind.army(kind) != UnitKind.Army.NONE and UnitKind.army(kind) != deck_army:
 		# ストーリーで解放した、ほかの軍の駒（必殺技は部隊の軍のもの）。
@@ -152,9 +165,13 @@ static func detail_lines(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [],
 	if role_note(role) != "":
 		lines.append(role_note(role))
 	lines.append("")
-	lines.append(stats_line(kind))
+	var grown := growth_bonus(kind, level)
+	lines.append(stats_line(kind, grown))
 	if not equipment.is_empty():
-		lines.append(Text.t("deck.detail.with_items", {"stats": stats_line(kind, equipment_bonus(equipment))}))
+		var total := equipment_bonus(equipment)
+		for stat: Unit.Stat in grown:
+			total[stat] = int(total.get(stat, 0)) + int(grown[stat])
+		lines.append(Text.t("deck.detail.with_items", {"stats": stats_line(kind, total)}))
 	var skill := skill_text(kind)
 	if skill != "":
 		lines.append("")

@@ -79,7 +79,7 @@ func open(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side := 0, dec
 	_title.text = Names.kind(kind) if level <= 1 else Text.t("deck.detail.title_level", {"name": Names.kind(kind), "level": level})
 	var font := _body.get_theme_font(&"font")
 	var font_size := _body.get_theme_font_size(&"font_size")
-	_body.text = TextWrap.fold("\n".join(DeckText.detail_lines(kind, equipment, deck_army)), BODY_WIDTH, func(character: String) -> float:
+	_body.text = TextWrap.fold("\n".join(DeckText.detail_lines(kind, equipment, deck_army, true, level)), BODY_WIDTH, func(character: String) -> float:
 		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
 	_scroll.custom_minimum_size = Vector2(BODY_WIDTH, minf(_body.get_combined_minimum_size().y, BODY_MAX_HEIGHT))
 	_scroll.scroll_vertical = 0
