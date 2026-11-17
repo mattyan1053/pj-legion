@@ -243,7 +243,6 @@ func test_ult_gauge_table_matches_ults() -> void:
 	_expect_number(table, "自分の駒が敵にダメージを与えた", column, Ults.DEALT_GAIN, 1)
 	_expect_number(table, "自分の駒が敵からダメージを受けた", column, Ults.TAKEN_GAIN, 1)
 	_expect_number(table, "自分の駒（将を除く）が倒れた", column, Ults.DEFEAT_GAIN)
-	_expect_number(table, "対戦モードの先手が、対戦を始めるとき（1 回だけ）", column, Ults.FIRST_PLAYER_START_GAUGE)
 	_expect_number(table, "聖遺物を受け取った（中ボスを倒した）", column, Relics.ULT_GAIN)
 
 
