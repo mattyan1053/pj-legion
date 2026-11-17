@@ -31,7 +31,8 @@ extends SceneTree
 ##                   数の上限まで予算の中で雇い、余った予算で装備を種で決まる駒に持たせる）。手で作ったマップは種を変えても
 ##                   盤が同じなので、標本が別々の局になるよう、部隊の違いで勝率を測る（--decks は見ない）
 ##   --squads=one    両軍のうち片方だけ、部隊を局ごとに変える（もう片方は CPU の編成）。変える側は、ステージと軍の組み合わせを
-##                   一巡するごとに入れ替わる（24 の倍数。mixed なら 12 の倍数）。人が自分で組んだ部隊で CPU と戦うときの見え方を測る
+##                   一巡するごとに入れ替わる（24 の倍数。mixed なら 12 の倍数）。人が自分で組んだ部隊で CPU と戦うときの見え方を測る。
+##                   --episode とは一緒に使えない
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
@@ -333,6 +334,10 @@ func _initialize() -> void:
 		return
 	var random_squads: bool = args.get("squads", "") == "random"
 	var one_squad: bool = args.get("squads", "") == "one"
+	if one_squad and episode != null:
+		printerr("--squads=one は対戦モードだけ（--episode では、人の側を変える --squads=random を使う）")
+		quit(1)
+		return
 	# 部隊の中身ごとの勝ち負け（--squads のとき。決着した局の、部隊 1 つずつ）。鍵 -> [部隊の数, 勝った数]。
 	var squad_rows: Dictionary[String, Array] = {}
 	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
