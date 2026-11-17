@@ -1,5 +1,6 @@
 extends Node
-## タイトルの場面。飾らない最小の形: 題名と、ストーリー・対戦・オプション・終了。背景は対戦と同じ景色（backdrop.gd）。
+## タイトルの場面。題名と、ストーリー・対戦・オプション・終了。背景は、裂けた空の下の結晶の森（title_backdrop.gd）。
+## 題字とメニューは、板に載せずに景色の上へ直に置く。
 ## 部隊編成は、各モードに入ったところから開く（対戦設定の「部隊編成」、出撃準備の「部隊編成」）。
 ## 場面の決まりは scene_flow.gd。
 
@@ -7,20 +8,24 @@ const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
-const Backdrop := preload("res://game/backdrop.gd")
+const Ornament := preload("res://game/ui_ornament.gd")
+const TitleBackdrop := preload("res://game/title_backdrop.gd")
 
 ## 「対戦」で &"start"、「ストーリー」で &"story"（話の一覧へ）。
 signal finished(outcome: StringName)
 
-const COLOR_PANEL := Palette.OVERLAY
-const COLOR_TEXT_DIM := Palette.TEXT_DIM
+## 題字の大きさ。
+const TITLE_SIZE := 68
+## 入ったときの動きの長さ（題字が浮かぶまで）と、メニューが 1 つずつ現れる間隔（秒）。
+const ENTER_TIME := 0.5
+const ENTER_STEP := 0.07
 
 var context: AppContext
 var _buttons := {}
 
 
 func _ready() -> void:
-	add_child(Backdrop.new())
+	add_child(TitleBackdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var center := CenterContainer.new()
@@ -28,23 +33,26 @@ func _ready() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(UiTheme.vignette())
 	layer.add_child(center)
-	var style := UiTheme.box(COLOR_PANEL, Palette.BORDER, 2, 12, 28.0, 12)
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", style)
-	center.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 14)
-	panel.add_child(column)
+	column.add_theme_constant_override("separation", 12)
+	center.add_child(column)
 
-	var title := _label("PROJECT LEGION", 46)
+	# 題字: 景色（裂けた空）の上に直に置く。字の間を空け、下に飾りの線と読みを添える。
+	var title := _label("PROJECT LEGION", TITLE_SIZE)
 	title.theme_type_variation = UiTheme.LABEL_TITLE
-	title.remove_theme_constant_override("outline_size")
+	var spaced := FontVariation.new()
+	spaced.base_font = UiTheme.FONT_HEADING
+	spaced.spacing_glyph = 5
+	title.add_theme_font_override("font", spaced)
+	title.add_theme_constant_override("outline_size", 12)
 	column.add_child(title)
-	var subtitle := _label(Text.t("title.subtitle"), 20)
-	subtitle.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	var ornament := Ornament.new(420.0, 16.0)
+	column.add_child(ornament)
+	var subtitle := _label(Text.t("title.subtitle"), 19)
+	subtitle.add_theme_color_override("font_color", Palette.TEXT)
 	column.add_child(subtitle)
-	var gap := HSeparator.new()  # 題字とメニューを分ける線
-	gap.custom_minimum_size = Vector2(0.0, 10.0)
+	var gap := Control.new()  # 題字とメニューの間
+	gap.custom_minimum_size = Vector2(0.0, 56.0)
 	column.add_child(gap)
 	_add_button(column, &"story", story_label(), press_story)
 	(_buttons[&"story"] as Button).set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
@@ -52,6 +60,23 @@ func _ready() -> void:
 	(_buttons[&"start"] as Button).set_meta(&"sound", &"ui_confirm")
 	_add_button(column, &"settings", Text.t("title.button.options"), press_settings)
 	_add_button(column, &"quit", Text.t("title.button.quit"), press_quit)
+	_enter([title, subtitle], ornament)
+
+
+## 入ったときの短い動き: 題字が浮かび、飾りの線が左右へ伸び、メニューが上から順に現れる。入力は止めない（すぐ押せる）。
+func _enter(heading: Array, ornament: Ornament) -> void:
+	var tween := create_tween().set_parallel()
+	for node: Control in heading:
+		node.modulate.a = 0.0
+		tween.tween_property(node, "modulate:a", 1.0, ENTER_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	ornament.grow = 0.0
+	tween.tween_property(ornament, "grow", 1.0, ENTER_TIME * 1.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var order := 0
+	for id: StringName in _buttons:
+		var button := _buttons[id] as Button
+		button.modulate.a = 0.0
+		tween.tween_property(button, "modulate:a", 1.0, ENTER_TIME * 0.7).set_delay(ENTER_TIME * 0.4 + ENTER_STEP * order)
+		order += 1
 
 
 ## ボタンの文字の並び（上から。検査用）。
@@ -96,8 +121,9 @@ func _add_button(column: VBoxContainer, id: StringName, text: String, action: Ca
 	var button := Button.new()
 	button.text = text
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 22)
-	button.custom_minimum_size = Vector2(320.0, 56.0)
+	button.theme_type_variation = UiTheme.BUTTON_MENU
+	button.custom_minimum_size = Vector2(320.0, 52.0)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.pressed.connect(action)
 	column.add_child(button)
 	_buttons[id] = button
