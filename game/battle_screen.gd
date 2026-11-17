@@ -39,6 +39,7 @@ const WinText := preload("res://game/win_text.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦設定へ」は &"setup"、「タイトルへ」は &"title"。
 ## 「次へ」（渡されたものが許したときだけ出る。ストーリー）は Run.NEXT）。
@@ -167,6 +168,9 @@ var _layout: PanelLayout
 var _hover_forced := NO_CELL
 ## 対戦を始めたことがあるか（起動した直後の設定画面だけ偽。偽の間は、設定画面を閉じて戻る先が無い）。
 var _battle_started := false
+## 終盤の曲（sound_catalog.gd の CLIMAX_MUSIC）: 対戦の初めの将の番号と、もう替えたか。
+var _climax_kings: Array[int] = []
+var _climax := false
 ## カメラが追いかけた駒の番号 -> 回数。検査用。
 var camera_follows := {}
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
@@ -442,6 +446,8 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	# 対戦の曲（盤の見た目か、話が決めた曲。battle_source.gd の music）。決着の曲のあとの「やり直す」でも、対戦の曲へ戻る。
 	# 新しい盤面で見た目が替われば、曲も替わる。同じ曲なら鳴らし直さない。
 	context.play_scene_music(source.music())
+	_climax_kings = SoundCatalog.kings_of(battle)
+	_climax = false
 	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_cues = source.talk_cues()
 	_talk.clear()
@@ -531,6 +537,19 @@ func say_for_check(lines: Array[BattleCues.Line]) -> void:
 ## 対戦の途中の会話の札を消す（スクリーンショットで、ほかの台詞を出すとき）。
 func clear_talk_for_check() -> void:
 	_talk.clear()
+
+
+## 終盤に入ったら、終盤の曲へフェードで替える（1 回だけ。戻さない。新しい対戦を始めると、その対戦の曲に戻る）。
+func _update_climax() -> void:
+	if _climax or not SoundCatalog.climax_reached(battle, _climax_kings):
+		return
+	_climax = true
+	context.play_scene_music(SoundCatalog.CLIMAX_MUSIC)
+
+
+## 終盤の曲に替えたか。検査用。
+func climax_started() -> bool:
+	return _climax
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
@@ -1751,6 +1770,7 @@ func _is_self_skill(unit: Unit) -> bool:
 
 
 func _refresh_status(turn: int, phase: Unit.Side) -> void:
+	_update_climax()
 	var counts: Array[int] = [
 		Queries.unit_count(battle, Unit.Side.PLAYER1), Queries.unit_count(battle, Unit.Side.PLAYER2),
 	]

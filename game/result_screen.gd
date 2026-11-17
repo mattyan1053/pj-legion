@@ -82,7 +82,7 @@ var overlays: OverlayStack
 var play_sound := Callable()
 ## 陣営ごとの色（添字がプレイヤー番号）。見出しの色（人どうし）に使う。
 var team_colors: Array[Color] = []
-## 将の姿（陣営ごと。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）。MVP と表のアイコンに使う。
+## 将の姿（陣営ごと。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）。MVP と表のアイコンに使う。
 var king_looks: Array[StringName] = [&"", &""]
 
 var _summary: RefCounted

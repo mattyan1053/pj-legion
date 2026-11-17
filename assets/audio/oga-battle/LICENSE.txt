@@ -1,0 +1,26 @@
+Battle music collected from OpenGameArt.org. Every track below is released
+under Creative Commons Zero (CC0 1.0 Universal) by its author:
+https://creativecommons.org/publicdomain/zero/1.0/
+
+  battle_theme_a_loop.ogg       "Cynic Battle Loop" by Ferk (loop edit of "Battle Theme A" by cynicmusic)
+                                https://opengameart.org/content/cynic-battle-loop
+                                https://opengameart.org/content/battle-theme-a
+  great_labyrinth.ogg           "Great Labyrinth (Orchestral dungeon music)" by MintoDog
+                                https://opengameart.org/content/great-labyrinthorchestral-dungeon-music
+  sigil.ogg                     "Sigil" by Kistol
+                                https://opengameart.org/content/sigil
+  determined_pursuit_loop.ogg   "Determined Pursuit (epic orchestra loop)" by Emma_MA
+                                https://opengameart.org/content/determined-pursuit-epic-orchestra-loop
+  the_fire_dragon_loop.ogg      "The Fire Dragon" (loop v2) by Umplix
+                                https://opengameart.org/content/the-fire-dragon
+  qazijamjam.ogg                "QaziJamJam (orchestral battle theme)" by Emma_MA
+                                https://opengameart.org/content/qazijamjam-orchestral-battle-theme
+  the_march_of_devils_dome.ogg  "The March of Devils Dome" by Eldritch Grim
+                                https://opengameart.org/content/the-march-of-devils-dome
+  epic_boss_battle_loop.ogg     "Epic Boss Battle [Seamlessly Looping]" by Juhani Junkala (SubspaceAudio)
+                                https://opengameart.org/content/boss-battle-music
+
+Each page above lists its license as CC0 (checked on 2026-11-17).
+None of the tracks came with a separate license file.
+The files here were converted to Ogg Vorbis (quality 2, stereo, 44.1 kHz) with metadata removed.
+Some were trimmed at the start/end and given a short crossfade so that they loop (see README.md).
