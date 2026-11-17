@@ -33,7 +33,7 @@ func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 		assert_false(ids.has(episode.id), "話の id が重なっている: %s" % episode.id)
 		ids.append(episode.id)
 		for rows: Array in [episode.before, episode.after]:
-			assert_between(rows.size(), 1, 6, "会話は短く（6 行まで）: %s" % episode.id)
+			assert_between(rows.size(), 1, Episode.TALK_MAX_LINES, "会話は短く（%d 行まで）: %s" % [Episode.TALK_MAX_LINES, episode.id])
 
 
 func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
