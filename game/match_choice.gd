@@ -84,10 +84,16 @@ func can_open_setup() -> bool:
 	return true
 
 
+## 決着の画面の、流れの外への行き先はマップ選択（別のマップで遊ぶ。タイトルへはシステムメニューから）。
+func leave() -> Array:
+	return [&"map_select", "result.to_map_select"]
+
+
 ## この選択で始める流れ（run.gd）: 対戦の場面 1 つ。対戦の場面には、この選択の写しを渡す
 ## （対戦の途中でマップや相手を替えても、対戦設定の場面に戻ったときの選択は変えない）。
 func run() -> Run:
 	var battle_run := Run.new()
+	battle_run.menu_exits = [[SceneFlow.MAP_SELECT, "map_select.resume", "menu.to_map_select.confirm"]]
 	battle_run.add(SceneFlow.BATTLE, copy())
 	return battle_run
 

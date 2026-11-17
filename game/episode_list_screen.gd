@@ -1,5 +1,5 @@
 extends Node
-## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（会話 → 出撃準備 → 対戦 → 会話）を始める。
+## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（出撃準備 → 会話 → 対戦 → 会話）を始める。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
 ## - カードには、話の番号と名前、盤の縮図（map_card.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
@@ -118,7 +118,7 @@ func resume_label() -> String:
 	return Text.t("story.episodes.resume")
 
 
-## 話 episode を始める（会話（前）から）。遊べない話なら何もしない。
+## 話 episode を始める（出撃準備から）。遊べない話なら何もしない。
 func choose(episode: Episode) -> void:
 	if not context.story.is_available(episode):
 		return

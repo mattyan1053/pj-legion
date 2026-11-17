@@ -113,6 +113,7 @@ var _detail_button: Button
 ## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
 var _board_buttons: Array[Button] = []  # 新しい盤面（ボタンの meta の &"field" がマップの鍵）
 var _setup_button: Button
+var _leave_button: Button
 var _squad_button: Button
 var _continue_button: Button
 var _again_button: Button
@@ -391,7 +392,7 @@ func _buttons_ready() -> bool:
 
 ## 出す行き先を決める（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める）。
 ## boards は「新しい盤面」で選べるマップの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦設定へ」、squad は「部隊を選び直す」を出すか。
-## 「同じ盤面でもう一度」と「タイトルへ」は、いつも出す。
+## 「同じ盤面でもう一度」と、流れの外への行き先（set_leave。既定は「タイトルへ」）は、いつも出す。
 func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void:
 	while _board_buttons.size() < boards.size():
 		var button := _button("", 0.0)
@@ -419,6 +420,18 @@ func set_continue(shown: bool, retry := false) -> void:
 	_prompt.text = Text.t("result.prompt", {"destination": enter_destination()})
 
 
+## 流れの外への行き先のボタンの文（既定は「タイトルへ」。対戦モードは「マップ選択へ」、ストーリーは「話の一覧へ」。battle_source.gd の leave）。
+## 押すと title_pressed（対戦の画面が、その行き先へ進む）。
+func set_leave(text: String) -> void:
+	_leave_button.text = text
+	_prompt.text = Text.t("result.prompt", {"destination": enter_destination()})
+
+
+## 流れの外への行き先のボタンの文。検査用。
+func leave_text() -> String:
+	return _leave_button.text
+
+
 ## 入力の案内（「行き先を選ぶ（Enter で…）」）の、画面の上の場所。検査用。
 func prompt_rect() -> Rect2:
 	return _prompt.get_global_rect()
@@ -430,7 +443,7 @@ func enter_destination() -> String:
 		return _continue_button.text
 	if _enter_retries:
 		return _again_button.text
-	return Text.t("result.to_title")
+	return _leave_button.text
 
 
 ## 「同じ盤面でもう一度」を押す。
@@ -725,9 +738,9 @@ func _build_actions() -> void:
 	_squad_button.pressed.connect(press_choose_squad)
 	_squad_button.visible = false
 	leave.add_child(_squad_button)
-	var to_title := _button(Text.t("result.to_title"), 180.0)
-	to_title.pressed.connect(title_pressed.emit)
-	leave.add_child(to_title)
+	_leave_button = _button(Text.t("result.to_title"), 180.0)
+	_leave_button.pressed.connect(title_pressed.emit)
+	leave.add_child(_leave_button)
 	_detail_button = _button("", 220.0)
 	_detail_button.pressed.connect(toggle_detail)
 	leave.add_child(_detail_button)
