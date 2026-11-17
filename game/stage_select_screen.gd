@@ -5,7 +5,7 @@ extends Node
 ## - カードは 2 段: 上の段が生成のステージ（毎回形が変わる）、下の段が手で作ったマップ（いつも同じ形）。
 ##   段に収まらないほど増えたら、その段を横に送れる（ホイールでも）。
 ## - カードには、そのステージの盤の縮図（stage_card_map.gd。盤はルールが作る）、番号と名前、置かれているもの、形の札を載せる。
-## - マウスを乗せたカードは明るくなり、少し大きくなって、下の欄にステージの説明が出る。
+## - マウスを乗せたカードは明るくなり、少し大きくなって、下の欄にステージの説明が出る。欄の大きさは、いちばん長い説明に合わせて固定する。
 ## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだステージを context.match_choice に入れて &"pick"（対戦設定へ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
@@ -17,6 +17,7 @@ const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const StageCardMap := preload("res://game/stage_card_map.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const SteadyBox := preload("res://game/steady_box.gd")
 
 signal finished(outcome: StringName)
 
@@ -117,7 +118,12 @@ func _ready() -> void:
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
 	root.add_child(back)
-	_show_note(&"")
+	# 説明の欄は、いちばん長い説明が収まる大きさに固定する（乗せたカードで大きさが変わると、カードの段まで動いて揺れる）。
+	var notes: Array[Callable] = []
+	for field: StringName in _cards:
+		notes.append(_show_note.bind(field))
+	notes.append(_show_note.bind(&""))
+	SteadyBox.fit_largest(note_panel, notes)
 
 
 ## 1 段ぶんのカード。幅に収まらなければ、横に送れる（収まれば真ん中に寄せる）。
