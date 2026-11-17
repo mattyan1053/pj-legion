@@ -292,6 +292,17 @@ func test_story_rules_hire_only_unlocked_kinds_and_items_within_the_unlocked_bud
 	assert_eq(booted.problems(), [Deck.Problem.ITEM_NOT_ALLOWED] as Array[Deck.Problem], "まだ持たせられない持ち物は、出せない理由になる")
 
 
+func test_story_rules_list_every_item_the_campaign_offers() -> void:
+	for campaign: RefCounted in Story.campaigns():
+		var offered := Story.offered_items(campaign)
+		var shown := Story.rules_of(Story.starting(campaign)).shown_items()
+		for item: Equipment.Id in Equipment.Id.values():
+			assert_eq(shown.has(item), offered.has(item), "%s / %s" % [campaign.id, Names.item(item)])
+		for episode: RefCounted in campaign.episodes:
+			for item: Equipment.Id in episode.unlock_items:
+				assert_true(offered.has(item), "解放する持ち物は、最初から並ぶ（未解放）")
+
+
 func test_campaigns_unlock_only_their_own_army() -> void:
 	for campaign in Story.campaigns():
 		for episode: RefCounted in campaign.episodes:

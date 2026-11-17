@@ -91,9 +91,77 @@ func test_deck_removes_an_entry() -> void:
 # --- 装備 ---
 
 
-func test_every_equipment_costs_one() -> void:
-	for item: Equipment.Id in Equipment.Id.values():
+func test_the_first_two_items_cost_one_and_stack() -> void:
+	for item: Equipment.Id in [BOOTS, SHIELD]:
 		assert_eq(Equipment.cost(item), 1, str(Equipment.Id.find_key(item)))
+		assert_eq(Equipment.stack_limit(item), Equipment.MAX_PER_UNIT)
+		assert_true(Equipment.roles(item).is_empty())
+
+
+func test_every_item_costs_something_and_does_something() -> void:
+	for item: Equipment.Id in Equipment.Id.values():
+		assert_true(Equipment.cost(item) >= 1, str(Equipment.Id.find_key(item)))
+		var adds := false
+		for stat: Unit.Stat in Unit.Stat.values():
+			adds = adds or Equipment.bonus(item, stat) != 0
+		assert_true(adds or not Equipment.traits(item).is_empty(), "能力値か特性のどちらかを持つ: %s" % Equipment.Id.find_key(item))
+
+
+func test_new_items_do_not_stack() -> void:
+	var entry := Deck.new(MILITARY).add(UnitKind.Id.COMMANDO)
+	assert_true(entry.equip(Equipment.Id.POWER_GAUNTLET))
+	assert_false(entry.equip(Equipment.Id.POWER_GAUNTLET), "重ねられない装備の 2 個目は断る")
+	assert_true(entry.equip(Equipment.Id.REGEN_CHARM), "違う装備なら持てる")
+	assert_eq(entry.equipment.size(), 2)
+
+
+func test_role_limited_items() -> void:
+	var deck := Deck.new(MILITARY)
+	assert_true(deck.add(UnitKind.Id.SNIPER).equip(Equipment.Id.LONG_SCOPE), "遠眼鏡は後衛が持てる")
+	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC]:
+		assert_false(deck.add(kind).equip(Equipment.Id.LONG_SCOPE), "遠眼鏡は後衛だけ: %s" % UnitKind.Id.find_key(kind))
+	assert_false(Deck.new(MILITARY).add(UnitKind.Id.SHIELD_TROOPER).equip(Equipment.Id.WAR_BANNER), "前衛は軍旗を持てない（元から支配領域を作る）")
+	for kind: UnitKind.Id in [UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC]:
+		assert_true(Deck.new(MILITARY).add(kind).equip(Equipment.Id.WAR_BANNER), str(UnitKind.Id.find_key(kind)))
+	assert_false(Equipment.fits(Equipment.Id.REGEN_CHARM, UnitKind.Id.KING), "将はどの装備も持てない")
+
+
+func test_add_unit_refuses_items_the_kind_cannot_hold() -> void:
+	var battle := _battle()
+	assert_eq(battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0), [Equipment.Id.LONG_SCOPE] as Array[Equipment.Id]), null)
+	assert_eq(battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0), [Equipment.Id.LONG_SCOPE, Equipment.Id.LONG_SCOPE] as Array[Equipment.Id]), null)
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0), [Equipment.Id.LONG_SCOPE] as Array[Equipment.Id])
+	assert_eq(sniper.attack_range(), UnitKind.attack_range(UnitKind.Id.SNIPER) + 1)
+
+
+func test_stat_items_add_to_the_base_layer() -> void:
+	var battle := _battle()
+	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 0), [Equipment.Id.POWER_GAUNTLET] as Array[Equipment.Id])
+	assert_eq(medic.power(), UnitKind.power(UnitKind.Id.MEDIC) + 2, "回復役は回復量が増える")
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(1, 0), [Equipment.Id.DRAGON_SCALE] as Array[Equipment.Id])
+	assert_eq(trooper.max_hp(), UnitKind.max_hp(UnitKind.Id.SHIELD_TROOPER) + 20)
+	assert_eq(trooper.hp, trooper.max_hp())
+
+
+func test_trait_items_grant_the_evolution_traits() -> void:
+	var battle := _battle()
+	var cell := Vector2i(0, 0)
+	var traits := {
+		Equipment.Id.REGEN_CHARM: [Evolution.Trait.REGENERATION],
+		Equipment.Id.TRAIL_MAP: [Evolution.Trait.FOREST_WALK],
+		Equipment.Id.SHADOW_CLOAK: [Evolution.Trait.IGNORES_ZOC],
+		Equipment.Id.WAR_BANNER: [Evolution.Trait.EXERTS_ZOC],
+		Equipment.Id.JET_PACK: [Evolution.Trait.IGNORES_ZOC, Evolution.Trait.FOREST_WALK],
+		Equipment.Id.DRAGON_SCALE: [Evolution.Trait.REGENERATION],
+	}
+	for item: Equipment.Id in traits:
+		var unit := battle.add_unit(UnitKind.Id.COMMANDO, P1, cell, [item] as Array[Equipment.Id])
+		cell.x += 1
+		for which: Evolution.Trait in Evolution.Trait.values():
+			assert_eq(unit.has_trait(which), (traits[item] as Array).has(which), "%s / %s" % [Equipment.Id.find_key(item), Evolution.Trait.find_key(which)])
+	var plain := battle.add_unit(UnitKind.Id.COMMANDO, P1, cell)
+	assert_false(plain.exerts_zoc())
+	assert_false(plain.ignores_zoc())
 
 
 func test_entry_holds_duplicates_up_to_three() -> void:
@@ -406,3 +474,29 @@ func test_deploy_on_generated_boards() -> void:
 			for unit in placed:
 				var d := (unit.cell - hq).abs()
 				assert_true(maxi(d.x, d.y) <= 2, "本陣のそば（ステージ %d）" % stage)
+
+
+func test_regeneration_from_an_item_heals_once_even_with_the_evolution() -> void:
+	var battle := _battle()
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0), [Equipment.Id.REGEN_CHARM] as Array[Equipment.Id])
+	paladin.hp -= 20
+	assert_eq(Evolution.regeneration_heal(paladin), Evolution.REGENERATION_HEAL)
+	assert_true(Evolution.regeneration_targets(battle, P1).has(paladin))
+	paladin.evolve(Evolution.Id.SACRED)
+	assert_eq(Evolution.regeneration_heal(paladin), Evolution.REGENERATION_HEAL, "進化先と装備の両方が与えても 1 回ぶん")
+
+
+func test_trail_map_walks_into_forest_like_plain_ground() -> void:
+	var battle := _battle([
+		".......",
+		".FFF...",
+		".......",
+		".......",
+		".......",
+		".......",
+		".......",
+	])
+	var walker := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 1), [Equipment.Id.TRAIL_MAP] as Array[Equipment.Id])
+	var plain := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 2))
+	assert_eq(walker.move_cost(battle.board, Vector2i(1, 1)), 1)
+	assert_true(plain.move_cost(battle.board, Vector2i(1, 1)) > 1)

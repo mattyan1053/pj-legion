@@ -62,6 +62,7 @@ deck.problem.over_budget,コスト上限を {over} 超過
 deck.problem.too_much_equipment,持ち物の数が上限超過の駒あり（1 体 {max} 個まで）
 deck.problem.not_in_roster,この軍で雇えない駒あり
 deck.problem.item_not_allowed,未解放の持ち物あり
+deck.problem.item_not_fit,持てない持ち物を持つ駒あり
 deck.problem.other,出撃不可
 deck.skill,"{name}（クールダウン {cooldown} ターン）
 {summary}"

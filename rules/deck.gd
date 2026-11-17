@@ -16,6 +16,7 @@ enum Problem {
 	TOO_MUCH_EQUIPMENT,  ## 装備を持てる数を超えて持っている駒がいる
 	NOT_IN_ROSTER,  ## この軍のロスターに無い駒がいる
 	ITEM_NOT_ALLOWED,  ## 決まりで持たせられない装備を持っている駒がいる
+	ITEM_NOT_FIT,  ## その駒が持てない装備（役割の限り、重ねられない装備の 2 個目）を持っている駒がいる
 }
 
 ## 対戦の決まりで雇える駒の数の上限（将を除く）。
@@ -95,7 +96,20 @@ func problems() -> Array[Problem]:
 		found.append(Problem.NOT_IN_ROSTER)
 	if entries.any(func(entry: DeckEntry) -> bool: return entry.equipment.any(func(item: Equipment.Id) -> bool: return not rules.allows_item(item))):
 		found.append(Problem.ITEM_NOT_ALLOWED)
+	if entries.any(func(entry: DeckEntry) -> bool: return _misfit(entry)):
+		found.append(Problem.ITEM_NOT_FIT)
 	return found
+
+
+## 駒 entry が、数の上限（TOO_MUCH_EQUIPMENT）のほかの理由で、持っている装備を持てないか（役割の限り、重ねられない装備の 2 個目）。
+static func _misfit(entry: DeckEntry) -> bool:
+	for item in entry.equipment:
+		if not Equipment.fits(item, entry.kind):
+			return true
+		var limit := Equipment.stack_limit(item)
+		if limit < Equipment.MAX_PER_UNIT and entry.equipment.count(item) > limit:
+			return true
+	return false
 
 
 ## 対戦に出せる形か。
