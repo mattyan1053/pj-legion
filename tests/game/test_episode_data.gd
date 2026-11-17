@@ -84,9 +84,9 @@ func test_the_probe_reads_every_field() -> void:
 	assert_eq(episode.enemy, [[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD, Equipment.Id.IRON_SHIELD]], [UnitKind.Id.PRIEST, []]])
 	assert_eq(episode.deploy[1], [Vector2i(8, 9), Vector2i(5, 9)] as Array[Vector2i])
 	assert_true(episode.deploy[0].is_empty())
-	assert_eq(episode.before, [[0, "いくぞ"], [1, "来い：ここだ"]], "全角の「：」でもよい。文の中の「：」はそのまま")
-	assert_eq(episode.after, [[1, "退け"]])
-	assert_eq(episode.cues, [[&"turn", 2, 0, "進め"], [&"king_half", 1, 1, "まだだ"]])
+	assert_eq(episode.before, [[0, "いくぞ", 0], [1, "来い：ここだ", 1]], "全角の「：」でもよい。文の中の「：」はそのまま")
+	assert_eq(episode.after, [[1, "退け", 1]])
+	assert_eq(episode.cues, [[&"turn", 2, 0, "進め", 0], [&"king_half", 1, 1, "まだだ", 1]])
 	assert_false(episode.has_squad())
 
 
@@ -102,6 +102,28 @@ func test_speaker_figures_read() -> void:
 	# 会話の場面と、対戦の途中の台詞へ渡る。
 	var talk := Story.talk_of(episode, episode.before)
 	assert_eq(talk["figures"], episode.figures)
+
+
+## ほかの話し手（speaker = 名前, 姿）。主な話し手（name）のあとに、書いた順に並ぶ（人の軍が先）。
+## 会話と途中の台詞の行は、話し手の番号と陣営を持ち、会話の場面と途中の台詞へ、その人の名前と姿が渡る。
+func test_more_speakers_read() -> void:
+	var text := PROBE.replace("name = 隊長", "name = 隊長\nspeaker = 新兵, medic\nspeaker = 伝令\nunit = sniper").replace("name = 敵将", "name = 敵将\nspeaker = 副官, sorcerer evolved")
+	text = text.replace("隊長: いくぞ", "新兵: いきます\n副官: 来ます").replace("(turn 2) 隊長: 進め", "(turn 1) 伝令: 進め")
+	var episode: Episode = Episode.parse(text)
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.speakers, PackedStringArray(["隊長", "敵将", "新兵", "伝令", "副官"]))
+	assert_eq(episode.speaker_sides, PackedInt32Array([0, 1, 0, 0, 1]))
+	assert_eq(episode.figures[2], {"kind": UnitKind.Id.MEDIC, "evolved": false, "look": &""})
+	assert_eq(episode.figures[3], {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, "姿を書かなければ将")
+	assert_eq(episode.figures[4], {"kind": UnitKind.Id.SORCERER, "evolved": true, "look": &""})
+	assert_eq(episode.before, [[0, "いきます", 2], [1, "来ます", 4], [1, "来い：ここだ", 1]])
+	assert_eq(episode.cues[0], [&"turn", 1, 0, "進め", 3])
+	var lines: Array = Story.talk_of(episode, episode.before)["lines"]
+	assert_eq([lines[0]["side"], lines[0]["who"], lines[0]["name"]], [0, 2, "新兵"])
+	assert_eq([lines[1]["side"], lines[1]["who"], lines[1]["name"]], [1, 4, "副官"])
+	var source := StoryBattle.new(episode, null)
+	var said: Array = source.talk_cues().on_start(source.make_setup(1).create_battle())
+	assert_eq([said[0].side, said[0].name, said[0].figure], [0, "伝令", episode.figures[3]])
 
 
 ## 敵の将の姿（king_figure）は見た目だけ。話し手の姿が将なら、その姿で立つ。ルールの上では将のまま。
@@ -242,6 +264,11 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"話し手の無い行": ["隊長: いくぞ", "いくぞ", 23],
 		"空の文": ["隊長: いくぞ", "隊長:", 23],
 		"会話が長い": ["隊長: いくぞ", "隊長: いくぞ\n".repeat(Episode.TALK_MAX_LINES + 1).strip_edges(), 22],
+		"会話の文が長い": ["隊長: いくぞ", "隊長: " + "あ".repeat(Episode.TALK_MAX_CHARS + 1), 23],
+		"話し手の重なり": ["name = 隊長", "name = 隊長\nspeaker = 敵将, sniper", 14],
+		"話し手の姿": ["name = 隊長", "name = 隊長\nspeaker = 新兵, knight", 14],
+		"話し手の書き方": ["name = 隊長", "name = 隊長\nspeaker = 新兵, sniper, evolved", 14],
+		"名前の無い話し手": ["name = 隊長", "name = 隊長\nspeaker = , sniper", 14],
 		"知らないきっかけ": ["(turn 2)", "(turn_end 2)", 30],
 		"きっかけの陣営": ["(king_half enemy)", "(king_half 1)", 31],
 		"ターン 0": ["(turn 2)", "(turn 0)", 30],

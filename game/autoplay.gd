@@ -2267,17 +2267,20 @@ func _visit_item_rows(app: Node) -> void:
 ## 対戦の前の会話の場面 talk（話 episode）: 文の数、最初の文、話し手の姿、送りと戻り。
 func _check_talk_before(talk: Node, episode: RefCounted) -> void:
 	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
-	_expect(talk.speaker() == episode.speakers[episode.before[0][0]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
+	_expect(talk.speaker() == episode.speakers[episode.before[0][2]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
 	_expect(not talk.has_method(&"next_episode") or talk.next_episode() == null, "対戦の前の会話に「次の話へ」がある")
 	await get_tree().process_frame
-	var sides: Array = episode.before.map(func(row: Array) -> int: return row[0])
-	_expect(talk.figures().size() == (2 if sides.has(0) and sides.has(1) else 1), "会話に出てくる陣営の話し手の姿が立っていない")
+	# 立つ所は左右に 1 つずつ。両軍が出てくるか、同じ軍の話し手が 2 人以上いれば、両方に立つ。
+	var talkers := {}
+	for row: Array in episode.before:
+		talkers[row[2]] = true
+	_expect(talk.figures().size() == mini(talkers.size(), 2), "会話に出てくる話し手の姿が立っていない")
 	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
 	for figure: Control in talk.figures():
 		var rect: Rect2 = figure.get_global_rect()
 		_expect(rect.has_area() and screen_rect.encloses(rect), "話し手の姿が画面からはみ出す: %s" % rect)
 		_expect(not rect.intersects(talk.bottom_rect()), "話し手の姿が、名前の札・文の枠・「飛ばす」に重なる: %s と %s" % [rect, talk.bottom_rect()])
-		_expect(figure.is_speaking() == (figure.side == episode.before[0][0]), "話している側の姿だけが明るく大きくなっていない")
+		_expect(figure.is_speaking() == (figure.who == episode.before[0][2]), "話している人の姿だけが明るく大きくなっていない")
 	talk.press_next()
 	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
 	talk.press_back()
