@@ -10,6 +10,7 @@ extends Node
 ## - 「部隊編成」で、部隊編成（ストーリー用）へ寄り道する（流れに差し込む。編成の「出撃準備へ戻る」で、ここへ戻る）。
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
 
+const SteadyBox := preload("res://game/steady_box.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -162,6 +163,7 @@ func _ready() -> void:
 	_options.add_theme_constant_override("separation", 4)
 	scroll.add_child(_options)
 	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。
+	# 部隊によって文の行の数が違うので、文の高さは、いちばん長い部隊に合わせて固定する（_build_options のあと）。
 	_deck_faces = HFlowContainer.new()
 	_deck_faces.add_theme_constant_override("h_separation", 2)
 	troops_column.add_child(_deck_faces)
@@ -184,6 +186,11 @@ func _ready() -> void:
 	footer.add_child(_sortie)
 
 	_build_options()
+	var summaries: Array[Callable] = []
+	for id: String in _option_buttons:
+		if not (_option_buttons[id] as Button).disabled:
+			summaries.append(choose.bind(id))
+	SteadyBox.fit_largest(_deck_line, summaries)
 	if is_squad_fixed():
 		choose(FIXED_ID)
 		return
