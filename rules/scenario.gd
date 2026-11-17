@@ -26,8 +26,9 @@ var win_conditions: Array[Array] = [STANDARD_WIN_CONDITIONS.duplicate(), STANDAR
 ## 「守り切る」（GameWonEvent.Reason.TURNS_HELD）のターン数。このターンが終わるまで決着しなければ、守り切る側の勝ち。
 ## 0 なら守り切るは働かない。対戦を作るとき、対戦（Battle.hold_turns）へ写す。
 var hold_turns := 0
-## プレイヤーごとの、対戦の始めの必殺技のゲージ（0 から Ults.GAUGE_MAX。docs/tactical-ult.md）。既定は 0。
-## 対戦を作るとき、対戦（Battle.ult_gauge）へ写す。必殺技の使い方を教える話が、ゲージがたまる手前から始めるのに使う。
+## プレイヤーごとの、対戦の始めの必殺技のゲージ（0 から Ults.GAUGE_MAX。docs/tactical-ult.md）。
+## 対戦モードの定義（versus、on_map）は、先手だけ Ults.FIRST_PLAYER_START_GAUGE から（先手の埋め合わせ）。
+## 対戦を作るとき、対戦（Battle.ult_gauge）へ写す。ストーリーの話は、話の start_gauge で置き換える（ふつうは 0）。
 var start_gauge: Array[int] = [0, 0]
 ## プレイヤーごとの、駒の始めのレベルと経験値（[レベル, 経験値] の列。部隊の並びの順に、将でない駒へ当てる）。
 ## 列が短ければ、残りの駒はいつもどおり（レベル 1、経験値 0）。既定は、どちらも空。
@@ -44,6 +45,7 @@ const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
 static func versus(at_stage: BoardGenerator.Stage) -> Scenario:
 	var scenario := Scenario.new()
 	scenario.stage = at_stage
+	scenario.start_gauge[Unit.Side.PLAYER1] = Ults.FIRST_PLAYER_START_GAUGE
 	return scenario
 
 
@@ -52,6 +54,7 @@ static func on_map(map: HandMap, map_title: String) -> Scenario:
 	var scenario := Scenario.new()
 	scenario.title = map_title
 	scenario.hand_map = map
+	scenario.start_gauge[Unit.Side.PLAYER1] = Ults.FIRST_PLAYER_START_GAUGE
 	return scenario
 
 

@@ -22,6 +22,9 @@ const DEALT_GAIN := 1
 const TAKEN_GAIN := 5
 ## 自分の駒（将を除く）が倒れたときにたまる量。
 const DEFEAT_GAIN := 80
+## 対戦モードで、先手（プレイヤー1）が対戦の始めに持っている量（戦いの定義の start_gauge。Scenario.versus、Scenario.on_map）。
+## 先に踏み込む先手は、先に殴られて後手が少し勝つ（docs/cpu-ai.md の「いまの集計」）。その埋め合わせ。
+const FIRST_PLAYER_START_GAUGE := 750
 
 ## すべての必殺技。足すときは、ここに 1 つ並べる。
 static var ALL: Array[Ult] = [
