@@ -13,6 +13,8 @@ const Episode := preload("res://game/episode.gd")
 var episode: Episode
 ## 人の部隊。
 var human_deck: Deck
+## 人が出撃準備で決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
+var placement: Array[Vector2i] = []
 
 
 func _init(of_episode: Episode = null, deck: Deck = null) -> void:
@@ -22,7 +24,9 @@ func _init(of_episode: Episode = null, deck: Deck = null) -> void:
 
 func make_setup(battle_seed: int) -> MatchSetup:
 	# 敵の部隊は戦いの定義が決め打ちにしているので、CPU の編成は作られない（MatchSetup.on_scenario）。
-	return MatchSetup.on_scenario(scenario(), battle_seed, Unit.Side.PLAYER1, human_deck)
+	var setup := MatchSetup.on_scenario(scenario(), battle_seed, Unit.Side.PLAYER1, human_deck)
+	setup.placements[Unit.Side.PLAYER1] = placement.duplicate()
+	return setup
 
 
 ## 話の戦いの定義（種に依らない。マップ、決め打ちの敵、初期位置、勝ち方）。出撃準備も、勝ち方と敵の部隊をここから読む。
@@ -76,7 +80,9 @@ func record_win(context: RefCounted) -> void:
 
 
 func copy() -> RefCounted:
-	return get_script().new(episode, human_deck)
+	var other: RefCounted = get_script().new(episode, human_deck)
+	other.placement = placement.duplicate()
+	return other
 
 
 ## 話 of_episode の戦いの定義（種に依らない）。

@@ -37,6 +37,7 @@ const SCENES := {
 	"setup_deck": "対戦設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
 	"setup_preview": "対戦設定で、CPU の部隊の「編成を確認」を開いたところ",
 	"setup_unit_detail": "対戦設定の「編成確認」（CPU の部隊）で、駒の札を押して詳しい説明を開いたところ",
+	"setup_placement": "対戦設定の「初期位置」の窓（中央平原の代表の形）で、駒を 1 体動かし、もう 1 体を選んでいるところ",
 	"setup_random": "対戦設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
 	"setup_cpu_deck": "対戦設定で、CPU の行の部隊の選択肢を開いた（CPU の編成・ランダム編成・取っておいた部隊）",
 	"setup_cpu_random": "CPU の部隊を「ランダム編成」にして始めた対戦の途中で、対戦設定の「編成確認」を開いた（いまの対戦で組んだ部隊）",
@@ -183,6 +184,7 @@ const SCENES := {
 	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守」の札と姿）",
 	"story_monster_sortie": "ストーリー: 魔物の群れの話（軍に属さない敵）の出撃準備（敵の部隊は「軍なし」の骸骨）",
 	"story_sortie_detail": "ストーリー: 出撃準備で、味方の駒のアイコン（持ち物つき）を押して詳しい説明を開いたところ",
+	"story_sortie_placed": "ストーリー: 出撃準備の初期位置で、駒を 1 体動かし、もう 1 体を選んでいるところ（「おまかせ」が押せる）",
 	"story_monster_detail": "ストーリー: 魔物の群れの話の出撃準備で、敵の骸骨のアイコンを押して詳しい説明を開いたところ",
 	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
 	"story_monster_king": "ストーリー: 魔物の群れの話で、敵の将（骸骨の将の姿。ルールの上では将）にマウスを乗せた駒の情報と、敵の将の途中の台詞（骸骨の将のアイコン）",
@@ -535,6 +537,29 @@ func _scene_setup_unit_detail() -> bool:
 	var preview: Control = _app.current_scene().setup_panel().preview()
 	preview.press_card(1)
 	return preview.detail().visible
+
+
+func _scene_setup_placement() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	panel.open_placement(Unit.Side.PLAYER1)
+	return _move_and_pick(panel.placement_dialog().deploy_map())
+
+
+## 初期位置の縮図 deploy で、最初の駒を空いている置けるマスへ動かし、2 番目の駒を選んでおく。
+func _move_and_pick(deploy: Control) -> bool:
+	var own: Array[Vector2i] = deploy.unit_cells()
+	var open: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return not own.has(cell))
+	if own.size() < 2 or open.is_empty():
+		return false
+	deploy.press_cell(own[0])
+	deploy.press_cell(open[open.size() - 1])
+	deploy.press_cell(own[1])
+	_park_mouse()
+	return deploy.selected() == 1
 
 
 func _scene_setup_preview() -> bool:
@@ -2168,6 +2193,12 @@ func _scene_story_monster_detail() -> bool:
 		return false
 	var detail: Control = _app.current_scene().press_face(Unit.Side.PLAYER2, 2)
 	return detail != null and detail.visible
+
+
+func _scene_story_sortie_placed() -> bool:
+	if not await _scene_story_sortie():
+		return false
+	return _move_and_pick(_app.current_scene().deploy_map())
 
 
 func _scene_story_sortie_detail() -> bool:

@@ -34,6 +34,9 @@ var human_side := Unit.Side.PLAYER1
 var random_side := false
 ## 手番が「ランダム」のとき、最後に作った対戦で引いた、人が動かす側。
 var drawn_side := Unit.Side.PLAYER1
+## 行ごとの、人が決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
+## その行が先手（下の本陣）として決めたもの。後手として対戦する（手番がランダム）ときは、上下を返して使う。部隊を替えたら空に戻す。
+var placements: Array[Array] = [[], []]
 
 
 ## CPU と対戦するときに、人が動かすプレイヤー（ランダムなら、最後に作った対戦で引いた側）。
@@ -128,6 +131,8 @@ func cpu_row() -> Unit.Side:
 
 ## side の軍を選ぶ。選んでいた部隊の軍と違えば、部隊は既定の編成に戻す。
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
+	if armies[side] != army:
+		placements[side] = []
 	armies[side] = army
 	if decks[side] != null and decks[side].army != army:
 		choose_default(side)
@@ -135,6 +140,7 @@ func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
 
 ## side の部隊を、取っておいた部隊 id（中身 deck）にする。軍は部隊の軍になる。
 func choose_deck(side: Unit.Side, id: String, deck: Deck) -> void:
+	placements[side] = []
 	deck_ids[side] = id
 	decks[side] = deck.copy()
 	drawn_decks[side] = null
@@ -143,6 +149,7 @@ func choose_deck(side: Unit.Side, id: String, deck: Deck) -> void:
 
 ## side の部隊を、軍の既定の編成にする。
 func choose_default(side: Unit.Side) -> void:
+	placements[side] = []
 	deck_ids[side] = ""
 	decks[side] = null
 	drawn_decks[side] = null
@@ -150,6 +157,7 @@ func choose_default(side: Unit.Side) -> void:
 
 ## side の部隊を、ランダム編成（対戦を作るたびに、種から決まりの中でランダムに組む）にする。
 func choose_random(side: Unit.Side) -> void:
+	placements[side] = []
 	deck_ids[side] = RANDOM
 	decks[side] = null
 	drawn_decks[side] = null
@@ -201,7 +209,22 @@ func copy() -> RefCounted:
 	other.human_side = human_side
 	other.random_side = random_side
 	other.drawn_side = drawn_side
+	for side in 2:
+		other.placements[side] = placements[side].duplicate()
 	return other
+
+
+## 行 row の初期位置を決める画面に見せる対戦（始まる前。row が先手・後手のその側として、種 battle_seed で作る）と、
+## row が決めた初期位置を使わない、いつもの置き方の対戦。[決めた置き方の対戦, いつもの対戦, row が動かすプレイヤー]。
+func placement_preview(row: Unit.Side, battle_seed: int) -> Array:
+	var shown: RefCounted = copy()
+	shown.random_side = false
+	if shown.cpu_opponent:
+		shown.human_side = row
+	var placed: Battle = shown.to_setup(battle_seed).create_battle()
+	shown.placements[row] = []
+	var usual: Battle = shown.to_setup(battle_seed).create_battle()
+	return [placed, usual, row]
 
 
 ## この選択で、種 battle_seed の対戦設定を作る。戦いの定義は、選んだマップの対戦モードのもの（versus_fields.gd）。
@@ -219,6 +242,16 @@ func to_setup(battle_seed: int) -> MatchSetup:
 			setup.decks[cpu_side()] = deck_for(cpu_row(), battle_seed, cpu_side())
 	else:
 		setup = MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1, battle_seed), deck_for(Unit.Side.PLAYER2, battle_seed))
+	# 人が決めた初期位置（行ごと）。後手として対戦する行は、上下を返す。部隊の数と合わなければ使わない。
+	for row in 2:
+		var plays_as: int = row if not cpu_opponent else (human_side_now() if row == human_row() else cpu_side())
+		if not is_human(row as Unit.Side) or placements[row].is_empty() or setup.decks[plays_as] == null \
+				or placements[row].size() != setup.decks[plays_as].entries.size():
+			continue
+		var placement: Array[Vector2i] = []
+		for offset: Vector2i in placements[row]:
+			placement.append(offset if plays_as == row or offset == Deployment.UNSET else Vector2i(offset.x, -offset.y))
+		setup.placements[plays_as] = placement
 	# ランダム編成で組んだ部隊を覚える（「編成確認」で見せる）。行と、実際に動かすプレイヤーは、手番がランダムのときに違う。
 	for row in 2:
 		var plays_as: int = row if not cpu_opponent else (human_side_now() if row == human_row() else cpu_side())

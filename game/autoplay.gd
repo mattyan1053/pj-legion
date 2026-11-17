@@ -1925,6 +1925,25 @@ func _visit_decks(app: Node) -> void:
 	setup_panel.choose_opponent(true)
 	setup_panel.choose_human_side(Unit.Side.PLAYER1)
 	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
+	# 初期位置: 人の行の「初期位置」で窓を開き、駒を動かして閉じると、その置き方で対戦が作られる。
+	setup_panel.open_placement(Unit.Side.PLAYER1)
+	var dialog: Control = setup_panel.placement_dialog()
+	var place_map: Control = dialog.deploy_map()
+	var placed_cells: Array[Vector2i] = place_map.unit_cells()
+	var open_cells: Array = place_map.zone().filter(func(cell: Vector2i) -> bool: return not placed_cells.has(cell))
+	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
+	place_map.press_cell(placed_cells[0])
+	place_map.press_cell(open_cells[0])
+	dialog.close_dialog()
+	var placed_choice: RefCounted = setup_panel.current_choice()
+	_expect(not dialog.visible and not placed_choice.placements[Unit.Side.PLAYER1].is_empty(), "初期位置の窓を閉じても、決めた置き方が対戦設定に残らない")
+	var placed_battle: Battle = placed_choice.to_setup(setup_panel.PLACEMENT_SEED).create_battle()
+	var first_unit: Array = placed_battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING)
+	_expect(first_unit[0].cell == open_cells[0], "対戦設定で決めた初期位置から、対戦が始まらない")
+	_expect(not setup_panel.placement_button_shown(Unit.Side.PLAYER2), "CPU の行に「初期位置」がある")
+	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
+	_expect(placed_choice.placements[Unit.Side.PLAYER1].is_empty(), "軍（部隊）を替えても、初期位置がおまかせに戻らない")
+	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
 	_expect(setup_panel.can_edit_decks(), "対戦設定に「部隊編成」が無い")
 	setup_panel.press_edit_decks(Unit.Side.PLAYER1)
 	await app.scene_changed
@@ -1941,13 +1960,14 @@ func _visit_decks(app: Node) -> void:
 	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty() and screen.editing_deck().army == UnitKind.Army.MILITARY, "選んだ軍で、空の部隊を組めない")
 	_expect(not screen.is_choosing_army(), "軍を選んで組む画面へ進んでも、軍を選ぶ画面が後ろに残っている")
 	_expect(not screen.can_save(), "空の部隊を取っておけた")
-	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.SHIELD_TROOPER)
+	screen.hire(UnitKind.Id.SNIPER)
 	_expect(screen.selected_entry() == 1, "雇った駒が選ばれない")
+	screen.select_entry(0)
 	screen.equip(Equipment.Id.IRON_SHIELD)
-	screen.move_entry(1, -1)
 	var deck: Deck = screen.editing_deck()
-	_expect(deck.entries[0].kind == UnitKind.Id.SHIELD_TROOPER and deck.entries[0].equipment.size() == 1 and screen.selected_entry() == 0, "並べ替えで、装備か選択がずれた")
+	_expect(deck.entries[0].kind == UnitKind.Id.SHIELD_TROOPER and deck.entries[0].equipment.size() == 1 and screen.selected_entry() == 0, "選んだ駒に、持ち物を持たせられない")
+	_expect(screen.troop_row_button_texts(0).filter(func(text: String) -> bool: return text in ["▲", "▼"]).is_empty(), "部隊の行に、並べ替え（配置）のボタンが残っている")
 	# 装備の文が行に収まらなくても、マウスを乗せれば全部読める。
 	screen.equip(Equipment.Id.SPEED_BOOTS)
 	var row_texts: Array[String] = screen.troop_row_texts(0)
@@ -2178,7 +2198,26 @@ func _visit_story(app: Node) -> void:
 		_expect(sortie.is_option_enabled(item.id) == item.playable(), "出せない部隊を選べる（か、出せる部隊を選べない）: %s" % item.name)
 		if item.playable():
 			sortie.choose(item.id)
-	var result: Node = await _win_story_battle(app, sortie, episode, true, _check_talk_before.bind(episode))
+	# 初期位置: 最初の駒を選んで、置けるマスの空いているところへ動かす。「おまかせ」で戻せる。右クリックで選ぶのをやめる。
+	var deploy: Control = sortie.deploy_map()
+	var own_cells: Array[Vector2i] = deploy.unit_cells()
+	var free_cells: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return not own_cells.has(cell))
+	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
+	deploy.press_cell(own_cells[0])
+	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
+	var right_click := InputEventMouseButton.new()
+	right_click.button_index = MOUSE_BUTTON_RIGHT
+	right_click.pressed = true
+	app.get_viewport().push_input(right_click)
+	_expect(deploy.selected() == -1 and app.current_id() == SceneFlow.SORTIE, "初期位置で駒を選んでいるときの右クリックで、選ぶのをやめない（か、出撃準備を抜けた）")
+	deploy.press_cell(own_cells[0])
+	deploy.press_cell(free_cells[0])
+	_expect(deploy.unit_cells()[0] == free_cells[0] and not deploy.is_default(), "初期位置で、置けるマスへ駒を動かせない")
+	sortie.press_auto_place()
+	_expect(deploy.is_default(), "「おまかせ」で、いつもの置き方に戻らない")
+	deploy.press_cell(own_cells[0])
+	deploy.press_cell(free_cells[0])
+	var result: Node = await _win_story_battle(app, sortie, episode, true, _check_talk_before.bind(episode), free_cells[0])
 	_expect(result.leave_text() == "話の一覧へ" and not result.enabled_buttons().has("タイトルへ"), "話の決着の画面の行き先が「話の一覧へ」でない: %s" % result.leave_text())
 	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ（対戦の前の会話は、もう出ない）。
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
@@ -2345,7 +2384,8 @@ func _check_talk_before(talk: Node, episode: RefCounted) -> void:
 ## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
 ## talk_first なら、出撃のあとに対戦の前の会話が出ることを確かめ（on_talk があれば、会話の場面を渡して呼ぶ）、飛ばして対戦へ。
 ## 偽なら、会話を出さずに対戦へ進むことを確かめる（「部隊変更」のあと）。
-func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first := false, on_talk := Callable()) -> Node:
+## first_at が盤の中なら、部隊の最初の駒がそのマスから始まることも確かめる（出撃準備で決めた初期位置）。
+func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first := false, on_talk := Callable(), first_at := Vector2i(-1, -1)) -> Node:
 	var story: RefCounted = app.context.story
 	var chosen: Deck = sortie.chosen_deck()
 	sortie.press_sortie()
@@ -2368,6 +2408,9 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 		if unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING:
 			placed += 1
 	_expect(placed == chosen.entries.size() and source.human_deck.entries.size() == chosen.entries.size(), "出撃準備で選んだ部隊で、対戦が始まらない")
+	if first_at != Vector2i(-1, -1):
+		var first: Array = screen.battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING)
+		_expect(not first.is_empty() and first[0].cell == first_at, "出撃準備で決めた初期位置から始まらない: %s（決めたのは %s）" % [first[0].cell if not first.is_empty() else null, first_at])
 	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.enemy_army, "話の敵を CPU が動かしていない")
 	# 対戦の途中の会話の札は、上の帯のすぐ下で、勝ち方の札・視点の案内・ミニマップと重ならない（いちばん長い台詞で確かめる）。
 	var longest := ""

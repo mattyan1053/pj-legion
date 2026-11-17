@@ -99,7 +99,6 @@ var _issues_label: Label
 var _roster_buttons := {}
 var _ult_label: Label
 var _troop_rows: VBoxContainer
-var _slots: Control
 var _detail_card: PanelContainer
 var _detail_title: Label
 var _detail_icon: TextureRect
@@ -585,6 +584,15 @@ func troop_row_texts(index: int) -> Array[String]:
 	return [main.text, main.tooltip_text]
 
 
+## 部隊の index 番目の行のボタンの文（検査用）。
+func troop_row_button_texts(index: int) -> Array[String]:
+	var texts: Array[String] = []
+	for child in _troop_rows.get_child(index).get_children():
+		if child is Button:
+			texts.append((child as Button).text)
+	return texts
+
+
 ## 雇える駒を押した: 部隊の最後に足して、その駒を選ぶ（装備をすぐ持たせられる）。
 func hire(kind: UnitKind.Id) -> void:
 	if _deck.add(kind) == null:
@@ -608,18 +616,6 @@ func remove_entry(index: int) -> void:
 		_selected = -1
 	elif _selected > index:
 		_selected -= 1
-	_dirty = true
-	_refresh_editor()
-
-
-## 部隊の i 番目の駒を、step（-1 で上、+1 で下）だけ動かす。選んでいれば、選んだまま動く。
-func move_entry(index: int, step: int) -> void:
-	if not _deck.move(index, index + step):
-		return
-	if _selected == index:
-		_selected = index + step
-	elif _selected == index + step:
-		_selected = index
 	_dirty = true
 	_refresh_editor()
 
@@ -756,9 +752,7 @@ func _build_editor() -> Control:
 	_troop_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_troop_rows.add_theme_constant_override("separation", 4)
 	troop_scroll.add_child(_troop_rows)
-	_slots = SlotMap.new()
-	_slots.custom_minimum_size = Vector2(TROOP_WIDTH, 100.0)
-	troop.add_child(_slots)
+	# 初期位置は部隊では決めない（マップを選んだあと、出撃準備・対戦設定で決める）。部隊は駒と持ち物の組だけ。
 
 	# 右: 選んだ駒の札（上）と、その駒の持ち物の欄（下）。別々の枠に分ける。
 	var right := VBoxContainer.new()
@@ -910,7 +904,6 @@ func _refresh_editor() -> void:
 		var empty := _text(16, COLOR_DIM)
 		empty.text = Text.t("deck.edit.no_units")
 		_troop_rows.add_child(empty)
-	(_slots as SlotMap).show_slots(count, _selected)
 
 	_refresh_detail()
 	_save_button.disabled = not can_save()
@@ -958,13 +951,6 @@ func _troop_row(index: int) -> Control:
 	main.set_pressed_no_signal(index == _selected)
 	main.pressed.connect(func() -> void: select_entry(-1 if _selected == index else index))
 	row.add_child(main)
-	for spec: Array in [["▲", -1, index > 0], ["▼", 1, index < _deck.entries.size() - 1]]:
-		var step: int = spec[1]
-		var move := _button(spec[0], 14)
-		move.custom_minimum_size = Vector2(36.0, 46.0)
-		move.disabled = not spec[2]
-		move.pressed.connect(func() -> void: move_entry(index, step))
-		row.add_child(move)
 	var remove := _button(Text.t("deck.edit.remove"), 14)
 	remove.custom_minimum_size = Vector2(52.0, 46.0)
 	remove.pressed.connect(func() -> void: remove_entry(index))
@@ -1249,47 +1235,3 @@ func _fold(label: Label, text: String, width: float) -> void:
 		if not _char_widths.has(key):
 			_char_widths[key] = font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		return _char_widths[key])
-
-
-## 小さな配置の図。本陣（将）と、その前の 2 行に、部隊の並びの番号を描く（何も無い盤のとき。Deployment.open_field_slots）。
-class SlotMap:
-	extends Control
-
-	const CELL := 28.0
-	const COLUMNS := 5
-	const ROWS := 2
-	const MIDDLE := 2  ## 本陣の列（COLUMNS の真ん中）
-	var _count := 0
-	var _selected := -1
-
-	func show_slots(count: int, selected: int) -> void:
-		_count = count
-		_selected = selected
-		queue_redraw()
-
-	func _draw() -> void:
-		var font := get_theme_default_font()
-		var caption := Text.t("deck.edit.deploy")
-		draw_string(font, Vector2(0.0, 14.0), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.68, 0.72, 0.78))
-		var origin := Vector2((size.x - CELL * COLUMNS) * 0.5, 21.0)
-		var slots := Deployment.open_field_slots(_count)
-		for row in ROWS + 1:
-			for column in COLUMNS:
-				var is_hq_row := row == ROWS
-				if is_hq_row and column != MIDDLE:
-					continue
-				var rect := Rect2(origin + Vector2(column * CELL, row * CELL), Vector2(CELL - 3.0, CELL - 3.0))
-				draw_rect(rect, Color(0.2, 0.24, 0.3) if not is_hq_row else Color(0.3, 0.27, 0.18))
-		var hq := Rect2(origin + Vector2((MIDDLE) * CELL, ROWS * CELL), Vector2(CELL - 3.0, CELL - 3.0))
-		draw_string(font, hq.position + Vector2(5.0, 19.0), Text.t("deck.deploy.king"), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("ffd479"))
-		draw_string(font, hq.position + Vector2(CELL + 4.0, 20.0), Text.t("deck.deploy.hq"), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.68, 0.72, 0.78))
-		draw_string(font, origin + Vector2(-44.0, 18.0), Text.t("deck.deploy.front"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.68, 0.72, 0.78))
-		for i in slots.size():
-			var slot := slots[i]
-			if slot.y > ROWS:
-				continue
-			var cell := Vector2(MIDDLE + slot.x, ROWS - slot.y)
-			var rect := Rect2(origin + cell * CELL, Vector2(CELL - 3.0, CELL - 3.0))
-			draw_rect(rect, Color("4f8fd8") if i == _selected else Color(0.32, 0.4, 0.52))
-			var text := str(i + 1)
-			draw_string(font, rect.position + Vector2(8.0 if text.length() == 1 else 3.0, 19.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)

@@ -19,6 +19,9 @@ signal map_pressed(choice: RefCounted)
 ## 「部隊編成」。いまの選択（写し）と、部隊を組むプレイヤーを渡す。持ち主が部隊編成へ寄り道する。
 signal decks_pressed(choice: RefCounted, side: Unit.Side)
 
+const DeployDialog := preload("res://game/deploy_dialog.gd")
+## 初期位置の窓で見せる盤の種（生成のマップは、マップ選択のカードと同じ代表の形）。
+const PLACEMENT_SEED := 3
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -59,6 +62,10 @@ var _deck_choices: Array = [[], []]
 var _map_name: Label
 var _map_button: Button
 var _preview: DeckPreview
+var _placement_buttons: Array[Button] = []
+var _placement: DeployDialog
+## 初期位置の窓で決めている行。
+var _placing_row := -1
 ## 「部隊編成」を出すか（対戦設定の場面だけ。対戦の途中では出さない）。
 var _can_edit_decks := false
 ## 取っておいた部隊（deck_library.gd）。無ければ既定の編成だけ。
@@ -159,6 +166,10 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		look.pressed.connect(func() -> void: open_preview(picked_side))
 		deck_row.add_child(look)
 		_preview_buttons.append(look)
+		var place := _button(Text.t("setup.placement"))
+		place.pressed.connect(func() -> void: open_placement(picked_side))
+		deck_row.add_child(place)
+		_placement_buttons.append(place)
 		var edit := _button(Text.t("setup.edit_deck"))
 		edit.custom_minimum_size = Vector2(170.0, 40.0)
 		edit.pressed.connect(func() -> void: press_edit_decks(picked_side))
@@ -189,6 +200,14 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	_preview = DeckPreview.new()
 	add_child(_preview)
 	_preview.setup(overlays)
+	_placement = DeployDialog.new()
+	add_child(_placement)
+	_placement.setup(overlays)
+	_placement.closed.connect(func() -> void:
+		if _placing_row != -1:
+			_choice.placements[_placing_row] = _placement.offsets()
+		_placing_row = -1
+		_show_choice())
 	_show_choice()
 
 
@@ -421,6 +440,11 @@ func _show_choice() -> void:
 		var shown := preview_deck(side as Unit.Side) != null
 		_preview_buttons[side].disabled = not shown
 		_preview_buttons[side].tooltip_text = "" if shown else Text.t("setup.deck.random_note")
+		# 初期位置は人の行だけ（CPU はいつもの置き方）。ランダム編成は部隊が決まっていないので決められない。
+		_placement_buttons[side].visible = human
+		_placement_buttons[side].disabled = _choice.is_random(side as Unit.Side)
+		_placement_buttons[side].tooltip_text = Text.t("setup.deck.random_note") if _choice.is_random(side as Unit.Side) else ""
+		_placement_buttons[side].text = Text.t("setup.placement") if _choice.placements[side].is_empty() else Text.t("setup.placement_set")
 
 
 ## 手番の行の注記（先手の必殺技のゲージ。始めが 0 なら空）。
@@ -457,6 +481,27 @@ func open_preview(side: Unit.Side) -> void:
 		return
 	# ランダムの間は陣営が決まっていないので、あなたは青、CPU は赤で見せる。
 	_preview.open(who_text(side), deck, side)
+
+
+## 「初期位置」: 行 side の初期位置を、盤の縮図で決める窓を開く（人の行で、ランダム編成でないときだけ）。
+func open_placement(side: Unit.Side) -> void:
+	stop_confirm()
+	if not _choice.is_human(side) or _choice.is_random(side):
+		return
+	_placing_row = side
+	var shown: Array = _choice.placement_preview(side, PLACEMENT_SEED)
+	var defined := VersusFields.scenario_of(_choice.field)
+	_placement.open(who_text(side), shown, defined.deploy_cells_of(shown[2]), VersusFields.look_of(_choice.field), _team_colors, VersusFields.is_generated(_choice.field))
+
+
+## side の行に「初期位置」を出しているか（検査用）。
+func placement_button_shown(side: Unit.Side) -> bool:
+	return _placement_buttons[side].visible
+
+
+## 初期位置の窓（検査用）。
+func placement_dialog() -> DeployDialog:
+	return _placement
 
 
 ## side の「編成確認」を押せるか（検査用）。
