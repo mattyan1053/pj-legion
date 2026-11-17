@@ -96,9 +96,10 @@ func test_every_episode_cue_is_well_formed() -> void:
 		with_cues += 1
 		assert_between(cues.size(), 1, 3, "%s: 途中の会話は少なく" % episode.id)
 		for cue: Array in cues:
-			assert_eq(cue.size(), 4, episode.id)
+			assert_eq(cue.size(), 5, episode.id)
 			assert_true(BattleCues.KINDS.has(cue[0]), "%s: 知らないきっかけ %s" % [episode.id, cue[0]])
-			assert_true(cue[2] in [0, 1], "話し手は 0 か 1")
+			assert_true(cue[2] in [0, 1], "話し手の陣営は 0 か 1")
+			assert_eq(episode.speaker_sides[cue[4]], cue[2], "%s: 話し手の番号と陣営が合う" % episode.id)
 			assert_ne(cue[3], "")
 			assert_true(String(cue[3]).length() <= 40, "%s: 札に収まる短さ（1〜2 行）" % episode.id)
 			if cue[0] == BattleCues.TURN and episode.hold_turns > 0:
@@ -123,12 +124,17 @@ func test_lines_carry_the_speaker_figure_and_the_card_shows_its_icon() -> void:
 	talk.say(lines)
 	assert_eq(talk.face(), UnitIcons.bust(UnitKind.Id.SKELETON, 1), "敵の陣営の色の、骸骨兵のアイコン")
 	talk.clear()
+	# 話し手の番号（5 つ目）があれば、その話し手の名前と姿（同じ陣営に何人いてもよい）。
+	var more_names := ["隊長", "敵将", "新兵"]
+	var more_figures := figures + [{"kind": UnitKind.Id.MEDIC, "evolved": false}]
+	var by_who := BattleCues.new([[BattleCues.TURN, 1, 0, "はい", 2]], more_names, more_figures).on_start(_battle())
+	assert_eq([by_who[0].side, by_who[0].name, by_who[0].figure], [0, "新兵", more_figures[2]])
 	talk.say([BattleCues.Line.new(0, "隊長", "一")] as Array[BattleCues.Line])
 	assert_eq(talk.face(), null, "姿の無い台詞は、アイコンを出さない")
 	talk.free()
 	var episode: RefCounted = Story.military().episodes[0]
 	var first: BattleCues.Line = Story.first_battle(episode).talk_cues().on_start(Story.first_battle(episode).make_setup(1).create_battle())[0]
-	assert_eq(first.figure, episode.figures[first.side], "話の対戦の台詞は、話の姿を持つ")
+	assert_eq(first.figure, episode.figures[episode.speakers.find(first.name)], "話の対戦の台詞は、その話し手の姿を持つ")
 
 
 func test_said_lines_are_written_to_the_log() -> void:

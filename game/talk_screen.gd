@@ -1,6 +1,8 @@
 extends Node
 ## 会話の場面（docs/story.md）。話し手の姿（駒の 3D の形。talk_figure.gd）を左右に立たせ、下に話し手の名前の札（陣営の色）と文の枠。
 ## 人の軍の話し手は左、敵の軍の話し手は右。話している側を明るく大きく、話していない側を暗く小さく。背景は対戦と同じ景色（backdrop.gd）。
+## 立つ所は左右に 1 つずつ。同じ所に立つ話し手が何人かいれば、いちばん近くに話した人（まだ誰も話していなければ、次に話す人）が立つ。
+## 敵の軍が出てこない会話は、最初に話す人が左、ほかの人が右（味方どうしが向き合って話す）。
 ## 背景は、話の盤（渡されなければ、タイトルと同じ景色）。場面の決まりは scene_flow.gd。流れ（run.gd）が、会話（story.gd の talk_of）を渡す。
 ##
 ## - クリック・Enter・Space で次の文へ。文が出きる前なら、出しきるだけ。最後の文のあとは Run.NEXT で終える（流れの次の場面へ）。
@@ -46,7 +48,7 @@ const COLOR_DIM := Palette.TEXT_DIM
 
 var context: AppContext
 ## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目,
-## "figures": 話し手の姿 [人の軍, 敵の軍]}。story.gd の talk_of）。
+## "figures": 話し手の姿（行の "who" の番号の並び）}。story.gd の talk_of）。行に "who" が無ければ、陣営（"side"）の番号。
 var talk := {}
 var _index := 0
 var _shown := 0.0  # いまの文の、出した文字数
@@ -60,7 +62,8 @@ var _item_face: Control  # item_icon.gd
 var _hint: Label
 var _count: Label
 var _skip: Button
-## 話し手の姿を立たせる所（見出しと、下の名前の札・文の枠の間）と、立たせた姿（会話に出てくる陣営だけ）。
+## 話し手の姿を立たせる所（見出しと、下の名前の札・文の枠の間）と、話し手の姿（会話に出てくる話し手ごとに 1 つ。
+## 同じ所に立つ話し手のうち、いま立っている 1 人だけを見せる）。
 var _stage: Control
 var _figures: Array[TalkFigure] = []
 ## 下の名前の札・「飛ばす」・文の枠をまとめたもの（姿と重ねない）。
@@ -106,13 +109,7 @@ func _ready() -> void:
 	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.resized.connect(_place_figures)
 	root.add_child(_stage)
-	var shapes: Array = talk.get("figures", [])
-	for side in mini(shapes.size(), 2):
-		if talk.get("lines", []).any(func(line: Dictionary) -> bool: return int(line.get("side", 0)) == side):
-			var figure: Dictionary = shapes[side]
-			var view := TalkFigure.new(figure["kind"], side, figure.get("evolved", false), figure.get("look", &""))
-			_stage.add_child(view)
-			_figures.append(view)
+	_make_figures()
 
 	var bottom := VBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 0)
@@ -205,14 +202,61 @@ func _ready() -> void:
 	_show_line(0)
 
 
-## 話し手の姿を、舞台の高さいっぱいに、文の枠の左端（人の軍）と右端（敵の軍）にそろえて置く。
+## 行 line の話し手の番号（"who"。無ければ陣営の番号）。知らせの行は -1。
+static func _who(line: Dictionary) -> int:
+	var side := int(line.get("side", 0))
+	return -1 if side >= NOTICE_SIDE else int(line.get("who", side))
+
+
+## 会話に出てくる話し手ごとに、姿を 1 つ作る。立つ所は、人の軍が左、敵の軍が右。
+## 敵の軍が出てこない会話は、最初に話す人が左、ほかの人が右。
+func _make_figures() -> void:
+	var shapes: Array = talk.get("figures", [])
+	var lines: Array = talk.get("lines", [])
+	var has_foe := lines.any(func(line: Dictionary) -> bool: return int(line.get("side", 0)) == 1)
+	var seen := {}
+	for line: Dictionary in lines:
+		var who := _who(line)
+		if who < 0 or who >= shapes.size() or seen.has(who):
+			continue
+		var side := int(line.get("side", 0))
+		var place := side if has_foe or seen.is_empty() else 1
+		seen[who] = true
+		var figure: Dictionary = shapes[who]
+		var view := TalkFigure.new(figure["kind"], side, figure.get("evolved", false), figure.get("look", &""), place)
+		view.who = who
+		view.visible = false
+		_stage.add_child(view)
+		_figures.append(view)
+
+
+## 話し手の姿を、舞台の高さいっぱいに、文の枠の左端と右端にそろえて置く。
 func _place_figures() -> void:
 	var height := _stage.size.y
 	var width := minf(height * TalkFigure.ASPECT, BOX_WIDTH * FIGURE_MAX_WIDTH)
 	var left := (_stage.size.x - BOX_WIDTH) / 2.0
 	for view in _figures:
 		view.size = Vector2(width, height)
-		view.position = Vector2(left if view.side == 0 else left + BOX_WIDTH - width, 0.0)
+		view.position = Vector2(left if view.place == 0 else left + BOX_WIDTH - width, 0.0)
+
+
+## 行 index のときに、左右それぞれの所に立つ話し手の番号（[左, 右]。誰もいなければ -1）。
+## いちばん近くに話した人。まだ誰も話していない所は、次に話す人。
+func _standing_at(index: int) -> Array[int]:
+	var place_of := {}
+	for view in _figures:
+		place_of[view.who] = view.place
+	var standing: Array[int] = [-1, -1]
+	var lines: Array = talk.get("lines", [])
+	for i in range(mini(index, lines.size() - 1), -1, -1):
+		var who := _who(lines[i])
+		if place_of.has(who) and standing[place_of[who]] < 0:
+			standing[place_of[who]] = who
+	for i in range(index + 1, lines.size()):
+		var who := _who(lines[i])
+		if place_of.has(who) and standing[place_of[who]] < 0:
+			standing[place_of[who]] = who
+	return standing
 
 
 func _process(delta: float) -> void:
@@ -295,9 +339,9 @@ func is_line_shown() -> bool:
 	return _index >= line_count() or _shown >= _line_length()
 
 
-## 立たせた話し手の姿（検査用）。
+## いま立っている話し手の姿（検査用。左右に 1 人ずつまで）。
 func figures() -> Array[TalkFigure]:
-	return _figures
+	return _figures.filter(func(view: TalkFigure) -> bool: return view.visible)
 
 
 ## 下の名前の札・「飛ばす」・文の枠が画面に占める四角（検査用。姿はこれと重ねない）。
@@ -338,8 +382,12 @@ func _show_line(index: int) -> void:
 		_item_face.item = line["item"]
 		_item_face.queue_redraw()
 	_count.text = "%d / %d" % [index + 1, line_count()]
+	var standing := _standing_at(index)
 	for view in _figures:
-		view.set_speaking(view.side == int(line.get("side", 0)), context.checking != &"")
+		var stands := standing[view.place] == view.who
+		# 立ったばかりの姿は、動きを挟まずに明るさを決める（暗いまま出てきて、あとから明るくならない）。
+		view.set_speaking(view.who == _who(line), context.checking != &"" or not view.visible or not stands)
+		view.visible = stands
 	if context.checking != &"":
 		_shown = _line_length()  # 検査とスクリーンショットは、文を出しきって始める
 	_text.visible_characters = -1 if is_line_shown() else 0
