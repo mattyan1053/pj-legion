@@ -11,9 +11,9 @@ func _init(entry_kind: UnitKind.Id) -> void:
 	kind = entry_kind
 
 
-## 装備を 1 個持たせる。もう持てなければ（上限に達している）何もせず false。
+## 装備を 1 個持たせる。持てなければ（数の上限、重ねて持てる数、役割の限り。Equipment.can_add）何もせず false。
 func equip(item: Equipment.Id) -> bool:
-	if equipment.size() >= Equipment.MAX_PER_UNIT:
+	if not Equipment.can_add(kind, equipment, item):
 		return false
 	equipment.append(item)
 	return true

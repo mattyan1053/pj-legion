@@ -129,8 +129,8 @@ static func regeneration_targets(battle: Battle, side: Unit.Side) -> Array[Unit]
 	return result
 
 
-## その駒が再生で回復する量（最大 HP を超えるぶんは切り捨てる）。再生の特性が無ければ 0。
+## その駒が再生で回復する量（最大 HP を超えるぶんは切り捨てる）。再生の特性（進化先か装備）が無ければ 0。
 static func regeneration_heal(unit: Unit) -> int:
-	if not has_trait(unit.evolution, Trait.REGENERATION):
+	if not unit.has_trait(Trait.REGENERATION):
 		return 0
 	return clampi(unit.max_hp() - unit.hp, 0, REGENERATION_HEAL)

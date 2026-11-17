@@ -42,6 +42,8 @@ static func problem_text(problem: Deck.Problem, deck: Deck) -> String:
 			return Text.t("deck.problem.not_in_roster")
 		Deck.Problem.ITEM_NOT_ALLOWED:
 			return Text.t("deck.problem.item_not_allowed")
+		Deck.Problem.ITEM_NOT_FIT:
+			return Text.t("deck.problem.item_not_fit")
 	return Text.t("deck.problem.other")
 
 

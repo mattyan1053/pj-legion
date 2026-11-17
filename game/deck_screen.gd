@@ -795,6 +795,7 @@ func _build_editor() -> Control:
 	equip_column.add_child(_equip_title)
 	for item: Equipment.Id in Equipment.Id.values():
 		var row := HBoxContainer.new()
+		row.visible = false  # 決まりが並べる持ち物だけを見せる（_show_detail）
 		row.add_theme_constant_override("separation", 8)
 		equip_column.add_child(row)
 		row.add_child(ItemIcon.new(item, 32.0))
@@ -1036,13 +1037,14 @@ func _refresh_detail() -> void:
 	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
 	if entry != null:
 		_equip_title.text = Text.t("deck.edit.items", {"count": entry.equipment.size(), "max": Equipment.MAX_PER_UNIT})
-		var full := entry.equipment.size() >= Equipment.MAX_PER_UNIT
+		var shown := _deck.rules.shown_items()
 		for item: Equipment.Id in _equip_rows:
 			var parts: Array = _equip_rows[item]
 			var allowed := _deck.rules.allows_item(item)
+			(parts[5] as Control).visible = shown.has(item) or entry.count(item) > 0
 			(parts[0] as Button).disabled = entry.count(item) == 0
 			(parts[1] as Label).text = str(entry.count(item))
-			(parts[2] as Button).disabled = full or not allowed
+			(parts[2] as Button).disabled = not allowed or not Equipment.can_add(entry.kind, entry.equipment, item)
 			# まだ持たせられない持ち物（ストーリーで未解放）は、灰色で「未解放」。持たせているものは「−」で外せる。
 			var item_name := parts[3] as Label
 			item_name.text = Text.t("deck.edit.item", {"name": Names.item(item), "cost": Equipment.cost(item)})
