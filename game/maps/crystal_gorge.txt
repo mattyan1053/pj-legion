@@ -1,4 +1,5 @@
-# 手で作ったマップ「結晶の岩山」（docs/hand-map.md）。20 x 20。ストーリーの話 gorge_rout（game/story/episodes/）と、対戦モードに使う。
+# 手で作ったマップ「結晶の岩山」（docs/hand-map.md）。20 x 20。
+# どの話が使うかは game/story/episodes/ を「map =」で探す。対戦モードに出すかは game/versus_fields.gd。
 #
 # 盤の中ほどを、結晶の岩山（2 行の障害物。画面では、結晶の生えた岩山が横たわって見える）が横切る。越え方は 3 つ:
 # - 左右（東西）の端の回り道（幅 2）。岩山の両端の切れ目。

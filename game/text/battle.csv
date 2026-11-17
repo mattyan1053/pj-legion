@@ -77,8 +77,8 @@ battle.cell.nothing,特別なものは無い
 battle.hint.over,決着
 battle.hint.cpu_turn,相手（CPU）の番
 battle.hint.evolve,進化先を選ぶ（上のボタン）
-battle.hint.confirm_ult,もう一度押すと必殺技「{ult}」を発動（取り消せない。右クリック・盤面のクリック: キャンセル）
-battle.hint.confirm_ult_unnamed,もう一度押すと必殺技を発動（取り消せない。右クリック・盤面のクリック: キャンセル）
+battle.hint.confirm_ult,もう一度押すと必殺技「{ult}」を発動（取り消せない。右クリック・盤のクリック: キャンセル）
+battle.hint.confirm_ult_unnamed,もう一度押すと必殺技を発動（取り消せない。右クリック・盤のクリック: キャンセル）
 battle.hint.confirm_end_turn,未行動の駒が {count} 体（足元が光っている）。もう一度押すとターン終了（右クリック: キャンセル）
 battle.hint.ranges.own,白: 動ける範囲
 battle.hint.ranges.foe,白: 動ける　赤: 次の番に攻撃が届く
@@ -350,7 +350,7 @@ result.mvp_numbers,与えたダメージ {damage}　撃破 {kills}
 result.mvp_neutral_numbers,中立へのダメージ {damage}　中立撃破 {kills}
 result.mvp_none,該当なし
 result.mvp_none_note,ダメージも回復も無し
-result.new_board,新しい盤面（{board}）
+result.new_board,新しいマップ（{board}）
 result.prompt,Enter: {destination}
 result.to_title,タイトルへ
 result.to_episodes,話の一覧へ
@@ -360,7 +360,7 @@ result.detail_open,詳しい戦績
 result.table.unit,駒
 result.table.defeated,倒れた
 result.next,次へ
-result.again,同じ盤面で再戦
+result.again,同じマップで再戦
 result.setup,対戦設定へ
 result.squad,部隊変更
 result.prompt_title,Enter: タイトルへ

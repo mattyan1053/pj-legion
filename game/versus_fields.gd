@@ -1,6 +1,6 @@
 extends RefCounted
 ## 対戦モードで選べる盤の一覧（docs/map-select.md の「選べる盤」）。マップ選択のカード、対戦設定のパネルのマップの行、
-## 決着の画面の「新しい盤面」、F1〜F3、集計の道具（tools/cpu_matches.gd の --stage）が、ここを引く。ノードに依存しない。
+## 決着の画面の「新しいマップ」、F1〜F3、集計の道具（tools/cpu_matches.gd の --stage）が、ここを引く。ノードに依存しない。
 ##
 ## 盤は鍵（StringName）で持つ。ストーリーの話（game/story/episodes/ のファイルの名前）や見た目（stage_look.gd の名前）と同じ持ち方。
 ## 盤の出どころは 2 つ:
@@ -95,7 +95,7 @@ static func is_shown(id: StringName) -> bool:
 	return has(id) and not _field(id).get(HIDDEN, false)
 
 
-## 生成のマップの鍵（並びの順）。「新しい盤面」（種を替えて作り直す）を選べるのは、これだけ。
+## 生成のマップの鍵（並びの順）。「新しいマップ」（種を替えて作り直す）を選べるのは、これだけ。
 static func generated_ids() -> Array[StringName]:
 	var generated: Array[StringName] = []
 	for id in ids():
