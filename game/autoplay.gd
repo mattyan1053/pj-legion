@@ -528,7 +528,7 @@ func _queue_result_scene() -> void:
 		full.headline = "VICTORY"
 		full.reason = "プレイヤー1（青） の勝ち　敵の将を倒した"
 		full.focus_name = "プレイヤー1（青）"
-		full.lines = [["マップ", "結晶の渓谷"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
+		full.lines = [["マップ", "結晶の岩山"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
 		full.mvp_name = "シールドトルーパー Lv3"
 		screen.present(full)
 	var waited_full := [0]

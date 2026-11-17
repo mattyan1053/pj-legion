@@ -141,8 +141,8 @@ const SCENES := {
 	"story_boss_mvp": "ストーリー: FANTASY の物語の「峠の番人」（勝ち方は中ボスの撃破だけ）に、敵の駒にダメージを与えずに勝ったリザルト（MVP は中ボスへのダメージで決まる）",
 	"story_fantasy_evolve": "ストーリー: FANTASY の物語の演習「分かれ道」で、あと 1 撃で進化するパラディンが盾役を攻撃し、進化先を選ぶところ",
 	"story_fantasy_main_list": "ストーリー: FANTASY の物語の演習を終え、本編の 1 話目をクリアしたあとの話の一覧（本編のカード、増えた持ち物とコスト上限）",
-	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（霧の森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
-	"story_fantasy_forest_wide": "ストーリー: 霧の森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
+	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
+	"story_fantasy_forest_wide": "ストーリー: リュエルの森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）",
@@ -153,9 +153,11 @@ const SCENES := {
 	"story_list_items": "ストーリー: 本編の 2 話目までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
 	"story_sortie_default": "ストーリー: 出撃準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ。まだ持たせられない持ち物は「未解放」）",
-	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（敵の将が話している。右の姿が明るく大きく、左の人の将は暗く小さい）",
-	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の話し手「教官」が話している。左の姿は進化後のシールドトルーパー）",
+	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（敵の話し手が話している。右の姿が明るく大きく、左の人の軍の話し手は暗く小さい）",
+	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の軍の曹長が話している。左の姿は進化後のシールドトルーパー）",
 	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
+	"story_talk_squad": "ストーリー: 部隊の中の人が話している対戦の前の会話（岩山の掃討。左の所の姿が、話した人に入れ替わる。右は敵の話し手）",
+	"story_talk_allies": "ストーリー: 敵の軍が出てこない会話（演習「手当て」の前。最初に話した人が左、ほかの人が右に立って向き合う）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
@@ -173,12 +175,12 @@ const SCENES := {
 	"story_hold_battle": "ストーリー: 守り切る話の対戦の途中（上の帯の勝ち方の札に「あと N ターン守り切れば勝ち」）",
 	"story_hold_last": "ストーリー: 守り切る話の最後のターン（勝ち方の札が「最後のターン: 守り切れば勝ち」で、赤く目立つ）",
 	"story_hold_result": "ストーリー: 守り切る話で、最後のターンの終わりまで持ちこたえて勝った決着の画面（「最後まで守り切った」）",
-	"story_rout_sortie": "ストーリー: 全滅させる話（第 4 話）の出撃準備（2 つ目の手で作ったマップ「結晶の渓谷」。勝ち方は「敵を全滅させれば勝ち」だけ）",
-	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の渓谷を、双子結晶の見た目で。上の帯の勝ち方の札「勝ち: 敵の全滅（将を倒しても終わらない）」）",
+	"story_rout_sortie": "ストーリー: 全滅させる話（第 4 話）の出撃準備（2 つ目の手で作ったマップ「結晶の岩山」。勝ち方は「敵を全滅させれば勝ち」だけ）",
+	"story_rout_start": "ストーリー: 全滅させる話の対戦の始め（結晶の岩山を、双子結晶の見た目で。上の帯の勝ち方の札「勝ち: 敵の全滅（将を倒しても終わらない）」）",
 	"story_boss_sortie": "ストーリー: 中ボスを倒す演習（「結晶の番人」）の出撃準備（勝ち方は「中ボスを倒せば勝ち。敵の将を倒しても終わらない。」だけ）",
 	"story_boss_start": "ストーリー: 中ボスを倒す演習の対戦の始め（上の帯の勝ち方の札「勝ち: 中ボスの撃破（将を倒しても終わらない）」）",
-	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
-	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守の騎士」の札と姿）",
+	"story_rout_wide": "ストーリー: 結晶の岩山を、いちばん引いて見ている（岩山と、両端の回り道、真ん中のポータル）",
+	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守」の札と姿）",
 	"story_monster_sortie": "ストーリー: 魔物の群れの話（軍に属さない敵）の出撃準備（敵の部隊は「軍なし」の骸骨）",
 	"story_sortie_detail": "ストーリー: 出撃準備で、味方の駒のアイコン（持ち物つき）を押して詳しい説明を開いたところ",
 	"story_monster_detail": "ストーリー: 魔物の群れの話の出撃準備で、敵の骸骨のアイコンを押して詳しい説明を開いたところ",
@@ -1885,8 +1887,48 @@ func _scene_story_tutorial_sortie() -> bool:
 func _scene_story_talk() -> bool:
 	if not await _start_story() or not await _talk_from_sortie():
 		return false
-	_app.current_scene().press_next()  # 2 行目（敵の将の札）
-	return true
+	return _talk_until(1)
+
+
+## いまの会話を、陣営 side の、at 人目（0 から。同じ人は 1 度だけ数える）の話し手が話す文まで送る。その人が出てこなければ偽。
+func _talk_until(side: int, at := 0) -> bool:
+	var talk: Node = _app.current_scene()
+	var lines: Array = talk.talk["lines"]
+	var seen := []
+	for index in lines.size():
+		var who: int = lines[index].get("who", -1)
+		if int(lines[index]["side"]) != side or seen.has(who):
+			continue
+		seen.append(who)
+		if seen.size() == at + 1:
+			while talk.line_index() < index:
+				talk.press_next()
+			return true
+	return false
+
+
+## 話 id の、MILITARY の物語の中の番号（0 から）。
+func _military_index(id: StringName) -> int:
+	var episodes: Array = Story.military().episodes
+	for index in episodes.size():
+		if episodes[index].id == id:
+			return index
+	return -1
+
+
+## 部隊の中の人（人の軍の 3 人目の話し手）が話している、対戦の前の会話。右に敵の話し手。
+func _scene_story_talk_squad() -> bool:
+	if not await _start_story(_military_index(&"gorge_rout")) or not await _talk_from_sortie():
+		return false
+	return _talk_until(0, 2) and _app.current_scene().figures().size() == 2
+
+
+## 敵の軍が出てこない会話。人の軍の 2 人目の話し手が、右に立って話している。
+func _scene_story_talk_allies() -> bool:
+	if not await _start_story(_military_index(&"drill_medic")) or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	return _talk_until(0, 1) and talk.figures().size() == 2 and talk.figures().all(func(view: Control) -> bool: return view.side == 0)
 
 
 func _scene_story_talk_drill() -> bool:

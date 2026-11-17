@@ -102,7 +102,7 @@ const SCENERY_SHADE := Color(0.84, 0.88, 0.86)
 ## 同じ見た目を、いくつものマップや話で使い回せる。マップの見た目を替えるときは OF_STAGE を書き換え、見た目そのものは替えない。
 const GRASSLAND := &"grassland"  ## 草原（中央平原）
 const STONE_WALLS := &"stone_walls"  ## 石の壁（迷宮回廊、ストーリーの尾根の小道）
-const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶、ストーリーの結晶の渓谷）
+const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶、ストーリーの結晶の岩山）
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
