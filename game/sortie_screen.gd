@@ -132,9 +132,10 @@ func _ready() -> void:
 		battle_source.placement = _deploy.offsets()
 		_auto_button.disabled = _deploy.is_default())
 	left_column.add_child(_deploy)
-	var map_hint := _text(14, COLOR_DIM)
-	map_hint.text = Text.t("sortie.place_hint") if not _deploy.read_only else Text.t("sortie.place_fixed")
-	left_column.add_child(map_hint)
+	if _deploy.read_only:
+		var map_hint := _text(14, COLOR_DIM)
+		map_hint.text = Text.t("sortie.place_fixed")
+		left_column.add_child(map_hint)
 
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(RIGHT_WIDTH, 0.0)
