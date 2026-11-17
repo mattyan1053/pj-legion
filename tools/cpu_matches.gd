@@ -30,6 +30,10 @@ extends SceneTree
 ##                   --episode でなければ、両軍の部隊を局ごとに変える（対戦の決まりのロスターから、種で決まる組み合わせで、
 ##                   数の上限まで予算の中で雇い、余った予算で装備を種で決まる駒に持たせる）。手で作ったマップは種を変えても
 ##                   盤が同じなので、標本が別々の局になるよう、部隊の違いで勝率を測る（--decks は見ない）
+##   --squads=one    両軍のうち片方だけ、部隊を局ごとに変える（もう片方は CPU の編成）。変える側は、ステージと軍の組み合わせを
+##                   一巡するごとに入れ替わる（24 の倍数。mixed なら 12 の倍数）。人が自分で組んだ部隊で CPU と戦うときの見え方を測る。
+##                   --episode とは一緒に使えない
+##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
 ##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
@@ -323,12 +327,21 @@ func _initialize() -> void:
 			return
 		fixed_stage = MAP_STAGE
 		_map_title = args["map"].get_file()
-	var rules := _rules_without(args.get("without", ""))
+	var rules := _rules_without(args.get("without", ""), args.get("budget", ""))
 	if rules == null:
-		printerr("--without の駒を知らない: %s" % args["without"])
+		printerr("--without の駒か --budget の予算を読めない: %s %s" % [args.get("without", ""), args.get("budget", "")])
 		quit(1)
 		return
 	var random_squads: bool = args.get("squads", "") == "random"
+	var one_squad: bool = args.get("squads", "") == "one"
+	if one_squad and episode != null:
+		printerr("--squads=one は対戦モードだけ（--episode では、人の側を変える --squads=random を使う）")
+		quit(1)
+		return
+	# 部隊の中身ごとの勝ち負け（--squads のとき。決着した局の、部隊 1 つずつ）。鍵 -> [部隊の数, 勝った数]。
+	var squad_rows: Dictionary[String, Array] = {}
+	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
+	var one_versus: Dictionary[String, Array] = {}
 	var started := Time.get_ticks_msec()
 
 	for game in games:
@@ -347,8 +360,10 @@ func _initialize() -> void:
 			setup.scenario = Scenario.versus(stage) if map_field == &"" else VersusFields.scenario_of(map_field)
 		setup.battle_seed = first_seed + game
 		setup.ignore_budget = deck_mode == "even"
+		@warning_ignore("integer_division")
+		var squad_side := (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2 if one_squad else -1
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-			if random_squads:
+			if random_squads or side == squad_side:
 				setup.decks[side] = _random_deck(armies[side], rules, (first_seed + game) * 2 + side)
 			else:
 				setup.decks[side] = _deck(armies[side], deck_mode, rules)
@@ -394,9 +409,11 @@ func _initialize() -> void:
 				first_seed + game, stage, Names.army(armies[0]), Names.army(armies[1]), outcome.winner, outcome.ending,
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
 			])
-			if random_squads:
+			if random_squads or one_squad:
 				for side: Unit.Side in ([Unit.Side.PLAYER1] if episode != null else [Unit.Side.PLAYER1, Unit.Side.PLAYER2]):
-					print("SQUAD seed=%d side=%d %s" % [first_seed + game, side, _deck_text(setup.deck_of(side))])
+					print("SQUAD seed=%d side=%d cpu=%d %s" % [
+						first_seed + game, side, 1 if one_squad and side != squad_side else 0, _deck_text(setup.deck_of(side)),
+					])
 			for kind: UnitKind.Id in outcome.by_kind:
 				var row: Array = outcome.by_kind[kind]
 				print("KIND seed=%d kind=%d hired=%d defeated=%d damage=%d kills=%d evolved=%d" % [
@@ -414,6 +431,21 @@ func _initialize() -> void:
 					first_seed + game, fall.kind, fall.turn, fall.damage, fall.hits_taken, fall.killer_kind, fall.killer_level,
 					1 if fall.after_step else 0,
 				])
+		if (random_squads or one_squad) and episode == null and outcome.winner >= 0:
+			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+				if one_squad and side != squad_side:
+					continue
+				var won := 1 if outcome.winner == side else 0
+				for key in _squad_keys(setup.deck_of(side), armies[side], armies[1 - side]):
+					var row: Array = squad_rows.get_or_add(key, [0, 0])
+					row[0] += 1
+					row[1] += won
+		if one_squad:
+			var pair := "%s（変えた側）対 %s（CPU の編成）" % [Names.army(armies[squad_side]), Names.army(armies[1 - squad_side])]
+			var slot := 2 if outcome.winner < 0 else (0 if outcome.winner == squad_side else 1)
+			one_versus.get_or_add("全体", [0, 0, 0])[slot] += 1
+			one_versus.get_or_add(pair, [0, 0, 0])[slot] += 1
+			one_versus.get_or_add(pair + "、変えた側が" + ("先手" if squad_side == 0 else "後手"), [0, 0, 0])[slot] += 1
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
 		var match_name := "%s 対 %s" % [Names.army(armies[0]), Names.army(armies[1])]
@@ -490,6 +522,10 @@ func _initialize() -> void:
 			print("  プレイヤー%d（%s）: %s" % [side + 1, "人の側" if side == Unit.Side.PLAYER1 else "敵", _deck_text(sample.deck_of(side))])
 	elif random_squads:
 		print("  編成: 両軍とも、局ごとに変える（--squads=random）")
+	elif one_squad:
+		print("  編成: 片方は局ごとに変える、もう片方は CPU の編成（--squads=one）")
+		for army in ARMIES:
+			print("  CPU の編成 %s: %s" % [Names.army(army), _deck_text(_deck(army, "auto", rules))])
 	else:
 		for army in ARMIES:
 			print("  編成 %s: %s" % [Names.army(army), _deck_text(_deck(army, deck_mode, rules))])
@@ -533,6 +569,22 @@ func _initialize() -> void:
 		mixed_games, army_wins[UnitKind.Army.MILITARY], army_wins[UnitKind.Army.FANTASY],
 		100.0 * army_wins[UnitKind.Army.MILITARY] / maxi(1, mixed_decided),
 	])
+	if one_squad:
+		print("")
+		print("部隊を変えた側 対 CPU の編成（変えた側の勝率は、決着した局だけ）")
+		for key in one_versus:
+			var row: Array = one_versus[key]
+			print("  %s: 変えた側 %d 勝、CPU の編成 %d 勝、決着なし %d（変えた側の勝率 %.1f%%）" % [
+				key, row[0], row[1], row[2], 100.0 * row[0] / maxi(1, row[0] + row[1]),
+			])
+	if not squad_rows.is_empty():
+		print("")
+		print("部隊の中身ごとの勝率（--squads。決着した局の、局ごとに変えた部隊 1 つずつ。軍の違う対戦と同じ軍の対戦を合わせる）")
+		var keys := squad_rows.keys()
+		keys.sort()
+		for key: String in keys:
+			var row: Array = squad_rows[key]
+			print("  %-40s %4d 勝 / %4d（%5.1f%%）" % [key, row[1], row[0], 100.0 * row[1] / maxi(1, row[0])])
 	if rival != null:
 		print("")
 		print("いまの CPU 対 別の版（%s）: いまの CPU %d 勝、別の版 %d 勝、決着なし %d（いまの CPU の勝率 %.1f%%）" % [
@@ -673,7 +725,7 @@ func _deck(army: UnitKind.Army, mode: String, rules: DeckRules) -> Deck:
 
 ## --squads=random の、対戦の部隊（両軍）。決まり rules のロスターから、種 squad_seed で決まる順に、数の上限まで予算の中で雇い、
 ## 余った予算で、種で決まる駒に種で決まる装備を持たせる（決まりで持たせられる装備から。その駒が持てるものだけ）。並びは役割の順（前衛が前に置かれる）。
-func _random_deck(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Deck:
+static func _random_deck(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Deck:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = squad_seed
 	var deck := Deck.new(army, rules)
@@ -704,12 +756,39 @@ func _random_deck(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Dec
 	return deck
 
 
-## --without の駒を抜いた、対戦の決まり。空なら対戦の決まりそのもの。知らない名前があれば null。
-func _rules_without(names: String) -> DeckRules:
-	if names.is_empty():
+## 部隊の中身を分ける鍵（--squads の「部隊の中身ごとの勝率」）。軍の並びを頭に付ける。
+## 駒の種類（入っている部隊）、駒の種類の数、駒の数、装備の数、役割の組み合わせ（前衛・後衛・奇襲・回復の数）、CPU の編成と同じか。
+static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Army) -> Array[String]:
+	var head := "%s 対 %s " % [Names.army(army), Names.army(rival_army)]
+	var keys: Array[String] = []
+	var counts := {}
+	var roles: Array[int] = [0, 0, 0, 0, 0]
+	var items := 0
+	for entry in deck.entries:
+		counts[entry.kind] = counts.get(entry.kind, 0) + 1
+		roles[UnitKind.role(entry.kind)] += 1
+		items += entry.equipment.size()
+	for kind: UnitKind.Id in counts:
+		keys.append(head + "駒 %s あり" % Names.kind(kind))
+		keys.append(head + "駒 %s %d 体" % [Names.kind(kind), counts[kind]])
+	for kind in Deck.roster(army):
+		if not counts.has(kind):
+			keys.append(head + "駒 %s 0 体" % Names.kind(kind))
+	keys.append(head + "数 %d 体" % deck.entries.size())
+	keys.append(head + "装備 %d 個" % items)
+	keys.append(head + "役割 前%d 後%d 奇%d 回%d" % roles.slice(1))
+	if _deck_text(deck) == _deck_text(CpuDeck.build(army, deck.rules)):
+		keys.append(head + "CPU の編成と同じ")
+	return keys
+
+
+## --without の駒を抜き、--budget の予算に置き換えた、対戦の決まり。どちらも空なら対戦の決まりそのもの。
+## 知らない名前や読めない予算があれば null。
+static func _rules_without(names: String, budget_text: String = "") -> DeckRules:
+	if names.is_empty() and budget_text.is_empty():
 		return DeckRules.versus()
 	var removed: Array[UnitKind.Id] = []
-	for name in names.split(","):
+	for name in (names.split(",") if not names.is_empty() else PackedStringArray()):
 		var index := UnitKind.Id.keys().find(name.to_upper())
 		if index == -1:
 			return null
@@ -720,6 +799,12 @@ func _rules_without(names: String) -> DeckRules:
 	for army in versus.armies():
 		rosters[army] = versus.roster(army).filter(func(kind: UnitKind.Id) -> bool: return not removed.has(kind))
 		budgets[army] = versus.budget(army)
+	if not budget_text.is_empty():
+		var parts := budget_text.split(",")
+		if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int():
+			return null
+		budgets[UnitKind.Army.MILITARY] = parts[0].to_int()
+		budgets[UnitKind.Army.FANTASY] = parts[1].to_int()
 	return DeckRules.new(&"without", versus.max_units, rosters, budgets, versus.items())
 
 
@@ -776,7 +861,7 @@ func _stage_name(stage: int) -> String:
 	return STAGE_NAMES[stage]
 
 
-func _deck_text(deck: Deck) -> String:
+static func _deck_text(deck: Deck) -> String:
 	var parts: Array[String] = []
 	for entry in deck.entries:
 		var text := Names.kind(entry.kind)

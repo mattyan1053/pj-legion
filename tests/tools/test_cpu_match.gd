@@ -162,3 +162,33 @@ func test_the_finish_only_rival_loads() -> void:
 	var rival := CpuMatch.load_rival("res://tools/rivals/finish_only.gd")
 	assert_true(rival != null, "finish_only.gd を読めない")
 	assert_true(rival is CpuPlayer)
+
+
+func test_matches_tool_can_swap_budgets_for_a_measurement() -> void:
+	# --budget=M,F（docs/cpu-ai.md の「集計の道具」）。測るためだけに、対戦の決まりの予算を置き換える。
+	var tool := load("res://tools/cpu_matches.gd")
+	var rules: DeckRules = tool._rules_without("", "22,20")
+	assert_eq(rules.budget(UnitKind.Army.MILITARY), 22)
+	assert_eq(rules.budget(UnitKind.Army.FANTASY), 20)
+	assert_eq(rules.roster(UnitKind.Army.FANTASY), DeckRules.versus().roster(UnitKind.Army.FANTASY))
+	assert_true(tool._rules_without("", "22") == null)
+	var without: DeckRules = tool._rules_without("sniper", "")
+	assert_false(without.roster(UnitKind.Army.MILITARY).has(UnitKind.Id.SNIPER))
+	assert_eq(without.budget(UnitKind.Army.MILITARY), DeckRules.versus().budget(UnitKind.Army.MILITARY))
+	for squad_seed in 20:
+		var deck: Deck = tool._random_deck(UnitKind.Army.FANTASY, rules, squad_seed)
+		assert_true(deck.total_cost() <= 20)
+		assert_true(deck.entries.size() > 0)
+
+
+func test_matches_tool_sorts_a_squad_by_what_is_in_it() -> void:
+	# --squads のときの「部隊の中身ごとの勝率」の鍵。CPU の編成そのものなら、そう分かる。
+	var tool := load("res://tools/cpu_matches.gd")
+	var deck := CpuDeck.build(UnitKind.Army.MILITARY)
+	var keys: Array[String] = tool._squad_keys(deck, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY)
+	assert_true(keys.has("MILITARY 対 FANTASY 数 6 体"), str(keys))
+	assert_true(keys.has("MILITARY 対 FANTASY 役割 前2 後2 奇1 回1"), str(keys))
+	assert_true(keys.has("MILITARY 対 FANTASY CPU の編成と同じ"), str(keys))
+	assert_true(keys.has("MILITARY 対 FANTASY 駒 スナイパー 2 体"), str(keys))
+	var other: Deck = tool._random_deck(UnitKind.Army.MILITARY, DeckRules.versus(), 5)
+	assert_false(tool._squad_keys(other, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY).has("MILITARY 対 FANTASY CPU の編成と同じ"))
