@@ -129,7 +129,7 @@ func test_only_a_win_shows_the_next_button() -> void:
 
 func test_enter_retries_only_after_a_story_loss() -> void:
 	var source := Story.first_battle(Story.military().episodes[0])
-	assert_true(source.retries_on_enter(false), "負けたら Enter で同じ盤面でもう一度")
+	assert_true(source.retries_on_enter(false), "負けたら Enter で同じマップで再戦")
 	assert_false(source.retries_on_enter(true))
 	var versus := preload("res://game/match_choice.gd").new()
 	assert_false(versus.retries_on_enter(false), "対戦モードの Enter はタイトルへのまま")

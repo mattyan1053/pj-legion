@@ -354,7 +354,7 @@ func start_battle(battle_seed: int) -> void:
 	start_with(setup.create_battle(), source.look(), battle_seed, setup.scenario.title)
 
 
-## マップを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
+## マップを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しいマップ」）。
 ## 渡されたものが、そのマップを選べない（source.new_board_fields() に無い）なら何もしない。
 func start_on_field(field: StringName, battle_seed: int) -> void:
 	if is_busy() or not source.new_board_fields().has(field):
@@ -363,7 +363,7 @@ func start_on_field(field: StringName, battle_seed: int) -> void:
 	start_battle(battle_seed)
 
 
-## F1〜F3: 「新しい盤面」で選べるマップの index 番目で、新しい対戦を始める（無ければ何もしない）。
+## F1〜F3: 「新しいマップ」で選べるマップの index 番目で、新しい対戦を始める（無ければ何もしない）。
 func _start_on_nth_field(index: int) -> void:
 	var fields := source.new_board_fields()
 	if index < fields.size():
@@ -566,7 +566,7 @@ func _on_restart_pressed(field: StringName, new_board: bool) -> void:
 		start_battle(map_seed)
 
 
-## 決着の画面の「新しい盤面」のボタン: [鍵, 名前] の列。
+## 決着の画面の「新しいマップ」のボタン: [鍵, 名前] の列。
 func _new_boards() -> Array[Array]:
 	var boards: Array[Array] = []
 	for field in source.new_board_fields():
