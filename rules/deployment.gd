@@ -12,42 +12,88 @@ extends RefCounted
 ## 置くマスの列（cells）を渡すと、将でない駒は、編成の並びの順に、その列のマスへ置く（戦いの定義の初期位置）。
 ## 列のマスが盤の外・入れない・駒がいる・どちらかの本陣なら飛ばす。列が尽きたら、残りの駒はいつもの置き方（本陣の前の行）で置く。
 ##
+## 置けるマス（zone）: 将でない駒を始めに置いてよいマス。置くマスの列（cells）が渡されていれば、そのうち置けるマス（話の deploy。
+## 2 か所に分かれていてもよい）。無ければ、本陣の前の ZONE_ROWS 行（1 行は本陣の列を中心に 5 マス）。駒の数より置けるマスが少なければ、さらに前の行を足す。
+## 人が決めた置き方（placement。本陣からのずれを、編成の並びの順に。決めていない駒は UNSET）を渡すと、
+## 置けるマスの中で空いているずれの駒は、そこに置く。ほかの駒は、上のいつもの置き方で、残ったマスへ置く。
+## 何も決めなければ（placement が空）、いつもの置き方と同じ（CPU の置き方）。
+##
 ## 編成が対戦に出せる形か（Deck.is_valid）は、ここでは調べない。対戦を始める側が、渡す前に調べる。
 
 ## 1 行で、本陣の列から左右に使う幅。
 const ROW_HALF_WIDTH := 2
+## 置けるマスにする、本陣の前の行の数（置くマスの列が無いとき）。
+const ZONE_ROWS := 2
 const NO_CELL := Vector2i(-1, -1)
+## 人が決めた置き方の「決めていない」（本陣からのずれ 0 = 本陣。将でない駒は置けないので、決めたずれと混ざらない）。
+const UNSET := Vector2i.ZERO
 
 
 ## side の軍を盤に置き、置いた駒を返す（先頭が将、あとは編成の並びの順）。
 ## 本陣に将を置けなければ、何も置かずに空を返す。置くマスが見つからなかった駒と、
 ## 装備を持てる数を超えている駒は置かない（返す列に入らない）。
-static func deploy(battle: Battle, side: Unit.Side, deck: Deck, cells: Array[Vector2i] = []) -> Array[Unit]:
+static func deploy(battle: Battle, side: Unit.Side, deck: Deck, cells: Array[Vector2i] = [], placement: Array[Vector2i] = []) -> Array[Unit]:
 	var placed: Array[Unit] = []
 	if side < 0 or side >= battle.board.hq_cells.size():
 		return placed
 	var hq := battle.board.hq_cells[side]
+	# 人が決めた置き方のうち、置けるマスの中で空いているものを、先に取っておく。
+	var chosen := {}  # 編成の並びの番号 -> マス
+	var reserved := {}  # 取っておいたマス -> true
+	if not placement.is_empty():
+		var area := zone(battle, side, cells, deck.entries.size())
+		for i in mini(placement.size(), deck.entries.size()):
+			var cell := hq + placement[i] if placement[i] != UNSET else NO_CELL
+			if cell != NO_CELL and area.has(cell) and _can_place(battle, cell) and not reserved.has(cell):
+				chosen[i] = cell
+				reserved[cell] = true
 	var king := battle.add_unit(UnitKind.Id.KING, side, hq)
 	if king == null:
 		return placed
 	placed.append(king)
 	battle.armies[side] = deck.army
 	var next_listed := 0
-	for entry in deck.entries:
-		var cell := NO_CELL
+	for i in deck.entries.size():
+		var entry := deck.entries[i]
+		var cell: Vector2i = chosen.get(i, NO_CELL)
 		while cell == NO_CELL and next_listed < cells.size():
 			var listed := cells[next_listed]
 			next_listed += 1
-			if _can_place(battle, listed):
+			if _can_place(battle, listed) and not reserved.has(listed):
 				cell = listed
 		if cell == NO_CELL:
-			cell = _free_cell(battle, hq)
+			cell = _free_cell(battle, hq, reserved)
 		if cell == NO_CELL:
 			continue
 		var unit := battle.add_unit(entry.kind, side, cell, entry.equipment)
 		if unit != null:
 			placed.append(unit)
 	return placed
+
+
+## side の将でない駒を始めに置いてよいマス（上の「置けるマス」）。count は置く駒の数（本陣の前の行を、足りるまで足す）。
+## side の駒がもう置かれていても、そのマスは置けるマスに入れる（置いたあとの対戦でも、置き直す前と同じマスの列になる）。
+static func zone(battle: Battle, side: Unit.Side, cells: Array[Vector2i] = [], count := 0) -> Array[Vector2i]:
+	var area: Array[Vector2i] = []
+	if side < 0 or side >= battle.board.hq_cells.size():
+		return area
+	if not cells.is_empty():
+		for cell in cells:
+			if _open_for(battle, side, cell) and not area.has(cell):
+				area.append(cell)
+		return area
+	var hq := battle.board.hq_cells[side]
+	var step := forward(battle.board, hq)
+	var row := hq + step
+	var rows := 0
+	while row.y >= 0 and row.y < battle.board.size.y and (rows < ZONE_ROWS or area.size() < count):
+		for offset in _row_offsets():
+			var cell := row + Vector2i(offset, 0)
+			if _open_for(battle, side, cell):
+				area.append(cell)
+		row += step
+		rows += 1
+	return area
 
 
 ## 何も無い広い盤で、編成の i 番目の駒が置かれるところ（本陣から見た位置）。count 体ぶんを、編成の並びの順に返す。
@@ -67,13 +113,13 @@ static func forward(board: Board, hq: Vector2i) -> Vector2i:
 
 
 ## 次に駒を置くマス。無ければ NO_CELL。
-static func _free_cell(battle: Battle, hq: Vector2i) -> Vector2i:
+static func _free_cell(battle: Battle, hq: Vector2i, reserved := {}) -> Vector2i:
 	var step := forward(battle.board, hq)
 	var row := hq + step
 	while row.y >= 0 and row.y < battle.board.size.y:
 		for offset in _row_offsets():
 			var cell := row + Vector2i(offset, 0)
-			if _can_place(battle, cell):
+			if _can_place(battle, cell) and not reserved.has(cell):
 				return cell
 		row += step
 	return NO_CELL
@@ -83,6 +129,14 @@ static func _free_cell(battle: Battle, hq: Vector2i) -> Vector2i:
 ## 本陣は将の場所なので、相手の将がまだ置かれていなくても使わない。
 static func _can_place(battle: Battle, cell: Vector2i) -> bool:
 	return battle.board.is_walkable(cell) and battle.unit_at(cell) == null and battle.board.hq_owner(cell) == -1
+
+
+## side の駒を置けるマスか（入れて、どちらの本陣でもなく、ほかの陣営の駒がいない。side の駒がいるのはよい）。
+static func _open_for(battle: Battle, side: Unit.Side, cell: Vector2i) -> bool:
+	if not battle.board.is_walkable(cell) or battle.board.hq_owner(cell) != -1:
+		return false
+	var unit := battle.unit_at(cell)
+	return unit == null or unit.side == side
 
 
 ## 行の中で試す列のずれ。0, -1, +1, -2, +2 …

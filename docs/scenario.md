@@ -17,7 +17,7 @@
 | `title` | 画面に出す名前 |
 | `hand_map` | 盤の出どころ（手で作ったマップ）。`HandMap`（`docs/hand-map.md`）。あれば、下の 2 つは使わない |
 | `stage`、`board_size` | 盤の出どころ（生成）。生成するマップ（`BoardGenerator.Stage`）と盤の大きさ（`docs/game-board.md`） |
-| `deploy_cells` | プレイヤーごとの初期位置。将でない駒を置くマスの列（編成の並びの順に使う）。空なら、いつもの「本陣の前」の置き方 |
+| `deploy_cells` | プレイヤーごとの初期位置。将でない駒を置くマスの列（編成の並びの順に使う。人が置き直せる「置けるマス」もこの列）。空なら、いつもの「本陣の前」の置き方 |
 | `fixed_decks` | プレイヤーごとの決め打ちの部隊（`Deck`）。`null` なら、対戦設定で選んだ編成を出す |
 | `win_conditions` | プレイヤーごとの勝ちの条件の列（`GameWonEvent.Reason`。`docs/win-conditions.md`）。既定は両方とも `STANDARD_WIN_CONDITIONS`（将の撃破と本陣の占拠） |
 | `hold_turns` | 「守り切る」のターン数（`docs/win-conditions.md`）。0 なら働かない |
