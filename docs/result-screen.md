@@ -1,7 +1,7 @@
 # 決着の画面
 
 コード: `game/result_summary.gd`（何を出すか。ノードに依存しない）、`game/stats_text.gd`（陣営の 1 行と表の列）、`game/result_screen.gd`（段階的に出す）。
-テスト: `tests/game/test_result_summary.gd`、`tests/game/test_stats_text.gd`、自動の対戦（`game/autoplay.gd` の `_queue_result_scene`）。
+テスト: `tests/game/test_result_summary.gd`、`tests/game/test_stats_text.gd`、`tests/game/test_result_table.gd`（詳しい戦績の表）、自動の対戦（`game/autoplay.gd` の `_queue_result_scene`）。
 数えるのは `BattleStats`（`docs/battle-stats.md`）。
 
 ## 出し方

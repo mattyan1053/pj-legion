@@ -2,7 +2,7 @@
 
 コード: `game/story.gd`（物語と話の並び、進み具合、話の流れ）、`game/story_battle.gd`（話の対戦。`docs/battle-source.md`）、
 `game/story/`（物語と話のファイル。下の「物語のファイル」「話のファイル」）、`game/campaign.gd`・`game/episode.gd`・`game/story_file.gd`（ファイルを読む）、`game/campaign_list_screen.gd`（物語を選ぶ）、`game/episode_list_screen.gd`（話の一覧）、`game/sortie_screen.gd`（出撃準備）、`game/talk_screen.gd`・`game/talk_figure.gd`（会話の場面と、話し手の姿）。
-テスト: `tests/game/test_story.gd`、`tests/game/test_episode_data.gd`（物語と話のファイルの書き間違い）、`tests/game/test_battle_cues.gd`（対戦の途中の会話）、自動の対戦の `story`（下の「検査」）。
+テスト: `tests/game/test_story.gd`、`tests/game/test_episode_data.gd`（物語と話のファイルの書き間違い）、`tests/game/test_battle_cues.gd`（対戦の途中の会話）、`tests/game/test_placement_choice.gd`（出撃準備で決めた初期位置）、自動の対戦の `story`（下の「検査」）。
 
 タイトルの「ストーリー」から物語を選び、その物語の話の一覧へ進み、選んだ話を「出撃準備 → 会話 → 対戦 → 会話」と通す。
 世界と登場人物は、Issue #49 の案 A「空の縫い目」（下の「世界と登場人物」）。人間が「一旦その内容でやってみてもいい」と言った案で、遊んで合わなければ替える。
@@ -113,7 +113,7 @@
   話し手が替わると、その所の姿が入れ替わる。名前の札の色は陣営の色のまま。
 - **敵の軍が出てこない会話**は、最初に話す人が左、ほかの人が右に立つ（味方どうしが向き合って話す。色はどちらも人の軍の色）。話し手が 1 人だけなら、左だけ。
 - 話している人は明るく大きく、話していない人は暗く小さく。知らせの行（下の「解放」）では、両方とも暗い。
-- 立っている間は待つ動き（駒の立ち姿のアニメーション）。黙っていた側が話し始めると、小さな身振り（`UnitView.GESTURE`）をする。
+- 立っている間は待つ動き（駒の立ち姿のアニメーション）。黙っていた側が話し始めると、小さな身振り（`UnitView.play_gesture`）をする。
 
 - クリック・Enter・Space で次の文へ。文は 1 文字ずつ出る（速さは `talk_screen.gd` の `CHARS_PER_SECOND`）。出きる前に送ると、出しきるだけ。
 - 右クリックで 1 つ前の文へ。Esc はシステムメニュー（ほかの場面と同じ。閉じるボタンは「会話へ戻る」）。

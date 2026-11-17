@@ -2,7 +2,7 @@
 
 コード: `rules/deck.gd`（編成、合計コスト）、`rules/deck_rules.gd`（編成の決まり: ロスター、予算、数の上限）、`rules/deck_entry.gd`（編成の中の駒 1 体）、
 `rules/equipment.gd`（装備: コスト、効果、持てる駒）、`rules/deployment.gd`（軍を盤に置く）、`rules/unit.gd`（駒の実効値の層）。
-テスト: `tests/rules/test_loadout.gd`。
+テスト: `tests/rules/test_loadout.gd`、`tests/rules/test_deployment_zone.gd`（置けるマスと、人が決めた置き方）、`tests/rules/test_deck_rules.gd`。
 
 編成が対戦に出せる形かの検査（予算に収まるか、駒の数、装備の数、ロスター）は `docs/deck-building.md`。
 
@@ -108,7 +108,7 @@
 - 本陣に将を置けなければ（駒がいる、入れない）、何も置かない。
 - 盤の端まで行っても置くマスが無い駒は、置かない。
 - `Deployment.open_field_slots(数)` は、何も無い広い盤で、編成の並びの何番目がどこに置かれるか（本陣の列からのずれと、何行前か）を返す。
-  実際の盤では、入れないマスを飛ばすので、ずれることがある（いまは画面では使わない。部隊編成から配置の図を外したため）。
+  実際の盤では、入れないマスを飛ばすので、ずれることがある（画面では使わない）。
 
 `Battle.add_unit(種類, 陣営, マス, 装備)` でも装備を持った駒を置ける。その陣営がもう聖遺物を持っていれば、置いた駒にも効果が掛かる。
 入れないマスか駒のいるマス、その種類が持てない装備の並び（将・中立に持たせる、数の上限、重ねられない装備の 2 個目、役割の限り。`Equipment.is_valid_for`）なら、置かずに `null` を返す。

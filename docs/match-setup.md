@@ -1,6 +1,6 @@
 # 対戦設定
 
-コード: `rules/match_setup.gd`（`MatchSetup`）。テスト: `tests/rules/test_match_setup.gd`。
+コード: `rules/match_setup.gd`（`MatchSetup`）。テスト: `tests/rules/test_match_setup.gd`、`tests/rules/test_deployment_zone.gd`（人が決めた置き方）。
 場面の遷移（タイトル、マップ選択、部隊編成、決着の画面）は画面の話なので、ここには無い（`docs/scene-flow.md`、`docs/deck-screen.md`）。
 
 ## 持つもの
@@ -13,6 +13,7 @@
 | `battle_seed` | 盤面の生成と、対戦の乱数（`Battle.rng`）の両方に使う種 |
 | `decks` | プレイヤーごとの選んだ編成（`Deck`。軍を含む）。戦いの定義が部隊を決め打ちにしているプレイヤーの分は使わない |
 | `controllers` | プレイヤーごとに、人（`HUMAN`）が動かすか CPU（`CPU`）が動かすか |
+| `placements` | プレイヤーごとの、人が決めた置き方（本陣からのずれ。空ならいつもの置き方。`docs/player-loadout.md`） |
 
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。

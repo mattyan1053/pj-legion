@@ -48,7 +48,7 @@ const SCENES := {
 	},
 	DECKS: {
 		"script": "res://game/deck_screen.gd",
-		"next": {&"back": TITLE},  # 対戦設定・出撃準備からの寄り道（流れの中）で開く。戻るのは Run.NEXT
+		"next": {&"back": TITLE},  # マップ選択・対戦設定・物語選択・話の一覧・出撃準備からの寄り道（流れの中）で開く。戻るのは Run.NEXT
 		"music": &"menu",
 	},
 	MAP_SELECT: {
