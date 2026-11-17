@@ -1,21 +1,21 @@
 extends Control
-## 対戦の前に、相手・手番・軍・部隊を選ぶ、飾らない最小の画面。ステージは、ステージ選択で選んだものを出すだけ
-## （変えるのは「ステージを選び直す」。ステージ選択の場面へ戻る）。
+## 対戦の前に、相手・手番・軍・部隊を選ぶ、飾らない最小の画面。マップは、マップ選択で選んだものを出すだけ
+## （変えるのは「マップを選び直す」。マップ選択の場面へ戻る）。
 ##
 ## 選んだもの（match_choice.gd）を持ち、「対戦を始める」で start_pressed を出す。ルールは持たない。
 ## どちらの行も、軍を選んだあと、その軍の部隊を、既定の編成（CPU の行では「CPU の編成」）、ランダム編成、取っておいた部隊（deck_library.gd）から選ぶ。
 ## 出せない部隊は、理由つきで並べ、選べなくする。人どうしでも CPU 戦でも、同じ選び方と見え方。
 ## 部隊の中身は、パネルに文で並べず、「編成を確認」で開く（deck_preview.gd。自分の部隊も CPU の部隊も同じ見え方）。
 ## パネルの大きさは、選んだものに依らず同じ（部隊の名前は決まった幅で切る）。
-## 対戦の途中で開いたときは、押すといまの対戦が終わるボタン（「ステージを選び直す」「新しい対戦を始める」）を 2 回押させる
+## 対戦の途中で開いたときは、押すといまの対戦が終わるボタン（「マップを選び直す」「新しい対戦を始める」）を 2 回押させる
 ## （ターン終了・必殺技の確かめと同じ。docs/battle-view.md）。1 回目でボタンが「もう一度押す」になり、理由は下の文に出す。
 
 ## 選んだもの（match_choice.gd の値。呼ぶ側に渡すのは写し）。
 signal start_pressed(choice: RefCounted)
 ## 何も変えずに閉じた（「対戦へ戻る」、右クリック、Esc）。いまの対戦は、そのまま続く。
 signal cancelled
-## 「ステージを選び直す」。いまの選択（写し）を渡す。持ち主がステージ選択の場面へ進む。
-signal stage_pressed(choice: RefCounted)
+## 「マップを選び直す」。いまの選択（写し）を渡す。持ち主がマップ選択の場面へ進む。
+signal map_pressed(choice: RefCounted)
 ## 「部隊編成」。いまの選択（写し）と、部隊を組むプレイヤーを渡す。持ち主が部隊編成へ寄り道する。
 signal decks_pressed(choice: RefCounted, side: Unit.Side)
 
@@ -37,12 +37,12 @@ const CAPTION_WIDTH := 190.0
 const PICKER_WIDTH := 330.0
 ## 手番の「ランダム」のボタンの値（Unit.Side の値と重ならない）。
 const RANDOM_SIDE := -1
-## 確かめの間のボタンの文字（「ステージ変更」と、始めるボタン）と、下の文（理由）。
-const CONFIRM_STAGE_BUTTON := "setup.confirm.stage"
+## 確かめの間のボタンの文字（「マップ変更」と、始めるボタン）と、下の文（理由）。
+const CONFIRM_MAP_BUTTON := "setup.confirm.map"
 const CONFIRM_START_BUTTON := "setup.confirm.start"
-const STAGE_TEXT := "setup.stage"
+const MAP_TEXT := "setup.map"
 const WARNING_TEXT := "setup.warning"
-const CONFIRM_STAGE_TEXT := "setup.confirm_stage"
+const CONFIRM_MAP_TEXT := "setup.confirm_map"
 const CONFIRM_START_TEXT := "setup.confirm_start"
 
 var _choice: RefCounted = MatchChoice.new()
@@ -56,8 +56,8 @@ var _deck_pickers: Array[OptionButton] = []
 var _preview_buttons: Array[Button] = []
 var _edit_buttons: Array[Button] = []
 var _deck_choices: Array = [[], []]
-var _stage_name: Label
-var _stage_button: Button
+var _map_name: Label
+var _map_button: Button
 var _preview: DeckPreview
 ## 「部隊編成」を出すか（対戦設定の場面だけ。対戦の途中では出さない）。
 var _can_edit_decks := false
@@ -114,16 +114,16 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 
-	var stage_row := _caption_row(column, Text.t("setup.caption.stage"))
-	_stage_name = _label(18)
-	_stage_name.custom_minimum_size = Vector2(PICKER_WIDTH, 0.0)
-	_stage_name.clip_text = true
-	_stage_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	stage_row.add_child(_stage_name)
-	_stage_button = _button(Text.t(STAGE_TEXT))
-	_stage_button.custom_minimum_size = Vector2(200.0, 40.0)
-	_stage_button.pressed.connect(press_stage)
-	stage_row.add_child(_stage_button)
+	var map_row := _caption_row(column, Text.t("setup.caption.map"))
+	_map_name = _label(18)
+	_map_name.custom_minimum_size = Vector2(PICKER_WIDTH, 0.0)
+	_map_name.clip_text = true
+	_map_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	map_row.add_child(_map_name)
+	_map_button = _button(Text.t(MAP_TEXT))
+	_map_button.custom_minimum_size = Vector2(200.0, 40.0)
+	_map_button.pressed.connect(press_map)
+	map_row.add_child(_map_button)
 	_add_row(column, Text.t("setup.caption.opponent"), &"opponent", {true: "CPU", false: Text.t("setup.opponent.human")})
 	var side_row := _add_row(column, Text.t("setup.caption.side"), &"human_side", {
 		Unit.Side.PLAYER1: Text.t("setup.side.first"), Unit.Side.PLAYER2: Text.t("setup.side.second"), RANDOM_SIDE: Text.t("setup.side.random"),
@@ -195,8 +195,8 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 ## いまの選択を choice の写しにして、画面を出す。開いただけでは、何も変わらない。
 ## cancellable が真なら、「対戦へ戻る」（右クリック・Esc でも）で、何も変えずに閉じられる。
 ## in_progress が真なら（決着していない対戦の途中）、始めるといまの対戦が失われることを書く。
-## back_text は閉じるボタンの文字（対戦設定の場面では「ステージ選択へ戻る」）。閉じるボタンがステージ選択へ行くときは、
-## 「ステージ変更」を出さない（同じ所へ行くボタンを 2 つ並べない）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
+## back_text は閉じるボタンの文字（対戦設定の場面では「マップ選択へ戻る」）。閉じるボタンがマップ選択へ行くときは、
+## 「マップ変更」を出さない（同じ所へ行くボタンを 2 つ並べない）。new_battle が真なら、始めるボタンを「新しい対戦を始める」にする
 ## （対戦の途中から開いたとき）。対戦の途中から開いたときは「部隊編成」を出さない（対戦設定の場面だけ）。
 func open(choice: RefCounted, cancellable := false, in_progress := false, back_text := "", new_battle := true) -> void:
 	_choice = choice.copy()
@@ -207,7 +207,7 @@ func open(choice: RefCounted, cancellable := false, in_progress := false, back_t
 	_in_progress = cancellable and in_progress
 	_back_button.visible = cancellable
 	_back_button.text = back_text if back_text != "" else Text.t("setup.back_to_battle")
-	_stage_button.visible = back_text == ""
+	_map_button.visible = back_text == ""
 	_warning.visible = _in_progress
 	_start_text = Text.t("setup.start_new") if cancellable and new_battle else Text.t("setup.start")
 	_confirming = null
@@ -262,7 +262,7 @@ func current_choice() -> RefCounted:
 	return _choice
 
 
-## ステージを field（versus_fields.gd の鍵）にする。
+## マップを field（versus_fields.gd の鍵）にする。
 func choose_field(field: StringName) -> void:
 	_choice.field = field
 	_show_choice()
@@ -347,9 +347,9 @@ func _press_or_confirm(button: Button, do: Callable) -> void:
 		stop_confirm()
 		_confirming = button
 		_confirm_started_msec = Time.get_ticks_msec()
-		button.text = Text.t(CONFIRM_STAGE_BUTTON) if button == _stage_button else Text.t(CONFIRM_START_BUTTON)
+		button.text = Text.t(CONFIRM_MAP_BUTTON) if button == _map_button else Text.t(CONFIRM_START_BUTTON)
 		button.theme_type_variation = UiTheme.BUTTON_DANGER
-		_warning.text = Text.t(CONFIRM_STAGE_TEXT) if button == _stage_button else Text.t(CONFIRM_START_TEXT)
+		_warning.text = Text.t(CONFIRM_MAP_TEXT) if button == _map_button else Text.t(CONFIRM_START_TEXT)
 		return
 	if Time.get_ticks_msec() - _confirm_started_msec < BattleUiState.CONFIRM_GUARD_MSEC:
 		return
@@ -359,8 +359,8 @@ func _press_or_confirm(button: Button, do: Callable) -> void:
 ## 確かめをやめる（ボタンと下の文を戻す）。確かめていなければ何もしない。
 func stop_confirm() -> void:
 	_confirming = null
-	_stage_button.text = Text.t(STAGE_TEXT)
-	_stage_button.theme_type_variation = &""
+	_map_button.text = Text.t(MAP_TEXT)
+	_map_button.theme_type_variation = &""
 	_start_button.text = _start_text
 	_start_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_warning.text = Text.t(WARNING_TEXT)
@@ -404,7 +404,7 @@ func _show_choice() -> void:
 		var buttons: Dictionary = _rows[key]
 		for value: Variant in buttons:
 			(buttons[value] as Button).set_pressed_no_signal(value == current[key])
-	_stage_name.text = "%d %s" % [VersusFields.number_of(_choice.field), VersusFields.title_of(_choice.field)]
+	_map_name.text = "%d %s" % [VersusFields.number_of(_choice.field), VersusFields.title_of(_choice.field)]
 	# 人どうしなら、手番は選ばない（先手・後手の 2 人が交代する）。
 	for button: Button in _rows[&"human_side"].values():
 		button.disabled = not _choice.cpu_opponent
@@ -469,15 +469,15 @@ func preview() -> DeckPreview:
 	return _preview
 
 
-## 「ステージを選び直す」。対戦の途中なら、1 回目は確かめるだけで、もう一度押すとステージ選択へ（_press_or_confirm）。
-func press_stage() -> void:
-	_press_or_confirm(_stage_button, _leave_for_stage)
+## 「マップを選び直す」。対戦の途中なら、1 回目は確かめるだけで、もう一度押すとマップ選択へ（_press_or_confirm）。
+func press_map() -> void:
+	_press_or_confirm(_map_button, _leave_for_map)
 
 
-func _leave_for_stage() -> void:
+func _leave_for_map() -> void:
 	stop_confirm()
 	visible = false
-	stage_pressed.emit(_choice.copy())
+	map_pressed.emit(_choice.copy())
 
 
 ## 「部隊編成」（side の部隊を組む）。
@@ -486,9 +486,9 @@ func press_edit_decks(side: Unit.Side) -> void:
 	decks_pressed.emit(_choice.copy(), side)
 
 
-## 「ステージ変更」が出ているか（検査用）。
-func stage_button_shown() -> bool:
-	return _stage_button.visible
+## 「マップ変更」が出ているか（検査用）。
+func map_button_shown() -> bool:
+	return _map_button.visible
 
 
 ## 「部隊編成」が出ているか（検査用）。

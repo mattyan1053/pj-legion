@@ -1,5 +1,5 @@
 extends RefCounted
-## ゲームの中のものの名前と説明（陣営、軍、役割、能力、特性、盤の上の効果、駒、進化先、持ち物、スキル、必殺技、状態、聖遺物、ステージ）。
+## ゲームの中のものの名前と説明（陣営、軍、役割、能力、特性、盤の上の効果、駒、進化先、持ち物、スキル、必殺技、状態、聖遺物、マップ）。
 ## ノードに依存しない。文は画面の文の表（game/text/names.csv。docs/text.md）にあり、ここは列挙から鍵を作って引くだけ。
 ## ルール（rules/）は名前の文を持たない（列挙と、説明に差し込む値だけ）。
 ##
@@ -131,6 +131,6 @@ static func relic_effect(id: Relics.Id) -> String:
 	return Text.t("relic.%s.effect" % word(Relics.Id, id), {"amount": Relics.amount(id)})
 
 
-## 生成のステージの名前。
+## 生成のマップの名前。
 static func stage(of_stage: BoardGenerator.Stage) -> String:
 	return Text.t("stage." + word(BoardGenerator.Stage, of_stage))

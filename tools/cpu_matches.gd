@@ -9,19 +9,19 @@ extends SceneTree
 ##   --max-turns=T   このターンを超えたら打ち切る（既定 60）
 ##   --decks=auto    編成。auto = CPU の編成（CpuDeck。予算に収まる）、even = 両軍とも同じ役割の 6 体・装備なし（予算は見ない）
 ##   --pairings=all  軍の組み合わせ。all = 4 通りを順に、mixed = 軍の違う 2 通り（先手を入れ替える）だけ
-##   --rival=REV     別の版の CPU（git のリビジョンか、スクリプトのパス）と対戦させる。先手・後手は、ステージと軍の組み合わせを一巡するごとに入れ替わる
-##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、ステージ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
+##   --rival=REV     別の版の CPU（git のリビジョンか、スクリプトのパス）と対戦させる。先手・後手は、マップと軍の組み合わせを一巡するごとに入れ替わる
+##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、マップ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
 ##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
-##   --stage=KEY     このステージだけを回す。KEY は対戦モードの盤の鍵（game/versus_fields.gd。plain、ridge_path など。
-##                   画面に出していない手で作ったマップも測れる）か、生成のステージの番号（1〜3）。
-##                   配置を見るときに 1 つのステージの標本を増やす。手で作ったマップを対戦モードに出せるかも、これで測る
+##   --stage=KEY     このマップだけを回す。KEY は対戦モードの盤の鍵（game/versus_fields.gd。plain、ridge_path など。
+##                   画面に出していない手で作ったマップも測れる）か、生成のマップの番号（1〜3）。
+##                   配置を見るときに 1 つのマップの標本を増やす。手で作ったマップを対戦モードに出せるかも、これで測る
 ##   --relic=NAME    プレイヤー1 が、対戦の始めから聖遺物を 1 つ持つ（wisdom = 英知、courage = 勇気。ゲージは足さない）。
 ##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さ」）
 ##   --no-reward=1   中ボスを倒しても、聖遺物の効果とゲージを取り消す（CPU は、もらえるつもりのまま狩る）。
 ##                   倒した側の勝率のうち、聖遺物のぶんと、もともと優勢な側が倒しているぶんを切り分ける（docs/relic-buff.md の「狩られ方」）
 ##   --episode=ID   ストーリーの話（game/story/episodes/ のファイルの名前。ridge_hold など。ファイルのパスでもよい）の対戦を、
 ##                   両方とも CPU で回す（人の側も CPU が持つ）。物語の [episodes] に並んでいる話だけ。
-##                   盤・部隊・初期位置はその話のもの（ステージと軍の組み合わせは回さない。--decks、--pairings、--stage は見ない）。
+##                   盤・部隊・初期位置はその話のもの（マップと軍の組み合わせは回さない。--decks、--pairings、--stage は見ない）。
 ##                   人の側は、その話を初めて遊ぶときの既定の編成（story.gd の first_battle）。
 ##                   話の敵の強さを、人の側の勝率で測る（docs/story.md の「敵の強さ」）
 ##   --squads=random  --episode のとき、人の側の部隊を、局ごとに変える（その話で雇える駒から、種で決まる組み合わせで、
@@ -30,7 +30,7 @@ extends SceneTree
 ##                   --episode でなければ、両軍の部隊を局ごとに変える（対戦の決まりのロスターから、種で決まる組み合わせで、
 ##                   数の上限まで予算の中で雇い、余った予算で装備を種で決まる駒に持たせる）。手で作ったマップは種を変えても
 ##                   盤が同じなので、標本が別々の局になるよう、部隊の違いで勝率を測る（--decks は見ない）
-##   --squads=one    両軍のうち片方だけ、部隊を局ごとに変える（もう片方は CPU の編成）。変える側は、ステージと軍の組み合わせを
+##   --squads=one    両軍のうち片方だけ、部隊を局ごとに変える（もう片方は CPU の編成）。変える側は、マップと軍の組み合わせを
 ##                   一巡するごとに入れ替わる（24 の倍数。mixed なら 12 の倍数）。人が自分で組んだ部隊で CPU と戦うときの見え方を測る。
 ##                   --episode とは一緒に使えない
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
@@ -40,7 +40,7 @@ extends SceneTree
 ##                   ファイルは、マップのファイルと同じ書式（[rows] の節。docs/hand-map.md）か、文字の格子の行だけを並べたテキスト。--stage より優先する
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
 ##
-## ステージ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
+## マップ（3 種）と軍の組み合わせ（4 通り。mixed なら 2 通り）を順に回すので、12 の倍数にすると偏らない
 ## （--rival を付けたら、その倍の 24 の倍数。mixed なら 12 の倍数）。
 ## 同じ引数なら、いつも同じ結果になる（考える時間の欄を除く）。
 
@@ -59,17 +59,17 @@ const STAGE_NAMES := {
 	BoardGenerator.Stage.TWIN_SPRINGS: "3 双子結晶",
 }
 const ENDINGS := {"king": "将の撃破", "hq": "本陣の占拠", "held": "守り切り", "routed": "全滅", "boss": "中ボスの撃破", "draw": "引き分け", "cutoff": "打ち切り"}
-## --episode のときの、集計の「ステージ」の欄の鍵（生成のステージと重ならない値）。名前は話の名前。
+## --episode のときの、集計の「マップ」の欄の鍵（生成のマップと重ならない値）。名前は話の名前。
 const EPISODE_STAGE := -1
 var _episode_title := ""
-## --stage に手で作ったマップを選んだときの、集計の「ステージ」の欄の鍵。名前はマップの名前。
+## --stage に手で作ったマップを選んだときの、集計の「マップ」の欄の鍵。名前はマップの名前。
 const MAP_STAGE := -2
 var _map_title := ""
 ## 「両軍とも同じ役割」の編成（--decks=even）。Deck.roster の並び（前衛・後衛・奇襲・回復）の何番目を雇うか。
 const EVEN_SLOTS: Array[int] = [0, 0, 1, 1, 2, 3]
 
 
-## 集計の 1 行ぶん（全体、ステージごと、軍の組み合わせごと）。
+## 集計の 1 行ぶん（全体、マップごと、軍の組み合わせごと）。
 class Tally:
 	extends RefCounted
 	var games := 0
@@ -292,7 +292,7 @@ func _initialize() -> void:
 			printerr("--rival の CPU を読めない: %s" % args["rival"])
 			quit(1)
 			return
-	# いまの CPU と別の版の対戦の [いまの CPU の勝ち, 別の版の勝ち, 決着しなかった局]。全体と、ステージごと。
+	# いまの CPU と別の版の対戦の [いまの CPU の勝ち, 別の版の勝ち, 決着しなかった局]。全体と、マップごと。
 	var versus: Array[int] = [0, 0, 0]
 	var versus_by_stage: Dictionary[int, Array] = {}
 	# 駒の種類ごとの表を、[いまの CPU の駒, 別の版の駒] に分けたもの。局数も同じ並び（将の行に使う）。
@@ -302,7 +302,7 @@ func _initialize() -> void:
 		printerr("--episode の話を読めない: %s" % args["episode"])
 		quit(1)
 		return
-	# --stage: 生成のステージ（番号か鍵）なら fixed_stage、手で作ったマップの鍵なら map_field。
+	# --stage: 生成のマップ（番号か鍵）なら fixed_stage、手で作ったマップの鍵なら map_field。
 	var fixed_stage := 0
 	var map_field: StringName = &""
 	if args.has("stage"):
@@ -388,7 +388,7 @@ func _initialize() -> void:
 		if rival == null:
 			outcome = CpuMatch.play(battle, max_turns, cpu, null, no_reward)
 		else:
-			# 別の版が動かす側。ステージと軍の組み合わせを一巡するごとに入れ替える。
+			# 別の版が動かす側。マップと軍の組み合わせを一巡するごとに入れ替える。
 			@warning_ignore("integer_division")
 			rival_side = (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2
 			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu, no_reward)
@@ -533,7 +533,7 @@ func _initialize() -> void:
 	print("")
 	print(all.line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].line("ステージ " + _stage_name(stage)))
+		print(by_stage[stage].line("マップ " + _map_name(stage)))
 	for match_name in by_match:
 		print(by_match[match_name].line(match_name))
 	print("")
@@ -541,19 +541,19 @@ func _initialize() -> void:
 	print("中ボス（倒した側の勝ち負けは、決着した局だけ。倒した側は、その中ボスの聖遺物を受け取る）")
 	print(all.boss_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].boss_line("ステージ " + _stage_name(stage)))
+		print(by_stage[stage].boss_line("マップ " + _map_name(stage)))
 	print("中ボスの取り合い（互角 = 倒れた時点の戦える駒の数の差が 1 以内。そば = 中ボスから %d マス以内に相手の戦える駒。横取り = 相手のほうが多く削っていた）" % CpuMatch.CONTEST_RADIUS)
 	print(all.contest_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].contest_line("ステージ " + _stage_name(stage)))
+		print(by_stage[stage].contest_line("マップ " + _map_name(stage)))
 	print("倒した側の削った量の分け前（止めの一撃を含む。3 割未満 = %.1f より小さい。止めの一撃だけ = ほかに 1 も削っていない）" % CpuMatch.LOW_SHARE)
 	print(all.share_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].share_line("ステージ " + _stage_name(stage)))
+		print(by_stage[stage].share_line("マップ " + _map_name(stage)))
 	print("倒した側の戦力（将を除く駒の HP の合計）の分け前。互角 = 0.5 から %.2f 以内。狩り始め = プレイヤーが初めて削った時点" % CpuMatch.EVEN_SHARE)
 	print(all.lead_line("全体"))
 	for stage: int in by_stage:
-		print(by_stage[stage].lead_line("ステージ " + _stage_name(stage)))
+		print(by_stage[stage].lead_line("マップ " + _map_name(stage)))
 	print("")
 	print("聖遺物（軍ごと。勝率は決着した局だけ。「相手だけ」は、自分は取らず、相手が取った局）")
 	for army in ARMIES:
@@ -593,7 +593,7 @@ func _initialize() -> void:
 		])
 		for stage: int in versus_by_stage:
 			var row: Array = versus_by_stage[stage]
-			print("  ステージ %s: いまの CPU %d 勝、別の版 %d 勝、決着なし %d" % [_stage_name(stage), row[0], row[1], row[2]])
+			print("  マップ %s: いまの CPU %d 勝、別の版 %d 勝、決着なし %d" % [_map_name(stage), row[0], row[1], row[2]])
 	print("")
 	print("雇った駒 %d 体（1 局あたり %.1f 体）のうち" % [hired, float(hired) / games])
 	print("  レベル 2 以上に届いた: %5.1f%%" % (100.0 * reached["lv2"] / hired))
@@ -821,7 +821,7 @@ func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
 	return deck
 
 
-func _stage_name(stage: int) -> String:
+func _map_name(stage: int) -> String:
 	if stage == EPISODE_STAGE:
 		return "話 " + _episode_title
 	if stage == MAP_STAGE:

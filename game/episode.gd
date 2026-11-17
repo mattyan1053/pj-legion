@@ -29,7 +29,7 @@ const SIDE_WORDS := {"ally": 0, "enemy": 1}
 var id := &""
 ## 会話の見出しと、話の一覧のカードに出す名前。
 var title := ""
-## 盤（手で作ったマップ）と、その名前（戦いの定義の名前。決着の画面の「ステージ」）。
+## 盤（手で作ったマップ）と、その名前（戦いの定義の名前。決着の画面の「マップ」）。
 var map: HandMap
 var map_title := ""
 ## 盤の見た目（stage_look.gd の THEMES の鍵）。

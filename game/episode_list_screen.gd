@@ -2,7 +2,7 @@ extends Node
 ## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（会話 → 出撃準備 → 対戦 → 会話）を始める。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
-## - カードには、話の番号と名前、盤の縮図（stage_card_map.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
+## - カードには、話の番号と名前、盤の縮図（map_card.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
 ## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（lesson のある話）の番号には「（演習）」を付ける。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
@@ -17,7 +17,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
-const StageCardMap := preload("res://game/stage_card_map.gd")
+const MapCard := preload("res://game/map_card.gd")
 const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
@@ -74,7 +74,7 @@ func _ready() -> void:
 	scroll.custom_minimum_size = Vector2(0.0, MAP_HEIGHT + 172.0)
 	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(scroll)
-	# 左右に余白を置き、送り切ったときもカードが画面の端に付かないようにする（ステージ選択とそろえる）。
+	# 左右に余白を置き、送り切ったときもカードが画面の端に付かないようにする（マップ選択とそろえる）。
 	# 幅に収まれば真ん中に寄せる。
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -264,7 +264,7 @@ static func face_of(episode: Episode) -> TextureRect:
 ## 話 episode の盤の縮図。両軍の駒の初期位置（初めて遊ぶときの既定の編成で置いたもの）に、陣営の色の点を打つ。
 static func map_image(episode: Episode) -> Image:
 	var battle := Story.first_battle(episode).make_setup(1).create_battle()
-	var image := StageCardMap.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
+	var image := MapCard.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
 	for unit in battle.units:
 		if unit.side == Unit.Side.NEUTRAL or unit.kind == UnitKind.Id.KING:
 			continue

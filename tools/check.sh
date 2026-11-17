@@ -5,7 +5,7 @@
 # 終わりに、まとまりごとに掛かった秒数を出す。
 #
 #   tools/check.sh /path/to/godot          PR ごとの検査（CI の check）
-#   tools/check.sh --full /path/to/godot   長い検査（時間の掛かるテストと、自動の対戦のほかのステージ、
+#   tools/check.sh --full /path/to/godot   長い検査（時間の掛かるテストと、自動の対戦のほかのマップ、
 #                                          スクリーンショットの場面のいくつかを撮らずに作ること、も回す）
 set -euo pipefail
 

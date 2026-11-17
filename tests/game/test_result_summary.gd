@@ -56,7 +56,7 @@ func test_local_match_names_the_winner_and_shows_the_winners_record() -> void:
 func test_lines_have_the_stage_turns_kills_and_relics() -> void:
 	var summary: RefCounted = ResultSummary.of(_stats(), false, P1, "", true, P1, NAMES, "双子結晶")
 	assert_eq(summary.lines, [
-		["ステージ", "双子結晶"],
+		["マップ", "双子結晶"],
 		["経過ターン", "14 ターン"],
 		["敵軍撃破", "2 体"],
 		["中立撃破", "3 体"],
@@ -71,7 +71,7 @@ func test_no_relics_and_no_mvp_are_left_out() -> void:
 	var battle := Maps.battle(["......"])
 	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	var summary: RefCounted = ResultSummary.of(BattleStats.new(battle), false, P1, "", true, P1, NAMES, "")
-	assert_eq(summary.lines.size(), 2, "ステージ・中立撃破・聖遺物は、無ければ出さない")
+	assert_eq(summary.lines.size(), 2, "マップ・中立撃破・聖遺物は、無ければ出さない")
 	assert_eq(summary.mvp_name, "")
 
 

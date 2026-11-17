@@ -1,9 +1,9 @@
 # ミニマップ
 
 コード: `game/minimap.gd`（描く・押されたことを知らせる）、`game/minimap_geometry.gd`（置き場所、盤とミニマップの座標、カメラが見ている範囲。ノードに依存しない）、
-`game/stage_card_map.gd`（地面の塗り分け。ステージ選択のカードと同じ）、`game/battle_hud.gd`（置く・出し入れ）、`game/battle_screen.gd`（「ミニマップ」。押したらカメラを移す）、
+`game/map_card.gd`（地面の塗り分け。マップ選択のカードと同じ）、`game/battle_hud.gd`（置く・出し入れ）、`game/battle_screen.gd`（「ミニマップ」。押したらカメラを移す）、
 `game/panel_layout.gd`（メニューと予測のパネルを重ねない）。
-テスト: `tests/game/test_minimap_geometry.gd`、`tests/game/test_stage_card_map.gd`。自動の対戦の場面 `minimap`（`game/autoplay.gd`）。
+テスト: `tests/game/test_minimap_geometry.gd`、`tests/game/test_map_card.gd`。自動の対戦の場面 `minimap`（`game/autoplay.gd`）。
 
 対戦の画面の右上に出す、盤の全体の縮図。盤は 3D で画面いっぱいなので、小さく控えめに置き、いまどこを見ているかと、駒がどこにいるかを一目で分かるようにする。
 **オプションの「ミニマップ」で出す・隠すを切り替えられる**（既定は出す。次に起動しても残る。`docs/system-menu.md` の「オプション」）。
@@ -22,7 +22,7 @@
 
 ミニマップは**盤の向きのまま**描く（カメラを回しても回さない）。上が盤の奥（行の番号の小さいほう）で、プレイヤー1 の始めの向きでは、画面とミニマップの上下左右がそろう。
 
-- 地面: ステージ選択のカードと同じ塗り分け（`stage_card_map.gd`。ステージの見た目（`stage_look.gd`）の平地・森・岩・結晶泉、本陣は陣営の色で周りを薄く）。
+- 地面: マップ選択のカードと同じ塗り分け（`map_card.gd`。マップの見た目（`stage_look.gd`）の平地・森・岩・結晶泉、本陣は陣営の色で周りを薄く）。
   小さいので市松の明るさの差は付けない。
 - 目印（対戦の途中で消える樽があるので、盤から毎回読んで描く）: 回復の泉 = 水色の四角、ポータル = 明るい紫の輪、起爆樽 = 橙の点。
 - 駒: 陣営の色の丸（黒い縁）。中立の小さい駒は黄、中ボスは紫の大きな菱形（倒すと聖遺物を落とす。`docs/relic-buff.md`）。
