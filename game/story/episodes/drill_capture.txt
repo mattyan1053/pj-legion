@@ -15,6 +15,7 @@ wins = hq_captured
 
 [ally]
 name = 教官
+figure = shield_trooper evolved
 unit = shield_trooper
 unit = shield_trooper
 unit = sniper
@@ -23,6 +24,7 @@ unit = medic
 
 [enemy]
 name = 演習相手
+figure = paladin
 army = fantasy
 unit = paladin
 unit = sorcerer

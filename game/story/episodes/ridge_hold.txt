@@ -22,6 +22,7 @@ name = 隊長
 
 [enemy]
 name = 追撃隊長
+figure = spellblade evolved
 army = fantasy
 unit = paladin + iron_shield
 unit = paladin + iron_shield

@@ -19,6 +19,7 @@ item = iron_shield
 
 [ally]
 name = 導師
+figure = priest evolved
 unit = paladin
 unit = sorcerer
 unit = spellblade
@@ -27,6 +28,7 @@ start_gauge = 800
 
 [enemy]
 name = 演習相手
+figure = shield_trooper
 army = military
 unit = shield_trooper + iron_shield
 unit = sniper

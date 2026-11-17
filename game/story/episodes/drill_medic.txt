@@ -17,12 +17,14 @@ unit = medic
 
 [ally]
 name = 教官
+figure = shield_trooper evolved
 unit = shield_trooper
 unit = sniper
 unit = medic
 
 [enemy]
 name = 演習相手
+figure = paladin
 army = fantasy
 unit = sorcerer
 

@@ -11,6 +11,7 @@ extends Control
 const Palette := preload("res://game/ui_palette.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 ## 1 つの台詞を出しておく時間（秒）: 基本 + 1 文字あたり。
 const SHOW_BASE := 2.2
@@ -26,8 +27,10 @@ const DIMMED := 0.18
 const DIM_SPEED := 6.0
 ## 名前の札と文の間（px）。
 const ROW_GAP := 10
+## 話し手のアイコン（unit_icons.gd の胸から上。話のファイルの figure の姿）の大きさ（px）。帯の高さを増やさない大きさ。
+const FACE_SIZE := 32.0
 
-const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Color("6b7280")]
+const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEXT_OFF]
 const COLOR_BOX := Color(Palette.PANEL, 0.72)
 const COLOR_BORDER := Color(Palette.BORDER, 0.9)
 const COLOR_TEXT := Palette.TEXT
@@ -47,6 +50,7 @@ var _name: Label
 var _text: Label
 var _box: PanelContainer
 var _plate: PanelContainer
+var _face: TextureRect
 
 
 ## 札の部品は、木に入れる前に作っておく（テストから木に入れずに使える）。
@@ -71,6 +75,10 @@ func _init() -> void:
 	row.add_theme_constant_override("separation", ROW_GAP)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_box.add_child(row)
+	# 話し手のアイコン（名前の札の左。陣営の色の、その話し手の駒の姿）。
+	_face = UnitIcons.rect(UnitKind.Id.KING, 0, false, FACE_SIZE)
+	_face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(_face)
 	_plate_style = StyleBoxFlat.new()
 	_plate_style.set_corner_radius_all(4)
 	_plate_style.content_margin_left = 10.0
@@ -115,6 +123,11 @@ func is_dimmed() -> bool:
 			if other.has_area() and rect.intersects(other):
 				return true
 	return false
+
+
+## いま出している話し手のアイコン（出していなければ null）。検査用。
+func face() -> Texture2D:
+	return _face.texture if visible and _face.visible else null
 
 
 ## 台詞を出す順に積む。
@@ -163,11 +176,16 @@ func _next() -> void:
 	if _current == null:
 		return
 	_name.text = _current.name
+	_face.visible = not _current.figure.is_empty() and _current.side < 2
+	if _face.visible:
+		_face.texture = UnitIcons.bust(_current.figure["kind"], _current.side, _current.figure.get("evolved", false))
 	_plate_style.bg_color = TEAM_COLORS[clampi(_current.side, 0, TEAM_COLORS.size() - 1)].darkened(0.15)
 	# 折り返しは先に決める（自動の折り返しのラベルは、幅が決まる前の高さを覚えて、帯が縦に伸びる）。
 	# 文の幅は、帯の幅から、枠の余白と名前の札と間のぶんを引いたもの。
 	var box_style := _box.get_theme_stylebox("panel")
 	var width := WIDTH - box_style.get_minimum_size().x - _plate.get_combined_minimum_size().x - ROW_GAP
+	if _face.visible:
+		width -= FACE_SIZE + ROW_GAP
 	var font := _text.get_theme_font("font")
 	var font_size := _text.get_theme_font_size("font_size")
 	_text.text = TextWrap.fold(_current.text, width,

@@ -87,6 +87,20 @@ func test_the_probe_reads_every_field() -> void:
 	assert_false(episode.has_squad())
 
 
+## 話し手の姿（figure）。書かなければ、どちらの陣営も将の姿。駒の種類と、進化後（evolved）を書ける。魔物も書ける。
+func test_speaker_figures_read() -> void:
+	var plain: Episode = Episode.parse(PROBE)
+	assert_eq(plain.figures, [{"kind": UnitKind.Id.KING, "evolved": false}, {"kind": UnitKind.Id.KING, "evolved": false}] as Array[Dictionary], "既定は将")
+	var text := PROBE.replace("name = 隊長", "name = 隊長\nfigure = sniper evolved").replace("name = 敵将", "name = 敵将\nfigure = skeleton_brute")
+	var episode: Episode = Episode.parse(text)
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.figures[0], {"kind": UnitKind.Id.SNIPER, "evolved": true})
+	assert_eq(episode.figures[1], {"kind": UnitKind.Id.SKELETON_BRUTE, "evolved": false})
+	# 会話の場面と、対戦の途中の台詞へ渡る。
+	var talk := Story.talk_of(episode, episode.before)
+	assert_eq(talk["figures"], episode.figures)
+
+
 ## 敵が軍に属さない話（魔物の群れ）: 軍は none と書き、部隊に魔物を並べられる。必殺技は無い。
 func test_an_enemy_without_an_army_reads() -> void:
 	var text := PROBE.replace("army = fantasy", "army = none").replace("unit = paladin + iron_shield + iron_shield", "unit = skeleton_brute").replace("unit = priest", "unit = skeleton_archer")
@@ -197,6 +211,10 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"知らない勝ち方": ["look = stone_walls", "look = stone_walls\nwins = rout", 6],
 		"守り切るのに勝ち方が無い": ["look = stone_walls", "look = stone_walls\nhold_turns = 5\nwins = routed", 7],
 		"勝ち方なのにターン数が無い": ["look = stone_walls", "look = stone_walls\nwins = turns_held", 6],
+		"知らない姿": ["name = 隊長", "name = 隊長\nfigure = knight", 14],
+		"中立の駒の姿": ["name = 隊長", "name = 隊長\nfigure = minion", 14],
+		"進化しない駒の進化後": ["name = 隊長", "name = 隊長\nfigure = king evolved", 14],
+		"姿の書き方": ["name = 隊長", "name = 隊長\nfigure = sniper grown", 14],
 		"ゲージがあふれる": ["name = 隊長", "name = 隊長\nstart_gauge = 1001", 14],
 		"決まった部隊が多い": ["name = 隊長", "name = 隊長\n" + "unit = sniper\n".repeat(Deck.MAX_UNITS + 1).strip_edges(), 12],
 		"節より前の行": ["[episode]", "title = 前\n[episode]", 2],

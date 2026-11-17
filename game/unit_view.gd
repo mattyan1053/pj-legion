@@ -15,6 +15,8 @@ const CrystalMesh := preload("res://game/crystal_mesh.gd")
 
 const MODEL_SCALE := 0.5
 const BLEND_TIME := 0.15
+## 話し始めの身振り（KayKit のキャラクターと骸骨に共通のアニメーション）。
+const GESTURE := &"Interact"
 ## テクスチャは 128 x 256 の色見本を並べたもの。"accent" に挙げた見本（列, 行）を陣営の色に塗り替える。
 const SWATCH_SIZE := Vector2i(128, 256)
 
@@ -184,6 +186,11 @@ func _process(delta: float) -> void:
 func play_idle() -> void:
 	if not _dying:
 		_play(_idle, true)
+
+
+## 話し始めの小さな身振り（会話の場面の話し手の姿。talk_figure.gd）。終われば立ち姿に戻る。
+func play_gesture() -> void:
+	_play(GESTURE, false)
 
 
 func play_run() -> void:
