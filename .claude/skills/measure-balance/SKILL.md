@@ -7,11 +7,16 @@ description: 釣り合い（軍・先手・駒・スキル・中ボス・手で�
 
 道具は `tools/cpu_matches.gd`。引数と出す欄の正は `docs/cpu-ai.md` の「集計の道具」（ここには写さない）。
 
-    godot --headless --path . -s res://tools/cpu_matches.gd -- --games=240 --seed=1 --pairings=mixed
+    godot --headless --path . -s res://tools/cpu_matches.gd -- --games=216 --seed=1 --pairings=mixed --squads=random
 
 ## 道具の選び方
 
+- **釣り合いは、両軍の部隊を局ごとに変えて測るのが標準**（`--squads=random`）。CPU の決まった編成どうしの数字は、
+  決まった 2 つの編成の相性で、人が組む部隊の釣り合いとは違う（手で作った盤では MILITARY が 83〜100% 勝ち、ばらすと 50% 前後）。
+  決まった編成どうし（`--decks=auto`）は、CPU の手を直したときの前後を比べる用に残す。
 - 軍の釣り合いは `--pairings=mixed`（同じ局数で標本が倍）。局数は 12 の倍数（ステージと軍の組み合わせが一巡する）。
+- 人が CPU と戦うときの手応えは `--squads=one`（片方は変えた部隊、もう片方は CPU の編成）。どの駒・編成が強いかは、
+  `--squads` のときに出る「部隊の中身ごとの勝率」を見る。予算の差の効き目は `--budget=M,F`（測るためだけ）。
 - 1 つの盤だけ見るなら `--stage=<鍵か 1〜3>`、話の敵の強さは `--episode=<パス>`。
 - CPU を直したら、直す前の版と `--rival=main` で対戦させる。人の手での悪用は、その手を狙う版を `tools/rivals/` に
   （`extends CpuPlayer` で上書き）作って `--rival` に渡し、勝ち越すかを見る。
