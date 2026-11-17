@@ -2237,6 +2237,7 @@ func _visit_story(app: Node) -> void:
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
 	_expect(talk.is_choosing() == (Story.episode_after(episode) != null), "あとの会話を送りきっても、「次の話へ」「話の一覧へ」を選ばせない")
+	_expect(talk.is_skip_shown() != talk.is_choosing(), "「次の話へ」「話の一覧へ」を選ぶ間も「スキップ」が出ている")
 	if talk.is_choosing():
 		talk.press_to_episodes()
 	await app.scene_changed
