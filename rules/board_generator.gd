@@ -1,13 +1,13 @@
 class_name BoardGenerator
 extends RefCounted
-## ステージごとに盤面を作る。
+## マップごとに盤面を作る。
 ##
-## 同じステージ・同じシードからは、いつも同じ盤面ができる。
-## どのステージでも、次を守る。
+## 同じマップ・同じシードからは、いつも同じ盤面ができる。
+## どのマップでも、次を守る。
 ## - 本陣の周り（チェビシェフ距離 3 以内）と結晶泉のマス、中ボスの周り（チェビシェフ距離 1 以内）には、障害物も森も置かない
 ## - 両陣営の本陣どうしは、障害物を避けて歩いてつながっている。中ボスのマスにも、本陣から歩いて行ける
 ##
-## 地形のあとに、ステージごとの環境オブジェクトを置く（中央平原に起爆樽、迷宮回廊に回復の泉、双子結晶にポータル）。
+## 地形のあとに、マップごとの環境オブジェクトを置く（中央平原に起爆樽、迷宮回廊に回復の泉、双子結晶にポータル）。
 ## 置くのは、本陣の周りと結晶泉を除く平地で、本陣から歩いて行けるマスだけ。
 
 enum Stage {
@@ -23,7 +23,7 @@ const MIN_SIZE := Vector2i(22, 22)
 const PROTECT_RADIUS := 3
 ## 中ボスの周りの、地形もオブジェクトも置かない広さ（チェビシェフ距離）。
 const MID_BOSS_CLEARING := 1
-## 上下の本陣のステージ（中央平原・迷宮回廊）で、中ボスを本陣の列から左右へ離す量。
+## 上下の本陣のマップ（中央平原・迷宮回廊）で、中ボスを本陣の列から左右へ離す量。
 const MID_BOSS_SPREAD := 6
 ## 双子結晶で、中ボスを中央の壁から上下へ離す量（壁のいちばん上の行・下の行から、このマス数）。
 const MID_BOSS_WALL_GAP := 4
@@ -87,7 +87,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 			return board
 
 	if stage == Stage.TWIN_SPRINGS:
-		# 中央を貫くとステージの形が崩れるので、盤の外周を空けてつなぐ。
+		# 中央を貫くとマップの形が崩れるので、盤の外周を空けてつなぐ。
 		for rect: Rect2i in [
 			Rect2i(0, 0, size.x, 1), Rect2i(0, size.y - 1, size.x, 1),
 			Rect2i(0, 0, 1, size.y), Rect2i(size.x - 1, 0, 1, size.y),
@@ -102,7 +102,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 	return board
 
 
-## ステージの中ボスのマス（0 = 左、1 = 右）。両方のプレイヤーに公平になるように置く（docs/neutral-mid-boss.md）。
+## マップの中ボスのマス（0 = 左、1 = 右）。両方のプレイヤーに公平になるように置く（docs/neutral-mid-boss.md）。
 ## - 中央平原・迷宮回廊: 盤の真ん中の行の高さで、本陣の列から左右へ MID_BOSS_SPREAD。
 ##   本陣どうしを入れ替える点対称（盤の行の数が偶数なので、真ん中の行は 2 つある）で、左右の中ボスが入れ替わる
 ## - 双子結晶: 中央の壁の上と下（0 = 上、1 = 下）。盤の列の真ん中で、壁から MID_BOSS_WALL_GAP。
@@ -171,7 +171,7 @@ static func carve_corridor(board: Board, to := Board.NO_CELL) -> void:
 		cell = parent[cell]
 
 
-## ステージごとの環境オブジェクトを置く。地形とは別の乱数を使う（地形は、オブジェクトの有無で変わらない）。
+## マップごとの環境オブジェクトを置く。地形とは別の乱数を使う（地形は、オブジェクトの有無で変わらない）。
 static func _place_objects(board: Board, stage: Stage, map_seed: int, protected: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = map_seed + OBJECT_SEED_OFFSET

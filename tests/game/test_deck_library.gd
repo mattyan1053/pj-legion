@@ -227,3 +227,14 @@ func test_without_a_store_nothing_is_written() -> void:
 	assert_false(library.save())
 	library.load_saved()
 	assert_eq(library.size(), 0, "書く先が無ければ、読んでも空")
+
+
+## 初期位置は部隊では決めない。前の版が書いたかもしれない配置の欄（駒の位置、並べ方）は、読めて、無視する。
+func test_placement_fields_from_older_files_are_ignored() -> void:
+	var library := _library()
+	library.load_data({"decks": [{"id": "1", "name": "配置つき", "rules": "versus", "army": "MILITARY", "placement": [[0, 1], [1, 1]],
+		"units": [{"kind": "SNIPER", "equipment": [], "slot": [0, 1]}, {"kind": "MEDIC", "equipment": [], "row": "back"}]}]})
+	assert_eq(library.size(), 1)
+	assert_true(library.items()[0].playable(), "%s" % [library.items()[0].issues()])
+	assert_eq(library.items()[0].deck.entries.size(), 2)
+	assert_false(JSON.stringify(library.to_data()).contains("placement"), "書き直すときは、配置の欄を残さない")

@@ -10,6 +10,9 @@ extends Node
 ## - 「部隊編成」で、部隊編成（ストーリー用）へ寄り道する（流れに差し込む。編成の「出撃準備へ戻る」で、ここへ戻る）。
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
 
+const DeployMap := preload("res://game/deploy_map.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
+const SteadyBox := preload("res://game/steady_box.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -20,7 +23,7 @@ const ScreenSize := preload("res://game/screen_size.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Run := preload("res://game/run.gd")
-const StageCardMap := preload("res://game/stage_card_map.gd")
+const MapCard := preload("res://game/map_card.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
@@ -53,10 +56,14 @@ const COLOR_ACCENT := Palette.ACCENT
 var context: AppContext
 ## 話（episode.gd。game/story/episodes/ の 1 ファイル）と、その対戦（story_battle.gd）。
 var episode: Episode
+var _layer: CanvasLayer
+var _enemy_faces: HFlowContainer
+var _detail: UnitDetail
 var battle_source: RefCounted
 ## 選んでいる部隊の id（DEFAULT_ID なら既定の編成）。
 var _chosen := DEFAULT_ID
-var _map: TextureRect
+var _deploy: DeployMap
+var _auto_button: Button
 var _options: VBoxContainer
 var _option_buttons := {}  # id -> Button
 var _deck_line: Label
@@ -88,6 +95,7 @@ func _ready() -> void:
 	root.add_theme_constant_override("separation", 12)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
+	_layer = layer
 	var heading := _text(30, COLOR_TEXT)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
@@ -106,12 +114,27 @@ func _ready() -> void:
 	var left_column := VBoxContainer.new()
 	left_column.add_theme_constant_override("separation", 6)
 	left.add_child(left_column)
-	left_column.add_child(_caption(Text.t("sortie.map", {"map": episode.map_title})))
-	_map = TextureRect.new()
-	_map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_map.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	left_column.add_child(_map)
+	# 初期位置: 盤の縮図に置けるマスを縁取り、駒を押してからマスを押すと置く（deploy_map.gd）。「おまかせ」でいつもの置き方へ。
+	var map_head := HBoxContainer.new()
+	map_head.add_theme_constant_override("separation", 12)
+	left_column.add_child(map_head)
+	var map_caption := _caption(Text.t("sortie.map", {"map": episode.map_title}))
+	map_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_head.add_child(map_caption)
+	_auto_button = _button(Text.t("sortie.auto_place"), 15)
+	_auto_button.custom_minimum_size = Vector2(120.0, 32.0)
+	_auto_button.pressed.connect(press_auto_place)
+	map_head.add_child(_auto_button)
+	_deploy = DeployMap.new()
+	_deploy.custom_minimum_size = Vector2(episode.map.make_board().size) * MAP_CELL
+	_deploy.read_only = is_placement_fixed()
+	_deploy.changed.connect(func() -> void:
+		battle_source.placement = _deploy.offsets()
+		_auto_button.disabled = _deploy.is_default())
+	left_column.add_child(_deploy)
+	var map_hint := _text(14, COLOR_DIM)
+	map_hint.text = Text.t("sortie.place_hint") if not _deploy.read_only else Text.t("sortie.place_fixed")
+	left_column.add_child(map_hint)
 
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(RIGHT_WIDTH, 0.0)
@@ -132,6 +155,12 @@ func _ready() -> void:
 	var enemy_column := VBoxContainer.new()
 	enemy.add_child(enemy_column)
 	enemy_column.add_child(_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)})))
+	# 敵の駒のアイコン（押すと詳しい説明。魔物も）。
+	var enemy_faces := HFlowContainer.new()
+	enemy_faces.add_theme_constant_override("h_separation", 2)
+	enemy_column.add_child(enemy_faces)
+	_enemy_faces = enemy_faces
+	_fill_faces(enemy_faces, battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], Unit.Side.PLAYER2, start_levels(Unit.Side.PLAYER2))
 	enemy_column.add_child(_wrapped(DeckText.deck_summary(
 		battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], start_levels(Unit.Side.PLAYER2)), 17, COLOR_TEXT))
 
@@ -162,6 +191,7 @@ func _ready() -> void:
 	_options.add_theme_constant_override("separation", 4)
 	scroll.add_child(_options)
 	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。
+	# 部隊によって文の行の数が違うので、文の高さは、いちばん長い部隊に合わせて固定する（_build_options のあと）。
 	_deck_faces = HFlowContainer.new()
 	_deck_faces.add_theme_constant_override("h_separation", 2)
 	troops_column.add_child(_deck_faces)
@@ -183,12 +213,22 @@ func _ready() -> void:
 	_sortie.pressed.connect(press_sortie)
 	footer.add_child(_sortie)
 
+	var kept_placement: Array = battle_source.placement.duplicate()
 	_build_options()
+	var summaries: Array[Callable] = []
+	for id: String in _option_buttons:
+		if not (_option_buttons[id] as Button).disabled:
+			summaries.append(choose.bind(id))
+	SteadyBox.fit_largest(_deck_line, summaries)
 	if is_squad_fixed():
 		choose(FIXED_ID)
-		return
-	var remembered: String = context.story.squad_id
-	choose(remembered if _option_buttons.has(remembered) and not (_option_buttons[remembered] as Button).disabled else DEFAULT_ID)
+	else:
+		var remembered: String = context.story.squad_id
+		choose(remembered if _option_buttons.has(remembered) and not (_option_buttons[remembered] as Button).disabled else DEFAULT_ID)
+	# 決着の画面の「部隊変更」で戻ってきたときは、前に決めた初期位置を残す（同じ数の部隊なら）。
+	if not kept_placement.is_empty() and kept_placement.size() == chosen_deck().entries.size() and not _deploy.read_only:
+		battle_source.placement.assign(kept_placement)
+		_refresh_deploy(chosen_deck())
 
 
 func resume_label() -> String:
@@ -210,25 +250,94 @@ func choose(id: String) -> void:
 	var deck := chosen_deck()
 	var levels := start_levels(Unit.Side.PLAYER1)
 	_fold(_deck_line, DeckText.deck_summary(deck, levels))
-	for face in _deck_faces.get_children():
-		_deck_faces.remove_child(face)
+	_fill_faces(_deck_faces, deck, Unit.Side.PLAYER1, levels)
+	# 部隊を替えたら、初期位置はおまかせに戻す。
+	battle_source.placement.clear()
+	_refresh_deploy(deck)
+
+
+## 初期位置の縮図を、部隊 deck と、いまの初期位置（battle_source.placement）で作り直す。
+func _refresh_deploy(deck: Deck) -> void:
+	var source: RefCounted = battle_source.copy()
+	source.human_deck = deck
+	var placed: Battle = source.make_setup(1).create_battle()
+	source.placement.clear()
+	var usual: Battle = source.make_setup(1).create_battle()
+	var defaults: Array[Vector2i] = []
+	for unit: Unit in usual.units:
+		if unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING:
+			defaults.append(unit.cell)
+	_deploy.setup(placed, Unit.Side.PLAYER1, defaults, battle_source.scenario().deploy_cells_of(Unit.Side.PLAYER1), episode.look, BattleScreen.TEAM_COLORS)
+	_auto_button.disabled = _deploy.is_default() or _deploy.read_only
+
+
+## 「おまかせ」: 初期位置を、いつもの置き方へ戻す。
+func press_auto_place() -> void:
+	_deploy.reset()
+
+
+## 初期位置を決められない話か（部隊も位置も決まっている演習）。
+func is_placement_fixed() -> bool:
+	return is_squad_fixed() and not episode.deploy[Unit.Side.PLAYER1].is_empty()
+
+
+## 初期位置の縮図（検査用）。
+func deploy_map() -> DeployMap:
+	return _deploy
+
+
+## faces に、部隊 deck の駒のアイコン（将から並びの順）を並べ直す。side は陣営、levels は始めのレベル（start_levels）。
+## アイコンを押すと、その駒の詳しい説明（unit_detail.gd）を開く。始めのレベルが 1 でない駒は、アイコンの右下にレベル。
+func _fill_faces(faces: Container, deck: Deck, side: Unit.Side, levels: Array) -> void:
+	for face in faces.get_children():
+		faces.remove_child(face)
 		face.queue_free()
-	_deck_faces.add_child(UnitIcons.rect(UnitKind.Id.KING, 0, false, 44.0))
+	var look: StringName = battle_source.king_looks()[side] if side < battle_source.king_looks().size() else &""
+	faces.add_child(_face(UnitKind.Id.KING, [], side, deck.army, 1, look))
 	for i in deck.entries.size():
-		var face := UnitIcons.rect(deck.entries[i].kind, 0, false, 44.0)
 		var level: int = levels[i] if i < levels.size() else 1
-		if level > 1:
-			# 始めのレベルが 1 でない駒（進化を教える話など）は、アイコンの右下にレベル。
-			var tag := _text(13, COLOR_ACCENT)
-			tag.text = Text.t("sortie.level", {"level": level})
-			tag.add_theme_constant_override("outline_size", 4)
-			tag.add_theme_color_override("font_outline_color", Palette.OUTLINE)
-			tag.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE)
-			tag.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-			tag.grow_vertical = Control.GROW_DIRECTION_BEGIN
-			face.add_child(tag)
-		_deck_faces.add_child(face)
-	_map.texture = ImageTexture.create_from_image(map_image(deck))
+		faces.add_child(_face(deck.entries[i].kind, deck.entries[i].equipment, side, deck.army, level))
+
+
+func _face(kind: UnitKind.Id, equipment: Array[Equipment.Id], side: Unit.Side, army: UnitKind.Army, level: int, look := &"") -> TextureRect:
+	var face := UnitIcons.rect(kind, side, false, 44.0, look)
+	face.mouse_filter = Control.MOUSE_FILTER_STOP
+	face.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	face.tooltip_text = Text.t("deck.detail.click")
+	face.set_meta(&"detail", [kind, equipment, side, army, level, look])
+	face.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_open_detail(face))
+	if level > 1:
+		# 始めのレベルが 1 でない駒（進化を教える話など）は、アイコンの右下にレベル。
+		var tag := _text(13, COLOR_ACCENT)
+		tag.text = Text.t("sortie.level", {"level": level})
+		tag.add_theme_constant_override("outline_size", 4)
+		tag.add_theme_color_override("font_outline_color", Palette.OUTLINE)
+		tag.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE)
+		tag.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		tag.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		face.add_child(tag)
+	return face
+
+
+func _open_detail(face: Control) -> void:
+	if _detail == null:
+		_detail = UnitDetail.new()
+		_layer.add_child(_detail)
+		_detail.setup(context.overlays)
+	var given: Array = face.get_meta(&"detail")
+	_detail.open(given[0], given[1], given[2], given[3], given[4], given[5])
+
+
+## 部隊の駒のアイコン（side の陣営。将から並びの順）を押す（検査用）: その駒の詳しい説明を開き、それを返す。
+func press_face(side: Unit.Side, index: int) -> Control:
+	var faces: Array[Node] = (_deck_faces if side == Unit.Side.PLAYER1 else _enemy_faces).get_children().filter(
+		func(face: Node) -> bool: return not face.is_queued_for_deletion())
+	if index < 0 or index >= faces.size():
+		return null
+	_open_detail(faces[index])
+	return _detail
 
 
 ## side の部隊の並びの順の、駒の始めのレベル（話の戦いの定義の start_growth。決めていなければ空）。
@@ -305,22 +414,8 @@ func _input(event: InputEvent) -> void:
 	if right or escape:
 		get_viewport().set_input_as_handled()
 		context.play_sound(&"ui_back")
-		press_back()
-
-
-## 盤の縮図。両軍の駒の初期位置（人は deck で置く）に、陣営の色の点を打つ。
-func map_image(deck: Deck) -> Image:
-	var source: RefCounted = battle_source.copy()
-	source.human_deck = deck
-	var battle: Battle = source.make_setup(1).create_battle()
-	var image := StageCardMap.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
-	for unit in battle.units:
-		if unit.side == Unit.Side.NEUTRAL or unit.kind == UnitKind.Id.KING:
-			continue
-		var corner := unit.cell * MAP_CELL
-		image.fill_rect(Rect2i(corner + Vector2i(3, 3), Vector2i(MAP_CELL - 6, MAP_CELL - 6)), Color.BLACK)
-		image.fill_rect(Rect2i(corner + Vector2i(4, 4), Vector2i(MAP_CELL - 8, MAP_CELL - 8)), BattleScreen.TEAM_COLORS[unit.side].lightened(0.2))
-	return image
+		if not _deploy.cancel():  # 初期位置で駒を選んでいれば、まず選ぶのをやめる
+			press_back()
 
 
 func _build_options() -> void:

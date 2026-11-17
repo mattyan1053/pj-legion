@@ -45,7 +45,7 @@ signal log_pressed
 signal setup_pressed
 ## 決着の画面の「タイトルへ」が押された。
 signal title_pressed
-## field はステージの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でやり直す（field は見ない）。
+## field はマップの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でやり直す（field は見ない）。
 signal restart_pressed(field: StringName, new_board: bool)
 ## 決着の画面を出した（draw なら引き分けで、winner は使わない）。決着の曲を鳴らす合図。
 signal result_shown(draw: bool, winner: Unit.Side)
@@ -86,7 +86,7 @@ const ULT_COLORS := {
 }
 
 var _team_colors: Array[Color] = []
-## 将の姿（陣営ごと。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
+## 将の姿（陣営ごと。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
 var king_looks: Array[StringName] = [&"", &""]
 
 var _turn_label: Label

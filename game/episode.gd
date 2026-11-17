@@ -11,14 +11,16 @@ const SoundCatalog := preload("res://game/sound_catalog.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const Maps := preload("res://game/maps.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
-const UnitView := preload("res://game/unit_view.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 const DIR := "res://game/story/episodes/"
 ## 書ける節。
 const SECTIONS := ["episode", "unlock", "ally", "enemy", "before", "after", "cues"]
 ## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃準備に出す覚えることの長さの上限。
-const TALK_MAX_LINES := 6
+const TALK_MAX_LINES := 10
+## 会話（前と後）の 1 行の文の長さの上限（会話の場面の文の枠に 2 行で収まる）。
+const TALK_MAX_CHARS := 60
 const CUES_MAX := 3
 const CUE_MAX_CHARS := 40
 const LESSON_MAX_CHARS := 48
@@ -29,7 +31,7 @@ const SIDE_WORDS := {"ally": 0, "enemy": 1}
 var id := &""
 ## 会話の見出しと、話の一覧のカードに出す名前。
 var title := ""
-## 盤（手で作ったマップ）と、その名前（戦いの定義の名前。決着の画面の「ステージ」）。
+## 盤（手で作ったマップ）と、その名前（戦いの定義の名前。決着の画面の「マップ」）。
 var map: HandMap
 var map_title := ""
 ## 盤の見た目（stage_look.gd の THEMES の鍵）。
@@ -58,24 +60,30 @@ var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
 ## 駒の始めのレベルと経験値: [人の部隊の列, 敵の部隊の列]。どちらも [レベル, 経験値] の列で、部隊（squad、enemy）と同じ並び。
 ## 駒の行に書かなければ [1, 0]（いつもどおり）。戦いの定義の start_growth へ写す（story_battle.gd）。
 var growth: Array = [[], []]
-## 話し手の名前: [人の軍, 敵の軍]。
+## 話し手の名前: [人の軍の主な話し手, 敵の軍の主な話し手, ほかの話し手（[ally]・[enemy] の speaker。書いた順）, …]。
+## 会話と途中の台詞の行は、話し手をこの並びの番号で持つ。
 var speakers: PackedStringArray = ["", ""]
-## 話し手の姿（会話の場面に立たせる駒の形と、対戦の途中の台詞のアイコン）: [人の軍, 敵の軍]。
-## どちらも {"kind": 駒の種類, "evolved": 進化後の形か, "look": 将の別の姿}。書かなければ、その陣営の将の姿。
+## 話し手の陣営（0 = 人の軍、1 = 敵の軍）。speakers と同じ並び。
+var speaker_sides: PackedInt32Array = [0, 1]
+## 話し手の姿（会話の場面に立たせる駒の形と、対戦の途中の台詞のアイコン）。speakers と同じ並び。
+## どれも {"kind": 駒の種類, "evolved": 進化後の形か, "look": 将の別の姿}。書かなければ、その陣営の将の姿。
+## [1]（敵の主な話し手）は、話の一覧のカードの顔にも使う。
 var figures: Array[Dictionary] = [{"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}]
-## 将の姿（見た目だけ。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）: [人の軍, 敵の軍]。敵の将だけ書ける（[enemy] の king_figure）。
+## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [人の軍, 敵の軍]。敵の将だけ書ける（[enemy] の king_figure）。
 ## 盤の将、駒の情報・決着の画面のアイコン、話し手の姿が king のときの姿に使う。ルールの上では将のまま。
 var king_looks: Array[StringName] = [&"", &""]
-## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文] の列。
+## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文, 話し手（speakers の番号）] の列。
 var before: Array = []
 var after: Array = []
-## 対戦の途中の会話: [きっかけ, 値, 話し手の陣営, 文] の列（battle_cues.gd）。
+## 対戦の途中の会話: [きっかけ, 値, 話し手の陣営, 文, 話し手（speakers の番号）] の列（battle_cues.gd）。
 var cues: Array = []
 ## 読んだファイルのパスと、書き間違い（空なら正しい）。
 var path := ""
 var problems: PackedStringArray = []
 ## 初期位置を書いた行（陣営ごと。書き間違いの文に使う）。
 var _deploy_lines := [0, 0]
+## ほかの話し手の行（陣営ごと。両方の陣営の主な話し手を読んだあとに読む）。
+var _speaker_entries := [[], []]
 
 
 ## 話 episode_id のファイル（DIR）を読む。
@@ -140,6 +148,7 @@ func _read(file: RefCounted) -> void:
 	_read_unlock(file)
 	_read_side(file, "ally", 0)
 	_read_side(file, "enemy", 1)
+	_read_more_speakers(file)
 	_read_talks(file)
 	_read_cues(file)
 	_check_deploy(file)
@@ -233,9 +242,10 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if not file.has(section):
 		file.problem(1, "[%s] の節が無い（話し手の name だけでも書く）" % section)
 		return
-	var keys := ["name", "figure", "unit", "deploy"]
+	var keys := ["name", "figure", "speaker", "unit", "deploy"]
 	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure"])
-	var values: Dictionary = file.values(section, keys, ["unit", "deploy"])
+	var values: Dictionary = file.values(section, keys, ["speaker", "unit", "deploy"])
+	_speaker_entries[side] = values.get("speaker", [])
 	if values.has("name"):
 		speakers[side] = values["name"][0]["value"]
 	if speakers[side] == "":
@@ -243,12 +253,15 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if values.has("king_figure"):
 		var entry: Dictionary = values["king_figure"][0]
 		var king_look := StringName(entry["value"])
-		if UnitView.KING_LOOKS.has(king_look):
+		if UnitLooks.KING_LOOKS.has(king_look):
 			king_looks[side] = king_look
 		else:
-			file.problem(entry["line"], "知らない将の姿「%s」（書けるのは %s）" % [king_look, ", ".join(UnitView.KING_LOOKS.keys())])
+			file.problem(entry["line"], "知らない将の姿「%s」（書けるのは %s）" % [king_look, ", ".join(UnitLooks.KING_LOOKS)])
 	if values.has("figure"):
-		_read_figure(file, values["figure"][0], side)
+		var entry: Dictionary = values["figure"][0]
+		var figure := _figure(file, entry["line"], entry["value"])
+		if not figure.is_empty():
+			figures[side] = figure
 	if figures[side]["kind"] == UnitKind.Id.KING:
 		figures[side]["look"] = king_looks[side]
 	var rows: Array = []
@@ -295,22 +308,47 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
 
 
-## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。
-func _read_figure(file: RefCounted, entry: Dictionary, side: int) -> void:
-	var words := (entry["value"] as String).split(" ", false)
+## ほかの話し手（[ally]・[enemy] の「speaker = 名前, 姿」。姿は無くてよく、無ければその陣営の将）。
+## 両方の陣営の主な話し手（name）を読んだあとに読む（speakers の [0] と [1] が主な話し手）。
+func _read_more_speakers(file: RefCounted) -> void:
+	for side: int in [0, 1]:
+		for entry: Dictionary in _speaker_entries[side]:
+			var parts := (entry["value"] as String).split(",")
+			var name := parts[0].strip_edges()
+			if name == "" or parts.size() > 2:
+				file.problem(entry["line"], "話し手は「speaker = 名前, 姿」（姿は無くてよい）: %s" % entry["value"])
+				continue
+			if speakers.has(name):
+				file.problem(entry["line"], "話し手「%s」が 2 度ある" % name)
+				continue
+			var figure := {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}
+			if parts.size() == 2:
+				figure = _figure(file, entry["line"], parts[1].strip_edges())
+				if figure.is_empty():
+					continue
+			if figure["kind"] == UnitKind.Id.KING:
+				figure["look"] = king_looks[side]
+			speakers.append(name)
+			speaker_sides.append(side)
+			figures.append(figure)
+
+
+## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。読めなければ空。
+func _figure(file: RefCounted, line: int, value: String) -> Dictionary:
+	var words := value.split(" ", false)
 	var kind := StoryFile.enum_value(UnitKind.Id, words[0] if not words.is_empty() else "")
 	if kind < 0 or UnitKind.is_neutral(kind as UnitKind.Id):
 		var neutral := UnitKind.Id.values().filter(func(each: int) -> bool: return UnitKind.is_neutral(each as UnitKind.Id))
-		file.problem(entry["line"], "知らない姿「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Id, neutral)])
-		return
+		file.problem(line, "知らない姿「%s」（書けるのは %s）" % [value, StoryFile.enum_words(UnitKind.Id, neutral)])
+		return {}
 	var evolved := words.size() == 2 and words[1] == "evolved"
 	if words.size() > 2 or (words.size() == 2 and not evolved):
-		file.problem(entry["line"], "姿は「駒の種類」か「駒の種類 evolved」: %s" % entry["value"])
-		return
+		file.problem(line, "姿は「駒の種類」か「駒の種類 evolved」: %s" % value)
+		return {}
 	if evolved and not UnitIcons.evolves(kind as UnitKind.Id):
-		file.problem(entry["line"], "%s に進化後の姿は無い" % words[0])
-		return
-	figures[side] = {"kind": kind, "evolved": evolved, "look": &""}
+		file.problem(line, "%s に進化後の姿は無い" % words[0])
+		return {}
+	return {"kind": kind, "evolved": evolved, "look": &""}
 
 
 ## side の部隊に、始めのレベルか経験値を決めた駒がいるか。
@@ -386,6 +424,8 @@ func _read_talks(file: RefCounted) -> void:
 			var line := _speech(file, row["line"], row["text"])
 			if not line.is_empty():
 				rows.append(line)
+				if (line[1] as String).length() > TALK_MAX_CHARS:
+					file.problem(row["line"], "会話の文は %d 字まで（いま %d 字）" % [TALK_MAX_CHARS, (line[1] as String).length()])
 		if rows.is_empty():
 			file.problem(maxi(file.line_of(section), 1), "[%s] の会話が無い" % section)
 		elif rows.size() > TALK_MAX_LINES:
@@ -396,7 +436,8 @@ func _read_talks(file: RefCounted) -> void:
 			after = rows
 
 
-## 会話の行「話し手: 文」（全角の「：」でもよい）を [陣営, 文] に。話し手は [ally] か [enemy] の name。読めなければ空。
+## 会話の行「話し手: 文」（全角の「：」でもよい）を [陣営, 文, 話し手（speakers の番号）] に。
+## 話し手は [ally] か [enemy] の name か speaker。読めなければ空。
 func _speech(file: RefCounted, line: int, text: String) -> Array:
 	var at := text.find(":")
 	var wide := text.find("：")
@@ -407,14 +448,14 @@ func _speech(file: RefCounted, line: int, text: String) -> Array:
 		return []
 	var name := text.substr(0, at).strip_edges()
 	var said := text.substr(at + 1).strip_edges()
-	var side := speakers.find(name)
-	if name == "" or side < 0:
-		file.problem(line, "知らない話し手「%s」（[ally] か [enemy] の name: %s）" % [name, " / ".join(speakers)])
+	var who := speakers.find(name)
+	if name == "" or who < 0:
+		file.problem(line, "知らない話し手「%s」（[ally] か [enemy] の name か speaker: %s）" % [name, " / ".join(speakers)])
 		return []
 	if said == "":
 		file.problem(line, "文が空")
 		return []
-	return [side, said]
+	return [speaker_sides[who], said, who]
 
 
 ## 対戦の途中の会話の行「(きっかけ 値) 話し手: 文」。
@@ -449,7 +490,7 @@ func _read_cues(file: RefCounted) -> void:
 				continue
 		if (speech[1] as String).length() > CUE_MAX_CHARS:
 			file.problem(row["line"], "途中の台詞は %d 字まで（いま %d 字）" % [CUE_MAX_CHARS, (speech[1] as String).length()])
-		cues.append([kind, value, speech[0], speech[1]])
+		cues.append([kind, value, speech[0], speech[1], speech[2]])
 	if cues.size() > CUES_MAX:
 		file.problem(file.line_of("cues"), "途中の台詞は %d つまで（いま %d）" % [CUES_MAX, cues.size()])
 

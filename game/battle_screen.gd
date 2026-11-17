@@ -2,7 +2,7 @@ extends Node3D
 ## 対戦の場面（俯瞰 3D の盤面と、操作・演出）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
 ## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。
 ## 対戦は、渡された「対戦設定を作ってくれるもの」（battle_source.gd。流れ（run.gd）が渡す。無ければ context.match_choice）から作る。
-## どのモードの対戦かは知らない。やり直し・ステージの替え・相手の切り替え・対戦設定のパネルは、それに聞いてから出す。
+## どのモードの対戦かは知らない。やり直し・マップの替え・相手の切り替え・対戦設定のパネルは、それに聞いてから出す。
 ##
 ## 相手（プレイヤー2）を CPU にすると、その番は CpuPlayer が返す行動を、人の操作と同じ入口（_do）に 1 つずつ流す。
 ## ここはルールを持たない。操作を行動（BattleAction）にして Battle.apply() に渡し、
@@ -39,6 +39,7 @@ const WinText := preload("res://game/win_text.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦設定へ」は &"setup"、「タイトルへ」は &"title"。
 ## 「次へ」（渡されたものが許したときだけ出る。ストーリー）は Run.NEXT）。
@@ -99,7 +100,7 @@ var battle_log: BattleLog:
 		battle_log = value
 		if _playback != null:
 			_playback.battle_log = value
-## いまの盤の見た目の名前（stage_look.gd）と、決着の画面の「ステージ」に出す名前（戦いの定義の名前）。
+## いまの盤の見た目の名前（stage_look.gd）と、決着の画面の「マップ」に出す名前（戦いの定義の名前）。
 var look := StageLook.DEFAULT
 var area_name := ""
 var map_seed := 0
@@ -167,6 +168,9 @@ var _layout: PanelLayout
 var _hover_forced := NO_CELL
 ## 対戦を始めたことがあるか（起動した直後の設定画面だけ偽。偽の間は、設定画面を閉じて戻る先が無い）。
 var _battle_started := false
+## 終盤の曲（sound_catalog.gd の CLIMAX_MUSIC）: 対戦の初めの将の番号と、もう替えたか。
+var _climax_kings: Array[int] = []
+var _climax := false
 ## カメラが追いかけた駒の番号 -> 回数。検査用。
 var camera_follows := {}
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
@@ -216,7 +220,7 @@ func _ready() -> void:
 	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
-	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
+	_hud.title_pressed.connect(func() -> void: finished.emit(source.leave()[0]))  # 決着の画面の、流れの外への行き先
 	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
 	_hud.result_screen().squad_pressed.connect(func() -> void: finished.emit(Run.PREVIOUS))
 	_hud.result_shown.connect(_on_result_shown)
@@ -231,9 +235,9 @@ func _ready() -> void:
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 	_setup_panel.cancelled.connect(_refresh)
-	_setup_panel.stage_pressed.connect(func(choice: RefCounted) -> void:
+	_setup_panel.map_pressed.connect(func(choice: RefCounted) -> void:
 		context.match_choice = choice
-		finished.emit(&"stage"))
+		finished.emit(&"map_select"))
 	_log_panel = LogPanel.new()
 	add_child(_log_panel)
 	_log_panel.setup(TEAM_COLORS, context.overlays)
@@ -350,8 +354,8 @@ func start_battle(battle_seed: int) -> void:
 	start_with(setup.create_battle(), source.look(), battle_seed, setup.scenario.title)
 
 
-## ステージを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
-## 渡されたものが、そのステージを選べない（source.new_board_fields() に無い）なら何もしない。
+## マップを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
+## 渡されたものが、そのマップを選べない（source.new_board_fields() に無い）なら何もしない。
 func start_on_field(field: StringName, battle_seed: int) -> void:
 	if is_busy() or not source.new_board_fields().has(field):
 		return
@@ -359,7 +363,7 @@ func start_on_field(field: StringName, battle_seed: int) -> void:
 	start_battle(battle_seed)
 
 
-## F1〜F3: 「新しい盤面」で選べるステージの index 番目で、新しい対戦を始める（無ければ何もしない）。
+## F1〜F3: 「新しい盤面」で選べるマップの index 番目で、新しい対戦を始める（無ければ何もしない）。
 func _start_on_nth_field(index: int) -> void:
 	var fields := source.new_board_fields()
 	if index < fields.size():
@@ -390,7 +394,7 @@ func _on_setup_chosen(chosen: RefCounted) -> void:
 
 
 ## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中と CPU の番の間は何もしない。
-## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「ステージ」（空なら出さない）。
+## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「マップ」（空なら出さない）。
 func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, battle_area := "") -> void:
 	if is_busy():
 		return
@@ -436,11 +440,14 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_layout.reset_menu()
 	_hud.hide_result()
 	_hud.result_screen().set_destinations(_new_boards(), source.can_open_setup(), source.can_choose_squad())
+	_hud.result_screen().set_leave(Text.t(source.leave()[1]))
 	_hud.king_looks = source.king_looks()
 	_hud.result_screen().king_looks = source.king_looks()
 	# 対戦の曲（盤の見た目か、話が決めた曲。battle_source.gd の music）。決着の曲のあとの「やり直す」でも、対戦の曲へ戻る。
 	# 新しい盤面で見た目が替われば、曲も替わる。同じ曲なら鳴らし直さない。
 	context.play_scene_music(source.music())
+	_climax_kings = SoundCatalog.kings_of(battle)
+	_climax = false
 	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_cues = source.talk_cues()
 	_talk.clear()
@@ -530,6 +537,19 @@ func say_for_check(lines: Array[BattleCues.Line]) -> void:
 ## 対戦の途中の会話の札を消す（スクリーンショットで、ほかの台詞を出すとき）。
 func clear_talk_for_check() -> void:
 	_talk.clear()
+
+
+## 終盤に入ったら、終盤の曲へフェードで替える（1 回だけ。戻さない。新しい対戦を始めると、その対戦の曲に戻る）。
+func _update_climax() -> void:
+	if _climax or not SoundCatalog.climax_reached(battle, _climax_kings):
+		return
+	_climax = true
+	context.play_scene_music(SoundCatalog.CLIMAX_MUSIC)
+
+
+## 終盤の曲に替えたか。検査用。
+func climax_started() -> bool:
+	return _climax
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
@@ -1750,6 +1770,7 @@ func _is_self_skill(unit: Unit) -> bool:
 
 
 func _refresh_status(turn: int, phase: Unit.Side) -> void:
+	_update_climax()
 	var counts: Array[int] = [
 		Queries.unit_count(battle, Unit.Side.PLAYER1), Queries.unit_count(battle, Unit.Side.PLAYER2),
 	]

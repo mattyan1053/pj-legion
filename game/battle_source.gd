@@ -43,13 +43,13 @@ func set_cpu_opponent(_cpu: bool) -> void:
 	pass
 
 
-## 新しい盤面でやり直すときに選べるステージ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しい盤面」）。
+## 新しい盤面でやり直すときに選べるマップ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しい盤面」）。
 ## 空なら、やり直しは「同じ盤面でもう一度」だけ。
 func new_board_fields() -> Array[StringName]:
 	return []
 
 
-## 次に作る対戦設定のステージを field にする（new_board_fields() にあるものだけ）。
+## 次に作る対戦設定のマップを field にする（new_board_fields() にあるものだけ）。
 func choose_field(_field: StringName) -> void:
 	pass
 
@@ -65,9 +65,15 @@ func can_continue(_won: bool) -> bool:
 	return false
 
 
-## 決着の画面の Enter を「同じ盤面でもう一度」にするか（偽なら、「次へ」があればそれ、無ければタイトルへ）。won は can_continue と同じ。
+## 決着の画面の Enter を「同じ盤面でもう一度」にするか（偽なら、「次へ」があればそれ、無ければ流れの外への行き先 leave()）。won は can_continue と同じ。
 func retries_on_enter(_won: bool) -> bool:
 	return false
+
+
+## 決着の画面の、流れの外への行き先（[終わり方（scene_flow.gd の対戦の場面の next）, ボタンの文の鍵]）。
+## 既定はタイトル。対戦モードはマップ選択、ストーリーは話の一覧。
+func leave() -> Array:
+	return [&"title", "result.to_title"]
 
 
 ## 決着の画面に「部隊を選び直す」を出すか（押すと、流れ（run.gd）の 1 つ前の場面、出撃準備へ戻る）。
@@ -81,7 +87,7 @@ func talk_cues() -> RefCounted:
 	return BattleCues.new()
 
 
-## 将の姿（見た目だけ。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）: [プレイヤー1, プレイヤー2]。既定はどちらもいつもの将。
+## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [プレイヤー1, プレイヤー2]。既定はどちらもいつもの将。
 func king_looks() -> Array[StringName]:
 	return [&"", &""]
 

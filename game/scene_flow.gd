@@ -22,7 +22,7 @@ const TITLE := &"title"
 const CAMPAIGNS := &"campaigns"
 const EPISODES := &"episodes"
 const DECKS := &"decks"
-const STAGE := &"stage"
+const MAP_SELECT := &"map_select"
 const SETUP := &"setup"
 const TALK := &"talk"
 const SORTIE := &"sortie"
@@ -33,7 +33,7 @@ const BATTLE := &"battle"
 const SCENES := {
 	TITLE: {
 		"script": "res://game/title_screen.gd",
-		"next": {&"start": STAGE, &"story": CAMPAIGNS},
+		"next": {&"start": MAP_SELECT, &"story": CAMPAIGNS},
 		"music": &"menu",
 	},
 	CAMPAIGNS: {
@@ -51,14 +51,14 @@ const SCENES := {
 		"next": {&"back": TITLE},  # 対戦設定・出撃準備からの寄り道（流れの中）で開く。戻るのは Run.NEXT
 		"music": &"menu",
 	},
-	STAGE: {
-		"script": "res://game/stage_select_screen.gd",
+	MAP_SELECT: {
+		"script": "res://game/map_select_screen.gd",
 		"next": {&"pick": SETUP, &"back": TITLE},
 		"music": &"menu",
 	},
 	SETUP: {
 		"script": "res://game/setup_screen.gd",
-		"next": {&"back": STAGE},  # 「対戦を始める」は、対戦の流れ（run.gd）を始める（setup_screen.gd）
+		"next": {&"back": MAP_SELECT},  # 「対戦を始める」は、対戦の流れ（run.gd）を始める（setup_screen.gd）
 		"music": &"menu",
 	},
 	TALK: {
@@ -73,7 +73,7 @@ const SCENES := {
 	},
 	BATTLE: {
 		"script": "res://game/battle_screen.gd",
-		"next": {&"setup": SETUP, &"stage": STAGE},  # 「ステージを選び直す」（対戦の途中で開いた対戦設定）は、ステージ選択へ
+		"next": {&"setup": SETUP, &"map_select": MAP_SELECT, &"episodes": EPISODES},  # 「マップを選び直す」（対戦の途中で開いた対戦設定）は、マップ選択へ
 		"music": &"battle",  # 既定。ふつうは渡すもの（battle_source.gd の music: 盤の見た目か、話が決めた曲）が決める
 	},
 }

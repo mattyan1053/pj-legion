@@ -16,7 +16,10 @@ story.episodes.cleared,クリア済み
 story.episodes.locked,第 {number} 話クリアで開放
 story.episodes.not_cleared,未クリア
 sortie.heading,出撃準備　　第 {number} 話「{title}」
-sortie.map,ステージ「{map}」（点は初期位置。青: 味方　赤: 敵）
+sortie.map,初期位置　マップ「{map}」
+sortie.auto_place,おまかせ
+sortie.place_hint,駒をクリック → 縁取りのマスをクリックで移動（駒どうしは入れ替え）
+sortie.place_fixed,この話の初期位置は固定
 sortie.lesson,この話で覚えること
 sortie.goal,勝ち方
 sortie.enemy,敵の部隊（{army}）
@@ -32,6 +35,7 @@ sortie.option,{name}　　{note}
 talk.skip,スキップ
 talk.hint,クリック・Enter: 次へ ▼　右クリック: 戻る
 talk.resume,会話へ戻る
+talk.next_episode,次の話へ
 story.episodes.roster,"雇える駒: {kinds}
 持ち物: {items}　　コスト上限: {budget}"
 story.episodes.rewards,"クリア報酬:

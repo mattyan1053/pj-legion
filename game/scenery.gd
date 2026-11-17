@@ -1,6 +1,6 @@
 extends Node3D
 ## 盤の外の景色。戦う範囲の外も地続きの場所に見えるように置く。見た目だけで、ルールには関わらない。
-## 何を置くかは、ステージの見た目（stage_look.gd の SCENERY）が決める。ここは並べ方だけを持つ。
+## 何を置くかは、マップの見た目（stage_look.gd の SCENERY）が決める。ここは並べ方だけを持つ。
 ## - 大きいもの（BIG。岩山など）: 尾根のノイズに沿って、盤から離れたところに。遠いほど大きい。
 ## - 小さいもの（SMALL。木など）: 森のノイズに沿って、かたまりで。盤の近くはまばらに、離れるほど濃く。
 ## - 散らばるもの（SCATTER。石など）: まばらに、どこにでも。低い。
@@ -34,7 +34,7 @@ const SHADOW_WITHIN := 30.0
 
 ## 置くもの。{ role（BIG・SMALL・SCATTER）, index（その候補の何番目）, position: Vector3, scale: float, yaw: float,
 ## height: float（マス）, distance: float（盤の端から）} の配列。
-## scenery はステージの見た目の SCENERY。同じ盤の大きさ・種・見た目からは、同じ並びになる。
+## scenery はマップの見た目の SCENERY。同じ盤の大きさ・種・見た目からは、同じ並びになる。
 static func layout(board_size: Vector2i, look_seed: int, scenery: Dictionary) -> Array[Dictionary]:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = look_seed

@@ -3,7 +3,7 @@ extends "res://game/battle_source.gd"
 ## 話（episode.gd。game/story/episodes/ の 1 ファイル）から、戦いの定義（手で作ったマップ、決め打ちの敵）を持った対戦設定を作る。
 ##
 ## 人はいつもプレイヤー1（先手）で、渡された部隊（story.gd が、いま雇える駒で組む）。敵はプレイヤー2 で、CPU が動かす。
-## 選び直せるものは無い（ステージ、相手、対戦設定のパネル）。やり直しは「同じ盤面でもう一度」と、出撃準備へ戻る「部隊を選び直す」。
+## 選び直せるものは無い（マップ、相手、対戦設定のパネル）。やり直しは「同じ盤面でもう一度」と、出撃準備へ戻る「部隊を選び直す」。
 ## 人が勝ったら、決着の画面に「次へ」を出し（流れの次の場面、あとの会話へ）、話をクリアしたと書く。
 ## ここはノードに依存しない（テストから呼べる）。
 
@@ -13,6 +13,8 @@ const Episode := preload("res://game/episode.gd")
 var episode: Episode
 ## 人の部隊。
 var human_deck: Deck
+## 人が出撃準備で決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
+var placement: Array[Vector2i] = []
 
 
 func _init(of_episode: Episode = null, deck: Deck = null) -> void:
@@ -22,7 +24,9 @@ func _init(of_episode: Episode = null, deck: Deck = null) -> void:
 
 func make_setup(battle_seed: int) -> MatchSetup:
 	# 敵の部隊は戦いの定義が決め打ちにしているので、CPU の編成は作られない（MatchSetup.on_scenario）。
-	return MatchSetup.on_scenario(scenario(), battle_seed, Unit.Side.PLAYER1, human_deck)
+	var setup := MatchSetup.on_scenario(scenario(), battle_seed, Unit.Side.PLAYER1, human_deck)
+	setup.placements[Unit.Side.PLAYER1] = placement.duplicate()
+	return setup
 
 
 ## 話の戦いの定義（種に依らない。マップ、決め打ちの敵、初期位置、勝ち方）。出撃準備も、勝ち方と敵の部隊をここから読む。
@@ -48,6 +52,11 @@ func retries_on_enter(won: bool) -> bool:
 	return not won
 
 
+## 決着の画面の、流れの外への行き先は話の一覧。
+func leave() -> Array:
+	return [&"episodes", "result.to_episodes"]
+
+
 ## 決着の画面に「部隊を選び直す」を出すか（部隊が決まっている話は出さない）。
 func can_choose_squad() -> bool:
 	return not episode.has_squad()
@@ -71,7 +80,9 @@ func record_win(context: RefCounted) -> void:
 
 
 func copy() -> RefCounted:
-	return get_script().new(episode, human_deck)
+	var other: RefCounted = get_script().new(episode, human_deck)
+	other.placement = placement.duplicate()
+	return other
 
 
 ## 話 of_episode の戦いの定義（種に依らない）。

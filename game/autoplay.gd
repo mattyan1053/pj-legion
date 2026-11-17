@@ -4,7 +4,7 @@ extends Node
 ## 人と同じ入口（マスを選ぶ・待機・戻す・ターン終了・進化先を選ぶ）だけを使う。回すのは SCENES の場面で、
 ## 対戦を最後まで進める場面（game）と、小さな盤面で決まった手順を通す場面（環境オブジェクト、盤の上の効果、スキル、必殺技、
 ## 中立の駒、レベルアップ、進化、回復、閲覧、対戦設定、システムメニュー、CPU の番）、最後にタイトルと部隊編成の場面を通す場面。
-## 長い検査（`-- --autoplay --full`）では、game のあとに盤面を作り直して、ほかのステージも少し動かす（そのうち 1 戦は、相手を CPU にする）。
+## 長い検査（`-- --autoplay --full`）では、game のあとに盤面を作り直して、ほかのマップも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ##
 ## `-- --autoplay --only <名前,…>` で、選んだ場面だけを回す（名前は SCENES の名前か、GROUPS のまとまりの名前）。
 ## 場面の中で確かめたことが外れたら、その場面の残りを飛ばして次の場面へ進み、最後にまとめて失敗にする。
@@ -53,9 +53,9 @@ const SCENES := {
 	"cpu": "CPU の番（止める、ログ、カメラが追う）",
 	"auto_turn": "自分の番のおまかせ（1 回目は確かめるだけ。2 回目で、残りの駒を CPU が動かしてターンを終える）",
 	"cpu_skip": "相手（CPU）の番の早送りとスキップ（中立のフェーズから。途中で決着したら、決着を見せる）",
-	"title": "相手の番の途中でタイトルへ戻り、ステージ選択と対戦設定を行き来する",
+	"title": "相手の番の途中でタイトルへ戻り、マップ選択と対戦設定を行き来する",
 	"decks": "部隊編成",
-	"story": "ストーリーの 1 話の通し（タイトル → 物語を選ぶ → 話の一覧 → 会話 → 出撃準備 → 対戦 → 勝って「次へ」「部隊を選び直す」→ 会話 → 話の一覧 → 物語を選ぶ → タイトル、クリアの記録）",
+	"story": "ストーリーの 1 話の通し（タイトル → 物語を選ぶ → 話の一覧 → 出撃準備 → 会話 → 対戦 → 勝って「部隊変更」（会話を飛ばす）→ 勝って「次へ」→ 会話 →「話の一覧へ」 → 物語を選ぶ → タイトル、クリアの記録）",
 }
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
@@ -76,7 +76,7 @@ const STAGES: Array[StringName] = [VersusFields.PLAIN, VersusFields.TWIN_SPRINGS
 enum Phase { GAME, SCENES, STAGES, END }
 
 var _scene: Node
-## 長い検査（`--full`）のときだけ、ほかのステージも動かす。
+## 長い検査（`--full`）のときだけ、ほかのマップも動かす。
 var _full := OS.get_cmdline_user_args().has("--full")
 ## 回す場面の名前（SCENES の順）。
 var _selected: Array[String] = []
@@ -512,7 +512,7 @@ func _queue_result_scene() -> void:
 			_push_front(again.bind(again))
 			return
 		_expect(screen.is_revealed(), "行き先を選べるのに、出そろっていない")
-		_expect(screen.enabled_buttons().has("タイトルへ"), "行き先に「タイトルへ」が無い")
+		_expect(screen.enabled_buttons().has("マップ選択へ") and not screen.enabled_buttons().has("タイトルへ"), "対戦モードの行き先に「マップ選択へ」が無い（か、「タイトルへ」がある）")
 		_expect(screen.stat_lines().size() >= 2 and screen.mvp_text() != "", "戦績か MVP が出ていない")
 		_expect(not screen.is_detail_open(), "詳しい戦績が、始めから開いている")
 		screen.toggle_detail()
@@ -522,13 +522,13 @@ func _queue_result_scene() -> void:
 		screen.show_table(1 - shown_side)
 		_expect(screen.table_side() == 1 - shown_side and not screen.table_names().is_empty(), "詳しい戦績の表を、もう一方の陣営に切り替えられない")
 		screen.toggle_detail()
-		_expect(screen.enter_destination() == "タイトルへ", "対戦モードの決着の画面の Enter がタイトルへでない: %s" % screen.enter_destination())
+		_expect(screen.enter_destination() == "マップ選択へ", "対戦モードの決着の画面の Enter がマップ選択へでない: %s" % screen.enter_destination())
 		# 戦績の行がいちばん多い（5 行）ときも、入力の案内が下の帯にかからない。
 		var full := ResultSummary.new()
 		full.headline = "VICTORY"
 		full.reason = "プレイヤー1（青） の勝ち　敵の将を倒した"
 		full.focus_name = "プレイヤー1（青）"
-		full.lines = [["ステージ", "結晶の渓谷"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
+		full.lines = [["マップ", "結晶の岩山"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
 		full.mvp_name = "シールドトルーパー Lv3"
 		screen.present(full)
 	var waited_full := [0]
@@ -1085,7 +1085,7 @@ func _queue_inspection_scene() -> void:
 		_expect(_scene.cancel() and _scene.pinned_ids().is_empty() and _scene.pinned_sets().is_empty(), "右クリックで、留めた範囲を全部外せない"))
 
 
-## 対戦設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とステージも選んだとおりになる。
+## 対戦設定画面で、後手を選んで CPU と対戦する（CPU が先手で動き出す）。軍とマップも選んだとおりになる。
 ## 最後に、既定の設定（人が先手）へ戻す。
 func _queue_setup_scene() -> void:
 	var seen := {"actions": 0}
@@ -1106,7 +1106,7 @@ func _queue_setup_scene() -> void:
 	_scripted.append(func() -> void:
 		var battle: Battle = _scene.battle
 		_expect(not _scene.setup_panel().visible, "設定画面が閉じない")
-		_expect(_scene.look == StageLook.CRYSTAL_FOREST, "選んだステージで始まらない")
+		_expect(_scene.look == StageLook.CRYSTAL_FOREST, "選んだマップで始まらない")
 		_expect(battle.armies == ([UnitKind.Army.FANTASY, UnitKind.Army.MILITARY] as Array[UnitKind.Army]), "選んだ軍で始まらない")
 		_expect(_scene.cpu_actions > seen["actions"], "先手の CPU が動かなかった")
 		_expect(battle.phase == Unit.Side.PLAYER2 and battle.turn == 1, "先手の CPU が番を終えなかった")
@@ -1121,7 +1121,7 @@ func _queue_setup_scene() -> void:
 		_expect(_scene.battle == battle and _scene.look == StageLook.CRYSTAL_FOREST and _scene.cpu_opponent, "設定画面を閉じたら、対戦か設定が変わった")
 		# 押すと対戦が終わるボタンは、2 回押させる（1 回目と、直後の 2 回目では終わらない。右クリックで確かめだけをやめる）。
 		_scene.open_setup()
-		for press: StringName in [&"press_stage", &"press_start"]:
+		for press: StringName in [&"press_map", &"press_start"]:
 			panel.call(press)
 			_expect(panel.visible and panel.confirming_text() != "", "%s の 1 回目で、確かめずに進んだ" % press)
 			panel.call(press)
@@ -1132,13 +1132,13 @@ func _queue_setup_scene() -> void:
 			panel._input(right)
 			_expect(panel.visible and panel.confirming_text() == "", "右クリックで、%s の確かめがやめにならない" % press)
 		panel.press_start()
-		panel.press_stage()  # ほかのボタンを押すと、そちらの確かめに変わる
+		panel.press_map()  # ほかのボタンを押すと、そちらの確かめに変わる
 		panel.pass_confirm_guard()
 		panel.press_start()
 		_expect(panel.visible and _scene.battle == battle, "別のボタンの確かめの間に、新しい対戦が始まった")
 		panel.cancel()
 		_expect(_scene.battle == battle and not panel.visible, "確かめの途中で閉じたら、対戦が変わった")
-		# 手で作ったマップ（対戦モードで選べるもの）でも始まる。「新しい盤面」は生成のステージだけ（同じマップは形が変わらない）。
+		# 手で作ったマップ（対戦モードで選べるもの）でも始まる。「新しい盤面」は生成のマップだけ（同じマップは形が変わらない）。
 		# 画面に出していない（釣り合いがめやすを外れる）マップでも、入口は同じ。
 		for field in VersusFields.all_ids():
 			if VersusFields.is_generated(field):
@@ -1150,7 +1150,7 @@ func _queue_setup_scene() -> void:
 			var expected := VersusFields.card_board(field, 0)
 			_expect(_scene.battle.board.size == expected.size and _scene.battle.board.hq_cells == expected.hq_cells, "手で作ったマップで始まらない: %s" % field)
 			_expect(_scene.look == VersusFields.look_of(field), "手で作ったマップの見た目にならない: %s" % field)
-			_expect(_scene.source.new_board_fields() == VersusFields.generated_ids(), "手で作ったマップの対戦の「新しい盤面」が、生成のステージでない")
+			_expect(_scene.source.new_board_fields() == VersusFields.generated_ids(), "手で作ったマップの対戦の「新しい盤面」が、生成のマップでない")
 		# CPU の部隊を「ランダム編成」にすると、対戦の種から組んだ部隊で始まる。設定パネルの「編成確認」で、いまの部隊が見える。
 		# 「同じ盤面で再戦」は同じ部隊、「新しい盤面」は新しい部隊（どちらも、ランダム編成のまま引き継ぐ）。
 		_scene.open_setup()
@@ -1167,6 +1167,17 @@ func _queue_setup_scene() -> void:
 		_expect(panel.current_choice().is_random(Unit.Side.PLAYER2) and panel.can_preview(Unit.Side.PLAYER2), "対戦の途中の設定パネルで、「ランダム編成」の部隊を確認できない")
 		panel.open_preview(Unit.Side.PLAYER2)
 		_expect(panel.preview().visible and panel.preview().shown_kinds().size() == drawn.size() + 1, "「編成確認」に、いまの対戦の「ランダム編成」の部隊が出ない")
+		# 相手の部隊の札も、押すと詳しい説明が出る。右クリックで説明だけ閉じる。
+		panel.preview().press_card(0)
+		var detail: Control = panel.preview().detail()
+		var first_kind: UnitKind.Id = panel.preview().shown_kinds()[1]
+		_expect(detail.visible and detail.title_text() == Names.kind(first_kind) and detail.body_text().contains("スキル") == (Skills.of_kind(first_kind) != null),
+			"対戦の途中の「編成確認」で、相手の駒の札を押しても詳しい説明が出ない: %s" % detail.title_text())
+		var right := InputEventMouseButton.new()
+		right.button_index = MOUSE_BUTTON_RIGHT
+		right.pressed = true
+		panel.get_viewport().push_input(right)
+		_expect(not detail.visible and panel.preview().visible, "詳しい説明を右クリックで閉じると、編成確認まで閉じる（か、説明が閉じない）")
 		panel.preview().close_preview()
 		panel.cancel()
 		_scene.start_battle(_scene.map_seed)  # 決着の画面の「同じ盤面で再戦」と同じ入口
@@ -1194,7 +1205,7 @@ func _queue_setup_scene() -> void:
 		panel.press_start()
 		_expect(_scene.battle != before and not panel.visible, "「新しい対戦を始める」の 2 回目で、新しい対戦が始まらない")
 		_expect(not _scene.cpu_opponent and _scene.source.cpu_side() == Unit.Side.PLAYER2, "既定の設定に戻らない"))
-	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、ステージ・相手・対戦設定は選び直せない）を渡すと、選び直す入口が出ない。
+	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、マップ・相手・対戦設定は選び直せない）を渡すと、選び直す入口が出ない。
 	var kept := {}
 	_script_fixed_source(kept)
 
@@ -1228,7 +1239,7 @@ func _script_fixed_source(kept: Dictionary) -> void:
 		_scene.open_setup()
 		_expect(not _scene.setup_panel().visible, "対戦設定を開けない対戦で、設定画面が開いた")
 		_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
-		_expect(_scene.battle == battle, "ステージを選べない対戦で、ステージを替えてやり直した")
+		_expect(_scene.battle == battle, "マップを選べない対戦で、マップを替えてやり直した")
 		_expect(not _scene.result_screen().can_go_to_setup() and _scene.result_screen().new_board_fields().is_empty(),
 			"選び直せない対戦の決着の画面に、対戦設定・新しい盤面のボタンがある")
 		_scene.source = kept["source"]
@@ -1267,7 +1278,7 @@ func _queue_system_menu_scene() -> void:
 		_expect(not menu.is_open() and _scene.selected_unit() == null, "選んでいる駒があるのに、Esc で選択をやめずにメニューを開いた")
 		_scene.press_escape()
 		_expect(menu.is_open() and _scene.is_busy() and Engine.time_scale == 0.0, "戻すものが無いのに、Esc でメニューが開かない（か、止まらない）")
-		_expect(menu.item_ids() == ([&"resume", &"settings", &"match_setup", &"title", &"quit"] as Array[StringName]), "メニューの項目が違う: %s" % [menu.item_ids()])
+		_expect(menu.item_ids() == ([&"resume", &"settings", &"match_setup", &"exit:map_select", &"title", &"quit"] as Array[StringName]), "メニューの項目が違う: %s" % [menu.item_ids()])
 		_scene.click_cell(trooper.cell)
 		_expect(_scene.selected_unit() == null, "メニューを開いている間に、駒を選べた")
 		# 対戦が失われる項目は、確かめる。「やめる」で、メニューへ戻る。
@@ -1803,23 +1814,39 @@ func _leave_battle(app: Node) -> void:
 	await get_tree().create_timer(1.0).timeout
 	app.current_scene().press_start()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.STAGE, "タイトルの「対戦」で、ステージ選択へ進まない")
+	_expect(app.current_id() == SceneFlow.MAP_SELECT, "タイトルの「対戦」で、マップ選択へ進まない")
 	var stages: Node = app.current_scene()
 	await get_tree().process_frame
-	_expect(stages.card_fields() == VersusFields.ids(), "ステージのカードが一覧と合わない")
+	_expect(stages.card_fields() == VersusFields.ids(), "マップのカードが一覧と合わない")
 	for field in VersusFields.ids():
 		var card: Control = stages.card_of(field)
-		_expect(card.get_global_rect().size.x > 0.0 and _on_screen(card), "ステージのカードが画面からはみ出す: %s" % field)
+		_expect(card.get_global_rect().size.x > 0.0 and _on_screen(card), "マップのカードが画面からはみ出す: %s" % field)
 	stages.hover(VersusFields.TWIN_SPRINGS)
 	_expect(stages.note_text().contains(VersusFields.title_of(VersusFields.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
 	stages.hover(&"")
+	# どのカードに乗せても、ほかの部品（説明の欄、カードの段、ボタン）の位置と大きさが変わらない（説明の長さで揺れない）。
+	var cards: Array[Node] = []
+	for field in VersusFields.ids():
+		cards.append(stages.card_of(field))
+	await _expect_steady(stages, cards, VersusFields.ids().map(func(field: StringName) -> Callable: return stages.hover.bind(field)),
+		"マップ選択でカードに乗せる")
+	stages.hover(&"")
+	# マップを選ぶ前にも、部隊編成（対戦用）へ寄り道できる。戻るとマップ選択。
+	stages.press_edit_decks()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.DECKS and app.current_scene().mode() == DeckRules.VERSUS and app.current_scene().back_label() == "マップ選択へ戻る",
+		"マップ選択の「部隊編成」で、対戦用の部隊編成へ進まない（か、戻り先の文字が違う）")
+	app.current_scene().press_back()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.MAP_SELECT, "マップ選択から開いた部隊編成の「マップ選択へ戻る」で、マップ選択へ戻らない")
+	stages = app.current_scene()
 	stages.choose(VersusFields.LABYRINTH)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SETUP, "ステージ選択のカードで、対戦設定へ進まない")
-	_expect(app.current_scene().setup_panel().current_choice().field == VersusFields.LABYRINTH, "選んだステージが対戦設定に渡らない")
+	_expect(app.current_id() == SceneFlow.SETUP, "マップ選択のカードで、対戦設定へ進まない")
+	_expect(app.current_scene().setup_panel().current_choice().field == VersusFields.LABYRINTH, "選んだマップが対戦設定に渡らない")
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.STAGE, "対戦設定の「ステージ選択へ戻る」で、ステージ選択へ戻らない")
+	_expect(app.current_id() == SceneFlow.MAP_SELECT, "対戦設定の「マップ選択へ戻る」で、マップ選択へ戻らない")
 	# カードの上での右クリックでも戻る（カードのボタンに食われない）。
 	var right := InputEventMouseButton.new()
 	right.button_index = MOUSE_BUTTON_RIGHT
@@ -1828,7 +1855,44 @@ func _leave_battle(app: Node) -> void:
 	right.global_position = right.position
 	app.get_viewport().push_input(right)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.TITLE, "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
+	_expect(app.current_id() == SceneFlow.TITLE, "マップ選択のカードの上で右クリックしても、タイトルへ戻らない")
+
+
+## 場面 scene の部品の位置と大きさが、moves（マウスを乗せる、などの関数の列）のどれをしても変わらないことを確かめる。
+## 乗せた物が大きくなるのはよいので、moving（とその中身）は比べない。
+func _expect_steady(scene: Node, moving: Array[Node], moves: Array, what: String) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var before := _layout_of(scene, moving)
+	for move: Callable in moves:
+		move.call()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var after := _layout_of(scene, moving)
+		var shifted: Array[String] = []
+		for path: NodePath in before:
+			if after.has(path) and after[path] != before[path]:
+				shifted.append("%s %s -> %s" % [path, before[path], after[path]])
+		_expect(shifted.is_empty(), "%sと、ほかの部品が動く（%s）: %s" % [what, move.get_bound_arguments(), shifted.slice(0, 3)])
+
+
+## 見えている部品（Control）の、画面の上の位置と大きさ（パス -> Rect2）。skip とその中身は除く。
+## 文字（Label）と、送れる枠（ScrollContainer）の中身は、中身に合わせて伸び縮みしてよい（枠と、ほかの部品が動かなければよい）ので、比べない。
+func _layout_of(node: Node, skip: Array[Node], into := {}) -> Dictionary:
+	for child: Node in node.get_children():
+		if skip.has(child):
+			continue
+		if child is Control:
+			var control := child as Control
+			if not control.is_visible_in_tree():
+				continue
+			if control is Label:
+				continue
+			into[control.get_path()] = Rect2(control.global_position, control.size)
+			if control is ScrollContainer:
+				continue  # 送れる枠の中身は、中身の量で伸び縮みしてよい（枠が動かなければよい）
+		_layout_of(child, skip, into)
+	return into
 
 
 ## control が画面（論理の大きさ）の中に収まっているか。
@@ -1848,8 +1912,37 @@ func _visit_decks(app: Node) -> void:
 	app.current_scene().choose(VersusFields.PLAIN)
 	await app.scene_changed
 	var setup_panel: Node = app.current_scene().setup_panel()
+	# 相手・手番・軍を選び替えても、パネルの部品の位置と大きさが変わらない。
+	var setup_moves: Array = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		for army: UnitKind.Army in UnitKind.Army.values():
+			setup_moves.append(setup_panel.choose_army.bind(side, army))
+	setup_moves.append(setup_panel.choose_human_side.bind(Unit.Side.PLAYER2))
+	setup_moves.append(setup_panel.choose_random_side)
+	setup_moves.append(setup_panel.choose_opponent.bind(false))
+	setup_moves.append(setup_panel.choose_opponent.bind(true))
+	await _expect_steady(app.current_scene(), [], setup_moves, "対戦設定で選び替える")
 	setup_panel.choose_opponent(true)
 	setup_panel.choose_human_side(Unit.Side.PLAYER1)
+	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
+	# 初期位置: 人の行の「初期位置」で窓を開き、駒を動かして閉じると、その置き方で対戦が作られる。
+	setup_panel.open_placement(Unit.Side.PLAYER1)
+	var dialog: Control = setup_panel.placement_dialog()
+	var place_map: Control = dialog.deploy_map()
+	var placed_cells: Array[Vector2i] = place_map.unit_cells()
+	var open_cells: Array = place_map.zone().filter(func(cell: Vector2i) -> bool: return not placed_cells.has(cell))
+	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
+	place_map.press_cell(placed_cells[0])
+	place_map.press_cell(open_cells[0])
+	dialog.close_dialog()
+	var placed_choice: RefCounted = setup_panel.current_choice()
+	_expect(not dialog.visible and not placed_choice.placements[Unit.Side.PLAYER1].is_empty(), "初期位置の窓を閉じても、決めた置き方が対戦設定に残らない")
+	var placed_battle: Battle = placed_choice.to_setup(setup_panel.PLACEMENT_SEED).create_battle()
+	var first_unit: Array = placed_battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING)
+	_expect(first_unit[0].cell == open_cells[0], "対戦設定で決めた初期位置から、対戦が始まらない")
+	_expect(not setup_panel.placement_button_shown(Unit.Side.PLAYER2), "CPU の行に「初期位置」がある")
+	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
+	_expect(placed_choice.placements[Unit.Side.PLAYER1].is_empty(), "軍（部隊）を替えても、初期位置がおまかせに戻らない")
 	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
 	_expect(setup_panel.can_edit_decks(), "対戦設定に「部隊編成」が無い")
 	setup_panel.press_edit_decks(Unit.Side.PLAYER1)
@@ -1867,19 +1960,33 @@ func _visit_decks(app: Node) -> void:
 	_expect(screen.is_editing() and screen.editing_deck().entries.is_empty() and screen.editing_deck().army == UnitKind.Army.MILITARY, "選んだ軍で、空の部隊を組めない")
 	_expect(not screen.is_choosing_army(), "軍を選んで組む画面へ進んでも、軍を選ぶ画面が後ろに残っている")
 	_expect(not screen.can_save(), "空の部隊を取っておけた")
-	screen.hire(UnitKind.Id.SNIPER)
 	screen.hire(UnitKind.Id.SHIELD_TROOPER)
+	screen.hire(UnitKind.Id.SNIPER)
 	_expect(screen.selected_entry() == 1, "雇った駒が選ばれない")
+	screen.select_entry(0)
 	screen.equip(Equipment.Id.IRON_SHIELD)
-	screen.move_entry(1, -1)
 	var deck: Deck = screen.editing_deck()
-	_expect(deck.entries[0].kind == UnitKind.Id.SHIELD_TROOPER and deck.entries[0].equipment.size() == 1 and screen.selected_entry() == 0, "並べ替えで、装備か選択がずれた")
+	_expect(deck.entries[0].kind == UnitKind.Id.SHIELD_TROOPER and deck.entries[0].equipment.size() == 1 and screen.selected_entry() == 0, "選んだ駒に、持ち物を持たせられない")
+	_expect(screen.troop_row_button_texts(0).filter(func(text: String) -> bool: return text in ["▲", "▼"]).is_empty(), "部隊の行に、並べ替え（配置）のボタンが残っている")
 	# 装備の文が行に収まらなくても、マウスを乗せれば全部読める。
 	screen.equip(Equipment.Id.SPEED_BOOTS)
 	var row_texts: Array[String] = screen.troop_row_texts(0)
 	_expect(row_texts[1] == row_texts[0] and row_texts[1].contains("スピードブーツ") and row_texts[1].contains("アイアンシールド"),
 		"部隊の行の装備の文を、マウスを乗せても読めない: %s" % [row_texts])
 	screen.unequip(Equipment.Id.SPEED_BOOTS)
+	# どの駒に乗せても、どの駒を選んでも、ほかの部品（列、見出し、ボタン）の位置と大きさが変わらない。
+	# （選ぶ・選ぶのをやめるのはクリックなので、持ち物の欄が出入りしてよい。比べるのは、選んだまま乗せる・選び替える。）
+	for selected: int in [-1, 0]:
+		screen.select_entry(selected)
+		var editor_moves: Array = []
+		for kind: UnitKind.Id in screen.editing_deck().available_kinds():
+			editor_moves.append(screen.hover_kind.bind(kind))
+		editor_moves.append(screen.hover_kind.bind(-1))
+		if selected != -1:
+			editor_moves.append(screen.select_entry.bind(1))
+			editor_moves.append(screen.select_entry.bind(0))
+		await _expect_steady(screen, [], editor_moves, "部隊編成で駒に乗せる・選ぶ")
+	screen.select_entry(0)
 	for i in 4:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
@@ -1968,18 +2075,22 @@ func _visit_decks(app: Node) -> void:
 	_expect(panel.choose_deck(Unit.Side.PLAYER1, id), "取っておいた部隊を選べない")
 	panel.open_preview(Unit.Side.PLAYER1)
 	_expect(panel.preview().visible and panel.preview().shown_kinds().size() == 6, "「編成を確認」で、選んだ部隊が出ない")
+	# 札を押すと、その駒の詳しい説明（役割・能力値・スキル・持ち物の効果・進化先）。将も。
+	panel.preview().press_card(-1)
+	_expect(panel.preview().detail().visible and panel.preview().detail().title_text() == Names.kind(UnitKind.Id.KING), "「編成確認」で将の札を押しても、詳しい説明が出ない")
 	panel.preview().close_preview()
-	# ステージは対戦設定では選ばない。「ステージ選択へ戻る」で戻って選び直す（選んだものは残る）。ステージ選択へ行くボタンは 1 つ。
-	_expect(not panel.stage_button_shown(), "対戦設定に、ステージ選択へ行くボタンが 2 つある")
+	_expect(not panel.preview().detail().visible, "編成確認を閉じても、詳しい説明が残る")
+	# マップは対戦設定では選ばない。「マップ選択へ戻る」で戻って選び直す（選んだものは残る）。マップ選択へ行くボタンは 1 つ。
+	_expect(not panel.map_button_shown(), "対戦設定に、マップ選択へ行くボタンが 2 つある")
 	panel.choose_random_side()
 	panel.cancel()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.STAGE, "「ステージ選択へ戻る」で、ステージ選択へ戻らない")
+	_expect(app.current_id() == SceneFlow.MAP_SELECT, "「マップ選択へ戻る」で、マップ選択へ戻らない")
 	app.current_scene().choose(VersusFields.LABYRINTH)
 	await app.scene_changed
 	panel = app.current_scene().setup_panel()
 	_expect(panel.current_choice().field == VersusFields.LABYRINTH and panel.current_choice().random_side and panel.current_choice().deck_ids[0] == id,
-		"ステージを選び直したら、ほかの選択が失われた")
+		"マップを選び直したら、ほかの選択が失われた")
 	panel.choose_human_side(Unit.Side.PLAYER1)
 	var setup: MatchSetup = panel.current_choice().to_setup(1)
 	_expect(setup.is_valid() and setup.decks[0].entries.size() == 5 and setup.decks[0].entries[0].kind == UnitKind.Id.SHIELD_TROOPER, "選んだ部隊で対戦を作らない")
@@ -2012,10 +2123,28 @@ func _visit_story(app: Node) -> void:
 	for each: RefCounted in Story.campaigns():
 		_expect(campaigns.is_card_enabled(each) == Story.is_ready(each)
 				and (campaigns.status_text(each) == "準備中") == not Story.is_ready(each), "話の無い物語を選べる（か、ある物語を選べない）: %s" % each.title)
+	# 物語選択の「部隊編成」（物語ごと）: その物語のストーリー用の部隊編成へ。戻ると物語選択。
+	campaigns.press_edit_decks(Story.campaigns()[1])
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.DECKS and app.current_scene().mode() == Story.campaigns()[1].rules_id and app.current_scene().back_label() == "物語選択へ戻る",
+		"物語選択の「部隊編成」で、その物語のストーリー用の部隊編成へ進まない（か、戻り先の文字が違う）")
+	app.current_scene().press_back()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "物語選択から開いた部隊編成の「物語選択へ戻る」で、物語選択へ戻らない")
+	campaigns = app.current_scene()
 	campaigns.choose(Story.military())
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and story.campaign == Story.military(), "物語を選んでも、その物語の話の一覧へ進まない")
 	var list: Node = app.current_scene()
+	# 話の一覧の「部隊編成」: この物語のストーリー用の部隊編成へ。戻ると話の一覧。
+	list.press_edit_decks()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.DECKS and app.current_scene().mode() == Story.military().rules_id and app.current_scene().back_label() == "話の一覧へ戻る",
+		"話の一覧の「部隊編成」で、この物語のストーリー用の部隊編成へ進まない（か、戻り先の文字が違う）")
+	app.current_scene().press_back()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.EPISODES, "話の一覧から開いた部隊編成の「話の一覧へ戻る」で、話の一覧へ戻らない")
+	list = app.current_scene()
 	_expect(list.episodes().size() == Story.military().episodes.size(), "話の一覧に、全部の話が並んでいない")
 	_expect(list.is_card_enabled(Story.military().episodes[0]) and list.card_status(Story.military().episodes[0]) == "クリア済み", "クリアした最初の話を選び直せない")
 	_expect(list.is_card_enabled(episode) and list.card_status(episode) == "未クリア", "次の話を選べない")
@@ -2023,26 +2152,7 @@ func _visit_story(app: Node) -> void:
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
 	list.choose(episode)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.TALK, "話の一覧で話を選んでも、会話の場面へ進まない")
-	var talk: Node = app.current_scene()
-	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
-	_expect(talk.speaker() == episode.speakers[episode.before[0][0]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
-	await get_tree().process_frame
-	var sides: Array = episode.before.map(func(row: Array) -> int: return row[0])
-	_expect(talk.figures().size() == (2 if sides.has(0) and sides.has(1) else 1), "会話に出てくる陣営の話し手の姿が立っていない")
-	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
-	for figure: Control in talk.figures():
-		var rect: Rect2 = figure.get_global_rect()
-		_expect(rect.has_area() and screen_rect.encloses(rect), "話し手の姿が画面からはみ出す: %s" % rect)
-		_expect(not rect.intersects(talk.bottom_rect()), "話し手の姿が、名前の札・文の枠・「飛ばす」に重なる: %s と %s" % [rect, talk.bottom_rect()])
-		_expect(figure.is_speaking() == (figure.side == episode.before[0][0]), "話している側の姿だけが明るく大きくなっていない")
-	talk.press_next()
-	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
-	talk.press_back()
-	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
-	talk.press_skip()
-	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "会話を飛ばしても、出撃準備へ進まない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "話の一覧で話を選んでも、出撃準備へ進まない（会話は出撃のあと）")
 	var sortie: Node = app.current_scene()
 	# 「部隊編成」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
 	sortie.press_edit_decks()
@@ -2066,12 +2176,50 @@ func _visit_story(app: Node) -> void:
 	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃準備で、既定の編成を選べない")
 	var story_decks: Array = app.context.decks.for_rules(Story.military().rules_id)
 	_expect(options.size() == 1 + story_decks.size(), "出撃準備に、ストーリー用の部隊が並ばない（か、対戦用が混ざった）")
+	# 味方と敵の駒のアイコンを押すと、詳しい説明。持ち物を持たせた駒なら、持ち物の効果も出る。
+	var own: Deck = sortie.chosen_deck()
+	var detail: Control = sortie.press_face(Unit.Side.PLAYER1, 1)
+	_expect(detail != null and detail.visible and detail.title_text() == Names.kind(own.entries[0].kind), "出撃準備で味方の駒のアイコンを押しても、詳しい説明が出ない")
+	if detail != null and not own.entries[0].equipment.is_empty():
+		_expect(detail.body_text().contains(Names.item(own.entries[0].equipment[0])), "出撃準備の駒の詳しい説明に、持ち物が出ない: %s" % detail.body_text())
+	if detail != null:
+		detail.close_detail()
+	var enemy_deck: Deck = episode.enemy_deck()
+	detail = sortie.press_face(Unit.Side.PLAYER2, enemy_deck.entries.size())
+	_expect(detail != null and detail.visible and detail.title_text().begins_with(Names.kind(enemy_deck.entries[-1].kind)), "出撃準備で敵の駒のアイコンを押しても、詳しい説明が出ない")
+	if detail != null:
+		detail.close_detail()
+	# 部隊を選び替えても（部隊の文の長さが違っても）、ほかの部品の位置と大きさが変わらない。
+	var sortie_moves: Array = []
+	for id: String in options:
+		sortie_moves.append(sortie.choose.bind(id))
+	await _expect_steady(sortie, [], sortie_moves, "出撃準備で部隊を選び替える")
 	for item: RefCounted in story_decks:
 		_expect(sortie.is_option_enabled(item.id) == item.playable(), "出せない部隊を選べる（か、出せる部隊を選べない）: %s" % item.name)
 		if item.playable():
 			sortie.choose(item.id)
-	var result: Node = await _win_story_battle(app, sortie, episode)
-	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ。
+	# 初期位置: 最初の駒を選んで、置けるマスの空いているところへ動かす。「おまかせ」で戻せる。右クリックで選ぶのをやめる。
+	var deploy: Control = sortie.deploy_map()
+	var own_cells: Array[Vector2i] = deploy.unit_cells()
+	var free_cells: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return not own_cells.has(cell))
+	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
+	deploy.press_cell(own_cells[0])
+	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
+	var right_click := InputEventMouseButton.new()
+	right_click.button_index = MOUSE_BUTTON_RIGHT
+	right_click.pressed = true
+	app.get_viewport().push_input(right_click)
+	_expect(deploy.selected() == -1 and app.current_id() == SceneFlow.SORTIE, "初期位置で駒を選んでいるときの右クリックで、選ぶのをやめない（か、出撃準備を抜けた）")
+	deploy.press_cell(own_cells[0])
+	deploy.press_cell(free_cells[0])
+	_expect(deploy.unit_cells()[0] == free_cells[0] and not deploy.is_default(), "初期位置で、置けるマスへ駒を動かせない")
+	sortie.press_auto_place()
+	_expect(deploy.is_default(), "「おまかせ」で、いつもの置き方に戻らない")
+	deploy.press_cell(own_cells[0])
+	deploy.press_cell(free_cells[0])
+	var result: Node = await _win_story_battle(app, sortie, episode, true, _check_talk_before.bind(episode), free_cells[0])
+	_expect(result.leave_text() == "話の一覧へ" and not result.enabled_buttons().has("タイトルへ"), "話の決着の画面の行き先が「話の一覧へ」でない: %s" % result.leave_text())
+	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ（対戦の前の会話は、もう出ない）。
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
 	result.press_choose_squad()
 	await app.scene_changed
@@ -2080,7 +2228,7 @@ func _visit_story(app: Node) -> void:
 	result.press_continue()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.TALK, "決着の画面の「次へ」で、あとの会話へ進まない")
-	talk = app.current_scene()
+	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.after.size() + Story.unlocked_before(episode).news_of(episode).size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
 	if not episode.unlock_kinds.is_empty():
 		talk.press_skip()
@@ -2088,8 +2236,11 @@ func _visit_story(app: Node) -> void:
 				and talk.line_text().contains(Names.kind(episode.unlock_kinds[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
+	_expect(talk.is_choosing() == (Story.episode_after(episode) != null), "あとの会話を送りきっても、「次の話へ」「話の一覧へ」を選ばせない")
+	if talk.is_choosing():
+		talk.press_to_episodes()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
+	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
 	list = app.current_scene()
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
@@ -2135,14 +2286,11 @@ func _visit_second_campaign(app: Node) -> void:
 		_expect(list.roster_text().contains(Names.kind(kind)), "2 つ目の物語の話の一覧に、最初から雇える駒が出ていない: %s" % Names.kind(kind))
 	list.choose(episode)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.TALK, "2 つ目の物語の話を選んでも、会話の場面へ進まない")
-	app.current_scene().press_skip()
-	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "2 つ目の物語の会話を飛ばしても、出撃準備へ進まない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "2 つ目の物語の話を選んでも、出撃準備へ進まない")
 	var sortie: Node = app.current_scene()
 	_expect(sortie.is_squad_fixed() and sortie.option_ids().size() == 1, "演習の出撃準備で、部隊を選べる")
 	_expect(sortie.chosen_deck().army == campaign.army and sortie.chosen_deck().entries.size() == episode.squad.size(), "演習の部隊が、物語の軍の決まった部隊でない")
-	var result: Node = await _win_story_battle(app, sortie, episode)
+	var result: Node = await _win_story_battle(app, sortie, episode, true)
 	_expect(not result.can_choose_squad(), "部隊が決まっている話の決着の画面に「部隊変更」がある")
 	result.press_continue()
 	await app.scene_changed
@@ -2150,8 +2298,17 @@ func _visit_second_campaign(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TALK and talk.line_count() == episode.after.size() + Story.unlocked_before(episode).news_of(episode).size(), "2 つ目の物語の、あとの会話の文の数が違う")
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
+	# 「次の話へ」で、次の話の出撃準備へ。そこからシステムメニューの「話の一覧へ戻る」で、話の一覧へ。
+	_expect(talk.is_choosing() and campaign.episodes.size() >= 2, "2 つ目の物語の、あとの会話のあとに「次の話へ」が無い")
+	talk.press_next_episode()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.EPISODES, "2 つ目の物語の、あとの会話を送りきっても、話の一覧へ戻らない")
+	_expect(app.current_id() == SceneFlow.SORTIE and app.current_scene().episode == campaign.episodes[1], "「次の話へ」で、次の話の出撃準備へ進まない")
+	var menu: Node = app.system_menu()
+	app.open_menu()
+	_expect(menu.item_ids().has(&"exit:episodes"), "出撃準備のシステムメニューに「話の一覧へ戻る」が無い: %s" % [menu.item_ids()])
+	menu.press(&"exit:episodes")
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "システムメニューの「話の一覧へ戻る」で、話の一覧へ戻らない")
 	list = app.current_scene()
 	_expect(list.card_status(episode) == "クリア済み" and (campaign.episodes.size() < 2 or list.is_card_enabled(campaign.episodes[1])), "2 つ目の物語で、クリアした話の次の話を選べない")
 	list.press_back()
@@ -2201,12 +2358,45 @@ func _visit_item_rows(app: Node) -> void:
 	await app.go(SceneFlow.TITLE)
 
 
+## 対戦の前の会話の場面 talk（話 episode）: 文の数、最初の文、話し手の姿、送りと戻り。
+func _check_talk_before(talk: Node, episode: RefCounted) -> void:
+	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
+	_expect(talk.speaker() == episode.speakers[episode.before[0][2]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
+	_expect(not talk.has_method(&"next_episode") or talk.next_episode() == null, "対戦の前の会話に「次の話へ」がある")
+	await get_tree().process_frame
+	# 立つ所は左右に 1 つずつ。両軍が出てくるか、同じ軍の話し手が 2 人以上いれば、両方に立つ。
+	var talkers := {}
+	for row: Array in episode.before:
+		talkers[row[2]] = true
+	_expect(talk.figures().size() == mini(talkers.size(), 2), "会話に出てくる話し手の姿が立っていない")
+	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
+	for figure: Control in talk.figures():
+		var rect: Rect2 = figure.get_global_rect()
+		_expect(rect.has_area() and screen_rect.encloses(rect), "話し手の姿が画面からはみ出す: %s" % rect)
+		_expect(not rect.intersects(talk.bottom_rect()), "話し手の姿が、名前の札・文の枠・「飛ばす」に重なる: %s と %s" % [rect, talk.bottom_rect()])
+		_expect(figure.is_speaking() == (figure.who == episode.before[0][2]), "話している人の姿だけが明るく大きくなっていない")
+	talk.press_next()
+	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
+	talk.press_back()
+	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
+
+
 ## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
-func _win_story_battle(app: Node, sortie: Node, episode: RefCounted) -> Node:
+## talk_first なら、出撃のあとに対戦の前の会話が出ることを確かめ（on_talk があれば、会話の場面を渡して呼ぶ）、飛ばして対戦へ。
+## 偽なら、会話を出さずに対戦へ進むことを確かめる（「部隊変更」のあと）。
+## first_at が盤の中なら、部隊の最初の駒がそのマスから始まることも確かめる（出撃準備で決めた初期位置）。
+func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first := false, on_talk := Callable(), first_at := Vector2i(-1, -1)) -> Node:
 	var story: RefCounted = app.context.story
 	var chosen: Deck = sortie.chosen_deck()
 	sortie.press_sortie()
 	await app.scene_changed
+	if talk_first:
+		_expect(app.current_id() == SceneFlow.TALK, "出撃しても、対戦の前の会話へ進まない")
+		if app.current_id() == SceneFlow.TALK:
+			if on_talk.is_valid():
+				await on_talk.call(app.current_scene())
+			app.current_scene().press_skip()
+			await app.scene_changed
 	_expect(app.current_id() == SceneFlow.BATTLE, "出撃準備の「出撃」で、対戦へ進まない")
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
@@ -2218,6 +2408,9 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted) -> Node:
 		if unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING:
 			placed += 1
 	_expect(placed == chosen.entries.size() and source.human_deck.entries.size() == chosen.entries.size(), "出撃準備で選んだ部隊で、対戦が始まらない")
+	if first_at != Vector2i(-1, -1):
+		var first: Array = screen.battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING)
+		_expect(not first.is_empty() and first[0].cell == first_at, "出撃準備で決めた初期位置から始まらない: %s（決めたのは %s）" % [first[0].cell if not first.is_empty() else null, first_at])
 	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.enemy_army, "話の敵を CPU が動かしていない")
 	# 対戦の途中の会話の札は、上の帯のすぐ下で、勝ち方の札・視点の案内・ミニマップと重ならない（いちばん長い台詞で確かめる）。
 	var longest := ""

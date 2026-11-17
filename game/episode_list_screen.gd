@@ -1,13 +1,14 @@
 extends Node
-## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（会話 → 出撃準備 → 対戦 → 会話）を始める。
+## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（出撃準備 → 会話 → 対戦 → 会話）を始める。
 ## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
-## - カードには、話の番号と名前、盤の縮図（stage_card_map.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
+## - カードには、話の番号と名前、盤の縮図（map_card.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
 ## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（lesson のある話）の番号には「（演習）」を付ける。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
 ## - カードのクリック（1〜9 のキーでも）で、その話を始める。
 ## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
+## - 「部隊編成」で、この物語のストーリー用の部隊を組む（寄り道。戻るとここ）。
 ## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
 
 const Text := preload("res://game/text.gd")
@@ -17,11 +18,12 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
-const StageCardMap := preload("res://game/stage_card_map.gd")
+const MapCard := preload("res://game/map_card.gd")
 const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const SceneFlow := preload("res://game/scene_flow.gd")
 
 signal finished(outcome: StringName)
 
@@ -74,7 +76,7 @@ func _ready() -> void:
 	scroll.custom_minimum_size = Vector2(0.0, MAP_HEIGHT + 172.0)
 	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(scroll)
-	# 左右に余白を置き、送り切ったときもカードが画面の端に付かないようにする（ステージ選択とそろえる）。
+	# 左右に余白を置き、送り切ったときもカードが画面の端に付かないようにする（マップ選択とそろえる）。
 	# 幅に収まれば真ん中に寄せる。
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -104,25 +106,41 @@ func _ready() -> void:
 	note.add_child(_roster)
 	_roster.text = roster_text()
 
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_CENTER
+	footer.add_theme_constant_override("separation", 16)
+	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(footer)
 	var back := Button.new()
 	back.text = Text.t("story.episodes.back")
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
-	root.add_child(back)
+	footer.add_child(back)
+	var decks := Button.new()
+	decks.text = Text.t("setup.edit_deck")
+	decks.focus_mode = Control.FOCUS_NONE
+	decks.add_theme_font_size_override("font_size", 18)
+	decks.custom_minimum_size = Vector2(220.0, 48.0)
+	decks.pressed.connect(press_edit_decks)
+	footer.add_child(decks)
 
 
 func resume_label() -> String:
 	return Text.t("story.episodes.resume")
 
 
-## 話 episode を始める（会話（前）から）。遊べない話なら何もしない。
+## 話 episode を始める（出撃準備から）。遊べない話なら何もしない。
 func choose(episode: Episode) -> void:
 	if not context.story.is_available(episode):
 		return
 	context.start_run(context.story.run_now(episode))
+
+
+## 「部隊編成」: この物語のストーリー用の部隊を組む（寄り道。編成の「話の一覧へ戻る」で、ここへ戻る）。
+func press_edit_decks() -> void:
+	context.start_run(Story.deck_run(context.story.campaign, SceneFlow.EPISODES, "story.episodes.resume"))
 
 
 ## 「物語を選び直す」。
@@ -264,7 +282,7 @@ static func face_of(episode: Episode) -> TextureRect:
 ## 話 episode の盤の縮図。両軍の駒の初期位置（初めて遊ぶときの既定の編成で置いたもの）に、陣営の色の点を打つ。
 static func map_image(episode: Episode) -> Image:
 	var battle := Story.first_battle(episode).make_setup(1).create_battle()
-	var image := StageCardMap.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
+	var image := MapCard.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
 	for unit in battle.units:
 		if unit.side == Unit.Side.NEUTRAL or unit.kind == UnitKind.Id.KING:
 			continue

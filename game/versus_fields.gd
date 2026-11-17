@@ -1,15 +1,15 @@
 extends RefCounted
-## 対戦モードで選べる盤の一覧（docs/stage-select.md の「選べる盤」）。ステージ選択のカード、対戦設定のパネルのステージの行、
+## 対戦モードで選べる盤の一覧（docs/map-select.md の「選べる盤」）。マップ選択のカード、対戦設定のパネルのマップの行、
 ## 決着の画面の「新しい盤面」、F1〜F3、集計の道具（tools/cpu_matches.gd の --stage）が、ここを引く。ノードに依存しない。
 ##
 ## 盤は鍵（StringName）で持つ。ストーリーの話（game/story/episodes/ のファイルの名前）や見た目（stage_look.gd の名前）と同じ持ち方。
 ## 盤の出どころは 2 つ:
-## - 生成のステージ（STAGE。BoardGenerator.Stage）: 対戦を始めるたびに、種から形を作り直す。見た目は StageLook.OF_STAGE。
+## - 生成のマップ（STAGE。BoardGenerator.Stage）: 対戦を始めるたびに、種から形を作り直す。見た目は StageLook.OF_STAGE。
 ## - 手で作ったマップ（MAP。game/maps/ のファイルの id。maps.gd）: 種によらず、いつも同じ形。見た目は LOOK。
 ## どちらも、勝ち方は対戦モードのいつもの 2 つ、初期位置はいつもの「本陣の前」、部隊は両方とも対戦設定で選ぶ（予算と 6 体）。
 ##
 ## **盤を 1 つ足すには、FIELDS に 1 つ足すだけ**（手で作ったマップなら、game/maps/ のファイルと）。
-## 並びが画面の並び（番号、1〜9 のキー、F1〜F3）。生成のステージを先に並べる。
+## 並びが画面の並び（番号、1〜9 のキー、F1〜F3）。生成のマップを先に並べる。
 ## 対戦モードの画面に出すのは、CPU どうしの釣り合い（docs/cpu-ai.md の「いまの集計」）が対戦モードのめやすに入るものだけ。
 ## めやすを外れるものは HIDDEN を立てて一覧に残す（画面には出さない。集計の道具の --stage では測れる）。
 
@@ -20,12 +20,12 @@ const Maps := preload("res://game/maps.gd")
 
 ## 項目の欄の名前。
 const ID := &"id"  ## 鍵
-const STAGE := &"stage"  ## 生成のステージ（BoardGenerator.Stage）
+const STAGE := &"stage"  ## 生成のマップ（BoardGenerator.Stage）
 const MAP := &"map"  ## 手で作ったマップ（game/maps/ のファイルの id。maps.gd で引く）
 const LOOK := &"look"  ## 手で作ったマップの見た目（stage_look.gd の名前）
 const TAGS := &"tags"  ## カードに載せる、置かれているもの（ひとことの特徴）
 const NOTE := &"note"  ## カードにマウスを乗せると出す説明
-const HIDDEN := &"hidden"  ## 真なら、対戦モードの画面に出さない（釣り合いがめやすを外れる。docs/stage-select.md）
+const HIDDEN := &"hidden"  ## 真なら、対戦モードの画面に出さない（釣り合いがめやすを外れる。docs/map-select.md）
 
 const PLAIN := &"plain"
 const LABYRINTH := &"labyrinth"
@@ -95,7 +95,7 @@ static func is_shown(id: StringName) -> bool:
 	return has(id) and not _field(id).get(HIDDEN, false)
 
 
-## 生成のステージの鍵（並びの順）。「新しい盤面」（種を替えて作り直す）を選べるのは、これだけ。
+## 生成のマップの鍵（並びの順）。「新しい盤面」（種を替えて作り直す）を選べるのは、これだけ。
 static func generated_ids() -> Array[StringName]:
 	var generated: Array[StringName] = []
 	for id in ids():
@@ -104,7 +104,7 @@ static func generated_ids() -> Array[StringName]:
 	return generated
 
 
-## 生成のステージ stage の鍵（一覧に無ければ空）。
+## 生成のマップ stage の鍵（一覧に無ければ空）。
 static func field_of_stage(stage: BoardGenerator.Stage) -> StringName:
 	for field: Dictionary in FIELDS:
 		if field.has(STAGE) and field[STAGE] == stage:
@@ -116,12 +116,12 @@ static func has(id: StringName) -> bool:
 	return _find(id) != -1
 
 
-## 画面に出す並びの番号（1 から。出さないものは 0）。カードと対戦設定のパネルに出す番号、ステージ選択のキー。
+## 画面に出す並びの番号（1 から。出さないものは 0）。カードと対戦設定のパネルに出す番号、マップ選択のキー。
 static func number_of(id: StringName) -> int:
 	return ids().find(id) + 1
 
 
-## 生成のステージか（偽なら、手で作ったマップ。種によらず、いつも同じ形）。
+## 生成のマップか（偽なら、手で作ったマップ。種によらず、いつも同じ形）。
 static func is_generated(id: StringName) -> bool:
 	return _field(id).has(STAGE)
 
@@ -158,12 +158,12 @@ static func scenario_of(id: StringName) -> Scenario:
 		return Scenario.on_map(found["map"], found["title"])
 	if field.has(STAGE):
 		var generated := Scenario.versus(field[STAGE])
-		generated.title = Names.stage(field[STAGE])  # 生成のステージの名前は、画面の文の表（ルールは持たない）
+		generated.title = Names.stage(field[STAGE])  # 生成のマップの名前は、画面の文の表（ルールは持たない）
 		return generated
 	return null
 
 
-## カードの縮図に描く盤（生成のステージは種 card_seed で作る。手で作ったマップは、いつもの形）。
+## カードの縮図に描く盤（生成のマップは種 card_seed で作る。手で作ったマップは、いつもの形）。
 static func card_board(id: StringName, card_seed: int) -> Board:
 	var defined := scenario_of(id)
 	return defined.make_board(card_seed) if defined != null else null

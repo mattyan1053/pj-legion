@@ -13,7 +13,7 @@ func _horde() -> Deck:
 func test_versus_scenario_is_the_generated_stage() -> void:
 	for stage: BoardGenerator.Stage in BoardGenerator.Stage.values():
 		var scenario := Scenario.versus(stage)
-		assert_eq(scenario.title, "", "生成のステージの名前は、画面の文の表が持つ（game/names.gd の stage）")
+		assert_eq(scenario.title, "", "生成のマップの名前は、画面の文の表が持つ（game/names.gd の stage）")
 		assert_eq(scenario.stage, stage)
 		assert_eq(scenario.board_size, BoardGenerator.DEFAULT_SIZE)
 		assert_false(scenario.is_fixed(Unit.Side.PLAYER1) or scenario.is_fixed(Unit.Side.PLAYER2))

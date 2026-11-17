@@ -33,26 +33,51 @@ func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 		assert_false(ids.has(episode.id), "話の id が重なっている: %s" % episode.id)
 		ids.append(episode.id)
 		for rows: Array in [episode.before, episode.after]:
-			assert_between(rows.size(), 1, 6, "会話は短く（6 行まで）: %s" % episode.id)
+			assert_between(rows.size(), 1, Episode.TALK_MAX_LINES, "会話は短く（%d 行まで）: %s" % [Episode.TALK_MAX_LINES, episode.id])
 
 
-func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
+func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
 	var episode: RefCounted = Story.military().episodes[0]
 	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
-	assert_eq(run.scene(), &"talk")
-	assert_eq(run.data()["title"], episode.title)
-	assert_eq(run.data()["lines"].size(), episode.before.size())
-	assert_eq(run.data()["lines"][0]["name"], episode.speakers[episode.before[0][0]])
-	assert_eq(run.advance(), Story.SORTIE)
+	assert_eq(run.scene(), Story.SORTIE, "出撃準備から始める（会話は出撃してから）")
 	assert_eq(run.data()["episode"], episode)
 	var battle: StoryBattle = run.data()["battle"]
+	assert_eq(run.advance(), &"talk")
+	assert_eq(run.data()["title"], episode.title)
+	assert_eq(run.data()["lines"].size(), episode.before.size())
+	assert_eq(run.data()["lines"][0]["name"], episode.speakers[episode.before[0][2]])
 	assert_eq(run.advance(), &"battle")
 	assert_true(run.data() == battle, "出撃準備は、対戦に渡すものの部隊を選び直す")
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["lines"].size(), episode.after.size())
+	assert_eq(run.data()["next_episode"], Story.military().episodes[1], "あとの会話のあとに、次の話を選べる")
 	assert_eq(run.advance(), Story.EPISODE_LIST, "話を終えたら、話の一覧へ戻る")
 	for scene: StringName in [&"talk", Story.SORTIE, &"battle", Story.EPISODE_LIST, &"title"]:
 		assert_true(SceneFlow.has(scene), "場面の表に無い: %s" % scene)
+	assert_eq(run.menu_exits.map(func(exit: Array) -> StringName: return exit[0]), [Story.EPISODE_LIST], "システムメニューから話の一覧へ戻れる")
+
+
+func test_changing_the_squad_after_a_battle_skips_the_talk_before() -> void:
+	var episode: RefCounted = Story.military().episodes[0]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	run.advance()  # 会話（前）
+	run.advance()  # 対戦
+	assert_eq(run.back(), Story.SORTIE, "決着の画面の「部隊変更」で、会話を飛ばして出撃準備へ戻る")
+	assert_eq(run.advance(), &"battle", "出撃し直しても、対戦の前の会話はもう出さない")
+	run.insert(SceneFlow.DECKS)
+	assert_eq(run.advance(), &"battle", "寄り道から戻っても同じ")
+
+
+func test_the_last_episode_has_no_next_episode() -> void:
+	for campaign: RefCounted in Story.campaigns():
+		if campaign.episodes.is_empty():
+			continue
+		var last: RefCounted = campaign.episodes[-1]
+		assert_eq(Story.episode_after(last), null, "%s: 物語の最後の話の次は無い" % last.id)
+		var run := Story.run_of(last, Story.default_deck(Story.starting(campaign)))
+		for i in 3:
+			run.advance()
+		assert_eq(run.data()["next_episode"], null)
 
 
 func test_episode_battle_is_the_hand_map_against_a_fixed_cpu_enemy() -> void:
@@ -323,7 +348,6 @@ func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loadi
 	var sortie := preload("res://game/sortie_screen.gd").new()
 	sortie.context = context
 	context.run = context.story.run_now(_episode(&"ridge_hold"))
-	context.run.advance()  # 出撃準備
 	context.scene = Story.SORTIE
 	var root := Node.new()
 	root.add_child(sortie)
@@ -337,8 +361,8 @@ func test_first_clear_tells_the_unlocked_kinds_at_the_end_of_the_talk() -> void:
 	var episode: RefCounted = _episode(&"drill_medic")  # 衛生兵が増える
 	var story := Story.new()
 	var run := story.run_now(episode)
-	assert_eq(run.data()["lines"].size(), episode.before.size(), "前の会話には知らせを出さない")
 	run.advance()
+	assert_eq(run.data()["lines"].size(), episode.before.size(), "前の会話には知らせを出さない")
 	run.advance()
 	assert_eq(run.data().human_deck.rules.id, Story.military().rules_id, "いま雇える駒で組んだ既定の編成")
 	run.advance()
@@ -554,7 +578,6 @@ func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sorti
 	var context := preload("res://game/app_context.gd").new()
 	context.story.choose_squad("9")
 	context.run = context.story.run_now(_episode(&"drill_sniper"))
-	context.run.advance()  # 出撃準備
 	context.scene = Story.SORTIE
 	var sortie := preload("res://game/sortie_screen.gd").new()
 	sortie.context = context
@@ -576,7 +599,6 @@ func test_the_sortie_shows_start_levels_above_one() -> void:
 	var context := preload("res://game/app_context.gd").new()
 	context.story.choose_campaign(Story.campaigns()[1])
 	context.run = context.story.run_now(_episode(&"trial_evolution"))
-	context.run.advance()  # 出撃準備
 	context.scene = Story.SORTIE
 	var sortie := preload("res://game/sortie_screen.gd").new()
 	sortie.context = context

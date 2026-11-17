@@ -449,31 +449,55 @@ func run_now(episode: Episode) -> Run:
 	return run_of(episode, default_deck(now), news)
 
 
-## 話 episode の流れ（run.gd）: 会話（前）→ 出撃準備 → 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃準備で選び直せる）。
-## 対戦で負けたら、決着の画面から「同じ盤面でもう一度」「部隊を選び直す」（出撃準備へ）か「タイトルへ」。勝ったら「次へ」で、あとの会話へ。
+## 話 episode の流れ（run.gd）: 出撃準備 → 会話（前）→ 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃準備で選び直せる）。
+## 会話（前）は、出撃してから対戦の前に 1 度だけ出す（決着の画面の「部隊変更」で出撃準備へ戻って出撃し直しても、もう出さない）。
+## 対戦で負けたら、決着の画面から「同じ盤面で再戦」「部隊変更」（出撃準備へ）か「話の一覧へ」。勝ったら「次へ」で、あとの会話へ。
+## あとの会話を読み終えたら「次の話へ」（物語の次の話の流れを始める）か「話の一覧へ」。次の話が無ければ、話の一覧へ。
+## システムメニューからは、いつでも「話の一覧へ」（menu_exits）。
 ## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。あとの会話の最後に、知らせの行で出す。
 static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = []) -> Run:
 	var run := Run.new()
 	run.exit = EPISODE_LIST
-	run.add(TALK, talk_of(episode, episode.before))
+	run.menu_exits = [[EPISODE_LIST, "story.episodes.resume", "menu.to_episodes.confirm"]]
 	var battle := StoryBattle.new(episode, human_deck)
 	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃準備で、battle の人の部隊を選び直す
+	run.add(TALK, talk_of(episode, episode.before), true)
 	run.add(BATTLE, battle)
 	var after := talk_of(episode, episode.after)
 	for news_line: Dictionary in news:
 		var line := {"side": NOTICE_SIDE, "name": notice_name()}
 		line.merge(news_line)
 		after["lines"].append(line)
+	after["next_episode"] = episode_after(episode)
 	run.add(TALK, after)
 	return run
 
 
-## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "name": 話し手, "text": 文}, …],
+## 話の一覧（と物語選択）の「部隊編成」で始める流れ（run.gd）: 部隊編成（of_campaign のストーリー用）→ 戻り先 back_to。
+## 寄り道で取っておいた部隊は、その物語の出撃準備で選ばれる（deck_screen.gd の leave。物語を、いまの物語にしてから始める）。
+## back_label は編成の「戻る」の文字の鍵。
+static func deck_run(of_campaign: Campaign, back_to: StringName, back_label: String) -> Run:
+	var detour := Run.new()
+	detour.add(SceneFlow.DECKS, {"rules": of_campaign.rules_id, "back_label": back_label})
+	detour.add(back_to)
+	return detour
+
+
+## 物語の並びで episode の次の話（物語の最後なら null）。
+static func episode_after(episode: Episode) -> Episode:
+	var of_campaign := campaign_of(episode)
+	if of_campaign == null:
+		return null
+	var at := of_campaign.episodes.find(episode)
+	return of_campaign.episodes[at + 1] if at >= 0 and at + 1 < of_campaign.episodes.size() else null
+
+
+## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文}, …],
 ## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲（話のファイルの talk_music。空なら場面の表の曲）,
-## "figures": 話し手の姿 [人の軍, 敵の軍]（episode.gd の figures）}。
+## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
 static func talk_of(episode: Episode, rows: Array) -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row: Array in rows:
-		lines.append({"side": row[0], "name": episode.speakers[row[0]], "text": row[1]})
+		lines.append({"side": row[0], "who": row[2], "name": episode.speakers[row[2]], "text": row[1]})
 	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
 			"music": episode.talk_music, "figures": episode.figures}

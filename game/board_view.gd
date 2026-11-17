@@ -1,5 +1,5 @@
 extends Node3D
-## 盤面の見た目。ルールの盤面（Board）を受け取って、地面・障害物と森の置物（ステージの見た目のもの）・結晶泉・本陣の旗と、
+## 盤面の見た目。ルールの盤面（Board）を受け取って、地面・障害物と森の置物（マップの見た目のもの）・結晶泉・本陣の旗と、
 ## 環境オブジェクト（起爆樽・回復の泉・ポータル）を組み立てる。盤の上の効果（盾・煙幕・聖域）も描く。
 ##
 ## 地面は、盤の外まで続く 1 枚の板（ground.gdshader）。マスごとの板は並べない。マス目は、その上に重ねる線（grid.gdshader）で、
@@ -14,7 +14,7 @@ const StageLook := preload("res://game/stage_look.gd")
 const Scenery := preload("res://game/scenery.gd")
 const GROUND_SHADER := preload("res://game/ground.gdshader")
 const GRID_SHADER := preload("res://game/grid.gdshader")
-## 障害物と森のマスに置くもの、地面の色と模様、泉の石と結晶の色は、ステージの見た目（stage_look.gd）が決める。
+## 障害物と森のマスに置くもの、地面の色と模様、泉の石と結晶の色は、マップの見た目（stage_look.gd）が決める。
 ## 石の壁（StageLook.WALL）の柱と壁の幅（マス）。柱は壁より少し太い。
 const WALL_PILLAR_WIDTH := 0.62
 const WALL_THICKNESS := 0.46
@@ -70,7 +70,7 @@ const PIN_LIFT := 0.065
 const PIN_EDGE_INSET := 0.09
 
 var board: Board
-## ステージの見た目（stage_look.gd）。
+## マップの見た目（stage_look.gd）。
 var look: Dictionary = StageLook.of(StageLook.DEFAULT)
 
 var _barrels := {}  # Vector2i -> Node3D（爆発したら取り除く）
@@ -148,7 +148,7 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 	_build_markers()
 
 
-## マスの地面の色（本陣は陣営の色）。palette はステージの見た目（stage_look.gd。省けば中央平原）。
+## マスの地面の色（本陣は陣営の色）。palette はマップの見た目（stage_look.gd。省けば中央平原）。
 static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color], palette: Dictionary = {}) -> Color:
 	if palette.is_empty():
 		palette = StageLook.of(StageLook.DEFAULT)
@@ -724,7 +724,7 @@ func _overlay_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
-## 障害物か森のマスに、ステージの見た目の置き方（StageLook.OBSTACLE_PROPS・FOREST_PROPS）で置く。
+## 障害物か森のマスに、マップの見た目の置き方（StageLook.OBSTACLE_PROPS・FOREST_PROPS）で置く。
 ## 手前にあると駒を隠すので、透かすときに使う形をすべて返す。
 func _add_cell_props(spec: Dictionary, cell: Vector2i, rng: RandomNumberGenerator) -> Array[GeometryInstance3D]:
 	var props: Array = spec.props
