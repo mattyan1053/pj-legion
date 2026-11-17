@@ -14,10 +14,12 @@
 
 | 決まり（`DeckRules.id`） | 使うところ | 中身 |
 | --- | --- | --- |
-| `versus`（`DeckRules.versus()`） | 対戦。全員が同じ決まりで組む | 軍ごとのロスター 4 種と予算（`docs/player-loadout.md` の表）、6 体まで、どの装備も持たせられる |
+| `versus`（`DeckRules.versus()`） | 対戦。全員が同じ決まりで組む | 軍ごとのロスター 4 種と予算（`docs/player-loadout.md` の表）、6 体まで、対戦モードに出る装備（`DeckRules.VERSUS_ITEMS`。`docs/player-loadout.md` の「装備」）を持たせられる |
 | 物語ごと（`story` など。`game/story.gd` の `deck_rules()`） | ストーリーの物語。人だけが使う | 物語の軍のロスターは、その物語でいま雇える駒（進み具合で増える。`docs/story.md` の「駒の解放」）。予算と数の上限は対戦と同じ |
 
 - 持たせられる装備（`DeckRules.items()`、`allows_item`）は、決まりを作るときに渡す。渡さなければ、どの装備も持たせられる。
+- 編成の画面に並べる装備（`DeckRules.shown_items()`）も、決まりを作るときに渡せる。持たせられる装備はいつも並び、渡した装備のうち持たせられないものは「未解放」で並ぶ。
+  対戦の決まりは、持たせられる装備だけを並べる。ストーリーの決まりは、その物語でいずれ持たせられる装備を全部並べる（`story.gd` の `offered_items`）。
 - 決まりを渡さずに組んだ編成（`Deck.new(軍)`、`CpuDeck.build(軍)`）は、対戦の決まりで組む。
 - 取っておく部隊は、どの決まりで組んだか（`id`）を持つ。読み込むときに `DeckRules.by_id` で引き直す（知らない名前なら `null`）。
 - 決まりは組んだら変えない。
@@ -36,6 +38,7 @@
 | `TOO_MUCH_EQUIPMENT` | どの駒も、装備が 3 個（`Equipment.MAX_PER_UNIT`）以下 |
 | `NOT_IN_ROSTER` | どの駒も、決まりの、選んだ軍のロスターの種類 |
 | `ITEM_NOT_ALLOWED` | どの駒の装備も、決まりで持たせられる装備 |
+| `ITEM_NOT_FIT` | どの駒も、持てない装備を持っていない（役割の限り、重ねられない装備の 2 個目。`docs/player-loadout.md` の「装備」） |
 
 - `Deck.problems()` が、満たしていない理由を全部返す。空なら出せる。
   並びは上の表の順で、同じ理由は 1 回だけ（当てはまる駒が何体いても）。
@@ -49,11 +52,11 @@
 編成の途中は、対戦に出せない形にもなる。途中で断るものと、検査で分かるものを分ける。
 
 - **その場で断るもの**（編成に入らない）: ロスターに無い種類と、上限を超える駒（`Deck.add` が `null`）、
-  上限を超える装備（`DeckEntry.equip` が `false`）。
+  その駒が持てない装備（数の上限、重ねられない装備の 2 個目、役割の限り。`DeckEntry.equip` が `false`）。
 - **検査で分かるもの**（編成には入る）: 予算を超えている、駒が 0 体、決まりで持たせられない装備（`DeckEntry` は決まりを知らないので、`equip` では断らない）。
   予算を超える駒や装備も足せて、外せば（`Deck.remove`、`DeckEntry.unequip`）戻る。
 
-`TOO_MANY_UNITS`、`TOO_MUCH_EQUIPMENT`、`NOT_IN_ROSTER` は、`add` / `equip` を通していれば起きない。
+`TOO_MANY_UNITS`、`TOO_MUCH_EQUIPMENT`、`NOT_IN_ROSTER`、`ITEM_NOT_FIT` は、`add` / `equip` を通していれば起きない。
 `entries` や `equipment` を直に組み立てた編成（保存したものの読み込み、自動生成）のために検査に入れている。
 
 ## 検査と、軍を盤に置くこと

@@ -170,10 +170,24 @@ func test_open_field_slots_match_deployment_on_an_open_board() -> void:
 
 
 func test_rules_allow_every_item_unless_told_otherwise() -> void:
-	assert_eq(DeckRules.versus().items(), _all_items())
 	for item: Equipment.Id in Equipment.Id.values():
-		assert_true(DeckRules.versus().allows_item(item))
 		assert_true(_narrow_rules().allows_item(item), "渡さなければ、どの装備も")
+	assert_eq(_narrow_rules().items(), _all_items())
+
+
+func test_versus_allows_only_the_versus_items() -> void:
+	assert_eq(DeckRules.versus().items(), DeckRules.VERSUS_ITEMS)
+	assert_eq(DeckRules.versus().shown_items(), DeckRules.VERSUS_ITEMS, "対戦の編成の画面には、持たせられる装備だけが並ぶ")
+	for item: Equipment.Id in Equipment.Id.values():
+		assert_eq(DeckRules.versus().allows_item(item), DeckRules.VERSUS_ITEMS.has(item), str(Equipment.Id.find_key(item)))
+
+
+func test_listed_items_include_the_allowed_ones_in_item_order() -> void:
+	var rules := DeckRules.new(&"some", 6, {MILITARY: DeckRules.versus().roster(MILITARY)}, {MILITARY: 24},
+			[Equipment.Id.REGEN_CHARM], [Equipment.Id.JET_PACK, Equipment.Id.SPEED_BOOTS])
+	assert_eq(rules.items(), [Equipment.Id.REGEN_CHARM] as Array[Equipment.Id])
+	assert_eq(rules.shown_items(), [Equipment.Id.SPEED_BOOTS, Equipment.Id.REGEN_CHARM, Equipment.Id.JET_PACK] as Array[Equipment.Id])
+	assert_false(rules.allows_item(Equipment.Id.JET_PACK), "並べるだけで、持たせられはしない")
 
 
 func test_items_left_out_of_the_rules_are_a_problem() -> void:

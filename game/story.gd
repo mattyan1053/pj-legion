@@ -371,7 +371,19 @@ static func rules_of(given: Unlocked) -> DeckRules:
 	roster.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
 		return UnitKind.role(a) < UnitKind.role(b) or (UnitKind.role(a) == UnitKind.role(b) and a < b))
 	var army: UnitKind.Army = given.campaign.army
-	return DeckRules.new(given.campaign.rules_id, Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items)
+	return DeckRules.new(given.campaign.rules_id, Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items, offered_items(given.campaign))
+
+
+## 物語 of_campaign で持たせられるようになる持ち物の全部（最初から持たせられるものと、どれかの話の解放で増えるもの）。
+## 編成の画面は、このうちまだ持たせられないものを「未解放」で並べる。
+static func offered_items(of_campaign: Campaign) -> Array[Equipment.Id]:
+	var result: Array[Equipment.Id] = []
+	result.assign(of_campaign.starting_items)
+	for episode: Episode in of_campaign.episodes:
+		for item: Equipment.Id in episode.unlock_items:
+			if not result.has(item):
+				result.append(item)
+	return result
 
 
 ## 使えるもの given の、ストーリーの既定の編成。初めて遊ぶ人が出撃準備で見て納得できる、素直な形にする:
