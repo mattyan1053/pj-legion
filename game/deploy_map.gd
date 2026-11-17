@@ -142,6 +142,12 @@ func cell_center(cell: Vector2i) -> Vector2:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		# 押せるマス（決める側の駒、選んでいる駒の行き先）の上では、指の形のカーソル。
+		var at := cell_at(event.position)
+		var pressable := not read_only and _battle != null and (_cells.has(at) or (_selected != -1 and _zone.has(at) and _is_free(at)))
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if pressable else Control.CURSOR_ARROW
+		return
 	if not (event is InputEventMouseButton and event.pressed):
 		return
 	if event.button_index == MOUSE_BUTTON_LEFT and not read_only:

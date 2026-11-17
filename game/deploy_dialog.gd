@@ -45,12 +45,6 @@ func setup(overlays: RefCounted) -> void:
 	_title.add_theme_font_size_override("font_size", 22)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_title)
-	var hint := Label.new()
-	hint.text = Text.t("sortie.place_hint")
-	hint.add_theme_font_size_override("font_size", 14)
-	hint.add_theme_color_override("font_color", Palette.TEXT_DIM)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(hint)
 	_map = DeployMap.new()
 	_map.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_map.changed.connect(func() -> void: _auto.disabled = _map.is_default())

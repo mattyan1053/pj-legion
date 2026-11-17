@@ -18,7 +18,6 @@ story.episodes.not_cleared,未クリア
 sortie.heading,出撃準備　　第 {number} 話「{title}」
 sortie.map,初期位置　マップ「{map}」
 sortie.auto_place,おまかせ
-sortie.place_hint,駒をクリック → 縁取りのマスをクリックで移動（駒どうしは入れ替え）
 sortie.place_fixed,この話の初期位置は固定
 sortie.lesson,この話で覚えること
 sortie.goal,勝ち方
