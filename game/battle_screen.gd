@@ -436,6 +436,8 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_layout.reset_menu()
 	_hud.hide_result()
 	_hud.result_screen().set_destinations(_new_boards(), source.can_open_setup(), source.can_choose_squad())
+	_hud.king_looks = source.king_looks()
+	_hud.result_screen().king_looks = source.king_looks()
 	# 対戦の曲（盤の見た目か、話が決めた曲。battle_source.gd の music）。決着の曲のあとの「やり直す」でも、対戦の曲へ戻る。
 	# 新しい盤面で見た目が替われば、曲も替わる。同じ曲なら鳴らし直さない。
 	context.play_scene_music(source.music())
@@ -447,11 +449,17 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_run_cpu()
 
 
+## side の将の姿（渡されたもの（source）が決める。見た目だけ）。中立の陣営は空。
+func _king_look(side: int) -> StringName:
+	var looks := source.king_looks() if source != null else [] as Array[StringName]
+	return looks[side] if side >= 0 and side < looks.size() else &""
+
+
 func _add_view(unit: Unit) -> void:
 	var view: UnitView = UnitView.new()
 	view.position = BoardView.cell_center(unit.cell)
 	add_child(view)
-	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp, unit.max_hp())
+	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp, unit.max_hp(), _king_look(unit.side))
 	if unit.level > 1:
 		view.set_growth(unit.level, unit.max_hp())
 		view.set_hp(unit.hp)
@@ -517,6 +525,11 @@ func talk_card_neighbors() -> Array[Rect2]:
 ## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の [cues] から出す）。
 func say_for_check(lines: Array[BattleCues.Line]) -> void:
 	_talk.say(lines)
+
+
+## 対戦の途中の会話の札を消す（スクリーンショットで、ほかの台詞を出すとき）。
+func clear_talk_for_check() -> void:
+	_talk.clear()
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。

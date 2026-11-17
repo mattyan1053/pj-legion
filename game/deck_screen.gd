@@ -795,6 +795,7 @@ func _build_editor() -> Control:
 	equip_column.add_child(_equip_title)
 	for item: Equipment.Id in Equipment.Id.values():
 		var row := HBoxContainer.new()
+		row.visible = false  # 決まりが並べる持ち物だけを見せる（_show_detail）
 		row.add_theme_constant_override("separation", 8)
 		equip_column.add_child(row)
 		row.add_child(ItemIcon.new(item, 32.0))
@@ -803,9 +804,12 @@ func _build_editor() -> Control:
 		info.add_theme_constant_override("separation", 0)
 		row.add_child(info)
 		var item_name := _text(16, COLOR_TEXT)
+		item_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		item_name.clip_text = true
 		info.add_child(item_name)
 		var effect := _text(14, COLOR_DIM)
-		effect.text = DeckText.equipment_effect(item)
+		effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # 長い効果で欄を広げない（全文は行のツールチップ）
+		effect.clip_text = true
 		info.add_child(effect)
 		var minus := _button("−", 18)
 		minus.custom_minimum_size = Vector2(40.0, 36.0)
@@ -1036,21 +1040,68 @@ func _refresh_detail() -> void:
 	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
 	if entry != null:
 		_equip_title.text = Text.t("deck.edit.items", {"count": entry.equipment.size(), "max": Equipment.MAX_PER_UNIT})
-		var full := entry.equipment.size() >= Equipment.MAX_PER_UNIT
+		var shown := _deck.rules.shown_items()
 		for item: Equipment.Id in _equip_rows:
 			var parts: Array = _equip_rows[item]
 			var allowed := _deck.rules.allows_item(item)
+			(parts[5] as Control).visible = shown.has(item) or entry.count(item) > 0
 			(parts[0] as Button).disabled = entry.count(item) == 0
 			(parts[1] as Label).text = str(entry.count(item))
-			(parts[2] as Button).disabled = full or not allowed
+			(parts[2] as Button).disabled = not allowed or not Equipment.can_add(entry.kind, entry.equipment, item)
 			# まだ持たせられない持ち物（ストーリーで未解放）は、灰色で「未解放」。持たせているものは「−」で外せる。
+			# 選んでいる駒が持てない持ち物（役割の限り、重ねられない）は、灰色で理由（「後衛専用」「1 体 1 個まで」）。
+			var refusal := DeckText.item_refusal(entry.kind, entry.equipment, item) if allowed else ""
+			var usable := allowed and refusal == ""
 			var item_name := parts[3] as Label
 			item_name.text = Text.t("deck.edit.item", {"name": Names.item(item), "cost": Equipment.cost(item)})
+			item_name.add_theme_color_override("font_color", COLOR_TEXT if usable else COLOR_DIM)
+			# 持たせられない理由は、効果の行の頭に置く（名前の行の後ろに足すと、長い名前で「…」に切れて読めない）。
+			# 役割の限り（「後衛専用」など）は、効果の文の括弧に、もう書いてある。
+			(parts[4] as Label).text = DeckText.equipment_effect(item)
+			var reason := Text.t("deck.edit.item_locked") if not allowed else ("" if refusal == DeckText.holders_text(item) else refusal)
+			# 切れてはいけない文（検査用。item_row_cut_texts）: 理由を頭に置いたら理由、役割の限りなら効果の文の全部（理由が括弧で後ろにある）。
+			(parts[4] as Label).set_meta(&"must_show", reason if reason != "" else ((parts[4] as Label).text if refusal != "" else ""))
+			if reason != "":
+				(parts[4] as Label).text = Text.t("deck.edit.item_refused", {"reason": reason, "effect": (parts[4] as Label).text})
+			(parts[5] as Control).modulate = Color.WHITE if usable or entry.count(item) > 0 else Color(1, 1, 1, 0.55)
+			var tips: Array[String] = [DeckText.equipment_effect(item)]
+			if DeckText.equipment_traits_text(item) != "":
+				tips.append(DeckText.equipment_traits_text(item))
 			if not allowed:
-				item_name.text += Text.t("deck.edit.item_locked")
-			item_name.add_theme_color_override("font_color", COLOR_TEXT if allowed else COLOR_DIM)
-			(parts[5] as Control).modulate = Color.WHITE if allowed else Color(1, 1, 1, 0.55)
-			(parts[5] as Control).tooltip_text = "" if allowed else Text.t("deck.edit.item_locked.tooltip")
+				tips.append(Text.t("deck.edit.item_locked.tooltip"))
+			(parts[5] as Control).tooltip_text = "\n".join(tips)
+
+
+## 持ち物の欄の、見えている行のうち、切れて読めない文（検査用。並べ終わったあとに呼ぶ）: 名前とコスト、持たせられない理由。
+## 効果の文は欄の幅で「…」に切ってよい（全文は行のツールチップ）。
+func item_row_cut_texts() -> Array[String]:
+	var cut: Array[String] = []
+	for item: Equipment.Id in _equip_rows:
+		var parts: Array = _equip_rows[item]
+		if not (parts[5] as Control).is_visible_in_tree():
+			continue
+		var name_label := parts[3] as Label
+		var effect := parts[4] as Label
+		if _text_width(name_label, name_label.text) > name_label.size.x + 0.5:
+			cut.append(name_label.text)
+		var must: String = effect.get_meta(&"must_show", "")
+		if must != "" and _text_width(effect, must) > effect.size.x + 0.5:
+			cut.append(effect.text)
+	return cut
+
+
+## 持ち物の欄の、見えている行の効果の行の文（検査用）。
+func item_row_effects() -> Dictionary:
+	var effects := {}
+	for item: Equipment.Id in _equip_rows:
+		var parts: Array = _equip_rows[item]
+		if (parts[5] as Control).is_visible_in_tree():
+			effects[item] = (parts[4] as Label).text
+	return effects
+
+
+static func _text_width(label: Label, text: String) -> float:
+	return label.get_theme_font(&"font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size(&"font_size")).x
 
 
 # ==== 確かめと名前の入力 ====

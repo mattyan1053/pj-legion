@@ -8,6 +8,9 @@ const Episode := preload("res://game/episode.gd")
 const Campaign := preload("res://game/campaign.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const Text := preload("res://game/text.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
+const CampaignListScreen := preload("res://game/campaign_list_screen.gd")
+const EpisodeListScreen := preload("res://game/episode_list_screen.gd")
 ## 欄の説明つきのひな形（docs/story.md の「話を 1 つ足す」）。どの物語にも並ばないが、そのまま読めること。
 const TEMPLATE := "res://game/story/template.txt"
 
@@ -85,6 +88,57 @@ func test_the_probe_reads_every_field() -> void:
 	assert_eq(episode.after, [[1, "退け"]])
 	assert_eq(episode.cues, [[&"turn", 2, 0, "進め"], [&"king_half", 1, 1, "まだだ"]])
 	assert_false(episode.has_squad())
+
+
+## 話し手の姿（figure）。書かなければ、どちらの陣営も将の姿。駒の種類と、進化後（evolved）を書ける。魔物も書ける。
+func test_speaker_figures_read() -> void:
+	var plain: Episode = Episode.parse(PROBE)
+	assert_eq(plain.figures, [{"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}] as Array[Dictionary], "既定は将")
+	var text := PROBE.replace("name = 隊長", "name = 隊長\nfigure = sniper evolved").replace("name = 敵将", "name = 敵将\nfigure = skeleton_brute")
+	var episode: Episode = Episode.parse(text)
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.figures[0], {"kind": UnitKind.Id.SNIPER, "evolved": true, "look": &""})
+	assert_eq(episode.figures[1], {"kind": UnitKind.Id.SKELETON_BRUTE, "evolved": false, "look": &""})
+	# 会話の場面と、対戦の途中の台詞へ渡る。
+	var talk := Story.talk_of(episode, episode.before)
+	assert_eq(talk["figures"], episode.figures)
+
+
+## 敵の将の姿（king_figure）は見た目だけ。話し手の姿が将なら、その姿で立つ。ルールの上では将のまま。
+func test_enemy_king_figure_changes_only_the_look() -> void:
+	var episode: Episode = Episode.parse(PROBE.replace("army = fantasy", "army = fantasy\nking_figure = skeleton_mage"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.king_looks, [&"", &"skeleton_mage"] as Array[StringName])
+	assert_eq(episode.figures[1]["look"], &"skeleton_mage", "話し手の姿が将（既定）なら、骸骨の将で立つ")
+	assert_eq(episode.figures[0]["look"], &"")
+	var battle := StoryBattle.new(episode, MatchSetup.default_deck(UnitKind.Army.MILITARY))
+	assert_eq(battle.king_looks(), episode.king_looks)
+	var kings := battle.make_setup(1).create_battle().units.filter(func(unit: Unit) -> bool: return unit.kind == UnitKind.Id.KING)
+	assert_eq(kings.size(), 2, "敵の将は、ルールの上では将のまま")
+	var other: Episode = Episode.parse(PROBE.replace("army = fantasy", "army = fantasy\nking_figure = skeleton_mage").replace("name = 敵将", "name = 敵将\nfigure = priest"))
+	assert_eq(other.figures[1]["look"], &"", "将でない話し手の姿には効かない")
+
+
+## 物語を選ぶ場面と話の一覧のカードの顔（文字だけの札にしない）。
+func test_story_cards_show_faces() -> void:
+	var campaign := Story.military()
+	var row := CampaignListScreen.faces_row(campaign)
+	assert_eq(row.get_child_count(), campaign.starting_kinds.size() + 1, "将と、最初から雇える駒")
+	assert_eq((row.get_child(0) as TextureRect).texture, UnitIcons.texture(UnitKind.Id.KING, 0))
+	row.free()
+	for episode: Episode in Story.all_episodes():
+		var face := EpisodeListScreen.face_of(episode)
+		var figure: Dictionary = episode.figures[1]
+		assert_eq(face.texture, UnitIcons.texture(figure["kind"], 1, figure["evolved"], figure["look"]), "%s: 敵の話し手の姿" % episode.id)
+		assert_true(face.texture != null)
+		face.free()
+
+
+## 魔物の話の敵の将は、骸骨の将の姿。
+func test_monster_episodes_are_led_by_the_skeleton_king() -> void:
+	for episode: Episode in Story.all_episodes():
+		if episode.enemy.any(func(row: Array) -> bool: return UnitKind.is_monster(row[0])):
+			assert_eq(episode.king_looks[1], &"skeleton_mage", "%s: 魔物のいる話の敵の将" % episode.id)
 
 
 ## 敵が軍に属さない話（魔物の群れ）: 軍は none と書き、部隊に魔物を並べられる。必殺技は無い。
@@ -197,6 +251,12 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"知らない勝ち方": ["look = stone_walls", "look = stone_walls\nwins = rout", 6],
 		"守り切るのに勝ち方が無い": ["look = stone_walls", "look = stone_walls\nhold_turns = 5\nwins = routed", 7],
 		"勝ち方なのにターン数が無い": ["look = stone_walls", "look = stone_walls\nwins = turns_held", 6],
+		"知らない姿": ["name = 隊長", "name = 隊長\nfigure = knight", 14],
+		"中立の駒の姿": ["name = 隊長", "name = 隊長\nfigure = minion", 14],
+		"進化しない駒の進化後": ["name = 隊長", "name = 隊長\nfigure = king evolved", 14],
+		"姿の書き方": ["name = 隊長", "name = 隊長\nfigure = sniper grown", 14],
+		"知らない将の姿": ["army = fantasy", "army = fantasy\nking_figure = dragon", 18],
+		"人の将の姿": ["name = 隊長", "name = 隊長\nking_figure = skeleton_mage", 14],
 		"ゲージがあふれる": ["name = 隊長", "name = 隊長\nstart_gauge = 1001", 14],
 		"決まった部隊が多い": ["name = 隊長", "name = 隊長\n" + "unit = sniper\n".repeat(Deck.MAX_UNITS + 1).strip_edges(), 12],
 		"節より前の行": ["[episode]", "title = 前\n[episode]", 2],

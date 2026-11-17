@@ -15,6 +15,7 @@ music = battle_tense
 hold_turns = 8
 
 [unlock]
+item = trail_map
 budget = 2
 
 [ally]
@@ -22,6 +23,7 @@ name = 騎士長
 
 [enemy]
 name = 死霊使いの軍曹
+king_figure = skeleton_mage
 army = military
 unit = skeleton
 unit = skeleton

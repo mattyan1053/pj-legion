@@ -36,8 +36,13 @@ deck.detail.borrowed,{origin} の駒（この部隊では {army} として戦う
 deck.detail.evolution,進化（レベル {level}）
 deck.edit.items,持ち物　{count} / {max}
 deck.edit.item,{name}　コスト {cost}
-deck.edit.item_locked,　未解放
+deck.edit.item_locked,未解放
 deck.edit.item_locked.tooltip,ストーリーを進めると持たせられる
+deck.item.with_holders,{effect}（{holders}）
+deck.item.only,{role}専用
+deck.item.except,{role}以外
+deck.item.one_each,1 体 {max} 個まで
+deck.edit.item_refused,{reason}　{effect}
 deck.name.prompt,{title}（{max} 文字まで）
 deck.dialog.ok,決定
 deck.dialog.cancel,キャンセル
@@ -62,6 +67,7 @@ deck.problem.over_budget,コスト上限を {over} 超過
 deck.problem.too_much_equipment,持ち物の数が上限超過の駒あり（1 体 {max} 個まで）
 deck.problem.not_in_roster,この軍で雇えない駒あり
 deck.problem.item_not_allowed,未解放の持ち物あり
+deck.problem.item_not_fit,持てない持ち物を持つ駒あり
 deck.problem.other,出撃不可
 deck.skill,"{name}（クールダウン {cooldown} ターン）
 {summary}"

@@ -10,6 +10,8 @@ const StageLook := preload("res://game/stage_look.gd")
 const SoundCatalog := preload("res://game/sound_catalog.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const Maps := preload("res://game/maps.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
+const UnitView := preload("res://game/unit_view.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 const DIR := "res://game/story/episodes/"
@@ -58,6 +60,12 @@ var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
 var growth: Array = [[], []]
 ## 話し手の名前: [人の軍, 敵の軍]。
 var speakers: PackedStringArray = ["", ""]
+## 話し手の姿（会話の場面に立たせる駒の形と、対戦の途中の台詞のアイコン）: [人の軍, 敵の軍]。
+## どちらも {"kind": 駒の種類, "evolved": 進化後の形か, "look": 将の別の姿}。書かなければ、その陣営の将の姿。
+var figures: Array[Dictionary] = [{"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}]
+## 将の姿（見た目だけ。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）: [人の軍, 敵の軍]。敵の将だけ書ける（[enemy] の king_figure）。
+## 盤の将、駒の情報・決着の画面のアイコン、話し手の姿が king のときの姿に使う。ルールの上では将のまま。
+var king_looks: Array[StringName] = [&"", &""]
 ## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文] の列。
 var before: Array = []
 var after: Array = []
@@ -225,13 +233,24 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if not file.has(section):
 		file.problem(1, "[%s] の節が無い（話し手の name だけでも書く）" % section)
 		return
-	var keys := ["name", "unit", "deploy"]
-	keys.append("start_gauge" if side == 0 else "army")
+	var keys := ["name", "figure", "unit", "deploy"]
+	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure"])
 	var values: Dictionary = file.values(section, keys, ["unit", "deploy"])
 	if values.has("name"):
 		speakers[side] = values["name"][0]["value"]
 	if speakers[side] == "":
 		file.problem(file.line_of(section), "[%s] に話し手の name が無い" % section)
+	if values.has("king_figure"):
+		var entry: Dictionary = values["king_figure"][0]
+		var king_look := StringName(entry["value"])
+		if UnitView.KING_LOOKS.has(king_look):
+			king_looks[side] = king_look
+		else:
+			file.problem(entry["line"], "知らない将の姿「%s」（書けるのは %s）" % [king_look, ", ".join(UnitView.KING_LOOKS.keys())])
+	if values.has("figure"):
+		_read_figure(file, values["figure"][0], side)
+	if figures[side]["kind"] == UnitKind.Id.KING:
+		figures[side]["look"] = king_looks[side]
 	var rows: Array = []
 	var grown: Array = []
 	for entry: Dictionary in values.get("unit", []):
@@ -276,6 +295,24 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
 
 
+## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。
+func _read_figure(file: RefCounted, entry: Dictionary, side: int) -> void:
+	var words := (entry["value"] as String).split(" ", false)
+	var kind := StoryFile.enum_value(UnitKind.Id, words[0] if not words.is_empty() else "")
+	if kind < 0 or UnitKind.is_neutral(kind as UnitKind.Id):
+		var neutral := UnitKind.Id.values().filter(func(each: int) -> bool: return UnitKind.is_neutral(each as UnitKind.Id))
+		file.problem(entry["line"], "知らない姿「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Id, neutral)])
+		return
+	var evolved := words.size() == 2 and words[1] == "evolved"
+	if words.size() > 2 or (words.size() == 2 and not evolved):
+		file.problem(entry["line"], "姿は「駒の種類」か「駒の種類 evolved」: %s" % entry["value"])
+		return
+	if evolved and not UnitIcons.evolves(kind as UnitKind.Id):
+		file.problem(entry["line"], "%s に進化後の姿は無い" % words[0])
+		return
+	figures[side] = {"kind": kind, "evolved": evolved, "look": &""}
+
+
 ## side の部隊に、始めのレベルか経験値を決めた駒がいるか。
 func has_growth(side: int) -> bool:
 	return growth[side].any(func(row: Array) -> bool: return row != [1, 0])
@@ -295,6 +332,9 @@ func _unit_row(file: RefCounted, entry: Dictionary) -> Array:
 		return []
 	if not items.is_empty() and not Equipment.can_equip(kind as UnitKind.Id):
 		file.problem(entry["line"], "%s は持ち物を持てない（軍に属する駒だけが持てる）" % words[0].strip_edges())
+		return []
+	if not Equipment.is_valid_for(kind as UnitKind.Id, items):
+		file.problem(entry["line"], "%s はこの持ち物の組を持てない（役割の限り、1 体の数、重ねられない持ち物）" % words[0].strip_edges())
 		return []
 	return [kind, items]
 

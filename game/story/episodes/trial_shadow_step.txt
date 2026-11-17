@@ -19,12 +19,14 @@ unit = spellblade
 
 [ally]
 name = 導師
+figure = priest evolved
 unit = paladin
 unit = spellblade
 unit = spellblade
 
 [enemy]
 name = 演習相手
+figure = shield_trooper
 army = military
 unit = shield_trooper
 unit = shield_trooper

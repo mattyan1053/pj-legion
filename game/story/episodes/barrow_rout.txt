@@ -14,6 +14,7 @@ look = stone_walls
 wins = routed
 
 [unlock]
+item = jet_pack
 budget = 2
 
 [ally]
@@ -21,6 +22,7 @@ name = 隊長
 
 [enemy]
 name = 墓守の騎士
+king_figure = skeleton_mage
 army = none
 unit = skeleton_brute
 unit = skeleton_brute

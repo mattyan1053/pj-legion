@@ -14,11 +14,13 @@ lesson = 駒をクリックして動かし、隣の敵を攻撃する。敵の�
 
 [ally]
 name = 教官
+figure = shield_trooper evolved
 unit = shield_trooper
 unit = shield_trooper
 
 [enemy]
 name = 演習相手
+figure = paladin
 army = fantasy
 unit = sorcerer
 

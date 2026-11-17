@@ -15,6 +15,7 @@ music = battle_tense
 hold_turns = 10
 
 [unlock]
+item = long_scope
 budget = 2
 
 [ally]
@@ -22,6 +23,7 @@ name = 隊長
 
 [enemy]
 name = 追撃隊長
+figure = spellblade evolved
 army = fantasy
 unit = paladin + iron_shield
 unit = paladin + iron_shield

@@ -16,6 +16,7 @@ look = stone_walls
 music = battle_tense
 
 [unlock]
+item = war_banner
 budget = 2
 
 [ally]
@@ -23,6 +24,7 @@ name = 隊長
 
 [enemy]
 name = 墓守の騎士
+king_figure = skeleton_mage
 army = none
 unit = skeleton_brute
 unit = skeleton_brute

@@ -8,6 +8,7 @@ const BattleLog := preload("res://game/battle_log.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const Maps := preload("res://tests/support/maps.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 const NAMES := ["隊長", "敵将"]
 
@@ -110,6 +111,24 @@ func test_story_battles_hand_their_cues_to_the_battle_screen() -> void:
 	var cues: BattleCues = Story.first_battle(episode).talk_cues()
 	assert_false(cues.is_empty())
 	assert_true(MatchChoiceProbe.new().talk_cues().is_empty(), "対戦モードは台詞なし")
+
+
+## 台詞は、話し手の姿（話のファイルの figure）を持ち、札は名前の左にその姿のアイコン（胸から上）を出す。
+func test_lines_carry_the_speaker_figure_and_the_card_shows_its_icon() -> void:
+	var figures := [{"kind": UnitKind.Id.SNIPER, "evolved": true}, {"kind": UnitKind.Id.SKELETON, "evolved": false}]
+	var cues := BattleCues.new([[BattleCues.TURN, 1, 1, "来たか"]], NAMES, figures)
+	var lines := cues.on_start(_battle())
+	assert_eq(lines[0].figure, figures[1])
+	var talk := BattleTalk.new()
+	talk.say(lines)
+	assert_eq(talk.face(), UnitIcons.bust(UnitKind.Id.SKELETON, 1), "敵の陣営の色の、骸骨兵のアイコン")
+	talk.clear()
+	talk.say([BattleCues.Line.new(0, "隊長", "一")] as Array[BattleCues.Line])
+	assert_eq(talk.face(), null, "姿の無い台詞は、アイコンを出さない")
+	talk.free()
+	var episode: RefCounted = Story.military().episodes[0]
+	var first: BattleCues.Line = Story.first_battle(episode).talk_cues().on_start(Story.first_battle(episode).make_setup(1).create_battle())[0]
+	assert_eq(first.figure, episode.figures[first.side], "話の対戦の台詞は、話の姿を持つ")
 
 
 func test_said_lines_are_written_to_the_log() -> void:

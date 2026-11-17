@@ -20,6 +20,10 @@ trait.exerts_zoc,周り 8 マスに支配領域を作る（敵はそこで止ま
 trait.ignores_zoc,敵の支配領域で止まらない
 trait.forest_walk,森を平地と同じ移動力で歩く
 trait.regeneration,自分の番の始めに {heal} 回復
+trait.exerts_zoc.short,支配領域を作る
+trait.ignores_zoc.short,支配領域を抜ける
+trait.forest_walk.short,森歩き
+trait.regeneration.short,毎ターン {heal} 回復
 field_effect.barricade,盾
 field_effect.smoke,煙幕
 field_effect.sanctuary,聖域
@@ -55,6 +59,14 @@ evolution.bishop,ビショップ
 evolution.saint,セイント
 item.speed_boots,スピードブーツ
 item.iron_shield,アイアンシールド
+item.power_gauntlet,力の籠手
+item.long_scope,遠眼鏡
+item.regen_charm,再生の護符
+item.trail_map,獣道の地図
+item.shadow_cloak,隠れ蓑
+item.war_banner,軍旗
+item.jet_pack,試作ジェットパック
+item.dragon_scale,古竜の鱗
 skill.adrenaline_shot,アドレナリン注射
 skill.adrenaline_shot.summary,行動済みの味方 1 体を、もう一度行動できるようにする。その駒は次の自分の番の終わりまで、攻撃力 -{penalty}（対戦中 {uses} 回まで）
 skill.divine_shield,ディバインシールド

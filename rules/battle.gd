@@ -82,15 +82,13 @@ func clone() -> Battle:
 
 
 ## 駒を置く（対戦の準備用）。置けないマスなら null。
-## 装備を持たせられる。装備を持てない種類（将・中立）に持たせるか、持てる数を超えていれば null。
+## 装備を持たせられる。その種類が持てない装備の並び（将・中立に持たせる、数の上限、重ねて持てる数、役割の限り。Equipment.is_valid_for）なら null。
 func add_unit(
 	kind: UnitKind.Id, side: Unit.Side, cell: Vector2i, equipment: Array[Equipment.Id] = []
 ) -> Unit:
 	if not board.is_walkable(cell) or unit_at(cell) != null:
 		return null
-	if equipment.size() > Equipment.MAX_PER_UNIT:
-		return null
-	if not equipment.is_empty() and not Equipment.can_equip(kind):
+	if not Equipment.is_valid_for(kind, equipment):
 		return null
 	var unit := Unit.new(_next_unit_id, kind, side, cell, equipment)
 	_next_unit_id += 1
