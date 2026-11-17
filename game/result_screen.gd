@@ -2,7 +2,7 @@ extends Control
 ## リザルトの画面。決着したら、対戦の画面（盤面）の上に重ねて、段階的に出す（result_summary.gd の中身）。
 ##
 ## 1. 勝敗の見出し（VICTORY / DEFEAT、人どうしは勝った側の名前）が中央に大きく出て、上へ退く。
-## 2. 戦績（ステージ・経過ターン・敵軍撃破・中立撃破・聖遺物）が 1 行ずつ出る。
+## 2. 戦績（マップ・経過ターン・敵軍撃破・中立撃破・聖遺物）が 1 行ずつ出る。
 ## 3. MVP が拡大しながら出る。
 ## 4. 行き先のボタンと、入力の案内が出る。**ここまで出そろうまで、行き先は選べない。**
 ## 出そろう前のクリック（Enter・Space でも）は、演出を飛ばして全部を出すだけ（行き先は選ばない）。
@@ -19,7 +19,7 @@ const OverlayStack := preload("res://game/overlay_stack.gd")
 const StatsText := preload("res://game/stats_text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 
-## 行き先のボタン。field はステージの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でもう一度（field は見ない）。
+## 行き先のボタン。field はマップの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でもう一度（field は見ない）。
 signal restart_pressed(field: StringName, new_board: bool)
 signal setup_pressed
 signal title_pressed
@@ -51,7 +51,7 @@ const BLINK_PERIOD := 1.4
 const HEADLINE_CENTER_Y := 290.0
 const HEADLINE_TOP_Y := 18.0
 const HEADLINE_SHRUNK := 0.62
-## 戦績の行は最大 5 行（ステージ・経過ターン・敵軍撃破・中立撃破・聖遺物）。5 行のときも、入力の案内が画面の下の帯
+## 戦績の行は最大 5 行（マップ・経過ターン・敵軍撃破・中立撃破・聖遺物）。5 行のときも、入力の案内が画面の下の帯
 ## （対戦の画面の下の帯。BattleHud.BOTTOM_BAR_HEIGHT）にかからないよう、行と行の間を詰めてある。
 const BODY_TOP := 140.0
 const STAT_FONT := 22
@@ -111,7 +111,7 @@ var _detail_text := ""
 var _actions: VBoxContainer
 var _detail_button: Button
 ## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
-var _board_buttons: Array[Button] = []  # 新しい盤面（ボタンの meta の &"field" がステージの鍵）
+var _board_buttons: Array[Button] = []  # 新しい盤面（ボタンの meta の &"field" がマップの鍵）
 var _setup_button: Button
 var _squad_button: Button
 var _continue_button: Button
@@ -390,7 +390,7 @@ func _buttons_ready() -> bool:
 
 
 ## 出す行き先を決める（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める）。
-## boards は「新しい盤面」で選べるステージの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦設定へ」、squad は「部隊を選び直す」を出すか。
+## boards は「新しい盤面」で選べるマップの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦設定へ」、squad は「部隊を選び直す」を出すか。
 ## 「同じ盤面でもう一度」と「タイトルへ」は、いつも出す。
 func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void:
 	while _board_buttons.size() < boards.size():
@@ -465,7 +465,7 @@ func press_choose_squad() -> void:
 		squad_pressed.emit()
 
 
-## 「新しい盤面」で出しているステージの鍵。検査用。
+## 「新しい盤面」で出しているマップの鍵。検査用。
 func new_board_fields() -> Array[StringName]:
 	var shown: Array[StringName] = []
 	for button in _board_buttons:

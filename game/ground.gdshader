@@ -12,7 +12,7 @@ uniform float map_pad = 2.0;
 uniform float warp = 0.22;
 // 盤の外の地面の明るさ（中を 1 として）。戦う範囲の境目が、さりげなく分かるようにする。
 uniform float outside_shade = 0.84;
-// 石畳の濃さ（0 = 無し。ステージの見た目の PAVING）と、ところどころ枯れた色に寄せる濃さ（DRY）。
+// 石畳の濃さ（0 = 無し。マップの見た目の PAVING）と、ところどころ枯れた色に寄せる濃さ（DRY）。
 uniform float paving = 0.0;
 uniform float dry = 0.45;
 

@@ -48,7 +48,7 @@ func test_scenery_stays_light() -> void:
 
 
 func test_each_theme_is_complete() -> void:
-	# どのステージの見た目も、全部の項目を持つ（ステージを足すときに、書き忘れが分かる）。
+	# どのマップの見た目も、全部の項目を持つ（マップを足すときに、書き忘れが分かる）。
 	for stage: StringName in StageLook.THEMES:
 		var look := StageLook.of(stage)
 		for key: StringName in StageLook.KEYS:
@@ -76,7 +76,7 @@ func test_prop_heights_match_the_assets() -> void:
 
 
 func test_each_stage_tells_the_kinds_of_cells_apart() -> void:
-	# 平地・森・障害物の地面の色は、どのステージでも、はっきり違う（置物に加えて、地面でも見分けられる）。
+	# 平地・森・障害物の地面の色は、どのマップでも、はっきり違う（置物に加えて、地面でも見分けられる）。
 	for stage: StringName in StageLook.THEMES:
 		var look := StageLook.of(stage)
 		var colors: Array[Color] = [look[StageLook.NORMAL], look[StageLook.FOREST], look[StageLook.OBSTACLE]]
@@ -107,7 +107,7 @@ func test_terrain_image_follows_the_board() -> void:
 
 
 func test_each_stage_has_its_own_ground() -> void:
-	# どのステージも、平地の色と霞の色がほかのステージと違う（一目で見分けられる）。
+	# どのマップも、平地の色と霞の色がほかのマップと違う（一目で見分けられる）。
 	var board := Maps.board([".F#*"])
 	var normals := {}
 	var hazes := {}
@@ -122,11 +122,11 @@ func test_each_stage_has_its_own_ground() -> void:
 
 
 func test_looks_are_named_and_every_versus_stage_has_one() -> void:
-	# 見た目は名前で引く。対戦モードの生成のステージは、どれも自分の見た目を持つ（OF_STAGE）。
+	# 見た目は名前で引く。対戦モードの生成のマップは、どれも自分の見た目を持つ（OF_STAGE）。
 	for stage: BoardGenerator.Stage in BoardGenerator.Stage.values():
-		assert_true(StageLook.THEMES.has(StageLook.name_of_stage(stage)), "ステージ %d の見た目が無い" % stage)
+		assert_true(StageLook.THEMES.has(StageLook.name_of_stage(stage)), "マップ %d の見た目が無い" % stage)
 	assert_eq(StageLook.OF_STAGE.size(), BoardGenerator.Stage.size())
-	assert_eq(StageLook.name_of_stage(-1), StageLook.DEFAULT, "知らないステージは既定の見た目")
+	assert_eq(StageLook.name_of_stage(-1), StageLook.DEFAULT, "知らないマップは既定の見た目")
 	assert_eq(StageLook.of(&"no_such_look"), StageLook.of(StageLook.DEFAULT), "知らない名前は既定の見た目")
 
 
@@ -134,7 +134,7 @@ func _scenery(stage: StringName) -> Dictionary:
 	return StageLook.of(stage)[StageLook.SCENERY]
 
 
-## どのステージの見た目にも出てくる素材の全部。
+## どのマップの見た目にも出てくる素材の全部。
 func _all_props() -> Array[Dictionary]:
 	var props: Array[Dictionary] = []
 	for stage: StringName in StageLook.THEMES:

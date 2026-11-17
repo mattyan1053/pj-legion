@@ -246,7 +246,7 @@ func _fade_to(alpha: float) -> void:
 # ---- 検査 ----
 
 
-## 検査は、人と同じ道（タイトルの「対戦」→ ステージ選択のカード → 対戦設定の「対戦を始める」）で対戦へ入る。
+## 検査は、人と同じ道（タイトルの「対戦」→ マップ選択のカード → 対戦設定の「対戦を始める」）で対戦へ入る。
 ## 対戦設定では、人どうし（相手は人）を選ぶ（検査は、人の操作の入口を両方のプレイヤーで通すところから始める）。
 ## スクリーンショットの道具は、対戦に入ったところで足す（場面を撮る間に、ほかの場面へも行き来する）。
 ## 最初に対戦へ入るまでの間だけ、ここが操作する（そのあとの行き来は、検査とスクリーンショットの道具が自分でやる）。
@@ -261,7 +261,7 @@ func _drive_check(scene: StringName) -> void:
 	match scene:
 		SceneFlow.TITLE:
 			_current.call(&"press_start")
-		SceneFlow.STAGE:
+		SceneFlow.MAP_SELECT:
 			_current.call(&"choose", context.match_choice.field)
 		SceneFlow.SETUP:
 			var panel: Node = _current.call(&"setup_panel")

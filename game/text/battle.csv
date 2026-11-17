@@ -313,7 +313,7 @@ stats.ending.routed,全滅
 stats.ending.boss_slain,中ボスの撃破
 stats.ending.draw,引き分け
 stats.head,ターン {turns}　{ending}
-stats.head_stage,ステージ: {stage}　ターン {turns}　{ending}
+stats.head_map,マップ: {map}　ターン {turns}　{ending}
 stats.damage,与えたダメージ {count}
 stats.kills,敵軍撃破 {count} 体
 stats.losses,倒された {count} 体
@@ -338,7 +338,7 @@ stats.unit_evolved,{kind}（{evolution}） Lv{level}
 stats.unit,{kind} Lv{level}
 result.won,{side}の勝ち
 result.won_reason,{side}の勝ち　{reason}
-result.line.stage,ステージ
+result.line.map,マップ
 result.line.turns,経過ターン
 result.line.turns.value,{count} ターン
 result.line.kills,敵軍撃破

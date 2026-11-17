@@ -59,7 +59,7 @@ static func versus_cpu(
 
 
 ## 戦いの定義 defined の、人どうしの対戦設定（先手の編成 first、後手の編成 second）。
-## 人どうしの対戦設定は、どのモードもここを通す（対戦モードの生成のステージは versus_human）。
+## 人どうしの対戦設定は、どのモードもここを通す（対戦モードの生成のマップは versus_human）。
 static func humans_on(defined: Scenario, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
 	var setup := _on(defined, with_seed)
 	setup.set_human(Unit.Side.PLAYER1, first)
@@ -67,7 +67,7 @@ static func humans_on(defined: Scenario, with_seed: int, first: Deck, second: De
 	return setup
 
 
-## 人どうしの、対戦モードのステージ at_stage の対戦設定。
+## 人どうしの、対戦モードのマップ at_stage の対戦設定。
 static func versus_human(at_stage: BoardGenerator.Stage, with_seed: int, first: Deck, second: Deck) -> MatchSetup:
 	return humans_on(Scenario.versus(at_stage), with_seed, first, second)
 
