@@ -43,7 +43,7 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 	for step in 6:
 		match step:
 			1: panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
-			4: assert_true(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM), "CPU の行でおまかせを選べない")
+			4: assert_true(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM), "CPU の行でランダム編成を選べない")
 			5: assert_true(panel.choose_deck(Unit.Side.PLAYER2, id), "CPU の行で取っておいた部隊を選べない")
 			2: panel.choose_opponent(false)
 			3:
@@ -112,7 +112,7 @@ func test_buttons_that_end_the_battle_ask_twice_in_a_battle() -> void:
 	holder.free()
 
 
-## CPU の行も、人の行と同じ欄で部隊を選ぶ: 「CPU の編成」、おまかせ、取っておいた部隊。おまかせは対戦を作るまで「編成確認」できず、
+## CPU の行も、人の行と同じ欄で部隊を選ぶ: 「CPU の編成」、ランダム編成、取っておいた部隊。ランダム編成は対戦を作るまで「編成確認」できず、
 ## 対戦の途中で開けば、いまの対戦で組んだ部隊を見せる。
 func test_the_cpu_row_picks_a_squad_too() -> void:
 	var library := DeckLibrary.new()
@@ -127,7 +127,7 @@ func test_the_cpu_row_picks_a_squad_too() -> void:
 	assert_true(panel.deck_options(Unit.Side.PLAYER2)[0][1].begins_with("CPU の編成"), "CPU の行の既定は「CPU の編成」")
 	assert_true(panel.deck_options(Unit.Side.PLAYER1)[0][1].begins_with("既定の編成"), "人の行の既定は「既定の編成」")
 	assert_true(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM))
-	assert_false(panel.can_preview(Unit.Side.PLAYER2), "おまかせは、対戦を作るまで部隊が決まらない")
+	assert_false(panel.can_preview(Unit.Side.PLAYER2), "ランダム編成は、対戦を作るまで部隊が決まらない")
 	panel.open_preview(Unit.Side.PLAYER2)
 	assert_false(panel.preview().visible)
 	var started: RefCounted = panel.current_choice().copy()

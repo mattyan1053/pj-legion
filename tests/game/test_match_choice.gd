@@ -130,7 +130,7 @@ func _kinds(deck: Deck) -> Array:
 	return deck.entries.map(func(entry: DeckEntry) -> Array: return [entry.kind, entry.equipment])
 
 
-## おまかせ: 対戦を作るたびに、対戦の種から決まりの中で組む（random_squad.gd。道具の --squads=random と同じ）。同じ種なら同じ部隊。
+## ランダム編成: 対戦を作るたびに、対戦の種から決まりの中で組む（random_squad.gd。道具の --squads=random と同じ）。同じ種なら同じ部隊。
 ## 組んだ部隊は、写しにも残り、「編成確認」で見られる（drawn_deck）。
 func test_random_squad_follows_the_battle_seed() -> void:
 	var choice := MatchChoice.new()
@@ -148,11 +148,11 @@ func test_random_squad_follows_the_battle_seed() -> void:
 	assert_true(differs, "種を替える（新しい盤面）と、部隊も変わる")
 	assert_true(setup.create_battle() != null)
 	choice.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
-	assert_true(choice.is_random(Unit.Side.PLAYER2), "軍を替えても、おまかせのまま")
+	assert_true(choice.is_random(Unit.Side.PLAYER2), "軍を替えても、ランダム編成のまま")
 	assert_true(choice.drawn_deck(Unit.Side.PLAYER2) == null, "前の軍で組んだ部隊は見せない")
 
 
-## 手番がランダムなら、おまかせの部隊は、引いた側（実際に動かすプレイヤー）として組む。人どうしなら、両方がおまかせを選べる。
+## 手番がランダムなら、ランダム編成の部隊は、引いた側（実際に動かすプレイヤー）として組む。人どうしなら、両方がランダム編成を選べる。
 func test_random_squad_is_drawn_for_the_side_that_plays() -> void:
 	var choice := MatchChoice.new()
 	choice.random_side = true
@@ -172,7 +172,7 @@ func test_random_squad_is_drawn_for_the_side_that_plays() -> void:
 	assert_eq(_kinds(setup.decks[1]), _kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, 3, Unit.Side.PLAYER2)))
 
 
-## おまかせの部隊は、どの種でも出せる部隊（決まりの検査を通る）。
+## ランダム編成の部隊は、どの種でも出せる部隊（決まりの検査を通る）。
 func test_random_squads_are_always_playable() -> void:
 	for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
 		for battle_seed in 40:

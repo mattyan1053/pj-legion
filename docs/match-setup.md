@@ -57,9 +57,9 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 `game/match_choice.gd` が `MatchSetup` にし、ストーリーでは話のデータから `game/story_battle.gd` が作って、`create_battle()` で始める。対戦の画面は `MatchChoice` を直に読まず、
 「`MatchSetup` を作ってくれるもの」（`game/battle_source.gd`。`docs/battle-source.md`）として受け取る。
 
-対戦モードの部隊は、人の行も CPU の行も同じ選び方（`match_choice.gd`）: 既定の編成（CPU の行では CPU の編成）、取っておいた部隊、おまかせ。
+対戦モードの部隊は、人の行も CPU の行も同じ選び方（`match_choice.gd`）: 既定の編成（CPU の行では CPU の編成）、取っておいた部隊、ランダム編成。
 
-### おまかせ
+### ランダム編成
 
 コード: `game/random_squad.gd`（`RandomSquad`）。テスト: `tests/game/test_match_choice.gd`。
 

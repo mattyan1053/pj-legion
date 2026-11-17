@@ -1151,34 +1151,34 @@ func _queue_setup_scene() -> void:
 			_expect(_scene.battle.board.size == expected.size and _scene.battle.board.hq_cells == expected.hq_cells, "手で作ったマップで始まらない: %s" % field)
 			_expect(_scene.look == VersusFields.look_of(field), "手で作ったマップの見た目にならない: %s" % field)
 			_expect(_scene.source.new_board_fields() == VersusFields.generated_ids(), "手で作ったマップの対戦の「新しい盤面」が、生成のステージでない")
-		# CPU の部隊を「おまかせ」にすると、対戦の種から組んだ部隊で始まる。設定パネルの「編成確認」で、いまの部隊が見える。
-		# 「同じ盤面で再戦」は同じ部隊、「新しい盤面」は新しい部隊（どちらも、おまかせのまま引き継ぐ）。
+		# CPU の部隊を「ランダム編成」にすると、対戦の種から組んだ部隊で始まる。設定パネルの「編成確認」で、いまの部隊が見える。
+		# 「同じ盤面で再戦」は同じ部隊、「新しい盤面」は新しい部隊（どちらも、ランダム編成のまま引き継ぐ）。
 		_scene.open_setup()
 		panel.choose_field(VersusFields.PLAIN)
 		panel.choose_opponent(true)
 		panel.choose_human_side(Unit.Side.PLAYER1)  # CPU は後手（始めてすぐには動かない）
 		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.FANTASY)
-		_expect(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM), "CPU の行で「おまかせ」を選べない")
+		_expect(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM), "CPU の行で「ランダム編成」を選べない")
 		panel.confirm()
 		_expect(_cpu_kinds(Unit.Side.PLAYER2) == _squad_kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, _scene.map_seed, Unit.Side.PLAYER2)),
-			"「おまかせ」の CPU が、種から組んだ部隊で始まらない")
+			"「ランダム編成」の CPU が、種から組んだ部隊で始まらない")
 		var drawn := _cpu_kinds(Unit.Side.PLAYER2)
 		_scene.open_setup()
-		_expect(panel.current_choice().is_random(Unit.Side.PLAYER2) and panel.can_preview(Unit.Side.PLAYER2), "対戦の途中の設定パネルで、「おまかせ」の部隊を確認できない")
+		_expect(panel.current_choice().is_random(Unit.Side.PLAYER2) and panel.can_preview(Unit.Side.PLAYER2), "対戦の途中の設定パネルで、「ランダム編成」の部隊を確認できない")
 		panel.open_preview(Unit.Side.PLAYER2)
-		_expect(panel.preview().visible and panel.preview().shown_kinds().size() == drawn.size() + 1, "「編成確認」に、いまの対戦の「おまかせ」の部隊が出ない")
+		_expect(panel.preview().visible and panel.preview().shown_kinds().size() == drawn.size() + 1, "「編成確認」に、いまの対戦の「ランダム編成」の部隊が出ない")
 		panel.preview().close_preview()
 		panel.cancel()
 		_scene.start_battle(_scene.map_seed)  # 決着の画面の「同じ盤面で再戦」と同じ入口
-		_expect(_cpu_kinds(Unit.Side.PLAYER2) == drawn, "「同じ盤面で再戦」で、「おまかせ」の部隊が変わった")
+		_expect(_cpu_kinds(Unit.Side.PLAYER2) == drawn, "「同じ盤面で再戦」で、「ランダム編成」の部隊が変わった")
 		var changed := false
 		for i in 3:  # 「新しい盤面」（種が替わる）。たまたま同じ部隊になることもあるので、何度か
 			_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
-			_expect(_scene.source.is_random(Unit.Side.PLAYER2), "「新しい盤面」で、「おまかせ」が引き継がれない")
+			_expect(_scene.source.is_random(Unit.Side.PLAYER2), "「新しい盤面」で、「ランダム編成」が引き継がれない")
 			_expect(_cpu_kinds(Unit.Side.PLAYER2) == _squad_kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, _scene.map_seed, Unit.Side.PLAYER2)),
-				"「新しい盤面」の「おまかせ」が、新しい種から組んだ部隊でない")
+				"「新しい盤面」の「ランダム編成」が、新しい種から組んだ部隊でない")
 			changed = changed or _cpu_kinds(Unit.Side.PLAYER2) != drawn
-		_expect(changed, "「新しい盤面」で、「おまかせ」の部隊が変わらない")
+		_expect(changed, "「新しい盤面」で、「ランダム編成」の部隊が変わらない")
 		_scene.open_setup()
 		panel.choose_deck(Unit.Side.PLAYER2, "")
 		_scene.open_setup()

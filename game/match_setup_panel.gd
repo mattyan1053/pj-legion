@@ -3,7 +3,7 @@ extends Control
 ## （変えるのは「ステージを選び直す」。ステージ選択の場面へ戻る）。
 ##
 ## 選んだもの（match_choice.gd）を持ち、「対戦を始める」で start_pressed を出す。ルールは持たない。
-## どちらの行も、軍を選んだあと、その軍の部隊を、既定の編成（CPU の行では「CPU の編成」）、おまかせ、取っておいた部隊（deck_library.gd）から選ぶ。
+## どちらの行も、軍を選んだあと、その軍の部隊を、既定の編成（CPU の行では「CPU の編成」）、ランダム編成、取っておいた部隊（deck_library.gd）から選ぶ。
 ## 出せない部隊は、理由つきで並べ、選べなくする。人どうしでも CPU 戦でも、同じ選び方と見え方。
 ## 部隊の中身は、パネルに文で並べず、「編成を確認」で開く（deck_preview.gd。自分の部隊も CPU の部隊も同じ見え方）。
 ## パネルの大きさは、選んだものに依らず同じ（部隊の名前は決まった幅で切る）。
@@ -50,7 +50,7 @@ var _team_colors: Array[Color] = []
 ## 選択肢の名前 -> その行のボタン（値 -> Button）。
 var _rows := {}
 ## プレイヤーごとの、軍の行の見出し（「あなた」「CPU」など）、部隊を選ぶ欄、「編成確認」、「部隊編成」、その選択肢
-## （並びの番号 -> 部隊の id。空は既定の編成、MatchChoice.RANDOM はおまかせ）。
+## （並びの番号 -> 部隊の id。空は既定の編成、MatchChoice.RANDOM はランダム編成）。
 var _who_labels: Array[Label] = []
 var _deck_pickers: Array[OptionButton] = []
 var _preview_buttons: Array[Button] = []
@@ -287,7 +287,7 @@ func open_deck_picker(side: Unit.Side) -> void:
 	_deck_pickers[side].show_popup()
 
 
-## side の部隊を、取っておいた部隊 id にする（空なら既定の編成、MatchChoice.RANDOM ならおまかせ）。出せない部隊・知らない id なら何もせず false。
+## side の部隊を、取っておいた部隊 id にする（空なら既定の編成、MatchChoice.RANDOM ならランダム編成）。出せない部隊・知らない id なら何もせず false。
 func choose_deck(side: Unit.Side, id: String) -> bool:
 	if id == "":
 		_choice.choose_default(side)
@@ -409,7 +409,7 @@ func _show_choice() -> void:
 			_who_labels[side].add_theme_color_override("font_color", _team_colors[side].lightened(0.4))
 		_edit_buttons[side].visible = human and _can_edit_decks
 		_fill_deck_picker(side as Unit.Side)
-		# おまかせは対戦を作るときに組むので、まだ組んでいなければ見せるものが無い（対戦の途中なら、いまの対戦の部隊を見せる）。
+		# ランダム編成は対戦を作るときに組むので、まだ組んでいなければ見せるものが無い（対戦の途中なら、いまの対戦の部隊を見せる）。
 		var shown := preview_deck(side as Unit.Side) != null
 		_preview_buttons[side].disabled = not shown
 		_preview_buttons[side].tooltip_text = "" if shown else Text.t("setup.deck.random_note")
@@ -425,7 +425,7 @@ func who_text(side: Unit.Side) -> String:
 
 
 ## side の部隊（「編成確認」で出すもの）。選んだ部隊か既定の編成（CPU の行なら CPU の編成。中身は既定の編成と同じ）。
-## おまかせなら、最後に作った対戦で組んだ部隊（まだ組んでいなければ null）。
+## ランダム編成なら、最後に作った対戦で組んだ部隊（まだ組んでいなければ null）。
 func preview_deck(side: Unit.Side) -> Deck:
 	if _choice.is_random(side):
 		return _choice.drawn_deck(side)
@@ -481,7 +481,7 @@ func can_edit_decks() -> bool:
 	return _can_edit_decks
 
 
-## side の部隊の選択肢を並べ直す: 既定の編成（CPU の行では「CPU の編成」）、おまかせ、その軍の取っておいた部隊（出せないものは理由つきで、選べない）。
+## side の部隊の選択肢を並べ直す: 既定の編成（CPU の行では「CPU の編成」）、ランダム編成、その軍の取っておいた部隊（出せないものは理由つきで、選べない）。
 func _fill_deck_picker(side: Unit.Side) -> void:
 	var army: UnitKind.Army = _choice.armies[side]
 	var default_deck := MatchSetup.default_deck(army)
