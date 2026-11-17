@@ -20,6 +20,10 @@ trait.exerts_zoc,周り 8 マスに支配領域を作る（敵はそこで止ま
 trait.ignores_zoc,敵の支配領域で止まらない
 trait.forest_walk,森を平地と同じ移動力で歩く
 trait.regeneration,自分の番の始めに {heal} 回復
+trait.exerts_zoc.short,支配領域を作る
+trait.ignores_zoc.short,支配領域を抜ける
+trait.forest_walk.short,森歩き
+trait.regeneration.short,毎ターン {heal} 回復
 field_effect.barricade,盾
 field_effect.smoke,煙幕
 field_effect.sanctuary,聖域

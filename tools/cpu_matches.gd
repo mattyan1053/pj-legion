@@ -745,7 +745,7 @@ func _find_episode(given: String) -> RefCounted:
 
 ## --squads=random の、人の側の部隊。その話を初めて遊ぶときに雇える駒から、種で決まる順に、数の上限まで予算の中で雇う。
 ## 予算と持たせられる装備も、その話を初めて遊ぶときのもの（story.gd の unlocked_before）。
-## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.DEFAULT_ITEMS）。
+## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.equip_defaults）。
 func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = squad_seed
@@ -764,10 +764,7 @@ func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
 	hired.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool: return UnitKind.role(a) < UnitKind.role(b))
 	for kind in hired:
 		deck.add(kind)
-	for entry in deck.entries:
-		var item := Story.DEFAULT_ITEMS.get(UnitKind.role(entry.kind), -1) as int
-		if item != -1 and deck.rules.allows_item(item as Equipment.Id) and deck.total_cost() + Equipment.cost(item as Equipment.Id) <= deck.budget():
-			entry.equip(item as Equipment.Id)
+	Story.equip_defaults(deck)
 	return deck
 
 

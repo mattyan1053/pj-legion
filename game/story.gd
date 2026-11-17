@@ -11,6 +11,7 @@ extends RefCounted
 
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
+const DeckText := preload("res://game/deck_text.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const Run := preload("res://game/run.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
@@ -33,10 +34,12 @@ const SORTIE := SceneFlow.SORTIE
 
 ## 最初の物語の id。版 1 の記録（物語が 1 つだったころ）は、この物語の記録として読む。
 const MILITARY_ID := &"military"
-## 既定の編成で、役割ごとに 1 つ持たせる装備（無い役割は持たせない）。
+## 既定の編成で、役割ごとに 1 つ持たせる装備の候補（前から順に、持たせられて、コストが収まる最初の 1 つ。無い役割は持たせない）。
+## ストーリー専用の持ち物（ジェットパック、古竜の鱗）を解放したら、盾・ブーツのかわりに持たせる。
+## ほかの新しい持ち物は持たせない（どの駒に何を持たせるかは、人が選ぶ。既定の編成は素直な形のまま）。
 const DEFAULT_ITEMS := {
-	UnitKind.Role.VANGUARD: Equipment.Id.IRON_SHIELD,
-	UnitKind.Role.RAIDER: Equipment.Id.SPEED_BOOTS,
+	UnitKind.Role.VANGUARD: [Equipment.Id.DRAGON_SCALE, Equipment.Id.IRON_SHIELD],
+	UnitKind.Role.RAIDER: [Equipment.Id.JET_PACK, Equipment.Id.SPEED_BOOTS],
 }
 ## 会話の行の、知らせ（話し手の名前の札を灰色にする。「飛ばす」でも飛ばさない。talk_screen.gd）。名前は notice_name()。
 const NOTICE_SIDE := 2
@@ -299,7 +302,7 @@ class Unlocked:
 		budget += episode.budget_up
 
 	## 話 episode のクリアで、これより新しく増えるものの知らせ（増えるものが無ければ空）。
-	## 1 つが {"text": 文} で、駒なら "kind" も持つ（会話の場面が、文の左に駒のアイコンを出す）。
+	## 1 つが {"text": 文} で、駒なら "kind"、持ち物なら "item" も持つ（会話の場面が、文の左に駒・持ち物のアイコンを出す）。
 	func news_of(episode: Episode) -> Array[Dictionary]:
 		var lines: Array[Dictionary] = []
 		for kind: UnitKind.Id in episode.unlock_kinds:
@@ -307,7 +310,7 @@ class Unlocked:
 				lines.append({"text": Text.t("story.news.unit", {"unit": Names.kind(kind)}), "kind": kind})
 		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
-				lines.append({"text": Text.t("story.news.item", {"item": Names.item(item)})})
+				lines.append({"text": Text.t("story.news.item", {"item": Names.item(item), "effect": DeckText.equipment_effect(item)}), "item": item})
 		var more := episode.budget_up
 		if more > 0:
 			lines.append({"text": Text.t("story.news.budget", {"budget": budget + more})})
@@ -388,7 +391,7 @@ static func offered_items(of_campaign: Campaign) -> Array[Equipment.Id]:
 
 ## 使えるもの given の、ストーリーの既定の編成。初めて遊ぶ人が出撃準備で見て納得できる、素直な形にする:
 ## 1. 雇える駒を、役割の順（前衛・後衛・奇襲・回復）に 1 体ずつ、数の上限まで繰り返して雇う（予算に収まるかぎり。まんべんなく）
-## 2. 余った予算で、前衛にアイアンシールド、奇襲にスピードブーツを、1 体に 1 つまで持たせる（持たせられる装備だけ）
+## 2. 余った予算で、役割ごとの既定の持ち物（DEFAULT_ITEMS。前衛に盾、奇襲にブーツ、など）を、1 体に 1 つまで持たせる（持たせられる装備だけ）
 ## 並びは役割の順（同じ種類はまとめる）。並びの順に初期位置へ置かれるので、前衛が前に出る。
 static func default_deck(given: Unlocked) -> Deck:
 	var rules := rules_of(given)
@@ -407,11 +410,19 @@ static func default_deck(given: Unlocked) -> Deck:
 	hired.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool: return roster.find(a) < roster.find(b))
 	for kind in hired:
 		deck.add(kind)
-	for entry in deck.entries:
-		var item := DEFAULT_ITEMS.get(UnitKind.role(entry.kind), -1) as int
-		if item != -1 and rules.allows_item(item as Equipment.Id) and deck.total_cost() + Equipment.cost(item as Equipment.Id) <= deck.budget():
-			entry.equip(item as Equipment.Id)
+	equip_defaults(deck)
 	return deck
+
+
+## 部隊 deck の駒に、並びの順に、既定の持ち物（DEFAULT_ITEMS）を 1 体に 1 つまで持たせる（決まりで持たせられ、その駒が持てて、コストが収まるものだけ）。
+## 既定の編成と、話の敵の強さを測る道具の、局ごとに変える部隊（tools/cpu_matches.gd の --squads=random）が使う。
+static func equip_defaults(deck: Deck) -> void:
+	for entry in deck.entries:
+		for item: Equipment.Id in DEFAULT_ITEMS.get(UnitKind.role(entry.kind), []):
+			if deck.rules.allows_item(item) and Equipment.can_add(entry.kind, entry.equipment, item) \
+					and deck.total_cost() + Equipment.cost(item) <= deck.budget():
+				entry.equip(item)
+				break
 
 
 ## 物語 of_campaign（省けば最初の物語）の、まだ何もクリアしていないときに使えるもの。

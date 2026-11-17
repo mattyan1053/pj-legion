@@ -13,6 +13,7 @@ look = crystal_forest
 music = battle_tense
 
 [unlock]
+item = shadow_cloak
 budget = 2
 
 [ally]

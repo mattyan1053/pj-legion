@@ -52,6 +52,11 @@ static func trait_text(of_trait: Evolution.Trait) -> String:
 	return Text.t("trait." + word(Evolution.Trait, of_trait), {"heal": Evolution.REGENERATION_HEAL})
 
 
+## 特性の短い名前（持ち物の効果の 1 行に並べる。「森歩き」「毎ターン 5 回復」）。
+static func trait_short(of_trait: Evolution.Trait) -> String:
+	return Text.t("trait." + word(Evolution.Trait, of_trait) + ".short", {"heal": Evolution.REGENERATION_HEAL})
+
+
 ## 盤の上の効果の名前。
 static func field_effect(type: FieldEffect.Type) -> String:
 	return Text.t("field_effect." + word(FieldEffect.Type, type))
