@@ -273,6 +273,7 @@ func _end() -> void:
 				await app.go(SceneFlow.TITLE)
 			await _visit_story(app)
 			await _visit_second_campaign(app)
+			await _visit_item_rows(app)
 		await _nudge_screen_size()
 	if _failures.is_empty():
 		_finish("autoplay: OK", 0)
@@ -2114,6 +2115,44 @@ func _visit_second_campaign(app: Node) -> void:
 	app.current_scene().press_back()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.TITLE, "物語を選ぶ場面の「タイトルへ戻る」で、タイトルへ戻らない")
+
+
+## 部隊編成の持ち物の欄: どの物語でも、解放の前と全部の解放のあとで、どの駒を選んでも、持ち物を持たせても、
+## 名前・コスト・持たせられない理由（「未解放」「1 体 1 個まで」「後衛専用」など）が切れずに読める。ストーリーの記録は、終わったら戻す。
+func _visit_item_rows(app: Node) -> void:
+	var story: RefCounted = app.context.story
+	var kept: Dictionary = story.to_data()
+	for campaign: RefCounted in Story.campaigns():
+		for unlock_all: bool in [false, true]:
+			story.load_data({})
+			story.choose_campaign(campaign)
+			if unlock_all:
+				for episode: RefCounted in campaign.episodes:
+					story.clear(episode.id)
+			await app.go(SceneFlow.DECKS)
+			var screen: Node = app.current_scene()
+			screen.set_mode(campaign.rules_id)
+			screen.press_new()
+			for kind: UnitKind.Id in screen.editing_deck().available_kinds():
+				screen.hire(kind)
+			for index: int in screen.editing_deck().entries.size():
+				screen.select_entry(index)
+				await app.get_tree().process_frame
+				await app.get_tree().process_frame
+				_expect(screen.item_row_cut_texts().is_empty(), "持ち物の欄の文が切れている（%s、%s）: %s" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), screen.item_row_cut_texts()])
+				for item: Equipment.Id in screen.editing_deck().rules.items():
+					screen.equip(item)
+					await app.get_tree().process_frame
+					await app.get_tree().process_frame
+					_expect(screen.item_row_cut_texts().is_empty(), "持ち物を持たせたら、持ち物の欄の文が切れた（%s、%s、%s）: %s" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), Names.item(item), screen.item_row_cut_texts()])
+					screen.unequip(item)
+			if not unlock_all:
+				screen.select_entry(0)
+				var effects: Dictionary = screen.item_row_effects()
+				for item: Equipment.Id in effects:
+					_expect(screen.editing_deck().rules.allows_item(item) or (effects[item] as String).begins_with("未解放"), "まだ持たせられない持ち物に「未解放」が出ない: %s" % effects[item])
+	story.load_data(kept)
+	await app.go(SceneFlow.TITLE)
 
 
 ## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
