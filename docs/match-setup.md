@@ -1,7 +1,7 @@
 # 対戦設定
 
 コード: `rules/match_setup.gd`（`MatchSetup`）。テスト: `tests/rules/test_match_setup.gd`。
-場面の遷移（タイトル、ステージ選択、部隊編成、決着の画面）は画面の話なので、ここには無い（`docs/scene-flow.md`、`docs/deck-screen.md`）。
+場面の遷移（タイトル、マップ選択、部隊編成、決着の画面）は画面の話なので、ここには無い（`docs/scene-flow.md`、`docs/deck-screen.md`）。
 
 ## 持つもの
 
@@ -22,9 +22,9 @@
   軍ごとの既定の編成 `MatchSetup.default_deck(軍)`（中身は CPU の編成と同じ。コスト上限どおり）。ストーリーでは、出撃準備で選んだ部隊か、ストーリーの既定の編成（`docs/story.md`）。
 - 人と CPU の対戦は `MatchSetup.on_scenario(戦いの定義, 種, 人のプレイヤー, 人の編成, CPU の軍)` から作る（どのモードもここを通す）。
   CPU の側の部隊を戦いの定義が決め打ちにしていれば（ストーリーの話の敵）、CPU の編成は作らない（CPU の軍は要らない）。
-- よく使う組み合わせ: `MatchSetup.versus_cpu(ステージ, 種, 人の編成, CPU の軍, 人のプレイヤー)`（`on_scenario` に対戦モードのステージの戦いの定義を渡す）、
-  `MatchSetup.versus_human(ステージ, 種, 先手の編成, 後手の編成)`（`MatchSetup.humans_on(戦いの定義, 種, 先手の編成, 後手の編成)` に対戦モードのステージの戦いの定義を渡す。人どうしは、どのモードも `humans_on` を通す）。どちらも、戦いの定義は対戦モードのそのステージ（`Scenario.versus`）。
-  ステージの名前（中央平原・迷宮回廊・双子結晶）は画面の文の表（`game/names.gd` の `stage`。`docs/text.md`）。ルールは持たない。
+- よく使う組み合わせ: `MatchSetup.versus_cpu(マップ, 種, 人の編成, CPU の軍, 人のプレイヤー)`（`on_scenario` に対戦モードのマップの戦いの定義を渡す）、
+  `MatchSetup.versus_human(マップ, 種, 先手の編成, 後手の編成)`（`MatchSetup.humans_on(戦いの定義, 種, 先手の編成, 後手の編成)` に対戦モードのマップの戦いの定義を渡す。人どうしは、どのモードも `humans_on` を通す）。どちらも、戦いの定義は対戦モードのそのマップ（`Scenario.versus`）。
+  マップの名前（中央平原・迷宮回廊・双子結晶）は画面の文の表（`game/names.gd` の `stage`。`docs/text.md`）。ルールは持たない。
 - 読むもの: `is_cpu(プレイヤー)`、`cpu_sides()`（CPU が動かすプレイヤー番号の並び。小さい順）、
   `deck_of(プレイヤー)`（対戦に出す編成。決め打ちの部隊があればそれ、無ければ選んだ編成）、
   `army_of(プレイヤー)`（`deck_of` の軍。編成が無ければ `Army.NONE`）。

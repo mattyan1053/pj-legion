@@ -10,11 +10,11 @@ static func ending(of: BattleStats.Ending) -> String:
 
 
 ## 全体の 1 行、陣営ごとの 2 行（数と MVP）。side_names はプレイヤー番号ごとの名前。
-static func text(stats: BattleStats, stage_name: String, side_names: Array[String]) -> String:
+static func text(stats: BattleStats, map_name: String, side_names: Array[String]) -> String:
 	var lines: Array[String] = []
 	var head := Text.t("stats.head", {"turns": stats.turns, "ending": ending(stats.ending)})
-	if stage_name != "":
-		head = Text.t("stats.head_stage", {"stage": stage_name, "turns": stats.turns, "ending": ending(stats.ending)})
+	if map_name != "":
+		head = Text.t("stats.head_map", {"map": map_name, "turns": stats.turns, "ending": ending(stats.ending)})
 	lines.append(head)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		lines.append("")

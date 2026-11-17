@@ -21,7 +21,7 @@ const BUTTON_PRIMARY := &"ButtonPrimary"
 const BUTTON_DANGER := &"ButtonDanger"
 ## 板の上に並ぶ、枠の無い行のボタン（一覧の行、メニューの項目）。
 const BUTTON_ROW := &"ButtonRow"
-## カードのボタン（ステージ、話）。
+## カードのボタン（マップ、話）。
 const BUTTON_CARD := &"ButtonCard"
 
 ## ダイアログやメニューの板（ほぼ不透明、太い縁、影）。
@@ -46,7 +46,7 @@ const LABEL_DIM := &"LabelDim"
 
 const FONT_SIZE := 16
 const CORNER := 6
-## 横に送れるカードの段の、左右の端の余白（ステージ選択・話の一覧。送り切ったときもカードが画面の端に付かない）。
+## 横に送れるカードの段の、左右の端の余白（マップ選択・話の一覧。送り切ったときもカードが画面の端に付かない）。
 const SCROLL_ROW_EDGE := 16
 
 

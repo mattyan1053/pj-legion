@@ -12,14 +12,14 @@ func test_starts_at_the_title() -> void:
 
 
 func test_goes_title_stage_setup_battle_and_back() -> void:
-	assert_eq(SceneFlow.next(&"title", &"start"), &"stage")
-	assert_eq(SceneFlow.next(&"stage", &"pick"), &"setup")
-	assert_eq(SceneFlow.next(&"stage", &"back"), &"title")
+	assert_eq(SceneFlow.next(&"title", &"start"), &"map_select")
+	assert_eq(SceneFlow.next(&"map_select", &"pick"), &"setup")
+	assert_eq(SceneFlow.next(&"map_select", &"back"), &"title")
 	assert_eq(SceneFlow.next(&"setup", &"start"), &"", "対戦は、表ではなく流れ（match_choice.gd の run）で始める")
 	assert_eq(MatchChoice.new().run().scene(), &"battle")
-	assert_eq(SceneFlow.next(&"setup", &"back"), &"stage", "対戦設定から 1 つ戻ると、ステージ選択")
+	assert_eq(SceneFlow.next(&"setup", &"back"), &"map_select", "対戦設定から 1 つ戻ると、マップ選択")
 	assert_eq(SceneFlow.next(&"battle", &"setup"), &"setup")
-	assert_eq(SceneFlow.next(&"battle", &"stage"), &"stage", "対戦の途中の対戦設定の「ステージを選び直す」")
+	assert_eq(SceneFlow.next(&"battle", &"map_select"), &"map_select", "対戦の途中の対戦設定の「マップを選び直す」")
 	assert_eq(SceneFlow.next(&"battle", &"title"), &"title", "どの場面からもタイトルへ戻れる")
 	assert_eq(SceneFlow.next(&"setup", &"title"), &"title")
 

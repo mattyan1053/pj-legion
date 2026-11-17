@@ -9,4 +9,4 @@
   - `wall_broken` / `wall_half` / `column` / `rubble_large` / `rubble_half` / `barrier_column`: 迷宮回廊の盤の外の、崩れた石組み
   - `*_dungeon_texture.png`: 各 `.glb` に埋め込まれたテクスチャを、Godot の取り込みが書き出したもの（中身はどれも同じ `dungeon_texture.png`）
 
-どこにどう置くかは `game/stage_look.gd`（ステージの見た目）で決めている。
+どこにどう置くかは `game/stage_look.gd`（マップの見た目）で決めている。
