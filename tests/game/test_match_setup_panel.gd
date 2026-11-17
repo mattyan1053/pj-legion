@@ -85,7 +85,7 @@ func test_random_side_labels_the_rows_by_who_plays() -> void:
 	panel.free()
 
 
-## 対戦の途中で開いたら、押すと対戦が終わるボタン（ステージを選び直す・新しい対戦を始める）は 2 回押させる。
+## 対戦の途中で開いたら、押すと対戦が終わるボタン（マップを選び直す・新しい対戦を始める）は 2 回押させる。
 ## 1 回目はボタンが「もう一度押す」になって理由を下に出し、直後の 2 回目は受けない。選び直すと確かめはやめる。
 ## 対戦の途中でなければ（対戦設定の場面、決着のあと）、1 回で進む。
 func test_buttons_that_end_the_battle_ask_twice_in_a_battle() -> void:
@@ -97,8 +97,8 @@ func test_buttons_that_end_the_battle_ask_twice_in_a_battle() -> void:
 	var started := [0]
 	var staged := [0]
 	panel.start_pressed.connect(func(_choice: RefCounted) -> void: started[0] += 1)
-	panel.stage_pressed.connect(func(_choice: RefCounted) -> void: staged[0] += 1)
-	for press: StringName in [&"press_start", &"press_stage"]:
+	panel.map_pressed.connect(func(_choice: RefCounted) -> void: staged[0] += 1)
+	for press: StringName in [&"press_start", &"press_map"]:
 		var count: Array = started if press == &"press_start" else staged
 		panel.open(MatchChoice.new(), true, true)
 		panel.call(press)

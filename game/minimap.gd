@@ -1,12 +1,12 @@
 extends Control
 ## 対戦の画面のミニマップ（docs/minimap.md）。盤の縮図、駒の点、目印、カメラが見ている範囲を描き、
 ## クリックとドラッグで、その場所を知らせる（カメラを動かすのは呼ぶ側）。
-## 置き場所・座標・見ている範囲の計算は minimap_geometry.gd、地面の塗り分けは stage_card_map.gd（ステージ選択のカードと同じ）。
+## 置き場所・座標・見ている範囲の計算は minimap_geometry.gd、地面の塗り分けは map_card.gd（マップ選択のカードと同じ）。
 
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const Geometry := preload("res://game/minimap_geometry.gd")
-const StageCardMap := preload("res://game/stage_card_map.gd")
+const MapCard := preload("res://game/map_card.gd")
 const UnitView := preload("res://game/unit_view.gd")
 
 ## ミニマップの上で押した・押したまま動かした。point は盤の座標（x / z）。
@@ -43,7 +43,7 @@ func _init() -> void:
 func show_board(board: Board, look_name: StringName) -> void:
 	_board = board
 	var px := Geometry.cell_px(board.size)
-	_texture = ImageTexture.create_from_image(StageCardMap.draw(board, look_name, team_colors, px, false))
+	_texture = ImageTexture.create_from_image(MapCard.draw(board, look_name, team_colors, px, false))
 	size = Geometry.map_size(board.size)
 	_dots.clear()
 	_view = PackedVector2Array()
@@ -94,11 +94,11 @@ func _draw() -> void:
 	draw_texture(_texture, Vector2.ONE * Geometry.PADDING, Color(1, 1, 1, MAP_ALPHA))
 	# 目印（対戦の途中で消えるもの（樽）もあるので、盤から毎回読む）。
 	for cell in _board.spring_cells:
-		draw_rect(_cell_rect(cell, px, 0.2), StageCardMap.COLOR_SPRING)
+		draw_rect(_cell_rect(cell, px, 0.2), MapCard.COLOR_SPRING)
 	for cell: Vector2i in _board.portal_exits:
-		draw_arc(_center(cell), px * 0.42, 0.0, TAU, 12, StageCardMap.COLOR_PORTAL, maxf(1.0, px * 0.3))
+		draw_arc(_center(cell), px * 0.42, 0.0, TAU, 12, MapCard.COLOR_PORTAL, maxf(1.0, px * 0.3))
 	for cell in _board.barrel_cells:
-		draw_circle(_center(cell), px * 0.32, StageCardMap.COLOR_BARREL)
+		draw_circle(_center(cell), px * 0.32, MapCard.COLOR_BARREL)
 	# 駒（中ボスは最後に、大きな菱形で）。
 	for boss: bool in [false, true]:
 		for dot: Array in _dots:
@@ -108,7 +108,7 @@ func _draw() -> void:
 			if boss:
 				var r := px * BOSS_RADIUS
 				var diamond := PackedVector2Array([at + Vector2(0, -r), at + Vector2(r, 0), at + Vector2(0, r), at + Vector2(-r, 0)])
-				draw_colored_polygon(diamond, StageCardMap.COLOR_MID_BOSS)
+				draw_colored_polygon(diamond, MapCard.COLOR_MID_BOSS)
 				diamond.append(diamond[0])
 				draw_polyline(diamond, COLOR_DOT_EDGE, 1.0)
 			else:

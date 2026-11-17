@@ -1,9 +1,9 @@
 extends "res://game/battle_source.gd"
 ## 対戦設定画面（match_setup_panel.gd）で選ぶもの。選んだものから、ルールの対戦設定（MatchSetup）を作る。
-## 対戦モードの対戦の画面に渡すもの（battle_source.gd）でもある。ステージを替えてやり直せ、相手を切り替えられ、
+## 対戦モードの対戦の画面に渡すもの（battle_source.gd）でもある。マップを替えてやり直せ、相手を切り替えられ、
 ## 対戦の途中で対戦設定のパネルを開ける。
 ##
-## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ（versus_fields.gd の鍵。生成のステージか手で作ったマップ）、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
+## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、マップ（versus_fields.gd の鍵。生成のマップか手で作ったマップ）、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
 ## 部隊は、人の行も CPU の行も同じ選び方: 軍ごとの既定の編成（部隊の id が空のとき。人なら MatchSetup.default_deck、CPU なら CPU の編成（CpuDeck）。中身は同じ）、
 ## 取っておいた部隊（deck_library.gd）、ランダム編成（RANDOM。対戦を作るたびに、対戦の種から決まりの中でランダムに組む。random_squad.gd）。
 ## ここはノードに依存しない（テストから呼べる）。
@@ -16,7 +16,7 @@ const RandomSquad := preload("res://game/random_squad.gd")
 ## 部隊の id の「ランダム編成」（取っておいた部隊の id と重ならない）。
 const RANDOM := "@random"
 
-## ステージ（対戦モードで選べる盤の鍵。versus_fields.gd）。
+## マップ（対戦モードで選べる盤の鍵。versus_fields.gd）。
 var field: StringName = VersusFields.DEFAULT
 ## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。
 var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
@@ -70,7 +70,7 @@ func set_cpu_opponent(cpu: bool) -> void:
 	cpu_opponent = cpu
 
 
-## 「新しい盤面」で選べるステージ: 生成のステージ（ステージ選択のカードと同じ並び）。
+## 「新しい盤面」で選べるマップ: 生成のマップ（マップ選択のカードと同じ並び）。
 ## 手で作ったマップは、種を替えても同じ形なので入れない（同じマップは「同じ盤面でもう一度」、ほかのマップは対戦設定から）。
 func new_board_fields() -> Array[StringName]:
 	return VersusFields.generated_ids()
@@ -84,10 +84,16 @@ func can_open_setup() -> bool:
 	return true
 
 
+## 決着の画面の、流れの外への行き先はマップ選択（別のマップで遊ぶ。タイトルへはシステムメニューから）。
+func leave() -> Array:
+	return [&"map_select", "result.to_map_select"]
+
+
 ## この選択で始める流れ（run.gd）: 対戦の場面 1 つ。対戦の場面には、この選択の写しを渡す
-## （対戦の途中でステージや相手を替えても、対戦設定の場面に戻ったときの選択は変えない）。
+## （対戦の途中でマップや相手を替えても、対戦設定の場面に戻ったときの選択は変えない）。
 func run() -> Run:
 	var battle_run := Run.new()
+	battle_run.menu_exits = [[SceneFlow.MAP_SELECT, "map_select.resume", "menu.to_map_select.confirm"]]
 	battle_run.add(SceneFlow.BATTLE, copy())
 	return battle_run
 
@@ -198,7 +204,7 @@ func copy() -> RefCounted:
 	return other
 
 
-## この選択で、種 battle_seed の対戦設定を作る。戦いの定義は、選んだステージの対戦モードのもの（versus_fields.gd）。
+## この選択で、種 battle_seed の対戦設定を作る。戦いの定義は、選んだマップの対戦モードのもの（versus_fields.gd）。
 ## 手番が「ランダム」なら、ここで種から引いた側を drawn_side に入れる（cpu_side() がそれを返す）。
 func to_setup(battle_seed: int) -> MatchSetup:
 	var defined := VersusFields.scenario_of(field)

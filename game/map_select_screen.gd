@@ -1,12 +1,12 @@
 extends Node
-## ステージ選択の場面（タイトルの「対戦」のあと、対戦設定の前）。カードから、戦うステージを選ぶ（docs/stage-select.md）。
-## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。選べるステージの一覧は versus_fields.gd。
+## マップ選択の場面（タイトルの「対戦」のあと、対戦設定の前）。カードから、戦うマップを選ぶ（docs/map-select.md）。
+## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。選べるマップの一覧は versus_fields.gd。
 ##
-## - カードは 2 段: 上の段が生成のステージ（毎回形が変わる）、下の段が手で作ったマップ（いつも同じ形）。
+## - カードは 2 段: 上の段が生成のマップ（毎回形が変わる）、下の段が手で作ったマップ（いつも同じ形）。
 ##   段に収まらないほど増えたら、その段を横に送れる（ホイールでも）。
-## - カードには、そのステージの盤の縮図（stage_card_map.gd。盤はルールが作る）、番号と名前、置かれているもの、形の札を載せる。
-## - マウスを乗せたカードは明るくなり、少し大きくなって、下の欄にステージの説明が出る。欄の大きさは、いちばん長い説明に合わせて固定する。
-## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだステージを context.match_choice に入れて &"pick"（対戦設定へ）。
+## - カードには、そのマップの盤の縮図（map_card.gd。盤はルールが作る）、番号と名前、置かれているもの、形の札を載せる。
+## - マウスを乗せたカードは明るくなり、少し大きくなって、下の欄にマップの説明が出る。欄の大きさは、いちばん長い説明に合わせて固定する。
+## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだマップを context.match_choice に入れて &"pick"（対戦設定へ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
 const Text := preload("res://game/text.gd")
@@ -15,7 +15,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
-const StageCardMap := preload("res://game/stage_card_map.gd")
+const MapCard := preload("res://game/map_card.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
 
@@ -30,12 +30,12 @@ const CARD_GAP := 20
 ## マウスを乗せたカードの大きさ。
 const HOVER_SCALE := 1.04
 const HOVER_TIME := 0.12
-const PROMPT := "stage.prompt"
-## 段の見出しと、カードの形の札（生成のステージ / 手で作ったマップ）。
-const ROW_GENERATED := "stage.row.generated"
-const ROW_HAND := "stage.row.hand"
-const TAG_GENERATED := "stage.tag.generated"
-const TAG_HAND := "stage.tag.hand"
+const PROMPT := "map_select.prompt"
+## 段の見出しと、カードの形の札（生成のマップ / 手で作ったマップ）。
+const ROW_GENERATED := "map_select.row.generated"
+const ROW_HAND := "map_select.row.hand"
+const TAG_GENERATED := "map_select.tag.generated"
+const TAG_HAND := "map_select.tag.hand"
 
 const COLOR_CARD := Palette.OVERLAY
 const COLOR_CARD_HOVER := Color(Palette.RAISED, 0.96)
@@ -47,7 +47,7 @@ const COLOR_TAG_GENERATED := Color("4fb8c9")
 const COLOR_TAG_HAND := Color("d9a441")
 
 var context: AppContext
-## ステージの鍵 -> カード（Button）。
+## マップの鍵 -> カード（Button）。
 var _cards := {}
 var _note_title: Label
 var _note: Label
@@ -68,11 +68,11 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
-	var heading := _label(Text.t("stage.heading"), 36)
+	var heading := _label(Text.t("map_select.heading"), 36)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
-	var sub := _label("SELECT BATTLEFIELD", 15)
+	var sub := _label("SELECT MAP", 15)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	root.add_child(sub)
 
@@ -152,7 +152,7 @@ func _card_row(fields: Array[StringName]) -> ScrollContainer:
 
 
 func resume_label() -> String:
-	return Text.t("stage.resume")
+	return Text.t("map_select.resume")
 
 
 ## field（versus_fields.gd の鍵）を選んで、対戦設定へ進む。
@@ -179,7 +179,7 @@ func hover(field: StringName) -> void:
 	_show_note(field)
 
 
-## マウスを乗せているカードのステージ（無ければ空）と、説明の欄の文字。検査用。
+## マウスを乗せているカードのマップ（無ければ空）と、説明の欄の文字。検査用。
 func hovered_field() -> StringName:
 	return _hovered
 
@@ -188,7 +188,7 @@ func note_text() -> String:
 	return _note_title.text + "\n" + _note.text
 
 
-## カードのステージの鍵（画面の並びの順）。検査用。
+## カードのマップの鍵（画面の並びの順）。検査用。
 func card_fields() -> Array[StringName]:
 	var fields: Array[StringName] = []
 	fields.assign(_cards.keys())
@@ -236,10 +236,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _show_note(field: StringName) -> void:
 	if field == &"":
-		_note_title.text = Text.t("stage.choose")
+		_note_title.text = Text.t("map_select.choose")
 		_note.text = Text.t(PROMPT)
 		return
-	_note_title.text = Text.t("stage.note_title", {
+	_note_title.text = Text.t("map_select.note_title", {
 		"number": VersusFields.number_of(field), "title": VersusFields.title_of(field), "tags": VersusFields.tags_of(field), "shape": _shape_tag(field),
 	})
 	_note.text = VersusFields.note_of(field)
@@ -287,7 +287,7 @@ func _build_card(field: StringName) -> Button:
 	card.add_child(row)
 	var board := VersusFields.card_board(field, MAP_SEED)
 	var map := TextureRect.new()
-	map.texture = ImageTexture.create_from_image(StageCardMap.draw(board, VersusFields.look_of(field), BattleScreen.TEAM_COLORS))
+	map.texture = ImageTexture.create_from_image(MapCard.draw(board, VersusFields.look_of(field), BattleScreen.TEAM_COLORS))
 	map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	map.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -311,7 +311,7 @@ func _build_card(field: StringName) -> Button:
 	return card
 
 
-## 形の札（生成のステージは「毎回ちがう形」、手で作ったマップは「いつも同じ形」）。
+## 形の札（生成のマップは「毎回ちがう形」、手で作ったマップは「いつも同じ形」）。
 func _shape_chip(field: StringName) -> PanelContainer:
 	var color := COLOR_TAG_GENERATED if VersusFields.is_generated(field) else COLOR_TAG_HAND
 	var style := StyleBoxFlat.new()

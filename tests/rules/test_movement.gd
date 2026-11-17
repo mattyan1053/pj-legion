@@ -247,12 +247,12 @@ func test_search_matches_the_plain_reference_search() -> void:
 			battle.add_unit(kinds[i % kinds.size()], (i % 2) as Unit.Side, cell)  # 置けないマスなら置かれないだけ
 		for cell: Vector2i in battle.board.portal_exits.keys().slice(0, 2):
 			battle.add_unit(UnitKind.Id.COMMANDO, P1, cell)  # ポータルの上から始まる駒と、ふさがった行き先
-		assert_true(battle.units.size() >= 6, "ステージ %d に駒を置けていない" % stage)
+		assert_true(battle.units.size() >= 6, "マップ %d に駒を置けていない" % stage)
 		for unit in battle.units:
 			for cruise: bool in [false, true]:
 				var found := Movement.search(battle, unit, cruise)
 				var expected := _reference_search(battle, unit, Movement.budget(unit, cruise))
-				var message := "ステージ %d の %s（巡航 %s）" % [stage, unit.cell, cruise]
+				var message := "マップ %d の %s（巡航 %s）" % [stage, unit.cell, cruise]
 				assert_eq(found.cost.size(), expected["cost"].size(), message)
 				assert_eq(found.parent.size(), expected["parent"].size(), message)
 				for cell: Vector2i in expected["cost"]:
