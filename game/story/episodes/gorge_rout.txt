@@ -11,6 +11,7 @@
 title = 渓谷の掃討
 map = crystal_gorge
 look = crystal_forest
+music = battle_rout
 wins = routed
 
 [unlock]
