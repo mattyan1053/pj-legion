@@ -27,7 +27,7 @@ var win_conditions: Array[Array] = [STANDARD_WIN_CONDITIONS.duplicate(), STANDAR
 ## 0 なら守り切るは働かない。対戦を作るとき、対戦（Battle.hold_turns）へ写す。
 var hold_turns := 0
 ## プレイヤーごとの、対戦の始めの必殺技のゲージ（0 から Ults.GAUGE_MAX。docs/tactical-ult.md）。
-## 対戦モードの定義（versus、on_map）は、先手だけ Ults.FIRST_PLAYER_START_GAUGE から（先手の埋め合わせ）。
+## 対戦モードの定義（versus、on_map）は、先手だけ Ults.FIRST_PLAYER_START_GAUGE から（いまは 0）。
 ## 対戦を作るとき、対戦（Battle.ult_gauge）へ写す。ストーリーの話は、話の start_gauge で置き換える（ふつうは 0）。
 var start_gauge: Array[int] = [0, 0]
 ## プレイヤーごとの、駒の始めのレベルと経験値（[レベル, 経験値] の列。部隊の並びの順に、将でない駒へ当てる）。
