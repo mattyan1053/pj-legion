@@ -91,7 +91,7 @@ setup.who.you,あなた
 setup.who_side,{who}・{turn}
 setup.deck.default,既定の編成（コスト {cost} / {budget}）
 setup.deck.cpu,CPU の編成（コスト {cost} / {budget}）
-setup.deck.random,おまかせ（毎回ちがう編成）
+setup.deck.random,ランダム編成（毎回ちがう部隊）
 setup.deck.random_note,対戦開始で決まる
 setup.deck.saved,{name}（コスト {cost} / {budget}）
 setup.deck.unplayable,{name}（出撃不可: {issue}）
