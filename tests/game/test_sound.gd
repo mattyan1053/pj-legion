@@ -75,6 +75,40 @@ func test_story_music_comes_from_the_episode() -> void:
 	assert_eq(StoryBattle.new(hold, null).music(), &"battle_tense", "守り切る話は、緊迫した曲")
 
 
+func test_battle_tracks_are_loops_apart_from_the_menu() -> void:
+	var calm: Array[StringName] = [&"menu", &"talk"]
+	for track: StringName in Catalog.MUSIC:
+		if String(track).begins_with("battle"):
+			assert_true(Catalog.MUSIC[track]["loop"], "対戦の曲はループする（%s）" % track)
+			for other in calm:
+				assert_ne(Catalog.MUSIC[track]["path"], Catalog.MUSIC[other]["path"], "対戦の曲は、メニュー・会話の曲と別（%s）" % track)
+	assert_true(Catalog.has_music(Catalog.CLIMAX_MUSIC), "終盤の曲が表にある")
+
+
+func _versus_battle() -> Battle:
+	var setup := MatchSetup.versus_human(
+		BoardGenerator.Stage.PLAIN, 1, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY)
+	)
+	return setup.create_battle()
+
+
+func test_climax_starts_when_either_king_is_down_to_half() -> void:
+	var battle := _versus_battle()
+	var kings := Catalog.kings_of(battle)
+	assert_eq(kings.size(), 2, "両陣営の将")
+	assert_false(Catalog.climax_reached(battle, kings), "始めは終盤でない")
+	for id in kings:
+		var check := _versus_battle()
+		var king := check.unit_by_id(id)
+		king.hp = int(king.max_hp() * Catalog.CLIMAX_KING_HP) + 1
+		assert_false(Catalog.climax_reached(check, kings), "半分より上なら、まだ")
+		king.hp = int(king.max_hp() * Catalog.CLIMAX_KING_HP)
+		assert_true(Catalog.climax_reached(check, kings), "どちらの将でも、半分以下で終盤（陣営 %d）" % king.side)
+	var gone := _versus_battle()
+	gone.units.erase(gone.unit_by_id(kings[0]))
+	assert_true(Catalog.climax_reached(gone, kings), "将がいなくなっても終盤")
+
+
 func test_music_for_falls_back_to_the_scene_table() -> void:
 	assert_eq(SceneFlow.music_for(SceneFlow.TITLE, null), &"menu")
 	assert_eq(SceneFlow.music_for(SceneFlow.TALK, {"music": &""}), &"talk", "空の名前なら、場面の表の曲")

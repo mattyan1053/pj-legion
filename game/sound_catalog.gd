@@ -12,22 +12,37 @@ extends RefCounted
 ## - volume_db: 曲ごとの大きさの釣り合い（設定の音量の前に掛ける）。
 ## - 大きさは、曲の平均の大きさ（EBU R128 の積分ラウドネス）を測ってそろえた。対戦の曲は -21.5 LUFS、会話の曲は -20 LUFS ほどに
 ##   なるように（volume_db = ねらい - 測った値）。耳では確かめていない。
+## - メニューと会話は落ち着いた曲（RandomMind の中世の連作）、対戦は戦いの曲（オーケストラ。assets/audio/oga-battle/）。
+##   対戦の曲を差し替えるときは、path を替えるだけ（次点の曲は assets/audio/oga-battle/README.md）。
 const StageLook := preload("res://game/stage_look.gd")
 const MUSIC := {
 	&"menu": {"path": "res://assets/audio/randommind/medieval_exploration.ogg", "loop": true, "volume_db": -8.0},
-	## 対戦（草原。明るい踊りの曲）。盤の見た目が分からないときの対戦の曲も、これ。
-	&"battle": {"path": "res://assets/audio/randommind/medieval_minstrel_dance_loop.ogg", "loop": true, "volume_db": -9.0},
-	## 対戦（石の遺跡）。
-	&"battle_ruins": {"path": "res://assets/audio/randommind/medieval_the_bards_tale_loop.ogg", "loop": true, "volume_db": -9.5},
-	## 対戦（結晶の森。夜風の静かな曲）。
-	&"battle_crystal": {"path": "res://assets/audio/randommind/fantasy_rising_moon.ogg", "loop": true, "volume_db": -7.5},
-	## 緊迫した戦い（ストーリーの守り切る話など。話のファイルの music で選ぶ）。
-	&"battle_tense": {"path": "res://assets/audio/randommind/medieval_battle.ogg", "loop": true, "volume_db": -8.0},
+	## 対戦（草原。弦と金管の勇ましい戦いの曲）。盤の見た目が分からないときの対戦の曲も、これ。
+	&"battle": {"path": "res://assets/audio/oga-battle/battle_theme_a_loop.ogg", "loop": true, "volume_db": -11.0},
+	## 対戦（石の遺跡。重く暗い 3 拍子の戦いの曲）。
+	&"battle_ruins": {"path": "res://assets/audio/oga-battle/great_labyrinth.ogg", "loop": true, "volume_db": -10.0},
+	## 対戦（結晶の森。打楽器の刻みが続く、異国風の戦いの曲）。
+	&"battle_crystal": {"path": "res://assets/audio/oga-battle/sigil.ogg", "loop": true, "volume_db": -4.0},
+	## 守り切る戦い（弦の速い刻みと金管。時間に追われる曲）。話のファイルの music で選ぶ。
+	&"battle_tense": {"path": "res://assets/audio/oga-battle/determined_pursuit_loop.ogg", "loop": true, "volume_db": -8.5},
+	## 中ボスを倒す戦い（巨大な魔物に挑む曲）。
+	&"battle_boss": {"path": "res://assets/audio/oga-battle/the_fire_dragon_loop.ogg", "loop": true, "volume_db": -8.0},
+	## 敵を全滅させる戦い（攻め込む行進の曲。4 分あり、途中で形が変わる）。
+	&"battle_rout": {"path": "res://assets/audio/oga-battle/qazijamjam.ogg", "loop": true, "volume_db": -8.5},
+	## 魔物（骸骨の軍）との戦い（不気味な行進の曲）。
+	&"battle_undead": {"path": "res://assets/audio/oga-battle/the_march_of_devils_dome.ogg", "loop": true, "volume_db": -10.0},
+	## 終盤（どちらかの将の HP が半分を切った）。対戦の途中で、この曲へフェードで替わる（CLIMAX_MUSIC）。
+	&"battle_climax": {"path": "res://assets/audio/oga-battle/epic_boss_battle_loop.ogg", "loop": true, "volume_db": -14.5},
 	## ストーリーの会話。
 	&"talk": {"path": "res://assets/audio/randommind/medieval_the_old_tower_inn_loop.ogg", "loop": true, "volume_db": -2.5},
 	&"victory": {"path": "res://assets/audio/randommind/medieval_victory_theme.ogg", "loop": false, "volume_db": -6.0},
 	&"defeat": {"path": "res://assets/audio/randommind/medieval_defeat_theme.ogg", "loop": false, "volume_db": -6.0},
 }
+
+## 終盤の曲。対戦の途中で、どちらかの将の HP が CLIMAX_KING_HP（最大 HP に対する割合）以下になったら（倒れたときも）、
+## この曲へ替わる（battle_screen.gd）。戻らない。新しい対戦を始めると、その対戦の曲に戻る。
+const CLIMAX_MUSIC := &"battle_climax"
+const CLIMAX_KING_HP := 0.5
 
 ## 効果音。
 ## - path: 素材。volume_db: 音ごとの大きさ（操作の音は控えめに、BGM の下に置く）。
@@ -103,6 +118,27 @@ const LOOK_MUSIC := {
 ## 盤の見た目 look_name の対戦の曲。
 static func battle_music(look_name: StringName) -> StringName:
 	return LOOK_MUSIC.get(look_name, &"battle")
+
+
+## 対戦の初めの将（両陣営の UnitKind.Id.KING）の番号。終盤の判定（climax_reached）に渡す。
+static func kings_of(battle: Battle) -> Array[int]:
+	var ids: Array[int] = []
+	for unit in battle.units:
+		if unit.kind == UnitKind.Id.KING and unit.side != Unit.Side.NEUTRAL:
+			ids.append(unit.id)
+	return ids
+
+
+## 終盤に入ったか: 初めにいた将（king_ids）のどれかの HP が、最大 HP の CLIMAX_KING_HP 以下になった（倒れたときも）。
+## どちらの将かは問わない（曲が形勢を告げないように）。決着がついたあとは偽（決着の曲を消さない）。
+static func climax_reached(battle: Battle, king_ids: Array[int]) -> bool:
+	if battle.is_over():
+		return false
+	for id in king_ids:
+		var king := battle.unit_by_id(id)
+		if king == null or king.hp <= king.max_hp() * CLIMAX_KING_HP:
+			return true
+	return false
 
 
 static func has_music(track: StringName) -> bool:
