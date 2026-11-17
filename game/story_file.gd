@@ -133,13 +133,19 @@ func integer(entry: Dictionary, fallback := 0) -> int:
 	return text.to_int()
 
 
-## マスの列（「8,9  5,9  11,9」。x,y を空白で区切る）を読む。
+## マスの列（「8,9  5,9  11,9」。x,y を空白で区切る）を読む。x を「4-8」と書くと、その行の x が 4 から 8 までのマスを左から並べる
+## （置けるマスを広く書く。「4-8,20  2-3,12」のように 2 か所に分けてもよい）。
 func cells(entry: Dictionary) -> Array[Vector2i]:
 	var found: Array[Vector2i] = []
 	for word: String in (entry["value"] as String).split(" ", false):
 		var parts := word.split(",")
-		if parts.size() != 2 or not parts[0].strip_edges().is_valid_int() or not parts[1].strip_edges().is_valid_int():
-			problem(entry["line"], "マスは「x,y」（空白で区切る）: %s" % word)
+		var xs := parts[0].split("-") if parts.size() == 2 else PackedStringArray()
+		var ok := parts.size() == 2 and parts[1].strip_edges().is_valid_int() and xs.size() in [1, 2]
+		for x: String in xs:
+			ok = ok and x.strip_edges().is_valid_int()
+		if not ok or (xs.size() == 2 and xs[0].to_int() > xs[1].to_int()):
+			problem(entry["line"], "マスは「x,y」か「x1-x2,y」（空白で区切る）: %s" % word)
 			continue
-		found.append(Vector2i(parts[0].to_int(), parts[1].to_int()))
+		for x in range(xs[0].to_int(), xs[-1].to_int() + 1):
+			found.append(Vector2i(x, parts[1].to_int()))
 	return found

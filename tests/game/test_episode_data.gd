@@ -357,3 +357,13 @@ deploy = 8,9  5,9
 (turn 2) 隊長: 進め
 (king_half enemy) 敵将: まだだ
 """
+
+
+## 置けるマスは、x の範囲（「4-8,20」）でも書ける。2 か所に分けてもよい。
+func test_deploy_cells_read_ranges() -> void:
+	var file: RefCounted = preload("res://game/story_file.gd").parse("[x]\ndeploy = 4-6,20  2,12\n")
+	var got: Array[Vector2i] = file.cells(file.values("x", ["deploy"], ["deploy"])["deploy"][0])
+	assert_eq(got, [Vector2i(4, 20), Vector2i(5, 20), Vector2i(6, 20), Vector2i(2, 12)] as Array[Vector2i])
+	assert_true(file.problems.is_empty(), "%s" % [file.problems])
+	file.cells({"value": "6-4,1  a,1", "line": 3})
+	assert_eq(file.problems.size(), 2, "逆の範囲と、数でない x は弾く")

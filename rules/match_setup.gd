@@ -31,6 +31,9 @@ var controllers: Array[Controller] = [Controller.HUMAN, Controller.HUMAN]
 ## 予算を超えた編成も通す。集計の道具の「両軍とも同じ役割の 6 体」（tools/cpu_matches.gd の --decks=even）だけが使う。
 ## 予算のほかの検査（駒の数、装備の数、ロスター）は、これを立てても通らない。
 var ignore_budget := false
+## 人が決めた初期位置（プレイヤーごと。本陣からのずれを、編成の並びの順に。決めていない駒は Deployment.UNSET）。
+## 空なら、いつもの置き方（Deployment.deploy）。置けるマス（Deployment.zone）の外のずれは使わない。
+var placements: Array[Array] = [[], []]
 
 
 ## 戦いの定義 defined の、人（human_side）と CPU の対戦設定。人の編成は渡したもの。
@@ -151,7 +154,9 @@ func create_battle() -> Battle:
 		return null
 	var battle := Battle.new(board, battle_seed)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		var placed := Deployment.deploy(battle, side, deck_of(side), scenario.deploy_cells_of(side))
+		var placement: Array[Vector2i] = []
+		placement.assign(placements[side])
+		var placed := Deployment.deploy(battle, side, deck_of(side), scenario.deploy_cells_of(side), placement)
 		_apply_start_growth(placed, scenario.start_growth[side])
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
