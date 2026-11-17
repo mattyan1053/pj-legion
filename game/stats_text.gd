@@ -47,8 +47,21 @@ static func side_lines(stats: BattleStats, side: Unit.Side, side_name: String) -
 	var lines: Array[String] = [Text.t("stats.side", {"side": side_name, "parts": Text.t("battle.hud.separator").join(parts)})]
 	var best := stats.mvp(side)
 	if best != null:
-		lines.append(Text.t("stats.mvp", {"unit": unit_name(best), "damage": best.damage, "kills": best.kills}))
+		lines.append(Text.t("stats.mvp", {"unit": unit_name(best), "numbers": mvp_numbers(best)}))
 	return lines
+
+
+## MVP の駒の数の 1 行。敵のプレイヤーの駒へのダメージか撃破があれば、それを出す。
+## 無ければ（中ボスの撃破だけで勝った話など）、中立の駒へのダメージと撃破、回復を出す。
+static func mvp_numbers(record: BattleStats.UnitRecord) -> String:
+	if record.damage > 0 or record.kills > 0:
+		return Text.t("result.mvp_numbers", {"damage": record.damage, "kills": record.kills})
+	var parts: Array[String] = []
+	if record.neutral_damage > 0 or record.neutral_kills > 0:
+		parts.append(Text.t("result.mvp_neutral_numbers", {"damage": record.neutral_damage, "kills": record.neutral_kills}))
+	if record.healing > 0:
+		parts.append(Text.t("stats.healing", {"count": record.healing}))
+	return Text.t("battle.hud.separator").join(parts)
 
 
 ## 詳しい戦績の表の列（[鍵, 見出しの表の鍵]）。行は駒（table_rows）。

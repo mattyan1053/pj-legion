@@ -27,6 +27,8 @@ var lines: Array = []
 var mvp_name := ""
 var mvp_damage := 0
 var mvp_kills := 0
+## MVP の数の 1 行（StatsText.mvp_numbers）。
+var mvp_numbers := ""
 ## MVP の駒の種類・陣営・進化したか（アイコンに使う。mvp_name が空なら見ない）。
 var mvp_kind := UnitKind.Id.KING
 var mvp_side := Unit.Side.PLAYER1
@@ -83,6 +85,7 @@ static func of(stats: BattleStats, draw: bool, winner_side: Unit.Side, reason_te
 		summary.mvp_name = StatsText.unit_name(best)
 		summary.mvp_damage = best.damage
 		summary.mvp_kills = best.kills
+		summary.mvp_numbers = StatsText.mvp_numbers(best)
 		summary.mvp_kind = best.kind
 		summary.mvp_side = best.side
 		summary.mvp_evolved = best.evolution != Evolution.Id.NONE

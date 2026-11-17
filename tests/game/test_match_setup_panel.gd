@@ -21,6 +21,8 @@ func _long_deck() -> Deck:
 func test_the_deck_line_groups_the_same_equipment() -> void:
 	var text := DeckText.deck_summary(_long_deck())
 	assert_true(text.begins_with("将、コマンドー+アイアンシールド×2+スピードブーツ、"), text)
+	var leveled := DeckText.deck_summary(_long_deck(), [3, 1])
+	assert_true(leveled.begins_with("将、コマンドー Lv3+アイアンシールド×2+スピードブーツ、"), "始めのレベルが 1 でなければ出す: %s" % leveled)
 
 
 ## パネルの大きさは、選んだもの（軍、部隊、相手）に依らず同じ。部隊の中身は「編成を確認」で開く。

@@ -1408,6 +1408,29 @@ func _queue_auto_turn_scene() -> void:
 		_expect(mine.has_moved or mine.acted or foe.hp < foe.max_hp() or mine.cell != Vector2i(2, 3), "任せた駒が何もしなかった")
 		_expect(not _scene.is_busy() and _scene.auto_button_state()[1], "人の番（プレイヤー2）で止まらなかった"))
 
+	# 任せた側の駒が上限のレベルに届いたら、CPU は止まり、進化先は人が選ぶ。選ぶと、残りを CPU が続けてターンを終える。
+	var board2 := _small_board(Vector2i(6, 4))
+	var battle2 := Battle.new(board2)
+	battle2.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 3))
+	battle2.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(5, 0))
+	var paladin := battle2.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(2, 2))
+	paladin.level = Growth.MAX_LEVEL - 1
+	paladin.experience = Growth.EXPERIENCE_PER_LEVEL - Growth.HIT_EXPERIENCE
+	battle2.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER2, Vector2i(3, 2))
+	_scripted.append(func() -> void: _scene.start_with(battle2, StageLook.GRASSLAND, 1))
+	_scripted.append(func() -> void:
+		_scene.press_auto()
+		_scene.pass_confirm_guard()
+		_scene.press_auto()
+		_expect(_scene.auto_side() == Unit.Side.PLAYER1, "2 回目で任せなかった"))
+	_scripted.append(func() -> void:
+		_expect(battle2.phase == Unit.Side.PLAYER1 and battle2.evolving_unit() == paladin, "おまかせの途中で、進化先を選ぶ前に進んだ（か、上限に届かなかった）")
+		_expect(paladin.evolution == Evolution.Id.NONE and _scene.is_choosing_evolution(), "おまかせの途中で、進化先を CPU が選んだ")
+		_scene.choose_evolution(1))
+	_scripted.append(func() -> void:
+		_expect(paladin.evolution == Evolution.Id.CRUSADER, "選んだ進化先にならなかった")
+		_expect(battle2.phase == Unit.Side.PLAYER2 and _scene.auto_side() == -1, "進化先を選んだあと、おまかせの続きを進めなかった"))
+
 
 ## 相手（CPU）の番の早送りとスキップ。人がターンを終えると、中立のフェーズから相手の番が見ているだけの番になり、
 ## 下の帯に「早送り」「スキップ」が出る。スキップすると、自分の番が来るまで見せずに進み、盤の見た目は状態と同じになる。

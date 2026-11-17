@@ -233,6 +233,32 @@ func test_mvp_is_the_non_king_that_dealt_the_most_damage() -> void:
 	assert_eq(stats.mvp(P2), null)
 
 
+## 中ボスの撃破だけで勝つ話（敵のプレイヤーの駒に誰もダメージを与えない）でも、勝った側に MVP がいる。
+func test_mvp_falls_back_to_neutral_damage_kills_and_healing() -> void:
+	var battle := Maps.battle(["......"])
+	var king := battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 0))
+	var a := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 0))
+	var b := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(2, 0))
+	var c := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(3, 0))
+	var stats := BattleStats.new(battle)
+	stats.units[king.id].neutral_damage = 99
+	stats.units[c.id].healing = 5
+	assert_eq(stats.mvp(P1).unit_id, c.id, "回復だけでも候補（将は除く）")
+	stats.units[a.id].neutral_damage = 20
+	stats.units[b.id].neutral_damage = 12
+	stats.units[c.id].healing = 12
+	assert_eq(stats.mvp(P1).unit_id, a.id, "中立の駒へのダメージと回復の和が多いほう")
+	stats.units[b.id].neutral_damage = 12
+	stats.units[b.id].boss_kills = 1
+	stats.units[b.id].neutral_kills = 1
+	stats.units[a.id].neutral_damage = 12
+	assert_eq(stats.mvp(P1).unit_id, b.id, "和も同じなら、中ボスを倒したほう")
+	stats.units[a.id].damage = 1
+	assert_eq(stats.mvp(P1).unit_id, a.id, "敵のプレイヤーの駒へのダメージがあれば、それがいちばん先")
+	stats.units[b.id].damage = 1
+	assert_eq(stats.mvp(P1).unit_id, b.id, "敵へのダメージと撃破が同じなら、中立と回復で決める")
+
+
 ## CPU どうしの 1 局（ほかのテストと共有する。tests/support/cpu_game.gd）を最後まで数える。
 ## 陣営の合計が、駒ごとの戦績の和と合う。
 func test_side_totals_match_the_unit_records_in_a_cpu_game() -> void:
@@ -242,6 +268,17 @@ func test_side_totals_match_the_unit_records_in_a_cpu_game() -> void:
 	_assert_side_totals(stats)
 	assert_eq(stats.turns, battle.turn)
 	assert_true(stats.ending != BattleStats.Ending.NONE, "決着を数えていない")
+	# いつもの対戦（敵の駒にダメージを与えた駒がいる）では、MVP は敵へのダメージ・撃破・番号だけで決まる。
+	for side: Unit.Side in [P1, P2]:
+		var expected: BattleStats.UnitRecord = null
+		for record: BattleStats.UnitRecord in stats.records_of(side):
+			if record.kind == UnitKind.Id.KING or record.damage == 0:
+				continue
+			if expected == null or record.damage > expected.damage \
+					or (record.damage == expected.damage and record.kills > expected.kills):
+				expected = record
+		assert_true(expected != null, "この局では両方の陣営が敵にダメージを与える")
+		assert_eq(stats.mvp(side), expected, "いつもの対戦の MVP が変わった")
 
 
 ## 生成した盤面（中立の駒がいる）で、CPU どうしに 8 ターン進めて数える。盤面が大きく、時間が掛かるので長い検査に回す
