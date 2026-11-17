@@ -8,4 +8,13 @@ GODOT="${1:-godot}"
 cd "$(dirname "$0")/.."
 # 取り込みが済んでいないと、クラスの名前が引けない。
 timeout 300 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
-timeout 120 "$GODOT" --headless --path . -s res://tools/write_story_script.gd 2>&1 | grep -E "^story_script:|ERROR" || true
+# 出力は要る行だけに絞る。失敗（Godot が動かない、話のファイルの書き間違い）は、終了コードで呼んだ側へ返す。
+out="$(mktemp)"
+trap 'rm -f "$out"' EXIT
+code=0
+timeout 120 "$GODOT" --headless --path . -s res://tools/write_story_script.gd >"$out" 2>&1 || code=$?
+grep -E "^story_script:|ERROR" "$out" || true
+if [ "$code" != 0 ]; then
+  echo "write_story_script: 失敗した（終了コード $code）" >&2
+  exit "$code"
+fi
