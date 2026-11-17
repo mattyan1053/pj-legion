@@ -158,6 +158,8 @@ const SCENES := {
 	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の軍の曹長が話している。左の姿は進化後のシールドトルーパー）",
 	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
 	"story_talk_squad": "ストーリー: 部隊の中の人が話している対戦の前の会話（岩山の掃討。左の所の姿が、話した人に入れ替わる。右は敵の話し手）",
+	"story_rivals_ridge": "ストーリー: MILITARY の物語「尾根の小道」の前の会話（左にハーデン、右にイェルダ。見分けが付くか）",
+	"story_rivals_forest": "ストーリー: FANTASY の物語「森の守り」の前の会話（左にイェルダ、右にハーデン。どちらも将。見分けが付くか）",
 	"story_talk_allies": "ストーリー: 敵の軍が出てこない会話（演習「手当て」の前。最初に話した人が左、ほかの人が右に立って向き合う）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
@@ -1939,6 +1941,25 @@ func _military_index(id: StringName) -> int:
 		if episodes[index].id == id:
 			return index
 	return -1
+
+
+## ハーデンとイェルダが向き合う会話（MILITARY の物語）。ハーデンが話していて、右にイェルダ。
+func _scene_story_rivals_ridge() -> bool:
+	if not await _start_story(_military_index(&"ridge_path")) or not await _talk_from_sortie():
+		return false
+	return _talk_until(0) and _app.current_scene().figures().size() == 2
+
+
+## ハーデンとイェルダが向き合う会話（FANTASY の物語の「森の守り」）。イェルダが話していて、右にハーデン。
+func _scene_story_rivals_forest() -> bool:
+	var episodes: Array = _fantasy().episodes
+	var at := episodes.map(func(episode: RefCounted) -> StringName: return episode.id).find(&"mist_forest")
+	if at < 0 or not await _start_fantasy(at) or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < talk.line_count() and talk.speaker() != "イェルダ":
+		talk.press_next()
+	return talk.speaker() == "イェルダ" and talk.figures().size() == 2
 
 
 ## 部隊の中の人（人の軍の 3 人目の話し手）が話している、対戦の前の会話。右に敵の話し手。

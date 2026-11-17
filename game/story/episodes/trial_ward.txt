@@ -21,6 +21,7 @@ unit = priest
 
 [ally]
 name = イェルダ
+figure = paladin evolved
 speaker = ウル, priest evolved
 speaker = ティオ, sorcerer
 unit = paladin
