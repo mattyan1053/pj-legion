@@ -35,10 +35,10 @@ const SORTIE := SceneFlow.SORTIE
 ## 最初の物語の id。版 1 の記録（物語が 1 つだったころ）は、この物語の記録として読む。
 const MILITARY_ID := &"military"
 ## 既定の編成で、役割ごとに 1 つ持たせる装備の候補（前から順に、持たせられて、コストが収まる最初の 1 つ。無い役割は持たせない）。
-## ストーリー専用の持ち物（ジェットパック、古竜の鱗）を解放したら、盾・ブーツのかわりに持たせる。遠眼鏡は後衛に。
+## ストーリー専用の持ち物（ジェットパック、古竜の鱗）を解放したら、盾・ブーツのかわりに持たせる。
+## ほかの新しい持ち物は持たせない（どの駒に何を持たせるかは、人が選ぶ。既定の編成は素直な形のまま）。
 const DEFAULT_ITEMS := {
 	UnitKind.Role.VANGUARD: [Equipment.Id.DRAGON_SCALE, Equipment.Id.IRON_SHIELD],
-	UnitKind.Role.REARGUARD: [Equipment.Id.LONG_SCOPE],
 	UnitKind.Role.RAIDER: [Equipment.Id.JET_PACK, Equipment.Id.SPEED_BOOTS],
 }
 ## 会話の行の、知らせ（話し手の名前の札を灰色にする。「飛ばす」でも飛ばさない。talk_screen.gd）。名前は notice_name()。
