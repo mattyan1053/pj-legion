@@ -19,6 +19,7 @@ lesson = レベル 3 に上がった駒は、進化先を 2 つから選ぶ。�
 
 [ally]
 name = 導師
+figure = priest evolved
 unit = paladin, level 2, exp 110
 unit = sorcerer, level 2, exp 110
 unit = priest
@@ -26,6 +27,7 @@ deploy = 4,10  3,11  5,11
 
 [enemy]
 name = 演習相手
+figure = shield_trooper
 army = military
 unit = shield_trooper
 unit = commando

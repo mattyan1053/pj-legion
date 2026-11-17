@@ -1980,6 +1980,15 @@ func _visit_story(app: Node) -> void:
 	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
 	_expect(talk.speaker() == episode.speakers[episode.before[0][0]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
+	await get_tree().process_frame
+	var sides: Array = episode.before.map(func(row: Array) -> int: return row[0])
+	_expect(talk.figures().size() == (2 if sides.has(0) and sides.has(1) else 1), "会話に出てくる陣営の話し手の姿が立っていない")
+	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
+	for figure: Control in talk.figures():
+		var rect: Rect2 = figure.get_global_rect()
+		_expect(rect.has_area() and screen_rect.encloses(rect), "話し手の姿が画面からはみ出す: %s" % rect)
+		_expect(not rect.intersects(talk.bottom_rect()), "話し手の姿が、名前の札・文の枠・「飛ばす」に重なる: %s と %s" % [rect, talk.bottom_rect()])
+		_expect(figure.is_speaking() == (figure.side == episode.before[0][0]), "話している側の姿だけが明るく大きくなっていない")
 	talk.press_next()
 	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
 	talk.press_back()
@@ -2131,7 +2140,7 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted) -> Node:
 		for cue: Array in each.cues:
 			if (cue[3] as String).length() > longest.length():
 				longest = cue[3]
-	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest)] as Array[BattleCues.Line])
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var card: Rect2 = screen.talk_card_rect()

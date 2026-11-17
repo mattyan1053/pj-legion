@@ -20,12 +20,14 @@ unit = priest
 
 [ally]
 name = 導師
+figure = priest evolved
 unit = paladin
 unit = paladin
 unit = priest
 
 [enemy]
 name = 演習相手
+figure = shield_trooper
 army = military
 unit = shield_trooper
 unit = sniper

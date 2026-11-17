@@ -19,6 +19,7 @@ name = 騎士長
 
 [enemy]
 name = 斥候隊長
+figure = commando evolved
 army = military
 unit = shield_trooper
 unit = sniper

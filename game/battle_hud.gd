@@ -86,6 +86,8 @@ const ULT_COLORS := {
 }
 
 var _team_colors: Array[Color] = []
+## 将の姿（陣営ごと。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
+var king_looks: Array[StringName] = [&"", &""]
 
 var _turn_label: Label
 var _phase_label: Label
@@ -320,7 +322,8 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 		_info_name.text = Text.t("battle.hud.name_role", {"unit": Names.unit(unit), "role": role}) if role else Names.unit(unit)
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
 	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
-	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE)
+	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE,
+			king_looks[unit.side] if unit.side < king_looks.size() else &"")
 	_info_icon.visible = true
 	var army: UnitKind.Army = side_armies[unit.side] if unit.side >= 0 and unit.side < side_armies.size() else UnitKind.Army.NONE
 	_info_side.text = affiliation_text(unit, viewer_side, army)

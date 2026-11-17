@@ -17,6 +17,7 @@ item = iron_shield
 
 [ally]
 name = 教官
+figure = shield_trooper evolved
 unit = shield_trooper
 unit = sniper
 unit = sniper
@@ -25,6 +26,7 @@ start_gauge = 800
 
 [enemy]
 name = 演習相手
+figure = paladin
 army = fantasy
 unit = paladin + iron_shield
 unit = sorcerer

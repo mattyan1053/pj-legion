@@ -22,6 +22,7 @@ name = 騎士長
 
 [enemy]
 name = 峠の守備隊長
+figure = shield_trooper evolved
 army = military
 unit = shield_trooper
 unit = sniper

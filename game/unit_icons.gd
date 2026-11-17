@@ -10,48 +10,76 @@ const COLORS: Array[Color] = [Color("3a7bd5"), Color("d64545"), Color("e0b83a")]
 const SIDE_NAMES: Array[String] = ["blue", "red", "neutral"]
 const NEUTRAL := 2
 
+const UnitView := preload("res://game/unit_view.gd")
+
 static var _cache := {}
 
 
-## 写す組み合わせ（[種類, 陣営, 進化したか] の列）。人の駒（将と雇える駒）と魔物は青と赤、進化は進化する駒だけ（将と魔物を除く）。
-## 中立の駒は中立の色だけ。
+## 写す組み合わせ（[種類, 陣営, 進化したか, 将の別の姿] の列）。人の駒（将と雇える駒）と魔物は青と赤、進化は進化する駒だけ（将と魔物を除く）。
+## 中立の駒は中立の色だけ。将は、別の姿（unit_view.gd の KING_LOOKS）も青と赤。
 static func variants() -> Array:
 	var list: Array = []
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		if UnitKind.is_neutral(kind):
-			list.append([kind, NEUTRAL, false])
+			list.append([kind, NEUTRAL, false, &""])
 			continue
 		for side in 2:
-			list.append([kind, side, false])
-			if _evolves(kind):
-				list.append([kind, side, true])
+			list.append([kind, side, false, &""])
+			if evolves(kind):
+				list.append([kind, side, true, &""])
+			if kind == UnitKind.Id.KING:
+				for look: StringName in UnitView.KING_LOOKS:
+					list.append([kind, side, false, look])
 	return list
 
 
 ## 進化する種類か（進化後のアイコンがあるか）。
-static func _evolves(kind: UnitKind.Id) -> bool:
+static func evolves(kind: UnitKind.Id) -> bool:
 	return kind != UnitKind.Id.KING and not UnitKind.is_monster(kind)
 
 
-static func file_name(kind: UnitKind.Id, side: int, evolved := false) -> String:
-	return "%s_%s%s.png" % [String(UnitKind.Id.keys()[kind]).to_lower(), SIDE_NAMES[side], "_evolved" if evolved else ""]
+## look は将の別の姿（将でない駒と、知らない名前には付けない）。
+static func file_name(kind: UnitKind.Id, side: int, evolved := false, look := &"") -> String:
+	var name := String(UnitKind.Id.keys()[kind]).to_lower()
+	if kind == UnitKind.Id.KING and UnitView.KING_LOOKS.has(look):
+		name += "_" + String(look)
+	return "%s_%s%s.png" % [name, SIDE_NAMES[side], "_evolved" if evolved else ""]
 
 
 ## kind の駒のアイコン。side は陣営（Unit.Side の値。中立の駒は何を渡しても中立の色）。evolved は進化したか（足元に金の輪）。
-## 無ければ null（呼ぶ側は、絵を出さずに文字だけにする）。
-static func texture(kind: UnitKind.Id, side := 0, evolved := false) -> Texture2D:
+## look は将の別の姿（unit_view.gd の KING_LOOKS。将でなければ見ない）。無ければ null（呼ぶ側は、絵を出さずに文字だけにする）。
+static func texture(kind: UnitKind.Id, side := 0, evolved := false, look := &"") -> Texture2D:
 	var neutral := UnitKind.is_neutral(kind)
-	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), evolved and not neutral and _evolves(kind))
+	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), evolved and not neutral and evolves(kind), look)
 	if not _cache.has(key):
 		var path := "%s/%s" % [DIR, key]
 		_cache[key] = load(path) if ResourceLoader.exists(path) else null
 	return _cache[key]
 
 
+## 胸から上を切り出す四角（ICON_SIZE の絵の中の px）。小さく出す所（対戦の途中の台詞）で、顔が読めるように。
+const BUST := Rect2(14.0, 0.0, 68.0, 68.0)
+
+
+## kind の駒のアイコンの、胸から上（BUST）。絵が無ければ null。
+static func bust(kind: UnitKind.Id, side := 0, evolved := false, look := &"") -> Texture2D:
+	var whole := texture(kind, side, evolved, look)
+	if whole == null:
+		return null
+	var key := "bust:%s" % whole.resource_path
+	if not _cache.has(key):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = whole
+		atlas.region = BUST
+		_cache[key] = atlas
+	return _cache[key]
+
+
 ## アイコンを出す TextureRect（size px の四角）。絵が無ければ空の四角（並びは崩さない）。
-static func rect(kind: UnitKind.Id, side := 0, evolved := false, size := 48.0) -> TextureRect:
+## look は将の別の姿（texture と同じ）。
+static func rect(kind: UnitKind.Id, side := 0, evolved := false, size := 48.0, look := &"") -> TextureRect:
 	var icon := TextureRect.new()
-	icon.texture = texture(kind, side, evolved)
+	icon.texture = texture(kind, side, evolved, look)
 	icon.custom_minimum_size = Vector2(size, size)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

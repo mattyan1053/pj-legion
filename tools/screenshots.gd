@@ -149,7 +149,9 @@ const SCENES := {
 	"story_list_items": "ストーリー: 本編の 2 話目までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
 	"story_sortie_default": "ストーリー: 出撃準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ。まだ持たせられない持ち物は「未解放」）",
-	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（名前の札と文の枠）",
+	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（敵の将が話している。右の姿が明るく大きく、左の人の将は暗く小さい）",
+	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の話し手「教官」が話している。左の姿は進化後のシールドトルーパー）",
+	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
@@ -170,9 +172,10 @@ const SCENES := {
 	"story_boss_sortie": "ストーリー: 中ボスを倒す演習（「結晶の番人」）の出撃準備（勝ち方は「中ボスを倒せば勝ち。敵の将を倒しても終わらない。」だけ）",
 	"story_boss_start": "ストーリー: 中ボスを倒す演習の対戦の始め（上の帯の勝ち方の札「勝ち: 中ボスの撃破（将を倒しても終わらない）」）",
 	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
-	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守の騎士」の札）",
+	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守の騎士」の札と姿）",
 	"story_monster_sortie": "ストーリー: 魔物の群れの話（軍に属さない敵）の出撃準備（敵の部隊は「軍なし」の骸骨）",
 	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
+	"story_monster_king": "ストーリー: 魔物の群れの話で、敵の将（骸骨の将の姿。ルールの上では将）にマウスを乗せた駒の情報と、敵の将の途中の台詞（骸骨の将のアイコン）",
 	"story_monster_info": "ストーリー: 魔物の群れの話で、骸骨重兵にマウスを乗せた駒の情報（所属は「魔物」。スキル・持ち物の欄は無い）",
 	"story_battle_talk": "ストーリー: 対戦の途中の会話（始めに台詞のある最初の話。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
@@ -1599,6 +1602,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 func _start_story(number := -1) -> bool:
 	if number < 0:
 		number = _main_episode()
+	_app.context.story.choose_campaign(Story.military())  # クリアは、いま選んでいる物語の記録に書く（前の場面が FANTASY を選んでいても）
 	for i in number:
 		_app.context.story.clear(Story.military().episodes[i].id)
 	if not await _scene_story_list():
@@ -1823,6 +1827,14 @@ func _scene_story_talk() -> bool:
 		return false
 	_app.current_scene().press_next()  # 2 行目（敵の将の札）
 	return true
+
+
+func _scene_story_talk_drill() -> bool:
+	return await _start_story(0)
+
+
+func _scene_story_fantasy_talk() -> bool:
+	return await _start_fantasy(0)
 
 
 func _scene_story_talk_menu() -> bool:
@@ -2052,6 +2064,25 @@ func _scene_story_monster_info() -> bool:
 	var brute := _first_unit_of(UnitKind.Id.SKELETON_BRUTE)
 	_scene.hover(brute.cell)
 	return true
+
+
+func _scene_story_monster_king() -> bool:
+	var number := _monster_episode()
+	if number == -1 or not await _story_battle(number):
+		return false
+	var king: Unit = null
+	for unit: Unit in _scene.battle.units:
+		if unit.kind == UnitKind.Id.KING and unit.side == Unit.Side.PLAYER2:
+			king = unit
+	if king == null:
+		return false
+	_look_at(BoardView.cell_center(king.cell))
+	_aim(6.0, 70.0, 38.0)
+	_scene.hover(king.cell)
+	var episode: RefCounted = Story.military().episodes[number]
+	_scene.clear_talk_for_check()
+	_scene.say_for_check([BattleCues.Line.new(1, episode.speakers[1], "骨よ、生きた者を通すな。", episode.figures[1])] as Array[BattleCues.Line])
+	return episode.king_looks[1] != &""
 
 
 ## 盤の上の、その種類の最初の駒。いなければ null。
