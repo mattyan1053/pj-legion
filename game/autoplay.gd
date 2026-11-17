@@ -528,7 +528,7 @@ func _queue_result_scene() -> void:
 		full.headline = "VICTORY"
 		full.reason = "プレイヤー1（青） の勝ち　敵の将を倒した"
 		full.focus_name = "プレイヤー1（青）"
-		full.lines = [["マップ", "結晶の渓谷"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
+		full.lines = [["マップ", "結晶の岩山"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
 		full.mvp_name = "シールドトルーパー Lv3"
 		screen.present(full)
 	var waited_full := [0]
@@ -1167,6 +1167,17 @@ func _queue_setup_scene() -> void:
 		_expect(panel.current_choice().is_random(Unit.Side.PLAYER2) and panel.can_preview(Unit.Side.PLAYER2), "対戦の途中の設定パネルで、「ランダム編成」の部隊を確認できない")
 		panel.open_preview(Unit.Side.PLAYER2)
 		_expect(panel.preview().visible and panel.preview().shown_kinds().size() == drawn.size() + 1, "「編成確認」に、いまの対戦の「ランダム編成」の部隊が出ない")
+		# 相手の部隊の札も、押すと詳しい説明が出る。右クリックで説明だけ閉じる。
+		panel.preview().press_card(0)
+		var detail: Control = panel.preview().detail()
+		var first_kind: UnitKind.Id = panel.preview().shown_kinds()[1]
+		_expect(detail.visible and detail.title_text() == Names.kind(first_kind) and detail.body_text().contains("スキル") == (Skills.of_kind(first_kind) != null),
+			"対戦の途中の「編成確認」で、相手の駒の札を押しても詳しい説明が出ない: %s" % detail.title_text())
+		var right := InputEventMouseButton.new()
+		right.button_index = MOUSE_BUTTON_RIGHT
+		right.pressed = true
+		panel.get_viewport().push_input(right)
+		_expect(not detail.visible and panel.preview().visible, "詳しい説明を右クリックで閉じると、編成確認まで閉じる（か、説明が閉じない）")
 		panel.preview().close_preview()
 		panel.cancel()
 		_scene.start_battle(_scene.map_seed)  # 決着の画面の「同じ盤面で再戦」と同じ入口
@@ -2044,7 +2055,11 @@ func _visit_decks(app: Node) -> void:
 	_expect(panel.choose_deck(Unit.Side.PLAYER1, id), "取っておいた部隊を選べない")
 	panel.open_preview(Unit.Side.PLAYER1)
 	_expect(panel.preview().visible and panel.preview().shown_kinds().size() == 6, "「編成を確認」で、選んだ部隊が出ない")
+	# 札を押すと、その駒の詳しい説明（役割・能力値・スキル・持ち物の効果・進化先）。将も。
+	panel.preview().press_card(-1)
+	_expect(panel.preview().detail().visible and panel.preview().detail().title_text() == Names.kind(UnitKind.Id.KING), "「編成確認」で将の札を押しても、詳しい説明が出ない")
 	panel.preview().close_preview()
+	_expect(not panel.preview().detail().visible, "編成確認を閉じても、詳しい説明が残る")
 	# マップは対戦設定では選ばない。「マップ選択へ戻る」で戻って選び直す（選んだものは残る）。マップ選択へ行くボタンは 1 つ。
 	_expect(not panel.map_button_shown(), "対戦設定に、マップ選択へ行くボタンが 2 つある")
 	panel.choose_random_side()
@@ -2141,6 +2156,19 @@ func _visit_story(app: Node) -> void:
 	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃準備で、既定の編成を選べない")
 	var story_decks: Array = app.context.decks.for_rules(Story.military().rules_id)
 	_expect(options.size() == 1 + story_decks.size(), "出撃準備に、ストーリー用の部隊が並ばない（か、対戦用が混ざった）")
+	# 味方と敵の駒のアイコンを押すと、詳しい説明。持ち物を持たせた駒なら、持ち物の効果も出る。
+	var own: Deck = sortie.chosen_deck()
+	var detail: Control = sortie.press_face(Unit.Side.PLAYER1, 1)
+	_expect(detail != null and detail.visible and detail.title_text() == Names.kind(own.entries[0].kind), "出撃準備で味方の駒のアイコンを押しても、詳しい説明が出ない")
+	if detail != null and not own.entries[0].equipment.is_empty():
+		_expect(detail.body_text().contains(Names.item(own.entries[0].equipment[0])), "出撃準備の駒の詳しい説明に、持ち物が出ない: %s" % detail.body_text())
+	if detail != null:
+		detail.close_detail()
+	var enemy_deck: Deck = episode.enemy_deck()
+	detail = sortie.press_face(Unit.Side.PLAYER2, enemy_deck.entries.size())
+	_expect(detail != null and detail.visible and detail.title_text().begins_with(Names.kind(enemy_deck.entries[-1].kind)), "出撃準備で敵の駒のアイコンを押しても、詳しい説明が出ない")
+	if detail != null:
+		detail.close_detail()
 	# 部隊を選び替えても（部隊の文の長さが違っても）、ほかの部品の位置と大きさが変わらない。
 	var sortie_moves: Array = []
 	for id: String in options:

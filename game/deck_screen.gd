@@ -1017,28 +1017,10 @@ func _refresh_detail() -> void:
 		title = "%d. %s" % [_selected + 1, title]
 	_detail_title.text = title
 	_detail_icon.texture = UnitIcons.texture(unit_kind)
-	var role := UnitKind.role(unit_kind)
-	var lines: Array[String] = [
-		Text.t("deck.detail.role", {"role": DeckText.role_name(unit_kind), "cost": UnitKind.cost(unit_kind)}),
-		DeckText.role_note(role),
-		"",
-		DeckText.stats_line(unit_kind),
-	]
-	if _deck != null and UnitKind.army(unit_kind) != _deck.army:
-		# ストーリーで解放した、ほかの軍の駒（必殺技は部隊の軍のもの）。
-		lines.insert(0, Text.t("deck.detail.borrowed", {"origin": DeckText.army_name(UnitKind.army(unit_kind)), "army": DeckText.army_name(_deck.army)}))
-	if entry != null and not entry.equipment.is_empty():
-		lines.append(Text.t("deck.detail.with_items", {"stats": DeckText.stats_line(unit_kind, DeckText.equipment_bonus(entry.equipment))}))
-	var skill := DeckText.skill_text(unit_kind)
-	if skill != "":
-		lines.append("")
-		lines.append(Text.t("deck.detail.skill", {"skill": skill}))
-	var evolutions := DeckText.evolution_lines(unit_kind)
-	if not evolutions.is_empty():
-		lines.append("")
-		lines.append(Text.t("deck.detail.evolution", {"level": Growth.MAX_LEVEL}))
-		for line in evolutions:
-			lines.append(Text.t("deck.detail.evolution_line", {"line": line}))
+	var held: Array[Equipment.Id] = []
+	if entry != null:
+		held = entry.equipment
+	var lines := DeckText.detail_lines(unit_kind, held, _deck.army if _deck != null else -1, false)
 	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
 	entry = chosen_entry
 	if entry != null:
