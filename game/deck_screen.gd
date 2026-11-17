@@ -1005,7 +1005,9 @@ func _refresh_detail() -> void:
 		entry = null
 	elif entry != null:
 		kind = entry.kind
-	_equip_box.visible = entry != null
+	# 持ち物の欄は、部隊の駒を選んでいる間はいつも出す（雇える駒に乗せても消さない。消すと札の大きさが変わって揺れる）。
+	var chosen_entry: DeckEntry = _deck.entries[_selected] if _selected != -1 else null
+	_equip_box.visible = chosen_entry != null
 	_detail_card.visible = kind != -1
 	if kind == -1:
 		return
@@ -1038,6 +1040,7 @@ func _refresh_detail() -> void:
 		for line in evolutions:
 			lines.append(Text.t("deck.detail.evolution_line", {"line": line}))
 	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
+	entry = chosen_entry
 	if entry != null:
 		_equip_title.text = Text.t("deck.edit.items", {"count": entry.equipment.size(), "max": Equipment.MAX_PER_UNIT})
 		var shown := _deck.rules.shown_items()

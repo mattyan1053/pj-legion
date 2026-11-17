@@ -1813,6 +1813,13 @@ func _leave_battle(app: Node) -> void:
 	stages.hover(VersusFields.TWIN_SPRINGS)
 	_expect(stages.note_text().contains(VersusFields.title_of(VersusFields.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
 	stages.hover(&"")
+	# どのカードに乗せても、ほかの部品（説明の欄、カードの段、ボタン）の位置と大きさが変わらない（説明の長さで揺れない）。
+	var cards: Array[Node] = []
+	for field in VersusFields.ids():
+		cards.append(stages.card_of(field))
+	await _expect_steady(stages, cards, VersusFields.ids().map(func(field: StringName) -> Callable: return stages.hover.bind(field)),
+		"ステージ選択でカードに乗せる")
+	stages.hover(&"")
 	stages.choose(VersusFields.LABYRINTH)
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.SETUP, "ステージ選択のカードで、対戦設定へ進まない")
@@ -1829,6 +1836,43 @@ func _leave_battle(app: Node) -> void:
 	app.get_viewport().push_input(right)
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.TITLE, "ステージ選択のカードの上で右クリックしても、タイトルへ戻らない")
+
+
+## 場面 scene の部品の位置と大きさが、moves（マウスを乗せる、などの関数の列）のどれをしても変わらないことを確かめる。
+## 乗せた物が大きくなるのはよいので、moving（とその中身）は比べない。
+func _expect_steady(scene: Node, moving: Array[Node], moves: Array, what: String) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var before := _layout_of(scene, moving)
+	for move: Callable in moves:
+		move.call()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var after := _layout_of(scene, moving)
+		var shifted: Array[String] = []
+		for path: NodePath in before:
+			if after.has(path) and after[path] != before[path]:
+				shifted.append("%s %s -> %s" % [path, before[path], after[path]])
+		_expect(shifted.is_empty(), "%sと、ほかの部品が動く（%s）: %s" % [what, move.get_bound_arguments(), shifted.slice(0, 3)])
+
+
+## 見えている部品（Control）の、画面の上の位置と大きさ（パス -> Rect2）。skip とその中身は除く。
+## 文字（Label）と、送れる枠（ScrollContainer）の中身は、中身に合わせて伸び縮みしてよい（枠と、ほかの部品が動かなければよい）ので、比べない。
+func _layout_of(node: Node, skip: Array[Node], into := {}) -> Dictionary:
+	for child: Node in node.get_children():
+		if skip.has(child):
+			continue
+		if child is Control:
+			var control := child as Control
+			if not control.is_visible_in_tree():
+				continue
+			if control is Label:
+				continue
+			into[control.get_path()] = Rect2(control.global_position, control.size)
+			if control is ScrollContainer:
+				continue  # 送れる枠の中身は、中身の量で伸び縮みしてよい（枠が動かなければよい）
+		_layout_of(child, skip, into)
+	return into
 
 
 ## control が画面（論理の大きさ）の中に収まっているか。
@@ -1848,6 +1892,16 @@ func _visit_decks(app: Node) -> void:
 	app.current_scene().choose(VersusFields.PLAIN)
 	await app.scene_changed
 	var setup_panel: Node = app.current_scene().setup_panel()
+	# 相手・手番・軍を選び替えても、パネルの部品の位置と大きさが変わらない。
+	var setup_moves: Array = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		for army: UnitKind.Army in UnitKind.Army.values():
+			setup_moves.append(setup_panel.choose_army.bind(side, army))
+	setup_moves.append(setup_panel.choose_human_side.bind(Unit.Side.PLAYER2))
+	setup_moves.append(setup_panel.choose_random_side)
+	setup_moves.append(setup_panel.choose_opponent.bind(false))
+	setup_moves.append(setup_panel.choose_opponent.bind(true))
+	await _expect_steady(app.current_scene(), [], setup_moves, "対戦設定で選び替える")
 	setup_panel.choose_opponent(true)
 	setup_panel.choose_human_side(Unit.Side.PLAYER1)
 	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
@@ -1880,6 +1934,19 @@ func _visit_decks(app: Node) -> void:
 	_expect(row_texts[1] == row_texts[0] and row_texts[1].contains("スピードブーツ") and row_texts[1].contains("アイアンシールド"),
 		"部隊の行の装備の文を、マウスを乗せても読めない: %s" % [row_texts])
 	screen.unequip(Equipment.Id.SPEED_BOOTS)
+	# どの駒に乗せても、どの駒を選んでも、ほかの部品（列、見出し、ボタン）の位置と大きさが変わらない。
+	# （選ぶ・選ぶのをやめるのはクリックなので、持ち物の欄が出入りしてよい。比べるのは、選んだまま乗せる・選び替える。）
+	for selected: int in [-1, 0]:
+		screen.select_entry(selected)
+		var editor_moves: Array = []
+		for kind: UnitKind.Id in screen.editing_deck().available_kinds():
+			editor_moves.append(screen.hover_kind.bind(kind))
+		editor_moves.append(screen.hover_kind.bind(-1))
+		if selected != -1:
+			editor_moves.append(screen.select_entry.bind(1))
+			editor_moves.append(screen.select_entry.bind(0))
+		await _expect_steady(screen, [], editor_moves, "部隊編成で駒に乗せる・選ぶ")
+	screen.select_entry(0)
 	for i in 4:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
@@ -2069,6 +2136,11 @@ func _visit_story(app: Node) -> void:
 	_expect(options[0] == "" and sortie.chosen_id() == "", "出撃準備で、既定の編成を選べない")
 	var story_decks: Array = app.context.decks.for_rules(Story.military().rules_id)
 	_expect(options.size() == 1 + story_decks.size(), "出撃準備に、ストーリー用の部隊が並ばない（か、対戦用が混ざった）")
+	# 部隊を選び替えても（部隊の文の長さが違っても）、ほかの部品の位置と大きさが変わらない。
+	var sortie_moves: Array = []
+	for id: String in options:
+		sortie_moves.append(sortie.choose.bind(id))
+	await _expect_steady(sortie, [], sortie_moves, "出撃準備で部隊を選び替える")
 	for item: RefCounted in story_decks:
 		_expect(sortie.is_option_enabled(item.id) == item.playable(), "出せない部隊を選べる（か、出せる部隊を選べない）: %s" % item.name)
 		if item.playable():
