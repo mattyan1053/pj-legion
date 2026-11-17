@@ -61,8 +61,8 @@ field.twin_springs.tags,2 本の道 ・ ポータル
 field.twin_springs.note,中央を大きな壁がふさぎ、戦場は左右 2 本の道に分かれる。本陣は対角。\nどちらの道にも、上下をつなぐポータル。どちらで攻め、どちらで守るか。
 field.ridge_path.tags,小さな盤 ・ 2 本の道
 field.ridge_path.note,細長い小さな盤。真ん中の岩が尾根を左右 2 本の道に分け、どちらの道にも結晶泉と中ボス。\n本陣どうしが近く、すぐにぶつかる。押し込むか、道をふさいで迎え撃つか。
-field.crystal_gorge.tags,裂け目 ・ 橋 ・ ポータル
-field.crystal_gorge.note,盤の中ほどを結晶の裂け目が横切る。渡れるのは左右の端の橋と、真ん中のポータルだけ。本陣は対角。\n遠回りの橋か、敵陣のただ中へ出る近道のポータルか。
+field.crystal_gorge.tags,岩山 ・ 回り道 ・ ポータル
+field.crystal_gorge.note,盤の中ほどを結晶の岩山が横切る。越えられるのは東西の端の回り道と、真ん中のポータルだけ。本陣は対角。\n遠い回り道か、敵陣のただ中へ出る近道のポータルか。
 field.boulder_pass.tags,大岩 ・ 広い 2 本の道
 field.boulder_pass.note,草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。
 setup.back,対戦設定へ戻る

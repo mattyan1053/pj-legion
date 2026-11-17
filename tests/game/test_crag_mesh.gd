@@ -4,7 +4,7 @@ extends "res://tests/base_test.gd"
 const CragMesh := preload("res://game/crag_mesh.gd")
 
 const COLORS := {CragMesh.LOW: Color.BLACK, CragMesh.CLIFF: Color.GRAY, CragMesh.TOP: Color.WHITE, CragMesh.CRYSTAL: Color.BLUE}
-## 双子結晶の真ん中のような大きなかたまり、結晶の渓谷のような 2 行の帯、1 マスだけ、斜めにだけ接する 2 マス。
+## 双子結晶の真ん中のような大きなかたまり、結晶の岩山のような 2 行の帯、1 マスだけ、斜めにだけ接する 2 マス。
 const ROWS: Array[String] = [
 	"...........",
 	".######....",

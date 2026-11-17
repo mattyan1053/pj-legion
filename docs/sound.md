@@ -30,7 +30,7 @@
 | --- | --- | --- |
 | 草原（中央平原）、見た目の分からない対戦 | `battle` | 明るい踊りの曲（Minstrel Dance） |
 | 石の遺跡（迷宮回廊、ストーリーの尾根） | `battle_ruins` | 吟遊詩人の語りの曲（The Bard's Tale） |
-| 結晶の森（双子結晶、ストーリーの結晶の渓谷） | `battle_crystal` | 夜風の静かな曲（Rising Moon） |
+| 結晶の森（双子結晶、ストーリーの結晶の岩山） | `battle_crystal` | 夜風の静かな曲（Rising Moon） |
 
 ほかに、話のデータで選べる曲: `battle_tense`（緊迫した戦い。Medieval: Battle。守り切る話の `ridge_hold`）。
 
