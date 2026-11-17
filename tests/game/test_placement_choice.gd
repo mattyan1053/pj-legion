@@ -51,7 +51,7 @@ func test_a_story_battle_carries_the_placement_through_copies() -> void:
 	var free: Array = Deployment.zone(usual, Unit.Side.PLAYER1, cells, 6).filter(func(cell: Vector2i) -> bool: return usual.unit_at(cell) == null)
 	var placement: Array[Vector2i] = [free[0] - hq]
 	source.placement = placement
-	assert_eq(_own(source.copy().make_setup(7).create_battle(), Unit.Side.PLAYER1)[0].cell, free[0], "同じ盤面で再戦（写し）でも、決めた位置")
+	assert_eq(_own(source.copy().make_setup(7).create_battle(), Unit.Side.PLAYER1)[0].cell, free[0], "同じマップで再戦（写し）でも、決めた位置")
 
 
 func test_refreshing_an_unchanged_saved_deck_keeps_the_placement() -> void:
