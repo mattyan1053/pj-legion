@@ -55,7 +55,7 @@ const SCENES := {
 	"cpu_skip": "相手（CPU）の番の早送りとスキップ（中立のフェーズから。途中で決着したら、決着を見せる）",
 	"title": "相手の番の途中でタイトルへ戻り、マップ選択と対戦設定を行き来する",
 	"decks": "部隊編成",
-	"story": "ストーリーの 1 話の通し（タイトル → 物語を選ぶ → 話の一覧 → 会話 → 出撃準備 → 対戦 → 勝って「次へ」「部隊を選び直す」→ 会話 → 話の一覧 → 物語を選ぶ → タイトル、クリアの記録）",
+	"story": "ストーリーの 1 話の通し（タイトル → 物語を選ぶ → 話の一覧 → 出撃準備 → 会話 → 対戦 → 勝って「部隊変更」（会話を飛ばす）→ 勝って「次へ」→ 会話 →「話の一覧へ」 → 物語を選ぶ → タイトル、クリアの記録）",
 }
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
@@ -512,7 +512,7 @@ func _queue_result_scene() -> void:
 			_push_front(again.bind(again))
 			return
 		_expect(screen.is_revealed(), "行き先を選べるのに、出そろっていない")
-		_expect(screen.enabled_buttons().has("タイトルへ"), "行き先に「タイトルへ」が無い")
+		_expect(screen.enabled_buttons().has("マップ選択へ") and not screen.enabled_buttons().has("タイトルへ"), "対戦モードの行き先に「マップ選択へ」が無い（か、「タイトルへ」がある）")
 		_expect(screen.stat_lines().size() >= 2 and screen.mvp_text() != "", "戦績か MVP が出ていない")
 		_expect(not screen.is_detail_open(), "詳しい戦績が、始めから開いている")
 		screen.toggle_detail()
@@ -522,7 +522,7 @@ func _queue_result_scene() -> void:
 		screen.show_table(1 - shown_side)
 		_expect(screen.table_side() == 1 - shown_side and not screen.table_names().is_empty(), "詳しい戦績の表を、もう一方の陣営に切り替えられない")
 		screen.toggle_detail()
-		_expect(screen.enter_destination() == "タイトルへ", "対戦モードの決着の画面の Enter がタイトルへでない: %s" % screen.enter_destination())
+		_expect(screen.enter_destination() == "マップ選択へ", "対戦モードの決着の画面の Enter がマップ選択へでない: %s" % screen.enter_destination())
 		# 戦績の行がいちばん多い（5 行）ときも、入力の案内が下の帯にかからない。
 		var full := ResultSummary.new()
 		full.headline = "VICTORY"
@@ -1267,7 +1267,7 @@ func _queue_system_menu_scene() -> void:
 		_expect(not menu.is_open() and _scene.selected_unit() == null, "選んでいる駒があるのに、Esc で選択をやめずにメニューを開いた")
 		_scene.press_escape()
 		_expect(menu.is_open() and _scene.is_busy() and Engine.time_scale == 0.0, "戻すものが無いのに、Esc でメニューが開かない（か、止まらない）")
-		_expect(menu.item_ids() == ([&"resume", &"settings", &"match_setup", &"title", &"quit"] as Array[StringName]), "メニューの項目が違う: %s" % [menu.item_ids()])
+		_expect(menu.item_ids() == ([&"resume", &"settings", &"match_setup", &"exit:map_select", &"title", &"quit"] as Array[StringName]), "メニューの項目が違う: %s" % [menu.item_ids()])
 		_scene.click_cell(trooper.cell)
 		_expect(_scene.selected_unit() == null, "メニューを開いている間に、駒を選べた")
 		# 対戦が失われる項目は、確かめる。「やめる」で、メニューへ戻る。
@@ -2090,29 +2090,7 @@ func _visit_story(app: Node) -> void:
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
 	list.choose(episode)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.TALK, "話の一覧で話を選んでも、会話の場面へ進まない")
-	var talk: Node = app.current_scene()
-	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
-	_expect(talk.speaker() == episode.speakers[episode.before[0][2]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
-	await get_tree().process_frame
-	# 立つ所は左右に 1 つずつ。両軍が出てくるか、同じ軍の話し手が 2 人以上いれば、両方に立つ。
-	var talkers := {}
-	for row: Array in episode.before:
-		talkers[row[2]] = true
-	_expect(talk.figures().size() == mini(talkers.size(), 2), "会話に出てくる話し手の姿が立っていない")
-	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
-	for figure: Control in talk.figures():
-		var rect: Rect2 = figure.get_global_rect()
-		_expect(rect.has_area() and screen_rect.encloses(rect), "話し手の姿が画面からはみ出す: %s" % rect)
-		_expect(not rect.intersects(talk.bottom_rect()), "話し手の姿が、名前の札・文の枠・「飛ばす」に重なる: %s と %s" % [rect, talk.bottom_rect()])
-		_expect(figure.is_speaking() == (figure.who == episode.before[0][2]), "話している人の姿だけが明るく大きくなっていない")
-	talk.press_next()
-	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
-	talk.press_back()
-	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
-	talk.press_skip()
-	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "会話を飛ばしても、出撃準備へ進まない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "話の一覧で話を選んでも、出撃準備へ進まない（会話は出撃のあと）")
 	var sortie: Node = app.current_scene()
 	# 「部隊編成」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
 	sortie.press_edit_decks()
@@ -2145,8 +2123,9 @@ func _visit_story(app: Node) -> void:
 		_expect(sortie.is_option_enabled(item.id) == item.playable(), "出せない部隊を選べる（か、出せる部隊を選べない）: %s" % item.name)
 		if item.playable():
 			sortie.choose(item.id)
-	var result: Node = await _win_story_battle(app, sortie, episode)
-	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ。
+	var result: Node = await _win_story_battle(app, sortie, episode, true, _check_talk_before.bind(episode))
+	_expect(result.leave_text() == "話の一覧へ" and not result.enabled_buttons().has("タイトルへ"), "話の決着の画面の行き先が「話の一覧へ」でない: %s" % result.leave_text())
+	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ（対戦の前の会話は、もう出ない）。
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
 	result.press_choose_squad()
 	await app.scene_changed
@@ -2155,7 +2134,7 @@ func _visit_story(app: Node) -> void:
 	result.press_continue()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.TALK, "決着の画面の「次へ」で、あとの会話へ進まない")
-	talk = app.current_scene()
+	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.after.size() + Story.unlocked_before(episode).news_of(episode).size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
 	if not episode.unlock_kinds.is_empty():
 		talk.press_skip()
@@ -2163,8 +2142,11 @@ func _visit_story(app: Node) -> void:
 				and talk.line_text().contains(Names.kind(episode.unlock_kinds[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
+	_expect(talk.is_choosing() == (Story.episode_after(episode) != null), "あとの会話を送りきっても、「次の話へ」「話の一覧へ」を選ばせない")
+	if talk.is_choosing():
+		talk.press_to_episodes()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話を送りきっても、話の一覧へ戻らない")
+	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
 	list = app.current_scene()
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
@@ -2210,14 +2192,11 @@ func _visit_second_campaign(app: Node) -> void:
 		_expect(list.roster_text().contains(Names.kind(kind)), "2 つ目の物語の話の一覧に、最初から雇える駒が出ていない: %s" % Names.kind(kind))
 	list.choose(episode)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.TALK, "2 つ目の物語の話を選んでも、会話の場面へ進まない")
-	app.current_scene().press_skip()
-	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "2 つ目の物語の会話を飛ばしても、出撃準備へ進まない")
+	_expect(app.current_id() == SceneFlow.SORTIE, "2 つ目の物語の話を選んでも、出撃準備へ進まない")
 	var sortie: Node = app.current_scene()
 	_expect(sortie.is_squad_fixed() and sortie.option_ids().size() == 1, "演習の出撃準備で、部隊を選べる")
 	_expect(sortie.chosen_deck().army == campaign.army and sortie.chosen_deck().entries.size() == episode.squad.size(), "演習の部隊が、物語の軍の決まった部隊でない")
-	var result: Node = await _win_story_battle(app, sortie, episode)
+	var result: Node = await _win_story_battle(app, sortie, episode, true)
 	_expect(not result.can_choose_squad(), "部隊が決まっている話の決着の画面に「部隊変更」がある")
 	result.press_continue()
 	await app.scene_changed
@@ -2225,8 +2204,17 @@ func _visit_second_campaign(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TALK and talk.line_count() == episode.after.size() + Story.unlocked_before(episode).news_of(episode).size(), "2 つ目の物語の、あとの会話の文の数が違う")
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
+	# 「次の話へ」で、次の話の出撃準備へ。そこからシステムメニューの「話の一覧へ戻る」で、話の一覧へ。
+	_expect(talk.is_choosing() and campaign.episodes.size() >= 2, "2 つ目の物語の、あとの会話のあとに「次の話へ」が無い")
+	talk.press_next_episode()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.EPISODES, "2 つ目の物語の、あとの会話を送りきっても、話の一覧へ戻らない")
+	_expect(app.current_id() == SceneFlow.SORTIE and app.current_scene().episode == campaign.episodes[1], "「次の話へ」で、次の話の出撃準備へ進まない")
+	var menu: Node = app.system_menu()
+	app.open_menu()
+	_expect(menu.item_ids().has(&"exit:episodes"), "出撃準備のシステムメニューに「話の一覧へ戻る」が無い: %s" % [menu.item_ids()])
+	menu.press(&"exit:episodes")
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "システムメニューの「話の一覧へ戻る」で、話の一覧へ戻らない")
 	list = app.current_scene()
 	_expect(list.card_status(episode) == "クリア済み" and (campaign.episodes.size() < 2 or list.is_card_enabled(campaign.episodes[1])), "2 つ目の物語で、クリアした話の次の話を選べない")
 	list.press_back()
@@ -2276,12 +2264,44 @@ func _visit_item_rows(app: Node) -> void:
 	await app.go(SceneFlow.TITLE)
 
 
+## 対戦の前の会話の場面 talk（話 episode）: 文の数、最初の文、話し手の姿、送りと戻り。
+func _check_talk_before(talk: Node, episode: RefCounted) -> void:
+	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
+	_expect(talk.speaker() == episode.speakers[episode.before[0][2]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
+	_expect(not talk.has_method(&"next_episode") or talk.next_episode() == null, "対戦の前の会話に「次の話へ」がある")
+	await get_tree().process_frame
+	# 立つ所は左右に 1 つずつ。両軍が出てくるか、同じ軍の話し手が 2 人以上いれば、両方に立つ。
+	var talkers := {}
+	for row: Array in episode.before:
+		talkers[row[2]] = true
+	_expect(talk.figures().size() == mini(talkers.size(), 2), "会話に出てくる話し手の姿が立っていない")
+	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
+	for figure: Control in talk.figures():
+		var rect: Rect2 = figure.get_global_rect()
+		_expect(rect.has_area() and screen_rect.encloses(rect), "話し手の姿が画面からはみ出す: %s" % rect)
+		_expect(not rect.intersects(talk.bottom_rect()), "話し手の姿が、名前の札・文の枠・「飛ばす」に重なる: %s と %s" % [rect, talk.bottom_rect()])
+		_expect(figure.is_speaking() == (figure.who == episode.before[0][2]), "話している人の姿だけが明るく大きくなっていない")
+	talk.press_next()
+	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
+	talk.press_back()
+	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
+
+
 ## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
-func _win_story_battle(app: Node, sortie: Node, episode: RefCounted) -> Node:
+## talk_first なら、出撃のあとに対戦の前の会話が出ることを確かめ（on_talk があれば、会話の場面を渡して呼ぶ）、飛ばして対戦へ。
+## 偽なら、会話を出さずに対戦へ進むことを確かめる（「部隊変更」のあと）。
+func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first := false, on_talk := Callable()) -> Node:
 	var story: RefCounted = app.context.story
 	var chosen: Deck = sortie.chosen_deck()
 	sortie.press_sortie()
 	await app.scene_changed
+	if talk_first:
+		_expect(app.current_id() == SceneFlow.TALK, "出撃しても、対戦の前の会話へ進まない")
+		if app.current_id() == SceneFlow.TALK:
+			if on_talk.is_valid():
+				await on_talk.call(app.current_scene())
+			app.current_scene().press_skip()
+			await app.scene_changed
 	_expect(app.current_id() == SceneFlow.BATTLE, "出撃準備の「出撃」で、対戦へ進まない")
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)

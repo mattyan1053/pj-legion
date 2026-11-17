@@ -27,6 +27,8 @@ signal scene_changed(scene: StringName)
 ## 共通のシステムメニューの項目。
 const ITEM_TITLE := &"title"
 const ITEM_QUIT := &"quit"
+## 流れの外への行き先の項目の名前の頭（後ろに場面の名前。Run.menu_exits）。
+const ITEM_EXIT_PREFIX := "exit:"
 ## 暗転にかける秒数（暗くなるまでと、明けるまで、それぞれ）。
 const FADE_TIME := 0.22
 const FADE_LAYER := 30
@@ -204,6 +206,10 @@ func menu_items() -> Array:
 	var items: Array = [[SystemMenu.ITEM_RESUME, resume, ""], [SystemMenu.ITEM_SETTINGS, Text.t("menu.settings"), ""]]
 	if scene.has_method(&"menu_items"):
 		items.append_array(scene.call(&"menu_items"))
+	# 流れの外への行き先（ストーリーの「話の一覧へ戻る」、対戦の「マップ選択へ戻る」）。タイトルへ戻るより先に並べる。
+	if context.run != null:
+		for exit: Array in context.run.menu_exits:
+			items.append([ITEM_EXIT_PREFIX + String(exit[0]), Text.t(exit[1]), leave_confirm(scene, Text.t(exit[2]))])
 	if _current_id != SceneFlow.FIRST:
 		items.append([ITEM_TITLE, Text.t("menu.to_title"), leave_confirm(scene, Text.t("menu.to_title.confirm"))])
 	items.append([ITEM_QUIT, Text.t("menu.quit"), leave_confirm(scene, Text.t("menu.quit.confirm"))])
@@ -227,6 +233,8 @@ func _on_menu_item(id: StringName) -> void:
 			go(SceneFlow.COMMON[&"title"])
 		ITEM_QUIT:
 			context.quit()
+		_ when String(id).begins_with(ITEM_EXIT_PREFIX):
+			go(StringName(String(id).trim_prefix(ITEM_EXIT_PREFIX)))  # 流れの外の場面なので、流れは捨てる（go）
 		_:
 			if _current != null and _current.has_method(&"on_menu_item"):
 				_current.call(&"on_menu_item", id)

@@ -48,6 +48,11 @@ func retries_on_enter(won: bool) -> bool:
 	return not won
 
 
+## 決着の画面の、流れの外への行き先は話の一覧。
+func leave() -> Array:
+	return [&"episodes", "result.to_episodes"]
+
+
 ## 決着の画面に「部隊を選び直す」を出すか（部隊が決まっている話は出さない）。
 func can_choose_squad() -> bool:
 	return not episode.has_squad()
