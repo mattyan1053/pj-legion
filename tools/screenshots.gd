@@ -1596,6 +1596,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 func _start_story(number := -1) -> bool:
 	if number < 0:
 		number = _main_episode()
+	_app.context.story.choose_campaign(Story.military())  # クリアは、いま選んでいる物語の記録に書く（前の場面が FANTASY を選んでいても）
 	for i in number:
 		_app.context.story.clear(Story.military().episodes[i].id)
 	if not await _scene_story_list():
