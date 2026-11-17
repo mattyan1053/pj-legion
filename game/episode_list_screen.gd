@@ -21,6 +21,7 @@ const StageCardMap := preload("res://game/stage_card_map.gd")
 const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 signal finished(outcome: StringName)
 
@@ -28,6 +29,8 @@ const CARD_WIDTH := 280.0
 ## 縮図の 1 マスの大きさ（px）と、縮図を置く枠の高さ。
 const MAP_CELL := 8
 const MAP_HEIGHT := 180.0
+## 縮図の右下に重ねる、その話の顔（敵の話し手の姿のアイコン）の大きさ（px）。
+const FACE_SIZE := 72.0
 
 const COLOR_PANEL := Palette.OVERLAY
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
@@ -231,6 +234,7 @@ func _build_card(episode: Episode) -> Button:
 	if not available:
 		map.modulate = Color(0.45, 0.45, 0.45)
 	column.add_child(map)
+	map.add_child(face_of(episode))
 	var status := _label(status_text(episode), 18)
 	var cleared: bool = context.story.is_cleared(episode.id)
 	status.add_theme_color_override("font_color", COLOR_CLEARED if cleared else (COLOR_NEW if available else COLOR_LOCKED))
@@ -240,6 +244,16 @@ func _build_card(episode: Episode) -> Button:
 		unlocks.add_theme_color_override("font_color", COLOR_TEXT_DIM if available else COLOR_LOCKED)
 		column.add_child(unlocks)
 	return card
+
+
+## 話の顔: 敵の話し手の姿（話のファイルの figure。骸骨の将なども）のアイコンを、縮図の右下に重ねる。
+static func face_of(episode: Episode) -> TextureRect:
+	var figure: Dictionary = episode.figures[1]
+	var face := UnitIcons.rect(figure["kind"], 1, figure.get("evolved", false), FACE_SIZE, figure.get("look", &""))
+	face.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	face.offset_left = -FACE_SIZE
+	face.offset_top = -FACE_SIZE
+	return face
 
 
 ## 話 episode の盤の縮図。両軍の駒の初期位置（初めて遊ぶときの既定の編成で置いたもの）に、陣営の色の点を打つ。

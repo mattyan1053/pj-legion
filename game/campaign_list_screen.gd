@@ -15,10 +15,14 @@ const Backdrop := preload("res://game/backdrop.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Campaign := preload("res://game/campaign.gd")
 const Story := preload("res://game/story.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 signal finished(outcome: StringName)
 
-const CARD_SIZE := Vector2(320.0, 200.0)
+const CARD_SIZE := Vector2(320.0, 270.0)
+## カードの顔（その物語の軍の、将と最初から雇える駒のアイコン）の大きさ（px）と、準備中のカードの暗さ。
+const FACE_SIZE := 72.0
+const LOCKED_SHADE := Color(0.4, 0.4, 0.45)
 
 ## 色は話の一覧（episode_list_screen.gd）とそろえる。
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
@@ -167,6 +171,7 @@ func _build_card(campaign: Campaign) -> Button:
 	column.add_theme_constant_override("separation", 10)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(column)
+	column.add_child(faces_row(campaign, ready))
 	var title := _label(campaign.title, 26)
 	if not ready:
 		title.add_theme_color_override("font_color", COLOR_LOCKED)
@@ -179,6 +184,22 @@ func _build_card(campaign: Campaign) -> Button:
 	status.add_theme_color_override("font_color", COLOR_CLEARED if all_cleared else (COLOR_NEW if ready else COLOR_LOCKED))
 	column.add_child(status)
 	return card
+
+
+## カードの顔: その物語で人が使う軍の、将と最初から雇える駒（人の軍の青）。文字だけの札にしない。
+static func faces_row(campaign: Campaign, ready := true) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", -8)  # 少し重ねて、隊のように並べる
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var kinds: Array[UnitKind.Id] = [UnitKind.Id.KING]
+	kinds.append_array(campaign.starting_kinds)
+	for kind in kinds:
+		var face := UnitIcons.rect(kind, 0, false, FACE_SIZE)
+		if not ready:
+			face.modulate = LOCKED_SHADE
+		row.add_child(face)
+	return row
 
 
 func _label(text: String, font_size: int) -> Label:

@@ -8,6 +8,9 @@ const Episode := preload("res://game/episode.gd")
 const Campaign := preload("res://game/campaign.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const Text := preload("res://game/text.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
+const CampaignListScreen := preload("res://game/campaign_list_screen.gd")
+const EpisodeListScreen := preload("res://game/episode_list_screen.gd")
 ## 欄の説明つきのひな形（docs/story.md の「話を 1 つ足す」）。どの物語にも並ばないが、そのまま読めること。
 const TEMPLATE := "res://game/story/template.txt"
 
@@ -114,6 +117,21 @@ func test_enemy_king_figure_changes_only_the_look() -> void:
 	assert_eq(kings.size(), 2, "敵の将は、ルールの上では将のまま")
 	var other: Episode = Episode.parse(PROBE.replace("army = fantasy", "army = fantasy\nking_figure = skeleton_mage").replace("name = 敵将", "name = 敵将\nfigure = priest"))
 	assert_eq(other.figures[1]["look"], &"", "将でない話し手の姿には効かない")
+
+
+## 物語を選ぶ場面と話の一覧のカードの顔（文字だけの札にしない）。
+func test_story_cards_show_faces() -> void:
+	var campaign := Story.military()
+	var row := CampaignListScreen.faces_row(campaign)
+	assert_eq(row.get_child_count(), campaign.starting_kinds.size() + 1, "将と、最初から雇える駒")
+	assert_eq((row.get_child(0) as TextureRect).texture, UnitIcons.texture(UnitKind.Id.KING, 0))
+	row.free()
+	for episode: Episode in Story.all_episodes():
+		var face := EpisodeListScreen.face_of(episode)
+		var figure: Dictionary = episode.figures[1]
+		assert_eq(face.texture, UnitIcons.texture(figure["kind"], 1, figure["evolved"], figure["look"]), "%s: 敵の話し手の姿" % episode.id)
+		assert_true(face.texture != null)
+		face.free()
 
 
 ## 魔物の話の敵の将は、骸骨の将の姿。
