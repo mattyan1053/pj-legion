@@ -9,8 +9,18 @@ const CpuGame := preload("res://tests/support/cpu_game.gd")
 const Maps := preload("res://tests/support/maps.gd")
 
 
+## 長い検査の 2 つのテストが比べる元の 1 局（種 3。1 回だけ回して控える）。
+static var _seed_three: CpuMatch.Outcome
+
+
 func _small_battle(battle_seed: int) -> Battle:
 	return CpuGame.small_battle(battle_seed)
+
+
+func _seed_three_game() -> CpuMatch.Outcome:
+	if _seed_three == null:
+		_seed_three = CpuMatch.play(_small_battle(3), 60)
+	return _seed_three
 
 
 func test_short_game_ends_and_every_action_is_accepted() -> void:
@@ -34,7 +44,7 @@ func test_replaying_the_shared_game_ends_the_same_way() -> void:
 
 
 func test_long_same_seed_plays_the_same_game() -> void:
-	var a := CpuMatch.play(_small_battle(3), 60)
+	var a := _seed_three_game()
 	var b := CpuMatch.play(_small_battle(3), 60)
 	assert_eq(a.turns, b.turns)
 	assert_eq(a.actions, b.actions)
@@ -45,7 +55,7 @@ func test_long_same_seed_plays_the_same_game() -> void:
 
 func test_long_a_second_cpu_can_play_player_two() -> void:
 	# 別の版の CPU と対戦させる入口。同じ CPU を渡せば、渡さないときと同じ対局になる。
-	var alone := CpuMatch.play(_small_battle(3), 60)
+	var alone := _seed_three_game()
 	var paired := CpuMatch.play(_small_battle(3), 60, CpuPlayer.new(), CpuPlayer.new())
 	assert_eq(paired.turns, alone.turns)
 	assert_eq(paired.actions, alone.actions)
