@@ -92,6 +92,10 @@ setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から開始
 setup.caption.deck,部隊
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成
+setup.placement,初期位置
+setup.placement_set,初期位置 ✓
+setup.placement.title,初期位置　{who}
+setup.placement.generated,ランダム生成のマップは、対戦のたびに形が変わる。入れないマスに当たった駒は、おまかせの位置へ
 setup.back_to_battle,対戦へ戻る
 setup.start,対戦開始
 setup.start_new,新しい対戦

@@ -46,10 +46,6 @@ deck.edit.item_refused,{reason}　{effect}
 deck.name.prompt,{title}（{max} 文字まで）
 deck.dialog.ok,決定
 deck.dialog.cancel,キャンセル
-deck.edit.deploy,配置
-deck.deploy.king,将
-deck.deploy.hq,本陣
-deck.deploy.front,前 ↑
 deck.list.row,"{name}
 {army}　{count} 体　コスト {cost} / {budget}"
 deck.list.row_unplayable,"{name}
