@@ -21,14 +21,14 @@ var exit := SceneFlow.TITLE
 var menu_exits: Array[Array] = []
 ## いま何番目か（0 から）。
 var index := 0
-var _steps: Array[Dictionary] = []  # {scene: StringName, data: Variant, once: bool, seen: bool}
+var _steps: Array[Dictionary] = []  # {scene: StringName, data: Variant, once: bool, seen: bool, detour: bool}
 
 
 ## 場面 step_scene（渡すもの step_data）を、列の終わりに足す。
 ## once なら、1 度通り過ぎた（NEXT で終えた）あとは、前後へ動くときに飛ばす（ストーリーの、対戦の前の会話。
 ## 決着の画面の「部隊変更」で出撃準備へ戻り、もう一度出撃しても、会話をもう一度は出さない）。
 func add(step_scene: StringName, step_data: Variant = null, once := false) -> void:
-	_steps.append({"scene": step_scene, "data": step_data, "once": once, "seen": false})
+	_steps.append({"scene": step_scene, "data": step_data, "once": once, "seen": false, "detour": false})
 
 
 ## いまの場面の名前。列を終えていたら空。
@@ -42,7 +42,11 @@ func data() -> Variant:
 
 
 ## 次の場面へ進み、その名前を返す。列を終えたら exit を返す。1 度通り過ぎた once の場面は飛ばす。
+## 差し込んだ寄り道の場面（insert）を終えたときは、それを列から外して、もとの場面へ戻る（寄り道のたびに列が伸びない）。
 func advance() -> StringName:
+	if index < _steps.size() and _steps[index]["detour"]:
+		_steps.remove_at(index)
+		return scene() if index < _steps.size() else exit
 	if index < _steps.size():
 		_steps[index]["seen"] = true
 	index = mini(index + 1, _steps.size())
@@ -66,9 +70,14 @@ func _skipped(at: int) -> bool:
 
 
 ## 場面 step_scene（渡すもの step_data）を、いまの場面の前に差し込み、そこを「いま」にする。
-## 差し込んだ場面が NEXT で終わると、もとの場面へ戻る（出撃準備から、部隊編成へ寄り道する）。
+## 差し込んだ場面が NEXT で終わると、列から外して、もとの場面へ戻る（出撃準備から、部隊編成へ寄り道する）。
 func insert(step_scene: StringName, step_data: Variant = null) -> void:
-	_steps.insert(index, {"scene": step_scene, "data": step_data, "once": false, "seen": false})
+	_steps.insert(index, {"scene": step_scene, "data": step_data, "once": false, "seen": false, "detour": true})
+
+
+## 列の場面の数（検査用。寄り道を終えたら、もとの数に戻る）。
+func size() -> int:
+	return _steps.size()
 
 
 func is_done() -> bool:

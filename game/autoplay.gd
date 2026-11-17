@@ -2155,6 +2155,7 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.SORTIE, "話の一覧で話を選んでも、出撃準備へ進まない（会話は出撃のあと）")
 	var sortie: Node = app.current_scene()
 	# 「部隊編成」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
+	var steps: int = app.context.run.size()
 	sortie.press_edit_decks()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.DECKS and app.context.run != null, "出撃準備の「部隊編成」で、流れを保ったまま編成へ進まない")
@@ -2169,6 +2170,7 @@ func _visit_story(app: Node) -> void:
 	decks.press_back()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.SORTIE, "編成の「出撃準備へ戻る」で、出撃準備へ戻らない")
+	_expect(app.context.run.size() == steps, "寄り道を終えても、流れの列に編成の場面が残っている")
 	sortie = app.current_scene()
 	_expect(sortie.chosen_id() == made, "寄り道で取っておいた部隊が、出撃準備で選ばれていない")
 	sortie.choose("")
