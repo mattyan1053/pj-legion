@@ -206,7 +206,18 @@ deploy = 8,9  5,9  11,9
 2. 欄を直す（使わない欄は消す）。
 3. 物語のファイル（`game/story/campaigns/<物語>.txt`）の `[episodes]` の、遊ばせたい位置に `<id>` を 1 行足す。
 4. `tools/check.sh` か、テストだけ（`godot --headless --path . -s res://tools/run_tests.gd`）を回す。書き間違いは「ファイル:行:」で出る。
-5. 敵の強さを測る（`tools/cpu_matches.gd -- --episode=<id>`。下の「敵の強さ」）。
+5. 台本を作り直す（`tools/write_story_script.sh <godot>`。下の「台本」）。
+6. 敵の強さを測る（`tools/cpu_matches.gd -- --episode=<id>`。下の「敵の強さ」）。
+
+### 台本
+
+`docs/story-script/` に、物語ごとの台本（Markdown。物語の id がファイルの名前）を置く。会話を、遊ばずに通しで読んで確かめるためのもの
+（人間の言葉「テキストで読み物として読むだけでもある程度評価できる」）。話の順に、話の名前、マップ、勝ち方、敵、（演習なら）覚えること、
+対戦の前の会話、途中の台詞（いつ出るか）、対戦のあとの会話、クリアで増えるもの。
+
+- **生成物で、手で書かない**（`docs/README.md` の「いまの仕様だけ」は、話のファイルが正で、台本はその写し、という形で守る）。
+  話のファイルを直したら `tools/write_story_script.sh <godot>` で作り直す（`tools/story_script.gd`）。
+- 作り直し忘れると、テスト（`tests/tools/test_story_script.gd`）が落ちる。
 
 ## 物語のファイル
 
