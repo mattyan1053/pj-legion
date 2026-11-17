@@ -81,7 +81,7 @@ func talk_cues() -> RefCounted:
 	return BattleCues.new()
 
 
-## 将の姿（見た目だけ。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）: [プレイヤー1, プレイヤー2]。既定はどちらもいつもの将。
+## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [プレイヤー1, プレイヤー2]。既定はどちらもいつもの将。
 func king_looks() -> Array[StringName]:
 	return [&"", &""]
 

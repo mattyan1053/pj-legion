@@ -11,7 +11,7 @@ const SoundCatalog := preload("res://game/sound_catalog.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const Maps := preload("res://game/maps.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
-const UnitView := preload("res://game/unit_view.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 const DIR := "res://game/story/episodes/"
@@ -63,7 +63,7 @@ var speakers: PackedStringArray = ["", ""]
 ## 話し手の姿（会話の場面に立たせる駒の形と、対戦の途中の台詞のアイコン）: [人の軍, 敵の軍]。
 ## どちらも {"kind": 駒の種類, "evolved": 進化後の形か, "look": 将の別の姿}。書かなければ、その陣営の将の姿。
 var figures: Array[Dictionary] = [{"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}]
-## 将の姿（見た目だけ。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）: [人の軍, 敵の軍]。敵の将だけ書ける（[enemy] の king_figure）。
+## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [人の軍, 敵の軍]。敵の将だけ書ける（[enemy] の king_figure）。
 ## 盤の将、駒の情報・決着の画面のアイコン、話し手の姿が king のときの姿に使う。ルールの上では将のまま。
 var king_looks: Array[StringName] = [&"", &""]
 ## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文] の列。
@@ -243,10 +243,10 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if values.has("king_figure"):
 		var entry: Dictionary = values["king_figure"][0]
 		var king_look := StringName(entry["value"])
-		if UnitView.KING_LOOKS.has(king_look):
+		if UnitLooks.KING_LOOKS.has(king_look):
 			king_looks[side] = king_look
 		else:
-			file.problem(entry["line"], "知らない将の姿「%s」（書けるのは %s）" % [king_look, ", ".join(UnitView.KING_LOOKS.keys())])
+			file.problem(entry["line"], "知らない将の姿「%s」（書けるのは %s）" % [king_look, ", ".join(UnitLooks.KING_LOOKS)])
 	if values.has("figure"):
 		_read_figure(file, values["figure"][0], side)
 	if figures[side]["kind"] == UnitKind.Id.KING:
