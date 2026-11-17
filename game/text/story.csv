@@ -41,5 +41,5 @@ story.episodes.number,第 {number} 話
 sortie.option.unplayable,出撃不可: {issue}
 story.news.speaker,知らせ
 story.news.unit,新しい駒「{unit}」を雇えるようになりました。
-story.news.item,新しい持ち物「{item}」を持たせられるようになりました。
+story.news.item,新しい持ち物「{item}」（{effect}）を持たせられるようになりました。
 story.news.budget,コスト上限が {budget} に上がりました。

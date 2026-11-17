@@ -27,7 +27,7 @@ const FAMILIES := {
 	"army": [UnitKind.Army, [""]],
 	"role": [UnitKind.Role, ["", ".summary"]],
 	"stat": [Unit.Stat, [""]],
-	"trait": [Evolution.Trait, [""]],
+	"trait": [Evolution.Trait, ["", ".short"]],
 	"field_effect": [FieldEffect.Type, [""]],
 	"unit": [UnitKind.Id, [""]],
 	"evolution": [Evolution.Id, [""]],

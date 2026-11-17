@@ -13,6 +13,7 @@ look = stone_walls
 wins = hq_captured
 
 [unlock]
+item = regen_charm
 budget = 2
 
 [ally]

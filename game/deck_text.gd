@@ -82,13 +82,54 @@ static func bonus_text(bonus: Dictionary, kind := -1) -> String:
 	return Text.join_comma(parts)
 
 
-## 装備 1 個の効果（「移動力 +2」）。
+## 装備 1 個の効果（「移動力 +2」「射程 +1（後衛専用）」）。能力値の増減、特性、持てる駒の限り。
 static func equipment_effect(item: Equipment.Id) -> String:
 	var bonus := {}
 	for stat: Unit.Stat in Unit.Stat.values():
 		if Equipment.bonus(item, stat) != 0:
 			bonus[stat] = Equipment.bonus(item, stat)
-	return bonus_text(bonus)
+	var parts: Array[String] = []
+	if not bonus.is_empty():
+		parts.append(bonus_text(bonus))
+	for which in Equipment.traits(item):
+		parts.append(Names.trait_short(which))
+	var text := Text.join_comma(parts)
+	var holders := holders_text(item)
+	return text if holders == "" else Text.t("deck.item.with_holders", {"effect": text, "holders": holders})
+
+
+## 装備の特性の説明（1 つ 1 行。部隊編成の持ち物の行のツールチップ）。特性が無ければ空。
+static func equipment_traits_text(item: Equipment.Id) -> String:
+	var lines: Array[String] = []
+	for which in Equipment.traits(item):
+		lines.append(Names.trait_text(which))
+	return "\n".join(lines)
+
+
+## 装備を持てる駒の限りの短い文（「後衛専用」「前衛以外」）。どの駒も持てるなら空。
+static func holders_text(item: Equipment.Id) -> String:
+	var roles := Equipment.roles(item)
+	if roles.is_empty():
+		return ""
+	if roles.size() == 1:
+		return Text.t("deck.item.only", {"role": Names.role(roles[0])})
+	var all_roles: Array[UnitKind.Role] = [UnitKind.Role.VANGUARD, UnitKind.Role.REARGUARD, UnitKind.Role.RAIDER, UnitKind.Role.HEALER]
+	var left_out := all_roles.filter(func(role: UnitKind.Role) -> bool: return not roles.has(role))
+	if left_out.size() == 1:
+		return Text.t("deck.item.except", {"role": Names.role(left_out[0])})
+	var names: Array[String] = []
+	for role in roles:
+		names.append(Names.role(role))
+	return Text.t("deck.item.only", {"role": Text.join_dot(names)})
+
+
+## kind の駒（held を持っている）に item を持たせられない理由の短い文（役割の限り、重ねられない）。持たせられるか、数の上限だけが理由なら空。
+static func item_refusal(kind: UnitKind.Id, held: Array[Equipment.Id], item: Equipment.Id) -> String:
+	if not Equipment.fits(item, kind):
+		return holders_text(item)
+	if held.count(item) >= Equipment.stack_limit(item) and Equipment.stack_limit(item) < Equipment.MAX_PER_UNIT:
+		return Text.t("deck.item.one_each", {"max": Equipment.stack_limit(item)})
+	return ""
 
 
 ## スキルの 1 行目（名前）と説明。持たなければ空。
