@@ -115,3 +115,39 @@ func test_match_setup_uses_the_placements() -> void:
 	for unit: Unit in moved.units:
 		if unit.side == P2:
 			assert_true(usual.unit_at(unit.cell) != null and usual.unit_at(unit.cell).side == P2, "相手の置き方は変わらない")
+
+
+## 相手の側へ返す（facing_placement）: 盤の形に合わせる。7 x 7 の盤で、置き方のずれ (2, -2)（本陣から 2 行前、右へ 2）を返す。
+func _facing(rows: Array[String], hqs: Array[Vector2i]) -> Vector2i:
+	var board := Maps.board(rows)
+	board.hq_cells = hqs
+	var placement: Array[Vector2i] = [Vector2i(2, -2), NO]
+	var facing := Deployment.facing_placement(board, placement)
+	assert_eq(facing[1], NO, "決めていない駒は、決めていないまま")
+	return facing[0]
+
+
+func test_facing_on_diagonal_hqs_turns_the_placement_around() -> void:
+	var open: Array[String] = [".......", ".......", ".......", ".......", ".......", ".......", "......."]
+	assert_eq(_facing(open, [Vector2i(1, 6), Vector2i(5, 0)]), Vector2i(-2, 2), "本陣が対角なら点対称: 上下と左右を返す")
+
+
+func test_facing_on_a_point_symmetric_board_turns_the_placement_around() -> void:
+	var rows: Array[String] = [".......", ".......", ".#.....", ".......", ".....#.", ".......", "......."]
+	assert_eq(_facing(rows, [P1_HQ, P2_HQ]), Vector2i(-2, 2), "地形が点対称なら、端に寄せた駒は相手の側でも端に（左右も返す）")
+
+
+func test_facing_on_a_mirrored_board_flips_only_up_and_down() -> void:
+	var rows: Array[String] = [".......", ".......", ".#.....", ".......", ".#.....", ".......", "......."]
+	assert_eq(_facing(rows, [P1_HQ, P2_HQ]), Vector2i(2, 2), "地形が上下の線対称なら、上下だけを返す")
+
+
+func test_facing_on_a_fully_symmetric_board_flips_only_up_and_down() -> void:
+	var open: Array[String] = [".......", ".......", ".......", ".......", ".......", ".......", "......."]
+	assert_eq(_facing(open, [P1_HQ, P2_HQ]), Vector2i(2, 2), "どちらの形でも重なるなら、上下だけ（いままでと同じ）")
+
+
+func test_facing_follows_the_fixed_things_before_the_terrain() -> void:
+	# 結晶泉は点対称でだけ重なる（地形は上下の線対称のほうが多く重なる）。
+	var rows: Array[String] = [".......", ".....*.", ".#.....", ".......", ".#.....", ".*.....", "......."]
+	assert_eq(_facing(rows, [P1_HQ, P2_HQ]), Vector2i(-2, 2), "本陣・中立の駒の場所を先に見る")
