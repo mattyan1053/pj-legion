@@ -32,6 +32,7 @@ sortie.option,{name}　　{note}
 talk.skip,スキップ
 talk.hint,クリック・Enter: 次へ ▼　右クリック: 戻る
 talk.resume,会話へ戻る
+talk.next_episode,次の話へ
 story.episodes.roster,"雇える駒: {kinds}
 持ち物: {items}　　コスト上限: {budget}"
 story.episodes.rewards,"クリア報酬:
