@@ -16,7 +16,8 @@
 
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
-  CPU の軍は、対戦を始める側が選ぶ。
+  CPU の軍は、対戦を始める側が選ぶ。CPU にほかの部隊を渡すときは、`set_cpu` のあとで `decks` を置き換える
+  （対戦モードの画面の CPU の行で選んだ部隊。CPU はどの部隊でも動かせる。下の「画面の入口」）。
 - **人の編成**は、渡したもの（`set_human(プレイヤー, 編成)`）。対戦モードの画面では、部隊編成で組んで取っておいた部隊か、
   軍ごとの既定の編成 `MatchSetup.default_deck(軍)`（中身は CPU の編成と同じ。コスト上限どおり）。ストーリーでは、出撃準備で選んだ部隊か、ストーリーの既定の編成（`docs/story.md`）。
 - 人と CPU の対戦は `MatchSetup.on_scenario(戦いの定義, 種, 人のプレイヤー, 人の編成, CPU の軍)` から作る（どのモードもここを通す）。
@@ -55,3 +56,16 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 画面の側（`game/`）は、対戦モードでは、対戦の前に設定画面（`docs/battle-view.md` の「対戦設定」）で選んだものを
 `game/match_choice.gd` が `MatchSetup` にし、ストーリーでは話のデータから `game/story_battle.gd` が作って、`create_battle()` で始める。対戦の画面は `MatchChoice` を直に読まず、
 「`MatchSetup` を作ってくれるもの」（`game/battle_source.gd`。`docs/battle-source.md`）として受け取る。
+
+対戦モードの部隊は、人の行も CPU の行も同じ選び方（`match_choice.gd`）: 既定の編成（CPU の行では CPU の編成）、取っておいた部隊、おまかせ。
+
+### おまかせ
+
+コード: `game/random_squad.gd`（`RandomSquad`）。テスト: `tests/game/test_match_choice.gd`。
+
+- 対戦を作るたびに、対戦の決まりの中でランダムに組む（`RandomSquad.for_battle(軍, 対戦の種, プレイヤー)`）。
+  その軍のロスターから、種で決まる順に、数の上限まで予算の中で雇い、余った予算で、種で決まる駒に種で決まる持ち物を持たせる。並びは役割の順。
+- 種は対戦の種から引く（`対戦の種 × 2 + プレイヤー番号`）。同じ種なら同じ部隊（「同じ盤面で再戦」は同じ部隊、「新しい盤面」は新しい部隊）。
+  手番がランダムなら、引いた側（実際に動かすプレイヤー）の番号で組む。
+- CPU どうしの集計の道具の `--squads=random`（対戦モード）も、同じ組み方を使う（`docs/cpu-ai.md`）。
+- 組んだ部隊は、選んだもの（`match_choice.gd` の `drawn_decks`）に残り、対戦の途中の対戦設定のパネルの「編成確認」で見られる。

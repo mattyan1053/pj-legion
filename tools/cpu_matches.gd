@@ -50,6 +50,7 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const Names := preload("res://game/names.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const Maps := preload("res://game/maps.gd")
+const RandomSquad := preload("res://game/random_squad.gd")  # --squads=random の、対戦の部隊（両軍）
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 const STAGE_NAMES := {
@@ -364,7 +365,7 @@ func _initialize() -> void:
 		var squad_side := (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2 if one_squad else -1
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			if random_squads or side == squad_side:
-				setup.decks[side] = _random_deck(armies[side], rules, (first_seed + game) * 2 + side)
+				setup.decks[side] = RandomSquad.build(armies[side], rules, (first_seed + game) * 2 + side)
 			else:
 				setup.decks[side] = _deck(armies[side], deck_mode, rules)
 		if episode != null:
@@ -720,39 +721,6 @@ func _deck(army: UnitKind.Army, mode: String, rules: DeckRules) -> Deck:
 	for slot in EVEN_SLOTS:
 		if rules.allows(army, roster[slot]):
 			deck.add(roster[slot])
-	return deck
-
-
-## --squads=random の、対戦の部隊（両軍）。決まり rules のロスターから、種 squad_seed で決まる順に、数の上限まで予算の中で雇い、
-## 余った予算で、種で決まる駒に種で決まる装備を持たせる（決まりで持たせられる装備から。その駒が持てるものだけ）。並びは役割の順（前衛が前に置かれる）。
-static func _random_deck(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Deck:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = squad_seed
-	var deck := Deck.new(army, rules)
-	var kinds := deck.available_kinds()
-	var hired: Array[UnitKind.Id] = []
-	var cost := 0
-	while hired.size() < rules.max_units:
-		var affordable := kinds.filter(func(kind: UnitKind.Id) -> bool: return cost + UnitKind.cost(kind) <= deck.budget())
-		if affordable.is_empty():
-			break
-		var kind: UnitKind.Id = affordable[rng.randi_range(0, affordable.size() - 1)]
-		hired.append(kind)
-		cost += UnitKind.cost(kind)
-	hired.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool: return UnitKind.role(a) < UnitKind.role(b))
-	for kind in hired:
-		deck.add(kind)
-	var items := rules.items()
-	while not deck.entries.is_empty() and not items.is_empty():
-		var item: Equipment.Id = items[rng.randi_range(0, items.size() - 1)]
-		var room := deck.entries.filter(func(entry: DeckEntry) -> bool: return entry.equipment.size() < Equipment.MAX_PER_UNIT)
-		if room.is_empty() or deck.total_cost() + Equipment.cost(item) > deck.budget():
-			break
-		var open := room.filter(func(entry: DeckEntry) -> bool: return Equipment.can_add(entry.kind, entry.equipment, item))
-		if open.is_empty():
-			items.erase(item)  # この装備を持てる駒がもういない（役割の限り、重ねられない）。ほかの装備で続ける
-			continue
-		(open[rng.randi_range(0, open.size() - 1)] as DeckEntry).equip(item)
 	return deck
 
 

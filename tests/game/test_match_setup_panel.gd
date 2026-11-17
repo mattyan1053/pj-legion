@@ -40,9 +40,11 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 	panel.open(MatchChoice.new())
 	var sizes := {}
 	var box: Control = panel.get_child(1).get_child(0)
-	for step in 4:
+	for step in 6:
 		match step:
 			1: panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
+			4: assert_true(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM), "CPU の行でおまかせを選べない")
+			5: assert_true(panel.choose_deck(Unit.Side.PLAYER2, id), "CPU の行で取っておいた部隊を選べない")
 			2: panel.choose_opponent(false)
 			3:
 				panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
@@ -56,6 +58,7 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 		kinds.append(entry.kind)
 	assert_eq(panel.preview().shown_kinds(), kinds, "選んだ部隊の駒を、将から並べる")
 	panel.choose_opponent(true)
+	panel.choose_deck(Unit.Side.PLAYER2, "")
 	panel.open_preview(Unit.Side.PLAYER2)
 	assert_eq(panel.preview().shown_kinds().size(), CpuDeck.build(UnitKind.Army.MILITARY).entries.size() + 1, "CPU の編成も同じ見え方で開く")
 	holder.free()
@@ -107,3 +110,30 @@ func test_buttons_that_end_the_battle_ask_twice_in_a_battle() -> void:
 		panel.call(press)
 		assert_eq(count[0], 2, "決着のあとの %s が、1 回で進まない" % press)
 	holder.free()
+
+
+## CPU の行も、人の行と同じ欄で部隊を選ぶ: 「CPU の編成」、おまかせ、取っておいた部隊。おまかせは対戦を作るまで「編成確認」できず、
+## 対戦の途中で開けば、いまの対戦で組んだ部隊を見せる。
+func test_the_cpu_row_picks_a_squad_too() -> void:
+	var library := DeckLibrary.new()
+	var id: String = library.add("CPU に渡す部隊", _long_deck()).id
+	var panel := MatchSetupPanel.new()
+	panel.setup([Color.BLUE, Color.RED] as Array[Color], library, OverlayStack.new())
+	var choice := MatchChoice.new()
+	choice.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
+	panel.open(choice)
+	var ids: Array = panel.deck_options(Unit.Side.PLAYER2).map(func(option: Array) -> String: return option[0])
+	assert_eq(ids, ["", MatchChoice.RANDOM, id])
+	assert_true(panel.deck_options(Unit.Side.PLAYER2)[0][1].begins_with("CPU の編成"), "CPU の行の既定は「CPU の編成」")
+	assert_true(panel.deck_options(Unit.Side.PLAYER1)[0][1].begins_with("既定の編成"), "人の行の既定は「既定の編成」")
+	assert_true(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM))
+	assert_false(panel.can_preview(Unit.Side.PLAYER2), "おまかせは、対戦を作るまで部隊が決まらない")
+	panel.open_preview(Unit.Side.PLAYER2)
+	assert_false(panel.preview().visible)
+	var started: RefCounted = panel.current_choice().copy()
+	var setup: MatchSetup = started.to_setup(5)  # 対戦を始めた
+	panel.open(started, true, true)  # 対戦の途中で開いた
+	assert_true(panel.can_preview(Unit.Side.PLAYER2))
+	panel.open_preview(Unit.Side.PLAYER2)
+	assert_eq(panel.preview().shown_kinds().size(), setup.decks[1].entries.size() + 1, "いまの対戦で組んだ部隊を見せる")
+	panel.free()

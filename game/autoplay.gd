@@ -21,6 +21,8 @@ const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
+const RandomSquad := preload("res://game/random_squad.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
@@ -1149,6 +1151,36 @@ func _queue_setup_scene() -> void:
 			_expect(_scene.battle.board.size == expected.size and _scene.battle.board.hq_cells == expected.hq_cells, "手で作ったマップで始まらない: %s" % field)
 			_expect(_scene.look == VersusFields.look_of(field), "手で作ったマップの見た目にならない: %s" % field)
 			_expect(_scene.source.new_board_fields() == VersusFields.generated_ids(), "手で作ったマップの対戦の「新しい盤面」が、生成のステージでない")
+		# CPU の部隊を「おまかせ」にすると、対戦の種から組んだ部隊で始まる。設定パネルの「編成確認」で、いまの部隊が見える。
+		# 「同じ盤面で再戦」は同じ部隊、「新しい盤面」は新しい部隊（どちらも、おまかせのまま引き継ぐ）。
+		_scene.open_setup()
+		panel.choose_field(VersusFields.PLAIN)
+		panel.choose_opponent(true)
+		panel.choose_human_side(Unit.Side.PLAYER1)  # CPU は後手（始めてすぐには動かない）
+		panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.FANTASY)
+		_expect(panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM), "CPU の行で「おまかせ」を選べない")
+		panel.confirm()
+		_expect(_cpu_kinds(Unit.Side.PLAYER2) == _squad_kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, _scene.map_seed, Unit.Side.PLAYER2)),
+			"「おまかせ」の CPU が、種から組んだ部隊で始まらない")
+		var drawn := _cpu_kinds(Unit.Side.PLAYER2)
+		_scene.open_setup()
+		_expect(panel.current_choice().is_random(Unit.Side.PLAYER2) and panel.can_preview(Unit.Side.PLAYER2), "対戦の途中の設定パネルで、「おまかせ」の部隊を確認できない")
+		panel.open_preview(Unit.Side.PLAYER2)
+		_expect(panel.preview().visible and panel.preview().shown_kinds().size() == drawn.size() + 1, "「編成確認」に、いまの対戦の「おまかせ」の部隊が出ない")
+		panel.preview().close_preview()
+		panel.cancel()
+		_scene.start_battle(_scene.map_seed)  # 決着の画面の「同じ盤面で再戦」と同じ入口
+		_expect(_cpu_kinds(Unit.Side.PLAYER2) == drawn, "「同じ盤面で再戦」で、「おまかせ」の部隊が変わった")
+		var changed := false
+		for i in 3:  # 「新しい盤面」（種が替わる）。たまたま同じ部隊になることもあるので、何度か
+			_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
+			_expect(_scene.source.is_random(Unit.Side.PLAYER2), "「新しい盤面」で、「おまかせ」が引き継がれない")
+			_expect(_cpu_kinds(Unit.Side.PLAYER2) == _squad_kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, _scene.map_seed, Unit.Side.PLAYER2)),
+				"「新しい盤面」の「おまかせ」が、新しい種から組んだ部隊でない")
+			changed = changed or _cpu_kinds(Unit.Side.PLAYER2) != drawn
+		_expect(changed, "「新しい盤面」で、「おまかせ」の部隊が変わらない")
+		_scene.open_setup()
+		panel.choose_deck(Unit.Side.PLAYER2, "")
 		_scene.open_setup()
 		panel.choose_opponent(false)
 		panel.choose_human_side(Unit.Side.PLAYER1)
@@ -1165,6 +1197,20 @@ func _queue_setup_scene() -> void:
 	# 何も選び直せない対戦（battle_source.gd の既定の答え。ストーリーの 1 話も、ステージ・相手・対戦設定は選び直せない）を渡すと、選び直す入口が出ない。
 	var kept := {}
 	_script_fixed_source(kept)
+
+
+## いまの対戦の、side の駒（将を除く）の種類の並び（小さい順）。
+func _cpu_kinds(side: Unit.Side) -> Array:
+	var kinds: Array = _scene.battle.units.filter(func(unit: Unit) -> bool: return unit.side == side and unit.kind != UnitKind.Id.KING).map(func(unit: Unit) -> int: return unit.kind)
+	kinds.sort()
+	return kinds
+
+
+## 部隊 deck の駒の種類の並び（小さい順）。
+func _squad_kinds(deck: Deck) -> Array:
+	var kinds: Array = deck.entries.map(func(entry: DeckEntry) -> int: return entry.kind)
+	kinds.sort()
+	return kinds
 
 
 func _script_fixed_source(kept: Dictionary) -> void:
@@ -1918,7 +1964,7 @@ func _visit_decks(app: Node) -> void:
 	var panel: Node = app.current_scene().setup_panel()
 	_expect(panel.current_choice().deck_ids[0] == id, "寄り道で取っておいた部隊が、対戦設定で選ばれていない")
 	var ids: Array = panel.deck_options(Unit.Side.PLAYER1).map(func(option: Array) -> String: return option[0])
-	_expect(ids == ["", id], "対戦設定に、取っておいた部隊が並ばない: %s" % [ids])
+	_expect(ids == ["", MatchChoice.RANDOM, id], "対戦設定に、取っておいた部隊が並ばない: %s" % [ids])
 	_expect(panel.choose_deck(Unit.Side.PLAYER1, id), "取っておいた部隊を選べない")
 	panel.open_preview(Unit.Side.PLAYER1)
 	_expect(panel.preview().visible and panel.preview().shown_kinds().size() == 6, "「編成を確認」で、選んだ部隊が出ない")

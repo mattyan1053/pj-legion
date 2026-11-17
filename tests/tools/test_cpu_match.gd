@@ -7,6 +7,7 @@ extends "res://tests/base_test.gd"
 const CpuMatch := preload("res://tools/cpu_match.gd")
 const CpuGame := preload("res://tests/support/cpu_game.gd")
 const Maps := preload("res://tests/support/maps.gd")
+const RandomSquad := preload("res://game/random_squad.gd")
 
 
 ## 長い検査の 2 つのテストが比べる元の 1 局（種 3。1 回だけ回して控える）。
@@ -176,7 +177,7 @@ func test_matches_tool_can_swap_budgets_for_a_measurement() -> void:
 	assert_false(without.roster(UnitKind.Army.MILITARY).has(UnitKind.Id.SNIPER))
 	assert_eq(without.budget(UnitKind.Army.MILITARY), DeckRules.versus().budget(UnitKind.Army.MILITARY))
 	for squad_seed in 20:
-		var deck: Deck = tool._random_deck(UnitKind.Army.FANTASY, rules, squad_seed)
+		var deck: Deck = RandomSquad.build(UnitKind.Army.FANTASY, rules, squad_seed)
 		assert_true(deck.total_cost() <= 20)
 		assert_true(deck.entries.size() > 0)
 
@@ -190,5 +191,5 @@ func test_matches_tool_sorts_a_squad_by_what_is_in_it() -> void:
 	assert_true(keys.has("MILITARY 対 FANTASY 役割 前2 後2 奇1 回1"), str(keys))
 	assert_true(keys.has("MILITARY 対 FANTASY CPU の編成と同じ"), str(keys))
 	assert_true(keys.has("MILITARY 対 FANTASY 駒 スナイパー 2 体"), str(keys))
-	var other: Deck = tool._random_deck(UnitKind.Army.MILITARY, DeckRules.versus(), 5)
+	var other: Deck = RandomSquad.build(UnitKind.Army.MILITARY, DeckRules.versus(), 5)
 	assert_false(tool._squad_keys(other, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY).has("MILITARY 対 FANTASY CPU の編成と同じ"))
