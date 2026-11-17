@@ -114,7 +114,7 @@ func test_holding_side_keeps_the_usual_ways_and_reaches_the_battle() -> void:
 
 func test_start_gauge_reaches_the_battle_within_the_gauge() -> void:
 	var scenario := Scenario.on_map(HandMap.new(PackedStringArray(["..2..", ".....", ".....", "..1.."])), "試し")
-	assert_eq(scenario.start_gauge, [0, 0] as Array[int], "既定は 0")
+	assert_eq(scenario.start_gauge, [Ults.FIRST_PLAYER_START_GAUGE, 0] as Array[int], "対戦モードの定義は、先手だけためて始まる")
 	scenario.set_start_gauge(Unit.Side.PLAYER1, 800)
 	scenario.set_start_gauge(Unit.Side.PLAYER2, Ults.GAUGE_MAX + 50)
 	assert_eq(scenario.start_gauge, [800, Ults.GAUGE_MAX] as Array[int], "いっぱいを超えない")
@@ -122,7 +122,9 @@ func test_start_gauge_reaches_the_battle_within_the_gauge() -> void:
 	setup.ignore_budget = true
 	var battle := setup.create_battle()
 	assert_eq(battle.ult_gauge, [800, Ults.GAUGE_MAX] as Array[int])
-	assert_eq(Scenario.versus(BoardGenerator.Stage.PLAIN).start_gauge, [0, 0] as Array[int], "対戦モードは 0 から")
+	assert_eq(Scenario.versus(BoardGenerator.Stage.PLAIN).start_gauge, [Ults.FIRST_PLAYER_START_GAUGE, 0] as Array[int], "生成の盤も同じ")
+	assert_eq(Scenario.new().start_gauge, [0, 0] as Array[int], "定義の既定は 0")
+	assert_true(Ults.FIRST_PLAYER_START_GAUGE < Ults.GAUGE_MAX, "先手でも、始めから必殺技は使えない")
 
 
 ## 駒の始めのレベルと経験値（start_growth）: 部隊の並びの順に将でない駒へ当て、レベルアップと同じだけ伸ばす。既定は空。
