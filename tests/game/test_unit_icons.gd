@@ -4,7 +4,7 @@ extends "res://tests/base_test.gd"
 const Names := preload("res://game/names.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
-const UnitView := preload("res://game/unit_view.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 
 func test_every_variant_has_a_picture() -> void:
@@ -15,7 +15,7 @@ func test_every_variant_has_a_picture() -> void:
 
 ## 将の別の姿（骸骨の将など）は、いつもの将と違う絵。将でない駒には効かない。
 func test_king_looks_have_their_own_picture() -> void:
-	for look: StringName in UnitView.KING_LOOKS:
+	for look: StringName in UnitLooks.KING_LOOKS:
 		var texture := UnitIcons.texture(UnitKind.Id.KING, 1, false, look)
 		assert_true(texture != null and texture != UnitIcons.texture(UnitKind.Id.KING, 1), "%s の将のアイコン" % look)
 	assert_eq(UnitIcons.texture(UnitKind.Id.SNIPER, 1, false, &"skeleton_mage"), UnitIcons.texture(UnitKind.Id.SNIPER, 1))

@@ -1,18 +1,22 @@
 extends SceneTree
-## 駒のアイコン（assets/unit_icons/）を、駒の 3D の形（game/unit_view.gd）から写して作る道具。絵は描かない。
-## 種類ごと・陣営の色ごと・進化の前後で 1 枚ずつ、透明な地の PNG を書く。使い方は assets/unit_icons/README.md。
+## 駒のアイコンを、駒の 3D の形（game/unit_view.gd）から写して作る道具。絵は描かない。
+## 種類ごと・陣営の色ごと・進化の前後で 1 枚ずつ、透明な地の PNG を、駒の見た目の組ごとのディレクトリ（組の定義の icon_dir）に書く。
+## 使い方は assets/unit_icons/README.md。
 ##
-##   tools/unit_icons.sh <godot>
+##   tools/unit_icons.sh <godot> [組の名前]   （組の名前を省くと、全部の組）
 ##
 ## 写すには画面の描画が要る（--headless では絵が出ない）。unit_icons.sh が、画面の無いコンテナでは Xvfb の上で回す。
 
 const UnitView := preload("res://game/unit_view.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 ## 写す大きさ（px）。書くのは ICON_SIZE に縮めたもの（縁がなめらかになる）。
 const RENDER_SIZE := 256
 
-var _out := "res://assets/unit_icons"
+## 書く組の名前（空なら全部）と、書く先（空なら組の icon_dir。--out で替えられる。組を 1 つ選んだときだけ）。
+var _look_set := &""
+var _out := ""
 
 
 func _initialize() -> void:
@@ -20,11 +24,17 @@ func _initialize() -> void:
 	var at := args.find("--out")
 	if at != -1 and at + 1 < args.size():
 		_out = args[at + 1]
+	at = args.find("--look")
+	if at != -1 and at + 1 < args.size():
+		_look_set = StringName(args[at + 1])
+		if not UnitLooks.SETS.has(_look_set):
+			push_error("unit_icons: 知らない組: %s（あるのは %s）" % [_look_set, ", ".join(UnitLooks.SETS.keys())])
+			quit(1)
+			return
 	_run.call_deferred()
 
 
 func _run() -> void:
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(RENDER_SIZE, RENDER_SIZE)
 	viewport.transparent_bg = true
@@ -50,6 +60,19 @@ func _run() -> void:
 	camera.current = true
 
 	var written := 0
+	for look_set: StringName in ([_look_set] if _look_set != &"" else UnitLooks.SETS.keys()):
+		var out := _out if _out != "" and _look_set != &"" else UnitLooks.of(look_set).icon_dir
+		if not await _write_set(viewport, camera, look_set, out):
+			quit(1)
+			return
+		written += UnitIcons.variants().size()
+		print("unit_icons: 組 %s を %s に書いた" % [look_set, out])
+	print("unit_icons: %d 枚を書いた" % written)
+	quit(0)
+
+
+func _write_set(viewport: SubViewport, camera: Camera3D, look_set: StringName, out: String) -> bool:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
 	for variant: Array in UnitIcons.variants():
 		var kind: UnitKind.Id = variant[0]
 		var side: int = variant[1]
@@ -57,7 +80,7 @@ func _run() -> void:
 		var look: StringName = variant[3]
 		var view := UnitView.new()
 		viewport.add_child(view)
-		view.setup(kind, UnitIcons.COLORS[side], 1, 1, look)
+		view.setup(kind, UnitIcons.COLORS[side], 1, 1, look, look_set)
 		if evolved:
 			view.set_evolved(1)
 		# 正面から少し見下ろす。駒の高さに合わせて、全身が収まるように寄る。
@@ -71,14 +94,11 @@ func _run() -> void:
 		await RenderingServer.frame_post_draw
 		var image := viewport.get_texture().get_image()
 		image.resize(UnitIcons.ICON_SIZE, UnitIcons.ICON_SIZE, Image.INTERPOLATE_LANCZOS)
-		var path := "%s/%s" % [_out, UnitIcons.file_name(kind, side, evolved, look)]
+		var path := "%s/%s" % [out, UnitIcons.file_name(kind, side, evolved, look)]
 		var error := image.save_png(path)
 		if error != OK:
 			push_error("unit_icons: 書けない: %s" % path)
-			quit(1)
-			return
-		written += 1
+			return false
 		viewport.remove_child(view)
 		view.free()
-	print("unit_icons: %d 枚を書いた（%s）" % [written, _out])
-	quit(0)
+	return true
