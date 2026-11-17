@@ -156,13 +156,22 @@ func test_cpu_plays_on_the_small_map() -> void:
 
 
 ## game/maps/ のどのマップでも、CPU どうしの対局が最後まで進む（先手と後手の軍を入れ替えて 2 局ずつ）。
-func test_long_cpu_games_on_every_map_finish() -> void:
+## 軍の並びごとに 2 つのテストに分けてある。長い検査（tools/check.sh --full）が、別々のプロセスで並べて回す。
+func test_long_cpu_games_on_every_map_finish_military_first() -> void:
+	_assert_cpu_games_finish_on_every_map([UnitKind.Army.MILITARY, UnitKind.Army.FANTASY])
+
+
+func test_long_cpu_games_on_every_map_finish_fantasy_first() -> void:
+	_assert_cpu_games_finish_on_every_map([UnitKind.Army.FANTASY, UnitKind.Army.MILITARY])
+
+
+func _assert_cpu_games_finish_on_every_map(armies: Array) -> void:
 	var maps := _all_maps()
+	assert_true(maps.size() > 0)
 	for file: String in maps:
-		for armies: Array in [[UnitKind.Army.MILITARY, UnitKind.Army.FANTASY], [UnitKind.Army.FANTASY, UnitKind.Army.MILITARY]]:
-			var outcome := _cpu_game(armies, 60, maps[file])
-			assert_true(outcome.finished, "%s: 60 ターンまでに決着する: %s" % [file, armies])
-			assert_eq(outcome.rejected, 0, file)
+		var outcome := _cpu_game(armies, 60, maps[file])
+		assert_true(outcome.finished, "%s: 60 ターンまでに決着する: %s" % [file, armies])
+		assert_eq(outcome.rejected, 0, file)
 
 
 ## マップのファイルの書式（game/maps.gd）: [rows] の中の # は障害物の文字。書き間違いは行で言う。
