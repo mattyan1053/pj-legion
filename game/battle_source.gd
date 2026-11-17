@@ -65,9 +65,15 @@ func can_continue(_won: bool) -> bool:
 	return false
 
 
-## 決着の画面の Enter を「同じ盤面でもう一度」にするか（偽なら、「次へ」があればそれ、無ければタイトルへ）。won は can_continue と同じ。
+## 決着の画面の Enter を「同じ盤面でもう一度」にするか（偽なら、「次へ」があればそれ、無ければ流れの外への行き先 leave()）。won は can_continue と同じ。
 func retries_on_enter(_won: bool) -> bool:
 	return false
+
+
+## 決着の画面の、流れの外への行き先（[終わり方（scene_flow.gd の対戦の場面の next）, ボタンの文の鍵]）。
+## 既定はタイトル。対戦モードはマップ選択、ストーリーは話の一覧。
+func leave() -> Array:
+	return [&"title", "result.to_title"]
 
 
 ## 決着の画面に「部隊を選び直す」を出すか（押すと、流れ（run.gd）の 1 つ前の場面、出撃準備へ戻る）。

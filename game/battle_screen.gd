@@ -220,7 +220,7 @@ func _ready() -> void:
 	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
-	_hud.title_pressed.connect(func() -> void: finished.emit(&"title"))
+	_hud.title_pressed.connect(func() -> void: finished.emit(source.leave()[0]))  # 決着の画面の、流れの外への行き先
 	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
 	_hud.result_screen().squad_pressed.connect(func() -> void: finished.emit(Run.PREVIOUS))
 	_hud.result_shown.connect(_on_result_shown)
@@ -440,6 +440,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_layout.reset_menu()
 	_hud.hide_result()
 	_hud.result_screen().set_destinations(_new_boards(), source.can_open_setup(), source.can_choose_squad())
+	_hud.result_screen().set_leave(Text.t(source.leave()[1]))
 	_hud.king_looks = source.king_looks()
 	_hud.result_screen().king_looks = source.king_looks()
 	# 対戦の曲（盤の見た目か、話が決めた曲。battle_source.gd の music）。決着の曲のあとの「やり直す」でも、対戦の曲へ戻る。

@@ -164,6 +164,8 @@ const SCENES := {
 	"story_decks_detour": "ストーリー: 出撃準備の「部隊編成」で開いた編成（ストーリー用だけ。「出撃準備へ戻る」）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
+	"story_next_choice": "ストーリー: あとの会話を読み終えて、「次の話へ」「話の一覧へ」を選ぶところ",
+	"story_battle_menu": "ストーリー: 話の対戦の途中で開いたシステムメニュー（「話の一覧へ戻る」がある）",
 	"story_item_unlock": "ストーリー: ストーリー専用の持ち物の知らせ（持ち物の印と効果）",
 	"story_items_decks": "ストーリー: FANTASY の物語を全部クリアしたあとの部隊編成（並ぶ持ち物が増えた。重ねられない持ち物は理由つき）",
 	"story_items_military": "ストーリー: MILITARY の物語を全部クリアしたあとの部隊編成（コマンドーを選んでいて、遠眼鏡は「後衛専用」で灰色）",
@@ -1642,7 +1644,7 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 
 
-## タイトルの「ストーリー」で話の一覧へ進み、number 番目（0 から）の話を始める（前の会話の場面に入る）。
+## タイトルの「ストーリー」で話の一覧へ進み、number 番目（0 から）の話を始める（出撃準備の場面に入る）。
 ## 前の話は、クリアしたことにする。number が負なら、部隊を選ぶ最初の話（チュートリアルのあとの本編の 1 話目）。
 func _start_story(number := -1) -> bool:
 	if number < 0:
@@ -1654,7 +1656,7 @@ func _start_story(number := -1) -> bool:
 		return false
 	_app.current_scene().choose(Story.military().episodes[number])
 	await _app.scene_changed
-	return _app.current_id() == SceneFlow.TALK
+	return _app.current_id() == SceneFlow.SORTIE
 
 
 ## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。
@@ -1695,12 +1697,12 @@ func _scene_story_fantasy_sortie() -> bool:
 		return false
 	_app.current_scene().choose(_fantasy().episodes[1])
 	await _app.scene_changed
-	if _app.current_id() != SceneFlow.TALK or not await _scene_story_sortie_from_talk():
+	if not _at_sortie():
 		return false
 	return _app.current_scene().is_squad_fixed()
 
 
-## FANTASY の物語の number 番目（0 から。負なら最後）の話を始める（前の会話の場面に入る）。前の話は、クリアしたことにする。
+## FANTASY の物語の number 番目（0 から。負なら最後）の話を始める（出撃準備の場面に入る）。前の話は、クリアしたことにする。
 func _start_fantasy(number: int) -> bool:
 	var episodes: Array = _fantasy().episodes
 	if number < 0:
@@ -1712,7 +1714,7 @@ func _start_fantasy(number: int) -> bool:
 		return false
 	_app.current_scene().choose(episodes[number])
 	await _app.scene_changed
-	return _app.current_id() == SceneFlow.TALK
+	return _app.current_id() == SceneFlow.SORTIE
 
 
 func _scene_story_fantasy_evolve_sortie() -> bool:
@@ -1720,7 +1722,7 @@ func _scene_story_fantasy_evolve_sortie() -> bool:
 	for i: int in _fantasy().episodes.size():
 		if _fantasy().episodes[i].id == &"trial_evolution":
 			number = i
-	return number >= 0 and await _start_fantasy(number) and await _scene_story_sortie_from_talk()
+	return number >= 0 and await _start_fantasy(number) and _at_sortie()
 
 
 ## FANTASY の物語の「峠の番人」を、CPU に人の側を持たせて、中ボスの撃破で勝つまで進める。
@@ -1730,11 +1732,9 @@ func _scene_story_boss_mvp() -> bool:
 	for i: int in _fantasy().episodes.size():
 		if _fantasy().episodes[i].id == &"boulder_warden":
 			number = i
-	if number < 0 or not await _start_fantasy(number) or not await _scene_story_sortie_from_talk():
+	if number < 0 or not await _start_fantasy(number) or not _at_sortie():
 		return false
-	_app.current_scene().press_sortie()
-	await _app.scene_changed
-	if _app.current_id() != SceneFlow.BATTLE:
+	if not await _sortie_to_battle():
 		return false
 	_scene = _app.current_scene()
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
@@ -1761,11 +1761,9 @@ func _scene_story_fantasy_evolve() -> bool:
 	for i: int in _fantasy().episodes.size():
 		if _fantasy().episodes[i].id == &"trial_evolution":
 			number = i
-	if number < 0 or not await _start_fantasy(number) or not await _scene_story_sortie_from_talk():
+	if number < 0 or not await _start_fantasy(number) or not _at_sortie():
 		return false
-	_app.current_scene().press_sortie()
-	await _app.scene_changed
-	if _app.current_id() != SceneFlow.BATTLE:
+	if not await _sortie_to_battle():
 		return false
 	_scene = _app.current_scene()
 	var paladin: Unit = null
@@ -1809,16 +1807,14 @@ func _scene_story_fantasy_forest_sortie() -> bool:
 	_app.context.decks.load_data({"decks": []})
 	if not await _start_fantasy(-1):
 		return false
-	return await _scene_story_sortie_from_talk()
+	return _at_sortie()
 
 
 ## FANTASY の物語の最後の話の対戦の始めを、いちばん引いて見る。
 func _scene_story_fantasy_forest_wide() -> bool:
 	if not await _scene_story_fantasy_forest_sortie():
 		return false
-	_app.current_scene().press_sortie()
-	await _app.scene_changed
-	if _app.current_id() != SceneFlow.BATTLE:
+	if not await _sortie_to_battle():
 		return false
 	_scene = _app.current_scene()
 	var size: Vector2i = _scene.battle.board.size
@@ -1862,13 +1858,13 @@ func _scene_story_tutorial_list() -> bool:
 func _scene_story_tutorial_sortie() -> bool:
 	if not await _start_story(1):
 		return false
-	if not await _scene_story_sortie_from_talk():
+	if not _at_sortie():
 		return false
 	return _app.current_scene().is_squad_fixed()
 
 
 func _scene_story_talk() -> bool:
-	if not await _start_story():
+	if not await _start_story() or not await _talk_from_sortie():
 		return false
 	return _talk_until(1)
 
@@ -1915,11 +1911,11 @@ func _scene_story_talk_allies() -> bool:
 
 
 func _scene_story_talk_drill() -> bool:
-	return await _start_story(0)
+	return await _start_story(0) and await _talk_from_sortie()
 
 
 func _scene_story_fantasy_talk() -> bool:
-	return await _start_fantasy(0)
+	return await _start_fantasy(0) and await _talk_from_sortie()
 
 
 func _scene_story_talk_menu() -> bool:
@@ -1929,25 +1925,40 @@ func _scene_story_talk_menu() -> bool:
 	return _app.system_menu().is_open()
 
 
-## 前の会話を飛ばして、話の対戦の場面に入る。
+## 出撃して、前の会話を飛ばして、話の対戦の場面に入る。
 func _story_battle(number := -1) -> bool:
 	if not await _start_story(number):
 		return false
-	if not await _scene_story_sortie_from_talk():
+	if not _at_sortie():
 		return false
-	_app.current_scene().press_sortie()
-	await _app.scene_changed
-	if _app.current_id() != SceneFlow.BATTLE:
+	if not await _sortie_to_battle():
 		return false
 	_scene = _app.current_scene()
 	return true
 
 
-## 前の会話を飛ばして、出撃準備の場面に入る。
-func _scene_story_sortie_from_talk() -> bool:
-	_app.current_scene().press_skip()
-	await _app.scene_changed
+## 話を始めて、出撃準備の場面に入る。
+func _at_sortie() -> bool:
 	return _app.current_id() == SceneFlow.SORTIE
+
+
+## 出撃準備の「出撃」で、対戦の前の会話の場面に入る。
+func _talk_from_sortie() -> bool:
+	if not _at_sortie():
+		return false
+	_app.current_scene().press_sortie()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.TALK
+
+
+## 出撃準備の「出撃」のあと、対戦の前の会話を飛ばして、話の対戦の場面に入る（会話を通り過ぎていれば、そのまま対戦へ）。
+func _sortie_to_battle() -> bool:
+	_app.current_scene().press_sortie()
+	await _app.scene_changed
+	if _app.current_id() == SceneFlow.TALK:
+		_app.current_scene().press_skip()
+		await _app.scene_changed
+	return _app.current_id() == SceneFlow.BATTLE
 
 
 ## 出撃準備（ストーリー用の部隊を 1 つ取っておいて、それを選んだところ）。
@@ -1959,7 +1970,7 @@ func _scene_story_sortie() -> bool:
 	var saved: RefCounted = _app.context.decks.add("狙撃の小隊", deck)
 	if not await _start_story():
 		return false
-	if not await _scene_story_sortie_from_talk():
+	if not _at_sortie():
 		return false
 	_app.current_scene().choose(saved.id)
 	return _app.current_scene().chosen_id() == saved.id
@@ -1992,7 +2003,7 @@ func _scene_story_sortie_default() -> bool:
 	_app.context.decks.load_data({"decks": []})
 	if not await _start_story():
 		return false
-	if not await _scene_story_sortie_from_talk():
+	if not _at_sortie():
 		return false
 	return _app.current_scene().chosen_id() == ""
 
@@ -2009,7 +2020,7 @@ func _scene_story_hold_sortie() -> bool:
 	var number := _hold_episode()
 	if number == -1 or not await _start_story(number):
 		return false
-	return await _scene_story_sortie_from_talk()
+	return _at_sortie()
 
 
 ## 守り切る話の対戦を、CPU どうしで until まで進めて画面に出す。until が無ければ、決着の手前まで進める。
@@ -2078,7 +2089,7 @@ func _scene_story_boss_sortie() -> bool:
 	var number := _boss_episode()
 	if number == -1 or not await _start_story(number):
 		return false
-	return await _scene_story_sortie_from_talk()
+	return _at_sortie()
 
 
 func _scene_story_boss_start() -> bool:
@@ -2090,7 +2101,7 @@ func _scene_story_rout_sortie() -> bool:
 	var number := _rout_episode()
 	if number == -1 or not await _start_story(number):
 		return false
-	return await _scene_story_sortie_from_talk()
+	return _at_sortie()
 
 
 func _scene_story_rout_start() -> bool:
@@ -2117,7 +2128,7 @@ func _monster_episode() -> int:
 
 func _scene_story_monster_talk() -> bool:
 	var number := _monster_episode()
-	if number == -1 or not await _start_story(number):
+	if number == -1 or not await _start_story(number) or not await _talk_from_sortie():
 		return false
 	for i in 2:
 		_app.current_scene().press_next()  # 3 行目（敵の将の札）
@@ -2128,7 +2139,7 @@ func _scene_story_monster_sortie() -> bool:
 	var number := _monster_episode()
 	if number == -1 or not await _start_story(number):
 		return false
-	return await _scene_story_sortie_from_talk()
+	return _at_sortie()
 
 
 func _scene_story_monster_start() -> bool:
@@ -2283,6 +2294,25 @@ func _scene_story_after() -> bool:
 	screen.press_continue()
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.TALK
+
+
+func _scene_story_next_choice() -> bool:
+	if not await _scene_story_after():
+		return false
+	var talk: Node = _app.current_scene()
+	for i: int in talk.line_count() + 1:
+		if talk.is_choosing():
+			break
+		talk.press_skip()
+		talk.press_next()
+	return talk.is_choosing()
+
+
+func _scene_story_battle_menu() -> bool:
+	if not await _story_battle():
+		return false
+	_app.open_menu()
+	return _app.system_menu().is_open() and _app.system_menu().item_ids().has(&"exit:episodes")
 
 
 func _scene_story_unlock() -> bool:

@@ -32,6 +32,8 @@ settings.reset,初期値に戻す
 menu.settings,オプション
 menu.to_title,タイトルへ戻る
 menu.to_title.confirm,タイトルへ戻りますか？
+menu.to_episodes.confirm,話の一覧へ戻りますか？
+menu.to_map_select.confirm,マップ選択へ戻りますか？
 menu.quit,ゲーム終了
 menu.quit.confirm,ゲームを終了しますか？
 menu.losing.battle,対戦の状態は失われます。

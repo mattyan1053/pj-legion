@@ -353,6 +353,8 @@ result.mvp_none_note,ダメージも回復も無し
 result.new_board,新しい盤面（{board}）
 result.prompt,Enter: {destination}
 result.to_title,タイトルへ
+result.to_episodes,話の一覧へ
+result.to_map_select,マップ選択へ
 result.detail_back,要約へ戻る
 result.detail_open,詳しい戦績
 result.table.unit,駒

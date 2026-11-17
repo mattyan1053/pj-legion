@@ -73,7 +73,7 @@ const SCENES := {
 	},
 	BATTLE: {
 		"script": "res://game/battle_screen.gd",
-		"next": {&"setup": SETUP, &"map_select": MAP_SELECT},  # 「マップを選び直す」（対戦の途中で開いた対戦設定）は、マップ選択へ
+		"next": {&"setup": SETUP, &"map_select": MAP_SELECT, &"episodes": EPISODES},  # 「マップを選び直す」（対戦の途中で開いた対戦設定）は、マップ選択へ
 		"music": &"battle",  # 既定。ふつうは渡すもの（battle_source.gd の music: 盤の見た目か、話が決めた曲）が決める
 	},
 }
