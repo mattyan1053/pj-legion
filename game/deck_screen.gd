@@ -804,9 +804,13 @@ func _build_editor() -> Control:
 		info.add_theme_constant_override("separation", 0)
 		row.add_child(info)
 		var item_name := _text(16, COLOR_TEXT)
+		item_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		item_name.clip_text = true
 		info.add_child(item_name)
 		var effect := _text(14, COLOR_DIM)
 		effect.text = DeckText.equipment_effect(item)
+		effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # 長い効果で欄を広げない（全文は行のツールチップ）
+		effect.clip_text = true
 		info.add_child(effect)
 		var minus := _button("−", 18)
 		minus.custom_minimum_size = Vector2(40.0, 36.0)
@@ -1046,13 +1050,23 @@ func _refresh_detail() -> void:
 			(parts[1] as Label).text = str(entry.count(item))
 			(parts[2] as Button).disabled = not allowed or not Equipment.can_add(entry.kind, entry.equipment, item)
 			# まだ持たせられない持ち物（ストーリーで未解放）は、灰色で「未解放」。持たせているものは「−」で外せる。
+			# 選んでいる駒が持てない持ち物（役割の限り、重ねられない）は、灰色で理由（「後衛専用」「1 体 1 個まで」）。
+			var refusal := DeckText.item_refusal(entry.kind, entry.equipment, item) if allowed else ""
+			var usable := allowed and refusal == ""
 			var item_name := parts[3] as Label
 			item_name.text = Text.t("deck.edit.item", {"name": Names.item(item), "cost": Equipment.cost(item)})
 			if not allowed:
 				item_name.text += Text.t("deck.edit.item_locked")
-			item_name.add_theme_color_override("font_color", COLOR_TEXT if allowed else COLOR_DIM)
-			(parts[5] as Control).modulate = Color.WHITE if allowed else Color(1, 1, 1, 0.55)
-			(parts[5] as Control).tooltip_text = "" if allowed else Text.t("deck.edit.item_locked.tooltip")
+			elif refusal != "":
+				item_name.text += Text.t("deck.edit.item_refused", {"reason": refusal})
+			item_name.add_theme_color_override("font_color", COLOR_TEXT if usable else COLOR_DIM)
+			(parts[5] as Control).modulate = Color.WHITE if usable or entry.count(item) > 0 else Color(1, 1, 1, 0.55)
+			var tips: Array[String] = [DeckText.equipment_effect(item)]
+			if DeckText.equipment_traits_text(item) != "":
+				tips.append(DeckText.equipment_traits_text(item))
+			if not allowed:
+				tips.append(Text.t("deck.edit.item_locked.tooltip"))
+			(parts[5] as Control).tooltip_text = "\n".join(tips)
 
 
 # ==== 確かめと名前の入力 ====

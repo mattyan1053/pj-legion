@@ -38,6 +38,11 @@ deck.edit.items,持ち物　{count} / {max}
 deck.edit.item,{name}　コスト {cost}
 deck.edit.item_locked,　未解放
 deck.edit.item_locked.tooltip,ストーリーを進めると持たせられる
+deck.item.with_holders,{effect}（{holders}）
+deck.item.only,{role}専用
+deck.item.except,{role}以外
+deck.item.one_each,1 体 {max} 個まで
+deck.edit.item_refused,　{reason}
 deck.name.prompt,{title}（{max} 文字まで）
 deck.dialog.ok,決定
 deck.dialog.cancel,キャンセル

@@ -11,6 +11,7 @@ const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const AppContext := preload("res://game/app_context.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const ItemIcon := preload("res://game/item_icon.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
 const TalkFigure := preload("res://game/talk_figure.gd")
@@ -52,6 +53,7 @@ var _plate_style: StyleBoxFlat
 var _name: Label
 var _text: Label
 var _face: TextureRect
+var _item_face: Control  # item_icon.gd
 var _hint: Label
 var _count: Label
 var _skip: Button
@@ -164,7 +166,7 @@ func _ready() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(column)
-	# 駒の解放の知らせ（行に "kind" がある）は、文の左に、その駒のアイコンを出す（unit_icons.gd）。
+	# 駒の解放の知らせ（行に "kind" がある）は、文の左に、その駒のアイコンを出す（unit_icons.gd）。持ち物（"item"）は持ち物の印（item_icon.gd）。
 	var text_row := HBoxContainer.new()
 	text_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -174,6 +176,10 @@ func _ready() -> void:
 	_face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_face.visible = false
 	text_row.add_child(_face)
+	_item_face = ItemIcon.new(Equipment.Id.IRON_SHIELD, 72.0)
+	_item_face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_item_face.visible = false
+	text_row.add_child(_item_face)
 	_text = _label(25, COLOR_TEXT)
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -305,6 +311,7 @@ func _show_line(index: int) -> void:
 		_name.text = ""
 		_text.text = ""
 		_face.visible = false
+		_item_face.visible = false
 		_count.text = ""
 		_plate.visible = false
 		return
@@ -316,6 +323,10 @@ func _show_line(index: int) -> void:
 	_face.visible = line.has("kind")
 	if _face.visible:
 		_face.texture = UnitIcons.texture(line["kind"])
+	_item_face.visible = line.has("item")
+	if _item_face.visible:
+		_item_face.item = line["item"]
+		_item_face.queue_redraw()
 	_count.text = "%d / %d" % [index + 1, line_count()]
 	for view in _figures:
 		view.set_speaking(view.side == int(line.get("side", 0)), context.checking != &"")

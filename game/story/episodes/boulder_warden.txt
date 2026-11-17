@@ -14,6 +14,7 @@ look = grassland
 wins = boss_slain
 
 [unlock]
+item = dragon_scale
 budget = 2
 
 [ally]

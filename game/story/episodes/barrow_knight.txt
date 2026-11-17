@@ -16,6 +16,7 @@ look = stone_walls
 music = battle_tense
 
 [unlock]
+item = war_banner
 budget = 2
 
 [ally]

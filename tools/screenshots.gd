@@ -160,6 +160,9 @@ const SCENES := {
 	"story_decks_detour": "ストーリー: 出撃準備の「部隊編成」で開いた編成（ストーリー用だけ。「出撃準備へ戻る」）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
+	"story_item_unlock": "ストーリー: ストーリー専用の持ち物の知らせ（持ち物の印と効果）",
+	"story_items_decks": "ストーリー: FANTASY の物語を全部クリアしたあとの部隊編成（並ぶ持ち物が増えた。重ねられない持ち物は理由つき）",
+	"story_items_military": "ストーリー: MILITARY の物語を全部クリアしたあとの部隊編成（コマンドーを選んでいて、遠眼鏡は「後衛専用」で灰色）",
 	"story_hold_sortie": "ストーリー: 守り切る話（第 3 話）の出撃準備（勝ち方の文の先頭に「N ターン目の終わりまで守り切る」）",
 	"story_hold_battle": "ストーリー: 守り切る話の対戦の途中（上の帯の勝ち方の札に「あと N ターン守り切れば勝ち」）",
 	"story_hold_last": "ストーリー: 守り切る話の最後のターン（勝ち方の札が「最後のターン: 守り切れば勝ち」で、赤く目立つ）",
@@ -282,6 +285,7 @@ func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	_app.context.settings.reset_all()
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
+	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:
 		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
 		_app.context.match_choice.cpu_opponent = false
@@ -1588,6 +1592,7 @@ func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 
 
 const Story := preload("res://game/story.gd")
+const Run := preload("res://game/run.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 
@@ -2201,6 +2206,53 @@ func _scene_story_unlock() -> bool:
 	var talk: Node = _app.current_scene()
 	talk.press_skip()
 	return talk.speaker() == Story.notice_name()
+
+
+## 終わりの 1 つ前の話（ストーリー専用の持ち物が手に入る）の、あとの会話の知らせの行。対戦はせず、会話の場面だけを流れで始める。
+func _scene_story_item_unlock() -> bool:
+	var campaign: RefCounted = Story.military()
+	var episode: RefCounted = campaign.episodes[campaign.episodes.size() - 2]
+	var talk := Story.talk_of(episode, [])
+	for news: Dictionary in Story.unlocked_before(episode).news_of(episode):
+		var line := {"side": Story.NOTICE_SIDE, "name": Story.notice_name()}
+		line.merge(news)
+		talk["lines"].append(line)
+	var run := Run.new()
+	run.exit = SceneFlow.TITLE
+	run.add(Story.TALK, talk)
+	_app.context.start_run(run)
+	await _app.scene_changed
+	var screen: Node = _app.current_scene()
+	return _app.current_id() == SceneFlow.TALK and screen.speaker() == Story.notice_name()
+
+
+## FANTASY の物語を全部クリアしたあとの部隊編成。パラディン（前衛）を選び、持ち物を持たせたところ。
+func _scene_story_items_decks() -> bool:
+	return await _items_decks(_fantasy(), [UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.SPELLBLADE, UnitKind.Id.PRIEST], 0,
+			[Equipment.Id.DRAGON_SCALE, Equipment.Id.TRAIL_MAP])
+
+
+## MILITARY の物語を全部クリアしたあとの部隊編成。コマンドー（奇襲）を選び、ジェットパックを持たせたところ。
+func _scene_story_items_military() -> bool:
+	return await _items_decks(Story.military(), [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC], 2,
+			[Equipment.Id.JET_PACK])
+
+
+## 物語 campaign を全部クリアして、部隊編成のストーリー用で kinds を雇い、selected 番目の駒に items を持たせる。
+func _items_decks(campaign: RefCounted, kinds: Array[UnitKind.Id], selected: int, items: Array[Equipment.Id]) -> bool:
+	_app.context.story.choose_campaign(campaign)
+	for episode: RefCounted in campaign.episodes:
+		_app.context.story.clear(episode.id)
+	await _app.go(SceneFlow.DECKS)
+	var screen: Node = _app.current_scene()
+	screen.set_mode(campaign.rules_id)
+	screen.press_new()
+	for kind in kinds:
+		screen.hire(kind)
+	screen.select_entry(selected)
+	for item in items:
+		screen.equip(item)
+	return screen.editing_deck().entries[selected].equipment == items
 
 
 func _scene_story_cleared() -> bool:

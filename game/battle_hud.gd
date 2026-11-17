@@ -306,7 +306,7 @@ func is_ult_enabled() -> bool:
 ## skill_note が真なら、スキルの説明も出す（note のほうにスキルの説明を出すときは、偽にして重ねない）。
 ##
 ## 並び（上から、大事な順）: 名前と役割 → 所属（[自軍] [敵軍] [中立]、陣営、軍） → HP の棒と数 → 能力値とレベル →
-## 状態（残りの期間と効果） → 装備 → スキル（名前と使えるか、説明） → 進化の特性 → 行動の状態といるマス → note。
+## 状態（残りの期間と効果） → 装備 → スキル（名前と使えるか、説明） → 特性（進化先と持ち物） → 行動の状態といるマス → note。
 func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
 	_info_pin.visible = false  # 出すときは、このあとに set_pin_switch
@@ -363,8 +363,9 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_set_shown(_info_skill_note, Names.skill_summary(skill) if skill != null and skill_note else "")
 
 	var traits: Array[String] = []
-	for which in Evolution.traits(unit.evolution):
-		traits.append(Text.t("battle.hud.trait", {"trait": Names.trait_text(which)}))
+	for which: Evolution.Trait in Evolution.Trait.values():  # 進化先と持ち物の、どちらが与えた特性も（重ねても 1 つ）
+		if unit.has_trait(which):
+			traits.append(Text.t("battle.hud.trait", {"trait": Names.trait_text(which)}))
 	_set_shown(_info_traits, "\n".join(traits))
 	_set_shown(_info_state, state)
 	_set_shown(_info_forecast, note)
