@@ -53,6 +53,11 @@ func can_choose_squad() -> bool:
 	return not episode.has_squad()
 
 
+## 話のファイルの [enemy] の king_figure（敵の将の姿。魔物の群れを率いる骸骨の将など）。
+func king_looks() -> Array[StringName]:
+	return episode.king_looks
+
+
 ## 話のファイルの [cues]（いつ・だれが・何と言うか）。無い話は台詞なし。
 func talk_cues() -> RefCounted:
 	if episode.cues.is_empty():

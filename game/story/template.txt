@@ -59,6 +59,8 @@ name = 隊長
 name = 敵将
 # 無くてよい: 話し手の姿（書き方は [ally] と同じ）。
 figure = paladin evolved
+# 無くてよい: 敵の将の姿（見た目だけ。ルールの上では将のまま）。いま選べるのは skeleton_mage（骸骨の将。魔物の群れを率いる）。
+# king_figure = skeleton_mage
 # 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない敵（魔物の群れ。必殺技もゲージも無い）。
 army = fantasy
 # 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。持ち物は「+」でつなぐ（魔物は持てない）。将は書かない（いつも本陣に置く）。

@@ -31,8 +31,8 @@ var _speaking := false
 var _tween: Tween
 
 
-## kind の駒（evolved なら進化後の形）を、陣営 side_ の色で立たせる。
-func _init(kind: UnitKind.Id, side_: int, evolved := false) -> void:
+## kind の駒（evolved なら進化後の形。look は将の別の姿）を、陣営 side_ の色で立たせる。
+func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"") -> void:
 	side = side_
 	stretch = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -64,7 +64,7 @@ func _init(kind: UnitKind.Id, side_: int, evolved := false) -> void:
 	_view = UnitView.new()
 	viewport.add_child(_view)
 	var hp := UnitKind.max_hp(kind)
-	_view.setup(kind, TEAM_COLORS[clampi(side, 0, 1)], hp, hp)
+	_view.setup(kind, TEAM_COLORS[clampi(side, 0, 1)], hp, hp, look)
 	if evolved:
 		_view.set_evolved(hp)
 	_view.rotation.y = TURN if side == 0 else -TURN

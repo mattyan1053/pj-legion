@@ -22,6 +22,7 @@ name = 騎士長
 
 [enemy]
 name = 死霊使いの軍曹
+king_figure = skeleton_mage
 army = military
 unit = skeleton
 unit = skeleton

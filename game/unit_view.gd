@@ -73,13 +73,25 @@ const KINDS := {
 	},
 }
 
+## 将の別の姿（見た目だけ。ルールの上では将のまま。docs/story.md の「話のファイル」の king_figure）。
+## 名前 -> KINDS と同じ形。ストーリーの話が、敵の将の姿として選ぶ（魔物の群れを率いる骸骨の将）。
+const KING_LOOKS := {
+	&"skeleton_mage": {
+		"model": "skeleton_mage", "show": [], "hold": {"handslot.r": "staff"}, "scale": 1.18,
+		"idle": "Idle", "attack": "Spellcast_Shoot",
+	},
+}
+
 ## 骸骨の小物（手の骨に付ける別の素材）。
 const HELD_PROPS := {
 	"blade": "res://assets/kaykit/skeletons/Skeleton_Blade.gltf",
 	"crossbow": "res://assets/kaykit/skeletons/Skeleton_Crossbow.gltf",
 	"axe": "res://assets/kaykit/skeletons/Skeleton_Axe.gltf",
 	"large_shield": "res://assets/kaykit/skeletons/Skeleton_Shield_Large_A.gltf",
+	"staff": "res://assets/kaykit/skeletons/Skeleton_Staff.gltf",
 }
+## 手の骨に付けたままでは向きが合わない小物の回し方（度）。杖は、そのままだと横に寝るので立てる。
+const HELD_PROP_TURNS := {"staff": Vector3(0.0, 0.0, 90.0)}
 
 ## 素材のキャラクター。"props" は付け外しできる小物、"accent" は陣営の色に塗り替える色見本（列, 行）。
 const MODELS := {
@@ -109,6 +121,7 @@ const MODELS := {
 	"skeleton_minion": {"scene": "res://assets/kaykit/skeletons/Skeleton_Minion.glb", "props": [], "accent": [Vector2i(5, 0)]},
 	"skeleton_rogue": {"scene": "res://assets/kaykit/skeletons/Skeleton_Rogue.glb", "props": [], "accent": [Vector2i(2, 2)]},
 	"skeleton_warrior": {"scene": "res://assets/kaykit/skeletons/Skeleton_Warrior.glb", "props": [], "accent": [Vector2i(2, 2)]},
+	"skeleton_mage": {"scene": "res://assets/kaykit/skeletons/Skeleton_Mage.glb", "props": [], "accent": [Vector2i(2, 2)]},
 }
 
 ## 中立の駒の形。size は全体の大きさ、rings は周りを回る輪の数、shards は周りを回る欠片の数。
@@ -155,12 +168,15 @@ var _evolved_ring: MeshInstance3D
 var _status_ring: MeshInstance3D
 
 
-func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int) -> void:
+## look は将の別の姿（KING_LOOKS の名前。空か知らない名前なら、いつもの将。将でない駒には効かない）。
+func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int, look := &"") -> void:
 	_kind = kind
 	_team_color = team_color
 	_max_hp = max_hp
 	_add_base(team_color)
-	if KINDS.has(kind):
+	if kind == UnitKind.Id.KING and KING_LOOKS.has(look):
+		_add_model(KING_LOOKS[look])
+	elif KINDS.has(kind):
 		_add_model(KINDS[kind])
 	elif CORES.has(kind):
 		_add_core(CORES[kind], team_color)
@@ -390,8 +406,9 @@ func _hold_props(model: Node3D, hold: Dictionary) -> void:
 		var attachment := BoneAttachment3D.new()
 		attachment.bone_name = bone
 		skeleton[0].add_child(attachment)
-		var prop: PackedScene = load(HELD_PROPS[hold[bone]])
-		attachment.add_child(prop.instantiate())
+		var prop: Node3D = (load(HELD_PROPS[hold[bone]]) as PackedScene).instantiate()
+		prop.rotation_degrees = HELD_PROP_TURNS.get(hold[bone], Vector3.ZERO)
+		attachment.add_child(prop)
 
 
 ## キャラクターのマテリアルを、差し色だけ陣営の色にしたものに差し替える。

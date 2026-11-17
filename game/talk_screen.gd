@@ -101,7 +101,7 @@ func _ready() -> void:
 	for side in mini(shapes.size(), 2):
 		if talk.get("lines", []).any(func(line: Dictionary) -> bool: return int(line.get("side", 0)) == side):
 			var figure: Dictionary = shapes[side]
-			var view := TalkFigure.new(figure["kind"], side, figure.get("evolved", false))
+			var view := TalkFigure.new(figure["kind"], side, figure.get("evolved", false), figure.get("look", &""))
 			_stage.add_child(view)
 			_figures.append(view)
 

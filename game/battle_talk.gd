@@ -178,7 +178,7 @@ func _next() -> void:
 	_name.text = _current.name
 	_face.visible = not _current.figure.is_empty() and _current.side < 2
 	if _face.visible:
-		_face.texture = UnitIcons.bust(_current.figure["kind"], _current.side, _current.figure.get("evolved", false))
+		_face.texture = UnitIcons.bust(_current.figure["kind"], _current.side, _current.figure.get("evolved", false), _current.figure.get("look", &""))
 	_plate_style.bg_color = TEAM_COLORS[clampi(_current.side, 0, TEAM_COLORS.size() - 1)].darkened(0.15)
 	# 折り返しは先に決める（自動の折り返しのラベルは、幅が決まる前の高さを覚えて、帯が縦に伸びる）。
 	# 文の幅は、帯の幅から、枠の余白と名前の札と間のぶんを引いたもの。
