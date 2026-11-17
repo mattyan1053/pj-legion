@@ -69,7 +69,7 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 		lines.append("### 対戦の途中")
 		lines.append("")
 		for cue: Array in episode.cues:
-			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), _name(episode, cue, 2), cue[3]])
+			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), episode.speakers[cue[4]], cue[3]])
 		lines.append("")
 	lines.append("### 対戦のあと")
 	lines.append("")
@@ -85,20 +85,24 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 
 static func _talk(lines: PackedStringArray, episode: Episode, rows: Array) -> void:
 	for row: Array in rows:
-		lines.append("- **%s**　%s" % [_name(episode, row, 0), row[1]])
+		lines.append("- **%s**　%s" % [episode.speakers[row[2]], row[1]])
 	lines.append("")
 
 
-## 行 row の話し手の名前（陣営は row[side_at]）。
-static func _name(episode: Episode, row: Array, side_at: int) -> String:
-	return episode.speakers[row[side_at]]
-
-
-## 話し手の一覧（「隊長（味方）」）。
+## 話し手の一覧（「隊長（味方・将）」。味方が先。姿は駒の名前、進化後の形なら「進化後」を添える）。台詞の無い話し手は並べない。
 static func _cast(episode: Episode) -> PackedStringArray:
+	var talks := {}
+	for row: Array in episode.before + episode.after:
+		talks[row[2]] = true
+	for cue: Array in episode.cues:
+		talks[cue[4]] = true
 	var cast: PackedStringArray = []
 	for side in 2:
-		cast.append("%s（%s）" % [episode.speakers[side], SIDE_WORDS[side]])
+		for who in episode.speakers.size():
+			if episode.speaker_sides[who] == side and talks.has(who):
+				var figure: Dictionary = episode.figures[who]
+				var shape := Names.kind(figure["kind"]) + ("・進化後" if figure.get("evolved", false) else "")
+				cast.append("%s（%s・%s）" % [episode.speakers[who], SIDE_WORDS[side], shape])
 	return cast
 
 

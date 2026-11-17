@@ -31,11 +31,11 @@ class Line:
 		figure = figure_
 
 
-## [きっかけ, 値, 話し手（0 か 1）, 文] の列。
+## [きっかけ, 値, 話し手の陣営（0 か 1）, 文, 話し手（_names の番号。無ければ陣営と同じ）] の列。
 var _cues: Array = []
-## 話し手の名前（0 = 人の軍、1 = 敵の軍）。
+## 話し手の名前（0 = 人の軍の主な話し手、1 = 敵の軍の主な話し手、2 から = ほかの話し手。episode.gd の speakers）。
 var _names: Array = []
-## 話し手の姿（0 = 人の軍、1 = 敵の軍。episode.gd の figures）。
+## 話し手の姿（_names と同じ並び。episode.gd の figures）。
 var _figures: Array = []
 ## 出した台詞（[cues] の何番目か）。
 var _said := {}
@@ -72,8 +72,9 @@ func _take(battle: Battle, events: Array[BattleEvent], at_start: bool) -> Array[
 		if _fires(battle, events, at_start, cue[0], cue[1]):
 			_said[i] = true
 			var side: int = cue[2]
-			lines.append(Line.new(side, _names[side] if side < _names.size() else "", cue[3],
-					_figures[side] if side < _figures.size() else {}))
+			var who: int = cue[4] if cue.size() > 4 else side
+			lines.append(Line.new(side, _names[who] if who < _names.size() else "", cue[3],
+					_figures[who] if who < _figures.size() else {}))
 	return lines
 
 
