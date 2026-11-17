@@ -469,11 +469,11 @@ func test_deploy_on_generated_boards() -> void:
 		var battle := Battle.new(BoardGenerator.generate(stage, 7))
 		for side: Unit.Side in [P1, P2]:
 			var placed := Deployment.deploy(battle, side, deck)
-			assert_eq(placed.size(), 7, "ステージ %d" % stage)
+			assert_eq(placed.size(), 7, "マップ %d" % stage)
 			var hq := battle.board.hq_cells[side]
 			for unit in placed:
 				var d := (unit.cell - hq).abs()
-				assert_true(maxi(d.x, d.y) <= 2, "本陣のそば（ステージ %d）" % stage)
+				assert_true(maxi(d.x, d.y) <= 2, "本陣のそば（マップ %d）" % stage)
 
 
 func test_regeneration_from_an_item_heals_once_even_with_the_evolution() -> void:

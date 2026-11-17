@@ -2,7 +2,7 @@ extends Node3D
 ## 対戦の場面（俯瞰 3D の盤面と、操作・演出）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
 ## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。
 ## 対戦は、渡された「対戦設定を作ってくれるもの」（battle_source.gd。流れ（run.gd）が渡す。無ければ context.match_choice）から作る。
-## どのモードの対戦かは知らない。やり直し・ステージの替え・相手の切り替え・対戦設定のパネルは、それに聞いてから出す。
+## どのモードの対戦かは知らない。やり直し・マップの替え・相手の切り替え・対戦設定のパネルは、それに聞いてから出す。
 ##
 ## 相手（プレイヤー2）を CPU にすると、その番は CpuPlayer が返す行動を、人の操作と同じ入口（_do）に 1 つずつ流す。
 ## ここはルールを持たない。操作を行動（BattleAction）にして Battle.apply() に渡し、
@@ -100,7 +100,7 @@ var battle_log: BattleLog:
 		battle_log = value
 		if _playback != null:
 			_playback.battle_log = value
-## いまの盤の見た目の名前（stage_look.gd）と、決着の画面の「ステージ」に出す名前（戦いの定義の名前）。
+## いまの盤の見た目の名前（stage_look.gd）と、決着の画面の「マップ」に出す名前（戦いの定義の名前）。
 var look := StageLook.DEFAULT
 var area_name := ""
 var map_seed := 0
@@ -235,9 +235,9 @@ func _ready() -> void:
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
 	_setup_panel.cancelled.connect(_refresh)
-	_setup_panel.stage_pressed.connect(func(choice: RefCounted) -> void:
+	_setup_panel.map_pressed.connect(func(choice: RefCounted) -> void:
 		context.match_choice = choice
-		finished.emit(&"stage"))
+		finished.emit(&"map_select"))
 	_log_panel = LogPanel.new()
 	add_child(_log_panel)
 	_log_panel.setup(TEAM_COLORS, context.overlays)
@@ -354,8 +354,8 @@ func start_battle(battle_seed: int) -> void:
 	start_with(setup.create_battle(), source.look(), battle_seed, setup.scenario.title)
 
 
-## ステージを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
-## 渡されたものが、そのステージを選べない（source.new_board_fields() に無い）なら何もしない。
+## マップを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しい盤面」）。
+## 渡されたものが、そのマップを選べない（source.new_board_fields() に無い）なら何もしない。
 func start_on_field(field: StringName, battle_seed: int) -> void:
 	if is_busy() or not source.new_board_fields().has(field):
 		return
@@ -363,7 +363,7 @@ func start_on_field(field: StringName, battle_seed: int) -> void:
 	start_battle(battle_seed)
 
 
-## F1〜F3: 「新しい盤面」で選べるステージの index 番目で、新しい対戦を始める（無ければ何もしない）。
+## F1〜F3: 「新しい盤面」で選べるマップの index 番目で、新しい対戦を始める（無ければ何もしない）。
 func _start_on_nth_field(index: int) -> void:
 	var fields := source.new_board_fields()
 	if index < fields.size():
@@ -394,7 +394,7 @@ func _on_setup_chosen(chosen: RefCounted) -> void:
 
 
 ## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中と CPU の番の間は何もしない。
-## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「ステージ」（空なら出さない）。
+## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「マップ」（空なら出さない）。
 func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, battle_area := "") -> void:
 	if is_busy():
 		return

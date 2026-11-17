@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 対戦モードで選べる盤の一覧（game/versus_fields.gd。docs/stage-select.md の「選べる盤」）。
+## 対戦モードで選べる盤の一覧（game/versus_fields.gd。docs/map-select.md の「選べる盤」）。
 
 const VersusFields := preload("res://game/versus_fields.gd")
 const StageLook := preload("res://game/stage_look.gd")
@@ -25,7 +25,7 @@ func test_generated_stages_come_first_in_the_order_of_the_stages() -> void:
 	for stage: BoardGenerator.Stage in BoardGenerator.Stage.values():
 		expected.append(VersusFields.field_of_stage(stage))
 	assert_eq(VersusFields.generated_ids(), expected)
-	assert_eq(VersusFields.ids().slice(0, expected.size()), expected, "生成のステージを先に並べる（F1〜F3 と番号がいまのまま）")
+	assert_eq(VersusFields.ids().slice(0, expected.size()), expected, "生成のマップを先に並べる（F1〜F3 と番号がいまのまま）")
 	for index in expected.size():
 		assert_eq(VersusFields.number_of(expected[index]), index + 1)
 		assert_eq(VersusFields.scenario_of(expected[index]).stage, BoardGenerator.Stage.values()[index])

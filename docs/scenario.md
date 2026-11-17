@@ -16,7 +16,7 @@
 | --- | --- |
 | `title` | 画面に出す名前 |
 | `hand_map` | 盤の出どころ（手で作ったマップ）。`HandMap`（`docs/hand-map.md`）。あれば、下の 2 つは使わない |
-| `stage`、`board_size` | 盤の出どころ（生成）。生成するステージ（`BoardGenerator.Stage`）と盤の大きさ（`docs/game-board.md`） |
+| `stage`、`board_size` | 盤の出どころ（生成）。生成するマップ（`BoardGenerator.Stage`）と盤の大きさ（`docs/game-board.md`） |
 | `deploy_cells` | プレイヤーごとの初期位置。将でない駒を置くマスの列（編成の並びの順に使う）。空なら、いつもの「本陣の前」の置き方 |
 | `fixed_decks` | プレイヤーごとの決め打ちの部隊（`Deck`）。`null` なら、対戦設定で選んだ編成を出す |
 | `win_conditions` | プレイヤーごとの勝ちの条件の列（`GameWonEvent.Reason`。`docs/win-conditions.md`）。既定は両方とも `STANDARD_WIN_CONDITIONS`（将の撃破と本陣の占拠） |
@@ -46,12 +46,12 @@
 
 ## 作り方
 
-- `Scenario.versus(ステージ)`（下の「対戦モード」）。
+- `Scenario.versus(マップ)`（下の「対戦モード」）。
 - `Scenario.on_map(マップ, 名前)`: 手で作ったマップの定義。初期位置と決め打ちの部隊は無し（あとから足す）。対戦モードの手で作ったマップと、ストーリーの話が使う。
 
 ## 対戦モード
 
-生成のステージは `Scenario.versus(ステージ)`: 名前は空（画面が、ステージから画面の文の表の名前を引いて入れる。`game/versus_fields.gd`）、盤はそのステージの生成（大きさは既定）、
+生成のマップは `Scenario.versus(マップ)`: 名前は空（画面が、マップから画面の文の表の名前を引いて入れる。`game/versus_fields.gd`）、盤はそのマップの生成（大きさは既定）、
 決め打ちの部隊は無し（両方とも、対戦設定で選ぶ）、勝ちの条件は既定、先手の必殺技のゲージは 75% から（`start_gauge`。先手の埋め合わせ。`docs/tactical-ult.md`）。
-手で作ったマップは `Scenario.on_map`（名前はマップのファイルの `title`）で、ほかは同じ。どちらを選べるかは `game/versus_fields.gd`（`docs/stage-select.md`）。
+手で作ったマップは `Scenario.on_map`（名前はマップのファイルの `title`）で、ほかは同じ。どちらを選べるかは `game/versus_fields.gd`（`docs/map-select.md`）。
 `MatchSetup.versus_cpu` / `versus_human` は、これを持った対戦設定を作る。

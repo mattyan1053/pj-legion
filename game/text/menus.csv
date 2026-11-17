@@ -45,14 +45,14 @@ menu.corner,メニュー
 menu.corner.tooltip,メニュー（Esc）
 menu.confirm.cancel,キャンセル
 menu.title,メニュー
-stage.prompt,カードにマウスを乗せると説明を表示。クリックで決定
-stage.row.generated,ランダム生成 ─ 対戦のたびに形が変わる
-stage.row.hand,固定マップ ─ いつも同じ形
-stage.tag.generated,ランダム
-stage.tag.hand,固定
-stage.heading,ステージ選択
-stage.resume,ステージ選択へ戻る
-stage.choose,ステージ選択
+map_select.prompt,カードにマウスを乗せると説明を表示。クリックで決定
+map_select.row.generated,ランダム生成 ─ 対戦のたびに形が変わる
+map_select.row.hand,固定マップ ─ いつも同じ形
+map_select.tag.generated,ランダム
+map_select.tag.hand,固定
+map_select.heading,マップ選択
+map_select.resume,マップ選択へ戻る
+map_select.choose,マップ選択
 field.plain.tags,広場 ・ 起爆樽
 field.plain.note,開けた平地。中央は遮るもののない広場で、まわりに岩と森が散らばる。\n中央の左右に起爆樽。正面からぶつかり合う、基本の戦場。
 field.labyrinth.tags,迷路 ・ 回復の泉
@@ -66,15 +66,15 @@ field.crystal_gorge.note,盤の中ほどを結晶の岩山が横切る。越え�
 field.boulder_pass.tags,大岩 ・ 広い 2 本の道
 field.boulder_pass.note,草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも中ボス。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。
 setup.back,対戦設定へ戻る
-stage.note_title,{number}  {title}　　{tags}　　（{shape}）
-setup.confirm.stage,もう一度押して変更
+map_select.note_title,{number}  {title}　　{tags}　　（{shape}）
+setup.confirm.map,もう一度押して変更
 setup.confirm.start,もう一度押して開始
-setup.stage,ステージ変更
-setup.warning,ステージ変更・新しい対戦で、いまの対戦は終わります。
-setup.confirm_stage,もう一度押すと、いまの対戦を終えてステージ選択へ（右クリック: キャンセル）
+setup.map,マップ変更
+setup.warning,マップ変更・新しい対戦で、いまの対戦は終わります。
+setup.confirm_map,もう一度押すと、いまの対戦を終えてマップ選択へ（右クリック: キャンセル）
 setup.confirm_start,もう一度押すと、いまの対戦を終えて新しい対戦へ（右クリック: キャンセル）
 setup.title,対戦設定
-setup.caption.stage,ステージ
+setup.caption.map,マップ
 setup.caption.opponent,相手
 setup.opponent.human,人（2 人で交代）
 setup.caption.side,手番

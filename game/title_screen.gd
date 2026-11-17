@@ -62,7 +62,7 @@ func button_texts() -> Array[String]:
 	return texts
 
 
-## 「対戦」: ステージ選択へ（そのあと対戦設定）。
+## 「対戦」: マップ選択へ（そのあと対戦設定）。
 func press_start() -> void:
 	finished.emit(&"start")
 

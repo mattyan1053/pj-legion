@@ -23,7 +23,7 @@ func test_versus_cpu_deploys_both_armies_on_every_stage() -> void:
 			var wanted := [
 				1 + setup.decks[0].entries.size(), 1 + setup.decks[1].entries.size(), 0,
 			]
-			assert_eq(_counts(battle), wanted, "ステージ %d 種 %d" % [stage, battle_seed])
+			assert_eq(_counts(battle), wanted, "マップ %d 種 %d" % [stage, battle_seed])
 			assert_eq(battle.armies, [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY] as Array[UnitKind.Army])
 
 
@@ -37,7 +37,7 @@ func test_battle_starts_at_player1_turn_1_with_kings_on_their_hq() -> void:
 		assert_eq(battle.phase, Unit.Side.PLAYER1)
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			var king := battle.unit_at(battle.board.hq_cells[side])
-			assert_true(king != null and king.kind == UnitKind.Id.KING and king.side == side, "ステージ %d" % stage)
+			assert_true(king != null and king.kind == UnitKind.Id.KING and king.side == side, "マップ %d" % stage)
 
 
 func test_cpu_side_gets_the_cpu_deck_of_its_army() -> void:

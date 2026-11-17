@@ -21,7 +21,7 @@ const ScreenSize := preload("res://game/screen_size.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Run := preload("res://game/run.gd")
-const StageCardMap := preload("res://game/stage_card_map.gd")
+const MapCard := preload("res://game/map_card.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
@@ -320,7 +320,7 @@ func map_image(deck: Deck) -> Image:
 	var source: RefCounted = battle_source.copy()
 	source.human_deck = deck
 	var battle: Battle = source.make_setup(1).create_battle()
-	var image := StageCardMap.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
+	var image := MapCard.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
 	for unit in battle.units:
 		if unit.side == Unit.Side.NEUTRAL or unit.kind == UnitKind.Id.KING:
 			continue

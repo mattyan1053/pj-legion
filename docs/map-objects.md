@@ -1,7 +1,7 @@
 # 環境オブジェクト（起爆樽、回復の泉、ポータル）
 
 コード: `rules/map_object.gd`（種類と、効果の計算）、`rules/board.gd`（どこに何があるか）、
-`rules/board_generator.gd`（ステージごとの配置）、`rules/actions/attack_barrel_action.gd`、
+`rules/board_generator.gd`（マップごとの配置）、`rules/actions/attack_barrel_action.gd`、
 `rules/events/`（`barrel_exploded_event.gd`、`explosion_damaged_event.gd`、`spring_healed_event.gd`、`unit_warped_event.gd`、
 `game_drawn_event.gd`）。
 泉の回復は `rules/actions/end_phase_action.gd`、ポータルは `rules/movement.gd` と `rules/actions/move_action.gd`。
@@ -91,12 +91,12 @@
 - 移動の取り消しは、転移の前のマスへ戻る（`MoveUndoneEvent` は 1 つ）。
 - ポータルが働くのは、移動の道の中だけ。スキルでポータルのマスに着いた駒（シャドウステップ。入れ替えられた駒も）は、転移しない。
 
-## ステージごとの配置
+## マップごとの配置
 
-盤面の生成（`BoardGenerator.generate`。`docs/game-board.md`）が、地形のあとに置く。同じステージ・同じシードなら、いつも同じ配置になる。
+盤面の生成（`BoardGenerator.generate`。`docs/game-board.md`）が、地形のあとに置く。同じマップ・同じシードなら、いつも同じ配置になる。
 地形は、オブジェクトを置いても置かなくても同じ（別の乱数を使う）。
 
-| ステージ | 置くもの | 場所（30 x 30 のとき） |
+| マップ | 置くもの | 場所（30 x 30 のとき） |
 | --- | --- | --- |
 | 1 中央平原 | 起爆樽 4（`MIN_BARRELS`）〜6（`MAX_BARRELS`）個 | 中央の左右の帯（`x: 8〜10` と `x: 20〜22`、どちらも `y: 10〜20`）に、左右交互に、でたらめに |
 | 2 迷宮回廊 | 回復の泉 2 か所 | 左 `(9,22)`（プレイヤー1 の側）と右 `(19,7)`（プレイヤー2 の側）。本陣どうしを入れ替える点対称（`BoardGenerator.spring_cells_for`）。どちらのプレイヤーにも、本陣に近い泉と遠い泉が 1 つずつ |
@@ -104,7 +104,7 @@
 
 ほかの大きさでは、盤の中心と端からの位置で決まる。
 
-どのステージでも次を守る。
+どのマップでも次を守る。
 
 - 置くのは**平地**だけ。本陣の周り（チェビシェフ距離 3（`PROTECT_RADIUS`）以内。軍の初期配置はこの中に収まる）、結晶泉、
   中ボスの場所の周り（チェビシェフ距離 1（`MID_BOSS_CLEARING`）以内）には置かない。

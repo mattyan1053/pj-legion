@@ -43,13 +43,13 @@ func set_cpu_opponent(_cpu: bool) -> void:
 	pass
 
 
-## 新しい盤面でやり直すときに選べるステージ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しい盤面」）。
+## 新しい盤面でやり直すときに選べるマップ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しい盤面」）。
 ## 空なら、やり直しは「同じ盤面でもう一度」だけ。
 func new_board_fields() -> Array[StringName]:
 	return []
 
 
-## 次に作る対戦設定のステージを field にする（new_board_fields() にあるものだけ）。
+## 次に作る対戦設定のマップを field にする（new_board_fields() にあるものだけ）。
 func choose_field(_field: StringName) -> void:
 	pass
 

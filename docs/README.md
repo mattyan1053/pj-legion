@@ -34,7 +34,7 @@ PR と push で回す検査は 1 分以内に収める（`CLAUDE.md`）。時間
 - `tools/check.sh --full <godot>`: 長い検査。上に加えて、次も回す。CI の `full-check` が main に入ったあとに回す（手でも起動できる）。
   - 名前が `test_long_` で始まるテスト（同じ CPU どうしの対戦を何度も回して比べる、など）。
     テストだけなら `run_tests.gd -- --full`（`--long-only`、`--only=<語>`、`--except=<語>` で絞れる）。
-  - 自動の対戦のほかのステージ（`-- --autoplay --full`）。
+  - 自動の対戦のほかのマップ（`-- --autoplay --full`）。
   - スクリーンショットの場面のいくつかを、撮らずに作る（`-- --shots <場面,…> --dry-run`。場面は `check.sh` の `SHOTS_IN_FULL_A` と `_B`）。
     ルールや数値が変わって場面が作れなくなったことに、撮る人より先に気付くため。
 

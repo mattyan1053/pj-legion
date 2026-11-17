@@ -234,7 +234,7 @@ func test_as_battle_source_makes_the_same_setup_and_names_the_look() -> void:
 	var setup: MatchSetup = choice.make_setup(7)
 	assert_eq(setup.scenario.stage, BoardGenerator.Stage.LABYRINTH)
 	assert_eq(setup.battle_seed, 7)
-	assert_eq(setup.scenario.title, Names.stage(BoardGenerator.Stage.LABYRINTH), "ステージは戦いの定義の名前")
+	assert_eq(setup.scenario.title, Names.stage(BoardGenerator.Stage.LABYRINTH), "マップは戦いの定義の名前")
 	assert_eq(choice.look(), StageLook.STONE_WALLS)
 	assert_true(setup.is_cpu(choice.cpu_side()))
 
@@ -266,7 +266,7 @@ func test_starting_a_versus_battle_is_a_run_of_one_battle_with_a_copy() -> void:
 	var given: RefCounted = run.data()
 	assert_true(given != choice, "対戦の場面に渡すのは写し")
 	given.choose_field(VersusFields.LABYRINTH)
-	assert_eq(choice.field, VersusFields.PLAIN, "対戦の途中でステージを替えても、選んだものは変わらない")
+	assert_eq(choice.field, VersusFields.PLAIN, "対戦の途中でマップを替えても、選んだものは変わらない")
 	assert_eq(run.advance(), run.exit)
 	assert_true(run.is_done())
 
@@ -282,7 +282,7 @@ func test_a_hand_map_makes_the_same_board_on_any_seed_with_the_versus_rules() ->
 		choice.field = field
 		var setup: MatchSetup = choice.make_setup(1)
 		assert_true(setup.is_valid(), str(field))
-		assert_eq(setup.scenario.title, VersusFields.title_of(field), "ステージはマップの名前")
+		assert_eq(setup.scenario.title, VersusFields.title_of(field), "マップはマップの名前")
 		assert_eq(setup.scenario.win_conditions_of(Unit.Side.PLAYER1), Scenario.STANDARD_WIN_CONDITIONS, "勝ち方は対戦モードのいつもの 2 つ")
 		assert_false(setup.scenario.is_fixed(Unit.Side.PLAYER2), "部隊は対戦設定で選ぶ（決め打ちにしない）")
 		assert_true(setup.decks[Unit.Side.PLAYER2].is_valid(), "CPU の編成は予算どおり")
