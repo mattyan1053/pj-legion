@@ -52,3 +52,26 @@ func test_a_story_battle_carries_the_placement_through_copies() -> void:
 	var placement: Array[Vector2i] = [free[0] - hq]
 	source.placement = placement
 	assert_eq(_own(source.copy().make_setup(7).create_battle(), Unit.Side.PLAYER1)[0].cell, free[0], "同じ盤面で再戦（写し）でも、決めた位置")
+
+
+func test_refreshing_an_unchanged_saved_deck_keeps_the_placement() -> void:
+	var library := preload("res://game/deck_library.gd").new()
+	var deck := MatchSetup.default_deck(UnitKind.Army.MILITARY)
+	var item: RefCounted = library.add("取っておいた部隊", deck)
+	var choice := MatchChoice.new()
+	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
+	var placement: Array[Vector2i] = [Vector2i(1, -1)]
+	choice.placements[0] = placement
+	choice.refresh_decks(library)
+	assert_eq(choice.placements[0], placement, "対戦設定を開き直しただけでは、初期位置を消さない")
+	choice.choose_default(Unit.Side.PLAYER1)
+	choice.choose_default(Unit.Side.PLAYER1)
+	choice.placements[0] = placement
+	choice.choose_default(Unit.Side.PLAYER1)
+	assert_eq(choice.placements[0], placement, "既定の編成のまま選び直しても消さない")
+	var changed := deck.copy()
+	changed.add(UnitKind.Id.SNIPER)
+	library.replace(item.id, "取っておいた部隊", changed)
+	choice.choose_deck(Unit.Side.PLAYER1, item.id, item.deck)
+	choice.refresh_decks(library)
+	assert_true(choice.placements[0].is_empty(), "部隊の駒が変わったら、おまかせに戻す")

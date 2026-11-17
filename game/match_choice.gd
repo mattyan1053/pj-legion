@@ -140,7 +140,9 @@ func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
 
 ## side の部隊を、取っておいた部隊 id（中身 deck）にする。軍は部隊の軍になる。
 func choose_deck(side: Unit.Side, id: String, deck: Deck) -> void:
-	placements[side] = []
+	# 同じ部隊を選び直しただけ（対戦設定を開くたびの refresh_decks）なら、初期位置は残す。駒の並びが変わったら、おまかせに戻す。
+	if id != deck_ids[side] or decks[side] == null or _kinds(decks[side]) != _kinds(deck):
+		placements[side] = []
 	deck_ids[side] = id
 	decks[side] = deck.copy()
 	drawn_decks[side] = null
@@ -149,13 +151,18 @@ func choose_deck(side: Unit.Side, id: String, deck: Deck) -> void:
 
 ## side の部隊を、軍の既定の編成にする。
 func choose_default(side: Unit.Side) -> void:
-	placements[side] = []
+	if deck_ids[side] != "":
+		placements[side] = []
 	deck_ids[side] = ""
 	decks[side] = null
 	drawn_decks[side] = null
 
 
 ## side の部隊を、ランダム編成（対戦を作るたびに、種から決まりの中でランダムに組む）にする。
+static func _kinds(deck: Deck) -> Array:
+	return deck.entries.map(func(entry: DeckEntry) -> UnitKind.Id: return entry.kind)
+
+
 func choose_random(side: Unit.Side) -> void:
 	placements[side] = []
 	deck_ids[side] = RANDOM
