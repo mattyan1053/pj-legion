@@ -42,7 +42,7 @@ func test_run_is_talk_sortie_battle_talk_then_the_episode_list() -> void:
 	assert_eq(run.scene(), &"talk")
 	assert_eq(run.data()["title"], episode.title)
 	assert_eq(run.data()["lines"].size(), episode.before.size())
-	assert_eq(run.data()["lines"][0]["name"], episode.speakers[episode.before[0][0]])
+	assert_eq(run.data()["lines"][0]["name"], episode.speakers[episode.before[0][2]])
 	assert_eq(run.advance(), Story.SORTIE)
 	assert_eq(run.data()["episode"], episode)
 	var battle: StoryBattle = run.data()["battle"]

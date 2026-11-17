@@ -468,12 +468,12 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 	return run
 
 
-## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "name": 話し手, "text": 文}, …],
+## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文}, …],
 ## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲（話のファイルの talk_music。空なら場面の表の曲）,
-## "figures": 話し手の姿 [人の軍, 敵の軍]（episode.gd の figures）}。
+## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
 static func talk_of(episode: Episode, rows: Array) -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row: Array in rows:
-		lines.append({"side": row[0], "name": episode.speakers[row[0]], "text": row[1]})
+		lines.append({"side": row[0], "who": row[2], "name": episode.speakers[row[2]], "text": row[1]})
 	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
 			"music": episode.talk_music, "figures": episode.figures}

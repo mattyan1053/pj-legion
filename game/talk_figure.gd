@@ -26,14 +26,19 @@ const CAMERA_DISTANCE := 3.8
 const LOOK_HEIGHT := 0.84
 
 var side := 0
+## 立つ所（0 = 左、1 = 右）と、話し手の番号（会話の行の "who"。会話の場面が付ける）。
+var place := 0
+var who := 0
 var _view: Node3D
 var _speaking := false
 var _tween: Tween
 
 
 ## kind の駒（evolved なら進化後の形。look は将の別の姿）を、陣営 side_ の色で立たせる。
-func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"") -> void:
+## place_ は立つ所（0 = 左で右を向く、1 = 右で左を向く。書かなければ、人の軍が左、敵の軍が右）。
+func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"", place_ := -1) -> void:
 	side = side_
+	place = clampi(side_, 0, 1) if place_ < 0 else place_
 	stretch = true
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var viewport := SubViewport.new()
@@ -51,7 +56,7 @@ func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"") -> void
 	world.environment = environment
 	viewport.add_child(world)
 	var light := DirectionalLight3D.new()
-	light.rotation = Vector3(deg_to_rad(-38.0), deg_to_rad(25.0 if side == 0 else -25.0), 0.0)
+	light.rotation = Vector3(deg_to_rad(-38.0), deg_to_rad(25.0 if place == 0 else -25.0), 0.0)
 	light.light_energy = 1.15
 	viewport.add_child(light)
 
@@ -67,7 +72,7 @@ func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"") -> void
 	_view.setup(kind, TEAM_COLORS[clampi(side, 0, 1)], hp, hp, look)
 	if evolved:
 		_view.set_evolved(hp)
-	_view.rotation.y = TURN if side == 0 else -TURN
+	_view.rotation.y = TURN if place == 0 else -TURN
 	resized.connect(_on_resized)
 
 
