@@ -59,6 +59,18 @@ func test_starts_with_the_current_phase_as_a_header() -> void:
 	assert_eq(book.entries[0].side, P1)
 
 
+## 始めからゲージがたまっている陣営（対戦モードの先手）は、見出しのすぐ下にそう書く。たまっていなければ書かない。
+func test_a_gauge_that_starts_charged_is_noted() -> void:
+	var setup := MatchSetup.versus_human(BoardGenerator.Stage.PLAIN, 1, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY))
+	var battle := setup.create_battle()
+	var book := BattleLog.new(battle)
+	var percent := Ults.FIRST_PLAYER_START_GAUGE * 100 / Ults.GAUGE_MAX
+	assert_eq(_lines(book), ["%sの必殺技のゲージは %d%% から" % [Names.side_word(P1), percent]] as Array[String])
+	assert_eq(book.entries[1].side, P1)
+	battle.ult_gauge[P1] = 0
+	assert_eq(_lines(BattleLog.new(battle)), [] as Array[String], "0 から始まるなら書かない")
+
+
 func test_unit_names_have_the_side_and_the_evolution() -> void:
 	var battle := Maps.battle(["......"])
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(0, 0))

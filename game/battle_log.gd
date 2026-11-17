@@ -106,6 +106,11 @@ func _init(battle: Battle, names: Array[String] = []) -> void:
 		known.evolution = unit.evolution
 		_units[unit.id] = known
 	_start_phase(battle.turn, battle.phase)
+	# 始めからゲージがたまっている陣営（対戦モードの先手、ゲージの手前から始める話）は、そう書いておく。
+	if battle.turn == 1 and battle.phase == Unit.Side.PLAYER1:
+		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+			if Ults.of(battle, side) != null and Ults.gauge(battle, side) > 0:
+				_line(Text.t("battle.log.start_gauge", {"side": Names.side_word(side), "percent": Ults.percent(battle, side)}), side)
 
 
 ## イベントの種類（スクリプト）-> 読むメソッドの名前。rules/events/ のイベントは、すべてここに載せる。
