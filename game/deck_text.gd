@@ -132,6 +132,53 @@ static func item_refusal(kind: UnitKind.Id, held: Array[Equipment.Id], item: Equ
 	return ""
 
 
+## 駒の詳しい説明の行（部隊編成の画面の駒の札と、編成確認・出撃準備で駒を押したときの詳細。unit_detail.gd）:
+## 役割とコスト（将・魔物はコストを書かない）、役割の説明、能力値（持ち物込みの値も）、スキル、持ち物の効果と特性、進化先。
+## deck_army: 部隊の軍（ほかの軍の駒なら、先頭に「FANTASY の駒（この部隊では MILITARY として戦う）」。-1 なら書かない）。
+## with_items: 持ち物の効果の行を入れるか（部隊編成の画面は、持ち物を別の欄に出すので入れない）。
+static func detail_lines(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], deck_army := -1, with_items := true) -> Array[String]:
+	var lines: Array[String] = []
+	if deck_army != -1 and UnitKind.army(kind) != UnitKind.Army.NONE and UnitKind.army(kind) != deck_army:
+		# ストーリーで解放した、ほかの軍の駒（必殺技は部隊の軍のもの）。
+		lines.append(Text.t("deck.detail.borrowed", {"origin": army_name(UnitKind.army(kind)), "army": army_name(deck_army as UnitKind.Army)}))
+	var role := UnitKind.role(kind)
+	if kind == UnitKind.Id.KING:
+		lines.append(Text.t("deck.card.king"))
+	elif UnitKind.army(kind) == UnitKind.Army.NONE:
+		if role != UnitKind.Role.NONE:
+			lines.append(role_name(kind))  # 魔物（敵だけの駒）はコストを書かない
+	else:
+		lines.append(Text.t("deck.detail.role", {"role": role_name(kind), "cost": UnitKind.cost(kind)}))
+	if role_note(role) != "":
+		lines.append(role_note(role))
+	lines.append("")
+	lines.append(stats_line(kind))
+	if not equipment.is_empty():
+		lines.append(Text.t("deck.detail.with_items", {"stats": stats_line(kind, equipment_bonus(equipment))}))
+	var skill := skill_text(kind)
+	if skill != "":
+		lines.append("")
+		lines.append(Text.t("deck.detail.skill", {"skill": skill}))
+	if with_items and not equipment.is_empty():
+		lines.append("")
+		var seen: Array[Equipment.Id] = []
+		for item: Equipment.Id in equipment:
+			if seen.has(item):
+				continue
+			seen.append(item)
+			var count := equipment.count(item)
+			lines.append(Text.t("deck.detail.item", {"name": Names.item(item) + (" ×%d" % count if count > 1 else ""), "effect": equipment_effect(item)}))
+			for which in Equipment.traits(item):
+				lines.append(Text.t("deck.detail.evolution_line", {"line": Names.trait_text(which)}))
+	var evolutions := evolution_lines(kind)
+	if not evolutions.is_empty():
+		lines.append("")
+		lines.append(Text.t("deck.detail.evolution", {"level": Growth.MAX_LEVEL}))
+		for line in evolutions:
+			lines.append(Text.t("deck.detail.evolution_line", {"line": line}))
+	return lines
+
+
 ## スキルの 1 行目（名前）と説明。持たなければ空。
 static func skill_text(kind: UnitKind.Id) -> String:
 	var skill := Skills.of_kind(kind)

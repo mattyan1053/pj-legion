@@ -60,6 +60,9 @@ deck.edit.troop_unit,"{unit}　コスト {cost}
 deck.edit.no_items,持ち物なし
 deck.detail.with_items,持ち物込み: {stats}
 deck.detail.skill,スキル: {skill}
+deck.detail.item,持ち物: {name}（{effect}）
+deck.detail.click,クリック: 詳細
+deck.detail.title_level,{name} Lv{level}
 deck.edit.remove,外す
 deck.problem.no_units,駒なし
 deck.problem.too_many_units,駒の数が上限超過（{max} 体まで）

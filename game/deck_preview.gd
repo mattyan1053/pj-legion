@@ -1,6 +1,7 @@
 extends Control
 ## 編成の確認（対戦設定の「編成を確認」）。1 つの部隊の駒を、札（unit_card.gd）にして並べる重なる画面。
 ## 自分の部隊も、CPU の部隊も、同じ見え方。「閉じる」・右クリック・Esc で閉じる。
+## 札を押すと、その駒の詳しい説明（unit_detail.gd）を上に重ねて開く。
 ## 色や枠は UI のテーマ（ui_theme.gd。板は PANEL_SOLID、札は PANEL_CARD）が当たる。
 
 const Text := preload("res://game/text.gd")
@@ -8,6 +9,7 @@ const UnitCard := preload("res://game/unit_card.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
 
 ## 1 行に並べる札の数。
 const COLUMNS := 4
@@ -15,6 +17,10 @@ const COLUMNS := 4
 var _overlays: RefCounted
 var _title: Label
 var _cards: GridContainer
+var _detail: UnitDetail
+## いま出している部隊と、アイコンの陣営の色。
+var _deck: Deck
+var _side := 0
 
 
 ## overlays は、開いている重なる画面の積み上げ（AppContext.overlays）。
@@ -41,6 +47,12 @@ func setup(overlays: RefCounted) -> void:
 	_title.add_theme_font_size_override("font_size", 22)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_title)
+	var hint := Label.new()
+	hint.text = Text.t("deck.detail.click")
+	hint.add_theme_font_size_override("font_size", 14)
+	hint.add_theme_color_override("font_color", Palette.TEXT_DIM)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(hint)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2((UnitCard.WIDTH + 8.0) * COLUMNS, 330.0)
@@ -58,6 +70,9 @@ func setup(overlays: RefCounted) -> void:
 	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(close_preview)
 	column.add_child(close)
+	_detail = UnitDetail.new()
+	add_child(_detail)
+	_detail.setup(overlays)
 
 
 ## who（「あなた」「CPU」など）の部隊 deck を出す。将を先頭に、雇った駒を並びの順に。side はアイコンの陣営の色。
@@ -66,13 +81,43 @@ func open(who: String, deck: Deck, side := 0) -> void:
 	for child in _cards.get_children():
 		_cards.remove_child(child)
 		child.queue_free()
-	_cards.add_child(UnitCard.build(UnitKind.Id.KING, [], side))
-	for entry in deck.entries:
-		_cards.add_child(UnitCard.build(entry.kind, entry.equipment, side))
+	_deck = deck
+	_side = side
+	_add_card(UnitCard.build(UnitKind.Id.KING, [], side), -1)
+	for index in deck.entries.size():
+		_add_card(UnitCard.build(deck.entries[index].kind, deck.entries[index].equipment, side), index)
 	visible = true
 
 
+## 札を押せるようにして並べる（index は部隊の並びの番号。将は -1）。
+func _add_card(card: Control, index: int) -> void:
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	card.mouse_entered.connect(func() -> void: card.modulate = Color(1.15, 1.15, 1.15))
+	card.mouse_exited.connect(func() -> void: card.modulate = Color.WHITE)
+	card.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			press_card(index))
+	_cards.add_child(card)
+
+
+## 部隊の index 番目の駒（-1 なら将）の札を押す: その駒の詳しい説明を開く。
+func press_card(index: int) -> void:
+	if _deck == null or index >= _deck.entries.size():
+		return
+	if index < 0:
+		_detail.open(UnitKind.Id.KING, [], _side, _deck.army)
+	else:
+		_detail.open(_deck.entries[index].kind, _deck.entries[index].equipment, _side, _deck.army)
+
+
+## 駒の詳しい説明（検査用）。
+func detail() -> UnitDetail:
+	return _detail
+
+
 func close_preview() -> void:
+	_detail.close_detail()
 	visible = false
 
 

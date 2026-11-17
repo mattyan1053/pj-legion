@@ -35,6 +35,7 @@ const SCENES := {
 	"setup_confirm": "対戦の途中で開いた対戦設定画面で「マップを選び直す」を 1 回押し、確かめている",
 	"setup_deck": "対戦設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
 	"setup_preview": "対戦設定で、CPU の部隊の「編成を確認」を開いたところ",
+	"setup_unit_detail": "対戦設定の「編成確認」（CPU の部隊）で、駒の札を押して詳しい説明を開いたところ",
 	"setup_random": "対戦設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
 	"setup_cpu_deck": "対戦設定で、CPU の行の部隊の選択肢を開いた（CPU の編成・ランダム編成・取っておいた部隊）",
 	"setup_cpu_random": "CPU の部隊を「ランダム編成」にして始めた対戦の途中で、対戦設定の「編成確認」を開いた（いまの対戦で組んだ部隊）",
@@ -178,6 +179,8 @@ const SCENES := {
 	"story_rout_wide": "ストーリー: 結晶の渓谷を、いちばん引いて見ている（裂け目と、両端の橋、真ん中のポータル）",
 	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守の騎士」の札と姿）",
 	"story_monster_sortie": "ストーリー: 魔物の群れの話（軍に属さない敵）の出撃準備（敵の部隊は「軍なし」の骸骨）",
+	"story_sortie_detail": "ストーリー: 出撃準備で、味方の駒のアイコン（持ち物つき）を押して詳しい説明を開いたところ",
+	"story_monster_detail": "ストーリー: 魔物の群れの話の出撃準備で、敵の骸骨のアイコンを押して詳しい説明を開いたところ",
 	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
 	"story_monster_king": "ストーリー: 魔物の群れの話で、敵の将（骸骨の将の姿。ルールの上では将）にマウスを乗せた駒の情報と、敵の将の途中の台詞（骸骨の将のアイコン）",
 	"story_monster_info": "ストーリー: 魔物の群れの話で、骸骨重兵にマウスを乗せた駒の情報（所属は「魔物」。スキル・持ち物の欄は無い）",
@@ -512,6 +515,14 @@ func _scene_setup_deck() -> bool:
 	await get_tree().process_frame
 	panel.open_deck_picker(Unit.Side.PLAYER1)
 	return true
+
+
+func _scene_setup_unit_detail() -> bool:
+	if not await _scene_setup_preview():
+		return false
+	var preview: Control = _app.current_scene().setup_panel().preview()
+	preview.press_card(1)
+	return preview.detail().visible
 
 
 func _scene_setup_preview() -> bool:
@@ -2098,6 +2109,20 @@ func _scene_story_monster_sortie() -> bool:
 	if number == -1 or not await _start_story(number):
 		return false
 	return _at_sortie()
+
+
+func _scene_story_monster_detail() -> bool:
+	if not await _scene_story_monster_sortie():
+		return false
+	var detail: Control = _app.current_scene().press_face(Unit.Side.PLAYER2, 2)
+	return detail != null and detail.visible
+
+
+func _scene_story_sortie_detail() -> bool:
+	if not await _scene_story_sortie():
+		return false
+	var detail: Control = _app.current_scene().press_face(Unit.Side.PLAYER1, 1)
+	return detail != null and detail.visible
 
 
 func _scene_story_monster_start() -> bool:
