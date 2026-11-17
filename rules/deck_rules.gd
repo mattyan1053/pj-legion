@@ -21,12 +21,22 @@ var _rosters: Dictionary = {}
 var _budgets: Dictionary = {}
 ## 持たせられる装備の種類（並びは Equipment.Id の順）。
 var _items: Array[Equipment.Id] = []
+## 編成の画面に並べる装備の種類（持たせられる装備と、まだ持たせられないが、この決まりでいずれ持たせられる装備。並びは Equipment.Id の順）。
+var _shown_items: Array[Equipment.Id] = []
+
+## 対戦の決まりで持たせられる装備。ほかの装備はストーリー専用（docs/player-loadout.md の「装備」）。
+const VERSUS_ITEMS: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS, Equipment.Id.IRON_SHIELD]
 
 static var _versus: DeckRules
 
 
 ## allowed_items: 持たせられる装備の種類。省けば（null）、どの装備も持たせられる。
-func _init(rules_id: StringName, unit_limit: int, rosters: Dictionary, budgets: Dictionary, allowed_items: Variant = null) -> void:
+## listed_items: 編成の画面に並べる装備の種類（まだ持たせられない装備は「未解放」で並ぶ）。省けば、持たせられる装備だけ。
+## 持たせられる装備は、渡さなくても並ぶ。
+func _init(
+	rules_id: StringName, unit_limit: int, rosters: Dictionary, budgets: Dictionary,
+	allowed_items: Variant = null, listed_items: Variant = null,
+) -> void:
 	id = rules_id
 	max_units = unit_limit
 	_rosters = rosters
@@ -34,9 +44,12 @@ func _init(rules_id: StringName, unit_limit: int, rosters: Dictionary, budgets: 
 	for item: Equipment.Id in Equipment.Id.values():
 		if allowed_items == null or (allowed_items as Array).has(item):
 			_items.append(item)
+		if _items.has(item) or (listed_items != null and (listed_items as Array).has(item)):
+			_shown_items.append(item)
 
 
 ## 対戦の決まり。軍ごとに、その軍の 4 種を雇える。予算は軍ごとの値（MILITARY 24、FANTASY 18。docs/player-loadout.md）。
+## 持たせられる装備は VERSUS_ITEMS だけ。
 static func versus() -> DeckRules:
 	if _versus == null:
 		var rosters := {}
@@ -45,7 +58,7 @@ static func versus() -> DeckRules:
 		_versus = DeckRules.new(VERSUS, Deck.MAX_UNITS, rosters, {
 			UnitKind.Army.MILITARY: 24,
 			UnitKind.Army.FANTASY: 18,
-		})
+		}, VERSUS_ITEMS)
 	return _versus
 
 
@@ -82,6 +95,11 @@ func budget(army: UnitKind.Army) -> int:
 ## 持たせられる装備の種類（並びは Equipment.Id の順）。
 func items() -> Array[Equipment.Id]:
 	return _items.duplicate()
+
+
+## 編成の画面に並べる装備の種類（並びは Equipment.Id の順）。持たせられない装備は「未解放」で並ぶ。
+func shown_items() -> Array[Equipment.Id]:
+	return _shown_items.duplicate()
 
 
 ## その装備を持たせられるか。

@@ -120,21 +120,26 @@ func evolve(to: Evolution.Id) -> void:
 	follow_max_hp(before)
 
 
-## 周り 8 マスに支配領域（ZOC）を作るか。前衛と、その特性を持つ進化先。
+## 特性（Evolution.Trait）を持つか。進化先か、持っている装備のどれかが与えていれば持つ（重ねても 1 つ）。
+func has_trait(which: Evolution.Trait) -> bool:
+	return Evolution.has_trait(evolution, which) or Equipment.grants(equipment, which)
+
+
+## 周り 8 マスに支配領域（ZOC）を作るか。前衛と、その特性を持つ進化先・装備。
 func exerts_zoc() -> bool:
-	return UnitKind.exerts_zoc(kind) or Evolution.has_trait(evolution, Evolution.Trait.EXERTS_ZOC)
+	return UnitKind.exerts_zoc(kind) or has_trait(Evolution.Trait.EXERTS_ZOC)
 
 
 ## 敵の支配領域（ZOC）で止まらずに進めるか。
 func ignores_zoc() -> bool:
-	return Evolution.has_trait(evolution, Evolution.Trait.IGNORES_ZOC)
+	return has_trait(Evolution.Trait.IGNORES_ZOC)
 
 
 ## into に入るのに使う移動力。入れないマスなら負の値（Board.move_cost と同じ）。
 ## 森を歩く特性の駒は、森にも平地と同じ移動力で入る。
 func move_cost(board: Board, into: Vector2i) -> int:
 	var cost := board.move_cost(into)
-	if cost > 1 and Evolution.has_trait(evolution, Evolution.Trait.FOREST_WALK):
+	if cost > 1 and has_trait(Evolution.Trait.FOREST_WALK):
 		return 1
 	return cost
 

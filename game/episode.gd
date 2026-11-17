@@ -296,6 +296,9 @@ func _unit_row(file: RefCounted, entry: Dictionary) -> Array:
 	if not items.is_empty() and not Equipment.can_equip(kind as UnitKind.Id):
 		file.problem(entry["line"], "%s は持ち物を持てない（軍に属する駒だけが持てる）" % words[0].strip_edges())
 		return []
+	if not Equipment.is_valid_for(kind as UnitKind.Id, items):
+		file.problem(entry["line"], "%s はこの持ち物の組を持てない（役割の限り、1 体の数、重ねられない持ち物）" % words[0].strip_edges())
+		return []
 	return [kind, items]
 
 

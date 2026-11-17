@@ -129,6 +129,21 @@ func test_deck_without_an_army_is_never_valid() -> void:
 	assert_eq(deck.problems(), _problems([Problem.OVER_BUDGET, Problem.NOT_IN_ROSTER]))
 
 
+func test_items_the_unit_cannot_hold_are_a_problem() -> void:
+	var deck := _deck(MILITARY, [UnitKind.Id.COMMANDO, UnitKind.Id.SNIPER])
+	deck.entries[0].equipment = [Equipment.Id.LONG_SCOPE]
+	assert_eq(deck.problems(), _problems([Problem.ITEM_NOT_ALLOWED, Problem.ITEM_NOT_FIT]), "対戦の決まりでは持たせられず、奇襲は持てない")
+	var open_rules := DeckRules.new(&"open", 6, {MILITARY: DeckRules.versus().roster(MILITARY)}, {MILITARY: 24})
+	var open := Deck.new(MILITARY, open_rules)
+	open.add(UnitKind.Id.COMMANDO)
+	open.entries[0].equipment = [Equipment.Id.LONG_SCOPE]
+	assert_eq(open.problems(), _problems([Problem.ITEM_NOT_FIT]), "役割の限り")
+	open.entries[0].equipment = [Equipment.Id.REGEN_CHARM, Equipment.Id.REGEN_CHARM]
+	assert_eq(open.problems(), _problems([Problem.ITEM_NOT_FIT]), "重ねられない装備の 2 個目")
+	open.entries[0].equipment = [Equipment.Id.REGEN_CHARM, Equipment.Id.SHADOW_CLOAK, Equipment.Id.POWER_GAUNTLET]
+	assert_true(open.is_valid(), "違う装備なら 3 個まで")
+
+
 func test_every_problem_is_reported_in_order() -> void:
 	var deck := Deck.new(FANTASY)
 	for i in 7:

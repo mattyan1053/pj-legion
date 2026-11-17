@@ -130,13 +130,23 @@ func test_equipment_matches_equipment() -> void:
 	var table := _table("res://docs/player-loadout.md", ["装備", "コスト"])
 	if table == null:
 		return
+	var role_names := {
+		UnitKind.Role.VANGUARD: "前衛", UnitKind.Role.REARGUARD: "後衛", UnitKind.Role.RAIDER: "奇襲", UnitKind.Role.HEALER: "回復",
+	}
 	for item: Equipment.Id in Equipment.Id.values():
 		var name := Names.item(item)
 		_expect_number(table, name, "コスト", Equipment.cost(item))
 		var amount := 0
 		for stat: Unit.Stat in Unit.Stat.values():
 			amount += Equipment.bonus(item, stat)
-		_expect_number(table, name, "効果（1 個につき）", amount)
+		if amount != 0:  # 特性だけの装備は、数を書かない（特性の名前を書く）
+			_expect_number(table, name, "効果（1 個につき）", amount)
+		_expect_number(table, name, "1 体に", Equipment.stack_limit(item))
+		var holders: Array[String] = []
+		for role: UnitKind.Role in Equipment.roles(item):
+			holders.append(role_names[role])
+		_expect_text(table, name, "持てる駒", "・".join(holders) if not holders.is_empty() else "どれでも")
+		_expect_text(table, name, "対戦モード", "出る" if DeckRules.VERSUS_ITEMS.has(item) else "出ない", true)
 
 
 func test_experience_tables_match_growth() -> void:

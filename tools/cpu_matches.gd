@@ -672,7 +672,7 @@ func _deck(army: UnitKind.Army, mode: String, rules: DeckRules) -> Deck:
 
 
 ## --squads=random の、対戦の部隊（両軍）。決まり rules のロスターから、種 squad_seed で決まる順に、数の上限まで予算の中で雇い、
-## 余った予算で、種で決まる駒に種で決まる装備を持たせる（1 体が持てる数まで）。並びは役割の順（前衛が前に置かれる）。
+## 余った予算で、種で決まる駒に種で決まる装備を持たせる（決まりで持たせられる装備から。その駒が持てるものだけ）。並びは役割の順（前衛が前に置かれる）。
 func _random_deck(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Deck:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = squad_seed
@@ -690,12 +690,16 @@ func _random_deck(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Dec
 	hired.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool: return UnitKind.role(a) < UnitKind.role(b))
 	for kind in hired:
 		deck.add(kind)
-	var items: Array = Equipment.Id.values()
-	while not deck.entries.is_empty():
-		var open := deck.entries.filter(func(entry: DeckEntry) -> bool: return entry.equipment.size() < Equipment.MAX_PER_UNIT)
+	var items := rules.items()
+	while not deck.entries.is_empty() and not items.is_empty():
 		var item: Equipment.Id = items[rng.randi_range(0, items.size() - 1)]
-		if open.is_empty() or deck.total_cost() + Equipment.cost(item) > deck.budget():
+		var room := deck.entries.filter(func(entry: DeckEntry) -> bool: return entry.equipment.size() < Equipment.MAX_PER_UNIT)
+		if room.is_empty() or deck.total_cost() + Equipment.cost(item) > deck.budget():
 			break
+		var open := room.filter(func(entry: DeckEntry) -> bool: return Equipment.can_add(entry.kind, entry.equipment, item))
+		if open.is_empty():
+			items.erase(item)  # この装備を持てる駒がもういない（役割の限り、重ねられない）。ほかの装備で続ける
+			continue
 		(open[rng.randi_range(0, open.size() - 1)] as DeckEntry).equip(item)
 	return deck
 
@@ -716,7 +720,7 @@ func _rules_without(names: String) -> DeckRules:
 	for army in versus.armies():
 		rosters[army] = versus.roster(army).filter(func(kind: UnitKind.Id) -> bool: return not removed.has(kind))
 		budgets[army] = versus.budget(army)
-	return DeckRules.new(&"without", versus.max_units, rosters, budgets)
+	return DeckRules.new(&"without", versus.max_units, rosters, budgets, versus.items())
 
 
 ## --map のファイルの、文字の格子の行（空の行は飛ばす）。マップのファイルの書式（[rows] の節がある）なら、その節の行。
