@@ -34,9 +34,19 @@ func test_overlay_stays_readable_over_a_bright_board() -> void:
 		assert_true(_contrast(text, ground) >= CONTRAST_TEXT, "白い盤の上の板の %s" % text.to_html(false))
 
 
+## タイトルのメニューは景色の上に直に並ぶ。後ろがいちばん明るい（白い）ときでも、ふつうの文字と、乗ったときの金の文字が読める。
+func test_title_menu_stays_readable_over_a_bright_sky() -> void:
+	var theme := UiTheme.new()
+	for state: Array in [[&"normal", &"font_color"], [&"hover", &"font_hover_color"]]:
+		var fill := (theme.get_stylebox(state[0], UiTheme.BUTTON_MENU) as StyleBoxFlat).bg_color
+		var ground := Color.WHITE.lerp(Color(fill, 1.0), fill.a)
+		assert_true(_contrast(theme.get_color(state[1], UiTheme.BUTTON_MENU), ground) >= CONTRAST_TEXT, "タイトルのメニューの %s" % state[0])
+
+
 func test_every_button_kind_has_every_state() -> void:
 	var theme := UiTheme.new()
-	for type: StringName in [&"Button", UiTheme.BUTTON_PRIMARY, UiTheme.BUTTON_DANGER, UiTheme.BUTTON_ROW, UiTheme.BUTTON_CARD]:
+	for type: StringName in [&"Button", UiTheme.BUTTON_PRIMARY, UiTheme.BUTTON_DANGER, UiTheme.BUTTON_ROW, UiTheme.BUTTON_CARD,
+			UiTheme.BUTTON_MENU]:
 		for state: StringName in [&"normal", &"hover", &"pressed", &"disabled"]:
 			assert_true(theme.has_stylebox(state, type), "%s の %s" % [type, state])
 		if type != &"Button":
