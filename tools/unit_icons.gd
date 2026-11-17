@@ -54,9 +54,10 @@ func _run() -> void:
 		var kind: UnitKind.Id = variant[0]
 		var side: int = variant[1]
 		var evolved: bool = variant[2]
+		var look: StringName = variant[3]
 		var view := UnitView.new()
 		viewport.add_child(view)
-		view.setup(kind, UnitIcons.COLORS[side], 1, 1)
+		view.setup(kind, UnitIcons.COLORS[side], 1, 1, look)
 		if evolved:
 			view.set_evolved(1)
 		# 正面から少し見下ろす。駒の高さに合わせて、全身が収まるように寄る。
@@ -70,7 +71,7 @@ func _run() -> void:
 		await RenderingServer.frame_post_draw
 		var image := viewport.get_texture().get_image()
 		image.resize(UnitIcons.ICON_SIZE, UnitIcons.ICON_SIZE, Image.INTERPOLATE_LANCZOS)
-		var path := "%s/%s" % [_out, UnitIcons.file_name(kind, side, evolved)]
+		var path := "%s/%s" % [_out, UnitIcons.file_name(kind, side, evolved, look)]
 		var error := image.save_png(path)
 		if error != OK:
 			push_error("unit_icons: 書けない: %s" % path)

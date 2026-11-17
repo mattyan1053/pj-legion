@@ -82,6 +82,8 @@ var overlays: OverlayStack
 var play_sound := Callable()
 ## 陣営ごとの色（添字がプレイヤー番号）。見出しの色（人どうし）に使う。
 var team_colors: Array[Color] = []
+## 将の姿（陣営ごと。unit_view.gd の KING_LOOKS の名前。空ならいつもの将）。MVP と表のアイコンに使う。
+var king_looks: Array[StringName] = [&"", &""]
 
 var _summary: RefCounted
 var _shade: ColorRect
@@ -186,7 +188,7 @@ func present(summary: RefCounted) -> void:
 		_stat_rows.append([name_label, value_label])
 	_mvp_icon.visible = summary.mvp_name != ""
 	if summary.mvp_name != "":
-		_mvp_icon.texture = UnitIcons.texture(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved)
+		_mvp_icon.texture = UnitIcons.texture(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved, _king_look(summary.mvp_side))
 		_mvp_name.text = summary.mvp_name
 		_mvp_numbers.text = summary.mvp_numbers
 	else:
@@ -644,6 +646,10 @@ func table_names() -> Array[String]:
 	return names
 
 
+func _king_look(side: int) -> StringName:
+	return king_looks[side] if side >= 0 and side < king_looks.size() else &""
+
+
 ## 表の 1 行（駒）。MVP の行は札の地と金の文字、倒れた駒は「撃破された」の印。
 func _table_row(row: Dictionary) -> Control:
 	# どの行も同じ余白の地（MVP の行だけ薄く塗る）にして、列の位置をそろえる。
@@ -651,7 +657,7 @@ func _table_row(row: Dictionary) -> Control:
 	panel.add_theme_stylebox_override("panel", UiTheme.box(Palette.WASH if row["mvp"] else Color.TRANSPARENT, Color.TRANSPARENT, 0, UiTheme.CORNER, 2.0))
 	var line := _table_line()
 	panel.add_child(line)
-	var icon := UnitIcons.rect(row["kind"], row["side"], row["evolved"], TABLE_ICON)
+	var icon := UnitIcons.rect(row["kind"], row["side"], row["evolved"], TABLE_ICON, _king_look(row["side"]))
 	line.add_child(icon)
 	var name_label := _table_cell(("★ " if row["mvp"] else "") + row["name"], TABLE_NAME_WIDTH, false, HORIZONTAL_ALIGNMENT_LEFT)
 	name_label.clip_text = true

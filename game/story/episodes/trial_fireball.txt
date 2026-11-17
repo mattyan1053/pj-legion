@@ -23,6 +23,7 @@ unit = sorcerer
 
 [enemy]
 name = 骨の群れ
+king_figure = skeleton_mage
 figure = skeleton
 army = none
 unit = skeleton
