@@ -13,7 +13,7 @@
 title = 墓守
 map = old_battlefield
 look = stone_walls
-music = battle_tense
+music = battle_undead
 
 [unlock]
 item = war_banner

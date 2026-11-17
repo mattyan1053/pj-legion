@@ -11,6 +11,7 @@
 title = 盾と祈り
 map = drill_field
 look = crystal_forest
+music = battle_tense
 lesson = パラディンのバリアは次の 1 撃を防ぐ。プリーストは 2 マス先の味方を回復できる。
 hold_turns = 6
 wins = turns_held

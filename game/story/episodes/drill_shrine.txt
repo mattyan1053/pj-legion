@@ -10,6 +10,7 @@
 title = 結晶の番人
 map = shrine_hollow
 look = crystal_forest
+music = battle_boss
 lesson = 結晶泉から湧く中立の駒は、どちらも襲う。中ボスを倒すと聖遺物が手に入る。
 # 勝ち方は中ボスの撃破だけ（将を倒しても終わらない）。教えたいこと（中ボスを狩る）をやらずに終われないように。
 wins = boss_slain

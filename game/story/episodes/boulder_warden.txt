@@ -11,6 +11,7 @@
 title = 峠の番人
 map = boulder_pass
 look = grassland
+music = battle_boss
 wins = boss_slain
 
 [unlock]

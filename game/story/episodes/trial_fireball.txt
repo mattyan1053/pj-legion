@@ -11,6 +11,7 @@
 title = 火球
 map = drill_field
 look = crystal_forest
+music = battle_undead
 lesson = ソーサラーのスキル「ファイアボール」は、十字の範囲の敵をまとめて焼く。壁越しにも届く。
 wins = routed
 
