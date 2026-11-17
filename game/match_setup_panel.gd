@@ -3,8 +3,8 @@ extends Control
 ## （変えるのは「ステージを選び直す」。ステージ選択の場面へ戻る）。
 ##
 ## 選んだもの（match_choice.gd）を持ち、「対戦を始める」で start_pressed を出す。ルールは持たない。
-## 人が動かすプレイヤーは、軍を選んだあと、その軍の部隊を、取っておいた部隊（deck_library.gd）か既定の編成から選ぶ。
-## 出せない部隊は、理由つきで並べ、選べなくする。CPU の編成は軍ごとの CPU の編成。
+## どちらの行も、軍を選んだあと、その軍の部隊を、既定の編成（CPU の行では「CPU の編成」）、おまかせ、取っておいた部隊（deck_library.gd）から選ぶ。
+## 出せない部隊は、理由つきで並べ、選べなくする。人どうしでも CPU 戦でも、同じ選び方と見え方。
 ## 部隊の中身は、パネルに文で並べず、「編成を確認」で開く（deck_preview.gd。自分の部隊も CPU の部隊も同じ見え方）。
 ## パネルの大きさは、選んだものに依らず同じ（部隊の名前は決まった幅で切る）。
 ## 対戦の途中で開いたときは、押すといまの対戦が終わるボタン（「ステージを選び直す」「新しい対戦を始める」）を 2 回押させる
@@ -49,11 +49,11 @@ var _choice: RefCounted = MatchChoice.new()
 var _team_colors: Array[Color] = []
 ## 選択肢の名前 -> その行のボタン（値 -> Button）。
 var _rows := {}
-## プレイヤーごとの、軍の行の見出し（「あなた」「CPU」など）、部隊を選ぶ欄、CPU の編成の欄、「部隊編成」、その選択肢
-## （並びの番号 -> 部隊の id。空は既定の編成）。
+## プレイヤーごとの、軍の行の見出し（「あなた」「CPU」など）、部隊を選ぶ欄、「編成確認」、「部隊編成」、その選択肢
+## （並びの番号 -> 部隊の id。空は既定の編成、MatchChoice.RANDOM はおまかせ）。
 var _who_labels: Array[Label] = []
 var _deck_pickers: Array[OptionButton] = []
-var _cpu_labels: Array[Label] = []
+var _preview_buttons: Array[Button] = []
 var _edit_buttons: Array[Button] = []
 var _deck_choices: Array = [[], []]
 var _stage_name: Label
@@ -147,15 +147,10 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		picker.item_selected.connect(func(index: int) -> void: _on_deck_picked(picked_side, index))
 		deck_row.add_child(picker)
 		_deck_pickers.append(picker)
-		var cpu_label := _label(18)
-		cpu_label.text = Text.t("setup.cpu_deck")
-		cpu_label.custom_minimum_size = Vector2(PICKER_WIDTH, 40.0)
-		cpu_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		deck_row.add_child(cpu_label)
-		_cpu_labels.append(cpu_label)
 		var look := _button(Text.t("setup.deck_preview"))
 		look.pressed.connect(func() -> void: open_preview(picked_side))
 		deck_row.add_child(look)
+		_preview_buttons.append(look)
 		var edit := _button(Text.t("setup.edit_deck"))
 		edit.custom_minimum_size = Vector2(170.0, 40.0)
 		edit.pressed.connect(func() -> void: press_edit_decks(picked_side))
@@ -292,10 +287,14 @@ func open_deck_picker(side: Unit.Side) -> void:
 	_deck_pickers[side].show_popup()
 
 
-## side の部隊を、取っておいた部隊 id にする（空なら既定の編成）。出せない部隊・知らない id なら何もせず false。
+## side の部隊を、取っておいた部隊 id にする（空なら既定の編成、MatchChoice.RANDOM ならおまかせ）。出せない部隊・知らない id なら何もせず false。
 func choose_deck(side: Unit.Side, id: String) -> bool:
 	if id == "":
 		_choice.choose_default(side)
+		_show_choice()
+		return true
+	if id == MatchChoice.RANDOM:
+		_choice.choose_random(side)
 		_show_choice()
 		return true
 	var item: Variant = _library.find(id) if _library != null else null
@@ -408,11 +407,12 @@ func _show_choice() -> void:
 		_who_labels[side].remove_theme_color_override("font_color")
 		if not (_choice.cpu_opponent and _choice.random_side):
 			_who_labels[side].add_theme_color_override("font_color", _team_colors[side].lightened(0.4))
-		_deck_pickers[side].visible = human
-		_cpu_labels[side].visible = not human
 		_edit_buttons[side].visible = human and _can_edit_decks
-		if human:
-			_fill_deck_picker(side as Unit.Side)
+		_fill_deck_picker(side as Unit.Side)
+		# おまかせは対戦を作るときに組むので、まだ組んでいなければ見せるものが無い（対戦の途中なら、いまの対戦の部隊を見せる）。
+		var shown := preview_deck(side as Unit.Side) != null
+		_preview_buttons[side].disabled = not shown
+		_preview_buttons[side].tooltip_text = "" if shown else Text.t("setup.deck.random_note")
 
 
 ## side の行の見出し。CPU 戦なら「あなた」「CPU」と手番、人どうしなら手番だけ。
@@ -424,18 +424,29 @@ func who_text(side: Unit.Side) -> String:
 	return who if _choice.random_side else Text.t("setup.who_side", {"who": who, "turn": turn})
 
 
-## side の部隊（「編成を確認」で出すもの）。人なら選んだ部隊か既定の編成、CPU なら軍ごとの CPU の編成。
+## side の部隊（「編成確認」で出すもの）。選んだ部隊か既定の編成（CPU の行なら CPU の編成。中身は既定の編成と同じ）。
+## おまかせなら、最後に作った対戦で組んだ部隊（まだ組んでいなければ null）。
 func preview_deck(side: Unit.Side) -> Deck:
-	if _choice.is_human(side):
-		return _choice.deck_for(side)
-	return CpuDeck.build(_choice.armies[side])
+	if _choice.is_random(side):
+		return _choice.drawn_deck(side)
+	if not _choice.is_human(side) and _choice.deck_ids[side] == "":
+		return CpuDeck.build(_choice.armies[side])
+	return _choice.deck_for(side)
 
 
 ## 「編成を確認」: side の部隊を札にして出す。
 func open_preview(side: Unit.Side) -> void:
 	stop_confirm()
+	var deck := preview_deck(side)
+	if deck == null:
+		return
 	# ランダムの間は陣営が決まっていないので、あなたは青、CPU は赤で見せる。
-	_preview.open(who_text(side), preview_deck(side), side)
+	_preview.open(who_text(side), deck, side)
+
+
+## side の「編成確認」を押せるか（検査用）。
+func can_preview(side: Unit.Side) -> bool:
+	return not _preview_buttons[side].disabled
 
 
 ## 編成の確認の画面（検査用）。
@@ -470,11 +481,15 @@ func can_edit_decks() -> bool:
 	return _can_edit_decks
 
 
-## side の部隊の選択肢を並べ直す: 既定の編成と、その軍の取っておいた部隊（出せないものは理由つきで、選べない）。
+## side の部隊の選択肢を並べ直す: 既定の編成（CPU の行では「CPU の編成」）、おまかせ、その軍の取っておいた部隊（出せないものは理由つきで、選べない）。
 func _fill_deck_picker(side: Unit.Side) -> void:
 	var army: UnitKind.Army = _choice.armies[side]
 	var default_deck := MatchSetup.default_deck(army)
-	var options: Array = [["", Text.t("setup.deck.default", {"cost": default_deck.total_cost(), "budget": default_deck.budget()}), true]]
+	var default_key := "setup.deck.default" if _choice.is_human(side) else "setup.deck.cpu"
+	var options: Array = [
+		["", Text.t(default_key, {"cost": default_deck.total_cost(), "budget": default_deck.budget()}), true],
+		[MatchChoice.RANDOM, Text.t("setup.deck.random"), true],
+	]
 	if _library != null:
 		for item: RefCounted in _library.for_rules(DeckRules.VERSUS, army):
 			var playable: bool = item.playable()

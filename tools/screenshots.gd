@@ -36,6 +36,8 @@ const SCENES := {
 	"setup_deck": "対戦設定で、取っておいた部隊を選ぶところ（選択肢を開いた）",
 	"setup_preview": "対戦設定で、CPU の部隊の「編成を確認」を開いたところ",
 	"setup_random": "対戦設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
+	"setup_cpu_deck": "対戦設定で、CPU の行の部隊の選択肢を開いた（CPU の編成・おまかせ・取っておいた部隊）",
+	"setup_cpu_random": "CPU の部隊を「おまかせ」にして始めた対戦の途中で、対戦設定の「編成確認」を開いた（いまの対戦で組んだ部隊）",
 	"deck_list": "部隊編成: 取っておいた部隊の一覧（出せない部隊も理由つきで並ぶ）",
 	"deck_delete": "部隊編成: 部隊を消す前の確かめ",
 	"deck_none": "部隊編成: 部隊がひとつも無い一覧（「編成なし」）",
@@ -521,6 +523,47 @@ func _scene_setup_preview() -> bool:
 	panel.open_preview(Unit.Side.PLAYER2)
 	_park_mouse()
 	return panel.preview().visible
+
+
+func _scene_setup_cpu_deck() -> bool:
+	_fill_decks()
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	if not panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM):
+		return false
+	_park_mouse()
+	await get_tree().process_frame
+	panel.open_deck_picker(Unit.Side.PLAYER2)
+	return true
+
+
+func _scene_setup_cpu_random() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	panel.choose_deck(Unit.Side.PLAYER2, MatchChoice.RANDOM)
+	panel.confirm()
+	await _app.scene_changed
+	if _app.current_id() != SceneFlow.BATTLE:
+		return false
+	_scene = _app.current_scene()
+	var battle_scene: Node = _scene
+	for i in 120:
+		if not battle_scene.is_busy():
+			break
+		await get_tree().process_frame
+	battle_scene.open_setup()
+	var shown: Node = battle_scene.setup_panel()
+	if not shown.visible or not shown.can_preview(Unit.Side.PLAYER2):
+		return false
+	shown.open_preview(Unit.Side.PLAYER2)
+	_park_mouse()
+	return shown.preview().visible
 
 
 func _scene_setup_random() -> bool:

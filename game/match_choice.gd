@@ -4,21 +4,27 @@ extends "res://game/battle_source.gd"
 ## 対戦の途中で対戦設定のパネルを開ける。
 ##
 ## 選べるのは、両方のプレイヤーの軍、人が動かすプレイヤーの部隊、ステージ（versus_fields.gd の鍵。生成のステージか手で作ったマップ）、相手（人か CPU か）、CPU と対戦するときの人の手番（先手か後手か）。
-## 人の部隊は、取っておいた部隊（deck_library.gd）か、軍ごとの既定の編成（MatchSetup.default_deck。部隊の id が空のとき）。
-## CPU の編成は、いままでどおり CPU の編成（CpuDeck）。
+## 部隊は、人の行も CPU の行も同じ選び方: 軍ごとの既定の編成（部隊の id が空のとき。人なら MatchSetup.default_deck、CPU なら CPU の編成（CpuDeck）。中身は同じ）、
+## 取っておいた部隊（deck_library.gd）、おまかせ（RANDOM。対戦を作るたびに、対戦の種から決まりの中でランダムに組む。random_squad.gd）。
 ## ここはノードに依存しない（テストから呼べる）。
 
 const Run := preload("res://game/run.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const RandomSquad := preload("res://game/random_squad.gd")
+
+## 部隊の id の「おまかせ」（取っておいた部隊の id と重ならない）。
+const RANDOM := "@random"
 
 ## ステージ（対戦モードで選べる盤の鍵。versus_fields.gd）。
 var field: StringName = VersusFields.DEFAULT
 ## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。
 var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
-## プレイヤー番号ごとの、選んだ部隊の id（空なら既定の編成）と、その中身（写し。選んだときのもの）。
+## プレイヤー番号（行）ごとの、選んだ部隊の id（空なら既定の編成、RANDOM ならおまかせ）と、その中身（写し。選んだときのもの。既定とおまかせは null）。
 var deck_ids: Array[String] = ["", ""]
 var decks: Array[Deck] = [null, null]
+## 行ごとの、最後に作った対戦で、おまかせで組んだ部隊（おまかせでない行や、まだ対戦を作っていなければ null）。「編成確認」で見せる。
+var drawn_decks: Array[Deck] = [null, null]
 ## 相手を CPU が動かすか。偽なら、2 人が 1 台で交代する。
 var cpu_opponent := true
 ## CPU と対戦するときに、人が動かすプレイヤー（PLAYER1 = 先手、PLAYER2 = 後手）。人どうしでは見ない。
@@ -95,7 +101,7 @@ static func deck_run(side: Unit.Side) -> Run:
 	return detour
 
 
-## side が人の部隊を使うか（CPU が動かすプレイヤーは、いつも CPU の編成）。
+## side の行を人が動かすか（偽なら CPU が動かす）。
 ## 手番が「ランダム」なら、人の部隊は先手・後手のどちらに付くか決まっていないので、選ぶのは先手の行（PLAYER1）だけにする
 ## （対戦を作るとき、引いた側へ人の部隊を、もう一方へ CPU の編成を付ける）。
 func is_human(side: Unit.Side) -> bool:
@@ -125,6 +131,7 @@ func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
 func choose_deck(side: Unit.Side, id: String, deck: Deck) -> void:
 	deck_ids[side] = id
 	decks[side] = deck.copy()
+	drawn_decks[side] = null
 	armies[side] = deck.army
 
 
@@ -132,13 +139,32 @@ func choose_deck(side: Unit.Side, id: String, deck: Deck) -> void:
 func choose_default(side: Unit.Side) -> void:
 	deck_ids[side] = ""
 	decks[side] = null
+	drawn_decks[side] = null
+
+
+## side の部隊を、おまかせ（対戦を作るたびに、種から決まりの中でランダムに組む）にする。
+func choose_random(side: Unit.Side) -> void:
+	deck_ids[side] = RANDOM
+	decks[side] = null
+	drawn_decks[side] = null
+
+
+func is_random(side: Unit.Side) -> bool:
+	return deck_ids[side] == RANDOM
+
+
+## side の行の、最後に作った対戦でおまかせで組んだ部隊（写し）。おまかせでないか、まだ組んでいなければ null。
+func drawn_deck(side: Unit.Side) -> Deck:
+	if not is_random(side) or drawn_decks[side] == null or drawn_decks[side].army != armies[side]:
+		return null
+	return drawn_decks[side].copy()
 
 
 ## 取っておいた部隊の一覧（deck_library.gd）に合わせ直す。選んでいた部隊が消えた・出せなくなったら、既定の編成に戻す。
 ## 残っていれば、いまの中身にする（編成の画面で組み直したとき）。
 func refresh_decks(library: RefCounted) -> void:
 	for side in 2:
-		if deck_ids[side] == "":
+		if deck_ids[side] == "" or deck_ids[side] == RANDOM:
 			continue
 		var item: Variant = library.find(deck_ids[side]) if library != null else null
 		if item == null or not item.playable() or item.deck.rules.id != DeckRules.VERSUS:
@@ -147,8 +173,11 @@ func refresh_decks(library: RefCounted) -> void:
 			choose_deck(side as Unit.Side, item.id, item.deck)
 
 
-## side が対戦に出す編成（人なら選んだ部隊か既定の編成。CPU の編成は MatchSetup が作る）。
-func deck_for(side: Unit.Side) -> Deck:
+## side の行が対戦に出す編成: 選んだ部隊か、既定の編成。おまかせなら、種 battle_seed の対戦で、プレイヤー plays_as として組む部隊
+## （random_squad.gd。同じ種なら同じ部隊）。plays_as が負なら side。
+func deck_for(side: Unit.Side, battle_seed := 0, plays_as := -1) -> Deck:
+	if is_random(side):
+		return RandomSquad.for_battle(armies[side], battle_seed, (side if plays_as < 0 else plays_as) as Unit.Side)
 	if decks[side] != null:
 		return decks[side].copy()
 	return MatchSetup.default_deck(armies[side])
@@ -161,6 +190,7 @@ func copy() -> RefCounted:
 	other.deck_ids = deck_ids.duplicate()
 	for side in 2:
 		other.decks[side] = decks[side].copy() if decks[side] != null else null
+		other.drawn_decks[side] = drawn_decks[side].copy() if drawn_decks[side] != null else null
 	other.cpu_opponent = cpu_opponent
 	other.human_side = human_side
 	other.random_side = random_side
@@ -174,6 +204,17 @@ func to_setup(battle_seed: int) -> MatchSetup:
 	var defined := VersusFields.scenario_of(field)
 	if random_side:
 		drawn_side = draw_side(battle_seed)
+	var setup: MatchSetup
 	if cpu_opponent:
-		return MatchSetup.on_scenario(defined, battle_seed, human_side_now(), deck_for(human_row()), armies[cpu_row()])
-	return MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1), deck_for(Unit.Side.PLAYER2))
+		var human_deck := deck_for(human_row(), battle_seed, human_side_now())
+		setup = MatchSetup.on_scenario(defined, battle_seed, human_side_now(), human_deck, armies[cpu_row()])
+		# CPU の行で選んだ部隊（既定なら、on_scenario が作った CPU の編成のまま）。
+		if deck_ids[cpu_row()] != "" and not defined.is_fixed(cpu_side()):
+			setup.decks[cpu_side()] = deck_for(cpu_row(), battle_seed, cpu_side())
+	else:
+		setup = MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1, battle_seed), deck_for(Unit.Side.PLAYER2, battle_seed))
+	# おまかせで組んだ部隊を覚える（「編成確認」で見せる）。行と、実際に動かすプレイヤーは、手番がランダムのときに違う。
+	for row in 2:
+		var plays_as: int = row if not cpu_opponent else (human_side_now() if row == human_row() else cpu_side())
+		drawn_decks[row] = setup.decks[plays_as].copy() if is_random(row as Unit.Side) and setup.decks[plays_as] != null else null
+	return setup

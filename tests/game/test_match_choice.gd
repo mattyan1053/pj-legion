@@ -6,6 +6,7 @@ const MatchChoice := preload("res://game/match_choice.gd")
 const BattleSource := preload("res://game/battle_source.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const RandomSquad := preload("res://game/random_squad.gd")
 
 
 func test_default_is_human_first_military_against_cpu_fantasy() -> void:
@@ -95,7 +96,7 @@ func test_chosen_deck_goes_into_the_match() -> void:
 	assert_true(setup.is_valid())
 	assert_eq(setup.decks[0].entries.size(), 2)
 	assert_eq(setup.decks[0].entries[0].equipment, [Equipment.Id.SPEED_BOOTS] as Array[Equipment.Id])
-	assert_eq(setup.decks[1].entries.size(), CpuDeck.build(UnitKind.Army.FANTASY).entries.size(), "CPU はいつも CPU の編成")
+	assert_eq(setup.decks[1].entries.size(), CpuDeck.build(UnitKind.Army.FANTASY).entries.size(), "CPU の行が既定なら、CPU の編成")
 	var battle := setup.create_battle()
 	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1).size(), 3, "将 + 2 体")
 
@@ -111,14 +112,72 @@ func test_both_humans_choose_their_own_decks() -> void:
 	assert_eq(setup.decks[1].entries.size(), 2, "後手は選んだ部隊")
 
 
-func test_cpu_side_ignores_a_chosen_deck() -> void:
+## CPU の行も、人の行と同じに部隊を選べる（選択肢に出ているものが、そのまま対戦に出る）。
+func test_cpu_side_takes_the_chosen_deck() -> void:
 	var library: RefCounted = preload("res://game/deck_library.gd").new()
 	var item := _saved_fantasy(library)
 	var choice := MatchChoice.new()
-	choice.choose_deck(Unit.Side.PLAYER2, item.id, item.deck)  # 人どうしのときに選んでいた
+	choice.choose_deck(Unit.Side.PLAYER2, item.id, item.deck)
 	assert_false(choice.is_human(Unit.Side.PLAYER2))
 	var setup: MatchSetup = choice.to_setup(1)
-	assert_eq(setup.decks[1].entries.size(), CpuDeck.build(UnitKind.Army.FANTASY).entries.size())
+	assert_true(setup.is_cpu(Unit.Side.PLAYER2) and setup.is_valid())
+	assert_eq(setup.decks[1].entries.size(), 2, "CPU が選んだ部隊で戦う")
+	choice.choose_default(Unit.Side.PLAYER2)
+	assert_eq(choice.to_setup(1).decks[1].entries.size(), CpuDeck.build(UnitKind.Army.FANTASY).entries.size(), "既定に戻せば CPU の編成")
+
+
+func _kinds(deck: Deck) -> Array:
+	return deck.entries.map(func(entry: DeckEntry) -> Array: return [entry.kind, entry.equipment])
+
+
+## おまかせ: 対戦を作るたびに、対戦の種から決まりの中で組む（random_squad.gd。道具の --squads=random と同じ）。同じ種なら同じ部隊。
+## 組んだ部隊は、写しにも残り、「編成確認」で見られる（drawn_deck）。
+func test_random_squad_follows_the_battle_seed() -> void:
+	var choice := MatchChoice.new()
+	choice.choose_random(Unit.Side.PLAYER2)
+	assert_true(choice.drawn_deck(Unit.Side.PLAYER2) == null, "対戦を作る前は、まだ組んでいない")
+	var setup: MatchSetup = choice.to_setup(7)
+	assert_true(setup.is_valid() and setup.is_cpu(Unit.Side.PLAYER2), "%s" % [setup.problems()])
+	assert_eq(_kinds(setup.decks[1]), _kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, 7, Unit.Side.PLAYER2)))
+	assert_eq(_kinds(choice.drawn_deck(Unit.Side.PLAYER2)), _kinds(setup.decks[1]), "組んだ部隊を覚える")
+	assert_eq(_kinds(choice.copy().drawn_deck(Unit.Side.PLAYER2)), _kinds(setup.decks[1]), "写しにも残る（対戦の途中の設定パネル）")
+	assert_eq(_kinds(choice.to_setup(7).decks[1]), _kinds(setup.decks[1]), "同じ種（同じ盤面で再戦）なら同じ部隊")
+	var differs := false
+	for other_seed in range(8, 16):
+		differs = differs or _kinds(choice.to_setup(other_seed).decks[1]) != _kinds(setup.decks[1])
+	assert_true(differs, "種を替える（新しい盤面）と、部隊も変わる")
+	assert_true(setup.create_battle() != null)
+	choice.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
+	assert_true(choice.is_random(Unit.Side.PLAYER2), "軍を替えても、おまかせのまま")
+	assert_true(choice.drawn_deck(Unit.Side.PLAYER2) == null, "前の軍で組んだ部隊は見せない")
+
+
+## 手番がランダムなら、おまかせの部隊は、引いた側（実際に動かすプレイヤー）として組む。人どうしなら、両方がおまかせを選べる。
+func test_random_squad_is_drawn_for_the_side_that_plays() -> void:
+	var choice := MatchChoice.new()
+	choice.random_side = true
+	choice.choose_random(Unit.Side.PLAYER1)
+	for battle_seed in range(1, 9):
+		var setup: MatchSetup = choice.to_setup(battle_seed)
+		var played := choice.human_side_now()
+		assert_eq(_kinds(setup.decks[played]), _kinds(RandomSquad.for_battle(UnitKind.Army.MILITARY, battle_seed, played)))
+		assert_eq(_kinds(choice.drawn_deck(Unit.Side.PLAYER1)), _kinds(setup.decks[played]))
+	var humans := MatchChoice.new()
+	humans.cpu_opponent = false
+	humans.choose_random(Unit.Side.PLAYER1)
+	humans.choose_random(Unit.Side.PLAYER2)
+	var setup: MatchSetup = humans.to_setup(3)
+	assert_true(setup.is_valid() and setup.cpu_sides().is_empty())
+	assert_eq(_kinds(setup.decks[0]), _kinds(RandomSquad.for_battle(UnitKind.Army.MILITARY, 3, Unit.Side.PLAYER1)))
+	assert_eq(_kinds(setup.decks[1]), _kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, 3, Unit.Side.PLAYER2)))
+
+
+## おまかせの部隊は、どの種でも出せる部隊（決まりの検査を通る）。
+func test_random_squads_are_always_playable() -> void:
+	for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
+		for battle_seed in 40:
+			var deck := RandomSquad.for_battle(army, battle_seed, (battle_seed % 2) as Unit.Side)
+			assert_true(deck.problems().is_empty() and deck.army == army and deck.rules.id == DeckRules.VERSUS, "%s %d: %s" % [army, battle_seed, deck.problems()])
 
 
 func test_changing_the_army_drops_the_chosen_deck() -> void:
