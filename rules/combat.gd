@@ -96,6 +96,19 @@ static func targets(battle: Battle, attacker: Unit) -> Array[Unit]:
 ## （突撃と照準を重ねても、満タンの将を 1 発で倒せないように。docs/tactical-ult.md）。
 ## 駒への攻撃と、盾への攻撃が使う。
 static func attack_power(attacker: Unit) -> int:
+	return _attack_power(attacker) + _probe_charge(attacker)
+
+
+static func _probe_charge(attacker: Unit) -> int:
+	var charge := int(RuleProbe.f("charge"))
+	if charge != 0 and attacker.side != Unit.Side.NEUTRAL and attacker.has_moved and attacker.cell != attacker.move_origin and UnitKind.role(attacker.kind) != UnitKind.Role.HEALER:
+		if RuleProbe.f("charge_melee") > 0 and attacker.attack_range() > 1:
+			return 0
+		return charge
+	return 0
+
+
+static func _attack_power(attacker: Unit) -> int:
 	var percent := Statuses.critical_percent(attacker)
 	if percent == Status.NORMAL_PERCENT:
 		return attacker.power()
@@ -115,6 +128,15 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
 	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
+	var brace := int(RuleProbe.f("brace"))
+	if brace > 0 and target.side != Unit.Side.NEUTRAL and target.side != battle.phase and target.has_moved and target.cell != target.move_origin:
+		amount = amount * (100 - brace) / 100
+	var deep := int(RuleProbe.f("deep"))
+	if deep != 0 and attacker.side != Unit.Side.NEUTRAL and battle.board.hq_cells.size() >= 2:
+		var own: Vector2i = battle.board.hq_cells[attacker.side]
+		var foe: Vector2i = battle.board.hq_cells[1 - attacker.side]
+		if distance(attacker.cell, foe) < distance(attacker.cell, own):
+			amount += deep
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
 	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
 	result.forest = forest

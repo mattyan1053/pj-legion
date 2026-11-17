@@ -115,7 +115,7 @@ static func charge_phase(battle: Battle, side: Unit.Side) -> void:
 static func charge_hit(battle: Battle, hit: Hit) -> void:
 	if hit.source == null or hit.lost <= 0 or not hit.source.is_enemy_of(hit.target):
 		return
-	charge(battle, hit.source.side, hit.lost * DEALT_GAIN)
+	charge(battle, hit.source.side, hit.lost * int(RuleProbe.f("dealt_gain", DEALT_GAIN)))
 	if hit.source.kind != UnitKind.Id.ELITE_MINION:
 		charge(battle, hit.target.side, hit.lost * TAKEN_GAIN)
 
