@@ -1897,14 +1897,14 @@ func _military_index(id: StringName) -> int:
 
 ## 部隊の中の人（人の軍の 3 人目の話し手）が話している、対戦の前の会話。右に敵の話し手。
 func _scene_story_talk_squad() -> bool:
-	if not await _start_story(_military_index(&"gorge_rout")):
+	if not await _start_story(_military_index(&"gorge_rout")) or not await _talk_from_sortie():
 		return false
 	return _talk_until(0, 2) and _app.current_scene().figures().size() == 2
 
 
 ## 敵の軍が出てこない会話。人の軍の 2 人目の話し手が、右に立って話している。
 func _scene_story_talk_allies() -> bool:
-	if not await _start_story(_military_index(&"drill_medic")):
+	if not await _start_story(_military_index(&"drill_medic")) or not await _talk_from_sortie():
 		return false
 	var talk: Node = _app.current_scene()
 	return _talk_until(0, 1) and talk.figures().size() == 2 and talk.figures().all(func(view: Control) -> bool: return view.side == 0)
