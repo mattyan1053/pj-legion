@@ -34,14 +34,14 @@
 | 石の遺跡（迷宮回廊、ストーリーの尾根） | `battle_ruins` | 重く暗い 3 拍子の曲（Great Labyrinth） |
 | 結晶の森（双子結晶、ストーリーの結晶の岩山） | `battle_crystal` | 打楽器の刻みが続く、異国風の曲（Sigil） |
 
-ストーリーの特別な話は、話のファイルの `music` で選ぶ:
+ストーリーの特別な話は、話のファイルの `music` で選ぶ（どの話が使うかは、話のファイルが正。`game/story/episodes/`）:
 
-| 話 | 曲の名前 | 曲 | 使う話 |
-| --- | --- | --- | --- |
-| 守り切る | `battle_tense` | 弦の速い刻みと金管。時間に追われる曲（Determined Pursuit） | `ridge_hold`、`barrow_vigil`、`trial_ward`、`mist_forest` |
-| 中ボスの撃破 | `battle_boss` | 巨大な魔物に挑む曲（The Fire Dragon） | `boulder_warden`、`drill_shrine` |
-| 全滅させる | `battle_rout` | 攻め込む行進の曲。4 分あり、途中で形が変わる（QaziJamJam） | `gorge_rout` |
-| 魔物（骸骨の軍） | `battle_undead` | 不気味な軍の行進（The March of Devils Dome） | `barrow_knight`、`barrow_rout`、`trial_fireball` |
+| 話 | 曲の名前 | 曲 |
+| --- | --- | --- |
+| 守り切る | `battle_tense` | 弦の速い刻みと金管。時間に追われる曲（Determined Pursuit） |
+| 中ボスの撃破 | `battle_boss` | 巨大な魔物に挑む曲（The Fire Dragon） |
+| 全滅させる | `battle_rout` | 攻め込む行進の曲。4 分あり、途中で形が変わる（QaziJamJam） |
+| 魔物（骸骨の軍） | `battle_undead` | 不気味な軍の行進（The March of Devils Dome） |
 
 **終盤**: 対戦の途中で、どちらかの将の HP が半分以下になったら（倒れたときも）、終盤の曲 `battle_climax`（Epic Boss Battle）へフェードで替わる
 （`sound_catalog.gd` の `CLIMAX_MUSIC` と `CLIMAX_KING_HP`、判定は `climax_reached`）。

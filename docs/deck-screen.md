@@ -2,7 +2,7 @@
 
 コード: `game/deck_screen.gd`（編成の場面）、`game/deck_library.gd`（取っておく部隊の一覧と、ファイルの読み書き）、
 `game/deck_text.gd`（出せない理由、駒と持ち物の中身の文）、`game/unit_card.gd`（駒の札）、`game/deck_preview.gd`（編成確認）、`game/match_choice.gd` と `game/match_setup_panel.gd`（対戦設定で選ぶ）。
-テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_match_setup_panel.gd`、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
+テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_match_setup_panel.gd`、`tests/game/test_unit_detail_text.gd`（駒の詳細の文）、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
 
 編成のルール（軍、ロスター、持ち物、コスト上限）は `docs/player-loadout.md`。
 **初期位置は部隊では決めない**（マップとその戦いの定義が置けるマスを決め、マップを選んだあとに出撃準備・対戦設定で決める。`docs/story.md`、`docs/battle-view.md`）。部隊は駒と持ち物の組だけ、検査と編成の決まりは `docs/deck-building.md`。
@@ -26,6 +26,7 @@
 ## 見た目の決まり
 
 - 画面の文は短い名前のボタンと見出しにする（説明の文で操作を教えない）。スキルや必殺技など、中身の説明は読める場所に出す。
+- 画面の上に `TOP_ROOM` だけ空け、右上のシステムメニューのボタンを、ほかの場面と同じく背景の上に置く（枠に埋もれないように）。
 - 駒は**札**で見せる（`game/unit_card.gd`。名前、役割、コスト、能力値、持ち物）。一覧の中身、対戦設定の「編成確認」が同じ札を使う。
 
 ## 駒の詳細
@@ -37,7 +38,6 @@
   **持ち物の効果**（「持ち物: アイアンシールド（…）」と、持ち物が与える特性の説明）、進化先。部隊編成の画面は持ち物を別の欄に出すので、札には持ち物の行を入れない。
 - 始めのレベルが 1 でない駒（出撃準備）は、名前の後ろに「Lv2」。長い駒は、文の欄の中で縦に送る。
 - 「閉じる」・右クリック・Esc・枠の外のクリックで閉じる（説明だけが閉じ、編成確認や出撃準備は残る）。
-- 画面の上に `TOP_ROOM` だけ空け、右上のシステムメニューのボタンを、ほかの場面と同じく背景の上に置く（枠に埋もれないように）。
 - 枠・札・ボタンの見た目は UI のテーマ（`docs/ui-theme.md`）。札の形のボタン（雇える駒、部隊の駒、一覧の部隊、軍）はカード、「編成完了」はいちばん大事なボタン、「削除」は危険なボタン。
 
 ## 一覧
@@ -126,7 +126,7 @@
 | `name` | 部隊の名前（長さの上限は `MAX_NAME_LENGTH`） |
 | `rules` | どの決まりで組んだか（`DeckRules.id`。`versus` か、物語の決まりの名前（MILITARY の物語は `story`））。対戦用とストーリー用（物語ごと）を分ける |
 | `army` | 軍（`UnitKind.Army` の名前） |
-| `units` | 雇った駒の並び（初期位置を決めないときの、おまかせの置き方の順にもなる）。前の版が書いたかもしれない配置の欄（`placement` や駒の位置）は、読めて、無視する（書き直すと消える）。`kind` は `UnitKind.Id` の名前、`equipment` は `Equipment.Id` の名前の列（持たせた順） |
+| `units` | 雇った駒の並び（初期位置を決めないときの、おまかせの置き方の順にもなる）。知らない欄（`placement` など）は読み飛ばす（書き直すと消える）。`kind` は `UnitKind.Id` の名前、`equipment` は `Equipment.Id` の名前の列（持たせた順） |
 | `load_issues` | （あれば）読み込みで外した・読み替えたものの理由。書き直しても残り、組み直して取っておくと消える（それまで出せない） |
 
 - 駒・持ち物・軍は、列挙の**名前**で書く（番号は、列挙に足したり並べ替えたりすると変わるため）。将は書かない。
