@@ -12,7 +12,7 @@ const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 
 ## 種 battle_seed の対戦設定。対戦の画面は、これの create_battle() で対戦を作る。
-## 同じ種なら同じ対戦になる（「同じ盤面でもう一度」）。
+## 同じ種なら同じ対戦になる（「同じマップで再戦」）。
 func make_setup(_battle_seed: int) -> MatchSetup:
 	return null
 
@@ -43,8 +43,8 @@ func set_cpu_opponent(_cpu: bool) -> void:
 	pass
 
 
-## 新しい盤面でやり直すときに選べるマップ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しい盤面」）。
-## 空なら、やり直しは「同じ盤面でもう一度」だけ。
+## 新しい盤面でやり直すときに選べるマップ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しいマップ」）。
+## 空なら、やり直しは「同じマップで再戦」だけ。
 func new_board_fields() -> Array[StringName]:
 	return []
 
@@ -65,7 +65,7 @@ func can_continue(_won: bool) -> bool:
 	return false
 
 
-## 決着の画面の Enter を「同じ盤面でもう一度」にするか（偽なら、「次へ」があればそれ、無ければ流れの外への行き先 leave()）。won は can_continue と同じ。
+## 決着の画面の Enter を「同じマップで再戦」にするか（偽なら、「次へ」があればそれ、無ければ流れの外への行き先 leave()）。won は can_continue と同じ。
 func retries_on_enter(_won: bool) -> bool:
 	return false
 

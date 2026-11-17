@@ -1138,7 +1138,7 @@ func _queue_setup_scene() -> void:
 		_expect(panel.visible and _scene.battle == battle, "別のボタンの確かめの間に、新しい対戦が始まった")
 		panel.cancel()
 		_expect(_scene.battle == battle and not panel.visible, "確かめの途中で閉じたら、対戦が変わった")
-		# 手で作ったマップ（対戦モードで選べるもの）でも始まる。「新しい盤面」は生成のマップだけ（同じマップは形が変わらない）。
+		# 手で作ったマップ（対戦モードで選べるもの）でも始まる。「新しいマップ」は生成のマップだけ（同じマップは形が変わらない）。
 		# 画面に出していない（釣り合いがめやすを外れる）マップでも、入口は同じ。
 		for field in VersusFields.all_ids():
 			if VersusFields.is_generated(field):
@@ -1150,9 +1150,9 @@ func _queue_setup_scene() -> void:
 			var expected := VersusFields.card_board(field, 0)
 			_expect(_scene.battle.board.size == expected.size and _scene.battle.board.hq_cells == expected.hq_cells, "手で作ったマップで始まらない: %s" % field)
 			_expect(_scene.look == VersusFields.look_of(field), "手で作ったマップの見た目にならない: %s" % field)
-			_expect(_scene.source.new_board_fields() == VersusFields.generated_ids(), "手で作ったマップの対戦の「新しい盤面」が、生成のマップでない")
+			_expect(_scene.source.new_board_fields() == VersusFields.generated_ids(), "手で作ったマップの対戦の「新しいマップ」が、生成のマップでない")
 		# CPU の部隊を「ランダム編成」にすると、対戦の種から組んだ部隊で始まる。設定パネルの「編成確認」で、いまの部隊が見える。
-		# 「同じ盤面で再戦」は同じ部隊、「新しい盤面」は新しい部隊（どちらも、ランダム編成のまま引き継ぐ）。
+		# 「同じマップで再戦」は同じ部隊、「新しいマップ」は新しい部隊（どちらも、ランダム編成のまま引き継ぐ）。
 		_scene.open_setup()
 		panel.choose_field(VersusFields.PLAIN)
 		panel.choose_opponent(true)
@@ -1180,16 +1180,16 @@ func _queue_setup_scene() -> void:
 		_expect(not detail.visible and panel.preview().visible, "詳しい説明を右クリックで閉じると、編成確認まで閉じる（か、説明が閉じない）")
 		panel.preview().close_preview()
 		panel.cancel()
-		_scene.start_battle(_scene.map_seed)  # 決着の画面の「同じ盤面で再戦」と同じ入口
-		_expect(_cpu_kinds(Unit.Side.PLAYER2) == drawn, "「同じ盤面で再戦」で、「ランダム編成」の部隊が変わった")
+		_scene.start_battle(_scene.map_seed)  # 決着の画面の「同じマップで再戦」と同じ入口
+		_expect(_cpu_kinds(Unit.Side.PLAYER2) == drawn, "「同じマップで再戦」で、「ランダム編成」の部隊が変わった")
 		var changed := false
-		for i in 3:  # 「新しい盤面」（種が替わる）。たまたま同じ部隊になることもあるので、何度か
+		for i in 3:  # 「新しいマップ」（種が替わる）。たまたま同じ部隊になることもあるので、何度か
 			_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
-			_expect(_scene.source.is_random(Unit.Side.PLAYER2), "「新しい盤面」で、「ランダム編成」が引き継がれない")
+			_expect(_scene.source.is_random(Unit.Side.PLAYER2), "「新しいマップ」で、「ランダム編成」が引き継がれない")
 			_expect(_cpu_kinds(Unit.Side.PLAYER2) == _squad_kinds(RandomSquad.for_battle(UnitKind.Army.FANTASY, _scene.map_seed, Unit.Side.PLAYER2)),
-				"「新しい盤面」の「ランダム編成」が、新しい種から組んだ部隊でない")
+				"「新しいマップ」の「ランダム編成」が、新しい種から組んだ部隊でない")
 			changed = changed or _cpu_kinds(Unit.Side.PLAYER2) != drawn
-		_expect(changed, "「新しい盤面」で、「ランダム編成」の部隊が変わらない")
+		_expect(changed, "「新しいマップ」で、「ランダム編成」の部隊が変わらない")
 		_scene.open_setup()
 		panel.choose_deck(Unit.Side.PLAYER2, "")
 		_scene.open_setup()
@@ -1241,7 +1241,7 @@ func _script_fixed_source(kept: Dictionary) -> void:
 		_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
 		_expect(_scene.battle == battle, "マップを選べない対戦で、マップを替えてやり直した")
 		_expect(not _scene.result_screen().can_go_to_setup() and _scene.result_screen().new_board_fields().is_empty(),
-			"選び直せない対戦の決着の画面に、対戦設定・新しい盤面のボタンがある")
+			"選び直せない対戦の決着の画面に、対戦設定・新しいマップのボタンがある")
 		_scene.source = kept["source"]
 		_scene.start_battle(_scene.map_seed + 1)
 		_expect(_scene.opponent_switch_shown() and _scene.result_screen().can_go_to_setup()
@@ -2155,6 +2155,7 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.SORTIE, "話の一覧で話を選んでも、出撃準備へ進まない（会話は出撃のあと）")
 	var sortie: Node = app.current_scene()
 	# 「部隊編成」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
+	var steps: int = app.context.run.size()
 	sortie.press_edit_decks()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.DECKS and app.context.run != null, "出撃準備の「部隊編成」で、流れを保ったまま編成へ進まない")
@@ -2169,6 +2170,7 @@ func _visit_story(app: Node) -> void:
 	decks.press_back()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.SORTIE, "編成の「出撃準備へ戻る」で、出撃準備へ戻らない")
+	_expect(app.context.run.size() == steps, "寄り道を終えても、流れの列に編成の場面が残っている")
 	sortie = app.current_scene()
 	_expect(sortie.chosen_id() == made, "寄り道で取っておいた部隊が、出撃準備で選ばれていない")
 	sortie.choose("")
@@ -2237,6 +2239,7 @@ func _visit_story(app: Node) -> void:
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
 	_expect(talk.is_choosing() == (Story.episode_after(episode) != null), "あとの会話を送りきっても、「次の話へ」「話の一覧へ」を選ばせない")
+	_expect(talk.is_skip_shown() != talk.is_choosing(), "「次の話へ」「話の一覧へ」を選ぶ間も「スキップ」が出ている")
 	if talk.is_choosing():
 		talk.press_to_episodes()
 	await app.scene_changed

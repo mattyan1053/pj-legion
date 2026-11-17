@@ -1,4 +1,5 @@
-# 手で作ったマップ「尾根の小道」（docs/hand-map.md）。17 x 22 の小さめの盤。ストーリーの話 ridge_path・ridge_ambush・ridge_hold（game/story/episodes/）と、対戦モードに使う。
+# 手で作ったマップ「尾根の小道」（docs/hand-map.md）。17 x 22 の小さめの盤。
+# どの話が使うかは game/story/episodes/ を「map =」で探す。対戦モードに出すかは game/versus_fields.gd。
 #
 # 本陣は上下の中央。盤の中心で点対称（本陣どうしを入れ替えると、同じ形になる）。
 # 中央を壁でふさぎ、左右の道に分ける。左右の道それぞれに、結晶泉と中ボスを 1 つずつ置く（点対称）。
