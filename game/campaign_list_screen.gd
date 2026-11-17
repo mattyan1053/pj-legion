@@ -7,6 +7,7 @@ extends Node
 ## - カードのクリック（1〜9 のキーでも）で、その物語を選んで &"open"（その物語の話の一覧へ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
+const SceneFlow := preload("res://game/scene_flow.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -68,9 +69,23 @@ func _ready() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(row)
 	for campaign in Story.campaigns():
+		# カードの下に、その物語のストーリー用の部隊を組む「部隊編成」（準備中の物語には出さない）。
+		var column := VBoxContainer.new()
+		column.add_theme_constant_override("separation", 8)
+		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(column)
 		var card := _build_card(campaign)
-		row.add_child(card)
+		column.add_child(card)
 		_cards[campaign] = card
+		var decks := Button.new()
+		decks.text = Text.t("setup.edit_deck")
+		decks.focus_mode = Control.FOCUS_NONE
+		decks.add_theme_font_size_override("font_size", 16)
+		decks.custom_minimum_size = Vector2(0.0, 40.0)
+		decks.pressed.connect(press_edit_decks.bind(campaign))
+		decks.modulate = Color.WHITE if Story.is_ready(campaign) else Color.TRANSPARENT  # 場所は取っておき、カードの高さをそろえる
+		decks.disabled = not Story.is_ready(campaign)
+		column.add_child(decks)
 	var spacer_below := Control.new()
 	spacer_below.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer_below.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -96,6 +111,15 @@ func choose(campaign: Campaign) -> void:
 		return
 	context.story.choose_campaign(campaign)
 	finished.emit(&"open")
+
+
+## 物語 campaign の「部隊編成」: その物語のストーリー用の部隊を組む（寄り道。編成の「物語選択へ戻る」で、ここへ戻る）。
+## 物語を、いまの物語にしてから始める（取っておいた部隊を、その物語の出撃準備で選んでおく）。準備中の物語なら何もしない。
+func press_edit_decks(campaign: Campaign) -> void:
+	if not Story.is_ready(campaign):
+		return
+	context.story.choose_campaign(campaign)
+	context.start_run(Story.deck_run(campaign, SceneFlow.CAMPAIGNS, "story.episodes.back"))
 
 
 ## 「タイトルへ戻る」。

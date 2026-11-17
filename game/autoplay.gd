@@ -1820,6 +1820,15 @@ func _leave_battle(app: Node) -> void:
 	await _expect_steady(stages, cards, VersusFields.ids().map(func(field: StringName) -> Callable: return stages.hover.bind(field)),
 		"マップ選択でカードに乗せる")
 	stages.hover(&"")
+	# マップを選ぶ前にも、部隊編成（対戦用）へ寄り道できる。戻るとマップ選択。
+	stages.press_edit_decks()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.DECKS and app.current_scene().mode() == DeckRules.VERSUS and app.current_scene().back_label() == "マップ選択へ戻る",
+		"マップ選択の「部隊編成」で、対戦用の部隊編成へ進まない（か、戻り先の文字が違う）")
+	app.current_scene().press_back()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.MAP_SELECT, "マップ選択から開いた部隊編成の「マップ選択へ戻る」で、マップ選択へ戻らない")
+	stages = app.current_scene()
 	stages.choose(VersusFields.LABYRINTH)
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.SETUP, "マップ選択のカードで、対戦設定へ進まない")
@@ -2079,10 +2088,28 @@ func _visit_story(app: Node) -> void:
 	for each: RefCounted in Story.campaigns():
 		_expect(campaigns.is_card_enabled(each) == Story.is_ready(each)
 				and (campaigns.status_text(each) == "準備中") == not Story.is_ready(each), "話の無い物語を選べる（か、ある物語を選べない）: %s" % each.title)
+	# 物語選択の「部隊編成」（物語ごと）: その物語のストーリー用の部隊編成へ。戻ると物語選択。
+	campaigns.press_edit_decks(Story.campaigns()[1])
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.DECKS and app.current_scene().mode() == Story.campaigns()[1].rules_id and app.current_scene().back_label() == "物語選択へ戻る",
+		"物語選択の「部隊編成」で、その物語のストーリー用の部隊編成へ進まない（か、戻り先の文字が違う）")
+	app.current_scene().press_back()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "物語選択から開いた部隊編成の「物語選択へ戻る」で、物語選択へ戻らない")
+	campaigns = app.current_scene()
 	campaigns.choose(Story.military())
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and story.campaign == Story.military(), "物語を選んでも、その物語の話の一覧へ進まない")
 	var list: Node = app.current_scene()
+	# 話の一覧の「部隊編成」: この物語のストーリー用の部隊編成へ。戻ると話の一覧。
+	list.press_edit_decks()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.DECKS and app.current_scene().mode() == Story.military().rules_id and app.current_scene().back_label() == "話の一覧へ戻る",
+		"話の一覧の「部隊編成」で、この物語のストーリー用の部隊編成へ進まない（か、戻り先の文字が違う）")
+	app.current_scene().press_back()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.EPISODES, "話の一覧から開いた部隊編成の「話の一覧へ戻る」で、話の一覧へ戻らない")
+	list = app.current_scene()
 	_expect(list.episodes().size() == Story.military().episodes.size(), "話の一覧に、全部の話が並んでいない")
 	_expect(list.is_card_enabled(Story.military().episodes[0]) and list.card_status(Story.military().episodes[0]) == "クリア済み", "クリアした最初の話を選び直せない")
 	_expect(list.is_card_enabled(episode) and list.card_status(episode) == "未クリア", "次の話を選べない")
