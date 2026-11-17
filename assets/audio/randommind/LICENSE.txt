@@ -1,18 +1,13 @@
 Music by RandomMind (https://opengameart.org/users/randommind)
 
   Medieval: Exploration     https://opengameart.org/content/medieval-exploration
-  Medieval: Minstrel Dance  https://opengameart.org/content/medieval-minstrel-dance
   Medieval: Victory Theme   https://opengameart.org/content/medieval-victory-theme
   Medieval: Defeat Theme    https://opengameart.org/content/medieval-defeat-theme
-  Medieval: The Bard's Tale https://opengameart.org/content/medieval-the-bards-tale
   Medieval: The Old Tower Inn https://opengameart.org/content/medieval-the-old-tower-inn
-  Medieval: Battle          https://opengameart.org/content/medieval-battle
-  Fantasy: Rising Moon      https://opengameart.org/content/fantasy-rising-moon
 
 License: Creative Commons Zero (CC0 1.0 Universal)
 https://creativecommons.org/publicdomain/zero/1.0/
 
-Each page above lists its license as CC0 (checked on 2026-11-15; the last four on 2026-11-16).
+Each page above lists its license as CC0 (checked on 2026-11-15; The Old Tower Inn on 2026-11-16).
 The author notes that credits are appreciated but not required.
-The files here were converted from the distributed WAV / MP3 files to Ogg Vorbis
-(Medieval: Battle and Fantasy: Rising Moon also have their trailing silence trimmed).
+The files here were converted from the distributed WAV files to Ogg Vorbis.
