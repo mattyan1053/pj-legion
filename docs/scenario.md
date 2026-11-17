@@ -22,7 +22,7 @@
 | `win_conditions` | プレイヤーごとの勝ちの条件の列（`GameWonEvent.Reason`。`docs/win-conditions.md`）。既定は両方とも `STANDARD_WIN_CONDITIONS`（将の撃破と本陣の占拠） |
 | `hold_turns` | 「守り切る」のターン数（`docs/win-conditions.md`）。0 なら働かない |
 | `start_growth` | プレイヤーごとの、駒の始めのレベルと経験値（`[レベル, 経験値]` の列。部隊の並びの順に、将でない駒へ当てる。列より後ろの駒はいつもどおり）。既定は空。`set_start_growth(プレイヤー, 列)` で決める。対戦を作るとき、置いた駒へ写す（`Growth.start_at`。下の「始めのレベル」）。対戦モードは使わない |
-| `start_gauge` | プレイヤーごとの、対戦の始めの必殺技のゲージ（`docs/tactical-ult.md`）。既定は 0。`set_start_gauge(プレイヤー, 量)` で決める（0 から `Ults.GAUGE_MAX` に収める）。対戦を作るときに対戦へ写す。対戦モードの定義（`Scenario.versus`、`Scenario.on_map`）は、先手だけ `Ults.FIRST_PLAYER_START_GAUGE`（先手の埋め合わせ。`docs/tactical-ult.md`）。ストーリーの話は、話の `start_gauge` で置き換える |
+| `start_gauge` | プレイヤーごとの、対戦の始めの必殺技のゲージ（`docs/tactical-ult.md`）。既定は 0。`set_start_gauge(プレイヤー, 量)` で決める（0 から `Ults.GAUGE_MAX` に収める）。対戦を作るときに対戦へ写す。対戦モードの定義（`Scenario.versus`、`Scenario.on_map`）は、先手だけ `Ults.FIRST_PLAYER_START_GAUGE`（いまは 0。`docs/tactical-ult.md`） |
 
 - 盤は `make_board(種)` が作る。作れなければ `null`（`can_make_board()`）。生成は、大きさが `BoardGenerator.MIN_SIZE` より小さいと作れない。
   手で作ったマップは、マップの検査（`HandMap.problems()`）を通らないと作れない。種と `board_size` は使わず、いつも同じ盤になる。
@@ -52,6 +52,6 @@
 ## 対戦モード
 
 生成のステージは `Scenario.versus(ステージ)`: 名前は空（画面が、ステージから画面の文の表の名前を引いて入れる。`game/versus_fields.gd`）、盤はそのステージの生成（大きさは既定）、
-決め打ちの部隊は無し（両方とも、対戦設定で選ぶ）、勝ちの条件は既定、先手の必殺技のゲージは 75% から（`start_gauge`。先手の埋め合わせ。`docs/tactical-ult.md`）。
+決め打ちの部隊は無し（両方とも、対戦設定で選ぶ）、勝ちの条件は既定。
 手で作ったマップは `Scenario.on_map`（名前はマップのファイルの `title`）で、ほかは同じ。どちらを選べるかは `game/versus_fields.gd`（`docs/stage-select.md`）。
 `MatchSetup.versus_cpu` / `versus_human` は、これを持った対戦設定を作る。

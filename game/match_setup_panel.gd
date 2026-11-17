@@ -129,7 +129,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		Unit.Side.PLAYER1: Text.t("setup.side.first"), Unit.Side.PLAYER2: Text.t("setup.side.second"), RANDOM_SIDE: Text.t("setup.side.random"),
 	})
 	_side_caption = side_row.get_child(0) as Label
-	# 対戦モードの先手は、必殺技のゲージがたまった状態から始まる（Ults.FIRST_PLAYER_START_GAUGE）。手番の行の右に書いておく。
+	# 対戦モードの先手が必殺技のゲージをためて始まるなら（Ults.FIRST_PLAYER_START_GAUGE が 0 より大きい）、手番の行の右に書いておく。
 	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
 	_first_gauge_note = _label(14)
 	_first_gauge_note.text = first_gauge_note()

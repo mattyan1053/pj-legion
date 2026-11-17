@@ -64,9 +64,12 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 	holder.free()
 
 
-## 手番の行に、先手の必殺技のゲージの始まりを書く（数は Ults.FIRST_PLAYER_START_GAUGE から作る）。
+## 手番の行に、先手の必殺技のゲージの始まりを書く（数は Ults.FIRST_PLAYER_START_GAUGE から作る。0 なら書かない）。
 func test_the_side_row_notes_the_first_player_gauge() -> void:
 	var note := MatchSetupPanel.first_gauge_note()
+	if Ults.FIRST_PLAYER_START_GAUGE <= 0:
+		assert_eq(note, "", "0 から始まるなら書かない")
+		return
 	assert_true(note.begins_with("先手"), note)
 	assert_true(note.contains("%d%%" % (Ults.FIRST_PLAYER_START_GAUGE * 100 / Ults.GAUGE_MAX)), note)
 
