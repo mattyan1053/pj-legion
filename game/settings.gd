@@ -27,6 +27,7 @@ const EFFECTS_VOLUME := &"effects_volume"
 const MUTE := &"mute"
 const SHOW_MINIMAP := &"show_minimap"
 const FULLSCREEN := &"fullscreen"
+const UNIT_LOOK := &"unit_look"
 
 ## 項目（画面に並べる順）。
 ## - key: 名前（ファイルにも、この名前で書く）。section: 画面の区分の見出し。label: 項目の名前。note: 短い説明。
@@ -79,6 +80,12 @@ const ITEMS: Array[Dictionary] = [
 		"key": SHOW_MINIMAP, "section": "settings.section.screen", "label": "settings.show_minimap",
 		"note": "settings.show_minimap.note",
 		"kind": Kind.TOGGLE, "default": true,
+	},
+	{
+		# 値は unit_looks.gd の ORDER の番号（組の名前ではなく番号で取っておく。CHOICE は数の値だけを持つ）。
+		"key": UNIT_LOOK, "section": "settings.section.screen", "label": "settings.unit_look",
+		"note": "settings.unit_look.note",
+		"kind": Kind.CHOICE, "choices": [[0, "settings.unit_look.kaykit"], [1, "settings.unit_look.tokens"], [2, "settings.unit_look.quaternius"]], "default": 0,
 	},
 ]
 

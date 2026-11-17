@@ -20,6 +20,7 @@ const ScreenSize := preload("res://game/screen_size.gd")
 const WindowMode := preload("res://game/window_mode.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const UiFeel := preload("res://game/ui_feel.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -51,6 +52,11 @@ func _ready() -> void:
 	if context.checking != &"":
 		# 検査とスクリーンショットは、決めた画面の大きさで回す（`--size <幅>x<高さ>`。無ければ基準の 1280×720）。
 		ScreenSize.apply_for_check(get_window(), ScreenSize.requested(args))
+		# 駒の見た目の組を選んで撮る・回す（`--unit-look <組の名前>`。無ければ既定の組）。
+		var at := args.find("--unit-look")
+		if at != -1 and at + 1 < args.size():
+			context.settings.set_value(AppContext.Settings.UNIT_LOOK, UnitLooks.ORDER.find(StringName(args[at + 1])))
+			UnitLooks.use(UnitLooks.name_at(context.settings.value(AppContext.Settings.UNIT_LOOK)))
 	# 検査とスクリーンショットは、遊ぶ人の設定を読まず、書かない（いつも既定の値で同じに動く）。
 	if context.checking == &"":
 		context.settings.store = SaveStore.new()
@@ -135,6 +141,8 @@ func go(scene: StringName) -> void:
 		await _fade_to(1.0)
 		remove_child(_current)
 		_current.queue_free()
+	# 駒の見た目の組は、場面を作るときにだけ替える（場面の途中でオプションを変えても、盤の駒とアイコンが混ざらない）。
+	UnitLooks.use(UnitLooks.name_at(context.settings.value(AppContext.Settings.UNIT_LOOK)))
 	var node: Node = load(SceneFlow.script_path(scene)).new()
 	context.scene = scene  # 場面が run_data() で、流れが渡すものを受け取れるように
 	node.set(&"context", context)

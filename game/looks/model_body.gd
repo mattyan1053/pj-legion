@@ -11,8 +11,10 @@ var _player: AnimationPlayer
 ## 動きの名前（idle・run・attack・hit・death・gesture） -> 素材のアニメーションの名前。
 var _moves := {}
 var _meshes: Array[MeshInstance3D] = []
-## 明るさ（float） -> 体に当てるマテリアル。
+## 明るさ（float） -> 体に当てるマテリアル（体の全部の面に同じものを当てる素材）。
 var _material_for: Callable
+## (MeshInstance3D, 明るさ) -> 面ごとにマテリアルを当てる（面ごとに色の違う素材）。_material_for より先に見る。
+var _surface_painter: Callable
 var _dying := false
 
 
@@ -64,7 +66,17 @@ func play_death() -> float:
 	return 0.0
 
 
+## 面ごとにマテリアルを当てる関数を使う（set_model のあと）。
+func set_surface_materials(painter: Callable) -> void:
+	_surface_painter = painter
+	set_shade(1.0)
+
+
 func set_shade(shade: float) -> void:
+	if _surface_painter.is_valid():
+		for mesh in _meshes:
+			_surface_painter.call(mesh, shade)
+		return
 	if _meshes.is_empty() or not _material_for.is_valid():
 		return
 	var material: Material = _material_for.call(shade)

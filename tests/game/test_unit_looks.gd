@@ -4,6 +4,7 @@ extends "res://tests/base_test.gd"
 const UnitLooks := preload("res://game/unit_looks.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const UnitView := preload("res://game/unit_view.gd")
+const Settings := preload("res://game/settings.gd")
 
 
 ## どの組も、どの種類の駒（将の別の姿も）にも体を作り、高さを返す。
@@ -49,3 +50,33 @@ func test_view_uses_the_body_height() -> void:
 		assert_true(is_equal_approx(view.height(), body.body_height + 0.2), "%s: 将の高さ" % name)
 		body.free()
 		view.free()
+
+
+## オプションの「駒の見た目」の選択肢は、組の並び（ORDER）と同じ数で、どの組も選べる。既定は既定の組。
+func test_settings_choices_match_the_sets() -> void:
+	var entry := Settings.item(Settings.UNIT_LOOK)
+	assert_eq(entry["choices"].size(), UnitLooks.ORDER.size())
+	for index in UnitLooks.ORDER.size():
+		assert_eq(entry["choices"][index][0], index)
+		assert_true(UnitLooks.SETS.has(UnitLooks.ORDER[index]), "ORDER の %s" % UnitLooks.ORDER[index])
+	assert_eq(UnitLooks.SETS.size(), UnitLooks.ORDER.size())
+	assert_eq(UnitLooks.name_at(entry["default"]), UnitLooks.DEFAULT)
+	assert_eq(UnitLooks.name_at(-1), UnitLooks.DEFAULT)
+	assert_eq(UnitLooks.name_at(UnitLooks.ORDER.size()), UnitLooks.DEFAULT)
+
+
+## どの組の体も、攻撃・被弾・倒れる・走る・身ぶりの動きを、エラー無く始められる（動きの無い組は代わりの動き）。
+func test_every_body_can_move() -> void:
+	for name: StringName in UnitLooks.SETS:
+		for kind: UnitKind.Id in [UnitKind.Id.KING, UnitKind.Id.SNIPER, UnitKind.Id.MINION, UnitKind.Id.SKELETON_BRUTE]:
+			var view := UnitView.new()
+			Engine.get_main_loop().root.add_child(view)
+			view.setup(kind, Color.RED, 10, 20, &"", name)
+			view.play_run()
+			view.play_idle()
+			view.play_gesture()
+			assert_true(view.play_attack() > 0.0, "%s: %s の攻撃の当たる時" % [name, UnitKind.Id.keys()[kind]])
+			view.play_hit()
+			view.set_acted(true)
+			view.set_acted(false)
+			view.free()

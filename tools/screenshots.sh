@@ -4,6 +4,7 @@
 #
 #   tools/screenshots.sh <godot> <出力のディレクトリ> [場面,場面,…|all] [--size=<幅>x<高さ>]
 #                                        --size は窓の大きさ（既定は 1280x720）。
+#                                        --unit-look=<組の名前> で駒の見た目の組を選ぶ（既定は game/unit_looks.gd の DEFAULT）。
 #   tools/screenshots.sh <godot> --list      場面の名前と説明の一覧（tools/screenshots.gd の SCENES から出す。撮らない）
 set -euo pipefail
 
@@ -20,9 +21,11 @@ fi
 OUT="${2:?出力のディレクトリを指定する}"
 SHOTS="all"
 SIZE="1280x720"
+LOOK=()
 for arg in "${@:3}"; do
   case "$arg" in
     --size=*) SIZE="${arg#--size=}" ;;
+    --unit-look=*) LOOK=(--unit-look "${arg#--unit-look=}") ;;
     *) SHOTS="$arg" ;;
   esac
 done
@@ -37,7 +40,7 @@ OUT="$(cd "$OUT" && pwd)"
 # 取り込みが済んでいないと、素材が読めずに絵が欠ける。
 timeout 120 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
-cmd=("$GODOT" --path . --resolution "$SIZE" -- --shots "$SHOTS" --out "$OUT" --size "$SIZE")
+cmd=("$GODOT" --path . --resolution "$SIZE" -- --shots "$SHOTS" --out "$OUT" --size "$SIZE" "${LOOK[@]}")
 if [ -z "${DISPLAY:-}" ]; then
   cmd=(xvfb-run -a -s "-screen 0 ${SIZE}x24" "${cmd[@]}")
 fi
