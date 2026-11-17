@@ -64,6 +64,13 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 	holder.free()
 
 
+## 手番の行に、先手の必殺技のゲージの始まりを書く（数は Ults.FIRST_PLAYER_START_GAUGE から作る）。
+func test_the_side_row_notes_the_first_player_gauge() -> void:
+	var note := MatchSetupPanel.first_gauge_note()
+	assert_true(note.begins_with("先手"), note)
+	assert_true(note.contains("%d%%" % (Ults.FIRST_PLAYER_START_GAUGE * 100 / Ults.GAUGE_MAX)), note)
+
+
 func test_random_side_labels_the_rows_by_who_plays() -> void:
 	var panel := MatchSetupPanel.new()
 	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())

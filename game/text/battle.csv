@@ -55,6 +55,7 @@ battle.log.status,{unit}に{status}（{turns} ターン）
 battle.log.status_group,{status}（{turns} ターン）: {units}
 battle.log.status_self,{status}が付いた（{turns} ターン）
 battle.log.ult,{side}が必殺技「{ult}」を使った
+battle.log.start_gauge,{side}の必殺技のゲージは {percent}% から
 battle.log.ult_ready,{side}の必殺技「{ult}」が使えるようになった
 battle.log.defeated,{unit}が倒れた
 battle.log.boss_fell,{place}の中ボスが倒れた

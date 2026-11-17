@@ -64,6 +64,7 @@ var _can_edit_decks := false
 ## 取っておいた部隊（deck_library.gd）。無ければ既定の編成だけ。
 var _library: RefCounted
 var _side_caption: Label
+var _first_gauge_note: Label
 var _start_button: Button
 var _back_button: Button
 var _warning: Label
@@ -128,6 +129,13 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		Unit.Side.PLAYER1: Text.t("setup.side.first"), Unit.Side.PLAYER2: Text.t("setup.side.second"), RANDOM_SIDE: Text.t("setup.side.random"),
 	})
 	_side_caption = side_row.get_child(0) as Label
+	# 対戦モードの先手は、必殺技のゲージがたまった状態から始まる（Ults.FIRST_PLAYER_START_GAUGE）。手番の行の右に書いておく。
+	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
+	_first_gauge_note = _label(14)
+	_first_gauge_note.text = first_gauge_note()
+	_first_gauge_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_first_gauge_note.visible = not _first_gauge_note.text.is_empty()
+	side_row.add_child(_first_gauge_note)
 	for side in 2:
 		column.add_child(HSeparator.new())
 		var names := {}
@@ -413,6 +421,13 @@ func _show_choice() -> void:
 		var shown := preview_deck(side as Unit.Side) != null
 		_preview_buttons[side].disabled = not shown
 		_preview_buttons[side].tooltip_text = "" if shown else Text.t("setup.deck.random_note")
+
+
+## 手番の行の注記（先手の必殺技のゲージ。始めが 0 なら空）。
+static func first_gauge_note() -> String:
+	if Ults.FIRST_PLAYER_START_GAUGE <= 0:
+		return ""
+	return Text.t("setup.side.first_gauge", {"percent": Ults.FIRST_PLAYER_START_GAUGE * 100 / Ults.GAUGE_MAX})
 
 
 ## side の行の見出し。CPU 戦なら「あなた」「CPU」と手番、人どうしなら手番だけ。

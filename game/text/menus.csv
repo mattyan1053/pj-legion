@@ -81,6 +81,7 @@ setup.caption.side,手番
 setup.side.first,先手（青）
 setup.side.second,後手（赤）
 setup.side.random,ランダム
+setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から開始
 setup.caption.deck,部隊
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成
