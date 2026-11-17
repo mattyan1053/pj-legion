@@ -21,7 +21,7 @@ func test_short_text_is_untouched() -> void:
 
 
 func test_every_line_fits() -> void:
-	var text := "このターンの間、軍の全員の移動力 +2、攻撃力（回復量）+5。使うと取り消せない"
+	var text := "このターンの間、軍の全員の移動力 +2、攻撃力・回復量 +5。使うと取り消せない"
 	for width: float in [12.0, 20.0, 31.0, 50.0]:
 		for line in _wrap(text, width):
 			assert_true(_measure(line) <= width, "幅 %s を超えた: %s" % [width, line])

@@ -201,3 +201,21 @@ func test_the_watch_counts_literals_but_not_comments() -> void:
 	file.close()
 	assert_eq(_hard_coded(probe), 2)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(probe))
+
+
+## 括弧の中に括弧を入れない（docs/wording.md の 8）。差し込む文が括弧を持つ文（持ち物の効果、聖遺物の効果）で、組み上がった文を見る。
+func test_no_brackets_inside_brackets() -> void:
+	const DeckText := preload("res://game/deck_text.gd")
+	var lines: Array[String] = []
+	for item: Equipment.Id in Equipment.Id.values():
+		lines.append(Text.t("story.news.item", {"item": Names.item(item), "effect": DeckText.equipment_effect(item)}))
+	for relic: Relics.Id in Relics.Id.values():
+		for key: String in ["battle.log.relic", "battle.banner.relic", "battle.forecast.relic"]:
+			lines.append(Text.t(key, {"side": "青", "relic": Names.relic(relic), "effect": Names.relic_summary(relic)}))
+	for line: String in lines:
+		var depth := 0
+		var deepest := 0
+		for letter: String in line:
+			depth += 1 if letter == "（" else (-1 if letter == "）" else 0)
+			deepest = maxi(deepest, depth)
+		assert_true(deepest <= 1, "括弧が二重: %s" % line)
