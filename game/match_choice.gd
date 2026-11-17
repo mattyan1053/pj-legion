@@ -98,12 +98,12 @@ func run() -> Run:
 	return battle_run
 
 
-## 対戦設定の「部隊編成」で始める流れ（run.gd）: 部隊編成（対戦用。side の部隊を組む寄り道）→ 対戦設定。
-## 寄り道で取っておいた部隊は、戻った対戦設定で side の部隊に選ばれる（deck_screen.gd の leave）。
-static func deck_run(side: Unit.Side) -> Run:
+## 対戦設定（とマップ選択）の「部隊編成」で始める流れ（run.gd）: 部隊編成（対戦用。side の部隊を組む寄り道）→ 戻り先 back_to（既定は対戦設定）。
+## 寄り道で取っておいた部隊は、対戦設定の side の部隊に選ばれる（deck_screen.gd の leave）。back_label は編成の「戻る」の文字の鍵。
+static func deck_run(side: Unit.Side, back_to := SceneFlow.SETUP, back_label := "setup.back") -> Run:
 	var detour := Run.new()
-	detour.add(SceneFlow.DECKS, {"rules": DeckRules.VERSUS, "back_label": "setup.back", "side": side})
-	detour.add(SceneFlow.SETUP)
+	detour.add(SceneFlow.DECKS, {"rules": DeckRules.VERSUS, "back_label": back_label, "side": side})
+	detour.add(back_to)
 	return detour
 
 

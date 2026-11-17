@@ -8,6 +8,7 @@ extends Node
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
 ## - カードのクリック（1〜9 のキーでも）で、その話を始める。
 ## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
+## - 「部隊編成」で、この物語のストーリー用の部隊を組む（寄り道。戻るとここ）。
 ## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
 
 const Text := preload("res://game/text.gd")
@@ -22,6 +23,7 @@ const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const SceneFlow := preload("res://game/scene_flow.gd")
 
 signal finished(outcome: StringName)
 
@@ -104,14 +106,25 @@ func _ready() -> void:
 	note.add_child(_roster)
 	_roster.text = roster_text()
 
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_CENTER
+	footer.add_theme_constant_override("separation", 16)
+	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(footer)
 	var back := Button.new()
 	back.text = Text.t("story.episodes.back")
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
-	root.add_child(back)
+	footer.add_child(back)
+	var decks := Button.new()
+	decks.text = Text.t("setup.edit_deck")
+	decks.focus_mode = Control.FOCUS_NONE
+	decks.add_theme_font_size_override("font_size", 18)
+	decks.custom_minimum_size = Vector2(220.0, 48.0)
+	decks.pressed.connect(press_edit_decks)
+	footer.add_child(decks)
 
 
 func resume_label() -> String:
@@ -123,6 +136,11 @@ func choose(episode: Episode) -> void:
 	if not context.story.is_available(episode):
 		return
 	context.start_run(context.story.run_now(episode))
+
+
+## 「部隊編成」: この物語のストーリー用の部隊を組む（寄り道。編成の「話の一覧へ戻る」で、ここへ戻る）。
+func press_edit_decks() -> void:
+	context.start_run(Story.deck_run(context.story.campaign, SceneFlow.EPISODES, "story.episodes.resume"))
 
 
 ## 「物語を選び直す」。

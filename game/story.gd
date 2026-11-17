@@ -473,6 +473,16 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 	return run
 
 
+## 話の一覧（と物語選択）の「部隊編成」で始める流れ（run.gd）: 部隊編成（of_campaign のストーリー用）→ 戻り先 back_to。
+## 寄り道で取っておいた部隊は、その物語の出撃準備で選ばれる（deck_screen.gd の leave。物語を、いまの物語にしてから始める）。
+## back_label は編成の「戻る」の文字の鍵。
+static func deck_run(of_campaign: Campaign, back_to: StringName, back_label: String) -> Run:
+	var detour := Run.new()
+	detour.add(SceneFlow.DECKS, {"rules": of_campaign.rules_id, "back_label": back_label})
+	detour.add(back_to)
+	return detour
+
+
 ## 物語の並びで episode の次の話（物語の最後なら null）。
 static func episode_after(episode: Episode) -> Episode:
 	var of_campaign := campaign_of(episode)
