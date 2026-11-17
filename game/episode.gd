@@ -10,6 +10,7 @@ const StageLook := preload("res://game/stage_look.gd")
 const SoundCatalog := preload("res://game/sound_catalog.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const Maps := preload("res://game/maps.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 const DIR := "res://game/story/episodes/"
@@ -58,6 +59,9 @@ var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
 var growth: Array = [[], []]
 ## 話し手の名前: [人の軍, 敵の軍]。
 var speakers: PackedStringArray = ["", ""]
+## 話し手の姿（会話の場面に立たせる駒の形と、対戦の途中の台詞のアイコン）: [人の軍, 敵の軍]。
+## どちらも {"kind": 駒の種類, "evolved": 進化後の形か}。書かなければ、その陣営の将の姿。
+var figures: Array[Dictionary] = [{"kind": UnitKind.Id.KING, "evolved": false}, {"kind": UnitKind.Id.KING, "evolved": false}]
 ## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文] の列。
 var before: Array = []
 var after: Array = []
@@ -225,13 +229,15 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if not file.has(section):
 		file.problem(1, "[%s] の節が無い（話し手の name だけでも書く）" % section)
 		return
-	var keys := ["name", "unit", "deploy"]
+	var keys := ["name", "figure", "unit", "deploy"]
 	keys.append("start_gauge" if side == 0 else "army")
 	var values: Dictionary = file.values(section, keys, ["unit", "deploy"])
 	if values.has("name"):
 		speakers[side] = values["name"][0]["value"]
 	if speakers[side] == "":
 		file.problem(file.line_of(section), "[%s] に話し手の name が無い" % section)
+	if values.has("figure"):
+		_read_figure(file, values["figure"][0], side)
 	var rows: Array = []
 	var grown: Array = []
 	for entry: Dictionary in values.get("unit", []):
@@ -274,6 +280,24 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 					var kind := StoryFile.enum_value(UnitKind.Id, (unit_entry["value"] as String).split(",")[0].split("+")[0])
 					if kind >= 0 and UnitKind.army(kind as UnitKind.Id) != UnitKind.Army.NONE:
 						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
+
+
+## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。
+func _read_figure(file: RefCounted, entry: Dictionary, side: int) -> void:
+	var words := (entry["value"] as String).split(" ", false)
+	var kind := StoryFile.enum_value(UnitKind.Id, words[0] if not words.is_empty() else "")
+	if kind < 0 or UnitKind.is_neutral(kind as UnitKind.Id):
+		var neutral := UnitKind.Id.values().filter(func(each: int) -> bool: return UnitKind.is_neutral(each as UnitKind.Id))
+		file.problem(entry["line"], "知らない姿「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Id, neutral)])
+		return
+	var evolved := words.size() == 2 and words[1] == "evolved"
+	if words.size() > 2 or (words.size() == 2 and not evolved):
+		file.problem(entry["line"], "姿は「駒の種類」か「駒の種類 evolved」: %s" % entry["value"])
+		return
+	if evolved and not UnitIcons.evolves(kind as UnitKind.Id):
+		file.problem(entry["line"], "%s に進化後の姿は無い" % words[0])
+		return
+	figures[side] = {"kind": kind, "evolved": evolved}
 
 
 ## side の部隊に、始めのレベルか経験値を決めた駒がいるか。

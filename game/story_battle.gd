@@ -57,7 +57,7 @@ func can_choose_squad() -> bool:
 func talk_cues() -> RefCounted:
 	if episode.cues.is_empty():
 		return BattleCues.new()
-	return BattleCues.new(episode.cues, episode.speakers)
+	return BattleCues.new(episode.cues, episode.speakers, episode.figures)
 
 
 func record_win(context: RefCounted) -> void:

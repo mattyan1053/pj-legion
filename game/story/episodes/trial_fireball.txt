@@ -16,12 +16,14 @@ wins = routed
 
 [ally]
 name = 導師
+figure = priest evolved
 unit = paladin
 unit = sorcerer
 unit = sorcerer
 
 [enemy]
 name = 骨の群れ
+figure = skeleton
 army = none
 unit = skeleton
 unit = skeleton

@@ -23,13 +23,13 @@ static func variants() -> Array:
 			continue
 		for side in 2:
 			list.append([kind, side, false])
-			if _evolves(kind):
+			if evolves(kind):
 				list.append([kind, side, true])
 	return list
 
 
 ## 進化する種類か（進化後のアイコンがあるか）。
-static func _evolves(kind: UnitKind.Id) -> bool:
+static func evolves(kind: UnitKind.Id) -> bool:
 	return kind != UnitKind.Id.KING and not UnitKind.is_monster(kind)
 
 
@@ -41,10 +41,28 @@ static func file_name(kind: UnitKind.Id, side: int, evolved := false) -> String:
 ## 無ければ null（呼ぶ側は、絵を出さずに文字だけにする）。
 static func texture(kind: UnitKind.Id, side := 0, evolved := false) -> Texture2D:
 	var neutral := UnitKind.is_neutral(kind)
-	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), evolved and not neutral and _evolves(kind))
+	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), evolved and not neutral and evolves(kind))
 	if not _cache.has(key):
 		var path := "%s/%s" % [DIR, key]
 		_cache[key] = load(path) if ResourceLoader.exists(path) else null
+	return _cache[key]
+
+
+## 胸から上を切り出す四角（ICON_SIZE の絵の中の px）。小さく出す所（対戦の途中の台詞）で、顔が読めるように。
+const BUST := Rect2(14.0, 0.0, 68.0, 68.0)
+
+
+## kind の駒のアイコンの、胸から上（BUST）。絵が無ければ null。
+static func bust(kind: UnitKind.Id, side := 0, evolved := false) -> Texture2D:
+	var whole := texture(kind, side, evolved)
+	if whole == null:
+		return null
+	var key := "bust:%s" % whole.resource_path
+	if not _cache.has(key):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = whole
+		atlas.region = BUST
+		_cache[key] = atlas
 	return _cache[key]
 
 

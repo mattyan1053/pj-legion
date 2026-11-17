@@ -1,5 +1,6 @@
 extends Node
-## 会話の場面（docs/story.md）。立ち絵は無く、話し手の名前の札（陣営の色）と、文の枠だけ。背景は対戦と同じ景色（backdrop.gd）。
+## 会話の場面（docs/story.md）。話し手の姿（駒の 3D の形。talk_figure.gd）を左右に立たせ、下に話し手の名前の札（陣営の色）と文の枠。
+## 人の軍の話し手は左、敵の軍の話し手は右。話している側を明るく大きく、話していない側を暗く小さく。背景は対戦と同じ景色（backdrop.gd）。
 ## 背景は、話の盤（渡されなければ、タイトルと同じ景色）。場面の決まりは scene_flow.gd。流れ（run.gd）が、会話（story.gd の talk_of）を渡す。
 ##
 ## - クリック・Enter・Space で次の文へ。文が出きる前なら、出しきるだけ。最後の文のあとは Run.NEXT で終える（流れの次の場面へ）。
@@ -12,6 +13,7 @@ const AppContext := preload("res://game/app_context.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
+const TalkFigure := preload("res://game/talk_figure.gd")
 
 signal finished(outcome: StringName)
 
@@ -20,10 +22,16 @@ const CHARS_PER_SECOND := 45.0
 const BOX_WIDTH := 980.0
 const BOX_HEIGHT := 150.0
 const BOX_BOTTOM := 40.0
+## 背景の盤に重ねる幕の濃さ（Palette.SHADE の色）。
+const BACKDROP_SHADE := 0.3
+## 画面の端から見出しまでの余白。
+const MARGIN := Vector2(32.0, 24.0)
+## 話し手の姿の枠の横幅の上限（文の枠の幅に対する割合。左右の姿が真ん中で重ならない）。
+const FIGURE_MAX_WIDTH := 0.42
 ## 送りの印の明滅の周期（秒）。
 const BLINK_PERIOD := 1.2
 ## 名前の札の色（0 = 人の軍、1 = 敵の軍は battle_screen.gd の TEAM_COLORS と同じ。2 = 知らせ）。
-const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Color("6b7280")]
+const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEXT_OFF]
 ## 知らせの行の side（story.gd の NOTICE_SIDE）。
 const NOTICE_SIDE := 2
 
@@ -33,7 +41,8 @@ const COLOR_TEXT := Palette.TEXT
 const COLOR_DIM := Palette.TEXT_DIM
 
 var context: AppContext
-## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目}。story.gd の talk_of）。
+## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目,
+## "figures": 話し手の姿 [人の軍, 敵の軍]}。story.gd の talk_of）。
 var talk := {}
 var _index := 0
 var _shown := 0.0  # いまの文の、出した文字数
@@ -46,6 +55,11 @@ var _face: TextureRect
 var _hint: Label
 var _count: Label
 var _skip: Button
+## 話し手の姿を立たせる所（見出しと、下の名前の札・文の枠の間）と、立たせた姿（会話に出てくる陣営だけ）。
+var _stage: Control
+var _figures: Array[TalkFigure] = []
+## 下の名前の札・「飛ばす」・文の枠をまとめたもの（姿と重ねない）。
+var _bottom: Control
 
 
 func _ready() -> void:
@@ -57,26 +71,47 @@ func _ready() -> void:
 	add_child(Backdrop.new(talk.get("board"), talk.get("look", &"")))
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	var root := Control.new()
+	# 背景の盤を少し沈め、話し手の姿と文を浮かせる。
+	var shade := ColorRect.new()
+	shade.color = Color(Palette.SHADE, BACKDROP_SHADE)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(shade)
+	# 縦に、見出し・話し手の姿の舞台・下の名前の札と文の枠。姿は舞台の中に収め、札・文の枠・「飛ばす」とは重ねない。
+	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = MARGIN.x
+	root.offset_right = -MARGIN.x
+	root.offset_top = MARGIN.y
+	root.offset_bottom = -BOX_BOTTOM
+	root.add_theme_constant_override("separation", 0)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
 	var heading := _label(26, COLOR_TEXT)
 	heading.text = talk.get("title", "")
-	heading.position = Vector2(32.0, 24.0)
 	root.add_child(heading)
+
+	_stage = Control.new()
+	_stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.resized.connect(_place_figures)
+	root.add_child(_stage)
+	var shapes: Array = talk.get("figures", [])
+	for side in mini(shapes.size(), 2):
+		if talk.get("lines", []).any(func(line: Dictionary) -> bool: return int(line.get("side", 0)) == side):
+			var figure: Dictionary = shapes[side]
+			var view := TalkFigure.new(figure["kind"], side, figure.get("evolved", false))
+			_stage.add_child(view)
+			_figures.append(view)
 
 	var bottom := VBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 0)
-	bottom.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.custom_minimum_size = Vector2(BOX_WIDTH, 0.0)
-	bottom.offset_left = -BOX_WIDTH / 2.0
-	bottom.offset_right = BOX_WIDTH / 2.0
-	bottom.offset_bottom = -BOX_BOTTOM
-	bottom.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bottom.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(bottom)
+	_bottom = bottom
 
 	var top_row := HBoxContainer.new()
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -157,6 +192,16 @@ func _ready() -> void:
 	_show_line(0)
 
 
+## 話し手の姿を、舞台の高さいっぱいに、文の枠の左端（人の軍）と右端（敵の軍）にそろえて置く。
+func _place_figures() -> void:
+	var height := _stage.size.y
+	var width := minf(height * TalkFigure.ASPECT, BOX_WIDTH * FIGURE_MAX_WIDTH)
+	var left := (_stage.size.x - BOX_WIDTH) / 2.0
+	for view in _figures:
+		view.size = Vector2(width, height)
+		view.position = Vector2(left if view.side == 0 else left + BOX_WIDTH - width, 0.0)
+
+
 func _process(delta: float) -> void:
 	_elapsed += delta
 	if _index < line_count() and _shown < _line_length():
@@ -234,6 +279,16 @@ func is_line_shown() -> bool:
 	return _index >= line_count() or _shown >= _line_length()
 
 
+## 立たせた話し手の姿（検査用）。
+func figures() -> Array[TalkFigure]:
+	return _figures
+
+
+## 下の名前の札・「飛ばす」・文の枠が画面に占める四角（検査用。姿はこれと重ねない）。
+func bottom_rect() -> Rect2:
+	return _bottom.get_global_rect()
+
+
 ## いまの話し手の名前と文（検査用）。
 func speaker() -> String:
 	return _name.text
@@ -262,6 +317,8 @@ func _show_line(index: int) -> void:
 	if _face.visible:
 		_face.texture = UnitIcons.texture(line["kind"])
 	_count.text = "%d / %d" % [index + 1, line_count()]
+	for view in _figures:
+		view.set_speaking(view.side == int(line.get("side", 0)), context.checking != &"")
 	if context.checking != &"":
 		_shown = _line_length()  # 検査とスクリーンショットは、文を出しきって始める
 	_text.visible_characters = -1 if is_line_shown() else 0

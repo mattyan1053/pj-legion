@@ -21,24 +21,30 @@ class Line:
 	var side: int
 	var name: String
 	var text: String
+	## 話し手の姿（{"kind": 駒の種類, "evolved": 進化後か}。episode.gd の figures）。空なら、アイコンを出さない。
+	var figure: Dictionary
 
-	func _init(side_: int, name_: String, text_: String) -> void:
+	func _init(side_: int, name_: String, text_: String, figure_ := {}) -> void:
 		side = side_
 		name = name_
 		text = text_
+		figure = figure_
 
 
 ## [きっかけ, 値, 話し手（0 か 1）, 文] の列。
 var _cues: Array = []
 ## 話し手の名前（0 = 人の軍、1 = 敵の軍）。
 var _names: Array = []
+## 話し手の姿（0 = 人の軍、1 = 敵の軍。episode.gd の figures）。
+var _figures: Array = []
 ## 出した台詞（[cues] の何番目か）。
 var _said := {}
 
 
-func _init(cues: Array = [], speakers: Array = []) -> void:
+func _init(cues: Array = [], speakers: Array = [], figures: Array = []) -> void:
 	_cues = cues
 	_names = speakers
+	_figures = figures
 
 
 func is_empty() -> bool:
@@ -66,7 +72,8 @@ func _take(battle: Battle, events: Array[BattleEvent], at_start: bool) -> Array[
 		if _fires(battle, events, at_start, cue[0], cue[1]):
 			_said[i] = true
 			var side: int = cue[2]
-			lines.append(Line.new(side, _names[side] if side < _names.size() else "", cue[3]))
+			lines.append(Line.new(side, _names[side] if side < _names.size() else "", cue[3],
+					_figures[side] if side < _figures.size() else {}))
 	return lines
 
 

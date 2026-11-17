@@ -14,12 +14,14 @@ lesson = スナイパーは 4 マス先から撃てるが、打たれ弱い。�
 
 [ally]
 name = 教官
+figure = shield_trooper evolved
 unit = shield_trooper
 unit = sniper
 unit = sniper
 
 [enemy]
 name = 演習相手
+figure = paladin
 army = fantasy
 unit = paladin
 
