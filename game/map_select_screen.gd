@@ -7,8 +7,11 @@ extends Node
 ## - カードには、そのマップの盤の縮図（map_card.gd。盤はルールが作る）、番号と名前、置かれているもの、形の札を載せる。
 ## - マウスを乗せたカードは明るくなり、少し大きくなって、下の欄にマップの説明が出る。欄の大きさは、いちばん長い説明に合わせて固定する。
 ## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだマップを context.match_choice に入れて &"pick"（対戦設定へ）。
+## - 「部隊編成」で、対戦用の部隊を組む（寄り道。戻るとここ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
+const SceneFlow := preload("res://game/scene_flow.gd")
+const MatchChoice := preload("res://game/match_choice.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -110,14 +113,25 @@ func _ready() -> void:
 	_note.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	note_column.add_child(_note)
 
+	var footer := HBoxContainer.new()
+	footer.alignment = BoxContainer.ALIGNMENT_CENTER
+	footer.add_theme_constant_override("separation", 16)
+	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(footer)
 	var back := Button.new()
 	back.text = Text.t("menu.to_title")
 	back.focus_mode = Control.FOCUS_NONE
 	back.add_theme_font_size_override("font_size", 18)
 	back.custom_minimum_size = Vector2(220.0, 44.0)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
-	root.add_child(back)
+	footer.add_child(back)
+	var decks := Button.new()
+	decks.text = Text.t("setup.edit_deck")
+	decks.focus_mode = Control.FOCUS_NONE
+	decks.add_theme_font_size_override("font_size", 18)
+	decks.custom_minimum_size = Vector2(220.0, 44.0)
+	decks.pressed.connect(press_edit_decks)
+	footer.add_child(decks)
 	# 説明の欄は、いちばん長い説明が収まる大きさに固定する（乗せたカードで大きさが変わると、カードの段まで動いて揺れる）。
 	var notes: Array[Callable] = []
 	for field: StringName in _cards:
@@ -159,6 +173,12 @@ func resume_label() -> String:
 func choose(field: StringName) -> void:
 	context.match_choice.field = field
 	finished.emit(&"pick")
+
+
+## 「部隊編成」: 対戦用の部隊を組む（寄り道。編成の「マップ選択へ戻る」で、ここへ戻る）。
+## 取っておいた部隊は、対戦設定の人の行の部隊に選ばれる。
+func press_edit_decks() -> void:
+	context.start_run(MatchChoice.deck_run(context.match_choice.human_row(), SceneFlow.MAP_SELECT, "map_select.resume"))
 
 
 ## 「タイトルへ戻る」。
