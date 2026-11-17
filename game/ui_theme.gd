@@ -46,6 +46,8 @@ const LABEL_DIM := &"LabelDim"
 
 const FONT_SIZE := 16
 const CORNER := 6
+## 横に送れるカードの段の、左右の端の余白（ステージ選択・話の一覧。送り切ったときもカードが画面の端に付かない）。
+const SCROLL_ROW_EDGE := 16
 
 
 ## 既定のテーマに、このテーマを重ねる。どのコントロールを作るよりも前に、1 回だけ呼ぶ。

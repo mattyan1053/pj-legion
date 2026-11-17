@@ -84,7 +84,7 @@ skill.smoke_grenade.summary,{range} マス以内を中心に煙幕（3 x 3。{tu
 skill.tactical_barricade,戦術バリケード
 skill.tactical_barricade.summary,周り 8 マスのどこかに盾（耐久 {durability}。通行と射撃を遮る）を置く
 ult.all_out_assault,総員突撃
-ult.all_out_assault.summary,このターンの間、軍の全員の移動力 +{move}、攻撃力（回復量）+{power}
+ult.all_out_assault.summary,このターンの間、軍の全員の移動力 +{move}、攻撃力・回復量 +{power}
 ult.mana_eruption,魔力解放
 ult.mana_eruption.summary,軍の全員のスキルのクールダウンを 0 にする（このターンから使える）
 status.barrier,バリア
@@ -94,7 +94,7 @@ status.assault,突撃
 relic.wisdom,英知の聖遺物
 relic.wisdom.summary,軍の全員の最大 HP +{amount}
 relic.courage,勇気の聖遺物
-relic.courage.summary,軍の全員の攻撃力（回復量）+{amount}
+relic.courage.summary,軍の全員の攻撃力・回復量 +{amount}
 stage.plain,中央平原
 stage.labyrinth,迷宮回廊
 stage.twin_springs,双子結晶
@@ -105,7 +105,7 @@ status.assault.summary,移動 +{move}・攻撃 +{power}
 relic.wisdom.short,英知
 relic.wisdom.effect,最大 HP +{amount}
 relic.courage.short,勇気
-relic.courage.effect,攻撃力（回復量）+{amount}
+relic.courage.effect,攻撃力・回復量 +{amount}
 role.vanguard.summary,前に立って受け止める。周り 8 マスに支配領域を作り、敵はそこで止まる
 role.rearguard.summary,離れたところから撃つ
 role.raider.summary,よく動き、弱った駒や本陣を狙う

@@ -130,7 +130,7 @@ func _card_row(fields: Array[StringName]) -> ScrollContainer:
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var room := ceili(CARD_SIZE.y * (HOVER_SCALE - 1.0) / 2.0) + 2
 	for side: String in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		margin.add_theme_constant_override(side, room + (16 if side in ["margin_left", "margin_right"] else 0))
+		margin.add_theme_constant_override(side, room + (UiTheme.SCROLL_ROW_EDGE if side in ["margin_left", "margin_right"] else 0))
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	scroll.add_child(margin)
 	var row := HBoxContainer.new()

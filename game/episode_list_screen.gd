@@ -74,14 +74,19 @@ func _ready() -> void:
 	scroll.custom_minimum_size = Vector2(0.0, MAP_HEIGHT + 172.0)
 	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(scroll)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	scroll.add_child(center)
+	# 左右に余白を置き、送り切ったときもカードが画面の端に付かないようにする（ステージ選択とそろえる）。
+	# 幅に収まれば真ん中に寄せる。
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left", UiTheme.SCROLL_ROW_EDGE)
+	margin.add_theme_constant_override("margin_right", UiTheme.SCROLL_ROW_EDGE)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scroll.add_child(margin)
 	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 28)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.add_child(row)
+	margin.add_child(row)
 	for episode: Episode in context.story.campaign.episodes:
 		var card := _build_card(episode)
 		row.add_child(card)
