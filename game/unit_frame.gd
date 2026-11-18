@@ -22,7 +22,8 @@ var chosen := false:
 		queue_redraw()
 
 
-func _init(kind: UnitKind.Id = UnitKind.Id.KING, side := 0, frame_size := 48.0, show_role := true, evolved := false) -> void:
+## look は将の別の姿（unit_icons.gd の texture と同じ）。
+func _init(kind: UnitKind.Id = UnitKind.Id.KING, side := 0, frame_size := 48.0, show_role := true, evolved := false, look := &"") -> void:
 	custom_minimum_size = Vector2(frame_size, frame_size)
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -39,12 +40,12 @@ func _init(kind: UnitKind.Id = UnitKind.Id.KING, side := 0, frame_size := 48.0, 
 	_mark.offset_right = 3.0
 	_mark.offset_bottom = 3.0
 	add_child(_mark)
-	set_kind(kind, side, evolved)
+	set_kind(kind, side, evolved, look)
 
 
 ## 入れる駒を替える（大きさは変わらない）。
-func set_kind(kind: UnitKind.Id, side := 0, evolved := false) -> void:
-	_icon.texture = UnitIcons.texture(kind, side, evolved)
+func set_kind(kind: UnitKind.Id, side := 0, evolved := false, look := &"") -> void:
+	_icon.texture = UnitIcons.texture(kind, side, evolved, look)
 	_icon.set_meta(&"icon_kind", kind)
 	_mark.role = UnitKind.role(kind) if _show_role else UnitKind.Role.NONE
 

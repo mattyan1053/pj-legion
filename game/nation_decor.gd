@@ -23,6 +23,11 @@ var glow := 90.0
 ## 紋の大きさ（px。0 で出さない）と濃さ。
 var crest_size := 0.0
 var crest_alpha := 0.09
+## 帯の色（透明なら、軍の国の色）。軍なしの板に、陣営の色の帯を付けるときに渡す。
+var band_color := Color(0, 0, 0, 0):
+	set(value):
+		band_color = value
+		queue_redraw()
 var _crest: Crest
 
 
@@ -68,7 +73,7 @@ func _place_crest() -> void:
 
 func _draw() -> void:
 	var board := _board()
-	var color := color_of(army)
+	var color := band_color if band_color.a > 0.0 else color_of(army)
 	var left := board.position.x + INSET
 	var right := board.end.x - INSET
 	var top := board.position.y + INSET
