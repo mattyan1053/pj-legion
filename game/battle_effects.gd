@@ -152,6 +152,7 @@ func wait_sign(at: Vector3) -> void:
 	var tween := create_tween()
 	tween.tween_property(label, "position:y", at.y + 1.75, 0.6).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(label, "outline_modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN)  # 縁取りも一緒に消す
 	tween.tween_callback(label.queue_free)
 
 

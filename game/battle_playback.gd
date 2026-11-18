@@ -826,6 +826,8 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	var tween := create_tween()
 	tween.tween_property(label, "position:y", label.position.y + POP_RISE, POP_TIME)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, POP_TIME).set_ease(Tween.EASE_IN)
+	# 縁取りは modulate では薄くならない。一緒に消さないと、消える間際に黒い縁取りだけが字の形に残る。
+	tween.parallel().tween_property(label, "outline_modulate:a", 0.0, POP_TIME).set_ease(Tween.EASE_IN)
 	tween.tween_callback(label.queue_free)
 
 
