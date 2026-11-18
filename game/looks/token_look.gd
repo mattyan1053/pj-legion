@@ -20,6 +20,9 @@ const BONE_DARK := Color("a8997a")
 const WOOD := Color("6b4a2e")
 const EYE := Color("1b1414")
 const CROSS := Color("f4f1e8")
+## 陣営の色の部分（胴・外套・台座の下の段）を明るくする割合と、ほのかに光らせる強さ。
+const TEAM_LIGHTEN := 0.15
+const TEAM_LIT := 0.4
 
 ## 種類ごとの形: [軍（"military"・"fantasy"・"monster"・"king"）, 記号, 大きさ]。
 const KINDS := {
@@ -77,18 +80,21 @@ func _assemble(body: TokenBody, army: String, mark: StringName, team: Color) -> 
 	var trim: Color = {"military": STEEL, "fantasy": BRASS, "king": GOLD}.get(army, BONE_DARK)
 	if army == "monster_king":
 		trim = GOLD
-	# 台座（2 段）。
-	body.part(f, _cylinder(0.3, 0.33, 0.07), trim.darkened(0.25), Vector3(0.0, 0.075, 0.0))
+	# 台座（2 段）。下の段は陣営の色（台座が足元の円盤をほとんど覆うので、足元でも陣営が分かるように）、上の段は軍の色。
+	body.part(f, _cylinder(0.3, 0.33, 0.07), team.lightened(TEAM_LIGHTEN), Vector3(0.0, 0.075, 0.0), Vector3.ZERO, false, TEAM_LIT)
 	body.part(f, _cylinder(0.25, 0.28, 0.05), trim, Vector3(0.0, 0.135, 0.0))
 	var top := PEDESTAL_TOP
-	# 胴。魔物は骨の細い胴に、陣営の色の外套を羽織る。
-	var torso := team if not monster else BONE
+	# 胴。魔物は骨の細い胴に、陣営の色の外套を羽織る。陣営の色の胴は少し明るくし、ほのかに光らせる
+	# （暗い地面や、橙・赤の範囲の上で、日の当たらない側が地に溶けないように）。
+	var torso := team.lightened(TEAM_LIGHTEN) if not monster else BONE
+	var lit := TEAM_LIT if not monster else 0.0
 	var wide := 1.25 if mark == &"shield" and monster else 1.0
-	body.part(f, _cylinder(0.11 * wide, 0.2 * wide, BODY_HEIGHT), torso, Vector3(0.0, top + BODY_HEIGHT / 2.0, 0.0))
-	body.part(f, _sphere(0.13 * wide, 0.12), torso.darkened(0.1), Vector3(0.0, top + BODY_HEIGHT, 0.0))
+	body.part(f, _cylinder(0.11 * wide, 0.2 * wide, BODY_HEIGHT), torso, Vector3(0.0, top + BODY_HEIGHT / 2.0, 0.0), Vector3.ZERO, false, lit)
+	body.part(f, _sphere(0.13 * wide, 0.12), torso.darkened(0.1), Vector3(0.0, top + BODY_HEIGHT, 0.0), Vector3.ZERO, false, lit)
 	if monster or army == "king":
 		# 外套（背中に、陣営の色の円錐を半分）。
-		var cloak := body.part(f, _cylinder(0.12, 0.25, 0.5), team.darkened(0.15), Vector3(0.0, top + 0.26, -0.07))
+		var cloak := body.part(f, _cylinder(0.12, 0.25, 0.5), team.lightened(TEAM_LIGHTEN).darkened(0.1), Vector3(0.0, top + 0.26, -0.07),
+			Vector3.ZERO, false, TEAM_LIT)
 		cloak.scale = Vector3(1.0, 1.0, 0.6)
 	# 頭。
 	var head_y := top + BODY_HEIGHT + 0.14

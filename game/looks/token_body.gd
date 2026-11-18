@@ -6,6 +6,8 @@ extends "res://game/unit_body.gd"
 const FORWARD := Vector3(0.0, 0.0, 1.0)
 const ATTACK_HIT := 0.22
 const DEATH_TIME := 0.45
+## 光るもの（杖の玉、回復の十字）の光の強さ。
+const GLOW_ENERGY := 0.8
 
 ## [MeshInstance3D, 元の色] の列（明るさを変えるとき、元の色から塗り直す）。
 var _parts: Array = []
@@ -30,14 +32,16 @@ func set_phase(at: Vector3) -> void:
 
 
 ## 形を 1 つ足す（parent に。mesh の形、色、置き場所、回し方（度））。光るものは glow。
-func part(parent: Node3D, mesh: Mesh, color: Color, at: Vector3, turn := Vector3.ZERO, glow := false) -> MeshInstance3D:
+## lit は、光の当たらない側でも沈まないよう、自分の色でほのかに光らせる強さ（陣営の色の胴。0 なら光らない）。
+func part(parent: Node3D, mesh: Mesh, color: Color, at: Vector3, turn := Vector3.ZERO, glow := false, lit := 0.0) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	instance.position = at
 	instance.rotation_degrees = turn
-	instance.material_override = _material(color, glow)
+	var energy := GLOW_ENERGY if glow else lit
+	instance.material_override = _material(color, energy)
 	parent.add_child(instance)
-	_parts.append([instance, color, glow])
+	_parts.append([instance, color, energy])
 	return instance
 
 
@@ -47,16 +51,16 @@ func set_shade(shade: float) -> void:
 		(entry[0] as MeshInstance3D).material_override = _material(Color(color.r * shade, color.g * shade, color.b * shade, color.a), entry[2])
 
 
-static func _material(color: Color, glow: bool) -> StandardMaterial3D:
-	var key := "%s:%s" % [color.to_html(), glow]
+static func _material(color: Color, energy: float) -> StandardMaterial3D:
+	var key := "%s:%s" % [color.to_html(), energy]
 	if not _materials.has(key):
 		var material := StandardMaterial3D.new()
 		material.albedo_color = color
 		material.roughness = 0.55
-		if glow:
+		if energy > 0.0:
 			material.emission_enabled = true
 			material.emission = color
-			material.emission_energy_multiplier = 0.8
+			material.emission_energy_multiplier = energy
 		_materials[key] = material
 	return _materials[key]
 

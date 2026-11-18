@@ -19,6 +19,11 @@ const ACTED_SHADE := 0.42
 const BAR_SIZE := Vector2i(34, 5)
 const BAR_PIXEL := 0.016
 const COLOR_GOLD := Color("f2c84b")
+## 足元の円盤の半径と、縁の線の幅、外側の暗い線の色。
+const BASE_RADIUS := 0.4
+const BASE_EDGE := 0.035
+const BASE_RIM_DARK := Color(0.06, 0.05, 0.08)
+const BASE_EDGE_LIGHTEN := 0.55
 const COLOR_STATUS := Color("7fe3ff")
 
 var _body: UnitBody
@@ -31,6 +36,8 @@ var _height := 1.3  # 駒の高さ（頭の上。将は冠まで）
 var _acted := false
 var _dying := false
 var _base_material: StandardMaterial3D
+## 足元の円盤の内側の明るい縁（行動済みで暗くする）。
+var _base_edge: StandardMaterial3D
 var _bar: Sprite3D
 var _evolved_ring: MeshInstance3D
 var _status_ring: MeshInstance3D
@@ -186,12 +193,13 @@ func set_acted(acted: bool) -> void:
 	_base_material.albedo_color = _team_color.darkened(1.0 - shade) if acted else _team_color
 	_base_material.emission_energy_multiplier = 0.05 if acted else 0.4
 	_body.set_shade(shade)
+	_base_edge.albedo_color = _team_color.lightened(BASE_EDGE_LIGHTEN).darkened(1.0 - shade)
 
 
 func _add_base(team_color: Color) -> void:
 	var mesh := CylinderMesh.new()
-	mesh.top_radius = 0.4
-	mesh.bottom_radius = 0.4
+	mesh.top_radius = BASE_RADIUS
+	mesh.bottom_radius = BASE_RADIUS
 	mesh.height = 0.04
 	_base_material = StandardMaterial3D.new()
 	_base_material.albedo_color = team_color
@@ -204,6 +212,29 @@ func _add_base(team_color: Color) -> void:
 	base.position.y = 0.02
 	base.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(base)
+	# 円盤の縁: 内側に明るい線、外側に暗い線。範囲の色（白・橙・赤）の上でも、暗い地面の上でも、円盤の形が切れて見える。
+	_base_edge = _add_flat_ring(BASE_RADIUS - BASE_EDGE, BASE_RADIUS, team_color.lightened(BASE_EDGE_LIGHTEN), 0.041)
+	_add_flat_ring(BASE_RADIUS, BASE_RADIUS + BASE_EDGE, BASE_RIM_DARK, 0.035)
+
+
+## 地面に寝た平たい輪（足元の円盤の縁）。光に左右されない色。
+func _add_flat_ring(inner: float, outer: float, color: Color, lift: float) -> StandardMaterial3D:
+	var mesh := TorusMesh.new()
+	mesh.inner_radius = inner
+	mesh.outer_radius = outer
+	mesh.rings = 40
+	mesh.ring_segments = 4
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var ring := MeshInstance3D.new()
+	ring.mesh = mesh
+	ring.material_override = material
+	ring.scale = Vector3(1.0, 0.08, 1.0)
+	ring.position.y = lift
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(ring)
+	return material
 
 
 ## 将の目印。頭の上に浮かぶ金の輪。
