@@ -5,6 +5,7 @@ extends SubViewportContainer
 ## 話している側は明るく大きく、話していない側は暗く小さく（set_speaking）。話し始めに小さな身振りをする。
 ## 置き場所と大きさは、会話の場面（talk_screen.gd）が決める（枠いっぱいに、足元を下の端に合わせて写す）。
 
+const RenderTone := preload("res://game/render_tone.gd")
 const UnitView := preload("res://game/unit_view.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
@@ -53,7 +54,7 @@ func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"", place_ 
 	environment.background_mode = Environment.BG_CLEAR_COLOR
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.75, 0.78, 0.9)
-	environment.ambient_light_energy = 0.55
+	environment.ambient_light_energy = 0.55 * RenderTone.ambient_scale()  # Forward+ は暗く出る（render_tone.gd）
 	var world := WorldEnvironment.new()
 	world.environment = environment
 	viewport.add_child(world)

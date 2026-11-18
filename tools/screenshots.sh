@@ -6,7 +6,7 @@
 #                                        --size は窓の大きさ（既定は 1280x720）。
 #                                        --unit-look=<組の名前> で駒の見た目の組を選ぶ（既定は game/unit_looks.gd の DEFAULT）。
 #                                        --frame-time で、撮る前にその場面の 1 コマの時間を測って出す（前後の重さを比べる）。
-#                                        --rendering-method=<forward_plus|gl_compatibility> で描画方式を選ぶ（既定は Godot が選ぶもの）。
+#                                        --rendering-method=<forward_plus|gl_compatibility> で描画方式を選ぶ（既定は forward_plus。Windows の exe と同じ）。
 #                                        --no-effects で、オプションの「画面の効果」を切って撮る（既定はオン）。
 #   tools/screenshots.sh <godot> --list      場面の名前と説明の一覧（tools/screenshots.gd の SCENES から出す。撮らない）
 set -euo pipefail
@@ -25,7 +25,7 @@ OUT="${2:?出力のディレクトリを指定する}"
 SHOTS="all"
 SIZE="1280x720"
 LOOK=()
-METHOD=()
+METHOD=(--rendering-method forward_plus)
 MEASURE=()
 EFFECTS=()
 for arg in "${@:3}"; do
@@ -75,6 +75,13 @@ if [ -n "$broken" ]; then
   exit 1
 fi
 grep -E "^screenshots:|SCRIPT ERROR|Parse Error" "$log" || true
+# Forward+ を頼んだのに Vulkan が無いと、Godot は黙って互換の描画（OpenGL）に替えて撮る。見た目の基準と違う絵になるので、失敗にする。
+if [ "${METHOD[1]}" = "forward_plus" ] && grep -q "switching to OpenGL" "$log"; then
+  echo "screenshots.sh: Forward+ で撮れなかった（Vulkan が無く、互換の描画に替わった）。" >&2
+  echo "  コンテナなら Vulkan のソフトウェア描画を入れる: apt-get install -y mesa-vulkan-drivers" >&2
+  echo "  互換の描画で撮るなら --rendering-method=gl_compatibility を付ける。" >&2
+  exit 1
+fi
 if grep -q "^screenshots: 作れなかった場面:" "$log"; then
   echo "screenshots.sh: 作れなかった場面がある（ほかの場面は撮った）。場面の条件か、ルールの変わり方を確かめる。" >&2
   exit 1
