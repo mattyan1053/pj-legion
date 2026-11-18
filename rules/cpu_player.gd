@@ -910,7 +910,7 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 			apart = mini(apart, Combat.distance(cell, friend_cell))
 		value -= ISOLATION_WEIGHT * maxi(0, apart - SUPPORT_DISTANCE)
 	var threat := _threat_at(unit, cell, ignored_id)
-	if RuleProbe.f("unaware") == 0 and (cell != unit.cell or unit.on_the_move):
+	if RuleProbe.f("unaware") == 0 and (acting or RuleProbe.f("acting_only") == 0) and (cell != unit.cell or unit.on_the_move):
 		threat = threat * Combat.moving_rate() / 100  # 動けば、移動の軽減が掛かる（スキルのぶんにも掛けるので、少し甘い）
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
