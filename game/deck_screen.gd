@@ -25,10 +25,14 @@ const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
 const Run := preload("res://game/run.gd")
 const UnitCard := preload("res://game/unit_card.gd")
-const UnitIcons := preload("res://game/unit_icons.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
-## 雇える駒・部隊の駒の行に出す、駒のアイコンの大きさ（px）。
-const ICON_SIZE := 44
+const Crest := preload("res://game/crest.gd")
+const NationDecor := preload("res://game/nation_decor.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
+const RoleMark := preload("res://game/role_mark.gd")
+const CostGems := preload("res://game/cost_gems.gd")
+const StatsRow := preload("res://game/stats_row.gd")
+const Ornament := preload("res://game/ui_ornament.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
@@ -42,10 +46,12 @@ const COLOR_ACCENT := Palette.ACCENT
 const TOP_ROOM := 52.0
 ## 詳しい中身の欄の、文を折り返す幅（px）。
 const DETAIL_WIDTH := 400.0
-const ROSTER_WIDTH := 300.0
+const ROSTER_WIDTH := 320.0
 const TROOP_WIDTH := 420.0
 ## 一覧の右の、駒の札を並べる数（1 行）。
 const LIST_CARD_COLUMNS := 3
+## コストの目盛り（宝石の並び）の幅（px）。コスト上限が大きくても、この幅に詰めて収める。
+const GAUGE_WIDTH := 236.0
 ## 画面の幅の上限（論理の px）。横長の画面では、これより広げずに真ん中に置く（docs/screen-size.md）。
 const MAX_WIDTH := 1560.0
 
@@ -63,6 +69,9 @@ var _list_rows: VBoxContainer
 var _list_empty: Label
 var _list_detail_title: Label
 var _list_detail_body: Label
+var _list_detail_crest: Crest
+var _list_detail_gauge: CostGems
+var _list_detail_decor: NationDecor
 var _list_detail_cards: GridContainer
 var _list_detail_card: Control
 var _list_detail_issues: Label
@@ -92,17 +101,21 @@ var _selected := -1
 var _hover_kind := -1
 var _name_label: Label
 var _army_label: Label
-var _budget_bar: ProgressBar
+var _army_crest: Crest
+var _edit_decor: NationDecor
+var _budget_gauge: CostGems
 var _budget_label: Label
 var _count_label: Label
 var _issues_label: Label
 var _roster_buttons := {}
-var _ult_label: Label
+var _ult_box: VBoxContainer
 var _troop_rows: VBoxContainer
 var _detail_card: PanelContainer
 var _detail_title: Label
-var _detail_icon: TextureRect
+var _detail_icon: UnitFrame
 var _detail_body: Label
+var _detail_role: RoleMark
+var _detail_stats: StatsRow
 var _equip_box: PanelContainer
 var _equip_title: Label
 var _equip_rows := {}
@@ -347,12 +360,19 @@ func _build_list() -> Control:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
-	var title := _text(26, COLOR_TEXT)
-	title.text = Text.t("deck.title")
-	header.add_child(title)
-	_mode_label = _text(18, COLOR_DIM)
-	_mode_label.size_flags_vertical = Control.SIZE_SHRINK_END
-	header.add_child(_mode_label)
+	header.add_child(_heading(Text.t("deck.title")))
+	# どの決まりの一覧か（「対戦用」か物語の名前）は、見出しの横の小さな札。
+	var mode_tag := PanelContainer.new()
+	mode_tag.theme_type_variation = UiTheme.PANEL_TAG
+	mode_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(mode_tag)
+	_mode_label = _text(15, COLOR_ACCENT)
+	mode_tag.add_child(_mode_label)
+	var header_line := Ornament.new(200.0, 12.0)
+	header_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header_line.color = Palette.BORDER
+	header.add_child(header_line)
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 20)
@@ -383,13 +403,34 @@ func _build_list() -> Control:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(right)
 	_list_detail_card = right
+	# 選んだ部隊の軍の色の帯と、右下の薄い紋。
+	_list_detail_decor = NationDecor.new(UnitKind.Army.NONE, 190.0, 70.0)
+	right.add_child(_list_detail_decor)
 	var detail := VBoxContainer.new()
-	detail.add_theme_constant_override("separation", 10)
+	detail.add_theme_constant_override("separation", 8)
 	right.add_child(detail)
+	var detail_head := HBoxContainer.new()
+	detail_head.add_theme_constant_override("separation", 10)
+	detail.add_child(detail_head)
+	_list_detail_crest = Crest.new(UnitKind.Army.MILITARY, 40.0)
+	_list_detail_crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	detail_head.add_child(_list_detail_crest)
+	var detail_names := VBoxContainer.new()
+	detail_names.add_theme_constant_override("separation", 0)
+	detail_names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_head.add_child(detail_names)
 	_list_detail_title = _text(24, COLOR_TEXT)
-	detail.add_child(_list_detail_title)
-	_list_detail_body = _text(17, COLOR_TEXT)
-	detail.add_child(_list_detail_body)
+	_list_detail_title.add_theme_font_override("font", UiTheme.FONT_HEADING)
+	_list_detail_title.clip_text = true
+	_list_detail_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	detail_names.add_child(_list_detail_title)
+	var detail_line := HBoxContainer.new()
+	detail_line.add_theme_constant_override("separation", 12)
+	detail_names.add_child(detail_line)
+	_list_detail_body = _text(16, COLOR_DIM)
+	detail_line.add_child(_list_detail_body)
+	_list_detail_gauge = CostGems.new(0, 1, 9.0, GAUGE_WIDTH)
+	detail_line.add_child(_list_detail_gauge)
 	# 駒の札（将と、雇った駒）。多ければ欄の中で送る。
 	var cards_scroll := ScrollContainer.new()
 	cards_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -401,6 +442,7 @@ func _build_list() -> Control:
 	_list_detail_cards.add_theme_constant_override("v_separation", 8)
 	cards_scroll.add_child(_list_detail_cards)
 	_list_detail_issues = _text(16, COLOR_BAD)
+	_list_detail_issues.add_theme_stylebox_override("normal", UiTheme.danger_strip_box())
 	detail.add_child(_list_detail_issues)
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 10)
@@ -435,25 +477,7 @@ func _refresh_list() -> void:
 	if not items.any(func(item: DeckLibrary.Saved) -> bool: return item.id == _list_selected):
 		_list_selected = items[0].id if not items.is_empty() else ""
 	for item in items:
-		var button := _card_button("", 16)
-		button.toggle_mode = true
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.custom_minimum_size = Vector2(0.0, 58.0)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.clip_text = true
-		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		button.text = Text.t("deck.list.row" if item.playable() else "deck.list.row_unplayable", {
-			"name": item.name, "army": DeckText.army_name(item.deck.army), "count": item.deck.entries.size(),
-			"cost": item.deck.total_cost(), "budget": item.deck.budget(),
-		})
-		if not item.playable():
-			button.add_theme_color_override("font_color", COLOR_BAD)
-			button.add_theme_color_override("font_pressed_color", COLOR_BAD)
-			button.add_theme_color_override("font_hover_color", COLOR_BAD.lightened(0.2))
-		button.set_pressed_no_signal(item.id == _list_selected)
-		var id := item.id
-		button.pressed.connect(func() -> void: select_saved(id))
-		_list_rows.add_child(button)
+		_list_rows.add_child(_list_row(item))
 	_list_empty.visible = items.is_empty()
 	var chosen := _library.find(_list_selected)
 	_list_detail_card.modulate.a = 1.0 if chosen != null else 0.0  # 選んでいなければ、右の欄は空（場所は保つ）
@@ -462,11 +486,19 @@ func _refresh_list() -> void:
 	for child in _list_detail_cards.get_children():
 		_list_detail_cards.remove_child(child)
 		child.queue_free()
+	_list_detail_issues.visible = chosen != null and not chosen.playable()
 	if chosen == null:
 		_list_detail_title.text = ""
 		_list_detail_body.text = ""
 		_list_detail_issues.text = ""
 		return
+	_list_detail_decor.army = chosen.deck.army
+	_list_detail_crest.army = chosen.deck.army
+	_list_detail_crest.modulate.a = 0.0 if chosen.deck.army == UnitKind.Army.NONE else 1.0
+	_list_detail_crest.queue_redraw()
+	_list_detail_gauge.slots = maxi(chosen.deck.budget(), 1)
+	_list_detail_gauge.count = chosen.deck.total_cost()
+	_list_detail_body.add_theme_color_override("font_color", COLOR_DIM if chosen.deck.total_cost() <= chosen.deck.budget() else COLOR_BAD)
 	_list_detail_title.text = chosen.name
 	_list_detail_body.text = Text.t("deck.list.detail", {"army": DeckText.army_name(chosen.deck.army), "count": chosen.deck.entries.size(), "cost": chosen.deck.total_cost(), "budget": chosen.deck.budget()})
 	_list_detail_cards.add_child(UnitCard.build(UnitKind.Id.KING))
@@ -474,6 +506,63 @@ func _refresh_list() -> void:
 		_list_detail_cards.add_child(UnitCard.build(entry.kind, entry.equipment))
 	var issues := chosen.issues()
 	_fold(_list_detail_issues, "" if issues.is_empty() else Text.t("deck.unplayable", {"issues": Text.join_comma(issues)}), DETAIL_WIDTH + 200.0)
+
+
+## 一覧の 1 行（取っておいた部隊 1 つ）: 左の縁に軍の色、軍の紋、名前、軍・駒の数・コスト。出せない部隊は、危険の色。
+func _list_row(item: DeckLibrary.Saved) -> Button:
+	var playable := item.playable()
+	var army := item.deck.army
+	var tone := NationDecor.color_of(army) if playable else COLOR_BAD
+	var button := _card_button("", 16)
+	button.toggle_mode = true
+	button.custom_minimum_size = Vector2(0.0, 62.0)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var text := Text.t("deck.list.row" if playable else "deck.list.row_unplayable", {
+		"name": item.name, "army": DeckText.army_name(army), "count": item.deck.entries.size(),
+		"cost": item.deck.total_cost(), "budget": item.deck.budget(),
+	})
+	button.set_meta(&"row_text", text)
+	var strip := ColorRect.new()
+	strip.color = Color(tone, 0.9)
+	strip.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	strip.offset_left = 3.0
+	strip.offset_right = 7.0
+	strip.offset_top = 5.0
+	strip.offset_bottom = -5.0
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(strip)
+	var inside := HBoxContainer.new()
+	inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inside.offset_left = 16.0
+	inside.offset_right = -10.0
+	inside.add_theme_constant_override("separation", 10)
+	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(inside)
+	var crest := Crest.new(army, 34.0, Color(tone, 0.95))
+	crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	crest.modulate.a = 0.0 if army == UnitKind.Army.NONE else 1.0
+	inside.add_child(crest)
+	var lines := VBoxContainer.new()
+	lines.alignment = BoxContainer.ALIGNMENT_CENTER
+	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lines.add_theme_constant_override("separation", 0)
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inside.add_child(lines)
+	var parts := text.split("\n", true, 1)
+	var name_label := _text(17, COLOR_TEXT if playable else COLOR_BAD)
+	name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	name_label.text = parts[0]
+	var info := _text(14, COLOR_DIM if playable else COLOR_BAD)
+	info.text = parts[1] if parts.size() > 1 else ""
+	for label: Label in [name_label, info]:
+		label.clip_text = true
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lines.add_child(label)
+	button.set_pressed_no_signal(item.id == _list_selected)
+	var id := item.id
+	button.pressed.connect(func() -> void: select_saved(id))
+	return button
 
 
 ## 一覧の右に出している駒の札の種類（将を含む。検査用）。
@@ -499,9 +588,7 @@ func _build_army_picker() -> Control:
 	var root := _frame()
 	root.visible = false
 	var column := root.get_child(0).get_child(0) as VBoxContainer
-	var title := _text(26, COLOR_TEXT)
-	title.text = Text.t("deck.army.title")
-	column.add_child(title)
+	column.add_child(_heading(Text.t("deck.army.title")))
 	var center := CenterContainer.new()
 	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(center)
@@ -512,34 +599,56 @@ func _build_army_picker() -> Control:
 		var card := _card_button("", 18)
 		card.custom_minimum_size = Vector2(400.0, 380.0)
 		card.pressed.connect(func() -> void: choose_new_army(army))
+		# その国の色の帯と、薄く大きな紋（物語のカードと同じ向き）。
+		var decor := NationDecor.new(army, 230.0, 120.0)
+		decor.crest_alpha = 0.13
+		decor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		card.add_child(decor)
 		var inside := VBoxContainer.new()
-		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 18)
+		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 20)
 		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inside.add_theme_constant_override("separation", 8)
+		inside.add_theme_constant_override("separation", 10)
 		card.add_child(inside)
-		var army_name := _text(30, COLOR_TEXT)
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 12)
+		inside.add_child(head)
+		head.add_child(Crest.new(army, 52.0))
+		var head_names := VBoxContainer.new()
+		head_names.add_theme_constant_override("separation", 0)
+		head.add_child(head_names)
+		var army_name := _text(30, Crest.color_of(army).lightened(0.25))
+		army_name.add_theme_font_override("font", UiTheme.FONT_HEADING)
 		army_name.text = DeckText.army_name(army)
-		inside.add_child(army_name)
-		var budget := _text(17, COLOR_DIM)
+		head_names.add_child(army_name)
+		var budget_row := HBoxContainer.new()
+		budget_row.add_theme_constant_override("separation", 10)
+		head_names.add_child(budget_row)
+		var budget := _text(16, COLOR_DIM)
 		budget.text = Text.t("deck.army.budget", {"budget": Deck.budget_of(army)})
-		inside.add_child(budget)
+		budget_row.add_child(budget)
+		budget_row.add_child(CostGems.new(Deck.budget_of(army), Deck.budget_of(army), 6.0, 176.0))
 		var faces := HBoxContainer.new()
-		faces.add_theme_constant_override("separation", 4)
+		faces.add_theme_constant_override("separation", 6)
 		inside.add_child(faces)
-		faces.add_child(UnitIcons.rect(UnitKind.Id.KING, 0, false, 64.0))
+		faces.add_child(UnitFrame.new(UnitKind.Id.KING, 0, 60.0))
 		for kind in Deck.roster(army):
-			faces.add_child(UnitIcons.rect(kind, 0, false, 64.0))
-		var roster := _text(17, COLOR_TEXT)
-		var names: Array[String] = []
-		for kind in Deck.roster(army):
-			names.append(Text.t("deck.army.unit", {"unit": Names.kind(kind), "role": DeckText.role_name(kind)}))
-		roster.text = "\n".join(names)
+			faces.add_child(UnitFrame.new(kind, 0, 60.0))
+		# 雇える駒は、役割の印と名前で 1 行ずつ。
+		var roster := VBoxContainer.new()
+		roster.add_theme_constant_override("separation", 2)
 		inside.add_child(roster)
+		for kind in Deck.roster(army):
+			var line := HBoxContainer.new()
+			line.add_theme_constant_override("separation", 8)
+			roster.add_child(line)
+			line.add_child(RoleMark.new(UnitKind.role(kind), 20.0))
+			var unit_name := _text(17, COLOR_TEXT)
+			unit_name.text = Text.t("deck.army.unit", {"unit": Names.kind(kind), "role": DeckText.role_name(kind)})
+			line.add_child(unit_name)
 		var ult := Ults.of_army(army)
 		if ult != null:
-			var ult_label := _text(15, COLOR_DIM)
-			_fold(ult_label, Text.t("deck.ult", {"name": Names.ult(ult), "summary": Names.ult_summary(ult)}), 360.0)
-			inside.add_child(ult_label)
+			inside.add_child(HSeparator.new())
+			inside.add_child(_ult_lines(Text.t("deck.ult", {"name": Names.ult(ult), "summary": Names.ult_summary(ult)}), 356.0, 15))
 		for label in inside.find_children("*", "Control", true, false):
 			(label as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(card)
@@ -581,7 +690,7 @@ func selected_entry() -> int:
 ## 部隊の index 番目の行のボタンが出している文と、マウスを乗せると出る文（検査用）。
 func troop_row_texts(index: int) -> Array[String]:
 	var main: Button = _troop_rows.get_child(index).get_child(1)
-	return [main.text, main.tooltip_text]
+	return [main.get_meta(&"row_text", ""), main.tooltip_text]
 
 
 ## 部隊の index 番目の行のボタンの文（検査用）。
@@ -679,30 +788,36 @@ func _build_editor() -> Control:
 	var column := root.get_child(0).get_child(0) as VBoxContainer
 
 	# 見出し: 名前、軍、コスト、駒の数（いつも見える）
+	_edit_decor = NationDecor.new(UnitKind.Army.NONE, 0.0, 64.0)
+	(column.get_parent() as Control).add_child(_edit_decor)
+	(column.get_parent() as Control).move_child(_edit_decor, 0)
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
+	_army_crest = Crest.new(UnitKind.Army.MILITARY, 36.0)
+	_army_crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(_army_crest)
 	_name_label = _text(24, COLOR_ACCENT)
-	_name_label.custom_minimum_size = Vector2(260.0, 0.0)
+	_name_label.add_theme_font_override("font", UiTheme.FONT_HEADING)
+	_name_label.custom_minimum_size = Vector2(250.0, 0.0)
 	_name_label.clip_text = true
 	_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(_name_label)
 	var rename := _button(Text.t("deck.list.rename"), 15)
 	rename.pressed.connect(press_rename_editing)
 	header.add_child(rename)
-	_army_label = _text(22, COLOR_TEXT)
-	_army_label.custom_minimum_size = Vector2(140.0, 0.0)
+	_army_label = _text(20, COLOR_TEXT)
+	_army_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	_army_label.custom_minimum_size = Vector2(130.0, 0.0)
 	_army_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(_army_label)
 	_budget_label = _text(20, COLOR_TEXT)
 	_budget_label.custom_minimum_size = Vector2(150.0, 0.0)
 	_budget_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	header.add_child(_budget_label)
-	_budget_bar = ProgressBar.new()
-	_budget_bar.show_percentage = false
-	_budget_bar.custom_minimum_size = Vector2(180.0, 16.0)
-	_budget_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	header.add_child(_budget_bar)
+	# コストは、宝石の目盛りで見せる（上限ぶんの溝に、使ったぶんの金の宝石。超えたら危険の色）。
+	_budget_gauge = CostGems.new(0, 1, 9.0, GAUGE_WIDTH)
+	header.add_child(_budget_gauge)
 	_count_label = _text(20, COLOR_TEXT)
 	_count_label.custom_minimum_size = Vector2(110.0, 0.0)
 	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -724,9 +839,8 @@ func _build_editor() -> Control:
 	roster.add_child(_caption(Text.t("deck.edit.roster")))
 	for i in 4:
 		var button := _card_button("", 15)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.custom_minimum_size = Vector2(ROSTER_WIDTH, 62.0)
-		button.add_theme_constant_override("icon_max_width", ICON_SIZE)
+		button.custom_minimum_size = Vector2(ROSTER_WIDTH, 66.0)
+		_fill_roster_button(button)
 		button.pressed.connect(func() -> void: _on_roster(i, &"press"))
 		button.mouse_entered.connect(func() -> void: _on_roster(i, &"enter"))
 		button.mouse_exited.connect(func() -> void: _on_roster(i, &"exit"))
@@ -734,8 +848,8 @@ func _build_editor() -> Control:
 		_roster_buttons[i] = button
 	var ult_card := _card()
 	roster.add_child(ult_card)
-	_ult_label = _text(14, COLOR_DIM)
-	ult_card.add_child(_ult_label)
+	_ult_box = VBoxContainer.new()
+	ult_card.add_child(_ult_box)
 
 	var troop := VBoxContainer.new()
 	troop.custom_minimum_size = Vector2(TROOP_WIDTH, 0.0)
@@ -771,13 +885,26 @@ func _build_editor() -> Control:
 	detail_column.add_theme_constant_override("separation", 6)
 	detail_scroll.add_child(detail_column)
 	var detail_head := HBoxContainer.new()
-	detail_head.add_theme_constant_override("separation", 8)
+	detail_head.add_theme_constant_override("separation", 12)
 	detail_column.add_child(detail_head)
-	_detail_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, 64.0)
+	_detail_icon = UnitFrame.new(UnitKind.Id.KING, 0, 64.0, false)
 	detail_head.add_child(_detail_icon)
+	var detail_names := VBoxContainer.new()
+	detail_names.alignment = BoxContainer.ALIGNMENT_CENTER
+	detail_names.add_theme_constant_override("separation", 4)
+	detail_head.add_child(detail_names)
+	var detail_title_row := HBoxContainer.new()
+	detail_title_row.add_theme_constant_override("separation", 8)
+	detail_names.add_child(detail_title_row)
+	_detail_role = RoleMark.new(UnitKind.Role.NONE, 24.0)
+	detail_title_row.add_child(_detail_role)
 	_detail_title = _text(22, COLOR_TEXT)
-	_detail_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	detail_head.add_child(_detail_title)
+	_detail_title.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	detail_title_row.add_child(_detail_title)
+	# 能力値は、札の頭に欄をそろえて出す（下の文にも同じ行がある。持ち物込みの値は文の側）。
+	_detail_stats = StatsRow.new("", 15)
+	detail_names.add_child(_detail_stats)
+	detail_column.add_child(HSeparator.new())
 	_detail_body = _text(15, COLOR_TEXT)
 	detail_column.add_child(_detail_body)
 	_equip_box = _card()
@@ -785,22 +912,32 @@ func _build_editor() -> Control:
 	var equip_column := VBoxContainer.new()
 	equip_column.add_theme_constant_override("separation", 6)
 	_equip_box.add_child(equip_column)
-	_equip_title = _text(17, COLOR_TEXT)
+	_equip_title = _text(16, COLOR_ACCENT)
+	_equip_title.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	equip_column.add_child(_equip_title)
 	for item: Equipment.Id in Equipment.Id.values():
 		var row := HBoxContainer.new()
 		row.visible = false  # 決まりが並べる持ち物だけを見せる（_show_detail）
 		row.add_theme_constant_override("separation", 8)
 		equip_column.add_child(row)
-		row.add_child(ItemIcon.new(item, 32.0))
+		# 持ち物の印は、沈んだ小さな額に入れる（駒の額と同じ向き）。
+		var slot := PanelContainer.new()
+		slot.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.INK, 0.85), Palette.BORDER, 1, 6, 4.0))
+		slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		slot.add_child(ItemIcon.new(item, 28.0))
+		row.add_child(slot)
 		var info := VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		info.add_theme_constant_override("separation", 0)
 		row.add_child(info)
+		var name_row := HBoxContainer.new()
+		name_row.add_theme_constant_override("separation", 6)
+		info.add_child(name_row)
 		var item_name := _text(16, COLOR_TEXT)
 		item_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		item_name.clip_text = true
-		info.add_child(item_name)
+		item_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_row.add_child(item_name)
 		var effect := _text(14, COLOR_DIM)
 		effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # 長い効果で欄を広げない（全文は行のツールチップ）
 		effect.clip_text = true
@@ -811,6 +948,7 @@ func _build_editor() -> Control:
 		minus.pressed.connect(func() -> void: unequip(item))
 		row.add_child(minus)
 		var count := _text(18, COLOR_TEXT)
+		count.add_theme_font_override("font", UiTheme.FONT_BOLD)
 		count.custom_minimum_size = Vector2(28.0, 0.0)
 		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -833,6 +971,7 @@ func _build_editor() -> Control:
 	# 出撃不可の理由は、押せない「編成完了」の左に出す（見出しの行は、名前・軍・コスト・駒の数で埋まり、理由が切れるため）。
 	_issues_label = _text(16, COLOR_BAD)
 	_issues_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_issues_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_issues_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_issues_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_issues_label.clip_text = true
@@ -859,23 +998,29 @@ func _refresh_editor() -> void:
 		return
 	_name_label.text = _deck_name + ("*" if _dirty else "")
 	_army_label.text = DeckText.army_name(_deck.army)
+	_army_label.add_theme_color_override("font_color", COLOR_TEXT if _deck.army == UnitKind.Army.NONE else Crest.color_of(_deck.army).lightened(0.25))
+	_army_crest.army = _deck.army
+	_army_crest.modulate.a = 0.0 if _deck.army == UnitKind.Army.NONE else 1.0
+	_army_crest.queue_redraw()
+	_edit_decor.army = _deck.army
 
 	var total := _deck.total_cost()
 	var budget := _deck.budget()
 	_budget_label.text = Text.t("deck.edit.cost", {"total": total, "budget": budget})
 	_budget_label.add_theme_color_override("font_color", COLOR_BAD if total > budget else COLOR_TEXT)
-	_budget_bar.max_value = maxi(budget, 1)
-	_budget_bar.value = mini(total, budget)
-	# 予算を超えたら、棒を危険の色にする（超えていなければ、テーマの棒のまま）。
-	if total > budget:
-		_budget_bar.add_theme_stylebox_override("fill", UiTheme.box(Palette.DANGER, Palette.DANGER, 0))
-	else:
-		_budget_bar.remove_theme_stylebox_override("fill")
+	# コスト上限を超えたら、目盛りの宝石がみな危険の色になる。
+	_budget_gauge.slots = maxi(budget, 1)
+	_budget_gauge.count = total
 	var count := _deck.entries.size()
 	_count_label.text = Text.t("deck.edit.count", {"count": count, "max": _deck.rules.max_units})
 	var issues := DeckText.problem_texts(_deck)
 	_issues_label.text = "" if issues.is_empty() else Text.t("deck.unplayable", {"issues": Text.join_comma(issues)})
 	_issues_label.tooltip_text = _issues_label.text
+	# 出撃不可の理由は、危険の色の帯に載せる（理由が無ければ帯も出さない。場所は保つ）。
+	if issues.is_empty():
+		_issues_label.remove_theme_stylebox_override("normal")
+	else:
+		_issues_label.add_theme_stylebox_override("normal", UiTheme.danger_strip_box())
 
 	var kinds := _deck.available_kinds()
 	var full := count >= _deck.rules.max_units
@@ -885,15 +1030,21 @@ func _refresh_editor() -> void:
 		if i >= kinds.size():
 			continue
 		var kind := kinds[i]
-		button.icon = UnitIcons.texture(kind)
 		button.set_meta(&"kind", kind)
-		button.text = Text.t("deck.edit.roster_unit", {"unit": Names.kind(kind), "role": DeckText.role_name(kind), "cost": UnitKind.cost(kind), "stats": DeckText.stats_line(kind)})
+		_show_roster_unit(button, kind)
 		button.disabled = full
+		(button.get_meta(&"inside") as Control).modulate.a = 0.5 if full else 1.0
 		button.tooltip_text = Text.t("deck.edit.full", {"max": _deck.rules.max_units}) if full else ""
 	var ult := Ults.of_army(_deck.army) if _deck.army != UnitKind.Army.NONE else null
-	if ult != null:
-		_fold(_ult_label, Text.t("deck.ult", {"name": Names.ult(ult), "summary": Names.ult_summary(ult)}), ROSTER_WIDTH - 24.0)
-	_ult_label.get_parent().visible = ult != null
+	var ult_text := "" if ult == null else Text.t("deck.ult", {"name": Names.ult(ult), "summary": Names.ult_summary(ult)})
+	if _ult_box.get_meta(&"text", "") != ult_text:
+		_ult_box.set_meta(&"text", ult_text)
+		for child in _ult_box.get_children():
+			_ult_box.remove_child(child)
+			child.queue_free()
+		if ult != null:
+			_ult_box.add_child(_ult_lines(ult_text, ROSTER_WIDTH - 24.0, 14))
+	_ult_box.get_parent().visible = ult != null
 
 	for child in _troop_rows.get_children():
 		_troop_rows.remove_child(child)
@@ -914,11 +1065,19 @@ func _king_row() -> Control:
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	row.add_child(line)
-	line.add_child(UnitIcons.rect(UnitKind.Id.KING, 0, false, 32.0))
-	var label := _text(16, COLOR_DIM)
-	label.text = Text.t("deck.edit.king", {"stats": DeckText.stats_line(UnitKind.Id.KING)})
+	line.add_child(UnitFrame.new(UnitKind.Id.KING, 0, 36.0, false))
+	# 「将　HP 30　攻撃 8 …」を、名前と能力値の欄に分けて出す。
+	var parts := Text.t("deck.edit.king", {"stats": DeckText.stats_line(UnitKind.Id.KING)}).split(char(0x3000), true, 1)
+	var label := _text(16, COLOR_TEXT)
+	label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	label.text = parts[0]
+	label.custom_minimum_size = Vector2(36.0, 0.0)
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(label)
+	if parts.size() > 1:
+		var stats := StatsRow.new(parts[1], 14, 76.0)
+		stats.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		line.add_child(stats)
 	return row
 
 
@@ -927,32 +1086,75 @@ func _troop_row(index: int) -> Control:
 	var entry := _deck.entries[index]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
-	var number := _text(17, COLOR_ACCENT)
+	var chosen := index == _selected
+	var number := _text(14, COLOR_ACCENT if chosen else COLOR_DIM)
+	number.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	number.text = str(index + 1)
-	number.custom_minimum_size = Vector2(24.0, 0.0)
+	number.custom_minimum_size = Vector2(24.0, 24.0)
 	number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	number.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var badge := UiTheme.number_box()
+	if chosen:
+		badge.border_color = Palette.ACCENT
+	number.add_theme_stylebox_override("normal", badge)
 	row.add_child(number)
 	var main := _card_button("", 14)
 	main.toggle_mode = true
-	main.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	main.custom_minimum_size = Vector2(0.0, 46.0)
-	main.icon = UnitIcons.texture(entry.kind)
-	main.add_theme_constant_override("icon_max_width", 28)
-	# 持ち物の文が長くても、列の幅を広げない。収まらないぶんは「…」にして、全文はマウスを乗せると出す。
-	main.clip_text = true
-	main.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	main.custom_minimum_size = Vector2(0.0, 50.0)
 	var equipment := Text.join_comma(UnitCard.equipment_lines(entry.equipment))
-	main.text = Text.t("deck.edit.troop_unit", {
+	var text := Text.t("deck.edit.troop_unit", {
 		"unit": Names.kind(entry.kind), "cost": entry.cost(), "items": equipment if equipment != "" else Text.t("deck.edit.no_items"),
 	})
-	main.tooltip_text = main.text
-	main.set_pressed_no_signal(index == _selected)
+	main.set_meta(&"row_text", text)
+	main.tooltip_text = text
+	# 札の中身: 駒の額、名前とコスト、持ち物（印つき。収まらないぶんは「…」。全文はマウスを乗せると出る）、右にコストの宝石。
+	var inside := HBoxContainer.new()
+	inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inside.offset_left = 8.0
+	inside.offset_right = -10.0
+	inside.add_theme_constant_override("separation", 8)
+	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main.add_child(inside)
+	var frame := UnitFrame.new(entry.kind, 0, 38.0)
+	frame.chosen = chosen
+	inside.add_child(frame)
+	var lines := VBoxContainer.new()
+	lines.alignment = BoxContainer.ALIGNMENT_CENTER
+	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lines.add_theme_constant_override("separation", 0)
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inside.add_child(lines)
+	var parts := text.split("\n", true, 1)
+	var name_label := _text(15, COLOR_ACCENT if chosen else COLOR_TEXT)
+	name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	name_label.text = parts[0]
+	name_label.clip_text = true
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lines.add_child(name_label)
+	var items_row := HBoxContainer.new()
+	items_row.add_theme_constant_override("separation", 4)
+	items_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lines.add_child(items_row)
+	for group: Array in UnitCard.grouped_equipment(entry.equipment):
+		items_row.add_child(ItemIcon.new(group[0], 16.0))
+	var items_label := _text(13, COLOR_DIM)
+	items_label.text = parts[1] if parts.size() > 1 else ""
+	items_label.clip_text = true
+	items_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	items_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	items_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	items_row.add_child(items_label)
+	items_row.add_child(CostGems.new(entry.cost(), 0, 7.0))
+	main.set_pressed_no_signal(chosen)
 	main.pressed.connect(func() -> void: select_entry(-1 if _selected == index else index))
 	row.add_child(main)
 	var remove := _button(Text.t("deck.edit.remove"), 14)
-	remove.custom_minimum_size = Vector2(52.0, 46.0)
+	remove.custom_minimum_size = Vector2(52.0, 50.0)
+	remove.theme_type_variation = UiTheme.BUTTON_ROW  # 札より軽く見せる（枠の無い行のボタン。乗ると薄く塗る）
+	remove.add_theme_color_override("font_color", COLOR_DIM)
 	remove.pressed.connect(func() -> void: remove_entry(index))
 	row.add_child(remove)
 	return row
@@ -1002,11 +1204,14 @@ func _refresh_detail() -> void:
 	if entry != null:
 		title = "%d. %s" % [_selected + 1, title]
 	_detail_title.text = title
-	_detail_icon.texture = UnitIcons.texture(unit_kind)
+	_detail_icon.set_kind(unit_kind)
+	_detail_role.role = UnitKind.role(unit_kind)
+	_detail_role.visible = UnitKind.role(unit_kind) != UnitKind.Role.NONE
 	var held: Array[Equipment.Id] = []
 	if entry != null:
 		held = entry.equipment
 	var lines := DeckText.detail_lines(unit_kind, held, _deck.army if _deck != null else -1, false)
+	_detail_stats.set_line(DeckText.stats_line(unit_kind, DeckText.equipment_bonus(held)))
 	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
 	entry = chosen_entry
 	if entry != null:
@@ -1199,10 +1404,88 @@ func _card() -> PanelContainer:
 	return panel
 
 
-func _caption(text: String) -> Label:
-	var label := _text(15, COLOR_DIM)
+## 欄の小見出し（金の太字と、右へ伸びる細い線）。
+func _caption(text: String) -> Control:
+	return UiTheme.section_head(text, 15)
+
+
+## 画面の見出し（明朝）。
+func _heading(text: String) -> Label:
+	var label := Label.new()
+	label.theme_type_variation = UiTheme.LABEL_HEADING
+	label.add_theme_font_size_override("font_size", 26)
 	label.text = text
 	return label
+
+
+## 必殺技の文（「必殺技: 名前」と説明）。1 行目を小見出しの色、説明を補足の色で、幅 width に折り返して出す。
+func _ult_lines(text: String, width: float, font_size: int) -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var parts := text.split("\n", true, 1)
+	var head := _text(font_size, COLOR_ACCENT)
+	head.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	_fold(head, parts[0], width)
+	box.add_child(head)
+	if parts.size() > 1:
+		var body := _text(font_size, COLOR_DIM)
+		_fold(body, parts[1], width)
+		box.add_child(body)
+	return box
+
+
+## 雇える駒の札の中身を作る（額、名前、役割とコスト、能力値の欄、右上にコストの宝石）。中身は _show_roster_unit が入れる。
+func _fill_roster_button(button: Button) -> void:
+	var inside := HBoxContainer.new()
+	inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inside.offset_left = 8.0
+	inside.offset_right = -10.0
+	inside.add_theme_constant_override("separation", 10)
+	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(inside)
+	var frame := UnitFrame.new(UnitKind.Id.KING, 0, 48.0)
+	inside.add_child(frame)
+	var lines := VBoxContainer.new()
+	lines.alignment = BoxContainer.ALIGNMENT_CENTER
+	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lines.add_theme_constant_override("separation", 1)
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inside.add_child(lines)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lines.add_child(top)
+	var head := _text(14, COLOR_TEXT)
+	head.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	head.clip_text = true
+	head.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(head)
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 0)
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lines.add_child(bottom)
+	var stats := StatsRow.new("", 13, 48.0)
+	stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom.add_child(stats)
+	var gems := CostGems.new(0, 0, 7.0, 58.0)
+	bottom.add_child(gems)
+	button.set_meta(&"inside", inside)
+	button.set_meta(&"parts", [frame, head, gems, stats])
+
+
+## 雇える駒の札に、kind の駒を出す。文は「名前　役割　コスト N」と能力値の 2 行（deck.edit.roster_unit）を、行ごとに分けて置く。
+func _show_roster_unit(button: Button, kind: UnitKind.Id) -> void:
+	var text := Text.t("deck.edit.roster_unit", {"unit": Names.kind(kind), "role": DeckText.role_name(kind), "cost": UnitKind.cost(kind), "stats": DeckText.stats_line(kind)})
+	button.set_meta(&"row_text", text)
+	var parts: Array = button.get_meta(&"parts")
+	var split := text.split("\n", true, 1)
+	(parts[0] as UnitFrame).set_kind(kind)
+	(parts[1] as Label).text = split[0]
+	(parts[2] as CostGems).count = UnitKind.cost(kind)
+	(parts[3] as StatsRow).set_line(split[1] if split.size() > 1 else "")
 
 
 func _text(font_size: int, color: Color) -> Label:

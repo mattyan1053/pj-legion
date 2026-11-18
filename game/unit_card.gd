@@ -8,9 +8,14 @@ const DeckText := preload("res://game/deck_text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
+const StatsRow := preload("res://game/stats_row.gd")
+const CostGems := preload("res://game/cost_gems.gd")
 
 ## 札の幅（px）。並べたときに、中身で幅が変わらないように決めておく。
 const WIDTH := 220.0
+## 能力値の 1 項目の幅（px）。4 項目で、札の中身の幅に収まる。
+const STAT_WIDTH := 50.0
 
 
 ## kind の駒の札。equipment は持ち物（同じものはまとめて「×2」）。将（UnitKind.Id.KING）はコストを書かない（自動で加わる）。
@@ -26,7 +31,7 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 6)
 	column.add_child(top)
-	top.add_child(UnitIcons.rect(kind, side, false, 48.0))
+	top.add_child(UnitFrame.new(kind, side, 48.0))
 	var names := VBoxContainer.new()
 	names.add_theme_constant_override("separation", 0)
 	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -36,8 +41,17 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 	names.add_child(title)
 	var role := DeckText.role_name(kind)
 	var head := Text.t("deck.card.king") if kind == UnitKind.Id.KING else Text.t("deck.detail.role", {"role": role, "cost": UnitKind.cost(kind)})
-	names.add_child(_label(head, 13, true))
-	column.add_child(_label(DeckText.stats_line(kind, DeckText.equipment_bonus(equipment)), 13, true))
+	var head_row := HBoxContainer.new()
+	head_row.add_theme_constant_override("separation", 4)
+	names.add_child(head_row)
+	var head_label := _label(head, 13, true)
+	head_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head_row.add_child(head_label)
+	if kind != UnitKind.Id.KING and UnitKind.army(kind) != UnitKind.Army.NONE:
+		head_row.add_child(CostGems.new(UnitKind.cost(kind), 0, 7.0))
+	# 能力値は、項目ごとに幅のそろった欄に分ける（札を並べたとき、数が縦にそろう）。
+	var stats := StatsRow.new(DeckText.stats_line(kind, DeckText.equipment_bonus(equipment)), 13, STAT_WIDTH)
+	column.add_child(stats)
 	if not equipment.is_empty():
 		column.add_child(HSeparator.new())
 		for item: Array in grouped_equipment(equipment):

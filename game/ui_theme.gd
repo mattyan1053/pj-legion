@@ -149,6 +149,36 @@ static func scene_shade() -> Control:
 	return shade
 
 
+## 板の中の小見出し（LABEL_SECTION）と、その右へ伸びる細い線。欄の頭に置く。
+static func section_head(text: String, font_size := 15) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var label := Label.new()
+	label.text = text
+	label.theme_type_variation = LABEL_SECTION
+	label.add_theme_font_size_override("font_size", font_size)
+	row.add_child(label)
+	var line := HSeparator.new()
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(line)
+	return row
+
+
+## 危険の知らせの帯（出撃不可の理由など）。危険の色を薄く敷き、危険の色の縁。
+static func danger_strip_box() -> StyleBoxFlat:
+	var strip := box(Color(Palette.DANGER_FILL, 0.5), Color(Palette.DANGER, 0.55), 1, 4, 4.0)
+	strip.content_margin_left = 12.0
+	strip.content_margin_right = 12.0
+	return strip
+
+
+## 小さな番号の札（部隊の並びの番号）。沈んだ地に、枠の真鍮の縁。
+static func number_box() -> StyleBoxFlat:
+	return box(Palette.INK, Palette.BORDER, 1, 10, 1.0)
+
+
 # ---- ボタン ----
 
 
