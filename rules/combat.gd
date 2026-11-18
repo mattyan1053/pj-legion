@@ -120,7 +120,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
 	if target.on_the_move:
-		amount = amount * MOVING_DAMAGE_RATE_PERCENT / 100
+		amount = amount * moving_rate() / 100
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
 	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
 	result.forest = forest
@@ -151,3 +151,7 @@ static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[Battle
 	if target.hp == 0:
 		events.append_array(battle.remove_unit(target, attacker))
 	return events
+
+
+static func moving_rate() -> int:
+	return int(RuleProbe.f("moving_rate", MOVING_DAMAGE_RATE_PERCENT))
