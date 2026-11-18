@@ -143,6 +143,10 @@ const SCENES := {
 	"story_boss_mvp": "ストーリー: FANTASY の物語の「峠の番人」（勝ち方は中ボスの撃破だけ）に、敵の駒にダメージを与えずに勝ったリザルト（MVP は中ボスへのダメージで決まる）",
 	"story_fantasy_evolve": "ストーリー: FANTASY の物語の演習「分かれ道」で、あと 1 撃で進化するパラディンが盾役を攻撃し、進化先を選ぶところ",
 	"story_fantasy_main_list": "ストーリー: FANTASY の物語の演習を終え、本編の 1 話目をクリアしたあとの話の一覧（本編のカード、増えた持ち物とコスト上限）",
+	"story_split_sortie": "ストーリー: FANTASY の物語「岩山の合流」の出撃準備（味方が岩山の南と北に分かれて始まる。置けるマスが 2 か所に出る）",
+	"story_split_placed": "ストーリー: 「岩山の合流」の出撃準備で、南の隊の駒を北の置けるマスへ移したところ",
+	"story_split_talk": "ストーリー: 「岩山の合流」の前の会話（北に取り残されたセリスが話している。右は敵の話し手「連邦の伍長」）",
+	"story_split_start": "ストーリー: 「岩山の合流」の対戦の始めを、いちばん引いて見ている（南と北に分かれた味方、北の台地のそばの敵）",
 	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
 	"story_fantasy_forest_wide": "ストーリー: リュエルの森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
@@ -1914,6 +1918,49 @@ func _scene_story_fantasy_main_list() -> bool:
 
 
 ## FANTASY の物語の最後の話の出撃準備（既定の編成）。
+## FANTASY の物語の、味方が 2 か所に分かれて始まる話（岩山の合流）の出撃準備。
+func _scene_story_split_sortie() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	var at: int = _fantasy().episodes.map(func(episode: RefCounted) -> StringName: return episode.id).find(&"gorge_rejoin")
+	if at < 0 or not await _start_fantasy(at):
+		return false
+	return _at_sortie()
+
+
+## 南の置けるマス（盤の下半分）にいる最初の駒を、北の置けるマスの空いているところへ移す。
+func _scene_story_split_placed() -> bool:
+	if not await _scene_story_split_sortie():
+		return false
+	var deploy: Control = _app.current_scene().deploy_map()
+	var own: Array[Vector2i] = deploy.unit_cells()
+	var south: Array = own.filter(func(cell: Vector2i) -> bool: return cell.y > 10)
+	var open: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return cell.y < 10 and not own.has(cell))
+	if south.is_empty() or open.is_empty():
+		return false
+	deploy.press_cell(south[0])
+	deploy.press_cell(open[0])
+	_park_mouse()
+	return deploy.unit_cells().has(open[0])
+
+
+func _scene_story_split_talk() -> bool:
+	if not await _scene_story_split_sortie() or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	return talk.speaker() == "セリス" and talk.figures().size() >= 1
+
+
+func _scene_story_split_start() -> bool:
+	if not await _scene_story_split_sortie() or not await _sortie_to_battle():
+		return false
+	_scene = _app.current_scene()
+	var size: Vector2i = _scene.battle.board.size
+	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
+	_aim(OrbitCamera.max_distance_for(size), 0.0, (OrbitCamera.MIN_PITCH + OrbitCamera.MAX_PITCH) / 2.0)
+	_park_mouse()
+	return true
+
+
 func _scene_story_fantasy_forest_sortie() -> bool:
 	_app.context.decks.load_data({"decks": []})
 	if not await _start_fantasy(-1):

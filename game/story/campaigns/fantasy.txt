@@ -23,6 +23,7 @@ trial_shadow_step
 trial_eruption
 trial_evolution
 gorge_crossing
+gorge_rejoin
 ridge_siege
 barrow_vigil
 boulder_warden
