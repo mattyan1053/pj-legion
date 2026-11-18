@@ -1971,6 +1971,10 @@ func forecast_rect() -> Rect2:
 
 
 func _cell_under_mouse() -> Vector2i:
+	# 自動の対戦では、本物のマウスの位置を見ない。窓ありで回したとき（スクリーンショットや実機での確かめ）に、
+	# 机の上のマウスの下のマスが、検査の乗せたこと（hover）を上書きしないように。検査は hover で乗せる。
+	if context.checking == AppContext.CHECK_AUTOPLAY:
+		return NO_CELL
 	return _cell_at(get_viewport().get_mouse_position())
 
 
