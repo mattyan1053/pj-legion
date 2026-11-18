@@ -30,6 +30,8 @@ const BOX_HEIGHT := 150.0
 const BOX_BOTTOM := 40.0
 ## 背景の盤に重ねる幕の濃さ（Palette.SHADE の色）。
 const BACKDROP_SHADE := 0.3
+## 足元を沈める幕の、下の端の濃さ。
+const FLOOR_SHADE := 0.7
 ## 画面の端から見出しまでの余白。
 const MARGIN := Vector2(32.0, 24.0)
 ## 話し手の姿の枠の横幅の上限（文の枠の幅に対する割合。左右の姿が真ん中で重ならない）。
@@ -55,6 +57,7 @@ var _shown := 0.0  # いまの文の、出した文字数
 var _elapsed := 0.0
 var _plate: PanelContainer
 var _plate_style: StyleBoxFlat
+var _box_style: StyleBoxFlat
 var _name: Label
 var _text: Label
 var _face: TextureRect
@@ -89,6 +92,9 @@ func _ready() -> void:
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
+	# 足元を、下から夜の藍へ沈める（話し手の姿が、舞台に立って見える）。四隅も沈める。
+	layer.add_child(_floor_shade())
+	layer.add_child(UiTheme.vignette())
 	# 縦に、見出し・話し手の姿の舞台・下の名前の札と文の枠。姿は舞台の中に収め、札・文の枠・「飛ばす」とは重ねない。
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -100,7 +106,9 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
-	var heading := _label(26, COLOR_TEXT)
+	var heading := _label(28, COLOR_TEXT)
+	heading.theme_type_variation = UiTheme.LABEL_HEADING
+	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	heading.text = talk.get("title", "")
 	root.add_child(heading)
 
@@ -122,14 +130,12 @@ func _ready() -> void:
 	var top_row := HBoxContainer.new()
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(top_row)
-	_plate_style = StyleBoxFlat.new()
-	_plate_style.set_corner_radius_all(4)
-	_plate_style.corner_radius_bottom_left = 0
-	_plate_style.corner_radius_bottom_right = 0
-	_plate_style.content_margin_left = 18.0
-	_plate_style.content_margin_right = 18.0
-	_plate_style.content_margin_top = 4.0
-	_plate_style.content_margin_bottom = 4.0
+	# 名前の札: 話し手の陣営の色の、角を落とした札（色と縁は、行を出すときに決める）。
+	_plate_style = UiTheme.box(Palette.RAISED, Palette.BORDER, 1, 8, 4.0, 4)
+	_plate_style.corner_detail = 1
+	_plate_style.border_width_bottom = 2
+	_plate_style.content_margin_left = 20.0
+	_plate_style.content_margin_right = 20.0
 	_plate = PanelContainer.new()
 	_plate.add_theme_stylebox_override("panel", _plate_style)
 	_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -153,11 +159,10 @@ func _ready() -> void:
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(gap)
 
-	var box_style := StyleBoxFlat.new()
-	box_style.bg_color = COLOR_BOX
-	box_style.border_color = COLOR_BORDER
-	box_style.set_border_width_all(1)
-	box_style.set_corner_radius_all(6)
+	# 文の枠: 影の付いた板。上の縁は太く、話し手の陣営の色にする（名前の札とつながって見える）。
+	var box_style := UiTheme.box(COLOR_BOX, COLOR_BORDER, 1, 8, 12.0, 10)
+	box_style.border_width_top = 3
+	_box_style = box_style
 	box_style.content_margin_left = 28.0
 	box_style.content_margin_right = 28.0
 	box_style.content_margin_top = 18.0
@@ -372,7 +377,10 @@ func _show_line(index: int) -> void:
 	var line: Dictionary = talk["lines"][index]
 	_plate.visible = true
 	_name.text = line.get("name", "")
-	_plate_style.bg_color = TEAM_COLORS[clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)].darkened(0.15)
+	var team := TEAM_COLORS[clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)]
+	_plate_style.bg_color = team.darkened(0.15)
+	_plate_style.border_color = team.lightened(0.35)
+	_box_style.border_color = COLOR_BORDER.lerp(team.lightened(0.2), 0.85)
 	_text.text = line.get("text", "")
 	_face.visible = line.has("kind")
 	if _face.visible:
@@ -497,6 +505,25 @@ func _choice_input(event: InputEvent) -> void:
 				press_next_episode()
 			KEY_ESCAPE:
 				context.open_menu()
+
+
+## 足元を沈める幕（下の端が濃く、画面の半ばで消える）。入力は通す。
+static func _floor_shade() -> TextureRect:
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+	gradient.colors = PackedColorArray([Color(Palette.INK, 0.0), Color(Palette.INK, 0.0), Color(Palette.INK, FLOOR_SHADE)])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill_from = Vector2(0.0, 0.0)
+	texture.fill_to = Vector2(0.0, 1.0)
+	texture.width = 4
+	texture.height = 64
+	var rect := TextureRect.new()
+	rect.texture = texture
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rect
 
 
 func _label(font_size: int, color: Color) -> Label:
