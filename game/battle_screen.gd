@@ -284,12 +284,19 @@ func _process(delta: float) -> void:
 	if battle.board.in_bounds(_hover_cell):
 		focus_cells.append(_hover_cell)
 	_board_view.update_occlusion(_rig.camera, _rig.global_position, focus_cells, delta)
-	_hud.place_minimap()
-	if _hud.minimap().visible:
-		_hud.minimap().refresh(battle, _views, _rig.camera, get_viewport().get_visible_rect().size)
+	_place_minimap()
 	_layout.place_menu(selected_unit(), _painted)
 	_layout.place_forecast(battle, selected_unit())
 	frame_passed.emit()
+
+
+## ミニマップを置き、盤の上の駒と見ている範囲を描き直す。
+func _place_minimap() -> void:
+	if battle == null or not is_inside_tree():
+		return
+	_hud.place_minimap()
+	if _hud.minimap().visible:
+		_hud.minimap().refresh(battle, _views, _rig.camera, get_viewport().get_visible_rect().size)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -420,6 +427,8 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	add_child(_board_view)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
 	_hud.minimap().show_board(battle.board, look)
+	# 場面に入る幕が明けるまでは _process が回らないので、ミニマップの置き場所を先に決めておく（左上に出てから跳ばない）。
+	_place_minimap.call_deferred()
 	_playback.set_board_view(_board_view)
 	StageLook.apply(self, _board_view.look)
 	for unit in battle.units:
