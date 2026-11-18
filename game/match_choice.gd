@@ -50,7 +50,7 @@ func cpu_side() -> Unit.Side:
 
 
 ## 手番が「ランダム」のとき、種 battle_seed の対戦で人が動かす側。対戦の乱数とは別に引く（盤や対戦の進みを変えない）。
-## 同じ種なら同じ側（「同じ盤面でもう一度」は同じ手番で始め直す）。
+## 同じ種なら同じ側（「同じマップで再戦」は同じ手番で始め直す）。
 static func draw_side(battle_seed: int) -> Unit.Side:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([&"human_side", battle_seed])
@@ -73,8 +73,8 @@ func set_cpu_opponent(cpu: bool) -> void:
 	cpu_opponent = cpu
 
 
-## 「新しい盤面」で選べるマップ: 生成のマップ（マップ選択のカードと同じ並び）。
-## 手で作ったマップは、種を替えても同じ形なので入れない（同じマップは「同じ盤面でもう一度」、ほかのマップは対戦設定から）。
+## 「新しいマップ」で選べるマップ: 生成のマップ（マップ選択のカードと同じ並び）。
+## 手で作ったマップは、種を替えても同じ形なので入れない（同じマップは「同じマップで再戦」、ほかのマップは対戦設定から）。
 func new_board_fields() -> Array[StringName]:
 	return VersusFields.generated_ids()
 

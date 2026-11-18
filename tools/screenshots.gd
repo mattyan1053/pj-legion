@@ -30,7 +30,7 @@ const SCENES := {
 	"map_hover": "マップ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
 	"versus_hand_start": "対戦モードの、手で作ったマップ（一覧の最初のもの。画面に出していないものでも）での対戦の始め",
 	"versus_hand_last_start": "対戦モードの、手で作ったマップ（一覧の最後のもの。いちばん新しく足したもの）での対戦の始め",
-	"versus_hand_result": "対戦モードの、手で作ったマップで CPU に勝ったときのリザルト（「新しい盤面」は生成のマップだけ）",
+	"versus_hand_result": "対戦モードの、手で作ったマップで CPU に勝ったときのリザルト（「新しいマップ」は生成のマップだけ）",
 	"setup": "対戦設定の場面（マップ選択のあと）",
 	"setup_again": "対戦の途中で開いた、対戦設定画面（閉じて戻れる）",
 	"setup_confirm": "対戦の途中で開いた対戦設定画面で「マップを選び直す」を 1 回押し、確かめている",
@@ -159,16 +159,18 @@ const SCENES := {
 	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の軍の曹長が話している。左の姿は進化後のシールドトルーパー）",
 	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
 	"story_talk_squad": "ストーリー: 部隊の中の人が話している対戦の前の会話（岩山の掃討。左の所の姿が、話した人に入れ替わる。右は敵の話し手）",
+	"story_rivals_ridge": "ストーリー: MILITARY の物語「尾根の小道」の前の会話（左にハーデン、右にイェルダ。見分けが付くか）",
+	"story_rivals_forest": "ストーリー: FANTASY の物語「森の守り」の前の会話（左にイェルダ、右にハーデン。どちらも将。見分けが付くか）",
 	"story_talk_allies": "ストーリー: 敵の軍が出てこない会話（演習「手当て」の前。最初に話した人が左、ほかの人が右に立って向き合う）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
 	"story_result": "ストーリー: 話の対戦に勝った決着の画面（「次へ」が出る）",
-	"story_defeat": "ストーリー: 話の対戦に負けた決着の画面（Enter で「同じ盤面でもう一度」。「部隊を選び直す」で出撃準備へ戻れる）",
+	"story_defeat": "ストーリー: 話の対戦に負けた決着の画面（Enter で「同じマップで再戦」。「部隊を選び直す」で出撃準備へ戻れる）",
 	"story_talk_menu": "ストーリー: 会話の場面で開いたシステムメニュー（閉じるボタンが「会話へ戻る」）",
 	"story_decks_detour": "ストーリー: 出撃準備の「部隊編成」で開いた編成（ストーリー用だけ。「出撃準備へ戻る」）",
 	"story_after": "ストーリー: 勝ったあとの会話（決着の画面の「次へ」のあと）",
 	"story_unlock": "ストーリー: あとの会話の最後の、解放した駒の知らせ（灰色の札。「飛ばす」でもここで止まる）",
-	"story_next_choice": "ストーリー: あとの会話を読み終えて、「次の話へ」「話の一覧へ」を選ぶところ",
+	"story_next_choice": "ストーリー: あとの会話を読み終えて、「次の話へ」「話の一覧へ」を選ぶところ（選ぶ間は「スキップ」を出さない）",
 	"story_battle_menu": "ストーリー: 話の対戦の途中で開いたシステムメニュー（「話の一覧へ戻る」がある）",
 	"story_item_unlock": "ストーリー: ストーリー専用の持ち物の知らせ（持ち物の印と効果）",
 	"story_items_decks": "ストーリー: FANTASY の物語を全部クリアしたあとの部隊編成（並ぶ持ち物が増えた。重ねられない持ち物は理由つき）",
@@ -205,6 +207,8 @@ const BANNER_WAIT := 3.0
 ## CPU どうしで進める行動の数の上限（場面が来なければ、撮らずに失敗にする）。
 const MAX_ACTIONS := 3000
 const JPEG_QUALITY := 0.82
+## `--frame-time` で測るコマの数。
+const FRAME_TIME_FRAMES := 40
 
 var _app: Node
 ## いまの対戦の画面（battle_screen.gd）。アプリが対戦の場面にいる間だけ使う。
@@ -212,6 +216,8 @@ var _scene: Node
 var _out := ""
 ## 場面を作るだけで撮らない（`--dry-run`。画面なしの長い検査で、場面が作れることだけを確かめる）。
 var _dry_run := false
+## 撮る前に、その場面の 1 コマの時間を測って出す（`--frame-time`。見た目を変えた前後の重さを比べる）。
+var _frame_time := false
 var _names: Array[String] = []
 var _cpu := CpuPlayer.new()
 var _battle: Battle
@@ -237,6 +243,7 @@ func _ready() -> void:
 	var shots := _arg(args, "--shots")
 	_out = _arg(args, "--out")
 	_dry_run = args.has("--dry-run")
+	_frame_time = args.has("--frame-time")
 	if shots == "" or (_out == "" and not _dry_run):
 		_quit("screenshots: --shots と --out（か --dry-run）を指定する（場面: %s）" % ", ".join(SCENES.keys()), 1)
 		return
@@ -329,6 +336,11 @@ func _reset(seed: int) -> void:
 
 ## いまの画面を撮って書く。書けなければ終わらせて偽を返す。
 func _capture(name: String) -> bool:
+	if _frame_time:
+		var started := Time.get_ticks_usec()
+		for i in FRAME_TIME_FRAMES:
+			await RenderingServer.frame_post_draw
+		print("screenshots: %s の 1 コマ %.1f ms（%d コマの平均）" % [name, (Time.get_ticks_usec() - started) / 1000.0 / FRAME_TIME_FRAMES, FRAME_TIME_FRAMES])
 	await RenderingServer.frame_post_draw
 	var path := _out.path_join(name + ".jpg")
 	var error := get_viewport().get_texture().get_image().save_jpg(path, JPEG_QUALITY)
@@ -1992,6 +2004,25 @@ func _military_index(id: StringName) -> int:
 		if episodes[index].id == id:
 			return index
 	return -1
+
+
+## ハーデンとイェルダが向き合う会話（MILITARY の物語）。ハーデンが話していて、右にイェルダ。
+func _scene_story_rivals_ridge() -> bool:
+	if not await _start_story(_military_index(&"ridge_path")) or not await _talk_from_sortie():
+		return false
+	return _talk_until(0) and _app.current_scene().figures().size() == 2
+
+
+## ハーデンとイェルダが向き合う会話（FANTASY の物語の「森の守り」）。イェルダが話していて、右にハーデン。
+func _scene_story_rivals_forest() -> bool:
+	var episodes: Array = _fantasy().episodes
+	var at := episodes.map(func(episode: RefCounted) -> StringName: return episode.id).find(&"mist_forest")
+	if at < 0 or not await _start_fantasy(at) or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < talk.line_count() and talk.speaker() != "イェルダ":
+		talk.press_next()
+	return talk.speaker() == "イェルダ" and talk.figures().size() == 2
 
 
 ## 部隊の中の人（人の軍の 3 人目の話し手）が話している、対戦の前の会話。右に敵の話し手。

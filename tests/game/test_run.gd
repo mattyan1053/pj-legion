@@ -56,6 +56,20 @@ func test_an_inserted_scene_returns_to_the_current_one() -> void:
 	assert_eq(run.advance(), &"battle")
 
 
+func test_a_finished_detour_leaves_the_run() -> void:
+	var run := Run.new()
+	run.add(&"sortie", "準備")
+	run.add(&"talk", "前", true)
+	run.add(&"battle", 3)
+	for i in 5:
+		run.insert(&"decks", "編成")
+		assert_eq(run.advance(), &"sortie", "寄り道を終えると、もとの場面へ戻る")
+	assert_eq(run.size(), 3, "寄り道を何度しても、列は伸びない")
+	assert_eq(run.advance(), &"talk")
+	assert_eq(run.advance(), &"battle")
+	assert_eq(run.back(), &"sortie", "寄り道の場面へは戻らない（通り過ぎた once の会話も飛ばす）")
+
+
 func test_a_once_scene_is_skipped_after_it_was_passed() -> void:
 	var run := Run.new()
 	run.add(&"sortie", "準備")

@@ -6,7 +6,7 @@ extends Control
 ## 3. MVP が拡大しながら出る。
 ## 4. 行き先のボタンと、入力の案内が出る。**ここまで出そろうまで、行き先は選べない。**
 ## 出そろう前のクリック（Enter・Space でも）は、演出を飛ばして全部を出すだけ（行き先は選ばない）。
-## 出そろったあとの Enter は、「次へ」を出していればそれ、「同じ盤面でもう一度」にすると決めていればそれ（ストーリーで負けたとき）、
+## 出そろったあとの Enter は、「次へ」を出していればそれ、「同じマップで再戦」にすると決めていればそれ（ストーリーで負けたとき）、
 ## どちらでもなければタイトルへ（ボタンの「タイトルへ」と同じ）。Enter で選ぶボタンは、文字を大きくして目立たせる。両方の陣営の詳しい戦績は畳んでおき、ボタンで開く。
 ##
 ## 何を出すかは呼ぶ側（result_summary.gd）が決める。ここは見せ方と、押されたことを signal で知らせるだけ。
@@ -19,7 +19,7 @@ const OverlayStack := preload("res://game/overlay_stack.gd")
 const StatsText := preload("res://game/stats_text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 
-## 行き先のボタン。field はマップの鍵（versus_fields.gd）。new_board が偽なら、いまと同じ盤面でもう一度（field は見ない）。
+## 行き先のボタン。field はマップの鍵（versus_fields.gd）。new_board が偽なら、いまと同じマップで再戦（field は見ない）。
 signal restart_pressed(field: StringName, new_board: bool)
 signal setup_pressed
 signal title_pressed
@@ -111,13 +111,13 @@ var _detail_text := ""
 var _actions: VBoxContainer
 var _detail_button: Button
 ## 行き先のボタンのうち、対戦によって出さないことがあるもの（set_destinations）。
-var _board_buttons: Array[Button] = []  # 新しい盤面（ボタンの meta の &"field" がマップの鍵）
+var _board_buttons: Array[Button] = []  # 新しいマップ（ボタンの meta の &"field" がマップの鍵）
 var _setup_button: Button
 var _leave_button: Button
 var _squad_button: Button
 var _continue_button: Button
 var _again_button: Button
-## Enter で「同じ盤面でもう一度」を選ぶか（set_continue）。
+## Enter で「同じマップで再戦」を選ぶか（set_continue）。
 var _enter_retries := false
 var _prompt: Label
 var _buttons: Array[Button] = []
@@ -391,8 +391,8 @@ func _buttons_ready() -> bool:
 
 
 ## 出す行き先を決める（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める）。
-## boards は「新しい盤面」で選べるマップの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦設定へ」、squad は「部隊を選び直す」を出すか。
-## 「同じ盤面でもう一度」と、流れの外への行き先（set_leave。既定は「タイトルへ」）は、いつも出す。
+## boards は「新しいマップ」で選べるマップの [鍵, 名前] の列（並びの順にボタンを出す）、setup は「対戦設定へ」、squad は「部隊を選び直す」を出すか。
+## 「同じマップで再戦」と、流れの外への行き先（set_leave。既定は「タイトルへ」）は、いつも出す。
 func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void:
 	while _board_buttons.size() < boards.size():
 		var button := _button("", 0.0)
@@ -412,7 +412,7 @@ func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void
 
 
 ## 「次へ」を出すか（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める。決着の画面を出すたびに決める）。
-## retry は、「次へ」が無いときの Enter を「同じ盤面でもう一度」にするか（偽ならタイトルへ）。
+## retry は、「次へ」が無いときの Enter を「同じマップで再戦」にするか（偽ならタイトルへ）。
 func set_continue(shown: bool, retry := false) -> void:
 	_continue_button.visible = shown
 	_enter_retries = retry and not shown
@@ -446,7 +446,7 @@ func enter_destination() -> String:
 	return _leave_button.text
 
 
-## 「同じ盤面でもう一度」を押す。
+## 「同じマップで再戦」を押す。
 func press_again() -> void:
 	restart_pressed.emit(&"", false)
 
@@ -478,7 +478,7 @@ func press_choose_squad() -> void:
 		squad_pressed.emit()
 
 
-## 「新しい盤面」で出しているマップの鍵。検査用。
+## 「新しいマップ」で出しているマップの鍵。検査用。
 func new_board_fields() -> Array[StringName]:
 	var shown: Array[StringName] = []
 	for button in _board_buttons:
@@ -716,7 +716,7 @@ func _build_actions() -> void:
 	_actions.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_body.add_child(_actions)
 	var row := _row()
-	# 「次へ」は「同じ盤面でもう一度」と同じ行の先頭に置く（ストーリーでは新しい盤面のボタンが出ないので、行が空く。
+	# 「次へ」は「同じマップで再戦」と同じ行の先頭に置く（ストーリーでは新しい盤面のボタンが出ないので、行が空く。
 	# 行を分けると、戦績の行が多いときにボタンが画面の下の帯に重なる）。
 	_continue_button = _button(Text.t("result.next"), 240.0)
 	_continue_button.set_meta(&"sound", &"ui_confirm")
@@ -729,7 +729,7 @@ func _build_actions() -> void:
 	_again_button.set_meta(&"sound", &"ui_confirm")
 	_again_button.pressed.connect(press_again)
 	row.add_child(_again_button)
-	# 「新しい盤面」のボタンは、この行に set_destinations が足す。
+	# 「新しいマップ」のボタンは、この行に set_destinations が足す。
 	var leave := _row()
 	_setup_button = _button(Text.t("result.setup"), 320.0)
 	_setup_button.pressed.connect(setup_pressed.emit)
