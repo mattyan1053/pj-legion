@@ -6,11 +6,15 @@ extends RefCounted
 ## - ただし、攻撃する駒と相手の間のマス（cells_between）に盾があると届かない（docs/field-effects.md）
 ## - 攻撃できるのは敵（違う陣営）の駒だけ。中立の駒は両プレイヤーの敵
 ## - ダメージは攻撃側の攻撃力（確定クリティカルなら倍率を掛ける）。守る側が森にいれば 0.8 倍（端数切り捨て）
+## - 守る側が動いた直後（Unit.on_the_move。自分の番に動いて、次の自分の番が来るまで）なら、さらに 0.75 倍（端数切り捨て）。移動の軽減
 ## - 受ける側にバリアがあれば 0（Hit。駒の HP を減らすものは、どれも Hit を通す）
 ## - 煙幕の中の持ち主の駒への、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃は、ダメージが 0 になる（FieldEffects.smoke_covering）
 ## - 回復役（衛生兵・プリースト）は攻撃しない（かわりに味方を回復する。Healing）
 
 const FOREST_DAMAGE_RATE_PERCENT := 80
+## 動いた直後の駒（Unit.on_the_move）が受ける、駒の攻撃のダメージの割合（%）。移動の軽減（docs/combat.md）。
+## 先に相手の届く所へ踏み込んだ側が、待っていた側に一方的に削られすぎないようにする。
+const MOVING_DAMAGE_RATE_PERCENT := 75
 ## この距離から先の攻撃が「離れたところからの攻撃」。煙幕が防ぐ。
 const RANGED_DISTANCE := 2
 
@@ -105,7 +109,7 @@ static func attack_power(attacker: Unit) -> int:
 
 
 ## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
-## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、森の軽減、受ける側の状態（バリア）。
+## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、森の軽減、移動の軽減、受ける側の状態（バリア）。
 ## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
 static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
@@ -115,9 +119,12 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
 	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
+	if target.on_the_move:
+		amount = amount * MOVING_DAMAGE_RATE_PERCENT / 100
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
 	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
 	result.forest = forest
+	result.moving = target.on_the_move
 	return result
 
 

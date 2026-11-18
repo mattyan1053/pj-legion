@@ -32,3 +32,7 @@ func test_every_status_has_a_text() -> void:
 	for type: int in Status.Type.values():
 		var text := BattleHud.status_text(type as Status.Type, 2)
 		assert_true(text.begins_with(Names.status(type as Status.Type)) and text.contains("あと 2 ターン"), text)
+
+
+func test_moving_cut_has_a_text() -> void:
+	assert_eq(BattleHud.moving_text(), "移動直後（次の自分の番まで）: 受けるダメージ 0.75 倍")

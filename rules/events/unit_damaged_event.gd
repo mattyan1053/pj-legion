@@ -25,6 +25,8 @@ var cause: Cause
 var critical := false
 ## 森の軽減が掛かったか（駒の攻撃だけ。amount は軽減したあとの量）。
 var forest := false
+## 移動の軽減が掛かったか（駒の攻撃だけ。受けた駒が動いた直後。amount は軽減したあとの量）。
+var moving := false
 ## ダメージを 0 にした、受けた駒の状態（Status.Type。バリア）。防がれていなければ -1。
 ## 防がれたときは amount が 0 で、このあとに、その状態が外れる StatusRemovedEvent が続く。
 var blocked_by := -1
@@ -38,6 +40,7 @@ func _fill(hit: Hit) -> void:
 	cause = hit.cause
 	critical = hit.critical
 	forest = hit.forest
+	moving = hit.moving
 	blocked_by = hit.blocked_by
 
 

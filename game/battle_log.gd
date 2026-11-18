@@ -292,6 +292,8 @@ func _damage_text(hit: UnitDamagedEvent, by_attack: bool) -> String:
 		notes.append(Text.t("battle.log.note.critical"))
 	if hit.forest:
 		notes.append(Text.t("battle.log.note.forest"))
+	if hit.moving:
+		notes.append(Text.t("battle.log.note.moving"))
 	return text + Text.notes(notes)
 
 

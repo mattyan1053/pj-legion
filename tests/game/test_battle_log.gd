@@ -134,12 +134,14 @@ func test_attack_shows_damage_and_remaining_hp() -> void:
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 0))
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(2, 0))
 	sniper.hp = 30
+	sniper.on_the_move = true
 	var book := BattleLog.new(battle)
 	_apply(battle, book, AttackAction.new(paladin.id, sniper.id))
 	var line := _lines(book)[-1]
 	assert_true(line.begins_with("青のパラディンが赤のスナイパーを攻撃: "), line)
 	assert_true(line.contains("残り HP %d" % sniper.hp), line)
 	assert_true(line.contains("森で軽減"), line)
+	assert_true(line.contains("移動で軽減"), line)
 	assert_eq(_lines(book).size(), 1, "経験値と行動済みは行にしない")
 	assert_eq(book.entries[-1].side, P1)
 	assert_eq(book.entries[-1].cell, Vector2i(2, 0), "攻撃された駒のマス")

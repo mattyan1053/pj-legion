@@ -365,6 +365,8 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	var statuses: Array[String] = []
 	for type in Statuses.types_of(unit):
 		statuses.append(status_text(type, unit.statuses[type]))
+	if unit.on_the_move:
+		statuses.append(moving_text())
 	_set_shown(_info_statuses, "\n".join(statuses))
 
 	var items := ""
@@ -427,6 +429,11 @@ static func equipment_text(items: Array[Equipment.Id]) -> String:
 ## 付いている状態の文（名前、残りのターン数、効果）。
 static func status_text(type: Status.Type, turns: int) -> String:
 	return Text.t("battle.hud.status", {"status": Names.status(type), "turns": turns, "effect": Names.status_summary(type)})
+
+
+## 動いた直後の駒の文（移動の軽減。docs/combat.md）。
+static func moving_text() -> String:
+	return Text.t("battle.hud.moving", {"rate": String.num(Combat.MOVING_DAMAGE_RATE_PERCENT / 100.0)})
 
 
 ## クリックしたマスの情報を、駒の情報と同じ枠に出す。title は見出し（マスの位置と地形）、body は説明（行ごと）。

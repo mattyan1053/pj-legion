@@ -73,6 +73,11 @@ func test_forest_critical_barrier_and_smoke() -> void:
 	var critical := Forecast.of(battle, AttackAction.new(sniper.id, in_forest.id)).outcome(in_forest.id)
 	assert_true(critical.critical)
 	assert_eq(critical.damage, sniper.power() * 2 * Combat.FOREST_DAMAGE_RATE_PERCENT / 100, "倍率のあとに森")
+	in_forest.on_the_move = true
+	var moving := Forecast.of(battle, AttackAction.new(sniper.id, in_forest.id)).outcome(in_forest.id)
+	assert_true(moving.moving, "動いた直後の軽減も予測に出る")
+	assert_eq(moving.damage, sniper.power() * 2 * Combat.FOREST_DAMAGE_RATE_PERCENT / 100 * Combat.MOVING_DAMAGE_RATE_PERCENT / 100)
+	in_forest.on_the_move = false
 	Statuses.add(in_forest, Status.Type.BARRIER, 2)
 	var blocked := Forecast.of(battle, AttackAction.new(sniper.id, in_forest.id))
 	assert_eq(blocked.outcome(in_forest.id).damage, 0)

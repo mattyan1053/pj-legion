@@ -49,6 +49,11 @@ var acted := false
 var has_moved := false
 var move_origin: Vector2i
 var cruised := false
+## 動いた直後か: 自分の番に、移動（巡航・ポータルも）でほかのマスへ動いた。次の自分のフェーズの始めまで続き、
+## その間に受ける攻撃のダメージが減る（移動の軽減。Combat.MOVING_DAMAGE_RATE_PERCENT。docs/combat.md）。
+var on_the_move := false
+## いまの行動で動く前の on_the_move（移動の取り消しで戻すため）。
+var on_the_move_before_move := false
 ## いまの行動で、移動の取り消しがもうできないか（行動を終えないスキルを使ったあと。docs/active-skills.md）。
 var move_locked := false
 ## スキルをまた使えるまでの残り（docs/active-skills.md）。0 なら使える。自分のフェーズの始めに 1 減る。

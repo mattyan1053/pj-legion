@@ -21,6 +21,7 @@ battle.log.damage.effect.defeated,{amount} ダメージ、倒れた
 battle.log.damage.left,{amount} ダメージ、残り HP {hp}
 battle.log.note.critical,クリティカル
 battle.log.note.forest,森で軽減
+battle.log.note.moving,移動で軽減
 battle.log.phase,ターン {turn}　{side}の番
 battle.log.note.cruise,巡航
 battle.log.note.portal,ポータル経由
@@ -199,6 +200,7 @@ battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし
 battle.hud.status,{status}（あと {turns} ターン）: {effect}
+battle.hud.moving,移動直後（次の自分の番まで）: 受けるダメージ {rate} 倍
 battle.hud.skill_state.used_up,使用済み
 battle.hud.skill_state.ready,使用可
 battle.hud.skill_state.unusable,使用不可

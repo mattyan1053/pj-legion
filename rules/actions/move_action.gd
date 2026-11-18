@@ -34,6 +34,9 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	unit.move_origin = unit.cell
 	unit.cruised = cruise
 	var moved := to != unit.cell
+	unit.on_the_move_before_move = unit.on_the_move
+	if moved:
+		unit.on_the_move = true
 	unit.cell = to
 	unit.statuses_before_move = {}
 	if moved:

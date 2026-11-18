@@ -88,6 +88,8 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 				row.notes.append(Text.t("battle.log.note.critical"))
 			if outcome.forest:
 				row.notes.append(Text.t("battle.log.note.forest"))
+			if outcome.moving:
+				row.notes.append(Text.t("battle.log.note.moving"))
 			if outcome.exploded:
 				row.notes.append(Text.t("battle.pop.exploded"))
 			if row.is_actor:

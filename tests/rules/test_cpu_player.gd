@@ -97,9 +97,10 @@ func test_attacks_without_moving_when_already_in_range() -> void:
 func test_king_leaves_cells_where_it_could_be_defeated() -> void:
 	var battle := _battle()
 	var king := battle.add_unit(UnitKind.Id.KING, P1, HQ1)
-	king.hp = 10
 	battle.add_unit(UnitKind.Id.KING, P2, HQ2)
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P2, Vector2i(5, 4))
+	# 動いた先でも（移動の軽減のあとでも）一撃で倒れる HP。
+	king.hp = commando.power() * Combat.MOVING_DAMAGE_RATE_PERCENT / 100
 	_play_phase(battle)
 	assert_ne(king.cell, HQ1, "倒されうるマスに残った")
 	var reach := commando.move_range() + commando.attack_range()

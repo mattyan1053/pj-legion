@@ -19,9 +19,10 @@ class UnitOutcome:
 	## 受けるダメージの合計（防がれたぶんは 0）と、当たる回数（防がれたものも数える）。
 	var damage := 0
 	var hits := 0
-	## ダメージの内訳: 確定クリティカルか、森で減るか、駒の状態に防がれるか（Status.Type。無ければ -1）、煙幕に阻まれるか。
+	## ダメージの内訳: 確定クリティカルか、森で減るか、動いた直後で減るか、駒の状態に防がれるか（Status.Type。無ければ -1）、煙幕に阻まれるか。
 	var critical := false
 	var forest := false
+	var moving := false
 	var blocked_by := -1
 	var smoked := false
 	## 樽の爆発に巻き込まれるか。
@@ -129,6 +130,7 @@ func _read(battle: Battle) -> void:
 			unit.hits += 1
 			unit.critical = unit.critical or damaged.critical
 			unit.forest = unit.forest or damaged.forest
+			unit.moving = unit.moving or damaged.moving
 			unit.exploded = unit.exploded or damaged.cause == UnitDamagedEvent.Cause.EXPLOSION
 			if damaged.is_blocked():
 				unit.blocked_by = damaged.blocked_by

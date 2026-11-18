@@ -84,6 +84,49 @@ func test_forest_cuts_damage_by_20_percent_rounding_down() -> void:
 	assert_eq(Combat.damage(battle, sniper, target), 5)  # 5.6 → 5
 
 
+## 移動の軽減: 自分の番にほかのマスへ動いた駒は、次の自分の番が来るまで、受ける攻撃のダメージが 0.75 倍（端数切り捨て）。
+func test_a_unit_that_moved_takes_less_damage_until_its_next_turn() -> void:
+	var battle := _battle()
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(5, 0))
+	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(7, 1))  # 攻撃力 11
+	assert_false(paladin.on_the_move)
+	assert_true(battle.apply(MoveAction.new(paladin.id, Vector2i(6, 0))).accepted)
+	assert_true(paladin.on_the_move)
+	assert_true(battle.apply(WaitAction.new(paladin.id)).accepted)
+	assert_true(battle.apply(EndPhaseAction.new()).accepted)
+	assert_eq(battle.phase, P2)
+	assert_eq(Combat.damage(battle, sorcerer, paladin), 11 * Combat.MOVING_DAMAGE_RATE_PERCENT / 100)  # 8.25 → 8
+	var events := battle.apply(AttackAction.new(sorcerer.id, paladin.id)).events
+	var damaged := events[0] as AttackDamagedEvent
+	assert_true(damaged.moving)
+	assert_false(damaged.forest)
+	assert_eq(paladin.hp, paladin.max_hp() - 8)
+	# 次の自分の番の始めに解ける。
+	assert_true(battle.apply(EndPhaseAction.new()).accepted)
+	while battle.phase != P1:
+		assert_true(battle.apply(EndPhaseAction.new()).accepted)
+	assert_false(paladin.on_the_move)
+
+
+func test_moving_cut_stacks_with_forest_and_skips_units_that_stayed() -> void:
+	var battle := _battle()
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 2))  # 攻撃力 7
+	var target := battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(2, 2))  # 森
+	target.on_the_move = true
+	assert_eq(Combat.damage(battle, sniper, target), 7 * 80 / 100 * Combat.MOVING_DAMAGE_RATE_PERCENT / 100, "森のあとに掛ける")
+	var hit := Combat.hit(battle, sniper, target)
+	assert_true(hit.forest and hit.moving)
+	# 動かない移動（いまのマスへ）と、取り消した移動では付かない。
+	var mover := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(5, 0))
+	assert_true(battle.apply(MoveAction.new(mover.id, mover.cell)).accepted)
+	assert_false(mover.on_the_move)
+	assert_true(battle.apply(UndoMoveAction.new(mover.id)).accepted)
+	assert_true(battle.apply(MoveAction.new(mover.id, Vector2i(6, 0))).accepted)
+	assert_true(mover.on_the_move)
+	assert_true(battle.apply(UndoMoveAction.new(mover.id)).accepted)
+	assert_false(mover.on_the_move, "取り消すと戻る")
+
+
 func test_attack_reduces_hp_and_ends_the_action() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
