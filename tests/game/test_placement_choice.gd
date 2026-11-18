@@ -3,6 +3,7 @@ extends "res://tests/base_test.gd"
 
 const MatchChoice := preload("res://game/match_choice.gd")
 const Story := preload("res://game/story.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
 
 
 func _own(battle: Battle, side: Unit.Side) -> Array:
@@ -34,10 +35,14 @@ func test_a_placement_is_flipped_when_the_row_plays_second() -> void:
 	placement[0] = Vector2i(2, -2)  # 先手として: 本陣から 2 行前、右 2
 	choice.placements[0] = placement
 	choice.random_side = true
+	choice.field = VersusFields.TWIN_SPRINGS  # 本陣が対角の、点対称の盤
 	for battle_seed in range(1, 40):
 		var setup := choice.to_setup(battle_seed)
 		if choice.drawn_side == Unit.Side.PLAYER2:
-			assert_eq(setup.placements[Unit.Side.PLAYER2][0], Vector2i(2, 2), "後手として対戦するときは、上下を返す")
+			assert_eq(setup.placements[Unit.Side.PLAYER2][0], Vector2i(-2, 2), "後手として対戦するときは、盤の形に合わせて返す（点対称なら左右も）")
+			var battle := setup.create_battle()
+			var hq := battle.board.hq_cells[Unit.Side.PLAYER2]
+			assert_eq(_own(battle, Unit.Side.PLAYER2)[0].cell, hq + Vector2i(-2, 2), "返した位置に置かれる")
 			return
 	assert_true(false, "後手を引く種が無い")
 

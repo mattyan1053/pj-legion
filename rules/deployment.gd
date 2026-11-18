@@ -107,6 +107,61 @@ static func open_field_slots(count: int) -> Array[Vector2i]:
 	return slots
 
 
+## 一方の陣営が決めた置き方（本陣からのずれの列。UNSET はそのまま）を、もう一方の陣営の置き方に返す。
+## 盤の形に合わせて返す（facing_is_point_symmetric）: 点対称の盤なら上下と左右を、そうでなければ上下だけを返す。
+## どちらでも、置いた意図（盤の端に寄せた、真ん中に寄せた、など）が、相手の側の地形に対して保たれる。
+static func facing_placement(board: Board, placement: Array[Vector2i]) -> Array[Vector2i]:
+	var point := facing_is_point_symmetric(board)
+	var facing: Array[Vector2i] = []
+	for offset in placement:
+		if offset == UNSET:
+			facing.append(offset)
+		else:
+			facing.append(-offset if point else Vector2i(offset.x, -offset.y))
+	return facing
+
+
+## 2 つの本陣を入れ替える形が、点対称（盤の中心で 180 度回す）か。偽なら上下の線対称（上下だけを返す）。
+## まず本陣: その形で移して本陣どうしが入れ替わる形だけを候補にする（対角の本陣は点対称だけ）。
+## どちらも候補なら（本陣が上下の中央）、中ボス・結晶泉・回復の泉・ポータルの重なる数、次に地形と環境オブジェクトの重なる数が多いほう。
+## 同じなら上下の線対称（生成のマップは、結晶泉が 1 行ずれるなど、ぴったりの対称でないことがある）。
+static func facing_is_point_symmetric(board: Board) -> bool:
+	var corner := board.size - Vector2i.ONE
+	var point := func(cell: Vector2i) -> Vector2i: return corner - cell
+	var line := func(cell: Vector2i) -> Vector2i: return Vector2i(cell.x, corner.y - cell.y)
+	var point_fits := _overlap([board.hq_cells], point) == board.hq_cells.size()
+	var line_fits := _overlap([board.hq_cells], line) == board.hq_cells.size()
+	if point_fits != line_fits:
+		return point_fits
+	var fixed := [board.mid_boss_cells, board.font_cells, board.spring_cells, board.portal_exits.keys()]
+	var by_fixed := _overlap(fixed, point) - _overlap(fixed, line)
+	if by_fixed != 0:
+		return by_fixed > 0
+	return _matching_cells(board, point) > _matching_cells(board, line)
+
+
+## 列 groups のそれぞれで、移した先も同じ列にあるマスの数（の合計）。
+static func _overlap(groups: Array, moved: Callable) -> int:
+	var count := 0
+	for cells: Array in groups:
+		for cell: Vector2i in cells:
+			if cells.has(moved.call(cell)):
+				count += 1
+	return count
+
+
+## 盤の全部のマスのうち、移した先と地形・環境オブジェクトが同じマスの数。
+static func _matching_cells(board: Board, moved: Callable) -> int:
+	var count := 0
+	for y in board.size.y:
+		for x in board.size.x:
+			var cell := Vector2i(x, y)
+			var other: Vector2i = moved.call(cell)
+			if board.terrain_at(cell) == board.terrain_at(other) and board.object_at(cell) == board.object_at(other):
+				count += 1
+	return count
+
+
 ## 本陣から見て前の向き（行の向き）。
 static func forward(board: Board, hq: Vector2i) -> Vector2i:
 	return Vector2i.DOWN if hq.y * 2 < board.size.y - 1 else Vector2i.UP

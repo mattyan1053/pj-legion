@@ -16,6 +16,7 @@ item = speed_boots
 
 [ally]
 name = イェルダ
+figure = paladin evolved
 speaker = ウル, priest evolved
 speaker = ティオ, sorcerer
 speaker = セリス, spellblade evolved
