@@ -28,6 +28,7 @@ const MUTE := &"mute"
 const SHOW_MINIMAP := &"show_minimap"
 const FULLSCREEN := &"fullscreen"
 const UNIT_LOOK := &"unit_look"
+const SCREEN_EFFECTS := &"screen_effects"
 
 ## 項目（画面に並べる順）。
 ## - key: 名前（ファイルにも、この名前で書く）。section: 画面の区分の見出し。label: 項目の名前。note: 短い説明。
@@ -79,6 +80,12 @@ const ITEMS: Array[Dictionary] = [
 	{
 		"key": SHOW_MINIMAP, "section": "settings.section.screen", "label": "settings.show_minimap",
 		"note": "settings.show_minimap.note",
+		"kind": Kind.TOGGLE, "default": true,
+	},
+	{
+		# 光るものの光のにじみ、物の合わせ目の陰、色の調子（stage_look.gd）。古めの PC で重いときに切る。
+		"key": SCREEN_EFFECTS, "section": "settings.section.screen", "label": "settings.screen_effects",
+		"note": "settings.screen_effects.note",
 		"kind": Kind.TOGGLE, "default": true,
 	},
 	{

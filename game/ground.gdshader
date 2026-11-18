@@ -11,7 +11,9 @@ uniform float map_pad = 2.0;
 // 地形の境目を揺らす幅（マス）。
 uniform float warp = 0.22;
 // 盤の外の地面の明るさ（中を 1 として）。戦う範囲の境目が、さりげなく分かるようにする。
-uniform float outside_shade = 0.84;
+uniform float outside_shade = 0.8;
+// 流れる雲の影の濃さ（0 = 無し）。
+uniform float cloud_shade = 0.1;
 // 石畳の濃さ（0 = 無し。マップの見た目の PAVING）と、ところどころ枯れた色に寄せる濃さ（DRY）。
 uniform float paving = 0.0;
 uniform float dry = 0.45;
@@ -34,6 +36,15 @@ void fragment() {
 	float patches = texture(noise_map, ground * 0.031 + vec2(0.11, 0.53)).r;
 	float grain = texture(noise_map, ground * 0.9).r;
 	color *= 0.86 + 0.22 * patches + 0.10 * (grain - 0.5);
+	// 色の寄り: 大きなむらで、日なたの黄みと、日かげの青みへ少し振る。
+	float drift = texture(noise_map, ground * 0.017 + vec2(0.83, 0.29)).r;
+	color *= mix(vec3(0.96, 0.99, 1.05), vec3(1.04, 1.01, 0.94), smoothstep(0.3, 0.7, drift));
+	// 細かい斑（草むらや小石）。近くで見たときの手触り。
+	float fleck = texture(noise_map, ground * 2.7 + vec2(0.19, 0.44)).r;
+	color *= 1.0 + 0.09 * (smoothstep(0.55, 0.75, fleck) - smoothstep(0.45, 0.25, fleck));
+	// 流れる雲の影（ごく薄く、ゆっくり）。
+	float cloud = texture(noise_map, ground * 0.012 + vec2(TIME * 0.004, TIME * 0.0015)).r;
+	color *= 1.0 - cloud_shade * smoothstep(0.45, 0.75, cloud);
 	// ところどころ、枯れた色に寄せる。
 	float dried = texture(noise_map, ground * 0.057 + vec2(0.61, 0.17)).r;
 	color = mix(color, color * vec3(1.06, 1.0, 0.8), smoothstep(0.5, 0.8, dried) * dry);
@@ -52,8 +63,13 @@ void fragment() {
 		color *= mix(1.0, (0.9 + 0.2 * stone) * (1.0 - 0.32 * joint), paved);
 	}
 
+	// 盤の外は、少し暗く、色を抜く（戦う範囲が、光の当たった舞台に見える）。境目のすぐ外には、細い影を落とす。
 	vec2 beyond = max(max(-at, at - board_size), vec2(0.0));
-	color *= mix(1.0, outside_shade, smoothstep(0.0, 0.9, length(beyond)));
+	float out_there = length(beyond);
+	float outside = smoothstep(0.0, 1.6, out_there);
+	color = mix(color, vec3(dot(color, vec3(0.3, 0.59, 0.11))), 0.22 * outside);
+	color *= mix(1.0, outside_shade, outside);
+	color *= 1.0 - 0.16 * smoothstep(0.0, 0.08, out_there) * smoothstep(0.7, 0.1, out_there);
 
 	ALBEDO = color;
 	ROUGHNESS = 0.95;

@@ -87,6 +87,7 @@ var _pin_fill: MultiMesh
 var _pin_edges: MultiMesh
 var _pinned_sets: Array = []
 var _grid: ShaderMaterial
+var _grid_instance: MeshInstance3D
 var _grid_emphasis := 0.0
 var _grid_emphasized := false
 ## 泉とポータルの動き。泉: 水面に広がる波紋（[輪, マテリアル, 位相]）。ポータル: 渦を巻いて昇る光の粒（[粒, 中心, 位相]）と、
@@ -184,6 +185,11 @@ static func terrain_image(battle_board: Board, team_colors: Array[Color], palett
 ## マス目の線を濃くする（駒を選んでいる、範囲を見せているなど、操作している間）。ふだんは薄い。
 func set_grid_emphasis(on: bool) -> void:
 	_grid_emphasized = on
+
+
+## マス目の線を出す・隠す（盤を景色として見せるだけの背景では隠す）。
+func set_grid_visible(on: bool) -> void:
+	_grid_instance.visible = on
 
 
 func _process(delta: float) -> void:
@@ -447,7 +453,8 @@ func _add_ground() -> void:
 	_grid.render_priority = -1
 	var grid_mesh := PlaneMesh.new()
 	grid_mesh.size = size + Vector2.ONE * 0.2
-	_add_mesh(grid_mesh, _grid, center + Vector3(0.0, 0.006, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_grid_instance = _add_mesh(grid_mesh, _grid, center + Vector3(0.0, 0.006, 0.0))
+	_grid_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 ## つなぎ目の無い白黒のノイズ（地面のむらと、地形の境目の揺れに使う）。作るのは 1 回だけ。

@@ -591,7 +591,7 @@ func _play_ult_used(event: UltUsedEvent) -> void:
 	var color: Color = BattleHud.ULT_COLORS[event.ult]
 	_hud.flash_screen(color)
 	_sound(&"ult")  # 音の山が、続く光の柱（_play_ult_effects）に重なる
-	_hud.show_banner(Text.t("battle.banner.ult", {"side": side_name.call(event.side), "ult": Names.ult(Ults.by_id(event.ult))}), color)
+	_hud.show_banner(Text.t("battle.banner.ult", {"side": side_name.call(event.side), "ult": Names.ult(Ults.by_id(event.ult))}), color, true)
 	await after(0.5)
 
 

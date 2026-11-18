@@ -23,6 +23,9 @@ const BOSS_RADIUS := 0.95
 ## 縮図を薄くする（盤の上の点と、見ている範囲の線が目立つように）。
 const MAP_ALPHA := 0.92
 
+## 枠の四隅の鉤の長さ。
+const FRAME_CORNER := 12.0
+
 var team_colors: Array[Color] = []
 var _board: Board
 var _texture: ImageTexture
@@ -87,8 +90,8 @@ func dot_count() -> int:
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), COLOR_BACK)
-	draw_rect(Rect2(Vector2.ONE * 0.5, size - Vector2.ONE), Palette.BORDER, false, 1.0)
 	if _board == null:
+		_draw_frame()
 		return
 	var px := float(Geometry.cell_px(_board.size))
 	draw_texture(_texture, Vector2.ONE * Geometry.PADDING, Color(1, 1, 1, MAP_ALPHA))
@@ -121,6 +124,18 @@ func _draw() -> void:
 		draw_colored_polygon(points, COLOR_VIEW_FILL)
 		points.append(points[0])
 		draw_polyline(points, COLOR_VIEW, 1.5, true)
+	_draw_frame()
+
+
+## 枠: 真鍮の縁と、四隅の明るい鉤（地図の額に見せる）。
+func _draw_frame() -> void:
+	draw_rect(Rect2(Vector2.ONE, size - Vector2.ONE * 2.0), Palette.BORDER, false, 2.0)
+	var reach := minf(FRAME_CORNER, minf(size.x, size.y) / 3.0)
+	for corner: Vector2 in [Vector2(0.0, 0.0), Vector2(1.0, 0.0), Vector2(0.0, 1.0), Vector2(1.0, 1.0)]:
+		var at := Vector2(1.0, 1.0) + corner * (size - Vector2.ONE * 2.0)
+		var inward := Vector2(1.0, 1.0) - corner * 2.0
+		draw_line(at, at + Vector2(inward.x * reach, 0.0), Palette.BORDER_BRIGHT, 2.0)
+		draw_line(at, at + Vector2(0.0, inward.y * reach), Palette.BORDER_BRIGHT, 2.0)
 
 
 func _gui_input(event: InputEvent) -> void:

@@ -24,6 +24,9 @@ const BUTTON_ROW := &"ButtonRow"
 ## カードのボタン（マップ、話）。
 const BUTTON_CARD := &"ButtonCard"
 
+## タイトルのメニューのボタン（景色の上に直に並ぶ。角を落とした大きな札）。
+const BUTTON_MENU := &"ButtonMenu"
+
 ## ダイアログやメニューの板（ほぼ不透明、太い縁、影）。
 const PANEL_SOLID := &"PanelSolid"
 ## 画面の上の帯と下の帯。
@@ -113,10 +116,11 @@ static func band_box(top: bool, margin := 10.0) -> StyleBoxFlat:
 
 
 ## 画面の四隅を沈める幕（景色の上に題字やカードを置く画面で、真ん中へ目を集める）。入力は通す。
-static func vignette() -> TextureRect:
+## strength は濃さ（1 = 景色の上に題字やカードを置く画面。対戦の盤の上は、もっと薄くする）。
+static func vignette(strength := 1.0) -> TextureRect:
 	var gradient := Gradient.new()
 	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-	gradient.colors = PackedColorArray([Color(Palette.INK, 0.0), Color(Palette.INK, 0.12), Color(Palette.INK, 0.62)])
+	gradient.colors = PackedColorArray([Color(Palette.INK, 0.0), Color(Palette.INK, 0.12 * strength), Color(Palette.INK, 0.62 * strength)])
 	var texture := GradientTexture2D.new()
 	texture.gradient = gradient
 	texture.fill = GradientTexture2D.FILL_RADIAL
@@ -145,6 +149,16 @@ func _build_buttons() -> void:
 	set_type_variation(BUTTON_DANGER, &"Button")
 	_button_type(BUTTON_DANGER, Palette.DANGER_FILL, Palette.DANGER_FILL.lightened(0.12), Palette.DANGER_FILL.darkened(0.2),
 		Palette.DANGER.darkened(0.35), Palette.DANGER, Color("ffe1d8"), Color.WHITE, Color.WHITE)
+
+	# タイトルのメニュー: 景色が透ける暗い地に、角を落とした札。乗ると金の縁。
+	set_type_variation(BUTTON_MENU, &"Button")
+	_button_type(BUTTON_MENU, Color(Palette.INK, 0.78), Color(Palette.RAISED_HOVER, 0.92), Palette.CHOSEN, Palette.BORDER, Palette.ACCENT,
+		Palette.TEXT, Palette.ACCENT, Palette.ACCENT)
+	set_font_size(&"font_size", BUTTON_MENU, 22)
+	for state: StringName in [&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled", &"focus"]:
+		var plate := get_stylebox(state, BUTTON_MENU) as StyleBoxFlat
+		plate.set_corner_radius_all(12)
+		plate.corner_detail = 1
 
 	# 行のボタン: 地も縁も無く、乗ると薄く塗り、選ばれていると金の薄い塗り。
 	set_type_variation(BUTTON_ROW, &"Button")
