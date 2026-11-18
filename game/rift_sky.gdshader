@@ -17,6 +17,8 @@ uniform vec3 stitch : source_color = vec3(1.0, 0.84, 0.42);
 // 光の脈の速さと、全体の明るさ（入ったときに 0 から 1 へ）。
 uniform float pulse_speed = 0.6;
 uniform float reveal = 1.0;
+// 空の明るさに掛ける数（描画方式でそろえる。render_tone.gd）。
+uniform float brightness = 1.0;
 
 varying vec3 dir;
 
@@ -104,5 +106,5 @@ void fragment() {
 	float tick = smoothstep(0.0020, 0.0008, tick_dist) * smoothstep(reach, reach * 0.8, dist) * taper;
 	color = mix(color, stitch, tick * 0.6 * reveal);
 
-	ALBEDO = color;
+	ALBEDO = color * brightness;
 }

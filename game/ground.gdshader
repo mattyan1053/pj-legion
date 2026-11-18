@@ -17,6 +17,8 @@ uniform float cloud_shade = 0.1;
 // 石畳の濃さ（0 = 無し。マップの見た目の PAVING）と、ところどころ枯れた色に寄せる濃さ（DRY）。
 uniform float paving = 0.0;
 uniform float dry = 0.45;
+// 模様（むら、色の寄り、斑、枯れ、石畳の目）の濃さ。描画方式で模様の出方が違うので、そろえるために掛ける（render_tone.gd）。
+uniform float pattern_gain = 1.0;
 
 varying vec2 ground;
 
@@ -35,19 +37,19 @@ void fragment() {
 	// むら（大きいものと細かいもの）。べた塗りに見えないように。
 	float patches = texture(noise_map, ground * 0.031 + vec2(0.11, 0.53)).r;
 	float grain = texture(noise_map, ground * 0.9).r;
-	color *= 0.86 + 0.22 * patches + 0.10 * (grain - 0.5);
+	color *= 1.0 + (0.86 + 0.22 * patches + 0.10 * (grain - 0.5) - 1.0) * pattern_gain;
 	// 色の寄り: 大きなむらで、日なたの黄みと、日かげの青みへ少し振る。
 	float drift = texture(noise_map, ground * 0.017 + vec2(0.83, 0.29)).r;
-	color *= mix(vec3(0.96, 0.99, 1.05), vec3(1.04, 1.01, 0.94), smoothstep(0.3, 0.7, drift));
+	color *= 1.0 + (mix(vec3(0.96, 0.99, 1.05), vec3(1.04, 1.01, 0.94), smoothstep(0.3, 0.7, drift)) - 1.0) * pattern_gain;
 	// 細かい斑（草むらや小石）。近くで見たときの手触り。
 	float fleck = texture(noise_map, ground * 2.7 + vec2(0.19, 0.44)).r;
-	color *= 1.0 + 0.09 * (smoothstep(0.55, 0.75, fleck) - smoothstep(0.45, 0.25, fleck));
+	color *= 1.0 + 0.09 * pattern_gain * (smoothstep(0.55, 0.75, fleck) - smoothstep(0.45, 0.25, fleck));
 	// 流れる雲の影（ごく薄く、ゆっくり）。
 	float cloud = texture(noise_map, ground * 0.012 + vec2(TIME * 0.004, TIME * 0.0015)).r;
 	color *= 1.0 - cloud_shade * smoothstep(0.45, 0.75, cloud);
 	// ところどころ、枯れた色に寄せる。
 	float dried = texture(noise_map, ground * 0.057 + vec2(0.61, 0.17)).r;
-	color = mix(color, color * vec3(1.06, 1.0, 0.8), smoothstep(0.5, 0.8, dried) * dry);
+	color = mix(color, color * vec3(1.06, 1.0, 0.8), min(1.0, smoothstep(0.5, 0.8, dried) * dry * pattern_gain));
 
 	// 石畳。1 マスに 2 × 2 枚、段ごとに半枚ずらした敷石。目地を暗く、石ごとに明るさを少し変える。
 	// ところどころ土に埋もれて（大きいむらの暗いところ）、敷石が途切れる。
@@ -60,7 +62,7 @@ void fragment() {
 		float stone = texture(noise_map, floor(stone_at) * 0.137).r;
 		float buried = smoothstep(0.42, 0.3, patches);
 		float paved = paving * (1.0 - buried);
-		color *= mix(1.0, (0.9 + 0.2 * stone) * (1.0 - 0.32 * joint), paved);
+		color *= mix(1.0, 1.0 + ((0.9 + 0.2 * stone) * (1.0 - 0.32 * joint) - 1.0) * pattern_gain, paved);
 	}
 
 	// 盤の外は、少し暗く、色を抜く（戦う範囲が、光の当たった舞台に見える）。境目のすぐ外には、細い影を落とす。

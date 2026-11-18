@@ -18,6 +18,7 @@ extends RefCounted
 
 const CrystalMesh := preload("res://game/crystal_mesh.gd")
 const BOARD_SKY := preload("res://game/board_sky.gdshader")
+const RenderTone := preload("res://game/render_tone.gd")
 
 ## 空の球の半径（カメラの見える距離より内側）と、その名前（apply が探す）。
 const SKY_RADIUS := 220.0
@@ -265,6 +266,9 @@ static func build_environment(parent: Node) -> void:
 	environment.background_mode = Environment.BG_COLOR
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	if RenderTone.is_forward():  # 互換の描画で決めた見え方に寄せる（render_tone.gd）
+		environment.tonemap_mode = RenderTone.FORWARD_TONEMAP
+		environment.tonemap_exposure = RenderTone.FORWARD_EXPOSURE
 	# 遠くの地面と景色は、空の色の霞に溶かす（盤の外の端が、ぷつりと切れて見えないように）。
 	# 盤の中は、いちばん引いても霞まない距離から始める。
 	environment.fog_enabled = true
@@ -318,7 +322,7 @@ static func apply(parent: Node, look: Dictionary) -> void:
 			world.environment.background_color = look[HAZE]
 			world.environment.fog_light_color = look[HAZE]
 			world.environment.ambient_light_color = look[AMBIENT]
-			world.environment.ambient_light_energy = look[AMBIENT_ENERGY]
+			world.environment.ambient_light_energy = look[AMBIENT_ENERGY] * RenderTone.ambient_scale()
 		var sun := node as DirectionalLight3D
 		if sun != null:
 			sun.light_color = look[SUN]

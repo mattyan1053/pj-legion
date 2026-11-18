@@ -14,6 +14,7 @@ const StageLook := preload("res://game/stage_look.gd")
 const Scenery := preload("res://game/scenery.gd")
 const GROUND_SHADER := preload("res://game/ground.gdshader")
 const GRID_SHADER := preload("res://game/grid.gdshader")
+const RenderTone := preload("res://game/render_tone.gd")
 ## 障害物と森のマスに置くもの、地面の色と模様、泉の石と結晶の色は、マップの見た目（stage_look.gd）が決める。
 ## 石の壁（StageLook.WALL）の柱と壁の幅（マス）。柱は壁より少し太い。
 const WALL_PILLAR_WIDTH := 0.62
@@ -64,6 +65,14 @@ const DANGER_LIFT := 0.07
 const DANGER_EDGE_WIDTH := 0.07
 ## 表示したままにしている（ピン留めした）駒の攻撃範囲（show_pinned）。駒ごとに、薄い橙の塗りと、範囲の縁の橙の線。
 ## 敵の全員の脅威範囲（赤い斜線）とは別の色で、両方を出しても見分けられる。縁の線は、斜線の縁より少し内側に引く。
+## 平地の色の明るさから、光を当てたあとの地面の明るさを見積もる数。
+const GROUND_TONE_SCALE := 1.15
+## マス目の線の濃さ（互換の描画での見え方。grid.gdshader の idle_alpha・active_alpha・border_alpha に渡す）。
+## 線の色（grid.gdshader の line_color）。
+const GRID_LINE_COLOR := Color(1.0, 1.0, 0.9)
+const GRID_IDLE_ALPHA := 0.17
+const GRID_ACTIVE_ALPHA := 0.46
+const GRID_BORDER_ALPHA := 0.42
 const COLOR_PIN_FILL := Color(1.0, 0.55, 0.1, 0.16)
 const COLOR_PIN_EDGE := Color(1.0, 0.6, 0.15, 0.9)
 const PIN_LIFT := 0.065
@@ -319,7 +328,7 @@ func show_cells(colors: Dictionary, raised := {}) -> void:
 	for cell: Vector2i in colors:
 		var lift := 0.05 if raised.has(cell) else 0.012
 		_highlight.set_instance_transform(i, Transform3D(Basis.IDENTITY, cell_center(cell) + Vector3(0.0, lift, 0.0)))
-		_highlight.set_instance_color(i, colors[cell])
+		_highlight.set_instance_color(i, RenderTone.fill_color(colors[cell], _ground_tone()))
 		i += 1
 
 
@@ -429,6 +438,11 @@ func update_occlusion(camera: Camera3D, looking_at: Vector3, focus_cells: Array[
 			part.transparency = move_toward(part.transparency, target, OCCLUDER_FADE_SPEED * delta)
 
 
+## 地面のおよその明るさ（sRGB）。半透明の重ね塗りの濃さを、描画方式でそろえるときに使う（render_tone.gd）。
+func _ground_tone() -> float:
+	return clampf((look[StageLook.NORMAL] as Color).get_luminance() * GROUND_TONE_SCALE, 0.2, 0.8)
+
+
 ## 地面（盤の外まで続く 1 枚の板）と、その上のマス目の線。
 func _add_ground() -> void:
 	var size := Vector2(board.size)
@@ -442,6 +456,7 @@ func _add_ground() -> void:
 	ground.set_shader_parameter(&"map_pad", float(MAP_PAD))
 	ground.set_shader_parameter(&"paving", float(look[StageLook.PAVING]))
 	ground.set_shader_parameter(&"dry", float(look[StageLook.DRY]))
+	ground.set_shader_parameter(&"pattern_gain", RenderTone.pattern_gain())
 	var ground_mesh := PlaneMesh.new()
 	ground_mesh.size = size + Vector2.ONE * 2.0 * GROUND_REACH
 	_add_mesh(ground_mesh, ground, center).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -449,6 +464,11 @@ func _add_ground() -> void:
 	_grid = ShaderMaterial.new()
 	_grid.shader = GRID_SHADER
 	_grid.set_shader_parameter(&"board_size", size)
+	# 線の濃さ（ふだん・操作しているとき・盤の縁）。Forward+ では濃く出るぶん下げる。
+	_grid.set_shader_parameter(&"line_color", GRID_LINE_COLOR)
+	_grid.set_shader_parameter(&"idle_alpha", RenderTone.overlay_alpha(GRID_IDLE_ALPHA, _ground_tone(), GRID_LINE_COLOR.get_luminance()))
+	_grid.set_shader_parameter(&"active_alpha", RenderTone.overlay_alpha(GRID_ACTIVE_ALPHA, _ground_tone(), GRID_LINE_COLOR.get_luminance()))
+	_grid.set_shader_parameter(&"border_alpha", RenderTone.overlay_alpha(GRID_BORDER_ALPHA, _ground_tone(), GRID_LINE_COLOR.get_luminance()))
 	# 塗ったマスや印より先に描く（線の上に色が乗る）。
 	_grid.render_priority = -1
 	var grid_mesh := PlaneMesh.new()
@@ -475,7 +495,10 @@ func _build_markers() -> void:
 	var cell_mesh := BoxMesh.new()
 	cell_mesh.size = Vector3(1.0 - TILE_GAP, 0.02, 1.0 - TILE_GAP)
 
-	var paint := _overlay_material(Color.WHITE)
+	# 塗りの色と濃さは、マスごとの色（show_cells）が決める。材質は不透明の白のまま（濃さの直しを 2 度掛けない）。
+	var paint := StandardMaterial3D.new()
+	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	paint.vertex_color_use_as_albedo = true
 	_highlight = MultiMesh.new()
 	_highlight.transform_format = MultiMesh.TRANSFORM_3D
@@ -489,7 +512,7 @@ func _build_markers() -> void:
 	highlight_instance.custom_aabb = AABB(Vector3.ZERO, Vector3(board.size.x, 1.0, board.size.y))
 	add_child(highlight_instance)
 
-	_danger_stripes = _overlay_layer(_stripe_mesh(), _stripe_material())
+	_danger_stripes = _overlay_layer(_stripe_mesh(), _stripe_material(_ground_tone()))
 	var edge_mesh := BoxMesh.new()
 	edge_mesh.size = Vector3(1.0, 0.004, DANGER_EDGE_WIDTH)
 	_danger_edges = _overlay_layer(edge_mesh, _overlay_material(COLOR_DANGER_EDGE))
@@ -538,7 +561,7 @@ static func _stripe_mesh() -> Mesh:
 
 
 ## 赤い斜線の絵。マスごとに同じ絵を貼っても、隣のマスと線がつながる（周期がマスの幅を割り切る）。
-static func _stripe_material() -> StandardMaterial3D:
+static func _stripe_material(ground: float) -> StandardMaterial3D:
 	const SIZE := 64
 	const PERIOD := 16
 	const WIDTH := 5
@@ -549,7 +572,7 @@ static func _stripe_material() -> StandardMaterial3D:
 	image.generate_mipmaps()
 	var material := StandardMaterial3D.new()
 	material.albedo_texture = ImageTexture.create_from_image(image)
-	material.albedo_color = COLOR_DANGER_STRIPE
+	material.albedo_color = RenderTone.overlay_color(COLOR_DANGER_STRIPE, ground)
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -725,7 +748,7 @@ func _flat_material(color: Color) -> StandardMaterial3D:
 
 func _overlay_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.albedo_color = color
+	material.albedo_color = RenderTone.overlay_color(color, _ground_tone())  # Forward+ では濃く出るぶん下げる
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	return material

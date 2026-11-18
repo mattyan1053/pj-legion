@@ -3,6 +3,7 @@ extends Node3D
 ## 裂けた空（rift_sky.gdshader）の下の、結晶の森。裂け目の光を背にして、岩山と結晶と木立が影になる。
 ## 素材は足さない（盤と景色は対戦の画面の部品、空はシェーダー）。カメラは低く構えて、ゆっくり左右に振る。
 
+const RenderTone := preload("res://game/render_tone.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const BoardView := preload("res://game/board_view.gd")
 const StageLook := preload("res://game/stage_look.gd")
@@ -63,6 +64,7 @@ func _ready() -> void:
 	_sky.shader = RIFT_SKY
 	_sky.set_shader_parameter(&"horizon", HAZE)
 	_sky.set_shader_parameter(&"reveal", 0.0)
+	_sky.set_shader_parameter(&"brightness", RenderTone.title_sky_brightness())
 	var dome := SphereMesh.new()
 	dome.radius = SKY_RADIUS
 	dome.height = SKY_RADIUS * 2.0
