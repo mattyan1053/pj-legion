@@ -18,7 +18,7 @@ signal finished(outcome: StringName)
 const TITLE_SIZE := 68
 ## 入ったときの動きの長さ（題字が浮かぶまで）と、メニューが 1 つずつ現れる間隔（秒）。
 const ENTER_TIME := 0.5
-const ENTER_STEP := 0.07
+const ENTER_STEP := 0.05
 
 var context: AppContext
 var _buttons := {}
@@ -64,8 +64,10 @@ func _ready() -> void:
 
 
 ## 入ったときの短い動き: 題字が浮かび、飾りの線が左右へ伸び、メニューが上から順に現れる。入力は止めない（すぐ押せる）。
+## 幕が明けるのと重ねて動き出す（アプリは幕が明けきるまで場面を止めておくが、この動きだけは止めない。明けてから動き出すと、空だけの間ができる）。
 func _enter(heading: Array, ornament: Ornament) -> void:
 	var tween := create_tween().set_parallel()
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	for node: Control in heading:
 		node.modulate.a = 0.0
 		tween.tween_property(node, "modulate:a", 1.0, ENTER_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -75,7 +77,7 @@ func _enter(heading: Array, ornament: Ornament) -> void:
 	for id: StringName in _buttons:
 		var button := _buttons[id] as Button
 		button.modulate.a = 0.0
-		tween.tween_property(button, "modulate:a", 1.0, ENTER_TIME * 0.7).set_delay(ENTER_TIME * 0.4 + ENTER_STEP * order)
+		tween.tween_property(button, "modulate:a", 1.0, ENTER_TIME * 0.5).set_delay(ENTER_TIME * 0.2 + ENTER_STEP * order)
 		order += 1
 
 
