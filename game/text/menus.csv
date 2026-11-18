@@ -24,6 +24,8 @@ settings.fullscreen,全画面
 settings.fullscreen.note,オフ: 窓で開く（端をドラッグで大きさを変えられる）。Alt+Enter でも切り替え
 settings.show_minimap,ミニマップ
 settings.show_minimap.note,対戦の画面の右上に盤の縮図を表示。押すと、その場所へ視点を移す
+settings.screen_effects,画面の効果
+settings.screen_effects.note,光のにじみ、陰、色の調子。動きが重いときは切る
 settings.unit_look,駒の見た目
 settings.unit_look.note,盤の駒・アイコン・会話の姿の形。次の画面から替わる（対戦の途中なら、次の対戦から）
 settings.unit_look.kaykit,人形

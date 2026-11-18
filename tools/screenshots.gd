@@ -206,6 +206,8 @@ const BANNER_WAIT := 3.0
 ## CPU どうしで進める行動の数の上限（場面が来なければ、撮らずに失敗にする）。
 const MAX_ACTIONS := 3000
 const JPEG_QUALITY := 0.82
+## `--frame-time` で測るコマの数。
+const FRAME_TIME_FRAMES := 40
 
 var _app: Node
 ## いまの対戦の画面（battle_screen.gd）。アプリが対戦の場面にいる間だけ使う。
@@ -213,6 +215,8 @@ var _scene: Node
 var _out := ""
 ## 場面を作るだけで撮らない（`--dry-run`。画面なしの長い検査で、場面が作れることだけを確かめる）。
 var _dry_run := false
+## 撮る前に、その場面の 1 コマの時間を測って出す（`--frame-time`。見た目を変えた前後の重さを比べる）。
+var _frame_time := false
 var _names: Array[String] = []
 var _cpu := CpuPlayer.new()
 var _battle: Battle
@@ -238,6 +242,7 @@ func _ready() -> void:
 	var shots := _arg(args, "--shots")
 	_out = _arg(args, "--out")
 	_dry_run = args.has("--dry-run")
+	_frame_time = args.has("--frame-time")
 	if shots == "" or (_out == "" and not _dry_run):
 		_quit("screenshots: --shots と --out（か --dry-run）を指定する（場面: %s）" % ", ".join(SCENES.keys()), 1)
 		return
@@ -330,6 +335,11 @@ func _reset(seed: int) -> void:
 
 ## いまの画面を撮って書く。書けなければ終わらせて偽を返す。
 func _capture(name: String) -> bool:
+	if _frame_time:
+		var started := Time.get_ticks_usec()
+		for i in FRAME_TIME_FRAMES:
+			await RenderingServer.frame_post_draw
+		print("screenshots: %s の 1 コマ %.1f ms（%d コマの平均）" % [name, (Time.get_ticks_usec() - started) / 1000.0 / FRAME_TIME_FRAMES, FRAME_TIME_FRAMES])
 	await RenderingServer.frame_post_draw
 	var path := _out.path_join(name + ".jpg")
 	var error := get_viewport().get_texture().get_image().save_jpg(path, JPEG_QUALITY)

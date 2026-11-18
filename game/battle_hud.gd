@@ -19,6 +19,7 @@ const ResultScreen := preload("res://game/result_screen.gd")
 const Minimap := preload("res://game/minimap.gd")
 const MinimapGeometry := preload("res://game/minimap_geometry.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const BannerBand := preload("res://game/banner_band.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -85,12 +86,22 @@ const ULT_COLORS := {
 	Ult.Id.MANA_ERUPTION: Color("9a7bff"),
 }
 
+## 盤の四隅を沈める幕の濃さ（景色の上に題字を置く画面を 1 として）。
+const BOARD_VIGNETTE := 0.4
+## 番の文字の後ろの札に、陣営の色を混ぜる割合（地は INK）。
+const PHASE_CHIP_TINT := 0.42
+## 画面の中央の知らせの帯の、上からの位置。
+const BANNER_TOP := 132.0
+
 var _team_colors: Array[Color] = []
 ## 将の姿（陣営ごと。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
 var king_looks: Array[StringName] = [&"", &""]
 
 var _turn_label: Label
 var _phase_label: Label
+## 上の帯の形（下の縁を、番の陣営の色にする）と、番の文字の後ろの札。
+var _top_style: StyleBoxFlat
+var _phase_chip_style: StyleBoxFlat
 ## 勝ち方の札（勝ち方がいつもと違う戦いだけ出す。win_text.gd の goal_tag）。
 var _goal_panel: PanelContainer
 var _goal_style: StyleBoxFlat
@@ -105,6 +116,7 @@ var _ult_labels: Array[Label] = []
 var _ult_button: Button
 var _ult_summary: Label
 var _info_panel: PanelContainer
+var _info_style: StyleBoxFlat
 var _info_icon: TextureRect
 var _info_name: Label
 var _info_side: Label
@@ -155,8 +167,7 @@ var _menu_see_through := false
 const MENU_SEE_THROUGH_ALPHA := 0.6
 ## 文字の幅の覚え（"文字の大きさ:文字" -> px）。折り返しに使う。
 var _char_widths := {}
-var _banner: Label
-var _banner_tween: Tween
+var _banner: BannerBand
 var _flash: ColorRect
 var _flash_tween: Tween
 var _result: ResultScreen
@@ -171,6 +182,7 @@ var _evolution_buttons: Array[Button] = []
 
 func setup(team_colors: Array[Color]) -> void:
 	_team_colors = team_colors
+	add_child(UiTheme.vignette(BOARD_VIGNETTE))  # 盤の四隅を、ごく薄く沈める（帯や枠の下）
 	_build_top_bar()
 	_build_info_panel()
 	_build_bottom()
@@ -206,7 +218,12 @@ func set_status(
 	_goal_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
 	_goal_label.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
 	_phase_label.text = Text.t("battle.hud.phase", {"side": Names.side(phase)})
-	_phase_label.add_theme_color_override("font_color", _side_color(phase))
+	# 番の陣営の色: 文字の後ろの札と、上の帯の下の縁。
+	var phase_color := _side_color(phase)
+	_phase_label.add_theme_color_override("font_color", phase_color.lightened(0.62))
+	_phase_chip_style.bg_color = Palette.INK.lerp(phase_color, PHASE_CHIP_TINT)
+	_phase_chip_style.border_color = phase_color.lightened(0.2)
+	_top_style.border_color = Palette.BORDER.lerp(phase_color.lightened(0.2), 0.8)
 	for player in 2:
 		var text := Text.t("battle.hud.side", {"side": Names.side_word(player), "count": counts[player]})
 		if capture_shown[player]:
@@ -321,6 +338,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	else:
 		_info_name.text = Text.t("battle.hud.name_role", {"unit": Names.unit(unit), "role": role}) if role else Names.unit(unit)
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
+	_edge_info_panel(_side_color(unit.side).lightened(0.15))
 	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
 	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE,
 			king_looks[unit.side] if unit.side < king_looks.size() else &"")
@@ -417,6 +435,7 @@ func show_cell_info(title: String, body: String) -> void:
 	_info_pin.visible = false
 	_info_name.text = title
 	_info_name.add_theme_color_override("font_color", Palette.TEXT)
+	_edge_info_panel(Palette.BORDER)
 	_info_icon.visible = false
 	_info_side.visible = false
 	_info_hp.visible = false
@@ -760,18 +779,14 @@ func _process(_delta: float) -> void:
 	_update_menu_alpha()
 
 
-## 画面の中央に、しばらくだけ大きな文字を出す。
-func show_banner(text: String, color: Color) -> void:
-	_banner.text = text
-	_banner.add_theme_color_override("font_color", color.lightened(0.4))
-	_banner.modulate.a = 1.0
-	_banner.visible = true
-	if _banner_tween != null:
-		_banner_tween.kill()
-	_banner_tween = create_tween()
-	_banner_tween.tween_interval(0.9)
-	_banner_tween.tween_property(_banner, "modulate:a", 0.0, 0.5)
-	_banner_tween.tween_callback(_banner.hide)
+## 画面の中央に、しばらくだけ大きな文字を、color の帯（banner_band.gd）で出す。strong は強い知らせ（必殺技）。
+func show_banner(text: String, color: Color, strong := false) -> void:
+	_banner.play(text, color, strong)
+
+
+## 画面の中央の大きな文字（検査用）。
+func banner_text() -> String:
+	return _banner.label.text if _banner.visible else ""
 
 
 ## 画面の中央の大きな文字が出ているか（スクリーンショットの道具が、消えるのを待つ）。
@@ -781,9 +796,7 @@ func is_banner_shown() -> bool:
 
 ## 画面の中央の大きな文字を、すぐに消す（時間を止めて読む画面を開いたとき、止まったまま残らないように）。
 func hide_banner() -> void:
-	if _banner_tween != null:
-		_banner_tween.kill()
-	_banner.visible = false
+	_banner.stop()
 
 
 ## リザルトの画面（result_screen.gd）を、summary（result_summary.gd）で段階的に出し始める。
@@ -892,7 +905,8 @@ func _build_minimap() -> void:
 
 func _build_top_bar() -> void:
 	var panel := _panel()
-	panel.add_theme_stylebox_override("panel", UiTheme.band_box(true))
+	_top_style = UiTheme.band_box(true)
+	panel.add_theme_stylebox_override("panel", _top_style)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	add_child(panel)
 	var row := HBoxContainer.new()
@@ -903,6 +917,11 @@ func _build_top_bar() -> void:
 	row.add_child(_turn_label)
 	_phase_label = _label(20)
 	row.add_child(_phase_label)
+	# 番の文字の後ろに、番の陣営の色の札を敷く（札は文字の枠の外へはみ出させて描く。並びの幅は変えない）。
+	_phase_chip_style = UiTheme.box(Palette.RAISED, Palette.BORDER, 1, 4, 0.0)
+	_phase_chip_style.expand_margin_left = 6.0
+	_phase_chip_style.expand_margin_right = 6.0
+	_phase_label.add_theme_stylebox_override("normal", _phase_chip_style)
 	for player in 2:
 		# 陣営の欄は、残った幅を分け合う。足りなければ「…」で省く（帯が画面の幅を超えて、右端のボタンが切れないように）。
 		var label := _label(16)
@@ -925,9 +944,7 @@ func _build_top_bar() -> void:
 		bar.custom_minimum_size = Vector2(76.0, 22.0)
 		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bar.show_percentage = false
-		var fill := StyleBoxFlat.new()
-		fill.bg_color = _team_colors[player].lightened(0.2)
-		bar.add_theme_stylebox_override("fill", fill)
+		bar.add_theme_stylebox_override("fill", UiTheme.box(_team_colors[player].lightened(0.2), _team_colors[player].lightened(0.55), 1, 3, 0.0))
 		row.add_child(bar)
 		_ult_bars.append(bar)
 		# 数字は棒の上に重ねる（上の帯の幅を取らない）。
@@ -994,8 +1011,15 @@ func _build_top_bar() -> void:
 	help_panel.add_child(help)
 
 
+## 情報の枠の上の縁を、color にする（駒なら陣営の色、マスなら枠の真鍮）。
+func _edge_info_panel(color: Color) -> void:
+	_info_style.border_color = Palette.BORDER.lerp(color, 0.85)
+
+
 func _build_info_panel() -> void:
 	_info_panel = _panel()
+	_info_style = _info_panel.get_theme_stylebox("panel") as StyleBoxFlat
+	_info_style.border_width_top = 3
 	_info_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_info_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_info_panel.offset_left = 10.0
@@ -1202,12 +1226,10 @@ func _build_menu() -> void:
 
 
 func _build_banner() -> void:
-	_banner = _label(44)
-	_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_banner.position.y = 150.0
-	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_banner.add_theme_constant_override("outline_size", 12)
+	_banner = BannerBand.new()
+	_banner.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_banner.offset_top = BANNER_TOP
+	_banner.offset_bottom = BANNER_TOP + BannerBand.HEIGHT
 	_banner.visible = false
 	add_child(_banner)
 
