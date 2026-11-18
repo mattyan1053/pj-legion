@@ -820,7 +820,7 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	var camera := _rig.camera if _rig != null else null
 	label.position = Vector3(at.x, at.y + POP_HEIGHT, at.z)
 	if camera != null and camera.is_inside_tree():
-		label.position = pop_start_position(label.position, text.length(), live, camera.unproject_position, camera.global_basis.y)
+		label.position = pop_place(label.position, text.length(), live, _hud.banner_rect(), camera.unproject_position, camera.global_basis.y)
 	_stage.add_child(label)
 	_pops.append(label)
 	var tween := create_tween()
@@ -829,6 +829,43 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	# 縁取りは modulate では薄くならない。一緒に消さないと、消える間際に黒い縁取りだけが字の形に残る。
 	tween.parallel().tween_property(label, "outline_modulate:a", 0.0, POP_TIME).set_ease(Tween.EASE_IN)
 	tween.tween_callback(label.queue_free)
+
+
+## 浮かぶ文字の出る位置: まだ浮かんでいる文字と重ならず（pop_start_position）、画面の中央の知らせの帯（必殺技など）が出ている間は、
+## 昇りきるまで帯にかからない（pop_clear_of_band）位置。帯から逃がすと別の文字に重なることがあるので、両方を満たすまで繰り返す
+## （同時に出る文字が、どれも帯の同じ縁へ寄せられて重ならないように）。
+static func pop_place(start: Vector3, length: int, live: Array, band: Rect2, project: Callable, up: Vector3) -> Vector3:
+	var at := start
+	for attempt in live.size() + 3:
+		var placed := pop_clear_of_band(pop_start_position(at, length, live, project, up), band, project, up)
+		if placed.is_equal_approx(at):
+			return at
+		at = placed
+	return at
+
+
+## 浮かぶ文字を at から出すとき、昇りきるまで（POP_RISE）画面の上で帯 band（画面の座標。空なら何もしない）にかからない位置。
+## 帯の真ん中より上から出る文字は帯の上へ、下から出る文字は帯の下へ、カメラの上の向き up に沿ってずらす。
+static func pop_clear_of_band(at: Vector3, band: Rect2, project: Callable, up: Vector3) -> Vector3:
+	if not band.has_area():
+		return at
+	var glyph := POP_FONT_SIZE * POP_PIXEL_SIZE
+	for attempt in 3:  # 透視でずれる量が少し変わるので、何度か詰める
+		var start: Vector2 = project.call(at)
+		var line: float = ((project.call(at + up * glyph) as Vector2) - start).length()
+		if line <= 0.0:
+			return at
+		var end: Vector2 = project.call(at + Vector3.UP * POP_RISE)
+		var half := line * POP_LINE_SPACING / 2.0  # 字の半分の高さと、縁取りのぶん
+		var top := minf(start.y, end.y) - half
+		var bottom := maxf(start.y, end.y) + half
+		if bottom <= band.position.y or top >= band.end.y:
+			return at
+		if start.y < band.get_center().y:
+			at += up * ((bottom - band.position.y + 1.0) / line * glyph)
+		else:
+			at -= up * ((band.end.y - top + 1.0) / line * glyph)
+	return at
 
 
 ## start に出したい length 文字の浮かぶ文字の、重ならない位置（start か、そこから画面の下へずらしたところ）。
