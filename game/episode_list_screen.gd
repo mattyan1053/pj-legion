@@ -6,7 +6,7 @@ extends Node
 ## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（lesson のある話）の番号には「（演習）」を付ける。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
-## - カードのクリック（1〜9 のキーでも）で、その話を始める。
+## - カードのクリックで、その話を始める。キーボードでは、左右の矢印で選んで Enter（card_keys.gd。1〜9 のキーでも、その番号の話）。
 ## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
 ## - 「部隊編成」で、この物語のストーリー用の部隊を組む（寄り道。戻るとここ）。
 ## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
@@ -27,6 +27,7 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 
 signal finished(outcome: StringName)
 
@@ -49,6 +50,9 @@ var context: AppContext
 ## 話（episode.gd）-> カード（Button）。
 var _cards := {}
 var _roster: Label
+var _scroll: ScrollContainer
+## 左右の矢印で選んでいるカードの番号（話の並びの順。選んでいなければ -1）。
+var _key_index := -1
 
 
 func _ready() -> void:
@@ -81,6 +85,7 @@ func _ready() -> void:
 	# 話が多いと横に並びきらないので、横に送れる枠に入れる（マウスのホイールでも送れる）。
 	# 開いたときは、次に遊ぶ話のカードが見えるところまで送っておく。
 	var scroll := ScrollContainer.new()
+	_scroll = scroll
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(0.0, MAP_HEIGHT + 172.0)
 	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -228,17 +233,48 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open() or not (event is InputEventKey and event.pressed and not event.echo):
+	if context.overlays.is_open():
+		return
+	var listed: Array[Episode] = context.story.campaign.episodes
+	var step := CardKeys.direction(event)
+	if step != 0:
+		get_viewport().set_input_as_handled()
+		var start := listed.find(context.story.next_episode())
+		select_by_key(CardKeys.next(_key_index, step, listed.size(), func(i: int) -> bool: return context.story.is_available(listed[i]), start))
+		return
+	if CardKeys.is_accept(event) and _key_index >= 0:
+		get_viewport().set_input_as_handled()
+		context.play_sound(&"ui_confirm")
+		choose(listed[_key_index])
+		return
+	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	var number := -1
 	if event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
 		number = event.physical_keycode - KEY_1
 	elif event.physical_keycode >= KEY_KP_1 and event.physical_keycode <= KEY_KP_9:
 		number = event.physical_keycode - KEY_KP_1
-	var listed: Array[Episode] = context.story.campaign.episodes
 	if number >= 0 and number < listed.size() and context.story.is_available(listed[number]):
 		context.play_sound(&"ui_confirm")
 		choose(listed[number])
+
+
+## キーボードで index 番目の話のカードを選ぶ（マウスを乗せたときと同じ見た目にし、見える所まで送る）。-1 で選ぶのをやめる。
+func select_by_key(index: int) -> void:
+	var listed: Array[Episode] = context.story.campaign.episodes
+	if _key_index >= 0:
+		(_cards[listed[_key_index]] as Button).remove_theme_stylebox_override("normal")
+	_key_index = index
+	if index < 0:
+		return
+	var card: Button = _cards[listed[index]]
+	card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+	_scroll.ensure_control_visible(card)
+
+
+## キーボードで選んでいる話（無ければ null。検査用）。
+func key_choice() -> Episode:
+	return null if _key_index < 0 else context.story.campaign.episodes[_key_index]
 
 
 func _build_card(episode: Episode) -> Button:
@@ -250,6 +286,7 @@ func _build_card(episode: Episode) -> Button:
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）
 	card.pressed.connect(choose.bind(episode))
+	card.mouse_entered.connect(func() -> void: select_by_key(-1))  # マウスに持ち替えたら、キーの選びはやめる
 
 	var column := VBoxContainer.new()
 	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

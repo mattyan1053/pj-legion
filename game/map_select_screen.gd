@@ -6,7 +6,8 @@ extends Node
 ##   段に収まらないほど増えたら、その段を横に送れる（ホイールでも）。
 ## - カードには、そのマップの盤の縮図（map_card.gd。盤はルールが作る）、番号と名前、置かれているもの、形の札を載せる。
 ## - マウスを乗せたカードは明るくなり、少し大きくなって、下の欄にマップの説明が出る。欄の大きさは、いちばん長い説明に合わせて固定する。
-## - カードのクリック（1〜9 のキーでも。番号のカード）で、選んだマップを context.match_choice に入れて &"pick"（対戦設定へ）。
+## - カードのクリックで、選んだマップを context.match_choice に入れて &"pick"（対戦設定へ）。キーボードでは、左右の矢印で選んで Enter
+##   （card_keys.gd。選んだカードはマウスを乗せたときと同じに明るくなり、説明が出る。1〜9 のキーでも、その番号のカード）。
 ## - 「部隊編成」で、対戦用の部隊を組む（寄り道。戻るとここ）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
@@ -21,6 +22,7 @@ const BattleScreen := preload("res://game/battle_screen.gd")
 const MapCard := preload("res://game/map_card.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 
 signal finished(outcome: StringName)
 
@@ -238,9 +240,24 @@ func _input(event: InputEvent) -> void:
 		press_back()
 
 
-## 1〜9 のキー（テンキーでも）で、その番号のカードを選ぶ。
+## 左右の矢印で選んで Enter で決める。1〜9 のキー（テンキーでも）なら、その番号のカードを選ぶ。
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open() or not (event is InputEventKey and event.pressed and not event.echo):
+	if context.overlays.is_open():
+		return
+	var listed := VersusFields.ids()
+	var step := CardKeys.direction(event)
+	if step != 0:
+		get_viewport().set_input_as_handled()
+		var index := CardKeys.next(listed.find(_hovered), step, listed.size(), func(_i: int) -> bool: return true)
+		if index >= 0:
+			hover(listed[index])
+		return
+	if CardKeys.is_accept(event) and _hovered != &"":
+		get_viewport().set_input_as_handled()
+		context.play_sound(&"ui_confirm")
+		choose(_hovered)
+		return
+	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	var key: Key = event.physical_keycode
 	var number := -1
