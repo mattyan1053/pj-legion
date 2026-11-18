@@ -79,6 +79,12 @@ const TEAM_BLUE := Color("3a7bd5")
 const TEAM_RED := Color("d64545")
 const TEAM_NEUTRAL := Color("e0b83a")
 
+# ---- 国（物語のカードの帯と紋。タイトルの空の左右の色と同じ向き） ----
+
+## 機械の国ベルク連邦（MILITARY）の琥珀と、魔法の国リュエル騎士領（FANTASY）の菫。
+const NATION_MILITARY := Color("d9a05a")
+const NATION_FANTASY := Color("a98cf0")
+
 # ---- 勝ち方の札 ----
 
 const GOAL := Color(0.25, 0.2, 0.08, 0.9)

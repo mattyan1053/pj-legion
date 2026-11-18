@@ -43,6 +43,12 @@ func test_title_menu_stays_readable_over_a_bright_sky() -> void:
 		assert_true(_contrast(theme.get_color(state[1], UiTheme.BUTTON_MENU), ground) >= CONTRAST_TEXT, "タイトルのメニューの %s" % state[0])
 
 
+## 国の色（物語のカードの「軍」の文字に使う）は、板の上で読める。
+func test_nation_colors_are_readable_on_a_card() -> void:
+	for nation: Color in [Palette.NATION_MILITARY, Palette.NATION_FANTASY]:
+		assert_true(_contrast(nation.lightened(0.25), Palette.PANEL) >= CONTRAST_TEXT, nation.to_html(false))
+
+
 func test_every_button_kind_has_every_state() -> void:
 	var theme := UiTheme.new()
 	for type: StringName in [&"Button", UiTheme.BUTTON_PRIMARY, UiTheme.BUTTON_DANGER, UiTheme.BUTTON_ROW, UiTheme.BUTTON_CARD,
