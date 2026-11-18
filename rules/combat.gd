@@ -95,6 +95,9 @@ static func targets(battle: Battle, attacker: Unit) -> Array[Unit]:
 ## 倍率は一時的な補正（突撃・注射。Unit の層 3）の前の攻撃力に掛け、一時的な補正はそのあとに足す
 ## （突撃と照準を重ねても、満タンの将を 1 発で倒せないように。docs/tactical-ult.md）。
 ## 駒への攻撃と、盾への攻撃が使う。
+static var probe_scale := 100
+
+
 static func attack_power(attacker: Unit) -> int:
 	return _attack_power(attacker) + _probe_charge(attacker)
 
@@ -124,7 +127,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
 	if smoke != null:
 		return Hit.smoked(attacker, target, smoke)
-	var amount := attack_power(attacker)
+	var amount := attack_power(attacker) * probe_scale / 100
 	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
 	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100

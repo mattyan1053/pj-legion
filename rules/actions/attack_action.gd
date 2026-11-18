@@ -30,5 +30,11 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var events := Combat.strike(battle, attacker, target)
 	var reason := ExperienceGainedEvent.Reason.DEFEAT if target.hp == 0 else ExperienceGainedEvent.Reason.HIT
 	events.append_array(Growth.gain(attacker, experience, reason))
+	var counter := int(RuleProbe.f("counter"))
+	if counter > 0 and target.hp > 0 and attacker.hp > 0 and attacker.side != Unit.Side.NEUTRAL and target.side != Unit.Side.NEUTRAL \
+			and target.kind != UnitKind.Id.KING and Combat.can_attack(battle, target, attacker):
+		Combat.probe_scale = counter
+		events.append_array(Combat.strike(battle, target, attacker))
+		Combat.probe_scale = 100
 	events.append(battle.finish_action(attacker))
 	return events
