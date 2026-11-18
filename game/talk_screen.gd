@@ -464,6 +464,7 @@ func _open_choice() -> void:
 		_layer.add_child(center)
 		var panel := PanelContainer.new()
 		panel.add_theme_stylebox_override("panel", UiTheme.solid_box(22.0))
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 枠の上の右クリックも、選ぶのをやめる入力へ通す（ボタンは押せる）
 		center.add_child(panel)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)

@@ -367,3 +367,29 @@ func test_deploy_cells_read_ranges() -> void:
 	assert_true(file.problems.is_empty(), "%s" % [file.problems])
 	file.cells({"value": "6-4,1  a,1", "line": 3})
 	assert_eq(file.problems.size(), 2, "逆の範囲と、数でない x は弾く")
+
+
+## 話の一覧の下の欄（いま雇える駒・持ち物・コスト上限）は、持ち物が増えても、欄の幅で、語の切れ目で折り返す
+## （Label の自動の折り返しは「コスト上限:」と数の間で切る）。どの物語も、全部の話をクリアしたところ（持ち物がいちばん多い）で見る。
+func test_the_roster_note_folds_within_its_width() -> void:
+	preload("res://game/ui_theme.gd").install()  # 遊ぶときの字（幅を測る）
+	for campaign: RefCounted in Story.campaigns():
+		var context := preload("res://game/app_context.gd").new()
+		context.story.choose_campaign(campaign)
+		for episode: Episode in campaign.episodes:
+			context.story.clear(episode.id)
+		var screen := EpisodeListScreen.new()
+		screen.context = context
+		var root := Node.new()
+		root.add_child(screen)
+		screen._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
+		var label := Label.new()
+		label.add_theme_font_size_override("font_size", 17)
+		var font := label.get_theme_font("font")
+		var shown: String = screen.roster_shown()
+		for line: String in shown.split("\n"):
+			var width := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
+			assert_true(width <= EpisodeListScreen.ROSTER_WIDTH + 1.0, "%s: 欄の幅を超える行（%d px）: %s" % [campaign.title, width, line])
+		assert_true(shown.contains("コスト上限: %d" % context.story.unlocked().budget), "%s: コスト上限と数が離れた: %s" % [campaign.title, shown])
+		label.free()
+		root.free()
