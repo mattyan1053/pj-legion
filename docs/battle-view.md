@@ -316,7 +316,7 @@
     環境光を強め（`FORWARD_AMBIENT`）、地面の模様を濃くする（`FORWARD_PATTERN_GAIN`。`ground.gdshader` の `pattern_gain`）。
   - 半透明の重ね塗り（範囲の色、マス目の線、脅威範囲の斜線）は、互換の描画が sRGB の値のまま混ぜ、Forward+ が光の量（線形）で混ぜるので、
     同じ不透明度でも Forward+ では白い塗りが濃く、暗い色の塗りが薄く出る → 地面の明るさ（マップの見た目の平地の色）と塗る色の明るさから、
-    互換で混ぜたときと同じ明るさになる不透明度に直す（`overlay_alpha`。白はさらに `FORWARD_WHITE_SCALE` を掛ける）。
+    互換で混ぜたときと同じ明るさになる不透明度に直す（`overlay_alpha`。白はさらに `FORWARD_WHITE_SCALE` を、マス 1 枚ぶんの範囲の塗りはさらに `FORWARD_FILL_SCALE` を掛ける）。
   - タイトルの裂けた空（光を受けない空）は、露出を上げたぶん白く出るので、Forward+ では暗くする（`FORWARD_TITLE_SKY`）。
   - 残る差: Forward+ では、草原の緑と石畳の黄みが互換より 1 割ほど淡く、結晶の光のにじみが少し強い。
 - 本陣のマスには陣営の色の旗が立つ。

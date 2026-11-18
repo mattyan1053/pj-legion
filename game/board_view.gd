@@ -328,7 +328,7 @@ func show_cells(colors: Dictionary, raised := {}) -> void:
 	for cell: Vector2i in colors:
 		var lift := 0.05 if raised.has(cell) else 0.012
 		_highlight.set_instance_transform(i, Transform3D(Basis.IDENTITY, cell_center(cell) + Vector3(0.0, lift, 0.0)))
-		_highlight.set_instance_color(i, RenderTone.overlay_color(colors[cell], _ground_tone()))
+		_highlight.set_instance_color(i, RenderTone.fill_color(colors[cell], _ground_tone()))
 		i += 1
 
 
@@ -495,7 +495,10 @@ func _build_markers() -> void:
 	var cell_mesh := BoxMesh.new()
 	cell_mesh.size = Vector3(1.0 - TILE_GAP, 0.02, 1.0 - TILE_GAP)
 
-	var paint := _overlay_material(Color.WHITE)
+	# 塗りの色と濃さは、マスごとの色（show_cells）が決める。材質は不透明の白のまま（濃さの直しを 2 度掛けない）。
+	var paint := StandardMaterial3D.new()
+	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	paint.vertex_color_use_as_albedo = true
 	_highlight = MultiMesh.new()
 	_highlight.transform_format = MultiMesh.TRANSFORM_3D
