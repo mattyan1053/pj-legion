@@ -637,7 +637,7 @@ func test_a_save_from_before_an_inserted_trial_keeps_its_place() -> void:
 	story.load_data({"campaigns": {"fantasy": {"cleared": before_trial + ["gorge_crossing"]}}})
 	story.choose_campaign(fantasy)
 	assert_true(story.is_cleared(&"trial_evolution"), "後ろの話をクリアしていれば、足した演習もクリアしたもの")
-	assert_true(story.is_available(_any_episode(&"ridge_siege")), "本編の続きを遊べる")
+	assert_true(story.is_available(Story.episode_after(_any_episode(&"gorge_crossing"))), "本編の続きを遊べる")
 	assert_eq(story.cleared_count(fantasy), before_trial.size() + 2)
 	var midway := Story.new()
 	midway.load_data({"campaigns": {"fantasy": {"cleared": before_trial}}})
@@ -645,6 +645,24 @@ func test_a_save_from_before_an_inserted_trial_keeps_its_place() -> void:
 	assert_false(midway.is_cleared(&"trial_evolution"))
 	assert_eq(midway.next_episode().id, &"trial_evolution", "演習の手前までの人は、足した演習から")
 	assert_false(midway.is_available(_any_episode(&"gorge_crossing")))
+
+
+## 本編の間に話を足した（FANTASY の「岩山の合流」）: 足す前の記録で、それより後ろの話をクリアしていた人は、
+## 足した話もクリアしたものとして読み、続きをそのまま遊べる。足した話の手前までの人は、足した話から続ける。
+func test_a_save_from_before_the_inserted_rejoin_keeps_its_place() -> void:
+	var fantasy: RefCounted = Story.campaigns()[1]
+	var trials := ["trial_first_steps", "trial_fireball", "trial_ward", "trial_shadow_step", "trial_eruption", "trial_evolution"]
+	var story := Story.new()
+	story.load_data({"campaigns": {"fantasy": {"cleared": trials + ["gorge_crossing", "ridge_siege"]}}})
+	story.choose_campaign(fantasy)
+	assert_true(story.is_cleared(&"gorge_rejoin"), "後ろの話をクリアしていれば、足した話もクリアしたもの")
+	assert_true(story.is_available(_any_episode(&"barrow_vigil")), "続きを遊べる")
+	assert_true(story.is_available(_any_episode(&"ridge_siege")), "クリアした後ろの話を遊び直せる")
+	var midway := Story.new()
+	midway.load_data({"campaigns": {"fantasy": {"cleared": trials + ["gorge_crossing"]}}})
+	midway.choose_campaign(fantasy)
+	assert_eq(midway.next_episode().id, &"gorge_rejoin", "足した話の手前までの人は、足した話から")
+	assert_false(midway.is_available(_any_episode(&"ridge_siege")))
 
 
 func _any_episode(id: StringName) -> RefCounted:
