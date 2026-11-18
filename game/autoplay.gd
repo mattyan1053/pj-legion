@@ -1831,6 +1831,16 @@ func _leave_battle(app: Node) -> void:
 	await _expect_steady(stages, cards, VersusFields.ids().map(func(field: StringName) -> Callable: return stages.hover.bind(field)),
 		"マップ選択でカードに乗せる")
 	stages.hover(&"")
+	# キーボードでは、左右の矢印で選ぶ（選んだカードの説明が出る）。
+	var fields := VersusFields.ids()
+	_push_key(app, KEY_RIGHT)
+	_expect(stages.hovered_field() == fields[0], "マップ選択で右の矢印を押しても、最初のカードが選ばれない")
+	_push_key(app, KEY_RIGHT)
+	_push_key(app, KEY_RIGHT)
+	_push_key(app, KEY_LEFT)
+	_expect(stages.hovered_field() == fields[1] and stages.note_text().contains(VersusFields.title_of(fields[1])),
+		"マップ選択で左右の矢印で選んでも、そのカードが選ばれない（か、説明が出ない）")
+	stages.hover(&"")
 	# マップを選ぶ前にも、部隊編成（対戦用）へ寄り道できる。戻るとマップ選択。
 	stages.press_edit_decks()
 	await app.scene_changed
@@ -2103,6 +2113,16 @@ func _visit_decks(app: Node) -> void:
 ## 決め打ちの敵）→ 勝って、決着の画面の「次へ」→ あとの会話（最後まで送る）→ タイトル。勝った時点でクリアを書き、タイトルに済みの印。
 ## 対戦は、話の対戦の画面に小さな盤を渡して、1 手で勝って終える（話の盤を最後まで進めると、検査が長くなる）。
 ## 部隊を選んで出撃する流れを通すので、部隊の決まっている頭の話（チュートリアル）は、クリアしたことにしてから始める。
+## キーを 1 回押して離したことにする（本物の入力と同じ道を通す）。
+func _push_key(app: Node, code: Key) -> void:
+	for pressed: bool in [true, false]:
+		var key := InputEventKey.new()
+		key.physical_keycode = code
+		key.keycode = code
+		key.pressed = pressed
+		app.get_viewport().push_input(key)
+
+
 func _visit_story(app: Node) -> void:
 	var story: RefCounted = app.context.story
 	story.choose_campaign(Story.military())
@@ -2150,9 +2170,17 @@ func _visit_story(app: Node) -> void:
 	_expect(list.is_card_enabled(episode) and list.card_status(episode) == "未クリア", "次の話を選べない")
 	for later: RefCounted in Story.military().episodes.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
-	list.choose(episode)
+	# キーボードでは、左右の矢印で選んで Enter（数字キーの届かない 10 話目より先も選べる）。最初の矢印は、次に遊ぶ話を選ぶ。
+	_push_key(app, KEY_RIGHT)
+	_expect(list.key_choice() == episode, "話の一覧で矢印を押しても、次に遊ぶ話が選ばれない")
+	_push_key(app, KEY_LEFT)
+	_expect(list.key_choice() == Story.military().episodes[first - 1], "話の一覧で左の矢印を押しても、前の話へ移らない")
+	_push_key(app, KEY_RIGHT)
+	_push_key(app, KEY_RIGHT)
+	_expect(list.key_choice() == episode, "話の一覧で、まだ遊べない話を矢印で選べる")
+	_push_key(app, KEY_ENTER)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "話の一覧で話を選んでも、出撃準備へ進まない（会話は出撃のあと）")
+	_expect(app.current_id() == SceneFlow.SORTIE, "話の一覧で話を選んで Enter を押しても、出撃準備へ進まない（会話は出撃のあと）")
 	var sortie: Node = app.current_scene()
 	# 「部隊編成」で編成（ストーリー用だけ）へ寄り道し、組んで取っておいた部隊を選んで戻る。
 	var steps: int = app.context.run.size()
