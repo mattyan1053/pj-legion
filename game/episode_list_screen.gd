@@ -26,10 +26,13 @@ const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
 
 signal finished(outcome: StringName)
 
 const CARD_WIDTH := 280.0
+## 下の欄（いま雇える駒・持ち物・コスト上限）の文の幅。
+const ROSTER_WIDTH := 830.0
 ## 縮図の 1 マスの大きさ（px）と、縮図を置く枠の高さ。
 const MAP_CELL := 8
 const MAP_HEIGHT := 180.0
@@ -107,10 +110,13 @@ func _ready() -> void:
 	root.add_child(note)
 	_roster = _label("", 17)
 	_roster.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	_roster.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_roster.custom_minimum_size = Vector2(830.0, 0.0)
+	_roster.custom_minimum_size = Vector2(ROSTER_WIDTH, 0.0)
 	note.add_child(_roster)
-	_roster.text = roster_text()
+	# 持ち物が増えると 1 行に収まらない。Label の折り返しは語の切れ目を見ない（「コスト上限:」と数を分ける）ので、ここで折り返す。
+	var font := _roster.get_theme_font("font")
+	var font_size := _roster.get_theme_font_size("font_size")
+	_roster.text = TextWrap.fold(roster_text(), ROSTER_WIDTH, func(character: String) -> float:
+		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
 
 	var footer := HBoxContainer.new()
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -180,6 +186,11 @@ func roster_text() -> String:
 	return Text.t("story.episodes.roster", {
 		"kinds": Text.join_dot(kinds), "items": Text.join_dot(items) if not items.is_empty() else Text.t("battle.hud.no_items"), "budget": now.budget,
 	})
+
+
+## 下の欄に出している文（折り返したあと。検査用）。
+func roster_shown() -> String:
+	return _roster.text
 
 
 ## 話 episode のクリアで増えるものの短い文（無ければ空）。カードに出す。

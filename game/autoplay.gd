@@ -2241,6 +2241,23 @@ func _visit_story(app: Node) -> void:
 	_expect(talk.is_choosing() == (Story.episode_after(episode) != null), "あとの会話を送りきっても、「次の話へ」「話の一覧へ」を選ばせない")
 	_expect(talk.is_skip_shown() != talk.is_choosing(), "「次の話へ」「話の一覧へ」を選ぶ間も「スキップ」が出ている")
 	if talk.is_choosing():
+		# 選ぶ枠（画面の真ん中）の上で右クリックしても、選ぶのをやめて最後の文へ戻る（枠に食われない）。もう一度送ると、また選ぶ。
+		# 画面なしの検査は、押した物を GUI で拾わないので、枠の真ん中でマウスを止める部品（ボタンのほか）が無いことも確かめる。
+		await get_tree().process_frame  # 枠の大きさが決まってから
+		var middle := app.get_viewport().get_visible_rect().get_center()
+		for node: Node in talk.find_children("*", "Control", true, false):
+			var control := node as Control
+			if control.is_visible_in_tree() and not control is BaseButton and control.mouse_filter == Control.MOUSE_FILTER_STOP and control.get_global_rect().has_point(middle):
+				_fail("選ぶ枠の上の右クリックを、%s が食う" % control.get_class())
+		var right := InputEventMouseButton.new()
+		right.button_index = MOUSE_BUTTON_RIGHT
+		right.pressed = true
+		right.position = middle
+		right.global_position = right.position
+		app.get_viewport().push_input(right)
+		_expect(not talk.is_choosing() and talk.is_skip_shown(), "選ぶ枠の上で右クリックしても、選ぶのをやめて最後の文へ戻らない")
+		talk.press_next()
+		_expect(talk.is_choosing(), "最後の文へ戻ったあと、送っても選ぶ枠が出ない")
 		talk.press_to_episodes()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
@@ -2402,6 +2419,10 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 			await app.scene_changed
 	_expect(app.current_id() == SceneFlow.BATTLE, "出撃準備の「出撃」で、対戦へ進まない")
 	var screen: Node = app.current_scene()
+	# 幕が明けた時点（場面の _process がまだ回っていない）で、ミニマップはもう右上にある（左上に出てから跳ばない）。
+	var minimap: Rect2 = screen.minimap_rect()
+	_expect(minimap.has_area() and minimap.position.x > screen.get_viewport().get_visible_rect().size.x / 2.0,
+		"対戦に入った幕が明けたとき、ミニマップが右上に置かれていない: %s" % minimap)
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
