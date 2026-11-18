@@ -18,6 +18,9 @@ const BLEND_GROUND := 0.5
 ## Forward+ は、混ぜたあとにトーンマッピングと露出が掛かる（互換は、物ごとに掛けてから混ぜる）ので、明るい重ね塗り（白い移動範囲、マス目）が
 ## さらに強く出る。白のときに不透明度に掛ける数（色が暗いほど 1 に近づける。橙や赤の範囲は、上の直しだけで互換に近い）。
 const FORWARD_WHITE_SCALE := 0.7
+## Forward+ のマスの塗り（範囲の色）の不透明度に、さらに掛ける数。マス 1 枚ぶんの広い塗りは、線や斜線より強く見えるので、
+## 互換の絵と見比べて決めた。
+const FORWARD_FILL_SCALE := 0.7
 
 ## Forward+ の地面の模様（むら、色の寄り、斑、枯れ、石畳の目）の濃さ（ground.gdshader の pattern_gain）。
 const FORWARD_PATTERN_GAIN := 1.8
@@ -60,6 +63,12 @@ static func overlay_alpha(alpha: float, ground := BLEND_GROUND, brightness := 1.
 ## 色 color の不透明度を overlay_alpha で直したもの。
 static func overlay_color(color: Color, ground := BLEND_GROUND) -> Color:
 	return Color(color, overlay_alpha(color.a, ground, color.get_luminance()))
+
+
+## マスの塗り（移動・攻撃の範囲など。board_view.gd の show_cells）の色。overlay_color に、さらに FORWARD_FILL_SCALE を掛ける。
+static func fill_color(color: Color, ground := BLEND_GROUND) -> Color:
+	var fixed := overlay_color(color, ground)
+	return Color(fixed, fixed.a * FORWARD_FILL_SCALE) if is_forward() else fixed
 
 
 ## sRGB で、明るさ ground_srgb の地面に、明るさ overlay_srgb の色を不透明度 alpha で混ぜた明るさを、
