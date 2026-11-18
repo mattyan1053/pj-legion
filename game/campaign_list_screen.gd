@@ -4,7 +4,7 @@ extends Node
 ##
 ## - 物語（軍 1 つと話の列。story.gd の CAMPAIGNS）をカードで並べる。カードには物語の名前、軍、クリアした話の数。
 ## - 話の無い物語は「準備中」の札で、押せない。遊べる物語が 1 つでも、選ぶ場面は飛ばさない（物語が増えていくことを見せる）。
-## - カードのクリック（1〜9 のキーでも）で、その物語を選んで &"open"（その物語の話の一覧へ）。
+## - カードのクリックで、その物語を選んで &"open"（その物語の話の一覧へ）。キーボードでは、左右の矢印で選んで Enter（card_keys.gd。1〜9 のキーでも）。
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
 const SceneFlow := preload("res://game/scene_flow.gd")
@@ -19,6 +19,7 @@ const DeckText := preload("res://game/deck_text.gd")
 const Campaign := preload("res://game/campaign.gd")
 const Story := preload("res://game/story.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 
 signal finished(outcome: StringName)
 
@@ -36,6 +37,8 @@ const COLOR_LOCKED := Palette.TEXT_OFF
 var context: AppContext
 ## 物語（campaign.gd）-> カード（Button）。
 var _cards := {}
+## 左右の矢印で選んでいるカードの番号（物語の並びの順。選んでいなければ -1）。
+var _key_index := -1
 
 
 func _ready() -> void:
@@ -159,6 +162,8 @@ func status_text(campaign: Campaign) -> String:
 func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():
 		return
+	if _key_index >= 0 and CardKeys.is_pointer_move(event):
+		select_by_key(-1)  # マウスに持ち替えた（キーで送ってカードがマウスの下へ来ただけでは、やめない）
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 	if right or escape:
@@ -168,7 +173,20 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open() or not (event is InputEventKey and event.pressed and not event.echo):
+	if context.overlays.is_open():
+		return
+	var listed := Story.campaigns()
+	var step := CardKeys.direction(event)
+	if step != 0:
+		get_viewport().set_input_as_handled()
+		select_by_key(CardKeys.next(_key_index, step, listed.size(), func(i: int) -> bool: return Story.is_ready(listed[i])))
+		return
+	if CardKeys.is_accept(event) and _key_index >= 0:
+		get_viewport().set_input_as_handled()
+		context.play_sound(&"ui_confirm")
+		choose(listed[_key_index])
+		return
+	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	var number := -1
 	if event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
@@ -178,6 +196,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	if number >= 0 and number < Story.campaigns().size() and Story.is_ready(Story.campaigns()[number]):
 		context.play_sound(&"ui_confirm")
 		choose(Story.campaigns()[number])
+
+
+## キーボードで index 番目の物語のカードを選ぶ（マウスを乗せたときと同じ見た目にする）。-1 で選ぶのをやめる。
+func select_by_key(index: int) -> void:
+	var listed := Story.campaigns()
+	if _key_index >= 0:
+		(_cards[listed[_key_index]] as Button).remove_theme_stylebox_override("normal")
+	_key_index = index
+	if index >= 0:
+		var card: Button = _cards[listed[index]]
+		card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+
+
+## キーボードで選んでいる物語（無ければ null。検査用）。
+func key_choice() -> Campaign:
+	return null if _key_index < 0 else Story.campaigns()[_key_index]
 
 
 func _build_card(campaign: Campaign) -> Button:

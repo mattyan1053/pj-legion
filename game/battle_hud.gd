@@ -794,6 +794,11 @@ func is_banner_shown() -> bool:
 	return _banner.visible
 
 
+## 知らせの帯が画面に占める四角（出ていなければ空）。浮かぶ文字が帯にかからないよう、再生が見る。
+func banner_rect() -> Rect2:
+	return _banner.get_global_rect() if _banner.visible else Rect2()
+
+
 ## 画面の中央の大きな文字を、すぐに消す（時間を止めて読む画面を開いたとき、止まったまま残らないように）。
 func hide_banner() -> void:
 	_banner.stop()
