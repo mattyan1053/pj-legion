@@ -57,6 +57,8 @@ var _cards := {}
 var _note_title: Label
 var _note: Label
 var _hovered: StringName = &""
+## 左右の矢印で選んでいる間か（マウスを動かすまで）。
+var _by_key := false
 
 
 func _ready() -> void:
@@ -232,6 +234,10 @@ func card_center(field: StringName) -> Vector2:
 func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():
 		return
+	if _by_key and CardKeys.is_pointer_move(event):
+		# マウスに持ち替えた: マウスの下のカードに乗ったことにする（無ければ、選びをやめる）。
+		_by_key = false
+		hover(_field_at((event as InputEventMouseMotion).global_position))
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 	if right or escape:
@@ -250,6 +256,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		var index := CardKeys.next(listed.find(_hovered), step, listed.size(), func(_i: int) -> bool: return true)
 		if index >= 0:
+			_by_key = true
 			hover(listed[index])
 		return
 	if CardKeys.is_accept(event) and _hovered != &"":
@@ -269,6 +276,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if number >= 1 and number <= fields.size():
 		context.play_sound(&"ui_confirm")
 		choose(fields[number - 1])
+
+
+## 画面の点 at の下のカードのマップ（無ければ空）。
+func _field_at(at: Vector2) -> StringName:
+	for field: StringName in _cards:
+		if (_cards[field] as Control).get_global_rect().has_point(at):
+			return field
+	return &""
 
 
 func _show_note(field: StringName) -> void:
@@ -308,9 +323,12 @@ func _build_card(field: StringName) -> Button:
 		card.add_theme_stylebox_override(state, style)
 		card.set_meta(&"hover_style" if hovered else &"normal_style", style)
 	card.pressed.connect(choose.bind(field))
-	card.mouse_entered.connect(hover.bind(field))
+	# キーで選んでいる間は、乗ったことにしない（キーで送ったカードがマウスの下へ来ても、選びが替わらないように）。
+	card.mouse_entered.connect(func() -> void:
+		if not _by_key:
+			hover(field))
 	card.mouse_exited.connect(func() -> void:
-		if _hovered == field:
+		if not _by_key and _hovered == field:
 			hover(&""))
 
 	var row := HBoxContainer.new()

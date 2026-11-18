@@ -42,3 +42,9 @@ static func next(index: int, step: int, count: int, enabled: Callable, start := 
 		i += step
 	return index
 
+
+
+## マウスを本当に動かしたか（キーで送ったカードがマウスの下へ来て、乗ったことになるのとは分ける）。
+## マウスに持ち替えたら、キーでの選びをやめる。
+static func is_pointer_move(event: InputEvent) -> bool:
+	return event is InputEventMouseMotion and (event as InputEventMouseMotion).relative != Vector2.ZERO

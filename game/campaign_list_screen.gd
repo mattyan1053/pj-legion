@@ -162,6 +162,8 @@ func status_text(campaign: Campaign) -> String:
 func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():
 		return
+	if _key_index >= 0 and CardKeys.is_pointer_move(event):
+		select_by_key(-1)  # マウスに持ち替えた（キーで送ってカードがマウスの下へ来ただけでは、やめない）
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 	if right or escape:
@@ -221,7 +223,6 @@ func _build_card(campaign: Campaign) -> Button:
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）
 	card.pressed.connect(choose.bind(campaign))
-	card.mouse_entered.connect(func() -> void: select_by_key(-1))  # マウスに持ち替えたら、キーの選びはやめる
 
 	card.add_child(CardDecor.new(campaign.army, ready))
 	var column := VBoxContainer.new()

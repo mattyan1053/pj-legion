@@ -37,3 +37,12 @@ func test_reaches_cards_beyond_the_ninth() -> void:
 	for i in 12:
 		index = CardKeys.next(index, 1, 12, func(_i: int) -> bool: return true)
 	assert_eq(index, 11, "数字キーの届かない 10 枚目より先も選べる")
+
+
+func test_only_a_real_pointer_move_counts_as_switching_to_the_mouse() -> void:
+	var still := InputEventMouseMotion.new()
+	assert_false(CardKeys.is_pointer_move(still), "動いていない（カードが下へ来ただけ）")
+	var moved := InputEventMouseMotion.new()
+	moved.relative = Vector2(3, 0)
+	assert_true(CardKeys.is_pointer_move(moved))
+	assert_false(CardKeys.is_pointer_move(_key(KEY_LEFT)))
