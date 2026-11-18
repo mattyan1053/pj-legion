@@ -249,15 +249,21 @@ func to_setup(battle_seed: int) -> MatchSetup:
 			setup.decks[cpu_side()] = deck_for(cpu_row(), battle_seed, cpu_side())
 	else:
 		setup = MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1, battle_seed), deck_for(Unit.Side.PLAYER2, battle_seed))
-	# 人が決めた初期位置（行ごと）。後手として対戦する行は、上下を返す。部隊の数と合わなければ使わない。
+	# 人が決めた初期位置（行ごと）。行と違う側で対戦する（手番ランダムで後手を引いた）ときは、盤の形に合わせて返す
+	# （点対称の盤なら上下と左右、そうでなければ上下。Deployment.facing_placement）。部隊の数と合わなければ使わない。
+	var board: Board = null
 	for row in 2:
 		var plays_as: int = row if not cpu_opponent else (human_side_now() if row == human_row() else cpu_side())
 		if not is_human(row as Unit.Side) or placements[row].is_empty() or setup.decks[plays_as] == null \
 				or placements[row].size() != setup.decks[plays_as].entries.size():
 			continue
 		var placement: Array[Vector2i] = []
-		for offset: Vector2i in placements[row]:
-			placement.append(offset if plays_as == row or offset == Deployment.UNSET else Vector2i(offset.x, -offset.y))
+		placement.assign(placements[row])
+		if plays_as != row:
+			if board == null:
+				board = defined.make_board(battle_seed)
+			if board != null:
+				placement = Deployment.facing_placement(board, placement)
 		setup.placements[plays_as] = placement
 	# ランダム編成で組んだ部隊を覚える（「編成確認」で見せる）。行と、実際に動かすプレイヤーは、手番がランダムのときに違う。
 	for row in 2:

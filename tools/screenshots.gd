@@ -38,6 +38,7 @@ const SCENES := {
 	"setup_preview": "対戦設定で、CPU の部隊の「編成を確認」を開いたところ",
 	"setup_unit_detail": "対戦設定の「編成確認」（CPU の部隊）で、駒の札を押して詳しい説明を開いたところ",
 	"setup_placement": "対戦設定の「初期位置」の窓（中央平原の代表の形）で、駒を 1 体動かし、もう 1 体を選んでいるところ",
+	"setup_random_second": "双子結晶（本陣が対角）で、初期位置の最初の駒を盤の端の側へ動かし、手番ランダムで後手を引いた対戦の始め（端の側の駒は、後手の側でも端の側。左右も返す）",
 	"setup_random": "対戦設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
 	"setup_cpu_deck": "対戦設定で、CPU の行の部隊の選択肢を開いた（CPU の編成・ランダム編成・取っておいた部隊）",
 	"setup_cpu_random": "CPU の部隊を「ランダム編成」にして始めた対戦の途中で、対戦設定の「編成確認」を開いた（いまの対戦で組んだ部隊）",
@@ -626,6 +627,58 @@ func _scene_setup_cpu_random() -> bool:
 	shown.open_preview(Unit.Side.PLAYER2)
 	_park_mouse()
 	return shown.preview().visible
+
+
+## 本物の入力で、手番ランダムの後手の初期位置を確かめる: 対戦設定の「初期位置」で最初の駒を端へ動かし、手番を「ランダム」にして始め、
+## 後手を引く種まで「同じ設定のまま新しい種」で始め直す。後手の最初の駒が、点対称に返したマスにいなければ偽。
+func _scene_setup_random_second() -> bool:
+	var choice := MatchChoice.new()
+	choice.field = VersusFields.TWIN_SPRINGS
+	_app.context.match_choice = choice
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	panel.open_placement(Unit.Side.PLAYER1)
+	var dialog: Control = panel.placement_dialog()
+	var deploy: Control = dialog.deploy_map()
+	var own: Array[Vector2i] = deploy.unit_cells()
+	var open: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return not own.has(cell))
+	if own.is_empty() or open.is_empty():
+		return false
+	# 盤の端の側（本陣が左下なので、列の小さいほう）の、空いている置けるマスへ。
+	open.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x < b.x)
+	deploy.press_cell(own[0])
+	deploy.press_cell(open[0])
+	dialog.close_dialog()
+	var offset: Vector2i = open[0] - panel.current_choice().placement_preview(Unit.Side.PLAYER1, panel.PLACEMENT_SEED)[1].board.hq_cells[0]
+	panel.choose_random_side()
+	panel.confirm()
+	await _app.scene_changed
+	if _app.current_id() != SceneFlow.BATTLE:
+		return false
+	_scene = _app.current_scene()
+	for battle_seed in range(1, 60):
+		if _scene.source.cpu_side() == Unit.Side.PLAYER1:
+			break
+		for i in 120:
+			if not _scene.is_busy():
+				break
+			await get_tree().process_frame
+		_scene.start_battle(battle_seed)
+	if _scene.source.cpu_side() != Unit.Side.PLAYER1:
+		return false
+	var battle: Battle = _scene.battle
+	var first: Array = battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER2 and unit.kind != UnitKind.Id.KING)
+	if first.is_empty() or first[0].cell != battle.board.hq_cells[Unit.Side.PLAYER2] - offset:
+		push_error("screenshots: 後手の最初の駒が %s（点対称に返したマスは %s）" % [first[0].cell if not first.is_empty() else null, battle.board.hq_cells[1] - offset])
+		return false
+	for i in 600:
+		if not _scene.is_busy():
+			break
+		await get_tree().process_frame
+	_park_mouse()
+	return true
 
 
 func _scene_setup_random() -> bool:
