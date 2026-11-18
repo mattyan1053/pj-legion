@@ -61,7 +61,7 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(UiTheme.vignette())
+	layer.add_child(UiTheme.scene_shade())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 22.0

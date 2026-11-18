@@ -51,6 +51,8 @@ const FONT_SIZE := 16
 const CORNER := 6
 ## 横に送れるカードの段の、左右の端の余白（マップ選択・話の一覧。送り切ったときもカードが画面の端に付かない）。
 const SCROLL_ROW_EDGE := 16
+## 景色の上にカードを並べる画面で、景色を沈める濃さ（scene_shade）。
+const SCENE_SHADE := 0.42
 
 
 ## 既定のテーマに、このテーマを重ねる。どのコントロールを作るよりも前に、1 回だけ呼ぶ。
@@ -136,6 +138,17 @@ static func vignette(strength := 1.0) -> TextureRect:
 	return rect
 
 
+## 景色の上にカードを並べる画面の幕（マップ選択、物語選択、話の一覧）。景色の全体を夜の藍へ沈めて、カードを浮かせる。
+## 真ん中も沈め、四隅はさらに沈める。入力は通す。
+static func scene_shade() -> Control:
+	var shade := ColorRect.new()
+	shade.color = Color(Palette.INK, SCENE_SHADE)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.add_child(vignette())
+	return shade
+
+
 # ---- ボタン ----
 
 
@@ -170,10 +183,12 @@ func _build_buttons() -> void:
 	set_stylebox(&"pressed", BUTTON_ROW, row_chosen)
 	set_stylebox(&"hover_pressed", BUTTON_ROW, row_chosen)
 
-	# カードのボタン: 板と同じ地に、乗ると金の縁。
+	# カードのボタン: 板と同じ地に、落ちる影。乗ると金の縁と、金の光のにじみ。
 	set_type_variation(BUTTON_CARD, &"Button")
-	var card := box(Palette.OVERLAY, Color(Palette.BORDER, 0.9), 1, 8, 10.0, 4)
-	var card_hover := box(Color(Palette.RAISED, 0.96), Palette.ACCENT, 2, 8, 10.0, 6)
+	var card := box(Palette.OVERLAY, Palette.BORDER, 1, 8, 10.0, 8)
+	var card_hover := box(Color(Palette.RAISED, 0.96), Palette.ACCENT, 2, 8, 10.0, 12)
+	card_hover.shadow_color = Color(Palette.ACCENT, 0.28)  # 乗ると、金の光がにじむ
+	card_hover.shadow_offset = Vector2.ZERO
 	set_stylebox(&"normal", BUTTON_CARD, card)
 	set_stylebox(&"hover", BUTTON_CARD, card_hover)
 	set_stylebox(&"pressed", BUTTON_CARD, card_hover)
