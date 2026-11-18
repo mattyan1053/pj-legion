@@ -15,6 +15,8 @@ const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const Ornament := preload("res://game/ui_ornament.gd")
+const Crest := preload("res://game/crest.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
@@ -52,12 +54,12 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(UiTheme.vignette())
+	layer.add_child(UiTheme.scene_shade())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 36.0
 	root.offset_bottom = -28.0
-	root.add_theme_constant_override("separation", 18)
+	root.add_theme_constant_override("separation", 10)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
@@ -65,6 +67,10 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
+	var ornament := Ornament.new(360.0, 14.0)
+	ornament.color = Crest.color_of(context.story.campaign.army)  # その物語の国の色
+	ornament.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	root.add_child(ornament)
 	var sub := _label(Text.t("story.episodes.sub"), 18)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	root.add_child(sub)

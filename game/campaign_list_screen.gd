@@ -11,6 +11,8 @@ const SceneFlow := preload("res://game/scene_flow.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const Ornament := preload("res://game/ui_ornament.gd")
+const Crest := preload("res://game/crest.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const DeckText := preload("res://game/deck_text.gd")
@@ -42,12 +44,12 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(UiTheme.vignette())
+	layer.add_child(UiTheme.scene_shade())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 36.0
 	root.offset_bottom = -28.0
-	root.add_theme_constant_override("separation", 18)
+	root.add_theme_constant_override("separation", 10)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
@@ -55,6 +57,9 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
+	var ornament := Ornament.new(360.0, 14.0)
+	ornament.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	root.add_child(ornament)
 	var sub := _label(Text.t("story.campaigns.sub"), 18)
 	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	root.add_child(sub)
@@ -185,6 +190,7 @@ func _build_card(campaign: Campaign) -> Button:
 	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）
 	card.pressed.connect(choose.bind(campaign))
 
+	card.add_child(CardDecor.new(campaign.army, ready))
 	var column := VBoxContainer.new()
 	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	column.offset_left = 14.0
@@ -197,11 +203,12 @@ func _build_card(campaign: Campaign) -> Button:
 	card.add_child(column)
 	column.add_child(faces_row(campaign, ready))
 	var title := _label(campaign.title, 26)
+	title.add_theme_font_override("font", UiTheme.FONT_HEADING)
 	if not ready:
 		title.add_theme_color_override("font_color", COLOR_LOCKED)
 	column.add_child(title)
 	var army := _label(Text.t("story.campaigns.army", {"army": DeckText.army_name(campaign.army)}), 16)
-	army.add_theme_color_override("font_color", COLOR_TEXT_DIM if ready else COLOR_LOCKED)
+	army.add_theme_color_override("font_color", Crest.color_of(campaign.army).lightened(0.25) if ready else COLOR_LOCKED)
 	column.add_child(army)
 	var status := _label(status_text(campaign), 18)
 	var all_cleared: bool = ready and context.story.cleared_count(campaign) == campaign.episodes.size()
@@ -235,3 +242,37 @@ func _label(text: String, font_size: int) -> Label:
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
+
+
+## 物語のカードの飾り: その国の色の帯（上の縁）と、薄く大きな国の紋（地紋）。準備中の物語は、色を抜く。
+class CardDecor extends Control:
+	const BAND := 5.0
+	const INSET := 2.0
+	var _army: UnitKind.Army
+	var _ready_to_play: bool
+
+	func _init(army: UnitKind.Army, ready: bool) -> void:
+		_army = army
+		_ready_to_play = ready
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var color := Crest.color_of(army) if ready else Palette.TEXT_OFF
+		var crest := Crest.new(army, 0.0, Color(color, 0.16 if ready else 0.08))
+		crest.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		crest.offset_left = 30.0
+		crest.offset_right = -30.0
+		crest.offset_top = 26.0
+		crest.offset_bottom = -22.0
+		add_child(crest)
+
+	func _draw() -> void:
+		var color := Crest.color_of(_army) if _ready_to_play else Palette.TEXT_OFF
+		# 上の縁の帯（真ん中が濃く、両端へ薄く）と、その下の淡い光。
+		var middle := size.x / 2.0
+		for part: Array in [[INSET + 6.0, middle, 0.25, 1.0], [middle, size.x - INSET - 6.0, 1.0, 0.25]]:
+			draw_polygon(
+				PackedVector2Array([Vector2(part[0], INSET), Vector2(part[1], INSET), Vector2(part[1], INSET + BAND), Vector2(part[0], INSET + BAND)]),
+				PackedColorArray([Color(color, part[2]), Color(color, part[3]), Color(color, part[3]), Color(color, part[2])]))
+		draw_polygon(
+			PackedVector2Array([Vector2(INSET, INSET + BAND), Vector2(size.x - INSET, INSET + BAND), Vector2(size.x - INSET, size.y * 0.5), Vector2(INSET, size.y * 0.5)]),
+			PackedColorArray([Color(color, 0.14), Color(color, 0.14), Color(color, 0.0), Color(color, 0.0)]))
