@@ -317,6 +317,8 @@ func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	_app.context.settings.reset_all()
 	_keep_unit_look()
+	if OS.get_cmdline_user_args().has("--no-effects"):
+		_app.context.settings.set_value(&"screen_effects", false)  # tools/screenshots.sh の --no-effects（画面の効果を切って撮る）
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
 	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:

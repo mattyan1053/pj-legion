@@ -19,7 +19,8 @@ PR に画面の絵を貼るための道具。人間はスマホで PR を見る�
   実機の速さではなく、変更の前後（main と作業中のブランチ）の比を見る。ほかの重い処理を並べずに測る。
 - 描画方式は `--rendering-method=<forward_plus|gl_compatibility>` で選べる（既定は Godot が選ぶもの。コンテナに Vulkan のソフトウェア描画
   （Mesa の lavapipe。`mesa-vulkan-drivers`）があれば実機と同じ Forward+、無ければ OpenGL の互換の描画）。
-  Forward+ のソフトウェア描画は日の影が出ない。影は互換の描画で、光のにじみと色の調子は Forward+ で確かめる。
+  Windows の exe は Forward+ なので、見た目（日の影、光のにじみ、色の調子、地面の明るさ）は Forward+ で撮った絵で確かめる。互換の描画は、地面が明るく、物の陰と色の調子が無いぶん違って見える。
+- オプションの「画面の効果」（光のにじみ・陰・色の調子）は、既定のオンで撮る。切った見え方は `--no-effects` で撮る。
 - 窓の大きさの JPEG（1280×720 で 1 枚 100〜250 KB）を `<場面>.jpg` で書く。
 - 場面は `tools/screenshots.gd` の `SCENES`（名前と説明）にある。一覧は `tools/screenshots.sh <godot> --list`（撮らずに、名前と説明を出す）で見る。
   **この文書には場面の一覧を書かない**（場面を足す PR が毎回同じ行に書き足して、衝突するため）。
