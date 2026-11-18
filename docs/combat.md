@@ -21,6 +21,12 @@
   （倍率は `docs/skills/precision-aim.md`）。倍率を掛けるのは一時的な補正（突撃・注射）の前の攻撃力で、一時的な補正はそのあとに足す。
   攻撃を 1 回すると、照準は消える。
 - 守る側が森にいれば 80%（`FOREST_DAMAGE_RATE_PERCENT`）にする（端数切り捨て。クリティカルの倍率を掛けたあと）。
+- **移動の軽減**: 守る側が動いた直後なら、さらに 75%（`MOVING_DAMAGE_RATE_PERCENT`）にする（端数切り捨て。森のあと）。
+  動いた直後は、自分の番に移動（巡航・ポータルを通るのも）でほかのマスへ動いた駒（`Unit.on_the_move`）。次の自分のフェーズの始めまで続く。
+  動かない移動（いまのマスへ）、取り消した移動、シャドウステップで跳ぶ・入れ替わるのは、動いたことにならない。
+  駒の攻撃だけに掛かる（スキルのダメージ、樽の爆発には掛からない）。中立の駒は移動の行動をしないので、付かない。
+  **なぜ**: 先に相手の届く所へ踏み込んだ側が、待っていた側に先に殴られて押されていた（CPU どうしで先手が 4 割台、最初の番に何もしない先手が 6 割近く勝つ）。
+  踏み込んだ駒への最初の一撃を軽くして、待つことが得になりすぎないようにする。数字は `docs/cpu-ai.md` の「いまの集計」。
 - 守る側が自分の陣営の煙幕の中にいて、距離 2（`RANGED_DISTANCE`）以上から攻撃されたら 0（`docs/field-effects.md`）。
 - **バリア**: 守る側にバリア（`docs/unit-statuses.md`）が付いていれば 0。バリアは、その 1 回で消える。
   煙幕に阻まれた攻撃は、バリアまで届かない（バリアは残る）。
@@ -33,7 +39,7 @@
 
 - 行動できる駒が、いまの位置から攻撃する。動いたあとでも、動かずにでもよい。**巡航で動いた駒は攻撃できない。**
 - 攻撃すると行動を終える。
-- 返すイベントは順に、`AttackDamagedEvent`（`UnitDamagedEvent` の子。与えたダメージと、受けたあとの HP。`critical`、`forest`、`blocked_by`、`attacker_id`）、
+- 返すイベントは順に、`AttackDamagedEvent`（`UnitDamagedEvent` の子。与えたダメージと、受けたあとの HP。`critical`、`forest`、`moving`、`blocked_by`、`attacker_id`）、
   バリアが防いだなら守る側の `StatusRemovedEvent`（`CONSUMED`）、照準で撃ったなら攻撃側の `StatusRemovedEvent`（`CONSUMED`）、
   倒れたなら `UnitDefeatedEvent`（中ボスなら続けて `MidBossDefeatedEvent` と、聖遺物を受け取れば `RelicGainedEvent`。`docs/neutral-mid-boss.md`、`docs/relic-buff.md`）、
   攻撃した駒が育つなら経験値（`ExperienceGainedEvent`、上がれば `LevelUpEvent`、最大のレベルに届けば `EvolutionOfferedEvent`。
@@ -55,7 +61,7 @@
 
 | 原因 | 入口 | 通る段（上から順に） |
 | --- | --- | --- |
-| 駒の攻撃（プレイヤーの駒、中立の駒） | `Combat.hit` / `Combat.strike` | 煙幕 → 攻撃力（確定クリティカル）→ 森 → 受ける側の状態 |
+| 駒の攻撃（プレイヤーの駒、中立の駒） | `Combat.hit` / `Combat.strike` | 煙幕 → 攻撃力（確定クリティカル）→ 森 → 移動の軽減 → 受ける側の状態 |
 | 起爆樽の爆発 | `MapObject.blast_hit` | 固定の量 → 受ける側の状態 |
 | スキルのダメージ | `Skills.deal_damage` | スキルが決めた量 → 受ける側の状態 |
 
