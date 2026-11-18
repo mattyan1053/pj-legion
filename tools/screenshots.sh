@@ -7,6 +7,7 @@
 #                                        --unit-look=<組の名前> で駒の見た目の組を選ぶ（既定は game/unit_looks.gd の DEFAULT）。
 #                                        --frame-time で、撮る前にその場面の 1 コマの時間を測って出す（前後の重さを比べる）。
 #                                        --rendering-method=<forward_plus|gl_compatibility> で描画方式を選ぶ（既定は Godot が選ぶもの）。
+#                                        --no-effects で、オプションの「画面の効果」を切って撮る（既定はオン）。
 #   tools/screenshots.sh <godot> --list      場面の名前と説明の一覧（tools/screenshots.gd の SCENES から出す。撮らない）
 set -euo pipefail
 
@@ -26,11 +27,13 @@ SIZE="1280x720"
 LOOK=()
 METHOD=()
 MEASURE=()
+EFFECTS=()
 for arg in "${@:3}"; do
   case "$arg" in
     --size=*) SIZE="${arg#--size=}" ;;
     --unit-look=*) LOOK=(--unit-look "${arg#--unit-look=}") ;;
     --frame-time) MEASURE=(--frame-time) ;;
+    --no-effects) EFFECTS=(--no-effects) ;;
     --rendering-method=*) METHOD=(--rendering-method "${arg#--rendering-method=}") ;;
     *) SHOTS="$arg" ;;
   esac
@@ -46,7 +49,7 @@ OUT="$(cd "$OUT" && pwd)"
 # 取り込みが済んでいないと、素材が読めずに絵が欠ける。
 timeout 120 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
-cmd=("$GODOT" "${METHOD[@]}" --path . --resolution "$SIZE" -- --shots "$SHOTS" --out "$OUT" --size "$SIZE" "${LOOK[@]}" "${MEASURE[@]}")
+cmd=("$GODOT" "${METHOD[@]}" --path . --resolution "$SIZE" -- --shots "$SHOTS" --out "$OUT" --size "$SIZE" "${LOOK[@]}" "${MEASURE[@]}" "${EFFECTS[@]}")
 if [ -z "${DISPLAY:-}" ]; then
   cmd=(xvfb-run -a -s "-screen 0 ${SIZE}x24" "${cmd[@]}")
 fi
