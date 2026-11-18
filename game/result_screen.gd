@@ -18,6 +18,7 @@ const ResultSummary := preload("res://game/result_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const StatsText := preload("res://game/stats_text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const ResultGlow := preload("res://game/result_glow.gd")
 
 ## 行き先のボタン。field はマップの鍵（versus_fields.gd）。new_board が偽なら、いまと同じマップで再戦（field は見ない）。
 signal restart_pressed(field: StringName, new_board: bool)
@@ -32,6 +33,8 @@ signal revealed
 
 ## 段階の時刻（秒。画面を出してから）。
 const HEADLINE_IN := 0.45
+## 後ろの光と粒が出きるまで。
+const GLOW_IN := 0.6
 const HEADLINE_RISE_AT := 0.9
 const RISE_TIME := 0.4
 const STATS_AT := 1.3
@@ -87,6 +90,7 @@ var king_looks: Array[StringName] = [&"", &""]
 
 var _summary: RefCounted
 var _shade: ColorRect
+var _glow: ResultGlow
 var _headline: Label
 var _reason: Label
 var _body: VBoxContainer
@@ -136,6 +140,8 @@ func _ready() -> void:
 	_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_shade)
+	_glow = ResultGlow.new()
+	add_child(_glow)
 
 	_headline = _label(76)
 	_headline.theme_type_variation = UiTheme.LABEL_HEADING
@@ -170,6 +176,13 @@ func present(summary: RefCounted) -> void:
 		_tween.kill()
 	_headline.text = summary.headline
 	_headline.add_theme_color_override("font_color", _headline_color(summary))
+	# 後ろの光と粒: 勝ち（どちらかの陣営の勝ちも）は光と紙吹雪、負けは沈めて灰、引き分けは無し。
+	if summary.tone == ResultSummary.Tone.DEFEAT:
+		_glow.play(false, _headline_color(summary))
+	elif summary.tone == ResultSummary.Tone.VICTORY or summary.tone == ResultSummary.Tone.SIDE:
+		_glow.play(true, _headline_color(summary))
+	else:
+		_glow.stop()
 	_reason.text = summary.reason
 	_stats_title.text = Text.t("result.stats_title", {"side": summary.focus_name})
 	for row: Array in _stat_rows:
@@ -204,6 +217,7 @@ func present(summary: RefCounted) -> void:
 
 	# 始めの形: 見出しは中央で透明、ほかは場所を取ったまま透明（出るときに配置が動かないように）。
 	_shade.modulate.a = 0.0
+	_glow.modulate.a = 0.0
 	_headline.modulate.a = 0.0
 	_headline.position.y = HEADLINE_CENTER_Y
 	_headline.scale = Vector2.ONE * 1.25
@@ -231,6 +245,7 @@ func _stage() -> void:
 	var t := _tween
 	# 1. 勝敗の見出し
 	t.tween_property(_shade, "modulate:a", 1.0, 0.35)
+	t.tween_property(_glow, "modulate:a", 1.0, GLOW_IN).set_delay(0.1)
 	t.tween_property(_headline, "modulate:a", 1.0, HEADLINE_IN)
 	t.tween_property(_headline, "scale", Vector2.ONE, HEADLINE_IN).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.tween_property(_reason, "modulate:a", 1.0, HEADLINE_IN).set_delay(0.15)

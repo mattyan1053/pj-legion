@@ -22,6 +22,8 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const UiFeel := preload("res://game/ui_feel.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const Palette := preload("res://game/ui_palette.gd")
+const WIPE := preload("res://game/wipe.gdshader")
 
 ## 場面を切り替え終えた（暗転が明けた）。
 signal scene_changed(scene: StringName)
@@ -40,6 +42,9 @@ var _current: Node
 var _current_id := &""
 var _changing := false
 var _fade: ColorRect
+var _wipe: ShaderMaterial
+## 幕がどこまで覆っているか（0 = 明けている、1 = 覆っている）。
+var _cover := 1.0
 var _window_mode: WindowMode
 
 
@@ -100,6 +105,13 @@ func _ready() -> void:
 	add_child(layer)
 	_fade = ColorRect.new()
 	_fade.color = Color.BLACK
+	# 幕は、斜めに拭き取るように覆って、同じ向きへ抜ける（wipe.gdshader）。
+	_wipe = ShaderMaterial.new()
+	_wipe.shader = WIPE
+	_wipe.set_shader_parameter(&"ink", Palette.INK)
+	_wipe.set_shader_parameter(&"edge", Palette.BORDER_BRIGHT)
+	_wipe.set_shader_parameter(&"cover", 1.0)
+	_fade.material = _wipe
 	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_fade)
@@ -256,14 +268,20 @@ func _on_menu_item(id: StringName) -> void:
 
 
 func _fade_to(alpha: float) -> void:
+	_wipe.set_shader_parameter(&"direction", 1.0 if alpha > _cover else -1.0)
 	if context.checking == CHECK_AUTOPLAY:
-		_fade.modulate.a = alpha  # 検査は暗転を待たない（切り替えが 1 フレームで終わるのは同じにする）
+		_set_cover(alpha)  # 検査は暗転を待たない（切り替えが 1 フレームで終わるのは同じにする）
 		await get_tree().process_frame
 		return
 	var tween := create_tween()
 	tween.set_ignore_time_scale(true)  # メニューで止めた時間や、検査の速さに左右されない
-	tween.tween_property(_fade, "modulate:a", alpha, FADE_TIME)
+	tween.tween_method(_set_cover, _cover, alpha, FADE_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tween.finished
+
+
+func _set_cover(value: float) -> void:
+	_cover = value
+	_wipe.set_shader_parameter(&"cover", value)
 
 
 # ---- 検査 ----
