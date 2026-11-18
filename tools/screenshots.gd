@@ -38,6 +38,7 @@ const SCENES := {
 	"setup_preview": "対戦設定で、CPU の部隊の「編成を確認」を開いたところ",
 	"setup_unit_detail": "対戦設定の「編成確認」（CPU の部隊）で、駒の札を押して詳しい説明を開いたところ",
 	"setup_placement": "対戦設定の「初期位置」の窓（中央平原の代表の形）で、駒を 1 体動かし、もう 1 体を選んでいるところ",
+	"setup_random_second": "双子結晶（本陣が対角）で、初期位置の最初の駒を盤の端の側へ動かし、手番ランダムで後手を引いた対戦の始め（端の側の駒は、後手の側でも端の側。左右も返す）",
 	"setup_random": "対戦設定で、手番を「ランダム」にしたところ（行の見出しは「あなた」「CPU」）",
 	"setup_cpu_deck": "対戦設定で、CPU の行の部隊の選択肢を開いた（CPU の編成・ランダム編成・取っておいた部隊）",
 	"setup_cpu_random": "CPU の部隊を「ランダム編成」にして始めた対戦の途中で、対戦設定の「編成確認」を開いた（いまの対戦で組んだ部隊）",
@@ -158,6 +159,8 @@ const SCENES := {
 	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の軍の曹長が話している。左の姿は進化後のシールドトルーパー）",
 	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
 	"story_talk_squad": "ストーリー: 部隊の中の人が話している対戦の前の会話（岩山の掃討。左の所の姿が、話した人に入れ替わる。右は敵の話し手）",
+	"story_rivals_ridge": "ストーリー: MILITARY の物語「尾根の小道」の前の会話（左にハーデン、右にイェルダ。見分けが付くか）",
+	"story_rivals_forest": "ストーリー: FANTASY の物語「森の守り」の前の会話（左にイェルダ、右にハーデン。どちらも将。見分けが付くか）",
 	"story_talk_allies": "ストーリー: 敵の軍が出てこない会話（演習「手当て」の前。最初に話した人が左、ほかの人が右に立って向き合う）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
@@ -624,6 +627,58 @@ func _scene_setup_cpu_random() -> bool:
 	shown.open_preview(Unit.Side.PLAYER2)
 	_park_mouse()
 	return shown.preview().visible
+
+
+## 本物の入力で、手番ランダムの後手の初期位置を確かめる: 対戦設定の「初期位置」で最初の駒を端へ動かし、手番を「ランダム」にして始め、
+## 後手を引く種まで「同じ設定のまま新しい種」で始め直す。後手の最初の駒が、点対称に返したマスにいなければ偽。
+func _scene_setup_random_second() -> bool:
+	var choice := MatchChoice.new()
+	choice.field = VersusFields.TWIN_SPRINGS
+	_app.context.match_choice = choice
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Node = _app.current_scene().setup_panel()
+	panel.open_placement(Unit.Side.PLAYER1)
+	var dialog: Control = panel.placement_dialog()
+	var deploy: Control = dialog.deploy_map()
+	var own: Array[Vector2i] = deploy.unit_cells()
+	var open: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return not own.has(cell))
+	if own.is_empty() or open.is_empty():
+		return false
+	# 盤の端の側（本陣が左下なので、列の小さいほう）の、空いている置けるマスへ。
+	open.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x < b.x)
+	deploy.press_cell(own[0])
+	deploy.press_cell(open[0])
+	dialog.close_dialog()
+	var offset: Vector2i = open[0] - panel.current_choice().placement_preview(Unit.Side.PLAYER1, panel.PLACEMENT_SEED)[1].board.hq_cells[0]
+	panel.choose_random_side()
+	panel.confirm()
+	await _app.scene_changed
+	if _app.current_id() != SceneFlow.BATTLE:
+		return false
+	_scene = _app.current_scene()
+	for battle_seed in range(1, 60):
+		if _scene.source.cpu_side() == Unit.Side.PLAYER1:
+			break
+		for i in 120:
+			if not _scene.is_busy():
+				break
+			await get_tree().process_frame
+		_scene.start_battle(battle_seed)
+	if _scene.source.cpu_side() != Unit.Side.PLAYER1:
+		return false
+	var battle: Battle = _scene.battle
+	var first: Array = battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER2 and unit.kind != UnitKind.Id.KING)
+	if first.is_empty() or first[0].cell != battle.board.hq_cells[Unit.Side.PLAYER2] - offset:
+		push_error("screenshots: 後手の最初の駒が %s（点対称に返したマスは %s）" % [first[0].cell if not first.is_empty() else null, battle.board.hq_cells[1] - offset])
+		return false
+	for i in 600:
+		if not _scene.is_busy():
+			break
+		await get_tree().process_frame
+	_park_mouse()
+	return true
 
 
 func _scene_setup_random() -> bool:
@@ -1949,6 +2004,25 @@ func _military_index(id: StringName) -> int:
 		if episodes[index].id == id:
 			return index
 	return -1
+
+
+## ハーデンとイェルダが向き合う会話（MILITARY の物語）。ハーデンが話していて、右にイェルダ。
+func _scene_story_rivals_ridge() -> bool:
+	if not await _start_story(_military_index(&"ridge_path")) or not await _talk_from_sortie():
+		return false
+	return _talk_until(0) and _app.current_scene().figures().size() == 2
+
+
+## ハーデンとイェルダが向き合う会話（FANTASY の物語の「森の守り」）。イェルダが話していて、右にハーデン。
+func _scene_story_rivals_forest() -> bool:
+	var episodes: Array = _fantasy().episodes
+	var at := episodes.map(func(episode: RefCounted) -> StringName: return episode.id).find(&"mist_forest")
+	if at < 0 or not await _start_fantasy(at) or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < talk.line_count() and talk.speaker() != "イェルダ":
+		talk.press_next()
+	return talk.speaker() == "イェルダ" and talk.figures().size() == 2
 
 
 ## 部隊の中の人（人の軍の 3 人目の話し手）が話している、対戦の前の会話。右に敵の話し手。

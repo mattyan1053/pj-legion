@@ -15,6 +15,8 @@ const ASPECT := 0.62
 ## 話していない側の大きさと明るさ。
 const QUIET_SCALE := 0.86
 const QUIET_SHADE := Color(0.42, 0.44, 0.5)
+## 話していない側の暗さに混ぜる陣営の色の割合（暗くても、どちらの側の人かが色で分かる。同じ騎士の形が向き合う会話のため）。
+const QUIET_TEAM_TINT := 0.5
 ## 話す・黙るの切り替えの時間（秒）。
 const SWITCH_TIME := 0.22
 ## 話の中央へ向ける角度（ラジアン。左の姿は右へ、右の姿は左へ向く）。
@@ -86,7 +88,7 @@ func set_speaking(speaking: bool, now := false) -> void:
 	var starts := speaking and not _speaking
 	_speaking = speaking
 	var target_scale := Vector2.ONE * (1.0 if speaking else QUIET_SCALE)
-	var target_shade := Color.WHITE if speaking else QUIET_SHADE
+	var target_shade := Color.WHITE if speaking else quiet_shade()
 	if _tween != null:
 		_tween.kill()
 	if now:
@@ -98,6 +100,12 @@ func set_speaking(speaking: bool, now := false) -> void:
 		_tween.tween_property(self, "modulate", target_shade, SWITCH_TIME)
 	if starts and not now:
 		gesture()
+
+
+## 話していない側の明るさ（暗い灰色に、陣営の色を混ぜる）。
+func quiet_shade() -> Color:
+	var team := TEAM_COLORS[clampi(side, 0, 1)]
+	return QUIET_SHADE.lerp(Color(team.r * 0.6, team.g * 0.6, team.b * 0.6), QUIET_TEAM_TINT)
 
 
 ## 話し始めの小さな身振り。
