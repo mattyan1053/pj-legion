@@ -99,3 +99,31 @@ func test_pop_labels_keep_clear_of_the_banner() -> void:
 				"%d 度、帯との差 %d: 浮かぶ文字が帯にかかる（%.1f〜%.1f と %s）" % [pitch, offset, top, bottom, band])
 			var went_up: bool = from.y < (project.call(start) as Vector2).y
 			assert_eq(went_up, offset > 0.0, "%d 度、帯との差 %d: 近いほうの側へ逃がしていない" % [pitch, offset])
+
+
+## 帯が出ている間に、近い駒の上に同時に出る文字（魔力解放の「スキル使用可」など）も、帯から逃がしたあとで重ならない。
+func test_pop_labels_moved_off_the_banner_do_not_overlap() -> void:
+	var scene: GDScript = load(SCENE_SCRIPT)
+	var glyph: float = scene.POP_FONT_SIZE * scene.POP_PIXEL_SIZE
+	for pitch: float in [30.0, 55.0, 85.0]:
+		var camera := _camera(pitch)
+		var project: Callable = camera[0]
+		var up: Vector3 = camera[1]
+		var first_start := Vector3(2.5, 1.5, 3.5)
+		var middle: float = (project.call(first_start) as Vector2).y
+		var band := Rect2(-1000.0, middle - 70.0, 3000.0, 108.0)
+		var live: Array = []
+		var placed: Array[Vector3] = []
+		# 横に重なる 3 つの文字を、帯の中の少しずつ違う高さから出す。
+		for i in 3:
+			var start := first_start - up * glyph * 0.4 * i
+			var at: Vector3 = scene.pop_place(start, 6, live, band, project, up)
+			placed.append(at)
+			live.append([at, 6])
+		for i in placed.size():
+			var screen: Vector2 = project.call(placed[i])
+			var line: float = ((project.call(placed[i] + up * glyph) as Vector2) - screen).length()
+			for j in range(i + 1, placed.size()):
+				var other: Vector2 = project.call(placed[j])
+				assert_true(absf(other.y - screen.y) >= line * scene.POP_LINE_SPACING - 0.5,
+					"%d 度: 帯から逃がした文字どうしが重なる（%s と %s）" % [pitch, screen, other])

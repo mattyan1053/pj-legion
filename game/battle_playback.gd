@@ -820,9 +820,7 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	var camera := _rig.camera if _rig != null else null
 	label.position = Vector3(at.x, at.y + POP_HEIGHT, at.z)
 	if camera != null and camera.is_inside_tree():
-		label.position = pop_start_position(label.position, text.length(), live, camera.unproject_position, camera.global_basis.y)
-		# 画面の中央の知らせの帯（必殺技など）が出ている間は、浮かぶ文字が帯にかからない所へ逃がす（昇りきるまで）。
-		label.position = pop_clear_of_band(label.position, _hud.banner_rect(), camera.unproject_position, camera.global_basis.y)
+		label.position = pop_place(label.position, text.length(), live, _hud.banner_rect(), camera.unproject_position, camera.global_basis.y)
 	_stage.add_child(label)
 	_pops.append(label)
 	var tween := create_tween()
@@ -831,6 +829,19 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	# 縁取りは modulate では薄くならない。一緒に消さないと、消える間際に黒い縁取りだけが字の形に残る。
 	tween.parallel().tween_property(label, "outline_modulate:a", 0.0, POP_TIME).set_ease(Tween.EASE_IN)
 	tween.tween_callback(label.queue_free)
+
+
+## 浮かぶ文字の出る位置: まだ浮かんでいる文字と重ならず（pop_start_position）、画面の中央の知らせの帯（必殺技など）が出ている間は、
+## 昇りきるまで帯にかからない（pop_clear_of_band）位置。帯から逃がすと別の文字に重なることがあるので、両方を満たすまで繰り返す
+## （同時に出る文字が、どれも帯の同じ縁へ寄せられて重ならないように）。
+static func pop_place(start: Vector3, length: int, live: Array, band: Rect2, project: Callable, up: Vector3) -> Vector3:
+	var at := start
+	for attempt in live.size() + 3:
+		var placed := pop_clear_of_band(pop_start_position(at, length, live, project, up), band, project, up)
+		if placed.is_equal_approx(at):
+			return at
+		at = placed
+	return at
 
 
 ## 浮かぶ文字を at から出すとき、昇りきるまで（POP_RISE）画面の上で帯 band（画面の座標。空なら何もしない）にかからない位置。
