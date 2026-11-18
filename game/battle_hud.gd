@@ -85,6 +85,9 @@ const ULT_COLORS := {
 	Ult.Id.MANA_ERUPTION: Color("9a7bff"),
 }
 
+## 盤の四隅を沈める幕の濃さ（景色の上に題字を置く画面を 1 として）。
+const BOARD_VIGNETTE := 0.4
+
 var _team_colors: Array[Color] = []
 ## 将の姿（陣営ごと。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
 var king_looks: Array[StringName] = [&"", &""]
@@ -171,6 +174,7 @@ var _evolution_buttons: Array[Button] = []
 
 func setup(team_colors: Array[Color]) -> void:
 	_team_colors = team_colors
+	add_child(UiTheme.vignette(BOARD_VIGNETTE))  # 盤の四隅を、ごく薄く沈める（帯や枠の下）
 	_build_top_bar()
 	_build_info_panel()
 	_build_bottom()

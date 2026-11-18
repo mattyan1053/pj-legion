@@ -17,6 +17,17 @@ extends RefCounted
 ## - 本陣の陣営の色、マスの塗り分け、駒、HP の棒、起爆樽とポータルの色は、どのテーマでも変えない（読み方を変えないため）。
 
 const CrystalMesh := preload("res://game/crystal_mesh.gd")
+const BOARD_SKY := preload("res://game/board_sky.gdshader")
+
+## 空の球の半径（カメラの見える距離より内側）と、その名前（apply が探す）。
+const SKY_RADIUS := 220.0
+const SKY_NODE := "Sky"
+## 画面の効果（オプションの「画面の効果」。光るものの光のにじみ、物の合わせ目の陰、色の調子）。
+## にじむのは、この明るさを超えたところだけ（結晶、ポータル、泉、演出の光）。地面や駒はにじませない。
+const GLOW_THRESHOLD := 1.0
+const GLOW_INTENSITY := 0.55
+## 光るもの（結晶など）の光の強さ。GLOW_THRESHOLD を超えて、にじむ。
+const CRYSTAL_GLOW := 1.3
 
 ## 霞が始まる距離と、すっかり霞む距離（カメラから）。いちばん引いて盤の端から端を見ても、盤の中はほとんど霞まない。
 const FOG_BEGIN := 64.0
@@ -27,7 +38,8 @@ const NORMAL := &"normal"  ## 平地
 const FOREST := &"forest"  ## 森の地面
 const OBSTACLE := &"obstacle"  ## 岩場の地面
 const FONT := &"font"  ## 結晶泉の地面
-const HAZE := &"haze"  ## 霞と空
+const HAZE := &"haze"  ## 霞と、地平の空
+const SKY := &"sky"  ## 高い空
 const SUN := &"sun"  ## 日の光
 const AMBIENT := &"ambient"  ## まわりの光
 ## 置物の色。
@@ -91,7 +103,7 @@ const CRYSTAL_CYAN := {"crystal": Color("5fe0f5"), "height": 1.0}
 
 ## どのマップの見た目も持つ項目（検査が確かめる）。
 const KEYS: Array[StringName] = [
-	NORMAL, FOREST, OBSTACLE, FONT, HAZE, SUN, AMBIENT, CRYSTAL, SPRING_STONE,
+	NORMAL, FOREST, OBSTACLE, FONT, HAZE, SKY, SUN, AMBIENT, CRYSTAL, SPRING_STONE,
 	SUN_PITCH, SUN_YAW, SUN_ENERGY, AMBIENT_ENERGY, PAVING, DRY, OBSTACLE_PROPS, FOREST_PROPS, SCENERY,
 ]
 
@@ -115,9 +127,9 @@ const OF_STAGE := {
 const THEMES := {
 	# 中央平原: いつもの草原。明るい若草色、昼の白い光。森と、灰色の岩山（固まった障害物は 1 つの岩山に）。
 	GRASSLAND: {
-		NORMAL: Color("5f9f4e"), FOREST: Color("3a6c38"), OBSTACLE: Color("767b84"), FONT: Color("3fa9bd"),
-		HAZE: Color("b4cbdc"), SUN: Color("ffffff"), AMBIENT: Color("b8c4d6"),
-		SUN_PITCH: -52.0, SUN_YAW: -35.0, SUN_ENERGY: 1.2, AMBIENT_ENERGY: 0.45,
+		NORMAL: Color("5a9549"), FOREST: Color("386a38"), OBSTACLE: Color("767b84"), FONT: Color("3fa9bd"),
+		HAZE: Color("b4cbdc"), SKY: Color("4f86c9"), SUN: Color("fff3dc"), AMBIENT: Color("a9bbd8"),
+		SUN_PITCH: -48.0, SUN_YAW: -35.0, SUN_ENERGY: 1.15, AMBIENT_ENERGY: 0.5,
 		PAVING: 0.0, DRY: 0.45,
 		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("b9bcc0"),
 		OBSTACLE_PROPS: {
@@ -131,7 +143,7 @@ const THEMES := {
 	# 夕方寄りの低い金色の光と、砂ぼこりの霞。
 	STONE_WALLS: {
 		NORMAL: Color("9a8f74"), FOREST: Color("5d7c38"), OBSTACLE: Color("5a5246"), FONT: Color("3fa9bd"),
-		HAZE: Color("d9c9a6"), SUN: Color("ffdcaa"), AMBIENT: Color("c8b8a0"),
+		HAZE: Color("d9c9a6"), SKY: Color("7f9bb4"), SUN: Color("ffdcaa"), AMBIENT: Color("c8b8a0"),
 		SUN_PITCH: -42.0, SUN_YAW: -62.0, SUN_ENERGY: 1.25, AMBIENT_ENERGY: 0.5,
 		PAVING: 1.0, DRY: 0.8,
 		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("d8c8a4"),
@@ -148,7 +160,7 @@ const THEMES := {
 	# 暗い針葉樹の森。盤の外にも結晶が光る。
 	CRYSTAL_FOREST: {
 		NORMAL: Color("3c6f68"), FOREST: Color("1d4440"), OBSTACLE: Color("4a4468"), FONT: Color("46bcd6"),
-		HAZE: Color("b4a3cf"), SUN: Color("ffc8b8"), AMBIENT: Color("8f9ad0"),
+		HAZE: Color("b4a3cf"), SKY: Color("3a3f86"), SUN: Color("ffc8b8"), AMBIENT: Color("8f9ad0"),
 		SUN_PITCH: -30.0, SUN_YAW: 40.0, SUN_ENERGY: 1.1, AMBIENT_ENERGY: 0.55,
 		PAVING: 0.0, DRY: 0.0,
 		CRYSTAL: Color("5fe0f5"), SPRING_STONE: Color("8c8aa8"),
@@ -208,19 +220,42 @@ static func material_of(prop: Dictionary, tint: Color) -> Material:
 	return _materials[key]
 
 
-## 結晶の色（少し光る、つやのある面）。
+## 結晶の色（光る、つやのある面。画面の効果があれば、光がにじむ）。
 static func crystal_material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.emission_enabled = true
 	material.emission = color
-	material.emission_energy_multiplier = 0.35
+	material.emission_energy_multiplier = CRYSTAL_GLOW
 	material.roughness = 0.25
 	return material
 
 
 static func _key(prop: Dictionary) -> String:
 	return str(prop.get("scene", prop.get("crystal")))
+
+
+## 画面の効果を使うか（オプション。アプリの入口が set_effects で決める）。
+static var effects := true
+static var _environments: Array[WeakRef] = []
+
+
+## 画面の効果を入れる・切る。いま出ている景色にも、すぐ効く。
+static func set_effects(on: bool) -> void:
+	effects = on
+	var alive: Array[WeakRef] = []
+	for ref in _environments:
+		var environment := ref.get_ref() as Environment
+		if environment != null:
+			_apply_effects(environment)
+			alive.append(ref)
+	_environments = alive
+
+
+static func _apply_effects(environment: Environment) -> void:
+	environment.ssao_enabled = effects
+	environment.glow_enabled = effects
+	environment.adjustment_enabled = effects
 
 
 ## 空・霞・光を parent に足す（タイトルと対戦設定の場面の背景も、同じ景色にする。backdrop.gd）。
@@ -230,7 +265,6 @@ static func build_environment(parent: Node) -> void:
 	environment.background_mode = Environment.BG_COLOR
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.ssao_enabled = true
 	# 遠くの地面と景色は、空の色の霞に溶かす（盤の外の端が、ぷつりと切れて見えないように）。
 	# 盤の中は、いちばん引いても霞まない距離から始める。
 	environment.fog_enabled = true
@@ -239,6 +273,15 @@ static func build_environment(parent: Node) -> void:
 	environment.fog_depth_begin = FOG_BEGIN
 	environment.fog_depth_end = FOG_END
 	environment.fog_depth_curve = 1.6
+	# 画面の効果: 光るものだけを、控えめににじませる。色は、ほんの少し締める。
+	environment.glow_hdr_threshold = GLOW_THRESHOLD
+	environment.glow_intensity = GLOW_INTENSITY
+	environment.glow_bloom = 0.0
+	environment.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	environment.adjustment_contrast = 1.06
+	environment.adjustment_saturation = 1.04
+	_apply_effects(environment)
+	_environments.append(weakref(environment))
 
 	var world := WorldEnvironment.new()
 	world.environment = environment
@@ -248,6 +291,22 @@ static func build_environment(parent: Node) -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	parent.add_child(sun)
+
+	# 空: 大きな球の内側に描く（低く構えて引いたとき、地平の上に見える）。
+	var dome := SphereMesh.new()
+	dome.radius = SKY_RADIUS
+	dome.height = SKY_RADIUS * 2.0
+	dome.radial_segments = 32
+	dome.rings = 16
+	var material := ShaderMaterial.new()
+	material.shader = BOARD_SKY
+	var sky := MeshInstance3D.new()
+	sky.name = SKY_NODE
+	sky.mesh = dome
+	sky.material_override = material
+	sky.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sky.extra_cull_margin = 4000.0  # カメラがどこにいても描く
+	parent.add_child(sky)
 	apply(parent, of(DEFAULT))
 
 
@@ -265,3 +324,11 @@ static func apply(parent: Node, look: Dictionary) -> void:
 			sun.light_color = look[SUN]
 			sun.light_energy = look[SUN_ENERGY]
 			sun.rotation_degrees = Vector3(look[SUN_PITCH], look[SUN_YAW], 0.0)
+		if node.name == SKY_NODE:
+			var material := (node as MeshInstance3D).material_override as ShaderMaterial
+			material.set_shader_parameter(&"zenith", look[SKY])
+			material.set_shader_parameter(&"horizon", look[HAZE])
+			material.set_shader_parameter(&"sun_color", look[SUN])
+			var pitch := deg_to_rad(float(look[SUN_PITCH]))
+			var yaw := deg_to_rad(float(look[SUN_YAW]))
+			material.set_shader_parameter(&"sun_direction", Basis.from_euler(Vector3(pitch, yaw, 0.0)) * Vector3.BACK)
