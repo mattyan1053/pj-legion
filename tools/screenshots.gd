@@ -78,6 +78,7 @@ const SCENES := {
 	"forecast_defeat": "倒せる相手にマウスを乗せている（予測のパネルに「倒せる！」）",
 	"forecast_skill": "範囲のスキルの対象のマスにマウスを乗せている（巻き込む駒が並ぶ）",
 	"forecast_heal": "回復役で、回復できる味方にマウスを乗せている",
+	"forecast_moving": "前の番に動いた相手（動いた直後）を攻撃する予測（内訳に「移動で軽減」。左下の駒の情報に「移動直後」）",
 	"forecast_small": "9×5 の小さな盤で、動いたあとメニューの「攻撃」を押し、隣の相手にマウスを乗せている（縮んだメニューと予測のパネルが重ならない）",
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
@@ -1059,6 +1060,29 @@ func _scene_forecast_defeat() -> bool:
 	_look_at(BoardView.cell_center(found[1].cell))
 	_scene.hover(found[1].cell)
 	return _scene.forecast_text().contains("倒せる")
+
+
+## 行動できる自分の駒が、いまの位置から攻撃できる、動いた直後の相手（[駒, 相手]）。無ければ空。
+func _moving_target() -> Array:
+	for unit in _own_units():
+		if not _battle.can_act(unit):
+			continue
+		for target_id in _battle.options(unit.id).attack_target_ids:
+			var target := _battle.unit_by_id(target_id)
+			if target.on_the_move and Combat.damage(_battle, unit, target) > 0:
+				return [unit, target]
+	return []
+
+
+func _scene_forecast_moving() -> bool:
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _moving_target().is_empty()):
+		return false
+	var found := _moving_target()
+	_show()
+	_scene.click_cell(found[0].cell)
+	_look_at(BoardView.cell_center(found[1].cell))
+	_scene.hover(found[1].cell)
+	return _scene.forecast_text().contains("移動で軽減")
 
 
 ## 行動できる自分の駒が、スキルで相手を 2 体以上巻き込めるマス（[駒, マス]）。無ければ空。

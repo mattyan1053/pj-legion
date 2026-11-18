@@ -35,4 +35,4 @@ func test_every_status_has_a_text() -> void:
 
 
 func test_moving_cut_has_a_text() -> void:
-	assert_eq(BattleHud.moving_text(), "移動直後（次の自分の番まで）: 受けるダメージ 0.75 倍")
+	assert_eq(BattleHud.moving_text(), "移動直後: ダメージ 0.75 倍")
