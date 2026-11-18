@@ -45,8 +45,7 @@ func _init() -> void:
 func play(text: String, color: Color, strong := false) -> void:
 	_color = color
 	_strong = strong
-	custom_minimum_size.y = HEIGHT_STRONG if strong else HEIGHT
-	size.y = custom_minimum_size.y
+	custom_minimum_size.y = HEIGHT_STRONG if strong else HEIGHT  # 高さは最小の大きさで決める（横の端に留めた帯の size は、直に決めない）
 	label.text = text
 	label.add_theme_font_size_override("font_size", 46 if strong else 40)
 	label.add_theme_color_override("font_color", Palette.ACCENT if strong else color.lightened(0.62))

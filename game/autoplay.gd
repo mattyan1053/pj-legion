@@ -2402,6 +2402,10 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 			await app.scene_changed
 	_expect(app.current_id() == SceneFlow.BATTLE, "出撃準備の「出撃」で、対戦へ進まない")
 	var screen: Node = app.current_scene()
+	# 幕が明けた時点（場面の _process がまだ回っていない）で、ミニマップはもう右上にある（左上に出てから跳ばない）。
+	var minimap: Rect2 = screen.minimap_rect()
+	_expect(minimap.has_area() and minimap.position.x > screen.get_viewport().get_visible_rect().size.x / 2.0,
+		"対戦に入った幕が明けたとき、ミニマップが右上に置かれていない: %s" % minimap)
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
