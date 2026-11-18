@@ -71,3 +71,31 @@ func test_pop_labels_do_not_overlap_on_screen() -> void:
 			for entry: Array in case[1]:
 				var other: Vector2 = project.call(entry[0])
 				assert_true(absf(other.y - screen.y) >= glyph * 50.0 - 0.01, "%d 度: 画面の上で重なる: %s と %s" % [pitch, screen, other])
+
+
+## 知らせの帯（必殺技など）が出ている間の浮かぶ文字は、昇りきるまで帯にかからない所から出す（帯の上の側なら上へ、下の側なら下へ）。
+func test_pop_labels_keep_clear_of_the_banner() -> void:
+	var scene: GDScript = load(SCENE_SCRIPT)
+	var glyph: float = scene.POP_FONT_SIZE * scene.POP_PIXEL_SIZE
+	for pitch: float in [30.0, 55.0, 85.0]:
+		var camera := _camera(pitch)
+		var project: Callable = camera[0]
+		var up: Vector3 = camera[1]
+		var start := Vector3(2.5, 1.5, 3.5)
+		var middle: float = (project.call(start) as Vector2).y
+		assert_eq(scene.pop_clear_of_band(start, Rect2(), project, up), start, "帯が出ていないのに、ずらした")
+		var far := Rect2(-1000.0, middle - 400.0, 3000.0, 108.0)
+		assert_eq(scene.pop_clear_of_band(start, far, project, up), start, "離れた帯のために、ずらした")
+		for offset: float in [-60.0, -20.0, 0.0, 30.0, 70.0]:
+			var band := Rect2(-1000.0, middle + offset - 54.0, 3000.0, 108.0)
+			var at: Vector3 = scene.pop_clear_of_band(start, band, project, up)
+			var from: Vector2 = project.call(at)
+			var to: Vector2 = project.call(at + Vector3.UP * scene.POP_RISE)
+			var line: float = ((project.call(at + up * glyph) as Vector2) - from).length()
+			var half: float = line * scene.POP_LINE_SPACING / 2.0
+			var top := minf(from.y, to.y) - half
+			var bottom := maxf(from.y, to.y) + half
+			assert_true(bottom <= band.position.y + 0.5 or top >= band.end.y - 0.5,
+				"%d 度、帯との差 %d: 浮かぶ文字が帯にかかる（%.1f〜%.1f と %s）" % [pitch, offset, top, bottom, band])
+			var went_up: bool = from.y < (project.call(start) as Vector2).y
+			assert_eq(went_up, offset > 0.0, "%d 度、帯との差 %d: 近いほうの側へ逃がしていない" % [pitch, offset])
