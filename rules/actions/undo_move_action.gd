@@ -22,6 +22,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var from := unit.cell
 	unit.cell = unit.move_origin
 	unit.has_moved = false
+	unit.probe_moved_turn = -1
 	unit.cruised = false
 	battle.acting_unit_id = 0
 	var events: Array[BattleEvent] = [MoveUndoneEvent.new(unit.id, from, unit.cell)]

@@ -48,6 +48,8 @@ var acted := false
 ## いまの行動で、もう動いたか。動いたなら、動く前のマスと、巡航だったか。
 var has_moved := false
 var move_origin: Vector2i
+## SCRATCH: the turn this unit last moved to another cell.
+var probe_moved_turn := -1
 var cruised := false
 ## いまの行動で、移動の取り消しがもうできないか（行動を終えないスキルを使ったあと。docs/active-skills.md）。
 var move_locked := false

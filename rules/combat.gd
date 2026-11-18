@@ -129,7 +129,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
 	var brace := int(RuleProbe.f("brace"))
-	if brace > 0 and target.side != Unit.Side.NEUTRAL and target.side != battle.phase and target.has_moved and target.cell != target.move_origin:
+	if brace > 0 and target.side != Unit.Side.NEUTRAL and target.side != battle.phase and target.probe_moved_turn == _last_own_turn(battle, target.side):
 		amount = amount * (100 - brace) / 100
 	var deep := int(RuleProbe.f("deep"))
 	if deep != 0 and attacker.side != Unit.Side.NEUTRAL and battle.board.hq_cells.size() >= 2:
@@ -166,3 +166,9 @@ static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[Battle
 	if target.hp == 0:
 		events.append_array(battle.remove_unit(target, attacker))
 	return events
+
+
+static func _last_own_turn(battle: Battle, side: Unit.Side) -> int:
+	if side == Unit.Side.PLAYER2 and battle.phase == Unit.Side.PLAYER1:
+		return battle.turn - 1
+	return battle.turn
