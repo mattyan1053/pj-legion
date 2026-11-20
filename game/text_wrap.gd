@@ -17,6 +17,8 @@ const NO_LINE_END := "（「『【〈《〔([{"
 const STRONG_BREAK_AFTER := "　。、"
 ## 優先する切れ目が、行の幅のこの割合より後ろにあれば、そこで切る。
 const STRONG_BREAK_RATIO := 0.5
+## fold_even が、行の長さをそろえる幅を探す回数（半分ずつ狭める）。
+const EVEN_STEPS := 6
 
 ## LOOSE は、語の途中だが、ほかに切れる所が無いときだけ切ってよい所（漢字どうしの間など）。
 enum { NO_BREAK, LOOSE, WEAK, STRONG }
@@ -28,6 +30,31 @@ static func fold(text: String, width: float, measure: Callable) -> String:
 	var lines: Array[String] = []
 	for paragraph in text.split("\n"):
 		lines.append_array(_fold_paragraph(paragraph, width, measure))
+	return "\n".join(lines)
+
+
+## fold と同じに折り返すが、行の数を増やさない範囲で、行の長さをそろえる（最後の行が 1 語だけ残らないように）。
+## 折り返さずに収まる段落と、元からある改行は、そのまま。短い案内の文（1〜2 行）に使う。
+static func fold_even(text: String, width: float, measure: Callable) -> String:
+	var lines: Array[String] = []
+	for paragraph in text.split("\n"):
+		var folded := _fold_paragraph(paragraph, width, measure)
+		if folded.size() > 1:
+			# 同じ行の数に収まる、いちばん狭い幅を探して、その幅で折り返す。
+			var total := 0.0
+			for character in paragraph:
+				total += float(measure.call(character))
+			var low := total / folded.size()
+			var high := width
+			for step in EVEN_STEPS:
+				var middle := (low + high) / 2.0
+				var tried := _fold_paragraph(paragraph, middle, measure)
+				if tried.size() <= folded.size():
+					high = middle
+					folded = tried
+				else:
+					low = middle
+		lines.append_array(folded)
 	return "\n".join(lines)
 
 

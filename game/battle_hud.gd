@@ -557,7 +557,10 @@ func set_hint(text: String) -> void:
 ## 案内を、いま使える幅で折り返し直す。右のボタンの文字や出し入れが変わると、使える幅も変わるので、そのたびに呼ぶ。
 func _fold_hint() -> void:
 	if _hint_label != null:
-		_set_folded(_hint_label, _hint_text, _hint_room())
+		# 2 行に分かれるときは、行の長さをそろえる（2 行目に 1 語だけ残さない）。
+		var font := _hint_label.get_theme_font("font")
+		var font_size := _hint_label.get_theme_font_size("font_size")
+		_hint_label.text = TextWrap.fold_even(_hint_text, _hint_room(), func(character: String) -> float: return _char_width(font, font_size, character))
 
 
 ## 下の帯の案内のうち、案内に使える幅に収まらない行（3 行目からは、収まっていても切れる）。検査用。
