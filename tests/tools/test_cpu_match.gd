@@ -130,6 +130,36 @@ func test_army_hp_at_a_mid_boss_kill_leaves_out_the_new_relic() -> void:
 	assert_eq(outcome.boss_falls[0].first_slayer_hp, before)
 
 
+func test_first_hit_and_first_kill_count_only_blows_between_players() -> void:
+	# 集計の「最初に当てた側・倒した側」: 中立の駒への攻撃は数えない。最初に当てたのはプレイヤー2、最初に倒したのはプレイヤー1。
+	var battle := Maps.battle(["........", "........"])
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(1, 1))
+	var finisher := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i(5, 1))
+	var minion := battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i(2, 1))
+	minion.hp = 1
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i(4, 1))
+	var outcome := CpuMatch.Outcome.new()
+	outcome.stats = BattleStats.new(battle)
+	var steps: Array[Array] = [
+		[Unit.Side.PLAYER1, AttackAction.new(paladin.id, minion.id)],
+		[Unit.Side.PLAYER2, AttackAction.new(sniper.id, paladin.id)],
+		[Unit.Side.PLAYER1, AttackAction.new(finisher.id, sniper.id)],
+	]
+	for i in steps.size():
+		battle.phase = steps[i][0]
+		if i == 2:
+			sniper.hp = 1
+		var result := battle.apply(steps[i][1])
+		assert_true(result.accepted, "%d 手目" % i)
+		for event in result.events:
+			outcome.stats.feed(event)
+			CpuMatch._count(outcome, event, battle, steps[i][0])
+		if i == 0:
+			assert_eq([outcome.first_hit_side, outcome.first_kill_side], [-1, -1], "中立の駒は数えない")
+	assert_eq([outcome.first_hit_side, outcome.first_hit_turn], [1, battle.turn])
+	assert_eq([outcome.first_kill_side, outcome.first_kill_turn], [0, battle.turn])
+
+
 func test_a_finish_on_a_boss_the_rival_wore_down_counts_as_finish_only() -> void:
 	# 相手（プレイヤー2）が 40 削った中ボスを、プレイヤー1 が止めの一撃だけで倒す（集計の「削った量の分け前」）。
 	var battle := Maps.battle(["........", "........"])
