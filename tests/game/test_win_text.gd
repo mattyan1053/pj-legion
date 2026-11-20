@@ -39,6 +39,24 @@ func test_rout_reads_as_rout() -> void:
 	assert_eq(WinText.of_scenario(scenario, P2).get_slice("\n", 1), "全滅すると負け。")
 
 
+## 将のいない群れ（docs/scenario.md）が相手なら、「将を倒しても終わらない」は言い添えない。
+func test_no_king_note_against_a_kingless_horde() -> void:
+	var scenario := Scenario.versus(BoardGenerator.Stage.PLAIN)
+	scenario.remove_king(P2)
+	scenario.set_win_conditions(P1, [GameWonEvent.Reason.ROUTED] as Array[GameWonEvent.Reason])
+	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。")
+	scenario.set_win_conditions(P1, [GameWonEvent.Reason.BOSS_SLAIN] as Array[GameWonEvent.Reason])
+	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "中ボスを倒せば勝ち。")
+	var battle := Maps.battle(["....", "...."])
+	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 1))
+	battle.add_unit(UnitKind.Id.SKELETON, P2, Vector2i(3, 0))
+	battle.win_conditions[P1] = [GameWonEvent.Reason.ROUTED]
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 敵の全滅", false])
+	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。")
+	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 中ボスの撃破", false])
+
+
 func test_turn_text_is_only_the_turn() -> void:
 	assert_eq(WinText.turn_text(3), "ターン 3")
 
@@ -63,6 +81,7 @@ func test_goal_tag_counts_down_the_turns_to_hold_and_marks_the_last() -> void:
 
 func test_goal_tag_says_the_king_does_not_end_a_rout() -> void:
 	var battle := Maps.battle(["....."])
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(4, 0))
 	battle.win_conditions[P1] = [GameWonEvent.Reason.ROUTED]
 	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 敵の全滅（将を倒しても終わらない）", false])
 	assert_eq(WinText.goal_tag(battle, 1, P2), ["全滅すると負け", false])
@@ -71,6 +90,7 @@ func test_goal_tag_says_the_king_does_not_end_a_rout() -> void:
 
 func test_boss_hunt_reads_as_a_boss_hunt() -> void:
 	var battle := Maps.battle(["....."])
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(4, 0))
 	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
 	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 中ボスの撃破（将を倒しても終わらない）", false])
 	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "中ボスを倒せば勝ち。敵の将を倒しても終わらない。")
