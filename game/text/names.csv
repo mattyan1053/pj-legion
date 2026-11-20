@@ -41,6 +41,8 @@ unit.elite_minion,エリートミニオン
 unit.skeleton,骸骨兵
 unit.skeleton_archer,骸骨射手
 unit.skeleton_brute,骸骨重兵
+unit.skeleton_caller,骸骨術師
+unit.skeleton_drummer,骸骨鼓手
 evolution.bulwark,ブルワーク
 evolution.juggernaut,ジャガーノート
 evolution.marksman,マークスマン
@@ -69,6 +71,10 @@ item.jet_pack,試作ジェットパック
 item.dragon_scale,古竜の鱗
 skill.adrenaline_shot,アドレナリン注射
 skill.adrenaline_shot.summary,行動済みの味方 1 体を、もう一度行動できるようにする。その駒は次の自分の番の終わりまで、攻撃力 -{penalty}（対戦中 {uses} 回まで）
+skill.bone_raise,骨起こし
+skill.bone_raise.summary,隣の空いたマスに、味方の骸骨兵を 1 体起こす。起きた骸骨兵は次の自分の番から動く（対戦中 {uses} 回まで）
+skill.war_drum,骨太鼓
+skill.war_drum.summary,{radius} マス以内の味方に突撃（次の自分の番まで、移動力 +{move}・攻撃力 +{power}）を付ける
 skill.divine_shield,ディバインシールド
 skill.divine_shield.summary,自分にバリア（{turns} ターン。次に受けるダメージを 1 回だけ 0 にする。攻撃・爆発・魔法のどれも）を付ける
 skill.fireball,ファイアボール

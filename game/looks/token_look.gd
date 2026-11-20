@@ -38,6 +38,8 @@ const KINDS := {
 	UnitKind.Id.SKELETON: ["monster", &"sword", 0.92],
 	UnitKind.Id.SKELETON_ARCHER: ["monster", &"bow", 1.0],
 	UnitKind.Id.SKELETON_BRUTE: ["monster", &"shield", 1.22],
+	UnitKind.Id.SKELETON_CALLER: ["monster", &"staff", 0.96],
+	UnitKind.Id.SKELETON_DRUMMER: ["monster", &"knives", 1.0],
 }
 ## 将の別の姿（unit_looks.gd の KING_LOOKS の名前 -> KINDS と同じ形）。
 const KING_LOOKS := {

@@ -66,6 +66,9 @@ figure = paladin evolved
 # speaker = 副官, sorcerer
 # 無くてよい: 敵の将の姿（見た目だけ。ルールの上では将のまま）。いま選べるのは skeleton_mage（骸骨の将。魔物の群れを率いる）。
 # king_figure = skeleton_mage
+# 無くてよい: none と書くと、敵は将のいない群れ（本陣は空のまま）。人の勝ち方（wins）を routed, boss_slain, turns_held から書く。
+#   king_figure は書けない。敵の話し手には、将でない姿（figure）を書く。
+# king = none
 # 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない敵（魔物の群れ。必殺技もゲージも無い）。
 army = fantasy
 # 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。持ち物は「+」でつなぐ（魔物は持てない）。将は書かない（いつも本陣に置く）。

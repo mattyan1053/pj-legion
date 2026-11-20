@@ -36,6 +36,8 @@ const KINDS := {
 	UnitKind.Id.SKELETON: {"model": "Zombie_Male", "hold": "dagger", "attack": MELEE, "accent": {"Clothes": 0.1, "DarkClothes": 0.35}, "scale": 0.92},
 	UnitKind.Id.SKELETON_ARCHER: {"model": "Zombie_Female", "hold": "bow", "attack": SHOOT, "accent": {"Clothes": 0.1, "DarkClothes": 0.35}},
 	UnitKind.Id.SKELETON_BRUTE: {"model": "Goblin_Male", "hold": "sword", "attack": MELEE, "accent": {"Pants": 0.1}, "scale": 1.2},
+	UnitKind.Id.SKELETON_CALLER: {"model": "Witch", "hold": "cleric_staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}, "scale": 0.92},
+	UnitKind.Id.SKELETON_DRUMMER: {"model": "Goblin_Male", "hold": "staff", "attack": SHOOT, "accent": {"Pants": 0.1}},
 }
 ## 将の別の姿（unit_looks.gd の KING_LOOKS の名前 -> KINDS と同じ形）。
 const KING_LOOKS := {

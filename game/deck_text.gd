@@ -220,8 +220,11 @@ static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
 
 ## 編成の 1 行の説明（対戦設定に出す。「将、シールドトルーパー+アイアンシールド×2、…」。同じ装備は数をまとめる）。
 ## levels: 部隊の並びの順の、駒の始めのレベル（戦いの定義の start_growth。ストーリーの話）。1 でない駒は、名前の後ろにレベルを出す。
-static func deck_summary(deck: Deck, levels: Array = []) -> String:
-	var parts: Array[String] = [Names.kind(UnitKind.Id.KING)]
+## with_king が偽（将のいない群れ）なら、将を並べない。
+static func deck_summary(deck: Deck, levels: Array = [], with_king := true) -> String:
+	var parts: Array[String] = []
+	if with_king:
+		parts.append(Names.kind(UnitKind.Id.KING))
 	for i in deck.entries.size():
 		var entry := deck.entries[i]
 		var text := Names.kind(entry.kind)

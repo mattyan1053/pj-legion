@@ -175,7 +175,8 @@ func _ready() -> void:
 	_enemy_faces = enemy_faces
 	_fill_faces(enemy_faces, battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], Unit.Side.PLAYER2, start_levels(Unit.Side.PLAYER2))
 	enemy_column.add_child(_wrapped(DeckText.deck_summary(
-		battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], start_levels(Unit.Side.PLAYER2)), 17, COLOR_TEXT))
+		battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], start_levels(Unit.Side.PLAYER2),
+		battle_source.scenario().has_king(Unit.Side.PLAYER2)), 17, COLOR_TEXT))
 
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -306,14 +307,15 @@ func deploy_map() -> DeployMap:
 	return _deploy
 
 
-## faces に、部隊 deck の駒のアイコン（将から並びの順）を並べ直す。side は陣営、levels は始めのレベル（start_levels）。
+## faces に、部隊 deck の駒のアイコン（将から並びの順。将のいない群れは将なし）を並べ直す。side は陣営、levels は始めのレベル（start_levels）。
 ## アイコンを押すと、その駒の詳しい説明（unit_detail.gd）を開く。始めのレベルが 1 でない駒は、アイコンの右下にレベル。
 func _fill_faces(faces: Container, deck: Deck, side: Unit.Side, levels: Array) -> void:
 	for face in faces.get_children():
 		faces.remove_child(face)
 		face.queue_free()
 	var look: StringName = battle_source.king_looks()[side] if side < battle_source.king_looks().size() else &""
-	faces.add_child(_face(UnitKind.Id.KING, [], side, deck.army, 1, look))
+	if battle_source.scenario().has_king(side):  # 将のいない群れ（docs/scenario.md）は、将を並べない
+		faces.add_child(_face(UnitKind.Id.KING, [], side, deck.army, 1, look))
 	for i in deck.entries.size():
 		var level: int = levels[i] if i < levels.size() else 1
 		faces.add_child(_face(deck.entries[i].kind, deck.entries[i].equipment, side, deck.army, level))

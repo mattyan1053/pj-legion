@@ -55,7 +55,10 @@ func test_only_vanguards_exert_zoc() -> void:
 
 ## 魔物は役割を持ち、軍を持たない。将と中立の駒は魔物ではない。
 func test_monsters_have_a_role_but_no_army() -> void:
-	var monsters: Array[UnitKind.Id] = [UnitKind.Id.SKELETON, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON_BRUTE]
+	var monsters: Array[UnitKind.Id] = [
+		UnitKind.Id.SKELETON, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON_BRUTE,
+		UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER,
+	]
 	for id: UnitKind.Id in UnitKind.Id.values():
 		assert_eq(UnitKind.is_monster(id), monsters.has(id), str(UnitKind.Id.find_key(id)))
 	for id in monsters:

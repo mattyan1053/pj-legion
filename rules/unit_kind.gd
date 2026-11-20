@@ -23,6 +23,8 @@ enum Id {
 	SKELETON,  ## 魔物・奇襲。弱く、数で押す
 	SKELETON_ARCHER,  ## 魔物・後衛。離れて撃つ
 	SKELETON_BRUTE,  ## 魔物・前衛。堅くて遅い
+	SKELETON_CALLER,  ## 魔物・後衛。骸骨兵を起こす（骨起こし）
+	SKELETON_DRUMMER,  ## 魔物・後衛。周りの味方を突撃させる（骨太鼓）
 }
 
 enum Role { NONE, VANGUARD, REARGUARD, RAIDER, HEALER }
@@ -45,6 +47,8 @@ const _TABLE := {
 	Id.SKELETON: [Role.RAIDER, Army.NONE, 1, 14, 6, 4, 1],
 	Id.SKELETON_ARCHER: [Role.REARGUARD, Army.NONE, 2, 12, 6, 3, 3],
 	Id.SKELETON_BRUTE: [Role.VANGUARD, Army.NONE, 3, 64, 10, 2, 1],
+	Id.SKELETON_CALLER: [Role.REARGUARD, Army.NONE, 3, 18, 5, 3, 2],
+	Id.SKELETON_DRUMMER: [Role.REARGUARD, Army.NONE, 3, 22, 5, 3, 2],
 }
 
 
