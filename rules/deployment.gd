@@ -9,6 +9,8 @@ extends RefCounted
 ## - 盤の外・入れないマス・駒のいるマス・本陣（相手のものも）は飛ばす。行が埋まったら、その前の行へ送る
 ## - 編成の並びの順に置く
 ##
+## 将を置かない陣営（with_king が偽。戦いの定義の「将のいない群れ」）は、本陣を空けたまま、将でない駒だけを同じ置き方で置く。
+##
 ## 置くマスの列（cells）を渡すと、将でない駒は、編成の並びの順に、その列のマスへ置く（戦いの定義の初期位置）。
 ## 列のマスが盤の外・入れない・駒がいる・どちらかの本陣なら飛ばす。列が尽きたら、残りの駒はいつもの置き方（本陣の前の行）で置く。
 ##
@@ -29,10 +31,12 @@ const NO_CELL := Vector2i(-1, -1)
 const UNSET := Vector2i.ZERO
 
 
-## side の軍を盤に置き、置いた駒を返す（先頭が将、あとは編成の並びの順）。
+## side の軍を盤に置き、置いた駒を返す（先頭が将、あとは編成の並びの順。将を置かないなら、編成の並びの順だけ）。
 ## 本陣に将を置けなければ、何も置かずに空を返す。置くマスが見つからなかった駒と、
 ## 装備を持てる数を超えている駒は置かない（返す列に入らない）。
-static func deploy(battle: Battle, side: Unit.Side, deck: Deck, cells: Array[Vector2i] = [], placement: Array[Vector2i] = []) -> Array[Unit]:
+static func deploy(
+	battle: Battle, side: Unit.Side, deck: Deck, cells: Array[Vector2i] = [], placement: Array[Vector2i] = [], with_king := true
+) -> Array[Unit]:
 	var placed: Array[Unit] = []
 	if side < 0 or side >= battle.board.hq_cells.size():
 		return placed
@@ -47,10 +51,11 @@ static func deploy(battle: Battle, side: Unit.Side, deck: Deck, cells: Array[Vec
 			if cell != NO_CELL and area.has(cell) and _can_place(battle, cell) and not reserved.has(cell):
 				chosen[i] = cell
 				reserved[cell] = true
-	var king := battle.add_unit(UnitKind.Id.KING, side, hq)
-	if king == null:
-		return placed
-	placed.append(king)
+	if with_king:
+		var king := battle.add_unit(UnitKind.Id.KING, side, hq)
+		if king == null:
+			return placed
+		placed.append(king)
 	battle.armies[side] = deck.army
 	var next_listed := 0
 	for i in deck.entries.size():

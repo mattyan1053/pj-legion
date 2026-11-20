@@ -156,7 +156,9 @@ func create_battle() -> Battle:
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var placement: Array[Vector2i] = []
 		placement.assign(placements[side])
-		var placed := Deployment.deploy(battle, side, deck_of(side), scenario.deploy_cells_of(side), placement)
+		var placed := Deployment.deploy(
+			battle, side, deck_of(side), scenario.deploy_cells_of(side), placement, scenario.has_king(side)
+		)
 		_apply_start_growth(placed, scenario.start_growth[side])
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
