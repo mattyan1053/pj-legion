@@ -6,6 +6,9 @@ extends Control
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const DeckText := preload("res://game/deck_text.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
+const RoleMark := preload("res://game/role_mark.gd")
+const StatsRow := preload("res://game/stats_row.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -16,7 +19,9 @@ const BODY_WIDTH := 460.0
 const BODY_MAX_HEIGHT := 400.0
 
 var _overlays: RefCounted
-var _icon: TextureRect
+var _icon: UnitFrame
+var _role: RoleMark
+var _stats: StatsRow
 var _title: Label
 var _body: Label
 var _scroll: ScrollContainer
@@ -49,12 +54,25 @@ func setup(overlays: RefCounted) -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 10)
 	column.add_child(head)
-	_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, 64.0)
+	# 駒の額（縁は陣営の色）、役割の印と名前、能力値の欄（持ち物と始めのレベルを足した値。文の側に内訳がある）。
+	_icon = UnitFrame.new(UnitKind.Id.KING, 0, 64.0, false)
 	head.add_child(_icon)
+	var names := VBoxContainer.new()
+	names.alignment = BoxContainer.ALIGNMENT_CENTER
+	names.add_theme_constant_override("separation", 4)
+	head.add_child(names)
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 8)
+	names.add_child(title_row)
+	_role = RoleMark.new(UnitKind.Role.NONE, 24.0)
+	title_row.add_child(_role)
 	_title = Label.new()
 	_title.add_theme_font_size_override("font_size", 22)
-	_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	head.add_child(_title)
+	_title.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	title_row.add_child(_title)
+	_stats = StatsRow.new("", 15)
+	names.add_child(_stats)
+	column.add_child(HSeparator.new())
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(_scroll)
@@ -75,7 +93,15 @@ func setup(overlays: RefCounted) -> void:
 ## kind の駒（持ち物 equipment、始めのレベル level）の詳細を開く。side はアイコンの陣営の色、deck_army は部隊の軍（DeckText.detail_lines）。
 ## look は将の姿（unit_view.gd の KING_LOOKS。空ならいつもの将）。
 func open(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side := 0, deck_army := -1, level := 1, look := &"") -> void:
-	_icon.texture = UnitIcons.texture(kind, side, false, look)
+	_icon.set_kind(kind, side, false, look)
+	_icon.edge = Color(UnitIcons.COLORS[clampi(side, 0, 1)].lightened(0.15), 0.9)
+	_role.role = UnitKind.role(kind)
+	_role.visible = UnitKind.role(kind) != UnitKind.Role.NONE
+	var bonus := DeckText.equipment_bonus(equipment)
+	var grown := DeckText.growth_bonus(kind, level)
+	for stat: Unit.Stat in grown:
+		bonus[stat] = int(bonus.get(stat, 0)) + int(grown[stat])
+	_stats.set_line(DeckText.stats_line(kind, bonus))
 	_title.text = Names.kind(kind) if level <= 1 else Text.t("deck.detail.title_level", {"name": Names.kind(kind), "level": level})
 	var font := _body.get_theme_font(&"font")
 	var font_size := _body.get_theme_font_size(&"font_size")
