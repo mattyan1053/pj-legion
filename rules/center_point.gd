@@ -61,6 +61,11 @@ static func start_phase(battle: Battle, side: Unit.Side) -> void:
 			for unit in battle.units:
 				if unit.side == side and Combat.distance(unit.cell, point) <= radius():
 					unit.hp = mini(unit.max_hp(), unit.hp + heal)
+	if RuleProbe.f("point_trace") > 0:
+		var holders := []
+		for point in cells(battle):
+			holders.append(holder(battle, point))
+		print("PH t=%d side=%d holders=%s" % [battle.turn, side, holders])
 	Ults.charge(battle, side, held * int(RuleProbe.f("point_gauge")))
 	battle.point_power[side] = held * int(RuleProbe.f("point_power"))
 	battle.point_score[side] += held
