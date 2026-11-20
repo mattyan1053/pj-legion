@@ -3,14 +3,16 @@
 # 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
 #
 # 手で作ったマップ「尾根の小道」（game/maps/ridge_path.txt）。MILITARY の物語の 1〜3 話と同じマップを、勝ち方を変えて使い回す。
-# 人の勝ち方は本陣の占拠だけ（wins）。敵の将を倒しても終わらない。敵は盾役と衛生兵の 2 体で、本陣の前から始まる。
+# 人の勝ち方は本陣の占拠か、敵の全滅（wins）。敵の将を倒しただけでは終わらない。敵は盾持ちの盾役とスナイパー 2 体で、本陣の前から始まる。
+# 占拠だけの勝ち方で、敵に衛生兵がいると、火力の低い部隊が将を削りきれずに 60 ターンの打ち切りになった（Issue #47）。
+# 全滅でも勝てるようにし、衛生兵をスナイパーに替えて、打ち切りを無くした（docs/story.md の「敵の強さ」）。
 # 書き方は docs/story.md の「話のファイル」（欄の説明つきのひな形は game/story/template.txt）。
 
 [episode]
 title = 尾根の砦
 map = ridge_path
 look = stone_walls
-wins = hq_captured
+wins = hq_captured, routed
 
 [unlock]
 item = regen_charm
@@ -27,15 +29,16 @@ speaker = セリス, commando
 name = ヴァルト
 figure = sniper evolved
 army = military
-unit = shield_trooper
-unit = medic
+unit = shield_trooper + iron_shield
+unit = sniper
+unit = sniper
 
 [before]
 イェルダ: 岩山を越えたあと、私はこの尾根で 2 度敗れた。相手の名はハーデン。連邦の偵察隊である。
 セリス: あたしも尾根を落とし損ねて、岩山ではハーデンに散らされた。……笑いなよ。
 ティオ: 笑わない。でも見て、尾根にもう砦が建ってる！
 ヴァルト: 尾根は連邦が頂いた。結晶も、谷もだ。騎士ごっこは森でやりたまえ。
-ウル: 将を討っても砦は落ちぬ。あの旗のマスに 3 ターン、立ち続けることじゃ。
+ウル: 将を討っても砦は落ちぬ。あの旗のマスに 3 ターン立つか、守りの兵を残らず倒すかじゃ。
 イェルダ: 承知。尾根は返してもらう。
 
 [after]
@@ -46,4 +49,4 @@ unit = medic
 
 [cues]
 (turn 1) ウル: 本陣は敵の将の足元じゃ。あの旗のマスよ。
-(king_half enemy) ウル: 将は捨て置け。旗のマスに乗り続けるのじゃ。
+(king_half enemy) ウル: 将だけ討っても終わらぬ。旗か、残りの兵じゃ。
