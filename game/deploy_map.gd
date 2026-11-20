@@ -16,6 +16,10 @@ signal changed
 
 ## 1 マスの大きさ（縮図の絵の px。表示は control の大きさに合わせて拡げる）。
 const IMAGE_CELL := 8
+## 作戦図の額: 盤の外へ出す目盛りの長さ（px。5 マスごとに長く）と、四隅の鉤の長さ。額は control の外（入れ物の余白）に描く。
+const TICK := 4.0
+const TICK_LONG := 7.0
+const FRAME_CORNER := 16.0
 
 var read_only := false
 
@@ -182,23 +186,73 @@ func _draw() -> void:
 	var rect := _board_rect()
 	var cell_px := rect.size.x / _battle.board.size.x
 	draw_texture_rect(_texture, rect, false)
+	_draw_grid(rect, cell_px)
 	var color: Color = _team_colors[_side]
 	var choosing := _selected != -1
 	for cell in _zone:
 		var box := Rect2(rect.position + Vector2(cell) * cell_px, Vector2.ONE * cell_px)
 		draw_rect(box, Color(color, 0.32 if choosing else 0.2))
 		draw_rect(box.grow(-1.0), Color(color.lightened(0.4), 0.9), false, 2.0)
+	# 本陣は、陣営の色の旗。
+	for side in _battle.board.hq_cells.size():
+		_draw_flag(rect.position + (Vector2(_battle.board.hq_cells[side]) + Vector2(0.5, 0.5)) * cell_px, cell_px, _team_colors[side])
 	# ほかの駒（相手、中立）は点。
 	for unit: Unit in _battle.units:
 		if unit.side == _side or unit.kind == UnitKind.Id.KING:
 			continue
 		var at := rect.position + (Vector2(unit.cell) + Vector2(0.5, 0.5)) * cell_px
 		var dot_color: Color = _team_colors[unit.side] if unit.side < _team_colors.size() else Palette.TEXT_DIM
-		draw_circle(at, cell_px * 0.3, Palette.OUTLINE)
-		draw_circle(at, cell_px * 0.24, dot_color.lightened(0.2))
+		draw_circle(at, cell_px * 0.32, Palette.OUTLINE)
+		draw_circle(at, cell_px * 0.25, dot_color.lightened(0.2))
+		draw_arc(at, cell_px * 0.25, 0.0, TAU, 16, Color(Palette.TEXT, 0.55), 1.0, true)
 	# 決める側の駒は、アイコン。
 	for i in _cells.size():
 		var box := Rect2(rect.position + Vector2(_cells[i]) * cell_px, Vector2.ONE * cell_px).grow(cell_px * 0.15)
 		draw_texture_rect(UnitIcons.texture(_kinds[i], _side), box, false)
 		if i == _selected:
-			draw_rect(box, Palette.ACCENT, false, 3.0)
+			draw_rect(box.grow(2.0), Color(Palette.ACCENT, 0.3), false, 3.0)
+			draw_rect(box, Palette.ACCENT, false, 2.0)
+	_draw_frame(rect, cell_px)
+
+
+## マスの境の細い線（作戦図の方眼）。地面の色を消さない濃さ。
+func _draw_grid(rect: Rect2, cell_px: float) -> void:
+	var line := Color(Palette.INK, 0.22)
+	for x in range(1, _battle.board.size.x):
+		draw_line(rect.position + Vector2(x * cell_px, 0.0), rect.position + Vector2(x * cell_px, rect.size.y), line, 1.0)
+	for y in range(1, _battle.board.size.y):
+		draw_line(rect.position + Vector2(0.0, y * cell_px), rect.position + Vector2(rect.size.x, y * cell_px), line, 1.0)
+
+
+## 本陣の旗（竿と、陣営の色の三角の旗）。at はマスの真ん中。
+func _draw_flag(at: Vector2, cell_px: float, color: Color) -> void:
+	var foot := at + Vector2(-cell_px * 0.22, cell_px * 0.42)
+	var top := at + Vector2(-cell_px * 0.22, -cell_px * 0.5)
+	var cloth := PackedVector2Array([top, top + Vector2(cell_px * 0.62, cell_px * 0.2), top + Vector2(0.0, cell_px * 0.42)])
+	draw_line(foot + Vector2(1.0, 1.0), top + Vector2(1.0, 1.0), Palette.OUTLINE, 3.0)
+	draw_colored_polygon(cloth, color.lightened(0.35))
+	draw_polyline(cloth + PackedVector2Array([cloth[0]]), Palette.OUTLINE, 1.0, true)
+	draw_line(foot, top, Palette.TEXT, 1.5)
+
+
+## 作戦図の額: 真鍮の縁、四隅の明るい鉤、盤の外の目盛り（1 マスごと。5 マスごとに長く）。ミニマップの額と同じ向き。
+func _draw_frame(rect: Rect2, cell_px: float) -> void:
+	var outer := rect.grow(1.0)
+	draw_rect(outer, Palette.BORDER, false, 2.0)
+	var tick := Color(Palette.BORDER_BRIGHT, 0.7)
+	for x in range(0, _battle.board.size.x + 1):
+		var reach := TICK_LONG if x % 5 == 0 else TICK
+		for edge: Array in [[outer.position.y, -1.0], [outer.end.y, 1.0]]:
+			var from := Vector2(rect.position.x + x * cell_px, edge[0])
+			draw_line(from, from + Vector2(0.0, reach * float(edge[1])), tick, 1.0)
+	for y in range(0, _battle.board.size.y + 1):
+		var reach := TICK_LONG if y % 5 == 0 else TICK
+		for edge: Array in [[outer.position.x, -1.0], [outer.end.x, 1.0]]:
+			var from := Vector2(edge[0], rect.position.y + y * cell_px)
+			draw_line(from, from + Vector2(reach * float(edge[1]), 0.0), tick, 1.0)
+	var corner_reach := minf(FRAME_CORNER, minf(rect.size.x, rect.size.y) / 3.0)
+	for corner: Vector2 in [Vector2(0.0, 0.0), Vector2(1.0, 0.0), Vector2(0.0, 1.0), Vector2(1.0, 1.0)]:
+		var at := outer.position + corner * outer.size
+		var inward := Vector2(1.0, 1.0) - corner * 2.0
+		draw_line(at, at + Vector2(inward.x * corner_reach, 0.0), Palette.BORDER_BRIGHT, 2.0)
+		draw_line(at, at + Vector2(0.0, inward.y * corner_reach), Palette.BORDER_BRIGHT, 2.0)

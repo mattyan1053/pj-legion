@@ -17,7 +17,6 @@ const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
-const UnitIcons := preload("res://game/unit_icons.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
@@ -30,6 +29,10 @@ const Story := preload("res://game/story.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const WinText := preload("res://game/win_text.gd")
+const Crest := preload("res://game/crest.gd")
+const NationDecor := preload("res://game/nation_decor.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
+const Ornament := preload("res://game/ui_ornament.gd")
 
 signal finished(outcome: StringName)
 
@@ -92,7 +95,7 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# 縦長・横長の画面では、枠を広げすぎず、真ん中にまとめる（中身の無い枠が伸びるだけになるため。docs/screen-size.md）。
 	ScreenSize.cap(root, MAX_SIZE, Vector4(40.0, 24.0, 40.0, 24.0))
-	root.add_theme_constant_override("separation", 12)
+	root.add_theme_constant_override("separation", 6)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 	_layer = layer
@@ -101,6 +104,11 @@ func _ready() -> void:
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	heading.text = Text.t("sortie.heading", {"number": Story.number_of(episode), "title": episode.title})
 	root.add_child(heading)
+	# 見出しの下の飾りの線は、人の軍の国の色（話の一覧と同じ）。
+	var heading_line := Ornament.new(520.0, 8.0)
+	heading_line.color = NationDecor.color_of(context.story.campaign.army)
+	heading_line.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	root.add_child(heading_line)
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -112,7 +120,7 @@ func _ready() -> void:
 	var left := _panel()
 	body.add_child(left)
 	var left_column := VBoxContainer.new()
-	left_column.add_theme_constant_override("separation", 6)
+	left_column.add_theme_constant_override("separation", 12)
 	left.add_child(left_column)
 	# 初期位置: 盤の縮図に置けるマスを縁取り、駒を押してからマスを押すと置く（deploy_map.gd）。「おまかせ」でいつもの置き方へ。
 	var map_head := HBoxContainer.new()
@@ -139,9 +147,11 @@ func _ready() -> void:
 
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(RIGHT_WIDTH, 0.0)
-	right.add_theme_constant_override("separation", 10)
+	right.add_theme_constant_override("separation", 8)
 	body.add_child(right)
+	# 勝ち方の欄は、対戦の上の帯の勝ち方の札と同じ色（金を混ぜた地と縁）。
 	var goal := _panel()
+	goal.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.GOAL.lerp(Palette.PANEL, 0.55), 0.94), Palette.GOAL_BORDER, 1, 8, 14.0))
 	right.add_child(goal)
 	var goal_column := VBoxContainer.new()
 	goal.add_child(goal_column)
@@ -153,12 +163,14 @@ func _ready() -> void:
 	goal_column.add_child(_wrapped(win_text(), 17, COLOR_TEXT))
 	var enemy := _panel()
 	right.add_child(enemy)
+	_decorate(enemy, episode.enemy_army, Palette.TEAM_RED)
 	var enemy_column := VBoxContainer.new()
 	enemy.add_child(enemy_column)
-	enemy_column.add_child(_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)})))
+	enemy_column.add_child(_army_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)}), episode.enemy_army))
 	# 敵の駒のアイコン（押すと詳しい説明。魔物も）。
 	var enemy_faces := HFlowContainer.new()
-	enemy_faces.add_theme_constant_override("h_separation", 2)
+	enemy_faces.add_theme_constant_override("h_separation", 4)
+	enemy_faces.add_theme_constant_override("v_separation", 4)
 	enemy_column.add_child(enemy_faces)
 	_enemy_faces = enemy_faces
 	_fill_faces(enemy_faces, battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], Unit.Side.PLAYER2, start_levels(Unit.Side.PLAYER2))
@@ -168,13 +180,14 @@ func _ready() -> void:
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_child(troops)
+	_decorate(troops, context.story.campaign.army, Palette.TEAM_BLUE)
 	var troops_column := VBoxContainer.new()
 	troops_column.add_theme_constant_override("separation", 6)
 	troops.add_child(troops_column)
 	var troops_head := HBoxContainer.new()
 	troops_head.add_theme_constant_override("separation", 12)
 	troops_column.add_child(troops_head)
-	var troops_caption := _caption(Text.t("sortie.troops"))
+	var troops_caption := _army_caption(Text.t("sortie.troops"), context.story.campaign.army)
 	troops_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	troops_head.add_child(troops_caption)
 	var edit := _button(Text.t("setup.edit_deck"), 16)
@@ -194,7 +207,8 @@ func _ready() -> void:
 	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。
 	# 部隊によって文の行の数が違うので、文の高さは、いちばん長い部隊に合わせて固定する（_build_options のあと）。
 	_deck_faces = HFlowContainer.new()
-	_deck_faces.add_theme_constant_override("h_separation", 2)
+	_deck_faces.add_theme_constant_override("h_separation", 4)
+	_deck_faces.add_theme_constant_override("v_separation", 4)
 	troops_column.add_child(_deck_faces)
 	_deck_line = _wrapped("", 15, COLOR_DIM)
 	troops_column.add_child(_deck_line)
@@ -203,16 +217,21 @@ func _ready() -> void:
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	footer.add_theme_constant_override("separation", 16)
 	root.add_child(footer)
+	# 「出撃」は、この画面の見せ場: 明朝の大きな字にして、左右へ飾りの線を伸ばす。
+	footer.add_child(_footer_line())
 	var back := _button(Text.t("story.episodes.resume"), 18)
 	back.custom_minimum_size = Vector2(220.0, 48.0)
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
 	footer.add_child(back)
-	_sortie = _button(Text.t("sortie.go"), 22)
-	_sortie.custom_minimum_size = Vector2(280.0, 54.0)
+	_sortie = _button(Text.t("sortie.go"), 24)
+	_sortie.custom_minimum_size = Vector2(300.0, 54.0)
 	_sortie.set_meta(&"sound", &"ui_confirm")
 	_sortie.theme_type_variation = UiTheme.BUTTON_PRIMARY
+	_sortie.add_theme_font_override("font", UiTheme.FONT_HEADING)
 	_sortie.pressed.connect(press_sortie)
 	footer.add_child(_sortie)
+	footer.add_child(_footer_line())
 
 	var kept_placement: Array = battle_source.placement.duplicate()
 	_build_options()
@@ -300,8 +319,10 @@ func _fill_faces(faces: Container, deck: Deck, side: Unit.Side, levels: Array) -
 		faces.add_child(_face(deck.entries[i].kind, deck.entries[i].equipment, side, deck.army, level))
 
 
-func _face(kind: UnitKind.Id, equipment: Array[Equipment.Id], side: Unit.Side, army: UnitKind.Army, level: int, look := &"") -> TextureRect:
-	var face := UnitIcons.rect(kind, side, false, 44.0, look)
+func _face(kind: UnitKind.Id, equipment: Array[Equipment.Id], side: Unit.Side, army: UnitKind.Army, level: int, look := &"") -> Control:
+	# 駒の額（役割の印つき）。縁は陣営の色。
+	var face := UnitFrame.new(kind, side, 44.0, true, false, look)
+	face.edge = Color(BattleScreen.TEAM_COLORS[side], 0.85)
 	face.mouse_filter = Control.MOUSE_FILTER_STOP
 	face.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	face.tooltip_text = Text.t("deck.detail.click")
@@ -315,9 +336,9 @@ func _face(kind: UnitKind.Id, equipment: Array[Equipment.Id], side: Unit.Side, a
 		tag.text = Text.t("sortie.level", {"level": level})
 		tag.add_theme_constant_override("outline_size", 4)
 		tag.add_theme_color_override("font_outline_color", Palette.OUTLINE)
-		tag.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE)
-		tag.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		tag.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		# 右下は役割の印なので、レベルは左上に置く。
+		tag.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE)
+		tag.offset_left = 3.0
 		face.add_child(tag)
 	return face
 
@@ -454,8 +475,39 @@ func _panel() -> PanelContainer:
 
 func _caption(text: String) -> Label:
 	var label := _text(15, COLOR_ACCENT)
+	label.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	label.text = text
 	return label
+
+
+## 部隊の欄の飾り: 上の縁にその軍の国の色の帯（軍なしは陣営の色）と、その下の淡い光。
+func _decorate(panel: PanelContainer, army: UnitKind.Army, team: Color) -> void:
+	var decor := NationDecor.new(army, 0.0, 44.0)
+	if army == UnitKind.Army.NONE:
+		decor.band_color = team
+	panel.add_child(decor)
+
+
+## 部隊の欄の小見出し: 軍の国の紋（軍なしは出さない）と、文。高さは小見出しの文と同じ（紋で行を高くしない）。
+func _army_caption(text: String, army: UnitKind.Army) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if army != UnitKind.Army.NONE:
+		var crest := Crest.new(army, 20.0)
+		crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(crest)
+	row.add_child(_caption(text))
+	return row
+
+
+## 下のボタンの左右へ伸びる飾りの線。
+func _footer_line() -> Control:
+	var line := Ornament.new(120.0, 12.0)
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.color = Palette.BORDER_BRIGHT
+	return line
 
 
 ## 右の欄の幅で折り返す文の札（Label の自動の折り返しは語の途中で切るので、text_wrap.gd で折り返す）。
