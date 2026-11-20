@@ -46,6 +46,10 @@ const COLOR_ACCENT := Palette.ACCENT
 const TOP_ROOM := 52.0
 ## 詳しい中身の欄の、文を折り返す幅（px）。
 const DETAIL_WIDTH := 400.0
+## 組む画面の右の列: 駒の札の高さの下限（額と能力値の頭 + 文が 5 行ほど）、札と持ち物の欄の間、持ち物の欄の送れる部分の高さの下限（px）。
+const DETAIL_MIN_HEIGHT := 200.0
+const RIGHT_GAP := 10
+const EQUIP_MIN_HEIGHT := 80.0
 const ROSTER_WIDTH := 320.0
 const TROOP_WIDTH := 420.0
 ## 一覧の右の、駒の札を並べる数（1 行）。
@@ -117,6 +121,9 @@ var _detail_body: Label
 var _detail_role: RoleMark
 var _detail_stats: StatsRow
 var _equip_box: PanelContainer
+var _equip_scroll: ScrollContainer
+var _equip_list: VBoxContainer
+var _right: VBoxContainer
 var _equip_title: Label
 var _equip_rows := {}
 var _save_button: Button
@@ -148,6 +155,7 @@ func _ready() -> void:
 	layer.add_child(_army_view)
 	_edit_view = _build_editor()
 	layer.add_child(_edit_view)
+	get_viewport().size_changed.connect(_fit_equip)  # 窓を縮めたとき、持ち物の欄の高さを決め直す
 	_dialog = _build_dialog()
 	layer.add_child(_dialog)
 	_library.changed.connect(_refresh_list)
@@ -872,10 +880,14 @@ func _build_editor() -> Control:
 	# 右: 選んだ駒の札（上）と、その駒の持ち物の欄（下）。別々の枠に分ける。
 	var right := VBoxContainer.new()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.add_theme_constant_override("separation", 10)
+	right.add_theme_constant_override("separation", RIGHT_GAP)
 	body.add_child(right)
+	_right = right
+	right.resized.connect(_fit_equip)
 	_detail_card = _card()
 	_detail_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# 持ち物が多くても、駒の札はこの高さを割らない（持ち物の欄のほうを、欄の中で送る。_fit_equip）。
+	_detail_card.custom_minimum_size = Vector2(0.0, DETAIL_MIN_HEIGHT)
 	right.add_child(_detail_card)
 	# 中身が長い駒でも、画面の下へはみ出さないよう、札の中で送れるようにする。
 	var detail_scroll := ScrollContainer.new()
@@ -916,11 +928,19 @@ func _build_editor() -> Control:
 	_equip_title = _text(16, COLOR_ACCENT)
 	_equip_title.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	equip_column.add_child(_equip_title)
+	# 行は、欄の中で縦に送れる入れ物に並べる（多いときだけ送りの棒が出る）。
+	_equip_scroll = ScrollContainer.new()
+	_equip_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	equip_column.add_child(_equip_scroll)
+	_equip_list = VBoxContainer.new()
+	_equip_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_equip_list.add_theme_constant_override("separation", 4)
+	_equip_scroll.add_child(_equip_list)
 	for item: Equipment.Id in Equipment.Id.values():
 		var row := HBoxContainer.new()
 		row.visible = false  # 決まりが並べる持ち物だけを見せる（_show_detail）
 		row.add_theme_constant_override("separation", 8)
-		equip_column.add_child(row)
+		_equip_list.add_child(row)
 		# 持ち物の印は、沈んだ小さな額に入れる（駒の額と同じ向き）。
 		var slot := PanelContainer.new()
 		slot.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.INK, 0.85), Palette.BORDER, 1, 6, 4.0))
@@ -944,18 +964,18 @@ func _build_editor() -> Control:
 		effect.clip_text = true
 		info.add_child(effect)
 		var minus := _button("−", 18)
-		minus.custom_minimum_size = Vector2(40.0, 36.0)
+		minus.custom_minimum_size = Vector2(36.0, 34.0)
 		minus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		minus.pressed.connect(func() -> void: unequip(item))
 		row.add_child(minus)
 		var count := _text(18, COLOR_TEXT)
 		count.add_theme_font_override("font", UiTheme.FONT_BOLD)
-		count.custom_minimum_size = Vector2(28.0, 0.0)
+		count.custom_minimum_size = Vector2(24.0, 0.0)
 		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(count)
 		var plus := _button(Text.t("deck.edit.plus"), 18)
-		plus.custom_minimum_size = Vector2(40.0, 36.0)
+		plus.custom_minimum_size = Vector2(36.0, 34.0)
 		plus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		plus.pressed.connect(func() -> void: equip(item))
 		row.add_child(plus)
@@ -1247,6 +1267,27 @@ func _refresh_detail() -> void:
 			if not allowed:
 				tips.append(Text.t("deck.edit.item_locked.tooltip"))
 			(parts[5] as Control).tooltip_text = "\n".join(tips)
+	_fit_equip()
+
+
+## 持ち物の欄の高さを決める: 並ぶ行がぜんぶ入る高さ。ただし、駒の札が DETAIL_MIN_HEIGHT を割るなら、そこまでにして欄の中で送る。
+func _fit_equip() -> void:
+	if _equip_scroll == null or _edit_view == null or not _equip_box.visible:
+		return
+	var natural := _equip_list.get_combined_minimum_size().y
+	var chrome := _equip_box.get_combined_minimum_size().y - _equip_scroll.custom_minimum_size.y
+	# 右の列に使える高さは、画面の高さから決める（右の列のいまの高さからは決めない。ここで決めた下限が右の列を支えるので、
+	# 窓を縦に縮めても右の列が縮まず、欄が低くならないまま、下のボタンが画面の外へ出る）。
+	# 組む画面の全体と右の列の高さの差（見出し・下のボタン・余白）は、支えられて伸びていても変わらない。
+	var around := _edit_view.size.y - _right.size.y
+	var budget := (_edit_view.get_viewport_rect().size.y if _edit_view.is_inside_tree() else _edit_view.size.y) - around
+	var room := budget - DETAIL_MIN_HEIGHT - RIGHT_GAP - chrome
+	_equip_scroll.custom_minimum_size.y = minf(natural, maxf(room, EQUIP_MIN_HEIGHT))
+
+
+## 駒の札（右上）と、持ち物の欄の送れる部分の、画面の上の四角。検査用。
+func detail_card_rect() -> Rect2:
+	return _detail_card.get_global_rect()
 
 
 ## 持ち物の欄の、見えている行のうち、切れて読めない文（検査用。並べ終わったあとに呼ぶ）: 名前とコスト、持たせられない理由。
