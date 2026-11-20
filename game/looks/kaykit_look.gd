@@ -68,6 +68,15 @@ const KINDS := {
 		"model": "skeleton_warrior", "show": [], "hold": {"handslot.r": "axe", "handslot.l": "large_shield"}, "scale": 1.22,
 		"idle": "Idle_Combat", "attack": "1H_Melee_Attack_Chop",
 	},
+	# 骸骨術師は骸骨の将と同じ素材で、小さく（将は 1.18）。骸骨鼓手は骸骨兵の素材に、杖を太鼓のばちの代わりに持たせる。
+	UnitKind.Id.SKELETON_CALLER: {
+		"model": "skeleton_mage", "show": [], "hold": {"handslot.r": "staff"}, "scale": 0.9,
+		"idle": "Idle", "attack": "Spellcast_Shoot",
+	},
+	UnitKind.Id.SKELETON_DRUMMER: {
+		"model": "skeleton_minion", "show": [], "hold": {"handslot.r": "staff", "handslot.l": "blade"}, "scale": 1.05,
+		"idle": "Idle_Combat", "attack": "1H_Melee_Attack_Chop",
+	},
 }
 
 ## 将の別の姿（unit_looks.gd の KING_LOOKS の名前 -> KINDS と同じ形）。
