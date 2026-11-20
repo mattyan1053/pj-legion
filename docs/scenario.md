@@ -1,6 +1,6 @@
 # 戦いの定義
 
-コード: `rules/scenario.gd`（`Scenario`）。テスト: `tests/rules/test_scenario.gd`。
+コード: `rules/scenario.gd`（`Scenario`）。テスト: `tests/rules/test_scenario.gd`、`tests/rules/test_horde.gd`（将のいない群れ）。
 
 1 回の戦いの、作り置きの変わらないところ。対戦設定（`MatchSetup`。`docs/match-setup.md`）が 1 つ持ち、
 対戦を作るとき（`MatchSetup.create_battle()`）だけ読む。
@@ -19,6 +19,7 @@
 | `stage`、`board_size` | 盤の出どころ（生成）。生成するマップ（`BoardGenerator.Stage`）と盤の大きさ（`docs/game-board.md`） |
 | `deploy_cells` | プレイヤーごとの初期位置。将でない駒を置くマスの列（編成の並びの順に使う。人が置き直せる「置けるマス」もこの列）。空なら、いつもの「本陣の前」の置き方 |
 | `fixed_decks` | プレイヤーごとの決め打ちの部隊（`Deck`）。`null` なら、対戦設定で選んだ編成を出す |
+| `kings` | プレイヤーごとに、将を置くか。既定は両方とも置く。`remove_king(プレイヤー)` で、その陣営を将のいない群れにする（下の「将のいない群れ」）。対戦モードは使わない |
 | `win_conditions` | プレイヤーごとの勝ちの条件の列（`GameWonEvent.Reason`。`docs/win-conditions.md`）。既定は両方とも `STANDARD_WIN_CONDITIONS`（将の撃破と本陣の占拠） |
 | `hold_turns` | 「守り切る」のターン数（`docs/win-conditions.md`）。0 なら働かない |
 | `start_growth` | プレイヤーごとの、駒の始めのレベルと経験値（`[レベル, 経験値]` の列。部隊の並びの順に、将でない駒へ当てる。列より後ろの駒はいつもどおり）。既定は空。`set_start_growth(プレイヤー, 列)` で決める。対戦を作るとき、置いた駒へ写す（`Growth.start_at`。下の「始めのレベル」）。対戦モードは使わない |
@@ -35,6 +36,16 @@
 - **勝ちの条件**（`set_win_conditions(プレイヤー, 条件の列)`）も、マップではなく戦いの定義が持つ。同じマップを、勝ち方を変えて使い回せる。
   対戦を作るとき（`create_battle()`）に対戦へ写す。対戦の側の列を変えても、定義は変わらない。
   `hold_for(プレイヤー, ターン数)` は、そのプレイヤーを守る側にする（勝ちの条件に守り切るを足し、`hold_turns` を決める）。
+
+### 将のいない群れ
+
+人間の言葉「全然別のモンスターとか、特に軍とかない特殊なユニット」（Issue #49）から、ストーリーの話の敵（魔物の群れ）が使う。
+
+- 将を置かず、将でない駒だけをいつもの置き方で置く（`Deployment.deploy` の `with_king`）。その陣営の本陣は空のまま。
+- 将がいないので、相手は将の撃破では勝てない。相手の勝ち方は、全滅させる・中ボスを倒す・守り切る（`docs/win-conditions.md`）から選ぶ。
+  本陣の占拠は、空の本陣に乗るだけで勝ててしまうので、話のファイルの検査が弾く（`docs/story.md`）。戦いの定義そのものは止めない。
+- 群れの側の勝ち方は変えない（相手の将を倒す、相手の本陣を占拠し続ける）。
+- CPU は、群れの側も、群れと戦う側も、いつもどおりに動かす（将を守る駒はもともと決めていない。目標は勝ちの条件と役割から。`docs/cpu-ai.md`）。
 
 ### 始めのレベル
 
