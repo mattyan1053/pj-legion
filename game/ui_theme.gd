@@ -172,10 +172,11 @@ static func section_head(text: String, font_size := 15) -> HBoxContainer:
 
 
 ## 窓（ダイアログ）の見出しの下に置く飾りの線（ui_ornament.gd。真ん中に菱形、左右へ細くなる）。窓の幅いっぱいに伸びる。
-static func window_rule() -> Control:
+## color は線の色（ふつうは枠の真鍮。確かめの窓は、失われるものがあるときに危険の色）。あとから変えるときは rule.color に入れる。
+static func window_rule(color := Palette.BORDER) -> Control:
 	var rule: Control = load("res://game/ui_ornament.gd").new(160.0, 10.0)
 	rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rule.set(&"color", Palette.BORDER)
+	rule.set(&"color", color)
 	return rule
 
 
