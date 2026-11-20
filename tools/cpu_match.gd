@@ -81,6 +81,12 @@ class Outcome:
 	var boss_finish: Dictionary[int, int] = {}
 	## 中ボスの駒の番号 -> プレイヤーが初めて削った時点の [ターン, プレイヤーごとの戦力]（狩りが始まった時点。army_hp）。
 	var boss_first_hit: Dictionary[int, Array] = {}
+	## 最初に相手のプレイヤーの駒へダメージを与えた（駒の攻撃かスキル。樽と中立は数えない）プレイヤーと、そのターン。無ければ -1 と 0。
+	var first_hit_side := -1
+	var first_hit_turn := 0
+	## 最初に相手のプレイヤーの駒（将を含む）を倒した（止めを刺した駒がそのプレイヤーの駒）プレイヤーと、そのターン。無ければ -1 と 0。
+	var first_kill_side := -1
+	var first_kill_turn := 0
 
 
 ## 倒れた中ボス 1 体の倒れ方（互角のまま取り合っているかを見る。docs/cpu-ai.md の「集計の道具」）。
@@ -289,6 +295,9 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 			outcome.last_hit_by[hit.unit_id] = source_id
 			if outcome.stats != null and outcome.stats.units.has(hit.unit_id) and outcome.stats.units.has(source_id):
 				var source_side := outcome.stats.units[source_id].side
+				if outcome.first_hit_side < 0 and _opposing(source_side, outcome.stats.units[hit.unit_id].side):
+					outcome.first_hit_side = source_side
+					outcome.first_hit_turn = battle.turn
 				if outcome.stats.units[hit.unit_id].kind == UnitKind.Id.ELITE_MINION:
 					# amount は残りの HP を超えても切らない量なので、倒した一撃は、その前の HP までにする。
 					var before: int = outcome.boss_hp.get(hit.unit_id, UnitKind.max_hp(UnitKind.Id.ELITE_MINION))
@@ -305,6 +314,11 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 		outcome.skill_hits[(event as SkillDamagedEvent).unit_id] = true
 	elif event is UnitDefeatedEvent:
 		var defeated := event as UnitDefeatedEvent
+		if outcome.first_kill_side < 0 and outcome.stats != null:
+			var by: int = outcome.last_hit_by.get(defeated.unit_id, 0)
+			if outcome.stats.units.has(by) and _opposing(outcome.stats.units[by].side, defeated.side):
+				outcome.first_kill_side = outcome.stats.units[by].side
+				outcome.first_kill_turn = battle.turn
 		if defeated.side != Unit.Side.NEUTRAL and defeated.kind != UnitKind.Id.KING:
 			var fall := Fall.new()
 			fall.kind = defeated.kind
@@ -385,6 +399,11 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 		outcome.skill_uses[used.skill] = outcome.skill_uses.get(used.skill, 0) + 1
 		if used.skill == Skill.Id.SHADOW_STEP:
 			outcome.stepped_at[used.unit_id] = [battle.turn, mover]
+
+
+## a と b が、別々のプレイヤー（中立でない）か。
+static func _opposing(a: int, b: int) -> bool:
+	return a != b and a != Unit.Side.NEUTRAL and b != Unit.Side.NEUTRAL
 
 
 ## 受け取った聖遺物を、効果ごと取り消す（play の no_reward）。HP は増えたぶんだけ戻す（1 は残す）。
