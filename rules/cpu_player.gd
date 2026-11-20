@@ -990,7 +990,8 @@ func _set_goal(unit: Unit) -> void:
 	var point := point_target(unit)
 	if point != Board.NO_CELL:
 		goal = point
-		_goal_reach = CenterPoint.radius()
+		# 拠点に乗る役（各拠点の 1 体目）は拠点まで。2 体目からは、そばで支える（PROBE_POINT_ESCORT_REACH）。
+		_goal_reach = CenterPoint.radius() if _point_rank == 0 else maxi(unit.attack_range(), int(RuleProbe.f("point_escort_reach", 3.0)))
 		_stand_off = false
 	_goal_steps = _steps_from(goal)
 
@@ -1225,6 +1226,9 @@ func _steps_from(goal: Vector2i) -> PackedInt32Array:
 # SCRATCH: 中央の拠点（CenterPoint）。
 
 
+var _point_rank := 0
+
+
 func _knows_point() -> bool:
 	return CenterPoint.count() > 0 and RuleProbe.f("point_cpu", 1.0) > 0
 
@@ -1240,6 +1244,7 @@ func point_target(unit: Unit) -> Vector2i:
 	var taken: Dictionary = {}
 	for point in CenterPoint.cells(_battle):
 		for i in takers:
+			_point_rank = i
 			var best: Unit = null
 			var best_distance := _FAR
 			for other in _battle.units:
