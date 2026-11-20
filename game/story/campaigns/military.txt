@@ -27,3 +27,5 @@ ridge_hold
 gorge_rout
 barrow_rout
 barrow_knight
+warden_twin
+drill_last
