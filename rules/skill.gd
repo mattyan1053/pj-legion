@@ -21,6 +21,8 @@ enum Id {
 	PRECISION_AIM,  ## 精密照準（スナイパー）
 	SHADOW_STEP,  ## シャドウステップ（スペルブレード）
 	ADRENALINE_SHOT,  ## アドレナリン注射（衛生兵）
+	BONE_RAISE,  ## 骨起こし（骸骨術師。魔物）
+	WAR_DRUM,  ## 骨太鼓（骸骨鼓手。魔物）
 }
 
 
