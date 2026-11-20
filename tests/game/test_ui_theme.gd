@@ -52,7 +52,7 @@ func test_nation_colors_are_readable_on_a_card() -> void:
 func test_every_button_kind_has_every_state() -> void:
 	var theme := UiTheme.new()
 	for type: StringName in [&"Button", UiTheme.BUTTON_PRIMARY, UiTheme.BUTTON_DANGER, UiTheme.BUTTON_ROW, UiTheme.BUTTON_CARD,
-			UiTheme.BUTTON_MENU]:
+			UiTheme.BUTTON_MENU, UiTheme.BUTTON_GHOST, UiTheme.BUTTON_ACTION]:
 		for state: StringName in [&"normal", &"hover", &"pressed", &"disabled"]:
 			assert_true(theme.has_stylebox(state, type), "%s の %s" % [type, state])
 		if type != &"Button":

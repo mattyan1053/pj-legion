@@ -9,6 +9,7 @@ const Palette := preload("res://game/ui_palette.gd")
 const Text := preload("res://game/text.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 
 ## 中身の幅（px）。盤を隠しすぎないよう、情報の枠（320）より狭くする。
 const WIDTH := 250.0
@@ -32,13 +33,16 @@ class HpChange:
 	var max_hp := 1
 
 	func _init() -> void:
-		custom_minimum_size = Vector2(0.0, 9.0)
+		custom_minimum_size = Vector2(0.0, 13.0)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		var full := size.x
-		var height := size.y
-		draw_rect(Rect2(0.0, 0.0, full, height), COLOR_BAR_BACK)
+		# 溝（沈んだ地と、枠の真鍮の縁）の内側に、棒を描く。
+		draw_rect(Rect2(Vector2.ZERO, size), COLOR_BAR_BACK)
+		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Palette.BORDER, false, 1.0)
+		draw_set_transform(Vector2(2.0, 2.0))
+		var full := size.x - 4.0
+		var height := size.y - 4.0
 		var top := maxi(before, after)
 		var low := mini(before, after)
 		var ratio := float(after) / maxf(float(max_hp), 1.0)
@@ -48,6 +52,8 @@ class HpChange:
 			var change := COLOR_HEAL if after > before else COLOR_LOSS.lightened(0.15)
 			var from := full * low / maxf(max_hp, 1.0)
 			draw_rect(Rect2(from, 0.0, full * (top - low) / maxf(max_hp, 1.0), height), change)
+			# 変わる境に、明るい線（どこまで減るか・増えるかが、細い棒でも読める）。
+			draw_rect(Rect2(from - 0.5, -1.0, 1.5, height + 2.0), Palette.TEXT)
 
 
 var _column: VBoxContainer
@@ -60,12 +66,9 @@ var _shown_text := ""
 func setup(team_colors: Array[Color], measure: Callable) -> void:
 	_team_colors = team_colors
 	_measure = measure
-	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_BACK
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(8.0)
-	style.border_color = COLOR_TITLE.darkened(0.3)
-	style.set_border_width_all(1)
+	# 板は UI のテーマの形。上の縁を太い金にして、予測（金の見出し）の札に見せる。
+	var style := UiTheme.box(COLOR_BACK, COLOR_TITLE.darkened(0.3), 1, 6, 8.0, 5)
+	style.border_width_top = 3
 	add_theme_stylebox_override("panel", style)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
@@ -81,13 +84,15 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 		_column.remove_child(child)
 		child.queue_free()
 	var texts: Array[String] = [title]
-	_add_label(title, 16, COLOR_TITLE)
+	_add_label(title, 16, COLOR_TITLE, true)
+	_add_rule()
+	# 目立つ知らせ（巻き込まれる、倒せる）は、色の札にして、ほかの行と見分ける。
 	if summary.hurts_actor:
-		_add_label(Text.t("battle.forecast.self_hurt"), 16, COLOR_WARN)
+		_add_alert(Text.t("battle.forecast.self_hurt"), COLOR_WARN)
 		texts.append(Text.t("battle.forecast.self_hurt"))
 	if summary.defeats > 0:
 		var text := Text.t("battle.forecast.defeats_one") if summary.defeats == 1 else Text.t("battle.forecast.defeats", {"count": summary.defeats})
-		_add_label(text, 16, COLOR_DEFEAT)
+		_add_alert(text, COLOR_DEFEAT)
 		texts.append(text)
 	var compact := summary.rows.size() >= COMPACT_FROM
 	for row in summary.rows:
@@ -95,7 +100,7 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 		if compact:
 			texts.append(_add_compact_row(name, row))
 			continue
-		_add_label(name, 15, _side_color(row.side).lightened(0.4))
+		_add_label(name, 15, _side_color(row.side).lightened(0.4), true)
 		texts.append(name)
 		var hp := ForecastText.hp_text(row)
 		if hp != "":
@@ -111,7 +116,7 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 				color = COLOR_HEAL
 			elif row.blocked:
 				color = COLOR_DIM
-			_add_label(hp, 17, color)
+			_add_label(hp, 17, color, true)
 			texts.append(hp)
 		if not row.notes.is_empty():
 			var notes := Text.join_dot(row.notes)
@@ -120,6 +125,8 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 		for effect in row.effects:
 			_add_label(effect, 14, COLOR_DIM)
 			texts.append(effect)
+	if not summary.lines.is_empty() and not summary.rows.is_empty():
+		_add_rule()
 	for line in summary.lines:
 		_add_label(line, 15, COLOR_TITLE if summary.decides and line == summary.lines[-1] else Palette.TEXT)
 		texts.append(line)
@@ -162,15 +169,32 @@ func shown_text() -> String:
 	return _shown_text if visible else ""
 
 
-func _add_label(text: String, font_size: int, color: Color) -> void:
+## 区切りの細い線。
+func _add_rule() -> void:
+	var rule := HSeparator.new()
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_column.add_child(rule)
+
+
+## 目立つ知らせの札（color の縁と薄い地、太字、真ん中寄せ）。
+func _add_alert(text: String, color: Color) -> void:
+	var label := _add_label(text, 16, color, true)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_stylebox_override("normal", UiTheme.alert_box(color))
+
+
+func _add_label(text: String, font_size: int, color: Color, bold := false) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
+	if bold:
+		label.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var font := label.get_theme_font("font")
 	label.text = TextWrap.fold(text, WIDTH, func(character: String) -> float: return _measure.call(font, font_size, character))
 	_column.add_child(label)
+	return label
 
 
 func _side_color(side: Unit.Side) -> Color:
