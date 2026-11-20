@@ -21,6 +21,8 @@ const ESTIMATES := {
 	Skill.Id.PRECISION_AIM: preload("res://rules/cpu/precision_aim_cpu.gd"),
 	Skill.Id.SHADOW_STEP: preload("res://rules/cpu/shadow_step_cpu.gd"),
 	Skill.Id.ADRENALINE_SHOT: preload("res://rules/cpu/adrenaline_shot_cpu.gd"),
+	Skill.Id.BONE_RAISE: preload("res://rules/cpu/bone_raise_cpu.gd"),
+	Skill.Id.WAR_DRUM: preload("res://rules/cpu/war_drum_cpu.gd"),
 }
 
 ## スキル -> 見積もり（状態を持たないので、1 つずつ作って使い回す）。
