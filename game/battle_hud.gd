@@ -18,8 +18,9 @@ const RelicIcon := preload("res://game/relic_icon.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const Minimap := preload("res://game/minimap.gd")
 const MinimapGeometry := preload("res://game/minimap_geometry.gd")
-const UnitIcons := preload("res://game/unit_icons.gd")
 const BannerBand := preload("res://game/banner_band.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
+const StatsRow := preload("res://game/stats_row.gd")
 
 signal menu_pressed(id: StringName)
 ## 駒のそばのメニューの項目にマウスが乗った（id）、離れた（空の名前）。乗っている間、その項目の説明を出す。
@@ -117,7 +118,13 @@ var _ult_button: Button
 var _ult_summary: Label
 var _info_panel: PanelContainer
 var _info_style: StyleBoxFlat
-var _info_icon: TextureRect
+var _info_icon: UnitFrame
+## 駒の能力値の欄（HP の棒、HP の数とレベル、攻撃・移動・射程の欄）と、その下の区切りの線。マスの情報では出さない。
+var _info_unit_box: VBoxContainer
+var _info_hp_label: Label
+var _info_level: Label
+var _info_stats_row: StatsRow
+var _info_rule: HSeparator
 var _info_name: Label
 var _info_side: Label
 var _info_hp: ProgressBar
@@ -340,15 +347,17 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_info_name.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.35))
 	_edge_info_panel(_side_color(unit.side).lightened(0.15))
 	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
-	_info_icon.texture = UnitIcons.texture(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE,
+	_info_icon.set_kind(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE,
 			king_looks[unit.side] if unit.side < king_looks.size() else &"")
+	_info_icon.edge = Color(_side_color(unit.side).lightened(0.15), 0.9)
 	_info_icon.visible = true
 	var army: UnitKind.Army = side_armies[unit.side] if unit.side >= 0 and unit.side < side_armies.size() else UnitKind.Army.NONE
 	_info_side.text = affiliation_text(unit, viewer_side, army)
 	_info_side.add_theme_color_override("font_color", _side_color(unit.side).lightened(0.5))
 	_info_side.visible = true
 	var ratio := float(unit.hp) / maxf(unit.max_hp(), 1.0)
-	_info_hp.visible = true
+	_info_unit_box.visible = true
+	_info_rule.visible = true
 	_info_hp.value = ratio * 100.0
 	_info_hp_fill.bg_color = hp_color(ratio)
 	var key := "battle.hud.stats_healer" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "battle.hud.stats"
@@ -360,7 +369,13 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 			stats += "\n" + Text.t("battle.hud.level_max", {"level": unit.level})
 		else:
 			stats += "\n" + Text.t("battle.hud.level", {"level": unit.level, "experience": unit.experience, "needed": Growth.EXPERIENCE_PER_LEVEL})
+	# 文は 1 つのまま持ち（info_text）、見せるときは行に分ける: HP の数（棒の下、太字）とレベル（その右）、能力値は幅のそろった欄。
 	_set_folded(_info_stats, stats, INFO_WIDTH)
+	_info_stats.visible = false
+	var stat_lines := stats.split("\n")
+	_info_hp_label.text = stat_lines[0]
+	_info_stats_row.set_line(stat_lines[1] if stat_lines.size() > 1 else "")
+	_info_level.text = stat_lines[2] if stat_lines.size() > 2 else ""
 
 	var statuses: Array[String] = []
 	for type in Statuses.types_of(unit):
@@ -438,7 +453,9 @@ func show_cell_info(title: String, body: String) -> void:
 	_edge_info_panel(Palette.BORDER)
 	_info_icon.visible = false
 	_info_side.visible = false
-	_info_hp.visible = false
+	_info_unit_box.visible = false
+	_info_rule.visible = false
+	_info_stats.visible = true
 	_set_folded(_info_stats, body, INFO_WIDTH)
 	for label: Label in [_info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
 		label.visible = false
@@ -477,7 +494,8 @@ func info_text() -> String:
 		return ""
 	var parts: Array[String] = []
 	for label: Label in [_info_side, _info_stats, _info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
-		if label.visible:
+		# 駒の能力値は、欄に分けて出している間も、文としてはここにある。
+		if label.visible or (label == _info_stats and _info_unit_box.visible):
 			parts.append(label.text)
 	return "\n".join(parts)
 
@@ -622,6 +640,7 @@ func set_menu(items: Array) -> void:
 		button.disabled = not item[2]
 		button.focus_mode = Control.FOCUS_NONE
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.theme_type_variation = UiTheme.BUTTON_ACTION
 		button.add_theme_font_size_override("font_size", 17)
 		button.custom_minimum_size = Vector2(118.0, 34.0)
 		button.pressed.connect(func() -> void: menu_pressed.emit(id))
@@ -1044,7 +1063,8 @@ func _build_info_panel() -> void:
 	head.add_theme_constant_override("separation", 6)
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(head)
-	_info_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, INFO_ICON_SIZE)
+	# 駒の額（縁は陣営の色。右下に役割の印）。
+	_info_icon = UnitFrame.new(UnitKind.Id.KING, 0, INFO_ICON_SIZE)
 	head.add_child(_info_icon)
 	_info_name = _label(20)
 	_info_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -1054,13 +1074,36 @@ func _build_info_panel() -> void:
 	_info_side.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_info_side)
 	# HP の棒（駒の頭の上には出さないので、ここで割合が分かるようにする）。
+	_info_unit_box = VBoxContainer.new()
+	_info_unit_box.add_theme_constant_override("separation", 3)
+	_info_unit_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(_info_unit_box)
 	_info_hp = ProgressBar.new()
-	_info_hp.custom_minimum_size = Vector2(0.0, 10.0)
+	_info_hp.custom_minimum_size = Vector2(0.0, 13.0)
 	_info_hp.show_percentage = false
 	_info_hp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_info_hp_fill = StyleBoxFlat.new()
+	_info_hp_fill = UiTheme.box(Palette.HP_HIGH, Color(0, 0, 0, 0), 0, 3, 0.0)
 	_info_hp.add_theme_stylebox_override("fill", _info_hp_fill)
-	column.add_child(_info_hp)
+	_info_unit_box.add_child(_info_hp)
+	# HP の数（太字）と、その右にレベルと経験。
+	var hp_row := HBoxContainer.new()
+	hp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_info_unit_box.add_child(hp_row)
+	_info_hp_label = _label(17)
+	_info_hp_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	_info_hp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hp_row.add_child(_info_hp_label)
+	_info_level = _label(14)
+	_info_level.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	_info_level.size_flags_vertical = Control.SIZE_SHRINK_END
+	hp_row.add_child(_info_level)
+	# 攻撃・移動・射程は、幅のそろった欄（駒を見比べても、数が同じ所にある）。
+	_info_stats_row = StatsRow.new("", 16, INFO_WIDTH / 3.0)
+	_info_unit_box.add_child(_info_stats_row)
+	_info_rule = HSeparator.new()
+	_info_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(_info_rule)
+	# マスの情報の本文（駒の能力値は、上の欄に分けて出す。文はここに持つ）。
 	_info_stats = _label(17)
 	column.add_child(_info_stats)
 	# 状態は、残りの期間と効果。付いている間だけ（盤の上では、足元の水色の輪だけで分かる）。
@@ -1100,8 +1143,15 @@ func _build_bottom() -> void:
 	panel.custom_minimum_size = Vector2(0.0, BOTTOM_BAR_HEIGHT)
 	add_child(panel)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", 14)
 	panel.add_child(row)
+	# 案内の頭の、金の細い線（案内の欄がどこから始まるかの目印。幅は _hint_room が引く）。
+	var hint_mark := ColorRect.new()
+	hint_mark.color = Palette.BORDER_BRIGHT
+	hint_mark.custom_minimum_size = Vector2(3.0, 44.0)
+	hint_mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hint_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(hint_mark)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1133,22 +1183,34 @@ func _build_bottom() -> void:
 	row.add_child(_watch_box)
 	_fast_button = _button(Text.t("battle.hud.fast"), fast_forward_toggled)
 	_fast_button.toggle_mode = true
-	_fast_button.custom_minimum_size = Vector2(120.0, 48.0)
+	_fast_button.custom_minimum_size = Vector2(120.0, 44.0)
+	_fast_button.theme_type_variation = UiTheme.BUTTON_GHOST
 	_fast_button.tooltip_text = Text.t("battle.hud.fast.tooltip")
 	_watch_box.add_child(_fast_button)
 	_skip_button = _button(Text.t("battle.hud.skip"), skip_pressed)
-	_skip_button.custom_minimum_size = Vector2(120.0, 48.0)
+	_skip_button.custom_minimum_size = Vector2(120.0, 44.0)
+	_skip_button.theme_type_variation = UiTheme.BUTTON_GHOST
 	_skip_button.tooltip_text = Text.t("battle.hud.skip.tooltip")
 	_watch_box.add_child(_skip_button)
 	_ult_button = _button(Text.t("battle.hud.ult"), ult_pressed)
 	_ult_button.custom_minimum_size = Vector2(220.0, 48.0)
 	_ult_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_ult_button.disabled = true
+	# 押せるとき（ゲージが READY）は、金の縁と金の文字（押せない間は、テーマの押せない形）。
+	var ult_ready := UiTheme.box(Palette.CHOSEN, Palette.ACCENT, 2, UiTheme.CORNER, 6.0, 4)
+	_ult_button.add_theme_stylebox_override("normal", ult_ready)
+	var ult_hover := ult_ready.duplicate() as StyleBoxFlat
+	ult_hover.bg_color = Palette.CHOSEN.lightened(0.12)
+	_ult_button.add_theme_stylebox_override("hover", ult_hover)
+	_ult_button.add_theme_color_override("font_color", Palette.ACCENT)
+	_ult_button.add_theme_color_override("font_hover_color", Palette.ACCENT)
+	_ult_button.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	_ult_button.mouse_entered.connect(_show_ult_summary)
 	_ult_button.mouse_exited.connect(_show_ult_summary)
 	row.add_child(_ult_button)
 	_auto_button = _button(Text.t("battle.hud.auto"), auto_pressed)
-	_auto_button.custom_minimum_size = Vector2(112.0, 48.0)
+	_auto_button.custom_minimum_size = Vector2(112.0, 44.0)
+	_auto_button.theme_type_variation = UiTheme.BUTTON_GHOST
 	_auto_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_auto_button.tooltip_text = Text.t("battle.hud.auto.tooltip")
 	_auto_button.disabled = true
@@ -1157,8 +1219,9 @@ func _build_bottom() -> void:
 	_end_turn_button = _button(Text.t("battle.hud.end_turn"), end_turn_pressed)
 	_end_turn_button.custom_minimum_size = Vector2(210.0, 60.0)
 	_end_turn_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_end_turn_button.add_theme_font_size_override("font_size", 20)
-	_end_turn_style = UiTheme.box(COLOR_END_TURN, COLOR_END_TURN_READY.lightened(0.3), 1, 6, 6.0, 3)
+	_end_turn_button.add_theme_font_size_override("font_size", 21)
+	_end_turn_button.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	_end_turn_style = UiTheme.box(COLOR_END_TURN, COLOR_END_TURN_READY.lightened(0.3), 2, 8, 6.0, 4)
 	_end_turn_button.add_theme_stylebox_override("normal", _end_turn_style)
 	_end_turn_button.add_theme_stylebox_override("hover", _end_turn_style)
 	row.add_child(_end_turn_button)
@@ -1221,12 +1284,16 @@ func _build_menu() -> void:
 	_menu_line.default_color = Color(1.0, 1.0, 1.0, 0.75)
 	_menu_line.visible = false
 	add_child(_menu_line)
-	_menu = _panel(COLOR_PANEL_SOLID)
-	(_menu.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(5.0)
+	# 板は、上の縁の太い真鍮と、落ちる影（盤の上で、札として浮く）。項目は板の上の行（BUTTON_ACTION）。
+	_menu = PanelContainer.new()
+	var menu_style := UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER, 1, 6, 5.0, 5)
+	menu_style.border_width_top = 3
+	menu_style.border_color = Palette.BORDER_BRIGHT.darkened(0.25)
+	_menu.add_theme_stylebox_override("panel", menu_style)
 	_menu.visible = false
 	add_child(_menu)
 	_menu_column = VBoxContainer.new()
-	_menu_column.add_theme_constant_override("separation", 3)
+	_menu_column.add_theme_constant_override("separation", 2)
 	_menu.add_child(_menu_column)
 
 
