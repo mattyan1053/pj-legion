@@ -9,10 +9,10 @@ look = crystal_forest
 
 [ally]
 name = イェルダ
-figure = paladin evolved
+figure = paladin evolved crown
 speaker = ウル, priest evolved
 speaker = ティオ, sorcerer
-speaker = セリス, spellblade evolved
+speaker = セリス, commando
 # 置けるマス: 南（本陣のそば）と、北（岩山の向こう、西の台地）の 2 か所。交互に書くので、いつもの置き方では半分ずつに分かれる。
 deploy = 3,17  2,6  5,17  3,6  2,17  1,7  6,17  4,6  3,16  2,7  5,16  1,6
 

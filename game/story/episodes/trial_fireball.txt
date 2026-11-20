@@ -17,7 +17,7 @@ wins = routed
 
 [ally]
 name = イェルダ
-figure = paladin evolved
+figure = paladin evolved crown
 speaker = ウル, priest evolved
 speaker = ティオ, sorcerer
 unit = paladin

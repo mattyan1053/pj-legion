@@ -27,7 +27,7 @@ speaker = ピップ, commando
 
 [enemy]
 name = セリス
-figure = spellblade evolved
+figure = commando
 army = fantasy
 unit = paladin + iron_shield
 unit = paladin + iron_shield
