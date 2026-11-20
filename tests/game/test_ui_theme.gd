@@ -59,6 +59,18 @@ func test_every_button_kind_has_every_state() -> void:
 			assert_eq(theme.get_type_variation_base(type), &"Button", type)
 
 
+## 選択肢の欄（OptionButton）と、開いた選択肢（PopupMenu）は、テーマの既定のままにしない。
+func test_option_picker_is_themed() -> void:
+	var theme := UiTheme.new()
+	for state: StringName in [&"normal", &"hover", &"pressed", &"disabled"]:
+		assert_true(theme.has_stylebox(state, &"OptionButton"), "OptionButton の %s" % state)
+	assert_true(theme.has_icon(&"arrow", &"OptionButton"), "OptionButton の山形")
+	for name: StringName in [&"panel", &"hover", &"separator"]:
+		assert_true(theme.has_stylebox(name, &"PopupMenu"), "PopupMenu の %s" % name)
+	var panel := theme.get_stylebox(&"panel", &"PopupMenu") as StyleBoxFlat
+	assert_eq(panel.bg_color.a, 1.0, "開いた選択肢の板が透けて、後ろの文字と重なる")
+
+
 func test_every_panel_and_label_kind_is_a_variation() -> void:
 	var theme := UiTheme.new()
 	for type: StringName in [UiTheme.PANEL_SOLID, UiTheme.PANEL_BAND_TOP, UiTheme.PANEL_BAND_BOTTOM, UiTheme.PANEL_CARD,
