@@ -24,6 +24,11 @@ const BUTTON_ROW := &"ButtonRow"
 ## カードのボタン（マップ、話）。
 const BUTTON_CARD := &"ButtonCard"
 
+## 控えめなボタン（地が薄く、縁だけ。大事なボタンの横に並べる、たまに使う操作）。
+const BUTTON_GHOST := &"ButtonGhost"
+## 駒のそばのメニューの項目（板の上の行。乗ると、左に金の線と薄い金の塗り）。
+const BUTTON_ACTION := &"ButtonAction"
+
 ## タイトルのメニューのボタン（景色の上に直に並ぶ。角を落とした大きな札）。
 const BUTTON_MENU := &"ButtonMenu"
 
@@ -174,6 +179,14 @@ static func danger_strip_box() -> StyleBoxFlat:
 	return strip
 
 
+## 目立たせる知らせの札（予測の「倒せる！」など）。color を薄く敷き、color の縁。文字は color にする。
+static func alert_box(color: Color) -> StyleBoxFlat:
+	var alert := box(Color(color.darkened(0.55), 0.6), Color(color, 0.8), 1, 4, 2.0)
+	alert.content_margin_left = 8.0
+	alert.content_margin_right = 8.0
+	return alert
+
+
 ## 小さな番号の札（部隊の並びの番号）。沈んだ地に、枠の真鍮の縁。
 static func number_box() -> StyleBoxFlat:
 	return box(Palette.INK, Palette.BORDER, 1, 10, 1.0)
@@ -202,6 +215,39 @@ func _build_buttons() -> void:
 		var plate := get_stylebox(state, BUTTON_MENU) as StyleBoxFlat
 		plate.set_corner_radius_all(12)
 		plate.corner_detail = 1
+
+	# 控えめなボタン: 薄い地と縁だけ（影も無い）。文字は補足の色で、乗ると本文の色。
+	set_type_variation(BUTTON_GHOST, &"Button")
+	_button_type(BUTTON_GHOST, Color(Palette.RAISED, 0.4), Color(Palette.RAISED_HOVER, 0.85), Palette.CHOSEN, Color(Palette.BORDER, 0.75), Palette.BORDER_BRIGHT,
+		Palette.TEXT_DIM, Palette.TEXT, Palette.ACCENT)
+	for state: StringName in [&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled"]:
+		var ghost := get_stylebox(state, BUTTON_GHOST) as StyleBoxFlat
+		ghost.shadow_size = 0
+		ghost.border_width_bottom = 1
+		ghost.border_width_top = 1
+
+	# 駒のそばのメニューの項目: 板の上の行。乗ると、左に金の線と薄い金の塗り（文字の位置は動かない）。
+	set_type_variation(BUTTON_ACTION, &"Button")
+	var action := box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 4, 6.0)
+	action.content_margin_left = 14.0
+	action.content_margin_right = 12.0
+	var action_hover := box(Color(Palette.ACCENT, 0.16), Palette.ACCENT, 0, 4, 6.0)
+	action_hover.border_width_left = 3
+	action_hover.content_margin_left = 14.0
+	action_hover.content_margin_right = 12.0
+	var action_pressed := action_hover.duplicate() as StyleBoxFlat
+	action_pressed.bg_color = Color(Palette.ACCENT, 0.28)
+	set_stylebox(&"normal", BUTTON_ACTION, action)
+	set_stylebox(&"disabled", BUTTON_ACTION, action)
+	set_stylebox(&"hover", BUTTON_ACTION, action_hover)
+	set_stylebox(&"pressed", BUTTON_ACTION, action_pressed)
+	set_stylebox(&"hover_pressed", BUTTON_ACTION, action_pressed)
+	set_stylebox(&"focus", BUTTON_ACTION, StyleBoxEmpty.new())
+	set_color(&"font_color", BUTTON_ACTION, Palette.TEXT)
+	set_color(&"font_hover_color", BUTTON_ACTION, Palette.ACCENT)
+	set_color(&"font_pressed_color", BUTTON_ACTION, Palette.ACCENT)
+	set_color(&"font_hover_pressed_color", BUTTON_ACTION, Palette.ACCENT)
+	set_color(&"font_disabled_color", BUTTON_ACTION, Palette.TEXT_OFF)
 
 	# 行のボタン: 地も縁も無く、乗ると薄く塗り、選ばれていると金の薄い塗り。
 	set_type_variation(BUTTON_ROW, &"Button")
