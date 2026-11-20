@@ -20,6 +20,8 @@ const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const MapCard := preload("res://game/map_card.gd")
+const MapFrame := preload("res://game/map_frame.gd")
+const Ornament := preload("res://game/ui_ornament.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
 const CardKeys := preload("res://game/card_keys.gd")
@@ -79,9 +81,10 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
-	var sub := _label("SELECT MAP", 15)
-	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	root.add_child(sub)
+	# 見出しの下の飾りの線（物語選択・話の一覧と同じ）。
+	var ornament := Ornament.new(360.0, 14.0)
+	ornament.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	root.add_child(ornament)
 
 	var generated: Array[StringName] = []
 	var hand: Array[StringName] = []
@@ -348,6 +351,7 @@ func _build_card(field: StringName) -> Button:
 	map.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	map.custom_minimum_size = Vector2(MAP_SIZE, MAP_SIZE)
 	map.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map.add_child(MapFrame.new())  # 真鍮の縁と四隅の鉤
 	row.add_child(map)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
