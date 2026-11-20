@@ -20,6 +20,9 @@ var deploy_cells: Array[Array] = [[], []]
 ## プレイヤーごとの決め打ちの部隊。null なら、対戦設定で選んだ部隊（MatchSetup.decks）を出す。
 ## 決め打ちの部隊は、編成の決まりの検査（Deck.problems）を通さずに、書いたとおりに置く（数で押す敵を作れる）。
 var fixed_decks: Array[Deck] = [null, null]
+## プレイヤーごとの、将を置くか。偽なら、その陣営は将のいない群れ（本陣は空のまま。将の撃破では負けない）。
+## ストーリーの話の敵だけが使う（対戦モードはいつも真）。対戦を作るとき、Deployment.deploy に渡す。
+var kings: Array[bool] = [true, true]
 ## プレイヤーごとの勝ちの条件の列（GameWonEvent.Reason の値。docs/win-conditions.md）。
 ## 対戦を作るとき、対戦（Battle.win_conditions）へ写す。既定は、どちらも STANDARD_WIN_CONDITIONS。
 var win_conditions: Array[Array] = [STANDARD_WIN_CONDITIONS.duplicate(), STANDARD_WIN_CONDITIONS.duplicate()]
@@ -65,6 +68,15 @@ func fix_deck(side: Unit.Side, deck: Deck) -> void:
 
 func is_fixed(side: Unit.Side) -> bool:
 	return fixed_decks[side] != null
+
+
+## side を将のいない群れにする（将を置かない）。
+func remove_king(side: Unit.Side) -> void:
+	kings[side] = false
+
+
+func has_king(side: Unit.Side) -> bool:
+	return kings[side]
 
 
 ## side の将でない駒を置くマスの列を cells にする。
