@@ -477,15 +477,41 @@ func _build_popups() -> void:
 	set_color(&"font_shadow_color", &"TooltipLabel", Color(0, 0, 0, 0))
 	set_font_size(&"font_size", &"TooltipLabel", 15)
 
-	set_stylebox(&"panel", &"PopupMenu", box(Palette.SOLID, Palette.BORDER_BRIGHT, 1, 4, 6.0))
-	set_stylebox(&"hover", &"PopupMenu", box(Palette.RAISED_HOVER, Color(0, 0, 0, 0), 0, 3, 4.0))
+	# 選択肢の欄（OptionButton）: 入力欄と同じ沈んだ地に真鍮の縁、右端に下向きの山形。乗ると明るい縁。
+	_button_type(&"OptionButton", Palette.INK, Palette.RAISED, Palette.INK, Palette.BORDER.lerp(Palette.BORDER_BRIGHT, 0.35), Palette.BORDER_BRIGHT,
+		Palette.TEXT, Palette.TEXT, Palette.ACCENT)
+	for state: StringName in [&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled"]:
+		var field := get_stylebox(state, &"OptionButton") as StyleBoxFlat
+		field.shadow_size = 0
+		field.border_width_top = 1
+		field.border_width_bottom = 1
+		field.set_corner_radius_all(4)
+		field.content_margin_left = 12.0
+	set_icon(&"arrow", &"OptionButton", _arrow_icon())
+	set_constant(&"arrow_margin", &"OptionButton", 10)
+
+	# 開いた選択肢（PopupMenu）: 上の縁が太い真鍮の板（駒のそばのメニューと同じ）。乗った行は、左に金の線と薄い金の塗り。
+	var menu := box(Palette.PANEL, Palette.BORDER_BRIGHT, 1, 6, 6.0)
+	menu.border_width_top = 3
+	set_stylebox(&"panel", &"PopupMenu", menu)
+	var menu_hover := box(Color(Palette.ACCENT, 0.16), Palette.ACCENT, 0, 3, 4.0)
+	menu_hover.border_width_left = 3
+	set_stylebox(&"hover", &"PopupMenu", menu_hover)
+	var menu_line := StyleBoxLine.new()
+	menu_line.color = Color(Palette.BORDER, 0.8)
+	menu_line.thickness = 1
+	menu_line.grow_begin = -4.0
+	menu_line.grow_end = -4.0
+	for name: StringName in [&"separator", &"labeled_separator_left", &"labeled_separator_right"]:
+		set_stylebox(name, &"PopupMenu", menu_line)
 	set_color(&"font_color", &"PopupMenu", Palette.TEXT)
 	set_color(&"font_hover_color", &"PopupMenu", Palette.ACCENT)
 	set_color(&"font_disabled_color", &"PopupMenu", Palette.TEXT_OFF)
 	set_color(&"font_separator_color", &"PopupMenu", Palette.TEXT_DIM)
-	set_constant(&"v_separation", &"PopupMenu", 8)
-	set_constant(&"item_start_padding", &"PopupMenu", 8)
-	set_constant(&"item_end_padding", &"PopupMenu", 8)
+	set_constant(&"v_separation", &"PopupMenu", 10)
+	set_constant(&"h_separation", &"PopupMenu", 8)
+	set_constant(&"item_start_padding", &"PopupMenu", 10)
+	set_constant(&"item_end_padding", &"PopupMenu", 12)
 	for state: StringName in [&"radio_checked", &"checked"]:
 		set_icon(state, &"PopupMenu", _check_icon(true, false))
 	for state: StringName in [&"radio_unchecked", &"unchecked"]:
@@ -518,6 +544,11 @@ static func _check_icon(on: bool, disabled: bool) -> Texture2D:
 static func _knob_icon(fill: Color, edge: Color) -> Texture2D:
 	return _svg(20, 20, """<circle cx="10" cy="10" r="8" fill="#%s" stroke="#%s" stroke-width="2"/>
 <circle cx="10" cy="10" r="3" fill="#%s"/>""" % [fill.to_html(false), Palette.OUTLINE.to_html(false), edge.to_html(false)])
+
+
+## 選択肢の欄の右端の、下向きの山形（目立たせる枠の真鍮）。
+static func _arrow_icon() -> Texture2D:
+	return _svg(14, 14, """<path d="M2.5 5 L7 9.5 L11.5 5" fill="none" stroke="#%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>""" % Palette.BORDER_BRIGHT.to_html(false))
 
 
 static func _svg(width: int, height: int, body: String) -> Texture2D:
