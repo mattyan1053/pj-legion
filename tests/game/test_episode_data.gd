@@ -90,6 +90,17 @@ func test_the_probe_reads_every_field() -> void:
 	assert_false(episode.has_squad())
 
 
+## 姿の最後の crown は、将の姿でない将に、会話で将の印を付ける（鍵は、付けたときだけ入る）。
+func test_figure_crown_reads() -> void:
+	var episode: Episode = Episode.parse(PROBE.replace("name = 敵将", "name = 敵将\nfigure = paladin evolved crown"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.figures[1], {"kind": UnitKind.Id.PALADIN, "evolved": true, "look": &"", "crown": true})
+	var plain: Episode = Episode.parse(PROBE.replace("name = 敵将", "name = 敵将\nfigure = paladin crown"))
+	assert_eq(plain.figures[1], {"kind": UnitKind.Id.PALADIN, "evolved": false, "look": &"", "crown": true})
+	var swapped: Episode = Episode.parse(PROBE.replace("name = 敵将", "name = 敵将\nfigure = paladin crown evolved"))
+	assert_true(not swapped.problems.is_empty(), "順が逆の書き方を通した")
+
+
 ## 話し手の姿（figure）。書かなければ、どちらの陣営も将の姿。駒の種類と、進化後（evolved）を書ける。魔物も書ける。
 func test_speaker_figures_read() -> void:
 	var plain: Episode = Episode.parse(PROBE)

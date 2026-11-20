@@ -15,7 +15,7 @@ lesson = 駒をクリックして動かし、敵を攻撃する。ソーサラ�
 
 [ally]
 name = イェルダ
-figure = paladin evolved
+figure = paladin evolved crown
 speaker = ウル, priest evolved
 speaker = ティオ, sorcerer
 unit = paladin
