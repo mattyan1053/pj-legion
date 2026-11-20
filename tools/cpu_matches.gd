@@ -11,7 +11,7 @@ extends SceneTree
 ##   --pairings=all  軍の組み合わせ。all = 4 通りを順に、mixed = 軍の違う 2 通り（先手を入れ替える）だけ
 ##   --rival=REV     別の版の CPU（git のリビジョンか、スクリプトのパス）と対戦させる。先手・後手は、マップと軍の組み合わせを一巡するごとに入れ替わる
 ##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、マップ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
-##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）。局を何本かに分けて並べて回し、あとで合わせるときに使う
+##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）、最初に当てた・倒したプレイヤーとターン（first_hit、first_kill。無ければ -1:0）。局を何本かに分けて並べて回し、あとで合わせるときに使う
 ##   --stage=KEY     このマップだけを回す。KEY は対戦モードの盤の鍵（game/versus_fields.gd。plain、ridge_path など。
 ##                   画面に出していない手で作ったマップも測れる）か、生成のマップの番号（1〜3）。
 ##                   配置を見るときに 1 つのマップの標本を増やす。手で作ったマップを対戦モードに出せるかも、これで測る
@@ -113,6 +113,9 @@ class Tally:
 	var boss_first_lead: Array[Array] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
 	## 削られ始めてから倒れるまでのターンの合計。
 	var boss_hunt_turns := 0
+	## 最初に相手のプレイヤーの駒へ当てた・倒したプレイヤー（0 = 先手、1 = 後手）ごとの [局, そのプレイヤーが勝った局, 決着した局, ターンの合計]。
+	var first_hit: Array[Array] = [[0, 0, 0, 0], [0, 0, 0, 0]]
+	var first_kill: Array[Array] = [[0, 0, 0, 0], [0, 0, 0, 0]]
 
 	func add(outcome: CpuMatch.Outcome) -> void:
 		games += 1
@@ -166,6 +169,29 @@ class Tally:
 					row[won] += 1
 		if even_game:
 			boss_even_games += 1
+		for pair: Array in [[first_hit, outcome.first_hit_side, outcome.first_hit_turn], [first_kill, outcome.first_kill_side, outcome.first_kill_turn]]:
+			if pair[1] < 0:
+				continue
+			var row: Array = pair[0][pair[1]]
+			row[0] += 1
+			row[1] += 1 if outcome.winner == pair[1] else 0
+			row[2] += 1 if outcome.winner >= 0 else 0
+			row[3] += pair[2]
+
+	## 最初に当てた側・最初に倒した側の行（先に手を出した側が得をしているかを見る）。
+	func first_line(name: String) -> String:
+		var parts: Array[String] = []
+		for pair: Array in [["当てた", first_hit], ["倒した", first_kill]]:
+			var rows: Array = pair[1]
+			var count: int = rows[0][0] + rows[1][0]
+			var won: int = rows[0][1] + rows[1][1]
+			var decided: int = rows[0][2] + rows[1][2]
+			var turn_total: int = rows[0][3] + rows[1][3]
+			parts.append("最初に%s 先手 %3d 後手 %3d（後手 %3.0f%%。平均ターン %4.1f）その側の勝ち %3d / %3d（%3.0f%%）" % [
+				pair[0], rows[0][0], rows[1][0], 100.0 * rows[1][0] / maxi(1, count), float(turn_total) / maxi(1, count),
+				won, decided, 100.0 * won / maxi(1, decided),
+			])
+		return "%-22s %s" % [name, "  ".join(parts)]
 
 	## 中ボスの取り合いの行（互角のまま倒れたか、相手がそばにいたか、止めの横取りか）。
 	func contest_line(name: String) -> String:
@@ -406,9 +432,10 @@ func _initialize() -> void:
 			var kills: Array[String] = []
 			for kill: Array in outcome.mid_boss_kills:
 				kills.append("%d:%d:%d" % [kill[0], kill[1], kill[2]])
-			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s rival=%d" % [
+			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s rival=%d first_hit=%d:%d first_kill=%d:%d" % [
 				first_seed + game, stage, Names.army(armies[0]), Names.army(armies[1]), outcome.winner, outcome.ending,
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
+				outcome.first_hit_side, outcome.first_hit_turn, outcome.first_kill_side, outcome.first_kill_turn,
 			])
 			if random_squads or one_squad:
 				for side: Unit.Side in ([Unit.Side.PLAYER1] if episode != null else [Unit.Side.PLAYER1, Unit.Side.PLAYER2]):
@@ -565,6 +592,10 @@ func _initialize() -> void:
 	print("")
 	var decided := all.wins[0] + all.wins[1]
 	print("先手（プレイヤー1）の勝率: %.1f%%（決着した %d 局のうち）" % [100.0 * all.wins[0] / maxi(1, decided), decided])
+	print("最初に相手のプレイヤーの駒へ当てた側・倒した側（その側の勝ちは、決着した局だけ）")
+	print(all.first_line("全体"))
+	for stage in by_stage:
+		print(by_stage[stage].first_line("マップ " + _map_name(stage)))
 	var mixed_decided: int = army_wins[UnitKind.Army.MILITARY] + army_wins[UnitKind.Army.FANTASY]
 	print("軍の違う対戦 %d 局: MILITARY %d 勝、FANTASY %d 勝（MILITARY の勝率 %.1f%%）" % [
 		mixed_games, army_wins[UnitKind.Army.MILITARY], army_wins[UnitKind.Army.FANTASY],
