@@ -1675,7 +1675,7 @@ func _refresh() -> void:
 		var texts: Array[String] = []
 		for choice in battle.options(evolving.id).evolutions:
 			texts.append(BattleHud.evolution_text(choice, healer))
-		_hud.show_evolution(Text.t("battle.evolution.title", {"unit": Names.kind(evolving.kind)}), texts)
+		_hud.show_evolution(Text.t("battle.evolution.title", {"unit": Names.kind(evolving.kind)}), texts, evolving.kind, evolving.side)
 	else:
 		_hud.hide_evolution()
 	var unacted := Queries.unacted_count(battle)

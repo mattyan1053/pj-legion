@@ -182,6 +182,9 @@ var _guide_panel: PanelContainer
 var _minimap: Minimap
 ## ミニマップを出すか（設定の「ミニマップ」）。
 var _minimap_wanted := true
+## 進化先の札の大きさの下限と、札の額の辺（px）。
+const EVOLUTION_CARD := Vector2(330.0, 110.0)
+const EVOLUTION_FRAME := 64.0
 var _evolution: Control
 var _evolution_title: Label
 var _evolution_buttons: Array[Button] = []
@@ -862,14 +865,73 @@ static func evolution_text(id: Evolution.Id, healer: bool) -> String:
 	return text
 
 
-## 進化先の選択肢を出す。texts は選択肢ごとの説明（evolution_text）。
-func show_evolution(title: String, texts: Array[String]) -> void:
+## 進化先の選択肢を出す。texts は選択肢ごとの説明（evolution_text。1 行目が名前、2 行目が能力値の増減、残りが特性）。
+## kind と side は進化する駒（札の額に、進化後の姿を陣営の色で出す）。
+func show_evolution(title: String, texts: Array[String], kind := UnitKind.Id.KING, side := 0) -> void:
 	_evolution_title.text = title
-	for i in _evolution_buttons.size():
-		_evolution_buttons[i].visible = i < texts.size()
-		if i < texts.size():
-			_evolution_buttons[i].text = texts[i]
+	var shown := "%s|%d|%d|%s" % [title, kind, side, "|".join(texts)]
+	if _evolution.get_meta(&"shown", "") != shown:
+		_evolution.set_meta(&"shown", shown)
+		for i in _evolution_buttons.size():
+			_evolution_buttons[i].visible = i < texts.size()
+			if i < texts.size():
+				_fill_evolution_card(_evolution_buttons[i], i, texts[i], kind, side)
 	_evolution.visible = true
+
+
+## 進化先の札の中身: 左に進化後の姿の額（縁は陣営の色）、右に名前（明朝）・能力値の増減（欄）・特性（金）。左上の隅に、選ぶキーの番号。
+func _fill_evolution_card(button: Button, index: int, text: String, kind: UnitKind.Id, side: int) -> void:
+	for child in button.get_children():
+		button.remove_child(child)
+		child.queue_free()
+	var lines := text.split("\n")
+	var inside := MarginContainer.new()
+	inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for edge: String in ["left", "right"]:
+		inside.add_theme_constant_override("margin_" + edge, 16)
+	for edge: String in ["top", "bottom"]:
+		inside.add_theme_constant_override("margin_" + edge, 10)
+	button.add_child(inside)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inside.add_child(row)
+	var frame := UnitFrame.new(kind, side, EVOLUTION_FRAME, true, true, king_looks[side] if side < king_looks.size() else &"")
+	frame.edge = _side_color(side)
+	row.add_child(frame)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 2)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(column)
+	var name_label := _label(21)
+	name_label.add_theme_font_override("font", UiTheme.FONT_HEADING)
+	name_label.text = lines[0]
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(name_label)
+	if lines.size() > 1 and lines[1] != "":
+		column.add_child(StatsRow.new(lines[1], 16))
+	for i in range(2, lines.size()):
+		var trait_label := _label(15)
+		trait_label.add_theme_color_override("font_color", Palette.ACCENT)
+		trait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_set_folded(trait_label, lines[i], EVOLUTION_CARD.x - EVOLUTION_FRAME - 46.0)
+		column.add_child(trait_label)
+	# 選ぶキー（1・2）の番号の札。札の左上の隅に、縁へ掛けて置く。
+	var key := PanelContainer.new()
+	key.add_theme_stylebox_override("panel", UiTheme.number_box())
+	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	key.position = Vector2(-6.0, -8.0)
+	key.custom_minimum_size = Vector2(22.0, 22.0)
+	var key_label := _label(13)
+	key_label.text = str(index + 1)
+	key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	key_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
+	key.add_child(key_label)
+	button.add_child(key)
+	button.custom_minimum_size = Vector2(EVOLUTION_CARD.x, maxf(EVOLUTION_CARD.y, inside.get_combined_minimum_size().y))
 
 
 func hide_evolution() -> void:
@@ -1306,9 +1368,12 @@ func _build_banner() -> void:
 	add_child(_banner)
 
 
-## 進化先の選択肢（飾らない 2 つのボタン）。盤面が見えるよう、画面の上寄りに出す。
+## 進化先の選択肢（2 つの札）。盤面が見えるよう、画面の上寄りに出す。板は予測のパネルと同じく、上の縁が太い金。
 func _build_evolution() -> void:
-	var panel := _panel()
+	var panel := PanelContainer.new()
+	var plate := UiTheme.box(COLOR_PANEL, Palette.BORDER_BRIGHT, 1, 8, 12.0, 6)
+	plate.border_width_top = 3
+	panel.add_theme_stylebox_override("panel", plate)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.position.y = 70.0
@@ -1316,17 +1381,19 @@ func _build_evolution() -> void:
 	add_child(panel)
 	_evolution = panel
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
+	column.add_theme_constant_override("separation", 8)
 	panel.add_child(column)
 	_evolution_title = _label(22)
-	_evolution_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiTheme.style_window_title(_evolution_title, 22)
 	column.add_child(_evolution_title)
+	column.add_child(UiTheme.window_rule(Palette.BORDER_BRIGHT))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", 14)
 	column.add_child(row)
 	for i in 2:
 		var button := _button("", Signal())
-		button.custom_minimum_size = Vector2(330.0, 110.0)
+		button.theme_type_variation = UiTheme.BUTTON_CARD
+		button.custom_minimum_size = EVOLUTION_CARD
 		button.pressed.connect(func() -> void: evolution_chosen.emit(i))
 		row.add_child(button)
 		_evolution_buttons.append(button)
