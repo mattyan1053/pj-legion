@@ -41,7 +41,7 @@ const DEFAULT_ITEMS := {
 	UnitKind.Role.VANGUARD: [Equipment.Id.DRAGON_SCALE, Equipment.Id.IRON_SHIELD],
 	UnitKind.Role.RAIDER: [Equipment.Id.JET_PACK, Equipment.Id.SPEED_BOOTS],
 }
-## 会話の行の、知らせ（話し手の名前の札を灰色にする。「飛ばす」でも飛ばさない。talk_screen.gd）。名前は notice_name()。
+## 会話の行の、知らせ（話し手の名前の札を金の縁にする。「飛ばす」でも飛ばさない。talk_screen.gd）。名前は notice_name()。
 const NOTICE_SIDE := 2
 
 ## 知らせの行の話し手の名前。
