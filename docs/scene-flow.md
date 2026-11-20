@@ -1,7 +1,7 @@
 # 場面の流れ
 
 コード: `game/scene_flow.gd`（場面の種類と並び）、`game/run.gd`（流れ）、`game/app.gd`（入口。場面を切り替える）、`game/app_context.gd`（場面どうしで共有するもの）。
-場面: `game/title_screen.gd`、`game/map_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）、`game/campaign_list_screen.gd`（ストーリーの物語を選ぶ）、`game/episode_list_screen.gd`（ストーリーの話の一覧）、`game/sortie_screen.gd`（出撃準備）、`game/talk_screen.gd`（ストーリーの会話。`docs/story.md`）。背景は `game/backdrop.gd`（タイトルは `game/title_backdrop.gd`）。
+場面: `game/title_screen.gd`、`game/map_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）、`game/campaign_list_screen.gd`（ストーリーの物語を選ぶ）、`game/episode_list_screen.gd`（ストーリーの話の一覧）、`game/sortie_screen.gd`（出撃準備）、`game/talk_screen.gd`（ストーリーの会話。`docs/story.md`）、`game/deck_screen.gd`（部隊編成）。背景は `game/backdrop.gd`（タイトルは `game/title_backdrop.gd`）。
 テスト: `tests/game/test_scene_flow.gd`、`tests/game/test_run.gd`、自動の対戦（`game/autoplay.gd`。人と同じ道で対戦に入り、最後にタイトルと対戦設定を往復する）。
 
 ## いまの流れ
@@ -32,11 +32,12 @@
   覆われる間、抜ける場面は止めておく。新しい場面も、幕が明けきるまで止めておき、入力を渡さない（切り替えの途中の操作は、行き先が捨てられるため）。
 - 場面ごとの BGM は `SCENES` の `music` に書く。曲が替わるときは暗転と同じころにフェードでつなぎ、同じ曲の場面どうしでは途切れない（`docs/sound.md`）。
 - タイトルの背景は、裂けた空の下の結晶の森（`game/title_backdrop.gd`）。世界（「空の縫い目」。`docs/story.md`）を 1 枚で見せる。
-  入ったときは、幕が明けるのと重ねて題字が浮かび、メニューが上から順に現れる（明けきるのを待たない。入力は止めない）。
+  入ったときは、幕が明けるのと重ねて題字が浮かび、メニューが上から順に現れる（明けきるのを待たない。明けてから動き出すと、空だけの間ができる）。
+  幕が明けたあとは、動きの終わりを待たずに押せる。
   - 空は `game/rift_sky.gdshader` が描く（絵は使わない）: 夜の藍、縦に走る裂け目（縫い目）の光と、それをまたぐ縫い糸、星、たなびく雲。
     縫い目の左は機械の国ベルク連邦の煙る琥珀、右は魔法の国リュエル騎士領の菫。
   - 地面は対戦の画面の部品（双子結晶の盤と、結晶の森の景色。マス目は隠す）。光は裂け目の側から低く差し、岩山と結晶と木立が影になる。
-  - カメラは盤の端に低く構えて、ゆっくり左右に振る。入ったとき、裂け目の光が差してきて、題字が浮かび、メニューが上から順に現れる（入力は止めない）。
+  - カメラは盤の端に低く構えて、ゆっくり左右に振る。入ったとき、裂け目の光が差してくる。
   - 題字とメニューは、板に載せず、景色の上に直に置く（題字の下に飾りの線 `game/ui_ornament.gd`、メニューは `UiTheme.BUTTON_MENU`）。
 - マップ選択・対戦設定・部隊編成・物語を選ぶ場面・話の一覧の背景は、対戦と同じ景色（盤と盤の外の景色。駒は置かない）を、ゆっくり回して見せる（`game/backdrop.gd`）。会話と出撃準備は、その話の盤を同じように見せる。素材は足していない。
 

@@ -32,7 +32,7 @@
 
 ## 対戦を作る
 
-`create_battle()` が、戦いの定義から盤面を作り（`docs/game-board.md`）、両方の軍（`deck_of`）を置き（人が決めた置き方 `placements` があればそこ、ほかは初期位置があればそこ、無ければ本陣の前。`Deployment`。`docs/player-loadout.md`）、勝ちの条件を写した、
+`create_battle()` が、戦いの定義から盤面を作り（`docs/game-board.md`）、両方の軍（`deck_of`）を置き（人が決めた置き方 `placements` があればそこ、ほかは初期位置があればそこ、無ければ本陣の前。`Deployment`。`docs/player-loadout.md`）、勝ちの条件・始めのレベル・必殺技のゲージ・守り切るターン数を戦いの定義から写した、
 ターン 1・プレイヤー1 の番の対戦を返す。設定は変えないので、同じ設定から何度でも同じ対戦が作れる。
 
 **対戦はこの入口だけから作る。** 対戦の画面、検査の自動の対戦（`game/autoplay.gd` の通しの対戦）、
