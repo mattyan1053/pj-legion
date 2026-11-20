@@ -692,7 +692,8 @@ func _play_relic_gained(event: RelicGainedEvent) -> void:
 	await after(0.7)
 
 
-## 中立の駒が結晶泉に湧いた（中ボスが現れた）。光とともに、小さい形から大きくする。
+## 中立の駒が結晶泉に湧いた（中ボスが現れた。骨起こしで骸骨兵が起きた）。光とともに、小さい形から大きくする。
+## 行動済みで現れた駒（骨起こし）は、行動済みの姿で置く。
 func _play_spawned(event: UnitSpawnedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
 	var view: UnitView = UnitView.new()
@@ -700,6 +701,8 @@ func _play_spawned(event: UnitSpawnedEvent) -> void:
 	_stage.add_child(view)
 	view.setup(event.kind, team_colors[event.side], event.hp, event.max_hp)
 	view.face(BoardView.cell_center(event.cell + Vector2i.DOWN) - at)
+	if event.acted:
+		view.set_acted(true)
 	_views[event.unit_id] = view
 	if not _quiet_playback:
 		_rig.focus_on(at)

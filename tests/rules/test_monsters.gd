@@ -10,7 +10,10 @@ const P2 := Unit.Side.PLAYER2
 ## 軍に属さない編成（軍 none）。決め打ちの敵と同じく、決まりの検査は通さずに組む。
 func _monster_deck() -> Deck:
 	var deck := Deck.new(UnitKind.Army.NONE)
-	for kind: UnitKind.Id in [UnitKind.Id.SKELETON_BRUTE, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON, UnitKind.Id.SKELETON, UnitKind.Id.SKELETON]:
+	for kind: UnitKind.Id in [
+		UnitKind.Id.SKELETON_BRUTE, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON, UnitKind.Id.SKELETON, UnitKind.Id.SKELETON,
+		UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER,
+	]:
 		deck.entries.append(DeckEntry.new(kind))
 	return deck
 
@@ -38,16 +41,23 @@ func test_a_monster_side_has_no_army_and_no_ult() -> void:
 	var battle := _battle()
 	assert_eq(battle.armies[P2], UnitKind.Army.NONE)
 	assert_eq(Ults.of(battle, P2), null)
-	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.side == P2).size(), 6, "将と 5 体")
+	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.side == P2).size(), 8, "将と 7 体")
 	Ults.charge(battle, P2, Ults.GAUGE_MAX)
 	assert_eq(Ults.gauge(battle, P2), 0, "必殺技の無い陣営のゲージはたまらない")
 	assert_false(Ults.is_ready(battle, P2))
 
 
-func test_monsters_hold_no_skill() -> void:
+## 骸骨兵・骸骨射手・骸骨重兵はスキルを持たない。骸骨術師と骸骨鼓手だけが、固有のスキルを持つ。
+func test_only_the_skilled_monsters_hold_a_skill() -> void:
+	var skilled := {UnitKind.Id.SKELETON_CALLER: Skill.Id.BONE_RAISE, UnitKind.Id.SKELETON_DRUMMER: Skill.Id.WAR_DRUM}
 	for kind: UnitKind.Id in UnitKind.Id.values():
-		if UnitKind.is_monster(kind):
-			assert_eq(Skills.of_kind(kind), null, str(UnitKind.Id.find_key(kind)))
+		if not UnitKind.is_monster(kind):
+			continue
+		var skill := Skills.of_kind(kind)
+		if skilled.has(kind):
+			assert_true(skill != null and skill.id() == skilled[kind], str(UnitKind.Id.find_key(kind)))
+		else:
+			assert_eq(skill, null, str(UnitKind.Id.find_key(kind)))
 
 
 ## CPU が魔物の側を（そして魔物と戦う側を）、断られる行動なしに動かし続けられる。
@@ -69,5 +79,5 @@ func test_cpu_moves_monsters_through_a_game() -> void:
 		if not result.accepted:
 			return
 		steps += 1
-	assert_eq(moved.size(), 3, "3 種類の魔物が、どれも行動した: %s" % [moved.keys()])
+	assert_eq(moved.size(), 5, "5 種類の魔物が、どれも行動した: %s" % [moved.keys()])
 	assert_false(battle.ult_uses[P2] > 0, "魔物の側は必殺技を使わない")

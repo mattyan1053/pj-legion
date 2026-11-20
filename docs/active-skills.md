@@ -12,7 +12,7 @@
 ## 誰が持つか
 
 - スキルは駒の種類で決まる（`Skills.of_kind(種類)`、`Skills.of(駒)`）。1 種類の駒は、スキルを 1 つだけ持つ。進化しても変わらない。
-- 将と中立の駒は持たない（`null`）。
+- 将と中立の駒は持たない（`null`）。魔物は、骸骨術師と骸骨鼓手だけが持つ（`docs/unit-roster.md` の「魔物」）。
 - スキルの定義は `Skill` の子のクラスで、状態を持たない。説明に差し込む値（`summary_args`。名前と 1 行の説明の文は、画面の文の表の `skill.<id>`。`docs/text.md`）、
   クールダウン（`cooldown`）、対象のマス（`target_cells`）、効果が及ぶマス（`affected_cells`）、効果（`apply`）を持つ。
   要るスキルだけが、行動を終えるか（`ends_action`）、回数の上限（`max_uses`）、スキルだけの条件（`is_ready`）を書く。
