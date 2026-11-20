@@ -51,7 +51,8 @@ func test_a_full_squad_is_placed_on_every_episode_map() -> void:
 		for unit in battle.units:
 			if unit.side != Unit.Side.NEUTRAL:
 				placed[unit.side] += 1
-		assert_eq(placed, [Deck.MAX_UNITS + 1, episode.enemy.size() + 1], "%s: 両軍の全員が盤に置かれる" % episode.id)
+		var enemy_king := 1 if episode.enemy_king else 0  # 将のいない群れ（king = none）は将なし
+		assert_eq(placed, [Deck.MAX_UNITS + 1, episode.enemy.size() + enemy_king], "%s: 両軍の全員が盤に置かれる" % episode.id)
 
 
 func test_fixed_squads_are_placed() -> void:
