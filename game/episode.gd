@@ -345,6 +345,7 @@ func _read_more_speakers(file: RefCounted) -> void:
 
 
 ## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。読めなければ空。
+## 最後に「crown」を付けると、将の印（頭の上の金の輪）を付ける（将の姿でない将。会話の姿だけに効く。"crown" の鍵は、付けたときだけ入る）。
 func _figure(file: RefCounted, line: int, value: String) -> Dictionary:
 	var words := value.split(" ", false)
 	var kind := StoryFile.enum_value(UnitKind.Id, words[0] if not words.is_empty() else "")
@@ -352,14 +353,19 @@ func _figure(file: RefCounted, line: int, value: String) -> Dictionary:
 		var neutral := UnitKind.Id.values().filter(func(each: int) -> bool: return UnitKind.is_neutral(each as UnitKind.Id))
 		file.problem(line, "知らない姿「%s」（書けるのは %s）" % [value, StoryFile.enum_words(UnitKind.Id, neutral)])
 		return {}
-	var evolved := words.size() == 2 and words[1] == "evolved"
-	if words.size() > 2 or (words.size() == 2 and not evolved):
-		file.problem(line, "姿は「駒の種類」か「駒の種類 evolved」: %s" % value)
+	var marks := Array(words.slice(1))
+	var evolved := marks.has("evolved")
+	var crown := marks.has("crown")
+	if marks != (["evolved"] if evolved else []) + (["crown"] if crown else []):
+		file.problem(line, "姿は「駒の種類」のあとに、evolved、crown をこの順で（どちらも無くてよい）: %s" % value)
 		return {}
 	if evolved and not UnitIcons.evolves(kind as UnitKind.Id):
 		file.problem(line, "%s に進化後の姿は無い" % words[0])
 		return {}
-	return {"kind": kind, "evolved": evolved, "look": &""}
+	var figure := {"kind": kind, "evolved": evolved, "look": &""}
+	if crown:
+		figure["crown"] = true
+	return figure
 
 
 ## side の部隊に、始めのレベルか経験値を決めた駒がいるか。

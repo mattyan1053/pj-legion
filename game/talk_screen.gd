@@ -27,6 +27,8 @@ signal finished(outcome: StringName)
 const CHARS_PER_SECOND := 45.0
 const BOX_WIDTH := 980.0
 const BOX_HEIGHT := 150.0
+## あとの会話の「次の話へ」「話の一覧へ」のボタンの幅（px。縦に積んで、左右の話し手の間に収める）。
+const CHOICE_WIDTH := 260.0
 const BOX_BOTTOM := 40.0
 ## 背景の盤に重ねる幕の濃さ（Palette.SHADE の色）。
 const BACKDROP_SHADE := 0.3
@@ -237,7 +239,7 @@ func _make_figures() -> void:
 		var place := side if has_foe or seen.is_empty() else 1
 		seen[who] = true
 		var figure: Dictionary = shapes[who]
-		var view := TalkFigure.new(figure["kind"], side, figure.get("evolved", false), figure.get("look", &""), place)
+		var view := TalkFigure.new(figure["kind"], side, figure.get("evolved", false), figure.get("look", &""), place, figure.get("crown", false))
 		view.who = who
 		view.visible = false
 		_stage.add_child(view)
@@ -481,13 +483,14 @@ func _open_choice() -> void:
 		panel.add_theme_stylebox_override("panel", UiTheme.solid_box(22.0))
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 枠の上の右クリックも、選ぶのをやめる入力へ通す（ボタンは押せる）
 		center.add_child(panel)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 16)
+		# 縦に積む（横に並べると、枠が左右の話し手の手や武器に重なる）。
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
 		panel.add_child(row)
 		var next := Button.new()
 		next.text = Text.t("talk.next_episode")
 		next.theme_type_variation = UiTheme.BUTTON_PRIMARY
-		next.custom_minimum_size = Vector2(240.0, 52.0)
+		next.custom_minimum_size = Vector2(CHOICE_WIDTH, 52.0)
 		next.add_theme_font_size_override("font_size", 22)
 		next.focus_mode = Control.FOCUS_NONE
 		next.set_meta(&"sound", &"ui_confirm")
@@ -495,7 +498,7 @@ func _open_choice() -> void:
 		row.add_child(next)
 		var list := Button.new()
 		list.text = Text.t("result.to_episodes")
-		list.custom_minimum_size = Vector2(220.0, 52.0)
+		list.custom_minimum_size = Vector2(CHOICE_WIDTH, 46.0)
 		list.add_theme_font_size_override("font_size", 18)
 		list.focus_mode = Control.FOCUS_NONE
 		list.pressed.connect(press_to_episodes)
