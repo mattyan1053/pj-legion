@@ -48,6 +48,7 @@ func test_raises_an_acted_skeleton_on_the_callers_side() -> void:
 	assert_eq(spawned.kind, UnitKind.Id.SKELETON)
 	assert_eq(spawned.side, P1)
 	assert_eq(spawned.cell, Vector2i(4, 2))
+	assert_true(spawned.acted, "行動済みで起きたことを、見た目へ渡す")
 	assert_true(result.events[2] is UnitActedEvent, "術師は行動を終える")
 	var raised := battle.unit_at(Vector2i(4, 2))
 	assert_eq(raised.level, 1)
