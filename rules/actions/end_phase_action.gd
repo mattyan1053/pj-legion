@@ -26,6 +26,9 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	events.append_array(battle.count_capture(battle.phase))
 	if battle.is_over():
 		return events
+	CenterPoint.end_phase(battle, battle.phase)
+	if battle.is_over():
+		return events
 
 	if battle.phase == Unit.Side.PLAYER1:
 		events.append_array(_start_phase(battle, Unit.Side.PLAYER2))

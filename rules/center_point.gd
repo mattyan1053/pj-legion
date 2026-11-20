@@ -49,6 +49,18 @@ static func holder(battle: Battle, point: Vector2i) -> int:
 
 ## side のフェーズの始めの得（EndPhaseAction が呼ぶ）。
 static func start_phase(battle: Battle, side: Unit.Side) -> void:
+	if RuleProbe.f("point_at_end") > 0:
+		return
+	_score(battle, side)
+
+
+## PROBE_POINT_AT_END: 得を、自分のフェーズの終わりに乗っているかで決める（先に取った側が、相手の番をしのがずに得る）。
+static func end_phase(battle: Battle, side: Unit.Side) -> void:
+	if RuleProbe.f("point_at_end") > 0:
+		_score(battle, side)
+
+
+static func _score(battle: Battle, side: Unit.Side) -> void:
 	if count() == 0 or side == Unit.Side.NEUTRAL:
 		return
 	var held := 0
