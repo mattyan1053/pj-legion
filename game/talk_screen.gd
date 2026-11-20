@@ -14,7 +14,7 @@ extends Node
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const AppContext := preload("res://game/app_context.gd")
-const UnitIcons := preload("res://game/unit_icons.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
@@ -42,6 +42,8 @@ const BLINK_PERIOD := 1.2
 const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEXT_OFF]
 ## 知らせの行の side（story.gd の NOTICE_SIDE）。
 const NOTICE_SIDE := 2
+## 知らせの行の、駒・持ち物の額の辺（px）。
+const NOTICE_FRAME := 72.0
 
 const COLOR_BOX := Color(Palette.PANEL, 0.92)
 const COLOR_BORDER := Palette.BORDER
@@ -60,8 +62,9 @@ var _plate_style: StyleBoxFlat
 var _box_style: StyleBoxFlat
 var _name: Label
 var _text: Label
-var _face: TextureRect
+var _face: UnitFrame
 var _item_face: Control  # item_icon.gd
+var _item_frame: PanelContainer
 var _hint: Label
 var _count: Label
 var _skip: Button
@@ -181,14 +184,20 @@ func _ready() -> void:
 	text_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	text_row.add_theme_constant_override("separation", 12)
 	column.add_child(text_row)
-	_face = UnitIcons.rect(UnitKind.Id.KING, 0, false, 72.0)
+	# どちらも、金の縁の額に入れる（手に入れたものとして見せる）。駒の額には役割の印が付く。
+	_face = UnitFrame.new(UnitKind.Id.KING, 0, NOTICE_FRAME)
+	_face.edge = Palette.BORDER_BRIGHT
 	_face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_face.visible = false
 	text_row.add_child(_face)
-	_item_face = ItemIcon.new(Equipment.Id.IRON_SHIELD, 72.0)
-	_item_face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	_item_face.visible = false
-	text_row.add_child(_item_face)
+	_item_frame = PanelContainer.new()
+	_item_frame.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.INK, 0.85), Palette.BORDER_BRIGHT, 1, 6, 8.0))
+	_item_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_item_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_item_frame.visible = false
+	text_row.add_child(_item_frame)
+	_item_face = ItemIcon.new(Equipment.Id.IRON_SHIELD, NOTICE_FRAME - 16.0)
+	_item_frame.add_child(_item_face)
 	_text = _label(25, COLOR_TEXT)
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -370,7 +379,7 @@ func _show_line(index: int) -> void:
 		_name.text = ""
 		_text.text = ""
 		_face.visible = false
-		_item_face.visible = false
+		_item_frame.visible = false
 		_count.text = ""
 		_plate.visible = false
 		return
@@ -378,15 +387,21 @@ func _show_line(index: int) -> void:
 	_plate.visible = true
 	_name.text = line.get("name", "")
 	var team := TEAM_COLORS[clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)]
-	_plate_style.bg_color = team.darkened(0.15)
-	_plate_style.border_color = team.lightened(0.35)
-	_box_style.border_color = COLOR_BORDER.lerp(team.lightened(0.2), 0.85)
+	if int(line.get("side", 0)) >= NOTICE_SIDE:
+		# 知らせ（手に入れたもの）は、陣営の色ではなく金: 選ばれている地の札と、金の縁。
+		_plate_style.bg_color = Palette.CHOSEN
+		_plate_style.border_color = Palette.BORDER_BRIGHT
+		_box_style.border_color = Palette.BORDER_BRIGHT
+	else:
+		_plate_style.bg_color = team.darkened(0.15)
+		_plate_style.border_color = team.lightened(0.35)
+		_box_style.border_color = COLOR_BORDER.lerp(team.lightened(0.2), 0.85)
 	_text.text = line.get("text", "")
 	_face.visible = line.has("kind")
 	if _face.visible:
-		_face.texture = UnitIcons.texture(line["kind"])
-	_item_face.visible = line.has("item")
-	if _item_face.visible:
+		_face.set_kind(line["kind"])
+	_item_frame.visible = line.has("item")
+	if _item_frame.visible:
 		_item_face.item = line["item"]
 		_item_face.queue_redraw()
 	_count.text = "%d / %d" % [index + 1, line_count()]
