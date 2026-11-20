@@ -35,6 +35,19 @@ func _engaged(unit: Unit) -> bool:
 	_moved_reach = Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
 	for candidate in _candidates(unit, cells):
 		var other := _battle.unit_by_id(candidate[2])
-		if other != null and other.side == _foe:
+		if other != null and (other.side == _foe) and _can_reach(unit, cells, other):
+			return true
+	return false
+
+
+## cells のどれかから、other に本当に手が届くか（_candidates は歩数だけの目安）。攻撃は盾の射線と煙幕もルールに聞く。
+func _can_reach(unit: Unit, cells: Dictionary[Vector2i, float], other: Unit) -> bool:
+	var healer := UnitKind.role(unit.kind) == UnitKind.Role.HEALER
+	for cell in cells:
+		var reach := _reach_from(unit, cell)
+		if healer:
+			if Combat.distance(cell, other.cell) <= reach:
+				return true
+		elif Combat.reaches(_battle, cell, other.cell, reach) and FieldEffects.smoke_covering(_battle, cell, other) == null:
 			return true
 	return false
