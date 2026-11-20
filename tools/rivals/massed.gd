@@ -3,7 +3,7 @@ extends CpuPlayer
 ## - そろうまでは、攻撃しない手で相手の届くマスへ入らない（どの役割も、動くだけの手の危険を DANGER_WHILE_GATHERING 倍に見る）。
 ##   相手を攻撃できる手は、いまの CPU と同じに選ぶ。
 ## - 自分の番の始めに、戦う駒（前衛・後衛・奇襲）のうち COMMIT_SHARE 以上が「あと 1 歩で相手の届く所」（動けるマスのどれかが、
-##   次の相手の番に攻撃されうる）か、すでに攻撃を届かせられるなら、その番から先は踏み込む（動くだけの手の危険を、攻撃する手と同じに見る）。
+##   次の相手の番に相手のプレイヤーの駒から攻撃されうる。中立の駒は数えない）か、すでに攻撃を届かせられるなら、その番から先は踏み込む（動くだけの手の危険を、攻撃する手と同じに見る）。
 ##   ターン COMMIT_BY から先も踏み込む。踏み込んだあとは、いまの CPU と同じ（ただし、ずっと踏み込む重さのまま）。
 ##
 ##   godot --headless --path . -s res://tools/cpu_matches.gd -- --games=216 --pairings=mixed --squads=random --rival=res://tools/rivals/massed.gd
@@ -47,11 +47,20 @@ func _gathered() -> bool:
 		if role == UnitKind.Role.NONE or role == UnitKind.Role.HEALER:
 			continue
 		fighters += 1
-		if _threats.has(unit.cell):
+		if _foe_threatens(unit.cell):
 			front += 1
 			continue
 		for cell in _battle.options(unit.id).move_cells:
-			if _threats.has(cell) and not (_threats[cell] as Dictionary).is_empty():
+			if _foe_threatens(cell):
 				front += 1
 				break
 	return fighters > 0 and front >= ceili(COMMIT_SHARE * fighters)
+
+
+## 次の相手の番に、相手のプレイヤーの駒（中立は除く）が cell を攻撃しうるか。
+func _foe_threatens(cell: Vector2i) -> bool:
+	for enemy_id: int in _threats.get(cell, {}):
+		var enemy := _battle.unit_by_id(enemy_id)
+		if enemy != null and enemy.side == _foe:
+			return true
+	return false

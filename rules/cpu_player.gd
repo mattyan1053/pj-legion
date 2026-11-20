@@ -910,6 +910,8 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 			apart = mini(apart, Combat.distance(cell, friend_cell))
 		value -= ISOLATION_WEIGHT * maxi(0, apart - SUPPORT_DISTANCE)
 	var threat := _threat_at(unit, cell, ignored_id)
+	if RuleProbe.f("brace_aware") > 0 and not acting and cell != unit.cell:
+		threat = int(threat * RuleProbe.f("brace_aware"))  # 構えれば、殴られにくい（見込み）
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
 		value -= _lethal_penalty
@@ -1245,11 +1247,20 @@ func _mass_gathered() -> bool:
 		if role == UnitKind.Role.NONE or role == UnitKind.Role.HEALER:
 			continue
 		fighters += 1
-		if _threats.has(unit.cell):
+		if _foe_threatens(unit.cell):
 			front += 1
 			continue
 		for cell in _battle.options(unit.id).move_cells:
-			if _threats.has(cell) and not (_threats[cell] as Dictionary).is_empty():
+			if _foe_threatens(cell):
 				front += 1
 				break
 	return fighters > 0 and front >= ceili(RuleProbe.f("massed_share", 0.75) * fighters)
+
+
+## 次の相手の番に、相手のプレイヤーの駒（中立は除く）が cell を攻撃しうるか。
+func _foe_threatens(cell: Vector2i) -> bool:
+	for enemy_id: int in _threats.get(cell, {}):
+		var enemy := _battle.unit_by_id(enemy_id)
+		if enemy != null and enemy.side == _foe:
+			return true
+	return false

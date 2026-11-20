@@ -51,7 +51,8 @@ static func _counter(battle: Battle, defender: Unit, attacker: Unit) -> Array[Ba
 		return events
 	if not Combat.can_attack(battle, defender, attacker):
 		return events
-	defender.braced = false
+	if RuleProbe.f("brace_keep") == 0:
+		defender.braced = false
 	var full := Combat.hit(battle, defender, attacker)
 	if full.smoke != null:
 		return events
