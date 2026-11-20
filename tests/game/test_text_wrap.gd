@@ -74,3 +74,22 @@ func test_kanji_words_and_their_kana_stay_together() -> void:
 		for i in range(1, lines.size()):
 			var tail := lines[i - 1].right(1) + lines[i].left(1)
 			assert_false(tail in ["表示", "示中", "範囲", "囲を", "届く", "ジを", "攻撃", "撃の"], "語の途中で切った: %s（幅 %s）" % [lines, width])
+
+
+## fold_even は、行の数を増やさずに、行の長さをそろえる（2 行目に 1 語だけ残さない）。
+func test_fold_even_leaves_no_orphan_word() -> void:
+	var text := "駒をクリックで選択。相手の駒は移動・攻撃の届く範囲を表示"
+	var plain := _wrap(text, 55.0)
+	assert_eq(plain.size(), 2)
+	assert_eq(plain[1], "表示", "前提: ふつうの折り返しでは、2 行目が 1 語だけになる")
+	var even := TextWrap.fold_even(text, 55.0, _measure).split("\n")
+	assert_eq(even.size(), 2, "行が増えた")
+	assert_eq("".join(even), text)
+	for line in even:
+		assert_true(_measure(line) <= 55.0, "幅を超えた: %s" % line)
+	assert_true(_measure(even[1]) >= _measure(text) * 0.3, "2 行目が短いまま: %s" % even[1])
+
+
+func test_fold_even_keeps_what_fits_and_newlines() -> void:
+	assert_eq(TextWrap.fold_even("駒をクリックして選ぶ", 40.0, _measure), "駒をクリックして選ぶ")
+	assert_eq(TextWrap.fold_even("攻撃する\n待機する", 40.0, _measure), "攻撃する\n待機する")
