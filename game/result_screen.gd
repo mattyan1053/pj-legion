@@ -17,8 +17,9 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const StatsText := preload("res://game/stats_text.gd")
-const UnitIcons := preload("res://game/unit_icons.gd")
 const ResultGlow := preload("res://game/result_glow.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
+const UiTaper := preload("res://game/ui_taper.gd")
 
 ## 行き先のボタン。field はマップの鍵（versus_fields.gd）。new_board が偽なら、いまと同じマップで再戦（field は見ない）。
 signal restart_pressed(field: StringName, new_board: bool)
@@ -101,7 +102,7 @@ var _stat_rows: Array = []
 var _mvp_panel: PanelContainer
 var _mvp_head: Label
 var _mvp_name: Label
-var _mvp_icon: TextureRect
+var _mvp_icon: UnitFrame
 var _mvp_numbers: Label
 var _detail_panel: PanelContainer
 var _detail: Label
@@ -196,13 +197,15 @@ func present(summary: RefCounted) -> void:
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		name_label.custom_minimum_size = Vector2(130.0, 0.0)
 		var value_label := _label(STAT_FONT)
+		value_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
 		value_label.text = line[1]
 		_stats_grid.add_child(name_label)
 		_stats_grid.add_child(value_label)
 		_stat_rows.append([name_label, value_label])
 	_mvp_icon.visible = summary.mvp_name != ""
 	if summary.mvp_name != "":
-		_mvp_icon.texture = UnitIcons.texture(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved, _king_look(summary.mvp_side))
+		_mvp_icon.set_kind(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved, _king_look(summary.mvp_side))
+		_mvp_icon.edge = team_colors[summary.mvp_side] if summary.mvp_side >= 0 and summary.mvp_side < team_colors.size() else Color(0, 0, 0, 0)
 		_mvp_name.text = summary.mvp_name
 		_mvp_numbers.text = summary.mvp_numbers
 	else:
@@ -433,6 +436,7 @@ func set_continue(shown: bool, retry := false) -> void:
 	_enter_retries = retry and not shown
 	_again_button.add_theme_font_size_override("font_size", BIG_FONT if _enter_retries else BUTTON_FONT)
 	_prompt.text = Text.t("result.prompt", {"destination": enter_destination()})
+	_mark_enter_button()
 
 
 ## 流れの外への行き先のボタンの文（既定は「タイトルへ」。対戦モードは「マップ選択へ」、ストーリーは「話の一覧へ」。battle_source.gd の leave）。
@@ -440,6 +444,14 @@ func set_continue(shown: bool, retry := false) -> void:
 func set_leave(text: String) -> void:
 	_leave_button.text = text
 	_prompt.text = Text.t("result.prompt", {"destination": enter_destination()})
+	_mark_enter_button()
+
+
+## Enter で選ぶボタンを、いちばん大事なボタンの見た目（金の地）にする。ほかの行き先は、ふつうのボタン。
+func _mark_enter_button() -> void:
+	var target := _continue_button if _continue_button.visible else (_again_button if _enter_retries else _leave_button)
+	for button: Button in [_continue_button, _again_button, _leave_button]:
+		button.theme_type_variation = UiTheme.BUTTON_PRIMARY if button == target else &""
 
 
 ## 流れの外への行き先のボタンの文。検査用。
@@ -542,17 +554,16 @@ func _sound(name: StringName) -> void:
 
 
 func _build_stats() -> void:
-	_stats_panel = _panel()
+	_stats_panel = _panel(Palette.BORDER)
 	_stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_stats_panel.custom_minimum_size = Vector2(460.0, 0.0)
 	_body.add_child(_stats_panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	_stats_panel.add_child(column)
-	_stats_title = _label(18)
-	_stats_title.add_theme_color_override("font_color", COLOR_DIM)
-	_stats_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_stats_title)
+	_stats_title = _label(17)
+	_stats_title.theme_type_variation = UiTheme.LABEL_SECTION
+	column.add_child(_flanked(_stats_title, Palette.BORDER_BRIGHT))
 	_stats_grid = GridContainer.new()
 	_stats_grid.columns = 2
 	_stats_grid.add_theme_constant_override("h_separation", 18)
@@ -562,7 +573,7 @@ func _build_stats() -> void:
 
 
 func _build_mvp() -> void:
-	_mvp_panel = _panel()
+	_mvp_panel = _panel(Color(Palette.BORDER_BRIGHT, 0.85))
 	_mvp_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_mvp_panel.custom_minimum_size = Vector2(460.0, 0.0)
 	_body.add_child(_mvp_panel)
@@ -571,21 +582,22 @@ func _build_mvp() -> void:
 	_mvp_panel.add_child(column)
 	_mvp_head = _label(24)
 	_mvp_head.text = "★ M V P ★"
+	_mvp_head.add_theme_font_override("font", UiTheme.FONT_HEADING)
 	_mvp_head.add_theme_color_override("font_color", COLOR_MVP)
-	_mvp_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_mvp_head)
+	column.add_child(_flanked(_mvp_head, COLOR_MVP))
 	# アイコン（左）と、名前・数（右）を 1 段に並べる（アイコンのぶん、枠を高くしない）。
 	var mvp_row := HBoxContainer.new()
 	mvp_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	mvp_row.add_theme_constant_override("separation", 10)
 	column.add_child(mvp_row)
-	_mvp_icon = UnitIcons.rect(UnitKind.Id.KING, 0, false, 64.0)
+	_mvp_icon = UnitFrame.new(UnitKind.Id.KING, 0, 64.0)
 	mvp_row.add_child(_mvp_icon)
 	var mvp_lines := VBoxContainer.new()
 	mvp_lines.add_theme_constant_override("separation", 0)
 	mvp_lines.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mvp_row.add_child(mvp_lines)
 	_mvp_name = _label(28)
+	_mvp_name.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	_mvp_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mvp_lines.add_child(_mvp_name)
 	_mvp_numbers = _label(19)
@@ -596,7 +608,7 @@ func _build_mvp() -> void:
 
 ## 詳しい戦績（両軍）: 全体の 1 行、陣営の切り替え、陣営の 1 行、駒ごとの表（行が駒、列が数。長ければ縦に送る）。
 func _build_detail() -> void:
-	_detail_panel = _panel()
+	_detail_panel = _panel(Palette.BORDER)
 	_detail_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_detail_panel.visible = false
 	_body.add_child(_detail_panel)
@@ -636,6 +648,7 @@ func _build_detail() -> void:
 	for spec: Array in StatsText.COLUMNS:
 		header.add_child(_table_cell(Text.t(spec[1]), TABLE_NUMBER_WIDTH, true))
 	header.add_child(_table_cell("", TABLE_STATE_WIDTH, true))
+	column.add_child(HSeparator.new())
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0.0, TABLE_HEIGHT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -657,8 +670,8 @@ func show_table(side: int) -> void:
 	for child in _table_rows.get_children():
 		_table_rows.remove_child(child)
 		child.queue_free()
-	for row: Dictionary in table["rows"]:
-		_table_rows.add_child(_table_row(row))
+	for index: int in table["rows"].size():
+		_table_rows.add_child(_table_row(table["rows"][index], index % 2 == 1))
 
 
 ## いま表に出している陣営と、その行の駒の名前（検査用）。
@@ -678,14 +691,22 @@ func _king_look(side: int) -> StringName:
 	return king_looks[side] if side >= 0 and side < king_looks.size() else &""
 
 
-## 表の 1 行（駒）。MVP の行は札の地と金の文字、倒れた駒は「撃破された」の印。
-func _table_row(row: Dictionary) -> Control:
-	# どの行も同じ余白の地（MVP の行だけ薄く塗る）にして、列の位置をそろえる。
+## 表の 1 行（駒）。MVP の行は金の薄い地・左の金の線・金の文字、倒れた駒は名前を沈めて「倒れた」の印。
+## striped は 1 行おきの薄い地（数を横に追いやすく）。
+func _table_row(row: Dictionary, striped := false) -> Control:
+	# どの行も同じ余白の地にして、列の位置をそろえる（左の線は余白の外へ描く）。
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UiTheme.box(Palette.WASH if row["mvp"] else Color.TRANSPARENT, Color.TRANSPARENT, 0, UiTheme.CORNER, 2.0))
+	var fill := Color(Palette.ACCENT, 0.14) if row["mvp"] else (Color(Palette.WASH, 0.035) if striped else Color.TRANSPARENT)
+	var plate := UiTheme.box(fill, Palette.ACCENT, 0, 4, 2.0)
+	if row["mvp"]:
+		plate.border_width_left = 3
+		plate.expand_margin_left = 3.0
+	panel.add_theme_stylebox_override("panel", plate)
 	var line := _table_line()
 	panel.add_child(line)
-	var icon := UnitIcons.rect(row["kind"], row["side"], row["evolved"], TABLE_ICON, _king_look(row["side"]))
+	var icon := UnitFrame.new(row["kind"], row["side"], TABLE_ICON, false, row["evolved"], _king_look(row["side"]))
+	if row["side"] >= 0 and row["side"] < team_colors.size():
+		icon.edge = Color(team_colors[row["side"]], 0.8)
 	line.add_child(icon)
 	var name_label := _table_cell(("★ " if row["mvp"] else "") + row["name"], TABLE_NAME_WIDTH, false, HORIZONTAL_ALIGNMENT_LEFT)
 	name_label.clip_text = true
@@ -694,11 +715,19 @@ func _table_row(row: Dictionary) -> Control:
 	for spec: Array in StatsText.COLUMNS:
 		var value: int = row[spec[0]]
 		var cell := _table_cell(str(value) if value != 0 else "-", TABLE_NUMBER_WIDTH)
+		if value != 0:
+			cell.add_theme_font_override("font", UiTheme.FONT_BOLD)
+		else:
+			cell.add_theme_color_override("font_color", Palette.TEXT_OFF)
 		line.add_child(cell)
-	line.add_child(_table_cell(Text.t("result.table.defeated") if row["defeated"] else "", TABLE_STATE_WIDTH, true))
+	var state := _table_cell(Text.t("result.table.defeated") if row["defeated"] else "", TABLE_STATE_WIDTH, true)
+	state.add_theme_color_override("font_color", Palette.DANGER.lerp(Palette.TEXT_DIM, 0.35))
+	line.add_child(state)
+	if row["defeated"] and not row["mvp"]:
+		name_label.add_theme_color_override("font_color", COLOR_DIM)
 	if row["mvp"]:
 		for cell in line.get_children():
-			if cell is Label:
+			if cell is Label and cell != state:
 				(cell as Label).add_theme_color_override("font_color", COLOR_MVP)
 	if row["defeated"]:
 		icon.modulate.a = 0.45
@@ -757,6 +786,7 @@ func _build_actions() -> void:
 	_leave_button.pressed.connect(title_pressed.emit)
 	leave.add_child(_leave_button)
 	_detail_button = _button("", 220.0)
+	_detail_button.theme_type_variation = UiTheme.BUTTON_GHOST  # たまに開くもの。行き先のボタンより控えめに
 	_detail_button.pressed.connect(toggle_detail)
 	leave.add_child(_detail_button)
 	_prompt = _label(16)
@@ -784,8 +814,21 @@ func _button(text: String, width: float) -> Button:
 	return button
 
 
-func _panel() -> PanelContainer:
-	var style := UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 6, 12.0)
+## 見出しを真ん中に、左右に細くなる線（色は color）。
+func _flanked(label: Label, color: Color) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(UiTaper.new(false, color))
+	row.add_child(label)
+	row.add_child(UiTaper.new(true, color))
+	return row
+
+
+## 板。上の縁を太くする（edge は縁の色。MVP は金、ほかは枠の真鍮）。
+func _panel(edge: Color) -> PanelContainer:
+	var style := UiTheme.box(COLOR_PANEL, edge, 1, 6, 12.0, 6)
+	style.border_width_top = 3
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE

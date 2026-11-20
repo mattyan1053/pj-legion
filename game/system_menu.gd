@@ -34,6 +34,8 @@ const LAYER := 20
 
 const COLOR_WARNING := Palette.WARN
 const BUTTON_WIDTH := 300.0
+## 確かめの窓の幅の下限（見出しの下の飾りの線が、短い文でも伸びるように）。
+const CONFIRM_WIDTH := 400.0
 ## 右上のボタンの大きさ。上の帯（battle_hud.gd）は、このぶんを右端に空けておく。
 const CORNER_BUTTON_SIZE := Vector2(104.0, 34.0)
 const CORNER_MARGIN := 8.0
@@ -44,6 +46,9 @@ var _menu: PanelContainer
 var _menu_column: VBoxContainer
 var _confirm: PanelContainer
 var _confirm_text: Label
+var _confirm_note: Label
+## 確かめの文の全体（1 行目が見出し、残りが失われるものの注意）。
+var _confirm_full := ""
 var _confirm_ok: Button
 var _settings_panel: SettingsPanel
 ## いま並べている項目（[名前, 文字, 確かめの文] の列）と、確かめている項目の名前。
@@ -99,10 +104,16 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 	var confirm_column := VBoxContainer.new()
 	confirm_column.add_theme_constant_override("separation", 14)
 	_confirm.add_child(confirm_column)
-	_confirm_text = _label(18)
-	_confirm_text.add_theme_color_override("font_color", COLOR_WARNING)
-	_confirm_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	confirm_column.custom_minimum_size = Vector2(CONFIRM_WIDTH, 0.0)
+	# 1 行目（何をするか）は窓の見出し、その下に危険の色の飾りの線、残り（失われるもの）は注意の色。
+	_confirm_text = _label(20)
+	UiTheme.style_window_title(_confirm_text, 20)
 	confirm_column.add_child(_confirm_text)
+	confirm_column.add_child(UiTheme.window_rule(Palette.DANGER))
+	_confirm_note = _label(16)
+	_confirm_note.add_theme_color_override("font_color", COLOR_WARNING)
+	_confirm_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	confirm_column.add_child(_confirm_note)
 	var confirm_buttons := HBoxContainer.new()
 	confirm_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	confirm_buttons.add_theme_constant_override("separation", 16)
@@ -133,14 +144,20 @@ func open(items: Array, settings_only := false) -> void:
 	for child in _menu_column.get_children():
 		_menu_column.remove_child(child)
 		child.queue_free()
-	var title := _label(26)
-	title.theme_type_variation = UiTheme.LABEL_HEADING
+	var title := _label(24)
+	UiTheme.style_window_title(title)
 	title.text = Text.t("menu.title")
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_menu_column.add_child(title)
+	_menu_column.add_child(UiTheme.window_rule())
+	# 項目はタイトルのメニューと同じ札。抜けると失われるものがある行き先（確かめを挟む項目）の前に、区切りの線を 1 本。
+	var parted := false
 	for item: Array in _items:
 		var id: StringName = item[0]
+		if not parted and item.size() > 2 and item[2] != "" and _menu_column.get_child_count() > 2:
+			parted = true
+			_menu_column.add_child(HSeparator.new())
 		var button := _button(item[1])
+		button.theme_type_variation = UiTheme.BUTTON_MENU
 		button.name = String(id)
 		button.pressed.connect(func() -> void: press(id))
 		_menu_column.add_child(button)
@@ -168,7 +185,7 @@ func confirming() -> StringName:
 
 ## 確かめの文（出ていなければ空）。検査用。
 func confirm_text() -> String:
-	return _confirm_text.text if confirming() != &"" else ""
+	return _confirm_full if confirming() != &"" else ""
 
 
 ## 並べている項目の名前（上から）。開いていなければ空。検査用。
@@ -190,7 +207,11 @@ func press(id: StringName) -> bool:
 		var confirm: String = item[2] if item.size() > 2 else ""
 		if confirm != "":
 			_confirming = id
-			_confirm_text.text = confirm
+			_confirm_full = confirm
+			var lines := confirm.split("\n", true, 1)
+			_confirm_text.text = lines[0]
+			_confirm_note.text = lines[1] if lines.size() > 1 else ""
+			_confirm_note.visible = _confirm_note.text != ""
 			_confirm_ok.text = item[1]
 			_show(_confirm)
 		else:
