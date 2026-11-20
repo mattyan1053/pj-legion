@@ -106,7 +106,7 @@ static func _cast(episode: Episode) -> PackedStringArray:
 	return cast
 
 
-## 敵の軍と顔ぶれ（「FANTASY: パラディン 2、ソーサラー」）。
+## 敵の軍と顔ぶれ（「FANTASY（将と 3 体: パラディン 2、ソーサラー）」。将のいない群れは「将なし、」）。
 static func _enemy(episode: Episode) -> String:
 	var counts := {}
 	for row: Array in episode.enemy:
@@ -114,7 +114,8 @@ static func _enemy(episode: Episode) -> String:
 	var parts: PackedStringArray = []
 	for kind: UnitKind.Id in counts:
 		parts.append(Names.kind(kind) if counts[kind] == 1 else "%s %d" % [Names.kind(kind), counts[kind]])
-	return "%s（将と %d 体: %s）" % [Names.army(episode.enemy_army), episode.enemy.size(), "、".join(parts)]
+	var leader := "将と " if episode.enemy_king else "将なし、"
+	return "%s（%s%d 体: %s）" % [Names.army(episode.enemy_army), leader, episode.enemy.size(), "、".join(parts)]
 
 
 static func _cue_word(cue: Array) -> String:

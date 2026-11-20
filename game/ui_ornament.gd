@@ -4,7 +4,10 @@ extends Control
 
 const Palette := preload("res://game/ui_palette.gd")
 
-var color := Palette.BORDER_BRIGHT
+var color := Palette.BORDER_BRIGHT:
+	set(value):
+		color = value
+		queue_redraw()
 var grow := 1.0:
 	set(value):
 		grow = value

@@ -22,6 +22,8 @@ static var ALL: Array[Skill] = [
 	PrecisionAimSkill.new(),
 	ShadowStepSkill.new(),
 	AdrenalineShotSkill.new(),
+	BoneRaiseSkill.new(),
+	WarDrumSkill.new(),
 ]
 
 static var _by_kind: Dictionary[UnitKind.Id, Skill] = {}

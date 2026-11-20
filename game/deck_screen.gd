@@ -124,6 +124,7 @@ var _save_button: Button
 # ---- 確かめと名前の入力 ----
 var _dialog: Control
 var _dialog_text: Label
+var _dialog_rule: Control
 var _dialog_input: LineEdit
 var _dialog_ok: Button
 var _dialog_action: Callable
@@ -1315,6 +1316,7 @@ func _confirm(text: String, ok_text: String, action: Callable) -> void:
 	_dialog_text.text = text
 	_dialog_ok.text = ok_text
 	_dialog_ok.theme_type_variation = UiTheme.BUTTON_DANGER  # 確かめるのは、元に戻せないこと（消す）
+	_dialog_rule.set(&"color", Palette.DANGER)
 	_dialog_input.visible = false
 	_dialog_action = action
 	_dialog.visible = true
@@ -1323,7 +1325,8 @@ func _confirm(text: String, ok_text: String, action: Callable) -> void:
 func _ask_name(title: String, current: String, action: Callable) -> void:
 	_dialog_text.text = Text.t("deck.name.prompt", {"title": title, "max": DeckLibrary.MAX_NAME_LENGTH})
 	_dialog_ok.text = Text.t("deck.dialog.ok")
-	_dialog_ok.theme_type_variation = &""
+	_dialog_ok.theme_type_variation = UiTheme.BUTTON_PRIMARY
+	_dialog_rule.set(&"color", Palette.BORDER)
 	_dialog_input.visible = true
 	_dialog_input.text = current
 	_dialog_action = action
@@ -1351,9 +1354,12 @@ func _build_dialog() -> Control:
 	column.add_theme_constant_override("separation", 16)
 	column.custom_minimum_size = Vector2(460.0, 0.0)
 	panel.add_child(column)
-	_dialog_text = _text(19, COLOR_TEXT)
-	_dialog_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# 見出し（何を確かめるか）と、その下の飾りの線（消す確かめは危険の色、名前の入力は枠の真鍮）。
+	_dialog_text = _text(20, COLOR_TEXT)
+	UiTheme.style_window_title(_dialog_text, 20)
 	column.add_child(_dialog_text)
+	_dialog_rule = UiTheme.window_rule()
+	column.add_child(_dialog_rule)
 	_dialog_input = LineEdit.new()
 	_dialog_input.max_length = DeckLibrary.MAX_NAME_LENGTH
 	_dialog_input.add_theme_font_size_override("font_size", 20)

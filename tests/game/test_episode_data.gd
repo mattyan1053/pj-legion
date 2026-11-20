@@ -159,7 +159,7 @@ func test_story_cards_show_faces() -> void:
 ## 魔物の話の敵の将は、骸骨の将の姿。
 func test_monster_episodes_are_led_by_the_skeleton_king() -> void:
 	for episode: Episode in Story.all_episodes():
-		if episode.enemy.any(func(row: Array) -> bool: return UnitKind.is_monster(row[0])):
+		if episode.enemy_king and episode.enemy.any(func(row: Array) -> bool: return UnitKind.is_monster(row[0])):
 			assert_eq(episode.king_looks[1], &"skeleton_mage", "%s: 魔物のいる話の敵の将" % episode.id)
 
 
@@ -175,6 +175,62 @@ func test_an_enemy_without_an_army_reads() -> void:
 	# 軍の駒を混ぜると、置いたときにその軍の必殺技が付いてしまうので弾く。
 	var mixed: Episode = Episode.parse(text.replace("unit = skeleton_archer", "unit = paladin"))
 	assert_true(Array(mixed.problems).any(func(problem: String) -> bool: return problem.begins_with("probe.txt:19:")), "軍の無い敵に軍の駒: %s" % mixed.problems)
+
+
+## 将のいない群れ（[enemy] の king = none）: 戦いの定義の敵に将を置かない。人の勝ち方を書き、将の撃破・本陣の占拠は書けない。
+func test_a_kingless_horde_reads() -> void:
+	var text := (KINGLESS_PROBE)
+	var episode: Episode = Episode.parse(text)
+	assert_eq(episode.problems, PackedStringArray())
+	assert_false(episode.enemy_king)
+	var scenario := StoryBattle.scenario_of(episode)
+	assert_false(scenario.has_king(Unit.Side.PLAYER2))
+	assert_true(scenario.has_king(Unit.Side.PLAYER1))
+	assert_true(Episode.parse(PROBE).enemy_king, "書かなければ将がいる")
+	var cases := {
+		"none でない": ["king = none", "king = yes", 14],
+		"勝ち方が無い": ["wins = routed\n", "", 9],
+		"将の撃破": ["wins = routed", "wins = routed, king_defeated", 1],
+		"本陣の占拠": ["wins = routed", "wins = hq_captured", 1],
+		"将の姿": ["king = none", "king = none\nking_figure = skeleton_mage", 15],
+		"話し手が将の姿": ["figure = skeleton_brute\n", "", 10],
+		"敵の将のきっかけ": ["(turn 2) 隊長: 進め", "(king_half enemy) 墓守: まだだ", 24],
+	}
+	for name: String in cases:
+		var case: Array = cases[name]
+		var broken := text.replace(case[0].c_unescape(), case[1].c_unescape())
+		assert_ne(broken, text, "見本に「%s」が無い: %s" % [case[0], name])
+		var problems: PackedStringArray = Episode.parse(broken).problems
+		var on_line := Array(problems).any(func(problem: String) -> bool: return problem.begins_with("probe.txt:%d:" % case[2]))
+		assert_true(on_line, "%s: %d 行目で弾かない: %s" % [name, case[2], problems])
+
+
+const KINGLESS_PROBE := """[episode]
+title = 群れ
+map = old_battlefield
+look = stone_walls
+wins = routed
+
+[ally]
+name = 隊長
+
+[enemy]
+name = 墓守
+figure = skeleton_brute
+army = none
+king = none
+unit = skeleton_brute
+unit = skeleton
+
+[before]
+隊長: いくぞ
+
+[after]
+隊長: 片付いた
+
+[cues]
+(turn 2) 隊長: 進め
+"""
 
 
 ## 人の側（決まった部隊、解放）に魔物は書けない（物語の軍の駒だけ。campaign.gd が確かめる）。

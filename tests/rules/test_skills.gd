@@ -54,7 +54,7 @@ func test_every_hireable_kind_has_a_skill() -> void:
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		if UnitKind.role(kind) != UnitKind.Role.NONE and not UnitKind.is_monster(kind):
 			assert_true(Skills.of_kind(kind) != null, str(UnitKind.Id.find_key(kind)))
-	assert_eq(Skills.ALL.size(), 8)
+	assert_eq(Skills.ALL.size(), 10, "雇える 8 種と、スキルを持つ魔物 2 種")
 
 
 func test_king_and_neutral_units_have_no_skill() -> void:

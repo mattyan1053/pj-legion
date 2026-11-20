@@ -55,6 +55,8 @@ const SKILL_COLORS := {
 	Skill.Id.PRECISION_AIM: Color("ff3355"),
 	Skill.Id.SHADOW_STEP: Color("8a4dff"),
 	Skill.Id.ADRENALINE_SHOT: Color("b6ff4a"),
+	Skill.Id.BONE_RAISE: Color("9fe0c8"),
+	Skill.Id.WAR_DRUM: Color("ff8a3d"),
 }
 ## スキルの系統ごとの効果音（sound_catalog.gd の名前）。形が対象に届いた瞬間に鳴る。
 ## 8 種を全部別にはせず、系統でまとめる: 炎、守り（壁・盾）、聖、風と影（煙幕・影の移動）、集中（照準・アドレナリン）。
@@ -67,6 +69,8 @@ const SKILL_SOUNDS := {
 	Skill.Id.SHADOW_STEP: &"skill_wind",
 	Skill.Id.PRECISION_AIM: &"skill_focus",
 	Skill.Id.ADRENALINE_SHOT: &"skill_focus",
+	Skill.Id.BONE_RAISE: &"skill_holy",
+	Skill.Id.WAR_DRUM: &"skill_guard",
 }
 ## スキルの形が対象に届くまでの秒数（使った駒の手振りが終わる瞬間に届く）。呼ぶ側はこの時間だけ待ってから効果を見せる。
 const SKILL_TIME := 0.4
@@ -87,12 +91,12 @@ static var _bolt_mesh: BoxMesh
 static var _column_mesh: CylinderMesh
 
 
-## 駒の種類ごとの当たり方。前衛と将は叩く、奇襲は斬る、射撃の後衛（スナイパー、骸骨射手）は撃つ、魔法の後衛・プリースト・中ボスは魔法。
+## 駒の種類ごとの当たり方。前衛と将は叩く、奇襲は斬る、射撃の後衛（スナイパー、骸骨射手）は撃つ、魔法の後衛・プリースト・中ボス・杖を持つ魔物（骸骨術師、骸骨鼓手）は魔法。
 static func hit_style(kind: UnitKind.Id) -> Style:
 	match kind:
 		UnitKind.Id.SNIPER, UnitKind.Id.SKELETON_ARCHER:
 			return Style.SHOT
-		UnitKind.Id.SORCERER, UnitKind.Id.PRIEST, UnitKind.Id.ELITE_MINION:
+		UnitKind.Id.SORCERER, UnitKind.Id.PRIEST, UnitKind.Id.ELITE_MINION, UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER:
 			return Style.MAGIC
 	match UnitKind.role(kind):
 		UnitKind.Role.VANGUARD:
@@ -198,6 +202,11 @@ func skill_flash(skill: Skill.Id, user: Vector3, target: Vector3) -> void:
 				_puff(user + Vector3(cos(angle) * 0.35, 0.5, sin(angle) * 0.35), color)
 		Skill.Id.ADRENALINE_SHOT:
 			_rise(target, color)
+		Skill.Id.BONE_RAISE:
+			_pillar(target, color, 0.4, 1.4, 0.35)
+			_rise(target, color)
+		Skill.Id.WAR_DRUM:
+			_ring(user + Vector3(0.0, 0.06, 0.0), color, 0.6, 4.2, 0.5)
 
 
 ## 必殺技を使った陣営の駒すべてに、同時に陣営の色の光の柱が立つ（駒ごとに順には出さない）。
