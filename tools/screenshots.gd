@@ -44,6 +44,7 @@ const SCENES := {
 	"setup_cpu_random": "CPU の部隊を「ランダム編成」にして始めた対戦の途中で、対戦設定の「編成確認」を開いた（いまの対戦で組んだ部隊）",
 	"deck_list": "部隊編成: 取っておいた部隊の一覧（出せない部隊も理由つきで並ぶ）",
 	"deck_delete": "部隊編成: 部隊を消す前の確かめ",
+	"deck_rename": "部隊編成: 部隊の名前を入れる窓",
 	"deck_none": "部隊編成: 部隊がひとつも無い一覧（「編成なし」）",
 	"deck_army": "部隊編成: 「新しい部隊」で、まず軍を選ぶ",
 	"deck_empty": "部隊編成: 軍を選んで組み始めた、空の部隊",
@@ -468,6 +469,14 @@ func _scene_deck_delete() -> bool:
 	if screen == null:
 		return false
 	screen.press_delete()
+	return screen.is_dialog_open()
+
+
+func _scene_deck_rename() -> bool:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return false
+	screen.press_rename()
 	return screen.is_dialog_open()
 
 
