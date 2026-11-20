@@ -104,7 +104,7 @@ func test_episode_battle_is_the_hand_map_against_a_fixed_cpu_enemy() -> void:
 		for unit in battle.units:
 			if unit.side != Unit.Side.NEUTRAL:
 				placed[unit.side] += 1
-		assert_eq(placed[1], episode.enemy.size() + 1, "敵の全員（将を含む）が盤に置かれていない")
+		assert_eq(placed[1], episode.enemy.size() + (1 if episode.enemy_king else 0), "敵の全員（将を含む。将のいない群れは将なし）が盤に置かれていない")
 		assert_eq(battle.board.size, episode.map.make_board().size)
 		assert_eq(source.look(), episode.look)
 

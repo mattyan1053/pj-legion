@@ -189,13 +189,16 @@ const SCENES := {
 	"story_boss_sortie": "ストーリー: 中ボスを倒す演習（「結晶の番人」）の出撃準備（勝ち方は「中ボスを倒せば勝ち。敵の将を倒しても終わらない。」だけ）",
 	"story_boss_start": "ストーリー: 中ボスを倒す演習の対戦の始め（上の帯の勝ち方の札「勝ち: 中ボスの撃破（将を倒しても終わらない）」）",
 	"story_rout_wide": "ストーリー: 結晶の岩山を、いちばん引いて見ている（岩山と、両端の回り道、真ん中のポータル）",
-	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（敵の話し手「墓守」の札と姿）",
+	"story_monster_talk": "ストーリー: 魔物の群れの話の、対戦の前の会話（将のいない群れ。敵の話し手「骨の術師」の札と、骸骨術師の姿）",
+	"story_horde_raise": "ストーリー: 将のいない群れの話「古戦場の亡者」で、骸骨術師が骨起こしで骸骨兵を起こしたあとの人の番（術師に寄って見る。旗の下は空）",
+	"story_drums_talk": "ストーリー: FANTASY の物語「骨の太鼓」の前の会話（敵の話し手「骨の鼓手」の札と、骸骨鼓手の姿）",
+	"story_drums_battle": "ストーリー: 「骨の太鼓」で、骸骨鼓手が骨太鼓を鳴らしたあとの人の番（周りの骨に突撃。突撃の付いた骸骨兵にマウスを乗せた駒の情報。上の帯の札は「勝ち: 敵の全滅」）",
 	"story_monster_sortie": "ストーリー: 魔物の群れの話（軍に属さない敵）の出撃準備（敵の部隊は「軍なし」の骸骨）",
 	"story_sortie_detail": "ストーリー: 出撃準備で、味方の駒のアイコン（持ち物つき）を押して詳しい説明を開いたところ",
 	"story_sortie_placed": "ストーリー: 出撃準備の初期位置で、駒を 1 体動かし、もう 1 体を選んでいるところ（「おまかせ」が押せる）",
 	"story_monster_detail": "ストーリー: 魔物の群れの話の出撃準備で、敵の骸骨のアイコンを押して詳しい説明を開いたところ",
 	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
-	"story_monster_king": "ストーリー: 魔物の群れの話で、敵の将（骸骨の将の姿。ルールの上では将）にマウスを乗せた駒の情報と、敵の将の途中の台詞（骸骨の将のアイコン）",
+	"story_monster_king": "ストーリー: 将のいる魔物の群れの話（墓守）で、敵の将（骸骨の将の姿。ルールの上では将）にマウスを乗せた駒の情報と、敵の将の途中の台詞（骸骨の将のアイコン）",
 	"story_monster_info": "ストーリー: 魔物の群れの話で、骸骨重兵にマウスを乗せた駒の情報（所属は「魔物」。スキル・持ち物の欄は無い）",
 	"story_battle_talk": "ストーリー: 対戦の途中の会話（始めに台詞のある最初の話。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
@@ -2307,11 +2310,81 @@ func _scene_story_rout_wide() -> bool:
 
 
 ## 魔物の群れの話（敵の軍が無い最初の話）の番号（0 から）。無ければ -1。
-func _monster_episode() -> int:
+## with_king なら、将のいる群れの最初の話。
+func _monster_episode(with_king := false) -> int:
 	for i in Story.military().episodes.size():
-		if Story.military().episodes[i].enemy_army == UnitKind.Army.NONE:
+		var episode: RefCounted = Story.military().episodes[i]
+		if episode.enemy_army == UnitKind.Army.NONE and (episode.enemy_king or not with_king):
 			return i
 	return -1
+
+
+## 話の対戦を、CPU どうしで、敵（プレイヤー2）が skill を使ったあとの人の番の始めまで進めて画面に出す。fantasy なら FANTASY の物語の話。
+## 使った駒の id を返す（使わないまま決着しそうなら -1）。
+func _battle_until_enemy_skill(episode_id: StringName, skill: Skill.Id, fantasy := false) -> int:
+	if fantasy:
+		var at: int = _fantasy().episodes.map(func(episode: RefCounted) -> StringName: return episode.id).find(episode_id)
+		if at < 0 or not await _start_fantasy(at) or not await _sortie_to_battle():
+			return -1
+		_scene = _app.current_scene()
+	elif not await _story_battle(_military_index(episode_id)):
+		return -1
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
+	var used := [-1]
+	var watch := func(events: Array[BattleEvent]) -> void:
+		for event in events:
+			var skill_used := event as SkillUsedEvent
+			if skill_used != null and skill_used.skill == skill and used[0] == -1:
+				used[0] = skill_used.unit_id
+	# 使ったあと、人の番の始めで止める（敵の番の途中で画面に出すと、画面の CPU が続きを指し、カメラがそちらへ寄る）。
+	if not _advance(func() -> bool: return used[0] != -1 and _battle.phase == Unit.Side.PLAYER1, watch):
+		return -1
+	if _battle.unit_by_id(used[0]) == null:
+		return -1
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	_scene.battle_log = _log
+	return used[0]
+
+
+func _scene_story_horde_raise() -> bool:
+	var caller_id := await _battle_until_enemy_skill(&"barrow_rout", Skill.Id.BONE_RAISE)
+	if caller_id == -1:
+		return false
+	var caller := _battle.unit_by_id(caller_id)
+	_look_at(BoardView.cell_center(caller.cell))
+	_aim(9.0, 0.0, 50.0)
+	return true
+
+
+func _scene_story_drums_talk() -> bool:
+	var at: int = _fantasy().episodes.map(func(episode: RefCounted) -> StringName: return episode.id).find(&"crag_drums")
+	if at < 0 or not await _start_fantasy(at) or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < talk.line_count() and talk.speaker() != "骨の鼓手":
+		talk.press_next()
+	return talk.speaker() == "骨の鼓手"
+
+
+func _scene_story_drums_battle() -> bool:
+	var drummer_id := await _battle_until_enemy_skill(&"crag_drums", Skill.Id.WAR_DRUM, true)
+	if drummer_id == -1:
+		return false
+	var drummer := _battle.unit_by_id(drummer_id)
+	var charged: Unit = null
+	for unit in _battle.units:
+		if unit.side == Unit.Side.PLAYER2 and Statuses.has(unit, Status.Type.ASSAULT):
+			charged = unit
+	if charged == null:
+		return false
+	_look_at(BoardView.cell_center(drummer.cell))
+	_aim(10.0, 0.0, 50.0)
+	_scene.hover(charged.cell)
+	return true
 
 
 func _scene_story_monster_talk() -> bool:
@@ -2319,7 +2392,7 @@ func _scene_story_monster_talk() -> bool:
 	if number == -1 or not await _start_story(number) or not await _talk_from_sortie():
 		return false
 	for i in 2:
-		_app.current_scene().press_next()  # 3 行目（敵の将の札）
+		_app.current_scene().press_next()  # 3 行目（敵の話し手の札）
 	return true
 
 
@@ -2371,7 +2444,7 @@ func _scene_story_monster_info() -> bool:
 
 
 func _scene_story_monster_king() -> bool:
-	var number := _monster_episode()
+	var number := _monster_episode(true)
 	if number == -1 or not await _story_battle(number):
 		return false
 	var king: Unit = null

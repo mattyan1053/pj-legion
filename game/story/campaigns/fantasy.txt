@@ -26,5 +26,6 @@ gorge_crossing
 gorge_rejoin
 ridge_siege
 barrow_vigil
+crag_drums
 boulder_warden
 mist_forest
