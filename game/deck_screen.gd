@@ -155,6 +155,7 @@ func _ready() -> void:
 	layer.add_child(_army_view)
 	_edit_view = _build_editor()
 	layer.add_child(_edit_view)
+	get_viewport().size_changed.connect(_fit_equip)  # 窓を縮めたとき、持ち物の欄の高さを決め直す
 	_dialog = _build_dialog()
 	layer.add_child(_dialog)
 	_library.changed.connect(_refresh_list)
@@ -1271,11 +1272,16 @@ func _refresh_detail() -> void:
 
 ## 持ち物の欄の高さを決める: 並ぶ行がぜんぶ入る高さ。ただし、駒の札が DETAIL_MIN_HEIGHT を割るなら、そこまでにして欄の中で送る。
 func _fit_equip() -> void:
-	if _equip_scroll == null or not _equip_box.visible:
+	if _equip_scroll == null or _edit_view == null or not _equip_box.visible:
 		return
 	var natural := _equip_list.get_combined_minimum_size().y
 	var chrome := _equip_box.get_combined_minimum_size().y - _equip_scroll.custom_minimum_size.y
-	var room := _right.size.y - DETAIL_MIN_HEIGHT - RIGHT_GAP - chrome
+	# 右の列に使える高さは、画面の高さから決める（右の列のいまの高さからは決めない。ここで決めた下限が右の列を支えるので、
+	# 窓を縦に縮めても右の列が縮まず、欄が低くならないまま、下のボタンが画面の外へ出る）。
+	# 組む画面の全体と右の列の高さの差（見出し・下のボタン・余白）は、支えられて伸びていても変わらない。
+	var around := _edit_view.size.y - _right.size.y
+	var budget := (_edit_view.get_viewport_rect().size.y if _edit_view.is_inside_tree() else _edit_view.size.y) - around
+	var room := budget - DETAIL_MIN_HEIGHT - RIGHT_GAP - chrome
 	_equip_scroll.custom_minimum_size.y = minf(natural, maxf(room, EQUIP_MIN_HEIGHT))
 
 
