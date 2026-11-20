@@ -88,6 +88,25 @@ func test_random_side_labels_the_rows_by_who_plays() -> void:
 	panel.free()
 
 
+## パネルの頭の帯は、いま選んでいる組み合わせ（だれが・どの軍で）とマップの縮図を出し、選び直すと追従する。帯の大きさは変わらない。
+func test_the_banner_follows_the_choice() -> void:
+	var panel := MatchSetupPanel.new()
+	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
+	panel.open(MatchChoice.new())
+	var banner := panel.banner()
+	var size_before := banner.get_combined_minimum_size()
+	assert_true(banner.has_map(), "マップの縮図が出ていない")
+	assert_eq(banner.texts(), [panel.who_text(Unit.Side.PLAYER1), "MILITARY", panel.who_text(Unit.Side.PLAYER2), "FANTASY"] as Array[String])
+	panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
+	panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
+	panel.choose_random_side()
+	assert_eq(banner.texts(), ["あなた", "FANTASY", "CPU", "MILITARY"] as Array[String])
+	panel.choose_opponent(false)
+	assert_eq(banner.texts()[0], panel.who_text(Unit.Side.PLAYER1))
+	assert_eq(banner.get_combined_minimum_size(), size_before)
+	panel.free()
+
+
 ## 対戦の途中で開いたら、押すと対戦が終わるボタン（マップを選び直す・新しい対戦を始める）は 2 回押させる。
 ## 1 回目はボタンが「もう一度押す」になって理由を下に出し、直後の 2 回目は受けない。選び直すと確かめはやめる。
 ## 対戦の途中でなければ（対戦設定の場面、決着のあと）、1 回で進む。

@@ -31,12 +31,15 @@ const DeckText := preload("res://game/deck_text.gd")
 const DeckPreview := preload("res://game/deck_preview.gd")
 const Names := preload("res://game/names.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
+const VersusBanner := preload("res://game/versus_banner.gd")
+const MapCard := preload("res://game/map_card.gd")
+const Ornament := preload("res://game/ui_ornament.gd")
 
 const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 ## パネルの中身の幅（px）。選んだものに依らず、この幅に固定する。
 const PANEL_WIDTH := 900.0
 ## 見出しの列の幅と、部隊を選ぶ欄の幅（px）。
-const CAPTION_WIDTH := 190.0
+const CAPTION_WIDTH := 180.0
 const PICKER_WIDTH := 330.0
 ## 手番の「ランダム」のボタンの値（Unit.Side の値と重ならない）。
 const RANDOM_SIDE := -1
@@ -60,6 +63,11 @@ var _preview_buttons: Array[Button] = []
 var _edit_buttons: Array[Button] = []
 var _deck_choices: Array = [[], []]
 var _map_name: Label
+## 対戦の組み合わせの帯（versus_banner.gd）と、その縮図に出しているマップ（選び直したときだけ描き直す）。
+var _banner: VersusBanner
+var _banner_field := &""
+## プレイヤーごとの、軍と部隊の 2 行を囲む板（左の縁に陣営の色）。
+var _side_boxes: Array[PanelContainer] = []
 var _map_button: Button
 var _preview: DeckPreview
 var _placement_buttons: Array[Button] = []
@@ -111,15 +119,18 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
+	column.add_theme_constant_override("separation", 8)
 	panel.add_child(column)
 
 	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
-	var title := _label(30)
+	var title := _label(28)
 	title.theme_type_variation = UiTheme.LABEL_HEADING
 	title.text = Text.t("setup.title")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
+	# どの軍とどの軍が、どのマップで戦うか（下の行で選んだものが、すぐここに出る）。
+	_banner = VersusBanner.new()
+	column.add_child(_banner)
 
 	var map_row := _caption_row(column, Text.t("setup.caption.map"))
 	_map_name = _label(18)
@@ -144,13 +155,20 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	_first_gauge_note.visible = not _first_gauge_note.text.is_empty()
 	side_row.add_child(_first_gauge_note)
 	for side in 2:
-		column.add_child(HSeparator.new())
+		# 軍と部隊の 2 行は、プレイヤーごとに 1 つの板にまとめる（左の縁に陣営の色。_show_choice）。
+		var side_box := PanelContainer.new()
+		column.add_child(side_box)
+		_side_boxes.append(side_box)
+		var side_column := VBoxContainer.new()
+		side_column.add_theme_constant_override("separation", 8)
+		side_box.add_child(side_column)
 		var names := {}
 		for army in ARMIES:
 			names[army] = Names.army(army)
-		var row := _add_row(column, "", StringName("army%d" % side), names)
+		var row := _add_row(side_column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)
-		var deck_row := _caption_row(column, Text.t("setup.caption.deck"))
+		(row.get_child(0) as Label).add_theme_font_override("font", UiTheme.FONT_BOLD)
+		var deck_row := _caption_row(side_column, Text.t("setup.caption.deck"))
 		var picker := OptionButton.new()
 		picker.focus_mode = Control.FOCUS_NONE
 		picker.add_theme_font_size_override("font_size", 17)
@@ -175,7 +193,6 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		edit.pressed.connect(func() -> void: press_edit_decks(picked_side))
 		deck_row.add_child(edit)
 		_edit_buttons.append(edit)
-	column.add_child(HSeparator.new())
 
 	# 対戦の途中で開いたときは、始めるといまの対戦が失われることを書く。
 	_warning = _label(15)
@@ -424,6 +441,10 @@ func _show_choice() -> void:
 		for value: Variant in buttons:
 			(buttons[value] as Button).set_pressed_no_signal(value == current[key])
 	_map_name.text = "%d %s" % [VersusFields.number_of(_choice.field), VersusFields.title_of(_choice.field)]
+	if _banner_field != _choice.field:
+		_banner_field = _choice.field
+		var board := VersusFields.card_board(_choice.field, PLACEMENT_SEED)
+		_banner.show_map(null if board == null else ImageTexture.create_from_image(MapCard.draw(board, VersusFields.look_of(_choice.field), _team_colors)))
 	# 人どうしなら、手番は選ばない（先手・後手の 2 人が交代する）。
 	for button: Button in _rows[&"human_side"].values():
 		button.disabled = not _choice.cpu_opponent
@@ -432,8 +453,13 @@ func _show_choice() -> void:
 		var human: bool = _choice.is_human(side as Unit.Side)
 		_who_labels[side].text = who_text(side as Unit.Side)
 		_who_labels[side].remove_theme_color_override("font_color")
-		if not (_choice.cpu_opponent and _choice.random_side):
+		# 手番がランダムの間は、陣営が決まっていないので、陣営の色を付けない。
+		var sided: bool = not (_choice.cpu_opponent and _choice.random_side)
+		if sided:
 			_who_labels[side].add_theme_color_override("font_color", _team_colors[side].lightened(0.4))
+		var tint: Color = _team_colors[side] if sided else Color(0, 0, 0, 0)
+		_banner.show_side(side, who_text(side as Unit.Side), _choice.armies[side], Names.army(_choice.armies[side]), tint)
+		_side_boxes[side].add_theme_stylebox_override("panel", _side_box(tint))
 		_edit_buttons[side].visible = human and _can_edit_decks
 		_fill_deck_picker(side as Unit.Side)
 		# ランダム編成は対戦を作るときに組むので、まだ組んでいなければ見せるものが無い（対戦の途中なら、いまの対戦の部隊を見せる）。
@@ -567,6 +593,23 @@ func _fill_deck_picker(side: Unit.Side) -> void:
 		if options[i][0] == _choice.deck_ids[side]:
 			chosen = i
 	picker.select(chosen)
+
+
+## 対戦の組み合わせの帯（検査用）。
+func banner() -> VersusBanner:
+	return _banner
+
+
+## プレイヤーの 2 行を囲む板の形: 薄い地と、左の縁の太い線（陣営の色。tint が透明なら枠の真鍮）。大きさは色で変わらない。
+static func _side_box(tint: Color) -> StyleBoxFlat:
+	var sided := tint.a > 0.0
+	var edge := tint.lightened(0.15) if sided else Palette.BORDER
+	var fill := Color(tint, 0.1) if sided else Color(Palette.RAISED, 0.35)
+	var style := UiTheme.box(fill, Color(edge, 0.55), 1, UiTheme.CORNER, 8.0)
+	style.border_width_left = 4
+	style.border_color = Color(edge, 0.85)
+	style.content_margin_left = 10.0
+	return style
 
 
 ## label の見出しと、values（値 -> 名前）のボタンを並べた 1 行。押すと、その値を選ぶ。
