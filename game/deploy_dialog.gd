@@ -13,7 +13,7 @@ signal closed
 
 ## 縮図の 1 マスの大きさの上限と、縮図の大きさの上限（大きい盤は小さく描く）。
 const CELL_PX := 22.0
-const MAP_MAX := Vector2(560.0, 470.0)
+const MAP_MAX := Vector2(560.0, 440.0)
 
 var _overlays: RefCounted
 var _title: Label
@@ -42,13 +42,19 @@ func setup(overlays: RefCounted) -> void:
 	column.add_theme_constant_override("separation", 8)
 	panel.add_child(column)
 	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 22)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiTheme.style_window_title(_title)
 	column.add_child(_title)
+	column.add_child(UiTheme.window_rule())
+	# 作戦図の額（目盛りと鉤）は縮図の外に描くので、そのぶんの余白を取る。
+	var map_room := MarginContainer.new()
+	for side: String in ["left", "right", "top", "bottom"]:
+		map_room.add_theme_constant_override("margin_" + side, int(DeployMap.TICK_LONG) + 2)
+	map_room.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	map_room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(map_room)
 	_map = DeployMap.new()
-	_map.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_map.changed.connect(func() -> void: _auto.disabled = _map.is_default())
-	column.add_child(_map)
+	map_room.add_child(_map)
 	var note := Label.new()
 	note.name = "Note"
 	note.add_theme_font_size_override("font_size", 14)

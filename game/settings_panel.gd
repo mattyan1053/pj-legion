@@ -23,7 +23,7 @@ const LABEL_WIDTH := 230.0
 const NOTE_WIDTH := 560.0
 const CONTROL_WIDTH := 300.0
 ## 項目の並ぶ枠の高さの上限（px）。見出し・下のボタン・余白と合わせて、720 の高さに収まる。超えたら縦に送る。
-const ROWS_MAX_HEIGHT := 540.0
+const ROWS_MAX_HEIGHT := 524.0
 ## 縦に送るときに、送る棒のために足す幅（px）。
 const SCROLL_BAR_ROOM := 16.0
 
@@ -47,6 +47,7 @@ func setup(target: Settings) -> void:
 	title.text = Text.t("settings.title")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
+	column.add_child(UiTheme.window_rule())
 
 	# 項目は、縦に送れる枠に並べる（720 の高さに収まらなければ、ホイールか右の棒で送る。見出しと下のボタンは送らない）。
 	var scroll := ScrollContainer.new()
@@ -61,10 +62,8 @@ func setup(target: Settings) -> void:
 	for entry in Settings.ITEMS:
 		if entry["section"] != section:
 			section = entry["section"]
-			var heading := _label(17)
-			heading.text = Text.t(section)
-			heading.theme_type_variation = UiTheme.LABEL_SECTION
-			rows.add_child(heading)
+			# 区分の小見出し（金の太字と、右へ伸びる細い線）。
+			rows.add_child(UiTheme.section_head(Text.t(section), 17))
 		rows.add_child(_build_row(entry))
 	var rows_size := rows.get_combined_minimum_size()
 	var scrolls := rows_size.y > ROWS_MAX_HEIGHT

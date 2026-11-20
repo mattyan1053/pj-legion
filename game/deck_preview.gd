@@ -44,9 +44,9 @@ func setup(overlays: RefCounted) -> void:
 	column.add_theme_constant_override("separation", 10)
 	panel.add_child(column)
 	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 22)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UiTheme.style_window_title(_title)
 	column.add_child(_title)
+	column.add_child(UiTheme.window_rule())
 	var hint := Label.new()
 	hint.text = Text.t("deck.detail.click")
 	hint.add_theme_font_size_override("font_size", 14)

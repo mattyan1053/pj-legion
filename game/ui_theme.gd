@@ -171,6 +171,21 @@ static func section_head(text: String, font_size := 15) -> HBoxContainer:
 	return row
 
 
+## 窓（ダイアログ）の見出しの下に置く飾りの線（ui_ornament.gd。真ん中に菱形、左右へ細くなる）。窓の幅いっぱいに伸びる。
+static func window_rule() -> Control:
+	var rule: Control = load("res://game/ui_ornament.gd").new(160.0, 10.0)
+	rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rule.set(&"color", Palette.BORDER)
+	return rule
+
+
+## 窓の見出し（明朝）にする。label は窓の頭の Label。
+static func style_window_title(label: Label, font_size := 24) -> void:
+	label.theme_type_variation = LABEL_HEADING
+	label.add_theme_font_size_override("font_size", font_size)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+
 ## 危険の知らせの帯（出撃不可の理由など）。危険の色を薄く敷き、危険の色の縁。
 static func danger_strip_box() -> StyleBoxFlat:
 	var strip := box(Color(Palette.DANGER_FILL, 0.5), Color(Palette.DANGER, 0.55), 1, 4, 4.0)
