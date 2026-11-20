@@ -69,6 +69,8 @@ static func start_phase(battle: Battle, side: Unit.Side) -> void:
 	Ults.charge(battle, side, held * int(RuleProbe.f("point_gauge")))
 	battle.point_power[side] = held * int(RuleProbe.f("point_power"))
 	battle.point_score[side] += held
+	if held > 0 and battle.point_first[side] == 0:
+		battle.point_first[side] = battle.turn
 	var win := int(RuleProbe.f("point_win"))
 	if win > 0 and battle.point_score[side] >= win and battle.winner < 0:
 		battle.winner = side

@@ -22,6 +22,8 @@ class Outcome:
 	var ending := "cutoff"
 	## 終わったときのターン。
 	var turns := 0
+	var point_score: Array[int] = [0, 0]  # SCRATCH
+	var point_first: Array[int] = [0, 0]  # SCRATCH
 	## 受け付けられた行動の数と、断られた行動の数（0 のはず）。
 	var actions := 0
 	var rejected := 0
@@ -229,6 +231,8 @@ static func play(battle: Battle, max_turns: int, cpu: RefCounted = null, second:
 			if no_reward and event is RelicGainedEvent:
 				_take_back(battle, event as RelicGainedEvent)
 	outcome.turns = battle.turn
+	outcome.point_score = battle.point_score.duplicate()
+	outcome.point_first = battle.point_first.duplicate()
 	outcome.finished = battle.is_over()
 	outcome.winner = battle.winner
 	match stats.ending:

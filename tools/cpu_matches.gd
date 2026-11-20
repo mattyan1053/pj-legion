@@ -432,10 +432,11 @@ func _initialize() -> void:
 			var kills: Array[String] = []
 			for kill: Array in outcome.mid_boss_kills:
 				kills.append("%d:%d:%d" % [kill[0], kill[1], kill[2]])
-			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s rival=%d first_hit=%d:%d first_kill=%d:%d" % [
+			print("GAME seed=%d stage=%d p1=%s p2=%s winner=%d ending=%s turns=%d ults=%d,%d boss=%s rival=%d first_hit=%d:%d first_kill=%d:%d point=%d,%d point_first=%d,%d" % [
 				first_seed + game, stage, Names.army(armies[0]), Names.army(armies[1]), outcome.winner, outcome.ending,
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
 				outcome.first_hit_side, outcome.first_hit_turn, outcome.first_kill_side, outcome.first_kill_turn,
+				outcome.point_score[0], outcome.point_score[1], outcome.point_first[0], outcome.point_first[1],
 			])
 			if random_squads or one_squad:
 				for side: Unit.Side in ([Unit.Side.PLAYER1] if episode != null else [Unit.Side.PLAYER1, Unit.Side.PLAYER2]):

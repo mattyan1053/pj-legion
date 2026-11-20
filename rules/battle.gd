@@ -60,6 +60,7 @@ var relics: Array[Array] = [[], []]
 ## SCRATCH: 中央の拠点（CenterPoint）。
 var point_power: Array[int] = [0, 0]
 var point_score: Array[int] = [0, 0]
+var point_first: Array[int] = [0, 0]
 
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
