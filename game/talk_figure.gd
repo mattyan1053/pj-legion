@@ -39,7 +39,8 @@ var _tween: Tween
 
 ## kind の駒（evolved なら進化後の形。look は将の別の姿）を、陣営 side_ の色で立たせる。
 ## place_ は立つ所（0 = 左で右を向く、1 = 右で左を向く。書かなければ、人の軍が左、敵の軍が右）。
-func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"", place_ := -1) -> void:
+## crown なら、将の姿でなくても将の目印（頭の上の金の輪）を付ける。
+func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"", place_ := -1, crown := false) -> void:
 	side = side_
 	place = clampi(side_, 0, 1) if place_ < 0 else place_
 	stretch = true
@@ -75,6 +76,8 @@ func _init(kind: UnitKind.Id, side_: int, evolved := false, look := &"", place_ 
 	_view.setup(kind, TEAM_COLORS[clampi(side, 0, 1)], hp, hp, look)
 	if evolved:
 		_view.set_evolved(hp)
+	if crown:
+		_view.show_crown()
 	_view.rotation.y = TURN if place == 0 else -TURN
 	resized.connect(_on_resized)
 

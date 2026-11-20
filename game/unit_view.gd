@@ -40,6 +40,7 @@ var _base_material: StandardMaterial3D
 var _base_edge: StandardMaterial3D
 var _bar: Sprite3D
 var _evolved_ring: MeshInstance3D
+var _crowned := false
 var _status_ring: MeshInstance3D
 
 
@@ -237,8 +238,15 @@ func _add_flat_ring(inner: float, outer: float, color: Color, lift: float) -> St
 	return material
 
 
+## 将の姿でない駒にも、将の目印を付ける（会話の姿。話のファイルの figure の crown）。もう付いていれば何もしない。
+func show_crown() -> void:
+	if not _crowned:
+		_add_crown()
+
+
 ## 将の目印。頭の上に浮かぶ金の輪。
 func _add_crown() -> void:
+	_crowned = true
 	var mesh := TorusMesh.new()
 	mesh.inner_radius = 0.13
 	mesh.outer_radius = 0.19

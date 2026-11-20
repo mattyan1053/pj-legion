@@ -115,6 +115,11 @@ var _relic_notes: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []
 var _ult_labels: Array[Label] = []
 var _ult_button: Button
+## 必殺技のボタンの中のゲージ（描く所、溜まり具合（負なら出さない）、陣営の色）と、下の辺の棒の太さ（px）。
+const ULT_FILL_BAR := 4.0
+var _ult_fill: Control
+var _ult_fill_ratio := -1.0
+var _ult_fill_color := Palette.TEAM_BLUE
 var _ult_summary: Label
 var _info_panel: PanelContainer
 var _info_style: StyleBoxFlat
@@ -307,13 +312,39 @@ func ult_gauge_text(player: int) -> String:
 
 ## 必殺技のボタン（下の帯）。text はボタンの文字、enabled は押せるか。summary は必殺技の説明（必殺技が無ければ空）。
 ## 説明は、ボタンにマウスを乗せている間と、pinned が真の間（使うかを確かめている間）だけ、ボタンの上に出す。
-func set_ult_button(text: String, enabled: bool, summary: String, pinned := false) -> void:
+## percent はゲージの溜まり具合（0〜100。負なら出さない）、side はその陣営。押せない間、ボタンの中に陣営の色で溜まり具合を出す。
+func set_ult_button(text: String, enabled: bool, summary: String, pinned := false, percent := -1, side := Unit.Side.PLAYER1) -> void:
 	_ult_button.text = text
 	_ult_button.disabled = not enabled
+	_ult_fill_ratio = clampf(percent / 100.0, 0.0, 1.0) if percent >= 0 and not enabled else -1.0
+	_ult_fill_color = _side_color(side)
+	_ult_fill.queue_redraw()
 	_set_folded(_ult_summary, summary, ULT_SUMMARY_WIDTH)
 	_ult_pinned = pinned
 	_show_ult_summary()
 	_fold_hint()
+
+
+## 必殺技のボタンの中のゲージ（押せない間だけ）: 左から溜まり具合まで陣営の色を薄く敷き、下の辺に溝と陣営の色の棒。
+## 溜まった先の端に、明るい細い線。
+func _draw_ult_fill() -> void:
+	if _ult_fill_ratio < 0.0:
+		return
+	var inset := 3.0
+	var area := Rect2(Vector2(inset, inset), _ult_fill.size - Vector2(inset, inset) * 2.0)
+	var filled := area.size.x * _ult_fill_ratio
+	if filled > 0.0:
+		_ult_fill.draw_rect(Rect2(area.position, Vector2(filled, area.size.y)), Color(_ult_fill_color, 0.26))
+	var groove := Rect2(area.position.x, area.end.y - ULT_FILL_BAR, area.size.x, ULT_FILL_BAR)
+	_ult_fill.draw_rect(groove, Color(Palette.INK, 0.9))
+	if filled > 0.0:
+		_ult_fill.draw_rect(Rect2(groove.position, Vector2(filled, ULT_FILL_BAR)), _ult_fill_color.lightened(0.25))
+		_ult_fill.draw_rect(Rect2(area.position.x + filled - 1.0, area.position.y, 1.0, area.size.y), Color(_ult_fill_color.lightened(0.5), 0.6))
+
+
+## 必殺技のボタンの中のゲージの溜まり具合（0〜1。出していなければ負）。検査用。
+func ult_fill_ratio() -> float:
+	return _ult_fill_ratio
 
 
 func _show_ult_summary() -> void:
@@ -526,7 +557,10 @@ func set_hint(text: String) -> void:
 ## 案内を、いま使える幅で折り返し直す。右のボタンの文字や出し入れが変わると、使える幅も変わるので、そのたびに呼ぶ。
 func _fold_hint() -> void:
 	if _hint_label != null:
-		_set_folded(_hint_label, _hint_text, _hint_room())
+		# 2 行に分かれるときは、行の長さをそろえる（2 行目に 1 語だけ残さない）。
+		var font := _hint_label.get_theme_font("font")
+		var font_size := _hint_label.get_theme_font_size("font_size")
+		_hint_label.text = TextWrap.fold_even(_hint_text, _hint_room(), func(character: String) -> float: return _char_width(font, font_size, character))
 
 
 ## 下の帯の案内のうち、案内に使える幅に収まらない行（3 行目からは、収まっていても切れる）。検査用。
@@ -1267,6 +1301,11 @@ func _build_bottom() -> void:
 	_ult_button.add_theme_color_override("font_color", Palette.ACCENT)
 	_ult_button.add_theme_color_override("font_hover_color", Palette.ACCENT)
 	_ult_button.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	_ult_fill = Control.new()
+	_ult_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ult_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ult_fill.draw.connect(_draw_ult_fill)
+	_ult_button.add_child(_ult_fill)
 	_ult_button.mouse_entered.connect(_show_ult_summary)
 	_ult_button.mouse_exited.connect(_show_ult_summary)
 	row.add_child(_ult_button)

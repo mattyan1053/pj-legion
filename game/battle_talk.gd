@@ -12,6 +12,7 @@ const Palette := preload("res://game/ui_palette.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 
 ## 1 つの台詞を出しておく時間（秒）: 基本 + 1 文字あたり。
 const SHOW_BASE := 2.2
@@ -51,17 +52,19 @@ var _text: Label
 var _box: PanelContainer
 var _plate: PanelContainer
 var _face: TextureRect
+var _face_frame: PanelContainer
+var _face_style: StyleBoxFlat
+var _box_style: StyleBoxFlat
 
 
 ## 札の部品は、木に入れる前に作っておく（テストから木に入れずに使える）。
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	position = Vector2((1280.0 - WIDTH) / 2.0, TOP)
-	var box_style := StyleBoxFlat.new()
-	box_style.bg_color = COLOR_BOX
-	box_style.border_color = COLOR_BORDER
-	box_style.set_border_width_all(1)
-	box_style.set_corner_radius_all(5)
+	# 帯: 会話の画面の文の枠と同じく、上の縁を太くして話し手の陣営の色にする。薄い影で盤から浮かせる。
+	var box_style := UiTheme.box(COLOR_BOX, COLOR_BORDER, 1, 5, 4.0, 3)
+	box_style.border_width_top = 2
+	_box_style = box_style
 	box_style.content_margin_left = 4.0
 	box_style.content_margin_right = 12.0
 	box_style.content_margin_top = 4.0
@@ -75,11 +78,17 @@ func _init() -> void:
 	row.add_theme_constant_override("separation", ROW_GAP)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_box.add_child(row)
-	# 話し手のアイコン（名前の札の左。陣営の色の、その話し手の駒の姿）。
+	# 話し手のアイコン（名前の札の左。陣営の色の、その話し手の駒の姿）。沈んだ地に陣営の色の縁の、小さな額に入れる。
+	_face_style = UiTheme.box(Color(Palette.INK, 0.85), COLOR_BORDER, 1, 5, 0.0)
+	_face_frame = PanelContainer.new()
+	_face_frame.add_theme_stylebox_override("panel", _face_style)
+	_face_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_face_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(_face_frame)
 	_face = UnitIcons.rect(UnitKind.Id.KING, 0, false, FACE_SIZE)
-	_face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	row.add_child(_face)
+	_face_frame.add_child(_face)
 	_plate_style = StyleBoxFlat.new()
+	_plate_style.set_border_width_all(1)
 	_plate_style.set_corner_radius_all(4)
 	_plate_style.content_margin_left = 10.0
 	_plate_style.content_margin_right = 10.0
@@ -91,6 +100,7 @@ func _init() -> void:
 	_plate.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.add_child(_plate)
 	_name = _label(15, Color.WHITE)
+	_name.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	_plate.add_child(_name)
 	_text = _label(17, COLOR_TEXT)
 	row.add_child(_text)
@@ -127,7 +137,7 @@ func is_dimmed() -> bool:
 
 ## いま出している話し手のアイコン（出していなければ null）。検査用。
 func face() -> Texture2D:
-	return _face.texture if visible and _face.visible else null
+	return _face.texture if visible and _face_frame.visible else null
 
 
 ## 台詞を出す順に積む。
@@ -176,16 +186,20 @@ func _next() -> void:
 	if _current == null:
 		return
 	_name.text = _current.name
-	_face.visible = not _current.figure.is_empty() and _current.side < 2
-	if _face.visible:
+	_face_frame.visible = not _current.figure.is_empty() and _current.side < 2
+	if _face_frame.visible:
 		_face.texture = UnitIcons.bust(_current.figure["kind"], _current.side, _current.figure.get("evolved", false), _current.figure.get("look", &""))
-	_plate_style.bg_color = TEAM_COLORS[clampi(_current.side, 0, TEAM_COLORS.size() - 1)].darkened(0.15)
+	var team := TEAM_COLORS[clampi(_current.side, 0, TEAM_COLORS.size() - 1)]
+	_plate_style.bg_color = team.darkened(0.15)
+	_plate_style.border_color = team.lightened(0.35)
+	_face_style.border_color = team.lightened(0.2)
+	_box_style.border_color = COLOR_BORDER.lerp(team.lightened(0.2), 0.85)
 	# 折り返しは先に決める（自動の折り返しのラベルは、幅が決まる前の高さを覚えて、帯が縦に伸びる）。
 	# 文の幅は、帯の幅から、枠の余白と名前の札と間のぶんを引いたもの。
 	var box_style := _box.get_theme_stylebox("panel")
 	var width := WIDTH - box_style.get_minimum_size().x - _plate.get_combined_minimum_size().x - ROW_GAP
-	if _face.visible:
-		width -= FACE_SIZE + ROW_GAP
+	if _face_frame.visible:
+		width -= _face_frame.get_combined_minimum_size().x + ROW_GAP
 	var font := _text.get_theme_font("font")
 	var font_size := _text.get_theme_font_size("font_size")
 	_text.text = TextWrap.fold(_current.text, width,

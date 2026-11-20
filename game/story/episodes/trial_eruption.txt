@@ -19,10 +19,10 @@ item = iron_shield
 
 [ally]
 name = イェルダ
-figure = paladin evolved
+figure = paladin evolved crown
 speaker = ウル, priest evolved
 speaker = ティオ, sorcerer
-speaker = セリス, spellblade evolved
+speaker = セリス, commando
 unit = paladin
 unit = sorcerer
 unit = spellblade
