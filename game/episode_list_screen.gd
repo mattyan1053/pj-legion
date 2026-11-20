@@ -21,6 +21,7 @@ const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const MapCard := preload("res://game/map_card.gd")
+const MapFrame := preload("res://game/map_frame.gd")
 const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
@@ -312,6 +313,7 @@ func _build_card(episode: Episode) -> Button:
 	if not available:
 		map.modulate = Color(0.45, 0.45, 0.45)
 	column.add_child(map)
+	map.add_child(MapFrame.new())  # 真鍮の縁と四隅の鉤（選べない話は、縮図ごと沈む）
 	map.add_child(face_of(episode))
 	var status := _label(status_text(episode), 18)
 	var cleared: bool = context.story.is_cleared(episode.id)
