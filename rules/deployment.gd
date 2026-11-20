@@ -84,7 +84,7 @@ static func zone(battle: Battle, side: Unit.Side, cells: Array[Vector2i] = [], c
 		return area
 	var hq := battle.board.hq_cells[side]
 	var step := forward(battle.board, hq)
-	var row := hq + step
+	var row := hq + step * (1 + int(RuleProbe.f("deploy_shift")))
 	var rows := 0
 	while row.y >= 0 and row.y < battle.board.size.y and (rows < ZONE_ROWS or area.size() < count):
 		for offset in _row_offsets():
@@ -170,7 +170,7 @@ static func forward(board: Board, hq: Vector2i) -> Vector2i:
 ## 次に駒を置くマス。無ければ NO_CELL。
 static func _free_cell(battle: Battle, hq: Vector2i, reserved := {}) -> Vector2i:
 	var step := forward(battle.board, hq)
-	var row := hq + step
+	var row := hq + step * (1 + int(RuleProbe.f("deploy_shift")))
 	while row.y >= 0 and row.y < battle.board.size.y:
 		for offset in _row_offsets():
 			var cell := row + Vector2i(offset, 0)

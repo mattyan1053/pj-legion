@@ -49,6 +49,8 @@ var acted := false
 var has_moved := false
 var move_origin: Vector2i
 var cruised := false
+## SCRATCH: 構え（動いて攻撃せずに行動を終えた。次の自分のフェーズの始めまで）。
+var braced := false
 ## いまの行動で、移動の取り消しがもうできないか（行動を終えないスキルを使ったあと。docs/active-skills.md）。
 var move_locked := false
 ## スキルをまた使えるまでの残り（docs/active-skills.md）。0 なら使える。自分のフェーズの始めに 1 減る。

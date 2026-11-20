@@ -40,7 +40,7 @@ static func amount(id: Id) -> int:
 
 ## その聖遺物 1 つが足す量（Unit.Stat -> int）。
 static func bonus(id: Id) -> Dictionary:
-	return {_TABLE[id][0]: _TABLE[id][1]}
+	return {_TABLE[id][0]: int(_TABLE[id][1] * RuleProbe.f("relic_scale", 1.0))}
 
 
 ## 中ボス boss_index の聖遺物。聖遺物を持たない番号なら -1。
@@ -97,7 +97,7 @@ static func grant(battle: Battle, side: Unit.Side, id: Id, boss_index: int) -> A
 			_add(unit, bonus(id))
 			affected.append(unit)
 	var before := Ults.gauge(battle, side)
-	Ults.charge(battle, side, ULT_GAIN)
+	Ults.charge(battle, side, int(ULT_GAIN * RuleProbe.f("relic_scale", 1.0)))
 	var gained := Ults.gauge(battle, side) - before
 	return [RelicGainedEvent.new(side, id, boss_index, affected, gained, Ults.gauge(battle, side))]
 

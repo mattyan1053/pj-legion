@@ -47,6 +47,7 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	for unit in battle.units:
 		if unit.side == side:
 			unit.reset_action()
+			unit.braced = false
 	var events: Array[BattleEvent] = [PhaseStartedEvent.new(battle.turn, side)]
 	for unit in MapObject.spring_targets(battle, side):
 		var amount := MapObject.spring_heal(unit)

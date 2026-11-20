@@ -27,8 +27,39 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var attacker := battle.unit_by_id(unit_id)
 	var target := battle.unit_by_id(target_id)
 	var experience := Growth.attack_experience(battle, attacker, target)
-	var events := Combat.strike(battle, attacker, target)
+	var events: Array[BattleEvent] = []
+	var first := RuleProbe.f("brace_first") > 0
+	if first:
+		events.append_array(_counter(battle, target, attacker))
+		if attacker.hp == 0:
+			return events
+	events.append_array(Combat.strike(battle, attacker, target))
+	if not first and target.hp > 0:
+		events.append_array(_counter(battle, target, attacker))
+		if attacker.hp == 0:
+			return events
 	var reason := ExperienceGainedEvent.Reason.DEFEAT if target.hp == 0 else ExperienceGainedEvent.Reason.HIT
 	events.append_array(Growth.gain(attacker, experience, reason))
 	events.append(battle.finish_action(attacker))
+	return events
+
+
+## SCRATCH: 構えた駒の反撃（RuleProbe brace = 攻撃力の %）。
+static func _counter(battle: Battle, defender: Unit, attacker: Unit) -> Array[BattleEvent]:
+	var events: Array[BattleEvent] = []
+	if not defender.braced or attacker.side == Unit.Side.NEUTRAL or defender.side == Unit.Side.NEUTRAL:
+		return events
+	if not Combat.can_attack(battle, defender, attacker):
+		return events
+	defender.braced = false
+	var full := Combat.hit(battle, defender, attacker)
+	if full.smoke != null:
+		return events
+	var amount := full.amount * int(RuleProbe.f("brace")) / 100
+	var resolved := Hit.resolve(defender, attacker, amount, UnitDamagedEvent.Cause.ATTACK)
+	var after := resolved.apply()
+	events.append(AttackDamagedEvent.new(resolved))
+	events.append_array(after)
+	if attacker.hp == 0:
+		events.append_array(battle.remove_unit(attacker, defender))
 	return events

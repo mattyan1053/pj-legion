@@ -931,6 +931,12 @@ func _set_goal(unit: Unit) -> void:
 	if _rushing:
 		bold = 1.0  # 守り切られる前に、踏み込む
 	_idle_danger_weight = lerpf(style[_IDLE_DANGER], minf(style[_DANGER], style[_IDLE_DANGER]), bold)
+	if RuleProbe.f("massed") > 0 and get_script() == load("res://rules/cpu_player.gd"):
+		if not _mass_committed(_battle):
+			if unit.kind != UnitKind.Id.KING:
+				_idle_danger_weight = maxf(_idle_danger_weight, _danger_weight) * 4.0 + 1.0
+		else:
+			_idle_danger_weight = minf(_danger_weight, _idle_danger_weight)
 	_lethal_penalty = style[_LETHAL]
 	_stand_off = role == UnitKind.Role.REARGUARD
 	_support = []
@@ -1213,3 +1219,37 @@ func _steps_from(goal: Vector2i) -> PackedInt32Array:
 				tail += 1
 	_steps[goal] = steps
 	return steps
+
+
+# SCRATCH: まとまって踏み込む（tools/rivals/massed.gd と同じ）。
+var _mass_state: Dictionary = {}  # battle -> [committed, checked_turn, side]
+
+
+func _mass_committed(battle: Battle) -> bool:
+	var key := "%d:%d" % [battle.get_instance_id(), _me]
+	var state: Array = _mass_state.get(key, [false, -1])
+	if not state[0] and battle.turn != state[1]:
+		state[1] = battle.turn
+		state[0] = battle.turn >= int(RuleProbe.f("massed_by", 10)) or _mass_gathered()
+	_mass_state[key] = state
+	return state[0]
+
+
+func _mass_gathered() -> bool:
+	var fighters := 0
+	var front := 0
+	for unit in _battle.units:
+		if unit.side != _me:
+			continue
+		var role := UnitKind.role(unit.kind)
+		if role == UnitKind.Role.NONE or role == UnitKind.Role.HEALER:
+			continue
+		fighters += 1
+		if _threats.has(unit.cell):
+			front += 1
+			continue
+		for cell in _battle.options(unit.id).move_cells:
+			if _threats.has(cell) and not (_threats[cell] as Dictionary).is_empty():
+				front += 1
+				break
+	return fighters > 0 and front >= ceili(RuleProbe.f("massed_share", 0.75) * fighters)
