@@ -1699,7 +1699,8 @@ func _refresh() -> void:
 	)
 	_layout.mark_menu_dirty()
 	_hud.set_ult_button(
-		BattleTexts.ult_button_text(battle, _ult_side(), _ui.confirming_ult), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult
+		BattleTexts.ult_button_text(battle, _ult_side(), _ui.confirming_ult), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult,
+		Ults.percent(battle, _ult_side()) if Ults.of(battle, _ult_side()) != null else -1, _ult_side()
 	)
 	_show_watch_controls()
 	_update_info()

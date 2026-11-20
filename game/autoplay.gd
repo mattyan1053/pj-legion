@@ -2396,6 +2396,7 @@ func _visit_item_rows(app: Node) -> void:
 				await app.get_tree().process_frame
 				await app.get_tree().process_frame
 				_expect(screen.item_row_cut_texts().is_empty(), "持ち物の欄の文が切れている（%s、%s）: %s" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), screen.item_row_cut_texts()])
+				_expect(screen.detail_card_rect().size.y >= screen.DETAIL_MIN_HEIGHT - 0.5, "持ち物の欄に押されて、駒の札が縮んだ（%s）: 高さ %.0f" % [campaign.title, screen.detail_card_rect().size.y])
 				for item: Equipment.Id in screen.editing_deck().rules.items():
 					screen.equip(item)
 					await app.get_tree().process_frame
