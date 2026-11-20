@@ -69,7 +69,8 @@ func setup(team_colors: Array[Color], overlays: RefCounted) -> void:
 	_overlay.gui_input.connect(_on_overlay_input)
 	add_child(_overlay)
 
-	var style := UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 6, 12.0)
+	var style := UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 6, 12.0, 6)
+	style.border_width_top = 3  # 上の縁を太く（情報の枠・予測のパネルと同じ向き）
 	_panel = PanelContainer.new()
 	_panel.add_theme_stylebox_override("panel", style)
 	_panel.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
@@ -83,16 +84,21 @@ func setup(team_colors: Array[Color], overlays: RefCounted) -> void:
 	_panel.add_child(column)
 
 	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 10)
 	column.add_child(title_row)
 	var title := _label(22, COLOR_TEXT)
 	title.text = Text.t("battle.log_panel.title")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_override("font", UiTheme.FONT_HEADING)
 	title_row.add_child(title)
+	var title_rule := UiTheme.window_rule()
+	title_rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title_row.add_child(title_rule)
 	var close_button := Button.new()
 	close_button.text = Text.t("battle.log_panel.close")
 	close_button.focus_mode = Control.FOCUS_NONE
 	close_button.add_theme_font_size_override("font_size", 16)
 	close_button.custom_minimum_size = Vector2(96.0, 34.0)
+	close_button.theme_type_variation = UiTheme.BUTTON_GHOST
 	close_button.pressed.connect(close)
 	title_row.add_child(close_button)
 	var hint := _label(13, COLOR_TEXT_DIM)
