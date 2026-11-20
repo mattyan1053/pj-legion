@@ -89,6 +89,9 @@ func copy() -> RefCounted:
 static func scenario_of(of_episode: Episode) -> Scenario:
 	var defined := Scenario.on_map(of_episode.map, of_episode.map_title)
 	defined.fix_deck(Unit.Side.PLAYER2, of_episode.enemy_deck())
+	# 将のいない群れ（[enemy] の king = none。docs/scenario.md）。
+	if not of_episode.enemy_king:
+		defined.remove_king(Unit.Side.PLAYER2)
 	# 人の部隊が決まっている話（[ally] の unit。チュートリアル）は、出撃準備で選んだ部隊のかわりに、それを置く。
 	if of_episode.has_squad():
 		defined.fix_deck(Unit.Side.PLAYER1, of_episode.squad_deck())

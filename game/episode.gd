@@ -54,6 +54,8 @@ var start_gauge := 0
 ## 敵の軍と部隊（将を除く。[駒の種類, [装備, …]] の列。並びの順に初期位置へ置く）。
 ## 軍が none（Army.NONE）なら、敵は軍に属さない（必殺技もゲージも無い）。魔物の群れの話に使う（docs/story.md）。
 var enemy_army := UnitKind.Army.FANTASY
+## 敵に将を置くか（[enemy] の king = none で偽。将のいない群れ。docs/scenario.md）。
+var enemy_king := true
 var enemy: Array = []
 ## 初期位置: [プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」。
 var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
@@ -151,6 +153,7 @@ func _read(file: RefCounted) -> void:
 	_read_more_speakers(file)
 	_read_talks(file)
 	_read_cues(file)
+	_check_kingless(file)
 	_check_deploy(file)
 	problems.append_array(file.problems)
 
@@ -243,7 +246,7 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 		file.problem(1, "[%s] の節が無い（話し手の name だけでも書く）" % section)
 		return
 	var keys := ["name", "figure", "speaker", "unit", "deploy"]
-	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure"])
+	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure", "king"])
 	var values: Dictionary = file.values(section, keys, ["speaker", "unit", "deploy"])
 	_speaker_entries[side] = values.get("speaker", [])
 	if values.has("name"):
@@ -289,6 +292,14 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 				start_gauge = 0
 		return
 	enemy = rows
+	if values.has("king"):
+		var entry: Dictionary = values["king"][0]
+		if entry["value"] != "none":
+			file.problem(entry["line"], "king に書けるのは none（将のいない群れ）だけ")
+		else:
+			enemy_king = false
+			if values.has("king_figure"):
+				file.problem(values["king_figure"][0]["line"], "将のいない敵（king = none）に、将の姿（king_figure）は書けない")
 	if rows.is_empty():
 		file.problem(file.line_of(section), "敵の部隊（unit）が無い")
 	if not values.has("army"):
@@ -456,6 +467,26 @@ func _speech(file: RefCounted, line: int, text: String) -> Array:
 		file.problem(line, "文が空")
 		return []
 	return [speaker_sides[who], said, who]
+
+
+## 将のいない群れ（king = none）の話の矛盾: 人の勝ち方（wins）を書かない（いつもの勝ち方は将の撃破と本陣の占拠）、
+## 将の撃破か本陣の占拠を勝ち方に入れた（倒す将がいない。空の本陣に乗るだけで勝ててしまう）、
+## 敵の話し手の姿が将（figure を書かないときも）、敵の将の HP のきっかけ。
+func _check_kingless(file: RefCounted) -> void:
+	if enemy_king:
+		return
+	var line: int = file.line_of("enemy")
+	if wins.is_empty():
+		file.problem(line, "将のいない敵（king = none）の話は、人の勝ち方（wins）を書く（routed, boss_slain, turns_held から）")
+	for reason: GameWonEvent.Reason in [GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED]:
+		if wins.has(reason):
+			file.problem(file.line_of("episode"), "将のいない敵（king = none）の話の wins に、%s は書けない" % String(GameWonEvent.Reason.find_key(reason)).to_lower())
+	for i in speakers.size():
+		if speaker_sides[i] == 1 and figures[i]["kind"] == UnitKind.Id.KING:
+			file.problem(line, "将のいない敵（king = none）の話し手「%s」に、将でない姿（figure）を書く" % speakers[i])
+	for cue: Array in cues:
+		if cue[0] == BattleCues.KING_HALF and cue[1] == 1:
+			file.problem(file.line_of("cues"), "将のいない敵（king = none）に、敵の将の HP のきっかけ（king_half enemy）は書けない")
 
 
 ## 対戦の途中の会話の行「(きっかけ 値) 話し手: 文」。
