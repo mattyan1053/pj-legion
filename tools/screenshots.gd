@@ -148,6 +148,7 @@ const SCENES := {
 	"story_split_placed": "ストーリー: 「岩山の合流」の出撃準備で、南の隊の駒を北の置けるマスへ移したところ",
 	"story_split_talk": "ストーリー: 「岩山の合流」の前の会話（北に取り残されたセリスが話している。右は敵の話し手「連邦の伍長」）",
 	"story_split_start": "ストーリー: 「岩山の合流」の対戦の始めを、いちばん引いて見ている（南と北に分かれた味方、北の台地のそばの敵）",
+	"story_quarry_start": "ストーリー: MILITARY の物語の最後の話「縫い目の発破」の対戦の始めを、いちばん引いて見ている（結晶の採掘場。樽の多い盤、正面と西の脇に分かれた味方）",
 	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
 	"story_fantasy_forest_wide": "ストーリー: リュエルの森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
@@ -1966,6 +1967,19 @@ func _scene_story_split_talk() -> bool:
 
 func _scene_story_split_start() -> bool:
 	if not await _scene_story_split_sortie() or not await _sortie_to_battle():
+		return false
+	_scene = _app.current_scene()
+	var size: Vector2i = _scene.battle.board.size
+	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
+	_aim(OrbitCamera.max_distance_for(size), 0.0, (OrbitCamera.MIN_PITCH + OrbitCamera.MAX_PITCH) / 2.0)
+	_park_mouse()
+	return true
+
+
+## MILITARY の物語の「縫い目の発破」（結晶の採掘場。味方が正面と西の脇に分かれて始まる）の対戦の始めを、いちばん引いて見る。
+func _scene_story_quarry_start() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	if not await _start_story(_military_index(&"quarry_blast")) or not await _sortie_to_battle():
 		return false
 	_scene = _app.current_scene()
 	var size: Vector2i = _scene.battle.board.size
