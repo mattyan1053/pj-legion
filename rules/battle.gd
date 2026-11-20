@@ -57,6 +57,9 @@ var mid_boss_slayers: Dictionary[int, int] = {}
 ## プレイヤーごとの、持っている聖遺物（Relics.Id の並び。受け取った順）。添字がプレイヤー番号。docs/relic-buff.md。
 ## 足すのは Relics.grant だけ（駒の聖遺物の層と、そろえて変える）。
 var relics: Array[Array] = [[], []]
+## SCRATCH: 中央の拠点（CenterPoint）。
+var point_power: Array[int] = [0, 0]
+var point_score: Array[int] = [0, 0]
 
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()

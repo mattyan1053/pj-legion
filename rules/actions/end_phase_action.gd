@@ -29,6 +29,8 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 
 	if battle.phase == Unit.Side.PLAYER1:
 		events.append_array(_start_phase(battle, Unit.Side.PLAYER2))
+		if battle.is_over():
+			return events
 	else:
 		events.append_array(_start_phase(battle, Unit.Side.NEUTRAL))
 		events.append_array(Neutral.play_phase(battle))
@@ -60,4 +62,5 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	events.append_array(Statuses.start_phase(battle, side))
 	events.append_array(Skills.start_phase(battle, side))
 	Ults.charge_phase(battle, side)
+	CenterPoint.start_phase(battle, side)
 	return events

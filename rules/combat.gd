@@ -111,7 +111,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
 	if smoke != null:
 		return Hit.smoked(attacker, target, smoke)
-	var amount := attack_power(attacker)
+	var amount := attack_power(attacker) + CenterPoint.power_bonus(battle, attacker)
 	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
 	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100

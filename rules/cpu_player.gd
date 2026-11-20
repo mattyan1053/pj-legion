@@ -909,6 +909,8 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		for friend_cell in _support:
 			apart = mini(apart, Combat.distance(cell, friend_cell))
 		value -= ISOLATION_WEIGHT * maxi(0, apart - SUPPORT_DISTANCE)
+	if _knows_point() and unit.kind != UnitKind.Id.KING and CenterPoint.covers(_battle, cell):
+		value += RuleProbe.f("point_stand", 40.0)
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
@@ -985,6 +987,11 @@ func _set_goal(unit: Unit) -> void:
 		elif enemy != null:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
+	var point := point_target(unit)
+	if point != Board.NO_CELL:
+		goal = point
+		_goal_reach = CenterPoint.radius()
+		_stand_off = false
 	_goal_steps = _steps_from(goal)
 
 
@@ -1213,3 +1220,41 @@ func _steps_from(goal: Vector2i) -> PackedInt32Array:
 				tail += 1
 	_steps[goal] = steps
 	return steps
+
+
+# SCRATCH: 中央の拠点（CenterPoint）。
+
+
+func _knows_point() -> bool:
+	return CenterPoint.count() > 0 and RuleProbe.f("point_cpu", 1.0) > 0
+
+
+## unit が向かう拠点（拠点ごとに、いちばん近い戦う駒 PROBE_POINT_TAKERS 体が受け持つ）。受け持たなければ NO_CELL。
+func point_target(unit: Unit) -> Vector2i:
+	if not _knows_point() or unit.side != _me:
+		return Board.NO_CELL
+	var role := UnitKind.role(unit.kind)
+	if role != UnitKind.Role.VANGUARD and role != UnitKind.Role.REARGUARD and role != UnitKind.Role.RAIDER:
+		return Board.NO_CELL
+	var takers := int(RuleProbe.f("point_takers", 1.0))
+	var taken: Dictionary = {}
+	for point in CenterPoint.cells(_battle):
+		for i in takers:
+			var best: Unit = null
+			var best_distance := _FAR
+			for other in _battle.units:
+				if other.side != _me or taken.has(other.id):
+					continue
+				var other_role := UnitKind.role(other.kind)
+				if other_role != UnitKind.Role.VANGUARD and other_role != UnitKind.Role.REARGUARD and other_role != UnitKind.Role.RAIDER:
+					continue
+				var distance := Combat.distance(other.cell, point)
+				if distance < best_distance:
+					best = other
+					best_distance = distance
+			if best == null:
+				break
+			taken[best.id] = true
+			if best == unit:
+				return point
+	return Board.NO_CELL

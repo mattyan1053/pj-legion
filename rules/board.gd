@@ -25,6 +25,9 @@ var barrel_cells: Array[Vector2i] = []
 var spring_cells: Array[Vector2i] = []
 ## ポータルのマス -> 対になるポータルのマス。対の両方が、互いを指して入る。
 var portal_exits: Dictionary[Vector2i, Vector2i] = {}
+## SCRATCH: 中央の拠点（CenterPoint）。
+var point_cells: Array[Vector2i] = []
+var point_ready := false
 ## 盤の上の効果（置いた順。番号の小さい順でもある）。
 var field_effects: Array[FieldEffect] = []
 ## 入れるマスが変わるたびに 1 進む（樽が消えた、盾が置かれた・消えた）。歩けるマスの表を覚えておく側（CPU）が見る。

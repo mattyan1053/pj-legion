@@ -21,6 +21,9 @@ func next_action(battle: Battle) -> BattleAction:
 
 func _plan(unit: Unit) -> BattleAction:
 	if not _released and _battle.turn < WAIT_UNTIL:
+		# SCRATCH: 拠点を知っている待ち方。拠点を受け持つ駒だけは、拠点へ向かう（ほかは待つ）。
+		if RuleProbe.f("ambush_point", 1.0) > 0 and point_target(unit) != Board.NO_CELL and not _engaged(unit):
+			return super._plan(unit)
 		if not _engaged(unit):
 			return WaitAction.new(unit.id)
 		_released = true
