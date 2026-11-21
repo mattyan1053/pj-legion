@@ -10,7 +10,6 @@
 [episode]
 title = 尾根の小道
 map = ridge_path
-look = stone_walls
 
 [unlock]
 unit = commando

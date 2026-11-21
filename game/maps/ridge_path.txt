@@ -8,7 +8,7 @@
 
 [map]
 title = 尾根の小道
-look = stone_walls
+look = ridge
 
 [rows]
 #.......2.......#

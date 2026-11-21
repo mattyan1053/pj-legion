@@ -14,7 +14,6 @@
 [episode]
 title = 尾根の骨
 map = ridge_path
-look = stone_walls
 music = battle_undead
 hold_turns = 10
 wins = turns_held

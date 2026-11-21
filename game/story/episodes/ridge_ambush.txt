@@ -10,7 +10,6 @@
 [episode]
 title = 尾根の待ち伏せ
 map = ridge_path
-look = stone_walls
 
 [unlock]
 item = speed_boots
