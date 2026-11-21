@@ -85,3 +85,15 @@ func test_the_window_fits_the_screen_for_every_unit() -> void:
 			assert_eq(texts[0], "HP")
 			assert_eq(texts[2] != "", not held.is_empty(), "持ち物で HP が増えた駒にだけ、増減が出る")
 	detail.free()
+
+
+## HP の棒の枠: 最大 HP が大きいほど長いが、小さい駒でも棒の欄の半分近くはある（HP が減った駒の塗りが、割合で読める）。
+func test_the_hp_frame_keeps_a_readable_length() -> void:
+	const StatMeter := preload("res://game/stat_meter.gd")
+	var scale: int = UnitSheet.SCALES[Unit.Stat.MAX_HP]
+	var small := StatMeter.Meter.hp_frame_ratio(20, scale)
+	var large := StatMeter.Meter.hp_frame_ratio(90, scale)
+	assert_true(small >= StatMeter.Meter.HP_FRAME_FLOOR)
+	assert_true(large > small, "最大 HP が大きい駒の枠のほうが長い")
+	assert_eq(StatMeter.Meter.hp_frame_ratio(scale, scale), 1.0)
+	assert_eq(StatMeter.Meter.hp_frame_ratio(scale * 2, scale), 1.0, "端を超えても、欄からはみ出さない")
