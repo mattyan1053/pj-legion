@@ -14,6 +14,7 @@
 | `decks` | プレイヤーごとの選んだ編成（`Deck`。軍を含む）。戦いの定義が部隊を決め打ちにしているプレイヤーの分は使わない |
 | `controllers` | プレイヤーごとに、人（`HUMAN`）が動かすか CPU（`CPU`）が動かすか |
 | `placements` | プレイヤーごとの、人が決めた置き方（本陣からのずれ。空ならいつもの置き方。`docs/player-loadout.md`） |
+| `trials` | 入にする試しの決まり（`TrialRules` の名前の並び。既定は空 = どれも切。下の「試しの決まり」） |
 
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
@@ -51,6 +52,23 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
   戦いの定義の決め打ちの部隊は、検査を通さない（`docs/scenario.md`）。
 - 例外は `ignore_budget` だけ。立てると、コスト上限を超えた編成（`OVER_BUDGET`）を通す。ほかの理由は通さない。
   テストのほかは、集計の道具の「両軍とも同じ役割の 6 体」（`--decks=even`）だけが使う。対戦の画面は使わない。
+
+## 試しの決まり
+
+コード: `rules/trial_rules.gd`（`TrialRules`）。テスト: `tests/rules/test_battery.gd`、`tests/game/test_match_choice.gd`。
+
+まだ本決まりでない決まりを、対戦設定で入・切して遊び比べるための区分（Issue #47）。
+
+- **既定はどれも切。切のとき、対戦は 1 局も変わらない**（盤も、駒も、CPU の手も）。ストーリーの話は、入にしない。
+- 入にするのは、`MatchSetup.trials` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
+- 画面では、対戦設定のパネルの行で入・切する（`game/match_choice.gd` の `trials`、`set_trial`）。集計の道具は `--trials=<名前>`（`docs/cpu-ai.md`）。
+- CPU は、入の決まりを知って打つ。
+
+| 名前 | 中身 | 入のときの準備 |
+| --- | --- | --- |
+| `battery`（`TrialRules.BATTERY`） | 砲台。後衛が乗ると射程が伸びるマス（`docs/map-objects.md` の「砲台」） | 盤の置ける場所に砲台を置く（`BoardGenerator.arm_batteries`） |
+
+決まりを足すとき: `TrialRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
 
 ## 画面の入口
 

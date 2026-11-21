@@ -27,6 +27,8 @@ const MID_BOSS_CLEARING := 1
 const MID_BOSS_SPREAD := 6
 ## 双子結晶で、中ボスを中央の壁から上下へ離す量（壁のいちばん上の行・下の行から、このマス数）。
 const MID_BOSS_WALL_GAP := 4
+## 双子結晶の砲台の場所（左上の角から、縦横にこれだけ内側。右下は点対称）。
+const BATTERY_CORNER := 7
 ## 迷宮回廊の回復の泉を、本陣の列から左右へ離す量と、真ん中の行から自分の本陣の側へ寄せる量。
 const SPRING_SPREAD := 5
 const SPRING_SETBACK := 7
@@ -66,6 +68,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 	for cell in board.font_cells:
 		board.set_terrain(cell, Terrain.Type.FONT)
 	board.mid_boss_cells = mid_boss_cells_for(stage, size)
+	board.battery_spots = battery_spots_for(stage, size)
 
 	var protected := protected_cells(board)
 	for attempt in MAX_ATTEMPTS:
@@ -100,6 +103,34 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 			carve_corridor(board, cell)
 	_place_objects(board, stage, map_seed, protected)
 	return board
+
+
+## マップの、砲台を置ける場所（2 つ。本陣どうしを入れ替える点対称で、どちらの本陣からもほぼ同じ遠さ）。
+## - 中央平原・迷宮回廊: 本陣の列の、真ん中の行の 1 つ手前と 1 つ先（中ボスと結晶泉の中立の駒が届かない）
+## - 双子結晶: 左上と右下の角の内側（左右の道の、両方の本陣から同じ道のりの辺り）
+static func battery_spots_for(stage: Stage, size: Vector2i) -> Array[Vector2i]:
+	var first: Vector2i
+	if stage == Stage.TWIN_SPRINGS:
+		first = Vector2i(BATTERY_CORNER, BATTERY_CORNER)
+	else:
+		first = Vector2i((size / 2).x - 1, ((size - Vector2i.ONE) / 2).y - 1)
+	var hqs_sum := Vector2i(size.x - 1, size.y - 1) if stage == Stage.TWIN_SPRINGS else Vector2i(2 * first.x, size.y - 1)
+	return [first, hqs_sum - first]
+
+
+## 砲台を置く（試しの決まり TrialRules.BATTERY が入の対戦だけ。MatchSetup.create_battle が呼ぶ）。
+## 置ける場所（Board.battery_spots）が障害物なら平地にし、本陣から歩いて行けなければ道を削る。ほかの環境オブジェクトがあるマスには置かない。
+static func arm_batteries(board: Board) -> void:
+	for cell in board.battery_spots:
+		if not board.in_bounds(cell) or board.object_at(cell) != MapObject.Type.NONE or board.hq_cells.has(cell):
+			continue
+		if board.terrain_at(cell) == Terrain.Type.FONT:
+			continue
+		if not Terrain.is_walkable(board.terrain_at(cell)):
+			board.set_terrain(cell, Terrain.Type.NORMAL)
+		if not board.is_reachable(board.hq_cells[0], cell):
+			carve_corridor(board, cell)
+		board.add_battery(cell)
 
 
 ## マップの中ボスのマス（0 = 左、1 = 右）。両方のプレイヤーに公平になるように置く（docs/neutral-mid-boss.md）。
