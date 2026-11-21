@@ -171,3 +171,9 @@ func test_big_spread_adds_big_scenery() -> void:
 	var spread := plain.duplicate()
 	spread[StageLook.BIG_SPREAD] = 0.3
 	assert_true(Scenery.layout(SIZE, 1, spread).size() > Scenery.layout(SIZE, 1, plain).size() * 1.5, "大きいものが増えない")
+
+
+func test_mist_brings_the_haze_nearer_but_not_onto_the_board() -> void:
+	# 霞の濃い見た目（MIST）でも、霞は、いちばん引いたカメラから盤の真ん中までの距離より先から始まる。
+	assert_true(StageLook.MIST_BEGIN < StageLook.FOG_BEGIN and StageLook.MIST_END < StageLook.FOG_END)
+	assert_true(StageLook.MIST_BEGIN > OrbitCamera.MAX_DISTANCE, "霞が、引いたカメラと盤の真ん中の間から始まる")
