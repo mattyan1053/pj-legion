@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dx16y6hk1smb0"
-path="res://.godot/imported/Viking_Female.fbx-70170e75023d46bb137bb90741aa32c4.scn"
+uid="uid://bvyeswleipir2"
+path="res://.godot/imported/Ninja_Female.fbx-8e1d9400796e14e1b56bcab6308a7f1e.scn"
 
 [deps]
 
-source_file="res://assets/quaternius/characters/Viking_Female.fbx"
-dest_files=["res://.godot/imported/Viking_Female.fbx-70170e75023d46bb137bb90741aa32c4.scn"]
+source_file="res://assets/quaternius/characters/Ninja_Female.fbx"
+dest_files=["res://.godot/imported/Ninja_Female.fbx-8e1d9400796e14e1b56bcab6308a7f1e.scn"]
 
 [params]
 

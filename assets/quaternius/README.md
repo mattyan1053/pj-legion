@@ -22,7 +22,7 @@
 | `Doctor_Female_Young.fbx` | 衛生兵 |
 | `Knight_Male.fbx` | パラディン |
 | `Wizard.fbx` | ソーサラー |
-| `Viking_Female.fbx` | スペルブレード（2026-11-21 に `Viking_Male` から替えた。同じ zip から） |
+| `Ninja_Female.fbx` | スペルブレード（2026-11-21 に `Viking_Male` から替えた。同じ zip から。セリスの姿） |
 | `Elf.fbx` | プリースト |
 
 ## weapons/（RPG Characters - Nov 2020）

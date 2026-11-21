@@ -1,7 +1,7 @@
 extends "res://game/looks/look_set.gd"
 ## 駒の見た目の組「Quaternius」: 服で役どころの分かる、低ポリの人物（assets/quaternius/。Quaternius、CC0）。
 ##
-## 素材は人物ごとに服が違うので、種類ごとに別の人物を当てる（MILITARY は兵士・忍者・医者、FANTASY は騎士・魔法使い・ヴァイキング・エルフ）。
+## 素材は人物ごとに服が違うので、種類ごとに別の人物を当てる（MILITARY は兵士・忍者・医者、FANTASY は騎士・魔法使い・忍びの女剣士・エルフ）。
 ## 素材の人物は何も持たないので、同じ作者の RPG Characters の武器を右手の骨に付ける。
 ## 陣営の色は、服の面（"accent" に挙げたマテリアル）を塗り替える。将は大きくしない（人物の素材は背が高く、会話の枠に収まらない）。魔物は、同じ作者の骸骨（quaternius_skeleton.gd）。将の別の姿（骸骨の将）も骸骨。
 ## 動きは素材のアニメーション（立つ・歩く・殴る・撃つ・被弾・負け・勝ち）。走る動きは無いので、歩く動きで代える。
@@ -32,7 +32,7 @@ const KINDS := {
 	UnitKind.Id.MEDIC: {"model": "Doctor_Female_Young", "hold": "", "attack": SHOOT, "accent": {"Black": 0.1}},
 	UnitKind.Id.PALADIN: {"model": "Knight_Male", "hold": "sword", "attack": MELEE, "accent": {"Detail": 0.1, "Red": 0.3, "Armor_Dark": 0.45}},
 	UnitKind.Id.SORCERER: {"model": "Wizard", "hold": "staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
-	UnitKind.Id.SPELLBLADE: {"model": "Viking_Female", "hold": "sword", "attack": MELEE, "accent": {"Main": 0.1}},
+	UnitKind.Id.SPELLBLADE: {"model": "Ninja_Female", "hold": "sword", "attack": MELEE, "accent": {"Main": 0.1, "Details": 0.5}},
 	UnitKind.Id.PRIEST: {"model": "Elf", "hold": "cleric_staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
 }
 
