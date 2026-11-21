@@ -31,7 +31,7 @@ var _title: Label
 var _tags: HBoxContainer
 var _gems: CostGems
 var _note: Label
-var _corner: Control
+var _corner: HBoxContainer
 var _meters: Array[StatMeter] = []
 var _skill: VBoxContainer
 var _evolutions_box: VBoxContainer
@@ -63,15 +63,19 @@ func _init(width := 376.0) -> void:
 	_tags = HBoxContainer.new()
 	_tags.add_theme_constant_override("separation", 6)
 	names.add_child(_tags)
-	# 右下の隅（呼ぶ側が「詳細」のボタンなどを重ねる所。並びの幅を使わない）。
-	_corner = Control.new()
-	_corner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	head.add_child(_corner)
 	# 役割の説明は、頭の札の下（額の横）に置く（行を足さない。持ち物の欄に押されて札が低いときも、能力値とスキルまで見える）。
 	_note = SheetParts.text(SheetParts.NOTE_SIZE, Palette.TEXT_DIM)
 	names.add_child(_note)
-	add_child(UiTheme.window_rule())
+	# 飾りの線の右に、呼ぶ側のボタン（「詳細」など）の場所を取る（名前や札に重ならない。空なら、線が幅いっぱい）。
+	var rule_row := HBoxContainer.new()
+	rule_row.add_theme_constant_override("separation", 8)
+	add_child(rule_row)
+	var rule := UiTheme.window_rule()
+	rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rule_row.add_child(rule)
+	_corner = HBoxContainer.new()
+	_corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rule_row.add_child(_corner)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 2)
 	add_child(rows)
@@ -92,7 +96,7 @@ func _init(width := 376.0) -> void:
 	_evolutions_box.add_child(_evolutions)
 
 
-## 頭の行の右下の隅（「詳細」のボタンなどを重ねる入れ物。幅は余りで、並びを広げない）。
+## 飾りの線の右の場所（「詳細」のボタンなどを入れる。入れたものの幅だけ、線が短くなる）。
 func corner() -> Control:
 	return _corner
 
@@ -170,6 +174,11 @@ func _evolution_card(title: String, summary: String, width: float) -> Control:
 ## いま出している中身（検査用）。
 func shown_sheet() -> UnitSheet:
 	return _sheet
+
+
+## 札の中身が、決めた幅からはみ出している量（px。0 以下なら収まっている。検査用。画面に出して 1 コマ待ってから呼ぶ）。
+func overflow() -> float:
+	return get_combined_minimum_size().x - _width
 
 
 ## 名前の欄の文（検査用）。

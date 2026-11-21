@@ -903,20 +903,15 @@ func _build_editor() -> Control:
 	# 札は、小さなステータス画面（unit_summary.gd。額、名前と役割の札、能力値の棒と粒、スキルと進化先の札）。
 	_detail_summary = UnitSummary.new(DETAIL_WIDTH - 24.0)
 	detail_column.add_child(_detail_summary)
-	# 「詳細」: 選んでいる部隊の駒のステータスの窓（unit_detail.gd）。札の頭の右上の隅。
-	# 並びの幅を使わないよう、余りの幅の入れ物の隅に重ねて置く（長い名前の駒でも、札が横に広がらない）。
+	# 「詳細」: 選んでいる部隊の駒のステータスの窓（unit_detail.gd）。札の頭の下の、飾りの線の右（名前や札に重ならない所）。
 	_detail_open = Button.new()
 	_detail_open.text = Text.t("battle.hud.detail")
 	_detail_open.theme_type_variation = UiTheme.BUTTON_GHOST
 	_detail_open.focus_mode = Control.FOCUS_NONE
 	_detail_open.add_theme_font_size_override("font_size", 14)
+	_detail_open.custom_minimum_size = Vector2(72.0, 26.0)
 	_detail_open.pressed.connect(press_unit_detail)
 	_detail_summary.corner().add_child(_detail_open)
-	_detail_open.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_detail_open.offset_left = -72.0
-	_detail_open.offset_top = 0.0
-	_detail_open.offset_right = 0.0
-	_detail_open.offset_bottom = 28.0
 	_equip_box = _card()
 	right.add_child(_equip_box)
 	var equip_column := VBoxContainer.new()
@@ -1292,6 +1287,16 @@ func _fit_equip() -> void:
 	var budget := (_edit_view.get_viewport_rect().size.y if _edit_view.is_inside_tree() else _edit_view.size.y) - around
 	var room := budget - DETAIL_MIN_HEIGHT - RIGHT_GAP - chrome
 	_equip_scroll.custom_minimum_size.y = minf(natural, maxf(room, EQUIP_MIN_HEIGHT))
+
+
+## 駒の札（右上）の中身が、札の幅からはみ出している量（px。0 以下なら収まっている）と、「詳細」のボタンが名前に重なっているか。検査用。
+func detail_summary_overflow() -> float:
+	return _detail_summary.overflow()
+
+
+func detail_button_covers_summary_head() -> bool:
+	var head: Control = _detail_summary.get_child(0)
+	return _detail_open.get_global_rect().intersects(head.get_global_rect())
 
 
 ## 駒の札（右上）と、持ち物の欄の送れる部分の、画面の上の四角。検査用。
