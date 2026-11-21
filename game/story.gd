@@ -89,6 +89,10 @@ func load_saved() -> void:
 ## 版 1 の形（{"cleared", "squad"}。物語が 1 つだったころ）は、MILITARY の物語の記録として読む。
 func load_data(data: Dictionary) -> void:
 	_records.clear()
+	# 確かめ用に開いている間のクリアと、開いて始めた話は、そのとき遊んでいたスロットのもの。ほかのスロットへ持ち越さない
+	# （持ち越すと、ほかのスロットで記録どおりに遊べるようになった話に勝っても、記録に書かない）。
+	_open_cleared.clear()
+	_opened_runs.clear()
 	var last: Variant = data.get("campaign")
 	_last_campaign = String(last) if typeof(last) in [TYPE_STRING, TYPE_STRING_NAME] else ""
 	var saved_campaigns: Variant = data.get("campaigns")
