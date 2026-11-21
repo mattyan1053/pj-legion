@@ -223,3 +223,18 @@ func test_matches_tool_sorts_a_squad_by_what_is_in_it() -> void:
 	assert_true(keys.has("MILITARY 対 FANTASY 駒 スナイパー 2 体"), str(keys))
 	var other: Deck = RandomSquad.build(UnitKind.Army.MILITARY, DeckRules.versus(), 5)
 	assert_false(tool._squad_keys(other, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY).has("MILITARY 対 FANTASY CPU の編成と同じ"))
+
+
+func test_a_stronghold_win_is_counted_as_its_own_ending() -> void:
+	var battle := Maps.battle([".........", ".........", ".........", ".........", "........."])
+	battle.board.hq_cells = [Vector2i(0, 4), Vector2i(8, 0)]
+	battle.board.stronghold_cell = Vector2i(4, 2)
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(4, 2))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(8, 0))
+	battle.stronghold_holds[Unit.Side.PLAYER1] = Stronghold.HOLDS_TO_WIN - 1
+	var outcome := CpuMatch.play(battle, 5)
+	assert_eq(outcome.ending, "point")
+	assert_eq(outcome.winner, Unit.Side.PLAYER1)

@@ -56,7 +56,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 ## 試しの決まり
 
-コード: `rules/trial_rules.gd`（`TrialRules`）。テスト: `tests/rules/test_battery.gd`、`tests/game/test_match_choice.gd`。
+コード: `rules/trial_rules.gd`（`TrialRules`）。テスト: `tests/rules/test_battery.gd`、`tests/rules/test_tactics.gd`、`tests/rules/test_stronghold.gd`、`tests/game/test_match_choice.gd`。
 
 まだ本決まりでない決まりを、対戦設定で入・切して遊び比べるための区分（Issue #47）。
 
@@ -69,6 +69,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 | --- | --- | --- |
 | `battery`（`TrialRules.BATTERY`） | 砲台。後衛が乗ると射程が伸びるマス（`docs/map-objects.md` の「砲台」） | 盤の置ける場所に砲台を置く（`BoardGenerator.arm_batteries`） |
 | `tactics`（`TrialRules.TACTICS`） | 作戦。対戦の前に選んだ札を、対戦中に 1 回ずつ使う（`docs/tactics.md`） | 両方のプレイヤーに手札を配る（`MatchSetup.tactics` から。`Tactics.hand_from`） |
+| `stronghold`（`TrialRules.STRONGHOLD`） | 拠点。盤の中央のマスで、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤の中央に拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
 
 決まりを足すとき: `TrialRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
 

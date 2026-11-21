@@ -1,7 +1,7 @@
 # 勝ち負け
 
 コード: `rules/battle.gd`（`winner`、`is_over`、`is_draw`、`capture_turns`、`count_capture`、`settle`、`hold_turns`、`turns_left`、`end_turn`）、`rules/actions/end_phase_action.gd`、
-`rules/events/game_won_event.gd`、`rules/events/game_drawn_event.gd`、`rules/events/capture_progress_event.gd`。
+`rules/events/game_won_event.gd`、`rules/events/game_drawn_event.gd`、`rules/events/capture_progress_event.gd`、拠点は `rules/stronghold.gd`。
 テスト: `tests/rules/test_victory.gd`、`tests/rules/test_relics.gd`（中ボスの撃破）、`tests/rules/test_scenario.gd`（勝ちの条件の列）、`tests/game/test_win_text.gd`（画面の勝ち方の文）、引き分けは `tests/rules/test_map_objects.gd`。
 
 プレイヤーごとに**勝ちの条件の列**を持ち、そのどれかが満たされた時点で決着し、`GameWonEvent`（勝った陣営と理由）が出る。決着したあとは、どの行動も受け付けない。
@@ -12,7 +12,8 @@
   条件は、決着の理由と同じ値（`GameWonEvent.Reason`）で表す。そのプレイヤーがその勝ち方で勝てるかは `Battle.wins_by(プレイヤー, 条件)`。
 - 既定（`Scenario.STANDARD_WIN_CONDITIONS`）は、両方とも「敵の将を倒す」「敵の本陣を占拠し続ける」。対戦モードはいつもこれ。
 - 勝ち方は、敵の将を倒す（`KING_DEFEATED`）、敵の本陣を占拠し続ける（`HQ_CAPTURED`）、守り切る（`TURNS_HELD`）、全滅させる（`ROUTED`）、
-  中ボスを倒す（`BOSS_SLAIN`）。
+  中ボスを倒す（`BOSS_SLAIN`）、拠点を確保し続ける（`STRONGHOLD_HELD`。試しの決まり）。
+- 試しの決まり「拠点」が入の対戦では、対戦を作るとき（`MatchSetup.create_battle`）に、両方の列へ拠点を確保し続けるを足す。
 - 画面で勝ち方を知らせる文（出撃準備の「勝ち方」、上の帯の勝ち方の札）は `game/win_text.gd` が列から作る。
   全滅させるがあって将の撃破が無い列では、「敵の将を倒しても、ほかの駒が残っていれば終わらない。」を言い添える。
   中ボスの撃破があって将の撃破が無い列では、「敵の将を倒しても終わらない。」を言い添える。
@@ -79,3 +80,20 @@
   理由は `GameWonEvent.Reason.BOSS_SLAIN`。`GameWonEvent` は、聖遺物を受け取った（`RelicGainedEvent`）あと、行動の結果の最後に付く。
 - 見るのは `Battle.settle`（将の撃破・全滅のあと）。止めを刺した駒がいない中ボスの撃破では勝たない。
 - CPU の手は、この勝ち方を読まない（いつもどおり、中ボスを狩る条件で狩る。`docs/relic-buff.md` の「CPU」）。
+
+## 拠点を確保し続ける
+
+試しの決まり「拠点」（`TrialRules.STRONGHOLD`。`docs/map-objects.md` の「拠点」）が入の対戦モードだけの勝ち方。理由は `GameWonEvent.Reason.STRONGHOLD_HELD`。
+テスト: `tests/rules/test_stronghold.gd`。
+
+- 自分のフェーズの終わり（ターン終了。敵の本陣の占拠を数えたあと）に、拠点に自分の駒（将でない）が乗っていて、拠点から 2（`Stronghold.CONTEST_RADIUS`）マス以内
+  （マンハッタン距離）に相手のプレイヤーの駒がいなければ、そのプレイヤーの確保が 1 進む（`Stronghold.count`）。中立の駒は数えない。
+- 確保が **6**（`Stronghold.HOLDS_TO_WIN`）に届いたら、そのプレイヤーの勝ち。そのフェーズのあとへは進まない。
+- **相手が確保を進めると、自分の確保は 0 に戻る**（上書き）。乗らずに番を終えても、周りに相手がいて進まなくても、自分の確保は減らない。
+- **将は乗っても確保を進めない**（将が前に出る理由を作らない。将の撃破と本陣の占拠は、いつもどおり）。
+- 確保が変わったときに `StrongholdProgressEvent`（プレイヤーと、いまの数）が出る（進んだプレイヤーの分、続けて 0 に戻った相手の分）。
+- あと何回で勝つかは `Stronghold.holds_left(対戦, プレイヤー)`（拠点が無いか、勝ちの条件に無ければ -1）。
+- 数え方をこう決めた理由（比べた形と数字は、入れた PR の本文）: 乗っていない間に 0 へ戻す形（本陣の占拠と同じ）や、周りの相手を見ない形では、
+  1 体が早く着いて居座るだけで決着した（相手の軍が着く前に数が届く）。周りに相手がいると止まる形にすると、拠点の周りでのぶつかり合いが要る。
+  数は、拠点での決着が多すぎず（将の撃破のほうが多い）、決着が早まりすぎないところ。
+

@@ -471,6 +471,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_board_view = BoardView.new()
 	add_child(_board_view)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
+	_sync_stronghold_flag()  # 途中から見せる対戦でも、旗は確保を進めた陣営の色
 	_hud.minimap().show_board(battle.board, look)
 	# 場面に入る幕が明けるまでは _process が回らないので、ミニマップの置き場所を先に決めておく（左上に出てから跳ばない）。
 	_place_minimap.call_deferred()
@@ -991,7 +992,22 @@ func _sync_views() -> void:
 	for id in _board_view.field_effect_ids():
 		if not effect_ids.has(id):
 			_board_view.remove_field_effect(id)
+	_sync_stronghold_flag()
 	_refresh_status(battle.turn, battle.phase)
+
+
+## 拠点の旗の色（検査用。拠点が無ければ透明）。
+func stronghold_flag_color() -> Color:
+	return _board_view.stronghold_flag_color()
+
+
+## 拠点の旗を、いまの確保から塗り直す（確保を進めている陣営の色。どちらも 0 なら白）。拠点の無い盤では何もしない。
+func _sync_stronghold_flag() -> void:
+	var color := BoardView.COLOR_STRONGHOLD_FLAG
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if battle.stronghold_holds[side] > 0:
+			color = TEAM_COLORS[side]
+	_board_view.set_stronghold_side(-1, color)
 
 
 ## CPU の駒の行動を再生する間だけ、設定の速さを掛ける（検査からも呼ぶ）。

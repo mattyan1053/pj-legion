@@ -12,7 +12,8 @@ extends BattleAction
 ## 続けて、そのプレイヤーの駒の状態の残りのターン数が 1 減り、0 になった状態は外れる（Statuses.start_phase）。
 ## 続けて、そのプレイヤーの駒のスキルのクールダウンが 1 減る（Skills.start_phase）。
 ## 最後に、そのプレイヤーの必殺技のゲージがたまる（Ults.charge_phase）。
-## フェーズを終える前に、敵の本陣の占拠を数える。それで勝ちが決まれば、次のフェーズへは進まない。
+## フェーズを終える前に、敵の本陣の占拠を数え、続けて拠点の確保を数える（Stronghold.count。拠点の無い盤では何もしない）。
+## それで勝ちが決まれば、次のフェーズへは進まない。
 
 func is_valid(battle: Battle) -> bool:
 	return battle.phase != Unit.Side.NEUTRAL
@@ -24,6 +25,7 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	if acting != null:
 		events.append(battle.finish_action(acting))
 	events.append_array(battle.count_capture(battle.phase))
+	events.append_array(Stronghold.count(battle, battle.phase))
 	if battle.is_over():
 		return events
 

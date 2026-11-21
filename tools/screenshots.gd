@@ -133,6 +133,9 @@ const SCENES := {
 	"battery_cell": "砲台（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
 	"battery": "砲台に乗った後衛を選んだところ（射程が伸びている。中央平原）",
 	"setup_battery": "対戦設定で、試しの決まりの「砲台」を「あり」にしたところ",
+	"stronghold_cell": "拠点（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
+	"stronghold": "拠点に駒が乗り、どちらかがあと 1 回の確保で勝つところ（勝ち方の札と確保の数。迷宮回廊）",
+	"setup_stronghold": "対戦設定で、試しの決まりの「拠点」を「あり」にしたところ",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
 	"portal_range": "ポータルへ届く駒を選んで、範囲の中のポータルと、その対の出るポータルが同じ色で塗られている（範囲は転移の先まで広げない。双子結晶）",
 	"portal_menu": "ポータルのマスへ動いて、メニューに「転移」が出ている（行き先のポータルが塗られている。双子結晶）",
@@ -763,6 +766,16 @@ func _scene_setup_battery() -> bool:
 	_app.current_scene().setup_panel().choose_trial(TrialRules.BATTERY, true)
 	_park_mouse()
 	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.BATTERY)
+
+
+func _scene_setup_stronghold() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_trial(TrialRules.STRONGHOLD, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.STRONGHOLD)
 
 
 func _scene_setup_tactics() -> bool:
@@ -1828,6 +1841,31 @@ func _scene_battery() -> bool:
 	_show()
 	_scene.click_cell(gunner[0].cell)
 	_scene.focus_camera(gunner[0].cell)
+	return true
+
+
+func _scene_stronghold_cell() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.STRONGHOLD])
+	_show()
+	var cell := _battle.board.stronghold_cell
+	if cell == Board.NO_CELL:
+		return false
+	_scene.click_cell(cell)
+	_scene.focus_camera(cell)
+	return _scene.info_title().begins_with("マス")
+
+
+## どちらかが、あと 1 回の確保で勝つところまで進める（拠点に駒が乗り、旗がその陣営の色。上の帯の札が目立つ）。
+func _scene_stronghold() -> bool:
+	_field = VersusFields.LABYRINTH
+	_new_battle([TrialRules.STRONGHOLD])
+	if not _advance(func() -> bool:
+		return Stronghold.holds_left(_battle, Unit.Side.PLAYER1) == 1 or Stronghold.holds_left(_battle, Unit.Side.PLAYER2) == 1
+	):
+		return false
+	_show()
+	_scene.focus_camera(_battle.board.stronghold_cell)
 	return true
 
 

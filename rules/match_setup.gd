@@ -159,6 +159,8 @@ func create_battle() -> Battle:
 		return null
 	if trials.has(TrialRules.BATTERY):
 		BoardGenerator.arm_batteries(board)
+	if trials.has(TrialRules.STRONGHOLD):
+		Stronghold.arm(board)
 	var battle := Battle.new(board, battle_seed)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var placement: Array[Vector2i] = []
@@ -168,6 +170,8 @@ func create_battle() -> Battle:
 		)
 		_apply_start_growth(placed, scenario.start_growth[side])
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
+		if board.stronghold_cell != Board.NO_CELL:
+			battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
 		if trials.has(TrialRules.TACTICS):
 			battle.tactics[side] = Tactics.hand_from(tactics[side])

@@ -10,8 +10,11 @@ const BATTERY := &"battery"
 ## 作戦: 対戦の前に選んだ札を、対戦中に 1 回ずつ使う（docs/tactics.md）。
 const TACTICS := &"tactics"
 
+## 拠点: 盤の中央の拠点に乗って番を終えると確保が進み、決まった数に届いたら勝ち（docs/map-objects.md の「拠点」）。
+const STRONGHOLD := &"stronghold"
+
 ## 名前の一覧（画面の並び）。
-const ALL: Array[StringName] = [BATTERY, TACTICS]
+const ALL: Array[StringName] = [BATTERY, TACTICS, STRONGHOLD]
 
 
 static func is_known(id: StringName) -> bool:

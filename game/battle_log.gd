@@ -15,6 +15,7 @@ const WIN_TEXTS := {
 	GameWonEvent.Reason.TURNS_HELD: "battle.log.won.turns_held",
 	GameWonEvent.Reason.ROUTED: "battle.log.won.routed",
 	GameWonEvent.Reason.BOSS_SLAIN: "battle.log.won.boss_slain",
+	GameWonEvent.Reason.STRONGHOLD_HELD: "battle.log.won.stronghold_held",
 }
 const DRAW_TEXTS := {
 	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "battle.log.drawn.both_kings_defeated",
@@ -151,6 +152,7 @@ static func readers() -> Dictionary:
 		LevelUpEvent: &"_read_level_up",
 		UnitEvolvedEvent: &"_read_evolved",
 		CaptureProgressEvent: &"_read_capture",
+		StrongholdProgressEvent: &"_read_stronghold",
 		GameWonEvent: &"_read_won",
 		GameDrawnEvent: &"_read_drawn",
 		# 行にしないもの。
@@ -627,6 +629,13 @@ func _read_capture(event: CaptureProgressEvent) -> void:
 	if event.turns == 0:
 		text = Text.t("battle.log.capture_broken", args)
 	_line(text, event.player, hq)
+
+
+func _read_stronghold(event: StrongholdProgressEvent) -> void:
+	_group = null
+	var args := {"side": Names.side_word(event.player), "holds": event.holds, "needed": Stronghold.HOLDS_TO_WIN}
+	var key := "battle.log.stronghold" if event.holds > 0 else "battle.log.stronghold_lost"
+	_line(Text.t(key, args), event.player, _board.stronghold_cell)
 
 
 func _read_won(event: GameWonEvent) -> void:

@@ -8,6 +8,7 @@ extends RefCounted
 ## - 起爆樽: 入れない。攻撃されると爆発して消え、周り 8 マスの駒すべてに固定のダメージ
 ## - 回復の泉: 入れる。プレイヤーのフェーズの始めに、乗っているそのプレイヤーの駒が回復する
 ## - 砲台: 入れる。試しの決まり（TrialRules.BATTERY）が入のときだけ置かれる。乗った後衛の射程が伸びる（Unit.site_range）
+## - 拠点: 入れる。試しの決まり（TrialRules.STRONGHOLD）が入のときだけ置かれる。乗って番を終えると確保が進む（Stronghold）
 ## - ポータル: 入れる。対になるポータルへ、移動力を使わずに移れる（Movement、Battle.portal_exit）
 
 enum Type {
@@ -16,6 +17,7 @@ enum Type {
 	SPRING,  ## 回復の泉
 	PORTAL,  ## ポータル
 	BATTERY,  ## 砲台（試しの決まり）
+	STRONGHOLD,  ## 拠点（試しの決まり。Stronghold）
 }
 
 ## 起爆樽の耐久力。攻撃 1 回で（攻撃力によらず）1 減るので、攻撃されれば必ず爆発する。
