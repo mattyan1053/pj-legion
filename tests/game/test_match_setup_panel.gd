@@ -49,6 +49,7 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 			3:
 				panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
 				assert_true(panel.choose_deck(Unit.Side.PLAYER1, id), "取っておいた部隊を選べない")
+		await settle(holder)  # 木に入れて 1 コマ待ってから測る（base_test.gd の settle）
 		sizes[box.get_combined_minimum_size()] = true
 	assert_eq(sizes.size(), 1, "選んだもので、パネルの大きさが変わる: %s" % [sizes.keys()])
 	panel.open_preview(Unit.Side.PLAYER1)
@@ -94,6 +95,7 @@ func test_the_banner_follows_the_choice() -> void:
 	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
 	panel.open(MatchChoice.new())
 	var banner := panel.banner()
+	await settle(panel)  # 木に入れて 1 コマ待ってから測る（base_test.gd の settle）
 	var size_before := banner.get_combined_minimum_size()
 	assert_true(banner.has_map(), "マップの縮図が出ていない")
 	assert_eq(banner.texts(), [panel.who_text(Unit.Side.PLAYER1), "MILITARY", panel.who_text(Unit.Side.PLAYER2), "FANTASY"] as Array[String])
@@ -103,8 +105,34 @@ func test_the_banner_follows_the_choice() -> void:
 	assert_eq(banner.texts(), ["あなた", "FANTASY", "CPU", "MILITARY"] as Array[String])
 	panel.choose_opponent(false)
 	assert_eq(banner.texts()[0], panel.who_text(Unit.Side.PLAYER1))
+	await settle(panel)
 	assert_eq(banner.get_combined_minimum_size(), size_before)
 	panel.free()
+
+
+## 帯の大きさは中身で変わらない（文は欄の幅で切り、「…」にする）。どの組み合わせでも、文が切れずに収まる。
+## 対戦設定の画面と同じ 1280×720 の中に置き、1 コマ待ってから測る（base_test.gd の settle）。
+func test_the_banner_texts_fit_without_trimming() -> void:
+	preload("res://game/ui_theme.gd").install()
+	var holder := Control.new()
+	holder.size = Vector2(1280.0, 720.0)
+	var panel := MatchSetupPanel.new()
+	holder.add_child(panel)
+	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
+	panel.open(MatchChoice.new())
+	for step in 5:
+		match step:
+			1: panel.choose_random_side()
+			2: panel.choose_human_side(Unit.Side.PLAYER2)
+			3: panel.choose_opponent(false)
+			4:
+				panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
+				panel.choose_army(Unit.Side.PLAYER2, UnitKind.Army.MILITARY)
+		await settle(holder)
+		for label: Label in panel.banner().find_children("*", "Label", true, false):
+			var width := label.get_theme_font("font").get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
+			assert_true(width <= label.size.x + 0.5, "帯の文が切れる（%.0f px の欄に %.0f px）: %s" % [label.size.x, width, label.text])
+	holder.free()
 
 
 ## 対戦の途中で開いたら、押すと対戦が終わるボタン（マップを選び直す・新しい対戦を始める）は 2 回押させる。
