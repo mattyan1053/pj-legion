@@ -92,6 +92,10 @@ setup.side.second,後手（赤）
 setup.side.random,ランダム
 setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から開始
 setup.caption.deck,部隊
+setup.caption.battery,砲台（試し）
+setup.trial.off,なし
+setup.trial.on,あり
+setup.battery.note,後衛が乗ると射程 +{range}
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成
 setup.placement,初期位置

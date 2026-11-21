@@ -1,4 +1,4 @@
-# 環境オブジェクト（起爆樽、回復の泉、ポータル）
+# 環境オブジェクト（起爆樽、回復の泉、ポータル、砲台）
 
 コード: `rules/map_object.gd`（種類と、効果の計算）、`rules/board.gd`（どこに何があるか）、
 `rules/board_generator.gd`（マップごとの配置）、`rules/actions/attack_barrel_action.gd`、
@@ -19,6 +19,7 @@
 | 起爆樽 | 入れない（通り抜けも、駒を置くこともできない） | 攻撃されると爆発する |
 | 回復の泉 | 入れる | フェーズの始めに、乗っている駒が回復する |
 | ポータル | 入れる | 対になるポータルへ移れる |
+| 砲台（試しの決まり） | 入れる | 乗った後衛の射程が伸びる |
 
 ## 起爆樽
 
@@ -90,6 +91,34 @@
 - ポータルの上から転移する: `UnitWarpedEvent` から始まる
 - 移動の取り消しは、転移の前のマスへ戻る（`MoveUndoneEvent` は 1 つ）。
 - ポータルが働くのは、移動の道の中だけ。スキルでポータルのマスに着いた駒（シャドウステップ。入れ替えられた駒も）は、転移しない。
+
+## 砲台（試しの決まり）
+
+コード: `rules/map_object.gd`（`battery_bonus`、`BATTERY_RANGE`）、`rules/board.gd`（`battery_spots`、`battery_cells`）、
+`rules/board_generator.gd`（`battery_spots_for`、`arm_batteries`）、`rules/unit.gd`（`site_range`）、`rules/battle.gd`（`refresh_sites`）。
+テスト: `tests/rules/test_battery.gd`。
+
+占拠していると有利なマス（Issue #47）。**試しの決まり `TrialRules.BATTERY` が入の対戦にだけ置かれる**（`docs/match-setup.md` の「試しの決まり」。既定は切）。
+
+- **後衛が砲台のマスに立っている間、射程が +3（`MapObject.BATTERY_RANGE`）。** 攻撃も、射程で測るものも（樽・盾への攻撃）伸びる。
+  ほかの役割（将、前衛、奇襲、回復）と中立の駒には、何も起きない。
+- 伸びるのは、立っている間だけ。動いて乗ればその行動から伸び、降りれば戻る（移動を取り消して戻れば、また伸びる）。
+  駒の実効値の層（`docs/player-loadout.md`）とは別に、駒が `Unit.site_range` に持ち、対戦が、駒を置いたときと行動のたびに付け直す。
+- 砲台は壊れず、だれのものでもない。入るのに使う移動力は地形のまま。ほかの駒が乗っていれば入れないのは、ふつうのマスと同じ。
+- イベントは無い（射程は駒の状態から読める）。
+- **置ける場所**（`Board.battery_spots`）は盤が持ち、決まりが切の間は何もしない。入のとき `BoardGenerator.arm_batteries` が砲台（`Board.battery_cells`）にする。
+  場所が障害物なら平地にし、本陣から歩いて行けなければ道を削る。ほかの環境オブジェクトのあるマスには置かない。
+- 場所は 2 つで、本陣どうしを入れ替える点対称。**どちらの本陣からも、ほぼ同じ遠さに置く**（自陣寄りに置くと守る側の物になり、先手が不利になった。比べた数字は、入れた PR の本文）。
+  中ボスの届く距離（縄張り + 射程）の外に置く（`tests/rules/test_battery.gd`、`tests/game/test_match_choice.gd` で固定）。
+
+| 盤 | 場所 |
+| --- | --- |
+| 中央平原、迷宮回廊 | 本陣の列の、真ん中の行の 1 つ手前と 1 つ先（30 x 30 なら `(14,13)` と `(14,16)`） |
+| 双子結晶 | 左上と右下の角から 7（`BoardGenerator.BATTERY_CORNER`）ずつ内側（30 x 30 なら `(7,7)` と `(22,22)`） |
+| 手で作ったマップ | マップのファイルの `C` のマス（`docs/hand-map.md`） |
+
+- CPU は砲台を知っている（`docs/cpu-ai.md` の「砲台」）。危険の見積もりと、駒の脅威範囲の表示（`docs/threat-range.md`）は、後衛が砲台に乗れるなら、そこからの射程も数える。
+- 入のときの CPU どうしの実測は `docs/cpu-ai.md` の「いまの集計」。
 
 ## マップごとの配置
 

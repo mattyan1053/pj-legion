@@ -239,6 +239,8 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	match battle.board.object_at(cell):
 		MapObject.Type.BARREL:
 			items.append([Text.t("battle.cell.barrel"), Text.t("battle.cell.barrel.note", {"damage": MapObject.BLAST_DAMAGE})])
+		MapObject.Type.BATTERY:
+			items.append([Text.t("battle.cell.battery"), Text.t("battle.cell.battery.note", {"range": MapObject.BATTERY_RANGE})])
 		MapObject.Type.SPRING:
 			items.append([Text.t("battle.cell.spring"), Text.t("battle.cell.spring.note", {"heal": MapObject.SPRING_HEAL})])
 		MapObject.Type.PORTAL:

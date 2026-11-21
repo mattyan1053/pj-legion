@@ -147,6 +147,12 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 			if stops.has(unit.cell):
 				_attacks(sim, unit.id, stay, [unit.cell], map)
 		_barrels(sim, unit.id, stay, moved, stops, map)
+		for cell in stops:
+			var bonus := MapObject.battery_bonus(sim.board, unit, cell)
+			if bonus > 0 and cell != unit.cell:
+				var gunner := moved.copy()
+				gunner.site_range = bonus
+				_attacks(sim, unit.id, gunner, [cell], map)
 	var skill := Skills.of(unit)
 	if skill == null or not Skills.can_use(sim, unit):
 		return
@@ -177,6 +183,7 @@ static func _probe(unit: Unit, at: Vector2i, tired: bool) -> Unit:
 	var probe := unit.copy()
 	if at != unit.cell:
 		Statuses.displace(probe)
+		probe.site_range = 0
 		probe.has_moved = true
 		probe.move_origin = unit.cell
 	if tired and not Statuses.has(probe, Status.Type.FATIGUE):

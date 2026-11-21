@@ -166,3 +166,15 @@ func test_the_cpu_row_picks_a_squad_too() -> void:
 	panel.open_preview(Unit.Side.PLAYER2)
 	assert_eq(panel.preview().shown_kinds().size(), setup.decks[1].entries.size() + 1, "いまの対戦で組んだ部隊を見せる")
 	panel.free()
+
+
+func test_the_battery_row_turns_the_trial_on_and_off() -> void:
+	var panel := MatchSetupPanel.new()
+	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
+	panel.open(MatchChoice.new())
+	assert_false(panel.current_choice().has_trial(TrialRules.BATTERY), "既定は切")
+	panel.choose_trial(TrialRules.BATTERY, true)
+	assert_true(panel.current_choice().has_trial(TrialRules.BATTERY))
+	panel.choose_trial(TrialRules.BATTERY, false)
+	assert_false(panel.current_choice().has_trial(TrialRules.BATTERY))
+	panel.free()

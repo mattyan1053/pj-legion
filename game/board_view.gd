@@ -43,6 +43,9 @@ const COLOR_BARREL_BAND := Color("3a3a3e")
 const COLOR_BARREL_MARK := Color("e8452e")
 const COLOR_SPRING_WATER := Color("2f8fe0")
 const COLOR_SPRING_CROSS := Color("2fd66b")
+const COLOR_BATTERY_BASE := Color("4a4f5a")
+const COLOR_BATTERY_GUN := Color("2b2e36")
+const COLOR_BATTERY_MARK := Color("ffb347")
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
@@ -150,6 +153,8 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 		_add_barrel(cell, rng)
 	for cell in board.spring_cells:
 		_add_spring(cell)
+	for cell in board.battery_cells:
+		_add_battery(cell)
 	for cell: Vector2i in board.portal_exits:
 		_add_portal(cell, portal_color(board, cell))
 	for effect in board.field_effects:
@@ -654,6 +659,42 @@ func _add_spring(cell: Vector2i) -> void:
 	var cross := _flat_material(COLOR_SPRING_CROSS)
 	_add_mesh(bar, cross, foot + Vector3(0.0, 1.1, 0.0))
 	_add_mesh(bar, cross, foot + Vector3(0.0, 1.1, 0.0)).rotation.z = PI / 2.0
+
+
+## 砲台（試しの決まり）。駒が上に立つので平たく作る（石の台と、橙の縁）。駒が乗っていても分かるよう、隅に砲身と橙の札を立てる。
+func _add_battery(cell: Vector2i) -> void:
+	var center := cell_center(cell)
+	var base := CylinderMesh.new()
+	base.top_radius = 0.44
+	base.bottom_radius = 0.47
+	base.height = 0.05
+	base.radial_segments = 8
+	_add_mesh(base, _material(COLOR_BATTERY_BASE), center + Vector3(0.0, 0.025, 0.0))
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.40
+	ring.outer_radius = 0.45
+	ring.rings = 16
+	ring.ring_segments = 4
+	_add_mesh(ring, _flat_material(COLOR_BATTERY_MARK), center + Vector3(0.0, 0.055, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var foot := center + Vector3(0.4, 0.0, -0.4)
+	var mount := BoxMesh.new()
+	mount.size = Vector3(0.16, 0.3, 0.16)
+	_add_mesh(mount, _material(COLOR_BATTERY_GUN), foot + Vector3(0.0, 0.15, 0.0))
+	var gun := CylinderMesh.new()
+	gun.top_radius = 0.045
+	gun.bottom_radius = 0.06
+	gun.height = 0.5
+	var barrel := _add_mesh(gun, _material(COLOR_BATTERY_GUN), foot + Vector3(-0.08, 0.42, 0.08))
+	barrel.rotation = Vector3(deg_to_rad(55.0), deg_to_rad(-45.0), 0.0)
+	var post := CylinderMesh.new()
+	post.top_radius = 0.025
+	post.bottom_radius = 0.025
+	post.height = 1.0
+	var flag_foot := center + Vector3(-0.4, 0.0, -0.4)
+	_add_mesh(post, _material(COLOR_BATTERY_GUN), flag_foot + Vector3(0.0, 0.5, 0.0))
+	var plate := BoxMesh.new()
+	plate.size = Vector3(0.26, 0.16, 0.05)
+	_add_mesh(plate, _flat_material(COLOR_BATTERY_MARK), flag_foot + Vector3(0.0, 1.08, 0.0))
 
 
 ## ポータル。駒が上に立つので平たく作る（色の輪と薄い面）。駒が乗っていても分かるよう、両脇に柱を立てる。
