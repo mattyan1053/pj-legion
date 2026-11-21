@@ -15,12 +15,15 @@ const UnitLooks := preload("res://game/unit_looks.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 ## 書ける節。
-const SECTIONS := ["episode", "cast", "before", "cues", "after", "ally", "enemy", "unlock"]
+const SECTIONS := ["episode", "cast", "before", "cues", "after", "lost", "ally", "enemy", "unlock"]
 ## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃準備に出す覚えることの長さの上限。
 const TALK_MAX_LINES := 10
 ## 会話（前と後）の 1 行の文の長さの上限（会話の場面の文の枠に 2 行で収まる）。
 const TALK_MAX_CHARS := 60
 const CUES_MAX := 3
+## 負けたときの台詞（[lost]。決着の画面に出す）の行の数と、1 行の文の長さの上限。
+const LOST_MAX_LINES := 3
+const LOST_MAX_CHARS := 40
 const CUE_MAX_CHARS := 40
 const LESSON_MAX_CHARS := 48
 ## 会話の行の話し手の陣営（0 = 人の軍、1 = 敵の軍）。きっかけの値の陣営も同じ言葉で書く。
@@ -83,6 +86,8 @@ var king_looks: Array[StringName] = [&"", &""]
 ## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文, 話し手（speakers の番号）] の列。
 var before: Array = []
 var after: Array = []
+## 負けたときの台詞（無ければ空。決着の画面の見出しの下に出す）。形は before・after と同じ。
+var lost: Array = []
 ## 対戦の途中の会話: [きっかけ, 値, 話し手の陣営, 文, 話し手（speakers の番号）] の列（battle_cues.gd）。
 var cues: Array = []
 ## 読んだファイルのパスと、書き間違い（空なら正しい）。
@@ -465,22 +470,22 @@ func _item(file: RefCounted, entry: Dictionary, word: String) -> int:
 
 
 func _read_talks(file: RefCounted) -> void:
-	for section: String in ["before", "after"]:
+	for section: String in ["before", "after", "lost"]:
+		var optional := section == "lost"
+		var max_lines := LOST_MAX_LINES if optional else TALK_MAX_LINES
+		var max_chars := LOST_MAX_CHARS if optional else TALK_MAX_CHARS
 		var rows: Array = []
 		for row: Dictionary in file.rows(section):
 			var line := _speech(file, row["line"], row["text"])
 			if not line.is_empty():
 				rows.append(line)
-				if (line[1] as String).length() > TALK_MAX_CHARS:
-					file.problem(row["line"], "会話の文は %d 字まで（いま %d 字）" % [TALK_MAX_CHARS, (line[1] as String).length()])
-		if rows.is_empty():
+				if (line[1] as String).length() > max_chars:
+					file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, max_chars, (line[1] as String).length()])
+		if rows.is_empty() and (not optional or file.has(section)):
 			file.problem(maxi(file.line_of(section), 1), "[%s] の会話が無い" % section)
-		elif rows.size() > TALK_MAX_LINES:
-			file.problem(file.line_of(section), "[%s] の会話は %d 行まで（いま %d 行）" % [section, TALK_MAX_LINES, rows.size()])
-		if section == "before":
-			before = rows
-		else:
-			after = rows
+		elif rows.size() > max_lines:
+			file.problem(file.line_of(section), "[%s] の会話は %d 行まで（いま %d 行）" % [section, max_lines, rows.size()])
+		set(section, rows)
 
 
 ## 会話の行「話し手: 文」（全角の「：」でもよい）を [陣営, 文, 話し手（speakers の番号）] に。
