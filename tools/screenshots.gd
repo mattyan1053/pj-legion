@@ -61,6 +61,7 @@ const SCENES := {
 	"deck_over": "部隊編成: 予算を超えて、取っておけない",
 	"system_menu": "対戦の途中で開いたシステムメニュー（Esc か右上のボタン）",
 	"system_quit": "システムメニューで「ゲームを終える」を押して、確かめている",
+	"window_close": "対戦の途中でウィンドウの × を押して、何が残るかを確かめている（対戦モード）",
 	"settings": "システムメニューから開いたオプションの画面（感度を変えたところ）",
 	"settings_screen": "オプションの画面を下まで送って、区分「画面」（全画面をオンにしたところ）を見せる",
 	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
@@ -787,6 +788,15 @@ func _scene_system_quit() -> bool:
 		return false
 	_app.system_menu().press(&"quit")
 	return _app.system_menu().confirming() == &"quit"
+
+
+func _scene_window_close() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	await get_tree().create_timer(SETTLE).timeout
+	_app.request_close()
+	return _app.quit_window.is_open()
 
 
 func _scene_settings() -> bool:
