@@ -43,6 +43,11 @@ func music() -> StringName:
 	return episode.battle_music()
 
 
+## 終盤の曲は、話のファイルの climax_music（無ければ、いつもの終盤の曲）。
+func climax_music() -> StringName:
+	return episode.climax_music if episode.climax_music != &"" else SoundCatalog.CLIMAX_MUSIC
+
+
 ## 勝ったときの調子は、話のファイルの victory_mood（暗い話は静か）。
 func victory_mood() -> StringName:
 	return episode.victory_mood

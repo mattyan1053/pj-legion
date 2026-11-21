@@ -9,6 +9,7 @@
 [episode]
 title = 撃ち合い
 map = drill_field
+music = battle_fields
 before_music = talk
 after_music = talk_bright
 lesson = スナイパーは 4 マス先から撃てるが、打たれ弱い。盾役を前に立てる。

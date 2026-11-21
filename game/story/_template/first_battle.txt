@@ -22,6 +22,8 @@ map = ridge_path
 # music = battle_tense
 # before_music = battle_tense
 # after_music = talk_bright
+# 終盤の曲（どちらかの将の HP が半分を切ったら替わる）。書かなければ battle_climax。
+# climax_music = battle_final
 # 勝ったときの調子。bright（明るい。ファンファーレのあと静かな曲）か quiet（静か。ファンファーレを鳴らさない）。書かなければ bright。
 # 弔いや敵討ちのあとなど、明るくない話は quiet。
 # victory_mood = quiet

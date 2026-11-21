@@ -40,6 +40,8 @@ var music := &""
 ## 前の会話と、あとの会話の曲（無ければ空。before_talk_music・after_talk_music が既定を決める）。
 var before_music := &""
 var after_music := &""
+## 終盤の曲（無ければ空 = いつもの終盤の曲。sound_catalog.gd の CLIMAX_MUSIC）。
+var climax_music := &""
 ## 勝ったときの調子（sound_catalog.gd の MOOD_BRIGHT か MOOD_QUIET。無ければ明るい）。静かなら、ファンファーレを鳴らさない。
 var victory_mood := SoundCatalog.MOOD_BRIGHT
 ## 出撃準備に出す、この話で覚えること（チュートリアルだけ。無ければ空）。
@@ -170,7 +172,7 @@ func _read_episode(file: RefCounted) -> void:
 		file.problem(1, "[episode] の節が無い")
 		return
 	var at: int = file.line_of("episode")
-	var values: Dictionary = file.values("episode", ["title", "map", "look", "music", "before_music", "after_music", "victory_mood", "lesson", "hold_turns", "wins"])
+	var values: Dictionary = file.values("episode", ["title", "map", "look", "music", "before_music", "after_music", "climax_music", "victory_mood", "lesson", "hold_turns", "wins"])
 	for key: String in ["title", "map"]:
 		if not values.has(key):
 			file.problem(at, "[episode] に「%s」が無い" % key)
@@ -194,7 +196,7 @@ func _read_episode(file: RefCounted) -> void:
 		look = StringName(entry["value"])
 		if not StageLook.THEMES.has(look):
 			file.problem(entry["line"], "知らない見た目「%s」（書けるのは %s）" % [look, ", ".join(StageLook.THEMES.keys())])
-	for key: String in ["music", "before_music", "after_music"]:
+	for key: String in ["music", "before_music", "after_music", "climax_music"]:
 		if values.has(key):
 			var entry: Dictionary = values[key][0]
 			var track := StringName(entry["value"])

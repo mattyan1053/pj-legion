@@ -10,7 +10,8 @@
 [episode]
 title = 尾根の待ち伏せ
 map = ridge_path
-before_music = battle_ruins
+music = battle
+before_music = battle
 after_music = talk_calm
 
 [cast]
