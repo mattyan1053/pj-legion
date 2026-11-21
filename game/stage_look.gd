@@ -61,6 +61,7 @@ const DRY := &"dry"  ## 地面の、ところどころ枯れた色に寄せる�
 ## 無くてよい数（書かなければ 0）。
 const STRATA := &"strata"  ## 地面の、掘り下げた段々（露天掘りの棚）の濃さ
 const CRACKS := &"cracks"  ## 地面の、ひび割れの濃さ
+const SNOW := &"snow"  ## 地面の残雪の濃さ（盤の中は薄く、外は濃く）
 const MIST := &"mist"  ## 霞を近くから掛ける量（0 = いつもの距離、1 = MIST_BEGIN・MIST_END の距離から）
 const SEAM_GLOW := &"seam_glow"  ## 盤の向こう（プレイヤー2 の本陣の先）の地面を横切る、光る裂け目の明るさ
 
@@ -143,6 +144,7 @@ const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶、ス�
 const QUARRY := &"quarry"  ## 採掘場（結晶の採掘場）
 const SEAM := &"seam"  ## 縫い目の谷
 const BARROW := &"barrow"  ## 古戦場
+const PASS := &"pass"  ## 峠（大岩の峠）
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -259,6 +261,26 @@ const THEMES := {
 			SMALL: [GRAVES, GRAVES, GRAVES, BROKEN_ARMS, TREES_B, COLUMN],
 			SCATTER: [GRAVES, BROKEN_ARMS, GRAVES, RUBBLE, GRAVES],
 			TINT: Color("b0b8a8"),
+		},
+	},
+	# 大岩の峠: 雪の残る高い峠。灰緑の高山の草地に残雪、障害物は雪をかぶった灰色の岩山（大岩）、森は暗い針葉樹。
+	# 盤の外は、四方を囲む雪の峰と、まばらな針葉樹、岩。澄んだ冷たい朝の低い光（長い影）と、淡い青の霞。
+	PASS: {
+		NORMAL: Color("64806e"), FOREST: Color("2f5140"), OBSTACLE: Color("4d515e"), FONT: Color("3fa9bd"),
+		HAZE: Color("c6d6e8"), SKY: Color("3d74c4"), SUN: Color("fff5e4"), AMBIENT: Color("b2c6e6"),
+		SUN_PITCH: -34.0, SUN_YAW: -125.0, SUN_ENERGY: 1.2, AMBIENT_ENERGY: 0.55,
+		PAVING: 0.0, DRY: 0.2, SNOW: 1.0,
+		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("c4ccd6"),
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE,
+			"low": Color("3a404a"), "cliff": Color("707886"), "top": Color("e6ecf2"),
+		},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_A, TREES_B], "scale": 0.62, "tint": Color("86a89c")},
+		SCENERY: {
+			BIG: [MOUNTAIN_B, MOUNTAIN_A, MOUNTAIN_C],
+			SMALL: [TREES_A, {"scene": HEX + "rock_single_E.gltf", "height": 0.19, "size": 0.4}, TREES_A],
+			SCATTER: [ROCK_C, ROCK_A],
+			TINT: Color("dfe8f4"), SMALL_SHARE: 0.45, BIG_SPREAD: 0.25,
 		},
 	},
 }
