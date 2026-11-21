@@ -1916,6 +1916,29 @@ func _portal_paint(unit: Unit) -> Dictionary:
 	return result
 
 
+## 塗りの色の見本を出す（スクリーンショットの道具用。景色ごとに、範囲の色が地面に沈まないかを並べて比べる）。
+## samples: 種類（&"move" 移動、&"target" 攻撃の相手、&"heal" 回復、&"skill" スキル、&"path" 道、&"portal" ポータルの対、
+## &"threat" 敵の全員の脅威範囲）-> マスの列。前に塗ったものは消える。
+func show_paint_samples(samples: Dictionary) -> void:
+	var colors := {}
+	var raised := {}
+	var kinds := {&"move": COLOR_MOVE, &"target": COLOR_TARGET, &"heal": COLOR_HEAL, &"skill": COLOR_SKILL, &"path": COLOR_PATH}
+	for kind: StringName in samples:
+		for cell: Vector2i in samples[kind]:
+			if kinds.has(kind):
+				colors[cell] = kinds[kind]
+			elif kind == &"portal" and not battle.board.portal_exits.is_empty():
+				colors[cell] = portal_paint_color(battle.board.portal_exits.keys()[0])
+			# 対戦の中と同じに、ポータルの上の塗り（道を除く）は、ポータルの面に隠れないよう上に塗る（_show_painted）。
+			if colors.has(cell) and battle.board.object_at(cell) == MapObject.Type.PORTAL and colors[cell] != COLOR_PATH:
+				raised[cell] = true
+	_board_view.show_cells(colors, raised)
+	var threat: Array[Vector2i] = []
+	threat.assign(samples.get(&"threat", []))
+	_board_view.show_danger(threat)
+	_board_view.set_grid_emphasis(true)
+
+
 ## ポータルの対を塗る色（ポータルの色を、塗りの濃さにしたもの）。
 func portal_paint_color(portal: Vector2i) -> Color:
 	return Color(BoardView.portal_color(battle.board, portal), 0.75)
