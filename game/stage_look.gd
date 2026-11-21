@@ -148,7 +148,7 @@ const KEYS: Array[StringName] = [
 ## 盤の外の景色に掛ける色の、どのテーマにも共通の分（盤の上の木立や岩山より沈ませる）。
 const SCENERY_SHADE := Color(0.84, 0.88, 0.86)
 
-## 見た目の名前。対戦モードのマップの名前とは別の名前の空間（マップ → 見た目は OF_STAGE、ストーリーの話 → 見た目は話の LOOK）。
+## 見た目の名前。対戦モードのマップの名前とは別の名前の空間（マップ → 見た目は OF_STAGE、ストーリーの話 → 見た目は話の look。Episode.look）。
 ## 同じ見た目を、いくつものマップや話で使い回せる。マップの見た目を替えるときは OF_STAGE を書き換え、見た目そのものは替えない。
 const GRASSLAND := &"grassland"  ## 草原（中央平原）
 const STONE_WALLS := &"stone_walls"  ## 石の壁（迷宮回廊、ストーリーの尾根の小道）
