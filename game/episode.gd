@@ -1,5 +1,5 @@
 extends RefCounted
-## ストーリーの話 1 つ（docs/story.md の「話のファイル」）。game/story/episodes/ の 1 ファイルを読んだもの。ノードに依存しない。
+## ストーリーの話 1 つ（docs/story.md の「話のファイル」）。game/story/<物語>/ の 1 ファイルを読んだもの。ノードに依存しない。
 ##
 ## 読むときに、書き間違い（知らないキー、無い駒・装備・マップ・見た目・曲、置けないマス、勝ち方の矛盾、会話の話し手、
 ## きっかけの値、文の長さ）を「ファイル:行: 何がおかしいか」で problems に貯める。problems が空でない話は遊べない（story.gd が外す）。
@@ -14,9 +14,8 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
-const DIR := "res://game/story/episodes/"
 ## 書ける節。
-const SECTIONS := ["episode", "unlock", "ally", "enemy", "before", "after", "cues"]
+const SECTIONS := ["episode", "cast", "before", "cues", "after", "ally", "enemy", "unlock"]
 ## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃準備に出す覚えることの長さの上限。
 const TALK_MAX_LINES := 10
 ## 会話（前と後）の 1 行の文の長さの上限（会話の場面の文の枠に 2 行で収まる）。
@@ -68,7 +67,8 @@ var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
 ## 駒の始めのレベルと経験値: [人の部隊の列, 敵の部隊の列]。どちらも [レベル, 経験値] の列で、部隊（squad、enemy）と同じ並び。
 ## 駒の行に書かなければ [1, 0]（いつもどおり）。戦いの定義の start_growth へ写す（story_battle.gd）。
 var growth: Array = [[], []]
-## 話し手の名前: [人の軍の主な話し手, 敵の軍の主な話し手, ほかの話し手（[ally]・[enemy] の speaker。書いた順）, …]。
+## 話し手の名前: [人の軍の主な話し手, 敵の軍の主な話し手, ほかの話し手（書いた順）, …]。[cast] に書く。
+## 主な話し手は、その陣営で最初に書いた人。
 ## 会話と途中の台詞の行は、話し手をこの並びの番号で持つ。
 var speakers: PackedStringArray = ["", ""]
 ## 話し手の陣営（0 = 人の軍、1 = 敵の軍）。speakers と同じ並び。
@@ -90,13 +90,6 @@ var path := ""
 var problems: PackedStringArray = []
 ## 初期位置を書いた行（陣営ごと。書き間違いの文に使う）。
 var _deploy_lines := [0, 0]
-## ほかの話し手の行（陣営ごと。両方の陣営の主な話し手を読んだあとに読む）。
-var _speaker_entries := [[], []]
-
-
-## 話 episode_id のファイル（DIR）を読む。
-static func load_id(episode_id: String) -> RefCounted:
-	return load_file(DIR + episode_id + ".txt")
 
 
 ## ファイル file_path を読む。
@@ -166,7 +159,7 @@ func _read(file: RefCounted) -> void:
 	_read_unlock(file)
 	_read_side(file, "ally", 0)
 	_read_side(file, "enemy", 1)
-	_read_more_speakers(file)
+	_read_cast(file)
 	_read_talks(file)
 	_read_cues(file)
 	_check_kingless(file)
@@ -268,16 +261,13 @@ func _read_unlock(file: RefCounted) -> void:
 ## 陣営の節（[ally] = 人の軍、[enemy] = 敵の軍）。
 func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if not file.has(section):
-		file.problem(1, "[%s] の節が無い（話し手の name だけでも書く）" % section)
+		# 人の側は、書かなければ「出撃準備で選んだ部隊を、いつもの初期位置に」。敵の側は、軍と部隊が要る。
+		if side == 1:
+			file.problem(1, "[enemy] の節が無い（敵の軍 army と、部隊 unit を書く）")
 		return
-	var keys := ["name", "figure", "speaker", "unit", "deploy"]
+	var keys := ["unit", "deploy"]
 	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure", "king"])
-	var values: Dictionary = file.values(section, keys, ["speaker", "unit", "deploy"])
-	_speaker_entries[side] = values.get("speaker", [])
-	if values.has("name"):
-		speakers[side] = values["name"][0]["value"]
-	if speakers[side] == "":
-		file.problem(file.line_of(section), "[%s] に話し手の name が無い" % section)
+	var values: Dictionary = file.values(section, keys, ["unit", "deploy"])
 	if values.has("king_figure"):
 		var entry: Dictionary = values["king_figure"][0]
 		var king_look := StringName(entry["value"])
@@ -285,13 +275,6 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 			king_looks[side] = king_look
 		else:
 			file.problem(entry["line"], "知らない将の姿「%s」（書けるのは %s）" % [king_look, ", ".join(UnitLooks.KING_LOOKS)])
-	if values.has("figure"):
-		var entry: Dictionary = values["figure"][0]
-		var figure := _figure(file, entry["line"], entry["value"])
-		if not figure.is_empty():
-			figures[side] = figure
-	if figures[side]["kind"] == UnitKind.Id.KING:
-		figures[side]["look"] = king_looks[side]
 	var rows: Array = []
 	var grown: Array = []
 	for entry: Dictionary in values.get("unit", []):
@@ -344,29 +327,51 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
 
 
-## ほかの話し手（[ally]・[enemy] の「speaker = 名前, 姿」。姿は無くてよく、無ければその陣営の将）。
-## 両方の陣営の主な話し手（name）を読んだあとに読む（speakers の [0] と [1] が主な話し手）。
-func _read_more_speakers(file: RefCounted) -> void:
-	for side: int in [0, 1]:
-		for entry: Dictionary in _speaker_entries[side]:
-			var parts := (entry["value"] as String).split(",")
-			var name := parts[0].strip_edges()
-			if name == "" or parts.size() > 2:
-				file.problem(entry["line"], "話し手は「speaker = 名前, 姿」（姿は無くてよい）: %s" % entry["value"])
+## 話し手（[cast] の「名前 = 陣営, 姿」。陣営は ally（人の軍）か enemy（敵の軍）。姿は無くてよく、無ければその陣営の将）。
+## その陣営で最初に書いた人が、主な話し手（speakers の [0] が人の軍、[1] が敵の軍。[1] の姿は話の一覧のカードの顔にもなる）。
+## 両方の陣営の節を読んだあとに読む（将の姿 king_figure が要る）。
+func _read_cast(file: RefCounted) -> void:
+	if not file.has("cast"):
+		file.problem(1, "[cast] の節が無い（話し手を「名前 = ally」「名前 = enemy, 姿」と書く）")
+		return
+	var main_found := [false, false]
+	var names := {}
+	for row: Dictionary in file.rows("cast"):
+		var text: String = row["text"]
+		var at := text.find("=")
+		var name := text.substr(0, maxi(at, 0)).strip_edges()
+		var parts := text.substr(at + 1).split(",")
+		if at < 0 or name == "" or parts.size() > 2:
+			file.problem(row["line"], "話し手は「名前 = 陣営, 姿」（陣営は ally か enemy。姿は無くてよい）: %s" % text)
+			continue
+		var side_word := parts[0].strip_edges()
+		if not SIDE_WORDS.has(side_word):
+			file.problem(row["line"], "話し手「%s」の陣営は ally（人の軍）か enemy（敵の軍）: %s" % [name, side_word])
+			continue
+		var side: int = SIDE_WORDS[side_word]
+		if names.has(name):
+			file.problem(row["line"], "話し手「%s」が 2 度ある（%d 行目にもある）" % [name, names[name]])
+			continue
+		names[name] = row["line"]
+		var figure := {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}
+		if parts.size() == 2:
+			figure = _figure(file, row["line"], parts[1].strip_edges())
+			if figure.is_empty():
 				continue
-			if speakers.has(name):
-				file.problem(entry["line"], "話し手「%s」が 2 度ある" % name)
-				continue
-			var figure := {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}
-			if parts.size() == 2:
-				figure = _figure(file, entry["line"], parts[1].strip_edges())
-				if figure.is_empty():
-					continue
-			if figure["kind"] == UnitKind.Id.KING:
-				figure["look"] = king_looks[side]
+		if figure["kind"] == UnitKind.Id.KING:
+			figure["look"] = king_looks[side]
+		if not main_found[side]:
+			main_found[side] = true
+			speakers[side] = name
+			figures[side] = figure
+		else:
 			speakers.append(name)
 			speaker_sides.append(side)
 			figures.append(figure)
+	for side: int in [0, 1]:
+		if not main_found[side]:
+			var word: String = SIDE_WORDS.find_key(side)
+			file.problem(file.line_of("cast"), "[cast] に、%s の話し手が 1 人もいない（「名前 = %s」）" % ["人の軍" if side == 0 else "敵の軍", word])
 
 
 ## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。読めなければ空。
@@ -479,7 +484,7 @@ func _read_talks(file: RefCounted) -> void:
 
 
 ## 会話の行「話し手: 文」（全角の「：」でもよい）を [陣営, 文, 話し手（speakers の番号）] に。
-## 話し手は [ally] か [enemy] の name か speaker。読めなければ空。
+## 話し手は [cast] に書いた名前。読めなければ空。
 func _speech(file: RefCounted, line: int, text: String) -> Array:
 	var at := text.find(":")
 	var wide := text.find("：")
@@ -492,7 +497,7 @@ func _speech(file: RefCounted, line: int, text: String) -> Array:
 	var said := text.substr(at + 1).strip_edges()
 	var who := speakers.find(name)
 	if name == "" or who < 0:
-		file.problem(line, "知らない話し手「%s」（[ally] か [enemy] の name か speaker: %s）" % [name, " / ".join(speakers)])
+		file.problem(line, "知らない話し手「%s」（[cast] に書いた名前: %s）" % [name, " / ".join(speakers)])
 		return []
 	if said == "":
 		file.problem(line, "文が空")
@@ -514,7 +519,7 @@ func _check_kingless(file: RefCounted) -> void:
 			file.problem(file.line_of("episode"), "将のいない敵（king = none）の話の wins に、%s は書けない" % String(GameWonEvent.Reason.find_key(reason)).to_lower())
 	for i in speakers.size():
 		if speaker_sides[i] == 1 and figures[i]["kind"] == UnitKind.Id.KING:
-			file.problem(line, "将のいない敵（king = none）の話し手「%s」に、将でない姿（figure）を書く" % speakers[i])
+			file.problem(line, "将のいない敵（king = none）の話し手「%s」に、[cast] で将でない姿を書く（「名前 = enemy, skeleton_caller」など）" % speakers[i])
 	for cue: Array in cues:
 		if cue[0] == BattleCues.KING_HALF and cue[1] == 1:
 			file.problem(file.line_of("cues"), "将のいない敵（king = none）に、敵の将の HP のきっかけ（king_half enemy）は書けない")

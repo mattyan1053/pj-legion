@@ -2,8 +2,8 @@ extends RefCounted
 ## ストーリー（docs/story.md）: 物語の並びと、物語ごとの進み具合（クリアした話、選んだ部隊）。読み書きは save_store.gd（user://story.json）。
 ## ノードに依存しない。
 ##
-## - 物語は、軍 1 つと話の列（game/story/campaigns/ の 1 ファイル。campaign.gd）。game/story/campaigns.txt の順に並ぶ。物語を選んでから、その物語の話を選ぶ。
-## - 話は物語の中で一本道（game/story/episodes/ の 1 ファイル。episode.gd）。物語の [episodes] の順に並ぶ。話の一覧（episode_list_screen.gd）で、前の話をクリアした話と、クリアした話を選べる。
+## - 物語は、軍 1 つと話の列（game/story/ の 1 フォルダ。campaign.gd）。物語のファイル（story.txt）の order の順に並ぶ。物語を選んでから、その物語の話を選ぶ。
+## - 話は物語の中で一本道（game/story/<物語>/ の 1 ファイル。episode.gd）。物語の [episodes] の順に並ぶ。話の一覧（episode_list_screen.gd）で、前の話をクリアした話と、クリアした話を選べる。
 ## - 進み具合（クリア、選んだ部隊、雇える駒）は物語ごと。名前に物語の付かない関数は、いま選んでいる物語（campaign）の進み具合を読む。
 ## - 書くのは、物語ごとの、クリアした話の id の一覧と、出撃準備で最後に選んだ部隊の id だけ。
 ##   壊れたファイル・知らない id があっても、起動を止めない（知らない話・物語の記録は残して書き戻す）。
@@ -159,7 +159,7 @@ static var _problems: PackedStringArray = []
 static var _loaded := false
 
 
-## 物語の並び（game/story/campaigns.txt の順）。話の無い物語は「準備中」で、選べない。
+## 物語の並び（物語のファイルの order の順）。話の無い物語は「準備中」で、選べない。
 ## 書き間違いのある話は並ばない（読み込みの書き間違いは load_problems() と、エラーの出力）。
 static func campaigns() -> Array[Campaign]:
 	if not _loaded:

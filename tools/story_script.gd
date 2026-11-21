@@ -44,11 +44,15 @@ static func index_text() -> String:
 	lines.append("- `[before]`: 対戦の前の会話。`[after]`: 勝ったあとの会話。1 行が「話し手: 文」。")
 	lines.append("- `[cues]`: 対戦の途中の台詞。頭の括弧が出るとき（`(turn 3)` はターン 3 の始め、`(fallen ally)` は味方が初めて倒れたとき、")
 	lines.append("  `(king_half enemy)` は敵の将の HP が半分を切ったとき、`(ult_ready ally)` は必殺技が使えるようになったとき）。")
-	lines.append("- 上のほうの `[episode]`・`[ally]`・`[enemy]` は、マップ・勝ち方・話し手・敵の部隊（書式は `docs/story.md` の「話のファイル」）。")
+	lines.append("- 頭の `[episode]` は話の名前・マップ・勝ち方、`[cast]` は話し手（`ally` が遊ぶ人の軍、`enemy` が敵の軍。後ろは会話に立つ姿）。")
+	lines.append("- 「ここから下は、戦いの設定」の線より下は、部隊・初期位置・クリアで増えるもの（書式は `docs/story.md` の「話のファイル」）。")
+	lines.append("- 物語を足すときは、`_template/` のフォルダを写す（`docs/story.md` の「物語を 1 つ足す」）。")
 	lines.append("- 登場人物は `docs/story.md` の「世界と登場人物」。")
 	for campaign: Campaign in Story.campaigns():
 		lines.append("")
 		lines.append("## %s（%s）" % [campaign.title, Names.army(campaign.army)])
+		lines.append("")
+		lines.append("物語のファイル: [%s](%s)" % [campaign.path.trim_prefix("res://game/story/"), campaign.path.trim_prefix("res://game/story/")])
 		lines.append("")
 		for at in campaign.episodes.size():
 			var episode: Episode = campaign.episodes[at]
@@ -69,7 +73,7 @@ static func text_of(campaign: Campaign) -> String:
 	lines.append("# %s" % campaign.title)
 	lines.append("")
 	lines.append("ストーリーの会話を、遊ばずに通しで読むための台本。人が使う軍は %s、全 %d 話。" % [Names.army(campaign.army), campaign.episodes.size()])
-	lines.append("話のファイル（`game/story/episodes/`）から作った写しで、コミットしない。直すのは話のファイル。")
+	lines.append("話のファイル（`game/story/<物語>/`）から作った写しで、コミットしない。直すのは話のファイル。")
 	lines.append("")
 	var given := Story.starting(campaign)
 	for episode: Episode in campaign.episodes:
