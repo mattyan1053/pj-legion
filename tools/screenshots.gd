@@ -308,7 +308,7 @@ func _run() -> void:
 			print("screenshots: 場面 %s を作れた" % name)
 			if _mid_animation:
 				_scene.set_time_scale_base(1.0)
-			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
+			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
 			continue
 		if _mid_animation:
@@ -318,7 +318,7 @@ func _run() -> void:
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
 			continue
-		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
+		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
