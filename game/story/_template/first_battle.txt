@@ -16,9 +16,15 @@ map = ridge_path
 # ここから下の欄は、どれも無くてよい（使うときに、頭の # を外す）。
 # この話だけ、マップと別の景色にする（stage_look.gd の見た目の名前）。
 # look = stone_walls
-# 対戦の曲と会話の曲（sound_catalog.gd の MUSIC の名前）。書かなければ、マップの曲と、会話の場面の曲。
+# 対戦の曲、前の会話の曲、あとの会話の曲（sound_catalog.gd の MUSIC の名前。docs/sound.md）。
+# 書かなければ、マップの曲、対戦の曲（会話の間は小さく鳴らし、そのまま対戦へつながる）、落ち着いた曲（talk_calm）。
+# 前の会話に対戦の曲（battle で始まる名前）を書くなら、その話の対戦の曲と同じにする（検査が確かめる）。
 # music = battle_tense
-# talk_music = talk
+# before_music = battle_tense
+# after_music = talk_bright
+# 勝ったときの調子。bright（明るい。ファンファーレのあと静かな曲）か quiet（静か。ファンファーレを鳴らさない）。書かなければ bright。
+# 弔いや敵討ちのあとなど、明るくない話は quiet。
+# victory_mood = quiet
 # 出撃準備に出す「この話で覚えること」（48 字まで）。書くと、話の一覧で「（演習）」と付く。
 # lesson = 駒をクリックして動かし、隣の敵を攻撃する。
 # 勝ち方。書かなければ、いつもの勝ち方（敵の将を倒すか、敵の本陣を占拠する）。

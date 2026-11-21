@@ -10,6 +10,8 @@
 title = 森の守り
 map = mist_forest
 music = battle_tense
+before_music = battle_tense
+after_music = talk_calm
 
 [cast]
 イェルダ = ally, paladin evolved crown

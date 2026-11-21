@@ -11,6 +11,8 @@
 title = 岩山の掃討
 map = crystal_gorge
 music = battle_rout
+before_music = battle_rout
+after_music = talk_dark
 wins = routed
 
 [cast]

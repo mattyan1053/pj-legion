@@ -43,6 +43,16 @@ func music() -> StringName:
 	return episode.battle_music()
 
 
+## 勝ったときの調子は、話のファイルの victory_mood（暗い話は静か）。
+func victory_mood() -> StringName:
+	return episode.victory_mood
+
+
+## 決着の曲のあとは、その話のあとの会話の曲（「次へ」で、そのまま会話へつながる）。
+func after_result_music() -> StringName:
+	return episode.after_talk_music()
+
+
 func can_continue(won: bool) -> bool:
 	return won
 

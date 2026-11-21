@@ -10,6 +10,8 @@
 [episode]
 title = 尾根の待ち伏せ
 map = ridge_path
+before_music = battle_ruins
+after_music = talk_calm
 
 [cast]
 ハーデン = ally

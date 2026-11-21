@@ -35,9 +35,13 @@ var map: HandMap
 var map_title := ""
 ## 盤の見た目（stage_look.gd の THEMES の鍵）。マップの見た目（マップのファイルの look）。話のファイルが look を書けば、それ。
 var look := &""
-## 対戦の曲（無ければ盤の見た目の曲）と、会話の曲（無ければ空 = 会話の場面の曲）。
+## 対戦の曲（無ければ空。battle_music が盤の見た目の曲にする）。
 var music := &""
-var talk_music := &""
+## 前の会話と、あとの会話の曲（無ければ空。before_talk_music・after_talk_music が既定を決める）。
+var before_music := &""
+var after_music := &""
+## 勝ったときの調子（sound_catalog.gd の MOOD_BRIGHT か MOOD_QUIET。無ければ明るい）。静かなら、ファンファーレを鳴らさない。
+var victory_mood := SoundCatalog.MOOD_BRIGHT
 ## 出撃準備に出す、この話で覚えること（チュートリアルだけ。無ければ空）。
 var lesson := ""
 ## クリアで増えるもの: 雇える駒、持たせられる装備、部隊のコストの上限の上がり幅。
@@ -122,6 +126,16 @@ func battle_music() -> StringName:
 	return music if music != &"" else SoundCatalog.battle_music(look)
 
 
+## 前の会話の曲（無ければ、対戦の曲。会話の間は小さく鳴らし、そのまま対戦へつながる。docs/sound.md）。
+func before_talk_music() -> StringName:
+	return before_music if before_music != &"" else battle_music()
+
+
+## あとの会話の曲（無ければ、落ち着いた曲。sound_catalog.gd の AFTER_TALK_MUSIC）。
+func after_talk_music() -> StringName:
+	return after_music if after_music != &"" else SoundCatalog.AFTER_TALK_MUSIC
+
+
 static func _deck_of(army: UnitKind.Army, rows: Array) -> Deck:
 	var deck := Deck.new(army)
 	for row: Array in rows:
@@ -156,7 +170,7 @@ func _read_episode(file: RefCounted) -> void:
 		file.problem(1, "[episode] の節が無い")
 		return
 	var at: int = file.line_of("episode")
-	var values: Dictionary = file.values("episode", ["title", "map", "look", "music", "talk_music", "lesson", "hold_turns", "wins"])
+	var values: Dictionary = file.values("episode", ["title", "map", "look", "music", "before_music", "after_music", "victory_mood", "lesson", "hold_turns", "wins"])
 	for key: String in ["title", "map"]:
 		if not values.has(key):
 			file.problem(at, "[episode] に「%s」が無い" % key)
@@ -180,16 +194,24 @@ func _read_episode(file: RefCounted) -> void:
 		look = StringName(entry["value"])
 		if not StageLook.THEMES.has(look):
 			file.problem(entry["line"], "知らない見た目「%s」（書けるのは %s）" % [look, ", ".join(StageLook.THEMES.keys())])
-	for key: String in ["music", "talk_music"]:
+	for key: String in ["music", "before_music", "after_music"]:
 		if values.has(key):
 			var entry: Dictionary = values[key][0]
 			var track := StringName(entry["value"])
 			if not SoundCatalog.has_music(track):
 				file.problem(entry["line"], "知らない曲「%s」（sound_catalog.gd の MUSIC）" % track)
-			elif key == "music":
-				music = track
 			else:
-				talk_music = track
+				set(key, track)
+	if values.has("victory_mood"):
+		var entry: Dictionary = values["victory_mood"][0]
+		var mood := StringName(entry["value"])
+		if not SoundCatalog.MOODS.has(mood):
+			file.problem(entry["line"], "知らない調子「%s」（書けるのは %s）" % [mood, ", ".join(SoundCatalog.MOODS)])
+		else:
+			victory_mood = mood
+	# 前の会話に対戦の曲を書くなら、その話の対戦の曲（会話から対戦へ、同じ曲のままつなぐ。違う対戦の曲へ替わると、続けて鳴る戦いの曲が 2 つになる）。
+	if SoundCatalog.is_battle_music(before_music) and before_music != battle_music():
+		file.problem(values["before_music"][0]["line"], "before_music の対戦の曲「%s」が、この話の対戦の曲「%s」と違う" % [before_music, battle_music()])
 	if values.has("lesson"):
 		var entry: Dictionary = values["lesson"][0]
 		lesson = entry["value"]
