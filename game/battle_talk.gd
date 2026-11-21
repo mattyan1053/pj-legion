@@ -14,9 +14,9 @@ const TextWrap := preload("res://game/text_wrap.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 
-## 1 つの台詞を出しておく時間（秒）: 基本 + 1 文字あたり。
-const SHOW_BASE := 2.2
-const SHOW_PER_CHAR := 0.07
+## 1 つの台詞を出しておく時間（秒）: 基本 + 1 文字あたり。目で追い終えてから、もう一度読めるくらい。
+const SHOW_BASE := 3.5
+const SHOW_PER_CHAR := 0.1
 ## 出てくる・消えるときのフェード（秒）。
 const FADE := 0.25
 ## 帯の幅と、上端（上の帯（battle_hud.gd の TOP_BAR_HEIGHT = 50）のすぐ下）。横は画面の真ん中。
@@ -38,6 +38,9 @@ const COLOR_TEXT := Palette.TEXT
 
 ## 札を薄くする四角（画面の座標）を返す Callable（無ければ、マウスだけを見る）。HUD が入れる（駒のそばのメニュー、予測のパネル）。
 var obstacles := Callable()
+## 真なら、次の台詞を出し始めずに待つ Callable（無ければ待たない）。対戦の画面が入れる: 画面の真ん中の「ターン N」の帯が出ている間は、
+## 目がそちらへ行くので、台詞は帯が消えてから出す（同時に出すと、気付かないうちに消える）。出し始めた台詞は止めない。
+var waiting := Callable()
 
 ## まだ出していない台詞。
 var _queue: Array[BattleCues.Line] = []
@@ -171,6 +174,9 @@ func _process(delta: float) -> void:
 	if Engine.time_scale <= 0.0:
 		return
 	var real := delta / Engine.time_scale
+	if _elapsed <= 0.0 and waiting.is_valid() and waiting.call():
+		modulate.a = 0.0
+		return
 	_elapsed += real
 	var shown := _duration(_current)
 	_dim = move_toward(_dim, DIMMED if is_dimmed() else 1.0, DIM_SPEED * real)

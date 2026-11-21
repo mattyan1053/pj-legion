@@ -9,7 +9,6 @@
 [episode]
 title = 岩山越え
 map = crystal_gorge
-look = crystal_forest
 before_music = battle_crystal
 after_music = talk_bright
 
