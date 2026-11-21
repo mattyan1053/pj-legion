@@ -88,7 +88,7 @@
 | `defeated` | 駒が倒れた |
 | `explosion` | 樽が爆発した |
 | `heal` | 回復した（回復役・泉・再生・聖域） |
-| `skill_fire` / `skill_guard` / `skill_holy` / `skill_wind` / `skill_focus` | スキルの形が対象に届いた瞬間。系統ごと（`battle_effects.gd` の `SKILL_SOUNDS`）: 炎、守り（バリケード・ディバインシールド）、聖（聖域）、風と影（スモークグレネード・シャドウステップ）、集中（照準・アドレナリン注射） |
+| `skill_fire` / `skill_guard` / `skill_holy` / `skill_wind` / `skill_focus` | スキルの形が対象に届いた瞬間。系統ごと（`battle_effects.gd` の `SKILL_SOUNDS`）: 炎、守り（バリケード・ディバインシールド・骨太鼓）、聖（聖域・骨起こし）、風と影（スモークグレネード・シャドウステップ）、集中（照準・アドレナリン注射） |
 | `ult` | 必殺技を使った（画面が光る瞬間に 1 回。音の山が、続く光の柱に重なる） |
 | `ult_ready` | 必殺技のゲージがいっぱいになった |
 | `portal` | ポータルで転移した |
