@@ -7,6 +7,8 @@ const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
 const Campaign := preload("res://game/campaign.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
+const BattleSource := preload("res://game/battle_source.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
 const Text := preload("res://game/text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const CampaignListScreen := preload("res://game/campaign_list_screen.gd")
@@ -153,6 +155,26 @@ func test_narration_lines_read() -> void:
 	assert_eq(talk["lines"][1]["name"], "隊長")
 	assert_eq(preload("res://game/talk_screen.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話の場面も、同じ陣営の番号で地の文と見る")
 	assert_eq(preload("res://game/talk_log.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話のログも、同じ陣営の番号で地の文と見る")
+
+
+## 負けたときの台詞（[lost]）は無くてよい。書けば、話し手と文を読み、話の対戦が決着の画面へ渡す（battle_source.gd の lost_lines）。
+func test_lost_lines_read() -> void:
+	var plain: Episode = Episode.parse(PROBE)
+	assert_eq(plain.lost, [], "書かなければ無し")
+	assert_true(StoryBattle.new(plain, null).lost_lines().is_empty())
+	var episode: Episode = Episode.parse(PROBE.replace("敵将: 退け", "敵将: 退け\n\n[lost]\n敵将: 甘い\n隊長：旗を空けすぎた"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.lost, [[1, "甘い", 1], [0, "旗を空けすぎた", 0]])
+	var lines := StoryBattle.new(episode, null).lost_lines()
+	assert_eq(lines.map(func(line: BattleCues.Line) -> Array: return [line.side, line.name, line.text]), [[1, "敵将", "甘い"], [0, "隊長", "旗を空けすぎた"]])
+	assert_eq(lines[1].figure, episode.figures[0], "話し手の姿も渡す（決着の画面のアイコン）")
+	assert_true(BattleSource.new().lost_lines().is_empty(), "対戦モードは無し")
+
+
+## どの話にも、負けたときの台詞がある（負けたときに、次にどうするかの手掛かりを残す。docs/story.md の「会話の書き方」）。
+func test_every_episode_has_lost_lines() -> void:
+	for episode: Episode in Story.all_episodes():
+		assert_between(episode.lost.size(), 1, Episode.LOST_MAX_LINES, "%s: [lost] が無い" % episode.id)
 
 
 ## 姿の最後の crown は、将の姿でない将に、会話で将の印を付ける（鍵は、付けたときだけ入る）。
@@ -331,7 +353,7 @@ func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 	var quoted := RegEx.create_from_string("「([^」]*)」")
 	for episode: Episode in Story.all_episodes():
 		var texts: Array[String] = [episode.lesson]
-		for line: Array in episode.before + episode.after:
+		for line: Array in episode.before + episode.after + episode.lost:
 			texts.append(line[1])
 		for cue: Array in episode.cues:
 			texts.append(cue[3])
@@ -427,6 +449,11 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"節より前の行": ["[episode]", "title = 前\n[episode]", 2],
 		"節の重なり": ["[after]", "[before]\n隊長: また\n[after]", 26],
 		"空の地の文": ["隊長: いくぞ", "＞", 23],
+		"負けの台詞に地の文": ["敵将: 退け", "敵将: 退け\n[lost]\n> 日が暮れた", 29],
+		"負けの台詞が多い": ["敵将: 退け", "敵将: 退け\n[lost]\n" + "隊長: また\n".repeat(Episode.LOST_MAX_LINES + 1).strip_edges(), 28],
+		"負けの台詞が長い": ["敵将: 退け", "敵将: 退け\n[lost]\n隊長: " + "あ".repeat(Episode.LOST_MAX_CHARS + 1), 29],
+		"負けの台詞が空": ["敵将: 退け", "敵将: 退け\n[lost]", 28],
+		"負けの台詞の話し手": ["敵将: 退け", "敵将: 退け\n[lost]\n団長: また", 29],
 	}
 	for name: String in cases:
 		var case: Array = cases[name]
