@@ -15,6 +15,7 @@
 | `controllers` | プレイヤーごとに、人（`HUMAN`）が動かすか CPU（`CPU`）が動かすか |
 | `placements` | プレイヤーごとの、人が決めた置き方（本陣からのずれ。空ならいつもの置き方。`docs/player-loadout.md`） |
 | `trials` | 入にする試しの決まり（`TrialRules` の名前の並び。既定は空 = どれも切。下の「試しの決まり」） |
+| `tactics` | プレイヤーごとの、選んだ作戦の札（`docs/tactics.md`）。試しの決まり「作戦」が入のときだけ使う |
 
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
@@ -61,12 +62,13 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 - **既定はどれも切。切のとき、対戦は 1 局も変わらない**（盤も、駒も、CPU の手も）。ストーリーの話は、入にしない。
 - 入にするのは、`MatchSetup.trials` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
-- 画面では、対戦設定のパネルの行で入・切する（`game/match_choice.gd` の `trials`、`set_trial`）。集計の道具は `--trials=<名前>`（`docs/cpu-ai.md`）。
+- 画面では、対戦設定のパネルの「試しの決まり」の行で、決まりごとのボタンを押して入・切する（`game/match_choice.gd` の `trials`、`set_trial`）。集計の道具は `--trials=<名前>`（`docs/cpu-ai.md`）。
 - CPU は、入の決まりを知って打つ。
 
 | 名前 | 中身 | 入のときの準備 |
 | --- | --- | --- |
 | `battery`（`TrialRules.BATTERY`） | 砲台。後衛が乗ると射程が伸びるマス（`docs/map-objects.md` の「砲台」） | 盤の置ける場所に砲台を置く（`BoardGenerator.arm_batteries`） |
+| `tactics`（`TrialRules.TACTICS`） | 作戦。対戦の前に選んだ札を、対戦中に 1 回ずつ使う（`docs/tactics.md`） | 両方のプレイヤーに手札を配る（`MatchSetup.tactics` から。`Tactics.hand_from`） |
 
 決まりを足すとき: `TrialRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
 

@@ -127,6 +127,8 @@ const SCENES := {
 	"ult_eruption": "魔力解放の効果（全員に同時に立つ光の柱と知らせ）",
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
+	"tactic": "作戦（試しの決まり）の手札のボタン。1 枚目を 1 回押して、確かめている（中央平原）",
+	"setup_tactics": "対戦設定で、試しの決まりの「作戦」を入にして、札を選んだところ",
 	"battery_cell": "砲台（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
 	"battery": "砲台に乗った後衛を選んだところ（射程が伸びている。中央平原）",
 	"setup_battery": "対戦設定で、試しの決まりの「砲台」を「あり」にしたところ",
@@ -759,6 +761,18 @@ func _scene_setup_battery() -> bool:
 	_app.current_scene().setup_panel().choose_trial(TrialRules.BATTERY, true)
 	_park_mouse()
 	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.BATTERY)
+
+
+func _scene_setup_tactics() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Variant = _app.current_scene().setup_panel()
+	panel.choose_trial(TrialRules.TACTICS, true)
+	panel.choose_tactic(Unit.Side.PLAYER1, Tactics.Id.WARD)
+	_park_mouse()
+	return panel.current_choice().has_trial(TrialRules.TACTICS)
 
 
 func _scene_setup() -> bool:
@@ -1760,6 +1774,19 @@ func _scene_spring() -> bool:
 
 func _scene_portal() -> bool:
 	return _close_look(BoardGenerator.Stage.TWIN_SPRINGS, func(board: Board) -> Array: return board.portal_exits.keys())
+
+
+## 作戦（試しの決まり）の手札のボタンが出ている対戦。1 枚目を 1 回押して、確かめているところ。
+func _scene_tactic() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.TACTICS])
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	if _scene.tactic_buttons().is_empty() or not _scene.tactic_buttons()[0][1]:
+		return false
+	_scene.press_tactic(0)
+	return true
 
 
 func _scene_battery_cell() -> bool:
