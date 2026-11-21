@@ -432,6 +432,7 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"きっかけの陣営": ["(king_half enemy)", "(king_half 1)", 31],
 		"ターン 0": ["(turn 2)", "(turn 0)", 30],
 		"きっかけの書き方": ["(turn 2) 隊長: 進め", "turn 2 隊長: 進め", 30],
+		"途中の台詞に地の文": ["(turn 2) 隊長: 進め", "(turn 2) > 日が暮れた", 30],
 		"長い台詞": ["(turn 2) 隊長: 進め", "(turn 2) 隊長: " + "あ".repeat(Episode.CUE_MAX_CHARS + 1), 30],
 		"長い覚えること": ["look = stone_walls", "look = stone_walls\nlesson = " + "あ".repeat(Episode.LESSON_MAX_CHARS + 1), 6],
 		"知らない勝ち方": ["look = stone_walls", "look = stone_walls\nwins = rout", 6],
