@@ -10,7 +10,7 @@
 
 [map]
 title = 大岩の峠
-look = grassland
+look = pass
 
 [rows]
 ####.....2.....####

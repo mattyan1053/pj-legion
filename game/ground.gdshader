@@ -24,6 +24,8 @@ uniform float cracks = 0.0;
 // 光る裂け目（縫い目）の明るさ（0 = 無し。マップの見た目の SEAM_GLOW）。盤の外、プレイヤー2 の本陣の先（-Z の側）の地面を、折れながら横切る。
 // 盤の中には掛からない（マスの塗り分けと紛れない）。色は、タイトルの裂けた空（rift_sky.gdshader）の裂け目と同じ。
 uniform float seam_glow = 0.0;
+// 残雪の濃さ（0 = 無し。マップの見た目の SNOW）。むらに沿って白く覆う。盤の中は薄く（マスの色分けと、白い移動範囲が沈まないように）、外は濃く。
+uniform float snow = 0.0;
 // 模様（むら、色の寄り、斑、枯れ、石畳の目）の濃さ。描画方式で模様の出方が違うので、そろえるために掛ける（render_tone.gd）。
 uniform float pattern_gain = 1.0;
 
@@ -92,6 +94,10 @@ void fragment() {
 	vec2 beyond = max(max(-at, at - board_size), vec2(0.0));
 	float out_there = length(beyond);
 	float outside = smoothstep(0.0, 1.6, out_there);
+	if (snow > 0.0) {
+		float drift_at = texture(noise_map, ground * 0.045 + vec2(0.15, 0.92)).r + 0.2 * (grain - 0.5);
+		color = mix(color, vec3(0.92, 0.95, 1.0), smoothstep(0.53, 0.61, drift_at) * min(1.0, snow * mix(0.14, 0.9, outside)));
+	}
 	color = mix(color, vec3(dot(color, vec3(0.3, 0.59, 0.11))), 0.22 * outside);
 	color *= mix(1.0, outside_shade, outside);
 	color *= 1.0 - 0.16 * smoothstep(0.0, 0.08, out_there) * smoothstep(0.7, 0.1, out_there);
