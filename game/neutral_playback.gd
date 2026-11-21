@@ -50,3 +50,34 @@ static func _actor_of(event: BattleEvent) -> int:
 	if event is AttackDamagedEvent or event is SmokeBlockedEvent:
 		return event.get(&"attacker_id")
 	return 0
+
+
+## events[at] が中立の PhaseStartedEvent のとき、そのフェーズの始めに盤に中立の駒がいたか（いれば、番の知らせを出す）。
+## 中立の駒のいない番は、番の知らせも上の帯の「中立の番」も出さずに飛ばす（毎回、一瞬だけ中立の番が挟まるのは落ち着かない）。
+## 再生のときの対戦の状態は events の終わりまで進んでいるので、イベントから戻して数える:
+## - そのフェーズの中で湧いた中立の駒がいる（途中で現れたマップでは、現れた番から出す）
+## - あとで倒れる中立の駒がいる（そのときは盤にいた。ただし、このあとで湧いた駒は除く）
+## - いま（events の終わり）盤にいる中立の駒が、このあとで湧いた駒でない
+## neutral_ids_now は、いま盤にいる中立の駒の番号。
+static func phase_has_neutrals(events: Array[BattleEvent], at: int, neutral_ids_now: Array[int]) -> bool:
+	var spawned_later := {}
+	var defeated_later := {}
+	var in_phase := true
+	for i in range(at + 1, events.size()):
+		var event := events[i]
+		if event is PhaseStartedEvent or event is GameWonEvent or event is GameDrawnEvent:
+			in_phase = false
+		var spawned := event as UnitSpawnedEvent
+		if spawned != null and spawned.side == Unit.Side.NEUTRAL:
+			if in_phase:
+				return true
+			spawned_later[spawned.unit_id] = true
+		var defeated := event as UnitDefeatedEvent
+		if defeated != null and defeated.side == Unit.Side.NEUTRAL and not spawned_later.has(defeated.unit_id):
+			defeated_later[defeated.unit_id] = true
+	if not defeated_later.is_empty():
+		return true
+	for id in neutral_ids_now:
+		if not spawned_later.has(id):
+			return true
+	return false
