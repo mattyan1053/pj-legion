@@ -165,6 +165,10 @@ func play_music(track: StringName, offset_db := 0.0, sharp := false) -> void:
 	if stream == null:
 		return
 	_active = 1 - _active
+	# 入る側の再生器に、前のフェード（消えて止まる途中など）が残っていれば止める（決着の曲を、そのフェードが消してしまわないように）。
+	if _fades[_active] != null:
+		_fades[_active].kill()
+		_fades[_active] = null
 	var player := _music[_active]
 	player.stream = stream
 	player.volume_db = _volume_of(track) if sharp else SILENT_DB
