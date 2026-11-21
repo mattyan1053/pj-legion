@@ -11,6 +11,7 @@ extends CanvasLayer
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
 
 ## 開いた・閉じた。
 signal opened
@@ -25,6 +26,8 @@ const MARGIN_Y := 40.0
 const PLATE_WIDTH := 150.0
 const NAME_FONT := 16
 const TEXT_FONT := 18
+## 文を折り返す幅（px）: 板の幅から、板の余白（左右 20）、縦のスクロールの棒のぶん（20）、名前の札と間（14）を引いたもの。
+const TEXT_WIDTH := PANEL_WIDTH - 40.0 - 20.0 - PLATE_WIDTH - 14.0
 ## 矢印のキー 1 回で動かす量（px）。PageUp/PageDown は板の見えている高さの 8 割。
 const KEY_STEP := 60.0
 ## 名前の札の色（0 = 人の軍、1 = 敵の軍、2 = 知らせ。talk_screen.gd の TEAM_COLORS と同じ）。
@@ -201,8 +204,9 @@ func _row(line: Dictionary) -> Control:
 	var text := _label(TEXT_FONT, Palette.TEXT)
 	if narration:
 		text.add_theme_font_override("font", UiTheme.FONT_HEADING)
-	text.text = line.get("text", "")
-	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var font := UiTheme.FONT_HEADING if narration else UiTheme.FONT_BODY
+	text.text = TextWrap.fold(line.get("text", ""), TEXT_WIDTH,
+		func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_FONT).x)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(text)
 	return row
