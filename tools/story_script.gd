@@ -41,7 +41,7 @@ static func index_text() -> String:
 	lines.append("")
 	lines.append("話の順に並べた目次。会話は、それぞれの話のファイルにそのまま書いてある（ここには写さない）。")
 	lines.append("")
-	lines.append("- `[before]`: 対戦の前の会話。`[after]`: 勝ったあとの会話。1 行が「話し手: 文」。")
+	lines.append("- `[before]`: 対戦の前の会話。`[after]`: 勝ったあとの会話。1 行が「話し手: 文」（頭が `>` の行は地の文）。")
 	lines.append("- `[cues]`: 対戦の途中の台詞。頭の括弧が出るとき（`(turn 3)` はターン 3 の始め、`(fallen ally)` は味方が初めて倒れたとき、")
 	lines.append("  `(king_half enemy)` は敵の将の HP が半分を切ったとき、`(ult_ready ally)` は必殺技が使えるようになったとき）。")
 	lines.append("- 頭の `[episode]` は話の名前・マップ・勝ち方、`[cast]` は話し手（`ally` が遊ぶ人の軍、`enemy` が敵の軍。後ろは会話に立つ姿）。")
@@ -119,7 +119,10 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 
 static func _talk(lines: PackedStringArray, episode: Episode, rows: Array) -> void:
 	for row: Array in rows:
-		lines.append("- **%s**　%s" % [episode.speakers[row[2]], row[1]])
+		if row[2] < 0:
+			lines.append("- *%s*" % row[1])  # 地の文
+		else:
+			lines.append("- **%s**　%s" % [episode.speakers[row[2]], row[1]])
 	lines.append("")
 
 

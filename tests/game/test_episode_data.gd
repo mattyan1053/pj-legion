@@ -141,6 +141,20 @@ func test_the_probe_reads_every_field() -> void:
 	assert_false(episode.has_squad())
 
 
+## 地の文（話し手のいない行）は、頭に「>」（全角の「＞」でもよい）を付けて書く。話し手の番号は -1 で、会話の場面には名前の無い行で渡す。
+func test_narration_lines_read() -> void:
+	var episode: Episode = Episode.parse(PROBE.replace("隊長: いくぞ", "> 尾根に着いた。\n隊長: いくぞ").replace("敵将: 退け", "敵将: 退け\n＞ 日が暮れた。"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.before[0], [Episode.NARRATION_SIDE, "尾根に着いた。", -1])
+	assert_eq(episode.after[1], [Episode.NARRATION_SIDE, "日が暮れた。", -1])
+	var talk := Story.talk_of(episode, episode.before)
+	assert_eq(talk["lines"][0]["name"], "", "地の文は名前の無い行")
+	assert_eq(talk["lines"][0]["side"], Episode.NARRATION_SIDE)
+	assert_eq(talk["lines"][1]["name"], "隊長")
+	assert_eq(preload("res://game/talk_screen.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話の場面も、同じ陣営の番号で地の文と見る")
+	assert_eq(preload("res://game/talk_log.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話のログも、同じ陣営の番号で地の文と見る")
+
+
 ## 姿の最後の crown は、将の姿でない将に、会話で将の印を付ける（鍵は、付けたときだけ入る）。
 func test_figure_crown_reads() -> void:
 	var episode: Episode = Episode.parse(PROBE.replace("敵将 = enemy", "敵将 = enemy, paladin evolved crown"))
@@ -412,6 +426,7 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"敵の節が無い": ["[enemy]\narmy = fantasy\nunit = paladin + iron_shield + iron_shield\nunit = priest\ndeploy = 8,9  5,9\n", "", 1],
 		"節より前の行": ["[episode]", "title = 前\n[episode]", 2],
 		"節の重なり": ["[after]", "[before]\n隊長: また\n[after]", 26],
+		"空の地の文": ["隊長: いくぞ", "＞", 23],
 	}
 	for name: String in cases:
 		var case: Array = cases[name]

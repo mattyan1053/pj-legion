@@ -531,6 +531,7 @@ static func episode_after(episode: Episode) -> Episode:
 static func talk_of(episode: Episode, rows: Array, track := &"") -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row: Array in rows:
-		lines.append({"side": row[0], "who": row[2], "name": episode.speakers[row[2]], "text": row[1]})
+		# 地の文（話し手が -1）は、名前の無い行（talk_screen.gd が、札を出さずに真ん中へ出す）。
+		lines.append({"side": row[0], "who": row[2], "name": episode.speakers[row[2]] if row[2] >= 0 else "", "text": row[1]})
 	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
 			"music": track, "figures": episode.figures}

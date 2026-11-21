@@ -30,6 +30,8 @@ const KEY_STEP := 60.0
 ## 名前の札の色（0 = 人の軍、1 = 敵の軍、2 = 知らせ。talk_screen.gd の TEAM_COLORS と同じ）。
 const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEXT_OFF]
 const NOTICE_SIDE := 2
+## 地の文の行の side（episode.gd の NARRATION_SIDE）。札を出さず（場所は取る）、文を明朝で。
+const NARRATION_SIDE := 3
 
 var _overlay: Control
 var _panel: PanelContainer
@@ -161,6 +163,7 @@ func panel_rect() -> Rect2:
 
 
 func _row(line: Dictionary) -> Control:
+	var narration := int(line.get("side", 0)) == NARRATION_SIDE
 	var side := clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -186,6 +189,8 @@ func _row(line: Dictionary) -> Control:
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.custom_minimum_size = Vector2(PLATE_WIDTH, 0.0)
 	plate.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	if narration:
+		plate.modulate.a = 0.0  # 地の文は札を出さない（文の頭は、ほかの行とそろえる）
 	row.add_child(plate)
 	var name_label := _label(NAME_FONT, Color.WHITE)
 	name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
@@ -194,6 +199,8 @@ func _row(line: Dictionary) -> Control:
 	name_label.clip_text = true
 	plate.add_child(name_label)
 	var text := _label(TEXT_FONT, Palette.TEXT)
+	if narration:
+		text.add_theme_font_override("font", UiTheme.FONT_HEADING)
 	text.text = line.get("text", "")
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
