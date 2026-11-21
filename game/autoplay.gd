@@ -1863,6 +1863,15 @@ func _leave_battle(app: Node) -> void:
 	_scene.set_opponent(true)
 	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
+	# ウィンドウの ×: 対戦の途中なので、すぐには閉じずに、何が残るかを書いて確かめる。確かめている間は時間を止める。キャンセルで続く。
+	app.request_close()
+	var quit_window: Node = app.quit_window
+	_expect(quit_window.is_open() and quit_window.question().contains("対戦の途中です。") and quit_window.question().contains("この対戦は残りません"),
+		"対戦の途中にウィンドウの × を押しても、何が残るかを書いて確かめない: %s" % quit_window.question())
+	_expect(app.context.overlays.pauses() and Engine.time_scale == 0.0, "閉じる確かめの間、対戦の時間（再生）が止まらない")
+	quit_window.cancel()
+	_expect(not quit_window.is_open() and _scene.in_progress() and not app.context.overlays.is_open() and Engine.time_scale > 0.0,
+		"閉じる確かめのキャンセルで、対戦へ戻らない（か、時間が止まったまま）")
 	_scene.press_escape()
 	_expect(menu.is_open() and menu.item_ids().has(&"title"), "相手の番の途中に、タイトルへ戻る項目が出ない")
 	menu.press(&"title")
@@ -2400,6 +2409,7 @@ func _visit_story(app: Node) -> void:
 	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後に保存した所が、話の一覧に出る。
 	_expect(app.save_mark.shown_count > saves_before and not app.context.slots.has_unsaved(), "話をクリアして話の一覧へ戻っても、保存しない（か、保存の印が出ない）")
 	_expect(list.saved_text() != "最後に保存: 未保存" and list.saved_text().begins_with("最後に保存: "), "話の一覧に、最後に保存した所が出ない")
+	_expect(app.quit_note() == "", "保存したあとの話の一覧で、ウィンドウを閉じる前に確かめる: %s" % app.quit_note())
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
 		_expect(list.is_card_enabled(Story.military().episodes[first + 1]), "前の話をクリアしたのに、次の話を選べない")
@@ -2650,6 +2660,9 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
+	# ウィンドウを閉じる前の確かめ: ストーリーの対戦の途中は、最後に保存した所から再開になることを書く。
+	_expect(app.quit_note().begins_with("対戦の途中です。") and (app.quit_note().contains("最後に保存した所（") or app.quit_note().contains("はじめから")),
+		"ストーリーの対戦の途中で閉じる確かめに、何が残るかが無い: %s" % app.quit_note())
 	_expect(screen.battle.board.size == episode.map.make_board().size, "話の対戦が、話のマップで始まらない")
 	var placed := 0
 	for unit: Unit in screen.battle.units:

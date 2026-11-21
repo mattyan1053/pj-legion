@@ -20,7 +20,7 @@ wins = king_defeated
 イェルダ = ally, paladin evolved crown
 ウル = ally, priest evolved
 ティオ = ally, sorcerer
-セリス = ally, commando
+セリス = ally, spellblade
 幻の兵 = enemy, shield_trooper
 
 [before]

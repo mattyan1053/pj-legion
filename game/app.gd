@@ -25,6 +25,7 @@ const StageLook := preload("res://game/stage_look.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const SaveMark := preload("res://game/save_mark.gd")
 const SlotScreen := preload("res://game/slot_screen.gd")
+const ConfirmWindow := preload("res://game/confirm_window.gd")
 const WIPE := preload("res://game/wipe.gdshader")
 
 ## 場面を切り替え終えた（暗転が明けた）。
@@ -51,6 +52,9 @@ var _cover := 1.0
 var _window_mode: WindowMode
 ## 保存の小さな印（オートセーブで書いたとき）。
 var save_mark: SaveMark
+## ウィンドウの × で閉じる前の確かめ（docs/save-slots.md の「ウィンドウを閉じるとき」）。
+var quit_window: ConfirmWindow
+const QUIT_LAYER := 26
 ## オプションの画面を開いてから、設定が変わったか（閉じて書いたときに、保存の印を出す）。
 var _settings_touched := false
 var _open_all: OpenAllKey
@@ -112,6 +116,16 @@ func _ready() -> void:
 
 	save_mark = SaveMark.new()
 	add_child(save_mark)
+	var quit_layer := CanvasLayer.new()
+	quit_layer.layer = QUIT_LAYER  # システムメニュー（20）の上、幕（30）の下
+	add_child(quit_layer)
+	quit_window = ConfirmWindow.new()
+	quit_window.overlays = context.overlays
+	quit_window.pausing = true
+	quit_layer.add_child(quit_window)
+	# ウィンドウの × は、すぐには閉じずに request_close で受ける（途中のものがあれば確かめる）。検査は、窓に触らない。
+	if context.checking == &"":
+		get_tree().auto_accept_quit = false
 	context.slots.saved.connect(save_mark.flash)
 
 	var layer := CanvasLayer.new()
@@ -234,6 +248,46 @@ func _on_settings_closed() -> void:
 	_settings_touched = false
 
 
+## ウィンドウの × を押された。
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and context.checking == &"":
+		request_close()
+
+
+## ウィンドウを閉じたい（× を押した）: その瞬間のものは保存しない（最後に保存した所までが残る）。
+## 途中のもの（決着していない対戦、取っておいていない部隊の変更、まだ保存していないストーリーの進み具合）があれば、
+## 何が残るかを書いて確かめる。無ければすぐ閉じる。確かめている間にもう一度 × を押したら、閉じる。
+func request_close() -> void:
+	if quit_window.is_open():
+		context.quit()
+		return
+	var note := quit_note()
+	if note == "":
+		context.quit()
+		return
+	context.system_menu.close()
+	quit_window.ask(Text.t("menu.quit.confirm"), note, Text.t("menu.quit"), context.quit)
+
+
+## ゲームを終える前の確かめに書く文（何が残るか）。確かめなくてよければ空。
+## 対戦の途中: ストーリーなら「最後に保存した所（日時）から再開」、対戦モードなら「この対戦は残らない」。
+## 部隊編成の途中: 「編成完了」の前の変更は残らない。ストーリーの、まだ保存していない進み具合も、最後に保存した所から再開。
+func quit_note() -> String:
+	var lines := PackedStringArray()
+	var busy: bool = _current != null and _current.has_method(&"in_progress") and _current.call(&"in_progress")
+	var in_story: bool = context.slots.counting
+	if busy and _current_id == SceneFlow.DECKS:
+		lines.append(Text.t("menu.quit.deck"))
+	elif busy:
+		lines.append(Text.t("menu.quit.battle"))
+		if not in_story:
+			lines.append(Text.t("menu.quit.versus"))
+	if in_story and (busy or context.slots.has_unsaved()):
+		var at := context.slots.saved_at()
+		lines.append(Text.t("menu.quit.resume", {"when": SlotScreen.date_text(at)}) if at > 0 else Text.t("menu.quit.from_start"))
+	return "".join(lines)
+
+
 ## 流れ run を、最初の場面から始める。切り替えの途中なら何もしない。
 func start_run(run: Run) -> void:
 	if _changing or run.is_done():
@@ -307,7 +361,9 @@ func menu_items() -> Array:
 			items.append([ITEM_EXIT_PREFIX + String(exit[0]), Text.t(exit[1]), leave_confirm(scene, Text.t(exit[2]))])
 	if _current_id != SceneFlow.FIRST:
 		items.append([ITEM_TITLE, Text.t("menu.to_title"), leave_confirm(scene, Text.t("menu.to_title.confirm"))])
-	items.append([ITEM_QUIT, Text.t("menu.quit"), leave_confirm(scene, Text.t("menu.quit.confirm"))])
+	# ゲーム終了は、ウィンドウの × と同じ確かめ（何が残るか）。
+	var quit_note_text := quit_note()
+	items.append([ITEM_QUIT, Text.t("menu.quit"), "" if quit_note_text == "" else "%s\n%s" % [Text.t("menu.quit.confirm"), quit_note_text]])
 	return items
 
 

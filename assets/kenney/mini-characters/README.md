@@ -21,14 +21,12 @@
 | `character-male-b.glb` | ソーサラー |
 | `character-female-a.glb` | スペルブレード |
 | `character-female-d.glb` | プリースト |
-| `character-zombie.glb` | 骸骨兵・骸骨射手・骸骨鼓手の代わり |
-| `character-robot.glb` | 骸骨重兵の代わり |
-| `character-alien.glb` | 骸骨術師・骸骨の将（`KING_LOOKS` の `skeleton_mage`）の代わり |
 | `weapon-sword.glb` | 剣 |
 | `weapon-bow.glb` | 弓 |
 | `weapon-shooter.glb` | 銃 |
 | `shield-round.glb`・`shield-rectangle.glb` | 盾 |
-| `aid-cane.glb` | 杖（骸骨鼓手のばちの代わり） |
 | `aid-defibrillator-red.glb` | 救急の道具（衛生兵） |
 
-魔法の杖（ソーサラー・プリースト・骸骨術師）は素材に無いので、コードで組んでいる（素材ではない）。
+魔法の杖（ソーサラー・プリースト）は素材に無いので、コードで組んでいる（素材ではない）。
+魔物（骸骨）はこの組でも Quaternius の骸骨（`assets/quaternius/monsters/`。`game/looks/quaternius_skeleton.gd`）を使う。
+前は代わりにゾンビ・ロボット・宇宙人と杖（`aid-cane`）を入れていたが、骸骨に替えたので外した（2026-11-21）。

@@ -61,6 +61,7 @@ const SCENES := {
 	"deck_over": "部隊編成: 予算を超えて、取っておけない",
 	"system_menu": "対戦の途中で開いたシステムメニュー（Esc か右上のボタン）",
 	"system_quit": "システムメニューで「ゲームを終える」を押して、確かめている",
+	"window_close": "対戦の途中でウィンドウの × を押して、何が残るかを確かめている（対戦モード）",
 	"settings": "システムメニューから開いたオプションの画面（感度を変えたところ）",
 	"settings_screen": "オプションの画面を下まで送って、区分「画面」（全画面をオンにしたところ）を見せる",
 	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
@@ -313,7 +314,7 @@ func _run() -> void:
 			print("screenshots: 場面 %s を作れた" % name)
 			if _mid_animation:
 				_scene.set_time_scale_base(1.0)
-			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
+			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
 			continue
 		if _mid_animation:
@@ -323,7 +324,7 @@ func _run() -> void:
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
 			continue
-		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
+		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -815,6 +816,15 @@ func _scene_system_quit() -> bool:
 		return false
 	_app.system_menu().press(&"quit")
 	return _app.system_menu().confirming() == &"quit"
+
+
+func _scene_window_close() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	await get_tree().create_timer(SETTLE).timeout
+	_app.request_close()
+	return _app.quit_window.is_open()
 
 
 func _scene_settings() -> bool:
