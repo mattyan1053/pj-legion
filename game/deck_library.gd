@@ -6,6 +6,8 @@ extends RefCounted
 ## - 壊れたファイル・知らない駒や装備・知らない決まりがあっても、起動を止めない。読めたぶんだけ一覧に残し、
 ##   出せない理由（load_issues）を付ける。決まりが変わって検査を通らなくなった部隊も、一覧に「出せない」と理由つきで残す。
 ## - 一覧を変える関数（add、replace、duplicate_deck、rename、remove）は、変えたあと書く（store が null なら書かない）。
+## - 対戦用の部隊は store（user://decks.json）に、ストーリー用の部隊は slot_store（いまのセーブのスロット。save_slots.gd）に書く。
+##   どちらに書くかは、部隊の決まり（is_slot_rules）で決める。slot_store が無ければ、全部を store に書く。
 
 const Text := preload("res://game/text.gd")
 const SaveStore := preload("res://game/save_store.gd")
@@ -30,6 +32,8 @@ class Saved:
 	var deck: Deck
 	## 読み込んだときに見つかった、出せない理由（知らない駒を外した、など）。組み直して取っておけば消える。
 	var load_issues: Array[String] = []
+	## セーブのスロットに書くか（ストーリー用の部隊）。
+	var in_slot := false
 
 	## 対戦に出せない理由の文（空なら出せる）。
 	func issues() -> Array[String]:
@@ -46,26 +50,54 @@ var store: RefCounted
 ## 決まりの名前から決まり（DeckRules）を引くもの（名前 -> DeckRules か null）。既定は DeckRules.by_id（対戦の決まりだけ）。
 ## ストーリーの決まりは進み具合で変わるので、アプリ（app_context.gd）が、ストーリーの決まりも引けるものを入れる。
 var rules_lookup: Callable = DeckRules.by_id
+## ストーリー用の部隊を書く先（いまのセーブのスロットのまとまり。save_slots.gd の section()）。null なら、全部を store に書く。
+var slot_store: RefCounted
+## 決まりの名前（StringName）が、スロットに書く決まり（ストーリーの決まり）か。アプリ（app_context.gd）が入れる。
+var is_slot_rules: Callable = func(_id: StringName) -> bool: return false
 var _items: Array[Saved] = []
 var _next_id := 1
 
 
 ## 取っておいた部隊を読む（いまの一覧は捨てる）。
+## 対戦用は store から、ストーリー用は slot_store から読む。store に残っていたストーリー用の部隊（前の置き方のもの）は、
+## いまのスロットへ移して書き直す。
 func load_saved() -> void:
 	_items.clear()
 	_next_id = 1
-	if store == null:
-		return
-	var saved: Dictionary = store.read(STORE_NAME)
-	if saved.is_empty():
-		changed.emit()
-		return
-	var data: Dictionary = _migrate(saved["version"], saved["data"])
-	load_data(data)
+	var data := {}
+	if store != null:
+		var saved: Dictionary = store.read(STORE_NAME)
+		if not saved.is_empty():
+			data = _migrate(saved["version"], saved["data"])
+	var moved := false
+	if slot_store != null:
+		var in_slot: Dictionary = slot_store.read(STORE_NAME)
+		var slot_data := {} if in_slot.is_empty() else _migrate(in_slot["version"], in_slot["data"])
+		var records: Array = []
+		var global_records: Variant = data.get("decks")
+		if typeof(global_records) == TYPE_ARRAY:
+			for record: Variant in global_records:
+				records.append(record)
+				if typeof(record) == TYPE_DICTIONARY and typeof(record.get("rules")) == TYPE_STRING and is_slot_rules.call(StringName(record["rules"])):
+					moved = true
+		var first_slot := records.size()
+		var slot_records: Variant = slot_data.get("decks")
+		if typeof(slot_records) == TYPE_ARRAY:
+			records.append_array(slot_records)
+		var next: Variant = slot_data.get("next_id")
+		if typeof(next) in [TYPE_INT, TYPE_FLOAT] and (typeof(data.get("next_id")) not in [TYPE_INT, TYPE_FLOAT] or int(next) > int(data["next_id"])):
+			data["next_id"] = int(next)
+		data["decks"] = records
+		load_data(data, first_slot)
+	else:
+		load_data(data)
+	if moved:
+		save()
 
 
 ## 中身（ファイルの data）から一覧を作る。形の違うところは読み飛ばす。
-func load_data(data: Dictionary) -> void:
+## first_slot より後ろ（番号がそれ以上）の部隊は、セーブのスロットから読んだもの（in_slot）。前の部隊は、決まりで分ける。
+func load_data(data: Dictionary, first_slot := -1) -> void:
 	_items.clear()
 	_next_id = 1
 	var next: Variant = data.get("next_id")
@@ -73,11 +105,14 @@ func load_data(data: Dictionary) -> void:
 		_next_id = maxi(1, int(next))
 	var records: Variant = data.get("decks")
 	if typeof(records) == TYPE_ARRAY:
-		for record: Variant in records:
+		for index: int in (records as Array).size():
+			var record: Variant = records[index]
 			if typeof(record) != TYPE_DICTIONARY:
 				push_warning("deck_library: 部隊の形でないものを読み飛ばした")
 				continue
 			var item := _from_record(record, rules_lookup)
+			var rules_name: Variant = record.get("rules")
+			item.in_slot = (first_slot >= 0 and index >= first_slot) or (typeof(rules_name) == TYPE_STRING and is_slot_rules.call(StringName(rules_name)))
 			if item.id == "" or find(item.id) != null:
 				item.id = _take_id()
 			elif item.id.is_valid_int():
@@ -86,17 +121,37 @@ func load_data(data: Dictionary) -> void:
 	changed.emit()
 
 
-## いまの一覧を書く。書けたか（書く先が無ければ偽）。
+## いまの一覧を書く（対戦用とストーリー用の両方）。書けたか（書く先が無ければ偽）。
 func save() -> bool:
-	if store == null:
+	if slot_store == null:
+		return store != null and store.write(STORE_NAME, FORMAT_VERSION, to_data())
+	# ストーリー用を先に書く。書けなければ（スロットが壊れている、など）、対戦用のファイルも書き直さない
+	# （前の置き方で対戦用のファイルに残っていたストーリー用の部隊を、どこにも書かずに落とさないため）。
+	# ストーリー用の部隊が無く、スロットもまだ始めていなければ、スロットは書かない（対戦用の部隊を取っておいただけで、
+	# 空のスロットが「つづきから」にならないように。次に付ける id の番号は、対戦用のファイルが持つ）。
+	var has_slot_items := _items.any(func(item: Saved) -> bool: return item.in_slot)
+	var slot_ok := true
+	if has_slot_items or not slot_store.has_method(&"is_started") or slot_store.is_started():
+		slot_ok = _save_part(true)
+	if not slot_ok and has_slot_items:
 		return false
-	return store.write(STORE_NAME, FORMAT_VERSION, to_data())
+	return _save_part(false) and slot_ok
 
 
-## ファイルの data に書く中身。
-func to_data() -> Dictionary:
+## 対戦用（in_slot が偽）か、ストーリー用（真）の部隊だけを書く。次に付ける id の番号は、両方に書く（スロットを替えても重ならないように）。
+func _save_part(in_slot: bool) -> bool:
+	var target: RefCounted = slot_store if in_slot else store
+	if target == null:
+		return false
+	return target.write(STORE_NAME, FORMAT_VERSION, to_data(1 if in_slot else 0))
+
+
+## ファイルの data に書く中身。part が -1 なら全部、0 なら対戦用（スロットの外）、1 ならストーリー用（スロット）の部隊だけ。
+func to_data(part := -1) -> Dictionary:
 	var records: Array = []
 	for item in _items:
+		if part != -1 and item.in_slot != (part == 1):
+			continue
 		var record := deck_to_record(item.deck)
 		record["id"] = item.id
 		record["name"] = item.name
@@ -148,8 +203,9 @@ func add(name: String, deck: Deck) -> Saved:
 	item.id = _take_id()
 	item.name = clean_name(name, default_name())
 	item.deck = deck.copy()
+	item.in_slot = slot_store != null and is_slot_rules.call(deck.rules.id)
 	_items.append(item)
-	_commit()
+	_commit(item, true)
 	return item
 
 
@@ -161,7 +217,7 @@ func replace(id: String, name: String, deck: Deck) -> bool:
 	item.name = clean_name(name, item.name)
 	item.deck = deck.copy()
 	item.load_issues.clear()
-	_commit()
+	_commit(item)
 	return true
 
 
@@ -176,8 +232,9 @@ func duplicate_deck(id: String) -> Saved:
 	item.name = clean_name(Text.t("deck.name.copy", {"name": original.name}), original.name)
 	item.deck = original.deck.copy()
 	item.load_issues = original.load_issues.duplicate()
+	item.in_slot = original.in_slot
 	_items.insert(index + 1, item)
-	_commit()
+	_commit(item, true)
 	return item
 
 
@@ -187,7 +244,7 @@ func rename(id: String, name: String) -> bool:
 	if item == null:
 		return false
 	item.name = clean_name(name, item.name)
-	_commit()
+	_commit(item)
 	return true
 
 
@@ -196,8 +253,9 @@ func remove(id: String) -> bool:
 	var index := _index_of(id)
 	if index == -1:
 		return false
+	var removed := _items[index]
 	_items.remove_at(index)
-	_commit()
+	_commit(removed)
 	return true
 
 
@@ -287,8 +345,12 @@ static func _migrate(version: int, data: Dictionary) -> Dictionary:
 	return data
 
 
-func _commit() -> void:
-	save()
+## item の側（対戦用か、ストーリー用か）を書く。新しい id を付けたら、もう片方にも次の番号を書く。
+func _commit(item: Saved, took_id := false) -> void:
+	if slot_store == null or took_id:
+		save()
+	else:
+		_save_part(item.in_slot)
 	changed.emit()
 
 

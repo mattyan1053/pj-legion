@@ -111,3 +111,13 @@ func _scripts(dir: String) -> Array[String]:
 	for sub in DirAccess.get_directories_at(dir):
 		found.append_array(_scripts(dir.path_join(sub)))
 	return found
+
+
+## 話の一覧の背景は、その物語の国の側の空を見る（docs/scene-flow.md）。
+func test_the_story_backdrop_faces_the_sky_of_the_nation() -> void:
+	var TitleBackdrop := load("res://game/title_backdrop.gd")
+	assert_eq(TitleBackdrop.view_of(UnitKind.Army.MILITARY), TitleBackdrop.VIEW_BERG)
+	assert_eq(TitleBackdrop.view_of(UnitKind.Army.FANTASY), TitleBackdrop.VIEW_RUEL)
+	# 琥珀の空は縫い目の左、菫の空は右（rift_sky.gdshader）。左を向くのは、向きが正。
+	assert_true(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_BERG][0] > 0.0 and TitleBackdrop.VIEWS[TitleBackdrop.VIEW_RUEL][0] < 0.0)
+	assert_eq(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_STORY][0], 0.0, "物語選択は、縫い目が真ん中")

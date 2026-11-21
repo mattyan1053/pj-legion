@@ -55,6 +55,8 @@ var store: RefCounted
 var campaign: Campaign = military()
 ## 物語の id（String）-> {"cleared": [話の id（String）, …], "squad": 部隊の id（空なら既定の編成）}。知らない物語の記録も残す。
 var _records := {}
+## 最後に選んだ物語の id（空なら、まだ選んでいない）。記録に書く。
+var _last_campaign := ""
 ## 確かめ用に、全部の話と解放を開いているか（docs/story.md の「確かめ用の解放」。F5）。その起動のあいだだけで、記録には書かない。
 ## 開いている間は、どの話も遊べ、どの物語でも全部の解放を使える。開いている間に勝った話のクリアは、記録に書かずに覚えておき、戻すと捨てる。
 var open_all := false:
@@ -75,6 +77,7 @@ var squad_id: String:
 ## 記録を読む（いまの記録は捨てる）。
 func load_saved() -> void:
 	_records.clear()
+	_last_campaign = ""
 	if store == null:
 		return
 	var saved: Dictionary = store.read(STORE_NAME)
@@ -86,6 +89,8 @@ func load_saved() -> void:
 ## 版 1 の形（{"cleared", "squad"}。物語が 1 つだったころ）は、MILITARY の物語の記録として読む。
 func load_data(data: Dictionary) -> void:
 	_records.clear()
+	var last: Variant = data.get("campaign")
+	_last_campaign = String(last) if typeof(last) in [TYPE_STRING, TYPE_STRING_NAME] else ""
 	var saved_campaigns: Variant = data.get("campaigns")
 	if typeof(saved_campaigns) != TYPE_DICTIONARY:
 		_records[String(MILITARY_ID)] = _read_record(data)
@@ -136,7 +141,10 @@ func to_data() -> Dictionary:
 			written["squad"] = record["squad"]
 		if not (written["cleared"] as Array).is_empty() or written.has("squad"):
 			written_campaigns[id] = written
-	return {"campaigns": written_campaigns}
+	var written_data := {"campaigns": written_campaigns}
+	if _last_campaign != "":
+		written_data["campaign"] = _last_campaign
+	return written_data
 
 
 ## 物語 of_campaign の記録（無ければ空の記録を作る）。
@@ -194,8 +202,13 @@ static func military() -> Campaign:
 
 
 ## 物語 of_campaign を選ぶ（話の一覧・出撃準備・選んだ部隊・雇える駒は、この物語のものになる）。
+## 最後に選んだ物語は記録に書く（セーブのスロットの札に出す。save_slots.gd）。
 func choose_campaign(of_campaign: Campaign) -> void:
 	campaign = of_campaign
+	if _last_campaign != String(of_campaign.id):
+		_last_campaign = String(of_campaign.id)
+		if not open_all:  # 確かめ用に開いている間は、記録に触らない（次に書くときに、いっしょに書く）
+			_save()
 
 
 ## 物語 of_campaign を遊べるか（話が 1 つ以上ある）。話の無い物語は「準備中」。
@@ -255,6 +268,26 @@ func choose_squad(id: String) -> void:
 func _save() -> void:
 	if store != null:
 		store.write(STORE_NAME, FORMAT_VERSION, to_data())
+
+
+## 記録の中身 data（ファイルの data）の要約（セーブのスロットの札）: {"campaign": 最後に選んだ物語（無ければ、クリアのある最初の物語。どちらも無ければ null）,
+## "cleared": その物語でクリアした話の数, "total": その物語の話の数, "last": その物語でクリアしたいちばん先の話（無ければ null）}。
+static func summary_of(data: Dictionary) -> Dictionary:
+	var reader := new()
+	reader.load_data(data)
+	var chosen: Campaign = campaign_by_id(StringName(reader._last_campaign)) if reader._last_campaign != "" else null
+	if chosen == null:
+		for each: Campaign in campaigns():
+			if reader.cleared_count(each) > 0:
+				chosen = each
+				break
+	if chosen == null:
+		return {"campaign": null, "cleared": 0, "total": 0, "last": null}
+	var last: Episode = null
+	for each: Episode in chosen.episodes:
+		if reader._cleared_in(chosen).has(String(each.id)):
+			last = each
+	return {"campaign": chosen, "cleared": reader.cleared_count(chosen), "total": chosen.episodes.size(), "last": last}
 
 
 ## 物語 of_campaign（省けば、いまの物語）の話のうち、クリアした話の数。

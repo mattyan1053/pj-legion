@@ -49,6 +49,13 @@ const HAND_BONE := "Fist.R"
 ## 武器も cm で入っていて、付ける骨の親も 100 倍なので、ここで縮める。
 const WEAPON_SCALE := 0.011
 
+## 肌と目の色。素材の人物は、肌が黒（ほぼ黒の "Skin"）で目が白（"Face"）の絵柄で、盤の大きさでは顔が黒くつぶれる。
+## その 2 つの面を、肌の色と暗い目に塗り替える（ゾンビ・ゴブリンなど、肌が黒でない人物はそのまま）。種類ごとの "skin" で肌の色を替えられる。
+const SKIN := Color("e3b48f")
+const EYES := Color("2b2421")
+## 素材の肌がこれより暗ければ、塗り替える（黒い肌の絵柄の人物だけ）。
+const DARK_SKIN := 0.15
+
 ## 塗り替えたマテリアルの使い回し（"モデル:面:色:暗さ" -> StandardMaterial3D）。
 static var _materials := {}
 
@@ -80,7 +87,8 @@ func _model_body(shape: Dictionary, team_color: Color) -> UnitBody:
 	var body := ModelBody.new()
 	body.body_height = MODEL_HEIGHT * size
 	body.set_model(model, moves, Callable())
-	body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void: _paint(mesh, model_name, accent, team_color, shade))
+	var skin: Color = shape.get("skin", SKIN)
+	body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void: _paint(mesh, model_name, accent, team_color, skin, shade))
 	return body
 
 
@@ -112,18 +120,32 @@ static func _weapon_material(file: String, texture: Texture2D) -> Material:
 	return _materials[key]
 
 
-## 体の面ごとに、陣営の色（accent の面）と明るさ（shade）を当てる。
-static func _paint(mesh: MeshInstance3D, model_name: String, accent: Dictionary, team_color: Color, shade: float) -> void:
+## 体の面ごとに、陣営の色（accent の面）、肌と目の色（黒い肌の絵柄の人物だけ）、明るさ（shade）を当てる。
+static func _paint(mesh: MeshInstance3D, model_name: String, accent: Dictionary, team_color: Color, skin: Color, shade: float) -> void:
+	var dark_skin := _has_dark_skin(mesh.mesh)
 	for i in mesh.mesh.get_surface_count():
 		var source := mesh.mesh.surface_get_material(i) as StandardMaterial3D
 		if source == null:
 			continue
-		var key := "%s:%d:%s:%s" % [model_name, i, team_color.to_html(), shade]
+		var key := "%s:%d:%s:%s:%s" % [model_name, i, team_color.to_html(), skin.to_html(), shade]
 		if not _materials.has(key):
 			var material := source.duplicate() as StandardMaterial3D
 			var color := source.albedo_color
 			if accent.has(source.resource_name):
 				color = team_color.darkened(accent[source.resource_name])
+			elif dark_skin and source.resource_name == "Skin":
+				color = skin
+			elif dark_skin and source.resource_name == "Face":
+				color = EYES
 			material.albedo_color = Color(color.r * shade, color.g * shade, color.b * shade, color.a)
 			_materials[key] = material
 		mesh.set_surface_override_material(i, _materials[key])
+
+
+## 肌（"Skin" の面）が黒い絵柄の人物か。
+static func _has_dark_skin(mesh: Mesh) -> bool:
+	for i in mesh.get_surface_count():
+		var source := mesh.surface_get_material(i) as StandardMaterial3D
+		if source != null and source.resource_name == "Skin":
+			return source.albedo_color.get_luminance() < DARK_SKIN
+	return false
