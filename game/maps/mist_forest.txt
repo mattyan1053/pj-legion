@@ -10,7 +10,7 @@
 
 [map]
 title = リュエルの森
-look = crystal_forest
+look = deep_forest
 
 [rows]
 ##F.....2.....F##
