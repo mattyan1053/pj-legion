@@ -60,6 +60,14 @@ const CLIMAX_KING_HP := 0.5
 const TALK_BATTLE_DB := -6.0
 ## 前の会話・あとの会話の曲を話のファイルが書かないときの、あとの会話の曲。前の会話は、その話の対戦の曲。
 const AFTER_TALK_MUSIC := &"talk_calm"
+## 決着の曲（ファンファーレ）が鳴り終えたあとに続ける曲（ループ）。ストーリーの話は、その話のあとの会話の曲（そのまま会話へつながる）。
+const AFTER_RESULT_MUSIC := &"talk_calm"
+
+## 勝ったときの調子（話のファイルの victory_mood）。明るい: ファンファーレを鳴らしてから、静かな曲へ。
+## 静か: ファンファーレを鳴らさず、対戦の曲を消して静かな曲へ（敵討ちのあと、弔いの話など）。
+const MOOD_BRIGHT := &"bright"
+const MOOD_QUIET := &"quiet"
+const MOODS: Array[StringName] = [MOOD_BRIGHT, MOOD_QUIET]
 
 ## 効果音。
 ## - path: 素材。volume_db: 音ごとの大きさ（操作の音は控えめに、BGM の下に置く）。

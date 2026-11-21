@@ -489,12 +489,13 @@ func _add_view(unit: Unit) -> void:
 	_views[unit.id] = view
 
 
-## 決着の画面が出た。決着の曲を 1 回鳴らす: 人が勝てば勝ちの曲、CPU に負けたときと引き分けは負けの曲。
-## 人どうしは、どちらかが勝っているので勝ちの曲。
+## 決着の画面が出た。対戦の曲を消して決着の曲を 1 回鳴らし、そのあと静かな曲へつなぐ（渡されたものの after_result_music）。
+## 人が勝てば勝ちの曲、CPU に負けたときと引き分けは負けの曲。人どうしは、どちらかが勝っているので勝ちの曲。
+## 勝ったときの調子が静か（話のファイルの victory_mood）なら、ファンファーレを鳴らさずに静かな曲へ。
 ## 渡されたもの（source）が許せば「次へ」を出し、人が勝ったことを知らせる（ストーリーのクリアの記録）。
 func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 	_talk.clear()  # 決着の画面に、前の台詞を残さない
-	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side()))
+	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side(), source.victory_mood()), source.after_result_music())
 	var won := cpu_opponent and not draw and winner == _human_side()
 	_hud.result_screen().set_continue(source.can_continue(won), source.retries_on_enter(won))
 	if won:
@@ -572,10 +573,12 @@ func climax_started() -> bool:
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
-static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human_side: Unit.Side) -> StringName:
+## mood は勝ったときの調子（静かなら、勝っても空 = ファンファーレを鳴らさない）。
+static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human_side: Unit.Side,
+		mood := SoundCatalog.MOOD_BRIGHT) -> StringName:
 	if draw or (against_cpu and winner != human_side):
 		return &"defeat"
-	return &"victory"
+	return &"" if mood == SoundCatalog.MOOD_QUIET else &"victory"
 
 
 func _on_restart_pressed(field: StringName, new_board: bool) -> void:

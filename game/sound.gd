@@ -21,6 +21,8 @@ const FADE_TIME := 0.8
 const SILENT_DB := -60.0
 ## 同時に鳴らせる効果音の数（対戦の中の音が重なっても、鳴っている音を途中で切らない程度）。
 const EFFECT_VOICES := 10
+## 決着の曲を鳴らすときに、対戦の曲を消す速さ（秒）。ファンファーレは、頭から表の大きさで鳴らす（フェードで入れない）。
+const JINGLE_FADE_TIME := 0.4
 ## アプリを終える前に、止めた音を手放すのを待つ秒数。
 const RELEASE_WAIT := 0.1
 ## ボタンに付ける meta の名前（効果音の名前を入れると、ボタンの音がそれに替わる）。
@@ -36,6 +38,8 @@ var _scene_track := &""
 ## いまの曲と場面の曲の、表の大きさからの差（dB。会話の場面で対戦の曲を小さくする。sound_catalog.gd の talk_offset_db）。
 var _offset_db := 0.0
 var _scene_offset_db := 0.0
+## 1 回だけの曲（決着）が鳴り終えたら続ける曲（空なら止まったまま）。
+var _then_track := &""
 var _voices: Array[AudioStreamPlayer] = []
 var _next_voice := 0
 ## 名前 -> 最後に鳴らしたフレーム（同じフレームに同じ音を重ねない）。
@@ -128,14 +132,27 @@ func resume_scene_music() -> void:
 	play_music(_scene_track, _scene_offset_db)
 
 
-## 1 回だけの曲（決着）を鳴らす。場面の曲は覚えたまま。
-func play_jingle(track: StringName) -> void:
-	play_music(track)
+## 1 回だけの曲（決着）を鳴らす。いまの曲は短いフェードで消し、ファンファーレは頭から表の大きさで鳴らす。
+## 鳴り終えたら then_track（ループの曲）へつなぐ。track が空なら、ファンファーレを鳴らさずに then_track へ。
+## 場面の曲は覚えたまま（resume_scene_music で戻る）。
+func play_jingle(track: StringName, then_track := &"") -> void:
+	_then_track = &""
+	if track == &"" or not Catalog.has_music(track):
+		play_music(then_track)
+		return
+	play_music(track, 0.0, true)
+	_then_track = then_track
+
+
+## 決着の曲のあとに続ける曲（鳴らし終えるまで待っている間だけ）。検査用。
+func pending_track() -> StringName:
+	return _then_track
 
 
 ## 曲 track へ、フェードでつなぐ。空の名前・表に無い名前・素材の無い名前なら、いまの曲を消すだけ。
 ## 同じ曲が鳴っていれば、鳴らし直さない（場面を行き来しても、曲を頭から鳴らし直さない）。大きさ（offset_db）が違えば、そこへフェードする。
-func play_music(track: StringName, offset_db := 0.0) -> void:
+func play_music(track: StringName, offset_db := 0.0, sharp := false) -> void:
+	_then_track = &""
 	if track == _track:
 		if offset_db != _offset_db and track != &"":
 			_offset_db = offset_db
@@ -144,16 +161,17 @@ func play_music(track: StringName, offset_db := 0.0) -> void:
 	var stream := _music_stream(track)
 	_track = track if stream != null else &""
 	_offset_db = offset_db
-	_fade(_active, SILENT_DB, true)
+	_fade(_active, SILENT_DB, true, JINGLE_FADE_TIME if sharp else FADE_TIME)
 	if stream == null:
 		return
 	_active = 1 - _active
 	var player := _music[_active]
 	player.stream = stream
-	player.volume_db = SILENT_DB
+	player.volume_db = _volume_of(track) if sharp else SILENT_DB
 	if _audible():
 		player.play()
-	_fade(_active, _volume_of(track), false)
+	if not sharp:
+		_fade(_active, _volume_of(track), false)
 
 
 ## 曲 track を、いまの差（_offset_db）で鳴らすときの大きさ（dB）。
@@ -171,10 +189,15 @@ func current_track() -> StringName:
 	return _track
 
 
-## 1 回だけの曲が終わった。
+## 1 回だけの曲が終わった。続ける曲があれば、それへ。
 func _on_music_finished(slot: int) -> void:
-	if slot == _active:
-		_track = &""
+	if slot != _active:
+		return
+	_track = &""
+	var following := _then_track
+	_then_track = &""
+	if following != &"":
+		play_music(following)
 
 
 ## 場面の曲の名前。検査用。
@@ -194,7 +217,7 @@ func _music_stream(track: StringName) -> AudioStream:
 	return stream
 
 
-func _fade(slot: int, to_db: float, then_stop: bool) -> void:
+func _fade(slot: int, to_db: float, then_stop: bool, seconds := FADE_TIME) -> void:
 	if _fades[slot] != null:
 		_fades[slot].kill()
 	var player := _music[slot]
@@ -206,7 +229,7 @@ func _fade(slot: int, to_db: float, then_stop: bool) -> void:
 		return
 	var tween := create_tween()
 	tween.set_ignore_time_scale(true)  # メニューで止めた時間や、CPU の番の速さに左右されない
-	tween.tween_property(player, "volume_db", to_db, FADE_TIME)
+	tween.tween_property(player, "volume_db", to_db, seconds)
 	if then_stop:
 		tween.tween_callback(player.stop)
 	_fades[slot] = tween

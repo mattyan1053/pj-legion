@@ -94,10 +94,10 @@ func play_sound(name: StringName) -> void:
 		sound.call(&"play", name)
 
 
-## 決着の曲を 1 回だけ鳴らす。
-func play_jingle(track: StringName) -> void:
+## 決着の曲を 1 回だけ鳴らし、鳴り終えたら then_track へつなぐ（track が空なら、すぐ then_track へ）。
+func play_jingle(track: StringName, then_track := &"") -> void:
 	if sound != null:
-		sound.call(&"play_jingle", track)
+		sound.call(&"play_jingle", track, then_track)
 
 
 ## 場面の曲を track にする（対戦の画面が、盤の見た目や話で曲を決める）。同じ曲が鳴っていれば、鳴らし直さない。

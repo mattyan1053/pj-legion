@@ -16,6 +16,7 @@ look = crystal_forest
 music = battle_undead
 before_music = battle_undead
 after_music = talk_sad
+victory_mood = quiet
 wins = routed
 
 [ally]

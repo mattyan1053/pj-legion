@@ -13,6 +13,7 @@ map = boulder_pass
 music = battle_boss
 before_music = battle_boss
 after_music = talk_dark
+victory_mood = quiet
 wins = boss_slain
 
 [unlock]
