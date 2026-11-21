@@ -68,7 +68,8 @@ static func turn_text(turn: int) -> String:
 ##   最後のターンは「最後のターン: …」にして目立たせる。
 ## - 全滅させる: 「勝ち: 敵の全滅（将を倒しても終わらない）」。敵の将が盤にいなければ（将のいない群れ）、「勝ち: 敵の全滅」。
 ## - 中ボスの撃破: 「勝ち: 中ボスの撃破（将を倒しても終わらない）」。
-## - 拠点の確保（試しの決まり）: 「拠点 4 回で勝ち」。どちらかがあと 1 回で勝つなら「あと 1 回で青の勝ち」にして目立たせる（自分の側を先に見る）。
+## - 拠点の確保（試しの決まり）: 「拠点の確保 6 回で勝ち　青 ●●○○○○　赤 ○○○○○○」（両方の陣営の確保の数）。
+##   どちらかがあと 1 回で勝つなら、頭を「あと 1 回の確保で青の勝ち」にして目立たせる（自分の側を先に見る）。
 static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 	var own: Array = battle.win_conditions[side]
 	var foe: Array = battle.win_conditions[1 - side]
@@ -106,6 +107,10 @@ static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 			last = true
 		else:
 			parts.append(Text.t("battle.goal.tag.stronghold", {"holds": Stronghold.HOLDS_TO_WIN}))
+		for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+			var held: int = battle.stronghold_holds[player]
+			var marks := Text.t("battle.hud.capture_on").repeat(held) + Text.t("battle.hud.capture_off").repeat(Stronghold.HOLDS_TO_WIN - held)
+			parts.append(Text.t("battle.goal.tag.stronghold_marks", {"side": Names.side_word(player), "marks": marks}))
 	return [Text.t("battle.hud.separator").join(parts), last]
 
 

@@ -1,7 +1,7 @@
 keys,ja
 battle.log.won.king_defeated,敵の将を倒した
 battle.log.won.hq_captured,敵の本陣を占拠し続けた
-battle.log.won.stronghold_held,拠点を確保し続けた
+battle.log.won.stronghold_held,拠点を確保した
 battle.log.won.turns_held,最後まで守り切った
 battle.log.won.routed,敵を全滅させた
 battle.log.won.boss_slain,中ボスを倒した
@@ -75,7 +75,7 @@ battle.log.evolved,{unit}が{evolution}に進化した
 battle.log.capture,{side}が{enemy}の本陣を占拠: {turns} / {needed}
 battle.log.capture_broken,{side}の、{enemy}の本陣の占拠が途切れた
 battle.log.stronghold,{side}が拠点を確保: {holds} / {needed}
-battle.log.stronghold_lost,{side}の拠点の確保が途切れた
+battle.log.stronghold_lost,{side}の拠点の確保が 0 に戻った
 battle.log.won,{side}の勝ち（{reason}）
 battle.log.drawn,引き分け（{reason}）
 battle.cell.nothing,特別なものは無い
@@ -163,7 +163,7 @@ battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マ�
 battle.cell.battery,砲台
 battle.cell.battery.note,後衛が乗ると、射程 +{range}
 battle.cell.stronghold,拠点
-battle.cell.stronghold.note,将でない駒が乗ったまま番を終えると、確保 +1。{needed} で勝ち
+battle.cell.stronghold.note,将でない駒が乗ったまま番を終えると、確保 +1。{needed} で勝ち。周り {radius} マスに敵がいる間は進まず、相手が確保すると 0 に戻る。
 battle.cell.spring,回復の泉
 battle.cell.spring.note,自分の番の始めに、乗っている駒が {heal} 回復
 battle.cell.portal,"ポータル → ({x}, {y})"
@@ -196,7 +196,6 @@ battle.hud.side,{side}  駒 {count}
 battle.hud.capture,  占拠 {marks}
 battle.hud.capture_on,●
 battle.hud.capture_off,○
-battle.hud.stronghold,  拠点 {marks}
 battle.hud.name_evolved_role,{unit}（{kind}から進化・{role}）
 battle.hud.name_evolved,{unit}（{kind}から進化）
 battle.hud.name_role,{unit}（{role}）
@@ -266,7 +265,7 @@ battle.pop.status_expired,{status}が消えた
 battle.pop.capture,占拠 {turns} / {needed}
 battle.pop.capture_broken,占拠が途切れた
 battle.pop.stronghold,確保 {holds} / {needed}
-battle.pop.stronghold_lost,確保が途切れた
+battle.pop.stronghold_lost,確保 0 に戻る
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
 battle.hud.relic_missing,{relic}（持っていない）: {effect}
@@ -332,6 +331,7 @@ battle.goal.tag.rout_or_king,勝ち: 敵の全滅
 battle.goal.tag.routed,全滅すると負け
 battle.goal.tag.stronghold,拠点の確保 {holds} 回で勝ち
 battle.goal.tag.stronghold_near,あと 1 回の確保で{side}の勝ち
+battle.goal.tag.stronghold_marks,{side} {marks}
 battle.goal.tag.boss,勝ち: 中ボスの撃破（将を倒しても終わらない）
 battle.goal.tag.boss_or_king,勝ち: 中ボスの撃破か将の撃破
 battle.goal.tag.boss_only,勝ち: 中ボスの撃破

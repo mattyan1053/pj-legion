@@ -57,10 +57,14 @@ static func _can_hold(board: Board, cell: Vector2i) -> bool:
 
 
 ## 拠点を置く（試しの決まりが入の対戦だけ。MatchSetup.create_battle が呼ぶ）。置けるマスが無ければ置かない。
+## 拠点のマスが森なら平地にする（拠点が木立に隠れず、乗った駒が森の軽減で守られない）。
 static func arm(board: Board) -> void:
 	var cell := choose_cell(board)
-	if cell != Board.NO_CELL:
-		board.stronghold_cell = cell
+	if cell == Board.NO_CELL:
+		return
+	if board.terrain_at(cell) != Terrain.Type.NORMAL:
+		board.set_terrain(cell, Terrain.Type.NORMAL)
+	board.stronghold_cell = cell
 
 
 ## player の駒が、拠点の確保を進められる形で乗っているか（将は数えない）。

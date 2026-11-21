@@ -471,6 +471,9 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_board_view = BoardView.new()
 	add_child(_board_view)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if battle.stronghold_holds[side] > 0:
+			_board_view.set_stronghold_side(side, TEAM_COLORS[side])  # 途中から見せる対戦でも、旗は確保を進めた陣営の色
 	_hud.minimap().show_board(battle.board, look)
 	# 場面に入る幕が明けるまでは _process が回らないので、ミニマップの置き場所を先に決めておく（左上に出てから跳ばない）。
 	_place_minimap.call_deferred()
@@ -1992,7 +1995,6 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	_hud.set_status(
 		WinText.turn_text(turn), phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN, shown,
 		WinText.goal_tag(battle, turn, _viewer_side()), WinText.goal_note(battle, _viewer_side()),
-		battle.stronghold_holds, Stronghold.HOLDS_TO_WIN if Stronghold.holds_left(battle, Unit.Side.PLAYER1) != -1 else 0,
 	)
 	var percents: Array[int] = []
 	var names: Array[String] = []

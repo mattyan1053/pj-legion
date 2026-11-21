@@ -84,9 +84,11 @@ func test_off_board_is_the_same_as_on_board_except_the_stronghold() -> void:
 		for y in off.size.y:
 			for x in off.size.x:
 				var cell := Vector2i(x, y)
-				assert_eq(on.terrain_at(cell), off.terrain_at(cell))
+				if cell != on.stronghold_cell:
+					assert_eq(on.terrain_at(cell), off.terrain_at(cell))
 				if cell != on.stronghold_cell:
 					assert_eq(on.object_at(cell), off.object_at(cell))
+		assert_eq(on.terrain_at(on.stronghold_cell), Terrain.Type.NORMAL, "拠点のマスは平地")
 
 
 func test_stronghold_is_not_placed_on_another_object_or_a_font() -> void:

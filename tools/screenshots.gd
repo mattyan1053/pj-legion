@@ -134,7 +134,7 @@ const SCENES := {
 	"battery": "砲台に乗った後衛を選んだところ（射程が伸びている。中央平原）",
 	"setup_battery": "対戦設定で、試しの決まりの「砲台」を「あり」にしたところ",
 	"stronghold_cell": "拠点（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
-	"stronghold": "拠点に駒が乗り、どちらかがあと 1 回の確保で勝つところ（上の帯の札と確保の数。結晶の岩山）",
+	"stronghold": "拠点に駒が乗り、どちらかがあと 1 回の確保で勝つところ（勝ち方の札と確保の数。迷宮回廊）",
 	"setup_stronghold": "対戦設定で、試しの決まりの「拠点」を「あり」にしたところ",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
 	"portal_range": "ポータルへ届く駒を選んで、範囲の中のポータルと、その対の出るポータルが同じ色で塗られている（範囲は転移の先まで広げない。双子結晶）",
@@ -1858,7 +1858,7 @@ func _scene_stronghold_cell() -> bool:
 
 ## どちらかが、あと 1 回の確保で勝つところまで進める（拠点に駒が乗り、旗がその陣営の色。上の帯の札が目立つ）。
 func _scene_stronghold() -> bool:
-	_field = VersusFields.CRYSTAL_GORGE
+	_field = VersusFields.LABYRINTH
 	_new_battle([TrialRules.STRONGHOLD])
 	if not _advance(func() -> bool:
 		return Stronghold.holds_left(_battle, Unit.Side.PLAYER1) == 1 or Stronghold.holds_left(_battle, Unit.Side.PLAYER2) == 1

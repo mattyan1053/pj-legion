@@ -729,21 +729,19 @@ func _add_stronghold(cell: Vector2i) -> void:
 	var pole := CylinderMesh.new()
 	pole.top_radius = 0.03
 	pole.bottom_radius = 0.035
-	pole.height = 1.9
+	pole.height = 2.6
 	var pole_foot := center + Vector3(-0.43, 0.0, -0.43)
-	_add_mesh(pole, _flat_material(COLOR_STRONGHOLD_EDGE), pole_foot + Vector3(0.0, 0.95, 0.0))
+	_add_mesh(pole, _flat_material(COLOR_STRONGHOLD_EDGE), pole_foot + Vector3(0.0, 1.3, 0.0))
 	var knob := SphereMesh.new()
 	knob.radius = 0.06
 	knob.height = 0.12
-	_add_mesh(knob, _flat_material(COLOR_STRONGHOLD_MARK), pole_foot + Vector3(0.0, 1.93, 0.0))
+	_add_mesh(knob, _flat_material(COLOR_STRONGHOLD_MARK), pole_foot + Vector3(0.0, 2.63, 0.0))
 	var cloth_mesh := BoxMesh.new()
-	cloth_mesh.size = Vector3(0.56, 0.34, 0.03)
+	cloth_mesh.size = Vector3(0.84, 0.5, 0.03)
 	_stronghold_cloth = _flat_material(COLOR_STRONGHOLD_FLAG)
-	var cloth := _add_mesh(cloth_mesh, _stronghold_cloth, pole_foot + Vector3(0.3, 1.68, 0.0))
-	cloth.rotation.y = deg_to_rad(-45.0)
-	cloth.position = pole_foot + Vector3(0.21, 1.68, 0.21)
+	var cloth := _add_mesh(cloth_mesh, _stronghold_cloth, pole_foot + Vector3(0.44, 2.3, 0.0))
 	var border_mesh := BoxMesh.new()
-	border_mesh.size = Vector3(0.6, 0.38, 0.02)
+	border_mesh.size = Vector3(0.9, 0.56, 0.02)
 	var border := _add_mesh(border_mesh, _flat_material(COLOR_STRONGHOLD_EDGE), cloth.position)
 	border.rotation.y = cloth.rotation.y
 

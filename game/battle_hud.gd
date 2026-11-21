@@ -227,11 +227,9 @@ func setup(team_colors: Array[Color]) -> void:
 ## counts は陣営ごとの駒の数、captures は本陣の占拠の数（どちらも添字がプレイヤー番号）。
 ## capture_shown は陣営ごとの、占拠の数を出すか（本陣の占拠が勝ちの条件に無い陣営は出さない）。
 ## goal_tag は勝ち方の札（[ひとことの文, 目立たせるか]。文が空なら札を出さない）、goal_note は札にマウスを乗せると出る詳しい文。
-## holds は拠点の確保の数（試しの決まり。添字がプレイヤー番号）、hold_goal は勝ちに要る数（0 なら拠点の欄を出さない）。
 func set_status(
 	turn_text: String, phase: Unit.Side, counts: Array[int], captures: Array[int], capture_goal: int,
 	capture_shown: Array[bool] = [true, true], goal_tag: Array = ["", false], goal_note := "",
-	holds: Array[int] = [0, 0], hold_goal := 0,
 ) -> void:
 	_turn_label.text = turn_text
 	_goal_panel.visible = goal_tag[0] != ""
@@ -254,9 +252,6 @@ func set_status(
 		if capture_shown[player]:
 			var marks := Text.t("battle.hud.capture_on").repeat(captures[player]) + Text.t("battle.hud.capture_off").repeat(capture_goal - captures[player])
 			text += Text.t("battle.hud.capture", {"marks": marks})
-		if hold_goal > 0:
-			var hold_marks := Text.t("battle.hud.capture_on").repeat(holds[player]) + Text.t("battle.hud.capture_off").repeat(hold_goal - holds[player])
-			text += Text.t("battle.hud.stronghold", {"marks": hold_marks})
 		_side_labels[player].text = text
 		# 幅が足りずに省かれても読めるよう、全文をツールチップにも置く。聖遺物の効果も、ここで読める。
 		_side_labels[player].tooltip_text = _side_labels[player].text
