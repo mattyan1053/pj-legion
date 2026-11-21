@@ -198,7 +198,7 @@ func test_no_new_hard_coded_japanese() -> void:
 
 ## 見張りそのものが効くこと。
 func test_the_watch_counts_literals_but_not_comments() -> void:
-	var probe := "user://text_probe.gd"
+	var probe := "user://text_probe_%d.gd" % (Time.get_ticks_usec() + randi())  # 並べて回すプロセスと名前がぶつからないように
 	var file := FileAccess.open(probe, FileAccess.WRITE)
 	file.store_string("# コメント「無視」\nvar a := \"直書き\"  ## 説明「無視」\npush_error(\"開発用\")\nvar b := \"plain\" + \"、\"\n")
 	file.close()
