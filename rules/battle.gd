@@ -28,6 +28,8 @@ var winner := -1
 var drawn := false
 ## プレイヤーごとの、敵の本陣を占拠し続けたフェーズの数。添字がプレイヤー番号。
 var capture_turns: Array[int] = [0, 0]
+## プレイヤーごとの、拠点の確保の数（試しの決まりの拠点。Stronghold）。添字がプレイヤー番号。
+var stronghold_holds: Array[int] = [0, 0]
 ## 行動の途中の駒が動く前の capture_turns。移動を取り消したときに戻す。
 var capture_turns_before_move: Array[int] = [0, 0]
 

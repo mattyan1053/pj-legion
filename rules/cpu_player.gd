@@ -127,6 +127,14 @@ const BATTERY_STEP_COST := 3.0
 const BATTERY_STEPS := 8
 const BATTERY_WATCH := 6
 ## 回復役が、減っている味方を探す範囲（歩数）。
+## 拠点（試しの決まり。docs/map-objects.md の「拠点」）。戦う駒が拠点に立って行動を終える価値と、もう乗っている駒が居座る価値（確保 1 つあたり）。
+const STRONGHOLD_VALUE := 60.0
+const STRONGHOLD_HOLD_VALUE := 100.0
+## 拠点に乗っている相手の駒。ダメージの価値を STRONGHOLD_RATE 倍にし、倒す価値に（相手の確保 1 つあたり）STRONGHOLD_KILL_BONUS を足す。
+const STRONGHOLD_RATE := 1.5
+const STRONGHOLD_KILL_BONUS := 40.0
+## 拠点に乗っている相手の駒を、この歩数の中の前衛・後衛・奇襲が追う。
+const STRONGHOLD_CHASE_STEPS := 16
 const HEALER_SEARCH_STEPS := 12
 ## スキルを使う手の、スキルごとの見積もり（対象に選ぶ価値のありそうなマスと、使った結果の価値）は、
 ## rules/cpu/ の 1 スキル 1 ファイル（CpuSkillEstimate.of）。
@@ -209,6 +217,10 @@ var _idle_danger_weight := 0.0
 var _hq_in_danger := false
 ## 勝ちの条件の読み（rules/cpu/win_conditions_cpu.gd）。守る側か、攻める側で急ぐか。
 var _holding := false
+## 拠点の確保で勝てるか、相手があと 1 つで拠点の確保で勝つか、拠点へ向かう駒の番号（0 = まだ決めていない、-1 = いない）。_begin が決める。
+var _takes_stronghold := false
+var _stronghold_urgent := false
+var _stronghold_taker := 0
 var _rushing := false
 var _lethal_penalty := 0.0
 var _stand_off := false
@@ -351,6 +363,10 @@ func _begin(battle: Battle) -> void:
 	# 本陣の占拠で勝てないなら、敵の本陣は目指すマスでない。
 	_foe_hq = board.hq_cells[_foe] if has_hqs and CpuWinPlan.raids_hq(battle, _me) else Board.NO_CELL
 	_holding = CpuWinPlan.holds(battle, _me)
+	_takes_stronghold = Stronghold.holds_left(battle, _me) != -1
+	var foe_left := Stronghold.holds_left(battle, _foe)
+	_stronghold_urgent = _takes_stronghold and foe_left != -1 and foe_left <= Stronghold.p_urgent
+	_stronghold_taker = 0
 	_rushing = CpuWinPlan.rushes(battle, _me)
 	_hq_in_danger = false
 	var keeper := battle.unit_at(_my_hq) if has_hqs else null
@@ -828,6 +844,9 @@ func _damage_value(victim: Unit, hp_after: int) -> float:
 		rate = KING_DAMAGE_VALUE
 	elif UnitKind.role(victim.kind) == UnitKind.Role.HEALER:
 		kill += HEALER_KILL_BONUS
+	if victim.side == _foe and victim.cell == _board.stronghold_cell and Stronghold.counts(victim):
+		rate *= STRONGHOLD_RATE
+		kill += STRONGHOLD_KILL_BONUS * (1 + _battle.stronghold_holds[_foe])
 	if victim.side == _foe and _my_hq != Board.NO_CELL:
 		if victim.cell == _my_hq:
 			rate *= OCCUPIER_RATE
@@ -1051,6 +1070,14 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 			apart = mini(apart, Combat.distance(cell, friend_cell))
 		value -= ISOLATION_WEIGHT * maxi(0, apart - SUPPORT_DISTANCE)
 	value += _battery_pull(unit, cell)
+	if cell == _board.stronghold_cell and _takes_stronghold and Stronghold.counts(unit) and UnitKind.role(unit.kind) != UnitKind.Role.HEALER:
+		value += STRONGHOLD_VALUE
+		if unit.cell == cell:
+			value += STRONGHOLD_HOLD_VALUE * _battle.stronghold_holds[_me]
+	elif _takes_stronghold and Stronghold.p_contest > 0 and Stronghold.p_block > 0.0 and Combat.distance(cell, _board.stronghold_cell) <= Stronghold.p_contest:
+		var holder := _battle.unit_at(_board.stronghold_cell)
+		if holder != null and holder.side == _foe and Stronghold.counts(holder):
+			value += Stronghold.p_block
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
@@ -1152,6 +1179,21 @@ func _set_goal(unit: Unit) -> void:
 		elif enemy != null:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
+	if _takes_stronghold and unit.kind != UnitKind.Id.KING and role != UnitKind.Role.HEALER:
+		_choose_stronghold_taker()
+		var holder := _battle.unit_at(_board.stronghold_cell)
+		if holder != null and holder.side == _foe and Stronghold.counts(holder):
+			# 相手が拠点に乗っている: 近くの戦う駒は、乗っている駒を追う。相手があと 1 つで勝つなら、危険を気にせず踏み込む。
+			if _steps_from(holder.cell)[unit.cell.y * _board.size.x + unit.cell.x] <= STRONGHOLD_CHASE_STEPS or _stronghold_urgent:
+				goal = holder.cell
+				_goal_reach = unit.attack_range()
+				_stand_off = false
+		elif unit.id == _stronghold_taker:
+			goal = _board.stronghold_cell
+			_goal_reach = 0
+			_stand_off = false
+		if _stronghold_urgent:
+			_idle_danger_weight = minf(_danger_weight, _idle_danger_weight)
 	if _foe_hq != Board.NO_CELL and role != UnitKind.Role.HEALER and not _foes_left() and (unit.kind != UnitKind.Id.KING or _lone_king):
 		# 相手の駒が残っていなくても終わらない（占拠でしか勝てない）: 追う敵がいないので、敵の本陣へ向かう。
 		goal = _foe_hq
@@ -1392,3 +1434,25 @@ func _steps_from(goal: Vector2i) -> PackedInt32Array:
 				tail += 1
 	_steps[goal] = steps
 	return steps
+
+
+## 拠点へ向かう駒（戦う駒 = 前衛・後衛・奇襲のうち、拠点までの歩数がいちばん近いもの。同じなら番号の小さいもの）を決めて _stronghold_taker に置く。
+## 自分の駒が拠点に乗っていれば、その駒。1 手を考えるたびに、最初に要ったときに決める。
+func _choose_stronghold_taker() -> void:
+	if _stronghold_taker != 0:
+		return
+	_stronghold_taker = -1
+	var cell := _board.stronghold_cell
+	var holder := _battle.unit_at(cell)
+	if holder != null and holder.side == _me and Stronghold.counts(holder):
+		_stronghold_taker = holder.id
+		return
+	var steps := _steps_from(cell)
+	var best := _FAR
+	for other in _battle.units:
+		if other.side != _me or other.kind == UnitKind.Id.KING or UnitKind.role(other.kind) == UnitKind.Role.HEALER:
+			continue
+		var far := steps[other.cell.y * _board.size.x + other.cell.x]
+		if far >= 0 and far < best:
+			best = far
+			_stronghold_taker = other.id

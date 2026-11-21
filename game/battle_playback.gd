@@ -174,6 +174,7 @@ static func event_players() -> Dictionary:
 		UnitActedEvent: &"_play_acted",
 		PhaseStartedEvent: &"_play_phase_started",
 		CaptureProgressEvent: &"_play_capture",
+		StrongholdProgressEvent: &"_play_stronghold",
 		GameWonEvent: &"_play_won",
 		GameDrawnEvent: &"_play_drawn",
 	}
@@ -796,6 +797,23 @@ func _play_capture(event: CaptureProgressEvent) -> void:
 	if event.turns > 0:
 		_sound(&"capture")
 	_pop_number(BoardView.cell_center(hq), text, team_colors[event.player].lightened(0.4))
+
+
+## 拠点の確保が進んだ・途切れた（試しの決まり）。拠点のマスに数を出し、旗をその陣営の色にする。
+## あと 1 回で勝つところまで来たら、画面の中央にも知らせる。
+func _play_stronghold(event: StrongholdProgressEvent) -> void:
+	refresh_status.call(battle.turn, battle.phase)
+	var cell := battle.board.stronghold_cell
+	var color: Color = team_colors[event.player]
+	if event.holds == 0:
+		_pop_number(BoardView.cell_center(cell), Text.t("battle.pop.stronghold_lost"), color.lightened(0.4))
+		return
+	_board_view.set_stronghold_side(event.player, color)
+	_sound(&"capture")
+	_pop_number(BoardView.cell_center(cell), Text.t("battle.pop.stronghold", {"holds": event.holds, "needed": Stronghold.HOLDS_TO_WIN}), color.lightened(0.4))
+	if event.holds == Stronghold.HOLDS_TO_WIN - 1:
+		_hud.show_banner(Text.t("battle.banner.stronghold_near", {"side": side_name.call(event.player)}), color, true)
+		await after(0.6)
 
 
 ## 対戦の中の効果音（sound_catalog.gd の名前。docs/sound.md の「対戦の音」）。演出に合わせて鳴らすだけで、待ち時間は変えない。

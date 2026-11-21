@@ -46,6 +46,10 @@ const COLOR_SPRING_CROSS := Color("2fd66b")
 const COLOR_BATTERY_BASE := Color("4a4f5a")
 const COLOR_BATTERY_GUN := Color("2b2e36")
 const COLOR_BATTERY_MARK := Color("ffb347")
+## 拠点（試しの決まり）: 黒い縁取りの上に明るい黄の輪。どの景色の地面でも沈まないよう、光に左右されない色で描く。
+const COLOR_STRONGHOLD_EDGE := Color("1c1a14")
+const COLOR_STRONGHOLD_MARK := Color("fff27a")
+const COLOR_STRONGHOLD_FLAG := Color("f4f1e6")
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
@@ -107,6 +111,7 @@ var _grid_emphasized := false
 var _ripples: Array = []
 var _motes: Array = []
 var _portal_discs: Array = []
+var _stronghold_cloth: StandardMaterial3D  # 拠点の旗の布（確保を進めた陣営の色に変える）
 var _motion_time := 0.0
 static var _noise: ImageTexture
 
@@ -155,6 +160,9 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 		_add_spring(cell)
 	for cell in board.battery_cells:
 		_add_battery(cell)
+	_stronghold_cloth = null
+	if board.stronghold_cell != Board.NO_CELL:
+		_add_stronghold(board.stronghold_cell)
 	for cell: Vector2i in board.portal_exits:
 		_add_portal(cell, portal_color(board, cell))
 	for effect in board.field_effects:
@@ -695,6 +703,60 @@ func _add_battery(cell: Vector2i) -> void:
 	var plate := BoxMesh.new()
 	plate.size = Vector3(0.26, 0.16, 0.05)
 	_add_mesh(plate, _flat_material(COLOR_BATTERY_MARK), flag_foot + Vector3(0.0, 1.08, 0.0))
+
+
+## 拠点（試しの決まり）。駒が上に立つので、床は平たく（黒い縁取りの輪と黄の輪、四隅の杭）。
+## 駒が乗っていても分かるよう、奥の隅に高い旗竿を立てる。旗は白で、確保を進めた陣営の色に変わる（set_stronghold_side）。
+func _add_stronghold(cell: Vector2i) -> void:
+	var center := cell_center(cell)
+	for ring_spec: Array in [[0.36, 0.49, COLOR_STRONGHOLD_EDGE, 0.03], [0.39, 0.46, COLOR_STRONGHOLD_MARK, 0.045]]:
+		var ring := TorusMesh.new()
+		ring.inner_radius = ring_spec[0]
+		ring.outer_radius = ring_spec[1]
+		ring.rings = 24
+		ring.ring_segments = 4
+		var instance := _add_mesh(ring, _flat_material(ring_spec[2]), center + Vector3(0.0, ring_spec[3], 0.0))
+		instance.scale = Vector3(1.0, 0.35, 1.0)
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var stake := BoxMesh.new()
+	stake.size = Vector3(0.09, 0.22, 0.09)
+	var cap := BoxMesh.new()
+	cap.size = Vector3(0.11, 0.05, 0.11)
+	for corner: Vector2 in [Vector2(-1, 1), Vector2(1, 1), Vector2(1, -1)]:
+		var foot := center + Vector3(corner.x, 0.0, corner.y) * 0.43
+		_add_mesh(stake, _flat_material(COLOR_STRONGHOLD_EDGE), foot + Vector3(0.0, 0.11, 0.0))
+		_add_mesh(cap, _flat_material(COLOR_STRONGHOLD_MARK), foot + Vector3(0.0, 0.245, 0.0))
+	var pole := CylinderMesh.new()
+	pole.top_radius = 0.03
+	pole.bottom_radius = 0.035
+	pole.height = 1.9
+	var pole_foot := center + Vector3(-0.43, 0.0, -0.43)
+	_add_mesh(pole, _flat_material(COLOR_STRONGHOLD_EDGE), pole_foot + Vector3(0.0, 0.95, 0.0))
+	var knob := SphereMesh.new()
+	knob.radius = 0.06
+	knob.height = 0.12
+	_add_mesh(knob, _flat_material(COLOR_STRONGHOLD_MARK), pole_foot + Vector3(0.0, 1.93, 0.0))
+	var cloth_mesh := BoxMesh.new()
+	cloth_mesh.size = Vector3(0.56, 0.34, 0.03)
+	_stronghold_cloth = _flat_material(COLOR_STRONGHOLD_FLAG)
+	var cloth := _add_mesh(cloth_mesh, _stronghold_cloth, pole_foot + Vector3(0.3, 1.68, 0.0))
+	cloth.rotation.y = deg_to_rad(-45.0)
+	cloth.position = pole_foot + Vector3(0.21, 1.68, 0.21)
+	var border_mesh := BoxMesh.new()
+	border_mesh.size = Vector3(0.6, 0.38, 0.02)
+	var border := _add_mesh(border_mesh, _flat_material(COLOR_STRONGHOLD_EDGE), cloth.position)
+	border.rotation.y = cloth.rotation.y
+
+
+## 拠点の旗を、確保を進めた陣営 side の色 color にする（拠点の無い盤では何もしない）。
+func set_stronghold_side(_side: int, color: Color) -> void:
+	if _stronghold_cloth != null:
+		_stronghold_cloth.albedo_color = color
+
+
+## 拠点の旗の色（検査用。拠点が無ければ透明）。
+func stronghold_flag_color() -> Color:
+	return _stronghold_cloth.albedo_color if _stronghold_cloth != null else Color.TRANSPARENT
 
 
 ## ポータル。駒が上に立つので平たく作る（色の輪と薄い面）。駒が乗っていても分かるよう、両脇に柱を立てる。

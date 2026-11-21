@@ -375,7 +375,7 @@ func choose_tactic(side: Unit.Side, id: Tactics.Id) -> void:
 
 ## 試しの決まりの、ひとことの説明。
 static func trial_note(id: StringName) -> String:
-	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "count": Tactics.HAND_SIZE})
+	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "count": Tactics.HAND_SIZE, "holds": Stronghold.HOLDS_TO_WIN})
 
 
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:

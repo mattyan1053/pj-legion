@@ -11,7 +11,7 @@ const Text := preload("res://game/text.gd")
 ## 「敵の将を倒すか、敵の本陣を 3 ターン占拠し続ければ勝ち。」「味方の将が倒されるか、味方の本陣を占拠され続けると負け。」
 ## foe_has_king が偽（相手が将のいない群れ。docs/scenario.md）なら、「将を倒しても終わらない」は言い添えない（倒す将がいない）。
 static func goal(conditions: Array[Array], hold_turns: int, side: Unit.Side, foe_has_king := true) -> String:
-	var args := {"turns": hold_turns, "capture": Battle.CAPTURE_TURNS_TO_WIN}
+	var args := {"turns": hold_turns, "capture": Battle.CAPTURE_TURNS_TO_WIN, "holds": Stronghold.HOLDS_TO_WIN}
 	var lines: Array[String] = []
 	var wins := _in_order(conditions[side])
 	if not wins.is_empty():
@@ -42,7 +42,7 @@ static func _joined(conditions: Array[GameWonEvent.Reason], prefix: String, args
 ## 文に並べる順。その戦いならではの勝ち方（守り切る、全滅）を先に、いつもの勝ち方をあとに。
 const ORDER: Array[GameWonEvent.Reason] = [
 	GameWonEvent.Reason.TURNS_HELD, GameWonEvent.Reason.ROUTED, GameWonEvent.Reason.BOSS_SLAIN,
-	GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED,
+	GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED, GameWonEvent.Reason.STRONGHOLD_HELD,
 ]
 
 
@@ -68,6 +68,7 @@ static func turn_text(turn: int) -> String:
 ##   最後のターンは「最後のターン: …」にして目立たせる。
 ## - 全滅させる: 「勝ち: 敵の全滅（将を倒しても終わらない）」。敵の将が盤にいなければ（将のいない群れ）、「勝ち: 敵の全滅」。
 ## - 中ボスの撃破: 「勝ち: 中ボスの撃破（将を倒しても終わらない）」。
+## - 拠点の確保（試しの決まり）: 「拠点 4 回で勝ち」。どちらかがあと 1 回で勝つなら「あと 1 回で青の勝ち」にして目立たせる（自分の側を先に見る）。
 static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 	var own: Array = battle.win_conditions[side]
 	var foe: Array = battle.win_conditions[1 - side]
@@ -95,6 +96,16 @@ static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 			parts.append(Text.t("battle.goal.tag.boss_or_king") if own.has(GameWonEvent.Reason.KING_DEFEATED) else Text.t("battle.goal.tag.boss"))
 	if foe.has(GameWonEvent.Reason.ROUTED):
 		parts.append(Text.t("battle.goal.tag.routed"))
+	if battle.board.stronghold_cell != Board.NO_CELL and (own.has(GameWonEvent.Reason.STRONGHOLD_HELD) or foe.has(GameWonEvent.Reason.STRONGHOLD_HELD)):
+		var near := -1
+		for player: Unit.Side in [side, (1 - side) as Unit.Side]:
+			if near == -1 and Stronghold.holds_left(battle, player) == 1:
+				near = player
+		if near != -1:
+			parts.append(Text.t("battle.goal.tag.stronghold_near", {"side": Names.side_word(near)}))
+			last = true
+		else:
+			parts.append(Text.t("battle.goal.tag.stronghold", {"holds": Stronghold.HOLDS_TO_WIN}))
 	return [Text.t("battle.hud.separator").join(parts), last]
 
 

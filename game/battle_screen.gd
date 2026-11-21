@@ -1992,6 +1992,7 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	_hud.set_status(
 		WinText.turn_text(turn), phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN, shown,
 		WinText.goal_tag(battle, turn, _viewer_side()), WinText.goal_note(battle, _viewer_side()),
+		battle.stronghold_holds, Stronghold.HOLDS_TO_WIN if Stronghold.holds_left(battle, Unit.Side.PLAYER1) != -1 else 0,
 	)
 	var percents: Array[int] = []
 	var names: Array[String] = []

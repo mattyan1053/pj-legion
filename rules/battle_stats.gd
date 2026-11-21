@@ -14,6 +14,7 @@ enum Ending {
 	ROUTED,  ## 全滅させた
 	DRAW,  ## 引き分け（両方の将が同時に倒れた）
 	BOSS_SLAIN,  ## 中ボスの撃破
+	STRONGHOLD_HELD,  ## 拠点の確保（試しの決まり）
 }
 
 ## 勝った理由 -> 決着の理由。
@@ -23,6 +24,7 @@ const ENDING_OF := {
 	GameWonEvent.Reason.TURNS_HELD: Ending.TURNS_HELD,
 	GameWonEvent.Reason.ROUTED: Ending.ROUTED,
 	GameWonEvent.Reason.BOSS_SLAIN: Ending.BOSS_SLAIN,
+	GameWonEvent.Reason.STRONGHOLD_HELD: Ending.STRONGHOLD_HELD,
 }
 
 
