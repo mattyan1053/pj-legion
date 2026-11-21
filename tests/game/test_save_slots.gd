@@ -77,6 +77,17 @@ func test_without_any_file_every_slot_is_empty_and_nothing_is_written() -> void:
 	_cleanup()
 
 
+func test_saving_versus_squads_does_not_start_a_slot() -> void:
+	var context := _context()
+	context.decks.add("対戦の部隊", _versus_deck())
+	var copy := context.decks.duplicate_deck(context.decks.items()[0].id)
+	context.decks.remove(copy.id)
+	assert_eq(context.slots.info(1)["state"], SaveSlots.EMPTY, "対戦用の部隊を取っておいただけでは、スロットを作らない")
+	assert_false(_store().exists(SaveSlots.store_name(1)))
+	assert_eq(_store().read(DeckLibrary.STORE_NAME)["data"]["next_id"], 3, "次に付ける id の番号は、対戦用のファイルが持つ")
+	_cleanup()
+
+
 func test_starting_an_empty_slot_writes_it_and_opening_again_reads_it() -> void:
 	var context := _context()
 	assert_true(context.use_slot(2))

@@ -394,3 +394,7 @@ class Section:
 
 	func write(name: String, version: int, data: Dictionary) -> bool:
 		return _slots._write_section(name, version, data, _buffered)
+
+	## いまのスロットを、もう書いたか（始めたか）。
+	func is_started() -> bool:
+		return _slots.is_started()

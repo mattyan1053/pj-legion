@@ -127,8 +127,13 @@ func save() -> bool:
 		return store != null and store.write(STORE_NAME, FORMAT_VERSION, to_data())
 	# ストーリー用を先に書く。書けなければ（スロットが壊れている、など）、対戦用のファイルも書き直さない
 	# （前の置き方で対戦用のファイルに残っていたストーリー用の部隊を、どこにも書かずに落とさないため）。
-	var slot_ok := _save_part(true)
-	if not slot_ok and _items.any(func(item: Saved) -> bool: return item.in_slot):
+	# ストーリー用の部隊が無く、スロットもまだ始めていなければ、スロットは書かない（対戦用の部隊を取っておいただけで、
+	# 空のスロットが「つづきから」にならないように。次に付ける id の番号は、対戦用のファイルが持つ）。
+	var has_slot_items := _items.any(func(item: Saved) -> bool: return item.in_slot)
+	var slot_ok := true
+	if has_slot_items or not slot_store.has_method(&"is_started") or slot_store.is_started():
+		slot_ok = _save_part(true)
+	if not slot_ok and has_slot_items:
 		return false
 	return _save_part(false) and slot_ok
 
