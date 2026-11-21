@@ -17,3 +17,9 @@ func test_widths_are_sane() -> void:
 	assert_true(WrapAudit.talk_max_lines() >= 2)
 	assert_true(WrapAudit.cue_width("ハーデン") > 200.0)
 	assert_true(WrapAudit.remark_width() > 150.0)
+
+
+## 画面の文の表（game/text/*.csv）の長い文も、点検の幅で語の途中を切らない（名前・数・マスを差し込んだ形で見る）。
+func test_table_texts_wrap_cleanly() -> void:
+	var found := WrapAudit.audit_texts()
+	assert_eq(found, [] as Array[String], "切れ方の悪い画面の文:\n%s" % "\n".join(found))
