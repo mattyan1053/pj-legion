@@ -2474,12 +2474,21 @@ func _visit_slots(app: Node) -> void:
 	var first: String = screen.card_text(1)
 	_expect(first.ends_with("つづきから") and first.contains(Story.military().title) and first.contains("話クリア"), "進み具合のあるスロットのカードに、物語とクリアの数が出ない: %s" % first.replace("\n", " / "))
 	_expect(screen.card_text(2).ends_with("はじめから"), "空きのスロットが「はじめから」でない")
+	# コピーは、元がいまのスロットなら先に書く（保存の時刻が、いまになる）。時刻を 1 分進めておき、
+	# 元のカードの日時が変わっても、コピーが元と同じ中身（同じ日時）になることを見る（分の変わり目で、毎回は起きないため）。
+	var slots: RefCounted = app.context.slots
+	var real_now: Callable = slots.now
+	slots.now = func() -> int: return real_now.call() + 60
 	screen.press_copy(1)
 	_expect(screen.is_copying() and not screen.is_card_enabled(1), "コピーの元のカードを、コピー先に選べる")
 	screen.choose(2)
+	slots.now = real_now
 	# （プレイ時間は、いまのスロットだけ数えている途中のぶんが足されるので、比べない）
 	var without_time := func(text: String) -> String: return "\n".join(Array(text.split("\n")).filter(func(line: String) -> bool: return not line.begins_with("プレイ時間")))
-	_expect(not screen.is_copying() and without_time.call(screen.card_text(2)) == without_time.call(first).replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う: %s ／ 元: %s" % [screen.card_text(2).replace("\n", " / "), first.replace("\n", " / ")])
+	var source: String = screen.card_text(1)
+	var without_date := func(text: String) -> String: return "\n".join(Array(without_time.call(text).split("\n")).filter(func(line: String) -> bool: return not RegEx.create_from_string("^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}$").search(line)))
+	_expect(source != first and without_date.call(source) == without_date.call(first), "コピーの元を書き直したとき、日時のほかが変わった（か、日時が変わらない）: %s ／ 前: %s" % [source.replace("\n", " / "), first.replace("\n", " / ")])
+	_expect(not screen.is_copying() and without_time.call(screen.card_text(2)) == without_time.call(source).replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う: %s ／ 元: %s" % [screen.card_text(2).replace("\n", " / "), source.replace("\n", " / ")])
 	screen.press_copy(2)
 	screen.choose(1)
 	var confirm: Node = screen.confirm_window()
@@ -2489,7 +2498,7 @@ func _visit_slots(app: Node) -> void:
 	screen.press_delete(2)
 	_expect(confirm.is_open() and confirm.ok_text() == "削除", "削除を確かめない")
 	confirm.accept()
-	_expect(screen.card_text(2).ends_with("はじめから") and without_time.call(screen.card_text(1)) == without_time.call(first), "削除したスロットが空きに戻らない（か、ほかのスロットが変わった）")
+	_expect(screen.card_text(2).ends_with("はじめから") and without_time.call(screen.card_text(1)) == without_time.call(source), "削除したスロットが空きに戻らない（か、ほかのスロットが変わった）")
 	screen.choose(1)
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "「つづきから」で、物語を選ぶ場面へ進まない")
