@@ -2173,8 +2173,23 @@ func _visit_story(app: Node) -> void:
 	_expect(list.episodes().size() == Story.military().episodes.size(), "話の一覧に、全部の話が並んでいない")
 	_expect(list.is_card_enabled(Story.military().episodes[0]) and list.card_status(Story.military().episodes[0]) == "クリア済み", "クリアした最初の話を選び直せない")
 	_expect(list.is_card_enabled(episode) and list.card_status(episode) == "未クリア", "次の話を選べない")
+	_expect(list.card_title(episode) == episode.title and list.is_card_revealed(episode), "次に遊ぶ話のカードの名前か縮図が伏せてある")
 	for later: RefCounted in Story.military().episodes.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
+		_expect(list.card_title(later) == "？？？" and not list.is_card_revealed(later), "まだ遊べない %s のカードの名前か縮図・顔が見えている" % later.title)
+	# 確かめ用の解放（F5）: 話の一覧を作り直して、全部の話を開く。もう一度押すと元に戻る。記録は変わらない。
+	var cleared_before: int = story.cleared_count()
+	_push_key(app, KEY_F5)
+	await app.scene_changed
+	list = app.current_scene()
+	_expect(app.current_id() == SceneFlow.EPISODES and story.open_all and app.open_all_key().is_marked(), "F5 で、全部の話を開かない（か、隅に印が無い）")
+	_expect(list.is_card_enabled(Story.military().episodes[-1]) and list.card_title(Story.military().episodes[-1]) == Story.military().episodes[-1].title, "F5 で開いても、最後の話を選べない（か、伏せたまま）")
+	_push_key(app, KEY_F5)
+	await app.scene_changed
+	list = app.current_scene()
+	_expect(not story.open_all and not app.open_all_key().is_marked() and not list.is_card_enabled(Story.military().episodes[-1]),
+		"もう一度 F5 を押しても、元に戻らない")
+	_expect(story.cleared_count() == cleared_before, "F5 で、クリアの記録が変わった")
 	# キーボードでは、左右の矢印で選んで Enter（数字キーの届かない 10 話目より先も選べる）。最初の矢印は、次に遊ぶ話を選ぶ。
 	_push_key(app, KEY_RIGHT)
 	_expect(list.key_choice() == episode, "話の一覧で矢印を押しても、次に遊ぶ話が選ばれない")
@@ -2440,6 +2455,52 @@ func _check_talk_before(talk: Node, episode: RefCounted) -> void:
 	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
 	talk.press_back()
 	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
+	await _check_talk_log(talk, episode)
+
+
+## 会話のログ: ホイールを上へ回すと開き、これまでの文（いまの文まで）を話し手と文で並べる。開いている間、会話は送らない。
+## 右クリックで閉じる（会話の文は戻らない）。L で開いて、Esc で閉じる。
+func _check_talk_log(talk: Node, episode: RefCounted) -> void:
+	talk.press_next()
+	talk.press_next()
+	var at: int = talk.line_index()
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	wheel.position = talk.get_viewport().get_visible_rect().get_center()
+	talk.get_viewport().push_input(wheel)
+	var log: CanvasLayer = talk.talk_log()
+	_expect(log.is_open(), "会話の画面でホイールを上へ回しても、会話のログが開かない")
+	var expected := []
+	for i in at + 1:
+		expected.append([episode.speakers[episode.before[i][2]], episode.before[i][1]])
+	_expect(log.row_texts() == expected, "会話のログに、これまでの文が並んでいない: %s" % [log.row_texts()])
+	var enter := InputEventKey.new()
+	enter.physical_keycode = KEY_ENTER
+	enter.pressed = true
+	talk.get_viewport().push_input(enter)
+	_expect(talk.line_index() == at and log.is_open(), "会話のログを開いている間に、会話が送られた")
+	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
+	_expect(screen_rect.encloses(log.panel_rect()), "会話のログの窓が画面からはみ出す: %s" % log.panel_rect())
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.position = wheel.position
+	talk.get_viewport().push_input(right)
+	_expect(not log.is_open() and talk.line_index() == at, "会話のログの右クリックで、閉じない（か、会話の文が戻った）")
+	var l_key := InputEventKey.new()
+	l_key.physical_keycode = KEY_L
+	l_key.pressed = true
+	talk.get_viewport().push_input(l_key)
+	_expect(log.is_open(), "L で会話のログが開かない")
+	var escape := InputEventKey.new()
+	escape.physical_keycode = KEY_ESCAPE
+	escape.pressed = true
+	talk.get_viewport().push_input(escape)
+	_expect(not log.is_open() and not talk.context.system_menu.is_open(), "会話のログの Esc で、閉じない（か、システムメニューが開いた）")
+	await get_tree().process_frame
+	for i in at:
+		talk.press_back()
 
 
 ## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。

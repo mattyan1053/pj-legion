@@ -161,6 +161,7 @@ const SCENES := {
 	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の「森の守り」（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
 	"story_fantasy_forest_wide": "ストーリー: リュエルの森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
+	"story_open_all": "ストーリー: 確かめ用の解放（F5）で全部の話を開いた話の一覧（左下の隅に印。どの話も選べる）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）",
 	"story_tutorial_list": "ストーリー: 何もクリアしていない話の一覧（頭のチュートリアルの話。番号に「（演習）」）",
@@ -170,6 +171,7 @@ const SCENES := {
 	"story_list_items": "ストーリー: 本編の 2 話目までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
 	"story_sortie_default": "ストーリー: 出撃準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ。まだ持たせられない持ち物は「未解放」）",
+	"story_talk_log": "ストーリー: 対戦の前の会話の途中で開いた会話のログ（これまでの文を、話し手の札と文で並べる。ホイールと矢印で遡る）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（敵の話し手が話している。右の姿が明るく大きく、左の人の軍の話し手は暗く小さい）",
 	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の軍の曹長が話している。左の姿は進化後のシールドトルーパー）",
 	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
@@ -1818,6 +1820,14 @@ func _scene_story_list() -> bool:
 	return _app.current_id() == SceneFlow.EPISODES
 
 
+func _scene_story_open_all() -> bool:
+	if not await _scene_story_list():
+		return false
+	_app.open_all_key().toggle()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.EPISODES and _app.context.story.open_all
+
+
 ## 2 つ目の物語（FANTASY の物語）。
 func _fantasy() -> RefCounted:
 	return Story.campaigns()[1]
@@ -2080,6 +2090,18 @@ func _scene_story_tutorial_sortie() -> bool:
 	if not _at_sortie():
 		return false
 	return _app.current_scene().is_squad_fixed()
+
+
+func _scene_story_talk_log() -> bool:
+	if not await _start_story() or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < talk.line_count() - 1:
+		talk.press_next()
+	talk.open_log()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return talk.talk_log().is_open()
 
 
 func _scene_story_talk() -> bool:
