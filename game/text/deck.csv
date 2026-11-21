@@ -3,7 +3,6 @@ deck.list.edit,編集
 deck.list.duplicate,複製
 deck.list.rename,名前変更
 deck.list.delete,削除
-deck.detail.evolution_line,・{line}
 deck.resume,部隊編成へ戻る
 deck.losing,編集中の変更は失われます。
 deck.mode.versus,対戦用
@@ -31,9 +30,7 @@ deck.edit.roster_unit,"{unit}　{role}　コスト {cost}
 deck.edit.full,{max} 体まで
 deck.edit.no_units,駒なし
 deck.edit.king,将　{stats}
-deck.detail.role,{role}　コスト {cost}
 deck.detail.borrowed,{origin} の駒（この部隊では {army} として戦う）
-deck.detail.evolution,進化（レベル {level}）
 deck.edit.items,持ち物　{count} / {max}
 deck.edit.item,{name}　コスト {cost}
 deck.edit.item_locked,未解放
@@ -54,9 +51,6 @@ deck.unplayable,出撃不可: {issues}
 deck.edit.troop_unit,"{unit}　コスト {cost}
 {items}"
 deck.edit.no_items,持ち物なし
-deck.detail.with_items,持ち物込み: {stats}
-deck.detail.skill,スキル: {skill}
-deck.detail.item,持ち物: {name}（{effect}）
 deck.detail.click,クリック: 詳細
 deck.edit.remove,外す
 deck.problem.no_units,駒なし
@@ -67,14 +61,11 @@ deck.problem.not_in_roster,この軍で雇えない駒あり
 deck.problem.item_not_allowed,未解放の持ち物あり
 deck.problem.item_not_fit,持てない持ち物を持つ駒あり
 deck.problem.other,出撃不可
-deck.skill,"{name}（クールダウン {cooldown} ターン）
-{summary}"
 deck.stats,HP {hp}　攻撃 {power}　移動 {move}　射程 {range}
 deck.stats_healer,HP {hp}　回復 {power}　移動 {move}　射程 {range}
 deck.summary.item,+{item}
 deck.summary.level,{kind} Lv{level}
 deck.summary.item_many,+{item}×{count}
-deck.evolution_line,{name}: {parts}
 deck.name.copy,{name} の写し
 deck.name.default,部隊 {number}
 deck.name.unnamed,名前の無い部隊

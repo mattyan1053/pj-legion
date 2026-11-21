@@ -3,6 +3,7 @@ extends "res://tests/base_test.gd"
 
 const UnitSheet := preload("res://game/unit_sheet.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
+const UnitSummary := preload("res://game/unit_summary.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const Names := preload("res://game/names.gd")
 const Maps := preload("res://tests/support/maps.gd")
@@ -85,6 +86,31 @@ func test_the_window_fits_the_screen_for_every_unit() -> void:
 			assert_eq(texts[0], "HP")
 			assert_eq(texts[2] != "", not held.is_empty(), "持ち物で HP が増えた駒にだけ、増減が出る")
 	detail.free()
+
+
+## 小さなステータスの札（部隊編成の右の札。game/unit_summary.gd）: 能力値の行は、ステータスの窓と同じ値（持ち物込みの値と増減）を出す。
+## 「詳細」などのボタンの場所は、名前や札と別の行（飾りの線の右）にある。
+## 札の幅が中身で広がらないことは、自動の対戦が画面の上で確かめる（game/autoplay.gd の _visit_decks。木の外では、大きさが測れない）。
+func test_the_summary_card_shows_the_sheet() -> void:
+	var card := UnitSummary.new(376.0)
+	var loads: Array = [
+		[] as Array[Equipment.Id],
+		[Equipment.Id.JET_PACK, Equipment.Id.DRAGON_SCALE, Equipment.Id.WAR_BANNER] as Array[Equipment.Id],
+	]
+	for kind: UnitKind.Id in UnitKind.Id.values():
+		for held: Array[Equipment.Id] in loads:
+			if not held.is_empty() and not Equipment.can_equip(kind):
+				continue
+			var sheet: UnitSheet = UnitSheet.of_kind(kind, held, 0, UnitKind.Army.MILITARY)
+			card.show_sheet(sheet, "12. %s" % sheet.name)
+			assert_eq(card.title_text(), "12. %s" % Names.kind(kind))
+			assert_eq(card.shown_sheet(), sheet)
+			var hp := card.stat_meters()[0].texts()
+			assert_eq(hp[1], str(sheet.max_hp()), "満タンの駒の HP は、値を 1 つだけ出す")
+			assert_eq(hp[2] != "", sheet.stat_line(Unit.Stat.MAX_HP).delta() != 0)
+	var row: Node = card.corner().get_parent()
+	assert_true(row.get_parent() == card and row.get_index() > 0, "ボタンの場所が、頭の行（名前の行）と同じ行にある")
+	card.free()
 
 
 ## HP の棒の枠: 最大 HP が大きいほど長いが、小さい駒でも棒の欄の半分近くはある（HP が減った駒の塗りが、割合で読める）。

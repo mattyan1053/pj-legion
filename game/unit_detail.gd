@@ -10,6 +10,7 @@ const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
+const SheetParts := preload("res://game/sheet_parts.gd")
 const UnitPortrait := preload("res://game/unit_portrait.gd")
 const RoleMark := preload("res://game/role_mark.gd")
 const StatMeter := preload("res://game/stat_meter.gd")
@@ -17,7 +18,6 @@ const AbilityMark := preload("res://game/ability_mark.gd")
 const CostGems := preload("res://game/cost_gems.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
-const TextWrap := preload("res://game/text_wrap.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
@@ -27,7 +27,7 @@ const RIGHT_WIDTH := 600.0
 const PORTRAIT_SIZE := Vector2(LEFT_WIDTH, 236.0)
 const GAP := 10.0
 ## 札の中の説明の文字の大きさ。
-const NOTE_SIZE := 13
+const NOTE_SIZE := SheetParts.NOTE_SIZE
 
 ## 閉じた（対戦の画面が、止めていた時間と視点の操作を戻す）。
 signal closed
@@ -337,75 +337,23 @@ func _show_evolutions(sheet: UnitSheet) -> void:
 		_evolutions.add_child(_card(AbilityMark.Type.EVOLUTION, "", Names.evolution(evolution), "", Text.join_comma(parts), width))
 
 
-## 札 1 枚: 頭に印・種類の小さな文字（kind_text）・名前・右に状態（state）、下に説明（summary）。off なら沈める（スキルなし）。
+## 札 1 枚（sheet_parts.gd）。
 func _card(type: AbilityMark.Type, kind_text: String, title: String, state: String, summary: String, width: float, off := false) -> Control:
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(width, 0.0)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var accent := Palette.BORDER
-	if type == AbilityMark.Type.ULT:
-		accent = Palette.GOLD
-	var box := UiTheme.box(Color(Palette.INK, 0.5) if off else Palette.RAISED, Color(accent, 0.5 if off else 1.0), 1, 6, 9.0)
-	if not off:
-		box.border_width_left = 3
-	card.add_theme_stylebox_override("panel", box)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 4)
-	card.add_child(column)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
-	column.add_child(head)
-	var mark := AbilityMark.new(type, 26.0)
-	mark.dim = off
-	head.add_child(mark)
-	var names := VBoxContainer.new()
-	names.add_theme_constant_override("separation", -3)
-	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(names)
-	if kind_text != "" and not off:
-		var kind_label := _text(11, mark.ink().darkened(0.15))
-		kind_label.text = kind_text
-		names.add_child(kind_label)
-	var name_label := _text(16, Palette.TEXT_OFF if off else Palette.TEXT, true)
-	name_label.text = title
-	names.add_child(name_label)
-	if state != "":
-		head.add_child(_tag(state, Palette.TEXT_DIM))
-	if summary != "":
-		var note := _text(NOTE_SIZE, Palette.GOOD if type == AbilityMark.Type.EVOLUTION else Palette.TEXT_DIM)
-		_fold(note, summary, width - 36.0)
-		column.add_child(note)
-	return card
+	return SheetParts.ability_card(type, kind_text, title, state, summary, width, off)
 
 
 ## 小さな札（役割・軍・クールダウン）。
 func _tag(text: String, color: Color) -> Control:
-	var tag := PanelContainer.new()
-	tag.theme_type_variation = UiTheme.PANEL_TAG
-	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var label := _text(12, color)
-	label.text = text
-	tag.add_child(label)
-	return tag
+	return SheetParts.tag(text, color)
 
 
 func _text(font_size: int, color: Color, bold := false) -> Label:
-	var label := Label.new()
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	if bold:
-		label.add_theme_font_override("font", UiTheme.FONT_BOLD)
-	return label
+	return SheetParts.text(font_size, color, bold)
 
 
 ## label に、width で折り返した text を入れる。
 func _fold(label: Label, text: String, width: float) -> void:
-	var font := label.get_theme_font(&"font")
-	var font_size := label.get_theme_font_size(&"font_size")
-	label.text = TextWrap.fold(text, width, func(character: String) -> float:
-		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	SheetParts.fold(label, text, width)
 
 
 func _clear(box: Container) -> void:

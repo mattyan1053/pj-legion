@@ -4,6 +4,7 @@ extends HBoxContainer
 ## 減ったぶんは危険の色の抜き。HP の棒は、枠の長さが最大 HP（小さい駒でも読めるよう、下駄を履かせる）、塗りがいまの HP。
 ## いまの HP の割合の色で埋める（減っているぶんは沈める）。
 ## 大きさは中身で変わらない（名前・値・増減の欄は幅を決めてある）。
+## compact は、小さなステータスの札（unit_summary.gd）用の詰めた行: 字と欄を小さくし、HP が満タンなら値を 1 つだけ出す。
 
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -13,22 +14,31 @@ const NAME_WIDTH := 48.0
 const VALUE_WIDTH := 96.0
 const DELTA_WIDTH := 64.0
 const ROW_HEIGHT := 26.0
+## 詰めた行の、名前・値・増減の欄の幅と、行の高さ。
+const COMPACT_NAME_WIDTH := 38.0
+const COMPACT_VALUE_WIDTH := 40.0
+const COMPACT_DELTA_WIDTH := 52.0
+const COMPACT_ROW_HEIGHT := 22.0
 
 var _name: Label
 var _value: Label
 var _delta: Label
 var _meter: Meter
+var _compact := false
 
 
-func _init() -> void:
+func _init(compact := false) -> void:
+	_compact = compact
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_theme_constant_override("separation", 8)
-	custom_minimum_size = Vector2(0.0, ROW_HEIGHT)
-	_name = _label(14, Palette.TEXT_DIM, false, NAME_WIDTH)
-	_value = _label(19, Palette.TEXT, true, VALUE_WIDTH)
+	add_theme_constant_override("separation", 6 if compact else 8)
+	custom_minimum_size = Vector2(0.0, COMPACT_ROW_HEIGHT if compact else ROW_HEIGHT)
+	_name = _label(13 if compact else 14, Palette.TEXT_DIM, false, COMPACT_NAME_WIDTH if compact else NAME_WIDTH)
+	_value = _label(17 if compact else 19, Palette.TEXT, true, COMPACT_VALUE_WIDTH if compact else VALUE_WIDTH)
 	_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_delta = _label(14, Palette.GOOD, true, DELTA_WIDTH)
+	_delta = _label(12 if compact else 14, Palette.GOOD, true, COMPACT_DELTA_WIDTH if compact else DELTA_WIDTH)
 	_meter = Meter.new()
+	if compact:
+		_meter.custom_minimum_size = Vector2(100.0, 12.0)
 	_meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	add_child(_meter)
@@ -51,7 +61,7 @@ func _label(font_size: int, color: Color, bold: bool, width: float) -> Label:
 ## hp は HP の行だけ（いまの HP。-1 なら HP の行でない）。
 func show_stat(stat_name: String, value: int, plain: int, scale: int, pips: bool, hp := -1) -> void:
 	_name.text = stat_name
-	_value.text = str(value) if hp < 0 else Text.t("deck.sheet.hp_value", {"hp": hp, "max": value})
+	_value.text = str(value) if hp < 0 or (_compact and hp == value) else Text.t("deck.sheet.hp_value", {"hp": hp, "max": value})
 	var delta := value - plain
 	_delta.text = "" if delta == 0 else Text.t("deck.sheet.gain" if delta > 0 else "deck.sheet.loss", {"amount": absi(delta)})
 	_delta.add_theme_color_override("font_color", Palette.GOOD if delta > 0 else Palette.DANGER)
