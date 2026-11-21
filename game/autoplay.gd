@@ -907,6 +907,11 @@ func _queue_evolution_scene() -> void:
 		_expect(paladin.level == Growth.MAX_LEVEL, "上限のレベルに届かなかった")
 		_expect(battle.evolving_unit() == paladin, "進化先を選ぶのを待っていない")
 		_expect(_scene.is_choosing_evolution(), "進化先の選択肢が出ていない")
+		# 進化先の選択肢と会話の札は、どちらも上の真ん中に出る。重なる間は、札を薄くする（文が選択肢の後ろから覗かない）。
+		_scene.say_for_check([BattleCues.Line.new(1, "ウル", "あと 1 段で進化じゃ。いますぐ選ぶがよい。", {})] as Array[BattleCues.Line])
+		_expect(not _scene.talk_card_rect().intersects(_scene.evolution_rect()) or _scene.is_talk_dimmed(),
+			"進化先の選択肢に重なった会話の札が、薄くならない: %s と %s" % [_scene.talk_card_rect(), _scene.evolution_rect()])
+		_scene.clear_talk_for_check()
 		_end_turn())
 	_scripted.append(func() -> void:
 		_expect(battle.phase == Unit.Side.PLAYER1, "進化先を選ぶ前にターンが終わった")
@@ -2403,6 +2408,8 @@ func _visit_item_rows(app: Node) -> void:
 					await app.get_tree().process_frame
 					_expect(screen.item_row_cut_texts().is_empty(), "持ち物を持たせたら、持ち物の欄の文が切れた（%s、%s、%s）: %s" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), Names.item(item), screen.item_row_cut_texts()])
 					screen.unequip(item)
+			if unlock_all:
+				await _resize_deck_screen(screen, campaign)
 			if not unlock_all:
 				screen.select_entry(0)
 				var effects: Dictionary = screen.item_row_effects()
@@ -2512,6 +2519,27 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 
 
 ## 画面の大きさを少し変えて戻す。抜けた場面の部品が、画面の大きさの合図につながったまま残っていれば、ここでエラーになる。
+## 部隊編成の持ち物が多いとき、窓を縦に広げてから元へ縮めても、駒の札が縮まず、元の大きさと置き場所に戻る
+## （持ち物の欄の高さは画面の高さから決め直す。deck_screen.gd の _fit_equip）。広げたままでも、札は下限を割らない。
+func _resize_deck_screen(screen: Node, campaign: RefCounted) -> void:
+	var window := get_window()
+	var size := window.content_scale_size
+	screen.select_entry(0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var before: Rect2 = screen.detail_card_rect()
+	for bigger: Vector2i in [size + Vector2i(0, 280), size + Vector2i(440, 0), size + Vector2i(0, 600)]:
+		window.content_scale_size = bigger
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_expect(screen.detail_card_rect().size.y >= screen.DETAIL_MIN_HEIGHT - 0.5, "部隊編成の窓を %s に広げたら、駒の札が縮んだ（%s）: %s" % [bigger, campaign.title, screen.detail_card_rect()])
+		window.content_scale_size = size
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_expect(screen.detail_card_rect().is_equal_approx(before), "部隊編成の窓を %s に広げてから縮めたら、駒の札が元に戻らない（%s）: %s（前は %s）" % [bigger, campaign.title, screen.detail_card_rect(), before])
+		_expect(screen.item_row_cut_texts().is_empty(), "部隊編成の窓を広げてから縮めたら、持ち物の欄の文が切れた（%s）: %s" % [campaign.title, screen.item_row_cut_texts()])
+
+
 func _nudge_screen_size() -> void:
 	var window := get_window()
 	var size := window.content_scale_size
