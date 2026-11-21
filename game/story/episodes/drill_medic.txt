@@ -9,7 +9,6 @@
 [episode]
 title = 手当て
 map = drill_field
-look = stone_walls
 before_music = talk
 after_music = talk_bright
 lesson = 衛生兵は味方を回復する。回復の泉の上で番を迎えた駒も HP が戻る。
