@@ -60,7 +60,7 @@ const COLOR_BAD := Palette.DANGER
 const COLOR_ACCENT := Palette.ACCENT
 
 var context: AppContext
-## 話（episode.gd。game/story/episodes/ の 1 ファイル）と、その対戦（story_battle.gd）。
+## 話（episode.gd。game/story/<物語>/ の 1 ファイル）と、その対戦（story_battle.gd）。
 var episode: Episode
 var _layer: CanvasLayer
 var _enemy_faces: HFlowContainer
