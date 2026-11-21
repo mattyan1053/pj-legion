@@ -76,7 +76,7 @@ battle.log.drawn,引き分け（{reason}）
 battle.cell.nothing,特別なものは無い
 battle.hint.over,決着
 battle.hint.cpu_turn,相手（CPU）の番
-battle.hint.evolve,進化先を選ぶ（上のボタン）
+battle.hint.evolve,進化先を選ぶ（上から 1 つ）
 battle.hint.confirm_ult,もう一度押すと必殺技「{ult}」を発動（取り消せない。右クリック・盤のクリック: キャンセル）
 battle.hint.confirm_ult_unnamed,もう一度押すと必殺技を発動（取り消せない。右クリック・盤のクリック: キャンセル）
 battle.hint.confirm_end_turn,未行動の駒が {count} 体（足元が光っている）。もう一度押すとターン終了（右クリック: キャンセル）
