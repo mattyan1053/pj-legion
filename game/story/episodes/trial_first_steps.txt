@@ -11,6 +11,9 @@
 title = 少数精鋭
 map = drill_field
 look = crystal_forest
+music = battle_knight
+before_music = talk
+after_music = talk
 lesson = 駒をクリックして動かし、敵を攻撃する。ソーサラーは 2 マス先から撃てる。
 
 [ally]
