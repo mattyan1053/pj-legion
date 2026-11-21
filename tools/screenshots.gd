@@ -149,7 +149,8 @@ const SCENES := {
 	"story_split_talk": "ストーリー: 「岩山の合流」の前の会話（北に取り残されたセリスが話している。右は敵の話し手「連邦の伍長」）",
 	"story_split_start": "ストーリー: 「岩山の合流」の対戦の始めを、いちばん引いて見ている（南と北に分かれた味方、北の台地のそばの敵）",
 	"story_quarry_start": "ストーリー: MILITARY の物語の最後の話「縫い目の発破」の対戦の始めを、いちばん引いて見ている（結晶の採掘場。樽の多い盤、正面と西の脇に分かれた味方）",
-	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の最後の話（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
+	"story_vale_start": "ストーリー: FANTASY の物語の最後の話「墓守の眠り」の対戦の始めを、いちばん引いて見ている（縫い目の谷。ポータルの多い盤、奥に墓守と骨の群れ）",
+	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の「森の守り」（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
 	"story_fantasy_forest_wide": "ストーリー: リュエルの森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
@@ -1991,9 +1992,29 @@ func _scene_story_quarry_start() -> bool:
 
 func _scene_story_fantasy_forest_sortie() -> bool:
 	_app.context.decks.load_data({"decks": []})
-	if not await _start_fantasy(-1):
+	if not await _start_fantasy(_fantasy_index(&"mist_forest")):
 		return false
 	return _at_sortie()
+
+
+## FANTASY の物語の話の番号（0 から）。無ければ最後の話。
+func _fantasy_index(id: StringName) -> int:
+	var episodes: Array = _fantasy().episodes
+	var at := episodes.map(func(episode: RefCounted) -> StringName: return episode.id).find(id)
+	return at if at >= 0 else episodes.size() - 1
+
+
+## FANTASY の物語の最後の話「墓守の眠り」（縫い目の谷）の対戦の始めを、いちばん引いて見る。
+func _scene_story_vale_start() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	if not await _start_fantasy(_fantasy_index(&"vale_keeper")) or not await _sortie_to_battle():
+		return false
+	_scene = _app.current_scene()
+	var size: Vector2i = _scene.battle.board.size
+	_look_at(Vector3(size.x / 2.0, 0.0, size.y / 2.0))
+	_aim(OrbitCamera.max_distance_for(size), 0.0, (OrbitCamera.MIN_PITCH + OrbitCamera.MAX_PITCH) / 2.0)
+	_park_mouse()
+	return true
 
 
 ## FANTASY の物語の最後の話の対戦の始めを、いちばん引いて見る。
