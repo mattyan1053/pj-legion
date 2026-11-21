@@ -88,6 +88,8 @@ const SCENES := {
 	"forecast_skill": "範囲のスキルの対象のマスにマウスを乗せている（巻き込む駒が並ぶ）",
 	"forecast_heal": "回復役で、回復できる味方にマウスを乗せている",
 	"forecast_small": "9×5 の小さな盤で、動いたあとメニューの「攻撃」を押し、隣の相手にマウスを乗せている（縮んだメニューと予測のパネルが重ならない）",
+	"battle_unit_detail": "対戦の途中で、傷ついた駒をクリックして見て、情報の枠の「詳細」でステータスの窓を開いたところ（いまの HP、経験値、スキルの残り）",
+	"deck_unit_detail": "部隊編成: 持ち物を持たせた駒の札の「詳細」で、ステータスの窓を開いたところ（持ち物での増減が色と矢印で出る）",
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"end_confirm": "未行動の駒を残してターン終了を 1 回押し、確かめている（未行動の駒の足元が光る）",
@@ -126,8 +128,9 @@ const SCENES := {
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
-	"portal_range": "ポータルへ届く駒を選んで、動ける範囲の中のポータルの対（入る・出る）が同じ色で塗られている（双子結晶）",
+	"portal_range": "ポータルへ届く駒を選んで、範囲の中のポータルと、その対の出るポータルが同じ色で塗られている（範囲は転移の先まで広げない。双子結晶）",
 	"portal_menu": "ポータルのマスへ動いて、メニューに「転移」が出ている（行き先のポータルが塗られている。双子結晶）",
+	"portal_warped": "「転移」で対のポータルへ移り、残りの移動力で届くマスが塗られている（双子結晶）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"minimap_pointed": "ミニマップで相手の本陣のあたりを押して、視点がそこへ移った（右上の白い枠が見ている範囲）",
 	"minimap_hidden": "設定でミニマップを隠した（右上に何も出ない）",
@@ -145,6 +148,9 @@ const SCENES := {
 	"look_boulder_crag": "大岩の峠（草原の見た目）の真ん中の大岩を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag": "双子結晶の真ん中の大きな岩山を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
+	"story_slots": "ストーリー: タイトルの「ストーリー」のあとの、セーブデータ選択（1 番と 2 番に進み具合、3 番は空き）",
+	"story_slots_copy": "ストーリー: セーブデータ選択で、1 番のコピー先を選んでいるところ",
+	"story_slots_delete": "ストーリー: セーブデータ選択で、2 番の削除を確かめているところ",
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
 	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
 	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
@@ -301,7 +307,7 @@ func _run() -> void:
 			print("screenshots: 場面 %s を作れた" % name)
 			if _mid_animation:
 				_scene.set_time_scale_base(1.0)
-			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding():
+			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
 			continue
 		if _mid_animation:
@@ -311,7 +317,7 @@ func _run() -> void:
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
 			continue
-		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding():
+		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -340,6 +346,8 @@ func _reset(seed: int) -> void:
 	_keep_unit_look()
 	if OS.get_cmdline_user_args().has("--no-effects"):
 		_app.context.settings.set_value(&"screen_effects", false)  # tools/screenshots.sh の --no-effects（画面の効果を切って撮る）
+	for number in range(1, 4):
+		_app.context.slots.remove(number)  # 前の場面が書いたセーブのスロットを持ち越さない（取っておく先は無いので、覚えているものだけ）
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
 	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:
@@ -348,6 +356,7 @@ func _reset(seed: int) -> void:
 		await _app.go(SceneFlow.BATTLE)
 	_scene = _app.current_scene()
 	_scene.log_panel().close()
+	_scene.unit_detail().close_detail()
 	_scene.setup_panel().visible = false
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
@@ -551,6 +560,18 @@ func _scene_deck_equip() -> bool:
 	screen.select_entry(3)
 	screen.equip(Equipment.Id.SPEED_BOOTS)
 	return screen.selected_entry() == 3
+
+
+func _scene_deck_unit_detail() -> bool:
+	var screen: Node = await _deck_editor()
+	if screen == null:
+		return false
+	screen.select_entry(0)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.SPEED_BOOTS)
+	screen.press_unit_detail()
+	return screen.unit_detail() != null and screen.unit_detail().visible
 
 
 func _scene_deck_over() -> bool:
@@ -1175,6 +1196,25 @@ func _scene_forecast_heal() -> bool:
 	return _scene.forecast_text() != ""
 
 
+func _scene_battle_unit_detail() -> bool:
+	# 傷ついていて、経験値も入っている、人の軍の駒。
+	var hurt := func() -> Unit:
+		for unit in _own_units():
+			if unit.hp < unit.max_hp() and unit.experience > 0 and Skills.of(unit) != null:
+				return unit
+		return null
+	if not _advance(func() -> bool: return hurt.call() != null):
+		return false
+	_show()
+	var unit: Unit = hurt.call()
+	_look_at(BoardView.cell_center(unit.cell))
+	_scene.click_cell(unit.cell)
+	if not _scene.detail_button_shown():
+		return false
+	_scene.open_unit_detail()
+	return _scene.unit_detail().visible
+
+
 func _scene_info_status() -> bool:
 	if not _advance(func() -> bool: return Ults.can_use(_battle)):
 		return false
@@ -1720,17 +1760,14 @@ func _scene_portal_cell() -> bool:
 	return _scene.info_title().begins_with("マス")
 
 
-## いまの番の駒のうち、歩いて（転移せずに）ポータルに止まれて、そこから転移できる駒と、そのポータル（[駒, マス]）。無ければ空。
+## いまの番の駒のうち、歩いてポータルに止まれて、そこから転移できる駒と、そのポータル（[駒, マス]）。無ければ空。
 func _portal_walker() -> Array:
 	for unit in _own_units():
 		if not _battle.can_act(unit):
 			continue
-		var cells := Queries.move_cells(_battle, unit)
-		for portal: Vector2i in _battle.board.portal_exits:
-			var exit := _battle.portal_exit(portal)
-			if not cells.has(portal) or cells[portal] or exit == Board.NO_CELL or not cells.has(exit):
-				continue
-			if not Movement.path_to(_battle, unit, portal).has(exit):  # ポータルへは歩いて行く（転移して着くのではない）
+		var portals := Queries.reachable_portals(_battle, unit)
+		for portal: Vector2i in portals:
+			if portal != unit.cell and not Queries.move_cells(_battle, unit)[portal]:
 				return [unit, portal]
 	return []
 
@@ -1769,6 +1806,27 @@ func _scene_portal_menu() -> bool:
 	return unit.cell == portal and _scene.menu_ids().has(&"warp")
 
 
+func _scene_portal_warped() -> bool:
+	_field = VersusFields.TWIN_SPRINGS
+	_new_battle()
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _portal_walker().is_empty()):
+		return false
+	_show()
+	var found := _portal_walker()
+	var unit: Unit = found[0]
+	var portal: Vector2i = found[1]
+	var exit := _battle.portal_exit(portal)
+	await _idle()
+	_scene.click_cell(unit.cell)
+	_scene.click_cell(portal)
+	await _idle()
+	_scene.press_warp()
+	await _idle()
+	_look_at(BoardView.cell_center(exit))
+	_aim(44.0, 0.0, 60.0)
+	return unit.cell == exit and not Queries.move_cells(_battle, unit).is_empty()
+
+
 func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 	_field = VersusFields.field_of_stage(stage)
 	_new_battle()
@@ -1805,12 +1863,50 @@ func _start_story(number := -1) -> bool:
 	return _app.current_id() == SceneFlow.SORTIE
 
 
-## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。
+## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。セーブデータ選択は、いまのスロットで通る。
 func _scene_story_campaigns() -> bool:
 	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_story()
 	await _app.scene_changed
+	if _app.current_id() != SceneFlow.SLOTS:
+		return false
+	_app.current_scene().choose(_app.context.slots.current)
+	await _app.scene_changed
 	return _app.current_id() == SceneFlow.CAMPAIGNS
+
+
+## セーブデータ選択: 1 番は MILITARY の物語を 7 話まで、2 番は FANTASY の物語を 3 話まで、3 番は空き。
+func _scene_story_slots() -> bool:
+	var context: RefCounted = _app.context
+	var plans := [[Story.military(), 7, 9000], [_fantasy(), 3, 2700]]
+	for i in plans.size():
+		context.use_slot(i + 1)
+		context.story.choose_campaign(plans[i][0])
+		for episode: RefCounted in (plans[i][0].episodes as Array).slice(0, plans[i][1]):
+			context.story.clear(episode.id)
+		context.slots._played = float(plans[i][2])
+		context.slots.flush()
+	context.use_slot(1)
+	await _app.go(SceneFlow.TITLE)
+	_app.current_scene().press_story()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.SLOTS
+
+
+## セーブデータ選択で、コピー先を選んでいるところ。
+func _scene_story_slots_copy() -> bool:
+	if not await _scene_story_slots():
+		return false
+	_app.current_scene().press_copy(1)
+	return _app.current_scene().is_copying()
+
+
+## セーブデータ選択で、削除を確かめているところ。
+func _scene_story_slots_delete() -> bool:
+	if not await _scene_story_slots():
+		return false
+	_app.current_scene().press_delete(2)
+	return _app.current_scene().confirm_window().is_open()
 
 
 func _scene_story_list() -> bool:
@@ -2489,7 +2585,17 @@ func _scene_story_sortie_placed() -> bool:
 func _scene_story_sortie_detail() -> bool:
 	if not await _scene_story_sortie():
 		return false
-	var detail: Control = _app.current_scene().press_face(Unit.Side.PLAYER1, 1)
+	# 持ち物を持っている駒を探して開く（無ければ、最初の雇った駒）。
+	var detail: Control = null
+	for index in range(1, 12):
+		var opened: Control = _app.current_scene().press_face(Unit.Side.PLAYER1, index)
+		if opened == null:
+			break
+		detail = opened
+		if not detail.shown_sheet().items.is_empty():
+			break
+	if detail != null and detail.shown_sheet().items.is_empty():
+		detail = _app.current_scene().press_face(Unit.Side.PLAYER1, 1)
 	return detail != null and detail.visible
 
 
@@ -2834,7 +2940,7 @@ func _new_battle() -> void:
 ## 対戦の画面の中央の知らせ（番の知らせなど）が消えるまで待つ。描画の遅い環境では SETTLE のうちに消えないことがある。
 ## 知らせを撮る場面のために、待つのは BANNER_WAIT 秒まで。
 func _banner_gone() -> void:
-	if _app.current_id() != SceneFlow.BATTLE or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open():
+	if _app.current_id() != SceneFlow.BATTLE or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open() or _scene.unit_detail().visible:
 		return  # 時間が止まっている（知らせは消えない）
 	var waited := 0.0
 	while _scene.is_banner_shown() and waited < BANNER_WAIT:

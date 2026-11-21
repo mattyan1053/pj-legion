@@ -34,7 +34,7 @@ const ResultSummary := preload("res://game/result_summary.gd")
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
-	"portal_and_spring": "ポータルに止まってメニューの「転移」、ふさがったポータル、ポータルを通る移動と取り消し、回復の泉",
+	"portal_and_spring": "ポータルに止まってメニューの「転移」、転移のあと続けて動く、取り消し、ふさがったポータル、回復の泉",
 	"capture": "敵の本陣の占拠",
 	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
@@ -372,7 +372,7 @@ func _end_turn() -> void:
 	_scene.press_end_turn()
 
 
-## ポータルを通る移動（歩く → 転移 → 歩く）と、その取り消し、回復の泉の回復。
+## ポータルを通る移動（ポータルへ歩く → メニューの「転移」→ 残りで続けて歩く）と、その取り消し、回復の泉の回復。
 func _queue_portal_and_spring_scene() -> void:
 	var board := _small_board(Vector2i(12, 6))
 	board.add_portal_pair(Vector2i(1, 1), Vector2i(8, 1))
@@ -408,12 +408,19 @@ func _queue_portal_and_spring_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(8, 1) and _scene.selected_unit() == walker, "「転移」で対のポータルへ移らなかった")
 		_expect(_scene.played.get(warped, 0) == 1, "転移を再生しなかった")
-		var last: String = _scene.battle_log.entries[-1].text
-		_expect(last.contains("(0, 1) → (8, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_expect(not _scene.menu_ids().has(BattleTexts.MENU_WARP), "転移したあとも「転移」が出ている")
+		_expect(_scene.painted_color(far) == _scene.COLOR_MOVE, "転移のあと、残りの移動力で届くマスを塗っていない")
+		_scene.played.erase(moved)
+		_scene.click_cell(far))
+	_scripted.append(func() -> void:
+		_expect(walker.cell == far, "転移のあと、続けて動けなかった")
+		_expect(_scene.played.get(moved, 0) == 1, "続きの移動を再生しなかった")
+		var last: String = _scene.battle_log.entries[-1].text
+		_expect(last.contains("(0, 1) → (10, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_scene.cancel())
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(0, 1), "転移を取り消して、動く前のマスへ戻らなかった")
+		_expect(_scene.painted_color(far) != _scene.COLOR_MOVE, "動く前の範囲を、転移の先まで広げている")
 		# 行き先がふさがっているポータル: 止まれるが、「転移」は出ない。
 		_click(blocked_walker.cell))
 	_scripted.append(func() -> void: _click(Vector2i(1, 3)))
@@ -423,22 +430,17 @@ func _queue_portal_and_spring_scene() -> void:
 		_scene.cancel())
 	_scripted.append(func() -> void: _scene.cancel())
 	_scripted.append(func() -> void: _click(walker.cell))
+	_scripted.append(func() -> void: _click(Vector2i(1, 1)))
+	_scripted.append(func() -> void: _scene.press_menu(BattleTexts.MENU_WARP))
+	_scripted.append(func() -> void: _scene.click_cell(far))
 	_scripted.append(func() -> void:
-		_scene.played.erase(warped)
-		_scene.played.erase(moved)
-		_scene.click_cell(far))
-	_scripted.append(func() -> void:
-		_expect(walker.cell == far, "ポータルの先へ動かなかった")
-		_expect(_scene.played.get(moved, 0) == 2 and _scene.played.get(warped, 0) == 1, "歩く → 転移 → 歩く の順に再生しなかった")
-		_scene.cancel())
-	_scripted.append(func() -> void:
-		_expect(walker.cell == Vector2i(0, 1), "転移した移動を取り消せなかった")
-		_scene.click_cell(far))
-	_scripted.append(func() -> void: _scene.press_wait())
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN)
+		_scene.press_wait())
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "ターンが進まなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 0, "中立の駒のいない番の知らせを出した")
 		_expect(bather.hp == bather.max_hp() - 20 + MapObject.SPRING_HEAL, "回復の泉で回復しなかった"))
 
 
@@ -829,12 +831,14 @@ func _queue_neutral_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1)
-		_scene.camera_follows.clear())
+		_scene.camera_follows.clear()
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		var core := battle.unit_at(font)
 		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 1, "中立の駒が湧いた番の知らせを出さなかった")
 		_expect(_scene.camera_follows.is_empty(), "湧いただけの中立の駒を、カメラが追った"))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
@@ -1961,6 +1965,21 @@ func _visit_decks(app: Node) -> void:
 	var placed_cells: Array[Vector2i] = place_map.unit_cells()
 	var open_cells: Array = place_map.zone().filter(func(cell: Vector2i) -> bool: return not placed_cells.has(cell))
 	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
+	var place_note: Control = dialog.deploy_note()
+	_expect(place_note.shown_unit_id() == -1, "初期位置の窓で、駒を選ぶ前から駒の欄に駒が出ている")
+	place_map.hover_cell(placed_cells[1])
+	var hovered_unit: Unit = place_map.focused_unit()
+	_expect(hovered_unit != null and place_note.shown_name() == Names.kind(hovered_unit.kind), "初期位置の窓で、マウスを乗せた駒の名前が欄に出ない")
+	place_map.press_cell(placed_cells[0])
+	var picked_unit: Unit = place_map.focused_unit()
+	_expect(picked_unit != hovered_unit and place_note.shown_unit_id() == picked_unit.id, "初期位置の窓で、選んだ駒が欄に出ない（マウスを乗せた駒より先に）")
+	# 選んだ駒を、マウスを乗せた駒と入れ替えると、マウスの下には選んだ駒が来る（欄も、その駒を出す）。
+	place_map.press_cell(placed_cells[1])
+	_expect(place_map.selected() == -1 and place_map.focused_unit() == picked_unit and place_note.shown_unit_id() == picked_unit.id,
+		"初期位置の窓で駒を入れ替えたあと、マウスの下の駒が古いまま")
+	place_map.reset()
+	_expect(place_map.focused_unit() == hovered_unit, "初期位置の窓で「おまかせ」に戻したあと、マウスの下の駒が古いまま")
+	place_map.hover_cell(Deployment.NO_CELL)
 	place_map.press_cell(placed_cells[0])
 	place_map.press_cell(open_cells[0])
 	dialog.close_dialog()
@@ -2156,7 +2175,17 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
 	app.current_scene().press_story()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "タイトルの「ストーリー」で、物語を選ぶ場面へ進まない")
+	_expect(app.current_id() == SceneFlow.SLOTS, "タイトルの「ストーリー」で、セーブデータ選択へ進まない")
+	# セーブデータ選択: どのスロットもまだ空き（はじめから）。1 番を選ぶと、物語を選ぶ場面へ。
+	var slots_screen: Node = app.current_scene()
+	# （1 番は、前の場面の部隊編成でストーリー用の部隊を組んでいれば、もう書いてある）
+	for number in range(1, 4):
+		_expect(slots_screen.is_card_enabled(number) and (slots_screen.card_text(number).ends_with("はじめから") or number == 1), "空きのスロット %d が「はじめから」でない" % number)
+	var saves_before: int = app.save_mark.shown_count
+	slots_screen.choose(1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "セーブデータ選択でスロットを選んでも、物語を選ぶ場面へ進まない")
+	_expect(app.context.slots.is_started() and story.is_cleared(Story.military().episodes[0].id), "はじめからで始めたスロットに、前から持っていた進み具合が残っていない")
 	var campaigns: Node = app.current_scene()
 	_expect(campaigns.campaigns() == Story.campaigns(), "物語を選ぶ場面に、全部の物語が並んでいない")
 	for each: RefCounted in Story.campaigns():
@@ -2269,6 +2298,7 @@ func _visit_story(app: Node) -> void:
 	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
 	deploy.press_cell(own_cells[0])
 	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
+	_expect(sortie.deploy_note().shown_name() == Names.kind(deploy.focused_unit().kind), "出撃準備の初期位置で、選んだ駒の名前が欄に出ない")
 	var right_click := InputEventMouseButton.new()
 	right_click.button_index = MOUSE_BUTTON_RIGHT
 	right_click.pressed = true
@@ -2330,6 +2360,9 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
 	list = app.current_scene()
+	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後に保存した所が、話の一覧に出る。
+	_expect(app.save_mark.shown_count > saves_before and not app.context.slots.has_unsaved(), "話をクリアして話の一覧へ戻っても、保存しない（か、保存の印が出ない）")
+	_expect(list.saved_text() != "最後に保存: 未保存" and list.saved_text().begins_with("最後に保存: "), "話の一覧に、最後に保存した所が出ない")
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
 		_expect(list.is_card_enabled(Story.military().episodes[first + 1]), "前の話をクリアしたのに、次の話を選べない")
@@ -2343,6 +2376,36 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TITLE, "物語を選ぶ場面の「タイトルへ戻る」で、タイトルへ戻らない")
 	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
 	_expect(story.unlocked_kinds().has(episode.unlock_kinds[0]) if not episode.unlock_kinds.is_empty() else true, "クリアしても、駒が増えていない")
+
+
+## セーブデータ選択（_visit_story のあと。1 番に進み具合がある）: 1 番は「つづきから」で物語とクリアの数が出る。
+## 1 番を 2 番へコピー → 2 番も同じ中身 → 2 番を 1 番へコピーは上書きを確かめる（キャンセル）→ 2 番を削除（確かめる）→ 空きに戻る。
+## 最後に 1 番を「つづきから」で選び、物語を選ぶ場面へ（進み具合はそのまま）。
+func _visit_slots(app: Node) -> void:
+	_expect(app.current_id() == SceneFlow.SLOTS, "タイトルの「ストーリー」で、セーブデータ選択へ進まない")
+	var screen: Node = app.current_scene()
+	var first: String = screen.card_text(1)
+	_expect(first.ends_with("つづきから") and first.contains(Story.military().title) and first.contains("話クリア"), "進み具合のあるスロットのカードに、物語とクリアの数が出ない: %s" % first.replace("\n", " / "))
+	_expect(screen.card_text(2).ends_with("はじめから"), "空きのスロットが「はじめから」でない")
+	screen.press_copy(1)
+	_expect(screen.is_copying() and not screen.is_card_enabled(1), "コピーの元のカードを、コピー先に選べる")
+	screen.choose(2)
+	# （プレイ時間は、いまのスロットだけ数えている途中のぶんが足されるので、比べない）
+	var without_time := func(text: String) -> String: return "\n".join(Array(text.split("\n")).filter(func(line: String) -> bool: return not line.begins_with("プレイ時間")))
+	_expect(not screen.is_copying() and without_time.call(screen.card_text(2)) == without_time.call(first).replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う")
+	screen.press_copy(2)
+	screen.choose(1)
+	var confirm: Node = screen.confirm_window()
+	_expect(confirm.is_open() and confirm.question().contains("上書き"), "中身のあるスロットへのコピーで、上書きを確かめない")
+	confirm.cancel()
+	screen.cancel_copy()
+	screen.press_delete(2)
+	_expect(confirm.is_open() and confirm.ok_text() == "削除", "削除を確かめない")
+	confirm.accept()
+	_expect(screen.card_text(2).ends_with("はじめから") and without_time.call(screen.card_text(1)) == without_time.call(first), "削除したスロットが空きに戻らない（か、ほかのスロットが変わった）")
+	screen.choose(1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "「つづきから」で、物語を選ぶ場面へ進まない")
 
 
 ## 2 つ目の物語（FANTASY の物語）の頭の話を通す: 物語を選ぶ場面で選べる → その物語の話の一覧（最初の話だけ選べる。演習の印）
@@ -2360,6 +2423,7 @@ func _visit_second_campaign(app: Node) -> void:
 	_expect(story.cleared_count(campaign) == 0, "2 つ目の物語を、始める前からクリアしている")
 	app.current_scene().press_story()
 	await app.scene_changed
+	await _visit_slots(app)
 	var campaigns: Node = app.current_scene()
 	_expect(campaigns.is_card_enabled(campaign) and campaigns.status_text(campaign) == "全 %d 話" % campaign.episodes.size(), "2 つ目の物語を選べない（か、状態の文が違う）")
 	campaigns.choose(campaign)

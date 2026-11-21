@@ -212,6 +212,9 @@ var _hunted: Dictionary[int, bool] = {}  # 値は、もう削り切れるとこ�
 var _chipped: Dictionary[int, bool] = {}
 var _rival_hunts: Dictionary[int, bool] = {}
 var _rival_strike: Dictionary[int, int] = {}
+## 決めた移動の続き（ポータルを通る移動は、移動・転移・移動の行動の列になる。Movement.route）。
+## 1 手ずつ返す。[駒の番号, 次の行動の前にいるはずのマス, 行動] の列。ずれたら（受け付けられない、駒が違う）捨てる。
+var _route: Array[Array] = []
 
 
 ## いまのフェーズのプレイヤーの、次の行動。決着のあとと中立のフェーズでは null。
@@ -244,15 +247,58 @@ func _decide() -> BattleAction:
 	var evolving := _battle.evolving_unit()
 	if evolving != null:
 		return _choose_evolution(evolving)
+	# 決めた移動の続き（転移と、その先の移動）は、ほかの手より先に返す（移動 1 回ぶんの手として決めたものなので、間に挟まない）。
+	var acting := _battle.unit_by_id(_battle.acting_unit_id)
+	var step := _next_route_step(acting)
+	if step != null:
+		return step
 	if Ults.can_use(_battle) and call(ULT_USES[Ults.of(_battle, _me).id()]):
 		return UseUltAction.new()
-	var acting := _battle.unit_by_id(_battle.acting_unit_id)
 	if acting != null:
 		return _follow_up(acting)
 	var unit := _next_unit()
 	if unit == null:
 		return EndPhaseAction.new()
 	return _plan(unit)
+
+
+## 決めた移動の続き（_route）の次の行動。続きが無いか、ずれていれば null（続きは捨てる）。
+func _next_route_step(acting: Unit) -> BattleAction:
+	if _route.is_empty():
+		return null
+	var step: Array = _route.pop_front()
+	var action: BattleAction = step[2]
+	if acting == null or acting.id != step[0] or acting.cell != step[1] or not _battle.can_apply(action):
+		_route = []
+		return null
+	return action
+
+
+## unit が to へ動く行動の列（Movement.route）を、複製した対戦 sim に順に当てる。全部受け付けられたか。
+static func _move_in(sim: Battle, unit_id: int, to: Vector2i, cruise := false) -> bool:
+	var unit := sim.unit_by_id(unit_id)
+	var actions := Movement.route(sim, unit, to, cruise)
+	if actions.is_empty():
+		return false
+	for action in actions:
+		if not sim.apply(action).accepted:
+			return false
+	return true
+
+
+## unit が行動の始めから、移動と転移を続けて止まれるマス（Movement.search の through_portals）。
+## [通常の移動で届くマス, 巡航でだけ届くマス]（どちらもマス -> 移動力）。
+static func _reach(battle: Battle, unit: Unit) -> Array[Dictionary]:
+	var normal: Dictionary[Vector2i, int] = {}
+	var cruise: Dictionary[Vector2i, int] = {}
+	var stops := Movement.search(battle, unit, true, true).stops()
+	var limit := Movement.budget(unit, false)
+	for cell: Vector2i in stops:
+		if stops[cell] <= limit:
+			normal[cell] = stops[cell]
+		else:
+			cruise[cell] = stops[cell]
+	return [normal, cruise]
 
 
 ## 考えた行動が受け付けられなかったときの逃げ道（ふつうは通らない）。待機できる駒を待機させ、いなければフェーズを終える。
@@ -402,7 +448,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 	var skill := Skills.of(unit)
 	var limited := skill != null and CpuSkillEstimate.of(skill.id()) != null
 	for action in _battle.options(unit.id).actions():
-		if action is MoveAction or action is WaitAction or action is UndoMoveAction:
+		if action is MoveAction or action is WarpAction or action is WaitAction or action is UndoMoveAction:
 			continue
 		var skill_use := action as UseSkillAction
 		if skill_use != null and limited and not wanted.has(skill_use.target):
@@ -422,6 +468,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 ## 動く先を決めたら、そこで何をするかは次の呼び出し（_follow_up）がもう一度決める（同じ見積もりを使うので、同じ結論になる）。
 func _plan(unit: Unit) -> BattleAction:
 	var options := _battle.options(unit.id)
+	var reach := _reach(_battle, unit)
 	_thinking_id = unit.id
 	_build_threats()
 	_set_goal(unit)
@@ -433,13 +480,13 @@ func _plan(unit: Unit) -> BattleAction:
 	var best_action: BattleAction = null
 	var best_value := _position_value(unit, unit.cell, 0, false)
 	var positions: Dictionary[Vector2i, float] = {}
-	for cell in options.move_cells:
+	for cell: Vector2i in reach[0]:
 		var value := _position_value(unit, cell, 0, false)
 		positions[cell] = value
 		if value > best_value:
 			best_cell = cell
 			best_value = value
-	for cell in options.cruise_cells:
+	for cell: Vector2i in reach[1]:
 		var value := _position_value(unit, cell, 0, false) - CRUISE_PENALTY
 		if value > best_value:
 			best_cell = cell
@@ -456,7 +503,7 @@ func _plan(unit: Unit) -> BattleAction:
 			continue
 		# その手を複製の上で実際にやってみて、起きたことから価値を読む。
 		var sim := _battle.clone()
-		if from != unit.cell and not sim.apply(MoveAction.new(unit.id, from)).accepted:
+		if from != unit.cell and not _move_in(sim, unit.id, from):
 			continue
 		var result := sim.apply(action)
 		if not result.accepted:
@@ -481,7 +528,7 @@ func _plan(unit: Unit) -> BattleAction:
 		var from: Vector2i = candidate[0]
 		var action := UseSkillAction.new(unit.id, candidate[1])
 		var sim := _battle.clone()
-		if from != unit.cell and not sim.apply(MoveAction.new(unit.id, from)).accepted:
+		if from != unit.cell and not _move_in(sim, unit.id, from):
 			continue
 		var result := sim.apply(action)
 		if not result.accepted:
@@ -499,10 +546,24 @@ func _plan(unit: Unit) -> BattleAction:
 			best_value = value
 
 	if best_cell != unit.cell:
-		return MoveAction.new(unit.id, best_cell, best_cruise)
+		return _start_route(unit, best_cell, best_cruise)
 	if best_action != null:
 		return best_action
 	return WaitAction.new(unit.id)
+
+
+## unit を to へ動かす行動の列（Movement.route）の最初の 1 手を返し、続きを _route に覚える。
+func _start_route(unit: Unit, to: Vector2i, cruise: bool) -> BattleAction:
+	_route = []
+	var actions := Movement.route(_battle, unit, to, cruise)
+	if actions.is_empty():
+		return MoveAction.new(unit.id, to, cruise)  # ふつうは通らない（next_action が受け付けられるかを見る）
+	var sim := _battle.clone()
+	for i in actions.size():
+		if i > 0:
+			_route.append([unit.id, sim.unit_by_id(unit.id).cell, actions[i]])
+		sim.apply(actions[i])
+	return actions[0]
 
 
 ## スキルを使う手の候補。[立つマス, 対象のマス] の列。対象ごとに、そこを選べるマスのうち、立つマスの価値がいちばん高いもの。
