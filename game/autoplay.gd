@@ -2185,6 +2185,19 @@ func _visit_story(app: Node) -> void:
 	for later: RefCounted in Story.military().episodes.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
 		_expect(list.card_title(later) == "？？？" and not list.is_card_revealed(later), "まだ遊べない %s のカードの名前か縮図・顔が見えている" % later.title)
+	# 確かめ用の解放（F5）: 話の一覧を作り直して、全部の話を開く。もう一度押すと元に戻る。記録は変わらない。
+	var cleared_before: int = story.cleared_count()
+	_push_key(app, KEY_F5)
+	await app.scene_changed
+	list = app.current_scene()
+	_expect(app.current_id() == SceneFlow.EPISODES and story.open_all and app.open_all_key().is_marked(), "F5 で、全部の話を開かない（か、隅に印が無い）")
+	_expect(list.is_card_enabled(Story.military().episodes[-1]) and list.card_title(Story.military().episodes[-1]) == Story.military().episodes[-1].title, "F5 で開いても、最後の話を選べない（か、伏せたまま）")
+	_push_key(app, KEY_F5)
+	await app.scene_changed
+	list = app.current_scene()
+	_expect(not story.open_all and not app.open_all_key().is_marked() and not list.is_card_enabled(Story.military().episodes[-1]),
+		"もう一度 F5 を押しても、元に戻らない")
+	_expect(story.cleared_count() == cleared_before, "F5 で、クリアの記録が変わった")
 	# キーボードでは、左右の矢印で選んで Enter（数字キーの届かない 10 話目より先も選べる）。最初の矢印は、次に遊ぶ話を選ぶ。
 	_push_key(app, KEY_RIGHT)
 	_expect(list.key_choice() == episode, "話の一覧で矢印を押しても、次に遊ぶ話が選ばれない")
@@ -2548,6 +2561,31 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	_expect(card.size.y <= 64.0, "対戦の途中の会話の札が、細い帯でない（2 行を超える高さ）: %s" % card)
 	for other: Rect2 in screen.talk_card_neighbors():
 		_expect(not card.intersects(other), "対戦の途中の会話の札が、勝ち方の札・視点の案内・ミニマップに重なる: %s と %s" % [card, other])
+	# 遊ぶときは、台詞を送られるまで出したままにし、その間は盤を止める。Enter で送る（ターン終了にならない）。
+	screen.clear_talk_for_check()
+	screen.set_talk_hold(true)
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	_expect(screen.is_talk_holding() and screen.is_busy(), "遊ぶときの対戦の途中の台詞で、盤が止まらない")
+	var turn_before: int = screen.battle.turn
+	var phase_before: int = screen.battle.phase
+	for i in 600:
+		if screen.advance_talk():
+			break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding(), "対戦の途中の台詞を送れない")
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	for i in 600:
+		if screen.talk_line() != null and app.get_viewport().get_visible_rect().size.x > 0 and screen.is_talk_holding():
+			var enter := InputEventKey.new()
+			enter.physical_keycode = KEY_ENTER
+			enter.pressed = true
+			app.get_viewport().push_input(enter)
+			if not screen.is_talk_holding():
+				break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding() and screen.battle.turn == turn_before and screen.battle.phase == phase_before,
+		"対戦の途中の台詞を Enter で送れない（か、Enter でターンが終わった）")
+	screen.set_talk_hold(false)
 	# 小さな盤で、1 手で将を倒して勝つ。
 	var board := _small_board(Vector2i(5, 4))
 	var battle := Battle.new(board)
