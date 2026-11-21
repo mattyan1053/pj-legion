@@ -102,6 +102,9 @@ if [ -n "$full" ]; then
   start tests_long_maps_military -s res://tools/run_tests.gd -- --long-only --only=on_every_map_finish_military_first
   start tests_long_maps_fantasy -s res://tools/run_tests.gd -- --long-only --only=on_every_map_finish_fantasy_first
   start tests_long_rest -s res://tools/run_tests.gd -- --long-only --except=on_every_map_finish_
+  # 通しの点検の長い道（game/autoplay_sweeps.gd。tools/sweep.sh と同じもの）。話を全部と、対戦モードの全部のマップ × 試しの決まりの入・切。
+  start sweep_story --fixed-fps 60 -- --autoplay --story-all
+  start sweep_versus --fixed-fps 60 -- --autoplay --versus-all
   start shots_a -- --shots "$SHOTS_IN_FULL_A" --dry-run
   start shots_b -- --shots "$SHOTS_IN_FULL_B" --dry-run
 fi
@@ -130,6 +133,12 @@ for name in autoplay autoplay_ui autoplay_ui_wide; do
   fi
 done
 if [ -n "$full" ]; then
+  for name in sweep_story sweep_versus; do
+    if ! grep -Fx "autoplay: OK" "$logs/$name.log" >/dev/null; then
+      echo "check: 通しの点検の長い道が最後まで進まなかった（$name）" >&2
+      exit 1
+    fi
+  done
   for name in shots_a shots_b; do
     if ! grep -Fx "screenshots: OK" "$logs/$name.log" >/dev/null; then
       echo "check: スクリーンショットの場面が作れなかった（$name）" >&2

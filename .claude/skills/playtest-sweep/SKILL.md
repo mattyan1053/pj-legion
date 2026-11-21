@@ -16,6 +16,13 @@ description: ゲームを通しで触って不具合を探し、見つけたも�
   絵は Forward+（既定。Windows の exe と同じ）で撮って見る。互換の描画の絵で見た目を判断しない（`docs/screenshots.md`）。
   画面の大きさの違いは `--size=<幅>x<高さ>` で撮り分ける（`docs/screen-size.md`）。
 - CPU どうしで何局も回すと、決着の間際など手で作りにくい場面に当たる（`tools/cpu_matches.gd`、`--autoplay --full`）。
+- **まず長い道を通す**: `tools/sweep.sh godot`（`story` / `versus` / `all`。既定は `all`。両方で 2 分ほど）。
+  - `story`（`-- --autoplay --story-all`）: 両方の物語を第 1〜15 話まで、タイトルから画面の道で通す。話の一覧は F5 で全部を開き、
+    話ごとに出撃準備 → 前の会話を 1 文ずつ送る → 途中の台詞（`[cues]`）を 1 つずつ出して送る → 小さな盤でわざと負けて、負けの台詞（`[lost]`）を見る →「話の一覧へ」。
+  - `versus`（`-- --autoplay --versus-all`）: 対戦モードの全部のマップを、試しの決まり（`TrialRules.ALL`）を全部切ったものと全部入れたもので、
+    タイトル → マップ選択 → 対戦設定（相手は CPU）→ 数ターン（自分の番は「おまかせ」。作戦が入なら 1 枚使う）。試しの決まりが増えても、そのまま回る。
+  - 中身は `game/autoplay_sweeps.gd`。足りない確かめはそこに足す。長い検査（`tools/check.sh --full`）も同じものを回す。
+- 台詞と画面の文の折り返しの切れ方は `godot --headless --path . -s res://tools/wrap_audit.gd`（`docs/battle-view.md` の折り返し）。
 
 ## 見る所
 
