@@ -145,6 +145,9 @@ const SCENES := {
 	"look_boulder_crag": "大岩の峠（草原の見た目）の真ん中の大岩を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag": "双子結晶の真ん中の大きな岩山を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
+	"story_slots": "ストーリー: タイトルの「ストーリー」のあとの、セーブデータ選択（1 番と 2 番に進み具合、3 番は空き）",
+	"story_slots_copy": "ストーリー: セーブデータ選択で、1 番のコピー先を選んでいるところ",
+	"story_slots_delete": "ストーリー: セーブデータ選択で、2 番の削除を確かめているところ",
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
 	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
 	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
@@ -337,6 +340,8 @@ func _reset(seed: int) -> void:
 	_keep_unit_look()
 	if OS.get_cmdline_user_args().has("--no-effects"):
 		_app.context.settings.set_value(&"screen_effects", false)  # tools/screenshots.sh の --no-effects（画面の効果を切って撮る）
+	for number in range(1, 4):
+		_app.context.slots.remove(number)  # 前の場面が書いたセーブのスロットを持ち越さない（取っておく先は無いので、覚えているものだけ）
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
 	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:
@@ -1802,12 +1807,50 @@ func _start_story(number := -1) -> bool:
 	return _app.current_id() == SceneFlow.SORTIE
 
 
-## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。
+## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。セーブデータ選択は、いまのスロットで通る。
 func _scene_story_campaigns() -> bool:
 	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_story()
 	await _app.scene_changed
+	if _app.current_id() != SceneFlow.SLOTS:
+		return false
+	_app.current_scene().choose(_app.context.slots.current)
+	await _app.scene_changed
 	return _app.current_id() == SceneFlow.CAMPAIGNS
+
+
+## セーブデータ選択: 1 番は MILITARY の物語を 7 話まで、2 番は FANTASY の物語を 3 話まで、3 番は空き。
+func _scene_story_slots() -> bool:
+	var context: RefCounted = _app.context
+	var plans := [[Story.military(), 7, 9000], [_fantasy(), 3, 2700]]
+	for i in plans.size():
+		context.use_slot(i + 1)
+		context.story.choose_campaign(plans[i][0])
+		for episode: RefCounted in (plans[i][0].episodes as Array).slice(0, plans[i][1]):
+			context.story.clear(episode.id)
+		context.slots._played = float(plans[i][2])
+		context.slots.flush()
+	context.use_slot(1)
+	await _app.go(SceneFlow.TITLE)
+	_app.current_scene().press_story()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.SLOTS
+
+
+## セーブデータ選択で、コピー先を選んでいるところ。
+func _scene_story_slots_copy() -> bool:
+	if not await _scene_story_slots():
+		return false
+	_app.current_scene().press_copy(1)
+	return _app.current_scene().is_copying()
+
+
+## セーブデータ選択で、削除を確かめているところ。
+func _scene_story_slots_delete() -> bool:
+	if not await _scene_story_slots():
+		return false
+	_app.current_scene().press_delete(2)
+	return _app.current_scene().confirm_window().is_open()
 
 
 func _scene_story_list() -> bool:

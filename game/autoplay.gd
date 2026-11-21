@@ -2142,7 +2142,17 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
 	app.current_scene().press_story()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "タイトルの「ストーリー」で、物語を選ぶ場面へ進まない")
+	_expect(app.current_id() == SceneFlow.SLOTS, "タイトルの「ストーリー」で、セーブデータ選択へ進まない")
+	# セーブデータ選択: どのスロットもまだ空き（はじめから）。1 番を選ぶと、物語を選ぶ場面へ。
+	var slots_screen: Node = app.current_scene()
+	# （1 番は、前の場面の部隊編成でストーリー用の部隊を組んでいれば、もう書いてある）
+	for number in range(1, 4):
+		_expect(slots_screen.is_card_enabled(number) and (slots_screen.card_text(number).ends_with("はじめから") or number == 1), "空きのスロット %d が「はじめから」でない" % number)
+	var saves_before: int = app.save_mark.shown_count
+	slots_screen.choose(1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "セーブデータ選択でスロットを選んでも、物語を選ぶ場面へ進まない")
+	_expect(app.context.slots.is_started() and story.is_cleared(Story.military().episodes[0].id), "はじめからで始めたスロットに、前から持っていた進み具合が残っていない")
 	var campaigns: Node = app.current_scene()
 	_expect(campaigns.campaigns() == Story.campaigns(), "物語を選ぶ場面に、全部の物語が並んでいない")
 	for each: RefCounted in Story.campaigns():
@@ -2300,6 +2310,9 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
 	list = app.current_scene()
+	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後に保存した所が、話の一覧に出る。
+	_expect(app.save_mark.shown_count > saves_before and not app.context.slots.has_unsaved(), "話をクリアして話の一覧へ戻っても、保存しない（か、保存の印が出ない）")
+	_expect(list.saved_text() != "最後に保存: 未保存" and list.saved_text().begins_with("最後に保存: "), "話の一覧に、最後に保存した所が出ない")
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
 		_expect(list.is_card_enabled(Story.military().episodes[first + 1]), "前の話をクリアしたのに、次の話を選べない")
@@ -2313,6 +2326,34 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TITLE, "物語を選ぶ場面の「タイトルへ戻る」で、タイトルへ戻らない")
 	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
 	_expect(story.unlocked_kinds().has(episode.unlock_kinds[0]) if not episode.unlock_kinds.is_empty() else true, "クリアしても、駒が増えていない")
+
+
+## セーブデータ選択（_visit_story のあと。1 番に進み具合がある）: 1 番は「つづきから」で物語とクリアの数が出る。
+## 1 番を 2 番へコピー → 2 番も同じ中身 → 2 番を 1 番へコピーは上書きを確かめる（キャンセル）→ 2 番を削除（確かめる）→ 空きに戻る。
+## 最後に 1 番を「つづきから」で選び、物語を選ぶ場面へ（進み具合はそのまま）。
+func _visit_slots(app: Node) -> void:
+	_expect(app.current_id() == SceneFlow.SLOTS, "タイトルの「ストーリー」で、セーブデータ選択へ進まない")
+	var screen: Node = app.current_scene()
+	var first: String = screen.card_text(1)
+	_expect(first.ends_with("つづきから") and first.contains(Story.military().title) and first.contains("話クリア"), "進み具合のあるスロットのカードに、物語とクリアの数が出ない: %s" % first.replace("\n", " / "))
+	_expect(screen.card_text(2).ends_with("はじめから"), "空きのスロットが「はじめから」でない")
+	screen.press_copy(1)
+	_expect(screen.is_copying() and not screen.is_card_enabled(1), "コピーの元のカードを、コピー先に選べる")
+	screen.choose(2)
+	_expect(not screen.is_copying() and screen.card_text(2) == first.replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う")
+	screen.press_copy(2)
+	screen.choose(1)
+	var confirm: Node = screen.confirm_window()
+	_expect(confirm.is_open() and confirm.question().contains("上書き"), "中身のあるスロットへのコピーで、上書きを確かめない")
+	confirm.cancel()
+	screen.cancel_copy()
+	screen.press_delete(2)
+	_expect(confirm.is_open() and confirm.ok_text() == "削除", "削除を確かめない")
+	confirm.accept()
+	_expect(screen.card_text(2).ends_with("はじめから") and screen.card_text(1) == first, "削除したスロットが空きに戻らない（か、ほかのスロットが変わった）")
+	screen.choose(1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "「つづきから」で、物語を選ぶ場面へ進まない")
 
 
 ## 2 つ目の物語（FANTASY の物語）の頭の話を通す: 物語を選ぶ場面で選べる → その物語の話の一覧（最初の話だけ選べる。演習の印）
@@ -2330,6 +2371,7 @@ func _visit_second_campaign(app: Node) -> void:
 	_expect(story.cleared_count(campaign) == 0, "2 つ目の物語を、始める前からクリアしている")
 	app.current_scene().press_story()
 	await app.scene_changed
+	await _visit_slots(app)
 	var campaigns: Node = app.current_scene()
 	_expect(campaigns.is_card_enabled(campaign) and campaigns.status_text(campaign) == "全 %d 話" % campaign.episodes.size(), "2 つ目の物語を選べない（か、状態の文が違う）")
 	campaigns.choose(campaign)

@@ -109,3 +109,6 @@ setup.deck.random,ランダム編成（毎回ちがう部隊）
 setup.deck.random_note,対戦開始で決まる
 setup.deck.saved,{name}（コスト {cost} / {budget}）
 setup.deck.unplayable,{name}（出撃不可: {issue}）
+menu.saved,保存しました
+menu.last_saved,最後に保存: {when}
+menu.never_saved,未保存

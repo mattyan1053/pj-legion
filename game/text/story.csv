@@ -46,3 +46,28 @@ story.news.speaker,知らせ
 story.news.unit,新しい駒「{unit}」を雇えるようになりました。
 story.news.item,新しい持ち物「{item}」を持たせられるようになりました。効果: {effect}
 story.news.budget,コスト上限が {budget} に上がりました。
+slots.heading,ストーリー
+slots.sub,セーブデータ選択
+slots.resume,セーブデータ選択へ戻る
+slots.number,データ {number}
+slots.empty,空き
+slots.new,はじめから
+slots.continue,つづきから
+slots.no_campaign,物語未選択
+slots.progress,{cleared} / {total} 話クリア
+slots.last,第 {number} 話「{title}」までクリア
+slots.not_cleared,クリアした話なし
+slots.played,プレイ時間 {hours}:{minutes}
+slots.date,{year}/{month}/{day} {hour}:{minute}
+slots.broken,読み込めないデータ
+slots.newer,新しい版のデータ
+slots.copy,コピー
+slots.delete,削除
+slots.copy.pick,データ {number} のコピー先を選択
+slots.copy.cancel,キャンセル
+slots.copy.confirm,データ {to} に上書きしますか？
+slots.copy.note,データ {to} の内容は失われます。
+slots.copy.ok,上書き
+slots.delete.confirm,データ {number} を削除しますか？
+slots.delete.note,削除したデータは元に戻せません。
+slots.delete.ok,削除

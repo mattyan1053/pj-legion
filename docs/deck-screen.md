@@ -100,7 +100,9 @@
 
 ## 取っておく形式
 
-`game/save_store.gd` の仕組みで、`user://decks.json` に置く（`{"name": "decks", "version": 版, "data": 中身}`）。
+`game/save_store.gd` の仕組みで、対戦用の部隊は `user://decks.json` に置く（`{"name": "decks", "version": 版, "data": 中身}`）。
+ストーリー用の部隊（決まりが物語の決まりのもの）は、いまのセーブデータ（スロット）のまとまり `decks` に、同じ形で置く（`docs/save-slots.md`）。
+どちらに書くかは部隊の決まりで決め（`DeckLibrary.is_slot_rules`）、部隊を変えた側のファイルだけを書く。`next_id` は両方に書く。
 いまの版は 1（`deck_library.gd` の `FORMAT_VERSION`）。中身:
 
 ```json
