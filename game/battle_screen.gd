@@ -1871,6 +1871,8 @@ func show_paint_samples(samples: Dictionary) -> void:
 				colors[cell] = kinds[kind]
 			elif kind == &"portal" and not battle.board.portal_exits.is_empty():
 				colors[cell] = portal_paint_color(battle.board.portal_exits.keys()[0])
+			# 対戦の中と同じに、ポータルの上の塗り（道を除く）は、ポータルの面に隠れないよう上に塗る（_show_painted）。
+			if colors.has(cell) and battle.board.object_at(cell) == MapObject.Type.PORTAL and colors[cell] != COLOR_PATH:
 				raised[cell] = true
 	_board_view.show_cells(colors, raised)
 	var threat: Array[Vector2i] = []
