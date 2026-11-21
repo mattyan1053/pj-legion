@@ -328,3 +328,23 @@ func test_every_versus_field_has_two_fair_battery_spots() -> void:
 		for cell in board.battery_cells:
 			for home in board.mid_boss_cells:
 				assert_true(Combat.distance(cell, home) > reach, "中ボスが届かない: %s" % field)
+
+
+func test_tactics_follow_the_row_to_the_side_it_plays() -> void:
+	var choice := MatchChoice.new()
+	assert_eq(choice.tactics[0], Tactics.DEFAULT_HAND as Array)
+	choice.pick_tactic(Unit.Side.PLAYER1, Tactics.Id.WARD)
+	choice.pick_tactic(Unit.Side.PLAYER1, Tactics.Id.WARD)
+	choice.pick_tactic(Unit.Side.PLAYER1, Tactics.Id.RALLY)
+	assert_eq(choice.tactics[0], [Tactics.Id.WARD, Tactics.Id.RALLY], "枚数を超えたら、先に選んだものが外れる")
+	assert_eq(choice.copy().tactics[0], choice.tactics[0])
+	assert_eq(choice.to_setup(1).create_battle().tactics, [[], []], "試しの決まりが切なら、手札は無い")
+	choice.set_trial(TrialRules.TACTICS, true)
+	var battle: Battle = choice.to_setup(1).create_battle()
+	assert_eq(battle.tactics[0], [Tactics.Id.WARD, Tactics.Id.RALLY])
+	assert_eq(battle.tactics[1], Tactics.DEFAULT_HAND as Array)
+	# 行は先手・後手のまま（人が後手に替わっても、1 行目の手札は先手のもの）。
+	choice.human_side = Unit.Side.PLAYER2
+	battle = choice.to_setup(1).create_battle()
+	assert_eq(battle.tactics[0], [Tactics.Id.WARD, Tactics.Id.RALLY])
+
