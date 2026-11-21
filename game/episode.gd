@@ -34,7 +34,7 @@ var title := ""
 ## 盤（手で作ったマップ）と、その名前（戦いの定義の名前。決着の画面の「マップ」）。
 var map: HandMap
 var map_title := ""
-## 盤の見た目（stage_look.gd の THEMES の鍵）。
+## 盤の見た目（stage_look.gd の THEMES の鍵）。マップの見た目（マップのファイルの look）。話のファイルが look を書けば、それ。
 var look := &""
 ## 対戦の曲（無ければ盤の見た目の曲）と、会話の曲（無ければ空 = 会話の場面の曲）。
 var music := &""
@@ -164,7 +164,7 @@ func _read_episode(file: RefCounted) -> void:
 		return
 	var at: int = file.line_of("episode")
 	var values: Dictionary = file.values("episode", ["title", "map", "look", "music", "talk_music", "lesson", "hold_turns", "wins"])
-	for key: String in ["title", "map", "look"]:
+	for key: String in ["title", "map"]:
 		if not values.has(key):
 			file.problem(at, "[episode] に「%s」が無い" % key)
 	if values.has("title"):
@@ -181,6 +181,7 @@ func _read_episode(file: RefCounted) -> void:
 		else:
 			map = found["map"]
 			map_title = found["title"]
+			look = found["look"]  # 見た目はマップが決める。話が look を書けば、その話だけ替える
 	if values.has("look"):
 		var entry: Dictionary = values["look"][0]
 		look = StringName(entry["value"])

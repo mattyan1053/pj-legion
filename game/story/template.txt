@@ -12,7 +12,7 @@
 [episode]
 # 会話の見出しと、話の一覧のカードに出す名前。
 title = 見本の話
-# 盤（手で作ったマップの id。docs/hand-map.md）と、その見た目（stage_look.gd の見た目の名前: grassland, stone_walls, crystal_forest）。
+# 盤（手で作ったマップの id。docs/hand-map.md）。景色はマップが決める。look は無くてよい（この話だけ別の見た目にするとき。stage_look.gd の見た目の名前）。
 map = ridge_path
 look = stone_walls
 # 無くてよい: 対戦の曲と会話の曲（sound_catalog.gd の MUSIC の名前）。無ければ、盤の見た目の曲と、会話の場面の曲。

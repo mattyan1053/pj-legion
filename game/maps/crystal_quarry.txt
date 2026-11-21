@@ -11,6 +11,7 @@
 
 [map]
 title = 結晶の採掘場
+look = crystal_forest
 
 [rows]
 ###......2......###

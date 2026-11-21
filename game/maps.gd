@@ -2,10 +2,12 @@ extends RefCounted
 ## 手で作ったマップ（docs/hand-map.md）を、名前（id）で引く。game/maps/ の 1 ファイルが 1 マップ（ファイルの名前が id）。ノードに依存しない。
 ## 話のファイル（episode.gd）は map = <id> で、対戦モードの盤の一覧（versus_fields.gd）は id で指す。
 ##
-## ファイルの書式は話のファイルと同じ（story_file.gd）: [map] に title、[rows] に文字の格子（1 文字 1 マス。この節の中では # も障害物の文字）。
+## ファイルの書式は話のファイルと同じ（story_file.gd）: [map] に title と look（見た目。stage_look.gd の名前）、
+## [rows] に文字の格子（1 文字 1 マス。この節の中では # も障害物の文字）。
 ## ルール（rules/）はファイルを読まない。ここで読んだ HandMap を、戦いの定義（Scenario.on_map）に渡す。
 
 const StoryFile := preload("res://game/story_file.gd")
+const StageLook := preload("res://game/stage_look.gd")
 
 ## マップを置く所（ファイルの名前が id）。
 const DIR := "res://game/maps/"
@@ -14,7 +16,7 @@ const DIR := "res://game/maps/"
 static var _cache := {}
 
 
-## id のマップ: {"map": HandMap, "title": 名前, "problems": 書き間違い（「ファイル:行: …」の文）}。ファイルが無ければ空。
+## id のマップ: {"map": HandMap, "title": 名前, "look": 見た目の名前（stage_look.gd）, "problems": 書き間違い（「ファイル:行: …」の文）}。ファイルが無ければ空。
 static func find(id: String) -> Dictionary:
 	if _cache.has(id):
 		return _cache[id]
@@ -40,12 +42,20 @@ static func parse(text: String, file_path := "probe.txt") -> Dictionary:
 
 static func read(file: RefCounted) -> Dictionary:
 	file.check_sections(["map", "rows"])
-	var values: Dictionary = file.values("map", ["title"])
+	var values: Dictionary = file.values("map", ["title", "look"])
 	var title := ""
 	if values.has("title"):
 		title = values["title"][0]["value"]
 	if title == "":
 		file.problem(maxi(file.line_of("map"), 1), "[map] に title が無い")
+	# 見た目（景色）。マップが決める。書かなければ既定の見た目。
+	var look := StageLook.DEFAULT
+	if values.has("look"):
+		var entry: Dictionary = values["look"][0]
+		look = StringName(entry["value"])
+		if not StageLook.THEMES.has(look):
+			file.problem(entry["line"], "知らない見た目「%s」（書けるのは %s）" % [look, ", ".join(StageLook.THEMES.keys())])
+			look = StageLook.DEFAULT
 	var rows := PackedStringArray()
 	for row: Dictionary in file.rows("rows"):
 		rows.append(row["text"])
@@ -57,7 +67,7 @@ static func read(file: RefCounted) -> Dictionary:
 	else:
 		for problem: HandMap.Problem in map.problems():
 			file.problem(file.line_of("rows"), "盤にできない: %s（docs/hand-map.md）" % HandMap.Problem.keys()[problem].to_lower())
-	return {"map": map, "title": title, "problems": file.problems}
+	return {"map": map, "title": title, "look": look, "problems": file.problems}
 
 
 ## game/maps/ のマップの id の並び（ファイルの名前の順）。

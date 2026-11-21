@@ -21,8 +21,16 @@ const Text := preload("res://game/text.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const Maps := preload("res://game/maps.gd")
 
 ## 場面の名前 -> 説明（撮る順）。
+## 景色の場面（SCENES に並べない。マップと見た目の組み合わせを、名前で作る）:
+##   scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>
+## マップは game/maps/ の id か、生成のマップの鍵（versus_fields.gd）。見た目は stage_look.gd の名前（書かなければ、マップの見た目）。
+const SCAPE := "scape."
+const SCAPE_VIEWS := ["wide", "side", "close", "range"]
+const SCAPE_USAGE := "scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>。構図: wide, side, close, range"
+
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
@@ -258,7 +266,11 @@ func _ready() -> void:
 		_quit("screenshots: --shots と --out（か --dry-run）を指定する（場面: %s）" % ", ".join(SCENES.keys()), 1)
 		return
 	for name: String in (SCENES.keys() if shots == "all" else Array(shots.split(","))):
-		if not SCENES.has(name):
+		if name.begins_with(SCAPE):
+			if not _scape_known(name):
+				_quit("screenshots: 知らない景色の場面: %s（%s）" % [name, SCAPE_USAGE], 1)
+				return
+		elif not SCENES.has(name):
 			_quit("screenshots: 知らない場面: %s（場面: %s）" % [name, ", ".join(SCENES.keys())], 1)
 			return
 		_names.append(name)
@@ -273,7 +285,7 @@ func _run() -> void:
 		var ok := false
 		for i in MORE_SEEDS + 1:
 			await _reset(SEED + i)
-			ok = await call("_scene_" + name)
+			ok = _scape(name) if name.begins_with(SCAPE) else await call("_scene_" + name)
 			if ok:
 				if i > 0:
 					print("screenshots: 場面 %s は種 %d で作れた" % [name, _seed])
@@ -2694,6 +2706,77 @@ func _scene_story_cleared() -> bool:
 			_app.context.story.clear(episode.id)
 	await _app.go(SceneFlow.TITLE)
 	return _app.current_scene().story_label().contains("クリア済み")
+
+
+## 景色の場面の名前を、[マップ, 見た目, 構図] に分ける（見た目を書かなければ、マップの見た目）。読めなければ空。
+func _scape_parts(name: String) -> Array:
+	var parts := name.trim_prefix(SCAPE).split(".")
+	if parts.size() == 2:
+		parts.insert(1, "")
+	if parts.size() != 3:
+		return []
+	var look := StringName(parts[1])
+	if VersusFields.has(StringName(parts[0])) and VersusFields.is_generated(StringName(parts[0])):
+		look = look if look != &"" else VersusFields.look_of(StringName(parts[0]))
+	elif not Maps.find(parts[0]).is_empty():
+		look = look if look != &"" else StringName(Maps.find(parts[0])["look"])
+	else:
+		return []
+	return [parts[0], look, parts[2]]
+
+
+func _scape_known(name: String) -> bool:
+	var parts := _scape_parts(name)
+	return not parts.is_empty() and StageLook.THEMES.has(parts[1]) and SCAPE_VIEWS.has(parts[2])
+
+
+## マップの景色を、決まった構図で撮る（どのマップも同じ構図。並べて見比べるため）。部隊は対戦モードのいつもの編成。
+func _scape(name: String) -> bool:
+	var parts := _scape_parts(name)
+	var defined: Scenario
+	if VersusFields.has(StringName(parts[0])) and VersusFields.is_generated(StringName(parts[0])):
+		defined = VersusFields.scenario_of(StringName(parts[0]))
+	else:
+		var found: Dictionary = Maps.find(parts[0])
+		defined = Scenario.on_map(found["map"], found["title"])
+	var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
+	var setup := MatchSetup.humans_on(defined, _seed, MatchSetup.default_deck(armies[0]), MatchSetup.default_deck(armies[1]))
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤）"] as Array[String])
+	_scene.start_with(_battle, parts[1], _seed, defined.title)
+	var size: Vector2i = _battle.board.size
+	var middle := Vector3(size.x / 2.0, 0.0, size.y / 2.0)
+	match parts[2]:
+		"wide":  # いちばん引いて、低い角度で。盤の全体と、その向こうの景色と空
+			_look_at(middle)
+			_aim(OrbitCamera.max_distance_for(size), 0.0, OrbitCamera.MIN_PITCH)
+		"side":  # 横から、いちばん引いて低い角度で。別の向きの景色と空
+			_look_at(middle)
+			_aim(OrbitCamera.max_distance_for(size), 115.0, OrbitCamera.MIN_PITCH)
+		"close":  # 盤の真ん中に寄って。障害物・森・平地の見分け
+			_look_at(middle)
+			_aim(13.0, 25.0, 45.0)
+		"range":
+			return _scape_range(parts[1], defined.title)
+	return true
+
+
+## 景色の場面の「range」: 両軍が近づいたターン 3 の先手の番で、駒を 1 つ選び（移動範囲）、敵の全員の脅威範囲も出す。
+## 範囲の色と駒が、その景色の地面に沈まないかを見る。
+func _scape_range(look: StringName, title: String) -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_scene.start_with(_battle, look, _seed, title)
+	var unit := _own_units()[0]
+	for own in _own_units():
+		if own.kind != UnitKind.Id.KING and _battle.can_act(own):
+			unit = own
+			break
+	_scene.click_cell(unit.cell)
+	_scene.toggle_threat()
+	_scene.focus_camera(unit.cell)
+	return _scene.is_threat_shown()
 
 
 func _new_battle() -> void:
