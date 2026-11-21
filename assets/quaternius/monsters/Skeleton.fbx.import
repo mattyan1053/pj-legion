@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cy67vxbljth35"
-path="res://.godot/imported/Goblin_Male.fbx-834babf01f4a6e49f1bbf2891bae9d4b.scn"
+uid="uid://bpvkeff5qy4oi"
+path="res://.godot/imported/Skeleton.fbx-b924d4750dd34f094acbe40d41f3571b.scn"
 
 [deps]
 
-source_file="res://assets/quaternius/characters/Goblin_Male.fbx"
-dest_files=["res://.godot/imported/Goblin_Male.fbx-834babf01f4a6e49f1bbf2891bae9d4b.scn"]
+source_file="res://assets/quaternius/monsters/Skeleton.fbx"
+dest_files=["res://.godot/imported/Skeleton.fbx-b924d4750dd34f094acbe40d41f3571b.scn"]
 
 [params]
 

@@ -20,7 +20,7 @@ hold_turns = 8
 イェルダ = ally, paladin evolved crown
 ウル = ally, priest evolved
 ティオ = ally, sorcerer
-セリス = ally, commando
+セリス = ally, spellblade
 骨の軍曹 = enemy
 
 [before]

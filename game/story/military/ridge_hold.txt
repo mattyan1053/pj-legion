@@ -22,7 +22,7 @@ hold_turns = 10
 マルタ = ally, medic
 ピップ = ally, commando
 ヴァルト = ally, sniper evolved
-セリス = enemy, commando
+セリス = enemy, spellblade
 
 [before]
 ピップ: たいちょ〜、追っ手っす！ 騎士が 7 人はいるっす！

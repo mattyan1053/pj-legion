@@ -25,7 +25,7 @@ wins = turns_held
 イェルダ = ally, paladin evolved crown
 ウル = ally, priest evolved
 ティオ = ally, sorcerer
-セリス = ally, commando
+セリス = ally, spellblade
 教導隊員 = ally, paladin
 骨の鼓手 = enemy, skeleton_drummer
 

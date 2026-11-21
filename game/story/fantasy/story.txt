@@ -21,7 +21,7 @@ unit = sorcerer
 イェルダ = paladin evolved crown, なりたての騎士長
 ウル = priest evolved, 老導師。騎士長の師
 ティオ = sorcerer, 見習い上がりの術士
-セリス = commando, 斬り込みの影刃
+セリス = spellblade, 斬り込みの影刃
 
 [episodes]
 trial_first_steps

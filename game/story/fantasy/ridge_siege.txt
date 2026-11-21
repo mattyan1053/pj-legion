@@ -19,7 +19,7 @@ wins = hq_captured, routed
 イェルダ = ally, paladin evolved crown
 ウル = ally, priest evolved
 ティオ = ally, sorcerer
-セリス = ally, commando
+セリス = ally, spellblade
 ヴァルト = enemy, sniper evolved
 
 [before]
