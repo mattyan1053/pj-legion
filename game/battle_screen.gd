@@ -150,6 +150,12 @@ var _auto_side := -1
 var _auto_cpu := CpuPlayer.new()
 ## 操作の状態（選んでいる駒、見ている駒、対象を選ぶ途中、確かめ、押している途中、再生と CPU の番の途中）。battle_ui_state.gd。
 var _ui := BattleUiState.new()
+## 使うかを確かめている途中の作戦（手札の何枚目か。無ければ -1）と、確かめを始めた時刻。
+var _tactic_confirm := -1
+const TACTIC_CONFIRM_MSEC := 4000
+var _tactic_confirm_msec := 0
+## 確かめを始めたときの [ターン, フェーズ]。番が替わったら、確かめは無かったことにする（次のプレイヤーへ持ち越さない）。
+var _tactic_confirm_phase: Array[int] = [0, 0]
 ## 対戦の途中の会話（battle_cues.gd）と、その札（battle_talk.gd）。台詞は渡すもの（source.talk_cues）が持つ。
 var _cues: BattleCues
 var _talk: BattleTalk
@@ -216,6 +222,7 @@ func _ready() -> void:
 	_hud.menu_pressed.connect(_on_menu_pressed)
 	_hud.menu_hovered.connect(_on_menu_hovered)
 	_hud.ult_pressed.connect(press_ult)
+	_hud.tactic_pressed.connect(press_tactic)
 	_hud.end_turn_pressed.connect(press_end_turn)
 	_hud.restart_pressed.connect(_on_restart_pressed)
 	_hud.evolution_chosen.connect(choose_evolution)
@@ -1347,6 +1354,55 @@ func press_ult() -> void:
 	_do(UseUltAction.new())
 
 
+## いまの番のプレイヤーの作戦（手札の index 枚目。docs/tactics.md）を使う。取り消せないので、1 回目は確かめるだけで、
+## TACTIC_CONFIRM_MSEC のうちにもう一度押すと使う。ほかの札を押したら、そちらの確かめに替わる。
+func press_tactic(index: int) -> void:
+	var hand: Array = Tactics.hand(battle, _ult_side())
+	if is_busy() or _is_cpu_turn() or index < 0 or index >= hand.size() or not battle.can_apply(UseTacticAction.new(hand[index])):
+		return
+	var now := Time.get_ticks_msec()
+	if _tactic_confirming(now) != index:
+		_tactic_confirm = index
+		_tactic_confirm_msec = now
+		_tactic_confirm_phase = [battle.turn, battle.phase]
+		_refresh()
+		return
+	if now - _tactic_confirm_msec < BattleUiState.CONFIRM_GUARD_MSEC:
+		return  # 確かめに変わった直後の 2 回目（ダブルクリック・連打）は受けない
+	_tactic_confirm = -1
+	_do(UseTacticAction.new(hand[index]))
+
+
+## 使うかを確かめている途中の作戦（手札の何枚目か）。無ければ -1。
+func _tactic_confirming(now_msec: int) -> int:
+	if _tactic_confirm_phase != ([battle.turn, battle.phase] as Array[int]) or now_msec - _tactic_confirm_msec > TACTIC_CONFIRM_MSEC:
+		return -1
+	return _tactic_confirm
+
+
+## 作戦のボタンに出すもの（手札の順に [文字, 押せるか, 説明]）。手札の無い対戦では空。
+func _tactic_items() -> Array:
+	var items: Array = []
+	var side := _ult_side()
+	var hand: Array = Tactics.hand(battle, side)
+	var confirming := _tactic_confirming(Time.get_ticks_msec())
+	for i in hand.size():
+		var id: Tactics.Id = hand[i]
+		var usable := not _is_cpu_turn() and battle.can_apply(UseTacticAction.new(id))
+		var text := Names.tactic(id)
+		if not Tactics.is_unused(battle, side, id):
+			text = Text.t("battle.tactic.used", {"tactic": text})
+		elif usable and confirming == i:
+			text = Text.t("battle.tactic.confirm", {"tactic": text})
+		items.append([text, usable, Names.tactic_summary(id)])
+	return items
+
+
+## 作戦のボタンの [文字, 押せるか] の列。検査用。
+func tactic_buttons() -> Array:
+	return _hud.tactic_buttons()
+
+
 ## 必殺技を使うかを確かめている途中か。検査用。
 func is_confirming_ult() -> bool:
 	return _ui.confirming_ult
@@ -1548,6 +1604,7 @@ func press_end_turn() -> void:
 ## 確かめを始めた直後の、2 回目を受けない間を、もう過ぎたことにする。検査用（人が間を置いてもう一度押すのと同じ）。
 func pass_confirm_guard() -> void:
 	_ui.confirm_started_msec -= BattleUiState.CONFIRM_GUARD_MSEC
+	_tactic_confirm_msec -= BattleUiState.CONFIRM_GUARD_MSEC
 
 
 ## ターン終了を確かめている途中か。検査用。
@@ -1843,6 +1900,7 @@ func _refresh() -> void:
 		BattleTexts.ult_button_text(battle, _ult_side(), _ui.confirming_ult), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult,
 		Ults.percent(battle, _ult_side()) if Ults.of(battle, _ult_side()) != null else -1, _ult_side()
 	)
+	_hud.set_tactic_buttons(_tactic_items())
 	_show_watch_controls()
 	_update_info()
 
