@@ -2440,6 +2440,52 @@ func _check_talk_before(talk: Node, episode: RefCounted) -> void:
 	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
 	talk.press_back()
 	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
+	await _check_talk_log(talk, episode)
+
+
+## 会話のログ: ホイールを上へ回すと開き、これまでの文（いまの文まで）を話し手と文で並べる。開いている間、会話は送らない。
+## 右クリックで閉じる（会話の文は戻らない）。L で開いて、Esc で閉じる。
+func _check_talk_log(talk: Node, episode: RefCounted) -> void:
+	talk.press_next()
+	talk.press_next()
+	var at: int = talk.line_index()
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	wheel.position = talk.get_viewport().get_visible_rect().get_center()
+	talk.get_viewport().push_input(wheel)
+	var log: CanvasLayer = talk.talk_log()
+	_expect(log.is_open(), "会話の画面でホイールを上へ回しても、会話のログが開かない")
+	var expected := []
+	for i in at + 1:
+		expected.append([episode.speakers[episode.before[i][2]], episode.before[i][1]])
+	_expect(log.row_texts() == expected, "会話のログに、これまでの文が並んでいない: %s" % [log.row_texts()])
+	var enter := InputEventKey.new()
+	enter.physical_keycode = KEY_ENTER
+	enter.pressed = true
+	talk.get_viewport().push_input(enter)
+	_expect(talk.line_index() == at and log.is_open(), "会話のログを開いている間に、会話が送られた")
+	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
+	_expect(screen_rect.encloses(log.panel_rect()), "会話のログの窓が画面からはみ出す: %s" % log.panel_rect())
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.position = wheel.position
+	talk.get_viewport().push_input(right)
+	_expect(not log.is_open() and talk.line_index() == at, "会話のログの右クリックで、閉じない（か、会話の文が戻った）")
+	var l_key := InputEventKey.new()
+	l_key.physical_keycode = KEY_L
+	l_key.pressed = true
+	talk.get_viewport().push_input(l_key)
+	_expect(log.is_open(), "L で会話のログが開かない")
+	var escape := InputEventKey.new()
+	escape.physical_keycode = KEY_ESCAPE
+	escape.pressed = true
+	talk.get_viewport().push_input(escape)
+	_expect(not log.is_open() and not talk.context.system_menu.is_open(), "会話のログの Esc で、閉じない（か、システムメニューが開いた）")
+	await get_tree().process_frame
+	for i in at:
+		talk.press_back()
 
 
 ## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
