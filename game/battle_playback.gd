@@ -66,8 +66,10 @@ var frame_passed: Signal
 # ---- 再生の状態 ----
 
 ## 再生したイベントの数（イベントのスクリプト -> 回数）と、カメラが追いかけた駒の番号 -> 回数。検査用（場面と同じ辞書）。
+## played の NEUTRAL_PHASE_SHOWN は、中立の番の知らせを出した回数（中立の駒のいない番は飛ばすので、数えない）。
 var played := {}
 var camera_follows := {}
+const NEUTRAL_PHASE_SHOWN := &"neutral_phase_shown"
 var _players := event_players()
 ## 中立のフェーズの静かな場面（動いただけ、湧いただけ）をまとめて流している途中か。この間は、カメラを動かさない。
 var _quiet_playback := false
@@ -184,6 +186,12 @@ func play_all(events: Array[BattleEvent]) -> void:
 			await _finish_skipped(events.slice(i))
 			return
 		var event := events[i]
+		var started_here := event as PhaseStartedEvent
+		if started_here != null and started_here.side == Unit.Side.NEUTRAL and not NeutralPlayback.phase_has_neutrals(events, i, _neutral_ids()):
+			# 中立の駒のいない番: 知らせも上の帯も出さずに飛ばす（ログと数は、ほかと同じに数える）。
+			_settle(event)
+			i += 1
+			continue
 		await _play(event)
 		i += 1
 		var ult := event as UltUsedEvent
@@ -218,6 +226,15 @@ func _finish_skipped(rest: Array[BattleEvent]) -> void:
 	_sync()
 	for event in finals:
 		await _play(event)
+
+
+## いま盤にいる中立の駒の番号。
+func _neutral_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for unit in battle.units:
+		if unit.side == Unit.Side.NEUTRAL:
+			ids.append(unit.id)
+	return ids
 
 
 func _sync() -> void:
@@ -736,6 +753,7 @@ func _play_phase_started(event: PhaseStartedEvent) -> void:
 	_acted_with_effect = false
 	if event.side == Unit.Side.NEUTRAL:
 		# 中立の駒は行動済みを持たないので、明るさは変えない。カメラは、攻撃する駒だけを追う（_play_neutral_phase）。
+		played[NEUTRAL_PHASE_SHOWN] = played.get(NEUTRAL_PHASE_SHOWN, 0) + 1
 		_hud.show_banner(Text.t("battle.banner.phase", {"turn": event.turn, "side": side_name.call(event.side)}), team_colors[event.side])
 		await after(0.5)
 		return

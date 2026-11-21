@@ -432,11 +432,14 @@ func _queue_portal_and_spring_scene() -> void:
 	_scripted.append(func() -> void: _click(Vector2i(1, 1)))
 	_scripted.append(func() -> void: _scene.press_menu(BattleTexts.MENU_WARP))
 	_scripted.append(func() -> void: _scene.click_cell(far))
-	_scripted.append(func() -> void: _scene.press_wait())
+	_scripted.append(func() -> void:
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN)
+		_scene.press_wait())
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "ターンが進まなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 0, "中立の駒のいない番の知らせを出した")
 		_expect(bather.hp == bather.max_hp() - 20 + MapObject.SPRING_HEAL, "回復の泉で回復しなかった"))
 
 
@@ -814,12 +817,14 @@ func _queue_neutral_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1)
-		_scene.camera_follows.clear())
+		_scene.camera_follows.clear()
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		var core := battle.unit_at(font)
 		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 1, "中立の駒が湧いた番の知らせを出さなかった")
 		_expect(_scene.camera_follows.is_empty(), "湧いただけの中立の駒を、カメラが追った"))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
