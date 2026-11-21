@@ -1,0 +1,63 @@
+# ストーリーの話「古戦場の亡者」。
+#
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+#
+# 敵は軍に属さない魔物の群れ（army = none。必殺技は無い。docs/unit-roster.md の「魔物」）で、将がいない（king = none。旗の下は空）。
+# 骸骨術師が骸骨兵を起こして数を増やす（骨起こし）。先に術師を倒すと、群れが増えなくなる。
+# 手で作ったマップ「古戦場」（game/maps/old_battlefield.txt）。見た目は石の壁（崩れた壁と柱）のテーマ。
+# 人の勝ち方は「敵を全滅させる」だけ（wins）。骨の群れを倒しきるまで終わらない。
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 古戦場の亡者
+map = old_battlefield
+music = battle_undead
+wins = routed
+
+[cast]
+ハーデン = ally
+ドーソン = ally, shield_trooper evolved
+ノエ = ally, sniper
+マルタ = ally, medic
+ピップ = ally, commando
+骨の術師 = enemy, skeleton_caller
+
+[before]
+ノエ: 隊長。あの石壁の陰……骨です。骨が、立ち上がっています。
+ピップ: うへぇ〜、数えたくないっすねぇ。10 はいるっす。
+骨の術師: 起きよ……起きよ……。生きた者が、来た……。
+ノエ: 杖の骸骨が、骨を起こしています。……率いる者が見当たりません。ばらばらに来ます。
+ドーソン: 頭の無い群れか。なら杖持ちから黙らせろ。放っておけば増えるぞ。
+マルタ: 見て、あの盾。連邦の古い紋よ。隣の骨のは、騎士領の。
+ハーデン: ……考えるのは後だ。1 体でも残せば背中を突かれる。全部倒す。
+
+[cues]
+(turn 1) ドーソン: 骨は脆いが数が多い。囲まれるなよ。
+(turn 3) ノエ: 杖の骸骨が、また起こしています！ 先にあれを！
+(fallen enemy) ピップ: でかい骨は足が遅いっす〜。弓の骨が先っす！
+
+[after]
+骨の術師: ……眠れぬ……。墓守さまが……お許しに、ならぬ……。
+ノエ: 墓守……。骨を起こしている者が、別にいるんでしょうか。
+ドーソン: いるんだろうよ。そいつを倒さん限り、きりが無いってことだ。
+ピップ: 補給から妙なのが届いてるっすよ〜。試作ジェットパック。飛べるらしいっす！
+ハーデン: 使えるものは使う。次で終わらせる。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[enemy]
+army = none
+king = none
+unit = skeleton_caller
+unit = skeleton_caller
+unit = skeleton_brute
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton
+unit = skeleton
+unit = skeleton
+
+[unlock]
+item = jet_pack
+budget = 2
