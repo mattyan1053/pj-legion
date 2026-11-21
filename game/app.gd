@@ -165,7 +165,8 @@ func go(scene: StringName) -> void:
 	context.system_menu.close()
 	# 暗転と同じころに、曲もつなぐ。流れが渡すものが曲を決めていれば、その曲（対戦の盤の見た目、話の会話）。
 	var given: Variant = context.run.data() if context.run != null else null
-	(context.sound as Sound).play_scene_music(SceneFlow.music_for(scene, given))
+	var track := SceneFlow.music_for(scene, given)
+	(context.sound as Sound).play_scene_music(track, SceneFlow.music_offset_db(scene, track))
 	if _current != null:
 		# 抜ける場面は止めておく（暗くなる間に、CPU の番や再生が進まないように）。
 		_current.process_mode = Node.PROCESS_MODE_DISABLED
