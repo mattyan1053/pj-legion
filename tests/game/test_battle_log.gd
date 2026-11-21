@@ -107,14 +107,11 @@ func test_cruise_and_portal_are_noted_on_the_move() -> void:
 	var battle := Maps.battle(["1....1"])
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 0))
 	var book := BattleLog.new(battle)
-	# (1, 0) → (0, 0) のポータル → (5, 0) → (4, 0)
-	var result := battle.apply(MoveAction.new(commando.id, Vector2i(4, 0), true))
-	assert_true(result.accepted)
-	var warped := false
-	for event in result.events:
-		warped = warped or event is UnitWarpedEvent
-	assert_true(warped, "ポータルを通っていない")
-	book.feed_all(result.events)
+	# (1, 0) → (0, 0) のポータル → 転移 → (5, 0) → 巡航で (4, 0)。行動 3 つで、ログは 1 行。
+	for action: BattleAction in [MoveAction.new(commando.id, Vector2i(0, 0)), WarpAction.new(commando.id), MoveAction.new(commando.id, Vector2i(4, 0), true)]:
+		var result := battle.apply(action)
+		assert_true(result.accepted, "%s" % action)
+		book.feed_all(result.events)
 	assert_eq(_lines(book), ["青のコマンドーが (1, 0) → (4, 0) へ移動（巡航・ポータル経由）"] as Array[String])
 
 
