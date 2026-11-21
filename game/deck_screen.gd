@@ -33,6 +33,8 @@ const RoleMark := preload("res://game/role_mark.gd")
 const CostGems := preload("res://game/cost_gems.gd")
 const StatsRow := preload("res://game/stats_row.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
+const UnitSummary := preload("res://game/unit_summary.gd")
+const UnitSheet := preload("res://game/unit_sheet.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
@@ -116,14 +118,10 @@ var _roster_buttons := {}
 var _ult_box: VBoxContainer
 var _troop_rows: VBoxContainer
 var _detail_card: PanelContainer
-var _detail_title: Label
-var _detail_icon: UnitFrame
-var _detail_body: Label
-var _detail_role: RoleMark
+var _detail_summary: UnitSummary
 var _detail_open: Button
 var _unit_detail: UnitDetail
 var _layer: CanvasLayer
-var _detail_stats: StatsRow
 var _equip_box: PanelContainer
 var _equip_scroll: ScrollContainer
 var _equip_list: VBoxContainer
@@ -902,47 +900,23 @@ func _build_editor() -> Control:
 	detail_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_column.add_theme_constant_override("separation", 6)
 	detail_scroll.add_child(detail_column)
-	var detail_head := HBoxContainer.new()
-	detail_head.add_theme_constant_override("separation", 12)
-	detail_column.add_child(detail_head)
-	_detail_icon = UnitFrame.new(UnitKind.Id.KING, 0, 64.0, false)
-	detail_head.add_child(_detail_icon)
-	var detail_names := VBoxContainer.new()
-	detail_names.alignment = BoxContainer.ALIGNMENT_CENTER
-	detail_names.add_theme_constant_override("separation", 4)
-	detail_head.add_child(detail_names)
-	var detail_title_row := HBoxContainer.new()
-	detail_title_row.add_theme_constant_override("separation", 8)
-	detail_names.add_child(detail_title_row)
-	_detail_role = RoleMark.new(UnitKind.Role.NONE, 24.0)
-	detail_title_row.add_child(_detail_role)
-	_detail_title = _text(22, COLOR_TEXT)
-	_detail_title.add_theme_font_override("font", UiTheme.FONT_BOLD)
-	detail_title_row.add_child(_detail_title)
-	# 「詳細」: 選んでいる部隊の駒のステータスの窓（unit_detail.gd。持ち物込みの値と増減）。札の頭の右下の隅。
-	# 並びの幅を使わないよう、幅 0 の入れ物の右下に重ねて置く（長い名前の駒でも、札が横に広がらない）。
-	var detail_corner := Control.new()
-	detail_corner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	detail_head.add_child(detail_corner)
+	# 札は、小さなステータス画面（unit_summary.gd。額、名前と役割の札、能力値の棒と粒、スキルと進化先の札）。
+	_detail_summary = UnitSummary.new(DETAIL_WIDTH - 24.0)
+	detail_column.add_child(_detail_summary)
+	# 「詳細」: 選んでいる部隊の駒のステータスの窓（unit_detail.gd）。札の頭の右上の隅。
+	# 並びの幅を使わないよう、余りの幅の入れ物の隅に重ねて置く（長い名前の駒でも、札が横に広がらない）。
 	_detail_open = Button.new()
 	_detail_open.text = Text.t("battle.hud.detail")
 	_detail_open.theme_type_variation = UiTheme.BUTTON_GHOST
 	_detail_open.focus_mode = Control.FOCUS_NONE
 	_detail_open.add_theme_font_size_override("font_size", 14)
 	_detail_open.pressed.connect(press_unit_detail)
-	detail_corner.add_child(_detail_open)
-	_detail_open.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_detail_open.offset_left = -80.0
-	_detail_open.offset_top = -30.0
+	_detail_summary.corner().add_child(_detail_open)
+	_detail_open.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_detail_open.offset_left = -72.0
+	_detail_open.offset_top = 0.0
 	_detail_open.offset_right = 0.0
-	_detail_open.offset_bottom = 0.0
-	# 能力値は、札の頭に欄をそろえて出す（下の文にも同じ行がある。持ち物込みの値は文の側）。
-	_detail_stats = StatsRow.new("", 15)
-	detail_names.add_child(_detail_stats)
-	detail_column.add_child(HSeparator.new())
-	_detail_body = _text(15, COLOR_TEXT)
-	detail_column.add_child(_detail_body)
+	_detail_open.offset_bottom = 28.0
 	_equip_box = _card()
 	right.add_child(_equip_box)
 	var equip_column := VBoxContainer.new()
@@ -1261,22 +1235,14 @@ func _refresh_detail() -> void:
 	if kind == -1:
 		return
 	var unit_kind := kind as UnitKind.Id
-	var title := Names.kind(unit_kind)
-	if entry != null:
-		title = "%d. %s" % [_selected + 1, title]
-	_detail_title.text = title
-	_detail_icon.set_kind(unit_kind)
-	_detail_role.role = UnitKind.role(unit_kind)
-	_detail_role.visible = UnitKind.role(unit_kind) != UnitKind.Role.NONE
 	var held: Array[Equipment.Id] = []
 	if entry != null:
 		held = entry.equipment
 	# 「詳細」は部隊の駒を出しているときだけ押せる（雇える駒は、マウスを離すと札が替わるので押せない。場所は保つ）。
 	_detail_open.disabled = entry == null
 	_detail_open.modulate.a = 1.0 if entry != null else 0.0
-	var lines := DeckText.detail_lines(unit_kind, held, _deck.army if _deck != null else -1, false)
-	_detail_stats.set_line(DeckText.stats_line(unit_kind, DeckText.equipment_bonus(held)))
-	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
+	var sheet: UnitSheet = UnitSheet.of_kind(unit_kind, held, 0, _deck.army if _deck != null else -1)
+	_detail_summary.show_sheet(sheet, "%d. %s" % [_selected + 1, sheet.name] if entry != null else "")
 	entry = chosen_entry
 	if entry != null:
 		_equip_title.text = Text.t("deck.edit.items", {"count": entry.equipment.size(), "max": Equipment.MAX_PER_UNIT})

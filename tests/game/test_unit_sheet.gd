@@ -85,3 +85,27 @@ func test_the_window_fits_the_screen_for_every_unit() -> void:
 			assert_eq(texts[0], "HP")
 			assert_eq(texts[2] != "", not held.is_empty(), "持ち物で HP が増えた駒にだけ、増減が出る")
 	detail.free()
+
+
+## 小さなステータスの札（部隊編成の右の札。game/unit_summary.gd）: どの駒・持ち物でも、幅が中身で広がらない。
+## 能力値の行は、ステータスの窓と同じ値（持ち物込みの値と増減）を出す。
+func test_the_summary_card_keeps_its_width_for_every_unit() -> void:
+	const UnitSummary := preload("res://game/unit_summary.gd")
+	var width := 376.0
+	var card := UnitSummary.new(width)
+	var loads: Array = [
+		[] as Array[Equipment.Id],
+		[Equipment.Id.JET_PACK, Equipment.Id.DRAGON_SCALE, Equipment.Id.WAR_BANNER] as Array[Equipment.Id],
+	]
+	for kind: UnitKind.Id in UnitKind.Id.values():
+		for held: Array[Equipment.Id] in loads:
+			if not held.is_empty() and not Equipment.can_equip(kind):
+				continue
+			var sheet: UnitSheet = UnitSheet.of_kind(kind, held, 0, UnitKind.Army.MILITARY)
+			card.show_sheet(sheet, "12. %s" % sheet.name)
+			assert_eq(card.title_text(), "12. %s" % Names.kind(kind))
+			assert_true(card.get_combined_minimum_size().x <= width + 0.5, "%s の札が幅 %d を超えた: %s" % [Names.kind(kind), int(width), card.get_combined_minimum_size()])
+			var hp := card.stat_meters()[0].texts()
+			assert_eq(hp[1], str(sheet.max_hp()), "満タンの駒の HP は、値を 1 つだけ出す")
+			assert_eq(hp[2] != "", sheet.stat_line(Unit.Stat.MAX_HP).delta() != 0)
+	card.free()

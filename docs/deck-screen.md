@@ -2,7 +2,7 @@
 
 コード: `game/deck_screen.gd`（編成の場面）、`game/deck_library.gd`（取っておく部隊の一覧と、ファイルの読み書き）、
 `game/deck_text.gd`（出せない理由、駒と持ち物の中身の文）、`game/unit_card.gd`（駒の札）、`game/deck_preview.gd`（編成確認）、`game/match_choice.gd` と `game/match_setup_panel.gd`（対戦設定で選ぶ）。
-テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_match_setup_panel.gd`、`tests/game/test_unit_detail_text.gd`（部隊編成の駒の札の文）、`tests/game/test_unit_sheet.gd`（駒の詳細）、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
+テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_match_setup_panel.gd`、`tests/game/test_unit_sheet.gd`（駒の詳細）、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
 
 編成のルール（軍、ロスター、持ち物、コスト上限）は `docs/player-loadout.md`。
 **初期位置は部隊では決めない**（マップとその戦いの定義が置けるマスを決め、マップを選んだあとに出撃準備・対戦設定で決める。`docs/story.md`、`docs/battle-view.md`）。部隊は駒と持ち物の組だけ、検査と編成の決まりは `docs/deck-building.md`。
@@ -60,7 +60,15 @@
 - 「閉じる」・右クリック・Esc・枠の外のクリックで閉じる（窓だけが閉じ、編成確認や出撃準備は残る）。
 - 枠・札・ボタンの見た目は UI のテーマ（`docs/ui-theme.md`）。札の形のボタン（雇える駒、部隊の駒、一覧の部隊、軍）はカード、「編成完了」はいちばん大事なボタン、「削除」は危険なボタン。
 
-部隊編成の右の札（選んだ駒・乗せた駒）は、いまも文（`DeckText.detail_lines`）で出す。
+部隊編成の右の札（選んだ駒・乗せた駒）は、**小さなステータスの札**（`game/unit_summary.gd`）。窓と同じ部品（`game/sheet_parts.gd`、`game/stat_meter.gd` の詰めた行）を、札の幅に詰めて並べる:
+
+- 頭: 駒のアイコンの額、役割の印と名前（部隊の駒は「4. コマンドー」）、札（役割・軍）とコスト（宝石）、役割の説明。右上の隅に「詳細」。
+- 能力値の行（HP、攻撃か回復、移動、射程）: いまの値、持ち物での増減、棒か粒。HP は満タンなので、値を 1 つだけ出す。
+- スキルの札（印、名前、クールダウン、説明）。必殺技は、雇える駒の一覧の下に出しているので、ここには出さない。持ち物は、下の持ち物の欄。
+- 進化先の札（2 つを横に。名前と、能力値の増減・特性）。
+- 幅は中身で変わらない（テストが、全部の駒で確かめる）。持ち物の欄に押されて低いときは、札の中で送る（能力値とスキルが先に見える）。
+
+編成確認と一覧の駒の札（`unit_card.gd`）と、初期位置の駒の欄（`deploy_note.gd`）の役割も、同じ小さな札（`PANEL_TAG`）で出す。
 
 ## 一覧
 
