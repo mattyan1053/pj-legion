@@ -1,16 +1,19 @@
 extends RefCounted
-## ストーリーの物語 1 つ（docs/story.md の「物語」）。game/story/campaigns/ の 1 ファイルを読んだもの。ノードに依存しない。
+## ストーリーの物語 1 つ（docs/story.md の「物語」）。game/story/ の 1 フォルダ（フォルダの名前が物語の id）を読んだもの。ノードに依存しない。
 ##
-## 物語は、軍 1 つと話の列。話は [episodes] に id を並べ、game/story/episodes/ のファイルから読む（episode.gd）。
+## 物語は、軍 1 つと話の列。フォルダの story.txt が物語のファイルで、話は [episodes] に id を並べ、同じフォルダの <id>.txt から読む（episode.gd）。
+## フォルダを置けば、物語の一覧に並ぶ（どこかへ登録しない）。名前が「_」で始まるフォルダは読まない（書き方の見本の _template）。
 ## 読むときに、物語と話の書き間違い（知らない軍・駒・装備、ほかの軍の駒の解放、同じものの 2 度目の解放、話のファイルの書き間違い）を
 ## 「ファイル:行: 何がおかしいか」で problems に貯める。書き間違いのある話は、並びから外す（遊べない）。
 
 const StoryFile := preload("res://game/story_file.gd")
 const Episode := preload("res://game/episode.gd")
 
-## 物語のファイルを置く所（ファイルの名前が物語の id）と、物語の並びのファイル。
-const DIR := "res://game/story/campaigns/"
-const ORDER_FILE := "res://game/story/campaigns.txt"
+## 物語のフォルダを置く所（フォルダの名前が物語の id）と、フォルダの中の物語のファイルの名前。
+const DIR := "res://game/story/"
+const STORY_FILE := "story.txt"
+## 物語の一覧での並びの順（[campaign] の order）を書かない物語の順（後ろに、id の順で並ぶ）。
+const ORDER_LAST := 1000
 const SECTIONS := ["campaign", "start", "episodes"]
 
 ## 物語の id（クリアの記録に書く。変えると記録が外れる）。ファイルの名前と同じ。
@@ -25,42 +28,45 @@ var rules_id := &""
 var starting_kinds: Array[UnitKind.Id] = []
 var starting_items: Array[Equipment.Id] = []
 var starting_budget := 0
+## 物語の一覧での並びの順（小さいほうが先。[campaign] の order。書かなければ ORDER_LAST）。
+var order := ORDER_LAST
 ## 話の並び（一本道）。
 var episodes: Array[Episode] = []
 var path := ""
 var problems: PackedStringArray = []
 
 
-## 物語の並び（ORDER_FILE の [campaigns] の順）を読む。書き間違いは、どれかの物語の problems か、並びの problems に入る。
-## 返すもの: {"campaigns": [物語, …], "problems": 並びのファイルの書き間違い}。
-static func load_all() -> Dictionary:
-	var file: RefCounted = StoryFile.open(ORDER_FILE)
-	file.check_sections(["campaigns"])
+## 物語を全部読む（DIR の下の、story.txt のあるフォルダ。並びは order の小さい順、同じなら id の順）。
+## 書き間違いは、どれかの物語の problems か、全体の problems に入る。
+## 返すもの: {"campaigns": [物語, …], "problems": 全体の書き間違い}。
+static func load_all(dir := DIR) -> Dictionary:
+	var found_problems: PackedStringArray = []
 	var found: Array = []
-	var ids := {}
 	var rules_ids := {DeckRules.VERSUS: 0}
 	var episode_ids := {}
-	for row: Dictionary in file.rows("campaigns"):
-		var campaign_id: String = row["text"]
-		if ids.has(campaign_id):
-			file.problem(row["line"], "物語「%s」が 2 度ある" % campaign_id)
+	var folders := Array(DirAccess.get_directories_at(dir))
+	folders.sort()
+	for folder: String in folders:
+		if folder.begins_with("_") or folder.begins_with("."):
 			continue
-		ids[campaign_id] = true
-		if not FileAccess.file_exists(DIR + campaign_id + ".txt"):
-			file.problem(row["line"], "物語のファイルが無い: %s%s.txt" % [DIR, campaign_id])
+		var file_path := dir.path_join(folder).path_join(STORY_FILE)
+		if not FileAccess.file_exists(file_path):
+			found_problems.append("%s: 物語のフォルダに %s が無い" % [dir.path_join(folder), STORY_FILE])
 			continue
-		var campaign: RefCounted = load_file(DIR + campaign_id + ".txt")
+		var campaign: RefCounted = load_file(file_path)
 		if rules_ids.has(campaign.rules_id):
 			campaign.problems.append("%s: 編成の決まりの名前「%s」が、ほかの物語か対戦と重なっている" % [campaign.path, campaign.rules_id])
 		rules_ids[campaign.rules_id] = true
 		for episode: RefCounted in campaign.episodes:
 			if episode_ids.has(episode.id):
-				campaign.problems.append("%s: 話「%s」は 2 つの物語に入っている" % [campaign.path, episode.id])
-			episode_ids[episode.id] = true
+				campaign.problems.append("%s: 話「%s」は、物語「%s」にもある（話の id は、物語をまたいで重ねない）" % [campaign.path, episode.id, episode_ids[episode.id]])
+			episode_ids[episode.id] = campaign.id
 		found.append(campaign)
+	found.sort_custom(func(a: RefCounted, b: RefCounted) -> bool:
+		return a.order < b.order if a.order != b.order else String(a.id) < String(b.id))
 	if found.is_empty():
-		file.problem(1, "物語が 1 つも無い")
-	return {"campaigns": found, "problems": file.problems}
+		found_problems.append("%s: 物語が 1 つも無い（物語のフォルダに %s を置く）" % [dir, STORY_FILE])
+	return {"campaigns": found, "problems": found_problems}
 
 
 static func load_file(file_path: String) -> RefCounted:
@@ -93,12 +99,13 @@ func find_episode(episode_id: StringName) -> RefCounted:
 
 func _read(file: RefCounted) -> void:
 	path = file.path
-	id = StringName(path.get_file().get_basename())
+	# 物語の id は、フォルダの名前（story.txt を置いたフォルダ）。
+	id = StringName(path.get_base_dir().get_file())
 	file.check_sections(SECTIONS)
 	if not file.has("campaign"):
 		file.problem(1, "[campaign] の節が無い")
 	var at: int = file.line_of("campaign")
-	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget"])
+	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget", "order"])
 	for key: String in ["title", "army", "rules", "budget"]:
 		if file.has("campaign") and not values.has(key):
 			file.problem(at, "[campaign] に「%s」が無い" % key)
@@ -113,6 +120,8 @@ func _read(file: RefCounted) -> void:
 			file.problem(entry["line"], "知らない軍「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(UnitKind.Army, [UnitKind.Army.NONE])])
 		else:
 			army = found as UnitKind.Army
+	if values.has("order"):
+		order = file.integer(values["order"][0])
 	if values.has("budget"):
 		starting_budget = file.integer(values["budget"][0])
 		if starting_budget < 1:
@@ -143,10 +152,11 @@ func _read_episodes(file: RefCounted) -> void:
 	for row: Dictionary in file.rows("episodes"):
 		var episode_id: String = row["text"]
 		var where := "%s:%d" % [path, row["line"]]
-		if not FileAccess.file_exists(Episode.DIR + episode_id + ".txt"):
-			problems.append("%s: 話のファイルが無い: %s%s.txt" % [where, Episode.DIR, episode_id])
+		var episode_path := path.get_base_dir().path_join(episode_id + ".txt")
+		if episode_id + ".txt" == STORY_FILE or not episode_id.is_valid_filename() or not FileAccess.file_exists(episode_path):
+			problems.append("%s: 話のファイルが無い: %s（物語と同じフォルダに置く）" % [where, episode_path])
 			continue
-		var loaded: RefCounted = Episode.load_id(episode_id)
+		var loaded: RefCounted = Episode.load_file(episode_path)
 		if find_episode(loaded.id) != null:
 			problems.append("%s: 話「%s」が 2 度ある" % [where, episode_id])
 			continue

@@ -4,10 +4,14 @@ Music by RandomMind (https://opengameart.org/users/randommind)
   Medieval: Victory Theme   https://opengameart.org/content/medieval-victory-theme
   Medieval: Defeat Theme    https://opengameart.org/content/medieval-defeat-theme
   Medieval: The Old Tower Inn https://opengameart.org/content/medieval-the-old-tower-inn
+  Medieval: Rejoicing       https://opengameart.org/content/medieval-rejoicing
+  Fantasy: Lament for a Warrior's Soul https://opengameart.org/content/fantasy-lament-for-a-warriors-soul
 
 License: Creative Commons Zero (CC0 1.0 Universal)
 https://creativecommons.org/publicdomain/zero/1.0/
 
-Each page above lists its license as CC0 (checked on 2026-11-15; The Old Tower Inn on 2026-11-16).
+Each page above lists its license as CC0 (checked on 2026-11-15; The Old Tower Inn on 2026-11-16;
+Rejoicing and Lament for a Warrior's Soul on 2026-11-21).
 The author notes that credits are appreciated but not required.
-The files here were converted from the distributed WAV files to Ogg Vorbis.
+The files here were converted from the distributed WAV files to Ogg Vorbis
+(Lament for a Warrior's Soul from the distributed MP3, with the silence at both ends trimmed).

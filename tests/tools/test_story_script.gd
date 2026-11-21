@@ -1,6 +1,7 @@
 extends "res://tests/base_test.gd"
-## ストーリーの台本（docs/story-script/。tools/story_script.gd）は、話のファイルから作った生成物。
-## 置いてある台本が、いまの話のファイルから作り直したものと同じこと（話を直して、台本を作り直し忘れたら落ちる）。
+## ストーリーの台本（tools/story_script.gd）。会話の正は話のファイルで、コミットするのは目次（game/story/README.md）だけ。
+## 置いてある目次が、いまの物語のファイルから作り直したものと同じこと（話を足して、目次を作り直し忘れたら落ちる）。
+## 通しの台本（コミットしない）は、作れることと、全部の文を順に持つことを確かめる。
 
 const Story := preload("res://game/story.gd")
 const Campaign := preload("res://game/campaign.gd")
@@ -8,12 +9,24 @@ const Episode := preload("res://game/episode.gd")
 const StoryScript := preload("res://tools/story_script.gd")
 
 
-func test_the_scripts_match_the_story_files() -> void:
+func test_the_index_matches_the_story_files() -> void:
+	var path := StoryScript.INDEX
+	assert_true(FileAccess.file_exists(path), "目次が無い: %s（tools/write_story_script.sh で作る）" % path)
+	var same := FileAccess.get_file_as_string(path) == StoryScript.index_text()
+	assert_true(same, "%s が物語のファイルと食い違っている（tools/write_story_script.sh で作り直す）" % path)
+
+
+## 目次のリンクは、どれも実際にある話のファイルを、話の順に指す。
+func test_the_index_links_every_episode_in_order() -> void:
+	var text := StoryScript.index_text()
+	var at := 0
 	for campaign: Campaign in Story.campaigns():
-		var path := StoryScript.path_of(campaign)
-		assert_true(FileAccess.file_exists(path), "台本が無い: %s（tools/write_story_script.sh で作る）" % path)
-		var same := FileAccess.get_file_as_string(path) == StoryScript.text_of(campaign)
-		assert_true(same, "%s が話のファイルと食い違っている（tools/write_story_script.sh で作り直す）" % path)
+		for episode: Episode in campaign.episodes:
+			var link := "[%s](%s/%s.txt)" % [episode.title, campaign.id, episode.id]
+			var found := text.find(link, at)
+			assert_true(found >= 0, "目次に %s が順に並んでいない" % link)
+			assert_true(FileAccess.file_exists("res://game/story/%s/%s.txt" % [campaign.id, episode.id]), "話のファイルが無い: %s" % episode.id)
+			at = maxi(at, found)
 
 
 ## 台本は、話の全部の文（会話、途中の台詞、覚えること）を、話の順に持つ。
