@@ -700,4 +700,10 @@ func test_opening_everything_for_checks_never_touches_the_record() -> void:
 	assert_false(story.is_cleared(last.id), "戻しても、開いている間のクリアが残る")
 	assert_false(story.is_available(episodes[2]), "戻しても、先の話が遊べる")
 	assert_eq(story.unlocked_kinds(), real_kinds, "戻しても、解放が残る")
+	# 開いて始めた先の話（上の run_now）に、戻してから勝っても、記録に書かない（一本道の読み方で、前の話が全部クリアになるので）。
+	story.clear(last.id)
+	assert_false(story.is_cleared(last.id), "戻してから勝った先の話を、クリアにした")
+	assert_eq(_store().read(Story.STORE_NAME), saved, "戻してから勝った先の話を、記録に書いた")
+	story.clear(episodes[1].id)
+	assert_true(story.is_cleared(episodes[1].id), "記録どおりに遊べる次の話は、クリアを書く")
 	_cleanup()

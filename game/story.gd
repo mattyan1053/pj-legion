@@ -64,6 +64,8 @@ var open_all := false:
 		changed.emit()
 ## 確かめ用に開いている間に勝った話の id（記録には書かない）。
 var _open_cleared: Array[String] = []
+## 確かめ用に開いている間に始めた、記録どおりではまだ遊べない話の id（その起動のあいだ、勝っても記録に書かない）。
+var _opened_runs: Array[String] = []
 ## 出撃準備で最後に選んだ部隊（いまの物語の。取っておいた部隊の id。空なら既定の編成）。次に起動しても選ばれている。
 var squad_id: String:
 	get:
@@ -226,12 +228,16 @@ func is_cleared(id: StringName) -> bool:
 
 
 ## 話 id をクリアしたと書く（いまの物語に。もう書いてあれば何もしない）。確かめ用に開いている間は、記録に書かずに覚えるだけ。
+## 確かめ用に開いて始めた、記録どおりではまだ遊べない話（_opened_runs）は、途中で戻してから勝っても記録に書かない
+## （書くと、一本道の読み方で前の話が全部クリアになる）。
 func clear(id: StringName) -> void:
 	if is_cleared(id):
 		return
 	if open_all:
 		_open_cleared.append(String(id))
 		changed.emit()
+		return
+	if _opened_runs.has(String(id)):
 		return
 	_cleared_in(campaign).append(String(id))
 	_save()
@@ -263,6 +269,14 @@ func all_cleared() -> bool:
 	for each: Campaign in campaigns():
 		if is_ready(each) and cleared_count(each) < each.episodes.size():
 			return false
+	return true
+
+
+## 話 id が、記録どおりの進み具合で遊べるか（確かめ用に開いているかに依らない）。いまの物語に無い話は、遊べるものとして扱う。
+func _reachable(id: StringName) -> bool:
+	for index: int in campaign.episodes.size():
+		if campaign.episodes[index].id == id:
+			return index == 0 or _cleared_in(campaign).has(String(campaign.episodes[index - 1].id))
 	return true
 
 
@@ -458,6 +472,8 @@ static func first_battle(episode: Episode) -> StoryBattle:
 ## 話の物語を、いまの物語にする。初めてクリアする話なら、あとの会話の最後に、増えるものの知らせを出す。
 func run_now(episode: Episode) -> Run:
 	choose_campaign(campaign_of(episode))
+	if open_all and not _reachable(episode.id) and not _opened_runs.has(String(episode.id)):
+		_opened_runs.append(String(episode.id))
 	var now := unlocked()
 	var news: Array[Dictionary] = []
 	if not is_cleared(episode.id):
