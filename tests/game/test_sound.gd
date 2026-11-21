@@ -138,7 +138,7 @@ func test_climax_starts_when_either_king_is_down_to_half() -> void:
 
 
 func test_talk_music_defaults() -> void:
-	var path := "res://game/story/episodes/ridge_hold.txt"
+	var path := "res://game/story/military/ridge_hold.txt"
 	var text := FileAccess.get_file_as_string(path)
 	var Episode: GDScript = Story.military().find_episode(&"ridge_hold").get_script()
 	var plain: RefCounted = Episode.parse(text.replace("before_music = battle_tense\n", "").replace("after_music = talk_bright\n", ""), path)

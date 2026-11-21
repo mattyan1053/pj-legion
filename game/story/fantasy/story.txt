@@ -1,0 +1,34 @@
+# ストーリーの物語「リュエル騎士領の物語」（FANTASY の物語）。
+#
+# 物語は、軍 1 つと話の列。人はこの軍で話を進め、話をクリアすると、この軍の駒が雇えるようになる。
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」（魔法の国リュエル騎士領の騎士長が、同じ戦争を反対側から見る）。
+# FANTASY は数が少なく、1 体のコストが高い（docs/unit-roster.md の「軍の釣り合い」）。最初のコスト上限は、対戦のコスト上限（18）より 4 低い。
+# 書き方は docs/story.md の「物語のファイル」（書き方の見本は game/story/_template/）。話は、このフォルダの <id>.txt。
+
+[campaign]
+title = リュエル騎士領の物語
+army = fantasy
+rules = story_fantasy
+budget = 14
+order = 2
+
+[start]
+unit = paladin
+unit = sorcerer
+
+[episodes]
+trial_first_steps
+trial_fireball
+trial_ward
+trial_shadow_step
+trial_eruption
+trial_evolution
+gorge_crossing
+gorge_rejoin
+ridge_siege
+barrow_vigil
+crag_drums
+boulder_warden
+mist_forest
+ridge_bones
+vale_keeper
