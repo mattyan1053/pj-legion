@@ -194,6 +194,7 @@ deploy = 8,9  5,9  11,9
 | | `map` | 盤（手で作ったマップの id。`game/maps/` のファイルの名前。`docs/hand-map.md`）。景色もマップが決める |
 | | `look` | 無くてよい。この話だけ、マップと別の見た目にする（`stage_look.gd` の名前） |
 | | `music`、`before_music`、`after_music` | 無くてよい。対戦の曲、前の会話の曲、あとの会話の曲（`sound_catalog.gd` の `MUSIC` の名前。`docs/sound.md`）。無ければ、盤の見た目の曲、その話の対戦の曲、落ち着いた曲（`talk_calm`）。前の会話に対戦の曲を書くなら、その話の対戦の曲と同じにする |
+| | `climax_music` | 無くてよい。終盤の曲（どちらかの将の HP が半分を切ったら替わる曲。`docs/sound.md`）。無ければ `battle_climax` |
 | | `victory_mood` | 無くてよい。勝ったときの調子: `bright`（ファンファーレのあと静かな曲。既定）か `quiet`（ファンファーレを鳴らさない。明るくない話）（`docs/sound.md`） |
 | | `lesson` | 無くてよい。出撃準備に出す「この話で覚えること」（48 字まで） |
 | | `hold_turns` | 無くてよい。人（プレイヤー1）がこのターンの終わりまで守り切れば勝ち |
