@@ -15,9 +15,12 @@ title = 見本の話
 # 盤（手で作ったマップの id。docs/hand-map.md）。景色はマップが決める。look は無くてよい（この話だけ別の見た目にするとき。stage_look.gd の見た目の名前）。
 map = ridge_path
 look = stone_walls
-# 無くてよい: 対戦の曲と会話の曲（sound_catalog.gd の MUSIC の名前）。無ければ、盤の見た目の曲と、会話の場面の曲。
+# 無くてよい: 対戦の曲、前の会話の曲、あとの会話の曲（sound_catalog.gd の MUSIC の名前。docs/sound.md）。
+# 無ければ、盤の見た目の曲、対戦の曲（会話の間は小さく鳴らし、そのまま対戦へつながる）、落ち着いた曲（talk_calm）。
+# 前の会話に対戦の曲（battle で始まる名前）を書くなら、その話の対戦の曲と同じにする（検査が確かめる）。
 # music = battle_tense
-# talk_music = talk
+# before_music = battle_tense
+# after_music = talk_bright
 # 無くてよい: 出撃の準備に出す「この話で覚えること」（チュートリアルの話だけ。48 字まで）。
 # lesson = 駒を押して動かし、隣の敵を攻撃する。
 # 無くてよい: 人がこのターンの終わりまで守り切れば勝ち。

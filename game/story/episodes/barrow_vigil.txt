@@ -11,6 +11,8 @@
 title = 古戦場の祈り
 map = old_battlefield
 music = battle_tense
+before_music = battle_tense
+after_music = talk_sad
 hold_turns = 8
 
 [unlock]

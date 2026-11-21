@@ -33,8 +33,19 @@ const MUSIC := {
 	&"battle_undead": {"path": "res://assets/audio/oga-battle/the_march_of_devils_dome.ogg", "loop": true, "volume_db": -10.0},
 	## 終盤（どちらかの将の HP が半分を切った）。対戦の途中で、この曲へフェードで替わる（CLIMAX_MUSIC）。
 	&"battle_climax": {"path": "res://assets/audio/oga-battle/epic_boss_battle_loop.ogg", "loop": true, "volume_db": -14.5},
-	## ストーリーの会話。
+	## ストーリーの会話（話のファイルの before_music・after_music で選ぶ。docs/sound.md）。前の会話は、ふつうは対戦の曲を小さく（TALK_BATTLE_DB）。
+	## 軽い会話（酒場の曲。演習の始まりなど）。
 	&"talk": {"path": "res://assets/audio/randommind/medieval_the_old_tower_inn_loop.ogg", "loop": true, "volume_db": -2.5},
+	## 勝って明るい会話（祝いの曲）。
+	&"talk_bright": {"path": "res://assets/audio/randommind/medieval_rejoicing_loop.ogg", "loop": true, "volume_db": -8.5},
+	## 落ち着いた会話（ピアノと弦。戦いのあとの一息、和解）。あとの会話の既定。
+	&"talk_calm": {"path": "res://assets/audio/oga-talk/waiting_ii.ogg", "loop": true, "volume_db": -1.0},
+	## 悲しい会話（弔い）。
+	&"talk_sad": {"path": "res://assets/audio/randommind/fantasy_lament_for_a_warriors_soul.ogg", "loop": true, "volume_db": -3.5},
+	## 不穏な会話（対決、明かされる真実）。
+	&"talk_dark": {"path": "res://assets/audio/oga-talk/the_confrontation.ogg", "loop": true, "volume_db": -2.0},
+	## 戦いのあとの重い会話（倒れた兵を思う）。
+	&"talk_aftermath": {"path": "res://assets/audio/oga-talk/aftermath.ogg", "loop": true, "volume_db": -3.5},
 	&"victory": {"path": "res://assets/audio/randommind/medieval_victory_theme.ogg", "loop": false, "volume_db": -6.0},
 	&"defeat": {"path": "res://assets/audio/randommind/medieval_defeat_theme.ogg", "loop": false, "volume_db": -6.0},
 }
@@ -43,6 +54,12 @@ const MUSIC := {
 ## この曲へ替わる（battle_screen.gd）。戻らない。新しい対戦を始めると、その対戦の曲に戻る。
 const CLIMAX_MUSIC := &"battle_climax"
 const CLIMAX_KING_HP := 0.5
+
+## 会話の場面で対戦の曲（名前が battle で始まる曲）を鳴らすときに、表の大きさから下げる dB（台詞を読む間は控えめに）。
+## 前の会話から対戦へ同じ曲で入ると、鳴らし直さずに、表の大きさへフェードで戻る。
+const TALK_BATTLE_DB := -6.0
+## 前の会話・あとの会話の曲を話のファイルが書かないときの、あとの会話の曲。前の会話は、その話の対戦の曲。
+const AFTER_TALK_MUSIC := &"talk_calm"
 
 ## 効果音。
 ## - path: 素材。volume_db: 音ごとの大きさ（操作の音は控えめに、BGM の下に置く）。
@@ -147,6 +164,16 @@ static func climax_reached(battle: Battle, king_ids: Array[int]) -> bool:
 		if king == null or king.hp <= king.max_hp() * CLIMAX_KING_HP:
 			return true
 	return false
+
+
+## 対戦の曲か（名前が battle で始まる）。会話の場面では、小さくして鳴らす（TALK_BATTLE_DB）。
+static func is_battle_music(track: StringName) -> bool:
+	return String(track).begins_with("battle")
+
+
+## 会話の場面で曲 track を鳴らすときの、表の大きさからの差（dB）。
+static func talk_offset_db(track: StringName) -> float:
+	return TALK_BATTLE_DB if is_battle_music(track) else 0.0
 
 
 static func has_music(track: StringName) -> bool:

@@ -12,6 +12,8 @@
 title = 古戦場の亡者
 map = old_battlefield
 music = battle_undead
+before_music = battle_undead
+after_music = talk_dark
 wins = routed
 
 [unlock]

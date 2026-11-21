@@ -15,6 +15,8 @@
 title = 分かれ道
 map = drill_field
 look = crystal_forest
+before_music = battle_crystal
+after_music = talk_calm
 lesson = レベル 3 に上がった駒は、進化先を 2 つから選ぶ。選んだ型で戦い方が変わる。
 
 [ally]
