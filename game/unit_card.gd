@@ -8,6 +8,8 @@ const DeckText := preload("res://game/deck_text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const Palette := preload("res://game/ui_palette.gd")
+const SheetParts := preload("res://game/sheet_parts.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
 const StatsRow := preload("res://game/stats_row.gd")
 const CostGems := preload("res://game/cost_gems.gd")
@@ -39,14 +41,16 @@ static func build(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], side :
 	var title := _label(Names.kind(kind), 16)  # いちばん長い名前（シールドトルーパー）が札の幅に収まる大きさ
 	title.name = "Name"
 	names.add_child(title)
-	var role := DeckText.role_name(kind)
-	var head := Text.t("deck.card.king") if kind == UnitKind.Id.KING else Text.t("deck.detail.role", {"role": role, "cost": UnitKind.cost(kind)})
+	# 役割は小さな札（ステータスの窓と同じ。sheet_parts.gd）、コストはその横に補足の色で。将は「本陣に配置」の札だけ。
 	var head_row := HBoxContainer.new()
-	head_row.add_theme_constant_override("separation", 4)
+	head_row.add_theme_constant_override("separation", 6)
 	names.add_child(head_row)
-	var head_label := _label(head, 13, true)
-	head_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head_row.add_child(head_label)
+	var role := DeckText.role_name(kind)
+	if kind == UnitKind.Id.KING or role != "":
+		head_row.add_child(SheetParts.tag(Text.t("deck.card.king") if kind == UnitKind.Id.KING else role, Palette.TEXT))
+	var cost_label := _label(Text.t("deck.sheet.cost", {"cost": UnitKind.cost(kind)}) if kind != UnitKind.Id.KING and UnitKind.army(kind) != UnitKind.Army.NONE else "", 13, true)
+	cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head_row.add_child(cost_label)
 	if kind != UnitKind.Id.KING and UnitKind.army(kind) != UnitKind.Army.NONE:
 		head_row.add_child(CostGems.new(UnitKind.cost(kind), 0, 7.0))
 	# 能力値は、項目ごとに幅のそろった欄に分ける（札を並べたとき、数が縦にそろう）。
