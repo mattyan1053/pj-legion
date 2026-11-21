@@ -47,11 +47,15 @@
 
 | 盤の見た目 | 曲の名前 | 曲 |
 | --- | --- | --- |
-| 草原（中央平原・大岩の峠など）、見た目の分からない対戦 | `battle` | 弦と金管の勇ましい曲（Battle Theme A のループ版） |
-| 石の遺跡（迷宮回廊・尾根の小道など） | `battle_ruins` | 重く暗い 3 拍子の曲（Great Labyrinth） |
-| 結晶の森（双子結晶・結晶の岩山など） | `battle_crystal` | 打楽器の刻みが続く、異国風の曲（Sigil） |
+| 草原（中央平原）、見た目の分からない対戦 | `battle` | 弦と金管の勇ましい曲（Battle Theme A のループ版） |
+| 石の遺跡（迷宮回廊）、月夜の結晶の岩山 | `battle_ruins` | 重く暗い 3 拍子の曲（Great Labyrinth） |
+| 結晶の森（双子結晶など） | `battle_crystal` | 打楽器の刻みが続く、異国風の曲（Sigil） |
+| 尾根・採掘場 | `battle_march` | ホルンと小太鼓の、軍の行進のような曲（The Battlefield） |
+| 峠（大岩の峠） | `battle_fields` | 木管と弦と打楽器の、ファンタジーの戦いの曲（Fantasy - Battlegrounds） |
+| 演習場・深い森 | `battle_knight` | 勇ましいが角の立たない、騎士の曲（A Knight's Challenge） |
+| 古戦場・縫い目の谷 | `battle_lament` | 合唱と太鼓の、戦の嘆きの曲。4 分近くあり、静かな所と山がある（Laments of the War） |
 
-手で作ったマップのための見た目（採掘場など）は、曲を足さず、上の 3 つのうち近い景色の曲を使う（どの見た目がどの曲かは `LOOK_MUSIC` が正）。
+どの見た目がどの曲かは `LOOK_MUSIC` が正。対戦モードの並び（`versus_fields.gd`）で隣り合うマップは、違う曲にする（テストが確かめる）。
 
 ストーリーの特別な話は、話のファイルの `music` で選ぶ（どの話が使うかは、話のファイルが正。`game/story/episodes/`）:
 
@@ -60,7 +64,10 @@
 | 守り切る | `battle_tense` | 弦の速い刻みと金管。時間に追われる曲（Determined Pursuit） |
 | 中ボスの撃破 | `battle_boss` | 巨大な魔物に挑む曲（The Fire Dragon） |
 | 全滅させる | `battle_rout` | 攻め込む行進の曲。4 分あり、途中で形が変わる（QaziJamJam） |
-| 魔物（骸骨の軍） | `battle_undead` | 不気味な軍の行進（The March of Devils Dome） |
+| 魔物（骸骨の軍） | `battle_undead` | 不気味な軍の行進（The March of Devils Dome）。古戦場の見た目の曲 `battle_lament` も、骸骨の軍の話に使う |
+
+話は、景色の曲（上の表）と特別な話の曲（この表）から選び、**物語の並びで隣り合う話が同じ対戦の曲にならないようにする**（テストが確かめる）。
+同じマップを使い回す話（演習場、尾根の小道）は、話のファイルの `music` で曲を替える。
 
 **決着のあと**: ファンファーレのあとは、ループの静かな曲を続ける（ファンファーレのあとの無音で決着の画面を待たせない）。
 ストーリーの話は、その話のあとの会話の曲（`after_music`。「次へ」で、そのまま会話へつながる）。対戦モードは `talk_calm`（`AFTER_RESULT_MUSIC`）。
@@ -72,6 +79,7 @@
 
 **終盤**: 対戦の途中で、どちらかの将の HP が半分以下になったら（倒れたときも）、終盤の曲 `battle_climax`（Epic Boss Battle）へフェードで替わる
 （`sound_catalog.gd` の `CLIMAX_MUSIC` と `CLIMAX_KING_HP`、判定は `climax_reached`）。
+物語の最後の話は、話のファイルの `climax_music` で、別の終盤の曲 `battle_final`（弦と金管のドラマの曲。The Final Battle）にする。
 
 - 1 対戦に 1 回だけ。替えたら戻さない（新しい対戦を始めると、その対戦の曲に戻る）。決着がついたあとは替えない（決着の曲を消さない）。
 - どちらの将かは問わない。曲が形勢（どちらが優勢か）を告げると気が散るので、「戦いが山場に来た」ことだけを知らせる。

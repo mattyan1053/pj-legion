@@ -565,7 +565,7 @@ func _update_climax() -> void:
 	if _climax or not SoundCatalog.climax_reached(battle, _climax_kings):
 		return
 	_climax = true
-	context.play_scene_music(SoundCatalog.CLIMAX_MUSIC)
+	context.play_scene_music(source.climax_music())
 
 
 ## 終盤の曲に替えたか。検査用。
