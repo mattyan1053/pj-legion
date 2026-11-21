@@ -6,6 +6,7 @@ extends Node
 ## 中立の駒、レベルアップ、進化、回復、閲覧、対戦設定、システムメニュー、CPU の番）、最後にタイトルと部隊編成の場面を通す場面。
 ## 長い検査（`-- --autoplay --full`）では、game のあとに盤面を作り直して、ほかのマップも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ##
+## `-- --autoplay --story-all` と `-- --autoplay --versus-all` は、場面のかわりに、通しの点検の長い道を通す（autoplay_sweeps.gd）。
 ## `-- --autoplay --only <名前,…>` で、選んだ場面だけを回す（名前は SCENES の名前か、GROUPS のまとまりの名前）。
 ## 場面の中で確かめたことが外れたら、その場面の残りを飛ばして次の場面へ進み、最後にまとめて失敗にする。
 ## イベントを再生する場面（GROUPS の events）を全部回したときは、どの種類のイベントも 1 回は再生したことを確かめる。
@@ -24,6 +25,7 @@ const StageLook := preload("res://game/stage_look.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 const RandomSquad := preload("res://game/random_squad.gd")
+const AutoplaySweeps := preload("res://game/autoplay_sweeps.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
@@ -134,10 +136,24 @@ static func _choose_scenes(args: PackedStringArray) -> Array[String]:
 func _ready() -> void:
 	var screen := get_viewport().get_visible_rect().size
 	print("autoplay: 画面 %dx%d" % [screen.x, screen.y])
-	if _selected.is_empty():
+	var args := OS.get_cmdline_user_args()
+	if args.has("--story-all") or args.has("--versus-all"):
+		_sweep.call_deferred(args)
+	elif _selected.is_empty():
 		_finish("autoplay: --only に知らない名前がある（場面: %s、まとまり: %s）" % [", ".join(SCENES.keys()), ", ".join(GROUPS.keys())], 1)
 	elif not _selected.has("game"):
 		_queue_scenes()
+
+
+## 通しの点検の長い道（autoplay_sweeps.gd）を通して終える。場面（SCENES）は回さない。
+func _sweep(args: PackedStringArray) -> void:
+	_leaving = true
+	var app := _scene.get_parent()
+	reparent(app)  # このノードは対戦の場面の子なので、場面が消える前にアプリの子へ移る
+	await AutoplaySweeps.new(self).run(app, args)
+	_scene = app  # 対戦の場面はもう無い。終えるときは、アプリの context で音を止める
+	_finish("autoplay: OK" if _failures.is_empty() else "autoplay: 失敗した所がある（%d 件）:\n  %s" % [_failures.size(), "\n  ".join(_failures)],
+		0 if _failures.is_empty() else 1)
 
 
 func _process(_delta: float) -> void:

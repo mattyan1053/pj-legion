@@ -521,6 +521,12 @@ func enter_destination() -> String:
 	return _leave_button.text
 
 
+## 流れの外への行き先のボタン（「話の一覧へ」など）を押す（出していなければ何もしない）。
+func press_leave() -> void:
+	if _leave_button.visible:
+		title_pressed.emit()
+
+
 ## 「同じマップで再戦」を押す。
 func press_again() -> void:
 	restart_pressed.emit(&"", false)
