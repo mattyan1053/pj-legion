@@ -1,7 +1,8 @@
 extends HBoxContainer
 ## 能力値 1 つの行（駒の詳細の窓。unit_detail.gd）: 名前、いまの値（太字）、持ち物などでの増減（色と矢印）、目盛り。
 ## 目盛りは、HP と攻撃が目盛り線つきの棒、移動と射程が菱形の粒。素の値のぶんは金、増えたぶんは良い知らせの色、
-## 減ったぶんは危険の色の抜き。HP の棒は、いまの HP の割合の色で埋める（減っているぶんは沈める）。
+## 減ったぶんは危険の色の抜き。HP の棒は、枠の長さが最大 HP（小さい駒でも読めるよう、下駄を履かせる）、塗りがいまの HP。
+## いまの HP の割合の色で埋める（減っているぶんは沈める）。
 ## 大きさは中身で変わらない（名前・値・増減の欄は幅を決めてある）。
 
 const Text := preload("res://game/text.gd")
@@ -77,6 +78,10 @@ class Meter:
 	## 棒の目盛り線の間隔（端の値がこれより大きいほど、粗くする）。
 	const TICKS := [[30, 5], [60, 10], [100000, 20]]
 
+	## HP の棒の枠の長さの下駄（最大 HP がどれだけ小さくても、棒の欄のこの割合はある。残りを最大 HP の大小で伸ばす）。
+	## 枠が短いと、HP が減った駒の塗りが数 px になって、割合が読めない。
+	const HP_FRAME_FLOOR := 0.45
+
 	var value := 0
 	var plain := 0
 	var scale_max := 1
@@ -93,13 +98,20 @@ class Meter:
 		else:
 			_draw_bar()
 
+	## HP の棒の枠の長さ（棒の欄の幅に対する割合）: 最大 HP が目盛りの端なら 1、小さくても HP_FRAME_FLOOR はある。
+	static func hp_frame_ratio(max_hp: int, scale: int) -> float:
+		return lerpf(HP_FRAME_FLOOR, 1.0, clampf(float(max_hp) / float(maxi(scale, 1)), 0.0, 1.0))
+
 	func _draw_bar() -> void:
 		var groove := Rect2(Vector2.ZERO, size)
 		var unit := (size.x - 4.0) / float(scale_max)
 		if hp >= 0:
-			# HP の溝は最大 HP の長さまで（満タンの駒の棒が、欠けて見えないように）。その先は、目盛りの端までの淡い跡だけ。
+			# HP の枠は最大 HP の長さ（満タンの駒の棒が、欠けて見えないように）。その先は、目盛りの端までの淡い跡だけ。
+			# 枠の中は、その駒の最大 HP が端（塗りの割合が、いまの HP の割合）。
 			draw_rect(groove, Color(Palette.INK, 0.35))
-			groove.size.x = unit * maxi(value, plain) + 4.0
+			var top := maxi(maxi(value, plain), 1)
+			unit = (size.x - 4.0) * hp_frame_ratio(top, scale_max) / float(top)
+			groove.size.x = unit * top + 4.0
 		draw_rect(groove, Palette.INK)
 		var inner := groove.grow(-2.0)
 		var kept := mini(value, plain)
@@ -124,7 +136,7 @@ class Meter:
 		draw_rect(Rect2(inner.position, Vector2(unit * maxi(value, plain), inner.size.y * 0.35)), Color(1.0, 1.0, 1.0, 0.14))
 		var step := 5
 		for pair: Array in TICKS:
-			if scale_max <= pair[0]:
+			if (maxi(value, plain) if hp >= 0 else scale_max) <= pair[0]:
 				step = pair[1]
 				break
 		var at := step
