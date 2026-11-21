@@ -191,7 +191,7 @@ func open_latest() -> void:
 	select(best)
 
 
-## スロット from の中身を、スロット to へ写す（to にあれば置き換える）。写せたか。壊れている・新しい版のスロットからは写さない。
+## スロット from の中身を、スロット to へ写す（to にあれば置き換える。最後に保存した日時とプレイ時間も写す）。写せたか。壊れている・新しい版のスロットからは写さない。
 ## to がいまのスロットなら、いまのスロットも写した中身になる（呼んだ側が、ストーリーと部隊を読み直す）。
 func copy(from: int, to: int) -> bool:
 	if from == to or from < 1 or from > COUNT or to < 1 or to > COUNT:
@@ -201,7 +201,7 @@ func copy(from: int, to: int) -> bool:
 	var found := _read(from)
 	if found["state"] != READY:
 		return false
-	var data := {"saved_at": now.call(), "played_seconds": found["played_seconds"], "sections": (found["sections"] as Dictionary).duplicate(true)}
+	var data := {"saved_at": found["saved_at"], "played_seconds": found["played_seconds"], "sections": (found["sections"] as Dictionary).duplicate(true)}
 	if not _write(to, data):
 		return false
 	if to == current:

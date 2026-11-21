@@ -2340,7 +2340,9 @@ func _visit_slots(app: Node) -> void:
 	screen.press_copy(1)
 	_expect(screen.is_copying() and not screen.is_card_enabled(1), "コピーの元のカードを、コピー先に選べる")
 	screen.choose(2)
-	_expect(not screen.is_copying() and screen.card_text(2) == first.replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う")
+	# （プレイ時間は、いまのスロットだけ数えている途中のぶんが足されるので、比べない）
+	var without_time := func(text: String) -> String: return "\n".join(Array(text.split("\n")).filter(func(line: String) -> bool: return not line.begins_with("プレイ時間")))
+	_expect(not screen.is_copying() and without_time.call(screen.card_text(2)) == without_time.call(first).replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う")
 	screen.press_copy(2)
 	screen.choose(1)
 	var confirm: Node = screen.confirm_window()
@@ -2350,7 +2352,7 @@ func _visit_slots(app: Node) -> void:
 	screen.press_delete(2)
 	_expect(confirm.is_open() and confirm.ok_text() == "削除", "削除を確かめない")
 	confirm.accept()
-	_expect(screen.card_text(2).ends_with("はじめから") and screen.card_text(1) == first, "削除したスロットが空きに戻らない（か、ほかのスロットが変わった）")
+	_expect(screen.card_text(2).ends_with("はじめから") and without_time.call(screen.card_text(1)) == without_time.call(first), "削除したスロットが空きに戻らない（か、ほかのスロットが変わった）")
 	screen.choose(1)
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "「つづきから」で、物語を選ぶ場面へ進まない")
