@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# ストーリーの台本（docs/story-script/）を、話のファイル（game/story/）から書き直す（tools/write_story_script.gd）。
-# 話のファイルを直したら回す。回し忘れると、テスト（tests/tools/test_story_script.gd）が落ちる。
+# ストーリーの台本の目次（game/story/README.md）を、物語のファイル（game/story/）から書き直す（tools/write_story_script.gd）。
+# 話を足す・並べ替える・名前を変えたら回す。回し忘れると、テスト（tests/tools/test_story_script.gd）が落ちる。
+# 台詞を直しただけなら要らない（目次は会話を写さない）。
+# ついでに、通しで 1 本に読める台本を build/story-script/ に書き出す（コミットしない）。
 #
 #   tools/write_story_script.sh <godot>
 set -euo pipefail
