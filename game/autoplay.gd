@@ -20,6 +20,7 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const Episode := preload("res://game/episode.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
+const Palette := preload("res://game/ui_palette.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
@@ -480,6 +481,7 @@ func _queue_capture_scene() -> void:
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void: _expect(battle.capture_turns[Unit.Side.PLAYER1] == 1, "占拠の数が進まなかった"))
 	_scripted.append(func() -> void: _expect(battle.stronghold_holds[Unit.Side.PLAYER1] == 1, "拠点の確保の数が進まなかった"))
+	_scripted.append(func() -> void: _expect(_scene.stronghold_flag_color() == Palette.TEAM_BLUE, "拠点の旗が確保した陣営の色にならなかった"))
 
 
 ## 樽を攻撃して爆発させ、両方の将を巻き込んで引き分けにする。
