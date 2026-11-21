@@ -53,12 +53,14 @@ static func layout(board_size: Vector2i, look_seed: int, scenery: Dictionary) ->
 	var scatter: Array = scenery.get(StageLook.SCATTER, [])
 	# 小さいものを置く割合（1 = 森のように詰めて。木でないもの（荷や石の山）は、まばらにする）。
 	var small_share := float(scenery.get(StageLook.SMALL_SHARE, 1.0))
+	# 大きいものを、尾根のノイズのどこまで下まで置くか（大きいほど、尾根が太く、数が増える。谷の両側の山並み）。
+	var big_spread := float(scenery.get(StageLook.BIG_SPREAD, 0.0))
 
 	for at in _candidates(size, BIG_SPACING, 0.8, rng):
 		var distance := distance_outside(at, size)
 		if big.is_empty() or distance < BIG_FROM or distance > REACH:
 			continue
-		if ridges.get_noise_2d(at.x, at.y) < 0.12:
+		if ridges.get_noise_2d(at.x, at.y) < 0.12 - big_spread:
 			continue
 		var height := lerpf(BIG_HEIGHT.x, BIG_HEIGHT.y, clampf((distance - BIG_FROM) / 40.0, 0.0, 1.0)) * rng.randf_range(0.75, 1.2)
 		items.append(_item(StageLook.BIG, big, rng.randi() % big.size(), at, height, rng.randf() * TAU, distance))

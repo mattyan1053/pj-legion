@@ -416,6 +416,27 @@ func test_raider_does_not_go_for_the_enemy_hq_when_capture_cannot_win() -> void:
 	assert_true(commando.cell != HQ2, "占拠で勝てないのに、敵の本陣へ乗った")
 
 
+## 占拠でしか勝てない話で、相手の駒が残っていない（倒しても終わらなかった）とき、戦う駒は自分の本陣へ戻らず、敵の本陣へ向かう。
+func test_heads_for_the_enemy_hq_when_no_enemy_is_left_and_only_capture_wins() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.KING, P1, HQ1)
+	battle.win_conditions[P1] = [GameWonEvent.Reason.HQ_CAPTURED] as Array[GameWonEvent.Reason]
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(4, 3))
+	var before := Combat.distance(trooper.cell, HQ2)
+	_play_phase(battle)
+	assert_false(battle.is_over())
+	assert_true(Combat.distance(trooper.cell, HQ2) < before, "敵のいない盤で、敵の本陣へ向かわなかった")
+
+
+## 同じとき、戦える駒の残っていない軍の将も、敵の本陣へ向かう。
+func test_lone_king_heads_for_the_enemy_hq_when_no_enemy_is_left() -> void:
+	var battle := _battle()
+	var king := battle.add_unit(UnitKind.Id.KING, P1, HQ1)
+	battle.win_conditions[P1] = [GameWonEvent.Reason.HQ_CAPTURED] as Array[GameWonEvent.Reason]
+	_play_phase(battle)
+	assert_true(Combat.distance(king.cell, HQ2) < Combat.distance(HQ1, HQ2), "敵のいない盤で、将が本陣に残った")
+
+
 func test_holding_side_waits_near_its_hq_instead_of_chasing_far_enemies() -> void:
 	var battle := _battle_with_kings()
 	battle.win_conditions[P1].append(GameWonEvent.Reason.TURNS_HELD)

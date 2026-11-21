@@ -13,7 +13,6 @@
 [episode]
 title = 墓守の眠り
 map = seam_vale
-look = crystal_forest
 music = battle_undead
 wins = king_defeated
 
