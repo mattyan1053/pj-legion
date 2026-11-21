@@ -3,9 +3,10 @@ extends "res://game/looks/look_set.gd"
 ##
 ## 素材は人物ごとに髪・服・顔が違うので、種類ごとに別の人物を当て、同じ素材の武器・盾・小物を腕の骨に付ける。
 ## 素材の絵は、色ごとの濃淡の帯（RAMP の大きさ）を並べた 1 枚。"accent" に挙げた帯を陣営の色に塗り替える。
-## 魔物は、ゾンビと宇宙人とロボットで代わりにする（骸骨は無い）。被弾の動きは無いので、unit_body.gd の代わりの動き。
+## 魔物は、Quaternius の骸骨（quaternius_skeleton.gd。「人物」の組と同じ形を、この組の背に縮める）。被弾の動きは無いので、unit_body.gd の代わりの動き。
 
 const ModelBody := preload("res://game/looks/model_body.gd")
+const Skeleton := preload("res://game/looks/quaternius_skeleton.gd")
 
 const DIR := "res://assets/kenney/mini-characters/"
 ## 盤の駒の大きさへの倍率と、そのときの体の高さ。
@@ -41,28 +42,16 @@ const KINDS := {
 	UnitKind.Id.SORCERER: {"model": "male-b", "right": "staff", "attack": SHOOT, "accent": [RED]},
 	UnitKind.Id.SPELLBLADE: {"model": "female-a", "right": "sword", "attack": MELEE, "accent": [PURPLE]},
 	UnitKind.Id.PRIEST: {"model": "female-d", "right": "holy_staff", "attack": SHOOT, "accent": [SLATE]},
-	UnitKind.Id.SKELETON: {"model": "zombie", "right": "sword", "attack": MELEE, "accent": [SLATE], "scale": 0.92},
-	UnitKind.Id.SKELETON_ARCHER: {"model": "zombie", "right": "bow", "attack": SHOOT, "accent": [SLATE]},
-	UnitKind.Id.SKELETON_BRUTE: {"model": "robot", "right": "sword", "left": "shield_round", "attack": MELEE, "accent": [YELLOW], "scale": 1.2},
-	UnitKind.Id.SKELETON_CALLER: {"model": "alien", "right": "dark_staff", "attack": SHOOT, "accent": [WHITE], "scale": 0.92},
-	UnitKind.Id.SKELETON_DRUMMER: {"model": "zombie", "right": "cane", "left": "shield_round", "attack": MELEE, "accent": [SLATE], "scale": 1.05},
 }
-## 将の別の姿（unit_looks.gd の KING_LOOKS の名前 -> KINDS と同じ形）。
-const KING_LOOKS := {
-	&"skeleton_mage": {"model": "alien", "right": "dark_staff", "attack": SHOOT, "accent": [WHITE], "scale": 1.18},
-}
-
 ## 腕に持つもの。"file" は素材のファイル、"at" は手からのずらし、"turn" は回し方（度）。どちらも、立っているときに駒がまっすぐ立つ向きで書く。
 const ITEMS := {
 	"sword": {"file": "weapon-sword", "at": Vector3(0.0, 0.02, 0.04), "turn": Vector3(25.0, 0.0, 0.0)},
 	"bow": {"file": "weapon-bow", "at": Vector3(0.0, -0.2, 0.06), "turn": Vector3.ZERO},
 	"shooter": {"file": "weapon-shooter", "at": Vector3(0.0, 0.0, 0.08), "turn": Vector3.ZERO},
-	"cane": {"file": "aid-cane", "at": Vector3(0.0, -0.26, 0.04), "turn": Vector3.ZERO},
 	"defibrillator": {"file": "aid-defibrillator-red", "at": Vector3(-0.04, -0.2, 0.04), "turn": Vector3.ZERO},
 	# 杖は素材に無いので、コードで組む（柄と、光る玉）。"orb" は玉の色。
 	"staff": {"orb": Color("ffb040"), "at": Vector3(0.0, -0.3, 0.04), "turn": Vector3.ZERO},
 	"holy_staff": {"orb": Color("fff2b0"), "at": Vector3(0.0, -0.3, 0.04), "turn": Vector3.ZERO},
-	"dark_staff": {"orb": Color("b060ff"), "at": Vector3(0.0, -0.3, 0.04), "turn": Vector3.ZERO},
 	"shield_round": {"file": "shield-round", "at": Vector3(0.02, 0.0, 0.1), "turn": Vector3.ZERO},
 	"shield_rectangle": {"file": "shield-rectangle", "at": Vector3(0.02, -0.14, 0.1), "turn": Vector3.ZERO},
 }
@@ -82,8 +71,10 @@ func _init() -> void:
 
 
 func build(kind: UnitKind.Id, team_color: Color, look: StringName, at: Vector3) -> UnitBody:
-	if kind == UnitKind.Id.KING and KING_LOOKS.has(look):
-		return _model_body(KING_LOOKS[look], team_color)
+	if kind == UnitKind.Id.KING and Skeleton.KING_LOOKS.has(look):
+		return Skeleton.build(Skeleton.KING_LOOKS[look], team_color, MODEL_HEIGHT)
+	if Skeleton.KINDS.has(kind):
+		return Skeleton.build(Skeleton.KINDS[kind], team_color, MODEL_HEIGHT)
 	if KINDS.has(kind):
 		return _model_body(KINDS[kind], team_color)
 	return super(kind, team_color, look, at)
