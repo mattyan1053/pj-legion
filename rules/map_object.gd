@@ -7,6 +7,7 @@ extends RefCounted
 ##
 ## - 起爆樽: 入れない。攻撃されると爆発して消え、周り 8 マスの駒すべてに固定のダメージ
 ## - 回復の泉: 入れる。プレイヤーのフェーズの始めに、乗っているそのプレイヤーの駒が回復する
+## - 砲台: 入れる。試しの決まり（TrialRules.BATTERY）が入のときだけ置かれる。乗った後衛の射程が伸びる（Unit.site_range）
 ## - ポータル: 入れる。対になるポータルへ、移動力を使わずに移れる（Movement、Battle.portal_exit）
 
 enum Type {
@@ -14,6 +15,7 @@ enum Type {
 	BARREL,  ## 起爆樽
 	SPRING,  ## 回復の泉
 	PORTAL,  ## ポータル
+	BATTERY,  ## 砲台（試しの決まり）
 }
 
 ## 起爆樽の耐久力。攻撃 1 回で（攻撃力によらず）1 減るので、攻撃されれば必ず爆発する。
@@ -22,6 +24,15 @@ const BARREL_HP := 1
 const BLAST_DAMAGE := 15
 ## 回復の泉の回復量。
 const SPRING_HEAL := 12
+## 砲台に乗った後衛の射程の伸び。
+const BATTERY_RANGE := 3
+
+
+## unit が cell に立ったときの、砲台による射程の伸び。後衛が、置かれた砲台（Board.battery_cells）のマスに立ったときだけ BATTERY_RANGE。
+static func battery_bonus(board: Board, unit: Unit, cell: Vector2i) -> int:
+	if board.battery_cells.is_empty() or UnitKind.role(unit.kind) != UnitKind.Role.REARGUARD:
+		return 0
+	return BATTERY_RANGE if board.battery_cells.has(cell) else 0
 
 
 static func is_walkable(type: Type) -> bool:

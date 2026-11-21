@@ -127,6 +127,9 @@ const SCENES := {
 	"ult_eruption": "魔力解放の効果（全員に同時に立つ光の柱と知らせ）",
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
+	"battery_cell": "砲台（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
+	"battery": "砲台に乗った後衛を選んだところ（射程が伸びている。中央平原）",
+	"setup_battery": "対戦設定で、試しの決まりの「砲台」を「あり」にしたところ",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
 	"portal_range": "ポータルへ届く駒を選んで、範囲の中のポータルと、その対の出るポータルが同じ色で塗られている（範囲は転移の先まで広げない。双子結晶）",
 	"portal_menu": "ポータルのマスへ動いて、メニューに「転移」が出ている（行き先のポータルが塗られている。双子結晶）",
@@ -746,6 +749,16 @@ func _scene_setup_random() -> bool:
 	_app.current_scene().setup_panel().choose_random_side()
 	_park_mouse()
 	return true
+
+
+func _scene_setup_battery() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_trial(TrialRules.BATTERY, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.BATTERY)
 
 
 func _scene_setup() -> bool:
@@ -1747,6 +1760,37 @@ func _scene_spring() -> bool:
 
 func _scene_portal() -> bool:
 	return _close_look(BoardGenerator.Stage.TWIN_SPRINGS, func(board: Board) -> Array: return board.portal_exits.keys())
+
+
+func _scene_battery_cell() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.BATTERY])
+	_show()
+	var batteries := _battle.board.battery_cells
+	if batteries.is_empty():
+		return false
+	_scene.click_cell(batteries[0])
+	_scene.focus_camera(batteries[0])
+	return _scene.info_title().begins_with("マス")
+
+
+## 砲台に後衛が乗っている番の始めまで進め、その駒を選ぶ（伸びた射程が、移動範囲の外の攻撃範囲に出る）。
+func _scene_battery() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.BATTERY])
+	var gunner: Array[Unit] = []
+	if not _advance(func() -> bool:
+		gunner.clear()
+		for unit in _battle.units:
+			if unit.site_range > 0 and unit.side == _battle.phase and _battle.can_act(unit):
+				gunner.append(unit)
+		return not gunner.is_empty()
+	):
+		return false
+	_show()
+	_scene.click_cell(gunner[0].cell)
+	_scene.focus_camera(gunner[0].cell)
+	return true
 
 
 func _scene_portal_cell() -> bool:
@@ -2934,10 +2978,12 @@ func _scape_range(look: StringName, title: String) -> bool:
 	return _scene.is_threat_shown()
 
 
-func _new_battle() -> void:
+func _new_battle(trials: Array[StringName] = []) -> void:
 	var choice: RefCounted = MatchChoice.new()
 	choice.field = _field
 	choice.cpu_opponent = false
+	for trial in trials:
+		choice.set_trial(trial, true)
 	_scene.source = choice
 	_battle = choice.to_setup(_seed).create_battle()
 	_stats = BattleStats.new(_battle)

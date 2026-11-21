@@ -121,6 +121,11 @@ const ISOLATION_WEIGHT := 5.0
 const CRUISE_PENALTY := 0.5
 ## 後衛が、狙う相手から 1 マス離れている価値（射程の中で、なるべく遠くに立つ）。
 const STAND_OFF_VALUE := 0.5
+## 砲台に立つ価値と、砲台から 1 歩離れるごとに引く量、引かれる歩数、砲台の射程の先に相手を数える広さ。
+const BATTERY_VALUE := 25.0
+const BATTERY_STEP_COST := 3.0
+const BATTERY_STEPS := 8
+const BATTERY_WATCH := 6
 ## 回復役が、減っている味方を探す範囲（歩数）。
 const HEALER_SEARCH_STEPS := 12
 ## スキルを使う手の、スキルごとの見積もり（対象に選ぶ価値のありそうなマスと、使った結果の価値）は、
@@ -650,7 +655,9 @@ func _in_reach(unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i) -> 
 
 ## unit が cell から手を出すときの射程。いまのマスなら、いまの射程。ほかのマスなら、動いたあとの射程。
 func _reach_from(unit: Unit, cell: Vector2i) -> int:
-	return unit.attack_range() if cell == unit.cell else _moved_reach
+	if cell == unit.cell:
+		return unit.attack_range()
+	return _moved_reach - unit.site_range + MapObject.battery_bonus(_board, unit, cell)
 
 
 ## cells（通常の移動で止まれるマス）のうち、at に手が届き、そこで手を出すのにいちばん良いマス。無ければ Board.NO_CELL。
@@ -970,11 +977,36 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		for friend_cell in _support:
 			apart = mini(apart, Combat.distance(cell, friend_cell))
 		value -= ISOLATION_WEIGHT * maxi(0, apart - SUPPORT_DISTANCE)
+	value += _battery_pull(unit, cell)
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
 		value -= _lethal_penalty
 	return value
+
+
+## 後衛が砲台（docs/map-objects.md）へ寄る・居座る重み。空いている（か自分が乗っている）砲台で、
+## 伸びた射程 + BATTERY_WATCH の中に相手の駒がいるものへ、歩数 BATTERY_STEPS までの所から引かれる。砲台の無い盤では 0。
+func _battery_pull(unit: Unit, cell: Vector2i) -> float:
+	if _board.battery_cells.is_empty() or UnitKind.role(unit.kind) != UnitKind.Role.REARGUARD:
+		return 0.0
+	var best := 0.0
+	var reach := unit.attack_range() - unit.site_range + MapObject.BATTERY_RANGE
+	for battery in _board.battery_cells:
+		var holder := _battle.unit_at(battery)
+		if holder != null and holder != unit:
+			continue
+		var steps := _steps_from(battery)[cell.y * _board.size.x + cell.x]
+		if steps > BATTERY_STEPS:
+			continue
+		var watched := false
+		for other in _battle.units:
+			if other.side == _foe and Combat.distance(other.cell, battery) <= reach + BATTERY_WATCH:
+				watched = true
+				break
+		if watched:
+			best = maxf(best, BATTERY_VALUE - BATTERY_STEP_COST * steps)
+	return best
 
 
 ## unit の目標（どこへ近づきたいか）を決めて、_goal_steps、_goal_reach、役割ごとの重み、_stand_off に置く。
