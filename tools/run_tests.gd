@@ -71,7 +71,7 @@ func _initialize() -> void:
 			var errors_before := errors.count
 			var started := Time.get_ticks_msec()
 			var test: Object = script.new()
-			test.call(name)
+			await test.call(name)  # 画面の大きさを測るテストは、コマを待つ（base_test.gd の settle）
 			timings.append([Time.get_ticks_msec() - started, label])
 			var problems: Array[String] = test.failures.duplicate()
 			if errors.count != errors_before:

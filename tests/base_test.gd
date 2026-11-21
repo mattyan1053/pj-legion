@@ -8,6 +8,10 @@ extends RefCounted
 ##
 ## メソッドごとに新しいインスタンスで実行する（テストどうしで状態を持ち越さない）。
 ## 失敗しても止めずに最後まで実行し、失敗した箇所をすべて報告する。
+##
+## 画面の部品（Control）の大きさは、木に入れて 1 コマ待ってから測る（`await settle(node)`）。
+## 木の外や、待たずに測ると、前に測った大きさが返る（文や字の大きさを替えても変わらない）。
+## テストのメソッドは await してよい（run_tests.gd が待つ）。
 
 var failures: Array[String] = []
 
@@ -35,6 +39,15 @@ func assert_ne(actual: Variant, unexpected: Variant, message := "") -> void:
 func assert_between(actual: float, low: float, high: float, message := "") -> void:
 	if actual < low or actual > high:
 		_fail("%s〜%s のはずが %s" % [low, high, actual], message)
+
+
+## node を木に入れ（親が無ければ root の下へ）、1 コマ待つ。そのあと、get_combined_minimum_size() などが、いまの中身の大きさを返す。
+## 中身を替えたら、測る前にもう一度呼ぶ。木から外して消すのは、呼んだ側の仕事（node.free()）。
+func settle(node: Node) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if node.get_parent() == null:
+		tree.root.add_child(node)
+	await tree.process_frame
 
 
 func _same(a: Variant, b: Variant) -> bool:
