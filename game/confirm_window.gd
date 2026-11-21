@@ -18,6 +18,8 @@ const WIDTH := 440.0
 
 ## 重なる画面の積み上げ（無くてもよい）。
 var overlays: RefCounted
+## 開いている間、後ろの場面の時間を止めるか（overlay_stack.gd の pausing）。
+var pausing := false
 
 var _title: Label
 var _note: Label
@@ -80,7 +82,7 @@ func ask(title: String, note: String, ok_label: String, action: Callable) -> voi
 	_action = action
 	visible = true
 	if overlays != null:
-		overlays.open(self)
+		overlays.open(self, pausing)
 
 
 func is_open() -> bool:
