@@ -1,0 +1,255 @@
+extends RefCounted
+## 自動の対戦（autoplay.gd）の、通しの点検（playtest-sweep）のための長い道。PR ごとの検査（tools/check.sh）には入れない。
+##
+## - `-- --autoplay --story-all`: 両方の物語を、第 1〜STORY_EPISODES 話まで、画面の道で通す。
+##   タイトル →「ストーリー」→ セーブデータ選択 → 物語を選ぶ → 話の一覧（確かめ用の解放 F5 で全部を開く）→ 話を選ぶ →
+##   出撃準備 →「出撃」→ 対戦の前の会話を 1 文ずつ送る → 対戦の途中の台詞（[cues]）を 1 つずつ出して送る →
+##   小さな盤でわざと負けて、決着の画面の負けの台詞（[lost]）を見る →「話の一覧へ」で戻り、次の話へ。
+## - `-- --autoplay --versus-all`: 対戦モードの全部のマップを、試しの決まり（TrialRules.ALL）を全部切ったものと全部入れたもので、
+##   タイトル →「対戦」→ マップ選択 → 対戦設定（相手は CPU）→ 対戦を VERSUS_TURNS ターンまで（自分の番は「おまかせ」）→ タイトル。
+##   試しの決まりが増えても、TrialRules.ALL から取るので、ここは変えなくてよい。
+##
+## 確かめたことが外れたら autoplay.gd の _expect で貯め、最後にまとめて失敗にする（"autoplay: OK" が出なければ失敗）。
+## 使い方は docs/README.md の「検査の分け方」と、.claude/skills/playtest-sweep/SKILL.md（手で回すときは tools/sweep.sh）。
+
+const SceneFlow := preload("res://game/scene_flow.gd")
+const Story := preload("res://game/story.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
+const BattleHud := preload("res://game/battle_hud.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
+
+## 物語ごとに通す話の数（頭から）。
+const STORY_EPISODES := 15
+## 対戦モードの 1 局を、このターンまで進める。
+const VERSUS_TURNS := 4
+## 待つ上限（コマ）。
+const WAIT_FRAMES := 3000
+
+## 呼んだ自動の対戦（autoplay.gd。_expect と、キーを押す道具を借りる）。
+var _autoplay: Node
+
+
+func _init(autoplay: Node) -> void:
+	_autoplay = autoplay
+
+
+## 引数で選んだ道を通す。
+func run(app: Node, args: PackedStringArray) -> void:
+	# 自動の対戦は、対戦の場面から始まる。場面の切り替え（幕が明ける）が済むのを待ってから、タイトルへ。
+	while app.get(&"_changing"):
+		await app.get_tree().process_frame
+	await app.go(SceneFlow.TITLE)
+	_expect(app.current_id() == SceneFlow.TITLE, "タイトルへ戻れない")
+	if args.has("--story-all"):
+		for campaign in Story.campaigns():
+			if Story.is_ready(campaign):
+				await _story_campaign(app, campaign)
+	if args.has("--versus-all"):
+		for field in VersusFields.ids():
+			for trials: Array[StringName] in [[] as Array[StringName], TrialRules.ALL]:
+				await _versus(app, field, trials)
+
+
+func _expect(ok: bool, message: String) -> void:
+	_autoplay._expect(ok, message)
+
+
+func _go(app: Node, id: StringName) -> void:
+	if app.current_id() != id:
+		await app.go(id)
+
+
+## 物語 campaign の頭の STORY_EPISODES 話を通す。
+func _story_campaign(app: Node, campaign: RefCounted) -> void:
+	_autoplay._current = "story-all %s" % campaign.title
+	await _go(app, SceneFlow.TITLE)
+	app.current_scene().press_story()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.SLOTS, "タイトルの「ストーリー」で、セーブデータ選択へ進まない")
+	if app.current_id() != SceneFlow.SLOTS:
+		return
+	app.current_scene().choose(1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "セーブデータ選択でスロットを選んでも、物語を選ぶ場面へ進まない")
+	if app.current_id() != SceneFlow.CAMPAIGNS:
+		return
+	app.current_scene().choose(campaign)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.EPISODES, "物語を選んでも、話の一覧へ進まない: %s" % campaign.title)
+	if app.current_id() != SceneFlow.EPISODES:
+		return
+	if not app.context.story.open_all:
+		_autoplay._push_key(app, KEY_F5)
+		await app.scene_changed
+	_expect(app.context.story.open_all, "F5 で、全部の話を開かない")
+	for i: int in mini(STORY_EPISODES, campaign.episodes.size()):
+		var episode: RefCounted = campaign.episodes[i]
+		_autoplay._current = "story-all %s 第 %d 話「%s」" % [campaign.title, i + 1, episode.title]
+		print("autoplay: %s" % _autoplay._current)
+		if app.current_id() != SceneFlow.EPISODES:
+			_expect(false, "話の一覧に戻っていない")
+			return
+		await _story_episode(app, episode)
+	if app.context.story.open_all:
+		_autoplay._push_key(app, KEY_F5)
+		await app.scene_changed
+
+
+## 話の一覧から、話 episode を選んで、会話・途中の台詞・負けの台詞を通し、話の一覧へ戻る。
+func _story_episode(app: Node, episode: RefCounted) -> void:
+	var list: Node = app.current_scene()
+	_expect(list.is_card_enabled(episode), "話の一覧で選べない")
+	list.choose(episode)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.SORTIE, "話を選んでも、出撃準備へ進まない")
+	if app.current_id() != SceneFlow.SORTIE:
+		await _go(app, SceneFlow.EPISODES)
+		return
+	app.current_scene().press_sortie()
+	await app.scene_changed
+	if not episode.before.is_empty():
+		_expect(app.current_id() == SceneFlow.TALK, "出撃しても、対戦の前の会話へ進まない")
+		if app.current_id() == SceneFlow.TALK:
+			await _read_talk(app, episode)
+	_expect(app.current_id() == SceneFlow.BATTLE, "会話を終えても、対戦へ進まない")
+	if app.current_id() != SceneFlow.BATTLE:
+		await _go(app, SceneFlow.EPISODES)
+		return
+	var screen: Node = app.current_scene()
+	screen.set_time_scale_base(8.0)
+	await _read_cues(app, screen, episode)
+	await _lose(app, screen, episode)
+
+
+## 対戦の前の会話を、1 文ずつ送る（文と話し手が話のファイルのとおりか）。最後の文のあとで、対戦へ進む。
+func _read_talk(app: Node, episode: RefCounted) -> void:
+	var talk: Node = app.current_scene()
+	_expect(talk.line_count() == episode.before.size(), "前の会話の文の数が違う")
+	for i: int in episode.before.size():
+		var row: Array = episode.before[i]
+		_expect(talk.line_index() == i and talk.line_text() == row[1], "会話の %d 文目が違う: %s" % [i + 1, talk.line_text()])
+		_expect(talk.speaker() == (episode.speakers[row[2]] if row[2] >= 0 else ""), "会話の %d 文目の話し手が違う: %s" % [i + 1, talk.speaker()])
+		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）
+		if talk.line_index() == i and app.current_id() == SceneFlow.TALK:
+			talk.press_next()
+		await app.get_tree().process_frame
+		if app.current_id() != SceneFlow.TALK:
+			break
+	if app.current_id() == SceneFlow.TALK:
+		await app.scene_changed
+
+
+## 対戦の途中の台詞を、1 つずつ出して送る（遊ぶときと同じに、送られるまで出したまま）。帯は 2 行の高さまでで、上の帯に重ならない。
+func _read_cues(app: Node, screen: Node, episode: RefCounted) -> void:
+	screen.clear_talk_for_check()
+	screen.set_talk_hold(true)
+	for cue: Array in episode.cues:
+		screen.say_for_check([BattleCues.Line.new(cue[2], episode.speakers[cue[4]] if cue[4] >= 0 else "", cue[3],
+			episode.figures[cue[4]] if cue[4] >= 0 and cue[4] < episode.figures.size() else {})] as Array[BattleCues.Line])
+		await app.get_tree().process_frame
+		await app.get_tree().process_frame
+		var card: Rect2 = screen.talk_card_rect()
+		_expect(card.has_area() and card.position.y >= BattleHud.TOP_BAR_HEIGHT and card.size.y <= 64.0,
+			"途中の台詞の帯が出ないか、上の帯に重なるか、2 行を超える: %s（%s）" % [cue[3], card])
+		for i: int in WAIT_FRAMES:
+			if screen.advance_talk():
+				break
+			await app.get_tree().process_frame
+		_expect(not screen.is_talk_holding(), "途中の台詞を送れない: %s" % cue[3])
+	screen.set_talk_hold(false)
+	screen.clear_talk_for_check()
+
+
+## 小さな盤で、人の将の HP を 1 にしてターンを終え、敵（CPU）に倒させて負ける。決着の画面に、話の負けの台詞が出る。
+## そのあと「話の一覧へ」で戻る。
+func _lose(app: Node, screen: Node, episode: RefCounted) -> void:
+	var board: Board = _autoplay._small_board(Vector2i(5, 4))
+	var battle := Battle.new(board)
+	var king := battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, board.hq_cells[0])
+	king.hp = 1
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, board.hq_cells[1])
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, board.hq_cells[0] + Vector2i(2, 0))
+	screen.start_with(battle, episode.look, 1, episode.map_title)
+	screen.press_end_turn()
+	screen.pass_confirm_guard()
+	screen.press_end_turn()
+	var result: Node = screen.result_screen()
+	for i: int in WAIT_FRAMES:
+		if not screen.is_busy() and result.visible:
+			break
+		await app.get_tree().process_frame
+	_expect(battle.is_over() and battle.winner == Unit.Side.PLAYER2, "わざと負けられなかった")
+	result.skip()
+	var lost: Array[String] = []
+	for row: Array in episode.lost:
+		lost.append("%s: %s" % [episode.speakers[row[2]] if row[2] >= 0 else "", row[1]])
+	_expect(result.remark_texts() == lost, "負けの台詞が、話のファイルのとおりに出ない: %s" % [result.remark_texts()])
+	if not lost.is_empty():
+		var rect: Rect2 = result.remark_rect()
+		_expect(rect.has_area() and app.get_viewport().get_visible_rect().encloses(rect), "負けの台詞の板が画面からはみ出す: %s" % rect)
+	for i: int in WAIT_FRAMES:
+		if result.can_leave():
+			break
+		await app.get_tree().process_frame
+	_expect(result.can_leave(), "負けた話の決着の画面に「話の一覧へ」が無い")
+	var leave: String = result.leave_text()
+	result.press_leave()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.EPISODES, "決着の画面の「%s」で、話の一覧へ戻らない" % leave)
+	await _go(app, SceneFlow.EPISODES)
+
+
+## 対戦モードの 1 局: マップ field、試しの決まり trials で、CPU を相手に VERSUS_TURNS ターンまで進める。
+func _versus(app: Node, field: StringName, trials: Array[StringName]) -> void:
+	_autoplay._current = "versus-all %s（試しの決まり: %s）" % [field, ", ".join(trials) if not trials.is_empty() else "なし"]
+	print("autoplay: %s" % _autoplay._current)
+	await _go(app, SceneFlow.TITLE)
+	app.current_scene().press_start()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.MAP_SELECT, "タイトルの「対戦」で、マップ選択へ進まない")
+	if app.current_id() != SceneFlow.MAP_SELECT:
+		return
+	app.current_scene().choose(field)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.SETUP, "マップのカードで、対戦設定へ進まない")
+	if app.current_id() != SceneFlow.SETUP:
+		return
+	var panel: Node = app.current_scene().setup_panel()
+	panel.choose_opponent(true)
+	for trial in TrialRules.ALL:
+		panel.choose_trial(trial, trials.has(trial))
+	panel.confirm()
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.BATTLE, "対戦設定の「対戦開始」で、対戦へ進まない")
+	if app.current_id() != SceneFlow.BATTLE:
+		return
+	var screen: Node = app.current_scene()
+	screen.set_time_scale_base(8.0)
+	var battle: Battle = screen.battle
+	for trial in TrialRules.ALL:
+		_expect(screen.source.has_trial(trial) == trials.has(trial), "選んだ試しの決まりで、対戦が始まらない: %s" % trial)
+	var tactic_tried := false
+	for i: int in WAIT_FRAMES * 4:
+		battle = screen.battle
+		if battle.is_over() or battle.turn > VERSUS_TURNS:
+			break
+		if screen.is_busy() or battle.phase != screen.source.human_side_now():
+			await app.get_tree().process_frame
+			continue
+		if trials.has(TrialRules.TACTICS) and not tactic_tried:
+			# 作戦の手札の 1 枚目を、確かめてから使う（再生を待ってから、おまかせへ）。
+			tactic_tried = true
+			var side: Unit.Side = screen.source.human_side_now()
+			screen.press_tactic(0)
+			screen.pass_confirm_guard()
+			screen.press_tactic(0)
+			_expect(not battle.tactics_used[side].is_empty(), "作戦の札を使えない（手札: %s）" % [Tactics.hand(battle, side)])
+			await app.get_tree().process_frame
+			continue
+		screen.press_auto()
+		screen.pass_confirm_guard()
+		screen.press_auto()
+		await app.get_tree().process_frame
+	_expect(battle.is_over() or battle.turn > VERSUS_TURNS, "%d ターンまで進まなかった（ターン %d）" % [VERSUS_TURNS, battle.turn])
+	print("autoplay:   ターン %d まで（%s）" % [battle.turn, "決着" if battle.is_over() else "途中"])
+	await app.go(SceneFlow.TITLE)

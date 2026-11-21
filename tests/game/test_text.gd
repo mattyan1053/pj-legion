@@ -12,6 +12,7 @@ const CODE_DIRS := ["res://game/", "res://rules/"]
 ## 直書きの日本語を見ないファイル（画面に出さない文だけを持つもの）。
 const NOT_SHOWN := [
 	"res://game/autoplay.gd",  # 自動の対戦が、くい違いを知らせる文（開発用）
+	"res://game/autoplay_sweeps.gd",  # 自動の対戦の通しの点検が、くい違いを知らせる文（開発用）
 	"res://game/story_file.gd",  # 話・物語・マップのファイルの書き間違いの文（開発用。ファイルを書く人が読む）
 	"res://game/episode.gd",
 	"res://game/campaign.gd",
