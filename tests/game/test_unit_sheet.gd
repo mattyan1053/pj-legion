@@ -67,9 +67,12 @@ func test_kings_and_monsters_have_no_cost_items_or_army_of_their_own() -> void:
 	assert_eq(borrowed.ult, Ults.of_army(UnitKind.Army.MILITARY), "必殺技は部隊の軍のもの")
 
 
+## 窓の大きさは、木に入れて 1 コマ待ってから測る（base_test.gd の settle）。遊ぶときの字（UI のテーマ）で測る。
 func test_the_window_fits_the_screen_for_every_unit() -> void:
+	preload("res://game/ui_theme.gd").install()
 	var detail := UnitDetail.new()
 	detail.setup(OverlayStack.new())
+	await settle(detail)
 	var loads: Array = [
 		[] as Array[Equipment.Id],
 		[Equipment.Id.JET_PACK, Equipment.Id.DRAGON_SCALE, Equipment.Id.WAR_BANNER] as Array[Equipment.Id],
@@ -80,6 +83,7 @@ func test_the_window_fits_the_screen_for_every_unit() -> void:
 				continue
 			detail.open(kind, held, 0, UnitKind.Army.MILITARY, 2)
 			assert_eq(detail.title_text(), Names.kind(kind))
+			await settle(detail)
 			var size := detail.panel_size()
 			assert_true(size.x <= 1240.0 and size.y <= 700.0, "%s の窓が 1280×720 に収まらない: %s" % [Names.kind(kind), size])
 			var texts := detail.stat_meters()[0].texts()
