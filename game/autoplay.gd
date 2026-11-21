@@ -1923,6 +1923,10 @@ func _leave_battle(app: Node) -> void:
 		_expect(card.get_global_rect().size.x > 0.0 and _on_screen(card), "マップのカードが画面からはみ出す: %s" % field)
 	stages.hover(VersusFields.TWIN_SPRINGS)
 	_expect(stages.note_text().contains(VersusFields.title_of(VersusFields.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
+	# カードを通り過ぎただけ（乗せて、待たずに離れた）なら、背景の景色は替えない。
+	stages.hover(&"")
+	_expect(stages.scape_field() != VersusFields.TWIN_SPRINGS, "カードを通り過ぎただけで、背景の景色が替わろうとした")
+	stages.hover(VersusFields.TWIN_SPRINGS)
 	# 背景の景色は、乗せたマップのものに替わる（少し待ってから、幕を沈めて替える。ここでは待たずに替える）。
 	_expect(stages.scape_field() == VersusFields.TWIN_SPRINGS, "カードに乗せても、背景の景色がそのマップに替わろうとしない")
 	stages.show_scape_now()

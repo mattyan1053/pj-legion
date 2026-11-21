@@ -226,6 +226,8 @@ func hover(field: StringName) -> void:
 		_set_card_hovered(_cards[field], true)
 		_scroll_into_view(_cards[field])
 		_queue_scape(field)
+	else:
+		_cancel_queued_scape()
 	_show_note(field)
 
 
@@ -241,6 +243,17 @@ func _queue_scape(field: StringName) -> void:
 	_scape_tween.tween_property(_curtain, "color:a", SCAPE_CURTAIN, SCAPE_FADE_OUT)
 	_scape_tween.tween_callback(_swap_scape)
 	_scape_tween.tween_property(_curtain, "color:a", 0.0, SCAPE_FADE_IN)
+
+
+## カードから離れた: まだ待っている間（幕を沈め始める前）なら、景色を替えるのをやめる（通り過ぎただけでは替えない）。
+## 幕がもう沈み始めていたら、そのまま替える（途中で戻すと、ちらつく）。
+func _cancel_queued_scape() -> void:
+	if _scape_next == &"" or _curtain.color.a > 0.0:
+		return
+	_scape_next = &""
+	if _scape_tween != null:
+		_scape_tween.kill()
+		_scape_tween = null
 
 
 func _swap_scape() -> void:
