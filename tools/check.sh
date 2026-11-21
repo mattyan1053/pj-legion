@@ -80,8 +80,8 @@ start() {
 }
 # 長い検査で、撮らずに作るスクリーンショットの場面（tools/screenshots.gd）。ルールや数値が変わると作れなくなりやすいもの。
 # 全部を作ると 5 分ほど掛かるので、いくつかに絞る（全部は、撮る人が tools/screenshots.sh で確かめる）。
-# 2 つのまとまりに分けて並べて回す（どちらも 30 秒ほど）。
-SHOTS_IN_FULL_A="mid_boss,forecast_skill,forecast_defeat,phase_camera,story_cleared"
+# 2 つのまとまりに分けて並べて回す（どちらも 30 秒ほど）。story_open_all は story_cleared の前に置き、前の場面の状態が残らないことも見る。
+SHOTS_IN_FULL_A="mid_boss,forecast_skill,forecast_defeat,phase_camera,story_open_all,story_cleared"
 SHOTS_IN_FULL_B="skill_fireball,skill_shadow,ult_eruption,result"
 
 started=$SECONDS
