@@ -9,7 +9,8 @@
 [episode]
 title = 森の守り
 map = mist_forest
-music = battle_tense
+before_music = battle_knight
+after_music = talk_calm
 
 [unlock]
 item = shadow_cloak

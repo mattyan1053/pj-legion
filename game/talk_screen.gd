@@ -7,6 +7,7 @@ extends Node
 ##
 ## - クリック・Enter・Space で次の文へ。文が出きる前なら、出しきるだけ。最後の文のあとは Run.NEXT で終える（流れの次の場面へ）。
 ## - 右クリックで 1 つ前の文へ戻る。Esc はシステムメニュー（ほかの場面と同じ）。
+## - 「ログ」・ホイールを上へ・L で、これまでの文を遡って読む窓（talk_log.gd）を開く。
 ## - 「飛ばす」で、残りを読まずに Run.NEXT で終える。知らせの行（side 2。駒の解放など）は飛ばさず、そこで止まる。
 ## - 渡された会話に次の話（"next_episode"。ストーリーの、あとの会話）があれば、終えるときに行き先を選ばせる:
 ##   「次の話へ」（その話の流れを始める。Enter でも）か「話の一覧へ」（Run.NEXT。流れの行き先）。右クリックで最後の文へ戻る。
@@ -20,6 +21,7 @@ const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
 const TalkFigure := preload("res://game/talk_figure.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const TalkLog := preload("res://game/talk_log.gd")
 
 signal finished(outcome: StringName)
 
@@ -70,6 +72,9 @@ var _item_frame: PanelContainer
 var _hint: Label
 var _count: Label
 var _skip: Button
+var _log_button: Button
+## 会話のログの窓（talk_log.gd）。
+var _log: TalkLog
 ## 話し手の姿を立たせる所（見出しと、下の名前の札・文の枠の間）と、話し手の姿（会話に出てくる話し手ごとに 1 つ。
 ## 同じ所に立つ話し手のうち、いま立っている 1 人だけを見せる）。
 var _stage: Control
@@ -151,6 +156,19 @@ func _ready() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(spacer)
+	_log_button = Button.new()
+	_log_button.text = Text.t("talk.log")
+	_log_button.tooltip_text = Text.t("talk.log.tooltip")
+	_log_button.focus_mode = Control.FOCUS_NONE
+	_log_button.add_theme_font_size_override("font_size", 17)
+	_log_button.custom_minimum_size = Vector2(110.0, 36.0)
+	_log_button.size_flags_vertical = Control.SIZE_SHRINK_END
+	_log_button.pressed.connect(open_log)
+	top_row.add_child(_log_button)
+	var buttons_gap := Control.new()
+	buttons_gap.custom_minimum_size = Vector2(8.0, 0.0)
+	buttons_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.add_child(buttons_gap)
 	_skip = Button.new()
 	_skip.text = Text.t("talk.skip")
 	_skip.focus_mode = Control.FOCUS_NONE
@@ -215,7 +233,26 @@ func _ready() -> void:
 	_hint.text = Text.t("talk.hint")
 	foot.add_child(_hint)
 
+	_log = TalkLog.new()
+	add_child(_log)
+	_log.setup(context.overlays)
+	_log.opened.connect(func() -> void: context.play_sound(&"menu_open"))
+	_log.closed.connect(func() -> void: context.play_sound(&"menu_close"))
+
 	_show_line(0)
+
+
+## 会話のログを開く（これまでに出した文。いまの文まで）。
+func open_log() -> void:
+	if _log.is_open() or context.overlays.is_open():
+		return
+	var lines: Array = talk.get("lines", [])
+	_log.open(lines.slice(0, mini(_index + 1, lines.size())))
+
+
+## 会話のログの窓（検査用）。
+func talk_log() -> TalkLog:
+	return _log
 
 
 ## 行 line の話し手の番号（"who"。無ければ陣営の番号）。知らせの行は -1。
@@ -285,6 +322,12 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if context.overlays.is_open():
+		return
+	var wheel_up: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP
+	var log_key: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_L
+	if wheel_up or log_key:
+		get_viewport().set_input_as_handled()
+		open_log()
 		return
 	if is_choosing():
 		_choice_input(event)

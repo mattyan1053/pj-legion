@@ -19,8 +19,18 @@ https://creativecommons.org/publicdomain/zero/1.0/
                                 https://opengameart.org/content/the-march-of-devils-dome
   epic_boss_battle_loop.ogg     "Epic Boss Battle [Seamlessly Looping]" by Juhani Junkala (SubspaceAudio)
                                 https://opengameart.org/content/boss-battle-music
+  fantasy_battlegrounds.ogg     "Fantasy - Battlegrounds" by doge
+                                https://opengameart.org/content/fantasy-battlegrounds
+  the_battlefield.ogg           "The Battlefield" by Umplix
+                                https://opengameart.org/content/the-battlefield
+  a_knights_challenge.ogg       "A Knight's Challenge" by Umplix
+                                https://opengameart.org/content/a-knights-challenge
+  laments_of_the_war.ogg        "Laments of the War" by cethiel
+                                https://opengameart.org/content/laments-of-the-war
+  the_final_battle.ogg          "The Final Battle" by skrjablin
+                                https://opengameart.org/content/the-final-battle
 
-Each page above lists its license as CC0 (checked on 2026-11-17).
+Each page above lists its license as CC0 (checked on 2026-11-17; the last five tracks on 2026-11-21).
 None of the tracks came with a separate license file.
 The files here were converted to Ogg Vorbis (quality 2, stereo, 44.1 kHz) with metadata removed.
 Some were trimmed at the start/end and given a short crossfade so that they loop (see README.md).
