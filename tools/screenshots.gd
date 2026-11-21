@@ -164,6 +164,7 @@ const SCENES := {
 	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の「森の守り」（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
 	"story_fantasy_forest_wide": "ストーリー: リュエルの森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
+	"story_open_all": "ストーリー: 確かめ用の解放（F5）で全部の話を開いた話の一覧（左下の隅に印。どの話も選べる）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）",
 	"story_tutorial_list": "ストーリー: 何もクリアしていない話の一覧（頭のチュートリアルの話。番号に「（演習）」）",
@@ -1860,6 +1861,14 @@ func _scene_story_list() -> bool:
 	_app.current_scene().choose(Story.military())
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.EPISODES
+
+
+func _scene_story_open_all() -> bool:
+	if not await _scene_story_list():
+		return false
+	_app.open_all_key().toggle()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.EPISODES and _app.context.story.open_all
 
 
 ## 2 つ目の物語（FANTASY の物語）。

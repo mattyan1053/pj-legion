@@ -38,6 +38,7 @@ const ITEM_EXIT_PREFIX := "exit:"
 ## 暗転にかける秒数（暗くなるまでと、明けるまで、それぞれ）。
 const FADE_TIME := 0.22
 const FADE_LAYER := 30
+const OpenAllKey := preload("res://game/open_all_key.gd")
 
 var context := AppContext.new()
 var _current: Node
@@ -52,6 +53,7 @@ var _window_mode: WindowMode
 var save_mark: SaveMark
 ## オプションの画面を開いてから、設定が変わったか（閉じて書いたときに、保存の印を出す）。
 var _settings_touched := false
+var _open_all: OpenAllKey
 
 
 func _ready() -> void:
@@ -134,9 +136,19 @@ func _ready() -> void:
 	_window_mode.setup(context.settings, context.checking == &"")
 	_window_mode.toggled.connect(context.settings.save)
 
+	# 確かめ用の解放（F5。ストーリーの全部の話と解放を、その起動のあいだだけ開く）。
+	_open_all = OpenAllKey.new()
+	add_child(_open_all)
+	_open_all.setup(self)
+
 	if context.checking != &"":
 		scene_changed.connect(_drive_check)
 	go(SceneFlow.FIRST)
+
+
+## 確かめ用の解放の鍵（open_all_key.gd。検査用）。
+func open_all_key() -> OpenAllKey:
+	return _open_all
 
 
 ## いまの場面（ノード）と、その名前。
