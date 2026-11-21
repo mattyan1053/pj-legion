@@ -207,7 +207,8 @@ func choose_campaign(of_campaign: Campaign) -> void:
 	campaign = of_campaign
 	if _last_campaign != String(of_campaign.id):
 		_last_campaign = String(of_campaign.id)
-		_save()
+		if not open_all:  # 確かめ用に開いている間は、記録に触らない（次に書くときに、いっしょに書く）
+			_save()
 
 
 ## 物語 of_campaign を遊べるか（話が 1 つ以上ある）。話の無い物語は「準備中」。
