@@ -1955,7 +1955,14 @@ func _visit_decks(app: Node) -> void:
 	place_map.press_cell(placed_cells[0])
 	var picked_unit: Unit = place_map.focused_unit()
 	_expect(picked_unit != hovered_unit and place_note.shown_unit_id() == picked_unit.id, "初期位置の窓で、選んだ駒が欄に出ない（マウスを乗せた駒より先に）")
+	# 選んだ駒を、マウスを乗せた駒と入れ替えると、マウスの下には選んだ駒が来る（欄も、その駒を出す）。
+	place_map.press_cell(placed_cells[1])
+	_expect(place_map.selected() == -1 and place_map.focused_unit() == picked_unit and place_note.shown_unit_id() == picked_unit.id,
+		"初期位置の窓で駒を入れ替えたあと、マウスの下の駒が古いまま")
+	place_map.reset()
+	_expect(place_map.focused_unit() == hovered_unit, "初期位置の窓で「おまかせ」に戻したあと、マウスの下の駒が古いまま")
 	place_map.hover_cell(Deployment.NO_CELL)
+	place_map.press_cell(placed_cells[0])
 	place_map.press_cell(open_cells[0])
 	dialog.close_dialog()
 	var placed_choice: RefCounted = setup_panel.current_choice()

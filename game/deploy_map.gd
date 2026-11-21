@@ -39,7 +39,9 @@ var _cells: Array[Vector2i] = []
 var _kinds: Array[UnitKind.Id] = []
 ## 決める側の駒（部隊の並びの順。_cells と同じ並び）。能力値を読むため。
 var _units: Array[Unit] = []
-## マウスを乗せている駒（_cells の添字。いなければ -1）。
+## マウスを乗せているマス（盤の外なら NO_CELL）と、そこにいる駒（_cells の添字。いなければ -1）。
+## 駒を動かすとマスの駒が替わるので、置き方が変わるたびに _hover_at から引き直す（_rehover）。
+var _hover_at := Deployment.NO_CELL
 var _hovered := -1
 var _team_colors: Array[Color] = []
 var _texture: Texture2D
@@ -64,6 +66,7 @@ func setup(battle: Battle, side: Unit.Side, defaults: Array[Vector2i], scenario_
 	_zone = Deployment.zone(battle, side, scenario_cells, _kinds.size())
 	_texture = ImageTexture.create_from_image(MapCard.draw(battle.board, look, team_colors, IMAGE_CELL))
 	_selected = -1
+	_hover_at = Deployment.NO_CELL
 	_hovered = -1
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	queue_redraw()
@@ -90,6 +93,7 @@ func offsets() -> Array[Vector2i]:
 func reset() -> void:
 	_cells = _defaults.duplicate()
 	_selected = -1
+	_rehover()
 	queue_redraw()
 	changed.emit()
 	focus_changed.emit()
@@ -125,12 +129,19 @@ func team_color() -> Color:
 
 ## マス cell にマウスを乗せる（マウスと同じ。検査用にも）。駒のいないマスなら、乗せている駒は無し。
 func hover_cell(cell: Vector2i) -> void:
-	var index := _cells.find(cell) if _battle != null else -1
+	_hover_at = cell
+	if _rehover():
+		queue_redraw()
+		focus_changed.emit()
+
+
+## マウスを乗せているマスの駒を、いまの置き方で引き直す。替わったか。
+func _rehover() -> bool:
+	var index := _cells.find(_hover_at) if _battle != null and _hover_at != Deployment.NO_CELL else -1
 	if index == _hovered:
-		return
+		return false
 	_hovered = index
-	queue_redraw()
-	focus_changed.emit()
+	return true
 
 
 ## マス cell を押す（マウスと同じ。検査用にも）。
@@ -155,6 +166,7 @@ func press_cell(cell: Vector2i) -> void:
 		changed.emit()
 	else:
 		_selected = -1
+	_rehover()
 	queue_redraw()
 	focus_changed.emit()
 
