@@ -431,8 +431,11 @@ func set_destinations(boards: Array[Array], setup: bool, squad := false) -> void
 
 ## 「次へ」を出すか（対戦の画面が、渡されたもの（battle_source.gd）に聞いて決める。決着の画面を出すたびに決める）。
 ## retry は、「次へ」が無いときの Enter を「同じマップで再戦」にするか（偽ならタイトルへ）。
+## 「次へ」を出すときは、流れの外への行き先（「話の一覧へ」）を出さない。勝った話の「次へ」の先には、あとの会話と増えたものの知らせがあり、
+## 並べると、読まずに一覧へ戻ってしまう（会話は「スキップ」で飛ばせ、読み終えたところでも「話の一覧へ」を選べる。メニューからも出られる）。
 func set_continue(shown: bool, retry := false) -> void:
 	_continue_button.visible = shown
+	_leave_button.visible = not shown
 	_enter_retries = retry and not shown
 	_again_button.add_theme_font_size_override("font_size", BIG_FONT if _enter_retries else BUTTON_FONT)
 	_prompt.text = Text.t("result.prompt", {"destination": enter_destination()})
@@ -452,6 +455,11 @@ func _mark_enter_button() -> void:
 	var target := _continue_button if _continue_button.visible else (_again_button if _enter_retries else _leave_button)
 	for button: Button in [_continue_button, _again_button, _leave_button]:
 		button.theme_type_variation = UiTheme.BUTTON_PRIMARY if button == target else &""
+
+
+## 流れの外への行き先のボタンを出しているか。検査用。
+func can_leave() -> bool:
+	return _leave_button.visible
 
 
 ## 流れの外への行き先のボタンの文。検査用。
