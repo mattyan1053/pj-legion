@@ -108,3 +108,142 @@ func test_story_scenarios_never_place_a_stronghold() -> void:
 	# 試しの決まりは対戦設定だけが入にする。戦いの定義の勝ちの条件にも、拠点は無い。
 	for reason: GameWonEvent.Reason in Scenario.STANDARD_WIN_CONDITIONS:
 		assert_true(reason != GameWonEvent.Reason.STRONGHOLD_HELD)
+
+
+# --- 確保を数える ---
+
+
+func test_standing_on_the_stronghold_at_phase_end_adds_a_hold() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	var events := _end(battle)
+	assert_eq(_progress(events), [[P1, 1]] as Array[Array])
+	assert_eq(battle.stronghold_holds, [1, 0] as Array[int])
+	assert_eq(Stronghold.holds_left(battle, P1), Stronghold.HOLDS_TO_WIN - 1)
+
+
+func test_holds_count_only_at_the_end_of_the_own_phase() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	_end(battle)
+	var events := _end(battle)  # プレイヤー2 のフェーズの終わり: プレイヤー1 の確保は進まない
+	assert_eq(_progress(events), [] as Array[Array])
+	assert_eq(battle.stronghold_holds, [1, 0] as Array[int])
+
+
+func test_the_king_does_not_hold_the_stronghold() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.KING, P1, CELL)
+	assert_eq(_progress(_end(battle)), [] as Array[Array])
+	assert_eq(battle.stronghold_holds, [0, 0] as Array[int])
+
+
+func test_leaving_the_stronghold_keeps_the_holds() -> void:
+	var battle := _battle()
+	var holder := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	_end(battle)
+	_end(battle)
+	battle.apply(MoveAction.new(holder.id, Vector2i(0, 2)))
+	assert_eq(_progress(_end(battle)), [] as Array[Array])
+	assert_eq(battle.stronghold_holds, [1, 0] as Array[int])
+
+
+func test_a_foe_hold_resets_the_holds() -> void:
+	var battle := _battle()
+	var holder := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	var foe := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(4, 0))
+	_end(battle)
+	battle.units.erase(holder)  # 倒されたことにする
+	foe.cell = CELL
+	var events := _end(battle)
+	assert_eq(_progress(events), [[P2, 1], [P1, 0]] as Array[Array])
+	assert_eq(battle.stronghold_holds, [0, 1] as Array[int])
+
+
+func test_a_foe_next_to_the_stronghold_stops_the_hold() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	var foe := battle.add_unit(UnitKind.Id.PALADIN, P2, CELL + Vector2i(1, 0))
+	assert_true(Stronghold.contested(battle, P1))
+	assert_eq(_progress(_end(battle)), [] as Array[Array])
+	assert_eq(battle.stronghold_holds, [0, 0] as Array[int])
+	foe.cell = CELL + Vector2i(1, 1)  # 斜めは隣でない（マンハッタン距離 2）
+	_end(battle)
+	assert_eq(_progress(_end(battle)), [[P1, 1]] as Array[Array])
+
+
+func test_neutral_units_do_not_stop_the_hold() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	battle.add_unit(UnitKind.Id.MINION, Unit.Side.NEUTRAL, CELL + Vector2i(1, 0))
+	assert_eq(_progress(_end(battle)), [[P1, 1]] as Array[Array])
+
+
+func test_reaching_the_holds_to_win_wins() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(4, 0))
+	battle.stronghold_holds[P1] = Stronghold.HOLDS_TO_WIN - 1
+	var events := _end(battle)
+	var won := events[-1] as GameWonEvent
+	assert_true(won != null)
+	assert_eq(won.winner, P1)
+	assert_eq(won.reason, GameWonEvent.Reason.STRONGHOLD_HELD)
+	assert_true(battle.is_over())
+	assert_eq(battle.phase, P1, "決着したら次のフェーズへ進まない")
+
+
+func test_without_the_condition_nothing_is_counted() -> void:
+	var battle := _battle()
+	battle.win_conditions[P1].erase(GameWonEvent.Reason.STRONGHOLD_HELD)
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
+	assert_eq(_progress(_end(battle)), [] as Array[Array])
+	assert_eq(Stronghold.holds_left(battle, P1), -1)
+
+
+func test_clone_copies_the_holds() -> void:
+	var battle := _battle()
+	battle.stronghold_holds[P2] = 2
+	var copy := battle.clone()
+	assert_eq(copy.stronghold_holds, [0, 2] as Array[int])
+	assert_eq(copy.board.stronghold_cell, CELL)
+	copy.stronghold_holds[P2] = 3
+	assert_eq(battle.stronghold_holds[P2], 2)
+
+
+# --- CPU ---
+
+
+func test_cpu_walks_a_fighter_onto_the_stronghold() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(2, 4))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(2, 0))
+	var cpu := CpuPlayer.new()
+	for step in 8:
+		var action := cpu.next_action(battle)
+		if action == null or action is EndPhaseAction:
+			break
+		battle.apply(action)
+	assert_eq(trooper.cell, CELL)
+
+
+func test_cpu_attacks_a_foe_holding_the_stronghold() -> void:
+	var battle := Maps.battle(["...........", "...........", "...........", "...........", "...........", "..........."])
+	battle.board.hq_cells = [Vector2i(5, 5), Vector2i(5, 0)]
+	battle.board.stronghold_cell = Vector2i(5, 2)
+	for side: Unit.Side in [P1, P2]:
+		battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
+	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(5, 5))
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(9, 5))
+	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(5, 0))
+	var holder := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(5, 2))
+	battle.stronghold_holds[P2] = Stronghold.HOLDS_TO_WIN - 1
+	var cpu := CpuPlayer.new()
+	for step in 8:
+		var action := cpu.next_action(battle)
+		if action == null or action is EndPhaseAction:
+			break
+		battle.apply(action)
+	assert_true(holder.hp < holder.max_hp() or Combat.distance(commando.cell, holder.cell) <= 1, "拠点の上の駒を叩くか、隣に立って確保を止める")
