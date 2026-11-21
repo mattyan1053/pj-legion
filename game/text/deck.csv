@@ -58,7 +58,6 @@ deck.detail.with_items,持ち物込み: {stats}
 deck.detail.skill,スキル: {skill}
 deck.detail.item,持ち物: {name}（{effect}）
 deck.detail.click,クリック: 詳細
-deck.detail.title_level,{name} Lv{level}
 deck.edit.remove,外す
 deck.problem.no_units,駒なし
 deck.problem.too_many_units,駒の数が上限超過（{max} 体まで）
@@ -87,3 +86,19 @@ deck.load.unknown_item,知らない持ち物（{name}）を外した
 deck.load.none,無し
 deck.preview.title,{who}　{army}　コスト {cost} / {budget}
 deck.card.king,本陣に配置
+deck.sheet.hp,HP
+deck.sheet.hp_value,{hp} / {max}
+deck.sheet.gain,▲ +{amount}
+deck.sheet.loss,▼ -{amount}
+deck.sheet.level,Lv {level}
+deck.sheet.level_max,最大
+deck.sheet.experience,経験 {experience} / {needed}
+deck.sheet.cost,コスト {cost}
+deck.sheet.skill,スキル
+deck.sheet.ult,必殺技
+deck.sheet.no_skill,スキルなし
+deck.sheet.cooldown,クールダウン {turns} ターン
+deck.sheet.items,持ち物 {count} / {max}
+deck.sheet.no_item,空き
+deck.sheet.evolution,進化先（レベル {level}）
+deck.sheet.evolved,進化済み
