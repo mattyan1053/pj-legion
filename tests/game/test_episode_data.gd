@@ -479,6 +479,13 @@ func test_broken_campaigns_are_caught() -> void:
 		"話の重なり": ["ridge_path\n", "ridge_path\nridge_path\n"],
 		"解放済みの駒をまた解放": ["unit = shield_trooper", "unit = shield_trooper\nunit = commando"],
 		"ほかの軍の部隊で決まっている話": ["ridge_path\n", "drill_first_steps\n"],
+		"長い紹介": ["budget = 20", "budget = 20\nintro = " + "あ".repeat(Campaign.INTRO_MAX_CHARS + 1)],
+		"空の紹介": ["budget = 20", "budget = 20\nintro ="],
+		"人物の書き方": ["[episodes]", "[cast]\n隊長 = king\n\n[episodes]"],
+		"人物の姿": ["[episodes]", "[cast]\n隊長 = knight, 隊長\n\n[episodes]"],
+		"長い立ち位置": ["[episodes]", "[cast]\n隊長 = king, " + "あ".repeat(Campaign.ROLE_MAX_CHARS + 1) + "\n\n[episodes]"],
+		"人物の重なり": ["[episodes]", "[cast]\n隊長 = king, 隊長\n隊長 = sniper, 新兵\n\n[episodes]"],
+		"人物が多い": ["[episodes]", "[cast]\n" + "".join(range(Campaign.CAST_MAX + 1).map(func(i: int) -> String: return "人%d = sniper, 兵\n" % i)) + "\n[episodes]"],
 	}
 	for name: String in cases:
 		var text := good.replace(cases[name][0], cases[name][1])
@@ -486,6 +493,37 @@ func test_broken_campaigns_are_caught() -> void:
 			text = text.replace("army = military", "army = fantasy").replace("unit = shield_trooper", "unit = paladin")
 		assert_ne(text, good, name)
 		assert_false(Campaign.parse(text, PROBE_STORY).problems.is_empty(), "弾けない: %s" % name)
+
+
+## 物語の紹介の 1 行（intro）と主な人物（[cast]）は無くてよい。書けば、そのまま読む（姿の書き方は話の [cast] と同じ）。
+func test_campaign_intro_and_cast_read() -> void:
+	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
+	var plain: Campaign = Campaign.parse(good, PROBE_STORY)
+	assert_eq(plain.intro, "")
+	assert_true(plain.cast.is_empty())
+	var full: Campaign = Campaign.parse(good.replace("budget = 20", "budget = 20\nintro = 尾根を越える。").replace("[episodes]", "[cast]\n隊長 = king, 新任の隊長\n曹長 = shield_trooper evolved, 曹長。教官\n\n[episodes]"), PROBE_STORY)
+	assert_eq(full.problems, PackedStringArray())
+	assert_eq(full.intro, "尾根を越える。")
+	assert_eq(full.cast.map(func(person: Dictionary) -> Array: return [person["name"], person["role"], person["figure"]["kind"], person["figure"]["evolved"]]),
+		[["隊長", "新任の隊長", UnitKind.Id.KING, false], ["曹長", "曹長。教官", UnitKind.Id.SHIELD_TROOPER, true]])
+
+
+## 遊べる物語は、紹介の 1 行と主な人物を書く（人間の言葉「誰がどういう立ち位置なんだ」。docs/story.md の「物語のファイル」）。
+## 主な人物は、その物語の話に、人の軍の話し手として同じ名前と姿で出てくる。
+func test_campaigns_introduce_their_cast() -> void:
+	for campaign: Campaign in Story.campaigns():
+		if campaign.episodes.is_empty():
+			continue
+		assert_ne(campaign.intro, "", "%s: intro が無い" % campaign.id)
+		assert_false(campaign.cast.is_empty(), "%s: [cast] が無い" % campaign.id)
+		for person: Dictionary in campaign.cast:
+			var found := false
+			for episode: Episode in campaign.episodes:
+				var at := episode.speakers.find(person["name"])
+				if at >= 0 and episode.speaker_sides[at] == 0:
+					found = true
+					assert_eq(episode.figures[at]["kind"], person["figure"]["kind"], "%s の %s: 主な人物と話の姿が違う" % [episode.id, person["name"]])
+			assert_true(found, "%s: 主な人物「%s」が、どの話にも人の軍の話し手で出てこない" % [campaign.id, person["name"]])
 
 
 # ---- 見本 ----

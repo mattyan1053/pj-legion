@@ -365,7 +365,7 @@ func _read_cast(file: RefCounted) -> void:
 		names[name] = row["line"]
 		var figure := {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}
 		if parts.size() == 2:
-			figure = _figure(file, row["line"], parts[1].strip_edges())
+			figure = read_figure(file, row["line"], parts[1].strip_edges())
 			if figure.is_empty():
 				continue
 		if figure["kind"] == UnitKind.Id.KING:
@@ -386,7 +386,7 @@ func _read_cast(file: RefCounted) -> void:
 
 ## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。読めなければ空。
 ## 最後に「crown」を付けると、将の印（頭の上の金の輪）を付ける（将の姿でない将。会話の姿だけに効く。"crown" の鍵は、付けたときだけ入る）。
-func _figure(file: RefCounted, line: int, value: String) -> Dictionary:
+static func read_figure(file: RefCounted, line: int, value: String) -> Dictionary:
 	var words := value.split(" ", false)
 	var kind := StoryFile.enum_value(UnitKind.Id, words[0] if not words.is_empty() else "")
 	if kind < 0 or UnitKind.is_neutral(kind as UnitKind.Id):
