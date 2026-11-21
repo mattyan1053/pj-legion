@@ -532,6 +532,16 @@ func talk_card_rect() -> Rect2:
 	return _talk.card_rect()
 
 
+## 対戦の途中の会話の札を薄くしているか（メニュー・予測のパネル・進化先の選択肢が重なっている間）。検査用。
+func is_talk_dimmed() -> bool:
+	return _talk.is_dimmed()
+
+
+## 進化先の選択肢の枠の四角（出していなければ大きさ 0）。検査用。
+func evolution_rect() -> Rect2:
+	return _hud.evolution_rect()
+
+
 func talk_card_neighbors() -> Array[Rect2]:
 	var rects := _hud.top_tag_rects()
 	rects.append(minimap_rect())
