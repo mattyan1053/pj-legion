@@ -17,6 +17,7 @@ const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
+const Episode := preload("res://game/episode.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
@@ -531,6 +532,11 @@ func _queue_result_scene() -> void:
 		full.lines = [["マップ", "結晶の岩山"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
 		full.mvp_name = "シールドトルーパー Lv3"
 		screen.present(full)
+		# 負けた話の台詞（いちばん多い 3 行、いちばん長い文）も、戦績の左に収まる。
+		var remark: Array[BattleCues.Line] = []
+		for side: int in [0, 1, 0]:
+			remark.append(BattleCues.Line.new(side, "ドーソン", "あ".repeat(Episode.LOST_MAX_CHARS), {"kind": UnitKind.Id.SHIELD_TROOPER, "evolved": true}))
+		screen.set_remark(remark)
 	var waited_full := [0]
 	var wait_full := func(again: Callable) -> void:
 		var screen_size: Vector2 = screen.get_viewport_rect().size
@@ -545,6 +551,10 @@ func _queue_result_scene() -> void:
 		var rect: Rect2 = screen.prompt_rect()
 		_expect(rect.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
 			"戦績が 5 行のとき、決着の画面の入力の案内が下の帯にかかる: %s" % rect)
+		var said: Rect2 = screen.remark_rect()
+		_expect(screen.remark_texts().size() == 3 and said.position.x >= 0.0 and said.end.x <= screen_size.x / 2.0 - 230.0
+			and said.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
+			"負けたときの台詞の板が、画面からはみ出すか、戦績や下の帯にかかる: %s" % said)
 	_scripted.append(wait_revealed.bind(wait_revealed))
 	_scripted.append(wait_full.bind(wait_full))
 
@@ -2269,6 +2279,7 @@ func _visit_story(app: Node) -> void:
 	deploy.press_cell(free_cells[0])
 	var result: Node = await _win_story_battle(app, sortie, episode, true, _check_talk_before.bind(episode), free_cells[0])
 	_expect(result.leave_text() == "話の一覧へ" and not result.enabled_buttons().has("タイトルへ"), "話の決着の画面の行き先が「話の一覧へ」でない: %s" % result.leave_text())
+	_expect(result.remark_texts().is_empty(), "勝った話の決着の画面に、負けたときの台詞が出る")
 	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ（対戦の前の会話は、もう出ない）。
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
 	result.press_choose_squad()
