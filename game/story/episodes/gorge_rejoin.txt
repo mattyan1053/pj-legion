@@ -5,7 +5,6 @@
 [episode]
 title = 岩山の合流
 map = crystal_gorge
-look = crystal_forest
 music = battle
 before_music = battle
 after_music = talk_bright

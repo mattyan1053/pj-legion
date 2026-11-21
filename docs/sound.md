@@ -48,8 +48,8 @@
 | 盤の見た目 | 曲の名前 | 曲 |
 | --- | --- | --- |
 | 草原（中央平原）、見た目の分からない対戦 | `battle` | 弦と金管の勇ましい曲（Battle Theme A のループ版） |
-| 石の遺跡（迷宮回廊） | `battle_ruins` | 重く暗い 3 拍子の曲（Great Labyrinth） |
-| 結晶の森（双子結晶・結晶の岩山など） | `battle_crystal` | 打楽器の刻みが続く、異国風の曲（Sigil） |
+| 石の遺跡（迷宮回廊）、月夜の結晶の岩山 | `battle_ruins` | 重く暗い 3 拍子の曲（Great Labyrinth） |
+| 結晶の森（双子結晶など） | `battle_crystal` | 打楽器の刻みが続く、異国風の曲（Sigil） |
 | 尾根・採掘場 | `battle_march` | ホルンと小太鼓の、軍の行進のような曲（The Battlefield） |
 | 峠（大岩の峠） | `battle_fields` | 木管と弦と打楽器の、ファンタジーの戦いの曲（Fantasy - Battlegrounds） |
 | 演習場・深い森 | `battle_knight` | 勇ましいが角の立たない、騎士の曲（A Knight's Challenge） |
