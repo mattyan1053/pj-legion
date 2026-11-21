@@ -16,6 +16,7 @@
     尾根の小道の盤の外の景色（2026-11-21。コミットは同じ `84fa4e9`）
   - `trees_A_large` / `trees_B_large` / `tree_single_B` / `mountain_B_grass_trees`: リュエルの森の森のマスの大きな木立と、盤の外の森・木の茂る山
     （2026-11-21。コミットは同じ `84fa4e9`）
+  - `buildings/green/building_barracks_green`（兵舎）: 練兵場の盤の外の景色（2026-11-21。コミットは同じ `84fa4e9`）
   - `hexagons_medieval.png`: 上の全部が共通で使うテクスチャ
 - 確かめた日: 2026-11-16（`mountain_B` から下を足したとき。コミット `84fa4e9`）
 
