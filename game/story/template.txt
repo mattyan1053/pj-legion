@@ -21,6 +21,9 @@ look = stone_walls
 # music = battle_tense
 # before_music = battle_tense
 # after_music = talk_bright
+# 無くてよい: 勝ったときの調子。bright（明るい。ファンファーレのあと静かな曲）か quiet（静か。ファンファーレを鳴らさない）。無ければ bright。
+# 弔いや敵討ちのあとなど、明るくない話は quiet。
+# victory_mood = quiet
 # 無くてよい: 出撃の準備に出す「この話で覚えること」（チュートリアルの話だけ。48 字まで）。
 # lesson = 駒を押して動かし、隣の敵を攻撃する。
 # 無くてよい: 人がこのターンの終わりまで守り切れば勝ち。

@@ -14,6 +14,7 @@ map = old_battlefield
 music = battle_undead
 before_music = battle_undead
 after_music = talk_dark
+victory_mood = quiet
 wins = routed
 
 [unlock]
