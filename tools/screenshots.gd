@@ -28,7 +28,7 @@ const Maps := preload("res://game/maps.gd")
 ##   scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>
 ## マップは game/maps/ の id か、生成のマップの鍵（versus_fields.gd）。見た目は stage_look.gd の名前（書かなければ、マップの見た目）。
 const SCAPE := "scape."
-const SCAPE_VIEWS := ["wide", "side", "close", "out", "range"]
+const SCAPE_VIEWS := ["wide", "side", "close", "out", "range", "paint"]
 const SCAPE_USAGE := "scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>。構図: wide, side, close, out, range"
 
 const SCENES := {
@@ -2948,6 +2948,8 @@ func _scape(name: String) -> bool:
 		defined = Scenario.on_map(found["map"], found["title"])
 	var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 	var setup := MatchSetup.humans_on(defined, _seed, MatchSetup.default_deck(armies[0]), MatchSetup.default_deck(armies[1]))
+	if parts[2] == "paint":
+		setup.trials.append(TrialRules.BATTERY)  # 砲台のマスも並べる
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
 	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤）"] as Array[String])
@@ -2969,6 +2971,36 @@ func _scape(name: String) -> bool:
 			_aim(15.0, -50.0, 38.0)
 		"range":
 			return _scape_range(parts[1], defined.title)
+		"paint":
+			return _scape_paint()
+	return true
+
+
+## 景色の場面の「paint」: 盤の真ん中の平地に、範囲の色を帯にして並べ（上から移動・攻撃の相手・回復・スキル・ポータルの対・道）、
+## 右に敵の全員の脅威範囲の斜線を重ねる。砲台（試しの決まり）とポータルのあるマップなら、その上にも移動の色を塗る。
+## どの景色でも同じ並びなので、景色ごとに並べて、どの色が地面に沈むかを見比べる。
+func _scape_paint() -> bool:
+	var board := _battle.board
+	var size: Vector2i = board.size
+	var origin := Vector2i(size.x / 2 - 3, size.y / 2 - 3)
+	var bands: Array[StringName] = [&"move", &"target", &"heal", &"skill", &"portal", &"path"]
+	var samples := {}
+	for kind in bands:
+		samples[kind] = [] as Array[Vector2i]
+	samples[&"threat"] = [] as Array[Vector2i]
+	for row in bands.size():
+		for column in 6:
+			var cell := origin + Vector2i(column, row)
+			if not board.in_bounds(cell):
+				continue
+			samples[bands[row]].append(cell)
+			if column >= 4:
+				samples[&"threat"].append(cell)
+	for cell: Vector2i in board.battery_cells + board.portal_exits.keys():
+		samples[&"move"].append(cell)
+	_scene.show_paint_samples(samples)
+	_look_at(BoardView.cell_center(origin + Vector2i(3, 3)))
+	_aim(14.0, 20.0, 50.0)
 	return true
 
 
