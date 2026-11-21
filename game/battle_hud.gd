@@ -733,7 +733,7 @@ func _update_menu_alpha() -> void:
 func add_talk_card(card: Control) -> void:
 	add_child(card)
 	move_child(card, 0)
-	card.obstacles = func() -> Array[Rect2]: return [menu_rect(), forecast_rect()]
+	card.obstacles = func() -> Array[Rect2]: return [menu_rect(), forecast_rect(), evolution_rect()]
 
 
 ## 上の帯のすぐ下に出す、決まった枠（左の勝ち方の札、右の視点の案内）の四角（出ていなければ大きさ 0）。検査用。
@@ -975,6 +975,11 @@ func hide_evolution() -> void:
 ## 進化先の選択肢を出しているか。検査用。
 func is_evolution_shown() -> bool:
 	return _evolution.visible
+
+
+## 進化先の選択肢の枠の四角（出していなければ大きさ 0）。会話の札は、これと重なる間は薄くする。
+func evolution_rect() -> Rect2:
+	return _evolution.get_global_rect() if _evolution.visible else Rect2()
 
 
 ## マウスがボタンやパネルの上にあるか（盤面のクリックと取り違えないため）。
