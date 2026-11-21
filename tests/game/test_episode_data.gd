@@ -461,3 +461,13 @@ func test_the_roster_note_folds_within_its_width() -> void:
 		assert_true(shown.contains("コスト上限: %d" % context.story.unlocked().budget), "%s: コスト上限と数が離れた: %s" % [campaign.title, shown])
 		label.free()
 		root.free()
+
+
+## 景色はマップが決める。話が look を書けば、その話だけ替える（docs/story.md）。
+func test_the_map_decides_the_look_unless_the_episode_names_one() -> void:
+	var Maps := load("res://game/maps.gd")
+	var named: Episode = Episode.parse(KINGLESS_PROBE.replace("look = stone_walls", "look = crystal_forest"))
+	assert_eq(named.look, &"crystal_forest")
+	var unnamed: Episode = Episode.parse(KINGLESS_PROBE.replace("look = stone_walls\n", ""))
+	assert_eq(Array(unnamed.problems), [])
+	assert_eq(unnamed.look, Maps.find("old_battlefield")["look"])

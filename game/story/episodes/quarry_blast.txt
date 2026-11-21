@@ -13,7 +13,6 @@
 [episode]
 title = 縫い目の発破
 map = crystal_quarry
-look = crystal_forest
 music = battle_tense
 
 [ally]

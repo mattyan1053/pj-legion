@@ -17,6 +17,8 @@ uniform float cloud_shade = 0.1;
 // 石畳の濃さ（0 = 無し。マップの見た目の PAVING）と、ところどころ枯れた色に寄せる濃さ（DRY）。
 uniform float paving = 0.0;
 uniform float dry = 0.45;
+// 掘り下げた段々（露天掘りの棚）の濃さ（0 = 無し。マップの見た目の STRATA）。大きなむらの等高線に沿って、段の縁を暗く、段ごとに明るさを少し変える。
+uniform float strata = 0.0;
 // 模様（むら、色の寄り、斑、枯れ、石畳の目）の濃さ。描画方式で模様の出方が違うので、そろえるために掛ける（render_tone.gd）。
 uniform float pattern_gain = 1.0;
 
@@ -63,6 +65,14 @@ void fragment() {
 		float buried = smoothstep(0.42, 0.3, patches);
 		float paved = paving * (1.0 - buried);
 		color *= mix(1.0, 1.0 + ((0.9 + 0.2 * stone) * (1.0 - 0.32 * joint) - 1.0) * pattern_gain, paved);
+	}
+
+	// 掘り下げた段々。地面は平らなまま、模様だけで段に見せる（マスの色分けは変えない）。
+	if (strata > 0.0) {
+		float level = texture(noise_map, ground * 0.014 + vec2(0.27, 0.66)).r * 12.0 + wobble.x * 0.2;
+		float bench = mod(floor(level), 2.0);
+		float cut = 1.0 - smoothstep(0.0, 0.12, fract(level));
+		color *= 1.0 + strata * pattern_gain * (0.05 * (bench - 0.5) - 0.13 * cut);
 	}
 
 	// 盤の外は、少し暗く、色を抜く（戦う範囲が、光の当たった舞台に見える）。境目のすぐ外には、細い影を落とす。
