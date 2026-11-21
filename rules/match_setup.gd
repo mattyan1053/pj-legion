@@ -36,6 +36,9 @@ var ignore_budget := false
 var placements: Array[Array] = [[], []]
 ## 入にする試しの決まり（TrialRules の名前）。既定は空（どれも切）。
 var trials: Array[StringName] = []
+## プレイヤーごとの、選んだ作戦（Tactics.Id の並び）。試しの決まり TrialRules.TACTICS が入のときだけ使う。
+## 空か足りなければ、既定の札で埋める（Tactics.hand_from）。
+var tactics: Array[Array] = [[], []]
 
 
 ## 戦いの定義 defined の、人（human_side）と CPU の対戦設定。人の編成は渡したもの。
@@ -166,6 +169,8 @@ func create_battle() -> Battle:
 		_apply_start_growth(placed, scenario.start_growth[side])
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
+		if trials.has(TrialRules.TACTICS):
+			battle.tactics[side] = Tactics.hand_from(tactics[side])
 	battle.hold_turns = scenario.hold_turns
 	return battle
 

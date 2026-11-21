@@ -166,6 +166,8 @@ static func event_players() -> Dictionary:
 		SkillUsedEvent: &"_play_skill_used",
 		SkillReadyEvent: &"_play_skill_ready",
 		UltUsedEvent: &"_play_ult_used",
+		TacticUsedEvent: &"_play_tactic_used",
+		TacticHealedEvent: &"_play_tactic_healed",
 		UltReadyEvent: &"_play_ult_ready",
 		StatusAppliedEvent: &"_play_status_applied",
 		StatusRemovedEvent: &"_play_status_removed",
@@ -194,6 +196,16 @@ func play_all(events: Array[BattleEvent]) -> void:
 			continue
 		await _play(event)
 		i += 1
+		var tactic := event as TacticUsedEvent
+		if tactic != null:
+			# 作戦の効果（状態が付いた）も、必殺技と同じに、全員に同時に見せる。
+			var applied: Array[BattleEvent] = []
+			while i < events.size() and events[i] is StatusAppliedEvent:
+				applied.append(events[i])
+				i += 1
+			if not applied.is_empty():
+				await _play_ult_effects(tactic.side, applied)
+			continue
 		var ult := event as UltUsedEvent
 		if ult != null:
 			var effects: Array[BattleEvent] = []
@@ -596,6 +608,17 @@ func _play_skill_ready(event: SkillReadyEvent) -> void:
 
 ## 必殺技を使った。画面が必殺技の色に一瞬光り、必殺技の名前を大きく出す。
 ## 効果（駒ごとの状態など）は、続くイベントを _play_all がまとめて同時に見せる（_play_ult_effects）。
+func _play_tactic_used(event: TacticUsedEvent) -> void:
+	refresh_status.call(battle.turn, battle.phase)
+	_sound(&"ult_ready")
+	_hud.show_banner(Text.t("battle.banner.tactic", {"side": side_name.call(event.side), "tactic": Names.tactic(event.tactic)}), team_colors[event.side], true)
+	await after(0.4)
+
+
+func _play_tactic_healed(event: TacticHealedEvent) -> void:
+	await _play_heal(event, true)
+
+
 func _play_ult_used(event: UltUsedEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)
 	var color: Color = BattleHud.ULT_COLORS[event.ult]

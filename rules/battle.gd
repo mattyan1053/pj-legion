@@ -50,6 +50,9 @@ var armies: Array[UnitKind.Army] = [UnitKind.Army.NONE, UnitKind.Army.NONE]
 ## プレイヤーごとの必殺技のゲージ（0 から Ults.GAUGE_MAX）と、使った回数。ためる・使うのは Ults だけ。
 var ult_gauge: Array[int] = [0, 0]
 var ult_uses: Array[int] = [0, 0]
+## プレイヤーごとの作戦の手札（Tactics.Id の並び。試しの決まりが切なら空）と、もう使った札（docs/tactics.md）。
+var tactics: Array[Array] = [[], []]
+var tactics_used: Array[Array] = [[], []]
 
 ## 倒れた中ボス -> 倒した陣営（docs/neutral-mid-boss.md）。キーは中ボスの番号（Board.mid_boss_cells の添字）。
 ## 値は MidBossDefeatedEvent.slayer_side と同じ（止めを刺した駒がいなければ -1）。倒れた中ボスは湧き直さない。
