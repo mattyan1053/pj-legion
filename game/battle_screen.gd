@@ -28,6 +28,8 @@ const Settings := preload("res://game/settings.gd")
 const AppContext := preload("res://game/app_context.gd")
 const BattleLog := preload("res://game/battle_log.gd")
 const LogPanel := preload("res://game/log_panel.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
+const UnitSheet := preload("res://game/unit_sheet.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
@@ -110,6 +112,7 @@ var _effects: BattleEffects
 var _views := {}  # 駒の番号 -> UnitView
 var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
+var _unit_detail: UnitDetail
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
 var _inspect_ring: MeshInstance3D
@@ -219,6 +222,7 @@ func _ready() -> void:
 	_hud.auto_pressed.connect(press_auto)
 	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
+	_hud.detail_pressed.connect(open_unit_detail)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(source.leave()[0]))  # 決着の画面の、流れの外への行き先
 	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
@@ -246,6 +250,11 @@ func _ready() -> void:
 	_log_panel.entry_chosen.connect(_on_log_entry_chosen)
 	_log_panel.opened.connect(func() -> void: context.play_sound(&"menu_open"))
 	_log_panel.closed.connect(func() -> void: context.play_sound(&"menu_close"))
+	_unit_detail = UnitDetail.new()
+	_unit_detail.pausing = true
+	_hud.add_child(_unit_detail)
+	_unit_detail.setup(context.overlays)
+	_unit_detail.closed.connect(_on_unit_detail_closed)
 
 	settings = context.settings
 	settings.changed.connect(_on_setting_changed)
@@ -638,6 +647,45 @@ func open_log() -> void:
 		return
 	_hud.hide_banner()
 	_log_panel.open(battle_log)
+
+
+# ---- 駒の詳細 ----
+
+
+## 駒の情報の枠の「詳細」: 見ている（クリックした）駒か、選んでいる駒のステータスの窓を開く。開いている間は時間を止める。
+func open_unit_detail() -> void:
+	var unit := _detail_unit()
+	if context.overlays.is_open() or unit == null:
+		return
+	var army: UnitKind.Army = battle.armies[unit.side] if unit.side < battle.armies.size() else UnitKind.Army.NONE
+	var looks := source.king_looks()
+	var king_look: StringName = looks[unit.side] if unit.side < looks.size() else &""
+	_unit_detail.open_sheet(UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), king_look))
+	context.play_sound(&"menu_open")
+	_on_overlay_opened()
+
+
+## 「詳細」で開く駒（見ている駒が先、無ければ選んでいる駒）。
+func _detail_unit() -> Unit:
+	var unit := inspected_unit()
+	return unit if unit != null else selected_unit()
+
+
+## 駒の情報の枠に「詳細」が出ているか（検査とスクリーンショットの道具用）。
+func detail_button_shown() -> bool:
+	return _hud.detail_button_shown()
+
+
+## 駒の詳細の窓（検査とスクリーンショットの道具用）。
+func unit_detail() -> UnitDetail:
+	return _unit_detail
+
+
+func _on_unit_detail_closed() -> void:
+	if not is_inside_tree():
+		return
+	_rig.controls_enabled = not context.overlays.pauses()
+	_update_time_scale()
 
 
 ## ログの画面（検査とスクリーンショットの道具用）。
@@ -1883,6 +1931,12 @@ func _update_hover() -> void:
 ## マウスの下の駒（いなければ見ている駒、選んでいる駒。それも無ければ、クリックしたマス）の情報を左下の枠に、
 ## マウスの下のマスの短い説明を下の帯に出す。行動の対象にマウスを乗せていれば、戦闘予測のパネルも出す（_update_forecast）。
 func _update_info() -> void:
+	_update_info_panel()
+	# 「詳細」は、マウスを離しても枠に残る駒（見ている駒・選んでいる駒）がいるときだけ出す（ボタンへ動かす間に枠が替わらないように）。
+	_hud.set_detail_button(not battle.is_over() and _detail_unit() != null)
+
+
+func _update_info_panel() -> void:
 	if battle.is_over():
 		# 決着のあとは、リザルトの画面が前に出る。後ろの盤の駒やマスの情報は出さない（左下の枠が、リザルトのボタンに重なる）。
 		_hud.show_cell("")

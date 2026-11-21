@@ -32,6 +32,7 @@ const UnitFrame := preload("res://game/unit_frame.gd")
 const RoleMark := preload("res://game/role_mark.gd")
 const CostGems := preload("res://game/cost_gems.gd")
 const StatsRow := preload("res://game/stats_row.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
@@ -119,6 +120,9 @@ var _detail_title: Label
 var _detail_icon: UnitFrame
 var _detail_body: Label
 var _detail_role: RoleMark
+var _detail_open: Button
+var _unit_detail: UnitDetail
+var _layer: CanvasLayer
 var _detail_stats: StatsRow
 var _equip_box: PanelContainer
 var _equip_scroll: ScrollContainer
@@ -144,6 +148,7 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	_layer = layer
 	var shade := ColorRect.new()
 	shade.color = Color(Palette.SHADE, 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -914,6 +919,24 @@ func _build_editor() -> Control:
 	_detail_title = _text(22, COLOR_TEXT)
 	_detail_title.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	detail_title_row.add_child(_detail_title)
+	# 「詳細」: 選んでいる部隊の駒のステータスの窓（unit_detail.gd。持ち物込みの値と増減）。札の頭の右下の隅。
+	# 並びの幅を使わないよう、幅 0 の入れ物の右下に重ねて置く（長い名前の駒でも、札が横に広がらない）。
+	var detail_corner := Control.new()
+	detail_corner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	detail_head.add_child(detail_corner)
+	_detail_open = Button.new()
+	_detail_open.text = Text.t("battle.hud.detail")
+	_detail_open.theme_type_variation = UiTheme.BUTTON_GHOST
+	_detail_open.focus_mode = Control.FOCUS_NONE
+	_detail_open.add_theme_font_size_override("font_size", 14)
+	_detail_open.pressed.connect(press_unit_detail)
+	detail_corner.add_child(_detail_open)
+	_detail_open.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_detail_open.offset_left = -80.0
+	_detail_open.offset_top = -30.0
+	_detail_open.offset_right = 0.0
+	_detail_open.offset_bottom = 0.0
 	# 能力値は、札の頭に欄をそろえて出す（下の文にも同じ行がある。持ち物込みの値は文の側）。
 	_detail_stats = StatsRow.new("", 15)
 	detail_names.add_child(_detail_stats)
@@ -1200,6 +1223,23 @@ func hover_kind(kind: int) -> void:
 	_set_hover(kind)
 
 
+## 右の札の「詳細」: 選んでいる部隊の駒のステータスの窓を開く。選んでいなければ何もしない。
+func press_unit_detail() -> void:
+	if _deck == null or _selected == -1 or context.overlays.is_open():
+		return
+	if _unit_detail == null:
+		_unit_detail = UnitDetail.new()
+		_layer.add_child(_unit_detail)
+		_unit_detail.setup(context.overlays)
+	var entry := _deck.entries[_selected]
+	_unit_detail.open(entry.kind, entry.equipment, 0, _deck.army)
+
+
+## 駒のステータスの窓（検査用。まだ開いていなければ null）。
+func unit_detail() -> Control:
+	return _unit_detail
+
+
 func _set_hover(kind: int) -> void:
 	_hover_kind = kind
 	_refresh_detail()
@@ -1231,6 +1271,9 @@ func _refresh_detail() -> void:
 	var held: Array[Equipment.Id] = []
 	if entry != null:
 		held = entry.equipment
+	# 「詳細」は部隊の駒を出しているときだけ押せる（雇える駒は、マウスを離すと札が替わるので押せない。場所は保つ）。
+	_detail_open.disabled = entry == null
+	_detail_open.modulate.a = 1.0 if entry != null else 0.0
 	var lines := DeckText.detail_lines(unit_kind, held, _deck.army if _deck != null else -1, false)
 	_detail_stats.set_line(DeckText.stats_line(unit_kind, DeckText.equipment_bonus(held)))
 	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)

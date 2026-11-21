@@ -199,6 +199,7 @@ battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし
 battle.hud.status,{status}（あと {turns} ターン）: {effect}
+battle.hud.detail,詳細
 battle.hud.skill_state.used_up,使用済み
 battle.hud.skill_state.ready,使用可
 battle.hud.skill_state.unusable,使用不可
