@@ -84,6 +84,7 @@ const SMALL_SHARE := &"small_share"  ## 無くてよい。小さいものを置�
 ##   SINGLE: マスごとに props から 1 つを選んで、素材の大きさの scale 倍で置く。向きは 60 度刻みでばらす。
 ##   WALL: マスの真ん中に柱（props[0]）を立て、右と下のマスも同じ種類なら、間を壁（props[1]、ときどき props[2]）でつなぐ。
 ##         続いた障害物が、1 本の石の壁に見える。height は柱の高さ（マス）。
+##         lone_wall が真なら、隣に障害物の無い 1 マスを、柱ではなく短い壁（両端に細い柱）にする（修練場。台詞が「壁」と呼ぶ）。
 ##   CRAG: 辺で接する障害物のかたまりを、1 つの岩山に見せる（crag_mesh.gd がコードで形を作る。props は使わない）。
 ##         内側ほど高く、縁は低い崖。low・cliff・top は面の色（崖の下・崖の上・上を向いた面）。
 ## crystals があれば、その色の結晶の群れを、置いたものの上に生やす（光る。CRAG は、かたまりの内側のところどころに）。
@@ -152,7 +153,7 @@ const SCENERY_SHADE := Color(0.84, 0.88, 0.86)
 ## 同じ見た目を、いくつものマップや話で使い回せる。マップの見た目を替えるときは OF_STAGE を書き換え、見た目そのものは替えない。
 const GRASSLAND := &"grassland"  ## 草原（中央平原）
 const STONE_WALLS := &"stone_walls"  ## 石の壁（迷宮回廊、ストーリーの尾根の小道）
-const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶、ストーリーの結晶の岩山）
+const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶）
 const QUARRY := &"quarry"  ## 採掘場（結晶の採掘場）
 const SEAM := &"seam"  ## 縫い目の谷
 const BARROW := &"barrow"  ## 古戦場
@@ -161,6 +162,8 @@ const RIDGE := &"ridge"  ## 尾根（尾根の小道）
 const DEEP_FOREST := &"deep_forest"  ## 深い森（リュエルの森）
 const DRILL_YARD := &"drill_yard"  ## 演習場（練兵場）
 const CRYSTAL_NIGHT := &"crystal_night"  ## 月夜の結晶の岩山（結晶の岩山）
+const SHRINE := &"shrine"  ## 祠（結晶の祠）
+const TRIAL_COURT := &"trial_court"  ## 修練場（リュエル騎士領の演習。練兵場の盤を、この見た目で使う）
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -371,6 +374,42 @@ const THEMES := {
 			SMALL: [TREES_A, CRYSTAL_CYAN, TREES_B_MEDIUM, CRYSTAL_VIOLET, CRYSTAL_CYAN],
 			SCATTER: [CRYSTAL_CYAN, ROCK_C, CRYSTAL_VIOLET],
 			TINT: Color("5c6ca0"), SMALL_SHARE: 0.7,
+		},
+	},
+	# 結晶の祠: 縫い目の土地の、古い祠の窪地。苔むした翡翠色の石畳に、障害物は青い結晶を抱いた石の柱（祠の柱）、森は暗い針葉樹。
+	# 盤の外は、柱の列と崩れた石組み、光る水色と紫の結晶、遠くの峰。高い日の白い光が、近くから掛かる淡い翡翠の霞に差す。
+	# 結晶の森（双子結晶）とは、石畳と柱、霞の色（紫でなく翡翠）、昼の光で見分ける。
+	SHRINE: {
+		NORMAL: Color("487566"), FOREST: Color("1c4636"), OBSTACLE: Color("8a94a0"), FONT: Color("46bcd6"),
+		HAZE: Color("a9d6cc"), SKY: Color("2f6f8a"), SUN: Color("fff2d8"), AMBIENT: Color("9cc4c0"),
+		SUN_PITCH: -56.0, SUN_YAW: 150.0, SUN_ENERGY: 1.1, AMBIENT_ENERGY: 0.55,
+		PAVING: 0.6, DRY: 0.0, MIST: 0.3,
+		CRYSTAL: Color("5fe0f5"), SPRING_STONE: Color("b8c8c4"),
+		OBSTACLE_PROPS: {"style": WALL, "props": [PILLAR, STONE_WALL, STONE_WALL_BROKEN], "height": 1.0, "tint": Color("c4d2d0"), "crystals": CRAG_CRYSTAL},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_B, TREES_A], "scale": 0.64, "tint": Color("7aa898")},
+		SCENERY: {
+			BIG: [MOUNTAIN_B, {"scene": DUNGEON + "wall_broken.glb", "height": 4.0, "size": 0.5}, {"crystal": Color("9465f0"), "height": 1.0, "size": 0.7}, RUBBLE_LARGE, MOUNTAIN_B],
+			SMALL: [PILLAR, TREES_B_MEDIUM, CRYSTAL_CYAN, PILLAR, TREES_B, STONE_WALL_HALF, CRYSTAL_VIOLET, TREES_B_MEDIUM, PILLAR],
+			SCATTER: [CRYSTAL_CYAN, RUBBLE, COLUMN, ROCK_C, BARRIER],
+			TINT: Color("a8c4c0"), SMALL_SPREAD: 0.06, SMALL_SHARE: 0.75, BIG_SPREAD: 0.15,
+		},
+	},
+	# 修練場: リュエル騎士領の、導師の修練場。森に囲まれた、白い石の庭。灰緑の石畳に、障害物は白い石の壁と柱、森は枝を広げた大きな木立。
+	# 盤の外は、すぐそばまで迫る騎士領の高い森と木の茂る山、石の柱、的と武器の架、墓所の墓標。晴れた午後の白い光と、淡い藤色の霞。
+	# 練兵場（連邦の土の演習場。木箱と天幕と兵舎）とは、石畳と石の壁、まわりの森、霞の色で見分ける。
+	TRIAL_COURT: {
+		NORMAL: Color("7f8c78"), FOREST: Color("3c6a3a"), OBSTACLE: Color("4e5262"), FONT: Color("3fa9bd"),
+		HAZE: Color("c9c4e0"), SKY: Color("5b78c8"), SUN: Color("fff0dc"), AMBIENT: Color("b4b8d4"),
+		SUN_PITCH: -40.0, SUN_YAW: -100.0, SUN_ENERGY: 1.2, AMBIENT_ENERGY: 0.5,
+		PAVING: 0.85, DRY: 0.1,
+		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("d4d8e0"),
+		OBSTACLE_PROPS: {"style": WALL, "props": [PILLAR, STONE_WALL, STONE_WALL_HALF], "height": 1.0, "tint": Color("dfe4ee"), "lone_wall": true},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_B_LARGE, TREES_A_LARGE], "scale": 0.5, "tint": Color("9cc09c")},
+		SCENERY: {
+			BIG: [WOODED_MOUNTAIN, {"scene": DUNGEON + "wall.glb", "height": 4.0, "size": 0.45}, MOUNTAIN_B],
+			SMALL: [COLUMN, TREES_B_LARGE, PILLAR, TARGET, TREES_A_LARGE, WEAPON_RACK, GRAVES, TREES_B_MEDIUM, STONE_WALL_HALF, TREES_B_LARGE],
+			SCATTER: [GRAVES, BARRIER, ROCK_C, GRAVES],
+			TINT: Color("c8d2cc"), SMALL_SPREAD: 0.12, SMALL_SHARE: 0.7,
 		},
 	},
 }

@@ -9,7 +9,6 @@
 [episode]
 title = 結晶の番人
 map = shrine_hollow
-look = crystal_forest
 music = battle_boss
 before_music = battle_boss
 after_music = talk_calm
