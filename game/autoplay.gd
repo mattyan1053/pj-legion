@@ -33,7 +33,7 @@ const ResultSummary := preload("res://game/result_summary.gd")
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
-	"portal_and_spring": "ポータルに止まってメニューの「転移」、ふさがったポータル、ポータルを通る移動と取り消し、回復の泉",
+	"portal_and_spring": "ポータルに止まってメニューの「転移」、転移のあと続けて動く、取り消し、ふさがったポータル、回復の泉",
 	"capture": "敵の本陣の占拠",
 	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
@@ -371,7 +371,7 @@ func _end_turn() -> void:
 	_scene.press_end_turn()
 
 
-## ポータルを通る移動（歩く → 転移 → 歩く）と、その取り消し、回復の泉の回復。
+## ポータルを通る移動（ポータルへ歩く → メニューの「転移」→ 残りで続けて歩く）と、その取り消し、回復の泉の回復。
 func _queue_portal_and_spring_scene() -> void:
 	var board := _small_board(Vector2i(12, 6))
 	board.add_portal_pair(Vector2i(1, 1), Vector2i(8, 1))
@@ -407,12 +407,19 @@ func _queue_portal_and_spring_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(8, 1) and _scene.selected_unit() == walker, "「転移」で対のポータルへ移らなかった")
 		_expect(_scene.played.get(warped, 0) == 1, "転移を再生しなかった")
-		var last: String = _scene.battle_log.entries[-1].text
-		_expect(last.contains("(0, 1) → (8, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_expect(not _scene.menu_ids().has(BattleTexts.MENU_WARP), "転移したあとも「転移」が出ている")
+		_expect(_scene.painted_color(far) == _scene.COLOR_MOVE, "転移のあと、残りの移動力で届くマスを塗っていない")
+		_scene.played.erase(moved)
+		_scene.click_cell(far))
+	_scripted.append(func() -> void:
+		_expect(walker.cell == far, "転移のあと、続けて動けなかった")
+		_expect(_scene.played.get(moved, 0) == 1, "続きの移動を再生しなかった")
+		var last: String = _scene.battle_log.entries[-1].text
+		_expect(last.contains("(0, 1) → (10, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_scene.cancel())
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(0, 1), "転移を取り消して、動く前のマスへ戻らなかった")
+		_expect(_scene.painted_color(far) != _scene.COLOR_MOVE, "動く前の範囲を、転移の先まで広げている")
 		# 行き先がふさがっているポータル: 止まれるが、「転移」は出ない。
 		_click(blocked_walker.cell))
 	_scripted.append(func() -> void: _click(Vector2i(1, 3)))
@@ -422,22 +429,17 @@ func _queue_portal_and_spring_scene() -> void:
 		_scene.cancel())
 	_scripted.append(func() -> void: _scene.cancel())
 	_scripted.append(func() -> void: _click(walker.cell))
+	_scripted.append(func() -> void: _click(Vector2i(1, 1)))
+	_scripted.append(func() -> void: _scene.press_menu(BattleTexts.MENU_WARP))
+	_scripted.append(func() -> void: _scene.click_cell(far))
 	_scripted.append(func() -> void:
-		_scene.played.erase(warped)
-		_scene.played.erase(moved)
-		_scene.click_cell(far))
-	_scripted.append(func() -> void:
-		_expect(walker.cell == far, "ポータルの先へ動かなかった")
-		_expect(_scene.played.get(moved, 0) == 2 and _scene.played.get(warped, 0) == 1, "歩く → 転移 → 歩く の順に再生しなかった")
-		_scene.cancel())
-	_scripted.append(func() -> void:
-		_expect(walker.cell == Vector2i(0, 1), "転移した移動を取り消せなかった")
-		_scene.click_cell(far))
-	_scripted.append(func() -> void: _scene.press_wait())
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN)
+		_scene.press_wait())
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "ターンが進まなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 0, "中立の駒のいない番の知らせを出した")
 		_expect(bather.hp == bather.max_hp() - 20 + MapObject.SPRING_HEAL, "回復の泉で回復しなかった"))
 
 
@@ -815,12 +817,14 @@ func _queue_neutral_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1)
-		_scene.camera_follows.clear())
+		_scene.camera_follows.clear()
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		var core := battle.unit_at(font)
 		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 1, "中立の駒が湧いた番の知らせを出さなかった")
 		_expect(_scene.camera_follows.is_empty(), "湧いただけの中立の駒を、カメラが追った"))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
@@ -1955,6 +1959,21 @@ func _visit_decks(app: Node) -> void:
 	var placed_cells: Array[Vector2i] = place_map.unit_cells()
 	var open_cells: Array = place_map.zone().filter(func(cell: Vector2i) -> bool: return not placed_cells.has(cell))
 	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
+	var place_note: Control = dialog.deploy_note()
+	_expect(place_note.shown_unit_id() == -1, "初期位置の窓で、駒を選ぶ前から駒の欄に駒が出ている")
+	place_map.hover_cell(placed_cells[1])
+	var hovered_unit: Unit = place_map.focused_unit()
+	_expect(hovered_unit != null and place_note.shown_name() == Names.kind(hovered_unit.kind), "初期位置の窓で、マウスを乗せた駒の名前が欄に出ない")
+	place_map.press_cell(placed_cells[0])
+	var picked_unit: Unit = place_map.focused_unit()
+	_expect(picked_unit != hovered_unit and place_note.shown_unit_id() == picked_unit.id, "初期位置の窓で、選んだ駒が欄に出ない（マウスを乗せた駒より先に）")
+	# 選んだ駒を、マウスを乗せた駒と入れ替えると、マウスの下には選んだ駒が来る（欄も、その駒を出す）。
+	place_map.press_cell(placed_cells[1])
+	_expect(place_map.selected() == -1 and place_map.focused_unit() == picked_unit and place_note.shown_unit_id() == picked_unit.id,
+		"初期位置の窓で駒を入れ替えたあと、マウスの下の駒が古いまま")
+	place_map.reset()
+	_expect(place_map.focused_unit() == hovered_unit, "初期位置の窓で「おまかせ」に戻したあと、マウスの下の駒が古いまま")
+	place_map.hover_cell(Deployment.NO_CELL)
 	place_map.press_cell(placed_cells[0])
 	place_map.press_cell(open_cells[0])
 	dialog.close_dialog()
@@ -2273,6 +2292,7 @@ func _visit_story(app: Node) -> void:
 	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
 	deploy.press_cell(own_cells[0])
 	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
+	_expect(sortie.deploy_note().shown_name() == Names.kind(deploy.focused_unit().kind), "出撃準備の初期位置で、選んだ駒の名前が欄に出ない")
 	var right_click := InputEventMouseButton.new()
 	right_click.button_index = MOUSE_BUTTON_RIGHT
 	right_click.pressed = true
@@ -2608,6 +2628,31 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	_expect(card.size.y <= 64.0, "対戦の途中の会話の札が、細い帯でない（2 行を超える高さ）: %s" % card)
 	for other: Rect2 in screen.talk_card_neighbors():
 		_expect(not card.intersects(other), "対戦の途中の会話の札が、勝ち方の札・視点の案内・ミニマップに重なる: %s と %s" % [card, other])
+	# 遊ぶときは、台詞を送られるまで出したままにし、その間は盤を止める。Enter で送る（ターン終了にならない）。
+	screen.clear_talk_for_check()
+	screen.set_talk_hold(true)
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	_expect(screen.is_talk_holding() and screen.is_busy(), "遊ぶときの対戦の途中の台詞で、盤が止まらない")
+	var turn_before: int = screen.battle.turn
+	var phase_before: int = screen.battle.phase
+	for i in 600:
+		if screen.advance_talk():
+			break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding(), "対戦の途中の台詞を送れない")
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	for i in 600:
+		if screen.talk_line() != null and app.get_viewport().get_visible_rect().size.x > 0 and screen.is_talk_holding():
+			var enter := InputEventKey.new()
+			enter.physical_keycode = KEY_ENTER
+			enter.pressed = true
+			app.get_viewport().push_input(enter)
+			if not screen.is_talk_holding():
+				break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding() and screen.battle.turn == turn_before and screen.battle.phase == phase_before,
+		"対戦の途中の台詞を Enter で送れない（か、Enter でターンが終わった）")
+	screen.set_talk_hold(false)
 	# 小さな盤で、1 手で将を倒して勝つ。
 	var board := _small_board(Vector2i(5, 4))
 	var battle := Battle.new(board)

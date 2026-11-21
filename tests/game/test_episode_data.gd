@@ -11,8 +11,10 @@ const Text := preload("res://game/text.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const CampaignListScreen := preload("res://game/campaign_list_screen.gd")
 const EpisodeListScreen := preload("res://game/episode_list_screen.gd")
-## 欄の説明つきのひな形（docs/story.md の「話を 1 つ足す」）。どの物語にも並ばないが、そのまま読めること。
-const TEMPLATE := "res://game/story/template.txt"
+## 書き方の見本の物語（docs/story.md の「物語を 1 つ足す」。欄の説明つき）。物語の一覧には並ばないが、そのまま読めること。
+const TEMPLATE := "res://game/story/_template/story.txt"
+## 物語のファイルの見本を読むときに渡すパス（話は、物語と同じフォルダから読む）。
+const PROBE_STORY := "res://game/story/military/story.txt"
 
 
 func test_every_story_file_reads_without_problems() -> void:
@@ -24,16 +26,64 @@ func test_every_episode_file_is_in_a_campaign() -> void:
 	var listed := {}
 	for episode: Episode in Story.all_episodes():
 		listed[String(episode.id)] = true
-	for file: String in DirAccess.get_files_at(Episode.DIR):
-		if file.ends_with(".txt"):
-			assert_true(listed.has(file.get_basename()), "どの物語の [episodes] にも並んでいない話のファイル: %s" % file)
+	for campaign: Campaign in Story.campaigns():
+		var folder := campaign.path.get_base_dir()
+		for file: String in DirAccess.get_files_at(folder):
+			if file.ends_with(".txt") and file != Campaign.STORY_FILE:
+				assert_true(listed.has(file.get_basename()), "物語の [episodes] に並んでいない話のファイル: %s" % folder.path_join(file))
+
+
+## 物語は、game/story/ のフォルダを置けば並ぶ（登録しない）。並びは物語のファイルの order の順。「_」で始まるフォルダは読まない。
+func test_story_folders_are_found_in_order() -> void:
+	var ids := Story.campaigns().map(func(each: Campaign) -> String: return String(each.id))
+	assert_eq(ids, ["military", "fantasy"], "order の順")
+	for folder: String in DirAccess.get_directories_at(Campaign.DIR):
+		assert_true(folder.begins_with("_") or ids.has(folder), "読まれていない物語のフォルダ: %s" % folder)
+
+
+## フォルダを 1 つ置くだけで、物語が増える。story.txt の無いフォルダは、何が足りないかを言う。
+func test_a_dropped_folder_becomes_a_campaign() -> void:
+	var dir := "user://test_story_%d" % randi()
+	for folder: String in ["zeta", "alpha", "_draft", "empty"]:
+		DirAccess.make_dir_recursive_absolute(dir.path_join(folder))
+	var story := FileAccess.get_file_as_string(TEMPLATE)
+	var episode := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
+	_write(dir.path_join("zeta/story.txt"), story.replace("rules = template", "rules = zeta").replace("order = 9", "order = 1"))
+	_write(dir.path_join("zeta/first_battle.txt"), episode)
+	_write(dir.path_join("alpha/story.txt"), story.replace("rules = template", "rules = alpha").replace("first_battle", "second_battle"))
+	_write(dir.path_join("alpha/second_battle.txt"), episode)
+	_write(dir.path_join("_draft/story.txt"), "壊れた下書き")
+	var found: Dictionary = Campaign.load_all(dir)
+	var campaigns: Array = found["campaigns"]
+	assert_eq(campaigns.map(func(each: Campaign) -> String: return String(each.id)), ["zeta", "alpha"], "order の小さい順。_ で始まるフォルダは読まない")
+	for each: Campaign in campaigns:
+		assert_eq(each.problems, PackedStringArray(), String(each.id))
+		assert_eq(each.episodes.size(), 1)
+	assert_eq(found["problems"].size(), 1, "story.txt の無いフォルダ: %s" % found["problems"])
+	assert_true((found["problems"][0] as String).contains("empty"))
+	for folder: String in ["zeta", "alpha", "_draft", "empty"]:
+		for file: String in DirAccess.get_files_at(dir.path_join(folder)):
+			DirAccess.remove_absolute(dir.path_join(folder).path_join(file))
+		DirAccess.remove_absolute(dir.path_join(folder))
+	DirAccess.remove_absolute(dir)
+
+
+func _write(path: String, text: String) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
 
 
 func test_the_template_reads_without_problems() -> void:
-	var episode: Episode = Episode.load_file(TEMPLATE)
-	assert_eq(episode.problems, PackedStringArray(), "ひな形")
+	var campaign: Campaign = Campaign.load_file(TEMPLATE)
+	assert_eq(campaign.problems, PackedStringArray(), "見本の物語")
+	assert_eq(campaign.id, &"_template", "物語の id はフォルダの名前")
+	assert_eq(campaign.episodes.size(), 1)
+	var episode: Episode = campaign.episodes[0]
 	assert_ne(episode.title, "")
 	assert_false(episode.before.is_empty())
+	assert_false(episode.cues.is_empty())
+	assert_eq(episode.speakers, PackedStringArray(["隊長", "敵将", "新兵"]))
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
@@ -93,12 +143,12 @@ func test_the_probe_reads_every_field() -> void:
 
 ## 姿の最後の crown は、将の姿でない将に、会話で将の印を付ける（鍵は、付けたときだけ入る）。
 func test_figure_crown_reads() -> void:
-	var episode: Episode = Episode.parse(PROBE.replace("name = 敵将", "name = 敵将\nfigure = paladin evolved crown"))
+	var episode: Episode = Episode.parse(PROBE.replace("敵将 = enemy", "敵将 = enemy, paladin evolved crown"))
 	assert_eq(episode.problems, PackedStringArray())
 	assert_eq(episode.figures[1], {"kind": UnitKind.Id.PALADIN, "evolved": true, "look": &"", "crown": true})
-	var plain: Episode = Episode.parse(PROBE.replace("name = 敵将", "name = 敵将\nfigure = paladin crown"))
+	var plain: Episode = Episode.parse(PROBE.replace("敵将 = enemy", "敵将 = enemy, paladin crown"))
 	assert_eq(plain.figures[1], {"kind": UnitKind.Id.PALADIN, "evolved": false, "look": &"", "crown": true})
-	var swapped: Episode = Episode.parse(PROBE.replace("name = 敵将", "name = 敵将\nfigure = paladin crown evolved"))
+	var swapped: Episode = Episode.parse(PROBE.replace("敵将 = enemy", "敵将 = enemy, paladin crown evolved"))
 	assert_true(not swapped.problems.is_empty(), "順が逆の書き方を通した")
 
 
@@ -106,7 +156,7 @@ func test_figure_crown_reads() -> void:
 func test_speaker_figures_read() -> void:
 	var plain: Episode = Episode.parse(PROBE)
 	assert_eq(plain.figures, [{"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}] as Array[Dictionary], "既定は将")
-	var text := PROBE.replace("name = 隊長", "name = 隊長\nfigure = sniper evolved").replace("name = 敵将", "name = 敵将\nfigure = skeleton_brute")
+	var text := PROBE.replace("隊長 = ally", "隊長 = ally, sniper evolved").replace("敵将 = enemy", "敵将 = enemy, skeleton_brute")
 	var episode: Episode = Episode.parse(text)
 	assert_eq(episode.problems, PackedStringArray())
 	assert_eq(episode.figures[0], {"kind": UnitKind.Id.SNIPER, "evolved": true, "look": &""})
@@ -116,10 +166,10 @@ func test_speaker_figures_read() -> void:
 	assert_eq(talk["figures"], episode.figures)
 
 
-## ほかの話し手（speaker = 名前, 姿）。主な話し手（name）のあとに、書いた順に並ぶ（人の軍が先）。
+## 話し手（[cast] の「名前 = 陣営, 姿」）。陣営ごとに最初の人が主な話し手で、ほかの人は、そのあとに書いた順に並ぶ。
 ## 会話と途中の台詞の行は、話し手の番号と陣営を持ち、会話の場面と途中の台詞へ、その人の名前と姿が渡る。
 func test_more_speakers_read() -> void:
-	var text := PROBE.replace("name = 隊長", "name = 隊長\nspeaker = 新兵, medic\nspeaker = 伝令\nunit = sniper").replace("name = 敵将", "name = 敵将\nspeaker = 副官, sorcerer evolved")
+	var text := PROBE.replace("隊長 = ally", "隊長 = ally\n新兵 = ally, medic\n伝令 = ally").replace("敵将 = enemy", "敵将 = enemy\n副官 = enemy, sorcerer evolved").replace("[enemy]", "[ally]\nunit = sniper\n\n[enemy]")
 	text = text.replace("隊長: いくぞ", "新兵: いきます\n副官: 来ます").replace("(turn 2) 隊長: 進め", "(turn 1) 伝令: 進め")
 	var episode: Episode = Episode.parse(text)
 	assert_eq(episode.problems, PackedStringArray())
@@ -149,7 +199,7 @@ func test_enemy_king_figure_changes_only_the_look() -> void:
 	assert_eq(battle.king_looks(), episode.king_looks)
 	var kings := battle.make_setup(1).create_battle().units.filter(func(unit: Unit) -> bool: return unit.kind == UnitKind.Id.KING)
 	assert_eq(kings.size(), 2, "敵の将は、ルールの上では将のまま")
-	var other: Episode = Episode.parse(PROBE.replace("army = fantasy", "army = fantasy\nking_figure = skeleton_mage").replace("name = 敵将", "name = 敵将\nfigure = priest"))
+	var other: Episode = Episode.parse(PROBE.replace("army = fantasy", "army = fantasy\nking_figure = skeleton_mage").replace("敵将 = enemy", "敵将 = enemy, priest"))
 	assert_eq(other.figures[1]["look"], &"", "将でない話し手の姿には効かない")
 
 
@@ -201,11 +251,11 @@ func test_a_kingless_horde_reads() -> void:
 	assert_true(Episode.parse(PROBE).enemy_king, "書かなければ将がいる")
 	var cases := {
 		"none でない": ["king = none", "king = yes", 14],
-		"勝ち方が無い": ["wins = routed\n", "", 9],
+		"勝ち方が無い": ["wins = routed\n", "", 10],
 		"将の撃破": ["wins = routed", "wins = routed, king_defeated", 1],
 		"本陣の占拠": ["wins = routed", "wins = hq_captured", 1],
 		"将の姿": ["king = none", "king = none\nking_figure = skeleton_mage", 15],
-		"話し手が将の姿": ["figure = skeleton_brute\n", "", 10],
+		"話し手が将の姿": ["墓守 = enemy, skeleton_brute", "墓守 = enemy", 11],
 		"敵の将のきっかけ": ["(turn 2) 隊長: 進め", "(king_half enemy) 墓守: まだだ", 24],
 	}
 	for name: String in cases:
@@ -223,12 +273,12 @@ map = old_battlefield
 look = stone_walls
 wins = routed
 
-[ally]
-name = 隊長
+[cast]
+隊長 = ally
+墓守 = enemy, skeleton_brute
 
 [enemy]
-name = 墓守
-figure = skeleton_brute
+# 群れ
 army = none
 king = none
 unit = skeleton_brute
@@ -248,7 +298,7 @@ unit = skeleton
 ## 人の側（決まった部隊、解放）に魔物は書けない（物語の軍の駒だけ。campaign.gd が確かめる）。
 func test_monsters_are_not_for_the_player() -> void:
 	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
-	var campaign: Campaign = Campaign.parse(good.replace("unit = shield_trooper", "unit = skeleton"))
+	var campaign: Campaign = Campaign.parse(good.replace("unit = shield_trooper", "unit = skeleton"), PROBE_STORY)
 	assert_false(campaign.problems.is_empty(), "最初から雇える駒に魔物")
 
 
@@ -279,7 +329,7 @@ func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 ## 駒の行の「,」のあとに、始めのレベルと経験値を書ける（進化の選び方を教える話）。書かない駒は [1, 0]。
 ## 戦いの定義の start_growth へ写り、対戦の駒がそのレベルと経験値で始まる。
 func test_unit_rows_can_start_grown() -> void:
-	var text := PROBE.replace("name = 隊長", "name = 隊長\nunit = sorcerer, level 2, exp 110\nunit = paladin + iron_shield\nunit = priest, exp 30")
+	var text := PROBE.replace("[enemy]", "[ally]\nunit = sorcerer, level 2, exp 110\nunit = paladin + iron_shield\nunit = priest, exp 30\n\n[enemy]")
 	text = text.replace("unit = priest\ndeploy", "unit = priest, level 2\ndeploy")
 	var episode: Episode = Episode.parse(text)
 	assert_eq(episode.problems, PackedStringArray())
@@ -333,10 +383,15 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"空の文": ["隊長: いくぞ", "隊長:", 23],
 		"会話が長い": ["隊長: いくぞ", "隊長: いくぞ\n".repeat(Episode.TALK_MAX_LINES + 1).strip_edges(), 22],
 		"会話の文が長い": ["隊長: いくぞ", "隊長: " + "あ".repeat(Episode.TALK_MAX_CHARS + 1), 23],
-		"話し手の重なり": ["name = 隊長", "name = 隊長\nspeaker = 敵将, sniper", 14],
-		"話し手の姿": ["name = 隊長", "name = 隊長\nspeaker = 新兵, knight", 14],
-		"話し手の書き方": ["name = 隊長", "name = 隊長\nspeaker = 新兵, sniper, evolved", 14],
-		"名前の無い話し手": ["name = 隊長", "name = 隊長\nspeaker = , sniper", 14],
+		"話し手の重なり": ["敵将 = enemy", "敵将 = enemy\n敵将 = ally, sniper", 15],
+		"話し手の姿": ["敵将 = enemy", "敵将 = enemy\n新兵 = ally, knight", 15],
+		"話し手の書き方": ["敵将 = enemy", "敵将 = enemy\n新兵 = ally, sniper, evolved", 15],
+		"名前の無い話し手": ["敵将 = enemy", "敵将 = enemy\n = ally, sniper", 15],
+		"話し手の陣営": ["敵将 = enemy", "敵将 = enemy\n新兵 = friend", 15],
+		"= の無い話し手": ["敵将 = enemy", "敵将 = enemy\n新兵", 15],
+		"敵の話し手がいない": ["敵将 = enemy", "副長 = ally", 12],
+		"話し手の節が無い": ["[cast]\n隊長 = ally\n敵将 = enemy\n", "", 1],
+		"前の書き方の話し手": ["army = fantasy", "army = fantasy\nname = 敵将", 18],
 		"知らないきっかけ": ["(turn 2)", "(turn_end 2)", 30],
 		"きっかけの陣営": ["(king_half enemy)", "(king_half 1)", 31],
 		"ターン 0": ["(turn 2)", "(turn 0)", 30],
@@ -346,14 +401,15 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"知らない勝ち方": ["look = stone_walls", "look = stone_walls\nwins = rout", 6],
 		"守り切るのに勝ち方が無い": ["look = stone_walls", "look = stone_walls\nhold_turns = 5\nwins = routed", 7],
 		"勝ち方なのにターン数が無い": ["look = stone_walls", "look = stone_walls\nwins = turns_held", 6],
-		"知らない姿": ["name = 隊長", "name = 隊長\nfigure = knight", 14],
-		"中立の駒の姿": ["name = 隊長", "name = 隊長\nfigure = minion", 14],
-		"進化しない駒の進化後": ["name = 隊長", "name = 隊長\nfigure = king evolved", 14],
-		"姿の書き方": ["name = 隊長", "name = 隊長\nfigure = sniper grown", 14],
+		"知らない姿": ["隊長 = ally", "隊長 = ally, knight", 13],
+		"中立の駒の姿": ["隊長 = ally", "隊長 = ally, minion", 13],
+		"進化しない駒の進化後": ["隊長 = ally", "隊長 = ally, king evolved", 13],
+		"姿の書き方": ["隊長 = ally", "隊長 = ally, sniper grown", 13],
 		"知らない将の姿": ["army = fantasy", "army = fantasy\nking_figure = dragon", 18],
-		"人の将の姿": ["name = 隊長", "name = 隊長\nking_figure = skeleton_mage", 14],
-		"ゲージがあふれる": ["name = 隊長", "name = 隊長\nstart_gauge = 1001", 14],
-		"決まった部隊が多い": ["name = 隊長", "name = 隊長\n" + "unit = sniper\n".repeat(Deck.MAX_UNITS + 1).strip_edges(), 12],
+		"人の将の姿": ["[enemy]", "[ally]\nking_figure = skeleton_mage\n\n[enemy]", 17],
+		"ゲージがあふれる": ["[enemy]", "[ally]\nstart_gauge = 1001\n\n[enemy]", 17],
+		"決まった部隊が多い": ["[enemy]", "[ally]\n" + "unit = sniper\n".repeat(Deck.MAX_UNITS + 1) + "\n[enemy]", 16],
+		"敵の節が無い": ["[enemy]\narmy = fantasy\nunit = paladin + iron_shield + iron_shield\nunit = priest\ndeploy = 8,9  5,9\n", "", 1],
 		"節より前の行": ["[episode]", "title = 前\n[episode]", 2],
 		"節の重なり": ["[after]", "[before]\n隊長: また\n[after]", 26],
 	}
@@ -371,8 +427,8 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 ## わざと壊した物語を弾くこと。
 func test_broken_campaigns_are_caught() -> void:
 	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
-	assert_eq(Campaign.parse(good).problems, PackedStringArray(), "見本そのものは正しい")
-	assert_eq(Campaign.parse(good).episodes.size(), 1)
+	assert_eq(Campaign.parse(good, PROBE_STORY).problems, PackedStringArray(), "見本そのものは正しい")
+	assert_eq(Campaign.parse(good, PROBE_STORY).episodes.size(), 1)
 	var cases := {
 		"ほかの軍の駒から始める": ["unit = shield_trooper", "unit = paladin"],
 		"知らない軍": ["army = military", "army = elves"],
@@ -387,7 +443,7 @@ func test_broken_campaigns_are_caught() -> void:
 		if name == "ほかの軍の部隊で決まっている話":
 			text = text.replace("army = military", "army = fantasy").replace("unit = shield_trooper", "unit = paladin")
 		assert_ne(text, good, name)
-		assert_false(Campaign.parse(text).problems.is_empty(), "弾けない: %s" % name)
+		assert_false(Campaign.parse(text, PROBE_STORY).problems.is_empty(), "弾けない: %s" % name)
 
 
 # ---- 見本 ----
@@ -404,11 +460,11 @@ unit = commando
 item = speed_boots
 budget = 2
 
-[ally]
-name = 隊長
+[cast]
+隊長 = ally
+敵将 = enemy
 
 [enemy]
-name = 敵将
 army = fantasy
 unit = paladin + iron_shield + iron_shield
 unit = priest

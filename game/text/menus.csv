@@ -31,6 +31,7 @@ settings.unit_look.note,盤の駒・アイコン・会話の姿の形。次の�
 settings.unit_look.kaykit,人形
 settings.unit_look.tokens,盤の駒
 settings.unit_look.quaternius,人物
+settings.unit_look.mini,ミニ
 settings.on,オン
 settings.off,オフ
 settings.title,オプション
@@ -44,7 +45,8 @@ menu.to_map_select.confirm,マップ選択へ戻りますか？
 menu.quit,ゲーム終了
 menu.quit.confirm,ゲームを終了しますか？
 menu.losing.battle,対戦の状態は失われます。
-title.subtitle,プロジェクト・レギオン
+title.logo.top,PROJECT
+title.logo.main,LEGION
 title.button.versus,対戦
 title.button.options,オプション
 title.button.quit,終了
@@ -117,3 +119,8 @@ menu.quit.versus,終了すると、この対戦は残りません。
 menu.quit.deck,部隊編成の途中です。「編成完了」の前の変更は残りません。
 menu.quit.resume,最後に保存した所（{when}）から再開になります。
 menu.quit.from_start,まだ保存していないので、はじめからになります。
+deploy.note.none,駒を選んでいない
+deploy.note.none_read_only,駒にマウスを乗せていない
+deploy.note.selected,選択中
+deploy.note.hovered,マウスを乗せた駒
+deploy.note.role_level,{role}　レベル {level}
