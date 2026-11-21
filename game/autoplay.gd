@@ -1632,7 +1632,15 @@ func _queue_tactic_scene() -> void:
 		_scene.press_tactic(1))
 	_scripted.append(func() -> void:
 		_expect(trooper.move_range() == move + Tactics.MARCH_MOVE and not trooper.acted, "強行軍が付いていない")
+		# 確かめの途中で番を終えたら、次のプレイヤーへ持ち越さない（次のプレイヤーも、1 回目は確かめるだけ）。
+		battle.tactics[Unit.Side.PLAYER1].append(Tactics.Id.WARD)
+		battle.tactics[Unit.Side.PLAYER2] = [Tactics.Id.SUPPLY, Tactics.Id.MARCH, Tactics.Id.RALLY]
+		_scene.press_tactic(2)
+		_scene.pass_confirm_guard()
 		_end_turn())
+	_scripted.append(func() -> void:
+		_scene.press_tactic(2)
+		_expect(battle.tactics_used[Unit.Side.PLAYER2].is_empty(), "前のプレイヤーの確かめを引き継いで、作戦を使った"))
 
 
 ## 必殺技。ゲージがいっぱいになるまでボタンは押せず、1 回目は確かめるだけで、もう一度押すと使う。使っても駒の行動は残る。

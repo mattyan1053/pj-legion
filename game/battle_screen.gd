@@ -154,6 +154,8 @@ var _ui := BattleUiState.new()
 var _tactic_confirm := -1
 const TACTIC_CONFIRM_MSEC := 4000
 var _tactic_confirm_msec := 0
+## 確かめを始めたときの [ターン, フェーズ]。番が替わったら、確かめは無かったことにする（次のプレイヤーへ持ち越さない）。
+var _tactic_confirm_phase: Array[int] = [0, 0]
 ## 対戦の途中の会話（battle_cues.gd）と、その札（battle_talk.gd）。台詞は渡すもの（source.talk_cues）が持つ。
 var _cues: BattleCues
 var _talk: BattleTalk
@@ -1362,6 +1364,7 @@ func press_tactic(index: int) -> void:
 	if _tactic_confirming(now) != index:
 		_tactic_confirm = index
 		_tactic_confirm_msec = now
+		_tactic_confirm_phase = [battle.turn, battle.phase]
 		_refresh()
 		return
 	if now - _tactic_confirm_msec < BattleUiState.CONFIRM_GUARD_MSEC:
@@ -1372,7 +1375,9 @@ func press_tactic(index: int) -> void:
 
 ## 使うかを確かめている途中の作戦（手札の何枚目か）。無ければ -1。
 func _tactic_confirming(now_msec: int) -> int:
-	return _tactic_confirm if now_msec - _tactic_confirm_msec <= TACTIC_CONFIRM_MSEC else -1
+	if _tactic_confirm_phase != ([battle.turn, battle.phase] as Array[int]) or now_msec - _tactic_confirm_msec > TACTIC_CONFIRM_MSEC:
+		return -1
+	return _tactic_confirm
 
 
 ## 作戦のボタンに出すもの（手札の順に [文字, 押せるか, 説明]）。手札の無い対戦では空。
