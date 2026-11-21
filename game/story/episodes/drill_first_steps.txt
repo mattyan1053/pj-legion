@@ -9,7 +9,6 @@
 [episode]
 title = はじめの一歩
 map = drill_field
-look = stone_walls
 lesson = 駒をクリックして動かし、隣の敵を攻撃する。敵の将を倒せば勝ち。
 
 [ally]

@@ -9,7 +9,6 @@
 [episode]
 title = スキルと必殺技
 map = drill_field
-look = stone_walls
 lesson = 駒ごとのスキルと、ゲージをためて使う軍の必殺技。
 
 [unlock]
