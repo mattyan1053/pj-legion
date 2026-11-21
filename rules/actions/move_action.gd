@@ -32,7 +32,8 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var unit := battle.unit_by_id(unit_id)
 	var found := Movement.search_now(battle, unit, cruise)
 	var is_cruise := cruise or unit.cruised
-	var events := events_along(battle, unit_id, found.path(to), is_cruise)
+	# 移動はポータルを越えないので、道は歩いた 1 本（隣り合うポータルの対を歩いて通っても、転移ではない）。
+	var events: Array[BattleEvent] = [UnitMovedEvent.new(unit_id, found.path(to), is_cruise)]
 	if not unit.has_moved:
 		begin(battle, unit)
 	unit.move_spent += found.cost[to]

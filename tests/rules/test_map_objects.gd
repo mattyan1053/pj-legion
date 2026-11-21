@@ -565,6 +565,14 @@ func test_neighbouring_portals_still_warp() -> void:
 	assert_true(route[1] is WarpAction)
 
 
+func test_walking_across_neighbouring_portals_is_not_a_warp() -> void:
+	var battle := Maps.battle(["..11.."])
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
+	var events := battle.apply(MoveAction.new(commando.id, Vector2i(4, 0))).events
+	assert_eq(events.size(), 1, "隣り合うポータルの対を歩いて通っただけ")
+	assert_eq((events[0] as UnitMovedEvent).path.size(), 5)
+
+
 func test_walking_past_an_ally_on_the_exit_is_not_a_warp() -> void:
 	var battle := Maps.battle(["..11.."])
 	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
