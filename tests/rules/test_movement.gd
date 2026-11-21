@@ -209,7 +209,7 @@ func test_tied_paths_are_chosen_the_same_way_as_before() -> void:
 	assert_eq(_path_text(battle, commando, Vector2i(5, 5)), "3,3 4,3 5,3 5,4 5,5")
 	assert_eq(_path_text(battle, commando, Vector2i(1, 1)), "3,3 2,3 1,3 1,2 1,1")
 	assert_eq(_path_text(battle, commando, Vector2i(6, 0)), "3,3 4,3 5,3 6,3 6,2 6,1 6,0")
-	# 森（移動力 2）と味方、ポータルが混ざっても同じ。
+	# 森（移動力 2）と味方、ポータルが混ざっても同じ（ポータルを通るのは、転移も使って行き先を探すときだけ）。
 	var mixed := Maps.battle([
 		"...F...",
 		".F.1.F.",
@@ -220,13 +220,14 @@ func test_tied_paths_are_chosen_the_same_way_as_before() -> void:
 	var walker := mixed.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 0))
 	mixed.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(2, 0))
 	assert_eq(_path_text(mixed, walker, Vector2i(4, 2)), "0,0 1,0 2,0 2,1 3,1 4,1 4,2")
-	assert_eq(_path_text(mixed, walker, Vector2i(6, 4)), "0,0 1,0 2,0 2,1 3,1 5,3 6,3 6,4")
+	assert_eq(_path_text(mixed, walker, Vector2i(6, 4), true), "0,0 1,0 2,0 2,1 3,1 5,3 6,3 6,4")
+	assert_eq(_path_text(mixed, walker, Vector2i(6, 4)), "", "移動はポータルを越えない（歩くと移動力が足りない）")
 	assert_eq(_path_text(mixed, walker, Vector2i(2, 4)), "0,0 1,0 2,0 2,1 2,2 2,3 2,4")
 
 
-func _path_text(battle: Battle, unit: Unit, to: Vector2i) -> String:
+func _path_text(battle: Battle, unit: Unit, to: Vector2i, through_portals := false) -> String:
 	var cells: Array[String] = []
-	for cell in Movement.path_to(battle, unit, to):
+	for cell in Movement.path_to(battle, unit, to, false, through_portals):
 		cells.append("%d,%d" % [cell.x, cell.y])
 	return " ".join(cells)
 
@@ -249,10 +250,12 @@ func test_search_matches_the_plain_reference_search() -> void:
 			battle.add_unit(UnitKind.Id.COMMANDO, P1, cell)  # ポータルの上から始まる駒と、ふさがった行き先
 		assert_true(battle.units.size() >= 6, "マップ %d に駒を置けていない" % stage)
 		for unit in battle.units:
-			for cruise: bool in [false, true]:
-				var found := Movement.search(battle, unit, cruise)
-				var expected := _reference_search(battle, unit, Movement.budget(unit, cruise))
-				var message := "マップ %d の %s（巡航 %s）" % [stage, unit.cell, cruise]
+			for cruise_and_portals: Vector2i in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+				var cruise := cruise_and_portals.x == 1
+				var portals := cruise_and_portals.y == 1
+				var found := Movement.search(battle, unit, cruise, portals)
+				var expected := _reference_search(battle, unit, Movement.budget(unit, cruise), portals)
+				var message := "マップ %d の %s（巡航 %s、転移 %s）" % [stage, unit.cell, cruise, portals]
 				assert_eq(found.cost.size(), expected["cost"].size(), message)
 				assert_eq(found.parent.size(), expected["parent"].size(), message)
 				for cell: Vector2i in expected["cost"]:
@@ -265,7 +268,8 @@ func test_search_matches_the_plain_reference_search() -> void:
 
 
 ## 比べる相手の、素朴な探索。Battle の問い合わせ（unit_at、is_in_enemy_zoc、portal_exit）だけで書いてある。
-static func _reference_search(battle: Battle, unit: Unit, limit: int) -> Dictionary:
+## through_portals なら、ほかの駒のいないポータルのマスから、対のポータルへ移動力 0 で移れる。
+static func _reference_search(battle: Battle, unit: Unit, limit: int, through_portals: bool) -> Dictionary:
 	var cost := {unit.cell: 0}
 	var parent := {}
 	var done := {}
@@ -287,8 +291,9 @@ static func _reference_search(battle: Battle, unit: Unit, limit: int) -> Diction
 		if cell != unit.cell and battle.is_in_enemy_zoc(cell, unit.side):
 			continue
 		var steps: Array[Vector2i] = []
-		var exit := battle.portal_exit(cell)
-		if exit != Board.NO_CELL:
+		var exit := battle.portal_exit(cell) if through_portals else Board.NO_CELL
+		var here := battle.unit_at(cell)
+		if exit != Board.NO_CELL and exit != unit.cell and (here == null or here == unit):
 			steps.append(exit)
 		for direction in Board.DIRECTIONS:
 			steps.append(cell + direction)

@@ -28,6 +28,8 @@ const Settings := preload("res://game/settings.gd")
 const AppContext := preload("res://game/app_context.gd")
 const BattleLog := preload("res://game/battle_log.gd")
 const LogPanel := preload("res://game/log_panel.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
+const UnitSheet := preload("res://game/unit_sheet.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
@@ -110,6 +112,7 @@ var _effects: BattleEffects
 var _views := {}  # 駒の番号 -> UnitView
 var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
+var _unit_detail: UnitDetail
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
 var _inspect_ring: MeshInstance3D
@@ -162,8 +165,10 @@ var _barrel_targets: Array[Vector2i] = []
 var _barricade_targets: Array[Vector2i] = []
 var _heal_targets: Array[Unit] = []
 var _skill_cells: Array[Vector2i] = []
-## 選んでいる駒が、いまのポータルから転移できるなら [行き先, 巡航か]（Queries.warp）。
-var _warp: Array = []
+## 選んでいる駒が、いまのポータルから転移できるなら行き先（Queries.warp_exit）。できなければ NO_CELL。
+var _warp := NO_CELL
+## 選んでいる駒の移動の範囲にある、転移に使えるポータル（入る -> 出る。Queries.reachable_portals）。
+var _portals := {}
 ## 駒のそばのメニューと、戦闘予測のパネルの置き場所（panel_layout.gd）。
 var _layout: PanelLayout
 ## 検査で、マウスを乗せたことにしているマス（hover）。NO_CELL ならマウスの位置。
@@ -221,6 +226,7 @@ func _ready() -> void:
 	_hud.auto_pressed.connect(press_auto)
 	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
+	_hud.detail_pressed.connect(open_unit_detail)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(source.leave()[0]))  # 決着の画面の、流れの外への行き先
 	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
@@ -260,6 +266,11 @@ func _ready() -> void:
 	_log_panel.entry_chosen.connect(_on_log_entry_chosen)
 	_log_panel.opened.connect(func() -> void: context.play_sound(&"menu_open"))
 	_log_panel.closed.connect(func() -> void: context.play_sound(&"menu_close"))
+	_unit_detail = UnitDetail.new()
+	_unit_detail.pausing = true
+	_hud.add_child(_unit_detail)
+	_unit_detail.setup(context.overlays)
+	_unit_detail.closed.connect(_on_unit_detail_closed)
 
 	settings = context.settings
 	settings.changed.connect(_on_setting_changed)
@@ -699,6 +710,45 @@ func open_log() -> void:
 	_log_panel.open(battle_log)
 
 
+# ---- 駒の詳細 ----
+
+
+## 駒の情報の枠の「詳細」: 見ている（クリックした）駒か、選んでいる駒のステータスの窓を開く。開いている間は時間を止める。
+func open_unit_detail() -> void:
+	var unit := _detail_unit()
+	if context.overlays.is_open() or unit == null:
+		return
+	var army: UnitKind.Army = battle.armies[unit.side] if unit.side < battle.armies.size() else UnitKind.Army.NONE
+	var looks := source.king_looks()
+	var king_look: StringName = looks[unit.side] if unit.side < looks.size() else &""
+	_unit_detail.open_sheet(UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), king_look))
+	context.play_sound(&"menu_open")
+	_on_overlay_opened()
+
+
+## 「詳細」で開く駒（見ている駒が先、無ければ選んでいる駒）。
+func _detail_unit() -> Unit:
+	var unit := inspected_unit()
+	return unit if unit != null else selected_unit()
+
+
+## 駒の情報の枠に「詳細」が出ているか（検査とスクリーンショットの道具用）。
+func detail_button_shown() -> bool:
+	return _hud.detail_button_shown()
+
+
+## 駒の詳細の窓（検査とスクリーンショットの道具用）。
+func unit_detail() -> UnitDetail:
+	return _unit_detail
+
+
+func _on_unit_detail_closed() -> void:
+	if not is_inside_tree():
+		return
+	_rig.controls_enabled = not context.overlays.pauses()
+	_update_time_scale()
+
+
 ## ログの画面（検査とスクリーンショットの道具用）。
 func log_panel() -> LogPanel:
 	return _log_panel
@@ -1111,10 +1161,10 @@ func click_cell(cell: Vector2i) -> void:
 		_inspect(clicked.id)
 	elif _ui.mode != Mode.NONE:
 		_leave_mode()
+	elif _move_cells.has(cell):
+		_do(MoveAction.new(_ui.selected_id, cell, _move_cells[cell]))  # 転移のあとなら、残りの移動力で続けて動く
 	elif battle.acting_unit_id != 0:
 		pass  # 動いたあとは、攻撃・回復・待機・取り消しのどれかを選ぶ。
-	elif _move_cells.has(cell):
-		_do(MoveAction.new(_ui.selected_id, cell, _move_cells[cell]))
 	else:
 		_select(clicked.id if clicked != null else 0)
 		if clicked == null:
@@ -1243,15 +1293,12 @@ func _leave_mode() -> void:
 	_refresh()
 
 
-## 選んでいる駒を、いまのポータルから対のポータルへ転移させる（メニューの「転移」）。
-## ポータルへ動いたあとなら、ルールには「移動の取り消し」と「行き先への移動」として渡す（Queries.warp_actions）。
-## 見せるのは転移だけ（戻って歩き直すところは見せない。BattlePlayback.play_all の quiet_until_warp_from）。
+## 選んでいる駒を、いまのポータルから対のポータルへ転移させる（メニューの「転移」。WarpAction）。
+## 移動力が残っていれば、転移した先から続けて動ける（範囲を塗り直す）。
 func press_warp() -> void:
-	if is_busy() or _ui.selected_id == 0:
+	if is_busy() or _ui.selected_id == 0 or _warp == NO_CELL:
 		return
-	var actions := Queries.warp_actions(battle, selected_unit())
-	if not actions.is_empty():
-		_do_all(actions, selected_unit().cell)
+	_do(WarpAction.new(_ui.selected_id))
 
 
 ## 選んでいる駒を待機させる（メニューの「待機」）。
@@ -1519,9 +1566,8 @@ func _do(action: BattleAction) -> bool:
 
 
 ## 行動の組を順にルールに渡し、起きたことをまとめて再生する。先頭が断られたら何もしない。途中で断られたら、そこまでを再生する。
-## quiet_until_warp_from がマスなら、そのポータルから出る転移より前に起きたこと（移動の取り消しと、歩き直し）は見せずに済ませる（ログには残る）。
 ## 受け付けられたかを返す（全部が受け付けられたとき真）。
-func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> bool:
+func _do_all(actions: Array[BattleAction]) -> bool:
 	var events: Array[BattleEvent] = []
 	var accepted := true
 	var was_watching := _watching_other()
@@ -1559,7 +1605,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 		_hud.set_end_turn(false, Text.t("battle.end_turn.cpu"))
 		_hud.set_hint(BattleTexts.hint(battle, null, null, Mode.NONE, true, false, false))
 	_show_watch_controls()
-	await _playback.play_all(events, quiet_until_warp_from)
+	await _playback.play_all(events)
 	_watch_playback = false
 	_ui.busy = false
 	if _playback.skipping and not _watching_other():
@@ -1669,7 +1715,8 @@ func _refresh() -> void:
 	_barricade_targets = Queries.barricade_targets(battle, unit)
 	_heal_targets = Queries.heal_targets(battle, unit)
 	_skill_cells = Queries.skill_cells(battle, unit)
-	_warp = Queries.warp(battle, unit)
+	_warp = Queries.warp_exit(battle, unit)
+	_portals = Queries.reachable_portals(battle, unit)
 	var cpu_turn := _ui.cpu_running or _is_cpu_turn()
 	_ui.reconcile(
 		unit != null, unit != null and battle.can_act(unit), inspected_unit() != null, battle.is_over(), cpu_turn,
@@ -1733,7 +1780,7 @@ func _refresh() -> void:
 	_refresh_status(battle.turn, battle.phase)
 	_hud.set_hint(BattleTexts.hint(
 		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit),
-		Queries.unacted_count(battle) if _ui.confirming_end else 0, not _warp.is_empty(), _ui.pinned_ids.size()
+		Queries.unacted_count(battle) if _ui.confirming_end else 0, _warp != NO_CELL, _ui.pinned_ids.size()
 	))
 	if _ui.confirming_auto:
 		_hud.set_hint(BattleTexts.auto_confirm_hint())
@@ -1765,7 +1812,7 @@ func _refresh() -> void:
 	_hud.set_menu(
 		BattleTexts.menu_items(
 			battle, unit, _ui.mode, _can_attack(), not _heal_targets.is_empty(), not _skill_cells.is_empty(),
-			_warp[0] if not _warp.is_empty() else NO_CELL
+			_warp
 		)
 		if not cpu_turn and evolving == null else []
 	)
@@ -1778,25 +1825,14 @@ func _refresh() -> void:
 	_update_info()
 
 
-## 動ける範囲に重ねる、ポータルの塗り（マス -> 色）。転移して行けるポータルの対を、ポータルと同じ色で塗る
-## （入るポータルと、出るポータル。駒がいま乗っているポータルは塗らない）。ポータルへ動いたあとで転移できるなら、出るポータルを塗る。
+## 動ける範囲に重ねる、ポータルの塗り（マス -> 色）。範囲の中の、転移に使えるポータル（止まると「転移」を選べる）と、
+## その対の出るポータルを、ポータルと同じ色で塗る（範囲は転移の先まで広げない。出るポータルの印で、どこへ出るかを見せる）。
 func _portal_paint(unit: Unit) -> Dictionary:
 	var result := {}
-	if unit.has_moved:
-		if not _warp.is_empty():
-			result[_warp[0]] = portal_paint_color(unit.cell)
-		return result
-	for portal: Vector2i in battle.board.portal_exits:
-		var exit := battle.portal_exit(portal)
-		if exit == NO_CELL or not _move_cells.has(exit) or (portal != unit.cell and not _move_cells.has(portal)):
-			continue
-		var path := Movement.path_to(battle, unit, exit, _move_cells[exit])
-		var at := path.find(portal)
-		if at < 0 or at + 1 >= path.size() or path[at + 1] != exit:
-			continue  # 行き先へは、このポータルを通らずに歩いて行く
-		result[exit] = portal_paint_color(portal)
+	for portal: Vector2i in _portals:
 		if portal != unit.cell:
 			result[portal] = portal_paint_color(portal)
+		result[_portals[portal]] = portal_paint_color(portal)
 	return result
 
 
@@ -1901,7 +1937,7 @@ func _show_painted() -> void:
 			colors[cell] = BattlePlayback.COLOR_BLAST
 	elif unit != null and not _ui.busy and _ui.mode == Mode.NONE and _move_cells.has(_hover_cell):
 		colors = _painted.duplicate()
-		for cell in Movement.path_to(battle, unit, _hover_cell, _move_cells[_hover_cell]):
+		for cell in Movement.search_now(battle, unit, _move_cells[_hover_cell]).path(_hover_cell):
 			if cell != unit.cell:
 				colors[cell] = COLOR_PATH
 	# 駒のいるマスの、攻撃・回復・スキルの対象の色は、駒の足元の円盤に隠れないよう、その上に塗る。
@@ -1945,6 +1981,12 @@ func _update_hover() -> void:
 ## マウスの下の駒（いなければ見ている駒、選んでいる駒。それも無ければ、クリックしたマス）の情報を左下の枠に、
 ## マウスの下のマスの短い説明を下の帯に出す。行動の対象にマウスを乗せていれば、戦闘予測のパネルも出す（_update_forecast）。
 func _update_info() -> void:
+	_update_info_panel()
+	# 「詳細」は、マウスを離しても枠に残る駒（見ている駒・選んでいる駒）がいるときだけ出す（ボタンへ動かす間に枠が替わらないように）。
+	_hud.set_detail_button(not battle.is_over() and _detail_unit() != null)
+
+
+func _update_info_panel() -> void:
 	if battle.is_over():
 		# 決着のあとは、リザルトの画面が前に出る。後ろの盤の駒やマスの情報は出さない（左下の枠が、リザルトのボタンに重なる）。
 		_hud.show_cell("")

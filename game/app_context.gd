@@ -9,6 +9,7 @@ const Settings := preload("res://game/settings.gd")
 const DeckLibrary := preload("res://game/deck_library.gd")
 const Story := preload("res://game/story.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
+const SaveSlots := preload("res://game/save_slots.gd")
 
 ## システムメニューを開いてほしい（Esc、何も戻すものが無いとき）。
 signal menu_requested
@@ -27,8 +28,10 @@ const CHECK_SEED := 20261114
 var settings := Settings.new()
 ## 取っておいた部隊（編成の画面で組み、対戦用は対戦設定で、ストーリー用は出撃準備で選ぶ。user:// に取っておく）。
 var decks := DeckLibrary.new()
-## ストーリーの進み具合（クリアした話。user:// に取っておく）。
+## ストーリーの進み具合（クリアした話。いまのセーブのスロットに取っておく）。
 var story := Story.new()
+## セーブのスロット（save_slots.gd）。ストーリーの進み具合とストーリー用の部隊は、いまのスロットに書く。
+var slots := SaveSlots.new()
 ## 開いている重なる画面（システムメニュー、ログ、対戦設定）の積み上げ（overlay_stack.gd）。
 ## 後ろの場面は、何かが開いているかを、ここだけで見る。Esc と右クリックは、いちばん上の重なる画面だけが受ける。
 var overlays := OverlayStack.new()
@@ -52,6 +55,34 @@ func _init() -> void:
 	# 取っておいた部隊は、ストーリーの決まり（進み具合で雇える駒が増える）も引ける。進み具合が変わったら引き直す。
 	decks.rules_lookup = rules_of
 	story.changed.connect(decks.refresh_rules)
+	# ストーリーの進み具合とストーリー用の部隊は、いまのスロットに書く（取っておく先の無い検査でも、スロットに覚えておく）。
+	slots.open_latest()  # 取っておく先の無いとき（検査）は、空の 1 番。遊ぶときは、アプリが取っておく先を入れてから開き直す
+	story.store = slots.section(true)  # 進み具合は覚えておき、区切りで書く（オートセーブ）
+	decks.slot_store = slots.section()
+	decks.is_slot_rules = is_story_rules
+
+
+## 決まりの名前が、ストーリーの決まり（どれかの物語の決まり）か。ストーリー用の部隊は、セーブのスロットに書く。
+static func is_story_rules(rules_id: StringName) -> bool:
+	for each: Story.Campaign in Story.campaigns():
+		if each.rules_id == rules_id:
+			return true
+	return false
+
+
+## スロット number をいまのスロットにして（空なら新しく始めて）、ストーリーの進み具合と部隊を読み直す。選べたか。
+func use_slot(number: int) -> bool:
+	if not slots.select(number):
+		return false
+	reload_slot()
+	return true
+
+
+## いまのスロットの中身で、ストーリーの進み具合と部隊を読み直す（写す・消すで、いまのスロットが変わったとき）。
+## 進み具合を先に読む（ストーリー用の部隊は、いま雇える駒の決まりで読む）。
+func reload_slot() -> void:
+	story.load_saved()
+	decks.load_saved()
 
 
 ## 決まりの名前から決まりを引く: ストーリーの決まりは、いまの進み具合のもの。ほかは DeckRules.by_id。

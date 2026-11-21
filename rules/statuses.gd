@@ -96,15 +96,9 @@ static func stat_after_move(unit: Unit, which: Unit.Stat) -> int:
 	return probe.stat(which)
 
 
-## unit がほかのマスへ動いた（MoveAction が呼ぶ）。動くと外れる状態を外す。
-## 外す前の状態は unit.statuses_before_move に残し、移動を取り消したら戻す（restore_after_undo）。
-static func after_move(unit: Unit) -> Array[BattleEvent]:
-	unit.statuses_before_move = unit.statuses.duplicate()
-	return displace(unit)
-
-
-## unit が、移動のほかの形でほかのマスへ移った（スキルで跳んだ、入れ替えられた）。動くと外れる状態を外す。
-## 移動の取り消しでは戻らない（外す前の状態を覚えない）。
+## unit がほかのマスへ移った（移動・転移。スキルで跳んだ、入れ替えられた）。動くと外れる状態を外す。
+## 移動と転移では、行動の最初の移動の前の状態が unit.statuses_before_move にあり（MoveAction.begin）、取り消したら戻す（restore_after_undo）。
+## スキルで移ったときは、取り消しで戻らない（スキルを使ったあとは取り消せない）。
 static func displace(unit: Unit) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	for type in types_of(unit):

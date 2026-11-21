@@ -186,6 +186,7 @@ func finish_action(unit: Unit) -> UnitActedEvent:
 	unit.has_moved = false
 	unit.cruised = false
 	unit.move_locked = false
+	unit.clear_move_steps()
 	if acting_unit_id == unit.id:
 		acting_unit_id = 0
 	return UnitActedEvent.new(unit.id)
@@ -199,6 +200,8 @@ func hold_action(unit: Unit) -> void:
 	unit.has_moved = true
 	unit.move_origin = unit.cell
 	unit.move_locked = true
+	unit.can_keep_moving = false
+	unit.just_warped = false
 
 
 ## 決着したか（どちらかが勝ったか、引き分け）。

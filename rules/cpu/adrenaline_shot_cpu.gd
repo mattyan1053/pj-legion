@@ -25,7 +25,7 @@ func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	var friend := sim.unit_at(used.target)
 	var best := 0.0
 	for action in sim.options(friend.id).actions():
-		if action is MoveAction or action is WaitAction or action is UndoMoveAction or action is UseSkillAction:
+		if action is MoveAction or action is WarpAction or action is WaitAction or action is UndoMoveAction or action is UseSkillAction:
 			continue
 		var after := sim.clone()
 		best = maxf(best, cpu._outcome_value(after, after.apply(action).events))
