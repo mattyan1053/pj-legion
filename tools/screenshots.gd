@@ -356,6 +356,7 @@ func _reset(seed: int) -> void:
 	for number in range(1, 4):
 		_app.context.slots.remove(number)  # 前の場面が書いたセーブのスロットを持ち越さない（取っておく先は無いので、覚えているものだけ）
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
+	_app.context.story.open_all = false  # 前の場面（story_open_all）の確かめ用の解放（F5）も持ち越さない（残ると、記録に書かず、隅に印が出る）
 	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:
 		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
