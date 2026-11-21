@@ -10,7 +10,7 @@
 [episode]
 title = 少数精鋭
 map = drill_field
-look = crystal_forest
+look = trial_court
 music = battle_knight
 before_music = talk
 after_music = talk

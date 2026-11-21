@@ -21,13 +21,13 @@ const MUSIC := {
 	&"battle": {"path": "res://assets/audio/oga-battle/battle_theme_a_loop.ogg", "loop": true, "volume_db": -11.0},
 	## 対戦（石の遺跡。重く暗い 3 拍子の戦いの曲）。
 	&"battle_ruins": {"path": "res://assets/audio/oga-battle/great_labyrinth.ogg", "loop": true, "volume_db": -10.0},
-	## 対戦（結晶の森。打楽器の刻みが続く、異国風の戦いの曲）。
+	## 対戦（結晶の森・結晶の祠。打楽器の刻みが続く、異国風の戦いの曲）。
 	&"battle_crystal": {"path": "res://assets/audio/oga-battle/sigil.ogg", "loop": true, "volume_db": -4.0},
 	## 対戦（峠。木管と弦と打楽器の、ファンタジーの戦いの曲）。
 	&"battle_fields": {"path": "res://assets/audio/oga-battle/fantasy_battlegrounds.ogg", "loop": true, "volume_db": -10.0},
 	## 対戦（尾根・採掘場。ホルンと小太鼓の、軍の行進のような戦いの曲）。
 	&"battle_march": {"path": "res://assets/audio/oga-battle/the_battlefield.ogg", "loop": true, "volume_db": -4.5},
-	## 対戦（演習場・深い森。勇ましいが角の立たない、騎士の戦いの曲）。
+	## 対戦（演習場・深い森・修練場。勇ましいが角の立たない、騎士の戦いの曲）。
 	&"battle_knight": {"path": "res://assets/audio/oga-battle/a_knights_challenge.ogg", "loop": true, "volume_db": -8.0},
 	## 魔物（古戦場・縫い目の谷。合唱と太鼓の、戦の嘆きの曲。4 分近くあり、静かな所と山がある）。
 	&"battle_lament": {"path": "res://assets/audio/oga-battle/laments_of_the_war.ogg", "loop": true, "volume_db": -10.5},
@@ -155,6 +155,8 @@ const LOOK_MUSIC := {
 	StageLook.DEEP_FOREST: &"battle_knight",
 	StageLook.DRILL_YARD: &"battle_knight",
 	StageLook.CRYSTAL_NIGHT: &"battle_ruins",
+	StageLook.SHRINE: &"battle_crystal",
+	StageLook.TRIAL_COURT: &"battle_knight",
 }
 
 

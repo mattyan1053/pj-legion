@@ -10,7 +10,7 @@
 [episode]
 title = 火球
 map = drill_field
-look = crystal_forest
+look = trial_court
 music = battle_undead
 before_music = battle_undead
 after_music = talk_calm
