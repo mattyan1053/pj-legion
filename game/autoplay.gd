@@ -907,6 +907,11 @@ func _queue_evolution_scene() -> void:
 		_expect(paladin.level == Growth.MAX_LEVEL, "上限のレベルに届かなかった")
 		_expect(battle.evolving_unit() == paladin, "進化先を選ぶのを待っていない")
 		_expect(_scene.is_choosing_evolution(), "進化先の選択肢が出ていない")
+		# 進化先の選択肢と会話の札は、どちらも上の真ん中に出る。重なる間は、札を薄くする（文が選択肢の後ろから覗かない）。
+		_scene.say_for_check([BattleCues.Line.new(1, "ウル", "あと 1 段で進化じゃ。いますぐ選ぶがよい。", {})] as Array[BattleCues.Line])
+		_expect(not _scene.talk_card_rect().intersects(_scene.evolution_rect()) or _scene.is_talk_dimmed(),
+			"進化先の選択肢に重なった会話の札が、薄くならない: %s と %s" % [_scene.talk_card_rect(), _scene.evolution_rect()])
+		_scene.clear_talk_for_check()
 		_end_turn())
 	_scripted.append(func() -> void:
 		_expect(battle.phase == Unit.Side.PLAYER1, "進化先を選ぶ前にターンが終わった")
