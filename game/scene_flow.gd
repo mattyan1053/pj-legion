@@ -16,6 +16,8 @@ extends RefCounted
 ##   - in_progress() -> bool: 抜けると失われるものがあるか（あれば、タイトルへ戻る・ゲームを終える前に確かめる）。
 ##   - losing_note() -> String: 確かめの文に書く、失われるもの（既定は「対戦の状態は失われます。」）。
 
+const SoundCatalog := preload("res://game/sound_catalog.gd")
+
 ## 場面の名前。ほかのスクリプトは、場面を名前で指すとき、文字で書かずにこれを使う（書き漏らすと、流れが渡すものを受け取れず、
 ## エラーにならずに既定の中身で始まる）。
 const TITLE := &"title"
@@ -70,7 +72,7 @@ const SCENES := {
 	TALK: {
 		"script": "res://game/talk_screen.gd",
 		"next": {},  # 流れの中でだけ使う（ストーリーの会話。Run.NEXT で次へ）
-		"music": &"talk",  # 話のファイルの talk_music で選び直せる（episode.gd）
+		"music": &"talk",  # ふつうは渡すもの（story.gd の talk_of: 話のファイルの before_music・after_music）が決める
 	},
 	SORTIE: {
 		"script": "res://game/sortie_screen.gd",
@@ -121,3 +123,8 @@ static func music_for(scene: StringName, given: Variant) -> StringName:
 	elif given is Dictionary:
 		track = (given as Dictionary).get("music", &"")
 	return track if track != &"" else music(scene)
+
+
+## 場面 scene で曲 track を鳴らすときの、表の大きさからの差（dB）。会話の場面では、対戦の曲を小さくする（sound_catalog.gd の talk_offset_db）。
+static func music_offset_db(scene: StringName, track: StringName) -> float:
+	return SoundCatalog.talk_offset_db(track) if scene == TALK else 0.0

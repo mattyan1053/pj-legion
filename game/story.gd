@@ -493,9 +493,9 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 	run.menu_exits = [[EPISODE_LIST, "story.episodes.resume", "menu.to_episodes.confirm"]]
 	var battle := StoryBattle.new(episode, human_deck)
 	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃準備で、battle の人の部隊を選び直す
-	run.add(TALK, talk_of(episode, episode.before), true)
+	run.add(TALK, talk_of(episode, episode.before, episode.before_talk_music()), true)
 	run.add(BATTLE, battle)
-	var after := talk_of(episode, episode.after)
+	var after := talk_of(episode, episode.after, episode.after_talk_music())
 	for news_line: Dictionary in news:
 		var line := {"side": NOTICE_SIDE, "name": notice_name()}
 		line.merge(news_line)
@@ -525,11 +525,11 @@ static func episode_after(episode: Episode) -> Episode:
 
 
 ## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文}, …],
-## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲（話のファイルの talk_music。空なら場面の表の曲）,
+## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲 track（前の会話・あとの会話の曲。episode.gd の before_talk_music・after_talk_music。空なら場面の表の曲）,
 ## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
-static func talk_of(episode: Episode, rows: Array) -> Dictionary:
+static func talk_of(episode: Episode, rows: Array, track := &"") -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row: Array in rows:
 		lines.append({"side": row[0], "who": row[2], "name": episode.speakers[row[2]], "text": row[1]})
 	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
-			"music": episode.talk_music, "figures": episode.figures}
+			"music": track, "figures": episode.figures}
