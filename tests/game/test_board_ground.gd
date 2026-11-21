@@ -163,3 +163,11 @@ func test_small_share_thins_out_the_small_scenery() -> void:
 	var fewer := Scenery.layout(SIZE, 1, thin)
 	assert_true(count.call(fewer, StageLook.SMALL) < count.call(all, StageLook.SMALL) * 0.5, "小さいものが減らない")
 	assert_eq(count.call(fewer, StageLook.BIG), count.call(all, StageLook.BIG))
+
+
+func test_big_spread_adds_big_scenery() -> void:
+	# 大きいものの尾根を太らせる（BIG_SPREAD）と、大きいものが増える（谷の両側の山並み）。
+	var plain := {StageLook.BIG: [StageLook.MOUNTAIN_A], StageLook.SMALL: [], StageLook.SCATTER: [], StageLook.TINT: Color.WHITE}
+	var spread := plain.duplicate()
+	spread[StageLook.BIG_SPREAD] = 0.3
+	assert_true(Scenery.layout(SIZE, 1, spread).size() > Scenery.layout(SIZE, 1, plain).size() * 1.5, "大きいものが増えない")
