@@ -6,13 +6,18 @@ extends Control
 ## - 決める側の駒を押すと選ぶ（金の縁）。続けて置けるマスを押すと、そこへ置く（駒がいれば入れ替える）。もう一度押すか右クリックで選ぶのをやめる。
 ## - 置き方は、本陣からのずれを部隊の並びの順に持つ（MatchSetup.placements。offsets）。reset でいつもの置き方（おまかせ）へ戻す。
 ## - read_only なら、見せるだけ（部隊も位置も決まっている話）。
+## - 選んでいる駒は、大きく描いて金の縁で囲む。マウスを乗せた駒と選んでいる駒には、縮図の上に名前の札を出す
+##   （アイコンだけでは誰か分かりにくい。詳しくは横の欄 deploy_note.gd）。
 
 const MapCard := preload("res://game/map_card.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const Palette := preload("res://game/ui_palette.gd")
+const Names := preload("res://game/names.gd")
 
 ## 置き方が変わった（offsets() で読む）。
 signal changed
+## 選んでいる駒か、マウスを乗せている駒が替わった（focused_unit() で読む）。
+signal focus_changed
 
 ## 1 マスの大きさ（縮図の絵の px。表示は control の大きさに合わせて拡げる）。
 const IMAGE_CELL := 8
@@ -20,6 +25,9 @@ const IMAGE_CELL := 8
 const TICK := 4.0
 const TICK_LONG := 7.0
 const FRAME_CORNER := 16.0
+## 駒の名前の札の文字の大きさと、文字の周りの余白（px）。
+const NAME_TAG_FONT := 13
+const NAME_TAG_PAD := 4.0
 
 var read_only := false
 
@@ -29,6 +37,10 @@ var _zone: Array[Vector2i] = []
 var _defaults: Array[Vector2i] = []
 var _cells: Array[Vector2i] = []
 var _kinds: Array[UnitKind.Id] = []
+## 決める側の駒（部隊の並びの順。_cells と同じ並び）。能力値を読むため。
+var _units: Array[Unit] = []
+## マウスを乗せている駒（_cells の添字。いなければ -1）。
+var _hovered := -1
 var _team_colors: Array[Color] = []
 var _texture: Texture2D
 var _selected := -1
@@ -42,16 +54,20 @@ func setup(battle: Battle, side: Unit.Side, defaults: Array[Vector2i], scenario_
 	_team_colors = team_colors
 	_kinds.clear()
 	_cells.clear()
+	_units.clear()
 	for unit: Unit in battle.units:
 		if unit.side == side and unit.kind != UnitKind.Id.KING:
 			_kinds.append(unit.kind)
 			_cells.append(unit.cell)
+			_units.append(unit)
 	_defaults = defaults.duplicate()
 	_zone = Deployment.zone(battle, side, scenario_cells, _kinds.size())
 	_texture = ImageTexture.create_from_image(MapCard.draw(battle.board, look, team_colors, IMAGE_CELL))
 	_selected = -1
+	_hovered = -1
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	queue_redraw()
+	focus_changed.emit()
 
 
 ## 盤の大きさに合う、縮図の大きさ（1 マス cell_px）。
@@ -76,6 +92,7 @@ func reset() -> void:
 	_selected = -1
 	queue_redraw()
 	changed.emit()
+	focus_changed.emit()
 
 
 func is_default() -> bool:
@@ -93,6 +110,27 @@ func unit_cells() -> Array[Vector2i]:
 
 func selected() -> int:
 	return _selected
+
+
+## 横の欄に出す駒: 選んでいる駒、選んでいなければマウスを乗せている駒。どちらも無ければ null。
+func focused_unit() -> Unit:
+	var index := _selected if _selected != -1 else _hovered
+	return _units[index] if index >= 0 and index < _units.size() else null
+
+
+## 決める側の陣営の色。
+func team_color() -> Color:
+	return _team_colors[_side] if _side < _team_colors.size() else Palette.TEXT
+
+
+## マス cell にマウスを乗せる（マウスと同じ。検査用にも）。駒のいないマスなら、乗せている駒は無し。
+func hover_cell(cell: Vector2i) -> void:
+	var index := _cells.find(cell) if _battle != null else -1
+	if index == _hovered:
+		return
+	_hovered = index
+	queue_redraw()
+	focus_changed.emit()
 
 
 ## マス cell を押す（マウスと同じ。検査用にも）。
@@ -118,6 +156,7 @@ func press_cell(cell: Vector2i) -> void:
 	else:
 		_selected = -1
 	queue_redraw()
+	focus_changed.emit()
 
 
 ## 選ぶのをやめる（やめるものがあれば真）。
@@ -126,6 +165,7 @@ func cancel() -> bool:
 		return false
 	_selected = -1
 	queue_redraw()
+	focus_changed.emit()
 	return true
 
 
@@ -145,10 +185,16 @@ func cell_center(cell: Vector2i) -> Vector2:
 	return rect.position + (Vector2(cell) + Vector2(0.5, 0.5)) * cell_px
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_MOUSE_EXIT:
+		hover_cell(Deployment.NO_CELL)
+
+
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		# 押せるマス（決める側の駒、選んでいる駒の行き先）の上では、指の形のカーソル。
 		var at := cell_at(event.position)
+		hover_cell(at)
 		var pressable := not read_only and _battle != null and (_cells.has(at) or (_selected != -1 and _zone.has(at) and _is_free(at)))
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if pressable else Control.CURSOR_ARROW
 		return
@@ -205,14 +251,25 @@ func _draw() -> void:
 		draw_circle(at, cell_px * 0.32, Palette.OUTLINE)
 		draw_circle(at, cell_px * 0.25, dot_color.lightened(0.2))
 		draw_arc(at, cell_px * 0.25, 0.0, TAU, 16, Color(Palette.TEXT, 0.55), 1.0, true)
-	# 決める側の駒は、アイコン。
+	# 決める側の駒は、アイコン。選んでいる駒は、ほかより大きく、最後に（上に）描く。
 	for i in _cells.size():
-		var box := Rect2(rect.position + Vector2(_cells[i]) * cell_px, Vector2.ONE * cell_px).grow(cell_px * 0.15)
-		draw_texture_rect(UnitIcons.texture(_kinds[i], _side), box, false)
-		if i == _selected:
-			draw_rect(box.grow(2.0), Color(Palette.ACCENT, 0.3), false, 3.0)
-			draw_rect(box, Palette.ACCENT, false, 2.0)
+		if i != _selected:
+			var box := Rect2(rect.position + Vector2(_cells[i]) * cell_px, Vector2.ONE * cell_px).grow(cell_px * 0.15)
+			draw_texture_rect(UnitIcons.texture(_kinds[i], _side), box, false)
+			if i == _hovered:
+				draw_rect(box, Color(Palette.TEXT, 0.8), false, 1.5)
+	if _selected != -1:
+		var box := Rect2(rect.position + Vector2(_cells[_selected]) * cell_px, Vector2.ONE * cell_px).grow(cell_px * 0.4)
+		draw_rect(box.grow(2.0), Color(Palette.OUTLINE, 0.6), true)
+		draw_texture_rect(UnitIcons.texture(_kinds[_selected], _side), box, false)
+		draw_rect(box.grow(3.0), Color(Palette.ACCENT, 0.35), false, 4.0)
+		draw_rect(box.grow(1.0), Palette.ACCENT, false, 2.0)
 	_draw_frame(rect, cell_px)
+	# 名前の札: マウスを乗せた駒と、選んでいる駒。
+	if _hovered >= 0 and _hovered < _cells.size() and _hovered != _selected:
+		_draw_name_tag(rect.position + (Vector2(_cells[_hovered]) + Vector2(0.5, 0.0)) * cell_px, cell_px, Names.kind(_kinds[_hovered]), false)
+	if _selected >= 0 and _selected < _cells.size():
+		_draw_name_tag(rect.position + (Vector2(_cells[_selected]) + Vector2(0.5, 0.0)) * cell_px, cell_px, Names.kind(_kinds[_selected]), true)
 
 
 ## マスの境の細い線（作戦図の方眼）。地面の色を消さない濃さ。
@@ -256,3 +313,20 @@ func _draw_frame(rect: Rect2, cell_px: float) -> void:
 		var inward := Vector2(1.0, 1.0) - corner * 2.0
 		draw_line(at, at + Vector2(inward.x * corner_reach, 0.0), Palette.BORDER_BRIGHT, 2.0)
 		draw_line(at, at + Vector2(0.0, inward.y * corner_reach), Palette.BORDER_BRIGHT, 2.0)
+
+
+## 駒の名前の札。at はマスの上の辺の真ん中。札はその上に出す（盤の上の端なら、マスの下に）。
+func _draw_name_tag(at: Vector2, cell_px: float, text: String, chosen: bool) -> void:
+	var font := get_theme_default_font()
+	var font_size := NAME_TAG_FONT
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var box_size := text_size + Vector2(NAME_TAG_PAD * 2.0, NAME_TAG_PAD)
+	var top := at.y - cell_px * (0.45 if chosen else 0.2) - box_size.y
+	if top < 0.0:
+		top = at.y + cell_px * (1.45 if chosen else 1.2)
+	var left := clampf(at.x - box_size.x / 2.0, 0.0, maxf(size.x - box_size.x, 0.0))
+	var box := Rect2(Vector2(left, top), box_size)
+	draw_rect(box, Color(Palette.INK, 0.9))
+	draw_rect(box, Palette.ACCENT if chosen else Palette.BORDER, false, 1.0)
+	var baseline := box.position + Vector2(NAME_TAG_PAD, NAME_TAG_PAD * 0.5 + font.get_ascent(font_size))
+	draw_string(font, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Palette.ACCENT if chosen else Palette.TEXT)

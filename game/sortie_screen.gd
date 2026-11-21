@@ -11,6 +11,7 @@ extends Node
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
 
 const DeployMap := preload("res://game/deploy_map.gd")
+const DeployNote := preload("res://game/deploy_note.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
 const Text := preload("res://game/text.gd")
@@ -44,6 +45,8 @@ const DEFAULT_ID := ""
 const FIXED_ID := "fixed"
 ## 縮図の 1 マスの大きさ（px）。
 const MAP_CELL := 20
+## 縮図の高さの上限（px）。下に駒の欄（deploy_note.gd）を置いても、下のボタンが画面に収まるように。縦に長いマップは、1 マスを小さく描く。
+const MAP_MAX_HEIGHT := 380.0
 const RIGHT_WIDTH := 600.0
 ## 中身の大きさの上限（論理の px）。縦長・横長の画面では、これより広げずに真ん中に置く（docs/screen-size.md）。
 const MAX_SIZE := Vector2(1560.0, 820.0)
@@ -66,6 +69,7 @@ var battle_source: RefCounted
 ## 選んでいる部隊の id（DEFAULT_ID なら既定の編成）。
 var _chosen := DEFAULT_ID
 var _deploy: DeployMap
+var _deploy_note: DeployNote
 var _auto_button: Button
 var _options: VBoxContainer
 var _option_buttons := {}  # id -> Button
@@ -134,7 +138,8 @@ func _ready() -> void:
 	_auto_button.pressed.connect(press_auto_place)
 	map_head.add_child(_auto_button)
 	_deploy = DeployMap.new()
-	_deploy.custom_minimum_size = Vector2(episode.map.make_board().size) * MAP_CELL
+	var board_size := Vector2(episode.map.make_board().size)
+	_deploy.custom_minimum_size = board_size * minf(MAP_CELL, MAP_MAX_HEIGHT / board_size.y)
 	_deploy.read_only = is_placement_fixed()
 	_deploy.changed.connect(func() -> void:
 		battle_source.placement = _deploy.offsets()
@@ -144,6 +149,10 @@ func _ready() -> void:
 		var map_hint := _text(14, COLOR_DIM)
 		map_hint.text = Text.t("sortie.place_fixed")
 		left_column.add_child(map_hint)
+	# 選んでいる駒（マウスを乗せている駒）の名前・役割・能力値（deploy_note.gd）。
+	_deploy_note = DeployNote.new()
+	left_column.add_child(_deploy_note)
+	_deploy_note.watch(_deploy)
 
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(RIGHT_WIDTH, 0.0)
@@ -302,9 +311,13 @@ func is_placement_fixed() -> bool:
 	return is_squad_fixed() and not episode.deploy[Unit.Side.PLAYER1].is_empty()
 
 
-## 初期位置の縮図（検査用）。
+## 初期位置の縮図と、その下の駒の欄（検査用）。
 func deploy_map() -> DeployMap:
 	return _deploy
+
+
+func deploy_note() -> DeployNote:
+	return _deploy_note
 
 
 ## faces に、部隊 deck の駒のアイコン（将から並びの順。将のいない群れは将なし）を並べ直す。side は陣営、levels は始めのレベル（start_levels）。
