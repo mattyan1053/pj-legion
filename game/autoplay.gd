@@ -1817,9 +1817,10 @@ func _leave_battle(app: Node) -> void:
 	var quit_window: Node = app.quit_window
 	_expect(quit_window.is_open() and quit_window.question().contains("対戦の途中です。") and quit_window.question().contains("この対戦は残りません"),
 		"対戦の途中にウィンドウの × を押しても、何が残るかを書いて確かめない: %s" % quit_window.question())
-	_expect(app.context.overlays.pauses(), "閉じる確かめの間、対戦の時間が止まらない")
+	_expect(app.context.overlays.pauses() and Engine.time_scale == 0.0, "閉じる確かめの間、対戦の時間（再生）が止まらない")
 	quit_window.cancel()
-	_expect(not quit_window.is_open() and _scene.in_progress() and not app.context.overlays.is_open(), "閉じる確かめのキャンセルで、対戦へ戻らない")
+	_expect(not quit_window.is_open() and _scene.in_progress() and not app.context.overlays.is_open() and Engine.time_scale > 0.0,
+		"閉じる確かめのキャンセルで、対戦へ戻らない（か、時間が止まったまま）")
 	_scene.press_escape()
 	_expect(menu.is_open() and menu.item_ids().has(&"title"), "相手の番の途中に、タイトルへ戻る項目が出ない")
 	menu.press(&"title")

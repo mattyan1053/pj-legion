@@ -278,6 +278,8 @@ func _ready() -> void:
 	_system_menu = context.system_menu
 	_system_menu.opened.connect(_on_system_menu_opened)
 	_system_menu.closed.connect(_on_system_menu_closed)
+	# 時間を止める重なる画面（ウィンドウを閉じる前の確かめなど、この場面が開いたのでないものも）が開いた・閉じたら、止めるか見直す。
+	context.overlays.changed.connect(_on_overlays_changed)
 
 	# 流れが渡すもの。流れの外から置かれた（スクリーンショットの道具など）なら、対戦設定の場面で選んだもの。
 	var given: Variant = context.run_data()
@@ -845,6 +847,24 @@ func in_progress() -> bool:
 func on_menu_item(id: StringName) -> void:
 	if id == SYSTEM_MATCH_SETUP:
 		_open_setup_when_ready()
+
+
+## 重なる画面の積み上げが変わった: 時間を止める画面が開いたら、押している途中の操作と視点の操作をやめて時間を止め、
+## 閉じて何も止めていなければ戻す（システムメニュー・ログ・駒の詳細は、それぞれの開く・閉じるでも同じことをする）。
+var _overlay_paused := false
+
+func _on_overlays_changed() -> void:
+	if not is_inside_tree():
+		return
+	var paused: bool = context.overlays.pauses()
+	if paused != _overlay_paused:
+		_overlay_paused = paused
+		if paused:
+			_ui.cancel_press()
+			_rig.controls_enabled = false
+		elif not context.overlays.is_open():
+			_rig.controls_enabled = true
+	_update_time_scale()
 
 
 func _on_system_menu_closed() -> void:
