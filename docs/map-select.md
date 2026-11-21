@@ -13,7 +13,7 @@
 ## 選べる盤
 
 対戦モードで選べる盤は、`game/versus_fields.gd` の `FIELDS` に並べる。盤は**鍵**（`StringName`。`plain`、`ridge_path` など）で持つ。
-ストーリーの話（`game/story/episodes/` のファイルの名前）や見た目（`stage_look.gd` の名前）と同じ持ち方。
+ストーリーの話（`game/story/<物語>/` のファイルの名前）や見た目（`stage_look.gd` の名前）と同じ持ち方。
 
 | 出どころ | 形 | 見た目 |
 | --- | --- | --- |
