@@ -147,6 +147,12 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		Unit.Side.PLAYER1: Text.t("setup.side.first"), Unit.Side.PLAYER2: Text.t("setup.side.second"), RANDOM_SIDE: Text.t("setup.side.random"),
 	})
 	_side_caption = side_row.get_child(0) as Label
+	# 試しの決まり（既定は切。docs/match-setup.md の「試しの決まり」）。
+	var battery_row := _add_row(column, Text.t("setup.caption.battery"), &"battery", {false: Text.t("setup.trial.off"), true: Text.t("setup.trial.on")})
+	var battery_note := _label(14)
+	battery_note.text = Text.t("setup.battery.note", {"range": MapObject.BATTERY_RANGE})
+	battery_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	battery_row.add_child(battery_note)
 	# 対戦モードの先手が必殺技のゲージをためて始まるなら（Ults.FIRST_PLAYER_START_GAUGE が 0 より大きい）、手番の行の右に書いておく。
 	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
 	_first_gauge_note = _label(14)
@@ -321,6 +327,12 @@ func choose_random_side() -> void:
 	_show_choice()
 
 
+## 試しの決まり id を入・切する。
+func choose_trial(id: StringName, on: bool) -> void:
+	_choice.set_trial(id, on)
+	_show_choice()
+
+
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
 	_choice.choose_army(side, army)
 	_show_choice()
@@ -421,6 +433,8 @@ func _choose(key: StringName, value: Variant) -> void:
 				choose_random_side()
 			else:
 				choose_human_side(value)
+		&"battery":
+			choose_trial(TrialRules.BATTERY, value)
 		&"army0":
 			choose_army(Unit.Side.PLAYER1, value)
 		&"army1":
@@ -435,6 +449,7 @@ func _show_choice() -> void:
 	var current := {
 		&"opponent": _choice.cpu_opponent, &"human_side": side_value,
 		&"army0": _choice.armies[0], &"army1": _choice.armies[1],
+		&"battery": _choice.has_trial(TrialRules.BATTERY),
 	}
 	for key: StringName in _rows:
 		var buttons: Dictionary = _rows[key]

@@ -152,6 +152,8 @@ battle.cell.font,結晶泉
 battle.cell.hq,{side}の本陣
 battle.cell.barrel,起爆樽
 battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マスの駒すべてに {damage} ダメージ
+battle.cell.battery,砲台
+battle.cell.battery.note,後衛が乗ると、射程 +{range}
 battle.cell.spring,回復の泉
 battle.cell.spring.note,自分の番の始めに、乗っている駒が {heal} 回復
 battle.cell.portal,"ポータル → ({x}, {y})"

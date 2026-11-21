@@ -96,6 +96,7 @@ func add_unit(
 	if side != Unit.Side.NEUTRAL and armies[side] == UnitKind.Army.NONE:
 		armies[side] = UnitKind.army(kind)
 	Relics.equip(self, unit)  # 聖遺物を取ったあとに置かれた駒にも、効果が掛かる
+	unit.site_range = MapObject.battery_bonus(board, unit, unit.cell)
 	return unit
 
 
@@ -303,11 +304,20 @@ func can_apply(action: BattleAction) -> bool:
 
 
 ## 行動を受け付けて状態を進め、起きたことを返す。受け付けられなければ、何も変えずに断る。
+## 砲台の上の後衛の射程を付け直す（MapObject.battery_bonus）。駒を置いたときと、行動のたびに呼ぶ。砲台の無い盤では何もしない。
+func refresh_sites() -> void:
+	if board.battery_cells.is_empty():
+		return
+	for unit in units:
+		unit.site_range = MapObject.battery_bonus(board, unit, unit.cell)
+
+
 func apply(action: BattleAction) -> ActionResult:
 	if not can_apply(action):
 		return ActionResult.rejected()
 	var ready: Array[bool] = [Ults.is_ready(self, Unit.Side.PLAYER1), Ults.is_ready(self, Unit.Side.PLAYER2)]
 	var events := action.execute(self)
+	refresh_sites()
 	events.append_array(settle(events))
 	# 必殺技のゲージは、ダメージ・撃破・フェーズの始めにたまる。この行動でいっぱいになったら、最後に知らせる。
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
