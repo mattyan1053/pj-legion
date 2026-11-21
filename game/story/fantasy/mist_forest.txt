@@ -16,7 +16,7 @@ after_music = talk_calm
 イェルダ = ally, paladin evolved crown
 ウル = ally, priest evolved
 ティオ = ally, sorcerer
-セリス = ally, commando
+セリス = ally, spellblade
 ハーデン = enemy
 ドーソン = enemy, shield_trooper evolved
 

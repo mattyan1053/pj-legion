@@ -21,7 +21,7 @@ wins = routed
 ノエ = ally, sniper
 マルタ = ally, medic
 ピップ = ally, commando
-セリス = enemy, commando
+セリス = enemy, spellblade
 
 [before]
 ハーデン: セリスの隊は、この岩山の向こうだ。

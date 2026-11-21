@@ -37,19 +37,21 @@ const KING_LOOKS := {
 }
 
 ## 持ち物。"file" は weapons/ の FBX（絵は別の PNG）、無ければコードで組む（"build"）。
-## "turn" は手に付けるときの回し方（度）、"at" はずらし（手の空間。1 は素材の 1 cm）。
+## "on" は手でなく付ける骨（太鼓は腰）。"turn" は手に付けるときの回し方（度）、"at" はずらし（手の空間。1 は素材の 1 cm）。
 const ITEMS := {
-	"dagger": {"file": "Rogue_Dagger", "turn": Vector3(0.0, 0.0, -90.0), "at": Vector3.ZERO},
-	"sword": {"file": "Warrior_Sword", "turn": Vector3(0.0, 0.0, -90.0), "at": Vector3.ZERO},
+	"dagger": {"file": "Rogue_Dagger", "turn": Vector3(180.0, 0.0, -30.0), "at": Vector3.ZERO},
+	"sword": {"file": "Warrior_Sword", "turn": Vector3(180.0, 0.0, -30.0), "at": Vector3.ZERO},
 	"bow": {"file": "Ranger_Bow", "turn": Vector3(0.0, 90.0, 0.0), "at": Vector3.ZERO},
-	"staff": {"file": "Wizard_Staff", "turn": Vector3(0.0, 0.0, -90.0), "at": Vector3.ZERO},
-	"cleric_staff": {"file": "Cleric_Staff", "turn": Vector3(0.0, 0.0, -90.0), "at": Vector3.ZERO},
-	"stick": {"build": "stick", "turn": Vector3(0.0, 0.0, -90.0), "at": Vector3.ZERO},
-	"shield": {"build": "shield", "turn": Vector3(0.0, 0.0, 0.0), "at": Vector3.ZERO},
-	"drum": {"build": "drum", "turn": Vector3(0.0, 0.0, 0.0), "at": Vector3.ZERO},
+	"staff": {"file": "Wizard_Staff", "turn": Vector3(180.0, 0.0, -15.0), "at": Vector3.ZERO},
+	"cleric_staff": {"file": "Cleric_Staff", "turn": Vector3(180.0, 0.0, -15.0), "at": Vector3.ZERO},
+	"stick": {"build": "stick", "turn": Vector3(180.0, 0.0, -30.0), "at": Vector3.ZERO},
+	"shield": {"build": "shield", "turn": Vector3(0.0, 90.0, 0.0), "at": Vector3.ZERO},
+	"drum": {"build": "drum", "on": WAIST, "turn": Vector3(0.0, 0.0, -20.0), "at": Vector3(0.007, 0.006, 0.0)},
 }
 ## 武器の FBX も cm で入っていて、付ける骨の親も 100 倍。体の倍率で割って、「人物」の武器と同じ大きさにする。
-const WEAPON_SIZE := 0.0052
+## 背の低い組（「ミニ」）では、背の割合で小さくする（REFERENCE_HEIGHT は「人物」の背）。
+const WEAPON_SIZE := 0.0042
+const REFERENCE_HEIGHT := 1.52
 
 ## 作ったマテリアルの使い回し（名前 -> Material）。
 static var _materials := {}
@@ -71,29 +73,31 @@ static func build(shape: Dictionary, team_color: Color, height: float) -> UnitBo
 		var bones := skeleton[0] as Skeleton3D
 		for hand: String in ["right", "left"]:
 			if shape.has(hand):
-				_hold(bones, HAND_RIGHT if hand == "right" else HAND_LEFT, ITEMS[shape[hand]], team_color, model_scale)
+				_hold(bones, HAND_RIGHT if hand == "right" else HAND_LEFT, ITEMS[shape[hand]], team_color, model_scale * REFERENCE_HEIGHT / height)
 		_wrap(bones, team_color)
 	return body
 
 
 ## 持ち物を手の骨に付ける。
-static func _hold(bones: Skeleton3D, bone: String, item: Dictionary, team_color: Color, model_scale: float) -> void:
+## shrink は、持ち物を体の倍率で割るときの値（体の倍率を、背の割合で直したもの）。
+static func _hold(bones: Skeleton3D, bone: String, item: Dictionary, team_color: Color, shrink: float) -> void:
 	var attachment := BoneAttachment3D.new()
-	attachment.bone_name = bone
+	attachment.bone_name = item.get("on", bone)
 	bones.add_child(attachment)
 	var hand := Node3D.new()
-	hand.position = Vector3(0.0, ARM_END, 0.0)
+	if not item.has("on"):
+		hand.position = Vector3(0.0, ARM_END, 0.0)
 	attachment.add_child(hand)
 	var prop: Node3D
 	if item.has("file"):
 		prop = (load(WEAPON_DIR + "%s.fbx" % item["file"]) as PackedScene).instantiate()
-		prop.scale = Vector3.ONE * WEAPON_SIZE / model_scale
+		prop.scale = Vector3.ONE * WEAPON_SIZE / shrink
 		var texture: Texture2D = load(WEAPON_DIR + "%s_Texture.png" % item["file"])
 		for mesh: MeshInstance3D in prop.find_children("*", "MeshInstance3D", true, false):
 			mesh.material_override = _textured(item["file"], texture)
 	else:
 		prop = _built(item["build"], team_color)
-		prop.scale = Vector3.ONE * 0.01 / model_scale
+		prop.scale = Vector3.ONE * 0.01 / shrink
 	prop.rotation_degrees = item["turn"]
 	prop.position = item["at"]
 	hand.add_child(prop)
@@ -137,12 +141,15 @@ static func _built(kind: String, team_color: Color) -> Node3D:
 			boss.position.x = -0.03
 			root.add_child(boss)
 		"drum":
-			var shell := _part(_cylinder(0.15, 0.15, 0.16), _plain("team:" + team_color.to_html(), team_color, 0.8))
+			var shell := _part(_cylinder(0.15, 0.15, 0.16), wood)
+			root.add_child(shell)
+			var band := _part(_cylinder(0.153, 0.153, 0.06), _plain("team:" + team_color.to_html(), team_color, 0.8))
+			shell = band
 			root.add_child(shell)
 			var top := _part(_cylinder(0.155, 0.155, 0.02), _plain("hide", Color("e8dcc0"), 0.9))
 			top.position.y = 0.085
 			root.add_child(top)
-			var rim := _part(_cylinder(0.157, 0.157, 0.02), wood)
+			var rim := _part(_cylinder(0.157, 0.157, 0.02), _plain("iron", Color("6b6b70"), 0.5))
 			rim.position.y = -0.08
 			root.add_child(rim)
 	return root
