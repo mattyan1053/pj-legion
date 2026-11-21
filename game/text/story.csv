@@ -15,6 +15,7 @@ story.episodes.reward_budget,コスト +{amount}
 story.episodes.cleared,クリア済み
 story.episodes.locked,第 {number} 話クリアで開放
 story.episodes.not_cleared,未クリア
+story.open_all.mark,確かめ用: 全部の話を開いている（F5 で戻す）
 sortie.heading,出撃準備　　第 {number} 話「{title}」
 sortie.map,初期位置　マップ「{map}」
 sortie.auto_place,おまかせ
