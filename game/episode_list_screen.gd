@@ -30,6 +30,7 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const CardKeys := preload("res://game/card_keys.gd")
+const App := preload("res://game/app.gd")
 
 signal finished(outcome: StringName)
 
@@ -52,6 +53,7 @@ var context: AppContext
 ## 話（episode.gd）-> カード（Button）。
 var _cards := {}
 var _roster: Label
+var _saved: Label
 var _scroll: ScrollContainer
 ## 左右の矢印で選んでいるカードの番号（話の並びの順。選んでいなければ -1）。
 var _key_index := -1
@@ -144,6 +146,16 @@ func _ready() -> void:
 	decks.custom_minimum_size = Vector2(220.0, 48.0)
 	decks.pressed.connect(press_edit_decks)
 	footer.add_child(decks)
+	# 最後に保存した所（オートセーブ。docs/save-slots.md）。ほかの並びを動かさないよう、画面の右下の隅に置く。
+	_saved = _label(saved_text(), 14)
+	_saved.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	_saved.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_saved.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_saved.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_saved.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_saved.offset_right = -18.0
+	_saved.offset_bottom = -10.0
+	layer.add_child(_saved)
 
 
 func resume_label() -> String:
@@ -182,6 +194,11 @@ func card_status(episode: Episode) -> String:
 
 
 ## 下の欄の文: いま雇える駒、持たせられる持ち物、部隊のコストの上限（話をクリアすると増える）。
+## 最後に保存した所の文（「最後に保存: 日時」）。
+func saved_text() -> String:
+	return App.last_saved_text(context.slots)
+
+
 func roster_text() -> String:
 	var now: RefCounted = context.story.unlocked()
 	var kinds: Array[String] = []
