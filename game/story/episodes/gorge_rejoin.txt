@@ -5,6 +5,8 @@
 [episode]
 title = 岩山の合流
 map = crystal_gorge
+before_music = battle_crystal
+after_music = talk_bright
 
 [ally]
 name = イェルダ
