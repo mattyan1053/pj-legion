@@ -111,3 +111,8 @@ setup.deck.random,ランダム編成（毎回ちがう部隊）
 setup.deck.random_note,対戦開始で決まる
 setup.deck.saved,{name}（コスト {cost} / {budget}）
 setup.deck.unplayable,{name}（出撃不可: {issue}）
+deploy.note.none,駒を選んでいない
+deploy.note.none_read_only,駒にマウスを乗せていない
+deploy.note.selected,選択中
+deploy.note.hovered,マウスを乗せた駒
+deploy.note.role_level,{role}　レベル {level}
