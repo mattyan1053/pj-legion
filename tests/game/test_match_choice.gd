@@ -295,3 +295,36 @@ func test_a_hand_map_makes_the_same_board_on_any_seed_with_the_versus_rules() ->
 		choice.cpu_opponent = false
 		assert_true(choice.make_setup(1).cpu_sides().is_empty(), "人どうしでも遊べる")
 		assert_true(choice.make_setup(1).is_valid())
+
+
+# --- 試しの決まり ---
+
+
+func test_trials_are_off_until_chosen_and_reach_the_setup() -> void:
+	var choice := MatchChoice.new()
+	assert_eq(choice.to_setup(1).trials, [] as Array[StringName])
+	choice.set_trial(TrialRules.BATTERY, true)
+	choice.set_trial(TrialRules.BATTERY, true)
+	assert_true(choice.has_trial(TrialRules.BATTERY))
+	assert_eq(choice.to_setup(1).trials, [TrialRules.BATTERY] as Array[StringName])
+	assert_eq(choice.copy().trials, [TrialRules.BATTERY] as Array[StringName])
+	assert_eq(choice.to_setup(1).create_battle().board.battery_cells.size(), 2)
+	choice.set_trial(TrialRules.BATTERY, false)
+	assert_false(choice.has_trial(TrialRules.BATTERY))
+	choice.set_trial(&"unknown", true)
+	assert_eq(choice.trials, [] as Array[StringName])
+	assert_eq(choice.to_setup(1).create_battle().board.battery_cells.size(), 0)
+
+
+func test_every_versus_field_has_two_fair_battery_spots() -> void:
+	var reach := Neutral.TERRITORY_RADIUS + UnitKind.attack_range(UnitKind.Id.ELITE_MINION)
+	for field in VersusFields.ids():
+		var choice := MatchChoice.new()
+		choice.choose_field(field)
+		choice.set_trial(TrialRules.BATTERY, true)
+		var board: Board = choice.to_setup(3).create_battle().board
+		assert_eq(board.battery_cells.size(), 2, field)
+		assert_eq(board.battery_cells[0] + board.battery_cells[1], board.hq_cells[0] + board.hq_cells[1], "点対称: %s" % field)
+		for cell in board.battery_cells:
+			for home in board.mid_boss_cells:
+				assert_true(Combat.distance(cell, home) > reach, "中ボスが届かない: %s" % field)

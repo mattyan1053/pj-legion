@@ -42,7 +42,7 @@ func test_a_script_holds_every_line_in_order() -> void:
 				texts.append(row[1])
 			for cue: Array in episode.cues:
 				texts.append(cue[3])
-			for row: Array in episode.after:
+			for row: Array in episode.after + episode.lost:
 				texts.append(row[1])
 			for each in texts:
 				var found := text.find(each, at)
