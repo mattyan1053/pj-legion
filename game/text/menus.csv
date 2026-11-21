@@ -45,7 +45,8 @@ menu.to_map_select.confirm,マップ選択へ戻りますか？
 menu.quit,ゲーム終了
 menu.quit.confirm,ゲームを終了しますか？
 menu.losing.battle,対戦の状態は失われます。
-title.subtitle,プロジェクト・レギオン
+title.logo.top,PROJECT
+title.logo.main,LEGION
 title.button.versus,対戦
 title.button.options,オプション
 title.button.quit,終了
