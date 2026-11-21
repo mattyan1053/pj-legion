@@ -456,6 +456,7 @@ func _add_ground() -> void:
 	ground.set_shader_parameter(&"map_pad", float(MAP_PAD))
 	ground.set_shader_parameter(&"paving", float(look[StageLook.PAVING]))
 	ground.set_shader_parameter(&"dry", float(look[StageLook.DRY]))
+	ground.set_shader_parameter(&"strata", float(look.get(StageLook.STRATA, 0.0)))
 	ground.set_shader_parameter(&"pattern_gain", RenderTone.pattern_gain())
 	var ground_mesh := PlaneMesh.new()
 	ground_mesh.size = size + Vector2.ONE * 2.0 * GROUND_REACH

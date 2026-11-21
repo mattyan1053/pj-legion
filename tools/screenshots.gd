@@ -28,8 +28,8 @@ const Maps := preload("res://game/maps.gd")
 ##   scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>
 ## マップは game/maps/ の id か、生成のマップの鍵（versus_fields.gd）。見た目は stage_look.gd の名前（書かなければ、マップの見た目）。
 const SCAPE := "scape."
-const SCAPE_VIEWS := ["wide", "side", "close", "range"]
-const SCAPE_USAGE := "scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>。構図: wide, side, close, range"
+const SCAPE_VIEWS := ["wide", "side", "close", "out", "range"]
+const SCAPE_USAGE := "scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>。構図: wide, side, close, out, range"
 
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
@@ -2757,6 +2757,9 @@ func _scape(name: String) -> bool:
 		"close":  # 盤の真ん中に寄って。障害物・森・平地の見分け
 			_look_at(middle)
 			_aim(13.0, 25.0, 45.0)
+		"out":  # 盤の左の外を、近くから。盤のすぐ外に置いたものの形と大きさ
+			_look_at(Vector3(-7.0, 0.0, size.y / 2.0))
+			_aim(15.0, -50.0, 38.0)
 		"range":
 			return _scape_range(parts[1], defined.title)
 	return true
