@@ -88,6 +88,8 @@ const SCENES := {
 	"forecast_skill": "範囲のスキルの対象のマスにマウスを乗せている（巻き込む駒が並ぶ）",
 	"forecast_heal": "回復役で、回復できる味方にマウスを乗せている",
 	"forecast_small": "9×5 の小さな盤で、動いたあとメニューの「攻撃」を押し、隣の相手にマウスを乗せている（縮んだメニューと予測のパネルが重ならない）",
+	"battle_unit_detail": "対戦の途中で、傷ついた駒をクリックして見て、情報の枠の「詳細」でステータスの窓を開いたところ（いまの HP、経験値、スキルの残り）",
+	"deck_unit_detail": "部隊編成: 持ち物を持たせた駒の札の「詳細」で、ステータスの窓を開いたところ（持ち物での増減が色と矢印で出る）",
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"end_confirm": "未行動の駒を残してターン終了を 1 回押し、確かめている（未行動の駒の足元が光る）",
@@ -215,6 +217,7 @@ const SCENES := {
 	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
 	"story_monster_king": "ストーリー: 将のいる魔物の群れの話（墓守）で、敵の将（骸骨の将の姿。ルールの上では将）にマウスを乗せた駒の情報と、敵の将の途中の台詞（骸骨の将のアイコン）",
 	"story_monster_info": "ストーリー: 魔物の群れの話で、骸骨重兵にマウスを乗せた駒の情報（所属は「魔物」。スキル・持ち物の欄は無い）",
+	"story_battle_talk_hold": "ストーリー: 遊ぶときの対戦の途中の会話（送られるまで盤を止める。帯の右に送りの印、下の帯に「クリック・Enter: 台詞を送る」）",
 	"story_battle_talk": "ストーリー: 対戦の途中の会話（始めに台詞のある最初の話。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
@@ -303,7 +306,7 @@ func _run() -> void:
 			print("screenshots: 場面 %s を作れた" % name)
 			if _mid_animation:
 				_scene.set_time_scale_base(1.0)
-			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
+			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
 			continue
 		if _mid_animation:
@@ -313,7 +316,7 @@ func _run() -> void:
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
 			continue
-		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
+		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -352,6 +355,7 @@ func _reset(seed: int) -> void:
 		await _app.go(SceneFlow.BATTLE)
 	_scene = _app.current_scene()
 	_scene.log_panel().close()
+	_scene.unit_detail().close_detail()
 	_scene.setup_panel().visible = false
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
@@ -555,6 +559,18 @@ func _scene_deck_equip() -> bool:
 	screen.select_entry(3)
 	screen.equip(Equipment.Id.SPEED_BOOTS)
 	return screen.selected_entry() == 3
+
+
+func _scene_deck_unit_detail() -> bool:
+	var screen: Node = await _deck_editor()
+	if screen == null:
+		return false
+	screen.select_entry(0)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.SPEED_BOOTS)
+	screen.press_unit_detail()
+	return screen.unit_detail() != null and screen.unit_detail().visible
 
 
 func _scene_deck_over() -> bool:
@@ -1177,6 +1193,25 @@ func _scene_forecast_heal() -> bool:
 	_look_at(BoardView.cell_center(target.cell))
 	_scene.hover(target.cell)
 	return _scene.forecast_text() != ""
+
+
+func _scene_battle_unit_detail() -> bool:
+	# 傷ついていて、経験値も入っている、人の軍の駒。
+	var hurt := func() -> Unit:
+		for unit in _own_units():
+			if unit.hp < unit.max_hp() and unit.experience > 0 and Skills.of(unit) != null:
+				return unit
+		return null
+	if not _advance(func() -> bool: return hurt.call() != null):
+		return false
+	_show()
+	var unit: Unit = hurt.call()
+	_look_at(BoardView.cell_center(unit.cell))
+	_scene.click_cell(unit.cell)
+	if not _scene.detail_button_shown():
+		return false
+	_scene.open_unit_detail()
+	return _scene.unit_detail().visible
 
 
 func _scene_info_status() -> bool:
@@ -2531,7 +2566,17 @@ func _scene_story_sortie_placed() -> bool:
 func _scene_story_sortie_detail() -> bool:
 	if not await _scene_story_sortie():
 		return false
-	var detail: Control = _app.current_scene().press_face(Unit.Side.PLAYER1, 1)
+	# 持ち物を持っている駒を探して開く（無ければ、最初の雇った駒）。
+	var detail: Control = null
+	for index in range(1, 12):
+		var opened: Control = _app.current_scene().press_face(Unit.Side.PLAYER1, index)
+		if opened == null:
+			break
+		detail = opened
+		if not detail.shown_sheet().items.is_empty():
+			break
+	if detail != null and detail.shown_sheet().items.is_empty():
+		detail = _app.current_scene().press_face(Unit.Side.PLAYER1, 1)
 	return detail != null and detail.visible
 
 
@@ -2590,6 +2635,21 @@ func _scene_story_battle_talk() -> bool:
 				return false
 			return _scene.talk_line() != null
 	return false
+
+
+func _scene_story_battle_talk_hold() -> bool:
+	if not await _scene_story_battle_talk():
+		return false
+	var line: BattleCues.Line = _scene.talk_line()
+	_scene.clear_talk_for_check()
+	_scene.set_talk_hold(true)
+	_scene.say_for_check([line] as Array[BattleCues.Line])
+	for i in 120:
+		if _scene.talk_line() != null and not _scene.is_banner_shown():
+			break
+		await get_tree().process_frame
+	await get_tree().create_timer(0.6).timeout
+	return _scene.is_talk_holding()
 
 
 ## 部隊編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。
@@ -2861,7 +2921,7 @@ func _new_battle() -> void:
 ## 対戦の画面の中央の知らせ（番の知らせなど）が消えるまで待つ。描画の遅い環境では SETTLE のうちに消えないことがある。
 ## 知らせを撮る場面のために、待つのは BANNER_WAIT 秒まで。
 func _banner_gone() -> void:
-	if _app.current_id() != SceneFlow.BATTLE or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open():
+	if _app.current_id() != SceneFlow.BATTLE or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open() or _scene.unit_detail().visible:
 		return  # 時間が止まっている（知らせは消えない）
 	var waited := 0.0
 	while _scene.is_banner_shown() and waited < BANNER_WAIT:

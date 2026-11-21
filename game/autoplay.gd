@@ -2596,6 +2596,31 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	_expect(card.size.y <= 64.0, "対戦の途中の会話の札が、細い帯でない（2 行を超える高さ）: %s" % card)
 	for other: Rect2 in screen.talk_card_neighbors():
 		_expect(not card.intersects(other), "対戦の途中の会話の札が、勝ち方の札・視点の案内・ミニマップに重なる: %s と %s" % [card, other])
+	# 遊ぶときは、台詞を送られるまで出したままにし、その間は盤を止める。Enter で送る（ターン終了にならない）。
+	screen.clear_talk_for_check()
+	screen.set_talk_hold(true)
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	_expect(screen.is_talk_holding() and screen.is_busy(), "遊ぶときの対戦の途中の台詞で、盤が止まらない")
+	var turn_before: int = screen.battle.turn
+	var phase_before: int = screen.battle.phase
+	for i in 600:
+		if screen.advance_talk():
+			break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding(), "対戦の途中の台詞を送れない")
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	for i in 600:
+		if screen.talk_line() != null and app.get_viewport().get_visible_rect().size.x > 0 and screen.is_talk_holding():
+			var enter := InputEventKey.new()
+			enter.physical_keycode = KEY_ENTER
+			enter.pressed = true
+			app.get_viewport().push_input(enter)
+			if not screen.is_talk_holding():
+				break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding() and screen.battle.turn == turn_before and screen.battle.phase == phase_before,
+		"対戦の途中の台詞を Enter で送れない（か、Enter でターンが終わった）")
+	screen.set_talk_hold(false)
 	# 小さな盤で、1 手で将を倒して勝つ。
 	var board := _small_board(Vector2i(5, 4))
 	var battle := Battle.new(board)
