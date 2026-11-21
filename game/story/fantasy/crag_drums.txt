@@ -1,0 +1,59 @@
+# ストーリーの話「骨の太鼓」。
+#
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+#
+# FANTASY の物語の本編、古戦場の祈りと峠の番人の間。峠へ向かうイェルダの隊が、結晶の岩山で、太鼓を鳴らして進む骨の隊列に出会う。
+# 敵は軍に属さない魔物の群れ（army = none）で、将がいない（king = none。旗の下は空）。
+# 骸骨鼓手が太鼓を鳴らすと、周りの骨が突撃する（骨太鼓）。先に鼓手を倒すと、群れの押しが弱まる。
+# 人の勝ち方は「敵を全滅させる」だけ（wins）。
+# クリアで増えるものは置かない（あとの話の既定の編成と難しさを変えないため）。
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 骨の太鼓
+map = crystal_gorge
+music = battle_undead
+before_music = battle_undead
+after_music = talk_sad
+victory_mood = quiet
+wins = routed
+
+[cast]
+イェルダ = ally, paladin evolved crown
+ウル = ally, priest evolved
+ティオ = ally, sorcerer
+セリス = ally, commando
+骨の鼓手 = enemy, skeleton_drummer
+
+[before]
+ティオ: 何の音？ ……太鼓だ。岩山の向こうから。
+骨の鼓手: 進め……進め……。尾根へ……旗のもとへ……。
+セリス: 骨が隊列を組んでる。率いてる者はいない。太鼓だけだ。
+ウル: 太鼓が鳴るたび、骨の足が速うなる。鳴らす者を先に、のう。
+ティオ: ……焼いて、いいんだよね。
+イェルダ: 兵として送ってやれ。峠への道である。一体残らず倒すのである。
+
+[cues]
+(turn 2) セリス: 太鼓持ちは後ろだね。斬ってこようか。
+(fallen enemy) ティオ: 太鼓が鳴ったら下がって！ 骨が一気に来る！
+
+[after]
+骨の鼓手: ……止まれ、か……。ようやく……。
+ティオ: 太鼓、止んだね。
+セリス: 誰の号令でもなかった。骨が、自分で戦を続けてる。
+ウル: 番人なら、何か覚えておろう。……急ごう。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[enemy]
+army = none
+king = none
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton_brute
+unit = skeleton_archer
+unit = skeleton_archer
+unit = skeleton_drummer

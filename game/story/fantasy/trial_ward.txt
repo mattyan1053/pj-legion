@@ -1,0 +1,60 @@
+# ストーリーの話「盾と祈り」。FANTASY の物語のチュートリアル（3 / 6）。1 話 1 ファイル。
+#
+# チュートリアルの話は、1 つの話で 1〜2 個だけ教える（docs/story.md の「チュートリアル」）。
+# 部隊は決まっていて（[ally] の unit）、敵は少なく、まず負けない。教え方は、出撃準備の文（lesson）と、対戦の途中の台詞（[cues]）。
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+# 教えること: パラディンのバリア（ディバインシールド）と、プリーストの回復・聖域（セイントプレイス）。クリアでプリーストを雇えるようになる。
+# 勝ち方は守り切るだけ（hold_turns と wins）。数の少ない FANTASY が、倒されずに持ちこたえる形。攻めて勝つ道は無いので、受けて戻す技を使う流れになる。
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 盾と祈り
+map = drill_field
+look = crystal_forest
+music = battle_tense
+before_music = battle_tense
+after_music = talk_bright
+lesson = パラディンのバリアは次の 1 撃を防ぐ。プリーストは 2 マス先の味方を回復できる。
+hold_turns = 6
+wins = turns_held
+
+[cast]
+イェルダ = ally, paladin evolved crown
+ウル = ally, priest evolved
+ティオ = ally, sorcerer
+幻の兵 = enemy, shield_trooper
+
+[before]
+ウル: 今日は攻めぬ。幻の狙撃に、わしがよしと言うまで撃たれ続けてもらう。
+ティオ: えー！ ぼくの出番は？
+ウル: 無い。見ておれ。倒れぬことも、強さのうちじゃ。
+イェルダ: パラディンの「ディバインシールド」は、次の 1 撃を防ぐのである。
+ウル: そして、わしが祈る。離れた者の傷も癒やせるし、「セイントプレイス」で聖域も敷ける。
+イェルダ: 導師みずから前に。……倒れるわけにはいかぬ。
+
+[cues]
+(turn 1) ウル: 狙われた者は「ディバインシールド」を張るのじゃ。
+(king_half ally) ウル: イェルダ、下がれ。わしの祈りが届く所へ。
+(fallen ally) ウル: 1 人の重みを知れ。聖域の中で傷を癒やすのじゃ。
+
+[after]
+ウル: よう耐えた。少ない者は、倒れぬことで勝つ。
+ティオ: ……撃たれても立ってるの、ちょっとかっこよかった。
+ウル: ほっほ。わしも修練場に飽きてのう。これからは共に行こう。
+イェルダ: それは心強い。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[ally]
+unit = paladin
+unit = paladin
+unit = priest
+
+[enemy]
+army = military
+unit = shield_trooper
+unit = sniper
+unit = sniper
+
+[unlock]
+unit = priest

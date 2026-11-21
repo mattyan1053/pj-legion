@@ -31,6 +31,7 @@ settings.unit_look.note,盤の駒・アイコン・会話の姿の形。次の�
 settings.unit_look.kaykit,人形
 settings.unit_look.tokens,盤の駒
 settings.unit_look.quaternius,人物
+settings.unit_look.mini,ミニ
 settings.on,オン
 settings.off,オフ
 settings.title,オプション

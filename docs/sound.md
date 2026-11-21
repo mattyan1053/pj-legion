@@ -57,7 +57,7 @@
 
 どの見た目がどの曲かは `LOOK_MUSIC` が正。対戦モードの並び（`versus_fields.gd`）で隣り合うマップは、違う曲にする（テストが確かめる）。
 
-ストーリーの特別な話は、話のファイルの `music` で選ぶ（どの話が使うかは、話のファイルが正。`game/story/episodes/`）:
+ストーリーの特別な話は、話のファイルの `music` で選ぶ（どの話が使うかは、話のファイルが正。`game/story/<物語>/`）:
 
 | 話 | 曲の名前 | 曲 |
 | --- | --- | --- |
@@ -156,7 +156,7 @@
 - **曲を差し替える**: `sound_catalog.gd` の `MUSIC` の `path` を替える。対戦の曲の次点（試聴できる配布元の URL）は `assets/audio/oga-battle/README.md`。
 - **場面の曲を替える・足す**: `scene_flow.gd` の場面の `music` に、`sound_catalog.gd` の `MUSIC` の名前を書く。曲を差し替えるだけなら、`MUSIC` の `path` を替える。
 - **盤の見た目を足す**: `sound_catalog.gd` の `LOOK_MUSIC` に、見た目の名前と曲の名前を 1 行足す（無ければ `battle`）。
-- **話の曲を選ぶ**: 話のファイル（`game/story/episodes/`）の `[episode]` に `music`（対戦）、`before_music`（前の会話）、`after_music`（あとの会話）を書く（`docs/story.md`）。
+- **話の曲を選ぶ**: 話のファイル（`game/story/<物語>/`）の `[episode]` に `music`（対戦）、`before_music`（前の会話）、`after_music`（あとの会話）を書く（`docs/story.md`）。
 - 形式は Ogg Vorbis にそろえる（MP3 はループの継ぎ目に隙間が出やすく、WAV は大きい）。ループは表の `loop` で決める（取り込みの設定ではなく）。
 
 ## 検査
