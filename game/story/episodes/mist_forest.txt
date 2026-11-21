@@ -9,7 +9,6 @@
 [episode]
 title = 森の守り
 map = mist_forest
-look = crystal_forest
 music = battle_tense
 
 [unlock]

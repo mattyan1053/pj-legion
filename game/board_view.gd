@@ -457,6 +457,8 @@ func _add_ground() -> void:
 	ground.set_shader_parameter(&"paving", float(look[StageLook.PAVING]))
 	ground.set_shader_parameter(&"dry", float(look[StageLook.DRY]))
 	ground.set_shader_parameter(&"strata", float(look.get(StageLook.STRATA, 0.0)))
+	if look.has(StageLook.CLOUD_SHADE):
+		ground.set_shader_parameter(&"cloud_shade", float(look[StageLook.CLOUD_SHADE]))
 	ground.set_shader_parameter(&"snow", float(look.get(StageLook.SNOW, 0.0)))
 	ground.set_shader_parameter(&"cracks", float(look.get(StageLook.CRACKS, 0.0)))
 	ground.set_shader_parameter(&"seam_glow", float(look.get(StageLook.SEAM_GLOW, 0.0)) * (StageLook.CRYSTAL_GLOW if StageLook.effects else 0.6))

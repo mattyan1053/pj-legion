@@ -53,6 +53,8 @@ static func layout(board_size: Vector2i, look_seed: int, scenery: Dictionary) ->
 	var scatter: Array = scenery.get(StageLook.SCATTER, [])
 	# 小さいものを置く割合（1 = 森のように詰めて。木でないもの（荷や石の山）は、まばらにする）。
 	var small_share := float(scenery.get(StageLook.SMALL_SHARE, 1.0))
+	# 小さいもののかたまりを太らせる量（大きいほど、木立が広がって、盤を囲む深い森になる）。
+	var small_spread := float(scenery.get(StageLook.SMALL_SPREAD, 0.0))
 	# 大きいものを、尾根のノイズのどこまで下まで置くか（大きいほど、尾根が太く、数が増える。谷の両側の山並み）。
 	var big_spread := float(scenery.get(StageLook.BIG_SPREAD, 0.0))
 
@@ -71,7 +73,7 @@ static func layout(board_size: Vector2i, look_seed: int, scenery: Dictionary) ->
 			continue
 		# かたまりで生える。盤の近くはまばらに、離れるほど濃く。大きいものの並ぶところは避ける。
 		var wood := woods.get_noise_2d(at.x, at.y)
-		var needed := lerpf(0.22, -0.08, clampf((distance - CLEAR) / 22.0, 0.0, 1.0))
+		var needed := lerpf(0.22, -0.08, clampf((distance - CLEAR) / 22.0, 0.0, 1.0)) - small_spread
 		if wood < needed or ridges.get_noise_2d(at.x, at.y) > 0.2:
 			continue
 		if small_share < 1.0 and rng.randf() >= small_share:

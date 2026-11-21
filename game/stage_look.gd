@@ -61,6 +61,7 @@ const DRY := &"dry"  ## 地面の、ところどころ枯れた色に寄せる�
 ## 無くてよい数（書かなければ 0）。
 const STRATA := &"strata"  ## 地面の、掘り下げた段々（露天掘りの棚）の濃さ
 const CRACKS := &"cracks"  ## 地面の、ひび割れの濃さ
+const CLOUD_SHADE := &"cloud_shade"  ## 地面を流れる影の濃さ（書かなければ、いつもの薄い雲の影。濃くすると、木もれ日のまだらになる）
 const SNOW := &"snow"  ## 地面の残雪の濃さ（盤の中は薄く、外は濃く）
 const MIST := &"mist"  ## 霞を近くから掛ける量（0 = いつもの距離、1 = MIST_BEGIN・MIST_END の距離から）
 const SEAM_GLOW := &"seam_glow"  ## 盤の向こう（プレイヤー2 の本陣の先）の地面を横切る、光る裂け目の明るさ
@@ -74,6 +75,7 @@ const SMALL := &"small"
 const SCATTER := &"scatter"
 const TINT := &"tint"
 const BIG_SPREAD := &"big_spread"  ## 無くてよい。大きいものの尾根を太らせる量（書かなければ 0。0.3 で、ほぼ倍の数）
+const SMALL_SPREAD := &"small_spread"  ## 無くてよい。小さいもののかたまりを太らせる量（書かなければ 0。0.2 で、盤を囲む深い森）
 const SMALL_SHARE := &"small_share"  ## 無くてよい。小さいものを置く割合（書かなければ 1 = 森のように詰めて）
 
 ## マスの置き方（OBSTACLE_PROPS・FOREST_PROPS）:
@@ -126,6 +128,10 @@ const TENT := {"scene": HEX + "tent.gltf", "height": 0.52, "size": 0.8, "tint": 
 const WOOD_FENCE := {"scene": HEX + "fence_wood_straight.gltf", "height": 0.5, "size": 0.45}
 const WEAPON_RACK := {"scene": HEX + "weaponrack.gltf", "height": 0.24, "size": 0.5}
 const TARGET := {"scene": HEX + "target.gltf", "height": 0.3, "size": 0.55}
+const TREES_A_LARGE := {"scene": HEX + "trees_A_large.gltf", "height": 0.92}
+const TREES_B_LARGE := {"scene": HEX + "trees_B_large.gltf", "height": 1.15}
+const TREE_SINGLE_B := {"scene": HEX + "tree_single_B.gltf", "height": 1.11}
+const WOODED_MOUNTAIN := {"scene": HEX + "mountain_B_grass_trees.gltf", "height": 2.5}
 const CRYSTAL_VIOLET := {"crystal": Color("9465f0"), "height": 1.0}
 ## 盤の上の結晶の岩山の結晶。ポータル（紫 b06cff）・中ボス（紫）・結晶泉（水色）と見分けられる青。
 const CRAG_CRYSTAL := Color("4f63e8")
@@ -150,6 +156,7 @@ const SEAM := &"seam"  ## 縫い目の谷
 const BARROW := &"barrow"  ## 古戦場
 const PASS := &"pass"  ## 峠（大岩の峠）
 const RIDGE := &"ridge"  ## 尾根（尾根の小道）
+const DEEP_FOREST := &"deep_forest"  ## 深い森（リュエルの森）
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -303,6 +310,26 @@ const THEMES := {
 			SMALL: [TENT, TENT, WOOD_FENCE, WEAPON_RACK, CRATE, TREES_A, TREES_B, TARGET],
 			SCATTER: [ROCK_C, CRATE, ROCK_A],
 			TINT: Color("d8c8b8"), SMALL_SHARE: 0.5,
+		},
+	},
+	# リュエルの森: 騎士領の、古い深い森。苔むした濃い緑の地面に、森のマスは枝を広げた大きな木立、障害物は苔の付いた岩。
+	# 盤の外は、すぐそばから盤を囲む高い森と、木の茂る山。木もれ日の淡い金の光と、緑がかった朝もや。
+	DEEP_FOREST: {
+		NORMAL: Color("35603c"), FOREST: Color("183c24"), OBSTACLE: Color("62625e"), FONT: Color("3fa9bd"),
+		HAZE: Color("a8c8b0"), SKY: Color("5a98bc"), SUN: Color("fff0c4"), AMBIENT: Color("9ab8a4"),
+		SUN_PITCH: -44.0, SUN_YAW: 52.0, SUN_ENERGY: 1.15, AMBIENT_ENERGY: 0.45,
+		PAVING: 0.0, DRY: 0.0, MIST: 0.7, CLOUD_SHADE: 0.38,
+		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("a8b4a0"),
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE,
+			"low": Color("262c24"), "cliff": Color("505a4c"), "top": Color("5f8250"),
+		},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_B_LARGE, TREES_A_LARGE, TREES_B_MEDIUM], "scale": 0.5, "tint": Color("8fb894")},
+		SCENERY: {
+			BIG: [WOODED_MOUNTAIN, MOUNTAIN_B],
+			SMALL: [TREES_B_LARGE, TREES_B_MEDIUM, TREES_A_LARGE, TREE_SINGLE_B, TREES_B_LARGE],
+			SCATTER: [ROCK_C, {"scene": HEX + "tree_single_B.gltf", "height": 1.11, "size": 1.6}],
+			TINT: Color("90b498"), SMALL_SPREAD: 0.22, SMALL_SHARE: 0.68,
 		},
 	},
 }
