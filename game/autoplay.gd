@@ -17,6 +17,7 @@ const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
+const Episode := preload("res://game/episode.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
@@ -533,6 +534,11 @@ func _queue_result_scene() -> void:
 		full.lines = [["マップ", "結晶の岩山"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
 		full.mvp_name = "シールドトルーパー Lv3"
 		screen.present(full)
+		# 負けた話の台詞（いちばん多い 3 行、いちばん長い文）も、戦績の左に収まる。
+		var remark: Array[BattleCues.Line] = []
+		for side: int in [0, 1, 0]:
+			remark.append(BattleCues.Line.new(side, "ドーソン", "あ".repeat(Episode.LOST_MAX_CHARS), {"kind": UnitKind.Id.SHIELD_TROOPER, "evolved": true}))
+		screen.set_remark(remark)
 	var waited_full := [0]
 	var wait_full := func(again: Callable) -> void:
 		var screen_size: Vector2 = screen.get_viewport_rect().size
@@ -547,6 +553,14 @@ func _queue_result_scene() -> void:
 		var rect: Rect2 = screen.prompt_rect()
 		_expect(rect.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
 			"戦績が 5 行のとき、決着の画面の入力の案内が下の帯にかかる: %s" % rect)
+		var said: Rect2 = screen.remark_rect()
+		_expect(screen.remark_texts().size() == 3 and said.position.x >= 0.0 and said.end.x <= screen_size.x / 2.0 - 230.0
+			and said.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
+			"負けたときの台詞の板が、画面からはみ出すか、戦績や下の帯にかかる: %s" % said)
+		screen.toggle_detail()
+		_expect(not screen.remark_rect().has_area(), "詳しい戦績を開いても、負けたときの台詞の板が表に重なって出ている")
+		screen.toggle_detail()
+		_expect(screen.remark_rect() == said, "詳しい戦績を閉じても、負けたときの台詞の板が戻らない")
 	_scripted.append(wait_revealed.bind(wait_revealed))
 	_scripted.append(wait_full.bind(wait_full))
 
@@ -2299,6 +2313,7 @@ func _visit_story(app: Node) -> void:
 	deploy.press_cell(free_cells[0])
 	var result: Node = await _win_story_battle(app, sortie, episode, true, _check_talk_before.bind(episode), free_cells[0])
 	_expect(result.leave_text() == "話の一覧へ" and not result.enabled_buttons().has("タイトルへ"), "話の決着の画面の行き先が「話の一覧へ」でない: %s" % result.leave_text())
+	_expect(result.remark_texts().is_empty(), "勝った話の決着の画面に、負けたときの台詞が出る")
 	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ（対戦の前の会話は、もう出ない）。
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
 	result.press_choose_squad()
@@ -2498,16 +2513,22 @@ func _visit_item_rows(app: Node) -> void:
 	await app.go(SceneFlow.TITLE)
 
 
+## 会話の行 row（episode.gd の before・after の 1 行）の話し手の名前（地の文なら空）。
+static func _speaker_of(episode: RefCounted, row: Array) -> String:
+	return episode.speakers[row[2]] if row[2] >= 0 else ""
+
+
 ## 対戦の前の会話の場面 talk（話 episode）: 文の数、最初の文、話し手の姿、送りと戻り。
 func _check_talk_before(talk: Node, episode: RefCounted) -> void:
 	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
-	_expect(talk.speaker() == episode.speakers[episode.before[0][2]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
+	_expect(talk.speaker() == _speaker_of(episode, episode.before[0]) and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
 	_expect(not talk.has_method(&"next_episode") or talk.next_episode() == null, "対戦の前の会話に「次の話へ」がある")
 	await get_tree().process_frame
 	# 立つ所は左右に 1 つずつ。両軍が出てくるか、同じ軍の話し手が 2 人以上いれば、両方に立つ。
 	var talkers := {}
 	for row: Array in episode.before:
-		talkers[row[2]] = true
+		if row[2] >= 0:  # 地の文は、話し手がいない
+			talkers[row[2]] = true
 	_expect(talk.figures().size() == mini(talkers.size(), 2), "会話に出てくる話し手の姿が立っていない")
 	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
 	for figure: Control in talk.figures():
@@ -2537,7 +2558,7 @@ func _check_talk_log(talk: Node, episode: RefCounted) -> void:
 	_expect(log.is_open(), "会話の画面でホイールを上へ回しても、会話のログが開かない")
 	var expected := []
 	for i in at + 1:
-		expected.append([episode.speakers[episode.before[i][2]], episode.before[i][1]])
+		expected.append([_speaker_of(episode, episode.before[i]), episode.before[i][1]])
 	_expect(log.row_texts() == expected, "会話のログに、これまでの文が並んでいない: %s" % [log.row_texts()])
 	var enter := InputEventKey.new()
 	enter.physical_keycode = KEY_ENTER

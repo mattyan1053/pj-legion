@@ -20,6 +20,9 @@ const StatsText := preload("res://game/stats_text.gd")
 const ResultGlow := preload("res://game/result_glow.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
 const UiTaper := preload("res://game/ui_taper.gd")
+const UnitIcons := preload("res://game/unit_icons.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
+const BattleCues := preload("res://game/battle_cues.gd")
 
 ## 行き先のボタン。field はマップの鍵（versus_fields.gd）。new_board が偽なら、いまと同じマップで再戦（field は見ない）。
 signal restart_pressed(field: StringName, new_board: bool)
@@ -71,6 +74,12 @@ const TABLE_STATE_WIDTH := 64.0
 ## 表の駒の名前と、見出しの文字の大きさ。
 const TABLE_NAME_FONT := 15
 const TABLE_HEADING_FONT := 14
+## 負けたときの台詞の板（set_remark。ストーリーの話の [lost]）: 幅、戦績の列との間、話し手のアイコン、文の大きさ。
+## 戦績の列（幅 460）の左に置く（見出しの下は、戦績が 5 行のときに縦の余りが無い。人の軍の話し手は、会話の場面でも左に立つ）。
+const REMARK_WIDTH := 300.0
+const REMARK_GAP := 22.0
+const REMARK_FACE := 40.0
+const REMARK_FONT := 17
 
 const COLOR_SHADE := Color(Palette.SHADE, 0.78)
 const COLOR_PANEL := Palette.SOLID
@@ -125,6 +134,10 @@ var _again_button: Button
 ## Enter で「同じマップで再戦」を選ぶか（set_continue）。
 var _enter_retries := false
 var _prompt: Label
+## 負けたときの台詞の板と、その行の入れ物、出している台詞（「名前: 文」。検査用）。
+var _remark: PanelContainer
+var _remark_rows: VBoxContainer
+var _remark_texts: Array[String] = []
 var _buttons: Array[Button] = []
 var _tween: Tween
 var _revealed := false
@@ -165,6 +178,7 @@ func _ready() -> void:
 	_build_mvp()
 	_build_detail()
 	_build_actions()
+	_build_remark()
 
 
 ## summary（result_summary.gd）を、段階的に出し始める。
@@ -231,6 +245,7 @@ func present(summary: RefCounted) -> void:
 			label.modulate.a = 0.0
 	_mvp_panel.modulate.a = 0.0
 	_actions.modulate.a = 0.0
+	set_remark([])  # 台詞は、出したあとで対戦の画面が渡す（負けた話だけ）
 	_set_buttons_enabled(false)
 	visible = true
 	# 大きさが決まってから、見出しの拡大の中心を決める。
@@ -260,6 +275,7 @@ func _stage() -> void:
 	t.tween_method(func(_v: float) -> void: _place_reason(), 0.0, 1.0, RISE_TIME).set_delay(HEADLINE_RISE_AT)
 	# 2. 戦績を 1 行ずつ
 	t.tween_property(_stats_panel, "modulate:a", 1.0, 0.2).set_delay(STATS_AT)
+	t.tween_property(_remark, "modulate:a", 1.0, 0.3).set_delay(STATS_AT)
 	var at := STATS_AT + 0.1
 	for row: Array in _stat_rows:
 		t.tween_callback(_sound.bind(&"ui_click")).set_delay(at)
@@ -278,6 +294,30 @@ func _stage() -> void:
 	at += MVP_IN + PROMPT_GAP
 	t.tween_property(_actions, "modulate:a", 1.0, 0.25).set_delay(at)
 	t.tween_callback(_on_revealed).set_delay(at + 0.25)
+
+
+## 負けたときの台詞（battle_cues.gd の Line の列。ストーリーの話の [lost]）を、戦績の左の板に出す。空なら板を隠す。
+## 出し始めたあと（present のあと）に渡す。戦績と一緒に出てくる（出そろったあとに渡したら、すぐ出す）。
+func set_remark(lines: Array) -> void:
+	for child in _remark_rows.get_children():
+		child.queue_free()
+	_remark_texts.clear()
+	for line: BattleCues.Line in lines:
+		_remark_rows.add_child(_remark_row(line))
+		_remark_texts.append("%s: %s" % [line.name, line.text])
+	_remark.visible = not lines.is_empty() and not _detail_panel.visible
+	_remark.modulate.a = 1.0 if _revealed else 0.0
+	_remark.reset_size()
+
+
+## 出している負けたときの台詞（「名前: 文」の列。出していなければ空）。検査用。
+func remark_texts() -> Array[String]:
+	return _remark_texts.duplicate() if visible else [] as Array[String]
+
+
+## 負けたときの台詞の板が画面に占める四角（出していなければ大きさ 0）。検査用。
+func remark_rect() -> Rect2:
+	return _remark.get_global_rect() if visible and _remark.visible else Rect2()
 
 
 ## 全部が出そろったか（行き先を選べるか）。
@@ -531,6 +571,7 @@ func _show_detail(open: bool) -> void:
 	_detail_panel.visible = open
 	_stats_panel.visible = not open
 	_mvp_panel.visible = not open
+	_remark.visible = not open and not _remark_texts.is_empty()  # 詳しい戦績の表は横に広いので、台詞の板と重ねない
 	_detail_button.text = Text.t("result.detail_back") if open else Text.t("result.detail_open")
 
 
@@ -802,6 +843,84 @@ func _build_actions() -> void:
 	_prompt.add_theme_color_override("font_color", COLOR_DIM)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_actions.add_child(_prompt)
+
+
+## 負けたときの台詞の板。戦績の列の左に、見出しの下から。
+func _build_remark() -> void:
+	_remark = _panel(Palette.BORDER)
+	_remark.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_remark.offset_right = -230.0 - REMARK_GAP
+	_remark.offset_left = _remark.offset_right - REMARK_WIDTH
+	_remark.offset_top = BODY_TOP
+	_remark.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_remark.custom_minimum_size = Vector2(REMARK_WIDTH, 0.0)
+	_remark.visible = false
+	add_child(_remark)
+	_remark_rows = VBoxContainer.new()
+	_remark_rows.add_theme_constant_override("separation", 10)
+	_remark_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_remark.add_child(_remark_rows)
+
+
+## 台詞の 1 行: 話し手のアイコン（陣営の色の縁）と、名前の札（陣営の色）、その下に文。
+func _remark_row(line: BattleCues.Line) -> HBoxContainer:
+	var team := _side_color(line.side)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var used := 0.0
+	if not line.figure.is_empty() and line.side < 2:
+		var frame := PanelContainer.new()
+		frame.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.INK, 0.85), team.lightened(0.2), 1, 5, 0.0))
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		frame.add_child(_face(line))
+		row.add_child(frame)
+		used += REMARK_FACE + 2.0 + 10.0
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 3)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(column)
+	var plate_style := StyleBoxFlat.new()
+	plate_style.bg_color = team.darkened(0.15)
+	plate_style.border_color = team.lightened(0.35)
+	plate_style.set_border_width_all(1)
+	plate_style.set_corner_radius_all(4)
+	plate_style.content_margin_left = 10.0
+	plate_style.content_margin_right = 10.0
+	plate_style.content_margin_top = 1.0
+	plate_style.content_margin_bottom = 1.0
+	var plate := PanelContainer.new()
+	plate.add_theme_stylebox_override("panel", plate_style)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	column.add_child(plate)
+	var speaker := _label(15)
+	speaker.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	speaker.text = line.name
+	plate.add_child(speaker)
+	var said := _label(REMARK_FONT)
+	var font := said.get_theme_font("font")
+	var style := _remark.get_theme_stylebox("panel")
+	var width := REMARK_WIDTH - style.get_minimum_size().x - used
+	said.text = TextWrap.fold(line.text, width,
+		func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, REMARK_FONT).x)
+	column.add_child(said)
+	return row
+
+
+## 話し手のアイコン（胸から上。対戦の途中の台詞の札と同じ）。
+func _face(line: BattleCues.Line) -> TextureRect:
+	var face := UnitIcons.rect(line.figure["kind"], line.side, false, REMARK_FACE)
+	face.texture = UnitIcons.bust(line.figure["kind"], line.side, line.figure.get("evolved", false), line.figure.get("look", &""))
+	return face
+
+
+## 陣営の色（team_colors。無ければ、いつもの青と赤）。
+func _side_color(side: int) -> Color:
+	if side >= 0 and side < team_colors.size():
+		return team_colors[side]
+	return Palette.TEAM_RED if side == 1 else Palette.TEAM_BLUE
 
 
 func _row() -> HBoxContainer:

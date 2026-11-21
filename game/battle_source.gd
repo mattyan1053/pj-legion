@@ -102,6 +102,11 @@ func talk_cues() -> RefCounted:
 	return BattleCues.new()
 
 
+## 負けたときの台詞（battle_cues.gd の Line の列。決着の画面の見出しの下に出す）。既定は無し。
+func lost_lines() -> Array[BattleCues.Line]:
+	return []
+
+
 ## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [プレイヤー1, プレイヤー2]。既定はどちらもいつもの将。
 func king_looks() -> Array[StringName]:
 	return [&"", &""]
