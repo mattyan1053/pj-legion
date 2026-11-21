@@ -4,42 +4,17 @@ extends RefCounted
 ##
 ## 盤の中央（両方の本陣から同じ道のり）のマス 1 つ。自分の駒が乗ったまま自分のフェーズを終えると、そのプレイヤーの「確保」が 1 進み、
 ## HOLDS_TO_WIN に届いたら勝ち（GameWonEvent.Reason.STRONGHOLD_HELD）。
-## 乗らずに終えても確保は減らない。相手が確保を進めると、自分の確保は 0 に戻る（相手が上書きする）。
-## 将は乗っても確保を進めない。
+## - 拠点から CONTEST_RADIUS 以内に相手の駒がいれば、確保は進まない（止まる。減りはしない）
+## - 乗らずに終えても、確保は減らない
+## - 相手が確保を進めると、自分の確保は 0 に戻る（相手が上書きする）
+## - 将は乗っても確保を進めない
 
 ## 確保がこの数に届いたら勝ち。
-const HOLDS_TO_WIN := 4
+const HOLDS_TO_WIN := 6
+## 拠点からこの距離（マンハッタン距離）以内に相手の駒がいる間は、確保が進まない。
+const CONTEST_RADIUS := 2
 ## 中ボスの家からこの距離（マンハッタン距離）以内には置かない（中ボスの縄張り。拠点に乗った駒が中ボスに殴られ続けないように）。
 const BOSS_CLEARANCE := Neutral.TERRITORY_RADIUS
-
-# PROBE（測るあいだだけ。入れる前に消す）
-static var _p_ready := false
-static var p_win := HOLDS_TO_WIN
-static var p_leave_resets := false
-static var p_take_resets := true
-static var p_king := false
-static var p_urgent := 1
-static var p_contest := 0
-static var p_open := 0
-static var p_block := 0.0
-
-
-static func _probe() -> void:
-	if _p_ready:
-		return
-	_p_ready = true
-	var e := OS.get_environment("SH")
-	for part in e.split(",", false):
-		var kv := part.split("=")
-		match kv[0]:
-			"win": p_win = int(kv[1])
-			"leave": p_leave_resets = kv[1] == "reset"
-			"take": p_take_resets = kv[1] == "reset"
-			"king": p_king = kv[1] == "1"
-			"urgent": p_urgent = int(kv[1])
-			"contest": p_contest = int(kv[1])
-			"open": p_open = int(kv[1])
-			"block": p_block = float(kv[1])
 
 
 ## 盤 board の拠点のマスを決める。両方の本陣からの道のり（移動のコスト。ポータルは転移も使う）の差がいちばん小さいマスのうち、
@@ -97,52 +72,36 @@ static func holds(battle: Battle, player: Unit.Side) -> bool:
 	return occupant != null and occupant.side == player and counts(occupant)
 
 
-## 拠点の周り（マンハッタン距離 p_contest 以内）に、player の相手の駒がいるか（いれば確保は進まない）。
+## 拠点の周り（マンハッタン距離 CONTEST_RADIUS 以内）に、player の相手の駒がいるか（いれば確保は進まない）。
 static func contested(battle: Battle, player: Unit.Side) -> bool:
 	var cell := battle.board.stronghold_cell
 	for unit in battle.units:
-		if unit.side == (1 - player) and Combat.distance(unit.cell, cell) <= p_contest:
+		if unit.side == (1 - player) and Combat.distance(unit.cell, cell) <= CONTEST_RADIUS:
 			return true
 	return false
 
 
 ## その駒が乗っていれば、確保を進めるか（将でない、プレイヤーの駒）。
 static func counts(unit: Unit) -> bool:
-	_probe()
-	return unit.side != Unit.Side.NEUTRAL and (p_king or unit.kind != UnitKind.Id.KING)
+	return unit.side != Unit.Side.NEUTRAL and unit.kind != UnitKind.Id.KING
 
 
 ## player のフェーズの終わりに、拠点の確保を数える（EndPhaseAction が、敵の本陣の占拠のあとに呼ぶ）。
-## 乗っていれば 1 進め、相手の確保を 0 に戻す。乗っていなければ、どちらも変えない。数が変わった分だけ StrongholdProgressEvent を出す。
+## 乗っていて、周りに相手の駒がいなければ 1 進め、相手の確保を 0 に戻す。そうでなければ、どちらも変えない。数が変わった分だけ StrongholdProgressEvent を出す。
 ## HOLDS_TO_WIN に届いたら勝ち。拠点の無い盤と、拠点の確保が勝ちの条件に無いプレイヤーでは何もしない。
 static func count(battle: Battle, player: Unit.Side) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	if battle.is_over() or not battle.wins_by(player, GameWonEvent.Reason.STRONGHOLD_HELD):
 		return events
-	_probe()
-	if OS.get_environment("SHTRACE") != "":
-		var occ := battle.unit_at(battle.board.stronghold_cell)
-		var nearest := 99
-		for u in battle.units:
-			if u.side == (1 - player):
-				nearest = mini(nearest, Combat.distance(u.cell, battle.board.stronghold_cell))
-		print("SH t=%d p=%d holds=%s occ=%s foe_near=%d" % [battle.turn, player, battle.stronghold_holds, "-" if occ == null else "%d:%d" % [occ.side, occ.kind], nearest])
-	if battle.turn < p_open:
-		return events
-	if p_contest > 0 and holds(battle, player) and contested(battle, player):
-		return events
-	if not holds(battle, player):
-		if p_leave_resets and battle.stronghold_holds[player] > 0:
-			battle.stronghold_holds[player] = 0
-			events.append(StrongholdProgressEvent.new(player, 0))
+	if not holds(battle, player) or contested(battle, player):
 		return events
 	battle.stronghold_holds[player] += 1
 	events.append(StrongholdProgressEvent.new(player, battle.stronghold_holds[player]))
 	var foe := (1 - player) as Unit.Side
-	if p_take_resets and battle.stronghold_holds[foe] > 0:
+	if battle.stronghold_holds[foe] > 0:
 		battle.stronghold_holds[foe] = 0
 		events.append(StrongholdProgressEvent.new(foe, 0))
-	if battle.stronghold_holds[player] >= p_win:
+	if battle.stronghold_holds[player] >= HOLDS_TO_WIN:
 		battle.winner = player
 		events.append(GameWonEvent.new(player, GameWonEvent.Reason.STRONGHOLD_HELD))
 	return events
@@ -152,8 +111,7 @@ static func count(battle: Battle, player: Unit.Side) -> Array[BattleEvent]:
 static func holds_left(battle: Battle, player: Unit.Side) -> int:
 	if battle.board.stronghold_cell == Board.NO_CELL or not battle.wins_by(player, GameWonEvent.Reason.STRONGHOLD_HELD):
 		return -1
-	_probe()
-	return maxi(0, p_win - battle.stronghold_holds[player])
+	return maxi(0, HOLDS_TO_WIN - battle.stronghold_holds[player])
 
 
 ## from からの道のり（移動のコスト。入れないマスは -1）。ポータルは、対になるポータルへ移動力を使わずに移る。添字は 行 x 幅 + 列。

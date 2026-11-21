@@ -160,14 +160,14 @@ func test_a_foe_hold_resets_the_holds() -> void:
 	assert_eq(battle.stronghold_holds, [0, 1] as Array[int])
 
 
-func test_a_foe_next_to_the_stronghold_stops_the_hold() -> void:
+func test_a_foe_near_the_stronghold_stops_the_hold() -> void:
 	var battle := _battle()
 	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, CELL)
-	var foe := battle.add_unit(UnitKind.Id.PALADIN, P2, CELL + Vector2i(1, 0))
+	var foe := battle.add_unit(UnitKind.Id.PALADIN, P2, CELL + Vector2i(Stronghold.CONTEST_RADIUS, 0))
 	assert_true(Stronghold.contested(battle, P1))
 	assert_eq(_progress(_end(battle)), [] as Array[Array])
 	assert_eq(battle.stronghold_holds, [0, 0] as Array[int])
-	foe.cell = CELL + Vector2i(1, 1)  # 斜めは隣でない（マンハッタン距離 2）
+	foe.cell = CELL + Vector2i(Stronghold.CONTEST_RADIUS, 1)  # マンハッタン距離で 1 つ外
 	_end(battle)
 	assert_eq(_progress(_end(battle)), [[P1, 1]] as Array[Array])
 

@@ -127,14 +127,15 @@ const BATTERY_STEP_COST := 3.0
 const BATTERY_STEPS := 8
 const BATTERY_WATCH := 6
 ## 回復役が、減っている味方を探す範囲（歩数）。
-## 拠点（試しの決まり。docs/map-objects.md の「拠点」）。戦う駒が拠点に立って行動を終える価値と、もう乗っている駒が居座る価値（確保 1 つあたり）。
+## 拠点（試しの決まり。docs/map-objects.md の「拠点」。docs/cpu-ai.md の「拠点」）。
+## 戦う駒が拠点に立って行動を終える価値と、もう乗っている駒が居座る価値（確保 1 つあたり）。
 const STRONGHOLD_VALUE := 60.0
 const STRONGHOLD_HOLD_VALUE := 100.0
 ## 拠点に乗っている相手の駒。ダメージの価値を STRONGHOLD_RATE 倍にし、倒す価値に（相手の確保 1 つあたり）STRONGHOLD_KILL_BONUS を足す。
 const STRONGHOLD_RATE := 1.5
 const STRONGHOLD_KILL_BONUS := 40.0
-## 拠点に乗っている相手の駒を、この歩数の中の前衛・後衛・奇襲が追う。
-const STRONGHOLD_CHASE_STEPS := 16
+## 相手の駒が拠点に乗っている間、拠点の周り（確保を止められる所。Stronghold.CONTEST_RADIUS 以内）に立って行動を終える価値。
+const STRONGHOLD_BLOCK_VALUE := 60.0
 const HEALER_SEARCH_STEPS := 12
 ## スキルを使う手の、スキルごとの見積もり（対象に選ぶ価値のありそうなマスと、使った結果の価値）は、
 ## rules/cpu/ の 1 スキル 1 ファイル（CpuSkillEstimate.of）。
@@ -217,9 +218,8 @@ var _idle_danger_weight := 0.0
 var _hq_in_danger := false
 ## 勝ちの条件の読み（rules/cpu/win_conditions_cpu.gd）。守る側か、攻める側で急ぐか。
 var _holding := false
-## 拠点の確保で勝てるか、相手があと 1 つで拠点の確保で勝つか、拠点へ向かう駒の番号（0 = まだ決めていない、-1 = いない）。_begin が決める。
+## 拠点の確保で勝てる（両方とも勝てる）か、拠点へ向かう駒の番号（0 = まだ決めていない、-1 = いない）。_begin が決める。
 var _takes_stronghold := false
-var _stronghold_urgent := false
 var _stronghold_taker := 0
 var _rushing := false
 var _lethal_penalty := 0.0
@@ -363,9 +363,7 @@ func _begin(battle: Battle) -> void:
 	# 本陣の占拠で勝てないなら、敵の本陣は目指すマスでない。
 	_foe_hq = board.hq_cells[_foe] if has_hqs and CpuWinPlan.raids_hq(battle, _me) else Board.NO_CELL
 	_holding = CpuWinPlan.holds(battle, _me)
-	_takes_stronghold = Stronghold.holds_left(battle, _me) != -1
-	var foe_left := Stronghold.holds_left(battle, _foe)
-	_stronghold_urgent = _takes_stronghold and foe_left != -1 and foe_left <= Stronghold.p_urgent
+	_takes_stronghold = Stronghold.holds_left(battle, _me) != -1 and Stronghold.holds_left(battle, _foe) != -1
 	_stronghold_taker = 0
 	_rushing = CpuWinPlan.rushes(battle, _me)
 	_hq_in_danger = false
@@ -1074,10 +1072,10 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		value += STRONGHOLD_VALUE
 		if unit.cell == cell:
 			value += STRONGHOLD_HOLD_VALUE * _battle.stronghold_holds[_me]
-	elif _takes_stronghold and Stronghold.p_contest > 0 and Stronghold.p_block > 0.0 and Combat.distance(cell, _board.stronghold_cell) <= Stronghold.p_contest:
+	elif _takes_stronghold and Combat.distance(cell, _board.stronghold_cell) <= Stronghold.CONTEST_RADIUS:
 		var holder := _battle.unit_at(_board.stronghold_cell)
 		if holder != null and holder.side == _foe and Stronghold.counts(holder):
-			value += Stronghold.p_block
+			value += STRONGHOLD_BLOCK_VALUE
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
@@ -1180,20 +1178,19 @@ func _set_goal(unit: Unit) -> void:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
 	if _takes_stronghold and unit.kind != UnitKind.Id.KING and role != UnitKind.Role.HEALER:
+		# 拠点: 待てば相手が確保を進めるので、戦う駒は動くだけの手の危険を、攻撃する手の重さで見る（長引いたときの踏み込みと同じ）。
+		# 相手が拠点に乗っていれば、乗っている駒を追う。そうでなければ、受け持ちの 1 体（_choose_stronghold_taker）が拠点へ向かう。
 		_choose_stronghold_taker()
+		_idle_danger_weight = minf(_danger_weight, _idle_danger_weight)
 		var holder := _battle.unit_at(_board.stronghold_cell)
 		if holder != null and holder.side == _foe and Stronghold.counts(holder):
-			# 相手が拠点に乗っている: 近くの戦う駒は、乗っている駒を追う。相手があと 1 つで勝つなら、危険を気にせず踏み込む。
-			if _steps_from(holder.cell)[unit.cell.y * _board.size.x + unit.cell.x] <= STRONGHOLD_CHASE_STEPS or _stronghold_urgent:
-				goal = holder.cell
-				_goal_reach = unit.attack_range()
-				_stand_off = false
+			goal = holder.cell
+			_goal_reach = unit.attack_range()
+			_stand_off = false
 		elif unit.id == _stronghold_taker:
 			goal = _board.stronghold_cell
 			_goal_reach = 0
 			_stand_off = false
-		if _stronghold_urgent:
-			_idle_danger_weight = minf(_danger_weight, _idle_danger_weight)
 	if _foe_hq != Board.NO_CELL and role != UnitKind.Role.HEALER and not _foes_left() and (unit.kind != UnitKind.Id.KING or _lone_king):
 		# 相手の駒が残っていなくても終わらない（占拠でしか勝てない）: 追う敵がいないので、敵の本陣へ向かう。
 		goal = _foe_hq
