@@ -30,6 +30,7 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const CardKeys := preload("res://game/card_keys.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
 
 signal finished(outcome: StringName)
 
@@ -41,6 +42,9 @@ const MAP_CELL := 8
 const MAP_HEIGHT := 180.0
 ## 縮図の右下に重ねる、その話の顔（敵の話し手の姿のアイコン）の大きさ（px）。
 const FACE_SIZE := 72.0
+## 主な人物の欄（物語のファイルの [cast]）: 姿の額の大きさと、人と人の間（px）。
+const CAST_FACE := 40.0
+const CAST_GAP := 22
 
 const COLOR_PANEL := Palette.OVERLAY
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
@@ -80,9 +84,13 @@ func _ready() -> void:
 	ornament.color = Crest.color_of(context.story.campaign.army)  # その物語の国の色
 	ornament.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(ornament)
-	var sub := _label(Text.t("story.episodes.sub"), 18)
-	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	root.add_child(sub)
+	# 見出しの下: 主な人物（物語のファイルの [cast]。姿の額・名前・立ち位置）。書いていない物語は「話の選択」の小見出し。
+	if context.story.campaign.cast.is_empty():
+		var sub := _label(Text.t("story.episodes.sub"), 18)
+		sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+		root.add_child(sub)
+	else:
+		root.add_child(cast_row(context.story.campaign))
 
 	# 話が多いと横に並びきらないので、横に送れる枠に入れる（マウスのホイールでも送れる）。
 	# 開いたときは、次に遊ぶ話のカードが見えるところまで送っておく。
@@ -386,6 +394,38 @@ func _panel(color: Color) -> PanelContainer:
 	panel.add_theme_stylebox_override("panel", style)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return panel
+
+
+## 主な人物の欄: 1 人ずつ、姿の額（人の軍の色）と、名前・立ち位置を横に並べる。
+func cast_row(campaign: RefCounted) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", CAST_GAP)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.name = &"Cast"
+	for person: Dictionary in campaign.cast:
+		var figure: Dictionary = person["figure"]
+		var entry := HBoxContainer.new()
+		entry.add_theme_constant_override("separation", 8)
+		entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(entry)
+		var frame := UnitFrame.new(figure["kind"], 0, CAST_FACE, false, figure.get("evolved", false), figure.get("look", &""))
+		frame.edge = Crest.color_of(campaign.army)
+		entry.add_child(frame)
+		var words := VBoxContainer.new()
+		words.add_theme_constant_override("separation", -2)
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		entry.add_child(words)
+		var name_label := _label(person["name"], 16)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+		words.add_child(name_label)
+		var role := _label(person["role"], 13)
+		role.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		role.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+		words.add_child(role)
+	return row
 
 
 func _label(text: String, font_size: int) -> Label:
