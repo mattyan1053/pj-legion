@@ -89,6 +89,14 @@ func talk_cues() -> RefCounted:
 	return BattleCues.new(episode.cues, episode.speakers, episode.figures)
 
 
+## 話のファイルの [lost]（負けたときの台詞）。無い話は無し。
+func lost_lines() -> Array[BattleCues.Line]:
+	var lines: Array[BattleCues.Line] = []
+	for row: Array in episode.lost:
+		lines.append(BattleCues.Line.new(row[0], episode.speakers[row[2]], row[1], episode.figures[row[2]]))
+	return lines
+
+
 func record_win(context: RefCounted) -> void:
 	if context != null and context.story != null:
 		context.story.clear(episode.id)

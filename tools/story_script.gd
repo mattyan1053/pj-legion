@@ -41,7 +41,7 @@ static func index_text() -> String:
 	lines.append("")
 	lines.append("話の順に並べた目次。会話は、それぞれの話のファイルにそのまま書いてある（ここには写さない）。")
 	lines.append("")
-	lines.append("- `[before]`: 対戦の前の会話。`[after]`: 勝ったあとの会話。1 行が「話し手: 文」。")
+	lines.append("- `[before]`: 対戦の前の会話。`[after]`: 勝ったあとの会話。`[lost]`: 負けたときの台詞（決着の画面に出す）。1 行が「話し手: 文」。")
 	lines.append("- `[cues]`: 対戦の途中の台詞。頭の括弧が出るとき（`(turn 3)` はターン 3 の始め、`(fallen ally)` は味方が初めて倒れたとき、")
 	lines.append("  `(king_half enemy)` は敵の将の HP が半分を切ったとき、`(ult_ready ally)` は必殺技が使えるようになったとき）。")
 	lines.append("- 頭の `[episode]` は話の名前・マップ・勝ち方、`[cast]` は話し手（`ally` が遊ぶ人の軍、`enemy` が敵の軍。後ろは会話に立つ姿）。")
@@ -108,6 +108,10 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	lines.append("### 対戦のあと")
 	lines.append("")
 	_talk(lines, episode, episode.after)
+	if not episode.lost.is_empty():
+		lines.append("### 負けたとき（決着の画面）")
+		lines.append("")
+		_talk(lines, episode, episode.lost)
 	var news := given.news_of(episode)
 	if not news.is_empty():
 		lines.append("クリアで増えるもの:")
@@ -126,7 +130,7 @@ static func _talk(lines: PackedStringArray, episode: Episode, rows: Array) -> vo
 ## 話し手の一覧（「隊長（味方・将）」。味方が先。姿は駒の名前、進化後の形なら「進化後」を添える）。台詞の無い話し手は並べない。
 static func _cast(episode: Episode) -> PackedStringArray:
 	var talks := {}
-	for row: Array in episode.before + episode.after:
+	for row: Array in episode.before + episode.after + episode.lost:
 		talks[row[2]] = true
 	for cue: Array in episode.cues:
 		talks[cue[4]] = true
