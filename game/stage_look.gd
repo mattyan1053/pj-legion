@@ -54,6 +54,10 @@ const SUN_ENERGY := &"sun_energy"
 const AMBIENT_ENERGY := &"ambient_energy"
 const PAVING := &"paving"  ## 地面の石畳の濃さ（0 = 無し）
 const DRY := &"dry"  ## 地面の、ところどころ枯れた色に寄せる濃さ
+## 無くてよい数（書かなければ 0）。
+const STRATA := &"strata"  ## 地面の、掘り下げた段々（露天掘りの棚）の濃さ
+const CRACKS := &"cracks"  ## 地面の、ひび割れの濃さ
+const SEAM_GLOW := &"seam_glow"  ## 盤の向こう（プレイヤー2 の本陣の先）の地面を横切る、光る裂け目の明るさ
 
 ## 置物の定義の名前。
 const OBSTACLE_PROPS := &"obstacle_props"  ## 障害物のマス（下の「置き方」）
@@ -63,6 +67,8 @@ const BIG := &"big"
 const SMALL := &"small"
 const SCATTER := &"scatter"
 const TINT := &"tint"
+const BIG_SPREAD := &"big_spread"  ## 無くてよい。大きいものの尾根を太らせる量（書かなければ 0。0.3 で、ほぼ倍の数）
+const SMALL_SHARE := &"small_share"  ## 無くてよい。小さいものを置く割合（書かなければ 1 = 森のように詰めて）
 
 ## マスの置き方（OBSTACLE_PROPS・FOREST_PROPS）:
 ##   {style, props: [素材, …], tint: Color, crystals?: Color, と style ごとの数}
@@ -79,6 +85,7 @@ const CRAG := &"crag"
 
 ## 素材: {scene: パス, height: 大きさ 1 のときの高さ} か、{crystal: Color, height: 1.0}（コードで作る結晶の群れ。crystal_mesh.gd）。
 ## size があれば、景色に置くときの大きさに掛ける（大きく・小さく見せたいもの）。height は検査が素材と突き合わせる。
+## tint があれば、景色に置くときの色に掛ける（景色の色 TINT と合わせて）。
 const HEX := "res://assets/kaykit/medieval-hexagon/"
 const DUNGEON := "res://assets/kaykit/dungeon-remastered/"
 const TREES_A := {"scene": HEX + "trees_A_small.gltf", "height": 1.09}
@@ -89,6 +96,7 @@ const MOUNTAIN_B := {"scene": HEX + "mountain_B.gltf", "height": 1.77}
 const MOUNTAIN_C := {"scene": HEX + "mountain_C.gltf", "height": 1.51}
 const ROCK_A := {"scene": HEX + "rock_single_A.gltf", "height": 0.07}
 const ROCK_C := {"scene": HEX + "rock_single_C.gltf", "height": 0.19}
+const ROCK_E := {"scene": HEX + "rock_single_E.gltf", "height": 0.19, "size": 0.5}
 const PILLAR := {"scene": DUNGEON + "pillar.glb", "height": 4.0}
 const STONE_WALL := {"scene": DUNGEON + "wall.glb", "height": 4.0}
 const STONE_WALL_BROKEN := {"scene": DUNGEON + "wall_broken.glb", "height": 4.0}
@@ -97,6 +105,13 @@ const COLUMN := {"scene": DUNGEON + "column.glb", "height": 1.4}
 const BARRIER := {"scene": DUNGEON + "barrier_column.glb", "height": 1.4}
 const RUBBLE := {"scene": DUNGEON + "rubble_half.glb", "height": 3.5}
 const RUBBLE_LARGE := {"scene": DUNGEON + "rubble_large.glb", "height": 3.5}
+const TREES_A_CUT := {"scene": HEX + "trees_A_cut.gltf", "height": 0.2, "size": 0.16}
+const MINE := {"scene": HEX + "building_mine_yellow.gltf", "height": 1.14, "size": 0.42, "tint": Color("c8b8a8")}
+const SCAFFOLDING := {"scene": HEX + "building_scaffolding.gltf", "height": 1.3, "size": 0.42, "tint": Color("c8b8a8")}
+const WHEELBARROW := {"scene": HEX + "wheelbarrow.gltf", "height": 0.19, "size": 0.4}
+const STONE_PILE := {"scene": HEX + "resource_stone.gltf", "height": 0.28, "size": 0.5}
+const CRATE := {"scene": HEX + "crate_A_big.gltf", "height": 0.21, "size": 0.5, "tint": Color("b8a890")}
+const LONG_CRATE := {"scene": HEX + "crate_long_A.gltf", "height": 0.15, "size": 0.35, "tint": Color("b8a890")}
 const CRYSTAL_VIOLET := {"crystal": Color("9465f0"), "height": 1.0}
 ## 盤の上の結晶の岩山の結晶。ポータル（紫 b06cff）・中ボス（紫）・結晶泉（水色）と見分けられる青。
 const CRAG_CRYSTAL := Color("4f63e8")
@@ -116,6 +131,8 @@ const SCENERY_SHADE := Color(0.84, 0.88, 0.86)
 const GRASSLAND := &"grassland"  ## 草原（中央平原）
 const STONE_WALLS := &"stone_walls"  ## 石の壁（迷宮回廊、ストーリーの尾根の小道）
 const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶、ストーリーの結晶の岩山）
+const QUARRY := &"quarry"  ## 採掘場（結晶の採掘場）
+const SEAM := &"seam"  ## 縫い目の谷
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -175,6 +192,46 @@ const THEMES := {
 			SMALL: [TREES_B, TREES_B_MEDIUM, CRYSTAL_VIOLET, CRYSTAL_CYAN],
 			SCATTER: [ROCK_C, CRYSTAL_CYAN],
 			TINT: Color("8a98c0"),
+		},
+	},
+	# 結晶の採掘場: 露天掘り。掘り返した赤茶の土が段々に下がり、障害物は切り出した岩の山に、掘り残した青い結晶がのぞく。
+	# 盤の外は、坑口、足場、木箱と樽の山、石の山、手押し車、切り株。高い日の白い光と、土ぼこりの霞。
+	QUARRY: {
+		NORMAL: Color("806850"), FOREST: Color("56663a"), OBSTACLE: Color("3f322d"), FONT: Color("3fa9bd"),
+		HAZE: Color("d9c2ad"), SKY: Color("6a94bc"), SUN: Color("fff4e2"), AMBIENT: Color("c2b3a8"),
+		SUN_PITCH: -62.0, SUN_YAW: 18.0, SUN_ENERGY: 1.25, AMBIENT_ENERGY: 0.5,
+		PAVING: 0.0, DRY: 0.3, STRATA: 1.0,
+		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("c9b8a4"),
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE, "crystals": CRAG_CRYSTAL,
+			"low": Color("3b2a24"), "cliff": Color("8a5f44"), "top": Color("ab8a6a"),
+		},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_B], "scale": 0.6, "tint": Color("b9b46e")},
+		SCENERY: {
+			BIG: [MOUNTAIN_C, MOUNTAIN_A, MOUNTAIN_C, MINE, SCAFFOLDING],
+			SMALL: [CRATE, STONE_PILE, LONG_CRATE, WHEELBARROW, TREES_A_CUT, STONE_PILE],
+			SCATTER: [ROCK_C, STONE_PILE, {"crystal": CRAG_CRYSTAL, "height": 1.0, "size": 0.8}],
+			TINT: Color("d8c0a8"), SMALL_SHARE: 0.5,
+		},
+	},
+	# 縫い目の谷: 糸を抜かれて、いちばん傷んだ所。灰色のひび割れた地面に、結晶の抜けた暗い岩の帯。森は枯れかけた木立。
+	# 盤の外は、両側から迫る暗い山並みと、割れ残った結晶。宵の暗い菫の霞と冷たい光。プレイヤー2 の本陣の向こうの地面を、光る裂け目（縫い目）が横切る。
+	SEAM: {
+		NORMAL: Color("676b72"), FOREST: Color("3e4a44"), OBSTACLE: Color("2c2a33"), FONT: Color("46bcd6"),
+		HAZE: Color("5a4c84"), SKY: Color("151433"), SUN: Color("d6dcff"), AMBIENT: Color("9c94c8"),
+		SUN_PITCH: -52.0, SUN_YAW: -150.0, SUN_ENERGY: 1.0, AMBIENT_ENERGY: 0.6,
+		PAVING: 0.0, DRY: 0.0, CRACKS: 1.0, SEAM_GLOW: 1.0,
+		CRYSTAL: Color("5fe0f5"), SPRING_STONE: Color("9a98b0"),
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE,
+			"low": Color("17161d"), "cliff": Color("3a3944"), "top": Color("6f7180"),
+		},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_B], "scale": 0.6, "tint": Color("8a9484")},
+		SCENERY: {
+			BIG: [MOUNTAIN_B, MOUNTAIN_A, MOUNTAIN_B, {"crystal": Color("9465f0"), "height": 1.0, "size": 0.5}],
+			SMALL: [TREES_A, ROCK_E, CRYSTAL_VIOLET, ROCK_C],
+			SCATTER: [ROCK_C, ROCK_A, CRYSTAL_CYAN],
+			TINT: Color("7c7a96"), SMALL_SHARE: 0.25, BIG_SPREAD: 0.3,
 		},
 	},
 }

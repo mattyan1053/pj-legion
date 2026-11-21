@@ -17,6 +17,13 @@ uniform float cloud_shade = 0.1;
 // 石畳の濃さ（0 = 無し。マップの見た目の PAVING）と、ところどころ枯れた色に寄せる濃さ（DRY）。
 uniform float paving = 0.0;
 uniform float dry = 0.45;
+// 掘り下げた段々（露天掘りの棚）の濃さ（0 = 無し。マップの見た目の STRATA）。大きなむらの等高線に沿って、段の縁を暗く、段ごとに明るさを少し変える。
+uniform float strata = 0.0;
+// ひび割れ（干上がって裂けた地面）の濃さ（0 = 無し。マップの見た目の CRACKS）。
+uniform float cracks = 0.0;
+// 光る裂け目（縫い目）の明るさ（0 = 無し。マップの見た目の SEAM_GLOW）。盤の外、プレイヤー2 の本陣の先（-Z の側）の地面を、折れながら横切る。
+// 盤の中には掛からない（マスの塗り分けと紛れない）。色は、タイトルの裂けた空（rift_sky.gdshader）の裂け目と同じ。
+uniform float seam_glow = 0.0;
 // 模様（むら、色の寄り、斑、枯れ、石畳の目）の濃さ。描画方式で模様の出方が違うので、そろえるために掛ける（render_tone.gd）。
 uniform float pattern_gain = 1.0;
 
@@ -65,6 +72,22 @@ void fragment() {
 		color *= mix(1.0, 1.0 + ((0.9 + 0.2 * stone) * (1.0 - 0.32 * joint) - 1.0) * pattern_gain, paved);
 	}
 
+	// 掘り下げた段々。地面は平らなまま、模様だけで段に見せる（マスの色分けは変えない）。
+	if (strata > 0.0) {
+		float level = texture(noise_map, ground * 0.014 + vec2(0.27, 0.66)).r * 12.0 + wobble.x * 0.2;
+		float bench = mod(floor(level), 2.0);
+		float cut = 1.0 - smoothstep(0.0, 0.12, fract(level));
+		color *= 1.0 + strata * pattern_gain * (0.05 * (bench - 0.5) - 0.13 * cut);
+	}
+
+	// ひび割れ。2 つの大きさのノイズの等高線を、細い暗い線にする。
+	if (cracks > 0.0) {
+		float wide = abs(texture(noise_map, ground * 0.09 + vec2(0.41, 0.13)).r - 0.5);
+		float fine = abs(texture(noise_map, ground * 0.23 + vec2(0.73, 0.58)).r - 0.47) * 1.5;
+		float crack = 1.0 - smoothstep(0.006, 0.03, min(wide, fine));
+		color *= 1.0 - min(0.6, 0.3 * cracks * pattern_gain) * crack;
+	}
+
 	// 盤の外は、少し暗く、色を抜く（戦う範囲が、光の当たった舞台に見える）。境目のすぐ外には、細い影を落とす。
 	vec2 beyond = max(max(-at, at - board_size), vec2(0.0));
 	float out_there = length(beyond);
@@ -73,6 +96,14 @@ void fragment() {
 	color *= mix(1.0, outside_shade, outside);
 	color *= 1.0 - 0.16 * smoothstep(0.0, 0.08, out_there) * smoothstep(0.7, 0.1, out_there);
 
+	if (seam_glow > 0.0) {
+		float seam_z = -8.5 + (texture(noise_map, vec2(ground.x * 0.017, 0.37)).r - 0.5) * 7.0
+			+ (texture(noise_map, vec2(ground.x * 0.13, 0.81)).r - 0.5) * 1.4;
+		float off = abs(ground.y - seam_z);
+		float pulse = 0.85 + 0.15 * sin(TIME * 0.8 + ground.x * 0.4);
+		color *= 1.0 - 0.6 * smoothstep(0.7, 0.1, off);
+		EMISSION = seam_glow * pulse * (vec3(0.37, 0.88, 0.96) * exp(-off * 1.3) * 0.45 + vec3(0.92, 1.0, 1.0) * smoothstep(0.2, 0.0, off) * 1.6);
+	}
 	ALBEDO = color;
 	ROUGHNESS = 0.95;
 	SPECULAR = 0.1;

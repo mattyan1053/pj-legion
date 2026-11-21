@@ -9,6 +9,8 @@
   - `mountain_B` / `mountain_C`: 双子結晶・迷宮回廊の盤の外の岩山
   - `rock_single_A` / `rock_single_C` / `rock_single_E`: 双子結晶の障害物のマスの岩（上に結晶を生やす）と、盤の外に散らばる石
   - `trees_B_medium`: 双子結晶の盤の外の森
+  - `trees_A_cut`（切り株）、`buildings/yellow/building_mine_yellow`（坑口）、`buildings/neutral/building_scaffolding`（足場）、
+    `decoration/props/` の `wheelbarrow`・`resource_stone`・`crate_A_big`・`crate_long_A`: 結晶の採掘場の盤の外の景色（2026-11-21 に足した。コミットは同じ `84fa4e9`）
   - `hexagons_medieval.png`: 上の全部が共通で使うテクスチャ
 - 確かめた日: 2026-11-16（`mountain_B` から下を足したとき。コミット `84fa4e9`）
 
