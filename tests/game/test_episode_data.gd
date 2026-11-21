@@ -143,6 +143,20 @@ func test_the_probe_reads_every_field() -> void:
 	assert_false(episode.has_squad())
 
 
+## 地の文（話し手のいない行）は、頭に「>」（全角の「＞」でもよい）を付けて書く。話し手の番号は -1 で、会話の場面には名前の無い行で渡す。
+func test_narration_lines_read() -> void:
+	var episode: Episode = Episode.parse(PROBE.replace("隊長: いくぞ", "> 尾根に着いた。\n隊長: いくぞ").replace("敵将: 退け", "敵将: 退け\n＞ 日が暮れた。"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.before[0], [Episode.NARRATION_SIDE, "尾根に着いた。", -1])
+	assert_eq(episode.after[1], [Episode.NARRATION_SIDE, "日が暮れた。", -1])
+	var talk := Story.talk_of(episode, episode.before)
+	assert_eq(talk["lines"][0]["name"], "", "地の文は名前の無い行")
+	assert_eq(talk["lines"][0]["side"], Episode.NARRATION_SIDE)
+	assert_eq(talk["lines"][1]["name"], "隊長")
+	assert_eq(preload("res://game/talk_screen.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話の場面も、同じ陣営の番号で地の文と見る")
+	assert_eq(preload("res://game/talk_log.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話のログも、同じ陣営の番号で地の文と見る")
+
+
 ## 負けたときの台詞（[lost]）は無くてよい。書けば、話し手と文を読み、話の対戦が決着の画面へ渡す（battle_source.gd の lost_lines）。
 func test_lost_lines_read() -> void:
 	var plain: Episode = Episode.parse(PROBE)
@@ -434,6 +448,8 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"敵の節が無い": ["[enemy]\narmy = fantasy\nunit = paladin + iron_shield + iron_shield\nunit = priest\ndeploy = 8,9  5,9\n", "", 1],
 		"節より前の行": ["[episode]", "title = 前\n[episode]", 2],
 		"節の重なり": ["[after]", "[before]\n隊長: また\n[after]", 26],
+		"空の地の文": ["隊長: いくぞ", "＞", 23],
+		"負けの台詞に地の文": ["敵将: 退け", "敵将: 退け\n[lost]\n> 日が暮れた", 29],
 		"負けの台詞が多い": ["敵将: 退け", "敵将: 退け\n[lost]\n" + "隊長: また\n".repeat(Episode.LOST_MAX_LINES + 1).strip_edges(), 28],
 		"負けの台詞が長い": ["敵将: 退け", "敵将: 退け\n[lost]\n隊長: " + "あ".repeat(Episode.LOST_MAX_CHARS + 1), 29],
 		"負けの台詞が空": ["敵将: 退け", "敵将: 退け\n[lost]", 28],

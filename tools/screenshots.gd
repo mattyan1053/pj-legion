@@ -184,6 +184,7 @@ const SCENES := {
 	"story_talk_squad": "ストーリー: 部隊の中の人が話している対戦の前の会話（岩山の掃討。左の所の姿が、話した人に入れ替わる。右は敵の話し手）",
 	"story_rivals_ridge": "ストーリー: MILITARY の物語「尾根の小道」の前の会話（左にハーデン、右にイェルダ。見分けが付くか）",
 	"story_rivals_forest": "ストーリー: FANTASY の物語「森の守り」の前の会話（左にイェルダ、右にハーデン。どちらも将。見分けが付くか）",
+	"story_talk_narration": "ストーリー: 会話の頭の地の文（「尾根の小道」の前。名前の札なし、文を真ん中に明朝で。左右の姿は暗い）",
 	"story_talk_allies": "ストーリー: 敵の軍が出てこない会話（演習「手当て」の前。最初に話した人が左、ほかの人が右に立って向き合う）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
@@ -2231,6 +2232,13 @@ func _military_index(id: StringName) -> int:
 		if episodes[index].id == id:
 			return index
 	return -1
+
+
+## 地の文（話し手のいない行）。「尾根の小道」の前の会話は、地の文から始まる。
+func _scene_story_talk_narration() -> bool:
+	if not await _start_story(_military_index(&"ridge_path")) or not await _talk_from_sortie():
+		return false
+	return _app.current_scene().is_narrating()
 
 
 ## ハーデンとイェルダが向き合う会話（MILITARY の物語）。ハーデンが話していて、右にイェルダ。

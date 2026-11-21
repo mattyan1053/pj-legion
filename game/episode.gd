@@ -28,6 +28,10 @@ const CUE_MAX_CHARS := 40
 const LESSON_MAX_CHARS := 48
 ## 会話の行の話し手の陣営（0 = 人の軍、1 = 敵の軍）。きっかけの値の陣営も同じ言葉で書く。
 const SIDE_WORDS := {"ally": 0, "enemy": 1}
+## 地の文（話し手のいない行。場面の説明や時間の経過）の陣営。話し手の番号は -1。会話の行の頭に NARRATION_MARK（全角の「＞」でもよい）を付けて書く。
+## 会話の場面では、名前の札を出さず、文を真ん中に明朝で出す（talk_screen.gd）。
+const NARRATION_SIDE := 3
+const NARRATION_MARK := ">"
 
 ## 話の id（クリアの記録に書く。変えると記録が外れる）。ファイルの名前と同じ。
 var id := &""
@@ -84,6 +88,7 @@ var figures: Array[Dictionary] = [{"kind": UnitKind.Id.KING, "evolved": false, "
 ## 盤の将、駒の情報・決着の画面のアイコン、話し手の姿が king のときの姿に使う。ルールの上では将のまま。
 var king_looks: Array[StringName] = [&"", &""]
 ## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文, 話し手（speakers の番号）] の列。
+## 地の文の行は [NARRATION_SIDE, 文, -1]。
 var before: Array = []
 var after: Array = []
 ## 負けたときの台詞（無ければ空。決着の画面の見出しの下に出す）。形は before・after と同じ。
@@ -477,7 +482,9 @@ func _read_talks(file: RefCounted) -> void:
 		var rows: Array = []
 		for row: Dictionary in file.rows(section):
 			var line := _speech(file, row["line"], row["text"])
-			if not line.is_empty():
+			if not line.is_empty() and optional and line[0] == NARRATION_SIDE:
+				file.problem(row["line"], "[%s] に地の文は書けない（決着の画面に、話し手のひとことで出す）" % section)
+			elif not line.is_empty():
 				rows.append(line)
 				if (line[1] as String).length() > max_chars:
 					file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, max_chars, (line[1] as String).length()])
@@ -489,8 +496,14 @@ func _read_talks(file: RefCounted) -> void:
 
 
 ## 会話の行「話し手: 文」（全角の「：」でもよい）を [陣営, 文, 話し手（speakers の番号）] に。
-## 話し手は [cast] に書いた名前。読めなければ空。
+## 話し手は [cast] に書いた名前。頭が「>」（全角の「＞」でもよい）の行は地の文（[NARRATION_SIDE, 文, -1]）。読めなければ空。
 func _speech(file: RefCounted, line: int, text: String) -> Array:
+	if text.begins_with(NARRATION_MARK) or text.begins_with("＞"):
+		var told := text.substr(1).strip_edges()
+		if told == "":
+			file.problem(line, "地の文が空（「> 文」）")
+			return []
+		return [NARRATION_SIDE, told, -1]
 	var at := text.find(":")
 	var wide := text.find("：")
 	if at < 0 or (wide >= 0 and wide < at):

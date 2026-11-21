@@ -46,6 +46,8 @@ const BLINK_PERIOD := 1.2
 const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEXT_OFF]
 ## 知らせの行の side（story.gd の NOTICE_SIDE）。
 const NOTICE_SIDE := 2
+## 地の文の行の side（episode.gd の NARRATION_SIDE）。名前の札を出さず、文を真ん中に明朝で出す。話し手の姿は、両方とも暗い。
+const NARRATION_SIDE := 3
 ## 知らせの行の、駒・持ち物の額の辺（px）。
 const NOTICE_FRAME := 72.0
 
@@ -408,6 +410,16 @@ func bottom_rect() -> Rect2:
 	return _bottom.get_global_rect()
 
 
+## 行 line が地の文か（話し手のいない行）。
+static func is_narration(line: Dictionary) -> bool:
+	return int(line.get("side", 0)) == NARRATION_SIDE
+
+
+## いまの文が地の文か（検査用）。
+func is_narrating() -> bool:
+	return _index < line_count() and is_narration(talk["lines"][_index])
+
+
 ## いまの話し手の名前と文（検査用）。
 func speaker() -> String:
 	return _name.text
@@ -429,10 +441,17 @@ func _show_line(index: int) -> void:
 		_plate.visible = false
 		return
 	var line: Dictionary = talk["lines"][index]
+	var narration := is_narration(line)
 	_plate.visible = true
+	_plate.modulate.a = 0.0 if narration else 1.0  # 地の文は札を出さない（場所は取ったまま。文の枠が上下に動かないように）
 	_name.text = line.get("name", "")
+	_text.add_theme_font_override("font", UiTheme.FONT_HEADING if narration else UiTheme.FONT_BODY)
+	_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if narration else HORIZONTAL_ALIGNMENT_LEFT
+	_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER if narration else VERTICAL_ALIGNMENT_TOP
 	var team := TEAM_COLORS[clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)]
-	if int(line.get("side", 0)) >= NOTICE_SIDE:
+	if narration:
+		_box_style.border_color = COLOR_BORDER
+	elif int(line.get("side", 0)) >= NOTICE_SIDE:
 		# 知らせ（手に入れたもの）は、陣営の色ではなく金: 選ばれている地の札と、金の縁。
 		_plate_style.bg_color = Palette.CHOSEN
 		_plate_style.border_color = Palette.BORDER_BRIGHT
