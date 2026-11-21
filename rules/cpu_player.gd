@@ -921,6 +921,7 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 ## - 奇襲: 敵の本陣（敵が乗っていれば、そこを攻撃できるところまで）
 ## - 前衛・後衛: 自分の本陣の近くに入った敵（侵入者）がいれば、そのいちばん近いもの。いなければ、いちばん近い敵の駒
 ## - 回復: 近くの減っている味方（減っている割合がいちばん大きいもの）。いなければ、いちばん近い味方の戦う駒
+## - 相手の駒が 1 体も残っていない（占拠でしか勝てない話）: 回復と、戦える駒の残っている軍の将のほかは、敵の本陣
 func _set_goal(unit: Unit) -> void:
 	var role := UnitKind.role(unit.kind)
 	_lone_king = unit.kind == UnitKind.Id.KING and not _has_fighters()
@@ -985,6 +986,10 @@ func _set_goal(unit: Unit) -> void:
 		elif enemy != null:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
+	if _foe_hq != Board.NO_CELL and role != UnitKind.Role.HEALER and not _foes_left() and (unit.kind != UnitKind.Id.KING or _lone_king):
+		# 相手の駒が残っていなくても終わらない（占拠でしか勝てない）: 追う敵がいないので、敵の本陣へ向かう。
+		goal = _foe_hq
+		_goal_reach = 0
 	_goal_steps = _steps_from(goal)
 
 
@@ -1012,6 +1017,14 @@ func _foe_king() -> Unit:
 		if other.side == _foe and other.kind == UnitKind.Id.KING:
 			return other
 	return null
+
+
+## 相手の軍の駒（将を含む）が、1 体でも残っているか。
+func _foes_left() -> bool:
+	for other in _battle.units:
+		if other.side == _foe:
+			return true
+	return false
 
 
 ## 自分の軍に、戦える駒（前衛・後衛・奇襲）が残っているか。
