@@ -45,7 +45,7 @@ func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["title"], episode.title)
 	assert_eq(run.data()["lines"].size(), episode.before.size())
-	assert_eq(run.data()["lines"][0]["name"], episode.speakers[episode.before[0][2]])
+	assert_eq(run.data()["lines"][0]["name"], episode.speakers[episode.before[0][2]] if episode.before[0][2] >= 0 else "")
 	assert_eq(run.advance(), &"battle")
 	assert_true(run.data() == battle, "出撃準備は、対戦に渡すものの部隊を選び直す")
 	assert_eq(run.advance(), &"talk")

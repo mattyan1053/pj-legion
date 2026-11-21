@@ -14,12 +14,21 @@ const DIR := "res://game/story/"
 const STORY_FILE := "story.txt"
 ## 物語の一覧での並びの順（[campaign] の order）を書かない物語の順（後ろに、id の順で並ぶ）。
 const ORDER_LAST := 1000
-const SECTIONS := ["campaign", "start", "episodes"]
+const SECTIONS := ["campaign", "start", "cast", "episodes"]
+## 物語の紹介の 1 行（[campaign] の intro。物語を選ぶ場面のカードに出す）の長さの上限。
+const INTRO_MAX_CHARS := 40
+## 主な人物（[cast]。話の一覧の頭に出す）の数と、立ち位置の長さの上限。
+const CAST_MAX := 6
+const ROLE_MAX_CHARS := 10
 
 ## 物語の id（クリアの記録に書く。変えると記録が外れる）。ファイルの名前と同じ。
 var id := &""
 ## 物語を選ぶ場面と、話の一覧の見出しに出す名前。
 var title := ""
+## 物語の紹介の 1 行（無ければ空）。誰として、何をする物語か。
+var intro := ""
+## 主な人物（無ければ空）: {"name": 名前, "role": 立ち位置, "figure": 姿（episode.gd の figures と同じ形）} の列。書いた順。
+var cast: Array[Dictionary] = []
 ## 人が使う軍。
 var army := UnitKind.Army.MILITARY
 ## この物語の編成の決まりの名前（取っておく部隊に書く。物語ごとに違う）。
@@ -105,7 +114,7 @@ func _read(file: RefCounted) -> void:
 	if not file.has("campaign"):
 		file.problem(1, "[campaign] の節が無い")
 	var at: int = file.line_of("campaign")
-	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget", "order"])
+	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget", "order", "intro"])
 	for key: String in ["title", "army", "rules", "budget"]:
 		if file.has("campaign") and not values.has(key):
 			file.problem(at, "[campaign] に「%s」が無い" % key)
@@ -122,6 +131,12 @@ func _read(file: RefCounted) -> void:
 			army = found as UnitKind.Army
 	if values.has("order"):
 		order = file.integer(values["order"][0])
+	if values.has("intro"):
+		var entry: Dictionary = values["intro"][0]
+		intro = entry["value"]
+		if intro == "" or intro.length() > INTRO_MAX_CHARS:
+			file.problem(entry["line"], "intro は 1 から %d 字（いま %d 字）" % [INTRO_MAX_CHARS, intro.length()])
+	_read_cast(file)
 	if values.has("budget"):
 		starting_budget = file.integer(values["budget"][0])
 		if starting_budget < 1:
@@ -143,6 +158,34 @@ func _read(file: RefCounted) -> void:
 			starting_items.append(item as Equipment.Id)
 	problems.append_array(file.problems)
 	_read_episodes(file)
+
+
+## 主な人物「名前 = 姿, 立ち位置」（姿の書き方は話のファイルの [cast] と同じ。立ち位置は短く）。
+func _read_cast(file: RefCounted) -> void:
+	var names := {}
+	for row: Dictionary in file.rows("cast"):
+		var text: String = row["text"]
+		var at := text.find("=")
+		var name := text.substr(0, maxi(at, 0)).strip_edges()
+		var rest := text.substr(at + 1)
+		var comma := rest.find(",")
+		if at < 0 or name == "" or comma < 0:
+			file.problem(row["line"], "主な人物は「名前 = 姿, 立ち位置」: %s" % text)
+			continue
+		var role := rest.substr(comma + 1).strip_edges()
+		if role == "" or role.length() > ROLE_MAX_CHARS:
+			file.problem(row["line"], "立ち位置は 1 から %d 字（いま %d 字）: %s" % [ROLE_MAX_CHARS, role.length(), role])
+			continue
+		if names.has(name):
+			file.problem(row["line"], "人物「%s」が 2 度ある（%d 行目にもある）" % [name, names[name]])
+			continue
+		var figure: Dictionary = Episode.read_figure(file, row["line"], rest.substr(0, comma).strip_edges())
+		if figure.is_empty():
+			continue
+		names[name] = row["line"]
+		cast.append({"name": name, "role": role, "figure": figure})
+	if cast.size() > CAST_MAX:
+		file.problem(file.line_of("cast"), "主な人物は %d 人まで（いま %d 人）" % [CAST_MAX, cast.size()])
 
 
 ## 話を読み、物語の中での決まり（解放は物語の軍の駒・まだ使えないものだけ、決まっている部隊は物語の軍）を確かめる。
