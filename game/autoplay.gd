@@ -1951,6 +1951,21 @@ func _visit_decks(app: Node) -> void:
 	var placed_cells: Array[Vector2i] = place_map.unit_cells()
 	var open_cells: Array = place_map.zone().filter(func(cell: Vector2i) -> bool: return not placed_cells.has(cell))
 	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
+	var place_note: Control = dialog.deploy_note()
+	_expect(place_note.shown_unit_id() == -1, "初期位置の窓で、駒を選ぶ前から駒の欄に駒が出ている")
+	place_map.hover_cell(placed_cells[1])
+	var hovered_unit: Unit = place_map.focused_unit()
+	_expect(hovered_unit != null and place_note.shown_name() == Names.kind(hovered_unit.kind), "初期位置の窓で、マウスを乗せた駒の名前が欄に出ない")
+	place_map.press_cell(placed_cells[0])
+	var picked_unit: Unit = place_map.focused_unit()
+	_expect(picked_unit != hovered_unit and place_note.shown_unit_id() == picked_unit.id, "初期位置の窓で、選んだ駒が欄に出ない（マウスを乗せた駒より先に）")
+	# 選んだ駒を、マウスを乗せた駒と入れ替えると、マウスの下には選んだ駒が来る（欄も、その駒を出す）。
+	place_map.press_cell(placed_cells[1])
+	_expect(place_map.selected() == -1 and place_map.focused_unit() == picked_unit and place_note.shown_unit_id() == picked_unit.id,
+		"初期位置の窓で駒を入れ替えたあと、マウスの下の駒が古いまま")
+	place_map.reset()
+	_expect(place_map.focused_unit() == hovered_unit, "初期位置の窓で「おまかせ」に戻したあと、マウスの下の駒が古いまま")
+	place_map.hover_cell(Deployment.NO_CELL)
 	place_map.press_cell(placed_cells[0])
 	place_map.press_cell(open_cells[0])
 	dialog.close_dialog()
@@ -2259,6 +2274,7 @@ func _visit_story(app: Node) -> void:
 	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
 	deploy.press_cell(own_cells[0])
 	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
+	_expect(sortie.deploy_note().shown_name() == Names.kind(deploy.focused_unit().kind), "出撃準備の初期位置で、選んだ駒の名前が欄に出ない")
 	var right_click := InputEventMouseButton.new()
 	right_click.button_index = MOUSE_BUTTON_RIGHT
 	right_click.pressed = true

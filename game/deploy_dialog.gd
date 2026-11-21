@@ -7,6 +7,7 @@ const Text := preload("res://game/text.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const DeployMap := preload("res://game/deploy_map.gd")
+const DeployNote := preload("res://game/deploy_note.gd")
 
 ## 閉じた（決めた置き方は offsets()）。
 signal closed
@@ -18,6 +19,7 @@ const MAP_MAX := Vector2(560.0, 440.0)
 var _overlays: RefCounted
 var _title: Label
 var _map: DeployMap
+var _note: DeployNote
 var _auto: Button
 
 
@@ -55,6 +57,10 @@ func setup(overlays: RefCounted) -> void:
 	_map = DeployMap.new()
 	_map.changed.connect(func() -> void: _auto.disabled = _map.is_default())
 	map_room.add_child(_map)
+	# 選んでいる駒（マウスを乗せている駒）の名前・役割・能力値（deploy_note.gd）。
+	_note = DeployNote.new()
+	column.add_child(_note)
+	_note.watch(_map)
 	var note := Label.new()
 	note.name = "Note"
 	note.add_theme_font_size_override("font_size", 14)
@@ -112,6 +118,11 @@ func offsets() -> Array[Vector2i]:
 
 func deploy_map() -> DeployMap:
 	return _map
+
+
+## 駒の欄（検査用）。
+func deploy_note() -> DeployNote:
+	return _note
 
 
 func _track_overlay() -> void:
