@@ -11,6 +11,8 @@
 title = 影渡り
 map = drill_field
 look = crystal_forest
+before_music = talk
+after_music = talk_bright
 lesson = スペルブレードは 3 マス先へ跳び、そのまま攻撃できる。敵のいるマスなら入れ替わる。
 wins = king_defeated
 
