@@ -150,6 +150,8 @@ var _ui := BattleUiState.new()
 ## 対戦の途中の会話（battle_cues.gd）と、その札（battle_talk.gd）。台詞は渡すもの（source.talk_cues）が持つ。
 var _cues: BattleCues
 var _talk: BattleTalk
+## 台詞を送られるのを待つ間、クリックを受け止める幕（透明）。
+var _talk_catcher: Control
 ## 敵の全員の脅威範囲（Threat.against）を、盤に重ねて出しているか（下の帯の切り替え）。
 var _threat_shown := false
 var _hover_cell := NO_CELL
@@ -229,7 +231,18 @@ func _ready() -> void:
 	_hud.result_screen().play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_talk = BattleTalk.new()
 	_talk.waiting = _hud.is_banner_shown
+	# 遊ぶときは、台詞を送られるまで出したままにし、その間は盤を止める（検査とスクリーンショットは、数秒で消す）。
+	_talk.hold = context.checking == &""
 	_hud.add_talk_card(_talk)
+	# 台詞を送られるのを待つ間、帯のボタンや盤へのクリックを受け止めて、台詞を送る（システムメニューのボタンは、上の層なので押せる）。
+	_talk_catcher = Control.new()
+	_talk_catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_talk_catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	_talk_catcher.visible = false
+	_talk_catcher.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			advance_talk())
+	_hud.add_child(_talk_catcher)
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
 	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)
@@ -307,6 +320,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 		if escape and context.overlays.is_top(_setup_panel):
 			open_system_menu()
+		return
+	if _talk.is_holding():
+		# 対戦の途中の台詞を送られるのを待つ間: Enter・Space・クリックで送る（クリックは幕が受ける）。Esc はメニュー。ほかのキーは使わない。
+		if event is InputEventKey and event.pressed and not event.echo:
+			match event.physical_keycode:
+				KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+					advance_talk()
+				KEY_ESCAPE:
+					press_escape()
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			advance_talk()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
@@ -503,14 +527,42 @@ func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 
 
 ## 対戦の途中の会話の台詞を、上の帯のすぐ下の札に順に出し、ログにも書く。
+## 札が台詞を送られるまで出したままにする（hold）ときは、送り終えるまで待つ（その間、盤は止まる。CPU の番の早送り・スキップ・おまかせの途中でも）。
 func _say(lines: Array[BattleCues.Line]) -> void:
 	if lines.is_empty():
 		return
 	for line in lines:
 		battle_log.say(line.name, line.text, line.side)
-	if _playback.skipping:
-		return  # スキップの途中の台詞は、ログにだけ残す
+	if _playback.skipping and not _talk.hold:
+		return  # 検査とスクリーンショットでは、スキップの途中の台詞は、ログにだけ残す
 	_talk.say(lines)
+	if not _talk.hold:
+		return
+	_talk_catcher.visible = true
+	_refresh()
+	while _talk.is_holding() and is_inside_tree():
+		await _talk.drained
+	_talk_catcher.visible = false
+	if is_inside_tree():
+		_refresh()
+
+
+## 対戦の途中の台詞を送る（クリック・Enter・Space）。送ったかを返す。
+func advance_talk() -> bool:
+	if not _talk.advance():
+		return false
+	context.play_sound(&"ui_click")
+	return true
+
+
+## 対戦の途中の台詞を送られるのを待っているか。検査用。
+func is_talk_holding() -> bool:
+	return _talk.is_holding()
+
+
+## 台詞を送られるまで出したままにするか（検査用。ふだんは遊ぶときだけ）。
+func set_talk_hold(on: bool) -> void:
+	_talk.hold = on
 
 
 ## いま画面に出ている、対戦の途中の会話の台詞（無ければ null。検査とスクリーンショットの道具用）。
@@ -549,9 +601,12 @@ func talk_card_neighbors() -> Array[Rect2]:
 	return rects
 
 
-## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の [cues] から出す）。
+## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の [cues] から出す）。hold なら、送られるまで盤を止める。
 func say_for_check(lines: Array[BattleCues.Line]) -> void:
-	_talk.say(lines)
+	if _talk.hold:
+		_say(lines)
+	else:
+		_talk.say(lines)
 
 
 ## 対戦の途中の会話の札を消す（スクリーンショットで、ほかの台詞を出すとき）。
@@ -599,7 +654,7 @@ func _new_boards() -> Array[Array]:
 
 ## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、重なる画面（対戦設定画面・システムメニュー・ログ）を開いている間）。
 func is_busy() -> bool:
-	return _ui.busy or _ui.cpu_running or context.overlays.is_open()
+	return _ui.busy or _ui.cpu_running or context.overlays.is_open() or _talk.is_holding()
 
 
 # ---- システムメニューと設定 ----
@@ -812,7 +867,7 @@ func toggle_fast_forward() -> void:
 
 
 ## 相手の番（と中立のフェーズ）の残りを、見せずに済ませる（下の帯の「スキップ」）。自分の番が来るまで続く。
-## 起きたことはログに残り、対戦の途中の台詞もログにだけ残す。途中で決着したら、決着を見せる。
+## 起きたことはログに残る。対戦の途中の台詞が出たら、そこで止まって送られるのを待つ（検査では、ログにだけ残す）。途中で決着したら、決着を見せる。
 func skip_watching() -> void:
 	if not _watching_other() or not (_ui.busy or _ui.cpu_running) or _playback.skipping:
 		return
@@ -1518,7 +1573,8 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 			_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_update_time_scale()
 	# 対戦の途中の会話: 起きたことを見せ終えてから出す（演出と重ねない）。決着した行動のあとは出さない（BattleCues が見る）。
-	_say(_cues.on_events(battle, events))
+	# 送られるまで待つ（その間、次の行動へ進まない）。
+	await _say(_cues.on_events(battle, events))
 
 	var evolving := battle.evolving_unit()
 	_ui.settle_after_action(
@@ -1680,6 +1736,8 @@ func _refresh() -> void:
 		_hud.set_hint(BattleTexts.auto_confirm_hint())
 	elif _auto_running():
 		_hud.set_hint(BattleTexts.auto_running_hint())
+	if _talk != null and _talk.is_holding():
+		_hud.set_hint(Text.t("battle.hint.talk"))
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
 		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
