@@ -2709,6 +2709,12 @@ func _scene_story_monster_info() -> bool:
 	return true
 
 
+## 場面 story_monster_king の構図: カメラの距離、向き（度）、見る点を将からずらす量（向きが 0 度のときのもの）。
+const KING_FRAME_DISTANCE := 8.0
+const KING_FRAME_YAW := 70.0
+const KING_FRAME_SHIFT := Vector3(0.0, 0.0, -0.8)
+
+
 func _scene_story_monster_king() -> bool:
 	var number := _monster_episode(true)
 	if number == -1 or not await _story_battle(number):
@@ -2719,8 +2725,10 @@ func _scene_story_monster_king() -> bool:
 			king = unit
 	if king == null:
 		return false
-	_look_at(BoardView.cell_center(king.cell))
-	_aim(6.0, 70.0, 38.0)
+	# 骸骨の将は背が高い（quaternius_skeleton.gd の KING_LOOKS の scale）。頭が上の帯と途中の台詞の帯に隠れないよう、
+	# 少し引いて、見る点を将の向こう側（カメラから遠い側）へずらし、将を画面の真ん中より下に置く。
+	_look_at(BoardView.cell_center(king.cell) + KING_FRAME_SHIFT.rotated(Vector3.UP, deg_to_rad(KING_FRAME_YAW)))
+	_aim(KING_FRAME_DISTANCE, KING_FRAME_YAW, 38.0)
 	_scene.hover(king.cell)
 	var episode: RefCounted = Story.military().episodes[number]
 	_scene.clear_talk_for_check()
