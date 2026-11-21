@@ -128,7 +128,7 @@ static func destination(battle: Battle, unit: Unit, target: Unit) -> Vector2i:
 	var reach := unit.attack_range() if target != null else 0
 	var best := unit.cell
 	var best_key := Vector2i(_gap(battle, unit.cell, goal, reach), 0)
-	var stops := Movement.reachable(battle, unit, false)
+	var stops := Movement.reachable(battle, unit, false, true)
 	for cell: Vector2i in stops:
 		if not in_territory(unit, cell):
 			continue
@@ -159,7 +159,7 @@ static func _act(battle: Battle, unit: Unit) -> Array[BattleEvent]:
 	var target := target_of(battle, unit)
 	var to := destination(battle, unit, target)
 	if to != unit.cell:
-		var path := Movement.path_to(battle, unit, to)
+		var path := Movement.path_to(battle, unit, to, false, true)
 		events.append_array(MoveAction.events_along(battle, unit.id, path, false))
 		unit.cell = to
 	var victim := attack_target_of(battle, unit, target)

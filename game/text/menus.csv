@@ -114,3 +114,8 @@ setup.deck.unplayable,{name}（出撃不可: {issue}）
 menu.saved,保存しました
 menu.last_saved,最後に保存: {when}
 menu.never_saved,未保存
+deploy.note.none,駒を選んでいない
+deploy.note.none_read_only,駒にマウスを乗せていない
+deploy.note.selected,選択中
+deploy.note.hovered,マウスを乗せた駒
+deploy.note.role_level,{role}　レベル {level}

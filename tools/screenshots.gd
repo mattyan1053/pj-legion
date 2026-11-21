@@ -128,8 +128,9 @@ const SCENES := {
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
-	"portal_range": "ポータルへ届く駒を選んで、動ける範囲の中のポータルの対（入る・出る）が同じ色で塗られている（双子結晶）",
+	"portal_range": "ポータルへ届く駒を選んで、範囲の中のポータルと、その対の出るポータルが同じ色で塗られている（範囲は転移の先まで広げない。双子結晶）",
 	"portal_menu": "ポータルのマスへ動いて、メニューに「転移」が出ている（行き先のポータルが塗られている。双子結晶）",
+	"portal_warped": "「転移」で対のポータルへ移り、残りの移動力で届くマスが塗られている（双子結晶）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"minimap_pointed": "ミニマップで相手の本陣のあたりを押して、視点がそこへ移った（右上の白い枠が見ている範囲）",
 	"minimap_hidden": "設定でミニマップを隠した（右上に何も出ない）",
@@ -1759,17 +1760,14 @@ func _scene_portal_cell() -> bool:
 	return _scene.info_title().begins_with("マス")
 
 
-## いまの番の駒のうち、歩いて（転移せずに）ポータルに止まれて、そこから転移できる駒と、そのポータル（[駒, マス]）。無ければ空。
+## いまの番の駒のうち、歩いてポータルに止まれて、そこから転移できる駒と、そのポータル（[駒, マス]）。無ければ空。
 func _portal_walker() -> Array:
 	for unit in _own_units():
 		if not _battle.can_act(unit):
 			continue
-		var cells := Queries.move_cells(_battle, unit)
-		for portal: Vector2i in _battle.board.portal_exits:
-			var exit := _battle.portal_exit(portal)
-			if not cells.has(portal) or cells[portal] or exit == Board.NO_CELL or not cells.has(exit):
-				continue
-			if not Movement.path_to(_battle, unit, portal).has(exit):  # ポータルへは歩いて行く（転移して着くのではない）
+		var portals := Queries.reachable_portals(_battle, unit)
+		for portal: Vector2i in portals:
+			if portal != unit.cell and not Queries.move_cells(_battle, unit)[portal]:
 				return [unit, portal]
 	return []
 
@@ -1806,6 +1804,27 @@ func _scene_portal_menu() -> bool:
 	_look_at(BoardView.cell_center(portal) + (BoardView.cell_center(_battle.portal_exit(portal)) - BoardView.cell_center(portal)) * 0.4)
 	_aim(44.0, 0.0, 72.0)
 	return unit.cell == portal and _scene.menu_ids().has(&"warp")
+
+
+func _scene_portal_warped() -> bool:
+	_field = VersusFields.TWIN_SPRINGS
+	_new_battle()
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _portal_walker().is_empty()):
+		return false
+	_show()
+	var found := _portal_walker()
+	var unit: Unit = found[0]
+	var portal: Vector2i = found[1]
+	var exit := _battle.portal_exit(portal)
+	await _idle()
+	_scene.click_cell(unit.cell)
+	_scene.click_cell(portal)
+	await _idle()
+	_scene.press_warp()
+	await _idle()
+	_look_at(BoardView.cell_center(exit))
+	_aim(44.0, 0.0, 60.0)
+	return unit.cell == exit and not Queries.move_cells(_battle, unit).is_empty()
 
 
 func _stage_overview(stage: BoardGenerator.Stage) -> bool:
