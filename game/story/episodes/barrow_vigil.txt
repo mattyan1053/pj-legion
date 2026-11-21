@@ -11,6 +11,9 @@
 title = 古戦場の祈り
 map = old_battlefield
 music = battle_tense
+before_music = battle_tense
+after_music = talk_sad
+victory_mood = quiet
 hold_turns = 8
 
 [unlock]
@@ -44,7 +47,7 @@ unit = skeleton_brute
 骨の軍曹: 総員……突撃……。尾根は……まだ……落ちて、おらん……。
 セリス: 鉄の人も混じってるけど、号令をかけてるのは骨だ。
 イェルダ: 20 年前の兵である。……まだ、あの日の戦を続けているのか。
-ウル: 鎮めの祈りを編む。8 ターンくれい。それまで、将と旗を守ってくれ。
+ウル: 鎮めの祈りを編む。編み上がるまで、イェルダと旗を守ってくれい。
 イェルダ: 皆、聞いたな。倒しきらずともよい。守り切れ。
 
 [after]
@@ -57,4 +60,5 @@ unit = skeleton_brute
 
 [cues]
 (turn 1) ティオ: 骨は固まって来る！ ファイアボールで焼くよ！
-(turn 7) ウル: あと 2 ターンじゃ。祈りは、じき編み上がる。
+(turn 7) ウル: 祈りは、じき編み上がる。あと少しじゃ。
+(fallen ally) イェルダ: 欠けた所を埋めよ。導師の祈りを止めさせるな。

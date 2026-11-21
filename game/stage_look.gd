@@ -125,13 +125,15 @@ const RUINED_HOUSE := {"scene": HEX + "building_destroyed.gltf", "height": 0.98,
 const BROKEN_ARMS := {"scene": DUNGEON + "sword_shield_broken.glb", "height": 1.17, "size": 0.75}
 const GRAVES := {"grave": Color("b4b9aa"), "height": 1.0, "size": 0.85}
 const TENT := {"scene": HEX + "tent.gltf", "height": 0.52, "size": 0.8, "tint": Color("e8d8c0")}
-const WOOD_FENCE := {"scene": HEX + "fence_wood_straight.gltf", "height": 0.5, "size": 0.45}
-const WEAPON_RACK := {"scene": HEX + "weaponrack.gltf", "height": 0.24, "size": 0.5}
-const TARGET := {"scene": HEX + "target.gltf", "height": 0.3, "size": 0.55}
+const WOOD_FENCE := {"scene": HEX + "fence_wood_straight.gltf", "height": 0.5, "size": 0.5}
+const WEAPON_RACK := {"scene": HEX + "weaponrack.gltf", "height": 0.24, "size": 0.6}
+const TARGET := {"scene": HEX + "target.gltf", "height": 0.3, "size": 0.7}
 const TREES_A_LARGE := {"scene": HEX + "trees_A_large.gltf", "height": 0.92}
 const TREES_B_LARGE := {"scene": HEX + "trees_B_large.gltf", "height": 1.15}
 const TREE_SINGLE_B := {"scene": HEX + "tree_single_B.gltf", "height": 1.11}
 const WOODED_MOUNTAIN := {"scene": HEX + "mountain_B_grass_trees.gltf", "height": 2.5}
+const CRATE_STACK := {"scene": DUNGEON + "crates_stacked.glb", "height": 2.14}
+const BARRACKS := {"scene": HEX + "building_barracks_green.gltf", "height": 1.64, "size": 0.5}
 const CRYSTAL_VIOLET := {"crystal": Color("9465f0"), "height": 1.0}
 ## 盤の上の結晶の岩山の結晶。ポータル（紫 b06cff）・中ボス（紫）・結晶泉（水色）と見分けられる青。
 const CRAG_CRYSTAL := Color("4f63e8")
@@ -157,6 +159,8 @@ const BARROW := &"barrow"  ## 古戦場
 const PASS := &"pass"  ## 峠（大岩の峠）
 const RIDGE := &"ridge"  ## 尾根（尾根の小道）
 const DEEP_FOREST := &"deep_forest"  ## 深い森（リュエルの森）
+const DRILL_YARD := &"drill_yard"  ## 演習場（練兵場）
+const CRYSTAL_NIGHT := &"crystal_night"  ## 月夜の結晶の岩山（結晶の岩山）
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -330,6 +334,43 @@ const THEMES := {
 			SMALL: [TREES_B_LARGE, TREES_B_MEDIUM, TREES_A_LARGE, TREE_SINGLE_B, TREES_B_LARGE],
 			SCATTER: [ROCK_C, {"scene": HEX + "tree_single_B.gltf", "height": 1.11, "size": 1.6}],
 			TINT: Color("90b498"), SMALL_SPREAD: 0.22, SMALL_SHARE: 0.68,
+		},
+	},
+	# 練兵場: 連邦の演習場。踏み固めた明るい土の地面に、障害物は積んだ木箱（演習の遮蔽物）、森は木立。
+	# 盤の外は、兵舎、天幕、木の柵、的、武器の架、木箱。晴れた午前の明るい光と、淡い空色の霞。
+	DRILL_YARD: {
+		NORMAL: Color("857648"), FOREST: Color("3f6e34"), OBSTACLE: Color("54463a"), FONT: Color("3fa9bd"),
+		HAZE: Color("c2d6e4"), SKY: Color("4a88cc"), SUN: Color("fff6e4"), AMBIENT: Color("b4c0d4"),
+		SUN_PITCH: -50.0, SUN_YAW: -28.0, SUN_ENERGY: 1.2, AMBIENT_ENERGY: 0.5,
+		PAVING: 0.0, DRY: 0.25,
+		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("d0c4a8"),
+		OBSTACLE_PROPS: {"style": SINGLE, "props": [CRATE_STACK], "scale": 0.37, "tint": Color("d8c8b0")},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_B], "scale": 0.62, "tint": Color.WHITE},
+		SCENERY: {
+			BIG: [BARRACKS, MOUNTAIN_A, BARRACKS],
+			SMALL: [TENT, WOOD_FENCE, TARGET, WEAPON_RACK, TENT, CRATE, TARGET, WOOD_FENCE, TREES_A, TREES_B],
+			SCATTER: [CRATE, TARGET, WEAPON_RACK],
+			TINT: Color("e4dccc"), SMALL_SPREAD: 0.14, SMALL_SHARE: 0.75,
+		},
+	},
+	# 結晶の岩山: 月夜。結晶の森（双子結晶）と同じ土地の、夜の姿。暗い藍緑の地面に、青い結晶の光る黒い岩山、暗い針葉樹。
+	# 盤の外は、黒い峰と、光る紫と水色の結晶。高い月の青白い光と、濃い藍の霞。結晶の光がにじむ（画面の効果）。
+	CRYSTAL_NIGHT: {
+		NORMAL: Color("2c5a66"), FOREST: Color("123a3a"), OBSTACLE: Color("3a3254"), FONT: Color("46bcd6"),
+		HAZE: Color("2a3668"), SKY: Color("0c1030"), SUN: Color("d0dcff"), AMBIENT: Color("8090b8"),
+		SUN_PITCH: -64.0, SUN_YAW: -40.0, SUN_ENERGY: 0.95, AMBIENT_ENERGY: 0.6,
+		PAVING: 0.0, DRY: 0.0,
+		CRYSTAL: Color("5fe0f5"), SPRING_STONE: Color("7c80a8"),
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE, "crystals": CRAG_CRYSTAL,
+			"low": Color("120e1c"), "cliff": Color("30264a"), "top": Color("57447e"),
+		},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_B], "scale": 0.64, "tint": Color("5a8aa0")},
+		SCENERY: {
+			BIG: [MOUNTAIN_B, MOUNTAIN_A, {"crystal": Color("9465f0"), "height": 1.0, "size": 0.7}],
+			SMALL: [TREES_A, CRYSTAL_CYAN, TREES_B_MEDIUM, CRYSTAL_VIOLET, CRYSTAL_CYAN],
+			SCATTER: [CRYSTAL_CYAN, ROCK_C, CRYSTAL_VIOLET],
+			TINT: Color("5c6ca0"), SMALL_SHARE: 0.7,
 		},
 	},
 }
