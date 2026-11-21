@@ -10,9 +10,12 @@ extends RefCounted
 
 var unit_id: int
 ## 通常の移動で届くマス -> そこまでに使う移動力。いまのマス（動かない移動。0）も含む。もう動いた駒では空。
+## 移動はポータルを越えない（転移は warp_exit）。転移して続けて動ける駒では、残りの移動力で届くマス（いまのマスは含まない）。
 var move_cells: Dictionary[Vector2i, int] = {}
-## 巡航でだけ届くマス -> そこまでに使う移動力。move_cells とは重ならない。
+## 巡航でだけ届くマス -> そこまでに使う移動力。move_cells とは重ならない。もう巡航で動いた駒の続きは、すべてこちら。
 var cruise_cells: Dictionary[Vector2i, int] = {}
+## いまのマスのポータルから転移できる先（WarpAction）。できなければ Board.NO_CELL。
+var warp_exit := Board.NO_CELL
 ## いまの位置から攻撃できる駒の番号（上の行から、左の列から）。巡航で動いた駒と回復役では空。
 var attack_target_ids: Array[int] = []
 ## いまの位置から攻撃できる起爆樽のマス（同じ並び）。
@@ -45,15 +48,19 @@ static func of(battle: Battle, for_unit_id: int) -> UnitOptions:
 		return options
 	options.can_wait = true
 	options.can_undo = unit.has_moved and not unit.move_locked
-	if not unit.has_moved:
+	if not unit.has_moved or unit.can_keep_moving:
 		# 巡航の範囲を 1 回だけ探す。通常の移動で届くのは、そのうち移動力が通常の範囲に収まるマス。
-		var stops := Movement.search(battle, unit, true).stops()
-		var normal := Movement.budget(unit, false)
+		var stops := Movement.search_now(battle, unit, true).stops()
+		var normal := -1 if unit.cruised else Movement.budget_left(unit, false)
 		for cell: Vector2i in stops:
+			if unit.can_keep_moving and cell == unit.cell:
+				continue
 			if stops[cell] <= normal:
 				options.move_cells[cell] = stops[cell]
 			else:
 				options.cruise_cells[cell] = stops[cell]
+	if WarpAction.new(for_unit_id).is_valid(battle):
+		options.warp_exit = battle.portal_exit(unit.cell)
 	if not unit.cruised:
 		for target in Combat.targets(battle, unit):
 			options.attack_target_ids.append(target.id)
@@ -76,7 +83,7 @@ func can_move_to(cell: Vector2i) -> bool:
 
 
 ## 選べる行動を、そのまま Battle.apply() に渡せる形で並べる。
-## 並びは、進化、移動（通常、巡航）、攻撃、樽の攻撃、盾の攻撃、回復、スキル、待機、取り消し。毎回同じ並びになる。
+## 並びは、進化、移動（通常、巡航）、転移、攻撃、樽の攻撃、盾の攻撃、回復、スキル、待機、取り消し。毎回同じ並びになる。
 ## 通常の移動で届くマスへの巡航は並べない（受け付けはするが、攻撃を諦めるだけで得が無い）。
 func actions() -> Array[BattleAction]:
 	var result: Array[BattleAction] = []
@@ -86,6 +93,8 @@ func actions() -> Array[BattleAction]:
 		result.append(MoveAction.new(unit_id, cell, false))
 	for cell in cruise_cells:
 		result.append(MoveAction.new(unit_id, cell, true))
+	if warp_exit != Board.NO_CELL:
+		result.append(WarpAction.new(unit_id))
 	for target_id in attack_target_ids:
 		result.append(AttackAction.new(unit_id, target_id))
 	for cell in barrel_cells:

@@ -76,7 +76,7 @@ func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	if cpu._stand != Board.NO_CELL and cpu._stand != user.cell:
 		if not cpu._moved_threats.has(cpu._stand):
 			var moved_state: Battle = cpu._battle.clone()
-			moved_state.apply(MoveAction.new(user.id, cpu._stand))
+			CpuPlayer._move_in(moved_state, user.id, cpu._stand)
 			var moved_threats: Dictionary[Vector2i, Dictionary] = {}
 			var moved_close: Dictionary[Vector2i, Dictionary] = {}
 			cpu._fill_threats(moved_state, moved_threats, moved_close, {} as Dictionary[Vector2i, bool])

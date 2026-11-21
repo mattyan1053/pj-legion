@@ -21,44 +21,33 @@ static func move_cells(battle: Battle, unit: Unit) -> Dictionary:
 	return result
 
 
-## その駒が、いまのマス（ポータル）から対のポータルへ転移できるなら [行き先, 巡航か]。できなければ空の列。
-## ルールに「転移する」行動は無い（転移は移動の道の中だけ。docs/map-objects.md）ので、画面はこれを次の行動の組に直す。
-## - まだ動いていない駒（フェーズの始めからポータルの上にいる）: 行き先への移動（MoveAction）。
-## - ポータルへ動いたあとの駒: 移動の取り消し（UndoMoveAction）と、動く前のマスから行き先への移動。
-##   取り消せない（スキルを使った）か、動く前のマスから行き先へ届かない（ポータルが敵の支配領域にある、など）なら空。
-## どちらも、行き先に駒がいれば空（Battle.portal_exit）。返す組は Battle.can_apply() が受け付ける（テストで確かめている）。
-static func warp(battle: Battle, unit: Unit) -> Array:
-	if unit == null or battle.is_over() or not battle.can_act(unit):
-		return []
-	var exit := battle.portal_exit(unit.cell)
-	if exit == Board.NO_CELL:
-		return []
-	if not unit.has_moved:
-		var cells := move_cells(battle, unit)
-		return [exit, cells[exit]] if cells.has(exit) else []
-	if not battle.options(unit.id).can_undo:
-		return []
-	var before := battle.clone()
-	if not before.apply(UndoMoveAction.new(unit.id)).accepted:
-		return []
-	var origin := before.unit_by_id(unit.id)
-	var path := Movement.path_to(before, origin, exit, unit.cruised)
-	var at := path.find(unit.cell)
-	if at < 0 or at + 1 >= path.size() or path[at + 1] != exit:
-		return []  # 動く前のマスから、このポータルを通って行き先へは行けない
-	return [exit, unit.cruised]
+## その駒が、いまのマス（ポータル）から対のポータルへ転移（WarpAction）できるなら行き先。できなければ Board.NO_CELL。
+static func warp_exit(battle: Battle, unit: Unit) -> Vector2i:
+	if unit == null:
+		return Board.NO_CELL
+	return battle.options(unit.id).warp_exit
 
 
-## warp が返す転移を、ルールの行動の列にする（空なら空）。
-static func warp_actions(battle: Battle, unit: Unit) -> Array[BattleAction]:
-	var actions: Array[BattleAction] = []
-	var found := warp(battle, unit)
-	if found.is_empty():
-		return actions
-	if unit.has_moved:
-		actions.append(UndoMoveAction.new(unit.id))
-	actions.append(MoveAction.new(unit.id, found[0], found[1]))
-	return actions
+## その駒の移動の範囲の中にある、いま転移に使えるポータル（入るポータル -> 出るポータル）。駒がいま乗っているポータルも含む。
+## 動けない駒・転移したばかりで乗っているポータルは含まない。範囲は転移の先まで広げない（転移は止まってから選ぶ）。
+static func reachable_portals(battle: Battle, unit: Unit) -> Dictionary:
+	var result := {}
+	if unit == null:
+		return result
+	var options := battle.options(unit.id)
+	if options.warp_exit != Board.NO_CELL:
+		result[unit.cell] = options.warp_exit
+	for portal: Vector2i in battle.board.portal_exits:
+		if portal == unit.cell or not options.can_move_to(portal):
+			continue
+		var exit := battle.portal_exit(portal)
+		if exit == Board.NO_CELL or exit == unit.cell:
+			continue
+		var probe := battle.clone()
+		var action := MoveAction.new(unit.id, portal, options.cruise_cells.has(portal))
+		if probe.apply(action).accepted and probe.options(unit.id).warp_exit != Board.NO_CELL:
+			result[portal] = exit
+	return result
 
 
 ## その駒がいまの位置から攻撃できる相手（行動できない駒・巡航で動いた駒では空）。
@@ -106,7 +95,7 @@ static func skill_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 static func inspect_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	if unit != null:
-		result.assign(Movement.reachable(battle, unit, false).keys())
+		result.assign(Movement.reachable(battle, unit, false).keys())  # ポータルの先へは広げない（自分の駒と同じ）
 	return result
 
 

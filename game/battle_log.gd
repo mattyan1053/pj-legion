@@ -327,9 +327,10 @@ func _read_moved(event: UnitMovedEvent) -> void:
 		return
 	var to: Vector2i = event.path[-1]
 	_set_cell(event.unit_id, to)
-	# ポータルを通った移動は、歩いた区間ごとに分かれて来る。続きの区間は、同じ行に書き足す。
+	# ポータルを通った移動は、歩く・転移・続きを歩く、に分かれて来る。続きの区間は、同じ行に書き足す。
 	var move: Array = _moves.get(event.unit_id, [])
 	if not move.is_empty() and move[3] and (move[0] as Entry).cell == event.path[0]:
+		move[2] = move[2] or event.cruise  # 転移のあとの続きを巡航にした
 		_redo_move(event.unit_id, to)
 		return
 	if event.path.size() < 2:
