@@ -9,7 +9,6 @@
 [episode]
 title = 本陣を取れ
 map = drill_field
-look = stone_walls
 lesson = 敵の本陣のマスに 3 ターン乗り続ければ勝ち。この演習は、将を倒しても終わらない。
 wins = hq_captured
 
