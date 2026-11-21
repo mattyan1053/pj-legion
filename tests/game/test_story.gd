@@ -706,4 +706,10 @@ func test_opening_everything_for_checks_never_touches_the_record() -> void:
 	assert_eq(_store().read(Story.STORE_NAME), saved, "戻してから勝った先の話を、記録に書いた")
 	story.clear(episodes[1].id)
 	assert_true(story.is_cleared(episodes[1].id), "記録どおりに遊べる次の話は、クリアを書く")
+	# 別のスロット（最後の話の 1 つ前までクリアした記録）を読めば、そこでは最後の話に勝てばクリアを書く（開いて始めたことを持ち越さない）。
+	var further := {"campaigns": {String(Story.military().id): {"cleared": [String(episodes[-2].id)], "squad": ""}}}
+	story.load_data(further)
+	assert_true(story.is_available(last), "読んだスロットで、最後の話が遊べない")
+	story.clear(last.id)
+	assert_true(story.is_cleared(last.id), "前のスロットで開いて始めた話を、別のスロットで勝ってもクリアにしない")
 	_cleanup()
