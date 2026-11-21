@@ -17,6 +17,8 @@
 | --- | --- | --- | --- | --- |
 | `make_setup(種)` | 無し（継いだ側が必ず書く） | 選んだもので `MatchSetup` を作る | 話のマップと決め打ちの敵で作る | 対戦を作る・やり直す |
 | `music()` | 見た目の曲（`SoundCatalog.battle_music`） | 既定のまま | 話のファイルの `music`（無ければ見た目の曲） | 対戦の曲（`docs/sound.md`） |
+| `victory_mood()` | 明るい（`MOOD_BRIGHT`） | 既定のまま | 話のファイルの `victory_mood`（無ければ明るい） | 勝ったときの調子。静かならファンファーレを鳴らさない（`docs/sound.md`） |
+| `after_result_music()` | 静かな曲（`AFTER_RESULT_MUSIC`） | 既定のまま | その話のあとの会話の曲 | 決着の曲のあとに続ける曲 |
 | `king_looks()` | 無し（将の姿） | 既定のまま | 話のファイルの `king_figure` | 将の姿（見た目だけ） |
 | `look()` | 既定の見た目 | マップの見た目（`VersusFields.look_of`） | 話の見た目（`LOOK`） | 盤・ミニマップ・空と光（`stage_look.gd`） |
 | `cpu_side()` | プレイヤー2 | 人の手番の反対 | 既定のまま | CPU が動かす（切り替えたら動かす）プレイヤー |

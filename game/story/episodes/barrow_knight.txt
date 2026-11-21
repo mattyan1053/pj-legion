@@ -13,6 +13,9 @@
 title = 墓守
 map = old_battlefield
 music = battle_undead
+before_music = battle_undead
+after_music = talk_aftermath
+victory_mood = quiet
 
 [unlock]
 item = war_banner

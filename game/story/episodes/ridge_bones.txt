@@ -15,6 +15,9 @@
 title = 尾根の骨
 map = ridge_path
 music = battle_undead
+before_music = battle_undead
+after_music = talk_aftermath
+victory_mood = quiet
 hold_turns = 10
 wins = turns_held
 
