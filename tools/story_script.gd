@@ -1,9 +1,12 @@
 extends RefCounted
-## ストーリーの台本（docs/story-script/）を、物語と話のファイル（game/story/）から作る。
-## 人間が、遊ばずに読み物として会話を読むためのもの（Issue #49）。物語 1 つが Markdown 1 つ。
+## ストーリーの台本を、物語と話のファイル（game/story/）から作る。
+## 人間が、遊ばずに読み物として会話を読むためのもの（Issue #49）。作るものは 2 つ:
+## - 目次（game/story/README.md。コミットする）: 物語ごとに、話の順に話のファイルへのリンクを並べる。
+##   会話そのものは話のファイルを読む（会話を写さないので、台詞を直しても作り直しが要らない）。
+## - 通しの台本（build/story-script/。コミットしない）: 物語 1 つが Markdown 1 つ。1 本で読みたいときに手元で作る。
 ##
 ## 書き出すのは tools/write_story_script.gd。テスト（tests/tools/test_story_script.gd）は、
-## 置いてある台本が、いまの話のファイルから作り直したものと同じことを確かめる。
+## 置いてある目次が、いまの物語のファイルから作り直したものと同じことを確かめる。
 ## ノードに依存しない。
 
 const Story := preload("res://game/story.gd")
@@ -14,8 +17,10 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const WinText := preload("res://game/win_text.gd")
 const Names := preload("res://game/names.gd")
 
-## 台本を置く所（物語の id が、ファイルの名前）。
-const DIR := "res://docs/story-script/"
+## 通しの台本を書き出す所（物語の id が、ファイルの名前）。コミットしない（.gitignore の /build/）。
+const DIR := "res://build/story-script/"
+## 目次を置く所（GitHub で game/story/ を開くと、下に出る）。
+const INDEX := "res://game/story/README.md"
 ## きっかけ（battle_cues.gd）の読み方。陣営ごとのものは [人の軍, 敵の軍]。
 const CUE_WORDS := {
 	BattleCues.KING_HALF: ["味方の将の HP が半分を切ったら", "敵の将の HP が半分を切ったら"],
@@ -24,6 +29,33 @@ const CUE_WORDS := {
 	BattleCues.RELIC: ["味方が聖遺物を受け取ったら", "敵が聖遺物を受け取ったら"],
 }
 const SIDE_WORDS := ["味方", "敵"]
+
+
+## 目次（Markdown）。物語ごとに、話の順に、話の名前と話のファイルへのリンク。
+## 持つのは話の並びと名前だけ（敵や勝ち方は写さない。話を足す・並べ替える・名前を変えたときだけ作り直す）。
+static func index_text() -> String:
+	var lines: PackedStringArray = []
+	lines.append("# ストーリーの台本")
+	lines.append("")
+	lines.append("<!-- 生成物。手で書かない。話を足す・並べ替える・名前を変えたら `tools/write_story_script.sh` で作り直す。 -->")
+	lines.append("")
+	lines.append("話の順に並べた目次。会話は、それぞれの話のファイルにそのまま書いてある（ここには写さない）。")
+	lines.append("")
+	lines.append("- `[before]`: 対戦の前の会話。`[after]`: 勝ったあとの会話。1 行が「話し手: 文」。")
+	lines.append("- `[cues]`: 対戦の途中の台詞。頭の括弧が出るとき（`(turn 3)` はターン 3 の始め、`(fallen ally)` は味方が初めて倒れたとき、")
+	lines.append("  `(king_half enemy)` は敵の将の HP が半分を切ったとき、`(ult_ready ally)` は必殺技が使えるようになったとき）。")
+	lines.append("- 上のほうの `[episode]`・`[ally]`・`[enemy]` は、マップ・勝ち方・話し手・敵の部隊（書式は `docs/story.md` の「話のファイル」）。")
+	lines.append("- 登場人物は `docs/story.md` の「世界と登場人物」。")
+	for campaign: Campaign in Story.campaigns():
+		lines.append("")
+		lines.append("## %s（%s）" % [campaign.title, Names.army(campaign.army)])
+		lines.append("")
+		for at in campaign.episodes.size():
+			var episode: Episode = campaign.episodes[at]
+			var drill := "（演習）" if episode.lesson != "" else ""
+			lines.append("%d. %s[%s](%s)" % [at + 1, drill, episode.title, episode.path.trim_prefix("res://game/story/")])
+	lines.append("")
+	return "\n".join(lines)
 
 
 ## 物語 campaign の台本を置くファイル。
@@ -36,10 +68,8 @@ static func text_of(campaign: Campaign) -> String:
 	var lines: PackedStringArray = []
 	lines.append("# %s" % campaign.title)
 	lines.append("")
-	lines.append("<!-- 生成物。手で書かない。話のファイル（game/story/）を直して `tools/write_story_script.sh` で作り直す。 -->")
-	lines.append("")
 	lines.append("ストーリーの会話を、遊ばずに通しで読むための台本。人が使う軍は %s、全 %d 話。" % [Names.army(campaign.army), campaign.episodes.size()])
-	lines.append("話のファイル（`game/story/episodes/`）から作ったもので、ここは直さない（直すのは話のファイル）。")
+	lines.append("話のファイル（`game/story/episodes/`）から作った写しで、コミットしない。直すのは話のファイル。")
 	lines.append("")
 	var given := Story.starting(campaign)
 	for episode: Episode in campaign.episodes:

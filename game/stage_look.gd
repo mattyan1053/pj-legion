@@ -160,6 +160,7 @@ const PASS := &"pass"  ## 峠（大岩の峠）
 const RIDGE := &"ridge"  ## 尾根（尾根の小道）
 const DEEP_FOREST := &"deep_forest"  ## 深い森（リュエルの森）
 const DRILL_YARD := &"drill_yard"  ## 演習場（練兵場）
+const CRYSTAL_NIGHT := &"crystal_night"  ## 月夜の結晶の岩山（結晶の岩山）
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -350,6 +351,26 @@ const THEMES := {
 			SMALL: [TENT, WOOD_FENCE, TARGET, WEAPON_RACK, TENT, CRATE, TARGET, WOOD_FENCE, TREES_A, TREES_B],
 			SCATTER: [CRATE, TARGET, WEAPON_RACK],
 			TINT: Color("e4dccc"), SMALL_SPREAD: 0.14, SMALL_SHARE: 0.75,
+		},
+	},
+	# 結晶の岩山: 月夜。結晶の森（双子結晶）と同じ土地の、夜の姿。暗い藍緑の地面に、青い結晶の光る黒い岩山、暗い針葉樹。
+	# 盤の外は、黒い峰と、光る紫と水色の結晶。高い月の青白い光と、濃い藍の霞。結晶の光がにじむ（画面の効果）。
+	CRYSTAL_NIGHT: {
+		NORMAL: Color("2c5a66"), FOREST: Color("123a3a"), OBSTACLE: Color("3a3254"), FONT: Color("46bcd6"),
+		HAZE: Color("2a3668"), SKY: Color("0c1030"), SUN: Color("d0dcff"), AMBIENT: Color("8090b8"),
+		SUN_PITCH: -64.0, SUN_YAW: -40.0, SUN_ENERGY: 0.95, AMBIENT_ENERGY: 0.6,
+		PAVING: 0.0, DRY: 0.0,
+		CRYSTAL: Color("5fe0f5"), SPRING_STONE: Color("7c80a8"),
+		OBSTACLE_PROPS: {
+			"style": CRAG, "props": [], "tint": Color.WHITE, "crystals": CRAG_CRYSTAL,
+			"low": Color("120e1c"), "cliff": Color("30264a"), "top": Color("57447e"),
+		},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_B], "scale": 0.64, "tint": Color("5a8aa0")},
+		SCENERY: {
+			BIG: [MOUNTAIN_B, MOUNTAIN_A, {"crystal": Color("9465f0"), "height": 1.0, "size": 0.7}],
+			SMALL: [TREES_A, CRYSTAL_CYAN, TREES_B_MEDIUM, CRYSTAL_VIOLET, CRYSTAL_CYAN],
+			SCATTER: [CRYSTAL_CYAN, ROCK_C, CRYSTAL_VIOLET],
+			TINT: Color("5c6ca0"), SMALL_SHARE: 0.7,
 		},
 	},
 }

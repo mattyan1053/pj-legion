@@ -144,6 +144,7 @@ const LOOK_MUSIC := {
 	StageLook.RIDGE: &"battle_ruins",
 	StageLook.DEEP_FOREST: &"battle_crystal",
 	StageLook.DRILL_YARD: &"battle_ruins",
+	StageLook.CRYSTAL_NIGHT: &"battle_crystal",
 }
 
 
