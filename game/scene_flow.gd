@@ -21,6 +21,7 @@ const SoundCatalog := preload("res://game/sound_catalog.gd")
 ## 場面の名前。ほかのスクリプトは、場面を名前で指すとき、文字で書かずにこれを使う（書き漏らすと、流れが渡すものを受け取れず、
 ## エラーにならずに既定の中身で始まる）。
 const TITLE := &"title"
+const SLOTS := &"slots"
 const CAMPAIGNS := &"campaigns"
 const EPISODES := &"episodes"
 const DECKS := &"decks"
@@ -35,7 +36,12 @@ const BATTLE := &"battle"
 const SCENES := {
 	TITLE: {
 		"script": "res://game/title_screen.gd",
-		"next": {&"start": MAP_SELECT, &"story": CAMPAIGNS},
+		"next": {&"start": MAP_SELECT, &"story": SLOTS},
+		"music": &"menu",
+	},
+	SLOTS: {
+		"script": "res://game/slot_screen.gd",
+		"next": {&"open": CAMPAIGNS, &"back": TITLE},  # スロットを選ぶ（空きなら新しく始める）と、物語を選ぶ場面へ
 		"music": &"menu",
 	},
 	CAMPAIGNS: {

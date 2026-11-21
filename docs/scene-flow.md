@@ -1,7 +1,7 @@
 # 場面の流れ
 
 コード: `game/scene_flow.gd`（場面の種類と並び）、`game/run.gd`（流れ）、`game/app.gd`（入口。場面を切り替える）、`game/app_context.gd`（場面どうしで共有するもの）。
-場面: `game/title_screen.gd`、`game/map_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）、`game/campaign_list_screen.gd`（ストーリーの物語を選ぶ）、`game/episode_list_screen.gd`（ストーリーの話の一覧）、`game/sortie_screen.gd`（出撃準備）、`game/talk_screen.gd`（ストーリーの会話。`docs/story.md`）、`game/deck_screen.gd`（部隊編成）。背景は `game/backdrop.gd`（タイトルは `game/title_backdrop.gd`）。
+場面: `game/title_screen.gd`、`game/slot_screen.gd`（ストーリーのセーブデータ選択。`docs/save-slots.md`）、`game/map_select_screen.gd`、`game/setup_screen.gd`、`game/battle_screen.gd`（対戦）、`game/campaign_list_screen.gd`（ストーリーの物語を選ぶ）、`game/episode_list_screen.gd`（ストーリーの話の一覧）、`game/sortie_screen.gd`（出撃準備）、`game/talk_screen.gd`（ストーリーの会話。`docs/story.md`）、`game/deck_screen.gd`（部隊編成）。背景は `game/backdrop.gd`（タイトルは `game/title_backdrop.gd`）。
 テスト: `tests/game/test_scene_flow.gd`、`tests/game/test_run.gd`、自動の対戦（`game/autoplay.gd`。人と同じ道で対戦に入り、最後にタイトルと対戦設定を往復する）。
 
 ## いまの流れ
@@ -11,7 +11,7 @@
           ↑            │  ↑                          │ ↑↓                            │            ├─「対戦設定へ」→ 対戦設定
           ├「タイトルへ戻る」┘  └「マップ選択へ戻る」─────┘ 部隊編成（対戦用）              │            └─「マップ選択へ」→ マップ選択
           │                    ↑ システムメニューの「マップ選択へ戻る」（対戦の途中）─────────┘
-          ├─「ストーリー」→ 物語を選ぶ → 話の一覧 ─話→ 出撃準備 ─「出撃」→ 会話（前。1 度だけ）→ 対戦 ─ 決着の画面 ─「次へ」（勝ったとき）→ 会話（後）─┬「次の話へ」→ 次の話の出撃準備
+          ├─「ストーリー」→ セーブデータ選択 → 物語を選ぶ → 話の一覧 ─話→ 出撃準備 ─「出撃」→ 会話（前。1 度だけ）→ 対戦 ─ 決着の画面 ─「次へ」（勝ったとき）→ 会話（後）─┬「次の話へ」→ 次の話の出撃準備
           │            ↑ └「物語選択へ戻る」→ 物語を選ぶ ↑   ↑↓                        ├─「同じマップで再戦」→ 対戦（同じ場面のまま）  └「話の一覧へ」→ 話の一覧
           │            │                        │  部隊編成                     ├─「部隊変更」→ 出撃準備（会話は飛ばして対戦へ）
           │            │                        │                               └─「話の一覧へ」→ 話の一覧
@@ -20,7 +20,7 @@
 ```
 
 - 起動するとタイトルから始まる。タイトルは、題名と「ストーリー」「対戦」「オプション」「終了」だけ。「オプション」は、オプションの画面（`docs/system-menu.md` の「オプション」）を開く。
-- 「ストーリー」は、物語を選ぶ場面へ進む。物語を選ぶと、その物語の話の一覧へ。話を選ぶと、その話の流れ（出撃準備 → 会話 → 対戦 → 会話）を始め、終えたら「次の話へ」か話の一覧へ（`docs/story.md`）。遊べる物語の話を全部クリアしていたら「ストーリー（クリア済み）」と出す。
+- 「ストーリー」は、セーブデータ選択（スロットを選ぶ。空きなら「はじめから」。`docs/save-slots.md`）へ進み、選ぶと物語を選ぶ場面へ進む。物語選択の「タイトルへ戻る」はタイトルへ。物語を選ぶと、その物語の話の一覧へ。話を選ぶと、その話の流れ（出撃準備 → 会話 → 対戦 → 会話）を始め、終えたら「次の話へ」か話の一覧へ（`docs/story.md`）。遊べる物語の話を全部クリアしていたら「ストーリー（クリア済み）」と出す。
 - 部隊編成（部隊を組んで取っておく場面。`game/deck_screen.gd`。`docs/deck-screen.md`）は、タイトルからは開かない。各モードに入ったところから寄り道で開き、戻ると開いた場面:
   対戦はマップ選択と対戦設定の「部隊編成」（`match_choice.gd` の `deck_run`。編成 → もとの場面 の流れ）、
   ストーリーは物語選択（物語ごと）・話の一覧（`story.gd` の `deck_run`）と出撃準備の「部隊編成」。
