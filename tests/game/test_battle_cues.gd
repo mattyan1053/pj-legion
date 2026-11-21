@@ -167,6 +167,48 @@ func test_talk_card_shows_lines_in_order_for_real_seconds() -> void:
 	talk.free()
 
 
+## 画面の真ん中の「ターン N」の帯が出ている間は、台詞を出し始めない（帯に目が行って、気付かないうちに消えるので）。
+## 出し始めた台詞は、帯が出ても止めない。
+func test_talk_card_waits_for_the_banner_before_starting_a_line() -> void:
+	var talk := BattleTalk.new()
+	var banner := [true]
+	talk.waiting = func() -> bool: return banner[0]
+	talk.say([BattleCues.Line.new(0, "隊長", "一"), BattleCues.Line.new(1, "敵将", "二")] as Array[BattleCues.Line])
+	talk._process(100.0)
+	assert_eq(talk.current().text, "一", "帯が出ている間に、台詞が進んだ")
+	assert_eq(talk.modulate.a, 0.0, "帯が出ている間に、台詞が見えている")
+	banner[0] = false
+	talk._process(1.0)
+	assert_true(talk.modulate.a > 0.0)
+	banner[0] = true
+	talk._process(BattleTalk.SHOW_BASE)
+	assert_eq(talk.current().text, "二", "出し始めた台詞が、帯で止まった")
+	talk._process(100.0)
+	assert_eq(talk.current().text, "二", "次の台詞も、帯が消えるまで待つ")
+	talk.free()
+
+
+## 遊ぶとき（hold）は、台詞を自動で消さず、送られるまで出したままにする。出し始める前（帯を待つ間・フェードの途中）は送れない。
+func test_held_talk_card_waits_to_be_advanced() -> void:
+	var talk := BattleTalk.new()
+	talk.hold = true
+	var drained := [0]
+	talk.drained.connect(func() -> void: drained[0] += 1)
+	talk.say([BattleCues.Line.new(0, "隊長", "一"), BattleCues.Line.new(1, "敵将", "二")] as Array[BattleCues.Line])
+	assert_true(talk.is_holding())
+	assert_false(talk.advance(), "出し始める前に送れた（押した勢いで、読む前に消える）")
+	talk._process(100.0)
+	assert_eq(talk.current().text, "一", "送る前に、台詞が消えた")
+	assert_true(talk.advance())
+	assert_eq(talk.current().text, "二")
+	talk._process(1.0)
+	assert_true(talk.advance())
+	assert_false(talk.is_holding(), "送り終えても、待っている")
+	assert_false(talk.visible)
+	assert_eq(drained[0], 1, "送り終えたことを知らせない")
+	talk.free()
+
+
 class MatchChoiceProbe:
 	extends "res://game/match_choice.gd"
 

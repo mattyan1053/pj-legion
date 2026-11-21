@@ -144,7 +144,7 @@ static func item_refusal(kind: UnitKind.Id, held: Array[Equipment.Id], item: Equ
 	return ""
 
 
-## 駒の詳しい説明の行（部隊編成の画面の駒の札と、編成確認・出撃準備で駒を押したときの詳細。unit_detail.gd）:
+## 駒の詳しい説明の行（部隊編成の画面の、右の駒の札。駒の詳細の窓 unit_detail.gd は、文ではなく unit_sheet.gd の欄で出す）:
 ## 役割とコスト（将・魔物はコストを書かない）、役割の説明、能力値（持ち物込みの値も）、スキル、持ち物の効果と特性、進化先。
 ## deck_army: 部隊の軍（ほかの軍の駒なら、先頭に「FANTASY の駒（この部隊では MILITARY として戦う）」。-1 なら書かない）。
 ## with_items: 持ち物の効果の行を入れるか（部隊編成の画面は、持ち物を別の欄に出すので入れない）。

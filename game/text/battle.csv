@@ -76,6 +76,7 @@ battle.log.drawn,引き分け（{reason}）
 battle.cell.nothing,特別なものは無い
 battle.hint.over,決着
 battle.hint.cpu_turn,相手（CPU）の番
+battle.hint.talk,クリック・Enter: 台詞を送る ▼
 battle.hint.evolve,進化先を選ぶ（上から 1 つ）
 battle.hint.confirm_ult,もう一度押すと必殺技「{ult}」を発動（取り消せない。右クリック・盤のクリック: キャンセル）
 battle.hint.confirm_ult_unnamed,もう一度押すと必殺技を発動（取り消せない。右クリック・盤のクリック: キャンセル）
@@ -203,6 +204,7 @@ battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし
 battle.hud.status,{status}（あと {turns} ターン）: {effect}
+battle.hud.detail,詳細
 battle.hud.skill_state.used_up,使用済み
 battle.hud.skill_state.ready,使用可
 battle.hud.skill_state.unusable,使用不可
