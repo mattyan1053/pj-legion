@@ -122,6 +122,10 @@ const LONG_CRATE := {"scene": HEX + "crate_long_A.gltf", "height": 0.15, "size":
 const RUINED_HOUSE := {"scene": HEX + "building_destroyed.gltf", "height": 0.98, "size": 0.4}
 const BROKEN_ARMS := {"scene": DUNGEON + "sword_shield_broken.glb", "height": 1.17, "size": 0.75}
 const GRAVES := {"grave": Color("b4b9aa"), "height": 1.0, "size": 0.85}
+const TENT := {"scene": HEX + "tent.gltf", "height": 0.52, "size": 0.8, "tint": Color("e8d8c0")}
+const WOOD_FENCE := {"scene": HEX + "fence_wood_straight.gltf", "height": 0.5, "size": 0.45}
+const WEAPON_RACK := {"scene": HEX + "weaponrack.gltf", "height": 0.24, "size": 0.5}
+const TARGET := {"scene": HEX + "target.gltf", "height": 0.3, "size": 0.55}
 const CRYSTAL_VIOLET := {"crystal": Color("9465f0"), "height": 1.0}
 ## 盤の上の結晶の岩山の結晶。ポータル（紫 b06cff）・中ボス（紫）・結晶泉（水色）と見分けられる青。
 const CRAG_CRYSTAL := Color("4f63e8")
@@ -145,6 +149,7 @@ const QUARRY := &"quarry"  ## 採掘場（結晶の採掘場）
 const SEAM := &"seam"  ## 縫い目の谷
 const BARROW := &"barrow"  ## 古戦場
 const PASS := &"pass"  ## 峠（大岩の峠）
+const RIDGE := &"ridge"  ## 尾根（尾根の小道）
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -281,6 +286,23 @@ const THEMES := {
 			SMALL: [TREES_A, {"scene": HEX + "rock_single_E.gltf", "height": 0.19, "size": 0.4}, TREES_A],
 			SCATTER: [ROCK_C, ROCK_A],
 			TINT: Color("dfe8f4"), SMALL_SHARE: 0.45, BIG_SPREAD: 0.25,
+		},
+	},
+	# 尾根の小道: 両軍が陣を張る、風の通る尾根。暗めの枯れ草色の草地に、灰色の石の壁。森は濃い木立。
+	# 盤の外は、天幕、木の柵、武器の架、木箱、まばらな木と岩、遠くの山。夕焼けの低い橙の光（長い影）と、桃色がかった霞。
+	RIDGE: {
+		NORMAL: Color("6c6f4c"), FOREST: Color("34562e"), OBSTACLE: Color("4b4a52"), FONT: Color("3fa9bd"),
+		HAZE: Color("e2b49c"), SKY: Color("54689c"), SUN: Color("ffb878"), AMBIENT: Color("a8a4c4"),
+		SUN_PITCH: -22.0, SUN_YAW: 118.0, SUN_ENERGY: 1.45, AMBIENT_ENERGY: 0.55,
+		PAVING: 0.0, DRY: 0.7,
+		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("b8b4bc"),
+		OBSTACLE_PROPS: {"style": WALL, "props": [PILLAR, STONE_WALL, STONE_WALL_BROKEN], "height": 1.0, "tint": Color("c6c8d2")},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_A, TREES_B], "scale": 0.62, "tint": Color("b8c890")},
+		SCENERY: {
+			BIG: [MOUNTAIN_A, MOUNTAIN_C],
+			SMALL: [TENT, TENT, WOOD_FENCE, WEAPON_RACK, CRATE, TREES_A, TREES_B, TARGET],
+			SCATTER: [ROCK_C, CRATE, ROCK_A],
+			TINT: Color("d8c8b8"), SMALL_SHARE: 0.5,
 		},
 	},
 }

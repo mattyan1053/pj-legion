@@ -10,7 +10,6 @@
 [episode]
 title = 尾根の籠城
 map = ridge_path
-look = stone_walls
 music = battle_tense
 hold_turns = 10
 
