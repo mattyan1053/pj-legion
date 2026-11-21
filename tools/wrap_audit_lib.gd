@@ -122,11 +122,25 @@ static func _measure(font: Font, font_size: int) -> Callable:
 		return widths[character]
 
 
-## 「{name}」のような差し込みを、それらしい長さの文字に置き換える（数は 2 桁、名前は 4 文字）。
+## 差し込みのうち、数が入るもの（2 桁の数で埋める）。
+const NUMBER_KEYS: Array[String] = ["count", "amount", "turns", "turn", "hp", "max_hp", "max", "level", "cost", "range", "budget", "number",
+	"move", "power", "needed", "damage", "heal", "total", "durability", "x", "y", "uses", "percent", "left", "kills", "experience",
+	"capture", "radius", "penalty", "times", "cooldown", "gauge", "holds", "before", "after", "value", "over",
+	"year", "month", "day", "hour", "minute", "hours", "minutes"]
+## 差し込みのうち、マスの座標が入るもの（common.cell の形で埋める）。
+const CELL_KEYS: Array[String] = ["from", "to", "cell"]
+
+
+## 「{name}」のような差し込みを、それらしい長さの文字に置き換える（数は 2 桁、マスは「(12, 12)」、ほかは名前とみて 5 文字）。
 static func _fill_placeholders(text: String) -> String:
-	var regex := RegEx.create_from_string("\\{[^}]*\\}")
+	var regex := RegEx.create_from_string("\\{([^}]*)\\}")
 	var out := text
 	for found in regex.search_all(text):
-		var key := found.get_string()
-		out = out.replace(key, "12" if key.contains("count") or key.contains("turn") or key.contains("hp") or key.contains("value") else "ソルジャー")
+		var key := found.get_string(1)
+		var filled := "ソルジャー"
+		if NUMBER_KEYS.has(key):
+			filled = "12"
+		elif CELL_KEYS.has(key):
+			filled = "(12, 12)"
+		out = out.replace(found.get_string(), filled)
 	return out

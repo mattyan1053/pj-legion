@@ -22,6 +22,7 @@ var _map: DeployMap
 var _frame: UnitFrame
 var _name: Label
 var _role: Label
+var _role_tag: PanelContainer
 var _state: Label
 var _stats: StatsRow
 var _hint: Label
@@ -49,10 +50,15 @@ func _init() -> void:
 	_name = _label(17, Palette.TEXT)
 	_name.name = "Name"
 	names.add_child(_name)
-	_role = _label(13, Palette.TEXT_DIM)
+	# 役割は小さな札（ステータスの窓と同じ形。PANEL_TAG）。
+	_role_tag = PanelContainer.new()
+	_role_tag.theme_type_variation = UiTheme.PANEL_TAG
+	_role_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_role_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	names.add_child(_role_tag)
+	_role = _label(12, Palette.TEXT)
 	_role.name = "Role"
-	_role.size_flags_vertical = Control.SIZE_SHRINK_END
-	names.add_child(_role)
+	_role_tag.add_child(_role)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	names.add_child(spacer)
@@ -82,7 +88,7 @@ func refresh() -> void:
 	var has_unit := unit != null
 	_frame.visible = has_unit
 	_name.visible = has_unit
-	_role.visible = has_unit
+	_role_tag.visible = has_unit
 	_stats.visible = has_unit
 	_state.visible = has_unit
 	_hint.visible = not has_unit
@@ -98,6 +104,7 @@ func refresh() -> void:
 	_name.text = Names.kind(unit.kind)
 	var role := DeckText.role_name(unit.kind)
 	_role.text = Text.t("deploy.note.role_level", {"role": role, "level": unit.level}) if unit.level > 1 else role
+	_role_tag.visible = _role.text != ""
 	_stats.set_line(Text.t("deck.stats_healer" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "deck.stats", {
 		"hp": unit.max_hp(), "power": unit.power(), "move": unit.move_range(), "range": unit.attack_range(),
 	}))

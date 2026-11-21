@@ -14,7 +14,7 @@
 [episode]
 title = 分かれ道
 map = drill_field
-look = crystal_forest
+look = trial_court
 music = battle_ruins
 before_music = battle_ruins
 after_music = talk_calm

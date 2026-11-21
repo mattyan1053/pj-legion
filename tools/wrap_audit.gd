@@ -5,8 +5,8 @@ extends SceneTree
 ##     godot --headless --path . -s res://tools/wrap_audit.gd             # 話の台詞と、画面の文の表
 ##     godot --headless --path . -s res://tools/wrap_audit.gd -- --story  # 話の台詞だけ
 ##
-## 話の台詞で見つかれば、終わりの値を 1 にする（画面の文の表は、使う所の幅が場面で変わるので、並べるだけ）。
-## 同じものを tests/game/test_wrap_audit.gd が PR ごとの検査で確かめる（話の台詞のほう）。
+## 話の台詞で見つかれば、終わりの値を 1 にする（画面の文の表は、使う所の幅が場面で変わるので、決めた幅で見て並べる）。
+## 同じものを tests/game/test_wrap_audit.gd が PR ごとの検査で確かめる。
 
 const WrapAudit := preload("res://tools/wrap_audit_lib.gd")
 
@@ -21,5 +21,5 @@ func _init() -> void:
 		var texts := WrapAudit.audit_texts()
 		for line in texts:
 			print(line)
-		print("画面の文の表: %d か所（並べるだけ）" % texts.size())
+		print("画面の文の表: %d か所" % texts.size())
 	quit(1 if not found.is_empty() else 0)

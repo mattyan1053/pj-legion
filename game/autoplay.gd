@@ -2583,6 +2583,8 @@ func _visit_item_rows(app: Node) -> void:
 				await app.get_tree().process_frame
 				_expect(screen.item_row_cut_texts().is_empty(), "持ち物の欄の文が切れている（%s、%s）: %s" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), screen.item_row_cut_texts()])
 				_expect(screen.detail_card_rect().size.y >= screen.DETAIL_MIN_HEIGHT - 0.5, "持ち物の欄に押されて、駒の札が縮んだ（%s）: 高さ %.0f" % [campaign.title, screen.detail_card_rect().size.y])
+				_expect(screen.detail_summary_overflow() <= 0.5, "駒の札の中身が、札の幅からはみ出した（%s、%s）: %.0f px" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), screen.detail_summary_overflow()])
+				_expect(not screen.detail_button_covers_summary_head(), "駒の札の「詳細」が、名前の行に重なった（%s、%s）" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind)])
 				for item: Equipment.Id in screen.editing_deck().rules.items():
 					screen.equip(item)
 					await app.get_tree().process_frame

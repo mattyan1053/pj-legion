@@ -11,7 +11,7 @@
 [episode]
 title = 魔力解放
 map = drill_field
-look = crystal_forest
+look = trial_court
 music = battle_fields
 before_music = battle_fields
 after_music = talk_bright

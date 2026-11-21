@@ -10,7 +10,7 @@
 [episode]
 title = 盾と祈り
 map = drill_field
-look = crystal_forest
+look = trial_court
 music = battle_tense
 before_music = battle_tense
 after_music = talk_bright

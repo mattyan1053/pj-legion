@@ -22,6 +22,9 @@ const WALL_THICKNESS := 0.46
 ## 壁の高さ（柱に対して）と、崩れた壁にする割合。
 const WALL_HEIGHT := 0.82
 const WALL_BROKEN_SHARE := 0.25
+## 隣に障害物の無い 1 マスを短い壁にするとき（見た目の lone_wall）の、壁の幅（マス）と、両端の柱の太さ（素材の幅に掛ける）。
+const LONE_WALL_WIDTH := 0.74
+const LONE_WALL_POST := 0.2
 
 ## 塗ったマスどうしの隙間（マス目の線が見える）。
 const TILE_GAP := 0.04
@@ -871,7 +874,7 @@ func _add_cell_props(spec: Dictionary, cell: Vector2i, rng: RandomNumberGenerato
 	var top := 0.0
 	match spec.style:
 		StageLook.WALL:
-			parts.append_array(_add_wall(props, tint, cell, float(spec.height), rng))
+			parts.append_array(_add_wall(props, tint, cell, float(spec.height), rng, bool(spec.get("lone_wall", false))))
 			top = float(spec.height)
 		_:
 			# 元は六角形のマス用なので、向きを 60 度刻みでばらす。
@@ -921,10 +924,19 @@ func _add_crags(spec: Dictionary, look_seed: int) -> void:
 
 ## 石の壁（StageLook.WALL）: マスの真ん中の柱と、右・下の障害物のマスへつなぐ壁。
 ## 素材の柱（幅 1.5・高さ 4）と壁（長さ 4・厚さ 1・高さ 4）を、マスに合わせて伸び縮みさせる。
-func _add_wall(props: Array, tint: Color, cell: Vector2i, height: float, rng: RandomNumberGenerator) -> Array[GeometryInstance3D]:
+func _add_wall(props: Array, tint: Color, cell: Vector2i, height: float, rng: RandomNumberGenerator, lone_wall := false) -> Array[GeometryInstance3D]:
 	var parts: Array[GeometryInstance3D] = []
 	var pillar: Dictionary = props[0]
 	var center := cell_center(cell)
+	if lone_wall and _is_lone_obstacle(cell):
+		# 隣に障害物の無い 1 マスは、柱ではなく、短い壁（両軍の間を遮る向き）と、その両端の細い柱。
+		var slab: Dictionary = props[1]
+		var slab_basis := Basis.from_scale(Vector3(LONE_WALL_WIDTH / 4.0, height * WALL_HEIGHT / float(slab.height), WALL_THICKNESS))
+		parts.append(_add_prop(slab, tint, Transform3D(slab_basis, center)))
+		for end: float in [-1.0, 1.0]:
+			var post_basis := Basis.from_scale(Vector3(LONE_WALL_POST, height * rng.randf_range(0.94, 1.02) / float(pillar.height), LONE_WALL_POST))
+			parts.append(_add_prop(pillar, tint, Transform3D(post_basis, center + Vector3(end * LONE_WALL_WIDTH * 0.5, 0.0, 0.0))))
+		return parts
 	var pillar_height := height * rng.randf_range(0.94, 1.06)
 	var width := WALL_PILLAR_WIDTH / 1.5
 	var pillar_basis := Basis.from_scale(Vector3(width, pillar_height / float(pillar.height), width))
@@ -940,6 +952,14 @@ func _add_wall(props: Array, tint: Color, cell: Vector2i, height: float, rng: Ra
 		var at := center + Vector3(side.x, 0.0, side.y) * 0.5
 		parts.append(_add_prop(wall, tint, Transform3D(stretched, at)))
 	return parts
+
+
+## cell の障害物が、辺で接する障害物を持たないか。
+func _is_lone_obstacle(cell: Vector2i) -> bool:
+	for side: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]:
+		if board.in_bounds(cell + side) and board.terrain_at(cell + side) == Terrain.Type.OBSTACLE:
+			return false
+	return true
 
 
 ## 素材を 1 つ、place に置く。

@@ -5,6 +5,8 @@ extends RefCounted
 ## 文字を出す前にここで改行を入れる。辞書は使わず、字の種類の並びを手がかりにする。決まり:
 ## - 行の頭に置かない文字（句読点、閉じ括弧、長音、小さい仮名など）の前と、行の末に置かない文字（開き括弧）の後では切らない。
 ## - 半角の空白の前後と、半角の文字どうしの間では切らない（「スキル 7 回」「HP 20 / 30」「Lv3」を 1 つに保つ）。
+##   ただし、ひらがなの後の半角の空白で、次が数でも英字でもない所（「パラディンが (1, 2)」の「が」の後。名前やマスを差し込む文）と、
+##   「→」の前の半角の空白は、語の切れ目とみる（空白の後で切り、行の末の空白は落とす）。
 ## - カタカナ（長音も）どうしの間では切らない（「ダメージ」「シールドトルーパー」を 1 語に保つ。行より長ければ、行の末で切る）。
 ## - 語の途中（漢字どうし「表示」、漢字・カタカナの後のひらがな「届く」「範囲を」、ひらがなどうし「まずかった」）は、
 ##   ほかに切れる所が無いときだけ切る。ひらがなどうしでも、「を」の後は語の切れ目とみて、助詞らしい字（ひらがなの後の「は」「が」「に」「で」）の後は、
@@ -146,7 +148,7 @@ static func _fold_paragraph(text: String, width: float, measure: Callable) -> Ar
 		var line := text.substr(start, end - start)
 		# 折り返したところの全角の空白は、行の末と次の行の頭から落とす（段落の頭の字下げは残す）。
 		if end < text.length():
-			line = line.rstrip("　")
+			line = line.rstrip("　 ")
 		lines.append(line)
 		start = end
 		while start < text.length() and end < text.length() and text[start] == "　":
@@ -162,6 +164,8 @@ static func _break_after(text: String, i: int) -> int:
 		return NO_BREAK
 	var here := text[i]
 	var next := text[i + 1]
+	if _is_phrase_gap(text, i):
+		return WEAK
 	if _is_glue(here) or _is_glue(next) or (_is_ascii(here) and _is_ascii(next)) or (_is_katakana(here) and _is_katakana(next)):
 		return NO_BREAK
 	if NO_LINE_START.contains(next) or NO_LINE_END.contains(here):
@@ -188,6 +192,22 @@ static func _short_tail(text: String, from: int) -> bool:
 	if count == 0 or count > SHORT_TAIL:
 		return false
 	return i >= text.length() or STRONG_BREAK_AFTER.contains(text[i]) or NO_LINE_START.contains(text[i])
+
+
+## i 文字目が、切ってよい半角の空白か: ひらがなの後で、次が数でも英字でもない（「が (1, 2)」）か、次が「→」。
+static func _is_phrase_gap(text: String, i: int) -> bool:
+	if text[i] != " " or i == 0 or i + 1 >= text.length():
+		return false
+	var next := text[i + 1]
+	if next == "→":
+		return true
+	return _is_hiragana(text[i - 1]) and not _is_ascii_word(next) and not _is_glue(next) and not NO_LINE_START.contains(next)
+
+
+## 半角の数か英字か。
+static func _is_ascii_word(character: String) -> bool:
+	var code := character.unicode_at(0)
+	return (code >= 0x30 and code <= 0x39) or (code >= 0x41 and code <= 0x5a) or (code >= 0x61 and code <= 0x7a)
 
 
 static func _is_glue(character: String) -> bool:

@@ -43,6 +43,14 @@ func test_number_and_unit_stay_together() -> void:
 	]))
 
 
+func test_breaks_at_space_after_particle() -> void:
+	# 名前やマスを差し込むログの文: 「が」の後の半角の空白と「→」の前で切れる（空白は落とす）。数の前の空白（「を 3 ターン」）では切らない。
+	assert_eq(_wrap("パラディンが (1, 2) → (5, 6) へ移動", 26.0), PackedStringArray(["パラディンが (1, 2)", "→ (5, 6) へ移動"]))
+	assert_eq(_wrap("パラディンが (1, 2) → (5, 6) へ移動", 18.0), PackedStringArray(["パラディンが", "(1, 2)", "→ (5, 6) へ移動"]))
+	assert_eq(TextWrap.bad_breaks("パラディンが (1, 2) → (5, 6) へ移動", 26.0, _measure), [] as Array[String])
+	assert_false(_wrap("敵の本陣を 3 ターン占拠する", 16.0).has("敵の本陣を"))
+
+
 func test_prefers_breaking_after_punctuation() -> void:
 	# 行の末まで詰めれば「攻撃」と「力」の間で切れる幅でも、読点の後で切る。
 	assert_eq(_wrap("軍の全員の移動力 +2、攻撃力 +5", 26.0), PackedStringArray(["軍の全員の移動力 +2、", "攻撃力 +5"]))
