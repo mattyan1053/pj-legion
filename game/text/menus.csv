@@ -112,3 +112,8 @@ setup.deck.unplayable,{name}（出撃不可: {issue}）
 menu.saved,保存しました
 menu.last_saved,最後に保存: {when}
 menu.never_saved,未保存
+menu.quit.battle,対戦の途中です。
+menu.quit.versus,終了すると、この対戦は残りません。
+menu.quit.deck,部隊編成の途中です。「編成完了」の前の変更は残りません。
+menu.quit.resume,最後に保存した所（{when}）から再開になります。
+menu.quit.from_start,まだ保存していないので、はじめからになります。
