@@ -21,7 +21,7 @@
 | `victory_mood()` | 明るい（`MOOD_BRIGHT`） | 既定のまま | 話のファイルの `victory_mood`（無ければ明るい） | 勝ったときの調子。静かならファンファーレを鳴らさない（`docs/sound.md`） |
 | `after_result_music()` | 静かな曲（`AFTER_RESULT_MUSIC`） | 既定のまま | その話のあとの会話の曲 | 決着の曲のあとに続ける曲 |
 | `king_looks()` | 無し（将の姿） | 既定のまま | 話のファイルの `king_figure` | 将の姿（見た目だけ） |
-| `look()` | 既定の見た目 | マップの見た目（`VersusFields.look_of`） | 話の見た目（`LOOK`） | 盤・ミニマップ・空と光（`stage_look.gd`） |
+| `look()` | 既定の見た目 | マップの見た目（`VersusFields.look_of`） | 話の見た目（`Episode.look`。マップのファイルの `look`、話のファイルが `look` を書けばそれ） | 盤・ミニマップ・空と光（`stage_look.gd`） |
 | `cpu_side()` | プレイヤー2 | 人の手番の反対 | 既定のまま | CPU が動かす（切り替えたら動かす）プレイヤー |
 | `can_switch_opponent()` | できない | できる | 既定のまま | F4、下の帯の「相手」のボタン |
 | `new_board_fields()` | 無し | 生成のマップの鍵（`game/versus_fields.gd`。手で作ったマップは入れない。`docs/map-select.md`） | 既定のまま | F1〜F3、決着の画面の「新しいマップ」 |
