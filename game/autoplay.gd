@@ -33,7 +33,7 @@ const ResultSummary := preload("res://game/result_summary.gd")
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
-	"portal_and_spring": "ポータルに止まってメニューの「転移」、ふさがったポータル、ポータルを通る移動と取り消し、回復の泉",
+	"portal_and_spring": "ポータルに止まってメニューの「転移」、転移のあと続けて動く、取り消し、ふさがったポータル、回復の泉",
 	"capture": "敵の本陣の占拠",
 	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
@@ -371,7 +371,7 @@ func _end_turn() -> void:
 	_scene.press_end_turn()
 
 
-## ポータルを通る移動（歩く → 転移 → 歩く）と、その取り消し、回復の泉の回復。
+## ポータルを通る移動（ポータルへ歩く → メニューの「転移」→ 残りで続けて歩く）と、その取り消し、回復の泉の回復。
 func _queue_portal_and_spring_scene() -> void:
 	var board := _small_board(Vector2i(12, 6))
 	board.add_portal_pair(Vector2i(1, 1), Vector2i(8, 1))
@@ -407,12 +407,19 @@ func _queue_portal_and_spring_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(8, 1) and _scene.selected_unit() == walker, "「転移」で対のポータルへ移らなかった")
 		_expect(_scene.played.get(warped, 0) == 1, "転移を再生しなかった")
-		var last: String = _scene.battle_log.entries[-1].text
-		_expect(last.contains("(0, 1) → (8, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_expect(not _scene.menu_ids().has(BattleTexts.MENU_WARP), "転移したあとも「転移」が出ている")
+		_expect(_scene.painted_color(far) == _scene.COLOR_MOVE, "転移のあと、残りの移動力で届くマスを塗っていない")
+		_scene.played.erase(moved)
+		_scene.click_cell(far))
+	_scripted.append(func() -> void:
+		_expect(walker.cell == far, "転移のあと、続けて動けなかった")
+		_expect(_scene.played.get(moved, 0) == 1, "続きの移動を再生しなかった")
+		var last: String = _scene.battle_log.entries[-1].text
+		_expect(last.contains("(0, 1) → (10, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_scene.cancel())
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(0, 1), "転移を取り消して、動く前のマスへ戻らなかった")
+		_expect(_scene.painted_color(far) != _scene.COLOR_MOVE, "動く前の範囲を、転移の先まで広げている")
 		# 行き先がふさがっているポータル: 止まれるが、「転移」は出ない。
 		_click(blocked_walker.cell))
 	_scripted.append(func() -> void: _click(Vector2i(1, 3)))
@@ -422,17 +429,9 @@ func _queue_portal_and_spring_scene() -> void:
 		_scene.cancel())
 	_scripted.append(func() -> void: _scene.cancel())
 	_scripted.append(func() -> void: _click(walker.cell))
-	_scripted.append(func() -> void:
-		_scene.played.erase(warped)
-		_scene.played.erase(moved)
-		_scene.click_cell(far))
-	_scripted.append(func() -> void:
-		_expect(walker.cell == far, "ポータルの先へ動かなかった")
-		_expect(_scene.played.get(moved, 0) == 2 and _scene.played.get(warped, 0) == 1, "歩く → 転移 → 歩く の順に再生しなかった")
-		_scene.cancel())
-	_scripted.append(func() -> void:
-		_expect(walker.cell == Vector2i(0, 1), "転移した移動を取り消せなかった")
-		_scene.click_cell(far))
+	_scripted.append(func() -> void: _click(Vector2i(1, 1)))
+	_scripted.append(func() -> void: _scene.press_menu(BattleTexts.MENU_WARP))
+	_scripted.append(func() -> void: _scene.click_cell(far))
 	_scripted.append(func() -> void:
 		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN)
 		_scene.press_wait())
