@@ -3,10 +3,11 @@ extends "res://game/looks/look_set.gd"
 ##
 ## 素材は人物ごとに服が違うので、種類ごとに別の人物を当てる（MILITARY は兵士・忍者・医者、FANTASY は騎士・魔法使い・ヴァイキング・エルフ）。
 ## 素材の人物は何も持たないので、同じ作者の RPG Characters の武器を右手の骨に付ける。
-## 陣営の色は、服の面（"accent" に挙げたマテリアル）を塗り替える。将は大きくしない（人物の素材は背が高く、会話の枠に収まらない）。魔物は、ゾンビとゴブリンで代わりにする（骸骨は無い）。
+## 陣営の色は、服の面（"accent" に挙げたマテリアル）を塗り替える。将は大きくしない（人物の素材は背が高く、会話の枠に収まらない）。魔物は、同じ作者の骸骨（quaternius_skeleton.gd）。将の別の姿（骸骨の将）も骸骨。
 ## 動きは素材のアニメーション（立つ・歩く・殴る・撃つ・被弾・負け・勝ち）。走る動きは無いので、歩く動きで代える。
 
 const ModelBody := preload("res://game/looks/model_body.gd")
+const Skeleton := preload("res://game/looks/quaternius_skeleton.gd")
 
 const DIR := "res://assets/quaternius/"
 ## 素材は cm で入っている（骨の親が 100 倍）。盤の駒の大きさへの倍率と、そのときの体の高さ。
@@ -33,15 +34,6 @@ const KINDS := {
 	UnitKind.Id.SORCERER: {"model": "Wizard", "hold": "staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
 	UnitKind.Id.SPELLBLADE: {"model": "Viking_Male", "hold": "sword", "attack": MELEE, "accent": {"Main": 0.1}},
 	UnitKind.Id.PRIEST: {"model": "Elf", "hold": "cleric_staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
-	UnitKind.Id.SKELETON: {"model": "Zombie_Male", "hold": "dagger", "attack": MELEE, "accent": {"Clothes": 0.1, "DarkClothes": 0.35}, "scale": 0.92},
-	UnitKind.Id.SKELETON_ARCHER: {"model": "Zombie_Female", "hold": "bow", "attack": SHOOT, "accent": {"Clothes": 0.1, "DarkClothes": 0.35}},
-	UnitKind.Id.SKELETON_BRUTE: {"model": "Goblin_Male", "hold": "sword", "attack": MELEE, "accent": {"Pants": 0.1}, "scale": 1.2},
-	UnitKind.Id.SKELETON_CALLER: {"model": "Witch", "hold": "cleric_staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}, "scale": 0.92},
-	UnitKind.Id.SKELETON_DRUMMER: {"model": "Goblin_Male", "hold": "staff", "attack": SHOOT, "accent": {"Pants": 0.1}},
-}
-## 将の別の姿（unit_looks.gd の KING_LOOKS の名前 -> KINDS と同じ形）。
-const KING_LOOKS := {
-	&"skeleton_mage": {"model": "Witch", "hold": "staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
 }
 
 ## 武器（weapons/ のファイルと、その絵）。素材の FBX は絵を中に持たないので、絵を別に貼る。
@@ -66,8 +58,10 @@ func _init() -> void:
 
 
 func build(kind: UnitKind.Id, team_color: Color, look: StringName, at: Vector3) -> UnitBody:
-	if kind == UnitKind.Id.KING and KING_LOOKS.has(look):
-		return _model_body(KING_LOOKS[look], team_color)
+	if kind == UnitKind.Id.KING and Skeleton.KING_LOOKS.has(look):
+		return Skeleton.build(Skeleton.KING_LOOKS[look], team_color, MODEL_HEIGHT)
+	if Skeleton.KINDS.has(kind):
+		return Skeleton.build(Skeleton.KINDS[kind], team_color, MODEL_HEIGHT)
 	if KINDS.has(kind):
 		return _model_body(KINDS[kind], team_color)
 	return super(kind, team_color, look, at)
