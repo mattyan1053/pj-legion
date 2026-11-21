@@ -2479,7 +2479,7 @@ func _visit_slots(app: Node) -> void:
 	screen.choose(2)
 	# （プレイ時間は、いまのスロットだけ数えている途中のぶんが足されるので、比べない）
 	var without_time := func(text: String) -> String: return "\n".join(Array(text.split("\n")).filter(func(line: String) -> bool: return not line.begins_with("プレイ時間")))
-	_expect(not screen.is_copying() and without_time.call(screen.card_text(2)) == without_time.call(first).replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う")
+	_expect(not screen.is_copying() and without_time.call(screen.card_text(2)) == without_time.call(first).replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う: %s ／ 元: %s" % [screen.card_text(2).replace("\n", " / "), first.replace("\n", " / ")])
 	screen.press_copy(2)
 	screen.choose(1)
 	var confirm: Node = screen.confirm_window()
