@@ -555,6 +555,10 @@ func _queue_result_scene() -> void:
 		_expect(screen.remark_texts().size() == 3 and said.position.x >= 0.0 and said.end.x <= screen_size.x / 2.0 - 230.0
 			and said.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
 			"負けたときの台詞の板が、画面からはみ出すか、戦績や下の帯にかかる: %s" % said)
+		screen.toggle_detail()
+		_expect(not screen.remark_rect().has_area(), "詳しい戦績を開いても、負けたときの台詞の板が表に重なって出ている")
+		screen.toggle_detail()
+		_expect(screen.remark_rect() == said, "詳しい戦績を閉じても、負けたときの台詞の板が戻らない")
 	_scripted.append(wait_revealed.bind(wait_revealed))
 	_scripted.append(wait_full.bind(wait_full))
 

@@ -305,14 +305,14 @@ func set_remark(lines: Array) -> void:
 	for line: BattleCues.Line in lines:
 		_remark_rows.add_child(_remark_row(line))
 		_remark_texts.append("%s: %s" % [line.name, line.text])
-	_remark.visible = not lines.is_empty()
+	_remark.visible = not lines.is_empty() and not _detail_panel.visible
 	_remark.modulate.a = 1.0 if _revealed else 0.0
 	_remark.reset_size()
 
 
 ## 出している負けたときの台詞（「名前: 文」の列。出していなければ空）。検査用。
 func remark_texts() -> Array[String]:
-	return _remark_texts.duplicate() if visible and _remark.visible else [] as Array[String]
+	return _remark_texts.duplicate() if visible else [] as Array[String]
 
 
 ## 負けたときの台詞の板が画面に占める四角（出していなければ大きさ 0）。検査用。
@@ -571,6 +571,7 @@ func _show_detail(open: bool) -> void:
 	_detail_panel.visible = open
 	_stats_panel.visible = not open
 	_mvp_panel.visible = not open
+	_remark.visible = not open and not _remark_texts.is_empty()  # 詳しい戦績の表は横に広いので、台詞の板と重ねない
 	_detail_button.text = Text.t("result.detail_back") if open else Text.t("result.detail_open")
 
 
