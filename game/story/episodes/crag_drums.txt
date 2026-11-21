@@ -18,10 +18,10 @@ wins = routed
 
 [ally]
 name = イェルダ
-figure = paladin evolved
+figure = paladin evolved crown
 speaker = ウル, priest evolved
 speaker = ティオ, sorcerer
-speaker = セリス, spellblade evolved
+speaker = セリス, commando
 
 [enemy]
 name = 骨の鼓手
