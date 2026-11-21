@@ -88,8 +88,11 @@ started=$SECONDS
 run import --import || { cat "$logs/import.log"; exit 1; }
 cat "$logs/import.log"
 # テストと自動の対戦は互いに関わらないので、並べて回す。
-# PR ごとの検査でも長い検査でも、`test_long_` でないテストは 1 つのまとまりで回す。
-start tests -s res://tools/run_tests.gd
+# `test_long_` でないテストは 2 つのまとまりに分ける（1 つだと、CI でいちばん長いまとまりになる）。
+# TESTS_APART に挙げたファイル（時間の掛かるもの）を別に回し、残りを全部 tests で回す（足したテストが漏れない）。
+TESTS_APART="test_hand_map.gd,test_battle_log.gd,test_horde.gd,test_board_generator.gd,test_monsters.gd,test_stronghold.gd"
+start tests -s res://tools/run_tests.gd -- --except="$TESTS_APART"
+start tests_apart -s res://tools/run_tests.gd -- --only="$TESTS_APART"
 # 自動の対戦。画面の描画を待たずに進める（--fixed-fps）。終わらなければ、コマ数で打ち切る。
 # 場面を 2 つのまとまり（イベントを再生する場面と、操作の決まりの場面。game/autoplay.gd の GROUPS）に分けて、並べて回す。
 start autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay --only events $full
