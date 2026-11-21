@@ -6,6 +6,7 @@ extends Node
 ## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（lesson のある話）の番号には「（演習）」を付ける。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
+##   まだ遊べない話は、名前・縮図・顔を伏せる（「？？？」。遊べるようになるまで中身を見せない）。番号と、開く条件とクリアで増えるものは見せる。
 ## - カードのクリックで、その話を始める。キーボードでは、左右の矢印で選んで Enter（card_keys.gd。1〜9 のキーでも、その番号の話）。
 ## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
 ## - 「部隊編成」で、この物語のストーリー用の部隊を組む（寄り道。戻るとここ）。
@@ -29,6 +30,7 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const CardKeys := preload("res://game/card_keys.gd")
+const App := preload("res://game/app.gd")
 
 signal finished(outcome: StringName)
 
@@ -51,6 +53,7 @@ var context: AppContext
 ## 話（episode.gd）-> カード（Button）。
 var _cards := {}
 var _roster: Label
+var _saved: Label
 var _scroll: ScrollContainer
 ## 左右の矢印で選んでいるカードの番号（話の並びの順。選んでいなければ -1）。
 var _key_index := -1
@@ -143,6 +146,16 @@ func _ready() -> void:
 	decks.custom_minimum_size = Vector2(220.0, 48.0)
 	decks.pressed.connect(press_edit_decks)
 	footer.add_child(decks)
+	# 最後に保存した所（オートセーブ。docs/save-slots.md）。ほかの並びを動かさないよう、画面の右下の隅に置く。
+	_saved = _label(saved_text(), 14)
+	_saved.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	_saved.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_saved.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_saved.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_saved.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_saved.offset_right = -18.0
+	_saved.offset_bottom = -10.0
+	layer.add_child(_saved)
 
 
 func resume_label() -> String:
@@ -181,6 +194,11 @@ func card_status(episode: Episode) -> String:
 
 
 ## 下の欄の文: いま雇える駒、持たせられる持ち物、部隊のコストの上限（話をクリアすると増える）。
+## 最後に保存した所の文（「最後に保存: 日時」）。
+func saved_text() -> String:
+	return App.last_saved_text(context.slots)
+
+
 func roster_text() -> String:
 	var now: RefCounted = context.story.unlocked()
 	var kinds: Array[String] = []
@@ -302,9 +320,10 @@ func _build_card(episode: Episode) -> Button:
 	var number := _label(Text.t("story.episodes.number_drill" if episode.lesson != "" else "story.episodes.number", {"number": Story.number_of(episode)}), 16)
 	number.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(number)
-	column.add_child(_label(episode.title, 24))
+	column.add_child(_label(card_title(episode), 24))
 	var map := TextureRect.new()
-	map.texture = ImageTexture.create_from_image(map_image(episode))
+	if available:
+		map.texture = ImageTexture.create_from_image(map_image(episode))
 	map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	map.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -313,8 +332,23 @@ func _build_card(episode: Episode) -> Button:
 	if not available:
 		map.modulate = Color(0.45, 0.45, 0.45)
 	column.add_child(map)
+	if not available:
+		# 伏せた縮図の地（後ろの景色を透かさない）。
+		var ground := ColorRect.new()
+		ground.color = Color(Palette.INK, 0.85)
+		ground.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map.add_child(ground)
 	map.add_child(MapFrame.new())  # 真鍮の縁と四隅の鉤（選べない話は、縮図ごと沈む）
-	map.add_child(face_of(episode))
+	if available:
+		map.add_child(face_of(episode))
+	else:
+		# 伏せた縮図: 縁の中に「？？？」だけ。
+		var hidden := _label(Text.t("story.episodes.hidden"), 30)
+		hidden.add_theme_color_override("font_color", COLOR_LOCKED)
+		hidden.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		hidden.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		map.add_child(hidden)
 	var status := _label(status_text(episode), 18)
 	var cleared: bool = context.story.is_cleared(episode.id)
 	status.add_theme_color_override("font_color", COLOR_CLEARED if cleared else (COLOR_NEW if available else COLOR_LOCKED))
@@ -324,6 +358,20 @@ func _build_card(episode: Episode) -> Button:
 		unlocks.add_theme_color_override("font_color", COLOR_TEXT_DIM if available else COLOR_LOCKED)
 		column.add_child(unlocks)
 	return card
+
+
+## カードに出す話の名前（まだ遊べない話は伏せる）。
+func card_title(episode: Episode) -> String:
+	return episode.title if context.story.is_available(episode) else Text.t("story.episodes.hidden")
+
+
+## カードに縮図と顔を出しているか（まだ遊べない話は伏せる。検査用）。
+func is_card_revealed(episode: Episode) -> bool:
+	var card: Button = _cards[episode]
+	for node in card.find_children("*", "TextureRect", true, false):
+		if (node as TextureRect).texture != null:
+			return true
+	return false
 
 
 ## 話の顔: 敵の話し手の姿（話のファイルの figure。骸骨の将なども）のアイコンを、縮図の右下に重ねる。

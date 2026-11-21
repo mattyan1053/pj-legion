@@ -73,6 +73,8 @@ static func hint(
 		return Text.t("battle.hint.after_skill")
 	if unit.has_moved and can_warp:
 		return Text.t("battle.hint.on_portal")
+	if unit.can_keep_moving:
+		return Text.t("battle.hint.after_warp_cruise" if unit.cruised else "battle.hint.after_warp")
 	if unit.has_moved:
 		if unit.cruised:
 			return Text.t("battle.hint.after_cruise")

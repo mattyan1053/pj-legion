@@ -2,7 +2,7 @@ extends RefCounted
 ## 対戦モードで選べる盤の一覧（docs/map-select.md の「選べる盤」）。マップ選択のカード、対戦設定のパネルのマップの行、
 ## 決着の画面の「新しいマップ」、F1〜F3、集計の道具（tools/cpu_matches.gd の --stage）が、ここを引く。ノードに依存しない。
 ##
-## 盤は鍵（StringName）で持つ。ストーリーの話（game/story/episodes/ のファイルの名前）や見た目（stage_look.gd の名前）と同じ持ち方。
+## 盤は鍵（StringName）で持つ。ストーリーの話（game/story/<物語>/ のファイルの名前）や見た目（stage_look.gd の名前）と同じ持ち方。
 ## 盤の出どころは 2 つ:
 ## - 生成のマップ（STAGE。BoardGenerator.Stage）: 対戦を始めるたびに、種から形を作り直す。見た目は StageLook.OF_STAGE。
 ## - 手で作ったマップ（MAP。game/maps/ のファイルの id。maps.gd）: 種によらず、いつも同じ形。見た目はマップのファイルが決める（[map] の look）。

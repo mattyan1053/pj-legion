@@ -52,6 +52,29 @@ func test_each_look_has_its_battle_music() -> void:
 	assert_eq(Catalog.battle_music(&"no_such_look"), &"battle", "知らない見た目は、いつもの対戦の曲")
 
 
+## 同じ曲が続けて当たらない: 物語の並びで隣り合う話の対戦の曲は違う。対戦モードの、並びで隣り合うマップの曲も違う。
+func test_neighbouring_battles_differ_in_music() -> void:
+	for of_campaign: RefCounted in Story.campaigns():
+		var previous := &""
+		for episode: RefCounted in of_campaign.episodes:
+			var track: StringName = StoryBattle.new(episode, null).music()
+			assert_ne(track, previous, "%s: 前の話と同じ対戦の曲 %s" % [episode.id, track])
+			previous = track
+	var ids := VersusFields.ids()
+	for i in range(1, ids.size()):
+		assert_ne(Catalog.battle_music(VersusFields.look_of(ids[i])), Catalog.battle_music(VersusFields.look_of(ids[i - 1])),
+				"対戦モードの隣り合うマップ %s と %s" % [ids[i - 1], ids[i]])
+
+
+func test_story_climax_music() -> void:
+	for episode: RefCounted in Story.all_episodes():
+		var track: StringName = StoryBattle.new(episode, null).climax_music()
+		assert_true(Catalog.has_music(track) and Catalog.MUSIC[track]["loop"], "%s の終盤の曲 %s" % [episode.id, track])
+	assert_eq(MatchChoice.new().climax_music(), Catalog.CLIMAX_MUSIC, "対戦モードは、いつもの終盤の曲")
+	var last: RefCounted = Story.campaigns()[0].episodes[-1]
+	assert_ne(StoryBattle.new(last, null).climax_music(), Catalog.CLIMAX_MUSIC, "物語の最後の話は、別の終盤の曲")
+
+
 func test_versus_battle_plays_the_music_of_its_look() -> void:
 	for field: StringName in VersusFields.all_ids():
 		var choice := MatchChoice.new()
@@ -115,7 +138,7 @@ func test_climax_starts_when_either_king_is_down_to_half() -> void:
 
 
 func test_talk_music_defaults() -> void:
-	var path := "res://game/story/episodes/ridge_hold.txt"
+	var path := "res://game/story/military/ridge_hold.txt"
 	var text := FileAccess.get_file_as_string(path)
 	var Episode: GDScript = Story.military().find_episode(&"ridge_hold").get_script()
 	var plain: RefCounted = Episode.parse(text.replace("before_music = battle_tense\n", "").replace("after_music = talk_bright\n", ""), path)
@@ -175,6 +198,22 @@ func test_result_music_follows_who_won() -> void:
 	assert_eq(BattleScreen.result_music(false, p1, true, p2), &"defeat", "CPU に負けた（人は後手）")
 	assert_eq(BattleScreen.result_music(false, p2, false, p1), &"victory", "人どうしは、どちらかが勝っている")
 	assert_eq(BattleScreen.result_music(true, Unit.Side.NEUTRAL, true, p1), &"defeat", "引き分け")
+	var quiet := Catalog.MOOD_QUIET
+	assert_eq(BattleScreen.result_music(false, p1, true, p1, quiet), &"", "静かな話は、勝ってもファンファーレを鳴らさない")
+	assert_eq(BattleScreen.result_music(false, p1, true, p2, quiet), &"defeat", "静かな話でも、負けは負けの曲")
+
+
+func test_story_victory_mood_comes_from_the_episode() -> void:
+	var quiet := 0
+	for episode: RefCounted in Story.all_episodes():
+		var battle := StoryBattle.new(episode, null)
+		assert_true(Catalog.MOODS.has(battle.victory_mood()), "%s の勝ったときの調子" % episode.id)
+		assert_eq(battle.after_result_music(), episode.after_talk_music(), "%s: 決着の曲のあとは、あとの会話の曲（そのまま会話へ）" % episode.id)
+		if battle.victory_mood() == Catalog.MOOD_QUIET:
+			quiet += 1
+	assert_true(quiet > 0, "静かに勝つ話がある")
+	assert_eq(MatchChoice.new().victory_mood(), Catalog.MOOD_BRIGHT, "対戦モードは明るい")
+	assert_eq(MatchChoice.new().after_result_music(), Catalog.AFTER_RESULT_MUSIC)
 
 
 func test_same_music_is_not_restarted() -> void:
@@ -197,6 +236,26 @@ func test_jingle_then_back_to_the_scene_music() -> void:
 	assert_eq(sound.current_track(), &"victory")
 	assert_eq(sound.scene_track(), &"battle", "決着の曲の間も、場面の曲は覚えている")
 	sound.resume_scene_music()
+	assert_eq(sound.current_track(), &"battle")
+	_drop(sound)
+
+
+func test_jingle_then_a_quiet_track() -> void:
+	var sound := _sound()
+	sound.play_scene_music(&"battle")
+	sound.play_jingle(&"victory", &"talk_calm")
+	assert_eq(sound.current_track(), &"victory")
+	assert_eq(sound._music[sound._active].volume_db, Catalog.MUSIC[&"victory"]["volume_db"], "ファンファーレはフェードで入れず、頭から鳴らす")
+	assert_eq(sound.pending_track(), &"talk_calm", "鳴り終えたら静かな曲へ")
+	sound._on_music_finished(sound._active)
+	assert_eq(sound.current_track(), &"talk_calm")
+	assert_eq(sound.scene_track(), &"battle", "場面の曲は覚えたまま（再戦で戻る）")
+	sound.play_jingle(&"", &"talk_sad")
+	assert_eq(sound.current_track(), &"talk_sad", "ファンファーレが無ければ、すぐ静かな曲へ")
+	sound.play_jingle(&"defeat", &"talk_calm")
+	sound.resume_scene_music()
+	assert_eq(sound.pending_track(), &"", "再戦で対戦の曲へ戻ったら、静かな曲へはつながない")
+	sound._on_music_finished(1 - sound._active)
 	assert_eq(sound.current_track(), &"battle")
 	_drop(sound)
 

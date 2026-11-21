@@ -49,6 +49,12 @@ var acted := false
 var has_moved := false
 var move_origin: Vector2i
 var cruised := false
+## いまの行動で歩いて使った移動力の合計（転移のあと、続けて動ける残りを出す。Movement.budget_left）。
+var move_spent := 0
+## 転移したあと、残りの移動力で続けて動けるか（WarpAction が立て、次の移動で倒れる）。
+var can_keep_moving := false
+## いまのマスへ転移して着いたばかりか（すぐにもう一度は転移できない）。
+var just_warped := false
 ## いまの行動で、移動の取り消しがもうできないか（行動を終えないスキルを使ったあと。docs/active-skills.md）。
 var move_locked := false
 ## スキルをまた使えるまでの残り（docs/active-skills.md）。0 なら使える。自分のフェーズの始めに 1 減る。
@@ -91,6 +97,14 @@ func reset_action() -> void:
 	has_moved = false
 	cruised = false
 	move_locked = false
+	clear_move_steps()
+
+
+## いまの行動の移動の途中の記録（使った移動力、転移のあと）を消す。
+func clear_move_steps() -> void:
+	move_spent = 0
+	can_keep_moving = false
+	just_warped = false
 
 
 ## 層 1（基礎 + 成長 + 進化 + 装備）の値。

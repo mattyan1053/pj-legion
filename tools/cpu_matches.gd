@@ -19,7 +19,7 @@ extends SceneTree
 ##                   聖遺物そのものの強さを、狩りの手間と切り離して測る（docs/relic-buff.md の「強さ」）
 ##   --no-reward=1   中ボスを倒しても、聖遺物の効果とゲージを取り消す（CPU は、もらえるつもりのまま狩る）。
 ##                   倒した側の勝率のうち、聖遺物のぶんと、もともと優勢な側が倒しているぶんを切り分ける（docs/relic-buff.md の「狩られ方」）
-##   --episode=ID   ストーリーの話（game/story/episodes/ のファイルの名前。ridge_hold など。ファイルのパスでもよい）の対戦を、
+##   --episode=ID   ストーリーの話（game/story/<物語>/ のファイルの名前。ridge_hold など。ファイルのパスでもよい）の対戦を、
 ##                   両方とも CPU で回す（人の側も CPU が持つ）。物語の [episodes] に並んでいる話だけ。
 ##                   盤・部隊・初期位置はその話のもの（マップと軍の組み合わせは回さない。--decks、--pairings、--stage は見ない）。
 ##                   人の側は、その話を初めて遊ぶときの既定の編成（story.gd の first_battle）。

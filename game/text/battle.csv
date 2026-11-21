@@ -76,6 +76,7 @@ battle.log.drawn,引き分け（{reason}）
 battle.cell.nothing,特別なものは無い
 battle.hint.over,決着
 battle.hint.cpu_turn,相手（CPU）の番
+battle.hint.talk,クリック・Enter: 台詞を送る ▼
 battle.hint.evolve,進化先を選ぶ（上から 1 つ）
 battle.hint.confirm_ult,もう一度押すと必殺技「{ult}」を発動（取り消せない。右クリック・盤のクリック: キャンセル）
 battle.hint.confirm_ult_unnamed,もう一度押すと必殺技を発動（取り消せない。右クリック・盤のクリック: キャンセル）
@@ -98,6 +99,10 @@ battle.hint.foe_unit,相手の駒。白: 動ける範囲　赤: 次の番に攻�
 battle.hint.acted,この駒は行動を終えている（白: 動ける範囲）
 battle.hint.after_skill,スキル使用済み。メニューから攻撃か待機を選ぶ（取り消せない）
 battle.hint.on_portal,ポータルの上。メニューの「転移」で、同じ色のマスへ移れる（右クリック: 移動を取り消す）
+battle.hint.after_warp,"転移した。青: 続けて移動　黄: 巡航（攻撃できない）
+マスをクリックで移動（右クリック: 移動を取り消す）"
+battle.hint.after_warp_cruise,"転移した。黄: 続けて巡航（攻撃できない）
+マスをクリックで移動（右クリック: 移動を取り消す）"
 battle.hint.after_cruise,巡航で移動したので攻撃できない。メニューから待機か取り消しを選ぶ
 battle.hint.after_move,メニューから行動を選ぶ（右クリック: 移動を取り消す）
 battle.hint.move_healer,"青: 移動　黄: 巡航（回復できない）　緑: 回復できる味方
@@ -121,7 +126,7 @@ battle.menu.skill.note_then_attack,"{skill}: {summary}
 battle.menu.wait.note,待機: 何もせずに、この駒の行動を終える
 battle.menu.undo.note,移動を取り消す: 動く前のマスへ戻る
 battle.menu.back.note,キャンセル: 対象を選ぶのをやめて、メニューへ戻る
-battle.menu.warp.note,転移: 対のポータル（同じ色の塗り）へ移る。移動力は使わない。転移のあとも攻撃・待機を選べる
+battle.menu.warp.note,転移: 対のポータル（同じ色の塗り）へ移る。移動力は使わない。残りの移動力で、そこから続けて動ける
 battle.menu.skill.cooldown,スキル（あと {turns} ターン）
 battle.menu.skill.used_up,スキル（使用済み）
 battle.menu.skill.unusable,スキル（使用不可）
@@ -152,8 +157,8 @@ battle.cell.battery.note,後衛が乗ると、射程 +{range}
 battle.cell.spring,回復の泉
 battle.cell.spring.note,自分の番の始めに、乗っている駒が {heal} 回復
 battle.cell.portal,"ポータル → ({x}, {y})"
-battle.cell.portal.note,止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わない
-battle.cell.portal.blocked_note,止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わない。行き先に駒がいて、いまは使えない
+battle.cell.portal.note,止まると、駒のそばのメニューの「転移」で対のポータル（同じ色の印）へ移れる。移動力は使わず、残りで続けて動ける
+battle.cell.portal.blocked_note,止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わず、残りで続けて動ける。行き先に駒がいて、いまは使えない
 battle.cell.barricade.note,{side}。耐久 {durability} / 通行・射撃を遮断
 battle.cell.smoke.note,{side}。残り {turns} ターン / 中の味方への、離れたところからの攻撃を無効
 battle.cell.sanctuary.note,{side}。残り {turns} ターン / 自分の番の始めに中の味方が HP {heal} 回復
@@ -201,6 +206,7 @@ battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし
 battle.hud.status,{status}（あと {turns} ターン）: {effect}
+battle.hud.detail,詳細
 battle.hud.skill_state.used_up,使用済み
 battle.hud.skill_state.ready,使用可
 battle.hud.skill_state.unusable,使用不可

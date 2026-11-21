@@ -39,6 +39,8 @@ signal skip_pressed
 signal auto_pressed
 ## 駒の情報の枠の「範囲を表示したまま」のスイッチが押された。
 signal pin_toggled
+## 駒の情報の枠の「詳細」を押した（その駒のステータスの窓を開く）。
+signal detail_pressed
 ## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
 ## ログのボタンが押された。
@@ -150,6 +152,7 @@ var battle: Battle
 var _info_forecast: Label
 ## 見ている相手の駒の攻撃範囲を、表示したままにするスイッチ（枠のいちばん下。set_pin_switch）。
 var _info_pin: CheckButton
+var _info_detail: Button
 var _cell_label: Label
 var _hint_label: Label
 ## 下の帯の案内の、折り返す前の文。
@@ -368,6 +371,7 @@ func is_ult_enabled() -> bool:
 func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
 	_info_pin.visible = false  # 出すときは、このあとに set_pin_switch
+	_info_detail.visible = false  # 出すときは、このあとに set_detail_button
 	if unit == null:
 		return
 	var role: String = Names.role(UnitKind.role(unit.kind))
@@ -482,6 +486,7 @@ static func status_text(type: Status.Type, turns: int) -> String:
 func show_cell_info(title: String, body: String) -> void:
 	_info_panel.visible = true
 	_info_pin.visible = false
+	_info_detail.visible = false
 	_info_name.text = title
 	_info_name.add_theme_color_override("font_color", Palette.TEXT)
 	_edge_info_panel(Palette.BORDER)
@@ -499,6 +504,24 @@ func show_cell_info(title: String, body: String) -> void:
 func set_pin_switch(shown: bool, pinned: bool) -> void:
 	_info_pin.visible = shown and _info_panel.visible
 	_info_pin.set_pressed_no_signal(pinned)
+
+
+## 駒の情報の枠の「詳細」のボタンを出すか（show_unit のあとに呼ぶ。枠が出ていなければ出さない）。
+func set_detail_button(shown: bool) -> void:
+	_info_detail.visible = shown and _info_panel.visible and _info_unit_box.visible
+
+
+## 「詳細」のボタンを出しているか。検査用。
+func detail_button_shown() -> bool:
+	return _info_detail.visible
+
+
+## 「詳細」のボタンを押す（クリックと同じ道）。出ていれば真。検査用。
+func press_detail() -> bool:
+	if not _info_detail.visible:
+		return false
+	_info_detail.pressed.emit()
+	return true
 
 
 ## 「範囲を表示したまま」のスイッチを出しているか、入っているか。検査用。
@@ -1226,6 +1249,14 @@ func _build_info_panel() -> void:
 	_info_pin.visible = false
 	_info_pin.pressed.connect(pin_toggled.emit)
 	column.add_child(_info_pin)
+	# 「詳細」: 見ている駒・選んでいる駒のステータスの窓（unit_detail.gd）を開く。控えめなボタンで、右に寄せる。
+	_info_detail = _button(Text.t("battle.hud.detail"), detail_pressed)
+	_info_detail.theme_type_variation = UiTheme.BUTTON_GHOST
+	_info_detail.add_theme_font_size_override("font_size", 14)
+	_info_detail.custom_minimum_size = Vector2(88.0, 30.0)
+	_info_detail.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_info_detail.visible = false
+	column.add_child(_info_detail)
 
 
 func _info_line(column: VBoxContainer, font_size: int, color: Color) -> Label:
