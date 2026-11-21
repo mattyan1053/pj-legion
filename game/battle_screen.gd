@@ -534,6 +534,8 @@ func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side(), source.victory_mood()), source.after_result_music())
 	var won := cpu_opponent and not draw and winner == _human_side()
 	_hud.result_screen().set_continue(source.can_continue(won), source.retries_on_enter(won))
+	# 負けた話は、見出しの下に、話し手のひとこと（話のファイルの [lost]。再戦の手間は増やさない）。
+	_hud.result_screen().set_remark([] if won or not cpu_opponent else source.lost_lines())
 	if won:
 		source.record_win(context)
 
