@@ -5,7 +5,7 @@ extends RefCounted
 ## 盤は鍵（StringName）で持つ。ストーリーの話（game/story/episodes/ のファイルの名前）や見た目（stage_look.gd の名前）と同じ持ち方。
 ## 盤の出どころは 2 つ:
 ## - 生成のマップ（STAGE。BoardGenerator.Stage）: 対戦を始めるたびに、種から形を作り直す。見た目は StageLook.OF_STAGE。
-## - 手で作ったマップ（MAP。game/maps/ のファイルの id。maps.gd）: 種によらず、いつも同じ形。見た目は LOOK。
+## - 手で作ったマップ（MAP。game/maps/ のファイルの id。maps.gd）: 種によらず、いつも同じ形。見た目はマップのファイルが決める（[map] の look）。
 ## どちらも、勝ち方は対戦モードのいつもの 2 つ、初期位置はいつもの「本陣の前」、部隊は両方とも対戦設定で選ぶ（予算と 6 体）。
 ##
 ## **盤を 1 つ足すには、FIELDS に 1 つ足すだけ**（手で作ったマップなら、game/maps/ のファイルと）。
@@ -22,7 +22,6 @@ const Maps := preload("res://game/maps.gd")
 const ID := &"id"  ## 鍵
 const STAGE := &"stage"  ## 生成のマップ（BoardGenerator.Stage）
 const MAP := &"map"  ## 手で作ったマップ（game/maps/ のファイルの id。maps.gd で引く）
-const LOOK := &"look"  ## 手で作ったマップの見た目（stage_look.gd の名前）
 const TAGS := &"tags"  ## カードに載せる、置かれているもの（ひとことの特徴）
 const NOTE := &"note"  ## カードにマウスを乗せると出す説明
 const HIDDEN := &"hidden"  ## 真なら、対戦モードの画面に出さない（釣り合いがめやすを外れる。docs/map-select.md）
@@ -55,18 +54,18 @@ const FIELDS := [
 	},
 	# 手で作ったマップ（ストーリーと同じ形）。部隊を変えた CPU どうしの釣り合いがめやすに入る（docs/cpu-ai.md の「いまの集計」）。
 	{
-		ID: RIDGE_PATH, MAP: "ridge_path", LOOK: StageLook.STONE_WALLS,
+		ID: RIDGE_PATH, MAP: "ridge_path",
 		TAGS: "field.ridge_path.tags",
 		NOTE: "field.ridge_path.note",
 	},
 	{
-		ID: CRYSTAL_GORGE, MAP: "crystal_gorge", LOOK: StageLook.CRYSTAL_FOREST,
+		ID: CRYSTAL_GORGE, MAP: "crystal_gorge",
 		TAGS: "field.crystal_gorge.tags",
 		NOTE: "field.crystal_gorge.note",
 	},
 	# 手で作ったマップ（対戦モードのために作ったもの）。
 	{
-		ID: BOULDER_PASS, MAP: "boulder_pass", LOOK: StageLook.GRASSLAND,
+		ID: BOULDER_PASS, MAP: "boulder_pass",
 		TAGS: "field.boulder_pass.tags",
 		NOTE: "field.boulder_pass.note",
 	},
@@ -145,8 +144,8 @@ static func note_of(id: StringName) -> String:
 ## 盤の見た目（stage_look.gd の名前）。
 static func look_of(id: StringName) -> StringName:
 	var field := _field(id)
-	if field.has(LOOK):
-		return field[LOOK]
+	if field.has(MAP):
+		return Maps.find(field[MAP]).get("look", StageLook.DEFAULT)
 	return StageLook.name_of_stage(field.get(STAGE, -1))
 
 

@@ -186,3 +186,17 @@ func test_map_files_read_rows_with_hash_and_report_lines() -> void:
 	assert_false((untitled["problems"] as PackedStringArray).is_empty(), "title が無い")
 	var no_hq := Maps.parse("[map]\ntitle = 見本\n[rows]\n...\n.1.\n")
 	assert_false((no_hq["problems"] as PackedStringArray).is_empty(), "本陣が 1 つ")
+
+
+## 景色（見た目）は、マップのファイルが決める（[map] の look。docs/hand-map.md）。
+func test_each_map_names_its_look() -> void:
+	var looks: Dictionary = load("res://game/stage_look.gd").THEMES
+	for id: String in Maps.ids():
+		assert_true(looks.has(Maps.find(id)["look"]), "%s: 知らない見た目 %s" % [id, Maps.find(id)["look"]])
+	var found := Maps.parse("[map]\ntitle = 見本\nlook = crystal_forest\n[rows]\n.2.\n.1.\n")
+	assert_eq(found["look"], &"crystal_forest")
+	assert_eq(Array(found["problems"]), [])
+	var plain := Maps.parse("[map]\ntitle = 見本\n[rows]\n.2.\n.1.\n")
+	assert_eq(plain["look"], &"grassland", "書かなければ草原")
+	var unknown := Maps.parse("[map]\ntitle = 見本\nlook = swamp\n[rows]\n.2.\n.1.\n")
+	assert_true(unknown["problems"][0].begins_with("probe.txt:3:"), "知らない見た目は、その行で弾く: %s" % [unknown["problems"]])

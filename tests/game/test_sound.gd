@@ -43,8 +43,10 @@ func test_each_look_has_its_battle_music() -> void:
 		var track := Catalog.battle_music(look_name)
 		assert_true(Catalog.has_music(track), "%s の対戦の曲 %s が表にある" % [look_name, track])
 		assert_true(Catalog.MUSIC[track]["loop"], "対戦の曲はループする（%s）" % track)
-		tracks[track] = true
-	assert_eq(tracks.size(), StageLook.THEMES.size(), "見た目ごとに違う曲")
+	# 対戦モードの生成のマップの見た目は、どれも違う曲（手で作ったマップのための見た目は、近い景色の曲を使い回してよい）。
+	for look_name: StringName in StageLook.OF_STAGE.values():
+		tracks[Catalog.battle_music(look_name)] = true
+	assert_eq(tracks.size(), StageLook.OF_STAGE.size(), "生成のマップの見た目ごとに違う曲")
 	for look_name: StringName in Catalog.LOOK_MUSIC:
 		assert_true(StageLook.THEMES.has(look_name), "LOOK_MUSIC の鍵は見た目の名前（%s）" % look_name)
 	assert_eq(Catalog.battle_music(&"no_such_look"), &"battle", "知らない見た目は、いつもの対戦の曲")

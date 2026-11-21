@@ -7,6 +7,7 @@
 
 [map]
 title = 練兵場
+look = stone_walls
 
 [rows]
 ....2....

@@ -1,6 +1,7 @@
 extends Node3D
 ## 盤の外の景色。戦う範囲の外も地続きの場所に見えるように置く。見た目だけで、ルールには関わらない。
 ## 何を置くかは、マップの見た目（stage_look.gd の SCENERY）が決める。ここは並べ方だけを持つ。
+## 素材ごとの色（素材の定義の tint）があれば、景色の色（SCENERY の TINT）に掛ける。
 ## - 大きいもの（BIG。岩山など）: 尾根のノイズに沿って、盤から離れたところに。遠いほど大きい。
 ## - 小さいもの（SMALL。木など）: 森のノイズに沿って、かたまりで。盤の近くはまばらに、離れるほど濃く。
 ## - 散らばるもの（SCATTER。石など）: まばらに、どこにでも。低い。
@@ -50,6 +51,8 @@ static func layout(board_size: Vector2i, look_seed: int, scenery: Dictionary) ->
 	var big: Array = scenery.get(StageLook.BIG, [])
 	var small: Array = scenery.get(StageLook.SMALL, [])
 	var scatter: Array = scenery.get(StageLook.SCATTER, [])
+	# 小さいものを置く割合（1 = 森のように詰めて。木でないもの（荷や石の山）は、まばらにする）。
+	var small_share := float(scenery.get(StageLook.SMALL_SHARE, 1.0))
 
 	for at in _candidates(size, BIG_SPACING, 0.8, rng):
 		var distance := distance_outside(at, size)
@@ -68,6 +71,8 @@ static func layout(board_size: Vector2i, look_seed: int, scenery: Dictionary) ->
 		var wood := woods.get_noise_2d(at.x, at.y)
 		var needed := lerpf(0.22, -0.08, clampf((distance - CLEAR) / 22.0, 0.0, 1.0))
 		if wood < needed or ridges.get_noise_2d(at.x, at.y) > 0.2:
+			continue
+		if small_share < 1.0 and rng.randf() >= small_share:
 			continue
 		var height := lerpf(SMALL_HEIGHT.x, SMALL_HEIGHT.y, clampf(distance / 30.0, 0.0, 1.0)) * rng.randf_range(0.85, 1.2)
 		items.append(_item(StageLook.SMALL, small, rng.randi() % small.size(), at, height, rng.randf() * TAU, distance))
@@ -131,7 +136,7 @@ func setup(board_size: Vector2i, look_seed: int, look: Dictionary) -> void:
 		var instance := MultiMeshInstance3D.new()
 		instance.multimesh = multimesh
 		# 結晶は沈ませない（光るもの）。
-		instance.material_override = StageLook.material_of(prop, Color.WHITE if prop.has("crystal") else tint)
+		instance.material_override = StageLook.material_of(prop, Color.WHITE if prop.has("crystal") else tint * (prop.get("tint", Color.WHITE) as Color))
 		if nearest > SHADOW_WITHIN or prop.has("crystal"):
 			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(instance)
