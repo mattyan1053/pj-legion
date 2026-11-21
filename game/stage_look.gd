@@ -17,6 +17,7 @@ extends RefCounted
 ## - 本陣の陣営の色、マスの塗り分け、駒、HP の棒、起爆樽とポータルの色は、どのテーマでも変えない（読み方を変えないため）。
 
 const CrystalMesh := preload("res://game/crystal_mesh.gd")
+const GraveMesh := preload("res://game/grave_mesh.gd")
 const BOARD_SKY := preload("res://game/board_sky.gdshader")
 const RenderTone := preload("res://game/render_tone.gd")
 
@@ -33,6 +34,9 @@ const CRYSTAL_GLOW := 1.3
 ## 霞が始まる距離と、すっかり霞む距離（カメラから）。いちばん引いて盤の端から端を見ても、盤の中はほとんど霞まない。
 const FOG_BEGIN := 64.0
 const FOG_END := 108.0
+## 霞の濃い見た目（MIST が 1）の、霞が始まる距離と、すっかり霞む距離。盤の外の景色は近くから霞むが、盤の中は、まだほとんど霞まない。
+const MIST_BEGIN := 46.0
+const MIST_END := 84.0
 
 ## 色の名前（地面と空気）。
 const NORMAL := &"normal"  ## 平地
@@ -57,6 +61,7 @@ const DRY := &"dry"  ## 地面の、ところどころ枯れた色に寄せる�
 ## 無くてよい数（書かなければ 0）。
 const STRATA := &"strata"  ## 地面の、掘り下げた段々（露天掘りの棚）の濃さ
 const CRACKS := &"cracks"  ## 地面の、ひび割れの濃さ
+const MIST := &"mist"  ## 霞を近くから掛ける量（0 = いつもの距離、1 = MIST_BEGIN・MIST_END の距離から）
 const SEAM_GLOW := &"seam_glow"  ## 盤の向こう（プレイヤー2 の本陣の先）の地面を横切る、光る裂け目の明るさ
 
 ## 置物の定義の名前。
@@ -83,7 +88,8 @@ const SINGLE := &"single"
 const WALL := &"wall"
 const CRAG := &"crag"
 
-## 素材: {scene: パス, height: 大きさ 1 のときの高さ} か、{crystal: Color, height: 1.0}（コードで作る結晶の群れ。crystal_mesh.gd）。
+## 素材: {scene: パス, height: 大きさ 1 のときの高さ} か、{crystal: Color, height: 1.0}（コードで作る結晶の群れ。crystal_mesh.gd）か、
+## {grave: Color, height: 1.0}（コードで作る墓標の群れ。grave_mesh.gd。Color は石の色）。
 ## size があれば、景色に置くときの大きさに掛ける（大きく・小さく見せたいもの）。height は検査が素材と突き合わせる。
 ## tint があれば、景色に置くときの色に掛ける（景色の色 TINT と合わせて）。
 const HEX := "res://assets/kaykit/medieval-hexagon/"
@@ -112,6 +118,9 @@ const WHEELBARROW := {"scene": HEX + "wheelbarrow.gltf", "height": 0.19, "size":
 const STONE_PILE := {"scene": HEX + "resource_stone.gltf", "height": 0.28, "size": 0.5}
 const CRATE := {"scene": HEX + "crate_A_big.gltf", "height": 0.21, "size": 0.5, "tint": Color("b8a890")}
 const LONG_CRATE := {"scene": HEX + "crate_long_A.gltf", "height": 0.15, "size": 0.35, "tint": Color("b8a890")}
+const RUINED_HOUSE := {"scene": HEX + "building_destroyed.gltf", "height": 0.98, "size": 0.4}
+const BROKEN_ARMS := {"scene": DUNGEON + "sword_shield_broken.glb", "height": 1.17, "size": 0.75}
+const GRAVES := {"grave": Color("b4b9aa"), "height": 1.0, "size": 0.85}
 const CRYSTAL_VIOLET := {"crystal": Color("9465f0"), "height": 1.0}
 ## 盤の上の結晶の岩山の結晶。ポータル（紫 b06cff）・中ボス（紫）・結晶泉（水色）と見分けられる青。
 const CRAG_CRYSTAL := Color("4f63e8")
@@ -133,6 +142,7 @@ const STONE_WALLS := &"stone_walls"  ## 石の壁（迷宮回廊、ストーリ�
 const CRYSTAL_FOREST := &"crystal_forest"  ## 結晶の森（双子結晶、ストーリーの結晶の岩山）
 const QUARRY := &"quarry"  ## 採掘場（結晶の採掘場）
 const SEAM := &"seam"  ## 縫い目の谷
+const BARROW := &"barrow"  ## 古戦場
 ## 名前を渡されないとき・知らない名前のときの見た目。
 const DEFAULT := GRASSLAND
 ## 対戦モードの生成のマップ（BoardGenerator.Stage）-> 見た目の名前。
@@ -234,6 +244,23 @@ const THEMES := {
 			TINT: Color("7c7a96"), SMALL_SHARE: 0.25, BIG_SPREAD: 0.3,
 		},
 	},
+	# 古戦場: 両方の国の兵が、同じ土の下に眠る野。枯れ草まじりのくすんだ草地に、苔むした石の壁（崩れたものが多い）。
+	# 盤の外は、墓標の群れ、土に刺さった折れた剣と盾、崩れた家と石組み、葉の落ちかけた木。曇り空の平たい光と、近くから掛かる灰緑の霞。
+	BARROW: {
+		NORMAL: Color("6e7a5a"), FOREST: Color("3a5e34"), OBSTACLE: Color("5a5552"), FONT: Color("3fa9bd"),
+		HAZE: Color("a9b4ad"), SKY: Color("77838c"), SUN: Color("e6ebee"), AMBIENT: Color("b4beb8"),
+		SUN_PITCH: -58.0, SUN_YAW: 70.0, SUN_ENERGY: 0.85, AMBIENT_ENERGY: 0.7,
+		PAVING: 0.0, DRY: 1.0, MIST: 1.0,
+		CRYSTAL: Color("4fd8f0"), SPRING_STONE: Color("a8aca4"),
+		OBSTACLE_PROPS: {"style": WALL, "props": [PILLAR, STONE_WALL_BROKEN, STONE_WALL], "height": 0.92, "tint": Color("b4bca6")},
+		FOREST_PROPS: {"style": SINGLE, "props": [TREES_B, TREES_A], "scale": 0.62, "tint": Color("9aa27c")},
+		SCENERY: {
+			BIG: [RUINED_HOUSE, RUBBLE_LARGE, {"scene": DUNGEON + "wall_broken.glb", "height": 4.0, "size": 0.4}, MOUNTAIN_A],
+			SMALL: [GRAVES, GRAVES, GRAVES, BROKEN_ARMS, TREES_B, COLUMN],
+			SCATTER: [GRAVES, BROKEN_ARMS, GRAVES, RUBBLE, GRAVES],
+			TINT: Color("b0b8a8"),
+		},
+	},
 }
 
 static var _meshes := {}  # 素材の定義の文字列 -> Mesh
@@ -256,6 +283,8 @@ static func mesh_of(prop: Dictionary) -> Mesh:
 	if not _meshes.has(key):
 		if prop.has("crystal"):
 			_meshes[key] = CrystalMesh.cluster()
+		elif prop.has("grave"):
+			_meshes[key] = GraveMesh.cluster()
 		else:
 			var root: Node = (load(prop.scene) as PackedScene).instantiate()
 			var found: MeshInstance3D = root.find_children("*", "MeshInstance3D", true, false)[0]
@@ -271,6 +300,10 @@ static func material_of(prop: Dictionary, tint: Color) -> Material:
 		var material: StandardMaterial3D
 		if prop.has("crystal"):
 			material = crystal_material(prop.crystal)
+		elif prop.has("grave"):
+			material = StandardMaterial3D.new()
+			material.albedo_color = (prop.grave as Color) * tint
+			material.roughness = 1.0
 		else:
 			material = mesh_of(prop).surface_get_material(0).duplicate()
 			material.albedo_color = material.albedo_color * tint
@@ -290,6 +323,8 @@ static func crystal_material(color: Color) -> StandardMaterial3D:
 
 
 static func _key(prop: Dictionary) -> String:
+	if prop.has("grave"):
+		return "grave:%s" % prop.grave
 	return str(prop.get("scene", prop.get("crystal")))
 
 
@@ -380,6 +415,9 @@ static func apply(parent: Node, look: Dictionary) -> void:
 			world.environment.fog_light_color = look[HAZE]
 			world.environment.ambient_light_color = look[AMBIENT]
 			world.environment.ambient_light_energy = look[AMBIENT_ENERGY] * RenderTone.ambient_scale()
+			var mist := float(look.get(MIST, 0.0))
+			world.environment.fog_depth_begin = lerpf(FOG_BEGIN, MIST_BEGIN, mist)
+			world.environment.fog_depth_end = lerpf(FOG_END, MIST_END, mist)
 		var sun := node as DirectionalLight3D
 		if sun != null:
 			sun.light_color = look[SUN]

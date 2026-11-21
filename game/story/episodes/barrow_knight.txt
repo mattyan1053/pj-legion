@@ -12,7 +12,6 @@
 [episode]
 title = 墓守
 map = old_battlefield
-look = stone_walls
 music = battle_undead
 
 [unlock]

@@ -10,7 +10,6 @@
 [episode]
 title = 古戦場の祈り
 map = old_battlefield
-look = stone_walls
 music = battle_tense
 hold_turns = 8
 

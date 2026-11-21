@@ -10,7 +10,7 @@
 
 [map]
 title = 古戦場
-look = stone_walls
+look = barrow
 
 [rows]
 #.......2.......#
