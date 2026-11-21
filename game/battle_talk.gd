@@ -1,12 +1,16 @@
 extends Control
 ## 対戦の途中の会話の札（docs/story.md の「対戦の途中の会話」）。上の帯のすぐ下の真ん中に、細く横長の 1 本の帯
-## （話し手の名前の札（陣営の色）と文）で、短い台詞を数秒出して消す。対戦は止めない（クリックを受けない。盤の操作の邪魔をしない）。
+## （話し手の名前の札（陣営の色）と文）で、短い台詞を出す。札そのものはクリックを受けない（送るのは対戦の画面。下の hold）。
 ##
 ## 盤を隠しにくくするため、地は半透明にし、マウスが乗っている間と、駒のそばのメニュー・予測のパネル・進化先の選択肢が重なっている間は薄くする
 ## （obstacles）。左の勝ち方の札、右の視点の案内・ミニマップとは重ならない幅にしてある。
 ##
 ## 台詞が重なったら、順に出す（前の台詞が消えてから次）。出す長さは実際の時間で測る（CPU の番の早送りや、
 ## 自動の対戦の速さ（Engine.time_scale）で縮めない。メニューを開いて止めている間は進めない）。
+##
+## hold（遊ぶとき）なら、台詞は自動で消さず、送られる（advance。対戦の画面が、クリック・Enter・Space で呼ぶ）まで出したままにする。
+## その間、対戦の画面は盤の進行を止める（is_holding）。帯の右に送りの印（▼）を明滅させる。
+## hold でない（検査とスクリーンショット）なら、数秒で消す。
 
 const Palette := preload("res://game/ui_palette.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
@@ -14,7 +18,9 @@ const TextWrap := preload("res://game/text_wrap.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 
-## 1 つの台詞を出しておく時間（秒）: 基本 + 1 文字あたり。目で追い終えてから、もう一度読めるくらい。
+## 送りの印の明滅の周期（秒）。
+const BLINK_PERIOD := 1.2
+## 1 つの台詞を出しておく時間（秒。hold でないとき）: 基本 + 1 文字あたり。目で追い終えてから、もう一度読めるくらい。
 const SHOW_BASE := 3.5
 const SHOW_PER_CHAR := 0.1
 ## 出てくる・消えるときのフェード（秒）。
@@ -41,6 +47,11 @@ var obstacles := Callable()
 ## 真なら、次の台詞を出し始めずに待つ Callable（無ければ待たない）。対戦の画面が入れる: 画面の真ん中の「ターン N」の帯が出ている間は、
 ## 目がそちらへ行くので、台詞は帯が消えてから出す（同時に出すと、気付かないうちに消える）。出し始めた台詞は止めない。
 var waiting := Callable()
+## 送られるまで台詞を出したままにするか（上の説明）。
+var hold := false
+
+## 出す台詞が尽きた（送り終えたか、消した）。
+signal drained
 
 ## まだ出していない台詞。
 var _queue: Array[BattleCues.Line] = []
@@ -58,6 +69,8 @@ var _face: TextureRect
 var _face_frame: PanelContainer
 var _face_style: StyleBoxFlat
 var _box_style: StyleBoxFlat
+var _more: Label
+var _blink := 0.0
 
 
 ## 札の部品は、木に入れる前に作っておく（テストから木に入れずに使える）。
@@ -107,6 +120,13 @@ func _init() -> void:
 	_plate.add_child(_name)
 	_text = _label(17, COLOR_TEXT)
 	row.add_child(_text)
+	# 送りの印（hold のときだけ）。文の右の端、下に寄せる。
+	_more = _label(14, Palette.TEXT)
+	_more.text = "▼"
+	_more.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_more.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_more.size_flags_vertical = Control.SIZE_SHRINK_END
+	row.add_child(_more)
 	visible = false
 
 
@@ -138,6 +158,17 @@ func is_dimmed() -> bool:
 	return false
 
 
+## メニュー・予測のパネル・進化先の選択肢が札に重なっているか（マウスは見ない）。
+func _blocked() -> bool:
+	if not obstacles.is_valid():
+		return false
+	var rect := Rect2(global_position, _box.size)
+	for other: Rect2 in obstacles.call():
+		if other.has_area() and rect.intersects(other):
+			return true
+	return false
+
+
 ## いま出している話し手のアイコン（出していなければ null）。検査用。
 func face() -> Texture2D:
 	return _face.texture if visible and _face_frame.visible else null
@@ -153,8 +184,25 @@ func say(lines: Array[BattleCues.Line]) -> void:
 ## 出している台詞と、積んである台詞を消す（新しい対戦を始めるとき）。
 func clear() -> void:
 	_queue.clear()
+	var had := _current != null
 	_current = null
 	visible = false
+	if had:
+		drained.emit()
+
+
+## 送られるのを待っているか（hold で、台詞を出している。出し始める前の「ターン N」の帯を待つ間も含む）。
+func is_holding() -> bool:
+	return hold and _current != null
+
+
+## いまの台詞を送る（次の台詞へ。無ければ消す）。出し始める前（帯を待つ間、フェードの途中）は送らない
+## （気付く前に、押した勢いで消さない）。送ったかを返す。
+func advance() -> bool:
+	if _current == null or _elapsed < FADE:
+		return false
+	_next()
+	return true
 
 
 ## いま出している台詞（無ければ null）。
@@ -178,6 +226,13 @@ func _process(delta: float) -> void:
 		modulate.a = 0.0
 		return
 	_elapsed += real
+	if hold:
+		# 送られるまで出したまま。薄くするのは、メニュー・予測のパネル・進化先の選択肢が重なっているときだけ（マウスでは薄くしない）。
+		_blink += real
+		_dim = move_toward(_dim, DIMMED if _blocked() else 1.0, DIM_SPEED * real)
+		modulate.a = clampf(_elapsed / FADE, 0.0, 1.0) * _dim
+		_more.modulate.a = 0.65 + 0.35 * cos(_blink * TAU / BLINK_PERIOD)
+		return
 	var shown := _duration(_current)
 	_dim = move_toward(_dim, DIMMED if is_dimmed() else 1.0, DIM_SPEED * real)
 	modulate.a = clampf(minf(_elapsed / FADE, (shown - _elapsed) / FADE), 0.0, 1.0) * _dim
@@ -190,7 +245,9 @@ func _next() -> void:
 	_elapsed = 0.0
 	visible = _current != null
 	if _current == null:
+		drained.emit()
 		return
+	_more.visible = hold
 	_name.text = _current.name
 	_face_frame.visible = not _current.figure.is_empty() and _current.side < 2
 	if _face_frame.visible:
@@ -204,6 +261,8 @@ func _next() -> void:
 	# 文の幅は、帯の幅から、枠の余白と名前の札と間のぶんを引いたもの。
 	var box_style := _box.get_theme_stylebox("panel")
 	var width := WIDTH - box_style.get_minimum_size().x - _plate.get_combined_minimum_size().x - ROW_GAP
+	if _more.visible:
+		width -= _more.get_combined_minimum_size().x + ROW_GAP
 	if _face_frame.visible:
 		width -= _face_frame.get_combined_minimum_size().x + ROW_GAP
 	var font := _text.get_theme_font("font")
