@@ -2,6 +2,11 @@ extends Node3D
 ## タイトルの背景。世界（「空の縫い目」。docs/story.md）を 1 枚で見せる:
 ## 裂けた空（rift_sky.gdshader）の下の、結晶の森。裂け目の光を背にして、岩山と結晶と木立が影になる。
 ## 素材は足さない（盤と景色は対戦の画面の部品、空はシェーダー）。カメラは低く構えて、ゆっくり左右に振る。
+##
+## ストーリーの物語選択と話の一覧も、同じ景色を別の構え（view）で使う（同じ世界の続きに見せる）:
+## - VIEW_TITLE: 縫い目を真ん中に、低く構える。
+## - VIEW_STORY: 縫い目を真ん中に、少し高く、空を広く見上げる（左のカードが琥珀の空、右のカードが菫の空の下に来る）。
+## - VIEW_BERG / VIEW_RUEL: その国の側の空（縫い目の左の琥珀 / 右の菫）へ向き、縫い目は画面の端に見える。
 
 const RenderTone := preload("res://game/render_tone.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
@@ -28,9 +33,36 @@ const SKY_RADIUS := 1800.0
 ## 入ったときに、裂け目の光が差してくるまでの秒数。
 const REVEAL_TIME := 1.4
 
+## 構え: [向き（度。正で左 = 琥珀の空へ）, 見上げる角度（度）, カメラの高さ]。
+const VIEW_TITLE := &"title"
+const VIEW_STORY := &"story"
+const VIEW_BERG := &"berg"
+const VIEW_RUEL := &"ruel"
+const VIEWS := {
+	VIEW_TITLE: [0.0, CAMERA_TILT, CAMERA_HEIGHT],
+	VIEW_STORY: [0.0, 15.0, 4.6],
+	VIEW_BERG: [24.0, 13.0, 4.2],
+	VIEW_RUEL: [-24.0, 13.0, 4.2],
+}
+
 var _camera: Camera3D
 var _sky: ShaderMaterial
 var _time := 0.0
+var _view := VIEW_TITLE
+
+
+func _init(which := VIEW_TITLE) -> void:
+	_view = which if VIEWS.has(which) else VIEW_TITLE
+
+
+## 物語の軍の側の空を見る構え（MILITARY はベルク連邦の琥珀、FANTASY はリュエル騎士領の菫）。
+static func view_of(army: UnitKind.Army) -> StringName:
+	return VIEW_RUEL if army == UnitKind.Army.FANTASY else VIEW_BERG
+
+
+## いまの構え（検査用）。
+func shown_view() -> StringName:
+	return _view
 
 
 func _ready() -> void:
@@ -57,7 +89,7 @@ func _ready() -> void:
 	_camera = Camera3D.new()
 	_camera.fov = CAMERA_FOV
 	_camera.far = SKY_RADIUS * 1.5
-	_camera.position = Vector3(board.size.x / 2.0, CAMERA_HEIGHT, board.size.y + CAMERA_BACK)
+	_camera.position = Vector3(board.size.x / 2.0, VIEWS[_view][2], board.size.y + CAMERA_BACK)
 	add_child(_camera)
 
 	_sky = ShaderMaterial.new()
@@ -88,4 +120,4 @@ func _process(delta: float) -> void:
 
 func _aim() -> void:
 	var yaw := deg_to_rad(SWAY) * sin(_time * TAU / SWAY_PERIOD)
-	_camera.rotation = Vector3(deg_to_rad(CAMERA_TILT), yaw, 0.0)
+	_camera.rotation = Vector3(deg_to_rad(VIEWS[_view][1]), deg_to_rad(VIEWS[_view][0]) + yaw, 0.0)
