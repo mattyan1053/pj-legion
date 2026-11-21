@@ -12,7 +12,7 @@
 
 [map]
 title = 結晶の岩山
-look = crystal_forest
+look = crystal_night
 
 [rows]
 ##........F.......##

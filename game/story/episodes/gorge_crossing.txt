@@ -9,7 +9,6 @@
 [episode]
 title = 岩山越え
 map = crystal_gorge
-look = crystal_forest
 
 [unlock]
 item = speed_boots
