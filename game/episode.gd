@@ -552,8 +552,11 @@ func _read_cues(file: RefCounted) -> void:
 			file.problem(row["line"], "途中の台詞の行は「(きっかけ 値) 話し手: 文」: %s" % text)
 			continue
 		var words := text.substr(1, close - 1).split(" ", false)
-		var speech := _speech(file, row["line"], text.substr(close + 1))
+		var speech := _speech(file, row["line"], text.substr(close + 1).strip_edges())
 		if speech.is_empty():
+			continue
+		if speech[0] == NARRATION_SIDE:
+			file.problem(row["line"], "[cues] に地の文は書けない（対戦の途中の台詞は、話し手の札で出す）")
 			continue
 		if words.size() != 2 or not BattleCues.KINDS.has(StringName(words[0])):
 			file.problem(row["line"], "知らないきっかけ「%s」（書けるのは %s。値と 2 語で書く）" % [" ".join(words), ", ".join(BattleCues.KINDS)])
