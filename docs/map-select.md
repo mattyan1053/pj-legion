@@ -1,6 +1,6 @@
 # マップ選択
 
-コード: `game/map_select_screen.gd`（場面）、`game/versus_fields.gd`（選べる盤の一覧）、`game/map_card.gd`（カードの縮図。ノードに依存しない）、`game/card_keys.gd`（カードをキーボードで選ぶ決まり。物語選択・話の一覧と同じ）。
+コード: `game/map_select_screen.gd`（場面）、`game/versus_fields.gd`（選べる盤の一覧）、`game/map_card.gd`（カードの縮図。ノードに依存しない）、`game/card_keys.gd`（カードをキーボードで選ぶ決まり。物語選択・話の一覧と同じ）、`game/map_frame.gd`（縮図の額）。
 テスト: `tests/game/test_versus_fields.gd`、`tests/game/test_map_card.gd`、`tests/game/test_card_keys.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_scene_flow.gd`、
 自動の対戦（タイトル → マップ選択 → 対戦設定と戻る道。カードが画面に収まるか。手で作ったマップでの対戦の始め）。
 盤の形は `docs/game-board.md`（生成）と `docs/hand-map.md`（手で作ったマップ）、置かれるものは `docs/map-objects.md`。
