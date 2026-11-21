@@ -143,7 +143,7 @@ static func vignette(strength := 1.0) -> TextureRect:
 	return rect
 
 
-## 景色の上にカードを並べる画面の幕（マップ選択、物語選択、話の一覧）。景色の全体を夜の藍へ沈めて、カードを浮かせる。
+## 景色の上にカードを並べる画面の幕（セーブデータ選択）。景色の全体を夜の藍へ沈めて、カードを浮かせる。
 ## 真ん中も沈め、四隅はさらに沈める。入力は通す。
 static func scene_shade() -> Control:
 	var shade := ColorRect.new()
@@ -154,7 +154,7 @@ static func scene_shade() -> Control:
 	return shade
 
 
-## 裂けた空の景色（title_backdrop.gd）の上にカードを並べる画面の幕（物語選択、話の一覧）。空の色を残すため、全体は沈めない。
+## 裂けた空の景色（title_backdrop.gd）の上にカードを並べる画面の幕（物語選択、話の一覧、マップ選択）。空の色を残すため、全体は沈めない。
 ## 上（見出しの後ろ）と下（下の欄とボタンの後ろ）を夜の藍へ沈め、四隅をさらに沈める。入力は通す。
 static func vista_shade() -> Control:
 	var gradient := Gradient.new()

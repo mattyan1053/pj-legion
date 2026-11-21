@@ -36,6 +36,9 @@ const SCENES := {
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
 	"map_select": "マップ選択の場面（タイトルの「対戦」のあと。生成のマップと手で作ったマップの 2 段のカード）",
 	"map_hover": "マップ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
+	"map_hover_pass": "マップ選択で、大岩の峠のカードにマウスを乗せたところ（背景の景色が、雪の峠に替わる）",
+	"map_hover_twin": "マップ選択で、双子結晶のカードにマウスを乗せたところ（背景の景色が、結晶の森に替わる）",
+	"setup_ridge": "尾根の小道を選んだ対戦設定（背景が、尾根の小道の景色）",
 	"versus_hand_start": "対戦モードの、手で作ったマップ（一覧の最初のもの。画面に出していないものでも）での対戦の始め",
 	"versus_hand_last_start": "対戦モードの、手で作ったマップ（一覧の最後のもの。いちばん新しく足したもの）での対戦の始め",
 	"versus_hand_result": "対戦モードの、手で作ったマップで CPU に勝ったときのリザルト（「新しいマップ」は生成のマップだけ）",
@@ -415,7 +418,31 @@ func _scene_map_hover() -> bool:
 	if not await _scene_map_select():
 		return false
 	_app.current_scene().hover(VersusFields.LABYRINTH)
+	_app.current_scene().show_scape_now()  # 背景の景色が、乗せたマップのものに替わるのを待たない
 	return _app.current_scene().hovered_field() == VersusFields.LABYRINTH
+
+
+func _scene_map_hover_pass() -> bool:
+	return await _map_hover(VersusFields.BOULDER_PASS)
+
+
+func _scene_map_hover_twin() -> bool:
+	return await _map_hover(VersusFields.TWIN_SPRINGS)
+
+
+func _map_hover(field: StringName) -> bool:
+	if not await _scene_map_select():
+		return false
+	_app.current_scene().hover(field)
+	_app.current_scene().show_scape_now()
+	return _app.current_scene().hovered_field() == field
+
+
+func _scene_setup_ridge() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	_app.context.match_choice.field = VersusFields.RIDGE_PATH
+	await _app.go(SceneFlow.SETUP)
+	return _app.current_id() == SceneFlow.SETUP
 
 
 ## 一覧の最初の手で作ったマップ（画面に出していないものも）。無ければ空。
