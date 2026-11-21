@@ -6,5 +6,6 @@
 
 ファイル名は `<種類>_<陣営>[_evolved].png`（陣営は `blue`・`red`・`neutral`）。読み出すのは `game/unit_icons.gd`。
 ここに直に置いてあるのは組 `kaykit` の絵。`tokens/` は組 `tokens`（コードで組んだ形。元の素材なし）、
-`quaternius/` は組 `quaternius`（Quaternius の CC0 の素材。`assets/quaternius/`）の絵。ほかの組の絵は、組の定義の `icon_dir`（このディレクトリの下の、組の名前のディレクトリ）に置く。
+`quaternius/` は組 `quaternius`（Quaternius の CC0 の素材。`assets/quaternius/`）の絵、
+`mini/` は組 `mini`（Kenney の CC0 の素材。`assets/kenney/mini-characters/`）の絵。ほかの組の絵は、組の定義の `icon_dir`（このディレクトリの下の、組の名前のディレクトリ）に置く。
 駒の形や陣営の色を変えたら、`tools/unit_icons.sh <godot> [組の名前]` で書き直す（画面の描画が要るので、画面の無いコンテナでは Xvfb の上で回す）。
