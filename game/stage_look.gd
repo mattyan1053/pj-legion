@@ -242,10 +242,10 @@ const THEMES := {
 			TINT: Color("d8c0a8"), SMALL_SHARE: 0.5,
 		},
 	},
-	# 縫い目の谷: 糸を抜かれて、いちばん傷んだ所。灰色のひび割れた地面に、結晶の抜けた暗い岩の帯。森は枯れかけた木立。
+	# 縫い目の谷: 糸を抜かれて、いちばん傷んだ所。灰色のひび割れた地面（菫の光で青く沈まないよう、少し暖かい灰。移動範囲の青が読めるように）に、結晶の抜けた暗い岩の帯。森は枯れかけた木立。
 	# 盤の外は、両側から迫る暗い山並みと、割れ残った結晶。宵の暗い菫の霞と冷たい光。プレイヤー2 の本陣の向こうの地面を、光る裂け目（縫い目）が横切る。
 	SEAM: {
-		NORMAL: Color("676b72"), FOREST: Color("3e4a44"), OBSTACLE: Color("2c2a33"), FONT: Color("46bcd6"),
+		NORMAL: Color("736b62"), FOREST: Color("3e4a44"), OBSTACLE: Color("2c2a33"), FONT: Color("46bcd6"),
 		HAZE: Color("5a4c84"), SKY: Color("151433"), SUN: Color("d6dcff"), AMBIENT: Color("9c94c8"),
 		SUN_PITCH: -52.0, SUN_YAW: -150.0, SUN_ENERGY: 1.0, AMBIENT_ENERGY: 0.6,
 		PAVING: 0.0, DRY: 0.0, CRACKS: 1.0, SEAM_GLOW: 1.0,
