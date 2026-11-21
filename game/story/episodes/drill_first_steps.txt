@@ -10,6 +10,8 @@
 title = はじめの一歩
 map = drill_field
 look = stone_walls
+before_music = talk
+after_music = talk
 lesson = 駒をクリックして動かし、隣の敵を攻撃する。敵の将を倒せば勝ち。
 
 [ally]

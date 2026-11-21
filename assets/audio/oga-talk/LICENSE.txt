@@ -1,0 +1,15 @@
+Quiet music for story conversations, collected from OpenGameArt.org.
+Every track below is released under Creative Commons Zero (CC0 1.0 Universal) by its author:
+https://creativecommons.org/publicdomain/zero/1.0/
+
+  waiting_ii.ogg          "Waiting II" by Kistol
+                          https://opengameart.org/content/waiting-ii
+  the_confrontation.ogg   "The Confrontation" by Umplix
+                          https://opengameart.org/content/the-confrontation
+  aftermath.ogg           "Aftermath" by indieteur
+                          https://opengameart.org/content/aftermath
+
+Each page above lists its license as CC0 (checked on 2026-11-21).
+None of the tracks came with a separate license file.
+The files here were converted to Ogg Vorbis (quality 2, stereo, 44.1 kHz) with metadata removed,
+and the silence at the start/end was trimmed (see README.md).

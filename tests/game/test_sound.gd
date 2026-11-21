@@ -68,11 +68,14 @@ func test_story_music_comes_from_the_episode() -> void:
 		assert_true(Catalog.has_music(track), "%s の対戦の曲 %s が表にある" % [episode.id, track])
 		if episode.music == &"":
 			assert_eq(track, Catalog.battle_music(episode.look), "%s: music が無ければ、盤の見た目の曲" % episode.id)
-		var talk := Story.talk_of(episode, episode.before)
-		var talk_track := SceneFlow.music_for(SceneFlow.TALK, talk)
-		assert_true(Catalog.has_music(talk_track), "%s の会話の曲 %s が表にある" % [episode.id, talk_track])
-		if episode.talk_music == &"":
-			assert_eq(talk_track, &"talk", "%s: talk_music が無ければ、会話の場面の曲" % episode.id)
+		var before := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.before, episode.before_talk_music()))
+		var after := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.after, episode.after_talk_music()))
+		assert_true(Catalog.has_music(before), "%s の前の会話の曲 %s が表にある" % [episode.id, before])
+		assert_true(Catalog.has_music(after), "%s のあとの会話の曲 %s が表にある" % [episode.id, after])
+		assert_true(episode.before_music != &"" and episode.after_music != &"", "%s: 前の会話とあとの会話の曲を、話のファイルが選んでいる" % episode.id)
+		if Catalog.is_battle_music(before):
+			assert_eq(before, track, "%s: 前の会話の対戦の曲は、その話の対戦の曲（そのまま対戦へつながる）" % episode.id)
+		assert_false(Catalog.is_battle_music(after), "%s: あとの会話に戦いの曲を鳴らさない" % episode.id)
 	var hold: RefCounted = Story.military().find_episode(&"ridge_hold")
 	assert_eq(StoryBattle.new(hold, null).music(), &"battle_tense", "守り切る話は、緊迫した曲")
 
@@ -109,6 +112,31 @@ func test_climax_starts_when_either_king_is_down_to_half() -> void:
 	var gone := _versus_battle()
 	gone.units.erase(gone.unit_by_id(kings[0]))
 	assert_true(Catalog.climax_reached(gone, kings), "将がいなくなっても終盤")
+
+
+func test_talk_music_defaults() -> void:
+	var path := "res://game/story/episodes/ridge_hold.txt"
+	var text := FileAccess.get_file_as_string(path)
+	var Episode: GDScript = Story.military().find_episode(&"ridge_hold").get_script()
+	var plain: RefCounted = Episode.parse(text.replace("before_music = battle_tense\n", "").replace("after_music = talk_bright\n", ""), path)
+	assert_eq(plain.problems, PackedStringArray())
+	assert_eq(plain.before_talk_music(), &"battle_tense", "前の会話は、書かなければ、その話の対戦の曲")
+	assert_eq(plain.after_talk_music(), Catalog.AFTER_TALK_MUSIC, "あとの会話は、書かなければ、落ち着いた曲")
+	var wrong: RefCounted = Episode.parse(text.replace("before_music = battle_tense", "before_music = battle_boss"), path)
+	assert_eq(wrong.problems.size(), 1, "前の会話に、対戦と違う戦いの曲は書けない")
+
+
+func test_battle_music_is_quieter_under_talk() -> void:
+	assert_eq(SceneFlow.music_offset_db(SceneFlow.TALK, &"battle_tense"), Catalog.TALK_BATTLE_DB, "会話の間の対戦の曲は小さく")
+	assert_eq(SceneFlow.music_offset_db(SceneFlow.TALK, &"talk_calm"), 0.0, "会話の曲は表の大きさ")
+	assert_eq(SceneFlow.music_offset_db(SceneFlow.BATTLE, &"battle_tense"), 0.0, "対戦の場面では表の大きさ")
+	var sound := _sound()
+	sound.play_scene_music(&"battle_tense", Catalog.TALK_BATTLE_DB)
+	var player: AudioStreamPlayer = sound._music[sound._active]
+	sound.play_scene_music(&"battle_tense")
+	assert_true(sound._music[sound._active] == player, "会話から対戦へ同じ曲なら、鳴らし直さない")
+	assert_eq(sound.current_offset_db(), 0.0, "大きさだけ表の大きさへ戻す")
+	_drop(sound)
 
 
 func test_music_for_falls_back_to_the_scene_table() -> void:

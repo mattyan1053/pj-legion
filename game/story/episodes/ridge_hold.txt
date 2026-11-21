@@ -11,6 +11,8 @@
 title = 尾根の籠城
 map = ridge_path
 music = battle_tense
+before_music = battle_tense
+after_music = talk_bright
 hold_turns = 10
 
 [unlock]
