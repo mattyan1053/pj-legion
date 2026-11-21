@@ -1923,6 +1923,10 @@ func _leave_battle(app: Node) -> void:
 		_expect(card.get_global_rect().size.x > 0.0 and _on_screen(card), "マップのカードが画面からはみ出す: %s" % field)
 	stages.hover(VersusFields.TWIN_SPRINGS)
 	_expect(stages.note_text().contains(VersusFields.title_of(VersusFields.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
+	# 背景の景色は、乗せたマップのものに替わる（少し待ってから、幕を沈めて替える。ここでは待たずに替える）。
+	_expect(stages.scape_field() == VersusFields.TWIN_SPRINGS, "カードに乗せても、背景の景色がそのマップに替わろうとしない")
+	stages.show_scape_now()
+	_expect(stages.backdrop_look() == VersusFields.look_of(VersusFields.TWIN_SPRINGS), "カードに乗せても、背景の景色がそのマップのものにならない: %s" % stages.backdrop_look())
 	stages.hover(&"")
 	# どのカードに乗せても、ほかの部品（説明の欄、カードの段、ボタン）の位置と大きさが変わらない（説明の長さで揺れない）。
 	var cards: Array[Node] = []
@@ -1954,6 +1958,7 @@ func _leave_battle(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.SETUP, "マップ選択のカードで、対戦設定へ進まない")
 	_expect(app.current_scene().setup_panel().current_choice().field == VersusFields.LABYRINTH, "選んだマップが対戦設定に渡らない")
+	_expect(app.current_scene().backdrop_look() == VersusFields.look_of(VersusFields.LABYRINTH), "対戦設定の背景が、選んだマップの景色でない: %s" % app.current_scene().backdrop_look())
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.MAP_SELECT, "対戦設定の「マップ選択へ戻る」で、マップ選択へ戻らない")
