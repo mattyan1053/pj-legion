@@ -2515,6 +2515,7 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 			break
 		await get_tree().process_frame
 	_expect(result.can_continue() and result.new_board_fields().is_empty() and not result.can_go_to_setup(), "勝った話の決着の画面の行き先が違う（「次へ」が無い、か、選び直す行き先がある）")
+	_expect(not result.can_leave(), "勝った話の決着の画面に「話の一覧へ」がある（あとの会話を読まずに抜けられる）")
 	return result
 
 
