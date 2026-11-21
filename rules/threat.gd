@@ -153,6 +153,7 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 				var gunner := moved.copy()
 				gunner.site_range = bonus
 				_attacks(sim, unit.id, gunner, [cell], map)
+				_barrels(sim, unit.id, gunner, gunner, [cell], map)  # 伸びた射程で撃てる樽の爆発も
 	var skill := Skills.of(unit)
 	if skill == null or not Skills.can_use(sim, unit):
 		return

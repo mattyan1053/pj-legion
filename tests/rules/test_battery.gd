@@ -142,6 +142,16 @@ func test_threat_counts_the_longer_reach_from_a_battery() -> void:
 	assert_false(Threat.of(battle, sniper.id).hits.has(far), "砲台が無ければ届かない")
 
 
+func test_threat_counts_barrels_within_the_longer_reach() -> void:
+	var battle := _lane()
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 0))
+	var barrel := Vector2i(2 + UnitKind.attack_range(UnitKind.Id.SNIPER) + MapObject.BATTERY_RANGE, 0)
+	battle.board.add_barrel(barrel)
+	assert_true(Threat.of(battle, sniper.id).hits.has(barrel + Vector2i(1, 0)), "砲台から撃てる樽の爆発")
+	battle.board.battery_cells.clear()
+	assert_false(Threat.of(battle, sniper.id).hits.has(barrel + Vector2i(1, 0)))
+
+
 func test_cpu_steps_onto_a_battery_to_shoot() -> void:
 	var battle := _lane()
 	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 1))
