@@ -154,6 +154,27 @@ static func scene_shade() -> Control:
 	return shade
 
 
+## 裂けた空の景色（title_backdrop.gd）の上にカードを並べる画面の幕（物語選択、話の一覧）。空の色を残すため、全体は沈めない。
+## 上（見出しの後ろ）と下（下の欄とボタンの後ろ）を夜の藍へ沈め、四隅をさらに沈める。入力は通す。
+static func vista_shade() -> Control:
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.24, 0.6, 1.0])
+	gradient.colors = PackedColorArray([Color(Palette.INK, 0.6), Color(Palette.INK, 0.08), Color(Palette.INK, 0.2), Color(Palette.INK, 0.78)])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill_from = Vector2(0.5, 0.0)
+	texture.fill_to = Vector2(0.5, 1.0)
+	texture.width = 8
+	texture.height = 128
+	var shade := TextureRect.new()
+	shade.texture = texture
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.add_child(vignette(0.8))
+	return shade
+
+
 ## 板の中の小見出し（LABEL_SECTION）と、その右へ伸びる細い線。欄の頭に置く。
 static func section_head(text: String, font_size := 15) -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -178,6 +199,14 @@ static func window_rule(color := Palette.BORDER) -> Control:
 	rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rule.set(&"color", color)
 	return rule
+
+
+## 字の間を空けた明朝（景色の上に直に置く大きな見出し）。spacing は字の間（px）。
+static func spaced_heading(spacing: int) -> FontVariation:
+	var spaced := FontVariation.new()
+	spaced.base_font = FONT_HEADING
+	spaced.spacing_glyph = spacing
+	return spaced
 
 
 ## 窓の見出し（明朝）にする。label は窓の頭の Label。
