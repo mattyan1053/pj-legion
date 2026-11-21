@@ -23,6 +23,14 @@ const MUSIC := {
 	&"battle_ruins": {"path": "res://assets/audio/oga-battle/great_labyrinth.ogg", "loop": true, "volume_db": -10.0},
 	## 対戦（結晶の森。打楽器の刻みが続く、異国風の戦いの曲）。
 	&"battle_crystal": {"path": "res://assets/audio/oga-battle/sigil.ogg", "loop": true, "volume_db": -4.0},
+	## 対戦（峠。木管と弦と打楽器の、ファンタジーの戦いの曲）。
+	&"battle_fields": {"path": "res://assets/audio/oga-battle/fantasy_battlegrounds.ogg", "loop": true, "volume_db": -10.0},
+	## 対戦（尾根・採掘場。ホルンと小太鼓の、軍の行進のような戦いの曲）。
+	&"battle_march": {"path": "res://assets/audio/oga-battle/the_battlefield.ogg", "loop": true, "volume_db": -4.5},
+	## 対戦（演習場・深い森。勇ましいが角の立たない、騎士の戦いの曲）。
+	&"battle_knight": {"path": "res://assets/audio/oga-battle/a_knights_challenge.ogg", "loop": true, "volume_db": -8.0},
+	## 魔物（古戦場・縫い目の谷。合唱と太鼓の、戦の嘆きの曲。4 分近くあり、静かな所と山がある）。
+	&"battle_lament": {"path": "res://assets/audio/oga-battle/laments_of_the_war.ogg", "loop": true, "volume_db": -10.5},
 	## 守り切る戦い（弦の速い刻みと金管。時間に追われる曲）。話のファイルの music で選ぶ。
 	&"battle_tense": {"path": "res://assets/audio/oga-battle/determined_pursuit_loop.ogg", "loop": true, "volume_db": -8.5},
 	## 中ボスを倒す戦い（巨大な魔物に挑む曲）。
@@ -33,6 +41,8 @@ const MUSIC := {
 	&"battle_undead": {"path": "res://assets/audio/oga-battle/the_march_of_devils_dome.ogg", "loop": true, "volume_db": -10.0},
 	## 終盤（どちらかの将の HP が半分を切った）。対戦の途中で、この曲へフェードで替わる（CLIMAX_MUSIC）。
 	&"battle_climax": {"path": "res://assets/audio/oga-battle/epic_boss_battle_loop.ogg", "loop": true, "volume_db": -14.5},
+	## 終盤（物語の最後の話）。話のファイルの climax_music で選ぶ。弦と金管のドラマの曲。
+	&"battle_final": {"path": "res://assets/audio/oga-battle/the_final_battle.ogg", "loop": true, "volume_db": -7.5},
 	## ストーリーの会話（話のファイルの before_music・after_music で選ぶ。docs/sound.md）。前の会話は、ふつうは対戦の曲を小さく（TALK_BATTLE_DB）。
 	## 軽い会話（酒場の曲。演習の始まりなど）。
 	&"talk": {"path": "res://assets/audio/randommind/medieval_the_old_tower_inn_loop.ogg", "loop": true, "volume_db": -2.5},
@@ -51,7 +61,7 @@ const MUSIC := {
 }
 
 ## 終盤の曲。対戦の途中で、どちらかの将の HP が CLIMAX_KING_HP（最大 HP に対する割合）以下になったら（倒れたときも）、
-## この曲へ替わる（battle_screen.gd）。戻らない。新しい対戦を始めると、その対戦の曲に戻る。
+## この曲へ替わる（battle_screen.gd）。ストーリーの話は、話のファイルの climax_music で選び直せる（battle_source.gd の climax_music）。戻らない。新しい対戦を始めると、その対戦の曲に戻る。
 const CLIMAX_MUSIC := &"battle_climax"
 const CLIMAX_KING_HP := 0.5
 
@@ -137,13 +147,13 @@ const LOOK_MUSIC := {
 	StageLook.GRASSLAND: &"battle",
 	StageLook.STONE_WALLS: &"battle_ruins",
 	StageLook.CRYSTAL_FOREST: &"battle_crystal",
-	StageLook.QUARRY: &"battle_crystal",
-	StageLook.SEAM: &"battle_crystal",
-	StageLook.BARROW: &"battle_ruins",
-	StageLook.PASS: &"battle",
-	StageLook.RIDGE: &"battle_ruins",
-	StageLook.DEEP_FOREST: &"battle_crystal",
-	StageLook.DRILL_YARD: &"battle_ruins",
+	StageLook.QUARRY: &"battle_march",
+	StageLook.SEAM: &"battle_lament",
+	StageLook.BARROW: &"battle_lament",
+	StageLook.PASS: &"battle_fields",
+	StageLook.RIDGE: &"battle_march",
+	StageLook.DEEP_FOREST: &"battle_knight",
+	StageLook.DRILL_YARD: &"battle_knight",
 }
 
 

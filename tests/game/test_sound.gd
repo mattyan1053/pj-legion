@@ -52,6 +52,29 @@ func test_each_look_has_its_battle_music() -> void:
 	assert_eq(Catalog.battle_music(&"no_such_look"), &"battle", "知らない見た目は、いつもの対戦の曲")
 
 
+## 同じ曲が続けて当たらない: 物語の並びで隣り合う話の対戦の曲は違う。対戦モードの、並びで隣り合うマップの曲も違う。
+func test_neighbouring_battles_differ_in_music() -> void:
+	for of_campaign: RefCounted in Story.campaigns():
+		var previous := &""
+		for episode: RefCounted in of_campaign.episodes:
+			var track: StringName = StoryBattle.new(episode, null).music()
+			assert_ne(track, previous, "%s: 前の話と同じ対戦の曲 %s" % [episode.id, track])
+			previous = track
+	var ids := VersusFields.ids()
+	for i in range(1, ids.size()):
+		assert_ne(Catalog.battle_music(VersusFields.look_of(ids[i])), Catalog.battle_music(VersusFields.look_of(ids[i - 1])),
+				"対戦モードの隣り合うマップ %s と %s" % [ids[i - 1], ids[i]])
+
+
+func test_story_climax_music() -> void:
+	for episode: RefCounted in Story.all_episodes():
+		var track: StringName = StoryBattle.new(episode, null).climax_music()
+		assert_true(Catalog.has_music(track) and Catalog.MUSIC[track]["loop"], "%s の終盤の曲 %s" % [episode.id, track])
+	assert_eq(MatchChoice.new().climax_music(), Catalog.CLIMAX_MUSIC, "対戦モードは、いつもの終盤の曲")
+	var last: RefCounted = Story.campaigns()[0].episodes[-1]
+	assert_ne(StoryBattle.new(last, null).climax_music(), Catalog.CLIMAX_MUSIC, "物語の最後の話は、別の終盤の曲")
+
+
 func test_versus_battle_plays_the_music_of_its_look() -> void:
 	for field: StringName in VersusFields.all_ids():
 		var choice := MatchChoice.new()

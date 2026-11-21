@@ -14,6 +14,7 @@
 title = 縫い目の発破
 map = crystal_quarry
 music = battle_tense
+climax_music = battle_final
 before_music = battle_tense
 after_music = talk_calm
 

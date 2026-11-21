@@ -11,7 +11,7 @@
 [episode]
 title = 尾根の砦
 map = ridge_path
-before_music = battle_ruins
+before_music = battle_march
 after_music = talk_calm
 wins = hq_captured, routed
 
