@@ -7,8 +7,11 @@ extends RefCounted
 ## 砲台: 盤の決まった場所に砲台が置かれ、後衛が乗ると射程が伸びる（docs/map-objects.md の「砲台」）。
 const BATTERY := &"battery"
 
+## 作戦: 対戦の前に選んだ札を、対戦中に 1 回ずつ使う（docs/tactics.md）。
+const TACTICS := &"tactics"
+
 ## 名前の一覧（画面の並び）。
-const ALL: Array[StringName] = [BATTERY]
+const ALL: Array[StringName] = [BATTERY, TACTICS]
 
 
 static func is_known(id: StringName) -> bool:

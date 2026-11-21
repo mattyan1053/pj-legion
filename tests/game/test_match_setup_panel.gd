@@ -178,3 +178,17 @@ func test_the_battery_row_turns_the_trial_on_and_off() -> void:
 	panel.choose_trial(TrialRules.BATTERY, false)
 	assert_false(panel.current_choice().has_trial(TrialRules.BATTERY))
 	panel.free()
+
+
+func test_the_tactic_cards_show_only_with_the_trial_and_keep_two() -> void:
+	var panel := MatchSetupPanel.new()
+	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
+	panel.open(MatchChoice.new())
+	assert_eq(panel.trial_note(TrialRules.BATTERY), "砲台: 後衛が乗ると射程 +%d" % MapObject.BATTERY_RANGE)
+	panel.choose_trial(TrialRules.TACTICS, true)
+	panel.choose_tactic(Unit.Side.PLAYER1, Tactics.Id.WARD)
+	assert_eq(panel.current_choice().tactics[0].size(), Tactics.HAND_SIZE)
+	assert_true(panel.current_choice().tactics[0].has(Tactics.Id.WARD))
+	assert_true(panel.current_choice().has_trial(TrialRules.TACTICS))
+	panel.free()
+

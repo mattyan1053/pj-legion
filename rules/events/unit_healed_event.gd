@@ -10,12 +10,14 @@ extends BattleEvent
 ## - SpringHealedEvent: 回復の泉（cell）
 ## - RegenerationHealedEvent: 進化先の特性の再生（固有の値は無い）
 ## - SanctuaryHealedEvent: 聖域（effect_id）
+## - TacticHealedEvent: 作戦の補給（固有の値は無い）
 
 enum Cause {
 	HEAL,  ## 回復役の回復
 	SPRING,  ## 回復の泉
 	REGENERATION,  ## 進化先の特性の再生
 	SANCTUARY,  ## 聖域
+	TACTIC,  ## 作戦（補給）
 }
 
 var unit_id: int

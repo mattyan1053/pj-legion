@@ -51,6 +51,8 @@ battle.log.heal,{healer}が{target}を {amount} 回復（HP {hp}）
 battle.log.healed.sanctuary,{unit}が聖域で {amount} 回復（HP {hp}）
 battle.log.healed.spring,{unit}が回復の泉で {amount} 回復（HP {hp}）
 battle.log.healed.regeneration,{unit}が再生で {amount} 回復（HP {hp}）
+battle.log.healed.tactic,{unit}が補給で {amount} 回復（HP {hp}）
+battle.log.tactic,{side}が作戦「{tactic}」を使った
 battle.log.status,{unit}に{status}（{turns} ターン）
 battle.log.status_group,{status}（{turns} ターン）: {units}
 battle.log.status_self,{status}が付いた（{turns} ターン）
@@ -132,6 +134,9 @@ battle.menu.skill.used_up,スキル（使用済み）
 battle.menu.skill.unusable,スキル（使用不可）
 battle.menu.skill.uses_left,{skill}（あと {uses} 回）
 battle.ult_button.none,必殺技（なし）
+battle.tactic.caption,作戦
+battle.tactic.used,{tactic}（使用済み）
+battle.tactic.confirm,{tactic}: もう一度押して使う
 battle.ult_button.confirm,もう一度押して発動
 battle.ult_button.ready,必殺技: {ult}（使用可）
 battle.ult_button.charging,必殺技: {ult}（{percent}%）
@@ -224,6 +229,7 @@ battle.pop.smoked,煙幕で防いだ
 battle.pop.refreshed,再行動
 battle.pop.skill_ready,スキル使用可
 battle.banner.ult,{side}　必殺技: {ult}!!
+battle.banner.tactic,{side}　作戦: {tactic}
 battle.banner.relic,{side}　{relic}を手に入れた（{effect}）
 battle.banner.phase,ターン {turn}　{side}の番
 battle.menu_resume.setup,対戦設定へ戻る
