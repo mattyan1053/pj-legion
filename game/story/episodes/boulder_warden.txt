@@ -11,6 +11,8 @@
 title = 峠の番人
 map = boulder_pass
 music = battle_boss
+before_music = battle_boss
+after_music = talk_dark
 wins = boss_slain
 
 [unlock]

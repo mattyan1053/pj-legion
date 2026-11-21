@@ -14,6 +14,8 @@
 title = 縫い目の発破
 map = crystal_quarry
 music = battle_tense
+before_music = battle_tense
+after_music = talk_calm
 
 [ally]
 name = ハーデン

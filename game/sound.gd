@@ -33,6 +33,9 @@ var _fades: Array[Tween] = [null, null]
 ## いま鳴らしている（か、鳴らし終えた）曲の名前と、場面の曲の名前。
 var _track := &""
 var _scene_track := &""
+## いまの曲と場面の曲の、表の大きさからの差（dB。会話の場面で対戦の曲を小さくする。sound_catalog.gd の talk_offset_db）。
+var _offset_db := 0.0
+var _scene_offset_db := 0.0
 var _voices: Array[AudioStreamPlayer] = []
 var _next_voice := 0
 ## 名前 -> 最後に鳴らしたフレーム（同じフレームに同じ音を重ねない）。
@@ -113,14 +116,16 @@ static func _set_bus(bus_name: StringName, percent: float, muted: bool) -> void:
 
 
 ## 場面の曲を track にして鳴らす（空なら止める）。同じ曲が鳴っていれば、鳴らし直さない。
-func play_scene_music(track: StringName) -> void:
+## offset_db: 表の大きさからの差（会話の場面で対戦の曲を小さくする）。同じ曲で差だけ違えば、その大きさへフェードする。
+func play_scene_music(track: StringName, offset_db := 0.0) -> void:
 	_scene_track = track
-	play_music(track)
+	_scene_offset_db = offset_db
+	play_music(track, offset_db)
 
 
 ## 場面の曲へ戻す（決着の曲のあと、新しい対戦を始めたとき）。
 func resume_scene_music() -> void:
-	play_music(_scene_track)
+	play_music(_scene_track, _scene_offset_db)
 
 
 ## 1 回だけの曲（決着）を鳴らす。場面の曲は覚えたまま。
@@ -129,12 +134,16 @@ func play_jingle(track: StringName) -> void:
 
 
 ## 曲 track へ、フェードでつなぐ。空の名前・表に無い名前・素材の無い名前なら、いまの曲を消すだけ。
-## 同じ曲が鳴っていれば、何もしない（場面を行き来しても、曲を頭から鳴らし直さない）。
-func play_music(track: StringName) -> void:
+## 同じ曲が鳴っていれば、鳴らし直さない（場面を行き来しても、曲を頭から鳴らし直さない）。大きさ（offset_db）が違えば、そこへフェードする。
+func play_music(track: StringName, offset_db := 0.0) -> void:
 	if track == _track:
+		if offset_db != _offset_db and track != &"":
+			_offset_db = offset_db
+			_fade(_active, _volume_of(track), false)
 		return
 	var stream := _music_stream(track)
 	_track = track if stream != null else &""
+	_offset_db = offset_db
 	_fade(_active, SILENT_DB, true)
 	if stream == null:
 		return
@@ -144,7 +153,17 @@ func play_music(track: StringName) -> void:
 	player.volume_db = SILENT_DB
 	if _audible():
 		player.play()
-	_fade(_active, Catalog.MUSIC[track].get("volume_db", 0.0), false)
+	_fade(_active, _volume_of(track), false)
+
+
+## 曲 track を、いまの差（_offset_db）で鳴らすときの大きさ（dB）。
+func _volume_of(track: StringName) -> float:
+	return Catalog.MUSIC[track].get("volume_db", 0.0) + _offset_db
+
+
+## いまの曲の、表の大きさからの差（dB）。検査用。
+func current_offset_db() -> float:
+	return _offset_db
 
 
 ## いま鳴らしている曲の名前（止めているか、1 回だけの曲を鳴らし終えたなら空）。検査用。

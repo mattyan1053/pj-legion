@@ -101,9 +101,10 @@ func play_jingle(track: StringName) -> void:
 
 
 ## 場面の曲を track にする（対戦の画面が、盤の見た目や話で曲を決める）。同じ曲が鳴っていれば、鳴らし直さない。
-func play_scene_music(track: StringName) -> void:
+## offset_db は表の大きさからの差（会話の場面で対戦の曲を小さくする）。
+func play_scene_music(track: StringName, offset_db := 0.0) -> void:
 	if sound != null:
-		sound.call(&"play_scene_music", track)
+		sound.call(&"play_scene_music", track, offset_db)
 
 
 ## 場面の曲へ戻す（決着の曲のあと、新しい対戦を始めたとき）。

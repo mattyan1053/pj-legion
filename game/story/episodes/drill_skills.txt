@@ -9,6 +9,8 @@
 [episode]
 title = スキルと必殺技
 map = drill_field
+before_music = battle_ruins
+after_music = talk_bright
 lesson = 駒ごとのスキルと、ゲージをためて使う軍の必殺技。
 
 [unlock]
