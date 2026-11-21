@@ -247,12 +247,13 @@ func _decide() -> BattleAction:
 	var evolving := _battle.evolving_unit()
 	if evolving != null:
 		return _choose_evolution(evolving)
-	if Ults.can_use(_battle) and call(ULT_USES[Ults.of(_battle, _me).id()]):
-		return UseUltAction.new()
+	# 決めた移動の続き（転移と、その先の移動）は、ほかの手より先に返す（移動 1 回ぶんの手として決めたものなので、間に挟まない）。
 	var acting := _battle.unit_by_id(_battle.acting_unit_id)
 	var step := _next_route_step(acting)
 	if step != null:
 		return step
+	if Ults.can_use(_battle) and call(ULT_USES[Ults.of(_battle, _me).id()]):
+		return UseUltAction.new()
 	if acting != null:
 		return _follow_up(acting)
 	var unit := _next_unit()
