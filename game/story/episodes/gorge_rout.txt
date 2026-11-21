@@ -10,7 +10,6 @@
 [episode]
 title = 岩山の掃討
 map = crystal_gorge
-look = crystal_forest
 music = battle_rout
 wins = routed
 
