@@ -33,7 +33,11 @@ sortie.option.default.note,雇える駒で自動編成
 sortie.option.saved.note,{count} 体・コスト {cost} / {budget}
 sortie.option,{name}　　{note}
 talk.skip,スキップ
-talk.hint,クリック・Enter: 次へ ▼　右クリック: 戻る
+talk.log,ログ
+talk.log.tooltip,これまでの会話を読む（ホイールを上へ・L でも）
+talk.log.title,会話のログ
+talk.log.close,閉じる
+talk.hint,クリック・Enter: 次へ ▼　右クリック: 戻る　ホイール: ログ
 talk.resume,会話へ戻る
 talk.next_episode,次の話へ
 story.episodes.roster,"雇える駒: {kinds}
