@@ -671,3 +671,33 @@ func _any_episode(id: StringName) -> RefCounted:
 			return episode
 	assert_true(false, "話が無い: %s" % id)
 	return null
+
+
+## 確かめ用の解放（F5）: 開いている間は、どの話も遊べ、全部の解放を使える。記録には書かない。戻すと元の進み具合。
+func test_opening_everything_for_checks_never_touches_the_record() -> void:
+	var story := Story.new()
+	story.store = _store()
+	story.load_saved()
+	var episodes: Array = Story.military().episodes
+	story.clear(episodes[0].id)
+	var saved: Dictionary = _store().read(Story.STORE_NAME)
+	var real_kinds := story.unlocked_kinds().duplicate()
+	story.open_all = true
+	for episode: RefCounted in episodes:
+		assert_true(story.is_available(episode), "開いても、%s を遊べない" % episode.title)
+	var all := Story.starting(Story.military())
+	for episode: RefCounted in episodes:
+		all.add(episode)
+	assert_eq(story.unlocked().kinds, all.kinds, "開いても、全部の駒を雇えない")
+	assert_eq(story.unlocked().budget, all.budget, "開いても、コストの上限が全部の解放のぶん上がらない")
+	# 開いている間に勝った話は、その起動のあいだだけクリアになる（記録は変わらない）。
+	var last: RefCounted = episodes[-1]
+	assert_true(story.run_now(last).size() > 0)
+	story.clear(last.id)
+	assert_true(story.is_cleared(last.id))
+	assert_eq(_store().read(Story.STORE_NAME), saved, "開いている間のクリアを、記録に書いた")
+	story.open_all = false
+	assert_false(story.is_cleared(last.id), "戻しても、開いている間のクリアが残る")
+	assert_false(story.is_available(episodes[2]), "戻しても、先の話が遊べる")
+	assert_eq(story.unlocked_kinds(), real_kinds, "戻しても、解放が残る")
+	_cleanup()
