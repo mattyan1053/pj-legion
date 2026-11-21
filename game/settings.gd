@@ -92,7 +92,7 @@ const ITEMS: Array[Dictionary] = [
 		# 値は unit_looks.gd の ORDER の番号（組の名前ではなく番号で取っておく。CHOICE は数の値だけを持つ）。
 		"key": UNIT_LOOK, "section": "settings.section.screen", "label": "settings.unit_look",
 		"note": "settings.unit_look.note",
-		"kind": Kind.CHOICE, "choices": [[0, "settings.unit_look.kaykit"], [1, "settings.unit_look.tokens"], [2, "settings.unit_look.quaternius"]], "default": 0,
+		"kind": Kind.CHOICE, "choices": [[0, "settings.unit_look.kaykit"], [1, "settings.unit_look.tokens"], [2, "settings.unit_look.quaternius"], [3, "settings.unit_look.mini"]], "default": 2,
 	},
 ]
 
