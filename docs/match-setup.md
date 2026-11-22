@@ -62,7 +62,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 - **対戦モードの既定は、拠点あり・砲台なし・組み方なし**（`OptionalRules.DEFAULTS`。`game/match_choice.gd` の `rules` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。砲台はまだ試し。
 - `MatchSetup` の既定は空（どれも切）。**ストーリーの話は、入にしない。** 切のとき、対戦は 1 局も変わらない（盤も、駒も、CPU の手も）。
 - 入にするのは、`MatchSetup.rules` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
-- 画面では、対戦設定のパネルの「拠点」「砲台（試し）」の行の「あり」「なし」で入・切する（`game/match_choice.gd` の `rules`、`set_rule`）。
+- 画面では、対戦設定のパネルの「拠点」「砲台（試し）」「組み方（試し）」の行の「あり」「なし」で入・切する（`game/match_choice.gd` の `rules`、`set_rule`）。
   集計の道具は、付けなければ対戦モードの既定で回し、`--rules=<名前>` でそれだけ入、`--rules=none` で全部切（`docs/cpu-ai.md`）。
 - CPU は、入の決まりを知って打つ。
 
