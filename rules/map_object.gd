@@ -27,7 +27,7 @@ const BLAST_DAMAGE := 15
 ## 回復の泉の回復量。
 const SPRING_HEAL := 12
 ## 砲台に乗った後衛の射程の伸び。
-const BATTERY_RANGE := 3
+const BATTERY_RANGE := 4
 
 
 ## unit が cell に立ったときの、砲台による射程の伸び。後衛が、置かれた砲台（Board.battery_cells）のマスに立ったときだけ BATTERY_RANGE。
