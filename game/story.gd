@@ -331,6 +331,24 @@ static func number_of(episode: Episode) -> int:
 	return 0 if of_campaign == null else of_campaign.episodes.find(episode) + 1
 
 
+## 物語 of_campaign の、背景に景色を見せる話（物語選択・セーブデータ選択。title_backdrop.gd の show_story）:
+## クリアしたいちばん先の話 last の次の話（last が最後の話ならそれ。last が無ければ最初の話）。
+static func scape_episode(of_campaign: Campaign, last: Episode) -> Episode:
+	if last == null:
+		return of_campaign.episodes[0]
+	var at := of_campaign.episodes.find(last)
+	return of_campaign.episodes[mini(at + 1, of_campaign.episodes.size() - 1)]
+
+
+## 物語 of_campaign で、まだクリアしていない最初の話（全部クリアしていたら最後の話）。背景に景色を見せる話。
+func scape_episode_in(of_campaign: Campaign) -> Episode:
+	var cleared := _cleared_in(of_campaign)  # いま選んでいる物語でなくても、その物語の記録を見る
+	for episode: Episode in of_campaign.episodes:
+		if not cleared.has(String(episode.id)):
+			return episode
+	return of_campaign.episodes[-1]
+
+
 ## 次に遊ぶ話（いまの物語で）: まだクリアしていない最初の話。全部クリアしていたら最初の話。
 func next_episode() -> Episode:
 	for episode: Episode in campaign.episodes:
@@ -531,9 +549,13 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 	run.menu_exits = [[EPISODE_LIST, "story.episodes.resume", "menu.to_episodes.confirm"]]
 	var battle := StoryBattle.new(episode, human_deck)
 	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃準備で、battle の人の部隊を選び直す
-	run.add(TALK, talk_of(episode, episode.before, episode.before_talk_music()), true)
+	var before := talk_of(episode, episode.before, episode.before_talk_music())
+	before["battle"] = battle  # 背景の盤に、出撃準備で決めた初期位置の駒を立たせる（talk_screen.gd）
+	run.add(TALK, before, true)
 	run.add(BATTLE, battle)
 	var after := talk_of(episode, episode.after, episode.after_talk_music())
+	after["battle"] = battle  # 背景の盤に、決着したときの駒を立たせる
+	after["after"] = true
 	for news_line: Dictionary in news:
 		var line := {"side": NOTICE_SIDE, "name": notice_name()}
 		line.merge(news_line)
@@ -565,6 +587,7 @@ static func episode_after(episode: Episode) -> Episode:
 ## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文}, …],
 ## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲 track（前の会話・あとの会話の曲。episode.gd の before_talk_music・after_talk_music。空なら場面の表の曲）,
 ## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
+## 話の流れ（run_of）は、さらに "battle"（話の対戦。story_battle.gd。背景の盤に駒を立たせる）と "after"（あとの会話か）を足す。
 static func talk_of(episode: Episode, rows: Array, track := &"") -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row: Array in rows:

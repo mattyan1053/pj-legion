@@ -60,6 +60,7 @@ var _cards := {}
 var _roster: Label
 var _saved: Label
 var _scroll: ScrollContainer
+var _backdrop: TitleBackdrop
 ## 左右の矢印で選んでいるカードの番号（話の並びの順。選んでいなければ -1）。
 var _key_index := -1
 
@@ -67,9 +68,13 @@ var _key_index := -1
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき
-	# 背景はタイトルと同じ世界（裂けた空の下の結晶の森）を、その物語の国の側の空へ向いて見る（ベルク連邦は琥珀、リュエル騎士領は菫）。
+	# 背景はタイトルと同じ裂けた空の下で、その物語の国の側の空へ向き、空をその国の色へ寄せる（ベルク連邦は琥珀、リュエル騎士領は菫）。
+	# 地面は、選んでいる話のマップの景色（開いたときは次に遊ぶ話。カードに乗せると、その話のマップに替わる。title_backdrop.gd の show_story）。
 	var army: UnitKind.Army = context.story.campaign.army
-	add_child(TitleBackdrop.new(TitleBackdrop.view_of(army)))
+	_backdrop = TitleBackdrop.new()
+	var first := context.story.next_episode()
+	_backdrop.show_story(army, first.map.make_board(), first.look, first.id)
+	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	layer.add_child(UiTheme.vista_shade())
@@ -313,6 +318,19 @@ func select_by_key(index: int) -> void:
 	var card: Button = _cards[listed[index]]
 	card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
 	_scroll.ensure_control_visible(card)
+	focus(listed[index])
+
+
+## 話 episode を選んでいる（マウスを乗せた・キーで選んだ）: 背景の景色を、その話のマップのものに替える（とどまったら）。まだ遊べない話は替えない。
+func focus(episode: Episode) -> void:
+	if not context.story.is_available(episode) or _backdrop.story_key() == episode.id:
+		return
+	_backdrop.queue_story(context.story.campaign.army, episode.map.make_board(), episode.look, episode.id)
+
+
+## 背景が見せている（替える途中なら、これから見せる）話の id と、待たずに替える入口（検査とスクリーンショットの道具用）。
+func backdrop() -> TitleBackdrop:
+	return _backdrop
 
 
 ## キーボードで選んでいる話（無ければ null。検査用）。
@@ -329,6 +347,9 @@ func _build_card(episode: Episode) -> Button:
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）
 	card.pressed.connect(choose.bind(episode))
+	if available:
+		card.mouse_entered.connect(focus.bind(episode))
+		card.mouse_exited.connect(func() -> void: _backdrop.cancel_queued())
 
 	# 上の縁に国の色の帯と淡い光（物語のカードと同じ向き）。まだ遊べない話は色を抜く。次に遊ぶ話は、帯を金にして目立たせる。
 	var decor := NationDecor.new(context.story.campaign.army, 0.0, 70.0)

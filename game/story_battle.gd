@@ -9,12 +9,17 @@ extends "res://game/battle_source.gd"
 
 const Episode := preload("res://game/episode.gd")
 
+## 会話の背景に映す、始めの盤を作る種（話の盤と敵の並びは種に依らない）。
+const TALK_SEED := 1
+
 ## 話（episode.gd）。
 var episode: Episode
 ## 人の部隊。
 var human_deck: Deck
 ## 人が出撃準備で決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
 var placement: Array[Vector2i] = []
+## いちばん最近に決着した対戦（record_end）。あとの会話の背景に、この盤の様子（生き残った駒）を映す。
+var ended_battle: Battle
 
 
 func _init(of_episode: Episode = null, deck: Deck = null) -> void:
@@ -65,6 +70,25 @@ func can_continue(won: bool) -> bool:
 ## 負けたら（引き分けも）、Enter は「同じマップで再戦」（話を進めるには勝つしかないので、まずはそのまま挑み直す）。
 func retries_on_enter(won: bool) -> bool:
 	return not won
+
+
+func record_end(ended: Battle) -> void:
+	ended_battle = ended
+
+
+## 会話の背景に映す盤の様子（talk_screen.gd）。前の会話（after が偽）は、出撃準備で決めた初期位置の味方と、話の並びの敵。
+## あとの会話は、決着したときの盤（生き残った駒）。まだ決着していなければ（検査で対戦を飛ばしたなど）、初期位置の味方だけ。
+## 作れなければ null（背景は駒の無い盤）。
+func talk_battle(after: bool) -> Battle:
+	if after and ended_battle != null:
+		return ended_battle
+	var setup := make_setup(TALK_SEED)
+	var shown := setup.create_battle() if setup != null else null
+	if shown != null and after:
+		for unit: Unit in shown.units.duplicate():
+			if unit.side != Unit.Side.PLAYER1:
+				shown.units.erase(unit)
+	return shown
 
 
 ## 陣営は「味方」「敵」と呼ぶ（敵を「CPU（赤）」と呼ばない）。
