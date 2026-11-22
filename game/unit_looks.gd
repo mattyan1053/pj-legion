@@ -11,10 +11,11 @@ const SETS := {
 	&"tokens": preload("res://game/looks/token_look.gd"),
 	&"quaternius": preload("res://game/looks/quaternius_look.gd"),
 	&"mini": preload("res://game/looks/mini_look.gd"),
+	&"kaykit2": preload("res://game/looks/kaykit2_look.gd"),
 }
 const DEFAULT := &"kaykit"
 ## オプションの「駒の見た目」の並び（settings.gd の UNIT_LOOK の値は、この並びの番号）。
-const ORDER: Array[StringName] = [&"kaykit", &"tokens", &"quaternius", &"mini"]
+const ORDER: Array[StringName] = [&"kaykit", &"tokens", &"quaternius", &"mini", &"kaykit2"]
 
 ## 将の別の姿の名前（見た目だけ。ルールの上では将のまま。docs/story.md の「話のファイル」の king_figure）。
 ## どの組も、ここに挙げた名前の姿を持つ（検査が確かめる）。話のファイルは、この名前で指すので、組を替えても通る。
