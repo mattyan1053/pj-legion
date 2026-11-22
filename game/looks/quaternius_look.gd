@@ -31,9 +31,9 @@ const KINDS := {
 	UnitKind.Id.COMMANDO: {"model": "Ninja_Male", "hold": "dagger", "attack": MELEE, "accent": {"Details": 0.0, "Main": 0.55}},
 	UnitKind.Id.MEDIC: {"model": "Doctor_Female_Young", "hold": "", "attack": SHOOT, "accent": {"Black": 0.1}},
 	UnitKind.Id.PALADIN: {"model": "Knight_Male", "hold": "sword", "attack": MELEE, "accent": {"Detail": 0.1, "Red": 0.3, "Armor_Dark": 0.45}},
-	UnitKind.Id.SORCERER: {"model": "Wizard", "hold": "staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
+	UnitKind.Id.SORCERER: {"model": "Elf", "hold": "staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
 	UnitKind.Id.SPELLBLADE: {"model": "Ninja_Female", "hold": "sword", "attack": MELEE, "accent": {"Main": 0.1, "Details": 0.5}},
-	UnitKind.Id.PRIEST: {"model": "Elf", "hold": "cleric_staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
+	UnitKind.Id.PRIEST: {"model": "Wizard", "hold": "cleric_staff", "attack": SHOOT, "accent": {"Clothes": 0.1, "Hat": 0.3}},
 }
 
 ## 武器（weapons/ のファイルと、その絵）。素材の FBX は絵を中に持たないので、絵を別に貼る。
