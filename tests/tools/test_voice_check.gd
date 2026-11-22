@@ -3,15 +3,6 @@ extends "res://tests/base_test.gd"
 ## 人間の言葉「ウルが導師と呼ばれているんだと認識するまで時間差がある」「口調が立場に対して違和感がある」（Issue #49、11/22）から。
 
 const VoiceCheck := preload("res://tools/voice_check.gd")
-const Story := preload("res://game/story.gd")
-const Campaign := preload("res://game/campaign.gd")
-const Episode := preload("res://game/episode.gd")
-
-## まだ口調の見本に合わせていない話（合わせたら消す。空になったら、この定数ごと消す）。
-const PENDING := [
-	"trial_shadow_step", "trial_eruption", "trial_evolution", "gorge_crossing", "gorge_rejoin", "ridge_siege", "barrow_vigil",
-	"crag_drums", "boulder_warden", "mist_forest", "ridge_bones", "vale_keeper",
-]
 
 const TABLE := """
 [pronouns]
@@ -56,18 +47,7 @@ func test_every_named_person_has_a_voice() -> void:
 func test_every_line_follows_the_table() -> void:
 	var table: VoiceCheck = VoiceCheck.load_table()
 	for line: String in table.check_all():
-		var pending := false
-		for id: String in PENDING:
-			pending = pending or line.contains("/%s [" % id)
-		assert_true(pending, line)
-
-
-func test_pending_episodes_exist() -> void:
-	var ids := {}
-	for episode: Episode in Story.all_episodes():
-		ids[String(episode.id)] = true
-	for id: String in PENDING:
-		assert_true(ids.has(id), "PENDING に、無い話: %s" % id)
+		assert_true(false, line)
 
 
 func test_a_wrong_pronoun_is_found() -> void:
