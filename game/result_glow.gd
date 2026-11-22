@@ -97,11 +97,6 @@ func stop() -> void:
 	_sync()
 
 
-## 粒が出ているか（検査用）。
-func is_emitting() -> bool:
-	return _particles.emitting
-
-
 func _place() -> void:
 	_particles.position = Vector2(size.x / 2.0, -12.0)
 	_particles.emission_rect_extents = Vector2(size.x / 2.0, 4.0)

@@ -23,7 +23,6 @@ const TURN := 0.38
 var _holder: SubViewportContainer
 var _crest: Crest
 var _side := 0
-var _army := UnitKind.Army.NONE
 var _shown: Array = []
 
 
@@ -46,7 +45,6 @@ func show_unit(kind: UnitKind.Id, side := 0, army := UnitKind.Army.NONE, evolved
 	_side = clampi(side, 0, TEAM_COLORS.size() - 1)
 	if UnitKind.is_neutral(kind):
 		_side = Unit.Side.NEUTRAL
-	_army = army
 	_crest.visible = army != UnitKind.Army.NONE
 	_crest.army = army
 	_crest.tint = Color(Crest.color_of(army), 0.13)

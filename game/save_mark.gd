@@ -51,7 +51,3 @@ func flash() -> void:
 	_tween.tween_interval(SHOW_TIME)
 	_tween.tween_property(_tag, "modulate:a", 0.0, FADE_TIME)
 
-
-## 印が出ているか（検査用）。
-func is_showing() -> bool:
-	return _tag.modulate.a > 0.0

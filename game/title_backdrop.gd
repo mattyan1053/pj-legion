@@ -104,11 +104,6 @@ static func map_view_of(army: UnitKind.Army) -> StringName:
 	return VIEW_RUEL_MAP if army == UnitKind.Army.FANTASY else VIEW_BERG_MAP
 
 
-## いまの構え（検査用）。
-func shown_view() -> StringName:
-	return _view
-
-
 func _ready() -> void:
 	StageLook.build_environment(self)
 	var board_sky := get_node(StageLook.SKY_NODE)  # 盤の空は使わない（裂けた空を描く）

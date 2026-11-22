@@ -13,7 +13,6 @@ const DIR := "res://assets/quaternius/"
 ## 素材は cm で入っている（骨の親が 100 倍）。盤の駒の大きさへの倍率と、そのときの体の高さ。
 const MODEL_SCALE := 0.47
 const MODEL_HEIGHT := 1.52
-const ANIM := "CharacterArmature|"
 ## 種類によらない動きの名前。
 const MOVES := {
 	&"idle": &"CharacterArmature|Idle", &"run": &"CharacterArmature|Walk", &"hit": &"CharacterArmature|RecieveHit",

@@ -73,11 +73,6 @@ func setup(battle: Battle, side: Unit.Side, defaults: Array[Vector2i], scenario_
 	focus_changed.emit()
 
 
-## 盤の大きさに合う、縮図の大きさ（1 マス cell_px）。
-func size_for(cell_px: float) -> Vector2:
-	return Vector2(_battle.board.size) * cell_px if _battle != null else Vector2.ZERO
-
-
 ## いまの置き方（本陣からのずれ。部隊の並びの順）。いつもの置き方と同じなら空（MatchSetup.placements に渡す）。
 func offsets() -> Array[Vector2i]:
 	var result: Array[Vector2i] = []

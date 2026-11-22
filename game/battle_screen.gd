@@ -658,11 +658,6 @@ func _update_climax() -> void:
 	context.play_scene_music(source.climax_music())
 
 
-## 終盤の曲に替えたか。検査用。
-func climax_started() -> bool:
-	return _climax
-
-
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
 ## mood は勝ったときの調子（静かなら、勝っても空 = ファンファーレを鳴らさない）。
 static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human_side: Unit.Side,
