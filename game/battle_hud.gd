@@ -1611,6 +1611,7 @@ func _build_bottom() -> void:
 ## 戦闘予測のパネル。中身は show_forecast()、置き場所は place_forecast() で決める。
 func _build_forecast() -> void:
 	_forecast = ForecastPanel.new()
+	Steady.mark(_forecast, "battle.forecast", Steady.WIDTH)  # 高さは、相手の数（行の数）で変わる
 	add_child(_forecast)
 	_forecast.setup(_team_colors, _char_width)
 
