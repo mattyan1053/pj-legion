@@ -96,11 +96,7 @@ func _ready() -> void:
 
 	# 画面の効果（光のにじみ、陰、色の調子）は、オプションで切れる。変えたら、いまの景色にもすぐ効く。
 	StageLook.set_effects(context.settings.value(AppContext.Settings.SCREEN_EFFECTS))
-	# 駒の縁取り（piece_style.gd）。次に作る駒から効く（いま立っている駒は替わらない）。
-	PieceStyle.outline = context.settings.value(AppContext.Settings.PIECE_OUTLINE)
 	context.settings.changed.connect(func(key: StringName) -> void:
-		if key == AppContext.Settings.PIECE_OUTLINE:
-			PieceStyle.outline = context.settings.value(key)
 		if key == AppContext.Settings.SCREEN_EFFECTS:
 			StageLook.set_effects(context.settings.value(key)))
 
@@ -215,6 +211,8 @@ func go(scene: StringName) -> void:
 		_current.queue_free()
 	# 駒の見た目の組は、場面を作るときにだけ替える（場面の途中でオプションを変えても、盤の駒とアイコンが混ざらない）。
 	UnitLooks.use(UnitLooks.name_at(context.settings.value(AppContext.Settings.UNIT_LOOK)))
+	# 駒の縁取り（piece_style.gd）も、場面を作るときに当てる（場面の途中で縁のある駒とない駒が混ざらない）。
+	PieceStyle.outline = context.settings.value(AppContext.Settings.PIECE_OUTLINE)
 	var node: Node = load(SceneFlow.script_path(scene)).new()
 	context.scene = scene  # 場面が run_data() で、流れが渡すものを受け取れるように
 	node.set(&"context", context)
