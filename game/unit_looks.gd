@@ -12,7 +12,7 @@ const SETS := {
 	&"quaternius": preload("res://game/looks/quaternius_look.gd"),
 	&"mini": preload("res://game/looks/mini_look.gd"),
 }
-const DEFAULT := &"quaternius"
+const DEFAULT := &"kaykit"
 ## オプションの「駒の見た目」の並び（settings.gd の UNIT_LOOK の値は、この並びの番号）。
 const ORDER: Array[StringName] = [&"kaykit", &"tokens", &"quaternius", &"mini"]
 

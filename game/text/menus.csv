@@ -102,6 +102,7 @@ setup.trial.tactics.note,作戦: {count} 枚選び、対戦中に 1 回ずつ使
 setup.trial.stronghold,拠点
 setup.trial.stronghold.note,拠点: 中央の拠点を {holds} 回確保すると勝ち
 setup.caption.tactics,作戦（{count} 枚）
+setup.tactic.note,{tactic}: {summary}
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成
 setup.placement,初期位置
