@@ -6,6 +6,7 @@ const MatchChoice := preload("res://game/match_choice.gd")
 const DeckLibrary := preload("res://game/deck_library.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
+const Names := preload("res://game/names.gd")
 
 
 ## 予算ぎりぎりで、装備をいちばん多く持たせた部隊（コマンドー 4 体に 3 つずつ）。
@@ -220,3 +221,27 @@ func test_the_tactic_cards_show_only_with_the_trial_and_keep_two() -> void:
 	assert_true(panel.current_choice().has_trial(TrialRules.TACTICS))
 	panel.free()
 
+
+
+## 札を選ぶと、その札の効果が試しの決まりの行の右に出る。欄の大きさは中身で変わらない（木に入れて測る）。
+func test_picking_a_tactic_card_shows_its_effect_in_a_fixed_note() -> void:
+	var panel := MatchSetupPanel.new()
+	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
+	panel.open(MatchChoice.new())
+	await settle(panel)
+	var before := panel._trial_note.size
+	assert_eq(before, MatchSetupPanel.TRIAL_NOTE_SIZE)
+	panel.choose_trial(TrialRules.TACTICS, true)
+	assert_eq(panel.trial_note_text(), panel.trial_note(TrialRules.TACTICS))
+	for id: Tactics.Id in Tactics.ALL:
+		panel.choose_tactic(Unit.Side.PLAYER2, id)
+		await settle(panel)
+		assert_eq(panel.trial_note_text(), "%s: %s" % [Names.tactic(id), Names.tactic_summary(id)])
+		assert_eq(panel._trial_note.size, before, "%s の効果で欄の大きさが変わった" % Names.tactic(id))
+	for trial: StringName in TrialRules.ALL:
+		panel.choose_trial(trial, true)
+	panel._picked_note = ""
+	panel._show_trial_note()
+	await settle(panel)
+	assert_eq(panel._trial_note.size, before, "決まりを全部入にして、欄の大きさが変わった")
+	panel.free()

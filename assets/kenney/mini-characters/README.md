@@ -18,9 +18,9 @@
 | `character-female-c.glb` | スナイパー |
 | `character-raider.glb` | コマンドー |
 | `character-female-e.glb` | 衛生兵 |
-| `character-male-b.glb` | ソーサラー |
+| `character-male-b.glb` | プリースト |
 | `character-female-a.glb` | スペルブレード |
-| `character-female-d.glb` | プリースト |
+| `character-female-d.glb` | ソーサラー |
 | `weapon-sword.glb` | 剣 |
 | `weapon-bow.glb` | 弓 |
 | `weapon-shooter.glb` | 銃 |
