@@ -17,6 +17,20 @@ printf '%s' "$cmd" | grep -Eq '(^|[;&|[:space:]])git([[:space:]]+-[^[:space:]]+(
 
 godot="${CHECK_GODOT:-godot}"
 command -v "$godot" >/dev/null 2>&1 || exit 0
+# push 先のチェックアウトを決める: `git -C <dir> push`、`cd <dir> && git push`、なければフックの cwd。
+target=""
+if [[ "$cmd" =~ git[[:space:]]+-C[[:space:]]+(\"([^\"]+)\"|\'([^\']+)\'|([^[:space:]]+))[[:space:]] ]]; then
+  target="${BASH_REMATCH[2]:-${BASH_REMATCH[3]:-${BASH_REMATCH[4]}}}"
+elif [[ "$cmd" =~ (^|[;&|[:space:]])cd[[:space:]]+(\"([^\"]+)\"|\'([^\']+)\'|([^[:space:];\&|]+)) ]]; then
+  target="${BASH_REMATCH[3]:-${BASH_REMATCH[4]:-${BASH_REMATCH[5]}}}"
+fi
+base="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)"
+[ -n "$base" ] || base="$PWD"
+if [ -n "$target" ]; then
+  case "$target" in /*) ;; *) target="$base/$target" ;; esac
+  base="$target"
+fi
+cd "$base" 2>/dev/null || exit 0
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [ -f "$root/tools/check.sh" ] || exit 0
 cd "$root"
