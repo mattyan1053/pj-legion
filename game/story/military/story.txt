@@ -1,7 +1,7 @@
 # ストーリーの物語「ベルク連邦の物語」（MILITARY の物語）。
 #
 # 物語は、軍 1 つと話の列。人はこの軍で話を進め、話をクリアすると、この軍の駒が雇えるようになる。
-# 世界は docs/world.md、登場人物は docs/story.md の「世界と登場人物」（機械の国ベルク連邦の偵察隊が、尾根を越えて谷への道を開く）。
+# 世界は docs/world.md、登場人物は docs/story.md の「世界と登場人物」（20 年前に着いた山の国ベルク連邦の偵察隊が、縫い目の土地の尾根を越えて、谷への道を開く）。
 # 書き方は docs/story.md の「物語のファイル」（書き方の見本は game/story/_template/）。話は、このフォルダの <id>.txt。
 
 [campaign]
@@ -10,7 +10,7 @@ army = military
 rules = story
 budget = 20
 order = 1
-intro = 新任の少尉ハーデンとして偵察隊を率い、尾根を越えて谷への道を開く。
+intro = 山の国の新任少尉ハーデンとして偵察隊を率い、縫い目の土地の尾根を越える。
 
 [start]
 unit = shield_trooper
@@ -19,9 +19,9 @@ unit = sniper
 [cast]
 ハーデン = king, 偵察隊の新任少尉
 ドーソン = shield_trooper evolved dawson, 古参の曹長。教官
-ノエ = sniper noe, 新兵の狙撃手
-マルタ = medic marta, 古参の衛生兵
-ピップ = commando pip, お調子者の斥候
+ノエ = sniper noe, 先月入隊の狙撃手
+マルタ = medic marta, 曹長と同期の衛生兵
+ピップ = commando pip, 足の速い斥候
 
 [episodes]
 drill_first_steps
