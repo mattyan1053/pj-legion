@@ -12,6 +12,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Names := preload("res://game/names.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
+const Steady := preload("res://game/steady.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
@@ -63,12 +64,29 @@ const COLOR_END_TURN := Palette.GO
 const COLOR_END_TURN_READY := Palette.GO_READY
 ## 上の帯と下の帯の高さ（駒のそばのメニューは、この内側に置く）。
 const TOP_BAR_HEIGHT := 50.0
+## 下の帯の高さは、中身で伸び縮みしない（docs/ui-theme.md の「枠の大きさ」）。案内（2 行まで）とマスの説明で、合わせて 3 行が入る:
+## 案内が 1 行ならマスの説明は 2 行まで、案内が 2 行ならマスの説明は 1 行。
 const BOTTOM_BAR_HEIGHT := 92.0
+## 下の帯の上下の余白（px）。3 行が入るよう、ほかの帯より詰める。
+const BOTTOM_BAR_MARGIN := 6.0
+## マスの説明の字の大きさ（px）。入る行の数に収まらないときだけ、小さいほうにする。それでも入らなければ「…」で切る（マスを押すと、情報の枠で全部読める）。
+const CELL_FONT_SIZE := 14
+const CELL_FONT_SIZE_SMALL := 12
+## 駒のそばのメニューの項目の幅（px）。項目の言葉で幅を変えない。いちばん長い項目（スキルの名前と残りの回数）は、字を小さくして入れる。
+const MENU_ITEM_WIDTH := 210.0
+const MENU_FONT_SIZE := 17
+const MENU_FONT_FLOOR := 13
 const TACTIC_BUTTON_HEIGHT := 40.0
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
 const INFO_WIDTH := 320.0
+## 情報の枠の高さ（px）。駒でもマスでも、中身が多くても少なくても、この高さ（docs/ui-theme.md の「枠の大きさ」）。
+## 入りきらない中身は、字を 1 段ずつ小さくして収め、それでも入らなければ、後で読めるものから省く（_fit_info）。
+const INFO_HEIGHT := 460.0
+const INFO_FONT_FLOOR := 12
+## 字を小さくする段の数の上限（1 段 1 px）。
+const INFO_SHRINK_STEPS := 3
 ## 駒の情報の枠の、駒のアイコンの大きさ（px）。
 const INFO_ICON_SIZE := 48.0
 const ULT_SUMMARY_WIDTH := 480.0
@@ -155,11 +173,19 @@ var battle: Battle
 var _info_forecast: Label
 ## 見ている相手の駒の攻撃範囲を、表示したままにするスイッチ（枠のいちばん下。set_pin_switch）。
 var _info_pin: CheckButton
+## 情報の枠の、残りの高さに収める文の入れ物（_build_info_panel）と、その中の列。
+var _info_room: ScrollContainer
+var _info_lines: VBoxContainer
+## 情報の枠の文を、いま何段小さくしているか（0 なら元の大きさ）。
+var _info_shrink := 0
+## 入りきらずに省いた文の数。
+var _info_dropped := 0
 var _info_detail: Button
 var _cell_label: Label
 var _hint_label: Label
 ## 下の帯の案内の、折り返す前の文。
 var _hint_text := ""
+var _cell_text := ""
 var _end_turn_button: Button
 var _end_turn_style: StyleBoxFlat
 var _opponent_button: Button
@@ -479,6 +505,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_set_shown(_info_traits, "\n".join(traits))
 	_set_shown(_info_state, state)
 	_set_shown(_info_forecast, note)
+	_fit_info()
 
 
 ## 駒の所属の文。盤を見ている人（viewer）から見た [自軍] [敵軍] [中立] と、陣営、軍（雇う駒だけ。魔物は「魔物」）。
@@ -537,17 +564,20 @@ func show_cell_info(title: String, body: String) -> void:
 	_set_folded(_info_stats, body, INFO_WIDTH)
 	for label: Label in [_info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
 		label.visible = false
+	_fit_info()
 
 
 ## 駒の情報の枠の「範囲を表示したまま」のスイッチ。shown で出すか、pinned で入っているか（show_unit のあとに呼ぶ）。
 func set_pin_switch(shown: bool, pinned: bool) -> void:
 	_info_pin.visible = shown and _info_panel.visible
 	_info_pin.set_pressed_no_signal(pinned)
+	_fit_info()
 
 
 ## 駒の情報の枠の「詳細」のボタンを出すか（show_unit のあとに呼ぶ。枠が出ていなければ出さない）。
 func set_detail_button(shown: bool) -> void:
 	_info_detail.visible = shown and _info_panel.visible and _info_unit_box.visible
+	_fit_info()
 
 
 ## 「詳細」のボタンを出しているか。検査用。
@@ -584,6 +614,76 @@ func _set_shown(label: Label, text: String) -> void:
 		_set_folded(label, text, INFO_WIDTH)
 
 
+## 情報の枠の文を、枠の残りの高さに収める（枠は伸ばさない）。中身かボタンの出し入れが変わるたびに呼ぶ。
+## 入りきらなければ、字を 1 段（1 px）ずつ小さくして折り返し直す（下限は INFO_FONT_FLOOR）。
+## それでも入らなければ、後で読めるものから順に省く（スキルの説明 → 特性 → 持ち物 → 状態 → 行動の状態。「詳細」の窓で全部読める）。
+## スキルの名前と、いま要る説明（メニューの項目の説明、スキルの見込み）は省かない。並べ直しを待たずに、いまの中身から求める。
+func _fit_info() -> void:
+	if not _info_panel.visible:
+		return
+	var labels: Array[Label] = []
+	for child in _info_lines.get_children():
+		labels.append(child as Label)
+	_info_shrink = 0
+	_info_dropped = 0
+	while true:
+		for label in labels:
+			label.add_theme_font_size_override("font_size", _info_font_size(label))
+			if label.visible:
+				_fold_info(label)
+		if _info_over() <= 0.0 or _info_shrink >= INFO_SHRINK_STEPS:
+			break
+		_info_shrink += 1
+	for label: Label in [_info_skill_note, _info_traits, _info_items, _info_statuses, _info_state]:
+		if _info_over() <= 0.0:
+			break
+		if label.visible:
+			label.visible = false
+			_info_dropped += 1
+
+
+## 情報の枠の文が、枠の残りの高さからはみ出している高さ（px。収まっていれば 0 以下）。
+func _info_over() -> float:
+	var fixed := _info_room.get_parent() as VBoxContainer
+	# 文の高さは、行の数と字の高さから求める（字の大きさを変えた直後は、Label の大きさがまだ前のまま）。
+	var needed := 0.0
+	var shown := 0
+	for child in _info_lines.get_children():
+		var label := child as Label
+		if not label.visible:
+			continue
+		var lines := label.text.count("\n") + 1
+		needed += lines * label.get_theme_font("font").get_height(_info_font_size(label)) + (lines - 1) * label.get_theme_constant("line_spacing")
+		shown += 1
+	needed += maxi(shown - 1, 0) * _info_lines.get_theme_constant("separation")
+	return needed - (INFO_HEIGHT - _info_style.get_minimum_size().y - fixed.get_combined_minimum_size().y)
+
+
+## 情報の枠の文 label を、いまの字の大きさで折り返し直す。
+func _fold_info(label: Label) -> void:
+	var font := label.get_theme_font("font")
+	var size := _info_font_size(label)
+	label.text = TextWrap.fold(label.get_meta(&"plain"), INFO_WIDTH, func(character: String) -> float: return _char_width(font, size, character))
+
+
+## 情報の枠の文 label の、いまの字の大きさ（小さくした段を引いたもの）。
+func _info_font_size(label: Label) -> int:
+	return maxi(int(label.get_meta(&"font_size")) - _info_shrink, INFO_FONT_FLOOR)
+
+
+## 情報の枠の文を、何段小さくしているか（0 なら元の大きさ）、いくつ省いたか、それでも下が切れているか。検査用。
+func info_shrink() -> int:
+	return _info_shrink
+
+
+func info_dropped() -> int:
+	return _info_dropped
+
+
+func is_info_cut() -> bool:
+	return _info_panel.visible and _info_over() > 0.5
+
+
 ## 駒の情報の枠に出している文（見出しを除く。出ていなければ空）。検査用。
 func info_text() -> String:
 	if not _info_panel.visible:
@@ -608,7 +708,38 @@ static func hp_color(ratio: float) -> Color:
 
 ## マウスの下のマスの説明。盤の外なら空を渡す。
 func show_cell(text: String) -> void:
-	_cell_label.text = text
+	_cell_text = text
+	_fold_cell()
+
+
+## マスの説明を、案内と同じ幅で折り返す。行の数は、案内が 1 行なら 2 行まで、案内が 2 行なら 1 行（帯の高さは変えない）。
+## 入らなければ字を小さくし、それでも入らなければ、最後の行を「…」で切る。
+func _fold_cell() -> void:
+	if _cell_label == null:
+		return
+	var font := _cell_label.get_theme_font("font")
+	var room := _hint_room()
+	var lines := 1 if _hint_label.text.contains("\n") else 2
+	var folded := ""
+	for size: int in [CELL_FONT_SIZE, CELL_FONT_SIZE_SMALL]:
+		folded = TextWrap.fold(_cell_text, room, func(character: String) -> float: return _char_width(font, size, character))
+		_cell_label.add_theme_font_size_override("font_size", size)
+		if folded.count("\n") < lines:
+			break
+	_cell_label.max_lines_visible = lines
+	_cell_label.text = folded
+
+
+## マスの説明のうち、帯に収まらずに切れる行（3 行目から）。検査用。
+func cell_cut_lines() -> Array[String]:
+	var cut: Array[String] = []
+	cut.assign(Array(_cell_label.text.split("\n")).slice(_cell_label.max_lines_visible))
+	return cut
+
+
+## 下の帯に出しているマスの説明（折り返したあと）。検査用。
+func cell_line_text() -> String:
+	return _cell_label.text
 
 
 func set_hint(text: String) -> void:
@@ -623,6 +754,7 @@ func _fold_hint() -> void:
 		var font := _hint_label.get_theme_font("font")
 		var font_size := _hint_label.get_theme_font_size("font_size")
 		_hint_label.text = TextWrap.fold_even(_hint_text, _hint_room(), func(character: String) -> float: return _char_width(font, font_size, character))
+		_fold_cell()  # 案内の行の数で、マスの説明の字の大きさが変わる
 
 
 ## 下の帯の案内のうち、案内に使える幅に収まらない行（3 行目からは、収まっていても切れる）。検査用。
@@ -740,13 +872,22 @@ func set_menu(items: Array) -> void:
 		button.focus_mode = Control.FOCUS_NONE
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.theme_type_variation = UiTheme.BUTTON_ACTION
-		button.add_theme_font_size_override("font_size", 17)
-		button.custom_minimum_size = Vector2(118.0, 34.0)
+		# 幅は決めておき、項目の言葉で変えない。入らない言葉は字を小さくし、それでも入らなければ「…」（いまの項目では切れない。tests/game/test_steady_frames.gd）。
+		button.custom_minimum_size = Vector2(MENU_ITEM_WIDTH, 34.0)
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		button.clip_text = true
 		button.pressed.connect(func() -> void: menu_pressed.emit(id))
 		button.mouse_entered.connect(func() -> void: menu_hovered.emit(id))
 		button.mouse_exited.connect(func() -> void: menu_hovered.emit(&""))
 		_menu_column.add_child(button)
 		_menu_buttons[id] = button
+		# 長い言葉（スキルの名前と残りの回数）は、字を小さくして幅に収める（下限は MENU_FONT_FLOOR）。
+		var font := button.get_theme_font("font")
+		var room := MENU_ITEM_WIDTH - button.get_theme_stylebox("normal").get_minimum_size().x
+		for size in range(MENU_FONT_SIZE, MENU_FONT_FLOOR - 1, -1):
+			button.add_theme_font_size_override("font_size", size)
+			if font.get_string_size(button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= room:
+				break
 	_menu.reset_size()
 
 
@@ -838,6 +979,11 @@ func is_menu_enabled(id: StringName) -> bool:
 ## メニューに出ている id の項目の文字（出ていなければ空）。
 func menu_text(id: StringName) -> String:
 	return (_menu_buttons[id] as Button).text if _menu.visible and _menu_buttons.has(id) else ""
+
+
+## メニューに出ている id の項目のボタン（無ければ null）。検査用。
+func menu_button(id: StringName) -> Button:
+	return _menu_buttons.get(id)
 
 
 ## メニューに出ている項目の名前（上から）。出ていなければ空。
@@ -1213,7 +1359,8 @@ func _build_info_panel() -> void:
 	_info_panel.offset_right = 10.0
 	_info_panel.offset_top = -BOTTOM_BAR_HEIGHT - 8.0
 	_info_panel.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0
-	_info_panel.custom_minimum_size = Vector2(INFO_WIDTH + 20.0, 0.0)
+	_info_panel.custom_minimum_size = Vector2(INFO_WIDTH + 20.0, INFO_HEIGHT)
+	Steady.mark(_info_panel, "battle.info", Steady.RECT)
 	# 盤面の隅に重なるので、下のマスを選べるよう、マウスは素通しにする。
 	_info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_info_panel.visible = false
@@ -1232,8 +1379,10 @@ func _build_info_panel() -> void:
 	_info_name = _label(20)
 	_info_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_info_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info_name.clip_text = true  # 折り返した行の端数で、枠の幅を広げない
 	head.add_child(_info_name)
 	_info_side = _label(14)
+	_info_side.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_info_side.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_info_side)
 	# HP の棒（駒の頭の上には出さないので、ここで割合が分かるようにする）。
@@ -1261,11 +1410,25 @@ func _build_info_panel() -> void:
 	_info_level.size_flags_vertical = Control.SIZE_SHRINK_END
 	hp_row.add_child(_info_level)
 	# 攻撃・移動・射程は、幅のそろった欄（駒を見比べても、数が同じ所にある）。
-	_info_stats_row = StatsRow.new("", 16, INFO_WIDTH / 3.0)
+	_info_stats_row = StatsRow.new("", 16, floorf(INFO_WIDTH / 3.0))  # 端数を持たせない（3 つ並べると枠が 1 px 広がる）
 	_info_unit_box.add_child(_info_stats_row)
 	_info_rule = HSeparator.new()
 	_info_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_info_rule)
+	# ここから下の文は、枠の残りの高さの中に収める（枠は伸ばさない）。入りきらなければ、字を小さくする（_fit_info）。
+	# 送りの棒は出さない（枠はマウスを素通しにする）。それでも入らないぶんは、下が切れる。
+	_info_room = ScrollContainer.new()
+	_info_room.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_info_room.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_info_room.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_info_room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(_info_room)
+	var fixed_column := column
+	column = VBoxContainer.new()
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info_room.add_child(column)
+	_info_lines = column
 	# マスの情報の本文（駒の能力値は、上の欄に分けて出す。文はここに持つ）。
 	_info_stats = _label(17)
 	column.add_child(_info_stats)
@@ -1280,6 +1443,11 @@ func _build_info_panel() -> void:
 	_info_forecast.add_theme_color_override("font_color", COLOR_FORECAST)
 	# スキルの説明のように長い文は、枠の幅で折り返してから出す（_set_folded。枠を横に広げて盤面を隠さない）。
 	column.add_child(_info_forecast)
+	for label: Label in [_info_stats, _info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
+		label.clip_text = true  # 折り返した行の端数で、枠の幅を広げない
+		label.set_meta(&"font_size", label.get_theme_font_size("font_size"))
+		label.set_meta(&"plain", "")
+	column = fixed_column
 	# 枠は素通しだが、スイッチはクリックを受ける。いちばん下に置く（枠は下にそろうので、中身が変わってもスイッチは動かない）。
 	_info_pin = CheckButton.new()
 	_info_pin.text = Text.t("battle.hud.pin")
@@ -1308,10 +1476,14 @@ func _info_line(column: VBoxContainer, font_size: int, color: Color) -> Label:
 
 func _build_bottom() -> void:
 	var panel := _panel()
-	panel.add_theme_stylebox_override("panel", UiTheme.band_box(false))
+	var band := UiTheme.band_box(false)
+	band.content_margin_top = BOTTOM_BAR_MARGIN
+	band.content_margin_bottom = BOTTOM_BAR_MARGIN
+	panel.add_theme_stylebox_override("panel", band)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.custom_minimum_size = Vector2(0.0, BOTTOM_BAR_HEIGHT)
+	Steady.mark(panel, "battle.bottom_band", Steady.RECT)
 	add_child(panel)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -1332,7 +1504,9 @@ func _build_bottom() -> void:
 	_hint_label.max_lines_visible = 2
 	_hint_label.clip_text = true
 	column.add_child(_hint_label)
-	_cell_label = _label(14)
+	# マウスの下のマスの説明。長ければ 2 行まで折り返す（拠点の説明のように長いものも読める。_fold_cell）。
+	_cell_label = _label(CELL_FONT_SIZE)
+	_cell_label.max_lines_visible = 2
 	_cell_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_cell_label.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_cell_label)
@@ -1483,6 +1657,7 @@ func _build_menu() -> void:
 	menu_style.border_color = Palette.BORDER_BRIGHT.darkened(0.25)
 	_menu.add_theme_stylebox_override("panel", menu_style)
 	_menu.visible = false
+	Steady.mark(_menu, "battle.menu", Steady.WIDTH)
 	add_child(_menu)
 	_menu_column = VBoxContainer.new()
 	_menu_column.add_theme_constant_override("separation", 2)
@@ -1553,6 +1728,8 @@ func _char_width(font: Font, font_size: int, character: String) -> float:
 
 ## label に、width（px）で折り返した text を出す（text_wrap.gd。日本語の禁則を守る）。
 func _set_folded(label: Label, text: String, width: float) -> void:
+	if label.has_meta(&"plain"):
+		label.set_meta(&"plain", text)  # 字の大きさを変えて折り返し直すときの、元の文（_fit_info）
 	var font := label.get_theme_font("font")
 	var font_size := label.get_theme_font_size("font_size")
 	label.text = TextWrap.fold(text, width, func(character: String) -> float: return _char_width(font, font_size, character))
@@ -1568,4 +1745,5 @@ func _button(text: String, to: Signal) -> Button:
 	if not to.is_null():
 		button.pressed.connect(to.emit)
 	return button
+
 

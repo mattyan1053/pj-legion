@@ -63,8 +63,11 @@ func _sample(frame: Control, marked: bool) -> void:
 		return
 	# 印の付いた枠は、名前で控える（作り直されても、同じ名前の枠は同じ大きさ。並んだ札もそろう）。印の無い板は、その板ごと。
 	var key: Variant = Steady.name_of(frame) if marked else frame.get_instance_id()
-	var with_place := marked and Steady.kind_of(frame) == Steady.RECT
+	var kind: StringName = Steady.kind_of(frame) if marked else Steady.SIZE
+	var with_place := kind == Steady.RECT
 	var rect := frame.get_global_rect()
+	if kind == Steady.WIDTH:
+		rect.size.y = 0.0  # 高さは見ない
 	if not _seen.has(key):
 		_seen[key] = [rect, rect, key if marked else _describe(frame)]
 		if not marked and not _hooked.has(key):
@@ -152,3 +155,4 @@ func found_report() -> String:
 		lines.append("%s: %s" % [what, " / ".join(found[what])])
 	lines.sort()
 	return "\n".join(lines)
+

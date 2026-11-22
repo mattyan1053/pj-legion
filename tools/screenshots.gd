@@ -137,6 +137,7 @@ const SCENES := {
 	"battery": "砲台に乗った後衛を選んだところ（射程が伸びている。中央平原）",
 	"setup_battery": "対戦設定で、試しの決まりの「砲台」を「あり」にしたところ",
 	"stronghold_cell": "拠点（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
+	"stronghold_hover": "拠点（試しの決まり）のマスにマウスを乗せて、下の帯にマスの説明が出ている（長い説明が 2 行に折り返され、切れない）",
 	"stronghold": "拠点に駒が乗り、どちらかがあと 1 回の確保で勝つところ（勝ち方の札と確保の数。迷宮回廊）",
 	"setup_stronghold": "対戦設定で、試しの決まりの「拠点」を「あり」にしたところ",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
@@ -1882,6 +1883,18 @@ func _scene_stronghold_cell() -> bool:
 	_scene.click_cell(cell)
 	_scene.focus_camera(cell)
 	return _scene.info_title().begins_with("マス")
+
+
+func _scene_stronghold_hover() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.STRONGHOLD])
+	_show()
+	var cell := _battle.board.stronghold_cell
+	if cell == Board.NO_CELL:
+		return false
+	_scene.focus_camera(cell)
+	_scene.hover(cell)
+	return true
 
 
 ## どちらかが、あと 1 回の確保で勝つところまで進める（拠点に駒が乗り、旗がその陣営の色。上の帯の札が目立つ）。
