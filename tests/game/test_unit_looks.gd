@@ -59,6 +59,10 @@ func test_people_have_their_own_shapes() -> void:
 	var dawson2_shown := _shown_meshes(dawson2)
 	assert_true(dawson2_shown.has("Engineer_Head") and not dawson2_shown.has("Knight_Helmet") and dawson2_shown.has("Knight_Body"), "%s" % [dawson2_shown])
 	dawson2.free()
+	# 将の別の姿（骸骨の将）は、「人形」の組の骸骨の将（騎士にならない）。
+	var skeleton_king := kaykit2.build(UnitKind.Id.KING, Color.RED, &"skeleton_mage", Vector3.ZERO)
+	assert_true(not _shown_meshes(skeleton_king).has("Knight_Body"), "%s" % [_shown_meshes(skeleton_king)])
+	skeleton_king.free()
 
 
 ## 見えている面の名前（親が隠れていれば見えない）。

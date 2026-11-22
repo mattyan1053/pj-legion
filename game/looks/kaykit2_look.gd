@@ -123,6 +123,9 @@ func _init() -> void:
 func build(kind: UnitKind.Id, team_color: Color, look: StringName, at: Vector3) -> UnitBody:
 	if PERSONS.has(look):
 		return _model_body(person_shape(look), team_color, look)
+	if kind == UnitKind.Id.KING and UnitLooks.KING_LOOKS.has(look):
+		# 将の別の姿（骸骨の将）は、「人形」の組のもの。
+		return UnitLooks.of(&"kaykit").build(kind, team_color, look, at)
 	if KINDS.has(kind):
 		return _model_body(KINDS[kind], team_color)
 	# 魔物と将の別の姿は、「人形」の組の骸骨。
