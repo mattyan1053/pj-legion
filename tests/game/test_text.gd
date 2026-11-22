@@ -12,6 +12,7 @@ const CODE_DIRS := ["res://game/", "res://rules/"]
 ## 直書きの日本語を見ないファイル（画面に出さない文だけを持つもの）。
 const NOT_SHOWN := [
 	"res://game/autoplay.gd",  # 自動の対戦が、くい違いを知らせる文（開発用）
+	"res://game/autoplay_sweeps.gd",  # 自動の対戦の通しの点検が、くい違いを知らせる文（開発用）
 	"res://game/story_file.gd",  # 話・物語・マップのファイルの書き間違いの文（開発用。ファイルを書く人が読む）
 	"res://game/episode.gd",
 	"res://game/campaign.gd",
@@ -34,6 +35,7 @@ const FAMILIES := {
 	"item": [Equipment.Id, [""]],
 	"skill": [Skill.Id, ["", ".summary"]],
 	"ult": [Ult.Id, ["", ".summary"]],
+	"tactic": [Tactics.Id, ["", ".summary"]],
 	"status": [Status.Type, ["", ".summary"]],
 	"relic": [Relics.Id, ["", ".summary", ".short", ".effect"]],
 	"stage": [BoardGenerator.Stage, [""]],
@@ -43,6 +45,7 @@ const SCREEN_FAMILIES := {
 	"battle.goal.win": [GameWonEvent.Reason, ["", ".last"]],
 	"battle.goal.lose": [GameWonEvent.Reason, ["", ".last"]],
 	"stats.ending": [BattleStats.Ending, [""]],
+	"setup.trial": [{"BATTERY": 0, "TACTICS": 1, "STRONGHOLD": 2}, ["", ".note"]],
 }
 
 
@@ -195,7 +198,7 @@ func test_no_new_hard_coded_japanese() -> void:
 
 ## 見張りそのものが効くこと。
 func test_the_watch_counts_literals_but_not_comments() -> void:
-	var probe := "user://text_probe.gd"
+	var probe := "user://text_probe_%d.gd" % (Time.get_ticks_usec() + randi())  # 並べて回すプロセスと名前がぶつからないように
 	var file := FileAccess.open(probe, FileAccess.WRITE)
 	file.store_string("# コメント「無視」\nvar a := \"直書き\"  ## 説明「無視」\npush_error(\"開発用\")\nvar b := \"plain\" + \"、\"\n")
 	file.close()

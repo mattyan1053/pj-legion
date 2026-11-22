@@ -23,6 +23,9 @@ const UiFeel := preload("res://game/ui_feel.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const Palette := preload("res://game/ui_palette.gd")
+const SaveMark := preload("res://game/save_mark.gd")
+const SlotScreen := preload("res://game/slot_screen.gd")
+const ConfirmWindow := preload("res://game/confirm_window.gd")
 const WIPE := preload("res://game/wipe.gdshader")
 
 ## 場面を切り替え終えた（暗転が明けた）。
@@ -36,6 +39,7 @@ const ITEM_EXIT_PREFIX := "exit:"
 ## 暗転にかける秒数（暗くなるまでと、明けるまで、それぞれ）。
 const FADE_TIME := 0.22
 const FADE_LAYER := 30
+const OpenAllKey := preload("res://game/open_all_key.gd")
 
 var context := AppContext.new()
 var _current: Node
@@ -46,6 +50,14 @@ var _wipe: ShaderMaterial
 ## 幕がどこまで覆っているか（0 = 明けている、1 = 覆っている）。
 var _cover := 1.0
 var _window_mode: WindowMode
+## 保存の小さな印（オートセーブで書いたとき）。
+var save_mark: SaveMark
+## ウィンドウの × で閉じる前の確かめ（docs/save-slots.md の「ウィンドウを閉じるとき」）。
+var quit_window: ConfirmWindow
+const QUIT_LAYER := 26
+## オプションの画面を開いてから、設定が変わったか（閉じて書いたときに、保存の印を出す）。
+var _settings_touched := false
+var _open_all: OpenAllKey
 
 
 func _ready() -> void:
@@ -67,11 +79,12 @@ func _ready() -> void:
 	if context.checking == &"":
 		context.settings.store = SaveStore.new()
 		context.settings.load_saved()
-		# ストーリーの進み具合を先に読む（取っておいたストーリー用の部隊は、いま雇える駒の決まりで読む）。
-		context.story.store = SaveStore.new()
-		context.story.load_saved()
+		# セーブのスロット（ストーリーの進み具合とストーリー用の部隊）。前の置き方のファイルがあれば 1 番へ移し、最後に遊んだスロットを開く。
+		context.slots.store = SaveStore.new()
+		context.slots.migrate_old(func(rules: String) -> bool: return AppContext.is_story_rules(StringName(rules)))
+		context.slots.open_latest()
 		context.decks.store = SaveStore.new()
-		context.decks.load_saved()
+		context.reload_slot()
 
 	# 画面の効果（光のにじみ、陰、色の調子）は、オプションで切れる。変えたら、いまの景色にもすぐ効く。
 	StageLook.set_effects(context.settings.value(AppContext.Settings.SCREEN_EFFECTS))
@@ -91,7 +104,8 @@ func _ready() -> void:
 	menu.setup(context.settings, context.overlays)
 	menu.open_requested.connect(open_menu)
 	menu.item_chosen.connect(_on_menu_item)
-	menu.settings_closed.connect(context.settings.save)
+	menu.settings_closed.connect(_on_settings_closed)
+	context.settings.changed.connect(func(_key: StringName) -> void: _settings_touched = true)
 	menu.opened.connect(context.play_sound.bind(&"menu_open"))
 	menu.closed.connect(context.play_sound.bind(&"menu_close"))
 	menu.stepped_back.connect(context.play_sound.bind(&"ui_back"))
@@ -99,6 +113,20 @@ func _ready() -> void:
 	context.menu_requested.connect(open_menu)
 	context.settings_requested.connect(open_settings)
 	context.run_requested.connect(start_run)
+
+	save_mark = SaveMark.new()
+	add_child(save_mark)
+	var quit_layer := CanvasLayer.new()
+	quit_layer.layer = QUIT_LAYER  # システムメニュー（20）の上、幕（30）の下
+	add_child(quit_layer)
+	quit_window = ConfirmWindow.new()
+	quit_window.overlays = context.overlays
+	quit_window.pausing = true
+	quit_layer.add_child(quit_window)
+	# ウィンドウの × は、すぐには閉じずに request_close で受ける（途中のものがあれば確かめる）。検査は、窓に触らない。
+	if context.checking == &"":
+		get_tree().auto_accept_quit = false
+	context.slots.saved.connect(save_mark.flash)
 
 	var layer := CanvasLayer.new()
 	layer.layer = FADE_LAYER
@@ -122,9 +150,19 @@ func _ready() -> void:
 	_window_mode.setup(context.settings, context.checking == &"")
 	_window_mode.toggled.connect(context.settings.save)
 
+	# 確かめ用の解放（F5。ストーリーの全部の話と解放を、その起動のあいだだけ開く）。
+	_open_all = OpenAllKey.new()
+	add_child(_open_all)
+	_open_all.setup(self)
+
 	if context.checking != &"":
 		scene_changed.connect(_drive_check)
 	go(SceneFlow.FIRST)
+
+
+## 確かめ用の解放の鍵（open_all_key.gd。検査用）。
+func open_all_key() -> OpenAllKey:
+	return _open_all
 
 
 ## いまの場面（ノード）と、その名前。
@@ -151,9 +189,11 @@ func go(scene: StringName) -> void:
 		context.run = null  # 流れの外の場面へ出た（タイトルへ戻る、対戦設定へ、など）
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP  # 切り替えの間のクリックは、どの場面にも届かない
 	context.system_menu.close()
+	_track_story_time(scene)
 	# 暗転と同じころに、曲もつなぐ。流れが渡すものが曲を決めていれば、その曲（対戦の盤の見た目、話の会話）。
 	var given: Variant = context.run.data() if context.run != null else null
-	(context.sound as Sound).play_scene_music(SceneFlow.music_for(scene, given))
+	var track := SceneFlow.music_for(scene, given)
+	(context.sound as Sound).play_scene_music(track, SceneFlow.music_offset_db(scene, track))
 	if _current != null:
 		# 抜ける場面は止めておく（暗くなる間に、CPU の番や再生が進まないように）。
 		_current.process_mode = Node.PROCESS_MODE_DISABLED
@@ -177,6 +217,75 @@ func go(scene: StringName) -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_changing = false
 	scene_changed.emit(scene)
+
+
+## ストーリーを遊んでいる間（物語を選ぶ場面に入ってから、タイトル・スロットの場面・マップ選択へ出るまで）、
+## いまのスロットの遊んだ時間を数える。
+## 区切り（オートセーブ。docs/save-slots.md の「保存する所」）で、いまのスロットを書く:
+## 話の流れ（出撃準備・会話・対戦・寄り道の部隊編成）を抜けて、話の一覧・物語選択・タイトルへ出たとき
+## （話をクリアしたなら、あとの会話と解放の知らせが済んだ所）と、あとの会話の「次の話へ」で次の話の出撃準備へ進んだとき。
+## ウィンドウを閉じた瞬間や、流れの途中は書かない（最後に書いた所までが残る）。
+const STORY_RUN_SCENES := [SceneFlow.SORTIE, SceneFlow.TALK, SceneFlow.BATTLE, SceneFlow.DECKS]
+
+func _track_story_time(scene: StringName) -> void:
+	var slots: AppContext.SaveSlots = context.slots
+	var from := _current_id
+	if not slots.counting:
+		slots.counting = scene == SceneFlow.CAMPAIGNS
+		return
+	var left_run: bool = from in STORY_RUN_SCENES and scene not in STORY_RUN_SCENES
+	var next_episode: bool = from == SceneFlow.TALK and scene == SceneFlow.SORTIE
+	if left_run or next_episode:
+		slots.flush_if_started()
+	if scene in [SceneFlow.TITLE, SceneFlow.SLOTS, SceneFlow.MAP_SELECT]:
+		slots.counting = false
+
+
+## オプションの画面を閉じた: 設定を書く（オートセーブの区切り）。変えたものがあれば、保存の印を出す。
+func _on_settings_closed() -> void:
+	if context.settings.save() and _settings_touched:
+		save_mark.flash()
+	_settings_touched = false
+
+
+## ウィンドウの × を押された。
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and context.checking == &"":
+		request_close()
+
+
+## ウィンドウを閉じたい（× を押した）: その瞬間のものは保存しない（最後に保存した所までが残る）。
+## 途中のもの（決着していない対戦、取っておいていない部隊の変更、まだ保存していないストーリーの進み具合）があれば、
+## 何が残るかを書いて確かめる。無ければすぐ閉じる。確かめている間にもう一度 × を押したら、閉じる。
+func request_close() -> void:
+	if quit_window.is_open():
+		context.quit()
+		return
+	var note := quit_note()
+	if note == "":
+		context.quit()
+		return
+	context.system_menu.close()
+	quit_window.ask(Text.t("menu.quit.confirm"), note, Text.t("menu.quit"), context.quit)
+
+
+## ゲームを終える前の確かめに書く文（何が残るか）。確かめなくてよければ空。
+## 対戦の途中: ストーリーなら「最後に保存した所（日時）から再開」、対戦モードなら「この対戦は残らない」。
+## 部隊編成の途中: 「編成完了」の前の変更は残らない。ストーリーの、まだ保存していない進み具合も、最後に保存した所から再開。
+func quit_note() -> String:
+	var lines := PackedStringArray()
+	var busy: bool = _current != null and _current.has_method(&"in_progress") and _current.call(&"in_progress")
+	var in_story: bool = context.slots.counting
+	if busy and _current_id == SceneFlow.DECKS:
+		lines.append(Text.t("menu.quit.deck"))
+	elif busy:
+		lines.append(Text.t("menu.quit.battle"))
+		if not in_story:
+			lines.append(Text.t("menu.quit.versus"))
+	if in_story and (busy or context.slots.has_unsaved()):
+		var at := context.slots.saved_at()
+		lines.append(Text.t("menu.quit.resume", {"when": SlotScreen.date_text(at)}) if at > 0 else Text.t("menu.quit.from_start"))
+	return "".join(lines)
 
 
 ## 流れ run を、最初の場面から始める。切り替えの途中なら何もしない。
@@ -212,7 +321,20 @@ func open_menu() -> void:
 	var menu := system_menu()
 	if _changing or menu.is_open() or _current == null:
 		return
-	menu.open(menu_items())
+	menu.open(menu_items(), false, last_saved_note())
+
+
+## ストーリーを遊んでいる間の、システムメニューの見出しの下の文（「最後に保存: 日時」）。ストーリーの外では空。
+func last_saved_note() -> String:
+	if not context.slots.counting:
+		return ""
+	return last_saved_text(context.slots)
+
+
+## いまのスロットを最後に保存した時刻の文（まだ保存していなければ「未保存」）。
+static func last_saved_text(slots: AppContext.SaveSlots) -> String:
+	var at := slots.saved_at()
+	return Text.t("menu.last_saved", {"when": SlotScreen.date_text(at) if at > 0 else Text.t("menu.never_saved")})
 
 
 ## オプションの画面だけを開く（タイトルの「オプション」）。閉じると、メニューへは戻らずに閉じる。
@@ -239,7 +361,9 @@ func menu_items() -> Array:
 			items.append([ITEM_EXIT_PREFIX + String(exit[0]), Text.t(exit[1]), leave_confirm(scene, Text.t(exit[2]))])
 	if _current_id != SceneFlow.FIRST:
 		items.append([ITEM_TITLE, Text.t("menu.to_title"), leave_confirm(scene, Text.t("menu.to_title.confirm"))])
-	items.append([ITEM_QUIT, Text.t("menu.quit"), leave_confirm(scene, Text.t("menu.quit.confirm"))])
+	# ゲーム終了は、ウィンドウの × と同じ確かめ（何が残るか）。
+	var quit_note_text := quit_note()
+	items.append([ITEM_QUIT, Text.t("menu.quit"), "" if quit_note_text == "" else "%s\n%s" % [Text.t("menu.quit.confirm"), quit_note_text]])
 	return items
 
 

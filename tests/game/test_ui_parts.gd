@@ -34,12 +34,17 @@ func test_stats_row_splits_a_line_into_names_and_numbers() -> void:
 		row.free()
 
 
+## 欄の幅は、数の桁で変わらない。木に入れて 1 コマ待ってから測る（base_test.gd の settle。木の外では、前の大きさが返る）。
 func test_stats_row_keeps_cell_width_whatever_the_numbers() -> void:
+	preload("res://game/ui_theme.gd").install()
 	var small := StatsRow.new(DeckText.stats_line(UnitKind.Id.KING), 13, 50.0)
 	var large := StatsRow.new(DeckText.stats_line(UnitKind.Id.KING, {Unit.Stat.MAX_HP: 200, Unit.Stat.POWER: 90}), 13, 50.0)
+	await settle(small)
+	await settle(large)
 	for i in 4:
-		assert_eq((small.get_child(i) as Control).custom_minimum_size.x, 50.0)
-		assert_eq((large.get_child(i) as Control).custom_minimum_size.x, 50.0)
+		assert_eq((small.get_child(i) as Control).get_combined_minimum_size().x, 50.0, "%d 番目の欄（小さい数）" % i)
+		assert_eq((large.get_child(i) as Control).get_combined_minimum_size().x, 50.0, "%d 番目の欄（大きい数）: %s" % [i, _texts(large)])
+	assert_eq(large.get_combined_minimum_size(), small.get_combined_minimum_size(), "行の大きさが、数で変わる")
 	small.free()
 	large.free()
 
@@ -59,10 +64,14 @@ func test_cost_gauge_size_does_not_follow_the_count() -> void:
 	gauge.free()
 
 
+## 額の大きさは、駒で変わらない。木に入れて 1 コマ待ってから測る（base_test.gd の settle）。
 func test_unit_frame_size_does_not_follow_the_unit() -> void:
 	var frame := UnitFrame.new(UnitKind.Id.KING, 0, 48.0)
+	await settle(frame)
 	var before := frame.get_combined_minimum_size()
+	assert_eq(before, Vector2(48.0, 48.0))
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		frame.set_kind(kind)
-		assert_eq(frame.get_combined_minimum_size(), before)
+		await settle(frame)
+		assert_eq(frame.get_combined_minimum_size(), before, "%d" % kind)
 	frame.free()

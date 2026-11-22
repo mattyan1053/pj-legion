@@ -1,6 +1,6 @@
 extends "res://game/battle_source.gd"
 ## ストーリーの 1 話の対戦（docs/story.md）。対戦の画面に渡すもの（battle_source.gd）。
-## 話（episode.gd。game/story/episodes/ の 1 ファイル）から、戦いの定義（手で作ったマップ、決め打ちの敵）を持った対戦設定を作る。
+## 話（episode.gd。game/story/<物語>/ の 1 ファイル）から、戦いの定義（手で作ったマップ、決め打ちの敵）を持った対戦設定を作る。
 ##
 ## 人はいつもプレイヤー1（先手）で、渡された部隊（story.gd が、いま雇える駒で組む）。敵はプレイヤー2 で、CPU が動かす。
 ## 選び直せるものは無い（マップ、相手、対戦設定のパネル）。やり直しは「同じマップで再戦」と、出撃準備へ戻る「部隊を選び直す」。
@@ -43,6 +43,21 @@ func music() -> StringName:
 	return episode.battle_music()
 
 
+## 終盤の曲は、話のファイルの climax_music（無ければ、いつもの終盤の曲）。
+func climax_music() -> StringName:
+	return episode.climax_music if episode.climax_music != &"" else SoundCatalog.CLIMAX_MUSIC
+
+
+## 勝ったときの調子は、話のファイルの victory_mood（暗い話は静か）。
+func victory_mood() -> StringName:
+	return episode.victory_mood
+
+
+## 決着の曲のあとは、その話のあとの会話の曲（「次へ」で、そのまま会話へつながる）。
+func after_result_music() -> StringName:
+	return episode.after_talk_music()
+
+
 func can_continue(won: bool) -> bool:
 	return won
 
@@ -72,6 +87,14 @@ func talk_cues() -> RefCounted:
 	if episode.cues.is_empty():
 		return BattleCues.new()
 	return BattleCues.new(episode.cues, episode.speakers, episode.figures)
+
+
+## 話のファイルの [lost]（負けたときの台詞）。無い話は無し。
+func lost_lines() -> Array[BattleCues.Line]:
+	var lines: Array[BattleCues.Line] = []
+	for row: Array in episode.lost:
+		lines.append(BattleCues.Line.new(row[0], episode.speakers[row[2]], row[1], episode.figures[row[2]]))
+	return lines
 
 
 func record_win(context: RefCounted) -> void:

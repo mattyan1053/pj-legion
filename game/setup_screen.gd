@@ -1,6 +1,6 @@
 extends Node
 ## 対戦設定の場面。マップ・相手・手番・軍を選ぶ（match_setup_panel.gd。対戦の途中で開く設定画面と同じもの）。
-## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。
+## 背景は、マップ選択と同じ、裂けた空の下の、選んだマップの景色（title_backdrop.gd の VIEW_VERSUS）。場面の決まりは scene_flow.gd。
 ##
 ## 「対戦を始める」で選んだものを context.match_choice に入れ、その選択の流れ（match_choice.gd の run。対戦の場面 1 つ）を始める。
 ## マップはマップ選択の場面で選んで来る。ここでは出すだけで、選び直すときは「マップ選択へ戻る」（右クリック・Esc でも）で
@@ -9,20 +9,30 @@ extends Node
 
 const Text := preload("res://game/text.gd")
 const AppContext := preload("res://game/app_context.gd")
-const Backdrop := preload("res://game/backdrop.gd")
+const TitleBackdrop := preload("res://game/title_backdrop.gd")
+const VersusFields := preload("res://game/versus_fields.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const MatchSetupPanel := preload("res://game/match_setup_panel.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
+
+## 背景の景色の盤の種（マップ選択と同じ景色にする）。
+const BACKDROP_SEED := 7
 
 signal finished(outcome: StringName)
 
 var context: AppContext
 var _panel: MatchSetupPanel
+var _backdrop: TitleBackdrop
 
 
 func _ready() -> void:
-	add_child(Backdrop.new())
+	# 背景は、マップ選択と同じ: 裂けた空の下の、選んだマップの景色。
+	var field: StringName = context.match_choice.field if VersusFields.has(context.match_choice.field) else VersusFields.DEFAULT
+	_backdrop = TitleBackdrop.new(TitleBackdrop.VIEW_VERSUS, VersusFields.card_board(field, BACKDROP_SEED), VersusFields.look_of(field))
+	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	layer.add_child(UiTheme.vignette(0.5))  # 板が画面のほとんどを覆うので、四隅だけ沈める（板の左右に、空と景色が見える）
 	_panel = MatchSetupPanel.new()
 	layer.add_child(_panel)
 	_panel.setup(BattleScreen.TEAM_COLORS, context.decks, context.overlays)
@@ -37,6 +47,11 @@ func _ready() -> void:
 ## 対戦設定のパネル（検査とスクリーンショットの道具用）。
 func setup_panel() -> MatchSetupPanel:
 	return _panel
+
+
+## 背景が見せている景色の見た目の名前（検査用）。
+func backdrop_look() -> StringName:
+	return _backdrop.shown_look()
 
 
 func resume_label() -> String:

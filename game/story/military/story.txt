@@ -1,0 +1,41 @@
+# ストーリーの物語「ベルク連邦の物語」（MILITARY の物語）。
+#
+# 物語は、軍 1 つと話の列。人はこの軍で話を進め、話をクリアすると、この軍の駒が雇えるようになる。
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」（機械の国ベルク連邦の偵察隊が、尾根を越えて谷への道を開く）。
+# 書き方は docs/story.md の「物語のファイル」（書き方の見本は game/story/_template/）。話は、このフォルダの <id>.txt。
+
+[campaign]
+title = ベルク連邦の物語
+army = military
+rules = story
+budget = 20
+order = 1
+intro = 新任の偵察隊長ハーデンとして、尾根を越えて谷への道を開く。
+
+[start]
+unit = shield_trooper
+unit = sniper
+
+[cast]
+ハーデン = king, 新任の偵察隊長
+ドーソン = shield_trooper evolved, 曹長。演習の教官
+ノエ = sniper, 新兵の狙撃手
+マルタ = medic, 古参の衛生兵
+ピップ = commando, お調子者の斥候
+
+[episodes]
+drill_first_steps
+drill_sniper
+drill_medic
+drill_skills
+drill_shrine
+drill_capture
+ridge_path
+ridge_ambush
+ridge_hold
+gorge_rout
+barrow_rout
+barrow_knight
+warden_twin
+drill_last
+quarry_blast

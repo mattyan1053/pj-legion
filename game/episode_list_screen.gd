@@ -1,11 +1,12 @@
 extends Node
 ## 話の一覧の場面（docs/story.md）。物語を選ぶ場面（campaign_list_screen.gd）のあと。いまの物語（story.gd の campaign）の話のカードを並べ、選んだ話の流れ（出撃準備 → 会話 → 対戦 → 会話）を始める。
-## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
+## 背景はタイトルと同じ、裂けた空の下の結晶の森を、その物語の国の側の空へ向いて見たもの（title_backdrop.gd）。場面の決まりは scene_flow.gd。話の流れを終えたら、ここへ戻る（story.gd の run_of）。
 ##
 ## - カードには、話の番号と名前、盤の縮図（map_card.gd。両軍の駒の初期位置に点）、クリアしたか、クリアで増えるもの（駒、持ち物、コストの上限）を載せる。
 ## - 話が多いと横に並びきらないので、横に送れる枠に入れる。チュートリアルの話（lesson のある話）の番号には「（演習）」を付ける。
 ##   同じマップを使い回す話でも、初期位置の違いが見える。
 ## - 話は一本道。前の話をクリアしていない話のカードは押せない（「第 N 話をクリアすると遊べる」）。クリアした話は遊び直せる。
+##   まだ遊べない話は、名前・縮図・顔を伏せる（「？？？」。遊べるようになるまで中身を見せない）。番号と、開く条件とクリアで増えるものは見せる。
 ## - カードのクリックで、その話を始める。キーボードでは、左右の矢印で選んで Enter（card_keys.gd。1〜9 のキーでも、その番号の話）。
 ## - 下の欄に、いま雇える駒・持ち物・コストの上限（クリアした話から求める）。
 ## - 「部隊編成」で、この物語のストーリー用の部隊を組む（寄り道。戻るとここ）。
@@ -18,7 +19,8 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 const Crest := preload("res://game/crest.gd")
 const AppContext := preload("res://game/app_context.gd")
-const Backdrop := preload("res://game/backdrop.gd")
+const TitleBackdrop := preload("res://game/title_backdrop.gd")
+const NationDecor := preload("res://game/nation_decor.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const MapCard := preload("res://game/map_card.gd")
 const MapFrame := preload("res://game/map_frame.gd")
@@ -29,6 +31,8 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const CardKeys := preload("res://game/card_keys.gd")
+const UnitFrame := preload("res://game/unit_frame.gd")
+const App := preload("res://game/app.gd")
 
 signal finished(outcome: StringName)
 
@@ -40,6 +44,9 @@ const MAP_CELL := 8
 const MAP_HEIGHT := 180.0
 ## 縮図の右下に重ねる、その話の顔（敵の話し手の姿のアイコン）の大きさ（px）。
 const FACE_SIZE := 72.0
+## 主な人物の欄（物語のファイルの [cast]）: 姿の額の大きさと、人と人の間（px）。
+const CAST_FACE := 40.0
+const CAST_GAP := 22
 
 const COLOR_PANEL := Palette.OVERLAY
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
@@ -51,6 +58,7 @@ var context: AppContext
 ## 話（episode.gd）-> カード（Button）。
 var _cards := {}
 var _roster: Label
+var _saved: Label
 var _scroll: ScrollContainer
 ## 左右の矢印で選んでいるカードの番号（話の並びの順。選んでいなければ -1）。
 var _key_index := -1
@@ -59,10 +67,12 @@ var _key_index := -1
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき
-	add_child(Backdrop.new())
+	# 背景はタイトルと同じ世界（裂けた空の下の結晶の森）を、その物語の国の側の空へ向いて見る（ベルク連邦は琥珀、リュエル騎士領は菫）。
+	var army: UnitKind.Army = context.story.campaign.army
+	add_child(TitleBackdrop.new(TitleBackdrop.view_of(army)))
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(UiTheme.scene_shade())
+	layer.add_child(UiTheme.vista_shade())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 36.0
@@ -71,17 +81,31 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 
+	# 見出し: 物語の名前を、その国の紋で左右から挟む。
+	var nation := Crest.color_of(army)
+	var head_row := HBoxContainer.new()
+	head_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	head_row.add_theme_constant_override("separation", 18)
+	head_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(head_row)
+	head_row.add_child(Crest.new(army, 44.0, nation.lightened(0.15)))
 	var heading := _label(context.story.campaign.title, 40)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
+	heading.add_theme_font_override("font", UiTheme.spaced_heading(4))
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
-	root.add_child(heading)
-	var ornament := Ornament.new(360.0, 14.0)
-	ornament.color = Crest.color_of(context.story.campaign.army)  # その物語の国の色
+	head_row.add_child(heading)
+	head_row.add_child(Crest.new(army, 44.0, nation.lightened(0.15)))
+	var ornament := Ornament.new(440.0, 16.0)
+	ornament.color = nation.lightened(0.1)  # その物語の国の色
 	ornament.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(ornament)
-	var sub := _label(Text.t("story.episodes.sub"), 18)
-	sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	root.add_child(sub)
+	# 見出しの下: 主な人物（物語のファイルの [cast]。姿の額・名前・立ち位置）。書いていない物語は「話の選択」の小見出し。
+	if context.story.campaign.cast.is_empty():
+		var sub := _label(Text.t("story.episodes.sub"), 18)
+		sub.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+		root.add_child(sub)
+	else:
+		root.add_child(cast_row(context.story.campaign))
 
 	# 話が多いと横に並びきらないので、横に送れる枠に入れる（マウスのホイールでも送れる）。
 	# 開いたときは、次に遊ぶ話のカードが見えるところまで送っておく。
@@ -114,6 +138,7 @@ func _ready() -> void:
 	note.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	note.custom_minimum_size = Vector2(860.0, 0.0)
 	root.add_child(note)
+	note.add_child(NationDecor.new(army, 0.0, 40.0))  # 上の縁に、その国の色の帯
 	_roster = _label("", 17)
 	_roster.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	_roster.custom_minimum_size = Vector2(ROSTER_WIDTH, 0.0)
@@ -143,6 +168,16 @@ func _ready() -> void:
 	decks.custom_minimum_size = Vector2(220.0, 48.0)
 	decks.pressed.connect(press_edit_decks)
 	footer.add_child(decks)
+	# 最後に保存した所（オートセーブ。docs/save-slots.md）。ほかの並びを動かさないよう、画面の右下の隅に置く。
+	_saved = _label(saved_text(), 14)
+	_saved.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+	_saved.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_saved.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_saved.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_saved.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_saved.offset_right = -18.0
+	_saved.offset_bottom = -10.0
+	layer.add_child(_saved)
 
 
 func resume_label() -> String:
@@ -181,6 +216,11 @@ func card_status(episode: Episode) -> String:
 
 
 ## 下の欄の文: いま雇える駒、持たせられる持ち物、部隊のコストの上限（話をクリアすると増える）。
+## 最後に保存した所の文（「最後に保存: 日時」）。
+func saved_text() -> String:
+	return App.last_saved_text(context.slots)
+
+
 func roster_text() -> String:
 	var now: RefCounted = context.story.unlocked()
 	var kinds: Array[String] = []
@@ -290,11 +330,19 @@ func _build_card(episode: Episode) -> Button:
 	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）
 	card.pressed.connect(choose.bind(episode))
 
+	# 上の縁に国の色の帯と淡い光（物語のカードと同じ向き）。まだ遊べない話は色を抜く。次に遊ぶ話は、帯を金にして目立たせる。
+	var decor := NationDecor.new(context.story.campaign.army, 0.0, 70.0)
+	decor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if not available:
+		decor.band_color = Color(Palette.TEXT_OFF, 0.6)
+	elif episode == context.story.next_episode() and not context.story.is_cleared(episode.id):
+		decor.band_color = Palette.ACCENT
+	card.add_child(decor)
 	var column := VBoxContainer.new()
 	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	column.offset_left = 12.0
 	column.offset_right = -12.0
-	column.offset_top = 12.0
+	column.offset_top = 14.0
 	column.offset_bottom = -10.0
 	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -302,9 +350,14 @@ func _build_card(episode: Episode) -> Button:
 	var number := _label(Text.t("story.episodes.number_drill" if episode.lesson != "" else "story.episodes.number", {"number": Story.number_of(episode)}), 16)
 	number.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(number)
-	column.add_child(_label(episode.title, 24))
+	var title := _label(card_title(episode), 24)
+	title.add_theme_font_override("font", UiTheme.FONT_HEADING)
+	if not available:
+		title.add_theme_color_override("font_color", COLOR_LOCKED)
+	column.add_child(title)
 	var map := TextureRect.new()
-	map.texture = ImageTexture.create_from_image(map_image(episode))
+	if available:
+		map.texture = ImageTexture.create_from_image(map_image(episode))
 	map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	map.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -313,8 +366,20 @@ func _build_card(episode: Episode) -> Button:
 	if not available:
 		map.modulate = Color(0.45, 0.45, 0.45)
 	column.add_child(map)
+	if not available:
+		# 伏せた縮図: 封をした札（暗い地に斜めの細い線、薄い国の紋）の上に「？？？」。後ろの景色は透かさない。
+		map.add_child(Sealed.new(context.story.campaign.army))
 	map.add_child(MapFrame.new())  # 真鍮の縁と四隅の鉤（選べない話は、縮図ごと沈む）
-	map.add_child(face_of(episode))
+	if available:
+		map.add_child(face_of(episode))
+	else:
+		var hidden := _label(Text.t("story.episodes.hidden"), 30)
+		hidden.add_theme_font_override("font", UiTheme.FONT_HEADING)
+		hidden.add_theme_color_override("font_color", Palette.TEXT_DIM)
+		hidden.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		hidden.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		hidden.modulate = Color(1.0 / 0.45, 1.0 / 0.45, 1.0 / 0.45)  # 縮図ごと沈めたぶんを戻す（字は読めるように）
+		map.add_child(hidden)
 	var status := _label(status_text(episode), 18)
 	var cleared: bool = context.story.is_cleared(episode.id)
 	status.add_theme_color_override("font_color", COLOR_CLEARED if cleared else (COLOR_NEW if available else COLOR_LOCKED))
@@ -324,6 +389,20 @@ func _build_card(episode: Episode) -> Button:
 		unlocks.add_theme_color_override("font_color", COLOR_TEXT_DIM if available else COLOR_LOCKED)
 		column.add_child(unlocks)
 	return card
+
+
+## カードに出す話の名前（まだ遊べない話は伏せる）。
+func card_title(episode: Episode) -> String:
+	return episode.title if context.story.is_available(episode) else Text.t("story.episodes.hidden")
+
+
+## カードに縮図と顔を出しているか（まだ遊べない話は伏せる。検査用）。
+func is_card_revealed(episode: Episode) -> bool:
+	var card: Button = _cards[episode]
+	for node in card.find_children("*", "TextureRect", true, false):
+		if (node as TextureRect).texture != null:
+			return true
+	return false
 
 
 ## 話の顔: 敵の話し手の姿（話のファイルの figure。骸骨の将なども）のアイコンを、縮図の右下に重ねる。
@@ -357,6 +436,38 @@ func _panel(color: Color) -> PanelContainer:
 	return panel
 
 
+## 主な人物の欄: 1 人ずつ、姿の額（人の軍の色）と、名前・立ち位置を横に並べる。
+func cast_row(campaign: RefCounted) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", CAST_GAP)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.name = &"Cast"
+	for person: Dictionary in campaign.cast:
+		var figure: Dictionary = person["figure"]
+		var entry := HBoxContainer.new()
+		entry.add_theme_constant_override("separation", 8)
+		entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(entry)
+		var frame := UnitFrame.new(figure["kind"], 0, CAST_FACE, false, figure.get("evolved", false), figure.get("look", &""))
+		frame.edge = Crest.color_of(campaign.army)
+		entry.add_child(frame)
+		var words := VBoxContainer.new()
+		words.add_theme_constant_override("separation", -2)
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		entry.add_child(words)
+		var name_label := _label(person["name"], 16)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+		words.add_child(name_label)
+		var role := _label(person["role"], 13)
+		role.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		role.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+		words.add_child(role)
+	return row
+
+
 func _label(text: String, font_size: int) -> Label:
 	var label := Label.new()
 	label.text = text
@@ -365,3 +476,27 @@ func _label(text: String, font_size: int) -> Label:
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
+
+
+## 伏せた縮図の地（まだ遊べない話）。封をした札に見せる: 暗い地、斜めの細い線、真ん中に薄い国の紋。絵は使わず、ここで描く。
+class Sealed extends Control:
+	const Palette := preload("res://game/ui_palette.gd")
+	const Crest := preload("res://game/crest.gd")
+	## 斜めの線の間隔（px）。
+	const HATCH := 12.0
+
+	func _init(army: UnitKind.Army) -> void:
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+		var crest := Crest.new(army, 0.0, Color(Palette.TEXT_DIM, 0.22))
+		crest.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 22)
+		add_child(crest)
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Palette.INK)
+		var line := Color(Palette.BORDER_BRIGHT, 0.2)
+		var at := -size.y
+		while at < size.x:
+			draw_line(Vector2(at, size.y), Vector2(at + size.y, 0.0), line, 1.0, true)
+			at += HATCH

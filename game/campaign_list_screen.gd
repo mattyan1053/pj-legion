@@ -1,6 +1,6 @@
 extends Node
 ## 物語を選ぶ場面（docs/story.md の「物語を選ぶ」）。タイトルの「ストーリー」のあと、話の一覧の前。
-## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。
+## 背景はタイトルと同じ、裂けた空の下の結晶の森（title_backdrop.gd の VIEW_STORY）。場面の決まりは scene_flow.gd。
 ##
 ## - 物語（軍 1 つと話の列。story.gd の CAMPAIGNS）をカードで並べる。カードには物語の名前、軍、クリアした話の数。
 ## - 話の無い物語は「準備中」の札で、押せない。遊べる物語が 1 つでも、選ぶ場面は飛ばさない（物語が増えていくことを見せる）。
@@ -14,16 +14,20 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 const Crest := preload("res://game/crest.gd")
 const AppContext := preload("res://game/app_context.gd")
-const Backdrop := preload("res://game/backdrop.gd")
+const TitleBackdrop := preload("res://game/title_backdrop.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Campaign := preload("res://game/campaign.gd")
 const Story := preload("res://game/story.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const CardKeys := preload("res://game/card_keys.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
 
 signal finished(outcome: StringName)
 
-const CARD_SIZE := Vector2(320.0, 270.0)
+## カードの大きさ。紹介の 1 行（物語のファイルの intro）が 2 行に折り返しても収まる高さ。
+const CARD_SIZE := Vector2(320.0, 300.0)
+## 紹介の 1 行の文字の大きさ（px）。
+const INTRO_FONT := 15
 ## カードの顔（その物語の軍の、将と最初から雇える駒のアイコン）の大きさ（px）と、準備中のカードの暗さ。
 const FACE_SIZE := 72.0
 const LOCKED_SHADE := Color(0.4, 0.4, 0.45)
@@ -44,10 +48,11 @@ var _key_index := -1
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき
-	add_child(Backdrop.new())
+	# 背景はタイトルと同じ世界（裂けた空の下の結晶の森）。縫い目が真ん中に来るので、左のカードは琥珀の空、右のカードは菫の空の下に並ぶ。
+	add_child(TitleBackdrop.new(TitleBackdrop.VIEW_STORY))
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(UiTheme.scene_shade())
+	layer.add_child(UiTheme.vista_shade())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 36.0
@@ -60,7 +65,9 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	root.add_child(heading)
-	var ornament := Ornament.new(360.0, 14.0)
+	heading.add_theme_font_override("font", UiTheme.spaced_heading(6))
+	var ornament := Ornament.new(440.0, 16.0)
+	ornament.color = Palette.ACCENT
 	ornament.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(ornament)
 	var sub := _label(Text.t("story.campaigns.sub"), 18)
@@ -73,7 +80,7 @@ func _ready() -> void:
 	root.add_child(spacer)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 28)
+	row.add_theme_constant_override("separation", 64)  # 2 枚の間に、空の縫い目が通る
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(row)
 	for campaign in Story.campaigns():
@@ -244,6 +251,14 @@ func _build_card(campaign: Campaign) -> Button:
 	var army := _label(Text.t("story.campaigns.army", {"army": DeckText.army_name(campaign.army)}), 16)
 	army.add_theme_color_override("font_color", Crest.color_of(campaign.army).lightened(0.25) if ready else COLOR_LOCKED)
 	column.add_child(army)
+	if campaign.intro != "":
+		# 紹介の 1 行: 遊ぶ人が誰として、何をする物語か（物語のファイルの intro）。カードの幅で、語の途中で切らずに折り返す。
+		var intro := _label("", INTRO_FONT)
+		var font := UiTheme.FONT_BODY
+		intro.text = TextWrap.fold(campaign.intro, CARD_SIZE.x - 28.0 - 8.0,
+			func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, INTRO_FONT).x)
+		intro.add_theme_color_override("font_color", COLOR_TEXT_DIM if ready else COLOR_LOCKED)
+		column.add_child(intro)
 	var status := _label(status_text(campaign), 18)
 	var all_cleared: bool = ready and context.story.cleared_count(campaign) == campaign.episodes.size()
 	status.add_theme_color_override("font_color", COLOR_CLEARED if all_cleared else (COLOR_NEW if ready else COLOR_LOCKED))

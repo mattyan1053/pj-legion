@@ -7,6 +7,7 @@ extends Node
 ##
 ## - クリック・Enter・Space で次の文へ。文が出きる前なら、出しきるだけ。最後の文のあとは Run.NEXT で終える（流れの次の場面へ）。
 ## - 右クリックで 1 つ前の文へ戻る。Esc はシステムメニュー（ほかの場面と同じ）。
+## - 「ログ」・ホイールを上へ・L で、これまでの文を遡って読む窓（talk_log.gd）を開く。
 ## - 「飛ばす」で、残りを読まずに Run.NEXT で終える。知らせの行（side 2。駒の解放など）は飛ばさず、そこで止まる。
 ## - 渡された会話に次の話（"next_episode"。ストーリーの、あとの会話）があれば、終えるときに行き先を選ばせる:
 ##   「次の話へ」（その話の流れを始める。Enter でも）か「話の一覧へ」（Run.NEXT。流れの行き先）。右クリックで最後の文へ戻る。
@@ -20,6 +21,8 @@ const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
 const TalkFigure := preload("res://game/talk_figure.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const TalkLog := preload("res://game/talk_log.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
 
 signal finished(outcome: StringName)
 
@@ -44,8 +47,14 @@ const BLINK_PERIOD := 1.2
 const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEXT_OFF]
 ## 知らせの行の side（story.gd の NOTICE_SIDE）。
 const NOTICE_SIDE := 2
+## 地の文の行の side（episode.gd の NARRATION_SIDE）。名前の札を出さず、文を真ん中に明朝で出す。話し手の姿は、両方とも暗い。
+const NARRATION_SIDE := 3
 ## 知らせの行の、駒・持ち物の額の辺（px）。
 const NOTICE_FRAME := 72.0
+## 文の大きさと、文の枠の左右の余白（px）、知らせのアイコンと文の間（px）。文の幅は text_width で決まる。
+const TEXT_FONT := 25
+const BOX_MARGIN_X := 28.0
+const NOTICE_GAP := 12
 
 const COLOR_BOX := Color(Palette.PANEL, 0.92)
 const COLOR_BORDER := Palette.BORDER
@@ -64,12 +73,16 @@ var _plate_style: StyleBoxFlat
 var _box_style: StyleBoxFlat
 var _name: Label
 var _text: Label
+var _raw_text := ""
 var _face: UnitFrame
 var _item_face: Control  # item_icon.gd
 var _item_frame: PanelContainer
 var _hint: Label
 var _count: Label
 var _skip: Button
+var _log_button: Button
+## 会話のログの窓（talk_log.gd）。
+var _log: TalkLog
 ## 話し手の姿を立たせる所（見出しと、下の名前の札・文の枠の間）と、話し手の姿（会話に出てくる話し手ごとに 1 つ。
 ## 同じ所に立つ話し手のうち、いま立っている 1 人だけを見せる）。
 var _stage: Control
@@ -151,6 +164,19 @@ func _ready() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(spacer)
+	_log_button = Button.new()
+	_log_button.text = Text.t("talk.log")
+	_log_button.tooltip_text = Text.t("talk.log.tooltip")
+	_log_button.focus_mode = Control.FOCUS_NONE
+	_log_button.add_theme_font_size_override("font_size", 17)
+	_log_button.custom_minimum_size = Vector2(110.0, 36.0)
+	_log_button.size_flags_vertical = Control.SIZE_SHRINK_END
+	_log_button.pressed.connect(open_log)
+	top_row.add_child(_log_button)
+	var buttons_gap := Control.new()
+	buttons_gap.custom_minimum_size = Vector2(8.0, 0.0)
+	buttons_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.add_child(buttons_gap)
 	_skip = Button.new()
 	_skip.text = Text.t("talk.skip")
 	_skip.focus_mode = Control.FOCUS_NONE
@@ -168,8 +194,8 @@ func _ready() -> void:
 	var box_style := UiTheme.box(COLOR_BOX, COLOR_BORDER, 1, 8, 12.0, 10)
 	box_style.border_width_top = 3
 	_box_style = box_style
-	box_style.content_margin_left = 28.0
-	box_style.content_margin_right = 28.0
+	box_style.content_margin_left = BOX_MARGIN_X
+	box_style.content_margin_right = BOX_MARGIN_X
 	box_style.content_margin_top = 18.0
 	box_style.content_margin_bottom = 12.0
 	var box := PanelContainer.new()
@@ -184,7 +210,7 @@ func _ready() -> void:
 	var text_row := HBoxContainer.new()
 	text_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_row.add_theme_constant_override("separation", 12)
+	text_row.add_theme_constant_override("separation", NOTICE_GAP)
 	column.add_child(text_row)
 	# どちらも、金の縁の額に入れる（手に入れたものとして見せる）。駒の額には役割の印が付く。
 	_face = UnitFrame.new(UnitKind.Id.KING, 0, NOTICE_FRAME)
@@ -200,8 +226,8 @@ func _ready() -> void:
 	text_row.add_child(_item_frame)
 	_item_face = ItemIcon.new(Equipment.Id.IRON_SHIELD, NOTICE_FRAME - 16.0)
 	_item_frame.add_child(_item_face)
-	_text = _label(25, COLOR_TEXT)
-	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# 折り返しは、文を出すときに text_wrap.gd で入れる（自動の折り返しは、ひらがなの語の途中や句読点の前で切る）。
+	_text = _label(TEXT_FONT, COLOR_TEXT)
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_row.add_child(_text)
@@ -215,7 +241,26 @@ func _ready() -> void:
 	_hint.text = Text.t("talk.hint")
 	foot.add_child(_hint)
 
+	_log = TalkLog.new()
+	add_child(_log)
+	_log.setup(context.overlays)
+	_log.opened.connect(func() -> void: context.play_sound(&"menu_open"))
+	_log.closed.connect(func() -> void: context.play_sound(&"menu_close"))
+
 	_show_line(0)
+
+
+## 会話のログを開く（これまでに出した文。いまの文まで）。
+func open_log() -> void:
+	if _log.is_open() or context.overlays.is_open():
+		return
+	var lines: Array = talk.get("lines", [])
+	_log.open(lines.slice(0, mini(_index + 1, lines.size())))
+
+
+## 会話のログの窓（検査用）。
+func talk_log() -> TalkLog:
+	return _log
 
 
 ## 行 line の話し手の番号（"who"。無ければ陣営の番号）。知らせの行は -1。
@@ -285,6 +330,12 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if context.overlays.is_open():
+		return
+	var wheel_up: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP
+	var log_key: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_L
+	if wheel_up or log_key:
+		get_viewport().set_input_as_handled()
+		open_log()
 		return
 	if is_choosing():
 		_choice_input(event)
@@ -365,13 +416,39 @@ func bottom_rect() -> Rect2:
 	return _bottom.get_global_rect()
 
 
+## 行 line が地の文か（話し手のいない行）。
+static func is_narration(line: Dictionary) -> bool:
+	return int(line.get("side", 0)) == NARRATION_SIDE
+
+
+## いまの文が地の文か（検査用）。
+func is_narrating() -> bool:
+	return _index < line_count() and is_narration(talk["lines"][_index])
+
+
 ## いまの話し手の名前と文（検査用）。
 func speaker() -> String:
 	return _name.text
 
 
+## いまの文（折り返す前のもの）。
 func line_text() -> String:
-	return _text.text
+	return _raw_text
+
+
+## 行 line の文を折り返す幅（px）。知らせの行は、アイコンのぶん狭い。
+static func text_width(line: Dictionary) -> float:
+	var width := BOX_WIDTH - BOX_MARGIN_X * 2.0
+	if line.has("kind") or line.has("item"):
+		width -= NOTICE_FRAME + NOTICE_GAP
+	return width
+
+
+## 行 line の文を、text_width で折り返したもの（地の文は見出しの字）。
+static func fold_line(line: Dictionary) -> String:
+	var font := UiTheme.FONT_HEADING if is_narration(line) else UiTheme.FONT_BODY
+	return TextWrap.fold(line.get("text", ""), text_width(line),
+		func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_FONT).x)
 
 
 func _show_line(index: int) -> void:
@@ -380,16 +457,24 @@ func _show_line(index: int) -> void:
 	if index >= line_count():
 		_name.text = ""
 		_text.text = ""
+		_raw_text = ""
 		_face.visible = false
 		_item_frame.visible = false
 		_count.text = ""
 		_plate.visible = false
 		return
 	var line: Dictionary = talk["lines"][index]
+	var narration := is_narration(line)
 	_plate.visible = true
+	_plate.modulate.a = 0.0 if narration else 1.0  # 地の文は札を出さない（場所は取ったまま。文の枠が上下に動かないように）
 	_name.text = line.get("name", "")
+	_text.add_theme_font_override("font", UiTheme.FONT_HEADING if narration else UiTheme.FONT_BODY)
+	_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if narration else HORIZONTAL_ALIGNMENT_LEFT
+	_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER if narration else VERTICAL_ALIGNMENT_TOP
 	var team := TEAM_COLORS[clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)]
-	if int(line.get("side", 0)) >= NOTICE_SIDE:
+	if narration:
+		_box_style.border_color = COLOR_BORDER
+	elif int(line.get("side", 0)) >= NOTICE_SIDE:
 		# 知らせ（手に入れたもの）は、陣営の色ではなく金: 選ばれている地の札と、金の縁。
 		_plate_style.bg_color = Palette.CHOSEN
 		_plate_style.border_color = Palette.BORDER_BRIGHT
@@ -398,7 +483,8 @@ func _show_line(index: int) -> void:
 		_plate_style.bg_color = team.darkened(0.15)
 		_plate_style.border_color = team.lightened(0.35)
 		_box_style.border_color = COLOR_BORDER.lerp(team.lightened(0.2), 0.85)
-	_text.text = line.get("text", "")
+	_raw_text = line.get("text", "")
+	_text.text = fold_line(line)
 	_face.visible = line.has("kind")
 	if _face.visible:
 		_face.set_kind(line["kind"])

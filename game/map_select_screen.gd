@@ -1,6 +1,6 @@
 extends Node
 ## マップ選択の場面（タイトルの「対戦」のあと、対戦設定の前）。カードから、戦うマップを選ぶ（docs/map-select.md）。
-## 背景は対戦と同じ景色（backdrop.gd）。場面の決まりは scene_flow.gd。選べるマップの一覧は versus_fields.gd。
+## 背景は、タイトルと同じ裂けた空の下の、選んでいるマップの景色（title_backdrop.gd の VIEW_VERSUS）。場面の決まりは scene_flow.gd。選べるマップの一覧は versus_fields.gd。
 ##
 ## - カードは 2 段: 上の段が生成のマップ（毎回形が変わる）、下の段が手で作ったマップ（いつも同じ形）。
 ##   段に収まらないほど増えたら、その段を横に送れる（ホイールでも）。
@@ -17,7 +17,7 @@ const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const AppContext := preload("res://game/app_context.gd")
-const Backdrop := preload("res://game/backdrop.gd")
+const TitleBackdrop := preload("res://game/title_backdrop.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const MapCard := preload("res://game/map_card.gd")
 const MapFrame := preload("res://game/map_frame.gd")
@@ -25,6 +25,13 @@ const Ornament := preload("res://game/ui_ornament.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
 const CardKeys := preload("res://game/card_keys.gd")
+
+## 背景の景色の盤の種（いつも同じ景色）、カードに乗せてから景色を替え始めるまでの秒数、幕を沈める・戻す秒数と、沈めたときの濃さ。
+const SCAPE_SEED := 7
+const SCAPE_DELAY := 0.25
+const SCAPE_FADE_OUT := 0.12
+const SCAPE_FADE_IN := 0.35
+const SCAPE_CURTAIN := 0.75
 
 signal finished(outcome: StringName)
 
@@ -59,15 +66,30 @@ var _cards := {}
 var _note_title: Label
 var _note: Label
 var _hovered: StringName = &""
+## 背景（裂けた空の下の、マップの景色）と、いま背景に見せているマップ、次に見せるマップ（替える途中でなければ空）。
+var _backdrop: TitleBackdrop
+var _curtain: ColorRect
+var _scape_field: StringName = &""
+var _scape_next: StringName = &""
+var _scape_tween: Tween
 ## 左右の矢印で選んでいる間か（マウスを動かすまで）。
 var _by_key := false
 
 
 func _ready() -> void:
-	add_child(Backdrop.new())
+	# 背景は、タイトル・物語の選択と同じ裂けた空の下の、選んでいるマップの景色（カードに乗せると、そのマップの景色に替わる）。
+	_scape_field = context.match_choice.field if context != null and VersusFields.has(context.match_choice.field) else VersusFields.DEFAULT
+	_backdrop = TitleBackdrop.new(TitleBackdrop.VIEW_VERSUS, VersusFields.card_board(_scape_field, SCAPE_SEED), VersusFields.look_of(_scape_field))
+	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(UiTheme.scene_shade())
+	# 景色を替えるときに、いちど沈める幕（替わる瞬間を見せない）。
+	_curtain = ColorRect.new()
+	_curtain.color = Color(Palette.INK, 0.0)
+	_curtain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_curtain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_curtain)
+	layer.add_child(UiTheme.vista_shade())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 22.0
@@ -203,7 +225,61 @@ func hover(field: StringName) -> void:
 	if field != &"":
 		_set_card_hovered(_cards[field], true)
 		_scroll_into_view(_cards[field])
+		_queue_scape(field)
+	else:
+		_cancel_queued_scape()
 	_show_note(field)
+
+
+## 背景の景色を field のマップのものに替える。カードの上を通り過ぎるだけでは替えない（SCAPE_DELAY 秒とどまったら、幕を沈めて替える）。
+func _queue_scape(field: StringName) -> void:
+	if field == _scape_next or (_scape_next == &"" and field == _scape_field):
+		return
+	_scape_next = field
+	if _scape_tween != null:
+		_scape_tween.kill()
+	_scape_tween = create_tween()
+	_scape_tween.tween_interval(SCAPE_DELAY)
+	_scape_tween.tween_property(_curtain, "color:a", SCAPE_CURTAIN, SCAPE_FADE_OUT)
+	_scape_tween.tween_callback(_swap_scape)
+	_scape_tween.tween_property(_curtain, "color:a", 0.0, SCAPE_FADE_IN)
+
+
+## カードから離れた: まだ待っている間（幕を沈め始める前）なら、景色を替えるのをやめる（通り過ぎただけでは替えない）。
+## 幕がもう沈み始めていたら、そのまま替える（途中で戻すと、ちらつく）。
+func _cancel_queued_scape() -> void:
+	if _scape_next == &"" or _curtain.color.a > 0.0:
+		return
+	_scape_next = &""
+	if _scape_tween != null:
+		_scape_tween.kill()
+		_scape_tween = null
+
+
+func _swap_scape() -> void:
+	if _scape_next == &"":
+		return
+	_scape_field = _scape_next
+	_scape_next = &""
+	_backdrop.show_scape(VersusFields.card_board(_scape_field, SCAPE_SEED), VersusFields.look_of(_scape_field))
+
+
+## 背景の景色を、待たずに、乗せているマップのものに替える（スクリーンショットの道具用）。
+func show_scape_now() -> void:
+	if _scape_tween != null:
+		_scape_tween.kill()
+	_curtain.color.a = 0.0
+	_swap_scape()
+
+
+## 背景がいま見せている景色の見た目の名前（検査用）。
+func backdrop_look() -> StringName:
+	return _backdrop.shown_look()
+
+
+## 背景に見せている（替える途中なら、これから見せる）マップ（検査用）。
+func scape_field() -> StringName:
+	return _scape_next if _scape_next != &"" else _scape_field
 
 
 ## マウスを乗せているカードのマップ（無ければ空）と、説明の欄の文字。検査用。

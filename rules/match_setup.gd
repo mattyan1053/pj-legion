@@ -34,6 +34,11 @@ var ignore_budget := false
 ## 人が決めた初期位置（プレイヤーごと。本陣からのずれを、編成の並びの順に。決めていない駒は Deployment.UNSET）。
 ## 空なら、いつもの置き方（Deployment.deploy）。置けるマス（Deployment.zone）の外のずれは使わない。
 var placements: Array[Array] = [[], []]
+## 入にする試しの決まり（TrialRules の名前）。既定は空（どれも切）。
+var trials: Array[StringName] = []
+## プレイヤーごとの、選んだ作戦（Tactics.Id の並び）。試しの決まり TrialRules.TACTICS が入のときだけ使う。
+## 空か足りなければ、既定の札で埋める（Tactics.hand_from）。
+var tactics: Array[Array] = [[], []]
 
 
 ## 戦いの定義 defined の、人（human_side）と CPU の対戦設定。人の編成は渡したもの。
@@ -152,6 +157,10 @@ func create_battle() -> Battle:
 	var board := scenario.make_board(battle_seed)
 	if board == null:
 		return null
+	if trials.has(TrialRules.BATTERY):
+		BoardGenerator.arm_batteries(board)
+	if trials.has(TrialRules.STRONGHOLD):
+		Stronghold.arm(board)
 	var battle := Battle.new(board, battle_seed)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var placement: Array[Vector2i] = []
@@ -161,7 +170,11 @@ func create_battle() -> Battle:
 		)
 		_apply_start_growth(placed, scenario.start_growth[side])
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
+		if board.stronghold_cell != Board.NO_CELL:
+			battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
+		if trials.has(TrialRules.TACTICS):
+			battle.tactics[side] = Tactics.hand_from(tactics[side])
 	battle.hold_turns = scenario.hold_turns
 	return battle
 

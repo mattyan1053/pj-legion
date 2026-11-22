@@ -15,6 +15,7 @@ const WIN_TEXTS := {
 	GameWonEvent.Reason.TURNS_HELD: "battle.log.won.turns_held",
 	GameWonEvent.Reason.ROUTED: "battle.log.won.routed",
 	GameWonEvent.Reason.BOSS_SLAIN: "battle.log.won.boss_slain",
+	GameWonEvent.Reason.STRONGHOLD_HELD: "battle.log.won.stronghold_held",
 }
 const DRAW_TEXTS := {
 	GameDrawnEvent.Reason.BOTH_KINGS_DEFEATED: "battle.log.drawn.both_kings_defeated",
@@ -141,6 +142,8 @@ static func readers() -> Dictionary:
 		SanctuaryHealedEvent: &"_read_healed",
 		StatusAppliedEvent: &"_read_status_applied",
 		UltUsedEvent: &"_read_ult_used",
+		TacticUsedEvent: &"_read_tactic_used",
+		TacticHealedEvent: &"_read_healed",
 		UltReadyEvent: &"_read_ult_ready",
 		UnitDefeatedEvent: &"_read_defeated",
 		MidBossDefeatedEvent: &"_read_mid_boss_defeated",
@@ -149,6 +152,7 @@ static func readers() -> Dictionary:
 		LevelUpEvent: &"_read_level_up",
 		UnitEvolvedEvent: &"_read_evolved",
 		CaptureProgressEvent: &"_read_capture",
+		StrongholdProgressEvent: &"_read_stronghold",
 		GameWonEvent: &"_read_won",
 		GameDrawnEvent: &"_read_drawn",
 		# 行にしないもの。
@@ -327,9 +331,10 @@ func _read_moved(event: UnitMovedEvent) -> void:
 		return
 	var to: Vector2i = event.path[-1]
 	_set_cell(event.unit_id, to)
-	# ポータルを通った移動は、歩いた区間ごとに分かれて来る。続きの区間は、同じ行に書き足す。
+	# ポータルを通った移動は、歩く・転移・続きを歩く、に分かれて来る。続きの区間は、同じ行に書き足す。
 	var move: Array = _moves.get(event.unit_id, [])
 	if not move.is_empty() and move[3] and (move[0] as Entry).cell == event.path[0]:
+		move[2] = move[2] or event.cruise  # 転移のあとの続きを巡航にした
 		_redo_move(event.unit_id, to)
 		return
 	if event.path.size() < 2:
@@ -505,6 +510,8 @@ func _read_healed(event: UnitHealedEvent) -> void:
 		key = "battle.log.healed.spring"
 	elif event is RegenerationHealedEvent:
 		key = "battle.log.healed.regeneration"
+	elif event is TacticHealedEvent:
+		key = "battle.log.healed.tactic"
 	_line(Text.t(key, {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
@@ -530,6 +537,11 @@ func _read_status_applied(event: StatusAppliedEvent) -> void:
 	if not _group.unit_ids.has(event.unit_id):
 		_group.unit_ids.append(event.unit_id)
 	_touch(_group)
+
+
+func _read_tactic_used(event: TacticUsedEvent) -> void:
+	var text := Text.t("battle.log.tactic", {"side": Names.side_word(event.side), "tactic": Names.tactic(event.tactic)})
+	_begin_group(_line(text, event.side))
 
 
 func _read_ult_used(event: UltUsedEvent) -> void:
@@ -617,6 +629,13 @@ func _read_capture(event: CaptureProgressEvent) -> void:
 	if event.turns == 0:
 		text = Text.t("battle.log.capture_broken", args)
 	_line(text, event.player, hq)
+
+
+func _read_stronghold(event: StrongholdProgressEvent) -> void:
+	_group = null
+	var args := {"side": Names.side_word(event.player), "holds": event.holds, "needed": Stronghold.HOLDS_TO_WIN}
+	var key := "battle.log.stronghold" if event.holds > 0 else "battle.log.stronghold_lost"
+	_line(Text.t(key, args), event.player, _board.stronghold_cell)
 
 
 func _read_won(event: GameWonEvent) -> void:

@@ -22,10 +22,10 @@ func test_the_index_links_every_episode_in_order() -> void:
 	var at := 0
 	for campaign: Campaign in Story.campaigns():
 		for episode: Episode in campaign.episodes:
-			var link := "[%s](episodes/%s.txt)" % [episode.title, episode.id]
+			var link := "[%s](%s/%s.txt)" % [episode.title, campaign.id, episode.id]
 			var found := text.find(link, at)
 			assert_true(found >= 0, "目次に %s が順に並んでいない" % link)
-			assert_true(FileAccess.file_exists("res://game/story/episodes/%s.txt" % episode.id), "話のファイルが無い: %s" % episode.id)
+			assert_true(FileAccess.file_exists("res://game/story/%s/%s.txt" % [campaign.id, episode.id]), "話のファイルが無い: %s" % episode.id)
 			at = maxi(at, found)
 
 
@@ -42,7 +42,7 @@ func test_a_script_holds_every_line_in_order() -> void:
 				texts.append(row[1])
 			for cue: Array in episode.cues:
 				texts.append(cue[3])
-			for row: Array in episode.after:
+			for row: Array in episode.after + episode.lost:
 				texts.append(row[1])
 			for each in texts:
 				var found := text.find(each, at)

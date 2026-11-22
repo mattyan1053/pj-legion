@@ -7,6 +7,9 @@ extends RefCounted
 ## - 後ろの場面は、何かが開いているか（is_open）、時間を止める重なりが開いているか（pauses）だけを見る。
 ##   重なる画面を 1 つ足すときは、開く・閉じるでここを通すだけでよい。
 
+## 開いた・閉じた（積み上げが変わった）。後ろの場面が、時間を止めるか見直すのに使う。
+signal changed
+
 ## 開いている重なる画面（下から上へ）。[画面, 時間を止めるか] の列。
 var _stack: Array = []
 
@@ -16,13 +19,18 @@ var _stack: Array = []
 func open(overlay: Object, pausing := false) -> void:
 	if not has(overlay):
 		_stack.append([overlay, pausing])
+		changed.emit()
 
 
 ## overlay を閉じた（積んでいなければ何もしない）。
 func close(overlay: Object) -> void:
+	var removed := false
 	for i in range(_stack.size() - 1, -1, -1):
 		if _stack[i][0] == overlay:
 			_stack.remove_at(i)
+			removed = true
+	if removed:
+		changed.emit()
 
 
 ## overlay を積んでいるか。

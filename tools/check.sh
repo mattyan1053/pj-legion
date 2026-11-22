@@ -80,16 +80,19 @@ start() {
 }
 # 長い検査で、撮らずに作るスクリーンショットの場面（tools/screenshots.gd）。ルールや数値が変わると作れなくなりやすいもの。
 # 全部を作ると 5 分ほど掛かるので、いくつかに絞る（全部は、撮る人が tools/screenshots.sh で確かめる）。
-# 2 つのまとまりに分けて並べて回す（どちらも 30 秒ほど）。
-SHOTS_IN_FULL_A="mid_boss,forecast_skill,forecast_defeat,phase_camera,story_cleared"
+# 2 つのまとまりに分けて並べて回す（どちらも 30 秒ほど）。story_open_all は story_cleared の前に置き、前の場面の状態が残らないことも見る。
+SHOTS_IN_FULL_A="mid_boss,forecast_skill,forecast_defeat,phase_camera,story_open_all,story_cleared"
 SHOTS_IN_FULL_B="skill_fireball,skill_shadow,ult_eruption,result"
 
 started=$SECONDS
 run import --import || { cat "$logs/import.log"; exit 1; }
 cat "$logs/import.log"
 # テストと自動の対戦は互いに関わらないので、並べて回す。
-# PR ごとの検査でも長い検査でも、`test_long_` でないテストは 1 つのまとまりで回す。
-start tests -s res://tools/run_tests.gd
+# `test_long_` でないテストは 2 つのまとまりに分ける（1 つだと、CI でいちばん長いまとまりになる）。
+# TESTS_APART に挙げたファイル（時間の掛かるもの）を別に回し、残りを全部 tests で回す（足したテストが漏れない）。
+TESTS_APART="test_hand_map.gd,test_battle_log.gd,test_horde.gd,test_board_generator.gd,test_monsters.gd,test_stronghold.gd"
+start tests -s res://tools/run_tests.gd -- --except="$TESTS_APART"
+start tests_apart -s res://tools/run_tests.gd -- --only="$TESTS_APART"
 # 自動の対戦。画面の描画を待たずに進める（--fixed-fps）。終わらなければ、コマ数で打ち切る。
 # 場面を 2 つのまとまり（イベントを再生する場面と、操作の決まりの場面。game/autoplay.gd の GROUPS）に分けて、並べて回す。
 start autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay --only events $full
@@ -102,6 +105,9 @@ if [ -n "$full" ]; then
   start tests_long_maps_military -s res://tools/run_tests.gd -- --long-only --only=on_every_map_finish_military_first
   start tests_long_maps_fantasy -s res://tools/run_tests.gd -- --long-only --only=on_every_map_finish_fantasy_first
   start tests_long_rest -s res://tools/run_tests.gd -- --long-only --except=on_every_map_finish_
+  # 通しの点検の長い道（game/autoplay_sweeps.gd。tools/sweep.sh と同じもの）。話を全部と、対戦モードの全部のマップ × 試しの決まりの入・切。
+  start sweep_story --fixed-fps 60 -- --autoplay --story-all
+  start sweep_versus --fixed-fps 60 -- --autoplay --versus-all
   start shots_a -- --shots "$SHOTS_IN_FULL_A" --dry-run
   start shots_b -- --shots "$SHOTS_IN_FULL_B" --dry-run
 fi
@@ -130,6 +136,12 @@ for name in autoplay autoplay_ui autoplay_ui_wide; do
   fi
 done
 if [ -n "$full" ]; then
+  for name in sweep_story sweep_versus; do
+    if ! grep -Fx "autoplay: OK" "$logs/$name.log" >/dev/null; then
+      echo "check: 通しの点検の長い道が最後まで進まなかった（$name）" >&2
+      exit 1
+    fi
+  done
   for name in shots_a shots_b; do
     if ! grep -Fx "screenshots: OK" "$logs/$name.log" >/dev/null; then
       echo "check: スクリーンショットの場面が作れなかった（$name）" >&2

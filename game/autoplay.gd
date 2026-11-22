@@ -6,6 +6,7 @@ extends Node
 ## 中立の駒、レベルアップ、進化、回復、閲覧、対戦設定、システムメニュー、CPU の番）、最後にタイトルと部隊編成の場面を通す場面。
 ## 長い検査（`-- --autoplay --full`）では、game のあとに盤面を作り直して、ほかのマップも少し動かす（そのうち 1 戦は、相手を CPU にする）。
 ##
+## `-- --autoplay --story-all` と `-- --autoplay --versus-all` は、場面のかわりに、通しの点検の長い道を通す（autoplay_sweeps.gd）。
 ## `-- --autoplay --only <名前,…>` で、選んだ場面だけを回す（名前は SCENES の名前か、GROUPS のまとまりの名前）。
 ## 場面の中で確かめたことが外れたら、その場面の残りを飛ばして次の場面へ進み、最後にまとめて失敗にする。
 ## イベントを再生する場面（GROUPS の events）を全部回したときは、どの種類のイベントも 1 回は再生したことを確かめる。
@@ -17,12 +18,15 @@ const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
+const Episode := preload("res://game/episode.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
+const Palette := preload("res://game/ui_palette.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 const RandomSquad := preload("res://game/random_squad.gd")
+const AutoplaySweeps := preload("res://game/autoplay_sweeps.gd")
 const NO_CELL := Vector2i(-1, -1)
 
 ## 場面の名前 -> 説明（回す順）。決まった手順の場面は、同じ名前の _queue_<名前>_scene() が手順を積む。
@@ -33,14 +37,15 @@ const ResultSummary := preload("res://game/result_summary.gd")
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
-	"portal_and_spring": "ポータルに止まってメニューの「転移」、ふさがったポータル、ポータルを通る移動と取り消し、回復の泉",
-	"capture": "敵の本陣の占拠",
+	"portal_and_spring": "ポータルに止まってメニューの「転移」、転移のあと続けて動く、取り消し、ふさがったポータル、回復の泉",
+	"capture": "敵の本陣の占拠と、拠点の確保（試しの決まり）",
 	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
 	"skill": "スキルのボタンと対象選び、クールダウン",
 	"status": "自分に使うスキルと、駒に付く状態",
 	"extra_action": "行動を終えないスキルと、行動済みの駒を戻すスキル",
 	"ult": "必殺技",
+	"tactic": "作戦（試しの決まり。手札の札を、確かめてから 1 回ずつ使う）",
 	"neutral": "中立の駒（湧く、攻撃する、カメラが追う）",
 	"mid_boss": "中ボスと聖遺物",
 	"level_up": "レベルアップ",
@@ -61,7 +66,7 @@ const SCENES := {
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
 	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
-		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
+		"ult", "tactic", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
 	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }
 
@@ -132,10 +137,24 @@ static func _choose_scenes(args: PackedStringArray) -> Array[String]:
 func _ready() -> void:
 	var screen := get_viewport().get_visible_rect().size
 	print("autoplay: 画面 %dx%d" % [screen.x, screen.y])
-	if _selected.is_empty():
+	var args := OS.get_cmdline_user_args()
+	if args.has("--story-all") or args.has("--versus-all"):
+		_sweep.call_deferred(args)
+	elif _selected.is_empty():
 		_finish("autoplay: --only に知らない名前がある（場面: %s、まとまり: %s）" % [", ".join(SCENES.keys()), ", ".join(GROUPS.keys())], 1)
 	elif not _selected.has("game"):
 		_queue_scenes()
+
+
+## 通しの点検の長い道（autoplay_sweeps.gd）を通して終える。場面（SCENES）は回さない。
+func _sweep(args: PackedStringArray) -> void:
+	_leaving = true
+	var app := _scene.get_parent()
+	reparent(app)  # このノードは対戦の場面の子なので、場面が消える前にアプリの子へ移る
+	await AutoplaySweeps.new(self).run(app, args)
+	_scene = app  # 対戦の場面はもう無い。終えるときは、アプリの context で音を止める
+	_finish("autoplay: OK" if _failures.is_empty() else "autoplay: 失敗した所がある（%d 件）:\n  %s" % [_failures.size(), "\n  ".join(_failures)],
+		0 if _failures.is_empty() else 1)
 
 
 func _process(_delta: float) -> void:
@@ -371,7 +390,7 @@ func _end_turn() -> void:
 	_scene.press_end_turn()
 
 
-## ポータルを通る移動（歩く → 転移 → 歩く）と、その取り消し、回復の泉の回復。
+## ポータルを通る移動（ポータルへ歩く → メニューの「転移」→ 残りで続けて歩く）と、その取り消し、回復の泉の回復。
 func _queue_portal_and_spring_scene() -> void:
 	var board := _small_board(Vector2i(12, 6))
 	board.add_portal_pair(Vector2i(1, 1), Vector2i(8, 1))
@@ -407,12 +426,19 @@ func _queue_portal_and_spring_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(8, 1) and _scene.selected_unit() == walker, "「転移」で対のポータルへ移らなかった")
 		_expect(_scene.played.get(warped, 0) == 1, "転移を再生しなかった")
-		var last: String = _scene.battle_log.entries[-1].text
-		_expect(last.contains("(0, 1) → (8, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_expect(not _scene.menu_ids().has(BattleTexts.MENU_WARP), "転移したあとも「転移」が出ている")
+		_expect(_scene.painted_color(far) == _scene.COLOR_MOVE, "転移のあと、残りの移動力で届くマスを塗っていない")
+		_scene.played.erase(moved)
+		_scene.click_cell(far))
+	_scripted.append(func() -> void:
+		_expect(walker.cell == far, "転移のあと、続けて動けなかった")
+		_expect(_scene.played.get(moved, 0) == 1, "続きの移動を再生しなかった")
+		var last: String = _scene.battle_log.entries[-1].text
+		_expect(last.contains("(0, 1) → (10, 1)") and last.contains("ポータル経由"), "ログが、ポータル経由の移動 1 行になっていない: " + last)
 		_scene.cancel())
 	_scripted.append(func() -> void:
 		_expect(walker.cell == Vector2i(0, 1), "転移を取り消して、動く前のマスへ戻らなかった")
+		_expect(_scene.painted_color(far) != _scene.COLOR_MOVE, "動く前の範囲を、転移の先まで広げている")
 		# 行き先がふさがっているポータル: 止まれるが、「転移」は出ない。
 		_click(blocked_walker.cell))
 	_scripted.append(func() -> void: _click(Vector2i(1, 3)))
@@ -422,32 +448,31 @@ func _queue_portal_and_spring_scene() -> void:
 		_scene.cancel())
 	_scripted.append(func() -> void: _scene.cancel())
 	_scripted.append(func() -> void: _click(walker.cell))
+	_scripted.append(func() -> void: _click(Vector2i(1, 1)))
+	_scripted.append(func() -> void: _scene.press_menu(BattleTexts.MENU_WARP))
+	_scripted.append(func() -> void: _scene.click_cell(far))
 	_scripted.append(func() -> void:
-		_scene.played.erase(warped)
-		_scene.played.erase(moved)
-		_scene.click_cell(far))
-	_scripted.append(func() -> void:
-		_expect(walker.cell == far, "ポータルの先へ動かなかった")
-		_expect(_scene.played.get(moved, 0) == 2 and _scene.played.get(warped, 0) == 1, "歩く → 転移 → 歩く の順に再生しなかった")
-		_scene.cancel())
-	_scripted.append(func() -> void:
-		_expect(walker.cell == Vector2i(0, 1), "転移した移動を取り消せなかった")
-		_scene.click_cell(far))
-	_scripted.append(func() -> void: _scene.press_wait())
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN)
+		_scene.press_wait())
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		_expect(battle.turn == 2 and battle.phase == Unit.Side.PLAYER1, "ターンが進まなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 0, "中立の駒のいない番の知らせを出した")
 		_expect(bather.hp == bather.max_hp() - 20 + MapObject.SPRING_HEAL, "回復の泉で回復しなかった"))
 
 
-## 敵の本陣に乗ったままターンを終えて、占拠の数を進める。
+## 敵の本陣に乗ったままターンを終えて、占拠の数を進める。拠点（試しの決まり）にも駒を乗せておき、確保の数も進める。
 func _queue_capture_scene() -> void:
 	var board := _small_board(Vector2i(6, 4))
+	board.stronghold_cell = Vector2i(2, 2)
 	var battle := Battle.new(board)
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 3))
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(5, 3))
 	var raider := battle.add_unit(UnitKind.Id.COMMANDO, Unit.Side.PLAYER1, Vector2i(3, 0))
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, board.stronghold_cell)
 
 	_scripted.append(func() -> void: _scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void: _scene.click_cell(raider.cell))
@@ -455,6 +480,8 @@ func _queue_capture_scene() -> void:
 	_scripted.append(func() -> void: _scene.press_wait())
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void: _expect(battle.capture_turns[Unit.Side.PLAYER1] == 1, "占拠の数が進まなかった"))
+	_scripted.append(func() -> void: _expect(battle.stronghold_holds[Unit.Side.PLAYER1] == 1, "拠点の確保の数が進まなかった"))
+	_scripted.append(func() -> void: _expect(_scene.stronghold_flag_color() == Palette.TEAM_BLUE, "拠点の旗が確保した陣営の色にならなかった"))
 
 
 ## 樽を攻撃して爆発させ、両方の将を巻き込んで引き分けにする。
@@ -531,6 +558,11 @@ func _queue_result_scene() -> void:
 		full.lines = [["マップ", "結晶の岩山"], ["経過ターン", "23 ターン"], ["敵軍撃破", "5 体"], ["中立撃破", "3 体"], ["聖遺物", "英知の聖遺物・勇気の聖遺物"]]
 		full.mvp_name = "シールドトルーパー Lv3"
 		screen.present(full)
+		# 負けた話の台詞（いちばん多い 3 行、いちばん長い文）も、戦績の左に収まる。
+		var remark: Array[BattleCues.Line] = []
+		for side: int in [0, 1, 0]:
+			remark.append(BattleCues.Line.new(side, "ドーソン", "あ".repeat(Episode.LOST_MAX_CHARS), {"kind": UnitKind.Id.SHIELD_TROOPER, "evolved": true}))
+		screen.set_remark(remark)
 	var waited_full := [0]
 	var wait_full := func(again: Callable) -> void:
 		var screen_size: Vector2 = screen.get_viewport_rect().size
@@ -545,6 +577,14 @@ func _queue_result_scene() -> void:
 		var rect: Rect2 = screen.prompt_rect()
 		_expect(rect.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
 			"戦績が 5 行のとき、決着の画面の入力の案内が下の帯にかかる: %s" % rect)
+		var said: Rect2 = screen.remark_rect()
+		_expect(screen.remark_texts().size() == 3 and said.position.x >= 0.0 and said.end.x <= screen_size.x / 2.0 - 230.0
+			and said.end.y <= screen_size.y - BattleHud.BOTTOM_BAR_HEIGHT,
+			"負けたときの台詞の板が、画面からはみ出すか、戦績や下の帯にかかる: %s" % said)
+		screen.toggle_detail()
+		_expect(not screen.remark_rect().has_area(), "詳しい戦績を開いても、負けたときの台詞の板が表に重なって出ている")
+		screen.toggle_detail()
+		_expect(screen.remark_rect() == said, "詳しい戦績を閉じても、負けたときの台詞の板が戻らない")
 	_scripted.append(wait_revealed.bind(wait_revealed))
 	_scripted.append(wait_full.bind(wait_full))
 
@@ -815,12 +855,14 @@ func _queue_neutral_scene() -> void:
 
 	_scripted.append(func() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1)
-		_scene.camera_follows.clear())
+		_scene.camera_follows.clear()
+		_scene.played.erase(BattlePlayback.NEUTRAL_PHASE_SHOWN))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		var core := battle.unit_at(font)
 		_expect(core != null and core.side == Unit.Side.NEUTRAL, "結晶泉にエナジー・コアが湧かなかった")
+		_expect(_scene.played.get(BattlePlayback.NEUTRAL_PHASE_SHOWN, 0) == 1, "中立の駒が湧いた番の知らせを出さなかった")
 		_expect(_scene.camera_follows.is_empty(), "湧いただけの中立の駒を、カメラが追った"))
 	_scripted.append(_end_turn)
 	_scripted.append(_end_turn)
@@ -1580,6 +1622,50 @@ func _queue_cpu_skip_scene() -> void:
 		_scene.set_opponent(false))
 
 
+## 作戦（試しの決まり）。手札のボタンは、1 回目は確かめるだけで、もう一度押すと使う。使った札は、もう押せない。使っても駒の行動は残る。
+func _queue_tactic_scene() -> void:
+	var board := _small_board(Vector2i(7, 5))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(1, 3))
+	trooper.hp -= 20
+	battle.tactics[Unit.Side.PLAYER1] = [Tactics.Id.SUPPLY, Tactics.Id.MARCH]
+	var used: Script = TacticUsedEvent
+	var move := trooper.move_range()
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+	_scripted.append(func() -> void:
+		_expect(_scene.tactic_buttons() == [[Names.tactic(Tactics.Id.SUPPLY), true], [Names.tactic(Tactics.Id.MARCH), true]], "作戦のボタンが、手札の順に出ていない")
+		_scene.press_tactic(0)
+		_expect(battle.tactics_used[0].is_empty(), "1 回押しただけで、作戦を使った")
+		_scene.press_tactic(0)
+		_expect(battle.tactics_used[0].is_empty(), "素早い 2 回押しで、作戦の確かめを飛ばした")
+		_scene.pass_confirm_guard()
+		_scene.press_tactic(0))
+	_scripted.append(func() -> void:
+		_expect(battle.tactics_used[0] == [Tactics.Id.SUPPLY], "補給を使えなかった")
+		_expect(_scene.played.get(used, 0) == 1, "作戦を再生しなかった")
+		_expect(trooper.hp == trooper.max_hp() - 20 + Tactics.SUPPLY_HEAL, "補給で回復しなかった")
+		_expect(not _scene.tactic_buttons()[0][1], "使った札が、まだ押せる")
+		_scene.press_tactic(1)
+		_scene.pass_confirm_guard()
+		_scene.press_tactic(1))
+	_scripted.append(func() -> void:
+		_expect(trooper.move_range() == move + Tactics.MARCH_MOVE and not trooper.acted, "強行軍が付いていない")
+		# 確かめの途中で番を終えたら、次のプレイヤーへ持ち越さない（次のプレイヤーも、1 回目は確かめるだけ）。
+		battle.tactics[Unit.Side.PLAYER1].append(Tactics.Id.WARD)
+		battle.tactics[Unit.Side.PLAYER2] = [Tactics.Id.SUPPLY, Tactics.Id.MARCH, Tactics.Id.RALLY]
+		_scene.press_tactic(2)
+		_scene.pass_confirm_guard()
+		_end_turn())
+	_scripted.append(func() -> void:
+		_scene.press_tactic(2)
+		_expect(battle.tactics_used[Unit.Side.PLAYER2].is_empty(), "前のプレイヤーの確かめを引き継いで、作戦を使った"))
+
+
 ## 必殺技。ゲージがいっぱいになるまでボタンは押せず、1 回目は確かめるだけで、もう一度押すと使う。使っても駒の行動は残る。
 func _queue_ult_scene() -> void:
 	var board := _small_board(Vector2i(7, 5))
@@ -1808,6 +1894,15 @@ func _leave_battle(app: Node) -> void:
 	_scene.set_opponent(true)
 	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
+	# ウィンドウの ×: 対戦の途中なので、すぐには閉じずに、何が残るかを書いて確かめる。確かめている間は時間を止める。キャンセルで続く。
+	app.request_close()
+	var quit_window: Node = app.quit_window
+	_expect(quit_window.is_open() and quit_window.question().contains("対戦の途中です。") and quit_window.question().contains("この対戦は残りません"),
+		"対戦の途中にウィンドウの × を押しても、何が残るかを書いて確かめない: %s" % quit_window.question())
+	_expect(app.context.overlays.pauses() and Engine.time_scale == 0.0, "閉じる確かめの間、対戦の時間（再生）が止まらない")
+	quit_window.cancel()
+	_expect(not quit_window.is_open() and _scene.in_progress() and not app.context.overlays.is_open() and Engine.time_scale > 0.0,
+		"閉じる確かめのキャンセルで、対戦へ戻らない（か、時間が止まったまま）")
 	_scene.press_escape()
 	_expect(menu.is_open() and menu.item_ids().has(&"title"), "相手の番の途中に、タイトルへ戻る項目が出ない")
 	menu.press(&"title")
@@ -1828,6 +1923,14 @@ func _leave_battle(app: Node) -> void:
 		_expect(card.get_global_rect().size.x > 0.0 and _on_screen(card), "マップのカードが画面からはみ出す: %s" % field)
 	stages.hover(VersusFields.TWIN_SPRINGS)
 	_expect(stages.note_text().contains(VersusFields.title_of(VersusFields.TWIN_SPRINGS)), "カードに乗せても、説明が出ない")
+	# カードを通り過ぎただけ（乗せて、待たずに離れた）なら、背景の景色は替えない。
+	stages.hover(&"")
+	_expect(stages.scape_field() != VersusFields.TWIN_SPRINGS, "カードを通り過ぎただけで、背景の景色が替わろうとした")
+	stages.hover(VersusFields.TWIN_SPRINGS)
+	# 背景の景色は、乗せたマップのものに替わる（少し待ってから、幕を沈めて替える。ここでは待たずに替える）。
+	_expect(stages.scape_field() == VersusFields.TWIN_SPRINGS, "カードに乗せても、背景の景色がそのマップに替わろうとしない")
+	stages.show_scape_now()
+	_expect(stages.backdrop_look() == VersusFields.look_of(VersusFields.TWIN_SPRINGS), "カードに乗せても、背景の景色がそのマップのものにならない: %s" % stages.backdrop_look())
 	stages.hover(&"")
 	# どのカードに乗せても、ほかの部品（説明の欄、カードの段、ボタン）の位置と大きさが変わらない（説明の長さで揺れない）。
 	var cards: Array[Node] = []
@@ -1859,6 +1962,7 @@ func _leave_battle(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.SETUP, "マップ選択のカードで、対戦設定へ進まない")
 	_expect(app.current_scene().setup_panel().current_choice().field == VersusFields.LABYRINTH, "選んだマップが対戦設定に渡らない")
+	_expect(app.current_scene().backdrop_look() == VersusFields.look_of(VersusFields.LABYRINTH), "対戦設定の背景が、選んだマップの景色でない: %s" % app.current_scene().backdrop_look())
 	app.current_scene().setup_panel().cancel()
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.MAP_SELECT, "対戦設定の「マップ選択へ戻る」で、マップ選択へ戻らない")
@@ -1947,6 +2051,21 @@ func _visit_decks(app: Node) -> void:
 	var placed_cells: Array[Vector2i] = place_map.unit_cells()
 	var open_cells: Array = place_map.zone().filter(func(cell: Vector2i) -> bool: return not placed_cells.has(cell))
 	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
+	var place_note: Control = dialog.deploy_note()
+	_expect(place_note.shown_unit_id() == -1, "初期位置の窓で、駒を選ぶ前から駒の欄に駒が出ている")
+	place_map.hover_cell(placed_cells[1])
+	var hovered_unit: Unit = place_map.focused_unit()
+	_expect(hovered_unit != null and place_note.shown_name() == Names.kind(hovered_unit.kind), "初期位置の窓で、マウスを乗せた駒の名前が欄に出ない")
+	place_map.press_cell(placed_cells[0])
+	var picked_unit: Unit = place_map.focused_unit()
+	_expect(picked_unit != hovered_unit and place_note.shown_unit_id() == picked_unit.id, "初期位置の窓で、選んだ駒が欄に出ない（マウスを乗せた駒より先に）")
+	# 選んだ駒を、マウスを乗せた駒と入れ替えると、マウスの下には選んだ駒が来る（欄も、その駒を出す）。
+	place_map.press_cell(placed_cells[1])
+	_expect(place_map.selected() == -1 and place_map.focused_unit() == picked_unit and place_note.shown_unit_id() == picked_unit.id,
+		"初期位置の窓で駒を入れ替えたあと、マウスの下の駒が古いまま")
+	place_map.reset()
+	_expect(place_map.focused_unit() == hovered_unit, "初期位置の窓で「おまかせ」に戻したあと、マウスの下の駒が古いまま")
+	place_map.hover_cell(Deployment.NO_CELL)
 	place_map.press_cell(placed_cells[0])
 	place_map.press_cell(open_cells[0])
 	dialog.close_dialog()
@@ -2142,7 +2261,17 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_scene().story_label() == "ストーリー", "クリア前のタイトルに、済みの印が付いている")
 	app.current_scene().press_story()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "タイトルの「ストーリー」で、物語を選ぶ場面へ進まない")
+	_expect(app.current_id() == SceneFlow.SLOTS, "タイトルの「ストーリー」で、セーブデータ選択へ進まない")
+	# セーブデータ選択: どのスロットもまだ空き（はじめから）。1 番を選ぶと、物語を選ぶ場面へ。
+	var slots_screen: Node = app.current_scene()
+	# （1 番は、前の場面の部隊編成でストーリー用の部隊を組んでいれば、もう書いてある）
+	for number in range(1, 4):
+		_expect(slots_screen.is_card_enabled(number) and (slots_screen.card_text(number).ends_with("はじめから") or number == 1), "空きのスロット %d が「はじめから」でない" % number)
+	var saves_before: int = app.save_mark.shown_count
+	slots_screen.choose(1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "セーブデータ選択でスロットを選んでも、物語を選ぶ場面へ進まない")
+	_expect(app.context.slots.is_started() and story.is_cleared(Story.military().episodes[0].id), "はじめからで始めたスロットに、前から持っていた進み具合が残っていない")
 	var campaigns: Node = app.current_scene()
 	_expect(campaigns.campaigns() == Story.campaigns(), "物語を選ぶ場面に、全部の物語が並んでいない")
 	for each: RefCounted in Story.campaigns():
@@ -2173,8 +2302,23 @@ func _visit_story(app: Node) -> void:
 	_expect(list.episodes().size() == Story.military().episodes.size(), "話の一覧に、全部の話が並んでいない")
 	_expect(list.is_card_enabled(Story.military().episodes[0]) and list.card_status(Story.military().episodes[0]) == "クリア済み", "クリアした最初の話を選び直せない")
 	_expect(list.is_card_enabled(episode) and list.card_status(episode) == "未クリア", "次の話を選べない")
+	_expect(list.card_title(episode) == episode.title and list.is_card_revealed(episode), "次に遊ぶ話のカードの名前か縮図が伏せてある")
 	for later: RefCounted in Story.military().episodes.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
+		_expect(list.card_title(later) == "？？？" and not list.is_card_revealed(later), "まだ遊べない %s のカードの名前か縮図・顔が見えている" % later.title)
+	# 確かめ用の解放（F5）: 話の一覧を作り直して、全部の話を開く。もう一度押すと元に戻る。記録は変わらない。
+	var cleared_before: int = story.cleared_count()
+	_push_key(app, KEY_F5)
+	await app.scene_changed
+	list = app.current_scene()
+	_expect(app.current_id() == SceneFlow.EPISODES and story.open_all and app.open_all_key().is_marked(), "F5 で、全部の話を開かない（か、隅に印が無い）")
+	_expect(list.is_card_enabled(Story.military().episodes[-1]) and list.card_title(Story.military().episodes[-1]) == Story.military().episodes[-1].title, "F5 で開いても、最後の話を選べない（か、伏せたまま）")
+	_push_key(app, KEY_F5)
+	await app.scene_changed
+	list = app.current_scene()
+	_expect(not story.open_all and not app.open_all_key().is_marked() and not list.is_card_enabled(Story.military().episodes[-1]),
+		"もう一度 F5 を押しても、元に戻らない")
+	_expect(story.cleared_count() == cleared_before, "F5 で、クリアの記録が変わった")
 	# キーボードでは、左右の矢印で選んで Enter（数字キーの届かない 10 話目より先も選べる）。最初の矢印は、次に遊ぶ話を選ぶ。
 	_push_key(app, KEY_RIGHT)
 	_expect(list.key_choice() == episode, "話の一覧で矢印を押しても、次に遊ぶ話が選ばれない")
@@ -2240,6 +2384,7 @@ func _visit_story(app: Node) -> void:
 	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
 	deploy.press_cell(own_cells[0])
 	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
+	_expect(sortie.deploy_note().shown_name() == Names.kind(deploy.focused_unit().kind), "出撃準備の初期位置で、選んだ駒の名前が欄に出ない")
 	var right_click := InputEventMouseButton.new()
 	right_click.button_index = MOUSE_BUTTON_RIGHT
 	right_click.pressed = true
@@ -2254,6 +2399,7 @@ func _visit_story(app: Node) -> void:
 	deploy.press_cell(free_cells[0])
 	var result: Node = await _win_story_battle(app, sortie, episode, true, _check_talk_before.bind(episode), free_cells[0])
 	_expect(result.leave_text() == "話の一覧へ" and not result.enabled_buttons().has("タイトルへ"), "話の決着の画面の行き先が「話の一覧へ」でない: %s" % result.leave_text())
+	_expect(result.remark_texts().is_empty(), "勝った話の決着の画面に、負けたときの台詞が出る")
 	# 「部隊を選び直す」で出撃準備へ戻り、同じ話をもう一度勝つ（対戦の前の会話は、もう出ない）。
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
 	result.press_choose_squad()
@@ -2300,6 +2446,10 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
 	list = app.current_scene()
+	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後に保存した所が、話の一覧に出る。
+	_expect(app.save_mark.shown_count > saves_before and not app.context.slots.has_unsaved(), "話をクリアして話の一覧へ戻っても、保存しない（か、保存の印が出ない）")
+	_expect(list.saved_text() != "最後に保存: 未保存" and list.saved_text().begins_with("最後に保存: "), "話の一覧に、最後に保存した所が出ない")
+	_expect(app.quit_note() == "", "保存したあとの話の一覧で、ウィンドウを閉じる前に確かめる: %s" % app.quit_note())
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
 		_expect(list.is_card_enabled(Story.military().episodes[first + 1]), "前の話をクリアしたのに、次の話を選べない")
@@ -2313,6 +2463,45 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TITLE, "物語を選ぶ場面の「タイトルへ戻る」で、タイトルへ戻らない")
 	_expect(app.current_scene().story_label() == "ストーリー（クリア済み）" or not story.all_cleared(), "クリアしたのに、タイトルに済みの印が無い")
 	_expect(story.unlocked_kinds().has(episode.unlock_kinds[0]) if not episode.unlock_kinds.is_empty() else true, "クリアしても、駒が増えていない")
+
+
+## セーブデータ選択（_visit_story のあと。1 番に進み具合がある）: 1 番は「つづきから」で物語とクリアの数が出る。
+## 1 番を 2 番へコピー → 2 番も同じ中身 → 2 番を 1 番へコピーは上書きを確かめる（キャンセル）→ 2 番を削除（確かめる）→ 空きに戻る。
+## 最後に 1 番を「つづきから」で選び、物語を選ぶ場面へ（進み具合はそのまま）。
+func _visit_slots(app: Node) -> void:
+	_expect(app.current_id() == SceneFlow.SLOTS, "タイトルの「ストーリー」で、セーブデータ選択へ進まない")
+	var screen: Node = app.current_scene()
+	var first: String = screen.card_text(1)
+	_expect(first.ends_with("つづきから") and first.contains(Story.military().title) and first.contains("話クリア"), "進み具合のあるスロットのカードに、物語とクリアの数が出ない: %s" % first.replace("\n", " / "))
+	_expect(screen.card_text(2).ends_with("はじめから"), "空きのスロットが「はじめから」でない")
+	# コピーは、元がいまのスロットなら先に書く（保存の時刻が、いまになる）。時刻を 1 分進めておき、
+	# 元のカードの日時が変わっても、コピーが元と同じ中身（同じ日時）になることを見る（分の変わり目で、毎回は起きないため）。
+	var slots: RefCounted = app.context.slots
+	var real_now: Callable = slots.now
+	slots.now = func() -> int: return real_now.call() + 60
+	screen.press_copy(1)
+	_expect(screen.is_copying() and not screen.is_card_enabled(1), "コピーの元のカードを、コピー先に選べる")
+	screen.choose(2)
+	slots.now = real_now
+	# （プレイ時間は、いまのスロットだけ数えている途中のぶんが足されるので、比べない）
+	var without_time := func(text: String) -> String: return "\n".join(Array(text.split("\n")).filter(func(line: String) -> bool: return not line.begins_with("プレイ時間")))
+	var source: String = screen.card_text(1)
+	var without_date := func(text: String) -> String: return "\n".join(Array(without_time.call(text).split("\n")).filter(func(line: String) -> bool: return not RegEx.create_from_string("^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}$").search(line)))
+	_expect(source != first and without_date.call(source) == without_date.call(first), "コピーの元を書き直したとき、日時のほかが変わった（か、日時が変わらない）: %s ／ 前: %s" % [source.replace("\n", " / "), first.replace("\n", " / ")])
+	_expect(not screen.is_copying() and without_time.call(screen.card_text(2)) == without_time.call(source).replace("データ 1", "データ 2"), "コピーしたスロットの中身が、元と違う: %s ／ 元: %s" % [screen.card_text(2).replace("\n", " / "), source.replace("\n", " / ")])
+	screen.press_copy(2)
+	screen.choose(1)
+	var confirm: Node = screen.confirm_window()
+	_expect(confirm.is_open() and confirm.question().contains("上書き"), "中身のあるスロットへのコピーで、上書きを確かめない")
+	confirm.cancel()
+	screen.cancel_copy()
+	screen.press_delete(2)
+	_expect(confirm.is_open() and confirm.ok_text() == "削除", "削除を確かめない")
+	confirm.accept()
+	_expect(screen.card_text(2).ends_with("はじめから") and without_time.call(screen.card_text(1)) == without_time.call(source), "削除したスロットが空きに戻らない（か、ほかのスロットが変わった）")
+	screen.choose(1)
+	await app.scene_changed
+	_expect(app.current_id() == SceneFlow.CAMPAIGNS, "「つづきから」で、物語を選ぶ場面へ進まない")
 
 
 ## 2 つ目の物語（FANTASY の物語）の頭の話を通す: 物語を選ぶ場面で選べる → その物語の話の一覧（最初の話だけ選べる。演習の印）
@@ -2330,6 +2519,7 @@ func _visit_second_campaign(app: Node) -> void:
 	_expect(story.cleared_count(campaign) == 0, "2 つ目の物語を、始める前からクリアしている")
 	app.current_scene().press_story()
 	await app.scene_changed
+	await _visit_slots(app)
 	var campaigns: Node = app.current_scene()
 	_expect(campaigns.is_card_enabled(campaign) and campaigns.status_text(campaign) == "全 %d 話" % campaign.episodes.size(), "2 つ目の物語を選べない（か、状態の文が違う）")
 	campaigns.choose(campaign)
@@ -2402,6 +2592,8 @@ func _visit_item_rows(app: Node) -> void:
 				await app.get_tree().process_frame
 				_expect(screen.item_row_cut_texts().is_empty(), "持ち物の欄の文が切れている（%s、%s）: %s" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), screen.item_row_cut_texts()])
 				_expect(screen.detail_card_rect().size.y >= screen.DETAIL_MIN_HEIGHT - 0.5, "持ち物の欄に押されて、駒の札が縮んだ（%s）: 高さ %.0f" % [campaign.title, screen.detail_card_rect().size.y])
+				_expect(screen.detail_summary_overflow() <= 0.5, "駒の札の中身が、札の幅からはみ出した（%s、%s）: %.0f px" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind), screen.detail_summary_overflow()])
+				_expect(not screen.detail_button_covers_summary_head(), "駒の札の「詳細」が、名前の行に重なった（%s、%s）" % [campaign.title, Names.kind(screen.editing_deck().entries[index].kind)])
 				for item: Equipment.Id in screen.editing_deck().rules.items():
 					screen.equip(item)
 					await app.get_tree().process_frame
@@ -2419,16 +2611,22 @@ func _visit_item_rows(app: Node) -> void:
 	await app.go(SceneFlow.TITLE)
 
 
+## 会話の行 row（episode.gd の before・after の 1 行）の話し手の名前（地の文なら空）。
+static func _speaker_of(episode: RefCounted, row: Array) -> String:
+	return episode.speakers[row[2]] if row[2] >= 0 else ""
+
+
 ## 対戦の前の会話の場面 talk（話 episode）: 文の数、最初の文、話し手の姿、送りと戻り。
 func _check_talk_before(talk: Node, episode: RefCounted) -> void:
 	_expect(talk.line_count() == episode.before.size() and talk.line_index() == 0, "前の会話の文の数が違う")
-	_expect(talk.speaker() == episode.speakers[episode.before[0][2]] and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
+	_expect(talk.speaker() == _speaker_of(episode, episode.before[0]) and talk.line_text() == episode.before[0][1], "最初の文が出ていない")
 	_expect(not talk.has_method(&"next_episode") or talk.next_episode() == null, "対戦の前の会話に「次の話へ」がある")
 	await get_tree().process_frame
 	# 立つ所は左右に 1 つずつ。両軍が出てくるか、同じ軍の話し手が 2 人以上いれば、両方に立つ。
 	var talkers := {}
 	for row: Array in episode.before:
-		talkers[row[2]] = true
+		if row[2] >= 0:  # 地の文は、話し手がいない
+			talkers[row[2]] = true
 	_expect(talk.figures().size() == mini(talkers.size(), 2), "会話に出てくる話し手の姿が立っていない")
 	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
 	for figure: Control in talk.figures():
@@ -2440,6 +2638,52 @@ func _check_talk_before(talk: Node, episode: RefCounted) -> void:
 	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
 	talk.press_back()
 	_expect(talk.line_index() == 0, "右クリックで、前の文へ戻らない")
+	await _check_talk_log(talk, episode)
+
+
+## 会話のログ: ホイールを上へ回すと開き、これまでの文（いまの文まで）を話し手と文で並べる。開いている間、会話は送らない。
+## 右クリックで閉じる（会話の文は戻らない）。L で開いて、Esc で閉じる。
+func _check_talk_log(talk: Node, episode: RefCounted) -> void:
+	talk.press_next()
+	talk.press_next()
+	var at: int = talk.line_index()
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	wheel.position = talk.get_viewport().get_visible_rect().get_center()
+	talk.get_viewport().push_input(wheel)
+	var log: CanvasLayer = talk.talk_log()
+	_expect(log.is_open(), "会話の画面でホイールを上へ回しても、会話のログが開かない")
+	var expected := []
+	for i in at + 1:
+		expected.append([_speaker_of(episode, episode.before[i]), episode.before[i][1]])
+	_expect(log.row_texts() == expected, "会話のログに、これまでの文が並んでいない: %s" % [log.row_texts()])
+	var enter := InputEventKey.new()
+	enter.physical_keycode = KEY_ENTER
+	enter.pressed = true
+	talk.get_viewport().push_input(enter)
+	_expect(talk.line_index() == at and log.is_open(), "会話のログを開いている間に、会話が送られた")
+	var screen_rect := Rect2(Vector2.ZERO, talk.get_viewport().get_visible_rect().size)
+	_expect(screen_rect.encloses(log.panel_rect()), "会話のログの窓が画面からはみ出す: %s" % log.panel_rect())
+	var right := InputEventMouseButton.new()
+	right.button_index = MOUSE_BUTTON_RIGHT
+	right.pressed = true
+	right.position = wheel.position
+	talk.get_viewport().push_input(right)
+	_expect(not log.is_open() and talk.line_index() == at, "会話のログの右クリックで、閉じない（か、会話の文が戻った）")
+	var l_key := InputEventKey.new()
+	l_key.physical_keycode = KEY_L
+	l_key.pressed = true
+	talk.get_viewport().push_input(l_key)
+	_expect(log.is_open(), "L で会話のログが開かない")
+	var escape := InputEventKey.new()
+	escape.physical_keycode = KEY_ESCAPE
+	escape.pressed = true
+	talk.get_viewport().push_input(escape)
+	_expect(not log.is_open() and not talk.context.system_menu.is_open(), "会話のログの Esc で、閉じない（か、システムメニューが開いた）")
+	await get_tree().process_frame
+	for i in at:
+		talk.press_back()
 
 
 ## 出撃準備 sortie で「出撃」し、話 episode の対戦に入ったことを確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
@@ -2467,6 +2711,9 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
+	# ウィンドウを閉じる前の確かめ: ストーリーの対戦の途中は、最後に保存した所から再開になることを書く。
+	_expect(app.quit_note().begins_with("対戦の途中です。") and (app.quit_note().contains("最後に保存した所（") or app.quit_note().contains("はじめから")),
+		"ストーリーの対戦の途中で閉じる確かめに、何が残るかが無い: %s" % app.quit_note())
 	_expect(screen.battle.board.size == episode.map.make_board().size, "話の対戦が、話のマップで始まらない")
 	var placed := 0
 	for unit: Unit in screen.battle.units:
@@ -2491,6 +2738,31 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	_expect(card.size.y <= 64.0, "対戦の途中の会話の札が、細い帯でない（2 行を超える高さ）: %s" % card)
 	for other: Rect2 in screen.talk_card_neighbors():
 		_expect(not card.intersects(other), "対戦の途中の会話の札が、勝ち方の札・視点の案内・ミニマップに重なる: %s と %s" % [card, other])
+	# 遊ぶときは、台詞を送られるまで出したままにし、その間は盤を止める。Enter で送る（ターン終了にならない）。
+	screen.clear_talk_for_check()
+	screen.set_talk_hold(true)
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	_expect(screen.is_talk_holding() and screen.is_busy(), "遊ぶときの対戦の途中の台詞で、盤が止まらない")
+	var turn_before: int = screen.battle.turn
+	var phase_before: int = screen.battle.phase
+	for i in 600:
+		if screen.advance_talk():
+			break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding(), "対戦の途中の台詞を送れない")
+	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
+	for i in 600:
+		if screen.talk_line() != null and app.get_viewport().get_visible_rect().size.x > 0 and screen.is_talk_holding():
+			var enter := InputEventKey.new()
+			enter.physical_keycode = KEY_ENTER
+			enter.pressed = true
+			app.get_viewport().push_input(enter)
+			if not screen.is_talk_holding():
+				break
+		await get_tree().process_frame
+	_expect(not screen.is_talk_holding() and screen.battle.turn == turn_before and screen.battle.phase == phase_before,
+		"対戦の途中の台詞を Enter で送れない（か、Enter でターンが終わった）")
+	screen.set_talk_hold(false)
 	# 小さな盤で、1 手で将を倒して勝つ。
 	var board := _small_board(Vector2i(5, 4))
 	var battle := Battle.new(board)

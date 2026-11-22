@@ -28,7 +28,7 @@ const Maps := preload("res://game/maps.gd")
 ##   scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>
 ## マップは game/maps/ の id か、生成のマップの鍵（versus_fields.gd）。見た目は stage_look.gd の名前（書かなければ、マップの見た目）。
 const SCAPE := "scape."
-const SCAPE_VIEWS := ["wide", "side", "close", "out", "range"]
+const SCAPE_VIEWS := ["wide", "side", "close", "out", "range", "paint"]
 const SCAPE_USAGE := "scape.<マップ>.<構図> か scape.<マップ>.<見た目>.<構図>。構図: wide, side, close, out, range"
 
 const SCENES := {
@@ -36,6 +36,9 @@ const SCENES := {
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
 	"map_select": "マップ選択の場面（タイトルの「対戦」のあと。生成のマップと手で作ったマップの 2 段のカード）",
 	"map_hover": "マップ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
+	"map_hover_pass": "マップ選択で、大岩の峠のカードにマウスを乗せたところ（背景の景色が、雪の峠に替わる）",
+	"map_hover_twin": "マップ選択で、双子結晶のカードにマウスを乗せたところ（背景の景色が、結晶の森に替わる）",
+	"setup_ridge": "尾根の小道を選んだ対戦設定（背景が、尾根の小道の景色）",
 	"versus_hand_start": "対戦モードの、手で作ったマップ（一覧の最初のもの。画面に出していないものでも）での対戦の始め",
 	"versus_hand_last_start": "対戦モードの、手で作ったマップ（一覧の最後のもの。いちばん新しく足したもの）での対戦の始め",
 	"versus_hand_result": "対戦モードの、手で作ったマップで CPU に勝ったときのリザルト（「新しいマップ」は生成のマップだけ）",
@@ -61,6 +64,7 @@ const SCENES := {
 	"deck_over": "部隊編成: 予算を超えて、取っておけない",
 	"system_menu": "対戦の途中で開いたシステムメニュー（Esc か右上のボタン）",
 	"system_quit": "システムメニューで「ゲームを終える」を押して、確かめている",
+	"window_close": "対戦の途中でウィンドウの × を押して、何が残るかを確かめている（対戦モード）",
 	"settings": "システムメニューから開いたオプションの画面（感度を変えたところ）",
 	"settings_screen": "オプションの画面を下まで送って、区分「画面」（全画面をオンにしたところ）を見せる",
 	"menu_note": "メニューの項目にマウスを乗せて、説明が出ている",
@@ -88,6 +92,8 @@ const SCENES := {
 	"forecast_skill": "範囲のスキルの対象のマスにマウスを乗せている（巻き込む駒が並ぶ）",
 	"forecast_heal": "回復役で、回復できる味方にマウスを乗せている",
 	"forecast_small": "9×5 の小さな盤で、動いたあとメニューの「攻撃」を押し、隣の相手にマウスを乗せている（縮んだメニューと予測のパネルが重ならない）",
+	"battle_unit_detail": "対戦の途中で、傷ついた駒をクリックして見て、情報の枠の「詳細」でステータスの窓を開いたところ（いまの HP、経験値、スキルの残り）",
+	"deck_unit_detail": "部隊編成: 持ち物を持たせた駒の札の「詳細」で、ステータスの窓を開いたところ（持ち物での増減が色と矢印で出る）",
 	"info_status": "必殺技のあとの駒の情報（所属、状態と残りの期間、装備、スキル）",
 	"ult": "必殺技のゲージが READY で、使うかを確かめている",
 	"end_confirm": "未行動の駒を残してターン終了を 1 回押し、確かめている（未行動の駒の足元が光る）",
@@ -125,9 +131,18 @@ const SCENES := {
 	"ult_eruption": "魔力解放の効果（全員に同時に立つ光の柱と知らせ）",
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
+	"tactic": "作戦（試しの決まり）の手札のボタン。1 枚目を 1 回押して、確かめている（中央平原）",
+	"setup_tactics": "対戦設定で、試しの決まりの「作戦」を入にして、札を選んだところ",
+	"battery_cell": "砲台（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
+	"battery": "砲台に乗った後衛を選んだところ（射程が伸びている。中央平原）",
+	"setup_battery": "対戦設定で、試しの決まりの「砲台」を「あり」にしたところ",
+	"stronghold_cell": "拠点（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
+	"stronghold": "拠点に駒が乗り、どちらかがあと 1 回の確保で勝つところ（勝ち方の札と確保の数。迷宮回廊）",
+	"setup_stronghold": "対戦設定で、試しの決まりの「拠点」を「あり」にしたところ",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
-	"portal_range": "ポータルへ届く駒を選んで、動ける範囲の中のポータルの対（入る・出る）が同じ色で塗られている（双子結晶）",
+	"portal_range": "ポータルへ届く駒を選んで、範囲の中のポータルと、その対の出るポータルが同じ色で塗られている（範囲は転移の先まで広げない。双子結晶）",
 	"portal_menu": "ポータルのマスへ動いて、メニューに「転移」が出ている（行き先のポータルが塗られている。双子結晶）",
+	"portal_warped": "「転移」で対のポータルへ移り、残りの移動力で届くマスが塗られている（双子結晶）",
 	"marks": "寄って見た、駒の足元の印（行動済み、HP の棒）と、移動範囲",
 	"minimap_pointed": "ミニマップで相手の本陣のあたりを押して、視点がそこへ移った（右上の白い枠が見ている範囲）",
 	"minimap_hidden": "設定でミニマップを隠した（右上に何も出ない）",
@@ -145,6 +160,9 @@ const SCENES := {
 	"look_boulder_crag": "大岩の峠（草原の見た目）の真ん中の大岩を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag": "双子結晶の真ん中の大きな岩山を、斜めの中くらいの距離から見ている（かたまりが 1 つの岩山に見えるか）",
 	"look_twin_springs_crag_low": "双子結晶の真ん中の岩山を、低い角度で、手前の駒ごしに見ている（岩山が駒とマスを隠しすぎないか）",
+	"story_slots": "ストーリー: タイトルの「ストーリー」のあとの、セーブデータ選択（1 番と 2 番に進み具合、3 番は空き）",
+	"story_slots_copy": "ストーリー: セーブデータ選択で、1 番のコピー先を選んでいるところ",
+	"story_slots_delete": "ストーリー: セーブデータ選択で、2 番の削除を確かめているところ",
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
 	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
 	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
@@ -161,6 +179,7 @@ const SCENES := {
 	"story_fantasy_forest_sortie": "ストーリー: FANTASY の物語の「森の守り」（リュエルの森）の出撃準備（既定の編成、勝ち方、敵の部隊）",
 	"story_fantasy_forest_wide": "ストーリー: リュエルの森（FANTASY の物語のための、森の多いマップ）を、いちばん引いて見ている",
 	"story_fantasy_decks": "ストーリー: 部隊編成の「ストーリー用」を FANTASY の物語に切り替えて組むところ（FANTASY の駒だけ、最初のコスト上限）",
+	"story_open_all": "ストーリー: 確かめ用の解放（F5）で全部の話を開いた話の一覧（左下の隅に印。どの話も選べる）",
 	"story_list": "ストーリー: 物語を選んだあとの話の一覧（最初の話だけ選べる）",
 	"story_list_cleared": "ストーリー: 本編の 1 話目をクリアしたあとの話の一覧（次の話が選べる。いま雇える駒が増えた）",
 	"story_tutorial_list": "ストーリー: 何もクリアしていない話の一覧（頭のチュートリアルの話。番号に「（演習）」）",
@@ -170,12 +189,14 @@ const SCENES := {
 	"story_list_items": "ストーリー: 本編の 2 話目までクリアしたあとの話の一覧（カードの「クリアで増える」と、下の欄の持ち物・コストの上限）",
 	"story_sortie_default": "ストーリー: 出撃準備で、既定の編成を選んでいるところ（第 1 話。解放した駒をまんべんなく、装備は 1 体に 1 つまで）",
 	"decks_story": "部隊編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ。まだ持たせられない持ち物は「未解放」）",
+	"story_talk_log": "ストーリー: 対戦の前の会話の途中で開いた会話のログ（これまでの文を、話し手の札と文で並べる。ホイールと矢印で遡る）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（敵の話し手が話している。右の姿が明るく大きく、左の人の軍の話し手は暗く小さい）",
 	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の軍の曹長が話している。左の姿は進化後のシールドトルーパー）",
 	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
 	"story_talk_squad": "ストーリー: 部隊の中の人が話している対戦の前の会話（岩山の掃討。左の所の姿が、話した人に入れ替わる。右は敵の話し手）",
 	"story_rivals_ridge": "ストーリー: MILITARY の物語「尾根の小道」の前の会話（左にハーデン、右にイェルダ。見分けが付くか）",
 	"story_rivals_forest": "ストーリー: FANTASY の物語「森の守り」の前の会話（左にイェルダ、右にハーデン。どちらも将。見分けが付くか）",
+	"story_talk_narration": "ストーリー: 会話の頭の地の文（「尾根の小道」の前。名前の札なし、文を真ん中に明朝で。左右の姿は暗い）",
 	"story_talk_allies": "ストーリー: 敵の軍が出てこない会話（演習「手当て」の前。最初に話した人が左、ほかの人が右に立って向き合う）",
 	"story_start": "ストーリー: 話の対戦の始め（手で作ったマップ「尾根の小道」、決め打ちの敵）",
 	"story_wide": "ストーリー: 話の対戦を、いちばん引いて見ている（引きの上限は盤の大きさに合わせる）",
@@ -210,6 +231,7 @@ const SCENES := {
 	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
 	"story_monster_king": "ストーリー: 将のいる魔物の群れの話（墓守）で、敵の将（骸骨の将の姿。ルールの上では将）にマウスを乗せた駒の情報と、敵の将の途中の台詞（骸骨の将のアイコン）",
 	"story_monster_info": "ストーリー: 魔物の群れの話で、骸骨重兵にマウスを乗せた駒の情報（所属は「魔物」。スキル・持ち物の欄は無い）",
+	"story_battle_talk_hold": "ストーリー: 遊ぶときの対戦の途中の会話（送られるまで盤を止める。帯の右に送りの印、下の帯に「クリック・Enter: 台詞を送る」）",
 	"story_battle_talk": "ストーリー: 対戦の途中の会話（始めに台詞のある最初の話。上の帯のすぐ下の真ん中の、細い帯。対戦は止めない。ログにも残る）",
 	"story_cleared": "ストーリー: 全部の話をクリアしたあとのタイトル（「ストーリー」に済みの印）",
 }
@@ -298,7 +320,7 @@ func _run() -> void:
 			print("screenshots: 場面 %s を作れた" % name)
 			if _mid_animation:
 				_scene.set_time_scale_base(1.0)
-			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
+			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
 			continue
 		if _mid_animation:
@@ -308,7 +330,7 @@ func _run() -> void:
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
 			continue
-		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _scene.log_panel().is_open():
+		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -337,7 +359,10 @@ func _reset(seed: int) -> void:
 	_keep_unit_look()
 	if OS.get_cmdline_user_args().has("--no-effects"):
 		_app.context.settings.set_value(&"screen_effects", false)  # tools/screenshots.sh の --no-effects（画面の効果を切って撮る）
+	for number in range(1, 4):
+		_app.context.slots.remove(number)  # 前の場面が書いたセーブのスロットを持ち越さない（取っておく先は無いので、覚えているものだけ）
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
+	_app.context.story.open_all = false  # 前の場面（story_open_all）の確かめ用の解放（F5）も持ち越さない（残ると、記録に書かず、隅に印が出る）
 	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:
 		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
@@ -345,6 +370,7 @@ func _reset(seed: int) -> void:
 		await _app.go(SceneFlow.BATTLE)
 	_scene = _app.current_scene()
 	_scene.log_panel().close()
+	_scene.unit_detail().close_detail()
 	_scene.setup_panel().visible = false
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
@@ -392,7 +418,31 @@ func _scene_map_hover() -> bool:
 	if not await _scene_map_select():
 		return false
 	_app.current_scene().hover(VersusFields.LABYRINTH)
+	_app.current_scene().show_scape_now()  # 背景の景色が、乗せたマップのものに替わるのを待たない
 	return _app.current_scene().hovered_field() == VersusFields.LABYRINTH
+
+
+func _scene_map_hover_pass() -> bool:
+	return await _map_hover(VersusFields.BOULDER_PASS)
+
+
+func _scene_map_hover_twin() -> bool:
+	return await _map_hover(VersusFields.TWIN_SPRINGS)
+
+
+func _map_hover(field: StringName) -> bool:
+	if not await _scene_map_select():
+		return false
+	_app.current_scene().hover(field)
+	_app.current_scene().show_scape_now()
+	return _app.current_scene().hovered_field() == field
+
+
+func _scene_setup_ridge() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	_app.context.match_choice.field = VersusFields.RIDGE_PATH
+	await _app.go(SceneFlow.SETUP)
+	return _app.current_id() == SceneFlow.SETUP
 
 
 ## 一覧の最初の手で作ったマップ（画面に出していないものも）。無ければ空。
@@ -548,6 +598,18 @@ func _scene_deck_equip() -> bool:
 	screen.select_entry(3)
 	screen.equip(Equipment.Id.SPEED_BOOTS)
 	return screen.selected_entry() == 3
+
+
+func _scene_deck_unit_detail() -> bool:
+	var screen: Node = await _deck_editor()
+	if screen == null:
+		return false
+	screen.select_entry(0)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.IRON_SHIELD)
+	screen.equip(Equipment.Id.SPEED_BOOTS)
+	screen.press_unit_detail()
+	return screen.unit_detail() != null and screen.unit_detail().visible
 
 
 func _scene_deck_over() -> bool:
@@ -723,6 +785,38 @@ func _scene_setup_random() -> bool:
 	return true
 
 
+func _scene_setup_battery() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_trial(TrialRules.BATTERY, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.BATTERY)
+
+
+func _scene_setup_stronghold() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_trial(TrialRules.STRONGHOLD, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.STRONGHOLD)
+
+
+func _scene_setup_tactics() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	var panel: Variant = _app.current_scene().setup_panel()
+	panel.choose_trial(TrialRules.TACTICS, true)
+	panel.choose_tactic(Unit.Side.PLAYER1, Tactics.Id.WARD)
+	_park_mouse()
+	return panel.current_choice().has_trial(TrialRules.TACTICS)
+
+
 func _scene_setup() -> bool:
 	_app.context.match_choice = MatchChoice.new()  # 遊ぶときの始めと同じ（相手は CPU）で開く
 	await _app.go(SceneFlow.SETUP)
@@ -763,6 +857,15 @@ func _scene_system_quit() -> bool:
 		return false
 	_app.system_menu().press(&"quit")
 	return _app.system_menu().confirming() == &"quit"
+
+
+func _scene_window_close() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	await get_tree().create_timer(SETTLE).timeout
+	_app.request_close()
+	return _app.quit_window.is_open()
 
 
 func _scene_settings() -> bool:
@@ -1170,6 +1273,25 @@ func _scene_forecast_heal() -> bool:
 	_look_at(BoardView.cell_center(target.cell))
 	_scene.hover(target.cell)
 	return _scene.forecast_text() != ""
+
+
+func _scene_battle_unit_detail() -> bool:
+	# 傷ついていて、経験値も入っている、人の軍の駒。
+	var hurt := func() -> Unit:
+		for unit in _own_units():
+			if unit.hp < unit.max_hp() and unit.experience > 0 and Skills.of(unit) != null:
+				return unit
+		return null
+	if not _advance(func() -> bool: return hurt.call() != null):
+		return false
+	_show()
+	var unit: Unit = hurt.call()
+	_look_at(BoardView.cell_center(unit.cell))
+	_scene.click_cell(unit.cell)
+	if not _scene.detail_button_shown():
+		return false
+	_scene.open_unit_detail()
+	return _scene.unit_detail().visible
 
 
 func _scene_info_status() -> bool:
@@ -1705,6 +1827,75 @@ func _scene_portal() -> bool:
 	return _close_look(BoardGenerator.Stage.TWIN_SPRINGS, func(board: Board) -> Array: return board.portal_exits.keys())
 
 
+## 作戦（試しの決まり）の手札のボタンが出ている対戦。1 枚目を 1 回押して、確かめているところ。
+func _scene_tactic() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.TACTICS])
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	if _scene.tactic_buttons().is_empty() or not _scene.tactic_buttons()[0][1]:
+		return false
+	_scene.press_tactic(0)
+	return true
+
+
+func _scene_battery_cell() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.BATTERY])
+	_show()
+	var batteries := _battle.board.battery_cells
+	if batteries.is_empty():
+		return false
+	_scene.click_cell(batteries[0])
+	_scene.focus_camera(batteries[0])
+	return _scene.info_title().begins_with("マス")
+
+
+## 砲台に後衛が乗っている番の始めまで進め、その駒を選ぶ（伸びた射程が、移動範囲の外の攻撃範囲に出る）。
+func _scene_battery() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.BATTERY])
+	var gunner: Array[Unit] = []
+	if not _advance(func() -> bool:
+		gunner.clear()
+		for unit in _battle.units:
+			if unit.site_range > 0 and unit.side == _battle.phase and _battle.can_act(unit):
+				gunner.append(unit)
+		return not gunner.is_empty()
+	):
+		return false
+	_show()
+	_scene.click_cell(gunner[0].cell)
+	_scene.focus_camera(gunner[0].cell)
+	return true
+
+
+func _scene_stronghold_cell() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.STRONGHOLD])
+	_show()
+	var cell := _battle.board.stronghold_cell
+	if cell == Board.NO_CELL:
+		return false
+	_scene.click_cell(cell)
+	_scene.focus_camera(cell)
+	return _scene.info_title().begins_with("マス")
+
+
+## どちらかが、あと 1 回の確保で勝つところまで進める（拠点に駒が乗り、旗がその陣営の色。上の帯の札が目立つ）。
+func _scene_stronghold() -> bool:
+	_field = VersusFields.LABYRINTH
+	_new_battle([TrialRules.STRONGHOLD])
+	if not _advance(func() -> bool:
+		return Stronghold.holds_left(_battle, Unit.Side.PLAYER1) == 1 or Stronghold.holds_left(_battle, Unit.Side.PLAYER2) == 1
+	):
+		return false
+	_show()
+	_scene.focus_camera(_battle.board.stronghold_cell)
+	return true
+
+
 func _scene_portal_cell() -> bool:
 	_field = VersusFields.TWIN_SPRINGS
 	_new_battle()
@@ -1717,17 +1908,14 @@ func _scene_portal_cell() -> bool:
 	return _scene.info_title().begins_with("マス")
 
 
-## いまの番の駒のうち、歩いて（転移せずに）ポータルに止まれて、そこから転移できる駒と、そのポータル（[駒, マス]）。無ければ空。
+## いまの番の駒のうち、歩いてポータルに止まれて、そこから転移できる駒と、そのポータル（[駒, マス]）。無ければ空。
 func _portal_walker() -> Array:
 	for unit in _own_units():
 		if not _battle.can_act(unit):
 			continue
-		var cells := Queries.move_cells(_battle, unit)
-		for portal: Vector2i in _battle.board.portal_exits:
-			var exit := _battle.portal_exit(portal)
-			if not cells.has(portal) or cells[portal] or exit == Board.NO_CELL or not cells.has(exit):
-				continue
-			if not Movement.path_to(_battle, unit, portal).has(exit):  # ポータルへは歩いて行く（転移して着くのではない）
+		var portals := Queries.reachable_portals(_battle, unit)
+		for portal: Vector2i in portals:
+			if portal != unit.cell and not Queries.move_cells(_battle, unit)[portal]:
 				return [unit, portal]
 	return []
 
@@ -1766,6 +1954,27 @@ func _scene_portal_menu() -> bool:
 	return unit.cell == portal and _scene.menu_ids().has(&"warp")
 
 
+func _scene_portal_warped() -> bool:
+	_field = VersusFields.TWIN_SPRINGS
+	_new_battle()
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _portal_walker().is_empty()):
+		return false
+	_show()
+	var found := _portal_walker()
+	var unit: Unit = found[0]
+	var portal: Vector2i = found[1]
+	var exit := _battle.portal_exit(portal)
+	await _idle()
+	_scene.click_cell(unit.cell)
+	_scene.click_cell(portal)
+	await _idle()
+	_scene.press_warp()
+	await _idle()
+	_look_at(BoardView.cell_center(exit))
+	_aim(44.0, 0.0, 60.0)
+	return unit.cell == exit and not Queries.move_cells(_battle, unit).is_empty()
+
+
 func _stage_overview(stage: BoardGenerator.Stage) -> bool:
 	_field = VersusFields.field_of_stage(stage)
 	_new_battle()
@@ -1802,12 +2011,50 @@ func _start_story(number := -1) -> bool:
 	return _app.current_id() == SceneFlow.SORTIE
 
 
-## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。
+## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。セーブデータ選択は、いまのスロットで通る。
 func _scene_story_campaigns() -> bool:
 	await _app.go(SceneFlow.TITLE)
 	_app.current_scene().press_story()
 	await _app.scene_changed
+	if _app.current_id() != SceneFlow.SLOTS:
+		return false
+	_app.current_scene().choose(_app.context.slots.current)
+	await _app.scene_changed
 	return _app.current_id() == SceneFlow.CAMPAIGNS
+
+
+## セーブデータ選択: 1 番は MILITARY の物語を 7 話まで、2 番は FANTASY の物語を 3 話まで、3 番は空き。
+func _scene_story_slots() -> bool:
+	var context: RefCounted = _app.context
+	var plans := [[Story.military(), 7, 9000], [_fantasy(), 3, 2700]]
+	for i in plans.size():
+		context.use_slot(i + 1)
+		context.story.choose_campaign(plans[i][0])
+		for episode: RefCounted in (plans[i][0].episodes as Array).slice(0, plans[i][1]):
+			context.story.clear(episode.id)
+		context.slots._played = float(plans[i][2])
+		context.slots.flush()
+	context.use_slot(1)
+	await _app.go(SceneFlow.TITLE)
+	_app.current_scene().press_story()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.SLOTS
+
+
+## セーブデータ選択で、コピー先を選んでいるところ。
+func _scene_story_slots_copy() -> bool:
+	if not await _scene_story_slots():
+		return false
+	_app.current_scene().press_copy(1)
+	return _app.current_scene().is_copying()
+
+
+## セーブデータ選択で、削除を確かめているところ。
+func _scene_story_slots_delete() -> bool:
+	if not await _scene_story_slots():
+		return false
+	_app.current_scene().press_delete(2)
+	return _app.current_scene().confirm_window().is_open()
 
 
 func _scene_story_list() -> bool:
@@ -1816,6 +2063,14 @@ func _scene_story_list() -> bool:
 	_app.current_scene().choose(Story.military())
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.EPISODES
+
+
+func _scene_story_open_all() -> bool:
+	if not await _scene_story_list():
+		return false
+	_app.open_all_key().toggle()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.EPISODES and _app.context.story.open_all
 
 
 ## 2 つ目の物語（FANTASY の物語）。
@@ -2082,6 +2337,18 @@ func _scene_story_tutorial_sortie() -> bool:
 	return _app.current_scene().is_squad_fixed()
 
 
+func _scene_story_talk_log() -> bool:
+	if not await _start_story() or not await _talk_from_sortie():
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < talk.line_count() - 1:
+		talk.press_next()
+	talk.open_log()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return talk.talk_log().is_open()
+
+
 func _scene_story_talk() -> bool:
 	if not await _start_story() or not await _talk_from_sortie():
 		return false
@@ -2112,6 +2379,13 @@ func _military_index(id: StringName) -> int:
 		if episodes[index].id == id:
 			return index
 	return -1
+
+
+## 地の文（話し手のいない行）。「尾根の小道」の前の会話は、地の文から始まる。
+func _scene_story_talk_narration() -> bool:
+	if not await _start_story(_military_index(&"ridge_path")) or not await _talk_from_sortie():
+		return false
+	return _app.current_scene().is_narrating()
 
 
 ## ハーデンとイェルダが向き合う会話（MILITARY の物語）。ハーデンが話していて、右にイェルダ。
@@ -2466,7 +2740,17 @@ func _scene_story_sortie_placed() -> bool:
 func _scene_story_sortie_detail() -> bool:
 	if not await _scene_story_sortie():
 		return false
-	var detail: Control = _app.current_scene().press_face(Unit.Side.PLAYER1, 1)
+	# 持ち物を持っている駒を探して開く（無ければ、最初の雇った駒）。
+	var detail: Control = null
+	for index in range(1, 12):
+		var opened: Control = _app.current_scene().press_face(Unit.Side.PLAYER1, index)
+		if opened == null:
+			break
+		detail = opened
+		if not detail.shown_sheet().items.is_empty():
+			break
+	if detail != null and detail.shown_sheet().items.is_empty():
+		detail = _app.current_scene().press_face(Unit.Side.PLAYER1, 1)
 	return detail != null and detail.visible
 
 
@@ -2490,6 +2774,12 @@ func _scene_story_monster_info() -> bool:
 	return true
 
 
+## 場面 story_monster_king の構図: カメラの距離、向き（度）、見る点を将からずらす量（向きが 0 度のときのもの）。
+const KING_FRAME_DISTANCE := 8.0
+const KING_FRAME_YAW := 70.0
+const KING_FRAME_SHIFT := Vector3(0.0, 0.0, -0.8)
+
+
 func _scene_story_monster_king() -> bool:
 	var number := _monster_episode(true)
 	if number == -1 or not await _story_battle(number):
@@ -2500,8 +2790,10 @@ func _scene_story_monster_king() -> bool:
 			king = unit
 	if king == null:
 		return false
-	_look_at(BoardView.cell_center(king.cell))
-	_aim(6.0, 70.0, 38.0)
+	# 骸骨の将は背が高い（quaternius_skeleton.gd の KING_LOOKS の scale）。頭が上の帯と途中の台詞の帯に隠れないよう、
+	# 少し引いて、見る点を将の向こう側（カメラから遠い側）へずらし、将を画面の真ん中より下に置く。
+	_look_at(BoardView.cell_center(king.cell) + KING_FRAME_SHIFT.rotated(Vector3.UP, deg_to_rad(KING_FRAME_YAW)))
+	_aim(KING_FRAME_DISTANCE, KING_FRAME_YAW, 38.0)
 	_scene.hover(king.cell)
 	var episode: RefCounted = Story.military().episodes[number]
 	_scene.clear_talk_for_check()
@@ -2525,6 +2817,21 @@ func _scene_story_battle_talk() -> bool:
 				return false
 			return _scene.talk_line() != null
 	return false
+
+
+func _scene_story_battle_talk_hold() -> bool:
+	if not await _scene_story_battle_talk():
+		return false
+	var line: BattleCues.Line = _scene.talk_line()
+	_scene.clear_talk_for_check()
+	_scene.set_talk_hold(true)
+	_scene.say_for_check([line] as Array[BattleCues.Line])
+	for i in 120:
+		if _scene.talk_line() != null and not _scene.is_banner_shown():
+			break
+		await get_tree().process_frame
+	await get_tree().create_timer(0.6).timeout
+	return _scene.is_talk_holding()
 
 
 ## 部隊編成の「ストーリー用」の一覧と、組む画面（いま雇える駒だけ）。
@@ -2741,6 +3048,8 @@ func _scape(name: String) -> bool:
 		defined = Scenario.on_map(found["map"], found["title"])
 	var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 	var setup := MatchSetup.humans_on(defined, _seed, MatchSetup.default_deck(armies[0]), MatchSetup.default_deck(armies[1]))
+	if parts[2] == "paint":
+		setup.trials.append(TrialRules.BATTERY)  # 砲台のマスも並べる
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
 	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤）"] as Array[String])
@@ -2762,6 +3071,36 @@ func _scape(name: String) -> bool:
 			_aim(15.0, -50.0, 38.0)
 		"range":
 			return _scape_range(parts[1], defined.title)
+		"paint":
+			return _scape_paint()
+	return true
+
+
+## 景色の場面の「paint」: 盤の真ん中の平地に、範囲の色を帯にして並べ（上から移動・攻撃の相手・回復・スキル・ポータルの対・道）、
+## 右に敵の全員の脅威範囲の斜線を重ねる。砲台（試しの決まり）とポータルのあるマップなら、その上にも移動の色を塗る。
+## どの景色でも同じ並びなので、景色ごとに並べて、どの色が地面に沈むかを見比べる。
+func _scape_paint() -> bool:
+	var board := _battle.board
+	var size: Vector2i = board.size
+	var origin := Vector2i(size.x / 2 - 3, size.y / 2 - 3)
+	var bands: Array[StringName] = [&"move", &"target", &"heal", &"skill", &"portal", &"path"]
+	var samples := {}
+	for kind in bands:
+		samples[kind] = [] as Array[Vector2i]
+	samples[&"threat"] = [] as Array[Vector2i]
+	for row in bands.size():
+		for column in 6:
+			var cell := origin + Vector2i(column, row)
+			if not board.in_bounds(cell):
+				continue
+			samples[bands[row]].append(cell)
+			if column >= 4:
+				samples[&"threat"].append(cell)
+	for cell: Vector2i in board.battery_cells + board.portal_exits.keys():
+		samples[&"move"].append(cell)
+	_scene.show_paint_samples(samples)
+	_look_at(BoardView.cell_center(origin + Vector2i(3, 3)))
+	_aim(14.0, 20.0, 50.0)
 	return true
 
 
@@ -2782,10 +3121,12 @@ func _scape_range(look: StringName, title: String) -> bool:
 	return _scene.is_threat_shown()
 
 
-func _new_battle() -> void:
+func _new_battle(trials: Array[StringName] = []) -> void:
 	var choice: RefCounted = MatchChoice.new()
 	choice.field = _field
 	choice.cpu_opponent = false
+	for trial in trials:
+		choice.set_trial(trial, true)
 	_scene.source = choice
 	_battle = choice.to_setup(_seed).create_battle()
 	_stats = BattleStats.new(_battle)
@@ -2796,7 +3137,7 @@ func _new_battle() -> void:
 ## 対戦の画面の中央の知らせ（番の知らせなど）が消えるまで待つ。描画の遅い環境では SETTLE のうちに消えないことがある。
 ## 知らせを撮る場面のために、待つのは BANNER_WAIT 秒まで。
 func _banner_gone() -> void:
-	if _app.current_id() != SceneFlow.BATTLE or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open():
+	if _app.current_id() != SceneFlow.BATTLE or _scene.setup_panel().visible or _app.system_menu().is_open() or _scene.log_panel().is_open() or _scene.unit_detail().visible:
 		return  # 時間が止まっている（知らせは消えない）
 	var waited := 0.0
 	while _scene.is_banner_shown() and waited < BANNER_WAIT:

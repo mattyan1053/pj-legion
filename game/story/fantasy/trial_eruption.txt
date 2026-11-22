@@ -1,0 +1,65 @@
+# ストーリーの話「魔力解放」。FANTASY の物語のチュートリアル（5 / 6）。1 話 1 ファイル。
+#
+# チュートリアルの話は、1 つの話で 1〜2 個だけ教える（docs/story.md の「チュートリアル」）。
+# 部隊は決まっていて（[ally] の unit）、敵は少なく、まず負けない。教え方は、出撃準備の文（lesson）と、対戦の途中の台詞（[cues]）。
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+# 教えること: FANTASY の必殺技「魔力解放」（全員のスキルの待ち時間が消え、同じ番にもう一度使える）。ゲージがたまる手前から始める（start_gauge）。
+# 部隊は 4 種類 1 体ずつ（どれもスキルを持つ）。スキルを使った次の番の始めに、駒を動かす前に必殺技を使うと、待たずにもう一巡ぶんのスキルが撃てる。
+# （必殺技は待ち時間を消すだけで、行動を終えた駒は動けない。シャドウステップだけは行動を終えないので、跳んだあとに解放すればもう一度跳べる）
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 魔力解放
+map = drill_field
+look = trial_court
+music = battle_fields
+before_music = battle_fields
+after_music = talk_bright
+lesson = 必殺技「魔力解放」で全員のスキルの待ち時間が消える。駒を動かす前に使う。
+
+[cast]
+イェルダ = ally, paladin evolved crown
+ウル = ally, priest evolved
+ティオ = ally, sorcerer
+セリス = ally, spellblade
+幻の兵 = enemy, shield_trooper
+
+[before]
+ティオ: 導師ー！ ファイアボール、1 回撃つとしばらく撃てないんだけど！
+ウル: 技は続けては出せぬ。息を整える間が要る。じゃが、それを消す手がある。「魔力解放」じゃ。
+イェルダ: 騎士領の切り札である。隊の魔力が満ちれば、全員がすぐ次の技を出せる。
+セリス: つまり、撃ってから解放すれば、すぐもう 1 回。
+ウル: うむ。ただし、動く前にな。済んだ動きまでは戻らぬ。
+ティオ: 2 回焼ける……！
+
+[cues]
+(turn 1) ウル: まずは技を惜しまず使うのじゃ。魔力は、戦えば満ちる。
+(ult_ready ally) ウル: 満ちたぞ。動く前に「魔力解放」じゃ、イェルダ。
+
+[after]
+ティオ: 2 回焼けた！！
+セリス: すごいすごい。耳が痛いから、もう少し静かにね。
+ウル: 少ない者は、技の数で押す。覚えておくのじゃぞ。
+ウル: それと、蔵からアイアンシールドが出てきた。次の戦から、前に立つ者に持たせるがよい。
+
+[lost]
+ウル: 解放は、技を撃ってからじゃ。動いてからでは遅いぞ。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[ally]
+unit = paladin
+unit = sorcerer
+unit = spellblade
+unit = priest
+start_gauge = 800
+
+[enemy]
+army = military
+unit = shield_trooper + iron_shield
+unit = sniper
+unit = sniper
+unit = medic
+
+[unlock]
+item = iron_shield

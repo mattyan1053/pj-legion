@@ -12,7 +12,9 @@ const CELL := 6
 const COLOR_MID_BOSS := Color("b04fd6")
 const COLOR_BARREL := Color("e08a2e")
 const COLOR_SPRING := Color("8fe3ff")
+const COLOR_BATTERY := Color("ffb347")
 const COLOR_PORTAL := Color("d9a6ff")
+const COLOR_STRONGHOLD := Color("fff27a")
 ## 市松に少し明るさを変える（マスの粒が見えるように）。
 const CHECKER := 0.05
 
@@ -37,8 +39,12 @@ static func draw(board: Board, look_name: StringName, team_colors: Array[Color],
 		_dot(image, cell, COLOR_BARREL, cell_size)
 	for cell in board.spring_cells:
 		_dot(image, cell, COLOR_SPRING, cell_size)
+	for cell in board.battery_cells:
+		_dot(image, cell, COLOR_BATTERY, cell_size)
 	for cell: Vector2i in board.portal_exits:
 		_dot(image, cell, COLOR_PORTAL, cell_size)
+	if board.stronghold_cell != Board.NO_CELL:
+		_dot(image, board.stronghold_cell, COLOR_STRONGHOLD, cell_size)
 	return image
 
 

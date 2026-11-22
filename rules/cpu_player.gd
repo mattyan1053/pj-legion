@@ -121,7 +121,21 @@ const ISOLATION_WEIGHT := 5.0
 const CRUISE_PENALTY := 0.5
 ## 後衛が、狙う相手から 1 マス離れている価値（射程の中で、なるべく遠くに立つ）。
 const STAND_OFF_VALUE := 0.5
+## 砲台に立つ価値と、砲台から 1 歩離れるごとに引く量、引かれる歩数、砲台の射程の先に相手を数える広さ。
+const BATTERY_VALUE := 25.0
+const BATTERY_STEP_COST := 3.0
+const BATTERY_STEPS := 8
+const BATTERY_WATCH := 6
 ## 回復役が、減っている味方を探す範囲（歩数）。
+## 拠点（試しの決まり。docs/map-objects.md の「拠点」。docs/cpu-ai.md の「拠点」）。
+## 戦う駒が拠点に立って行動を終える価値と、もう乗っている駒が居座る価値（確保 1 つあたり）。
+const STRONGHOLD_VALUE := 60.0
+const STRONGHOLD_HOLD_VALUE := 100.0
+## 拠点に乗っている相手の駒。ダメージの価値を STRONGHOLD_RATE 倍にし、倒す価値に（相手の確保 1 つあたり）STRONGHOLD_KILL_BONUS を足す。
+const STRONGHOLD_RATE := 1.5
+const STRONGHOLD_KILL_BONUS := 40.0
+## 相手の駒が拠点に乗っている間、拠点の周り（確保を止められる所。Stronghold.CONTEST_RADIUS 以内）に立って行動を終える価値。
+const STRONGHOLD_BLOCK_VALUE := 60.0
 const HEALER_SEARCH_STEPS := 12
 ## スキルを使う手の、スキルごとの見積もり（対象に選ぶ価値のありそうなマスと、使った結果の価値）は、
 ## rules/cpu/ の 1 スキル 1 ファイル（CpuSkillEstimate.of）。
@@ -139,6 +153,17 @@ const ULT_USES := {
 ## 総員突撃: まだ行動していない戦う駒のうち、伸びた移動力で敵の駒に攻撃が届きそうな駒が、この数だけいれば使う
 ## （戦う駒がこれより少なければ、その全員）。
 const ASSAULT_MIN_UNITS := 3
+## 作戦（docs/tactics.md）を使うかを決めるメソッド（札 -> メソッドの名前）と、その調整値。
+const TACTIC_USES := {
+	Tactics.Id.MARCH: &"_march_pays",
+	Tactics.Id.SUPPLY: &"_supply_pays",
+	Tactics.Id.RALLY: &"_rally_pays",
+	Tactics.Id.WARD: &"_ward_pays",
+}
+const MARCH_MIN_UNITS := 2
+const SUPPLY_MIN_HEAL := 20
+const RALLY_BY_TURN := 12
+const WARD_MIN_DANGER := 8
 ## 魔力解放: まだ行動していない駒のうち、クールダウンがこのターン数以上残っていて、敵の駒がこの距離の中にいる駒が、
 ## ERUPTION_MIN_UNITS 体いれば使う（スキルを持つ駒がこれより少なければ、その全員）。
 const ERUPTION_MIN_COOLDOWN := 2
@@ -193,6 +218,9 @@ var _idle_danger_weight := 0.0
 var _hq_in_danger := false
 ## 勝ちの条件の読み（rules/cpu/win_conditions_cpu.gd）。守る側か、攻める側で急ぐか。
 var _holding := false
+## 拠点の確保で勝てる（両方とも勝てる）か、拠点へ向かう駒の番号（0 = まだ決めていない、-1 = いない）。_begin が決める。
+var _takes_stronghold := false
+var _stronghold_taker := 0
 var _rushing := false
 var _lethal_penalty := 0.0
 var _stand_off := false
@@ -212,6 +240,9 @@ var _hunted: Dictionary[int, bool] = {}  # 値は、もう削り切れるとこ�
 var _chipped: Dictionary[int, bool] = {}
 var _rival_hunts: Dictionary[int, bool] = {}
 var _rival_strike: Dictionary[int, int] = {}
+## 決めた移動の続き（ポータルを通る移動は、移動・転移・移動の行動の列になる。Movement.route）。
+## 1 手ずつ返す。[駒の番号, 次の行動の前にいるはずのマス, 行動] の列。ずれたら（受け付けられない、駒が違う）捨てる。
+var _route: Array[Array] = []
 
 
 ## いまのフェーズのプレイヤーの、次の行動。決着のあとと中立のフェーズでは null。
@@ -244,15 +275,62 @@ func _decide() -> BattleAction:
 	var evolving := _battle.evolving_unit()
 	if evolving != null:
 		return _choose_evolution(evolving)
+	# 決めた移動の続き（転移と、その先の移動）は、ほかの手より先に返す（移動 1 回ぶんの手として決めたものなので、間に挟まない）。
+	var acting := _battle.unit_by_id(_battle.acting_unit_id)
+	var step := _next_route_step(acting)
+	if step != null:
+		return step
+	if acting == null:
+		var tactic := _tactic_to_use()
+		if tactic != null:
+			return tactic
 	if Ults.can_use(_battle) and call(ULT_USES[Ults.of(_battle, _me).id()]):
 		return UseUltAction.new()
-	var acting := _battle.unit_by_id(_battle.acting_unit_id)
 	if acting != null:
 		return _follow_up(acting)
 	var unit := _next_unit()
 	if unit == null:
 		return EndPhaseAction.new()
 	return _plan(unit)
+
+
+## 決めた移動の続き（_route）の次の行動。続きが無いか、ずれていれば null（続きは捨てる）。
+func _next_route_step(acting: Unit) -> BattleAction:
+	if _route.is_empty():
+		return null
+	var step: Array = _route.pop_front()
+	var action: BattleAction = step[2]
+	if acting == null or acting.id != step[0] or acting.cell != step[1] or not _battle.can_apply(action):
+		_route = []
+		return null
+	return action
+
+
+## unit が to へ動く行動の列（Movement.route）を、複製した対戦 sim に順に当てる。全部受け付けられたか。
+static func _move_in(sim: Battle, unit_id: int, to: Vector2i, cruise := false) -> bool:
+	var unit := sim.unit_by_id(unit_id)
+	var actions := Movement.route(sim, unit, to, cruise)
+	if actions.is_empty():
+		return false
+	for action in actions:
+		if not sim.apply(action).accepted:
+			return false
+	return true
+
+
+## unit が行動の始めから、移動と転移を続けて止まれるマス（Movement.search の through_portals）。
+## [通常の移動で届くマス, 巡航でだけ届くマス]（どちらもマス -> 移動力）。
+static func _reach(battle: Battle, unit: Unit) -> Array[Dictionary]:
+	var normal: Dictionary[Vector2i, int] = {}
+	var cruise: Dictionary[Vector2i, int] = {}
+	var stops := Movement.search(battle, unit, true, true).stops()
+	var limit := Movement.budget(unit, false)
+	for cell: Vector2i in stops:
+		if stops[cell] <= limit:
+			normal[cell] = stops[cell]
+		else:
+			cruise[cell] = stops[cell]
+	return [normal, cruise]
 
 
 ## 考えた行動が受け付けられなかったときの逃げ道（ふつうは通らない）。待機できる駒を待機させ、いなければフェーズを終える。
@@ -285,6 +363,8 @@ func _begin(battle: Battle) -> void:
 	# 本陣の占拠で勝てないなら、敵の本陣は目指すマスでない。
 	_foe_hq = board.hq_cells[_foe] if has_hqs and CpuWinPlan.raids_hq(battle, _me) else Board.NO_CELL
 	_holding = CpuWinPlan.holds(battle, _me)
+	_takes_stronghold = Stronghold.holds_left(battle, _me) != -1 and Stronghold.holds_left(battle, _foe) != -1
+	_stronghold_taker = 0
 	_rushing = CpuWinPlan.rushes(battle, _me)
 	_hq_in_danger = false
 	var keeper := battle.unit_at(_my_hq) if has_hqs else null
@@ -331,6 +411,64 @@ func _nearest_foe_distance(unit: Unit) -> int:
 		if other.side == _foe:
 			nearest = mini(nearest, Combat.distance(unit.cell, other.cell))
 	return nearest
+
+
+## 手札の作戦（docs/tactics.md）のうち、いま使うのが得なものを使う行動。無ければ null。手札の無い対戦では、いつも null。
+func _tactic_to_use() -> BattleAction:
+	for id: Tactics.Id in Tactics.hand(_battle, _me):
+		if Tactics.can_use(_battle, id) and call(TACTIC_USES[id]):
+			return UseTacticAction.new(id)
+	return null
+
+
+## 強行軍: まだ動いていない戦う駒のうち、いまは届かず、伸びた移動力なら敵に届く駒が MARCH_MIN_UNITS 体以上（戦う駒がそれより少なければ全員）。
+func _march_pays() -> bool:
+	var fighters := 0
+	var gained := 0
+	var lone := not _has_fighters()
+	for unit in _battle.units:
+		if unit.side != _me:
+			continue
+		var role := UnitKind.role(unit.kind)
+		if role == UnitKind.Role.HEALER or (unit.kind == UnitKind.Id.KING and not lone):
+			continue
+		fighters += 1
+		if unit.acted or unit.has_moved:
+			continue
+		var reach := unit.move_range() + Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
+		var apart := _nearest_foe_distance(unit)
+		if apart > reach and apart <= reach + Tactics.MARCH_MOVE:
+			gained += 1
+	return gained > 0 and gained >= mini(MARCH_MIN_UNITS, fighters)
+
+
+## 補給: 回復する HP の合計が SUPPLY_MIN_HEAL 以上（駒が少なければ、全員が 1 回ぶんずつ減っているとき）。
+func _supply_pays() -> bool:
+	var total := 0
+	var units := 0
+	for unit in _battle.units:
+		if unit.side == _me:
+			units += 1
+			total += Tactics.supply_heal(unit)
+	return total >= mini(SUPPLY_MIN_HEAL, units * Tactics.SUPPLY_HEAL)
+
+
+## 号令: たまるぶんでゲージがいっぱいになるとき。RALLY_BY_TURN ターンからは、持ち越さずに使う。
+func _rally_pays() -> bool:
+	if Ults.of(_battle, _me) == null or Ults.is_ready(_battle, _me):
+		return false
+	return Ults.gauge(_battle, _me) + Tactics.RALLY_GAIN >= Ults.GAUGE_MAX or _battle.turn >= RALLY_BY_TURN
+
+
+## 加護: 将がバリアを持たず、いまのマスで次の相手の番に WARD_MIN_DANGER 以上のダメージを受けうるとき。
+func _ward_pays() -> bool:
+	for unit in _battle.units:
+		if unit.side == _me and unit.kind == UnitKind.Id.KING:
+			if Statuses.has(unit, Status.Type.BARRIER):
+				return false
+			_build_threats()
+			return _threat_at(unit, unit.cell, 0) >= WARD_MIN_DANGER
+	return false
 
 
 ## 総員突撃を、いま使うか。まだ行動していない戦う駒（前衛・後衛・奇襲。1 体もいなければ将）のうち、
@@ -402,7 +540,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 	var skill := Skills.of(unit)
 	var limited := skill != null and CpuSkillEstimate.of(skill.id()) != null
 	for action in _battle.options(unit.id).actions():
-		if action is MoveAction or action is WaitAction or action is UndoMoveAction:
+		if action is MoveAction or action is WarpAction or action is WaitAction or action is UndoMoveAction:
 			continue
 		var skill_use := action as UseSkillAction
 		if skill_use != null and limited and not wanted.has(skill_use.target):
@@ -422,6 +560,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 ## 動く先を決めたら、そこで何をするかは次の呼び出し（_follow_up）がもう一度決める（同じ見積もりを使うので、同じ結論になる）。
 func _plan(unit: Unit) -> BattleAction:
 	var options := _battle.options(unit.id)
+	var reach := _reach(_battle, unit)
 	_thinking_id = unit.id
 	_build_threats()
 	_set_goal(unit)
@@ -433,13 +572,13 @@ func _plan(unit: Unit) -> BattleAction:
 	var best_action: BattleAction = null
 	var best_value := _position_value(unit, unit.cell, 0, false)
 	var positions: Dictionary[Vector2i, float] = {}
-	for cell in options.move_cells:
+	for cell: Vector2i in reach[0]:
 		var value := _position_value(unit, cell, 0, false)
 		positions[cell] = value
 		if value > best_value:
 			best_cell = cell
 			best_value = value
-	for cell in options.cruise_cells:
+	for cell: Vector2i in reach[1]:
 		var value := _position_value(unit, cell, 0, false) - CRUISE_PENALTY
 		if value > best_value:
 			best_cell = cell
@@ -456,7 +595,7 @@ func _plan(unit: Unit) -> BattleAction:
 			continue
 		# その手を複製の上で実際にやってみて、起きたことから価値を読む。
 		var sim := _battle.clone()
-		if from != unit.cell and not sim.apply(MoveAction.new(unit.id, from)).accepted:
+		if from != unit.cell and not _move_in(sim, unit.id, from):
 			continue
 		var result := sim.apply(action)
 		if not result.accepted:
@@ -481,7 +620,7 @@ func _plan(unit: Unit) -> BattleAction:
 		var from: Vector2i = candidate[0]
 		var action := UseSkillAction.new(unit.id, candidate[1])
 		var sim := _battle.clone()
-		if from != unit.cell and not sim.apply(MoveAction.new(unit.id, from)).accepted:
+		if from != unit.cell and not _move_in(sim, unit.id, from):
 			continue
 		var result := sim.apply(action)
 		if not result.accepted:
@@ -499,10 +638,24 @@ func _plan(unit: Unit) -> BattleAction:
 			best_value = value
 
 	if best_cell != unit.cell:
-		return MoveAction.new(unit.id, best_cell, best_cruise)
+		return _start_route(unit, best_cell, best_cruise)
 	if best_action != null:
 		return best_action
 	return WaitAction.new(unit.id)
+
+
+## unit を to へ動かす行動の列（Movement.route）の最初の 1 手を返し、続きを _route に覚える。
+func _start_route(unit: Unit, to: Vector2i, cruise: bool) -> BattleAction:
+	_route = []
+	var actions := Movement.route(_battle, unit, to, cruise)
+	if actions.is_empty():
+		return MoveAction.new(unit.id, to, cruise)  # ふつうは通らない（next_action が受け付けられるかを見る）
+	var sim := _battle.clone()
+	for i in actions.size():
+		if i > 0:
+			_route.append([unit.id, sim.unit_by_id(unit.id).cell, actions[i]])
+		sim.apply(actions[i])
+	return actions[0]
 
 
 ## スキルを使う手の候補。[立つマス, 対象のマス] の列。対象ごとに、そこを選べるマスのうち、立つマスの価値がいちばん高いもの。
@@ -589,7 +742,9 @@ func _in_reach(unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i) -> 
 
 ## unit が cell から手を出すときの射程。いまのマスなら、いまの射程。ほかのマスなら、動いたあとの射程。
 func _reach_from(unit: Unit, cell: Vector2i) -> int:
-	return unit.attack_range() if cell == unit.cell else _moved_reach
+	if cell == unit.cell:
+		return unit.attack_range()
+	return _moved_reach - unit.site_range + MapObject.battery_bonus(_board, unit, cell)
 
 
 ## cells（通常の移動で止まれるマス）のうち、at に手が届き、そこで手を出すのにいちばん良いマス。無ければ Board.NO_CELL。
@@ -687,6 +842,9 @@ func _damage_value(victim: Unit, hp_after: int) -> float:
 		rate = KING_DAMAGE_VALUE
 	elif UnitKind.role(victim.kind) == UnitKind.Role.HEALER:
 		kill += HEALER_KILL_BONUS
+	if victim.side == _foe and victim.cell == _board.stronghold_cell and Stronghold.counts(victim):
+		rate *= STRONGHOLD_RATE
+		kill += STRONGHOLD_KILL_BONUS * (1 + _battle.stronghold_holds[_foe])
 	if victim.side == _foe and _my_hq != Board.NO_CELL:
 		if victim.cell == _my_hq:
 			rate *= OCCUPIER_RATE
@@ -909,11 +1067,44 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		for friend_cell in _support:
 			apart = mini(apart, Combat.distance(cell, friend_cell))
 		value -= ISOLATION_WEIGHT * maxi(0, apart - SUPPORT_DISTANCE)
+	value += _battery_pull(unit, cell)
+	if cell == _board.stronghold_cell and _takes_stronghold and Stronghold.counts(unit) and UnitKind.role(unit.kind) != UnitKind.Role.HEALER:
+		value += STRONGHOLD_VALUE
+		if unit.cell == cell:
+			value += STRONGHOLD_HOLD_VALUE * _battle.stronghold_holds[_me]
+	elif _takes_stronghold and Combat.distance(cell, _board.stronghold_cell) <= Stronghold.CONTEST_RADIUS:
+		var holder := _battle.unit_at(_board.stronghold_cell)
+		if holder != null and holder.side == _foe and Stronghold.counts(holder):
+			value += STRONGHOLD_BLOCK_VALUE
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
 		value -= _lethal_penalty
 	return value
+
+
+## 後衛が砲台（docs/map-objects.md）へ寄る・居座る重み。空いている（か自分が乗っている）砲台で、
+## 伸びた射程 + BATTERY_WATCH の中に相手の駒がいるものへ、歩数 BATTERY_STEPS までの所から引かれる。砲台の無い盤では 0。
+func _battery_pull(unit: Unit, cell: Vector2i) -> float:
+	if _board.battery_cells.is_empty() or UnitKind.role(unit.kind) != UnitKind.Role.REARGUARD:
+		return 0.0
+	var best := 0.0
+	var reach := unit.attack_range() - unit.site_range + MapObject.BATTERY_RANGE
+	for battery in _board.battery_cells:
+		var holder := _battle.unit_at(battery)
+		if holder != null and holder != unit:
+			continue
+		var steps := _steps_from(battery)[cell.y * _board.size.x + cell.x]
+		if steps > BATTERY_STEPS:
+			continue
+		var watched := false
+		for other in _battle.units:
+			if other.side == _foe and Combat.distance(other.cell, battery) <= reach + BATTERY_WATCH:
+				watched = true
+				break
+		if watched:
+			best = maxf(best, BATTERY_VALUE - BATTERY_STEP_COST * steps)
+	return best
 
 
 ## unit の目標（どこへ近づきたいか）を決めて、_goal_steps、_goal_reach、役割ごとの重み、_stand_off に置く。
@@ -986,6 +1177,20 @@ func _set_goal(unit: Unit) -> void:
 		elif enemy != null:
 			goal = enemy.cell
 			_goal_reach = unit.attack_range()
+	if _takes_stronghold and unit.kind != UnitKind.Id.KING and role != UnitKind.Role.HEALER:
+		# 拠点: 待てば相手が確保を進めるので、戦う駒は動くだけの手の危険を、攻撃する手の重さで見る（長引いたときの踏み込みと同じ）。
+		# 相手が拠点に乗っていれば、乗っている駒を追う。そうでなければ、受け持ちの 1 体（_choose_stronghold_taker）が拠点へ向かう。
+		_choose_stronghold_taker()
+		_idle_danger_weight = minf(_danger_weight, _idle_danger_weight)
+		var holder := _battle.unit_at(_board.stronghold_cell)
+		if holder != null and holder.side == _foe and Stronghold.counts(holder):
+			goal = holder.cell
+			_goal_reach = unit.attack_range()
+			_stand_off = false
+		elif unit.id == _stronghold_taker:
+			goal = _board.stronghold_cell
+			_goal_reach = 0
+			_stand_off = false
 	if _foe_hq != Board.NO_CELL and role != UnitKind.Role.HEALER and not _foes_left() and (unit.kind != UnitKind.Id.KING or _lone_king):
 		# 相手の駒が残っていなくても終わらない（占拠でしか勝てない）: 追う敵がいないので、敵の本陣へ向かう。
 		goal = _foe_hq
@@ -1226,3 +1431,25 @@ func _steps_from(goal: Vector2i) -> PackedInt32Array:
 				tail += 1
 	_steps[goal] = steps
 	return steps
+
+
+## 拠点へ向かう駒（戦う駒 = 前衛・後衛・奇襲のうち、拠点までの歩数がいちばん近いもの。同じなら番号の小さいもの）を決めて _stronghold_taker に置く。
+## 自分の駒が拠点に乗っていれば、その駒。1 手を考えるたびに、最初に要ったときに決める。
+func _choose_stronghold_taker() -> void:
+	if _stronghold_taker != 0:
+		return
+	_stronghold_taker = -1
+	var cell := _board.stronghold_cell
+	var holder := _battle.unit_at(cell)
+	if holder != null and holder.side == _me and Stronghold.counts(holder):
+		_stronghold_taker = holder.id
+		return
+	var steps := _steps_from(cell)
+	var best := _FAR
+	for other in _battle.units:
+		if other.side != _me or other.kind == UnitKind.Id.KING or UnitKind.role(other.kind) == UnitKind.Role.HEALER:
+			continue
+		var far := steps[other.cell.y * _board.size.x + other.cell.x]
+		if far >= 0 and far < best:
+			best = far
+			_stronghold_taker = other.id

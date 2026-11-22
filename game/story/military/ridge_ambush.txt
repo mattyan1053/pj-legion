@@ -1,0 +1,60 @@
+# ストーリーの話「尾根の待ち伏せ」。
+#
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+#
+# 1 話と同じマップ「尾根の小道」（game/maps/ridge_path.txt）を、初期位置を変えて使い回す（Issue #49 の「マップの使い回し」）。
+# 敵は本陣の前ではなく、尾根の中ほど（中央の岩の上側）に陣取って始まる。左右どちらの道へも、すぐ出られる。
+# 人はいつもの「本陣の前」から。敵の部隊は 1 話より少し強い（docs/story.md の「敵の強さ」）。
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 尾根の待ち伏せ
+map = ridge_path
+music = battle
+before_music = battle
+after_music = talk_calm
+
+[cast]
+ハーデン = ally
+ドーソン = ally, shield_trooper evolved
+ノエ = ally, sniper
+マルタ = ally, medic
+ピップ = ally, commando
+イェルダ = enemy, paladin evolved crown
+
+[before]
+ピップ: ほら〜、言ったでしょ。まだいるって。しかも尾根の真ん中まで出てきてるっす〜。
+イェルダ: 待っていたぞ、連邦の隊長。今度は、こちらから迎え撃つのである。
+ノエ: 距離が近いです。左右どちらの道にも、すぐ出てこられます。
+ハーデン: 全員で前に出れば、本陣が空く。
+ドーソン: 旗の番を決めとけ。脇を抜かれたら、それで終わりだ。
+イェルダ: 前のようにはいかぬ。
+
+[cues]
+(turn 1) イェルダ: かかったな。尾根の上から挟み込め。
+(fallen ally) マルタ: 1 人やられた！ ばらけないで、固まって！
+(king_half enemy) イェルダ: ……強い。だが、退く道は無いのである。
+
+[after]
+イェルダ: ……二度まで。貴公、名は。
+ハーデン: ハーデン。ベルク連邦、偵察隊。
+イェルダ: 覚えておこう。……ひとつ忠告を。あの谷は、どちらの国の土でもない。眠る者たちの土である。
+ピップ: 何すかね〜、今の。あ、補給が追い付いたっすよ。スピードブーツ、入ってま〜す。
+ドーソン: 足が速くなりゃ、お前の遅刻も減るな。
+
+[lost]
+ドーソン: 旗が空いてたぞ。番を 1 人、残しとけ。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[enemy]
+army = fantasy
+unit = paladin + iron_shield + iron_shield
+unit = sorcerer
+unit = priest
+deploy = 8,9  5,9  11,9  3,11  13,11
+deploy = 8,7
+
+[unlock]
+item = speed_boots
+budget = 2

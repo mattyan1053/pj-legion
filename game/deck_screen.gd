@@ -32,6 +32,9 @@ const UnitFrame := preload("res://game/unit_frame.gd")
 const RoleMark := preload("res://game/role_mark.gd")
 const CostGems := preload("res://game/cost_gems.gd")
 const StatsRow := preload("res://game/stats_row.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
+const UnitSummary := preload("res://game/unit_summary.gd")
+const UnitSheet := preload("res://game/unit_sheet.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
@@ -115,11 +118,10 @@ var _roster_buttons := {}
 var _ult_box: VBoxContainer
 var _troop_rows: VBoxContainer
 var _detail_card: PanelContainer
-var _detail_title: Label
-var _detail_icon: UnitFrame
-var _detail_body: Label
-var _detail_role: RoleMark
-var _detail_stats: StatsRow
+var _detail_summary: UnitSummary
+var _detail_open: Button
+var _unit_detail: UnitDetail
+var _layer: CanvasLayer
 var _equip_box: PanelContainer
 var _equip_scroll: ScrollContainer
 var _equip_list: VBoxContainer
@@ -144,6 +146,7 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	_layer = layer
 	var shade := ColorRect.new()
 	shade.color = Color(Palette.SHADE, 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -897,29 +900,18 @@ func _build_editor() -> Control:
 	detail_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_column.add_theme_constant_override("separation", 6)
 	detail_scroll.add_child(detail_column)
-	var detail_head := HBoxContainer.new()
-	detail_head.add_theme_constant_override("separation", 12)
-	detail_column.add_child(detail_head)
-	_detail_icon = UnitFrame.new(UnitKind.Id.KING, 0, 64.0, false)
-	detail_head.add_child(_detail_icon)
-	var detail_names := VBoxContainer.new()
-	detail_names.alignment = BoxContainer.ALIGNMENT_CENTER
-	detail_names.add_theme_constant_override("separation", 4)
-	detail_head.add_child(detail_names)
-	var detail_title_row := HBoxContainer.new()
-	detail_title_row.add_theme_constant_override("separation", 8)
-	detail_names.add_child(detail_title_row)
-	_detail_role = RoleMark.new(UnitKind.Role.NONE, 24.0)
-	detail_title_row.add_child(_detail_role)
-	_detail_title = _text(22, COLOR_TEXT)
-	_detail_title.add_theme_font_override("font", UiTheme.FONT_BOLD)
-	detail_title_row.add_child(_detail_title)
-	# 能力値は、札の頭に欄をそろえて出す（下の文にも同じ行がある。持ち物込みの値は文の側）。
-	_detail_stats = StatsRow.new("", 15)
-	detail_names.add_child(_detail_stats)
-	detail_column.add_child(HSeparator.new())
-	_detail_body = _text(15, COLOR_TEXT)
-	detail_column.add_child(_detail_body)
+	# 札は、小さなステータス画面（unit_summary.gd。額、名前と役割の札、能力値の棒と粒、スキルと進化先の札）。
+	_detail_summary = UnitSummary.new(DETAIL_WIDTH - 24.0)
+	detail_column.add_child(_detail_summary)
+	# 「詳細」: 選んでいる部隊の駒のステータスの窓（unit_detail.gd）。札の頭の下の、飾りの線の右（名前や札に重ならない所）。
+	_detail_open = Button.new()
+	_detail_open.text = Text.t("battle.hud.detail")
+	_detail_open.theme_type_variation = UiTheme.BUTTON_GHOST
+	_detail_open.focus_mode = Control.FOCUS_NONE
+	_detail_open.add_theme_font_size_override("font_size", 14)
+	_detail_open.custom_minimum_size = Vector2(72.0, 26.0)
+	_detail_open.pressed.connect(press_unit_detail)
+	_detail_summary.corner().add_child(_detail_open)
 	_equip_box = _card()
 	right.add_child(_equip_box)
 	var equip_column := VBoxContainer.new()
@@ -1200,6 +1192,23 @@ func hover_kind(kind: int) -> void:
 	_set_hover(kind)
 
 
+## 右の札の「詳細」: 選んでいる部隊の駒のステータスの窓を開く。選んでいなければ何もしない。
+func press_unit_detail() -> void:
+	if _deck == null or _selected == -1 or context.overlays.is_open():
+		return
+	if _unit_detail == null:
+		_unit_detail = UnitDetail.new()
+		_layer.add_child(_unit_detail)
+		_unit_detail.setup(context.overlays)
+	var entry := _deck.entries[_selected]
+	_unit_detail.open(entry.kind, entry.equipment, 0, _deck.army)
+
+
+## 駒のステータスの窓（検査用。まだ開いていなければ null）。
+func unit_detail() -> Control:
+	return _unit_detail
+
+
 func _set_hover(kind: int) -> void:
 	_hover_kind = kind
 	_refresh_detail()
@@ -1221,19 +1230,14 @@ func _refresh_detail() -> void:
 	if kind == -1:
 		return
 	var unit_kind := kind as UnitKind.Id
-	var title := Names.kind(unit_kind)
-	if entry != null:
-		title = "%d. %s" % [_selected + 1, title]
-	_detail_title.text = title
-	_detail_icon.set_kind(unit_kind)
-	_detail_role.role = UnitKind.role(unit_kind)
-	_detail_role.visible = UnitKind.role(unit_kind) != UnitKind.Role.NONE
 	var held: Array[Equipment.Id] = []
 	if entry != null:
 		held = entry.equipment
-	var lines := DeckText.detail_lines(unit_kind, held, _deck.army if _deck != null else -1, false)
-	_detail_stats.set_line(DeckText.stats_line(unit_kind, DeckText.equipment_bonus(held)))
-	_fold(_detail_body, "\n".join(lines), DETAIL_WIDTH)
+	# 「詳細」は部隊の駒を出しているときだけ押せる（雇える駒は、マウスを離すと札が替わるので押せない。場所は保つ）。
+	_detail_open.disabled = entry == null
+	_detail_open.modulate.a = 1.0 if entry != null else 0.0
+	var sheet: UnitSheet = UnitSheet.of_kind(unit_kind, held, 0, _deck.army if _deck != null else -1)
+	_detail_summary.show_sheet(sheet, "%d. %s" % [_selected + 1, sheet.name] if entry != null else "")
 	entry = chosen_entry
 	if entry != null:
 		_equip_title.text = Text.t("deck.edit.items", {"count": entry.equipment.size(), "max": Equipment.MAX_PER_UNIT})
@@ -1283,6 +1287,16 @@ func _fit_equip() -> void:
 	var budget := (_edit_view.get_viewport_rect().size.y if _edit_view.is_inside_tree() else _edit_view.size.y) - around
 	var room := budget - DETAIL_MIN_HEIGHT - RIGHT_GAP - chrome
 	_equip_scroll.custom_minimum_size.y = minf(natural, maxf(room, EQUIP_MIN_HEIGHT))
+
+
+## 駒の札（右上）の中身が、札の幅からはみ出している量（px。0 以下なら収まっている）と、「詳細」のボタンが名前に重なっているか。検査用。
+func detail_summary_overflow() -> float:
+	return _detail_summary.overflow()
+
+
+func detail_button_covers_summary_head() -> bool:
+	var head: Control = _detail_summary.get_child(0)
+	return _detail_open.get_global_rect().intersects(head.get_global_rect())
 
 
 ## 駒の札（右上）と、持ち物の欄の送れる部分の、画面の上の四角。検査用。

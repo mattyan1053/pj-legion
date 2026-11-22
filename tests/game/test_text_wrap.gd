@@ -43,6 +43,14 @@ func test_number_and_unit_stay_together() -> void:
 	]))
 
 
+func test_breaks_at_space_after_particle() -> void:
+	# 名前やマスを差し込むログの文: 「が」の後の半角の空白と「→」の前で切れる（空白は落とす）。数の前の空白（「を 3 ターン」）では切らない。
+	assert_eq(_wrap("パラディンが (1, 2) → (5, 6) へ移動", 26.0), PackedStringArray(["パラディンが (1, 2)", "→ (5, 6) へ移動"]))
+	assert_eq(_wrap("パラディンが (1, 2) → (5, 6) へ移動", 18.0), PackedStringArray(["パラディンが", "(1, 2)", "→ (5, 6) へ移動"]))
+	assert_eq(TextWrap.bad_breaks("パラディンが (1, 2) → (5, 6) へ移動", 26.0, _measure), [] as Array[String])
+	assert_false(_wrap("敵の本陣を 3 ターン占拠する", 16.0).has("敵の本陣を"))
+
+
 func test_prefers_breaking_after_punctuation() -> void:
 	# 行の末まで詰めれば「攻撃」と「力」の間で切れる幅でも、読点の後で切る。
 	assert_eq(_wrap("軍の全員の移動力 +2、攻撃力 +5", 26.0), PackedStringArray(["軍の全員の移動力 +2、", "攻撃力 +5"]))
@@ -79,9 +87,9 @@ func test_kanji_words_and_their_kana_stay_together() -> void:
 ## fold_even は、行の数を増やさずに、行の長さをそろえる（2 行目に 1 語だけ残さない）。
 func test_fold_even_leaves_no_orphan_word() -> void:
 	var text := "駒をクリックで選択。相手の駒は移動・攻撃の届く範囲を表示"
-	var plain := _wrap(text, 55.0)
+	var plain := TextWrap._fold_paragraph(text, 55.0, _measure)
 	assert_eq(plain.size(), 2)
-	assert_eq(plain[1], "表示", "前提: ふつうの折り返しでは、2 行目が 1 語だけになる")
+	assert_eq(plain[1], "表示", "前提: 行の末まで詰めると、2 行目が 1 語だけになる")
 	var even := TextWrap.fold_even(text, 55.0, _measure).split("\n")
 	assert_eq(even.size(), 2, "行が増えた")
 	assert_eq("".join(even), text)
@@ -93,3 +101,45 @@ func test_fold_even_leaves_no_orphan_word() -> void:
 func test_fold_even_keeps_what_fits_and_newlines() -> void:
 	assert_eq(TextWrap.fold_even("駒をクリックして選ぶ", 40.0, _measure), "駒をクリックして選ぶ")
 	assert_eq(TextWrap.fold_even("攻撃する\n待機する", 40.0, _measure), "攻撃する\n待機する")
+
+
+## fold も、段落の最後の行が短すぎれば（幅の 2 割より短い）、行の数を増やさずに長さをそろえる。
+func test_fold_leaves_no_short_last_line() -> void:
+	var text := "駒をクリックで選択。相手の駒は移動・攻撃の届く範囲を表示"
+	var lines := _wrap(text, 55.0)
+	assert_eq(lines.size(), 2, "行が増えた")
+	assert_true(_measure(lines[1]) >= 55.0 * TextWrap.SHORT_LAST_RATIO, "最後の行が短いまま: %s" % [lines])
+
+
+## ひらがなが続く所は、語の途中（「まずかっ / た。」）で切らない（負けの台詞の板で起きていた）。
+func test_hiragana_word_is_not_split() -> void:
+	var text := "ばらけて押したのがまずかった。道を 1 本に絞れ、隊長。"
+	for width: float in range(16, 60, 2):
+		var lines := _wrap(text, float(width))
+		assert_eq("".join(lines), text, "文字が変わった（幅 %s）" % width)
+		for i in range(1, lines.size()):
+			assert_false(lines[i].begins_with("た。"), "語の途中で切った: %s（幅 %s）" % [lines, width])
+			assert_false(lines[i - 1].ends_with("かっ") or lines[i - 1].ends_with("まず"), "語の途中で切った: %s（幅 %s）" % [lines, width])
+
+
+## 次の行が、ひらがな 1〜2 字と句読点だけで始まらない（「行く / よ。」）。
+func test_short_kana_tail_stays_with_its_word() -> void:
+	for width: float in range(10, 40, 2):
+		for line in _wrap("ここは通さないぞ。おまえたちの好きにはさせないよ。", float(width)):
+			assert_false(line.begins_with("よ。") or line.begins_with("ぞ。") or line.begins_with("いよ。"), "短い尾が次の行に落ちた（幅 %s）: %s" % [width, line])
+
+
+## ひらがなばかりの文では、助詞らしい字（「を」「が」）の後で切る。
+func test_hiragana_breaks_after_particles() -> void:
+	var lines := _wrap("おれたちがここをまもりぬくのだ", 20.0)
+	assert_eq(lines.size(), 2)
+	assert_true(lines[0].ends_with("が") or lines[0].ends_with("を"), "助詞の後で切っていない: %s" % [lines])
+
+
+## 語の切れ目が見つからない所は、bad_breaks が拾う（点検の道具 tools/wrap_audit.gd が使う）。
+func test_bad_breaks_reports_word_splits() -> void:
+	# 「表示中」は、幅 4（2 文字）では語の途中で切るほかない。
+	assert_eq(TextWrap.bad_breaks("表示中だ", 4.0, _measure).size(), 1)
+	assert_eq(TextWrap.bad_breaks("ばらけて押したのがまずかった。", 18.0, _measure), [] as Array[String])
+	# 元からある改行は見ない。
+	assert_eq(TextWrap.bad_breaks("まずかっ\nた。道を", 40.0, _measure), [] as Array[String])

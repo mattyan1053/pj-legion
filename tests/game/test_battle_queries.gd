@@ -185,50 +185,54 @@ func _portal_battle() -> Battle:
 	return battle
 
 
-## 組をルールに順に渡し、どれも受け付けられたかを返す。
-func _apply_all(battle: Battle, actions: Array[BattleAction]) -> bool:
-	for action in actions:
-		if not battle.apply(action).accepted:
-			return false
-	return true
-
-
 func test_warp_after_stepping_onto_a_portal() -> void:
 	var battle := _portal_battle()
-	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 1))
-	assert_eq(Queries.warp(battle, unit), [], "ポータルの上にいない")
+	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 1))  # 移動力 3
+	assert_eq(Queries.warp_exit(battle, unit), Board.NO_CELL, "ポータルの上にいない")
+	assert_eq(Queries.reachable_portals(battle, unit), {Vector2i(1, 1): Vector2i(8, 1)}, "範囲の中のポータルと、出る先")
+	assert_false(Queries.move_cells(battle, unit).has(Vector2i(8, 1)), "範囲は転移の先まで広げない")
 	battle.apply(MoveAction.new(unit.id, Vector2i(1, 1)))
-	assert_eq(Queries.warp(battle, unit), [Vector2i(8, 1), false])
-	assert_true(_apply_all(battle, Queries.warp_actions(battle, unit)), "ルールが受け付けなかった")
+	assert_eq(Queries.warp_exit(battle, unit), Vector2i(8, 1))
+	assert_true(battle.can_apply(WarpAction.new(unit.id)))
+	battle.apply(WarpAction.new(unit.id))
 	assert_eq(unit.cell, Vector2i(8, 1))
-	assert_eq(battle.acting_unit_id, unit.id, "転移のあとも、行動の途中（攻撃・待機・取り消しを選ぶ）")
-	assert_eq(Queries.warp(battle, unit), [], "もう転移した（行き先のポータルからは、戻れない）")
+	assert_eq(battle.acting_unit_id, unit.id, "転移のあとも、行動の途中")
+	assert_eq(Queries.warp_exit(battle, unit), Board.NO_CELL, "転移したばかり（すぐには戻れない）")
+	assert_true(Queries.reachable_portals(battle, unit).is_empty())
+	var cells := Queries.move_cells(battle, unit)
+	assert_eq(cells.get(Vector2i(9, 1)), false, "残りの移動力（2）で続けて動ける")
+	assert_eq(cells.get(Vector2i(8, 3)), false)
+	assert_eq(cells.get(Vector2i(8, 4)), null)
+	for cell: Vector2i in cells:
+		assert_true(battle.can_apply(MoveAction.new(unit.id, cell, cells[cell])), "%s" % cell)
 
 
 func test_warp_from_a_portal_at_the_start_of_the_phase() -> void:
 	var battle := _portal_battle()
 	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(1, 1))
-	assert_eq(Queries.warp(battle, unit), [Vector2i(8, 1), false])
-	assert_eq(Queries.warp_actions(battle, unit).size(), 1, "動いていなければ、移動だけ")
-	assert_true(_apply_all(battle, Queries.warp_actions(battle, unit)))
+	assert_eq(Queries.warp_exit(battle, unit), Vector2i(8, 1))
+	assert_eq(Queries.reachable_portals(battle, unit), {Vector2i(1, 1): Vector2i(8, 1)})
+	battle.apply(WarpAction.new(unit.id))
 	assert_eq(unit.cell, Vector2i(8, 1))
+	assert_eq(Queries.move_cells(battle, unit).size(), Movement.reachable(battle, unit, true).size() - 1, "移動力はまるごと残る")
 
 
 func test_no_warp_when_the_exit_is_taken() -> void:
 	var battle := _portal_battle()
 	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 1))
 	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(8, 1))
+	assert_true(Queries.reachable_portals(battle, unit).is_empty())
 	battle.apply(MoveAction.new(unit.id, Vector2i(1, 1)))
-	assert_eq(Queries.warp(battle, unit), [])
-	assert_true(Queries.warp_actions(battle, unit).is_empty())
+	assert_eq(Queries.warp_exit(battle, unit), Board.NO_CELL)
 
 
 func test_no_warp_from_a_portal_in_an_enemy_zone() -> void:
 	var battle := _portal_battle()
 	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(2, 1))  # (1, 1) は支配領域
+	assert_true(Queries.reachable_portals(battle, unit).is_empty(), "止まっても転移できないポータルは、印を付けない")
 	battle.apply(MoveAction.new(unit.id, Vector2i(1, 1)))
-	assert_eq(Queries.warp(battle, unit), [], "敵の支配領域で止まったポータルからは、転移できない")
+	assert_eq(Queries.warp_exit(battle, unit), Board.NO_CELL, "敵の支配領域で止まったポータルからは、転移できない")
 
 
 func test_cruise_warp_keeps_cruising() -> void:
@@ -238,7 +242,8 @@ func test_cruise_warp_keeps_cruising() -> void:
 	])
 	battle.board.add_portal_pair(Vector2i(5, 0), Vector2i(9, 1))
 	var unit := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))  # 移動力 3。巡航で 6
+	assert_eq(Queries.reachable_portals(battle, unit), {Vector2i(5, 0): Vector2i(9, 1)}, "巡航でだけ届くポータルも")
 	battle.apply(MoveAction.new(unit.id, Vector2i(5, 0), true))
-	assert_eq(Queries.warp(battle, unit), [Vector2i(9, 1), true])
-	assert_true(_apply_all(battle, Queries.warp_actions(battle, unit)))
+	battle.apply(WarpAction.new(unit.id))
 	assert_true(unit.cruised)
+	assert_eq(Queries.move_cells(battle, unit), {Vector2i(8, 1): true, Vector2i(9, 0): true}, "続きも巡航（残り 1）")

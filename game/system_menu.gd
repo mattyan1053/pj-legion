@@ -138,7 +138,8 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 ## メニューを開く。items は [名前, 文字, 確かめの文（要らなければ空）] の列（上から）。
 ## 名前が ITEM_RESUME の項目は閉じるだけ、ITEM_SETTINGS の項目はオプションの画面を開く。ほかは item_chosen で知らせる。
 ## settings_only が真なら、メニューを出さずにオプションの画面だけを開く（閉じると、メニューへは戻らずに閉じる）。
-func open(items: Array, settings_only := false) -> void:
+## note は見出しの下に小さく出す文（ストーリーの「最後に保存: …」。空なら出さない）。
+func open(items: Array, settings_only := false, note := "") -> void:
 	_settings_only = settings_only
 	_items = items.duplicate(true)
 	for child in _menu_column.get_children():
@@ -149,11 +150,18 @@ func open(items: Array, settings_only := false) -> void:
 	title.text = Text.t("menu.title")
 	_menu_column.add_child(title)
 	_menu_column.add_child(UiTheme.window_rule())
+	if note != "":
+		var saved := _label(14)
+		saved.text = note
+		saved.name = "Note"
+		saved.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		saved.add_theme_color_override("font_color", Palette.TEXT_DIM)
+		_menu_column.add_child(saved)
 	# 項目はタイトルのメニューと同じ札。抜けると失われるものがある行き先（確かめを挟む項目）の前に、区切りの線を 1 本。
 	var parted := false
 	for item: Array in _items:
 		var id: StringName = item[0]
-		if not parted and item.size() > 2 and item[2] != "" and _menu_column.get_child_count() > 2:
+		if not parted and item.size() > 2 and item[2] != "" and _menu_column.get_child_count() > (3 if note != "" else 2):
 			parted = true
 			_menu_column.add_child(HSeparator.new())
 		var button := _button(item[1])

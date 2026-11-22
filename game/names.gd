@@ -91,6 +91,15 @@ static func skill_summary(of_skill: Skill) -> String:
 	return Text.t("skill.%s.summary" % word(Skill.Id, of_skill.id()), of_skill.summary_args())
 
 
+## 作戦（docs/tactics.md）の名前と、1 行の説明。
+static func tactic(id: Tactics.Id) -> String:
+	return Text.t("tactic." + word(Tactics.Id, id))
+
+
+static func tactic_summary(id: Tactics.Id) -> String:
+	return Text.t("tactic.%s.summary" % word(Tactics.Id, id), Tactics.summary_args())
+
+
 ## 必殺技の名前と、1 行の説明。
 static func ult(of_ult: Ult) -> String:
 	return Text.t("ult." + word(Ult.Id, of_ult.id()))
@@ -108,7 +117,7 @@ static func status(type: Status.Type) -> String:
 static func status_summary(type: Status.Type) -> String:
 	var args := {
 		"range": PrecisionAimSkill.RANGE_BONUS, "penalty": AdrenalineShotSkill.POWER_PENALTY,
-		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS,
+		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS, "march": Tactics.MARCH_MOVE,
 	}
 	return Text.t("status.%s.summary" % word(Status.Type, type), args)
 

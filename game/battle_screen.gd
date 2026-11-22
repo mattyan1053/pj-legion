@@ -28,6 +28,8 @@ const Settings := preload("res://game/settings.gd")
 const AppContext := preload("res://game/app_context.gd")
 const BattleLog := preload("res://game/battle_log.gd")
 const LogPanel := preload("res://game/log_panel.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
+const UnitSheet := preload("res://game/unit_sheet.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
@@ -110,6 +112,7 @@ var _effects: BattleEffects
 var _views := {}  # 駒の番号 -> UnitView
 var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
+var _unit_detail: UnitDetail
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
 var _inspect_ring: MeshInstance3D
@@ -147,9 +150,17 @@ var _auto_side := -1
 var _auto_cpu := CpuPlayer.new()
 ## 操作の状態（選んでいる駒、見ている駒、対象を選ぶ途中、確かめ、押している途中、再生と CPU の番の途中）。battle_ui_state.gd。
 var _ui := BattleUiState.new()
+## 使うかを確かめている途中の作戦（手札の何枚目か。無ければ -1）と、確かめを始めた時刻。
+var _tactic_confirm := -1
+const TACTIC_CONFIRM_MSEC := 4000
+var _tactic_confirm_msec := 0
+## 確かめを始めたときの [ターン, フェーズ]。番が替わったら、確かめは無かったことにする（次のプレイヤーへ持ち越さない）。
+var _tactic_confirm_phase: Array[int] = [0, 0]
 ## 対戦の途中の会話（battle_cues.gd）と、その札（battle_talk.gd）。台詞は渡すもの（source.talk_cues）が持つ。
 var _cues: BattleCues
 var _talk: BattleTalk
+## 台詞を送られるのを待つ間、クリックを受け止める幕（透明）。
+var _talk_catcher: Control
 ## 敵の全員の脅威範囲（Threat.against）を、盤に重ねて出しているか（下の帯の切り替え）。
 var _threat_shown := false
 var _hover_cell := NO_CELL
@@ -160,8 +171,10 @@ var _barrel_targets: Array[Vector2i] = []
 var _barricade_targets: Array[Vector2i] = []
 var _heal_targets: Array[Unit] = []
 var _skill_cells: Array[Vector2i] = []
-## 選んでいる駒が、いまのポータルから転移できるなら [行き先, 巡航か]（Queries.warp）。
-var _warp: Array = []
+## 選んでいる駒が、いまのポータルから転移できるなら行き先（Queries.warp_exit）。できなければ NO_CELL。
+var _warp := NO_CELL
+## 選んでいる駒の移動の範囲にある、転移に使えるポータル（入る -> 出る。Queries.reachable_portals）。
+var _portals := {}
 ## 駒のそばのメニューと、戦闘予測のパネルの置き場所（panel_layout.gd）。
 var _layout: PanelLayout
 ## 検査で、マウスを乗せたことにしているマス（hover）。NO_CELL ならマウスの位置。
@@ -209,6 +222,7 @@ func _ready() -> void:
 	_hud.menu_pressed.connect(_on_menu_pressed)
 	_hud.menu_hovered.connect(_on_menu_hovered)
 	_hud.ult_pressed.connect(press_ult)
+	_hud.tactic_pressed.connect(press_tactic)
 	_hud.end_turn_pressed.connect(press_end_turn)
 	_hud.restart_pressed.connect(_on_restart_pressed)
 	_hud.evolution_chosen.connect(choose_evolution)
@@ -219,6 +233,7 @@ func _ready() -> void:
 	_hud.auto_pressed.connect(press_auto)
 	_hud.pin_toggled.connect(func() -> void: toggle_pin(_ui.inspected_id))
 	_hud.log_pressed.connect(open_log)
+	_hud.detail_pressed.connect(open_unit_detail)
 	_hud.setup_pressed.connect(func() -> void: finished.emit(&"setup"))
 	_hud.title_pressed.connect(func() -> void: finished.emit(source.leave()[0]))  # 決着の画面の、流れの外への行き先
 	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
@@ -229,7 +244,18 @@ func _ready() -> void:
 	_hud.result_screen().play_sound = func(name: StringName) -> void: context.play_sound(name)
 	_talk = BattleTalk.new()
 	_talk.waiting = _hud.is_banner_shown
+	# 遊ぶときは、台詞を送られるまで出したままにし、その間は盤を止める（検査とスクリーンショットは、数秒で消す）。
+	_talk.hold = context.checking == &""
 	_hud.add_talk_card(_talk)
+	# 台詞を送られるのを待つ間、帯のボタンや盤へのクリックを受け止めて、台詞を送る（システムメニューのボタンは、上の層なので押せる）。
+	_talk_catcher = Control.new()
+	_talk_catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_talk_catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	_talk_catcher.visible = false
+	_talk_catcher.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			advance_talk())
+	_hud.add_child(_talk_catcher)
 	_setup_panel = MatchSetupPanel.new()
 	_hud.add_child(_setup_panel)
 	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)
@@ -247,6 +273,11 @@ func _ready() -> void:
 	_log_panel.entry_chosen.connect(_on_log_entry_chosen)
 	_log_panel.opened.connect(func() -> void: context.play_sound(&"menu_open"))
 	_log_panel.closed.connect(func() -> void: context.play_sound(&"menu_close"))
+	_unit_detail = UnitDetail.new()
+	_unit_detail.pausing = true
+	_hud.add_child(_unit_detail)
+	_unit_detail.setup(context.overlays)
+	_unit_detail.closed.connect(_on_unit_detail_closed)
 
 	settings = context.settings
 	settings.changed.connect(_on_setting_changed)
@@ -254,6 +285,8 @@ func _ready() -> void:
 	_system_menu = context.system_menu
 	_system_menu.opened.connect(_on_system_menu_opened)
 	_system_menu.closed.connect(_on_system_menu_closed)
+	# 時間を止める重なる画面（ウィンドウを閉じる前の確かめなど、この場面が開いたのでないものも）が開いた・閉じたら、止めるか見直す。
+	context.overlays.changed.connect(_on_overlays_changed)
 
 	# 流れが渡すもの。流れの外から置かれた（スクリーンショットの道具など）なら、対戦設定の場面で選んだもの。
 	var given: Variant = context.run_data()
@@ -307,6 +340,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 		if escape and context.overlays.is_top(_setup_panel):
 			open_system_menu()
+		return
+	if _talk.is_holding():
+		# 対戦の途中の台詞を送られるのを待つ間: Enter・Space・クリックで送る（クリックは幕が受ける）。Esc はメニュー。ほかのキーは使わない。
+		if event is InputEventKey and event.pressed and not event.echo:
+			match event.physical_keycode:
+				KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+					advance_talk()
+				KEY_ESCAPE:
+					press_escape()
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			advance_talk()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
@@ -427,6 +471,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_board_view = BoardView.new()
 	add_child(_board_view)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
+	_sync_stronghold_flag()  # 途中から見せる対戦でも、旗は確保を進めた陣営の色
 	_hud.minimap().show_board(battle.board, look)
 	# 場面に入る幕が明けるまでは _process が回らないので、ミニマップの置き場所を先に決めておく（左上に出てから跳ばない）。
 	_place_minimap.call_deferred()
@@ -490,27 +535,58 @@ func _add_view(unit: Unit) -> void:
 	_views[unit.id] = view
 
 
-## 決着の画面が出た。決着の曲を 1 回鳴らす: 人が勝てば勝ちの曲、CPU に負けたときと引き分けは負けの曲。
-## 人どうしは、どちらかが勝っているので勝ちの曲。
+## 決着の画面が出た。対戦の曲を消して決着の曲を 1 回鳴らし、そのあと静かな曲へつなぐ（渡されたものの after_result_music）。
+## 人が勝てば勝ちの曲、CPU に負けたときと引き分けは負けの曲。人どうしは、どちらかが勝っているので勝ちの曲。
+## 勝ったときの調子が静か（話のファイルの victory_mood）なら、ファンファーレを鳴らさずに静かな曲へ。
 ## 渡されたもの（source）が許せば「次へ」を出し、人が勝ったことを知らせる（ストーリーのクリアの記録）。
 func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 	_talk.clear()  # 決着の画面に、前の台詞を残さない
-	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side()))
+	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side(), source.victory_mood()), source.after_result_music())
 	var won := cpu_opponent and not draw and winner == _human_side()
 	_hud.result_screen().set_continue(source.can_continue(won), source.retries_on_enter(won))
+	# 負けた話は、見出しの下に、話し手のひとこと（話のファイルの [lost]。再戦の手間は増やさない）。
+	_hud.result_screen().set_remark([] if won or not cpu_opponent else source.lost_lines())
 	if won:
 		source.record_win(context)
 
 
 ## 対戦の途中の会話の台詞を、上の帯のすぐ下の札に順に出し、ログにも書く。
+## 札が台詞を送られるまで出したままにする（hold）ときは、送り終えるまで待つ（その間、盤は止まる。CPU の番の早送り・スキップ・おまかせの途中でも）。
 func _say(lines: Array[BattleCues.Line]) -> void:
 	if lines.is_empty():
 		return
 	for line in lines:
 		battle_log.say(line.name, line.text, line.side)
-	if _playback.skipping:
-		return  # スキップの途中の台詞は、ログにだけ残す
+	if _playback.skipping and not _talk.hold:
+		return  # 検査とスクリーンショットでは、スキップの途中の台詞は、ログにだけ残す
 	_talk.say(lines)
+	if not _talk.hold:
+		return
+	_talk_catcher.visible = true
+	_refresh()
+	while _talk.is_holding() and is_inside_tree():
+		await _talk.drained
+	_talk_catcher.visible = false
+	if is_inside_tree():
+		_refresh()
+
+
+## 対戦の途中の台詞を送る（クリック・Enter・Space）。送ったかを返す。
+func advance_talk() -> bool:
+	if not _talk.advance():
+		return false
+	context.play_sound(&"ui_click")
+	return true
+
+
+## 対戦の途中の台詞を送られるのを待っているか。検査用。
+func is_talk_holding() -> bool:
+	return _talk.is_holding()
+
+
+## 台詞を送られるまで出したままにするか（検査用。ふだんは遊ぶときだけ）。
+func set_talk_hold(on: bool) -> void:
+	_talk.hold = on
 
 
 ## いま画面に出ている、対戦の途中の会話の台詞（無ければ null。検査とスクリーンショットの道具用）。
@@ -549,9 +625,12 @@ func talk_card_neighbors() -> Array[Rect2]:
 	return rects
 
 
-## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の [cues] から出す）。
+## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の [cues] から出す）。hold なら、送られるまで盤を止める。
 func say_for_check(lines: Array[BattleCues.Line]) -> void:
-	_talk.say(lines)
+	if _talk.hold:
+		_say(lines)
+	else:
+		_talk.say(lines)
 
 
 ## 対戦の途中の会話の札を消す（スクリーンショットで、ほかの台詞を出すとき）。
@@ -564,7 +643,7 @@ func _update_climax() -> void:
 	if _climax or not SoundCatalog.climax_reached(battle, _climax_kings):
 		return
 	_climax = true
-	context.play_scene_music(SoundCatalog.CLIMAX_MUSIC)
+	context.play_scene_music(source.climax_music())
 
 
 ## 終盤の曲に替えたか。検査用。
@@ -573,10 +652,12 @@ func climax_started() -> bool:
 
 
 ## 決着の曲の名前（sound_catalog.gd の MUSIC）。against_cpu は CPU との対戦か、human_side はそのときの人の側。
-static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human_side: Unit.Side) -> StringName:
+## mood は勝ったときの調子（静かなら、勝っても空 = ファンファーレを鳴らさない）。
+static func result_music(draw: bool, winner: Unit.Side, against_cpu: bool, human_side: Unit.Side,
+		mood := SoundCatalog.MOOD_BRIGHT) -> StringName:
 	if draw or (against_cpu and winner != human_side):
 		return &"defeat"
-	return &"victory"
+	return &"" if mood == SoundCatalog.MOOD_QUIET else &"victory"
 
 
 func _on_restart_pressed(field: StringName, new_board: bool) -> void:
@@ -599,7 +680,7 @@ func _new_boards() -> Array[Array]:
 
 ## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、重なる画面（対戦設定画面・システムメニュー・ログ）を開いている間）。
 func is_busy() -> bool:
-	return _ui.busy or _ui.cpu_running or context.overlays.is_open()
+	return _ui.busy or _ui.cpu_running or context.overlays.is_open() or _talk.is_holding()
 
 
 # ---- システムメニューと設定 ----
@@ -639,6 +720,45 @@ func open_log() -> void:
 		return
 	_hud.hide_banner()
 	_log_panel.open(battle_log)
+
+
+# ---- 駒の詳細 ----
+
+
+## 駒の情報の枠の「詳細」: 見ている（クリックした）駒か、選んでいる駒のステータスの窓を開く。開いている間は時間を止める。
+func open_unit_detail() -> void:
+	var unit := _detail_unit()
+	if context.overlays.is_open() or unit == null:
+		return
+	var army: UnitKind.Army = battle.armies[unit.side] if unit.side < battle.armies.size() else UnitKind.Army.NONE
+	var looks := source.king_looks()
+	var king_look: StringName = looks[unit.side] if unit.side < looks.size() else &""
+	_unit_detail.open_sheet(UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), king_look))
+	context.play_sound(&"menu_open")
+	_on_overlay_opened()
+
+
+## 「詳細」で開く駒（見ている駒が先、無ければ選んでいる駒）。
+func _detail_unit() -> Unit:
+	var unit := inspected_unit()
+	return unit if unit != null else selected_unit()
+
+
+## 駒の情報の枠に「詳細」が出ているか（検査とスクリーンショットの道具用）。
+func detail_button_shown() -> bool:
+	return _hud.detail_button_shown()
+
+
+## 駒の詳細の窓（検査とスクリーンショットの道具用）。
+func unit_detail() -> UnitDetail:
+	return _unit_detail
+
+
+func _on_unit_detail_closed() -> void:
+	if not is_inside_tree():
+		return
+	_rig.controls_enabled = not context.overlays.pauses()
+	_update_time_scale()
 
 
 ## ログの画面（検査とスクリーンショットの道具用）。
@@ -739,6 +859,24 @@ func on_menu_item(id: StringName) -> void:
 		_open_setup_when_ready()
 
 
+## 重なる画面の積み上げが変わった: 時間を止める画面が開いたら、押している途中の操作と視点の操作をやめて時間を止め、
+## 閉じて何も止めていなければ戻す（システムメニュー・ログ・駒の詳細は、それぞれの開く・閉じるでも同じことをする）。
+var _overlay_paused := false
+
+func _on_overlays_changed() -> void:
+	if not is_inside_tree():
+		return
+	var paused: bool = context.overlays.pauses()
+	if paused != _overlay_paused:
+		_overlay_paused = paused
+		if paused:
+			_ui.cancel_press()
+			_rig.controls_enabled = false
+		elif not context.overlays.is_open():
+			_rig.controls_enabled = true
+	_update_time_scale()
+
+
 func _on_system_menu_closed() -> void:
 	_rig.controls_enabled = not context.overlays.pauses()
 	_update_time_scale()
@@ -812,7 +950,7 @@ func toggle_fast_forward() -> void:
 
 
 ## 相手の番（と中立のフェーズ）の残りを、見せずに済ませる（下の帯の「スキップ」）。自分の番が来るまで続く。
-## 起きたことはログに残り、対戦の途中の台詞もログにだけ残す。途中で決着したら、決着を見せる。
+## 起きたことはログに残る。対戦の途中の台詞が出たら、そこで止まって送られるのを待つ（検査では、ログにだけ残す）。途中で決着したら、決着を見せる。
 func skip_watching() -> void:
 	if not _watching_other() or not (_ui.busy or _ui.cpu_running) or _playback.skipping:
 		return
@@ -854,7 +992,22 @@ func _sync_views() -> void:
 	for id in _board_view.field_effect_ids():
 		if not effect_ids.has(id):
 			_board_view.remove_field_effect(id)
+	_sync_stronghold_flag()
 	_refresh_status(battle.turn, battle.phase)
+
+
+## 拠点の旗の色（検査用。拠点が無ければ透明）。
+func stronghold_flag_color() -> Color:
+	return _board_view.stronghold_flag_color()
+
+
+## 拠点の旗を、いまの確保から塗り直す（確保を進めている陣営の色。どちらも 0 なら白）。拠点の無い盤では何もしない。
+func _sync_stronghold_flag() -> void:
+	var color := BoardView.COLOR_STRONGHOLD_FLAG
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if battle.stronghold_holds[side] > 0:
+			color = TEAM_COLORS[side]
+	_board_view.set_stronghold_side(-1, color)
 
 
 ## CPU の駒の行動を再生する間だけ、設定の速さを掛ける（検査からも呼ぶ）。
@@ -1053,10 +1206,10 @@ func click_cell(cell: Vector2i) -> void:
 		_inspect(clicked.id)
 	elif _ui.mode != Mode.NONE:
 		_leave_mode()
+	elif _move_cells.has(cell):
+		_do(MoveAction.new(_ui.selected_id, cell, _move_cells[cell]))  # 転移のあとなら、残りの移動力で続けて動く
 	elif battle.acting_unit_id != 0:
 		pass  # 動いたあとは、攻撃・回復・待機・取り消しのどれかを選ぶ。
-	elif _move_cells.has(cell):
-		_do(MoveAction.new(_ui.selected_id, cell, _move_cells[cell]))
 	else:
 		_select(clicked.id if clicked != null else 0)
 		if clicked == null:
@@ -1185,15 +1338,12 @@ func _leave_mode() -> void:
 	_refresh()
 
 
-## 選んでいる駒を、いまのポータルから対のポータルへ転移させる（メニューの「転移」）。
-## ポータルへ動いたあとなら、ルールには「移動の取り消し」と「行き先への移動」として渡す（Queries.warp_actions）。
-## 見せるのは転移だけ（戻って歩き直すところは見せない。BattlePlayback.play_all の quiet_until_warp_from）。
+## 選んでいる駒を、いまのポータルから対のポータルへ転移させる（メニューの「転移」。WarpAction）。
+## 移動力が残っていれば、転移した先から続けて動ける（範囲を塗り直す）。
 func press_warp() -> void:
-	if is_busy() or _ui.selected_id == 0:
+	if is_busy() or _ui.selected_id == 0 or _warp == NO_CELL:
 		return
-	var actions := Queries.warp_actions(battle, selected_unit())
-	if not actions.is_empty():
-		_do_all(actions, selected_unit().cell)
+	_do(WarpAction.new(_ui.selected_id))
 
 
 ## 選んでいる駒を待機させる（メニューの「待機」）。
@@ -1218,6 +1368,55 @@ func press_ult() -> void:
 	if _ui.confirm_guarded(Time.get_ticks_msec()):
 		return  # 確かめに変わった直後の 2 回目（ダブルクリック・連打）は受けない
 	_do(UseUltAction.new())
+
+
+## いまの番のプレイヤーの作戦（手札の index 枚目。docs/tactics.md）を使う。取り消せないので、1 回目は確かめるだけで、
+## TACTIC_CONFIRM_MSEC のうちにもう一度押すと使う。ほかの札を押したら、そちらの確かめに替わる。
+func press_tactic(index: int) -> void:
+	var hand: Array = Tactics.hand(battle, _ult_side())
+	if is_busy() or _is_cpu_turn() or index < 0 or index >= hand.size() or not battle.can_apply(UseTacticAction.new(hand[index])):
+		return
+	var now := Time.get_ticks_msec()
+	if _tactic_confirming(now) != index:
+		_tactic_confirm = index
+		_tactic_confirm_msec = now
+		_tactic_confirm_phase = [battle.turn, battle.phase]
+		_refresh()
+		return
+	if now - _tactic_confirm_msec < BattleUiState.CONFIRM_GUARD_MSEC:
+		return  # 確かめに変わった直後の 2 回目（ダブルクリック・連打）は受けない
+	_tactic_confirm = -1
+	_do(UseTacticAction.new(hand[index]))
+
+
+## 使うかを確かめている途中の作戦（手札の何枚目か）。無ければ -1。
+func _tactic_confirming(now_msec: int) -> int:
+	if _tactic_confirm_phase != ([battle.turn, battle.phase] as Array[int]) or now_msec - _tactic_confirm_msec > TACTIC_CONFIRM_MSEC:
+		return -1
+	return _tactic_confirm
+
+
+## 作戦のボタンに出すもの（手札の順に [文字, 押せるか, 説明]）。手札の無い対戦では空。
+func _tactic_items() -> Array:
+	var items: Array = []
+	var side := _ult_side()
+	var hand: Array = Tactics.hand(battle, side)
+	var confirming := _tactic_confirming(Time.get_ticks_msec())
+	for i in hand.size():
+		var id: Tactics.Id = hand[i]
+		var usable := not _is_cpu_turn() and battle.can_apply(UseTacticAction.new(id))
+		var text := Names.tactic(id)
+		if not Tactics.is_unused(battle, side, id):
+			text = Text.t("battle.tactic.used", {"tactic": text})
+		elif usable and confirming == i:
+			text = Text.t("battle.tactic.confirm", {"tactic": text})
+		items.append([text, usable, Names.tactic_summary(id)])
+	return items
+
+
+## 作戦のボタンの [文字, 押せるか] の列。検査用。
+func tactic_buttons() -> Array:
+	return _hud.tactic_buttons()
 
 
 ## 必殺技を使うかを確かめている途中か。検査用。
@@ -1421,6 +1620,7 @@ func press_end_turn() -> void:
 ## 確かめを始めた直後の、2 回目を受けない間を、もう過ぎたことにする。検査用（人が間を置いてもう一度押すのと同じ）。
 func pass_confirm_guard() -> void:
 	_ui.confirm_started_msec -= BattleUiState.CONFIRM_GUARD_MSEC
+	_tactic_confirm_msec -= BattleUiState.CONFIRM_GUARD_MSEC
 
 
 ## ターン終了を確かめている途中か。検査用。
@@ -1461,9 +1661,8 @@ func _do(action: BattleAction) -> bool:
 
 
 ## 行動の組を順にルールに渡し、起きたことをまとめて再生する。先頭が断られたら何もしない。途中で断られたら、そこまでを再生する。
-## quiet_until_warp_from がマスなら、そのポータルから出る転移より前に起きたこと（移動の取り消しと、歩き直し）は見せずに済ませる（ログには残る）。
 ## 受け付けられたかを返す（全部が受け付けられたとき真）。
-func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> bool:
+func _do_all(actions: Array[BattleAction]) -> bool:
 	var events: Array[BattleEvent] = []
 	var accepted := true
 	var was_watching := _watching_other()
@@ -1501,7 +1700,7 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 		_hud.set_end_turn(false, Text.t("battle.end_turn.cpu"))
 		_hud.set_hint(BattleTexts.hint(battle, null, null, Mode.NONE, true, false, false))
 	_show_watch_controls()
-	await _playback.play_all(events, quiet_until_warp_from)
+	await _playback.play_all(events)
 	_watch_playback = false
 	_ui.busy = false
 	if _playback.skipping and not _watching_other():
@@ -1518,7 +1717,8 @@ func _do_all(actions: Array[BattleAction], quiet_until_warp_from := NO_CELL) -> 
 			_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_update_time_scale()
 	# 対戦の途中の会話: 起きたことを見せ終えてから出す（演出と重ねない）。決着した行動のあとは出さない（BattleCues が見る）。
-	_say(_cues.on_events(battle, events))
+	# 送られるまで待つ（その間、次の行動へ進まない）。
+	await _say(_cues.on_events(battle, events))
 
 	var evolving := battle.evolving_unit()
 	_ui.settle_after_action(
@@ -1610,7 +1810,8 @@ func _refresh() -> void:
 	_barricade_targets = Queries.barricade_targets(battle, unit)
 	_heal_targets = Queries.heal_targets(battle, unit)
 	_skill_cells = Queries.skill_cells(battle, unit)
-	_warp = Queries.warp(battle, unit)
+	_warp = Queries.warp_exit(battle, unit)
+	_portals = Queries.reachable_portals(battle, unit)
 	var cpu_turn := _ui.cpu_running or _is_cpu_turn()
 	_ui.reconcile(
 		unit != null, unit != null and battle.can_act(unit), inspected_unit() != null, battle.is_over(), cpu_turn,
@@ -1674,12 +1875,14 @@ func _refresh() -> void:
 	_refresh_status(battle.turn, battle.phase)
 	_hud.set_hint(BattleTexts.hint(
 		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit),
-		Queries.unacted_count(battle) if _ui.confirming_end else 0, not _warp.is_empty(), _ui.pinned_ids.size()
+		Queries.unacted_count(battle) if _ui.confirming_end else 0, _warp != NO_CELL, _ui.pinned_ids.size()
 	))
 	if _ui.confirming_auto:
 		_hud.set_hint(BattleTexts.auto_confirm_hint())
 	elif _auto_running():
 		_hud.set_hint(BattleTexts.auto_running_hint())
+	if _talk != null and _talk.is_holding():
+		_hud.set_hint(Text.t("battle.hint.talk"))
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
 		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
@@ -1704,7 +1907,7 @@ func _refresh() -> void:
 	_hud.set_menu(
 		BattleTexts.menu_items(
 			battle, unit, _ui.mode, _can_attack(), not _heal_targets.is_empty(), not _skill_cells.is_empty(),
-			_warp[0] if not _warp.is_empty() else NO_CELL
+			_warp
 		)
 		if not cpu_turn and evolving == null else []
 	)
@@ -1713,30 +1916,43 @@ func _refresh() -> void:
 		BattleTexts.ult_button_text(battle, _ult_side(), _ui.confirming_ult), not cpu_turn and battle.can_apply(UseUltAction.new()), _ult_summary(), _ui.confirming_ult,
 		Ults.percent(battle, _ult_side()) if Ults.of(battle, _ult_side()) != null else -1, _ult_side()
 	)
+	_hud.set_tactic_buttons(_tactic_items())
 	_show_watch_controls()
 	_update_info()
 
 
-## 動ける範囲に重ねる、ポータルの塗り（マス -> 色）。転移して行けるポータルの対を、ポータルと同じ色で塗る
-## （入るポータルと、出るポータル。駒がいま乗っているポータルは塗らない）。ポータルへ動いたあとで転移できるなら、出るポータルを塗る。
+## 動ける範囲に重ねる、ポータルの塗り（マス -> 色）。範囲の中の、転移に使えるポータル（止まると「転移」を選べる）と、
+## その対の出るポータルを、ポータルと同じ色で塗る（範囲は転移の先まで広げない。出るポータルの印で、どこへ出るかを見せる）。
 func _portal_paint(unit: Unit) -> Dictionary:
 	var result := {}
-	if unit.has_moved:
-		if not _warp.is_empty():
-			result[_warp[0]] = portal_paint_color(unit.cell)
-		return result
-	for portal: Vector2i in battle.board.portal_exits:
-		var exit := battle.portal_exit(portal)
-		if exit == NO_CELL or not _move_cells.has(exit) or (portal != unit.cell and not _move_cells.has(portal)):
-			continue
-		var path := Movement.path_to(battle, unit, exit, _move_cells[exit])
-		var at := path.find(portal)
-		if at < 0 or at + 1 >= path.size() or path[at + 1] != exit:
-			continue  # 行き先へは、このポータルを通らずに歩いて行く
-		result[exit] = portal_paint_color(portal)
+	for portal: Vector2i in _portals:
 		if portal != unit.cell:
 			result[portal] = portal_paint_color(portal)
+		result[_portals[portal]] = portal_paint_color(portal)
 	return result
+
+
+## 塗りの色の見本を出す（スクリーンショットの道具用。景色ごとに、範囲の色が地面に沈まないかを並べて比べる）。
+## samples: 種類（&"move" 移動、&"target" 攻撃の相手、&"heal" 回復、&"skill" スキル、&"path" 道、&"portal" ポータルの対、
+## &"threat" 敵の全員の脅威範囲）-> マスの列。前に塗ったものは消える。
+func show_paint_samples(samples: Dictionary) -> void:
+	var colors := {}
+	var raised := {}
+	var kinds := {&"move": COLOR_MOVE, &"target": COLOR_TARGET, &"heal": COLOR_HEAL, &"skill": COLOR_SKILL, &"path": COLOR_PATH}
+	for kind: StringName in samples:
+		for cell: Vector2i in samples[kind]:
+			if kinds.has(kind):
+				colors[cell] = kinds[kind]
+			elif kind == &"portal" and not battle.board.portal_exits.is_empty():
+				colors[cell] = portal_paint_color(battle.board.portal_exits.keys()[0])
+			# 対戦の中と同じに、ポータルの上の塗り（道を除く）は、ポータルの面に隠れないよう上に塗る（_show_painted）。
+			if colors.has(cell) and battle.board.object_at(cell) == MapObject.Type.PORTAL and colors[cell] != COLOR_PATH:
+				raised[cell] = true
+	_board_view.show_cells(colors, raised)
+	var threat: Array[Vector2i] = []
+	threat.assign(samples.get(&"threat", []))
+	_board_view.show_danger(threat)
+	_board_view.set_grid_emphasis(true)
 
 
 ## ポータルの対を塗る色（ポータルの色を、塗りの濃さにしたもの）。
@@ -1840,7 +2056,7 @@ func _show_painted() -> void:
 			colors[cell] = BattlePlayback.COLOR_BLAST
 	elif unit != null and not _ui.busy and _ui.mode == Mode.NONE and _move_cells.has(_hover_cell):
 		colors = _painted.duplicate()
-		for cell in Movement.path_to(battle, unit, _hover_cell, _move_cells[_hover_cell]):
+		for cell in Movement.search_now(battle, unit, _move_cells[_hover_cell]).path(_hover_cell):
 			if cell != unit.cell:
 				colors[cell] = COLOR_PATH
 	# 駒のいるマスの、攻撃・回復・スキルの対象の色は、駒の足元の円盤に隠れないよう、その上に塗る。
@@ -1884,6 +2100,12 @@ func _update_hover() -> void:
 ## マウスの下の駒（いなければ見ている駒、選んでいる駒。それも無ければ、クリックしたマス）の情報を左下の枠に、
 ## マウスの下のマスの短い説明を下の帯に出す。行動の対象にマウスを乗せていれば、戦闘予測のパネルも出す（_update_forecast）。
 func _update_info() -> void:
+	_update_info_panel()
+	# 「詳細」は、マウスを離しても枠に残る駒（見ている駒・選んでいる駒）がいるときだけ出す（ボタンへ動かす間に枠が替わらないように）。
+	_hud.set_detail_button(not battle.is_over() and _detail_unit() != null)
+
+
+func _update_info_panel() -> void:
 	if battle.is_over():
 		# 決着のあとは、リザルトの画面が前に出る。後ろの盤の駒やマスの情報は出さない（左下の枠が、リザルトのボタンに重なる）。
 		_hud.show_cell("")

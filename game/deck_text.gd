@@ -15,11 +15,6 @@ static func role_name(kind: UnitKind.Id) -> String:
 	return Names.role(UnitKind.role(kind))
 
 
-## 役割の、ひとことの説明（役割を持たなければ空）。
-static func role_note(role: UnitKind.Role) -> String:
-	return Names.role_summary(role)
-
-
 ## 編成が対戦に出せない理由の文（Deck.problems() の順）。空なら出せる。
 static func problem_texts(deck: Deck) -> Array[String]:
 	var texts: Array[String] = []
@@ -57,18 +52,6 @@ static func stats_line(kind: UnitKind.Id, bonus := {}) -> String:
 		"move": UnitKind.move_range(kind) + int(bonus.get(Unit.Stat.MOVE_RANGE, 0)),
 		"range": UnitKind.attack_range(kind) + int(bonus.get(Unit.Stat.ATTACK_RANGE, 0)),
 	})
-
-
-## kind の駒がレベル level から始めるときに、レベル 1 より伸びている量（Unit.Stat -> 足す量。Growth.start_at と同じ）。育たない駒とレベル 1 は空。
-static func growth_bonus(kind: UnitKind.Id, level: int) -> Dictionary:
-	var role := UnitKind.role(kind)
-	if level <= 1 or not Growth.GAINS.has(role):
-		return {}
-	var bonus := {}
-	var gains: Dictionary = Growth.GAINS[role]
-	for stat: Unit.Stat in gains:
-		bonus[stat] = int(gains[stat]) * (Growth.start_level(level) - 1)
-	return bonus
 
 
 ## 装備の並びが足す量（Unit.Stat -> 足す量）。
@@ -142,80 +125,6 @@ static func item_refusal(kind: UnitKind.Id, held: Array[Equipment.Id], item: Equ
 	if held.count(item) >= Equipment.stack_limit(item) and Equipment.stack_limit(item) < Equipment.MAX_PER_UNIT:
 		return Text.t("deck.item.one_each", {"max": Equipment.stack_limit(item)})
 	return ""
-
-
-## 駒の詳しい説明の行（部隊編成の画面の駒の札と、編成確認・出撃準備で駒を押したときの詳細。unit_detail.gd）:
-## 役割とコスト（将・魔物はコストを書かない）、役割の説明、能力値（持ち物込みの値も）、スキル、持ち物の効果と特性、進化先。
-## deck_army: 部隊の軍（ほかの軍の駒なら、先頭に「FANTASY の駒（この部隊では MILITARY として戦う）」。-1 なら書かない）。
-## with_items: 持ち物の効果の行を入れるか（部隊編成の画面は、持ち物を別の欄に出すので入れない）。
-## level: 始めのレベル（ストーリーの話の start_growth）。1 より上なら、能力値にレベルアップのぶん（Growth.GAINS）を足して出す。
-static func detail_lines(kind: UnitKind.Id, equipment: Array[Equipment.Id] = [], deck_army := -1, with_items := true, level := 1) -> Array[String]:
-	var lines: Array[String] = []
-	if deck_army != -1 and UnitKind.army(kind) != UnitKind.Army.NONE and UnitKind.army(kind) != deck_army:
-		# ストーリーで解放した、ほかの軍の駒（必殺技は部隊の軍のもの）。
-		lines.append(Text.t("deck.detail.borrowed", {"origin": army_name(UnitKind.army(kind)), "army": army_name(deck_army as UnitKind.Army)}))
-	var role := UnitKind.role(kind)
-	if kind == UnitKind.Id.KING:
-		lines.append(Text.t("deck.card.king"))
-	elif UnitKind.army(kind) == UnitKind.Army.NONE:
-		if role != UnitKind.Role.NONE:
-			lines.append(role_name(kind))  # 魔物（敵だけの駒）はコストを書かない
-	else:
-		lines.append(Text.t("deck.detail.role", {"role": role_name(kind), "cost": UnitKind.cost(kind)}))
-	if role_note(role) != "":
-		lines.append(role_note(role))
-	lines.append("")
-	var grown := growth_bonus(kind, level)
-	lines.append(stats_line(kind, grown))
-	if not equipment.is_empty():
-		var total := equipment_bonus(equipment)
-		for stat: Unit.Stat in grown:
-			total[stat] = int(total.get(stat, 0)) + int(grown[stat])
-		lines.append(Text.t("deck.detail.with_items", {"stats": stats_line(kind, total)}))
-	var skill := skill_text(kind)
-	if skill != "":
-		lines.append("")
-		lines.append(Text.t("deck.detail.skill", {"skill": skill}))
-	if with_items and not equipment.is_empty():
-		lines.append("")
-		var seen: Array[Equipment.Id] = []
-		for item: Equipment.Id in equipment:
-			if seen.has(item):
-				continue
-			seen.append(item)
-			var count := equipment.count(item)
-			lines.append(Text.t("deck.detail.item", {"name": Names.item(item) + (" ×%d" % count if count > 1 else ""), "effect": equipment_effect(item)}))
-			for which in Equipment.traits(item):
-				lines.append(Text.t("deck.detail.evolution_line", {"line": Names.trait_text(which)}))
-	var evolutions := evolution_lines(kind)
-	if not evolutions.is_empty():
-		lines.append("")
-		lines.append(Text.t("deck.detail.evolution", {"level": Growth.MAX_LEVEL}))
-		for line in evolutions:
-			lines.append(Text.t("deck.detail.evolution_line", {"line": line}))
-	return lines
-
-
-## スキルの 1 行目（名前）と説明。持たなければ空。
-static func skill_text(kind: UnitKind.Id) -> String:
-	var skill := Skills.of_kind(kind)
-	if skill == null:
-		return ""
-	return Text.t("deck.skill", {"name": Names.skill(skill), "cooldown": skill.cooldown(), "summary": Names.skill_summary(skill)})
-
-
-## 進化先の文（1 つ 1 行。名前と、能力値の増減と、特性）。
-static func evolution_lines(kind: UnitKind.Id) -> Array[String]:
-	var lines: Array[String] = []
-	for evolution in Evolution.options_for(kind):
-		var parts: Array[String] = []
-		var bonus := bonus_text(Evolution.bonuses(evolution), kind)
-		if bonus != "":
-			parts.append(bonus)
-		for which in Evolution.traits(evolution):
-			parts.append(Names.trait_text(which))
-		lines.append(Text.t("deck.evolution_line", {"name": Names.evolution(evolution), "parts": Text.join_comma(parts)}))
-	return lines
 
 
 ## 編成の 1 行の説明（対戦設定に出す。「将、シールドトルーパー+アイアンシールド×2、…」。同じ装備は数をまとめる）。

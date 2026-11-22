@@ -79,6 +79,10 @@ var _can_edit_decks := false
 ## 取っておいた部隊（deck_library.gd）。無ければ既定の編成だけ。
 var _library: RefCounted
 var _side_caption: Label
+var _trial_buttons: Dictionary[StringName, Button] = {}
+var _trial_note: Label
+var _tactic_boxes: Array[HBoxContainer] = []
+var _tactic_buttons: Array[Dictionary] = []
 var _first_gauge_note: Label
 var _start_button: Button
 var _back_button: Button
@@ -147,6 +151,20 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		Unit.Side.PLAYER1: Text.t("setup.side.first"), Unit.Side.PLAYER2: Text.t("setup.side.second"), RANDOM_SIDE: Text.t("setup.side.random"),
 	})
 	_side_caption = side_row.get_child(0) as Label
+	# 試しの決まり（既定は切。docs/match-setup.md の「試しの決まり」）。
+	# 決まりごとに、入・切のボタンを 1 つずつ（押してあれば入）。右に、入の決まりのひとことの説明。
+	var trial_row := _caption_row(column, Text.t("setup.caption.trials"))
+	for trial in TrialRules.ALL:
+		var toggle := _button(Text.t("setup.trial.%s" % trial))
+		toggle.toggle_mode = true
+		toggle.tooltip_text = trial_note(trial)
+		var picked_trial := trial
+		toggle.pressed.connect(func() -> void: choose_trial(picked_trial, not _choice.has_trial(picked_trial)))
+		trial_row.add_child(toggle)
+		_trial_buttons[trial] = toggle
+	_trial_note = _label(14)
+	_trial_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	trial_row.add_child(_trial_note)
 	# 対戦モードの先手が必殺技のゲージをためて始まるなら（Ults.FIRST_PLAYER_START_GAUGE が 0 より大きい）、手番の行の右に書いておく。
 	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
 	_first_gauge_note = _label(14)
@@ -168,6 +186,28 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		var row := _add_row(side_column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)
 		(row.get_child(0) as Label).add_theme_font_override("font", UiTheme.FONT_BOLD)
+		# 作戦（試しの決まりが入のときだけ出す）: 札ごとのボタン。押してあるものが手札。
+		var tactic_box := HBoxContainer.new()
+		tactic_box.add_theme_constant_override("separation", 6)
+		var tactic_caption := _label(15)
+		tactic_caption.text = Text.t("setup.caption.tactics", {"count": Tactics.HAND_SIZE})
+		tactic_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		tactic_box.add_child(tactic_caption)
+		var tactic_buttons := {}
+		for id in Tactics.ALL:
+			var card := _button(Names.tactic(id))
+			card.toggle_mode = true
+			card.custom_minimum_size = Vector2(92.0, 40.0)
+			card.add_theme_font_size_override("font_size", 15)
+			card.tooltip_text = Names.tactic_summary(id)
+			var tactic_side := side
+			var tactic_id := id
+			card.pressed.connect(func() -> void: choose_tactic(tactic_side, tactic_id))
+			tactic_box.add_child(card)
+			tactic_buttons[id] = card
+		row.add_child(tactic_box)
+		_tactic_boxes.append(tactic_box)
+		_tactic_buttons.append(tactic_buttons)
 		var deck_row := _caption_row(side_column, Text.t("setup.caption.deck"))
 		var picker := OptionButton.new()
 		picker.focus_mode = Control.FOCUS_NONE
@@ -321,6 +361,23 @@ func choose_random_side() -> void:
 	_show_choice()
 
 
+## 試しの決まり id を入・切する。
+func choose_trial(id: StringName, on: bool) -> void:
+	_choice.set_trial(id, on)
+	_show_choice()
+
+
+## 行 side の作戦に id を選ぶ（手札の枚数を超えたら、先に選んだものが外れる）。
+func choose_tactic(side: Unit.Side, id: Tactics.Id) -> void:
+	_choice.pick_tactic(side, id)
+	_show_choice()
+
+
+## 試しの決まりの、ひとことの説明。
+static func trial_note(id: StringName) -> String:
+	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "count": Tactics.HAND_SIZE, "holds": Stronghold.HOLDS_TO_WIN})
+
+
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
 	_choice.choose_army(side, army)
 	_show_choice()
@@ -445,6 +502,16 @@ func _show_choice() -> void:
 		_banner_field = _choice.field
 		var board := VersusFields.card_board(_choice.field, PLACEMENT_SEED)
 		_banner.show_map(null if board == null else ImageTexture.create_from_image(MapCard.draw(board, VersusFields.look_of(_choice.field), _team_colors)))
+	var notes := PackedStringArray()
+	for trial: StringName in _trial_buttons:
+		(_trial_buttons[trial] as Button).set_pressed_no_signal(_choice.has_trial(trial))
+		if _choice.has_trial(trial):
+			notes.append(trial_note(trial))
+	_trial_note.text = "\n".join(notes)
+	for side in 2:
+		_tactic_boxes[side].visible = _choice.has_trial(TrialRules.TACTICS)
+		for id: Tactics.Id in _tactic_buttons[side]:
+			(_tactic_buttons[side][id] as Button).set_pressed_no_signal(_choice.tactics[side].has(id))
 	# 人どうしなら、手番は選ばない（先手・後手の 2 人が交代する）。
 	for button: Button in _rows[&"human_side"].values():
 		button.disabled = not _choice.cpu_opponent

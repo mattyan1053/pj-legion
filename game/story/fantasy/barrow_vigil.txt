@@ -1,0 +1,68 @@
+# ストーリーの話「古戦場の祈り」。FANTASY の物語の本編 3 話目。
+#
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+#
+# 手で作ったマップ「古戦場」（game/maps/old_battlefield.txt）。MILITARY の物語の 11・12 話と同じマップを、勝ち方と敵を変えて使い回す。
+# 人は守る側: 決められたターンが終わるまで、将と本陣を守り切れば勝ち（hold_turns）。
+# 敵は混成: MILITARY の軍に、骨の群れ（魔物）が付いている。軍があるので、敵は必殺技（総員突撃）も使う。
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 古戦場の祈り
+map = old_battlefield
+music = battle_tense
+before_music = battle_tense
+after_music = talk_sad
+victory_mood = quiet
+hold_turns = 8
+
+[cast]
+イェルダ = ally, paladin evolved crown
+ウル = ally, priest evolved
+ティオ = ally, sorcerer
+セリス = ally, spellblade
+骨の軍曹 = enemy
+
+[before]
+ティオ: 骨だ！ また骨！ ……あれ、骨が号令をかけてる？
+骨の軍曹: 総員……突撃……。尾根は……まだ……落ちて、おらん……。
+セリス: 鉄の人も混じってるけど、号令をかけてるのは骨だ。
+イェルダ: 20 年前の兵である。……まだ、あの日の戦を続けているのか。
+ウル: 鎮めの祈りを編む。編み上がるまで、イェルダと旗を守ってくれい。
+イェルダ: 皆、聞いたな。倒しきらずともよい。守り切れ。
+
+[cues]
+(turn 1) ティオ: 骨は固まって来る！ ファイアボールで焼くよ！
+(turn 7) ウル: 祈りは、じき編み上がる。あと少しじゃ。
+(fallen ally) イェルダ: 欠けた所を埋めよ。導師の祈りを止めさせるな。
+
+[after]
+骨の軍曹: ……交代、か……。やっと……。
+ウル: 眠れ。もう尾根を守らずともよい。
+ティオ: ……ぼく、骨を焼いて喜んでた。
+イェルダ: 恥じることはない。だが覚えておけ。あれは魔物ではなく、兵であった。
+セリス: 骨を起こしてるのは鉄の人じゃない。じゃあ、誰？
+ウル: 結晶の濃い所ほど、よう起きる。……峠の番人なら、覚えておるやもしれん。
+
+[lost]
+ウル: 祈りが途切れた……。旗とイェルダから離れるでない。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[enemy]
+king_figure = skeleton_mage
+army = military
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton_archer
+unit = skeleton_archer
+unit = commando
+unit = skeleton_brute
+
+[unlock]
+item = trail_map
+budget = 2

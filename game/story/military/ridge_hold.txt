@@ -1,0 +1,70 @@
+# ストーリーの話「尾根の籠城」。
+#
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+#
+# 1・2 話と同じマップ「尾根の小道」（game/maps/ridge_path.txt）を、勝ち方を変えて使い回す（Issue #49 の「マップの使い回し」）。
+# 人は守る側: 決められたターンが終わるまで、将と本陣を守り切れば勝ち（hold_turns。docs/win-conditions.md の「守り切る」）。
+# 敵は数で押す。尾根の中ほどから始まり、いつもの勝ち方（将の撃破、本陣の占拠）で攻めてくる。
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 尾根の籠城
+map = ridge_path
+music = battle_tense
+before_music = battle_tense
+after_music = talk_bright
+hold_turns = 10
+
+[cast]
+ハーデン = ally
+ドーソン = ally, shield_trooper evolved
+ノエ = ally, sniper
+マルタ = ally, medic
+ピップ = ally, commando
+ヴァルト = ally, sniper evolved
+セリス = enemy, spellblade
+
+[before]
+ピップ: たいちょ〜、追っ手っす！ 騎士が 7 人はいるっす！
+セリス: やあ、鉄の人たち。うちの騎士長を 2 度も退かせたって？ 顔を見に来たよ。
+ノエ: 多すぎます……。撃ち切れません。
+ハーデン: ヴァルト少佐の本隊へ伝令は出した。着くまで、ここで持たせる。
+ドーソン: よし、聞いたな。勝たなくていい。隊長と旗を守って、立ってろ。
+マルタ: 倒れなきゃいいのね。それなら得意よ。
+セリス: 尾根ごと、押しつぶしてあげる。
+
+[cues]
+(turn 8) ハーデン: 本隊は近い。あと少しだ、持ちこたえろ。
+(turn 10) セリス: これで最後。全員で押し込みな！
+(fallen ally) マルタ: 1 人倒れた！ 穴を埋めて。旗から離れないで！
+
+[after]
+ノエ: ……旗です。連邦の旗が見えます！
+セリス: ちぇっ、時間切れ。退くよ。——またね、鉄の人。
+ヴァルト: 遅くなったわね、ハーデン。尾根は本隊が預かるわ。この石壁は、今日から連邦の砦よ。
+ハーデン: 少佐。騎士は、岩山のほうへ退きました。
+ヴァルト: なら追いなさい。結晶は連邦の燃料よ。騎士には、ひとかけらも渡さないこと。
+ドーソン: ……相変わらずだな、少佐どのは。まあいい。よく立ってた。もう、ひよっこじゃないな。
+ノエ: 曹長……！
+マルタ: 補給に遠眼鏡が入ってたわ。ノエ、あなた向きね。
+
+[lost]
+セリス: ほら、つぶれた。
+ドーソン: 勝たなくていいと言ったろう。旗のそばで固まって、立ってろ。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[enemy]
+army = fantasy
+unit = paladin + iron_shield
+unit = paladin + iron_shield
+unit = sorcerer
+unit = sorcerer
+unit = spellblade
+unit = priest
+deploy = 8,9  5,9  11,9  3,11  13,11
+deploy = 8,7  6,7  10,7  8,5
+
+[unlock]
+item = long_scope
+budget = 2

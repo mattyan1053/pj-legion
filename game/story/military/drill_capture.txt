@@ -1,0 +1,60 @@
+# ストーリーの話「本陣を取れ」。MILITARY の物語のチュートリアル（6 / 6）。1 話 1 ファイル。
+#
+# チュートリアルの話は、1 つの話で 1〜2 個だけ教える（docs/story.md の「チュートリアル」）。
+# 部隊は決まっていて（[ally] の unit）、敵は少なく、まず負けない。教え方は、出撃準備の文（lesson）と、対戦の途中の台詞（[cues]）。
+# 世界と登場人物は Issue #49 の案 A「空の縫い目」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+# 教えること: 本陣の占拠（敵の本陣に乗り続けて勝つ）。この話は、敵の将を倒しても終わらない（wins）。
+# 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
+
+[episode]
+title = 本陣を取れ
+map = drill_field
+music = battle_ruins
+before_music = battle_ruins
+after_music = talk_bright
+lesson = 敵の本陣のマスに 3 ターン乗り続ければ勝ち。この演習は、将を倒しても終わらない。
+wins = hq_captured
+
+[cast]
+ハーデン = ally
+ドーソン = ally, shield_trooper evolved
+ノエ = ally, sniper
+マルタ = ally, medic
+教導隊員 = enemy, paladin
+
+[before]
+ドーソン: よし、仕上げだ。今日は敵の本陣を取る。
+ノエ: 本陣……あの旗の所ですか。将が真上に立っています。
+ドーソン: そうだ。あそこへ踏み込んで居座れ。旗を引き倒すまで、どかされるなよ。
+教導隊員: 言っておくけど、私を倒しても旗は渡さないわよ。今日はそういう演習。
+ハーデン: 周りを片付けて、乗り込む。
+マルタ: 居座ってる間も殴られるんだから。痛くなったら、ちゃんと呼びなさいよ。
+
+[cues]
+(turn 1) ドーソン: 旗は敵の将の足元だ。周りを片付けて乗り込め。
+(king_half enemy) ドーソン: 将は放っておけ。旗の所から動くな。
+
+[after]
+ドーソン: 演習はここまでだ、隊長。少佐どのには、使える隊長だと報告しておく。
+ハーデン: 世話になった、曹長。
+ドーソン: 何を言う。俺も行くんだ。ひよっこだけで尾根を越えさせるか。
+ノエ: ひよっこ……。
+マルタ: はいはい、言うと思った。
+ハーデン: ……心強い。出発は明朝だ。尾根を越えて、谷へ下りる道を探す。
+
+[lost]
+ドーソン: 旗の上は殴られ放題だ。盾を乗せて、マルタを隣に付けろ。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[ally]
+unit = shield_trooper
+unit = shield_trooper
+unit = sniper
+unit = sniper
+unit = medic
+
+[enemy]
+army = fantasy
+unit = paladin
+unit = sorcerer

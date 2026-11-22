@@ -17,8 +17,11 @@
 | --- | --- | --- | --- | --- |
 | `make_setup(種)` | 無し（継いだ側が必ず書く） | 選んだもので `MatchSetup` を作る | 話のマップと決め打ちの敵で作る | 対戦を作る・やり直す |
 | `music()` | 見た目の曲（`SoundCatalog.battle_music`） | 既定のまま | 話のファイルの `music`（無ければ見た目の曲） | 対戦の曲（`docs/sound.md`） |
+| `climax_music()` | いつもの終盤の曲（`CLIMAX_MUSIC`） | 既定のまま | 話のファイルの `climax_music`（無ければ既定） | 終盤の曲（`docs/sound.md`） |
+| `victory_mood()` | 明るい（`MOOD_BRIGHT`） | 既定のまま | 話のファイルの `victory_mood`（無ければ明るい） | 勝ったときの調子。静かならファンファーレを鳴らさない（`docs/sound.md`） |
+| `after_result_music()` | 静かな曲（`AFTER_RESULT_MUSIC`） | 既定のまま | その話のあとの会話の曲 | 決着の曲のあとに続ける曲 |
 | `king_looks()` | 無し（将の姿） | 既定のまま | 話のファイルの `king_figure` | 将の姿（見た目だけ） |
-| `look()` | 既定の見た目 | マップの見た目（`VersusFields.look_of`） | 話の見た目（`LOOK`） | 盤・ミニマップ・空と光（`stage_look.gd`） |
+| `look()` | 既定の見た目 | マップの見た目（`VersusFields.look_of`） | 話の見た目（`Episode.look`。マップのファイルの `look`、話のファイルが `look` を書けばそれ） | 盤・ミニマップ・空と光（`stage_look.gd`） |
 | `cpu_side()` | プレイヤー2 | 人の手番の反対 | 既定のまま | CPU が動かす（切り替えたら動かす）プレイヤー |
 | `can_switch_opponent()` | できない | できる | 既定のまま | F4、下の帯の「相手」のボタン |
 | `new_board_fields()` | 無し | 生成のマップの鍵（`game/versus_fields.gd`。手で作ったマップは入れない。`docs/map-select.md`） | 既定のまま | F1〜F3、決着の画面の「新しいマップ」 |
@@ -28,6 +31,7 @@
 | `leave()` | タイトル（「タイトルへ」） | マップ選択（「マップ選択へ」） | 話の一覧（「話の一覧へ」） | 決着の画面の、流れの外への行き先のボタン（`[終わり方, 文の鍵]`） |
 | `can_choose_squad()` | 出さない | 既定のまま | 出す | 決着の画面の「部隊変更」（押すと `Run.PREVIOUS` で終わり、流れの 1 つ前の場面 = 出撃準備へ） |
 | `talk_cues()` | 台詞なし | 既定のまま | 話のファイルの `[cues]` | 対戦の途中の会話（`docs/story.md` の「対戦の途中の会話」。新しい対戦を始めるたびに作る） |
+| `lost_lines()` | 無し | 既定のまま | 話のファイルの `[lost]` | 負けたときの台詞（決着の画面の戦績の左に出す。`docs/result-screen.md`） |
 | `record_win(context)` | 何もしない | 既定のまま | 話をクリアしたと書く | CPU と対戦して人が勝った（決着の画面が出たとき） |
 
 - **誰が動かすか**は、作った `MatchSetup` の `controllers` から読む（`cpu_side()` のプレイヤーが CPU か）。

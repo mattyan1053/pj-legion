@@ -26,6 +26,7 @@ const HQ_PLAYER2 := "2"
 const MID_BOSS := "M"
 const BARREL := "B"
 const SPRING := "S"
+const BATTERY := "C"
 ## 中ボスは、関わりのある聖遺物が番号で決まる（Relics.OF_BOSS）ので、0 か 2 体だけ（docs/neutral-mid-boss.md）。
 const MID_BOSS_COUNTS: Array[int] = [0, 2]
 
@@ -111,6 +112,8 @@ func _build() -> Board:
 					board.add_barrel(cell)
 				SPRING:
 					board.add_spring(cell)
+				BATTERY:
+					board.battery_spots.append(cell)
 				_:
 					if _is_portal(c):
 						if portals.has(c):
@@ -126,5 +129,5 @@ static func _is_portal(c: String) -> bool:
 
 static func _is_known(c: String) -> bool:
 	return _is_portal(c) or [
-		PLAIN, OBSTACLE, FOREST, FONT, HQ_PLAYER1, HQ_PLAYER2, MID_BOSS, BARREL, SPRING,
+		PLAIN, OBSTACLE, FOREST, FONT, HQ_PLAYER1, HQ_PLAYER2, MID_BOSS, BARREL, SPRING, BATTERY,
 	].has(c)

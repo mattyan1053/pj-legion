@@ -125,7 +125,7 @@ static func _player(sim: Battle, unit: Unit, map: Map) -> void:
 ## unit が starts のどれかのマスから、通常の移動で止まれるマス（starts も含む）。
 static func _stops(sim: Battle, unit: Unit, starts: Array[Vector2i]) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	result.assign(Movement.reachable_from_any(sim, unit, starts).keys())
+	result.assign(Movement.reachable_from_any(sim, unit, starts, false, true).keys())
 	return result
 
 
@@ -147,6 +147,13 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 			if stops.has(unit.cell):
 				_attacks(sim, unit.id, stay, [unit.cell], map)
 		_barrels(sim, unit.id, stay, moved, stops, map)
+		for cell in stops:
+			var bonus := MapObject.battery_bonus(sim.board, unit, cell)
+			if bonus > 0 and cell != unit.cell:
+				var gunner := moved.copy()
+				gunner.site_range = bonus
+				_attacks(sim, unit.id, gunner, [cell], map)
+				_barrels(sim, unit.id, gunner, gunner, [cell], map)  # 伸びた射程で撃てる樽の爆発も
 	var skill := Skills.of(unit)
 	if skill == null or not Skills.can_use(sim, unit):
 		return
@@ -177,6 +184,7 @@ static func _probe(unit: Unit, at: Vector2i, tired: bool) -> Unit:
 	var probe := unit.copy()
 	if at != unit.cell:
 		Statuses.displace(probe)
+		probe.site_range = 0
 		probe.has_moved = true
 		probe.move_origin = unit.cell
 	if tired and not Statuses.has(probe, Status.Type.FATIGUE):
@@ -250,7 +258,7 @@ static func _shot_cells(sim: Battle, unit: Unit) -> Dictionary[Vector2i, bool]:
 	var result: Dictionary[Vector2i, bool] = {}
 	for medic in _medics(sim, unit):
 		var reach := medic.attack_range()
-		for from: Vector2i in Movement.reachable(sim, medic, false):
+		for from: Vector2i in Movement.reachable(sim, medic, false, true):
 			for dy in range(-reach, reach + 1):
 				var width := reach - absi(dy)
 				for dx in range(-width, width + 1):
@@ -261,7 +269,7 @@ static func _shot_cells(sim: Battle, unit: Unit) -> Dictionary[Vector2i, bool]:
 ## 中立の駒 unit の脅威範囲を map に書く。縄張りの中で止まれるマス（いまのマスも）から、射程の中。
 static func _neutral(battle: Battle, unit: Unit, map: Map) -> void:
 	var posts: Array[Vector2i] = [unit.cell]
-	for cell: Vector2i in Movement.reachable(battle, unit, false):
+	for cell: Vector2i in Movement.reachable(battle, unit, false, true):
 		if cell != unit.cell and Neutral.in_territory(unit, cell):
 			posts.append(cell)
 	_attacks(battle, unit.id, unit, posts, map)

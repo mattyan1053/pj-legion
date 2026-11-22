@@ -73,6 +73,8 @@ static func hint(
 		return Text.t("battle.hint.after_skill")
 	if unit.has_moved and can_warp:
 		return Text.t("battle.hint.on_portal")
+	if unit.can_keep_moving:
+		return Text.t("battle.hint.after_warp_cruise" if unit.cruised else "battle.hint.after_warp")
 	if unit.has_moved:
 		if unit.cruised:
 			return Text.t("battle.hint.after_cruise")
@@ -239,6 +241,10 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	match battle.board.object_at(cell):
 		MapObject.Type.BARREL:
 			items.append([Text.t("battle.cell.barrel"), Text.t("battle.cell.barrel.note", {"damage": MapObject.BLAST_DAMAGE})])
+		MapObject.Type.BATTERY:
+			items.append([Text.t("battle.cell.battery"), Text.t("battle.cell.battery.note", {"range": MapObject.BATTERY_RANGE})])
+		MapObject.Type.STRONGHOLD:
+			items.append([Text.t("battle.cell.stronghold"), Text.t("battle.cell.stronghold.note", {"needed": Stronghold.HOLDS_TO_WIN, "radius": Stronghold.CONTEST_RADIUS})])
 		MapObject.Type.SPRING:
 			items.append([Text.t("battle.cell.spring"), Text.t("battle.cell.spring.note", {"heal": MapObject.SPRING_HEAL})])
 		MapObject.Type.PORTAL:

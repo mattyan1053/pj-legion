@@ -98,6 +98,11 @@ func _draw() -> void:
 	# 目印（対戦の途中で消えるもの（樽）もあるので、盤から毎回読む）。
 	for cell in _board.spring_cells:
 		draw_rect(_cell_rect(cell, px, 0.2), MapCard.COLOR_SPRING)
+	for cell in _board.battery_cells:
+		draw_rect(_cell_rect(cell, px, 0.2), MapCard.COLOR_BATTERY)
+	if _board.stronghold_cell != Board.NO_CELL:
+		var mark := _cell_rect(_board.stronghold_cell, px, 0.1)
+		draw_rect(mark, MapCard.COLOR_STRONGHOLD, false, maxf(1.0, px * 0.25))
 	for cell: Vector2i in _board.portal_exits:
 		draw_arc(_center(cell), px * 0.42, 0.0, TAU, 12, MapCard.COLOR_PORTAL, maxf(1.0, px * 0.3))
 	for cell in _board.barrel_cells:

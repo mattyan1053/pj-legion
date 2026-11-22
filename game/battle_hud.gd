@@ -27,6 +27,8 @@ signal menu_pressed(id: StringName)
 signal menu_hovered(id: StringName)
 ## 必殺技のボタンが押された（確かめる・使うのは呼ぶ側が決める）。
 signal ult_pressed
+## 作戦のボタン（手札の何枚目か）が押された。
+signal tactic_pressed(index: int)
 signal end_turn_pressed
 ## 進化先を選んだ。index は、出している選択肢の何番目か（0 が A、1 が B）。
 signal evolution_chosen(index: int)
@@ -39,6 +41,8 @@ signal skip_pressed
 signal auto_pressed
 ## 駒の情報の枠の「範囲を表示したまま」のスイッチが押された。
 signal pin_toggled
+## 駒の情報の枠の「詳細」を押した（その駒のステータスの窓を開く）。
+signal detail_pressed
 ## 相手を人にするか CPU にするかの切り替えが押された。
 signal opponent_pressed
 ## ログのボタンが押された。
@@ -60,6 +64,7 @@ const COLOR_END_TURN_READY := Palette.GO_READY
 ## 上の帯と下の帯の高さ（駒のそばのメニューは、この内側に置く）。
 const TOP_BAR_HEIGHT := 50.0
 const BOTTOM_BAR_HEIGHT := 92.0
+const TACTIC_BUTTON_HEIGHT := 40.0
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
@@ -150,6 +155,7 @@ var battle: Battle
 var _info_forecast: Label
 ## 見ている相手の駒の攻撃範囲を、表示したままにするスイッチ（枠のいちばん下。set_pin_switch）。
 var _info_pin: CheckButton
+var _info_detail: Button
 var _cell_label: Label
 var _hint_label: Label
 ## 下の帯の案内の、折り返す前の文。
@@ -165,6 +171,8 @@ var _skip_button: Button
 ## 自分の番の残りを CPU に任せるボタン（ターン終了の左。set_auto_button）。
 var _auto_button: Button
 var _ult_panel: PanelContainer
+var _tactic_box: HBoxContainer
+var _tactic_buttons: Array[Button] = []
 var _ult_pinned := false
 var _menu: PanelContainer
 var _forecast: ForecastPanel
@@ -325,6 +333,40 @@ func set_ult_button(text: String, enabled: bool, summary: String, pinned := fals
 	_fold_hint()
 
 
+## 作戦のボタンを並べる。items は手札の順に [文字, 押せるか, 説明]。空なら出さない。
+## 出している間は、必殺技の説明の枠を、そのぶん上へずらす（重ねない）。
+func set_tactic_buttons(items: Array) -> void:
+	while _tactic_buttons.size() < items.size():
+		var index := _tactic_buttons.size()
+		var button := _button("", Signal())
+		button.custom_minimum_size = Vector2(140.0, TACTIC_BUTTON_HEIGHT)
+		button.add_theme_font_size_override("font_size", 16)
+		button.pressed.connect(func() -> void: tactic_pressed.emit(index))
+		_tactic_box.add_child(button)
+		_tactic_buttons.append(button)
+	for i in _tactic_buttons.size():
+		var button := _tactic_buttons[i]
+		button.visible = i < items.size()
+		if button.visible:
+			button.text = items[i][0]
+			button.disabled = not items[i][1]
+			button.tooltip_text = items[i][2]
+	_tactic_box.visible = not items.is_empty()
+	var lift := TACTIC_BUTTON_HEIGHT + 8.0 if _tactic_box.visible else 0.0
+	_ult_panel.offset_top = -BOTTOM_BAR_HEIGHT - 8.0 - lift
+	_ult_panel.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0 - lift
+
+
+## 作戦のボタンの [文字, 押せるか] の列（出しているものだけ）。検査用。
+func tactic_buttons() -> Array:
+	var shown: Array = []
+	if _tactic_box.visible:
+		for button in _tactic_buttons:
+			if button.visible:
+				shown.append([button.text, not button.disabled])
+	return shown
+
+
 ## 必殺技のボタンの中のゲージ（押せない間だけ）: 左から溜まり具合まで陣営の色を薄く敷き、下の辺に溝と陣営の色の棒。
 ## 溜まった先の端に、明るい細い線。
 func _draw_ult_fill() -> void:
@@ -368,6 +410,7 @@ func is_ult_enabled() -> bool:
 func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
 	_info_pin.visible = false  # 出すときは、このあとに set_pin_switch
+	_info_detail.visible = false  # 出すときは、このあとに set_detail_button
 	if unit == null:
 		return
 	var role: String = Names.role(UnitKind.role(unit.kind))
@@ -482,6 +525,7 @@ static func status_text(type: Status.Type, turns: int) -> String:
 func show_cell_info(title: String, body: String) -> void:
 	_info_panel.visible = true
 	_info_pin.visible = false
+	_info_detail.visible = false
 	_info_name.text = title
 	_info_name.add_theme_color_override("font_color", Palette.TEXT)
 	_edge_info_panel(Palette.BORDER)
@@ -499,6 +543,24 @@ func show_cell_info(title: String, body: String) -> void:
 func set_pin_switch(shown: bool, pinned: bool) -> void:
 	_info_pin.visible = shown and _info_panel.visible
 	_info_pin.set_pressed_no_signal(pinned)
+
+
+## 駒の情報の枠の「詳細」のボタンを出すか（show_unit のあとに呼ぶ。枠が出ていなければ出さない）。
+func set_detail_button(shown: bool) -> void:
+	_info_detail.visible = shown and _info_panel.visible and _info_unit_box.visible
+
+
+## 「詳細」のボタンを出しているか。検査用。
+func detail_button_shown() -> bool:
+	return _info_detail.visible
+
+
+## 「詳細」のボタンを押す（クリックと同じ道）。出ていれば真。検査用。
+func press_detail() -> bool:
+	if not _info_detail.visible:
+		return false
+	_info_detail.pressed.emit()
+	return true
 
 
 ## 「範囲を表示したまま」のスイッチを出しているか、入っているか。検査用。
@@ -1226,6 +1288,14 @@ func _build_info_panel() -> void:
 	_info_pin.visible = false
 	_info_pin.pressed.connect(pin_toggled.emit)
 	column.add_child(_info_pin)
+	# 「詳細」: 見ている駒・選んでいる駒のステータスの窓（unit_detail.gd）を開く。控えめなボタンで、右に寄せる。
+	_info_detail = _button(Text.t("battle.hud.detail"), detail_pressed)
+	_info_detail.theme_type_variation = UiTheme.BUTTON_GHOST
+	_info_detail.add_theme_font_size_override("font_size", 14)
+	_info_detail.custom_minimum_size = Vector2(88.0, 30.0)
+	_info_detail.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_info_detail.visible = false
+	column.add_child(_info_detail)
 
 
 func _info_line(column: VBoxContainer, font_size: int, color: Color) -> Label:
@@ -1346,6 +1416,22 @@ func _build_bottom() -> void:
 	add_child(_ult_panel)
 	_ult_summary = _label(15)
 	_ult_panel.add_child(_ult_summary)
+	# 作戦（試しの決まり）のボタン。下の帯のすぐ上の右端。手札の無い対戦では出さない。
+	_tactic_box = HBoxContainer.new()
+	_tactic_box.add_theme_constant_override("separation", 8)
+	_tactic_box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_tactic_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_tactic_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_tactic_box.offset_left = -10.0
+	_tactic_box.offset_right = -10.0
+	_tactic_box.offset_top = -BOTTOM_BAR_HEIGHT - 8.0
+	_tactic_box.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0
+	_tactic_box.visible = false
+	add_child(_tactic_box)
+	var tactic_caption := _label(15)
+	tactic_caption.text = Text.t("battle.tactic.caption")
+	tactic_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_tactic_box.add_child(tactic_caption)
 
 
 ## 戦闘予測のパネル。中身は show_forecast()、置き場所は place_forecast() で決める。

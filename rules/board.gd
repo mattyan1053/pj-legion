@@ -23,6 +23,12 @@ var mid_boss_cells: Array[Vector2i] = []
 var barrel_cells: Array[Vector2i] = []
 ## 回復の泉のマス。
 var spring_cells: Array[Vector2i] = []
+## 砲台を置ける場所（盤の出どころが決める。置かれるまでは何もしない）。
+var battery_spots: Array[Vector2i] = []
+## 置かれた砲台（試しの決まりが入の対戦だけ。BoardGenerator.arm_batteries）。
+var battery_cells: Array[Vector2i] = []
+## 拠点のマス（試しの決まりが入の対戦だけ。Stronghold.arm）。無ければ NO_CELL。
+var stronghold_cell := NO_CELL
 ## ポータルのマス -> 対になるポータルのマス。対の両方が、互いを指して入る。
 var portal_exits: Dictionary[Vector2i, Vector2i] = {}
 ## 盤の上の効果（置いた順。番号の小さい順でもある）。
@@ -82,8 +88,12 @@ func object_at(cell: Vector2i) -> MapObject.Type:
 		return MapObject.Type.BARREL
 	if spring_cells.has(cell):
 		return MapObject.Type.SPRING
+	if battery_cells.has(cell):
+		return MapObject.Type.BATTERY
 	if portal_exits.has(cell):
 		return MapObject.Type.PORTAL
+	if cell == stronghold_cell:
+		return MapObject.Type.STRONGHOLD
 	return MapObject.Type.NONE
 
 
@@ -116,6 +126,13 @@ func add_spring(cell: Vector2i) -> bool:
 
 
 ## 互いを行き先にするポータルを 2 つ置く。どちらかが置けなければ、どちらも置かずに偽。
+func add_battery(cell: Vector2i) -> bool:
+	if not can_place_object(cell):
+		return false
+	battery_cells.append(cell)
+	return true
+
+
 func add_portal_pair(a: Vector2i, b: Vector2i) -> bool:
 	if a == b or not can_place_object(a) or not can_place_object(b):
 		return false

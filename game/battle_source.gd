@@ -27,6 +27,21 @@ func music() -> StringName:
 	return SoundCatalog.battle_music(look())
 
 
+## 終盤の曲（どちらかの将の HP が半分を切ったら替わる。sound_catalog.gd の CLIMAX_MUSIC）。
+func climax_music() -> StringName:
+	return SoundCatalog.CLIMAX_MUSIC
+
+
+## 人が勝ったときの調子（sound_catalog.gd の MOOD_BRIGHT か MOOD_QUIET）。既定は明るい（ファンファーレを鳴らす）。
+func victory_mood() -> StringName:
+	return SoundCatalog.MOOD_BRIGHT
+
+
+## 決着の曲のあとに続ける曲（ループ）。既定は静かな曲（sound_catalog.gd の AFTER_RESULT_MUSIC）。
+func after_result_music() -> StringName:
+	return SoundCatalog.AFTER_RESULT_MUSIC
+
+
 ## 相手のプレイヤー: CPU が動かすプレイヤー。人どうしなら、相手を CPU に切り替えたときに CPU が動かすほう。
 ## その反対が、CPU と対戦するときに人が動かすプレイヤー。
 func cpu_side() -> Unit.Side:
@@ -85,6 +100,11 @@ func can_choose_squad() -> bool:
 ## 既定は台詞なし。
 func talk_cues() -> RefCounted:
 	return BattleCues.new()
+
+
+## 負けたときの台詞（battle_cues.gd の Line の列。決着の画面の見出しの下に出す）。既定は無し。
+func lost_lines() -> Array[BattleCues.Line]:
+	return []
 
 
 ## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [プレイヤー1, プレイヤー2]。既定はどちらもいつもの将。

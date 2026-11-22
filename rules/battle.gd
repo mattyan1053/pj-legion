@@ -28,6 +28,8 @@ var winner := -1
 var drawn := false
 ## プレイヤーごとの、敵の本陣を占拠し続けたフェーズの数。添字がプレイヤー番号。
 var capture_turns: Array[int] = [0, 0]
+## プレイヤーごとの、拠点の確保の数（試しの決まりの拠点。Stronghold）。添字がプレイヤー番号。
+var stronghold_holds: Array[int] = [0, 0]
 ## 行動の途中の駒が動く前の capture_turns。移動を取り消したときに戻す。
 var capture_turns_before_move: Array[int] = [0, 0]
 
@@ -50,6 +52,9 @@ var armies: Array[UnitKind.Army] = [UnitKind.Army.NONE, UnitKind.Army.NONE]
 ## プレイヤーごとの必殺技のゲージ（0 から Ults.GAUGE_MAX）と、使った回数。ためる・使うのは Ults だけ。
 var ult_gauge: Array[int] = [0, 0]
 var ult_uses: Array[int] = [0, 0]
+## プレイヤーごとの作戦の手札（Tactics.Id の並び。試しの決まりが切なら空）と、もう使った札（docs/tactics.md）。
+var tactics: Array[Array] = [[], []]
+var tactics_used: Array[Array] = [[], []]
 
 ## 倒れた中ボス -> 倒した陣営（docs/neutral-mid-boss.md）。キーは中ボスの番号（Board.mid_boss_cells の添字）。
 ## 値は MidBossDefeatedEvent.slayer_side と同じ（止めを刺した駒がいなければ -1）。倒れた中ボスは湧き直さない。
@@ -96,6 +101,7 @@ func add_unit(
 	if side != Unit.Side.NEUTRAL and armies[side] == UnitKind.Army.NONE:
 		armies[side] = UnitKind.army(kind)
 	Relics.equip(self, unit)  # 聖遺物を取ったあとに置かれた駒にも、効果が掛かる
+	unit.site_range = MapObject.battery_bonus(board, unit, unit.cell)
 	return unit
 
 
@@ -186,6 +192,7 @@ func finish_action(unit: Unit) -> UnitActedEvent:
 	unit.has_moved = false
 	unit.cruised = false
 	unit.move_locked = false
+	unit.clear_move_steps()
 	if acting_unit_id == unit.id:
 		acting_unit_id = 0
 	return UnitActedEvent.new(unit.id)
@@ -199,6 +206,8 @@ func hold_action(unit: Unit) -> void:
 	unit.has_moved = true
 	unit.move_origin = unit.cell
 	unit.move_locked = true
+	unit.can_keep_moving = false
+	unit.just_warped = false
 
 
 ## 決着したか（どちらかが勝ったか、引き分け）。
@@ -300,11 +309,20 @@ func can_apply(action: BattleAction) -> bool:
 
 
 ## 行動を受け付けて状態を進め、起きたことを返す。受け付けられなければ、何も変えずに断る。
+## 砲台の上の後衛の射程を付け直す（MapObject.battery_bonus）。駒を置いたときと、行動のたびに呼ぶ。砲台の無い盤では何もしない。
+func refresh_sites() -> void:
+	if board.battery_cells.is_empty():
+		return
+	for unit in units:
+		unit.site_range = MapObject.battery_bonus(board, unit, unit.cell)
+
+
 func apply(action: BattleAction) -> ActionResult:
 	if not can_apply(action):
 		return ActionResult.rejected()
 	var ready: Array[bool] = [Ults.is_ready(self, Unit.Side.PLAYER1), Ults.is_ready(self, Unit.Side.PLAYER2)]
 	var events := action.execute(self)
+	refresh_sites()
 	events.append_array(settle(events))
 	# 必殺技のゲージは、ダメージ・撃破・フェーズの始めにたまる。この行動でいっぱいになったら、最後に知らせる。
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:

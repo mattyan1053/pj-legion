@@ -22,6 +22,9 @@ const WALL_THICKNESS := 0.46
 ## 壁の高さ（柱に対して）と、崩れた壁にする割合。
 const WALL_HEIGHT := 0.82
 const WALL_BROKEN_SHARE := 0.25
+## 隣に障害物の無い 1 マスを短い壁にするとき（見た目の lone_wall）の、壁の幅（マス）と、両端の柱の太さ（素材の幅に掛ける）。
+const LONE_WALL_WIDTH := 0.74
+const LONE_WALL_POST := 0.2
 
 ## 塗ったマスどうしの隙間（マス目の線が見える）。
 const TILE_GAP := 0.04
@@ -43,6 +46,13 @@ const COLOR_BARREL_BAND := Color("3a3a3e")
 const COLOR_BARREL_MARK := Color("e8452e")
 const COLOR_SPRING_WATER := Color("2f8fe0")
 const COLOR_SPRING_CROSS := Color("2fd66b")
+const COLOR_BATTERY_BASE := Color("4a4f5a")
+const COLOR_BATTERY_GUN := Color("2b2e36")
+const COLOR_BATTERY_MARK := Color("ffb347")
+## 拠点（試しの決まり）: 黒い縁取りの上に明るい黄の輪。どの景色の地面でも沈まないよう、光に左右されない色で描く。
+const COLOR_STRONGHOLD_EDGE := Color("1c1a14")
+const COLOR_STRONGHOLD_MARK := Color("fff27a")
+const COLOR_STRONGHOLD_FLAG := Color("f4f1e6")
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
@@ -104,6 +114,7 @@ var _grid_emphasized := false
 var _ripples: Array = []
 var _motes: Array = []
 var _portal_discs: Array = []
+var _stronghold_cloth: StandardMaterial3D  # 拠点の旗の布（確保を進めた陣営の色に変える）
 var _motion_time := 0.0
 static var _noise: ImageTexture
 
@@ -150,6 +161,11 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 		_add_barrel(cell, rng)
 	for cell in board.spring_cells:
 		_add_spring(cell)
+	for cell in board.battery_cells:
+		_add_battery(cell)
+	_stronghold_cloth = null
+	if board.stronghold_cell != Board.NO_CELL:
+		_add_stronghold(board.stronghold_cell)
 	for cell: Vector2i in board.portal_exits:
 		_add_portal(cell, portal_color(board, cell))
 	for effect in board.field_effects:
@@ -656,6 +672,94 @@ func _add_spring(cell: Vector2i) -> void:
 	_add_mesh(bar, cross, foot + Vector3(0.0, 1.1, 0.0)).rotation.z = PI / 2.0
 
 
+## 砲台（試しの決まり）。駒が上に立つので平たく作る（石の台と、橙の縁）。駒が乗っていても分かるよう、隅に砲身と橙の札を立てる。
+func _add_battery(cell: Vector2i) -> void:
+	var center := cell_center(cell)
+	var base := CylinderMesh.new()
+	base.top_radius = 0.44
+	base.bottom_radius = 0.47
+	base.height = 0.05
+	base.radial_segments = 8
+	_add_mesh(base, _material(COLOR_BATTERY_BASE), center + Vector3(0.0, 0.025, 0.0))
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.40
+	ring.outer_radius = 0.45
+	ring.rings = 16
+	ring.ring_segments = 4
+	_add_mesh(ring, _flat_material(COLOR_BATTERY_MARK), center + Vector3(0.0, 0.055, 0.0)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var foot := center + Vector3(0.4, 0.0, -0.4)
+	var mount := BoxMesh.new()
+	mount.size = Vector3(0.16, 0.3, 0.16)
+	_add_mesh(mount, _material(COLOR_BATTERY_GUN), foot + Vector3(0.0, 0.15, 0.0))
+	var gun := CylinderMesh.new()
+	gun.top_radius = 0.045
+	gun.bottom_radius = 0.06
+	gun.height = 0.5
+	var barrel := _add_mesh(gun, _material(COLOR_BATTERY_GUN), foot + Vector3(-0.08, 0.42, 0.08))
+	barrel.rotation = Vector3(deg_to_rad(55.0), deg_to_rad(-45.0), 0.0)
+	var post := CylinderMesh.new()
+	post.top_radius = 0.025
+	post.bottom_radius = 0.025
+	post.height = 1.0
+	var flag_foot := center + Vector3(-0.4, 0.0, -0.4)
+	_add_mesh(post, _material(COLOR_BATTERY_GUN), flag_foot + Vector3(0.0, 0.5, 0.0))
+	var plate := BoxMesh.new()
+	plate.size = Vector3(0.26, 0.16, 0.05)
+	_add_mesh(plate, _flat_material(COLOR_BATTERY_MARK), flag_foot + Vector3(0.0, 1.08, 0.0))
+
+
+## 拠点（試しの決まり）。駒が上に立つので、床は平たく（黒い縁取りの輪と黄の輪、四隅の杭）。
+## 駒が乗っていても分かるよう、奥の隅に高い旗竿を立てる。旗は白で、確保を進めた陣営の色に変わる（set_stronghold_side）。
+func _add_stronghold(cell: Vector2i) -> void:
+	var center := cell_center(cell)
+	for ring_spec: Array in [[0.36, 0.49, COLOR_STRONGHOLD_EDGE, 0.03], [0.39, 0.46, COLOR_STRONGHOLD_MARK, 0.045]]:
+		var ring := TorusMesh.new()
+		ring.inner_radius = ring_spec[0]
+		ring.outer_radius = ring_spec[1]
+		ring.rings = 24
+		ring.ring_segments = 4
+		var instance := _add_mesh(ring, _flat_material(ring_spec[2]), center + Vector3(0.0, ring_spec[3], 0.0))
+		instance.scale = Vector3(1.0, 0.35, 1.0)
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var stake := BoxMesh.new()
+	stake.size = Vector3(0.09, 0.22, 0.09)
+	var cap := BoxMesh.new()
+	cap.size = Vector3(0.11, 0.05, 0.11)
+	for corner: Vector2 in [Vector2(-1, 1), Vector2(1, 1), Vector2(1, -1)]:
+		var foot := center + Vector3(corner.x, 0.0, corner.y) * 0.43
+		_add_mesh(stake, _flat_material(COLOR_STRONGHOLD_EDGE), foot + Vector3(0.0, 0.11, 0.0))
+		_add_mesh(cap, _flat_material(COLOR_STRONGHOLD_MARK), foot + Vector3(0.0, 0.245, 0.0))
+	var pole := CylinderMesh.new()
+	pole.top_radius = 0.03
+	pole.bottom_radius = 0.035
+	pole.height = 2.6
+	var pole_foot := center + Vector3(-0.43, 0.0, -0.43)
+	_add_mesh(pole, _flat_material(COLOR_STRONGHOLD_EDGE), pole_foot + Vector3(0.0, 1.3, 0.0))
+	var knob := SphereMesh.new()
+	knob.radius = 0.06
+	knob.height = 0.12
+	_add_mesh(knob, _flat_material(COLOR_STRONGHOLD_MARK), pole_foot + Vector3(0.0, 2.63, 0.0))
+	var cloth_mesh := BoxMesh.new()
+	cloth_mesh.size = Vector3(0.84, 0.5, 0.03)
+	_stronghold_cloth = _flat_material(COLOR_STRONGHOLD_FLAG)
+	var cloth := _add_mesh(cloth_mesh, _stronghold_cloth, pole_foot + Vector3(0.44, 2.3, 0.0))
+	var border_mesh := BoxMesh.new()
+	border_mesh.size = Vector3(0.9, 0.56, 0.02)
+	var border := _add_mesh(border_mesh, _flat_material(COLOR_STRONGHOLD_EDGE), cloth.position)
+	border.rotation.y = cloth.rotation.y
+
+
+## 拠点の旗を、確保を進めた陣営 side の色 color にする（拠点の無い盤では何もしない）。
+func set_stronghold_side(_side: int, color: Color) -> void:
+	if _stronghold_cloth != null:
+		_stronghold_cloth.albedo_color = color
+
+
+## 拠点の旗の色（検査用。拠点が無ければ透明）。
+func stronghold_flag_color() -> Color:
+	return _stronghold_cloth.albedo_color if _stronghold_cloth != null else Color.TRANSPARENT
+
+
 ## ポータル。駒が上に立つので平たく作る（色の輪と薄い面）。駒が乗っていても分かるよう、両脇に柱を立てる。
 ## 色は対ごとに変える。
 func _add_portal(cell: Vector2i, color: Color) -> void:
@@ -770,7 +874,7 @@ func _add_cell_props(spec: Dictionary, cell: Vector2i, rng: RandomNumberGenerato
 	var top := 0.0
 	match spec.style:
 		StageLook.WALL:
-			parts.append_array(_add_wall(props, tint, cell, float(spec.height), rng))
+			parts.append_array(_add_wall(props, tint, cell, float(spec.height), rng, bool(spec.get("lone_wall", false))))
 			top = float(spec.height)
 		_:
 			# 元は六角形のマス用なので、向きを 60 度刻みでばらす。
@@ -820,10 +924,19 @@ func _add_crags(spec: Dictionary, look_seed: int) -> void:
 
 ## 石の壁（StageLook.WALL）: マスの真ん中の柱と、右・下の障害物のマスへつなぐ壁。
 ## 素材の柱（幅 1.5・高さ 4）と壁（長さ 4・厚さ 1・高さ 4）を、マスに合わせて伸び縮みさせる。
-func _add_wall(props: Array, tint: Color, cell: Vector2i, height: float, rng: RandomNumberGenerator) -> Array[GeometryInstance3D]:
+func _add_wall(props: Array, tint: Color, cell: Vector2i, height: float, rng: RandomNumberGenerator, lone_wall := false) -> Array[GeometryInstance3D]:
 	var parts: Array[GeometryInstance3D] = []
 	var pillar: Dictionary = props[0]
 	var center := cell_center(cell)
+	if lone_wall and _is_lone_obstacle(cell):
+		# 隣に障害物の無い 1 マスは、柱ではなく、短い壁（両軍の間を遮る向き）と、その両端の細い柱。
+		var slab: Dictionary = props[1]
+		var slab_basis := Basis.from_scale(Vector3(LONE_WALL_WIDTH / 4.0, height * WALL_HEIGHT / float(slab.height), WALL_THICKNESS))
+		parts.append(_add_prop(slab, tint, Transform3D(slab_basis, center)))
+		for end: float in [-1.0, 1.0]:
+			var post_basis := Basis.from_scale(Vector3(LONE_WALL_POST, height * rng.randf_range(0.94, 1.02) / float(pillar.height), LONE_WALL_POST))
+			parts.append(_add_prop(pillar, tint, Transform3D(post_basis, center + Vector3(end * LONE_WALL_WIDTH * 0.5, 0.0, 0.0))))
+		return parts
 	var pillar_height := height * rng.randf_range(0.94, 1.06)
 	var width := WALL_PILLAR_WIDTH / 1.5
 	var pillar_basis := Basis.from_scale(Vector3(width, pillar_height / float(pillar.height), width))
@@ -839,6 +952,14 @@ func _add_wall(props: Array, tint: Color, cell: Vector2i, height: float, rng: Ra
 		var at := center + Vector3(side.x, 0.0, side.y) * 0.5
 		parts.append(_add_prop(wall, tint, Transform3D(stretched, at)))
 	return parts
+
+
+## cell の障害物が、辺で接する障害物を持たないか。
+func _is_lone_obstacle(cell: Vector2i) -> bool:
+	for side: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]:
+		if board.in_bounds(cell + side) and board.terrain_at(cell + side) == Terrain.Type.OBSTACLE:
+			return false
+	return true
 
 
 ## 素材を 1 つ、place に置く。

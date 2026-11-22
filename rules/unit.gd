@@ -49,6 +49,12 @@ var acted := false
 var has_moved := false
 var move_origin: Vector2i
 var cruised := false
+## いまの行動で歩いて使った移動力の合計（転移のあと、続けて動ける残りを出す。Movement.budget_left）。
+var move_spent := 0
+## 転移したあと、残りの移動力で続けて動けるか（WarpAction が立て、次の移動で倒れる）。
+var can_keep_moving := false
+## いまのマスへ転移して着いたばかりか（すぐにもう一度は転移できない）。
+var just_warped := false
 ## いまの行動で、移動の取り消しがもうできないか（行動を終えないスキルを使ったあと。docs/active-skills.md）。
 var move_locked := false
 ## スキルをまた使えるまでの残り（docs/active-skills.md）。0 なら使える。自分のフェーズの始めに 1 減る。
@@ -75,6 +81,10 @@ func _init(
 
 
 ## 同じ状態の駒を作る（Battle.clone() が使う）。
+## いま立っているマス（砲台）による射程の伸び。Battle が、駒を置いたときと行動のたびに付け直す（Battle.refresh_sites）。
+var site_range := 0
+
+
 func copy() -> Unit:
 	var result := Unit.new(id, kind, side, cell)
 	StateCopy.copy_fields(self, result)
@@ -87,6 +97,14 @@ func reset_action() -> void:
 	has_moved = false
 	cruised = false
 	move_locked = false
+	clear_move_steps()
+
+
+## いまの行動の移動の途中の記録（使った移動力、転移のあと）を消す。
+func clear_move_steps() -> void:
+	move_spent = 0
+	can_keep_moving = false
+	just_warped = false
 
 
 ## 層 1（基礎 + 成長 + 進化 + 装備）の値。
@@ -158,6 +176,8 @@ func follow_max_hp(before: int) -> void:
 ## 実効値。層 1 に、聖遺物、一時的な補正の順で足す。最大 HP は 1、ほかは 0 を下回らない。
 func stat(which: Stat) -> int:
 	var value := base_stat(which)
+	if which == Stat.ATTACK_RANGE:
+		value += site_range
 	value += relic_bonus.get(which, 0)
 	value += temporary_bonus.get(which, 0)
 	return maxi(value, 1 if which == Stat.MAX_HP else 0)
