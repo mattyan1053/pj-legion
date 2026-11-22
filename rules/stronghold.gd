@@ -1,6 +1,6 @@
 class_name Stronghold
 extends RefCounted
-## 拠点（選べる決まり TrialRules.STRONGHOLD。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）。
+## 拠点（選べる決まり OptionalRules.STRONGHOLD。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）。
 ##
 ## 盤の中央（両方の本陣から同じ道のり）のマス 1 つ。自分の駒が乗ったまま自分のフェーズを終えると、そのプレイヤーの「確保」が 1 進み、
 ## HOLDS_TO_WIN に届いたら勝ち（GameWonEvent.Reason.STRONGHOLD_HELD）。

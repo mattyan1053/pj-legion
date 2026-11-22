@@ -820,9 +820,9 @@ func _scene_setup_battery() -> bool:
 	await _app.go(SceneFlow.SETUP)
 	if _app.current_id() != SceneFlow.SETUP:
 		return false
-	_app.current_scene().setup_panel().choose_trial(TrialRules.BATTERY, true)
+	_app.current_scene().setup_panel().choose_rule(OptionalRules.BATTERY, true)
 	_park_mouse()
-	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.BATTERY)
+	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.BATTERY)
 
 
 func _scene_setup_stronghold() -> bool:
@@ -830,9 +830,9 @@ func _scene_setup_stronghold() -> bool:
 	await _app.go(SceneFlow.SETUP)
 	if _app.current_id() != SceneFlow.SETUP:
 		return false
-	_app.current_scene().setup_panel().choose_trial(TrialRules.STRONGHOLD, true)
+	_app.current_scene().setup_panel().choose_rule(OptionalRules.STRONGHOLD, true)
 	_park_mouse()
-	return _app.current_scene().setup_panel().current_choice().has_trial(TrialRules.STRONGHOLD)
+	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.STRONGHOLD)
 
 
 func _scene_setup() -> bool:
@@ -1847,7 +1847,7 @@ func _scene_portal() -> bool:
 
 func _scene_battery_cell() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([TrialRules.BATTERY])
+	_new_battle([OptionalRules.BATTERY])
 	_show()
 	var batteries := _battle.board.battery_cells
 	if batteries.is_empty():
@@ -1860,7 +1860,7 @@ func _scene_battery_cell() -> bool:
 ## 砲台に後衛が乗っている番の始めまで進め、その駒を選ぶ（伸びた射程が、移動範囲の外の攻撃範囲に出る）。
 func _scene_battery() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([TrialRules.BATTERY])
+	_new_battle([OptionalRules.BATTERY])
 	var gunner: Array[Unit] = []
 	if not _advance(func() -> bool:
 		gunner.clear()
@@ -1878,7 +1878,7 @@ func _scene_battery() -> bool:
 
 func _scene_stronghold_cell() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([TrialRules.STRONGHOLD])
+	_new_battle([OptionalRules.STRONGHOLD])
 	_show()
 	var cell := _battle.board.stronghold_cell
 	if cell == Board.NO_CELL:
@@ -1890,7 +1890,7 @@ func _scene_stronghold_cell() -> bool:
 
 func _scene_stronghold_hover() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([TrialRules.STRONGHOLD])
+	_new_battle([OptionalRules.STRONGHOLD])
 	_show()
 	var cell := _battle.board.stronghold_cell
 	if cell == Board.NO_CELL:
@@ -1903,7 +1903,7 @@ func _scene_stronghold_hover() -> bool:
 ## どちらかが、あと 1 回の確保で勝つところまで進める（拠点に駒が乗り、旗がその陣営の色。上の帯の札が目立つ）。
 func _scene_stronghold() -> bool:
 	_field = VersusFields.LABYRINTH
-	_new_battle([TrialRules.STRONGHOLD])
+	_new_battle([OptionalRules.STRONGHOLD])
 	if not _advance(func() -> bool:
 		return Stronghold.holds_left(_battle, Unit.Side.PLAYER1) == 1 or Stronghold.holds_left(_battle, Unit.Side.PLAYER2) == 1
 	):
@@ -3107,7 +3107,7 @@ func _scape(name: String) -> bool:
 	var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 	var setup := MatchSetup.humans_on(defined, _seed, MatchSetup.default_deck(armies[0]), MatchSetup.default_deck(armies[1]))
 	if parts[2] == "paint":
-		setup.trials.append(TrialRules.BATTERY)  # 砲台のマスも並べる
+		setup.rules.append(OptionalRules.BATTERY)  # 砲台のマスも並べる
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
 	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤）"] as Array[String])
@@ -3179,12 +3179,12 @@ func _scape_range(look: StringName, title: String) -> bool:
 	return _scene.is_threat_shown()
 
 
-func _new_battle(trials: Array[StringName] = []) -> void:
+func _new_battle(rules: Array[StringName] = []) -> void:
 	var choice: RefCounted = MatchChoice.new()
 	choice.field = _field
 	choice.cpu_opponent = false
-	for trial in trials:
-		choice.set_trial(trial, true)
+	for rule in rules:
+		choice.set_rule(rule, true)
 	_scene.source = choice
 	_battle = choice.to_setup(_seed).create_battle()
 	_stats = BattleStats.new(_battle)

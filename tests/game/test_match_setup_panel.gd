@@ -201,11 +201,11 @@ func test_the_battery_row_turns_the_trial_on_and_off() -> void:
 	var panel := MatchSetupPanel.new()
 	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
 	panel.open(MatchChoice.new())
-	assert_false(panel.current_choice().has_trial(TrialRules.BATTERY), "既定は切")
-	panel.choose_trial(TrialRules.BATTERY, true)
-	assert_true(panel.current_choice().has_trial(TrialRules.BATTERY))
-	panel.choose_trial(TrialRules.BATTERY, false)
-	assert_false(panel.current_choice().has_trial(TrialRules.BATTERY))
+	assert_false(panel.current_choice().has_rule(OptionalRules.BATTERY), "既定は切")
+	panel.choose_rule(OptionalRules.BATTERY, true)
+	assert_true(panel.current_choice().has_rule(OptionalRules.BATTERY))
+	panel.choose_rule(OptionalRules.BATTERY, false)
+	assert_false(panel.current_choice().has_rule(OptionalRules.BATTERY))
 	panel.free()
 
 
@@ -215,16 +215,16 @@ func test_the_rule_rows_switch_and_keep_their_note_size() -> void:
 	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
 	panel.open(MatchChoice.new())
 	await settle(panel)
-	assert_true(panel.current_choice().has_trial(TrialRules.STRONGHOLD), "拠点は既定であり")
-	assert_false(panel.current_choice().has_trial(TrialRules.BATTERY), "砲台は既定でなし")
-	for trial: StringName in MatchSetupPanel.TRIAL_ROWS:
-		var note: Label = panel._trial_notes[trial]
+	assert_true(panel.current_choice().has_rule(OptionalRules.STRONGHOLD), "拠点は既定であり")
+	assert_false(panel.current_choice().has_rule(OptionalRules.BATTERY), "砲台は既定でなし")
+	for rule: StringName in MatchSetupPanel.RULE_ROWS:
+		var note: Label = panel._rule_notes[rule]
 		var before := note.size
 		assert_eq(before, MatchSetupPanel.TRIAL_NOTE_SIZE)
-		assert_eq(panel.trial_note_text(trial), panel.trial_note(trial))
+		assert_eq(panel.rule_note_text(rule), panel.rule_note(rule))
 		for on: bool in [true, false, true]:
-			panel._choose(StringName("trial_%s" % trial), on)
+			panel._choose(StringName("rule_%s" % rule), on)
 			await settle(panel)
-			assert_eq(panel.current_choice().has_trial(trial), on)
-			assert_eq(note.size, before, "%s で欄の大きさが変わった" % trial)
+			assert_eq(panel.current_choice().has_rule(rule), on)
+			assert_eq(note.size, before, "%s で欄の大きさが変わった" % rule)
 	panel.free()

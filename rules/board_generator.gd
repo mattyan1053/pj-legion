@@ -118,7 +118,7 @@ static func battery_spots_for(stage: Stage, size: Vector2i) -> Array[Vector2i]:
 	return [first, hqs_sum - first]
 
 
-## 砲台を置く（選べる決まり TrialRules.BATTERY が入の対戦だけ。MatchSetup.create_battle が呼ぶ）。
+## 砲台を置く（選べる決まり OptionalRules.BATTERY が入の対戦だけ。MatchSetup.create_battle が呼ぶ）。
 ## 置ける場所（Board.battery_spots）が障害物なら平地にし、本陣から歩いて行けなければ道を削る。ほかの環境オブジェクトがあるマスには置かない。
 static func arm_batteries(board: Board) -> void:
 	for cell in board.battery_spots:
