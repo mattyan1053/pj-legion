@@ -390,6 +390,7 @@ func set_tactic_buttons(items: Array) -> void:
 		button.custom_minimum_size = Vector2(TACTIC_BUTTON_WIDTH, TACTIC_BUTTON_HEIGHT)
 		button.clip_text = true
 		button.add_theme_font_size_override("font_size", 16)
+		Steady.mark(button, "battle.tactic_button")
 		button.pressed.connect(func() -> void: tactic_pressed.emit(index))
 		button.mouse_entered.connect(_show_tactic_note)
 		button.mouse_exited.connect(_show_tactic_note)
@@ -1695,6 +1696,7 @@ func _build_bottom() -> void:
 	_tactic_note_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tactic_note_panel.visible = false
 	add_child(_tactic_note_panel)
+	Steady.mark(_tactic_note_panel, "battle.tactic_note", Steady.RECT)
 	_tactic_note = _label(15)
 	_tactic_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_tactic_note.max_lines_visible = 2
@@ -1775,6 +1777,7 @@ func _build_notice() -> void:
 	_notice.mouse_filter = Control.MOUSE_FILTER_STOP
 	_notice.visible = false
 	add_child(_notice)
+	Steady.mark(_notice, "battle.trial_notice", Steady.RECT)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	_notice.add_child(column)

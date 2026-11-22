@@ -25,6 +25,7 @@ const PLACEMENT_SEED := 3
 ## 試しの決まりの行の右の説明の欄の大きさ（px。2 行まで）。
 const TRIAL_NOTE_SIZE := Vector2(380.0, 44.0)
 const Text := preload("res://game/text.gd")
+const Steady := preload("res://game/steady.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
@@ -173,6 +174,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	_trial_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_trial_note.max_lines_visible = 2
 	_trial_note.custom_minimum_size = TRIAL_NOTE_SIZE
+	Steady.mark(_trial_note, "setup.trial_note")
 	trial_row.add_child(_trial_note)
 	# 対戦モードの先手が必殺技のゲージをためて始まるなら（Ults.FIRST_PLAYER_START_GAUGE が 0 より大きい）、手番の行の右に書いておく。
 	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
