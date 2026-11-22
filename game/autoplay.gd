@@ -2045,6 +2045,7 @@ func _visit_decks(app: Node) -> void:
 	setup_moves.append(setup_panel.choose_opponent.bind(false))
 	setup_moves.append(setup_panel.choose_opponent.bind(true))
 	await _expect_steady(app.current_scene(), [], setup_moves, "対戦設定で選び替える")
+	_expect(setup_panel.fits_screen(), "対戦設定のパネルが画面からはみ出している")
 	setup_panel.choose_opponent(true)
 	setup_panel.choose_human_side(Unit.Side.PLAYER1)
 	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)

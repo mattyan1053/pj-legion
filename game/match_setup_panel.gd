@@ -25,7 +25,7 @@ const PLACEMENT_SEED := 3
 ## 選べる決まりの行（並び）、「あり」「なし」のボタンの幅、右の説明の欄の大きさ（px。2 行まで）。
 const RULE_ROWS: Array[StringName] = [OptionalRules.STRONGHOLD, OptionalRules.BATTERY, OptionalRules.FORMATION]
 const TRIAL_BUTTON_WIDTH := 110.0
-const TRIAL_NOTE_SIZE := Vector2(400.0, 48.0)
+const TRIAL_NOTE_SIZE := Vector2(440.0, 36.0)
 const Text := preload("res://game/text.gd")
 const Steady := preload("res://game/steady.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -86,6 +86,7 @@ var _library: RefCounted
 var _side_caption: Label
 ## 選べる決まりの行の右の説明（決まりの名前 → Label）。
 var _rule_notes: Dictionary[StringName, Label] = {}
+var _panel: PanelContainer
 var _first_gauge_note: Label
 var _start_button: Button
 var _back_button: Button
@@ -126,11 +127,12 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
+	column.add_theme_constant_override("separation", 6)
 	panel.add_child(column)
 
 	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
 	Steady.mark(panel, "setup.panel", Steady.RECT)
+	_panel = panel
 	var title := _label(28)
 	title.theme_type_variation = UiTheme.LABEL_HEADING
 	title.text = Text.t("setup.title")
@@ -160,8 +162,8 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		var rule_row := _add_row(column, Text.t("setup.caption.%s" % rule), StringName("rule_%s" % rule),
 			{true: Text.t("setup.rule.on"), false: Text.t("setup.rule.off")})
 		for button: Button in (_rows[StringName("rule_%s" % rule)] as Dictionary).values():
-			button.custom_minimum_size = Vector2(TRIAL_BUTTON_WIDTH, 40.0)
-		var note := _label(14)
+			button.custom_minimum_size = Vector2(TRIAL_BUTTON_WIDTH, 36.0)
+		var note := _label(13)
 		note.text = rule_note(rule)
 		note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -346,6 +348,11 @@ func choose_random_side() -> void:
 
 
 ## 選べる決まり id を入・切する。
+## パネルが画面（窓）の中に収まっているか。検査用（決まりの行を足して、下のボタンが画面の外へ出ないように）。
+func fits_screen() -> bool:
+	return get_viewport().get_visible_rect().encloses(_panel.get_global_rect())
+
+
 func choose_rule(id: StringName, on: bool) -> void:
 	_choice.set_rule(id, on)
 	_show_choice()
