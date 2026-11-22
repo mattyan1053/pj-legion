@@ -10,6 +10,7 @@ extends Node
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。コピー先を選んでいる間の右クリック・Esc は、コピーをやめる。
 
 const SceneFlow := preload("res://game/scene_flow.gd")
+const Steady := preload("res://game/steady.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -353,6 +354,7 @@ func _build_card(info: Dictionary, number: int) -> Button:
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
 	card.custom_minimum_size = CARD_SIZE
+	Steady.mark(card, "slots.card")
 	card.theme_type_variation = UiTheme.BUTTON_CARD
 	card.set_meta(&"sound", &"ui_confirm")
 	if _copy_from != 0:

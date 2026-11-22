@@ -12,6 +12,7 @@ extends Control
 ## 何を出すかは呼ぶ側（result_summary.gd）が決める。ここは見せ方と、押されたことを signal で知らせるだけ。
 
 const Text := preload("res://game/text.gd")
+const Steady := preload("res://game/steady.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
@@ -108,6 +109,8 @@ var _stats_panel: PanelContainer
 var _stats_title: Label
 var _stats_grid: GridContainer
 var _stat_rows: Array = []
+## 戦績の行の高さを上限の数ぶん取るための、空の行（段階の出し方には入れない）。
+var _stat_pads: Array[Label] = []
 var _mvp_panel: PanelContainer
 var _mvp_head: Label
 var _mvp_name: Label
@@ -204,6 +207,9 @@ func present(summary: RefCounted) -> void:
 		for label: Label in row:
 			label.queue_free()
 	_stat_rows.clear()
+	for label: Label in _stat_pads:
+		label.queue_free()
+	_stat_pads.clear()
 	for line: Array in summary.lines:
 		var name_label := _label(18)
 		name_label.text = line[0]
@@ -216,6 +222,15 @@ func present(summary: RefCounted) -> void:
 		_stats_grid.add_child(name_label)
 		_stats_grid.add_child(value_label)
 		_stat_rows.append([name_label, value_label])
+	# 行の少ない戦績でも、上限の行の数ぶんの高さを取る（空の行で埋める。戦績の枠の大きさを中身で変えない）。
+	for i in range(summary.lines.size(), ResultSummary.MAX_LINES):
+		var name_label := _label(18)
+		var value_label := _label(STAT_FONT)
+		value_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+		value_label.text = " "
+		_stats_grid.add_child(name_label)
+		_stats_grid.add_child(value_label)
+		_stat_pads.append_array([name_label, value_label])
 	_mvp_icon.visible = summary.mvp_name != ""
 	if summary.mvp_name != "":
 		_mvp_icon.set_kind(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved, _king_look(summary.mvp_side))
@@ -612,6 +627,7 @@ func _build_stats() -> void:
 	_stats_panel = _panel(Palette.BORDER)
 	_stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_stats_panel.custom_minimum_size = Vector2(460.0, 0.0)
+	Steady.mark(_stats_panel, "result.stats")
 	_body.add_child(_stats_panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
@@ -631,6 +647,7 @@ func _build_mvp() -> void:
 	_mvp_panel = _panel(Color(Palette.BORDER_BRIGHT, 0.85))
 	_mvp_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_mvp_panel.custom_minimum_size = Vector2(460.0, 0.0)
+	Steady.mark(_mvp_panel, "result.mvp")
 	_body.add_child(_mvp_panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)

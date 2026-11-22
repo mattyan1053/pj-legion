@@ -13,6 +13,7 @@ extends Node
 ## - 「物語を選び直す」（右クリック・Esc でも）で &"back"（物語を選ぶ場面へ）。
 
 const Text := preload("res://game/text.gd")
+const Steady := preload("res://game/steady.gd")
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -341,6 +342,7 @@ func _build_card(episode: Episode) -> Button:
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
 	card.custom_minimum_size = Vector2(CARD_WIDTH, MAP_HEIGHT + 170.0)
+	Steady.mark(card, "episodes.card")
 	card.disabled = not available
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）

@@ -1233,6 +1233,7 @@ func _build_top_bar() -> void:
 	_top_style = UiTheme.band_box(true)
 	panel.add_theme_stylebox_override("panel", _top_style)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	Steady.mark(panel, "battle.top_band", Steady.RECT)
 	add_child(panel)
 	var row := HBoxContainer.new()
 	# 間とゲージの幅は、相手が CPU（「相手: CPU」）で、ターンが 2 桁でも、陣営の欄（駒の数と占拠の印）が省かれずに収まる大きさ。
