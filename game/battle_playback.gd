@@ -16,7 +16,6 @@ const BattleLog := preload("res://game/battle_log.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const NeutralPlayback := preload("res://game/neutral_playback.gd")
 const Names := preload("res://game/names.gd")
-const Queries := preload("res://game/battle_queries.gd")
 
 ## 1 マス歩くのにかける秒数（巡航は速く走る）。中立の駒は、目で追えるよう、ゆっくり歩かせる。
 const STEP_TIME := 0.16
@@ -29,9 +28,6 @@ const NEUTRAL_PAUSE := 0.5
 const ULT_EFFECTS_TIME := 0.45
 
 const COLOR_BLAST := Color(1.0, 0.55, 0.1, 0.6)
-## 強行軍を使ったとき、広がった移動の範囲を塗る色（battle_screen.gd の移動の色と同じ）と、塗っておく秒数。
-const COLOR_MARCH := Color(0.35, 0.65, 1.0, 0.5)
-const MARCH_PAINT_TIME := 1.2
 const COLOR_EXPERIENCE := Color("9fd8ff")
 const COLOR_LEVEL_UP := Color("ffd34a")
 const COLOR_EVOLUTION := Color("d9a6ff")
@@ -170,8 +166,6 @@ static func event_players() -> Dictionary:
 		SkillUsedEvent: &"_play_skill_used",
 		SkillReadyEvent: &"_play_skill_ready",
 		UltUsedEvent: &"_play_ult_used",
-		TacticUsedEvent: &"_play_tactic_used",
-		TacticHealedEvent: &"_play_tactic_healed",
 		UltReadyEvent: &"_play_ult_ready",
 		StatusAppliedEvent: &"_play_status_applied",
 		StatusRemovedEvent: &"_play_status_removed",
@@ -201,18 +195,6 @@ func play_all(events: Array[BattleEvent]) -> void:
 			continue
 		await _play(event)
 		i += 1
-		var tactic := event as TacticUsedEvent
-		if tactic != null:
-			# 作戦の効果（状態が付いた）も、必殺技と同じに、全員に同時に見せる。
-			var applied: Array[BattleEvent] = []
-			while i < events.size() and events[i] is StatusAppliedEvent:
-				applied.append(events[i])
-				i += 1
-			if not applied.is_empty():
-				await _play_ult_effects(tactic.side, applied)
-			if tactic.tactic == Tactics.Id.MARCH:
-				await _show_march_reach(applied)
-			continue
 		var ult := event as UltUsedEvent
 		if ult != null:
 			var effects: Array[BattleEvent] = []
@@ -615,41 +597,6 @@ func _play_skill_ready(event: SkillReadyEvent) -> void:
 
 ## 必殺技を使った。画面が必殺技の色に一瞬光り、必殺技の名前を大きく出す。
 ## 効果（駒ごとの状態など）は、続くイベントを _play_all がまとめて同時に見せる（_play_ult_effects）。
-## 作戦を使った（どちらの陣営でも）。画面の中央に札の名前を、手札のボタンの上の枠に札の効果を、しばらく出す。
-## 号令は、将の上にゲージの増えた分を出す（ほかの札の効果は、続くイベントが駒ごとに見せる）。
-func _play_tactic_used(event: TacticUsedEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
-	_sound(&"ult_ready")
-	var color: Color = team_colors[event.side]
-	_hud.show_banner(Text.t("battle.banner.tactic", {"side": side_name.call(event.side), "tactic": Names.tactic(event.tactic)}), color, true)
-	_hud.flash_tactic_note(Text.t("battle.tactic.used_note", {"side": side_name.call(event.side), "tactic": Names.tactic(event.tactic),
-		"summary": Names.tactic_summary(event.tactic)}))
-	if event.tactic == Tactics.Id.RALLY:
-		for unit in battle.units:
-			if unit.side == event.side and unit.kind == UnitKind.Id.KING and _views.has(unit.id):
-				_pop_number(_view(unit.id).position, Text.t("battle.pop.rally", Tactics.summary_args()), color.lightened(0.4))
-	await after(0.4)
-
-
-## 強行軍の効果（移動力が増えた駒の、いま動ける範囲）を、しばらく盤に塗る。
-func _show_march_reach(applied: Array[BattleEvent]) -> void:
-	var colors := {}
-	for event in applied:
-		var unit := battle.unit_by_id(event.get(&"unit_id"))
-		var cells := Queries.move_cells(battle, unit)
-		for cell: Vector2i in cells:
-			colors[cell] = COLOR_MARCH
-	if colors.is_empty():
-		return
-	_board_view.show_cells(colors)
-	await after(MARCH_PAINT_TIME)
-	_board_view.show_cells({})
-
-
-func _play_tactic_healed(event: TacticHealedEvent) -> void:
-	await _play_heal(event, true)
-
-
 func _play_ult_used(event: UltUsedEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)
 	var color: Color = BattleHud.ULT_COLORS[event.ult]
@@ -684,9 +631,7 @@ func _play_ult_ready(_event: UltReadyEvent) -> void:
 func _play_status_applied(event: StatusAppliedEvent) -> void:
 	if _after_skill and event.status != Status.Type.FATIGUE:
 		return  # スキルの名前と形が見せている（反動は、スキルの形では分からないので出す）
-	# 強行軍は、状態の名前でなく、増えた移動力を出す（何が起きたかが盤の上で分かるように）。
-	var text := Text.t("battle.pop.march", Tactics.summary_args()) if event.status == Status.Type.MARCH else Names.status(event.status)
-	_pop_number(_view(event.unit_id).position, text, Color("9fd8ff"))
+	_pop_number(_view(event.unit_id).position, Names.status(event.status), Color("9fd8ff"))
 	await after(0.25)
 
 

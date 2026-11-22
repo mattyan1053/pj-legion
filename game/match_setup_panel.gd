@@ -22,8 +22,10 @@ signal decks_pressed(choice: RefCounted, side: Unit.Side)
 const DeployDialog := preload("res://game/deploy_dialog.gd")
 ## 初期位置の窓で見せる盤の種（生成のマップは、マップ選択のカードと同じ代表の形）。
 const PLACEMENT_SEED := 3
-## 試しの決まりの行の右の説明の欄の大きさ（px。2 行まで）。
-const TRIAL_NOTE_SIZE := Vector2(380.0, 44.0)
+## 選べる決まりの行（並び）、「あり」「なし」のボタンの幅、右の説明の欄の大きさ（px。2 行まで）。
+const TRIAL_ROWS: Array[StringName] = [TrialRules.STRONGHOLD, TrialRules.BATTERY]
+const TRIAL_BUTTON_WIDTH := 110.0
+const TRIAL_NOTE_SIZE := Vector2(400.0, 48.0)
 const Text := preload("res://game/text.gd")
 const Steady := preload("res://game/steady.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -82,13 +84,8 @@ var _can_edit_decks := false
 ## 取っておいた部隊（deck_library.gd）。無ければ既定の編成だけ。
 var _library: RefCounted
 var _side_caption: Label
-var _trial_buttons: Dictionary[StringName, Button] = {}
-var _trial_note: Label
-## 試しの決まりの行の右の説明に出すもの: マウスを乗せている札・決まりの説明と、最後に押した札・決まりの説明（どちらも無ければ、入の決まりの説明）。
-var _hover_note := ""
-var _picked_note := ""
-var _tactic_boxes: Array[HBoxContainer] = []
-var _tactic_buttons: Array[Dictionary] = []
+## 選べる決まりの行の右の説明（決まりの名前 → Label）。
+var _trial_notes: Dictionary[StringName, Label] = {}
 var _first_gauge_note: Label
 var _start_button: Button
 var _back_button: Button
@@ -157,25 +154,21 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		Unit.Side.PLAYER1: Text.t("setup.side.first"), Unit.Side.PLAYER2: Text.t("setup.side.second"), RANDOM_SIDE: Text.t("setup.side.random"),
 	})
 	_side_caption = side_row.get_child(0) as Label
-	# 試しの決まり（既定は切。docs/match-setup.md の「試しの決まり」）。
-	# 決まりごとに、入・切のボタンを 1 つずつ（押してあれば入）。右に、入の決まりのひとことの説明。
-	var trial_row := _caption_row(column, Text.t("setup.caption.trials"))
-	for trial in TrialRules.ALL:
-		var toggle := _button(Text.t("setup.trial.%s" % trial))
-		toggle.toggle_mode = true
-		var picked_trial := trial
-		toggle.pressed.connect(func() -> void: choose_trial(picked_trial, not _choice.has_trial(picked_trial)))
-		_note_on_hover(toggle, trial_note(trial))
-		trial_row.add_child(toggle)
-		_trial_buttons[trial] = toggle
-	# 説明の欄は決まった大きさ（2 行まで。中身で行もパネルも大きくしない）。
-	_trial_note = _label(13)
-	_trial_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_trial_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_trial_note.max_lines_visible = 2
-	_trial_note.custom_minimum_size = TRIAL_NOTE_SIZE
-	Steady.mark(_trial_note, "setup.trial_note")
-	trial_row.add_child(_trial_note)
+	# 選べる決まり（docs/match-setup.md の「選べる決まり」）。決まりごとに 1 行: 「あり」「なし」と、右に決まりのひとことの説明（決まった大きさ）。
+	for trial: StringName in TRIAL_ROWS:
+		var trial_row := _add_row(column, Text.t("setup.caption.%s" % trial), StringName("trial_%s" % trial),
+			{true: Text.t("setup.trial.on"), false: Text.t("setup.trial.off")})
+		for button: Button in (_rows[StringName("trial_%s" % trial)] as Dictionary).values():
+			button.custom_minimum_size = Vector2(TRIAL_BUTTON_WIDTH, 40.0)
+		var note := _label(14)
+		note.text = trial_note(trial)
+		note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.max_lines_visible = 2
+		note.custom_minimum_size = TRIAL_NOTE_SIZE
+		Steady.mark(note, "setup.trial_note")
+		trial_row.add_child(note)
+		_trial_notes[trial] = note
 	# 対戦モードの先手が必殺技のゲージをためて始まるなら（Ults.FIRST_PLAYER_START_GAUGE が 0 より大きい）、手番の行の右に書いておく。
 	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
 	_first_gauge_note = _label(14)
@@ -197,28 +190,6 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		var row := _add_row(side_column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)
 		(row.get_child(0) as Label).add_theme_font_override("font", UiTheme.FONT_BOLD)
-		# 作戦（試しの決まりが入のときだけ出す）: 札ごとのボタン。押してあるものが手札。
-		var tactic_box := HBoxContainer.new()
-		tactic_box.add_theme_constant_override("separation", 6)
-		var tactic_caption := _label(15)
-		tactic_caption.text = Text.t("setup.caption.tactics", {"count": Tactics.HAND_SIZE})
-		tactic_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		tactic_box.add_child(tactic_caption)
-		var tactic_buttons := {}
-		for id in Tactics.ALL:
-			var card := _button(Names.tactic(id))
-			card.toggle_mode = true
-			card.custom_minimum_size = Vector2(92.0, 40.0)
-			card.add_theme_font_size_override("font_size", 15)
-			var tactic_side := side
-			var tactic_id := id
-			card.pressed.connect(func() -> void: choose_tactic(tactic_side, tactic_id))
-			_note_on_hover(card, tactic_note(id))
-			tactic_box.add_child(card)
-			tactic_buttons[id] = card
-		row.add_child(tactic_box)
-		_tactic_boxes.append(tactic_box)
-		_tactic_buttons.append(tactic_buttons)
 		var deck_row := _caption_row(side_column, Text.t("setup.caption.deck"))
 		var picker := OptionButton.new()
 		picker.focus_mode = Control.FOCUS_NONE
@@ -372,58 +343,20 @@ func choose_random_side() -> void:
 	_show_choice()
 
 
-## 試しの決まり id を入・切する。入にしたら、その説明を行の右に出したままにする。
+## 選べる決まり id を入・切する。
 func choose_trial(id: StringName, on: bool) -> void:
 	_choice.set_trial(id, on)
-	_picked_note = trial_note(id) if on else ""
 	_show_choice()
 
 
-## 行 side の作戦に id を選ぶ（手札の枚数を超えたら、先に選んだものが外れる）。札の効果を、試しの決まりの行の右に出したままにする。
-func choose_tactic(side: Unit.Side, id: Tactics.Id) -> void:
-	_choice.pick_tactic(side, id)
-	_picked_note = tactic_note(id)
-	_show_choice()
+## 選べる決まりの行の右の説明（検査用）。
+func trial_note_text(id: StringName) -> String:
+	return (_trial_notes[id] as Label).text
 
 
-## 作戦の札の、名前と効果の文（「補給: 軍の全員が 8 回復」）。
-static func tactic_note(id: Tactics.Id) -> String:
-	return Text.t("setup.tactic.note", {"tactic": Names.tactic(id), "summary": Names.tactic_summary(id)})
-
-
-## ボタン button にマウスを乗せている間、試しの決まりの行の右に note を出す。
-func _note_on_hover(button: Button, note: String) -> void:
-	button.mouse_entered.connect(func() -> void:
-		_hover_note = note
-		_show_trial_note())
-	button.mouse_exited.connect(func() -> void:
-		if _hover_note == note:
-			_hover_note = ""
-		_show_trial_note())
-
-
-## 試しの決まりの行の右の説明: 乗せている札・決まり、最後に押した札・決まり、入の決まりの順に、あるものを出す。
-func _show_trial_note() -> void:
-	if _hover_note != "":
-		_trial_note.text = _hover_note
-	elif _picked_note != "":
-		_trial_note.text = _picked_note
-	else:
-		var notes := PackedStringArray()
-		for trial: StringName in TrialRules.ALL:
-			if _choice.has_trial(trial):
-				notes.append(trial_note(trial))
-		_trial_note.text = Text.t("common.joiner.comma").join(notes)
-
-
-## 試しの決まりの行の右の説明（検査用）。
-func trial_note_text() -> String:
-	return _trial_note.text
-
-
-## 試しの決まりの、ひとことの説明。
+## 選べる決まりの、ひとことの説明。
 static func trial_note(id: StringName) -> String:
-	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "count": Tactics.HAND_SIZE, "holds": Stronghold.HOLDS_TO_WIN})
+	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "holds": Stronghold.HOLDS_TO_WIN})
 
 
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
@@ -530,6 +463,9 @@ func _choose(key: StringName, value: Variant) -> void:
 			choose_army(Unit.Side.PLAYER1, value)
 		&"army1":
 			choose_army(Unit.Side.PLAYER2, value)
+		_:
+			if String(key).begins_with("trial_"):
+				choose_trial(StringName(String(key).trim_prefix("trial_")), value)
 
 
 func _show_choice() -> void:
@@ -541,22 +477,20 @@ func _show_choice() -> void:
 		&"opponent": _choice.cpu_opponent, &"human_side": side_value,
 		&"army0": _choice.armies[0], &"army1": _choice.armies[1],
 	}
+	for trial: StringName in TRIAL_ROWS:
+		current[StringName("trial_%s" % trial)] = _choice.has_trial(trial)
 	for key: StringName in _rows:
 		var buttons: Dictionary = _rows[key]
 		for value: Variant in buttons:
 			(buttons[value] as Button).set_pressed_no_signal(value == current[key])
 	_map_name.text = "%d %s" % [VersusFields.number_of(_choice.field), VersusFields.title_of(_choice.field)]
-	if _banner_field != _choice.field:
-		_banner_field = _choice.field
+	var banner_key := StringName("%s:%s" % [_choice.field, _choice.has_trial(TrialRules.STRONGHOLD)])  # 拠点の入・切でも縮図を描き直す
+	if _banner_field != banner_key:
+		_banner_field = banner_key
 		var board := VersusFields.card_board(_choice.field, PLACEMENT_SEED)
+		if board != null and _choice.has_trial(TrialRules.STRONGHOLD):
+			Stronghold.arm(board, PLACEMENT_SEED)  # 拠点の印も縮図に描く
 		_banner.show_map(null if board == null else ImageTexture.create_from_image(MapCard.draw(board, VersusFields.look_of(_choice.field), _team_colors)))
-	for trial: StringName in _trial_buttons:
-		(_trial_buttons[trial] as Button).set_pressed_no_signal(_choice.has_trial(trial))
-	_show_trial_note()
-	for side in 2:
-		_tactic_boxes[side].visible = _choice.has_trial(TrialRules.TACTICS)
-		for id: Tactics.Id in _tactic_buttons[side]:
-			(_tactic_buttons[side][id] as Button).set_pressed_no_signal(_choice.tactics[side].has(id))
 	# 人どうしなら、手番は選ばない（先手・後手の 2 人が交代する）。
 	for button: Button in _rows[&"human_side"].values():
 		button.disabled = not _choice.cpu_opponent

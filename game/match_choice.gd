@@ -37,10 +37,8 @@ var drawn_side := Unit.Side.PLAYER1
 ## 行ごとの、人が決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
 ## その行が先手（下の本陣）として決めたもの。後手として対戦する（手番がランダム）ときは、上下を返して使う。部隊を替えたら空に戻す。
 var placements: Array[Array] = [[], []]
-## 入にした試しの決まり（TrialRules の名前。既定は空 = どれも切。docs/match-setup.md の「試しの決まり」）。
-var trials: Array[StringName] = []
-## 行ごとの、選んだ作戦（Tactics.Id の並び。選んだ順）。試しの決まり「作戦」が入のときだけ使う（docs/tactics.md）。
-var tactics: Array[Array] = [Tactics.DEFAULT_HAND.duplicate(), Tactics.DEFAULT_HAND.duplicate()]
+## 入にした選べる決まり（TrialRules の名前。既定は TrialRules.DEFAULTS = 拠点あり・砲台なし。docs/match-setup.md の「選べる決まり」）。
+var trials: Array[StringName] = TrialRules.DEFAULTS.duplicate()
 
 
 ## CPU と対戦するときに、人が動かすプレイヤー（ランダムなら、最後に作った対戦で引いた側）。
@@ -69,20 +67,11 @@ func has_trial(id: StringName) -> bool:
 	return trials.has(id)
 
 
-## 試しの決まり id を入・切する。
+## 選べる決まり id を入・切する。
 func set_trial(id: StringName, on: bool) -> void:
 	trials.erase(id)
 	if on and TrialRules.is_known(id):
 		trials.append(id)
-
-
-## 行 side の作戦に id を足す。もう選んでいれば何もしない。手札の枚数を超えたら、先に選んだものを外す。
-func pick_tactic(side: Unit.Side, id: Tactics.Id) -> void:
-	if tactics[side].has(id) or not Tactics.ALL.has(id):
-		return
-	tactics[side].append(id)
-	while tactics[side].size() > Tactics.HAND_SIZE:
-		tactics[side].pop_front()
 
 
 func make_setup(battle_seed: int) -> MatchSetup:
@@ -242,8 +231,6 @@ func copy() -> RefCounted:
 	other.drawn_side = drawn_side
 	other.trials = trials.duplicate()
 	for side in 2:
-		other.tactics[side] = tactics[side].duplicate()
-	for side in 2:
 		other.placements[side] = placements[side].duplicate()
 	return other
 
@@ -293,9 +280,6 @@ func to_setup(battle_seed: int) -> MatchSetup:
 			if board != null:
 				placement = Deployment.facing_placement(board, placement)
 		setup.placements[plays_as] = placement
-	for row in 2:
-		var tactics_of: int = row if not cpu_opponent else (human_side_now() if row == human_row() else cpu_side())
-		setup.tactics[tactics_of] = tactics[row].duplicate()
 	# ランダム編成で組んだ部隊を覚える（「編成確認」で見せる）。行と、実際に動かすプレイヤーは、手番がランダムのときに違う。
 	for row in 2:
 		var plays_as: int = row if not cpu_opponent else (human_side_now() if row == human_row() else cpu_side())

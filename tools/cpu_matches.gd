@@ -36,7 +36,8 @@ extends SceneTree
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --trials=NAME   試しの決まり（TrialRules の名前。battery = 砲台。`,` で並べられる）を入にして回す（docs/match-setup.md の「試しの決まり」）
+##   --trials=NAME   選べる決まり（TrialRules の名前。battery = 砲台、stronghold = 拠点。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##                   付けなければ、対戦モードの既定（TrialRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
 ##                   ファイルは、マップのファイルと同じ書式（[rows] の節。docs/hand-map.md）か、文字の格子の行だけを並べたテキスト。--stage より優先する
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
@@ -372,8 +373,6 @@ func _initialize() -> void:
 	var squad_rows: Dictionary[String, Array] = {}
 	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
 	var one_versus: Dictionary[String, Array] = {}
-	# 作戦（試しの決まり）の札ごとの [手札にあった決着した局, うち勝ち, 手札にあった局, 使った局]。
-	var tactic_rows: Dictionary[Tactics.Id, Array] = {}
 	var started := Time.get_ticks_msec()
 
 	for game in games:
@@ -408,12 +407,13 @@ func _initialize() -> void:
 			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
-		for trial in (args.get("trials", "") as String).split(",", false):
-			setup.trials.append(StringName(trial))
-		if random_squads and setup.trials.has(TrialRules.TACTICS):
-			# 作戦の手札も、局ごとに変える（札ごとの勝ち負けを見る）。
-			for side in 2:
-				setup.tactics[side] = Tactics.random_hand((first_seed + game) * 2 + side)
+		# 対戦モードは、対戦設定の既定の決まり（拠点あり）で回す。--trials=none で全部切、--trials=名前,… でそれだけ入。
+		var trial_arg := args.get("trials", "default") as String
+		if episode == null and trial_arg == "default":
+			setup.trials.append_array(TrialRules.DEFAULTS)
+		elif trial_arg != "default" and trial_arg != "none":
+			for trial in trial_arg.split(",", false):
+				setup.trials.append(StringName(trial))
 		var battle := setup.create_battle()
 		if args.has("relic"):
 			var relic := Relics.Id.COURAGE if args["relic"] == "courage" else Relics.Id.WISDOM
@@ -439,21 +439,6 @@ func _initialize() -> void:
 					for i in row.size():
 						row[i] += outcome.by_side_kind[side][kind][i]
 
-		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-			var names: Array[String] = []
-			var used_names: Array[String] = []
-			for id: Tactics.Id in Tactics.hand(battle, side):
-				var used: bool = battle.tactics_used[side].has(id)
-				var row: Array = tactic_rows.get_or_add(id, [0, 0, 0, 0])
-				row[0] += 1 if outcome.winner >= 0 else 0
-				row[1] += 1 if outcome.winner == side else 0
-				row[2] += 1
-				row[3] += 1 if used else 0
-				names.append(Names.word(Tactics.Id, id))
-				if used:
-					used_names.append(Names.word(Tactics.Id, id))
-			if not names.is_empty() and args.get("list", "0") == "1":
-				print("TACTIC seed=%d side=%d hand=%s used=%s" % [first_seed + game, side, "+".join(names), "+".join(used_names)])
 		if args.get("list", "0") == "1":
 			var kills: Array[String] = []
 			for kill: Array in outcome.mid_boss_kills:
@@ -696,14 +681,6 @@ func _initialize() -> void:
 			float(row[6]) / maxi(1, row[7]), row[3], row[2], 100.0 * row[3] / maxi(1, row[2]),
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]),
 		])
-	if not tactic_rows.is_empty():
-		print("")
-		print("作戦（札ごと。手札にあった側の勝率は決着した局だけ）")
-		for id in Tactics.ALL:
-			var row: Array = tactic_rows.get(id, [0, 0, 0, 0])
-			print("  %-6s 手札 %4d  使った %4d（%3.0f%%）  手札にあった側 %3d 勝 / %3d（%3.0f%%）" % [
-				Names.tactic(id), row[2], row[3], 100.0 * row[3] / maxi(1, row[2]), row[1], row[0], 100.0 * row[1] / maxi(1, row[0]),
-			])
 	print("")
 	print("行動 %d 回。考える時間: 1 手の平均 %.1f ms、最長 %.1f ms。全体で %.1f 秒" % [
 		actions, think / maxi(1, actions), slowest, (Time.get_ticks_msec() - started) / 1000.0,
