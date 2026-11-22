@@ -21,6 +21,7 @@ const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
 const TalkFigure := preload("res://game/talk_figure.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const Steady := preload("res://game/steady.gd")
 const TalkLog := preload("res://game/talk_log.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 
@@ -30,6 +31,8 @@ signal finished(outcome: StringName)
 const CHARS_PER_SECOND := 45.0
 const BOX_WIDTH := 980.0
 const BOX_HEIGHT := 150.0
+## 名前の札の幅（px）。いちばん長い話し手の名前が入る幅（tests/game/test_steady_frames.gd）。名前の長さで変えない。
+const PLATE_WIDTH := 152.0
 ## あとの会話の「次の話へ」「話の一覧へ」のボタンの幅（px。縦に積んで、左右の話し手の間に収める）。
 const CHOICE_WIDTH := 260.0
 const BOX_BOTTOM := 40.0
@@ -92,6 +95,7 @@ var _bottom: Control
 ## 会話を終えるときの行き先の選択（次の話があるときだけ。_end で出す）。
 var _choice: Control
 var _layer: CanvasLayer
+var _backdrop: Backdrop
 
 
 func _ready() -> void:
@@ -100,7 +104,12 @@ func _ready() -> void:
 	var given: Variant = context.run_data()
 	if given != null:
 		talk = given
-	add_child(Backdrop.new(talk.get("board"), talk.get("look", &"")))
+	# 話の流れの会話なら、背景の盤に駒を立たせる（前の会話は初期位置、あとの会話は決着したときの駒。story_battle.gd の talk_battle）。
+	var story_battle: RefCounted = talk.get("battle")
+	var shown: Battle = story_battle.talk_battle(talk.get("after", false)) if story_battle != null else null
+	var king_looks: Array[StringName] = story_battle.king_looks() if story_battle != null else [] as Array[StringName]
+	_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks)
+	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_layer = layer
@@ -157,8 +166,13 @@ func _ready() -> void:
 	_plate = PanelContainer.new()
 	_plate.add_theme_stylebox_override("panel", _plate_style)
 	_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 札の幅は、話し手の名前の長さで変えない（docs/ui-theme.md の「枠の大きさ」）。名前は真ん中に置く。
+	_plate.custom_minimum_size = Vector2(PLATE_WIDTH, 0.0)
+	Steady.mark(_plate, "talk.name_plate", Steady.RECT)
 	top_row.add_child(_plate)
 	_name = _label(22, Color.WHITE)
+	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_plate.add_child(_name)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -404,6 +418,14 @@ func line_index() -> int:
 ## いまの文が出きっているか。
 func is_line_shown() -> bool:
 	return _index >= line_count() or _shown >= _line_length()
+
+
+## 背景の盤に立たせた駒の数（陣営ごと: [味方, 敵, 中立]。検査用）。
+func backdrop_units() -> Array[int]:
+	var counts: Array[int] = [0, 0, 0]
+	for view in _backdrop.unit_views:
+		counts[_backdrop.unit_sides[_backdrop.unit_views.find(view)]] += 1
+	return counts
 
 
 ## いま立っている話し手の姿（検査用。左右に 1 人ずつまで）。

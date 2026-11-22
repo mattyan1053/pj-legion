@@ -1639,8 +1639,14 @@ func _queue_tactic_scene() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
 		_expect(_scene.tactic_buttons() == [[Names.tactic(Tactics.Id.SUPPLY), true], [Names.tactic(Tactics.Id.MARCH), true]], "作戦のボタンが、手札の順に出ていない")
+		_expect(_scene.notice_text().contains("作戦"), "対戦の始めに、作戦の知らせが出ていない")
+		_expect(_scene.tactic_note_text() == "", "札に乗せる前から、札の説明が出ている")
+		_scene.hover_tactic(1)
+		_expect(_scene.tactic_note_text().contains(Names.tactic_summary(Tactics.Id.MARCH)), "札に乗せても、効果が出ない")
+		_scene.hover_tactic(-1)
 		_scene.press_tactic(0)
 		_expect(battle.tactics_used[0].is_empty(), "1 回押しただけで、作戦を使った")
+		_expect(_scene.tactic_note_text().contains(Names.tactic_summary(Tactics.Id.SUPPLY)), "使うかを確かめている間に、効果が出ていない")
 		_scene.press_tactic(0)
 		_expect(battle.tactics_used[0].is_empty(), "素早い 2 回押しで、作戦の確かめを飛ばした")
 		_scene.pass_confirm_guard()
@@ -1650,6 +1656,9 @@ func _queue_tactic_scene() -> void:
 		_expect(_scene.played.get(used, 0) == 1, "作戦を再生しなかった")
 		_expect(trooper.hp == trooper.max_hp() - 20 + Tactics.SUPPLY_HEAL, "補給で回復しなかった")
 		_expect(not _scene.tactic_buttons()[0][1], "使った札が、まだ押せる")
+		_expect(_scene.tactic_note_text().contains(Names.tactic_summary(Tactics.Id.SUPPLY)), "使った札の効果を知らせていない")
+		_expect(_scene.battle_log.entries.any(func(entry: RefCounted) -> bool: return (entry.text as String).contains(Names.tactic_summary(Tactics.Id.SUPPLY))),
+			"ログに、使った札の効果が無い")
 		_scene.press_tactic(1)
 		_scene.pass_confirm_guard()
 		_scene.press_tactic(1))
@@ -2324,6 +2333,9 @@ func _visit_story(app: Node) -> void:
 	_expect(scape.story_key() == Story.military().episodes[0].id and scape.shown_look() == Story.military().episodes[0].look, "話を選んでも、背景がその話のマップに替わらない")
 	list.focus(Story.military().episodes[-1])
 	_expect(scape.story_key() == Story.military().episodes[0].id, "まだ遊べない話を選んだら、背景が替わった")
+	list.focus(episode)
+	scape.cancel_queued()
+	_expect(scape.story_key() == Story.military().episodes[0].id, "とどまる前にカードから離れても、背景が替わる")
 	for later: RefCounted in Story.military().episodes.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
 		_expect(list.card_title(later) == "？？？" and not list.is_card_revealed(later), "まだ遊べない %s のカードの名前か縮図・顔が見えている" % later.title)
@@ -2434,6 +2446,10 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TALK, "決着の画面の「次へ」で、あとの会話へ進まない")
 	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.after.size() + Story.unlocked_before(episode).news_of(episode).size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
+	# 背景の盤に、勝ったときに生き残っていた駒が立つ。
+	var ended: Battle = app.context.run.data()["battle"].ended_battle
+	var survivors := ended.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1).size() if ended != null else -1
+	_expect(talk.backdrop_units()[0] == survivors, "あとの会話の背景に、生き残った味方が立たない: %s / %d" % [talk.backdrop_units(), survivors])
 	if not episode.unlock_kinds.is_empty():
 		talk.press_skip()
 		_expect(talk.line_index() == episode.after.size() and talk.speaker() == Story.notice_name()
@@ -2724,6 +2740,9 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	if talk_first:
 		_expect(app.current_id() == SceneFlow.TALK, "出撃しても、対戦の前の会話へ進まない")
 		if app.current_id() == SceneFlow.TALK:
+			# 背景の盤に、初期位置の味方と、話の並びの敵が立つ。
+			var standing: Array[int] = app.current_scene().backdrop_units()
+			_expect(standing[0] == chosen.entries.size() + 1 and standing[1] > 0, "対戦の前の会話の背景に、初期位置の駒が立たない: %s" % [standing])
 			if on_talk.is_valid():
 				await on_talk.call(app.current_scene())
 			app.current_scene().press_skip()

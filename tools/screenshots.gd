@@ -135,7 +135,9 @@ const SCENES := {
 	"spring": "寄って見た回復の泉（水面に広がる波紋。迷宮回廊）",
 	"portal": "寄って見たポータル（渦を巻いて昇る光の粒と、脈打つ面。双子結晶）",
 	"tactic": "作戦（試しの決まり）の手札のボタン。1 枚目を 1 回押して、確かめている（中央平原）",
-	"setup_tactics": "対戦設定で、試しの決まりの「作戦」を入にして、札を選んだところ",
+	"setup_tactics": "対戦設定で、試しの決まりの「作戦」を入にして、札を選んだところ（選んだ札の効果が、決まりの行の右に出る）",
+	"tactic_march": "作戦の強行軍を使った直後（広がった移動の範囲を塗り、駒ごとに「移動 +2」。手札の上に使った札の効果。中央平原）",
+	"trial_notice": "試しの決まりを全部入にした対戦の始め（決まりの知らせ。中央平原）",
 	"battery_cell": "砲台（試しの決まり）のマスをクリックして、説明が出ている（中央平原）",
 	"battery": "砲台に乗った後衛を選んだところ（射程が伸びている。中央平原）",
 	"setup_battery": "対戦設定で、試しの決まりの「砲台」を「あり」にしたところ",
@@ -1870,6 +1872,40 @@ func _scene_tactic() -> bool:
 		return false
 	_scene.press_tactic(0)
 	return true
+
+
+## 強行軍を使った直後。広がった移動の範囲を塗っている間を撮る。
+func _scene_tactic_march() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([TrialRules.TACTICS])
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	var index := Tactics.hand(_battle, Unit.Side.PLAYER1).find(Tactics.Id.MARCH)
+	if index < 0 or not Tactics.is_unused(_battle, Unit.Side.PLAYER1, Tactics.Id.MARCH):
+		return false
+	var front := _battle.board.hq_cells[Unit.Side.PLAYER1]
+	for unit in _battle.units:
+		if unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING and not unit.acted:
+			front = unit.cell
+			break
+	await _settle_camera(front)
+	_park_mouse()
+	_scene.press_tactic(index)
+	_scene.pass_confirm_guard()
+	_scene.set_time_scale_base(0.5)
+	_scene.press_tactic(index)
+	await get_tree().create_timer(1.3).timeout  # 知らせと、駒ごとの「移動 +2」のあと、範囲を塗っている間（対戦の時間で数える）
+	_mid_animation = true
+	return true
+
+
+## 試しの決まりを全部入にした対戦の始め。
+func _scene_trial_notice() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle(TrialRules.ALL.duplicate())
+	_show()
+	return _scene.notice_text() != ""
 
 
 func _scene_battery_cell() -> bool:

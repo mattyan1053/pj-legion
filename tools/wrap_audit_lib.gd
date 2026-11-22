@@ -103,7 +103,8 @@ static func talk_max_lines() -> int:
 ## 途中の台詞の帯の文の幅（battle_talk.gd の _next と同じ引き算。話し手のアイコンと送りの印が出るとき）。
 static func cue_width(speaker: String) -> float:
 	var box := 4.0 + 12.0  # 帯の左右の余白
-	var plate := 20.0 + UiTheme.FONT_BOLD.get_string_size(speaker, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	# 名前の札は、決まった幅（名前が入らないほど長ければ、そのぶん広がる）。
+	var plate := maxf(BattleTalk.PLATE_WIDTH, 20.0 + UiTheme.FONT_BOLD.get_string_size(speaker, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x)
 	var face := BattleTalk.FACE_SIZE
 	var more := UiTheme.FONT_BODY.get_string_size("▼", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	return BattleTalk.WIDTH - box - plate - BattleTalk.ROW_GAP - face - BattleTalk.ROW_GAP - more - BattleTalk.ROW_GAP

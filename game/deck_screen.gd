@@ -34,6 +34,7 @@ const CostGems := preload("res://game/cost_gems.gd")
 const StatsRow := preload("res://game/stats_row.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
 const UnitSummary := preload("res://game/unit_summary.gd")
+const Steady := preload("res://game/steady.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
@@ -891,6 +892,7 @@ func _build_editor() -> Control:
 	_detail_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# 持ち物が多くても、駒の札はこの高さを割らない（持ち物の欄のほうを、欄の中で送る。_fit_equip）。
 	_detail_card.custom_minimum_size = Vector2(0.0, DETAIL_MIN_HEIGHT)
+	Steady.mark(_detail_card, "decks.unit_card", Steady.RECT)
 	right.add_child(_detail_card)
 	# 中身が長い駒でも、画面の下へはみ出さないよう、札の中で送れるようにする。
 	var detail_scroll := ScrollContainer.new()
@@ -913,6 +915,7 @@ func _build_editor() -> Control:
 	_detail_open.pressed.connect(press_unit_detail)
 	_detail_summary.corner().add_child(_detail_open)
 	_equip_box = _card()
+	Steady.mark(_equip_box, "decks.items", Steady.RECT)
 	right.add_child(_equip_box)
 	var equip_column := VBoxContainer.new()
 	equip_column.add_theme_constant_override("separation", 6)
@@ -1223,10 +1226,21 @@ func _refresh_detail() -> void:
 		entry = null
 	elif entry != null:
 		kind = entry.kind
-	# 持ち物の欄は、部隊の駒を選んでいる間はいつも出す（雇える駒に乗せても消さない。消すと札の大きさが変わって揺れる）。
+	# 駒の札と持ち物の欄は、いつも同じ大きさで場所を取る（docs/ui-theme.md の「枠の大きさ」）。出すものが無い間は、中身を透かすだけ
+	# （駒を選ぶ・雇える駒に乗せるたびに、札が出たり消えたり、伸び縮みしたりしない）。
 	var chosen_entry: DeckEntry = _deck.entries[_selected] if _selected != -1 else null
-	_equip_box.visible = chosen_entry != null
-	_detail_card.visible = kind != -1
+	# 枠は出したまま、中身だけを透かす（空の枠が、そこに何が出るかの場所を示す）。
+	(_equip_box.get_child(0) as Control).modulate.a = 1.0 if chosen_entry != null else 0.0
+	(_detail_card.get_child(0) as Control).modulate.a = 1.0 if kind != -1 else 0.0
+	if chosen_entry == null:
+		# 持ち物の欄は、並ぶ行だけ決めて（高さを保つ）、押せなくする。
+		var listed := _deck.rules.shown_items()
+		for item: Equipment.Id in _equip_rows:
+			var parts: Array = _equip_rows[item]
+			(parts[5] as Control).visible = listed.has(item)
+			(parts[0] as Button).disabled = true
+			(parts[2] as Button).disabled = true
+		_fit_equip()
 	if kind == -1:
 		return
 	var unit_kind := kind as UnitKind.Id
@@ -1276,8 +1290,9 @@ func _refresh_detail() -> void:
 
 ## 持ち物の欄の高さを決める: 並ぶ行がぜんぶ入る高さ。ただし、駒の札が DETAIL_MIN_HEIGHT を割るなら、そこまでにして欄の中で送る。
 func _fit_equip() -> void:
-	if _equip_scroll == null or _edit_view == null or not _equip_box.visible:
+	if _equip_scroll == null or _edit_view == null:
 		return
+	# 高さは、決まりが並べる持ち物の行の数で決める（選んでいる駒が持っているものでは変えない）。
 	var natural := _equip_list.get_combined_minimum_size().y
 	var chrome := _equip_box.get_combined_minimum_size().y - _equip_scroll.custom_minimum_size.y
 	# 右の列に使える高さは、画面の高さから決める（右の列のいまの高さからは決めない。ここで決めた下限が右の列を支えるので、

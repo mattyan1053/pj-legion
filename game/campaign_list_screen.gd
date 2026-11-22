@@ -252,6 +252,7 @@ func _build_card(campaign: Campaign) -> Button:
 	card.pressed.connect(choose.bind(campaign))
 	if ready:
 		card.mouse_entered.connect(focus.bind(campaign))
+		card.mouse_exited.connect(func() -> void: _backdrop.cancel_queued())
 
 	card.add_child(CardDecor.new(campaign.army, ready))
 	var column := VBoxContainer.new()

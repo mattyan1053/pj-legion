@@ -363,6 +363,7 @@ func _build_card(info: Dictionary, number: int) -> Button:
 		card.disabled = state in [SaveSlots.BROKEN, SaveSlots.NEWER]
 	card.pressed.connect(choose.bind(number))
 	card.mouse_entered.connect(focus.bind(number))
+	card.mouse_exited.connect(func() -> void: _backdrop.cancel_queued())
 	var lines := card_lines(info, number)
 	var summary_campaign: Variant = null
 	if state == SaveSlots.READY:

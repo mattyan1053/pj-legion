@@ -146,3 +146,14 @@ func test_the_title_shows_every_look_and_has_its_own_theme() -> void:
 	assert_eq(looks.size(), StageLook.THEMES.size(), "同じ景色が 2 つある")
 	assert_eq(SceneFlow.music(SceneFlow.TITLE), &"title")
 	assert_eq(SceneFlow.music(SceneFlow.CAMPAIGNS), &"menu", "選んでいる間は、いままでのタイトルの曲")
+
+
+## 物語選択で、いま選んでいない物語のカードに乗せたときも、その物語の記録で「まだクリアしていない最初の話」を選ぶ。
+func test_the_campaign_backdrop_reads_the_hovered_campaigns_record() -> void:
+	var story: RefCounted = Story.new()
+	var fantasy: RefCounted = Story.campaigns()[1]
+	story.choose_campaign(Story.military())
+	story.clear(Story.military().episodes[0].id)
+	story.choose_campaign(fantasy)
+	assert_eq(story.scape_episode_in(Story.military()), Story.military().episodes[1], "選んでいない物語の記録を見る")
+	assert_eq(story.scape_episode_in(fantasy), fantasy.episodes[0])

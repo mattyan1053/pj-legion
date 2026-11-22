@@ -540,7 +540,7 @@ func _read_status_applied(event: StatusAppliedEvent) -> void:
 
 
 func _read_tactic_used(event: TacticUsedEvent) -> void:
-	var text := Text.t("battle.log.tactic", {"side": Names.side_word(event.side), "tactic": Names.tactic(event.tactic)})
+	var text := Text.t("battle.log.tactic", {"side": Names.side_word(event.side), "tactic": Names.tactic(event.tactic), "summary": Names.tactic_summary(event.tactic)})
 	_begin_group(_line(text, event.side))
 
 
