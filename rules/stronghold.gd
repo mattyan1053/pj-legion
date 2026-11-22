@@ -58,7 +58,7 @@ static func candidates(board: Board) -> Array[Vector2i]:
 			var i := y * board.size.x + x
 			if near[i] < 0 or far[i] < 0 or not _can_hold(board, cell):
 				continue
-			var gap := absi(near[i] - far[i])
+			var gap := absi(near[i] - far[i] - int(OS.get_environment("SH_GAP")))
 			var off := Vector2(cell).distance_squared_to(middle)
 			if ties.is_empty() or gap < best_gap or (gap == best_gap and off < best_off - 0.001):
 				ties = [cell]
@@ -149,8 +149,8 @@ static func holds_left(battle: Battle, player: Unit.Side) -> int:
 
 
 static func needed(player: int) -> int:
-	if player == 1 and OS.get_environment("SH_P2") == "7":
-		return HOLDS_TO_WIN - 1
+	if player == 1 and OS.has_environment("SH_P2"):
+		return int(OS.get_environment("SH_P2"))
 	return HOLDS_TO_WIN
 
 
