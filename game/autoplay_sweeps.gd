@@ -231,22 +231,11 @@ func _versus(app: Node, field: StringName, trials: Array[StringName]) -> void:
 	var battle: Battle = screen.battle
 	for trial in TrialRules.ALL:
 		_expect(screen.source.has_trial(trial) == trials.has(trial), "選んだ試しの決まりで、対戦が始まらない: %s" % trial)
-	var tactic_tried := false
 	for i: int in WAIT_FRAMES * 4:
 		battle = screen.battle
 		if battle.is_over() or battle.turn > VERSUS_TURNS:
 			break
 		if screen.is_busy() or battle.phase != screen.source.human_side_now():
-			await app.get_tree().process_frame
-			continue
-		if trials.has(TrialRules.TACTICS) and not tactic_tried:
-			# 作戦の手札の 1 枚目を、確かめてから使う（再生を待ってから、おまかせへ）。
-			tactic_tried = true
-			var side: Unit.Side = screen.source.human_side_now()
-			screen.press_tactic(0)
-			screen.pass_confirm_guard()
-			screen.press_tactic(0)
-			_expect(not battle.tactics_used[side].is_empty(), "作戦の札を使えない（手札: %s）" % [Tactics.hand(battle, side)])
 			await app.get_tree().process_frame
 			continue
 		screen.press_auto()

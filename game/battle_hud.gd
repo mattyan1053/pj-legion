@@ -28,8 +28,6 @@ signal menu_pressed(id: StringName)
 signal menu_hovered(id: StringName)
 ## 必殺技のボタンが押された（確かめる・使うのは呼ぶ側が決める）。
 signal ult_pressed
-## 作戦のボタン（手札の何枚目か）が押された。
-signal tactic_pressed(index: int)
 signal end_turn_pressed
 ## 進化先を選んだ。index は、出している選択肢の何番目か（0 が A、1 が B）。
 signal evolution_chosen(index: int)
@@ -76,15 +74,6 @@ const CELL_FONT_SIZE_SMALL := 12
 const MENU_ITEM_WIDTH := 210.0
 const MENU_FONT_SIZE := 17
 const MENU_FONT_FLOOR := 13
-const TACTIC_BUTTON_HEIGHT := 40.0
-## 対戦の始めの知らせ（試しの決まり）の枠の大きさ（px）。決まりの数で変えない。
-const NOTICE_SIZE := Vector2(620.0, 290.0)
-## 知らせの本文の行数の上限（折り返した行も数える）。これを超える分は出さない（枠を広げない）。
-const NOTICE_LINES := 6
-## 作戦のボタンの幅と、その上の説明の枠の大きさ（px）。札の名前・使用済み・確かめで変えない。
-const TACTIC_BUTTON_WIDTH := 172.0
-const TACTIC_NOTE_SIZE := Vector2(460.0, 70.0)
-const TACTIC_FLASH_SECONDS := 5.0
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
@@ -140,9 +129,6 @@ var _phase_chip_style: StyleBoxFlat
 var _goal_panel: PanelContainer
 var _goal_style: StyleBoxFlat
 var _goal_label: Label
-## 対戦の始めの知らせ（試しの決まり。見出し、決まりごとの行、閉じるボタン）。
-var _notice: PanelContainer
-var _notice_body: Label
 var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
 ## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
@@ -210,17 +196,6 @@ var _skip_button: Button
 ## 自分の番の残りを CPU に任せるボタン（ターン終了の左。set_auto_button）。
 var _auto_button: Button
 var _ult_panel: PanelContainer
-var _tactic_box: HBoxContainer
-## 作戦の説明の枠（手札のボタンの上）。札ごとの説明、確かめている札（無ければ -1）、検査で乗せたことにした札。
-var _tactic_note_panel: PanelContainer
-var _tactic_note: Label
-var _tactic_notes: Array[String] = []
-var _tactic_pinned := -1
-var _tactic_hover_forced := -1
-## 作戦が使われたときに、しばらく出す文（どちらの陣営でも）と、消す時刻（ミリ秒）。
-var _tactic_flash := ""
-var _tactic_flash_until := 0
-var _tactic_buttons: Array[Button] = []
 var _ult_pinned := false
 var _menu: PanelContainer
 var _forecast: ForecastPanel
@@ -259,7 +234,6 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_bottom()
 	_build_flash()
 	_build_banner()
-	_build_notice()
 	_build_menu()
 	_build_forecast()
 	_build_minimap()
@@ -382,97 +356,6 @@ func set_ult_button(text: String, enabled: bool, summary: String, pinned := fals
 	_fold_hint()
 
 
-## 作戦のボタンを並べる。items は手札の順に [文字, 押せるか, 説明, 確かめている途中か]。空なら出さない。
-## ボタンの幅は文字で変えない（TACTIC_BUTTON_WIDTH）。説明は、ボタンの上の決まった大きさの枠（TACTIC_NOTE_SIZE）に、
-## マウスを乗せている間と、使うかを確かめている間だけ出す。出している間は、必殺技の説明の枠を、そのぶん上へずらす（重ねない）。
-func set_tactic_buttons(items: Array) -> void:
-	while _tactic_buttons.size() < items.size():
-		var index := _tactic_buttons.size()
-		var button := _button("", Signal())
-		button.custom_minimum_size = Vector2(TACTIC_BUTTON_WIDTH, TACTIC_BUTTON_HEIGHT)
-		button.clip_text = true
-		button.add_theme_font_size_override("font_size", 16)
-		Steady.mark(button, "battle.tactic_button")
-		button.pressed.connect(func() -> void: tactic_pressed.emit(index))
-		button.mouse_entered.connect(_show_tactic_note)
-		button.mouse_exited.connect(_show_tactic_note)
-		_tactic_box.add_child(button)
-		_tactic_buttons.append(button)
-	_tactic_notes.clear()
-	_tactic_pinned = -1
-	for i in _tactic_buttons.size():
-		var button := _tactic_buttons[i]
-		button.visible = i < items.size()
-		_tactic_notes.append(items[i][2] if button.visible else "")
-		if button.visible:
-			button.text = items[i][0]
-			button.disabled = not items[i][1]
-			if items[i].size() > 3 and items[i][3]:
-				_tactic_pinned = i
-	_tactic_box.visible = not items.is_empty()
-	var lift := TACTIC_BUTTON_HEIGHT + 8.0 if _tactic_box.visible else 0.0
-	_ult_panel.offset_top = -BOTTOM_BAR_HEIGHT - 8.0 - lift
-	_ult_panel.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0 - lift
-	_show_tactic_note()
-
-
-## 作戦の説明の枠を出すか決める: 確かめている札があればその札、無ければマウスの乗っている札の説明。どちらも無ければ消す。
-## 出している間は、必殺技の説明（同じ場所）を出さない。
-func _show_tactic_note() -> void:
-	var shown := _tactic_pinned
-	if shown < 0:
-		for i in _tactic_buttons.size():
-			if _tactic_buttons[i].visible and (_tactic_buttons[i].is_hovered() or i == _tactic_hover_forced):
-				shown = i
-	var text := _tactic_notes[shown] if _tactic_box.visible and shown >= 0 and shown < _tactic_notes.size() else ""
-	if text == "" and Time.get_ticks_msec() < _tactic_flash_until:
-		text = _tactic_flash
-	_tactic_note_panel.visible = text != ""
-	if _tactic_note_panel.visible:
-		_tactic_note.text = text
-		_ult_panel.visible = false
-	else:
-		_show_ult_summary()
-
-
-## 作戦が使われたことを、手札のボタンの上の枠に TACTIC_FLASH_SECONDS 秒だけ出す（札にマウスを乗せている間は、そちらが先）。
-func flash_tactic_note(text: String) -> void:
-	_tactic_flash = text
-	_tactic_flash_until = Time.get_ticks_msec() + int(TACTIC_FLASH_SECONDS * 1000.0)
-	_show_tactic_note()
-	# 消す時刻は実時間で数える（早送りで Engine.time_scale が変わっても、時刻とずれない）。
-	get_tree().create_timer(TACTIC_FLASH_SECONDS + 0.05, true, false, true).timeout.connect(_show_tactic_note)
-
-
-## 作戦の説明の枠の文（出ていなければ空。検査用）。
-func tactic_note_text() -> String:
-	return _tactic_note.text if _tactic_note_panel.visible else ""
-
-
-## 作戦の説明の枠と、手札のボタンの大きさ（検査用）。
-func tactic_sizes() -> Array[Vector2]:
-	var sizes: Array[Vector2] = [_tactic_note_panel.size]
-	for button in _tactic_buttons:
-		sizes.append(button.size)
-	return sizes
-
-
-## 作戦のボタンにマウスを乗せたことにする（スクリーンショット・検査用。-1 で外す）。
-func hover_tactic(index: int) -> void:
-	_tactic_hover_forced = index
-	_show_tactic_note()
-
-
-## 作戦のボタンの [文字, 押せるか] の列（出しているものだけ）。検査用。
-func tactic_buttons() -> Array:
-	var shown: Array = []
-	if _tactic_box.visible:
-		for button in _tactic_buttons:
-			if button.visible:
-				shown.append([button.text, not button.disabled])
-	return shown
-
-
 ## 必殺技のボタンの中のゲージ（押せない間だけ）: 左から溜まり具合まで陣営の色を薄く敷き、下の辺に溝と陣営の色の棒。
 ## 溜まった先の端に、明るい細い線。
 func _draw_ult_fill() -> void:
@@ -496,7 +379,7 @@ func ult_fill_ratio() -> float:
 
 
 func _show_ult_summary() -> void:
-	_ult_panel.visible = _ult_summary.text != "" and (_ult_pinned or _ult_button.is_hovered()) and not _tactic_note_panel.visible
+	_ult_panel.visible = _ult_summary.text != "" and (_ult_pinned or _ult_button.is_hovered())
 
 
 func ult_button_text() -> String:
@@ -1670,40 +1553,6 @@ func _build_bottom() -> void:
 	add_child(_ult_panel)
 	_ult_summary = _label(15)
 	_ult_panel.add_child(_ult_summary)
-	# 作戦（試しの決まり）のボタン。下の帯のすぐ上の右端。手札の無い対戦では出さない。
-	_tactic_box = HBoxContainer.new()
-	_tactic_box.add_theme_constant_override("separation", 8)
-	_tactic_box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_tactic_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_tactic_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_tactic_box.offset_left = -10.0
-	_tactic_box.offset_right = -10.0
-	_tactic_box.offset_top = -BOTTOM_BAR_HEIGHT - 8.0
-	_tactic_box.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0
-	_tactic_box.visible = false
-	add_child(_tactic_box)
-	var tactic_caption := _label(15)
-	tactic_caption.text = Text.t("battle.tactic.caption")
-	tactic_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_tactic_box.add_child(tactic_caption)
-	# 作戦の説明。ボタンの上の決まった場所・大きさに、乗せている間と確かめている間だけ出す。
-	_tactic_note_panel = _panel(COLOR_PANEL_SOLID)
-	_tactic_note_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_tactic_note_panel.custom_minimum_size = TACTIC_NOTE_SIZE
-	_tactic_note_panel.offset_left = -10.0 - TACTIC_NOTE_SIZE.x
-	_tactic_note_panel.offset_right = -10.0
-	_tactic_note_panel.offset_bottom = -BOTTOM_BAR_HEIGHT - 8.0 - TACTIC_BUTTON_HEIGHT - 8.0
-	_tactic_note_panel.offset_top = _tactic_note_panel.offset_bottom - TACTIC_NOTE_SIZE.y
-	_tactic_note_panel.clip_contents = true
-	_tactic_note_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tactic_note_panel.visible = false
-	add_child(_tactic_note_panel)
-	Steady.mark(_tactic_note_panel, "battle.tactic_note", Steady.RECT)
-	_tactic_note = _label(15)
-	_tactic_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_tactic_note.max_lines_visible = 2
-	_tactic_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_tactic_note_panel.add_child(_tactic_note)
 
 
 ## 戦闘予測のパネル。中身は show_forecast()、置き場所は place_forecast() で決める。
@@ -1761,63 +1610,6 @@ func _build_menu() -> void:
 	_menu_column = VBoxContainer.new()
 	_menu_column.add_theme_constant_override("separation", 2)
 	_menu.add_child(_menu_column)
-
-
-## 対戦の始めの知らせ（試しの決まり）。盤の上寄りの真ん中に、決まった大きさで出す。閉じるまで（か、盤をクリックするまで）出したまま。
-func _build_notice() -> void:
-	_notice = PanelContainer.new()
-	var plate := UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 14.0, 6)
-	plate.border_width_top = 3
-	_notice.add_theme_stylebox_override("panel", plate)
-	_notice.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_notice.custom_minimum_size = NOTICE_SIZE
-	_notice.offset_left = -NOTICE_SIZE.x / 2.0
-	_notice.offset_right = NOTICE_SIZE.x / 2.0
-	_notice.offset_top = BANNER_TOP + BannerBand.HEIGHT + 12.0
-	_notice.offset_bottom = _notice.offset_top + NOTICE_SIZE.y
-	_notice.clip_contents = true
-	_notice.mouse_filter = Control.MOUSE_FILTER_STOP
-	_notice.visible = false
-	add_child(_notice)
-	Steady.mark(_notice, "battle.trial_notice", Steady.RECT)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	_notice.add_child(column)
-	var title := _label(20)
-	title.text = Text.t("battle.notice.title")
-	UiTheme.style_window_title(title, 20)
-	column.add_child(title)
-	column.add_child(UiTheme.window_rule(Palette.BORDER_BRIGHT))
-	_notice_body = _label(16)
-	_notice_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_notice_body.max_lines_visible = NOTICE_LINES
-	_notice_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(_notice_body)
-	var close := _button(Text.t("battle.notice.close"), Signal())
-	close.custom_minimum_size = Vector2(120.0, 32.0)
-	close.size_flags_horizontal = Control.SIZE_SHRINK_END
-	close.pressed.connect(hide_notice)
-	column.add_child(close)
-
-
-## 対戦の始めの知らせを出す（lines は決まりごとの行。空なら出さない）。
-func show_notice(lines: Array[String]) -> void:
-	_notice_body.text = "\n".join(lines)
-	_notice.visible = not lines.is_empty()
-
-
-func hide_notice() -> void:
-	_notice.visible = false
-
-
-## 対戦の始めの知らせの文（出ていなければ空。検査用）。
-func notice_text() -> String:
-	return _notice_body.text if _notice.visible else ""
-
-
-## 対戦の始めの知らせの枠の四角（出ていなければ大きさ 0。検査用）。
-func notice_rect() -> Rect2:
-	return _notice.get_global_rect() if _notice.visible else Rect2()
 
 
 func _build_banner() -> void:
