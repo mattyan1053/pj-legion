@@ -17,6 +17,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const Steady := preload("res://game/steady.gd")
 
 ## 送りの印の明滅の周期（秒）。
 const BLINK_PERIOD := 1.2
@@ -28,6 +29,9 @@ const FADE := 0.25
 ## 帯の幅と、上端（上の帯（battle_hud.gd の TOP_BAR_HEIGHT = 50）のすぐ下）。横は画面の真ん中。
 ## 幅は、1280 の画面で、左の勝ち方の札（いちばん長い文で 360 ほど）と右の視点の案内（左端が 900 ほど）の間に収まるもの。
 const WIDTH := 500.0
+## 帯の高さ（px。台詞 2 行ぶん）と、名前の札の幅（px。いちばん長い話し手の名前が入る幅。tests/game/test_steady_frames.gd）。
+const HEIGHT := 61.0
+const PLATE_WIDTH := 96.0
 const TOP := 54.0
 ## 薄くしたときの濃さと、濃さが変わる速さ（1 秒あたり）。
 const DIMMED := 0.18
@@ -88,7 +92,9 @@ func _init() -> void:
 	_box = PanelContainer.new()
 	_box.add_theme_stylebox_override("panel", box_style)
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box.custom_minimum_size = Vector2(WIDTH, 0.0)
+	# 帯の高さは、台詞が 1 行でも 2 行でも同じ（2 行ぶん）。
+	_box.custom_minimum_size = Vector2(WIDTH, HEIGHT)
+	Steady.mark(_box, "battle_talk.box")
 	add_child(_box)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", ROW_GAP)
@@ -114,8 +120,13 @@ func _init() -> void:
 	_plate.add_theme_stylebox_override("panel", _plate_style)
 	_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_plate.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# 札の幅は、話し手の名前の長さで変えない（docs/ui-theme.md の「枠の大きさ」）。名前は真ん中に置く。
+	_plate.custom_minimum_size = Vector2(PLATE_WIDTH, 0.0)
+	Steady.mark(_plate, "battle_talk.name_plate")
 	row.add_child(_plate)
 	_name = _label(15, Color.WHITE)
+	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_name.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	_plate.add_child(_name)
 	_text = _label(17, COLOR_TEXT)

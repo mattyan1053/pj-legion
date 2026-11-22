@@ -12,6 +12,9 @@ const BattleTexts := preload("res://game/battle_texts.gd")
 const Names := preload("res://game/names.gd")
 const Text := preload("res://game/text.gd")
 const CpuGame := preload("res://tests/support/cpu_game.gd")
+const Story := preload("res://game/story.gd")
+const TalkScreen := preload("res://game/talk_screen.gd")
+const BattleTalk := preload("res://game/battle_talk.gd")
 
 
 func _frames(count: int) -> void:
@@ -210,3 +213,20 @@ func test_menu_keeps_its_width_and_fits_every_skill() -> void:
 		var needs := button.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, button.get_theme_font_size("font_size")).x
 		assert_true(needs <= room + 0.5, "項目「%s」が切れる（要る幅 %d、入る幅 %d）" % [text, needs, room])
 	hud.free()
+
+
+# ---- 会話（game/talk_screen.gd、game/battle_talk.gd）----
+
+
+## 会話の名前の札と、対戦の途中の台詞の名前の札は、決まった幅。全部の話の、どの話し手の名前も切れずに入る。
+func test_name_plates_fit_every_speaker() -> void:
+	var names := {}
+	for episode in Story.all_episodes():
+		for speaker: String in episode.speakers:
+			names[speaker] = true
+	assert_true(names.size() > 5, "話し手を読めていない")
+	for speaker: String in names:
+		var talk := UiTheme.FONT_BODY.get_string_size(speaker, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 40.0
+		assert_true(talk <= TalkScreen.PLATE_WIDTH, "会話の名前の札に入らない: %s（要る幅 %d）" % [speaker, talk])
+		var cue := UiTheme.FONT_BOLD.get_string_size(speaker, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 20.0
+		assert_true(cue <= BattleTalk.PLATE_WIDTH, "途中の台詞の名前の札に入らない: %s（要る幅 %d）" % [speaker, cue])
