@@ -137,6 +137,18 @@ const STRONGHOLD_KILL_BONUS := 40.0
 ## 相手の駒が拠点に乗っている間、拠点の周り（確保を止められる所。Stronghold.CONTEST_RADIUS 以内）に立って行動を終える価値。
 const STRONGHOLD_BLOCK_VALUE := 60.0
 const HEALER_SEARCH_STEPS := 12
+## 組み方（docs/formation.md。docs/cpu-ai.md の「組み方」）。入の対戦だけ効く（切なら、どれも 0）。
+## 分隊の駒が、同じ分隊の仲間の隣（肩並べ）に立って行動を終える価値（受けうるダメージの見積もりも、肩並べのぶんだけ減らして読む）。
+const SQUAD_HUDDLE_VALUE := 2.0
+## 分隊の駒が攻撃した相手（倒しきらない）に、このあとに動ける同じ分隊の仲間が届きそうなら、追い撃ちの見込みとして足す価値。
+const SQUAD_FOCUS_SETUP_VALUE := 4.0
+## 誓いの駒が、誓いの相手から Formation.OATH_RANGE マス以内に立って行動を終える価値（離れると仇討ちが効かない）。
+const OATH_NEAR_VALUE := 6.0
+## 相手の誓いの駒を倒す価値（誓いを切る。仇討ちが消える）。
+const OATH_BREAK_VALUE := 15.0
+## 相手の誓いの駒を、倒しきらずに攻撃する減点（誓いの相手が近くにいれば、仇討ちを受ける）。
+const OATH_PROVOKE_PENALTY := 6.0
+
 ## スキルを使う手の、スキルごとの見積もり（対象に選ぶ価値のありそうなマスと、使った結果の価値）は、
 ## rules/cpu/ の 1 スキル 1 ファイル（CpuSkillEstimate.of）。
 
@@ -719,6 +731,8 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 			var victim := _battle.unit_by_id(damaged.unit_id)
 			var worth := _damage_value(victim, damaged.hp)
 			value += -FRIENDLY_FIRE_RATE * worth if victim.side == _me else worth
+			if damaged is AttackDamagedEvent and _battle.formation and victim.side == _foe:
+				value += _formation_value(sim, (damaged as AttackDamagedEvent).attacker_id, victim, damaged.hp)
 			continue
 		var healed := event as UnitHealedEvent
 		if healed != null:
@@ -753,6 +767,27 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 			value += EXPERIENCE_VALUE * gained.amount
 		elif event is LevelUpEvent:
 			value += LEVEL_UP_VALUE
+	return value
+
+
+## 組み方の見込み: 駒 attacker_id が相手の victim（攻撃の前の状態）を hp_after まで減らしたあとの、組み方のぶんの価値。
+## 誓いの駒を倒せば OATH_BREAK_VALUE。倒しきらず、誓いの相手が近くにいれば -OATH_PROVOKE_PENALTY。
+## 分隊の駒が倒しきらずに攻撃し、このあとに動ける同じ分隊の仲間が届きそうなら SQUAD_FOCUS_SETUP_VALUE（追い撃ちの見込み）。
+func _formation_value(sim: Battle, attacker_id: int, victim: Unit, hp_after: int) -> float:
+	var value := 0.0
+	if Formation.partner_of(_battle, victim) != null:
+		if hp_after == 0:
+			value += OATH_BREAK_VALUE
+		elif Formation.oath_near(_battle, victim):
+			value -= OATH_PROVOKE_PENALTY
+	var attacker := _battle.unit_by_id(attacker_id)
+	if hp_after > 0 and attacker != null and Formation.in_squad(_battle, attacker):
+		for mate in Formation.squad_of(_battle, attacker):
+			if mate.id == attacker.id or not sim.can_act(sim.unit_by_id(mate.id)):
+				continue
+			if Combat.distance(mate.cell, victim.cell) <= mate.move_range() + mate.attack_range():
+				value += SQUAD_FOCUS_SETUP_VALUE
+				break
 	return value
 
 
@@ -1003,6 +1038,12 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		var holder := _battle.unit_at(_board.stronghold_cell)
 		if holder != null and holder.side == _foe and Stronghold.counts(holder):
 			value += STRONGHOLD_BLOCK_VALUE
+	if _battle.formation:
+		if Formation.guarded_at(_battle, unit, cell):
+			value += SQUAD_HUDDLE_VALUE
+		var partner := Formation.partner_of(_battle, unit)
+		if partner != null and Combat.distance(partner.cell, cell) <= Formation.OATH_RANGE:
+			value += OATH_NEAR_VALUE
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:
@@ -1263,6 +1304,7 @@ func _friend_to_follow(unit: Unit) -> Unit:
 ## ignored_id の敵は数えない。_build_threats のあとに呼ぶ。
 ## - 自分の煙幕の中のマスでは、煙幕に防がれない攻撃だけを数える
 ## - unit にバリアが付いていれば、いちばん弱い 1 回ぶんを引く（相手は、弱い攻撃で先にはがす）
+## - unit が cell で肩並べ（組み方の分隊）になるなら、1 回ごとに肩並べのぶんを引く
 func _threat_at(unit: Unit, cell: Vector2i, ignored_id: int) -> int:
 	return _danger_in(_threats, _close_threats, unit, cell, ignored_id)
 
@@ -1275,10 +1317,12 @@ func _danger_in(
 	var by: Dictionary = (close if _smoked.has(cell) else threats).get(cell, {})
 	var total := 0
 	var weakest := _FAR
+	var guard := Formation.SQUAD_GUARD if Formation.guarded_at(_battle, unit, cell) else 0  # 肩並べ（組み方が切なら 0）
 	for enemy_id: int in by:
 		if enemy_id != ignored_id:
-			total += by[enemy_id]
-			weakest = mini(weakest, by[enemy_id])
+			var hurt := maxi(0, by[enemy_id] - guard)
+			total += hurt
+			weakest = mini(weakest, hurt)
 	if total > 0 and Statuses.blocking(unit) != -1:
 		total -= weakest
 	return total

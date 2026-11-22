@@ -159,6 +159,7 @@ func create_battle() -> Battle:
 	if rules.has(OptionalRules.STRONGHOLD):
 		Stronghold.arm(board, battle_seed)
 	var battle := Battle.new(board, battle_seed)
+	battle.formation = rules.has(OptionalRules.FORMATION)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var placement: Array[Vector2i] = []
 		placement.assign(placements[side])
@@ -166,6 +167,7 @@ func create_battle() -> Battle:
 			battle, side, deck_of(side), scenario.deploy_cells_of(side), placement, scenario.has_king(side)
 		)
 		_apply_start_growth(placed, scenario.start_growth[side])
+		Formation.arm(battle, deck_of(side), placed)
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
 		if board.stronghold_cell != Board.NO_CELL:
 			battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)

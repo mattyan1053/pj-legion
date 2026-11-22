@@ -26,6 +26,9 @@ var army: UnitKind.Army
 var entries: Array[DeckEntry] = []
 ## この編成の決まり（ロスター、予算、数の上限）。
 var rules: DeckRules
+## 誓い（組み方。Formation）で結んだ 2 体の組（[DeckEntry, DeckEntry] の並び）。騎士領だけ。組み方が入の対戦で効く。
+## 結ぶ・ほどくのは bind / unbind（1 体は 1 組まで、Formation.MAX_OATHS 組まで）。駒を外すと、その組もほどける。
+var oaths: Array[Array] = []
 
 
 ## deck_rules を渡さなければ、対戦の決まり（DeckRules.versus()）で組む。
@@ -70,7 +73,55 @@ func remove(entry: DeckEntry) -> bool:
 	if index == -1:
 		return false
 	entries.remove_at(index)
+	unbind(entry)
 	return true
+
+
+## 2 体を誓いで結ぶ（docs/formation.md）。結べなければ（騎士領でない、どちらかがこの編成に無い、同じ駒、もう誓いを結んでいる、組の数が上限）何もせず false。
+func bind(a: DeckEntry, b: DeckEntry) -> bool:
+	if not can_bind(a, b):
+		return false
+	oaths.append([a, b])
+	return true
+
+
+## 2 体を誓いで結べるか。
+func can_bind(a: DeckEntry, b: DeckEntry) -> bool:
+	if not Formation.binds_oaths(army) or a == b or not entries.has(a) or not entries.has(b):
+		return false
+	if partner_of(a) != null or partner_of(b) != null:
+		return false
+	return oaths.size() < Formation.MAX_OATHS
+
+
+## entry の誓いをほどく。結んでいなければ何もせず false。
+func unbind(entry: DeckEntry) -> bool:
+	for i in oaths.size():
+		if oaths[i].has(entry):
+			oaths.remove_at(i)
+			return true
+	return false
+
+
+## entry と誓いを結んでいる駒。結んでいなければ null。
+func partner_of(entry: DeckEntry) -> DeckEntry:
+	for pair in oaths:
+		if pair[0] == entry:
+			return pair[1]
+		if pair[1] == entry:
+			return pair[0]
+	return null
+
+
+## 誓いの組を、駒の並びの添字の組（小さいほうが x）で。並びは結んだ順。
+func oath_pairs() -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	for pair in oaths:
+		var a := entries.find(pair[0])
+		var b := entries.find(pair[1])
+		if a != -1 and b != -1:
+			result.append(Vector2i(mini(a, b), maxi(a, b)))
+	return result
 
 
 ## 合計コスト（駒のコスト + 装備のコスト）。将は含まない。
@@ -117,13 +168,15 @@ func is_valid() -> bool:
 	return problems().is_empty()
 
 
-## 同じ決まり・軍・駒・装備の、別の編成（片方を変えても、もう片方は変わらない）。
+## 同じ決まり・軍・駒・装備・誓いの、別の編成（片方を変えても、もう片方は変わらない）。
 func copy() -> Deck:
 	var other := Deck.new(army, rules)
 	for entry in entries:
 		var twin := DeckEntry.new(entry.kind)
 		twin.equipment = entry.equipment.duplicate()
 		other.entries.append(twin)
+	for pair in oath_pairs():
+		other.oaths.append([other.entries[pair.x], other.entries[pair.y]])
 	return other
 
 

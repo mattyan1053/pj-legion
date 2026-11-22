@@ -117,9 +117,22 @@ static func status(type: Status.Type) -> String:
 static func status_summary(type: Status.Type) -> String:
 	var args := {
 		"range": PrecisionAimSkill.RANGE_BONUS, "penalty": AdrenalineShotSkill.POWER_PENALTY,
-		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS,
+		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS, "resolve": Formation.RESOLVE_POWER,
 	}
 	return Text.t("status.%s.summary" % word(Status.Type, type), args)
+
+
+## 組み方の効果（Formation.Effect）の名前と、1 行の説明（docs/formation.md）。
+static func formation_effect(effect: Formation.Effect) -> String:
+	return Text.t("formation." + word(Formation.Effect, effect))
+
+
+static func formation_summary(effect: Formation.Effect) -> String:
+	var args := {
+		"guard": Formation.SQUAD_GUARD, "focus": Formation.SQUAD_FOCUS, "vengeance": Formation.OATH_VENGEANCE,
+		"range": Formation.OATH_RANGE, "resolve": Formation.RESOLVE_POWER,
+	}
+	return Text.t("formation.%s.summary" % word(Formation.Effect, effect), args)
 
 
 ## 聖遺物の名前と、1 行の説明。
