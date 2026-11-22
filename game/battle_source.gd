@@ -123,6 +123,12 @@ func cast_looks() -> Array:
 	return [[], []]
 
 
+## 対戦が決着した（決着の画面が出たとき。勝ち負けによらない）。ended は決着したときの対戦（盤と生き残った駒）。
+## ストーリーは、あとの会話の背景に、この盤の様子を映す（story_battle.gd）。
+func record_end(_ended: Battle) -> void:
+	pass
+
+
 ## CPU と対戦して人が勝った（決着の画面が出たとき）。context は app_context.gd。
 func record_win(_context: RefCounted) -> void:
 	pass

@@ -43,13 +43,16 @@ var context: AppContext
 var _cards := {}
 ## 左右の矢印で選んでいるカードの番号（物語の並びの順。選んでいなければ -1）。
 var _key_index := -1
+var _backdrop: TitleBackdrop
 
 
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき
 	# 背景はタイトルと同じ世界（裂けた空の下の結晶の森）。縫い目が真ん中に来るので、左のカードは琥珀の空、右のカードは菫の空の下に並ぶ。
-	add_child(TitleBackdrop.new(TitleBackdrop.VIEW_STORY))
+	# 物語のカードに乗せると、その物語の景色（国の側の空、国の色の空、その物語の話のマップ。title_backdrop.gd の show_story）に替わる。
+	_backdrop = TitleBackdrop.new(TitleBackdrop.VIEW_STORY)
+	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	layer.add_child(UiTheme.vista_shade())
@@ -214,6 +217,23 @@ func select_by_key(index: int) -> void:
 	if index >= 0:
 		var card: Button = _cards[listed[index]]
 		card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+		focus(listed[index])
+
+
+## 物語 campaign を選んでいる（マウスを乗せた・キーで選んだ）: 背景を、その物語の景色に替える（とどまったら）。準備中の物語は替えない。
+## 地面は、その物語でまだクリアしていない最初の話のマップ（Story.scape_episode_in）。
+func focus(campaign: Campaign) -> void:
+	if not Story.is_ready(campaign):
+		return
+	var episode := context.story.scape_episode_in(campaign)
+	if _backdrop.story_key() == episode.id:
+		return
+	_backdrop.queue_story(campaign.army, episode.map.make_board(), episode.look, episode.id)
+
+
+## 背景（検査とスクリーンショットの道具用）。
+func backdrop() -> TitleBackdrop:
+	return _backdrop
 
 
 ## キーボードで選んでいる物語（無ければ null。検査用）。
@@ -230,6 +250,9 @@ func _build_card(campaign: Campaign) -> Button:
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	card.theme_type_variation = UiTheme.BUTTON_CARD  # カードの板と、乗ったときの金の縁（docs/ui-theme.md）
 	card.pressed.connect(choose.bind(campaign))
+	if ready:
+		card.mouse_entered.connect(focus.bind(campaign))
+		card.mouse_exited.connect(func() -> void: _backdrop.cancel_queued())
 
 	card.add_child(CardDecor.new(campaign.army, ready))
 	var column := VBoxContainer.new()

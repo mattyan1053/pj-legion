@@ -113,11 +113,47 @@ func _scripts(dir: String) -> Array[String]:
 	return found
 
 
-## 話の一覧の背景は、その物語の国の側の空を見る（docs/scene-flow.md）。
+## 物語の景色は、その物語の国の側の空を見る（docs/scene-flow.md）。
 func test_the_story_backdrop_faces_the_sky_of_the_nation() -> void:
 	var TitleBackdrop := load("res://game/title_backdrop.gd")
-	assert_eq(TitleBackdrop.view_of(UnitKind.Army.MILITARY), TitleBackdrop.VIEW_BERG)
-	assert_eq(TitleBackdrop.view_of(UnitKind.Army.FANTASY), TitleBackdrop.VIEW_RUEL)
+	assert_eq(TitleBackdrop.map_view_of(UnitKind.Army.MILITARY), TitleBackdrop.VIEW_BERG_MAP)
+	assert_eq(TitleBackdrop.map_view_of(UnitKind.Army.FANTASY), TitleBackdrop.VIEW_RUEL_MAP)
 	# 琥珀の空は縫い目の左、菫の空は右（rift_sky.gdshader）。左を向くのは、向きが正。
-	assert_true(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_BERG][0] > 0.0 and TitleBackdrop.VIEWS[TitleBackdrop.VIEW_RUEL][0] < 0.0)
+	assert_true(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_BERG_MAP][0] > 0.0 and TitleBackdrop.VIEWS[TitleBackdrop.VIEW_RUEL_MAP][0] < 0.0)
+	assert_eq(TitleBackdrop.NATION_SKY.size(), UnitKind.Army.size() - 1, "空の色は、軍なし以外の国ごとに 1 つ")
 	assert_eq(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_STORY][0], 0.0, "物語選択は、縫い目が真ん中")
+
+
+## 物語選択・セーブデータ選択の背景に見せる話: クリアしたいちばん先の話の次（最後の話なら、それ。無ければ最初の話）。
+func test_the_story_backdrop_shows_the_episode_after_the_last_clear() -> void:
+	var campaign: RefCounted = Story.military()
+	var episodes: Array = campaign.episodes
+	assert_eq(Story.scape_episode(campaign, null), episodes[0])
+	assert_eq(Story.scape_episode(campaign, episodes[0]), episodes[1])
+	assert_eq(Story.scape_episode(campaign, episodes[-1]), episodes[-1])
+
+
+## タイトルの背景は、13 の景色（stage_look.gd の THEMES）から選ぶ。どの景色にも盤がある。タイトルの曲は、選んでいる間の曲と別。
+func test_the_title_shows_every_look_and_has_its_own_theme() -> void:
+	var TitleScreen := load("res://game/title_screen.gd")
+	var StageLook := load("res://game/stage_look.gd")
+	var scapes: Array = TitleScreen.title_scapes()
+	assert_eq(scapes.size(), StageLook.THEMES.size())
+	var looks := {}
+	for scape: Array in scapes:
+		looks[scape[0]] = true
+		assert_true(scape[1].call() is Board, "景色 %s の盤が作れない" % scape[0])
+	assert_eq(looks.size(), StageLook.THEMES.size(), "同じ景色が 2 つある")
+	assert_eq(SceneFlow.music(SceneFlow.TITLE), &"title")
+	assert_eq(SceneFlow.music(SceneFlow.CAMPAIGNS), &"menu", "選んでいる間は、いままでのタイトルの曲")
+
+
+## 物語選択で、いま選んでいない物語のカードに乗せたときも、その物語の記録で「まだクリアしていない最初の話」を選ぶ。
+func test_the_campaign_backdrop_reads_the_hovered_campaigns_record() -> void:
+	var story: RefCounted = Story.new()
+	var fantasy: RefCounted = Story.campaigns()[1]
+	story.choose_campaign(Story.military())
+	story.clear(Story.military().episodes[0].id)
+	story.choose_campaign(fantasy)
+	assert_eq(story.scape_episode_in(Story.military()), Story.military().episodes[1], "選んでいない物語の記録を見る")
+	assert_eq(story.scape_episode_in(fantasy), fantasy.episodes[0])
