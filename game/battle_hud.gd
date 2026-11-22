@@ -411,7 +411,8 @@ func flash_tactic_note(text: String) -> void:
 	_tactic_flash = text
 	_tactic_flash_until = Time.get_ticks_msec() + int(TACTIC_FLASH_SECONDS * 1000.0)
 	_show_tactic_note()
-	get_tree().create_timer(TACTIC_FLASH_SECONDS + 0.05).timeout.connect(_show_tactic_note)
+	# 消す時刻は実時間で数える（早送りで Engine.time_scale が変わっても、時刻とずれない）。
+	get_tree().create_timer(TACTIC_FLASH_SECONDS + 0.05, true, false, true).timeout.connect(_show_tactic_note)
 
 
 ## 作戦の説明の枠の文（出ていなければ空。検査用）。
