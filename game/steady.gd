@@ -8,6 +8,8 @@ const GROUP := &"steady_frame"
 const META := &"steady_frame"
 ## 大きさだけを見る（置き場所は、まわりの都合で動いてよい。駒のそばのメニューなど）。
 const SIZE := &"size"
+## 幅だけを見る（行の数で高さが変わる並び。駒のそばのメニュー、一覧）。
+const WIDTH := &"width"
 ## 大きさと置き場所の両方を見る（画面の決まった所に出る枠）。
 const RECT := &"rect"
 
