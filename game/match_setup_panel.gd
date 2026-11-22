@@ -22,6 +22,8 @@ signal decks_pressed(choice: RefCounted, side: Unit.Side)
 const DeployDialog := preload("res://game/deploy_dialog.gd")
 ## 初期位置の窓で見せる盤の種（生成のマップは、マップ選択のカードと同じ代表の形）。
 const PLACEMENT_SEED := 3
+## 試しの決まりの行の右の説明の欄の大きさ（px。2 行まで）。
+const TRIAL_NOTE_SIZE := Vector2(380.0, 44.0)
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -81,6 +83,9 @@ var _library: RefCounted
 var _side_caption: Label
 var _trial_buttons: Dictionary[StringName, Button] = {}
 var _trial_note: Label
+## 試しの決まりの行の右の説明に出すもの: マウスを乗せている札・決まりの説明と、最後に押した札・決まりの説明（どちらも無ければ、入の決まりの説明）。
+var _hover_note := ""
+var _picked_note := ""
 var _tactic_boxes: Array[HBoxContainer] = []
 var _tactic_buttons: Array[Dictionary] = []
 var _first_gauge_note: Label
@@ -157,13 +162,17 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	for trial in TrialRules.ALL:
 		var toggle := _button(Text.t("setup.trial.%s" % trial))
 		toggle.toggle_mode = true
-		toggle.tooltip_text = trial_note(trial)
 		var picked_trial := trial
 		toggle.pressed.connect(func() -> void: choose_trial(picked_trial, not _choice.has_trial(picked_trial)))
+		_note_on_hover(toggle, trial_note(trial))
 		trial_row.add_child(toggle)
 		_trial_buttons[trial] = toggle
-	_trial_note = _label(14)
+	# 説明の欄は決まった大きさ（2 行まで。中身で行もパネルも大きくしない）。
+	_trial_note = _label(13)
 	_trial_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_trial_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_trial_note.max_lines_visible = 2
+	_trial_note.custom_minimum_size = TRIAL_NOTE_SIZE
 	trial_row.add_child(_trial_note)
 	# 対戦モードの先手が必殺技のゲージをためて始まるなら（Ults.FIRST_PLAYER_START_GAUGE が 0 より大きい）、手番の行の右に書いておく。
 	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
@@ -199,10 +208,10 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 			card.toggle_mode = true
 			card.custom_minimum_size = Vector2(92.0, 40.0)
 			card.add_theme_font_size_override("font_size", 15)
-			card.tooltip_text = Names.tactic_summary(id)
 			var tactic_side := side
 			var tactic_id := id
 			card.pressed.connect(func() -> void: choose_tactic(tactic_side, tactic_id))
+			_note_on_hover(card, tactic_note(id))
 			tactic_box.add_child(card)
 			tactic_buttons[id] = card
 		row.add_child(tactic_box)
@@ -361,16 +370,53 @@ func choose_random_side() -> void:
 	_show_choice()
 
 
-## 試しの決まり id を入・切する。
+## 試しの決まり id を入・切する。入にしたら、その説明を行の右に出したままにする。
 func choose_trial(id: StringName, on: bool) -> void:
 	_choice.set_trial(id, on)
+	_picked_note = trial_note(id) if on else ""
 	_show_choice()
 
 
-## 行 side の作戦に id を選ぶ（手札の枚数を超えたら、先に選んだものが外れる）。
+## 行 side の作戦に id を選ぶ（手札の枚数を超えたら、先に選んだものが外れる）。札の効果を、試しの決まりの行の右に出したままにする。
 func choose_tactic(side: Unit.Side, id: Tactics.Id) -> void:
 	_choice.pick_tactic(side, id)
+	_picked_note = tactic_note(id)
 	_show_choice()
+
+
+## 作戦の札の、名前と効果の文（「補給: 軍の全員が 8 回復」）。
+static func tactic_note(id: Tactics.Id) -> String:
+	return Text.t("setup.tactic.note", {"tactic": Names.tactic(id), "summary": Names.tactic_summary(id)})
+
+
+## ボタン button にマウスを乗せている間、試しの決まりの行の右に note を出す。
+func _note_on_hover(button: Button, note: String) -> void:
+	button.mouse_entered.connect(func() -> void:
+		_hover_note = note
+		_show_trial_note())
+	button.mouse_exited.connect(func() -> void:
+		if _hover_note == note:
+			_hover_note = ""
+		_show_trial_note())
+
+
+## 試しの決まりの行の右の説明: 乗せている札・決まり、最後に押した札・決まり、入の決まりの順に、あるものを出す。
+func _show_trial_note() -> void:
+	if _hover_note != "":
+		_trial_note.text = _hover_note
+	elif _picked_note != "":
+		_trial_note.text = _picked_note
+	else:
+		var notes := PackedStringArray()
+		for trial: StringName in TrialRules.ALL:
+			if _choice.has_trial(trial):
+				notes.append(trial_note(trial))
+		_trial_note.text = Text.t("common.joiner.comma").join(notes)
+
+
+## 試しの決まりの行の右の説明（検査用）。
+func trial_note_text() -> String:
+	return _trial_note.text
 
 
 ## 試しの決まりの、ひとことの説明。
@@ -502,12 +548,9 @@ func _show_choice() -> void:
 		_banner_field = _choice.field
 		var board := VersusFields.card_board(_choice.field, PLACEMENT_SEED)
 		_banner.show_map(null if board == null else ImageTexture.create_from_image(MapCard.draw(board, VersusFields.look_of(_choice.field), _team_colors)))
-	var notes := PackedStringArray()
 	for trial: StringName in _trial_buttons:
 		(_trial_buttons[trial] as Button).set_pressed_no_signal(_choice.has_trial(trial))
-		if _choice.has_trial(trial):
-			notes.append(trial_note(trial))
-	_trial_note.text = "\n".join(notes)
+	_show_trial_note()
 	for side in 2:
 		_tactic_boxes[side].visible = _choice.has_trial(TrialRules.TACTICS)
 		for id: Tactics.Id in _tactic_buttons[side]:

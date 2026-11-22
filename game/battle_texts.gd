@@ -256,6 +256,18 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	return items
 
 
+## 対戦の始めの知らせ（試しの決まり）の行。入の決まりごとに 1 行（盤に砲台・拠点がある、手札がある）。無ければ空。
+static func trial_notice(battle: Battle) -> Array[String]:
+	var lines: Array[String] = []
+	if not battle.board.battery_cells.is_empty():
+		lines.append(Text.t("battle.notice.battery", {"range": MapObject.BATTERY_RANGE}))
+	if not battle.tactics[Unit.Side.PLAYER1].is_empty() or not battle.tactics[Unit.Side.PLAYER2].is_empty():
+		lines.append(Text.t("battle.notice.tactics"))
+	if battle.board.stronghold_cell != Board.NO_CELL:
+		lines.append(Text.t("battle.notice.stronghold", {"needed": Stronghold.HOLDS_TO_WIN, "radius": Stronghold.CONTEST_RADIUS}))
+	return lines
+
+
 ## 盤の上の効果の [名前, 説明]。
 static func field_effect_item(effect: FieldEffect) -> Array:
 	var args := {"side": Names.side(effect.side), "durability": effect.durability, "turns": effect.turns_left, "heal": FieldEffects.SANCTUARY_HEAL}
