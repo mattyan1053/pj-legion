@@ -15,6 +15,8 @@ const SaveSlots := preload("res://game/save_slots.gd")
 signal menu_requested
 ## オプションの画面だけを開いてほしい（タイトルの「オプション」）。
 signal settings_requested
+## ゲームを終えたい（タイトルの「終了」）。アプリが、ウィンドウの × と同じ確かめを出す。
+signal quit_requested
 ## 流れ（run.gd）を始めてほしい（流れの最初の場面へ切り替える）。
 signal run_requested(run: RefCounted)
 
@@ -97,6 +99,11 @@ func open_menu() -> void:
 
 func open_settings() -> void:
 	settings_requested.emit()
+
+
+## ゲームを終えたい（確かめてから終える。app.gd の request_close）。
+func ask_quit() -> void:
+	quit_requested.emit()
 
 
 ## 流れ a_run を始める（アプリが、いまの場面を抜けて、流れの最初の場面へ切り替える）。

@@ -81,6 +81,7 @@ battle.log.drawn,引き分け（{reason}）
 battle.cell.nothing,特別なものは無い
 battle.hint.over,決着
 battle.hint.cpu_turn,相手（CPU）の番
+battle.hint.foe_turn,敵の番
 battle.hint.talk,クリック・Enter: 台詞を送る ▼
 battle.hint.evolve,進化先を選ぶ（上から 1 つ）
 battle.hint.confirm_ult,もう一度押すと必殺技「{ult}」を発動（取り消せない。右クリック・盤のクリック: キャンセル）
@@ -246,6 +247,7 @@ battle.banner.setup_after_moves,動きが終わったら、対戦設定を開き
 battle.hud.opponent.cpu,相手: CPU
 battle.hud.opponent.human,相手: 人
 battle.end_turn.cpu,CPU の番
+battle.end_turn.foe,敵の番
 battle.evolution.title,{unit}の進化先
 battle.end_turn.auto,おまかせ中
 battle.end_turn.confirm,もう一度押して終了
@@ -369,6 +371,14 @@ stats.unit_evolved,{kind}（{evolution}） Lv{level}
 stats.unit,{kind} Lv{level}
 result.won,{side}の勝ち
 result.won_reason,{side}の勝ち　{reason}
+result.story.won,勝利　{reason}
+result.story.lost,敗北　{reason}
+result.lost.king_defeated,将が倒れた
+result.lost.hq_captured,本陣を取られた
+result.lost.turns_held,攻め切れなかった
+result.lost.routed,全滅した
+result.lost.boss_slain,敵に中ボスを倒された
+result.lost.stronghold_held,敵に拠点を確保された
 result.line.map,マップ
 result.line.turns,経過ターン
 result.line.turns.value,{count} ターン

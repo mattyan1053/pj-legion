@@ -94,3 +94,25 @@ func test_tables_have_a_row_per_unit_and_mark_the_mvp() -> void:
 	assert_true(rows[1]["defeated"])
 	assert_eq(summary.tables[1]["rows"].size(), 1)
 	assert_eq(summary.tables[1]["name"], "赤")
+
+
+func test_story_says_what_happened_from_the_players_side() -> void:
+	var lost_line := ResultSummary.story_reason(false, GameWonEvent.Reason.KING_DEFEATED, "敵の将を倒した")
+	assert_eq(lost_line, "敗北　将が倒れた", "負けは、遊ぶ人の側から何が起きたか")
+	assert_eq(ResultSummary.story_reason(false, GameWonEvent.Reason.HQ_CAPTURED, ""), "敗北　本陣を取られた")
+	assert_eq(ResultSummary.story_reason(true, GameWonEvent.Reason.TURNS_HELD, "最後まで守り切った"), "勝利　最後まで守り切った")
+	for reason: GameWonEvent.Reason in GameWonEvent.Reason.values():
+		assert_true(ResultSummary.LOSS_TEXTS.has(reason), "負けの理由の文が無い: %s" % GameWonEvent.Reason.find_key(reason))
+	var lost: RefCounted = ResultSummary.of(_stats(), false, P2, "敵の将を倒した", true, P1, NAMES, "", lost_line)
+	assert_eq(lost.reason, lost_line, "「CPU（赤）の勝ち」と書かない")
+	assert_eq(lost.headline, "DEFEAT")
+
+
+func test_story_calls_the_sides_friend_and_foe() -> void:
+	Names.story_sides = true
+	var friend := Names.side(P1)
+	var foe := Names.side_word(P2)
+	var neutral := Names.side(Unit.Side.NEUTRAL)
+	Names.story_sides = false
+	assert_eq([friend, foe, neutral], ["味方", "敵", "中立"])
+	assert_eq(Names.side_word(P2), "赤", "対戦モードは色で呼ぶ")

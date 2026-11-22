@@ -180,6 +180,9 @@ func _lose(app: Node, screen: Node, episode: RefCounted) -> void:
 		await app.get_tree().process_frame
 	_expect(battle.is_over() and battle.winner == Unit.Side.PLAYER2, "わざと負けられなかった")
 	result.skip()
+	# ストーリーの決着は、遊ぶ人の側から書く（「CPU（赤）の勝ち」と書かない）。
+	var reason: String = result.shown_summary().reason
+	_expect(reason == "敗北　将が倒れた", "話で負けた決着の文が、遊ぶ人の側から書かれていない: %s" % reason)
 	var lost: Array[String] = []
 	for row: Array in episode.lost:
 		lost.append("%s: %s" % [episode.speakers[row[2]] if row[2] >= 0 else "", row[1]])
