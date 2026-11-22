@@ -100,6 +100,16 @@ func test_focus_adds_damage_to_the_second_hit_on_the_same_target_in_a_phase() ->
 	assert_false(Formation.focus_on(battle, second, target), "フェーズが替われば消える")
 
 
+func test_own_second_attack_is_not_a_follow_up() -> void:
+	var battle := _battle()
+	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 3))
+	battle.add_unit(K.SNIPER, P1, Vector2i(0, 6))
+	var target := battle.add_unit(K.PALADIN, P2, Vector2i(3, 3))
+	_attack(battle, sniper, target)
+	sniper.acted = false  # アドレナリン注射でもう一度動けるようになった
+	assert_eq(_effects(_attack(battle, sniper, target)), [], "自分の 2 発目は伸びない")
+
+
 func test_focus_needs_the_same_kind() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 3))

@@ -129,12 +129,15 @@ static func guarded_at(battle: Battle, unit: Unit, cell: Vector2i) -> bool:
 	return false
 
 
-## attacker が target を攻撃すると、追い撃ちになるか（このフェーズに、同じ分隊の仲間が target を攻撃した）。
+## attacker が target を攻撃すると、追い撃ちになるか（このフェーズに、同じ分隊のほかの駒が target を攻撃した。
+## 自分の 1 発目は数えない: アドレナリン注射でもう一度動いて同じ相手を撃っても、伸びない）。
 static func focus_on(battle: Battle, attacker: Unit, target: Unit) -> bool:
 	if not in_squad(battle, attacker):
 		return false
-	var by: Array = battle.focus_marks.get(target.id, [])
-	return by.has(attacker.kind)
+	for mark: Vector2i in battle.focus_marks.get(target.id, []):
+		if mark.y == attacker.kind and mark.x != attacker.id:
+			return true
+	return false
 
 
 ## unit の誓いの相手（盤にいれば）。結んでいないか、相手が倒れていれば null。
@@ -185,15 +188,16 @@ static func guard_of(battle: Battle, target: Unit) -> int:
 
 
 ## 駒の攻撃のあとに覚えること（Combat.strike が、ダメージを当てたあとに呼ぶ。煙幕に阻まれた攻撃では呼ばない）。
-## - attacker が分隊にいれば、このフェーズに target をその兵種が攻撃したと覚える（追い撃ち）
+## - attacker が分隊にいれば、このフェーズに target を attacker（番号と兵種）が攻撃したと覚える（追い撃ち）
 ## - target が誓いを結んでいれば、attacker を仇として覚える（仇討ち。上書きする）
 static func note_attack(battle: Battle, attacker: Unit, target: Unit) -> void:
 	if not battle.formation:
 		return
 	if in_squad(battle, attacker):
 		var by: Array = battle.focus_marks.get(target.id, [])
-		if not by.has(attacker.kind):
-			by.append(attacker.kind)
+		var mark := Vector2i(attacker.id, attacker.kind)
+		if not by.has(mark):
+			by.append(mark)
 		battle.focus_marks[target.id] = by
 	if partner_of(battle, target) != null:
 		target.oath_foe = attacker.id

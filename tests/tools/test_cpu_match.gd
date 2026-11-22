@@ -236,6 +236,14 @@ func test_matches_tool_sorts_a_squad_by_its_formation_when_the_rule_is_on() -> v
 	keys = tool._squad_keys(knights, UnitKind.Army.FANTASY, UnitKind.Army.MILITARY, true)
 	assert_true(keys.has("FANTASY 対 MILITARY 誓い パラディン・ソーサラー"), str(keys))
 	assert_true(keys.has("FANTASY 対 MILITARY 誓いの数 2"), str(keys))
+	var twins := Deck.new(UnitKind.Army.FANTASY)
+	var entries: Array[DeckEntry] = []
+	for i in 4:
+		entries.append(twins.add(UnitKind.Id.SORCERER))
+	twins.bind(entries[0], entries[1])
+	twins.bind(entries[2], entries[3])
+	keys = tool._squad_keys(twins, UnitKind.Army.FANTASY, UnitKind.Army.MILITARY, true)
+	assert_eq(keys.count("FANTASY 対 MILITARY 誓い ソーサラー・ソーサラー"), 1, "同じ組の誓いは 1 回だけ数える")
 
 
 func test_formation_effects_are_counted() -> void:

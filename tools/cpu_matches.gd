@@ -810,7 +810,9 @@ static func _formation_keys(deck: Deck, head: String) -> Array[String]:
 		for pair in deck.oath_pairs():
 			var kinds: Array[UnitKind.Id] = [deck.entries[pair.x].kind, deck.entries[pair.y].kind]
 			kinds.sort()
-			keys.append(head + "誓い %s・%s" % [Names.kind(kinds[0]), Names.kind(kinds[1])])
+			var key := head + "誓い %s・%s" % [Names.kind(kinds[0]), Names.kind(kinds[1])]
+			if not keys.has(key):  # 同じ兵種の組の誓いが 2 つあっても、部隊は 1 回だけ数える
+				keys.append(key)
 		keys.append(head + "誓いの数 %d" % deck.oaths.size())
 	else:
 		var squads := Formation.squad_kinds(deck)

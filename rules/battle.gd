@@ -62,7 +62,7 @@ var relics: Array[Array] = [[], []]
 
 ## 組み方（選べる決まり OptionalRules.FORMATION。Formation）が入の対戦か。対戦を作るとき（MatchSetup.create_battle）に決まる。
 var formation := false
-## このフェーズに、分隊の駒が攻撃した相手（駒の番号 -> 攻撃した兵種の並び）。追い撃ち（Formation）が読む。フェーズの始めに空になる。
+## このフェーズに、分隊の駒が攻撃した相手（駒の番号 -> 攻撃した駒の (番号, 兵種) の並び）。追い撃ち（Formation）が読む。フェーズの始めに空になる。
 var focus_marks: Dictionary[int, Array] = {}
 
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
