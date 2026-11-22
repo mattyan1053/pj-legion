@@ -2324,6 +2324,9 @@ func _visit_story(app: Node) -> void:
 	_expect(scape.story_key() == Story.military().episodes[0].id and scape.shown_look() == Story.military().episodes[0].look, "話を選んでも、背景がその話のマップに替わらない")
 	list.focus(Story.military().episodes[-1])
 	_expect(scape.story_key() == Story.military().episodes[0].id, "まだ遊べない話を選んだら、背景が替わった")
+	list.focus(episode)
+	scape.cancel_queued()
+	_expect(scape.story_key() == Story.military().episodes[0].id, "とどまる前にカードから離れても、背景が替わる")
 	for later: RefCounted in Story.military().episodes.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
 		_expect(list.card_title(later) == "？？？" and not list.is_card_revealed(later), "まだ遊べない %s のカードの名前か縮図・顔が見えている" % later.title)

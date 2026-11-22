@@ -131,3 +131,14 @@ func test_the_story_backdrop_shows_the_episode_after_the_last_clear() -> void:
 	assert_eq(Story.scape_episode(campaign, null), episodes[0])
 	assert_eq(Story.scape_episode(campaign, episodes[0]), episodes[1])
 	assert_eq(Story.scape_episode(campaign, episodes[-1]), episodes[-1])
+
+
+## 物語選択で、いま選んでいない物語のカードに乗せたときも、その物語の記録で「まだクリアしていない最初の話」を選ぶ。
+func test_the_campaign_backdrop_reads_the_hovered_campaigns_record() -> void:
+	var story: RefCounted = Story.new()
+	var fantasy: RefCounted = Story.campaigns()[1]
+	story.choose_campaign(Story.military())
+	story.clear(Story.military().episodes[0].id)
+	story.choose_campaign(fantasy)
+	assert_eq(story.scape_episode_in(Story.military()), Story.military().episodes[1], "選んでいない物語の記録を見る")
+	assert_eq(story.scape_episode_in(fantasy), fantasy.episodes[0])

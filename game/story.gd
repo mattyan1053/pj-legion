@@ -342,8 +342,9 @@ static func scape_episode(of_campaign: Campaign, last: Episode) -> Episode:
 
 ## 物語 of_campaign で、まだクリアしていない最初の話（全部クリアしていたら最後の話）。背景に景色を見せる話。
 func scape_episode_in(of_campaign: Campaign) -> Episode:
+	var cleared := _cleared_in(of_campaign)  # いま選んでいる物語でなくても、その物語の記録を見る
 	for episode: Episode in of_campaign.episodes:
-		if not is_cleared(episode.id):
+		if not cleared.has(String(episode.id)):
 			return episode
 	return of_campaign.episodes[-1]
 

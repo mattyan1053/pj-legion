@@ -349,6 +349,7 @@ func _build_card(episode: Episode) -> Button:
 	card.pressed.connect(choose.bind(episode))
 	if available:
 		card.mouse_entered.connect(focus.bind(episode))
+		card.mouse_exited.connect(func() -> void: _backdrop.cancel_queued())
 
 	# 上の縁に国の色の帯と淡い光（物語のカードと同じ向き）。まだ遊べない話は色を抜く。次に遊ぶ話は、帯を金にして目立たせる。
 	var decor := NationDecor.new(context.story.campaign.army, 0.0, 70.0)

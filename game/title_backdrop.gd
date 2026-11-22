@@ -198,6 +198,18 @@ func queue_story(army: int, board: Board, look_name: StringName, key: Variant) -
 	_swap_tween.tween_property(_curtain, "color:a", 0.0, SWAP_FADE_IN)
 
 
+## カードから離れた: まだ待っている間（幕を沈め始める前）なら、景色を替えるのをやめる（通り過ぎただけでは替えない）。
+## 幕がもう沈み始めていたら、そのまま替える（途中で戻すと、ちらつく）。
+func cancel_queued() -> void:
+	if _next_key == null or _curtain == null or _curtain.color.a > 0.0:
+		return
+	_next_key = null
+	_next = []
+	if _swap_tween != null:
+		_swap_tween.kill()
+		_swap_tween = null
+
+
 func _swap_story() -> void:
 	if _next.is_empty():
 		return
