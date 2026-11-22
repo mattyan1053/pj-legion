@@ -370,6 +370,7 @@ func _initialize() -> void:
 		return
 	# 部隊の中身ごとの勝ち負け（--squads のとき。決着した局の、部隊 1 つずつ）。鍵 -> [部隊の数, 勝った数]。
 	var squad_rows: Dictionary[String, Array] = {}
+	var formation_counts: Dictionary[int, int] = {}  # 組み方の効果が効いた回数（全部の局の合計）
 	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
 	var one_versus: Dictionary[String, Array] = {}
 	var started := Time.get_ticks_msec()
@@ -469,6 +470,8 @@ func _initialize() -> void:
 					first_seed + game, fall.kind, fall.turn, fall.damage, fall.hits_taken, fall.killer_kind, fall.killer_level,
 					1 if fall.after_step else 0,
 				])
+		for effect: int in outcome.formation:
+			formation_counts[effect] = formation_counts.get(effect, 0) + outcome.formation[effect]
 		if (random_squads or one_squad) and episode == null and outcome.winner >= 0:
 			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 				if one_squad and side != squad_side:
@@ -600,6 +603,12 @@ func _initialize() -> void:
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]), row[7], row[6], 100.0 * row[7] / maxi(1, row[6]),
 		])
 	print("")
+	if not formation_counts.is_empty():
+		var parts: Array[String] = []
+		for effect: Formation.Effect in Formation.Effect.values():
+			parts.append("%s %.2f" % [Names.formation_effect(effect), float(formation_counts.get(effect, 0)) / maxi(1, games)])
+		print("組み方の効果が効いた回数（1 局あたり。誓いの果ては誓いが切れた回数）: %s" % "  ".join(parts))
+		print("")
 	var decided := all.wins[0] + all.wins[1]
 	print("先手（プレイヤー1）の勝率: %.1f%%（決着した %d 局のうち）" % [100.0 * all.wins[0] / maxi(1, decided), decided])
 	print("最初に相手のプレイヤーの駒へ当てた側・倒した側（その側の勝ちは、決着した局だけ）")
