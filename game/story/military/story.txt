@@ -10,15 +10,15 @@ army = military
 rules = story
 budget = 20
 order = 1
-intro = 新任の偵察隊長ハーデンとして、尾根を越えて谷への道を開く。
+intro = 新任の少尉ハーデンとして偵察隊を率い、尾根を越えて谷への道を開く。
 
 [start]
 unit = shield_trooper
 unit = sniper
 
 [cast]
-ハーデン = king, 新任の偵察隊長
-ドーソン = shield_trooper evolved, 曹長。演習の教官
+ハーデン = king, 新任の少尉。隊長
+ドーソン = shield_trooper evolved, 古参の曹長。教官
 ノエ = sniper, 新兵の狙撃手
 マルタ = medic, 古参の衛生兵
 ピップ = commando, お調子者の斥候
