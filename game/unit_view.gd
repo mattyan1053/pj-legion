@@ -12,6 +12,7 @@ extends Node3D
 
 const UnitLooks := preload("res://game/unit_looks.gd")
 const UnitBody := preload("res://game/unit_body.gd")
+const PieceStyle := preload("res://game/piece_style.gd")
 
 ## 行動済みの駒は、この明るさまで暗くする。
 const ACTED_SHADE := 0.42
@@ -58,6 +59,7 @@ func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int, look := &
 	_body.view = self
 	add_child(_body)
 	_height = _body.body_height
+	PieceStyle.add_outline(_body)
 	if kind == UnitKind.Id.KING:
 		_add_crown()
 	_add_bar()
