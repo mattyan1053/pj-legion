@@ -12,6 +12,7 @@ extends Control
 ## 何を出すかは呼ぶ側（result_summary.gd）が決める。ここは見せ方と、押されたことを signal で知らせるだけ。
 
 const Text := preload("res://game/text.gd")
+const Steady := preload("res://game/steady.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
@@ -612,6 +613,7 @@ func _build_stats() -> void:
 	_stats_panel = _panel(Palette.BORDER)
 	_stats_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_stats_panel.custom_minimum_size = Vector2(460.0, 0.0)
+	Steady.mark(_stats_panel, "result.stats")
 	_body.add_child(_stats_panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
@@ -631,6 +633,7 @@ func _build_mvp() -> void:
 	_mvp_panel = _panel(Color(Palette.BORDER_BRIGHT, 0.85))
 	_mvp_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_mvp_panel.custom_minimum_size = Vector2(460.0, 0.0)
+	Steady.mark(_mvp_panel, "result.mvp")
 	_body.add_child(_mvp_panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)

@@ -65,7 +65,7 @@ func _sample(frame: Control, marked: bool) -> void:
 	var key: Variant = Steady.name_of(frame) if marked else frame.get_instance_id()
 	var kind: StringName = Steady.kind_of(frame) if marked else Steady.SIZE
 	var with_place := kind == Steady.RECT
-	var rect := frame.get_global_rect()
+	var rect := _rect_of(frame)
 	if kind == Steady.WIDTH:
 		rect.size.y = 0.0  # 高さは見ない
 	if not _seen.has(key):
@@ -93,6 +93,13 @@ func _sample(frame: Control, marked: bool) -> void:
 		if not sizes.has(_size_text(rect)) and sizes.size() < 6:
 			sizes.append(_size_text(rect))
 		entry[0] = rect
+
+
+## 枠の四角（画面の上の置き場所と大きさ）。枠そのものの拡大（マウスを乗せたカードが浮く演出。scale）は、並びを動かさないので数えない。
+## 入れ物ごと拡大したときは、中の枠も大きく見えるので数える。
+static func _rect_of(frame: Control) -> Rect2:
+	var outer := frame.get_global_transform() * frame.get_transform().affine_inverse()
+	return Rect2(outer * frame.position, frame.size * outer.get_scale())
 
 
 func _forget(id: int) -> void:

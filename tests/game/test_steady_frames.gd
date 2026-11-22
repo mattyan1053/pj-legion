@@ -70,6 +70,27 @@ func test_probe_passes_a_fixed_frame_and_tells_size_from_place() -> void:
 	probe.free()
 
 
+## 枠そのものを拡大する演出（マウスを乗せたカードが浮く）は、並びを動かさないので拾わない。入れ物ごと拡大したら、中の枠は拾う。
+func test_probe_skips_a_frame_scaled_on_its_own() -> void:
+	var probe := SteadyProbe.new()
+	await settle(probe)
+	var holder := Control.new()
+	var card := _marked("試し: 浮くカード", Steady.RECT)
+	card[0].custom_minimum_size = Vector2(200.0, 40.0)
+	holder.add_child(card[0])
+	await settle(holder)
+	await _frames(3)
+	card[0].pivot_offset = card[0].size / 2.0
+	card[0].scale = Vector2.ONE * 1.05
+	await _frames(4)
+	assert_eq(probe.report(), "", "浮かせただけのカードを拾った")
+	holder.scale = Vector2.ONE * 1.5
+	await _frames(4)
+	assert_true(probe.report().contains("試し: 浮くカード"), "入れ物ごと大きくなった枠を拾わない")
+	holder.free()
+	probe.free()
+
+
 ## 同じ名前の枠は、作り直しても同じ大きさ（並んだ札がそろう、選び直しで作り直す欄が動かない）。控えを捨てたら（場面が替わった）、比べ直す。
 func test_probe_compares_frames_of_the_same_name() -> void:
 	var probe := SteadyProbe.new()
