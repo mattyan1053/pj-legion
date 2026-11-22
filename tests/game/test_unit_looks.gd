@@ -48,6 +48,21 @@ func test_people_have_their_own_shapes() -> void:
 	var yelda := kaykit.build(UnitKind.Id.KING, Color.RED, &"yelda", Vector3.ZERO)
 	assert_true(_shown_meshes(yelda).has("Rogue_Head") and _shown_meshes(yelda).has("Badge_Shield"), "%s" % [_shown_meshes(yelda)])
 	yelda.free()
+	# 「人形 2」の組: 頭を別の人物の頭に替え、頭に合わせた帽子・兜は外す。
+	var kaykit2 := UnitLooks.of(&"kaykit2")
+	var ul2 := kaykit2.build(UnitKind.Id.PRIEST, Color.RED, &"ul", Vector3.ZERO)
+	var ul2_shown := _shown_meshes(ul2)
+	assert_eq(ul2_shown.filter(func(each: String) -> bool: return each.ends_with("_Head")), ["Barbarian_Head"])
+	assert_true(not ul2_shown.has("Mage_Hat") and ul2_shown.has("Mage_Body") and ul2_shown.has("Mage_Cape"), "%s" % [ul2_shown])
+	ul2.free()
+	var dawson2 := kaykit2.build(UnitKind.Id.SHIELD_TROOPER, Color.RED, &"dawson", Vector3.ZERO)
+	var dawson2_shown := _shown_meshes(dawson2)
+	assert_true(dawson2_shown.has("Engineer_Head") and not dawson2_shown.has("Knight_Helmet") and dawson2_shown.has("Knight_Body"), "%s" % [dawson2_shown])
+	dawson2.free()
+	# 将の別の姿（骸骨の将）は、「人形」の組の骸骨の将（騎士にならない）。
+	var skeleton_king := kaykit2.build(UnitKind.Id.KING, Color.RED, &"skeleton_mage", Vector3.ZERO)
+	assert_true(not _shown_meshes(skeleton_king).has("Knight_Body"), "%s" % [_shown_meshes(skeleton_king)])
+	skeleton_king.free()
 
 
 ## 見えている面の名前（親が隠れていれば見えない）。
