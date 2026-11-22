@@ -22,6 +22,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const UiFeel := preload("res://game/ui_feel.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
 const StageLook := preload("res://game/stage_look.gd")
+const PieceStyle := preload("res://game/piece_style.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const SaveMark := preload("res://game/save_mark.gd")
 const SlotScreen := preload("res://game/slot_screen.gd")
@@ -210,6 +211,8 @@ func go(scene: StringName) -> void:
 		_current.queue_free()
 	# 駒の見た目の組は、場面を作るときにだけ替える（場面の途中でオプションを変えても、盤の駒とアイコンが混ざらない）。
 	UnitLooks.use(UnitLooks.name_at(context.settings.value(AppContext.Settings.UNIT_LOOK)))
+	# 駒の縁取り（piece_style.gd）も、場面を作るときに当てる（場面の途中で縁のある駒とない駒が混ざらない）。
+	PieceStyle.outline = context.settings.value(AppContext.Settings.PIECE_OUTLINE)
 	var node: Node = load(SceneFlow.script_path(scene)).new()
 	context.scene = scene  # 場面が run_data() で、流れが渡すものを受け取れるように
 	node.set(&"context", context)
