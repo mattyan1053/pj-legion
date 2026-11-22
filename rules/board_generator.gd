@@ -29,8 +29,6 @@ const MID_BOSS_SPREAD := 6
 const MID_BOSS_WALL_GAP := 4
 ## 双子結晶の砲台の場所（左上の角から、縦横にこれだけ内側。右下は点対称）。
 const BATTERY_CORNER := 7
-## 中央平原・迷宮回廊の砲台の、左右の端からの列（0 から数える）。
-const BATTERY_EDGE := 1
 ## 迷宮回廊の回復の泉を、本陣の列から左右へ離す量と、真ん中の行から自分の本陣の側へ寄せる量。
 const SPRING_SPREAD := 5
 const SPRING_SETBACK := 7
@@ -108,17 +106,15 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 
 
 ## マップの、砲台を置ける場所（2 つ。本陣どうしを入れ替える点対称で、どちらの本陣からもほぼ同じ遠さ）。
-## 盤の真ん中（拠点と、正面のぶつかり合い）から外し、脇に置く（人間の案。Issue #47 の 11/22）。
-## - 中央平原・迷宮回廊: 左右の端から BATTERY_EDGE 列目の、真ん中の行（中ボスと結晶泉の中立の駒が届かない）
+## - 中央平原・迷宮回廊: 本陣の列の、真ん中の行の 1 つ手前と 1 つ先（中ボスと結晶泉の中立の駒が届かない）
 ## - 双子結晶: 左上と右下の角の内側（左右の道の、両方の本陣から同じ道のりの辺り）
 static func battery_spots_for(stage: Stage, size: Vector2i) -> Array[Vector2i]:
 	var first: Vector2i
 	if stage == Stage.TWIN_SPRINGS:
 		first = Vector2i(BATTERY_CORNER, BATTERY_CORNER)
 	else:
-		first = Vector2i(BATTERY_EDGE, ((size - Vector2i.ONE) / 2).y)
-	# 本陣どうしを入れ替える点対称（中央平原・迷宮回廊の本陣は、列の真ん中より 1 つ左。双子結晶は対角）。
-	var hqs_sum := Vector2i(size.x - 1, size.y - 1) if stage == Stage.TWIN_SPRINGS else Vector2i(2 * ((size / 2).x - 1), size.y - 1)
+		first = Vector2i((size / 2).x - 1, ((size - Vector2i.ONE) / 2).y - 1)
+	var hqs_sum := Vector2i(size.x - 1, size.y - 1) if stage == Stage.TWIN_SPRINGS else Vector2i(2 * first.x, size.y - 1)
 	return [first, hqs_sum - first]
 
 
