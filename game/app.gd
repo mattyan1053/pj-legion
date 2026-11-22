@@ -58,6 +58,8 @@ const QUIT_LAYER := 26
 ## オプションの画面を開いてから、設定が変わったか（閉じて書いたときに、保存の印を出す）。
 var _settings_touched := false
 var _open_all: OpenAllKey
+## 検査のときだけ持つ、枠の見張り（game/steady_probe.gd）。
+var steady_probe: Node
 
 
 func _ready() -> void:
@@ -68,6 +70,11 @@ func _ready() -> void:
 	elif args.has("--shots"):
 		context.checking = AppContext.CHECK_SHOTS
 	if context.checking != &"":
+		# 枠の大きさが中身で変わらないことを見張る（docs/ui-theme.md の「枠の大きさ」）。`--frames` は洗い出し。
+		steady_probe = load("res://game/steady_probe.gd").new(args.has("--frames"))
+		steady_probe.name = "SteadyProbe"
+		add_child(steady_probe)
+		scene_changed.connect(func(_scene: StringName) -> void: steady_probe.forget_all())
 		# 検査とスクリーンショットは、決めた画面の大きさで回す（`--size <幅>x<高さ>`。無ければ基準の 1280×720）。
 		ScreenSize.apply_for_check(get_window(), ScreenSize.requested(args))
 		# 駒の見た目の組を選んで撮る・回す（`--unit-look <組の名前>`。無ければ既定の組）。
@@ -112,6 +119,7 @@ func _ready() -> void:
 	context.system_menu = menu
 	context.menu_requested.connect(open_menu)
 	context.settings_requested.connect(open_settings)
+	context.quit_requested.connect(request_close)
 	context.run_requested.connect(start_run)
 
 	save_mark = SaveMark.new()
@@ -254,38 +262,19 @@ func _notification(what: int) -> void:
 		request_close()
 
 
-## ウィンドウを閉じたい（× を押した）: その瞬間のものは保存しない（最後に保存した所までが残る）。
-## 途中のもの（決着していない対戦、取っておいていない部隊の変更、まだ保存していないストーリーの進み具合）があれば、
-## 何が残るかを書いて確かめる。無ければすぐ閉じる。確かめている間にもう一度 × を押したら、閉じる。
+## ウィンドウを閉じたい（× を押した）: その瞬間のものは保存しない（最後にオートセーブした所までが残る）。
+## どの画面でも、すぐには閉じずに確かめる（文はいつも同じ。quit_note）。確かめている間にもう一度 × を押したら、閉じる。
 func request_close() -> void:
 	if quit_window.is_open():
 		context.quit()
 		return
-	var note := quit_note()
-	if note == "":
-		context.quit()
-		return
 	context.system_menu.close()
-	quit_window.ask(Text.t("menu.quit.confirm"), note, Text.t("menu.quit"), context.quit)
+	quit_window.ask(Text.t("menu.quit.confirm"), quit_note(), Text.t("menu.quit"), context.quit)
 
 
-## ゲームを終える前の確かめに書く文（何が残るか）。確かめなくてよければ空。
-## 対戦の途中: ストーリーなら「最後に保存した所（日時）から再開」、対戦モードなら「この対戦は残らない」。
-## 部隊編成の途中: 「編成完了」の前の変更は残らない。ストーリーの、まだ保存していない進み具合も、最後に保存した所から再開。
-func quit_note() -> String:
-	var lines := PackedStringArray()
-	var busy: bool = _current != null and _current.has_method(&"in_progress") and _current.call(&"in_progress")
-	var in_story: bool = context.slots.counting
-	if busy and _current_id == SceneFlow.DECKS:
-		lines.append(Text.t("menu.quit.deck"))
-	elif busy:
-		lines.append(Text.t("menu.quit.battle"))
-		if not in_story:
-			lines.append(Text.t("menu.quit.versus"))
-	if in_story and (busy or context.slots.has_unsaved()):
-		var at := context.slots.saved_at()
-		lines.append(Text.t("menu.quit.resume", {"when": SlotScreen.date_text(at)}) if at > 0 else Text.t("menu.quit.from_start"))
-	return "".join(lines)
+## ゲームを終える前の確かめに書く文。どの画面でも同じ（「セーブしていない内容は失われます。」。docs/save-slots.md）。
+static func quit_note() -> String:
+	return Text.t("menu.quit.note")
 
 
 ## 流れ run を、最初の場面から始める。切り替えの途中なら何もしない。
@@ -324,14 +313,14 @@ func open_menu() -> void:
 	menu.open(menu_items(), false, last_saved_note())
 
 
-## ストーリーを遊んでいる間の、システムメニューの見出しの下の文（「最後に保存: 日時」）。ストーリーの外では空。
+## ストーリーを遊んでいる間の、システムメニューの見出しの下の文（「最後のオートセーブ: 日時」）。ストーリーの外では空。
 func last_saved_note() -> String:
 	if not context.slots.counting:
 		return ""
 	return last_saved_text(context.slots)
 
 
-## いまのスロットを最後に保存した時刻の文（まだ保存していなければ「未保存」）。
+## いまのスロットを最後にオートセーブした時刻の文（まだ書いていなければ「なし」）。
 static func last_saved_text(slots: AppContext.SaveSlots) -> String:
 	var at := slots.saved_at()
 	return Text.t("menu.last_saved", {"when": SlotScreen.date_text(at) if at > 0 else Text.t("menu.never_saved")})
@@ -361,9 +350,8 @@ func menu_items() -> Array:
 			items.append([ITEM_EXIT_PREFIX + String(exit[0]), Text.t(exit[1]), leave_confirm(scene, Text.t(exit[2]))])
 	if _current_id != SceneFlow.FIRST:
 		items.append([ITEM_TITLE, Text.t("menu.to_title"), leave_confirm(scene, Text.t("menu.to_title.confirm"))])
-	# ゲーム終了は、ウィンドウの × と同じ確かめ（何が残るか）。
-	var quit_note_text := quit_note()
-	items.append([ITEM_QUIT, Text.t("menu.quit"), "" if quit_note_text == "" else "%s\n%s" % [Text.t("menu.quit.confirm"), quit_note_text]])
+	# ゲーム終了は、ウィンドウの × と同じ確かめ（どの画面でも確かめる）。
+	items.append([ITEM_QUIT, Text.t("menu.quit"), "%s\n%s" % [Text.t("menu.quit.confirm"), quit_note()]])
 	return items
 
 

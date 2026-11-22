@@ -302,6 +302,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	# メニューで止めた時間や、CPU の番の速さを、ほかの場面へ持ち越さない。
 	Engine.time_scale = 1.0
+	Names.story_sides = false
 
 
 ## 毎フレームの終わり（_process の終わり）。再生の途中で、次のフレームまで待つのに使う。
@@ -457,6 +458,8 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	stats = BattleStats.new(battle)
 	_phase_focus.clear()
 	_log_panel.close()
+	# ストーリーなら、陣営を「味方」「敵」と呼ぶ（ログ・上の帯・番の知らせ・マスの説明・決着。names.gd）。
+	Names.story_sides = source != null and source.story_sides()
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		names.append(_side_name(side))
@@ -1106,6 +1109,8 @@ func auto_button_state() -> Array:
 
 ## 番の知らせに出す陣営の名前（CPU が動かすなら、そう書く）。
 func _side_name(side: Unit.Side) -> String:
+	if Names.story_sides:
+		return Names.side(side)
 	if cpu_opponent and side == source.cpu_side():
 		return Text.t("battle.side_cpu", {"color": Names.side_word(side)})
 	return Names.side(side)
@@ -1698,7 +1703,7 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 	_hud.hide_evolution()
 	if _watching_other():
 		# 自分の番を終えた: 再生の間（中立のフェーズから）も、相手の番の表示にする。
-		_hud.set_end_turn(false, Text.t("battle.end_turn.cpu"))
+		_hud.set_end_turn(false, Text.t("battle.end_turn.foe" if Names.story_sides else "battle.end_turn.cpu"))
 		_hud.set_hint(BattleTexts.hint(battle, null, null, Mode.NONE, true, false, false))
 	_show_watch_controls()
 	await _playback.play_all(events)
@@ -1779,11 +1784,15 @@ func _run_cpu() -> void:
 
 
 ## リザルトの画面に出すもの（result_summary.gd）。draw なら引き分けで、winner は見ない。
-func _result_summary(draw: bool, winner: Unit.Side, reason: String) -> RefCounted:
+## reason_id は決着の理由（GameWonEvent.Reason。引き分けは -1）。ストーリーなら、遊ぶ人の側から書く（「敗北　将が倒れた」）。
+func _result_summary(draw: bool, winner: Unit.Side, reason: String, reason_id := -1) -> RefCounted:
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		names.append(_side_name(side))
-	return ResultSummary.of(stats, draw, winner, reason, cpu_opponent, _human_side(), names, area_name)
+	var story_line := ""
+	if Names.story_sides and not draw and reason_id >= 0:
+		story_line = ResultSummary.story_reason(winner == _human_side(), reason_id as GameWonEvent.Reason, reason)
+	return ResultSummary.of(stats, draw, winner, reason, cpu_opponent, _human_side(), names, area_name, story_line)
 
 
 ## side の番が来たときにカメラが見る地点。寄る駒（phase_focus.gd。前回最後に動かした駒）のいるところから、少し敵の本陣のほうへ寄せる
@@ -1899,7 +1908,7 @@ func _refresh() -> void:
 		_ui.confirming_auto
 	)
 	if cpu_turn:
-		_hud.set_end_turn(false, Text.t("battle.end_turn.auto") if battle.phase == _auto_side else Text.t("battle.end_turn.cpu"))
+		_hud.set_end_turn(false, Text.t("battle.end_turn.auto") if battle.phase == _auto_side else Text.t("battle.end_turn.foe" if Names.story_sides else "battle.end_turn.cpu"))
 	elif _ui.confirming_end:
 		_hud.set_end_turn(true, Text.t("battle.end_turn.confirm"))
 	else:

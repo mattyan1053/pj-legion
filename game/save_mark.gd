@@ -1,5 +1,5 @@
 extends CanvasLayer
-## 保存の小さな印（docs/save-slots.md の「保存する所」）。オートセーブで書いたとき、画面の右下に「保存しました」を少しの間だけ出す。
+## 保存の小さな印（docs/save-slots.md の「保存する所」）。オートセーブで書いたとき、画面の右下に「オートセーブ完了」を少しの間だけ出す。
 ## アプリ（app.gd）が 1 つ持つ。入力は受けない（クリックを通す）。
 
 const Text := preload("res://game/text.gd")

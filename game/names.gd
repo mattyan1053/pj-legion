@@ -17,13 +17,22 @@ static func word(names: Dictionary, value: int) -> String:
 	return String(names.find_key(value)).to_lower()
 
 
+## ストーリーの呼び方にするか。真なら、陣営を遊ぶ人の側から「味方」「敵」と呼ぶ（色と「プレイヤー1」で呼ばない。中立はそのまま）。
+## ストーリーの間の画面（出撃準備・対戦）が、入るときに真にし、出るときに偽に戻す（docs/wording.md の「陣営の呼び方」）。
+static var story_sides := false
+
+
 ## 陣営の名前（見出し、番の知らせ、決着、本陣のマス）。
 static func side(of_side: Unit.Side) -> String:
+	if story_sides and of_side != Unit.Side.NEUTRAL:
+		return Text.t("side.story." + word(Unit.Side, of_side))
 	return Text.t("side." + word(Unit.Side, of_side))
 
 
 ## 陣営の短い名前（ログの駒の名前の前、上の帯の陣営ごとの欄）。
 static func side_word(of_side: Unit.Side) -> String:
+	if story_sides and of_side != Unit.Side.NEUTRAL:
+		return Text.t("side.story." + word(Unit.Side, of_side))
 	return Text.t("side.%s.short" % word(Unit.Side, of_side))
 
 

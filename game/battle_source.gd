@@ -48,6 +48,12 @@ func cpu_side() -> Unit.Side:
 	return Unit.Side.PLAYER2
 
 
+## 陣営を遊ぶ人の側から「味方」「敵」と呼ぶか（ストーリー。names.gd の story_sides）。偽なら色とプレイヤーの番号で呼ぶ（対戦モード）。
+## 真なら、決着の画面の理由も遊ぶ人の側から書く（「敗北　将が倒れた」。result_summary.gd）。
+func story_sides() -> bool:
+	return false
+
+
 ## 対戦の途中で、相手を人と CPU で切り替えられるか（F4、下の帯の「相手」のボタン）。
 func can_switch_opponent() -> bool:
 	return false

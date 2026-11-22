@@ -1894,11 +1894,11 @@ func _leave_battle(app: Node) -> void:
 	_scene.set_opponent(true)
 	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
-	# ウィンドウの ×: 対戦の途中なので、すぐには閉じずに、何が残るかを書いて確かめる。確かめている間は時間を止める。キャンセルで続く。
+	# ウィンドウの ×: すぐには閉じずに確かめる（どの画面でも同じ文）。確かめている間は時間を止める。キャンセルで続く。
 	app.request_close()
 	var quit_window: Node = app.quit_window
-	_expect(quit_window.is_open() and quit_window.question().contains("対戦の途中です。") and quit_window.question().contains("この対戦は残りません"),
-		"対戦の途中にウィンドウの × を押しても、何が残るかを書いて確かめない: %s" % quit_window.question())
+	_expect(quit_window.is_open() and quit_window.question().contains("セーブしていない内容は失われます。"),
+		"対戦の途中にウィンドウの × を押しても、確かめない: %s" % quit_window.question())
 	_expect(app.context.overlays.pauses() and Engine.time_scale == 0.0, "閉じる確かめの間、対戦の時間（再生）が止まらない")
 	quit_window.cancel()
 	_expect(not quit_window.is_open() and _scene.in_progress() and not app.context.overlays.is_open() and Engine.time_scale > 0.0,
@@ -1995,6 +1995,17 @@ func _expect_steady(scene: Node, moving: Array[Node], moves: Array, what: String
 		_expect(shifted.is_empty(), "%sと、ほかの部品が動く（%s）: %s" % [what, move.get_bound_arguments(), shifted.slice(0, 3)])
 
 
+## 初期位置の縮図（deploy_map.gd）の駒に、次々マウスを乗せて、最後に外す。枠の見張り（steady_probe.gd）が、その間の枠を見る。
+func _hover_each(deploy: Control) -> void:
+	for cell: Vector2i in deploy.unit_cells():
+		deploy.hover_cell(cell)
+		for i in 3:
+			await get_tree().process_frame
+	deploy.hover_cell(NO_CELL)
+	for i in 3:
+		await get_tree().process_frame
+
+
 ## 見えている部品（Control）の、画面の上の位置と大きさ（パス -> Rect2）。skip とその中身は除く。
 ## 文字（Label）と、送れる枠（ScrollContainer）の中身は、中身に合わせて伸び縮みしてよい（枠と、ほかの部品が動かなければよい）ので、比べない。
 func _layout_of(node: Node, skip: Array[Node], into := {}) -> Dictionary:
@@ -2053,6 +2064,7 @@ func _visit_decks(app: Node) -> void:
 	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
 	var place_note: Control = dialog.deploy_note()
 	_expect(place_note.shown_unit_id() == -1, "初期位置の窓で、駒を選ぶ前から駒の欄に駒が出ている")
+	await _hover_each(place_map)
 	place_map.hover_cell(placed_cells[1])
 	var hovered_unit: Unit = place_map.focused_unit()
 	_expect(hovered_unit != null and place_note.shown_name() == Names.kind(hovered_unit.kind), "初期位置の窓で、マウスを乗せた駒の名前が欄に出ない")
@@ -2382,6 +2394,8 @@ func _visit_story(app: Node) -> void:
 	var own_cells: Array[Vector2i] = deploy.unit_cells()
 	var free_cells: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return not own_cells.has(cell))
 	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
+	# 駒に次々マウスを乗せる（駒の欄の中身が替わっても、枠が動かないこと。枠の見張り steady_probe.gd が見る）。
+	await _hover_each(deploy)
 	deploy.press_cell(own_cells[0])
 	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
 	_expect(sortie.deploy_note().shown_name() == Names.kind(deploy.focused_unit().kind), "出撃準備の初期位置で、選んだ駒の名前が欄に出ない")
@@ -2450,10 +2464,13 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
 	list = app.current_scene()
-	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後に保存した所が、話の一覧に出る。
+	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後にオートセーブした時刻が、話の一覧に出る。
 	_expect(app.save_mark.shown_count > saves_before and not app.context.slots.has_unsaved(), "話をクリアして話の一覧へ戻っても、保存しない（か、保存の印が出ない）")
-	_expect(list.saved_text() != "最後に保存: 未保存" and list.saved_text().begins_with("最後に保存: "), "話の一覧に、最後に保存した所が出ない")
-	_expect(app.quit_note() == "", "保存したあとの話の一覧で、ウィンドウを閉じる前に確かめる: %s" % app.quit_note())
+	_expect(list.saved_text() != "最後のオートセーブ: なし" and list.saved_text().begins_with("最後のオートセーブ: "), "話の一覧に、最後にオートセーブした時刻が出ない")
+	# ウィンドウの ×: 保存したあとの話の一覧でも、確かめる（どの画面でも出す）。
+	app.request_close()
+	_expect(app.quit_window.is_open(), "話の一覧でウィンドウの × を押しても、確かめない")
+	app.quit_window.cancel()
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
 		_expect(list.is_card_enabled(Story.military().episodes[first + 1]), "前の話をクリアしたのに、次の話を選べない")
@@ -2718,9 +2735,8 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
-	# ウィンドウを閉じる前の確かめ: ストーリーの対戦の途中は、最後に保存した所から再開になることを書く。
-	_expect(app.quit_note().begins_with("対戦の途中です。") and (app.quit_note().contains("最後に保存した所（") or app.quit_note().contains("はじめから")),
-		"ストーリーの対戦の途中で閉じる確かめに、何が残るかが無い: %s" % app.quit_note())
+	# ストーリーの間は、陣営を「味方」「敵」と呼ぶ（「CPU（赤）」「プレイヤー1」と呼ばない）。
+	_expect(Names.side(Unit.Side.PLAYER2) == "敵" and Names.side_word(Unit.Side.PLAYER1) == "味方", "話の対戦で、陣営が「味方」「敵」と呼ばれない")
 	_expect(screen.battle.board.size == episode.map.make_board().size, "話の対戦が、話のマップで始まらない")
 	var placed := 0
 	for unit: Unit in screen.battle.units:
@@ -2831,6 +2847,14 @@ func _nudge_screen_size() -> void:
 
 func _finish(message: String, code: int) -> void:
 	_finished = true
+	# 枠の見張り（game/steady_probe.gd）: 印の付いた枠が、出ている間に動いていたら失敗にする。
+	var probe: Node = get_tree().root.find_child("SteadyProbe", true, false)
+	if probe != null:
+		if probe.found_report() != "":
+			print("frames: 大きさが変わった板（印なし）:\n%s" % probe.found_report())
+		if probe.report() != "":
+			message = "autoplay: %s" % probe.report() if code == 0 else "%s\n  %s" % [message, probe.report()]
+			code = 1
 	print(message)
 	# 音を止めて手放してから終える（鳴らしたまま終えると、終わるときにエラーが出る）。
 	var context: Variant = _scene.get(&"context") if is_instance_valid(_scene) else null

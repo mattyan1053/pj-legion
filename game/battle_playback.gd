@@ -50,7 +50,7 @@ var _ui: BattleUiState
 var _stage: Node3D
 var team_colors: Array[Color] = []
 ## 場面に頼むこと: 上の帯を描き直す (turn, phase)、陣営の名前 (side) -> String、
-## リザルトの画面に出すもの (draw, winner, reason) -> result_summary.gd、
+## リザルトの画面に出すもの (draw, winner, reason, reason_id) -> result_summary.gd（reason_id は GameWonEvent.Reason。引き分けは -1）、
 ## side の番にカメラが見る地点 (side) -> Vector3、CPU が動かす陣営 () -> Unit.Side、効果音を鳴らす (name)。
 var refresh_status: Callable
 var side_name: Callable
@@ -679,12 +679,12 @@ func _play_acted(event: UnitActedEvent) -> void:
 
 func _play_won(event: GameWonEvent) -> void:
 	await after(0.4)
-	_hud.show_result(result_summary.call(false, event.winner, Text.t(BattleLog.WIN_TEXTS[event.reason])))
+	_hud.show_result(result_summary.call(false, event.winner, Text.t(BattleLog.WIN_TEXTS[event.reason]), event.reason))
 
 
 func _play_drawn(event: GameDrawnEvent) -> void:
 	await after(0.4)
-	_hud.show_result(result_summary.call(true, Unit.Side.NEUTRAL, Text.t(BattleLog.DRAW_TEXTS[event.reason])))
+	_hud.show_result(result_summary.call(true, Unit.Side.NEUTRAL, Text.t(BattleLog.DRAW_TEXTS[event.reason]), -1))
 
 
 func _play_defeated(event: UnitDefeatedEvent) -> void:

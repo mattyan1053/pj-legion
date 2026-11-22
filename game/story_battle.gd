@@ -91,6 +91,11 @@ func talk_battle(after: bool) -> Battle:
 	return shown
 
 
+## 陣営は「味方」「敵」と呼ぶ（敵を「CPU（赤）」と呼ばない）。
+func story_sides() -> bool:
+	return true
+
+
 ## 決着の画面の、流れの外への行き先は話の一覧。
 func leave() -> Array:
 	return [&"episodes", "result.to_episodes"]
