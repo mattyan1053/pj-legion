@@ -113,11 +113,21 @@ func _scripts(dir: String) -> Array[String]:
 	return found
 
 
-## 話の一覧の背景は、その物語の国の側の空を見る（docs/scene-flow.md）。
+## 物語の景色は、その物語の国の側の空を見る（docs/scene-flow.md）。
 func test_the_story_backdrop_faces_the_sky_of_the_nation() -> void:
 	var TitleBackdrop := load("res://game/title_backdrop.gd")
-	assert_eq(TitleBackdrop.view_of(UnitKind.Army.MILITARY), TitleBackdrop.VIEW_BERG)
-	assert_eq(TitleBackdrop.view_of(UnitKind.Army.FANTASY), TitleBackdrop.VIEW_RUEL)
+	assert_eq(TitleBackdrop.map_view_of(UnitKind.Army.MILITARY), TitleBackdrop.VIEW_BERG_MAP)
+	assert_eq(TitleBackdrop.map_view_of(UnitKind.Army.FANTASY), TitleBackdrop.VIEW_RUEL_MAP)
 	# 琥珀の空は縫い目の左、菫の空は右（rift_sky.gdshader）。左を向くのは、向きが正。
-	assert_true(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_BERG][0] > 0.0 and TitleBackdrop.VIEWS[TitleBackdrop.VIEW_RUEL][0] < 0.0)
+	assert_true(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_BERG_MAP][0] > 0.0 and TitleBackdrop.VIEWS[TitleBackdrop.VIEW_RUEL_MAP][0] < 0.0)
+	assert_eq(TitleBackdrop.NATION_SKY.size(), UnitKind.Army.size() - 1, "空の色は、軍なし以外の国ごとに 1 つ")
 	assert_eq(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_STORY][0], 0.0, "物語選択は、縫い目が真ん中")
+
+
+## 物語選択・セーブデータ選択の背景に見せる話: クリアしたいちばん先の話の次（最後の話なら、それ。無ければ最初の話）。
+func test_the_story_backdrop_shows_the_episode_after_the_last_clear() -> void:
+	var campaign: RefCounted = Story.military()
+	var episodes: Array = campaign.episodes
+	assert_eq(Story.scape_episode(campaign, null), episodes[0])
+	assert_eq(Story.scape_episode(campaign, episodes[0]), episodes[1])
+	assert_eq(Story.scape_episode(campaign, episodes[-1]), episodes[-1])

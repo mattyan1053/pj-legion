@@ -6,7 +6,9 @@ extends Node3D
 ## ストーリーの物語選択と話の一覧も、同じ景色を別の構え（view）で使う（同じ世界の続きに見せる）:
 ## - VIEW_TITLE: 縫い目を真ん中に、低く構える。
 ## - VIEW_STORY: 縫い目を真ん中に、少し高く、空を広く見上げる（左のカードが琥珀の空、右のカードが菫の空の下に来る）。
-## - VIEW_BERG / VIEW_RUEL: その国の側の空（縫い目の左の琥珀 / 右の菫）へ向き、縫い目は画面の端に見える。
+##
+## 物語の景色（show_story / queue_story。物語選択・話の一覧・セーブデータ選択）: その物語の国の側の空へ向き（VIEW_BERG_MAP / VIEW_RUEL_MAP）、
+## 空の色をその国の色へ寄せ（NATION_SKY）、地面は、その物語の話のマップの景色。物語ごとの違いが、空・地面・遠景で分かるようにする。
 ##
 ## 対戦モードのマップ選択と対戦設定も、同じ裂けた空の下に置く（VIEW_VERSUS）。地面と景色は、選んでいるマップのもの（show_scape で替える）。
 ## 高く構えて少し見下ろし、マップの地面と置物が、カードのまわりに見えるようにする。光は同じ裂け目の光で、霞にだけマップの空気の色を少し残す。
@@ -16,6 +18,7 @@ const BattleScreen := preload("res://game/battle_screen.gd")
 const BoardView := preload("res://game/board_view.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const RIFT_SKY := preload("res://game/rift_sky.gdshader")
+const Palette := preload("res://game/ui_palette.gd")
 
 ## 盤の種（いつも同じ景色にする）。
 const LOOK_SEED := 7
@@ -39,16 +42,25 @@ const REVEAL_TIME := 1.4
 ## 構え: [向き（度。正で左 = 琥珀の空へ）, 見上げる角度（度）, カメラの高さ]。
 const VIEW_TITLE := &"title"
 const VIEW_STORY := &"story"
-const VIEW_BERG := &"berg"
-const VIEW_RUEL := &"ruel"
 const VIEW_VERSUS := &"versus"
+const VIEW_BERG_MAP := &"berg_map"
+const VIEW_RUEL_MAP := &"ruel_map"
 const VIEWS := {
 	VIEW_VERSUS: [0.0, -7.0, 7.5],
+	VIEW_BERG_MAP: [14.0, -4.0, 7.0],
+	VIEW_RUEL_MAP: [-14.0, -4.0, 7.0],
 	VIEW_TITLE: [0.0, CAMERA_TILT, CAMERA_HEIGHT],
 	VIEW_STORY: [0.0, 15.0, 4.6],
-	VIEW_BERG: [24.0, 13.0, 4.2],
-	VIEW_RUEL: [-24.0, 13.0, 4.2],
 }
+
+## 国の空の色（裂けた空の左右の色。rift_sky.gdshader の left_tint / right_tint の既定と同じ）。物語の景色では、両側をその国の色へ寄せる。
+const NATION_SKY := {UnitKind.Army.MILITARY: Color(0.80, 0.50, 0.28), UnitKind.Army.FANTASY: Color(0.50, 0.36, 0.86)}
+const NATION_SKY_SHARE := 0.7
+## 物語の景色を替えるとき（queue_story）: とどまってから替えるまで（秒）、幕を沈める・明ける長さ、幕の濃さ（マップ選択とそろえる）。
+const SWAP_DELAY := 0.25
+const SWAP_FADE_OUT := 0.12
+const SWAP_FADE_IN := 0.35
+const SWAP_CURTAIN := 0.75
 
 ## マップの景色を見せるとき（show_scape）に、霞とまわりの光へ残す、そのマップの空気の色の割合（残りは裂け目の夕闇）。
 const SCAPE_AIR := 0.4
@@ -65,19 +77,31 @@ var _board: Board
 var _look := StageLook.CRYSTAL_FOREST
 ## マップの景色を見せているか（偽なら、いつもの結晶の森。空気は裂け目の夕闇だけ）。
 var _own_air := false
+## 空の色を寄せる国（UnitKind.Army。-1 なら寄せない）。
+var _army := -1
+## 物語の景色の名前（queue_story の key）。いま見せているものと、替えるのを待っているもの。
+var _story_key: Variant = null
+var _next_key: Variant = null
+var _next: Array = []
+var _swap_tween: Tween
+## 景色を替えるときに、いちど沈める幕（替わる瞬間を見せない）。
+var _curtain: ColorRect
 
 
-## which は構え。board と look_name を渡すと、その盤と見た目の景色を見せる（対戦モードのマップ。渡さなければ、いつもの結晶の森）。
-func _init(which := VIEW_TITLE, board: Board = null, look_name := StageLook.CRYSTAL_FOREST) -> void:
+## which は構え。board と look_name を渡すと、その盤と見た目の景色を見せる（対戦モードのマップ・物語の話のマップ。渡さなければ、いつもの結晶の森）。
+## army を渡すと、空の色をその国へ寄せる（物語の景色）。
+func _init(which := VIEW_TITLE, board: Board = null, look_name := StageLook.CRYSTAL_FOREST, army := -1) -> void:
 	_view = which if VIEWS.has(which) else VIEW_TITLE
 	_board = board
 	_look = look_name
 	_own_air = board != null
+	_army = army
 
 
-## 物語の軍の側の空を見る構え（MILITARY はベルク連邦の琥珀、FANTASY はリュエル騎士領の菫）。
-static func view_of(army: UnitKind.Army) -> StringName:
-	return VIEW_RUEL if army == UnitKind.Army.FANTASY else VIEW_BERG
+## 物語の景色の構え（軍 army の国の側の空へ向き、話のマップを見下ろす。MILITARY はベルク連邦の琥珀 = 縫い目の左、
+## FANTASY はリュエル騎士領の菫 = 右。縫い目は画面の端に見える）。
+static func map_view_of(army: UnitKind.Army) -> StringName:
+	return VIEW_RUEL_MAP if army == UnitKind.Army.FANTASY else VIEW_BERG_MAP
 
 
 ## いまの構え（検査用）。
@@ -114,6 +138,14 @@ func _ready() -> void:
 	_sky_dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_sky_dome)
 	_build_scape()
+	var layer := CanvasLayer.new()
+	layer.layer = 0  # 景色の上、場面の文字（ふつうの CanvasLayer）の下
+	add_child(layer)
+	_curtain = ColorRect.new()
+	_curtain.color = Color(Palette.INK, 0.0)
+	_curtain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_curtain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_curtain)
 	create_tween().tween_method(func(value: float) -> void: _sky.set_shader_parameter(&"reveal", value), 0.0, 1.0, REVEAL_TIME) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_aim()
@@ -128,6 +160,70 @@ func show_scape(board: Board, look_name: StringName) -> void:
 	_own_air = true
 	if is_inside_tree():
 		_build_scape()
+
+
+## 物語の景色にする（いますぐ。幕は沈めない）。army が -1 なら、いつもの構え（VIEW_STORY の結晶の森、空の色も寄せない）。
+## army があれば、その国の側の空へ向き、空の色をその国へ寄せ、地面は board・look_name の景色。key は景色の名前（同じなら替えない）。
+func show_story(army: int, board: Board, look_name: StringName, key: Variant = null) -> void:
+	_story_key = key
+	_army = army
+	if army < 0 or board == null:
+		_view = VIEW_STORY
+		_board = BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, LOOK_SEED)
+		_look = StageLook.CRYSTAL_FOREST
+		_own_air = false
+	else:
+		_view = map_view_of(army as UnitKind.Army)
+		_board = board
+		_look = look_name
+		_own_air = true
+	if is_inside_tree():
+		_build_scape()
+		_aim()
+
+
+## 物語の景色を替える。カードの上を通り過ぎるだけでは替えない（SWAP_DELAY 秒とどまったら、幕を沈めて替える）。
+## いま見せている（か、替えるのを待っている）景色と key が同じなら、何もしない。
+func queue_story(army: int, board: Board, look_name: StringName, key: Variant) -> void:
+	if key == _next_key or (_next_key == null and key == _story_key):
+		return
+	_next_key = key
+	_next = [army, board, look_name]
+	if _swap_tween != null:
+		_swap_tween.kill()
+	_swap_tween = create_tween()
+	_swap_tween.tween_interval(SWAP_DELAY)
+	_swap_tween.tween_property(_curtain, "color:a", SWAP_CURTAIN, SWAP_FADE_OUT)
+	_swap_tween.tween_callback(_swap_story)
+	_swap_tween.tween_property(_curtain, "color:a", 0.0, SWAP_FADE_IN)
+
+
+func _swap_story() -> void:
+	if _next.is_empty():
+		return
+	var key: Variant = _next_key
+	var next := _next
+	_next_key = null
+	_next = []
+	show_story(next[0], next[1], next[2], key)
+
+
+## 待っている景色へ、待たずに替える（スクリーンショットの道具と検査用）。
+func swap_now() -> void:
+	if _swap_tween != null:
+		_swap_tween.kill()
+	_curtain.color.a = 0.0
+	_swap_story()
+
+
+## 物語の景色の名前（いま見せているもの。替えるのを待っていれば、これから見せるもの。検査用）。
+func story_key() -> Variant:
+	return _next_key if _next_key != null else _story_key
+
+
+## 空の色を寄せている国（-1 なら寄せていない。検査用）。
+func sky_army() -> int:
+	return _army
 
 
 ## いま見せている景色の見た目の名前（検査用）。
@@ -159,8 +255,20 @@ func _build_scape() -> void:
 	look.erase(StageLook.MIST)  # 霞の距離は、どのマップでも同じ（遠くの空と地平がつながるように）
 	StageLook.apply(self, look)
 	_sky.set_shader_parameter(&"horizon", haze)
+	_tint_sky()
 	_camera.position = Vector3(_board.size.x / 2.0, VIEWS[_view][2], _board.size.y + CAMERA_BACK)
 	_sky_dome.position = _camera.position
+
+
+## 空の左右の色を、国（_army）の色へ寄せる（寄せないなら、もとの琥珀と菫）。
+func _tint_sky() -> void:
+	var left: Color = NATION_SKY[UnitKind.Army.MILITARY]
+	var right: Color = NATION_SKY[UnitKind.Army.FANTASY]
+	if NATION_SKY.has(_army):
+		left = left.lerp(NATION_SKY[_army], NATION_SKY_SHARE)
+		right = right.lerp(NATION_SKY[_army], NATION_SKY_SHARE)
+	_sky.set_shader_parameter(&"left_tint", left)
+	_sky.set_shader_parameter(&"right_tint", right)
 
 
 func _process(delta: float) -> void:

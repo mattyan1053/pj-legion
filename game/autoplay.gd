@@ -2315,6 +2315,15 @@ func _visit_story(app: Node) -> void:
 	_expect(list.is_card_enabled(Story.military().episodes[0]) and list.card_status(Story.military().episodes[0]) == "クリア済み", "クリアした最初の話を選び直せない")
 	_expect(list.is_card_enabled(episode) and list.card_status(episode) == "未クリア", "次の話を選べない")
 	_expect(list.card_title(episode) == episode.title and list.is_card_revealed(episode), "次に遊ぶ話のカードの名前か縮図が伏せてある")
+	# 背景は物語の景色: 次に遊ぶ話のマップで、空をその国の色へ寄せる。ほかの遊べる話を選ぶと、その話のマップに替わる。まだ遊べない話では替えない。
+	var scape: Node = list.backdrop()
+	_expect(scape.story_key() == episode.id and scape.sky_army() == Story.military().army and scape.shown_look() == episode.look,
+		"話の一覧の背景が、次に遊ぶ話の景色でない: %s %s" % [scape.story_key(), scape.shown_look()])
+	list.focus(Story.military().episodes[0])
+	scape.swap_now()
+	_expect(scape.story_key() == Story.military().episodes[0].id and scape.shown_look() == Story.military().episodes[0].look, "話を選んでも、背景がその話のマップに替わらない")
+	list.focus(Story.military().episodes[-1])
+	_expect(scape.story_key() == Story.military().episodes[0].id, "まだ遊べない話を選んだら、背景が替わった")
 	for later: RefCounted in Story.military().episodes.slice(first + 1):
 		_expect(not list.is_card_enabled(later), "前の話をクリアしていないのに、%s を選べる" % later.title)
 		_expect(list.card_title(later) == "？？？" and not list.is_card_revealed(later), "まだ遊べない %s のカードの名前か縮図・顔が見えている" % later.title)

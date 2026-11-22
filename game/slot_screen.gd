@@ -15,7 +15,7 @@ const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 const AppContext := preload("res://game/app_context.gd")
-const Backdrop := preload("res://game/backdrop.gd")
+const TitleBackdrop := preload("res://game/title_backdrop.gd")
 const Story := preload("res://game/story.gd")
 const SaveSlots := preload("res://game/save_slots.gd")
 const CardKeys := preload("res://game/card_keys.gd")
@@ -38,15 +38,24 @@ var _confirm: ConfirmWindow
 ## コピーの元のスロット（コピー先を選んでいなければ 0）。
 var _copy_from := 0
 var _key_index := -1
+var _backdrop: TitleBackdrop
 
 
 func _ready() -> void:
 	if context == null:
 		context = AppContext.new()  # アプリを通さずに置いたとき
-	add_child(Backdrop.new())
+	# 背景はタイトルと同じ裂けた空の下。セーブデータのカードに乗せると、そのデータの物語の景色（国の側の空、国の色の空、
+	# クリアしたいちばん先の話の次の話のマップ。title_backdrop.gd の show_story）に替わる。開いたときは、いまのデータのもの。
+	_backdrop = TitleBackdrop.new(TitleBackdrop.VIEW_STORY)
+	var shown := scape_of(context.slots.current)
+	if shown.is_empty():
+		_backdrop.show_story(-1, null, &"", &"")
+	else:
+		_backdrop.show_story(shown[0], shown[1], shown[2], shown[3])
+	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	layer.add_child(UiTheme.scene_shade())
+	layer.add_child(UiTheme.vista_shade())
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_top = 36.0
@@ -263,6 +272,39 @@ func select_by_key(index: int) -> void:
 	if index >= 0:
 		var card: Button = _cards[index + 1]
 		card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+		focus(index + 1)
+
+
+## セーブデータ number の物語の景色: [軍, 盤, 見た目, 話の id]。物語の無いデータ（空き・まだ物語を選んでいない）は空。
+func scape_of(number: int) -> Array:
+	if number < 1 or number > SaveSlots.COUNT:
+		return []
+	var info := context.slots.info(number)
+	if info["state"] != SaveSlots.READY:
+		return []
+	var story_section: Variant = (info["sections"] as Dictionary).get(Story.STORE_NAME)
+	if typeof(story_section) != TYPE_DICTIONARY or typeof(story_section.get("data")) != TYPE_DICTIONARY:
+		return []
+	var summary := Story.summary_of(story_section["data"])
+	if summary["campaign"] == null:
+		return []
+	var episode := Story.scape_episode(summary["campaign"], summary["last"])
+	return [summary["campaign"].army, episode.map.make_board(), episode.look, episode.id]
+
+
+## セーブデータ number を選んでいる（マウスを乗せた・キーで選んだ）: 背景を、そのデータの物語の景色に替える（とどまったら）。
+## 物語の無いデータは、いつもの景色（縫い目が真ん中の結晶の森）へ戻す。
+func focus(number: int) -> void:
+	var shown := scape_of(number)
+	if shown.is_empty():
+		_backdrop.queue_story(-1, null, &"", &"")
+	else:
+		_backdrop.queue_story(shown[0], shown[1], shown[2], shown[3])
+
+
+## 背景（検査とスクリーンショットの道具用）。
+func backdrop() -> TitleBackdrop:
+	return _backdrop
 
 
 # ---- 組み立て ----
@@ -320,6 +362,7 @@ func _build_card(info: Dictionary, number: int) -> Button:
 	else:
 		card.disabled = state in [SaveSlots.BROKEN, SaveSlots.NEWER]
 	card.pressed.connect(choose.bind(number))
+	card.mouse_entered.connect(focus.bind(number))
 	var lines := card_lines(info, number)
 	var summary_campaign: Variant = null
 	if state == SaveSlots.READY:

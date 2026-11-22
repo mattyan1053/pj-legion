@@ -331,6 +331,23 @@ static func number_of(episode: Episode) -> int:
 	return 0 if of_campaign == null else of_campaign.episodes.find(episode) + 1
 
 
+## 物語 of_campaign の、背景に景色を見せる話（物語選択・セーブデータ選択。title_backdrop.gd の show_story）:
+## クリアしたいちばん先の話 last の次の話（last が最後の話ならそれ。last が無ければ最初の話）。
+static func scape_episode(of_campaign: Campaign, last: Episode) -> Episode:
+	if last == null:
+		return of_campaign.episodes[0]
+	var at := of_campaign.episodes.find(last)
+	return of_campaign.episodes[mini(at + 1, of_campaign.episodes.size() - 1)]
+
+
+## 物語 of_campaign で、まだクリアしていない最初の話（全部クリアしていたら最後の話）。背景に景色を見せる話。
+func scape_episode_in(of_campaign: Campaign) -> Episode:
+	for episode: Episode in of_campaign.episodes:
+		if not is_cleared(episode.id):
+			return episode
+	return of_campaign.episodes[-1]
+
+
 ## 次に遊ぶ話（いまの物語で）: まだクリアしていない最初の話。全部クリアしていたら最初の話。
 func next_episode() -> Episode:
 	for episode: Episode in campaign.episodes:
