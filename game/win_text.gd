@@ -97,21 +97,40 @@ static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 			parts.append(Text.t("battle.goal.tag.boss_or_king") if own.has(GameWonEvent.Reason.KING_DEFEATED) else Text.t("battle.goal.tag.boss"))
 	if foe.has(GameWonEvent.Reason.ROUTED):
 		parts.append(Text.t("battle.goal.tag.routed"))
-	if battle.board.stronghold_cell != Board.NO_CELL and (own.has(GameWonEvent.Reason.STRONGHOLD_HELD) or foe.has(GameWonEvent.Reason.STRONGHOLD_HELD)):
-		var near := -1
-		for player: Unit.Side in [side, (1 - side) as Unit.Side]:
-			if near == -1 and Stronghold.holds_left(battle, player) == 1:
-				near = player
-		if near != -1:
-			parts.append(Text.t("battle.goal.tag.stronghold_near", {"side": Names.side_word(near)}))
-			last = true
-		else:
-			parts.append(Text.t("battle.goal.tag.stronghold", {"holds": Stronghold.HOLDS_TO_WIN}))
-		for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-			var held: int = battle.stronghold_holds[player]
-			var marks := Text.t("battle.hud.capture_on").repeat(held) + Text.t("battle.hud.capture_off").repeat(Stronghold.HOLDS_TO_WIN - held)
-			parts.append(Text.t("battle.goal.tag.stronghold_marks", {"side": Names.side_word(player), "marks": marks}))
+	# 拠点の確保（試しの決まり）は、勝ち方の札でなく、拠点の札（stronghold_goal など。上の帯の下）に出す。
 	return [Text.t("battle.hud.separator").join(parts), last]
+
+
+## 拠点の札の勝つ数（拠点の無い対戦か、どちらの勝ちの条件にも拠点の確保が無ければ 0。札を出さない）。
+static func stronghold_goal(battle: Battle) -> int:
+	if battle.board.stronghold_cell == Board.NO_CELL:
+		return 0
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if battle.wins_by(player, GameWonEvent.Reason.STRONGHOLD_HELD):
+			return Stronghold.HOLDS_TO_WIN
+	return 0
+
+
+## あと 1 回の確保で勝つ陣営（いなければ -1）。
+static func stronghold_near(battle: Battle) -> int:
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if Stronghold.holds_left(battle, player) == 1:
+			return player
+	return -1
+
+
+## 拠点の札にマウスを乗せると出る文（決まりと、あと 1 回で勝つ陣営）。
+static func stronghold_note(battle: Battle) -> String:
+	var lines: Array[String] = [Text.t("battle.stronghold.rule", stronghold_args())]
+	var near := stronghold_near(battle)
+	if near >= 0:
+		lines.push_front(Text.t("battle.goal.tag.stronghold_near", {"side": Names.side_word(near)}))
+	return "\n".join(lines)
+
+
+## 拠点の決まりの文に差し込む値。
+static func stronghold_args() -> Dictionary:
+	return {"needed": Stronghold.HOLDS_TO_WIN}
 
 
 ## 勝ち方の札にマウスを乗せると出る、詳しい文（side から見た goal）。

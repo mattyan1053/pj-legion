@@ -9,6 +9,7 @@ extends Node3D
 ## 何を塗るかは呼ぶ側が決める（ここはルールを持たない）。
 
 const CrystalMesh := preload("res://game/crystal_mesh.gd")
+const Text := preload("res://game/text.gd")
 const CragMesh := preload("res://game/crag_mesh.gd")
 const StageLook := preload("res://game/stage_look.gd")
 const Scenery := preload("res://game/scenery.gd")
@@ -53,6 +54,10 @@ const COLOR_BATTERY_MARK := Color("ffb347")
 const COLOR_STRONGHOLD_EDGE := Color("1c1a14")
 const COLOR_STRONGHOLD_MARK := Color("fff27a")
 const COLOR_STRONGHOLD_FLAG := Color("f4f1e6")
+## 拠点の旗の高さ（竿の足からの、旗の中心。確保 0 と、勝つ数に届いたとき）と、竿の上の数の札の大きさ。
+const STRONGHOLD_FLAG_LOW := 0.75
+const STRONGHOLD_FLAG_HIGH := 2.3
+const STRONGHOLD_LABEL_PIXEL := 0.0009
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
@@ -115,6 +120,10 @@ var _ripples: Array = []
 var _motes: Array = []
 var _portal_discs: Array = []
 var _stronghold_cloth: StandardMaterial3D  # 拠点の旗の布（確保を進めた陣営の色に変える）
+## 拠点の旗（布と縁。確保の進み具合で竿を上る）と、竿の上の数の札（「3 / 6」）。
+var _stronghold_flag: Array[Node3D] = []
+var _stronghold_label: Label3D
+var _stronghold_pole_foot := Vector3.ZERO
 var _motion_time := 0.0
 static var _noise: ImageTexture
 
@@ -164,6 +173,8 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 	for cell in board.battery_cells:
 		_add_battery(cell)
 	_stronghold_cloth = null
+	_stronghold_flag.clear()
+	_stronghold_label = null
 	if board.stronghold_cell != Board.NO_CELL:
 		_add_stronghold(board.stronghold_cell)
 	for cell: Vector2i in board.portal_exits:
@@ -742,17 +753,50 @@ func _add_stronghold(cell: Vector2i) -> void:
 	var cloth_mesh := BoxMesh.new()
 	cloth_mesh.size = Vector3(0.84, 0.5, 0.03)
 	_stronghold_cloth = _flat_material(COLOR_STRONGHOLD_FLAG)
-	var cloth := _add_mesh(cloth_mesh, _stronghold_cloth, pole_foot + Vector3(0.44, 2.3, 0.0))
+	_stronghold_pole_foot = pole_foot
+	var cloth := _add_mesh(cloth_mesh, _stronghold_cloth, pole_foot + Vector3(0.44, STRONGHOLD_FLAG_LOW, 0.0))
 	var border_mesh := BoxMesh.new()
 	border_mesh.size = Vector3(0.9, 0.56, 0.02)
 	var border := _add_mesh(border_mesh, _flat_material(COLOR_STRONGHOLD_EDGE), cloth.position)
-	border.rotation.y = cloth.rotation.y
+	_stronghold_flag.assign([cloth, border])
+	# 竿の上の数の札。駒や木に隠れないよう、いつも手前に描く。
+	_stronghold_label = Label3D.new()
+	_stronghold_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_stronghold_label.no_depth_test = true
+	_stronghold_label.fixed_size = true
+	_stronghold_label.pixel_size = STRONGHOLD_LABEL_PIXEL
+	_stronghold_label.font_size = 40
+	_stronghold_label.outline_size = 14
+	_stronghold_label.outline_modulate = COLOR_STRONGHOLD_EDGE
+	_stronghold_label.render_priority = 3
+	_stronghold_label.outline_render_priority = 2
+	_stronghold_label.position = pole_foot + Vector3(0.0, 3.05, 0.0)
+	add_child(_stronghold_label)
 
 
-## 拠点の旗を、確保を進めた陣営 side の色 color にする（拠点の無い盤では何もしない）。
-func set_stronghold_side(_side: int, color: Color) -> void:
-	if _stronghold_cloth != null:
-		_stronghold_cloth.albedo_color = color
+## 拠点の確保の進み具合を見せる（拠点の無い盤では何もしない）: 旗を color にし、holds / needed の高さまで竿を上げ、
+## 竿の上の札に「holds / needed」を出す（blocked なら、乗っている駒の確保が隣の敵で止まっていることを添える）。だれも確保していなければ（holds が 0）、旗は白で竿の下、札は「0 / needed」。
+func set_stronghold_progress(holds: int, needed: int, color: Color, blocked := false) -> void:
+	if _stronghold_cloth == null:
+		return
+	_stronghold_cloth.albedo_color = color
+	var rate := clampf(float(holds) / maxf(needed, 1.0), 0.0, 1.0)
+	for part in _stronghold_flag:
+		part.position.y = _stronghold_pole_foot.y + lerpf(STRONGHOLD_FLAG_LOW, STRONGHOLD_FLAG_HIGH, rate)
+	_stronghold_label.text = Text.t("battle.stronghold.mark_blocked" if blocked else "battle.stronghold.mark", {"holds": holds, "needed": needed})
+	_stronghold_label.modulate = color.lightened(0.25) if holds > 0 else COLOR_STRONGHOLD_FLAG
+
+
+## 拠点の竿の上の札の文（検査用。拠点が無ければ空）。
+func stronghold_mark() -> String:
+	return _stronghold_label.text if _stronghold_label != null else ""
+
+
+## 拠点の旗の、竿の上での高さ（0 = いちばん下、1 = いちばん上。検査用。拠点が無ければ -1）。
+func stronghold_flag_rate() -> float:
+	if _stronghold_flag.is_empty():
+		return -1.0
+	return inverse_lerp(STRONGHOLD_FLAG_LOW, STRONGHOLD_FLAG_HIGH, _stronghold_flag[0].position.y - _stronghold_pole_foot.y)
 
 
 ## 拠点の旗の色（検査用。拠点が無ければ透明）。

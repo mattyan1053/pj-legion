@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 試しの決まりの、対戦の画面の枠（game/battle_hud.gd）: 対戦の始めの知らせ、作戦の説明の枠と手札のボタン。
+## 試しの決まりの、対戦の画面の枠（game/battle_hud.gd）: 拠点の札、対戦の始めの知らせ、作戦の説明の枠と手札のボタン。
 ## どれも大きさは中身で変えない（CLAUDE.md の人間の決定。11/22）。
 
 const BattleHud := preload("res://game/battle_hud.gd")
@@ -10,6 +10,37 @@ func _hud() -> BattleHud:
 	var hud := BattleHud.new()
 	hud.setup([Palette.TEAM_BLUE, Palette.TEAM_RED] as Array[Color])
 	return hud
+
+
+func test_stronghold_chip_keeps_its_size_whatever_the_holds() -> void:
+	var hud := _hud()
+	await settle(hud)
+	hud.set_stronghold([0, 0] as Array[int], 6, -1, "")
+	await settle(hud)
+	var before := hud.stronghold_chip_size()
+	assert_eq(before, BattleHud.STRONGHOLD_CHIP_SIZE)
+	assert_eq(hud.stronghold_text(), "拠点 青 ○○○○○○ 赤 ○○○○○○")
+	assert_false(hud.stronghold_urgent())
+	hud.set_stronghold([5, 0] as Array[int], 6, 0, "あと 1 回")
+	await settle(hud)
+	assert_eq(hud.stronghold_chip_size(), before)
+	assert_eq(hud.stronghold_text(), "拠点 青 ●●●●●○ 赤 ○○○○○○")
+	assert_true(hud.stronghold_urgent())
+	hud.set_stronghold([0, 0] as Array[int], 0, -1, "")
+	assert_eq(hud.stronghold_text(), "", "拠点の無い対戦では出さない")
+	hud.free()
+
+
+## 中身が枠に収まる（はみ出して切れない）。
+func test_stronghold_chip_fits_its_content() -> void:
+	var hud := _hud()
+	await settle(hud)
+	hud.set_stronghold([6, 6] as Array[int], 6, 0, "")
+	await settle(hud)
+	var row := hud._stronghold_panel.get_child(0) as Control
+	assert_true(row.get_combined_minimum_size().x + 20.0 <= BattleHud.STRONGHOLD_CHIP_SIZE.x,
+		"拠点の札の中身が収まらない: %s" % row.get_combined_minimum_size())
+	hud.free()
 
 
 func test_notice_keeps_its_size_and_fits_three_rules() -> void:

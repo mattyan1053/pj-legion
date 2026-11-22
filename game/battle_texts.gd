@@ -6,6 +6,7 @@ const BattleHud := preload("res://game/battle_hud.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const Names := preload("res://game/names.gd")
 const Text := preload("res://game/text.gd")
+const WinText := preload("res://game/win_text.gd")
 const Mode := BattleUiState.Mode
 
 ## 駒のそばのメニューの項目の名前。
@@ -222,12 +223,13 @@ static func _terrain_item(terrain: Terrain.Type) -> Array:
 	return [Text.t("battle.cell.plain"), ""]
 
 
-## 項目を 1 つの文にしたもの（「森（移動 2・受けるダメージ 0.8 倍）」）。
+## 項目を 1 つの文にしたもの（「森（移動 2・受けるダメージ 0.8 倍）」）。下の帯の 1 行に入れるので、短い説明（3 つ目）があればそちらを使う。
 static func _with_note(item: Array) -> String:
-	return item[0] if item[1] == "" else item[0] + Text.paren(item[1])
+	var note: String = item[2] if item.size() > 2 else item[1]
+	return item[0] if note == "" else item[0] + Text.paren(note)
 
 
-## マスの説明の項目（[名前, 説明（無ければ空）] の列）: 地形の効果、本陣、盤の上の効果、環境オブジェクト。何も無ければ「特別なものは無い」。
+## マスの説明の項目（[名前, 説明（無ければ空）, 下の帯の 1 行に入れる短い説明（長い説明だけ）] の列）: 地形の効果、本陣、盤の上の効果、環境オブジェクト。何も無ければ「特別なものは無い」。
 static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	var items: Array[Array] = []
 	var terrain := _terrain_item(battle.board.terrain_at(cell))
@@ -244,7 +246,8 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 		MapObject.Type.BATTERY:
 			items.append([Text.t("battle.cell.battery"), Text.t("battle.cell.battery.note", {"range": MapObject.BATTERY_RANGE})])
 		MapObject.Type.STRONGHOLD:
-			items.append([Text.t("battle.cell.stronghold"), Text.t("battle.cell.stronghold.note", {"needed": Stronghold.HOLDS_TO_WIN, "radius": Stronghold.CONTEST_RADIUS})])
+			items.append([Text.t("battle.cell.stronghold"), Text.t("battle.cell.stronghold.note", {"needed": Stronghold.HOLDS_TO_WIN}),
+				Text.t("battle.cell.stronghold.short")])
 		MapObject.Type.SPRING:
 			items.append([Text.t("battle.cell.spring"), Text.t("battle.cell.spring.note", {"heal": MapObject.SPRING_HEAL})])
 		MapObject.Type.PORTAL:
@@ -264,7 +267,7 @@ static func trial_notice(battle: Battle) -> Array[String]:
 	if not battle.tactics[Unit.Side.PLAYER1].is_empty() or not battle.tactics[Unit.Side.PLAYER2].is_empty():
 		lines.append(Text.t("battle.notice.tactics"))
 	if battle.board.stronghold_cell != Board.NO_CELL:
-		lines.append(Text.t("battle.notice.stronghold", {"needed": Stronghold.HOLDS_TO_WIN, "radius": Stronghold.CONTEST_RADIUS}))
+		lines.append(Text.t("battle.notice.stronghold", WinText.stronghold_args()))
 	return lines
 
 

@@ -160,7 +160,7 @@ func create_battle() -> Battle:
 	if trials.has(TrialRules.BATTERY):
 		BoardGenerator.arm_batteries(board)
 	if trials.has(TrialRules.STRONGHOLD):
-		Stronghold.arm(board)
+		Stronghold.arm(board, battle_seed)
 	var battle := Battle.new(board, battle_seed)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var placement: Array[Vector2i] = []

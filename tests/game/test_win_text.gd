@@ -104,15 +104,18 @@ func test_every_win_condition_has_a_place_in_the_text() -> void:
 		assert_eq(text.split("\n").size(), 2, "勝ち方と負け方の 2 行にならない: %s" % text)
 
 
-func test_stronghold_tag_shows_both_sides_holds_and_marks_the_last_one() -> void:
+func test_stronghold_has_its_own_chip_and_marks_the_last_one() -> void:
 	var battle := Maps.battle(["....."])
+	assert_eq(WinText.stronghold_goal(battle), 0, "拠点の無い対戦では札を出さない")
 	battle.board.stronghold_cell = Vector2i(2, 0)
 	for side: Unit.Side in [P1, P2]:
 		battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
-	var empty := "○".repeat(Stronghold.HOLDS_TO_WIN)
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["拠点の確保 %d 回で勝ち　青 %s　赤 %s" % [Stronghold.HOLDS_TO_WIN, empty, empty], false])
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["", false], "拠点は勝ち方の札でなく、拠点の札に出す")
+	assert_eq(WinText.stronghold_goal(battle), Stronghold.HOLDS_TO_WIN)
+	assert_eq(WinText.stronghold_near(battle), -1)
 	battle.stronghold_holds[P2] = Stronghold.HOLDS_TO_WIN - 1
-	var near := "●".repeat(Stronghold.HOLDS_TO_WIN - 1) + "○"
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["あと 1 回の確保で赤の勝ち　青 %s　赤 %s" % [empty, near], true])
+	assert_eq(WinText.stronghold_near(battle), P2)
+	assert_true(WinText.stronghold_note(battle).begins_with("あと 1 回の確保で赤の勝ち"))
+	assert_true(WinText.stronghold_note(battle).contains("%d 回で勝ち" % Stronghold.HOLDS_TO_WIN))
 	assert_true(WinText.goal_note(battle, P1).contains("拠点を %d 回確保すれば勝ち" % Stronghold.HOLDS_TO_WIN))
 	assert_true(WinText.goal_note(battle, P1).contains("拠点を %d 回確保されると負け" % Stronghold.HOLDS_TO_WIN))

@@ -481,7 +481,10 @@ func _queue_capture_scene() -> void:
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void: _expect(battle.capture_turns[Unit.Side.PLAYER1] == 1, "占拠の数が進まなかった"))
 	_scripted.append(func() -> void: _expect(battle.stronghold_holds[Unit.Side.PLAYER1] == 1, "拠点の確保の数が進まなかった"))
-	_scripted.append(func() -> void: _expect(_scene.stronghold_flag_color() == Palette.TEAM_BLUE, "拠点の旗が確保した陣営の色にならなかった"))
+	_scripted.append(func() -> void:
+		_expect(_scene.stronghold_flag_color() == Palette.TEAM_BLUE, "拠点の旗が確保した陣営の色にならなかった")
+		_expect(_scene.stronghold_mark() == "1 / %d" % Stronghold.HOLDS_TO_WIN, "拠点の竿の上の札が確保の数でない: %s" % _scene.stronghold_mark())
+		_expect(_scene.stronghold_flag_rate() > 0.0, "確保が進んでも、旗が竿を上らない"))
 
 
 ## 樽を攻撃して爆発させ、両方の将を巻き込んで引き分けにする。
