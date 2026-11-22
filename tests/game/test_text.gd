@@ -37,6 +37,7 @@ const FAMILIES := {
 	"skill": [Skill.Id, ["", ".summary"]],
 	"ult": [Ult.Id, ["", ".summary"]],
 	"status": [Status.Type, ["", ".summary"]],
+	"formation": [Formation.Effect, ["", ".summary"]],
 	"relic": [Relics.Id, ["", ".summary", ".short", ".effect"]],
 	"stage": [BoardGenerator.Stage, [""]],
 }
