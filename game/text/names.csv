@@ -5,6 +5,8 @@ side.neutral,中立
 side.player1.short,青
 side.player2.short,赤
 side.neutral.short,中立
+side.story.player1,味方
+side.story.player2,敵
 army.none,軍なし
 army.military,MILITARY
 army.fantasy,FANTASY

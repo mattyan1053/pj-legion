@@ -36,7 +36,7 @@ static func hint(
 	if battle.is_over():
 		return Text.t("battle.hint.over")
 	if cpu_turn:
-		return Text.t("battle.hint.cpu_turn")
+		return Text.t("battle.hint.foe_turn" if Names.story_sides else "battle.hint.cpu_turn")
 	if battle.evolving_unit() != null:
 		return Text.t("battle.hint.evolve")
 	if confirming_ult:
