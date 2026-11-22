@@ -10,6 +10,7 @@ extends Control
 ##   window.ask("データ 1 を削除しますか？", "削除したデータは元に戻せません。", "削除", func() -> void: ...)
 
 const Text := preload("res://game/text.gd")
+const Steady := preload("res://game/steady.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
@@ -42,6 +43,7 @@ func _init() -> void:
 	add_child(center)
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = UiTheme.PANEL_SOLID
+	Steady.mark(panel, "confirm.window", Steady.RECT)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.custom_minimum_size = Vector2(WIDTH, 0.0)

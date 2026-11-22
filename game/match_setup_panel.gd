@@ -130,6 +130,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	panel.add_child(column)
 
 	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
+	Steady.mark(panel, "setup.panel", Steady.RECT)
 	var title := _label(28)
 	title.theme_type_variation = UiTheme.LABEL_HEADING
 	title.text = Text.t("setup.title")
@@ -179,6 +180,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	for side in 2:
 		# 軍と部隊の 2 行は、プレイヤーごとに 1 つの板にまとめる（左の縁に陣営の色。_show_choice）。
 		var side_box := PanelContainer.new()
+		Steady.mark(side_box, "setup.side")
 		column.add_child(side_box)
 		_side_boxes.append(side_box)
 		var side_column := VBoxContainer.new()

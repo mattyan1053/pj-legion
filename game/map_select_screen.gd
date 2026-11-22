@@ -12,6 +12,7 @@ extends Node
 ## - 「タイトルへ戻る」（右クリック・Esc でも）で &"back"。
 
 const SceneFlow := preload("res://game/scene_flow.gd")
+const Steady := preload("res://game/steady.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -130,6 +131,7 @@ func _ready() -> void:
 	var note_panel := _panel(COLOR_PANEL)
 	note_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	note_panel.custom_minimum_size = Vector2(CARD_SIZE.x * 3 + CARD_GAP * 2, 84.0)
+	Steady.mark(note_panel, "map_select.note")
 	root.add_child(note_panel)
 	var note_column := VBoxContainer.new()
 	note_column.add_theme_constant_override("separation", 4)
@@ -391,6 +393,7 @@ func _build_card(field: StringName) -> Button:
 	var card := Button.new()
 	card.focus_mode = Control.FOCUS_NONE
 	card.custom_minimum_size = CARD_SIZE
+	Steady.mark(card, "map_select.card")
 	card.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	for state: String in ["normal", "hover", "pressed", "hover_pressed"]:
 		var hovered := state != "normal"
