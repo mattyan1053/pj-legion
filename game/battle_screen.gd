@@ -554,6 +554,7 @@ func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 	_hud.result_screen().set_continue(source.can_continue(won), source.retries_on_enter(won))
 	# 負けた話は、見出しの下に、話し手のひとこと（話のファイルの [lost]。再戦の手間は増やさない）。
 	_hud.result_screen().set_remark([] if won or not cpu_opponent else source.lost_lines())
+	source.record_end(battle)
 	if won:
 		source.record_win(context)
 
