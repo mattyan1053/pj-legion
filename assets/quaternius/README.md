@@ -21,9 +21,9 @@
 | `Ninja_Male.fbx` | コマンドー |
 | `Doctor_Female_Young.fbx` | 衛生兵 |
 | `Knight_Male.fbx` | パラディン |
-| `Wizard.fbx` | ソーサラー |
+| `Wizard.fbx` | プリースト |
 | `Ninja_Female.fbx` | スペルブレード（2026-11-21 に `Viking_Male` から替えた。同じ zip から。セリスの姿） |
-| `Elf.fbx` | プリースト |
+| `Elf.fbx` | ソーサラー |
 
 ## weapons/（RPG Characters - Nov 2020）
 

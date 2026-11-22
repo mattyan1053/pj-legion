@@ -95,6 +95,7 @@ var _bottom: Control
 ## 会話を終えるときの行き先の選択（次の話があるときだけ。_end で出す）。
 var _choice: Control
 var _layer: CanvasLayer
+var _backdrop: Backdrop
 
 
 func _ready() -> void:
@@ -103,7 +104,12 @@ func _ready() -> void:
 	var given: Variant = context.run_data()
 	if given != null:
 		talk = given
-	add_child(Backdrop.new(talk.get("board"), talk.get("look", &"")))
+	# 話の流れの会話なら、背景の盤に駒を立たせる（前の会話は初期位置、あとの会話は決着したときの駒。story_battle.gd の talk_battle）。
+	var story_battle: RefCounted = talk.get("battle")
+	var shown: Battle = story_battle.talk_battle(talk.get("after", false)) if story_battle != null else null
+	var king_looks: Array[StringName] = story_battle.king_looks() if story_battle != null else [] as Array[StringName]
+	_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks)
+	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	_layer = layer
@@ -412,6 +418,14 @@ func line_index() -> int:
 ## いまの文が出きっているか。
 func is_line_shown() -> bool:
 	return _index >= line_count() or _shown >= _line_length()
+
+
+## 背景の盤に立たせた駒の数（陣営ごと: [味方, 敵, 中立]。検査用）。
+func backdrop_units() -> Array[int]:
+	var counts: Array[int] = [0, 0, 0]
+	for view in _backdrop.unit_views:
+		counts[_backdrop.unit_sides[_backdrop.unit_views.find(view)]] += 1
+	return counts
 
 
 ## いま立っている話し手の姿（検査用。左右に 1 人ずつまで）。

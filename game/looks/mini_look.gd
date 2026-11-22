@@ -39,9 +39,9 @@ const KINDS := {
 	UnitKind.Id.COMMANDO: {"model": "raider", "right": "sword", "attack": MELEE, "accent": [GREEN]},
 	UnitKind.Id.MEDIC: {"model": "female-e", "right": "defibrillator", "attack": SHOOT, "accent": [DARK]},
 	UnitKind.Id.PALADIN: {"model": "knight", "right": "sword", "left": "shield_rectangle", "attack": MELEE, "accent": [SLATE, BLUE]},
-	UnitKind.Id.SORCERER: {"model": "male-b", "right": "staff", "attack": SHOOT, "accent": [RED]},
+	UnitKind.Id.SORCERER: {"model": "female-d", "right": "staff", "attack": SHOOT, "accent": [SLATE]},
 	UnitKind.Id.SPELLBLADE: {"model": "female-a", "right": "sword", "attack": MELEE, "accent": [PURPLE]},
-	UnitKind.Id.PRIEST: {"model": "female-d", "right": "holy_staff", "attack": SHOOT, "accent": [SLATE]},
+	UnitKind.Id.PRIEST: {"model": "male-b", "right": "holy_staff", "attack": SHOOT, "accent": [RED]},
 }
 ## 腕に持つもの。"file" は素材のファイル、"at" は手からのずらし、"turn" は回し方（度）。どちらも、立っているときに駒がまっすぐ立つ向きで書く。
 const ITEMS := {
