@@ -324,7 +324,9 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 	var units: Variant = record.get("units")
 	if typeof(units) != TYPE_ARRAY:
 		units = []
+	var by_index: Array = []  # ファイルの units の添字 -> 読めた駒（読めずに外したものは null）。誓いの添字はファイルの並びを指す
 	for unit: Variant in units:
+		by_index.append(null)
 		if typeof(unit) != TYPE_DICTIONARY:
 			item.load_issues.append(Text.t("deck.load.unreadable_unit"))
 			continue
@@ -342,7 +344,8 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 				else:
 					item.load_issues.append(Text.t("deck.load.unknown_item", {"name": _shown(equipment_name)}))
 		item.deck.entries.append(entry)
-	# 誓い（無ければ空。読めない組と、結べない組は捨てる。理由には書かない: 部隊は出撃できる）。
+		by_index[-1] = entry
+	# 誓い（無ければ空。読めない組と、結べない組と、外した駒を含む組は捨てる。理由には書かない: 部隊は出撃できる）。
 	var oaths: Variant = record.get("oaths")
 	if typeof(oaths) == TYPE_ARRAY:
 		for pair: Variant in oaths:
@@ -352,9 +355,9 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 			var b: Variant = pair[1]
 			if typeof(a) not in [TYPE_INT, TYPE_FLOAT] or typeof(b) not in [TYPE_INT, TYPE_FLOAT]:
 				continue
-			var count := item.deck.entries.size()
-			if int(a) >= 0 and int(a) < count and int(b) >= 0 and int(b) < count:
-				item.deck.bind(item.deck.entries[int(a)], item.deck.entries[int(b)])
+			var count := by_index.size()
+			if int(a) >= 0 and int(a) < count and int(b) >= 0 and int(b) < count and by_index[int(a)] != null and by_index[int(b)] != null:
+				item.deck.bind(by_index[int(a)], by_index[int(b)])
 	return item
 
 

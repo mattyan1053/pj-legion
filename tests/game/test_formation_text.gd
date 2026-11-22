@@ -93,4 +93,8 @@ func test_saved_decks_keep_their_oaths() -> void:
 	assert_eq(read.oath_pairs(), [Vector2i(0, 2)] as Array[Vector2i])
 	record["oaths"] = [[0, 9], "x", [1, 1]]
 	assert_eq(DeckLibrary._from_record(record).deck.oaths, [] as Array[Array], "読めない組は捨てる")
+	record["units"] = [{"kind": "NO_SUCH_UNIT"}, {"kind": "PALADIN"}, {"kind": "SORCERER"}, {"kind": "PRIEST"}]
+	record["oaths"] = [[1, 2], [0, 3]]
+	var kept: Deck = DeckLibrary._from_record(record).deck
+	assert_eq(kept.oath_pairs(), [Vector2i(0, 1)] as Array[Vector2i], "誓いの添字はファイルの並び。外した駒を含む組は捨てる")
 	assert_false(DeckLibrary.deck_to_record(Deck.new(UnitKind.Army.MILITARY)).has("oaths"), "誓いが無ければ書かない（いまのファイルと同じ形）")
