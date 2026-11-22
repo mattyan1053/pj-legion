@@ -164,6 +164,9 @@ const SCENES := {
 	"story_slots_copy": "ストーリー: セーブデータ選択で、1 番のコピー先を選んでいるところ",
 	"story_slots_delete": "ストーリー: セーブデータ選択で、2 番の削除を確かめているところ",
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
+	"story_campaigns_berg": "ストーリー: 物語を選ぶ場面で、MILITARY の物語のカードを選んだところ（背景がその物語の景色）",
+	"story_campaigns_ruel": "ストーリー: 物語を選ぶ場面で、FANTASY の物語のカードを選んだところ（背景がその物語の景色）",
+	"story_slots_fantasy": "ストーリー: セーブデータ選択で、FANTASY の物語のデータ（2 番）を選んだところ（背景がその物語の景色）",
 	"story_fantasy_list": "ストーリー: FANTASY の物語を選んだあとの話の一覧（頭の演習。最初の話だけ選べる）",
 	"story_fantasy_sortie": "ストーリー: FANTASY の物語の演習（第 2 話「火球」）の出撃準備（この話で覚えること、決まっている部隊、軍なしの敵）",
 	"story_fantasy_evolve_sortie": "ストーリー: FANTASY の物語の演習「分かれ道」の出撃準備（レベル 2 から始まるパラディンとソーサラーに、レベルが出る）",
@@ -2021,6 +2024,31 @@ func _scene_story_campaigns() -> bool:
 	_app.current_scene().choose(_app.context.slots.current)
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.CAMPAIGNS
+
+
+## 物語を選ぶ場面で、物語 index のカードを、キーで選んだところ（背景がその物語の景色に替わる）。
+func _campaign_focused(index: int) -> bool:
+	if not await _scene_story_campaigns():
+		return false
+	_app.current_scene().select_by_key(index)
+	_app.current_scene().backdrop().swap_now()
+	return true
+
+
+func _scene_story_campaigns_berg() -> bool:
+	return await _campaign_focused(0)
+
+
+func _scene_story_campaigns_ruel() -> bool:
+	return await _campaign_focused(1)
+
+
+func _scene_story_slots_fantasy() -> bool:
+	if not await _scene_story_slots():
+		return false
+	_app.current_scene().select_by_key(1)
+	_app.current_scene().backdrop().swap_now()
+	return true
 
 
 ## セーブデータ選択: 1 番は MILITARY の物語を 7 話まで、2 番は FANTASY の物語を 3 話まで、3 番は空き。
