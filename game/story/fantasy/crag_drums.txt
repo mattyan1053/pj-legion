@@ -19,10 +19,10 @@ victory_mood = quiet
 wins = routed
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
 骨の鼓手 = enemy, skeleton_drummer
 
 [before]

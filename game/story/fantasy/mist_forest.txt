@@ -13,12 +13,12 @@ before_music = battle_knight
 after_music = talk_calm
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
 ハーデン = enemy
-ドーソン = enemy, shield_trooper evolved
+ドーソン = enemy, shield_trooper evolved dawson
 
 [before]
 ティオ: 帰ってきた！ ぼくらの森！ ……って、もう鉄の人がいる！

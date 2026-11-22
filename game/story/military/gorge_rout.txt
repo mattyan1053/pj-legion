@@ -17,11 +17,11 @@ wins = routed
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-ピップ = ally, commando
-セリス = enemy, spellblade
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
+セリス = enemy, spellblade seris
 
 [before]
 ハーデン: セリスの隊は、この岩山の向こうだ。

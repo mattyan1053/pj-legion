@@ -17,11 +17,11 @@ victory_mood = quiet
 wins = boss_slain
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
-ヴァルト = enemy, sniper evolved
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
+ヴァルト = enemy, sniper evolved valt
 
 [before]
 ウル: 大岩の脇の、あの大きいの。あれが峠の番人じゃ。天が裂ける前から、この地を見てきた。

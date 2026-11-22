@@ -19,9 +19,9 @@ hold_turns = 6
 wins = turns_held
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
 幻の兵 = enemy, shield_trooper
 
 [before]

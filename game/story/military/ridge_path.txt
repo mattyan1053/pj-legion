@@ -15,11 +15,11 @@ after_music = talk_bright
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-ピップ = ally, commando
-イェルダ = enemy, paladin evolved crown
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
+イェルダ = enemy, paladin evolved crown yelda
 
 [before]
 > 演習を終えた偵察隊は、縫い目の土地の尾根に着いた。

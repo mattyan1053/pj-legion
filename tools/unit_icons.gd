@@ -65,7 +65,7 @@ func _run() -> void:
 		if not await _write_set(viewport, camera, look_set, out):
 			quit(1)
 			return
-		written += UnitIcons.variants().size()
+		written += UnitIcons.variants(look_set).size()
 		print("unit_icons: 組 %s を %s に書いた" % [look_set, out])
 	print("unit_icons: %d 枚を書いた" % written)
 	quit(0)
@@ -73,7 +73,7 @@ func _run() -> void:
 
 func _write_set(viewport: SubViewport, camera: Camera3D, look_set: StringName, out: String) -> bool:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
-	for variant: Array in UnitIcons.variants():
+	for variant: Array in UnitIcons.variants(look_set):
 		var kind: UnitKind.Id = variant[0]
 		var side: int = variant[1]
 		var evolved: bool = variant[2]

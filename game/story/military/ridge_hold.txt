@@ -17,12 +17,12 @@ hold_turns = 10
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-ピップ = ally, commando
-ヴァルト = ally, sniper evolved
-セリス = enemy, spellblade
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
+ヴァルト = ally, sniper evolved valt
+セリス = enemy, spellblade seris
 
 [before]
 ピップ: たいちょ〜、追っ手っす！ 騎士が 7 人はいるっす！

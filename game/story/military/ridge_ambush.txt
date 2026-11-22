@@ -16,11 +16,11 @@ after_music = talk_calm
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-ピップ = ally, commando
-イェルダ = enemy, paladin evolved crown
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
+イェルダ = enemy, paladin evolved crown yelda
 
 [before]
 ピップ: ほら〜、言ったでしょ。まだいるって。しかも尾根の真ん中まで出てきてるっす〜。

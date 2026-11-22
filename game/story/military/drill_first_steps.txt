@@ -15,8 +15,8 @@ lesson = 駒をクリックして動かし、隣の敵を攻撃する。敵の�
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-教導隊員 = enemy, paladin
+ドーソン = ally, shield_trooper evolved dawson
+教導隊員 = enemy, paladin drill_sergeant
 
 [before]
 ドーソン: ドーソン曹長、着任しました。本日から、ハーデン少尉の偵察隊に入ります。

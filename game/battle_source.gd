@@ -118,6 +118,11 @@ func king_looks() -> Array[StringName]:
 	return [&"", &""]
 
 
+## 名前のある人物の形を付ける駒（unit_looks.gd の assign_people に渡す、陣営ごとの人物の列）。既定は無し。
+func cast_looks() -> Array:
+	return [[], []]
+
+
 ## CPU と対戦して人が勝った（決着の画面が出たとき）。context は app_context.gd。
 func record_win(_context: RefCounted) -> void:
 	pass

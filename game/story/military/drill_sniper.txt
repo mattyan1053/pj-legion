@@ -16,9 +16,9 @@ lesson = スナイパーは 4 マス先から撃てるが、打たれ弱い。�
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-教導隊員 = enemy, paladin
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+教導隊員 = enemy, paladin drill_sergeant
 
 [before]
 ドーソン: よし、今日から狙撃手が付きます。ノエ、ハーデン隊長に挨拶しろ。

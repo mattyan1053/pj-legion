@@ -19,6 +19,11 @@ func build(kind: UnitKind.Id, team_color: Color, _look: StringName, at: Vector3)
 	return placeholder(team_color)
 
 
+## 名前のある人物（unit_looks.gd の PERSONS）の形を、この組が持つか。持たなければ、その人の駒は種類の形。
+func has_person(_person: StringName) -> bool:
+	return false
+
+
 ## 中立の駒の体。組が中立の駒の形を持たなければ、これを使う。
 func core(kind: UnitKind.Id, team_color: Color, at: Vector3) -> UnitBody:
 	var body := CoreBody.new()

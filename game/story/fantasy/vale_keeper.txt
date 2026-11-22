@@ -20,12 +20,12 @@ victory_mood = quiet
 wins = king_defeated
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
 ハーデン = ally, king
-ドーソン = ally, shield_trooper evolved
+ドーソン = ally, shield_trooper evolved dawson
 墓守 = enemy
 
 [before]

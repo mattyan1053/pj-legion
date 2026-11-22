@@ -17,12 +17,12 @@ after_music = talk_calm
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-ピップ = ally, commando
-教導隊員 = enemy, paladin
-ヴァルト = enemy, sniper evolved
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
+教導隊員 = enemy, paladin drill_sergeant
+ヴァルト = enemy, sniper evolved valt
 
 [before]
 ヴァルト: 縫い糸ですって？ 聖遺物ひとつで本隊を止めろと言うの。世迷い言はたくさんよ。
