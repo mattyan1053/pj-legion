@@ -9,8 +9,6 @@ const Episode := preload("res://game/episode.gd")
 
 ## まだ口調の見本に合わせていない話（合わせたら消す。空になったら、この定数ごと消す）。
 const PENDING := [
-	"drill_skills", "drill_shrine", "drill_capture", "ridge_path", "ridge_ambush", "ridge_hold", "gorge_rout", "barrow_rout",
-	"barrow_knight", "warden_twin", "drill_last", "quarry_blast",
 	"trial_shadow_step", "trial_eruption", "trial_evolution", "gorge_crossing", "gorge_rejoin", "ridge_siege", "barrow_vigil",
 	"crag_drums", "boulder_warden", "mist_forest", "ridge_bones", "vale_keeper",
 ]
