@@ -17,7 +17,7 @@ unit = shield_trooper
 unit = sniper
 
 [cast]
-ハーデン = king, 新任の少尉。隊長
+ハーデン = king, 偵察隊の新任少尉
 ドーソン = shield_trooper evolved dawson, 古参の曹長。教官
 ノエ = sniper noe, 新兵の狙撃手
 マルタ = medic marta, 古参の衛生兵
