@@ -138,10 +138,11 @@ const PERSONS := {
 		"swap": {"Knight_Head": ["rogue", "Rogue_Head"]}, "hide": ["Knight_Helmet"], "scale": 1.04,
 		"paint": {"rogue": {Vector2i(1, 0): Color("6b4a3a")}},
 	},
-	# 30 代の女の軍曹。騎士を真似た鎧と盾に兜。兜の下から長い髪が出る（女の頭）。
+	# 30 代の女の軍曹。騎士を真似た鎧と盾。兜をかぶると女の頭の髪がほとんど隠れるので、兜は脱ぐ（暗い茶の髪）。
+	# イェルダ（金髪、マント、将の印）と見分けるため、マントは外す。
 	&"drill_sergeant": {
-		"swap": {"Knight_Head": ["rogue", "Rogue_Head"]},
-		"paint": {"rogue": {Vector2i(1, 0): Color("5a3a2c")}},
+		"swap": {"Knight_Head": ["rogue", "Rogue_Head"]}, "hide": ["Knight_Helmet", "Knight_Cape"],
+		"paint": {"rogue": {Vector2i(1, 0): Color("4a2e24")}},
 	},
 }
 
@@ -273,6 +274,7 @@ static func _swap_parts(model: Node3D, swap: Dictionary) -> void:
 		var donor: Node3D = (load(MODELS[donor_name]["scene"]) as PackedScene).instantiate()
 		var part := donor.find_child(swap[old_name][1], true, false) as MeshInstance3D
 		part.get_parent().remove_child(part)
+		part.owner = null  # 元のキャラクターは消すので、持ち主を外す（残すと消えた持ち主を指したままになる）
 		part.set_meta(&"kaykit_model", donor_name)
 		skeleton.add_child(part)
 		part.skeleton = NodePath("..")
@@ -288,6 +290,9 @@ static func _borrow_props(model: Node3D, borrow: Array) -> void:
 		var slot := model.find_child(String(prop.get_parent().name), true, false)
 		var kept := prop.transform
 		prop.get_parent().remove_child(prop)
+		prop.owner = null
+		for child: Node in prop.find_children("*", "", true, false):
+			child.owner = null
 		prop.set_meta(&"kaykit_model", donor_name)
 		prop.visible = true
 		slot.add_child(prop)
