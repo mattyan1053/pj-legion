@@ -2045,6 +2045,7 @@ func _visit_decks(app: Node) -> void:
 	setup_moves.append(setup_panel.choose_opponent.bind(false))
 	setup_moves.append(setup_panel.choose_opponent.bind(true))
 	await _expect_steady(app.current_scene(), [], setup_moves, "対戦設定で選び替える")
+	_expect(setup_panel.fits_screen(), "対戦設定のパネルが画面からはみ出している")
 	setup_panel.choose_opponent(true)
 	setup_panel.choose_human_side(Unit.Side.PLAYER1)
 	setup_panel.choose_army(Unit.Side.PLAYER1, UnitKind.Army.MILITARY)
@@ -2129,6 +2130,7 @@ func _visit_decks(app: Node) -> void:
 	for i in 4:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
+	_expect(screen.formation_text().contains(Names.kind(UnitKind.Id.SHIELD_TROOPER) + " 5 体"), "組み方の欄に、そろえた兵種の分隊が出ない: %s" % screen.formation_text())
 	_expect(not screen.can_save() and deck.problems() == ([Deck.Problem.OVER_BUDGET] as Array[Deck.Problem]), "予算を超えた部隊を取っておけた")
 	await screen.get_tree().process_frame
 	await screen.get_tree().process_frame
@@ -2167,6 +2169,26 @@ func _visit_decks(app: Node) -> void:
 	_expect(screen.is_dialog_open(), "変えたところがあるのに、確かめずに一覧へ戻った")
 	screen.accept_dialog()
 	_expect(not screen.is_editing() and library.find(id).deck.entries.size() == 5, "取っておかずに戻ったのに、部隊が変わった")
+	# 組み方の誓い（騎士領の対戦用の部隊）: 「誓い」を 2 体で押すと結ばれ、もう一度押すと、ほどける。欄の大きさは変わらない。
+	screen.press_new()
+	screen.choose_new_army(UnitKind.Army.FANTASY)
+	for kind: UnitKind.Id in [UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.SPELLBLADE]:
+		screen.hire(kind)
+	screen.select_entry(-1)
+	screen.press_oath(0)
+	_expect(screen.binding_entry() == 0, "「誓い」で、結ぶ相手を選び始めない")
+	screen.press_oath(1)
+	var knights: Deck = screen.editing_deck()
+	_expect(knights.oath_pairs() == ([Vector2i(0, 1)] as Array[Vector2i]) and screen.binding_entry() == -1, "2 体の「誓い」で、誓いを結べない")
+	_expect(screen.formation_text().contains(Names.kind(UnitKind.Id.PALADIN) + "・" + Names.kind(UnitKind.Id.SORCERER)), "組み方の欄に、結んだ誓いが出ない: %s" % screen.formation_text())
+	await _expect_steady(screen, [], [screen.press_oath.bind(2), screen.press_oath.bind(2), screen.press_oath.bind(0), screen.press_oath.bind(0), screen.press_oath.bind(1)], "部隊編成で誓いを結ぶ・ほどく")
+	screen.press_oath(2)
+	screen.press_back()
+	_expect(screen.binding_entry() == -1 and screen.is_editing(), "右クリックで、結ぶ相手を選ぶのをやめない")
+	screen.press_back()
+	if screen.is_dialog_open():
+		screen.accept_dialog()
+	_expect(not screen.is_editing() and library.size() == 1, "誓いを試した部隊を、取っておかずに戻れない")
 	# ストーリー用の部隊: 切り替えると、対戦用の部隊は並ばない。雇える駒は、いま解放した駒だけ。
 	_expect(screen.mode() == DeckRules.VERSUS and screen.listed_ids() == ([id] as Array[String]), "対戦用の一覧が違う")
 	screen.set_mode(Story.military().rules_id)

@@ -33,6 +33,8 @@ const UnitDetail := preload("res://game/unit_detail.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
+const FormationText := preload("res://game/formation_text.gd")
+const FormationLinks := preload("res://game/formation_links.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const PanelLayout := preload("res://game/panel_layout.gd")
 const BattleEffects := preload("res://game/battle_effects.gd")
@@ -109,6 +111,7 @@ var area_name := ""
 var map_seed := 0
 
 var _board_view: BoardView
+var _formation_links: FormationLinks
 var _effects: BattleEffects
 var _views := {}  # 駒の番号 -> UnitView
 ## 名前のある人物の形の付いた駒（駒の番号 -> unit_looks.gd の PERSONS の名前。話の [cast]。start_with で決める）。
@@ -469,6 +472,10 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 
 	_board_view = BoardView.new()
 	add_child(_board_view)
+	if _formation_links != null:
+		_formation_links.queue_free()
+	_formation_links = FormationLinks.new()
+	add_child(_formation_links)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
 	_sync_stronghold_flag()  # 途中から見せる対戦でも、旗は確保を進めた陣営の色
 	_hud.minimap().show_board(battle.board, look)
@@ -738,7 +745,9 @@ func open_unit_detail() -> void:
 	if context.overlays.is_open() or unit == null:
 		return
 	var army: UnitKind.Army = battle.armies[unit.side] if unit.side < battle.armies.size() else UnitKind.Army.NONE
-	_unit_detail.open_sheet(UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), _look_of(unit)))
+	var sheet: UnitSheet = UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), _look_of(unit))
+	sheet.formation = FormationText.unit_lines(battle, unit)
+	_unit_detail.open_sheet(sheet)
 	context.play_sound(&"menu_open")
 	_on_overlay_opened()
 
@@ -977,6 +986,30 @@ func is_skipping() -> bool:
 ## 下の帯の早送り・スキップのボタン: [出ているか, 早送りが入っているか]。検査用。
 func watch_controls_state() -> Array[bool]:
 	return _hud.watch_controls_state()
+
+
+## 組み方の印（docs/formation.md）: 分隊と誓いの駒の足元の輪と、誓いの 2 体・肩並べの仲間どうしの線。組み方が切なら、何も出さない。
+func _refresh_formation() -> void:
+	var links: Array = []
+	for shown in battle.units:
+		if not _views.has(shown.id):
+			continue
+		var squad := Formation.squad_of(battle, shown)
+		var partner := Formation.partner_of(battle, shown)
+		var color := Palette.NATION_MILITARY if not squad.is_empty() else Palette.NATION_FANTASY
+		_view(shown.id).set_formation_mark(not squad.is_empty() or partner != null, color)
+		if partner != null and shown.id < partner.id and _views.has(partner.id):
+			var near := Formation.oath_near(battle, shown)
+			links.append([_view(shown.id), _view(partner.id), Color(Palette.NATION_FANTASY, 1.0 if near else FormationLinks.FAR_ALPHA)])
+		for mate in squad:
+			if mate.id > shown.id and _views.has(mate.id) and maxi(absi(mate.cell.x - shown.cell.x), absi(mate.cell.y - shown.cell.y)) == 1:
+				links.append([_view(shown.id), _view(mate.id), Palette.NATION_MILITARY])
+	_formation_links.set_links(links)
+
+
+## 組み方の線の数（検査用）。
+func formation_link_count() -> int:
+	return _formation_links.link_count() if _formation_links != null else 0
 
 
 ## 見せずに済ませたあと、盤の見た目（駒・樽・盤の上の効果）を、いまの盤から作り直す。
@@ -1857,6 +1890,7 @@ func _refresh() -> void:
 	for shown in battle.units:
 		if _views.has(shown.id):
 			_view(shown.id).set_status_mark(not Statuses.types_of(shown).is_empty())
+	_refresh_formation()
 	_refresh_status(battle.turn, battle.phase)
 	_hud.set_hint(BattleTexts.hint(
 		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit),
