@@ -10,12 +10,12 @@ const P2 := Unit.Side.PLAYER2
 const CELL := Vector2i(2, 2)
 
 
-func _setup(field: StringName, battle_seed: int, trials: Array[StringName] = []) -> MatchSetup:
+func _setup(field: StringName, battle_seed: int, rules: Array[StringName] = []) -> MatchSetup:
 	var setup := MatchSetup.versus_human(
 		BoardGenerator.Stage.PLAIN, battle_seed, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY)
 	)
 	setup.scenario = VersusFields.scenario_of(field)
-	setup.trials = trials
+	setup.rules = rules
 	return setup
 
 
@@ -57,7 +57,7 @@ func test_trial_is_off_by_default_and_nothing_is_placed() -> void:
 func test_trial_places_one_stronghold_at_the_same_distance_from_both_hqs() -> void:
 	for field in VersusFields.all_ids():
 		for battle_seed: int in [1, 2, 3]:
-			var battle := _setup(field, battle_seed, [TrialRules.STRONGHOLD]).create_battle()
+			var battle := _setup(field, battle_seed, [OptionalRules.STRONGHOLD]).create_battle()
 			var board := battle.board
 			var cell := board.stronghold_cell
 			var label := "%s 種 %d" % [field, battle_seed]
@@ -80,7 +80,7 @@ func test_trial_places_one_stronghold_at_the_same_distance_from_both_hqs() -> vo
 func test_off_board_is_the_same_as_on_board_except_the_stronghold() -> void:
 	for field in VersusFields.all_ids():
 		var off := _setup(field, 5).create_battle().board
-		var on := _setup(field, 5, [TrialRules.STRONGHOLD]).create_battle().board
+		var on := _setup(field, 5, [OptionalRules.STRONGHOLD]).create_battle().board
 		for y in off.size.y:
 			for x in off.size.x:
 				var cell := Vector2i(x, y)

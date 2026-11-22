@@ -14,7 +14,7 @@
 | `decks` | プレイヤーごとの選んだ編成（`Deck`。軍を含む）。戦いの定義が部隊を決め打ちにしているプレイヤーの分は使わない |
 | `controllers` | プレイヤーごとに、人（`HUMAN`）が動かすか CPU（`CPU`）が動かすか |
 | `placements` | プレイヤーごとの、人が決めた置き方（本陣からのずれ。空ならいつもの置き方。`docs/player-loadout.md`） |
-| `trials` | 入にする選べる決まり（`TrialRules` の名前の並び。既定は空 = どれも切。対戦モードの対戦設定からは拠点あり。下の「選べる決まり」） |
+| `rules` | 入にする選べる決まり（`OptionalRules` の名前の並び。既定は空 = どれも切。対戦モードの対戦設定からは拠点あり。下の「選べる決まり」） |
 
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
@@ -55,23 +55,23 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 ## 選べる決まり
 
-コード: `rules/trial_rules.gd`（`TrialRules`）。テスト: `tests/rules/test_battery.gd`、`tests/rules/test_stronghold.gd`、`tests/game/test_match_choice.gd`。
+コード: `rules/optional_rules.gd`（`OptionalRules`）。テスト: `tests/rules/test_battery.gd`、`tests/rules/test_stronghold.gd`、`tests/game/test_match_choice.gd`。
 
-対戦モードで、対戦設定から入・切できる決まり（Issue #47）。名前の `TrialRules` は、試しの決まりとして入れた名残り。
+対戦モードで、対戦設定から入・切できる決まり（Issue #47）。
 
-- **対戦モードの既定は、拠点あり・砲台なし**（`TrialRules.DEFAULTS`。`game/match_choice.gd` の `trials` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。砲台はまだ試し。
+- **対戦モードの既定は、拠点あり・砲台なし**（`OptionalRules.DEFAULTS`。`game/match_choice.gd` の `rules` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。砲台はまだ試し。
 - `MatchSetup` の既定は空（どれも切）。**ストーリーの話は、入にしない。** 切のとき、対戦は 1 局も変わらない（盤も、駒も、CPU の手も）。
-- 入にするのは、`MatchSetup.trials` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
-- 画面では、対戦設定のパネルの「拠点」「砲台（試し）」の行の「あり」「なし」で入・切する（`game/match_choice.gd` の `trials`、`set_trial`）。
-  集計の道具は、付けなければ対戦モードの既定で回し、`--trials=<名前>` でそれだけ入、`--trials=none` で全部切（`docs/cpu-ai.md`）。
+- 入にするのは、`MatchSetup.rules` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
+- 画面では、対戦設定のパネルの「拠点」「砲台（試し）」の行の「あり」「なし」で入・切する（`game/match_choice.gd` の `rules`、`set_rule`）。
+  集計の道具は、付けなければ対戦モードの既定で回し、`--rules=<名前>` でそれだけ入、`--rules=none` で全部切（`docs/cpu-ai.md`）。
 - CPU は、入の決まりを知って打つ。
 
 | 名前 | 中身 | 入のときの準備 |
 | --- | --- | --- |
-| `battery`（`TrialRules.BATTERY`） | 砲台。後衛が乗ると射程が伸びるマス（`docs/map-objects.md` の「砲台」） | 盤の置ける場所に砲台を置く（`BoardGenerator.arm_batteries`） |
-| `stronghold`（`TrialRules.STRONGHOLD`） | 拠点。盤の中央のマスで、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤の中央に拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
+| `battery`（`OptionalRules.BATTERY`） | 砲台。後衛が乗ると射程が伸びるマス（`docs/map-objects.md` の「砲台」） | 盤の置ける場所に砲台を置く（`BoardGenerator.arm_batteries`） |
+| `stronghold`（`OptionalRules.STRONGHOLD`） | 拠点。盤の中央のマスで、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤の中央に拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
 
-決まりを足すとき: `TrialRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
+決まりを足すとき: `OptionalRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
 
 ## 画面の入口
 

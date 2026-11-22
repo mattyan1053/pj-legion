@@ -260,7 +260,7 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 
 
 ## 対戦の始めの知らせ（選べる決まり）の行。入の決まりごとに 1 行（盤に砲台・拠点がある）。無ければ空。
-static func trial_notice(battle: Battle) -> Array[String]:
+static func rule_notice(battle: Battle) -> Array[String]:
 	var lines: Array[String] = []
 	if not battle.board.battery_cells.is_empty():
 		lines.append(Text.t("battle.notice.battery", {"range": MapObject.BATTERY_RANGE}))

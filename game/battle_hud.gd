@@ -1690,7 +1690,7 @@ func _build_notice() -> void:
 	_notice.mouse_filter = Control.MOUSE_FILTER_STOP
 	_notice.visible = false
 	add_child(_notice)
-	Steady.mark(_notice, "battle.trial_notice", Steady.RECT)
+	Steady.mark(_notice, "battle.rule_notice", Steady.RECT)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	_notice.add_child(column)

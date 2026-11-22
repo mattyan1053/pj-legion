@@ -23,7 +23,7 @@ const DeployDialog := preload("res://game/deploy_dialog.gd")
 ## 初期位置の窓で見せる盤の種（生成のマップは、マップ選択のカードと同じ代表の形）。
 const PLACEMENT_SEED := 3
 ## 選べる決まりの行（並び）、「あり」「なし」のボタンの幅、右の説明の欄の大きさ（px。2 行まで）。
-const TRIAL_ROWS: Array[StringName] = [TrialRules.STRONGHOLD, TrialRules.BATTERY]
+const RULE_ROWS: Array[StringName] = [OptionalRules.STRONGHOLD, OptionalRules.BATTERY]
 const TRIAL_BUTTON_WIDTH := 110.0
 const TRIAL_NOTE_SIZE := Vector2(400.0, 48.0)
 const Text := preload("res://game/text.gd")
@@ -85,7 +85,7 @@ var _can_edit_decks := false
 var _library: RefCounted
 var _side_caption: Label
 ## 選べる決まりの行の右の説明（決まりの名前 → Label）。
-var _trial_notes: Dictionary[StringName, Label] = {}
+var _rule_notes: Dictionary[StringName, Label] = {}
 var _first_gauge_note: Label
 var _start_button: Button
 var _back_button: Button
@@ -155,20 +155,20 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	})
 	_side_caption = side_row.get_child(0) as Label
 	# 選べる決まり（docs/match-setup.md の「選べる決まり」）。決まりごとに 1 行: 「あり」「なし」と、右に決まりのひとことの説明（決まった大きさ）。
-	for trial: StringName in TRIAL_ROWS:
-		var trial_row := _add_row(column, Text.t("setup.caption.%s" % trial), StringName("trial_%s" % trial),
-			{true: Text.t("setup.trial.on"), false: Text.t("setup.trial.off")})
-		for button: Button in (_rows[StringName("trial_%s" % trial)] as Dictionary).values():
+	for rule: StringName in RULE_ROWS:
+		var rule_row := _add_row(column, Text.t("setup.caption.%s" % rule), StringName("rule_%s" % rule),
+			{true: Text.t("setup.rule.on"), false: Text.t("setup.rule.off")})
+		for button: Button in (_rows[StringName("rule_%s" % rule)] as Dictionary).values():
 			button.custom_minimum_size = Vector2(TRIAL_BUTTON_WIDTH, 40.0)
 		var note := _label(14)
-		note.text = trial_note(trial)
+		note.text = rule_note(rule)
 		note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.max_lines_visible = 2
 		note.custom_minimum_size = TRIAL_NOTE_SIZE
-		Steady.mark(note, "setup.trial_note")
-		trial_row.add_child(note)
-		_trial_notes[trial] = note
+		Steady.mark(note, "setup.rule_note")
+		rule_row.add_child(note)
+		_rule_notes[rule] = note
 	# 対戦モードの先手が必殺技のゲージをためて始まるなら（Ults.FIRST_PLAYER_START_GAUGE が 0 より大きい）、手番の行の右に書いておく。
 	# 2 行にして、ボタンの高さに収める（行もパネルも大きくしない）。
 	_first_gauge_note = _label(14)
@@ -344,19 +344,19 @@ func choose_random_side() -> void:
 
 
 ## 選べる決まり id を入・切する。
-func choose_trial(id: StringName, on: bool) -> void:
-	_choice.set_trial(id, on)
+func choose_rule(id: StringName, on: bool) -> void:
+	_choice.set_rule(id, on)
 	_show_choice()
 
 
 ## 選べる決まりの行の右の説明（検査用）。
-func trial_note_text(id: StringName) -> String:
-	return (_trial_notes[id] as Label).text
+func rule_note_text(id: StringName) -> String:
+	return (_rule_notes[id] as Label).text
 
 
 ## 選べる決まりの、ひとことの説明。
-static func trial_note(id: StringName) -> String:
-	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "holds": Stronghold.HOLDS_TO_WIN})
+static func rule_note(id: StringName) -> String:
+	return Text.t("setup.rule.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "holds": Stronghold.HOLDS_TO_WIN})
 
 
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
@@ -464,8 +464,8 @@ func _choose(key: StringName, value: Variant) -> void:
 		&"army1":
 			choose_army(Unit.Side.PLAYER2, value)
 		_:
-			if String(key).begins_with("trial_"):
-				choose_trial(StringName(String(key).trim_prefix("trial_")), value)
+			if String(key).begins_with("rule_"):
+				choose_rule(StringName(String(key).trim_prefix("rule_")), value)
 
 
 func _show_choice() -> void:
@@ -477,18 +477,18 @@ func _show_choice() -> void:
 		&"opponent": _choice.cpu_opponent, &"human_side": side_value,
 		&"army0": _choice.armies[0], &"army1": _choice.armies[1],
 	}
-	for trial: StringName in TRIAL_ROWS:
-		current[StringName("trial_%s" % trial)] = _choice.has_trial(trial)
+	for rule: StringName in RULE_ROWS:
+		current[StringName("rule_%s" % rule)] = _choice.has_rule(rule)
 	for key: StringName in _rows:
 		var buttons: Dictionary = _rows[key]
 		for value: Variant in buttons:
 			(buttons[value] as Button).set_pressed_no_signal(value == current[key])
 	_map_name.text = "%d %s" % [VersusFields.number_of(_choice.field), VersusFields.title_of(_choice.field)]
-	var banner_key := StringName("%s:%s" % [_choice.field, _choice.has_trial(TrialRules.STRONGHOLD)])  # 拠点の入・切でも縮図を描き直す
+	var banner_key := StringName("%s:%s" % [_choice.field, _choice.has_rule(OptionalRules.STRONGHOLD)])  # 拠点の入・切でも縮図を描き直す
 	if _banner_field != banner_key:
 		_banner_field = banner_key
 		var board := VersusFields.card_board(_choice.field, PLACEMENT_SEED)
-		if board != null and _choice.has_trial(TrialRules.STRONGHOLD):
+		if board != null and _choice.has_rule(OptionalRules.STRONGHOLD):
 			Stronghold.arm(board, PLACEMENT_SEED)  # 拠点の印も縮図に描く
 		_banner.show_map(null if board == null else ImageTexture.create_from_image(MapCard.draw(board, VersusFields.look_of(_choice.field), _team_colors)))
 	# 人どうしなら、手番は選ばない（先手・後手の 2 人が交代する）。

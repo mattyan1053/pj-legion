@@ -37,8 +37,8 @@ var drawn_side := Unit.Side.PLAYER1
 ## 行ごとの、人が決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
 ## その行が先手（下の本陣）として決めたもの。後手として対戦する（手番がランダム）ときは、上下を返して使う。部隊を替えたら空に戻す。
 var placements: Array[Array] = [[], []]
-## 入にした選べる決まり（TrialRules の名前。既定は TrialRules.DEFAULTS = 拠点あり・砲台なし。docs/match-setup.md の「選べる決まり」）。
-var trials: Array[StringName] = TrialRules.DEFAULTS.duplicate()
+## 入にした選べる決まり（OptionalRules の名前。既定は OptionalRules.DEFAULTS = 拠点あり・砲台なし。docs/match-setup.md の「選べる決まり」）。
+var rules: Array[StringName] = OptionalRules.DEFAULTS.duplicate()
 
 
 ## CPU と対戦するときに、人が動かすプレイヤー（ランダムなら、最後に作った対戦で引いた側）。
@@ -63,15 +63,15 @@ func look() -> StringName:
 	return VersusFields.look_of(field)
 
 
-func has_trial(id: StringName) -> bool:
-	return trials.has(id)
+func has_rule(id: StringName) -> bool:
+	return rules.has(id)
 
 
 ## 選べる決まり id を入・切する。
-func set_trial(id: StringName, on: bool) -> void:
-	trials.erase(id)
-	if on and TrialRules.is_known(id):
-		trials.append(id)
+func set_rule(id: StringName, on: bool) -> void:
+	rules.erase(id)
+	if on and OptionalRules.is_known(id):
+		rules.append(id)
 
 
 func make_setup(battle_seed: int) -> MatchSetup:
@@ -229,7 +229,7 @@ func copy() -> RefCounted:
 	other.human_side = human_side
 	other.random_side = random_side
 	other.drawn_side = drawn_side
-	other.trials = trials.duplicate()
+	other.rules = rules.duplicate()
 	for side in 2:
 		other.placements[side] = placements[side].duplicate()
 	return other
@@ -263,7 +263,7 @@ func to_setup(battle_seed: int) -> MatchSetup:
 			setup.decks[cpu_side()] = deck_for(cpu_row(), battle_seed, cpu_side())
 	else:
 		setup = MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1, battle_seed), deck_for(Unit.Side.PLAYER2, battle_seed))
-	setup.trials = trials.duplicate()
+	setup.rules = rules.duplicate()
 	# 人が決めた初期位置（行ごと）。行と違う側で対戦する（手番ランダムで後手を引いた）ときは、盤の形に合わせて返す
 	# （点対称の盤なら上下と左右、そうでなければ上下。Deployment.facing_placement）。部隊の数と合わなければ使わない。
 	var board: Board = null

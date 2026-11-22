@@ -511,7 +511,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	# 拠点・砲台のある対戦では、対戦の始め（ターン 1）に 1 回だけ知らせる。途中から見せる対戦では出さない。
 	var notice: Array[String] = []
 	if battle.turn == 1:
-		notice = BattleTexts.trial_notice(battle)
+		notice = BattleTexts.rule_notice(battle)
 	_hud.show_notice(notice)
 	_refresh()
 	_run_cpu()
