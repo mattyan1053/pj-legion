@@ -11,6 +11,7 @@ extends Node
 ## - 「話の一覧へ戻る」（右クリック・Esc でも）で &"back"（流れは捨てる）。
 
 const DeployMap := preload("res://game/deploy_map.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 const DeployNote := preload("res://game/deploy_note.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
@@ -452,9 +453,7 @@ func press_back() -> void:
 func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():
 		return
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		context.play_sound(&"ui_back")
 		if not _deploy.cancel():  # 初期位置で駒を選んでいれば、まず選ぶのをやめる

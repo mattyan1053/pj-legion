@@ -7,6 +7,7 @@ extends Control
 ## 「閉じる」・右クリック・Esc・枠の外のクリックで閉じる。色や枠は UI のテーマ（ui_theme.gd。板は PANEL_SOLID）が当たる。
 
 const Text := preload("res://game/text.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 const Names := preload("res://game/names.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
@@ -409,8 +410,6 @@ func _exit_tree() -> void:
 func _input(event: InputEvent) -> void:
 	if not visible or _overlays == null or not _overlays.is_top(self):
 		return
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		close_detail()

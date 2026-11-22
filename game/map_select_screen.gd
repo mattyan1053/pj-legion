@@ -319,9 +319,7 @@ func _input(event: InputEvent) -> void:
 		# マウスに持ち替えた: マウスの下のカードに乗ったことにする（無ければ、選びをやめる）。
 		_by_key = false
 		hover(_field_at((event as InputEventMouseMotion).global_position))
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		context.play_sound(&"ui_back")
 		press_back()

@@ -2,6 +2,7 @@ extends RefCounted
 ## 横に並ぶカード（物語選択・話の一覧・マップ選択）を、キーボードで選ぶときの決まり（ノードに依存しない）。
 ## 主の操作はマウス。キーボードは、左右の矢印で選び、Enter で決める（数字キーは 1〜9 までしか届かないので、それより先も選べるように）。
 ## 選んでいるカードは、マウスを乗せたときと同じ見た目にする（見た目は画面の側）。
+## 1 つ戻る操作（右クリック・Esc）も、ここで見分ける（どの画面・窓も同じ決まり）。
 
 ## 押したキーが左右のどちらか（左 -1、右 +1、どちらでもない 0）。
 static func direction(event: InputEvent) -> int:
@@ -42,6 +43,13 @@ static func next(index: int, step: int, count: int, enabled: Callable, start := 
 		i += step
 	return index
 
+
+
+## 1 つ戻る操作か（右クリックを押した、Esc を押した。押しっぱなしの繰り返しは数えない）。
+static func is_back(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		return event.pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT
+	return event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).physical_keycode == KEY_ESCAPE
 
 
 ## マウスを本当に動かしたか（キーで送ったカードがマウスの下へ来て、乗ったことになるのとは分ける）。

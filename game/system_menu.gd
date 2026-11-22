@@ -8,6 +8,7 @@ extends CanvasLayer
 ## - 「設定」（ITEM_SETTINGS）は、ここでオプションの画面（settings_panel.gd）に切り替える。閉じると settings_closed を出す。
 
 const Text := preload("res://game/text.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Settings := preload("res://game/settings.gd")
@@ -300,9 +301,7 @@ func _show(panel: Control) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_open() or not _overlays.is_top(self):
 		return
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		back()
 	elif event is InputEventKey:
