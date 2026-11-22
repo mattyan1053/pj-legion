@@ -20,11 +20,11 @@ after_music = talk_calm
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-ピップ = ally, commando
-ヴァルト = enemy, sniper evolved
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
+ヴァルト = enemy, sniper evolved valt
 
 [before]
 ピップ: 着いたっす〜。見てくださいよ、樽、樽、樽。あれ全部、発破用っす。

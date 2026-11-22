@@ -7,6 +7,7 @@ extends "res://game/looks/look_set.gd"
 ## 中立の駒は、どの組とも同じ結晶のコア（core_body.gd）。
 
 const ModelBody := preload("res://game/looks/model_body.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 const MODEL_SCALE := 0.5
 ## 体の高さ（大きさ 1 のとき）。
@@ -87,6 +88,64 @@ const KING_LOOKS := {
 	},
 }
 
+## 名前のある人物の形（unit_looks.gd の PERSONS の名前 -> その人の駒の種類の形への書き足し）。
+## 人物像（docs/story.md の「口調の見本」の「見た目」の行）に合わせて、同じ骨組みのキャラクターの部品を付け替える。
+## "swap": 体の部品の付け替え（元の部品 -> [キャラクター, 部品]）。頭を替えると、顔・髪・ひげが替わる。
+## "borrow": 別のキャラクターの小物（[キャラクター, 小物] の列。同じ名前の付け所に付け、いつも出す）。
+## "hide": 隠す部品（兜・帽子・マントなど）。
+## "paint": 色見本の塗り替え（キャラクター -> {色見本（列, 行） -> 色}）。髪の色、衣の色。塗った見本は陣営の色にしない。
+## どの KayKit のキャラクターも、色見本の (1, 0) が髪（ひげ）の色。
+const PERSONS := {
+	# ハーデン（20 代前半の男の士官）は、兜の騎士の将の形のままで合うので書かない。
+	# 40 代の古参の男。がっしりした体に、使い込んだ鎧と大きな盾。禿げ頭にひげの頭（Barbarian）で、兜は脱ぐ。少し大きく。
+	&"dawson": {
+		"swap": {"Knight_Head": ["barbarian", "Barbarian_Head"]}, "hide": ["Knight_Helmet"], "scale": 1.08,
+		"paint": {"barbarian": {Vector2i(1, 0): Color("6e5a48")}},
+	},
+	# 10 代後半の女。小柄。軽装に長い弓（クロスボウ）。
+	&"noe": {"scale": 0.92},
+	# 40 代の女の衛生兵。髪の長い女の頭（Rogue）に、白い上着（Mage の衣を白に）。帽子は無し。髪は白の混じった茶。
+	&"marta": {
+		"swap": {"Mage_Head": ["rogue", "Rogue_Head"]}, "hide": ["Mage_Hat"],
+		"paint": {
+			"mage": {Vector2i(0, 1): Color("e4e6e8"), Vector2i(1, 1): Color("e4e6e8"), Vector2i(7, 1): Color("9aa0a6")},
+			"rogue": {Vector2i(1, 0): Color("8f7f74")},
+		},
+	},
+	# 20 代の男の斥候。頭巾をかぶった軽装（髪を出したノエと見分ける）。短い刃物 2 本。
+	&"pip": {"model": "rogue_hooded"},
+	# 20 代半ばの女の騎士。鎧と盾の騎士の、兜を脱いだ姿（髪の長い女の頭）。将の印は駒の見た目が付ける。
+	&"yelda": {
+		"swap": {"Knight_Head": ["rogue", "Rogue_Head"]}, "hide": ["Knight_Helmet"],
+		"paint": {"rogue": {Vector2i(1, 0): Color("d8b26a")}},
+	},
+	# 70 歳近い男の導師。禿げ頭に白いひげ（Barbarian の頭）、長い衣（Mage）に杖と本。
+	&"ul": {
+		"swap": {"Mage_Head": ["barbarian", "Barbarian_Head"]}, "hide": ["Mage_Hat"],
+		"show": ["2H_Staff", "Spellbook"],
+		"paint": {"barbarian": {Vector2i(1, 0): Color("e8e6e0")}},
+	},
+	# 14 歳の男の子。とんがり帽子の若い顔の魔法使いを、小さく。
+	&"tio": {"scale": 0.86},
+	# 20 代後半の女の影刃。細身で身軽。軽装（Rogue）に、黒い髪と両手の剣（Knight の剣）。
+	&"seris": {
+		"model": "rogue", "show": [], "borrow": [["knight", "2H_Sword"]],
+		"paint": {"rogue": {Vector2i(1, 0): Color("2a2630")}},
+	},
+	# 40 代の女の将校。背筋の伸びた鎧（Knight の体とマント）に、女の頭（髪は栗色）と長い弓（Rogue のクロスボウ）。
+	&"valt": {
+		"model": "knight", "show": [], "borrow": [["rogue", "2H_Crossbow"]],
+		"swap": {"Knight_Head": ["rogue", "Rogue_Head"]}, "hide": ["Knight_Helmet"], "scale": 1.04,
+		"paint": {"rogue": {Vector2i(1, 0): Color("6b4a3a")}},
+	},
+	# 30 代の女の軍曹。騎士を真似た鎧と盾。兜をかぶると女の頭の髪がほとんど隠れるので、兜は脱ぐ（暗い茶の髪）。
+	# イェルダ（金髪、マント、将の印）と見分けるため、マントは外す。
+	&"drill_sergeant": {
+		"swap": {"Knight_Head": ["rogue", "Rogue_Head"]}, "hide": ["Knight_Helmet", "Knight_Cape"],
+		"paint": {"rogue": {Vector2i(1, 0): Color("4a2e24")}},
+	},
+}
+
 ## 骸骨の小物（手の骨に付ける別の素材）。
 const HELD_PROPS := {
 	"blade": "res://assets/kaykit/skeletons/Skeleton_Blade.gltf",
@@ -123,6 +182,12 @@ const MODELS := {
 		"props": ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Knife", "Throwable"],
 		"accent": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 2)],
 	},
+	# 頭巾をかぶった Rogue（体と小物は Rogue と同じ。頭だけ頭巾の形）。
+	"rogue_hooded": {
+		"scene": "res://assets/kaykit/adventurers/Rogue_Hooded.glb",
+		"props": ["Knife_Offhand", "1H_Crossbow", "2H_Crossbow", "Knife", "Throwable"],
+		"accent": [Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 2)],
+	},
 	"skeleton_minion": {"scene": "res://assets/kaykit/skeletons/Skeleton_Minion.glb", "props": [], "accent": [Vector2i(5, 0)]},
 	"skeleton_rogue": {"scene": "res://assets/kaykit/skeletons/Skeleton_Rogue.glb", "props": [], "accent": [Vector2i(2, 2)]},
 	"skeleton_warrior": {"scene": "res://assets/kaykit/skeletons/Skeleton_Warrior.glb", "props": [], "accent": [Vector2i(2, 2)]},
@@ -134,6 +199,8 @@ static var _team_materials := {}
 
 
 func build(kind: UnitKind.Id, team_color: Color, look: StringName, at: Vector3) -> UnitBody:
+	if PERSONS.has(look):
+		return _model_body(person_shape(look), team_color, look)
 	if kind == UnitKind.Id.KING and KING_LOOKS.has(look):
 		return _model_body(KING_LOOKS[look], team_color)
 	if KINDS.has(kind):
@@ -141,32 +208,96 @@ func build(kind: UnitKind.Id, team_color: Color, look: StringName, at: Vector3) 
 	return super(kind, team_color, look, at)
 
 
-func _model_body(shape: Dictionary, team_color: Color) -> UnitBody:
+func has_person(person: StringName) -> bool:
+	return PERSONS.has(person)
+
+
+## 名前のある人物の形（PERSONS の書き足しを、その人の駒の種類の形に重ねたもの）。
+static func person_shape(person: StringName) -> Dictionary:
+	var shape: Dictionary = KINDS[UnitLooks.PERSONS[person]].duplicate()
+	shape.merge(PERSONS[person], true)
+	return shape
+
+
+## person は名前のある人物（PERSONS の名前。色の塗り替えを人物ごとに分ける）。
+func _model_body(shape: Dictionary, team_color: Color, person := &"") -> UnitBody:
 	var model_name: String = shape["model"]
 	var source: Dictionary = MODELS[model_name]
 	var model: Node3D = (load(source["scene"]) as PackedScene).instantiate()
 	var size: float = shape.get("scale", 1.0)
 	model.scale = Vector3.ONE * MODEL_SCALE * size
 	_hold_props(model, shape.get("hold", {}))
+	for mesh: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		mesh.set_meta(&"kaykit_model", model_name)
 
 	var shown: Array = shape["show"]
 	for node_name: String in source["props"]:
 		var part := model.find_child(node_name, true, false) as Node3D
 		if part != null:
 			part.visible = shown.has(node_name)
+	_swap_parts(model, shape.get("swap", {}))
+	_borrow_props(model, shape.get("borrow", []))
+	for node_name: String in shape.get("hide", []):
+		var hidden := model.find_child(node_name, true, false) as Node3D
+		if hidden != null:
+			hidden.visible = false
 
-	var original: Material = null
-	var first := model.find_children("*", "MeshInstance3D", true, false)
-	if not first.is_empty():
-		original = (first[0] as MeshInstance3D).mesh.surface_get_material(0)
 	var moves := MOVES.duplicate()
 	moves[&"idle"] = StringName(shape["idle"])
 	moves[&"attack"] = StringName(shape["attack"])
 
 	var body := ModelBody.new()
 	body.body_height = MODEL_HEIGHT * size
-	body.set_model(model, moves, func(shade: float) -> Material: return _team_material(model_name, team_color, original, shade))
+	body.set_model(model, moves, Callable())
+	var paint := shape.get("paint", {}) as Dictionary
+	body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void:
+		var from: String = mesh.get_meta(&"kaykit_model", model_name)
+		var original := mesh.mesh.surface_get_material(0)
+		if original == null:
+			return
+		mesh.material_override = _team_material(from, team_color, original, shade, person, paint.get(from, {})))
 	return body
+
+
+## 体の部品（骨に沿って曲がる面）を、別のキャラクターの同じ場所の部品に替える（swap: 元の部品の名前 -> [キャラクター, 部品の名前]）。
+## KayKit の Adventurers は、どのキャラクターも同じ骨組み（骨の名前と並びが同じ）なので、部品をそのまま付け替えられる。
+static func _swap_parts(model: Node3D, swap: Dictionary) -> void:
+	if swap.is_empty():
+		return
+	var skeleton := model.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
+	for old_name: String in swap:
+		var old_part := model.find_child(old_name, true, false)
+		if old_part != null:
+			old_part.get_parent().remove_child(old_part)
+			old_part.free()
+		var donor_name: String = swap[old_name][0]
+		var donor: Node3D = (load(MODELS[donor_name]["scene"]) as PackedScene).instantiate()
+		var part := donor.find_child(swap[old_name][1], true, false) as MeshInstance3D
+		part.get_parent().remove_child(part)
+		part.owner = null  # 元のキャラクターは消すので、持ち主を外す（残すと消えた持ち主を指したままになる）
+		part.set_meta(&"kaykit_model", donor_name)
+		skeleton.add_child(part)
+		part.skeleton = NodePath("..")
+		donor.free()
+
+
+## 別のキャラクターの小物・かぶり物を、同じ名前の付け所（手・頭・胸の骨）に付ける（borrow: [キャラクター, 小物の名前] の列）。
+static func _borrow_props(model: Node3D, borrow: Array) -> void:
+	for entry: Array in borrow:
+		var donor_name: String = entry[0]
+		var donor: Node3D = (load(MODELS[donor_name]["scene"]) as PackedScene).instantiate()
+		var prop := donor.find_child(entry[1], true, false) as Node3D
+		var slot := model.find_child(String(prop.get_parent().name), true, false)
+		var kept := prop.transform
+		prop.get_parent().remove_child(prop)
+		prop.owner = null
+		for child: Node in prop.find_children("*", "", true, false):
+			child.owner = null
+		prop.set_meta(&"kaykit_model", donor_name)
+		prop.visible = true
+		slot.add_child(prop)
+		prop.transform = kept
+		donor.free()
 
 
 ## 小物を手の骨に付ける（hold: 骨の名前 -> HELD_PROPS の名前）。
@@ -187,12 +318,13 @@ static func _hold_props(model: Node3D, hold: Dictionary) -> void:
 
 ## キャラクターのマテリアルを、差し色だけ陣営の色にしたものに差し替える。
 ## 明るさの濃淡は元のまま残し、色相と彩度だけを変える。shade は全体の明るさ（行動済みの駒は暗くする）。
-static func _team_material(model_name: String, team_color: Color, source: Material, shade: float) -> Material:
-	var key := "%s:%s:%s" % [model_name, team_color.to_html(), shade]
+## person と paint は名前のある人物の塗り替え（paint: 色見本（列, 行） -> 色。陣営の色より先に塗り、塗った見本は陣営の色にしない）。
+static func _team_material(model_name: String, team_color: Color, source: Material, shade: float, person := &"", paint := {}) -> Material:
+	var key := "%s:%s:%s:%s" % [model_name, team_color.to_html(), shade, person]
 	if _team_materials.has(key):
 		return _team_materials[key]
 	if shade < 1.0:
-		var dimmed := _team_material(model_name, team_color, source, 1.0).duplicate() as StandardMaterial3D
+		var dimmed := _team_material(model_name, team_color, source, 1.0, person, paint).duplicate() as StandardMaterial3D
 		dimmed.albedo_color = Color(shade, shade, shade)
 		_team_materials[key] = dimmed
 		return dimmed
@@ -204,7 +336,19 @@ static func _team_material(model_name: String, team_color: Color, source: Materi
 	image.clear_mipmaps()
 	image.convert(Image.FORMAT_RGBA8)
 
+	for swatch: Vector2i in paint:
+		var origin := swatch * SWATCH_SIZE
+		var to: Color = paint[swatch]
+		var middle := image.get_pixel(origin.x + SWATCH_SIZE.x / 2, origin.y + SWATCH_SIZE.y / 2)
+		for y in SWATCH_SIZE.y:
+			for x in SWATCH_SIZE.x:
+				var c := image.get_pixel(origin.x + x, origin.y + y)
+				# 見本の中の濃淡（真ん中との明るさの比）を残して、決めた色にする。
+				var ratio := c.v / maxf(middle.v, 0.01)
+				image.set_pixel(origin.x + x, origin.y + y, Color(to.r * ratio, to.g * ratio, to.b * ratio, c.a).clamp())
 	for swatch: Vector2i in MODELS[model_name]["accent"]:
+		if paint.has(swatch):
+			continue
 		var origin := swatch * SWATCH_SIZE
 		for y in SWATCH_SIZE.y:
 			for x in SWATCH_SIZE.x:

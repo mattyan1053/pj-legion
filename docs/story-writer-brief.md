@@ -220,8 +220,8 @@ lesson = 駒をクリックして動かし、隣の敵を攻撃する。敵の�
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-教導隊員 = enemy, paladin
+ドーソン = ally, shield_trooper evolved dawson
+教導隊員 = enemy, paladin drill_sergeant
 
 [before]
 
@@ -263,9 +263,9 @@ map = drill_field
 lesson = 駒をクリックして動かし、敵を攻撃する。ソーサラーは 2 マス先から撃てる。
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
 幻の兵 = enemy, shield_trooper
 
 [before]

@@ -368,7 +368,10 @@ func _read_cast(file: RefCounted) -> void:
 			figure = read_figure(file, row["line"], parts[1].strip_edges())
 			if figure.is_empty():
 				continue
-		if figure["kind"] == UnitKind.Id.KING:
+		if figure["kind"] == UnitKind.Id.KING and king_looks[side] != &"":
+			if figure["look"] != &"":
+				file.problem(row["line"], "将の姿（king_figure）のある陣営の将に、人物の形は書けない: %s" % text)
+				continue
 			figure["look"] = king_looks[side]
 		if not main_found[side]:
 			main_found[side] = true
@@ -386,6 +389,8 @@ func _read_cast(file: RefCounted) -> void:
 
 ## 話し手の姿「駒の種類」か「駒の種類 evolved」（king も書ける。中立の駒は書けない。進化後は進化する駒だけ）。読めなければ空。
 ## 最後に「crown」を付けると、将の印（頭の上の金の輪）を付ける（将の姿でない将。会話の姿だけに効く。"crown" の鍵は、付けたときだけ入る）。
+## さらに最後に人物の名前（unit_looks.gd の PERSONS。「sniper noe」）を付けると、その人の形にする（"look" に入る）。
+## 人物の形は、会話の姿と、盤でその人が乗る駒に効く（battle_source.gd の cast_looks）。駒の種類は、その人の種類と同じにする。
 static func read_figure(file: RefCounted, line: int, value: String) -> Dictionary:
 	var words := value.split(" ", false)
 	var kind := StoryFile.enum_value(UnitKind.Id, words[0] if not words.is_empty() else "")
@@ -394,15 +399,24 @@ static func read_figure(file: RefCounted, line: int, value: String) -> Dictionar
 		file.problem(line, "知らない姿「%s」（書けるのは %s）" % [value, StoryFile.enum_words(UnitKind.Id, neutral)])
 		return {}
 	var marks := Array(words.slice(1))
+	var person := &""
+	if not marks.is_empty() and not ["evolved", "crown"].has(marks.back()):
+		person = StringName(marks.pop_back())
+		if not UnitLooks.PERSONS.has(person):
+			file.problem(line, "知らない人物の形「%s」（書けるのは %s）" % [person, ", ".join(UnitLooks.PERSONS.keys())])
+			return {}
+		if UnitLooks.PERSONS[person] != kind:
+			file.problem(line, "人物の形「%s」の駒の種類は %s: %s" % [person, String(UnitKind.Id.keys()[UnitLooks.PERSONS[person]]).to_lower(), value])
+			return {}
 	var evolved := marks.has("evolved")
 	var crown := marks.has("crown")
 	if marks != (["evolved"] if evolved else []) + (["crown"] if crown else []):
-		file.problem(line, "姿は「駒の種類」のあとに、evolved、crown をこの順で（どちらも無くてよい）: %s" % value)
+		file.problem(line, "姿は「駒の種類」のあとに、evolved、crown、人物の形をこの順で（どれも無くてよい）: %s" % value)
 		return {}
 	if evolved and not UnitIcons.evolves(kind as UnitKind.Id):
 		file.problem(line, "%s に進化後の姿は無い" % words[0])
 		return {}
-	var figure := {"kind": kind, "evolved": evolved, "look": &""}
+	var figure := {"kind": kind, "evolved": evolved, "look": person}
 	if crown:
 		figure["crown"] = true
 	return figure

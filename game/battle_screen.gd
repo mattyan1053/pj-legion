@@ -13,6 +13,7 @@ const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const OrbitCamera := preload("res://game/orbit_camera.gd")
 const UnitView := preload("res://game/unit_view.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 const BoardView := preload("res://game/board_view.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 const Names := preload("res://game/names.gd")
@@ -110,6 +111,8 @@ var map_seed := 0
 var _board_view: BoardView
 var _effects: BattleEffects
 var _views := {}  # 駒の番号 -> UnitView
+## 名前のある人物の形の付いた駒（駒の番号 -> unit_looks.gd の PERSONS の名前。話の [cast]。start_with で決める）。
+var _people := {}
 var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
 var _unit_detail: UnitDetail
@@ -473,6 +476,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_place_minimap.call_deferred()
 	_playback.set_board_view(_board_view)
 	StageLook.apply(self, _board_view.look)
+	_people = UnitLooks.assign_people(battle.units, source.cast_looks() if source != null else [])
 	for unit in battle.units:
 		_add_view(unit)
 
@@ -493,6 +497,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_hud.result_screen().set_destinations(_new_boards(), source.can_open_setup(), source.can_choose_squad())
 	_hud.result_screen().set_leave(Text.t(source.leave()[1]))
 	_hud.king_looks = source.king_looks()
+	_hud.unit_looks = _people
 	_hud.result_screen().king_looks = source.king_looks()
 	# 対戦の曲（盤の見た目か、話が決めた曲。battle_source.gd の music）。決着の曲のあとの「やり直す」でも、対戦の曲へ戻る。
 	# 新しい盤面で見た目が替われば、曲も替わる。同じ曲なら鳴らし直さない。
@@ -513,11 +518,16 @@ func _king_look(side: int) -> StringName:
 	return looks[side] if side >= 0 and side < looks.size() else &""
 
 
+## unit の駒の姿（名前のある人物の形が先。無ければ、その陣営の将の姿）。
+func _look_of(unit: Unit) -> StringName:
+	return _people.get(unit.id, _king_look(unit.side))
+
+
 func _add_view(unit: Unit) -> void:
 	var view: UnitView = UnitView.new()
 	view.position = BoardView.cell_center(unit.cell)
 	add_child(view)
-	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp, unit.max_hp(), _king_look(unit.side))
+	view.setup(unit.kind, TEAM_COLORS[unit.side], unit.hp, unit.max_hp(), _look_of(unit))
 	if unit.level > 1:
 		view.set_growth(unit.level, unit.max_hp())
 		view.set_hp(unit.hp)
@@ -728,9 +738,7 @@ func open_unit_detail() -> void:
 	if context.overlays.is_open() or unit == null:
 		return
 	var army: UnitKind.Army = battle.armies[unit.side] if unit.side < battle.armies.size() else UnitKind.Army.NONE
-	var looks := source.king_looks()
-	var king_look: StringName = looks[unit.side] if unit.side < looks.size() else &""
-	_unit_detail.open_sheet(UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), king_look))
+	_unit_detail.open_sheet(UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), _look_of(unit)))
 	context.play_sound(&"menu_open")
 	_on_overlay_opened()
 

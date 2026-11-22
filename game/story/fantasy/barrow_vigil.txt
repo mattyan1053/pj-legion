@@ -17,10 +17,10 @@ victory_mood = quiet
 hold_turns = 8
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
 骨の軍曹 = enemy
 
 [before]

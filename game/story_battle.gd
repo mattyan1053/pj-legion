@@ -8,6 +8,7 @@ extends "res://game/battle_source.gd"
 ## ここはノードに依存しない（テストから呼べる）。
 
 const Episode := preload("res://game/episode.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 ## 会話の背景に映す、始めの盤を作る種（話の盤と敵の並びは種に依らない）。
 const TALK_SEED := 1
@@ -109,6 +110,19 @@ func can_choose_squad() -> bool:
 ## 話のファイルの [enemy] の king_figure（敵の将の姿。魔物の群れを率いる骸骨の将など）。
 func king_looks() -> Array[StringName]:
 	return episode.king_looks
+
+
+## 話のファイルの [cast] で人物の形を書いた話し手（姿が king か crown 付きなら将、ほかは同じ種類の駒に付く）。
+func cast_looks() -> Array:
+	var cast: Array = [[], []]
+	for i in episode.figures.size():
+		var figure: Dictionary = episode.figures[i]
+		if not UnitLooks.PERSONS.has(figure.get("look", &"")):
+			continue
+		var side: int = episode.speaker_sides[i] if i < episode.speaker_sides.size() else i
+		var king: bool = figure["kind"] == UnitKind.Id.KING or figure.get("crown", false)
+		cast[side].append({"kind": figure["kind"], "look": figure["look"], "king": king})
+	return cast
 
 
 ## 話のファイルの [cues]（いつ・だれが・何と言うか）。無い話は台詞なし。

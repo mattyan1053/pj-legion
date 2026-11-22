@@ -224,6 +224,40 @@ func test_more_speakers_read() -> void:
 	assert_eq([said[0].side, said[0].name, said[0].figure], [0, "伝令", episode.figures[3]])
 
 
+## 姿の最後に人物の名前（unit_looks.gd の PERSONS）を書くと、その人の形（"look"）。駒の種類は、その人の種類と同じにする。
+func test_figure_person_reads() -> void:
+	var episode: Episode = Episode.parse(PROBE.replace("敵将 = enemy", "敵将 = enemy, paladin evolved crown yelda\n副官 = enemy, priest evolved ul"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.figures[1], {"kind": UnitKind.Id.PALADIN, "evolved": true, "look": &"yelda", "crown": true})
+	assert_eq(episode.figures[2], {"kind": UnitKind.Id.PRIEST, "evolved": true, "look": &"ul"})
+	for wrong: String in ["sniper ul", "paladin nobody", "paladin yelda evolved"]:
+		var bad: Episode = Episode.parse(PROBE.replace("敵将 = enemy", "敵将 = enemy, " + wrong))
+		assert_true(not bad.problems.is_empty(), "通した: %s" % wrong)
+	var skeleton: Episode = Episode.parse(PROBE.replace("army = fantasy", "army = fantasy\nking_figure = skeleton_mage").replace("敵将 = enemy", "敵将 = enemy, king harden"))
+	assert_true(not skeleton.problems.is_empty(), "骸骨の将の陣営の将に、人物の形を通した")
+
+
+## 人物の形は、盤でその人が乗る駒に付く: 将の印（crown）か将の姿なら将、ほかは同じ陣営の同じ種類の、いちばん前の駒。
+func test_people_ride_their_pieces() -> void:
+	var text := PROBE.replace("隊長 = ally", "隊長 = ally\n衛生兵 = ally, medic marta").replace("敵将 = enemy", "敵将 = enemy, paladin evolved crown yelda\n副官 = enemy, priest evolved ul")
+	var episode: Episode = Episode.parse(text.replace("[enemy]", "[ally]\nunit = medic\nunit = medic\n\n[enemy]"))
+	assert_eq(episode.problems, PackedStringArray())
+	var source := StoryBattle.new(episode, null)
+	var battle: Battle = source.make_setup(1).create_battle()
+	var people: Dictionary = preload("res://game/unit_looks.gd").assign_people(battle.units, source.cast_looks())
+	var by_look := {}
+	for unit: Unit in battle.units:
+		if people.has(unit.id):
+			by_look[people[unit.id]] = unit
+	assert_eq(by_look.size(), 3, "%s" % [people])
+	assert_eq([by_look[&"yelda"].kind, by_look[&"yelda"].side], [UnitKind.Id.KING, Unit.Side.PLAYER2], "将の印の人は将に")
+	assert_eq([by_look[&"ul"].kind, by_look[&"ul"].side], [UnitKind.Id.PRIEST, Unit.Side.PLAYER2])
+	var medics := battle.units.filter(func(unit: Unit) -> bool: return unit.kind == UnitKind.Id.MEDIC and unit.side == Unit.Side.PLAYER1)
+	assert_eq(medics.size(), 2)
+	assert_eq(by_look[&"marta"], medics.reduce(func(a: Unit, b: Unit) -> Unit: return a if a.id < b.id else b), "同じ種類の駒が何体いても、付くのは 1 体だけ")
+	assert_eq(BattleSource.new().cast_looks(), [[], []], "話の外（対戦モード）は人物なし")
+
+
 ## 敵の将の姿（king_figure）は見た目だけ。話し手の姿が将なら、その姿で立つ。ルールの上では将のまま。
 func test_enemy_king_figure_changes_only_the_look() -> void:
 	var episode: Episode = Episode.parse(PROBE.replace("army = fantasy", "army = fantasy\nking_figure = skeleton_mage"))

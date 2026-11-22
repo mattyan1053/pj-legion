@@ -19,10 +19,10 @@ wins = routed
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-ピップ = ally, commando
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
 骨の術師 = enemy, skeleton_caller
 
 [before]

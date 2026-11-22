@@ -26,17 +26,20 @@ var _board: Board
 var _look: StringName
 var _shown: Battle
 var _king_looks: Array[StringName] = []
+var _people := {}
 ## 立たせた駒の見た目（検査用）。
 var unit_views: Array[UnitView] = []
 var unit_sides: Array[int] = []
 
 
 ## shown: 駒を立たせる対戦（盤は shown の盤を使う）。king_looks: 陣営ごとの将の姿（battle_source.gd の king_looks）。
-func _init(board: Board = null, look := StageLook.DEFAULT, shown: Battle = null, king_looks: Array[StringName] = []) -> void:
+## people: 名前のある人物の形の付いた駒（駒の id -> unit_looks.gd の PERSONS の名前。将の姿より先）。
+func _init(board: Board = null, look := StageLook.DEFAULT, shown: Battle = null, king_looks: Array[StringName] = [], people := {}) -> void:
 	_board = shown.board if shown != null else board
 	_look = look
 	_shown = shown
 	_king_looks = king_looks
+	_people = people
 
 
 func _ready() -> void:
@@ -67,7 +70,7 @@ func _add_unit(unit: Unit) -> void:
 	view.position = BoardView.cell_center(unit.cell)
 	add_child(view)
 	var king_look: StringName = _king_looks[unit.side] if unit.side < _king_looks.size() else &""
-	view.setup(unit.kind, BattleScreen.TEAM_COLORS[unit.side], unit.max_hp(), unit.max_hp(), king_look)
+	view.setup(unit.kind, BattleScreen.TEAM_COLORS[unit.side], unit.max_hp(), unit.max_hp(), _people.get(unit.id, king_look))
 	if unit.evolution != Evolution.Id.NONE:
 		view.set_evolved(unit.max_hp())
 	var enemy_hq := _shown.board.hq_cells[1 - unit.side] if unit.side != Unit.Side.NEUTRAL else unit.cell + Vector2i.DOWN

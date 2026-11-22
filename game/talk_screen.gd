@@ -24,6 +24,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const Steady := preload("res://game/steady.gd")
 const TalkLog := preload("res://game/talk_log.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 signal finished(outcome: StringName)
 
@@ -108,7 +109,9 @@ func _ready() -> void:
 	var story_battle: RefCounted = talk.get("battle")
 	var shown: Battle = story_battle.talk_battle(talk.get("after", false)) if story_battle != null else null
 	var king_looks: Array[StringName] = story_battle.king_looks() if story_battle != null else [] as Array[StringName]
-	_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks)
+	# 名前のある人物は、盤と同じく、その人の乗る駒をその人の形で立たせる（unit_looks.gd の assign_people）。
+	var people: Dictionary = UnitLooks.assign_people(shown.units, story_battle.cast_looks()) if shown != null else {}
+	_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
 	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
