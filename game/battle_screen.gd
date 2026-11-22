@@ -510,6 +510,11 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_cues = source.talk_cues()
 	_talk.clear()
 	_say(_cues.on_start(battle))
+	# 試しの決まりが入なら、対戦の始め（ターン 1）に 1 回だけ知らせる。途中から見せる対戦では出さない。
+	var notice: Array[String] = []
+	if battle.turn == 1:
+		notice = BattleTexts.trial_notice(battle)
+	_hud.show_notice(notice)
 	_refresh()
 	_run_cpu()
 
@@ -1175,6 +1180,7 @@ func result_screen() -> Control:
 func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
 		return
+	_hud.hide_notice()  # 盤を触ったら、対戦の始めの知らせは読んだものとする
 	if _ui.confirming_ult or _ui.confirming_auto:
 		# 必殺技・おまかせを確かめている途中のクリックは、確かめるのをやめるだけ（移動や攻撃はしない）。
 		_ui.confirming_ult = false
@@ -1392,6 +1398,7 @@ func press_tactic(index: int) -> void:
 	if now - _tactic_confirm_msec < BattleUiState.CONFIRM_GUARD_MSEC:
 		return  # 確かめに変わった直後の 2 回目（ダブルクリック・連打）は受けない
 	_tactic_confirm = -1
+	_hud.set_tactic_buttons(_tactic_items())  # 確かめの文と枠を、使う前に戻す（使った知らせを枠に出すため）
 	_do(UseTacticAction.new(hand[index]))
 
 
@@ -1402,7 +1409,7 @@ func _tactic_confirming(now_msec: int) -> int:
 	return _tactic_confirm
 
 
-## 作戦のボタンに出すもの（手札の順に [文字, 押せるか, 説明]）。手札の無い対戦では空。
+## 作戦のボタンに出すもの（手札の順に [文字, 押せるか, 説明（札の名前と効果）, 確かめている途中か]）。手札の無い対戦では空。
 func _tactic_items() -> Array:
 	var items: Array = []
 	var side := _ult_side()
@@ -1412,12 +1419,28 @@ func _tactic_items() -> Array:
 		var id: Tactics.Id = hand[i]
 		var usable := not _is_cpu_turn() and battle.can_apply(UseTacticAction.new(id))
 		var text := Names.tactic(id)
+		var note := Text.t("battle.tactic.note", {"tactic": text, "summary": Names.tactic_summary(id)})
 		if not Tactics.is_unused(battle, side, id):
 			text = Text.t("battle.tactic.used", {"tactic": text})
 		elif usable and confirming == i:
 			text = Text.t("battle.tactic.confirm", {"tactic": text})
-		items.append([text, usable, Names.tactic_summary(id)])
+		items.append([text, usable, note, usable and confirming == i])
 	return items
+
+
+## 対戦の始めの知らせの文（出ていなければ空。検査用）。
+func notice_text() -> String:
+	return _hud.notice_text()
+
+
+## 作戦の説明の枠の文（出ていなければ空。検査用）。
+func tactic_note_text() -> String:
+	return _hud.tactic_note_text()
+
+
+## 作戦のボタンにマウスを乗せたことにする（スクリーンショット・検査用。-1 で外す）。
+func hover_tactic(index: int) -> void:
+	_hud.hover_tactic(index)
 
 
 ## 作戦のボタンの [文字, 押せるか] の列。検査用。
