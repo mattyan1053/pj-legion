@@ -74,6 +74,12 @@ const CELL_FONT_SIZE_SMALL := 12
 const MENU_ITEM_WIDTH := 210.0
 const MENU_FONT_SIZE := 17
 const MENU_FONT_FLOOR := 13
+## 拠点の札の大きさ（px）。確保の数が変わっても、あと 1 回で勝つときも、この大きさのまま。
+const STRONGHOLD_CHIP_SIZE := Vector2(440.0, 30.0)
+## 対戦の始めの知らせ（選べる決まり）の枠の大きさ（px）。決まりの数で変えない。
+const NOTICE_SIZE := Vector2(620.0, 290.0)
+## 知らせの本文の行数の上限（折り返した行も数える）。これを超える分は出さない（枠を広げない）。
+const NOTICE_LINES := 6
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
@@ -129,6 +135,14 @@ var _phase_chip_style: StyleBoxFlat
 var _goal_panel: PanelContainer
 var _goal_style: StyleBoxFlat
 var _goal_label: Label
+## 拠点の札（選べる決まり「拠点」の対戦だけ出す）: 見出しと、陣営ごとの確保の印。大きさは中身で変えない（STRONGHOLD_CHIP_SIZE）。
+var _stronghold_panel: PanelContainer
+var _stronghold_style: StyleBoxFlat
+var _stronghold_caption: Label
+var _stronghold_marks: Array[Label] = []
+## 対戦の始めの知らせ（選べる決まり。見出し、決まりごとの行、閉じるボタン）。
+var _notice: PanelContainer
+var _notice_body: Label
 var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
 ## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
@@ -234,6 +248,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_bottom()
 	_build_flash()
 	_build_banner()
+	_build_notice()
 	_build_menu()
 	_build_forecast()
 	_build_minimap()
@@ -354,6 +369,47 @@ func set_ult_button(text: String, enabled: bool, summary: String, pinned := fals
 	_ult_pinned = pinned
 	_show_ult_summary()
 	_fold_hint()
+
+
+## 拠点の札を出す（選べる決まり「拠点」）。holds は陣営ごとの確保の数（添字がプレイヤー番号）、needed は勝つ数（0 以下なら札を出さない）。
+## near は、あと 1 回の確保で勝つ陣営（いなければ -1。札を急ぎの色にする）。note は札にマウスを乗せると出る決まりの文。
+## 大きさは中身で変えない。勝ち方の札が出ていれば、その下に並べる。
+func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> void:
+	_stronghold_panel.visible = needed > 0
+	if needed <= 0:
+		return
+	_stronghold_caption.text = Text.t("battle.hud.stronghold")
+	for player in 2:
+		var held := mini(holds[player], needed)
+		_stronghold_marks[player].text = Text.t("battle.hud.stronghold_marks", {"side": Names.side_word(player),
+			"marks": Text.t("battle.hud.capture_on").repeat(held) + Text.t("battle.hud.capture_off").repeat(needed - held)})
+		_stronghold_marks[player].add_theme_color_override("font_color", _side_color(player).lightened(0.45 if held > 0 else 0.3))
+	var urgent := near >= 0
+	_stronghold_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
+	_stronghold_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
+	_stronghold_caption.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
+	_stronghold_panel.tooltip_text = note
+	_stronghold_panel.offset_top = TOP_BAR_HEIGHT + 4.0
+	if _goal_panel.visible:
+		_stronghold_panel.offset_top += _goal_panel.get_combined_minimum_size().y + 4.0
+	_stronghold_panel.size = STRONGHOLD_CHIP_SIZE
+
+
+## 拠点の札の文（見出しと、陣営ごとの印。出ていなければ空。検査用）。
+func stronghold_text() -> String:
+	if not _stronghold_panel.visible:
+		return ""
+	return " ".join([_stronghold_caption.text, _stronghold_marks[0].text, _stronghold_marks[1].text])
+
+
+## 拠点の札の大きさ（検査用）。
+func stronghold_chip_size() -> Vector2:
+	return _stronghold_panel.size
+
+
+## 拠点の札が、あと 1 回で勝つ急ぎの色か（検査用）。
+func stronghold_urgent() -> bool:
+	return _stronghold_panel.visible and _stronghold_style.border_color == COLOR_PULSE
 
 
 ## 必殺技のボタンの中のゲージ（押せない間だけ）: 左から溜まり具合まで陣営の色を薄く敷き、下の辺に溝と陣営の色の棒。
@@ -907,6 +963,7 @@ func top_tag_rects() -> Array[Rect2]:
 	return [
 		_goal_panel.get_global_rect() if _goal_panel.visible else Rect2(),
 		_guide_panel.get_global_rect() if _guide_panel.visible else Rect2(),
+		_stronghold_panel.get_global_rect() if _stronghold_panel.visible else Rect2(),
 	]
 
 
@@ -1289,6 +1346,39 @@ func _build_top_bar() -> void:
 	_goal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_goal_panel.add_child(_goal_label)
 
+	# 拠点の札（選べる決まり）。勝ち方の札と同じ所（出ていれば、その下）に、決まった大きさで出す。
+	_stronghold_panel = PanelContainer.new()
+	_stronghold_style = StyleBoxFlat.new()
+	_stronghold_style.set_corner_radius_all(4)
+	_stronghold_style.set_border_width_all(1)
+	_stronghold_style.content_margin_left = 10.0
+	_stronghold_style.content_margin_right = 10.0
+	_stronghold_panel.add_theme_stylebox_override("panel", _stronghold_style)
+	_stronghold_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_stronghold_panel.offset_left = 6.0
+	_stronghold_panel.offset_top = TOP_BAR_HEIGHT + 4.0
+	_stronghold_panel.custom_minimum_size = STRONGHOLD_CHIP_SIZE
+	_stronghold_panel.size = STRONGHOLD_CHIP_SIZE
+	_stronghold_panel.clip_contents = true
+	_stronghold_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_stronghold_panel.visible = false
+	add_child(_stronghold_panel)
+	Steady.mark(_stronghold_panel, "battle.stronghold_chip")
+	var stronghold_row := HBoxContainer.new()
+	stronghold_row.add_theme_constant_override("separation", 10)
+	stronghold_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stronghold_panel.add_child(stronghold_row)
+	_stronghold_caption = _label(17)
+	_stronghold_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stronghold_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	stronghold_row.add_child(_stronghold_caption)
+	for player in 2:
+		var marks := _label(17)
+		marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		marks.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		stronghold_row.add_child(marks)
+		_stronghold_marks.append(marks)
+
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。小さく 1 行だけ。
 	var help_panel := _panel()
 	_guide_panel = help_panel
@@ -1610,6 +1700,63 @@ func _build_menu() -> void:
 	_menu_column = VBoxContainer.new()
 	_menu_column.add_theme_constant_override("separation", 2)
 	_menu.add_child(_menu_column)
+
+
+## 対戦の始めの知らせ（選べる決まり）。盤の上寄りの真ん中に、決まった大きさで出す。閉じるまで（か、盤をクリックするまで）出したまま。
+func _build_notice() -> void:
+	_notice = PanelContainer.new()
+	var plate := UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 14.0, 6)
+	plate.border_width_top = 3
+	_notice.add_theme_stylebox_override("panel", plate)
+	_notice.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_notice.custom_minimum_size = NOTICE_SIZE
+	_notice.offset_left = -NOTICE_SIZE.x / 2.0
+	_notice.offset_right = NOTICE_SIZE.x / 2.0
+	_notice.offset_top = BANNER_TOP + BannerBand.HEIGHT + 12.0
+	_notice.offset_bottom = _notice.offset_top + NOTICE_SIZE.y
+	_notice.clip_contents = true
+	_notice.mouse_filter = Control.MOUSE_FILTER_STOP
+	_notice.visible = false
+	add_child(_notice)
+	Steady.mark(_notice, "battle.trial_notice", Steady.RECT)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	_notice.add_child(column)
+	var title := _label(20)
+	title.text = Text.t("battle.notice.title")
+	UiTheme.style_window_title(title, 20)
+	column.add_child(title)
+	column.add_child(UiTheme.window_rule(Palette.BORDER_BRIGHT))
+	_notice_body = _label(16)
+	_notice_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_notice_body.max_lines_visible = NOTICE_LINES
+	_notice_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(_notice_body)
+	var close := _button(Text.t("battle.notice.close"), Signal())
+	close.custom_minimum_size = Vector2(120.0, 32.0)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close.pressed.connect(hide_notice)
+	column.add_child(close)
+
+
+## 対戦の始めの知らせを出す（lines は決まりごとの行。空なら出さない）。
+func show_notice(lines: Array[String]) -> void:
+	_notice_body.text = "\n".join(lines)
+	_notice.visible = not lines.is_empty()
+
+
+func hide_notice() -> void:
+	_notice.visible = false
+
+
+## 対戦の始めの知らせの文（出ていなければ空。検査用）。
+func notice_text() -> String:
+	return _notice_body.text if _notice.visible else ""
+
+
+## 対戦の始めの知らせの枠の四角（出ていなければ大きさ 0。検査用）。
+func notice_rect() -> Rect2:
+	return _notice.get_global_rect() if _notice.visible else Rect2()
 
 
 func _build_banner() -> void:

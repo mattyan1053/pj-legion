@@ -105,7 +105,7 @@ if [ -n "$full" ]; then
   start tests_long_maps_military -s res://tools/run_tests.gd -- --long-only --only=on_every_map_finish_military_first
   start tests_long_maps_fantasy -s res://tools/run_tests.gd -- --long-only --only=on_every_map_finish_fantasy_first
   start tests_long_rest -s res://tools/run_tests.gd -- --long-only --except=on_every_map_finish_
-  # 通しの点検の長い道（game/autoplay_sweeps.gd。tools/sweep.sh と同じもの）。話を全部と、対戦モードの全部のマップ × 試しの決まりの入・切。
+  # 通しの点検の長い道（game/autoplay_sweeps.gd。tools/sweep.sh と同じもの）。話を全部と、対戦モードの全部のマップ × 選べる決まりの入・切。
   start sweep_story --fixed-fps 60 -- --autoplay --story-all
   start sweep_versus --fixed-fps 60 -- --autoplay --versus-all
   start shots_a -- --shots "$SHOTS_IN_FULL_A" --dry-run

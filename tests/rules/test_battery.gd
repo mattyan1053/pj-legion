@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 砲台（試しの決まり。docs/map-objects.md の「砲台」）: 置かれるのは入のときだけ、乗った後衛の射程、危険の読み、CPU。
+## 砲台（選べる決まり。docs/map-objects.md の「砲台」）: 置かれるのは入のときだけ、乗った後衛の射程、危険の読み、CPU。
 
 const Maps := preload("res://tests/support/maps.gd")
 

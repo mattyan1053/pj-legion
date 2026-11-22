@@ -420,6 +420,8 @@ func _build_card(field: StringName) -> Button:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(row)
 	var board := VersusFields.card_board(field, MAP_SEED)
+	if board != null and TrialRules.DEFAULTS.has(TrialRules.STRONGHOLD):
+		Stronghold.arm(board, MAP_SEED)  # 拠点（対戦モードの既定の勝ち方）も、縮図に印を描く
 	var map := TextureRect.new()
 	map.texture = ImageTexture.create_from_image(MapCard.draw(board, VersusFields.look_of(field), BattleScreen.TEAM_COLORS))
 	map.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 拠点（試しの決まり。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）:
+## 拠点（docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）:
 ## 置かれるのは入のときだけ、置く場所、確保の数え方、勝ち、CPU。
 
 const Maps := preload("res://tests/support/maps.gd")
@@ -99,6 +99,23 @@ func test_stronghold_is_not_placed_on_another_object_or_a_font() -> void:
 	assert_eq(cell, Vector2i(2, 3), "道のりの同じマス（真ん中の列）のうち、ほかの物の無いもの")
 
 
+## 道のりのそろうマスが無い盤（本陣どうしの道のりが奇数）では、先手に 1 歩近いマスと後手に 1 歩近いマスが候補になり、
+## どちらに置くかは種で替わる（決め打ちにすると、盤ごとに先手・後手のどちらかが勝ちやすくなる）。同じ種なら同じマス。
+func test_ties_are_chosen_by_the_seed() -> void:
+	var odd := Maps.board([".....", ".....", ".....", "....."])
+	odd.hq_cells = [Vector2i(2, 3), Vector2i(2, 0)]
+	var near := Stronghold.distances(odd, odd.hq_cells[P1])
+	var far := Stronghold.distances(odd, odd.hq_cells[P2])
+	var leans := {}
+	for battle_seed in 20:
+		var cell := Stronghold.choose_cell(odd, battle_seed)
+		assert_eq(Stronghold.choose_cell(odd, battle_seed), cell, "同じ種で違うマス")
+		var i := cell.y * odd.size.x + cell.x
+		assert_eq(absi(near[i] - far[i]), 1)
+		leans[signi(far[i] - near[i])] = true
+	assert_eq(leans.size(), 2, "種を替えても、先手の側か後手の側の片方にしか置かない")
+
+
 func test_distances_use_portals() -> void:
 	var board := Maps.board(["1...#....", "....#...1"])
 	var dist := Stronghold.distances(board, Vector2i(0, 0))
@@ -107,7 +124,7 @@ func test_distances_use_portals() -> void:
 
 
 func test_story_scenarios_never_place_a_stronghold() -> void:
-	# 試しの決まりは対戦設定だけが入にする。戦いの定義の勝ちの条件にも、拠点は無い。
+	# 選べる決まりは対戦設定だけが入にする。戦いの定義の勝ちの条件にも、拠点は無い。
 	for reason: GameWonEvent.Reason in Scenario.STANDARD_WIN_CONDITIONS:
 		assert_true(reason != GameWonEvent.Reason.STRONGHOLD_HELD)
 

@@ -776,16 +776,18 @@ func _play_capture(event: CaptureProgressEvent) -> void:
 	_pop_number(BoardView.cell_center(hq), text, team_colors[event.player].lightened(0.4))
 
 
-## 拠点の確保が進んだ・途切れた（試しの決まり）。拠点のマスに数を出し、旗をその陣営の色にする。
+## 拠点の確保が進んだ・途切れた（選べる決まり）。拠点のマスに数を出し、旗をその陣営の色にする。
 ## あと 1 回で勝つところまで来たら、画面の中央にも知らせる。
 func _play_stronghold(event: StrongholdProgressEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)
 	var cell := battle.board.stronghold_cell
 	var color: Color = team_colors[event.player]
 	if event.holds == 0:
-		_pop_number(BoardView.cell_center(cell), Text.t("battle.pop.stronghold_lost"), color.lightened(0.4))
+		_pop_number(BoardView.cell_center(cell), Text.t("battle.pop.stronghold_lost", {"side": side_name.call(event.player)}), color.lightened(0.4))
+		if battle.stronghold_holds[1 - event.player] == 0:
+			_board_view.set_stronghold_progress(0, Stronghold.HOLDS_TO_WIN, BoardView.COLOR_STRONGHOLD_FLAG)
 		return
-	_board_view.set_stronghold_side(event.player, color)
+	_board_view.set_stronghold_progress(event.holds, Stronghold.HOLDS_TO_WIN, color)
 	_sound(&"capture")
 	_pop_number(BoardView.cell_center(cell), Text.t("battle.pop.stronghold", {"holds": event.holds, "needed": Stronghold.HOLDS_TO_WIN}), color.lightened(0.4))
 	if event.holds == Stronghold.HOLDS_TO_WIN - 1:

@@ -4,6 +4,7 @@ extends "res://tests/base_test.gd"
 const Maps := preload("res://tests/support/maps.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 const Mode := BattleTexts.Mode
 
 const P1 := Unit.Side.PLAYER1
@@ -118,3 +119,22 @@ func test_unit_state_only_for_the_side_to_move() -> void:
 func test_ult_button_without_an_ult() -> void:
 	var battle := _battle()
 	assert_eq(BattleTexts.ult_button_text(battle, P1, false), "必殺技（なし）")
+
+
+## 拠点のマスの説明: 下の帯の 1 行は短い説明で、帯に収まる。クリックした枠の説明は、決まりを 2 行で。
+func test_stronghold_cell_fits_the_bottom_line_and_the_info_panel() -> void:
+	var battle := Maps.battle([
+		"1....",
+		".....",
+		"....2",
+	])
+	battle.board.stronghold_cell = Vector2i(2, 1)
+	var line := BattleTexts.cell_line(battle, Vector2i(2, 1))
+	assert_true(line.contains("拠点"))
+	var width := UiTheme.FONT_BODY.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	assert_true(width <= 480.0, "下の帯の 1 行に収まらない（%d px）: %s" % [width, line])
+	var body := BattleTexts.cell_body(battle, Vector2i(2, 1))
+	assert_true(body.contains("%d 回で勝ち" % Stronghold.HOLDS_TO_WIN), body)
+	assert_eq(body.split("\n").size(), 4, "見出しの「拠点」と、決まりの 3 文のほかに行がある: " + body)
+	for row in body.split("\n"):
+		assert_true(UiTheme.FONT_BODY.get_string_size(row, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x <= BattleHud.INFO_WIDTH, "枠の 1 行に収まらない: " + row)

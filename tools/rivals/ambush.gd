@@ -2,7 +2,7 @@ extends CpuPlayer
 ## 測るための版（--rival に渡す。Issue #47 の「待つのは得か」）: 相手が届く所へ来るまで待ち、来たら叩いて、そこからはいまの CPU と同じに戦う CPU。
 ## - 待っている間は、tools/rivals/hold.gd と同じ（この番に相手のプレイヤーの駒へ攻撃を届かせられる駒だけが、動いて手を出す）。
 ## - どれかの駒が手を出せた番から先、またはターン WAIT_UNTIL から先は、いまの CPU（CpuPlayer）と同じ。
-## - 拠点（試しの決まり）があれば、拠点へ向かう 1 体（CpuPlayer と同じ選び方）だけは、待たずに拠点へ向かう。
+## - 拠点があれば、拠点へ向かう 1 体（CpuPlayer と同じ選び方）だけは、待たずに拠点へ向かう。
 ##
 ##   godot --headless --path . -s res://tools/cpu_matches.gd -- --games=216 --pairings=mixed --squads=random --rival=res://tools/rivals/ambush.gd
 
@@ -22,7 +22,7 @@ func next_action(battle: Battle) -> BattleAction:
 
 func _plan(unit: Unit) -> BattleAction:
 	if not _released and _battle.turn < WAIT_UNTIL:
-		# 拠点（試しの決まり）があれば、拠点へ向かう 1 体だけは待たずに向かう（拠点を知った上で待つ）。
+		# 拠点があれば、拠点へ向かう 1 体だけは待たずに向かう（拠点を知った上で待つ）。
 		if _takes_stronghold and unit.kind != UnitKind.Id.KING and UnitKind.role(unit.kind) != UnitKind.Role.HEALER:
 			_choose_stronghold_taker()
 			if unit.id == _stronghold_taker and not _engaged(unit):

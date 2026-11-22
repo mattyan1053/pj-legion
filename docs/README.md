@@ -48,7 +48,7 @@ PR と push で回す検査は 1 分以内に収める（`CLAUDE.md`）。時間
     テストだけなら `run_tests.gd -- --full`（`--long-only`、`--only=<語>`、`--except=<語>` で絞れる）。
   - 自動の対戦のほかのマップ（`-- --autoplay --full`）。
   - 通しの点検の長い道（`-- --autoplay --story-all` と `--versus-all`。`game/autoplay_sweeps.gd`）: 両方の物語の第 1〜15 話を画面の道で通す
-    （会話・途中の台詞・わざと負けて負けの台詞）と、対戦モードの全部のマップ × 試しの決まりの入・切を数ターン。手で回すときは `tools/sweep.sh <godot> [story|versus|all]`。
+    （会話・途中の台詞・わざと負けて負けの台詞）と、対戦モードの全部のマップ × 選べる決まりの入・切を数ターン。手で回すときは `tools/sweep.sh <godot> [story|versus|all]`。
   - スクリーンショットの場面のいくつかを、撮らずに作る（`-- --shots <場面,…> --dry-run`。場面は `check.sh` の `SHOTS_IN_FULL_A` と `_B`）。
     ルールや数値が変わって場面が作れなくなったことに、撮る人より先に気付くため。
 

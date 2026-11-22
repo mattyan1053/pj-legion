@@ -297,23 +297,28 @@ func test_a_hand_map_makes_the_same_board_on_any_seed_with_the_versus_rules() ->
 		assert_true(choice.make_setup(1).is_valid())
 
 
-# --- 試しの決まり ---
+# --- 選べる決まり ---
 
 
-func test_trials_are_off_until_chosen_and_reach_the_setup() -> void:
+## 既定は拠点あり・砲台なし（TrialRules.DEFAULTS）。選んだものが対戦の設定に届く。
+func test_rules_start_from_the_defaults_and_reach_the_setup() -> void:
 	var choice := MatchChoice.new()
-	assert_eq(choice.to_setup(1).trials, [] as Array[StringName])
+	assert_eq(choice.to_setup(1).trials, [TrialRules.STRONGHOLD] as Array[StringName])
+	assert_true(choice.to_setup(1).create_battle().board.stronghold_cell != Board.NO_CELL, "既定の対戦に拠点がある")
 	choice.set_trial(TrialRules.BATTERY, true)
 	choice.set_trial(TrialRules.BATTERY, true)
 	assert_true(choice.has_trial(TrialRules.BATTERY))
-	assert_eq(choice.to_setup(1).trials, [TrialRules.BATTERY] as Array[StringName])
-	assert_eq(choice.copy().trials, [TrialRules.BATTERY] as Array[StringName])
+	assert_eq(choice.to_setup(1).trials, [TrialRules.STRONGHOLD, TrialRules.BATTERY] as Array[StringName])
+	assert_eq(choice.copy().trials, [TrialRules.STRONGHOLD, TrialRules.BATTERY] as Array[StringName])
 	assert_eq(choice.to_setup(1).create_battle().board.battery_cells.size(), 2)
 	choice.set_trial(TrialRules.BATTERY, false)
+	choice.set_trial(TrialRules.STRONGHOLD, false)
 	assert_false(choice.has_trial(TrialRules.BATTERY))
 	choice.set_trial(&"unknown", true)
 	assert_eq(choice.trials, [] as Array[StringName])
-	assert_eq(choice.to_setup(1).create_battle().board.battery_cells.size(), 0)
+	var battle := choice.to_setup(1).create_battle()
+	assert_eq(battle.board.battery_cells.size(), 0)
+	assert_eq(battle.board.stronghold_cell, Board.NO_CELL, "拠点をなしにすれば置かない")
 
 
 func test_every_versus_field_has_two_fair_battery_spots() -> void:

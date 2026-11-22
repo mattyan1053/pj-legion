@@ -209,21 +209,22 @@ func test_the_battery_row_turns_the_trial_on_and_off() -> void:
 	panel.free()
 
 
-## 試しの決まりを押すと、その説明が行の右に出る。欄の大きさは中身で変わらない（木に入れて測る）。
-func test_the_trial_note_keeps_its_size() -> void:
+## 選べる決まりは、行ごとに「あり」「なし」と、右に決まりの説明。説明の欄の大きさは、入・切で変わらない（木に入れて測る）。
+func test_the_rule_rows_switch_and_keep_their_note_size() -> void:
 	var panel := MatchSetupPanel.new()
 	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
 	panel.open(MatchChoice.new())
 	await settle(panel)
-	var before := panel._trial_note.size
-	assert_eq(before, MatchSetupPanel.TRIAL_NOTE_SIZE)
-	for trial: StringName in TrialRules.ALL:
-		panel.choose_trial(trial, true)
-		await settle(panel)
-		assert_eq(panel.trial_note_text(), panel.trial_note(trial))
-		assert_eq(panel._trial_note.size, before, "%s で欄の大きさが変わった" % trial)
-	panel._picked_note = ""
-	panel._show_trial_note()
-	await settle(panel)
-	assert_eq(panel._trial_note.size, before, "決まりを全部入にして、欄の大きさが変わった")
+	assert_true(panel.current_choice().has_trial(TrialRules.STRONGHOLD), "拠点は既定であり")
+	assert_false(panel.current_choice().has_trial(TrialRules.BATTERY), "砲台は既定でなし")
+	for trial: StringName in MatchSetupPanel.TRIAL_ROWS:
+		var note: Label = panel._trial_notes[trial]
+		var before := note.size
+		assert_eq(before, MatchSetupPanel.TRIAL_NOTE_SIZE)
+		assert_eq(panel.trial_note_text(trial), panel.trial_note(trial))
+		for on: bool in [true, false, true]:
+			panel._choose(StringName("trial_%s" % trial), on)
+			await settle(panel)
+			assert_eq(panel.current_choice().has_trial(trial), on)
+			assert_eq(note.size, before, "%s で欄の大きさが変わった" % trial)
 	panel.free()

@@ -37,8 +37,8 @@ var drawn_side := Unit.Side.PLAYER1
 ## 行ごとの、人が決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
 ## その行が先手（下の本陣）として決めたもの。後手として対戦する（手番がランダム）ときは、上下を返して使う。部隊を替えたら空に戻す。
 var placements: Array[Array] = [[], []]
-## 入にした試しの決まり（TrialRules の名前。既定は空 = どれも切。docs/match-setup.md の「試しの決まり」）。
-var trials: Array[StringName] = []
+## 入にした選べる決まり（TrialRules の名前。既定は TrialRules.DEFAULTS = 拠点あり・砲台なし。docs/match-setup.md の「選べる決まり」）。
+var trials: Array[StringName] = TrialRules.DEFAULTS.duplicate()
 
 
 ## CPU と対戦するときに、人が動かすプレイヤー（ランダムなら、最後に作った対戦で引いた側）。
@@ -67,7 +67,7 @@ func has_trial(id: StringName) -> bool:
 	return trials.has(id)
 
 
-## 試しの決まり id を入・切する。
+## 選べる決まり id を入・切する。
 func set_trial(id: StringName, on: bool) -> void:
 	trials.erase(id)
 	if on and TrialRules.is_known(id):

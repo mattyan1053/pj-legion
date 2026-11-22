@@ -1,33 +1,45 @@
 class_name Stronghold
 extends RefCounted
-## 拠点（試しの決まり TrialRules.STRONGHOLD。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）。
+## 拠点（選べる決まり TrialRules.STRONGHOLD。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）。
 ##
 ## 盤の中央（両方の本陣から同じ道のり）のマス 1 つ。自分の駒が乗ったまま自分のフェーズを終えると、そのプレイヤーの「確保」が 1 進み、
 ## HOLDS_TO_WIN に届いたら勝ち（GameWonEvent.Reason.STRONGHOLD_HELD）。
-## - 拠点から CONTEST_RADIUS 以内に相手の駒がいれば、確保は進まない（止まる。減りはしない）
+## - 拠点の隣（CONTEST_RADIUS 以内）に相手の駒がいれば、確保は進まない（止まる。減りはしない）
 ## - 乗らずに終えても、確保は減らない
 ## - 相手が確保を進めると、自分の確保は 0 に戻る（相手が上書きする）
 ## - 将は乗っても確保を進めない
 
 ## 確保がこの数に届いたら勝ち。
-const HOLDS_TO_WIN := 6
-## 拠点からこの距離（マンハッタン距離）以内に相手の駒がいる間は、確保が進まない。
-const CONTEST_RADIUS := 2
+const HOLDS_TO_WIN := 8
+## 拠点からこの距離（マンハッタン距離）以内に相手の駒がいる間は、確保が進まない（1 = 上下左右の隣）。
+const CONTEST_RADIUS := 1
 ## 中ボスの家からこの距離（マンハッタン距離）以内には置かない（中ボスの縄張り。拠点に乗った駒が中ボスに殴られ続けないように）。
 const BOSS_CLEARANCE := Neutral.TERRITORY_RADIUS
 
 
 ## 盤 board の拠点のマスを決める。両方の本陣からの道のり（移動のコスト。ポータルは転移も使う）の差がいちばん小さいマスのうち、
-## 両方の本陣の真ん中にいちばん近いもの（同じなら、上の行から、左の列から）。
+## 両方の本陣の真ん中にいちばん近いもの。それが何マスかあれば（盤の真ん中をはさんだ対など）、種 battle_seed から引いた乱数で選ぶ。盤によっては、先手の陣地の側と後手の陣地の側に 1 つずつ候補ができ、
+## どちらに置くかで先手・後手の有利がはっきり変わるので、決め打ちにせず、局ごとに替わるようにする。
 ## 置けるのは、どちらの本陣からも歩いて行ける、何も置かれていない（環境オブジェクトの無い）マスで、本陣・結晶泉・中ボスのマスでないもの。
 ## 置けるマスが無ければ Board.NO_CELL。
-static func choose_cell(board: Board) -> Vector2i:
-	if board.hq_cells.size() < 2:
+static func choose_cell(board: Board, battle_seed := 0) -> Vector2i:
+	var ties := candidates(board)
+	if ties.is_empty():
 		return Board.NO_CELL
+	# 種の偶奇は、集計の道具の軍の組み合わせの順と重なるので、種から乱数を引いて選ぶ。
+	var rng := RandomNumberGenerator.new()
+	rng.seed = battle_seed
+	return ties[rng.randi_range(0, ties.size() - 1)]
+
+
+## 拠点を置ける候補（道のりの差がいちばん小さく、真ん中にいちばん近いマス。上の行から、左の列から）。
+static func candidates(board: Board) -> Array[Vector2i]:
+	var ties: Array[Vector2i] = []
+	if board.hq_cells.size() < 2:
+		return ties
 	var near := distances(board, board.hq_cells[0])
 	var far := distances(board, board.hq_cells[1])
 	var middle := Vector2(board.hq_cells[0] + board.hq_cells[1]) / 2.0
-	var best := Board.NO_CELL
 	var best_gap := 0
 	var best_off := 0.0
 	for y in board.size.y:
@@ -38,11 +50,13 @@ static func choose_cell(board: Board) -> Vector2i:
 				continue
 			var gap := absi(near[i] - far[i])
 			var off := Vector2(cell).distance_squared_to(middle)
-			if best == Board.NO_CELL or gap < best_gap or (gap == best_gap and off < best_off):
-				best = cell
+			if ties.is_empty() or gap < best_gap or (gap == best_gap and off < best_off - 0.001):
+				ties = [cell]
 				best_gap = gap
 				best_off = off
-	return best
+			elif gap == best_gap and absf(off - best_off) <= 0.001:
+				ties.append(cell)
+	return ties
 
 
 static func _can_hold(board: Board, cell: Vector2i) -> bool:
@@ -56,10 +70,10 @@ static func _can_hold(board: Board, cell: Vector2i) -> bool:
 	return true
 
 
-## 拠点を置く（試しの決まりが入の対戦だけ。MatchSetup.create_battle が呼ぶ）。置けるマスが無ければ置かない。
+## 拠点を置く（選べる決まりが入の対戦だけ。MatchSetup.create_battle が呼ぶ。battle_seed は対戦の種）。置けるマスが無ければ置かない。
 ## 拠点のマスが森なら平地にする（拠点が木立に隠れず、乗った駒が森の軽減で守られない）。
-static func arm(board: Board) -> void:
-	var cell := choose_cell(board)
+static func arm(board: Board, battle_seed := 0) -> void:
+	var cell := choose_cell(board, battle_seed)
 	if cell == Board.NO_CELL:
 		return
 	if board.terrain_at(cell) != Terrain.Type.NORMAL:

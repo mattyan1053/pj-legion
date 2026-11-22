@@ -159,7 +159,8 @@ battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マ�
 battle.cell.battery,砲台
 battle.cell.battery.note,後衛が乗ると、射程 +{range}
 battle.cell.stronghold,拠点
-battle.cell.stronghold.note,将でない駒が乗ったまま番を終えると、確保 +1。{needed} で勝ち。周り {radius} マスに敵がいる間は進まず、相手が確保すると 0 に戻る。
+battle.cell.stronghold.note,乗ったまま番を終えると確保 +1。{needed} 回で勝ち。隣に敵がいる間は止まる。
+battle.cell.stronghold.short,乗ったまま番を終えると確保 +1
 battle.cell.spring,回復の泉
 battle.cell.spring.note,自分の番の始めに、乗っている駒が {heal} 回復
 battle.cell.portal,"ポータル → ({x}, {y})"
@@ -262,6 +263,15 @@ battle.pop.capture,占拠 {turns} / {needed}
 battle.pop.capture_broken,占拠が途切れた
 battle.pop.stronghold,確保 {holds} / {needed}
 battle.pop.stronghold_lost,確保 0 に戻る
+battle.stronghold.mark,{holds} / {needed}
+battle.stronghold.mark_blocked,{holds} / {needed} 停止
+battle.stronghold.rule,乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まり、相手が確保すると 0 に戻る。将は数えない。
+battle.hud.stronghold,拠点
+battle.hud.stronghold_marks,{side} {marks}
+battle.notice.title,この対戦の決まり
+battle.notice.close,閉じる
+battle.notice.battery,砲台（橙の台）: 後衛が乗ると射程 +{range}
+battle.notice.stronghold,拠点（旗の立つマス）: 乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まる
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
 battle.hud.relic_missing,{relic}（持っていない）: {effect}
@@ -325,9 +335,7 @@ battle.goal.tag.attack,あと {left} ターンで決着しなければ負け
 battle.goal.tag.rout,勝ち: 敵の全滅（将を倒しても終わらない）
 battle.goal.tag.rout_or_king,勝ち: 敵の全滅
 battle.goal.tag.routed,全滅すると負け
-battle.goal.tag.stronghold,拠点の確保 {holds} 回で勝ち
 battle.goal.tag.stronghold_near,あと 1 回の確保で{side}の勝ち
-battle.goal.tag.stronghold_marks,{side} {marks}
 battle.goal.tag.boss,勝ち: 中ボスの撃破（将を倒しても終わらない）
 battle.goal.tag.boss_or_king,勝ち: 中ボスの撃破か将の撃破
 battle.goal.tag.boss_only,勝ち: 中ボスの撃破

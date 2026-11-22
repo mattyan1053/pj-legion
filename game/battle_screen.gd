@@ -508,6 +508,11 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_cues = source.talk_cues()
 	_talk.clear()
 	_say(_cues.on_start(battle))
+	# 拠点・砲台のある対戦では、対戦の始め（ターン 1）に 1 回だけ知らせる。途中から見せる対戦では出さない。
+	var notice: Array[String] = []
+	if battle.turn == 1:
+		notice = BattleTexts.trial_notice(battle)
+	_hud.show_notice(notice)
 	_refresh()
 	_run_cpu()
 
@@ -1006,13 +1011,36 @@ func stronghold_flag_color() -> Color:
 	return _board_view.stronghold_flag_color()
 
 
-## 拠点の旗を、いまの確保から塗り直す（確保を進めている陣営の色。どちらも 0 なら白）。拠点の無い盤では何もしない。
+## 拠点の旗と竿の上の札を、いまの確保から直す（確保の多いほうの陣営の色と数。どちらも 0 なら白）。拠点の無い盤では何もしない。
 func _sync_stronghold_flag() -> void:
+	if _board_view == null or battle.board.stronghold_cell == Board.NO_CELL:
+		return
 	var color := BoardView.COLOR_STRONGHOLD_FLAG
+	var holds := 0
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		if battle.stronghold_holds[side] > 0:
+		if battle.stronghold_holds[side] > holds:
+			holds = battle.stronghold_holds[side]
 			color = TEAM_COLORS[side]
-	_board_view.set_stronghold_side(-1, color)
+	# 乗っている駒の確保が、隣の敵で止まっていれば、札にそう添える。
+	var blocked := false
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		blocked = blocked or (Stronghold.holds(battle, side) and Stronghold.contested(battle, side))
+	_board_view.set_stronghold_progress(holds, Stronghold.HOLDS_TO_WIN, color, blocked)
+
+
+## 対戦の始めの知らせの文（出ていなければ空。検査用）。
+func notice_text() -> String:
+	return _hud.notice_text()
+
+
+## 拠点の竿の上の札の文（検査用）。
+func stronghold_mark() -> String:
+	return _board_view.stronghold_mark()
+
+
+## 拠点の旗の高さ（0〜1。検査用）。
+func stronghold_flag_rate() -> float:
+	return _board_view.stronghold_flag_rate()
 
 
 ## CPU の駒の行動を再生する間だけ、設定の速さを掛ける（検査からも呼ぶ）。
@@ -1176,6 +1204,7 @@ func result_screen() -> Control:
 func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
 		return
+	_hud.hide_notice()  # 盤を触ったら、対戦の始めの知らせは読んだものとする
 	if _ui.confirming_ult or _ui.confirming_auto:
 		# 必殺技・おまかせを確かめている途中のクリックは、確かめるのをやめるだけ（移動や攻撃はしない）。
 		_ui.confirming_ult = false
@@ -1968,6 +1997,7 @@ func _is_self_skill(unit: Unit) -> bool:
 
 func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	_update_climax()
+	_sync_stronghold_flag()
 	var counts: Array[int] = [
 		Queries.unit_count(battle, Unit.Side.PLAYER1), Queries.unit_count(battle, Unit.Side.PLAYER2),
 	]
@@ -1992,6 +2022,7 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		WinText.turn_text(turn), phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN, shown,
 		WinText.goal_tag(battle, turn, _viewer_side()), WinText.goal_note(battle, _viewer_side()),
 	)
+	_hud.set_stronghold(battle.stronghold_holds, WinText.stronghold_goal(battle), WinText.stronghold_near(battle), WinText.stronghold_note(battle))
 	var percents: Array[int] = []
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:

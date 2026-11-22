@@ -46,7 +46,8 @@ const SCREEN_FAMILIES := {
 	"battle.goal.lose": [GameWonEvent.Reason, ["", ".last"]],
 	"stats.ending": [BattleStats.Ending, [""]],
 	"side.story": [{"PLAYER1": 0, "PLAYER2": 1}, [""]],
-	"setup.trial": [{"BATTERY": 0, "STRONGHOLD": 1}, ["", ".note"]],
+	"setup.trial": [{"BATTERY": 0, "STRONGHOLD": 1}, [".note"]],
+	"setup.caption": [{"BATTERY": 0, "STRONGHOLD": 1}, [""]],
 }
 
 

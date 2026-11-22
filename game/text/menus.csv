@@ -94,11 +94,12 @@ setup.side.second,後手（赤）
 setup.side.random,ランダム
 setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から開始
 setup.caption.deck,部隊
-setup.caption.trials,試しの決まり
-setup.trial.battery,砲台
-setup.trial.battery.note,砲台: 後衛が乗ると射程 +{range}
-setup.trial.stronghold,拠点
-setup.trial.stronghold.note,拠点: 中央の拠点を {holds} 回確保すると勝ち
+setup.caption.stronghold,拠点
+setup.caption.battery,砲台（試し）
+setup.trial.on,あり
+setup.trial.off,なし
+setup.trial.battery.note,後衛が乗ると射程 +{range}
+setup.trial.stronghold.note,中央の拠点に乗ったまま {holds} 回番を終えると勝ち。隣に敵がいる間は止まる
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成
 setup.placement,初期位置
