@@ -36,8 +36,8 @@ extends SceneTree
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --trials=NAME   選べる決まり（TrialRules の名前。battery = 砲台、stronghold = 拠点。`,` で並べられる）をそれだけ入にして回す。none で全部切。
-##                   付けなければ、対戦モードの既定（TrialRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
+##   --rules=NAME   選べる決まり（OptionalRules の名前。battery = 砲台、stronghold = 拠点。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
 ##                   ファイルは、マップのファイルと同じ書式（[rows] の節。docs/hand-map.md）か、文字の格子の行だけを並べたテキスト。--stage より優先する
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
@@ -407,13 +407,13 @@ func _initialize() -> void:
 			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
-		# 対戦モードは、対戦設定の既定の決まり（拠点あり）で回す。--trials=none で全部切、--trials=名前,… でそれだけ入。
-		var trial_arg := args.get("trials", "default") as String
-		if episode == null and trial_arg == "default":
-			setup.trials.append_array(TrialRules.DEFAULTS)
-		elif trial_arg != "default" and trial_arg != "none":
-			for trial in trial_arg.split(",", false):
-				setup.trials.append(StringName(trial))
+		# 対戦モードは、対戦設定の既定の決まり（拠点あり）で回す。--rules=none で全部切、--rules=名前,… でそれだけ入。
+		var rule_arg := args.get("rules", "default") as String
+		if episode == null and rule_arg == "default":
+			setup.rules.append_array(OptionalRules.DEFAULTS)
+		elif rule_arg != "default" and rule_arg != "none":
+			for rule in rule_arg.split(",", false):
+				setup.rules.append(StringName(rule))
 		var battle := setup.create_battle()
 		if args.has("relic"):
 			var relic := Relics.Id.COURAGE if args["relic"] == "courage" else Relics.Id.WISDOM

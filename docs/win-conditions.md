@@ -84,7 +84,7 @@
 
 ## 拠点を確保し続ける
 
-対戦モードの勝ち方（対戦設定の既定で「拠点: あり」。`TrialRules.STRONGHOLD`。`docs/map-objects.md` の「拠点」）。ストーリーの話には無い。理由は `GameWonEvent.Reason.STRONGHOLD_HELD`。
+対戦モードの勝ち方（対戦設定の既定で「拠点: あり」。`OptionalRules.STRONGHOLD`。`docs/map-objects.md` の「拠点」）。ストーリーの話には無い。理由は `GameWonEvent.Reason.STRONGHOLD_HELD`。
 テスト: `tests/rules/test_stronghold.gd`。
 
 - 自分のフェーズの終わり（ターン終了。敵の本陣の占拠を数えたあと）に、拠点に自分の駒（将でない）が乗っていて、拠点の隣（上下左右。

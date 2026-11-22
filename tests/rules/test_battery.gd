@@ -10,11 +10,11 @@ const STAGES: Array[BoardGenerator.Stage] = [
 ]
 
 
-func _setup(stage: BoardGenerator.Stage, battle_seed: int, trials: Array[StringName] = []) -> MatchSetup:
+func _setup(stage: BoardGenerator.Stage, battle_seed: int, rules: Array[StringName] = []) -> MatchSetup:
 	var setup := MatchSetup.versus_human(
 		stage, battle_seed, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY)
 	)
-	setup.trials = trials
+	setup.rules = rules
 	return setup
 
 
@@ -29,7 +29,7 @@ func _lane() -> Battle:
 
 
 func test_trial_is_off_by_default_and_nothing_is_placed() -> void:
-	assert_eq(MatchSetup.new().trials, [] as Array[StringName])
+	assert_eq(MatchSetup.new().rules, [] as Array[StringName])
 	for stage in STAGES:
 		for battle_seed: int in [1, 2, 3]:
 			var battle := _setup(stage, battle_seed).create_battle()
@@ -53,7 +53,7 @@ func test_off_board_is_the_same_as_the_generated_board() -> void:
 func test_trial_places_two_reachable_batteries() -> void:
 	for stage in STAGES:
 		for battle_seed: int in [1, 2, 3, 4, 5]:
-			var battle := _setup(stage, battle_seed, [TrialRules.BATTERY]).create_battle()
+			var battle := _setup(stage, battle_seed, [OptionalRules.BATTERY]).create_battle()
 			var board := battle.board
 			assert_eq(board.battery_cells.size(), 2, "マップ %d 種 %d" % [stage, battle_seed])
 			for cell in board.battery_cells:

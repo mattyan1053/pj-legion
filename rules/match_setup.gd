@@ -34,8 +34,8 @@ var ignore_budget := false
 ## 人が決めた初期位置（プレイヤーごと。本陣からのずれを、編成の並びの順に。決めていない駒は Deployment.UNSET）。
 ## 空なら、いつもの置き方（Deployment.deploy）。置けるマス（Deployment.zone）の外のずれは使わない。
 var placements: Array[Array] = [[], []]
-## 入にする選べる決まり（TrialRules の名前）。既定は空（どれも切）。
-var trials: Array[StringName] = []
+## 入にする選べる決まり（OptionalRules の名前）。既定は空（どれも切）。
+var rules: Array[StringName] = []
 
 
 ## 戦いの定義 defined の、人（human_side）と CPU の対戦設定。人の編成は渡したもの。
@@ -154,9 +154,9 @@ func create_battle() -> Battle:
 	var board := scenario.make_board(battle_seed)
 	if board == null:
 		return null
-	if trials.has(TrialRules.BATTERY):
+	if rules.has(OptionalRules.BATTERY):
 		BoardGenerator.arm_batteries(board)
-	if trials.has(TrialRules.STRONGHOLD):
+	if rules.has(OptionalRules.STRONGHOLD):
 		Stronghold.arm(board, battle_seed)
 	var battle := Battle.new(board, battle_seed)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:

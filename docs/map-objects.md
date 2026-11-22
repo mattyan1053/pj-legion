@@ -105,7 +105,7 @@
 `rules/board_generator.gd`（`battery_spots_for`、`arm_batteries`）、`rules/unit.gd`（`site_range`）、`rules/battle.gd`（`refresh_sites`）。
 テスト: `tests/rules/test_battery.gd`。
 
-占拠していると有利なマス（Issue #47）。**選べる決まり `TrialRules.BATTERY` が入の対戦にだけ置かれる**（`docs/match-setup.md` の「選べる決まり」。既定は切）。
+占拠していると有利なマス（Issue #47）。**選べる決まり `OptionalRules.BATTERY` が入の対戦にだけ置かれる**（`docs/match-setup.md` の「選べる決まり」。既定は切）。
 
 - **後衛が砲台のマスに立っている間、射程が +4（`MapObject.BATTERY_RANGE`）。** 攻撃も、射程で測るものも（樽・盾への攻撃）伸びる。
   ほかの役割（将、前衛、奇襲、回復）と中立の駒には、何も起きない。
@@ -134,7 +134,7 @@
 コード: `rules/stronghold.gd`（`Stronghold`。置く場所、確保の数え方）、`rules/board.gd`（`stronghold_cell`）、
 `rules/actions/end_phase_action.gd`、`rules/events/stronghold_progress_event.gd`。テスト: `tests/rules/test_stronghold.gd`。
 
-待っている側が損をする物（Issue #47 の「先制攻撃が不利で、待ち有利」）。**対戦モードの既定で置かれる**（`TrialRules.STRONGHOLD`。
+待っている側が損をする物（Issue #47 の「先制攻撃が不利で、待ち有利」）。**対戦モードの既定で置かれる**（`OptionalRules.STRONGHOLD`。
 対戦設定で「拠点: なし」にすれば置かない。`docs/match-setup.md` の「選べる決まり」。ストーリーの話には置かない）。拠点を確保し続けると勝つ（勝ち方の決まりは `docs/win-conditions.md` の「拠点を確保し続ける」）。
 
 - 盤に 1 つ。入るのに使う移動力は地形のまま。ほかの駒が乗っていれば入れないのは、ふつうのマスと同じ。壊れず、だれのものでもない。
