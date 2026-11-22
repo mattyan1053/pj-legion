@@ -43,6 +43,7 @@ const SCENES := {
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
 	"skill": "スキルのボタンと対象選び、クールダウン",
 	"status": "自分に使うスキルと、駒に付く状態",
+	"formation": "組み方（分隊の追い撃ちと、誓いが切れること）",
 	"extra_action": "行動を終えないスキルと、行動済みの駒を戻すスキル",
 	"ult": "必殺技",
 	"neutral": "中立の駒（湧く、攻撃する、カメラが追う）",
@@ -64,7 +65,7 @@ const SCENES := {
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
-	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
+	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "formation", "extra_action",
 		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
 	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }
@@ -770,6 +771,40 @@ func _queue_status_scene() -> void:
 		var doubled := sniper.power() * PrecisionAimSkill.CRITICAL_PERCENT / 100
 		_expect(king2.hp == king2.max_hp() - doubled, "伸びた射程からのクリティカルが当たらなかった")
 		_expect(not Statuses.has(sniper, Status.Type.AIM), "照準が残っている"))
+
+
+## 組み方（docs/formation.md）。スナイパーの分隊が同じ相手を続けて撃ち（追い撃ち）、誓いを結んだ相手の片方を倒す（誓いが切れて、奮起が付く）。
+func _queue_formation_scene() -> void:
+	var board := _small_board(Vector2i(7, 3))
+	var battle := Battle.new(board)
+	battle.formation = true
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 1))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
+	var first := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
+	var second := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 2))
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(3, 1))
+	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(5, 1))
+	Formation.bind(paladin, sorcerer)
+	paladin.hp = first.power() + 1
+	var triggered: Script = FormationTriggeredEvent
+	var broken: Script = OathBrokenEvent
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+	_scripted.append(func() -> void: _scene.click_cell(first.cell))
+	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void:
+		_expect(paladin.hp == 1, "1 発目が当たらなかった")
+		_scene.played.erase(triggered)
+		_scene.played.erase(broken)
+		_scene.click_cell(second.cell))
+	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void:
+		_expect(not battle.units.has(paladin), "追い撃ちで倒せなかった")
+		_expect(_scene.played.get(triggered, 0) == 1, "追い撃ちを再生しなかった")
+		_expect(_scene.played.get(broken, 0) == 1, "誓いが切れたことを再生しなかった")
+		_expect(Statuses.has(sorcerer, Status.Type.RESOLVE), "奮起が付かなかった"))
 
 
 ## 行動の流れを変えるスキル。シャドウステップで敵と入れ替わってから攻撃し、アドレナリン注射で、行動済みの駒をもう一度動かす。

@@ -16,6 +16,7 @@ const BattleLog := preload("res://game/battle_log.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const NeutralPlayback := preload("res://game/neutral_playback.gd")
 const Names := preload("res://game/names.gd")
+const Palette := preload("res://game/ui_palette.gd")
 
 ## 1 マス歩くのにかける秒数（巡航は速く走る）。中立の駒は、目で追えるよう、ゆっくり歩かせる。
 const STEP_TIME := 0.16
@@ -167,6 +168,8 @@ static func event_players() -> Dictionary:
 		SkillReadyEvent: &"_play_skill_ready",
 		UltUsedEvent: &"_play_ult_used",
 		UltReadyEvent: &"_play_ult_ready",
+		FormationTriggeredEvent: &"_play_formation_triggered",
+		OathBrokenEvent: &"_play_oath_broken",
 		StatusAppliedEvent: &"_play_status_applied",
 		StatusRemovedEvent: &"_play_status_removed",
 		UnitActedEvent: &"_play_acted",
@@ -625,6 +628,30 @@ func _play_ult_effects(side: Unit.Side, effects: Array[BattleEvent]) -> void:
 func _play_ult_ready(_event: UltReadyEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)
 	_sound(&"ult_ready")
+
+
+## 組み方の効果が攻撃に効いた（docs/formation.md）。効果を受けた駒の上に、効果の名前と増減を出す（ダメージの数の手前）。
+func _play_formation_triggered(event: FormationTriggeredEvent) -> void:
+	var down := event.effect == Formation.Effect.SQUAD_GUARD
+	var text := Text.t("battle.pop.formation_down" if down else "battle.pop.formation_up",
+		{"effect": Names.formation_effect(event.effect), "amount": event.amount})
+	var color := Palette.NATION_MILITARY if Formation.forms_squads(_kind_of(event.unit_id)) else Palette.NATION_FANTASY
+	_pop_number(_view(event.unit_id).position + Vector3(0.0, 0.35, 0.0), text, color.lightened(0.3))
+	await after(0.3)
+
+
+## 誓いの片方が倒れ、誓いが切れた。残った駒の上に「誓いの果て」を出す（続く奮起は、状態が付いたことの再生が出す）。
+func _play_oath_broken(event: OathBrokenEvent) -> void:
+	if not _views.has(event.survivor_id):
+		return
+	_pop_number(_view(event.survivor_id).position + Vector3(0.0, 0.6, 0.0), Names.formation_effect(Formation.Effect.OATH_RESOLVE), Palette.NATION_FANTASY.lightened(0.3))
+	await after(0.3)
+
+
+## 駒 unit_id の種類（盤から消えていれば、見た目の種類）。
+func _kind_of(unit_id: int) -> UnitKind.Id:
+	var unit := battle.unit_by_id(unit_id)
+	return unit.kind if unit != null else _view(unit_id).unit_kind()
 
 
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。

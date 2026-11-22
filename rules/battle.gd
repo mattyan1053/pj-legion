@@ -60,6 +60,11 @@ var mid_boss_slayers: Dictionary[int, int] = {}
 ## 足すのは Relics.grant だけ（駒の聖遺物の層と、そろえて変える）。
 var relics: Array[Array] = [[], []]
 
+## 組み方（選べる決まり OptionalRules.FORMATION。Formation）が入の対戦か。対戦を作るとき（MatchSetup.create_battle）に決まる。
+var formation := false
+## このフェーズに、分隊の駒が攻撃した相手（駒の番号 -> 攻撃した駒の (番号, 兵種) の並び）。追い撃ち（Formation）が読む。フェーズの始めに空になる。
+var focus_marks: Dictionary[int, Array] = {}
+
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
 
@@ -103,7 +108,7 @@ func add_unit(
 
 
 ## 倒れた駒を盤から取り除く。by は止めを刺した駒（攻撃した駒、スキルを使った駒、爆発した樽を攻撃した駒）。
-## 返すのは UnitDefeatedEvent。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）と、
+## 返すのは UnitDefeatedEvent。組み方が入で、誓いを結んだ駒なら、続けて誓いが切れる（Formation.on_defeated）。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）と、
 ## 倒した陣営がいれば RelicGainedEvent（その中ボスの聖遺物を受け取る。Relics.grant）。
 func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 	units.erase(unit)
@@ -111,6 +116,7 @@ func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 		acting_unit_id = 0
 	Ults.charge_defeat(self, unit)
 	var events: Array[BattleEvent] = [UnitDefeatedEvent.new(unit)]
+	events.append_array(Formation.on_defeated(self, unit))
 	var boss_index := mid_boss_index(unit)
 	if boss_index != -1:
 		var slayer := by if by != null and by.side != Unit.Side.NEUTRAL else null

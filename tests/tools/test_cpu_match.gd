@@ -225,6 +225,40 @@ func test_matches_tool_sorts_a_squad_by_what_is_in_it() -> void:
 	assert_false(tool._squad_keys(other, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY).has("MILITARY 対 FANTASY CPU の編成と同じ"))
 
 
+func test_matches_tool_sorts_a_squad_by_its_formation_when_the_rule_is_on() -> void:
+	var tool := load("res://tools/cpu_matches.gd")
+	var federation := CpuDeck.build(UnitKind.Army.MILITARY)
+	assert_false(str(tool._squad_keys(federation, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY)).contains("分隊"), "切なら組み方の鍵は無い")
+	var keys: Array[String] = tool._squad_keys(federation, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY, true)
+	assert_true(keys.has("MILITARY 対 FANTASY 分隊 スナイパー 2 体"), str(keys))
+	assert_true(keys.has("MILITARY 対 FANTASY 分隊の数 2"), str(keys))
+	var knights := CpuDeck.build(UnitKind.Army.FANTASY)
+	keys = tool._squad_keys(knights, UnitKind.Army.FANTASY, UnitKind.Army.MILITARY, true)
+	assert_true(keys.has("FANTASY 対 MILITARY 誓い パラディン・ソーサラー"), str(keys))
+	assert_true(keys.has("FANTASY 対 MILITARY 誓いの数 2"), str(keys))
+	var twins := Deck.new(UnitKind.Army.FANTASY)
+	var entries: Array[DeckEntry] = []
+	for i in 4:
+		entries.append(twins.add(UnitKind.Id.SORCERER))
+	twins.bind(entries[0], entries[1])
+	twins.bind(entries[2], entries[3])
+	keys = tool._squad_keys(twins, UnitKind.Army.FANTASY, UnitKind.Army.MILITARY, true)
+	assert_eq(keys.count("FANTASY 対 MILITARY 誓い ソーサラー・ソーサラー"), 1, "同じ組の誓いは 1 回だけ数える")
+
+
+func test_formation_effects_are_counted() -> void:
+	var battle := Maps.battle([".........", ".........", ".........", ".........", "........."])
+	battle.formation = true
+	battle.board.hq_cells = [Vector2i(0, 4), Vector2i(8, 0)]
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(8, 0))
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(2, 2))
+	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(2, 3))
+	battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(5, 2))
+	var outcome := CpuMatch.play(battle, 3)
+	assert_true(outcome.formation.get(Formation.Effect.SQUAD_FOCUS, 0) >= 1, str(outcome.formation))
+
+
 func test_a_stronghold_win_is_counted_as_its_own_ending() -> void:
 	var battle := Maps.battle([".........", ".........", ".........", ".........", "........."])
 	battle.board.hq_cells = [Vector2i(0, 4), Vector2i(8, 0)]
