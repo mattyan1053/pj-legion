@@ -171,8 +171,6 @@ func create_battle() -> Battle:
 			battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
 	battle.hold_turns = scenario.hold_turns
-	if board.stronghold_cell != Board.NO_CELL and OS.get_environment("SH_P2START") == "1":
-		battle.stronghold_holds[1] = 1
 	return battle
 
 

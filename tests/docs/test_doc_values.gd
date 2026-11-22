@@ -89,6 +89,24 @@ func test_numbers_tagged_with_constants_match_the_code() -> void:
 	assert_true(checked >= 20, "文の中で突き合わせた値が少なすぎる（%d）" % checked)
 
 
+# ---- 個別: 定数を名指ししない文 ----
+
+
+func test_readme_win_counts_match_the_code() -> void:
+	# README は人の読む紹介なので定数を書かない。勝ち方の文の回数を、ここで定数と突き合わせる。
+	var text := FileAccess.get_file_as_string("res://README.md")
+	var counts := {
+		"ターン終了を %d 回続ける": Battle.CAPTURE_TURNS_TO_WIN,
+		"ターン終了を %d 回重ねると勝ち": Stronghold.HOLDS_TO_WIN,
+	}
+	for pattern: String in counts:
+		var found := RegEx.create_from_string(pattern.replace("%d", "(\\d+)")).search(text)
+		if found == null:
+			_fail("README.md に「%s」の文が無い" % pattern, "")
+			continue
+		_expect(float(found.get_string(1)), float(counts[pattern]), "README.md の「%s」" % found.get_string(0))
+
+
 # ---- 個別: 定数を名指ししない表 ----
 
 

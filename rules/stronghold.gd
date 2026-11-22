@@ -26,16 +26,6 @@ static func choose_cell(board: Board, battle_seed := 0) -> Vector2i:
 	var ties := candidates(board)
 	if ties.is_empty():
 		return Board.NO_CELL
-	if OS.get_environment("SH_PLACE") == "p2" and ties.size() > 1:
-		var d2 := distances(board, board.hq_cells[1])
-		var d1 := distances(board, board.hq_cells[0])
-		var best := ties[0]
-		for c in ties:
-			var i := c.y * board.size.x + c.x
-			var bi := best.y * board.size.x + best.x
-			if d2[i] - d1[i] < d2[bi] - d1[bi]:
-				best = c
-		return best
 	# 種の偶奇は、集計の道具の軍の組み合わせの順と重なるので、種から乱数を引いて選ぶ。
 	var rng := RandomNumberGenerator.new()
 	rng.seed = battle_seed
@@ -58,7 +48,7 @@ static func candidates(board: Board) -> Array[Vector2i]:
 			var i := y * board.size.x + x
 			if near[i] < 0 or far[i] < 0 or not _can_hold(board, cell):
 				continue
-			var gap := absi(near[i] - far[i] - int(OS.get_environment("SH_GAP")))
+			var gap := absi(near[i] - far[i])
 			var off := Vector2(cell).distance_squared_to(middle)
 			if ties.is_empty() or gap < best_gap or (gap == best_gap and off < best_off - 0.001):
 				ties = [cell]
@@ -123,19 +113,13 @@ static func count(battle: Battle, player: Unit.Side) -> Array[BattleEvent]:
 		return events
 	if not holds(battle, player) or contested(battle, player):
 		return events
-	var start_turn := int(OS.get_environment("SH_START")) if OS.has_environment("SH_START") else 0
-	if battle.turn < start_turn:
-		return events
-	if OS.get_environment("SH_SKIP1") == "1" and player == 0 and not battle.sh_skipped:
-		battle.sh_skipped = true
-		return events
 	battle.stronghold_holds[player] += 1
 	events.append(StrongholdProgressEvent.new(player, battle.stronghold_holds[player]))
 	var foe := (1 - player) as Unit.Side
 	if battle.stronghold_holds[foe] > 0:
 		battle.stronghold_holds[foe] = 0
 		events.append(StrongholdProgressEvent.new(foe, 0))
-	if battle.stronghold_holds[player] >= needed(player):
+	if battle.stronghold_holds[player] >= HOLDS_TO_WIN:
 		battle.winner = player
 		events.append(GameWonEvent.new(player, GameWonEvent.Reason.STRONGHOLD_HELD))
 	return events
@@ -145,13 +129,7 @@ static func count(battle: Battle, player: Unit.Side) -> Array[BattleEvent]:
 static func holds_left(battle: Battle, player: Unit.Side) -> int:
 	if battle.board.stronghold_cell == Board.NO_CELL or not battle.wins_by(player, GameWonEvent.Reason.STRONGHOLD_HELD):
 		return -1
-	return maxi(0, needed(player) - battle.stronghold_holds[player])
-
-
-static func needed(player: int) -> int:
-	if player == 1 and OS.has_environment("SH_P2"):
-		return int(OS.get_environment("SH_P2"))
-	return HOLDS_TO_WIN
+	return maxi(0, HOLDS_TO_WIN - battle.stronghold_holds[player])
 
 
 ## from からの道のり（移動のコスト。入れないマスは -1）。ポータルは、対になるポータルへ移動力を使わずに移る。添字は 行 x 幅 + 列。
