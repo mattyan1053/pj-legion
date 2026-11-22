@@ -36,7 +36,7 @@ extends SceneTree
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --rules=NAME   選べる決まり（OptionalRules の名前。battery = 砲台、stronghold = 拠点。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##   --rules=NAME   選べる決まり（OptionalRules の名前。battery = 砲台、stronghold = 拠点、formation = 組み方。`,` で並べられる）をそれだけ入にして回す。none で全部切。
 ##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
 ##                   ファイルは、マップのファイルと同じ書式（[rows] の節。docs/hand-map.md）か、文字の格子の行だけを並べたテキスト。--stage より優先する
@@ -474,7 +474,7 @@ func _initialize() -> void:
 				if one_squad and side != squad_side:
 					continue
 				var won := 1 if outcome.winner == side else 0
-				for key in _squad_keys(setup.deck_of(side), armies[side], armies[1 - side]):
+				for key in _squad_keys(setup.deck_of(side), armies[side], armies[1 - side], setup.rules.has(OptionalRules.FORMATION)):
 					var row: Array = squad_rows.get_or_add(key, [0, 0])
 					row[0] += 1
 					row[1] += won
@@ -767,7 +767,8 @@ func _deck(army: UnitKind.Army, mode: String, rules: DeckRules) -> Deck:
 
 ## 部隊の中身を分ける鍵（--squads の「部隊の中身ごとの勝率」）。軍の並びを頭に付ける。
 ## 駒の種類（入っている部隊）、駒の種類の数、駒の数、装備の数、役割の組み合わせ（前衛・後衛・奇襲・回復の数）、CPU の編成と同じか。
-static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Army) -> Array[String]:
+## 組み方が入（formation）なら、分隊の兵種と数（連邦）、誓いの組と数（騎士領）も。
+static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Army, formation := false) -> Array[String]:
 	var head := "%s 対 %s " % [Names.army(army), Names.army(rival_army)]
 	var keys: Array[String] = []
 	var counts := {}
@@ -788,6 +789,27 @@ static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Ar
 	keys.append(head + "役割 前%d 後%d 奇%d 回%d" % roles.slice(1))
 	if _deck_text(deck) == _deck_text(CpuDeck.build(army, deck.rules)):
 		keys.append(head + "CPU の編成と同じ")
+	if formation:
+		keys.append_array(_formation_keys(deck, head))
+	return keys
+
+
+## 組み方の鍵: 連邦は分隊の兵種（と、その体数）と分隊の数、騎士領は誓いの組（兵種の組。役割の順）と誓いの数。
+static func _formation_keys(deck: Deck, head: String) -> Array[String]:
+	var keys: Array[String] = []
+	if Formation.binds_oaths(deck.army):
+		for pair in deck.oath_pairs():
+			var kinds: Array[UnitKind.Id] = [deck.entries[pair.x].kind, deck.entries[pair.y].kind]
+			kinds.sort()
+			keys.append(head + "誓い %s・%s" % [Names.kind(kinds[0]), Names.kind(kinds[1])])
+		keys.append(head + "誓いの数 %d" % deck.oaths.size())
+	else:
+		var squads := Formation.squad_kinds(deck)
+		for kind in squads:
+			var size := deck.entries.filter(func(entry: DeckEntry) -> bool: return entry.kind == kind).size()
+			keys.append(head + "分隊 %s" % Names.kind(kind))
+			keys.append(head + "分隊 %s %d 体" % [Names.kind(kind), size])
+		keys.append(head + "分隊の数 %d" % squads.size())
 	return keys
 
 

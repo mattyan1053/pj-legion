@@ -24,6 +24,10 @@ class UnitOutcome:
 	var forest := false
 	var blocked_by := -1
 	var smoked := false
+	## 組み方（Formation）で増える・減るダメージ（Formation.Effect -> 量。肩並べは減る量）。
+	var formation: Dictionary[int, int] = {}
+	## 誓いの相手が倒れて、誓いが切れるか（残る側に付く）。
+	var oath_broken := false
 	## 樽の爆発に巻き込まれるか。
 	var exploded := false
 	var defeated := false
@@ -132,6 +136,8 @@ func _read(battle: Battle) -> void:
 			unit.exploded = unit.exploded or damaged.cause == UnitDamagedEvent.Cause.EXPLOSION
 			if damaged.is_blocked():
 				unit.blocked_by = damaged.blocked_by
+			for effect: int in damaged.formation:
+				unit.formation[effect] = unit.formation.get(effect, 0) + int(damaged.formation[effect])
 		elif event is SmokeBlockedEvent:
 			var smoked := _unit(battle, (event as SmokeBlockedEvent).target_id)
 			smoked.smoked = true
@@ -161,6 +167,8 @@ func _read(battle: Battle) -> void:
 			var swapped := event as UnitsSwappedEvent
 			_unit(battle, swapped.unit_id).moved_to = swapped.other_from
 			_unit(battle, swapped.other_id).moved_to = swapped.from
+		elif event is OathBrokenEvent:
+			_unit(battle, (event as OathBrokenEvent).survivor_id).oath_broken = true
 		elif event is UnitReactivatedEvent:
 			_unit(battle, (event as UnitReactivatedEvent).unit_id).reactivated = true
 		elif event is BarricadeDamagedEvent:

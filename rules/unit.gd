@@ -61,6 +61,10 @@ var move_locked := false
 var skill_cooldown := 0
 ## この対戦でスキルを使った回数。回数に上限のあるスキル（Skill.max_uses）が見る。
 var skill_uses := 0
+## 誓い（組み方。Formation）の相手の番号。結んでいなければ 0。
+var oath_partner := 0
+## この駒を最後に攻撃した敵の番号（誓いを結んでいる駒だけ。仇討ち。Formation）。いなければ 0。
+var oath_foe := 0
 ## 中立の駒が守る場所（エナジー・コアなら、湧いた結晶泉）。プレイヤーの駒では Board.NO_CELL。
 var home_cell := Board.NO_CELL
 
