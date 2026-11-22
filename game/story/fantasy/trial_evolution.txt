@@ -21,9 +21,9 @@ after_music = talk_calm
 lesson = レベル 3 に上がった駒は、進化先を 2 つから選ぶ。選んだ型で戦い方が変わる。
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
 幻の兵 = enemy, shield_trooper
 
 [before]

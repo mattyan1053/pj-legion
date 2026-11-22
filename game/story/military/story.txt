@@ -18,10 +18,10 @@ unit = sniper
 
 [cast]
 ハーデン = king, 偵察隊の新任少尉
-ドーソン = shield_trooper evolved, 古参の曹長。教官
-ノエ = sniper, 新兵の狙撃手
-マルタ = medic, 古参の衛生兵
-ピップ = commando, お調子者の斥候
+ドーソン = shield_trooper evolved dawson, 古参の曹長。教官
+ノエ = sniper noe, 新兵の狙撃手
+マルタ = medic marta, 古参の衛生兵
+ピップ = commando pip, お調子者の斥候
 
 [episodes]
 drill_first_steps

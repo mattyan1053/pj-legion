@@ -15,10 +15,10 @@ lesson = 衛生兵は味方を回復する。回復の泉の上で番を迎え�
 
 [cast]
 ハーデン = ally
-ドーソン = ally, shield_trooper evolved
-ノエ = ally, sniper
-マルタ = ally, medic
-教導隊員 = enemy, paladin
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+教導隊員 = enemy, paladin drill_sergeant
 
 [before]
 マルタ: はいはい、衛生兵のマルタよ。怪我人はどこ？

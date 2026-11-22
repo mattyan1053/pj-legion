@@ -17,7 +17,9 @@ static var _cache := {}
 
 ## 写す組み合わせ（[種類, 陣営, 進化したか, 将の別の姿] の列）。人の駒（将と雇える駒）と魔物は青と赤、進化は進化する駒だけ（将と魔物を除く）。
 ## 中立の駒は中立の色だけ。将は、別の姿（unit_looks.gd の KING_LOOKS）も青と赤。
-static func variants() -> Array:
+## look_set は駒の見た目の組の名前（空なら、いま使っている組）。人物の形は、その組が持つ人物だけ。
+static func variants(look_set := &"") -> Array:
+	var looks := UnitLooks.active() if look_set == &"" else UnitLooks.of(look_set)
 	var list: Array = []
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		if UnitKind.is_neutral(kind):
@@ -30,6 +32,13 @@ static func variants() -> Array:
 			if kind == UnitKind.Id.KING:
 				for look: StringName in UnitLooks.KING_LOOKS:
 					list.append([kind, side, false, look])
+	# 名前のある人物の形（PERSONS）。進化の前後とも（盤で進化することがある。会話の姿も進化後を書ける）。
+	for person: StringName in UnitLooks.PERSONS:
+		if not looks.has_person(person):
+			continue
+		for side in 2:
+			for evolved: bool in [false, true]:
+				list.append([UnitLooks.PERSONS[person], side, evolved, person])
 	return list
 
 
@@ -38,10 +47,12 @@ static func evolves(kind: UnitKind.Id) -> bool:
 	return kind != UnitKind.Id.KING and not UnitKind.is_monster(kind)
 
 
-## look は将の別の姿（将でない駒と、知らない名前には付けない）。
+## look は将の別の姿（将でない駒と、知らない名前には付けない）か、名前のある人物の形（どの駒でも、人物の名前のファイル）。
 static func file_name(kind: UnitKind.Id, side: int, evolved := false, look := &"") -> String:
 	var name := String(UnitKind.Id.keys()[kind]).to_lower()
-	if kind == UnitKind.Id.KING and UnitLooks.KING_LOOKS.has(look):
+	if UnitLooks.PERSONS.has(look):
+		name = "person_" + String(look)
+	elif kind == UnitKind.Id.KING and UnitLooks.KING_LOOKS.has(look):
 		name += "_" + String(look)
 	return "%s_%s%s.png" % [name, SIDE_NAMES[side], "_evolved" if evolved else ""]
 
@@ -50,10 +61,15 @@ static func file_name(kind: UnitKind.Id, side: int, evolved := false, look := &"
 ## look は将の別の姿（unit_looks.gd の KING_LOOKS。将でなければ見ない）。無ければ null（呼ぶ側は、絵を出さずに文字だけにする）。
 static func texture(kind: UnitKind.Id, side := 0, evolved := false, look := &"") -> Texture2D:
 	var neutral := UnitKind.is_neutral(kind)
-	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), evolved and not neutral and evolves(kind), look)
+	var person := UnitLooks.PERSONS.has(look)
+	# 人物の形は、将の人物でも進化の前後の絵がある（その人の種類で写す）。
+	var shown_evolved := evolved and not neutral and (person or evolves(kind))
+	var key := file_name(kind, NEUTRAL if neutral else clampi(side, 0, 1), shown_evolved, look)
 	var path := "%s/%s" % [UnitLooks.active().icon_dir, key]
 	if not _cache.has(path):
 		_cache[path] = load(path) if ResourceLoader.exists(path) else null
+	if _cache[path] == null and person:
+		return texture(kind, side, evolved)  # 人物の形を持たない組は、種類の絵
 	return _cache[path]
 
 

@@ -18,10 +18,10 @@ after_music = talk_bright
 lesson = 必殺技「魔力解放」で全員のスキルの待ち時間が消える。駒を動かす前に使う。
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
 幻の兵 = enemy, shield_trooper
 
 [before]

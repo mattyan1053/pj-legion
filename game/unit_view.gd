@@ -44,7 +44,8 @@ var _crowned := false
 var _status_ring: MeshInstance3D
 
 
-## look は将の別の姿（unit_looks.gd の KING_LOOKS の名前。空か知らない名前なら、いつもの将。将でない駒には効かない）。
+## look は将の別の姿（unit_looks.gd の KING_LOOKS の名前。将でない駒には効かない）か、名前のある人物の形（PERSONS の名前。
+## どの駒にも効く。組が形を持たなければ種類の形）。空か知らない名前なら、種類の形。
 ## look_set は駒の見た目の組の名前（空なら、いま使っている組。アイコンを写す道具が組を選ぶのに使う）。
 func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int, look := &"", look_set := &"") -> void:
 	_kind = kind
@@ -52,8 +53,8 @@ func setup(kind: UnitKind.Id, team_color: Color, hp: int, max_hp: int, look := &
 	_max_hp = max_hp
 	_add_base(team_color)
 	var looks := UnitLooks.active() if look_set == &"" else UnitLooks.of(look_set)
-	var king_look := look if kind == UnitKind.Id.KING and UnitLooks.KING_LOOKS.has(look) else &""
-	_body = looks.build(kind, team_color, king_look, global_position if is_inside_tree() else position)
+	var shown_look := look if (kind == UnitKind.Id.KING and UnitLooks.KING_LOOKS.has(look)) or UnitLooks.PERSONS.has(look) else &""
+	_body = looks.build(kind, team_color, shown_look, global_position if is_inside_tree() else position)
 	_body.view = self
 	add_child(_body)
 	_height = _body.body_height

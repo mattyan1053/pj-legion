@@ -123,6 +123,8 @@ const BANNER_TOP := 132.0
 var _team_colors: Array[Color] = []
 ## 将の姿（陣営ごと。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）。駒の情報のアイコンに使う。
 var king_looks: Array[StringName] = [&"", &""]
+## 名前のある人物の形の付いた駒（駒の id -> unit_looks.gd の PERSONS の名前）。駒の情報のアイコンに使う（将の姿より先）。
+var unit_looks := {}
 
 var _turn_label: Label
 var _phase_label: Label
@@ -468,7 +470,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	_edge_info_panel(_side_color(unit.side).lightened(0.15))
 	_set_folded(_info_name, _info_name.text, INFO_WIDTH - INFO_ICON_SIZE - 6.0)
 	_info_icon.set_kind(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE,
-			king_looks[unit.side] if unit.side < king_looks.size() else &"")
+			unit_looks.get(unit.id, king_looks[unit.side] if unit.side < king_looks.size() else &""))
 	_info_icon.edge = Color(_side_color(unit.side).lightened(0.15), 0.9)
 	_info_icon.visible = true
 	var army: UnitKind.Army = side_armies[unit.side] if unit.side >= 0 and unit.side < side_armies.size() else UnitKind.Army.NONE

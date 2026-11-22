@@ -22,11 +22,11 @@ hold_turns = 10
 wins = turns_held
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
-教導隊員 = ally, paladin
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
+教導隊員 = ally, paladin drill_sergeant
 骨の鼓手 = enemy, skeleton_drummer
 
 [before]

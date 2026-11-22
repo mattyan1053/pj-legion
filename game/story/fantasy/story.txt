@@ -18,10 +18,10 @@ unit = paladin
 unit = sorcerer
 
 [cast]
-イェルダ = paladin evolved crown, なりたての騎士長
-ウル = priest evolved, 老導師。騎士長の師
-ティオ = sorcerer, 見習い上がりの術士
-セリス = spellblade, 斬り込みの影刃
+イェルダ = paladin evolved crown yelda, なりたての騎士長
+ウル = priest evolved ul, 老導師。騎士長の師
+ティオ = sorcerer tio, 見習い上がりの術士
+セリス = spellblade seris, 斬り込みの影刃
 
 [episodes]
 trial_first_steps

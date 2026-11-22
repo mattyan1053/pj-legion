@@ -18,9 +18,9 @@ lesson = ソーサラーのスキル「ファイアボール」は、十字の�
 wins = routed
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
 骨の群れ = enemy, skeleton
 
 [before]

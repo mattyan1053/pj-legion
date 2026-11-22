@@ -14,11 +14,11 @@ before_music = battle_crystal
 after_music = talk_bright
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
-セリス = ally, spellblade
-ピップ = enemy, commando
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
+セリス = ally, spellblade seris
+ピップ = enemy, commando pip
 
 [before]
 > 修練を終えた騎士長の隊は、初めて領の外へ出た。

@@ -17,9 +17,9 @@ after_music = talk
 lesson = 駒をクリックして動かし、敵を攻撃する。ソーサラーは 2 マス先から撃てる。
 
 [cast]
-イェルダ = ally, paladin evolved crown
-ウル = ally, priest evolved
-ティオ = ally, sorcerer
+イェルダ = ally, paladin evolved crown yelda
+ウル = ally, priest evolved ul
+ティオ = ally, sorcerer tio
 幻の兵 = enemy, shield_trooper
 
 [before]

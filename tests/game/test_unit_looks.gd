@@ -21,11 +21,55 @@ func test_every_set_builds_every_kind() -> void:
 			body.free()
 
 
+## 名前のある人物の形: 「人形」の組は、人物ごとに部品を付け替えた形を作る。ほかの組（人物の形を持たない）は、駒の種類の形のまま。
+func test_people_have_their_own_shapes() -> void:
+	for person: StringName in UnitLooks.PERSONS:
+		var kind: UnitKind.Id = UnitLooks.PERSONS[person]
+		for name: StringName in UnitLooks.SETS:
+			var view := UnitView.new()
+			Engine.get_main_loop().root.add_child(view)
+			view.setup(kind, Color.RED, 10, 20, person, name)
+			assert_true(view.height() > 0.3, "%s: %s の体" % [name, person])
+			view.play_run()
+			assert_true(view.play_attack() > 0.0, "%s: %s の攻撃" % [name, person])
+			view.free()
+	var kaykit := UnitLooks.of(&"kaykit")
+	assert_true(not UnitLooks.of(&"mini").has_person(&"ul"))
+	# ウル: 衣の魔法使いの頭を、禿げ頭にひげの頭に替え、帽子を脱ぐ。杖と本を持つ。
+	var ul := kaykit.build(UnitKind.Id.PRIEST, Color.RED, &"ul", Vector3.ZERO)
+	assert_eq(_shown_meshes(ul).filter(func(each: String) -> bool: return each.ends_with("_Head")), ["Barbarian_Head"])
+	assert_true(not _shown_meshes(ul).has("Mage_Hat") and _shown_meshes(ul).has("2H_Staff") and _shown_meshes(ul).has("Spellbook"), "%s" % [_shown_meshes(ul)])
+	ul.free()
+	# セリス: 軽装（Rogue）に、騎士の両手剣を借りて持つ。
+	var seris := kaykit.build(UnitKind.Id.SPELLBLADE, Color.RED, &"seris", Vector3.ZERO)
+	assert_true(_shown_meshes(seris).has("2H_Sword") and _shown_meshes(seris).has("Rogue_Head") and not _shown_meshes(seris).has("2H_Crossbow"), "%s" % [_shown_meshes(seris)])
+	seris.free()
+	# 人物の形は、将の駒に付いても（将の印の人）その人の形。
+	var yelda := kaykit.build(UnitKind.Id.KING, Color.RED, &"yelda", Vector3.ZERO)
+	assert_true(_shown_meshes(yelda).has("Rogue_Head") and _shown_meshes(yelda).has("Badge_Shield"), "%s" % [_shown_meshes(yelda)])
+	yelda.free()
+
+
+## 見えている面の名前（親が隠れていれば見えない）。
+func _shown_meshes(body: Node) -> Array:
+	var names: Array = []
+	for mesh: MeshInstance3D in body.find_children("*", "MeshInstance3D", true, false):
+		var shown := true
+		var node: Node = mesh
+		while node != body:
+			if node is Node3D and not (node as Node3D).visible:
+				shown = false
+			node = node.get_parent()
+		if shown:
+			names.append(String(mesh.name))
+	return names
+
+
 ## どの組にも、写したアイコンが全部ある（無ければ tools/unit_icons.sh <godot> <組> で写す）。
 func test_every_set_has_every_icon() -> void:
 	for name: StringName in UnitLooks.SETS:
 		var dir := UnitLooks.of(name).icon_dir
-		for variant: Array in UnitIcons.variants():
+		for variant: Array in UnitIcons.variants(name):
 			var file := UnitIcons.file_name(variant[0], variant[1], variant[2], variant[3])
 			assert_true(ResourceLoader.exists("%s/%s" % [dir, file]), "%s: アイコンが無い: %s" % [name, file])
 
