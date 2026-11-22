@@ -142,8 +142,6 @@ static func readers() -> Dictionary:
 		SanctuaryHealedEvent: &"_read_healed",
 		StatusAppliedEvent: &"_read_status_applied",
 		UltUsedEvent: &"_read_ult_used",
-		TacticUsedEvent: &"_read_tactic_used",
-		TacticHealedEvent: &"_read_healed",
 		UltReadyEvent: &"_read_ult_ready",
 		UnitDefeatedEvent: &"_read_defeated",
 		MidBossDefeatedEvent: &"_read_mid_boss_defeated",
@@ -510,8 +508,6 @@ func _read_healed(event: UnitHealedEvent) -> void:
 		key = "battle.log.healed.spring"
 	elif event is RegenerationHealedEvent:
 		key = "battle.log.healed.regeneration"
-	elif event is TacticHealedEvent:
-		key = "battle.log.healed.tactic"
 	_line(Text.t(key, {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
@@ -537,11 +533,6 @@ func _read_status_applied(event: StatusAppliedEvent) -> void:
 	if not _group.unit_ids.has(event.unit_id):
 		_group.unit_ids.append(event.unit_id)
 	_touch(_group)
-
-
-func _read_tactic_used(event: TacticUsedEvent) -> void:
-	var text := Text.t("battle.log.tactic", {"side": Names.side_word(event.side), "tactic": Names.tactic(event.tactic), "summary": Names.tactic_summary(event.tactic)})
-	_begin_group(_line(text, event.side))
 
 
 func _read_ult_used(event: UltUsedEvent) -> void:

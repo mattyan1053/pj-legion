@@ -45,7 +45,6 @@ const SCENES := {
 	"status": "自分に使うスキルと、駒に付く状態",
 	"extra_action": "行動を終えないスキルと、行動済みの駒を戻すスキル",
 	"ult": "必殺技",
-	"tactic": "作戦（試しの決まり。手札の札を、確かめてから 1 回ずつ使う）",
 	"neutral": "中立の駒（湧く、攻撃する、カメラが追う）",
 	"mid_boss": "中ボスと聖遺物",
 	"level_up": "レベルアップ",
@@ -66,7 +65,7 @@ const SCENES := {
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
 	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "extra_action",
-		"ult", "tactic", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
+		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
 	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }
 
@@ -1620,59 +1619,6 @@ func _queue_cpu_skip_scene() -> void:
 			"CPU が番を終えたあとの中立のフェーズの再生の間に、早送り・スキップが出ていない")
 		_expect(not _scene.watch_controls_state()[0], "自分の番に戻っても、早送り・スキップが出ている")
 		_scene.set_opponent(false))
-
-
-## 作戦（試しの決まり）。手札のボタンは、1 回目は確かめるだけで、もう一度押すと使う。使った札は、もう押せない。使っても駒の行動は残る。
-func _queue_tactic_scene() -> void:
-	var board := _small_board(Vector2i(7, 5))
-	var battle := Battle.new(board)
-	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 4))
-	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
-	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(1, 3))
-	trooper.hp -= 20
-	battle.tactics[Unit.Side.PLAYER1] = [Tactics.Id.SUPPLY, Tactics.Id.MARCH]
-	var used: Script = TacticUsedEvent
-	var move := trooper.move_range()
-
-	_scripted.append(func() -> void:
-		_scene.set_opponent(false)
-		_scene.start_with(battle, StageLook.GRASSLAND, 1))
-	_scripted.append(func() -> void:
-		_expect(_scene.tactic_buttons() == [[Names.tactic(Tactics.Id.SUPPLY), true], [Names.tactic(Tactics.Id.MARCH), true]], "作戦のボタンが、手札の順に出ていない")
-		_expect(_scene.notice_text().contains("作戦"), "対戦の始めに、作戦の知らせが出ていない")
-		_expect(_scene.tactic_note_text() == "", "札に乗せる前から、札の説明が出ている")
-		_scene.hover_tactic(1)
-		_expect(_scene.tactic_note_text().contains(Names.tactic_summary(Tactics.Id.MARCH)), "札に乗せても、効果が出ない")
-		_scene.hover_tactic(-1)
-		_scene.press_tactic(0)
-		_expect(battle.tactics_used[0].is_empty(), "1 回押しただけで、作戦を使った")
-		_expect(_scene.tactic_note_text().contains(Names.tactic_summary(Tactics.Id.SUPPLY)), "使うかを確かめている間に、効果が出ていない")
-		_scene.press_tactic(0)
-		_expect(battle.tactics_used[0].is_empty(), "素早い 2 回押しで、作戦の確かめを飛ばした")
-		_scene.pass_confirm_guard()
-		_scene.press_tactic(0))
-	_scripted.append(func() -> void:
-		_expect(battle.tactics_used[0] == [Tactics.Id.SUPPLY], "補給を使えなかった")
-		_expect(_scene.played.get(used, 0) == 1, "作戦を再生しなかった")
-		_expect(trooper.hp == trooper.max_hp() - 20 + Tactics.SUPPLY_HEAL, "補給で回復しなかった")
-		_expect(not _scene.tactic_buttons()[0][1], "使った札が、まだ押せる")
-		_expect(_scene.tactic_note_text().contains(Names.tactic_summary(Tactics.Id.SUPPLY)), "使った札の効果を知らせていない")
-		_expect(_scene.battle_log.entries.any(func(entry: RefCounted) -> bool: return (entry.text as String).contains(Names.tactic_summary(Tactics.Id.SUPPLY))),
-			"ログに、使った札の効果が無い")
-		_scene.press_tactic(1)
-		_scene.pass_confirm_guard()
-		_scene.press_tactic(1))
-	_scripted.append(func() -> void:
-		_expect(trooper.move_range() == move + Tactics.MARCH_MOVE and not trooper.acted, "強行軍が付いていない")
-		# 確かめの途中で番を終えたら、次のプレイヤーへ持ち越さない（次のプレイヤーも、1 回目は確かめるだけ）。
-		battle.tactics[Unit.Side.PLAYER1].append(Tactics.Id.WARD)
-		battle.tactics[Unit.Side.PLAYER2] = [Tactics.Id.SUPPLY, Tactics.Id.MARCH, Tactics.Id.RALLY]
-		_scene.press_tactic(2)
-		_scene.pass_confirm_guard()
-		_end_turn())
-	_scripted.append(func() -> void:
-		_scene.press_tactic(2)
-		_expect(battle.tactics_used[Unit.Side.PLAYER2].is_empty(), "前のプレイヤーの確かめを引き継いで、作戦を使った"))
 
 
 ## 必殺技。ゲージがいっぱいになるまでボタンは押せず、1 回目は確かめるだけで、もう一度押すと使う。使っても駒の行動は残る。

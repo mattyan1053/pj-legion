@@ -36,7 +36,6 @@ const FAMILIES := {
 	"item": [Equipment.Id, [""]],
 	"skill": [Skill.Id, ["", ".summary"]],
 	"ult": [Ult.Id, ["", ".summary"]],
-	"tactic": [Tactics.Id, ["", ".summary"]],
 	"status": [Status.Type, ["", ".summary"]],
 	"relic": [Relics.Id, ["", ".summary", ".short", ".effect"]],
 	"stage": [BoardGenerator.Stage, [""]],
@@ -47,7 +46,7 @@ const SCREEN_FAMILIES := {
 	"battle.goal.lose": [GameWonEvent.Reason, ["", ".last"]],
 	"stats.ending": [BattleStats.Ending, [""]],
 	"side.story": [{"PLAYER1": 0, "PLAYER2": 1}, [""]],
-	"setup.trial": [{"BATTERY": 0, "TACTICS": 1, "STRONGHOLD": 2}, ["", ".note"]],
+	"setup.trial": [{"BATTERY": 0, "STRONGHOLD": 1}, ["", ".note"]],
 }
 
 

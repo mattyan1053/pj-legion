@@ -84,11 +84,9 @@ var _library: RefCounted
 var _side_caption: Label
 var _trial_buttons: Dictionary[StringName, Button] = {}
 var _trial_note: Label
-## 試しの決まりの行の右の説明に出すもの: マウスを乗せている札・決まりの説明と、最後に押した札・決まりの説明（どちらも無ければ、入の決まりの説明）。
+## 試しの決まりの行の右の説明に出すもの: マウスを乗せている決まりの説明と、最後に押した決まりの説明（どちらも無ければ、入の決まりの説明）。
 var _hover_note := ""
 var _picked_note := ""
-var _tactic_boxes: Array[HBoxContainer] = []
-var _tactic_buttons: Array[Dictionary] = []
 var _first_gauge_note: Label
 var _start_button: Button
 var _back_button: Button
@@ -197,28 +195,6 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		var row := _add_row(side_column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)
 		(row.get_child(0) as Label).add_theme_font_override("font", UiTheme.FONT_BOLD)
-		# 作戦（試しの決まりが入のときだけ出す）: 札ごとのボタン。押してあるものが手札。
-		var tactic_box := HBoxContainer.new()
-		tactic_box.add_theme_constant_override("separation", 6)
-		var tactic_caption := _label(15)
-		tactic_caption.text = Text.t("setup.caption.tactics", {"count": Tactics.HAND_SIZE})
-		tactic_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		tactic_box.add_child(tactic_caption)
-		var tactic_buttons := {}
-		for id in Tactics.ALL:
-			var card := _button(Names.tactic(id))
-			card.toggle_mode = true
-			card.custom_minimum_size = Vector2(92.0, 40.0)
-			card.add_theme_font_size_override("font_size", 15)
-			var tactic_side := side
-			var tactic_id := id
-			card.pressed.connect(func() -> void: choose_tactic(tactic_side, tactic_id))
-			_note_on_hover(card, tactic_note(id))
-			tactic_box.add_child(card)
-			tactic_buttons[id] = card
-		row.add_child(tactic_box)
-		_tactic_boxes.append(tactic_box)
-		_tactic_buttons.append(tactic_buttons)
 		var deck_row := _caption_row(side_column, Text.t("setup.caption.deck"))
 		var picker := OptionButton.new()
 		picker.focus_mode = Control.FOCUS_NONE
@@ -379,18 +355,6 @@ func choose_trial(id: StringName, on: bool) -> void:
 	_show_choice()
 
 
-## 行 side の作戦に id を選ぶ（手札の枚数を超えたら、先に選んだものが外れる）。札の効果を、試しの決まりの行の右に出したままにする。
-func choose_tactic(side: Unit.Side, id: Tactics.Id) -> void:
-	_choice.pick_tactic(side, id)
-	_picked_note = tactic_note(id)
-	_show_choice()
-
-
-## 作戦の札の、名前と効果の文（「補給: 軍の全員が 8 回復」）。
-static func tactic_note(id: Tactics.Id) -> String:
-	return Text.t("setup.tactic.note", {"tactic": Names.tactic(id), "summary": Names.tactic_summary(id)})
-
-
 ## ボタン button にマウスを乗せている間、試しの決まりの行の右に note を出す。
 func _note_on_hover(button: Button, note: String) -> void:
 	button.mouse_entered.connect(func() -> void:
@@ -402,7 +366,7 @@ func _note_on_hover(button: Button, note: String) -> void:
 		_show_trial_note())
 
 
-## 試しの決まりの行の右の説明: 乗せている札・決まり、最後に押した札・決まり、入の決まりの順に、あるものを出す。
+## 試しの決まりの行の右の説明: 乗せている決まり、最後に押した決まり、入の決まりの順に、あるものを出す。
 func _show_trial_note() -> void:
 	if _hover_note != "":
 		_trial_note.text = _hover_note
@@ -423,7 +387,7 @@ func trial_note_text() -> String:
 
 ## 試しの決まりの、ひとことの説明。
 static func trial_note(id: StringName) -> String:
-	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "count": Tactics.HAND_SIZE, "holds": Stronghold.HOLDS_TO_WIN})
+	return Text.t("setup.trial.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "holds": Stronghold.HOLDS_TO_WIN})
 
 
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:
@@ -553,10 +517,6 @@ func _show_choice() -> void:
 	for trial: StringName in _trial_buttons:
 		(_trial_buttons[trial] as Button).set_pressed_no_signal(_choice.has_trial(trial))
 	_show_trial_note()
-	for side in 2:
-		_tactic_boxes[side].visible = _choice.has_trial(TrialRules.TACTICS)
-		for id: Tactics.Id in _tactic_buttons[side]:
-			(_tactic_buttons[side][id] as Button).set_pressed_no_signal(_choice.tactics[side].has(id))
 	# 人どうしなら、手番は選ばない（先手・後手の 2 人が交代する）。
 	for button: Button in _rows[&"human_side"].values():
 		button.disabled = not _choice.cpu_opponent

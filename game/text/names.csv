@@ -99,7 +99,6 @@ status.barrier,バリア
 status.aim,照準
 status.fatigue,反動
 status.assault,突撃
-status.march,強行軍
 relic.wisdom,英知の聖遺物
 relic.wisdom.summary,軍の全員の最大 HP +{amount}
 relic.courage,勇気の聖遺物
@@ -111,15 +110,6 @@ status.barrier.summary,次に受けるダメージを 1 回だけ防ぐ
 status.aim.summary,射程 +{range}。次の攻撃がクリティカル（動くと解ける）
 status.fatigue.summary,攻撃 -{penalty}
 status.assault.summary,移動 +{move}・攻撃 +{power}
-status.march.summary,移動 +{march}
-tactic.march,強行軍
-tactic.march.summary,このターンの間、軍の全員の移動力 +{move}
-tactic.supply,補給
-tactic.supply.summary,軍の全員が {heal} 回復
-tactic.rally,号令
-tactic.rally.summary,必殺技のゲージ +{gauge}%
-tactic.ward,加護
-tactic.ward.summary,将にバリア（次に受けるダメージを 1 回だけ防ぐ。{turns} ターン）
 relic.wisdom.short,英知
 relic.wisdom.effect,最大 HP +{amount}
 relic.courage.short,勇気
