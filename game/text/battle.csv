@@ -52,8 +52,6 @@ battle.log.heal,{healer}が{target}を {amount} 回復（HP {hp}）
 battle.log.healed.sanctuary,{unit}が聖域で {amount} 回復（HP {hp}）
 battle.log.healed.spring,{unit}が回復の泉で {amount} 回復（HP {hp}）
 battle.log.healed.regeneration,{unit}が再生で {amount} 回復（HP {hp}）
-battle.log.healed.tactic,{unit}が補給で {amount} 回復（HP {hp}）
-battle.log.tactic,{side}が作戦「{tactic}」を使った: {summary}
 battle.log.status,{unit}に{status}（{turns} ターン）
 battle.log.status_group,{status}（{turns} ターン）: {units}
 battle.log.status_self,{status}が付いた（{turns} ターン）
@@ -138,11 +136,6 @@ battle.menu.skill.used_up,スキル（使用済み）
 battle.menu.skill.unusable,スキル（使用不可）
 battle.menu.skill.uses_left,{skill}（あと {uses} 回）
 battle.ult_button.none,必殺技（なし）
-battle.tactic.caption,作戦
-battle.tactic.used,{tactic}（使用済み）
-battle.tactic.confirm,もう一度押して発動
-battle.tactic.note,{tactic}: {summary}
-battle.tactic.used_note,{side}の作戦「{tactic}」: {summary}
 battle.ult_button.confirm,もう一度押して発動
 battle.ult_button.ready,必殺技: {ult}（使用可）
 battle.ult_button.charging,必殺技: {ult}（{percent}%）
@@ -237,7 +230,6 @@ battle.pop.smoked,煙幕で防いだ
 battle.pop.refreshed,再行動
 battle.pop.skill_ready,スキル使用可
 battle.banner.ult,{side}　必殺技: {ult}!!
-battle.banner.tactic,{side}　作戦: {tactic}
 battle.banner.relic,{side}　{relic}を手に入れた（{effect}）
 battle.banner.stronghold_near,{side}　拠点の確保まで、あと 1 回
 battle.banner.phase,ターン {turn}　{side}の番
@@ -268,13 +260,6 @@ battle.pop.status_broken,{status}が解けた
 battle.pop.status_expired,{status}が消えた
 battle.pop.capture,占拠 {turns} / {needed}
 battle.pop.capture_broken,占拠が途切れた
-battle.notice.title,試しの決まり
-battle.notice.close,閉じる
-battle.notice.battery,砲台（橙の台）: 後衛が乗ると射程 +{range}
-battle.notice.tactics,作戦（右下の札）: 自分の番に 1 枚ずつ使える。札にマウスを乗せると効果が出る
-battle.notice.stronghold,拠点（旗の立つマス）: 将でない駒が乗ったまま番を終えると確保 +1、{needed} 回で勝ち。周り {radius} マスに敵がいる間は進まない
-battle.pop.march,移動 +{move}
-battle.pop.rally,ゲージ +{gauge}%
 battle.pop.stronghold,確保 {holds} / {needed}
 battle.pop.stronghold_lost,確保 0 に戻る
 battle.hud.relic_note,{relic}: {effect}

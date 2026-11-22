@@ -209,37 +209,19 @@ func test_the_battery_row_turns_the_trial_on_and_off() -> void:
 	panel.free()
 
 
-func test_the_tactic_cards_show_only_with_the_trial_and_keep_two() -> void:
-	var panel := MatchSetupPanel.new()
-	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
-	panel.open(MatchChoice.new())
-	assert_eq(panel.trial_note(TrialRules.BATTERY), "砲台: 後衛が乗ると射程 +%d" % MapObject.BATTERY_RANGE)
-	panel.choose_trial(TrialRules.TACTICS, true)
-	panel.choose_tactic(Unit.Side.PLAYER1, Tactics.Id.WARD)
-	assert_eq(panel.current_choice().tactics[0].size(), Tactics.HAND_SIZE)
-	assert_true(panel.current_choice().tactics[0].has(Tactics.Id.WARD))
-	assert_true(panel.current_choice().has_trial(TrialRules.TACTICS))
-	panel.free()
-
-
-
-## 札を選ぶと、その札の効果が試しの決まりの行の右に出る。欄の大きさは中身で変わらない（木に入れて測る）。
-func test_picking_a_tactic_card_shows_its_effect_in_a_fixed_note() -> void:
+## 試しの決まりを押すと、その説明が行の右に出る。欄の大きさは中身で変わらない（木に入れて測る）。
+func test_the_trial_note_keeps_its_size() -> void:
 	var panel := MatchSetupPanel.new()
 	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
 	panel.open(MatchChoice.new())
 	await settle(panel)
 	var before := panel._trial_note.size
 	assert_eq(before, MatchSetupPanel.TRIAL_NOTE_SIZE)
-	panel.choose_trial(TrialRules.TACTICS, true)
-	assert_eq(panel.trial_note_text(), panel.trial_note(TrialRules.TACTICS))
-	for id: Tactics.Id in Tactics.ALL:
-		panel.choose_tactic(Unit.Side.PLAYER2, id)
-		await settle(panel)
-		assert_eq(panel.trial_note_text(), "%s: %s" % [Names.tactic(id), Names.tactic_summary(id)])
-		assert_eq(panel._trial_note.size, before, "%s の効果で欄の大きさが変わった" % Names.tactic(id))
 	for trial: StringName in TrialRules.ALL:
 		panel.choose_trial(trial, true)
+		await settle(panel)
+		assert_eq(panel.trial_note_text(), panel.trial_note(trial))
+		assert_eq(panel._trial_note.size, before, "%s で欄の大きさが変わった" % trial)
 	panel._picked_note = ""
 	panel._show_trial_note()
 	await settle(panel)

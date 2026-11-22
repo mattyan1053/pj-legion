@@ -153,17 +153,6 @@ const ULT_USES := {
 ## 総員突撃: まだ行動していない戦う駒のうち、伸びた移動力で敵の駒に攻撃が届きそうな駒が、この数だけいれば使う
 ## （戦う駒がこれより少なければ、その全員）。
 const ASSAULT_MIN_UNITS := 3
-## 作戦（docs/tactics.md）を使うかを決めるメソッド（札 -> メソッドの名前）と、その調整値。
-const TACTIC_USES := {
-	Tactics.Id.MARCH: &"_march_pays",
-	Tactics.Id.SUPPLY: &"_supply_pays",
-	Tactics.Id.RALLY: &"_rally_pays",
-	Tactics.Id.WARD: &"_ward_pays",
-}
-const MARCH_MIN_UNITS := 2
-const SUPPLY_MIN_HEAL := 20
-const RALLY_BY_TURN := 12
-const WARD_MIN_DANGER := 8
 ## 魔力解放: まだ行動していない駒のうち、クールダウンがこのターン数以上残っていて、敵の駒がこの距離の中にいる駒が、
 ## ERUPTION_MIN_UNITS 体いれば使う（スキルを持つ駒がこれより少なければ、その全員）。
 const ERUPTION_MIN_COOLDOWN := 2
@@ -280,10 +269,6 @@ func _decide() -> BattleAction:
 	var step := _next_route_step(acting)
 	if step != null:
 		return step
-	if acting == null:
-		var tactic := _tactic_to_use()
-		if tactic != null:
-			return tactic
 	if Ults.can_use(_battle) and call(ULT_USES[Ults.of(_battle, _me).id()]):
 		return UseUltAction.new()
 	if acting != null:
@@ -411,64 +396,6 @@ func _nearest_foe_distance(unit: Unit) -> int:
 		if other.side == _foe:
 			nearest = mini(nearest, Combat.distance(unit.cell, other.cell))
 	return nearest
-
-
-## 手札の作戦（docs/tactics.md）のうち、いま使うのが得なものを使う行動。無ければ null。手札の無い対戦では、いつも null。
-func _tactic_to_use() -> BattleAction:
-	for id: Tactics.Id in Tactics.hand(_battle, _me):
-		if Tactics.can_use(_battle, id) and call(TACTIC_USES[id]):
-			return UseTacticAction.new(id)
-	return null
-
-
-## 強行軍: まだ動いていない戦う駒のうち、いまは届かず、伸びた移動力なら敵に届く駒が MARCH_MIN_UNITS 体以上（戦う駒がそれより少なければ全員）。
-func _march_pays() -> bool:
-	var fighters := 0
-	var gained := 0
-	var lone := not _has_fighters()
-	for unit in _battle.units:
-		if unit.side != _me:
-			continue
-		var role := UnitKind.role(unit.kind)
-		if role == UnitKind.Role.HEALER or (unit.kind == UnitKind.Id.KING and not lone):
-			continue
-		fighters += 1
-		if unit.acted or unit.has_moved:
-			continue
-		var reach := unit.move_range() + Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
-		var apart := _nearest_foe_distance(unit)
-		if apart > reach and apart <= reach + Tactics.MARCH_MOVE:
-			gained += 1
-	return gained > 0 and gained >= mini(MARCH_MIN_UNITS, fighters)
-
-
-## 補給: 回復する HP の合計が SUPPLY_MIN_HEAL 以上（駒が少なければ、全員が 1 回ぶんずつ減っているとき）。
-func _supply_pays() -> bool:
-	var total := 0
-	var units := 0
-	for unit in _battle.units:
-		if unit.side == _me:
-			units += 1
-			total += Tactics.supply_heal(unit)
-	return total >= mini(SUPPLY_MIN_HEAL, units * Tactics.SUPPLY_HEAL)
-
-
-## 号令: たまるぶんでゲージがいっぱいになるとき。RALLY_BY_TURN ターンからは、持ち越さずに使う。
-func _rally_pays() -> bool:
-	if Ults.of(_battle, _me) == null or Ults.is_ready(_battle, _me):
-		return false
-	return Ults.gauge(_battle, _me) + Tactics.RALLY_GAIN >= Ults.GAUGE_MAX or _battle.turn >= RALLY_BY_TURN
-
-
-## 加護: 将がバリアを持たず、いまのマスで次の相手の番に WARD_MIN_DANGER 以上のダメージを受けうるとき。
-func _ward_pays() -> bool:
-	for unit in _battle.units:
-		if unit.side == _me and unit.kind == UnitKind.Id.KING:
-			if Statuses.has(unit, Status.Type.BARRIER):
-				return false
-			_build_threats()
-			return _threat_at(unit, unit.cell, 0) >= WARD_MIN_DANGER
-	return false
 
 
 ## 総員突撃を、いま使うか。まだ行動していない戦う駒（前衛・後衛・奇襲。1 体もいなければ将）のうち、
