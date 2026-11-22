@@ -221,7 +221,7 @@ func card_status(episode: Episode) -> String:
 
 
 ## 下の欄の文: いま雇える駒、持たせられる持ち物、部隊のコストの上限（話をクリアすると増える）。
-## 最後に保存した所の文（「最後に保存: 日時」）。
+## 最後にオートセーブした時刻の文（「最後のオートセーブ: 日時」）。
 func saved_text() -> String:
 	return App.last_saved_text(context.slots)
 

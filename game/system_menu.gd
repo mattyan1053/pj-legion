@@ -138,7 +138,7 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 ## メニューを開く。items は [名前, 文字, 確かめの文（要らなければ空）] の列（上から）。
 ## 名前が ITEM_RESUME の項目は閉じるだけ、ITEM_SETTINGS の項目はオプションの画面を開く。ほかは item_chosen で知らせる。
 ## settings_only が真なら、メニューを出さずにオプションの画面だけを開く（閉じると、メニューへは戻らずに閉じる）。
-## note は見出しの下に小さく出す文（ストーリーの「最後に保存: …」。空なら出さない）。
+## note は見出しの下に小さく出す文（ストーリーの「最後のオートセーブ: …」。空なら出さない）。
 func open(items: Array, settings_only := false, note := "") -> void:
 	_settings_only = settings_only
 	_items = items.duplicate(true)
