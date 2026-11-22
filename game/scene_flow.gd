@@ -37,7 +37,7 @@ const SCENES := {
 	TITLE: {
 		"script": "res://game/title_screen.gd",
 		"next": {&"start": MAP_SELECT, &"story": SLOTS},
-		"music": &"menu",
+		"music": &"title",
 	},
 	SLOTS: {
 		"script": "res://game/slot_screen.gd",
