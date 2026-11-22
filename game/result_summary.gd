@@ -14,7 +14,7 @@ enum Tone { VICTORY, DEFEAT, SIDE, DRAW }
 ## 勝敗の見出し（VICTORY / DEFEAT / DRAW、人どうしは「<勝った側> の勝ち」「引き分け」）。
 var headline := ""
 var tone := Tone.DRAW
-## 見出しの下の 1 行（決着の理由。CPU 戦は、どちらが勝ったかも添える）。
+## 見出しの下の 1 行（決着の理由。CPU 戦は、どちらが勝ったかも添える。ストーリーは遊ぶ人の側から「敗北　将が倒れた」）。
 var reason := ""
 ## 勝った陣営（引き分けなら NEUTRAL）。見出しの色（Tone.SIDE）に使う。
 var winner := Unit.Side.NEUTRAL
@@ -41,10 +41,30 @@ var detail_head := ""
 var tables: Array[Dictionary] = []
 
 
+## ストーリーで負けたときの理由（遊ぶ人の側から。勝ったときは battle_log.gd の WIN_TEXTS が、もう遊ぶ人の側から書いてある）。
+const LOSS_TEXTS := {
+	GameWonEvent.Reason.KING_DEFEATED: "result.lost.king_defeated",
+	GameWonEvent.Reason.HQ_CAPTURED: "result.lost.hq_captured",
+	GameWonEvent.Reason.TURNS_HELD: "result.lost.turns_held",
+	GameWonEvent.Reason.ROUTED: "result.lost.routed",
+	GameWonEvent.Reason.BOSS_SLAIN: "result.lost.boss_slain",
+	GameWonEvent.Reason.STRONGHOLD_HELD: "result.lost.stronghold_held",
+}
+
+
+## ストーリーの決着の 1 行（遊ぶ人 human_side の側から）: 「勝利　敵の将を倒した」「敗北　将が倒れた」。
+## why は決着の理由（GameWonEvent.Reason）、win_text は勝った側から書いた理由の文。
+static func story_reason(won: bool, why: GameWonEvent.Reason, win_text: String) -> String:
+	if won:
+		return Text.t("result.story.won", {"reason": win_text})
+	return Text.t("result.story.lost", {"reason": Text.t(LOSS_TEXTS[why])})
+
+
 ## stats: 決着した対戦の戦績。draw なら引き分けで winner は見ない。reason: 決着の理由の文。
 ## against_cpu: CPU との対戦か。human_side: CPU 戦で人が動かす側。side_names: プレイヤー番号ごとの名前。
+## story_reason_text: ストーリーなら、遊ぶ人の側から書いた決着の 1 行（story_reason）。空なら、CPU 戦は「<勝った側>の勝ち　理由」。
 static func of(stats: BattleStats, draw: bool, winner_side: Unit.Side, reason_text: String, against_cpu: bool,
-		human_side: Unit.Side, side_names: Array[String], map_name: String) -> RefCounted:
+		human_side: Unit.Side, side_names: Array[String], map_name: String, story_reason_text := "") -> RefCounted:
 	var summary := new()
 	summary.winner = Unit.Side.NEUTRAL if draw else winner_side
 	if against_cpu:
@@ -63,7 +83,9 @@ static func of(stats: BattleStats, draw: bool, winner_side: Unit.Side, reason_te
 		summary.headline = Text.t("stats.ending.draw") if draw else Text.t("result.won", {"side": side_names[winner_side]})
 		summary.tone = Tone.DRAW if draw else Tone.SIDE
 	summary.reason = reason_text
-	if against_cpu and not draw:
+	if story_reason_text != "":
+		summary.reason = story_reason_text
+	elif against_cpu and not draw:
 		summary.reason = Text.t("result.won_reason", {"side": side_names[winner_side], "reason": reason_text})
 	summary.focus_name = side_names[summary.focus_side]
 
