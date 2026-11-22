@@ -2411,6 +2411,10 @@ func _visit_story(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TALK, "決着の画面の「次へ」で、あとの会話へ進まない")
 	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.after.size() + Story.unlocked_before(episode).news_of(episode).size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
+	# 背景の盤に、勝ったときに生き残っていた駒が立つ。
+	var ended: Battle = app.context.run.data()["battle"].ended_battle
+	var survivors := ended.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1).size() if ended != null else -1
+	_expect(talk.backdrop_units()[0] == survivors, "あとの会話の背景に、生き残った味方が立たない: %s / %d" % [talk.backdrop_units(), survivors])
 	if not episode.unlock_kinds.is_empty():
 		talk.press_skip()
 		_expect(talk.line_index() == episode.after.size() and talk.speaker() == Story.notice_name()
@@ -2698,6 +2702,9 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	if talk_first:
 		_expect(app.current_id() == SceneFlow.TALK, "出撃しても、対戦の前の会話へ進まない")
 		if app.current_id() == SceneFlow.TALK:
+			# 背景の盤に、初期位置の味方と、話の並びの敵が立つ。
+			var standing: Array[int] = app.current_scene().backdrop_units()
+			_expect(standing[0] == chosen.entries.size() + 1 and standing[1] > 0, "対戦の前の会話の背景に、初期位置の駒が立たない: %s" % [standing])
 			if on_talk.is_valid():
 				await on_talk.call(app.current_scene())
 			app.current_scene().press_skip()
