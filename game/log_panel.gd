@@ -8,6 +8,7 @@ extends CanvasLayer
 ## - 行は、新しいほうから CHUNK 行ずつ作る。いちばん上までさかのぼると、その前の CHUNK 行を足す（長い対戦でも、開くのが重くならない）。
 
 const Text := preload("res://game/text.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const BattleLog := preload("res://game/battle_log.gd")
@@ -320,9 +321,7 @@ func _on_overlay_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_open() or not _overlays.is_top(self):
 		return
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		close()
 	elif event is InputEventKey:

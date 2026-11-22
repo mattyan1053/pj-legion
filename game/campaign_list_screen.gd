@@ -174,9 +174,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if _key_index >= 0 and CardKeys.is_pointer_move(event):
 		select_by_key(-1)  # マウスに持ち替えた（キーで送ってカードがマウスの下へ来ただけでは、やめない）
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		context.play_sound(&"ui_back")
 		press_back()

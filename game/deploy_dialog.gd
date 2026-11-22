@@ -4,6 +4,7 @@ extends Control
 ## 「おまかせ」でいつもの置き方へ戻す。「決定」・右クリック・Esc で閉じる（右クリックは、駒を選んでいれば選ぶのをやめるだけ）。
 
 const Text := preload("res://game/text.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const DeployMap := preload("res://game/deploy_map.gd")
@@ -146,9 +147,7 @@ func _exit_tree() -> void:
 func _input(event: InputEvent) -> void:
 	if not visible or _overlays == null or not _overlays.is_top(self):
 		return
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		if not _map.cancel():
 			close_dialog()

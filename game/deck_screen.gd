@@ -13,6 +13,7 @@ extends Node
 ##   いちばん外の「戻る」は Run.NEXT（流れの次の場面 = 出撃準備・対戦設定へ戻る）。寄り道の間に取っておいた部隊を、戻った先で選ぶ。
 
 const Text := preload("res://game/text.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -198,9 +199,7 @@ func losing_note() -> String:
 func _input(event: InputEvent) -> void:
 	if context.overlays.is_open():
 		return
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		press_back()
 

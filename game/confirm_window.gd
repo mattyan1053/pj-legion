@@ -10,6 +10,7 @@ extends Control
 ##   window.ask("データ 1 を削除しますか？", "削除したデータは元に戻せません。", "削除", func() -> void: ...)
 
 const Text := preload("res://game/text.gd")
+const CardKeys := preload("res://game/card_keys.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
@@ -124,9 +125,7 @@ func close() -> void:
 func _input(event: InputEvent) -> void:
 	if not visible or (overlays != null and not overlays.is_top(self)):
 		return
-	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
-	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
-	if right or escape:
+	if CardKeys.is_back(event):
 		get_viewport().set_input_as_handled()
 		cancel()
 

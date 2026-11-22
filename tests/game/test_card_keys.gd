@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 横に並ぶカードをキーボードで選ぶ決まり（game/card_keys.gd）。
+## 横に並ぶカードをキーボードで選ぶ決まりと、1 つ戻る操作（game/card_keys.gd）。
 
 const CardKeys := preload("res://game/card_keys.gd")
 
@@ -46,3 +46,21 @@ func test_only_a_real_pointer_move_counts_as_switching_to_the_mouse() -> void:
 	moved.relative = Vector2(3, 0)
 	assert_true(CardKeys.is_pointer_move(moved))
 	assert_false(CardKeys.is_pointer_move(_key(KEY_LEFT)))
+
+
+## 1 つ戻る操作は、右クリックを押したときと Esc を押したとき（どの画面・窓も同じ決まり）。
+func test_right_click_and_escape_go_back() -> void:
+	var click := func(button: MouseButton, pressed: bool) -> InputEventMouseButton:
+		var event := InputEventMouseButton.new()
+		event.button_index = button
+		event.pressed = pressed
+		return event
+	assert_true(CardKeys.is_back(click.call(MOUSE_BUTTON_RIGHT, true)))
+	assert_false(CardKeys.is_back(click.call(MOUSE_BUTTON_RIGHT, false)), "離したときは戻らない")
+	assert_false(CardKeys.is_back(click.call(MOUSE_BUTTON_LEFT, true)))
+	assert_true(CardKeys.is_back(_key(KEY_ESCAPE)))
+	assert_false(CardKeys.is_back(_key(KEY_ESCAPE, false)))
+	var held := _key(KEY_ESCAPE)
+	held.echo = true
+	assert_false(CardKeys.is_back(held), "押しっぱなしの繰り返しは数えない")
+	assert_false(CardKeys.is_back(_key(KEY_ENTER)))
