@@ -1894,11 +1894,11 @@ func _leave_battle(app: Node) -> void:
 	_scene.set_opponent(true)
 	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
-	# ウィンドウの ×: 対戦の途中なので、すぐには閉じずに、何が残るかを書いて確かめる。確かめている間は時間を止める。キャンセルで続く。
+	# ウィンドウの ×: すぐには閉じずに確かめる（どの画面でも同じ文）。確かめている間は時間を止める。キャンセルで続く。
 	app.request_close()
 	var quit_window: Node = app.quit_window
-	_expect(quit_window.is_open() and quit_window.question().contains("対戦の途中です。") and quit_window.question().contains("この対戦は残りません"),
-		"対戦の途中にウィンドウの × を押しても、何が残るかを書いて確かめない: %s" % quit_window.question())
+	_expect(quit_window.is_open() and quit_window.question().contains("セーブしていない内容は失われます。"),
+		"対戦の途中にウィンドウの × を押しても、確かめない: %s" % quit_window.question())
 	_expect(app.context.overlays.pauses() and Engine.time_scale == 0.0, "閉じる確かめの間、対戦の時間（再生）が止まらない")
 	quit_window.cancel()
 	_expect(not quit_window.is_open() and _scene.in_progress() and not app.context.overlays.is_open() and Engine.time_scale > 0.0,
@@ -2446,10 +2446,13 @@ func _visit_story(app: Node) -> void:
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "あとの会話の「話の一覧へ」で、話の一覧へ戻らない")
 	list = app.current_scene()
-	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後に保存した所が、話の一覧に出る。
+	# オートセーブ: 話の流れを終えて話の一覧へ戻った所で書き、保存の印を出す。最後にオートセーブした時刻が、話の一覧に出る。
 	_expect(app.save_mark.shown_count > saves_before and not app.context.slots.has_unsaved(), "話をクリアして話の一覧へ戻っても、保存しない（か、保存の印が出ない）")
-	_expect(list.saved_text() != "最後に保存: 未保存" and list.saved_text().begins_with("最後に保存: "), "話の一覧に、最後に保存した所が出ない")
-	_expect(app.quit_note() == "", "保存したあとの話の一覧で、ウィンドウを閉じる前に確かめる: %s" % app.quit_note())
+	_expect(list.saved_text() != "最後のオートセーブ: なし" and list.saved_text().begins_with("最後のオートセーブ: "), "話の一覧に、最後にオートセーブした時刻が出ない")
+	# ウィンドウの ×: 保存したあとの話の一覧でも、確かめる（どの画面でも出す）。
+	app.request_close()
+	_expect(app.quit_window.is_open(), "話の一覧でウィンドウの × を押しても、確かめない")
+	app.quit_window.cancel()
 	_expect(list.card_status(episode) == "クリア済み", "クリアした話のカードに、済みの印が無い")
 	if Story.military().episodes.size() > first + 1:
 		_expect(list.is_card_enabled(Story.military().episodes[first + 1]), "前の話をクリアしたのに、次の話を選べない")
@@ -2711,9 +2714,8 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
-	# ウィンドウを閉じる前の確かめ: ストーリーの対戦の途中は、最後に保存した所から再開になることを書く。
-	_expect(app.quit_note().begins_with("対戦の途中です。") and (app.quit_note().contains("最後に保存した所（") or app.quit_note().contains("はじめから")),
-		"ストーリーの対戦の途中で閉じる確かめに、何が残るかが無い: %s" % app.quit_note())
+	# ストーリーの間は、陣営を「味方」「敵」と呼ぶ（「CPU（赤）」「プレイヤー1」と呼ばない）。
+	_expect(Names.side(Unit.Side.PLAYER2) == "敵" and Names.side_word(Unit.Side.PLAYER1) == "味方", "話の対戦で、陣営が「味方」「敵」と呼ばれない")
 	_expect(screen.battle.board.size == episode.map.make_board().size, "話の対戦が、話のマップで始まらない")
 	var placed := 0
 	for unit: Unit in screen.battle.units:
