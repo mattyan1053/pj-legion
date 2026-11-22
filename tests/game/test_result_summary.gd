@@ -62,6 +62,7 @@ func test_lines_have_the_stage_turns_kills_and_relics() -> void:
 		["中立撃破", "3 体"],
 		["聖遺物", Names.relic(Relics.Id.WISDOM)],
 	], "撃破は、敵のプレイヤーの駒と中立の駒（中ボスを含む）を分けて出す")
+	assert_eq(summary.lines.size(), ResultSummary.MAX_LINES, "全部の行が出る戦績が、画面の取る行の数（MAX_LINES）")
 	assert_eq(summary.mvp_name, "%s Lv1" % Names.kind(UnitKind.Id.SNIPER))
 	assert_eq([summary.mvp_damage, summary.mvp_kills], [42, 2])
 	assert_true(summary.detail.contains("赤: 与えたダメージ"), "詳しい戦績は両方の陣営")

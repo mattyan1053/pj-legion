@@ -15,6 +15,8 @@ const CpuGame := preload("res://tests/support/cpu_game.gd")
 const Story := preload("res://game/story.gd")
 const TalkScreen := preload("res://game/talk_screen.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
+const ResultScreen := preload("res://game/result_screen.gd")
+const ResultSummary := preload("res://game/result_summary.gd")
 
 
 func _frames(count: int) -> void:
@@ -251,3 +253,23 @@ func test_name_plates_fit_every_speaker() -> void:
 		assert_true(talk <= TalkScreen.PLATE_WIDTH, "会話の名前の札に入らない: %s（要る幅 %d）" % [speaker, talk])
 		var cue := UiTheme.FONT_BOLD.get_string_size(speaker, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 20.0
 		assert_true(cue <= BattleTalk.PLATE_WIDTH, "途中の台詞の名前の札に入らない: %s（要る幅 %d）" % [speaker, cue])
+
+
+## 決着の画面の戦績の枠: 行の少ない戦績（中立撃破も聖遺物も無い）でも、行の多い戦績と同じ大きさ。
+func test_result_stats_keep_their_size_whatever_the_lines() -> void:
+	var screen := ResultScreen.new()
+	await settle(screen)
+	var sizes: Array[Vector2] = []
+	for count: int in [2, ResultSummary.MAX_LINES, 3]:
+		var summary := ResultSummary.new()
+		summary.headline = "VICTORY"
+		summary.focus_name = "MILITARY"
+		for i in count:
+			summary.lines.append(["項目 %d" % i, "%d 体" % (i * 7)])
+		screen.present(summary)
+		screen.skip()
+		await settle(screen)
+		sizes.append(screen._stats_panel.size)
+	assert_eq(sizes[1], sizes[0], "戦績の行が増えると、枠が伸びた")
+	assert_eq(sizes[2], sizes[0], "戦績の行が減ると、枠が縮んだ")
+	screen.free()

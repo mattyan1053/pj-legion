@@ -23,6 +23,8 @@ var focus_side := Unit.Side.PLAYER1
 var focus_name := ""
 ## 戦績の行（[項目, 値] の列。上から順に出す）。
 var lines: Array = []
+## 戦績の行の数の上限（マップ・経過ターン・敵軍撃破・中立撃破・聖遺物）。画面は、いつもこの数の行の高さを取る（枠を中身で変えない）。
+const MAX_LINES := 5
 ## MVP（いなければ mvp_name が空）。
 var mvp_name := ""
 var mvp_damage := 0

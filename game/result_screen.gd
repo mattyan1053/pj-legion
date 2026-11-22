@@ -217,6 +217,15 @@ func present(summary: RefCounted) -> void:
 		_stats_grid.add_child(name_label)
 		_stats_grid.add_child(value_label)
 		_stat_rows.append([name_label, value_label])
+	# 行の少ない戦績でも、上限の行の数ぶんの高さを取る（空の行で埋める。戦績の枠の大きさを中身で変えない）。
+	for i in range(summary.lines.size(), ResultSummary.MAX_LINES):
+		var name_label := _label(18)
+		var value_label := _label(STAT_FONT)
+		value_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
+		value_label.text = " "
+		_stats_grid.add_child(name_label)
+		_stats_grid.add_child(value_label)
+		_stat_rows.append([name_label, value_label])
 	_mvp_icon.visible = summary.mvp_name != ""
 	if summary.mvp_name != "":
 		_mvp_icon.set_kind(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved, _king_look(summary.mvp_side))
