@@ -226,6 +226,7 @@ const SCENES := {
 	"story_drums_battle": "ストーリー: 「骨の太鼓」で、骸骨鼓手が骨太鼓を鳴らしたあとの人の番（周りの骨に突撃。突撃の付いた骸骨兵にマウスを乗せた駒の情報。上の帯の札は「勝ち: 敵の全滅」）",
 	"story_monster_sortie": "ストーリー: 魔物の群れの話（軍に属さない敵）の出撃準備（敵の部隊は「軍なし」の骸骨）",
 	"story_sortie_detail": "ストーリー: 出撃準備で、味方の駒のアイコン（持ち物つき）を押して詳しい説明を開いたところ",
+	"story_sortie_hover": "ストーリー: 出撃準備の初期位置で、名前のいちばん長い駒にマウスを乗せたところ（駒の欄の中身が替わっても、板もまわりも動かない。story_sortie と並べる）",
 	"story_sortie_placed": "ストーリー: 出撃準備の初期位置で、駒を 1 体動かし、もう 1 体を選んでいるところ（「おまかせ」が押せる）",
 	"story_monster_detail": "ストーリー: 魔物の群れの話の出撃準備で、敵の骸骨のアイコンを押して詳しい説明を開いたところ",
 	"story_monster_start": "ストーリー: 魔物の群れの話の対戦の始め（古戦場。骸骨兵・骸骨射手・骸骨重兵の群れに寄って見る）",
@@ -2729,6 +2730,22 @@ func _scene_story_monster_detail() -> bool:
 		return false
 	var detail: Control = _app.current_scene().press_face(Unit.Side.PLAYER2, 2)
 	return detail != null and detail.visible
+
+
+func _scene_story_sortie_hover() -> bool:
+	if not await _scene_story_sortie():
+		return false
+	var deploy: Control = _app.current_scene().deploy_map()
+	var longest := Vector2i(-1, -1)
+	var length := 0
+	for cell: Vector2i in deploy.unit_cells():
+		deploy.hover_cell(cell)
+		var name: String = _app.current_scene().deploy_note().shown_name()
+		if name.length() > length:
+			length = name.length()
+			longest = cell
+	deploy.hover_cell(longest)
+	return length > 0
 
 
 func _scene_story_sortie_placed() -> bool:

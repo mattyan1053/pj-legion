@@ -8,6 +8,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const DeployMap := preload("res://game/deploy_map.gd")
 const DeployNote := preload("res://game/deploy_note.gd")
+const Steady := preload("res://game/steady.gd")
 
 ## 閉じた（決めた置き方は offsets()）。
 signal closed
@@ -59,6 +60,9 @@ func setup(overlays: RefCounted) -> void:
 	map_room.add_child(_map)
 	# 選んでいる駒（マウスを乗せている駒）の名前・役割・能力値（deploy_note.gd）。
 	_note = DeployNote.new()
+	# 欄は、マップの広さに依らず同じ大きさで真ん中に置く（docs/ui-theme.md の「枠の大きさ」）。
+	_note.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	Steady.mark(_note, "placement.unit_note")
 	column.add_child(_note)
 	_note.watch(_map)
 	var note := Label.new()
