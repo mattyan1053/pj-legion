@@ -16,6 +16,8 @@ const TURN_SPEED := 0.05
 const LOOK_SEED := 7
 const DISTANCE := 30.0
 const PITCH := 38.0
+## 駒を立たせるときに、見る中心を盤の真ん中から味方の本陣へ寄せる割合。
+const TOWARD_FRIENDS := 0.45
 
 const UnitView := preload("res://game/unit_view.gd")
 
@@ -51,6 +53,10 @@ func _ready() -> void:
 	add_child(_rig)
 	_rig.controls_enabled = false  # 背景なので、キーとホイールでは動かさない
 	_rig.position = BoardView.cell_center(board.size / 2)
+	if _shown != null:
+		# 駒を立たせるときは、見る中心を味方の本陣のほうへ寄せる（手前の味方が、下の文の枠の後ろに隠れない）。
+		var toward := BoardView.cell_center(board.hq_cells[Unit.Side.PLAYER1]) - _rig.position
+		_rig.position += toward * TOWARD_FRIENDS
 	_rig.bounds = Rect2(Vector2.ZERO, Vector2(board.size))
 	_rig._target_distance = DISTANCE
 	_rig.set_pitch(PITCH)
