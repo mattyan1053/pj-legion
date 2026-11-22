@@ -5,7 +5,7 @@
 テスト: `tests/game/test_story.gd`、`tests/game/test_episode_data.gd`（物語と話のファイルの書き間違い）、`tests/game/test_battle_cues.gd`（対戦の途中の会話）、`tests/game/test_placement_choice.gd`（出撃準備で決めた初期位置）、`tests/game/test_card_keys.gd`、`tests/tools/test_story_script.gd`（目次）、自動の対戦の `story`（下の「検査」）。
 
 タイトルの「ストーリー」から物語を選び、その物語の話の一覧へ進み、選んだ話を「出撃準備 → 会話 → 対戦 → 会話」と通す。
-世界と登場人物は、Issue #49 の案 A「空の縫い目」（下の「世界と登場人物」）。人間が「一旦その内容でやってみてもいい」と言った案で、遊んで合わなければ替える。
+世界は `docs/world.md`、登場人物は下の「世界と登場人物」。
 会話を話の順に読むための目次は `game/story/README.md`（下の「台本」）。
 
 ## 物語
