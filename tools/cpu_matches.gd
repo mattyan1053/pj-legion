@@ -421,7 +421,11 @@ func _initialize() -> void:
 			setup.rules.erase(OptionalRules.STRONGHOLD)
 		var battle := setup.create_battle()
 		if trial_stronghold:
-			_arm_trial_stronghold(battle, args["stronghold"], setup.battle_seed)
+			if not _arm_trial_stronghold(battle, args["stronghold"], setup.battle_seed):
+				# 置けない局を拠点なしのまま数えると、違う決まりの局が混ざるので、集計ごと止める。
+				printerr("--stronghold の場所に拠点を置けない（種 %d）: %s" % [setup.battle_seed, args["stronghold"]])
+				quit(1)
+				return
 		if args.has("relic"):
 			var relic := Relics.Id.COURAGE if args["relic"] == "courage" else Relics.Id.WISDOM
 			var gauge := battle.ult_gauge[Unit.Side.PLAYER1]
@@ -922,7 +926,8 @@ static func _deck_text(deck: Deck) -> String:
 
 ## --stronghold: 拠点の場所を、盤の出どころの決めた場所の代わりに試す（測るためだけ）。値は「列,行」（そのマス）か「lean:K」（道のりの寄せ K。
 ## Board.stronghold_lean）。MatchSetup.create_battle が拠点を置くのと同じ順（砲台のあと）に置き、両方の勝ち方に拠点を足す。
-static func _arm_trial_stronghold(battle: Battle, value: String, battle_seed: int) -> void:
+## 置けなければ偽（拠点は置かない）。
+static func _arm_trial_stronghold(battle: Battle, value: String, battle_seed: int) -> bool:
 	var board := battle.board
 	if value.begins_with("lean:"):
 		board.stronghold_site = Board.NO_CELL
@@ -932,10 +937,10 @@ static func _arm_trial_stronghold(battle: Battle, value: String, battle_seed: in
 		board.stronghold_site = Vector2i(parts[0].to_int(), parts[1].to_int())
 	Stronghold.arm(board, battle_seed)
 	if board.stronghold_cell == Board.NO_CELL:
-		printerr("--stronghold の場所に拠点を置けない: %s" % value)
-		return
+		return false
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
+	return true
 
 
 ## `--名前=値` の引数（`--` のあとに書いたもの）。
