@@ -123,8 +123,8 @@ const CRUISE_PENALTY := 0.5
 const STAND_OFF_VALUE := 0.5
 ## 砲台に立つ価値と、砲台から 1 歩離れるごとに引く量、引かれる歩数、砲台の射程の先に相手を数える広さ。
 const BATTERY_VALUE := 25.0
-const BATTERY_STEP_COST := 3.0
-const BATTERY_STEPS := 8
+const BATTERY_STEP_COST := 1.5
+const BATTERY_STEPS := 16
 const BATTERY_WATCH := 6
 ## 回復役が、減っている味方を探す範囲（歩数）。
 ## 拠点（docs/map-objects.md の「拠点」。docs/cpu-ai.md の「拠点」）。
