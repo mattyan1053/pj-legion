@@ -29,6 +29,7 @@ const SHOW_MINIMAP := &"show_minimap"
 const FULLSCREEN := &"fullscreen"
 const UNIT_LOOK := &"unit_look"
 const SCREEN_EFFECTS := &"screen_effects"
+const PIECE_OUTLINE := &"piece_outline"
 
 ## 項目（画面に並べる順）。
 ## - key: 名前（ファイルにも、この名前で書く）。section: 画面の区分の見出し。label: 項目の名前。note: 短い説明。
@@ -87,6 +88,12 @@ const ITEMS: Array[Dictionary] = [
 		"key": SCREEN_EFFECTS, "section": "settings.section.screen", "label": "settings.screen_effects",
 		"note": "settings.screen_effects.note",
 		"kind": Kind.TOGGLE, "default": true,
+	},
+	{
+		# 盤の駒・会話の姿の縁取り（piece_style.gd）。地面や範囲の色の上で、駒の形を見分けやすくする。
+		"key": PIECE_OUTLINE, "section": "settings.section.screen", "label": "settings.piece_outline",
+		"note": "settings.piece_outline.note",
+		"kind": Kind.TOGGLE, "default": false,
 	},
 	{
 		# 値は unit_looks.gd の ORDER の番号（組の名前ではなく番号で取っておく。CHOICE は数の値だけを持つ）。
