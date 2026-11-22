@@ -10,7 +10,7 @@
 
 | ファイル | 使う場面 | 元の曲（配布元のページ = 試聴できる） | 元のファイル |
 | --- | --- | --- | --- |
-| `medieval_exploration.ogg` | タイトル・部隊の編成・対戦の設定（`menu`） | Medieval: Exploration — https://opengameart.org/content/medieval-exploration | `Exploration.wav`（3:54） |
+| `medieval_exploration.ogg` | 選んでいる間: セーブデータ選択・物語選択・話の一覧・部隊の編成・対戦の設定など（`menu`。11/22 まではタイトルも） | Medieval: Exploration — https://opengameart.org/content/medieval-exploration | `Exploration.wav`（3:54） |
 | `medieval_victory_theme.ogg` | 決着: 勝ち（`victory`） | Medieval: Victory Theme — https://opengameart.org/content/medieval-victory-theme | `victory.wav`（0:32） |
 | `medieval_defeat_theme.ogg` | 決着: 負け・引き分け（`defeat`） | Medieval: Defeat Theme — https://opengameart.org/content/medieval-defeat-theme | `defeat.wav`（0:45） |
 | `medieval_the_old_tower_inn_loop.ogg` | ストーリーの会話: 軽い（`talk`） | Medieval: The Old Tower Inn（ループ版） — https://opengameart.org/content/medieval-the-old-tower-inn | `Loop_The_Old_Tower_Inn.wav`（0:50） |

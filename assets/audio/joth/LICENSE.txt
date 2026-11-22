@@ -1,0 +1,10 @@
+Title music from OpenGameArt.org, released under Creative Commons Zero (CC0 1.0 Universal) by its author:
+https://creativecommons.org/publicdomain/zero/1.0/
+
+  fantasy_orchestral_theme.ogg  "Fantasy Orchestral Theme" by Joth
+                                https://opengameart.org/content/fantasy-orchestral-theme
+
+The page lists its license as CC0 (checked on 2026-11-22).
+The track did not come with a separate license file.
+The file here was trimmed at the end (trailing silence removed, 0.6 s fade-out), converted to
+Ogg Vorbis (quality 2, stereo, 44.1 kHz), and its metadata was removed.
