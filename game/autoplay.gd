@@ -1995,6 +1995,17 @@ func _expect_steady(scene: Node, moving: Array[Node], moves: Array, what: String
 		_expect(shifted.is_empty(), "%sと、ほかの部品が動く（%s）: %s" % [what, move.get_bound_arguments(), shifted.slice(0, 3)])
 
 
+## 初期位置の縮図（deploy_map.gd）の駒に、次々マウスを乗せて、最後に外す。枠の見張り（steady_probe.gd）が、その間の枠を見る。
+func _hover_each(deploy: Control) -> void:
+	for cell: Vector2i in deploy.unit_cells():
+		deploy.hover_cell(cell)
+		for i in 3:
+			await get_tree().process_frame
+	deploy.hover_cell(NO_CELL)
+	for i in 3:
+		await get_tree().process_frame
+
+
 ## 見えている部品（Control）の、画面の上の位置と大きさ（パス -> Rect2）。skip とその中身は除く。
 ## 文字（Label）と、送れる枠（ScrollContainer）の中身は、中身に合わせて伸び縮みしてよい（枠と、ほかの部品が動かなければよい）ので、比べない。
 func _layout_of(node: Node, skip: Array[Node], into := {}) -> Dictionary:
@@ -2053,6 +2064,7 @@ func _visit_decks(app: Node) -> void:
 	_expect(dialog.visible and not placed_cells.is_empty() and not open_cells.is_empty(), "対戦設定の「初期位置」で、駒と置けるマスの窓が開かない")
 	var place_note: Control = dialog.deploy_note()
 	_expect(place_note.shown_unit_id() == -1, "初期位置の窓で、駒を選ぶ前から駒の欄に駒が出ている")
+	await _hover_each(place_map)
 	place_map.hover_cell(placed_cells[1])
 	var hovered_unit: Unit = place_map.focused_unit()
 	_expect(hovered_unit != null and place_note.shown_name() == Names.kind(hovered_unit.kind), "初期位置の窓で、マウスを乗せた駒の名前が欄に出ない")
@@ -2391,6 +2403,8 @@ func _visit_story(app: Node) -> void:
 	var own_cells: Array[Vector2i] = deploy.unit_cells()
 	var free_cells: Array = deploy.zone().filter(func(cell: Vector2i) -> bool: return not own_cells.has(cell))
 	_expect(not own_cells.is_empty() and not free_cells.is_empty() and deploy.is_default(), "出撃準備の初期位置に、駒か置けるマスが無い（か、始めからおまかせでない）")
+	# 駒に次々マウスを乗せる（駒の欄の中身が替わっても、枠が動かないこと。枠の見張り steady_probe.gd が見る）。
+	await _hover_each(deploy)
 	deploy.press_cell(own_cells[0])
 	_expect(deploy.selected() == 0, "初期位置で、駒を押しても選べない")
 	_expect(sortie.deploy_note().shown_name() == Names.kind(deploy.focused_unit().kind), "出撃準備の初期位置で、選んだ駒の名前が欄に出ない")
@@ -2833,6 +2847,14 @@ func _nudge_screen_size() -> void:
 
 func _finish(message: String, code: int) -> void:
 	_finished = true
+	# 枠の見張り（game/steady_probe.gd）: 印の付いた枠が、出ている間に動いていたら失敗にする。
+	var probe: Node = get_tree().root.find_child("SteadyProbe", true, false)
+	if probe != null:
+		if probe.found_report() != "":
+			print("frames: 大きさが変わった板（印なし）:\n%s" % probe.found_report())
+		if probe.report() != "":
+			message = "autoplay: %s" % probe.report() if code == 0 else "%s\n  %s" % [message, probe.report()]
+			code = 1
 	print(message)
 	# 音を止めて手放してから終える（鳴らしたまま終えると、終わるときにエラーが出る）。
 	var context: Variant = _scene.get(&"context") if is_instance_valid(_scene) else null

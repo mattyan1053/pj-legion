@@ -14,6 +14,7 @@ const DeployMap := preload("res://game/deploy_map.gd")
 const DeployNote := preload("res://game/deploy_note.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
+const Steady := preload("res://game/steady.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -122,6 +123,7 @@ func _ready() -> void:
 	root.add_child(body)
 
 	var left := _panel()
+	Steady.mark(left, "sortie.map", Steady.RECT)
 	body.add_child(left)
 	var left_column := VBoxContainer.new()
 	left_column.add_theme_constant_override("separation", 12)
@@ -151,6 +153,7 @@ func _ready() -> void:
 		left_column.add_child(map_hint)
 	# 選んでいる駒（マウスを乗せている駒）の名前・役割・能力値（deploy_note.gd）。
 	_deploy_note = DeployNote.new()
+	Steady.mark(_deploy_note, "sortie.unit_note", Steady.RECT)
 	left_column.add_child(_deploy_note)
 	_deploy_note.watch(_deploy)
 
@@ -161,6 +164,7 @@ func _ready() -> void:
 	# 勝ち方の欄は、対戦の上の帯の勝ち方の札と同じ色（金を混ぜた地と縁）。
 	var goal := _panel()
 	goal.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.GOAL.lerp(Palette.PANEL, 0.55), 0.94), Palette.GOAL_BORDER, 1, 8, 14.0))
+	Steady.mark(goal, "sortie.goal", Steady.RECT)
 	right.add_child(goal)
 	var goal_column := VBoxContainer.new()
 	goal.add_child(goal_column)
@@ -171,6 +175,7 @@ func _ready() -> void:
 	goal_column.add_child(_caption(Text.t("sortie.goal")))
 	goal_column.add_child(_wrapped(win_text(), 17, COLOR_TEXT))
 	var enemy := _panel()
+	Steady.mark(enemy, "sortie.enemy", Steady.RECT)
 	right.add_child(enemy)
 	_decorate(enemy, episode.enemy_army, Palette.TEAM_RED)
 	var enemy_column := VBoxContainer.new()
@@ -189,6 +194,7 @@ func _ready() -> void:
 
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	Steady.mark(troops, "sortie.troops", Steady.RECT)
 	right.add_child(troops)
 	_decorate(troops, context.story.campaign.army, Palette.TEAM_BLUE)
 	var troops_column := VBoxContainer.new()

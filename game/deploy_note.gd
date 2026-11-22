@@ -12,9 +12,11 @@ const UnitFrame := preload("res://game/unit_frame.gd")
 const StatsRow := preload("res://game/stats_row.gd")
 const DeployMap := preload("res://game/deploy_map.gd")
 
-## 欄のいちばん狭い幅と、高さ（px）。駒を替えても大きさが変わらないように決めておく。
-const WIDTH := 300.0
-const HEIGHT := 64.0
+## 欄の幅と高さ（px）。駒を替えても、何も出していなくても、この大きさ（docs/ui-theme.md の「枠の大きさ」）。
+## 幅は、いちばん長い中身（名前・役割とレベルの札・「マウスを乗せた駒」）が切れずに入る幅。縮図がこれより狭いマップでは、板のほうがこの幅になる。
+## それでも入らない名前は「…」で切る（枠は広げない）。tests/game/test_steady_frames.gd が、どの駒も切れないことを確かめる。
+const WIDTH := 460.0
+const HEIGHT := 68.0
 ## 能力値の 1 項目の幅（px）。
 const STAT_WIDTH := 52.0
 
@@ -49,6 +51,9 @@ func _init() -> void:
 	column.add_child(names)
 	_name = _label(17, Palette.TEXT)
 	_name.name = "Name"
+	# 名前は残りの幅を取り、入らなければ「…」で切る（欄を広げない）。
+	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	names.add_child(_name)
 	# 役割は小さな札（ステータスの窓と同じ形。PANEL_TAG）。
 	_role_tag = PanelContainer.new()
@@ -59,9 +64,6 @@ func _init() -> void:
 	_role = _label(12, Palette.TEXT)
 	_role.name = "Role"
 	_role_tag.add_child(_role)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	names.add_child(spacer)
 	_state = _label(13, Palette.ACCENT)
 	_state.name = "State"
 	_state.size_flags_vertical = Control.SIZE_SHRINK_END
@@ -70,8 +72,9 @@ func _init() -> void:
 	column.add_child(_stats)
 	_hint = _label(14, Palette.TEXT_DIM)
 	_hint.name = "Hint"
-	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	column.add_child(_hint)
+	show_unit(null)  # 縮図を見る前も、何も出していないときの形（同じ大きさ）
 
 
 ## 見る縮図を決める。縮図の選び直し・マウスの出入りに合わせて、欄を描き直す。
@@ -84,7 +87,11 @@ func watch(map: DeployMap) -> void:
 
 ## 欄を、いまの縮図に合わせて描き直す。
 func refresh() -> void:
-	var unit: Unit = _map.focused_unit() if _map != null else null
+	show_unit(_map.focused_unit() if _map != null else null, _map != null and _map.selected() != -1)
+
+
+## 欄に駒 unit を出す（null なら、何も出していないと書く）。selected は、選んでいる駒か（そうでなければ、マウスを乗せた駒）。
+func show_unit(unit: Unit, selected := false) -> void:
 	var has_unit := unit != null
 	_frame.visible = has_unit
 	_name.visible = has_unit
@@ -99,8 +106,9 @@ func refresh() -> void:
 		return
 	_shown_id = unit.id
 	_frame.set_kind(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE)
-	_frame.edge = Color(_map.team_color(), 0.85)
-	_frame.chosen = _map.selected() != -1
+	if _map != null:
+		_frame.edge = Color(_map.team_color(), 0.85)
+	_frame.chosen = selected
 	_name.text = Names.kind(unit.kind)
 	var role := DeckText.role_name(unit.kind)
 	_role.text = Text.t("deploy.note.role_level", {"role": role, "level": unit.level}) if unit.level > 1 else role
@@ -108,12 +116,18 @@ func refresh() -> void:
 	_stats.set_line(Text.t("deck.stats_healer" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "deck.stats", {
 		"hp": unit.max_hp(), "power": unit.power(), "move": unit.move_range(), "range": unit.attack_range(),
 	}))
-	_state.text = Text.t("deploy.note.selected") if _map.selected() != -1 else Text.t("deploy.note.hovered")
+	_state.text = Text.t("deploy.note.selected") if selected else Text.t("deploy.note.hovered")
 
 
 ## 出している駒の番号（無ければ -1。検査用）。
 func shown_unit_id() -> int:
 	return _shown_id
+
+
+## 名前が「…」で切れているか（検査用。木に入れて 1 コマ待ってから）。
+func is_name_cut() -> bool:
+	var font := _name.get_theme_font("font")
+	return _name.visible and font.get_string_size(_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _name.get_theme_font_size("font_size")).x > _name.size.x + 0.5
 
 
 ## 出している名前（検査用）。

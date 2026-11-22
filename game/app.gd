@@ -58,6 +58,8 @@ const QUIT_LAYER := 26
 ## オプションの画面を開いてから、設定が変わったか（閉じて書いたときに、保存の印を出す）。
 var _settings_touched := false
 var _open_all: OpenAllKey
+## 検査のときだけ持つ、枠の見張り（game/steady_probe.gd）。
+var steady_probe: Node
 
 
 func _ready() -> void:
@@ -68,6 +70,11 @@ func _ready() -> void:
 	elif args.has("--shots"):
 		context.checking = AppContext.CHECK_SHOTS
 	if context.checking != &"":
+		# 枠の大きさが中身で変わらないことを見張る（docs/ui-theme.md の「枠の大きさ」）。`--frames` は洗い出し。
+		steady_probe = load("res://game/steady_probe.gd").new(args.has("--frames"))
+		steady_probe.name = "SteadyProbe"
+		add_child(steady_probe)
+		scene_changed.connect(func(_scene: StringName) -> void: steady_probe.forget_all())
 		# 検査とスクリーンショットは、決めた画面の大きさで回す（`--size <幅>x<高さ>`。無ければ基準の 1280×720）。
 		ScreenSize.apply_for_check(get_window(), ScreenSize.requested(args))
 		# 駒の見た目の組を選んで撮る・回す（`--unit-look <組の名前>`。無ければ既定の組）。
