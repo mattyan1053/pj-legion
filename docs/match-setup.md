@@ -14,7 +14,7 @@
 | `decks` | プレイヤーごとの選んだ編成（`Deck`。軍を含む）。戦いの定義が部隊を決め打ちにしているプレイヤーの分は使わない |
 | `controllers` | プレイヤーごとに、人（`HUMAN`）が動かすか CPU（`CPU`）が動かすか |
 | `placements` | プレイヤーごとの、人が決めた置き方（本陣からのずれ。空ならいつもの置き方。`docs/player-loadout.md`） |
-| `trials` | 入にする試しの決まり（`TrialRules` の名前の並び。既定は空 = どれも切。下の「試しの決まり」） |
+| `trials` | 入にする選べる決まり（`TrialRules` の名前の並び。既定は空 = どれも切。対戦モードの対戦設定からは拠点あり。下の「選べる決まり」） |
 
 - **先手・後手**は、どちらのプレイヤー番号を人が動かすかで表す。ルールでは、いつもプレイヤー1 から動く（`docs/turn-phase.md`）。
 - **CPU の編成**は、その軍の CPU の編成（`CpuDeck`。`docs/cpu-ai.md`）。`set_cpu(プレイヤー, 軍)` が作る。
@@ -53,15 +53,17 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 - 例外は `ignore_budget` だけ。立てると、コスト上限を超えた編成（`OVER_BUDGET`）を通す。ほかの理由は通さない。
   テストのほかは、集計の道具の「両軍とも同じ役割の 6 体」（`--decks=even`）だけが使う。対戦の画面は使わない。
 
-## 試しの決まり
+## 選べる決まり
 
 コード: `rules/trial_rules.gd`（`TrialRules`）。テスト: `tests/rules/test_battery.gd`、`tests/rules/test_stronghold.gd`、`tests/game/test_match_choice.gd`。
 
-まだ本決まりでない決まりを、対戦設定で入・切して遊び比べるための区分（Issue #47）。
+対戦モードで、対戦設定から入・切できる決まり（Issue #47）。名前の `TrialRules` は、試しの決まりとして入れた名残り。
 
-- **既定はどれも切。切のとき、対戦は 1 局も変わらない**（盤も、駒も、CPU の手も）。ストーリーの話は、入にしない。
+- **対戦モードの既定は、拠点あり・砲台なし**（`TrialRules.DEFAULTS`。`game/match_choice.gd` の `trials` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。砲台はまだ試し。
+- `MatchSetup` の既定は空（どれも切）。**ストーリーの話は、入にしない。** 切のとき、対戦は 1 局も変わらない（盤も、駒も、CPU の手も）。
 - 入にするのは、`MatchSetup.trials` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
-- 画面では、対戦設定のパネルの行で入・切する（`game/match_choice.gd` の `trials`、`set_trial`）。集計の道具は `--trials=<名前>`（`docs/cpu-ai.md`）。
+- 画面では、対戦設定のパネルの「拠点」「砲台（試し）」の行の「あり」「なし」で入・切する（`game/match_choice.gd` の `trials`、`set_trial`）。
+  集計の道具は、付けなければ対戦モードの既定で回し、`--trials=<名前>` でそれだけ入、`--trials=none` で全部切（`docs/cpu-ai.md`）。
 - CPU は、入の決まりを知って打つ。
 
 | 名前 | 中身 | 入のときの準備 |

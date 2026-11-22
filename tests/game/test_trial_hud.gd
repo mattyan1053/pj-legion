@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 試しの決まりの、対戦の画面の枠（game/battle_hud.gd）: 拠点の札、対戦の始めの知らせ。
+## 選べる決まりの、対戦の画面の枠（game/battle_hud.gd）: 拠点の札、対戦の始めの知らせ。
 ## どれも大きさは中身で変えない（CLAUDE.md の人間の決定。11/22）。
 
 const BattleHud := preload("res://game/battle_hud.gd")

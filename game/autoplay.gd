@@ -38,7 +38,7 @@ const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
 	"portal_and_spring": "ポータルに止まってメニューの「転移」、転移のあと続けて動く、取り消し、ふさがったポータル、回復の泉",
-	"capture": "敵の本陣の占拠と、拠点の確保（試しの決まり）",
+	"capture": "敵の本陣の占拠と、拠点の確保（選べる決まり）",
 	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
 	"skill": "スキルのボタンと対象選び、クールダウン",
@@ -461,7 +461,7 @@ func _queue_portal_and_spring_scene() -> void:
 		_expect(bather.hp == bather.max_hp() - 20 + MapObject.SPRING_HEAL, "回復の泉で回復しなかった"))
 
 
-## 敵の本陣に乗ったままターンを終えて、占拠の数を進める。拠点（試しの決まり）にも駒を乗せておき、確保の数も進める。
+## 敵の本陣に乗ったままターンを終えて、占拠の数を進める。拠点にも駒を乗せておき、確保の数も進める。
 func _queue_capture_scene() -> void:
 	var board := _small_board(Vector2i(6, 4))
 	board.stronghold_cell = Vector2i(2, 2)

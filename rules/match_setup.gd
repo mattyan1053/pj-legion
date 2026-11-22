@@ -34,7 +34,7 @@ var ignore_budget := false
 ## 人が決めた初期位置（プレイヤーごと。本陣からのずれを、編成の並びの順に。決めていない駒は Deployment.UNSET）。
 ## 空なら、いつもの置き方（Deployment.deploy）。置けるマス（Deployment.zone）の外のずれは使わない。
 var placements: Array[Array] = [[], []]
-## 入にする試しの決まり（TrialRules の名前）。既定は空（どれも切）。
+## 入にする選べる決まり（TrialRules の名前）。既定は空（どれも切）。
 var trials: Array[StringName] = []
 
 

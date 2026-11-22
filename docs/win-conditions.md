@@ -10,10 +10,11 @@
 
 - 列は戦いの定義（`Scenario.win_conditions`。`docs/scenario.md`）がプレイヤーごとに持ち、対戦を作るときに `Battle.win_conditions` へ写す。
   条件は、決着の理由と同じ値（`GameWonEvent.Reason`）で表す。そのプレイヤーがその勝ち方で勝てるかは `Battle.wins_by(プレイヤー, 条件)`。
-- 既定（`Scenario.STANDARD_WIN_CONDITIONS`）は、両方とも「敵の将を倒す」「敵の本陣を占拠し続ける」。対戦モードはいつもこれ。
+- 既定（`Scenario.STANDARD_WIN_CONDITIONS`）は、両方とも「敵の将を倒す」「敵の本陣を占拠し続ける」。
+  対戦モードは、これに「拠点を確保し続ける」が足される（対戦設定の既定。「拠点: なし」にすれば足さない。`docs/match-setup.md` の「選べる決まり」）。
 - 勝ち方は、敵の将を倒す（`KING_DEFEATED`）、敵の本陣を占拠し続ける（`HQ_CAPTURED`）、守り切る（`TURNS_HELD`）、全滅させる（`ROUTED`）、
-  中ボスを倒す（`BOSS_SLAIN`）、拠点を確保し続ける（`STRONGHOLD_HELD`。試しの決まり）。
-- 試しの決まり「拠点」が入の対戦では、対戦を作るとき（`MatchSetup.create_battle`）に、両方の列へ拠点を確保し続けるを足す。
+  中ボスを倒す（`BOSS_SLAIN`）、拠点を確保し続ける（`STRONGHOLD_HELD`）。
+- 拠点のある対戦（対戦モードの既定）では、対戦を作るとき（`MatchSetup.create_battle`）に、両方の列へ拠点を確保し続けるを足す。
 - 画面で勝ち方を知らせる文（出撃準備の「勝ち方」、上の帯の勝ち方の札）は `game/win_text.gd` が列から作る。
   全滅させるがあって将の撃破が無い列では、「敵の将を倒しても、ほかの駒が残っていれば終わらない。」を言い添える。
   中ボスの撃破があって将の撃破が無い列では、「敵の将を倒しても終わらない。」を言い添える。
@@ -83,7 +84,7 @@
 
 ## 拠点を確保し続ける
 
-試しの決まり「拠点」（`TrialRules.STRONGHOLD`。`docs/map-objects.md` の「拠点」）が入の対戦モードだけの勝ち方。理由は `GameWonEvent.Reason.STRONGHOLD_HELD`。
+対戦モードの勝ち方（対戦設定の既定で「拠点: あり」。`TrialRules.STRONGHOLD`。`docs/map-objects.md` の「拠点」）。ストーリーの話には無い。理由は `GameWonEvent.Reason.STRONGHOLD_HELD`。
 テスト: `tests/rules/test_stronghold.gd`。
 
 - 自分のフェーズの終わり（ターン終了。敵の本陣の占拠を数えたあと）に、拠点に自分の駒（将でない）が乗っていて、拠点の隣（上下左右。

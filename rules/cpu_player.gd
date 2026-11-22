@@ -127,7 +127,7 @@ const BATTERY_STEP_COST := 3.0
 const BATTERY_STEPS := 8
 const BATTERY_WATCH := 6
 ## 回復役が、減っている味方を探す範囲（歩数）。
-## 拠点（試しの決まり。docs/map-objects.md の「拠点」。docs/cpu-ai.md の「拠点」）。
+## 拠点（docs/map-objects.md の「拠点」。docs/cpu-ai.md の「拠点」）。
 ## 戦う駒が拠点に立って行動を終える価値と、もう乗っている駒が居座る価値（確保 1 つあたり）。
 const STRONGHOLD_VALUE := 60.0
 const STRONGHOLD_HOLD_VALUE := 100.0

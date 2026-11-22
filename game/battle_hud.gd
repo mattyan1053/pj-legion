@@ -76,7 +76,7 @@ const MENU_FONT_SIZE := 17
 const MENU_FONT_FLOOR := 13
 ## 拠点の札の大きさ（px）。確保の数が変わっても、あと 1 回で勝つときも、この大きさのまま。
 const STRONGHOLD_CHIP_SIZE := Vector2(440.0, 30.0)
-## 対戦の始めの知らせ（試しの決まり）の枠の大きさ（px）。決まりの数で変えない。
+## 対戦の始めの知らせ（選べる決まり）の枠の大きさ（px）。決まりの数で変えない。
 const NOTICE_SIZE := Vector2(620.0, 290.0)
 ## 知らせの本文の行数の上限（折り返した行も数える）。これを超える分は出さない（枠を広げない）。
 const NOTICE_LINES := 6
@@ -133,12 +133,12 @@ var _phase_chip_style: StyleBoxFlat
 var _goal_panel: PanelContainer
 var _goal_style: StyleBoxFlat
 var _goal_label: Label
-## 拠点の札（試しの決まり「拠点」の対戦だけ出す）: 見出しと、陣営ごとの確保の印。大きさは中身で変えない（STRONGHOLD_CHIP_SIZE）。
+## 拠点の札（選べる決まり「拠点」の対戦だけ出す）: 見出しと、陣営ごとの確保の印。大きさは中身で変えない（STRONGHOLD_CHIP_SIZE）。
 var _stronghold_panel: PanelContainer
 var _stronghold_style: StyleBoxFlat
 var _stronghold_caption: Label
 var _stronghold_marks: Array[Label] = []
-## 対戦の始めの知らせ（試しの決まり。見出し、決まりごとの行、閉じるボタン）。
+## 対戦の始めの知らせ（選べる決まり。見出し、決まりごとの行、閉じるボタン）。
 var _notice: PanelContainer
 var _notice_body: Label
 var _side_labels: Array[Label] = []
@@ -369,7 +369,7 @@ func set_ult_button(text: String, enabled: bool, summary: String, pinned := fals
 	_fold_hint()
 
 
-## 拠点の札を出す（試しの決まり「拠点」）。holds は陣営ごとの確保の数（添字がプレイヤー番号）、needed は勝つ数（0 以下なら札を出さない）。
+## 拠点の札を出す（選べる決まり「拠点」）。holds は陣営ごとの確保の数（添字がプレイヤー番号）、needed は勝つ数（0 以下なら札を出さない）。
 ## near は、あと 1 回の確保で勝つ陣営（いなければ -1。札を急ぎの色にする）。note は札にマウスを乗せると出る決まりの文。
 ## 大きさは中身で変えない。勝ち方の札が出ていれば、その下に並べる。
 func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> void:
@@ -1344,7 +1344,7 @@ func _build_top_bar() -> void:
 	_goal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_goal_panel.add_child(_goal_label)
 
-	# 拠点の札（試しの決まり）。勝ち方の札と同じ所（出ていれば、その下）に、決まった大きさで出す。
+	# 拠点の札（選べる決まり）。勝ち方の札と同じ所（出ていれば、その下）に、決まった大きさで出す。
 	_stronghold_panel = PanelContainer.new()
 	_stronghold_style = StyleBoxFlat.new()
 	_stronghold_style.set_corner_radius_all(4)
@@ -1700,7 +1700,7 @@ func _build_menu() -> void:
 	_menu.add_child(_menu_column)
 
 
-## 対戦の始めの知らせ（試しの決まり）。盤の上寄りの真ん中に、決まった大きさで出す。閉じるまで（か、盤をクリックするまで）出したまま。
+## 対戦の始めの知らせ（選べる決まり）。盤の上寄りの真ん中に、決まった大きさで出す。閉じるまで（か、盤をクリックするまで）出したまま。
 func _build_notice() -> void:
 	_notice = PanelContainer.new()
 	var plate := UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 14.0, 6)

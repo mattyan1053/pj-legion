@@ -121,7 +121,7 @@ func test_ult_button_without_an_ult() -> void:
 	assert_eq(BattleTexts.ult_button_text(battle, P1, false), "必殺技（なし）")
 
 
-## 拠点（試しの決まり）のマスの説明: 下の帯の 1 行は短い説明で、帯に収まる。クリックした枠の説明は、決まりを 2 行で。
+## 拠点のマスの説明: 下の帯の 1 行は短い説明で、帯に収まる。クリックした枠の説明は、決まりを 2 行で。
 func test_stronghold_cell_fits_the_bottom_line_and_the_info_panel() -> void:
 	var battle := Maps.battle([
 		"1....",

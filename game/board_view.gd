@@ -50,7 +50,7 @@ const COLOR_SPRING_CROSS := Color("2fd66b")
 const COLOR_BATTERY_BASE := Color("4a4f5a")
 const COLOR_BATTERY_GUN := Color("2b2e36")
 const COLOR_BATTERY_MARK := Color("ffb347")
-## 拠点（試しの決まり）: 黒い縁取りの上に明るい黄の輪。どの景色の地面でも沈まないよう、光に左右されない色で描く。
+## 拠点: 黒い縁取りの上に明るい黄の輪。どの景色の地面でも沈まないよう、光に左右されない色で描く。
 const COLOR_STRONGHOLD_EDGE := Color("1c1a14")
 const COLOR_STRONGHOLD_MARK := Color("fff27a")
 const COLOR_STRONGHOLD_FLAG := Color("f4f1e6")
@@ -683,7 +683,7 @@ func _add_spring(cell: Vector2i) -> void:
 	_add_mesh(bar, cross, foot + Vector3(0.0, 1.1, 0.0)).rotation.z = PI / 2.0
 
 
-## 砲台（試しの決まり）。駒が上に立つので平たく作る（石の台と、橙の縁）。駒が乗っていても分かるよう、隅に砲身と橙の札を立てる。
+## 砲台（選べる決まり）。駒が上に立つので平たく作る（石の台と、橙の縁）。駒が乗っていても分かるよう、隅に砲身と橙の札を立てる。
 func _add_battery(cell: Vector2i) -> void:
 	var center := cell_center(cell)
 	var base := CylinderMesh.new()
@@ -719,7 +719,7 @@ func _add_battery(cell: Vector2i) -> void:
 	_add_mesh(plate, _flat_material(COLOR_BATTERY_MARK), flag_foot + Vector3(0.0, 1.08, 0.0))
 
 
-## 拠点（試しの決まり）。駒が上に立つので、床は平たく（黒い縁取りの輪と黄の輪、四隅の杭）。
+## 拠点。駒が上に立つので、床は平たく（黒い縁取りの輪と黄の輪、四隅の杭）。
 ## 駒が乗っていても分かるよう、奥の隅に高い旗竿を立てる。旗は白で、確保を進めた陣営の色に変わる（set_stronghold_side）。
 func _add_stronghold(cell: Vector2i) -> void:
 	var center := cell_center(cell)

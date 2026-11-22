@@ -5,9 +5,9 @@ extends RefCounted
 ##   タイトル →「ストーリー」→ セーブデータ選択 → 物語を選ぶ → 話の一覧（確かめ用の解放 F5 で全部を開く）→ 話を選ぶ →
 ##   出撃準備 →「出撃」→ 対戦の前の会話を 1 文ずつ送る → 対戦の途中の台詞（[cues]）を 1 つずつ出して送る →
 ##   小さな盤でわざと負けて、決着の画面の負けの台詞（[lost]）を見る →「話の一覧へ」で戻り、次の話へ。
-## - `-- --autoplay --versus-all`: 対戦モードの全部のマップを、試しの決まり（TrialRules.ALL）を全部切ったものと全部入れたもので、
+## - `-- --autoplay --versus-all`: 対戦モードの全部のマップを、選べる決まり（TrialRules.ALL）を全部切ったものと全部入れたもので、
 ##   タイトル →「対戦」→ マップ選択 → 対戦設定（相手は CPU）→ 対戦を VERSUS_TURNS ターンまで（自分の番は「おまかせ」）→ タイトル。
-##   試しの決まりが増えても、TrialRules.ALL から取るので、ここは変えなくてよい。
+##   選べる決まりが増えても、TrialRules.ALL から取るので、ここは変えなくてよい。
 ##
 ## 確かめたことが外れたら autoplay.gd の _expect で貯め、最後にまとめて失敗にする（"autoplay: OK" が出なければ失敗）。
 ## 使い方は docs/README.md の「検査の分け方」と、.claude/skills/playtest-sweep/SKILL.md（手で回すときは tools/sweep.sh）。
@@ -202,9 +202,9 @@ func _lose(app: Node, screen: Node, episode: RefCounted) -> void:
 	await _go(app, SceneFlow.EPISODES)
 
 
-## 対戦モードの 1 局: マップ field、試しの決まり trials で、CPU を相手に VERSUS_TURNS ターンまで進める。
+## 対戦モードの 1 局: マップ field、選べる決まり trials で、CPU を相手に VERSUS_TURNS ターンまで進める。
 func _versus(app: Node, field: StringName, trials: Array[StringName]) -> void:
-	_autoplay._current = "versus-all %s（試しの決まり: %s）" % [field, ", ".join(trials) if not trials.is_empty() else "なし"]
+	_autoplay._current = "versus-all %s（選べる決まり: %s）" % [field, ", ".join(trials) if not trials.is_empty() else "なし"]
 	print("autoplay: %s" % _autoplay._current)
 	await _go(app, SceneFlow.TITLE)
 	app.current_scene().press_start()
@@ -230,7 +230,7 @@ func _versus(app: Node, field: StringName, trials: Array[StringName]) -> void:
 	screen.set_time_scale_base(8.0)
 	var battle: Battle = screen.battle
 	for trial in TrialRules.ALL:
-		_expect(screen.source.has_trial(trial) == trials.has(trial), "選んだ試しの決まりで、対戦が始まらない: %s" % trial)
+		_expect(screen.source.has_trial(trial) == trials.has(trial), "選んだ選べる決まりで、対戦が始まらない: %s" % trial)
 	for i: int in WAIT_FRAMES * 4:
 		battle = screen.battle
 		if battle.is_over() or battle.turn > VERSUS_TURNS:

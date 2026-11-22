@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 拠点（試しの決まり。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）:
+## 拠点（docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）:
 ## 置かれるのは入のときだけ、置く場所、確保の数え方、勝ち、CPU。
 
 const Maps := preload("res://tests/support/maps.gd")
@@ -124,7 +124,7 @@ func test_distances_use_portals() -> void:
 
 
 func test_story_scenarios_never_place_a_stronghold() -> void:
-	# 試しの決まりは対戦設定だけが入にする。戦いの定義の勝ちの条件にも、拠点は無い。
+	# 選べる決まりは対戦設定だけが入にする。戦いの定義の勝ちの条件にも、拠点は無い。
 	for reason: GameWonEvent.Reason in Scenario.STANDARD_WIN_CONDITIONS:
 		assert_true(reason != GameWonEvent.Reason.STRONGHOLD_HELD)
 

@@ -19,8 +19,8 @@
 | 起爆樽 | 入れない（通り抜けも、駒を置くこともできない） | 攻撃されると爆発する |
 | 回復の泉 | 入れる | フェーズの始めに、乗っている駒が回復する |
 | ポータル | 入れる | 対になるポータルへ移れる |
-| 砲台（試しの決まり） | 入れる | 乗った後衛の射程が伸びる |
-| 拠点（試しの決まり） | 入れる | 乗ったまま番を終えると確保が進み、決まった数で勝つ |
+| 砲台（選べる決まり） | 入れる | 乗った後衛の射程が伸びる |
+| 拠点（対戦モードの既定） | 入れる | 乗ったまま番を終えると確保が進み、決まった数で勝つ |
 
 ## 起爆樽
 
@@ -99,13 +99,13 @@
 - ポータルが働くのは、移動と転移の行動だけ。スキルでポータルのマスに着いた駒（シャドウステップ。入れ替えられた駒も）は、転移しない
   （そのあとは、行動を終えないスキルを使ったあとなので、転移を選べない）。
 
-## 砲台（試しの決まり）
+## 砲台（選べる決まり）
 
 コード: `rules/map_object.gd`（`battery_bonus`、`BATTERY_RANGE`）、`rules/board.gd`（`battery_spots`、`battery_cells`）、
 `rules/board_generator.gd`（`battery_spots_for`、`arm_batteries`）、`rules/unit.gd`（`site_range`）、`rules/battle.gd`（`refresh_sites`）。
 テスト: `tests/rules/test_battery.gd`。
 
-占拠していると有利なマス（Issue #47）。**試しの決まり `TrialRules.BATTERY` が入の対戦にだけ置かれる**（`docs/match-setup.md` の「試しの決まり」。既定は切）。
+占拠していると有利なマス（Issue #47）。**選べる決まり `TrialRules.BATTERY` が入の対戦にだけ置かれる**（`docs/match-setup.md` の「選べる決まり」。既定は切）。
 
 - **後衛が砲台のマスに立っている間、射程が +3（`MapObject.BATTERY_RANGE`）。** 攻撃も、射程で測るものも（樽・盾への攻撃）伸びる。
   ほかの役割（将、前衛、奇襲、回復）と中立の駒には、何も起きない。
@@ -127,13 +127,13 @@
 - CPU は砲台を知っている（`docs/cpu-ai.md` の「砲台」）。危険の見積もりと、駒の脅威範囲の表示（`docs/threat-range.md`）は、後衛が砲台に乗れるなら、そこからの射程も数える。
 - 入のときの CPU どうしの実測は `docs/cpu-ai.md` の「いまの集計」。
 
-## 拠点（試しの決まり）
+## 拠点
 
 コード: `rules/stronghold.gd`（`Stronghold`。置く場所、確保の数え方）、`rules/board.gd`（`stronghold_cell`）、
 `rules/actions/end_phase_action.gd`、`rules/events/stronghold_progress_event.gd`。テスト: `tests/rules/test_stronghold.gd`。
 
-待っている側が損をする物（Issue #47 の「先制攻撃が不利で、待ち有利」）。**試しの決まり `TrialRules.STRONGHOLD` が入の対戦にだけ置かれる**
-（`docs/match-setup.md` の「試しの決まり」。既定は切。ストーリーの話には置かない）。拠点を確保し続けると勝つ（勝ち方の決まりは `docs/win-conditions.md` の「拠点を確保し続ける」）。
+待っている側が損をする物（Issue #47 の「先制攻撃が不利で、待ち有利」）。**対戦モードの既定で置かれる**（`TrialRules.STRONGHOLD`。
+対戦設定で「拠点: なし」にすれば置かない。`docs/match-setup.md` の「選べる決まり」。ストーリーの話には置かない）。拠点を確保し続けると勝つ（勝ち方の決まりは `docs/win-conditions.md` の「拠点を確保し続ける」）。
 
 - 盤に 1 つ。入るのに使う移動力は地形のまま。ほかの駒が乗っていれば入れないのは、ふつうのマスと同じ。壊れず、だれのものでもない。
 - **置く場所**（`Stronghold.choose_cell`）: 両方の本陣からの道のり（移動のコスト。ポータルは転移も使う。`Stronghold.distances`）の差がいちばん小さいマスのうち、

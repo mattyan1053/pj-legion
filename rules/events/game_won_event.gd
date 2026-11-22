@@ -8,7 +8,7 @@ enum Reason {
 	TURNS_HELD,  ## 決められたターンが終わるまで、守り切った
 	ROUTED,  ## 敵の駒を（将も含めて）全部倒した
 	BOSS_SLAIN,  ## 中ボスを倒した（どちらの中ボスでもよい）
-	STRONGHOLD_HELD,  ## 拠点を確保し続けた（試しの決まりの拠点）
+	STRONGHOLD_HELD,  ## 拠点を確保し続けた（拠点）
 }
 
 var winner: Unit.Side

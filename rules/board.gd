@@ -25,9 +25,9 @@ var barrel_cells: Array[Vector2i] = []
 var spring_cells: Array[Vector2i] = []
 ## 砲台を置ける場所（盤の出どころが決める。置かれるまでは何もしない）。
 var battery_spots: Array[Vector2i] = []
-## 置かれた砲台（試しの決まりが入の対戦だけ。BoardGenerator.arm_batteries）。
+## 置かれた砲台（選べる決まりが入の対戦だけ。BoardGenerator.arm_batteries）。
 var battery_cells: Array[Vector2i] = []
-## 拠点のマス（試しの決まりが入の対戦だけ。Stronghold.arm）。無ければ NO_CELL。
+## 拠点のマス（選べる決まりが入の対戦だけ。Stronghold.arm）。無ければ NO_CELL。
 var stronghold_cell := NO_CELL
 ## ポータルのマス -> 対になるポータルのマス。対の両方が、互いを指して入る。
 var portal_exits: Dictionary[Vector2i, Vector2i] = {}

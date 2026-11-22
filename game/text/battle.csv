@@ -268,7 +268,7 @@ battle.stronghold.mark_blocked,{holds} / {needed} 停止
 battle.stronghold.rule,乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まり、相手が確保すると 0 に戻る。将は数えない。
 battle.hud.stronghold,拠点
 battle.hud.stronghold_marks,{side} {marks}
-battle.notice.title,試しの決まり
+battle.notice.title,この対戦の決まり
 battle.notice.close,閉じる
 battle.notice.battery,砲台（橙の台）: 後衛が乗ると射程 +{range}
 battle.notice.stronghold,拠点（旗の立つマス）: 乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まる

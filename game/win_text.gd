@@ -68,7 +68,7 @@ static func turn_text(turn: int) -> String:
 ##   最後のターンは「最後のターン: …」にして目立たせる。
 ## - 全滅させる: 「勝ち: 敵の全滅（将を倒しても終わらない）」。敵の将が盤にいなければ（将のいない群れ）、「勝ち: 敵の全滅」。
 ## - 中ボスの撃破: 「勝ち: 中ボスの撃破（将を倒しても終わらない）」。
-## - 拠点の確保（試しの決まり）: 「拠点の確保 6 回で勝ち　青 ●●○○○○　赤 ○○○○○○」（両方の陣営の確保の数）。
+## - 拠点の確保（選べる決まり）: 「拠点の確保 6 回で勝ち　青 ●●○○○○　赤 ○○○○○○」（両方の陣営の確保の数）。
 ##   どちらかがあと 1 回で勝つなら、頭を「あと 1 回の確保で青の勝ち」にして目立たせる（自分の側を先に見る）。
 static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 	var own: Array = battle.win_conditions[side]
@@ -97,7 +97,7 @@ static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 			parts.append(Text.t("battle.goal.tag.boss_or_king") if own.has(GameWonEvent.Reason.KING_DEFEATED) else Text.t("battle.goal.tag.boss"))
 	if foe.has(GameWonEvent.Reason.ROUTED):
 		parts.append(Text.t("battle.goal.tag.routed"))
-	# 拠点の確保（試しの決まり）は、勝ち方の札でなく、拠点の札（stronghold_goal など。上の帯の下）に出す。
+	# 拠点の確保（選べる決まり）は、勝ち方の札でなく、拠点の札（stronghold_goal など。上の帯の下）に出す。
 	return [Text.t("battle.hud.separator").join(parts), last]
 
 

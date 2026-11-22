@@ -776,7 +776,7 @@ func _play_capture(event: CaptureProgressEvent) -> void:
 	_pop_number(BoardView.cell_center(hq), text, team_colors[event.player].lightened(0.4))
 
 
-## 拠点の確保が進んだ・途切れた（試しの決まり）。拠点のマスに数を出し、旗をその陣営の色にする。
+## 拠点の確保が進んだ・途切れた（選べる決まり）。拠点のマスに数を出し、旗をその陣営の色にする。
 ## あと 1 回で勝つところまで来たら、画面の中央にも知らせる。
 func _play_stronghold(event: StrongholdProgressEvent) -> void:
 	refresh_status.call(battle.turn, battle.phase)

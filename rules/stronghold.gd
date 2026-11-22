@@ -1,6 +1,6 @@
 class_name Stronghold
 extends RefCounted
-## 拠点（試しの決まり TrialRules.STRONGHOLD。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）。
+## 拠点（選べる決まり TrialRules.STRONGHOLD。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）。
 ##
 ## 盤の中央（両方の本陣から同じ道のり）のマス 1 つ。自分の駒が乗ったまま自分のフェーズを終えると、そのプレイヤーの「確保」が 1 進み、
 ## HOLDS_TO_WIN に届いたら勝ち（GameWonEvent.Reason.STRONGHOLD_HELD）。
@@ -70,7 +70,7 @@ static func _can_hold(board: Board, cell: Vector2i) -> bool:
 	return true
 
 
-## 拠点を置く（試しの決まりが入の対戦だけ。MatchSetup.create_battle が呼ぶ。battle_seed は対戦の種）。置けるマスが無ければ置かない。
+## 拠点を置く（選べる決まりが入の対戦だけ。MatchSetup.create_battle が呼ぶ。battle_seed は対戦の種）。置けるマスが無ければ置かない。
 ## 拠点のマスが森なら平地にする（拠点が木立に隠れず、乗った駒が森の軽減で守られない）。
 static func arm(board: Board, battle_seed := 0) -> void:
 	var cell := choose_cell(board, battle_seed)
