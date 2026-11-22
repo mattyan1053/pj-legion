@@ -150,12 +150,3 @@ static func deck_summary(deck: Deck, levels: Array = [], with_king := true) -> S
 		parts.append(text)
 	return Text.join_comma(parts)
 
-
-## 駒 1 体の装備の短い文（「ブーツ 2、盾 1」）。持っていなければ空。
-static func equipment_short(items: Array[Equipment.Id]) -> String:
-	var parts: Array[String] = []
-	for item: Equipment.Id in Equipment.Id.values():
-		var count := items.count(item)
-		if count > 0:
-			parts.append(Text.t("battle.hud.item_count", {"item": Names.item(item), "count": count}))
-	return Text.join_comma(parts)

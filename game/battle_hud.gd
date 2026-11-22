@@ -346,11 +346,6 @@ func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
 		_ult_bars[player].tooltip_text = names[player]
 
 
-## 上の帯の勝ち方の札の文字（出ていなければ空）。検査用。
-func goal_tag_text() -> String:
-	return _goal_label.text if _goal_panel.visible else ""
-
-
 ## いちばん上の帯に出ている、必殺技のゲージの文字（"62%" か "READY"。出ていなければ空）。検査用。
 func ult_gauge_text(player: int) -> String:
 	return _ult_labels[player].text if _ult_labels[player].visible else ""
@@ -427,11 +422,6 @@ func _draw_ult_fill() -> void:
 	if filled > 0.0:
 		_ult_fill.draw_rect(Rect2(groove.position, Vector2(filled, ULT_FILL_BAR)), _ult_fill_color.lightened(0.25))
 		_ult_fill.draw_rect(Rect2(area.position.x + filled - 1.0, area.position.y, 1.0, area.size.y), Color(_ult_fill_color.lightened(0.5), 0.6))
-
-
-## 必殺技のボタンの中のゲージの溜まり具合（0〜1。出していなければ負）。検査用。
-func ult_fill_ratio() -> float:
-	return _ult_fill_ratio
 
 
 func _show_ult_summary() -> void:
@@ -602,14 +592,6 @@ func set_detail_button(shown: bool) -> void:
 ## 「詳細」のボタンを出しているか。検査用。
 func detail_button_shown() -> bool:
 	return _info_detail.visible
-
-
-## 「詳細」のボタンを押す（クリックと同じ道）。出ていれば真。検査用。
-func press_detail() -> bool:
-	if not _info_detail.visible:
-		return false
-	_info_detail.pressed.emit()
-	return true
 
 
 ## 「範囲を表示したまま」のスイッチを出しているか、入っているか。検査用。
@@ -939,11 +921,6 @@ func set_menu_see_through(see_through: bool) -> void:
 	_menu_see_through = see_through
 
 
-## メニューの濃さ（1 で、ふつう）。検査用。
-func menu_alpha() -> float:
-	return _menu.modulate.a
-
-
 func _update_menu_alpha() -> void:
 	var faded := _menu_see_through and _menu.visible and not menu_rect().grow(6.0).has_point(get_viewport().get_mouse_position())
 	_menu.modulate.a = MENU_SEE_THROUGH_ALPHA if faded else 1.0
@@ -1066,11 +1043,6 @@ func _process(_delta: float) -> void:
 ## 画面の中央に、しばらくだけ大きな文字を、color の帯（banner_band.gd）で出す。strong は強い知らせ（必殺技）。
 func show_banner(text: String, color: Color, strong := false) -> void:
 	_banner.play(text, color, strong)
-
-
-## 画面の中央の大きな文字（検査用）。
-func banner_text() -> String:
-	return _banner.label.text if _banner.visible else ""
 
 
 ## 画面の中央の大きな文字が出ているか（スクリーンショットの道具が、消えるのを待つ）。

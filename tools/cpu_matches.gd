@@ -60,7 +60,6 @@ const STAGE_NAMES := {
 	BoardGenerator.Stage.LABYRINTH: "2 迷宮回廊",
 	BoardGenerator.Stage.TWIN_SPRINGS: "3 双子結晶",
 }
-const ENDINGS := {"king": "将の撃破", "hq": "本陣の占拠", "held": "守り切り", "routed": "全滅", "boss": "中ボスの撃破", "point": "拠点の確保", "draw": "引き分け", "cutoff": "打ち切り"}
 ## --episode のときの、集計の「マップ」の欄の鍵（生成のマップと重ならない値）。名前は話の名前。
 const EPISODE_STAGE := -1
 var _episode_title := ""

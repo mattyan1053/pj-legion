@@ -119,14 +119,6 @@ func is_started() -> bool:
 	return _started
 
 
-## 中身のあるスロット（READY）があるか。
-func any_ready() -> bool:
-	for number in range(1, COUNT + 1):
-		if _read(number)["state"] == READY:
-			return true
-	return false
-
-
 # ---- 選ぶ・始める・写す・消す ----
 
 

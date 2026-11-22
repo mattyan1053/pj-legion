@@ -83,11 +83,6 @@ func view_on_map() -> PackedVector2Array:
 	return points
 
 
-## 描いている駒の点の数。検査用。
-func dot_count() -> int:
-	return _dots.size()
-
-
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), COLOR_BACK)
 	if _board == null:

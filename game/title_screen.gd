@@ -166,11 +166,6 @@ static func title_scapes() -> Array:
 	return scapes
 
 
-## いま背景に見せている景色の見た目の名前（検査用）。
-func scape_look() -> StringName:
-	return _scapes[_scape_index][0]
-
-
 ## 背景の景色を、次の（ランダムな、いまと違う）景色へ替える。SCAPE_SECONDS 秒ごとに呼ぶ。
 func next_scape() -> void:
 	if _scapes.size() < 2:
@@ -241,11 +236,6 @@ func _spaced(spacing: int) -> FontVariation:
 	spaced.base_font = UiTheme.FONT_HEADING
 	spaced.spacing_glyph = spacing
 	return spaced
-
-
-## 題字に出している語（上の語、主の語。検査用）。
-func logo_texts() -> Array[String]:
-	return [Text.t("title.logo.top"), Text.t("title.logo.main")]
 
 
 func _label(text: String, font_size: int) -> Label:

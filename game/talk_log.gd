@@ -143,11 +143,6 @@ func row_texts() -> Array:
 	return texts
 
 
-## いまの位置（0 でいちばん上）と、いちばん下の値。検査とスクリーンショットの道具用。
-func scroll_value() -> int:
-	return _scroll.scroll_vertical
-
-
 func scroll_max() -> int:
 	return maxi(int(_scroll.get_v_scroll_bar().max_value - _scroll.get_v_scroll_bar().page), 0)
 
