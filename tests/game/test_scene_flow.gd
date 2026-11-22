@@ -131,3 +131,18 @@ func test_the_story_backdrop_shows_the_episode_after_the_last_clear() -> void:
 	assert_eq(Story.scape_episode(campaign, null), episodes[0])
 	assert_eq(Story.scape_episode(campaign, episodes[0]), episodes[1])
 	assert_eq(Story.scape_episode(campaign, episodes[-1]), episodes[-1])
+
+
+## タイトルの背景は、13 の景色（stage_look.gd の THEMES）から選ぶ。どの景色にも盤がある。タイトルの曲は、選んでいる間の曲と別。
+func test_the_title_shows_every_look_and_has_its_own_theme() -> void:
+	var TitleScreen := load("res://game/title_screen.gd")
+	var StageLook := load("res://game/stage_look.gd")
+	var scapes: Array = TitleScreen.title_scapes()
+	assert_eq(scapes.size(), StageLook.THEMES.size())
+	var looks := {}
+	for scape: Array in scapes:
+		looks[scape[0]] = true
+		assert_true(scape[1].call() is Board, "景色 %s の盤が作れない" % scape[0])
+	assert_eq(looks.size(), StageLook.THEMES.size(), "同じ景色が 2 つある")
+	assert_eq(SceneFlow.music(SceneFlow.TITLE), &"title")
+	assert_eq(SceneFlow.music(SceneFlow.CAMPAIGNS), &"menu", "選んでいる間は、いままでのタイトルの曲")

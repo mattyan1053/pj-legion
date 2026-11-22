@@ -26,8 +26,8 @@ func _drop(sound: Sound) -> void:
 
 
 func test_each_scene_has_its_music() -> void:
-	assert_eq(SceneFlow.music(&"title"), &"menu")
-	assert_eq(SceneFlow.music(&"decks"), &"menu", "タイトルから編成・対戦設定までは同じ曲（途切れない）")
+	assert_eq(SceneFlow.music(&"title"), &"title", "タイトルは主題歌")
+	assert_eq(SceneFlow.music(&"decks"), &"menu", "選んでいる間（編成・対戦設定など）は同じ曲（途切れない）")
 	assert_eq(SceneFlow.music(&"setup"), &"menu")
 	assert_eq(SceneFlow.music(&"battle"), &"battle")
 	assert_eq(SceneFlow.music(&"nowhere"), &"")
@@ -163,7 +163,7 @@ func test_battle_music_is_quieter_under_talk() -> void:
 
 
 func test_music_for_falls_back_to_the_scene_table() -> void:
-	assert_eq(SceneFlow.music_for(SceneFlow.TITLE, null), &"menu")
+	assert_eq(SceneFlow.music_for(SceneFlow.TITLE, null), &"title")
 	assert_eq(SceneFlow.music_for(SceneFlow.TALK, {"music": &""}), &"talk", "空の名前なら、場面の表の曲")
 	assert_eq(SceneFlow.music_for(SceneFlow.TALK, {"music": &"battle_tense"}), &"battle_tense")
 	assert_eq(SceneFlow.music_for(SceneFlow.SORTIE, {"episode": null}), &"menu", "曲を決めない渡すもの")

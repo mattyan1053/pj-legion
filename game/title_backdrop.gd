@@ -164,10 +164,16 @@ func show_scape(board: Board, look_name: StringName) -> void:
 
 ## 物語の景色にする（いますぐ。幕は沈めない）。army が -1 なら、いつもの構え（VIEW_STORY の結晶の森、空の色も寄せない）。
 ## army があれば、その国の側の空へ向き、空の色をその国へ寄せ、地面は board・look_name の景色。key は景色の名前（同じなら替えない）。
-func show_story(army: int, board: Board, look_name: StringName, key: Variant = null) -> void:
+## view を渡すと、その構えのまま景色だけを替える（タイトル。空の色も寄せない）。
+func show_story(army: int, board: Board, look_name: StringName, key: Variant = null, view := &"") -> void:
 	_story_key = key
 	_army = army
-	if army < 0 or board == null:
+	if view != &"" and board != null:
+		_view = view
+		_board = board
+		_look = look_name
+		_own_air = true
+	elif army < 0 or board == null:
 		_view = VIEW_STORY
 		_board = BoardGenerator.generate(BoardGenerator.Stage.TWIN_SPRINGS, LOOK_SEED)
 		_look = StageLook.CRYSTAL_FOREST
@@ -188,7 +194,7 @@ func queue_story(army: int, board: Board, look_name: StringName, key: Variant) -
 	if key == _next_key or (_next_key == null and key == _story_key):
 		return
 	_next_key = key
-	_next = [army, board, look_name]
+	_next = [army, board, look_name, &""]
 	if _swap_tween != null:
 		_swap_tween.kill()
 	_swap_tween = create_tween()
@@ -205,7 +211,14 @@ func _swap_story() -> void:
 	var next := _next
 	_next_key = null
 	_next = []
-	show_story(next[0], next[1], next[2], key)
+	show_story(next[0], next[1], next[2], key, next[3])
+
+
+## 景色を、いまの構えのまま board・look_name のものに替える（幕を沈めて。タイトルの、時間ごとの入れ替え）。
+func queue_scape(board: Board, look_name: StringName, key: Variant) -> void:
+	queue_story(-1, board, look_name, key)
+	if not _next.is_empty():
+		_next[3] = _view
 
 
 ## 待っている景色へ、待たずに替える（スクリーンショットの道具と検査用）。

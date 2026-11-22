@@ -33,6 +33,9 @@ const SCAPE_USAGE := "scape.<マップ>.<構図> か scape.<マップ>.<見た�
 
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
+	"title_scape_ruins": "タイトルの場面の背景を、石の遺跡の景色にしたところ（景色は起動のたびと時間ごとに替わる）",
+	"title_scape_night": "タイトルの場面の背景を、月夜の結晶の岩山の景色にしたところ",
+	"title_scape_barrow": "タイトルの場面の背景を、古戦場の景色にしたところ",
 	"title_menu": "タイトルで Esc を押して開いたシステムメニュー",
 	"map_select": "マップ選択の場面（タイトルの「対戦」のあと。生成のマップと手で作ったマップの 2 段のカード）",
 	"map_hover": "マップ選択で、迷宮回廊のカードにマウスを乗せて、説明が出ている",
@@ -412,6 +415,30 @@ func _capture(name: String) -> bool:
 func _scene_title() -> bool:
 	await _app.go(SceneFlow.TITLE)
 	return _app.current_id() == SceneFlow.TITLE
+
+
+## タイトルの背景を、景色 look にしたところ。
+func _title_scape(look: StringName) -> bool:
+	if not await _scene_title():
+		return false
+	var scapes: Array = _app.current_scene().title_scapes()
+	for index in scapes.size():
+		if scapes[index][0] == look:
+			_app.current_scene().show_scape_at(index)
+			return true
+	return false
+
+
+func _scene_title_scape_ruins() -> bool:
+	return await _title_scape(StageLook.STONE_WALLS)
+
+
+func _scene_title_scape_night() -> bool:
+	return await _title_scape(StageLook.CRYSTAL_NIGHT)
+
+
+func _scene_title_scape_barrow() -> bool:
+	return await _title_scape(StageLook.BARROW)
 
 
 func _scene_map_select() -> bool:
