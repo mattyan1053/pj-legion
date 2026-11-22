@@ -266,14 +266,15 @@ static func rule_notice(battle: Battle) -> Array[String]:
 		lines.append(Text.t("battle.notice.battery", {"range": MapObject.BATTERY_RANGE}))
 	if battle.board.stronghold_cell != Board.NO_CELL:
 		lines.append(Text.t("battle.notice.stronghold", WinText.stronghold_args()))
-	if battle.formation:
-		lines.append_array(formation_notice(battle))
+	lines.append_array(formation_notice(battle))
 	return lines
 
 
 ## 組み方の知らせ（docs/formation.md）。軍ごとに 1 行ずつ（プレイヤーの順。両方が同じ軍なら 1 行）。
 static func formation_notice(battle: Battle) -> Array[String]:
 	var lines: Array[String] = []
+	if not battle.formation:
+		return lines
 	var seen: Array[UnitKind.Army] = []
 	var args := {
 		"guard": Formation.SQUAD_GUARD, "focus": Formation.SQUAD_FOCUS, "vengeance": Formation.OATH_VENGEANCE,
