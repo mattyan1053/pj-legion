@@ -11,6 +11,7 @@ const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Names := preload("res://game/names.gd")
+const FormationText := preload("res://game/formation_text.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
 const Steady := preload("res://game/steady.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
@@ -77,9 +78,9 @@ const MENU_FONT_FLOOR := 13
 ## 拠点の札の大きさ（px）。確保の数が変わっても、あと 1 回で勝つときも、この大きさのまま。
 const STRONGHOLD_CHIP_SIZE := Vector2(440.0, 30.0)
 ## 対戦の始めの知らせ（選べる決まり）の枠の大きさ（px）。決まりの数で変えない。
-const NOTICE_SIZE := Vector2(620.0, 290.0)
+const NOTICE_SIZE := Vector2(680.0, 340.0)
 ## 知らせの本文の行数の上限（折り返した行も数える）。これを超える分は出さない（枠を広げない）。
-const NOTICE_LINES := 6
+const NOTICE_LINES := 9
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
@@ -97,6 +98,8 @@ const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
 const COLOR_STATUS := Palette.INFO
 const COLOR_TRAIT := Palette.ACCENT
+## 組み方（分隊・誓い）の行。
+const COLOR_FORMATION := Palette.WARN
 ## 勝ち方の札の地と枠（いつもと、最後のターンのように急ぐとき）。
 const COLOR_GOAL := Palette.GOAL
 const COLOR_GOAL_BORDER := Palette.GOAL_BORDER
@@ -173,6 +176,7 @@ var _info_hp_fill: StyleBoxFlat
 var _info_stats: Label
 var _info_state: Label
 var _info_statuses: Label
+var _info_formation: Label
 var _info_items: Label
 var _info_skill: Label
 var _info_skill_note: Label
@@ -493,6 +497,8 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	for type in Statuses.types_of(unit):
 		statuses.append(status_text(type, unit.statuses[type]))
 	_set_shown(_info_statuses, "\n".join(statuses))
+	# 組み方（分隊・誓い）。相手の駒も同じように出す（docs/formation.md）。
+	_set_shown(_info_formation, "\n".join(FormationText.unit_lines(battle, unit)))
 
 	var items := ""
 	if Equipment.can_equip(unit.kind):
@@ -571,7 +577,7 @@ func show_cell_info(title: String, body: String) -> void:
 	_info_rule.visible = false
 	_info_stats.visible = true
 	_set_folded(_info_stats, body, INFO_WIDTH)
-	for label: Label in [_info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
+	for label: Label in [_info_statuses, _info_formation, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
 		label.visible = false
 	_fit_info()
 
@@ -635,7 +641,7 @@ func _fit_info() -> void:
 		if _info_over() <= 0.0 or _info_shrink >= INFO_SHRINK_STEPS:
 			break
 		_info_shrink += 1
-	for label: Label in [_info_skill_note, _info_traits, _info_items, _info_statuses, _info_state]:
+	for label: Label in [_info_skill_note, _info_traits, _info_items, _info_formation, _info_statuses, _info_state]:
 		if _info_over() <= 0.0:
 			break
 		if label.visible:
@@ -690,7 +696,7 @@ func info_text() -> String:
 	if not _info_panel.visible:
 		return ""
 	var parts: Array[String] = []
-	for label: Label in [_info_side, _info_stats, _info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
+	for label: Label in [_info_side, _info_stats, _info_statuses, _info_formation, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
 		# 駒の能力値は、欄に分けて出している間も、文としてはここにある。
 		if label.visible or (label == _info_stats and _info_unit_box.visible):
 			parts.append(label.text)
@@ -1460,6 +1466,7 @@ func _build_info_panel() -> void:
 	column.add_child(_info_stats)
 	# 状態は、残りの期間と効果。付いている間だけ（盤の上では、足元の水色の輪だけで分かる）。
 	_info_statuses = _info_line(column, 15, COLOR_STATUS)
+	_info_formation = _info_line(column, 15, COLOR_FORMATION)
 	_info_items = _info_line(column, 15, Palette.TEXT)
 	_info_skill = _info_line(column, 15, Palette.TEXT)
 	_info_skill_note = _info_line(column, 14, COLOR_TEXT_DIM)
@@ -1469,7 +1476,7 @@ func _build_info_panel() -> void:
 	_info_forecast.add_theme_color_override("font_color", COLOR_FORECAST)
 	# スキルの説明のように長い文は、枠の幅で折り返してから出す（_set_folded。枠を横に広げて盤面を隠さない）。
 	column.add_child(_info_forecast)
-	for label: Label in [_info_stats, _info_statuses, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
+	for label: Label in [_info_stats, _info_statuses, _info_formation, _info_items, _info_skill, _info_skill_note, _info_traits, _info_state, _info_forecast]:
 		label.clip_text = true  # 折り返した行の端数で、枠の幅を広げない
 		label.set_meta(&"font_size", label.get_theme_font_size("font_size"))
 		label.set_meta(&"plain", "")

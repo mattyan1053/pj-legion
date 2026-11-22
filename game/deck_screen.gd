@@ -38,6 +38,7 @@ const UnitSummary := preload("res://game/unit_summary.gd")
 const Steady := preload("res://game/steady.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
+const FormationText := preload("res://game/formation_text.gd")
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
 signal finished(outcome: StringName)
@@ -57,6 +58,11 @@ const RIGHT_GAP := 10
 const EQUIP_MIN_HEIGHT := 80.0
 const ROSTER_WIDTH := 320.0
 const TROOP_WIDTH := 420.0
+## 組み方の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。
+const FORMATION_HEIGHT := 150.0
+const FORMATION_LINES := 7
+## 部隊の行の、組み方の札（分隊の印・誓いのボタン）の幅（px）。
+const FORMATION_TAG_WIDTH := 64.0
 ## 一覧の右の、駒の札を並べる数（1 行）。
 const LIST_CARD_COLUMNS := 3
 ## コストの目盛り（宝石の並び）の幅（px）。コスト上限が大きくても、この幅に詰めて収める。
@@ -106,6 +112,11 @@ var _deck: Deck
 var _deck_name := ""
 var _dirty := false
 var _selected := -1
+## 誓い（組み方）で結ぶ相手を選んでいる駒の番号（部隊の並びの添字）。選んでいなければ -1。
+var _binding := -1
+## 組み方の欄（対戦用の部隊だけ。決まった大きさ）と、その文。
+var _formation_box: PanelContainer
+var _formation_label: Label
 ## マウスを乗せている雇える駒（無ければ -1）。
 var _hover_kind := -1
 var _name_label: Label
@@ -208,6 +219,9 @@ func _input(event: InputEvent) -> void:
 func press_back() -> void:
 	if _dialog.visible:
 		close_dialog()
+	elif is_editing() and _binding != -1:
+		_binding = -1
+		_refresh_editor()
 	elif is_editing() and _selected != -1:
 		select_entry(-1)
 	elif is_editing():
@@ -683,6 +697,7 @@ func _open_editor(id: String, name: String, deck: Deck) -> void:
 	_deck = deck
 	_dirty = false
 	_selected = -1
+	_binding = -1
 	_hover_kind = -1
 	_list_view.visible = false
 	_army_view.visible = false  # 軍を選んだあとの組む画面の後ろに、軍の札を透かして残さない
@@ -732,6 +747,7 @@ func select_entry(index: int) -> void:
 func remove_entry(index: int) -> void:
 	if index < 0 or index >= _deck.entries.size():
 		return
+	_binding = -1
 	_deck.remove(_deck.entries[index])
 	if _selected == index:
 		_selected = -1
@@ -739,6 +755,41 @@ func remove_entry(index: int) -> void:
 		_selected -= 1
 	_dirty = true
 	_refresh_editor()
+
+
+## 部隊の index 番目の駒の「誓い」を押した（組み方。騎士領の対戦用の部隊だけ。docs/formation.md）。
+## 結んでいれば、ほどく。結んでいなければ、結ぶ相手を選び始める。選んでいる間に、ほかの駒の「誓い」を押すと、2 体を結ぶ（同じ駒なら、やめる）。
+func press_oath(index: int) -> void:
+	if not shows_formation() or not Formation.binds_oaths(_deck.army) or index < 0 or index >= _deck.entries.size():
+		return
+	var entry := _deck.entries[index]
+	if _binding == -1:
+		if _deck.unbind(entry):
+			_dirty = true
+		elif _deck.oaths.size() < Formation.MAX_OATHS:
+			_binding = index
+	elif _binding == index:
+		_binding = -1
+	else:
+		if _deck.bind(_deck.entries[_binding], entry):
+			_dirty = true
+		_binding = -1
+	_refresh_editor()
+
+
+## 誓いで結ぶ相手を選んでいるか（その駒の番号。選んでいなければ -1）。検査用。
+func binding_entry() -> int:
+	return _binding
+
+
+## 組み方の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊には出さない）。
+func shows_formation() -> bool:
+	return _deck != null and _deck.rules.id == DeckRules.VERSUS
+
+
+## 組み方の欄の文（検査用）。
+func formation_text() -> String:
+	return _formation_label.text if _formation_box.visible else ""
 
 
 ## 選んでいる駒に装備を 1 個持たせる。
@@ -878,6 +929,17 @@ func _build_editor() -> Control:
 	_troop_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_troop_rows.add_theme_constant_override("separation", 4)
 	troop_scroll.add_child(_troop_rows)
+	# 組み方の欄（対戦用の部隊だけ）: 分隊・誓いの組と、軍の組み方の効果。中身で大きさを変えない。
+	_formation_box = _card()
+	_formation_box.custom_minimum_size = Vector2(TROOP_WIDTH, FORMATION_HEIGHT)
+	_formation_box.clip_contents = true
+	Steady.mark(_formation_box, "decks.formation", Steady.RECT)
+	troop.add_child(_formation_box)
+	_formation_label = _text(13, COLOR_TEXT)
+	_formation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_formation_label.max_lines_visible = FORMATION_LINES
+	_formation_label.custom_minimum_size = Vector2(TROOP_WIDTH - 24.0, 0.0)
+	_formation_box.add_child(_formation_label)
 	# 初期位置は部隊では決めない（マップを選んだあと、出撃準備・対戦設定で決める）。部隊は駒と持ち物の組だけ。
 
 	# 右: 選んだ駒の札（上）と、その駒の持ち物の欄（下）。別々の枠に分ける。
@@ -1071,6 +1133,9 @@ func _refresh_editor() -> void:
 		empty.text = Text.t("deck.edit.no_units")
 		_troop_rows.add_child(empty)
 
+	_formation_box.visible = shows_formation()
+	if shows_formation():
+		_formation_label.text = FormationText.deck_text(_deck, _binding)
 	_refresh_detail()
 	_save_button.disabled = not can_save()
 
@@ -1166,6 +1231,8 @@ func _troop_row(index: int) -> Control:
 	main.set_pressed_no_signal(chosen)
 	main.pressed.connect(func() -> void: select_entry(-1 if _selected == index else index))
 	row.add_child(main)
+	if shows_formation():
+		row.add_child(_formation_tag(index))
 	var remove := _button(Text.t("deck.edit.remove"), 14)
 	remove.custom_minimum_size = Vector2(52.0, 50.0)
 	remove.theme_type_variation = UiTheme.BUTTON_ROW  # 札より軽く見せる（枠の無い行のボタン。乗ると薄く塗る）
@@ -1173,6 +1240,29 @@ func _troop_row(index: int) -> Control:
 	remove.pressed.connect(func() -> void: remove_entry(index))
 	row.add_child(remove)
 	return row
+
+
+## 部隊の行の、組み方の札。騎士領は「誓い」のボタン（結んでいれば何組目か。結ぶ相手を選んでいる駒は明るく）、
+## 連邦は、分隊の駒なら「分隊」の印。どちらでもなければ空（幅は同じ）。
+func _formation_tag(index: int) -> Control:
+	var entry := _deck.entries[index]
+	if Formation.binds_oaths(_deck.army):
+		var button := _button(FormationText.oath_tag(_deck, entry), 13)
+		button.custom_minimum_size = Vector2(FORMATION_TAG_WIDTH, 50.0)
+		button.theme_type_variation = UiTheme.BUTTON_ROW
+		var bound := _deck.partner_of(entry) != null
+		button.add_theme_color_override("font_color", Palette.NATION_FANTASY.lightened(0.3) if bound or _binding == index else COLOR_DIM)
+		button.toggle_mode = true
+		button.set_pressed_no_signal(_binding == index)
+		button.tooltip_text = FormationText.oath_tooltip(_deck, entry)
+		button.pressed.connect(func() -> void: press_oath(index))
+		return button
+	var tag := _text(13, Palette.NATION_MILITARY.lightened(0.2))
+	tag.custom_minimum_size = Vector2(FORMATION_TAG_WIDTH, 50.0)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tag.text = Text.t("deck.formation.squad_tag") if Formation.squad_kinds(_deck).has(entry.kind) else ""
+	return tag
 
 
 ## 雇える駒の i 番目のボタンが押された・マウスが乗った・離れた。

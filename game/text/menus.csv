@@ -96,9 +96,11 @@ setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から開始
 setup.caption.deck,部隊
 setup.caption.stronghold,拠点
 setup.caption.battery,砲台（試し）
+setup.caption.formation,組み方（試し）
 setup.rule.on,あり
 setup.rule.off,なし
 setup.rule.battery.note,後衛が乗ると射程 +{range}
+setup.rule.formation.note,連邦は同じ兵種 2 体で分隊、騎士領は 2 人を誓いで結ぶ。部隊編成で効果を確認
 setup.rule.stronghold.note,中央の拠点に乗ったまま {holds} 回番を終えると勝ち。隣に敵がいる間は止まる
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成

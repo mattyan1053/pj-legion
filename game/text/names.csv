@@ -116,10 +116,10 @@ formation.squad_guard,肩並べ
 formation.squad_focus,追い撃ち
 formation.oath_vengeance,仇討ち
 formation.oath_resolve,誓いの果て
-formation.squad_guard.summary,周りに同じ分隊の仲間がいると、攻撃で受けるダメージ -{guard}
-formation.squad_focus.summary,同じ番に分隊の仲間が攻撃した相手へ、ダメージ +{focus}
-formation.oath_vengeance.summary,誓いの相手を最後に攻撃した敵へ、ダメージ +{vengeance}（誓いの相手が {range} マス以内）
-formation.oath_resolve.summary,片方が倒れると、残った側は次の自分の番まで攻撃 +{resolve}。誓いは切れる
+formation.squad_guard.summary,隣に同じ分隊の仲間がいると、受けるダメージ -{guard}
+formation.squad_focus.summary,同じ番に分隊の仲間が攻撃した相手へ +{focus}
+formation.oath_vengeance.summary,誓いの相手を攻撃した敵へ +{vengeance}（{range} マス以内）
+formation.oath_resolve.summary,片方が倒れると、残る側が次の番まで攻撃 +{resolve}
 relic.wisdom.short,英知
 relic.wisdom.effect,最大 HP +{amount}
 relic.courage.short,勇気

@@ -286,7 +286,14 @@ static func deck_to_record(deck: Deck) -> Dictionary:
 		for item in entry.equipment:
 			equipment.append(Equipment.Id.keys()[item])
 		units.append({"kind": UnitKind.Id.keys()[entry.kind], "equipment": equipment})
-	return {"rules": String(deck.rules.id), "army": UnitKind.Army.keys()[deck.army], "units": units}
+	var record := {"rules": String(deck.rules.id), "army": UnitKind.Army.keys()[deck.army], "units": units}
+	if not deck.oaths.is_empty():
+		# 誓い（組み方。docs/formation.md）は、駒の並びの添字の組で書く。
+		var oaths: Array = []
+		for pair in deck.oath_pairs():
+			oaths.append([pair.x, pair.y])
+		record["oaths"] = oaths
+	return record
 
 
 ## ファイルの 1 件から、取っておいた部隊を作る。知らない駒・装備は外し、知らない決まり・軍は理由に書く。
@@ -335,6 +342,19 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 				else:
 					item.load_issues.append(Text.t("deck.load.unknown_item", {"name": _shown(equipment_name)}))
 		item.deck.entries.append(entry)
+	# 誓い（無ければ空。読めない組と、結べない組は捨てる。理由には書かない: 部隊は出撃できる）。
+	var oaths: Variant = record.get("oaths")
+	if typeof(oaths) == TYPE_ARRAY:
+		for pair: Variant in oaths:
+			if typeof(pair) != TYPE_ARRAY or (pair as Array).size() != 2:
+				continue
+			var a: Variant = pair[0]
+			var b: Variant = pair[1]
+			if typeof(a) not in [TYPE_INT, TYPE_FLOAT] or typeof(b) not in [TYPE_INT, TYPE_FLOAT]:
+				continue
+			var count := item.deck.entries.size()
+			if int(a) >= 0 and int(a) < count and int(b) >= 0 and int(b) < count:
+				item.deck.bind(item.deck.entries[int(a)], item.deck.entries[int(b)])
 	return item
 
 

@@ -141,6 +141,12 @@ const SCENES := {
 	"stronghold_hover": "拠点のマスにマウスを乗せて、下の帯にマスの説明が出ている（長い説明が 2 行に折り返され、切れない）",
 	"stronghold": "拠点に駒が乗り、どちらかがあと 1 回の確保で勝つところ（勝ち方の札と確保の数。迷宮回廊）",
 	"setup_stronghold": "対戦設定で、選べる決まりの「拠点」を「あり」にしたところ",
+	"setup_formation": "対戦設定で、選べる決まりの「組み方（試し）」を「あり」にしたところ",
+	"formation_start": "組み方ありの対戦の始め（決まりの知らせに、両軍の組み方。駒の足元の輪と、誓い・肩並べの線）",
+	"formation_oath": "組み方ありの対戦の途中で、誓いを結んだ騎士領の駒をクリックしたところ（駒の情報の枠に誓いと仇の行、2 人をつなぐ線）",
+	"formation_forecast": "組み方ありの対戦で、組み方の効果が乗る攻撃の予測（追い撃ち・仇討ちで増える、肩並べで減る）",
+	"decks_formation_knights": "部隊編成で、騎士領の対戦用の部隊に誓いを 2 組結んだところ（行の「誓い 1」「誓い 2」と、組み方の欄）",
+	"decks_formation_federation": "部隊編成で、連邦の対戦用の部隊（行の「分隊」の印と、組み方の欄）",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
 	"portal_range": "ポータルへ届く駒を選んで、範囲の中のポータルと、その対の出るポータルが同じ色で塗られている（範囲は転移の先まで広げない。双子結晶）",
 	"portal_menu": "ポータルのマスへ動いて、メニューに「転移」が出ている（行き先のポータルが塗られている。双子結晶）",
@@ -823,6 +829,97 @@ func _scene_setup_battery() -> bool:
 	_app.current_scene().setup_panel().choose_rule(OptionalRules.BATTERY, true)
 	_park_mouse()
 	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.BATTERY)
+
+
+func _scene_setup_formation() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_rule(OptionalRules.FORMATION, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.FORMATION)
+
+
+func _scene_formation_start() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.FORMATION])
+	_show()
+	return _scene.notice_text().contains("分隊") and _scene.formation_link_count() > 0
+
+
+## 誓いの相手を攻撃した敵（仇）が決まった、騎士領の誓いの駒。無ければ null。
+func _oath_with_foe() -> Unit:
+	for unit in _battle.units:
+		if Formation.partner_of(_battle, unit) != null and Formation.foe_of_partner(_battle, unit) != null:
+			return unit
+	return null
+
+
+func _scene_formation_oath() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.FORMATION])
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and _oath_with_foe() != null):
+		return false
+	var unit := _oath_with_foe()
+	_show()
+	_scene.click_cell(unit.cell)
+	_scene.focus_camera(unit.cell)
+	return _scene.info_text().contains("誓い")
+
+
+## 行動できる自分の駒が、組み方の効果の乗る攻撃をできる相手（[駒, 相手]）。無ければ空。
+func _formation_attack() -> Array:
+	for unit in _own_units():
+		if not _battle.can_act(unit):
+			continue
+		for target_id in _battle.options(unit.id).attack_target_ids:
+			var outcome := Forecast.of(_battle, AttackAction.new(unit.id, target_id)).outcome(target_id)
+			if outcome != null and not outcome.formation.is_empty():
+				return [unit, _battle.unit_by_id(target_id)]
+	return []
+
+
+func _scene_formation_forecast() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.FORMATION])
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _formation_attack().is_empty()):
+		return false
+	var found := _formation_attack()
+	_show()
+	_scene.click_cell(found[0].cell)
+	_look_at(BoardView.cell_center(found[1].cell))
+	_scene.hover(found[1].cell)
+	return true
+
+
+func _scene_decks_formation_knights() -> bool:
+	await _app.go(SceneFlow.DECKS)
+	var screen: Node = _app.current_scene()
+	screen.set_mode(DeckRules.VERSUS)
+	screen.press_new()
+	screen.choose_new_army(UnitKind.Army.FANTASY)
+	for kind: UnitKind.Id in [UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.SPELLBLADE, UnitKind.Id.PRIEST, UnitKind.Id.SPELLBLADE]:
+		screen.hire(kind)
+	screen.select_entry(-1)
+	for pair: Array in [[0, 1], [2, 4]]:
+		screen.press_oath(pair[0])
+		screen.press_oath(pair[1])
+	_park_mouse()
+	return screen.editing_deck().oaths.size() == 2
+
+
+func _scene_decks_formation_federation() -> bool:
+	await _app.go(SceneFlow.DECKS)
+	var screen: Node = _app.current_scene()
+	screen.set_mode(DeckRules.VERSUS)
+	screen.press_new()
+	screen.choose_new_army(UnitKind.Army.MILITARY)
+	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC]:
+		screen.hire(kind)
+	screen.select_entry(-1)
+	_park_mouse()
+	return screen.formation_text().contains("分隊")
 
 
 func _scene_setup_stronghold() -> bool:
