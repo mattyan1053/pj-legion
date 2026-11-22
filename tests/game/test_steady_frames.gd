@@ -270,6 +270,7 @@ func test_result_stats_keep_their_size_whatever_the_lines() -> void:
 		screen.skip()
 		await settle(screen)
 		sizes.append(screen._stats_panel.size)
+		assert_eq(screen._stat_rows.size(), count, "埋めた空の行を、段階の出し方（音と間）に入れた")
 	assert_eq(sizes[1], sizes[0], "戦績の行が増えると、枠が伸びた")
 	assert_eq(sizes[2], sizes[0], "戦績の行が減ると、枠が縮んだ")
 	screen.free()

@@ -109,6 +109,8 @@ var _stats_panel: PanelContainer
 var _stats_title: Label
 var _stats_grid: GridContainer
 var _stat_rows: Array = []
+## 戦績の行の高さを上限の数ぶん取るための、空の行（段階の出し方には入れない）。
+var _stat_pads: Array[Label] = []
 var _mvp_panel: PanelContainer
 var _mvp_head: Label
 var _mvp_name: Label
@@ -205,6 +207,9 @@ func present(summary: RefCounted) -> void:
 		for label: Label in row:
 			label.queue_free()
 	_stat_rows.clear()
+	for label: Label in _stat_pads:
+		label.queue_free()
+	_stat_pads.clear()
 	for line: Array in summary.lines:
 		var name_label := _label(18)
 		name_label.text = line[0]
@@ -225,7 +230,7 @@ func present(summary: RefCounted) -> void:
 		value_label.text = " "
 		_stats_grid.add_child(name_label)
 		_stats_grid.add_child(value_label)
-		_stat_rows.append([name_label, value_label])
+		_stat_pads.append_array([name_label, value_label])
 	_mvp_icon.visible = summary.mvp_name != ""
 	if summary.mvp_name != "":
 		_mvp_icon.set_kind(summary.mvp_kind, summary.mvp_side, summary.mvp_evolved, _king_look(summary.mvp_side))
