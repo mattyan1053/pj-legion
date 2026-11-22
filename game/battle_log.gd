@@ -141,6 +141,8 @@ static func readers() -> Dictionary:
 		RegenerationHealedEvent: &"_read_healed",
 		SanctuaryHealedEvent: &"_read_healed",
 		StatusAppliedEvent: &"_read_status_applied",
+		FormationTriggeredEvent: &"_read_formation",
+		OathBrokenEvent: &"_read_oath_broken",
 		UltUsedEvent: &"_read_ult_used",
 		UltReadyEvent: &"_read_ult_ready",
 		UnitDefeatedEvent: &"_read_defeated",
@@ -510,6 +512,19 @@ func _read_healed(event: UnitHealedEvent) -> void:
 		key = "battle.log.healed.regeneration"
 	_line(Text.t(key, {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
+
+
+## 組み方の効果が攻撃に効いた（「青のスナイパーの追い撃ち: ダメージ +3」）。
+func _read_formation(event: FormationTriggeredEvent) -> void:
+	var key := "battle.log.formation_down" if event.effect == Formation.Effect.SQUAD_GUARD else "battle.log.formation_up"
+	_line(Text.t(key, {"unit": unit_name(event.unit_id), "effect": Names.formation_effect(event.effect), "amount": event.amount}),
+		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id, event.other_id])
+
+
+## 誓いの片方が倒れて、誓いが切れた。
+func _read_oath_broken(event: OathBrokenEvent) -> void:
+	_line(Text.t("battle.log.oath_broken", {"unit": unit_name(event.survivor_id), "fallen": unit_name(event.fallen_id)}),
+		_side_of(event.survivor_id), _cell_of(event.survivor_id), [event.survivor_id])
 
 
 ## 状態が付いた。まとめ先があれば、状態ごとに 1 行にまとめる（「突撃（2 ターン）: 青の将、青のパラディン…」）。

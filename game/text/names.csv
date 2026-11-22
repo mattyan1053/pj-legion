@@ -99,6 +99,7 @@ status.barrier,バリア
 status.aim,照準
 status.fatigue,反動
 status.assault,突撃
+status.resolve,奮起
 relic.wisdom,英知の聖遺物
 relic.wisdom.summary,軍の全員の最大 HP +{amount}
 relic.courage,勇気の聖遺物
@@ -110,6 +111,15 @@ status.barrier.summary,次に受けるダメージを 1 回だけ防ぐ
 status.aim.summary,射程 +{range}。次の攻撃がクリティカル（動くと解ける）
 status.fatigue.summary,攻撃 -{penalty}
 status.assault.summary,移動 +{move}・攻撃 +{power}
+status.resolve.summary,攻撃 +{resolve}（誓いの相手が倒れた）
+formation.squad_guard,肩並べ
+formation.squad_focus,追い撃ち
+formation.oath_vengeance,仇討ち
+formation.oath_resolve,誓いの果て
+formation.squad_guard.summary,周りに同じ分隊の仲間がいると、攻撃で受けるダメージ -{guard}
+formation.squad_focus.summary,同じ番に分隊の仲間が攻撃した相手へ、ダメージ +{focus}
+formation.oath_vengeance.summary,誓いの相手を最後に攻撃した敵へ、ダメージ +{vengeance}（誓いの相手が {range} マス以内）
+formation.oath_resolve.summary,片方が倒れると、残った側は次の自分の番まで攻撃 +{resolve}。誓いは切れる
 relic.wisdom.short,英知
 relic.wisdom.effect,最大 HP +{amount}
 relic.courage.short,勇気

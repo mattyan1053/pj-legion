@@ -105,17 +105,27 @@ static func attack_power(attacker: Unit) -> int:
 
 
 ## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
-## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、森の軽減、受ける側の状態（バリア）。
+## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、組み方で足すもの（追い撃ち・仇討ち）、森の軽減、
+## 組み方で引くもの（肩並べ）、受ける側の状態（バリア）。
 ## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
 static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
 	if smoke != null:
 		return Hit.smoked(attacker, target, smoke)
 	var amount := attack_power(attacker)
+	var boosts := Formation.attack_boosts(battle, attacker, target)
+	for effect: int in boosts:
+		amount += boosts[effect]
 	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
 	if forest:
 		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
+	var guard := Formation.guard_of(battle, target)
+	if guard > 0 and amount > 0:
+		boosts[Formation.Effect.SQUAD_GUARD] = mini(guard, amount)
+		amount = maxi(0, amount - guard)
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
+	if result.blocked_by == -1:
+		result.formation = boosts  # バリアに防がれたら、組み方の増減も出さない
 	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
 	result.forest = forest
 	return result
@@ -127,7 +137,7 @@ static func damage(battle: Battle, attacker: Unit, target: Unit) -> int:
 
 
 ## attacker が target を攻撃する（届くかどうかは呼ぶ側が確かめる）。起きたことを返す。
-## 煙幕に阻まれたら SmokeBlockedEvent。そうでなければ AttackDamagedEvent と、防いだ状態（バリア）が外れる StatusRemovedEvent。
+## 煙幕に阻まれたら SmokeBlockedEvent。そうでなければ、組み方が効いたぶんの FormationTriggeredEvent、AttackDamagedEvent と、防いだ状態（バリア）が外れる StatusRemovedEvent。
 ## 続けて、攻撃で外れる攻撃側の状態（照準）の StatusRemovedEvent、倒れたら UnitDefeatedEvent。
 ## プレイヤーの駒の攻撃（AttackAction）と中立の駒の攻撃（Neutral）が同じものを使う。経験値と行動の終わりは呼ぶ側。
 static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[BattleEvent]:
@@ -138,7 +148,12 @@ static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[Battle
 	if resolved.smoke != null:
 		events.append(SmokeBlockedEvent.new(attacker.id, target.id, resolved.smoke.id))
 	else:
+		for effect: int in resolved.formation:
+			var helped := target if effect == Formation.Effect.SQUAD_GUARD else attacker
+			var other := attacker if effect == Formation.Effect.SQUAD_GUARD else target
+			events.append(FormationTriggeredEvent.new(effect as Formation.Effect, helped.id, other.id, resolved.formation[effect]))
 		events.append(AttackDamagedEvent.new(resolved))
+		Formation.note_attack(battle, attacker, target)
 	events.append_array(after)
 	events.append_array(Statuses.after_attack(attacker))
 	if target.hp == 0:

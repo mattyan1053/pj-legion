@@ -53,6 +53,9 @@ battle.log.healed.sanctuary,{unit}が聖域で {amount} 回復（HP {hp}）
 battle.log.healed.spring,{unit}が回復の泉で {amount} 回復（HP {hp}）
 battle.log.healed.regeneration,{unit}が再生で {amount} 回復（HP {hp}）
 battle.log.status,{unit}に{status}（{turns} ターン）
+battle.log.formation_up,{unit}の{effect}: ダメージ +{amount}
+battle.log.formation_down,{unit}の{effect}: ダメージ -{amount}
+battle.log.oath_broken,{fallen}が倒れ、{unit}の誓いが切れた
 battle.log.status_group,{status}（{turns} ターン）: {units}
 battle.log.status_self,{status}が付いた（{turns} ターン）
 battle.log.ult,{side}が必殺技「{ult}」を使った
@@ -258,6 +261,8 @@ battle.forecast.defeats_one,倒せる！
 battle.forecast.defeats,{count} 体を倒せる！
 battle.forecast.self_named,自分（{unit}）
 battle.pop.status_broken,{status}が解けた
+battle.pop.formation_up,{effect} +{amount}
+battle.pop.formation_down,{effect} -{amount}
 battle.pop.status_expired,{status}が消えた
 battle.pop.capture,占拠 {turns} / {needed}
 battle.pop.capture_broken,占拠が途切れた
