@@ -138,8 +138,9 @@ func press_settings() -> void:
 	context.open_settings()
 
 
+## 「終了」: ウィンドウの × と同じく、確かめてから終える。
 func press_quit() -> void:
-	context.quit()
+	context.ask_quit()
 
 
 ## Esc は、戻すものが無いので、システムメニューを開く（ほかの場面と同じ）。
