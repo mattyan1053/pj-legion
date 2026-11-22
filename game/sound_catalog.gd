@@ -16,6 +16,9 @@ extends RefCounted
 ##   対戦の曲を差し替えるときは、path を替えるだけ（次点の曲は assets/audio/oga-battle/README.md）。
 const StageLook := preload("res://game/stage_look.gd")
 const MUSIC := {
+	## タイトル（主題歌。静かに始まり、弦と金管が高まって、静かに終わる。オーケストラ）。
+	&"title": {"path": "res://assets/audio/joth/fantasy_orchestral_theme.ogg", "loop": true, "volume_db": -4.0},
+	## 選んでいる間（セーブデータ選択・物語選択・話の一覧・出撃準備・部隊編成・マップ選択・対戦設定）。
 	&"menu": {"path": "res://assets/audio/randommind/medieval_exploration.ogg", "loop": true, "volume_db": -8.0},
 	## 対戦（草原。弦と金管の勇ましい戦いの曲）。盤の見た目が分からないときの対戦の曲も、これ。
 	&"battle": {"path": "res://assets/audio/oga-battle/battle_theme_a_loop.ogg", "loop": true, "volume_db": -11.0},
