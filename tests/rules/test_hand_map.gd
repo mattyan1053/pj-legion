@@ -57,11 +57,26 @@ func test_each_problem_is_found() -> void:
 		HandMap.Problem.PORTAL_PAIR: ["1a2"] as Array[String],
 		HandMap.Problem.HQ_NOT_CONNECTED: ["1#2"] as Array[String],
 		HandMap.Problem.MID_BOSS_UNREACHABLE: ["1.2#M", "...#M"] as Array[String],
+		HandMap.Problem.STRONGHOLD_COUNT: ["1HH2"] as Array[String],
+		HandMap.Problem.STRONGHOLD_UNUSABLE: ["1.2#H"] as Array[String],
 	}
 	for problem: HandMap.Problem in cases:
 		var map := _map(cases[problem])
 		assert_eq(map.problems(), [problem] as Array[HandMap.Problem], HandMap.Problem.keys()[problem])
 		assert_eq(map.make_board(), null)
+
+
+## 拠点の場所（H）: 地形は平地で、盤の stronghold_site になる（拠点が入の対戦でだけ拠点になる）。中ボスの縄張りの中には書けない。
+func test_stronghold_site_is_read_and_checked() -> void:
+	var map := _map(["..2..", "..H..", "..1.."])
+	assert_eq(map.problems(), [] as Array[HandMap.Problem])
+	var board := map.make_board()
+	assert_eq(board.stronghold_site, Vector2i(2, 1))
+	assert_eq(board.terrain_at(Vector2i(2, 1)), Terrain.Type.NORMAL)
+	assert_eq(board.stronghold_cell, Board.NO_CELL, "置かれるのは、拠点が入の対戦だけ")
+	assert_eq(_map(["..2..", "..1.."]).make_board().stronghold_site, Board.NO_CELL, "書かなければ、道のりから選ぶ")
+	var near_boss := _map(["M.2.....", "..H.....", "..1....M"])
+	assert_eq(near_boss.problems(), [HandMap.Problem.STRONGHOLD_UNUSABLE] as Array[HandMap.Problem], "中ボスの縄張りの中")
 
 
 func test_barrels_block_the_way_between_hqs() -> void:
@@ -184,6 +199,11 @@ func test_map_files_read_rows_with_hash_and_report_lines() -> void:
 	assert_true(Array(ragged["problems"]).any(func(problem: String) -> bool: return problem.begins_with("probe.txt:5:")), "長さの違う行: %s" % [ragged["problems"]])
 	var untitled := Maps.parse("[map]\n[rows]\n2\n1\n")
 	assert_false((untitled["problems"] as PackedStringArray).is_empty(), "title が無い")
+	var two_sites := Maps.parse("[map]\ntitle = 見本\n[rows]\n.2.\nH.H\n.1.\n")
+	assert_eq(Array(two_sites["problems"]), ["probe.txt:5: 拠点の場所（H）が 2 つ以上ある（1 つだけ書ける）"])
+	var walled := Maps.parse("[map]\ntitle = 見本\n[rows]\n.2.#.\n...#H\n.1.#.\n")
+	assert_eq(Array(walled["problems"]).size(), 1)
+	assert_true((walled["problems"][0] as String).begins_with("probe.txt:5: 拠点の場所（H。5 列目）に拠点を置けない"), "%s" % [walled["problems"]])
 	var no_hq := Maps.parse("[map]\ntitle = 見本\n[rows]\n...\n.1.\n")
 	assert_false((no_hq["problems"] as PackedStringArray).is_empty(), "本陣が 1 つ")
 

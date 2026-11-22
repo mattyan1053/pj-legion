@@ -15,6 +15,8 @@ enum Problem {
 	PORTAL_PAIR,  ## ポータルの文字が、ちょうど 2 マスずつでない
 	HQ_NOT_CONNECTED,  ## 本陣どうしが歩いてつながっていない
 	MID_BOSS_UNREACHABLE,  ## 本陣から歩いて行けない中ボスがいる
+	STRONGHOLD_COUNT,  ## 拠点の場所（H）が 2 つ以上ある
+	STRONGHOLD_UNUSABLE,  ## 拠点の場所（H）に拠点を置けない（中ボスの縄張りの中、またはどちらかの本陣から歩いて行けない）
 }
 
 const PLAIN := "."
@@ -27,6 +29,8 @@ const MID_BOSS := "M"
 const BARREL := "B"
 const SPRING := "S"
 const BATTERY := "C"
+## 拠点の場所（地形は平地。拠点が入の対戦でだけ拠点になる。無ければ道のりから選ぶ。docs/map-objects.md の「拠点」）。
+const STRONGHOLD := "H"
 ## 中ボスは、関わりのある聖遺物が番号で決まる（Relics.OF_BOSS）ので、0 か 2 体だけ（docs/neutral-mid-boss.md）。
 const MID_BOSS_COUNTS: Array[int] = [0, 2]
 
@@ -65,6 +69,8 @@ func problems() -> Array[Problem]:
 		if _is_portal(c) and counts[c] != 2:
 			found.append(Problem.PORTAL_PAIR)
 			break
+	if counts.get(STRONGHOLD, 0) > 1:
+		found.append(Problem.STRONGHOLD_COUNT)
 	if not found.is_empty():
 		return found
 	var board := _build()
@@ -74,7 +80,20 @@ func problems() -> Array[Problem]:
 		if not board.is_reachable(board.hq_cells[0], cell):
 			found.append(Problem.MID_BOSS_UNREACHABLE)
 			break
+	var site := board.stronghold_site
+	if site != Board.NO_CELL and (not Stronghold.can_hold(board, site)
+			or not board.is_reachable(board.hq_cells[0], site) or not board.is_reachable(board.hq_cells[1], site)):
+		found.append(Problem.STRONGHOLD_UNUSABLE)
 	return found
+
+
+## 拠点の場所（H）のマス。無ければ Board.NO_CELL。
+func stronghold_site() -> Vector2i:
+	for y in rows.size():
+		var x := rows[y].find(STRONGHOLD)
+		if x >= 0:
+			return Vector2i(x, y)
+	return Board.NO_CELL
 
 
 func is_valid() -> bool:
@@ -114,6 +133,8 @@ func _build() -> Board:
 					board.add_spring(cell)
 				BATTERY:
 					board.battery_spots.append(cell)
+				STRONGHOLD:
+					board.stronghold_site = cell
 				_:
 					if _is_portal(c):
 						if portals.has(c):
@@ -129,5 +150,5 @@ static func _is_portal(c: String) -> bool:
 
 static func _is_known(c: String) -> bool:
 	return _is_portal(c) or [
-		PLAIN, OBSTACLE, FOREST, FONT, HQ_PLAYER1, HQ_PLAYER2, MID_BOSS, BARREL, SPRING, BATTERY,
+		PLAIN, OBSTACLE, FOREST, FONT, HQ_PLAYER1, HQ_PLAYER2, MID_BOSS, BARREL, SPRING, BATTERY, STRONGHOLD,
 	].has(c)

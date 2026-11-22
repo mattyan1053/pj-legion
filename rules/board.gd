@@ -29,6 +29,12 @@ var battery_spots: Array[Vector2i] = []
 var battery_cells: Array[Vector2i] = []
 ## 拠点のマス（選べる決まりが入の対戦だけ。Stronghold.arm）。無ければ NO_CELL。
 var stronghold_cell := NO_CELL
+## 拠点を置く場所（盤の出どころが決める。手で作ったマップの `H`。置かれるまでは何もしない）。無ければ NO_CELL で、
+## Stronghold.choose_cell が道のりから選ぶ。
+var stronghold_site := NO_CELL
+## 拠点を道のりから選ぶときの寄せ（Stronghold.candidates。先手の本陣からの道のり - 後手の本陣からの道のり の、ねらう値。
+## 0 = 両方から同じ。正 = 後手の本陣に近い側）。生成のマップは BoardGenerator が盤の種類ごとに決める。
+var stronghold_lean := 0
 ## ポータルのマス -> 対になるポータルのマス。対の両方が、互いを指して入る。
 var portal_exits: Dictionary[Vector2i, Vector2i] = {}
 ## 盤の上の効果（置いた順。番号の小さい順でもある）。

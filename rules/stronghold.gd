@@ -2,7 +2,7 @@ class_name Stronghold
 extends RefCounted
 ## 拠点（選べる決まり OptionalRules.STRONGHOLD。docs/map-objects.md の「拠点」、docs/win-conditions.md の「拠点を確保し続ける」）。
 ##
-## 盤の中央（両方の本陣から同じ道のり）のマス 1 つ。自分の駒が乗ったまま自分のフェーズを終えると、そのプレイヤーの「確保」が 1 進み、
+## 盤ごとに決めたマス 1 つ（手で作ったマップは `H`、生成のマップは盤の種類ごとの寄せで、両方の本陣からの道のりから選ぶ）。自分の駒が乗ったまま自分のフェーズを終えると、そのプレイヤーの「確保」が 1 進み、
 ## HOLDS_TO_WIN に届いたら勝ち（GameWonEvent.Reason.STRONGHOLD_HELD）。
 ## - 拠点の隣（CONTEST_RADIUS 以内）に相手の駒がいれば、確保は進まない（止まる。減りはしない）
 ## - 乗らずに終えても、確保は減らない
@@ -17,12 +17,13 @@ const CONTEST_RADIUS := 1
 const BOSS_CLEARANCE := Neutral.TERRITORY_RADIUS
 
 
-## 盤 board の拠点のマスを決める。両方の本陣からの道のり（移動のコスト。ポータルは転移も使う）の差がいちばん小さいマスのうち、
-## 両方の本陣の真ん中にいちばん近いもの。それが何マスかあれば（盤の真ん中をはさんだ対など）、種 battle_seed から引いた乱数で選ぶ。盤によっては、先手の陣地の側と後手の陣地の側に 1 つずつ候補ができ、
-## どちらに置くかで先手・後手の有利がはっきり変わるので、決め打ちにせず、局ごとに替わるようにする。
-## 置けるのは、どちらの本陣からも歩いて行ける、何も置かれていない（環境オブジェクトの無い）マスで、本陣・結晶泉・中ボスのマスでないもの。
+## 盤 board の拠点のマスを決める。盤の出どころが場所を決めていれば（Board.stronghold_site。手で作ったマップの `H`）、そこ。
+## 決めていなければ、道のりから選ぶ（candidates）。候補が何マスかあれば（盤の真ん中をはさんだ対など）、種 battle_seed から引いた乱数で選ぶ（同じ種なら同じマス）。
+## 置けるのは、どちらの本陣からも歩いて行ける、何も置かれていない（環境オブジェクトの無い）マスで、本陣・結晶泉・砲台の場所でなく、中ボスの縄張りの外のもの。
 ## 置けるマスが無ければ Board.NO_CELL。
 static func choose_cell(board: Board, battle_seed := 0) -> Vector2i:
+	if board.stronghold_site != Board.NO_CELL:
+		return board.stronghold_site if can_hold(board, board.stronghold_site) else Board.NO_CELL
 	var ties := candidates(board)
 	if ties.is_empty():
 		return Board.NO_CELL
@@ -32,7 +33,9 @@ static func choose_cell(board: Board, battle_seed := 0) -> Vector2i:
 	return ties[rng.randi_range(0, ties.size() - 1)]
 
 
-## 拠点を置ける候補（道のりの差がいちばん小さく、真ん中にいちばん近いマス。上の行から、左の列から）。
+## 道のりから選ぶ拠点の候補。先手の本陣からの道のり - 後手の本陣からの道のり（移動のコスト。ポータルは転移も使う）が、
+## 盤の寄せ（Board.stronghold_lean。0 = 両方から同じ）にいちばん近いマスのうち、両方の本陣の真ん中にいちばん近いもの（上の行から、左の列から）。
+## 盤によっては道のりのそろうマスが無く、先手に 1 歩近いマスと後手に 1 歩近いマスが並んで候補になる。
 static func candidates(board: Board) -> Array[Vector2i]:
 	var ties: Array[Vector2i] = []
 	if board.hq_cells.size() < 2:
@@ -46,9 +49,9 @@ static func candidates(board: Board) -> Array[Vector2i]:
 		for x in board.size.x:
 			var cell := Vector2i(x, y)
 			var i := y * board.size.x + x
-			if near[i] < 0 or far[i] < 0 or not _can_hold(board, cell):
+			if near[i] < 0 or far[i] < 0 or not can_hold(board, cell):
 				continue
-			var gap := absi(near[i] - far[i])
+			var gap := absi(near[i] - far[i] - board.stronghold_lean)
 			var off := Vector2(cell).distance_squared_to(middle)
 			if ties.is_empty() or gap < best_gap or (gap == best_gap and off < best_off - 0.001):
 				ties = [cell]
@@ -59,8 +62,11 @@ static func candidates(board: Board) -> Array[Vector2i]:
 	return ties
 
 
-static func _can_hold(board: Board, cell: Vector2i) -> bool:
-	if not board.can_place_object(cell) or board.hq_owner(cell) >= 0:
+## cell に拠点を置けるか（道のりは見ない）。何も置かれていない、本陣・結晶泉・砲台の場所でないマスで、中ボスの家から BOSS_CLEARANCE より遠いもの。
+static func can_hold(board: Board, cell: Vector2i) -> bool:
+	if not board.in_bounds(cell) or not board.can_place_object(cell) or board.hq_owner(cell) >= 0:
+		return false
+	if board.battery_spots.has(cell) or board.terrain_at(cell) == Terrain.Type.OBSTACLE:
 		return false
 	if board.terrain_at(cell) == Terrain.Type.FONT:
 		return false

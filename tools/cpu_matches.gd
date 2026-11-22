@@ -38,6 +38,8 @@ extends SceneTree
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
 ##   --rules=NAME   選べる決まり（OptionalRules の名前。battery = 砲台、stronghold = 拠点、formation = 組み方。`,` で並べられる）をそれだけ入にして回す。none で全部切。
 ##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
+##   --stronghold=X,Y  拠点を、マス (X, Y) に置いて回す（測るためだけ。拠点が入の対戦だけ）。lean:K なら、道のりの寄せ K（Board.stronghold_lean。
+##                   先手の本陣からの道のり - 後手の本陣からの道のり の、ねらう値）で選ぶ
 ##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
 ##                   ファイルは、マップのファイルと同じ書式（[rows] の節。docs/hand-map.md）か、文字の格子の行だけを並べたテキスト。--stage より優先する
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
@@ -414,7 +416,12 @@ func _initialize() -> void:
 		elif rule_arg != "default" and rule_arg != "none":
 			for rule in rule_arg.split(",", false):
 				setup.rules.append(StringName(rule))
+		var trial_stronghold := args.has("stronghold") and setup.rules.has(OptionalRules.STRONGHOLD)
+		if trial_stronghold:
+			setup.rules.erase(OptionalRules.STRONGHOLD)
 		var battle := setup.create_battle()
+		if trial_stronghold:
+			_arm_trial_stronghold(battle, args["stronghold"], setup.battle_seed)
 		if args.has("relic"):
 			var relic := Relics.Id.COURAGE if args["relic"] == "courage" else Relics.Id.WISDOM
 			var gauge := battle.ult_gauge[Unit.Side.PLAYER1]
@@ -911,6 +918,24 @@ static func _deck_text(deck: Deck) -> String:
 			text += " + " + Names.item(item)
 		parts.append(text)
 	return "%s（コスト %d / %d）" % ["、".join(parts), deck.total_cost(), deck.budget()]
+
+
+## --stronghold: 拠点の場所を、盤の出どころの決めた場所の代わりに試す（測るためだけ）。値は「列,行」（そのマス）か「lean:K」（道のりの寄せ K。
+## Board.stronghold_lean）。MatchSetup.create_battle が拠点を置くのと同じ順（砲台のあと）に置き、両方の勝ち方に拠点を足す。
+static func _arm_trial_stronghold(battle: Battle, value: String, battle_seed: int) -> void:
+	var board := battle.board
+	if value.begins_with("lean:"):
+		board.stronghold_site = Board.NO_CELL
+		board.stronghold_lean = value.trim_prefix("lean:").to_int()
+	else:
+		var parts := value.split(",")
+		board.stronghold_site = Vector2i(parts[0].to_int(), parts[1].to_int())
+	Stronghold.arm(board, battle_seed)
+	if board.stronghold_cell == Board.NO_CELL:
+		printerr("--stronghold の場所に拠点を置けない: %s" % value)
+		return
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
 
 
 ## `--名前=値` の引数（`--` のあとに書いたもの）。
