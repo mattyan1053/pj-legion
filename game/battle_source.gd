@@ -17,6 +17,11 @@ func make_setup(_battle_seed: int) -> MatchSetup:
 	return null
 
 
+## 中ボスの名前（names.gd の set_boss。空なら既定の「番人」）。対戦の画面が、対戦を始めるたびに入れる。
+func boss_name() -> String:
+	return ""
+
+
 ## 盤の見た目の名前（stage_look.gd の THEMES の鍵）。
 func look() -> StringName:
 	return StageLook.DEFAULT

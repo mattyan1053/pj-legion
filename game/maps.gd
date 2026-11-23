@@ -16,7 +16,11 @@ const DIR := "res://game/maps/"
 static var _cache := {}
 
 
-## id のマップ: {"map": HandMap, "title": 名前, "look": 見た目の名前（stage_look.gd）, "problems": 書き間違い（「ファイル:行: …」の文）}。ファイルが無ければ空。
+## 中ボスの名前の長さの上限（字）。「峠の番人の撃破」が、対戦ルールの札と上の帯の札に収まる長さ。
+const BOSS_NAME_MAX := 6
+
+
+## id のマップ: {"map": HandMap, "title": 名前, "look": 見た目の名前（stage_look.gd）, "boss": 中ボスの名前（無ければ空）, "problems": 書き間違い（「ファイル:行: …」の文）}。ファイルが無ければ空。
 static func find(id: String) -> Dictionary:
 	if _cache.has(id):
 		return _cache[id]
@@ -42,7 +46,7 @@ static func parse(text: String, file_path := "probe.txt") -> Dictionary:
 
 static func read(file: RefCounted) -> Dictionary:
 	file.check_sections(["map", "rows"])
-	var values: Dictionary = file.values("map", ["title", "look"])
+	var values: Dictionary = file.values("map", ["title", "look", "boss"])
 	var title := ""
 	if values.has("title"):
 		title = values["title"][0]["value"]
@@ -56,6 +60,13 @@ static func read(file: RefCounted) -> Dictionary:
 		if not StageLook.THEMES.has(look):
 			file.problem(entry["line"], "知らない見た目「%s」（書けるのは %s）" % [look, ", ".join(StageLook.THEMES.keys())])
 			look = StageLook.DEFAULT
+	# 中ボスの名前（docs/neutral-mid-boss.md の「名前」）。書かなければ空（既定の「番人」）。
+	var boss := ""
+	if values.has("boss"):
+		boss = values["boss"][0]["value"]
+		if boss == "" or boss.length() > BOSS_NAME_MAX:
+			file.problem(values["boss"][0]["line"], "boss は 1 から %d 字" % BOSS_NAME_MAX)
+			boss = ""
 	var rows := PackedStringArray()
 	for row: Dictionary in file.rows("rows"):
 		rows.append(row["text"])
@@ -84,7 +95,7 @@ static func read(file: RefCounted) -> Dictionary:
 						HandMap.STRONGHOLD, site.x + 1, Stronghold.BOSS_CLEARANCE])
 				_:
 					file.problem(file.line_of("rows"), "盤にできない: %s（docs/hand-map.md）" % HandMap.Problem.keys()[problem].to_lower())
-	return {"map": map, "title": title, "look": look, "problems": file.problems}
+	return {"map": map, "title": title, "look": look, "boss": boss, "problems": file.problems}
 
 
 ## game/maps/ のマップの id の並び（ファイルの名前の順）。
