@@ -248,11 +248,10 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	return items
 
 
-## 対戦の始めの知らせ（選べる決まり）の行。入の決まりごとに 1 行（盤に砲台・拠点がある）。無ければ空。
+## 対戦の始めの知らせ（選べる決まり）の行。入の決まりごとに 1 行（盤に拠点がある）。無ければ空。
+## 砲台はマップの物なので、ここでは言わない（マスの説明と、乗ったときの射程で分かる）。
 static func rule_notice(battle: Battle) -> Array[String]:
 	var lines: Array[String] = []
-	if not battle.board.battery_cells.is_empty():
-		lines.append(Text.t("battle.notice.battery", {"range": MapObject.BATTERY_RANGE}))
 	if battle.board.stronghold_cell != Board.NO_CELL:
 		lines.append(Text.t("battle.notice.stronghold", WinText.stronghold_args()))
 	if not battle.signs.is_empty():

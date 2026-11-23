@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 砲台（選べる決まり。docs/map-objects.md の「砲台」）: 置かれるのは入のときだけ、乗った後衛の射程、危険の読み、CPU。
+## 砲台（マップの物。docs/map-objects.md の「砲台」）: 置く盤、乗った後衛の射程、危険の読み、CPU。
 
 const Maps := preload("res://tests/support/maps.gd")
 
@@ -28,18 +28,20 @@ func _lane() -> Battle:
 # --- 置く ---
 
 
-func test_trial_is_off_by_default_and_nothing_is_placed() -> void:
-	assert_eq(MatchSetup.new().rules, [] as Array[StringName])
+func test_generated_boards_have_batteries_only_on_the_listed_stages() -> void:
 	for stage in STAGES:
 		for battle_seed: int in [1, 2, 3]:
 			var battle := _setup(stage, battle_seed).create_battle()
-			assert_eq(battle.board.battery_cells, [] as Array[Vector2i])
-			assert_eq(battle.board.battery_spots.size(), 2, "置ける場所は、切でも盤が持つ")
-			for unit in battle.units:
-				assert_eq(unit.site_range, 0)
+			assert_eq(battle.board.battery_spots.size(), 2, "場所は、砲台を置かない盤も持つ")
+			var expected := 2 if BoardGenerator.BATTERY_STAGES.has(stage) else 0
+			assert_eq(battle.board.battery_cells.size(), expected, "マップ %d 種 %d" % [stage, battle_seed])
+			if expected == 0:
+				for unit in battle.units:
+					assert_eq(unit.site_range, 0)
 
 
-func test_off_board_is_the_same_as_the_generated_board() -> void:
+func test_the_battle_board_is_the_generated_board() -> void:
+	# 砲台は盤を作るときに置く（MatchSetup は何も足さない）。拠点の無い設定なら、対戦の盤は生成の盤そのもの。
 	for stage in STAGES:
 		var plain := BoardGenerator.generate(stage, 7)
 		var battle := _setup(stage, 7).create_battle()
@@ -50,11 +52,12 @@ func test_off_board_is_the_same_as_the_generated_board() -> void:
 				assert_eq(battle.board.object_at(cell), plain.object_at(cell))
 
 
-func test_trial_places_two_reachable_batteries() -> void:
+func test_battery_spots_take_two_reachable_batteries() -> void:
+	# どの生成の盤の場所も、置けば歩いて行ける 2 つの砲台になる（いま置かない盤も、置く盤に足せる）。
 	for stage in STAGES:
 		for battle_seed: int in [1, 2, 3, 4, 5]:
-			var battle := _setup(stage, battle_seed, [OptionalRules.BATTERY]).create_battle()
-			var board := battle.board
+			var board := BoardGenerator.generate(stage, battle_seed)
+			BoardGenerator.arm_batteries(board)
 			assert_eq(board.battery_cells.size(), 2, "マップ %d 種 %d" % [stage, battle_seed])
 			for cell in board.battery_cells:
 				assert_eq(board.object_at(cell), MapObject.Type.BATTERY)
@@ -63,6 +66,13 @@ func test_trial_places_two_reachable_batteries() -> void:
 				assert_true(board.is_reachable(board.hq_cells[P2], cell))
 			# 本陣どうしを入れ替える点対称。
 			assert_eq(board.battery_cells[0] + board.battery_cells[1], board.hq_cells[P1] + board.hq_cells[P2])
+
+
+func test_a_hand_map_battery_is_always_there() -> void:
+	var map := HandMap.new(["..2..", "..C..", ".....", "..C..", "..1.."] as Array[String])
+	var board := map.make_board()
+	assert_eq(board.battery_cells, [Vector2i(2, 1), Vector2i(2, 3)] as Array[Vector2i])
+	assert_eq(board.object_at(Vector2i(2, 1)), MapObject.Type.BATTERY)
 
 
 func test_batteries_sit_outside_the_reach_of_mid_bosses() -> void:
