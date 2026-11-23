@@ -266,32 +266,11 @@ static func rule_notice(battle: Battle) -> Array[String]:
 		lines.append(Text.t("battle.notice.battery", {"range": MapObject.BATTERY_RANGE}))
 	if battle.board.stronghold_cell != Board.NO_CELL:
 		lines.append(Text.t("battle.notice.stronghold", WinText.stronghold_args()))
-	lines.append_array(formation_notice(battle))
 	if not battle.signs.is_empty():
 		var names: Array[String] = []
 		for sign in battle.signs:
 			names.append(Names.sign_name(sign))
 		lines.append(Text.t("battle.notice.signs", {"names": Text.t("common.joiner.dot").join(names)}))
-	return lines
-
-
-## 組み方の知らせ（docs/formation.md）。軍ごとに 1 行ずつ（プレイヤーの順。両方が同じ軍なら 1 行）。
-static func formation_notice(battle: Battle) -> Array[String]:
-	var lines: Array[String] = []
-	if not battle.formation:
-		return lines
-	var seen: Array[UnitKind.Army] = []
-	var args := {
-		"guard": Formation.SQUAD_GUARD, "focus": Formation.SQUAD_FOCUS, "vengeance": Formation.OATH_VENGEANCE,
-		"range": Formation.OATH_RANGE, "resolve": Formation.RESOLVE_POWER,
-	}
-	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-		var army := battle.armies[side]
-		if seen.has(army) or Formation.effects_of(army).is_empty():
-			continue
-		seen.append(army)
-		args["army"] = Names.army(army)
-		lines.append(Text.t("battle.notice.oath" if Formation.binds_oaths(army) else "battle.notice.squad", args))
 	return lines
 
 

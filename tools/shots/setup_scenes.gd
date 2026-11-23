@@ -181,16 +181,6 @@ func _scene_setup_battery() -> bool:
 	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.BATTERY)
 
 
-func _scene_setup_formation() -> bool:
-	_app.context.match_choice = MatchChoice.new()
-	await _app.go(SceneFlow.SETUP)
-	if _app.current_id() != SceneFlow.SETUP:
-		return false
-	_app.current_scene().setup_panel().choose_rule(OptionalRules.FORMATION, true)
-	_park_mouse()
-	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.FORMATION)
-
-
 func _scene_setup_seam() -> bool:
 	_app.context.match_choice = MatchChoice.new()
 	await _app.go(SceneFlow.SETUP)
@@ -222,7 +212,7 @@ func _scene_formation_start() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.FORMATION])
 	_show()
-	return _scene.notice_text().contains("分隊") and _scene.formation_link_count() > 0
+	return _scene.formation_link_count() > 0
 
 
 ## 誓いの相手を攻撃した敵（仇）が決まった、騎士領の誓いの駒。無ければ null。
@@ -268,63 +258,3 @@ func _scene_formation_forecast() -> bool:
 	_look_at(BoardView.cell_center(found[1].cell))
 	_scene.hover(found[1].cell)
 	return true
-
-
-func _scene_decks_formation_knights() -> bool:
-	await _app.go(SceneFlow.DECKS)
-	var screen: Node = _app.current_scene()
-	screen.set_mode(DeckRules.VERSUS)
-	screen.press_new()
-	screen.choose_new_army(UnitKind.Army.FANTASY)
-	for kind: UnitKind.Id in [UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.SPELLBLADE, UnitKind.Id.PRIEST, UnitKind.Id.SPELLBLADE]:
-		screen.hire(kind)
-	screen.select_entry(-1)
-	for pair: Array in [[0, 1], [2, 4]]:
-		screen.press_oath(pair[0])
-		screen.press_oath(pair[1])
-	_park_mouse()
-	return screen.editing_deck().oaths.size() == 2
-
-
-func _scene_decks_formation_federation() -> bool:
-	await _app.go(SceneFlow.DECKS)
-	var screen: Node = _app.current_scene()
-	screen.set_mode(DeckRules.VERSUS)
-	screen.press_new()
-	screen.choose_new_army(UnitKind.Army.MILITARY)
-	for kind: UnitKind.Id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC]:
-		screen.hire(kind)
-	screen.select_entry(-1)
-	_park_mouse()
-	return screen.formation_text().contains("分隊")
-
-
-func _scene_setup_stronghold() -> bool:
-	_app.context.match_choice = MatchChoice.new()
-	await _app.go(SceneFlow.SETUP)
-	if _app.current_id() != SceneFlow.SETUP:
-		return false
-	_app.current_scene().setup_panel().choose_rule(OptionalRules.STRONGHOLD, true)
-	_park_mouse()
-	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.STRONGHOLD)
-
-
-func _scene_setup() -> bool:
-	_app.context.match_choice = MatchChoice.new()  # 遊ぶときの始めと同じ（相手は CPU）で開く
-	await _app.go(SceneFlow.SETUP)
-	return _app.current_id() == SceneFlow.SETUP
-
-
-func _scene_setup_again() -> bool:
-	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
-		return false
-	_show()
-	_scene.open_setup()
-	return _scene.setup_panel().is_cancellable()
-
-
-func _scene_setup_confirm() -> bool:
-	if not _scene_setup_again():
-		return false
-	_scene.setup_panel().press_map()
-	return _scene.setup_panel().confirming_text() != ""

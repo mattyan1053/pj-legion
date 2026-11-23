@@ -74,10 +74,10 @@ func has_rule(id: StringName) -> bool:
 	return rules.has(id)
 
 
-## 選べる決まり id を入・切する。
+## 選べる決まり id を入・切する。休眠の決まり（OptionalRules.DORMANT）は入にできない。
 func set_rule(id: StringName, on: bool) -> void:
 	rules.erase(id)
-	if on and OptionalRules.is_known(id):
+	if on and OptionalRules.is_choosable(id):
 		rules.append(id)
 
 
