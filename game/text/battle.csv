@@ -169,22 +169,17 @@ battle.hud.side,{side}  駒 {count}
 battle.hud.capture,  占拠 {marks}
 battle.hud.capture_on,●
 battle.hud.capture_off,○
-battle.hud.name_evolved_role,{unit}（{kind}から進化・{role}）
-battle.hud.name_evolved,{unit}（{kind}から進化）
-battle.hud.name_role,{unit}（{role}）
-battle.hud.stats,"HP {hp} / {max_hp}
-攻撃 {power}　移動 {move}　射程 {range}"
-battle.hud.stats_healer,"HP {hp} / {max_hp}
-回復 {power}　移動 {move}　射程 {range}"
-battle.hud.level_max,レベル {level}（最大）
-battle.hud.level,レベル {level}　経験 {experience} / {needed}
+battle.hud.name_evolved,{unit}（{kind}）
+battle.hud.level_max,Lv {level} 最大
+battle.hud.status_chip,{status}（あと {turns}）
+battle.hud.status_turns,あと {turns}
+battle.hud.origin,{origin} 出身
 battle.hud.equipment,持ち物: {items}
 battle.hud.skill,スキル: {skill}（{state}）
 battle.hud.trait,★ {trait}
-battle.hud.tag.neutral,[中立]
-battle.hud.tag.own,[自軍]
-battle.hud.tag.foe,[敵軍]
-battle.hud.borrowed_army,{army}（{origin} 出身）
+battle.hud.tag.neutral,中立
+battle.hud.tag.own,自軍
+battle.hud.tag.foe,敵軍
 battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし

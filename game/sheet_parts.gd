@@ -43,8 +43,9 @@ static func tag(words: String, color: Color, font_size := 12) -> Control:
 
 ## 札 1 枚: 頭に印・種類の小さな文字（kind_text）・名前・右に状態（state）、下に説明（summary）。off なら沈める（スキルなし）。
 ## mark_size は印の辺、title_size は名前の字の大きさ（小さな札では小さくする）。
+## summary_inset は、説明を折り返す幅を札の幅からどれだけ狭めるか（px。札の余白のぶん。狭い札では詰める）。
 static func ability_card(type: AbilityMark.Type, kind_text: String, title: String, state: String, summary: String, width: float,
-		off := false, mark_size := 26.0, title_size := 16) -> Control:
+		off := false, mark_size := 26.0, title_size := 16, summary_inset := 36.0) -> Control:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(width, 0.0)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -80,6 +81,6 @@ static func ability_card(type: AbilityMark.Type, kind_text: String, title: Strin
 		head.add_child(tag(state, Palette.TEXT_DIM))
 	if summary != "":
 		var note := text(NOTE_SIZE, Palette.GOOD if type == AbilityMark.Type.EVOLUTION else Palette.TEXT_DIM)
-		fold(note, summary, width - 36.0)
+		fold(note, summary, width - summary_inset)
 		column.add_child(note)
 	return card

@@ -23,6 +23,8 @@ const MinimapGeometry := preload("res://game/minimap_geometry.gd")
 const BannerBand := preload("res://game/banner_band.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
 const StatsRow := preload("res://game/stats_row.gd")
+const InfoCard := preload("res://game/info_card.gd")
+const UnitSheet := preload("res://game/unit_sheet.gd")
 
 
 signal menu_pressed(id: StringName)
@@ -98,13 +100,12 @@ const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
 const INFO_WIDTH := 320.0
 ## 情報の枠の高さ（px）。駒でもマスでも、中身が多くても少なくても、この高さ（docs/ui-theme.md の「枠の大きさ」）。
-## 入りきらない中身は、字を 1 段ずつ小さくして収め、それでも入らなければ、後で読めるものから省く（_fit_info）。
+## 入りきらない中身は、後で読めるものから省く（info_card.gd の fit）。
 const INFO_HEIGHT := 460.0
-const INFO_FONT_FLOOR := 12
-## 字を小さくする段の数の上限（1 段 1 px）。
-const INFO_SHRINK_STEPS := 3
-## 駒の情報の枠の、駒のアイコンの大きさ（px）。
-const INFO_ICON_SIZE := 48.0
+## 行動の状態を、名前の右の札にする長さの上限（字。これより長い文は、札の下の行に出す）。
+const ACTION_TAG_CHARS := 6
+## 情報の枠の札と、下のボタンの行の間（px）。
+const INFO_FOOT_GAP := 6.0
 const ULT_SUMMARY_WIDTH := 480.0
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
@@ -182,41 +183,18 @@ var _ult_fill_color := Palette.TEAM_BLUE
 var _ult_summary: Label
 var _info_panel: PanelContainer
 var _info_style: StyleBoxFlat
-var _info_icon: UnitFrame
-## 駒の能力値の欄（HP の棒、HP の数とレベル、攻撃・移動・射程の欄）と、その下の区切りの線。マスの情報では出さない。
-var _info_unit_box: VBoxContainer
-var _info_hp_label: Label
-var _info_level: Label
-var _info_stats_row: StatsRow
-var _info_rule: HSeparator
-var _info_name: Label
-var _info_side: Label
-var _info_hp: ProgressBar
-var _info_hp_fill: StyleBoxFlat
-var _info_stats: Label
-var _info_state: Label
-var _info_statuses: Label
-var _info_formation: Label
-var _info_items: Label
-var _info_skill: Label
-var _info_skill_note: Label
-var _info_traits: Label
-## 盤を見ている人のプレイヤー（駒の情報の [自軍] [敵軍] を決める）。呼ぶ側が合わせる。
+## 情報の枠の中身（駒のステータスの札、マスの札。info_card.gd）と、下のボタンの行。いま出しているのが駒の札か。
+var _info_card: InfoCard
+var _info_foot: HBoxContainer
+var _info_is_unit := false
+## 盤を見ている人のプレイヤー（駒の情報の「自軍」「敵軍」を決める）。呼ぶ側が合わせる。
 var viewer_side := Unit.Side.PLAYER1
 ## 陣営ごとの軍（Battle.armies。対戦の画面が入れる）。所属の欄に出す軍は、駒の種類の軍でなく、陣営の軍。
 var side_armies: Array = []
 ## いまの対戦（対戦の画面が入れる）。スキルが、いま使える状態か（動いたら使えない、など）を見るのに使う。
 var battle: Battle
-var _info_forecast: Label
 ## 見ている相手の駒の攻撃範囲を、表示したままにするスイッチ（枠のいちばん下。set_pin_switch）。
 var _info_pin: CheckButton
-## 情報の枠の、残りの高さに収める文の入れ物（_build_info_panel）と、その中の列。
-var _info_room: ScrollContainer
-var _info_lines: VBoxContainer
-## 情報の枠の文を、いま何段小さくしているか（0 なら元の大きさ）。
-var _info_shrink := 0
-## 入りきらずに省いた文の数。
-var _info_dropped := 0
 var _info_detail: Button
 var _cell_label: Label
 ## 下の帯の案内（句と印の並び）と、色の印の名前 -> 盤に塗る色（対戦の画面が入れる）。
