@@ -71,7 +71,10 @@ func test_drawn_signs_never_clash_and_skip_signs_that_do_not_apply() -> void:
 			if stage != BoardGenerator.Stage.TWIN_SPRINGS:
 				assert_false(signs.has(S.SHIFT), "ポータルの無い盤に、仮縫いのずれは出ない")
 	for sign: int in S.values():
-		assert_true(seen.has(sign), "どの札も、どこかの局で出る: %s" % Seam.key(sign))
+		if Seam.STORY_ONLY.has(sign):
+			assert_false(seen.has(sign), "話だけの札は、対戦モードではめくらない: %s" % Seam.key(sign))
+		else:
+			assert_true(seen.has(sign), "どの札も、どこかの局で出る: %s" % Seam.key(sign))
 	var bare := Maps.board(["....", "...."])
 	assert_false(Seam.applies(S.SHIFT, bare))
 	assert_false(Seam.applies(S.LOOSE, bare))

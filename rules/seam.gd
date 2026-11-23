@@ -5,7 +5,7 @@ extends RefCounted
 ## 対戦モードでは、選べる決まり OptionalRules.SEAM（既定は入 =「ランダム」）の対戦で、対戦ごとに 0〜DRAWN 個がめくられる（数も札も対戦の種で決まる）。
 ## ストーリーでは、話のファイルが指定した様子（Scenario.signs）が、いつも付く。
 ## 様子は、その対戦のあいだずっと効く条件で、どちらのプレイヤーにも同じに効く。対戦中に切る操作は無い。
-## - 札の山は Sign の全部。その盤で効かない札（ポータルの無い盤の「仮縫いのずれ」など）は、山から抜く（applies）
+## - 札の山は Sign のうち STORY_ONLY でないもの。その盤で効かない札（ポータルの無い盤の「仮縫いのずれ」など）は、山から抜く（applies）
 ## - 2 枚目は、1 枚目と打ち消し合わない札（CLASHES）から引く
 ## - めくるのは、対戦の乱数（Battle.rng）とは別の乱数（盤も、対戦の進みも変えない）
 ##
@@ -33,6 +33,10 @@ const KEYS: Array[StringName] = [&"haze", &"brim", &"loose", &"hush", &"shift", 
 const DRAWN := 2
 ## めくる札の数（0, 1, …, DRAWN）の重み。何も付かない日も、1 つの日も、2 つの日もある（気候のように）。
 const DRAW_WEIGHTS: Array[int] = [1, 2, 1]
+
+## 対戦モードの山に入れない札（話のファイルの signs では使える）。片方の軍だけが得をするので、対戦モードではめくらない
+## （張りつめた糸は、スキルを使える駒の多い FANTASY の得になった。docs/seam-signs.md）。
+const STORY_ONLY: Array[int] = [Sign.TAUT]
 
 ## 打ち消し合うので、同じ対戦に並べない札の組。
 const CLASHES: Array[Array] = [[Sign.LOOSE, Sign.HUSH], [Sign.HAZE, Sign.GLEAM]]
@@ -107,7 +111,7 @@ static func draw(board: Board, battle_seed: int) -> Array[int]:
 	var count := draw_count(battle_seed)
 	var deck: Array[int] = []
 	for sign: int in Sign.values():
-		if applies(sign as Sign, board):
+		if applies(sign as Sign, board) and not STORY_ONLY.has(sign):
 			deck.append(sign)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([&"seam", battle_seed])
