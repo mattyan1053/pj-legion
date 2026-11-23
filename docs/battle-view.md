@@ -196,7 +196,7 @@
 
 - 当たる瞬間は、攻撃の動きが当たる瞬間と同じ（弾はそれに間に合うように撃ち出す）。**再生の待ち時間は変えない**（形は出したら待たずに消える）。
 - 演出の起点は、種類ごとに `battle_effects.gd` の 1 つのメソッドにまとめてある（`strike`、`wait_sign`、`skill_flash`、`ult_burst`。
-  画面のフラッシュは `battle_hud.gd` の `flash_screen`）。効果音もそこで鳴らす（`docs/sound.md`）。
+  画面のフラッシュは `battle_hud/hud_overlays.gd` の `flash_screen`）。効果音もそこで鳴らす（`docs/sound.md`）。
 
 ### スキルの形
 
@@ -492,7 +492,7 @@
 ## 縫い目の様子
 
 選べる決まりの縫い目の様子（`docs/seam-signs.md`）が入の対戦では、対戦を始める前に札がめくられる。コード: `game/signs_window.gd`（札がめくられる窓）、
-`game/sign_card.gd`（札 1 枚）、`game/sign_mark.gd`（札の印。スクリプトで描く）、`game/battle_hud.gd`（`show_signs`。上の帯の下の札の帯）。
+`game/sign_card.gd`（札 1 枚）、`game/sign_mark.gd`（札の印。スクリプトで描く）、`game/battle_hud/hud_top_bar.gd`（`show_signs`。上の帯の下の札の帯）。
 テスト: `tests/game/test_seam_view.gd`。
 
 - **流れ**: 対戦設定の「対戦開始」→ 札がめくられる窓 → 窓の「対戦開始」で番が始まる。「同じマップで再戦」「新しいマップ」（F1〜F3）、対戦設定のパネルの「新しい対戦」も、同じ窓を通る（対戦を作るたびに札がめくられる。同じ種なら同じ札）。
