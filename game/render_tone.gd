@@ -65,7 +65,7 @@ static func overlay_color(color: Color, ground := BLEND_GROUND) -> Color:
 	return Color(color, overlay_alpha(color.a, ground, color.get_luminance()))
 
 
-## マスの塗り（移動・攻撃の範囲など。board_view.gd の show_cells）の色。overlay_color に、さらに FORWARD_FILL_SCALE を掛ける。
+## マスの塗り（移動・攻撃の範囲など。board_view/board_marks.gd の show_cells）の色。overlay_color に、さらに FORWARD_FILL_SCALE を掛ける。
 static func fill_color(color: Color, ground := BLEND_GROUND) -> Color:
 	var fixed := overlay_color(color, ground)
 	return Color(fixed, fixed.a * FORWARD_FILL_SCALE) if is_forward() else fixed

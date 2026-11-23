@@ -108,7 +108,9 @@ func _ready() -> void:
 	# 話の流れの会話なら、背景の盤に駒を立たせる（前の会話は初期位置、あとの会話は決着したときの駒。story_battle.gd の talk_battle）。
 	var story_battle: RefCounted = talk.get("battle")
 	var shown: Battle = story_battle.talk_battle(talk.get("after", false)) if story_battle != null else null
-	var king_looks: Array[StringName] = story_battle.king_looks() if story_battle != null else [] as Array[StringName]
+	var king_looks: Array[StringName] = []  # 三項の式で型の付いた空の配列を返すと、型の無い配列になって入らない
+	if story_battle != null:
+		king_looks = story_battle.king_looks()
 	# 名前のある人物は、盤と同じく、その人の乗る駒をその人の形で立たせる（unit_looks.gd の assign_people）。
 	var people: Dictionary = UnitLooks.assign_people(shown.units, story_battle.cast_looks()) if shown != null else {}
 	_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
