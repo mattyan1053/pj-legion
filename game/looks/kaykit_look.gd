@@ -16,9 +16,21 @@ const MODEL_HEIGHT := 1.3
 const MOVES := {&"run": &"Running_A", &"hit": &"Hit_A", &"death": &"Death_A", &"gesture": &"Interact"}
 ## テクスチャは 128 x 256 の色見本を並べたもの。"accent" に挙げた見本（列, 行）を陣営の色に塗り替える。
 const SWATCH_SIZE := Vector2i(128, 256)
+## 狙いの動きの、構えるまでの長さ（秒。ここから先が、繰り返せる本体）と、射撃の動きの、構えるまでの長さ（秒。すぐあとのコマで撃つ）。
+const AIM_SKIP := 0.3
+const SHOT_SKIP := 0.27
+## 構えたままから撃つ射撃が当たるまでの秒数。
+const SHOT_HIT := 0.12
+## 武器を下ろした立ち姿と、構えの間のつなぎの秒数。身構えた立ち姿（Idle_Combat）と、振りかぶる攻撃の間のつなぎの秒数。
+const AIM_BLEND := 0.4
+const GUARD_BLEND := 0.25
 
 ## 駒の種類ごとの形。"model" は MODELS の名前、"show" は持たせる小物（それ以外の小物は隠す）。
 ## "idle" と "attack" は、その種類の立ち姿と攻撃のアニメーション。"scale" は大きさ（無ければ 1）。
+## 動きの間合い（model_body.gd の set_timing。どれも無ければ既定）: "skip" は動きの頭を飛ばす秒数（動きの名前 -> 秒）、
+## "hit" は攻撃が当たるまでの秒数、"blend" は攻撃の出入りのつなぎの秒数。
+## 素材の「狙い」（2H_Ranged_Aiming）と「射撃」（2H_Ranged_Shoot）は、頭の 8 コマが「下ろした武器を構えるまで」で、そのあとが本体。
+## 狙いを立ち姿にする形は、構えるまでを飛ばして本体だけを繰り返す（AIM_SKIP）。射撃は、構えたままから撃つ（SHOT_SKIP）。
 const KINDS := {
 	UnitKind.Id.KING: {
 		"model": "knight", "show": ["2H_Sword"], "scale": 1.18,
@@ -32,9 +44,10 @@ const KINDS := {
 		"model": "knight", "show": ["1H_Sword", "Badge_Shield"],
 		"idle": "Idle", "attack": "1H_Melee_Attack_Slice_Diagonal",
 	},
+	# 立ち姿は武器を下ろし、撃つときに構える。撃ったあとの構えから立ち姿へは、ゆっくり下ろす（つなぎを長く）。
 	UnitKind.Id.SNIPER: {
 		"model": "rogue", "show": ["2H_Crossbow"],
-		"idle": "Idle", "attack": "2H_Ranged_Shoot",
+		"idle": "Idle", "attack": "2H_Ranged_Shoot", "blend": AIM_BLEND,
 	},
 	UnitKind.Id.COMMANDO: {
 		"model": "rogue", "show": ["Knife", "Knife_Offhand"],
@@ -64,10 +77,11 @@ const KINDS := {
 	UnitKind.Id.SKELETON_ARCHER: {
 		"model": "skeleton_rogue", "show": [], "hold": {"handslot.r": "crossbow"},
 		"idle": "2H_Ranged_Aiming", "attack": "2H_Ranged_Shoot",
+		"skip": {&"idle": AIM_SKIP, &"attack": SHOT_SKIP}, "hit": SHOT_HIT,
 	},
 	UnitKind.Id.SKELETON_BRUTE: {
 		"model": "skeleton_warrior", "show": [], "hold": {"handslot.r": "axe", "handslot.l": "large_shield"}, "scale": 1.22,
-		"idle": "Idle_Combat", "attack": "1H_Melee_Attack_Chop",
+		"idle": "Idle_Combat", "attack": "1H_Melee_Attack_Chop", "blend": GUARD_BLEND,
 	},
 	# 骸骨術師は骸骨の将と同じ素材で、小さく（将は 1.18）。骸骨鼓手は骸骨兵の素材に、杖を太鼓のばちの代わりに持たせる。
 	UnitKind.Id.SKELETON_CALLER: {
@@ -76,7 +90,7 @@ const KINDS := {
 	},
 	UnitKind.Id.SKELETON_DRUMMER: {
 		"model": "skeleton_minion", "show": [], "hold": {"handslot.r": "staff", "handslot.l": "blade"}, "scale": 1.05,
-		"idle": "Idle_Combat", "attack": "1H_Melee_Attack_Chop",
+		"idle": "Idle_Combat", "attack": "1H_Melee_Attack_Chop", "blend": GUARD_BLEND,
 	},
 }
 
@@ -249,6 +263,7 @@ func _model_body(shape: Dictionary, team_color: Color, person := &"") -> UnitBod
 	var body := ModelBody.new()
 	body.body_height = MODEL_HEIGHT * size
 	body.set_model(model, moves, Callable())
+	body.set_timing(shape.get("skip", {}), shape.get("hit", ModelBody.ATTACK_HIT), shape.get("blend", ModelBody.BLEND_TIME))
 	var paint := shape.get("paint", {}) as Dictionary
 	body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void:
 		var from: String = mesh.get_meta(&"kaykit_model", model_name)
