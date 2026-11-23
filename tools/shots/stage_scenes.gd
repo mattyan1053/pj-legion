@@ -44,9 +44,11 @@ func _scene_marks() -> bool:
 		return false
 	_show()
 	var unit: Unit = hurt.call()
-	_scene.click_cell(unit.cell)
+	# カメラを寄せ終えてから選ぶ（寄る途中で選ぶと、メニューの置き場所が撮る時刻で 2 通りに変わる）。
 	_look_at(Vector3(unit.cell.x + 0.5, 0.0, unit.cell.y + 0.5))
 	_aim(11.0, 0.0, 50.0)
+	await _camera_still()
+	_scene.click_cell(unit.cell)
 	return true
 
 

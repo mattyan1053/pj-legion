@@ -93,6 +93,11 @@ func scroll_to_end() -> void:
 	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
 
 
+## 項目の枠を、いちばん上へ戻す（スクリーンショットの道具が、前の場面で送った位置を持ち越さないため）。
+func scroll_to_top() -> void:
+	_scroll.scroll_vertical = 0
+
+
 func refresh() -> void:
 	var any_changed := false
 	for key: StringName in _rows:
