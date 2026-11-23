@@ -1,7 +1,7 @@
 # 聖遺物
 
 コード: `rules/relics.gd`（種類、調整値、受け取る・掛ける）、`rules/events/relic_gained_event.gd`、
-`rules/battle.gd`（`relics`、`remove_unit`、`add_unit`）、`rules/unit.gd`（聖遺物の層）、`rules/cpu_player.gd`（狩りの判断）。
+`rules/battle.gd`（`relics`、`remove_unit`、`add_unit`）、`rules/unit.gd`（聖遺物の層）、`rules/cpu/cpu_outcome_value.gd`（狩りの判断）。
 テスト: `tests/rules/test_relics.gd`、`tests/rules/test_cpu_relic_hunt.gd`。
 
 中ボス（`docs/neutral-mid-boss.md`）を倒した陣営が受け取る、対戦の終わりまで続く見返り。
@@ -98,7 +98,7 @@
 
 ## 調整値
 
-`rules/relics.gd` の先頭（効果）と、`rules/cpu_player.gd` の先頭（CPU）。
+`rules/relics.gd` の先頭（効果）と、`rules/cpu/cpu_player_base.gd` の先頭（CPU）。
 
 | 値 | いま | 理由 |
 | --- | --- | --- |

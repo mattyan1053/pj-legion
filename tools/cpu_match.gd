@@ -179,23 +179,69 @@ class Fall:
 ## no_reward なら、聖遺物の効果とゲージを受け取った直後に取り消す（倒した側の勝率のうち、聖遺物のぶんを切り分けるための比べ。
 ## CPU は、聖遺物がもらえるつもりのまま狩る）。
 ## 別の版の CPU を作る（docs/cpu-ai.md の「別の版と比べる」。tools/cpu_matches.gd の --rival）。読めなければ null。
-## spec が .gd で終わればスクリプトのファイル、そうでなければ git のリビジョン（その版の rules/cpu_player.gd）。
+## spec が .gd で終わればスクリプトのファイル、そうでなければ git のリビジョン（その版の rules/cpu_player.gd と、それが継ぐ
+## rules/cpu/ のファイル。継ぐファイルも、その版のものを一時の置き場所に書いて読む）。
 static func load_rival(spec: String) -> RefCounted:
 	var source := ""
 	if spec.ends_with(".gd"):
 		source = FileAccess.get_file_as_string(spec)
 	else:
-		var output := []
-		var root := ProjectSettings.globalize_path("res://")
-		if OS.execute("git", ["-C", root, "show", "%s:rules/cpu_player.gd" % spec], output, true) == 0:
-			source = output[0]
+		source = _git_show(spec, "rules/cpu_player.gd")
+		if not source.is_empty():
+			var dir := "user://cpu_rival_%d_%d" % [Time.get_ticks_usec(), randi()]
+			source = _with_rival_bases(spec, source, dir)
+			var rival := rival_from_source(source) if not source.is_empty() else null
+			_remove_dir(dir)
+			return rival
 	if source.is_empty():
 		return null
 	return rival_from_source(source)
 
 
+## 版 revision の path の中身（読めなければ空）。
+static func _git_show(revision: String, path: String) -> String:
+	var output := []
+	var root := ProjectSettings.globalize_path("res://")
+	if OS.execute("git", ["-C", root, "show", "%s:%s" % [revision, path]], output, true) == 0:
+		return output[0]
+	return ""
+
+
+## source が rules/ の下のファイルを継いでいれば（extends "res://rules/…"）、その版の継ぐファイルを dir に書き、継ぐ先を書き換えた中身を返す。
+## 継ぐファイルがさらに継ぐものも、同じようにたどる。読めなければ空。
+static func _with_rival_bases(revision: String, source: String, dir: String) -> String:
+	var found := RegEx.create_from_string("(?m)^extends \"res://(rules/[A-Za-z0-9_/]+\\.gd)\"").search(source)
+	if found == null:
+		return source
+	var base_path := found.get_string(1)
+	var base := _git_show(revision, base_path)
+	if base.is_empty():
+		return ""
+	base = _with_rival_bases(revision, base, dir)
+	if base.is_empty():
+		return ""
+	var written := dir.path_join(base_path)
+	DirAccess.make_dir_recursive_absolute(written.get_base_dir())
+	var file := FileAccess.open(written, FileAccess.WRITE)
+	if file == null:
+		return ""
+	file.store_string(base)
+	file.close()
+	return source.substr(0, found.get_start()) + "extends \"%s\"" % written + source.substr(found.get_end())
+
+
+static func _remove_dir(dir: String) -> void:
+	if not DirAccess.dir_exists_absolute(dir):
+		return
+	for sub: String in DirAccess.get_directories_at(dir):
+		_remove_dir(dir.path_join(sub))
+	for file: String in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(file))
+	DirAccess.remove_absolute(dir)
+
+
 ## スクリプトの中身から、別の版の CPU を作る。class_name の行は除く（いまの CpuPlayer と名前がぶつからないように）。
-## rules/cpu/ の見積もりは、いまの版のものを使う（別の版が、見積もりの読む変数とメソッドを持っていれば動く）。
+## rules/cpu/ のスキルごとの見積もりは、いまの版のものを使う（別の版が、見積もりの読む変数とメソッドを持っていれば動く）。
 static func rival_from_source(source: String) -> RefCounted:
 	var script := GDScript.new()
 	script.source_code = RegEx.create_from_string("(?m)^class_name\\b.*$").sub(source, "", true)
