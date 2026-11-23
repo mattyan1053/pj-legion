@@ -70,10 +70,11 @@ static func after_hit(battle: Battle, attacker: Unit, target: Unit) -> Array[Bat
 
 
 ## 糸喰い fallen が倒れて弾けたとき、巻き込まれる駒（周り 8 マス。陣営を問わない。上の行から、左の列から）。fallen はもう盤にいなくてよい。
+## 同じ爆発やスキルで HP が 0 になり、取り除かれるのを待っている駒は含まない（2 度当てない）。
 static func burst_victims(battle: Battle, fallen: Unit) -> Array[Unit]:
 	var result: Array[Unit] = []
 	for unit in MapObject.blast_victims(battle, fallen.cell):
-		if unit != fallen:
+		if unit != fallen and unit.hp > 0:
 			result.append(unit)
 	return result
 
