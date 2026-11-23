@@ -4,8 +4,8 @@
 `rules/board.gd`（どこに何があるか）、`rules/combat.gd`（射線と煙幕）、`rules/actions/attack_barricade_action.gd`、
 `rules/events/`（`field_effect_placed_event.gd`、`barricade_placed_event.gd`、`area_effect_placed_event.gd`、
 `field_effect_ticked_event.gd`、`field_effect_removed_event.gd`、`barricade_damaged_event.gd`、`smoke_blocked_event.gd`、
-`sanctuary_healed_event.gd`）。
-テスト: `tests/rules/test_field_effects.gd`。
+`sanctuary_healed_event.gd`、`knot_placed_event.gd`）、`rules/monsters.gd`（結び目を置く・ほどく・立ち直る）。
+テスト: `tests/rules/test_field_effects.gd`、`tests/rules/test_monster_falls.gd`。
 
 スキルが盤のマスに一定の間だけ置くもの（結び目だけは、倒れた魔物が残す。`docs/monsters.md`）。ここにあるのは効果の側の約束だけで、**誰が・いつ・どこへ置くか（スキル、クールダウン）は
 スキルの側が決める**（`docs/active-skills.md`、`docs/skills/`）。

@@ -102,7 +102,8 @@
 ## 砲台
 
 コード: `rules/map_object.gd`（`battery_bonus`、`BATTERY_RANGE`）、`rules/board.gd`（`battery_spots`、`battery_cells`）、
-`rules/board_generator.gd`（`battery_spots_for`、`arm_batteries`）、`rules/unit.gd`（`site_range`）、`rules/battle.gd`（`refresh_sites`）。
+`rules/board_generator.gd`（`battery_spots_for`、`arm_batteries`）、`rules/hand_map.gd`（`C` と、対戦モードだけの `V`）、`game/versus_fields.gd`（対戦モードの盤）、
+`rules/unit.gd`（`site_range`）、`rules/battle.gd`（`refresh_sites`）。
 テスト: `tests/rules/test_battery.gd`。
 
 占拠していると有利なマス（Issue #47）。**回復の泉やポータルと同じ、マップの物**（人間の決定。Issue #47 の 11/23）。
@@ -137,9 +138,11 @@
 | --- | --- |
 | 中央平原、迷宮回廊 | 置く（`BoardGenerator.BATTERY_STAGES`） |
 | 結晶の岩山 | 対戦モードだけ置く（`V`。`(8,8)` と `(11,11)`。両方の本陣から同じ道のりで、中ボスの届く距離の外） |
-| 双子結晶 | 置かない（置くと MILITARY が 45% を割る） |
-| 尾根の小道 | 置かない（両方の本陣から同じ道のりのマスは、どれも中ボスの届く距離の内側。縄張りの外の 4 か所を試したが、どれも MILITARY が 41% 前後、先手が 53〜64% に寄る） |
-| 大岩の峠 | 置かない（左右の道の端に置くと、45〜55% には入るが MILITARY が 2〜3 ポイント下がる） |
+| 双子結晶 | 置かない（置くと MILITARY が下がる） |
+| 尾根の小道 | 置かない（両方の本陣から同じ道のりのマスは、どれも中ボスの届く距離の内側。縄張りの外に置くと、先手に寄り、MILITARY が下がる） |
+| 大岩の峠 | 置かない（左右の道の端に置くと、MILITARY が下がる） |
+
+比べた数字は `docs/cpu-ai.md` の「いまの集計」。
 
 ## 拠点
 
