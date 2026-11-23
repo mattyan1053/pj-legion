@@ -17,7 +17,7 @@ const DeployDialog := preload("res://game/deploy_dialog.gd")
 ## 初期位置の窓で見せる盤の種（生成のマップは、マップ選択のカードと同じ代表の形）。
 const PLACEMENT_SEED := 3
 ## 選べる決まりの行（並び）、「あり」「なし」のボタンの大きさ、右の説明の欄の大きさ（px。1 行）。
-const RULE_ROWS: Array[StringName] = [OptionalRules.STRONGHOLD, OptionalRules.BATTERY, OptionalRules.SEAM]
+const RULE_ROWS: Array[StringName] = [OptionalRules.STRONGHOLD, OptionalRules.SEAM]
 const TRIAL_BUTTON_WIDTH := 110.0
 const TRIAL_BUTTON_HEIGHT := 26.0
 const TRIAL_NOTE_SIZE := Vector2(440.0, 26.0)

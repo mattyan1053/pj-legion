@@ -197,18 +197,6 @@ func test_the_cpu_row_picks_a_squad_too() -> void:
 	panel.free()
 
 
-func test_the_battery_row_turns_the_trial_on_and_off() -> void:
-	var panel := MatchSetupPanel.new()
-	panel.setup([Color.BLUE, Color.RED] as Array[Color], DeckLibrary.new(), OverlayStack.new())
-	panel.open(MatchChoice.new())
-	assert_false(panel.current_choice().has_rule(OptionalRules.BATTERY), "既定は切")
-	panel.choose_rule(OptionalRules.BATTERY, true)
-	assert_true(panel.current_choice().has_rule(OptionalRules.BATTERY))
-	panel.choose_rule(OptionalRules.BATTERY, false)
-	assert_false(panel.current_choice().has_rule(OptionalRules.BATTERY))
-	panel.free()
-
-
 ## 選べる決まりは、行ごとに「あり」「なし」と、右に決まりの説明。説明の欄の大きさは、入・切で変わらない（木に入れて測る）。
 func test_the_rule_rows_switch_and_keep_their_note_size() -> void:
 	var panel := MatchSetupPanel.new()
@@ -216,7 +204,7 @@ func test_the_rule_rows_switch_and_keep_their_note_size() -> void:
 	panel.open(MatchChoice.new())
 	await settle(panel)
 	assert_true(panel.current_choice().has_rule(OptionalRules.STRONGHOLD), "拠点は既定であり")
-	assert_false(panel.current_choice().has_rule(OptionalRules.BATTERY), "砲台は既定でなし")
+	assert_false(panel.current_choice().has_rule(OptionalRules.SEAM), "縫い目の様子は既定でなし")
 	assert_false(MatchSetupPanel.RULE_ROWS.has(OptionalRules.FORMATION), "休眠の決まり（組み方）の行は無い")
 	for rule: StringName in MatchSetupPanel.RULE_ROWS:
 		var note: Label = panel._rule_notes[rule]

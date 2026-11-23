@@ -133,6 +133,7 @@ func _build() -> Board:
 					board.add_spring(cell)
 				BATTERY:
 					board.battery_spots.append(cell)
+					board.add_battery(cell)
 				STRONGHOLD:
 					board.stronghold_site = cell
 				_:
