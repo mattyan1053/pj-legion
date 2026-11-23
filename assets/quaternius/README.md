@@ -1,6 +1,7 @@
 # Quaternius
 
 駒の見た目の組「人物」（`game/looks/quaternius_look.gd`）の素材。魔物の骸骨（`monsters/`）は「ミニ」の組も使う（`game/looks/quaternius_skeleton.gd`）。
+骸骨でない魔物（`monsters/` の Bat・Slime）と骸骨旗手は、どの組でも同じ形（`game/looks/monster_body.gd`）。
 
 - 作者: Quaternius（https://quaternius.com）
 - ライセンス: CC0 1.0（`LICENSE.txt`。RPG Characters の zip に入っていた `License.txt` をそのまま置いた）。商用・改変・再配布が自由で、クレジット表記は任意
@@ -44,9 +45,12 @@
 - ライセンス: CC0 1.0。配布元のページの「License(s)」が CC0 で、zip の `License.txt` も CC0 1.0 Universal（`monsters/LICENSE.txt` にそのまま置いた。クレジットは任意）
 - 取ってきた日・ライセンスを確かめた日: 2026-11-21
 - 改変: なし（FBX のまま。骨の色、持ち物、腰の布は実行時に付けている）
-- 骨は 17 本。腕の骨は素材の中で `L.UpperLeg.001`・`L.DownLeg.001` などの名前（脚と同じ名前に `.001` が付いたもの）。
+- 2026-11-23 に、同じ zip から `Bat.fbx`・`Slime.fbx` を足した（改変なし。面の色の塗り替えと、浮かせる・回すのは実行時）。
+- 骨は 17 本（Skeleton）。腕の骨は素材の中で `L.UpperLeg.001`・`L.DownLeg.001` などの名前（脚と同じ名前に `.001` が付いたもの）。
   動きは Skeleton_Idle・Skeleton_Running・Skeleton_Attack・Skeleton_Death・Skeleton_Spawn の 5 つ。
 
 | ファイル | 使い道（`quaternius_skeleton.gd` の `KINDS`・`KING_LOOKS`） |
 | --- | --- |
-| `Skeleton.fbx` | 骸骨兵・骸骨射手・骸骨重兵・骸骨術師・骸骨鼓手・骸骨の将（「人物」と「ミニ」の組） |
+| `Skeleton.fbx` | 骸骨兵・骸骨射手・骸骨重兵・骸骨術師・骸骨鼓手・骸骨の将（「人物」と「ミニ」の組）。骸骨旗手（どの組でも。`game/looks/monster_body.gd`） |
+| `Bat.fbx` | 大蝙蝠（どの組でも。`game/looks/monster_body.gd`）。動きは Bat_Flying・Bat_Attack・Bat_Attack2・Bat_Hit・Bat_Death |
+| `Slime.fbx` | ほつれ（どの組でも。`game/looks/monster_body.gd`）。動きは Slime_Idle・Slime_Walk・Slime_Attack・Slime_Death |

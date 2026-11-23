@@ -6,9 +6,12 @@ extends RefCounted
 
 const UnitBody := preload("res://game/unit_body.gd")
 const CoreBody := preload("res://game/looks/core_body.gd")
+const MonsterBody := preload("res://game/looks/monster_body.gd")
 
 ## 駒のアイコン（tools/unit_icons.gd が、この組で写したもの）を置くディレクトリ。
 var icon_dir := "res://assets/unit_icons"
+## この組の人の駒の背（倍率 1 の駒の高さ）。組が形を持たない魔物（monster_body.gd）を、これに合わせる。
+var monster_height := 1.3
 
 
 ## kind の駒の体を作る（陣営の色 team_color。look は将の別の姿の名前で、将でなければ空）。
@@ -16,6 +19,8 @@ var icon_dir := "res://assets/unit_icons"
 func build(kind: UnitKind.Id, team_color: Color, _look: StringName, at: Vector3) -> UnitBody:
 	if CoreBody.has_shape(kind):
 		return core(kind, team_color, at)
+	if MonsterBody.has_shape(kind):
+		return MonsterBody.build(kind, team_color, monster_height)
 	return placeholder(team_color)
 
 

@@ -63,6 +63,7 @@ static var _materials := {}
 
 func _init() -> void:
 	icon_dir = "res://assets/unit_icons/quaternius"
+	monster_height = MODEL_HEIGHT
 
 
 func build(kind: UnitKind.Id, team_color: Color, look: StringName, at: Vector3) -> UnitBody:

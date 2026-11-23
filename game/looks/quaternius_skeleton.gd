@@ -1,6 +1,7 @@
 extends RefCounted
 ## 魔物の骸骨の体（assets/quaternius/monsters/Skeleton.fbx。Quaternius の Animated Monster Pack、CC0）。
-## 「人物」と「ミニ」の組が、魔物（骸骨兵・骸骨射手・骸骨重兵・骸骨術師・骸骨鼓手・骸骨の将）の形に使う。
+## 「人物」と「ミニ」の組が、魔物（骸骨兵・骸骨射手・骸骨重兵・骸骨術師・骸骨鼓手・骸骨旗手・骸骨の将）の形に使う。
+## 骸骨旗手は、ほかの組でもこの形（monster_body.gd）。
 ##
 ## 素材は骨の色の 1 面だけで、何も持たない。6 種は、持ち物（同じ作者の RPG Characters の武器と、コードで組む盾・太鼓）、
 ## 大きさ、骨の色で見分ける。陣営の色は、腰に巻いた布と、盾・太鼓の面に出す（足元の円盤にも出る）。
@@ -30,6 +31,7 @@ const KINDS := {
 	UnitKind.Id.SKELETON_BRUTE: {"right": "sword", "left": "shield", "scale": 1.22, "bone": Color("a89f8f")},
 	UnitKind.Id.SKELETON_CALLER: {"right": "cleric_staff", "scale": 0.95, "bone": Color("c9c0d6")},
 	UnitKind.Id.SKELETON_DRUMMER: {"right": "stick", "left": "drum", "scale": 1.05, "bone": Color("e0cfa8")},
+	UnitKind.Id.SKELETON_BANNER: {"right": "flag", "scale": 1.0, "bone": Color("d6c9a6")},
 }
 ## 将の別の姿（unit_looks.gd の KING_LOOKS の名前 -> KINDS と同じ形）。
 const KING_LOOKS := {
@@ -45,6 +47,7 @@ const ITEMS := {
 	"staff": {"file": "Wizard_Staff", "turn": Vector3(180.0, 0.0, -15.0), "at": Vector3.ZERO},
 	"cleric_staff": {"file": "Cleric_Staff", "turn": Vector3(180.0, 0.0, -15.0), "at": Vector3.ZERO},
 	"stick": {"build": "stick", "turn": Vector3(180.0, 0.0, -30.0), "at": Vector3.ZERO},
+	"flag": {"build": "flag", "turn": Vector3(180.0, 0.0, -10.0), "at": Vector3.ZERO},
 	"shield": {"build": "shield", "turn": Vector3(0.0, 90.0, 0.0), "at": Vector3.ZERO},
 	"drum": {"build": "drum", "on": WAIST, "turn": Vector3(0.0, 0.0, -20.0), "at": Vector3(0.007, 0.006, 0.0)},
 }
@@ -133,6 +136,14 @@ static func _built(kind: String, team_color: Color) -> Node3D:
 			var knob := _part(_sphere(0.04), _plain("bone", Color("e6dcc3"), 0.8))
 			knob.position.y = 0.3
 			root.add_child(knob)
+		"flag":
+			# 手から上へ伸びる竿と、先の陣営の色の旗（あの日の旗）。
+			var pole := _part(_cylinder(0.016, 0.016, 1.1), wood)
+			pole.position.y = 0.3
+			root.add_child(pole)
+			var cloth := _part(_box(Vector3(0.36, 0.26, 0.012)), _plain("team:" + team_color.to_html(), team_color, 0.9))
+			cloth.position = Vector3(0.19, 0.72, 0.0)
+			root.add_child(cloth)
 		"shield":
 			var face := _part(_cylinder(0.2, 0.2, 0.04), _plain("team:" + team_color.to_html(), team_color, 0.8))
 			face.rotation_degrees = Vector3(0.0, 0.0, 90.0)
@@ -169,6 +180,12 @@ static func _cylinder(top: float, bottom: float, height: float) -> CylinderMesh:
 	mesh.height = height
 	mesh.radial_segments = 10
 	mesh.rings = 1
+	return mesh
+
+
+static func _box(size: Vector3) -> BoxMesh:
+	var mesh := BoxMesh.new()
+	mesh.size = size
 	return mesh
 
 
