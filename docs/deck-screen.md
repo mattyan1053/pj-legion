@@ -2,7 +2,7 @@
 
 コード: `game/deck_screen.gd`（編成の場面）、`game/deck_library.gd`（取っておく部隊の一覧と、ファイルの読み書き）、
 `game/deck_text.gd`（出せない理由、駒と持ち物の中身の文）、`game/unit_card.gd`（駒の札）、`game/deck_preview.gd`（編成確認）、`game/match_choice.gd` と `game/match_setup_panel.gd`（対戦設定で選ぶ）。
-テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_match_setup_panel.gd`、`tests/game/test_unit_sheet.gd`（駒の詳細）、自動の対戦（`game/autoplay.gd` の `_visit_decks`）。
+テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_match_setup_panel.gd`、`tests/game/test_unit_sheet.gd`（駒の詳細）、自動の対戦（`game/autoplay/title_checks.gd` の `_visit_decks`）。
 
 編成のルール（軍、ロスター、持ち物、コスト上限）は `docs/player-loadout.md`。
 **初期位置は部隊では決めない**（マップとその戦いの定義が置けるマスを決め、マップを選んだあとに出撃準備・対戦設定で決める。`docs/story.md`、`docs/battle-view.md`）。部隊は駒と持ち物の組だけ、検査と編成の決まりは `docs/deck-building.md`。

@@ -3,7 +3,7 @@
 コード: `game/minimap.gd`（描く・押されたことを知らせる）、`game/minimap_geometry.gd`（置き場所、盤とミニマップの座標、カメラが見ている範囲。ノードに依存しない）、
 `game/map_card.gd`（地面の塗り分け。マップ選択のカードと同じ）、`game/battle_hud/hud_overlays.gd`（置く・出し入れ）、`game/battle_screen.gd`（「ミニマップ」。押したらカメラを移す）、
 `game/panel_layout.gd`（メニューと予測のパネルを重ねない）。
-テスト: `tests/game/test_minimap_geometry.gd`、`tests/game/test_map_card.gd`。自動の対戦の場面 `minimap`（`game/autoplay.gd`）。
+テスト: `tests/game/test_minimap_geometry.gd`、`tests/game/test_map_card.gd`。自動の対戦の場面 `minimap`（`game/autoplay/setup_checks.gd`）。
 
 対戦の画面の右上に出す、盤の全体の縮図。盤は 3D で画面いっぱいなので、小さく控えめに置き、いまどこを見ているかと、駒がどこにいるかを一目で分かるようにする。
 **オプションの「ミニマップ」で出す・隠すを切り替えられる**（既定は出す。次に起動しても残る。`docs/system-menu.md` の「オプション」）。
