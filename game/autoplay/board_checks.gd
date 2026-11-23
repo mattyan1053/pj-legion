@@ -315,7 +315,7 @@ func _queue_skill_scene() -> void:
 		_expect(_scene.is_choosing_skill_target(), "ファイアボールの対象を選び始めなかった")
 		_scene.played.erase(damaged)
 		_scene.hover(burned.cell)
-		_expect_forecast([Names.skill(Skills.of(sorcerer)), Names.unit(burned), "ダメージ"], "ファイアボール")
+		_expect_forecast([Names.skill(Skills.of(sorcerer)), Names.unit(burned), "▼ -"], "ファイアボール")
 		_scene.hover(NO_CELL)
 		_scene.click_cell(burned.cell))
 	_scripted.append(func() -> void:
