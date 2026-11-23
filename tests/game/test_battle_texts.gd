@@ -40,13 +40,25 @@ func test_portal_says_where_it_sends() -> void:
 		"1...1",
 	])
 	var notes := BattleTexts.cell_notes(battle, Vector2i(0, 0))
-	assert_eq(notes, ["ポータル → (4, 0)（止まると、兵のそばのメニューの「転移」で対のポータル（同じ色の印）へ移れる。移動力は使わず、残りで続けて動ける）"] as Array[String])
+	assert_eq(notes, ["ポータル → (4, 0)（止まって「転移」で、同じ色の対へ移る（移動力を使わない））"] as Array[String])
 	var body := BattleTexts.cell_body(battle, Vector2i(0, 0))
-	assert_true(body.contains("\n　止まると、兵のそばのメニューの「転移」で"), "転送の説明を行に分けていない: " + body)
+	assert_true(body.contains("\n　止まって「転移」で"), "転送の説明を行に分けていない: " + body)
 	battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(4, 0))
 	notes = BattleTexts.cell_notes(battle, Vector2i(0, 0))
-	assert_eq(notes, ["ポータル → (4, 0)（止まると、兵のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わず、残りで続けて動ける。行き先に兵がいて、いまは使えない）"] as Array[String],
+	assert_eq(notes, ["ポータル → (4, 0)（行き先に兵がいて、いまは移れない）"] as Array[String],
 		"行き先がふさがっていることを書いていない")
+
+## マスの説明は、短く、嘘が無いこと（Issue #46 の 11/23）。結晶泉は「特別なものは無い」ではなく、中立の敵が湧くこと。本陣は占拠で決まること。
+func test_font_and_hq_say_what_happens_there() -> void:
+	var battle := Maps.battle([".....", "..*..", "....."])
+	battle.board.hq_cells = [Vector2i(0, 0), Vector2i(4, 2)]
+	battle.win_conditions = [Scenario.STANDARD_WIN_CONDITIONS.duplicate(), Scenario.STANDARD_WIN_CONDITIONS.duplicate()]
+	var font := BattleTexts.cell_body(battle, Vector2i(2, 1))
+	assert_true(font.contains("中立の敵が湧く") and not font.contains("特別"), font)
+	Seam.arm(battle, [Seam.Sign.HUSH] as Array[int])
+	assert_true(BattleTexts.cell_body(battle, Vector2i(2, 1)).contains("湧き直さない"))
+	assert_true(BattleTexts.cell_body(battle, Vector2i(0, 0)).contains("%d ターン占拠" % Battle.CAPTURE_TURNS_TO_WIN))
+
 
 ## 下の帯の案内を 1 行の文にしたもの（key_marks.gd の parts_text と同じ形）。
 func _guide(battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn := false, confirming := false, unacted := 0, pinned := 0) -> String:

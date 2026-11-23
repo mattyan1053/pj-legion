@@ -1,6 +1,6 @@
 extends PanelContainer
 ## 縫い目の様子の札 1 枚（docs/seam-signs.md）: 印（sign_mark.gd）、名前、効果の文（2 行まで）。
-## 札がめくられる窓（signs_window.gd）に並べる。大きさは中身（札）に依らず同じ（SIZE。docs/ui-theme.md の「枠の大きさ」）。
+## 対戦中、上の帯の下の札の名前をクリックすると出す窓（hud_top_bar.gd）に使う。大きさは中身（札）に依らず同じ（SIZE。docs/ui-theme.md の「枠の大きさ」）。
 
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")

@@ -28,7 +28,8 @@ func remove_barrel(cell: Vector2i) -> void:
 		_barrels.erase(cell)
 
 
-## 盤の上の効果を描く。盾は持ち主の色の堅い板、煙幕は灰色の靄、聖域は持ち主の色の淡い光の床。
+## 盤の上の効果を描く。盾は持ち主の色の堅い板、煙幕は灰色の靄、聖域は持ち主の色の淡い光の床、
+## 結び目は床に置いた糸の輪 2 つ（青白く光る。持ち主の色の小さな芯）。
 ## どれもマスの上、駒の下（聖域と煙幕の床は駒の足元より低く、煙幕の靄は駒を包む高さで薄く）。
 ## 盾には、残りの耐久の棒を付ける（durability。置いたばかりなら省ける = いっぱい）。
 func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, cells: Array[Vector2i], durability := FieldEffects.BARRICADE_DURABILITY) -> void:
@@ -74,6 +75,23 @@ func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, c
 			glow.emission = color.lightened(0.5)
 			for cell in cells:
 				_add_part(root, floor_mesh, glow, cell_center(cell) + Vector3(0.0, 0.015, 0.0))
+		FieldEffect.Type.KNOT:
+			var loop := TorusMesh.new()
+			loop.inner_radius = 0.16
+			loop.outer_radius = 0.24
+			var thread := _material(COLOR_KNOT)
+			thread.emission_enabled = true
+			thread.emission = COLOR_KNOT
+			var core := SphereMesh.new()
+			core.radius = 0.1
+			core.height = 0.2
+			for cell in cells:
+				var at := cell_center(cell)
+				var low := _add_part(root, loop, thread, at + Vector3(-0.06, 0.04, 0.0))
+				var high := _add_part(root, loop, thread, at + Vector3(0.06, 0.08, 0.0))
+				low.rotation_degrees = Vector3(0.0, 0.0, 18.0)
+				high.rotation_degrees = Vector3(0.0, 90.0, -18.0)
+				_add_part(root, core, _material(color), at + Vector3(0.0, 0.08, 0.0))
 	if type != FieldEffect.Type.BARRICADE:
 		for part: GeometryInstance3D in root.get_children():
 			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -263,8 +281,8 @@ func _add_stronghold(cell: Vector2i) -> void:
 	_stronghold_label.no_depth_test = true
 	_stronghold_label.fixed_size = true
 	_stronghold_label.pixel_size = STRONGHOLD_LABEL_PIXEL
-	_stronghold_label.font_size = 40
-	_stronghold_label.outline_size = 14
+	_stronghold_label.font_size = STRONGHOLD_LABEL_FONT
+	_stronghold_label.outline_size = 10
 	_stronghold_label.outline_modulate = COLOR_STRONGHOLD_EDGE
 	_stronghold_label.render_priority = 3
 	_stronghold_label.outline_render_priority = 2
@@ -273,7 +291,8 @@ func _add_stronghold(cell: Vector2i) -> void:
 
 
 ## 拠点の確保の進み具合を見せる（拠点の無い盤では何もしない）: 旗を color にし、holds / needed の高さまで竿を上げ、
-## 竿の上の札に「holds / needed」を出す（blocked なら、乗っている駒の確保が隣の敵で止まっていることを添える）。だれも確保していなければ（holds が 0）、旗は白で竿の下、札は「0 / needed」。
+## 竿の上の札に「holds / needed」を出す。だれも確保していなければ（holds が 0）、旗は白で竿の下、札は「0 / needed」。
+## blocked（乗っている駒の確保が隣の敵で止まっている）なら、文字は足さず、札の色を落とす（STRONGHOLD_BLOCKED_ALPHA。色と数で十分）。
 func set_stronghold_progress(holds: int, needed: int, color: Color, blocked := false) -> void:
 	if _stronghold_cloth == null:
 		return
@@ -281,8 +300,16 @@ func set_stronghold_progress(holds: int, needed: int, color: Color, blocked := f
 	var rate := clampf(float(holds) / maxf(needed, 1.0), 0.0, 1.0)
 	for part in _stronghold_flag:
 		part.position.y = _stronghold_pole_foot.y + lerpf(STRONGHOLD_FLAG_LOW, STRONGHOLD_FLAG_HIGH, rate)
-	_stronghold_label.text = Text.t("battle.stronghold.mark_blocked" if blocked else "battle.stronghold.mark", {"holds": holds, "needed": needed})
-	_stronghold_label.modulate = color.lightened(0.25) if holds > 0 else COLOR_STRONGHOLD_FLAG
+	_stronghold_label.text = Text.t("battle.stronghold.mark", {"holds": holds, "needed": needed})
+	var shown := color.lightened(0.25) if holds > 0 else COLOR_STRONGHOLD_FLAG
+	if blocked:
+		shown = Color(shown.darkened(0.35), STRONGHOLD_BLOCKED_ALPHA)
+	_stronghold_label.modulate = shown
+
+
+## 拠点の竿の上の札の色を落としているか（確保が隣の敵で止まっている。検査用）。
+func stronghold_mark_dimmed() -> bool:
+	return _stronghold_label != null and _stronghold_label.modulate.a < 1.0
 
 
 ## 拠点の竿の上の札の文（検査用。拠点が無ければ空）。

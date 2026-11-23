@@ -35,6 +35,9 @@ enum Trait {
 	IGNORES_ZOC,  ## 敵の支配領域で止まらない
 	FOREST_WALK,  ## 森に、平地と同じ移動力で入る
 	REGENERATION,  ## 自分のフェーズの始めに、REGENERATION_HEAL だけ回復する
+	ROOTED,  ## 動けない（移動力 0。突撃などで移動力が増えても動かない）。魔物の糸針（Monsters）
+	RALLY_ON_FALL,  ## 倒れると、周りの味方が奮起する。魔物の骸骨旗手（Monsters）
+	KNOT_ON_FALL,  ## 倒れると、結び目が残る。踏まれずにいると立ち直る。魔物のほつれ（Monsters）
 }
 
 # ---- 調整値（docs/branch-evolution.md の「調整値」） ----

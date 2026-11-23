@@ -36,9 +36,9 @@ extends "res://tools/cpu_matches_base.gd"
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、formation = 組み方（休眠）、seam = 縫い目の様子。`,` で並べられる）をそれだけ入にして回す。none で全部切。
-##                   seam なら、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す。--squads=random なら、CPU が札を見て候補から部隊を選ぶ
-##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
+##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、formation = 組み方（休眠）、seam = 縫い目の様子のランダム。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##                   縫い目の様子のある局があれば、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す
+##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり・縫い目の様子はランダム）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --stronghold=X,Y  拠点を、マス (X, Y) に置いて回す（測るためだけ。拠点が入の対戦だけ）。lean:K なら、道のりの寄せ K（Board.stronghold_lean。
 ##                   先手の本陣からの道のり - 後手の本陣からの道のり の、ねらう値）で選ぶ
 ##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
@@ -189,20 +189,11 @@ func _initialize() -> void:
 		elif rule_arg != "default" and rule_arg != "none":
 			for rule in rule_arg.split(",", false):
 				setup.rules.append(StringName(rule))
-		# 縫い目の様子: CPU は、めくられた札を見て、部隊を選ぶ（局ごとに変える部隊なら、SIGN_CANDIDATES 個の候補から。CpuDeck.pick_for_signs）。
-		# 候補の先頭は、札の無い対戦と同じ部隊。
-		var signs := setup.signs() if episode == null else ([] as Array[int])
-		if not signs.is_empty() and random_squads:
-			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
-				var base_seed := (first_seed + game) * 2 + side
-				var candidates: Array[Deck] = [setup.decks[side]]
-				for i in range(1, SIGN_CANDIDATES):
-					candidates.append(RandomSquad.build(armies[side], rules, hash([base_seed, i])))
-				setup.decks[side] = CpuDeck.pick_for_signs(candidates, signs)
 		var trial_stronghold := args.has("stronghold") and setup.rules.has(OptionalRules.STRONGHOLD)
 		if trial_stronghold:
 			setup.rules.erase(OptionalRules.STRONGHOLD)
 		var battle := setup.create_battle()
+		var signs: Array[int] = battle.signs.duplicate()  # この局の縫い目の様子（札ごとの集計と SIGNS の行）
 		if trial_stronghold:
 			if not _arm_trial_stronghold(battle, args["stronghold"], setup.battle_seed):
 				# 置けない局を拠点なしのまま数えると、違う決まりの局が混ざるので、集計ごと止める。

@@ -17,10 +17,9 @@ func make_setup(_battle_seed: int) -> MatchSetup:
 	return null
 
 
-## 対戦を始める前に、縫い目の様子の札がめくられる窓（signs_window.gd）を出すか（選べる決まり OptionalRules.SEAM が入の対戦モード）。
-## 真なら、対戦の画面は札を見せ、部隊を選び直させてから始める。既定は出さない（ストーリー）。
-func shows_signs() -> bool:
-	return false
+## 中ボスの名前（names.gd の set_boss。空なら既定の「番人」）。対戦の画面が、対戦を始めるたびに入れる。
+func boss_name() -> String:
+	return ""
 
 
 ## 盤の見た目の名前（stage_look.gd の THEMES の鍵）。

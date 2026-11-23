@@ -13,6 +13,7 @@ extends RefCounted
 ## 使い方は docs/README.md の「検査の分け方」と、.claude/skills/playtest-sweep/SKILL.md（手で回すときは tools/sweep.sh）。
 
 const SceneFlow := preload("res://game/scene_flow.gd")
+const Text := preload("res://game/text.gd")
 const Story := preload("res://game/story.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
@@ -117,6 +118,9 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 		return
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
+	# 前の会話のあと、対戦の始めに「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。
+	_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
+	_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
 	await _read_cues(app, screen, episode)
 	await _lose(app, screen, episode)
 
@@ -228,13 +232,13 @@ func _versus(app: Node, field: StringName, rules: Array[StringName]) -> void:
 		return
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
-	# 縫い目の様子が入なら、まず札がめくられる窓が出る。札を確かめて「対戦開始」を押す（部隊は選び直さない）。
-	_expect(screen.signs_pending() == rules.has(OptionalRules.SEAM), "縫い目の様子の窓が、決まりの入・切どおりに出ない")
-	if screen.signs_pending():
-		_expect(screen.signs_window().card_texts().size() == Seam.DRAWN, "めくった札が %d 枚出ていない" % Seam.DRAWN)
-		_expect(not screen.is_cpu_running(), "札を見ている間に、CPU の番が始まった")
-		screen.signs_window().press_start()
-		_expect(not screen.signs_pending() and screen.battle.signs.size() == Seam.DRAWN, "札の窓の「対戦開始」で、札のある対戦が始まらない")
+	# 対戦の始めに「対戦ルール」（勝利条件と、あれば縫い目の様子）が出て、札の文は切れない。
+	_expect(screen.notice_text().contains(Text.t("battle.goal.name.king_defeated")), "対戦の始めに「対戦ルール」が出ない")
+	_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
+	# 縫い目の様子は、対戦設定の「ランダム」なら種で 0〜2 つ（窓は出さず、そのまま始まる）。「なし」なら付かない。
+	var signs: Array[int] = screen.battle.signs
+	_expect(signs.size() <= Seam.DRAWN and (rules.has(OptionalRules.SEAM) or signs.is_empty()), "縫い目の様子が、決まりの入・切どおりでない: %s" % [signs])
+	_expect(screen.signs_text() == "" if signs.is_empty() else screen.signs_text() != "", "上の帯の縫い目の様子の札が、対戦の様子と合わない")
 	var battle: Battle = screen.battle
 	for rule in OptionalRules.choosable():
 		_expect(screen.source.has_rule(rule) == rules.has(rule), "選んだ選べる決まりで、対戦が始まらない: %s" % rule)

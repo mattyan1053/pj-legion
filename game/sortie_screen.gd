@@ -32,6 +32,8 @@ const Story := preload("res://game/story.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const WinText := preload("res://game/win_text.gd")
+const Names := preload("res://game/names.gd")
+const GoalMark := preload("res://game/goal_mark.gd")
 const Crest := preload("res://game/crest.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
@@ -47,6 +49,8 @@ const DEFAULT_ID := ""
 const FIXED_ID := "fixed"
 ## 縮図の 1 マスの大きさ（px）。
 const MAP_CELL := 20
+## 勝ち方の欄の見出しに並べる印の大きさ（px）。
+const GOAL_MARK_SIDE := 22.0
 ## 縮図の高さの上限（px）。下に駒の欄（deploy_note.gd）を置いても、下のボタンが画面に収まるように。縦に長いマップは、1 マスを小さく描く。
 const MAP_MAX_HEIGHT := 380.0
 const RIGHT_WIDTH := 600.0
@@ -173,7 +177,20 @@ func _ready() -> void:
 	if lesson != "":
 		goal_column.add_child(_caption(Text.t("sortie.lesson")))
 		goal_column.add_child(_wrapped(lesson, 17, COLOR_TEXT))
-	goal_column.add_child(_caption(Text.t("sortie.goal")))
+	# 見出しの右に、勝ち方の印と短い名前（対戦の始めの「対戦ルール」・上の帯の札と同じ印。goal_mark.gd）。
+	Names.set_boss(battle_source.boss_name())  # 勝ち方の文の中ボスの名前（話のファイルの boss）
+	var goal_head := HBoxContainer.new()
+	goal_head.add_theme_constant_override("separation", 6)
+	goal_column.add_child(goal_head)
+	goal_head.add_child(_caption(Text.t("sortie.goal")))
+	for reason: int in goal_reasons():
+		goal_head.add_child(GoalMark.new(reason, GOAL_MARK_SIDE))
+		var name := Label.new()
+		name.text = Text.t("battle.goal.name." + String(GameWonEvent.Reason.find_key(reason)).to_lower())
+		name.add_theme_font_size_override("font_size", 14)
+		name.add_theme_color_override("font_color", Palette.GOLD)
+		name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		goal_head.add_child(name)
 	goal_column.add_child(_wrapped(win_text(), 17, COLOR_TEXT))
 	var enemy := _panel()
 	Steady.mark(enemy, "sortie.enemy", Steady.RECT)
@@ -275,6 +292,16 @@ func resume_label() -> String:
 ## 勝ち方の文（話の戦いの定義の勝ちの条件から。人はプレイヤー1。win_text.gd、docs/win-conditions.md）。
 func win_text() -> String:
 	return WinText.of_scenario(battle_source.scenario(), Unit.Side.PLAYER1)
+
+
+## 勝ち方の欄に印を並べる勝ち方（人の勝ちの条件。WinText.ORDER の順）。
+func goal_reasons() -> Array[int]:
+	var conditions: Array = battle_source.scenario().win_conditions_of(Unit.Side.PLAYER1)
+	var reasons: Array[int] = []
+	for reason: GameWonEvent.Reason in WinText.ORDER:
+		if conditions.has(reason):
+			reasons.append(reason)
+	return reasons
 
 
 ## 部隊 id（DEFAULT_ID なら既定の編成）を選ぶ。出せない部隊なら何もしない。

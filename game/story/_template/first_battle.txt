@@ -36,6 +36,15 @@ map = ridge_path
 #     turns_held（守り切る。hold_turns と組で書く）
 # hold_turns = 10
 # wins = routed
+# 中ボスの名前（6 字まで）。画面では「中ボス」と言わず、この名前で呼ぶ（勝ち方・ログ・決着の文）。
+# 書かなければ、マップのファイルの boss（大岩の峠なら「峠の番人」）。どちらも無ければ「番人」。
+# boss = 峠の番人
+# 縫い目の様子（マップに付く、気候のような効果。docs/seam-signs.md）。2 つまで、「,」で区切って書く。書かなければ付かない。
+# 対戦の始めの「対戦ルール」に、勝ち方と並んで出る。効く札は、マップに合うものを選ぶ（結晶泉の無いマップに loose を書いても何も起きない）。
+#   haze（天裂の名残り）, brim（糸の満ち）, loose（糸のゆるみ）, hush（骨の眠り）, shift（仮縫いのずれ）,
+#   gale（縫い代の風）, gleam（天裂の光）, thicket（深い茂み）, taut（張りつめた糸）
+#   loose と hush、haze と gleam は打ち消し合うので並べない。
+# signs = gale, taut
 
 # 話し手。1 行に 1 人で「名前 = 陣営, 姿」。
 #   陣営: ally（遊ぶ人の軍。会話で左に立ち、名前の札は青）か enemy（敵の軍。右に立ち、札は赤）。どちらも 1 人は要る。
@@ -99,7 +108,7 @@ deploy = 8,20  7,20  9,20  6,19  10,19  8,18
 # 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない魔物の群れ（必殺技が無い。魔物だけを置く）。
 army = fantasy
 # 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。将は書かない（いつも本陣に立つ）。持ち物は「+」でつなぐ（魔物は持てない）。
-#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer（docs/unit-roster.md の「魔物」）
+#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer, skeleton_banner, bat, fray, needle（docs/unit-roster.md の「魔物」）
 #   始めのレベルも書ける（unit = paladin, level 2）。
 unit = paladin + iron_shield
 unit = sorcerer

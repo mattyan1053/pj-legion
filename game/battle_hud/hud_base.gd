@@ -14,6 +14,9 @@ const SystemMenu := preload("res://game/system_menu.gd")
 const Steady := preload("res://game/steady.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
 const SignMark := preload("res://game/sign_mark.gd")
+const SignCard := preload("res://game/sign_card.gd")
+const RuleCard := preload("res://game/rule_card.gd")
+const GoalMark := preload("res://game/goal_mark.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
@@ -89,12 +92,13 @@ const STRONGHOLD_CHIP_SIZE := Vector2(440.0, 30.0)
 const SIGNS_CHIP_SIZE := Vector2(440.0, 34.0)
 const SIGN_SLOT_WIDTH := 205.0
 const SIGN_MARK_SIDE := 26.0
-## 対戦の始めの知らせ（選べる決まり）の枠の大きさ（px）。決まりの数で変えない。
-const NOTICE_SIZE := Vector2(680.0, 340.0)
-## 知らせの本文の行数の上限（折り返した行も数える）。これを超える分は出さない（枠を広げない）。
-const NOTICE_LINES := 9
-## 始めの知らせの文を折り返す幅（枠の幅から、左右の余白 14 を引いたもの）。
-const NOTICE_TEXT_WIDTH := NOTICE_SIZE.x - 14.0 * 2.0
+## 上の帯の勝ち方の札・拠点の札の印の大きさ（px）と、勝ち方の札に並べる印の数の上限。
+const GOAL_MARK_SIDE := 24.0
+const GOAL_TAG_MARKS := 3
+## 対戦の始めの「対戦ルール」の枠の大きさ（px）。札の数で変えない（勝利条件の段と縫い目の様子の段が入る高さ）。
+const NOTICE_SIZE := Vector2(720.0, 400.0)
+## 「対戦ルール」に並べる勝利条件の札の数の上限（1 段）。対戦モードは 3 つ（将・本陣・拠点）、話は 2 つまで + 時間の限り。
+const NOTICE_GOALS := 3
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
@@ -164,9 +168,19 @@ var _signs_panel: PanelContainer
 var _sign_slots: Array[Control] = []
 var _sign_marks: Array[SignMark] = []
 var _sign_names: Array[Label] = []
+## 札の名前をクリックすると出す、札 1 枚の窓（決まった大きさ。sign_card.gd）と、出している札の位置（出していなければ -1）。
+var _sign_note: PanelContainer
+var _sign_note_card: SignCard
+var _sign_note_index := -1
 ## 対戦の始めの知らせ（選べる決まり。見出し、決まりごとの行、閉じるボタン）。
+## 上の帯の勝ち方の札の印（goal_mark.gd）。
+var _goal_marks: Array[GoalMark] = []
 var _notice: PanelContainer
-var _notice_body: Label
+## 「対戦ルール」の札（勝利条件と縫い目の様子）と、縫い目の様子の段の見出し・段。
+var _notice_goals: Array[RuleCard] = []
+var _notice_signs: Array[RuleCard] = []
+var _notice_signs_caption: Label
+var _notice_signs_row: Control
 var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
 ## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。

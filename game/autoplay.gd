@@ -28,6 +28,7 @@ const SCENES := {
 	"skill": "スキルのボタンと対象選び、クールダウン",
 	"status": "自分に使うスキルと、駒に付く状態",
 	"formation": "組み方（分隊の追い撃ちと、誓いが切れること）",
+	"monster_falls": "倒れると何か起きる魔物（骸骨旗手の奮起、ほつれの結び目）",
 	"extra_action": "行動を終えないスキルと、行動済みの駒を戻すスキル",
 	"ult": "必殺技",
 	"neutral": "中立の駒（湧く、攻撃する、カメラが追う）",
@@ -49,7 +50,7 @@ const SCENES := {
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
-	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "formation", "extra_action",
+	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "formation", "monster_falls", "extra_action",
 		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
 	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }

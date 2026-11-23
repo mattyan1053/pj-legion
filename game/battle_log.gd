@@ -87,6 +87,8 @@ var _did_something := {}
 ## 倒れたことを、もうダメージの行に書いた駒と、壊れたことを書いた盾。
 var _noted_defeats := {}
 var _noted_effects := {}
+## 結び目から立ち直ったと書いた駒が、次の UnitSpawnedEvent で現れる（湧いた、と書かない）。
+var _reforming := false
 ## 盤の上の効果の番号 -> [種類, 陣営, 中心のマス]（消えたときのイベントは陣営を持たない）。
 var _effects := {}
 ## 直前の行が、湧いた駒の行なら、その種類（続けて湧いたぶんを 1 行にまとめる）。湧いたマスの控え。
@@ -132,6 +134,8 @@ static func readers() -> Dictionary:
 		BarricadeDamagedEvent: &"_read_barricade_damaged",
 		BarricadePlacedEvent: &"_read_field_effect_placed",
 		AreaEffectPlacedEvent: &"_read_field_effect_placed",
+		KnotPlacedEvent: &"_read_field_effect_placed",
+		RallyEvent: &"_read_rally",
 		FieldEffectRemovedEvent: &"_read_field_effect_removed",
 		UnitTeleportedEvent: &"_read_teleported",
 		UnitsSwappedEvent: &"_read_swapped",
@@ -460,6 +464,9 @@ func _read_field_effect_placed(event: FieldEffectPlacedEvent) -> void:
 	if event is BarricadePlacedEvent:
 		key = "battle.log.barricade_placed" if _group != null else "battle.log.barricade_placed_by"
 		args["durability"] = (event as BarricadePlacedEvent).durability
+	elif event is KnotPlacedEvent:
+		key = "battle.log.knot_placed"
+		args["turns"] = (event as KnotPlacedEvent).turns_left
 	else:
 		args["turns"] = (event as AreaEffectPlacedEvent).turns_left
 	var text := Text.t(key, args)
@@ -473,8 +480,17 @@ func _read_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
 		_noted_effects.erase(event.effect_id)
 		return
 	var owner: int = known[1]
-	var key := "battle.log.effect_destroyed" if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED else "battle.log.effect_expired"
-	_line(Text.t(key, {"effect": _effect_name(event.type, owner)}), owner, known[2])
+	var key := "battle.log.effect_expired"
+	match event.reason:
+		FieldEffectRemovedEvent.Reason.DESTROYED:
+			key = "battle.log.effect_destroyed"
+		FieldEffectRemovedEvent.Reason.UNTIED:
+			key = "battle.log.knot_untied"
+		FieldEffectRemovedEvent.Reason.REFORMED:
+			key = "battle.log.knot_reformed"
+			_reforming = true
+	_line(Text.t(key, {"effect": _effect_name(event.type, owner), "unit": Names.kind(UnitKind.Id.FRAY), "cell": cell_text(known[2])}),
+		owner, known[2])
 
 
 func _read_teleported(event: UnitTeleportedEvent) -> void:
@@ -522,6 +538,12 @@ func _read_formation(event: FormationTriggeredEvent) -> void:
 
 
 ## 誓いの片方が倒れて、誓いが切れた。
+## 骸骨旗手が倒れ、周りの味方が奮起した。続く奮起（StatusAppliedEvent）は、この行にまとめる。
+func _read_rally(event: RallyEvent) -> void:
+	var text := Text.t("battle.log.rally", {"unit": unit_name(event.fallen_id), "count": event.rallied_ids.size()})
+	_begin_group(_line(text, _side_of(event.fallen_id), event.cell, [event.fallen_id]))
+
+
 func _read_oath_broken(event: OathBrokenEvent) -> void:
 	_line(Text.t("battle.log.oath_broken", {"unit": unit_name(event.survivor_id), "fallen": unit_name(event.fallen_id)}),
 		_side_of(event.survivor_id), _cell_of(event.survivor_id), [event.survivor_id])
@@ -588,6 +610,10 @@ func _read_relic_gained(event: RelicGainedEvent) -> void:
 func _read_spawned(event: UnitSpawnedEvent) -> void:
 	_group = null
 	_units[event.unit_id] = Known.new(event.kind, event.side, event.cell)
+	if _reforming:
+		_reforming = false  # 結び目の行（「立ち直った」）に書いた
+		entries[-1].unit_ids.append(event.unit_id)
+		return
 	var name := Names.kind(event.kind)
 	var elite := event.kind == UnitKind.Id.ELITE_MINION  # 中ボスは「現れた」、雑兵は「湧いた」
 	if _spawn_kind == event.kind and not entries.is_empty():

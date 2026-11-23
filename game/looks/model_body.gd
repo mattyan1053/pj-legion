@@ -3,6 +3,9 @@ extends "res://game/unit_body.gd"
 ## 名前の無い動きは、unit_body.gd の代わりの動きになる。
 
 const BLEND_TIME := 0.15
+## 立ち姿から走りへ、走りから立ち姿へのつなぎの秒数。走りは腕と脚を大きく振るので、立ち姿との間が離れている
+## （「人形」で、いちばん離れた骨が 110〜140 度）。短いと、動き出しと止まりで姿勢が飛んで見える。
+const RUN_BLEND := 0.3
 ## 攻撃の動きを始めてから当たるまでの秒数と、倒れる動きを待つ秒数（素材のアニメーションの場合）。
 const ATTACK_HIT := 0.4
 const DEATH_TIME := 0.75
@@ -42,11 +45,11 @@ func set_model(model: Node3D, moves: Dictionary, material_for: Callable) -> void
 
 func play_idle() -> void:
 	if not _dying:
-		_play(&"idle", true)
+		_play(&"idle", true, RUN_BLEND if _current == &"run" else BLEND_TIME)
 
 
 func play_run() -> void:
-	_play(&"run", true)
+	_play(&"run", true, RUN_BLEND)
 
 
 func play_gesture() -> void:
@@ -125,6 +128,10 @@ func _on_animation_finished(_animation: StringName) -> void:
 		_play(&"idle", true, _attack_blend if _current == &"attack" else BLEND_TIME)
 
 
+## 走りのつなぎを測るときに、動きを等分する数。
+const MOTION_SAMPLES := 8
+
+
 ## 動きのつなぎ目で、姿勢がどれだけ飛ぶか。検査用（測ると再生が止まる）。
 ## "idle_loop": 立ち姿の繰り返しの終わりと頭の、いちばん離れた骨の角度（度）。
 ## "attack_in"・"attack_out": 立ち姿から攻撃の頭へ、攻撃の終わりから立ち姿へ、つなぎの間に骨が回る速さ（度 / 秒。いちばん速い骨）。
@@ -139,11 +146,24 @@ func motion_jumps() -> Dictionary:
 	var idle_end := _pose_at(skeleton, &"idle", _player.get_animation(_moves[&"idle"]).length - 0.001)
 	var attack_start := _pose_at(skeleton, &"attack", _skips.get(&"attack", 0.0))
 	var attack_end := _pose_at(skeleton, &"attack", _player.get_animation(_moves[&"attack"]).length - 0.001)
-	return {
+	var jumps := {
 		"idle_loop": _pose_gap(idle_end, idle_start),
 		"attack_in": _pose_gap(idle_start, attack_start) / _attack_blend,
 		"attack_out": _pose_gap(attack_end, idle_start) / _attack_blend,
 	}
+	if _has(&"run"):
+		# 走り出しと止まりは、立ち姿・走りのどこからでも起きる。それぞれの動きを等分した時刻で測り、いちばん速いものを取る。
+		var run_in := 0.0
+		var run_out := 0.0
+		var run_start := _pose_at(skeleton, &"run", _skips.get(&"run", 0.0))
+		for i in MOTION_SAMPLES:
+			var idle_pose := _pose_at(skeleton, &"idle", _player.get_animation(_moves[&"idle"]).length * i / MOTION_SAMPLES)
+			var run_pose := _pose_at(skeleton, &"run", _player.get_animation(_moves[&"run"]).length * i / MOTION_SAMPLES)
+			run_in = maxf(run_in, _pose_gap(idle_pose, run_start))
+			run_out = maxf(run_out, _pose_gap(run_pose, idle_start))
+		jumps["run_in"] = run_in / RUN_BLEND
+		jumps["run_out"] = run_out / RUN_BLEND
+	return jumps
 
 
 func _pose_at(skeleton: Skeleton3D, move: StringName, time: float) -> Array[Quaternion]:

@@ -200,7 +200,7 @@ static func cell_body(battle: Battle, cell: Vector2i) -> String:
 	return "\n".join(lines)
 
 
-## 地形の [名前, 説明（無ければ空）]。森の受けるダメージは、対戦の札（深い茂み）を含めた割合（Seam.forest_rate_percent）。
+## 地形の [名前, 説明（無ければ空）, 下の帯などの 1 行に入れる短い説明（長い説明だけ）]。森の受けるダメージは、対戦の札（深い茂み）を含めた割合（Seam.forest_rate_percent）。
 static func _terrain_item(terrain: Terrain.Type, battle: Battle) -> Array:
 	match terrain:
 		Terrain.Type.OBSTACLE:
@@ -208,7 +208,9 @@ static func _terrain_item(terrain: Terrain.Type, battle: Battle) -> Array:
 		Terrain.Type.FOREST:
 			return [Text.t("battle.cell.forest"), Text.t("battle.cell.forest.note", {"rate": "%.1f" % (Seam.forest_rate_percent(battle) / 100.0)})]
 		Terrain.Type.FONT:
-			return [Text.t("battle.cell.font"), ""]
+			# 中立の敵が湧く（縫い目の様子の「骨の眠り」の間は、湧き直さない）。
+			var font_note := "battle.cell.font.hushed_note" if Seam.respawn_percent(battle) == 0 else "battle.cell.font.note"
+			return [Text.t("battle.cell.font"), Text.t(font_note), Text.t("battle.cell.font.short")]
 	return [Text.t("battle.cell.plain"), ""]
 
 
@@ -226,7 +228,11 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 		items.append([terrain[1], ""])
 	var hq_owner := battle.board.hq_owner(cell)
 	if hq_owner >= 0:
-		items.append([Text.t("battle.cell.hq", {"side": Names.side(hq_owner)}), ""])
+		# 本陣の占拠が相手の勝ち方にあれば、何ターンで決まるかを添える。
+		var hq_note := ""
+		if battle.wins_by((1 - hq_owner) as Unit.Side, GameWonEvent.Reason.HQ_CAPTURED):
+			hq_note = Text.t("battle.cell.hq.note", {"turns": Battle.CAPTURE_TURNS_TO_WIN})
+		items.append([Text.t("battle.cell.hq", {"side": Names.side(hq_owner)}), hq_note])
 	for effect in battle.board.field_effects_at(cell):
 		items.append(field_effect_item(effect))
 	match battle.board.object_at(cell):
@@ -248,18 +254,22 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	return items
 
 
-## 対戦の始めの知らせ（選べる決まり）の行。入の決まりごとに 1 行（盤に拠点がある）。無ければ空。
-## 砲台はマップの物なので、ここでは言わない（マスの説明と、乗ったときの射程で分かる）。
-static func rule_notice(battle: Battle) -> Array[String]:
-	var lines: Array[String] = []
-	if battle.board.stronghold_cell != Board.NO_CELL:
-		lines.append(Text.t("battle.notice.stronghold", WinText.stronghold_args()))
-	if not battle.signs.is_empty():
-		var names: Array[String] = []
-		for sign in battle.signs:
-			names.append(Names.sign_name(sign))
-		lines.append(Text.t("battle.notice.signs", {"names": Text.t("common.joiner.dot").join(names)}))
-	return lines
+## 対戦の始めの「対戦ルール」の札（docs/battle-view.md の「対戦ルール」）。side（人が動かす側）から見た、いま効いている勝利条件と、縫い目の様子。
+## 札は [種類（&"goal" か &"sign"）, 印の値（GameWonEvent.Reason か Seam.Sign）, 名前, 1 行の説明] の列。勝利条件が先、縫い目の様子があとで、それぞれの並びの順。
+## 相手が守り切る戦い（side が攻める側）は、勝利条件に「時間の限り」の札を足す（守り切るの印）。
+static func rule_cards(battle: Battle, side: Unit.Side) -> Array[Array]:
+	var cards: Array[Array] = []
+	var args := {"turns": battle.hold_turns, "capture": Battle.CAPTURE_TURNS_TO_WIN, "holds": Stronghold.HOLDS_TO_WIN}
+	for reason: GameWonEvent.Reason in WinText.ORDER:
+		if battle.win_conditions[side].has(reason):
+			var word := String(GameWonEvent.Reason.find_key(reason)).to_lower()
+			cards.append([&"goal", reason, Text.t("battle.goal.name." + word), Text.t("battle.goal.win." + word, args)])
+	var foe := (1 - side) as Unit.Side
+	if battle.win_conditions[foe].has(GameWonEvent.Reason.TURNS_HELD) and not battle.win_conditions[side].has(GameWonEvent.Reason.TURNS_HELD):
+		cards.append([&"goal", GameWonEvent.Reason.TURNS_HELD, Text.t("battle.goal.name.deadline"), Text.t("battle.goal.deadline", args)])
+	for sign in battle.signs:
+		cards.append([&"sign", sign, Names.sign_name(sign), Names.sign_summary(sign)])
+	return cards
 
 
 ## 盤の上の効果の [名前, 説明]。
@@ -270,6 +280,9 @@ static func field_effect_item(effect: FieldEffect) -> Array:
 			return [Names.field_effect(effect.type), Text.t("battle.cell.barricade.note", args)]
 		FieldEffect.Type.SMOKE:
 			return [Names.field_effect(effect.type), Text.t("battle.cell.smoke.note", args)]
+		FieldEffect.Type.KNOT:
+			args["unit"] = Names.kind(UnitKind.Id.FRAY)
+			return [Names.field_effect(effect.type), Text.t("battle.cell.knot.note", args)]
 	return [Names.field_effect(effect.type), Text.t("battle.cell.sanctuary.note", args)]
 
 

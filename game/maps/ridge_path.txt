@@ -10,6 +10,7 @@
 [map]
 title = 尾根の小道
 look = ridge
+boss = 尾根の番人
 
 [rows]
 #.......2.......#

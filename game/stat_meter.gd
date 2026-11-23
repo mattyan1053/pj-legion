@@ -74,6 +74,32 @@ func show_stat(stat_name: String, value: int, plain: int, scale: int, pips: bool
 	_meter.queue_redraw()
 
 
+## HP の変わり方の行（戦闘予測のパネル。forecast_panel.gd）: 名前、あとの HP（太字）、増減（減るぶんは ▼、増えるぶんは ▲）、
+## 棒（枠の長さが最大 HP。あとの HP を割合の色で塗り、減るぶん・増えるぶんを色で重ねて、変わる境に明るい線）。
+## 情報の枠の HP の行（show_stat）と同じ形で、増減の欄と棒だけが「前からあとへ」を見せる。defeated なら、あとの HP を危険の色にする。
+func show_change(stat_name: String, before: int, after: int, max_hp: int, defeated := false) -> void:
+	_name.text = stat_name
+	_value.text = str(after)
+	var delta := after - before
+	_delta.text = Text.t("battle.forecast.hp_same") if delta == 0 else Text.t("deck.sheet.gain" if delta > 0 else "deck.sheet.loss", {"amount": absi(delta)})
+	_delta.add_theme_color_override("font_color", Palette.TEXT_DIM if delta == 0 else (Palette.GOOD if delta > 0 else Palette.DANGER))
+	var value_color := Palette.TEXT
+	if defeated:
+		value_color = Palette.DANGER
+	elif delta > 0:
+		value_color = Palette.GOOD.lightened(0.35)
+	elif delta == 0:
+		value_color = Palette.TEXT_DIM
+	_value.add_theme_color_override("font_color", value_color)
+	_meter.value = maxi(max_hp, 1)
+	_meter.plain = _meter.value
+	_meter.scale_max = _meter.value
+	_meter.pips = false
+	_meter.hp = clampi(after, 0, _meter.value)
+	_meter.before = clampi(before, 0, _meter.value)
+	_meter.queue_redraw()
+
+
 ## 出している文（検査用。名前、値、増減）。
 func texts() -> Array[String]:
 	return [_name.text, _value.text, _delta.text]
@@ -97,6 +123,8 @@ class Meter:
 	var scale_max := 1
 	var pips := false
 	var hp := -1
+	## 変わる前の HP（戦闘予測の行。show_change）。-1 なら、変わり方を描かない。
+	var before := -1
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -142,6 +170,12 @@ class Meter:
 			var lost := Rect2(inner.position + Vector2(unit * value, 0.0), Vector2(unit * (plain - value), inner.size.y))
 			draw_rect(lost, Color(Palette.DANGER, 0.22))
 			draw_rect(lost.grow(-0.5), Palette.DANGER, false, 1.0)
+		if hp >= 0 and before >= 0 and before != hp:
+			# 戦闘予測: 減るぶん（明るい赤）・増えるぶん（良い知らせの色）を重ね、変わる境に明るい線（どこまで減るか・増えるかが読める）。
+			var low := mini(before, hp)
+			var change := Rect2(inner.position + Vector2(unit * low, 0.0), Vector2(unit * absi(before - hp), inner.size.y))
+			draw_rect(change, Palette.GOOD if hp > before else Palette.HP_LOW.lightened(0.15))
+			draw_rect(Rect2(change.position.x - 0.5, inner.position.y - 1.0, 1.5, inner.size.y + 2.0), Palette.TEXT)
 		# 上の縁の淡い光（棒に厚みを見せる）。
 		draw_rect(Rect2(inner.position, Vector2(unit * maxi(value, plain), inner.size.y * 0.35)), Color(1.0, 1.0, 1.0, 0.14))
 		var step := 5

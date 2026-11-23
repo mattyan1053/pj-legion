@@ -44,6 +44,11 @@ func look() -> StringName:
 	return episode.look
 
 
+## 中ボスの名前は、話のファイルの boss（無ければマップのファイルの boss。どちらも無ければ既定の「番人」）。
+func boss_name() -> String:
+	return episode.boss
+
+
 ## 話のファイルの music があれば、その曲（守り切る話の緊迫した曲など）。無ければ、盤の見た目の曲。
 func music() -> StringName:
 	return episode.battle_music()
@@ -178,4 +183,6 @@ static func scenario_of(of_episode: Episode) -> Scenario:
 	# wins があれば、人の勝ち方はその列だけ（たとえば全滅だけ。敵の将を倒しても終わらない）。
 	if not of_episode.wins.is_empty():
 		defined.set_win_conditions(Unit.Side.PLAYER1, of_episode.wins)
+	# 縫い目の様子（[episode] の signs）。書けば、その話にいつも付く。
+	defined.signs = of_episode.signs.duplicate()
 	return defined

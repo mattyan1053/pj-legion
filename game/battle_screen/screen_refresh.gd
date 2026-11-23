@@ -279,6 +279,7 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 	_hud.set_status(
 		WinText.turn_text(turn), phase, counts, battle.capture_turns, Battle.CAPTURE_TURNS_TO_WIN, shown,
 		WinText.goal_tag(battle, turn, _viewer_side()), WinText.goal_note(battle, _viewer_side()),
+		WinText.goal_tag_marks(battle, _viewer_side()),
 	)
 	_hud.set_stronghold(battle.stronghold_holds, WinText.stronghold_goal(battle), WinText.stronghold_near(battle), WinText.stronghold_note(battle))
 	var percents: Array[int] = []

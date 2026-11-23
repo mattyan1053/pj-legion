@@ -5,7 +5,8 @@ extends "res://tests/base_test.gd"
 func test_every_kind_has_stats() -> void:
 	for id: UnitKind.Id in UnitKind.Id.values():
 		assert_true(UnitKind.max_hp(id) > 0, str(UnitKind.Id.find_key(id)))
-		assert_true(UnitKind.move_range(id) > 0, str(UnitKind.Id.find_key(id)))
+		var rooted := Monsters.kind_traits(id).has(Evolution.Trait.ROOTED)  # 動けない魔物（糸針）だけが 0
+		assert_eq(UnitKind.move_range(id) > 0, not rooted, str(UnitKind.Id.find_key(id)))
 		assert_true(UnitKind.attack_range(id) > 0, str(UnitKind.Id.find_key(id)))
 
 
@@ -49,7 +50,7 @@ func test_neutrals() -> void:
 
 func test_only_vanguards_exert_zoc() -> void:
 	for id: UnitKind.Id in UnitKind.Id.values():
-		var expected: bool = id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN, UnitKind.Id.SKELETON_BRUTE]
+		var expected: bool = id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN, UnitKind.Id.SKELETON_BRUTE, UnitKind.Id.FRAY]
 		assert_eq(UnitKind.exerts_zoc(id), expected, str(UnitKind.Id.find_key(id)))
 
 
@@ -57,7 +58,8 @@ func test_only_vanguards_exert_zoc() -> void:
 func test_monsters_have_a_role_but_no_army() -> void:
 	var monsters: Array[UnitKind.Id] = [
 		UnitKind.Id.SKELETON, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON_BRUTE,
-		UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER,
+		UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER, UnitKind.Id.SKELETON_BANNER,
+		UnitKind.Id.BAT, UnitKind.Id.FRAY, UnitKind.Id.NEEDLE,
 	]
 	for id: UnitKind.Id in UnitKind.Id.values():
 		assert_eq(UnitKind.is_monster(id), monsters.has(id), str(UnitKind.Id.find_key(id)))

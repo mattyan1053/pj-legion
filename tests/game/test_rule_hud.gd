@@ -1,9 +1,11 @@
 extends "res://tests/base_test.gd"
-## 選べる決まりの、対戦の画面の枠（game/battle_hud.gd）: 拠点の札、対戦の始めの知らせ。
+## 対戦の画面の枠（game/battle_hud.gd）: 拠点の札、対戦の始めの「対戦ルール」。
 ## どれも大きさは中身で変えない（CLAUDE.md の人間の決定。11/22）。
 
 const BattleHud := preload("res://game/battle_hud.gd")
 const Palette := preload("res://game/ui_palette.gd")
+const Text := preload("res://game/text.gd")
+const BattleTexts := preload("res://game/battle_texts.gd")
 
 
 func _hud() -> BattleHud:
@@ -45,42 +47,70 @@ func test_stronghold_chip_fits_its_content() -> void:
 	hud.free()
 
 
-func test_notice_keeps_its_size_and_fits_three_rules() -> void:
+## 「対戦ルール」: 札の数（勝利条件 1〜3 枚、縫い目の様子 0〜2 枚）で枠の大きさを変えず、中身が収まり、どの札の説明も切れない。
+func test_notice_keeps_its_size_and_fits_any_cards() -> void:
 	var hud := _hud()
 	await settle(hud)
-	hud.show_notice(["1 行"] as Array[String])
-	await settle(hud)
-	var before := hud.notice_rect().size
-	assert_eq(before, BattleHud.NOTICE_SIZE)
-	var long_line := "あいうえおかきくけこ".repeat(5)  # 2 行に折り返す
-	hud.show_notice([long_line, long_line, long_line] as Array[String])
-	await settle(hud)
-	assert_eq(hud.notice_rect().size, before)
-	var column := hud._notice.get_child(0) as Control
-	assert_true(column.get_combined_minimum_size().y + 28.0 <= BattleHud.NOTICE_SIZE.y,
-		"知らせの中身が収まらない: %s" % column.get_combined_minimum_size())
+	var sizes := {}
+	var goals: Array[int] = [GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED, GameWonEvent.Reason.STRONGHOLD_HELD,
+		GameWonEvent.Reason.TURNS_HELD, GameWonEvent.Reason.ROUTED, GameWonEvent.Reason.BOSS_SLAIN]
+	for goal_count: int in [1, 2, 3]:
+		for sign_count: int in [0, 2]:
+			var cards: Array[Array] = []
+			for i in goal_count:
+				cards.append([&"goal", goals[i], "名前", "敵の本陣を 3 ターン占拠し続ける"])
+			for i in sign_count:
+				cards.append([&"sign", i, "名前", "森にいる駒が受けるダメージ 0.6 倍"])
+			hud.show_notice(cards)
+			await settle(hud)
+			sizes[hud.notice_rect().size] = true
+			var column := hud._notice.get_child(0) as Control
+			assert_true(column.get_combined_minimum_size().y + 28.0 <= BattleHud.NOTICE_SIZE.y,
+				"中身が収まらない（勝利条件 %d・様子 %d）: %s" % [goal_count, sign_count, column.get_combined_minimum_size()])
+			assert_eq(hud.notice_cut_texts(), [] as Array[String])
+			assert_eq(hud.notice_text().split("\n").size(), goal_count + sign_count)
+	assert_eq(sizes.keys(), [BattleHud.NOTICE_SIZE])
 	hud.hide_notice()
 	assert_eq(hud.notice_text(), "")
 	hud.free()
 
 
-## 始めの知らせの文は、語の途中で切らずに折り返す（text_wrap.gd）。折り返した行は、どれも本文の欄に収まる
-## （収まらない行があると、ラベルの自動の折り返しが、語の途中で切り直す。「仲間」が「仲 / 間」になっていた）。
-func test_notice_folds_lines_without_breaking_words() -> void:
-	var hud := _hud()
-	await settle(hud)
-	var line := "MILITARY の分隊（同じ兵種 2 体以上）: 隣に仲間がいると受けるダメージ -2、同じ番に仲間が撃った相手へ +3"
-	hud.show_notice([line] as Array[String])
-	await settle(hud)
-	var body: Label = hud._notice_body
-	assert_true(body.size.x >= BattleHud.NOTICE_TEXT_WIDTH - 0.5, "本文の欄が、折り返す幅より狭い: %s" % body.size.x)
-	var font := body.get_theme_font("font")
-	var font_size := body.get_theme_font_size("font_size")
-	var folded := body.text.split("\n")
-	assert_true(folded.size() >= 2, "折り返していない: %s" % body.text)
-	for each in folded:
-		var width := font.get_string_size(each, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		assert_true(width <= body.size.x, "本文の欄に収まらない行（自動の折り返しで、語の途中で切れる）: %s（%d）" % [each, width])
-	assert_false(body.text.contains("仲\n間"), "語の途中で切れた: %s" % body.text)
-	assert_eq(hud.notice_text(), line, "知らせの文（折り返す前）")
-	hud.free()
+## 対戦の始めの「対戦ルール」の札: 人の側から見た、いま効いている勝利条件（並びは WinText.ORDER）と縫い目の様子。
+func test_rule_cards_list_the_live_win_conditions() -> void:
+	var board := preload("res://tests/support/maps.gd").board(["1...", "...2"])
+	var battle := Battle.new(board)
+	battle.win_conditions = [Scenario.STANDARD_WIN_CONDITIONS.duplicate(), Scenario.STANDARD_WIN_CONDITIONS.duplicate()]
+	var cards := BattleTexts.rule_cards(battle, Unit.Side.PLAYER1)
+	assert_eq(cards.map(func(card: Array) -> int: return card[1]), [GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED])
+	assert_eq(cards[0][2], "将の撃破")
+	# 将の撃破の無い話（全滅だけ）でも成り立つ。相手が守り切る戦いは「時間の限り」が付く。
+	battle.win_conditions = [[GameWonEvent.Reason.ROUTED], [GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.TURNS_HELD]]
+	battle.hold_turns = 10
+	cards = BattleTexts.rule_cards(battle, Unit.Side.PLAYER1)
+	assert_eq(cards.map(func(card: Array) -> int: return card[1]), [GameWonEvent.Reason.ROUTED, GameWonEvent.Reason.TURNS_HELD])
+	assert_true(cards[1][3].contains("10"), cards[1][3])
+	cards = BattleTexts.rule_cards(battle, Unit.Side.PLAYER2)
+	assert_eq(cards.map(func(card: Array) -> int: return card[1]), [GameWonEvent.Reason.TURNS_HELD, GameWonEvent.Reason.KING_DEFEATED])
+
+
+## 実際の札の文（どの勝利条件も、どの縫い目の様子も）が、札の欄に収まる（説明は 2 行まで）。
+func test_every_real_card_text_fits() -> void:
+	const RuleCard := preload("res://game/rule_card.gd")
+	const Names := preload("res://game/names.gd")
+	var card := RuleCard.new()
+	await settle(card)
+	var args := {"turns": 10, "capture": Battle.CAPTURE_TURNS_TO_WIN, "holds": Stronghold.HOLDS_TO_WIN}
+	for reason: int in GameWonEvent.Reason.values():
+		var word := String(GameWonEvent.Reason.find_key(reason)).to_lower()
+		card.show_goal(reason, Text.t("battle.goal.name." + word), Text.t("battle.goal.win." + word, args))
+		await settle(card)
+		assert_true(card.fits(), card.shown_text())
+	card.show_goal(GameWonEvent.Reason.TURNS_HELD, Text.t("battle.goal.name.deadline"), Text.t("battle.goal.deadline", args))
+	await settle(card)
+	assert_true(card.fits(), card.shown_text())
+	for sign: int in Seam.Sign.values():
+		card.show_sign(sign, Names.sign_name(sign), Names.sign_summary(sign))
+		await settle(card)
+		assert_true(card.fits(), card.shown_text())
+		assert_eq(card.size, RuleCard.SIZE)
+	card.free()

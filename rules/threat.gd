@@ -13,6 +13,7 @@ extends RefCounted
 ## - スキル（使えるときだけ）: ダメージの届くマス（Skill.threat_damage）と、使ったあとに攻撃できる移った先（Skill.threat_origins）
 ## - 同じ陣営の衛生兵がアドレナリン注射を打てるなら、1 度目の行動のあと、注射の届くマスから、もう一度の移動と攻撃
 ## - 中立の駒は、縄張りの中で止まれるマス（いまのマスも）から、射程の中
+## - 次の番の始めに結び目から立ち直るほつれ（Monsters）も、立ち直ったマスから動いて届くマスを数える（against だけ）
 ##
 ## 量は、その駒の 1 回ぶんのいちばん強い値（受ける側の森とバリアは引かない。受ける駒で変わるので、読む側が見る）。
 ## 確率で決まるルール（中立の駒の同点）は複製の上で引くので、元の Battle.rng は進まない。
@@ -82,7 +83,26 @@ static func against(battle: Battle, side: Unit.Side) -> Map:
 		var sim: Battle = sims[unit.side]
 		if sim != null:
 			_player(sim, sim.unit_by_id(unit.id), map)
+	# 次の番の始めまでに盤に現れる駒（結び目から立ち直るほつれ。Monsters）も、その番に動いて届く。
+	for enemy: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if enemy == side or not _has_knot(battle, enemy):
+			continue
+		if not sims.has(enemy):
+			sims[enemy] = next_phase(battle, enemy)
+		var sim: Battle = sims[enemy]
+		if sim == null:
+			continue
+		for unit in sim.units:
+			if unit.side == enemy and battle.unit_by_id(unit.id) == null:
+				_player(sim, unit, map)
 	return map
+
+
+static func _has_knot(battle: Battle, side: Unit.Side) -> bool:
+	for effect in battle.board.field_effects:
+		if effect.type == FieldEffect.Type.KNOT and effect.side == side:
+			return true
+	return false
 
 
 ## side の次のフェーズの始めの状態（複製）。必殺技を使えるなら、使ったあと。その前に決着するなら null。

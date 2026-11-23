@@ -315,7 +315,7 @@ func _queue_skill_scene() -> void:
 		_expect(_scene.is_choosing_skill_target(), "ファイアボールの対象を選び始めなかった")
 		_scene.played.erase(damaged)
 		_scene.hover(burned.cell)
-		_expect_forecast([Names.skill(Skills.of(sorcerer)), Names.unit(burned), "ダメージ"], "ファイアボール")
+		_expect_forecast([Names.skill(Skills.of(sorcerer)), Names.unit(burned), "▼ -"], "ファイアボール")
 		_scene.hover(NO_CELL)
 		_scene.click_cell(burned.cell))
 	_scripted.append(func() -> void:
@@ -420,6 +420,39 @@ func _queue_formation_scene() -> void:
 		_expect(_scene.played.get(triggered, 0) == 1, "追い撃ちを再生しなかった")
 		_expect(_scene.played.get(broken, 0) == 1, "誓いが切れたことを再生しなかった")
 		_expect(Statuses.has(sorcerer, Status.Type.RESOLVE), "奮起が付かなかった"))
+
+
+## 倒れると何か起きる魔物（docs/monsters.md）。スナイパーが骸骨旗手を倒し（隣の骸骨兵が奮起）、もう 1 体がほつれを倒す（結び目が残る）。
+func _queue_monster_falls_scene() -> void:
+	var board := _small_board(Vector2i(8, 3))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 2))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(7, 0))
+	var first := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
+	var second := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 1))
+	var banner := battle.add_unit(UnitKind.Id.SKELETON_BANNER, Unit.Side.PLAYER2, Vector2i(3, 0))
+	var skeleton := battle.add_unit(UnitKind.Id.SKELETON, Unit.Side.PLAYER2, Vector2i(4, 0))
+	var fray := battle.add_unit(UnitKind.Id.FRAY, Unit.Side.PLAYER2, Vector2i(3, 1))
+	banner.hp = 1
+	fray.hp = 1
+	var rally: Script = RallyEvent
+	var knot: Script = KnotPlacedEvent
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+	_scripted.append(func() -> void: _scene.click_cell(first.cell))
+	_scripted.append(func() -> void: _scene.click_cell(banner.cell))
+	_scripted.append(func() -> void:
+		_expect(not battle.units.has(banner), "旗手を倒せなかった")
+		_expect(_scene.played.get(rally, 0) == 1, "奮起を再生しなかった")
+		_expect(Statuses.has(skeleton, Status.Type.RESOLVE), "隣の骸骨兵に奮起が付かなかった")
+		_scene.click_cell(second.cell))
+	_scripted.append(func() -> void: _scene.click_cell(fray.cell))
+	_scripted.append(func() -> void:
+		_expect(not battle.units.has(fray), "ほつれを倒せなかった")
+		_expect(_scene.played.get(knot, 0) == 1, "結び目を再生しなかった")
+		_expect(Monsters.knot_at(battle, Vector2i(3, 1)) != null, "結び目が残らなかった"))
 
 
 ## 行動の流れを変えるスキル。シャドウステップで敵と入れ替わってから攻撃し、アドレナリン注射で、行動済みの駒をもう一度動かす。

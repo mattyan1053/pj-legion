@@ -21,6 +21,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			advance_talk()
 		return
+	if _hud.notice_open():
+		# 「対戦ルール」を出している間: クリック・Enter・Space・Esc で閉じるだけ（盤の操作やターン終了にはしない）。視点の操作と右クリックは通す。
+		var closing: bool = (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) \
+			or (event is InputEventKey and event.pressed and not event.echo and event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_ESCAPE])
+		if closing:
+			_hud.hide_notice()
+			return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# 押しただけでは何もしない。離すまでに動かなければクリック、動けば視点を回す・傾ける（駒の上で押したときは、いつもクリック）。
@@ -148,6 +155,7 @@ func click_cell(cell: Vector2i) -> void:
 	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
 		return
 	_hud.hide_notice()  # 盤を触ったら、対戦の始めの知らせは読んだものとする
+	_hud.hide_sign_note()  # 縫い目の様子の札の窓も閉じる
 	if _ui.confirming_ult or _ui.confirming_auto:
 		# 必殺技・おまかせを確かめている途中のクリックは、確かめるのをやめるだけ（移動や攻撃はしない）。
 		_ui.confirming_ult = false

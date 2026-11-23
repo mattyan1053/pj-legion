@@ -181,21 +181,37 @@ func _scene_setup_seam() -> bool:
 	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.SEAM)
 
 
-func _scene_signs() -> bool:
-	var choice: RefCounted = MatchChoice.new()
-	choice.field = VersusFields.PLAIN
-	choice.set_rule(OptionalRules.SEAM, true)
-	_scene.source = choice
-	_scene.start_battle(_seed)
-	_park_mouse()
-	return _scene.signs_pending() and _scene.signs_window().card_texts().size() == Seam.DRAWN
+## 縫い目の様子が 2 つ付く対戦（ランダム）を、中央平原で作る（種を、2 つめくられる種まで進める）。
+func _two_signs_battle() -> void:
+	_field = VersusFields.PLAIN
+	var at := _seed
+	while Seam.draw_count(_seed) < Seam.DRAWN:
+		_seed += 1
+	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.SEAM])
+	_show()
+	_seed = at
 
 
 func _scene_signs_start() -> bool:
+	_two_signs_battle()
+	return _scene.notice_text().split("\n").size() >= 5 and _scene.signs_text() != ""
+
+
+## 対戦モードの既定（拠点あり）の対戦の始めの「対戦ルール」（縫い目の様子の無い種）。
+func _scene_rules_notice() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.SEAM])
+	_new_battle([OptionalRules.STRONGHOLD])
 	_show()
-	return _scene.notice_text().contains("縫い目の様子") and _scene.signs_text() != ""
+	return _scene.notice_text().contains("将の撃破") and _scene.notice_text().contains("拠点の確保") and _scene.notice_cut_texts().is_empty()
+
+
+## 対戦中に、上の帯の下の札の名前をクリックしたところ（札 1 枚の窓に、印・名前・効果）。
+func _scene_sign_note() -> bool:
+	_two_signs_battle()
+	_scene.hide_notice()
+	_scene.toggle_sign_note(0)
+	_park_mouse()
+	return _scene.sign_note_text() != ""
 
 
 func _scene_formation_start() -> bool:

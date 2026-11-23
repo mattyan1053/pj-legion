@@ -143,6 +143,31 @@ func test_the_probe_reads_every_field() -> void:
 	assert_false(episode.has_squad())
 
 
+## 中ボスの名前: 話のファイルの boss、無ければマップのファイルの boss（docs/neutral-mid-boss.md の「名前」）。
+func test_boss_name_reads_from_the_episode_or_the_map() -> void:
+	var plain: Episode = Episode.parse(PROBE)
+	assert_eq(plain.boss, "尾根の番人", "マップ（尾根の小道）の名前")
+	var named: Episode = Episode.parse(PROBE.replace("look = stone_walls", "look = stone_walls\nboss = 谷の主"))
+	assert_eq(named.problems, PackedStringArray())
+	assert_eq(named.boss, "谷の主")
+	assert_eq(StoryBattle.new(named, MatchSetup.default_deck(UnitKind.Army.MILITARY)).boss_name(), "谷の主")
+	var long: Episode = Episode.parse(PROBE.replace("look = stone_walls", "look = stone_walls\nboss = とても長い番人の名前"))
+	assert_eq(long.problems.size(), 1)
+
+
+func test_signs_read_and_reach_the_battle() -> void:
+	var plain: Episode = Episode.parse(PROBE)
+	assert_eq(plain.signs, [] as Array[int], "書かなければ付かない")
+	var episode: Episode = Episode.parse(PROBE.replace("look = stone_walls", "look = stone_walls\nsigns = gale, taut"))
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.signs, [Seam.Sign.GALE, Seam.Sign.TAUT] as Array[int])
+	var setup: MatchSetup = StoryBattle.new(episode, MatchSetup.default_deck(UnitKind.Army.MILITARY)).make_setup(3)
+	assert_eq(setup.create_battle().signs, [Seam.Sign.GALE, Seam.Sign.TAUT] as Array[int], "話の様子は、その話にいつも付く")
+	for wrong: String in ["signs = fog", "signs = loose, hush", "signs = gale, taut, brim"]:
+		var bad: Episode = Episode.parse(PROBE.replace("look = stone_walls", "look = stone_walls\n" + wrong))
+		assert_eq(bad.problems.size(), 1, "%s: %s" % [wrong, bad.problems])
+
+
 ## 地の文（話し手のいない行）は、頭に「>」（全角の「＞」でもよい）を付けて書く。話し手の番号は -1 で、会話の場面には名前の無い行で渡す。
 func test_narration_lines_read() -> void:
 	var episode: Episode = Episode.parse(PROBE.replace("隊長: いくぞ", "> 尾根に着いた。\n隊長: いくぞ").replace("敵将: 退け", "敵将: 退け\n＞ 日が暮れた。"))

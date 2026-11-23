@@ -253,7 +253,9 @@ func _mouse_motion(at: Vector2, held: bool, relative := Vector2(60, 0)) -> void:
 
 
 ## マスを、マウスの左ボタンで押して離す（人がクリックするのと同じ入口）。
+## マスをマウスでクリックする。対戦の始めの「対戦ルール」が出ていれば、先に閉じる（出ている間の最初のクリックは、閉じるだけなので）。
 func _click(cell: Vector2i) -> void:
+	_scene.hide_notice()
 	var at: Vector2 = _scene.cell_screen_position(cell)
 	_mouse_button(at, true)
 	_mouse_button(at, false)

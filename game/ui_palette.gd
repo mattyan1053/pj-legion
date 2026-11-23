@@ -84,6 +84,8 @@ const TEAM_NEUTRAL := Color("e0b83a")
 ## 機械の国ベルク連邦（MILITARY）の琥珀と、魔法の国リュエル騎士領（FANTASY）の菫。
 const NATION_MILITARY := Color("d9a05a")
 const NATION_FANTASY := Color("a98cf0")
+## 魔物の決まり（骸骨旗手の奮起、ほつれの結び目）の光と文字。縫い目の糸の、青白い色。
+const MONSTER_GLOW := Color("9fd8e8")
 
 # ---- 勝ち方の札 ----
 
