@@ -53,7 +53,9 @@ func _build_detail() -> void:
 	var icon_room := Control.new()
 	icon_room.custom_minimum_size = Vector2(TABLE_ICON, 0.0)
 	header.add_child(icon_room)
-	header.add_child(_table_cell(Text.t("result.table.unit"), TABLE_NAME_WIDTH, true, HORIZONTAL_ALIGNMENT_LEFT))
+	# 見出しの文は、表を出すときに決める（show_table。この画面は、ストーリーかどうかが決まる前に作られる）。
+	_table_unit_head = _table_cell("", TABLE_NAME_WIDTH, true, HORIZONTAL_ALIGNMENT_LEFT)
+	header.add_child(_table_unit_head)
 	for spec: Array in StatsText.COLUMNS:
 		header.add_child(_table_cell(Text.t(spec[1]), TABLE_NUMBER_WIDTH, true))
 	header.add_child(_table_cell("", TABLE_STATE_WIDTH, true))
@@ -76,6 +78,7 @@ func show_table(side: int) -> void:
 		_table_tabs[i].set_pressed_no_signal(i == side)
 	var table: Dictionary = _summary.tables[side]
 	_table_summary.text = table["summary"]
+	_table_unit_head.text = Text.t("result.table.unit.story" if Names.story_sides else "result.table.unit")
 	for child in _table_rows.get_children():
 		_table_rows.remove_child(child)
 		child.queue_free()
@@ -86,6 +89,11 @@ func show_table(side: int) -> void:
 ## いま表に出している陣営と、その行の駒の名前（検査用）。
 func table_side() -> int:
 	return _table_side
+
+
+## 表の、名前の列の見出し（検査用）。
+func table_unit_heading() -> String:
+	return _table_unit_head.text
 
 
 func table_names() -> Array[String]:

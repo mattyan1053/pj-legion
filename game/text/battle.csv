@@ -7,7 +7,7 @@ battle.log.won.routed,敵を全滅させた
 battle.log.won.boss_slain,中ボスを倒した
 battle.log.drawn.both_kings_defeated,両方の将が同時に倒れた
 battle.log.detail,　{text}
-battle.log.unknown_unit,駒
+battle.log.unknown_unit,不明
 battle.side_cpu,CPU（{color}）
 battle.log.unit,{side}の{unit}
 battle.log.boss_place.top,上
@@ -36,7 +36,7 @@ battle.log.skill,{unit}が「{skill}」を使った
 battle.log.effect_damage,{unit}に {result}
 battle.log.effect_blocked,{unit}: {result}
 battle.log.barrel,{attacker}が {cell} の起爆樽を攻撃: 爆発した
-battle.log.barrel_alone,{attacker}が {cell} の起爆樽を攻撃: 爆発した（巻き込まれた駒はいない）
+battle.log.barrel_alone,{attacker}が {cell} の起爆樽を攻撃: 爆発した（巻き込みなし）
 battle.log.barricade_hit,{attacker}が{effect}を攻撃: {amount} ダメージ、残りの耐久 {durability}
 battle.log.barricade_broken,{attacker}が{effect}を攻撃: {amount} ダメージ、壊した
 battle.log.barricade_placed,{effect}を {cell} に置いた（耐久 {durability}）
@@ -184,7 +184,7 @@ battle.hud.trait,★ {trait}
 battle.hud.tag.neutral,[中立]
 battle.hud.tag.own,[自軍]
 battle.hud.tag.foe,[敵軍]
-battle.hud.borrowed_army,{army}（{origin} の駒）
+battle.hud.borrowed_army,{army}（{origin} 出身）
 battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし
@@ -383,6 +383,7 @@ result.to_map_select,マップ選択へ
 result.detail_back,要約へ戻る
 result.detail_open,詳しい戦績
 result.table.unit,駒
+result.table.unit.story,名前
 result.table.defeated,倒れた
 result.next,次へ
 result.again,同じマップで再戦

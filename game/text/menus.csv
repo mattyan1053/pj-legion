@@ -121,10 +121,9 @@ menu.saved,オートセーブ完了
 menu.last_saved,最後のオートセーブ: {when}
 menu.never_saved,なし
 menu.quit.note,セーブしていない内容は失われます。
-deploy.note.none,駒を選んでいない
-deploy.note.none_read_only,駒にマウスを乗せていない
+deploy.note.none,未選択
 deploy.note.selected,選択中
-deploy.note.hovered,マウスを乗せた駒
+deploy.note.hovered,表示中
 deploy.note.role_level,{role}　レベル {level}
 setup.caption.seam,縫い目の様子
 setup.rule.seam.note,対戦ごとに条件の札が 2 枚めくられ、見てから部隊を選ぶ

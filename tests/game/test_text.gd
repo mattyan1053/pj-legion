@@ -6,6 +6,8 @@ extends "res://tests/base_test.gd"
 
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
+const Story := preload("res://game/story.gd")
+const Episode := preload("res://game/episode.gd")
 const TEXT_DIR := "res://game/text/"
 ## 見張るコード。
 const CODE_DIRS := ["res://game/", "res://rules/"]
@@ -128,6 +130,36 @@ func test_the_table_has_unique_keys_with_text() -> void:
 			seen[key] = file
 			assert_ne(Text.t(key), key, "%s の %s の文が空か、表が読み込まれていない" % [file, key])
 	assert_true(seen.size() > 0)
+
+
+## ストーリーの間に出る文は「駒」と言わない（docs/wording.md の「ストーリーでの呼び方」。登場人物なので）。
+## 対戦モードと部隊編成・オプションの文（STORY_FREE）は見ない。別の仕事が直す文（STORY_PENDING）は、直ったらここから外す。
+const STORY_FREE: Array[String] = ["deck.", "setup.", "settings.", "field.", "map_select.", "sign.", "signs.", "formation.", "title.", "stats."]
+const STORY_PENDING: Array[String] = [
+	"battle.cell.barrel.note", "battle.cell.spring.note", "battle.cell.portal.note", "battle.cell.portal.blocked_note",
+	"battle.hud.side", "battle.goal.rout_note",
+]
+## ストーリーでは別の文に替わる鍵（対戦モードの側だけ「駒」と言う）。
+const STORY_SWAPPED: Array[String] = ["result.table.unit"]
+
+
+func test_story_texts_do_not_say_piece() -> void:
+	var piece := RegEx.create_from_string("駒|コマ(?!ンド)")
+	var checked := 0
+	for file: String in _table():
+		for key: String in _table()[file]:
+			if STORY_PENDING.has(key) or STORY_SWAPPED.has(key) or STORY_FREE.any(func(head: String) -> bool: return key.begins_with(head)):
+				continue
+			checked += 1
+			assert_true(piece.search(Text.t(key)) == null, "%s の %s: ストーリーの間に出る文が「駒」と言っている（%s）" % [file, key, Text.t(key)])
+	assert_true(checked > 300)
+	for key: String in STORY_PENDING:
+		assert_true(piece.search(Text.t(key)) != null, "%s は「駒」と言わなくなった。STORY_PENDING から外す" % key)
+	# 話のファイルの、出撃準備に出す文（覚えること）と、物語・話の名前。
+	for campaign in Story.campaigns():
+		for episode: Episode in campaign.episodes:
+			for text: String in [episode.title, episode.lesson]:
+				assert_true(piece.search(text) == null, "%s の話 %s: 「駒」と言っている（%s）" % [campaign.id, episode.id, text])
 
 
 ## 差し込んだ名前（駒・陣営・スキルなど）と、前後の かな・漢字 の間に空白を置かない（docs/wording.md の 8。「スペルブレード を表示中」にしない）。

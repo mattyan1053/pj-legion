@@ -23,7 +23,7 @@ look = trial_court
 music = battle_ruins
 before_music = battle_ruins
 after_music = talk_calm
-lesson = レベル 3 に上がった駒は、進化先を 2 つから選ぶ。選んだ型で戦い方が変わる。
+lesson = レベル 3 に上がった味方は、進化先を 2 つから選ぶ。選んだ型で戦い方が変わる。
 
 [cast]
 イェルダ = ally, paladin evolved crown yelda
