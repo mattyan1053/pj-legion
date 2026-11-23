@@ -1,7 +1,7 @@
 # CPU の思考
 
 コード: `rules/cpu_player.gd`（思考と調整値）、`rules/cpu_deck.gd`（CPU の編成）、
-`tools/cpu_match.gd`（CPU どうしの 1 局）、`tools/cpu_matches.gd`（何局も回す集計）。
+`tools/cpu_match.gd`（CPU どうしの 1 局）、`tools/cpu_matches.gd`（何局も回す集計。集計の 1 行ぶんは `tools/cpu_tally.gd`、引数と道具は `tools/cpu_matches_base.gd`）。
 テスト: `tests/rules/test_cpu_player.gd`、`tests/rules/test_cpu_danger.gd`（危険の見積もり）、`tests/rules/test_cpu_deck.gd`、
 `tests/tools/test_cpu_match.gd`。スキルごとの使い方のテストは、そのスキルのテスト（`tests/rules/skills/`）。
 
