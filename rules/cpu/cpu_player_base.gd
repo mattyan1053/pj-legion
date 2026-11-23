@@ -26,6 +26,11 @@ const LONE_KING_STYLE: Array[float] = [4.0, 0.3, 0.3, 5000.0]
 ## 互いに相手の届くマスの外で待ち合って、いつまでも決着しないのを防ぐ。
 const BOLD_FROM_TURN := 20
 const BOLD_BY_TURN := 40
+## 膠着を解く: このターンから、拠点の受け持ち（_stronghold_taker）のほかの戦う駒は敵の将へ向かい、
+## 戦える駒の残っていない軍の回復役は敵の本陣へ向かう。回復し合う形と、拠点の隣で塞ぎ合う形が、いつまでも決着しないのを防ぐ。
+const STALL_TURN := 40
+## 膠着を解くときの、目標への近さの重みの倍率（目の前の、治される相手を殴り続けるより、将へ向かう）。
+const STALL_GOAL_RATE := 4.0
 ## 勝ちが決まる手、引き分けになる手の価値（負けが決まる手は、勝ちの逆）。
 const WIN_VALUE := 1000000.0
 const DRAW_VALUE := -100000.0
@@ -231,6 +236,8 @@ var _hq_in_danger := false
 var _holding := false
 ## 拠点の確保で勝てる（両方とも勝てる）か、拠点へ向かう駒の番号（0 = まだ決めていない、-1 = いない）。_begin が決める。
 var _takes_stronghold := false
+## いま考えている駒が、膠着を解きに敵の将へ向かっているか（拠点の隣で塞ぐ価値を見ない）。_set_goal が決める。
+var _breaking_stall := false
 var _stronghold_taker := 0
 var _rushing := false
 var _lethal_penalty := 0.0
