@@ -128,3 +128,21 @@ role.vanguard.summary,前に立って受け止める。周り 8 マスに支配�
 role.rearguard.summary,離れたところから撃つ
 role.raider.summary,よく動き、弱った駒や本陣を狙う
 role.healer.summary,味方の HP を回復する（攻撃のかわりに回復）
+sign.haze,天裂の名残り
+sign.brim,糸の満ち
+sign.loose,糸のゆるみ
+sign.hush,骨の眠り
+sign.shift,仮縫いのずれ
+sign.dusk,宵闇
+sign.mend,癒やしの糸
+sign.thicket,深い茂み
+sign.taut,張りつめた糸
+sign.haze.summary,霞が残る。射程 {haze_from} 以上の攻撃は射程 -{haze_cut}
+sign.brim.summary,必殺技のゲージが {brim}% の速さでたまる
+sign.loose.summary,結晶泉に中立の駒が湧き直しやすい（{respawn}% → {loose}%）
+sign.hush.summary,結晶泉に中立の駒が湧き直さない（最初の 1 体だけ）
+sign.shift.summary,ポータルの行き先が入れ替わる
+sign.dusk.summary,奇襲の移動力 +{dusk}
+sign.mend.summary,回復役の回復量 +{mend}
+sign.thicket.summary,森にいる駒が受ける攻撃のダメージ {thicket}%（いつもは {forest}%）
+sign.taut.summary,スキルのクールダウンが {taut} ターン短い

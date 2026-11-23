@@ -55,11 +55,11 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 ## 選べる決まり
 
-コード: `rules/optional_rules.gd`（`OptionalRules`）。テスト: `tests/rules/test_battery.gd`、`tests/rules/test_stronghold.gd`、`tests/rules/test_formation.gd`、`tests/game/test_match_choice.gd`。
+コード: `rules/optional_rules.gd`（`OptionalRules`）。テスト: `tests/rules/test_battery.gd`、`tests/rules/test_stronghold.gd`、`tests/rules/test_formation.gd`、`tests/rules/test_seam.gd`、`tests/game/test_match_choice.gd`。
 
 対戦モードで、対戦設定から入・切できる決まり（Issue #47）。
 
-- **対戦モードの既定は、拠点あり・砲台なし・組み方なし**（`OptionalRules.DEFAULTS`。`game/match_choice.gd` の `rules` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。砲台はまだ試し。
+- **対戦モードの既定は、拠点あり・砲台なし・組み方なし・縫い目の様子なし**（`OptionalRules.DEFAULTS`。`game/match_choice.gd` の `rules` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。砲台はまだ試し。
 - `MatchSetup` の既定は空（どれも切）。**ストーリーの話は、入にしない。** 切のとき、対戦は 1 局も変わらない（盤も、駒も、CPU の手も）。
 - 入にするのは、`MatchSetup.rules` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
 - 画面では、対戦設定のパネルの「拠点」「砲台（試し）」「組み方（試し）」の行の「あり」「なし」で入・切する（`game/match_choice.gd` の `rules`、`set_rule`）。
@@ -70,6 +70,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 | --- | --- | --- |
 | `battery`（`OptionalRules.BATTERY`） | 砲台。後衛が乗ると射程が伸びるマス（`docs/map-objects.md` の「砲台」） | 盤の置ける場所に砲台を置く（`BoardGenerator.arm_batteries`） |
 | `formation`（`OptionalRules.FORMATION`） | 組み方。連邦は同じ兵種をそろえた分隊、騎士領は編成で結んだ誓いに、効果が付く（`docs/formation.md`） | 組み方を入にし（`Battle.formation`）、編成の誓いを駒に写す（`Formation.arm`） |
+| `seam`（`OptionalRules.SEAM`） | 縫い目の様子。対戦ごとに条件の札が 2 枚めくられ、対戦のあいだずっと効く（`docs/seam-signs.md`） | 盤と種で札を引き（`Seam.draw`。対戦を作る前に `signs()` でも引ける）、対戦に入れる（`Seam.arm`。仮縫いのずれなら、拠点を置いたあとにポータルを組み直す） |
 | `stronghold`（`OptionalRules.STRONGHOLD`） | 拠点。盤ごとに決めたマス（両方の本陣から同じくらいの道のり）で、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤ごとに決めたマスに拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
 
 決まりを足すとき: `OptionalRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
