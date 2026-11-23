@@ -19,7 +19,7 @@ look = trial_court
 music = battle_knight
 before_music = talk
 after_music = talk
-lesson = 駒をクリックして動かし、敵を攻撃する。ソーサラーは 2 マス先から撃てる。
+lesson = 味方を動かして、敵を攻撃する。ソーサラーは 2 マス先から撃てる。
 
 [cast]
 イェルダ = ally, paladin evolved crown yelda

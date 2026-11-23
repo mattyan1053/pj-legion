@@ -19,18 +19,18 @@ deck.ult,"必殺技: {name}
 {summary}"
 deck.leave.confirm,変更を破棄しますか？
 deck.leave.discard,破棄
-deck.edit.roster,雇える駒
+deck.edit.roster,雇える兵
 deck.edit.troop,部隊
 deck.edit.plus,＋
 deck.edit.save,編成完了
 deck.edit.cost,コスト {total} / {budget}
-deck.edit.count,駒 {count} / {max}
+deck.edit.count,兵 {count} / {max}
 deck.edit.roster_unit,"{unit}　{role}　コスト {cost}
 {stats}"
 deck.edit.full,{max} 体まで
-deck.edit.no_units,駒なし
+deck.edit.no_units,兵なし
 deck.edit.king,将　{stats}
-deck.detail.borrowed,{origin} の駒（この部隊では {army} として戦う）
+deck.detail.borrowed,{origin} の兵（この部隊では {army} として戦う）
 deck.edit.items,持ち物　{count} / {max}
 deck.edit.item,{name}　コスト {cost}
 deck.edit.item_locked,未解放
@@ -53,13 +53,13 @@ deck.edit.troop_unit,"{unit}　コスト {cost}
 deck.edit.no_items,持ち物なし
 deck.detail.click,クリック: 詳細
 deck.edit.remove,外す
-deck.problem.no_units,駒なし
-deck.problem.too_many_units,駒の数が上限超過（{max} 体まで）
+deck.problem.no_units,兵なし
+deck.problem.too_many_units,兵の数が上限超過（{max} 体まで）
 deck.problem.over_budget,コスト上限を {over} 超過
-deck.problem.too_much_equipment,持ち物の数が上限超過の駒あり（1 体 {max} 個まで）
-deck.problem.not_in_roster,この軍で雇えない駒あり
+deck.problem.too_much_equipment,持ち物の数が上限超過の兵あり（1 体 {max} 個まで）
+deck.problem.not_in_roster,この軍で雇えない兵あり
 deck.problem.item_not_allowed,未解放の持ち物あり
-deck.problem.item_not_fit,持てない持ち物を持つ駒あり
+deck.problem.item_not_fit,持てない持ち物を持つ兵あり
 deck.problem.other,出撃不可
 deck.stats,HP {hp}　攻撃 {power}　移動 {move}　射程 {range}
 deck.stats_healer,HP {hp}　回復 {power}　移動 {move}　射程 {range}
@@ -71,8 +71,8 @@ deck.name.default,部隊 {number}
 deck.name.unnamed,名前の無い部隊
 deck.load.unknown_rules,未対応の決まり（{name}）
 deck.load.unknown_army,軍が読めない（{name}）
-deck.load.unreadable_unit,読めない駒を除外
-deck.load.unknown_unit,未対応の駒（{name}）を除外
+deck.load.unreadable_unit,読めない兵を除外
+deck.load.unknown_unit,未対応の兵（{name}）を除外
 deck.load.unknown_item,未対応の持ち物（{name}）を除外
 deck.load.none,無し
 deck.preview.title,{who}　{army}　コスト {cost} / {budget}
@@ -101,7 +101,7 @@ deck.formation.no_squad,分隊なし（同じ兵種 {size} 体で分隊）
 deck.formation.pair,{a}・{b}
 deck.formation.oaths,誓い {count} / {max}: {pairs}
 deck.formation.no_oath,誓いなし（{max} 組まで）
-deck.formation.binding,誓い: {unit}と結ぶ駒を選択中
+deck.formation.binding,誓い: {unit}と結ぶ兵を選択中
 deck.formation.effect,{effect}: {summary}
 deck.formation.oath_tag,誓い
 deck.formation.oath_tag_bound,誓い {number}

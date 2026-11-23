@@ -6,6 +6,8 @@ extends "res://tests/base_test.gd"
 
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
+const Story := preload("res://game/story.gd")
+const Episode := preload("res://game/episode.gd")
 const TEXT_DIR := "res://game/text/"
 ## 見張るコード。
 const CODE_DIRS := ["res://game/", "res://rules/"]
@@ -128,6 +130,28 @@ func test_the_table_has_unique_keys_with_text() -> void:
 			seen[key] = file
 			assert_ne(Text.t(key), key, "%s の %s の文が空か、表が読み込まれていない" % [file, key])
 	assert_true(seen.size() > 0)
+
+
+## 画面の文は、どのモードでも「駒」「コマ」「ユニット」と言わない（docs/wording.md の「兵と呼ぶ」）。
+## 見た目の組の名前「盤の駒」（ボードゲームの駒のような形）だけは、物の名前なので見ない。
+const PIECE_NAMES: Array[String] = ["settings.unit_look.tokens"]
+
+
+func test_texts_do_not_say_piece() -> void:
+	var piece := RegEx.create_from_string("駒|ユニット|コマ(?!ンド)")
+	var checked := 0
+	for file: String in _table():
+		for key: String in _table()[file]:
+			if PIECE_NAMES.has(key):
+				continue
+			checked += 1
+			assert_true(piece.search(Text.t(key)) == null, "%s の %s: 「駒」と言っている（%s）" % [file, key, Text.t(key)])
+	assert_true(checked > 600)
+	# 話のファイルの、出撃準備に出す文（覚えること）と、物語・話の名前。
+	for campaign in Story.campaigns():
+		for episode: Episode in campaign.episodes:
+			for text: String in [episode.title, episode.lesson]:
+				assert_true(piece.search(text) == null, "%s の話 %s: 「駒」と言っている（%s）" % [campaign.id, episode.id, text])
 
 
 ## 差し込んだ名前（駒・陣営・スキルなど）と、前後の かな・漢字 の間に空白を置かない（docs/wording.md の 8。「スペルブレード を表示中」にしない）。

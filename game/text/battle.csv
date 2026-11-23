@@ -7,7 +7,7 @@ battle.log.won.routed,敵を全滅させた
 battle.log.won.boss_slain,中ボスを倒した
 battle.log.drawn.both_kings_defeated,両方の将が同時に倒れた
 battle.log.detail,　{text}
-battle.log.unknown_unit,駒
+battle.log.unknown_unit,不明
 battle.side_cpu,CPU（{color}）
 battle.log.unit,{side}の{unit}
 battle.log.boss_place.top,上
@@ -36,7 +36,7 @@ battle.log.skill,{unit}が「{skill}」を使った
 battle.log.effect_damage,{unit}に {result}
 battle.log.effect_blocked,{unit}: {result}
 battle.log.barrel,{attacker}が {cell} の起爆樽を攻撃: 爆発した
-battle.log.barrel_alone,{attacker}が {cell} の起爆樽を攻撃: 爆発した（巻き込まれた駒はいない）
+battle.log.barrel_alone,{attacker}が {cell} の起爆樽を攻撃: 爆発した（巻き込みなし）
 battle.log.barricade_hit,{attacker}が{effect}を攻撃: {amount} ダメージ、残りの耐久 {durability}
 battle.log.barricade_broken,{attacker}が{effect}を攻撃: {amount} ダメージ、壊した
 battle.log.barricade_placed,{effect}を {cell} に置いた（耐久 {durability}）
@@ -129,17 +129,17 @@ battle.cell.forest.note,移動 2・受けるダメージ {rate} 倍
 battle.cell.font,結晶泉
 battle.cell.hq,{side}の本陣
 battle.cell.barrel,起爆樽
-battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マスの駒すべてに {damage} ダメージ
+battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マスの兵すべてに {damage} ダメージ
 battle.cell.battery,砲台
 battle.cell.battery.note,後衛が乗ると、射程 +{range}
 battle.cell.stronghold,拠点
 battle.cell.stronghold.note,乗ったまま番を終えると確保 +1。{needed} 回で勝ち。隣に敵がいる間は止まる。
 battle.cell.stronghold.short,乗ったまま番を終えると確保 +1
 battle.cell.spring,回復の泉
-battle.cell.spring.note,自分の番の始めに、乗っている駒が {heal} 回復
+battle.cell.spring.note,自分の番の始めに、乗っている兵が {heal} 回復
 battle.cell.portal,"ポータル → ({x}, {y})"
-battle.cell.portal.note,止まると、駒のそばのメニューの「転移」で対のポータル（同じ色の印）へ移れる。移動力は使わず、残りで続けて動ける
-battle.cell.portal.blocked_note,止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わず、残りで続けて動ける。行き先に駒がいて、いまは使えない
+battle.cell.portal.note,止まると、兵のそばのメニューの「転移」で対のポータル（同じ色の印）へ移れる。移動力は使わず、残りで続けて動ける
+battle.cell.portal.blocked_note,止まると、兵のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わず、残りで続けて動ける。行き先に兵がいて、いまは使えない
 battle.cell.barricade.note,{side}。耐久 {durability} / 通行・射撃を遮断
 battle.cell.smoke.note,{side}。残り {turns} ターン / 中の味方への、離れたところからの攻撃を無効
 battle.cell.sanctuary.note,{side}。残り {turns} ターン / 自分の番の始めに中の味方が HP {heal} 回復
@@ -165,26 +165,21 @@ battle.hud.skip.tooltip,相手の番の残りを省略（出来事はログに�
 battle.hud.ult,必殺技
 battle.hud.auto.tooltip,残りの行動を CPU に任せてターン終了
 battle.hud.end_turn,ターン終了
-battle.hud.side,{side}  駒 {count}
+battle.hud.side,{side}  兵 {count}
 battle.hud.capture,  占拠 {marks}
 battle.hud.capture_on,●
 battle.hud.capture_off,○
-battle.hud.name_evolved_role,{unit}（{kind}から進化・{role}）
-battle.hud.name_evolved,{unit}（{kind}から進化）
-battle.hud.name_role,{unit}（{role}）
-battle.hud.stats,"HP {hp} / {max_hp}
-攻撃 {power}　移動 {move}　射程 {range}"
-battle.hud.stats_healer,"HP {hp} / {max_hp}
-回復 {power}　移動 {move}　射程 {range}"
-battle.hud.level_max,レベル {level}（最大）
-battle.hud.level,レベル {level}　経験 {experience} / {needed}
+battle.hud.name_evolved,{unit}（{kind}）
+battle.hud.level_max,Lv {level} 最大
+battle.hud.status_chip,{status}（あと {turns}）
+battle.hud.status_turns,あと {turns}
+battle.hud.origin,{origin} 出身
 battle.hud.equipment,持ち物: {items}
 battle.hud.skill,スキル: {skill}（{state}）
 battle.hud.trait,★ {trait}
-battle.hud.tag.neutral,[中立]
-battle.hud.tag.own,[自軍]
-battle.hud.tag.foe,[敵軍]
-battle.hud.borrowed_army,{army}（{origin} の駒）
+battle.hud.tag.neutral,中立
+battle.hud.tag.own,自軍
+battle.hud.tag.foe,敵軍
 battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし
@@ -283,7 +278,7 @@ battle.forecast.nothing,何も起きない
 battle.goal.win,{conditions}勝ち。
 battle.goal.lose,{conditions}負け。
 battle.goal.or,か、
-battle.goal.rout_note,敵の将を倒しても、ほかの駒が残っていれば終わらない。
+battle.goal.rout_note,敵の将を倒しても、ほかの兵が残っていれば終わらない。
 battle.goal.boss_note,敵の将を倒しても終わらない。
 battle.goal.win.king_defeated,敵の将を倒す
 battle.goal.win.king_defeated.last,敵の将を倒せば
@@ -382,7 +377,8 @@ result.to_episodes,話の一覧へ
 result.to_map_select,マップ選択へ
 result.detail_back,要約へ戻る
 result.detail_open,詳しい戦績
-result.table.unit,駒
+result.table.unit,兵
+result.table.unit.story,名前
 result.table.defeated,倒れた
 result.next,次へ
 result.again,同じマップで再戦

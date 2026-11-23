@@ -160,7 +160,7 @@
 [episode]
 title = 見本の話
 map = ridge_path
-lesson = 駒をクリックして動かし、隣の敵を攻撃する。
+lesson = 味方を動かして、隣の敵を攻撃する。
 
 [cast]
 隊長 = ally
@@ -234,7 +234,7 @@ lesson = 駒をクリックして動かし、隣の敵を攻撃する。
 [episode]
 title = はじめの一歩
 map = drill_field
-lesson = 駒をクリックして動かし、隣の敵を攻撃する。敵の将を倒せば勝ち。
+lesson = 味方を動かして、隣の敵を攻撃する。敵の将を倒せば勝ち。
 
 [cast]
 ハーデン = ally

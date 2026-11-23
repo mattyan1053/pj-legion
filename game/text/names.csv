@@ -72,7 +72,7 @@ item.war_banner,軍旗
 item.jet_pack,試作ジェットパック
 item.dragon_scale,古竜の鱗
 skill.adrenaline_shot,アドレナリン注射
-skill.adrenaline_shot.summary,行動済みの味方 1 体を、もう一度行動できるようにする。その駒は次の自分の番の終わりまで、攻撃力 -{penalty}（対戦中 {uses} 回まで）
+skill.adrenaline_shot.summary,行動済みの味方 1 体を、もう一度行動できるようにする。その味方は次の自分の番の終わりまで、攻撃力 -{penalty}（対戦中 {uses} 回まで）
 skill.bone_raise,骨起こし
 skill.bone_raise.summary,隣の空いたマスに、味方の骸骨兵を 1 体起こす。起きた骸骨兵は次の自分の番から動く（対戦中 {uses} 回まで）
 skill.war_drum,骨太鼓
@@ -86,7 +86,7 @@ skill.precision_aim.summary,動かずに構える。次の自分の番、この�
 skill.saint_place,セイントプレイス
 skill.saint_place.summary,{range} マス以内を中心に聖域（3 x 3。{turns} ターン。自分の番の始めに中の味方が HP {heal} 回復）を置く
 skill.shadow_step,シャドウステップ
-skill.shadow_step.summary,縦・横・斜め {range} マス以内へ跳ぶ（壁も駒も越える。敵のいるマスなら入れ替わる）。続けて攻撃できる
+skill.shadow_step.summary,縦・横・斜め {range} マス以内へ跳ぶ（壁も味方も敵も越える。敵のいるマスなら入れ替わる）。続けて攻撃できる
 skill.smoke_grenade,スモークグレネード
 skill.smoke_grenade.summary,{range} マス以内を中心に煙幕（3 x 3。{turns} ターン。中の味方への、離れたところからの攻撃を無効にする）を置く
 skill.tactical_barricade,戦術バリケード
@@ -126,7 +126,7 @@ relic.courage.short,勇気
 relic.courage.effect,攻撃力・回復量 +{amount}
 role.vanguard.summary,前に立って受け止める。周り 8 マスに支配領域を作り、敵はそこで止まる
 role.rearguard.summary,離れたところから撃つ
-role.raider.summary,よく動き、弱った駒や本陣を狙う
+role.raider.summary,よく動き、弱った相手や本陣を狙う
 role.healer.summary,味方の HP を回復する（攻撃のかわりに回復）
 sign.haze,天裂の名残り
 sign.brim,糸の満ち
@@ -139,10 +139,10 @@ sign.thicket,深い茂み
 sign.taut,張りつめた糸
 sign.haze.summary,霞が残る。射程 {haze_from} 以上の攻撃は射程 -{haze_cut}
 sign.brim.summary,必殺技のゲージが {brim}% の速さでたまる
-sign.loose.summary,結晶泉に中立の駒が湧き直しやすい（{loose}%）
-sign.hush.summary,結晶泉に中立の駒が湧き直さない（最初の 1 体だけ）
+sign.loose.summary,結晶泉に中立の敵が湧き直しやすい（{loose}%）
+sign.hush.summary,結晶泉に中立の敵が湧き直さない（最初の 1 体だけ）
 sign.shift.summary,ポータルの行き先が入れ替わる
 sign.gale.summary,巡航の移動力 +{gale}
 sign.gleam.summary,裂け目の光が射す。後衛の射程 +{gleam}
-sign.thicket.summary,森にいる駒が受ける攻撃のダメージ {thicket}%
+sign.thicket.summary,森にいる兵が受ける攻撃のダメージ {thicket}%
 sign.taut.summary,スキルのクールダウンが {taut} ターン短い

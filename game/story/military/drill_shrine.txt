@@ -17,7 +17,7 @@ map = shrine_hollow
 music = battle_boss
 before_music = battle_boss
 after_music = talk_calm
-lesson = 結晶泉から湧く中立の駒は、どちらも襲う。中ボスを倒すと聖遺物が手に入る。
+lesson = 結晶泉から湧く中立の群れは、どちらの軍も襲う。中ボスを倒すと聖遺物が手に入る。
 # 勝ち方は中ボスの撃破だけ（将を倒しても終わらない）。教えたいこと（中ボスを狩る）をやらずに終われないように。
 wins = boss_slain
 

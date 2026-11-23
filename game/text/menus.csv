@@ -26,10 +26,10 @@ settings.show_minimap,ミニマップ
 settings.show_minimap.note,対戦の右上に盤の縮図を表示
 settings.screen_effects,画面の効果
 settings.screen_effects.note,光のにじみ・陰・色の調子。重いときはオフ
-settings.piece_outline,駒の縁取り
-settings.piece_outline.note,盤の駒と会話の姿に暗い縁。次の画面から反映
-settings.unit_look,駒の見た目
-settings.unit_look.note,盤の駒・アイコン・会話の姿。次の画面から反映（対戦中は次の対戦から）
+settings.piece_outline,兵の縁取り
+settings.piece_outline.note,盤の兵と会話の姿に暗い縁。次の画面から反映
+settings.unit_look,兵の見た目
+settings.unit_look.note,盤の兵・アイコン・会話の姿。次の画面から反映（対戦中は次の対戦から）
 settings.unit_look.kaykit,人形
 settings.unit_look.tokens,盤の駒
 settings.unit_look.quaternius,人物
@@ -69,7 +69,7 @@ map_select.choose,マップ選択
 field.plain.tags,広場 ・ 起爆樽 ・ 砲台
 field.plain.note,開けた平地。中央は遮るもののない広場で、まわりに岩と森が散らばる。\n中央の左右に起爆樽。正面からぶつかり合う、基本の戦場。
 field.labyrinth.tags,迷路 ・ 回復の泉
-field.labyrinth.note,格子に並んだ壁が通路を作る迷路。射線が通りにくく、本陣へは回り道になる。\n左右に回復の泉。遠くから撃つより、角を曲がって近づく駒が強い。
+field.labyrinth.note,格子に並んだ壁が通路を作る迷路。射線が通りにくく、本陣へは回り道になる。\n左右に回復の泉。遠くから撃つより、角を曲がって近づく兵が強い。
 field.twin_springs.tags,2 本の道 ・ ポータル
 field.twin_springs.note,中央を大きな壁がふさぎ、戦場は左右 2 本の道に分かれる。本陣は対角。\nどちらの道にも、上下をつなぐポータル。どちらで攻め、どちらで守るか。
 field.ridge_path.tags,小さな盤 ・ 2 本の道
@@ -105,7 +105,7 @@ setup.edit_deck,部隊編成
 setup.placement,初期位置
 setup.placement_set,初期位置 ✓
 setup.placement.title,初期位置　{who}
-setup.placement.generated,ランダム生成のマップは、対戦のたびに形が変わる。入れないマスに当たった駒は、おまかせの位置へ
+setup.placement.generated,ランダム生成のマップは、対戦のたびに形が変わる。入れないマスに当たった兵は、おまかせの位置へ
 setup.back_to_battle,対戦へ戻る
 setup.start,対戦開始
 setup.start_new,新しい対戦
@@ -121,10 +121,9 @@ menu.saved,オートセーブ完了
 menu.last_saved,最後のオートセーブ: {when}
 menu.never_saved,なし
 menu.quit.note,セーブしていない内容は失われます。
-deploy.note.none,駒を選んでいない
-deploy.note.none_read_only,駒にマウスを乗せていない
+deploy.note.none,未選択
 deploy.note.selected,選択中
-deploy.note.hovered,マウスを乗せた駒
+deploy.note.hovered,表示中
 deploy.note.role_level,{role}　レベル {level}
 setup.caption.seam,縫い目の様子
 setup.rule.seam.note,対戦ごとに条件の札が 2 枚めくられ、見てから部隊を選ぶ

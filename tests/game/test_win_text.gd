@@ -35,7 +35,7 @@ func test_rout_reads_as_rout() -> void:
 	var scenario := Scenario.versus(BoardGenerator.Stage.PLAIN)
 	var rout: Array[GameWonEvent.Reason] = [GameWonEvent.Reason.ROUTED]
 	scenario.set_win_conditions(P1, rout)
-	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。敵の将を倒しても、ほかの駒が残っていれば終わらない。")
+	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。敵の将を倒しても、ほかの兵が残っていれば終わらない。")
 	assert_eq(WinText.of_scenario(scenario, P2).get_slice("\n", 1), "全滅すると負け。")
 
 

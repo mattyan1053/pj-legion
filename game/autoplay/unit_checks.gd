@@ -167,7 +167,7 @@ func _queue_heal_scene() -> void:
 		_expect(_scene.menu_ids() == ([&"heal", &"skill", &"wait", &"undo"] as Array[StringName]), "動いたあとのメニューの項目が違う: %s" % [_scene.menu_ids()])
 		# スキルの説明は、駒の情報にいつも出ている。メニューの項目にマウスを乗せると、押すと何が起きるかが出る。
 		var skill := Skills.of(medic)
-		_expect(_scene.info_text().replace("\n", "").contains(Names.skill_summary(skill)), "駒の情報に、スキルの説明が出ていない")
+		_expect(_scene.info_text().replace("\n", "").contains(Names.skill_summary(skill)), "駒の情報に、スキルの説明が出ていない: %s" % _scene.info_text())
 		_scene.hover_menu_item(&"heal")
 		_expect(_scene.info_text().contains("行動終了"), "メニューの項目の説明が出ていない: %s" % _scene.info_text())
 		_scene.hover_menu_item(&"")

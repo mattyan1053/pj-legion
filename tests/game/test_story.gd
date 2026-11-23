@@ -557,7 +557,7 @@ func test_news_tell_each_new_kind_item_and_the_new_budget() -> void:
 	given.items.assign([Equipment.Id.IRON_SHIELD])
 	var news := given.news_of(episode)
 	assert_eq(news, [
-		{"text": "新しい駒「コマンドー」を雇えるようになりました。", "kind": UnitKind.Id.COMMANDO},
+		{"text": "新しい兵種「コマンドー」を雇えるようになりました。", "kind": UnitKind.Id.COMMANDO},
 		{"text": "新しい持ち物「スピードブーツ」を持たせられるようになりました。効果: 移動 +2", "item": Equipment.Id.SPEED_BOOTS},
 		{"text": "コスト上限が %d に上がりました。" % (Story.military().starting_budget + 3)},
 	] as Array[Dictionary], "もう使えるもの（スナイパー、アイアンシールド）は知らせない。駒・持ち物の知らせはアイコンを出す（kind、item）。持ち物は効果も")

@@ -158,7 +158,7 @@ func _frame(node: Node, what: String) -> Control:
 	return null
 
 
-## 情報の枠: どの駒を出しても（持ち物・状態・メニューの項目の説明を積んでも）、マスを出しても、同じ大きさ。下が切れない。
+## 情報の枠: どの駒を出しても（持ち物・状態・メニューの項目の説明を積んでも）、マスを出しても、同じ大きさ。下が切れず、札が枠の幅からはみ出さない。
 func test_info_panel_keeps_its_size_whatever_it_shows() -> void:
 	var hud := _hud()
 	await settle(hud)
@@ -166,15 +166,17 @@ func test_info_panel_keeps_its_size_whatever_it_shows() -> void:
 	var size := Vector2(BattleHud.INFO_WIDTH + 20.0, BattleHud.INFO_HEIGHT)
 	var items: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS, Equipment.Id.REGEN_CHARM]
 	for kind: UnitKind.Id in UnitKind.Id.values():
-		# 素の駒と、中身を積んだ駒（持ち物 2 つ、状態 1 つ）。積んだ駒は、メニューの項目に乗せた形（説明が足される）も。
+		# 素の駒と、中身を積んだ駒（持ち物 2 つ、状態 1 つ、HP が減っている）。積んだ駒は、メニューの項目に乗せた形（説明が足される）も。
 		var plain := Unit.new(1, kind, Unit.Side.PLAYER1, Vector2i.ZERO)
 		hud.show_unit(plain, BattleTexts.unit_state(hud.battle, plain), "")
 		hud.set_detail_button(true)
 		await settle(hud)
 		assert_eq(panel.size, size, "素の駒: %s" % Names.kind(kind))
-		assert_eq([hud.info_shrink(), hud.info_dropped()], [0, 0], "素の駒で字が小さくなる（か、文が省かれる）: %s" % Names.kind(kind))
+		assert_eq(hud.info_dropped(), 0, "素の駒で、欄が省かれる: %s" % Names.kind(kind))
+		assert_true(hud.info_overflow() <= 0.5, "素の駒で、札が枠の幅からはみ出す（%.1f px）: %s" % [hud.info_overflow(), Names.kind(kind)])
 		var loaded := Unit.new(2, kind, Unit.Side.PLAYER2, Vector2i.ZERO, items if Equipment.can_equip(kind) else ([] as Array[Equipment.Id]))
 		loaded.statuses[Status.Type.values()[0]] = 2
+		loaded.hp = maxi(loaded.max_hp() / 3, 1)
 		for id: StringName in [BattleTexts.MENU_ATTACK, BattleTexts.MENU_SKILL, &""]:
 			if id == BattleTexts.MENU_SKILL and Skills.of(loaded) == null:
 				continue
@@ -184,11 +186,47 @@ func test_info_panel_keeps_its_size_whatever_it_shows() -> void:
 			await settle(hud)
 			assert_eq(panel.size, size, "中身を積んだ駒: %s %s" % [Names.kind(kind), id])
 			assert_false(hud.is_info_cut(), "中身を積んだ駒で、下が切れる: %s %s\n%s" % [Names.kind(kind), id, hud.info_text()])
+			assert_true(hud.info_overflow() <= 0.5, "中身を積んだ駒で、札が枠の幅からはみ出す（%.1f px）: %s %s" % [hud.info_overflow(), Names.kind(kind), id])
 			if id == &"":
-				assert_eq(hud.info_dropped(), 0, "駒を見ているだけで、文が省かれる: %s" % Names.kind(kind))
+				assert_eq(hud.info_dropped(), 0, "駒を見ているだけで、欄が省かれる: %s" % Names.kind(kind))
+	# 札が込み合うと（状態 3 つ、いるマスの行、スイッチ）、後で読めるものから省いて、枠に収める。スキルの名前は残す。
+	var crowded := Unit.new(3, UnitKind.Id.MEDIC, Unit.Side.PLAYER2, Vector2i.ZERO, items)
+	for type: int in Status.Type.values().slice(0, 3):
+		crowded.statuses[type] = 2
+	hud.show_unit(crowded, "未行動\n" + Text.t("battle.unit.on_cell", {"terrain": Text.t("battle.cell.forest")}), "")
+	hud.set_pin_switch(true, false)
+	hud.set_detail_button(true)
+	await settle(hud)
+	assert_eq(panel.size, size, "込み合った駒")
+	assert_true(hud.info_dropped() > 0 and not hud.is_info_cut(), "込み合った駒を、省いて収めていない（省いた数 %d）" % hud.info_dropped())
+	assert_true(hud.info_text().contains(Names.skill(Skills.of(crowded))), "スキルの名前まで省いた")
 	hud.show_cell_info("マス (12, 15)　平地", "拠点\n　将でない駒が乗ったまま番を終えると、確保 +1\n　6 で勝ち")
 	await settle(hud)
 	assert_eq(panel.size, size, "マス")
+	assert_true(hud.info_overflow() <= 0.5, "マスの札が枠の幅からはみ出す")
+	assert_eq(hud.info_title(), "マス (12, 15)　平地")
+	assert_eq(hud.info_text(), "拠点\n将でない駒が乗ったまま番を終えると、確保 +1\n6 で勝ち", "マスの説明を、項目ごとの札に分けていない")
+	hud.free()
+
+
+## 情報の枠の札は、文の段落でなく欄で出す: 所属・役割・軍・レベルの札、能力値の行、状態の札（名前と残りのターン）、スキルの札、持ち物の枠。
+func test_info_panel_is_a_status_card() -> void:
+	var hud := _hud()
+	await settle(hud)
+	var items: Array[Equipment.Id] = [Equipment.Id.IRON_SHIELD, Equipment.Id.IRON_SHIELD]
+	var trooper := Unit.new(1, UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i.ZERO, items)
+	trooper.hp = 40
+	trooper.statuses[Status.Type.values()[0]] = 2
+	hud.show_unit(trooper, "未行動", "")
+	await settle(hud)
+	var lines := hud.info_text().split("\n")
+	assert_eq(hud.info_title(), Names.kind(UnitKind.Id.SHIELD_TROOPER))
+	assert_eq(lines[0], "自軍　%s　%s　Lv 1　未行動" % [Names.role(UnitKind.role(trooper.kind)), Names.army(UnitKind.army(trooper.kind))], "札の並び")
+	assert_true(lines[1].begins_with("HP 40 / %d" % trooper.max_hp()), "HP の行: %s" % lines[1])
+	assert_true(lines.has("%s（あと 2）" % Names.status(Status.Type.values()[0])), "状態の札: %s" % hud.info_text())
+	assert_true(lines.has("持ち物: アイアンシールド ×2"), "持ち物の枠: %s" % hud.info_text())
+	for line in lines:
+		assert_false(line.contains("。") and line.length() > 60, "長い文の段落が残っている: %s" % line)
 	hud.free()
 
 
@@ -257,6 +295,23 @@ func test_name_plates_fit_every_speaker() -> void:
 		assert_true(talk <= TalkScreen.PLATE_WIDTH, "会話の名前の札に入らない: %s（要る幅 %d）" % [speaker, talk])
 		var cue := UiTheme.FONT_BOLD.get_string_size(speaker, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 20.0
 		assert_true(cue <= BattleTalk.PLATE_WIDTH, "途中の台詞の名前の札に入らない: %s（要る幅 %d）" % [speaker, cue])
+
+
+## 決着の詳しい戦績の表の、名前の列の見出し: 対戦モードは「駒」、ストーリーは「名前」。
+## 画面は対戦の始まる前（ストーリーかどうかが決まる前）に作られるので、表を出すときに決める。
+func test_result_table_heading_follows_the_mode_at_show_time() -> void:
+	var screen := ResultScreen.new()
+	await settle(screen)
+	var summary := ResultSummary.new()
+	summary.tables = [{"name": "A", "summary": "", "rows": []}, {"name": "B", "summary": "", "rows": []}]
+	screen.present(summary)
+	screen.show_table(0)
+	assert_eq(screen.table_unit_heading(), Text.t("result.table.unit"))
+	Names.story_sides = true
+	screen.show_table(1)
+	assert_eq(screen.table_unit_heading(), Text.t("result.table.unit.story"), "ストーリーの表の見出しが「駒」のまま")
+	Names.story_sides = false
+	screen.free()
 
 
 ## 決着の画面の戦績の枠: 行の少ない戦績（中立撃破も聖遺物も無い）でも、行の多い戦績と同じ大きさ。

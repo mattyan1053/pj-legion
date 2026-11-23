@@ -30,7 +30,7 @@ sortie.level,Lv{level}
 sortie.option.fixed,この話の部隊
 sortie.option.fixed.note,固定（この話では変更不可）
 sortie.option.default,既定の編成
-sortie.option.default.note,雇える駒で自動編成
+sortie.option.default.note,自動編成
 sortie.option.saved.note,{count} 体・コスト {cost} / {budget}
 sortie.option,{name}　　{note}
 talk.skip,スキップ
@@ -43,7 +43,7 @@ talk.guide.back,戻る
 talk.guide.log,ログ
 talk.resume,会話へ戻る
 talk.next_episode,次の話へ
-story.episodes.roster,"雇える駒: {kinds}
+story.episodes.roster,"雇える兵種: {kinds}
 持ち物: {items}　　コスト上限: {budget}"
 story.episodes.rewards,"クリア報酬:
 {rewards}"
@@ -51,7 +51,7 @@ story.episodes.number_drill,第 {number} 話（演習）
 story.episodes.number,第 {number} 話
 sortie.option.unplayable,出撃不可: {issue}
 story.news.speaker,知らせ
-story.news.unit,新しい駒「{unit}」を雇えるようになりました。
+story.news.unit,新しい兵種「{unit}」を雇えるようになりました。
 story.news.item,新しい持ち物「{item}」を持たせられるようになりました。効果: {effect}
 story.news.budget,コスト上限が {budget} に上がりました。
 slots.heading,ストーリー
