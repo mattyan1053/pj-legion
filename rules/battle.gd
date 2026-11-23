@@ -114,6 +114,7 @@ func add_unit(
 ## 倒れた駒を盤から取り除く。by は止めを刺した駒（攻撃した駒、スキルを使った駒、爆発した樽を攻撃した駒）。
 ## 返すのは UnitDefeatedEvent。組み方が入で、誓いを結んだ駒なら、続けて誓いが切れる（Formation.on_defeated）。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）と、
 ## 倒した陣営がいれば RelicGainedEvent（その中ボスの聖遺物を受け取る。Relics.grant）。
+## 倒れると何か起きる魔物なら、続けてそのイベント（骸骨旗手の奮起、ほつれの結び目。Monsters.on_defeated）。
 func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 	units.erase(unit)
 	if acting_unit_id == unit.id:
@@ -121,6 +122,7 @@ func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 	Ults.charge_defeat(self, unit)
 	var events: Array[BattleEvent] = [UnitDefeatedEvent.new(unit)]
 	events.append_array(Formation.on_defeated(self, unit))
+	events.append_array(Monsters.on_defeated(self, unit))
 	var boss_index := mid_boss_index(unit)
 	if boss_index != -1:
 		var slayer := by if by != null and by.side != Unit.Side.NEUTRAL else null

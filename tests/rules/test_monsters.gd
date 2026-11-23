@@ -12,7 +12,8 @@ func _monster_deck() -> Deck:
 	var deck := Deck.new(UnitKind.Army.NONE)
 	for kind: UnitKind.Id in [
 		UnitKind.Id.SKELETON_BRUTE, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON, UnitKind.Id.SKELETON, UnitKind.Id.SKELETON,
-		UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER,
+		UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER, UnitKind.Id.SKELETON_BANNER, UnitKind.Id.BAT,
+		UnitKind.Id.FRAY, UnitKind.Id.NEEDLE,
 	]:
 		deck.entries.append(DeckEntry.new(kind))
 	return deck
@@ -41,7 +42,7 @@ func test_a_monster_side_has_no_army_and_no_ult() -> void:
 	var battle := _battle()
 	assert_eq(battle.armies[P2], UnitKind.Army.NONE)
 	assert_eq(Ults.of(battle, P2), null)
-	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.side == P2).size(), 8, "将と 7 体")
+	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.side == P2).size(), 12, "将と 11 体")
 	Ults.charge(battle, P2, Ults.GAUGE_MAX)
 	assert_eq(Ults.gauge(battle, P2), 0, "必殺技の無い陣営のゲージはたまらない")
 	assert_false(Ults.is_ready(battle, P2))
@@ -79,5 +80,5 @@ func test_cpu_moves_monsters_through_a_game() -> void:
 		if not result.accepted:
 			return
 		steps += 1
-	assert_eq(moved.size(), 5, "5 種類の魔物が、どれも行動した: %s" % [moved.keys()])
+	assert_eq(moved.size(), 9, "9 種類の魔物が、どれも行動した: %s" % [moved.keys()])
 	assert_false(battle.ult_uses[P2] > 0, "魔物の側は必殺技を使わない")

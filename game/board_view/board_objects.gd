@@ -28,7 +28,8 @@ func remove_barrel(cell: Vector2i) -> void:
 		_barrels.erase(cell)
 
 
-## 盤の上の効果を描く。盾は持ち主の色の堅い板、煙幕は灰色の靄、聖域は持ち主の色の淡い光の床。
+## 盤の上の効果を描く。盾は持ち主の色の堅い板、煙幕は灰色の靄、聖域は持ち主の色の淡い光の床、
+## 結び目は床に置いた糸の輪 2 つ（青白く光る。持ち主の色の小さな芯）。
 ## どれもマスの上、駒の下（聖域と煙幕の床は駒の足元より低く、煙幕の靄は駒を包む高さで薄く）。
 ## 盾には、残りの耐久の棒を付ける（durability。置いたばかりなら省ける = いっぱい）。
 func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, cells: Array[Vector2i], durability := FieldEffects.BARRICADE_DURABILITY) -> void:
@@ -74,6 +75,23 @@ func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, c
 			glow.emission = color.lightened(0.5)
 			for cell in cells:
 				_add_part(root, floor_mesh, glow, cell_center(cell) + Vector3(0.0, 0.015, 0.0))
+		FieldEffect.Type.KNOT:
+			var loop := TorusMesh.new()
+			loop.inner_radius = 0.16
+			loop.outer_radius = 0.24
+			var thread := _material(COLOR_KNOT)
+			thread.emission_enabled = true
+			thread.emission = COLOR_KNOT
+			var core := SphereMesh.new()
+			core.radius = 0.1
+			core.height = 0.2
+			for cell in cells:
+				var at := cell_center(cell)
+				var low := _add_part(root, loop, thread, at + Vector3(-0.06, 0.04, 0.0))
+				var high := _add_part(root, loop, thread, at + Vector3(0.06, 0.08, 0.0))
+				low.rotation_degrees = Vector3(0.0, 0.0, 18.0)
+				high.rotation_degrees = Vector3(0.0, 90.0, -18.0)
+				_add_part(root, core, _material(color), at + Vector3(0.0, 0.08, 0.0))
 	if type != FieldEffect.Type.BARRICADE:
 		for part: GeometryInstance3D in root.get_children():
 			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

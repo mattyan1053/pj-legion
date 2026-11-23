@@ -28,6 +28,8 @@ class UnitOutcome:
 	var formation: Dictionary[int, int] = {}
 	## 誓いの相手が倒れて、誓いが切れるか（残る側に付く）。
 	var oath_broken := false
+	## 倒れた骸骨旗手の周りにいて、奮起するか（Monsters。付く奮起は statuses_applied にも入る）。
+	var rallied := false
 	## 樽の爆発に巻き込まれるか。
 	var exploded := false
 	var defeated := false
@@ -66,7 +68,7 @@ var barricades: Array[BarricadeOutcome] = []
 ## プレイヤーごとの必殺技のゲージ（行動の前と、あと）。
 var gauge_before: Array[int] = [0, 0]
 var gauge_after: Array[int] = [0, 0]
-## 盤に置かれる効果（盾、煙幕、聖域）。
+## 盤に置かれる効果（盾、煙幕、聖域、倒れたほつれの残す結び目）。
 var placed: Array[FieldEffectPlacedEvent] = []
 ## 受け取る聖遺物（中ボスを倒すとき）。
 var relics: Array[RelicGainedEvent] = []
@@ -167,6 +169,9 @@ func _read(battle: Battle) -> void:
 			var swapped := event as UnitsSwappedEvent
 			_unit(battle, swapped.unit_id).moved_to = swapped.other_from
 			_unit(battle, swapped.other_id).moved_to = swapped.from
+		elif event is RallyEvent:
+			for rallied_id in (event as RallyEvent).rallied_ids:
+				_unit(battle, rallied_id).rallied = true
 		elif event is OathBrokenEvent:
 			_unit(battle, (event as OathBrokenEvent).survivor_id).oath_broken = true
 		elif event is UnitReactivatedEvent:

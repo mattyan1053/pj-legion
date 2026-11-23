@@ -108,7 +108,7 @@ deploy = 8,20  7,20  9,20  6,19  10,19  8,18
 # 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない魔物の群れ（必殺技が無い。魔物だけを置く）。
 army = fantasy
 # 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。将は書かない（いつも本陣に立つ）。持ち物は「+」でつなぐ（魔物は持てない）。
-#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer（docs/unit-roster.md の「魔物」）
+#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer, skeleton_banner, bat, fray, needle（docs/unit-roster.md の「魔物」）
 #   始めのレベルも書ける（unit = paladin, level 2）。
 unit = paladin + iron_shield
 unit = sorcerer

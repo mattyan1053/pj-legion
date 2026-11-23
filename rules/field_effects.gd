@@ -1,9 +1,9 @@
 class_name FieldEffects
 extends RefCounted
-## 盤の上の効果（盾、煙幕、聖域。FieldEffect）を置く・消す・期間を進める処理と、効果の計算。docs/field-effects.md。
+## 盤の上の効果（盾、煙幕、聖域、結び目。FieldEffect）を置く・消す・期間を進める処理と、効果の計算。docs/field-effects.md。
 ##
 ## どこに何があるかは Board が持つ（Board.field_effects）。ここの問い合わせは状態を変えない。
-## 状態を変えるのは place_*（スキルの効果が呼ぶ。rules/skills/）、start_phase（EndPhaseAction が呼ぶ）、
+## 状態を変えるのは place_*（スキルの効果が呼ぶ。rules/skills/。結び目は Monsters が置く）、start_phase（EndPhaseAction が呼ぶ）、
 ## 盾への攻撃（AttackBarricadeAction）と、駒への攻撃（Combat.strike。煙幕が無効にする）。
 ##
 ## - 盾: 入れない（Board.is_walkable）。間に盾がある攻撃は届かない（Combat.reaches）。攻撃されると攻撃力のぶん耐久力が減る
@@ -177,7 +177,8 @@ static func sanctuary_heal(unit: Unit) -> int:
 
 ## side のフェーズの始めに起きること（EndPhaseAction が、回復の泉と再生のあとに呼ぶ）。
 ## 1. side の聖域の中の side の駒が回復する（SanctuaryHealedEvent）
-## 2. side の煙幕と聖域の残りのターン数が 1 減る（FieldEffectTickedEvent）。0 になったものは消える（FieldEffectRemovedEvent）
+## 2. side の結び目が、ほどけるか、1 減るか、立ち直る（Monsters.start_phase）
+## 3. side の煙幕と聖域の残りのターン数が 1 減る（FieldEffectTickedEvent）。0 になったものは消える（FieldEffectRemovedEvent）
 ## 中立のフェーズには何も起きない（中立の効果は無い）。
 static func start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
@@ -187,8 +188,9 @@ static func start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 		var amount := sanctuary_heal(unit)
 		unit.hp += amount
 		events.append(SanctuaryHealedEvent.new(sanctuary_of(battle, unit).id, unit.id, amount, unit.hp))
+	events.append_array(Monsters.start_phase(battle, side))
 	for effect: FieldEffect in battle.board.field_effects.duplicate():
-		if effect.side != side or not effect.is_timed():
+		if effect.side != side or not effect.is_timed() or effect.type == FieldEffect.Type.KNOT:
 			continue
 		effect.turns_left -= 1
 		if effect.turns_left > 0:

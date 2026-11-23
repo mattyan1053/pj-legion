@@ -25,6 +25,10 @@ enum Id {
 	SKELETON_BRUTE,  ## 魔物・前衛。堅くて遅い
 	SKELETON_CALLER,  ## 魔物・後衛。骸骨兵を起こす（骨起こし）
 	SKELETON_DRUMMER,  ## 魔物・後衛。周りの味方を突撃させる（骨太鼓）
+	SKELETON_BANNER,  ## 魔物・奇襲。倒れると、周りの味方が奮起する（Monsters）
+	BAT,  ## 魔物・奇襲。速く脆い。支配領域で止まらず、森を平地と同じに飛ぶ
+	FRAY,  ## 魔物・前衛。倒れると、結び目が残り、放っておくと立ち直る（Monsters）
+	NEEDLE,  ## 魔物・後衛。動かないが、遠くまで撃つ
 }
 
 enum Role { NONE, VANGUARD, REARGUARD, RAIDER, HEALER }
@@ -49,6 +53,10 @@ const _TABLE := {
 	Id.SKELETON_BRUTE: [Role.VANGUARD, Army.NONE, 3, 64, 10, 2, 1],
 	Id.SKELETON_CALLER: [Role.REARGUARD, Army.NONE, 3, 18, 5, 3, 2],
 	Id.SKELETON_DRUMMER: [Role.REARGUARD, Army.NONE, 3, 22, 5, 3, 2],
+	Id.SKELETON_BANNER: [Role.RAIDER, Army.NONE, 2, 26, 6, 3, 1],
+	Id.BAT: [Role.RAIDER, Army.NONE, 1, 10, 5, 6, 1],
+	Id.FRAY: [Role.VANGUARD, Army.NONE, 2, 30, 6, 2, 1],
+	Id.NEEDLE: [Role.REARGUARD, Army.NONE, 2, 24, 7, 0, 4],
 }
 
 

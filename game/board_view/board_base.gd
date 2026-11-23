@@ -63,6 +63,8 @@ const STRONGHOLD_BLOCKED_ALPHA := 0.6
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)
+## 結び目（倒れたほつれが残すもの）の糸の色。魔物の決まりの光と同じ（ui_palette.gd の MONSTER_GLOW）。
+const COLOR_KNOT := preload("res://game/ui_palette.gd").MONSTER_GLOW
 ## 泉の波紋（1 回の秒数、いちばん濃いときの濃さ、1 つの泉の波紋の数）。
 const RIPPLE_PERIOD := 2.2
 const RIPPLE_ALPHA := 0.75
@@ -151,12 +153,13 @@ func _ground_tone() -> float:
 	return clampf((look[StageLook.NORMAL] as Color).get_luminance() * GROUND_TONE_SCALE, 0.2, 0.8)
 
 
-func _add_part(parent: Node3D, mesh: Mesh, material: Material, at: Vector3) -> void:
+func _add_part(parent: Node3D, mesh: Mesh, material: Material, at: Vector3) -> MeshInstance3D:
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	instance.material_override = material
 	instance.position = at
 	parent.add_child(instance)
+	return instance
 
 
 ## 本陣の旗。駒が乗っても見えるよう、マスの隅に立てる。
