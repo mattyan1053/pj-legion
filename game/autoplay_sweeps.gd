@@ -5,9 +5,9 @@ extends RefCounted
 ##   タイトル →「ストーリー」→ セーブデータ選択 → 物語を選ぶ → 話の一覧（確かめ用の解放 F5 で全部を開く）→ 話を選ぶ →
 ##   出撃準備 →「出撃」→ 対戦の前の会話を 1 文ずつ送る → 対戦の途中の台詞（[cues]）を 1 つずつ出して送る →
 ##   小さな盤でわざと負けて、決着の画面の負けの台詞（[lost]）を見る →「話の一覧へ」で戻り、次の話へ。
-## - `-- --autoplay --versus-all`: 対戦モードの全部のマップを、選べる決まり（OptionalRules.ALL）を全部切ったものと全部入れたもので、
+## - `-- --autoplay --versus-all`: 対戦モードの全部のマップを、選べる決まり（OptionalRules.choosable()。休眠の決まりは画面から入にできない）を全部切ったものと全部入れたもので、
 ##   タイトル →「対戦」→ マップ選択 → 対戦設定（相手は CPU）→ 対戦を VERSUS_TURNS ターンまで（自分の番は「おまかせ」）→ タイトル。
-##   選べる決まりが増えても、OptionalRules.ALL から取るので、ここは変えなくてよい。
+##   選べる決まりが増えても、OptionalRules.choosable() から取るので、ここは変えなくてよい。
 ##
 ## 確かめたことが外れたら autoplay.gd の _expect で貯め、最後にまとめて失敗にする（"autoplay: OK" が出なければ失敗）。
 ## 使い方は docs/README.md の「検査の分け方」と、.claude/skills/playtest-sweep/SKILL.md（手で回すときは tools/sweep.sh）。
@@ -46,7 +46,7 @@ func run(app: Node, args: PackedStringArray) -> void:
 				await _story_campaign(app, campaign)
 	if args.has("--versus-all"):
 		for field in VersusFields.ids():
-			for rules: Array[StringName] in [[] as Array[StringName], OptionalRules.ALL]:
+			for rules: Array[StringName] in [[] as Array[StringName], OptionalRules.choosable()]:
 				await _versus(app, field, rules)
 
 
@@ -219,7 +219,7 @@ func _versus(app: Node, field: StringName, rules: Array[StringName]) -> void:
 		return
 	var panel: Node = app.current_scene().setup_panel()
 	panel.choose_opponent(true)
-	for rule in OptionalRules.ALL:
+	for rule in OptionalRules.choosable():
 		panel.choose_rule(rule, rules.has(rule))
 	panel.confirm()
 	await app.scene_changed
@@ -236,7 +236,7 @@ func _versus(app: Node, field: StringName, rules: Array[StringName]) -> void:
 		screen.signs_window().press_start()
 		_expect(not screen.signs_pending() and screen.battle.signs.size() == Seam.DRAWN, "札の窓の「対戦開始」で、札のある対戦が始まらない")
 	var battle: Battle = screen.battle
-	for rule in OptionalRules.ALL:
+	for rule in OptionalRules.choosable():
 		_expect(screen.source.has_rule(rule) == rules.has(rule), "選んだ選べる決まりで、対戦が始まらない: %s" % rule)
 	for i: int in WAIT_FRAMES * 4:
 		battle = screen.battle

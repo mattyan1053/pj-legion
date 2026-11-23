@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 組み方の画面の文（game/formation_text.gd、BattleTexts.formation_notice。docs/formation.md の「画面」）。
+## 組み方の画面の文（game/formation_text.gd。docs/formation.md の「画面」）。
 
 const FormationText := preload("res://game/formation_text.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
@@ -49,17 +49,15 @@ func test_nothing_is_shown_when_the_rule_is_off() -> void:
 	var a := battle.add_unit(K.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
 	battle.add_unit(K.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 1))
 	assert_eq(FormationText.unit_lines(battle, a), [] as Array[String])
-	assert_eq(BattleTexts.formation_notice(battle), [] as Array[String])
 	assert_eq(BattleTexts.rule_notice(battle), [] as Array[String])
 
 
-func test_notice_has_one_line_per_army() -> void:
+func test_the_start_notice_says_nothing_of_formations_while_they_sleep() -> void:
+	# 組み方は休眠（OptionalRules.DORMANT）。入の対戦でも、始めの知らせには出さない（人間の決定。Issue #47 の 11/23）。
 	var battle := _battle()
 	battle.add_unit(K.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
 	battle.add_unit(K.PALADIN, Unit.Side.PLAYER2, Vector2i(6, 4))
-	var lines := BattleTexts.rule_notice(battle)
-	assert_eq(lines.size(), 2, str(lines))
-	assert_true(lines[0].contains("分隊") and lines[1].contains("誓い"), str(lines))
+	assert_eq(BattleTexts.rule_notice(battle), [] as Array[String])
 
 
 func test_deck_text_tells_what_is_formed() -> void:
