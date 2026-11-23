@@ -2,6 +2,8 @@ extends "res://tests/base_test.gd"
 ## 勝ち方の文（game/win_text.gd）。
 
 const WinText := preload("res://game/win_text.gd")
+const Names := preload("res://game/names.gd")
+const Text := preload("res://game/text.gd")
 const Maps := preload("res://tests/support/maps.gd")
 
 const P1 := Unit.Side.PLAYER1
@@ -46,7 +48,7 @@ func test_no_king_note_against_a_kingless_horde() -> void:
 	scenario.set_win_conditions(P1, [GameWonEvent.Reason.ROUTED] as Array[GameWonEvent.Reason])
 	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。")
 	scenario.set_win_conditions(P1, [GameWonEvent.Reason.BOSS_SLAIN] as Array[GameWonEvent.Reason])
-	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "中ボスを倒せば勝ち。")
+	assert_eq(WinText.of_scenario(scenario, P1).get_slice("\n", 0), "番人を倒せば勝ち。")
 	var battle := Maps.battle(["....", "...."])
 	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 1))
 	battle.add_unit(UnitKind.Id.SKELETON, P2, Vector2i(3, 0))
@@ -54,7 +56,7 @@ func test_no_king_note_against_a_kingless_horde() -> void:
 	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 敵の全滅", false])
 	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。")
 	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 中ボスの撃破", false])
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 番人の撃破", false])
 
 
 func test_turn_text_is_only_the_turn() -> void:
@@ -92,8 +94,8 @@ func test_boss_hunt_reads_as_a_boss_hunt() -> void:
 	var battle := Maps.battle(["....."])
 	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(4, 0))
 	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 中ボスの撃破（将を倒しても終わらない）", false])
-	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "中ボスを倒せば勝ち。敵の将を倒しても終わらない。")
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 番人の撃破（将を倒しても終わらない）", false])
+	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "番人を倒せば勝ち。敵の将を倒しても終わらない。")
 
 
 func test_every_win_condition_has_a_place_in_the_text() -> void:
@@ -119,3 +121,13 @@ func test_stronghold_has_its_own_chip_and_marks_the_last_one() -> void:
 	assert_true(WinText.stronghold_note(battle).contains("%d 回で勝ち" % Stronghold.HOLDS_TO_WIN))
 	assert_true(WinText.goal_note(battle, P1).contains("拠点を %d 回確保すれば勝ち" % Stronghold.HOLDS_TO_WIN))
 	assert_true(WinText.goal_note(battle, P1).contains("拠点を %d 回確保されると負け" % Stronghold.HOLDS_TO_WIN))
+
+
+## 中ボスは、画面では「中ボス」と言わず、その対戦の名前で呼ぶ（話・マップのファイルの boss。無ければ「番人」）。
+func test_the_boss_is_called_by_its_name() -> void:
+	Names.set_boss("峠の番人")
+	assert_eq(Text.t("battle.goal.name.boss_slain"), "峠の番人の撃破")
+	assert_eq(Text.t("battle.log.won.boss_slain"), "峠の番人を倒した")
+	assert_eq(Names.kind(UnitKind.Id.ELITE_MINION), "峠の番人")
+	Names.set_boss("")
+	assert_eq(Text.t("battle.goal.name.boss_slain"), "番人の撃破")

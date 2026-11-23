@@ -263,8 +263,8 @@ func _add_stronghold(cell: Vector2i) -> void:
 	_stronghold_label.no_depth_test = true
 	_stronghold_label.fixed_size = true
 	_stronghold_label.pixel_size = STRONGHOLD_LABEL_PIXEL
-	_stronghold_label.font_size = 40
-	_stronghold_label.outline_size = 14
+	_stronghold_label.font_size = STRONGHOLD_LABEL_FONT
+	_stronghold_label.outline_size = 10
 	_stronghold_label.outline_modulate = COLOR_STRONGHOLD_EDGE
 	_stronghold_label.render_priority = 3
 	_stronghold_label.outline_render_priority = 2
@@ -273,7 +273,8 @@ func _add_stronghold(cell: Vector2i) -> void:
 
 
 ## 拠点の確保の進み具合を見せる（拠点の無い盤では何もしない）: 旗を color にし、holds / needed の高さまで竿を上げ、
-## 竿の上の札に「holds / needed」を出す（blocked なら、乗っている駒の確保が隣の敵で止まっていることを添える）。だれも確保していなければ（holds が 0）、旗は白で竿の下、札は「0 / needed」。
+## 竿の上の札に「holds / needed」を出す。だれも確保していなければ（holds が 0）、旗は白で竿の下、札は「0 / needed」。
+## blocked（乗っている駒の確保が隣の敵で止まっている）なら、文字は足さず、札の色を落とす（STRONGHOLD_BLOCKED_ALPHA。色と数で十分）。
 func set_stronghold_progress(holds: int, needed: int, color: Color, blocked := false) -> void:
 	if _stronghold_cloth == null:
 		return
@@ -281,8 +282,16 @@ func set_stronghold_progress(holds: int, needed: int, color: Color, blocked := f
 	var rate := clampf(float(holds) / maxf(needed, 1.0), 0.0, 1.0)
 	for part in _stronghold_flag:
 		part.position.y = _stronghold_pole_foot.y + lerpf(STRONGHOLD_FLAG_LOW, STRONGHOLD_FLAG_HIGH, rate)
-	_stronghold_label.text = Text.t("battle.stronghold.mark_blocked" if blocked else "battle.stronghold.mark", {"holds": holds, "needed": needed})
-	_stronghold_label.modulate = color.lightened(0.25) if holds > 0 else COLOR_STRONGHOLD_FLAG
+	_stronghold_label.text = Text.t("battle.stronghold.mark", {"holds": holds, "needed": needed})
+	var shown := color.lightened(0.25) if holds > 0 else COLOR_STRONGHOLD_FLAG
+	if blocked:
+		shown = Color(shown.darkened(0.35), STRONGHOLD_BLOCKED_ALPHA)
+	_stronghold_label.modulate = shown
+
+
+## 拠点の竿の上の札の色を落としているか（確保が隣の敵で止まっている。検査用）。
+func stronghold_mark_dimmed() -> bool:
+	return _stronghold_label != null and _stronghold_label.modulate.a < 1.0
 
 
 ## 拠点の竿の上の札の文（検査用。拠点が無ければ空）。
