@@ -86,7 +86,13 @@ func _new_battle(rules: Array[StringName] = []) -> void:
 	for rule in rules:
 		choice.set_rule(rule, true)
 	_scene.source = choice
-	_battle = choice.to_setup(_seed).create_battle()
+	var setup: MatchSetup = choice.to_setup(_seed)
+	# 休眠の決まり（OptionalRules.DORMANT。組み方）は、画面からは入にできない（choice が受け付けない）。
+	# 集計の道具の --rules= と同じく、道具の入口から直に入にする（作り直すときの見比べ用）。
+	for rule in rules:
+		if OptionalRules.DORMANT.has(rule) and not setup.rules.has(rule):
+			setup.rules.append(rule)
+	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
 	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
 
