@@ -105,6 +105,10 @@ deploy = 8,20  7,20  9,20  6,19  10,19  8,18
 
 # 敵の軍（CPU が動かす）。
 [enemy]
+# 部隊の特徴（docs/troop-traits.md）。書かなければ特徴なし。軍の特徴だけ（military: focus, ranks, supply / fantasy: vengeance, oath, lone）。
+# trait = vengeance
+# 誓い（trait = oath）なら、結ぶ 2 体を unit の行の番号（1 から）で。2 組まで。[ally] にも同じに書ける（人の側の誓いは unit を書いた話だけ）。
+# oath = 1, 2
 # 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない魔物の群れ（必殺技が無い。魔物だけを置く）。
 army = fantasy
 # 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。将は書かない（いつも本陣に立つ）。持ち物は「+」でつなぐ（魔物は持てない）。
