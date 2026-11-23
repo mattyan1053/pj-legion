@@ -254,7 +254,7 @@ func _queue_inspection_scene() -> void:
 		_expect(_scene.is_choosing_target() and _scene.inspected_unit() == null, "見終わったあとに、相手を選ぶ途中へ戻らなかった")
 		# 相手にマウスを乗せると、そのそばに戦闘予測のパネルが出る（メニューと重ならず、画面に収まる）。離すと消える。
 		_scene.hover(foe.cell)
-		_expect_forecast(["攻撃", Names.unit(foe), "ダメージ"], "攻撃")
+		_expect_forecast(["攻撃", Names.unit(foe), "▼ -"], "攻撃")
 		_scene.hover(Vector2i(0, 0))
 		_expect(_scene.forecast_text() == "", "相手からマウスを離しても、予測のパネルが残っている")
 		_scene.hover(NO_CELL)
