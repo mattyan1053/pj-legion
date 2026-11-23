@@ -241,14 +241,15 @@ battle.stronghold.mark_blocked,{holds} / {needed} 停止
 battle.stronghold.rule,乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まり、相手が確保すると 0 に戻る。将は数えない。
 battle.hud.stronghold,拠点
 battle.hud.stronghold_marks,{side} {marks}
-battle.notice.title,この対戦の決まり
+battle.notice.title,対戦ルール
+battle.notice.goals,勝利条件
+battle.notice.signs,縫い目の様子
 battle.notice.close,閉じる
 battle.hud.squad,分隊（{kind} {count} 体）: 隣に仲間がいると受けるダメージ -{guard}、仲間が撃った相手へ +{focus}
 battle.hud.squad_guarded,分隊（{kind} {count} 体）: 肩並べ中（受けるダメージ -{guard}）、仲間が撃った相手へ +{focus}
 battle.hud.oath,誓い（{unit}）: {range} マス以内で仇討ち（離れている）
 battle.hud.oath_near,誓い（{unit}）: {range} マス以内で仇討ち（届く）
 battle.hud.oath_foe,仇: {unit}（攻撃 +{vengeance}）
-battle.notice.stronghold,拠点（旗の立つマス）: 乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まる
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
 battle.hud.relic_missing,{relic}（持っていない）: {effect}
@@ -292,6 +293,14 @@ battle.goal.win.routed,敵を全滅させる
 battle.goal.win.routed.last,敵を全滅させれば
 battle.goal.win.boss_slain,中ボスを倒す
 battle.goal.win.boss_slain.last,中ボスを倒せば
+battle.goal.name.king_defeated,将の撃破
+battle.goal.name.hq_captured,本陣の占拠
+battle.goal.name.turns_held,守り切る
+battle.goal.name.routed,全滅
+battle.goal.name.boss_slain,中ボスの撃破
+battle.goal.name.stronghold_held,拠点の確保
+battle.goal.name.deadline,時間の限り
+battle.goal.deadline,{turns} ターン目の終わりまでに勝つ
 battle.goal.lose.king_defeated,味方の将が倒される
 battle.goal.lose.king_defeated.last,味方の将が倒されると
 battle.goal.lose.hq_captured,味方の本陣を占拠され続ける
@@ -387,4 +396,3 @@ result.squad,部隊変更
 result.prompt_title,Enter: タイトルへ
 battle.hud.monster,魔物
 battle.hud.sign_note,{name}: {summary}
-battle.notice.signs,縫い目の様子: {names}

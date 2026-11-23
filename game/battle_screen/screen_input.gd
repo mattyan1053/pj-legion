@@ -21,6 +21,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			advance_talk()
 		return
+	if _hud.notice_open():
+		# 「対戦ルール」を出している間: クリック・Enter・Space・Esc で閉じるだけ（盤の操作やターン終了にはしない）。視点の操作と右クリックは通す。
+		var closing: bool = (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) \
+			or (event is InputEventKey and event.pressed and not event.echo and event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_ESCAPE])
+		if closing:
+			_hud.hide_notice()
+			return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# 押しただけでは何もしない。離すまでに動かなければクリック、動けば視点を回す・傾ける（駒の上で押したときは、いつもクリック）。

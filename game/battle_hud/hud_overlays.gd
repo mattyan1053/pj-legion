@@ -196,7 +196,9 @@ func _build_minimap() -> void:
 	add_child(_minimap)
 
 
-## 対戦の始めの知らせ（選べる決まり）。盤の上寄りの真ん中に、決まった大きさで出す。閉じるまで（か、盤をクリックするまで）出したまま。
+## 対戦の始めの「対戦ルール」（docs/battle-view.md の「対戦ルール」）。盤の上寄りの真ん中に、決まった大きさで出す。
+## 勝利条件の札の段（NOTICE_GOALS 枚まで。多い分は出さない）と、縫い目の様子の札の段（あれば）。札は決まった大きさで、真ん中に寄せて並べる（少なくても間延びしない）。
+## 閉じるボタン、枠のクリック、盤のクリック、Enter・Space・Esc で閉じる（screen_input.gd）。
 func _build_notice() -> void:
 	_notice = PanelContainer.new()
 	var plate := UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 14.0, 6)
@@ -211,22 +213,52 @@ func _build_notice() -> void:
 	_notice.clip_contents = true
 	_notice.mouse_filter = Control.MOUSE_FILTER_STOP
 	_notice.visible = false
+	_notice.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			hide_notice()
+			_notice.accept_event())
 	add_child(_notice)
 	Steady.mark(_notice, "battle.rule_notice", Steady.RECT)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_notice.add_child(column)
 	var title := _label(20)
 	title.text = Text.t("battle.notice.title")
 	UiTheme.style_window_title(title, 20)
 	column.add_child(title)
 	column.add_child(UiTheme.window_rule(Palette.BORDER_BRIGHT))
-	_notice_body = _label(16)
-	_notice_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_notice_body.max_lines_visible = NOTICE_LINES
-	_notice_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_notice_body.set_meta(&"plain", "")  # 折り返す前の文（notice_text）
-	column.add_child(_notice_body)
+	# 札の塊は、見出しの下と閉じるボタンの上の間の、真ん中に置く。
+	var middle := VBoxContainer.new()
+	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.alignment = BoxContainer.ALIGNMENT_CENTER
+	middle.add_theme_constant_override("separation", 6)
+	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(middle)
+	middle.add_child(_notice_caption(Text.t("battle.notice.goals")))
+	var goals := HBoxContainer.new()
+	goals.alignment = BoxContainer.ALIGNMENT_CENTER
+	goals.add_theme_constant_override("separation", 10)
+	goals.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(goals)
+	for i in NOTICE_GOALS:
+		var card := RuleCard.new()
+		card.visible = false
+		goals.add_child(card)
+		_notice_goals.append(card)
+	_notice_signs_caption = _notice_caption(Text.t("battle.notice.signs"))
+	middle.add_child(_notice_signs_caption)
+	var signs := HBoxContainer.new()
+	signs.alignment = BoxContainer.ALIGNMENT_CENTER
+	signs.add_theme_constant_override("separation", 10)
+	signs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.add_child(signs)
+	_notice_signs_row = signs
+	for i in Seam.DRAWN:
+		var card := RuleCard.new()
+		card.visible = false
+		signs.add_child(card)
+		_notice_signs.append(card)
 	var close := _button(Text.t("battle.notice.close"), Signal())
 	close.custom_minimum_size = Vector2(120.0, 32.0)
 	close.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -234,20 +266,59 @@ func _build_notice() -> void:
 	column.add_child(close)
 
 
-## 対戦の始めの知らせを出す（lines は決まりごとの行。空なら出さない）。
-func show_notice(lines: Array[String]) -> void:
-	# 語の途中で切らないよう、日本語の行の切れ目の決まり（text_wrap.gd）で折り返しておく（ラベルの自動の折り返しは、どこでも切る）。
-	_set_folded(_notice_body, "\n".join(lines), NOTICE_TEXT_WIDTH)
-	_notice.visible = not lines.is_empty()
+## 「対戦ルール」の段の見出し（小さな金の字。真ん中）。
+func _notice_caption(text: String) -> Label:
+	var caption := _label(14)
+	caption.text = text
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.add_theme_color_override("font_color", Palette.GOLD)
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return caption
+
+
+## 「対戦ルール」を出す（cards は BattleTexts.rule_cards の札。空なら出さない）。
+func show_notice(cards: Array[Array]) -> void:
+	var goals := cards.filter(func(card: Array) -> bool: return card[0] == &"goal")
+	var signs := cards.filter(func(card: Array) -> bool: return card[0] == &"sign")
+	for i in _notice_goals.size():
+		_notice_goals[i].visible = i < goals.size()
+		if i < goals.size():
+			_notice_goals[i].show_goal(goals[i][1], goals[i][2], goals[i][3])
+	for i in _notice_signs.size():
+		_notice_signs[i].visible = i < signs.size()
+		if i < signs.size():
+			_notice_signs[i].show_sign(signs[i][1], signs[i][2], signs[i][3])
+	_notice_signs_caption.visible = not signs.is_empty()
+	_notice_signs_row.visible = not signs.is_empty()
+	_notice.visible = not cards.is_empty()
 
 
 func hide_notice() -> void:
 	_notice.visible = false
 
 
-## 対戦の始めの知らせの文（出ていなければ空。検査用）。
+func notice_open() -> bool:
+	return _notice.visible
+
+
+## 「対戦ルール」の文（出ている札の名前と説明を、1 枚 1 行で。出ていなければ空。検査用）。
 func notice_text() -> String:
-	return String(_notice_body.get_meta(&"plain")) if _notice.visible else ""
+	if not _notice.visible:
+		return ""
+	var lines: Array[String] = []
+	for card in _notice_goals + _notice_signs:
+		if card.visible:
+			lines.append(card.shown_text())
+	return "\n".join(lines)
+
+
+## 出ている札のうち、説明の文が欄からはみ出しているものの文（検査用）。
+func notice_cut_texts() -> Array[String]:
+	var cut: Array[String] = []
+	for card in _notice_goals + _notice_signs:
+		if card.visible and not card.fits():
+			cut.append(card.shown_text())
+	return cut
 
 
 ## 対戦の始めの知らせの枠の四角（出ていなければ大きさ 0。検査用）。

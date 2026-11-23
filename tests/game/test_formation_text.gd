@@ -49,7 +49,7 @@ func test_nothing_is_shown_when_the_rule_is_off() -> void:
 	var a := battle.add_unit(K.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
 	battle.add_unit(K.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 1))
 	assert_eq(FormationText.unit_lines(battle, a), [] as Array[String])
-	assert_eq(BattleTexts.rule_notice(battle), [] as Array[String])
+	assert_false(BattleTexts.rule_cards(battle, Unit.Side.PLAYER1).any(func(card: Array) -> bool: return card[2].contains("分隊") or card[2].contains("誓い")))
 
 
 func test_the_start_notice_says_nothing_of_formations_while_they_sleep() -> void:
@@ -57,7 +57,7 @@ func test_the_start_notice_says_nothing_of_formations_while_they_sleep() -> void
 	var battle := _battle()
 	battle.add_unit(K.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
 	battle.add_unit(K.PALADIN, Unit.Side.PLAYER2, Vector2i(6, 4))
-	assert_eq(BattleTexts.rule_notice(battle), [] as Array[String])
+	assert_false(BattleTexts.rule_cards(battle, Unit.Side.PLAYER1).any(func(card: Array) -> bool: return card[2].contains("分隊") or card[2].contains("誓い")))
 
 
 func test_deck_text_tells_what_is_formed() -> void:
