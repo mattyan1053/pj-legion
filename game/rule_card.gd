@@ -12,6 +12,11 @@ const SignMark := preload("res://game/sign_mark.gd")
 ## 札の大きさ（px）と、印の大きさ。
 const SIZE := Vector2(214.0, 92.0)
 const MARK_SIDE := 40.0
+## 名前の字の大きさ。長い名前（6 字の番人の「〜の撃破」など）は、欄に収まるまで小さくする（下限 NAME_FONT_MIN）。
+const NAME_FONT := 18
+const NAME_FONT_MIN := 13
+## 名前と説明の欄の幅（札の幅から、印と間と縁を引いたもの）。
+const TEXT_WIDTH := SIZE.x - MARK_SIDE - 40.0
 
 var _goal_mark: GoalMark
 var _sign_mark: SignMark
@@ -42,7 +47,7 @@ func _init() -> void:
 	row.add_child(column)
 	_name = Label.new()
 	_name.theme_type_variation = UiTheme.LABEL_HEADING
-	_name.add_theme_font_size_override("font_size", 18)
+	_name.add_theme_font_size_override("font_size", NAME_FONT)
 	_name.clip_text = true
 	column.add_child(_name)
 	_line = Label.new()
@@ -50,7 +55,7 @@ func _init() -> void:
 	_line.add_theme_color_override("font_color", Palette.TEXT_DIM)
 	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_line.max_lines_visible = 2
-	_line.custom_minimum_size = Vector2(SIZE.x - MARK_SIDE - 40.0, 0.0)
+	_line.custom_minimum_size = Vector2(TEXT_WIDTH, 0.0)
 	column.add_child(_line)
 
 
@@ -59,7 +64,7 @@ func show_goal(reason: int, title: String, line: String) -> void:
 	_goal_mark.reason = reason
 	_goal_mark.visible = true
 	_sign_mark.visible = false
-	_name.text = title
+	_set_name(title)
 	_line.text = line
 
 
@@ -68,7 +73,7 @@ func show_sign(sign: int, title: String, line: String) -> void:
 	_sign_mark.sign = sign
 	_sign_mark.visible = true
 	_goal_mark.visible = false
-	_name.text = title
+	_set_name(title)
 	_line.text = line
 
 
@@ -77,6 +82,19 @@ func shown_text() -> String:
 	return "%s %s" % [_name.text, _line.text]
 
 
-## 説明の文の行が、欄に収まっているか（はみ出して切れていないか。検査用）。
+## 名前を置き、欄に収まる字の大きさにする（枠の大きさは変えない）。
+func _set_name(title: String) -> void:
+	_name.text = title
+	var size := NAME_FONT
+	while size > NAME_FONT_MIN and _name_width(size) > TEXT_WIDTH:
+		size -= 1
+	_name.add_theme_font_size_override("font_size", size)
+
+
+func _name_width(font_size: int) -> float:
+	return _name.get_theme_font("font").get_string_size(_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+
+
+## 名前と説明の文が、欄に収まっているか（はみ出して切れていないか。検査用）。
 func fits() -> bool:
-	return _line.get_line_count() <= _line.max_lines_visible
+	return _line.get_line_count() <= _line.max_lines_visible and _name_width(_name.get_theme_font_size("font_size")) <= TEXT_WIDTH
