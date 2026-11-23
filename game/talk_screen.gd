@@ -13,6 +13,7 @@ extends Node
 ##   「次の話へ」（その話の流れを始める。Enter でも）か「話の一覧へ」（Run.NEXT。流れの行き先）。右クリックで最後の文へ戻る。
 
 const Text := preload("res://game/text.gd")
+const KeyMarks := preload("res://game/key_marks.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const AppContext := preload("res://game/app_context.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
@@ -81,7 +82,7 @@ var _raw_text := ""
 var _face: UnitFrame
 var _item_face: Control  # item_icon.gd
 var _item_frame: PanelContainer
-var _hint: Label
+var _hint: KeyMarks
 var _count: Label
 var _skip: Button
 var _log_button: Button
@@ -256,8 +257,12 @@ func _ready() -> void:
 	_count = _label(15, COLOR_DIM)
 	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(_count)
-	_hint = _label(15, COLOR_DIM)
-	_hint.text = Text.t("talk.hint")
+	_hint = KeyMarks.new()
+	_hint.set_parts([
+		KeyMarks.key(Text.t("common.key.click"), Text.t("talk.guide.next")),
+		KeyMarks.key(Text.t("common.key.right_click"), Text.t("talk.guide.back")),
+		KeyMarks.key(Text.t("common.key.wheel"), Text.t("talk.guide.log")),
+	])
 	foot.add_child(_hint)
 
 	_log = TalkLog.new()

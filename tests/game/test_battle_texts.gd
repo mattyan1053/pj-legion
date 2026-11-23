@@ -1,9 +1,10 @@
 extends "res://tests/base_test.gd"
-## 対戦の画面の文（game/battle_texts.gd）: 下の帯の説明、メニュー、マスの説明、駒の状態、必殺技のボタン。
+## 対戦の画面の文（game/battle_texts.gd）: 下の帯の案内、メニュー、マスの説明、駒の状態、必殺技のボタン。
 
 const Maps := preload("res://tests/support/maps.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
+const KeyMarks := preload("res://game/key_marks.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Mode := BattleTexts.Mode
 
@@ -47,20 +48,41 @@ func test_portal_says_where_it_sends() -> void:
 	assert_eq(notes, ["ポータル → (4, 0)（止まると、駒のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わず、残りで続けて動ける。行き先に駒がいて、いまは使えない）"] as Array[String],
 		"行き先がふさがっていることを書いていない")
 
-func test_hint_follows_the_state() -> void:
+## 下の帯の案内を 1 行の文にしたもの（key_marks.gd の parts_text と同じ形）。
+func _guide(battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn := false, confirming := false, unacted := 0, pinned := 0) -> String:
+	var marks := KeyMarks.new()
+	marks.set_parts(BattleTexts.guide(battle, unit, inspected, mode, cpu_turn, confirming, unacted, pinned))
+	var text := marks.parts_text()
+	marks.free()
+	return text
+
+
+## 下の帯の案内は、短い句と、キーの印・色の印だけ。分かりきった場面では何も出さない（docs/wording.md の決まり 1）。
+func test_guide_follows_the_state() -> void:
 	var battle := _battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(0, 0))
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(4, 2))
-	assert_true(BattleTexts.hint(battle, null, null, Mode.NONE, false, false, false).begins_with("駒をクリックで選択"))
-	assert_eq(BattleTexts.hint(battle, sniper, null, Mode.NONE, true, false, false), "相手（CPU）の番")
-	assert_true(BattleTexts.hint(battle, sniper, null, Mode.ATTACK, false, false, false).begins_with("攻撃:"))
-	assert_true(BattleTexts.hint(battle, sniper, null, Mode.NONE, false, true, false).begins_with("もう一度押すと必殺技"))
+	assert_eq(_guide(battle, null, null, Mode.NONE), "", "駒を選ぶ前に、操作を教えている")
+	assert_eq(_guide(battle, sniper, null, Mode.NONE, true), "", "相手の番（ターン終了のボタンに出ている）")
+	assert_eq(_guide(battle, sniper, null, Mode.ATTACK), "対象を選択  [右クリック] キャンセル")
+	assert_eq(_guide(battle, sniper, null, Mode.SKILL), "対象を選択  [右クリック] キャンセル")
+	assert_eq(_guide(battle, sniper, null, Mode.NONE, false, true), "[右クリック] キャンセル", "必殺技・おまかせの確かめ")
 	# ターン終了の確かめの理由（まだ行動していない駒の数）は、ボタンでなく下の帯に出す。
-	var unacted := BattleTexts.hint(battle, sniper, null, Mode.NONE, false, false, false, 2)
-	assert_true(unacted.contains("2 体") and unacted.contains("右クリック: キャンセル"), unacted)
-	var seen := BattleTexts.hint(battle, sniper, paladin, Mode.NONE, false, false, false)
-	assert_true(seen.contains("を表示中") and seen.contains("選んでいる駒へ戻る"), seen)
-	assert_true(BattleTexts.hint(battle, sniper, null, Mode.NONE, false, false, false).begins_with("青: 移動"))
+	assert_eq(_guide(battle, sniper, null, Mode.NONE, false, false, 2), "未行動 2 体  [右クリック] キャンセル")
+	assert_eq(_guide(battle, sniper, paladin, Mode.NONE), "* 移動  * 攻撃  [右クリック] 戻る", "相手の駒を見ている")
+	assert_eq(_guide(battle, sniper, sniper, Mode.NONE, false, false, 0, 1), "* 移動  * 表示中  [右クリック] 戻る")
+	assert_eq(_guide(battle, null, null, Mode.NONE, false, false, 0, 1), "* 表示中  [右クリック] 解除")
+	assert_eq(_guide(battle, sniper, null, Mode.NONE), "* 移動  * 巡航  * 攻撃")
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(0, 2))
+	assert_eq(_guide(battle, priest, null, Mode.NONE), "* 移動  * 巡航  * 回復")
+	assert_eq(_guide(battle, paladin, null, Mode.NONE), "* 移動  * 攻撃", "相手の駒を選んでいる")
+	sniper.has_moved = true
+	sniper.move_origin = Vector2i(0, 0)
+	sniper.cell = Vector2i(2, 0)
+	assert_eq(_guide(battle, sniper, null, Mode.NONE), "[右クリック] 取り消し", "動いたあと")
+	# どの場面の文にも、文末の「。」と、です・ます調が無い。
+	for text: String in [_guide(battle, sniper, null, Mode.ATTACK), _guide(battle, sniper, null, Mode.NONE, false, false, 2)]:
+		assert_false(text.contains("。") or text.contains("ます"), text)
 
 
 func test_menu_lists_only_what_can_be_done() -> void:
@@ -78,11 +100,16 @@ func test_menu_lists_only_what_can_be_done() -> void:
 	assert_eq(warp[0], [BattleTexts.MENU_WARP, "転移", true], "転移できるなら、いちばん上に「転移」")
 
 
-func test_every_menu_item_has_a_note() -> void:
+## 押すと何が起きるかを添えるのは、名前だけでは分からない項目。名前で分かる項目（待機・移動を取り消す・キャンセル）には添えない。
+func test_menu_notes_only_where_the_name_is_not_enough() -> void:
 	var battle := _battle()
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(0, 0))
-	for id: StringName in [BattleTexts.MENU_ATTACK, BattleTexts.MENU_HEAL, BattleTexts.MENU_SKILL, BattleTexts.MENU_WAIT, BattleTexts.MENU_UNDO, BattleTexts.MENU_BACK, BattleTexts.MENU_WARP]:
-		assert_ne(BattleTexts.menu_note(id, priest), "", "項目 %s に説明が無い" % id)
+	for id: StringName in [BattleTexts.MENU_ATTACK, BattleTexts.MENU_HEAL, BattleTexts.MENU_SKILL, BattleTexts.MENU_WARP]:
+		var note := BattleTexts.menu_note(id, priest)
+		assert_ne(note, "", "項目 %s に説明が無い" % id)
+		assert_false(note.contains("する。") or note.contains("できる"), "説明書の調子: %s" % note)
+	for id: StringName in [BattleTexts.MENU_WAIT, BattleTexts.MENU_UNDO, BattleTexts.MENU_BACK]:
+		assert_eq(BattleTexts.menu_note(id, priest), "", "項目 %s は、名前で分かる" % id)
 
 
 ## 左下の枠のスキルの状態は、メニューと同じに、動いたら使えない（精密照準）ことまで見る（Issue #46）。

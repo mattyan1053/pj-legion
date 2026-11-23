@@ -12,6 +12,7 @@ const Names := preload("res://game/names.gd")
 const FormationText := preload("res://game/formation_text.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
 const Steady := preload("res://game/steady.gd")
+const KeyMarks := preload("res://game/key_marks.gd")
 const SignMark := preload("res://game/sign_mark.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
@@ -64,11 +65,15 @@ const COLOR_END_TURN := Palette.GO
 const COLOR_END_TURN_READY := Palette.GO_READY
 ## 上の帯と下の帯の高さ（駒のそばのメニューは、この内側に置く）。
 const TOP_BAR_HEIGHT := 50.0
-## 下の帯の高さは、中身で伸び縮みしない（docs/ui-theme.md の「枠の大きさ」）。案内（2 行まで）とマスの説明で、合わせて 3 行が入る:
-## 案内が 1 行ならマスの説明は 2 行まで、案内が 2 行ならマスの説明は 1 行。
+## 下の帯の高さは、中身で伸び縮みしない（docs/ui-theme.md の「枠の大きさ」）。左の欄に、案内（句と印の小さな並び。1 行）と、
+## マスの説明（CELL_LINES 行まで）が入る。
 const BOTTOM_BAR_HEIGHT := 92.0
-## 下の帯の上下の余白（px）。3 行が入るよう、ほかの帯より詰める。
+## 下の帯の上下の余白（px）。ほかの帯より詰める。
 const BOTTOM_BAR_MARGIN := 6.0
+## 下の帯の案内の欄の高さと、マスの説明の欄の高さ・行の数。出すものが無くても、この高さのまま。
+const GUIDE_HEIGHT := 24.0
+const CELL_HEIGHT := 46.0
+const CELL_LINES := 2
 ## マスの説明の字の大きさ（px）。入る行の数に収まらないときだけ、小さいほうにする。それでも入らなければ「…」で切る（マスを押すと、情報の枠で全部読める）。
 const CELL_FONT_SIZE := 14
 const CELL_FONT_SIZE_SMALL := 12
@@ -214,9 +219,9 @@ var _info_shrink := 0
 var _info_dropped := 0
 var _info_detail: Button
 var _cell_label: Label
-var _hint_label: Label
-## 下の帯の案内の、折り返す前の文。
-var _hint_text := ""
+## 下の帯の案内（句と印の並び）と、色の印の名前 -> 盤に塗る色（対戦の画面が入れる）。
+var _guide: KeyMarks
+var range_colors := {}
 var _cell_text := ""
 var _end_turn_button: Button
 var _end_turn_style: StyleBoxFlat

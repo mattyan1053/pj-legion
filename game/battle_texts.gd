@@ -1,9 +1,10 @@
 extends RefCounted
-## 対戦の画面の文: 下の帯の説明、駒のそばのメニューの項目と説明、マスの説明、駒の行動の状態、必殺技のボタン。
+## 対戦の画面の文: 下の帯の案内（句と印の並び）、駒のそばのメニューの項目と説明、マスの説明、駒の行動の状態、必殺技のボタン。
 ## ノードに依存しない（テストから呼べる）。対戦の場面（battle_screen.gd）が、いまの盤と操作の状態を渡して作らせ、画面に出す。
 
 const BattleHud := preload("res://game/battle_hud.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
+const KeyMarks := preload("res://game/key_marks.gd")
 const Names := preload("res://game/names.gd")
 const Text := preload("res://game/text.gd")
 const WinText := preload("res://game/win_text.gd")
@@ -26,72 +27,65 @@ static func nothing_special() -> String:
 # ---- 下の帯 ----
 
 
-## 下の帯の、いまできることの説明。クリックだけで進められる言い方で、短く書く。
+## 下の帯の案内: 短い句と、キーの印・色の印の並び（key_marks.gd の parts）。文で操作を教えない（docs/wording.md の決まり 1）。
+## 分かりきった場面（駒を選ぶ前、相手の番、決着、台詞の途中、進化先を選ぶ間）は空。
 ## unit は選んでいる駒、inspected は見ている駒（どちらも無ければ null）。cpu_turn は CPU の番（を進めている途中）か。
-## self_skill は、選べる対象が自分のマスだけのスキル（自分に使うスキル）を選んでいるか。
-## confirming_unacted は、ターン終了を確かめている途中なら、まだ行動していない駒の数（確かめていなければ 0）。
-static func hint(
-	battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn: bool, confirming_ult: bool, self_skill: bool,
-	confirming_unacted := 0, can_warp := false, pinned := 0
-) -> String:
-	if battle.is_over():
-		return Text.t("battle.hint.over")
-	if cpu_turn:
-		return Text.t("battle.hint.foe_turn" if Names.story_sides else "battle.hint.cpu_turn")
-	if battle.evolving_unit() != null:
-		return Text.t("battle.hint.evolve")
-	if confirming_ult:
-		var ult := Ults.of(battle, battle.phase)  # 確かめるのは、人の番だけ
-		if ult == null:
-			return Text.t("battle.hint.confirm_ult_unnamed")
-		return Text.t("battle.hint.confirm_ult", {"ult": Names.ult(ult)})
+## confirming は、必殺技かおまかせを確かめている途中か。confirming_unacted は、ターン終了を確かめている途中なら、
+## まだ行動していない駒の数（確かめていなければ 0）。pinned は、範囲を表示したままにしている駒の数。
+## 色の印の色は名前（&"move" など）で返す。画面の側が、盤に塗る色に直す。
+static func guide(
+	battle: Battle, unit: Unit, inspected: Unit, mode: Mode, cpu_turn: bool, confirming: bool,
+	confirming_unacted := 0, pinned := 0
+) -> Array[Dictionary]:
+	var parts: Array[Dictionary] = []
+	if battle.is_over() or cpu_turn or battle.evolving_unit() != null:
+		return parts
+	if confirming:
+		return [_right_click("battle.guide.cancel")]
 	if confirming_unacted > 0 and inspected == null:
-		return Text.t("battle.hint.confirm_end_turn", {"count": confirming_unacted})
+		return [KeyMarks.phrase(Text.t("battle.guide.unacted", {"count": confirming_unacted})), _right_click("battle.guide.cancel")]
 	if inspected != null:
-		var ranges := Text.t("battle.hint.ranges.own") if inspected.side == battle.phase else Text.t("battle.hint.ranges.foe")
-		if pinned > 0:
-			ranges += Text.t("battle.hint.ranges.pinned")
-		var key := "battle.hint.inspect_back" if unit != null else "battle.hint.inspect"
-		return Text.t(key, {"unit": Names.unit(inspected), "ranges": ranges})
-	if unit == null and pinned > 0:
-		return Text.t("battle.hint.choose_pinned")
+		parts = _seen_ranges(battle, inspected, pinned)
+		parts.append(_right_click("battle.guide.back"))
+		return parts
 	if unit == null:
-		return Text.t("battle.hint.choose")
-	if mode == Mode.SKILL and self_skill:
-		return Text.t("battle.hint.skill_self", {"skill": Names.skill(Skills.of(unit))})
-	if mode == Mode.SKILL:
-		var key := "battle.hint.skill_ends" if Skills.of(unit).ends_action() else "battle.hint.skill_then_attack"
-		return Text.t(key, {"skill": Names.skill(Skills.of(unit))})
-	if mode == Mode.ATTACK:
-		return Text.t("battle.hint.attack")
-	if mode == Mode.HEAL:
-		return Text.t("battle.hint.heal")
+		if pinned > 0:
+			return [_mark(&"pin", "battle.guide.pinned", true), _right_click("battle.guide.unpin")]
+		return parts
+	if mode != Mode.NONE:
+		return [KeyMarks.phrase(Text.t("battle.guide.target")), _right_click("battle.guide.cancel")]
 	if not battle.can_act(unit):
-		if unit.side != battle.phase:
-			return Text.t("battle.hint.foe_unit")
-		return Text.t("battle.hint.acted")
+		return _seen_ranges(battle, unit, pinned)
 	if unit.move_locked:
-		return Text.t("battle.hint.after_skill")
-	if unit.has_moved and can_warp:
-		return Text.t("battle.hint.on_portal")
-	if unit.can_keep_moving:
-		return Text.t("battle.hint.after_warp_cruise" if unit.cruised else "battle.hint.after_warp")
+		return parts
 	if unit.has_moved:
-		if unit.cruised:
-			return Text.t("battle.hint.after_cruise")
-		return Text.t("battle.hint.after_move")
-	if UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
-		return Text.t("battle.hint.move_healer")
-	return Text.t("battle.hint.move")
+		if unit.can_keep_moving:
+			if not unit.cruised:
+				parts.append(_mark(&"move", "battle.guide.move"))
+			parts.append(_mark(&"cruise", "battle.guide.cruise"))
+		parts.append(_right_click("battle.guide.undo"))
+		return parts
+	parts = [_mark(&"move", "battle.guide.move"), _mark(&"cruise", "battle.guide.cruise")]
+	parts.append(_mark(&"heal", "battle.guide.heal") if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else _mark(&"attack", "battle.guide.attack"))
+	return parts
 
 
-## 自分の番の「おまかせ」を確かめている間と、任せている間の下の帯。
-static func auto_confirm_hint() -> String:
-	return Text.t("battle.hint.auto_confirm")
+## 見ている駒の範囲の色の印: 動ける範囲と、相手の駒なら次の番に攻撃が届く範囲、留めた範囲があればその枠。
+static func _seen_ranges(battle: Battle, seen: Unit, pinned: int) -> Array[Dictionary]:
+	var parts: Array[Dictionary] = [_mark(&"reach", "battle.guide.move")]
+	if seen.side != battle.phase:
+		parts.append(_mark(&"threat", "battle.guide.attack"))
+	if pinned > 0:
+		parts.append(_mark(&"pin", "battle.guide.pinned", true))
+	return parts
 
 
-static func auto_running_hint() -> String:
-	return Text.t("battle.hint.auto_running")
+static func _right_click(word: String) -> Dictionary:
+	return KeyMarks.key(Text.t("common.key.right_click"), Text.t(word))
+
+
+static func _mark(color: StringName, word: String, framed := false) -> Dictionary:
+	return KeyMarks.swatch(color, Text.t(word), framed)
 
 
 # ---- 駒のそばのメニュー ----
@@ -125,6 +119,7 @@ static func menu_items(
 
 
 ## メニューの項目の説明（押すと何が起きるか）。マウスを乗せている間、左下の枠に出す。
+## 名前で分かる項目（待機、移動を取り消す、キャンセル）は空。
 ## battle があれば、スキルの状態は、いま使えるか（Skills.can_use）まで見る。
 static func menu_note(id: StringName, unit: Unit, battle: Battle = null) -> String:
 	match id:
@@ -136,12 +131,6 @@ static func menu_note(id: StringName, unit: Unit, battle: Battle = null) -> Stri
 			var skill := Skills.of(unit)
 			var key := "battle.menu.skill.note_ends" if skill.ends_action() else "battle.menu.skill.note_then_attack"
 			return Text.t(key, {"skill": Names.skill(skill), "summary": Names.skill_summary(skill), "state": BattleHud.skill_state_text(unit, battle)})
-		MENU_WAIT:
-			return Text.t("battle.menu.wait.note")
-		MENU_UNDO:
-			return Text.t("battle.menu.undo.note")
-		MENU_BACK:
-			return Text.t("battle.menu.back.note")
 		MENU_WARP:
 			return Text.t("battle.menu.warp.note")
 	return ""

@@ -164,7 +164,7 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 	if _watching_other():
 		# 自分の番を終えた: 再生の間（中立のフェーズから）も、相手の番の表示にする。
 		_hud.set_end_turn(false, Text.t("battle.end_turn.foe" if Names.story_sides else "battle.end_turn.cpu"))
-		_hud.set_hint(BattleTexts.hint(battle, null, null, Mode.NONE, true, false, false))
+		_hud.set_guide([])
 	_show_watch_controls()
 	await _playback.play_all(events)
 	_watch_playback = false
