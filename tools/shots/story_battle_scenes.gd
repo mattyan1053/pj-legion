@@ -488,10 +488,15 @@ func _scene_story_unlock() -> bool:
 	return talk.speaker() == Story.notice_name()
 
 
-## 終わりの 1 つ前の話（ストーリー専用の持ち物が手に入る）の、あとの会話の知らせの行。対戦はせず、会話の場面だけを流れで始める。
+## 知らせのある最後の話（ストーリー専用の持ち物が手に入る）の、あとの会話の知らせの行。対戦はせず、会話の場面だけを流れで始める。
 func _scene_story_item_unlock() -> bool:
 	var campaign: RefCounted = Story.military()
-	var episode: RefCounted = campaign.episodes[campaign.episodes.size() - 2]
+	var episode: RefCounted = null
+	for each: RefCounted in campaign.episodes:
+		if not Story.unlocked_before(each).news_of(each).is_empty():
+			episode = each  # 知らせのある最後の話（話が増えても、知らせの無い話を選ばない）
+	if episode == null:
+		return false
 	var talk := Story.talk_of(episode, [])
 	for news: Dictionary in Story.unlocked_before(episode).news_of(episode):
 		var line := {"side": Story.NOTICE_SIDE, "name": Story.notice_name()}
