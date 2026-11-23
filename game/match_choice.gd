@@ -15,6 +15,8 @@ const RandomSquad := preload("res://game/random_squad.gd")
 
 ## 部隊の id の「ランダム編成」（取っておいた部隊の id と重ならない）。
 const RANDOM := "@random"
+## 縫い目の様子で、CPU の行がランダム編成のとき、CPU が札を見て選ぶ候補の数（集計の道具の SIGN_CANDIDATES と同じ）。
+const SIGN_CANDIDATES := 3
 
 ## マップ（対戦モードで選べる盤の鍵。versus_fields.gd）。
 var field: StringName = VersusFields.DEFAULT
@@ -39,6 +41,11 @@ var drawn_side := Unit.Side.PLAYER1
 var placements: Array[Array] = [[], []]
 ## 入にした選べる決まり（OptionalRules の名前。既定は OptionalRules.DEFAULTS = 拠点あり・砲台なし。docs/match-setup.md の「選べる決まり」）。
 var rules: Array[StringName] = OptionalRules.DEFAULTS.duplicate()
+## 縫い目の様子（OptionalRules.SEAM）で、CPU が札を見て選ぶ候補にする、取っておいた部隊（軍 -> 部隊の写しの並び。出せるものだけ）。
+## 取っておいた部隊の一覧に合わせるとき（refresh_decks）に入れる。
+var saved_pool: Dictionary = {}
+## 最後に作った対戦で、縫い目の様子の札を見て CPU が選んだ部隊（写し。札が無いか、CPU 戦でなければ null）。「編成確認」で見せる。
+var signs_pick: Deck = null
 
 
 ## CPU と対戦するときに、人が動かすプレイヤー（ランダムなら、最後に作った対戦で引いた側）。
@@ -72,6 +79,10 @@ func set_rule(id: StringName, on: bool) -> void:
 	rules.erase(id)
 	if on and OptionalRules.is_known(id):
 		rules.append(id)
+
+
+func shows_signs() -> bool:
+	return has_rule(OptionalRules.SEAM)
 
 
 func make_setup(battle_seed: int) -> MatchSetup:
@@ -197,6 +208,14 @@ func drawn_deck(side: Unit.Side) -> Deck:
 ## 取っておいた部隊の一覧（deck_library.gd）に合わせ直す。選んでいた部隊が消えた・出せなくなったら、既定の編成に戻す。
 ## 残っていれば、いまの中身にする（編成の画面で組み直したとき）。
 func refresh_decks(library: RefCounted) -> void:
+	saved_pool.clear()
+	if library != null:
+		for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
+			var pool: Array[Deck] = []
+			for item: RefCounted in library.for_rules(DeckRules.VERSUS, army):
+				if item.playable():
+					pool.append(item.deck.copy())
+			saved_pool[army] = pool
 	for side in 2:
 		if deck_ids[side] == "" or deck_ids[side] == RANDOM:
 			continue
@@ -232,7 +251,31 @@ func copy() -> RefCounted:
 	other.rules = rules.duplicate()
 	for side in 2:
 		other.placements[side] = placements[side].duplicate()
+	for army: int in saved_pool:
+		var pool: Array[Deck] = []
+		for deck: Deck in saved_pool[army]:
+			pool.append(deck.copy())
+		other.saved_pool[army] = pool
+	other.signs_pick = signs_pick.copy() if signs_pick != null else null
 	return other
+
+
+## 縫い目の様子の札を見て、CPU が出す部隊の候補（CpuDeck.pick_for_signs に渡す。先頭は札の無い対戦と同じ部隊）。
+## CPU の行が既定の編成なら、CPU の編成とその軍の取っておいた部隊。ランダム編成なら、種で組んだ SIGN_CANDIDATES 個。
+## 取っておいた部隊を名指しした行は、選び直さない（空を返す）。
+func cpu_candidates(battle_seed: int) -> Array[Deck]:
+	var row := cpu_row()
+	var army := armies[row]
+	var candidates: Array[Deck] = []
+	if is_random(row):
+		candidates.append(deck_for(row, battle_seed, cpu_side()))
+		for i in range(1, SIGN_CANDIDATES):
+			candidates.append(RandomSquad.build(army, DeckRules.versus(), hash([battle_seed * 2 + cpu_side(), i])))
+	elif deck_ids[row] == "":
+		candidates.append(MatchSetup.default_deck(army))
+		for deck: Deck in saved_pool.get(army, []):
+			candidates.append(deck.copy())
+	return candidates
 
 
 ## 行 row の初期位置を決める画面に見せる対戦（始まる前。row が先手・後手のその側として、種 battle_seed で作る）と、
@@ -264,6 +307,13 @@ func to_setup(battle_seed: int) -> MatchSetup:
 	else:
 		setup = MatchSetup.humans_on(defined, battle_seed, deck_for(Unit.Side.PLAYER1, battle_seed), deck_for(Unit.Side.PLAYER2, battle_seed))
 	setup.rules = rules.duplicate()
+	# 縫い目の様子: CPU は、めくられた札を見て、候補から部隊を選ぶ（docs/cpu-ai.md の「縫い目の様子」）。
+	signs_pick = null
+	if cpu_opponent and has_rule(OptionalRules.SEAM) and not defined.is_fixed(cpu_side()):
+		var candidates := cpu_candidates(battle_seed)
+		if not candidates.is_empty():
+			signs_pick = CpuDeck.pick_for_signs(candidates, setup.signs())
+			setup.decks[cpu_side()] = signs_pick.copy()
 	# 人が決めた初期位置（行ごと）。行と違う側で対戦する（手番ランダムで後手を引いた）ときは、盤の形に合わせて返す
 	# （点対称の盤なら上下と左右、そうでなければ上下。Deployment.facing_placement）。部隊の数と合わなければ使わない。
 	var board: Board = null

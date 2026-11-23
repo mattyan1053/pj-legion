@@ -192,13 +192,13 @@ static func unit_state(battle: Battle, unit: Unit) -> String:
 	# 森にいれば、受けるダメージが減る。
 	var terrain := battle.board.terrain_at(unit.cell)
 	if terrain != Terrain.Type.NORMAL:
-		state += ("\n" if state != "" else "") + Text.t("battle.unit.on_cell", {"terrain": _with_note(_terrain_item(terrain))})
+		state += ("\n" if state != "" else "") + Text.t("battle.unit.on_cell", {"terrain": _with_note(_terrain_item(terrain, battle))})
 	return state
 
 
 ## マスの見出し（位置と地形の名前）。
 static func cell_title(battle: Battle, cell: Vector2i) -> String:
-	return Text.t("battle.cell.title", {"x": cell.x, "y": cell.y, "terrain": _terrain_item(battle.board.terrain_at(cell))[0]})
+	return Text.t("battle.cell.title", {"x": cell.x, "y": cell.y, "terrain": _terrain_item(battle.board.terrain_at(cell), battle)[0]})
 
 
 ## マスの説明を、左下の枠に出す形にしたもの。項目の名前の行と、説明を「。」ごとに字下げした行に分ける。
@@ -211,13 +211,13 @@ static func cell_body(battle: Battle, cell: Vector2i) -> String:
 	return "\n".join(lines)
 
 
-## 地形の [名前, 説明（無ければ空）]。
-static func _terrain_item(terrain: Terrain.Type) -> Array:
+## 地形の [名前, 説明（無ければ空）]。森の受けるダメージは、対戦の札（深い茂み）を含めた割合（Seam.forest_rate_percent）。
+static func _terrain_item(terrain: Terrain.Type, battle: Battle) -> Array:
 	match terrain:
 		Terrain.Type.OBSTACLE:
 			return [Text.t("battle.cell.obstacle"), Text.t("battle.cell.obstacle.note")]
 		Terrain.Type.FOREST:
-			return [Text.t("battle.cell.forest"), Text.t("battle.cell.forest.note")]
+			return [Text.t("battle.cell.forest"), Text.t("battle.cell.forest.note", {"rate": "%.1f" % (Seam.forest_rate_percent(battle) / 100.0)})]
 		Terrain.Type.FONT:
 			return [Text.t("battle.cell.font"), ""]
 	return [Text.t("battle.cell.plain"), ""]
@@ -232,7 +232,7 @@ static func _with_note(item: Array) -> String:
 ## マスの説明の項目（[名前, 説明（無ければ空）, 下の帯の 1 行に入れる短い説明（長い説明だけ）] の列）: 地形の効果、本陣、盤の上の効果、環境オブジェクト。何も無ければ「特別なものは無い」。
 static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	var items: Array[Array] = []
-	var terrain := _terrain_item(battle.board.terrain_at(cell))
+	var terrain := _terrain_item(battle.board.terrain_at(cell), battle)
 	if terrain[1] != "":
 		items.append([terrain[1], ""])
 	var hq_owner := battle.board.hq_owner(cell)
@@ -267,6 +267,11 @@ static func rule_notice(battle: Battle) -> Array[String]:
 	if battle.board.stronghold_cell != Board.NO_CELL:
 		lines.append(Text.t("battle.notice.stronghold", WinText.stronghold_args()))
 	lines.append_array(formation_notice(battle))
+	if not battle.signs.is_empty():
+		var names: Array[String] = []
+		for sign in battle.signs:
+			names.append(Names.sign_name(sign))
+		lines.append(Text.t("battle.notice.signs", {"names": Text.t("common.joiner.dot").join(names)}))
 	return lines
 
 

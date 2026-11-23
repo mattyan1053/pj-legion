@@ -228,6 +228,13 @@ func _versus(app: Node, field: StringName, rules: Array[StringName]) -> void:
 		return
 	var screen: Node = app.current_scene()
 	screen.set_time_scale_base(8.0)
+	# 縫い目の様子が入なら、まず札がめくられる窓が出る。札を確かめて「対戦開始」を押す（部隊は選び直さない）。
+	_expect(screen.signs_pending() == rules.has(OptionalRules.SEAM), "縫い目の様子の窓が、決まりの入・切どおりに出ない")
+	if screen.signs_pending():
+		_expect(screen.signs_window().card_texts().size() == Seam.DRAWN, "めくった札が %d 枚出ていない" % Seam.DRAWN)
+		_expect(not screen.is_cpu_running(), "札を見ている間に、CPU の番が始まった")
+		screen.signs_window().press_start()
+		_expect(not screen.signs_pending() and screen.battle.signs.size() == Seam.DRAWN, "札の窓の「対戦開始」で、札のある対戦が始まらない")
 	var battle: Battle = screen.battle
 	for rule in OptionalRules.ALL:
 		_expect(screen.source.has_rule(rule) == rules.has(rule), "選んだ選べる決まりで、対戦が始まらない: %s" % rule)
