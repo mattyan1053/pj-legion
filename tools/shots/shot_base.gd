@@ -35,6 +35,8 @@ const MORE_SEEDS := 8
 const SETTLE := 1.8
 ## 番の知らせが消えるのを、SETTLE のあとさらに待つ上限（秒）。
 const BANNER_WAIT := 3.0
+## カメラが寄り終わるのを待つ上限（秒。_camera_still）。
+const CAMERA_WAIT := 4.0
 ## CPU どうしで進める行動の数の上限（場面が来なければ、撮らずに失敗にする）。
 const MAX_ACTIONS := 3000
 const JPEG_QUALITY := 0.82
@@ -113,6 +115,24 @@ func _look_at(point: Vector3) -> void:
 func _aim(distance: float, yaw_degrees: float, pitch: float) -> void:
 	_scene.set_camera_view(distance, yaw_degrees)
 	_scene.set_camera_pitch(pitch)
+
+
+## カメラが寄り終わるまで待つ（見ている地点・距離・角度がコマの間で動かなくなるまで。上限 CAMERA_WAIT 秒）。
+## 駒のそばのメニューと予測のパネルは、カメラが動く間、前に選んだ側をひいきして置き直すので、
+## 動いている途中で駒を選ぶと、撮る時刻（コマの長さ）しだいで置き場所が変わる。カメラを決めてから選ぶ場面で使う。
+func _camera_still() -> void:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	var last := camera.global_transform
+	var still := 0
+	var waited := 0.0
+	while still < 3 and waited < CAMERA_WAIT:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+		var now := camera.global_transform
+		still = still + 1 if now.is_equal_approx(last) else 0
+		last = now
 
 
 ## CPU どうしで行動を 1 つずつ進め、行動と行動の間で until が真になったら止めて真を返す。

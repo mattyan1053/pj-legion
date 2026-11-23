@@ -431,6 +431,11 @@ func place_camera(point: Vector3) -> void:
 	_rig.place_at(point)
 
 
+## 駒のそばのメニューと予測のパネルを、いまのカメラだけで置き直す（前に選んだ側をひいきしない）。スクリーンショットの道具用。
+func replace_panels() -> void:
+	_layout.reset_placement()
+
+
 ## カメラがいま見ている地点（盤面の上）。スクリーンショットの道具用。
 func camera_center() -> Vector3:
 	return _rig.position
