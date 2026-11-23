@@ -443,6 +443,11 @@ func signs_window() -> SignsWindow:
 	return _signs_window
 
 
+## 上の帯の下の、縫い目の様子の札の帯の文（札の名前。出ていなければ空。検査用）。
+func signs_text() -> String:
+	return _hud.signs_text()
+
+
 ## CPU の番を進めている途中か（検査用）。
 func is_cpu_running() -> bool:
 	return _ui.cpu_running
