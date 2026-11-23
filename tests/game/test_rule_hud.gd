@@ -58,7 +58,7 @@ func test_notice_keeps_its_size_and_fits_any_cards() -> void:
 		for sign_count: int in [0, 2]:
 			var cards: Array[Array] = []
 			for i in goal_count:
-				cards.append([&"goal", goals[i], "名前", "敵の本陣を 3 ターン占拠し続ける"])
+				cards.append([&"goal", goals[i], "名前", "3 ターン、敵の本陣を占拠し続ける"])
 			for i in sign_count:
 				cards.append([&"sign", i, "名前", "森にいる駒が受けるダメージ 0.6 倍"])
 			hud.show_notice(cards)
