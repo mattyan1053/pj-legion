@@ -4,7 +4,7 @@ battle.log.won.hq_captured,敵の本陣を占拠し続けた
 battle.log.won.stronghold_held,拠点を確保した
 battle.log.won.turns_held,最後まで守り切った
 battle.log.won.routed,敵を全滅させた
-battle.log.won.boss_slain,中ボスを倒した
+battle.log.won.boss_slain,{boss}を倒した
 battle.log.drawn.both_kings_defeated,両方の将が同時に倒れた
 battle.log.detail,　{text}
 battle.log.unknown_unit,不明
@@ -63,8 +63,8 @@ battle.log.ult,{side}が必殺技「{ult}」を使った
 battle.log.start_gauge,{side}の必殺技のゲージは {percent}% から
 battle.log.ult_ready,{side}の必殺技「{ult}」が使えるようになった
 battle.log.defeated,{unit}が倒れた
-battle.log.boss_fell,{place}の中ボスが倒れた
-battle.log.boss_slain,{side}が{place}の中ボスを倒した
+battle.log.boss_fell,{place}の{boss}が倒れた
+battle.log.boss_slain,{side}が{place}の{boss}を倒した
 battle.log.relic,{side}が聖遺物「{relic}」を手に入れた（{effect}）
 battle.log.spawned,{unit}が {cell} に湧いた
 battle.log.appeared,{unit}が {cell} に現れた
@@ -127,9 +127,13 @@ battle.cell.obstacle.note,入れない
 battle.cell.forest,森
 battle.cell.forest.note,移動 2・受けるダメージ {rate} 倍
 battle.cell.font,結晶泉
+battle.cell.font.note,中立の敵が湧く。倒しても、また湧くことがある
+battle.cell.font.hushed_note,中立の敵が湧く。いまは湧き直さない
+battle.cell.font.short,中立の敵が湧く
 battle.cell.hq,{side}の本陣
+battle.cell.hq.note,{turns} ターン占拠し続けた側の勝ち
 battle.cell.barrel,起爆樽
-battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マスの兵すべてに {damage} ダメージ
+battle.cell.barrel.note,入れない。攻撃すると爆発し、周り 8 マスに {damage} ダメージ
 battle.cell.battery,砲台
 battle.cell.battery.note,後衛が乗ると、射程 +{range}
 battle.cell.stronghold,拠点
@@ -138,8 +142,8 @@ battle.cell.stronghold.short,乗ったまま番を終えると確保 +1
 battle.cell.spring,回復の泉
 battle.cell.spring.note,自分の番の始めに、乗っている兵が {heal} 回復
 battle.cell.portal,"ポータル → ({x}, {y})"
-battle.cell.portal.note,止まると、兵のそばのメニューの「転移」で対のポータル（同じ色の印）へ移れる。移動力は使わず、残りで続けて動ける
-battle.cell.portal.blocked_note,止まると、兵のそばのメニューの「転移」で対のポータルへ移れる。移動力は使わず、残りで続けて動ける。行き先に兵がいて、いまは使えない
+battle.cell.portal.note,止まって「転移」で、同じ色の対へ移る（移動力を使わない）
+battle.cell.portal.blocked_note,行き先に兵がいて、いまは移れない
 battle.cell.barricade.note,{side}。耐久 {durability} / 通行・射撃を遮断
 battle.cell.smoke.note,{side}。残り {turns} ターン / 中の味方への、離れたところからの攻撃を無効
 battle.cell.sanctuary.note,{side}。残り {turns} ターン / 自分の番の始めに中の味方が HP {heal} 回復
@@ -237,7 +241,6 @@ battle.pop.capture_broken,占拠が途切れた
 battle.pop.stronghold,確保 {holds} / {needed}
 battle.pop.stronghold_lost,確保 0 に戻る
 battle.stronghold.mark,{holds} / {needed}
-battle.stronghold.mark_blocked,{holds} / {needed} 停止
 battle.stronghold.rule,乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まり、相手が確保すると 0 に戻る。将は数えない。
 battle.hud.stronghold,拠点
 battle.hud.stronghold_marks,{side} {marks}
@@ -270,6 +273,7 @@ battle.forecast.gauge,必殺技のゲージ {before}% → {after}%
 battle.forecast.draw,引き分けになる
 battle.forecast.win,{side}の勝ち
 battle.forecast.no_damage,0 ダメージ
+battle.forecast.hp_same,±0
 battle.forecast.damage_defeat,{damage} ダメージ → 倒れる
 battle.forecast.damage,{damage} ダメージ → 残り HP {hp}
 battle.forecast.heal,+{amount} → HP {hp} / {max_hp}
@@ -291,13 +295,13 @@ battle.goal.win.turns_held,{turns} ターン目の終わりまで守り切る
 battle.goal.win.turns_held.last,{turns} ターン目の終わりまで守り切れば
 battle.goal.win.routed,敵を全滅させる
 battle.goal.win.routed.last,敵を全滅させれば
-battle.goal.win.boss_slain,中ボスを倒す
-battle.goal.win.boss_slain.last,中ボスを倒せば
+battle.goal.win.boss_slain,{boss}を倒す
+battle.goal.win.boss_slain.last,{boss}を倒せば
 battle.goal.name.king_defeated,将の撃破
 battle.goal.name.hq_captured,本陣の占拠
 battle.goal.name.turns_held,守り切る
 battle.goal.name.routed,全滅
-battle.goal.name.boss_slain,中ボスの撃破
+battle.goal.name.boss_slain,{boss}の撃破
 battle.goal.name.stronghold_held,拠点の確保
 battle.goal.name.deadline,時間の限り
 battle.goal.deadline,{turns} ターン目の終わりまでに勝つ
@@ -311,8 +315,8 @@ battle.goal.lose.turns_held,{turns} ターン目の終わりまで守り切ら�
 battle.goal.lose.turns_held.last,{turns} ターン目の終わりまで守り切られると
 battle.goal.lose.routed,全滅する
 battle.goal.lose.routed.last,全滅すると
-battle.goal.lose.boss_slain,中ボスを倒される
-battle.goal.lose.boss_slain.last,中ボスを倒されると
+battle.goal.lose.boss_slain,{boss}を倒される
+battle.goal.lose.boss_slain.last,{boss}を倒されると
 battle.goal.turn,ターン {turn}
 battle.goal.tag.last_hold,最後のターン: 守り切れば勝ち
 battle.goal.tag.last_attack,最後のターン: 決着しなければ負け
@@ -322,15 +326,15 @@ battle.goal.tag.rout,勝ち: 敵の全滅（将を倒しても終わらない）
 battle.goal.tag.rout_or_king,勝ち: 敵の全滅
 battle.goal.tag.routed,全滅すると負け
 battle.goal.tag.stronghold_near,あと 1 回の確保で{side}の勝ち
-battle.goal.tag.boss,勝ち: 中ボスの撃破（将を倒しても終わらない）
-battle.goal.tag.boss_or_king,勝ち: 中ボスの撃破か将の撃破
-battle.goal.tag.boss_only,勝ち: 中ボスの撃破
+battle.goal.tag.boss,勝ち: {boss}の撃破（将を倒しても終わらない）
+battle.goal.tag.boss_or_king,勝ち: {boss}の撃破か将の撃破
+battle.goal.tag.boss_only,勝ち: {boss}の撃破
 stats.ending.none,決着していない
 stats.ending.king_defeated,将の撃破
 stats.ending.hq_captured,本陣の占拠
 stats.ending.turns_held,守り切り
 stats.ending.routed,全滅
-stats.ending.boss_slain,中ボスの撃破
+stats.ending.boss_slain,{boss}の撃破
 stats.ending.stronghold_held,拠点の確保
 stats.ending.draw,引き分け
 stats.head,ターン {turns}　{ending}
@@ -339,7 +343,7 @@ stats.damage,与えたダメージ {count}
 stats.kills,敵軍撃破 {count} 体
 stats.losses,倒された {count} 体
 stats.neutral_kills,中立撃破 {count} 体
-stats.neutral_kills_boss,中立撃破 {count} 体（中ボス {boss}）
+stats.neutral_kills_boss,中立撃破 {count} 体（{boss} {boss_count}）
 stats.healing,回復 {count}
 stats.skill_uses,スキル {count} 回
 stats.ult_uses,必殺技 {count} 回
@@ -354,7 +358,7 @@ stats.column.kills,撃破
 stats.column.neutral_kills,中立撃破
 stats.column.healing,回復
 stats.column.skill_uses,スキル
-stats.boss_kills,中ボス撃破 {count}
+stats.boss_kills,{boss}撃破 {count}
 stats.unit_evolved,{kind}（{evolution}） Lv{level}
 stats.unit,{kind} Lv{level}
 result.won,{side}の勝ち
@@ -365,7 +369,7 @@ result.lost.king_defeated,将が倒れた
 result.lost.hq_captured,本陣を取られた
 result.lost.turns_held,攻め切れなかった
 result.lost.routed,全滅した
-result.lost.boss_slain,敵に中ボスを倒された
+result.lost.boss_slain,敵に{boss}を倒された
 result.lost.stronghold_held,敵に拠点を確保された
 result.line.map,マップ
 result.line.turns,経過ターン
@@ -396,3 +400,4 @@ result.squad,部隊変更
 result.prompt_title,Enter: タイトルへ
 battle.hud.monster,魔物
 battle.hud.sign_note,{name}: {summary}
+default.boss,番人

@@ -32,6 +32,7 @@ const Story := preload("res://game/story.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const WinText := preload("res://game/win_text.gd")
+const Names := preload("res://game/names.gd")
 const GoalMark := preload("res://game/goal_mark.gd")
 const Crest := preload("res://game/crest.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
@@ -177,6 +178,7 @@ func _ready() -> void:
 		goal_column.add_child(_caption(Text.t("sortie.lesson")))
 		goal_column.add_child(_wrapped(lesson, 17, COLOR_TEXT))
 	# 見出しの右に、勝ち方の印と短い名前（対戦の始めの「対戦ルール」・上の帯の札と同じ印。goal_mark.gd）。
+	Names.set_boss(battle_source.boss_name())  # 勝ち方の文の中ボスの名前（話のファイルの boss）
 	var goal_head := HBoxContainer.new()
 	goal_head.add_theme_constant_override("separation", 6)
 	goal_column.add_child(goal_head)

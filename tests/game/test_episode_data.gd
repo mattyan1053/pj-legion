@@ -143,6 +143,18 @@ func test_the_probe_reads_every_field() -> void:
 	assert_false(episode.has_squad())
 
 
+## 中ボスの名前: 話のファイルの boss、無ければマップのファイルの boss（docs/neutral-mid-boss.md の「名前」）。
+func test_boss_name_reads_from_the_episode_or_the_map() -> void:
+	var plain: Episode = Episode.parse(PROBE)
+	assert_eq(plain.boss, "尾根の番人", "マップ（尾根の小道）の名前")
+	var named: Episode = Episode.parse(PROBE.replace("look = stone_walls", "look = stone_walls\nboss = 谷の主"))
+	assert_eq(named.problems, PackedStringArray())
+	assert_eq(named.boss, "谷の主")
+	assert_eq(StoryBattle.new(named, MatchSetup.default_deck(UnitKind.Army.MILITARY)).boss_name(), "谷の主")
+	var long: Episode = Episode.parse(PROBE.replace("look = stone_walls", "look = stone_walls\nboss = とても長い番人の名前"))
+	assert_eq(long.problems.size(), 1)
+
+
 func test_signs_read_and_reach_the_battle() -> void:
 	var plain: Episode = Episode.parse(PROBE)
 	assert_eq(plain.signs, [] as Array[int], "書かなければ付かない")

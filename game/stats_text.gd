@@ -31,7 +31,7 @@ static func side_lines(stats: BattleStats, side: Unit.Side, side_name: String) -
 	]
 	if record.neutral_kills > 0:
 		if record.boss_kills > 0:
-			parts.append(Text.t("stats.neutral_kills_boss", {"count": record.neutral_kills, "boss": record.boss_kills}))
+			parts.append(Text.t("stats.neutral_kills_boss", {"count": record.neutral_kills, "boss_count": record.boss_kills}))
 		else:
 			parts.append(Text.t("stats.neutral_kills", {"count": record.neutral_kills}))
 	if record.healing > 0:

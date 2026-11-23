@@ -44,6 +44,11 @@ func look() -> StringName:
 	return episode.look
 
 
+## 中ボスの名前は、話のファイルの boss（無ければマップのファイルの boss。どちらも無ければ既定の「番人」）。
+func boss_name() -> String:
+	return episode.boss
+
+
 ## 話のファイルの music があれば、その曲（守り切る話の緊迫した曲など）。無ければ、盤の見た目の曲。
 func music() -> StringName:
 	return episode.battle_music()
