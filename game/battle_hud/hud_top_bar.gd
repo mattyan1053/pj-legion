@@ -118,9 +118,11 @@ func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> 
 	_place_signs()
 
 
-## 縫い目の様子の札を、上の帯の下の帯に出す（signs は Seam.Sign の並び。空なら出さない）。札ごとに印と名前、マウスを乗せると効果の文。
+## 縫い目の様子の札を、上の帯の下の帯に出す（signs は Seam.Sign の並び。空なら出さない）。札ごとに印と名前。
+## マウスを乗せると効果の文、クリックすると札 1 枚の窓（印・名前・効果。もう一度クリックか、窓のクリックで閉じる）。
 ## 大きさは中身で変えない。勝ち方の札・拠点の札が出ていれば、その下に並べる。
 func show_signs(signs: Array[int]) -> void:
+	hide_sign_note()
 	_signs_panel.visible = not signs.is_empty()
 	for i in _sign_slots.size():
 		var shown := i < signs.size()
@@ -142,6 +144,28 @@ func signs_text() -> String:
 	return Text.t("common.joiner.dot").join(names)
 
 
+## i 番目の札の窓を開く（開いていれば閉じる）。札が出ていなければ何もしない。
+func toggle_sign_note(i: int) -> void:
+	if i == _sign_note_index or i < 0 or i >= _sign_slots.size() or not _sign_slots[i].visible:
+		hide_sign_note()
+		return
+	_sign_note_index = i
+	_sign_note_card.show_sign(_sign_marks[i].sign)
+	_sign_note.visible = true
+	_place_signs()
+
+
+func hide_sign_note() -> void:
+	_sign_note_index = -1
+	if _sign_note != null:
+		_sign_note.visible = false
+
+
+## 開いている札の窓の文（名前と効果。開いていなければ空。検査用）。
+func sign_note_text() -> String:
+	return _sign_note_card.shown_text() if _sign_note.visible else ""
+
+
 func sign_notes() -> Array[String]:
 	var notes: Array[String] = []
 	for slot in _sign_slots:
@@ -160,6 +184,8 @@ func _place_signs() -> void:
 		top += STRONGHOLD_CHIP_SIZE.y + 4.0
 	_signs_panel.offset_top = top
 	_signs_panel.size = SIGNS_CHIP_SIZE
+	if _sign_note != null:
+		_sign_note.position = Vector2(_signs_panel.offset_left, top + SIGNS_CHIP_SIZE.y + 4.0)
 
 
 ## 拠点の札の文（見出しと、陣営ごとの印。出ていなければ空。検査用）。
@@ -330,7 +356,12 @@ func _build_top_bar() -> void:
 		var slot := HBoxContainer.new()
 		slot.add_theme_constant_override("separation", 6)
 		slot.custom_minimum_size = Vector2(SIGN_SLOT_WIDTH, 0.0)
-		slot.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると効果の文
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると効果の文、クリックで札の窓
+		slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		slot.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				toggle_sign_note(i)
+				slot.accept_event())
 		signs_row.add_child(slot)
 		var mark := SignMark.new(-1, SIGN_MARK_SIDE)
 		slot.add_child(mark)
@@ -344,6 +375,20 @@ func _build_top_bar() -> void:
 		_sign_slots.append(slot)
 		_sign_marks.append(mark)
 		_sign_names.append(name)
+	# 札の名前をクリックすると出す、札 1 枚の窓（決まった大きさ）。窓をクリックすると閉じる。
+	_sign_note = PanelContainer.new()
+	_sign_note.add_theme_stylebox_override("panel", UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 4.0, 6))  # 盤の上でも読めるよう、透かさない
+	_sign_note.mouse_filter = Control.MOUSE_FILTER_STOP
+	_sign_note.visible = false
+	add_child(_sign_note)
+	_sign_note_card = SignCard.new()
+	_sign_note_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sign_note.add_child(_sign_note_card)
+	_sign_note.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed:
+			hide_sign_note()
+			_sign_note.accept_event())
+	Steady.mark(_sign_note, "battle.sign_note", Steady.RECT)
 
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。キーの印と一語を、小さく 1 行だけ。
 	var help_panel := _panel()

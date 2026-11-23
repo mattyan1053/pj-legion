@@ -25,8 +25,6 @@ const MAP_STAGE := -2
 var _map_title := ""
 ## 「両軍とも同じ役割」の編成（--decks=even）。Deck.roster の並び（前衛・後衛・奇襲・回復）の何番目を雇うか。
 const EVEN_SLOTS: Array[int] = [0, 0, 1, 1, 2, 3]
-## 縫い目の様子（--rules=seam）で、局ごとに変える部隊（--squads=random）のとき、CPU が札を見て選ぶ候補の数（先頭は札の無い対戦と同じ部隊）。
-const SIGN_CANDIDATES := 3
 
 
 ## 駒の種類ごとの表（種類 -> [雇った数, 倒された数, 与えたダメージ, 倒した数, 進化した数]）を、1 体あたりで出す。
