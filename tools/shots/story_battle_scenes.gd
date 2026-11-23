@@ -200,9 +200,9 @@ func _scene_story_drums_talk() -> bool:
 	if at < 0 or not await _start_fantasy(at) or not await _talk_from_sortie():
 		return false
 	var talk: Node = _app.current_scene()
-	while talk.line_index() < talk.line_count() and talk.speaker() != "骨の鼓手":
+	while talk.line_index() < talk.line_count() and talk.speaker() != "亡者の鼓手":
 		talk.press_next()
-	return talk.speaker() == "骨の鼓手"
+	return talk.speaker() == "亡者の鼓手"
 
 
 func _scene_story_drums_battle() -> bool:
