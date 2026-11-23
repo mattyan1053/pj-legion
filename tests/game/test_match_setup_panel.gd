@@ -217,6 +217,7 @@ func test_the_rule_rows_switch_and_keep_their_note_size() -> void:
 	await settle(panel)
 	assert_true(panel.current_choice().has_rule(OptionalRules.STRONGHOLD), "拠点は既定であり")
 	assert_false(panel.current_choice().has_rule(OptionalRules.BATTERY), "砲台は既定でなし")
+	assert_false(MatchSetupPanel.RULE_ROWS.has(OptionalRules.FORMATION), "休眠の決まり（組み方）の行は無い")
 	for rule: StringName in MatchSetupPanel.RULE_ROWS:
 		var note: Label = panel._rule_notes[rule]
 		var before := note.size

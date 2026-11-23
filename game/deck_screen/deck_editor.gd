@@ -94,8 +94,9 @@ func binding_entry() -> int:
 
 
 ## 組み方の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊には出さない）。
+## 組み方が休眠の間（OptionalRules.DORMANT）は、どの部隊にも出さない（誓いを結ぶ操作も、分隊の印も）。
 func shows_formation() -> bool:
-	return _deck != null and _deck.rules.id == DeckRules.VERSUS
+	return _deck != null and _deck.rules.id == DeckRules.VERSUS and OptionalRules.is_choosable(OptionalRules.FORMATION)
 
 
 ## 組み方の欄の文（検査用）。
