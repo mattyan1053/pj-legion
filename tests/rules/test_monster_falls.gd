@@ -70,6 +70,8 @@ func test_needle_cannot_take_a_portal() -> void:
 	var needle := battle.add_unit(UnitKind.Id.NEEDLE, P1, Vector2i(4, 3))
 	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(9, 5))
 	assert_false(battle.can_apply(WarpAction.new(needle.id)))
+	assert_eq(Movement.reachable(battle, needle, false, true).keys(), [needle.cell], "ポータルを越えた探索でも、いまのマスだけ")
+	assert_false(Threat.of(battle, needle.id).has(Vector2i(8, 4)), "ポータルの先からは撃たない")
 
 
 # ---- 骸骨旗手 ----

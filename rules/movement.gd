@@ -130,6 +130,7 @@ class Search:
 static func _search(battle: Battle, unit: Unit, limit: int, from: Array[Vector2i], through_portals: bool) -> Search:
 	var found := Search.new()
 	limit = maxi(limit, 0)
+	through_portals = through_portals and not unit.has_trait(Evolution.Trait.ROOTED)  # 動けない駒は、ポータルでも動かない
 	var board := battle.board
 	var enemy_zoc: Dictionary[Vector2i, bool] = {}
 	var stopped_by_zoc := not unit.ignores_zoc()
