@@ -85,7 +85,7 @@ func test_the_template_reads_without_problems() -> void:
 	assert_ne(episode.title, "")
 	assert_false(episode.before.is_empty())
 	assert_false(episode.cues.is_empty())
-	assert_eq(episode.speakers, PackedStringArray(["隊長", "敵将", "新兵"]))
+	assert_eq(episode.speakers, PackedStringArray(["少尉", "敵将", "新兵"]))
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
