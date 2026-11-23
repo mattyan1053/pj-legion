@@ -7,6 +7,7 @@ extends BattleEvent
 ##
 ## - BarricadePlacedEvent: 盾（durability）
 ## - AreaEffectPlacedEvent: 煙幕・聖域（turns_left）
+## - KnotPlacedEvent: 結び目（turns_left、立ち直る種類）
 
 var effect_id: int
 var type: FieldEffect.Type

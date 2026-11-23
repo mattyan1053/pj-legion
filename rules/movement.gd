@@ -16,8 +16,10 @@ extends RefCounted
 ##   道の中でポータルの対が続けて並んでいたら、そこは転移（Battle.portal_exit で見分ける）。route() が行動の列に直す
 
 
-## 移動に使える移動力。
+## 移動に使える移動力。動けない駒（Evolution.Trait.ROOTED）は 0。
 static func budget(unit: Unit, cruise: bool) -> int:
+	if unit.has_trait(Evolution.Trait.ROOTED):
+		return 0
 	return unit.move_range() * 2 + unit.cruise_bonus if cruise else unit.move_range()
 
 

@@ -58,12 +58,20 @@ static func stat(of_stat: Unit.Stat) -> String:
 
 ## 進化先の特性の説明。
 static func trait_text(of_trait: Evolution.Trait) -> String:
-	return Text.t("trait." + word(Evolution.Trait, of_trait), {"heal": Evolution.REGENERATION_HEAL})
+	return Text.t("trait." + word(Evolution.Trait, of_trait), _trait_args())
 
 
 ## 特性の短い名前（持ち物の効果の 1 行に並べる。「森歩き」「毎ターン 5 回復」）。
 static func trait_short(of_trait: Evolution.Trait) -> String:
-	return Text.t("trait." + word(Evolution.Trait, of_trait) + ".short", {"heal": Evolution.REGENERATION_HEAL})
+	return Text.t("trait." + word(Evolution.Trait, of_trait) + ".short", _trait_args())
+
+
+## 特性の文に差し込む値。
+static func _trait_args() -> Dictionary:
+	return {
+		"heal": Evolution.REGENERATION_HEAL, "radius": Monsters.RALLY_RADIUS, "power": Formation.RESOLVE_POWER,
+		"turns": Monsters.KNOT_TURNS,
+	}
 
 
 ## 盤の上の効果の名前。

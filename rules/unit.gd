@@ -147,9 +147,9 @@ func evolve(to: Evolution.Id) -> void:
 	follow_max_hp(before)
 
 
-## 特性（Evolution.Trait）を持つか。進化先か、持っている装備のどれかが与えていれば持つ（重ねても 1 つ）。
+## 特性（Evolution.Trait）を持つか。進化先か、持っている装備のどれか、または種類そのもの（魔物。Monsters.kind_traits）が与えていれば持つ（重ねても 1 つ）。
 func has_trait(which: Evolution.Trait) -> bool:
-	return Evolution.has_trait(evolution, which) or Equipment.grants(equipment, which)
+	return Evolution.has_trait(evolution, which) or Equipment.grants(equipment, which) or Monsters.kind_traits(kind).has(which)
 
 
 ## 周り 8 マスに支配領域（ZOC）を作るか。前衛と、その特性を持つ進化先・装備。
@@ -204,7 +204,10 @@ func power() -> int:
 	return stat(Stat.POWER)
 
 
+## 動けない特性（Evolution.Trait.ROOTED）の駒は、補正があっても 0。
 func move_range() -> int:
+	if has_trait(Evolution.Trait.ROOTED):
+		return 0
 	return stat(Stat.MOVE_RANGE)
 
 

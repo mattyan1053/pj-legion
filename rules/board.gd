@@ -131,7 +131,7 @@ func add_spring(cell: Vector2i) -> bool:
 	return true
 
 
-## 互いを行き先にするポータルを 2 つ置く。どちらかが置けなければ、どちらも置かずに偽。
+## 砲台を置く。置けなければ偽。
 func add_battery(cell: Vector2i) -> bool:
 	if not can_place_object(cell):
 		return false
@@ -139,6 +139,7 @@ func add_battery(cell: Vector2i) -> bool:
 	return true
 
 
+## 互いを行き先にするポータルを 2 つ置く。どちらかが置けなければ、どちらも置かずに偽。
 func add_portal_pair(a: Vector2i, b: Vector2i) -> bool:
 	if a == b or not can_place_object(a) or not can_place_object(b):
 		return false

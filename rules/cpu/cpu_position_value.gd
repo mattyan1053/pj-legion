@@ -2,7 +2,7 @@ extends "res://rules/cpu/cpu_outcome_value.gd"
 ## CPU の思考の、位置の価値と目標（どこへ向かうか、砲台・拠点、狙う相手と付いていく味方）。
 
 
-## unit が cell に立って行動を終える価値。目標への近さ、敵の本陣、次の相手の番に受けうるダメージで決まる。
+## unit が cell に立って行動を終える価値。目標への近さ、敵の本陣、相手の結び目（踏んでほどく）、次の相手の番に受けうるダメージで決まる。
 ## ignored_id の敵からの危険は数えない（この行動で倒す相手）。acting は、そこで攻撃・回復する手か。
 ## _set_goal と _build_threats のあとに呼ぶ。
 func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) -> float:
@@ -37,6 +37,9 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		var partner := Formation.partner_of(_battle, unit)
 		if partner != null and Combat.distance(partner.cell, cell) <= Formation.OATH_RANGE:
 			value += OATH_NEAR_VALUE
+	var knot := Monsters.knot_at(_battle, cell)
+	if knot != null and knot.side != _me:
+		value += KNOT_STEP_VALUE
 	var threat := _threat_at(unit, cell, ignored_id)
 	value -= (_danger_weight if acting else _idle_danger_weight) * threat
 	if threat >= unit.hp:

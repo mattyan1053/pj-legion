@@ -1,5 +1,5 @@
 extends "res://game/battle_playback/playback_units.gd"
-## 盤のイベントの再生: 起爆樽、盤の上の効果（盾・煙幕・聖域）、本陣の占拠と拠点の確保、中ボスと聖遺物。
+## 盤のイベントの再生: 起爆樽、盤の上の効果（盾・煙幕・聖域・結び目）、骸骨旗手の奮起、本陣の占拠と拠点の確保、中ボスと聖遺物。
 
 
 ## 攻撃の動きのあと、樽を消して、爆発の届いたマスを塗る（続くダメージの再生の間も塗ったまま）。
@@ -35,14 +35,31 @@ func _play_field_effect_ticked(_event: FieldEffectTickedEvent) -> void:
 	pass
 
 
-## 盤の上の効果が消えた（期間が尽きた・盾が壊れた）。
+## 盤の上の効果が消えた（期間が尽きた・盾が壊れた・結び目がほどけた・結び目から立ち直った）。
 func _play_field_effect_removed(event: FieldEffectRemovedEvent) -> void:
 	_board_view.remove_field_effect(event.effect_id)
-	if event.reason == FieldEffectRemovedEvent.Reason.DESTROYED:
-		var at := BoardView.cell_center(event.cells[0])
-		_flash(at + Vector3(0.0, 0.3, 0.0), Color("d8d0c0"), 1.4)
-		_pop_number(at, Text.t("battle.pop.barricade_broken"), Color("d8d0c0"))
-		await after(0.3)
+	var at := BoardView.cell_center(event.cells[0])
+	match event.reason:
+		FieldEffectRemovedEvent.Reason.DESTROYED:
+			_flash(at + Vector3(0.0, 0.3, 0.0), Color("d8d0c0"), 1.4)
+			_pop_number(at, Text.t("battle.pop.barricade_broken"), Color("d8d0c0"))
+			await after(0.3)
+		FieldEffectRemovedEvent.Reason.UNTIED:
+			_flash(at + Vector3(0.0, 0.2, 0.0), Color("d8d0c0"), 1.2)
+			_pop_number(at, Text.t("battle.pop.knot_untied"), Color("d8d0c0"))
+			await after(0.3)
+		FieldEffectRemovedEvent.Reason.REFORMED:
+			_flash(at + Vector3(0.0, 0.3, 0.0), Palette.MONSTER_GLOW, 2.0)
+			_pop_number(at, Text.t("battle.pop.knot_reformed"), Palette.MONSTER_GLOW)
+			await after(0.3)
+
+
+## 骸骨旗手が倒れ、周りの味方が奮起した。倒れたマスに「旗が倒れた」を出す（続く奮起は、状態が付いたことの再生が出す）。
+func _play_rally(event: RallyEvent) -> void:
+	var at := BoardView.cell_center(event.cell)
+	_flash(at + Vector3(0.0, 0.3, 0.0), Palette.MONSTER_GLOW, 2.4)
+	_pop_number(at, Text.t("battle.pop.rally"), Palette.MONSTER_GLOW)
+	await after(0.3)
 
 
 ## 盾を攻撃した。攻撃の動きのあと、減った耐久を出す。

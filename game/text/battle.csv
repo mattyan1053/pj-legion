@@ -45,6 +45,10 @@ battle.log.area_placed,{effect}を {cell} のまわりに張った（{turns} タ
 battle.log.area_placed_by,{side}が{effect}を {cell} のまわりに張った（{turns} ターン）
 battle.log.effect_destroyed,{effect}が壊れた
 battle.log.effect_expired,{effect}が消えた
+battle.log.knot_placed,{cell} に{effect}が残った（{turns} ターンで立ち直る）
+battle.log.knot_untied,{effect}が踏まれて、ほどけた
+battle.log.knot_reformed,{effect}から、{unit}が立ち直った（{cell}）
+battle.log.rally,{unit}が倒れ、周りの {count} 体が奮起した
 battle.log.effect_owned,{side}の{effect}
 battle.log.warped,{unit}が {from} → {to} へ移った
 battle.log.swapped,{unit}と{other}の位置が入れ替わった
@@ -147,6 +151,7 @@ battle.cell.portal.blocked_note,行き先に兵がいて、いまは移れない
 battle.cell.barricade.note,{side}。耐久 {durability} / 通行・射撃を遮断
 battle.cell.smoke.note,{side}。残り {turns} ターン / 中の味方への、離れたところからの攻撃を無効
 battle.cell.sanctuary.note,{side}。残り {turns} ターン / 自分の番の始めに中の味方が HP {heal} 回復
+battle.cell.knot.note,{side}。残り {turns} ターンで{unit}が立ち直る / 相手の兵が乗っていると、ほどける
 battle.cell.line,{title}　{notes}
 battle.cell.separator,　
 battle.hud.phase,{side}の番
@@ -201,6 +206,9 @@ battle.pop.level_up,レベル {level}！
 battle.pop.evolution_ready,進化できる！
 battle.pop.exploded,爆発
 battle.pop.barricade_broken,盾が壊れた
+battle.pop.knot_untied,ほどけた
+battle.pop.knot_reformed,立ち直った
+battle.pop.rally,旗が倒れた
 battle.pop.durability,耐久 -{amount}
 battle.pop.smoked,煙幕で防いだ
 battle.pop.refreshed,再行動

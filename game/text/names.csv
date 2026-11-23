@@ -22,13 +22,20 @@ trait.exerts_zoc,周り 8 マスに支配領域を作る（敵はそこで止ま
 trait.ignores_zoc,敵の支配領域で止まらない
 trait.forest_walk,森を平地と同じ移動力で歩く
 trait.regeneration,自分の番の始めに {heal} 回復
+trait.rooted,その場から動けない
+trait.rally_on_fall,倒れると、周り {radius} マスの味方の攻撃 +{power}
+trait.knot_on_fall,倒れると結び目、{turns} ターンで立ち直る
 trait.exerts_zoc.short,支配領域を作る
 trait.ignores_zoc.short,支配領域を抜ける
 trait.forest_walk.short,森歩き
 trait.regeneration.short,毎ターン {heal} 回復
+trait.rooted.short,動けない
+trait.rally_on_fall.short,倒れると周りが奮起
+trait.knot_on_fall.short,倒れると結び目
 field_effect.barricade,盾
 field_effect.smoke,煙幕
 field_effect.sanctuary,聖域
+field_effect.knot,結び目
 unit.king,将
 unit.shield_trooper,シールドトルーパー
 unit.sniper,スナイパー
@@ -45,6 +52,10 @@ unit.skeleton_archer,骸骨射手
 unit.skeleton_brute,骸骨重兵
 unit.skeleton_caller,骸骨術師
 unit.skeleton_drummer,骸骨鼓手
+unit.skeleton_banner,骸骨旗手
+unit.bat,大蝙蝠
+unit.fray,ほつれ
+unit.needle,糸針
 evolution.bulwark,ブルワーク
 evolution.juggernaut,ジャガーノート
 evolution.marksman,マークスマン

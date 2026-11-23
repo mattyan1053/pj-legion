@@ -280,6 +280,9 @@ static func field_effect_item(effect: FieldEffect) -> Array:
 			return [Names.field_effect(effect.type), Text.t("battle.cell.barricade.note", args)]
 		FieldEffect.Type.SMOKE:
 			return [Names.field_effect(effect.type), Text.t("battle.cell.smoke.note", args)]
+		FieldEffect.Type.KNOT:
+			args["unit"] = Names.kind(UnitKind.Id.FRAY)
+			return [Names.field_effect(effect.type), Text.t("battle.cell.knot.note", args)]
 	return [Names.field_effect(effect.type), Text.t("battle.cell.sanctuary.note", args)]
 
 

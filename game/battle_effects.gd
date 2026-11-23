@@ -91,10 +91,10 @@ static var _bolt_mesh: BoxMesh
 static var _column_mesh: CylinderMesh
 
 
-## 駒の種類ごとの当たり方。前衛と将は叩く、奇襲は斬る、射撃の後衛（スナイパー、骸骨射手）は撃つ、魔法の後衛・プリースト・中ボス・杖を持つ魔物（骸骨術師、骸骨鼓手）は魔法。
+## 駒の種類ごとの当たり方。前衛と将は叩く、奇襲は斬る、射撃の後衛（スナイパー、骸骨射手、糸針）は撃つ、魔法の後衛・プリースト・中ボス・杖を持つ魔物（骸骨術師、骸骨鼓手）は魔法。
 static func hit_style(kind: UnitKind.Id) -> Style:
 	match kind:
-		UnitKind.Id.SNIPER, UnitKind.Id.SKELETON_ARCHER:
+		UnitKind.Id.SNIPER, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.NEEDLE:
 			return Style.SHOT
 		UnitKind.Id.SORCERER, UnitKind.Id.PRIEST, UnitKind.Id.ELITE_MINION, UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER:
 			return Style.MAGIC
