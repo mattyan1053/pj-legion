@@ -45,7 +45,6 @@ const CARD_GAP := 20
 ## マウスを乗せたカードの大きさ。
 const HOVER_SCALE := 1.04
 const HOVER_TIME := 0.12
-const PROMPT := "map_select.prompt"
 ## 段の見出しと、カードの形の札（生成のマップ / 手で作ったマップ）。
 const ROW_GENERATED := "map_select.row.generated"
 const ROW_HAND := "map_select.row.hand"
@@ -368,7 +367,7 @@ func _field_at(at: Vector2) -> StringName:
 func _show_note(field: StringName) -> void:
 	if field == &"":
 		_note_title.text = Text.t("map_select.choose")
-		_note.text = Text.t(PROMPT)
+		_note.text = ""
 		return
 	_note_title.text = Text.t("map_select.note_title", {
 		"number": VersusFields.number_of(field), "title": VersusFields.title_of(field), "tags": VersusFields.tags_of(field), "shape": _shape_tag(field),

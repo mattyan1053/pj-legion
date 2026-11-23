@@ -1,5 +1,5 @@
 extends "res://game/battle_hud/hud_top_bar.gd"
-## 対戦の画面の下の帯: マスの一行、操作の案内、ターン終了、必殺技、おまかせ、早送りとスキップ、脅威範囲と相手の切り替え。
+## 対戦の画面の下の帯: 案内（句と印の小さな並び）、マスの説明、ターン終了、必殺技、おまかせ、早送りとスキップ、脅威範囲と相手の切り替え。
 
 
 ## 必殺技のボタン（下の帯）。text はボタンの文字、enabled は押せるか。summary は必殺技の説明（必殺技が無ければ空）。
@@ -14,7 +14,7 @@ func set_ult_button(text: String, enabled: bool, summary: String, pinned := fals
 	_set_folded(_ult_summary, summary, ULT_SUMMARY_WIDTH)
 	_ult_pinned = pinned
 	_show_ult_summary()
-	_fold_hint()
+	_fold_cell()
 
 
 ## 必殺技のボタンの中のゲージ（押せない間だけ）: 左から溜まり具合まで陣営の色を薄く敷き、下の辺に溝と陣営の色の棒。
@@ -52,21 +52,20 @@ func show_cell(text: String) -> void:
 	_fold_cell()
 
 
-## マスの説明を、案内と同じ幅で折り返す。行の数は、案内が 1 行なら 2 行まで、案内が 2 行なら 1 行（帯の高さは変えない）。
+## マスの説明を、帯の左の欄の幅で折り返す（CELL_LINES 行まで。帯の高さは変えない）。
 ## 入らなければ字を小さくし、それでも入らなければ、最後の行を「…」で切る。
 func _fold_cell() -> void:
 	if _cell_label == null:
 		return
 	var font := _cell_label.get_theme_font("font")
-	var room := _hint_room()
-	var lines := 1 if _hint_label.text.contains("\n") else 2
+	var room := _guide_room()
 	var folded := ""
 	for size: int in [CELL_FONT_SIZE, CELL_FONT_SIZE_SMALL]:
 		folded = TextWrap.fold(_cell_text, room, func(character: String) -> float: return _char_width(font, size, character))
 		_cell_label.add_theme_font_size_override("font_size", size)
-		if folded.count("\n") < lines:
+		if folded.count("\n") < CELL_LINES:
 			break
-	_cell_label.max_lines_visible = lines
+	_cell_label.max_lines_visible = CELL_LINES
 	_cell_label.text = folded
 
 
@@ -82,38 +81,32 @@ func cell_line_text() -> String:
 	return _cell_label.text
 
 
-func set_hint(text: String) -> void:
-	_hint_text = text
-	_fold_hint()
+## 下の帯の案内（短い句と、キーの印・色の印の並び。battle_texts.gd の guide）。空なら何も出さない（欄の高さはそのまま）。
+## 色の印の色が名前なら、range_colors（対戦の画面が入れる、盤に塗る色）で色に直す。
+func set_guide(parts: Array) -> void:
+	var shown: Array = []
+	for part: Dictionary in parts:
+		if part.get("swatch") is StringName:
+			part = part.duplicate()
+			part["swatch"] = range_colors.get(part["swatch"], Palette.TEXT)
+		shown.append(part)
+	_guide.set_parts(shown)
 
 
-## 案内を、いま使える幅で折り返し直す。右のボタンの文字や出し入れが変わると、使える幅も変わるので、そのたびに呼ぶ。
-func _fold_hint() -> void:
-	if _hint_label != null:
-		# 2 行に分かれるときは、行の長さをそろえる（2 行目に 1 語だけ残さない）。
-		var font := _hint_label.get_theme_font("font")
-		var font_size := _hint_label.get_theme_font_size("font_size")
-		_hint_label.text = TextWrap.fold_even(_hint_text, _hint_room(), func(character: String) -> float: return _char_width(font, font_size, character))
-		_fold_cell()  # 案内の行の数で、マスの説明の字の大きさが変わる
+## 下の帯の案内を 1 行の文にしたもの。検査用。
+func guide_text() -> String:
+	return _guide.parts_text()
 
 
-## 下の帯の案内のうち、案内に使える幅に収まらない行（3 行目からは、収まっていても切れる）。検査用。
-func hint_cut_lines() -> Array[String]:
-	var font := _hint_label.get_theme_font(&"font")
-	var font_size := _hint_label.get_theme_font_size(&"font_size")
-	var room := _hint_room()
-	var cut: Array[String] = []
-	var lines := _hint_label.text.split("\n")
-	for i in lines.size():
-		if i >= _hint_label.max_lines_visible or font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > room + 0.5:
-			cut.append(lines[i])
-	return cut
+## 下の帯の案内が、使える幅からはみ出しているか。検査用。
+func guide_overflows() -> bool:
+	return _guide.get_combined_minimum_size().x > _guide_room() + 0.5
 
 
-## 下の帯で、案内に使える幅: 帯の幅から、右のボタンとスイッチ（出ているもの）の幅と間を引いた残り。
+## 下の帯で、案内とマスの説明に使える幅: 帯の幅から、右のボタンとスイッチ（出ているもの）の幅と間を引いた残り。
 ## 並べ直しを待たずに求める（ボタンの文字が変わった直後にも正しい）。
-func _hint_room() -> float:
-	var column := _hint_label.get_parent() as Control
+func _guide_room() -> float:
+	var column := _cell_label.get_parent() as Control
 	var row := column.get_parent() as HBoxContainer
 	var panel := row.get_parent() as Control
 	var room := panel.get_viewport_rect().size.x - panel.get_theme_stylebox(&"panel").get_minimum_size().x
@@ -130,7 +123,7 @@ func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 	_end_turn_button.disabled = not enabled
 	_end_turn_button.text = text
 	_end_turn_style.bg_color = COLOR_END_TURN_READY if ready else COLOR_END_TURN
-	_fold_hint()
+	_fold_cell()
 
 
 ## 相手の番の「早送り」「スキップ」を出すか（出している間は、必殺技のボタンを隠す）。fast は早送りが入っているか、
@@ -142,14 +135,14 @@ func set_watch_controls(shown: bool, fast: bool, can_skip: bool) -> void:
 	_fast_button.set_pressed_no_signal(fast)
 	_skip_button.disabled = not can_skip
 	_skip_button.text = Text.t("battle.hud.skip") if can_skip else Text.t("battle.hud.skipping")
-	_fold_hint()
+	_fold_cell()
 
 
 ## 自分の番の「おまかせ」。confirming なら、もう一度押すと任せる、の形にする。
 func set_auto_button(enabled: bool, confirming: bool) -> void:
 	_auto_button.disabled = not enabled
 	_auto_button.text = Text.t("battle.hud.auto_confirm") if confirming else Text.t("battle.hud.auto")
-	_fold_hint()
+	_fold_cell()
 
 
 ## 「おまかせ」の文字と、押せるか。検査用。
@@ -173,7 +166,7 @@ func press_skip() -> bool:
 ## 敵の全員の脅威範囲の切り替えを、出しているかに合わせる。
 func set_threat_button(shown: bool) -> void:
 	_threat_button.set_pressed_no_signal(shown)
-	_fold_hint()
+	_fold_cell()
 
 
 func end_turn_text() -> String:
@@ -184,7 +177,7 @@ func end_turn_text() -> String:
 func set_opponent(text: String) -> void:
 	_opponent_button.text = text
 	_opponent_button.visible = text != ""
-	_fold_hint()
+	_fold_cell()
 
 
 ## 相手を切り替えるボタンを出しているか。検査用。
@@ -206,25 +199,24 @@ func _build_bottom() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	panel.add_child(row)
-	# 案内の頭の、金の細い線（案内の欄がどこから始まるかの目印。幅は _hint_room が引く）。
-	var hint_mark := ColorRect.new()
-	hint_mark.color = Palette.BORDER_BRIGHT
-	hint_mark.custom_minimum_size = Vector2(3.0, 44.0)
-	hint_mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	hint_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(hint_mark)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 2)
+	column.clip_contents = true
 	row.add_child(column)
-	# いまできること。長ければ 2 行まで折り返す（ボタンを画面の外へ押し出さない）。
-	_hint_label = _label(17)
-	_hint_label.max_lines_visible = 2
-	_hint_label.clip_text = true
-	column.add_child(_hint_label)
+	# 案内: 短い句と、キーの印・色の印（「右クリック キャンセル」）。出すものが無い場面も、欄の高さは同じ。
+	var guide_slot := Control.new()
+	guide_slot.custom_minimum_size = Vector2(0.0, GUIDE_HEIGHT)
+	guide_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(guide_slot)
+	_guide = KeyMarks.new()
+	_guide.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	guide_slot.add_child(_guide)
 	# マウスの下のマスの説明。長ければ 2 行まで折り返す（拠点の説明のように長いものも読める。_fold_cell）。
 	_cell_label = _label(CELL_FONT_SIZE)
-	_cell_label.max_lines_visible = 2
+	_cell_label.custom_minimum_size = Vector2(0.0, CELL_HEIGHT)
+	_cell_label.max_lines_visible = CELL_LINES
 	_cell_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_cell_label.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 	column.add_child(_cell_label)

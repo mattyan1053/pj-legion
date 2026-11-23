@@ -7,3 +7,8 @@ common.sentence_end,。
 common.back,戻る
 common.close,閉じる
 common.ok,決定
+common.key.click,クリック
+common.key.right_click,右クリック
+common.key.drag,ドラッグ
+common.key.wheel,ホイール
+common.key.wasd,WASD
