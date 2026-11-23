@@ -143,3 +143,12 @@ func test_bad_breaks_reports_word_splits() -> void:
 	assert_eq(TextWrap.bad_breaks("ばらけて押したのがまずかった。", 18.0, _measure), [] as Array[String])
 	# 元からある改行は見ない。
 	assert_eq(TextWrap.bad_breaks("まずかっ\nた。道を", 40.0, _measure), [] as Array[String])
+
+
+## 送り仮名をはさむ言葉（KEEP_WORDS の「縫い目」など）は、中で切らない。切るほかなければ、bad_breaks が拾う。
+func test_keep_words_stay_together() -> void:
+	# 幅 20（10 字）では「土地の縫い」で 1 行が埋まる。語の切れ目に見える「い」の後でなく、「縫い目」の前で切る。
+	var lines := _wrap("少ない隊で土地の縫い目を預かる", 20.0)
+	assert_true(lines[0].ends_with("の"), "縫い目の前で切っていない: %s" % [lines])
+	assert_true(lines[1].begins_with("縫い目"), "縫い目を割った: %s" % [lines])
+	assert_eq(TextWrap.bad_breaks("縫い目", 4.0, _measure).size(), 1)

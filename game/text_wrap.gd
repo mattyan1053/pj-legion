@@ -17,6 +17,7 @@ extends RefCounted
 ##   どれも無ければ、切れるところで切る。
 ## - 段落の最後の行が短すぎる（行の幅の 2 割より短い）ときは、行の数を増やさない範囲で、行の長さをそろえる（fold_even と同じ）。
 ## - 元からある改行は、そのまま残す。
+## - 送り仮名をはさむ言葉のうち、よく出るもの（KEEP_WORDS。「縫い目」など）は、中で切らない（ひらがなの後の漢字を、語の切れ目と見誤るため）。
 
 const NO_LINE_START := "、。，．・：；？！ー〜～）」』】〉》〕％…‥ゃゅょっャュョッ々)]}%!?,.:;"
 const NO_LINE_END := "（「『【〈《〔([{"
@@ -24,6 +25,8 @@ const STRONG_BREAK_AFTER := "　。、"
 ## ひらがなの後にあれば、助詞らしいとみる字（その後で切るのは、語の途中よりは良い）。
 ## 「も」「と」「の」は語の中にも多い（「まもる」「とき」「もの」）ので入れない。「を」は助詞のほかに無いので、語の切れ目とみる。
 const PARTICLES := "はがにで"
+## 中で切らない言葉（送り仮名をはさむので、字の種類の並びでは 1 語と分からないもの）。
+const KEEP_WORDS: Array[String] = ["縫い目", "縫い代"]
 ## 優先する切れ目が、行の幅のこの割合より後ろにあれば、そこで切る。
 const STRONG_BREAK_RATIO := 0.5
 ## 語の切れ目（WEAK）と助詞の後（SOFT）が、行の幅のこの割合より後ろにあれば、そこで切る。
@@ -164,6 +167,8 @@ static func _break_after(text: String, i: int) -> int:
 		return NO_BREAK
 	var here := text[i]
 	var next := text[i + 1]
+	if _inside_word(text, i):
+		return NO_BREAK
 	if _is_phrase_gap(text, i):
 		return WEAK
 	if _is_glue(here) or _is_glue(next) or (_is_ascii(here) and _is_ascii(next)) or (_is_katakana(here) and _is_katakana(next)):
@@ -180,6 +185,16 @@ static func _break_after(text: String, i: int) -> int:
 		var particle := i > 0 and _is_hiragana(text[i - 1]) and PARTICLES.contains(here)
 		return SOFT if particle else LOOSE
 	return STRONG if STRONG_BREAK_AFTER.contains(here) or NO_LINE_END.contains(next) else WEAK
+
+
+## i 文字目と次の字が、KEEP_WORDS の言葉の中で並んでいるか。
+static func _inside_word(text: String, i: int) -> bool:
+	for word in KEEP_WORDS:
+		for offset in range(1, word.length()):
+			var start := i + 1 - offset
+			if start >= 0 and text.substr(start, word.length()) == word:
+				return true
+	return false
 
 
 ## from 文字目から、ひらがなが SHORT_TAIL 字以下だけ続いて、句読点・閉じ括弧か段落の終わりが来るか（「た。」「よ」）。
