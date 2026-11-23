@@ -142,6 +142,9 @@ const SCENES := {
 	"stronghold": "拠点に駒が乗り、どちらかがあと 1 回の確保で勝つところ（勝ち方の札と確保の数。迷宮回廊）",
 	"setup_stronghold": "対戦設定で、選べる決まりの「拠点」を「あり」にしたところ",
 	"setup_formation": "対戦設定で、選べる決まりの「組み方（試し）」を「あり」にしたところ",
+	"setup_seam": "対戦設定で、選べる決まりの「縫い目の様子」を「あり」にしたところ",
+	"signs": "縫い目の様子ありの対戦の始めに、札が 2 枚めくられる窓（あなたの部隊を選び直せる。CPU は札を見て選んだ部隊）",
+	"signs_start": "縫い目の様子ありの対戦の始め（決まりの知らせに札の名前。上の帯の下の左に、札 2 枚の印と名前）",
 	"formation_start": "組み方ありの対戦の始め（決まりの知らせに、両軍の組み方。駒の足元の輪と、誓い・肩並べの線）",
 	"formation_oath": "組み方ありの対戦の途中で、誓いを結んだ騎士領の駒をクリックしたところ（駒の情報の枠に誓いと仇の行、2 人をつなぐ線）",
 	"formation_forecast": "組み方ありの対戦で、組み方の効果が乗る攻撃の予測（追い撃ち・仇討ちで増える、肩並べで減る）",
@@ -332,7 +335,7 @@ func _run() -> void:
 			print("screenshots: 場面 %s を作れた" % name)
 			if _mid_animation:
 				_scene.set_time_scale_base(1.0)
-			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
+			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible and not _scene.signs_window().visible:
 				await get_tree().process_frame
 			continue
 		if _mid_animation:
@@ -342,7 +345,7 @@ func _run() -> void:
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
 			continue
-		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
+		while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible and not _scene.signs_window().visible:
 			await get_tree().process_frame
 		_park_mouse()
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
@@ -384,6 +387,7 @@ func _reset(seed: int) -> void:
 	_scene.log_panel().close()
 	_scene.unit_detail().close_detail()
 	_scene.setup_panel().visible = false
+	_scene.signs_window().visible = false  # 前の場面（signs）の札の窓を閉じる
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
 	_scene.hover_menu_item(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
@@ -839,6 +843,33 @@ func _scene_setup_formation() -> bool:
 	_app.current_scene().setup_panel().choose_rule(OptionalRules.FORMATION, true)
 	_park_mouse()
 	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.FORMATION)
+
+
+func _scene_setup_seam() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_rule(OptionalRules.SEAM, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.SEAM)
+
+
+func _scene_signs() -> bool:
+	var choice: RefCounted = MatchChoice.new()
+	choice.field = VersusFields.PLAIN
+	choice.set_rule(OptionalRules.SEAM, true)
+	_scene.source = choice
+	_scene.start_battle(_seed)
+	_park_mouse()
+	return _scene.signs_pending() and _scene.signs_window().card_texts().size() == Seam.DRAWN
+
+
+func _scene_signs_start() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.SEAM])
+	_show()
+	return _scene.notice_text().contains("縫い目の様子") and _scene.signs_text() != ""
 
 
 func _scene_formation_start() -> bool:

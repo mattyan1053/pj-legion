@@ -16,6 +16,7 @@
 | 聞くこと | 既定の答え（`battle_source.gd`） | 対戦モード（`match_choice.gd`） | ストーリーの話（`story_battle.gd`） | 画面のどこが使うか |
 | --- | --- | --- | --- | --- |
 | `make_setup(種)` | 無し（継いだ側が必ず書く） | 選んだもので `MatchSetup` を作る | 話のマップと決め打ちの敵で作る | 対戦を作る・やり直す |
+| `shows_signs()` | 出さない | 縫い目の様子が入なら出す | 既定のまま | 対戦を始める前の、札がめくられる窓（`docs/battle-view.md` の「縫い目の様子」） |
 | `music()` | 見た目の曲（`SoundCatalog.battle_music`） | 既定のまま | 話のファイルの `music`（無ければ見た目の曲） | 対戦の曲（`docs/sound.md`） |
 | `climax_music()` | いつもの終盤の曲（`CLIMAX_MUSIC`） | 既定のまま | 話のファイルの `climax_music`（無ければ既定） | 終盤の曲（`docs/sound.md`） |
 | `victory_mood()` | 明るい（`MOOD_BRIGHT`） | 既定のまま | 話のファイルの `victory_mood`（無ければ明るい） | 勝ったときの調子。静かならファンファーレを鳴らさない（`docs/sound.md`） |

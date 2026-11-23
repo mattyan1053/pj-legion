@@ -14,6 +14,7 @@ const Names := preload("res://game/names.gd")
 const FormationText := preload("res://game/formation_text.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
 const Steady := preload("res://game/steady.gd")
+const SignMark := preload("res://game/sign_mark.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
@@ -77,6 +78,10 @@ const MENU_FONT_SIZE := 17
 const MENU_FONT_FLOOR := 13
 ## 拠点の札の大きさ（px）。確保の数が変わっても、あと 1 回で勝つときも、この大きさのまま。
 const STRONGHOLD_CHIP_SIZE := Vector2(440.0, 30.0)
+## 縫い目の様子の札の帯（選べる決まり。上の帯の下の左、勝ち方の札・拠点の札の下）の大きさと、札 1 枚ぶんの欄の幅、印の大きさ。
+const SIGNS_CHIP_SIZE := Vector2(440.0, 34.0)
+const SIGN_SLOT_WIDTH := 205.0
+const SIGN_MARK_SIDE := 26.0
 ## 対戦の始めの知らせ（選べる決まり）の枠の大きさ（px）。決まりの数で変えない。
 const NOTICE_SIZE := Vector2(680.0, 340.0)
 ## 知らせの本文の行数の上限（折り返した行も数える）。これを超える分は出さない（枠を広げない）。
@@ -143,6 +148,11 @@ var _stronghold_panel: PanelContainer
 var _stronghold_style: StyleBoxFlat
 var _stronghold_caption: Label
 var _stronghold_marks: Array[Label] = []
+## 縫い目の様子の札の帯と、札ごとの欄（印と名前。マウスを乗せると効果の文）。
+var _signs_panel: PanelContainer
+var _sign_slots: Array[Control] = []
+var _sign_marks: Array[SignMark] = []
+var _sign_names: Array[Label] = []
 ## 対戦の始めの知らせ（選べる決まり。見出し、決まりごとの行、閉じるボタン）。
 var _notice: PanelContainer
 var _notice_body: Label
@@ -278,6 +288,7 @@ func set_status(
 	_goal_label.text = goal_tag[0]
 	_goal_panel.reset_size()  # 文が短くなったら、札も縮める
 	_goal_panel.tooltip_text = goal_note
+	_place_signs()
 	var urgent: bool = goal_tag[1]
 	_goal_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
 	_goal_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
@@ -392,6 +403,51 @@ func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> 
 	if _goal_panel.visible:
 		_stronghold_panel.offset_top += _goal_panel.get_combined_minimum_size().y + 4.0
 	_stronghold_panel.size = STRONGHOLD_CHIP_SIZE
+	_place_signs()
+
+
+## 縫い目の様子の札を、上の帯の下の帯に出す（signs は Seam.Sign の並び。空なら出さない）。札ごとに印と名前、マウスを乗せると効果の文。
+## 大きさは中身で変えない。勝ち方の札・拠点の札が出ていれば、その下に並べる。
+func show_signs(signs: Array[int]) -> void:
+	_signs_panel.visible = not signs.is_empty()
+	for i in _sign_slots.size():
+		var shown := i < signs.size()
+		_sign_slots[i].visible = shown
+		_sign_marks[i].sign = signs[i] if shown else -1
+		_sign_names[i].text = Names.sign_name(signs[i]) if shown else ""
+		_sign_slots[i].tooltip_text = Text.t("battle.hud.sign_note", {"name": Names.sign_name(signs[i]), "summary": Names.sign_summary(signs[i])}) if shown else ""
+	_place_signs()
+
+
+## 札の帯の文（札の名前を並べたもの。出ていなければ空。検査用）と、札ごとの、マウスを乗せると出る文。
+func signs_text() -> String:
+	if not _signs_panel.visible:
+		return ""
+	var names: Array[String] = []
+	for i in _sign_slots.size():
+		if _sign_slots[i].visible:
+			names.append(_sign_names[i].text)
+	return Text.t("common.joiner.dot").join(names)
+
+
+func sign_notes() -> Array[String]:
+	var notes: Array[String] = []
+	for slot in _sign_slots:
+		if slot.visible:
+			notes.append(slot.tooltip_text)
+	return notes
+
+
+func _place_signs() -> void:
+	if _signs_panel == null:
+		return
+	var top := TOP_BAR_HEIGHT + 4.0
+	if _goal_panel.visible:
+		top += _goal_panel.get_combined_minimum_size().y + 4.0
+	if _stronghold_panel.visible:
+		top += STRONGHOLD_CHIP_SIZE.y + 4.0
+	_signs_panel.offset_top = top
+	_signs_panel.size = SIGNS_CHIP_SIZE
 
 
 ## 拠点の札の文（見出しと、陣営ごとの印。出ていなければ空。検査用）。
@@ -947,6 +1003,7 @@ func top_tag_rects() -> Array[Rect2]:
 		_goal_panel.get_global_rect() if _goal_panel.visible else Rect2(),
 		_guide_panel.get_global_rect() if _guide_panel.visible else Rect2(),
 		_stronghold_panel.get_global_rect() if _stronghold_panel.visible else Rect2(),
+		_signs_panel.get_global_rect() if _signs_panel.visible else Rect2(),
 	]
 
 
@@ -1357,6 +1414,48 @@ func _build_top_bar() -> void:
 		marks.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		stronghold_row.add_child(marks)
 		_stronghold_marks.append(marks)
+
+	# 縫い目の様子の札の帯（選べる決まり）。拠点の札の下に、決まった大きさで出す。札 1 枚ごとに印と名前、マウスを乗せると効果の文。
+	_signs_panel = PanelContainer.new()
+	var signs_style := StyleBoxFlat.new()
+	signs_style.set_corner_radius_all(4)
+	signs_style.set_border_width_all(1)
+	signs_style.bg_color = COLOR_GOAL
+	signs_style.border_color = COLOR_GOAL_BORDER
+	signs_style.content_margin_left = 8.0
+	signs_style.content_margin_right = 8.0
+	_signs_panel.add_theme_stylebox_override("panel", signs_style)
+	_signs_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_signs_panel.offset_left = 6.0
+	_signs_panel.custom_minimum_size = SIGNS_CHIP_SIZE
+	_signs_panel.size = SIGNS_CHIP_SIZE
+	_signs_panel.clip_contents = true
+	_signs_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_signs_panel.visible = false
+	add_child(_signs_panel)
+	Steady.mark(_signs_panel, "battle.signs_chip")
+	var signs_row := HBoxContainer.new()
+	signs_row.add_theme_constant_override("separation", 8)
+	signs_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_signs_panel.add_child(signs_row)
+	for i in Seam.DRAWN:
+		var slot := HBoxContainer.new()
+		slot.add_theme_constant_override("separation", 6)
+		slot.custom_minimum_size = Vector2(SIGN_SLOT_WIDTH, 0.0)
+		slot.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると効果の文
+		signs_row.add_child(slot)
+		var mark := SignMark.new(-1, SIGN_MARK_SIDE)
+		slot.add_child(mark)
+		var name := _label(16)
+		name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		name.clip_text = true
+		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name.add_theme_color_override("font_color", COLOR_FORECAST)
+		slot.add_child(name)
+		_sign_slots.append(slot)
+		_sign_marks.append(mark)
+		_sign_names.append(name)
 
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。小さく 1 行だけ。
 	var help_panel := _panel()

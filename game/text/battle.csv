@@ -155,7 +155,7 @@ battle.cell.plain,平地
 battle.cell.obstacle,障害物
 battle.cell.obstacle.note,入れない
 battle.cell.forest,森
-battle.cell.forest.note,移動 2・受けるダメージ 0.8 倍
+battle.cell.forest.note,移動 2・受けるダメージ {rate} 倍
 battle.cell.font,結晶泉
 battle.cell.hq,{side}の本陣
 battle.cell.barrel,起爆樽
@@ -421,3 +421,5 @@ result.setup,対戦設定へ
 result.squad,部隊変更
 result.prompt_title,Enter: タイトルへ
 battle.hud.monster,魔物
+battle.hud.sign_note,{name}: {summary}
+battle.notice.signs,縫い目の様子: {names}

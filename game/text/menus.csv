@@ -131,3 +131,9 @@ deploy.note.none_read_only,駒にマウスを乗せていない
 deploy.note.selected,選択中
 deploy.note.hovered,マウスを乗せた駒
 deploy.note.role_level,{role}　レベル {level}
+setup.caption.seam,縫い目の様子
+setup.rule.seam.note,対戦ごとに条件の札が 2 枚めくられ、見てから部隊を選ぶ
+signs.title,縫い目の様子
+signs.lead,この対戦のあいだ、両軍にずっと効く
+signs.to_setup,対戦設定へ
+signs.cpu_deck,札を見て選んだ部隊（コスト {cost} / {budget}）

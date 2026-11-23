@@ -19,6 +19,7 @@ const BattleHud := preload("res://game/battle_hud.gd")
 const Names := preload("res://game/names.gd")
 const BattleSource := preload("res://game/battle_source.gd")
 const MatchSetupPanel := preload("res://game/match_setup_panel.gd")
+const SignsWindow := preload("res://game/signs_window.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const Autoplay := preload("res://game/autoplay.gd")
@@ -118,6 +119,9 @@ var _views := {}  # 駒の番号 -> UnitView
 var _people := {}
 var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
+## 縫い目の様子の札がめくられる窓（signs_window.gd）と、それを出していて、対戦の番をまだ始めていないか。
+var _signs_window: SignsWindow
+var _signs_pending := false
 var _unit_detail: UnitDetail
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D
@@ -260,10 +264,18 @@ func _ready() -> void:
 	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
-	_setup_panel.cancelled.connect(_refresh)
+	_setup_panel.cancelled.connect(func() -> void:
+		_refresh()
+		if _signs_pending:  # 札の窓から開いた対戦設定を閉じたら、札の窓へ戻る（対戦の番はまだ始まっていない）
+			_signs_window.open(source, map_seed, battle.signs))
 	_setup_panel.map_pressed.connect(func(choice: RefCounted) -> void:
 		context.match_choice = choice
 		finished.emit(&"map_select"))
+	_signs_window = SignsWindow.new()
+	_hud.add_child(_signs_window)
+	_signs_window.setup(TEAM_COLORS, context.decks, context.overlays)
+	_signs_window.started.connect(_on_signs_started)
+	_signs_window.setup_requested.connect(open_setup)
 	_log_panel = LogPanel.new()
 	add_child(_log_panel)
 	_log_panel.setup(TEAM_COLORS, context.overlays)
@@ -397,13 +409,48 @@ func _unhandled_input(event: InputEvent) -> void:
 ## 渡されたもの（source）が作る種 battle_seed の対戦設定で、盤面を作り、軍を置いて、最初から始める。
 ## 対戦はルールの入口（MatchSetup.create_battle）で作る。相手を CPU が動かすかも、その設定から決める。
 ## 再生の途中と CPU の番の間は何もしない。
-func start_battle(battle_seed: int) -> void:
+## 縫い目の様子（source.shows_signs()）の対戦なら、まず札がめくられる窓（signs_window.gd）を出す。後ろには、いまの選択の部隊で作った盤を置いておき、
+## 番を始めない。窓の「対戦開始」で、選び直した部隊で同じ種の対戦を作り直して始める（signs_chosen が真で呼び直す）。
+func start_battle(battle_seed: int, signs_chosen := false) -> void:
 	if is_busy():
 		return
 	var setup := source.make_setup(battle_seed)
 	cpu_opponent = setup.is_cpu(source.cpu_side())
 	_show_opponent()
-	start_with(setup.create_battle(), source.look(), battle_seed, setup.scenario.title)
+	var created := setup.create_battle()
+	var hold := not signs_chosen and source.shows_signs() and not created.signs.is_empty()
+	_signs_pending = hold
+	start_with(created, source.look(), battle_seed, setup.scenario.title, hold)
+	if hold:
+		_signs_window.open(source, battle_seed, created.signs)
+
+
+## 札がめくられる窓の「対戦開始」: 選び直したものを、これからの対戦の選択にして、同じ種で始める。
+func _on_signs_started(chosen: RefCounted) -> void:
+	_signs_pending = false
+	source = chosen
+	context.match_choice = chosen.copy()
+	start_battle(map_seed, true)
+
+
+## 札がめくられる窓を出しているか、出す途中か（対戦の番は、まだ始まっていない）。
+func signs_pending() -> bool:
+	return _signs_pending
+
+
+## 札がめくられる窓（検査用）。
+func signs_window() -> SignsWindow:
+	return _signs_window
+
+
+## 上の帯の下の、縫い目の様子の札の帯の文（札の名前。出ていなければ空。検査用）。
+func signs_text() -> String:
+	return _hud.signs_text()
+
+
+## CPU の番を進めている途中か（検査用）。
+func is_cpu_running() -> bool:
+	return _ui.cpu_running
 
 
 ## マップを field（versus_fields.gd の鍵）に替えて、新しい対戦を始める（F1〜F3、決着の画面の「新しいマップ」）。
@@ -429,7 +476,8 @@ func _start_on_nth_field(index: int) -> void:
 func open_setup() -> void:
 	if is_busy() or not source.can_open_setup():
 		return
-	_setup_panel.open(source, _battle_started, _battle_started and not battle.is_over())
+	# 札の窓から開いたとき（対戦の番はまだ始まっていない）は、始めても失われるものが無いので、確かめない。
+	_setup_panel.open(source, _battle_started, _battle_started and not battle.is_over() and not _signs_pending)
 
 
 ## 対戦設定画面（検査用）。
@@ -447,7 +495,8 @@ func _on_setup_chosen(chosen: RefCounted) -> void:
 
 ## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中と CPU の番の間は何もしない。
 ## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「マップ」（空なら出さない）。
-func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, battle_area := "") -> void:
+## hold が真なら、盤と駒を置くだけで、番の知らせ・始めの知らせ・台詞・CPU の番は始めない（縫い目の様子の札を見せている間）。
+func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, battle_area := "", hold := false) -> void:
 	if is_busy():
 		return
 	look = battle_look
@@ -511,9 +560,14 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	context.play_scene_music(source.music())
 	_climax_kings = SoundCatalog.kings_of(battle)
 	_climax = false
-	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
+	_hud.show_signs(battle.signs)
 	_cues = source.talk_cues()
 	_talk.clear()
+	if hold:
+		_hud.show_notice([] as Array[String])
+		_refresh()
+		return
+	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_say(_cues.on_start(battle))
 	# 拠点・砲台のある対戦では、対戦の始め（ターン 1）に 1 回だけ知らせる。途中から見せる対戦では出さない。
 	var notice: Array[String] = []
