@@ -99,11 +99,17 @@ func _literal_keys(all := false) -> Dictionary:
 	return keys
 
 
+## 道具のファイル（res://tools/ の下。分けた先のディレクトリ（tools/shots/ など）も見る）。
 func _tool_files() -> Array[String]:
 	var files: Array[String] = []
-	for file: String in DirAccess.get_files_at("res://tools/"):
-		if file.ends_with(".gd"):
-			files.append("res://tools/" + file)
+	var dirs: Array[String] = ["res://tools/"]
+	while not dirs.is_empty():
+		var dir: String = dirs.pop_back()
+		for sub: String in DirAccess.get_directories_at(dir):
+			dirs.append(dir + sub + "/")
+		for file: String in DirAccess.get_files_at(dir):
+			if file.ends_with(".gd"):
+				files.append(dir + file)
 	return files
 
 
