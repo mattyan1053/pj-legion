@@ -104,12 +104,13 @@ func test_sign_summaries_say_no_base_value() -> void:
 		assert_true(summary.length() <= 24, "%s: %d 字" % [summary, summary.length()])
 
 
-func test_start_notice_names_the_signs() -> void:
+func test_start_notice_has_a_card_per_sign() -> void:
 	var battle := Battle.new(Maps.board(["...."]))
 	Seam.arm(battle, [Seam.Sign.GALE, Seam.Sign.GLEAM] as Array[int])
-	var notice := BattleTexts.rule_notice(battle)
-	assert_true(notice.any(func(line: String) -> bool: return line.contains(Names.sign_name(Seam.Sign.GALE)) and line.contains(Names.sign_name(Seam.Sign.GLEAM))))
-	assert_false(BattleTexts.rule_notice(Battle.new(Maps.board(["...."]))).any(func(line: String) -> bool: return line.contains("縫い目")))
+	var signs := BattleTexts.rule_cards(battle, Unit.Side.PLAYER1).filter(func(card: Array) -> bool: return card[0] == &"sign")
+	assert_eq(signs.map(func(card: Array) -> int: return card[1]), [Seam.Sign.GALE, Seam.Sign.GLEAM])
+	assert_eq(signs[0][2], Names.sign_name(Seam.Sign.GALE))
+	assert_false(BattleTexts.rule_cards(Battle.new(Maps.board(["...."])), Unit.Side.PLAYER1).any(func(card: Array) -> bool: return card[0] == &"sign"))
 
 
 func test_forest_note_follows_the_thicket() -> void:

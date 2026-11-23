@@ -154,10 +154,11 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_talk.clear()
 	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_say(_cues.on_start(battle))
-	# 拠点・砲台のある対戦では、対戦の始め（ターン 1）に 1 回だけ知らせる。途中から見せる対戦では出さない。
-	var notice: Array[String] = []
+	# 対戦の始め（ターン 1）に 1 回だけ、「対戦ルール」（勝利条件と縫い目の様子）を出す。どのモードも（ストーリーは前の会話のあと）。
+	# 人が動かす側から見る（人どうしは先手から。対戦モードは両方とも同じ勝ち方）。途中から見せる対戦では出さない。
+	var notice: Array[Array] = []
 	if battle.turn == 1:
-		notice = BattleTexts.rule_notice(battle)
+		notice = BattleTexts.rule_cards(battle, _human_side() if cpu_opponent else Unit.Side.PLAYER1)
 	_hud.show_notice(notice)
 	_refresh()
 	_run_cpu()

@@ -194,7 +194,15 @@ func _two_signs_battle() -> void:
 
 func _scene_signs_start() -> bool:
 	_two_signs_battle()
-	return _scene.notice_text().contains("縫い目の様子") and _scene.signs_text() != ""
+	return _scene.notice_text().split("\n").size() >= 5 and _scene.signs_text() != ""
+
+
+## 対戦モードの既定（拠点あり）の対戦の始めの「対戦ルール」（縫い目の様子の無い種）。
+func _scene_rules_notice() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD])
+	_show()
+	return _scene.notice_text().contains("将の撃破") and _scene.notice_text().contains("拠点の確保") and _scene.notice_cut_texts().is_empty()
 
 
 ## 対戦中に、上の帯の下の札の名前をクリックしたところ（札 1 枚の窓に、印・名前・効果）。

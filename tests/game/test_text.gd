@@ -55,6 +55,7 @@ const FAMILIES := {
 const SCREEN_FAMILIES := {
 	"battle.goal.win": [GameWonEvent.Reason, ["", ".last"]],
 	"battle.goal.lose": [GameWonEvent.Reason, ["", ".last"]],
+	"battle.goal.name": [GameWonEvent.Reason, [""]],
 	"stats.ending": [BattleStats.Ending, [""]],
 	"side.story": [{"PLAYER1": 0, "PLAYER2": 1}, [""]],
 	"setup.rule": [{"STRONGHOLD": 1, "SEAM": 3}, [".note"]],

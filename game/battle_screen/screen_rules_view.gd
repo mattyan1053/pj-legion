@@ -48,9 +48,14 @@ func _sync_stronghold_flag() -> void:
 	_board_view.set_stronghold_progress(holds, Stronghold.HOLDS_TO_WIN, color, blocked)
 
 
-## 対戦の始めの知らせの文（出ていなければ空。検査用）。
+## 対戦の始めの「対戦ルール」の文（札ごとに 1 行。出ていなければ空。検査用）。
 func notice_text() -> String:
 	return _hud.notice_text()
+
+
+## 「対戦ルール」の札のうち、説明が欄からはみ出しているもの（検査用）。
+func notice_cut_texts() -> Array[String]:
+	return _hud.notice_cut_texts()
 
 
 ## 拠点の竿の上の札の文（検査用）。
