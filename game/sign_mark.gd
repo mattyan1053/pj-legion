@@ -2,7 +2,7 @@ extends Control
 ## 縫い目の様子の札（Seam.Sign）の印。絵は使わず、ここで描く（docs/seam-signs.md、docs/ui-theme.md）。
 ## 暗い丸い札の上に、生成りの形。札ごとに形で見分ける（色は陣営・国・危険などの意味に取ってあるので、付けない）。
 ## - 天裂の名残り: 霞（3 本の波）　- 糸の満ち: 満ちる器　- 糸のゆるみ: たるんだ糸　- 骨の眠り: 閉じた目
-## - 仮縫いのずれ: 入れ違う 2 本の矢　- 宵闇: 三日月　- 癒やしの糸: 縫い目の十字　- 深い茂み: 木立　- 張りつめた糸: 張った糸と留め
+## - 仮縫いのずれ: 入れ違う 2 本の矢　- 縫い代の風: 流れる 3 本の風　- 天裂の光: 裂け目から射す光　- 深い茂み: 木立　- 張りつめた糸: 張った糸と留め
 
 const Palette := preload("res://game/ui_palette.gd")
 
@@ -63,13 +63,17 @@ func _draw() -> void:
 			draw_line(p.call(0.26, 0.66), p.call(0.72, 0.34), ink, line, true)
 			_head(p.call(0.74, 0.67), Vector2(1.0, 0.7).normalized(), s * 0.13, ink)
 			_head(p.call(0.74, 0.33), Vector2(1.0, -0.7).normalized(), s * 0.13, ink)
-		Seam.Sign.DUSK:
-			draw_circle(p.call(0.5, 0.5), s * 0.24, ink)
-			draw_circle(p.call(0.6, 0.44), s * 0.21, Palette.INK if plate else Palette.PANEL)
-		Seam.Sign.MEND:
-			draw_line(p.call(0.5, 0.24), p.call(0.5, 0.76), ink, line, true)
-			for y: float in [0.34, 0.5, 0.66]:
-				draw_line(p.call(0.36, y - 0.04), p.call(0.64, y + 0.04), ink, line * 0.8, true)
+		Seam.Sign.GALE:
+			for row: Array in [[0.34, 0.22, 0.7], [0.5, 0.3, 0.78], [0.66, 0.22, 0.62]]:
+				var y: float = row[0]
+				draw_line(p.call(row[1], y), p.call(row[2], y), ink, line, true)
+				draw_arc(p.call(row[2], y - 0.06), s * 0.06, -PI / 2.0, PI / 2.0, 8, ink, line, true)
+		Seam.Sign.GLEAM:
+			draw_line(p.call(0.5, 0.2), p.call(0.5, 0.44), ink, line * 1.4, true)
+			for i in 5:
+				var angle := PI * (0.15 + 0.175 * i)
+				var from: Vector2 = p.call(0.5, 0.48) + Vector2(cos(angle), sin(angle)) * s * 0.06
+				draw_line(from, from + Vector2(cos(angle), sin(angle)) * s * 0.22, ink, line, true)
 		Seam.Sign.THICKET:
 			for x: float in [0.35, 0.65]:
 				draw_colored_polygon(PackedVector2Array([p.call(x, 0.24), p.call(x + 0.15, 0.62), p.call(x - 0.15, 0.62)]), ink)

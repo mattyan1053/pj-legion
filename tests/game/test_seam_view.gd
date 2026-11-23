@@ -151,7 +151,7 @@ func test_signs_chip_shows_names_and_notes_and_keeps_its_size() -> void:
 	hud.show_signs([] as Array[int])
 	assert_eq(hud.signs_text(), "", "札の無い対戦では出さない")
 	var sizes := {}
-	for pair: Array in [[Seam.Sign.HAZE, Seam.Sign.BRIM], [Seam.Sign.THICKET, Seam.Sign.TAUT], [Seam.Sign.SHIFT, Seam.Sign.MEND]]:
+	for pair: Array in [[Seam.Sign.HAZE, Seam.Sign.BRIM], [Seam.Sign.THICKET, Seam.Sign.TAUT], [Seam.Sign.SHIFT, Seam.Sign.GLEAM]]:
 		var signs: Array[int] = []
 		signs.assign(pair)
 		hud.show_signs(signs)
@@ -165,9 +165,9 @@ func test_signs_chip_shows_names_and_notes_and_keeps_its_size() -> void:
 
 func test_start_notice_names_the_signs() -> void:
 	var battle := Battle.new(Maps.board(["...."]))
-	Seam.arm(battle, [Seam.Sign.DUSK, Seam.Sign.MEND] as Array[int])
+	Seam.arm(battle, [Seam.Sign.GALE, Seam.Sign.GLEAM] as Array[int])
 	var notice := BattleTexts.rule_notice(battle)
-	assert_true(notice.any(func(line: String) -> bool: return line.contains(Names.sign_name(Seam.Sign.DUSK)) and line.contains(Names.sign_name(Seam.Sign.MEND))))
+	assert_true(notice.any(func(line: String) -> bool: return line.contains(Names.sign_name(Seam.Sign.GALE)) and line.contains(Names.sign_name(Seam.Sign.GLEAM))))
 	assert_false(BattleTexts.rule_notice(Battle.new(Maps.board(["...."]))).any(func(line: String) -> bool: return line.contains("縫い目")))
 
 
