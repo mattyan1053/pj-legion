@@ -202,6 +202,11 @@ func test_a_barrel_can_set_off_an_eater() -> void:
 	assert_eq(_of_type(result.events, BurstEvent).size(), 1)
 	var defeated := _of_type(result.events, UnitDefeatedEvent)
 	assert_eq(defeated.size(), 2, "2 体とも 1 回ずつ倒れる")
+	var burst: BurstEvent = _of_type(result.events, BurstEvent)[0]
+	assert_false(burst.victim_ids.has(both.id), "同じ爆発で倒れた駒に、2 度当てない")
+	var hits_on_both := _of_type(result.events, ExplosionDamagedEvent).filter(
+		func(event: ExplosionDamagedEvent) -> bool: return event.unit_id == both.id)
+	assert_eq(hits_on_both.size(), 1)
 
 
 ## 予測に、弾けて巻き込まれる駒が入る（倒した駒自身も）。
