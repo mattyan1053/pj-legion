@@ -8,6 +8,7 @@ const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const GoalMark := preload("res://game/goal_mark.gd")
 const SignMark := preload("res://game/sign_mark.gd")
+const TextWrap := preload("res://game/text_wrap.gd")
 
 ## 札の大きさ（px）と、印の大きさ。
 const SIZE := Vector2(214.0, 92.0)
@@ -17,11 +18,18 @@ const NAME_FONT := 18
 const NAME_FONT_MIN := 13
 ## 名前と説明の欄の幅（札の幅から、印と間と縁を引いたもの）。
 const TEXT_WIDTH := SIZE.x - MARK_SIDE - 40.0
+## 説明の字の大きさと、行の数の上限。説明は語の途中で切らずに折り返す（text_wrap.gd。tools/wrap_audit.gd が全部の文を見る）。
+## 欄は狭いので、行の数の上限に収まらないか語の途中で切れるなら、収まるまで字を小さくする（下限 LINE_FONT_MIN）。
+const LINE_FONT := 13
+const LINE_FONT_MIN := 11
+const LINE_MAX_LINES := 2
 
 var _goal_mark: GoalMark
 var _sign_mark: SignMark
 var _name: Label
 var _line: Label
+## 説明の、折り返す前の文（検査用）。
+var _line_plain := ""
 
 
 func _init() -> void:
@@ -51,10 +59,10 @@ func _init() -> void:
 	_name.clip_text = true
 	column.add_child(_name)
 	_line = Label.new()
-	_line.add_theme_font_size_override("font_size", 13)
+	_line.add_theme_font_override("font", UiTheme.FONT_BODY)  # 折り返しを測る字と同じに
+	_line.add_theme_font_size_override("font_size", LINE_FONT)
 	_line.add_theme_color_override("font_color", Palette.TEXT_DIM)
-	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_line.max_lines_visible = 2
+	_line.max_lines_visible = LINE_MAX_LINES
 	_line.custom_minimum_size = Vector2(TEXT_WIDTH, 0.0)
 	column.add_child(_line)
 
@@ -65,7 +73,7 @@ func show_goal(reason: int, title: String, line: String) -> void:
 	_goal_mark.visible = true
 	_sign_mark.visible = false
 	_set_name(title)
-	_line.text = line
+	_set_line(line)
 
 
 ## 縫い目の様子の札（sign は Seam.Sign の値）。
@@ -74,12 +82,35 @@ func show_sign(sign: int, title: String, line: String) -> void:
 	_sign_mark.visible = true
 	_goal_mark.visible = false
 	_set_name(title)
-	_line.text = line
+	_set_line(line)
 
 
 ## 見せている文（名前と説明。検査用）。
 func shown_text() -> String:
-	return "%s %s" % [_name.text, _line.text]
+	return "%s %s" % [_name.text, _line_plain]
+
+
+## 説明を、欄の幅で語の途中を切らずに折り返して置く。
+func _set_line(line: String) -> void:
+	_line_plain = line
+	var fitted := fold_line(line, UiTheme.FONT_BODY)
+	_line.add_theme_font_size_override("font_size", fitted[0])
+	_line.text = fitted[1]
+
+
+## 説明 line を欄に置くときの [字の大きさ, 折り返した文]: LINE_FONT から字を小さくしていき、
+## 行の数の上限に収まって語の途中で切らない、いちばん大きな字で（下限でも収まらなければ下限で）。
+static func fold_line(line: String, font: Font) -> Array:
+	var font_size := LINE_FONT
+	while true:
+		var size := font_size
+		var measure := func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var folded := TextWrap.fold(line, TEXT_WIDTH, measure)
+		var clean := folded.count("\n") < LINE_MAX_LINES and TextWrap.bad_breaks(line, TEXT_WIDTH, measure).is_empty()
+		if clean or font_size <= LINE_FONT_MIN:
+			return [font_size, folded]
+		font_size -= 1
+	return []
 
 
 ## 名前を置き、欄に収まる字の大きさにする（枠の大きさは変えない）。
