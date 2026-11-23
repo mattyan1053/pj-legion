@@ -16,7 +16,7 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		if unit.cell == cell:
 			value += HQ_HOLD_VALUE * _battle.capture_turns[_me]
 	if cell == _my_hq and _hq_in_danger and UnitKind.role(unit.kind) != UnitKind.Role.RAIDER:
-		value += HQ_GUARD_VALUE
+		value += HQ_GUARD_VALUE * (1.0 - _bold)
 	if not _support.is_empty():
 		var apart := _FAR
 		for friend_cell in _support:
@@ -83,6 +83,7 @@ func _set_goal(unit: Unit) -> void:
 	var bold := clampf(float(_battle.turn - BOLD_FROM_TURN) / (BOLD_BY_TURN - BOLD_FROM_TURN), 0.0, 1.0)
 	if _rushing:
 		bold = 1.0  # 守り切られる前に、踏み込む
+	_bold = bold
 	_idle_danger_weight = lerpf(style[_IDLE_DANGER], minf(style[_DANGER], style[_IDLE_DANGER]), bold)
 	_lethal_penalty = style[_LETHAL]
 	_stand_off = role == UnitKind.Role.REARGUARD
