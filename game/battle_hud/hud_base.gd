@@ -14,6 +14,7 @@ const SystemMenu := preload("res://game/system_menu.gd")
 const Steady := preload("res://game/steady.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
 const SignMark := preload("res://game/sign_mark.gd")
+const SignCard := preload("res://game/sign_card.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
@@ -164,6 +165,10 @@ var _signs_panel: PanelContainer
 var _sign_slots: Array[Control] = []
 var _sign_marks: Array[SignMark] = []
 var _sign_names: Array[Label] = []
+## 札の名前をクリックすると出す、札 1 枚の窓（決まった大きさ。sign_card.gd）と、出している札の位置（出していなければ -1）。
+var _sign_note: PanelContainer
+var _sign_note_card: SignCard
+var _sign_note_index := -1
 ## 対戦の始めの知らせ（選べる決まり。見出し、決まりごとの行、閉じるボタン）。
 var _notice: PanelContainer
 var _notice_body: Label

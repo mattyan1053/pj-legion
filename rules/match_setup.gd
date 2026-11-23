@@ -159,7 +159,7 @@ func create_battle() -> Battle:
 		Stronghold.arm(board, battle_seed)
 	var battle := Battle.new(board, battle_seed)
 	battle.formation = rules.has(OptionalRules.FORMATION)
-	if rules.has(OptionalRules.SEAM):
+	if not drawn.is_empty():
 		Seam.arm(battle, drawn)  # 拠点を置いたあと（ポータルの対を替えても、拠点のマスは動かない）。駒を置く前
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var placement: Array[Vector2i] = []
@@ -177,9 +177,12 @@ func create_battle() -> Battle:
 	return battle
 
 
-## 縫い目の様子（OptionalRules.SEAM）が入なら、この設定の対戦でめくる札（Seam.draw。盤と種で決まる）。切なら空。
-## 盤を作るので、画面が札を見せる（部隊を選ぶ前）ときにも呼べる（編成が無くてもよい）。
+## この設定の対戦の縫い目の様子。戦いの定義が様子を決めていれば（ストーリーの話）それ、
+## 無ければ、縫い目の様子（OptionalRules.SEAM。対戦モードのランダム）が入ならめくる札（Seam.draw。盤と種で決まる）。どちらでもなければ空。
+## 盤を作るので、対戦を作る前にも呼べる（編成が無くてもよい）。
 func signs() -> Array[int]:
+	if not scenario.signs.is_empty():
+		return scenario.signs.duplicate()
 	if not rules.has(OptionalRules.SEAM):
 		return []
 	var board := scenario.make_board(battle_seed)
@@ -187,6 +190,8 @@ func signs() -> Array[int]:
 
 
 func _signs_on(board: Board) -> Array[int]:
+	if not scenario.signs.is_empty():
+		return scenario.signs.duplicate()
 	if not rules.has(OptionalRules.SEAM):
 		return []
 	return Seam.draw(board, battle_seed)

@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 縫い目の様子（選べる決まり。docs/seam-signs.md）: めくる札、札ごとの効果、切のときは何も変わらないこと、CPU の部隊の選び方。
+## 縫い目の様子（docs/seam-signs.md）: めくる札の数と札、話が決めた様子、札ごとの効果、切のときは何も変わらないこと。
 
 const Maps := preload("res://tests/support/maps.gd")
 
@@ -45,13 +45,14 @@ func test_off_has_no_signs_and_changes_no_unit() -> void:
 # --- めくる ---
 
 
-func test_two_signs_are_drawn_from_the_seed_and_match_the_battle() -> void:
+func test_signs_are_drawn_from_the_seed_and_match_the_battle() -> void:
 	for stage in STAGES:
-		for battle_seed in range(1, 4):
+		for battle_seed in range(1, 8):
 			var setup := _setup(stage, battle_seed, [OptionalRules.SEAM])
 			var signs := setup.signs()
-			assert_eq(signs.size(), Seam.DRAWN)
-			assert_ne(signs[0], signs[1])
+			assert_eq(signs.size(), Seam.draw_count(battle_seed))
+			if signs.size() == 2:
+				assert_ne(signs[0], signs[1])
 			assert_eq(setup.signs(), signs, "同じ種なら同じ札")
 			assert_eq(setup.create_battle().signs, signs, "対戦に入る札は、見せた札と同じ")
 
@@ -63,7 +64,7 @@ func test_drawn_signs_never_clash_and_skip_signs_that_do_not_apply() -> void:
 		var board := BoardGenerator.generate(stage, 1)
 		for battle_seed in range(1, 301):
 			var signs := Seam.draw(board, battle_seed)
-			assert_eq(signs.size(), Seam.DRAWN)
+			assert_eq(signs.size(), Seam.draw_count(battle_seed))
 			assert_false(signs.has(S.LOOSE) and signs.has(S.HUSH), "マップ %d 種 %d" % [stage, battle_seed])
 			for sign in signs:
 				seen[sign] = true
@@ -83,6 +84,33 @@ func test_drawing_does_not_move_the_battle_random() -> void:
 	var off := _setup(BoardGenerator.Stage.PLAIN, 5).create_battle()
 	var on := _setup(BoardGenerator.Stage.PLAIN, 5, [OptionalRules.SEAM]).create_battle()
 	assert_eq(on.rng.state, off.rng.state)
+
+
+func test_the_count_follows_the_weights() -> void:
+	var counts := [0, 0, 0]
+	for battle_seed in range(1, 401):
+		counts[Seam.draw_count(battle_seed)] += 1
+	# 重み 1 : 2 : 1（DRAW_WEIGHTS）。400 局でおよそ 100 : 200 : 100。
+	assert_eq(Seam.DRAW_WEIGHTS.size(), Seam.DRAWN + 1)
+	assert_true(counts[0] > 60 and counts[0] < 140 and counts[1] > 150 and counts[2] > 60 and counts[2] < 140, str(counts))
+
+
+func test_a_scenario_with_signs_always_has_them() -> void:
+	# ストーリーの話のファイルが様子を決めた戦い: 決まり（OptionalRules.SEAM）に依らず、いつもその様子。
+	var defined := Scenario.versus(BoardGenerator.Stage.PLAIN)
+	defined.signs = [S.GALE, S.TAUT] as Array[int]
+	for battle_seed in range(1, 6):
+		var setup := MatchSetup.humans_on(defined, battle_seed, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY))
+		assert_eq(setup.signs(), [S.GALE, S.TAUT] as Array[int])
+		assert_eq(setup.create_battle().signs, [S.GALE, S.TAUT] as Array[int])
+
+
+func test_keys_read_back_to_signs() -> void:
+	var wrong: Array[String] = []
+	assert_eq(Seam.from_keys(PackedStringArray(["gale", " taut"]), wrong), [S.GALE, S.TAUT] as Array[int])
+	assert_eq(wrong, [] as Array[String])
+	assert_eq(Seam.from_keys(PackedStringArray(["loose", "hush", "fog", "loose"]), wrong), [S.LOOSE] as Array[int])
+	assert_eq(wrong, ["hush", "fog", "loose"] as Array[String], "打ち消し合う札、知らない鍵、重なる札")
 
 
 func test_keys_name_every_sign() -> void:
@@ -182,21 +210,7 @@ func test_shift_on_the_twin_springs_keeps_every_portal_paired() -> void:
 	_fail("仮縫いのずれの局が見つからない", "")
 
 
-# --- CPU の部隊の選び方 ---
-
-
-func test_cpu_picks_the_squad_that_suits_the_signs() -> void:
-	var snipers := Deck.new(UnitKind.Army.MILITARY)
-	snipers.add(K.SNIPER)
-	snipers.add(K.SNIPER)
-	var raiders := Deck.new(UnitKind.Army.MILITARY)
-	raiders.add(K.COMMANDO)
-	raiders.add(K.SHIELD_TROOPER)
-	var candidates: Array[Deck] = [snipers, raiders]
-	assert_eq(CpuDeck.pick_for_signs(candidates, []), snipers, "札が部隊を選ばなければ、先頭")
-	assert_eq(CpuDeck.pick_for_signs(candidates, [S.HAZE]), raiders, "霞の日は、スナイパーの少ない部隊")
-	assert_eq(CpuDeck.pick_for_signs(candidates, [S.GLEAM]), snipers, "天裂の光は、後衛の多い部隊")
-	assert_eq(CpuDeck.pick_for_signs(candidates, [S.BRIM]), snipers, "どの部隊にも同じに効く札は、先頭")
+# --- CPU ---
 
 
 ## 天裂の名残りと砲台が重なっても、CPU の「動いた先の射程」は、その先の実際の射程と同じ（Codex の指摘。#400）。

@@ -135,17 +135,16 @@ static func formation_summary(effect: Formation.Effect) -> String:
 	return Text.t("formation.%s.summary" % word(Formation.Effect, effect), args)
 
 
-## 縫い目の様子の札（Seam.Sign）の名前と、効果の文（1〜2 行。docs/seam-signs.md）。
+## 縫い目の様子の札（Seam.Sign）の名前と、効果の文（短く言い切る 1 行。比べる元の値は書かない。docs/seam-signs.md）。
 static func sign_name(sign: int) -> String:
 	return Text.t("sign." + Seam.key(sign))
 
 
 static func sign_summary(sign: int) -> String:
 	var args := {
-		"haze_from": Seam.HAZE_FROM, "haze_cut": Seam.HAZE_CUT, "brim": Seam.BRIM_PERCENT,
-		"loose": Seam.LOOSE_RESPAWN_PERCENT, "respawn": Neutral.RESPAWN_CHANCE_PERCENT, "gale": Seam.GALE_CRUISE,
-		"gleam": Seam.GLEAM_RANGE, "thicket": Seam.THICKET_RATE_PERCENT, "forest": Combat.FOREST_DAMAGE_RATE_PERCENT,
-		"taut": Seam.TAUT_CUT,
+		"haze_from": Seam.HAZE_FROM, "haze_cut": Seam.HAZE_CUT, "brim_times": String.num(Seam.BRIM_PERCENT / 100.0),
+		"loose": Seam.LOOSE_RESPAWN_PERCENT, "gale": Seam.GALE_CRUISE,
+		"gleam": Seam.GLEAM_RANGE, "thicket_times": String.num(Seam.THICKET_RATE_PERCENT / 100.0), "taut": Seam.TAUT_CUT,
 	}
 	return Text.t("sign.%s.summary" % Seam.key(sign), args)
 

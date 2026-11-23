@@ -1,9 +1,10 @@
 class_name Seam
 extends RefCounted
-## 縫い目の様子（選べる決まり OptionalRules.SEAM。docs/seam-signs.md）。
+## 縫い目の様子（docs/seam-signs.md）。その対戦のマップに付く、気候のような効果。
 ##
-## 対戦ごとに、その日の縫い代の様子を表す札が DRAWN 枚めくられる。めくる札は対戦の種で決まり、両方のプレイヤーに同じものが見える。
-## 札は、その対戦のあいだずっと効く条件で、どちらのプレイヤーにも同じに効く。対戦中に切る操作は無い。
+## 対戦モードでは、選べる決まり OptionalRules.SEAM（既定は入 =「ランダム」）の対戦で、対戦ごとに 0〜DRAWN 個がめくられる（数も札も対戦の種で決まる）。
+## ストーリーでは、話のファイルが指定した様子（Scenario.signs）が、いつも付く。
+## 様子は、その対戦のあいだずっと効く条件で、どちらのプレイヤーにも同じに効く。対戦中に切る操作は無い。
 ## - 札の山は Sign の全部。その盤で効かない札（ポータルの無い盤の「仮縫いのずれ」など）は、山から抜く（applies）
 ## - 2 枚目は、1 枚目と打ち消し合わない札（CLASHES）から引く
 ## - めくるのは、対戦の乱数（Battle.rng）とは別の乱数（盤も、対戦の進みも変えない）
@@ -28,8 +29,10 @@ enum Sign {
 ## 札の鍵（画面の文の表、集計の道具、テストで使う）。Sign の順。
 const KEYS: Array[StringName] = [&"haze", &"brim", &"loose", &"hush", &"shift", &"gale", &"gleam", &"thicket", &"taut"]
 
-## 1 回の対戦でめくる札の数。
+## 1 回の対戦でめくる札の数の上限。
 const DRAWN := 2
+## めくる札の数（0, 1, …, DRAWN）の重み。何も付かない日も、1 つの日も、2 つの日もある（気候のように）。
+const DRAW_WEIGHTS: Array[int] = [1, 2, 1]
 
 ## 打ち消し合うので、同じ対戦に並べない札の組。
 const CLASHES: Array[Array] = [[Sign.LOOSE, Sign.HUSH], [Sign.HAZE, Sign.GLEAM]]
@@ -83,9 +86,25 @@ static func compatible(a: int, b: int) -> bool:
 	return true
 
 
-## 盤 board の、種 battle_seed の対戦でめくる札（DRAWN 枚。めくった順）。同じ盤と種なら、いつも同じ札。
+## 種 battle_seed の対戦でめくる札の数（0〜DRAWN。DRAW_WEIGHTS の重みで、種で決まる）。
+static func draw_count(battle_seed: int) -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([&"seam_count", battle_seed])
+	var total := 0
+	for weight in DRAW_WEIGHTS:
+		total += weight
+	var roll := rng.randi_range(0, total - 1)
+	for count in DRAW_WEIGHTS.size():
+		roll -= DRAW_WEIGHTS[count]
+		if roll < 0:
+			return count
+	return 0
+
+
+## 盤 board の、種 battle_seed の対戦でめくる札（draw_count 枚。めくった順）。同じ盤と種なら、いつも同じ札。
 ## 対戦の乱数とは別に引く。山の札が足りなければ、めくれただけ。
 static func draw(board: Board, battle_seed: int) -> Array[int]:
+	var count := draw_count(battle_seed)
 	var deck: Array[int] = []
 	for sign: int in Sign.values():
 		if applies(sign as Sign, board):
@@ -99,11 +118,23 @@ static func draw(board: Board, battle_seed: int) -> Array[int]:
 		deck[j] = held
 	var drawn: Array[int] = []
 	for sign in deck:
-		if drawn.size() >= DRAWN:
+		if drawn.size() >= count:
 			break
 		if drawn.all(func(other: int) -> bool: return compatible(other, sign)):
 			drawn.append(sign)
 	return drawn
+
+
+## 話のファイルの様子の並び names（鍵の並び）を札にする。知らない鍵、重なる札、打ち消し合う札があれば、その鍵を problems に足す。
+static func from_keys(names: PackedStringArray, problems: Array[String] = []) -> Array[int]:
+	var signs: Array[int] = []
+	for name in names:
+		var sign := from_key(StringName(name.strip_edges()))
+		if sign < 0 or not signs.all(func(other: int) -> bool: return compatible(other, sign)):
+			problems.append(name.strip_edges())
+			continue
+		signs.append(sign)
+	return signs
 
 
 ## 対戦 battle に札 signs を入れる（MatchSetup.create_battle が、駒を置く前に呼ぶ）。盤に効く札は、ここで盤を変える（arm_board）。
