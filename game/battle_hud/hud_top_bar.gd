@@ -6,13 +6,17 @@ extends "res://game/battle_hud/hud_base.gd"
 ## counts は陣営ごとの駒の数、captures は本陣の占拠の数（どちらも添字がプレイヤー番号）。
 ## capture_shown は陣営ごとの、占拠の数を出すか（本陣の占拠が勝ちの条件に無い陣営は出さない）。
 ## goal_tag は勝ち方の札（[ひとことの文, 目立たせるか]。文が空なら札を出さない）、goal_note は札にマウスを乗せると出る詳しい文。
+## goal_marks は札の文の前に並べる勝ち方の印（WinText.goal_tag_marks）。
 func set_status(
 	turn_text: String, phase: Unit.Side, counts: Array[int], captures: Array[int], capture_goal: int,
-	capture_shown: Array[bool] = [true, true], goal_tag: Array = ["", false], goal_note := "",
+	capture_shown: Array[bool] = [true, true], goal_tag: Array = ["", false], goal_note := "", goal_marks: Array[int] = [],
 ) -> void:
 	_turn_label.text = turn_text
 	_goal_panel.visible = goal_tag[0] != ""
 	_goal_label.text = goal_tag[0]
+	for i in _goal_marks.size():
+		_goal_marks[i].visible = i < goal_marks.size()
+		_goal_marks[i].reason = goal_marks[i] if i < goal_marks.size() else -1
 	_goal_panel.reset_size()  # 文が短くなったら、札も縮める
 	_goal_panel.tooltip_text = goal_note
 	_place_signs()
@@ -292,9 +296,18 @@ func _build_top_bar() -> void:
 	_goal_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_goal_panel.visible = false
 	add_child(_goal_panel)
+	var goal_row := HBoxContainer.new()
+	goal_row.add_theme_constant_override("separation", 6)
+	goal_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_goal_panel.add_child(goal_row)
+	for i in GOAL_TAG_MARKS:  # 勝ち方の印（「対戦ルール」・出撃準備と同じ印。goal_mark.gd）
+		var mark := GoalMark.new(-1, GOAL_MARK_SIDE)
+		mark.visible = false
+		goal_row.add_child(mark)
+		_goal_marks.append(mark)
 	_goal_label = _label(17)
 	_goal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_goal_panel.add_child(_goal_label)
+	goal_row.add_child(_goal_label)
 
 	# 拠点の札（選べる決まり）。勝ち方の札と同じ所（出ていれば、その下）に、決まった大きさで出す。
 	_stronghold_panel = PanelContainer.new()
@@ -318,6 +331,7 @@ func _build_top_bar() -> void:
 	stronghold_row.add_theme_constant_override("separation", 10)
 	stronghold_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stronghold_panel.add_child(stronghold_row)
+	stronghold_row.add_child(GoalMark.new(GameWonEvent.Reason.STRONGHOLD_HELD, GOAL_MARK_SIDE))  # 拠点の確保の印
 	_stronghold_caption = _label(17)
 	_stronghold_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stronghold_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
