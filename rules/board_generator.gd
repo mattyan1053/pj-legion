@@ -29,6 +29,9 @@ const MID_BOSS_SPREAD := 6
 const MID_BOSS_WALL_GAP := 4
 ## 双子結晶の砲台の場所（左上の角から、縦横にこれだけ内側。右下は点対称）。
 const BATTERY_CORNER := 7
+## 砲台を置く盤の種類（docs/map-objects.md の「砲台」）。CPU どうしの実測で、置いても先手と MILITARY が 45〜55% に収まる盤だけ。
+## ほかの盤も場所（Board.battery_spots）は持つ（拠点がそのマスを避けるので、砲台の有無で拠点は動かない）。
+const BATTERY_STAGES: Array[Stage] = [Stage.PLAIN]
 ## 迷宮回廊の回復の泉を、本陣の列から左右へ離す量と、真ん中の行から自分の本陣の側へ寄せる量。
 const SPRING_SPREAD := 5
 const SPRING_SETBACK := 7
@@ -126,7 +129,7 @@ static func battery_spots_for(stage: Stage, size: Vector2i) -> Array[Vector2i]:
 	return [first, hqs_sum - first]
 
 
-## 砲台を置く（選べる決まり OptionalRules.BATTERY が入の対戦だけ。MatchSetup.create_battle が呼ぶ）。
+## 場所（Board.battery_spots）に砲台を置く（BATTERY_STAGES の盤を作るとき、generate が呼ぶ）。
 ## 置ける場所（Board.battery_spots）が障害物なら平地にし、本陣から歩いて行けなければ道を削る。ほかの環境オブジェクトがあるマスには置かない。
 static func arm_batteries(board: Board) -> void:
 	for cell in board.battery_spots:
@@ -232,6 +235,9 @@ static func _place_objects(board: Board, stage: Stage, map_seed: int, protected:
 				var bottom := _free_cell_near(board, protected, Vector2i(x, board.size.y - 5))
 				if top != Board.NO_CELL and bottom != Board.NO_CELL:
 					board.add_portal_pair(top, bottom)
+	# 砲台はマップの物。置く盤の種類だけ、ほかの物を置いたあとに置く（ほかの物のマスには置かない）。
+	if BATTERY_STAGES.has(stage):
+		arm_batteries(board)
 
 
 ## 起爆樽を、中央の左右の帯（30 x 30 なら x:8〜10 と x:20〜22、y:10〜20）に、左右交互に置く。

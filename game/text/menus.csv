@@ -66,7 +66,7 @@ map_select.tag.hand,固定
 map_select.heading,マップ選択
 map_select.resume,マップ選択へ戻る
 map_select.choose,マップ選択
-field.plain.tags,広場 ・ 起爆樽
+field.plain.tags,広場 ・ 起爆樽 ・ 砲台
 field.plain.note,開けた平地。中央は遮るもののない広場で、まわりに岩と森が散らばる。\n中央の左右に起爆樽。正面からぶつかり合う、基本の戦場。
 field.labyrinth.tags,迷路 ・ 回復の泉
 field.labyrinth.note,格子に並んだ壁が通路を作る迷路。射線が通りにくく、本陣へは回り道になる。\n左右に回復の泉。遠くから撃つより、角を曲がって近づく駒が強い。
@@ -97,10 +97,8 @@ setup.side.random,ランダム
 setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から開始
 setup.caption.deck,部隊
 setup.caption.stronghold,拠点
-setup.caption.battery,砲台（試し）
 setup.rule.on,あり
 setup.rule.off,なし
-setup.rule.battery.note,後衛が乗ると射程 +{range}
 setup.rule.stronghold.note,拠点に乗ったまま {holds} 回番を終えると勝ち。隣に敵がいる間は止まる
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成

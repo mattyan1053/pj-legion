@@ -232,6 +232,9 @@ func _queue_field_effect_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(not Queries.attack_targets(battle, sniper).has(guard), "盾越しに撃てる")
 		_expect(Queries.barricade_targets(battle, sniper) == ([wall] as Array[Vector2i]), "狙える盾が違う")
+		# 盾の上の棒は、いまの残りの耐久（置いたあとに減らした 5）。
+		var bar: int = _scene.barricade_bar_durability(battle.board.barricade_at(wall).id)
+		_expect(bar == 5, "盾の耐久の棒が、残りの耐久と違う: %d" % bar)
 		_scene.click_cell(wall))
 	_scripted.append(func() -> void:
 		_expect(battle.board.barricade_at(wall) == null, "盾が壊れなかった")

@@ -305,30 +305,32 @@ func test_rules_start_from_the_defaults_and_reach_the_setup() -> void:
 	var choice := MatchChoice.new()
 	assert_eq(choice.to_setup(1).rules, [OptionalRules.STRONGHOLD] as Array[StringName])
 	assert_true(choice.to_setup(1).create_battle().board.stronghold_cell != Board.NO_CELL, "既定の対戦に拠点がある")
-	choice.set_rule(OptionalRules.BATTERY, true)
-	choice.set_rule(OptionalRules.BATTERY, true)
-	assert_true(choice.has_rule(OptionalRules.BATTERY))
-	assert_eq(choice.to_setup(1).rules, [OptionalRules.STRONGHOLD, OptionalRules.BATTERY] as Array[StringName])
-	assert_eq(choice.copy().rules, [OptionalRules.STRONGHOLD, OptionalRules.BATTERY] as Array[StringName])
-	assert_eq(choice.to_setup(1).create_battle().board.battery_cells.size(), 2)
-	choice.set_rule(OptionalRules.BATTERY, false)
+	choice.set_rule(OptionalRules.SEAM, true)
+	choice.set_rule(OptionalRules.SEAM, true)
+	assert_true(choice.has_rule(OptionalRules.SEAM))
+	assert_eq(choice.to_setup(1).rules, [OptionalRules.STRONGHOLD, OptionalRules.SEAM] as Array[StringName])
+	assert_eq(choice.copy().rules, [OptionalRules.STRONGHOLD, OptionalRules.SEAM] as Array[StringName])
+	choice.set_rule(OptionalRules.SEAM, false)
 	choice.set_rule(OptionalRules.STRONGHOLD, false)
-	assert_false(choice.has_rule(OptionalRules.BATTERY))
+	assert_false(choice.has_rule(OptionalRules.SEAM))
 	choice.set_rule(&"unknown", true)
 	choice.set_rule(OptionalRules.FORMATION, true)
 	assert_eq(choice.rules, [] as Array[StringName], "知らない決まりと休眠の決まり（組み方）は入にできない")
 	var battle := choice.to_setup(1).create_battle()
-	assert_eq(battle.board.battery_cells.size(), 0)
 	assert_eq(battle.board.stronghold_cell, Board.NO_CELL, "拠点をなしにすれば置かない")
 
 
-func test_every_versus_field_has_two_fair_battery_spots() -> void:
+## 砲台はマップの物。置くマップでは 2 つで、点対称で、中ボスが届かない。生成のマップは、置かない盤でも場所は同じ形で持つ（置けば同じ）。
+func test_every_versus_battery_is_fair() -> void:
 	var reach := Neutral.TERRITORY_RADIUS + UnitKind.attack_range(UnitKind.Id.ELITE_MINION)
 	for field in VersusFields.ids():
 		var choice := MatchChoice.new()
 		choice.choose_field(field)
-		choice.set_rule(OptionalRules.BATTERY, true)
 		var board: Board = choice.to_setup(3).create_battle().board
+		if VersusFields.is_generated(field):
+			BoardGenerator.arm_batteries(board)
+		if board.battery_cells.is_empty():
+			continue
 		assert_eq(board.battery_cells.size(), 2, field)
 		assert_eq(board.battery_cells[0] + board.battery_cells[1], board.hq_cells[0] + board.hq_cells[1], "点対称: %s" % field)
 		for cell in board.battery_cells:
