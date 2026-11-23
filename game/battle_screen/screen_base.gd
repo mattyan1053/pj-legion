@@ -13,7 +13,6 @@ const BattleHud := preload("res://game/battle_hud.gd")
 const Names := preload("res://game/names.gd")
 const BattleSource := preload("res://game/battle_source.gd")
 const MatchSetupPanel := preload("res://game/match_setup_panel.gd")
-const SignsWindow := preload("res://game/signs_window.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const Autoplay := preload("res://game/autoplay.gd")
@@ -121,9 +120,6 @@ var _views := {}  # 駒の番号 -> UnitView
 var _people := {}
 var _hud: BattleHud
 var _setup_panel: MatchSetupPanel
-## 縫い目の様子の札がめくられる窓（signs_window.gd）と、それを出していて、対戦の番をまだ始めていないか。
-var _signs_window: SignsWindow
-var _signs_pending := false
 var _unit_detail: UnitDetail
 var _rig: OrbitCamera
 var _selection_ring: MeshInstance3D

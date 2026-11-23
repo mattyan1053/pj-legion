@@ -36,6 +36,12 @@ map = ridge_path
 #     turns_held（守り切る。hold_turns と組で書く）
 # hold_turns = 10
 # wins = routed
+# 縫い目の様子（マップに付く、気候のような効果。docs/seam-signs.md）。2 つまで、「,」で区切って書く。書かなければ付かない。
+# 対戦の始めの「対戦ルール」に、勝ち方と並んで出る。効く札は、マップに合うものを選ぶ（結晶泉の無いマップに loose を書いても何も起きない）。
+#   haze（天裂の名残り）, brim（糸の満ち）, loose（糸のゆるみ）, hush（骨の眠り）, shift（仮縫いのずれ）,
+#   gale（縫い代の風）, gleam（天裂の光）, thicket（深い茂み）, taut（張りつめた糸）
+#   loose と hush、haze と gleam は打ち消し合うので並べない。
+# signs = gale, taut
 
 # 話し手。1 行に 1 人で「名前 = 陣営, 姿」。
 #   陣営: ally（遊ぶ人の軍。会話で左に立ち、名前の札は青）か enemy（敵の軍。右に立ち、札は赤）。どちらも 1 人は要る。

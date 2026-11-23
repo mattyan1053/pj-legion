@@ -69,9 +69,10 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	})
 	_side_caption = side_row.get_child(0) as Label
 	# 選べる決まり（docs/match-setup.md の「選べる決まり」）。決まりごとに 1 行: 「あり」「なし」と、右に決まりのひとことの説明（決まった大きさ）。
+	# 入の文は、決まりが RULE_ON_KEYS に持てばそれ（縫い目の様子は「ランダム」）。
 	for rule: StringName in RULE_ROWS:
 		var rule_row := _add_row(column, Text.t("setup.caption.%s" % rule), StringName("rule_%s" % rule),
-			{true: Text.t("setup.rule.on"), false: Text.t("setup.rule.off")})
+			{true: Text.t(RULE_ON_KEYS.get(rule, "setup.rule.on")), false: Text.t("setup.rule.off")})
 		for button: Button in (_rows[StringName("rule_%s" % rule)] as Dictionary).values():
 			button.custom_minimum_size = Vector2(TRIAL_BUTTON_WIDTH, TRIAL_BUTTON_HEIGHT)
 			button.add_theme_font_size_override("font_size", 15)
