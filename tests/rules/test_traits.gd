@@ -306,9 +306,9 @@ func test_cpu_picks_a_trait_that_fits_the_squad() -> void:
 	deck.add(K.MEDIC)
 	assert_eq(CpuDeck.choose_trait(deck), T.SUPPLY, "回復役が 2 体")
 	var knights := Deck.new(UnitKind.Army.FANTASY)
-	for kind: UnitKind.Id in [K.PALADIN, K.SPELLBLADE, K.SPELLBLADE]:
+	for kind: UnitKind.Id in [K.PALADIN, K.SPELLBLADE, K.SPELLBLADE, K.SPELLBLADE]:
 		knights.add(kind)
-	assert_eq(CpuDeck.choose_trait(knights), T.LONE, "奇襲が 2 体")
+	assert_eq(CpuDeck.choose_trait(knights), T.LONE, "奇襲が 3 体")
 	var built := CpuDeck.build(UnitKind.Army.FANTASY)
 	assert_eq(built.trait_id, CpuDeck.choose_trait(built))
 	assert_eq(built.oaths.is_empty(), built.trait_id != T.OATH, "誓いのときだけ結ぶ")

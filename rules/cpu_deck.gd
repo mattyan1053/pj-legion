@@ -76,9 +76,9 @@ static func choose_trait(deck: Deck) -> int:
 
 ## choose_trait の数（部隊の中身の目安）。
 const SUPPLY_MEDICS := 2
-const RANKS_KIND := 3
-const LONE_RAIDERS := 2
-const OATH_FIGHTERS := 4
+const RANKS_KIND := 4
+const LONE_RAIDERS := 3
+const OATH_FIGHTERS := 5
 
 
 ## 騎士領の編成に、CPU の決め方で誓いを結ぶ（もう結んである誓いはほどく）。騎士領でなければ何もしない。

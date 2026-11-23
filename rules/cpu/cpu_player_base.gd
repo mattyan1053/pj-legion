@@ -130,7 +130,7 @@ const STRONGHOLD_BLOCK_VALUE := 60.0
 const HEALER_SEARCH_STEPS := 12
 ## 部隊の特徴（docs/troop-traits.md。docs/cpu-ai.md の「部隊の特徴」）。その特徴の部隊でだけ効く。
 ## 隊列: 同じ兵種の味方の隣に立って行動を終える価値（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）。
-const RANKS_HUDDLE_VALUE := 6.0
+const RANKS_HUDDLE_VALUE := 2.0
 ## 補給線: HP の減った駒が回復役の隣に立って行動を終える価値（回復する HP 1 あたり）。
 const SUPPLY_STAND_VALUE := 1.0
 ## 誓い: 誓いの相手からこの距離（マンハッタン距離）以内に立って行動を終える価値（同じ敵を 2 人で攻撃できる所にいる）。
