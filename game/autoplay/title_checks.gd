@@ -334,7 +334,7 @@ func _visit_decks(app: Node) -> void:
 
 ## 画面の大きさを少し変えて戻す。抜けた場面の部品が、画面の大きさの合図につながったまま残っていれば、ここでエラーになる。
 ## 部隊編成の持ち物が多いとき、窓を縦に広げてから元へ縮めても、駒の札が縮まず、元の大きさと置き場所に戻る
-## （持ち物の欄の高さは画面の高さから決め直す。deck_screen.gd の _fit_equip）。広げたままでも、札は下限を割らない。
+## （持ち物の欄の高さは画面の高さから決め直す。deck_screen/deck_unit_card.gd の _fit_equip）。広げたままでも、札は下限を割らない。
 func _resize_deck_screen(screen: Node, campaign: RefCounted) -> void:
 	var window := get_window()
 	var size := window.content_scale_size
