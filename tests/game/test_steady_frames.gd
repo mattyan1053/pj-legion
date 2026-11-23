@@ -297,6 +297,23 @@ func test_name_plates_fit_every_speaker() -> void:
 		assert_true(cue <= BattleTalk.PLATE_WIDTH, "途中の台詞の名前の札に入らない: %s（要る幅 %d）" % [speaker, cue])
 
 
+## 決着の詳しい戦績の表の、名前の列の見出し: 対戦モードは「駒」、ストーリーは「名前」。
+## 画面は対戦の始まる前（ストーリーかどうかが決まる前）に作られるので、表を出すときに決める。
+func test_result_table_heading_follows_the_mode_at_show_time() -> void:
+	var screen := ResultScreen.new()
+	await settle(screen)
+	var summary := ResultSummary.new()
+	summary.tables = [{"name": "A", "summary": "", "rows": []}, {"name": "B", "summary": "", "rows": []}]
+	screen.present(summary)
+	screen.show_table(0)
+	assert_eq(screen.table_unit_heading(), Text.t("result.table.unit"))
+	Names.story_sides = true
+	screen.show_table(1)
+	assert_eq(screen.table_unit_heading(), Text.t("result.table.unit.story"), "ストーリーの表の見出しが「駒」のまま")
+	Names.story_sides = false
+	screen.free()
+
+
 ## 決着の画面の戦績の枠: 行の少ない戦績（中立撃破も聖遺物も無い）でも、行の多い戦績と同じ大きさ。
 func test_result_stats_keep_their_size_whatever_the_lines() -> void:
 	var screen := ResultScreen.new()

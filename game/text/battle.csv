@@ -249,8 +249,6 @@ battle.hud.squad_guarded,分隊（{kind} {count} 体）: 肩並べ中（受け�
 battle.hud.oath,誓い（{unit}）: {range} マス以内で仇討ち（離れている）
 battle.hud.oath_near,誓い（{unit}）: {range} マス以内で仇討ち（届く）
 battle.hud.oath_foe,仇: {unit}（攻撃 +{vengeance}）
-battle.notice.squad,{army} の分隊（同じ兵種 2 体以上）: 隣に仲間がいると受けるダメージ -{guard}、同じ番に仲間が撃った相手へ +{focus}
-battle.notice.oath,{army} の誓い（結んだ 2 人）: 相手を攻撃した敵へ +{vengeance}（{range} マス以内）、片方が倒れると残る側が攻撃 +{resolve}
 battle.notice.stronghold,拠点（旗の立つマス）: 乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まる
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
