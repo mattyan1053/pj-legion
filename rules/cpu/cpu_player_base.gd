@@ -236,6 +236,8 @@ var _hq_in_danger := false
 var _holding := false
 ## 拠点の確保で勝てる（両方とも勝てる）か、拠点へ向かう駒の番号（0 = まだ決めていない、-1 = いない）。_begin が決める。
 var _takes_stronghold := false
+## 中ボスの撃破で勝てて、相手に将がいない（群れ）か。狩る条件（_outguns_rivals、HUNT_RADIUS）を見ずに、中ボスを狩る。_begin が決める。
+var _slays_bosses := false
 ## いま考えている駒が、膠着を解きに敵の将へ向かっているか（拠点の隣で塞ぐ価値を見ない）。_set_goal が決める。
 var _breaking_stall := false
 var _stronghold_taker := 0
