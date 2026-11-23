@@ -197,3 +197,20 @@ func test_cpu_picks_the_squad_that_suits_the_signs() -> void:
 	assert_eq(CpuDeck.pick_for_signs(candidates, [S.HAZE]), raiders, "霞の日は、スナイパーの少ない部隊")
 	assert_eq(CpuDeck.pick_for_signs(candidates, [S.GLEAM]), snipers, "天裂の光は、後衛の多い部隊")
 	assert_eq(CpuDeck.pick_for_signs(candidates, [S.BRIM]), snipers, "どの部隊にも同じに効く札は、先頭")
+
+
+## 天裂の名残りと砲台が重なっても、CPU の「動いた先の射程」は、その先の実際の射程と同じ（Codex の指摘。#400）。
+func test_cpu_reach_on_and_off_a_battery_under_haze() -> void:
+	var board := Maps.board(["..........", ".........."])
+	board.add_battery(Vector2i(2, 0))
+	var battle := Battle.new(board)
+	Seam.arm(battle, [S.HAZE] as Array[int])
+	var sorcerer := battle.add_unit(K.SORCERER, P1, Vector2i(2, 0))
+	battle.refresh_sites()
+	assert_eq(sorcerer.attack_range(), UnitKind.attack_range(K.SORCERER) + MapObject.BATTERY_RANGE - Seam.HAZE_CUT)
+	var cpu := CpuPlayer.new()
+	cpu._battle = battle
+	cpu._board = board
+	cpu._moved_reach = CpuPlayer._unhazed(sorcerer, func() -> int: return sorcerer.attack_range())
+	assert_eq(cpu._reach_from(sorcerer, Vector2i(5, 0)), UnitKind.attack_range(K.SORCERER), "砲台を降りれば、射程 2 のまま")
+	assert_eq(cpu._reach_from(sorcerer, Vector2i(2, 0)), sorcerer.attack_range())
