@@ -162,7 +162,7 @@ static func scenario_of(id: StringName) -> Scenario:
 	var field := _field(id)
 	if field.has(MAP):
 		var found: Dictionary = Maps.find(field[MAP])
-		return Scenario.on_map(found["map"], found["title"])
+		return Scenario.on_map(found["map"], found["title"], true)
 	if field.has(STAGE):
 		var generated := Scenario.versus(field[STAGE])
 		generated.title = Names.stage(field[STAGE])  # 生成のマップの名前は、画面の文の表（ルールは持たない）

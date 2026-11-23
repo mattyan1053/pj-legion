@@ -68,13 +68,13 @@ map_select.resume,マップ選択へ戻る
 map_select.choose,マップ選択
 field.plain.tags,広場 ・ 起爆樽 ・ 砲台
 field.plain.note,開けた平地。中央は遮るもののない広場で、まわりに岩と森が散らばる。\n中央の左右に起爆樽。正面からぶつかり合う、基本の戦場。
-field.labyrinth.tags,迷路 ・ 回復の泉
+field.labyrinth.tags,迷路 ・ 回復の泉 ・ 砲台
 field.labyrinth.note,格子に並んだ壁が通路を作る迷路。射線が通りにくく、本陣へは回り道になる。\n左右に回復の泉。遠くから撃つより、角を曲がって近づく兵が強い。
 field.twin_springs.tags,2 本の道 ・ ポータル
 field.twin_springs.note,中央を大きな壁がふさぎ、戦場は左右 2 本の道に分かれる。本陣は対角。\nどちらの道にも、上下をつなぐポータル。どちらで攻め、どちらで守るか。
 field.ridge_path.tags,小さな盤 ・ 2 本の道
 field.ridge_path.note,細長い小さな盤。真ん中の岩が尾根を左右 2 本の道に分け、どちらの道にも結晶泉と番人。\n本陣どうしが近く、すぐにぶつかる。押し込むか、道をふさいで迎え撃つか。
-field.crystal_gorge.tags,岩山 ・ 回り道 ・ ポータル
+field.crystal_gorge.tags,岩山 ・ ポータル ・ 砲台
 field.crystal_gorge.note,盤の中ほどを結晶の岩山が横切る。越えられるのは東西の端の回り道と、真ん中のポータルだけ。本陣は対角。\n遠い回り道か、敵陣のただ中へ出る近道のポータルか。
 field.boulder_pass.tags,大岩 ・ 広い 2 本の道
 field.boulder_pass.note,草原の真ん中を大岩がふさぎ、戦場は左右の広い道に分かれる。どちらの道にも番人。\n小さな盤でも、本陣どうしは遠い。どちらの道に厚く構えるか。

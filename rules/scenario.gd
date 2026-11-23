@@ -12,6 +12,8 @@ var title := ""
 ## 盤の出どころ。hand_map があれば、手で作ったマップ（種によらず、いつも同じ盤）。
 ## 無ければ、マップ stage を大きさ board_size で生成する。
 var hand_map: HandMap = null
+## 対戦モードの戦いか（手で作ったマップの、対戦モードだけの物を置くか。HandMap.make_board の for_versus）。
+var for_versus := false
 var stage := BoardGenerator.Stage.PLAIN
 var board_size := BoardGenerator.DEFAULT_SIZE
 ## プレイヤーごとの、将でない駒を置くマスの列（編成の並びの順に使う）。空なら、いつもの置き方（本陣の前の行）。
@@ -64,10 +66,12 @@ static func versus(at_stage: BoardGenerator.Stage) -> Scenario:
 
 
 ## 手で作ったマップ map の戦いの定義（部隊は両方とも対戦設定で選ぶ。初期位置はいつもの置き方）。
-static func on_map(map: HandMap, map_title: String) -> Scenario:
+## in_versus なら対戦モードの戦い（マップの、対戦モードだけの物も置く）。ストーリーの話は偽のまま使う。
+static func on_map(map: HandMap, map_title: String, in_versus := false) -> Scenario:
 	var scenario := Scenario.new()
 	scenario.title = map_title
 	scenario.hand_map = map
+	scenario.for_versus = in_versus
 	scenario.start_gauge[Unit.Side.PLAYER1] = Ults.FIRST_PLAYER_START_GAUGE
 	scenario.deck_traits = true
 	return scenario
@@ -150,5 +154,5 @@ func make_board(board_seed: int) -> Board:
 	if not can_make_board():
 		return null
 	if hand_map != null:
-		return hand_map.make_board()
+		return hand_map.make_board(for_versus)
 	return BoardGenerator.generate(stage, board_seed, board_size)

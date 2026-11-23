@@ -152,7 +152,7 @@ sign.gale,縫い代の風
 sign.gleam,天裂の光
 sign.thicket,深い茂み
 sign.taut,張りつめた糸
-sign.haze.summary,射程 {haze_from} 以上の攻撃は、射程 -{haze_cut}
+sign.haze.summary,後衛の射程 -{haze_cut}
 sign.brim.summary,必殺技のゲージが {brim_times} 倍の速さでたまる
 sign.loose.summary,結晶泉に、中立の敵が {loose}% で湧き直す
 sign.hush.summary,結晶泉に、中立の敵が湧き直さない

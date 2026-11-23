@@ -71,7 +71,10 @@ func test_drawn_signs_never_clash_and_skip_signs_that_do_not_apply() -> void:
 			if stage != BoardGenerator.Stage.TWIN_SPRINGS:
 				assert_false(signs.has(S.SHIFT), "ポータルの無い盤に、仮縫いのずれは出ない")
 	for sign: int in S.values():
-		assert_true(seen.has(sign), "どの札も、どこかの局で出る: %s" % Seam.key(sign))
+		if Seam.STORY_ONLY.has(sign):
+			assert_false(seen.has(sign), "話だけの札は、対戦モードではめくらない: %s" % Seam.key(sign))
+		else:
+			assert_true(seen.has(sign), "どの札も、どこかの局で出る: %s" % Seam.key(sign))
 	var bare := Maps.board(["....", "...."])
 	assert_false(Seam.applies(S.SHIFT, bare))
 	assert_false(Seam.applies(S.LOOSE, bare))
@@ -122,12 +125,17 @@ func test_keys_name_every_sign() -> void:
 # --- 札ごとの効果 ---
 
 
-func test_haze_shortens_long_ranges_only() -> void:
+func test_haze_shortens_rearguards_only() -> void:
 	var battle := _battle(["......", "......"], [S.HAZE])
 	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 0))
 	var sorcerer := battle.add_unit(K.SORCERER, P2, Vector2i(5, 0))
+	var priest := battle.add_unit(K.PRIEST, P2, Vector2i(5, 1))
+	var trooper := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(1, 0))
 	assert_eq(sniper.attack_range(), UnitKind.attack_range(K.SNIPER) - Seam.HAZE_CUT)
-	assert_eq(sorcerer.attack_range(), UnitKind.attack_range(K.SORCERER), "射程 2 は縮まない")
+	assert_eq(sorcerer.attack_range(), UnitKind.attack_range(K.SORCERER) - Seam.HAZE_CUT, "どちらの軍の後衛も縮む")
+	assert_eq(priest.attack_range(), UnitKind.attack_range(K.PRIEST), "回復は後衛でない")
+	assert_eq(trooper.attack_range(), UnitKind.attack_range(K.SHIELD_TROOPER))
+	assert_eq(Seam.hazed_range(1), 1, "1 より短くはならない")
 	sorcerer.site_range = MapObject.BATTERY_RANGE  # 砲台で伸びた射程も縮む
 	assert_eq(sorcerer.attack_range(), UnitKind.attack_range(K.SORCERER) + MapObject.BATTERY_RANGE - Seam.HAZE_CUT)
 
@@ -226,5 +234,5 @@ func test_cpu_reach_on_and_off_a_battery_under_haze() -> void:
 	cpu._battle = battle
 	cpu._board = board
 	cpu._moved_reach = CpuPlayer._unhazed(sorcerer, func() -> int: return sorcerer.attack_range())
-	assert_eq(cpu._reach_from(sorcerer, Vector2i(5, 0)), UnitKind.attack_range(K.SORCERER), "砲台を降りれば、射程 2 のまま")
+	assert_eq(cpu._reach_from(sorcerer, Vector2i(5, 0)), UnitKind.attack_range(K.SORCERER) - Seam.HAZE_CUT, "砲台を降りれば、いつもの射程を縮めたもの")
 	assert_eq(cpu._reach_from(sorcerer, Vector2i(2, 0)), sorcerer.attack_range())

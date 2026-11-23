@@ -166,7 +166,7 @@ static func sign_name(sign: int) -> String:
 
 static func sign_summary(sign: int) -> String:
 	var args := {
-		"haze_from": Seam.HAZE_FROM, "haze_cut": Seam.HAZE_CUT, "brim_times": String.num(Seam.BRIM_PERCENT / 100.0),
+		"haze_cut": Seam.HAZE_CUT, "brim_times": String.num(Seam.BRIM_PERCENT / 100.0),
 		"loose": Seam.LOOSE_RESPAWN_PERCENT, "gale": Seam.GALE_CRUISE,
 		"gleam": Seam.GLEAM_RANGE, "thicket_times": String.num(Seam.THICKET_RATE_PERCENT / 100.0), "taut": Seam.TAUT_CUT,
 	}

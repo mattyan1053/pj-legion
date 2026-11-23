@@ -31,7 +31,7 @@ const MID_BOSS_WALL_GAP := 4
 const BATTERY_CORNER := 7
 ## 砲台を置く盤の種類（docs/map-objects.md の「砲台」）。CPU どうしの実測で、置いても先手と MILITARY が 45〜55% に収まる盤だけ。
 ## ほかの盤も場所（Board.battery_spots）は持つ（拠点がそのマスを避けるので、砲台の有無で拠点は動かない）。
-const BATTERY_STAGES: Array[Stage] = [Stage.PLAIN]
+const BATTERY_STAGES: Array[Stage] = [Stage.PLAIN, Stage.LABYRINTH]
 ## 迷宮回廊の回復の泉を、本陣の列から左右へ離す量と、真ん中の行から自分の本陣の側へ寄せる量。
 const SPRING_SPREAD := 5
 const SPRING_SETBACK := 7
