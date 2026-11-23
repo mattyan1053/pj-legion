@@ -20,6 +20,8 @@ const MOVES := {
 }
 const MELEE := &"CharacterArmature|Punch"
 const SHOOT := &"CharacterArmature|Shoot_OneHanded"
+## 攻撃の出入りのつなぎの秒数。
+const ATTACK_BLEND := 0.2
 
 ## 種類ごとの形。"model" は characters/ のファイルの名前、"hold" は右手に持つ武器（WEAPONS の名前）、
 ## "attack" は攻撃の動き、"accent" は陣営の色に塗るマテリアル（名前 -> 暗くする割合）。"scale" は大きさ（無ければ 1）。
@@ -86,6 +88,8 @@ func _model_body(shape: Dictionary, team_color: Color) -> UnitBody:
 	var body := ModelBody.new()
 	body.body_height = MODEL_HEIGHT * size
 	body.set_model(model, moves, Callable())
+	# この素材は、立ち姿と攻撃の頭の姿勢が離れている（腕を大きく振りかぶる）ので、攻撃の出入りのつなぎを少し長くする。
+	body.set_timing({}, ModelBody.ATTACK_HIT, ATTACK_BLEND)
 	var skin: Color = shape.get("skin", SKIN)
 	body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void: _paint(mesh, model_name, accent, team_color, skin, shade))
 	return body
