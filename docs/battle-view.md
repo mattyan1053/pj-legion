@@ -126,7 +126,7 @@
 ## ルールとのつなぎ方
 
 - 画面はルールを持たない。操作を行動（`BattleAction`）にして `Battle.apply()` に渡し、
-  返ってきた `ActionResult.events` を順に再生する（`battle_screen.gd` の `_do` と、`battle_playback.gd` の `play_all`）。
+  返ってきた `ActionResult.events` を順に再生する（`battle_screen/screen_sides.gd` の `_do` と、`battle_playback.gd` の `play_all`）。
 - 再生している間は、操作を受け付けない。再生が終わったら、対戦の状態と選んでいる駒から、
   塗るマス・ボタン・文字を作り直す（`_refresh`）。帯・メニュー・マスの説明などの文は、ノードに依存しない `battle_texts.gd` が作る（テストは `tests/game/test_battle_texts.gd`）。
 - 選べること（動けるマス、攻撃できる相手、攻撃できる樽、回復できる味方、スキルの対象のマス）は、ルールの問い合わせ `Battle.options()`（`docs/battle.md`）に聞き、
@@ -496,7 +496,7 @@
 テスト: `tests/game/test_seam_view.gd`。
 
 - **流れ**: 対戦設定の「対戦開始」→ 札がめくられる窓 → 窓の「対戦開始」で番が始まる。「同じマップで再戦」「新しいマップ」（F1〜F3）、対戦設定のパネルの「新しい対戦」も、同じ窓を通る（対戦を作るたびに札がめくられる。同じ種なら同じ札）。
-  窓を出している間、後ろにはいまの選択の部隊で作った盤を置き、番の知らせ・始めの知らせ・CPU の番は始めない（`battle_screen.gd` の `start_battle`、`start_with` の `hold`）。
+  窓を出している間、後ろにはいまの選択の部隊で作った盤を置き、番の知らせ・始めの知らせ・CPU の番は始めない（`battle_screen/screen_start.gd` の `start_battle`、`start_with` の `hold`）。
 - **札がめくられる窓**: 札 2 枚（印・名前・効果の文。決まった大きさ）と、その下に両方のプレイヤーの行。
   - 人の行: 部隊の欄（既定の編成・ランダム編成・取っておいた部隊。対戦設定と同じ選択肢）、「編成確認」、「初期位置」（この対戦の盤で決める）。ここで選び直したものは、対戦設定の選択にも残る。
   - CPU の行: 札を見て CPU が選んだ部隊（「札を見て選んだ部隊（コスト）」）と「編成確認」。選び方は `docs/cpu-ai.md` の「縫い目の様子」。
