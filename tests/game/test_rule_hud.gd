@@ -62,3 +62,25 @@ func test_notice_keeps_its_size_and_fits_three_rules() -> void:
 	hud.hide_notice()
 	assert_eq(hud.notice_text(), "")
 	hud.free()
+
+
+## 始めの知らせの文は、語の途中で切らずに折り返す（text_wrap.gd）。折り返した行は、どれも本文の欄に収まる
+## （収まらない行があると、ラベルの自動の折り返しが、語の途中で切り直す。「仲間」が「仲 / 間」になっていた）。
+func test_notice_folds_lines_without_breaking_words() -> void:
+	var hud := _hud()
+	await settle(hud)
+	var line := "MILITARY の分隊（同じ兵種 2 体以上）: 隣に仲間がいると受けるダメージ -2、同じ番に仲間が撃った相手へ +3"
+	hud.show_notice([line] as Array[String])
+	await settle(hud)
+	var body: Label = hud._notice_body
+	assert_true(body.size.x >= BattleHud.NOTICE_TEXT_WIDTH - 0.5, "本文の欄が、折り返す幅より狭い: %s" % body.size.x)
+	var font := body.get_theme_font("font")
+	var font_size := body.get_theme_font_size("font_size")
+	var folded := body.text.split("\n")
+	assert_true(folded.size() >= 2, "折り返していない: %s" % body.text)
+	for each in folded:
+		var width := font.get_string_size(each, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		assert_true(width <= body.size.x, "本文の欄に収まらない行（自動の折り返しで、語の途中で切れる）: %s（%d）" % [each, width])
+	assert_false(body.text.contains("仲\n間"), "語の途中で切れた: %s" % body.text)
+	assert_eq(hud.notice_text(), line, "知らせの文（折り返す前）")
+	hud.free()

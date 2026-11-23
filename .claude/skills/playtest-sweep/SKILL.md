@@ -12,7 +12,7 @@ description: ゲームを通しで触って不具合を探し、見つけたも�
 - **人の操作と同じ道で通す。** 本物の入力イベント（`InputEventMouseButton`・`InputEventMouseMotion`・キー）を組んで
   `get_viewport().push_input()` や画面の名前の付いた入口（`click_cell`、`press_menu` など）へ渡す。画面の中の変数を直接いじらない
   （`game/autoplay.gd` と `docs/screenshots.md`）。
-- 場面は `tools/screenshots.sh godot <出力> <場面,…>` で撮る。無い場面は `tools/screenshots.gd` に足す。
+- 場面は `tools/screenshots.sh godot <出力> <場面,…>` で撮る。無い場面は `tools/screenshots.gd` の `SCENES` と、`tools/shots/` の画面ごとのファイルに足す。
   絵は Forward+（既定。Windows の exe と同じ）で撮って見る。互換の描画の絵で見た目を判断しない（`docs/screenshots.md`）。
   画面の大きさの違いは `--size=<幅>x<高さ>` で撮り分ける（`docs/screen-size.md`）。
 - CPU どうしで何局も回すと、決着の間際など手で作りにくい場面に当たる（`tools/cpu_matches.gd`、`--autoplay --full`）。
