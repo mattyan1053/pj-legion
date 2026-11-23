@@ -27,7 +27,7 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		value += STRONGHOLD_VALUE
 		if unit.cell == cell:
 			value += STRONGHOLD_HOLD_VALUE * _battle.stronghold_holds[_me]
-	elif _takes_stronghold and Combat.distance(cell, _board.stronghold_cell) <= Stronghold.CONTEST_RADIUS:
+	elif _takes_stronghold and not _breaking_stall and Combat.distance(cell, _board.stronghold_cell) <= Stronghold.CONTEST_RADIUS:
 		var holder := _battle.unit_at(_board.stronghold_cell)
 		if holder != null and holder.side == _foe and Stronghold.counts(holder):
 			value += STRONGHOLD_BLOCK_VALUE
@@ -89,6 +89,7 @@ func _set_goal(unit: Unit) -> void:
 	if _rushing:
 		bold = 1.0  # 守り切られる前に、踏み込む
 	_bold = bold
+	_breaking_stall = false
 	_idle_danger_weight = lerpf(style[_IDLE_DANGER], minf(style[_DANGER], style[_IDLE_DANGER]), bold)
 	_lethal_penalty = style[_LETHAL]
 	_stand_off = role == UnitKind.Role.REARGUARD
@@ -158,11 +159,38 @@ func _set_goal(unit: Unit) -> void:
 			goal = _board.stronghold_cell
 			_goal_reach = 0
 			_stand_off = false
+	if _battle.turn >= STALL_TURN and unit.kind != UnitKind.Id.KING and not _holding and not _rushing:
+		goal = _break_stall(unit, role, goal)
 	if _foe_hq != Board.NO_CELL and role != UnitKind.Role.HEALER and not _foes_left() and (unit.kind != UnitKind.Id.KING or _lone_king):
 		# 相手の駒が残っていなくても終わらない（占拠でしか勝てない）: 追う敵がいないので、敵の本陣へ向かう。
 		goal = _foe_hq
 		_goal_reach = 0
 	_goal_steps = _steps_from(goal)
+
+
+## 長引いた（STALL_TURN から）ときの目標。拠点の受け持ちのほかの戦う駒は、敵の将を攻撃できるところまで。
+## 戦える駒の残っていない軍の回復役は、敵の本陣（治しても勝てないので、占拠を狙う）。変えなければ goal のまま返す。
+## _set_goal の終わり近くで呼ぶ（_goal_reach、_stand_off、_support も置く）。
+func _break_stall(unit: Unit, role: UnitKind.Role, goal: Vector2i) -> Vector2i:
+	if role == UnitKind.Role.HEALER:
+		if _has_fighters() or _foe_hq == Board.NO_CELL:
+			return goal
+		_goal_reach = 0
+		_goal_weight *= STALL_GOAL_RATE
+		return _foe_hq
+	var king := _foe_king()
+	if king == null:
+		return goal
+	if _takes_stronghold:
+		_choose_stronghold_taker()
+		if unit.id == _stronghold_taker:
+			return goal
+	_goal_reach = unit.attack_range()
+	_goal_weight *= STALL_GOAL_RATE
+	_breaking_stall = true
+	_stand_off = false
+	_support = []
+	return king.cell
 
 
 ## 守る側の前衛・後衛・奇襲が追う敵: 自分の本陣から CpuWinPlan.HOLD_RADIUS 以内の敵のうち、侵入者を先に、その中でいちばん近いもの。
