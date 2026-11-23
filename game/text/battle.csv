@@ -273,6 +273,7 @@ battle.forecast.gauge,必殺技のゲージ {before}% → {after}%
 battle.forecast.draw,引き分けになる
 battle.forecast.win,{side}の勝ち
 battle.forecast.no_damage,0 ダメージ
+battle.forecast.hp_same,±0
 battle.forecast.damage_defeat,{damage} ダメージ → 倒れる
 battle.forecast.damage,{damage} ダメージ → 残り HP {hp}
 battle.forecast.heal,+{amount} → HP {hp} / {max_hp}
