@@ -9,6 +9,8 @@ const Palette := preload("res://game/ui_palette.gd")
 
 ## 札の中の説明の文字の大きさ。
 const NOTE_SIZE := 13
+## 札の説明を折り返す幅を、札の幅から狭める既定の量（px。札の余白のぶん）。
+const SUMMARY_INSET := 36.0
 
 
 static func text(font_size: int, color: Color, bold := false) -> Label:
@@ -45,7 +47,7 @@ static func tag(words: String, color: Color, font_size := 12) -> Control:
 ## mark_size は印の辺、title_size は名前の字の大きさ（小さな札では小さくする）。
 ## summary_inset は、説明を折り返す幅を札の幅からどれだけ狭めるか（px。札の余白のぶん。狭い札では詰める）。
 static func ability_card(type: AbilityMark.Type, kind_text: String, title: String, state: String, summary: String, width: float,
-		off := false, mark_size := 26.0, title_size := 16, summary_inset := 36.0) -> Control:
+		off := false, mark_size := 26.0, title_size := 16, summary_inset := SUMMARY_INSET) -> Control:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(width, 0.0)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL

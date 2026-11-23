@@ -66,6 +66,7 @@ unit = fray
 unit = fray
 unit = skeleton_banner
 unit = skeleton_banner
+unit = skeleton_banner
 unit = skeleton
 unit = skeleton
 unit = skeleton

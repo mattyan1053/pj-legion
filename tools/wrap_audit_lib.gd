@@ -5,6 +5,7 @@ extends RefCounted
 ## - 会話の枠（talk_screen.gd の text_width。地の文は見出しの字）と、会話のログ（talk_log.gd の TEXT_WIDTH）。
 ## - 対戦の途中の台詞の帯（battle_talk.gd。話し手のアイコンと送りの印が出る、いちばん狭いとき）。
 ## - 負けの台詞の板（result_screen.gd の REMARK_WIDTH。話し手のアイコンが出るとき）。
+## - 札の文（card_sites）: 物語の選択のカードの紹介、出撃準備の手ほどき、対戦ルールの札、縫い目の様子の札、兵の情報の札と詳しい窓のスキル・必殺技・状態。
 
 const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
@@ -13,6 +14,17 @@ const TalkLog := preload("res://game/talk_log.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const Text := preload("res://game/text.gd")
+const Names := preload("res://game/names.gd")
+const CampaignList := preload("res://game/campaign_list_screen.gd")
+const SortieScreen := preload("res://game/sortie_screen.gd")
+const RuleCard := preload("res://game/rule_card.gd")
+const SignCard := preload("res://game/sign_card.gd")
+const InfoCard := preload("res://game/info_card.gd")
+const HudBase := preload("res://game/battle_hud/hud_base.gd")
+const UnitDetail := preload("res://game/unit_detail.gd")
+const SheetParts := preload("res://game/sheet_parts.gd")
+const Maps := preload("res://game/maps.gd")
 
 ## 対戦の途中の台詞の帯の行の数の上限（それより多いと、盤の上を覆いすぎる）。
 const CUE_MAX_LINES := 2
@@ -76,6 +88,66 @@ static func audit_texts() -> Array[String]:
 				for bad in TextWrap.bad_breaks(text, site.x, measure):
 					found.append("%s %s（幅 %d・%d px）: %s" % [path, row[0], int(site.x), int(site.y), bad])
 	return found
+
+
+## 札の文の、切れ方の悪い所と行の数の超え（1 か所が 1 行の文）。どの札も、出す所の幅・字の大きさ・行の数の上限で見る。
+static func audit_cards() -> Array[String]:
+	var found: Array[String] = []
+	for site in card_sites():
+		var width: float = site["width"]
+		for entry: Array in site["texts"]:
+			# 字の大きさを文で変える札（対戦ルールの札）は、その札が選ぶ大きさで見る。
+			var font_size: int = site["sizer"].call(entry[1]) if site.has("sizer") else int(site["size"])
+			var measure := _measure(UiTheme.FONT_BODY, font_size)
+			for bad in TextWrap.bad_breaks(entry[1], width, measure):
+				found.append("%s %s（%s）: %s" % [site["name"], entry[0], "幅 %d・%d px" % [int(width), font_size], bad])
+			var count := TextWrap.line_count(entry[1], width, measure)
+			if count > int(site["max_lines"]):
+				found.append("%s %s: %d 行（%d 行まで）: %s" % [site["name"], entry[0], count, site["max_lines"],
+					TextWrap.fold(entry[1], width, measure).replace("\n", " / ")])
+	return found
+
+
+## 札ごとの {name, width, size（字の大きさ）, max_lines, texts: [[どれか, 文], …]}。幅は、それぞれの札の定数から出す。
+static func card_sites() -> Array[Dictionary]:
+	var intros: Array[Array] = []
+	for campaign in Story.campaigns():
+		if campaign.intro != "":
+			intros.append([campaign.title, campaign.intro])
+	var lessons: Array[Array] = []
+	for episode in Story.all_episodes():
+		if episode.lesson != "":
+			lessons.append([episode.path.get_file(), episode.lesson])
+	var goals: Array[Array] = []
+	# 数は 2 桁、番人の名前はいちばん長い字数（Maps.BOSS_NAME_MAX）で埋める。
+	var args := {"turns": 12, "capture": 12, "holds": 12, "boss": "縫".repeat(Maps.BOSS_NAME_MAX)}
+	for key: String in GameWonEvent.Reason.keys():
+		var reason := key.to_lower()
+		goals.append([reason, Text.t("battle.goal.win." + reason, args)])
+	goals.append(["deadline", Text.t("battle.goal.deadline", args)])
+	var signs: Array[Array] = []
+	for sign in Seam.KEYS.size():
+		signs.append([String(Seam.KEYS[sign]), Names.sign_summary(sign)])
+	var abilities: Array[Array] = []
+	for skill in Skills.ALL:
+		abilities.append([Names.skill(skill), Names.skill_summary(skill)])
+	for ult in Ults.ALL:
+		abilities.append([Names.ult(ult), Names.ult_summary(ult)])
+	var statuses: Array[Array] = []
+	for type: int in Status.Type.values():
+		statuses.append([Names.status(type), Names.status_summary(type)])
+	# 詳しい窓のスキルと必殺技の札は、右の列に 2 枚並ぶ。
+	var detail_card := (UnitDetail.RIGHT_WIDTH - UnitDetail.GAP) / 2.0
+	return [
+		{"name": "物語の選択のカード", "width": CampaignList.INTRO_WIDTH, "size": CampaignList.INTRO_FONT, "max_lines": CampaignList.INTRO_MAX_LINES, "texts": intros},
+		{"name": "出撃準備の手ほどき", "width": SortieScreen.WRAP_WIDTH, "size": 17, "max_lines": 3, "texts": lessons},
+		{"name": "対戦ルールの札", "width": RuleCard.TEXT_WIDTH, "max_lines": RuleCard.LINE_MAX_LINES, "texts": goals + signs,
+			"sizer": func(text: String) -> int: return RuleCard.fold_line(text, UiTheme.FONT_BODY)[0]},
+		{"name": "縫い目の様子の札", "width": SignCard.SUMMARY_WIDTH, "size": SignCard.SUMMARY_FONT, "max_lines": SignCard.SUMMARY_MAX_LINES, "texts": signs},
+		{"name": "兵の情報の札", "width": HudBase.INFO_WIDTH - InfoCard.SUMMARY_INSET, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": abilities},
+		{"name": "兵の情報の札の状態", "width": HudBase.INFO_WIDTH - 22.0, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": statuses},
+		{"name": "兵の詳しい窓", "width": detail_card - SheetParts.SUMMARY_INSET, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": abilities},
+	]
 
 
 ## 行 line が出る所ごとの {name, width, measure, max_lines}。

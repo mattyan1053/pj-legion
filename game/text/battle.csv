@@ -295,7 +295,7 @@ battle.goal.rout_note,敵の将を倒しても、ほかの兵が残っていれ�
 battle.goal.boss_note,敵の将を倒しても終わらない。
 battle.goal.win.king_defeated,敵の将を倒す
 battle.goal.win.king_defeated.last,敵の将を倒せば
-battle.goal.win.hq_captured,敵の本陣を {capture} ターン占拠し続ける
+battle.goal.win.hq_captured,{capture} ターン、敵の本陣を占拠し続ける
 battle.goal.win.hq_captured.last,敵の本陣を {capture} ターン占拠し続ければ
 battle.goal.win.stronghold_held,拠点を {holds} 回確保する
 battle.goal.win.stronghold_held.last,拠点を {holds} 回確保すれば
