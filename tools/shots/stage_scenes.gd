@@ -154,9 +154,18 @@ func _scene_portal() -> bool:
 	return _close_look(BoardGenerator.Stage.TWIN_SPRINGS, func(board: Board) -> Array: return board.portal_exits.keys())
 
 
+## 砲台のある対戦モードのマップ（並びの先頭。無ければ中央平原）。
+func _battery_field() -> StringName:
+	for field in VersusFields.ids():
+		var board := VersusFields.scenario_of(field).make_board(_seed)
+		if board != null and not board.battery_cells.is_empty():
+			return field
+	return VersusFields.PLAIN
+
+
 func _scene_battery_cell() -> bool:
-	_field = VersusFields.PLAIN
-	_new_battle([OptionalRules.BATTERY])
+	_field = _battery_field()
+	_new_battle()
 	_show()
 	var batteries := _battle.board.battery_cells
 	if batteries.is_empty():
@@ -168,8 +177,8 @@ func _scene_battery_cell() -> bool:
 
 ## 砲台に後衛が乗っている番の始めまで進め、その駒を選ぶ（伸びた射程が、移動範囲の外の攻撃範囲に出る）。
 func _scene_battery() -> bool:
-	_field = VersusFields.PLAIN
-	_new_battle([OptionalRules.BATTERY])
+	_field = _battery_field()
+	_new_battle()
 	var gunner: Array[Unit] = []
 	if not _advance(func() -> bool:
 		gunner.clear()
@@ -343,9 +352,9 @@ func _scape(name: String) -> bool:
 		defined = Scenario.on_map(found["map"], found["title"])
 	var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 	var setup := MatchSetup.humans_on(defined, _seed, MatchSetup.default_deck(armies[0]), MatchSetup.default_deck(armies[1]))
-	if parts[2] == "paint":
-		setup.rules.append(OptionalRules.BATTERY)  # 砲台のマスも並べる
 	_battle = setup.create_battle()
+	if parts[2] == "paint" and VersusFields.has(StringName(parts[0])) and VersusFields.is_generated(StringName(parts[0])):
+		BoardGenerator.arm_batteries(_battle.board)  # 砲台を置かない盤でも、砲台のマスも並べる
 	_stats = BattleStats.new(_battle)
 	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "プレイヤー2（赤）"] as Array[String])
 	_scene.start_with(_battle, parts[1], _seed, defined.title)

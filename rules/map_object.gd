@@ -1,13 +1,13 @@
 class_name MapObject
 extends RefCounted
-## 環境オブジェクト（起爆樽、回復の泉、ポータル）の種類と、その効果の計算。
+## 環境オブジェクト（起爆樽、回復の泉、ポータル、砲台、拠点）の種類と、その効果の計算。
 ##
 ## どこに何があるかは Board が持つ（Board.object_at）。ここの計算は状態を変えない。
 ## 状態を変えるのは行動の側（AttackBarrelAction、EndPhaseAction、MoveAction）で、戦闘予測も同じ計算を使う。
 ##
 ## - 起爆樽: 入れない。攻撃されると爆発して消え、周り 8 マスの駒すべてに固定のダメージ
 ## - 回復の泉: 入れる。プレイヤーのフェーズの始めに、乗っているそのプレイヤーの駒が回復する
-## - 砲台: 入れる。選べる決まり（OptionalRules.BATTERY）が入のときだけ置かれる。乗った後衛の射程が伸びる（Unit.site_range）
+## - 砲台: 入れる。マップの物（手で作ったマップの `C`、生成のマップは BoardGenerator.BATTERY_STAGES）。乗った後衛の射程が伸びる（Unit.site_range）
 ## - 拠点: 入れる。選べる決まり（OptionalRules.STRONGHOLD）が入のときだけ置かれる。乗って番を終えると確保が進む（Stronghold）
 ## - ポータル: 入れる。対になるポータルへ、移動力を使わずに移れる（Movement、Battle.portal_exit）
 
@@ -16,7 +16,7 @@ enum Type {
 	BARREL,  ## 起爆樽
 	SPRING,  ## 回復の泉
 	PORTAL,  ## ポータル
-	BATTERY,  ## 砲台（選べる決まり）
+	BATTERY,  ## 砲台
 	STRONGHOLD,  ## 拠点（Stronghold）
 }
 

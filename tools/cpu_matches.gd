@@ -36,7 +36,7 @@ extends "res://tools/cpu_matches_base.gd"
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --rules=NAME   選べる決まり（OptionalRules の名前。battery = 砲台、stronghold = 拠点、formation = 組み方、seam = 縫い目の様子。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、formation = 組み方（休眠）、seam = 縫い目の様子。`,` で並べられる）をそれだけ入にして回す。none で全部切。
 ##                   seam なら、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す。--squads=random なら、CPU が札を見て候補から部隊を選ぶ
 ##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --stronghold=X,Y  拠点を、マス (X, Y) に置いて回す（測るためだけ。拠点が入の対戦だけ）。lean:K なら、道のりの寄せ K（Board.stronghold_lean。

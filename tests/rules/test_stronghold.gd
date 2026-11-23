@@ -152,10 +152,15 @@ func test_stronghold_avoids_battery_spots() -> void:
 	board.battery_spots = [Vector2i(2, 2)]
 	var cell := Stronghold.choose_cell(board)
 	assert_true(cell != Vector2i(2, 2) and cell != Board.NO_CELL)
-	for field in VersusFields.all_ids():
-		var off := _setup(field, 3, [OptionalRules.STRONGHOLD]).create_battle().board.stronghold_cell
-		var on := _setup(field, 3, [OptionalRules.STRONGHOLD, OptionalRules.BATTERY]).create_battle().board.stronghold_cell
-		assert_eq(on, off, "%s: 砲台の入・切で拠点が動いた" % field)
+	# 生成のマップは、砲台を置く盤でも置かない盤でも、拠点は砲台の場所を避けて同じマスに置く。
+	for stage: BoardGenerator.Stage in [BoardGenerator.Stage.PLAIN, BoardGenerator.Stage.LABYRINTH, BoardGenerator.Stage.TWIN_SPRINGS]:
+		var off := BoardGenerator.generate(stage, 3)
+		off.battery_cells.clear()
+		Stronghold.arm(off, 3)
+		var on := BoardGenerator.generate(stage, 3)
+		BoardGenerator.arm_batteries(on)
+		Stronghold.arm(on, 3)
+		assert_eq(on.stronghold_cell, off.stronghold_cell, "%d: 砲台の有無で拠点が動いた" % stage)
 
 
 func test_distances_use_portals() -> void:

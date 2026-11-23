@@ -171,16 +171,6 @@ func _scene_setup_random() -> bool:
 	return true
 
 
-func _scene_setup_battery() -> bool:
-	_app.context.match_choice = MatchChoice.new()
-	await _app.go(SceneFlow.SETUP)
-	if _app.current_id() != SceneFlow.SETUP:
-		return false
-	_app.current_scene().setup_panel().choose_rule(OptionalRules.BATTERY, true)
-	_park_mouse()
-	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.BATTERY)
-
-
 func _scene_setup_seam() -> bool:
 	_app.context.match_choice = MatchChoice.new()
 	await _app.go(SceneFlow.SETUP)

@@ -155,8 +155,6 @@ func create_battle() -> Battle:
 	if board == null:
 		return null
 	var drawn := _signs_on(board)  # 札は、決まりの準備で盤を変える前の盤から引く（signs() と同じ札）
-	if rules.has(OptionalRules.BATTERY):
-		BoardGenerator.arm_batteries(board)
 	if rules.has(OptionalRules.STRONGHOLD):
 		Stronghold.arm(board, battle_seed)
 	var battle := Battle.new(board, battle_seed)
