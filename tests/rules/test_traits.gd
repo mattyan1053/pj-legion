@@ -216,6 +216,55 @@ func test_traits_belong_to_one_side_only() -> void:
 	assert_eq(_effects(_attack(battle, second, target)), [], "相手の陣営の特徴は、自分の攻撃に乗らない")
 
 
+# --- 糸の魔物と一緒に（docs/monsters.md） ---
+
+
+## 糸喰いが弾けたダメージは、起爆樽の爆発と同じく、隊列で減らない。
+func test_ranks_do_not_cut_an_eater_burst() -> void:
+	var battle := _battle(T.FOCUS, T.RANKS)
+	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(3, 0))
+	var eater := battle.add_unit(K.EATER, Unit.Side.NEUTRAL, Vector2i(3, 3))
+	var front := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(2, 3))
+	var back := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(2, 4))
+	assert_eq(Traits.guard_of(battle, front), Traits.RANKS_GUARD, "並んでいる")
+	eater.hp = 1
+	var events := _attack(battle, sniper, eater)
+	assert_false(battle.units.has(eater))
+	assert_eq(front.hp, front.max_hp() - Monsters.BURST_DAMAGE)
+	assert_eq(back.hp, back.max_hp() - Monsters.BURST_DAMAGE)
+	assert_eq(_effects(events), [], "弾けたダメージに特徴は掛からない")
+
+
+## 糸喰いが弾けて倒れた駒は、糸喰いを倒した駒が倒したことにする。だから、その駒は倒れた駒の陣営の仇になる（味方を巻き込んでも仇にはならない）。
+func test_units_felled_by_a_burst_make_the_eater_killer_a_foe_to_avenge() -> void:
+	var battle := _battle(T.VENGEANCE, T.VENGEANCE)
+	var killer := battle.add_unit(K.SNIPER, P2, Vector2i(3, 0))
+	var eater := battle.add_unit(K.EATER, Unit.Side.NEUTRAL, Vector2i(3, 3))
+	var victim := battle.add_unit(K.SORCERER, P1, Vector2i(3, 4))
+	var mate := battle.add_unit(K.SORCERER, P2, Vector2i(2, 2))
+	var mage := battle.add_unit(K.SORCERER, P1, Vector2i(3, 6))
+	eater.hp = 1
+	victim.hp = Monsters.BURST_DAMAGE
+	mate.hp = Monsters.BURST_DAMAGE
+	battle.phase = P2
+	_attack(battle, killer, eater)
+	assert_false(battle.units.has(victim) or battle.units.has(mate), "2 体とも弾けて倒れた")
+	assert_true(Traits.vengeance_marked(battle, killer, P1), "弾けて倒れた味方の仇")
+	assert_false(Traits.slew(killer, P2), "自分の陣営の駒を巻き込んでも仇ではない")
+	assert_eq(Traits.attack_boosts(battle, mage, killer), {T.VENGEANCE: Traits.VENGEANCE_BONUS})
+
+
+## 糸蜘蛛の攻撃は駒の攻撃なので、隊列で減る。減っても絡む。
+func test_ranks_cut_a_spider_bite_and_the_target_is_still_snared() -> void:
+	var battle := _battle(Traits.NONE, T.RANKS)
+	var spider := battle.add_unit(K.SPIDER, P1, Vector2i(3, 3))
+	var guarded := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 4))
+	battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(2, 4))
+	var events := _attack(battle, spider, guarded)
+	assert_eq(_damage(events), spider.power() - Traits.RANKS_GUARD)
+	assert_true(Statuses.has(guarded, Status.Type.SNARE))
+
+
 # --- 部隊 ---
 
 
