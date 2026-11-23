@@ -65,8 +65,25 @@ static func read(file: RefCounted) -> Dictionary:
 	if rows.is_empty():
 		file.problem(maxi(file.line_of("rows"), 1), "[rows] に文字の格子が無い")
 	else:
+		var row_lines: Array[int] = []
+		for row: Dictionary in file.rows("rows"):
+			row_lines.append(row["line"])
 		for problem: HandMap.Problem in map.problems():
-			file.problem(file.line_of("rows"), "盤にできない: %s（docs/hand-map.md）" % HandMap.Problem.keys()[problem].to_lower())
+			match problem:
+				HandMap.Problem.STRONGHOLD_COUNT:
+					# 2 つ目の H のある行で言う。
+					var seen := 0
+					for k in rows.size():
+						seen += rows[k].count(HandMap.STRONGHOLD)
+						if seen >= 2:
+							file.problem(row_lines[k], "拠点の場所（%s）が 2 つ以上ある（1 つだけ書ける）" % HandMap.STRONGHOLD)
+							break
+				HandMap.Problem.STRONGHOLD_UNUSABLE:
+					var site := map.stronghold_site()
+					file.problem(row_lines[site.y], "拠点の場所（%s。%d 列目）に拠点を置けない（中ボスから %d マス以内か、どちらかの本陣から歩いて行けない）" % [
+						HandMap.STRONGHOLD, site.x + 1, Stronghold.BOSS_CLEARANCE])
+				_:
+					file.problem(file.line_of("rows"), "盤にできない: %s（docs/hand-map.md）" % HandMap.Problem.keys()[problem].to_lower())
 	return {"map": map, "title": title, "look": look, "problems": file.problems}
 
 

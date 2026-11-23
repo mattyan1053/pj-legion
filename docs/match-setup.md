@@ -70,7 +70,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 | --- | --- | --- |
 | `battery`（`OptionalRules.BATTERY`） | 砲台。後衛が乗ると射程が伸びるマス（`docs/map-objects.md` の「砲台」） | 盤の置ける場所に砲台を置く（`BoardGenerator.arm_batteries`） |
 | `formation`（`OptionalRules.FORMATION`） | 組み方。連邦は同じ兵種をそろえた分隊、騎士領は編成で結んだ誓いに、効果が付く（`docs/formation.md`） | 組み方を入にし（`Battle.formation`）、編成の誓いを駒に写す（`Formation.arm`） |
-| `stronghold`（`OptionalRules.STRONGHOLD`） | 拠点。盤の中央のマスで、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤の中央に拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
+| `stronghold`（`OptionalRules.STRONGHOLD`） | 拠点。盤ごとに決めたマス（両方の本陣から同じくらいの道のり）で、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤ごとに決めたマスに拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
 
 決まりを足すとき: `OptionalRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
 

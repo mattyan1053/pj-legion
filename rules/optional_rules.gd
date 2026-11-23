@@ -8,7 +8,7 @@ extends RefCounted
 ## 砲台: 盤の決まった場所に砲台が置かれ、後衛が乗ると射程が伸びる（docs/map-objects.md の「砲台」）。
 const BATTERY := &"battery"
 
-## 拠点: 盤の中央の拠点に乗って番を終えると確保が進み、決まった数に届いたら勝ち（docs/map-objects.md の「拠点」）。
+## 拠点: 盤ごとに決めたマスの拠点に乗って番を終えると確保が進み、決まった数に届いたら勝ち（docs/map-objects.md の「拠点」）。
 const STRONGHOLD := &"stronghold"
 
 ## 組み方: 軍ごとの組み合わせの効果（連邦の分隊、騎士領の誓い。docs/formation.md）。

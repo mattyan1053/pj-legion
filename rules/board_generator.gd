@@ -36,6 +36,13 @@ const WALL_RATIO := 0.10
 const FOREST_RATIO := 0.15
 ## 連結しない盤面ができたら、シードをずらして作り直す回数。尽きたら壁を削ってつなぐ。
 const MAX_ATTEMPTS := 10
+## 拠点を道のりから選ぶときの寄せ（Board.stronghold_lean。先手の本陣からの道のり - 後手の本陣からの道のり の、ねらう値。
+## 正 = 後手の本陣に近い側）。盤の種類ごとに、CPU どうしの実測で先手・後手が釣り合うように決めた（docs/map-objects.md の「拠点」）。
+const STRONGHOLD_LEAN := {
+	Stage.PLAIN: 0,
+	Stage.LABYRINTH: 1,
+	Stage.TWIN_SPRINGS: 3,
+}
 ## 中央平原の起爆樽の数。
 const MIN_BARRELS := 4
 const MAX_BARRELS := 6
@@ -69,6 +76,7 @@ static func generate(stage: Stage, map_seed: int, size := DEFAULT_SIZE) -> Board
 		board.set_terrain(cell, Terrain.Type.FONT)
 	board.mid_boss_cells = mid_boss_cells_for(stage, size)
 	board.battery_spots = battery_spots_for(stage, size)
+	board.stronghold_lean = STRONGHOLD_LEAN[stage]
 
 	var protected := protected_cells(board)
 	for attempt in MAX_ATTEMPTS:

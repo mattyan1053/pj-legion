@@ -212,6 +212,29 @@ func test_matches_tool_can_swap_budgets_for_a_measurement() -> void:
 		assert_true(deck.entries.size() > 0)
 
 
+func test_matches_tool_can_try_a_stronghold_cell() -> void:
+	# --stronghold=列,行 か lean:K（docs/cpu-ai.md の「集計の道具」）。測るためだけに、拠点の場所を置き換える。
+	var tool := load("res://tools/cpu_matches.gd")
+	var setup := MatchSetup.versus_human(
+		BoardGenerator.Stage.PLAIN, 4, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY)
+	)
+	var battle := setup.create_battle()
+	assert_true(tool._arm_trial_stronghold(battle, "5,6", 4))
+	assert_eq(battle.board.stronghold_cell, Vector2i(5, 6))
+	assert_true(battle.wins_by(Unit.Side.PLAYER1, GameWonEvent.Reason.STRONGHOLD_HELD))
+	assert_true(battle.wins_by(Unit.Side.PLAYER2, GameWonEvent.Reason.STRONGHOLD_HELD))
+	var leaned := setup.create_battle()
+	assert_true(tool._arm_trial_stronghold(leaned, "lean:2", 4))
+	assert_eq(leaned.board.stronghold_lean, 2)
+	var near := Stronghold.distances(leaned.board, leaned.board.hq_cells[0])
+	var far := Stronghold.distances(leaned.board, leaned.board.hq_cells[1])
+	var i := leaned.board.stronghold_cell.y * leaned.board.size.x + leaned.board.stronghold_cell.x
+	assert_eq(near[i] - far[i], 2, "後手の本陣に 2 歩近いマス")
+	var blocked := setup.create_battle()
+	assert_false(tool._arm_trial_stronghold(blocked, "%d,%d" % [blocked.board.hq_cells[0].x, blocked.board.hq_cells[0].y], 4), "本陣には置けない")
+	assert_eq(blocked.board.stronghold_cell, Board.NO_CELL)
+
+
 func test_matches_tool_sorts_a_squad_by_what_is_in_it() -> void:
 	# --squads のときの「部隊の中身ごとの勝率」の鍵。CPU の編成そのものなら、そう分かる。
 	var tool := load("res://tools/cpu_matches.gd")

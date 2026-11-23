@@ -54,7 +54,8 @@ func test_trial_is_off_by_default_and_nothing_is_placed() -> void:
 		assert_eq(Stronghold.holds_left(battle, P1), -1)
 
 
-func test_trial_places_one_stronghold_at_the_same_distance_from_both_hqs() -> void:
+## 置く場所は、手で作ったマップなら `H` のマス、生成のマップなら盤の種類ごとの寄せ（BoardGenerator.STRONGHOLD_LEAN）で道のりから選んだマス。
+func test_trial_places_one_stronghold_where_the_board_says() -> void:
 	for field in VersusFields.all_ids():
 		for battle_seed: int in [1, 2, 3]:
 			var battle := _setup(field, battle_seed, [OptionalRules.STRONGHOLD]).create_battle()
@@ -65,11 +66,17 @@ func test_trial_places_one_stronghold_at_the_same_distance_from_both_hqs() -> vo
 			assert_eq(board.object_at(cell), MapObject.Type.STRONGHOLD, label)
 			assert_true(board.is_walkable(cell), label)
 			assert_eq(board.hq_owner(cell), -1, label)
+			if VersusFields.is_generated(field):
+				assert_eq(board.stronghold_site, Board.NO_CELL, label)
+				assert_eq(board.stronghold_lean, BoardGenerator.STRONGHOLD_LEAN[VersusFields.scenario_of(field).stage], label)
+				var fresh := VersusFields.scenario_of(field).make_board(battle_seed)  # 拠点を置く前の、同じ盤
+				assert_true(Stronghold.candidates(fresh).has(cell), label)
+			else:
+				assert_eq(cell, board.stronghold_site, "%s: 手で作ったマップは H のマス" % label)
 			var near := Stronghold.distances(board, board.hq_cells[P1])
 			var far := Stronghold.distances(board, board.hq_cells[P2])
 			var i := cell.y * board.size.x + cell.x
 			assert_true(near[i] > 0 and far[i] > 0, label)
-			assert_true(absi(near[i] - far[i]) <= 1, "%s: 道のり %d と %d" % [label, near[i], far[i]])
 			for home in board.mid_boss_cells:
 				assert_true(Combat.distance(home, cell) > Stronghold.BOSS_CLEARANCE, label)
 			for side: Unit.Side in [P1, P2]:
@@ -114,6 +121,41 @@ func test_ties_are_chosen_by_the_seed() -> void:
 		assert_eq(absi(near[i] - far[i]), 1)
 		leans[signi(far[i] - near[i])] = true
 	assert_eq(leans.size(), 2, "種を替えても、先手の側か後手の側の片方にしか置かない")
+
+
+## 盤の寄せ（Board.stronghold_lean）: 先手の本陣からの道のり - 後手の本陣からの道のり が、その値にいちばん近いマスに置く。
+func test_lean_moves_the_stronghold_toward_one_hq() -> void:
+	var board := Maps.board([".....", ".....", ".....", ".....", "....."])
+	board.hq_cells = [Vector2i(2, 4), Vector2i(2, 0)]
+	assert_eq(Stronghold.candidates(board), [Vector2i(2, 2)] as Array[Vector2i], "寄せ 0 なら両方から同じ道のりの、真ん中")
+	board.stronghold_lean = 2
+	assert_eq(Stronghold.candidates(board), [Vector2i(2, 1)] as Array[Vector2i], "正の寄せは、後手の本陣に近い側")
+	board.stronghold_lean = -2
+	assert_eq(Stronghold.candidates(board), [Vector2i(2, 3)] as Array[Vector2i], "負の寄せは、先手の本陣に近い側")
+
+
+## 盤の出どころが場所を決めていれば（Board.stronghold_site）、道のりによらずそこ。置けない場所なら置かない。
+func test_site_overrides_the_distances() -> void:
+	var board := Maps.board([".....", ".....", "..S..", ".....", "....."])
+	board.hq_cells = [Vector2i(2, 4), Vector2i(2, 0)]
+	board.stronghold_site = Vector2i(0, 1)
+	for battle_seed in 5:
+		assert_eq(Stronghold.choose_cell(board, battle_seed), Vector2i(0, 1))
+	board.stronghold_site = Vector2i(2, 2)
+	assert_eq(Stronghold.choose_cell(board), Board.NO_CELL, "泉の上には置かない")
+
+
+## 砲台の場所には置かない（砲台が入の対戦でも切の対戦でも、拠点が同じマスになるように）。
+func test_stronghold_avoids_battery_spots() -> void:
+	var board := Maps.board([".....", ".....", ".....", ".....", "....."])
+	board.hq_cells = [Vector2i(2, 4), Vector2i(2, 0)]
+	board.battery_spots = [Vector2i(2, 2)]
+	var cell := Stronghold.choose_cell(board)
+	assert_true(cell != Vector2i(2, 2) and cell != Board.NO_CELL)
+	for field in VersusFields.all_ids():
+		var off := _setup(field, 3, [OptionalRules.STRONGHOLD]).create_battle().board.stronghold_cell
+		var on := _setup(field, 3, [OptionalRules.STRONGHOLD, OptionalRules.BATTERY]).create_battle().board.stronghold_cell
+		assert_eq(on, off, "%s: 砲台の入・切で拠点が動いた" % field)
 
 
 func test_distances_use_portals() -> void:
