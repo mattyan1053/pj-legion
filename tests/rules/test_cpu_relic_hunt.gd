@@ -110,6 +110,32 @@ func test_squad_does_not_start_a_hunt_with_stronger_rivals_close() -> void:
 	assert_eq(boss.hp, boss.max_hp(), "横取りされる狩りを始めない")
 
 
+## 中ボスの撃破で勝つ、将のいない群れとの戦い: 群れが中ボスのそばに固まっていても、狩りに向かう（狩らずには終われない）。
+func test_squad_hunts_a_guarded_boss_when_slaying_it_wins_against_a_horde() -> void:
+	var battle := _battle()
+	for unit: Unit in battle.units.duplicate():
+		if unit.side == P2:
+			battle.units.erase(unit)  # 群れには将がいない
+	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
+	var boss := _boss(battle)
+	var squad: Array[Unit] = [
+		battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(4, 4)),
+		battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(4, 5)),
+		battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(3, 3)),
+		battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(3, 5)),
+	]
+	# 上の「はっきり強い相手」と同じ群れが、中ボスの向こうに固まっている。
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(13, 3))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(13, 5))
+	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(14, 4))
+	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(14, 3))
+	battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(14, 5))
+	_play_phase(battle)
+	assert_true(boss.hp < boss.max_hp(), "届く駒から殴り始める")
+	for unit in squad:
+		assert_true(_distance(unit, boss.cell) <= maxi(4, unit.attack_range()), "中ボスへ寄る: %s" % str(UnitKind.Id.find_key(unit.kind)))
+
+
 func test_engaged_units_fight_instead_of_hunting() -> void:
 	var battle := _battle()
 	var boss := _boss(battle)
