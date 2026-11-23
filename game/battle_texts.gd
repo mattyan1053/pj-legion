@@ -248,18 +248,22 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 	return items
 
 
-## 対戦の始めの知らせ（選べる決まり）の行。入の決まりごとに 1 行（盤に拠点がある）。無ければ空。
-## 砲台はマップの物なので、ここでは言わない（マスの説明と、乗ったときの射程で分かる）。
-static func rule_notice(battle: Battle) -> Array[String]:
-	var lines: Array[String] = []
-	if battle.board.stronghold_cell != Board.NO_CELL:
-		lines.append(Text.t("battle.notice.stronghold", WinText.stronghold_args()))
-	if not battle.signs.is_empty():
-		var names: Array[String] = []
-		for sign in battle.signs:
-			names.append(Names.sign_name(sign))
-		lines.append(Text.t("battle.notice.signs", {"names": Text.t("common.joiner.dot").join(names)}))
-	return lines
+## 対戦の始めの「対戦ルール」の札（docs/battle-view.md の「対戦ルール」）。side（人が動かす側）から見た、いま効いている勝利条件と、縫い目の様子。
+## 札は [種類（&"goal" か &"sign"）, 印の値（GameWonEvent.Reason か Seam.Sign）, 名前, 1 行の説明] の列。勝利条件が先、縫い目の様子があとで、それぞれの並びの順。
+## 相手が守り切る戦い（side が攻める側）は、勝利条件に「時間の限り」の札を足す（守り切るの印）。
+static func rule_cards(battle: Battle, side: Unit.Side) -> Array[Array]:
+	var cards: Array[Array] = []
+	var args := {"turns": battle.hold_turns, "capture": Battle.CAPTURE_TURNS_TO_WIN, "holds": Stronghold.HOLDS_TO_WIN}
+	for reason: GameWonEvent.Reason in WinText.ORDER:
+		if battle.win_conditions[side].has(reason):
+			var word := String(GameWonEvent.Reason.find_key(reason)).to_lower()
+			cards.append([&"goal", reason, Text.t("battle.goal.name." + word), Text.t("battle.goal.win." + word, args)])
+	var foe := (1 - side) as Unit.Side
+	if battle.win_conditions[foe].has(GameWonEvent.Reason.TURNS_HELD) and not battle.win_conditions[side].has(GameWonEvent.Reason.TURNS_HELD):
+		cards.append([&"goal", GameWonEvent.Reason.TURNS_HELD, Text.t("battle.goal.name.deadline"), Text.t("battle.goal.deadline", args)])
+	for sign in battle.signs:
+		cards.append([&"sign", sign, Names.sign_name(sign), Names.sign_summary(sign)])
+	return cards
 
 
 ## 盤の上の効果の [名前, 説明]。

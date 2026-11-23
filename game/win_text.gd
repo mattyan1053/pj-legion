@@ -101,6 +101,18 @@ static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 	return [Text.t("battle.hud.separator").join(parts), last]
 
 
+## 上の帯の勝ち方の札に並べる印（GameWonEvent.Reason の並び。goal_mark.gd）: 札の文が言う勝ち方（守り切る・全滅・中ボスの撃破）。
+## 「対戦ルール」と出撃準備の勝ち方の欄と同じ印で、同じものだと分かるようにする。札を出さない対戦（goal_tag の文が空）では空。
+static func goal_tag_marks(battle: Battle, side: Unit.Side) -> Array[int]:
+	var marks: Array[int] = []
+	if battle.turns_left() != -1:
+		marks.append(GameWonEvent.Reason.TURNS_HELD)
+	for reason: GameWonEvent.Reason in [GameWonEvent.Reason.ROUTED, GameWonEvent.Reason.BOSS_SLAIN]:
+		if battle.win_conditions[side].has(reason):
+			marks.append(reason)
+	return marks
+
+
 ## 拠点の札の勝つ数（拠点の無い対戦か、どちらの勝ちの条件にも拠点の確保が無ければ 0。札を出さない）。
 static func stronghold_goal(battle: Battle) -> int:
 	if battle.board.stronghold_cell == Board.NO_CELL:
