@@ -200,9 +200,9 @@ func _scene_story_drums_talk() -> bool:
 	if at < 0 or not await _start_fantasy(at) or not await _talk_from_sortie():
 		return false
 	var talk: Node = _app.current_scene()
-	while talk.line_index() < talk.line_count() and talk.speaker() != "骨の鼓手":
+	while talk.line_index() < talk.line_count() and talk.speaker() != "亡者の鼓手":
 		talk.press_next()
-	return talk.speaker() == "骨の鼓手"
+	return talk.speaker() == "亡者の鼓手"
 
 
 func _scene_story_drums_battle() -> bool:
@@ -327,7 +327,7 @@ func _scene_story_monster_king() -> bool:
 	_scene.hover(king.cell)
 	var episode: RefCounted = Story.military().episodes[number]
 	_scene.clear_talk_for_check()
-	_scene.say_for_check([BattleCues.Line.new(1, episode.speakers[1], "骨よ、生きた者を通すな。", episode.figures[1])] as Array[BattleCues.Line])
+	_scene.say_for_check([BattleCues.Line.new(1, episode.speakers[1], "眠れぬ者らよ、生きた者を通すな。", episode.figures[1])] as Array[BattleCues.Line])
 	return episode.king_looks[1] != &""
 
 

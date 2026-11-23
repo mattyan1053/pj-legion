@@ -110,7 +110,7 @@ unit = priest
 # 敵の将の見た目を替える（いま選べるのは skeleton_mage = 骸骨の将。ルールの上では将のまま）。
 # king_figure = skeleton_mage
 # none と書くと、将のいない群れ（本陣は空）。そのときは [episode] の wins を routed, boss_slain, turns_held から書き、
-# [cast] の敵の話し手には将でない姿を書く（「骨の術師 = enemy, skeleton_caller」）。
+# [cast] の敵の話し手には将でない姿を書く（「亡者の術師 = enemy, skeleton_caller」）。
 # king = none
 
 # 無くてよい節: クリアで増えるもの。
