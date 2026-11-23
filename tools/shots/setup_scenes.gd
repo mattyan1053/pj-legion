@@ -219,6 +219,12 @@ func _scene_trait_start() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.SUPPLY, Traits.Id.OATH])
 	_show()
+	_scene.hide_notice()
+	for unit in _battle.units:
+		if Traits.partner_of(_battle, unit) != null:
+			_scene.focus_camera(unit.cell)  # 誓いの線の見える騎士領の側
+			break
+	_park_mouse()
 	return _scene.trait_link_count() > 0
 
 
