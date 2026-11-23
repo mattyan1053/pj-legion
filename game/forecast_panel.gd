@@ -3,7 +3,7 @@ extends PanelContainer
 ##
 ## 中身は ForecastText.summarize()（Forecast をそのまま読んだもの）。ここは並べて描くだけで、ルールも計算も持たない。
 ## 一目で分かることを上に置く: 見出し（何をするか）→ 目立つ知らせ（倒せる、自分も巻き込まれる、決着）→ 駒ごとの行
-## （名前、HP の棒の減り方・増え方、数、内訳）→ 駒に属さないこと（置かれる効果、盾、聖遺物、必殺技のゲージ）。
+## （名前、HP の行（情報の枠と同じ部品で、棒に減り方・増え方を重ねる）、内訳）→ 駒に属さないこと（置かれる効果、盾、聖遺物、必殺技のゲージ）。
 
 const Palette := preload("res://game/ui_palette.gd")
 const Text := preload("res://game/text.gd")
@@ -12,6 +12,7 @@ const TextWrap := preload("res://game/text_wrap.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const SheetParts := preload("res://game/sheet_parts.gd")
 const InfoCard := preload("res://game/info_card.gd")
+const StatMeter := preload("res://game/stat_meter.gd")
 
 ## 中身の幅（px）。盤を隠しすぎないよう、情報の枠（320）より狭くする。
 const WIDTH := 250.0
@@ -20,45 +21,11 @@ const COLOR_TITLE := Palette.ACCENT
 const COLOR_DIM := Palette.TEXT_DIM
 const COLOR_DEFEAT := Palette.DANGER
 const COLOR_WARN := Palette.WARN
-const COLOR_HEAL := Palette.GOOD
-const COLOR_LOSS := Palette.HP_LOW
-const COLOR_BAR_BACK := Palette.INK
 ## 何かが起きる駒がこれより多いと、駒ごとに 1 行の詰めた形にする（樽の爆発は 8 体まで巻き込むので、パネルが画面の高さを超えないように）。
 const COMPACT_FROM := 4
 ## 小さな札の字の大きさと、札の左右の余白の見積もり（px。これを足して幅に入らない文は、札にしない）。
 const CHIP_FONT_SIZE := 13
 const CHIP_PADDING := 20.0
-
-
-## HP の棒。前の HP と後の HP を並べて描く（減るぶんは赤、増えるぶんは緑、残りは HP の色）。
-class HpChange:
-	extends Control
-	var before := 0
-	var after := 0
-	var max_hp := 1
-
-	func _init() -> void:
-		custom_minimum_size = Vector2(0.0, 13.0)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _draw() -> void:
-		# 溝（沈んだ地と、枠の真鍮の縁）の内側に、棒を描く。
-		draw_rect(Rect2(Vector2.ZERO, size), COLOR_BAR_BACK)
-		draw_rect(Rect2(Vector2(0.5, 0.5), size - Vector2.ONE), Palette.BORDER, false, 1.0)
-		draw_set_transform(Vector2(2.0, 2.0))
-		var full := size.x - 4.0
-		var height := size.y - 4.0
-		var top := maxi(before, after)
-		var low := mini(before, after)
-		var ratio := float(after) / maxf(float(max_hp), 1.0)
-		var color := Palette.hp(ratio)
-		draw_rect(Rect2(0.0, 0.0, full * low / maxf(max_hp, 1.0), height), color)
-		if top > low:
-			var change := COLOR_HEAL if after > before else COLOR_LOSS.lightened(0.15)
-			var from := full * low / maxf(max_hp, 1.0)
-			draw_rect(Rect2(from, 0.0, full * (top - low) / maxf(max_hp, 1.0), height), change)
-			# 変わる境に、明るい線（どこまで減るか・増えるかが、細い棒でも読める）。
-			draw_rect(Rect2(from - 0.5, -1.0, 1.5, height + 2.0), Palette.TEXT)
 
 
 var _column: VBoxContainer
@@ -78,6 +45,7 @@ func setup(team_colors: Array[Color], measure: Callable) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
 	_column = VBoxContainer.new()
+	_column.custom_minimum_size = Vector2(WIDTH, 0.0)  # 幅は中身で変えない（「何も起きない」だけでも同じ幅）
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.add_theme_constant_override("separation", 2)
 	add_child(_column)
@@ -107,22 +75,12 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 			continue
 		_add_label(name, 15, _side_color(row.side).lightened(0.4), true)
 		texts.append(name)
-		var hp := ForecastText.hp_text(row)
-		if hp != "":
-			var bar := HpChange.new()
-			bar.before = row.hp_before
-			bar.after = row.hp_after
-			bar.max_hp = maxi(row.max_hp, 1)
-			_column.add_child(bar)
-			var color := Color.WHITE
-			if row.defeated:
-				color = COLOR_DEFEAT
-			elif row.healed > 0:
-				color = COLOR_HEAL
-			elif row.blocked:
-				color = COLOR_DIM
-			_add_label(hp, 17, color, true)
-			texts.append(hp)
+		if row.damage >= 0 or row.healed > 0:
+			# HP の行は、情報の枠と同じ部品（名前・あとの HP・増減・棒）。減るぶん・増えるぶんを棒に色で重ねる。文の段落にしない。
+			var meter := StatMeter.new(true)
+			meter.show_change(Text.t("deck.sheet.hp"), row.hp_before, row.hp_after, maxi(row.max_hp, 1), row.defeated)
+			_column.add_child(meter)
+			texts.append(" ".join(meter.texts()))
 		# 内訳（クリティカル、森で軽減）と、ほかに起きること（付く状態など）は、小さな札にして並べる（情報の枠の札と同じ形）。
 		var chips := _add_chips()
 		for note in row.notes:
