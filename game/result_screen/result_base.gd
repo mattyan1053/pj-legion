@@ -120,6 +120,8 @@ var _detail: Label
 ## 詳しい戦績の表: 陣営の切り替え、陣営の 1 行、表の行の入れ物、いま出している陣営。
 var _table_tabs: Array[Button] = []
 var _table_summary: Label
+## 表の、駒の名前の列の見出し（対戦モードは「駒」、ストーリーは「名前」）。
+var _table_unit_head: Label
 var _table_rows: VBoxContainer
 var _table_side := 0
 ## 詳しい戦績の文（stats_text.gd。画面には表で出す。検査用）。
