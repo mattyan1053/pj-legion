@@ -118,7 +118,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 		amount += boosts[effect]
 	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
 	if forest:
-		amount = amount * FOREST_DAMAGE_RATE_PERCENT / 100
+		amount = amount * Seam.forest_rate_percent(battle) / 100
 	var guard := Formation.guard_of(battle, target)
 	if guard > 0 and amount > 0:
 		boosts[Formation.Effect.SQUAD_GUARD] = mini(guard, amount)

@@ -91,7 +91,7 @@ static func can_target(battle: Battle, unit: Unit, target: Vector2i) -> bool:
 ## 行動を終えないスキル（Skill.ends_action が偽）では、UnitActedEvent は出ず、駒は行動の途中になる（Battle.hold_action）。
 static func use(battle: Battle, unit: Unit, target: Vector2i) -> Array[BattleEvent]:
 	var skill := of(unit)
-	unit.skill_cooldown = skill.cooldown()
+	unit.skill_cooldown = Seam.cooldown_of(battle, skill.cooldown())
 	unit.skill_uses += 1
 	var events: Array[BattleEvent] = [SkillUsedEvent.new(unit.id, skill.id(), target, unit.skill_cooldown)]
 	events.append_array(skill.apply(battle, unit, target))

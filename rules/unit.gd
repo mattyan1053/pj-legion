@@ -87,6 +87,11 @@ func _init(
 ## 同じ状態の駒を作る（Battle.clone() が使う）。
 ## いま立っているマス（砲台）による射程の伸び。Battle が、駒を置いたときと行動のたびに付け直す（Battle.refresh_sites）。
 var site_range := 0
+## 縫い目の様子の札（Seam）が掛ける能力値の層（Unit.Stat -> 足す値）と、天裂の名残りで射程が縮むか。対戦が、駒を置くときに付ける（Seam.equip）。
+var sign_bonus := {}
+var hazed := false
+## 縫い目の様子の札（縫い代の風）が巡航の移動力に足す値（Movement.budget）。
+var cruise_bonus := 0
 
 
 func copy() -> Unit:
@@ -177,13 +182,16 @@ func follow_max_hp(before: int) -> void:
 	hp = mini(hp, after)
 
 
-## 実効値。層 1 に、聖遺物、一時的な補正の順で足す。最大 HP は 1、ほかは 0 を下回らない。
+## 実効値。層 1 に、聖遺物、縫い目の様子の札、一時的な補正の順で足す（射程は、砲台の伸びも。天裂の名残りは、足したあとの射程を縮める）。最大 HP は 1、ほかは 0 を下回らない。
 func stat(which: Stat) -> int:
 	var value := base_stat(which)
 	if which == Stat.ATTACK_RANGE:
 		value += site_range
 	value += relic_bonus.get(which, 0)
+	value += sign_bonus.get(which, 0)
 	value += temporary_bonus.get(which, 0)
+	if which == Stat.ATTACK_RANGE and hazed:
+		value = Seam.hazed_range(value)
 	return maxi(value, 1 if which == Stat.MAX_HP else 0)
 
 

@@ -38,6 +38,7 @@ const FAMILIES := {
 	"ult": [Ult.Id, ["", ".summary"]],
 	"status": [Status.Type, ["", ".summary"]],
 	"formation": [Formation.Effect, ["", ".summary"]],
+	"sign": [Seam.Sign, ["", ".summary"]],
 	"relic": [Relics.Id, ["", ".summary", ".short", ".effect"]],
 	"stage": [BoardGenerator.Stage, [""]],
 }

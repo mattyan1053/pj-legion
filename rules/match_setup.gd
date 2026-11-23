@@ -154,12 +154,15 @@ func create_battle() -> Battle:
 	var board := scenario.make_board(battle_seed)
 	if board == null:
 		return null
+	var drawn := _signs_on(board)  # 札は、決まりの準備で盤を変える前の盤から引く（signs() と同じ札）
 	if rules.has(OptionalRules.BATTERY):
 		BoardGenerator.arm_batteries(board)
 	if rules.has(OptionalRules.STRONGHOLD):
 		Stronghold.arm(board, battle_seed)
 	var battle := Battle.new(board, battle_seed)
 	battle.formation = rules.has(OptionalRules.FORMATION)
+	if rules.has(OptionalRules.SEAM):
+		Seam.arm(battle, drawn)  # 拠点を置いたあと（ポータルの対を替えても、拠点のマスは動かない）。駒を置く前
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var placement: Array[Vector2i] = []
 		placement.assign(placements[side])
@@ -174,6 +177,21 @@ func create_battle() -> Battle:
 		battle.ult_gauge[side] = scenario.start_gauge[side]
 	battle.hold_turns = scenario.hold_turns
 	return battle
+
+
+## 縫い目の様子（OptionalRules.SEAM）が入なら、この設定の対戦でめくる札（Seam.draw。盤と種で決まる）。切なら空。
+## 盤を作るので、画面が札を見せる（部隊を選ぶ前）ときにも呼べる（編成が無くてもよい）。
+func signs() -> Array[int]:
+	if not rules.has(OptionalRules.SEAM):
+		return []
+	var board := scenario.make_board(battle_seed)
+	return _signs_on(board) if board != null else []
+
+
+func _signs_on(board: Board) -> Array[int]:
+	if not rules.has(OptionalRules.SEAM):
+		return []
+	return Seam.draw(board, battle_seed)
 
 
 ## 置いた駒 placed（将が先頭、あとは部隊の並びの順）に、始めのレベルと経験値 rows を当てる。

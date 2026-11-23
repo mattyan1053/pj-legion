@@ -228,6 +228,7 @@ var _stand_off := false
 ## いま考えている駒（奇襲）が離れすぎないようにする味方（前衛・後衛）のマス。空なら、見ない。
 var _support: Array[Vector2i] = []
 ## いま考えている駒が、ほかのマスへ動いたあとの射程（動くと外れる状態で伸びた射程は、動くと戻る）。
+## 縫い目の様子の天裂の名残りで縮める前の値（砲台の伸びを付け替えてから縮める。_reach_from）。
 var _moved_reach := 0
 ## いま考えている駒が、戦える駒のいなくなった軍の将か。
 var _lone_king := false
@@ -473,7 +474,7 @@ func _follow_up(unit: Unit) -> BattleAction:
 	_thinking_id = unit.id
 	_build_threats()
 	_set_goal(unit)
-	_moved_reach = unit.attack_range()
+	_moved_reach = _unhazed(unit, func() -> int: return unit.attack_range())
 	var here: Dictionary[Vector2i, float] = {unit.cell: 0.0}
 	var wanted := _wanted_skill_targets(unit, here)
 	var skill := Skills.of(unit)
@@ -503,7 +504,7 @@ func _plan(unit: Unit) -> BattleAction:
 	_thinking_id = unit.id
 	_build_threats()
 	_set_goal(unit)
-	_moved_reach = Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE)
+	_moved_reach = _unhazed(unit, func() -> int: return Statuses.stat_after_move(unit, Unit.Stat.ATTACK_RANGE))
 
 	# 動くだけ（待機）の手。
 	var best_cell := unit.cell
@@ -683,7 +684,17 @@ func _in_reach(unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i) -> 
 func _reach_from(unit: Unit, cell: Vector2i) -> int:
 	if cell == unit.cell:
 		return unit.attack_range()
-	return _moved_reach - unit.site_range + MapObject.battery_bonus(_board, unit, cell)
+	var reach := _moved_reach - unit.site_range + MapObject.battery_bonus(_board, unit, cell)
+	return Seam.hazed_range(reach) if unit.hazed else reach
+
+
+## unit の射程を measure で測る。天裂の名残り（Seam）で縮める前の値（縮み方は射程に比例しないので、砲台の伸びを付け替えてから縮める）。
+static func _unhazed(unit: Unit, measure: Callable) -> int:
+	var hazed := unit.hazed
+	unit.hazed = false
+	var value: int = measure.call()
+	unit.hazed = hazed
+	return value
 
 
 ## cells（通常の移動で止まれるマス）のうち、at に手が届き、そこで手を出すのにいちばん良いマス。無ければ Board.NO_CELL。
@@ -1057,7 +1068,9 @@ func _battery_pull(unit: Unit, cell: Vector2i) -> float:
 	if _board.battery_cells.is_empty() or UnitKind.role(unit.kind) != UnitKind.Role.REARGUARD:
 		return 0.0
 	var best := 0.0
-	var reach := unit.attack_range() - unit.site_range + MapObject.BATTERY_RANGE
+	var reach := _unhazed(unit, func() -> int: return unit.attack_range()) - unit.site_range + MapObject.BATTERY_RANGE
+	if unit.hazed:
+		reach = Seam.hazed_range(reach)
 	for battery in _board.battery_cells:
 		var holder := _battle.unit_at(battery)
 		if holder != null and holder != unit:
