@@ -151,4 +151,4 @@
 | 煙幕・聖域の広がり | 中心からチェビシェフ距離 1（3 x 3） | `AREA_RADIUS` |
 
 煙幕が防ぐ「離れたところ」の距離（2（`Combat.RANGED_DISTANCE`）以上）は `rules/combat.gd`。
-CPU の、盾を削る価値（耐久力 1 あたり 0.5（`BARRICADE_DAMAGE_VALUE`））と壊す価値（10（`BARRICADE_BREAK_VALUE`））は `rules/cpu_player.gd`。
+CPU の、盾を削る価値（耐久力 1 あたり 0.5（`BARRICADE_DAMAGE_VALUE`））と壊す価値（10（`BARRICADE_BREAK_VALUE`））は `rules/cpu/cpu_player_base.gd`。
