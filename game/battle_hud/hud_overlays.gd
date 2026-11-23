@@ -225,6 +225,7 @@ func _build_notice() -> void:
 	_notice_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_notice_body.max_lines_visible = NOTICE_LINES
 	_notice_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_notice_body.set_meta(&"plain", "")  # 折り返す前の文（notice_text）
 	column.add_child(_notice_body)
 	var close := _button(Text.t("battle.notice.close"), Signal())
 	close.custom_minimum_size = Vector2(120.0, 32.0)
@@ -235,7 +236,8 @@ func _build_notice() -> void:
 
 ## 対戦の始めの知らせを出す（lines は決まりごとの行。空なら出さない）。
 func show_notice(lines: Array[String]) -> void:
-	_notice_body.text = "\n".join(lines)
+	# 語の途中で切らないよう、日本語の行の切れ目の決まり（text_wrap.gd）で折り返しておく（ラベルの自動の折り返しは、どこでも切る）。
+	_set_folded(_notice_body, "\n".join(lines), NOTICE_TEXT_WIDTH)
 	_notice.visible = not lines.is_empty()
 
 
@@ -245,7 +247,7 @@ func hide_notice() -> void:
 
 ## 対戦の始めの知らせの文（出ていなければ空。検査用）。
 func notice_text() -> String:
-	return _notice_body.text if _notice.visible else ""
+	return String(_notice_body.get_meta(&"plain")) if _notice.visible else ""
 
 
 ## 対戦の始めの知らせの枠の四角（出ていなければ大きさ 0。検査用）。
