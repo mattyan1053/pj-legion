@@ -10,7 +10,7 @@ extends RefCounted
 ## - 面ごとに平らな影と色（ローポリの岩）。上を向いた面は明るい色、崖は暗い色、低いところほど暗い。
 ## - 結晶は、かたまりの内側の高いところに、ところどころ生やす（1 マスだけの障害物は、小さい岩に結晶 1 つ）。
 ##
-## 駒やマウスの下のマスの手前で透かす（board_view.gd の update_occlusion）ため、形はマスごとに分けて返す
+## 駒やマウスの下のマスの手前で透かす（board_view/board_marks.gd の update_occlusion）ため、形はマスごとに分けて返す
 ## （1 マスの形 = 岩の面と結晶の面の 2 つ。同じ形の結晶も、マスの形の中へまとめて、1 マス 1 回で描く）。
 
 const CrystalMesh := preload("res://game/crystal_mesh.gd")

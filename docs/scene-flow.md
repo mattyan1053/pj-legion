@@ -99,7 +99,7 @@
   `in_progress()`（抜けると失われるものがあるか。あれば、タイトルへ戻る・ゲームを終える前に確かめる）。`losing_note()`（確かめの文に書く、失われるもの。無ければ対戦の文）。
 - 場面からアプリへの頼みごと（システムメニューを開く、オプションの画面を開く）は `context.open_menu()` と `context.open_settings()`。場面はアプリを知らない。
   音は `context.play_sound(名前)`、決着の曲は `context.play_jingle(名前)`・`context.resume_scene_music()`、アプリを終えるのは `context.quit()`（音を止めてから終える）。
-- 場面を抜けるとノードは消える。再生の待ち時間は、場面の子の Timer で測る（`battle_playback.gd` の `after`）。木の時計で待つと、消えた場面の続きが走ってしまう。
+- 場面を抜けるとノードは消える。再生の待ち時間は、場面の子の Timer で測る（`battle_playback/playback_base.gd` の `after`）。木の時計で待つと、消えた場面の続きが走ってしまう。
 
 ## 共有するもの（`app_context.gd`）
 
