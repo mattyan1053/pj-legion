@@ -204,9 +204,19 @@ func power() -> int:
 	return stat(Stat.POWER)
 
 
-## 動けない特性（Evolution.Trait.ROOTED）の駒は、補正があっても 0。
-func move_range() -> int:
+## 動けないか: 動けない特性（Evolution.Trait.ROOTED。糸針）か、動けなくする状態（Status.roots。絡み）が付いている。
+func is_rooted() -> bool:
 	if has_trait(Evolution.Trait.ROOTED):
+		return true
+	for type: Status.Type in statuses:
+		if Status.roots(type):
+			return true
+	return false
+
+
+## 動けない駒（is_rooted）は、補正があっても 0。
+func move_range() -> int:
+	if is_rooted():
 		return 0
 	return stat(Stat.MOVE_RANGE)
 

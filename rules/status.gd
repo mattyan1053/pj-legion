@@ -10,6 +10,7 @@ extends RefCounted
 ## - 受けるダメージを 0 にする（blocks_damage）。1 回で外れる。ダメージの解決（Hit.resolve）が見る
 ## - 攻撃を確定クリティカルにする（critical_percent）。攻撃 1 回で外れる。Combat.hit が見る
 ## - 動くと外れる（breaks_on_move）
+## - 動けなくする（roots。絡み。Unit.is_rooted が見る）
 
 enum Type {
 	BARRIER,  ## バリア。次に受けるダメージを 1 回だけ 0 にする（ディバインシールド）
@@ -17,6 +18,7 @@ enum Type {
 	FATIGUE,  ## 反動。攻撃力が下がる（アドレナリン注射を受けた駒）
 	ASSAULT,  ## 突撃。移動力と攻撃力が上がる（必殺技の総員突撃）
 	RESOLVE,  ## 奮起。攻撃力が上がる（組み方の誓いの相手が倒れた駒。Formation）
+	SNARE,  ## 絡み。動けない（糸蜘蛛に攻撃された駒。Monsters）
 }
 
 ## クリティカルでない攻撃の倍率（%）。
@@ -55,3 +57,8 @@ static func ends_on_attack(type: Type) -> bool:
 ## 駒がほかのマスへ動くと外れるか。
 static func breaks_on_move(type: Type) -> bool:
 	return type == Type.AIM
+
+
+## 付いている間、駒が動けなくなるか（移動力 0。ポータルでも動かない。Unit.is_rooted）。
+static func roots(type: Type) -> bool:
+	return type == Type.SNARE

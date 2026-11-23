@@ -5,7 +5,7 @@
 `rules/events/status_applied_event.gd`、`rules/events/status_removed_event.gd`。
 テスト: `tests/rules/test_statuses.gd`。
 
-スキルと必殺技（と組み方の誓い）が駒に一定の間だけ付けるもの（バリア、照準、反動、突撃、奮起）。盤のマスに置く効果（`docs/field-effects.md`）とは別で、駒と一緒に動く。
+スキルと必殺技（と組み方の誓い）が駒に一定の間だけ付けるもの（バリア、照準、反動、突撃、奮起、絡み）。盤のマスに置く効果（`docs/field-effects.md`）とは別で、駒と一緒に動く。
 ここにあるのは状態の側の約束だけで、**誰が・いつ付けるか（スキル、クールダウン、数値）はスキルごとの文書**（`docs/skills/`。突撃は `docs/tactical-ult.md` と `docs/skills/war-drum.md`）。
 
 ## 持ち方
@@ -23,6 +23,7 @@
 | 反動（`FATIGUE`） | 攻撃力（回復役は回復量）が下がる | 期限 | アドレナリン注射（受けた駒に付く） |
 | 突撃（`ASSAULT`） | 移動力と攻撃力（回復役は回復量）が上がる | 期限 | 必殺技の総員突撃（`docs/tactical-ult.md`。軍の全員に付く）、骨太鼓（`docs/skills/war-drum.md`。周りの味方に付く） |
 | 奮起（`RESOLVE`） | 攻撃力（回復役は回復量）が上がる | 期限 | 組み方の誓いの果て（`docs/formation.md`。誓いの相手が倒れた駒に付く） |
+| 絡み（`SNARE`） | 動けない（移動力 0。ポータルでも動かない。攻撃とスキルはできる。`Unit.is_rooted`） | 期限（相手の番に付き、付いた駒の次の番の終わりまで） | 魔物の糸蜘蛛の攻撃（`docs/monsters.md`。スキルではない） |
 
 状態がダメージをどう変えるか（バリア、確定クリティカル）は `docs/combat.md` の「ダメージの解決」。
 
