@@ -185,6 +185,42 @@ func test_skill_damage_is_grouped_under_the_skill() -> void:
 	assert_true(entry.unit_ids.has(a.id) and entry.unit_ids.has(b.id))
 
 
+## 骸骨旗手が倒れると、攻撃の行のあとに奮起の行。奮起した駒は、その下に 1 行にまとめる。
+func test_rally_is_a_line_with_the_rallied_units_under_it() -> void:
+	var battle := Maps.battle(["......", "......"])
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 0))
+	var banner := battle.add_unit(UnitKind.Id.SKELETON_BANNER, P2, Vector2i(2, 0))
+	battle.add_unit(UnitKind.Id.SKELETON, P2, Vector2i(3, 0))
+	battle.add_unit(UnitKind.Id.SKELETON, P2, Vector2i(2, 1))
+	banner.hp = 1
+	var book := BattleLog.new(battle)
+	_apply(battle, book, AttackAction.new(paladin.id, banner.id))
+	var entry: BattleLog.Entry = book.entries[-1]
+	assert_eq(entry.text, "赤の%sが倒れ、周りの 2 体が奮起した" % Names.kind(UnitKind.Id.SKELETON_BANNER), entry.full_text())
+	assert_eq(entry.side, P2)
+	assert_eq(entry.cell, Vector2i(2, 0), "倒れたマス")
+	assert_eq(entry.details.size(), 1, entry.full_text())
+	assert_true(entry.details[0].begins_with("%s（" % Names.status(Status.Type.RESOLVE)), entry.details[0])
+
+
+## ほつれが倒れると、結び目が残ったことと、立ち直るまでのターン数を書く。
+func test_knot_is_noted_with_the_turns_to_reform() -> void:
+	var battle := Maps.battle(["......"])
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(1, 0))
+	var fray := battle.add_unit(UnitKind.Id.FRAY, P2, Vector2i(2, 0))
+	fray.hp = 1
+	var book := BattleLog.new(battle)
+	var result := battle.apply(AttackAction.new(paladin.id, fray.id))
+	assert_true(result.accepted)
+	book.feed_all(result.events)
+	var knot: KnotPlacedEvent = result.events.filter(func(e: BattleEvent) -> bool: return e is KnotPlacedEvent)[0]
+	var text := "(2, 0) に%sが残った（%d ターンで立ち直る）" % [Names.field_effect(FieldEffect.Type.KNOT), knot.turns_left]
+	var found := false
+	for line in _lines(book):
+		found = found or line.contains(text)
+	assert_true(found, "\n".join(_lines(book)))
+
+
 func test_ult_statuses_are_one_detail_line() -> void:
 	var battle := Maps.battle(["......"])
 	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(0, 0))
