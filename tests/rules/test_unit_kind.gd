@@ -50,7 +50,7 @@ func test_neutrals() -> void:
 
 func test_only_vanguards_exert_zoc() -> void:
 	for id: UnitKind.Id in UnitKind.Id.values():
-		var expected: bool = id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN, UnitKind.Id.SKELETON_BRUTE, UnitKind.Id.FRAY]
+		var expected: bool = id in [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.PALADIN, UnitKind.Id.SKELETON_BRUTE, UnitKind.Id.FRAY, UnitKind.Id.EATER]
 		assert_eq(UnitKind.exerts_zoc(id), expected, str(UnitKind.Id.find_key(id)))
 
 
@@ -59,7 +59,7 @@ func test_monsters_have_a_role_but_no_army() -> void:
 	var monsters: Array[UnitKind.Id] = [
 		UnitKind.Id.SKELETON, UnitKind.Id.SKELETON_ARCHER, UnitKind.Id.SKELETON_BRUTE,
 		UnitKind.Id.SKELETON_CALLER, UnitKind.Id.SKELETON_DRUMMER, UnitKind.Id.SKELETON_BANNER,
-		UnitKind.Id.BAT, UnitKind.Id.FRAY, UnitKind.Id.NEEDLE,
+		UnitKind.Id.BAT, UnitKind.Id.FRAY, UnitKind.Id.NEEDLE, UnitKind.Id.SPIDER, UnitKind.Id.EATER,
 	]
 	for id: UnitKind.Id in UnitKind.Id.values():
 		assert_eq(UnitKind.is_monster(id), monsters.has(id), str(UnitKind.Id.find_key(id)))

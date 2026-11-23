@@ -29,6 +29,8 @@ enum Id {
 	BAT,  ## 魔物・奇襲。速く脆い。支配領域で止まらず、森を平地と同じに飛ぶ
 	FRAY,  ## 魔物・前衛。倒れると、結び目が残り、放っておくと立ち直る（Monsters）
 	NEEDLE,  ## 魔物・後衛。動かないが、遠くまで撃つ
+	SPIDER,  ## 魔物・奇襲。当てた相手を、次の番まで動けなくする（Monsters）
+	EATER,  ## 魔物・前衛。倒れると、腹の糸が弾けて周りを焼く（Monsters）
 }
 
 enum Role { NONE, VANGUARD, REARGUARD, RAIDER, HEALER }
@@ -57,6 +59,8 @@ const _TABLE := {
 	Id.BAT: [Role.RAIDER, Army.NONE, 1, 12, 7, 6, 1],
 	Id.FRAY: [Role.VANGUARD, Army.NONE, 2, 30, 6, 2, 1],
 	Id.NEEDLE: [Role.REARGUARD, Army.NONE, 2, 28, 8, 0, 4],
+	Id.SPIDER: [Role.RAIDER, Army.NONE, 2, 18, 5, 4, 1],
+	Id.EATER: [Role.VANGUARD, Army.NONE, 3, 36, 8, 3, 1],
 }
 
 

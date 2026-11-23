@@ -1,9 +1,11 @@
 extends RefCounted
-## 骸骨でない魔物（大蝙蝠・ほつれ・糸針）と骸骨旗手の体。どの見た目の組でも同じ形（組が形を持たなければ、look_set.gd がこれを使う）。
+## 骸骨でない魔物（大蝙蝠・ほつれ・糸針・糸蜘蛛・糸喰い）と骸骨旗手の体。どの見た目の組でも同じ形（組が形を持たなければ、look_set.gd がこれを使う）。
 ##
 ## - 大蝙蝠: Quaternius の Animated Monster Pack の Bat（assets/quaternius/monsters/Bat.fbx。CC0）。宙に浮かせる。腹を陣営の色に塗る
 ## - ほつれ: 同じパックの Slime（Slime.fbx）。体を糸の青白い色に塗り、目を陣営の色にする
 ## - 糸針: 素材を使わず、コードで組む結晶の針の束（crystal_mesh.gd）。根元の輪が陣営の色
+## - 糸蜘蛛: CDmir の Alien Bug Animated（assets/cdmir/alien-bug/alien-bug.glb。CC0）。体の絵に糸の青白い色を掛ける
+## - 糸喰い: Quaternius の Animated Monster Pack の Dragon（Dragon.fbx）。腹を糸の色に光らせ、翼を陣営の色に塗る。宙に浮かせる
 ## - 骸骨旗手: 「人物」の組の骸骨（quaternius_skeleton.gd）に、陣営の色の旗を持たせたもの
 ## 動きは素材の 4〜5 つ（立つ・走る・殴る・倒れる。大蝙蝠は被弾も）。糸針は unit_body.gd の代わりの動き。
 
@@ -17,7 +19,7 @@ const DIR := "res://assets/quaternius/monsters/"
 ## 糸（結晶）の青白い色。ほつれの体と、糸針の針。
 const THREAD := Palette.MONSTER_GLOW
 
-## 素材ごとの形。"raw" は素材の足から頭の上までの高さ（素材は cm で入っていて、骨の親が 100 倍）、"size" は駒の背に対する大きさ、
+## 素材ごとの形。"file" は DIR の FBX の名前（"path" があれば、そのファイル）。"raw" は素材の足から頭の上までの高さ（素材は cm で入っていて、骨の親が 100 倍）、"size" は駒の背に対する大きさ、
 ## "lift" は浮かせる高さ（駒の背に対する割合）、"turn" は前を向かせる回し方（度）、"paint" は塗り替える面（素材のマテリアルの名前 -> "team" か色）。
 const MODELS := {
 	UnitKind.Id.BAT: {
@@ -35,6 +37,19 @@ const MODELS := {
 			&"death": &"Armature|Slime_Death",
 		},
 		"paint": {"Body": THREAD, "Eyes": "team"},
+	},
+	UnitKind.Id.SPIDER: {
+		"path": "res://assets/cdmir/alien-bug/alien-bug.glb", "raw": 0.57, "size": 0.44, "lift": 0.0,
+		"moves": {&"idle": &"Idle", &"run": &"Run", &"attack": &"Attack_000"},
+		"paint": {"Bug": THREAD},
+	},
+	UnitKind.Id.EATER: {
+		"file": "Dragon", "raw": 4.8, "size": 0.9, "lift": 0.0,
+		"moves": {
+			&"idle": &"DragonArmature|Dragon_Flying", &"run": &"DragonArmature|Dragon_Flying",
+			&"attack": &"DragonArmature|Dragon_Attack", &"hit": &"DragonArmature|Dragon_Hit", &"death": &"DragonArmature|Dragon_Death",
+		},
+		"paint": {"Belly": THREAD, "Wings": "team"},
 	},
 }
 
@@ -56,7 +71,8 @@ static func build(kind: UnitKind.Id, team_color: Color, height: float) -> UnitBo
 
 
 static func _model(shape: Dictionary, team_color: Color, height: float) -> UnitBody:
-	var model: Node3D = (load(DIR + "%s.fbx" % shape["file"]) as PackedScene).instantiate()
+	var path: String = shape["path"] if shape.has("path") else DIR + "%s.fbx" % shape["file"]
+	var model: Node3D = (load(path) as PackedScene).instantiate()
 	var size: float = shape["size"]
 	model.scale = Vector3.ONE * height * size / float(shape["raw"])
 	model.position.y = height * float(shape["lift"])
@@ -69,7 +85,7 @@ static func _model(shape: Dictionary, team_color: Color, height: float) -> UnitB
 	return body
 
 
-## 面ごとに、素材の色（paint にあれば、その色か陣営の色）を暗さ shade で塗る。
+## 面ごとに、素材の色（paint にあれば、その色か陣営の色）を暗さ shade で塗る。素材に絵があれば、絵に色を掛ける。
 static func _paint(mesh: MeshInstance3D, paint: Dictionary, team_color: Color, shade: float) -> void:
 	for i in mesh.mesh.get_surface_count():
 		var original := mesh.mesh.surface_get_material(i) as StandardMaterial3D
@@ -82,6 +98,8 @@ static func _paint(mesh: MeshInstance3D, paint: Dictionary, team_color: Color, s
 			var material := StandardMaterial3D.new()
 			material.albedo_color = Color(color.r * shade, color.g * shade, color.b * shade)
 			material.roughness = 0.8
+			if original != null and original.albedo_texture != null:
+				material.albedo_texture = original.albedo_texture
 			_materials[key] = material
 		mesh.set_surface_override_material(i, _materials[key])
 

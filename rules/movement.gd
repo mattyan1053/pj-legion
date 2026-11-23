@@ -16,9 +16,9 @@ extends RefCounted
 ##   道の中でポータルの対が続けて並んでいたら、そこは転移（Battle.portal_exit で見分ける）。route() が行動の列に直す
 
 
-## 移動に使える移動力。動けない駒（Evolution.Trait.ROOTED）は 0。
+## 移動に使える移動力。動けない駒（Unit.is_rooted。糸針と、絡みの付いた駒）は 0。
 static func budget(unit: Unit, cruise: bool) -> int:
-	if unit.has_trait(Evolution.Trait.ROOTED):
+	if unit.is_rooted():
 		return 0
 	return unit.move_range() * 2 + unit.cruise_bonus if cruise else unit.move_range()
 
@@ -130,7 +130,7 @@ class Search:
 static func _search(battle: Battle, unit: Unit, limit: int, from: Array[Vector2i], through_portals: bool) -> Search:
 	var found := Search.new()
 	limit = maxi(limit, 0)
-	through_portals = through_portals and not unit.has_trait(Evolution.Trait.ROOTED)  # 動けない駒は、ポータルでも動かない
+	through_portals = through_portals and not unit.is_rooted()  # 動けない駒は、ポータルでも動かない
 	var board := battle.board
 	var enemy_zoc: Dictionary[Vector2i, bool] = {}
 	var stopped_by_zoc := not unit.ignores_zoc()

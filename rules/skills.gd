@@ -95,6 +95,8 @@ static func use(battle: Battle, unit: Unit, target: Vector2i) -> Array[BattleEve
 	unit.skill_uses += 1
 	var events: Array[BattleEvent] = [SkillUsedEvent.new(unit.id, skill.id(), target, unit.skill_cooldown)]
 	events.append_array(skill.apply(battle, unit, target))
+	if not battle.units.has(unit):
+		return events  # 倒した糸喰いが弾けて、使った駒も倒れた（行動を終えるイベントは出ない）
 	if skill.ends_action():
 		events.append(battle.finish_action(unit))
 	else:
@@ -130,6 +132,8 @@ static func deal_damage(battle: Battle, user: Unit, hits: Array[Array]) -> Array
 		var victim: Unit = hit[0]
 		if victim.hp == 0 and battle.units.has(victim):
 			events.append_array(battle.remove_unit(victim, user))
+	if not battle.units.has(user):
+		return events  # 倒した糸喰いが弾けて、使った駒も倒れた
 	var reason := ExperienceGainedEvent.Reason.DEFEAT if defeated else ExperienceGainedEvent.Reason.HIT
 	events.append_array(Growth.gain(user, experience, reason))
 	return events

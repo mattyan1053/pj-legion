@@ -122,7 +122,7 @@ func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 	Ults.charge_defeat(self, unit)
 	var events: Array[BattleEvent] = [UnitDefeatedEvent.new(unit)]
 	events.append_array(Formation.on_defeated(self, unit))
-	events.append_array(Monsters.on_defeated(self, unit))
+	events.append_array(Monsters.on_defeated(self, unit, by))
 	var boss_index := mid_boss_index(unit)
 	if boss_index != -1:
 		var slayer := by if by != null and by.side != Unit.Side.NEUTRAL else null

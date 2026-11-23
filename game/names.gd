@@ -70,7 +70,7 @@ static func trait_short(of_trait: Evolution.Trait) -> String:
 static func _trait_args() -> Dictionary:
 	return {
 		"heal": Evolution.REGENERATION_HEAL, "radius": Monsters.RALLY_RADIUS, "power": Formation.RESOLVE_POWER,
-		"turns": Monsters.KNOT_TURNS,
+		"turns": Monsters.KNOT_TURNS, "damage": Monsters.BURST_DAMAGE,
 	}
 
 

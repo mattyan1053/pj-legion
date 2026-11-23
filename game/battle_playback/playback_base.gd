@@ -163,6 +163,7 @@ static func event_players() -> Dictionary:
 		AreaEffectPlacedEvent: &"_play_field_effect_placed",
 		KnotPlacedEvent: &"_play_field_effect_placed",
 		RallyEvent: &"_play_rally",
+		BurstEvent: &"_play_burst",
 		FieldEffectTickedEvent: &"_play_field_effect_ticked",
 		FieldEffectRemovedEvent: &"_play_field_effect_removed",
 		BarricadeDamagedEvent: &"_play_barricade_damaged",

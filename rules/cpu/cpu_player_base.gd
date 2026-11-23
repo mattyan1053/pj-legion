@@ -153,6 +153,8 @@ const RALLY_PENALTY := 15.0
 const KNOT_PENALTY := 40.0
 ## 相手の結び目の上に立って行動を終える価値（相手のフェーズの始めに、ほどける）。
 const KNOT_STEP_VALUE := 45.0
+## 相手の駒に絡み（糸蜘蛛の攻撃。Status.Type.SNARE）を付ける価値（もう絡まっている相手には付けない。docs/monsters.md）。
+const SNARE_VALUE := 12.0
 
 
 ## スキルを使う手の、スキルごとの見積もり（対象に選ぶ価値のありそうなマスと、使った結果の価値）は、

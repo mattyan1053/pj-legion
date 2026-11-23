@@ -25,6 +25,8 @@ trait.regeneration,自分の番の始めに {heal} 回復
 trait.rooted,その場から動けない
 trait.rally_on_fall,倒れると、周り {radius} マスの味方の攻撃 +{power}
 trait.knot_on_fall,倒れると結び目、{turns} ターンで立ち直る
+trait.binds_on_hit,当てた相手は、次の番に動けない
+trait.bursts_on_fall,倒れると弾け、周り 8 マスに {damage} ダメージ
 trait.exerts_zoc.short,支配領域を作る
 trait.ignores_zoc.short,支配領域を抜ける
 trait.forest_walk.short,森歩き
@@ -32,6 +34,8 @@ trait.regeneration.short,毎ターン {heal} 回復
 trait.rooted.short,動けない
 trait.rally_on_fall.short,倒れると周りが奮起
 trait.knot_on_fall.short,倒れると結び目
+trait.binds_on_hit.short,当てると絡める
+trait.bursts_on_fall.short,倒れると弾ける
 field_effect.barricade,盾
 field_effect.smoke,煙幕
 field_effect.sanctuary,聖域
@@ -56,6 +60,8 @@ unit.skeleton_banner,骸骨旗手
 unit.bat,大蝙蝠
 unit.fray,ほつれ
 unit.needle,糸針
+unit.spider,糸蜘蛛
+unit.eater,糸喰い
 evolution.bulwark,ブルワーク
 evolution.juggernaut,ジャガーノート
 evolution.marksman,マークスマン
@@ -111,6 +117,7 @@ status.aim,照準
 status.fatigue,反動
 status.assault,突撃
 status.resolve,奮起
+status.snare,絡み
 relic.wisdom,英知の聖遺物
 relic.wisdom.summary,軍の全員の最大 HP +{amount}
 relic.courage,勇気の聖遺物
@@ -123,6 +130,7 @@ status.aim.summary,射程 +{range}。次の攻撃がクリティカル（動く�
 status.fatigue.summary,攻撃 -{penalty}
 status.assault.summary,移動 +{move}・攻撃 +{power}
 status.resolve.summary,攻撃 +{resolve}（誓いの相手が倒れた）
+status.snare.summary,動けない（攻撃はできる）
 formation.squad_guard,肩並べ
 formation.squad_focus,追い撃ち
 formation.oath_vengeance,仇討ち

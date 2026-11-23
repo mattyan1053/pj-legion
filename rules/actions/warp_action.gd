@@ -22,7 +22,7 @@ func is_valid(battle: Battle) -> bool:
 	var unit := battle.unit_by_id(unit_id)
 	if not battle.can_act(unit) or unit.move_locked or unit.just_warped:
 		return false
-	if unit.has_trait(Evolution.Trait.ROOTED):
+	if unit.is_rooted():
 		return false
 	if battle.portal_exit(unit.cell) == Board.NO_CELL:
 		return false

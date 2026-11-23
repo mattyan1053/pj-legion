@@ -1,5 +1,5 @@
 extends "res://game/battle_playback/playback_units.gd"
-## 盤のイベントの再生: 起爆樽、盤の上の効果（盾・煙幕・聖域・結び目）、骸骨旗手の奮起、本陣の占拠と拠点の確保、中ボスと聖遺物。
+## 盤のイベントの再生: 起爆樽、倒れた糸喰いが弾けた、盤の上の効果（盾・煙幕・聖域・結び目）、骸骨旗手の奮起、本陣の占拠と拠点の確保、中ボスと聖遺物。
 
 
 ## 攻撃の動きのあと、樽を消して、爆発の届いたマスを塗る（続くダメージの再生の間も塗ったまま）。
@@ -59,6 +59,19 @@ func _play_rally(event: RallyEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
 	_flash(at + Vector3(0.0, 0.3, 0.0), Palette.MONSTER_GLOW, 2.4)
 	_pop_number(at, Text.t("battle.pop.rally"), Palette.MONSTER_GLOW)
+	await after(0.3)
+
+
+## 糸喰いが倒れて弾けた。届いたマスを塗り、糸の色の爆発を出す（続くダメージの再生の間も塗ったまま）。
+func _play_burst(event: BurstEvent) -> void:
+	var at := BoardView.cell_center(event.cell)
+	var colors := {event.cell: COLOR_BLAST}
+	for cell in event.blast_cells:
+		colors[cell] = COLOR_BLAST
+	_board_view.show_cells(colors)
+	_flash(at + Vector3(0.0, 0.3, 0.0), Palette.MONSTER_GLOW, 2.6)
+	_sound(&"explosion")
+	_pop_number(at, Text.t("battle.pop.burst"), Palette.MONSTER_GLOW)
 	await after(0.3)
 
 
