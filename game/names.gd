@@ -79,7 +79,6 @@ static func field_effect(type: FieldEffect.Type) -> String:
 	return Text.t("field_effect." + word(FieldEffect.Type, type))
 
 
-## 駒の種類の名前。
 ## 中ボスの名前（話のファイル・マップのファイルの boss。docs/neutral-mid-boss.md の「名前」）。画面では「中ボス」と言わず、この名前で呼ぶ。
 ## 対戦の画面が、対戦を始めるたびに入れる（空なら既定の「番人」。画面の文の表の default.boss）。文の {boss} に差し込まれる（text.gd の shared）。
 static func set_boss(name: String) -> void:

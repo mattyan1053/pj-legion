@@ -114,3 +114,29 @@ func test_every_real_card_text_fits() -> void:
 		assert_true(card.fits(), card.shown_text())
 		assert_eq(card.size, RuleCard.SIZE)
 	card.free()
+
+
+## 番人の名前がいちばん長い（Maps.BOSS_NAME_MAX 字）ときも、「〜の撃破」の名前が札の欄で切れない。枠の大きさは変わらない。
+func test_longest_boss_name_fits_the_card() -> void:
+	const RuleCard := preload("res://game/rule_card.gd")
+	const Maps := preload("res://game/maps.gd")
+	var card := RuleCard.new()
+	await settle(card)
+	var before: Variant = Text.shared.get("boss")
+	Text.shared["boss"] = "縫".repeat(Maps.BOSS_NAME_MAX)
+	card.show_goal(GameWonEvent.Reason.BOSS_SLAIN, Text.t("battle.goal.name.boss_slain"), Text.t("battle.goal.win.boss_slain"))
+	await settle(card)
+	assert_true(card.fits(), card.shown_text())
+	var name_label: Label = card._name
+	var width := name_label.get_theme_font("font").get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, name_label.get_theme_font_size("font_size")).x
+	assert_true(width <= RuleCard.SIZE.x - RuleCard.MARK_SIDE - 40.0, "名前が切れる: %s（%.0f px）" % [name_label.text, width])
+	assert_eq(card.size, RuleCard.SIZE)
+	# 短い名前は、もとの大きさのまま。
+	card.show_goal(GameWonEvent.Reason.KING_DEFEATED, Text.t("battle.goal.name.king_defeated"), Text.t("battle.goal.win.king_defeated"))
+	await settle(card)
+	assert_true(card.fits(), card.shown_text())
+	if before == null:
+		Text.shared.erase("boss")
+	else:
+		Text.shared["boss"] = before
+	card.free()
