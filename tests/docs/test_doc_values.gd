@@ -480,9 +480,15 @@ func _resolve(class_name_part: String, constant: String, scripts: Array[String])
 func _constant_values(scripts: Array[String], constant: String) -> Array:
 	var values: Array = []
 	for script_path: String in scripts:
-		var constants := (load(script_path) as Script).get_script_constant_map()
-		if constants.has(constant):
-			values.append(constants[constant])
+		# 継いだスクリプトの定数もたどる（get_script_constant_map は、そのスクリプトが書いた定数だけを返す。
+		# CpuPlayer の調整値は、継ぐ元の rules/cpu/cpu_player_base.gd にある）。
+		var script := load(script_path) as Script
+		while script != null:
+			var constants := script.get_script_constant_map()
+			if constants.has(constant):
+				values.append(constants[constant])
+				break
+			script = script.get_base_script()
 	return values
 
 

@@ -1,7 +1,8 @@
 # CPU の思考
 
-コード: `rules/cpu_player.gd`（思考と調整値）、`rules/cpu_deck.gd`（CPU の編成）、
-`tools/cpu_match.gd`（CPU どうしの 1 局）、`tools/cpu_matches.gd`（何局も回す集計）。
+コード: `rules/cpu_player.gd`（思考の流れ）と、それが継ぐ `rules/cpu/cpu_player_base.gd`（調整値と状態、歩数の表）・`rules/cpu/cpu_threats.gd`（危険なマス）・
+`rules/cpu/cpu_outcome_value.gd`（行動の結果の価値）・`rules/cpu/cpu_position_value.gd`（位置の価値と目標）、`rules/cpu_deck.gd`（CPU の編成）、
+`tools/cpu_match.gd`（CPU どうしの 1 局）、`tools/cpu_matches.gd`（何局も回す集計。集計の 1 行ぶんは `tools/cpu_tally.gd`、引数と道具は `tools/cpu_matches_base.gd`）。
 テスト: `tests/rules/test_cpu_player.gd`、`tests/rules/test_cpu_danger.gd`（危険の見積もり）、`tests/rules/test_cpu_deck.gd`、
 `tests/tools/test_cpu_match.gd`。スキルごとの使い方のテストは、そのスキルのテスト（`tests/rules/skills/`）。
 
@@ -273,7 +274,7 @@ CPU は 1 人のプレイヤーとして、移動・攻撃・樽の攻撃・盾�
 
 ## 調整値
 
-`rules/cpu_player.gd` の先頭にまとめてある。上の表の数と、役割ごとの重み:
+`rules/cpu/cpu_player_base.gd` の先頭にまとめてある（`CpuPlayer` が継ぐので、`CpuPlayer.名前` で読める）。上の表の数と、役割ごとの重み:
 
 | 役割 | 目標へ 1 マス | 危険（攻撃・回復する手） | 危険（動くだけの手） | 倒されうるマス |
 | --- | --- | --- | --- | --- |
@@ -928,7 +929,7 @@ FANTASY の物語のチュートリアル（第 1〜6 話。部隊が決まっ�
 ### 別の版と比べる
 
 CPU を直したときは、直す前の版と対戦させて、強くなったかを見る。`--rival` に git のリビジョンを渡すと、
-その版の `rules/cpu_player.gd` を別の版として読む（`class_name` の行は道具が除く）。
+その版の `rules/cpu_player.gd` を別の版として読む（`class_name` の行は道具が除く。継ぐ `rules/` のファイルも、その版のものを一時の置き場所に書いて読む）。
 
     godot --headless --path . -s res://tools/cpu_matches.gd -- --games=96 --pairings=mixed --rival=main
 
@@ -938,7 +939,7 @@ CPU を直したときは、直す前の版と対戦させて、強くなった�
   駒の種類ごとの表は、全体のあとに「いまの CPU の駒」「別の版の駒」に分けても出す（どの駒の使い方が変わったかを見る）。
   ほかの欄は、両方の CPU の駒を合わせた数。
 - `--rival` には、`.gd` で終わるスクリプトのパスも渡せる（`next_action(対戦)` を持つものなら何でもよい。`class_name` の行があれば除く）。
-- 別の版に入れ替わるのは `rules/cpu_player.gd` だけで、スキルごとの見積もり（`rules/cpu/`）は、いまの版のものを使う。
+- 別の版に入れ替わるのは `rules/cpu_player.gd` と、それが継ぐファイルだけで、スキルごとの見積もり（`rules/cpu/<スキル>_cpu.gd`）は、いまの版のものを使う。
   見積もりが読む変数とメソッドを別の版が持っていないときと、ルールが変わっていて古い版が動かないときは、比べられない。
 - 人の手での悪用を測るための版（ある手を狙って使う CPU）は `tools/rivals/` に置く。いまあるのは、シャドウステップで将を引きずり出す版
   （`shadow_step_pull.gd`。`docs/skills/shadow-step.md`）と、中ボスを削らずに止めだけを狙う版（`finish_only.gd`。`docs/relic-buff.md` の「受け取る」）、
