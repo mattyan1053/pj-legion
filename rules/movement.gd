@@ -18,7 +18,7 @@ extends RefCounted
 
 ## 移動に使える移動力。
 static func budget(unit: Unit, cruise: bool) -> int:
-	return unit.move_range() * (2 if cruise else 1)
+	return unit.move_range() * 2 + unit.cruise_bonus if cruise else unit.move_range()
 
 
 ## いまの行動の残りの移動力（転移のあと、続けて動くとき）。もう巡航で動いていれば、巡航の移動力から数える。

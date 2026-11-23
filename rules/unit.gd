@@ -90,6 +90,8 @@ var site_range := 0
 ## 縫い目の様子の札（Seam）が掛ける能力値の層（Unit.Stat -> 足す値）と、天裂の名残りで射程が縮むか。対戦が、駒を置くときに付ける（Seam.equip）。
 var sign_bonus := {}
 var hazed := false
+## 縫い目の様子の札（縫い代の風）が巡航の移動力に足す値（Movement.budget）。
+var cruise_bonus := 0
 
 
 func copy() -> Unit:

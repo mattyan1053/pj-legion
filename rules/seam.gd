@@ -9,7 +9,7 @@ extends RefCounted
 ## - めくるのは、対戦の乱数（Battle.rng）とは別の乱数（盤も、対戦の進みも変えない）
 ##
 ## 札の効果は、ルールの各所が読む（どれも対戦が Battle.signs に札を持つときだけ。持たない対戦では何も変わらない）:
-## 駒の能力値（equip。射程・移動力・回復量）、必殺技のゲージ（gauge_gain）、中立の湧き直し（respawn_percent）、
+## 駒の能力値（equip。射程・巡航の移動力）、必殺技のゲージ（gauge_gain）、中立の湧き直し（respawn_percent）、
 ## 森の軽減（forest_rate_percent）、スキルのクールダウン（cooldown_of）、ポータルの対（arm_board）。
 
 ## 札。並びは山の順（めくる前に、この順から混ぜる）。名前と効果の文は画面の文の表（game/text/names.csv の sign.<鍵>。鍵は KEYS）。
@@ -19,20 +19,20 @@ enum Sign {
 	LOOSE,  ## 糸のゆるみ: 結晶泉の中立の駒が LOOSE_RESPAWN_PERCENT % で湧き直す
 	HUSH,  ## 骨の眠り: 結晶泉の中立の駒が湧き直さない（ターン 1 の湧きだけ）
 	SHIFT,  ## 仮縫いのずれ: ポータルの行き先が入れ替わる
-	DUSK,  ## 宵闇: 奇襲の移動力 +DUSK_MOVE
-	MEND,  ## 癒やしの糸: 回復役の回復量 +MEND_HEAL
+	GALE,  ## 縫い代の風: 巡航の移動力 +GALE_CRUISE
+	GLEAM,  ## 天裂の光: 後衛の射程 +GLEAM_RANGE
 	THICKET,  ## 深い茂み: 森にいる駒が受ける攻撃のダメージが THICKET_RATE_PERCENT %
 	TAUT,  ## 張りつめた糸: スキルのクールダウンが TAUT_CUT ターン短い
 }
 
 ## 札の鍵（画面の文の表、集計の道具、テストで使う）。Sign の順。
-const KEYS: Array[StringName] = [&"haze", &"brim", &"loose", &"hush", &"shift", &"dusk", &"mend", &"thicket", &"taut"]
+const KEYS: Array[StringName] = [&"haze", &"brim", &"loose", &"hush", &"shift", &"gale", &"gleam", &"thicket", &"taut"]
 
 ## 1 回の対戦でめくる札の数。
 const DRAWN := 2
 
 ## 打ち消し合うので、同じ対戦に並べない札の組。
-const CLASHES: Array[Array] = [[Sign.LOOSE, Sign.HUSH]]
+const CLASHES: Array[Array] = [[Sign.LOOSE, Sign.HUSH], [Sign.HAZE, Sign.GLEAM]]
 
 ## 天裂の名残り: 射程がこの値以上の攻撃（砲台で伸びたものも）が縮む。
 const HAZE_FROM := 3
@@ -42,10 +42,10 @@ const HAZE_CUT := 1
 const BRIM_PERCENT := 150
 ## 糸のゆるみ: 結晶泉に中立の駒が湧き直す確率（いつもは Neutral.RESPAWN_CHANCE_PERCENT）。
 const LOOSE_RESPAWN_PERCENT := 70
-## 宵闇: 奇襲の移動力に足す値。
-const DUSK_MOVE := 1
-## 癒やしの糸: 回復役の回復量に足す値。
-const MEND_HEAL := 5
+## 縫い代の風: 巡航の移動力に足す値（巡航のいつもの移動力は、移動力の 2 倍）。
+const GALE_CRUISE := 2
+## 天裂の光: 後衛の射程に足す値。
+const GLEAM_RANGE := 1
 ## 深い茂み: 森にいる駒が受ける攻撃のダメージ（いつもは Combat.FOREST_DAMAGE_RATE_PERCENT）。
 const THICKET_RATE_PERCENT := 60
 ## 張りつめた糸: スキルのクールダウンから引くターン数（1 より短くはならない）。
@@ -137,16 +137,14 @@ static func portal_pairs(board: Board) -> Array[Array]:
 	return pairs
 
 
-## 駒 unit に、対戦の札が駒に掛ける能力値の層を付け直す（Battle.add_unit が置くたびに呼ぶ）。
+## 駒 unit に、対戦の札が駒に掛ける能力値の層（射程・巡航の移動力）を付け直す（Battle.add_unit が置くたびに呼ぶ）。
 ## 札の無い対戦では、層は空（何も変わらない）。
 static func equip(battle: Battle, unit: Unit) -> void:
 	unit.sign_bonus.clear()
 	unit.hazed = battle.signs.has(Sign.HAZE)
-	var role := UnitKind.role(unit.kind)
-	if battle.signs.has(Sign.DUSK) and role == UnitKind.Role.RAIDER:
-		unit.sign_bonus[Unit.Stat.MOVE_RANGE] = DUSK_MOVE
-	if battle.signs.has(Sign.MEND) and role == UnitKind.Role.HEALER:
-		unit.sign_bonus[Unit.Stat.POWER] = MEND_HEAL
+	unit.cruise_bonus = GALE_CRUISE if battle.signs.has(Sign.GALE) else 0
+	if battle.signs.has(Sign.GLEAM) and UnitKind.role(unit.kind) == UnitKind.Role.REARGUARD:
+		unit.sign_bonus[Unit.Stat.ATTACK_RANGE] = GLEAM_RANGE
 
 
 ## 天裂の名残りで縮めたあとの射程（range_value は、ほかの層をすべて足した射程）。

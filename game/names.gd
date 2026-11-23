@@ -143,8 +143,8 @@ static func sign_name(sign: int) -> String:
 static func sign_summary(sign: int) -> String:
 	var args := {
 		"haze_from": Seam.HAZE_FROM, "haze_cut": Seam.HAZE_CUT, "brim": Seam.BRIM_PERCENT,
-		"loose": Seam.LOOSE_RESPAWN_PERCENT, "respawn": Neutral.RESPAWN_CHANCE_PERCENT, "dusk": Seam.DUSK_MOVE,
-		"mend": Seam.MEND_HEAL, "thicket": Seam.THICKET_RATE_PERCENT, "forest": Combat.FOREST_DAMAGE_RATE_PERCENT,
+		"loose": Seam.LOOSE_RESPAWN_PERCENT, "respawn": Neutral.RESPAWN_CHANCE_PERCENT, "gale": Seam.GALE_CRUISE,
+		"gleam": Seam.GLEAM_RANGE, "thicket": Seam.THICKET_RATE_PERCENT, "forest": Combat.FOREST_DAMAGE_RATE_PERCENT,
 		"taut": Seam.TAUT_CUT,
 	}
 	return Text.t("sign.%s.summary" % Seam.key(sign), args)

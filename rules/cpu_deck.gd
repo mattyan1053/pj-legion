@@ -111,8 +111,7 @@ static func pick_for_signs(candidates: Array[Deck], signs: Array[int]) -> Deck:
 
 ## 部隊 deck が札 signs に合う度合い（高いほど合う）。駒 1 体ずつ、札が得にする駒を足し、損にする駒を引く。
 ## - 天裂の名残り: 射程が Seam.HAZE_FROM 以上の駒（スナイパー）は射程が縮むので -SIGN_FIT
-## - 宵闇: 奇襲は足が伸びるので +SIGN_FIT
-## - 癒やしの糸: 回復役は回復が増えるので +SIGN_FIT
+## - 天裂の光: 後衛は射程が伸びるので +SIGN_FIT
 ## ほかの札は、どの部隊にも同じくらいに効くので数えない。
 static func sign_fit(deck: Deck, signs: Array[int]) -> int:
 	var fit := 0
@@ -120,8 +119,6 @@ static func sign_fit(deck: Deck, signs: Array[int]) -> int:
 		var role := UnitKind.role(entry.kind)
 		if signs.has(Seam.Sign.HAZE) and UnitKind.attack_range(entry.kind) >= Seam.HAZE_FROM:
 			fit -= SIGN_FIT
-		if signs.has(Seam.Sign.DUSK) and role == UnitKind.Role.RAIDER:
-			fit += SIGN_FIT
-		if signs.has(Seam.Sign.MEND) and role == UnitKind.Role.HEALER:
+		if signs.has(Seam.Sign.GLEAM) and role == UnitKind.Role.REARGUARD:
 			fit += SIGN_FIT
 	return fit

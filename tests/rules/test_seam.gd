@@ -104,15 +104,27 @@ func test_haze_shortens_long_ranges_only() -> void:
 	assert_eq(sorcerer.attack_range(), UnitKind.attack_range(K.SORCERER) + MapObject.BATTERY_RANGE - Seam.HAZE_CUT)
 
 
-func test_dusk_and_mend_raise_raiders_and_healers() -> void:
-	var battle := _battle(["......", "......"], [S.DUSK, S.MEND])
-	var commando := battle.add_unit(K.COMMANDO, P1, Vector2i(0, 0))
-	var medic := battle.add_unit(K.MEDIC, P1, Vector2i(1, 0))
-	var trooper := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(2, 0))
-	assert_eq(commando.move_range(), UnitKind.move_range(K.COMMANDO) + Seam.DUSK_MOVE)
-	assert_eq(medic.power(), UnitKind.power(K.MEDIC) + Seam.MEND_HEAL)
-	assert_eq(trooper.move_range(), UnitKind.move_range(K.SHIELD_TROOPER))
-	assert_eq(trooper.power(), UnitKind.power(K.SHIELD_TROOPER))
+func test_gleam_lengthens_rearguards_and_clashes_with_haze() -> void:
+	var battle := _battle(["......", "......"], [S.GLEAM])
+	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 0))
+	var sorcerer := battle.add_unit(K.SORCERER, P2, Vector2i(5, 0))
+	var trooper := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(1, 0))
+	assert_eq(sniper.attack_range(), UnitKind.attack_range(K.SNIPER) + Seam.GLEAM_RANGE)
+	assert_eq(sorcerer.attack_range(), UnitKind.attack_range(K.SORCERER) + Seam.GLEAM_RANGE)
+	assert_eq(trooper.attack_range(), UnitKind.attack_range(K.SHIELD_TROOPER))
+	assert_false(Seam.compatible(S.HAZE, S.GLEAM))
+
+
+func test_gale_lengthens_only_the_cruise() -> void:
+	var battle := _battle(["................................"], [S.GALE])
+	var trooper := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(0, 0))
+	var move := UnitKind.move_range(K.SHIELD_TROOPER)
+	assert_eq(Movement.budget(trooper, false), move)
+	assert_eq(Movement.budget(trooper, true), move * 2 + Seam.GALE_CRUISE)
+	assert_true(Movement.reachable_now(battle, trooper, true).has(Vector2i(move * 2 + Seam.GALE_CRUISE, 0)), "巡航の範囲に入る")
+	assert_false(Movement.reachable_now(battle, trooper, false).has(Vector2i(move + 1, 0)))
+	var calm := _battle(["......"], [])
+	assert_eq(Movement.budget(calm.add_unit(K.SHIELD_TROOPER, P1, Vector2i(0, 0)), true), move * 2)
 
 
 func test_brim_fills_the_gauge_faster() -> void:
@@ -183,5 +195,5 @@ func test_cpu_picks_the_squad_that_suits_the_signs() -> void:
 	var candidates: Array[Deck] = [snipers, raiders]
 	assert_eq(CpuDeck.pick_for_signs(candidates, []), snipers, "札が部隊を選ばなければ、先頭")
 	assert_eq(CpuDeck.pick_for_signs(candidates, [S.HAZE]), raiders, "霞の日は、スナイパーの少ない部隊")
-	assert_eq(CpuDeck.pick_for_signs(candidates, [S.DUSK]), raiders, "宵闇は、奇襲のいる部隊")
+	assert_eq(CpuDeck.pick_for_signs(candidates, [S.GLEAM]), snipers, "天裂の光は、後衛の多い部隊")
 	assert_eq(CpuDeck.pick_for_signs(candidates, [S.BRIM]), snipers, "どの部隊にも同じに効く札は、先頭")
