@@ -243,7 +243,6 @@ battle.hud.stronghold,拠点
 battle.hud.stronghold_marks,{side} {marks}
 battle.notice.title,この対戦の決まり
 battle.notice.close,閉じる
-battle.notice.battery,砲台（橙の台）: 後衛が乗ると射程 +{range}
 battle.hud.squad,分隊（{kind} {count} 体）: 隣に仲間がいると受けるダメージ -{guard}、仲間が撃った相手へ +{focus}
 battle.hud.squad_guarded,分隊（{kind} {count} 体）: 肩並べ中（受けるダメージ -{guard}）、仲間が撃った相手へ +{focus}
 battle.hud.oath,誓い（{unit}）: {range} マス以内で仇討ち（離れている）

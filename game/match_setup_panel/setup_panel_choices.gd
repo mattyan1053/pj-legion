@@ -54,7 +54,7 @@ func rule_note_text(id: StringName) -> String:
 
 ## 選べる決まりの、ひとことの説明。
 static func rule_note(id: StringName) -> String:
-	return Text.t("setup.rule.%s.note" % id, {"range": MapObject.BATTERY_RANGE, "holds": Stronghold.HOLDS_TO_WIN})
+	return Text.t("setup.rule.%s.note" % id, {"holds": Stronghold.HOLDS_TO_WIN})
 
 
 func choose_army(side: Unit.Side, army: UnitKind.Army) -> void:

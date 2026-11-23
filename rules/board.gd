@@ -23,9 +23,9 @@ var mid_boss_cells: Array[Vector2i] = []
 var barrel_cells: Array[Vector2i] = []
 ## 回復の泉のマス。
 var spring_cells: Array[Vector2i] = []
-## 砲台を置ける場所（盤の出どころが決める。置かれるまでは何もしない）。
+## 砲台の場所（盤の出どころが決める。生成のマップは、砲台を置かない盤の種類でも場所は持つ。拠点はこのマスを避ける）。
 var battery_spots: Array[Vector2i] = []
-## 置かれた砲台（選べる決まりが入の対戦だけ。BoardGenerator.arm_batteries）。
+## 置かれた砲台（マップの物。手で作ったマップの `C`、生成のマップは BoardGenerator.BATTERY_STAGES の盤。BoardGenerator.arm_batteries）。
 var battery_cells: Array[Vector2i] = []
 ## 拠点のマス（選べる決まりが入の対戦だけ。Stronghold.arm）。無ければ NO_CELL。
 var stronghold_cell := NO_CELL
