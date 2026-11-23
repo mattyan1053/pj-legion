@@ -212,6 +212,11 @@ func _build_hunts() -> void:
 			_rival_hunts[boss.id] = true
 		if home_threat or _battle.turn < HUNT_FROM_TURN or _holding or _rushing:
 			continue
+		if _slays_bosses:
+			# 中ボスの撃破で勝つ、群れとの戦い: 群れが中ボスのそばに固まっていても狩りに行く（狩らずには終われない）。
+			_hunted[boss.id] = true
+			_chipped[boss.id] = true
+			continue
 		var need := ceili(boss.hp * HUNT_MARGIN)
 		# 加われる駒の全部で倒せるなら、届いた駒は削ってよい。
 		if _outguns_rivals(boss, squad, foes, _kill_turns(squad, need, HUNT_TURNS)):
@@ -258,7 +263,7 @@ func _boss_to_hunt(unit: Unit) -> Unit:
 		return null
 	var engaged := _nearest_foe_distance(unit) <= HUNT_ENGAGE_DISTANCE
 	var best: Unit = null
-	var best_steps := HUNT_RADIUS + 1
+	var best_steps := _FAR if _slays_bosses else HUNT_RADIUS + 1
 	var from := _steps_from(unit.cell)
 	for boss_id in _hunted:
 		if engaged and not _hunted[boss_id]:

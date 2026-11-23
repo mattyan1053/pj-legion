@@ -137,6 +137,10 @@ func _begin(battle: Battle) -> void:
 	_takes_stronghold = Stronghold.holds_left(battle, _me) != -1 and Stronghold.holds_left(battle, _foe) != -1
 	_stronghold_taker = 0
 	_rushing = CpuWinPlan.rushes(battle, _me)
+	_slays_bosses = battle.wins_by(_me, GameWonEvent.Reason.BOSS_SLAIN)
+	for unit in battle.units:
+		if unit.side == _foe and unit.kind == UnitKind.Id.KING:
+			_slays_bosses = false
 	_hq_in_danger = false
 	var keeper := battle.unit_at(_my_hq) if has_hqs else null
 	if has_hqs and CpuWinPlan.guards_hq(battle, _me) and (keeper == null or keeper.kind != UnitKind.Id.KING):

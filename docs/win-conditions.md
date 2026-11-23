@@ -85,7 +85,7 @@
 - この勝ち方が列にあるプレイヤーが、どちらかの中ボス（`docs/neutral-mid-boss.md`）に止めを刺したら、そのプレイヤーの勝ち。
   理由は `GameWonEvent.Reason.BOSS_SLAIN`。`GameWonEvent` は、聖遺物を受け取った（`RelicGainedEvent`）あと、行動の結果の最後に付く。
 - 見るのは `Battle.settle`（将の撃破・全滅のあと）。止めを刺した駒がいない中ボスの撃破では勝たない。
-- CPU の手は、この勝ち方を読まない（いつもどおり、中ボスを狩る条件で狩る。`docs/relic-buff.md` の「CPU」）。
+- CPU の手は、相手が将のいない群れのときだけ、この勝ち方を読む（狩る条件を見ずに、中ボスを狩る）。ほかは、いつもどおり中ボスを狩る条件で狩る（`docs/relic-buff.md` の「CPU」）。
 
 ## 拠点を確保し続ける
 
