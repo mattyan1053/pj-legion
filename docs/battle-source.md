@@ -1,7 +1,7 @@
 # 対戦の画面に渡すもの
 
 コード: `game/battle_source.gd`（既定の答え）、`game/match_choice.gd`（対戦モード）、`game/story_battle.gd`（ストーリーの話。`docs/story.md`）、`game/battle_screen.gd`（受け取る側）。
-テスト: `tests/game/test_match_choice.gd`、`tests/game/test_story.gd`、自動の対戦（`game/autoplay.gd` の `setup`。何も選び直せない対戦を渡して、入口が出ないことを見る）。
+テスト: `tests/game/test_match_choice.gd`、`tests/game/test_story.gd`、自動の対戦（`game/autoplay/setup_checks.gd` の場面 `setup`。何も選び直せない対戦を渡して、入口が出ないことを見る）。
 
 対戦の画面は、どのモードの対戦かを知らない。「対戦設定（`MatchSetup`）を作ってくれるもの」を 1 つ受け取り、
 対戦を作るのも、やり直すのも、選び直す入口を出すかも、それに聞く。
