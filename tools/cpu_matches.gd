@@ -36,7 +36,8 @@ extends SceneTree
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --rules=NAME   選べる決まり（OptionalRules の名前。battery = 砲台、stronghold = 拠点、formation = 組み方。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##   --rules=NAME   選べる決まり（OptionalRules の名前。battery = 砲台、stronghold = 拠点、formation = 組み方、seam = 縫い目の様子。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##                   seam なら、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す。--squads=random なら、CPU が札を見て候補から部隊を選ぶ
 ##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --stronghold=X,Y  拠点を、マス (X, Y) に置いて回す（測るためだけ。拠点が入の対戦だけ）。lean:K なら、道のりの寄せ K（Board.stronghold_lean。
 ##                   先手の本陣からの道のり - 後手の本陣からの道のり の、ねらう値）で選ぶ
@@ -70,6 +71,8 @@ const MAP_STAGE := -2
 var _map_title := ""
 ## 「両軍とも同じ役割」の編成（--decks=even）。Deck.roster の並び（前衛・後衛・奇襲・回復）の何番目を雇うか。
 const EVEN_SLOTS: Array[int] = [0, 0, 1, 1, 2, 3]
+## 縫い目の様子（--rules=seam）で、局ごとに変える部隊（--squads=random）のとき、CPU が札を見て選ぶ候補の数（先頭は札の無い対戦と同じ部隊）。
+const SIGN_CANDIDATES := 3
 
 
 ## 集計の 1 行ぶん（全体、マップごと、軍の組み合わせごと）。
@@ -296,6 +299,8 @@ func _initialize() -> void:
 	var all := Tally.new()
 	var by_stage: Dictionary[int, Tally] = {}
 	var by_match: Dictionary[String, Tally] = {}
+	## 縫い目の様子（--rules=seam）の、札ごと・札の組ごとの集計。鍵は札の名前、組は「名前+名前」（Seam.Sign の順）。
+	var by_sign: Dictionary[String, Tally] = {}
 	var army_wins := {UnitKind.Army.MILITARY: 0, UnitKind.Army.FANTASY: 0}
 	var mixed_games := 0
 	var hired := 0
@@ -416,6 +421,16 @@ func _initialize() -> void:
 		elif rule_arg != "default" and rule_arg != "none":
 			for rule in rule_arg.split(",", false):
 				setup.rules.append(StringName(rule))
+		# 縫い目の様子: CPU は、めくられた札を見て、部隊を選ぶ（局ごとに変える部隊なら、SIGN_CANDIDATES 個の候補から。CpuDeck.pick_for_signs）。
+		# 候補の先頭は、札の無い対戦と同じ部隊。
+		var signs := setup.signs() if episode == null else ([] as Array[int])
+		if not signs.is_empty() and random_squads:
+			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+				var base_seed := (first_seed + game) * 2 + side
+				var candidates: Array[Deck] = [setup.decks[side]]
+				for i in range(1, SIGN_CANDIDATES):
+					candidates.append(RandomSquad.build(armies[side], rules, hash([base_seed, i])))
+				setup.decks[side] = CpuDeck.pick_for_signs(candidates, signs)
 		var trial_stronghold := args.has("stronghold") and setup.rules.has(OptionalRules.STRONGHOLD)
 		if trial_stronghold:
 			setup.rules.erase(OptionalRules.STRONGHOLD)
@@ -459,6 +474,8 @@ func _initialize() -> void:
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
 				outcome.first_hit_side, outcome.first_hit_turn, outcome.first_kill_side, outcome.first_kill_turn,
 			])
+			if not signs.is_empty():
+				print("SIGNS seed=%d signs=%s" % [first_seed + game, ",".join(signs.map(func(sign: int) -> String: return Seam.key(sign)))])
 			if random_squads or one_squad:
 				for side: Unit.Side in ([Unit.Side.PLAYER1] if episode != null else [Unit.Side.PLAYER1, Unit.Side.PLAYER2]):
 					print("SQUAD seed=%d side=%d cpu=%d %s" % [
@@ -500,6 +517,17 @@ func _initialize() -> void:
 			one_versus.get_or_add(pair + "、変えた側が" + ("先手" if squad_side == 0 else "後手"), [0, 0, 0])[slot] += 1
 		all.add(outcome)
 		by_stage.get_or_add(stage, Tally.new()).add(outcome)
+		if not signs.is_empty():
+			var sorted_signs := signs.duplicate()
+			sorted_signs.sort()
+			var sign_keys: Array[String] = ["+".join(sorted_signs.map(func(sign: int) -> String: return Seam.key(sign)))]
+			for sign in signs:
+				sign_keys.append(Seam.key(sign))
+			for sign_key in sign_keys:
+				var sign_tally: Tally = by_sign.get_or_add(sign_key, Tally.new())
+				sign_tally.add(outcome)
+				if armies[0] != armies[1] and outcome.winner >= 0 and ARMIES.has(armies[outcome.winner]):
+					sign_tally.army_wins[ARMIES.find(armies[outcome.winner])] += 1
 		var match_name := "%s 対 %s" % [Names.army(armies[0]), Names.army(armies[1])]
 		by_match.get_or_add(match_name, Tally.new()).add(outcome)
 		if armies[0] != armies[1]:
@@ -619,6 +647,22 @@ func _initialize() -> void:
 		for effect: Formation.Effect in Formation.Effect.values():
 			parts.append("%s %.2f" % [Names.formation_effect(effect), float(formation_counts.get(effect, 0)) / maxi(1, games)])
 		print("組み方の効果が効いた回数（1 局あたり。誓いの果ては誓いが切れた回数）: %s" % "  ".join(parts))
+		print("")
+	if not by_sign.is_empty():
+		print("縫い目の様子（札ごと、札の組ごと。先手と MILITARY の勝率は決着した局だけ。MILITARY は軍の違う対戦だけ）")
+		var sign_names := by_sign.keys()
+		sign_names.sort_custom(func(a: String, b: String) -> bool: return (a.contains("+")) == (b.contains("+")) and a < b or (not a.contains("+") and b.contains("+")))
+		for sign_key: String in sign_names:
+			var tally: Tally = by_sign[sign_key]
+			var sorted_turns := tally.turns.duplicate()
+			var turn_total := 0
+			for value: int in sorted_turns:
+				turn_total += value
+			print("  %-16s %3d 局  先手 %5.1f%%  MILITARY %5.1f%%  ターン 平均 %4.1f  打切 %2d" % [
+				sign_key, tally.games, 100.0 * tally.wins[0] / maxi(1, tally.wins[0] + tally.wins[1]),
+				100.0 * tally.army_wins[0] / maxi(1, tally.army_wins[0] + tally.army_wins[1]),
+				float(turn_total) / maxi(1, tally.games), tally.endings["cutoff"],
+			])
 		print("")
 	var decided := all.wins[0] + all.wins[1]
 	print("先手（プレイヤー1）の勝率: %.1f%%（決着した %d 局のうち）" % [100.0 * all.wins[0] / maxi(1, decided), decided])

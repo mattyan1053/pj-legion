@@ -65,6 +65,9 @@ var formation := false
 ## このフェーズに、分隊の駒が攻撃した相手（駒の番号 -> 攻撃した駒の (番号, 兵種) の並び）。追い撃ち（Formation）が読む。フェーズの始めに空になる。
 var focus_marks: Dictionary[int, Array] = {}
 
+## この対戦でめくられた縫い目の様子の札（Seam.Sign の並び。選べる決まり OptionalRules.SEAM）。対戦を作るとき（MatchSetup.create_battle）に決まる。空なら札は無い。
+var signs: Array[int] = []
+
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
 
@@ -103,6 +106,7 @@ func add_unit(
 	if side != Unit.Side.NEUTRAL and armies[side] == UnitKind.Army.NONE:
 		armies[side] = UnitKind.army(kind)
 	Relics.equip(self, unit)  # 聖遺物を取ったあとに置かれた駒にも、効果が掛かる
+	Seam.equip(self, unit)  # 縫い目の様子の札（射程・移動力・回復量。最大 HP は変えない）
 	unit.site_range = MapObject.battery_bonus(board, unit, unit.cell)
 	return unit
 

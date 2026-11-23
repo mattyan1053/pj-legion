@@ -96,11 +96,11 @@ static func preview(battle: Battle) -> Array[BattleEvent]:
 # ---- ためる ----
 
 
-## side のゲージに amount を足す（GAUGE_MAX を超えない）。中立と、必殺技を持たないプレイヤーには何もしない。
+## side のゲージに amount を足す（GAUGE_MAX を超えない。糸の満ちの札があれば多くたまる。Seam.gauge_gain）。中立と、必殺技を持たないプレイヤーには何もしない。
 static func charge(battle: Battle, side: Unit.Side, amount: int) -> void:
 	if of(battle, side) == null:
 		return
-	battle.ult_gauge[side] = clampi(battle.ult_gauge[side] + amount, 0, GAUGE_MAX)
+	battle.ult_gauge[side] = clampi(battle.ult_gauge[side] + Seam.gauge_gain(battle, amount), 0, GAUGE_MAX)
 
 
 ## side のフェーズの始め（EndPhaseAction が呼ぶ）。

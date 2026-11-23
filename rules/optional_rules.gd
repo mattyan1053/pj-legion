@@ -2,7 +2,7 @@ class_name OptionalRules
 extends RefCounted
 ## 対戦モードで、対戦設定から入・切できる決まり（docs/match-setup.md の「選べる決まり」）の名前。
 ## 入にするのは MatchSetup.rules に名前を並べること（MatchSetup の既定は空 = どれも切。ストーリーの話は入にしない）。
-## 対戦モードの対戦設定の既定は DEFAULTS（拠点は入、砲台・組み方は切）。
+## 対戦モードの対戦設定の既定は DEFAULTS（拠点は入、砲台・組み方・縫い目の様子は切）。
 ## 決まりを 1 つ足すには、ここに名前を足し、MatchSetup.create_battle に入のときの準備を書く。
 
 ## 砲台: 盤の決まった場所に砲台が置かれ、後衛が乗ると射程が伸びる（docs/map-objects.md の「砲台」）。
@@ -14,9 +14,12 @@ const STRONGHOLD := &"stronghold"
 ## 組み方: 軍ごとの組み合わせの効果（連邦の分隊、騎士領の誓い。docs/formation.md）。
 const FORMATION := &"formation"
 
+## 縫い目の様子: 対戦ごとに条件の札が 2 枚めくられ、対戦のあいだずっと効く（Seam。docs/seam-signs.md）。
+const SEAM := &"seam"
+
 ## 名前の一覧。
-const ALL: Array[StringName] = [BATTERY, STRONGHOLD, FORMATION]
-## 対戦モードの対戦設定の既定（拠点は、将の撃破・本陣の占拠と並ぶ勝ち方として入。砲台と組み方は切）。
+const ALL: Array[StringName] = [BATTERY, STRONGHOLD, FORMATION, SEAM]
+## 対戦モードの対戦設定の既定（拠点は、将の撃破・本陣の占拠と並ぶ勝ち方として入。砲台・組み方・縫い目の様子は切）。
 const DEFAULTS: Array[StringName] = [STRONGHOLD]
 
 

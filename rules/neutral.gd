@@ -53,7 +53,7 @@ static func play_phase(battle: Battle) -> Array[BattleEvent]:
 ## 空いている結晶泉に、中立の駒を 1 体ずつ湧かせる。
 ## - その泉を家にする中立の駒が生きている間は、湧かない（泉ごとに 1 体まで）
 ## - 泉のマスにほかの駒が乗っている間は、湧かない（確率も引かない）
-## - ターン 1 では必ず湧く。それより後は RESPAWN_CHANCE_PERCENT の確率で
+## - ターン 1 では必ず湧く。それより後は RESPAWN_CHANCE_PERCENT の確率で（縫い目の様子の札で変わる。Seam.respawn_percent）
 static func spawn(battle: Battle) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	for font in battle.board.font_cells:
@@ -61,7 +61,7 @@ static func spawn(battle: Battle) -> Array[BattleEvent]:
 			continue
 		if not battle.board.is_walkable(font):
 			continue
-		if battle.turn > 1 and battle.rng.randi_range(1, 100) > RESPAWN_CHANCE_PERCENT:
+		if battle.turn > 1 and battle.rng.randi_range(1, 100) > Seam.respawn_percent(battle):
 			continue
 		var unit := battle.add_unit(SPAWN_KIND, Unit.Side.NEUTRAL, font)
 		unit.home_cell = font
