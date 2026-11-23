@@ -242,6 +242,18 @@ static func _deck_text(deck: Deck) -> String:
 	return "%s（コスト %d / %d）" % ["、".join(parts), deck.total_cost(), deck.budget()]
 
 
+## --signs: 縫い目の様子を、めくらずに札 value（鍵を `,` で並べたもの）に決める（測るためだけ）。none なら様子を付けない。
+static func _fix_signs(setup: MatchSetup, value: String) -> void:
+	if value == "none":
+		setup.rules.erase(OptionalRules.SEAM)
+		setup.scenario.signs = []
+		return
+	var problems: Array[String] = []
+	setup.scenario.signs = Seam.from_keys(value.split(",", false), problems)
+	if not problems.is_empty():
+		printerr("--signs の札が読めない: %s" % ", ".join(problems))
+
+
 ## --stronghold: 拠点の場所を、盤の出どころの決めた場所の代わりに試す（測るためだけ）。値は「列,行」（そのマス）か「lean:K」（道のりの寄せ K。
 ## Board.stronghold_lean）。MatchSetup.create_battle が拠点を置くのと同じ順（砲台のあと）に置き、両方の勝ち方に拠点を足す。
 ## 置けなければ偽（拠点は置かない）。

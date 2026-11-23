@@ -5,7 +5,7 @@ extends RefCounted
 ## 対戦モードでは、選べる決まり OptionalRules.SEAM（既定は入 =「ランダム」）の対戦で、対戦ごとに 0〜DRAWN 個がめくられる（数も札も対戦の種で決まる）。
 ## ストーリーでは、話のファイルが指定した様子（Scenario.signs）が、いつも付く。
 ## 様子は、その対戦のあいだずっと効く条件で、どちらのプレイヤーにも同じに効く。対戦中に切る操作は無い。
-## - 札の山は Sign の全部。その盤で効かない札（ポータルの無い盤の「仮縫いのずれ」など）は、山から抜く（applies）
+## - 札の山は Sign のうち STORY_ONLY でないもの。その盤で効かない札（ポータルの無い盤の「仮縫いのずれ」など）は、山から抜く（applies）
 ## - 2 枚目は、1 枚目と打ち消し合わない札（CLASHES）から引く
 ## - めくるのは、対戦の乱数（Battle.rng）とは別の乱数（盤も、対戦の進みも変えない）
 ##
@@ -15,7 +15,7 @@ extends RefCounted
 
 ## 札。並びは山の順（めくる前に、この順から混ぜる）。名前と効果の文は画面の文の表（game/text/names.csv の sign.<鍵>。鍵は KEYS）。
 enum Sign {
-	HAZE,  ## 天裂の名残り: 射程 HAZE_FROM 以上の攻撃は、射程 -HAZE_CUT
+	HAZE,  ## 天裂の名残り: 後衛の射程 -HAZE_CUT（1 より短くはならない）
 	BRIM,  ## 糸の満ち: 必殺技のゲージが BRIM_PERCENT % の速さでたまる
 	LOOSE,  ## 糸のゆるみ: 結晶泉の中立の駒が LOOSE_RESPAWN_PERCENT % で湧き直す
 	HUSH,  ## 骨の眠り: 結晶泉の中立の駒が湧き直さない（ターン 1 の湧きだけ）
@@ -34,12 +34,15 @@ const DRAWN := 2
 ## めくる札の数（0, 1, …, DRAWN）の重み。何も付かない日も、1 つの日も、2 つの日もある（気候のように）。
 const DRAW_WEIGHTS: Array[int] = [1, 2, 1]
 
+## 対戦モードの山に入れない札（話のファイルの signs では使える）。片方の軍だけが得をするので、対戦モードではめくらない
+## （張りつめた糸は、スキルを使える駒の多い FANTASY の得になった。docs/seam-signs.md）。
+const STORY_ONLY: Array[int] = [Sign.TAUT]
+
 ## 打ち消し合うので、同じ対戦に並べない札の組。
 const CLASHES: Array[Array] = [[Sign.LOOSE, Sign.HUSH], [Sign.HAZE, Sign.GLEAM]]
 
-## 天裂の名残り: 射程がこの値以上の攻撃（砲台で伸びたものも）が縮む。
-const HAZE_FROM := 3
-## 天裂の名残り: 縮む射程。
+## 天裂の名残り: 後衛の射程（砲台で伸びたものも）が縮む幅。1 より短くはならない。
+## 天裂の光（GLEAM_RANGE）の裏返し。前は「射程 3 以上の攻撃」で、スナイパーのいる MILITARY だけが損をした（docs/seam-signs.md）。
 const HAZE_CUT := 1
 ## 糸の満ち: 必殺技のゲージのたまり方（いつもを 100 として）。
 const BRIM_PERCENT := 150
@@ -107,7 +110,7 @@ static func draw(board: Board, battle_seed: int) -> Array[int]:
 	var count := draw_count(battle_seed)
 	var deck: Array[int] = []
 	for sign: int in Sign.values():
-		if applies(sign as Sign, board):
+		if applies(sign as Sign, board) and not STORY_ONLY.has(sign):
 			deck.append(sign)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([&"seam", battle_seed])
@@ -172,15 +175,15 @@ static func portal_pairs(board: Board) -> Array[Array]:
 ## 札の無い対戦では、層は空（何も変わらない）。
 static func equip(battle: Battle, unit: Unit) -> void:
 	unit.sign_bonus.clear()
-	unit.hazed = battle.signs.has(Sign.HAZE)
+	unit.hazed = battle.signs.has(Sign.HAZE) and UnitKind.role(unit.kind) == UnitKind.Role.REARGUARD
 	unit.cruise_bonus = GALE_CRUISE if battle.signs.has(Sign.GALE) else 0
 	if battle.signs.has(Sign.GLEAM) and UnitKind.role(unit.kind) == UnitKind.Role.REARGUARD:
 		unit.sign_bonus[Unit.Stat.ATTACK_RANGE] = GLEAM_RANGE
 
 
-## 天裂の名残りで縮めたあとの射程（range_value は、ほかの層をすべて足した射程）。
+## 天裂の名残りで縮めたあとの射程（range_value は、ほかの層をすべて足した射程）。1 より短くはしない。
 static func hazed_range(range_value: int) -> int:
-	return range_value - HAZE_CUT if range_value >= HAZE_FROM else range_value
+	return maxi(1, range_value - HAZE_CUT) if range_value > 1 else range_value
 
 
 ## 必殺技のゲージにためる量（いつもの量 amount に、札の効き目を掛けたもの）。

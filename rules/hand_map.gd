@@ -29,6 +29,9 @@ const MID_BOSS := "M"
 const BARREL := "B"
 const SPRING := "S"
 const BATTERY := "C"
+## 対戦モードだけの砲台（地形は平地。対戦モードの戦いの定義（Scenario.on_map の for_versus）でだけ砲台になる。話では、ただの平地。
+## 話と同じマップに、話の盤を変えずに砲台を置くため。docs/hand-map.md）。
+const VERSUS_BATTERY := "V"
 ## 拠点の場所（地形は平地。拠点が入の対戦でだけ拠点になる。無ければ道のりから選ぶ。docs/map-objects.md の「拠点」）。
 const STRONGHOLD := "H"
 ## 中ボスは、関わりのある聖遺物が番号で決まる（Relics.OF_BOSS）ので、0 か 2 体だけ（docs/neutral-mid-boss.md）。
@@ -73,7 +76,7 @@ func problems() -> Array[Problem]:
 		found.append(Problem.STRONGHOLD_COUNT)
 	if not found.is_empty():
 		return found
-	var board := _build()
+	var board := _build(true)  # 対戦モードの物も置いた形で調べる（拠点は対戦モードでだけ置くので）
 	if not board.is_reachable(board.hq_cells[0], board.hq_cells[1]):
 		found.append(Problem.HQ_NOT_CONNECTED)
 	for cell in board.mid_boss_cells:
@@ -101,11 +104,17 @@ func is_valid() -> bool:
 
 
 ## マップの盤面。盤にできなければ null。毎回、新しい盤を作る。
-func make_board() -> Board:
-	return _build() if is_valid() else null
+## for_versus なら、対戦モードだけの物（VERSUS_BATTERY）も置く。偽なら、そのマスは平地。
+func make_board(for_versus := false) -> Board:
+	return _build(for_versus) if is_valid() else null
 
 
-func _build() -> Board:
+## 対戦モードだけの物（VERSUS_BATTERY）があるか。
+func has_versus_objects() -> bool:
+	return Array(rows).any(func(row: String) -> bool: return row.contains(VERSUS_BATTERY))
+
+
+func _build(for_versus := false) -> Board:
 	var board := Board.new(size)
 	board.hq_cells = [Board.NO_CELL, Board.NO_CELL]
 	var portals := {}
@@ -134,6 +143,10 @@ func _build() -> Board:
 				BATTERY:
 					board.battery_spots.append(cell)
 					board.add_battery(cell)
+				VERSUS_BATTERY:
+					if for_versus:
+						board.battery_spots.append(cell)
+						board.add_battery(cell)
 				STRONGHOLD:
 					board.stronghold_site = cell
 				_:
@@ -151,5 +164,5 @@ static func _is_portal(c: String) -> bool:
 
 static func _is_known(c: String) -> bool:
 	return _is_portal(c) or [
-		PLAIN, OBSTACLE, FOREST, FONT, HQ_PLAYER1, HQ_PLAYER2, MID_BOSS, BARREL, SPRING, BATTERY, STRONGHOLD,
+		PLAIN, OBSTACLE, FOREST, FONT, HQ_PLAYER1, HQ_PLAYER2, MID_BOSS, BARREL, SPRING, BATTERY, VERSUS_BATTERY, STRONGHOLD,
 	].has(c)

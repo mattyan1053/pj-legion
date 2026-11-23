@@ -41,6 +41,8 @@ extends "res://tools/cpu_matches_base.gd"
 ##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり・縫い目の様子はランダム）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --stronghold=X,Y  拠点を、マス (X, Y) に置いて回す（測るためだけ。拠点が入の対戦だけ）。lean:K なら、道のりの寄せ K（Board.stronghold_lean。
 ##                   先手の本陣からの道のり - 後手の本陣からの道のり の、ねらう値）で選ぶ
+##   --signs=KEYS    縫い目の様子を、めくらずにこの札（Seam.KEYS の鍵。haze,brim のように 2 つまで）に決めて回す（測るためだけ。
+##                   様子ごとの片寄りを見る）。none なら様子を付けない。盤で効かない札でも付ける
 ##   --map=PATH      手で作ったマップの形を、ファイルから読んで回す（試しの形を、game/maps/ に足さずに測る）。
 ##                   ファイルは、マップのファイルと同じ書式（[rows] の節。docs/hand-map.md）か、文字の格子の行だけを並べたテキスト。--stage より優先する
 ##   --hit=N --level=N   「当たりの経験値が N だったら」「1 レベルに要る経験値が N だったら」の見積もりに使う値（既定 15、80）
@@ -161,7 +163,7 @@ func _initialize() -> void:
 		var armies: Array[UnitKind.Army] = [ARMIES[pairing % 2], ARMIES[(pairing % 2) ^ (0 if pairing >= 2 else 1)]]
 		var setup := MatchSetup.new()
 		if trial_map != null:
-			setup.scenario = Scenario.on_map(trial_map, _map_title)
+			setup.scenario = Scenario.on_map(trial_map, _map_title, true)
 		else:
 			setup.scenario = Scenario.versus(stage) if map_field == &"" else VersusFields.scenario_of(map_field)
 		setup.battle_seed = first_seed + game
@@ -192,6 +194,8 @@ func _initialize() -> void:
 		var trial_stronghold := args.has("stronghold") and setup.rules.has(OptionalRules.STRONGHOLD)
 		if trial_stronghold:
 			setup.rules.erase(OptionalRules.STRONGHOLD)
+		if args.has("signs"):
+			_fix_signs(setup, args["signs"])
 		var battle := setup.create_battle()
 		var signs: Array[int] = battle.signs.duplicate()  # この局の縫い目の様子（札ごとの集計と SIGNS の行）
 		if trial_stronghold:
