@@ -66,7 +66,7 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 	for cell: Vector2i in board.portal_exits:
 		_add_portal(cell, portal_color(board, cell))
 	for effect in board.field_effects:
-		add_field_effect(effect.id, effect.type, effect.side, effect.cells)
+		add_field_effect(effect.id, effect.type, effect.side, effect.cells, effect.durability)
 
 	_build_markers()
 

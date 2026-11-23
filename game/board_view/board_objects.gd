@@ -30,7 +30,8 @@ func remove_barrel(cell: Vector2i) -> void:
 
 ## 盤の上の効果を描く。盾は持ち主の色の堅い板、煙幕は灰色の靄、聖域は持ち主の色の淡い光の床。
 ## どれもマスの上、駒の下（聖域と煙幕の床は駒の足元より低く、煙幕の靄は駒を包む高さで薄く）。
-func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, cells: Array[Vector2i]) -> void:
+## 盾には、残りの耐久の棒を付ける（durability。置いたばかりなら省ける = いっぱい）。
+func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, cells: Array[Vector2i], durability := FieldEffects.BARRICADE_DURABILITY) -> void:
 	remove_field_effect(effect_id)
 	var root := Node3D.new()
 	add_child(root)
@@ -45,6 +46,15 @@ func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, c
 			for cell in cells:
 				_add_part(root, wall, _material(color.darkened(0.15)), cell_center(cell) + Vector3(0.0, 0.35, 0.0))
 				_add_part(root, post, _material(color.lightened(0.35)), cell_center(cell) + Vector3(0.0, 0.72, 0.0))
+			# 残りの耐久の棒。駒の HP の棒と同じ形を少し大きくして、盾の上に、いつも出す（盾は少なく、どれだけ持つかが要る）。
+			# 色は持ち主の色（盾の上の板は淡い色なので、濃いままの色で塗る）。
+			var bar := GaugeSprite.make()
+			bar.pixel_size = GaugeSprite.PIXEL * BARRICADE_BAR_SCALE
+			bar.position = cell_center(cells[0]) + Vector3(0.0, BARRICADE_BAR_HEIGHT, 0.0)
+			bar.set_meta(&"color", color)
+			root.add_child(bar)
+			_barricade_bars[effect_id] = bar
+			set_barricade_durability(effect_id, durability)
 		FieldEffect.Type.SMOKE:
 			var floor_mesh := BoxMesh.new()
 			floor_mesh.size = Vector3(1.0, 0.02, 1.0)
@@ -69,11 +79,27 @@ func add_field_effect(effect_id: int, type: FieldEffect.Type, side: Unit.Side, c
 			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
+## 盾の残りの耐久を、棒に出す（描かれていない盾なら何もしない）。
+func set_barricade_durability(effect_id: int, durability: int) -> void:
+	if not _barricade_bars.has(effect_id) or _barricade_durability.get(effect_id, -1) == durability:
+		return
+	_barricade_durability[effect_id] = durability
+	var bar: Sprite3D = _barricade_bars[effect_id]
+	GaugeSprite.fill(bar, float(durability) / FieldEffects.BARRICADE_DURABILITY, bar.get_meta(&"color"))
+
+
+## 盾の棒に出している耐久（描かれていなければ -1）。検査用。
+func barricade_durability(effect_id: int) -> int:
+	return _barricade_durability.get(effect_id, -1)
+
+
 ## 消えた効果を取り除く。
 func remove_field_effect(effect_id: int) -> void:
 	if _field_effects.has(effect_id):
 		_field_effects[effect_id].queue_free()
 		_field_effects.erase(effect_id)
+	_barricade_bars.erase(effect_id)
+	_barricade_durability.erase(effect_id)
 
 
 ## 描かれている効果の番号（小さい順）。検査用。

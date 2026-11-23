@@ -51,6 +51,7 @@ func _play_barricade_damaged(event: BarricadeDamagedEvent) -> void:
 	var attacker := _view(event.attacker_id)
 	attacker.face(at - attacker.position)
 	await _strike(attacker, at)
+	_board_view.set_barricade_durability(event.effect_id, event.durability)
 	_pop_number(at, Text.t("battle.pop.durability", {"amount": event.amount}), Color("ffe9a8"))
 	await after(0.3)
 
