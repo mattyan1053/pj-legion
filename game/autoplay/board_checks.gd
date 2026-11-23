@@ -388,38 +388,44 @@ func _queue_status_scene() -> void:
 		_expect(not Statuses.has(sniper, Status.Type.AIM), "照準が残っている"))
 
 
-## 組み方（docs/formation.md）。スナイパーの分隊が同じ相手を続けて撃ち（追い撃ち）、誓いを結んだ相手の片方を倒す（誓いが切れて、奮起が付く）。
-func _queue_formation_scene() -> void:
+## 部隊の特徴（docs/troop-traits.md）。集中砲火の連邦のスナイパーが 1 発当てると、敵の足元に輪が出て、2 人目のスナイパーの攻撃に集中砲火が乗る。
+## ターンを終えると、補給線の相手の番の始めに、衛生兵と隣り合う兵が回復する。
+func _queue_traits_scene() -> void:
 	var board := _small_board(Vector2i(7, 3))
 	var battle := Battle.new(board)
-	battle.formation = true
+	battle.traits = [Traits.Id.FOCUS, Traits.Id.SUPPLY]
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 1))
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
 	var first := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 0))
 	var second := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(0, 2))
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(3, 1))
-	var sorcerer := battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(5, 1))
-	Formation.bind(paladin, sorcerer)
-	paladin.hp = first.power() + 1
-	var triggered: Script = FormationTriggeredEvent
-	var broken: Script = OathBrokenEvent
+	paladin.hp = first.power() + Traits.FOCUS_BONUS + 1
+	battle.add_unit(UnitKind.Id.MEDIC, Unit.Side.PLAYER2, Vector2i(6, 2))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER2, Vector2i(5, 2))
+	trooper.hp -= 10
+	var triggered: Script = TraitTriggeredEvent
+	var supplied: Script = SupplyHealedEvent
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
-	_scripted.append(func() -> void: _scene.click_cell(first.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.trait_mark_count() == 0, "まだ誰も攻撃していないのに、特徴の輪が出ている")
+		_scene.click_cell(first.cell))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
 	_scripted.append(func() -> void:
-		_expect(paladin.hp == 1, "1 発目が当たらなかった")
+		_expect(paladin.hp == Traits.FOCUS_BONUS + 1, "1 発目が当たらなかった")
+		_expect(_scene.trait_mark_count() == 1, "攻撃された敵の足元に、集中砲火の輪が出ない")
 		_scene.played.erase(triggered)
-		_scene.played.erase(broken)
 		_scene.click_cell(second.cell))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
 	_scripted.append(func() -> void:
-		_expect(not battle.units.has(paladin), "追い撃ちで倒せなかった")
-		_expect(_scene.played.get(triggered, 0) == 1, "追い撃ちを再生しなかった")
-		_expect(_scene.played.get(broken, 0) == 1, "誓いが切れたことを再生しなかった")
-		_expect(Statuses.has(sorcerer, Status.Type.RESOLVE), "奮起が付かなかった"))
+		_expect(not battle.units.has(paladin), "集中砲火で倒せなかった")
+		_expect(_scene.played.get(triggered, 0) == 1, "集中砲火を再生しなかった"))
+	_scripted.append(_end_turn)  # 後手（補給線）の番の始めに、衛生兵と隣り合う兵が回復する
+	_scripted.append(func() -> void:
+		_expect(trooper.hp == trooper.max_hp() - 10 + Traits.SUPPLY_HEAL, "補給線で回復しなかった")
+		_expect(_scene.played.get(supplied, 0) == 1, "補給線の回復を再生しなかった"))
 
 
 ## 倒れると何か起きる魔物（docs/monsters.md）。スナイパーが骸骨旗手を倒し（隣の骸骨兵が奮起）、もう 1 体がほつれを倒す（結び目が残る）。

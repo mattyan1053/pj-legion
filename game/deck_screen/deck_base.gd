@@ -29,7 +29,8 @@ const UnitSummary := preload("res://game/unit_summary.gd")
 const Steady := preload("res://game/steady.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
-const FormationText := preload("res://game/formation_text.gd")
+const TraitText := preload("res://game/trait_text.gd")
+const TraitIcon := preload("res://game/trait_icon.gd")
 
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
@@ -51,11 +52,13 @@ const RIGHT_GAP := 10
 const EQUIP_MIN_HEIGHT := 80.0
 const ROSTER_WIDTH := 320.0
 const TROOP_WIDTH := 420.0
-## 組み方の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。
-const FORMATION_HEIGHT := 150.0
-const FORMATION_LINES := 7
-## 部隊の行の、組み方の札（分隊の印・誓いのボタン）の幅（px）。
-const FORMATION_TAG_WIDTH := 64.0
+## 部隊の特徴の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。札の高さと、札の印の大きさ。
+const TRAIT_BOX_HEIGHT := 94.0
+const TRAIT_LINES := 2
+const TRAIT_CARD_HEIGHT := 30.0
+const TRAIT_MARK_SIDE := 24.0
+## 部隊の行の、誓いのボタン（特徴が誓いの部隊だけ）の幅（px）。
+const OATH_TAG_WIDTH := 64.0
 ## 一覧の右の、駒の札を並べる数（1 行）。
 const LIST_CARD_COLUMNS := 3
 ## コストの目盛り（宝石の並び）の幅（px）。コスト上限が大きくても、この幅に詰めて収める。
@@ -110,11 +113,14 @@ var _deck: Deck
 var _deck_name := ""
 var _dirty := false
 var _selected := -1
-## 誓い（組み方）で結ぶ相手を選んでいる駒の番号（部隊の並びの添字）。選んでいなければ -1。
+## 誓い（部隊の特徴）で結ぶ相手を選んでいる駒の番号（部隊の並びの添字）。選んでいなければ -1。
 var _binding := -1
-## 組み方の欄（対戦用の部隊だけ。決まった大きさ）と、その文。
-var _formation_box: PanelContainer
-var _formation_label: Label
+## 部隊の特徴の欄（対戦用の部隊だけ。必殺技の欄の下。決まった大きさ）: 札 3 枚と、選んだ（乗せた）特徴の文。
+var _trait_box: PanelContainer
+var _trait_buttons: Array[Button] = []
+var _trait_label: Label
+## 特徴の札にマウスを乗せている特徴（無ければ Traits.NONE。文の欄に、その特徴の文を出す）。
+var _hover_trait := Traits.NONE
 ## マウスを乗せている雇える駒（無ければ -1）。
 var _hover_kind := -1
 var _name_label: Label

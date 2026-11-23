@@ -63,8 +63,8 @@ class Outcome:
 	var first_ult_turn: Array[int] = [0, 0]
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
-	## 組み方の効果が効いた回数（Formation.Effect -> 回数。誓いの果ては、誓いが切れた回数）。
-	var formation: Dictionary[int, int] = {}
+	## 部隊の特徴が効いた回数（Traits.Id -> 回数。補給線は回復した回数）。
+	var traits: Dictionary[int, int] = {}
 	## 倒されたプレイヤーの駒（将を除く）の倒され方。1 体につき 1 つ（Fall）。
 	var falls: Array[Fall] = []
 	## 駒の番号 -> ダメージを受けた回数（防がれたものは数えない）。
@@ -333,11 +333,11 @@ static func _copy_stats(outcome: Outcome, stats: BattleStats) -> void:
 static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: Unit.Side) -> void:
 	var kind: Script = event.get_script()
 	outcome.events[kind] = outcome.events.get(kind, 0) + 1
-	if event is FormationTriggeredEvent:
-		var effect: int = (event as FormationTriggeredEvent).effect
-		outcome.formation[effect] = outcome.formation.get(effect, 0) + 1
-	elif event is OathBrokenEvent:
-		outcome.formation[Formation.Effect.OATH_RESOLVE] = outcome.formation.get(Formation.Effect.OATH_RESOLVE, 0) + 1
+	if event is TraitTriggeredEvent:
+		var id: int = (event as TraitTriggeredEvent).trait_id
+		outcome.traits[id] = outcome.traits.get(id, 0) + 1
+	elif event is SupplyHealedEvent:
+		outcome.traits[Traits.Id.SUPPLY] = outcome.traits.get(Traits.Id.SUPPLY, 0) + 1
 	if event is UnitDamagedEvent:
 		var hit := event as UnitDamagedEvent
 		if hit.amount > 0:

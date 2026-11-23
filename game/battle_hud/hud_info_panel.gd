@@ -28,9 +28,6 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 			level = Text.t("deck.sheet.level", {"level": unit.level})
 			experience = [unit.experience, Growth.EXPERIENCE_PER_LEVEL]
 	var chips: Array = []
-	# 組み方（分隊・誓い）は、見出しだけを札にする（効果は「詳細」の窓で読める）。相手の駒も同じように出す（docs/formation.md）。
-	for line in FormationText.unit_lines(battle, unit):
-		chips.append([line.get_slice(": ", 0), COLOR_FORMATION])
 	for which: Evolution.Trait in Evolution.Trait.values():  # 進化先と持ち物の、どちらが与えた特性も（重ねても 1 つ）
 		if unit.has_trait(which):
 			chips.append([Text.t("battle.hud.trait", {"trait": Names.trait_text(which)}), COLOR_TRAIT])

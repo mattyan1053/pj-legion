@@ -250,14 +250,10 @@ func _show_level(sheet: UnitSheet) -> void:
 
 func _show_statuses(sheet: UnitSheet) -> void:
 	_clear(_statuses)
-	_statuses.visible = not sheet.statuses.is_empty() or not sheet.formation.is_empty()
+	_statuses.visible = not sheet.statuses.is_empty()
 	for status: Array in sheet.statuses:
 		var line := _text(NOTE_SIZE, Palette.INFO)
 		_fold(line, Text.t("battle.hud.status", {"status": Names.status(status[0]), "turns": status[1], "effect": Names.status_summary(status[0])}), RIGHT_WIDTH)
-		_statuses.add_child(line)
-	for text in sheet.formation:
-		var line := _text(NOTE_SIZE, Palette.WARN)
-		_fold(line, text, RIGHT_WIDTH)
 		_statuses.add_child(line)
 
 

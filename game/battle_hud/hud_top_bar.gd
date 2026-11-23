@@ -92,6 +92,20 @@ func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
 		_ult_bars[player].tooltip_text = names[player]
 
 
+## 陣営ごとの部隊の特徴（上の帯の印。添字がプレイヤー番号。Traits.NONE なら出さない）。notes は印に乗せると出る文。
+func set_traits(ids: Array[int], notes: Array[String]) -> void:
+	for player in _trait_icons.size():
+		var mark := _trait_icons[player]
+		mark.set(&"trait_id", ids[player])
+		mark.visible = ids[player] != Traits.NONE
+		mark.tooltip_text = notes[player]
+
+
+## 上の帯に出ている、陣営の部隊の特徴の印の文（乗せると出る文。出ていなければ空）。検査用。
+func trait_note(player: int) -> String:
+	return _trait_icons[player].tooltip_text if _trait_icons[player].visible else ""
+
+
 ## いちばん上の帯に出ている、必殺技のゲージの文字（"62%" か "READY"。出ていなければ空）。検査用。
 func ult_gauge_text(player: int) -> String:
 	return _ult_labels[player].text if _ult_labels[player].visible else ""
@@ -239,6 +253,12 @@ func _build_top_bar() -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_child(label)
 		_side_labels.append(label)
+		# 部隊の特徴の印（特徴が無ければ出さない）。名前と文は、印にマウスを乗せると出る。
+		var mark := TraitIcon.new(Traits.NONE, TRAIT_MARK_SIDE)
+		mark.mouse_filter = Control.MOUSE_FILTER_STOP
+		mark.visible = false
+		row.add_child(mark)
+		_trait_icons.append(mark)
 		# 聖遺物のアイコン（持っていなければ暗い輪郭、持っていれば点く）。名前と効果は、アイコンにマウスを乗せると出る。
 		var icons: Array = []
 		for relic: Relics.Id in Relics.Id.values():

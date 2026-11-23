@@ -69,7 +69,7 @@ static func trait_short(of_trait: Evolution.Trait) -> String:
 ## 特性の文に差し込む値。
 static func _trait_args() -> Dictionary:
 	return {
-		"heal": Evolution.REGENERATION_HEAL, "radius": Monsters.RALLY_RADIUS, "power": Formation.RESOLVE_POWER,
+		"heal": Evolution.REGENERATION_HEAL, "radius": Monsters.RALLY_RADIUS, "power": Monsters.RESOLVE_POWER,
 		"turns": Monsters.KNOT_TURNS,
 	}
 
@@ -139,22 +139,24 @@ static func status(type: Status.Type) -> String:
 static func status_summary(type: Status.Type) -> String:
 	var args := {
 		"range": PrecisionAimSkill.RANGE_BONUS, "penalty": AdrenalineShotSkill.POWER_PENALTY,
-		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS, "resolve": Formation.RESOLVE_POWER,
+		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS, "resolve": Monsters.RESOLVE_POWER,
 	}
 	return Text.t("status.%s.summary" % word(Status.Type, type), args)
 
 
-## 組み方の効果（Formation.Effect）の名前と、1 行の説明（docs/formation.md）。
-static func formation_effect(effect: Formation.Effect) -> String:
-	return Text.t("formation." + word(Formation.Effect, effect))
+## 部隊の特徴（Traits.Id）の名前と、1 行の文（docs/troop-traits.md）。
+static func troop_trait(id: int) -> String:
+	return Text.t("troop_trait." + Traits.key(id)) if id != Traits.NONE else ""
 
 
-static func formation_summary(effect: Formation.Effect) -> String:
-	var args := {
-		"guard": Formation.SQUAD_GUARD, "focus": Formation.SQUAD_FOCUS, "vengeance": Formation.OATH_VENGEANCE,
-		"range": Formation.OATH_RANGE, "resolve": Formation.RESOLVE_POWER,
+static func troop_trait_text(id: int) -> String:
+	if id == Traits.NONE:
+		return ""
+	var amounts := {
+		Traits.Id.FOCUS: Traits.FOCUS_BONUS, Traits.Id.RANKS: Traits.RANKS_GUARD, Traits.Id.SUPPLY: Traits.SUPPLY_HEAL,
+		Traits.Id.VENGEANCE: Traits.VENGEANCE_BONUS, Traits.Id.OATH: Traits.OATH_BONUS, Traits.Id.LONE: Traits.LONE_BONUS,
 	}
-	return Text.t("formation.%s.summary" % word(Formation.Effect, effect), args)
+	return Text.t("troop_trait.%s.text" % Traits.key(id), {"amount": amounts[id], "medic": kind(UnitKind.Id.MEDIC)})
 
 
 ## 縫い目の様子の札（Seam.Sign）の名前と、効果の文（短く言い切る 1 行。比べる元の値は書かない。docs/seam-signs.md）。

@@ -6,7 +6,8 @@ extends "res://rules/cpu/cpu_player_base.gd"
 ## ignored_id の敵は数えない。_build_threats のあとに呼ぶ。
 ## - 自分の煙幕の中のマスでは、煙幕に防がれない攻撃だけを数える
 ## - unit にバリアが付いていれば、いちばん弱い 1 回ぶんを引く（相手は、弱い攻撃で先にはがす）
-## - unit が cell で肩並べ（組み方の分隊）になるなら、1 回ごとに肩並べのぶんを引く
+## - unit が cell で隊列（部隊の特徴）になるなら、1 回ごとに隊列のぶんを引く
+## - 敵の部隊の特徴で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら、単騎はいつも）
 func _threat_at(unit: Unit, cell: Vector2i, ignored_id: int) -> int:
 	return _danger_in(_threats, _close_threats, unit, cell, ignored_id)
 
@@ -19,10 +20,29 @@ func _danger_in(
 	var by: Dictionary = (close if _smoked.has(cell) else threats).get(cell, {})
 	var total := 0
 	var weakest := _FAR
-	var guard := Formation.SQUAD_GUARD if Formation.guarded_at(_battle, unit, cell) else 0  # 肩並べ（組み方が切なら 0）
+	var guard := Traits.RANKS_GUARD if Traits.ranked_at(_battle, unit, cell) else 0  # 隊列
+	var foe_trait := Traits.of_side(_battle, _foe)
+	var focusers := 0
 	for enemy_id: int in by:
 		if enemy_id != ignored_id:
-			var hurt := maxi(0, by[enemy_id] - guard)
+			var hurt := by[enemy_id] as int
+			if hurt > 0 and foe_trait != Traits.NONE:
+				var enemy := _battle.unit_by_id(enemy_id)
+				if enemy != null and enemy.side == _foe:
+					match foe_trait:
+						Traits.Id.FOCUS:
+							focusers += 1
+							if focusers > 1:
+								hurt += Traits.FOCUS_BONUS
+						Traits.Id.VENGEANCE:
+							if Traits.slew(unit, _foe):
+								hurt += Traits.VENGEANCE_BONUS
+						Traits.Id.OATH:
+							if enemy.oath_partner != 0 and enemy.oath_partner < enemy_id and by.has(enemy.oath_partner) and enemy.oath_partner != ignored_id:
+								hurt += Traits.OATH_BONUS
+						Traits.Id.LONE:
+							hurt += Traits.LONE_BONUS
+			hurt = maxi(0, hurt - guard)
 			total += hurt
 			weakest = mini(weakest, hurt)
 	if total > 0 and Statuses.blocking(unit) != -1:

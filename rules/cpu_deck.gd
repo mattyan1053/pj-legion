@@ -7,7 +7,7 @@ extends RefCounted
 ## 1. 4 つの役割（前衛・後衛・奇襲・回復）を 1 体ずつ雇う
 ## 2. 予算と数の上限が許すかぎり、前衛、後衛、奇襲の順にもう 1 体ずつ足す
 ## 3. 余った予算で装備を持たせる。前衛にアイアンシールド、奇襲にスピードブーツを、1 個ずつ順に配る
-## 4. 誓いを結べる軍（騎士領）なら、誓いを結ぶ（oath_plan。組み方が入の対戦で効く。docs/formation.md）
+## 4. 部隊の特徴を選ぶ（choose_trait。docs/troop-traits.md）。誓いなら、誓いを結ぶ（bind_oaths）
 
 
 
@@ -34,17 +34,60 @@ static func build(army: UnitKind.Army, rules: DeckRules = null) -> Deck:
 				continue
 			if entry.equip(item):
 				equipped = true
-	bind_oaths(deck)
+	pick_trait(deck)
 	return deck
 
 
+## 部隊 deck に、CPU の決め方で特徴を選んで付け（choose_trait）、誓いなら誓いを結ぶ（bind_oaths）。
+static func pick_trait(deck: Deck) -> void:
+	deck.trait_id = choose_trait(deck)
+	if deck.trait_id == Traits.Id.OATH:
+		bind_oaths(deck)
+	else:
+		deck.oaths.clear()
+
+
+## 部隊の中身に合う特徴（docs/cpu-ai.md の「部隊の特徴」）。軍でなければ Traits.NONE。
+## 連邦: 回復役が SUPPLY_MEDICS 体以上なら補給線、同じ兵種（回復役を除く）が RANKS_KIND 体以上なら隊列、ほかは集中砲火。
+## 騎士領: 奇襲が LONE_RAIDERS 体以上なら単騎、攻撃する駒（回復役を除く）が OATH_FIGHTERS 体以上なら誓い、ほかは仇討ち。
+static func choose_trait(deck: Deck) -> int:
+	var counts := {}
+	var fighters := 0
+	for entry in deck.entries:
+		counts[entry.kind] = counts.get(entry.kind, 0) + 1
+		if UnitKind.role(entry.kind) != UnitKind.Role.HEALER:
+			fighters += 1
+	match deck.army:
+		UnitKind.Army.MILITARY:
+			if counts.get(UnitKind.Id.MEDIC, 0) >= SUPPLY_MEDICS:
+				return Traits.Id.SUPPLY
+			for kind: UnitKind.Id in counts:
+				if UnitKind.role(kind) != UnitKind.Role.HEALER and counts[kind] >= RANKS_KIND:
+					return Traits.Id.RANKS
+			return Traits.Id.FOCUS
+		UnitKind.Army.FANTASY:
+			if counts.get(UnitKind.Id.SPELLBLADE, 0) >= LONE_RAIDERS:
+				return Traits.Id.LONE
+			if fighters >= OATH_FIGHTERS:
+				return Traits.Id.OATH
+			return Traits.Id.VENGEANCE
+	return Traits.default_of(deck.army)
+
+
+## choose_trait の数（部隊の中身の目安）。
+const SUPPLY_MEDICS := 2
+const RANKS_KIND := 3
+const LONE_RAIDERS := 2
+const OATH_FIGHTERS := 4
+
+
 ## 騎士領の編成に、CPU の決め方で誓いを結ぶ（もう結んである誓いはほどく）。騎士領でなければ何もしない。
-## 誓いは、近くで戦う 2 人で結ぶ（仇討ちは、相手が近くにいる間だけ効く）。
+## 誓いは、近くで戦う 2 人で結ぶ（同じ敵を、同じターンに 2 人で攻撃できる組）。
 ## 1 組目は前衛と後衛（前衛が受けた敵を、後ろから撃ち返す）。2 組目は、残りの前衛か奇襲と、残りの後衛か前衛。
-## 回復役は結ばない（攻撃しないので、仇討ちが効かない）。
+## 回復役は結ばない（攻撃しないので、誓いが効かない）。
 static func bind_oaths(deck: Deck) -> void:
 	deck.oaths.clear()
-	if not Formation.binds_oaths(deck.army):
+	if deck.army != UnitKind.Army.FANTASY:
 		return
 	var free := deck.entries.filter(func(entry: DeckEntry) -> bool: return UnitKind.role(entry.kind) != UnitKind.Role.HEALER)
 	for wanted: Array in OATH_PLAN:

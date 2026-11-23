@@ -16,6 +16,8 @@ extends RefCounted
 
 ## 骸骨旗手が倒れたとき、奮起が付く広さ（マンハッタン距離）。
 const RALLY_RADIUS := 2
+## 奮起（Status.Type.RESOLVE）の攻撃力（回復役は回復量）の上がり幅。
+const RESOLVE_POWER := 4
 ## 結び目が立ち直るまでの、持ち主のフェーズの数（残したときの残りのターン数）。
 const KNOT_TURNS := 2
 

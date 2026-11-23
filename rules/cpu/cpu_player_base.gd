@@ -128,17 +128,20 @@ const STRONGHOLD_KILL_BONUS := 40.0
 ## 相手の駒が拠点に乗っている間、拠点の周り（確保を止められる所。Stronghold.CONTEST_RADIUS 以内）に立って行動を終える価値。
 const STRONGHOLD_BLOCK_VALUE := 60.0
 const HEALER_SEARCH_STEPS := 12
-## 組み方（docs/formation.md。docs/cpu-ai.md の「組み方」）。入の対戦だけ効く（切なら、どれも 0）。
-## 分隊の駒が、同じ分隊の仲間の隣（肩並べ）に立って行動を終える価値（受けうるダメージの見積もりも、肩並べのぶんだけ減らして読む）。
-const SQUAD_HUDDLE_VALUE := 2.0
-## 分隊の駒が攻撃した相手（倒しきらない）に、このあとに動ける同じ分隊の仲間が届きそうなら、追い撃ちの見込みとして足す価値。
-const SQUAD_FOCUS_SETUP_VALUE := 4.0
-## 誓いの駒が、誓いの相手から Formation.OATH_RANGE マス以内に立って行動を終える価値（離れると仇討ちが効かない）。
-const OATH_NEAR_VALUE := 6.0
-## 相手の誓いの駒を倒す価値（誓いを切る。仇討ちが消える）。
-const OATH_BREAK_VALUE := 15.0
-## 相手の誓いの駒を、倒しきらずに攻撃する減点（誓いの相手が近くにいれば、仇討ちを受ける）。
-const OATH_PROVOKE_PENALTY := 6.0
+## 部隊の特徴（docs/troop-traits.md。docs/cpu-ai.md の「部隊の特徴」）。その特徴の部隊でだけ効く。
+## 隊列: 同じ兵種の味方の隣に立って行動を終える価値（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）。
+const RANKS_HUDDLE_VALUE := 6.0
+## 補給線: HP の減った駒が回復役の隣に立って行動を終える価値（回復する HP 1 あたり）。
+const SUPPLY_STAND_VALUE := 1.0
+## 誓い: 誓いの相手からこの距離（マンハッタン距離）以内に立って行動を終える価値（同じ敵を 2 人で攻撃できる所にいる）。
+const OATH_NEAR := 4
+const OATH_NEAR_VALUE := 4.0
+## 単騎: 攻撃する駒（将と回復役を除く）が、隣に味方のいないマスに立って行動を終える価値。
+const LONE_STAND_VALUE := 2.0
+## 集中砲火・誓い: 敵を倒しきらずに攻撃し、このあとに動ける味方（誓いなら誓いの相手）が届きそうなら、続けて当てる見込みとして足す価値。
+const FOLLOW_UP_VALUE := 3.0
+## 仇討ち（相手の特徴）: 相手の駒を倒して、倒した駒が新しく仇になる減点（その駒は、これから余計に狙われる）。
+const AVENGER_PENALTY := 3.0
 
 ## 倒れると何か起きる魔物（docs/monsters.md）。
 ## 相手の骸骨旗手を倒して、相手の駒 1 体に奮起が付く減点（倒す価値から引く。群れから離れた所で倒すほうを選ぶ）。

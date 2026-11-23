@@ -16,7 +16,7 @@ enum Type {
 	AIM,  ## 照準。射程が伸び、次の攻撃が確定クリティカルになる。動くと外れる（精密照準）
 	FATIGUE,  ## 反動。攻撃力が下がる（アドレナリン注射を受けた駒）
 	ASSAULT,  ## 突撃。移動力と攻撃力が上がる（必殺技の総員突撃）
-	RESOLVE,  ## 奮起。攻撃力が上がる（組み方の誓いの相手が倒れた駒。Formation）
+	RESOLVE,  ## 奮起。攻撃力が上がる（骸骨旗手が倒れたときの、周りの味方。Monsters）
 }
 
 ## クリティカルでない攻撃の倍率（%）。
@@ -32,7 +32,7 @@ static func bonus(type: Type) -> Dictionary:
 	if type == Type.ASSAULT:
 		return {Unit.Stat.MOVE_RANGE: AllOutAssaultUlt.MOVE_BONUS, Unit.Stat.POWER: AllOutAssaultUlt.POWER_BONUS}
 	if type == Type.RESOLVE:
-		return {Unit.Stat.POWER: Formation.RESOLVE_POWER}
+		return {Unit.Stat.POWER: Monsters.RESOLVE_POWER}
 	return {}
 
 

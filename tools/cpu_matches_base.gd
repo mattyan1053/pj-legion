@@ -105,8 +105,8 @@ func _deck(army: UnitKind.Army, mode: String, rules: DeckRules) -> Deck:
 
 ## 部隊の中身を分ける鍵（--squads の「部隊の中身ごとの勝率」）。軍の並びを頭に付ける。
 ## 駒の種類（入っている部隊）、駒の種類の数、駒の数、装備の数、役割の組み合わせ（前衛・後衛・奇襲・回復の数）、CPU の編成と同じか。
-## 組み方が入（formation）なら、分隊の兵種と数（連邦）、誓いの組と数（騎士領）も。
-static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Army, formation := false) -> Array[String]:
+## 部隊の特徴（trait_id。無ければ Traits.NONE）と、その特徴と兵種の数の組も。
+static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Army, trait_id := Traits.NONE) -> Array[String]:
 	var head := "%s 対 %s " % [Names.army(army), Names.army(rival_army)]
 	var keys: Array[String] = []
 	var counts := {}
@@ -127,29 +127,11 @@ static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Ar
 	keys.append(head + "役割 前%d 後%d 奇%d 回%d" % roles.slice(1))
 	if _deck_text(deck) == _deck_text(CpuDeck.build(army, deck.rules)):
 		keys.append(head + "CPU の編成と同じ")
-	if formation:
-		keys.append_array(_formation_keys(deck, head))
-	return keys
-
-
-## 組み方の鍵: 連邦は分隊の兵種（と、その体数）と分隊の数、騎士領は誓いの組（兵種の組。役割の順）と誓いの数。
-static func _formation_keys(deck: Deck, head: String) -> Array[String]:
-	var keys: Array[String] = []
-	if Formation.binds_oaths(deck.army):
-		for pair in deck.oath_pairs():
-			var kinds: Array[UnitKind.Id] = [deck.entries[pair.x].kind, deck.entries[pair.y].kind]
-			kinds.sort()
-			var key := head + "誓い %s・%s" % [Names.kind(kinds[0]), Names.kind(kinds[1])]
-			if not keys.has(key):  # 同じ兵種の組の誓いが 2 つあっても、部隊は 1 回だけ数える
-				keys.append(key)
-		keys.append(head + "誓いの数 %d" % deck.oaths.size())
-	else:
-		var squads := Formation.squad_kinds(deck)
-		for kind in squads:
-			var size := deck.entries.filter(func(entry: DeckEntry) -> bool: return entry.kind == kind).size()
-			keys.append(head + "分隊 %s" % Names.kind(kind))
-			keys.append(head + "分隊 %s %d 体" % [Names.kind(kind), size])
-		keys.append(head + "分隊の数 %d" % squads.size())
+	if trait_id != Traits.NONE:
+		var name := Names.troop_trait(trait_id)
+		keys.append(head + "特徴 %s" % name)
+		for kind: UnitKind.Id in counts:
+			keys.append(head + "特徴 %s・駒 %s %d 体" % [name, Names.kind(kind), counts[kind]])
 	return keys
 
 

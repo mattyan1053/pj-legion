@@ -1,5 +1,5 @@
 extends "res://rules/cpu/cpu_threats.gd"
-## CPU の思考の、行動の結果の価値（ダメージ・撃破・回復・経験・組み方・中ボスと聖遺物・狩り・障壁・倒れると何か起きる魔物）。
+## CPU の思考の、行動の結果の価値（ダメージ・撃破・回復・経験・部隊の特徴・中ボスと聖遺物・狩り・障壁・倒れると何か起きる魔物）。
 
 
 ## 行動を複製（sim）に apply したあとの、その行動の価値。events はそのとき起きたこと。
@@ -16,8 +16,8 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 			var victim := _battle.unit_by_id(damaged.unit_id)
 			var worth := _damage_value(victim, damaged.hp)
 			value += -FRIENDLY_FIRE_RATE * worth if victim.side == _me else worth
-			if damaged is AttackDamagedEvent and _battle.formation and victim.side == _foe:
-				value += _formation_value(sim, (damaged as AttackDamagedEvent).attacker_id, victim, damaged.hp)
+			if damaged is AttackDamagedEvent and victim.side == _foe:
+				value += _trait_value(sim, (damaged as AttackDamagedEvent).attacker_id, victim, damaged.hp)
 			continue
 		var healed := event as UnitHealedEvent
 		if healed != null:
@@ -64,24 +64,33 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 	return value
 
 
-## 組み方の見込み: 駒 attacker_id が相手の victim（攻撃の前の状態）を hp_after まで減らしたあとの、組み方のぶんの価値。
-## 誓いの駒を倒せば OATH_BREAK_VALUE。倒しきらず、誓いの相手が近くにいれば -OATH_PROVOKE_PENALTY。
-## 分隊の駒が倒しきらずに攻撃し、このあとに動ける同じ分隊の仲間が届きそうなら SQUAD_FOCUS_SETUP_VALUE（追い撃ちの見込み）。
-func _formation_value(sim: Battle, attacker_id: int, victim: Unit, hp_after: int) -> float:
+## 部隊の特徴の見込み: 駒 attacker_id が相手の victim（攻撃の前の状態）を hp_after まで減らしたあとの、特徴のぶんの価値。
+## - 集中砲火・誓い: 倒しきらず、このあとに動ける味方（誓いなら誓いの相手）が届きそうなら FOLLOW_UP_VALUE（続けて当てる見込み）
+## - 相手が仇討ち: 倒して、倒した駒が新しく仇になるなら -AVENGER_PENALTY
+## ダメージの増減そのものは、複製の上で手を進めて読むので、ここでは数えない。
+func _trait_value(sim: Battle, attacker_id: int, victim: Unit, hp_after: int) -> float:
 	var value := 0.0
-	if Formation.partner_of(_battle, victim) != null:
-		if hp_after == 0:
-			value += OATH_BREAK_VALUE
-		elif Formation.oath_near(_battle, victim):
-			value -= OATH_PROVOKE_PENALTY
 	var attacker := _battle.unit_by_id(attacker_id)
-	if hp_after > 0 and attacker != null and Formation.in_squad(_battle, attacker):
-		for mate in Formation.squad_of(_battle, attacker):
-			if mate.id == attacker.id or not sim.can_act(sim.unit_by_id(mate.id)):
-				continue
-			if Combat.distance(mate.cell, victim.cell) <= mate.move_range() + mate.attack_range():
-				value += SQUAD_FOCUS_SETUP_VALUE
+	if attacker == null:
+		return value
+	if hp_after > 0:
+		var mates: Array[Unit] = []
+		match Traits.of_side(_battle, attacker.side):
+			Traits.Id.FOCUS:
+				if not Traits.struck_by_side(_battle, victim, attacker.side):
+					mates.assign(_battle.units.filter(func(mate: Unit) -> bool:
+						return mate.side == attacker.side and mate != attacker and UnitKind.role(mate.kind) != UnitKind.Role.HEALER))
+			Traits.Id.OATH:
+				var partner := Traits.partner_of(_battle, attacker)
+				if partner != null and not Traits.oath_marked(_battle, attacker, victim):
+					mates = [partner]
+		for mate in mates:
+			var now := sim.unit_by_id(mate.id)
+			if now != null and sim.can_act(now) and Combat.distance(now.cell, victim.cell) <= now.move_range() + now.attack_range():
+				value += FOLLOW_UP_VALUE
 				break
+	elif Traits.of_side(_battle, victim.side) == Traits.Id.VENGEANCE and not Traits.slew(attacker, victim.side):
+		value -= AVENGER_PENALTY
 	return value
 
 

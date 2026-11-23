@@ -155,6 +155,24 @@ func test_boss_name_reads_from_the_episode_or_the_map() -> void:
 	assert_eq(long.problems.size(), 1)
 
 
+## 部隊の特徴（docs/troop-traits.md）: 話のファイルの trait と oath。書いた陣営だけが持ち、部隊編成で選んだ特徴は使わない。
+func test_traits_read_and_reach_the_battle() -> void:
+	var plain: Episode = Episode.parse(PROBE)
+	var mine := MatchSetup.default_deck(UnitKind.Army.MILITARY).copy()
+	mine.trait_id = Traits.Id.SUPPLY
+	assert_eq(StoryBattle.new(plain, mine).make_setup(3).create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "書かなければ、どちらも無い")
+	var text := PROBE.replace("army = fantasy\n", "army = fantasy\ntrait = oath\noath = 1, 2\n")
+	var episode: Episode = Episode.parse(text)
+	assert_eq(episode.problems, PackedStringArray())
+	assert_eq(episode.enemy_deck().oath_pairs(), [Vector2i(0, 1)] as Array[Vector2i])
+	var battle := StoryBattle.new(episode, mine).make_setup(3).create_battle()
+	assert_eq(battle.traits, [Traits.NONE, Traits.Id.OATH] as Array[int])
+	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.oath_partner != 0).size(), 2, "誓いを駒に写す")
+	for wrong: String in ["trait = focus", "trait = shout", "trait = oath\noath = 1, 3", "trait = lone\noath = 1, 2"]:
+		var bad: Episode = Episode.parse(PROBE.replace("army = fantasy\n", "army = fantasy\n" + wrong + "\n"))
+		assert_eq(bad.problems.size(), 1, "%s: %s" % [wrong, bad.problems])
+
+
 func test_signs_read_and_reach_the_battle() -> void:
 	var plain: Episode = Episode.parse(PROBE)
 	assert_eq(plain.signs, [] as Array[int], "書かなければ付かない")

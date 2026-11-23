@@ -60,10 +60,10 @@ var mid_boss_slayers: Dictionary[int, int] = {}
 ## 足すのは Relics.grant だけ（駒の聖遺物の層と、そろえて変える）。
 var relics: Array[Array] = [[], []]
 
-## 組み方（選べる決まり OptionalRules.FORMATION。Formation）が入の対戦か。対戦を作るとき（MatchSetup.create_battle）に決まる。
-var formation := false
-## このフェーズに、分隊の駒が攻撃した相手（駒の番号 -> 攻撃した駒の (番号, 兵種) の並び）。追い撃ち（Formation）が読む。フェーズの始めに空になる。
-var focus_marks: Dictionary[int, Array] = {}
+## プレイヤーごとの部隊の特徴（Traits.Id。無ければ Traits.NONE）。添字がプレイヤー番号。対戦を作るとき（MatchSetup.create_battle）に決まる。
+var traits: Array[int] = [Traits.NONE, Traits.NONE]
+## このフェーズに攻撃された駒（駒の番号 -> 攻撃した駒の (番号, 陣営) の並び）。集中砲火と誓い（Traits）が読む。フェーズの始めに空になる。
+var struck: Dictionary[int, Array] = {}
 
 ## この対戦でめくられた縫い目の様子の札（Seam.Sign の並び。選べる決まり OptionalRules.SEAM）。対戦を作るとき（MatchSetup.create_battle）に決まる。空なら札は無い。
 var signs: Array[int] = []
@@ -112,7 +112,7 @@ func add_unit(
 
 
 ## 倒れた駒を盤から取り除く。by は止めを刺した駒（攻撃した駒、スキルを使った駒、爆発した樽を攻撃した駒）。
-## 返すのは UnitDefeatedEvent。組み方が入で、誓いを結んだ駒なら、続けて誓いが切れる（Formation.on_defeated）。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）と、
+## 返すのは UnitDefeatedEvent。倒した駒には仇の印が付き、誓いの相手がいれば誓いが切れる（Traits.on_defeated。イベントは無い）。中ボスなら、続けて MidBossDefeatedEvent（倒した陣営を mid_boss_slayers に控える）と、
 ## 倒した陣営がいれば RelicGainedEvent（その中ボスの聖遺物を受け取る。Relics.grant）。
 ## 倒れると何か起きる魔物なら、続けてそのイベント（骸骨旗手の奮起、ほつれの結び目。Monsters.on_defeated）。
 func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
@@ -121,7 +121,7 @@ func remove_unit(unit: Unit, by: Unit = null) -> Array[BattleEvent]:
 		acting_unit_id = 0
 	Ults.charge_defeat(self, unit)
 	var events: Array[BattleEvent] = [UnitDefeatedEvent.new(unit)]
-	events.append_array(Formation.on_defeated(self, unit))
+	Traits.on_defeated(self, unit, by)
 	events.append_array(Monsters.on_defeated(self, unit))
 	var boss_index := mid_boss_index(unit)
 	if boss_index != -1:

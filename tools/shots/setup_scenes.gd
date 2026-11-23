@@ -214,56 +214,52 @@ func _scene_sign_note() -> bool:
 	return _scene.sign_note_text() != ""
 
 
-func _scene_formation_start() -> bool:
+## 部隊の特徴の線（誓いの 2 人、補給線の衛生兵と隣り合う兵）が出ている、対戦の始め。
+func _scene_trait_start() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.FORMATION])
+	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.SUPPLY, Traits.Id.OATH])
 	_show()
-	return _scene.formation_link_count() > 0
+	return _scene.trait_link_count() > 0
 
 
-## 誓いの相手を攻撃した敵（仇）が決まった、騎士領の誓いの駒。無ければ null。
-func _oath_with_foe() -> Unit:
-	for unit in _battle.units:
-		if Formation.partner_of(_battle, unit) != null and Formation.foe_of_partner(_battle, unit) != null:
-			return unit
-	return null
-
-
-func _scene_formation_oath() -> bool:
-	_field = VersusFields.PLAIN
-	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.FORMATION])
-	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and _oath_with_foe() != null):
-		return false
-	var unit := _oath_with_foe()
-	_show()
-	_scene.click_cell(unit.cell)
-	_scene.focus_camera(unit.cell)
-	return _scene.info_text().contains("誓い")
-
-
-## 行動できる自分の駒が、組み方の効果の乗る攻撃をできる相手（[駒, 相手]）。無ければ空。
-func _formation_attack() -> Array:
+## 行動できる自分の駒が、部隊の特徴の乗る攻撃をできる相手（[駒, 相手]）。無ければ空。
+func _trait_attack() -> Array:
 	for unit in _own_units():
 		if not _battle.can_act(unit):
 			continue
 		for target_id in _battle.options(unit.id).attack_target_ids:
 			var outcome := Forecast.of(_battle, AttackAction.new(unit.id, target_id)).outcome(target_id)
-			if outcome != null and not outcome.formation.is_empty():
+			if outcome != null and outcome.traits.has(Traits.of_side(_battle, unit.side)):
 				return [unit, _battle.unit_by_id(target_id)]
 	return []
 
 
-func _scene_formation_forecast() -> bool:
+## 集中砲火: 味方が当てた敵の足元に輪が出ていて、2 人目の攻撃の予測に「集中砲火 +2」。
+func _scene_trait_focus() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.FORMATION])
-	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _formation_attack().is_empty()):
+	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.LONE])
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _trait_attack().is_empty()):
 		return false
-	var found := _formation_attack()
+	var found := _trait_attack()
 	_show()
 	_scene.click_cell(found[0].cell)
 	_look_at(BoardView.cell_center(found[1].cell))
 	_scene.hover(found[1].cell)
-	return true
+	return _scene.trait_mark_count() > 0
+
+
+## 仇討ち: 味方を倒した敵の足元に輪が出ていて、その敵への攻撃の予測に「仇討ち +4」。
+func _scene_trait_vengeance() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.RANKS, Traits.Id.VENGEANCE])
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER2 and not _trait_attack().is_empty()):
+		return false
+	var found := _trait_attack()
+	_show()
+	_scene.click_cell(found[0].cell)
+	_look_at(BoardView.cell_center(found[1].cell))
+	_scene.hover(found[1].cell)
+	return _scene.trait_mark_count() > 0
 
 
 func _scene_setup_stronghold() -> bool:

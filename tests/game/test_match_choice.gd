@@ -315,8 +315,8 @@ func test_rules_start_from_the_defaults_and_reach_the_setup() -> void:
 	choice.set_rule(OptionalRules.STRONGHOLD, false)
 	assert_false(choice.has_rule(OptionalRules.SEAM))
 	choice.set_rule(&"unknown", true)
-	choice.set_rule(OptionalRules.FORMATION, true)
-	assert_eq(choice.rules, [] as Array[StringName], "知らない決まりと休眠の決まり（組み方）は入にできない")
+	choice.set_rule(&"formation", true)
+	assert_eq(choice.rules, [] as Array[StringName], "知らない決まり（前の組み方も）は入にできない")
 	var battle := choice.to_setup(1).create_battle()
 	assert_eq(battle.board.stronghold_cell, Board.NO_CELL, "拠点をなしにすれば置かない")
 

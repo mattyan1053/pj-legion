@@ -88,18 +88,16 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 				row.notes.append(Text.t("battle.log.note.critical"))
 			if outcome.forest:
 				row.notes.append(Text.t("battle.log.note.forest"))
-			for effect: int in outcome.formation:  # 組み方で増える・減るぶん（docs/formation.md）
-				var down := effect == Formation.Effect.SQUAD_GUARD
-				row.notes.append(Text.t("battle.pop.formation_down" if down else "battle.pop.formation_up",
-					{"effect": Names.formation_effect(effect as Formation.Effect), "amount": outcome.formation[effect]}))
+			for id: int in outcome.traits:  # 部隊の特徴で増える・減るぶん（docs/troop-traits.md）
+				var down := id == Traits.Id.RANKS
+				row.notes.append(Text.t("battle.pop.trait_down" if down else "battle.pop.trait_up",
+					{"effect": Names.troop_trait(id), "amount": outcome.traits[id]}))
 			if outcome.exploded:
 				row.notes.append(Text.t("battle.pop.exploded"))
 			if row.is_actor:
 				summary.hurts_actor = true
 		if row.defeated and not row.is_actor:
 			summary.defeats += 1
-		if outcome.oath_broken:
-			row.effects.append(Text.t("battle.forecast.oath_broken"))
 		for status: int in outcome.statuses_applied:
 			row.effects.append(Text.t("battle.forecast.status_added", {"status": Names.status(status as Status.Type), "turns": outcome.statuses_applied[status]}))
 		for status in outcome.statuses_removed:

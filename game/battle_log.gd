@@ -143,10 +143,10 @@ static func readers() -> Dictionary:
 		HealerHealedEvent: &"_read_healer_healed",
 		SpringHealedEvent: &"_read_healed",
 		RegenerationHealedEvent: &"_read_healed",
+		SupplyHealedEvent: &"_read_healed",
 		SanctuaryHealedEvent: &"_read_healed",
 		StatusAppliedEvent: &"_read_status_applied",
-		FormationTriggeredEvent: &"_read_formation",
-		OathBrokenEvent: &"_read_oath_broken",
+		TraitTriggeredEvent: &"_read_trait",
 		UltUsedEvent: &"_read_ult_used",
 		UltReadyEvent: &"_read_ult_ready",
 		UnitDefeatedEvent: &"_read_defeated",
@@ -519,34 +519,30 @@ func _read_healer_healed(event: HealerHealedEvent) -> void:
 	_line(text, _side_of(event.healer_id), _cell_of(event.unit_id), [event.healer_id, event.unit_id])
 
 
-## フェーズの始めの回復（泉・再生・聖域）。
+## フェーズの始めの回復（泉・再生・聖域・補給線）。
 func _read_healed(event: UnitHealedEvent) -> void:
 	var key := "battle.log.healed.sanctuary"
 	if event is SpringHealedEvent:
 		key = "battle.log.healed.spring"
 	elif event is RegenerationHealedEvent:
 		key = "battle.log.healed.regeneration"
-	_line(Text.t(key, {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp}),
+	elif event is SupplyHealedEvent:
+		key = "battle.log.healed.supply"
+	_line(Text.t(key, {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp, "effect": Names.troop_trait(Traits.Id.SUPPLY)}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
 
-## 組み方の効果が攻撃に効いた（「青のスナイパーの追い撃ち: ダメージ +3」）。
-func _read_formation(event: FormationTriggeredEvent) -> void:
-	var key := "battle.log.formation_down" if event.effect == Formation.Effect.SQUAD_GUARD else "battle.log.formation_up"
-	_line(Text.t(key, {"unit": unit_name(event.unit_id), "effect": Names.formation_effect(event.effect), "amount": event.amount}),
+## 部隊の特徴が攻撃に効いた（「青のスナイパーの集中砲火: ダメージ +2」）。
+func _read_trait(event: TraitTriggeredEvent) -> void:
+	var key := "battle.log.trait_down" if event.trait_id == Traits.Id.RANKS else "battle.log.trait_up"
+	_line(Text.t(key, {"unit": unit_name(event.unit_id), "effect": Names.troop_trait(event.trait_id), "amount": event.amount}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id, event.other_id])
 
 
-## 誓いの片方が倒れて、誓いが切れた。
 ## 骸骨旗手が倒れ、周りの味方が奮起した。続く奮起（StatusAppliedEvent）は、この行にまとめる。
 func _read_rally(event: RallyEvent) -> void:
 	var text := Text.t("battle.log.rally", {"unit": unit_name(event.fallen_id), "count": event.rallied_ids.size()})
 	_begin_group(_line(text, _side_of(event.fallen_id), event.cell, [event.fallen_id]))
-
-
-func _read_oath_broken(event: OathBrokenEvent) -> void:
-	_line(Text.t("battle.log.oath_broken", {"unit": unit_name(event.survivor_id), "fallen": unit_name(event.fallen_id)}),
-		_side_of(event.survivor_id), _cell_of(event.survivor_id), [event.survivor_id])
 
 
 ## 状態が付いた。まとめ先があれば、状態ごとに 1 行にまとめる（「突撃（2 ターン）: 青の将、青のパラディン…」）。

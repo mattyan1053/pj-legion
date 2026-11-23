@@ -122,15 +122,19 @@ status.barrier.summary,次に受けるダメージを 1 回だけ防ぐ
 status.aim.summary,射程 +{range}。次の攻撃がクリティカル（動くと解ける）
 status.fatigue.summary,攻撃 -{penalty}
 status.assault.summary,移動 +{move}・攻撃 +{power}
-status.resolve.summary,攻撃 +{resolve}（誓いの相手が倒れた）
-formation.squad_guard,肩並べ
-formation.squad_focus,追い撃ち
-formation.oath_vengeance,仇討ち
-formation.oath_resolve,誓いの果て
-formation.squad_guard.summary,隣に同じ分隊の仲間がいると、受けるダメージ -{guard}
-formation.squad_focus.summary,同じ番に分隊の仲間が攻撃した相手へ +{focus}
-formation.oath_vengeance.summary,誓いの相手を攻撃した敵へ +{vengeance}（{range} マス以内）
-formation.oath_resolve.summary,片方が倒れると、残る側が次の番まで攻撃 +{resolve}
+status.resolve.summary,攻撃 +{resolve}（骸骨旗手が倒れた）
+troop_trait.focus,集中砲火
+troop_trait.ranks,隊列
+troop_trait.supply,補給線
+troop_trait.vengeance,仇討ち
+troop_trait.oath,誓い
+troop_trait.lone,単騎
+troop_trait.focus.text,このターンに味方が攻撃した敵を攻撃すると、ダメージ +{amount}
+troop_trait.ranks.text,同じ兵種の味方と隣り合う兵は、受けるダメージ -{amount}
+troop_trait.supply.text,{medic}と隣り合う兵は、ターンの始めに HP {amount} 回復
+troop_trait.vengeance.text,味方を倒した敵を攻撃すると、ダメージ +{amount}
+troop_trait.oath.text,誓いの相手がこのターンに攻撃した敵を攻撃すると、ダメージ +{amount}
+troop_trait.lone.text,隣に味方がいない兵は、与えるダメージ +{amount}
 relic.wisdom.short,英知
 relic.wisdom.effect,最大 HP +{amount}
 relic.courage.short,勇気
