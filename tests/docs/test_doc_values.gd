@@ -13,6 +13,7 @@ extends "res://tests/base_test.gd"
 ## 文書とコードが食い違ったら、コードが正で、文書を直す。
 
 const Names := preload("res://game/names.gd")
+const Text := preload("res://game/text.gd")
 const DocTables := preload("res://tests/support/doc_tables.gd")
 
 ## 自動で突き合わせる表の「いま」の列の見出し。
@@ -119,7 +120,7 @@ func test_unit_roster_matches_unit_kind() -> void:
 	}
 	assert_eq(table.rows.size(), UnitKind.Id.size(), "%s の行の数（駒の種類の数）" % table.where())
 	for kind: UnitKind.Id in UnitKind.Id.values():
-		var name := Names.kind(kind)
+		var name := _kind_name(kind)
 		_expect_number(table, name, "コスト", UnitKind.cost(kind))
 		_expect_number(table, name, "最大 HP", UnitKind.max_hp(kind))
 		_expect_number(table, name, "攻撃力", UnitKind.power(kind))
@@ -141,7 +142,7 @@ func test_rosters_and_budgets_match_deck() -> void:
 		var key: String = UnitKind.Army.keys()[army]
 		_expect_number(table, key, "予算", Deck.budget_of(army))
 		for kind: UnitKind.Id in Deck.roster(army):
-			_expect_text(table, key, columns[UnitKind.role(kind)], Names.kind(kind))
+			_expect_text(table, key, columns[UnitKind.role(kind)], _kind_name(kind))
 
 
 func test_equipment_matches_equipment() -> void:
@@ -238,8 +239,8 @@ func test_healer_table_matches_unit_kind() -> void:
 	if table == null:
 		return
 	for kind: UnitKind.Id in [UnitKind.Id.MEDIC, UnitKind.Id.PRIEST]:
-		_expect_number(table, Names.kind(kind), "回復量", UnitKind.power(kind))
-		_expect_number(table, Names.kind(kind), "射程", UnitKind.attack_range(kind))
+		_expect_number(table, _kind_name(kind), "回復量", UnitKind.power(kind))
+		_expect_number(table, _kind_name(kind), "射程", UnitKind.attack_range(kind))
 
 
 func test_terrain_table_matches_terrain() -> void:
@@ -342,7 +343,7 @@ func test_cpu_decks_match_cpu_deck() -> void:
 		var deck := CpuDeck.build(army)
 		var names: Array[String] = []
 		for entry: DeckEntry in deck.entries:
-			var name := Names.kind(entry.kind)
+			var name := _kind_name(entry.kind)
 			var items: Array[String] = []
 			var shields := entry.equipment.count(Equipment.Id.IRON_SHIELD)
 			var boots := entry.equipment.count(Equipment.Id.SPEED_BOOTS)
@@ -501,3 +502,8 @@ func _rule_scripts(dir_path: String) -> Array[String]:
 	for sub: String in dir.get_directories():
 		found.append_array(_rule_scripts(dir_path.path_join(sub)))
 	return found
+
+
+## 駒の種類の表の行の名前（文書は種類の名前で書く。中ボスは画面ではその対戦の名前で呼ぶが、文書の行は「エリートミニオン」）。
+static func _kind_name(kind: UnitKind.Id) -> String:
+	return Text.t("unit." + Names.word(UnitKind.Id, kind))

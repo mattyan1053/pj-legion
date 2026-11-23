@@ -63,6 +63,11 @@ func look() -> StringName:
 	return VersusFields.look_of(field)
 
 
+## 中ボスの名前は、マップのファイルの boss（生成のマップは既定の「番人」）。
+func boss_name() -> String:
+	return VersusFields.boss_of(field)
+
+
 func has_rule(id: StringName) -> bool:
 	return rules.has(id)
 

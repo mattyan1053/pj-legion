@@ -57,6 +57,9 @@ const COLOR_STRONGHOLD_FLAG := Color("f4f1e6")
 const STRONGHOLD_FLAG_LOW := 0.75
 const STRONGHOLD_FLAG_HIGH := 2.3
 const STRONGHOLD_LABEL_PIXEL := 0.0009
+## 竿の上の数の札の字の大きさと、確保が止まっている間の札の濃さ（文字は足さない）。
+const STRONGHOLD_LABEL_FONT := 26
+const STRONGHOLD_BLOCKED_ALPHA := 0.6
 ## ポータルの色。対ごとに変える（同じ色の 2 つがつながっている）。
 const PORTAL_COLORS: Array[Color] = [Color("b06cff"), Color("ff9a3c"), Color("ff5fa8"), Color("f2e85a")]
 const COLOR_SMOKE := Color(0.62, 0.64, 0.68, 0.55)

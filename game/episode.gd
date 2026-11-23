@@ -60,6 +60,8 @@ var budget_up := 0
 ## 人（プレイヤー1）の勝ち方: 守り切るターン数（0 なら無し）と、勝ち方の列（空ならいつもの勝ち方）。
 var hold_turns := 0
 var wins: Array[GameWonEvent.Reason] = []
+## 中ボスの名前（[episode] の boss。無ければマップのファイルの boss。どちらも無ければ空 = 既定の「番人」）。
+var boss := ""
 ## この話の縫い目の様子（Seam.Sign の並び。空なら付かない。docs/seam-signs.md）。[episode] の signs。
 var signs: Array[int] = []
 ## 人の部隊が決まっている話の、その部隊（[駒の種類, [装備, …]] の列。空なら出撃準備で選ぶ）と、必殺技のゲージの始めの量。
@@ -184,7 +186,7 @@ func _read_episode(file: RefCounted) -> void:
 		file.problem(1, "[episode] の節が無い")
 		return
 	var at: int = file.line_of("episode")
-	var values: Dictionary = file.values("episode", ["title", "map", "look", "music", "before_music", "after_music", "climax_music", "victory_mood", "lesson", "hold_turns", "wins", "signs"])
+	var values: Dictionary = file.values("episode", ["title", "map", "look", "music", "before_music", "after_music", "climax_music", "victory_mood", "lesson", "hold_turns", "wins", "signs", "boss"])
 	for key: String in ["title", "map"]:
 		if not values.has(key):
 			file.problem(at, "[episode] に「%s」が無い" % key)
@@ -202,6 +204,7 @@ func _read_episode(file: RefCounted) -> void:
 		else:
 			map = found["map"]
 			map_title = found["title"]
+			boss = found.get("boss", "")
 			look = found["look"]  # 見た目はマップが決める。話が look を書けば、その話だけ替える
 	if values.has("look"):
 		var entry: Dictionary = values["look"][0]
@@ -250,6 +253,12 @@ func _read_episode(file: RefCounted) -> void:
 		# 勝ち方の列は、いつもの勝ち方を置き換える。守り切るのに turns_held が無いと、守り切っても勝てない。
 		if (hold_turns > 0) != wins.has(GameWonEvent.Reason.TURNS_HELD):
 			file.problem(entry["line"], "hold_turns と、wins の turns_held は、両方書くか両方書かない")
+	if values.has("boss"):
+		var entry: Dictionary = values["boss"][0]
+		boss = entry["value"]
+		if boss == "" or boss.length() > Maps.BOSS_NAME_MAX:
+			file.problem(entry["line"], "boss は 1 から %d 字" % Maps.BOSS_NAME_MAX)
+			boss = ""
 	if values.has("signs"):
 		var entry: Dictionary = values["signs"][0]
 		var wrong: Array[String] = []

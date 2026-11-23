@@ -15,13 +15,18 @@ const DIR := "res://game/text/"
 ## 鍵 -> 文。最初に引くときに読む。
 static var _table := {}
 static var _loaded := false
+## どの文にも差し込める値（名前 -> 値。args に同じ名前があれば args が勝つ）。
+## 表の「default.<名前>」の鍵が既定の値（いまは default.boss = 中ボスの名前「番人」）。対戦の画面が、対戦ごとに入れ替える（names.gd の set_boss）。
+static var shared := {}
 
 
-## 鍵 key の文。args があれば、文の {名前} に差し込む。
+## 鍵 key の文。args（と shared）があれば、文の {名前} に差し込む。
 static func t(key: String, args: Dictionary = {}) -> String:
 	_load()
 	var text: String = _table.get(key, key)
-	return text if args.is_empty() else text.format(args)
+	if not text.contains("{"):
+		return text
+	return text.format(shared.merged(args, true))
 
 
 ## 鍵 key が表にあるか。
@@ -37,6 +42,9 @@ static func _load() -> void:
 	for file: String in DirAccess.get_files_at(DIR):
 		if file.ends_with(".csv"):
 			_read(DIR + file)
+	for key: String in _table:
+		if key.begins_with("default.") and not shared.has(key.trim_prefix("default.")):
+			shared[key.trim_prefix("default.")] = _table[key]
 
 
 ## CSV を 1 つ読んで、表に足す（1 行目は見出し。文の中の \n は改行にする）。

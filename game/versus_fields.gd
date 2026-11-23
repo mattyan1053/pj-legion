@@ -149,6 +149,14 @@ static func look_of(id: StringName) -> StringName:
 	return StageLook.name_of_stage(field.get(STAGE, -1))
 
 
+## 中ボスの名前（手で作ったマップのファイルの boss。無ければ空 = 既定の「番人」。docs/neutral-mid-boss.md の「名前」）。
+static func boss_of(id: StringName) -> String:
+	var field := _field(id)
+	if field.has(MAP):
+		return Maps.find(field[MAP]).get("boss", "")
+	return ""
+
+
 ## 対戦モードの戦いの定義（docs/scenario.md）。知らない鍵なら null。
 static func scenario_of(id: StringName) -> Scenario:
 	var field := _field(id)
