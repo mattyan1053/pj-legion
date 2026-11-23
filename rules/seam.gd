@@ -15,7 +15,7 @@ extends RefCounted
 
 ## 札。並びは山の順（めくる前に、この順から混ぜる）。名前と効果の文は画面の文の表（game/text/names.csv の sign.<鍵>。鍵は KEYS）。
 enum Sign {
-	HAZE,  ## 天裂の名残り: 射程 HAZE_FROM 以上の攻撃は、射程 -HAZE_CUT
+	HAZE,  ## 天裂の名残り: 後衛の射程 -HAZE_CUT（1 より短くはならない）
 	BRIM,  ## 糸の満ち: 必殺技のゲージが BRIM_PERCENT % の速さでたまる
 	LOOSE,  ## 糸のゆるみ: 結晶泉の中立の駒が LOOSE_RESPAWN_PERCENT % で湧き直す
 	HUSH,  ## 骨の眠り: 結晶泉の中立の駒が湧き直さない（ターン 1 の湧きだけ）
@@ -41,9 +41,8 @@ const STORY_ONLY: Array[int] = [Sign.TAUT]
 ## 打ち消し合うので、同じ対戦に並べない札の組。
 const CLASHES: Array[Array] = [[Sign.LOOSE, Sign.HUSH], [Sign.HAZE, Sign.GLEAM]]
 
-## 天裂の名残り: 射程がこの値以上の攻撃（砲台で伸びたものも）が縮む。
-const HAZE_FROM := 3
-## 天裂の名残り: 縮む射程。
+## 天裂の名残り: 後衛の射程（砲台で伸びたものも）が縮む幅。1 より短くはならない。
+## 天裂の光（GLEAM_RANGE）の裏返し。前は「射程 3 以上の攻撃」で、スナイパーのいる MILITARY だけが損をした（docs/seam-signs.md）。
 const HAZE_CUT := 1
 ## 糸の満ち: 必殺技のゲージのたまり方（いつもを 100 として）。
 const BRIM_PERCENT := 150
@@ -176,15 +175,15 @@ static func portal_pairs(board: Board) -> Array[Array]:
 ## 札の無い対戦では、層は空（何も変わらない）。
 static func equip(battle: Battle, unit: Unit) -> void:
 	unit.sign_bonus.clear()
-	unit.hazed = battle.signs.has(Sign.HAZE)
+	unit.hazed = battle.signs.has(Sign.HAZE) and UnitKind.role(unit.kind) == UnitKind.Role.REARGUARD
 	unit.cruise_bonus = GALE_CRUISE if battle.signs.has(Sign.GALE) else 0
 	if battle.signs.has(Sign.GLEAM) and UnitKind.role(unit.kind) == UnitKind.Role.REARGUARD:
 		unit.sign_bonus[Unit.Stat.ATTACK_RANGE] = GLEAM_RANGE
 
 
-## 天裂の名残りで縮めたあとの射程（range_value は、ほかの層をすべて足した射程）。
+## 天裂の名残りで縮めたあとの射程（range_value は、ほかの層をすべて足した射程）。1 より短くはしない。
 static func hazed_range(range_value: int) -> int:
-	return range_value - HAZE_CUT if range_value >= HAZE_FROM else range_value
+	return maxi(1, range_value - HAZE_CUT) if range_value > 1 else range_value
 
 
 ## 必殺技のゲージにためる量（いつもの量 amount に、札の効き目を掛けたもの）。
