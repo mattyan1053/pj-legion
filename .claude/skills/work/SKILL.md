@@ -67,7 +67,7 @@ description: 作業のセッションとして動く。メインのセッショ�
 
 - **スクリーンショットを本文に貼る**（人間はスマホで見ることが多い）。`tools/screenshots.sh` で撮り、
   `tools/publish_screenshots.sh` で `screenshots` ブランチに置いて、出てきた Markdown を貼る（`docs/screenshots.md`）。
-  変わった場面を選んで数枚。無い場面は `tools/screenshots.gd` に足す。前後を比べられるなら、main で撮ったものと並べる。
+  変わった場面を選んで数枚。無い場面は `tools/screenshots.gd` の `SCENES` と、`tools/shots/` の画面ごとのファイルに足す。前後を比べられるなら、main で撮ったものと並べる。
 - **撮った絵を自分でも見て**、崩れ（文字の重なり、はみ出し、読めない色）が無いかを確かめる。
 - コンテナの描画は Windows の実機と違う。最終の見え方は exe で確かめてもらう、と本文に書く。
 
