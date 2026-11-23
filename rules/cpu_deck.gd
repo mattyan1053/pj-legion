@@ -10,8 +10,6 @@ extends RefCounted
 ## 4. 誓いを結べる軍（騎士領）なら、誓いを結ぶ（oath_plan。組み方が入の対戦で効く。docs/formation.md）
 
 
-## 縫い目の様子の札に合う駒 1 体ぶんの値（sign_fit）。
-const SIGN_FIT := 1
 
 
 static func build(army: UnitKind.Army, rules: DeckRules = null) -> Deck:
@@ -93,32 +91,3 @@ static func _item_for(kind: UnitKind.Id) -> int:
 		UnitKind.Role.RAIDER:
 			return Equipment.Id.SPEED_BOOTS
 	return -1
-
-
-## 縫い目の様子の札 signs（Seam.Sign の並び）を見て、候補 candidates から出す部隊を選ぶ（docs/cpu-ai.md の「縫い目の様子」）。
-## いちばん札に合う（sign_fit が高い）もの。並べば先の候補（候補の先頭に、いつもの部隊を置けば、札に関わらないときはそれを出す）。
-## 候補が空なら null。札が無ければ先頭。
-static func pick_for_signs(candidates: Array[Deck], signs: Array[int]) -> Deck:
-	var best: Deck = null
-	var best_fit := 0
-	for deck in candidates:
-		var fit := sign_fit(deck, signs)
-		if best == null or fit > best_fit:
-			best = deck
-			best_fit = fit
-	return best
-
-
-## 部隊 deck が札 signs に合う度合い（高いほど合う）。駒 1 体ずつ、札が得にする駒を足し、損にする駒を引く。
-## - 天裂の名残り: 射程が Seam.HAZE_FROM 以上の駒（スナイパー）は射程が縮むので -SIGN_FIT
-## - 天裂の光: 後衛は射程が伸びるので +SIGN_FIT
-## ほかの札は、どの部隊にも同じくらいに効くので数えない。
-static func sign_fit(deck: Deck, signs: Array[int]) -> int:
-	var fit := 0
-	for entry in deck.entries:
-		var role := UnitKind.role(entry.kind)
-		if signs.has(Seam.Sign.HAZE) and UnitKind.attack_range(entry.kind) >= Seam.HAZE_FROM:
-			fit -= SIGN_FIT
-		if signs.has(Seam.Sign.GLEAM) and role == UnitKind.Role.REARGUARD:
-			fit += SIGN_FIT
-	return fit

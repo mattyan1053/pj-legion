@@ -80,6 +80,7 @@ func _new_battle(rules: Array[StringName] = []) -> void:
 	var choice: RefCounted = MatchChoice.new()
 	choice.field = _field
 	choice.cpu_opponent = false
+	choice.set_rule(OptionalRules.SEAM, false)  # 撮る場面がいつも同じになるよう、縫い目の様子は名指ししたときだけ
 	for rule in rules:
 		choice.set_rule(rule, true)
 	_scene.source = choice

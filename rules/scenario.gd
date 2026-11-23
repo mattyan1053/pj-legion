@@ -38,6 +38,10 @@ var start_gauge: Array[int] = [0, 0]
 ## 対戦を作るとき、置いた駒へ写す（Growth.start_at）。進化の選び方を教える話が、あと少しで進化する駒から始めるのに使う。
 var start_growth: Array[Array] = [[], []]
 
+## この戦いに、いつも付く縫い目の様子（Seam.Sign の並び。docs/seam-signs.md）。ストーリーの話のファイルが指定する。
+## 空なら、対戦設定の決まり（OptionalRules.SEAM。対戦モードのランダム）に任せる。対戦を作るとき、対戦（Battle.signs）へ写す。
+var signs: Array[int] = []
+
 ## いまの対戦モードの勝ち方: 敵の将を倒す、敵の本陣を占拠し続ける。
 const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
 	GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED

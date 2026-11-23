@@ -178,4 +178,6 @@ static func scenario_of(of_episode: Episode) -> Scenario:
 	# wins があれば、人の勝ち方はその列だけ（たとえば全滅だけ。敵の将を倒しても終わらない）。
 	if not of_episode.wins.is_empty():
 		defined.set_win_conditions(Unit.Side.PLAYER1, of_episode.wins)
+	# 縫い目の様子（[episode] の signs）。書けば、その話にいつも付く。
+	defined.signs = of_episode.signs.duplicate()
 	return defined

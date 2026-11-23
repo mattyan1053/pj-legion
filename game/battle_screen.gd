@@ -87,18 +87,10 @@ func _ready() -> void:
 	_setup_panel.setup(TEAM_COLORS, context.decks, context.overlays)
 	_setup_panel.visible = false
 	_setup_panel.start_pressed.connect(_on_setup_chosen)
-	_setup_panel.cancelled.connect(func() -> void:
-		_refresh()
-		if _signs_pending:  # 札の窓から開いた対戦設定を閉じたら、札の窓へ戻る（対戦の番はまだ始まっていない）
-			_signs_window.open(source, map_seed, battle.signs))
+	_setup_panel.cancelled.connect(_refresh)
 	_setup_panel.map_pressed.connect(func(choice: RefCounted) -> void:
 		context.match_choice = choice
 		finished.emit(&"map_select"))
-	_signs_window = SignsWindow.new()
-	_hud.add_child(_signs_window)
-	_signs_window.setup(TEAM_COLORS, context.decks, context.overlays)
-	_signs_window.started.connect(_on_signs_started)
-	_signs_window.setup_requested.connect(open_setup)
 	_log_panel = LogPanel.new()
 	add_child(_log_panel)
 	_log_panel.setup(TEAM_COLORS, context.overlays)

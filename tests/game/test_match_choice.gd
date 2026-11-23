@@ -303,12 +303,13 @@ func test_a_hand_map_makes_the_same_board_on_any_seed_with_the_versus_rules() ->
 ## 既定は拠点あり・砲台なし（OptionalRules.DEFAULTS）。選んだものが対戦の設定に届く。
 func test_rules_start_from_the_defaults_and_reach_the_setup() -> void:
 	var choice := MatchChoice.new()
-	assert_eq(choice.to_setup(1).rules, [OptionalRules.STRONGHOLD] as Array[StringName])
-	assert_true(choice.to_setup(1).create_battle().board.stronghold_cell != Board.NO_CELL, "既定の対戦に拠点がある")
-	choice.set_rule(OptionalRules.SEAM, true)
-	choice.set_rule(OptionalRules.SEAM, true)
-	assert_true(choice.has_rule(OptionalRules.SEAM))
 	assert_eq(choice.to_setup(1).rules, [OptionalRules.STRONGHOLD, OptionalRules.SEAM] as Array[StringName])
+	assert_true(choice.to_setup(1).create_battle().board.stronghold_cell != Board.NO_CELL, "既定の対戦に拠点がある")
+	choice.set_rule(OptionalRules.SEAM, false)
+	assert_false(choice.has_rule(OptionalRules.SEAM))
+	choice.set_rule(OptionalRules.SEAM, true)
+	choice.set_rule(OptionalRules.SEAM, true)
+	assert_eq(choice.to_setup(1).rules, [OptionalRules.STRONGHOLD, OptionalRules.SEAM] as Array[StringName], "入にし直しても 1 つ")
 	assert_eq(choice.copy().rules, [OptionalRules.STRONGHOLD, OptionalRules.SEAM] as Array[StringName])
 	choice.set_rule(OptionalRules.SEAM, false)
 	choice.set_rule(OptionalRules.STRONGHOLD, false)
