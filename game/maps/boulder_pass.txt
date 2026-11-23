@@ -12,6 +12,7 @@
 [map]
 title = 大岩の峠
 look = pass
+boss = 峠の番人
 
 [rows]
 ####.....2.....####

@@ -14,6 +14,7 @@
 [map]
 title = 結晶の岩山
 look = crystal_night
+boss = 岩山の番人
 
 [rows]
 ##........F.......##

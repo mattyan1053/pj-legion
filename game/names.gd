@@ -72,7 +72,21 @@ static func field_effect(type: FieldEffect.Type) -> String:
 
 
 ## 駒の種類の名前。
+## 中ボスの名前（話のファイル・マップのファイルの boss。docs/neutral-mid-boss.md の「名前」）。画面では「中ボス」と言わず、この名前で呼ぶ。
+## 対戦の画面が、対戦を始めるたびに入れる（空なら既定の「番人」。画面の文の表の default.boss）。文の {boss} に差し込まれる（text.gd の shared）。
+static func set_boss(name: String) -> void:
+	Text.shared["boss"] = name if name != "" else Text.t("default.boss")
+
+
+static func boss() -> String:
+	var fallback := Text.t("default.boss")  # 表を読む（shared の既定も、ここで入る）
+	return String(Text.shared.get("boss", fallback))
+
+
+## 駒の種類の名前。中ボス（エリートミニオン）は、その対戦の中ボスの名前（boss）。
 static func kind(of_kind: UnitKind.Id) -> String:
+	if of_kind == UnitKind.Id.ELITE_MINION:
+		return boss()
 	return Text.t("unit." + word(UnitKind.Id, of_kind))
 
 
