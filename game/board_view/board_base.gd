@@ -11,6 +11,7 @@ const Scenery := preload("res://game/scenery.gd")
 const GROUND_SHADER := preload("res://game/ground.gdshader")
 const GRID_SHADER := preload("res://game/grid.gdshader")
 const RenderTone := preload("res://game/render_tone.gd")
+const GaugeSprite := preload("res://game/gauge_sprite.gd")
 ## 障害物と森のマスに置くもの、地面の色と模様、泉の石と結晶の色は、マップの見た目（stage_look.gd）が決める。
 ## 石の壁（StageLook.WALL）の柱と壁の幅（マス）。柱は壁より少し太い。
 const WALL_PILLAR_WIDTH := 0.62
@@ -86,6 +87,9 @@ const GRID_LINE_COLOR := Color(1.0, 1.0, 0.9)
 const GRID_IDLE_ALPHA := 0.17
 const GRID_ACTIVE_ALPHA := 0.46
 const GRID_BORDER_ALPHA := 0.42
+## 盾の耐久の棒の高さ（盾の上の板の上に浮かせる）と、駒の HP の棒に対する大きさ。
+const BARRICADE_BAR_HEIGHT := 1.05
+const BARRICADE_BAR_SCALE := 1.4
 const COLOR_PIN_FILL := Color(1.0, 0.55, 0.1, 0.16)
 const COLOR_PIN_EDGE := Color(1.0, 0.6, 0.15, 0.9)
 const PIN_LIFT := 0.065
@@ -99,6 +103,9 @@ var look: Dictionary = StageLook.of(StageLook.DEFAULT)
 
 var _barrels := {}  # Vector2i -> Node3D（爆発したら取り除く）
 var _field_effects := {}  # 効果の番号 -> Node3D（消えたら取り除く）
+## 盾の耐久の棒（効果の番号 -> Sprite3D）と、いま出している耐久（効果の番号 -> 耐久）。
+var _barricade_bars := {}
+var _barricade_durability := {}
 var _team_colors: Array[Color] = []
 var _occluders := {}  # Vector2i -> Array[GeometryInstance3D]（岩山と木立。手前にあると駒を隠す）
 var _cursor: MeshInstance3D

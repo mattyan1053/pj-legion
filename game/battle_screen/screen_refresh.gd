@@ -47,7 +47,9 @@ func _sync_views() -> void:
 	for effect in battle.board.field_effects:
 		effect_ids.append(effect.id)
 		if not _board_view.field_effect_ids().has(effect.id):
-			_board_view.add_field_effect(effect.id, effect.type, effect.side, effect.cells)
+			_board_view.add_field_effect(effect.id, effect.type, effect.side, effect.cells, effect.durability)
+		elif effect.type == FieldEffect.Type.BARRICADE:
+			_board_view.set_barricade_durability(effect.id, effect.durability)
 	for id in _board_view.field_effect_ids():
 		if not effect_ids.has(id):
 			_board_view.remove_field_effect(id)
@@ -66,6 +68,10 @@ func _refresh() -> void:
 	_skill_cells = Queries.skill_cells(battle, unit)
 	_warp = Queries.warp_exit(battle, unit)
 	_portals = Queries.reachable_portals(battle, unit)
+	# 盾の上の棒を、いまの残りの耐久に合わせる（変わっていなければ描き直さない）。
+	for effect in battle.board.field_effects:
+		if effect.type == FieldEffect.Type.BARRICADE:
+			_board_view.set_barricade_durability(effect.id, effect.durability)
 	var cpu_turn := _ui.cpu_running or _is_cpu_turn()
 	_ui.reconcile(
 		unit != null, unit != null and battle.can_act(unit), inspected_unit() != null, battle.is_over(), cpu_turn,

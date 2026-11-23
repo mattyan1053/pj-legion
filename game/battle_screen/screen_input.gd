@@ -113,6 +113,11 @@ func field_effect_view_ids() -> Array[int]:
 	return _board_view.field_effect_ids()
 
 
+## 盾の棒に出している残りの耐久（描かれていなければ -1）。検査用。
+func barricade_bar_durability(effect_id: int) -> int:
+	return _board_view.barricade_durability(effect_id)
+
+
 ## いま出ている結果の見出し（出ていなければ空）。検査用。
 func result_title() -> String:
 	return _hud.result_title()

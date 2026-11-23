@@ -102,6 +102,29 @@ func _scene_skill_barricade() -> bool:
 	return await _skill_frame(Skill.Id.TACTICAL_BARRICADE, 0.47)
 
 
+## 置いたばかりの盾（青）と、削られた盾（赤。残りの耐久 7）を並べ、削られた盾にマウスを乗せる。
+func _scene_barricade_worn() -> bool:
+	_new_battle()
+	var spots: Array[Vector2i] = []
+	var middle := _battle.board.size / 2
+	for y in range(middle.y - 3, middle.y + 4):
+		for x in range(middle.x - 4, middle.x + 4):
+			var cell := Vector2i(x, y)
+			var next := cell + Vector2i(2, 0)
+			if spots.is_empty() and FieldEffects.can_place_barricade(_battle, cell) and FieldEffects.can_place_barricade(_battle, next):
+				spots = [cell, next]
+	if spots.is_empty():
+		return false
+	FieldEffects.place_barricade(_battle, Unit.Side.PLAYER1, spots[0])
+	FieldEffects.place_barricade(_battle, Unit.Side.PLAYER2, spots[1])
+	_battle.board.barricade_at(spots[1]).durability = 7
+	_show()
+	await _settle_camera(spots[0] + Vector2i(1, 0))
+	_scene.click_cell(spots[1])
+	_scene.hover(spots[1])
+	return _scene.barricade_bar_durability(_battle.board.barricade_at(spots[1]).id) == 7
+
+
 func _scene_skill_smoke() -> bool:
 	return await _skill_frame(Skill.Id.SMOKE_GRENADE, 0.5)
 
