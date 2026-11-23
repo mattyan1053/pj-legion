@@ -37,6 +37,11 @@ func fits_screen() -> bool:
 	return get_viewport().get_visible_rect().encloses(_panel.get_global_rect())
 
 
+## パネルの四角（画面の座標）。検査用。
+func panel_rect() -> Rect2:
+	return _panel.get_global_rect()
+
+
 func choose_rule(id: StringName, on: bool) -> void:
 	_choice.set_rule(id, on)
 	_show_choice()

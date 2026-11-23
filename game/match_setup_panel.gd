@@ -31,12 +31,13 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var style := UiTheme.solid_box(18.0)
+	var style := UiTheme.solid_box(14.0)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 4)
+	# 対戦の途中で開くと「マップ変更」のボタンと注意の文が増える。そのときも 1280×720 に収まるよう、余白と行の間を詰めてある。
+	column.add_theme_constant_override("separation", 3)
 	panel.add_child(column)
 
 	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
@@ -58,7 +59,8 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	_map_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	map_row.add_child(_map_name)
 	_map_button = _button(Text.t(MAP_TEXT))
-	_map_button.custom_minimum_size = Vector2(200.0, 40.0)
+	_map_button.custom_minimum_size = Vector2(200.0, 30.0)
+	_map_button.add_theme_font_size_override("font_size", 15)
 	_map_button.pressed.connect(press_map)
 	map_row.add_child(_map_button)
 	_add_row(column, Text.t("setup.caption.opponent"), &"opponent", {true: "CPU", false: Text.t("setup.opponent.human")})
@@ -96,7 +98,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		column.add_child(side_box)
 		_side_boxes.append(side_box)
 		var side_column := VBoxContainer.new()
-		side_column.add_theme_constant_override("separation", 4)
+		side_column.add_theme_constant_override("separation", 3)
 		side_box.add_child(side_column)
 		var names := {}
 		for army in ARMIES:
@@ -131,7 +133,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		_edit_buttons.append(edit)
 
 	# 対戦の途中で開いたときは、始めるといまの対戦が失われることを書く。
-	_warning = _label(15)
+	_warning = _label(14)
 	_warning.text = Text.t(WARNING_TEXT)
 	_warning.add_theme_color_override("font_color", Palette.WARN)
 	_warning.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -141,11 +143,11 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_child(buttons)
 	_back_button = _button(Text.t("setup.back_to_battle"))
-	_back_button.custom_minimum_size = Vector2(220.0, 46.0)
+	_back_button.custom_minimum_size = Vector2(220.0, 40.0)
 	_back_button.pressed.connect(cancel)
 	buttons.add_child(_back_button)
 	_start_button = _button(Text.t("setup.start"))
-	_start_button.custom_minimum_size = Vector2(220.0, 46.0)
+	_start_button.custom_minimum_size = Vector2(220.0, 40.0)
 	_start_button.set_meta(&"sound", &"ui_confirm")  # 決める音（sound.gd）
 	_start_button.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_start_button.pressed.connect(press_start)
