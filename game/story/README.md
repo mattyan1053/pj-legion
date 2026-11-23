@@ -59,3 +59,4 @@
 1. [岩山の蝙蝠](berk_patrol/patrol_crags.txt)
 2. [ほつれた野](berk_patrol/patrol_knots.txt)
 3. [針の峠](berk_patrol/patrol_needles.txt)
+4. [石喰いの採掘場](berk_patrol/patrol_eaters.txt)

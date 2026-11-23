@@ -38,6 +38,8 @@ enum Trait {
 	ROOTED,  ## 動けない（移動力 0。突撃などで移動力が増えても動かない）。魔物の糸針（Monsters）
 	RALLY_ON_FALL,  ## 倒れると、周りの味方が奮起する。魔物の骸骨旗手（Monsters）
 	KNOT_ON_FALL,  ## 倒れると、結び目が残る。踏まれずにいると立ち直る。魔物のほつれ（Monsters）
+	BINDS_ON_HIT,  ## 攻撃を当てた相手に、絡み（Status.Type.SNARE）を付ける。魔物の糸蜘蛛（Monsters）
+	BURSTS_ON_FALL,  ## 倒れると弾けて、周り 8 マスの駒すべてにダメージ。魔物の糸喰い（Monsters）
 }
 
 # ---- 調整値（docs/branch-evolution.md の「調整値」） ----

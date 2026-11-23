@@ -133,6 +133,8 @@ func feed(event: BattleEvent) -> void:
 		_count_damage(event as UnitDamagedEvent)
 	elif event is BarrelExplodedEvent:
 		_barrel_attacker = (event as BarrelExplodedEvent).attacker_id
+	elif event is BurstEvent:
+		_barrel_attacker = (event as BurstEvent).by_id
 	elif event is UnitDefeatedEvent:
 		_count_defeat(event as UnitDefeatedEvent)
 	elif event is MidBossDefeatedEvent:

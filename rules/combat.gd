@@ -155,6 +155,8 @@ static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[Battle
 		events.append(AttackDamagedEvent.new(resolved))
 		Traits.note_attack(battle, attacker, target)
 	events.append_array(after)
+	if resolved.smoke == null:
+		events.append_array(Monsters.after_hit(battle, attacker, target))
 	events.append_array(Statuses.after_attack(attacker))
 	if target.hp == 0:
 		events.append_array(battle.remove_unit(target, attacker))

@@ -1,5 +1,5 @@
 extends "res://rules/cpu/cpu_threats.gd"
-## CPU の思考の、行動の結果の価値（ダメージ・撃破・回復・経験・部隊の特徴・中ボスと聖遺物・狩り・障壁・倒れると何か起きる魔物）。
+## CPU の思考の、行動の結果の価値（ダメージ・撃破・回復・経験・部隊の特徴・中ボスと聖遺物・狩り・障壁・倒れると何か起きる魔物・絡み）。
 
 
 ## 行動を複製（sim）に apply したあとの、その行動の価値。events はそのとき起きたこと。
@@ -51,6 +51,13 @@ func _outcome_value(sim: Battle, events: Array[BattleEvent]) -> float:
 		if rally != null:
 			var bearer := _battle.unit_by_id(rally.fallen_id)
 			value += (RALLY_PENALTY if bearer.side == _me else -RALLY_PENALTY) * rally.rallied_ids.size()
+			continue
+		var applied := event as StatusAppliedEvent
+		if applied != null:
+			if applied.status == Status.Type.SNARE:
+				var bound := _battle.unit_by_id(applied.unit_id)
+				if bound != null and not Statuses.has(bound, Status.Type.SNARE):
+					value += SNARE_VALUE if bound.side != _me else -SNARE_VALUE
 			continue
 		var knot := event as KnotPlacedEvent
 		if knot != null:

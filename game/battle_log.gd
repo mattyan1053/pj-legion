@@ -136,6 +136,7 @@ static func readers() -> Dictionary:
 		AreaEffectPlacedEvent: &"_read_field_effect_placed",
 		KnotPlacedEvent: &"_read_field_effect_placed",
 		RallyEvent: &"_read_rally",
+		BurstEvent: &"_read_burst",
 		FieldEffectRemovedEvent: &"_read_field_effect_removed",
 		UnitTeleportedEvent: &"_read_teleported",
 		UnitsSwappedEvent: &"_read_swapped",
@@ -543,6 +544,12 @@ func _read_trait(event: TraitTriggeredEvent) -> void:
 func _read_rally(event: RallyEvent) -> void:
 	var text := Text.t("battle.log.rally", {"unit": unit_name(event.fallen_id), "count": event.rallied_ids.size()})
 	_begin_group(_line(text, _side_of(event.fallen_id), event.cell, [event.fallen_id]))
+
+
+## 糸喰いが倒れて弾けた。続く巻き込み（ExplosionDamagedEvent）は、この行にまとめる。
+func _read_burst(event: BurstEvent) -> void:
+	var key := "battle.log.burst_alone" if event.victim_ids.is_empty() else "battle.log.burst"
+	_begin_group(_line(Text.t(key, {"unit": unit_name(event.fallen_id)}), _side_of(event.fallen_id), event.cell, [event.fallen_id]))
 
 
 ## 状態が付いた。まとめ先があれば、状態ごとに 1 行にまとめる（「突撃（2 ターン）: 青の将、青のパラディン…」）。

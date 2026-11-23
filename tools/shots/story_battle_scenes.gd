@@ -409,6 +409,58 @@ func _scene_story_patrol_needles() -> bool:
 	return true
 
 
+func _scene_story_patrol_eaters() -> bool:
+	if not await _patrol_battle(3):
+		return false
+	var eater := _first_unit_of(UnitKind.Id.EATER)
+	if eater == null:
+		return false
+	_scene.hide_notice()
+	_look_at(BoardView.cell_center(eater.cell))
+	_aim(8.0, 20.0, 50.0)
+	_scene.hover(eater.cell)
+	return true
+
+
+func _scene_story_patrol_spider() -> bool:
+	if not await _patrol_battle(3):
+		return false
+	var spider := _first_unit_of(UnitKind.Id.SPIDER)
+	if spider == null:
+		return false
+	_scene.hide_notice()
+	_look_at(BoardView.cell_center(spider.cell))
+	_aim(7.0, -20.0, 50.0)
+	_scene.hover(spider.cell)
+	return true
+
+
+## 糸蜘蛛に絡められた人の駒がいる、人の番の始め。その駒にマウスを乗せる（状態の欄に絡み）。
+func _scene_story_patrol_snare() -> bool:
+	if not await _patrol_battle(3):
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
+	var snared := func() -> Unit:
+		for unit: Unit in _battle.units:
+			if unit.side == Unit.Side.PLAYER1 and Statuses.has(unit, Status.Type.SNARE):
+				return unit
+		return null
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and snared.call() != null):
+		return false
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	_scene.battle_log = _log
+	_scene.hide_notice()
+	var unit: Unit = snared.call()
+	_look_at(BoardView.cell_center(unit.cell))
+	_aim(8.0, 0.0, 50.0)
+	_scene.hover(unit.cell)
+	return true
+
+
 func _first_unit_of(kind: UnitKind.Id) -> Unit:
 	for unit: Unit in _scene.battle.units:
 		if unit.kind == kind:

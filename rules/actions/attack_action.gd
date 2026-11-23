@@ -28,6 +28,9 @@ func execute(battle: Battle) -> Array[BattleEvent]:
 	var target := battle.unit_by_id(target_id)
 	var experience := Growth.attack_experience(battle, attacker, target)
 	var events := Combat.strike(battle, attacker, target)
+	# 倒した糸喰いが弾けて、攻撃した駒も倒れたら、経験値も行動を終えるイベントも出ない。
+	if not battle.units.has(attacker):
+		return events
 	var reason := ExperienceGainedEvent.Reason.DEFEAT if target.hp == 0 else ExperienceGainedEvent.Reason.HIT
 	events.append_array(Growth.gain(attacker, experience, reason))
 	events.append(battle.finish_action(attacker))

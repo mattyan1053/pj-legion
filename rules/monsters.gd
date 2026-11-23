@@ -8,6 +8,9 @@ extends RefCounted
 ## - ほつれ（Trait.KNOT_ON_FALL）が倒れると、そのマスに結び目（FieldEffect.Type.KNOT）が残る（on_defeated）。
 ##   持ち主のフェーズの始めに（start_phase）、ほかの陣営の駒が乗っていれば、ほどける。乗っていなければ残りのターン数が 1 減り、
 ##   0 になったら、そこにほつれが立ち直る（行動済みでなく、そのフェーズから動く）。持ち主の駒が乗っていれば、空くまで待つ
+## - 糸蜘蛛（Trait.BINDS_ON_HIT）の攻撃が当たると、相手に絡み（Status.Type.SNARE）が付き、相手の次の番の終わりまで動けない（bind。Combat.strike が呼ぶ）
+## - 糸喰い（Trait.BURSTS_ON_FALL）が倒れると、腹の糸が弾けて、周り 8 マスの駒すべて（陣営を問わない）に BURST_DAMAGE（on_defeated）。
+##   弾けて倒れた駒が糸喰いなら、続けて弾ける
 ##
 ## どれも Battle.remove_unit と EndPhaseAction の中で起きるので、予測（Forecast）・CPU の先読み・脅威範囲（Threat）は、
 ## 複製の上で同じ処理を走らせて知る。
@@ -20,6 +23,8 @@ const RALLY_RADIUS := 2
 const RESOLVE_POWER := 4
 ## 結び目が立ち直るまでの、持ち主のフェーズの数（残したときの残りのターン数）。
 const KNOT_TURNS := 2
+## 糸喰いが倒れて弾けたとき、周りの駒が受けるダメージ（固定。起爆樽の爆発と同じく、攻撃力にも地形にもよらない）。
+const BURST_DAMAGE := 10
 
 ## 種類 -> その種類が生まれつき持つ特性。
 const _KIND_TRAITS := {
@@ -27,6 +32,8 @@ const _KIND_TRAITS := {
 	UnitKind.Id.BAT: [Evolution.Trait.IGNORES_ZOC, Evolution.Trait.FOREST_WALK],
 	UnitKind.Id.FRAY: [Evolution.Trait.KNOT_ON_FALL],
 	UnitKind.Id.NEEDLE: [Evolution.Trait.ROOTED],
+	UnitKind.Id.SPIDER: [Evolution.Trait.BINDS_ON_HIT],
+	UnitKind.Id.EATER: [Evolution.Trait.BURSTS_ON_FALL],
 }
 const _NONE: Array = []
 
@@ -39,13 +46,56 @@ static func kind_traits(kind: UnitKind.Id) -> Array:
 ## 駒 fallen が倒れたあと（Battle.remove_unit が、盤から取り除いたあとに呼ぶ）に起きること。
 ## - 骸骨旗手: RallyEvent と、奮起の付いた味方ごとの StatusAppliedEvent（味方がいなければ何も起きない）
 ## - ほつれ: KnotPlacedEvent（そのマスに、もう結び目があれば残さない）
-static func on_defeated(battle: Battle, fallen: Unit) -> Array[BattleEvent]:
+## - 糸喰い: BurstEvent と、巻き込んだ駒ごとの ExplosionDamagedEvent、倒れた駒の UnitDefeatedEvent（by は倒した駒。経験値は入らない）
+static func on_defeated(battle: Battle, fallen: Unit, by: Unit = null) -> Array[BattleEvent]:
 	var events: Array[BattleEvent] = []
 	var traits := kind_traits(fallen.kind)
 	if traits.has(Evolution.Trait.RALLY_ON_FALL):
 		events.append_array(_rally(battle, fallen))
 	if traits.has(Evolution.Trait.KNOT_ON_FALL):
 		events.append_array(_tie_knot(battle, fallen))
+	if traits.has(Evolution.Trait.BURSTS_ON_FALL):
+		events.append_array(_burst(battle, fallen, by))
+	return events
+
+
+## 駒 attacker の攻撃が target に当たった（煙幕に阻まれず、target が倒れていない）あとに起きること（Combat.strike が呼ぶ）。
+## attacker が糸蜘蛛なら、target に絡み（StatusAppliedEvent）。target の次の番の終わりまで動けない。それ以外は何も起きない。
+static func after_hit(battle: Battle, attacker: Unit, target: Unit) -> Array[BattleEvent]:
+	var events: Array[BattleEvent] = []
+	if attacker.has_trait(Evolution.Trait.BINDS_ON_HIT) and target.hp > 0:
+		# 状態は持ち主のフェーズの始めに 1 減る。相手の番に付ければ 2 で、相手の次の番のあいだ残る。
+		events.append(Statuses.add(target, Status.Type.SNARE, 1 if battle.phase == target.side else 2))
+	return events
+
+
+## 糸喰い fallen が倒れて弾けたとき、巻き込まれる駒（周り 8 マス。陣営を問わない。上の行から、左の列から）。fallen はもう盤にいなくてよい。
+static func burst_victims(battle: Battle, fallen: Unit) -> Array[Unit]:
+	var result: Array[Unit] = []
+	for unit in MapObject.blast_victims(battle, fallen.cell):
+		if unit != fallen:
+			result.append(unit)
+	return result
+
+
+static func _burst(battle: Battle, fallen: Unit, by: Unit) -> Array[BattleEvent]:
+	var victims := burst_victims(battle, fallen)
+	var victim_ids: Array[int] = []
+	for victim in victims:
+		victim_ids.append(victim.id)
+	var events: Array[BattleEvent] = [
+		BurstEvent.new(fallen, by, MapObject.blast_cells(battle.board, fallen.cell), victim_ids)
+	]
+	# 起爆樽の爆発と同じく、同時に当たる。全員のダメージを先に並べ、倒れた駒はそのあとにまとめて取り除く。
+	var after: Array[BattleEvent] = []
+	for victim in victims:
+		var hit := Hit.resolve(null, victim, BURST_DAMAGE, UnitDamagedEvent.Cause.EXPLOSION)
+		after.append_array(hit.apply())
+		events.append(ExplosionDamagedEvent.new(fallen.cell, hit))
+	events.append_array(after)
+	for victim in victims:
+		if victim.hp == 0 and battle.units.has(victim):
+			events.append_array(battle.remove_unit(victim, by))
 	return events
 
 

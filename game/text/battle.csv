@@ -48,6 +48,8 @@ battle.log.knot_placed,{cell} に{effect}が残った（{turns} ターンで立�
 battle.log.knot_untied,{effect}が踏まれて、ほどけた
 battle.log.knot_reformed,{effect}から、{unit}が立ち直った（{cell}）
 battle.log.rally,{unit}が倒れ、周りの {count} 体が奮起した
+battle.log.burst,{unit}が倒れ、腹の糸が弾けた
+battle.log.burst_alone,{unit}が倒れ、腹の糸が弾けた（巻き込みなし）
 battle.log.effect_owned,{side}の{effect}
 battle.log.warped,{unit}が {from} → {to} へ移った
 battle.log.swapped,{unit}と{other}の位置が入れ替わった
@@ -208,6 +210,7 @@ battle.pop.barricade_broken,盾が壊れた
 battle.pop.knot_untied,ほどけた
 battle.pop.knot_reformed,立ち直った
 battle.pop.rally,旗が倒れた
+battle.pop.burst,弾けた
 battle.pop.durability,耐久 -{amount}
 battle.pop.smoked,煙幕で防いだ
 battle.pop.refreshed,再行動

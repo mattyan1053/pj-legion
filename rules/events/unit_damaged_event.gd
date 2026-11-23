@@ -13,7 +13,7 @@ extends BattleEvent
 
 enum Cause {
 	ATTACK,  ## 駒の攻撃
-	EXPLOSION,  ## 起爆樽の爆発
+	EXPLOSION,  ## 起爆樽の爆発（倒れた糸喰いが弾けたのも）
 	SKILL,  ## ダメージのあるスキル
 }
 

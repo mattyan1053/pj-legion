@@ -428,7 +428,8 @@ func _queue_traits_scene() -> void:
 		_expect(_scene.played.get(supplied, 0) == 1, "補給線の回復を再生しなかった"))
 
 
-## 倒れると何か起きる魔物（docs/monsters.md）。スナイパーが骸骨旗手を倒し（隣の骸骨兵が奮起）、もう 1 体がほつれを倒す（結び目が残る）。
+## 倒れると何か起きる魔物（docs/monsters.md）。スナイパーが骸骨旗手を倒し（隣の骸骨兵が奮起）、もう 1 体がほつれを倒し（結び目が残る）、
+## 3 体目が糸喰いを倒す（弾けて、隣の骸骨兵を巻き込む）。
 func _queue_monster_falls_scene() -> void:
 	var board := _small_board(Vector2i(8, 3))
 	var battle := Battle.new(board)
@@ -439,10 +440,15 @@ func _queue_monster_falls_scene() -> void:
 	var banner := battle.add_unit(UnitKind.Id.SKELETON_BANNER, Unit.Side.PLAYER2, Vector2i(3, 0))
 	var skeleton := battle.add_unit(UnitKind.Id.SKELETON, Unit.Side.PLAYER2, Vector2i(4, 0))
 	var fray := battle.add_unit(UnitKind.Id.FRAY, Unit.Side.PLAYER2, Vector2i(3, 1))
+	var third := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 2))
+	var eater := battle.add_unit(UnitKind.Id.EATER, Unit.Side.PLAYER2, Vector2i(5, 2))
+	var caught := battle.add_unit(UnitKind.Id.SKELETON, Unit.Side.PLAYER2, Vector2i(6, 1))
 	banner.hp = 1
 	fray.hp = 1
+	eater.hp = 1
 	var rally: Script = RallyEvent
 	var knot: Script = KnotPlacedEvent
+	var burst: Script = BurstEvent
 
 	_scripted.append(func() -> void:
 		_scene.set_opponent(false)
@@ -458,7 +464,13 @@ func _queue_monster_falls_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(not battle.units.has(fray), "ほつれを倒せなかった")
 		_expect(_scene.played.get(knot, 0) == 1, "結び目を再生しなかった")
-		_expect(Monsters.knot_at(battle, Vector2i(3, 1)) != null, "結び目が残らなかった"))
+		_expect(Monsters.knot_at(battle, Vector2i(3, 1)) != null, "結び目が残らなかった")
+		_scene.click_cell(third.cell))
+	_scripted.append(func() -> void: _scene.click_cell(eater.cell))
+	_scripted.append(func() -> void:
+		_expect(not battle.units.has(eater), "糸喰いを倒せなかった")
+		_expect(_scene.played.get(burst, 0) == 1, "弾けたのを再生しなかった")
+		_expect(caught.hp == UnitKind.max_hp(UnitKind.Id.SKELETON) - Monsters.BURST_DAMAGE, "隣の骸骨兵が巻き込まれなかった"))
 
 
 ## 行動の流れを変えるスキル。シャドウステップで敵と入れ替わってから攻撃し、アドレナリン注射で、行動済みの駒をもう一度動かす。
