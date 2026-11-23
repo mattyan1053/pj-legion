@@ -237,7 +237,7 @@ func _build_editor() -> Control:
 	roster.add_child(_caption(Text.t("deck.edit.roster")))
 	for i in 4:
 		var button := _card_button("", 15)
-		button.custom_minimum_size = Vector2(ROSTER_WIDTH, 66.0)
+		button.custom_minimum_size = Vector2(ROSTER_WIDTH, ROSTER_CARD_HEIGHT)
 		_fill_roster_button(button)
 		button.pressed.connect(func() -> void: _on_roster(i, &"press"))
 		button.mouse_entered.connect(func() -> void: _on_roster(i, &"enter"))

@@ -162,7 +162,7 @@ func set_status_mark(marked: bool) -> void:
 ## 部隊の特徴が効く駒を、足元の外側の輪で見せる（色は特徴の軍の色。docs/troop-traits.md の「画面」）。marked が偽なら消す。
 func set_trait_mark(marked: bool, color := Color.WHITE) -> void:
 	if marked and _trait_ring == null:
-		_trait_ring = _add_ring(0.6, 0.68, color)
+		_trait_ring = _add_ring(0.58, 0.72, color)
 	if _trait_ring != null:
 		_trait_ring.visible = marked
 		(_trait_ring.material_override as StandardMaterial3D).albedo_color = color

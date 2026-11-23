@@ -3,7 +3,8 @@ extends "res://game/battle_screen/screen_base.gd"
 
 
 ## 部隊の特徴の印（docs/troop-traits.md の「画面」）: 効く相手の足元の輪と、組む兵どうしの線。色は特徴の軍の色。相手の特徴も同じに出す。
-## - 輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵、単騎は隣に味方のいない兵
+## - 輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵、
+##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない攻撃する兵（増えるのは攻撃する側なので、番の間だけ）
 ## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種、補給線で隣り合う回復役
 func _refresh_traits() -> void:
 	var links: Array = []
@@ -18,7 +19,7 @@ func _refresh_traits() -> void:
 			var color := _trait_color(id)
 			if Traits.focus_marked(battle, shown, side) or Traits.vengeance_marked(battle, shown, side):
 				marked[shown.id] = color
-			if shown.side == side and Traits.alone_at(battle, shown, shown.cell) and shown.kind != UnitKind.Id.KING and UnitKind.role(shown.kind) != UnitKind.Role.HEALER:
+			if shown.side == side and battle.phase == side and Traits.alone_at(battle, shown, shown.cell) and battle.can_act(shown) and shown.kind != UnitKind.Id.KING and UnitKind.role(shown.kind) != UnitKind.Role.HEALER:
 				marked[shown.id] = color
 			if shown.side != side and id == Traits.Id.OATH:
 				for mate in battle.units:

@@ -51,12 +51,14 @@ const DETAIL_MIN_HEIGHT := 200.0
 const RIGHT_GAP := 10
 const EQUIP_MIN_HEIGHT := 80.0
 const ROSTER_WIDTH := 320.0
+## 雇える兵の札の高さ（下に必殺技と特徴の欄を収めるため、720 の高さで 4 枚がこれ）。
+const ROSTER_CARD_HEIGHT := 63.0
 const TROOP_WIDTH := 420.0
 ## 部隊の特徴の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。札の高さと、札の印の大きさ。
-const TRAIT_BOX_HEIGHT := 94.0
+const TRAIT_BOX_HEIGHT := 96.0
 const TRAIT_LINES := 2
-const TRAIT_CARD_HEIGHT := 30.0
-const TRAIT_MARK_SIDE := 24.0
+const TRAIT_CARD_HEIGHT := 32.0
+const TRAIT_MARK_SIDE := 28.0
 ## 部隊の行の、誓いのボタン（特徴が誓いの部隊だけ）の幅（px）。
 const OATH_TAG_WIDTH := 64.0
 ## 一覧の右の、駒の札を並べる数（1 行）。

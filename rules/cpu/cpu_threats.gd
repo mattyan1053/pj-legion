@@ -7,7 +7,7 @@ extends "res://rules/cpu/cpu_player_base.gd"
 ## - 自分の煙幕の中のマスでは、煙幕に防がれない攻撃だけを数える
 ## - unit にバリアが付いていれば、いちばん弱い 1 回ぶんを引く（相手は、弱い攻撃で先にはがす）
 ## - unit が cell で隊列（部隊の特徴）になるなら、1 回ごとに隊列のぶんを引く
-## - 敵の部隊の特徴で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら、単騎はいつも）
+## - 敵の部隊の特徴で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら、単騎はいま隣に味方のいない敵）
 func _threat_at(unit: Unit, cell: Vector2i, ignored_id: int) -> int:
 	return _danger_in(_threats, _close_threats, unit, cell, ignored_id)
 
@@ -41,7 +41,8 @@ func _danger_in(
 							if enemy.oath_partner != 0 and enemy.oath_partner < enemy_id and by.has(enemy.oath_partner) and enemy.oath_partner != ignored_id:
 								hurt += Traits.OATH_BONUS
 						Traits.Id.LONE:
-							hurt += Traits.LONE_BONUS
+							if Traits.alone_at(_battle, enemy, enemy.cell):  # いま隣に味方がいない敵（動いた先は読まない）
+								hurt += Traits.LONE_BONUS
 			hurt = maxi(0, hurt - guard)
 			total += hurt
 			weakest = mini(weakest, hurt)
