@@ -13,12 +13,10 @@ extends Node3D
 const UnitLooks := preload("res://game/unit_looks.gd")
 const UnitBody := preload("res://game/unit_body.gd")
 const PieceStyle := preload("res://game/piece_style.gd")
+const GaugeSprite := preload("res://game/gauge_sprite.gd")
 
 ## 行動済みの駒は、この明るさまで暗くする。
 const ACTED_SHADE := 0.42
-## 足元の HP の棒（減っている駒だけ）。
-const BAR_SIZE := Vector2i(34, 5)
-const BAR_PIXEL := 0.016
 const COLOR_GOLD := Color("f2c84b")
 ## 足元の円盤の半径と、縁の線の幅、外側の暗い線の色。
 const BASE_RADIUS := 0.4
@@ -133,15 +131,7 @@ func set_hp(hp: int) -> void:
 	_bar.visible = hp < _max_hp and not _dying
 	if not _bar.visible:
 		return
-	var image := Image.create_empty(BAR_SIZE.x, BAR_SIZE.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0.05, 0.05, 0.07, 0.9))
-	var inner := BAR_SIZE - Vector2i(2, 2)
-	var ratio := clampf(float(hp) / _max_hp, 0.0, 1.0)
-	var filled := ceili(inner.x * ratio)
-	if filled > 0:
-		var color := Color("5fd35f") if ratio > 0.5 else (Color("e8c23a") if ratio > 0.25 else Color("e8503a"))
-		image.fill_rect(Rect2i(1, 1, filled, inner.y), color)
-	_bar.texture = ImageTexture.create_from_image(image)
+	GaugeSprite.fill(_bar, float(hp) / _max_hp)
 
 
 ## レベルと最大 HP を変える（レベルアップ）。棒は次の set_hp で描き直す。
@@ -286,14 +276,8 @@ func _add_crown() -> void:
 
 ## 足元の HP の棒。いつもカメラを向き、木や岩に隠れない。駒の体には重ねず、マスの手前の縁に出す。
 func _add_bar() -> void:
-	_bar = Sprite3D.new()
-	_bar.pixel_size = BAR_PIXEL
-	_bar.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_bar.no_depth_test = true
-	_bar.shaded = false
-	_bar.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	_bar.render_priority = 2
-	_bar.offset = Vector2(0.0, -BAR_SIZE.y * 2.0)
+	_bar = GaugeSprite.make()
+	_bar.offset = Vector2(0.0, -GaugeSprite.SIZE.y * 2.0)
 	_bar.position.y = 0.0
 	_bar.visible = false
 	add_child(_bar)
