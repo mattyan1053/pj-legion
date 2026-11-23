@@ -10,6 +10,7 @@ extends "res://game/looks/look_set.gd"
 
 const ModelBody := preload("res://game/looks/model_body.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
+const Kaykit := preload("res://game/looks/kaykit_look.gd")
 
 const DIR := "res://assets/kaykit/adventurers2/"
 const MODEL_SCALE := 0.5
@@ -58,7 +59,11 @@ const KINDS := {
 		"attack": MELEE_1H,
 	},
 	# 連邦（山の 3 州。銃と規律）の後衛は、長い銃。
-	UnitKind.Id.SNIPER: {"model": "ranger", "show": ["Ranger_Cape"], "right": "shotgun", "idle": "Ranged_2H_Aiming", "attack": SHOOT_2H},
+	# 立ち姿は銃を構えたまま。素材の狙いと射撃の動きは、頭の数コマが「構えるまで」なので、飛ばして本体だけを使う（kaykit_look.gd の KINDS の説明）。
+	UnitKind.Id.SNIPER: {
+		"model": "ranger", "show": ["Ranger_Cape"], "right": "shotgun", "idle": "Ranged_2H_Aiming", "attack": SHOOT_2H,
+		"skip": {&"idle": Kaykit.AIM_SKIP, &"attack": Kaykit.SHOT_SKIP}, "hit": Kaykit.SHOT_HIT,
+	},
 	UnitKind.Id.COMMANDO: {
 		"model": "rogue_hooded", "show": ["RogueHooded_Mask"], "right": "dagger", "left": "dagger", "attack": DUAL,
 	},
@@ -173,6 +178,7 @@ func _model_body(shape: Dictionary, team_color: Color, person := &"") -> UnitBod
 	var body := ModelBody.new()
 	body.body_height = MODEL_HEIGHT * size
 	body.set_model(model, moves, Callable())
+	body.set_timing(shape.get("skip", {}), shape.get("hit", ModelBody.ATTACK_HIT), shape.get("blend", ModelBody.BLEND_TIME))
 	var paint := shape.get("paint", {}) as Dictionary
 	body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void:
 		var original := mesh.mesh.surface_get_material(0)
