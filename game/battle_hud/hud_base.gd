@@ -86,6 +86,8 @@ const SIGN_MARK_SIDE := 26.0
 const NOTICE_SIZE := Vector2(680.0, 340.0)
 ## 知らせの本文の行数の上限（折り返した行も数える）。これを超える分は出さない（枠を広げない）。
 const NOTICE_LINES := 9
+## 始めの知らせの文を折り返す幅（枠の幅から、左右の余白 14 を引いたもの）。
+const NOTICE_TEXT_WIDTH := NOTICE_SIZE.x - 14.0 * 2.0
 ## メニューが駒の中央からこれより離れたら、駒まで線を引く（px）。
 const MENU_LINE_FROM := 70.0
 ## 文を折り返す幅（px）。情報の枠、必殺技の説明。下の帯の説明は、画面の幅からボタンのぶんを引く。
