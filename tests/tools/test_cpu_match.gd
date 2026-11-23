@@ -235,6 +235,20 @@ func test_matches_tool_can_try_a_stronghold_cell() -> void:
 	assert_eq(blocked.board.stronghold_cell, Board.NO_CELL)
 
 
+func test_matches_tool_can_fix_the_signs() -> void:
+	# --signs=鍵,鍵 か none（docs/cpu-ai.md の「集計の道具」）。測るためだけに、縫い目の様子をめくらずに決める。
+	var tool := load("res://tools/cpu_matches.gd")
+	var setup := MatchSetup.versus_human(
+		BoardGenerator.Stage.PLAIN, 4, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY)
+	)
+	setup.rules.append_array(OptionalRules.DEFAULTS)
+	tool._fix_signs(setup, "haze,taut")
+	assert_eq(setup.create_battle().signs, [Seam.Sign.HAZE, Seam.Sign.TAUT] as Array[int])
+	tool._fix_signs(setup, "none")
+	assert_eq(setup.create_battle().signs, [] as Array[int])
+	assert_false(setup.rules.has(OptionalRules.SEAM))
+
+
 func test_matches_tool_sorts_a_squad_by_what_is_in_it() -> void:
 	# --squads のときの「部隊の中身ごとの勝率」の鍵。CPU の編成そのものなら、そう分かる。
 	var tool := load("res://tools/cpu_matches.gd")

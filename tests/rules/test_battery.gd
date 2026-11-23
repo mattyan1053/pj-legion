@@ -75,6 +75,21 @@ func test_a_hand_map_battery_is_always_there() -> void:
 	assert_eq(board.object_at(Vector2i(2, 1)), MapObject.Type.BATTERY)
 
 
+## V は対戦モードだけの砲台: 対戦モードの戦いの定義でだけ砲台になり、話（for_versus が偽）では平地のまま。
+func test_a_versus_battery_is_there_only_in_versus() -> void:
+	var map := HandMap.new(["..2..", "..V..", ".....", "..V..", "..1.."] as Array[String])
+	assert_true(map.is_valid())
+	assert_true(map.has_versus_objects())
+	var story := map.make_board()
+	assert_eq(story.battery_cells, [] as Array[Vector2i])
+	assert_eq(story.object_at(Vector2i(2, 1)), MapObject.Type.NONE)
+	assert_eq(story.terrain_at(Vector2i(2, 1)), Terrain.Type.NORMAL)
+	var versus := map.make_board(true)
+	assert_eq(versus.battery_cells, [Vector2i(2, 1), Vector2i(2, 3)] as Array[Vector2i])
+	assert_eq(Scenario.on_map(map, "", true).make_board(1).battery_cells.size(), 2)
+	assert_eq(Scenario.on_map(map, "").make_board(1).battery_cells.size(), 0, "話の定義は置かない")
+
+
 func test_batteries_sit_outside_the_reach_of_mid_bosses() -> void:
 	var reach := Neutral.TERRITORY_RADIUS + UnitKind.attack_range(UnitKind.Id.ELITE_MINION)
 	for stage in STAGES:
