@@ -327,7 +327,7 @@ func _scene_story_monster_king() -> bool:
 	_scene.hover(king.cell)
 	var episode: RefCounted = Story.military().episodes[number]
 	_scene.clear_talk_for_check()
-	_scene.say_for_check([BattleCues.Line.new(1, episode.speakers[1], "骨よ、生きた者を通すな。", episode.figures[1])] as Array[BattleCues.Line])
+	_scene.say_for_check([BattleCues.Line.new(1, episode.speakers[1], "眠れぬ者らよ、生きた者を通すな。", episode.figures[1])] as Array[BattleCues.Line])
 	return episode.king_looks[1] != &""
 
 
