@@ -94,7 +94,7 @@ func test_the_window_fits_the_screen_for_every_unit() -> void:
 
 ## 小さなステータスの札（部隊編成の右の札。game/unit_summary.gd）: 能力値の行は、ステータスの窓と同じ値（持ち物込みの値と増減）を出す。
 ## 「詳細」などのボタンの場所は、名前や札と別の行（飾りの線の右）にある。
-## 札の幅が中身で広がらないことは、自動の対戦が画面の上で確かめる（game/autoplay.gd の _visit_decks。木の外では、大きさが測れない）。
+## 札の幅が中身で広がらないことは、自動の対戦が画面の上で確かめる（game/autoplay/title_checks.gd の _visit_decks。木の外では、大きさが測れない）。
 func test_the_summary_card_shows_the_sheet() -> void:
 	var card := UnitSummary.new(376.0)
 	var loads: Array = [

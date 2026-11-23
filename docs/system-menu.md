@@ -2,7 +2,7 @@
 
 コード: `game/app.gd`（開く・並べる項目）、`game/system_menu.gd`（メニュー）、`game/settings_panel.gd`（オプションの画面）、`game/settings.gd`（設定の項目と値）、
 `game/save_store.gd`（取っておく仕組み）、`game/overlay_stack.gd`（重なる画面の積み上げ）。対戦の場面のつなぎは `game/battle_screen.gd` の「システムメニューと設定」。
-テスト: `tests/game/test_settings.gd`、`tests/game/test_system_menu.gd`、`tests/game/test_overlay_stack.gd`、`tests/game/test_orbit_camera.gd`、自動の対戦（`game/autoplay.gd` の `_queue_system_menu_scene`）。
+テスト: `tests/game/test_settings.gd`、`tests/game/test_system_menu.gd`、`tests/game/test_overlay_stack.gd`、`tests/game/test_orbit_camera.gd`、自動の対戦（`game/autoplay/setup_checks.gd` の `_queue_system_menu_scene`）。
 
 ## 開き方
 
