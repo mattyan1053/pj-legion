@@ -4,6 +4,7 @@ extends Control
 
 
 const Text := preload("res://game/text.gd")
+const Names := preload("res://game/names.gd")
 const Steady := preload("res://game/steady.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")

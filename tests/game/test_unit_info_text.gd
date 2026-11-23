@@ -13,7 +13,7 @@ func test_affiliation_from_the_viewer() -> void:
 	assert_true(BattleHud.affiliation_text(sniper, Unit.Side.PLAYER1).contains("MILITARY"))
 	assert_true(BattleHud.affiliation_text(core, Unit.Side.PLAYER1).begins_with("[中立]"))
 	var paladin := Unit.new(3, UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i.ZERO)
-	assert_true(BattleHud.affiliation_text(paladin, Unit.Side.PLAYER1, UnitKind.Army.MILITARY).ends_with("MILITARY（FANTASY の駒）"),
+	assert_true(BattleHud.affiliation_text(paladin, Unit.Side.PLAYER1, UnitKind.Army.MILITARY).ends_with("MILITARY（FANTASY 出身）"),
 			"ほかの軍の駒は、陣営の軍と、駒の種類の軍を並べる")
 	assert_true(BattleHud.affiliation_text(sniper, Unit.Side.PLAYER1, UnitKind.Army.MILITARY).ends_with("MILITARY"), "同じ軍なら 1 つだけ")
 	var skeleton := Unit.new(4, UnitKind.Id.SKELETON, Unit.Side.PLAYER2, Vector2i.ZERO)

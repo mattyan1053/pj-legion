@@ -102,7 +102,7 @@ func show_unit(unit: Unit, selected := false) -> void:
 	if not has_unit:
 		_shown_id = -1
 		# 使い方の案内は書かない（docs/story.md の「出撃準備」）。何も出していないことだけ。
-		_hint.text = Text.t("deploy.note.none_read_only") if _map != null and _map.read_only else Text.t("deploy.note.none")
+		_hint.text = Text.t("deploy.note.none")
 		return
 	_shown_id = unit.id
 	_frame.set_kind(unit.kind, unit.side, unit.evolution != Evolution.Id.NONE)

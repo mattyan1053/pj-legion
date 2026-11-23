@@ -53,7 +53,7 @@ func _build_detail() -> void:
 	var icon_room := Control.new()
 	icon_room.custom_minimum_size = Vector2(TABLE_ICON, 0.0)
 	header.add_child(icon_room)
-	header.add_child(_table_cell(Text.t("result.table.unit"), TABLE_NAME_WIDTH, true, HORIZONTAL_ALIGNMENT_LEFT))
+	header.add_child(_table_cell(Text.t("result.table.unit.story" if Names.story_sides else "result.table.unit"), TABLE_NAME_WIDTH, true, HORIZONTAL_ALIGNMENT_LEFT))
 	for spec: Array in StatsText.COLUMNS:
 		header.add_child(_table_cell(Text.t(spec[1]), TABLE_NUMBER_WIDTH, true))
 	header.add_child(_table_cell("", TABLE_STATE_WIDTH, true))

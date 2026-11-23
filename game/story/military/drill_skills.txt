@@ -17,7 +17,7 @@ map = drill_field
 music = battle
 before_music = battle
 after_music = talk_bright
-lesson = 駒ごとのスキルと、ゲージをためて使う軍の必殺技。
+lesson = 兵種ごとのスキルと、ゲージをためて使う軍の必殺技。
 
 [cast]
 ハーデン = ally
