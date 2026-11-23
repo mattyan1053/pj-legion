@@ -278,6 +278,21 @@ func test_trait_effects_are_counted() -> void:
 	battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(5, 2))
 	var outcome := CpuMatch.play(battle, 3)
 	assert_true(outcome.traits.get(Traits.Id.FOCUS, 0) >= 1, str(outcome.traits))
+	assert_eq(outcome.trait_hits, [outcome.traits[Traits.Id.FOCUS], 0] as Array[int], "効いた回数は、その特徴の陣営に数える")
+
+
+## 両方の部隊が同じ特徴の局は、効いた回数を陣営ごとに分けて数える（合計を 2 回数えない）。
+func test_mirror_trait_hits_are_counted_per_side() -> void:
+	var battle := Maps.battle([".........", ".........", ".........", ".........", "........."])
+	battle.traits = [Traits.Id.FOCUS, Traits.Id.FOCUS]
+	var a := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(2, 2))
+	var b := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(5, 2))
+	var outcome := CpuMatch.Outcome.new()
+	CpuMatch._count(outcome, TraitTriggeredEvent.new(Traits.Id.FOCUS, a.id, b.id, 2), battle, Unit.Side.PLAYER1)
+	CpuMatch._count(outcome, TraitTriggeredEvent.new(Traits.Id.FOCUS, b.id, a.id, 2), battle, Unit.Side.PLAYER2)
+	CpuMatch._count(outcome, TraitTriggeredEvent.new(Traits.Id.FOCUS, b.id, a.id, 2), battle, Unit.Side.PLAYER2)
+	assert_eq(outcome.trait_hits, [1, 2] as Array[int])
+	assert_eq(outcome.traits[Traits.Id.FOCUS], 3)
 
 
 func test_a_stronghold_win_is_counted_as_its_own_ending() -> void:

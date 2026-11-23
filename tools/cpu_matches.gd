@@ -242,8 +242,9 @@ func _initialize() -> void:
 				outcome.first_hit_side, outcome.first_hit_turn, outcome.first_kill_side, outcome.first_kill_turn,
 			])
 			if traits != [Traits.NONE, Traits.NONE]:
-				print("TRAIT seed=%d p1=%s p2=%s count=%s" % [first_seed + game, Traits.key(traits[0]), Traits.key(traits[1]),
-					",".join(outcome.traits.keys().map(func(id: int) -> String: return "%s:%d" % [Traits.key(id), outcome.traits[id]]))])
+				print("TRAIT seed=%d p1=%s p2=%s hits=%d,%d" % [
+					first_seed + game, Traits.key(traits[0]), Traits.key(traits[1]), outcome.trait_hits[0], outcome.trait_hits[1],
+				])
 			if not signs.is_empty():
 				print("SIGNS seed=%d signs=%s" % [first_seed + game, ",".join(signs.map(func(sign: int) -> String: return Seam.key(sign)))])
 			if random_squads or one_squad:
@@ -273,7 +274,7 @@ func _initialize() -> void:
 				continue
 			var row: Array = trait_rows.get_or_add(traits[side], [0, 0, 0, 0, 0, 0])
 			row[0] += 1
-			row[3] += outcome.traits.get(traits[side], 0)
+			row[3] += outcome.trait_hits[side]
 			if outcome.winner >= 0:
 				row[1] += 1
 				row[2] += 1 if outcome.winner == side else 0
