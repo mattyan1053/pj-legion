@@ -258,3 +258,34 @@ func _scene_formation_forecast() -> bool:
 	_look_at(BoardView.cell_center(found[1].cell))
 	_scene.hover(found[1].cell)
 	return true
+
+
+func _scene_setup_stronghold() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_rule(OptionalRules.STRONGHOLD, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.STRONGHOLD)
+
+
+func _scene_setup() -> bool:
+	_app.context.match_choice = MatchChoice.new()  # 遊ぶときの始めと同じ（相手は CPU）で開く
+	await _app.go(SceneFlow.SETUP)
+	return _app.current_id() == SceneFlow.SETUP
+
+
+func _scene_setup_again() -> bool:
+	if not _advance(func() -> bool: return _battle.turn >= 3 and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_show()
+	_scene.open_setup()
+	return _scene.setup_panel().is_cancellable()
+
+
+func _scene_setup_confirm() -> bool:
+	if not _scene_setup_again():
+		return false
+	_scene.setup_panel().press_map()
+	return _scene.setup_panel().confirming_text() != ""
