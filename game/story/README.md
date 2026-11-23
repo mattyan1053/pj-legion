@@ -51,3 +51,11 @@
 13. [森の守り](fantasy/mist_forest.txt)
 14. [尾根の亡者](fantasy/ridge_bones.txt)
 15. [墓守の眠り](fantasy/vale_keeper.txt)
+
+## 番外　縫い代の見回り（MILITARY）
+
+物語のファイル: [berk_patrol/story.txt](berk_patrol/story.txt)
+
+1. [岩山の蝙蝠](berk_patrol/patrol_crags.txt)
+2. [ほつれた野](berk_patrol/patrol_knots.txt)
+3. [針の峠](berk_patrol/patrol_needles.txt)

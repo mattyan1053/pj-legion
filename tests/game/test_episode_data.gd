@@ -38,7 +38,7 @@ func test_every_episode_file_is_in_a_campaign() -> void:
 ## 物語は、game/story/ のフォルダを置けば並ぶ（登録しない）。並びは物語のファイルの order の順。「_」で始まるフォルダは読まない。
 func test_story_folders_are_found_in_order() -> void:
 	var ids := Story.campaigns().map(func(each: Campaign) -> String: return String(each.id))
-	assert_eq(ids, ["military", "fantasy"], "order の順")
+	assert_eq(ids, ["military", "fantasy", "berk_patrol"], "order の順")
 	for folder: String in DirAccess.get_directories_at(Campaign.DIR):
 		assert_true(folder.begins_with("_") or ids.has(folder), "読まれていない物語のフォルダ: %s" % folder)
 

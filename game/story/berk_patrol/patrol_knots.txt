@@ -1,0 +1,76 @@
+# ストーリーの話「ほつれた野」。番外「縫い代の見回り」の 2 話目。
+#
+# 世界は docs/world.md、登場人物は docs/story.md の「世界と登場人物」。会話は、人物どうしの掛け合いで書く（docs/story.md の「会話の書き方」）。
+#
+# 倒れると何か起きる魔物（docs/monsters.md）の見本の話。ほつれは倒れると結び目を残し、だれかが上に立たないと立ち直る。
+# 骸骨旗手は倒れると、周りの亡者を奮い立たせる。どこで、どの順に倒すかを考える話。
+# 縫い目の様子（signs）の見本も兼ねる: 天裂の名残り（haze。遠くまで届く攻撃の射程が縮む）が、いつも付く。狙撃手が近くへ出る。
+# 敵は軍に属さない魔物の群れ（army = none）で、将がいない（king = none）。人の勝ち方は「敵を全滅させる」だけ（wins）。
+# 手で作ったマップ「古戦場」（game/maps/old_battlefield.txt）。
+#
+# 仕上げの書き手へ（この話の背骨。docs/story-outline.md の写し。台詞をどう直しても、ここは崩さない）
+# 起きること: 古戦場の外れで、地面から青白い塊が湧き、旗を掲げた骸骨が亡者を集めている。塊は倒しても、跡を踏まないと起き上がる。
+# 伝わること: 塊は離れて撃って倒し、近くの者が跡を踏む。旗持ちは、群れから離れたときに倒す。
+# 知る・変わる: 古戦場の亡者は、墓守を退けても出てくると知る。旗の骸骨の掲げる旗は、20 年前の連邦の旗だった（ドーソンは何も言わない）。
+
+[episode]
+title = ほつれた野
+map = old_battlefield
+music = battle_undead
+before_music = battle_undead
+after_music = talk_dark
+victory_mood = quiet
+wins = routed
+signs = haze
+
+[cast]
+ハーデン = ally
+ドーソン = ally, shield_trooper evolved dawson
+ノエ = ally, sniper noe
+マルタ = ally, medic marta
+ピップ = ally, commando pip
+亡者の旗手 = enemy, skeleton_banner
+
+[before]
+> 偵察隊は、古戦場の外れまで見回りの足を延ばした。
+ピップ: しょ〜い〜、地面から青白いのが湧いてるっす。ぷよぷよしてるっす。
+ノエ: 塊を撃った所に、光る結び目が残りました。……また、膨らんできます。
+ドーソン: 跡を踏んでおけ。放っておけば、起き上がるぞ。
+亡者の旗手: 旗の……下へ……。集まれ……集まれ……。
+ハーデン: 旗持ちは、群れの中で倒すな。離れたときに落とす。
+マルタ: 今日は空がかすんで、遠くが見えにくいわ。ノエ、前に出すぎないのよ。
+
+[cues]
+(turn 1) ドーソン: 塊は離れて撃て。跡は近くの者が踏め。
+(fallen enemy) ノエ: 結び目が……。だれか、上に立ってください！
+(turn 6) ピップ: 旗が倒れると、周りが騒ぐっす。離れたところを狙うっす！
+
+[after]
+ノエ: 旗の骸骨の旗……。連邦の、古い紋でした。
+マルタ: ……ドーソン。
+ドーソン: ハーデン少尉、旗のことは報告に書かんでいいでしょう。数だけで。
+ピップ: 墓守を退けても、湧くもんは湧くんすね〜。
+ハーデン: 数も、旗も書く。見たものは、そのまま報告する。
+
+[lost]
+亡者の旗手: 旗の……下へ……。
+ドーソン: 塊の跡を空けたままにするな。踏めば起きん。
+
+# ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
+
+[enemy]
+army = none
+king = none
+unit = fray
+unit = fray
+unit = fray
+unit = skeleton_banner
+unit = skeleton_banner
+unit = skeleton
+unit = skeleton
+unit = skeleton
+unit = skeleton_archer
+unit = skeleton_archer
+
+[unlock]
+budget = 2

@@ -54,9 +54,9 @@ const _TABLE := {
 	Id.SKELETON_CALLER: [Role.REARGUARD, Army.NONE, 3, 18, 5, 3, 2],
 	Id.SKELETON_DRUMMER: [Role.REARGUARD, Army.NONE, 3, 22, 5, 3, 2],
 	Id.SKELETON_BANNER: [Role.RAIDER, Army.NONE, 2, 26, 6, 3, 1],
-	Id.BAT: [Role.RAIDER, Army.NONE, 1, 10, 5, 6, 1],
+	Id.BAT: [Role.RAIDER, Army.NONE, 1, 12, 7, 6, 1],
 	Id.FRAY: [Role.VANGUARD, Army.NONE, 2, 30, 6, 2, 1],
-	Id.NEEDLE: [Role.REARGUARD, Army.NONE, 2, 24, 7, 0, 4],
+	Id.NEEDLE: [Role.REARGUARD, Army.NONE, 2, 28, 8, 0, 4],
 }
 
 
