@@ -30,6 +30,10 @@ func _ready() -> void:
 	_hud = BattleHud.new()
 	add_child(_hud)
 	_hud.setup(TEAM_COLORS)
+	_hud.range_colors = {
+		&"move": COLOR_MOVE, &"cruise": COLOR_CRUISE, &"attack": COLOR_TARGET, &"heal": COLOR_HEAL,
+		&"reach": COLOR_INSPECT, &"threat": COLOR_THREAT, &"pin": BoardView.COLOR_PIN_EDGE,
+	}
 	_playback = BattlePlayback.new()
 	add_child(_playback)
 	_playback.setup(self, _views, _rig, _hud, _effects, _ui, TEAM_COLORS, played, camera_follows)

@@ -60,9 +60,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				toggle_threat()
 
 
-## 下の帯の案内のうち、案内に使える幅に収まらない行（3 行目からは、収まっていても切れる）。検査用。
-func hint_cut_lines() -> Array[String]:
-	return _hud.hint_cut_lines()
+## 下の帯の案内（句と印の並び）が、使える幅からはみ出しているか。検査用。
+func guide_overflows() -> bool:
+	return _hud.guide_overflows()
+
+
+## 下の帯の案内を 1 行の文にしたもの。検査用。
+func guide_text() -> String:
+	return _hud.guide_text()
 
 
 ## 上の帯の陣営の欄のうち、幅が足りずに省かれている文（battle_hud.gd）。検査用。

@@ -34,7 +34,7 @@ deck.detail.borrowed,{origin} の駒（この部隊では {army} として戦う
 deck.edit.items,持ち物　{count} / {max}
 deck.edit.item,{name}　コスト {cost}
 deck.edit.item_locked,未解放
-deck.edit.item_locked.tooltip,ストーリーを進めると持たせられる
+deck.edit.item_locked.tooltip,ストーリーで解放
 deck.item.with_holders,{effect}（{holders}）
 deck.item.only,{role}専用
 deck.item.except,{role}以外
@@ -69,11 +69,11 @@ deck.summary.item_many,+{item}×{count}
 deck.name.copy,{name} の写し
 deck.name.default,部隊 {number}
 deck.name.unnamed,名前の無い部隊
-deck.load.unknown_rules,知らない決まり（{name}）で組んである
+deck.load.unknown_rules,未対応の決まり（{name}）
 deck.load.unknown_army,軍が読めない（{name}）
-deck.load.unreadable_unit,読めない駒を外した
-deck.load.unknown_unit,知らない駒（{name}）を外した
-deck.load.unknown_item,知らない持ち物（{name}）を外した
+deck.load.unreadable_unit,読めない駒を除外
+deck.load.unknown_unit,未対応の駒（{name}）を除外
+deck.load.unknown_item,未対応の持ち物（{name}）を除外
 deck.load.none,無し
 deck.preview.title,{who}　{army}　コスト {cost} / {budget}
 deck.card.king,本陣に配置
@@ -93,7 +93,7 @@ deck.sheet.items,持ち物 {count} / {max}
 deck.sheet.no_item,空き
 deck.sheet.evolution,進化先（レベル {level}）
 deck.sheet.evolved,進化済み
-deck.formation.title,組み方（「組み方: あり」の対戦で効く）
+deck.formation.title,組み方（「組み方: あり」の対戦のみ）
 deck.formation.squad_tag,分隊
 deck.formation.squad,{kind} {count} 体
 deck.formation.squads,分隊: {squads}
