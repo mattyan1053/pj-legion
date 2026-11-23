@@ -10,6 +10,8 @@ const Text := preload("res://game/text.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const SheetParts := preload("res://game/sheet_parts.gd")
+const InfoCard := preload("res://game/info_card.gd")
 
 ## 中身の幅（px）。盤を隠しすぎないよう、情報の枠（320）より狭くする。
 const WIDTH := 250.0
@@ -23,6 +25,9 @@ const COLOR_LOSS := Palette.HP_LOW
 const COLOR_BAR_BACK := Palette.INK
 ## 何かが起きる駒がこれより多いと、駒ごとに 1 行の詰めた形にする（樽の爆発は 8 体まで巻き込むので、パネルが画面の高さを超えないように）。
 const COMPACT_FROM := 4
+## 小さな札の字の大きさと、札の左右の余白の見積もり（px。これを足して幅に入らない文は、札にしない）。
+const CHIP_FONT_SIZE := 13
+const CHIP_PADDING := 20.0
 
 
 ## HP の棒。前の HP と後の HP を並べて描く（減るぶんは赤、増えるぶんは緑、残りは HP の色）。
@@ -118,17 +123,21 @@ func show_summary(title: String, summary: ForecastText.Summary) -> void:
 				color = COLOR_DIM
 			_add_label(hp, 17, color, true)
 			texts.append(hp)
+		# 内訳（クリティカル、森で軽減）と、ほかに起きること（付く状態など）は、小さな札にして並べる（情報の枠の札と同じ形）。
+		var chips := _add_chips()
+		for note in row.notes:
+			_add_chip(chips, note, COLOR_DIM)
 		if not row.notes.is_empty():
-			var notes := Text.join_dot(row.notes)
-			_add_label(notes, 14, COLOR_DIM)
-			texts.append(notes)
+			texts.append(Text.join_dot(row.notes))
 		for effect in row.effects:
-			_add_label(effect, 14, COLOR_DIM)
+			_add_chip(chips, effect, Palette.INFO)
 			texts.append(effect)
 	if not summary.lines.is_empty() and not summary.rows.is_empty():
 		_add_rule()
+	# 駒に属さないこと（経験、必殺技のゲージ、置かれる効果）も札に。決着は金の字。
+	var line_chips := _add_chips()
 	for line in summary.lines:
-		_add_label(line, 15, COLOR_TITLE if summary.decides and line == summary.lines[-1] else Palette.TEXT)
+		_add_chip(line_chips, line, COLOR_TITLE if summary.decides and line == summary.lines[-1] else Palette.TEXT)
 		texts.append(line)
 	if summary.rows.is_empty() and summary.lines.is_empty():
 		_add_label(Text.t("battle.forecast.nothing"), 15, COLOR_DIM)
@@ -167,6 +176,23 @@ func hide_summary() -> void:
 ## 出している中身の文（出していなければ空）。検査用。
 func shown_text() -> String:
 	return _shown_text if visible else ""
+
+
+## 札を並べる入れ物（幅に入らなければ次の行へ送る）。
+func _add_chips() -> InfoCard.ChipRows:
+	var chips := InfoCard.ChipRows.new(WIDTH)
+	_column.add_child(chips)
+	return chips
+
+
+## 短い文は小さな札に、札の幅に入らない長い文は、折り返した行にする。
+func _add_chip(chips: InfoCard.ChipRows, text: String, color: Color) -> void:
+	var font := UiTheme.FONT_BODY
+	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FONT_SIZE).x + CHIP_PADDING > WIDTH:
+		var label := _add_label(text, 14, color)
+		_column.move_child(label, chips.get_index() + 1)
+		return
+	chips.add(SheetParts.tag(text, color, CHIP_FONT_SIZE))
 
 
 ## 区切りの細い線。

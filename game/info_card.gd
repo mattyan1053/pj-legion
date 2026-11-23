@@ -97,9 +97,9 @@ func _build_unit() -> void:
 	title_row.add_theme_constant_override("separation", 6)
 	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	names.add_child(title_row)
-	_role = RoleMark.new(UnitKind.Role.NONE, 20.0)
+	_role = RoleMark.new(UnitKind.Role.NONE, 18.0)
 	title_row.add_child(_role)
-	_title = SheetParts.text(19, Palette.TEXT, true)
+	_title = SheetParts.text(17, Palette.TEXT, true)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_title.clip_text = true
@@ -205,8 +205,10 @@ func show_unit(
 	_chips.visible = not _chips.is_empty()
 	_skill_summary = ""
 	_clear(_skill)
-	_skill.visible = sheet.skill != null
-	if sheet.skill != null:
+	if sheet.skill == null:
+		# スキルを持たない駒も、同じ場所に沈めた札を出す（札の並びを、駒によって変えない）。
+		_skill.add_child(SheetParts.ability_card(AbilityMark.Type.SKILL, Text.t("deck.sheet.skill"), Text.t("deck.sheet.no_skill"), "", "", _width, true, 22.0, 15))
+	else:
 		_skill_summary = Names.skill_summary(sheet.skill) if skill_note else ""
 		_skill_args = [Names.skill(sheet.skill), sheet.skill_state]
 		_add_skill_card(_skill_summary)
@@ -252,13 +254,13 @@ func fit(height: float) -> void:
 	_state.visible = _state_plain != ""
 	_items.visible = _items_line != ""
 	_chips.visible = not _chips.is_empty()
-	if _skill.visible and _skill_summary != "" and not _skill_summary_shown:
+	if _skill_summary != "" and not _skill_summary_shown:
 		_clear(_skill)
 		_add_skill_card(_skill_summary)
 	if _over(height) > 0.0 and _state.visible:
 		_state.visible = false
 		_dropped += 1
-	if _over(height) > 0.0 and _skill.visible and _skill_summary != "":
+	if _over(height) > 0.0 and _skill_summary != "":
 		_clear(_skill)
 		_add_skill_card("")
 		_dropped += 1
