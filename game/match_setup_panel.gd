@@ -22,11 +22,11 @@ signal decks_pressed(choice: RefCounted, side: Unit.Side)
 const DeployDialog := preload("res://game/deploy_dialog.gd")
 ## 初期位置の窓で見せる盤の種（生成のマップは、マップ選択のカードと同じ代表の形）。
 const PLACEMENT_SEED := 3
-## 選べる決まりの行（並び）、「あり」「なし」のボタンの大きさ、右の説明の欄の大きさ（px。2 行まで）。
+## 選べる決まりの行（並び）、「あり」「なし」のボタンの大きさ、右の説明の欄の大きさ（px。1 行）。
 const RULE_ROWS: Array[StringName] = [OptionalRules.STRONGHOLD, OptionalRules.BATTERY, OptionalRules.FORMATION, OptionalRules.SEAM]
 const TRIAL_BUTTON_WIDTH := 110.0
-const TRIAL_BUTTON_HEIGHT := 30.0
-const TRIAL_NOTE_SIZE := Vector2(440.0, 30.0)
+const TRIAL_BUTTON_HEIGHT := 26.0
+const TRIAL_NOTE_SIZE := Vector2(440.0, 26.0)
 const Text := preload("res://game/text.gd")
 const Steady := preload("res://game/steady.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -128,7 +128,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 5)
+	column.add_theme_constant_override("separation", 4)
 	panel.add_child(column)
 
 	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
@@ -164,11 +164,12 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 			{true: Text.t("setup.rule.on"), false: Text.t("setup.rule.off")})
 		for button: Button in (_rows[StringName("rule_%s" % rule)] as Dictionary).values():
 			button.custom_minimum_size = Vector2(TRIAL_BUTTON_WIDTH, TRIAL_BUTTON_HEIGHT)
+			button.add_theme_font_size_override("font_size", 15)
 		var note := _label(13)
 		note.text = rule_note(rule)
 		note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		note.max_lines_visible = 2
+		note.max_lines_visible = 1
 		note.custom_minimum_size = TRIAL_NOTE_SIZE
 		Steady.mark(note, "setup.rule_note")
 		rule_row.add_child(note)
