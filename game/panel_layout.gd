@@ -63,6 +63,15 @@ func reset_menu() -> void:
 	_menu_placement.reset()
 
 
+## メニューと予測のパネルを、前に選んだ側をひいきせずに、次のコマで置き直す（いまのカメラだけで決める）。
+## カメラが動く間は前に選んだ側をひいきするので、置き場所が動き方（コマの長さ）しだいになる。スクリーンショットの道具が、撮る前に使う。
+func reset_placement() -> void:
+	_menu_placement.reset()
+	_menu_dirty = true
+	_forecast_placement.reset()
+	_forecast_dirty = true
+
+
 ## メニューの中身が変わった: 次の place_menu で、カメラが動いていなくても置き直す。
 func mark_menu_dirty() -> void:
 	_menu_dirty = true
