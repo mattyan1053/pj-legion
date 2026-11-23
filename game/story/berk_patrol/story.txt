@@ -1,0 +1,36 @@
+# ストーリーの物語「番外　縫い代の見回り」（MILITARY の番外の物語）。
+#
+# 本編（ベルク連邦の物語）の外の、短い寄り道。墓守を退けたあと、ハーデン少尉の偵察隊が縫い代を見回り、名も無い戦いに出会う。
+# 本編の筋は動かさない（ここで知ったことを、本編の人物は口にしない）。
+# 新しく足した魔物（大蝙蝠・ほつれ・骸骨旗手・糸針。docs/unit-roster.md の「魔物」）と、縫い目の様子（signs）と、番人の名前（boss）の使い方の見本を兼ねる。
+# 世界は docs/world.md、登場人物は docs/story.md の「世界と登場人物」。書き方は docs/story.md の「物語のファイル」。
+
+[campaign]
+title = 番外　縫い代の見回り
+army = military
+rules = berk_patrol
+budget = 22
+order = 3
+intro = ハーデン少尉の偵察隊として、縫い代の見回りで名も無い戦いをくぐる。
+
+[start]
+unit = shield_trooper
+unit = sniper
+unit = commando
+unit = medic
+item = iron_shield
+item = speed_boots
+item = long_scope
+item = power_gauntlet
+
+[cast]
+ハーデン = king, 偵察隊の新任少尉
+ドーソン = shield_trooper evolved dawson, 古参の曹長
+ノエ = sniper noe, 新兵の狙撃手
+マルタ = medic marta, 曹長と同期の衛生兵
+ピップ = commando pip, 足の速い斥候
+
+[episodes]
+patrol_crags
+patrol_knots
+patrol_needles

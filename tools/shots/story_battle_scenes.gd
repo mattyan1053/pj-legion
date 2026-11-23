@@ -332,6 +332,83 @@ func _scene_story_monster_king() -> bool:
 
 
 ## 盤の上の、その種類の最初の駒。いなければ null。
+## 番外の物語（berk_patrol）の number 番目の話の対戦を、画面に出す。
+func _patrol_battle(number: int) -> bool:
+	var patrol: RefCounted = null
+	for campaign: RefCounted in Story.campaigns():
+		if campaign.id == &"berk_patrol":
+			patrol = campaign
+	if patrol == null:
+		return false
+	_app.context.story.choose_campaign(patrol)  # クリアは、いま選んでいる物語の記録に書く
+	for i: int in number:
+		_app.context.story.clear(patrol.episodes[i].id)
+	if not await _scene_story_campaigns():
+		return false
+	_app.current_scene().choose(patrol)
+	await _app.scene_changed
+	if _app.current_id() != SceneFlow.EPISODES:
+		return false
+	_app.current_scene().choose(patrol.episodes[number])
+	await _app.scene_changed
+	if not _at_sortie() or not await _sortie_to_battle():
+		return false
+	_scene = _app.current_scene()
+	return true
+
+
+func _scene_story_patrol_bats() -> bool:
+	if not await _patrol_battle(0):
+		return false
+	var bat := _first_unit_of(UnitKind.Id.BAT)
+	if bat == null:
+		return false
+	_scene.hide_notice()  # 対戦ルールの知らせを閉じて、盤を見せる
+	_look_at(BoardView.cell_center(bat.cell))
+	_aim(9.0, 0.0, 50.0)
+	_scene.hover(bat.cell)
+	return true
+
+
+func _scene_story_patrol_knot() -> bool:
+	if not await _patrol_battle(1):
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
+	var knot_cell := func() -> Vector2i:
+		for effect in _battle.board.field_effects:
+			if effect.type == FieldEffect.Type.KNOT:
+				return effect.center
+		return Board.NO_CELL
+	# 結び目が残ったあと、人の番の始めで止める。
+	if not _advance(func() -> bool: return knot_cell.call() != Board.NO_CELL and _battle.phase == Unit.Side.PLAYER1):
+		return false
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	_scene.battle_log = _log
+	_scene.hide_notice()
+	var cell: Vector2i = knot_cell.call()
+	_look_at(BoardView.cell_center(cell))
+	_aim(9.0, 0.0, 50.0)
+	_scene.hover(cell)
+	return true
+
+
+func _scene_story_patrol_needles() -> bool:
+	if not await _patrol_battle(2):
+		return false
+	var needle := _first_unit_of(UnitKind.Id.NEEDLE)
+	if needle == null:
+		return false
+	_scene.hide_notice()
+	_look_at(BoardView.cell_center(needle.cell))
+	_aim(9.0, 30.0, 50.0)
+	_scene.hover(needle.cell)
+	return true
+
+
 func _first_unit_of(kind: UnitKind.Id) -> Unit:
 	for unit: Unit in _scene.battle.units:
 		if unit.kind == kind:
