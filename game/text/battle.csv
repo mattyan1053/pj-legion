@@ -81,60 +81,30 @@ battle.log.stronghold_lost,{side}の拠点の確保が 0 に戻った
 battle.log.won,{side}の勝ち（{reason}）
 battle.log.drawn,引き分け（{reason}）
 battle.cell.nothing,特別なものは無い
-battle.hint.over,決着
-battle.hint.cpu_turn,相手（CPU）の番
-battle.hint.foe_turn,敵の番
-battle.hint.talk,クリック・Enter: 台詞を送る ▼
-battle.hint.evolve,進化先を選ぶ（上から 1 つ）
-battle.hint.confirm_ult,もう一度押すと必殺技「{ult}」を発動（取り消せない。右クリック・盤のクリック: キャンセル）
-battle.hint.confirm_ult_unnamed,もう一度押すと必殺技を発動（取り消せない。右クリック・盤のクリック: キャンセル）
-battle.hint.confirm_end_turn,未行動の駒が {count} 体（足元が光っている）。もう一度押すとターン終了（右クリック: キャンセル）
-battle.hint.ranges.own,白: 動ける範囲
-battle.hint.ranges.foe,白: 動ける　赤: 次の番に攻撃が届く
-battle.hint.ranges.pinned,　橙の枠: 表示したままの範囲
-battle.hint.inspect_back,"{unit}を表示中（{ranges}）
-右クリック: 選んでいる駒へ戻る"
-battle.hint.inspect,"{unit}を表示中（{ranges}）
-右クリック: 表示をやめる"
-battle.hint.choose_pinned,駒をクリックで選択。橙の枠: 表示したままの相手の範囲（右クリック: 全部消す）
-battle.hint.choose,駒をクリックで選択。相手の駒は移動・攻撃の届く範囲を表示
-battle.hint.skill_self,{skill}: この駒（紫のマス）をクリックで使う（右クリック: キャンセル）
-battle.hint.skill_ends,{skill}: 紫のマスをクリックで使う。使うと行動を終える（右クリック: キャンセル）
-battle.hint.skill_then_attack,{skill}: 紫のマスをクリックで使う。使ったあと、続けて攻撃できる（右クリック: キャンセル）
-battle.hint.attack,攻撃: 赤いマスの相手をクリック（右クリック: キャンセル）
-battle.hint.heal,回復: 緑のマスの味方をクリック（右クリック: キャンセル）
-battle.hint.foe_unit,相手の駒。白: 動ける範囲　赤: 次の番に攻撃が届く範囲
-battle.hint.acted,この駒は行動を終えている（白: 動ける範囲）
-battle.hint.after_skill,スキル使用済み。メニューから攻撃か待機を選ぶ（取り消せない）
-battle.hint.on_portal,ポータルの上。メニューの「転移」で、同じ色のマスへ移れる（右クリック: 移動を取り消す）
-battle.hint.after_warp,"転移した。青: 続けて移動　黄: 巡航（攻撃できない）
-マスをクリックで移動（右クリック: 移動を取り消す）"
-battle.hint.after_warp_cruise,"転移した。黄: 続けて巡航（攻撃できない）
-マスをクリックで移動（右クリック: 移動を取り消す）"
-battle.hint.after_cruise,巡航で移動したので攻撃できない。メニューから待機か取り消しを選ぶ
-battle.hint.after_move,メニューから行動を選ぶ（右クリック: 移動を取り消す）
-battle.hint.move_healer,"青: 移動　黄: 巡航（回復できない）　緑: 回復できる味方
-マスをクリックで移動。行動は駒のそばのメニューから"
-battle.hint.move,"青: 移動　黄: 巡航（攻撃できない）　赤: 攻撃できる相手
-マスをクリックで移動。行動は駒のそばのメニューから"
-battle.hint.auto_confirm,おまかせ: もう一度押すと、残りの駒を CPU が動かしてターンを終える（取り消せない。右クリック: キャンセル）
-battle.hint.auto_running,おまかせ: このターンは CPU が動かしている
+battle.guide.target,対象を選択
+battle.guide.unacted,未行動 {count} 体
+battle.guide.cancel,キャンセル
+battle.guide.undo,取り消し
+battle.guide.back,戻る
+battle.guide.unpin,解除
+battle.guide.move,移動
+battle.guide.cruise,巡航
+battle.guide.attack,攻撃
+battle.guide.heal,回復
+battle.guide.pinned,表示中
 battle.menu.back,キャンセル
 battle.menu.warp,転移
 battle.menu.attack,攻撃
 battle.menu.heal,回復
 battle.menu.wait,待機
 battle.menu.undo,移動を取り消す
-battle.menu.attack.note,攻撃: 赤いマスの相手（樽・盾も）を選んで攻撃する。攻撃すると、この駒の行動は終わる。相手にマウスを乗せると見込みを表示
-battle.menu.heal.note,回復: 緑のマスの味方を選んで回復する（回復量 {amount}）。回復すると、この駒の行動は終わる
+battle.menu.attack.note,赤いマスの相手を攻撃（樽・盾も）。行動終了
+battle.menu.heal.note,緑のマスの味方を {amount} 回復。行動終了
 battle.menu.skill.note_ends,"{skill}: {summary}
-使うと、この駒の行動は終わる（{state}）"
+行動終了（{state}）"
 battle.menu.skill.note_then_attack,"{skill}: {summary}
-使ったあと、続けて攻撃できる。移動は取り消せなくなる（{state}）"
-battle.menu.wait.note,待機: 何もせずに、この駒の行動を終える
-battle.menu.undo.note,移動を取り消す: 動く前のマスへ戻る
-battle.menu.back.note,キャンセル: 対象を選ぶのをやめて、メニューへ戻る
-battle.menu.warp.note,転移: 対のポータル（同じ色の塗り）へ移る。移動力は使わない。残りの移動力で、そこから続けて動ける
+続けて攻撃可。移動の取り消し不可（{state}）"
+battle.menu.warp.note,同じ色のポータルへ移る。移動力は使わない
 battle.menu.skill.cooldown,スキル（あと {turns} ターン）
 battle.menu.skill.used_up,スキル（使用済み）
 battle.menu.skill.unusable,スキル（使用不可）
@@ -180,18 +150,20 @@ battle.hud.skip,スキップ
 battle.hud.skipping,スキップ中…
 battle.hud.auto_confirm,もう一度押して実行
 battle.hud.auto,おまかせ
-battle.hud.opponent.tooltip,相手を CPU と人で切り替える
+battle.hud.opponent.tooltip,相手の切り替え（CPU / 人）
 battle.hud.log,ログ
-battle.hud.log.tooltip,対戦で起きたことを、ターンごとにさかのぼって表示
-battle.hud.camera_help,視点: ドラッグで回転・傾き　ホイールで拡大　WASD で移動
+battle.hud.log.tooltip,ターンごとの出来事
+battle.hud.camera.turn,回転
+battle.hud.camera.zoom,拡大
+battle.hud.camera.pan,移動
 battle.hud.pin,範囲を表示したまま
 battle.hud.threat,敵の攻撃範囲
-battle.hud.threat.tooltip,敵が次の番に攻撃を届かせうるマスを、赤い斜線で表示
+battle.hud.threat.tooltip,敵の次の番の攻撃が届くマス（赤い斜線）
 battle.hud.fast,早送り
-battle.hud.fast.tooltip,相手の番を速く進める（入れたままなら、次の相手の番も）
-battle.hud.skip.tooltip,相手の番の残りを見せずに進める（起きたことはログに残る）
+battle.hud.fast.tooltip,相手の番を早送り（入れたままなら次の番も）
+battle.hud.skip.tooltip,相手の番の残りを省略（出来事はログに残る）
 battle.hud.ult,必殺技
-battle.hud.auto.tooltip,このターンの残りの駒を CPU が動かし、ターンを終える
+battle.hud.auto.tooltip,残りの行動を CPU に任せてターン終了
 battle.hud.end_turn,ターン終了
 battle.hud.side,{side}  駒 {count}
 battle.hud.capture,  占拠 {marks}
@@ -255,8 +227,8 @@ battle.forecast.barrel,樽を撃つ（爆発 {damage} ダメージ）
 battle.forecast.barricade,盾を攻撃
 battle.log_panel.title,ログ
 battle.log_panel.close,閉じる
-battle.log_panel.hint,行を押すと、その場所と駒を盤の上に表示
-battle.minimap.tooltip,クリック・ドラッグ: その場所へ視点を移す
+battle.log_panel.show,盤に表示
+battle.minimap.tooltip,視点を移動
 battle.forecast.self_hurt,自分も巻き込まれる！
 battle.forecast.defeats_one,倒せる！
 battle.forecast.defeats,{count} 体を倒せる！

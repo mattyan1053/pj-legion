@@ -20,7 +20,7 @@ story.open_all.mark,確かめ用: 全部の話を開いている（F5 で戻す�
 sortie.heading,出撃準備　　第 {number} 話「{title}」
 sortie.map,初期位置　マップ「{map}」
 sortie.auto_place,おまかせ
-sortie.place_fixed,この話の初期位置は固定
+sortie.place_fixed,初期位置: 固定
 sortie.lesson,この話で覚えること
 sortie.goal,勝ち方
 sortie.enemy,敵の部隊（{army}）
@@ -35,10 +35,12 @@ sortie.option.saved.note,{count} 体・コスト {cost} / {budget}
 sortie.option,{name}　　{note}
 talk.skip,スキップ
 talk.log,ログ
-talk.log.tooltip,これまでの会話を読む（ホイールを上へ・L でも）
+talk.log.tooltip,会話のログ（ホイール・L）
 talk.log.title,会話のログ
 talk.log.close,閉じる
-talk.hint,クリック・Enter: 次へ ▼　右クリック: 戻る　ホイール: ログ
+talk.guide.next,次へ
+talk.guide.back,戻る
+talk.guide.log,ログ
 talk.resume,会話へ戻る
 talk.next_episode,次の話へ
 story.episodes.roster,"雇える駒: {kinds}

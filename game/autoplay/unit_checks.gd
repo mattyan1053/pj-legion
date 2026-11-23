@@ -168,10 +168,10 @@ func _queue_heal_scene() -> void:
 		# スキルの説明は、駒の情報にいつも出ている。メニューの項目にマウスを乗せると、押すと何が起きるかが出る。
 		var skill := Skills.of(medic)
 		_expect(_scene.info_text().replace("\n", "").contains(Names.skill_summary(skill)), "駒の情報に、スキルの説明が出ていない")
-		_scene.hover_menu_item(&"wait")
-		_expect(_scene.info_text().contains("待機"), "メニューの項目の説明が出ていない")
+		_scene.hover_menu_item(&"heal")
+		_expect(_scene.info_text().contains("行動終了"), "メニューの項目の説明が出ていない: %s" % _scene.info_text())
 		_scene.hover_menu_item(&"")
-		_expect(not _scene.info_text().contains("待機:"), "マウスが離れても、項目の説明が残っている")
+		_expect(not _scene.info_text().contains("行動終了"), "マウスが離れても、項目の説明が残っている")
 		_expect(_scene.press_menu(&"heal") and _scene.is_choosing_target(), "メニューの回復で、相手を選び始めなかった")
 		_scene.hover(wounded.cell)
 		_expect_forecast(["回復", Names.unit(wounded), "+%d" % medic.power()], "回復")
@@ -353,7 +353,7 @@ func _queue_ult_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(_scene.played.get(ready, 0) == 1, "ゲージがいっぱいになったことを再生しなかった")
 		_expect(_scene.ult_gauge_text(1) == "READY" and _scene.is_ult_enabled(), "プレイヤー2 の番に、必殺技のボタンが押せない")
-		_expect(_scene.hint_cut_lines().is_empty(), "必殺技のボタンが広がって、下の帯の案内が切れた: %s" % [_scene.hint_cut_lines()])
+		_expect(not _scene.guide_overflows(), "必殺技のボタンが広がって、下の帯の案内がはみ出した: %s" % _scene.guide_text())
 		_scene.press_ult()
 		_scene.pass_confirm_guard()
 		_scene.press_ult())
