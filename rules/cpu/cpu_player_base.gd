@@ -99,6 +99,7 @@ const HQ_VALUE_RAIDER := 150.0
 const HQ_VALUE_OTHER := 60.0
 const HQ_HOLD_VALUE := 400.0
 ## 将のいない自分の本陣のマスに立つ価値（敵が GUARD_RADIUS 以内にいるとき。乗っていれば、敵は占拠できない）。
+## 長引いたら、踏み込みの度合いに合わせて 0 まで下げる（本陣に乗ったまま動かない駒がいると、回復し合う相手と決着しない）。
 const HQ_GUARD_VALUE := 80.0
 const GUARD_RADIUS := 10
 ## 奇襲が、空いている敵の本陣へ乗りに行く距離（歩数）。これより遠ければ、敵の駒を狙う。
@@ -222,6 +223,8 @@ var _goal_reach := 0
 var _goal_weight := 0.0
 var _danger_weight := 0.0
 var _idle_danger_weight := 0.0
+## 長引いたときの踏み込みの度合い（0〜1。BOLD_FROM_TURN から BOLD_BY_TURN にかけて 0 から 1）。_set_goal が決める。
+var _bold := 0.0
 ## 敵が自分の本陣の近く（GUARD_RADIUS 以内）にいるか。
 var _hq_in_danger := false
 ## 勝ちの条件の読み（rules/cpu/win_conditions_cpu.gd）。守る側か、攻める側で急ぐか。
