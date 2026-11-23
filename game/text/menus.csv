@@ -1,35 +1,35 @@
 keys,ja
 settings.section.control,操作
 settings.mouse_sensitivity,マウスの感度
-settings.mouse_sensitivity.note,ドラッグで視点を回す・傾ける速さ
-settings.invert_vertical_drag,縦のドラッグを逆にする
-settings.invert_vertical_drag.note,オフ: 下へ動かすと真上から見下ろす。オン: 上へ動かすと真上から見下ろす
+settings.mouse_sensitivity.note,視点の回転・傾きの速さ
+settings.invert_vertical_drag,縦のドラッグを反転
+settings.invert_vertical_drag.note,オフ: 下へドラッグで見下ろす　オン: 上へドラッグで見下ろす
 settings.section.playback,再生
 settings.cpu_playback_speed,CPU の番の速さ
-settings.cpu_playback_speed.note,CPU の駒が動く・攻撃するところを見せる速さ（中立の番は変わらない）
+settings.cpu_playback_speed.note,CPU の移動と攻撃の再生の速さ（中立の番は対象外）
 settings.cpu_playback_speed.normal,ふつう
 settings.cpu_playback_speed.fast,速い
 settings.cpu_playback_speed.faster,とても速い
 settings.section.sound,音
 settings.master_volume,全体の音量
-settings.master_volume.note,BGM と効果音の両方に掛かる
+settings.master_volume.note,BGM と効果音の両方
 settings.music_volume,BGM の音量
 settings.music_volume.note,タイトル・会話・対戦・決着の曲
 settings.effects_volume,効果音の音量
-settings.effects_volume.note,スライダーを離すと、ボタンの音で大きさを確かめられる
+settings.effects_volume.note,スライダーを離すと試聴
 settings.mute,音を消す
-settings.mute.note,音量はそのままで、すべての音を止める
+settings.mute.note,すべての音を停止（音量の設定は保持）
 settings.section.screen,画面
 settings.fullscreen,全画面
-settings.fullscreen.note,オフ: 窓で開く（端をドラッグで大きさを変えられる）。Alt+Enter でも切り替え
+settings.fullscreen.note,オフ: ウィンドウ表示　Alt+Enter: 切り替え
 settings.show_minimap,ミニマップ
-settings.show_minimap.note,対戦の画面の右上に盤の縮図を表示。押すと、その場所へ視点を移す
+settings.show_minimap.note,対戦の右上に盤の縮図を表示
 settings.screen_effects,画面の効果
-settings.screen_effects.note,光のにじみ、物の合わせ目の陰、色の調子。動きが重いときは切る
+settings.screen_effects.note,光のにじみ・陰・色の調子。重いときはオフ
 settings.piece_outline,駒の縁取り
-settings.piece_outline.note,盤の駒と会話の姿に暗い縁を付ける。次の画面から替わる
+settings.piece_outline.note,盤の駒と会話の姿に暗い縁。次の画面から反映
 settings.unit_look,駒の見た目
-settings.unit_look.note,盤の駒・アイコン・会話の姿の形。次の画面から替わる（対戦の途中なら、次の対戦から）
+settings.unit_look.note,盤の駒・アイコン・会話の姿。次の画面から反映（対戦中は次の対戦から）
 settings.unit_look.kaykit,人形
 settings.unit_look.tokens,盤の駒
 settings.unit_look.quaternius,人物
@@ -59,7 +59,6 @@ menu.corner,メニュー
 menu.corner.tooltip,メニュー（Esc）
 menu.confirm.cancel,キャンセル
 menu.title,メニュー
-map_select.prompt,カードにマウスを乗せると説明を表示。クリックで決定
 map_select.row.generated,ランダム生成 ─ 対戦のたびに形が変わる
 map_select.row.hand,固定マップ ─ いつも同じ形
 map_select.tag.generated,ランダム

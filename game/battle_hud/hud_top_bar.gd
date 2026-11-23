@@ -345,7 +345,7 @@ func _build_top_bar() -> void:
 		_sign_marks.append(mark)
 		_sign_names.append(name)
 
-	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。小さく 1 行だけ。
+	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。キーの印と一語を、小さく 1 行だけ。
 	var help_panel := _panel()
 	_guide_panel = help_panel
 	(help_panel.get_theme_stylebox("panel") as StyleBoxFlat).set_content_margin_all(4.0)
@@ -356,8 +356,10 @@ func _build_top_bar() -> void:
 	help_panel.offset_top = TOP_BAR_HEIGHT + 4.0
 	help_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(help_panel)
-	var help := _label(13)
-	help.text = Text.t("battle.hud.camera_help")
-	help.add_theme_color_override("font_color", COLOR_TEXT_DIM)
-	help.add_theme_constant_override("outline_size", 0)
+	var help := KeyMarks.new()
+	help.set_parts([
+		KeyMarks.key(Text.t("common.key.drag"), Text.t("battle.hud.camera.turn")),
+		KeyMarks.key(Text.t("common.key.wheel"), Text.t("battle.hud.camera.zoom")),
+		KeyMarks.key(Text.t("common.key.wasd"), Text.t("battle.hud.camera.pan")),
+	])
 	help_panel.add_child(help)

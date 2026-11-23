@@ -128,16 +128,13 @@ func _refresh() -> void:
 			_view(shown.id).set_status_mark(not Statuses.types_of(shown).is_empty())
 	_refresh_formation()
 	_refresh_status(battle.turn, battle.phase)
-	_hud.set_hint(BattleTexts.hint(
-		battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult, _is_self_skill(unit),
-		Queries.unacted_count(battle) if _ui.confirming_end else 0, _warp != NO_CELL, _ui.pinned_ids.size()
-	))
-	if _ui.confirming_auto:
-		_hud.set_hint(BattleTexts.auto_confirm_hint())
-	elif _auto_running():
-		_hud.set_hint(BattleTexts.auto_running_hint())
-	if _talk != null and _talk.is_holding():
-		_hud.set_hint(Text.t("battle.hint.talk"))
+	var guide: Array[Dictionary] = []
+	if not _auto_running() and not (_talk != null and _talk.is_holding()):
+		guide = BattleTexts.guide(
+			battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult or _ui.confirming_auto,
+			Queries.unacted_count(battle) if _ui.confirming_end else 0, _ui.pinned_ids.size()
+		)
+	_hud.set_guide(guide)
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
 		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
@@ -384,8 +381,11 @@ func _update_info_panel() -> void:
 		return
 	if _ui.menu_hover_id != &"" and selected_unit() != null and hovered == null and _hud.menu_ids().has(_ui.menu_hover_id):
 		# メニューの項目にマウスを乗せている間は、その項目を押すと何が起きるかを出す。
-		_hud.show_unit(selected_unit(), "", BattleTexts.menu_note(_ui.menu_hover_id, selected_unit(), battle), _ui.menu_hover_id != MENU_SKILL)
-		return
+		# 名前で分かる項目（待機など）は説明が無い。そのときは、いつもの駒の情報のまま。
+		var note := BattleTexts.menu_note(_ui.menu_hover_id, selected_unit(), battle)
+		if note != "":
+			_hud.show_unit(selected_unit(), "", note, _ui.menu_hover_id != MENU_SKILL)
+			return
 	_hud.show_unit(shown, BattleTexts.unit_state(battle, shown), "")
 	# 見ている（クリックした）相手の駒なら、その範囲を表示したままにするスイッチを出す。
 	_hud.set_pin_switch(shown.id == _ui.inspected_id and _can_pin(shown), _ui.pinned_ids.has(shown.id))

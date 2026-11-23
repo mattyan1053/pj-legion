@@ -8,6 +8,8 @@ const SteadyProbe := preload("res://game/steady_probe.gd")
 const DeployNote := preload("res://game/deploy_note.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
+const KeyMarks := preload("res://game/key_marks.gd")
+const Palette := preload("res://game/ui_palette.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
 const Names := preload("res://game/names.gd")
 const Text := preload("res://game/text.gd")
@@ -190,23 +192,25 @@ func test_info_panel_keeps_its_size_whatever_it_shows() -> void:
 	hud.free()
 
 
-## 下の帯: 案内とマスの説明の長さを替えても、同じ大きさ。長いマスの説明は 2 行に折り返して、切れない（案内が 1 行のとき）。
+## 下の帯: 案内（句と印の並び）とマスの説明を替えても、同じ大きさ。案内は使える幅に収まり、長いマスの説明は 2 行に折り返して、切れない。
 func test_bottom_band_keeps_its_size_and_wraps_the_cell_line() -> void:
 	var hud := _hud()
 	await settle(hud)
 	var band := _frame(hud, "battle.bottom_band")
 	var size := band.size
 	assert_eq(size.y, BattleHud.BOTTOM_BAR_HEIGHT)
-	var long_hint := "攻撃する相手を選ぶ。赤いマスの相手にマウスを乗せると見込みを表示。右クリックでメニューへ戻る。もう一度押すと決定"
+	var long_guide: Array = [KeyMarks.phrase(Text.t("battle.guide.unacted", {"count": 12})), KeyMarks.swatch(Palette.TEXT, Text.t("battle.guide.move")),
+		KeyMarks.swatch(Palette.TEXT, Text.t("battle.guide.cruise")), KeyMarks.swatch(Palette.TEXT, Text.t("battle.guide.attack")),
+		KeyMarks.swatch(Palette.TEXT, Text.t("battle.guide.pinned"), true), KeyMarks.key(Text.t("common.key.right_click"), Text.t("battle.guide.cancel"))]
 	var long_cell := Text.t("battle.cell.line", {"title": Text.t("battle.cell.title", {"x": 12, "y": 15, "terrain": Text.t("battle.cell.plain")}),
 		"notes": Text.t("battle.cell.stronghold") + Text.paren(Text.t("battle.cell.stronghold.note", {"needed": 6, "radius": 2}))})
-	for hint: String in ["待機", long_hint]:
+	for guide: Array in [[], long_guide]:
 		for cell: String in ["", "マス (1, 2)　平地", long_cell]:
-			hud.set_hint(hint)
+			hud.set_guide(guide)
 			hud.show_cell(cell)
 			await settle(hud)
-			assert_eq(band.size, size, "案内「%s」、マス「%s」" % [hint.left(6), cell.left(10)])
-	hud.set_hint("待機")
+			assert_eq(band.size, size, "案内「%s」、マス「%s」" % [hud.guide_text().left(6), cell.left(10)])
+			assert_false(hud.guide_overflows(), "案内が、下の帯の欄からはみ出す: %s" % hud.guide_text())
 	hud.show_cell(long_cell)
 	assert_true(hud.cell_line_text().contains("\n"), "長いマスの説明が折り返されない")
 	assert_eq(hud.cell_cut_lines(), [] as Array[String], "拠点の説明が、下の帯で切れる")

@@ -8,6 +8,7 @@ extends CanvasLayer
 ## - 行は、新しいほうから CHUNK 行ずつ作る。いちばん上までさかのぼると、その前の CHUNK 行を足す（長い対戦でも、開くのが重くならない）。
 
 const Text := preload("res://game/text.gd")
+const KeyMarks := preload("res://game/key_marks.gd")
 const CardKeys := preload("res://game/card_keys.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -102,8 +103,8 @@ func setup(team_colors: Array[Color], overlays: RefCounted) -> void:
 	close_button.theme_type_variation = UiTheme.BUTTON_GHOST
 	close_button.pressed.connect(close)
 	title_row.add_child(close_button)
-	var hint := _label(13, COLOR_TEXT_DIM)
-	hint.text = Text.t("battle.log_panel.hint")
+	var hint := KeyMarks.new()
+	hint.set_parts([KeyMarks.key(Text.t("common.key.click"), Text.t("battle.log_panel.show"))])
 	column.add_child(hint)
 
 	_scroll = ScrollContainer.new()
