@@ -139,10 +139,10 @@ sign.thicket,深い茂み
 sign.taut,張りつめた糸
 sign.haze.summary,霞が残る。射程 {haze_from} 以上の攻撃は射程 -{haze_cut}
 sign.brim.summary,必殺技のゲージが {brim}% の速さでたまる
-sign.loose.summary,結晶泉に中立の駒が湧き直しやすい（{respawn}% → {loose}%）
+sign.loose.summary,結晶泉に中立の駒が湧き直しやすい（{loose}%）
 sign.hush.summary,結晶泉に中立の駒が湧き直さない（最初の 1 体だけ）
 sign.shift.summary,ポータルの行き先が入れ替わる
 sign.gale.summary,巡航の移動力 +{gale}
 sign.gleam.summary,裂け目の光が射す。後衛の射程 +{gleam}
-sign.thicket.summary,森にいる駒が受ける攻撃のダメージ {thicket}%（いつもは {forest}%）
+sign.thicket.summary,森にいる駒が受ける攻撃のダメージ {thicket}%
 sign.taut.summary,スキルのクールダウンが {taut} ターン短い
