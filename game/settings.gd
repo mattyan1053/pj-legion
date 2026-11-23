@@ -2,7 +2,7 @@ extends RefCounted
 ## 遊ぶ人ごとの設定（マウスの感度など）。項目の並び・範囲・既定の値と、いまの値を持つ。ノードに依存しない。
 ##
 ## 画面（settings_panel.gd）は ITEMS から行を作るので、項目を足すのは ITEMS に 1 つ足し、効かせる側
-## （操作と再生は battle_screen.gd の _apply_settings、音は sound.gd の apply_settings）に 1 行足すだけで済む。
+## （操作と再生は battle_screen/screen_overlays.gd の _apply_settings、音は sound.gd の apply_settings）に 1 行足すだけで済む。
 ##
 ## 取っておくのは save_store.gd（user:// の JSON）。読めないファイル・知らない項目・型の違う値・範囲の外の値は、
 ## 既定の値に戻すか、範囲に収める（起動を止めない）。

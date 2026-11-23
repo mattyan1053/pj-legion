@@ -367,7 +367,16 @@ func test_battle_sounds_cover_every_style_and_skill() -> void:
 func test_every_sound_name_in_the_code_is_listed() -> void:
 	var pattern := RegEx.create_from_string("(?:play_sound|_sound|Sound\\.play)\\(&\"([a-z_0-9]+)\"\\)")
 	var found := 0
-	for file in DirAccess.get_files_at("res://game"):
+	# 分けた先のディレクトリ（game/battle_screen/ など）も見る。話とマップと文の表のディレクトリには .gd が無い。
+	var files: Array[String] = []
+	var dirs: Array[String] = ["res://game"]
+	while not dirs.is_empty():
+		var dir: String = dirs.pop_back()
+		for sub: String in DirAccess.get_directories_at(dir):
+			dirs.append(dir.path_join(sub))
+		for name: String in DirAccess.get_files_at(dir):
+			files.append(dir.path_join(name).trim_prefix("res://game/"))
+	for file in files:
 		if not file.ends_with(".gd"):
 			continue
 		var text := FileAccess.get_file_as_string("res://game".path_join(file))
