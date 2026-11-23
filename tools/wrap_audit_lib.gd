@@ -110,7 +110,7 @@ static func cue_width(speaker: String) -> float:
 	return BattleTalk.WIDTH - box - plate - BattleTalk.ROW_GAP - face - BattleTalk.ROW_GAP - more - BattleTalk.ROW_GAP
 
 
-## 負けの台詞の板の文の幅（result_screen.gd の _remark_row と同じ引き算。話し手のアイコンが出るとき）。
+## 負けの台詞の板の文の幅（result_screen/result_remark.gd の _remark_row と同じ引き算。話し手のアイコンが出るとき）。
 static func remark_width() -> float:
 	return ResultScreen.REMARK_WIDTH - 12.0 * 2.0 - ResultScreen.REMARK_FACE - 2.0 - 10.0
 
