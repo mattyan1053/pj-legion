@@ -31,6 +31,8 @@ func _queue_setup_scene() -> void:
 		# 設定画面を開いて、選び直してから閉じても、いまの対戦と設定はそのまま（始めるボタンを押すまで、何も変わらない）。
 		_scene.open_setup()
 		_expect(panel.visible and panel.is_cancellable(), "対戦の途中の設定画面を、閉じられない")
+		# 対戦の途中で開くと、マップの行に「マップ変更」のボタンと、下に注意の文が増える。それでも画面に収まる。
+		_expect(panel.fits_screen(), "対戦の途中で開いた対戦設定のパネルが、画面からはみ出している: %s" % panel.panel_rect())
 		panel.choose_field(VersusFields.LABYRINTH)
 		panel.choose_opponent(false)
 		panel.cancel()
