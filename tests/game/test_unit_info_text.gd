@@ -1,25 +1,30 @@
 extends "res://tests/base_test.gd"
-## 駒の情報の枠に出す文（game/battle_hud.gd の static な関数）: 所属、装備の一覧、状態。
+## 駒の情報の枠に出す文（game/battle_hud.gd の static な関数）: 所属の札、名前、装備の一覧、状態。
 
 const Names := preload("res://game/names.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 
 
-func test_affiliation_from_the_viewer() -> void:
+## 所属の札は、対戦モードでは盤を見ている人から見た「自軍」「敵軍」、ストーリーでは遊ぶ人の側から「味方」「敵」。中立はどちらも「中立」。
+func test_side_tag_from_the_viewer() -> void:
 	var sniper := Unit.new(1, UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i.ZERO)
 	var core := Unit.new(2, UnitKind.Id.MINION, Unit.Side.NEUTRAL, Vector2i.ZERO)
-	assert_true(BattleHud.affiliation_text(sniper, Unit.Side.PLAYER1).begins_with("[自軍]"))
-	assert_true(BattleHud.affiliation_text(sniper, Unit.Side.PLAYER2).begins_with("[敵軍]"))
-	assert_true(BattleHud.affiliation_text(sniper, Unit.Side.PLAYER1).contains("MILITARY"))
-	assert_true(BattleHud.affiliation_text(core, Unit.Side.PLAYER1).begins_with("[中立]"))
-	var paladin := Unit.new(3, UnitKind.Id.PALADIN, Unit.Side.PLAYER1, Vector2i.ZERO)
-	assert_true(BattleHud.affiliation_text(paladin, Unit.Side.PLAYER1, UnitKind.Army.MILITARY).ends_with("MILITARY（FANTASY 出身）"),
-			"ほかの軍の駒は、陣営の軍と、駒の種類の軍を並べる")
-	assert_true(BattleHud.affiliation_text(sniper, Unit.Side.PLAYER1, UnitKind.Army.MILITARY).ends_with("MILITARY"), "同じ軍なら 1 つだけ")
-	var skeleton := Unit.new(4, UnitKind.Id.SKELETON, Unit.Side.PLAYER2, Vector2i.ZERO)
-	var monster := BattleHud.affiliation_text(skeleton, Unit.Side.PLAYER1, UnitKind.Army.FANTASY)
-	assert_true(monster.begins_with("[敵軍]") and monster.ends_with("魔物"), "魔物は軍の名前のかわりに「魔物」: %s" % monster)
-	assert_false(monster.contains("FANTASY"), "魔物に陣営の軍の名前を付けない")
+	assert_eq(BattleHud.side_tag(sniper, Unit.Side.PLAYER1), "自軍")
+	assert_eq(BattleHud.side_tag(sniper, Unit.Side.PLAYER2), "敵軍")
+	assert_eq(BattleHud.side_tag(core, Unit.Side.PLAYER1), "中立")
+	Names.story_sides = true
+	assert_eq(BattleHud.side_tag(sniper, Unit.Side.PLAYER1), "味方")
+	assert_eq(BattleHud.side_tag(Unit.new(3, UnitKind.Id.SNIPER, Unit.Side.PLAYER2, Vector2i.ZERO), Unit.Side.PLAYER1), "敵")
+	assert_eq(BattleHud.side_tag(core, Unit.Side.PLAYER1), "中立")
+	Names.story_sides = false
+
+
+## 進化した駒の名前の欄は、進化先の名前と、元の種類。
+func test_title_names_the_kind_of_an_evolved_unit() -> void:
+	var blade := Unit.new(1, UnitKind.Id.SPELLBLADE, Unit.Side.PLAYER1, Vector2i.ZERO)
+	assert_eq(BattleHud.unit_title(blade), Names.kind(UnitKind.Id.SPELLBLADE))
+	blade.evolution = Evolution.options_for(UnitKind.Id.SPELLBLADE)[0]
+	assert_eq(BattleHud.unit_title(blade), "%s（%s）" % [Names.evolution(blade.evolution), Names.kind(UnitKind.Id.SPELLBLADE)])
 
 
 func test_equipment_is_counted() -> void:
