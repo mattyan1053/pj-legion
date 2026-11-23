@@ -292,6 +292,12 @@ func _run() -> void:
 		# システムメニューを開いている間は時間が止まるので、待つのは時間の速さに依らない時計で測る。
 		await get_tree().create_timer(SETTLE, true, false, true).timeout
 		await _banner_gone()
+		if _app.current_id() == SceneFlow.BATTLE:
+			# カメラが寄り終わってから、メニューと予測のパネルを置き直す（寄る間は前に選んだ側をひいきするので、
+			# 置き場所が撮る時刻で変わる。場面 marks・move）。
+			await _camera_still()
+			_scene.replace_panels()
+			await get_tree().process_frame
 		if not await _capture(name):
 			return
 	if not failed.is_empty():
@@ -311,6 +317,8 @@ func _keep_unit_look() -> void:
 ## 場面を作る前に、前の場面の状態を戻し、種 seed の新しい対戦を用意する。
 func _reset(seed: int) -> void:
 	_app.system_menu().close()
+	if _app.quit_window.is_open():
+		_app.quit_window.close()  # 前の場面（window_close）の × の確かめを閉じる（開いたままだと時間が止まり、次の場面が進まない）
 	_app.context.settings.reset_all()
 	_keep_unit_look()
 	if OS.get_cmdline_user_args().has("--no-effects"):
@@ -320,6 +328,8 @@ func _reset(seed: int) -> void:
 	_app.context.story.load_data({})  # 前の場面（ストーリー）のクリアの記録を持ち越さない
 	_app.context.story.open_all = false  # 前の場面（story_open_all）の確かめ用の解放（F5）も持ち越さない（残ると、記録に書かず、隅に印が出る）
 	_app.context.story.choose_campaign(Story.military())  # 前の場面が選んだ物語も持ち越さない
+	_app.context.match_choice = MatchChoice.new()  # 前の場面が選んだマップと決まりも持ち越さない（マップ選択の背景は、選んでいるマップの景色）
+	_app.system_menu().settings_panel().scroll_to_top()  # 前の場面（settings_screen）で下まで送ったオプションの画面を戻す
 	if _app.current_id() != SceneFlow.BATTLE or _app.context.run != null:
 		_app.context.run = null  # 流れ（ストーリーの話）の中の対戦の場面は使わない
 		_app.context.match_choice.cpu_opponent = false
@@ -334,10 +344,13 @@ func _reset(seed: int) -> void:
 	_scene.hover_menu_item(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
 	if _scene.is_threat_shown():
 		_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
+	_park_mouse()  # 本物のマウスも、前の場面で置いた所から戻す（演出の途中を撮る場面は、撮る前に置き直さないので、マウスの下の駒の情報が出てしまう）
 	_field = VersusFields.PLAIN
 	_seed = seed
 	_new_battle()
 	_aim(22.0, 0.0, OrbitCamera.DEFAULT_PITCH)  # 前の場面で動かしたカメラを戻す（ほかの場面は、始めの向きと角度で撮る）
+	# 戻り終わるまで待つ（寄る途中で場面がログやメニューを開くと、時間が止まり、前の場面のカメラの名残りのまま撮れる）。
+	await _camera_still()
 	_mid_animation = false
 
 

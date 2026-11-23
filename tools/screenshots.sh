@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ゲームの決まった場面を撮る（tools/screenshots.gd）。画面の無いコンテナでは、仮想の画面（Xvfb）とソフトウェア描画で撮る。
 # 手元（作業のセッションのコンテナ）で回すもの。CI には入れない。使い方は docs/screenshots.md。
+# 打ち切りは 600 秒。全部を撮るときは SHOTS_TIMEOUT=<秒> で延ばす。
 #
 #   tools/screenshots.sh <godot> <出力のディレクトリ> [場面,場面,…|all] [--size=<幅>x<高さ>]
 #                                        --size は窓の大きさ（既定は 1280x720）。
@@ -56,7 +57,7 @@ fi
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 # スクリプトが読み込めない（文法の誤りなど）と、Godot は終わらずに待ち続ける。ログを見て、読み込めなかったら、すぐに止める。
-timeout 600 "${cmd[@]}" >"$log" 2>&1 &
+timeout ${SHOTS_TIMEOUT:-600} "${cmd[@]}" >"$log" 2>&1 &
 pid=$!
 broken=""
 while kill -0 "$pid" 2>/dev/null; do
