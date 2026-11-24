@@ -2,7 +2,7 @@
 
 コード: `game/app.gd`（開く・並べる項目）、`game/system_menu.gd`（メニュー）、`game/settings_panel.gd`（オプションの画面）、`game/settings.gd`（設定の項目と値）、
 `game/save_store.gd`（取っておく仕組み）、`game/overlay_stack.gd`（重なる画面の積み上げ）。対戦の場面のつなぎは `game/battle_screen.gd` の「システムメニューと設定」。
-テスト: `tests/game/test_settings.gd`、`tests/game/test_system_menu.gd`、`tests/game/test_overlay_stack.gd`、`tests/game/test_orbit_camera.gd`、自動の対戦（`game/autoplay/setup_checks.gd` の `_queue_system_menu_scene`）。
+テスト: `tests/game/test_settings.gd`、`tests/game/test_settings_panel.gd`、`tests/game/test_system_menu.gd`、`tests/game/test_overlay_stack.gd`、`tests/game/test_orbit_camera.gd`、自動の対戦（`game/autoplay/setup_checks.gd` の `_queue_system_menu_scene`）。
 
 ## 開き方
 
@@ -66,6 +66,8 @@
 
 - 項目は `settings.gd` の `ITEMS` に並べ、画面はそれだけを見て行を作る。**項目を足すのは、`ITEMS` に 1 つ足し、効かせる側（操作と再生は `battle_screen/screen_overlays.gd` の `_apply_settings`、音は `sound.gd` の `apply_settings`）に 1 行足すだけ。**
   種類は、スライダー（整数の範囲と刻み）、オン・オフ、選択肢。オン・オフも、押されているほうが色で分かるボタンを 2 つ並べる。
+- 行の幅は中身で変えない。選ぶボタンの数や言葉が違っても、右の「初期値に戻す」は縦にそろう（選ぶボタンの行は、スライダーの値の欄のぶんもボタンに回す。
+  ボタンは言葉が長くても広がらない。収まることは `test_settings_panel.gd` が見る）。
 - 項目の並ぶ枠は、720 の高さに収まらなければ縦に送れる（ホイールか右の棒。`settings_panel.gd` の `ROWS_MAX_HEIGHT`）。
   見出しの「オプション」と、下の「すべて初期値に戻す」「戻る」は送らずに、いつも見える。項目が多いと、少し送る。
 

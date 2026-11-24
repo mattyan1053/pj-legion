@@ -305,6 +305,8 @@ func _scene_story_monster_info() -> bool:
 
 
 ## 場面 story_monster_king の構図: カメラの距離、向き（度）、見る点を将からずらす量（向きが 0 度のときのもの）。
+## 糸喰いを倒す攻撃を始めてから、弾けた瞬間を撮るまでの時間（遊びの時間の秒。SLOW_MOTION で遅くして待つ）。
+const BURST_AFTER := 2.4
 const KING_FRAME_DISTANCE := 8.0
 const KING_FRAME_YAW := 70.0
 const KING_FRAME_SHIFT := Vector3(0.0, 0.0, -0.8)
@@ -538,6 +540,82 @@ func _scene_story_patrol_spores() -> bool:
 		return false
 	_scene.hover(target.cell)
 	return _scene.forecast_text().contains(Text.t("battle.log.note.spores"))
+
+
+## 番外の 4 話目（全滅させる）と 5 話目（守り切る 8 ターン）の対戦の始めの、対戦ルールの札と上の帯。
+func _scene_story_patrol_rules_eaters() -> bool:
+	return await _patrol_battle(3) and _scene.notice_text() != ""
+
+
+func _scene_story_patrol_rules_vale() -> bool:
+	return await _patrol_battle(4) and _scene.notice_text() != ""
+
+
+## 番外の 5 話目で、離れて攻撃する人の駒を選び、攻撃の相手を選ぶところ。届く距離に殻蟹がいるが、離れているので狙えない。
+## 殻蟹にマウスを乗せる（範囲の色と、駒の情報の札の言葉）。
+func _scene_story_patrol_crab_far() -> bool:
+	var found := func() -> Array:
+		for unit: Unit in _battle.units:
+			if unit.side != Unit.Side.PLAYER1 or not _battle.can_act(unit) or Combat.targets(_battle, unit).is_empty():
+				continue
+			for crab: Unit in _battle.units:
+				if crab.kind == UnitKind.Id.CRAB and Monsters.shell_turns_away(unit.cell, crab) \
+						and Combat.reaches(_battle, unit.cell, crab.cell, unit.attack_range()):
+					return [unit, crab]
+		return []
+	if not await _patrol_vale_until(func() -> bool: return not found.call().is_empty()):
+		return false
+	var pair: Array = found.call()
+	var unit: Unit = pair[0]
+	var crab: Unit = pair[1]
+	_look_at((BoardView.cell_center(unit.cell) + BoardView.cell_center(crab.cell)) * 0.5)
+	_aim(10.0, 0.0, 55.0)
+	for i in 3:
+		await get_tree().process_frame
+	_scene.click_cell(unit.cell)
+	_scene.click_cell(unit.cell)  # 動かずに、その場で行動のメニューを出す
+	for i in 120:
+		await get_tree().process_frame
+	if not _scene.press_menu(&"attack"):
+		return false
+	_scene.hover(crab.cell)
+	return true
+
+
+## 番外の 4 話目で、人の駒が糸喰いを倒し、腹の糸が弾けた瞬間（届いたマスの色と「弾けた」）。演出の途中を撮る。
+func _scene_story_patrol_burst() -> bool:
+	if not await _patrol_battle(3):
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
+	var finisher := func() -> Array:
+		if _battle.phase != Unit.Side.PLAYER1:
+			return []
+		for unit: Unit in _battle.units:
+			if unit.side != Unit.Side.PLAYER1 or not _battle.can_act(unit):
+				continue
+			for target: Unit in Combat.targets(_battle, unit):
+				if target.kind == UnitKind.Id.EATER and Combat.damage(_battle, unit, target) >= target.hp:
+					return [unit, target]
+		return []
+	if not _advance(func() -> bool: return not finisher.call().is_empty()):
+		return false
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	_scene.battle_log = _log
+	_scene.hide_notice()
+	var pair: Array = finisher.call()
+	var unit: Unit = pair[0]
+	var target: Unit = pair[1]
+	await _settle_camera(target.cell)
+	_park_mouse()
+	_scene.set_time_scale_base(SLOW_MOTION)
+	_scene.act(AttackAction.new(unit.id, target.id))
+	await get_tree().create_timer(BURST_AFTER).timeout
+	_mid_animation = true
+	return true
 
 
 func _first_unit_of(kind: UnitKind.Id) -> Unit:

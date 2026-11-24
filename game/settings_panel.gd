@@ -22,6 +22,8 @@ const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const LABEL_WIDTH := 230.0
 const NOTE_WIDTH := 560.0
 const CONTROL_WIDTH := 300.0
+## スライダーの値（「80%」）の欄の幅（px）。選ぶボタンの並ぶ項目は値を出さないので、この欄のぶんもボタンに回す。
+const VALUE_WIDTH := 90.0
 ## 項目の並ぶ枠の高さの上限（px）。見出し・下のボタン・余白と合わせて、720 の高さに収まる。超えたら縦に送る。
 const ROWS_MAX_HEIGHT := 524.0
 ## 縦に送るときに、送る棒のために足す幅（px）。
@@ -132,7 +134,11 @@ func _build_row(entry: Dictionary) -> Control:
 
 	var control: Variant
 	var holder := HBoxContainer.new()
-	holder.custom_minimum_size = Vector2(CONTROL_WIDTH, 36.0)
+	var slider_row: bool = entry["kind"] == Settings.Kind.SLIDER
+	# 枠の大きさは中身で変えない: 選択肢の数や言葉で、行の右の「初期値に戻す」を動かさない。
+	# 選ぶボタンの項目は、値の欄のぶんも使う（どちらの行も、同じ幅になる）。
+	var row_gap := row.get_theme_constant("separation")
+	holder.custom_minimum_size = Vector2(CONTROL_WIDTH if slider_row else CONTROL_WIDTH + VALUE_WIDTH + row_gap, 36.0)
 	holder.add_theme_constant_override("separation", 6)
 	row.add_child(holder)
 	match entry["kind"]:
@@ -160,6 +166,8 @@ func _build_row(entry: Dictionary) -> Control:
 				# 押されている（選んでいる）ボタンは、テーマの「選ばれている」の形（金の縁と濃い金の地）になる。
 				button.custom_minimum_size = Vector2(0.0, 36.0)
 				button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				# 言葉が長くても、ボタンが広がって欄を押し出さない（収まることは test_settings_panel.gd が見る）。
+				button.clip_text = true
 				var choice_value: Variant = choice[0]
 				button.pressed.connect(func() -> void: settings.set_value(key, choice_value))
 				holder.add_child(button)
@@ -167,8 +175,9 @@ func _build_row(entry: Dictionary) -> Control:
 			control = buttons
 
 	var shown := _label(17)
-	shown.custom_minimum_size = Vector2(90.0, 0.0)
+	shown.custom_minimum_size = Vector2(VALUE_WIDTH, 0.0)
 	shown.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	shown.visible = slider_row
 	row.add_child(shown)
 	var reset := _button(Text.t("settings.reset"), 15)
 	reset.custom_minimum_size = Vector2(110.0, 34.0)
@@ -182,6 +191,16 @@ func _build_row(entry: Dictionary) -> Control:
 	_set_folded(note, Text.t(entry["note"]) if entry.has("note") else "", NOTE_WIDTH)
 	_rows[key] = {"control": control, "value": shown, "reset": reset}
 	return box
+
+
+## 検査用: 項目 key の行の「初期値に戻す」ボタンと、選ぶボタン（選択肢の値 -> Button。スライダーなら空）。
+func row_reset_button(key: StringName) -> Button:
+	return _rows[key]["reset"]
+
+
+func row_choice_buttons(key: StringName) -> Dictionary:
+	var control: Variant = _rows[key]["control"]
+	return control if control is Dictionary else {}
 
 
 func _label(font_size: int) -> Label:
