@@ -22,6 +22,8 @@ var amount := 0
 var critical := false
 ## 森の軽減が掛かったか（駒の攻撃だけ。amount は軽減したあとの量）。
 var forest := false
+## 糸茸の胞子で弱まったか（駒の攻撃だけ。amount は引いたあとの量。Monsters.spore_penalty）。
+var spores := false
 ## 組み方（Formation）で増えた・減った量（Formation.Effect -> 量。減ったもの（肩並べ）も正の量で持つ）。駒の攻撃だけ。
 var formation := {}
 ## ダメージを 0 にした、受ける側の状態（Status.Type）。無ければ -1。

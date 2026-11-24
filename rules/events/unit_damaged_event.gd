@@ -25,6 +25,8 @@ var cause: Cause
 var critical := false
 ## 森の軽減が掛かったか（駒の攻撃だけ。amount は軽減したあとの量）。
 var forest := false
+## 糸茸の胞子で弱まったか（駒の攻撃だけ。amount は引いたあとの量）。
+var spores := false
 ## ダメージを 0 にした、受けた駒の状態（Status.Type。バリア）。防がれていなければ -1。
 ## 防がれたときは amount が 0 で、このあとに、その状態が外れる StatusRemovedEvent が続く。
 var blocked_by := -1
@@ -40,6 +42,7 @@ func _fill(hit: Hit) -> void:
 	cause = hit.cause
 	critical = hit.critical
 	forest = hit.forest
+	spores = hit.spores
 	blocked_by = hit.blocked_by
 	formation = hit.formation.duplicate()
 

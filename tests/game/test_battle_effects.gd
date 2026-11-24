@@ -35,6 +35,8 @@ func test_styles_follow_the_role() -> void:
 		UnitKind.Id.NEEDLE: BattleEffects.Style.SHOT,
 		UnitKind.Id.SPIDER: BattleEffects.Style.SLASH,
 		UnitKind.Id.EATER: BattleEffects.Style.SLAM,
+		UnitKind.Id.CRAB: BattleEffects.Style.SLAM,
+		UnitKind.Id.SHROOM: BattleEffects.Style.SLASH,
 	}
 	assert_eq(expected.size(), UnitKind.Id.size(), "表に無い種類がある")
 	for kind: UnitKind.Id in expected:

@@ -40,6 +40,8 @@ enum Trait {
 	KNOT_ON_FALL,  ## 倒れると、結び目が残る。踏まれずにいると立ち直る。魔物のほつれ（Monsters）
 	BINDS_ON_HIT,  ## 攻撃を当てた相手に、絡み（Status.Type.SNARE）を付ける。魔物の糸蜘蛛（Monsters）
 	BURSTS_ON_FALL,  ## 倒れると弾けて、周り 8 マスの駒すべてにダメージ。魔物の糸喰い（Monsters）
+	SHELLED,  ## 離れた所（Combat.RANGED_DISTANCE 以上）からの攻撃では狙えない。魔物の殻蟹（Monsters）
+	SPORES,  ## 周り 8 マスにいる敵の攻撃のダメージを減らす。魔物の糸茸（Monsters）
 }
 
 # ---- 調整値（docs/branch-evolution.md の「調整値」） ----

@@ -88,6 +88,8 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 				row.notes.append(Text.t("battle.log.note.critical"))
 			if outcome.forest:
 				row.notes.append(Text.t("battle.log.note.forest"))
+			if outcome.spores:
+				row.notes.append(Text.t("battle.log.note.spores"))
 			for effect: int in outcome.formation:  # 組み方で増える・減るぶん（docs/formation.md）
 				var down := effect == Formation.Effect.SQUAD_GUARD
 				row.notes.append(Text.t("battle.pop.formation_down" if down else "battle.pop.formation_up",
