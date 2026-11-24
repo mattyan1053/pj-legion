@@ -13,6 +13,8 @@ uniform float hue_width = 0.06;
 uniform float min_saturation = 0.25;
 // 塗り替える所の、素材の絵のふつうの明るさ（0〜1）。
 uniform float ref_value = 0.3;
+// 自分で光る強さ（素材の色に掛ける）。笠の陰に入る糸茸の顔のように、陰で沈む所を持ち上げる。
+uniform float glow = 0.0;
 
 vec3 rgb_to_hsv(vec3 c) {
 	vec4 k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -32,5 +34,6 @@ void fragment() {
 		* smoothstep(min_saturation * 0.6, min_saturation, hsv.y);
 	vec3 team = team_color * clamp(hsv.z / ref_value, 0.35, 1.25);
 	ALBEDO = mix(linear_color * tint, team, weight) * shade;
+	EMISSION = ALBEDO * glow;
 	ROUGHNESS = 0.8;
 }

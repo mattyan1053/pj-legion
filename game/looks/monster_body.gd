@@ -27,7 +27,7 @@ const THREAD := Palette.MONSTER_GLOW
 ## 素材ごとの形。"file" は DIR の FBX の名前（"path" があれば、そのファイル）。"raw" は素材の足から頭の上までの高さ（素材は cm で入っていて、骨の親が 100 倍）、"size" は駒の背に対する大きさ、
 ## "lift" は浮かせる高さ（駒の背に対する割合）、"turn" は前を向かせる回し方（度）、"paint" は塗り替える面（素材のマテリアルの名前 -> "team" か色）。
 ## "recolor" は絵の色合いで塗り替えるもの（"texture" は絵のファイル。無ければ素材の絵。"hue"・"width" は陣営の色にする色合い（0〜1）とその幅、
-## "value" はその所の絵のふつうの明るさ、"tint" はほかの所に掛ける色）。"recolor" があれば "paint" は見ない。
+## "value" はその所の絵のふつうの明るさ、"tint" はほかの所に掛ける色、"glow" は自分で光る強さ（陰で沈む所を持ち上げる。無ければ 0））。"recolor" があれば "paint" は見ない。
 const MODELS := {
 	UnitKind.Id.BAT: {
 		"file": "Bat", "raw": 4.3, "size": 0.65, "lift": 0.3,
@@ -69,7 +69,7 @@ const MODELS := {
 	UnitKind.Id.SHROOM: {
 		"path": CUTE + "Mushroom.fbx", "raw": 3.3, "size": 0.7, "lift": 0.0,
 		"moves": {&"idle": &"MonsterArmature|Idle"},
-		"recolor": {"texture": CUTE + "Mushroom_Texture.png", "hue": 0.05, "width": 0.045, "value": 0.31, "tint": Color.WHITE},
+		"recolor": {"texture": CUTE + "Mushroom_Texture.png", "hue": 0.05, "width": 0.045, "value": 0.31, "tint": Color(1.5, 1.45, 1.3), "glow": 0.35},
 	},
 }
 
@@ -125,6 +125,7 @@ static func _recolor(mesh: MeshInstance3D, recolor: Dictionary, team_color: Colo
 			material.set_shader_parameter(&"hue_center", recolor["hue"])
 			material.set_shader_parameter(&"hue_width", recolor["width"])
 			material.set_shader_parameter(&"ref_value", recolor["value"])
+			material.set_shader_parameter(&"glow", recolor.get("glow", 0.0))
 			_materials[key] = material
 		mesh.set_surface_override_material(i, _materials[key])
 
