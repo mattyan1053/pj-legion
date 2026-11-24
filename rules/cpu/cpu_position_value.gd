@@ -176,7 +176,8 @@ func _break_stall(unit: Unit, role: UnitKind.Role, goal: Vector2i) -> Vector2i:
 	var king := _foe_king()
 	if king == null:
 		return goal
-	if _takes_stronghold:
+	if _takes_stronghold and _fighter_count() > 1:
+		# 拠点の受け持ちは残る。ただし戦う駒がその 1 体だけなら、残しても、拠点の隣で治し合うまま決着しないので、将へ向かう。
 		_choose_stronghold_taker()
 		if unit.id == _stronghold_taker:
 			return goal
@@ -220,6 +221,15 @@ func _foes_left() -> bool:
 		if other.side == _foe:
 			return true
 	return false
+
+
+## 自分の軍の、戦える駒（前衛・後衛・奇襲）の数。
+func _fighter_count() -> int:
+	var count := 0
+	for other in _battle.units:
+		if other.side == _me and other.kind != UnitKind.Id.KING and UnitKind.role(other.kind) != UnitKind.Role.HEALER:
+			count += 1
+	return count
 
 
 ## 自分の軍に、戦える駒（前衛・後衛・奇襲）が残っているか。

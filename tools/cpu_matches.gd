@@ -556,7 +556,8 @@ static func _override_traits(setup: MatchSetup, how: String, game_seed: int) -> 
 		setup.scenario.deck_traits = false
 		return
 	var rng := RandomNumberGenerator.new()
-	rng.seed = game_seed * 7919 + 13
+	# 近い種で同じ並びにならないよう、種を混ぜる（そのままだと、軍どうしの特徴の組み合わせが片寄る）。
+	rng.seed = hash(game_seed * 7919 + 13)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var deck := setup.deck_of(side).copy()
 		var choices := Traits.of_army(deck.army)

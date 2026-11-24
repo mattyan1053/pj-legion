@@ -31,7 +31,7 @@ const NONE := -1
 ## 集中砲火で、与えるダメージに足す量。
 const FOCUS_BONUS := 2
 ## 隊列で、攻撃で受けるダメージから引く量。
-const RANKS_GUARD := 4
+const RANKS_GUARD := 6
 ## 補給線で、ターンの始めに回復する量。
 const SUPPLY_HEAL := 4
 ## 仇討ちで、与えるダメージに足す量。

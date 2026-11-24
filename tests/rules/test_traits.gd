@@ -254,14 +254,14 @@ func test_units_felled_by_a_burst_make_the_eater_killer_a_foe_to_avenge() -> voi
 	assert_eq(Traits.attack_boosts(battle, mage, killer), {T.VENGEANCE: Traits.VENGEANCE_BONUS})
 
 
-## 糸蜘蛛の攻撃は駒の攻撃なので、隊列で減る。減っても絡む。
+## 糸蜘蛛の攻撃は駒の攻撃なので、隊列で減る（0 より下にはならない）。減っても絡む。
 func test_ranks_cut_a_spider_bite_and_the_target_is_still_snared() -> void:
 	var battle := _battle(Traits.NONE, T.RANKS)
 	var spider := battle.add_unit(K.SPIDER, P1, Vector2i(3, 3))
 	var guarded := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 4))
 	battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(2, 4))
 	var events := _attack(battle, spider, guarded)
-	assert_eq(_damage(events), spider.power() - Traits.RANKS_GUARD)
+	assert_eq(_damage(events), maxi(spider.power() - Traits.RANKS_GUARD, 0))
 	assert_true(Statuses.has(guarded, Status.Type.SNARE))
 
 

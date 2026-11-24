@@ -486,3 +486,33 @@ func test_win_plan_reads_the_conditions() -> void:
 	assert_true(CpuWinPlan.raids_hq(battle, P2), "守る側の占拠は、ターンに縛られない")
 	battle.capture_turns[P1] = 1
 	assert_true(CpuWinPlan.raids_hq(battle, P1), "もう 1 回占拠していれば、まだ間に合う")
+
+
+## 拠点のある 16 x 5 の盤（拠点は (7,2)。両方とも拠点の確保で勝てる）。ターン 40（膠着を解く）。
+## プレイヤー1 は将と、拠点に乗った前衛（と、fighters が 2 なら、もう 1 体の前衛）。プレイヤー2 は将だけ。
+func _stalled_stronghold(fighters: int) -> Battle:
+	var battle := _battle_with_kings()
+	battle.board.stronghold_cell = Vector2i(7, 2)
+	for side: Unit.Side in [P1, P2]:
+		battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(7, 2))
+	if fighters > 1:
+		battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(5, 3))
+	battle.turn = CpuPlayer.STALL_TURN
+	return battle
+
+
+## 膠着を解く（docs/cpu-ai.md）: 戦う駒が拠点の受け持ちの 1 体だけなら、それも敵の将へ向かう（拠点の隣で治し合うまま終わらないので）。
+func test_lone_stronghold_taker_heads_for_the_enemy_general_when_the_game_stalls() -> void:
+	var battle := _stalled_stronghold(1)
+	var taker := battle.unit_at(Vector2i(7, 2))
+	_play_phase(battle)
+	assert_true(Combat.distance(taker.cell, HQ2) < Combat.distance(Vector2i(7, 2), HQ2), "敵の将へ寄る: %s" % taker.cell)
+
+
+## 戦う駒がほかにもいれば、拠点の受け持ちは拠点に残る。
+func test_stronghold_taker_stays_when_another_fighter_breaks_the_stall() -> void:
+	var battle := _stalled_stronghold(2)
+	var taker := battle.unit_at(Vector2i(7, 2))
+	_play_phase(battle)
+	assert_eq(taker.cell, Vector2i(7, 2))
