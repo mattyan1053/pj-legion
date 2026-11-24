@@ -107,8 +107,8 @@ func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> 
 	_stronghold_caption.text = Text.t("battle.hud.stronghold")
 	for player in 2:
 		var held := mini(holds[player], needed)
-		_stronghold_marks[player].text = Text.t("battle.hud.stronghold_marks", {"side": Names.side_word(player),
-			"marks": Text.t("battle.hud.capture_on").repeat(held) + Text.t("battle.hud.capture_off").repeat(needed - held)})
+		# 色と数だけ（「青 3 / 8」）。印を勝つ数だけ並べると、札が長くなる（11/23「色と 1/8 で十分」）。
+		_stronghold_marks[player].text = Text.t("battle.hud.stronghold_marks", {"side": Names.side_word(player), "holds": held, "needed": needed})
 		_stronghold_marks[player].add_theme_color_override("font_color", _side_color(player).lightened(0.45 if held > 0 else 0.3))
 	var urgent := near >= 0
 	_stronghold_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
@@ -338,6 +338,7 @@ func _build_top_bar() -> void:
 	stronghold_row.add_child(_stronghold_caption)
 	for player in 2:
 		var marks := _label(17)
+		marks.custom_minimum_size.x = STRONGHOLD_SIDE_WIDTH  # 数の桁で、隣の欄を動かさない
 		marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		marks.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		stronghold_row.add_child(marks)
