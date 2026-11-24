@@ -4,7 +4,7 @@ extends "res://rules/cpu/cpu_player_base.gd"
 
 ## unit が cell に立っているときに、次の相手の番（と中立のフェーズ）に受けうるダメージの合計。
 ## ignored_id の敵は数えない。_build_threats のあとに呼ぶ。
-## - 自分の煙幕の中のマスでは、煙幕に防がれない攻撃だけを数える
+## - 自分の煙幕の中のマスと、殻蟹（離れた所からは狙えない。Monsters）では、近くからの攻撃だけを数える
 ## - unit にバリアが付いていれば、いちばん弱い 1 回ぶんを引く（相手は、弱い攻撃で先にはがす）
 ## - unit が cell で隊列（部隊の特徴）になるなら、1 回ごとに隊列のぶんを引く
 ## - 敵の部隊の特徴で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら、単騎はいま隣に味方のいない敵）
@@ -17,7 +17,8 @@ func _danger_in(
 	threats: Dictionary[Vector2i, Dictionary], close: Dictionary[Vector2i, Dictionary],
 	unit: Unit, cell: Vector2i, ignored_id: int
 ) -> int:
-	var by: Dictionary = (close if _smoked.has(cell) else threats).get(cell, {})
+	var near_only := _smoked.has(cell) or unit.has_trait(Evolution.Trait.SHELLED)
+	var by: Dictionary = (close if near_only else threats).get(cell, {})
 	var total := 0
 	var weakest := _FAR
 	var guard := Traits.RANKS_GUARD if Traits.ranked_at(_battle, unit, cell) else 0  # 隊列

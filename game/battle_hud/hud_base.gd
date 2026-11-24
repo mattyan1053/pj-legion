@@ -88,7 +88,9 @@ const MENU_ITEM_WIDTH := 210.0
 const MENU_FONT_SIZE := 17
 const MENU_FONT_FLOOR := 13
 ## 拠点の札の大きさ（px）。確保の数が変わっても、あと 1 回で勝つときも、この大きさのまま。
-const STRONGHOLD_CHIP_SIZE := Vector2(440.0, 30.0)
+## 陣営ごとの数の欄（「青 3 / 8」）は、決まった幅。
+const STRONGHOLD_CHIP_SIZE := Vector2(270.0, 30.0)
+const STRONGHOLD_SIDE_WIDTH := 76.0
 ## 縫い目の様子の札の帯（選べる決まり。上の帯の下の左、勝ち方の札・拠点の札の下）の大きさと、札 1 枚ぶんの欄の幅、印の大きさ。
 const SIGNS_CHIP_SIZE := Vector2(440.0, 34.0)
 const SIGN_SLOT_WIDTH := 205.0

@@ -27,6 +27,8 @@ trait.rally_on_fall,倒れると、周り {radius} マスの味方の攻撃 +{po
 trait.knot_on_fall,倒れると結び目、{turns} ターンで立ち直る
 trait.binds_on_hit,当てた相手は、次の番に動けない
 trait.bursts_on_fall,倒れると弾け、周り 8 マスに {damage} ダメージ
+trait.shelled,2 マス以上離れた所からは狙えない
+trait.spores,周り 8 マスの敵の攻撃 -{spores}
 trait.exerts_zoc.short,支配領域を作る
 trait.ignores_zoc.short,支配領域を抜ける
 trait.forest_walk.short,森歩き
@@ -36,6 +38,8 @@ trait.rally_on_fall.short,倒れると周りが奮起
 trait.knot_on_fall.short,倒れると結び目
 trait.binds_on_hit.short,当てると絡める
 trait.bursts_on_fall.short,倒れると弾ける
+trait.shelled.short,離れて狙えない
+trait.spores.short,周りの敵の攻撃を弱める
 field_effect.barricade,盾
 field_effect.smoke,煙幕
 field_effect.sanctuary,聖域
@@ -62,6 +66,8 @@ unit.fray,ほつれ
 unit.needle,糸針
 unit.spider,糸蜘蛛
 unit.eater,糸喰い
+unit.crab,殻蟹
+unit.shroom,糸茸
 evolution.bulwark,ブルワーク
 evolution.juggernaut,ジャガーノート
 evolution.marksman,マークスマン

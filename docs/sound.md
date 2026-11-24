@@ -96,6 +96,26 @@
 - 優勢・劣勢で曲を替えることはしない（じっくり考えるゲームで、曲が形勢を告げると気が散る）。替えるのは上の「終盤」だけ。
 - 曲ごとの大きさの釣り合いは、表の `volume_db` で取る。
 
+### BGM の組（聴き比べ）
+
+オプションの「BGM の組」で、曲を候補の組に差し替えられる（`sound_catalog.gd` の `MUSIC_SETS`。既定は「いまの組」で、上の表のまま）。
+候補の曲は人間が耳で選ぶためのもの（どれも CC0、`assets/audio/oga-bgm-sets/`）。聴いて決まったら、選んだ曲を `MUSIC` へ移し、組は畳む。
+
+| 曲の名前（鳴る場面） | 候補 A | 候補 B | 候補 C |
+| --- | --- | --- | --- |
+| `title`（タイトル） | A Legend Will Rise（CodeManu） | The Last Horn（redFireMeat） | Last Journey（Crocdent） |
+| `talk_calm`（あとの会話の既定、対戦モードの決着のあと） | Beautiful Forest（nene） | Prologue Theme（CleytonKauffman） | — |
+| `talk`（軽い会話） | — | — | King's Feast（RandomMind） |
+| `battle`（対戦: 草原。中央平原） | Hope（MintoDog） | Final Stand（iamoneabe） | — |
+| `battle_march`（対戦: 尾根・採掘場） | Some Militaristic Tune（Spring Spring） | Col Legno（Vehicle） | — |
+| `battle_climax`・`battle_boss`（終盤、中ボスの話） | Epic Endgame Cinematic（cynicmusic） | Duel of the Dungeons（Umplix） | — |
+| `victory`（勝ち） | Victory（Umplix） | Victory Fanfare Short（cynicmusic） | — |
+| `defeat`（負け） | Game Over（Kistol） | Bittersweet（Emma_MA） | Lose Game Short Music Clip（Robin Lamb） |
+
+- 組に無い曲（「—」と、表に無い曲）は、いまの組のまま鳴る。ループかどうかは、差し替える前の曲と同じ（テストが確かめる）。
+- 組を替えると、いま鳴っている曲もその組の曲へフェードでつなぎ直す（決着の曲の間は替えない）。
+- 大きさは、上と同じねらいの積分ラウドネスにそろえた（`volume_db`）。
+
 ### 効果音
 
 操作の音と、対戦の音。どちらも控えめな大きさで、BGM の下に置く。

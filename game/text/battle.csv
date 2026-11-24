@@ -22,6 +22,7 @@ battle.log.damage.effect.defeated,{amount} ダメージ、倒れた
 battle.log.damage.left,{amount} ダメージ、残り HP {hp}
 battle.log.note.critical,クリティカル
 battle.log.note.forest,森で軽減
+battle.log.note.spores,胞子で弱まる
 battle.log.phase,ターン {turn}　{side}の番
 battle.log.note.cruise,巡航
 battle.log.note.portal,ポータル経由
@@ -253,7 +254,7 @@ battle.pop.stronghold_lost,確保 0 に戻る
 battle.stronghold.mark,{holds} / {needed}
 battle.stronghold.rule,乗ったまま番を終えると確保 +1、{needed} 回で勝ち。隣に敵がいる間は止まり、相手が確保すると 0 に戻る。将は数えない。
 battle.hud.stronghold,拠点
-battle.hud.stronghold_marks,{side} {marks}
+battle.hud.stronghold_marks,{side} {holds} / {needed}
 battle.notice.title,対戦ルール
 battle.notice.goals,勝利条件
 battle.notice.signs,縫い目の様子

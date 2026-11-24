@@ -8,6 +8,8 @@ extends RefCounted
 ## - ダメージは攻撃側の攻撃力（確定クリティカルなら倍率を掛ける）。守る側が森にいれば 0.8 倍（端数切り捨て）
 ## - 受ける側にバリアがあれば 0（Hit。駒の HP を減らすものは、どれも Hit を通す）
 ## - 煙幕の中の持ち主の駒への、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃は、ダメージが 0 になる（FieldEffects.smoke_covering）
+## - 殻蟹は、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃では狙えない（Monsters.shell_turns_away）
+## - 糸茸の周り 8 マスにいる駒の攻撃は、ダメージが減る（Monsters.spore_penalty。森の軽減と隊列のあと）
 ## - 回復役（衛生兵・プリースト）は攻撃しない（かわりに味方を回復する。Healing）
 
 const FOREST_DAMAGE_RATE_PERCENT := 80
@@ -77,6 +79,8 @@ static func can_attack(battle: Battle, attacker: Unit, target: Unit) -> bool:
 		return false
 	if not battle.units.has(target):
 		return false
+	if Monsters.shell_turns_away(attacker.cell, target):
+		return false
 	return reaches(battle, attacker.cell, target.cell, attacker.attack_range())
 
 
@@ -106,7 +110,7 @@ static func attack_power(attacker: Unit) -> int:
 
 ## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
 ## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、部隊の特徴で足すもの（集中砲火・仇討ち・誓い・単騎）、森の軽減、
-## 部隊の特徴で引くもの（隊列）、受ける側の状態（バリア）。
+## 部隊の特徴で引くもの（隊列）、胞子（糸茸）、受ける側の状態（バリア）。
 ## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
 static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
@@ -123,11 +127,15 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	if guard > 0 and amount > 0:
 		boosts[Traits.Id.RANKS] = mini(guard, amount)
 		amount = maxi(0, amount - guard)
+	var spores := Monsters.spore_penalty(battle, attacker)
+	if spores > 0:
+		amount = maxi(0, amount - spores)
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
 	if result.blocked_by == -1:
 		result.traits = boosts  # バリアに防がれたら、特徴の増減も出さない
 	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
 	result.forest = forest
+	result.spores = spores > 0 and result.blocked_by == -1
 	return result
 
 

@@ -1,0 +1,44 @@
+Music collected from OpenGameArt.org for the "BGM set" option (listening comparison).
+Every track below is released under Creative Commons Zero (CC0 1.0 Universal) by its author:
+https://creativecommons.org/publicdomain/zero/1.0/
+
+  a_legend_will_rise.ogg        "A Legend Will Rise (Orchestral)" by CodeManu
+                                https://opengameart.org/content/a-legend-will-rise-orchestral
+  the_last_horn.ogg             "The Last Horn" by redFireMeat
+                                https://opengameart.org/content/the-last-horn
+  last_journey.ogg              "Last Journey" by Crocdent
+                                https://opengameart.org/content/last-journey
+  beautiful_forest.ogg          "Beautiful Forest [Orchestra]" by nene
+                                https://opengameart.org/content/beautiful-forest-orchestra
+  prologue_theme.ogg            "Prologue Theme" by CleytonKauffman
+                                https://opengameart.org/content/prologue-theme
+  kings_feast_loop.ogg          "Medieval: King's Feast" (loop version) by RandomMind
+                                https://opengameart.org/content/medieval-kings-feast
+  hope_orchestral_battle.ogg    "Hope (Orchestral battle music)" by MintoDog
+                                https://opengameart.org/content/hopeorchestral-battle-music
+  some_militaristic_tune.ogg    "Some Militaristic Tune" by Spring Spring
+                                https://opengameart.org/content/some-militaristic-tune
+  final_stand.ogg               "Final Stand" by iamoneabe
+                                https://opengameart.org/content/final-stand
+  col_legno.ogg                 "Col Legno" by Vehicle
+                                https://opengameart.org/content/col-legno
+  epic_endgame_cinematic.ogg    "Epic Endgame Cinematic" by cynicmusic
+                                https://opengameart.org/content/epic-endgame-cinematic
+  duel_of_the_dungeons.ogg      "Duel of the Dungeons" by Umplix
+                                https://opengameart.org/content/duel-of-the-dungeons
+  victory_umplix.ogg            "Victory" by Umplix
+                                https://opengameart.org/content/victory-4
+  victory_fanfare_short.ogg     "Victory Fanfare Short" by cynicmusic
+                                https://opengameart.org/content/victory-fanfare-short
+  game_over_kistol.ogg          "Game Over" by Kistol
+                                https://opengameart.org/content/game-over
+  bittersweet.ogg               "Bittersweet" by Emma_MA
+                                https://opengameart.org/content/bittersweet
+  lose_game_short.ogg           "Lose Game Short Music Clip" by Robin Lamb
+                                https://opengameart.org/content/lose-game-short-music-clip
+
+Each page above lists its license as CC0 (checked on 2026-11-24).
+None of the tracks came with a separate license file.
+The files here were converted to Ogg Vorbis (quality 4, stereo, 44.1 kHz) with metadata removed,
+except some_militaristic_tune.ogg, which is the original file unchanged.
+Some were trimmed of silence at the start/end or given short fades (see README.md).

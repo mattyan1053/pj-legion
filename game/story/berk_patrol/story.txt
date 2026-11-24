@@ -2,7 +2,7 @@
 #
 # 本編（ベルク連邦の物語）の外の、短い寄り道。墓守を退けたあと、ハーデン少尉の偵察隊が縫い代を見回り、名も無い戦いに出会う。
 # 本編の筋は動かさない（ここで知ったことを、本編の人物は口にしない）。
-# 新しく足した魔物（大蝙蝠・ほつれ・骸骨旗手・糸針・糸喰い・糸蜘蛛。docs/unit-roster.md の「魔物」）と、縫い目の様子（signs）と、番人の名前（boss）の使い方の見本を兼ねる。
+# 新しく足した魔物（大蝙蝠・ほつれ・骸骨旗手・糸針・糸喰い・糸蜘蛛・殻蟹・糸茸。docs/unit-roster.md の「魔物」）と、縫い目の様子（signs）と、番人の名前（boss）の使い方の見本を兼ねる。
 # 世界は docs/world.md、登場人物は docs/story.md の「世界と登場人物」。書き方は docs/story.md の「物語のファイル」。
 
 [campaign]
@@ -35,3 +35,4 @@ patrol_crags
 patrol_knots
 patrol_needles
 patrol_eaters
+patrol_shells
