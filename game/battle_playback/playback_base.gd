@@ -20,6 +20,8 @@ const Palette := preload("res://game/ui_palette.gd")
 const STEP_TIME := 0.16
 const CRUISE_STEP_TIME := 0.1
 const NEUTRAL_STEP_TIME := 0.26
+## 曲がり角で向きを替える秒数（1 マスの秒数より長くはしない）。
+const TURN_TIME := 0.08
 ## 中立のフェーズで、攻撃する駒へカメラを寄せてから動き出すまでの秒数と、その駒の場面が終わってから次までの間。
 const NEUTRAL_FOCUS_TIME := 0.5
 const NEUTRAL_PAUSE := 0.5
