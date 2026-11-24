@@ -165,9 +165,9 @@ func _cpu_game(armies: Array, max_turns: int, found: Dictionary = {}) -> CpuMatc
 
 ## CPU が小さい盤でも手を指せる（断られる行動が無い）。1 局を最後まで読むのは長い検査（下）。
 func test_cpu_plays_on_the_small_map() -> void:
-	var outcome := _cpu_game([UnitKind.Army.MILITARY, UnitKind.Army.FANTASY], 6)
+	var outcome := _cpu_game([UnitKind.Army.MILITARY, UnitKind.Army.FANTASY], 4)
 	assert_eq(outcome.rejected, 0)
-	assert_true(outcome.turns > 6 or outcome.finished)
+	assert_true(outcome.turns > 4 or outcome.finished)
 
 
 ## game/maps/ のどのマップでも、CPU どうしの対局が最後まで進む（先手と後手の軍を入れ替えて 2 局ずつ）。

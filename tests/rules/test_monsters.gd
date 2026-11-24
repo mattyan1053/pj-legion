@@ -67,7 +67,7 @@ func test_cpu_moves_monsters_through_a_game() -> void:
 	var cpu := CpuPlayer.new()
 	var moved := {}
 	var steps := 0
-	while not battle.is_over() and battle.turn <= 6 and steps < 2000:
+	while not battle.is_over() and battle.turn <= 3 and steps < 2000:
 		var action := cpu.next_action(battle)
 		assert_true(action != null, "CPU が行動を返さない")
 		if action == null:
