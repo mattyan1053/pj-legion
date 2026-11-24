@@ -31,6 +31,8 @@ enum Id {
 	NEEDLE,  ## 魔物・後衛。動かないが、遠くまで撃つ
 	SPIDER,  ## 魔物・奇襲。当てた相手を、次の番まで動けなくする（Monsters）
 	EATER,  ## 魔物・前衛。倒れると、腹の糸が弾けて周りを焼く（Monsters）
+	CRAB,  ## 魔物・前衛。結晶の殻で、離れた所からの攻撃では狙えない（Monsters）
+	SHROOM,  ## 魔物・奇襲。胞子で、周りの敵の攻撃を弱める（Monsters）
 }
 
 enum Role { NONE, VANGUARD, REARGUARD, RAIDER, HEALER }
@@ -61,6 +63,8 @@ const _TABLE := {
 	Id.NEEDLE: [Role.REARGUARD, Army.NONE, 2, 28, 8, 0, 4],
 	Id.SPIDER: [Role.RAIDER, Army.NONE, 2, 18, 5, 4, 1],
 	Id.EATER: [Role.VANGUARD, Army.NONE, 3, 36, 8, 3, 1],
+	Id.CRAB: [Role.VANGUARD, Army.NONE, 3, 30, 7, 3, 1],
+	Id.SHROOM: [Role.RAIDER, Army.NONE, 2, 20, 5, 3, 1],
 }
 
 

@@ -461,6 +461,85 @@ func _scene_story_patrol_snare() -> bool:
 	return true
 
 
+func _scene_story_patrol_crab() -> bool:
+	return await _patrol_hover(UnitKind.Id.CRAB, 20.0)
+
+
+func _scene_story_patrol_shroom() -> bool:
+	return await _patrol_hover(UnitKind.Id.SHROOM, -20.0)
+
+
+## 番外の 5 話目の対戦の始めに、kind の最初の駒へ寄って、マウスを乗せる。
+func _patrol_hover(kind: UnitKind.Id, yaw: float) -> bool:
+	if not await _patrol_battle(4):
+		return false
+	var unit := _first_unit_of(kind)
+	if unit == null:
+		return false
+	_scene.hide_notice()
+	_look_at(BoardView.cell_center(unit.cell))
+	_aim(6.0, yaw, 45.0)
+	_scene.hover(unit.cell)
+	return true
+
+
+## 番外の 5 話目を CPU どうしで進め、until が真になった人の番の始めを画面に出す。
+func _patrol_vale_until(until: Callable) -> bool:
+	if not await _patrol_battle(4):
+		return false
+	var setup: MatchSetup = _scene.source.make_setup(_seed)
+	_battle = setup.create_battle()
+	_stats = BattleStats.new(_battle)
+	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and until.call()):
+		return false
+	_scene.start_with(_battle, _scene.source.look(), _seed, setup.scenario.title)
+	_scene.stats = _stats
+	_scene.battle_log = _log
+	_scene.hide_notice()
+	return true
+
+
+func _scene_story_patrol_vale() -> bool:
+	if not await _patrol_vale_until(func() -> bool: return _battle.turn >= 4):
+		return false
+	var size := _battle.board.size
+	_look_at(BoardView.cell_center(Vector2i(size.x / 2, size.y / 2 + 1)))
+	_aim(19.0, 0.0, 62.0)
+	return true
+
+
+## 人の番で、糸茸の隣にいる行動できる人の駒と、その駒がいまの位置から胞子で弱まって攻撃できる相手（[駒, 相手]）。無ければ空。
+func _spored_attack() -> Array:
+	for unit: Unit in _battle.units:
+		if unit.side != Unit.Side.PLAYER1 or not _battle.can_act(unit) or Monsters.spore_penalty(_battle, unit) == 0:
+			continue
+		for target in Combat.targets(_battle, unit):
+			if Combat.hit(_battle, unit, target).spores:
+				return [unit, target]
+	return []
+
+
+func _scene_story_patrol_spores() -> bool:
+	if not await _patrol_vale_until(func() -> bool: return not _spored_attack().is_empty()):
+		return false
+	var found := _spored_attack()
+	var unit: Unit = found[0]
+	var target: Unit = found[1]
+	_look_at(BoardView.cell_center(unit.cell))
+	_aim(8.0, 0.0, 50.0)
+	for i in 3:
+		await get_tree().process_frame
+	_scene.click_cell(unit.cell)
+	_scene.click_cell(unit.cell)  # 動かずに、その場で行動のメニューを出す
+	for i in 120:
+		await get_tree().process_frame
+	if not _scene.press_menu(&"attack"):
+		return false
+	_scene.hover(target.cell)
+	return _scene.forecast_text().contains(Text.t("battle.log.note.spores"))
+
+
 func _first_unit_of(kind: UnitKind.Id) -> Unit:
 	for unit: Unit in _scene.battle.units:
 		if unit.kind == kind:

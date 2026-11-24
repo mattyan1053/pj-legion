@@ -11,6 +11,9 @@ extends RefCounted
 ## - 糸蜘蛛（Trait.BINDS_ON_HIT）の攻撃が当たると、相手に絡み（Status.Type.SNARE）が付き、相手の次の番の終わりまで動けない（bind。Combat.strike が呼ぶ）
 ## - 糸喰い（Trait.BURSTS_ON_FALL）が倒れると、腹の糸が弾けて、周り 8 マスの駒すべて（陣営を問わない）に BURST_DAMAGE（on_defeated）。
 ##   弾けて倒れた駒が糸喰いなら、続けて弾ける
+## - 殻蟹（Trait.SHELLED）は、離れた所（Combat.RANGED_DISTANCE 以上）からの攻撃では狙えない（Combat.can_attack が shell_turns_away を読む）。
+##   爆発・弾ける・スキルのダメージ（狙わずに範囲で当たるもの）は受ける
+## - 糸茸（Trait.SPORES）の周り 8 マスにいる敵の攻撃は、ダメージが SPORE_PENALTY 減る（Combat.hit が spore_penalty を読む）。何本いても 1 回
 ##
 ## どれも Battle.remove_unit と EndPhaseAction の中で起きるので、予測（Forecast）・CPU の先読み・脅威範囲（Threat）は、
 ## 複製の上で同じ処理を走らせて知る。
@@ -23,6 +26,8 @@ const RALLY_RADIUS := 2
 const KNOT_TURNS := 2
 ## 糸喰いが倒れて弾けたとき、周りの駒が受けるダメージ（固定。起爆樽の爆発と同じく、攻撃力にも地形にもよらない）。
 const BURST_DAMAGE := 10
+## 糸茸の周り 8 マスにいる敵の、攻撃 1 回のダメージから引く量（何本の糸茸の隣でも 1 回だけ。0 より下にはならない）。
+const SPORE_PENALTY := 4
 
 ## 種類 -> その種類が生まれつき持つ特性。
 const _KIND_TRAITS := {
@@ -32,6 +37,8 @@ const _KIND_TRAITS := {
 	UnitKind.Id.NEEDLE: [Evolution.Trait.ROOTED],
 	UnitKind.Id.SPIDER: [Evolution.Trait.BINDS_ON_HIT],
 	UnitKind.Id.EATER: [Evolution.Trait.BURSTS_ON_FALL],
+	UnitKind.Id.CRAB: [Evolution.Trait.SHELLED],
+	UnitKind.Id.SHROOM: [Evolution.Trait.SPORES],
 }
 const _NONE: Array = []
 
@@ -65,6 +72,34 @@ static func after_hit(battle: Battle, attacker: Unit, target: Unit) -> Array[Bat
 		# 状態は持ち主のフェーズの始めに 1 減る。相手の番に付ければ 2 で、相手の次の番のあいだ残る。
 		events.append(Statuses.add(target, Status.Type.SNARE, 1 if battle.phase == target.side else 2))
 	return events
+
+
+## from のマスから target を狙う攻撃が、殻に逸らされて狙えないか（target が殻蟹で、距離が Combat.RANGED_DISTANCE 以上）。
+static func shell_turns_away(from: Vector2i, target: Unit) -> bool:
+	return target.has_trait(Evolution.Trait.SHELLED) and Combat.distance(from, target.cell) >= Combat.RANGED_DISTANCE
+
+
+## attacker の攻撃が、胞子で弱まる量（attacker の周り 8 マスに、attacker の敵の糸茸がいれば SPORE_PENALTY。いなければ 0）。
+static func spore_penalty(battle: Battle, attacker: Unit) -> int:
+	for unit in battle.units:
+		if unit != attacker and unit.has_trait(Evolution.Trait.SPORES) and unit.is_enemy_of(attacker) and _touches(unit.cell, attacker.cell):
+			return SPORE_PENALTY
+	return 0
+
+
+## attacker の周り 8 マスにいる、attacker の敵の糸茸（上の行から、左の列から）。予測の見せ方と CPU が読む。
+static func spore_sources(battle: Battle, attacker: Unit) -> Array[Unit]:
+	var result: Array[Unit] = []
+	for unit in battle.units:
+		if unit != attacker and unit.has_trait(Evolution.Trait.SPORES) and unit.is_enemy_of(attacker) and _touches(unit.cell, attacker.cell):
+			result.append(unit)
+	result.sort_custom(func(a: Unit, b: Unit) -> bool: return Board.in_reading_order(a.cell, b.cell))
+	return result
+
+
+## a と b が、周り 8 マスの間柄か（同じマスは含まない）。
+static func _touches(a: Vector2i, b: Vector2i) -> bool:
+	return a != b and absi(a.x - b.x) <= 1 and absi(a.y - b.y) <= 1
 
 
 ## 糸喰い fallen が倒れて弾けたとき、巻き込まれる駒（周り 8 マス。陣営を問わない。上の行から、左の列から）。fallen はもう盤にいなくてよい。

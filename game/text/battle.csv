@@ -22,6 +22,7 @@ battle.log.damage.effect.defeated,{amount} ダメージ、倒れた
 battle.log.damage.left,{amount} ダメージ、残り HP {hp}
 battle.log.note.critical,クリティカル
 battle.log.note.forest,森で軽減
+battle.log.note.spores,胞子で弱まる
 battle.forecast.oath_broken,誓いが切れる
 battle.log.phase,ターン {turn}　{side}の番
 battle.log.note.cruise,巡航

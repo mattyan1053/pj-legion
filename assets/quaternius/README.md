@@ -1,7 +1,7 @@
 # Quaternius
 
 駒の見た目の組「人物」（`game/looks/quaternius_look.gd`）の素材。魔物の骸骨（`monsters/`）は「ミニ」の組も使う（`game/looks/quaternius_skeleton.gd`）。
-骸骨でない魔物（`monsters/` の Bat・Slime・Dragon）と骸骨旗手は、どの組でも同じ形（`game/looks/monster_body.gd`）。
+骸骨でない魔物（`monsters/` の Bat・Slime・Dragon と、`cute/` の Crab・Mushroom）と骸骨旗手は、どの組でも同じ形（`game/looks/monster_body.gd`）。
 
 - 作者: Quaternius（https://quaternius.com）
 - ライセンス: CC0 1.0（`LICENSE.txt`。RPG Characters の zip に入っていた `License.txt` をそのまま置いた）。商用・改変・再配布が自由で、クレジット表記は任意
@@ -56,3 +56,17 @@
 | `Bat.fbx` | 大蝙蝠（どの組でも。`game/looks/monster_body.gd`）。動きは Bat_Flying・Bat_Attack・Bat_Attack2・Bat_Hit・Bat_Death |
 | `Slime.fbx` | ほつれ（どの組でも。`game/looks/monster_body.gd`）。動きは Slime_Idle・Slime_Walk・Slime_Attack・Slime_Death |
 | `Dragon.fbx` | 糸喰い（どの組でも。`game/looks/monster_body.gd`）。動きは Dragon_Flying・Dragon_Attack・Dragon_Attack2・Dragon_Hit・Dragon_Death |
+
+## cute/（Cute Animated Monsters - Aug 2020。配布元のページの題は「Textured Cute Monster Pack」）
+
+- 配布元: https://opengameart.org/content/textured-cute-monster-pack （`cute_animated_monsters_-_aug_2020.zip`。投稿者は作者本人）
+- ライセンス: CC0 1.0。配布元のページの「License(s)」が CC0（本文も「free to use in personal and commercial projects」）。
+  zip にライセンスの文は入っていない（上の characters/ と同じ）。CC0 1.0 の文は `LICENSE.txt`（同じ作者の RPG Characters の zip のもの）。
+- 取ってきた日・ライセンスを確かめた日: 2026-11-24
+- 改変: なし（FBX と絵のまま。FBX は絵を中に持たないので、実行時に貼る。絵の決まった色合いの所を陣営の色に塗り替えるのも実行時。`game/looks/team_recolor.gdshader`）
+- 入れたもの: 21 体のうち 2 体（`FBX/` と `Textures/` から）。どれも骨は同じ形（MonsterArmature）。
+
+| ファイル | 使い道（`game/looks/monster_body.gd` の `MODELS`） |
+| --- | --- |
+| `Crab.fbx`・`Crab_Texture.png` | 殻蟹（どの組でも）。殻の赤を陣営の色に。動きは Idle・Walk・Bite_Front・HitRecieve・Death など 10 |
+| `Mushroom.fbx`・`Mushroom_Texture.png` | 糸茸（どの組でも）。笠の茶色を陣営の色に。素材の動きは Idle だけ（ほかは代わりの動き） |

@@ -1,11 +1,14 @@
 extends RefCounted
-## 骸骨でない魔物（大蝙蝠・ほつれ・糸針・糸蜘蛛・糸喰い）と骸骨旗手の体。どの見た目の組でも同じ形（組が形を持たなければ、look_set.gd がこれを使う）。
+## 骸骨でない魔物（大蝙蝠・ほつれ・糸針・糸蜘蛛・糸喰い・殻蟹・糸茸）と骸骨旗手の体。どの見た目の組でも同じ形（組が形を持たなければ、look_set.gd がこれを使う）。
 ##
 ## - 大蝙蝠: Quaternius の Animated Monster Pack の Bat（assets/quaternius/monsters/Bat.fbx。CC0）。宙に浮かせる。腹を陣営の色に塗る
 ## - ほつれ: 同じパックの Slime（Slime.fbx）。体を糸の青白い色に塗り、目を陣営の色にする
 ## - 糸針: 素材を使わず、コードで組む結晶の針の束（crystal_mesh.gd）。根元の輪が陣営の色
-## - 糸蜘蛛: CDmir の Alien Bug Animated（assets/cdmir/alien-bug/alien-bug.glb。CC0）。体の絵に糸の青白い色を掛ける
+## - 糸蜘蛛: CDmir の Alien Bug Animated（assets/cdmir/alien-bug/alien-bug.glb。CC0）。胴の茶色を陣営の色に塗り替え、脚に糸の青白い色を掛ける
 ## - 糸喰い: Quaternius の Animated Monster Pack の Dragon（Dragon.fbx）。腹を糸の色に光らせ、翼を陣営の色に塗る。宙に浮かせる
+## - 殻蟹: Quaternius の Cute Animated Monsters の Crab（assets/quaternius/cute/Crab.fbx。CC0）。殻の赤を陣営の色に塗り替える
+## - 糸茸: 同じパックの Mushroom（Mushroom.fbx）。笠の茶色を陣営の色に塗り替える。素材の動きは立つだけ（ほかは unit_body.gd の代わりの動き）
+## 絵が 1 枚で面を分けられない素材は、絵の決まった色合いの所を陣営の色に塗り替える（"recolor"。team_recolor.gdshader）。
 ## - 骸骨旗手: 「人物」の組の骸骨（quaternius_skeleton.gd）に、陣営の色の旗を持たせたもの
 ## 動きは素材の 4〜5 つ（立つ・走る・殴る・倒れる。大蝙蝠は被弾も）。糸針は unit_body.gd の代わりの動き。
 
@@ -16,11 +19,15 @@ const CrystalMesh := preload("res://game/crystal_mesh.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
 const DIR := "res://assets/quaternius/monsters/"
+const CUTE := "res://assets/quaternius/cute/"
+const RECOLOR := preload("res://game/looks/team_recolor.gdshader")
 ## 糸（結晶）の青白い色。ほつれの体と、糸針の針。
 const THREAD := Palette.MONSTER_GLOW
 
 ## 素材ごとの形。"file" は DIR の FBX の名前（"path" があれば、そのファイル）。"raw" は素材の足から頭の上までの高さ（素材は cm で入っていて、骨の親が 100 倍）、"size" は駒の背に対する大きさ、
 ## "lift" は浮かせる高さ（駒の背に対する割合）、"turn" は前を向かせる回し方（度）、"paint" は塗り替える面（素材のマテリアルの名前 -> "team" か色）。
+## "recolor" は絵の色合いで塗り替えるもの（"texture" は絵のファイル。無ければ素材の絵。"hue"・"width" は陣営の色にする色合い（0〜1）とその幅、
+## "value" はその所の絵のふつうの明るさ、"tint" はほかの所に掛ける色）。"recolor" があれば "paint" は見ない。
 const MODELS := {
 	UnitKind.Id.BAT: {
 		"file": "Bat", "raw": 4.3, "size": 0.65, "lift": 0.3,
@@ -41,7 +48,7 @@ const MODELS := {
 	UnitKind.Id.SPIDER: {
 		"path": "res://assets/cdmir/alien-bug/alien-bug.glb", "raw": 0.57, "size": 0.44, "lift": 0.0,
 		"moves": {&"idle": &"Idle", &"run": &"Run", &"attack": &"Attack_000"},
-		"paint": {"Bug": THREAD},
+		"recolor": {"hue": 0.085, "width": 0.07, "value": 0.44, "tint": THREAD},
 	},
 	UnitKind.Id.EATER: {
 		"file": "Dragon", "raw": 4.8, "size": 0.9, "lift": 0.0,
@@ -50,6 +57,19 @@ const MODELS := {
 			&"attack": &"DragonArmature|Dragon_Attack", &"hit": &"DragonArmature|Dragon_Hit", &"death": &"DragonArmature|Dragon_Death",
 		},
 		"paint": {"Belly": THREAD, "Wings": "team"},
+	},
+	UnitKind.Id.CRAB: {
+		"path": CUTE + "Crab.fbx", "raw": 1.42, "size": 0.45, "lift": 0.0,
+		"moves": {
+			&"idle": &"MonsterArmature|Idle", &"run": &"MonsterArmature|Walk", &"attack": &"MonsterArmature|Bite_Front",
+			&"hit": &"MonsterArmature|HitRecieve", &"death": &"MonsterArmature|Death",
+		},
+		"recolor": {"texture": CUTE + "Crab_Texture.png", "hue": 0.0, "width": 0.07, "value": 0.27, "tint": Color.WHITE},
+	},
+	UnitKind.Id.SHROOM: {
+		"path": CUTE + "Mushroom.fbx", "raw": 3.3, "size": 0.7, "lift": 0.0,
+		"moves": {&"idle": &"MonsterArmature|Idle"},
+		"recolor": {"texture": CUTE + "Mushroom_Texture.png", "hue": 0.05, "width": 0.045, "value": 0.31, "tint": Color.WHITE},
 	},
 }
 
@@ -80,9 +100,33 @@ static func _model(shape: Dictionary, team_color: Color, height: float) -> UnitB
 	var body := ModelBody.new()
 	body.body_height = height * (size + float(shape["lift"]))
 	body.set_model(model, shape["moves"], Callable())
+	if shape.has("recolor"):
+		var recolor: Dictionary = shape["recolor"]
+		body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void: _recolor(mesh, recolor, team_color, shade))
+		return body
 	var paint: Dictionary = shape["paint"]
 	body.set_surface_materials(func(mesh: MeshInstance3D, shade: float) -> void: _paint(mesh, paint, team_color, shade))
 	return body
+
+
+## 面ごとに、絵の決まった色合いの所を陣営の色に塗り替えたマテリアル（team_recolor.gdshader）を、暗さ shade で当てる。
+static func _recolor(mesh: MeshInstance3D, recolor: Dictionary, team_color: Color, shade: float) -> void:
+	for i in mesh.mesh.get_surface_count():
+		var original := mesh.mesh.surface_get_material(i) as StandardMaterial3D
+		var texture: Texture2D = load(recolor["texture"]) if recolor.has("texture") else (original.albedo_texture if original != null else null)
+		var key := "recolor:%s:%s:%s:%s" % [texture.resource_path if texture != null else "", recolor["hue"], team_color.to_html(), shade]
+		if not _materials.has(key):
+			var material := ShaderMaterial.new()
+			material.shader = RECOLOR
+			material.set_shader_parameter(&"body_texture", texture)
+			material.set_shader_parameter(&"team_color", team_color)
+			material.set_shader_parameter(&"tint", recolor["tint"])
+			material.set_shader_parameter(&"shade", shade)
+			material.set_shader_parameter(&"hue_center", recolor["hue"])
+			material.set_shader_parameter(&"hue_width", recolor["width"])
+			material.set_shader_parameter(&"ref_value", recolor["value"])
+			_materials[key] = material
+		mesh.set_surface_override_material(i, _materials[key])
 
 
 ## 面ごとに、素材の色（paint にあれば、その色か陣営の色）を暗さ shade で塗る。素材に絵があれば、絵に色を掛ける。
