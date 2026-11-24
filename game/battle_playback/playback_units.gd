@@ -16,15 +16,33 @@ func _play_moved(event: UnitMovedEvent) -> void:
 		camera_follows[event.unit_id] = camera_follows.get(event.unit_id, 0) + 1
 		_rig.follow(view)
 	view.play_run()
-	for i in range(1, event.path.size()):
-		var target := BoardView.cell_center(event.path[i])
-		view.face(target - view.position)
-		var tween := create_tween()
-		tween.tween_property(view, "position", target, step_time)
-		await tween.finished
+	var tween := create_tween()  # 再生の側の Tween（駒の側に持たせると、駒が消えたとき終わりを待ち続ける）
+	walk(tween, view, event.path, step_time)
+	await tween.finished
 	view.play_idle()
 	if followed:
 		_rig.follow(null)
+
+
+## 道順（path。マスの列）を歩く動きを、tween に積む。道順の全部のマスを 1 つの Tween につなぐ
+## （マスごとに Tween を作って終わりを待つと、マスの境目ごとに 1 コマ止まり、歩きがカクつく）。
+## 曲がり角は、向きを短く（TURN_TIME）回して替える（一瞬で替えると、そこでもカクつく）。回る向きは、近いほう。
+## 歩き出しの向きは、その場で替える（最初の 1 歩を遅らせない）。
+static func walk(tween: Tween, view: Node3D, path: Array, step_time: float) -> void:
+	var from := view.position
+	var heading := view.rotation.y
+	for i in range(1, path.size()):
+		var target := BoardView.cell_center(path[i])
+		tween.tween_property(view, "position", target, step_time)
+		var step := target - from
+		if Vector2(step.x, step.z).length() > 0.001:
+			var want := heading + wrapf(atan2(step.x, step.z) - heading, -PI, PI)
+			if i == 1:
+				view.rotation.y = want
+			elif not is_equal_approx(want, heading):
+				tween.parallel().tween_property(view, "rotation:y", want, minf(TURN_TIME, step_time))
+			heading = want
+		from = target
 
 
 func _play_undone(event: MoveUndoneEvent) -> void:
