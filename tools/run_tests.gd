@@ -9,7 +9,7 @@ extends SceneTree
 ##   -- --long-only                 `test_long_` だけを実行する
 ##   -- --only=<語>,<語>            「ファイル名 メソッド名」がどれかの語を含むものだけを実行する
 ##   -- --except=<語>,<語>          どれかの語を含むものを除く
-## 終わりに、1 秒以上掛かったテストを、長い順にいくつか出す。
+## 終わりに、1 秒以上掛かったテストとファイルを、長い順にいくつか出す（まとまりの釣り合いを直すときに見る）。
 ##
 ## テストの途中でスクリプトのエラー（null の参照など）が起きた場合も失敗にする。
 ## その場合 GDScript はメソッドを途中で抜けるだけなので、ログを横取りして数える。
@@ -51,7 +51,16 @@ func _initialize() -> void:
 	var filtered := 0
 	var failed: Array[String] = []
 	var timings: Array[Array] = []
+	var file_timings: Array[Array] = []
+	# ファイルの名前（`.gd` で終わる語）で絞るときは、外れるファイルを読み込まない（テストのファイルを全部読むと 6 秒ほど掛かる）。
+	var only_files := _file_patterns(only) if _file_patterns(only).size() == only.size() else PackedStringArray()
+	var except_files := _file_patterns(except)
 	for path in _find_tests(TEST_ROOT):
+		var file := path.get_file()
+		if (not only_files.is_empty() and not _matches(file, only_files)) or _matches(file, except_files):
+			continue
+		var file_started := Time.get_ticks_msec()
+		var file_ran := false
 		var script: GDScript = load(path)
 		if script == null or not script.can_instantiate():
 			failed.append("%s: 読み込めない" % path)
@@ -68,6 +77,7 @@ func _initialize() -> void:
 			if (long_only and not is_long) or (not only.is_empty() and not _matches(label, only)) or _matches(label, except):
 				filtered += 1
 				continue
+			file_ran = true
 			var errors_before := errors.count
 			var started := Time.get_ticks_msec()
 			var test: Object = script.new()
@@ -80,6 +90,8 @@ func _initialize() -> void:
 				passed += 1
 			else:
 				failed.append("%s\n    %s" % [label, "\n    ".join(problems)])
+		if file_ran:
+			file_timings.append([Time.get_ticks_msec() - file_started, file])
 
 	OS.remove_logger(errors)
 	# 時間の掛かったテスト（次に検査が伸びたとき、どこが伸びたか分かるように）。
@@ -88,6 +100,11 @@ func _initialize() -> void:
 		if timing[0] < SLOW_MSEC:
 			break
 		print("tests: %5.1f 秒 %s" % [timing[0] / 1000.0, timing[1]])
+	file_timings.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	for timing: Array in file_timings.slice(0, SLOW_SHOWN):
+		if timing[0] < SLOW_MSEC:
+			break
+		print("tests: %5.1f 秒 %s（ファイル）" % [timing[0] / 1000.0, timing[1]])
 	for line in failed:
 		printerr("FAIL ", line)
 	var notes := "%d long ones skipped (run with -- --full)" % skipped
@@ -103,6 +120,15 @@ func _list_arg(args: PackedStringArray, prefix: String) -> PackedStringArray:
 		if arg.begins_with(prefix):
 			return arg.trim_prefix(prefix).split(",", false)
 	return PackedStringArray()
+
+
+## 並びのうち、ファイルの名前を指す語（`.gd` で終わり、空白を含まない）。「ファイル名 メソッド名」の中では、ファイル名の部分にしか当たらない。
+func _file_patterns(patterns: PackedStringArray) -> PackedStringArray:
+	var found := PackedStringArray()
+	for pattern in patterns:
+		if pattern.ends_with(".gd") and not pattern.contains(" "):
+			found.append(pattern)
+	return found
 
 
 func _matches(label: String, patterns: PackedStringArray) -> bool:
