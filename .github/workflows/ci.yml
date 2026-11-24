@@ -36,5 +36,14 @@ jobs:
             "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
           unzip -q /tmp/godot.zip -d ~/godot
 
+      # 取り込んだ素材（.godot/）を控えて、取り込みを短くする（無いと 15 秒ほど掛かる）。
+      # 素材の取り込みの設定（*.import）か project.godot が変われば、新しい鍵で控え直す。前の控えから始め、変わった分だけ取り込み直す。
+      - name: Cache imported assets
+        uses: actions/cache@v4
+        with:
+          path: .godot
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('project.godot', '**/*.import') }}
+          restore-keys: godot-import-${{ env.GODOT_VERSION }}-
+
       - name: Check project
         run: tools/check.sh ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64
