@@ -145,6 +145,45 @@ const EFFECTS := {
 }
 
 
+## BGM の組（オプションの「BGM の組」。settings.gd の MUSIC_SET の値が番号）。聴き比べのための候補の曲。
+## 組は「曲の名前 -> 差し替える曲（MUSIC と同じ形）」。組に無い曲は、いまの組（MUSIC）のまま鳴る。0 番がいまの組（何も差し替えない。既定）。
+## 候補の曲は assets/audio/oga-bgm-sets/（どれも CC0。聴いていない）。大きさは MUSIC と同じねらい（LUFS）にそろえた
+## （タイトル -19.5、会話 -20、対戦・終盤 -21.5、勝ち -16、負け -18。Lose Game Short は頭打ちのため -22）。
+const BGM_SETS_DIR := "res://assets/audio/oga-bgm-sets/"
+const MUSIC_SETS: Array[Dictionary] = [
+	{},
+	## 候補 A
+	{
+		&"title": {"path": BGM_SETS_DIR + "a_legend_will_rise.ogg", "loop": true, "volume_db": -9.5},
+		&"talk_calm": {"path": BGM_SETS_DIR + "beautiful_forest.ogg", "loop": true, "volume_db": -5.0},
+		&"battle": {"path": BGM_SETS_DIR + "hope_orchestral_battle.ogg", "loop": true, "volume_db": -11.5},
+		&"battle_march": {"path": BGM_SETS_DIR + "some_militaristic_tune.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_climax": {"path": BGM_SETS_DIR + "epic_endgame_cinematic.ogg", "loop": true, "volume_db": -8.5},
+		&"battle_boss": {"path": BGM_SETS_DIR + "epic_endgame_cinematic.ogg", "loop": true, "volume_db": -8.5},
+		&"victory": {"path": BGM_SETS_DIR + "victory_umplix.ogg", "loop": false, "volume_db": -5.0},
+		&"defeat": {"path": BGM_SETS_DIR + "game_over_kistol.ogg", "loop": false, "volume_db": 0.0},
+	},
+	## 候補 B
+	{
+		&"title": {"path": BGM_SETS_DIR + "the_last_horn.ogg", "loop": true, "volume_db": -3.0},
+		&"talk_calm": {"path": BGM_SETS_DIR + "prologue_theme.ogg", "loop": true, "volume_db": -0.5},
+		&"battle": {"path": BGM_SETS_DIR + "final_stand.ogg", "loop": true, "volume_db": -7.0},
+		&"battle_march": {"path": BGM_SETS_DIR + "col_legno.ogg", "loop": true, "volume_db": -7.5},
+		&"battle_climax": {"path": BGM_SETS_DIR + "duel_of_the_dungeons.ogg", "loop": true, "volume_db": -9.0},
+		&"battle_boss": {"path": BGM_SETS_DIR + "duel_of_the_dungeons.ogg", "loop": true, "volume_db": -9.0},
+		&"victory": {"path": BGM_SETS_DIR + "victory_fanfare_short.ogg", "loop": false, "volume_db": -5.0},
+		&"defeat": {"path": BGM_SETS_DIR + "bittersweet.ogg", "loop": false, "volume_db": 3.0},
+	},
+	## 候補 C（3 曲目のある役だけ。ほかは、いまの組のまま）
+	{
+		&"title": {"path": BGM_SETS_DIR + "last_journey.ogg", "loop": true, "volume_db": -6.5},
+		&"talk": {"path": BGM_SETS_DIR + "kings_feast_loop.ogg", "loop": true, "volume_db": 1.0},
+		&"defeat": {"path": BGM_SETS_DIR + "lose_game_short.ogg", "loop": false, "volume_db": 0.0},
+	},
+]
+## いまの BGM の組の番号（sound.gd の apply_settings が設定から入れる）。
+static var music_set := 0
+
 ## 盤の見た目（stage_look.gd の THEMES の鍵）-> 対戦の曲。表に無い見た目は battle。
 const LOOK_MUSIC := {
 	StageLook.GRASSLAND: &"battle",
@@ -203,6 +242,12 @@ static func has_music(track: StringName) -> bool:
 	return MUSIC.has(track)
 
 
+## 曲 track の、いまの BGM の組（music_set）での中身（path・loop・volume_db）。組が差し替えていなければ MUSIC のまま。
+static func music_entry(track: StringName) -> Dictionary:
+	var of_set: Dictionary = MUSIC_SETS[music_set] if music_set >= 0 and music_set < MUSIC_SETS.size() else {}
+	return of_set.get(track, MUSIC.get(track, {}))
+
+
 static func has_effect(name: StringName) -> bool:
 	return EFFECTS.has(name)
 
@@ -210,7 +255,7 @@ static func has_effect(name: StringName) -> bool:
 ## 表の曲・効果音のうち、素材のファイルが無いもの（res:// の道）。検査用。
 static func missing_files() -> Array[String]:
 	var missing: Array[String] = []
-	for table: Dictionary in [MUSIC, EFFECTS]:
+	for table: Dictionary in [MUSIC, EFFECTS] + MUSIC_SETS:
 		for entry: Dictionary in table.values():
 			if not ResourceLoader.exists(entry["path"]):
 				missing.append(entry["path"])

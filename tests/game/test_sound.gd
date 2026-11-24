@@ -384,3 +384,40 @@ func test_every_sound_name_in_the_code_is_listed() -> void:
 			found += 1
 			assert_true(Catalog.has_effect(StringName(m.get_string(1))), "%s の %s が表にある" % [file, m.get_string(1)])
 	assert_true(found >= 15, "対戦の音を名前で鳴らしている（%d か所）" % found)
+
+
+## BGM の組（オプション）: 組は MUSIC の曲だけを差し替え、ループかどうかは元の曲と同じ。選んだ組の素材が鳴る。
+func test_music_sets_replace_tracks_of_the_same_kind() -> void:
+	var choices: Array = Settings.item(Settings.MUSIC_SET)["choices"]
+	assert_eq(choices.size(), Catalog.MUSIC_SETS.size(), "オプションの選択肢は、組の数だけ")
+	assert_eq(Settings.item(Settings.MUSIC_SET)["default"], 0, "既定は、いまの組")
+	assert_true(Catalog.MUSIC_SETS[0].is_empty(), "0 番（いまの組）は何も差し替えない")
+	for of_set: Dictionary in Catalog.MUSIC_SETS:
+		for track: StringName in of_set:
+			assert_true(Catalog.has_music(track), "組が差し替えるのは表の曲（%s）" % track)
+			assert_eq(of_set[track]["loop"], Catalog.MUSIC[track]["loop"], "ループかどうかは元の曲と同じ（%s）" % track)
+			assert_ne(of_set[track]["path"], Catalog.MUSIC[track]["path"], "組の曲は、いまの曲と別（%s）" % track)
+
+
+func test_music_set_changes_what_plays() -> void:
+	var settings := Settings.new()
+	var sound := _sound()
+	Sound.apply_settings(settings)
+	sound.play_scene_music(&"title")
+	var player: AudioStreamPlayer = sound._music[sound._active]
+	assert_eq(player.stream.resource_path, Catalog.MUSIC[&"title"]["path"], "既定は、いまの曲")
+	settings.set_value(Settings.MUSIC_SET, 1)
+	Sound.apply_settings(settings)
+	sound.refresh_music()
+	assert_true(sound._music[sound._active] != player, "組を替えると、同じ場面のまま新しい曲へつなぎ直す")
+	assert_eq(sound._music[sound._active].stream.resource_path, Catalog.MUSIC_SETS[1][&"title"]["path"])
+	assert_eq(sound.current_track(), &"title")
+	var again: AudioStreamPlayer = sound._music[sound._active]
+	sound.play_scene_music(&"title")
+	assert_true(sound._music[sound._active] == again, "同じ組の同じ曲なら、鳴らし直さない")
+	sound.play_scene_music(&"menu")
+	assert_eq(sound._music[sound._active].stream.resource_path, Catalog.MUSIC[&"menu"]["path"], "組に無い曲は、いまの曲のまま")
+	settings.set_value(Settings.MUSIC_SET, 0)
+	Sound.apply_settings(settings)
+	assert_eq(Catalog.music_set, 0)
+	_drop(sound)

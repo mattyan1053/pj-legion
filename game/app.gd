@@ -105,7 +105,10 @@ func _ready() -> void:
 	add_child(sound)
 	context.sound = sound
 	Sound.apply_settings(context.settings)
-	context.settings.changed.connect(func(_key: StringName) -> void: Sound.apply_settings(context.settings))
+	context.settings.changed.connect(func(key: StringName) -> void:
+		Sound.apply_settings(context.settings)
+		if key == AppContext.Settings.MUSIC_SET:
+			sound.refresh_music())
 
 	var menu := SystemMenu.new()
 	add_child(menu)

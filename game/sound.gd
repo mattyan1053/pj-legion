@@ -34,6 +34,8 @@ var _active := 0
 var _fades: Array[Tween] = [null, null]
 ## いま鳴らしている（か、鳴らし終えた）曲の名前と、場面の曲の名前。
 var _track := &""
+## いま鳴らしている曲の素材（BGM の組を替えたら、同じ名前でも素材が替わる）。
+var _track_path := ""
 var _scene_track := &""
 ## いまの曲と場面の曲の、表の大きさからの差（dB。会話の場面で対戦の曲を小さくする。sound_catalog.gd の talk_offset_db）。
 var _offset_db := 0.0
@@ -80,6 +82,7 @@ func release() -> void:
 		player.stop()
 		player.stream = null
 	_track = &""
+	_track_path = ""
 	if is_inside_tree():
 		await get_tree().create_timer(RELEASE_WAIT, true, false, true).timeout
 
@@ -98,6 +101,7 @@ static func ensure_buses() -> void:
 static func apply_settings(settings: Settings) -> void:
 	ensure_buses()
 	var muted: bool = settings.value(Settings.MUTE)
+	Catalog.music_set = settings.value(Settings.MUSIC_SET)
 	_set_bus(BUS_MASTER, settings.value(Settings.MASTER_VOLUME), muted)
 	_set_bus(BUS_MUSIC, settings.value(Settings.MUSIC_VOLUME), false)
 	_set_bus(BUS_EFFECTS, settings.value(Settings.EFFECTS_VOLUME), false)
@@ -153,13 +157,14 @@ func pending_track() -> StringName:
 ## 同じ曲が鳴っていれば、鳴らし直さない（場面を行き来しても、曲を頭から鳴らし直さない）。大きさ（offset_db）が違えば、そこへフェードする。
 func play_music(track: StringName, offset_db := 0.0, sharp := false) -> void:
 	_then_track = &""
-	if track == _track:
+	if track == _track and _path_of(track) == _track_path:
 		if offset_db != _offset_db and track != &"":
 			_offset_db = offset_db
 			_fade(_active, _volume_of(track), false)
 		return
 	var stream := _music_stream(track)
 	_track = track if stream != null else &""
+	_track_path = _path_of(track) if stream != null else ""
 	_offset_db = offset_db
 	_fade(_active, SILENT_DB, true, JINGLE_FADE_TIME if sharp else FADE_TIME)
 	if stream == null:
@@ -180,7 +185,19 @@ func play_music(track: StringName, offset_db := 0.0, sharp := false) -> void:
 
 ## 曲 track を、いまの差（_offset_db）で鳴らすときの大きさ（dB）。
 func _volume_of(track: StringName) -> float:
-	return Catalog.MUSIC[track].get("volume_db", 0.0) + _offset_db
+	return Catalog.music_entry(track).get("volume_db", 0.0) + _offset_db
+
+
+func _path_of(track: StringName) -> String:
+	return Catalog.music_entry(track).get("path", "")
+
+
+## BGM の組を替えたあと、いまの曲が別の素材になったなら、その素材へフェードでつなぎ直す（オプションで替えて、すぐ聴き比べられるように）。
+## 1 回だけの曲（決着）を鳴らしている間は、そのまま（鳴り終えて続ける曲は、新しい組で鳴る）。
+func refresh_music() -> void:
+	if _track == &"" or _then_track != &"" or not Catalog.music_entry(_track).get("loop", false):
+		return
+	play_music(_track, _offset_db)
 
 
 ## いまの曲の、表の大きさからの差（dB）。検査用。
@@ -198,6 +215,7 @@ func _on_music_finished(slot: int) -> void:
 	if slot != _active:
 		return
 	_track = &""
+	_track_path = ""
 	var following := _then_track
 	_then_track = &""
 	if following != &"":
@@ -212,7 +230,7 @@ func scene_track() -> StringName:
 func _music_stream(track: StringName) -> AudioStream:
 	if not Catalog.has_music(track):
 		return null
-	var entry: Dictionary = Catalog.MUSIC[track]
+	var entry := Catalog.music_entry(track)
 	var stream := _load(entry["path"])
 	if stream is AudioStreamOggVorbis:
 		(stream as AudioStreamOggVorbis).loop = entry.get("loop", false)

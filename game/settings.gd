@@ -25,6 +25,7 @@ const MASTER_VOLUME := &"master_volume"
 const MUSIC_VOLUME := &"music_volume"
 const EFFECTS_VOLUME := &"effects_volume"
 const MUTE := &"mute"
+const MUSIC_SET := &"music_set"
 const SHOW_MINIMAP := &"show_minimap"
 const FULLSCREEN := &"fullscreen"
 const UNIT_LOOK := &"unit_look"
@@ -72,6 +73,12 @@ const ITEMS: Array[Dictionary] = [
 		"key": MUTE, "section": "settings.section.sound", "label": "settings.mute",
 		"note": "settings.mute.note",
 		"kind": Kind.TOGGLE, "default": false,
+	},
+	{
+		# 値は sound_catalog.gd の MUSIC_SETS の番号。聴き比べのための候補の曲（docs/sound.md の「BGM の組」）。
+		"key": MUSIC_SET, "section": "settings.section.sound", "label": "settings.music_set",
+		"note": "settings.music_set.note",
+		"kind": Kind.CHOICE, "choices": [[0, "settings.music_set.current"], [1, "settings.music_set.a"], [2, "settings.music_set.b"], [3, "settings.music_set.c"]], "default": 0,
 	},
 	{
 		"key": FULLSCREEN, "section": "settings.section.screen", "label": "settings.fullscreen",
