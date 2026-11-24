@@ -127,7 +127,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	if guard > 0 and amount > 0:
 		boosts[Traits.Id.RANKS] = mini(guard, amount)
 		amount = maxi(0, amount - guard)
-	var spores := Monsters.spore_penalty(battle, attacker)
+	var spores := Monsters.spore_penalty(battle, attacker) if amount > 0 else 0  # 隊列で 0 になったら、胞子は引くものが無い
 	if spores > 0:
 		amount = maxi(0, amount - spores)
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)

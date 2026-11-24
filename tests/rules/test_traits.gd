@@ -344,6 +344,87 @@ func test_forecast_shows_the_trait_part() -> void:
 	assert_eq(outcome.damage, second.power() + Traits.FOCUS_BONUS - Traits.RANKS_GUARD)
 
 
+# --- 殻蟹と糸茸（docs/monsters.md） ---
+
+
+## 胞子は隊列のあとに引く。足して 0 で止まる。隊列で 0 になった攻撃には、胞子の印を付けない。
+func test_spores_come_after_ranks_and_stop_at_zero() -> void:
+	var battle := _battle(Traits.NONE, T.RANKS)
+	battle.add_unit(K.SHROOM, Unit.Side.NEUTRAL, Vector2i(1, 2))
+	var target := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 3))
+	battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 4))
+	var commando := battle.add_unit(K.COMMANDO, P1, Vector2i(2, 3))  # 糸茸の斜め隣
+	var hit := Combat.hit(battle, commando, target)
+	assert_eq(hit.amount, commando.power() - Traits.RANKS_GUARD - Monsters.SPORE_PENALTY)
+	assert_eq(hit.traits, {T.RANKS: Traits.RANKS_GUARD})
+	assert_true(hit.spores)
+	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 3))  # 7 - 6 = 1 から 4 を引く
+	hit = Combat.hit(battle, sniper, target)
+	assert_eq(hit.amount, 0)
+	assert_eq(hit.traits, {T.RANKS: Traits.RANKS_GUARD})
+	assert_true(hit.spores)
+	sniper.temporary_bonus[Unit.Stat.POWER] = -2  # 5 は隊列だけで 0
+	hit = Combat.hit(battle, sniper, target)
+	assert_eq(hit.amount, 0)
+	assert_eq(hit.traits, {T.RANKS: 5}, "隊列は、引けたぶんだけ")
+	assert_false(hit.spores, "胞子は引くものが無い")
+
+
+## 集中砲火・仇討ち・誓いで足すぶんは、胞子より前に足す（足した量はそのまま出て、胞子で 4 引く）。
+func test_trait_bonuses_come_before_spores() -> void:
+	var focus := _battle(T.FOCUS)
+	focus.add_unit(K.SHROOM, Unit.Side.NEUTRAL, Vector2i(1, 2))
+	var target := focus.add_unit(K.PALADIN, P2, Vector2i(3, 3))
+	_attack(focus, focus.add_unit(K.SNIPER, P1, Vector2i(3, 0)), target)
+	var commando := focus.add_unit(K.COMMANDO, P1, Vector2i(2, 3))
+	var hit := Combat.hit(focus, commando, target)
+	assert_eq(hit.amount, commando.power() + Traits.FOCUS_BONUS - Monsters.SPORE_PENALTY)
+	assert_eq(hit.traits, {T.FOCUS: Traits.FOCUS_BONUS})
+	assert_true(hit.spores)
+
+	var vengeance := _battle(T.VENGEANCE)
+	vengeance.add_unit(K.SHROOM, Unit.Side.NEUTRAL, Vector2i(1, 2))
+	var fallen := vengeance.add_unit(K.SORCERER, P1, Vector2i(3, 2))
+	var killer := vengeance.add_unit(K.COMMANDO, P2, Vector2i(3, 3))
+	var blade := vengeance.add_unit(K.SPELLBLADE, P1, Vector2i(2, 3))
+	fallen.hp = 1
+	vengeance.phase = P2
+	_attack(vengeance, killer, fallen)
+	vengeance.phase = P1
+	hit = Combat.hit(vengeance, blade, killer)
+	assert_eq(hit.amount, blade.power() + Traits.VENGEANCE_BONUS - Monsters.SPORE_PENALTY)
+	assert_eq(hit.traits, {T.VENGEANCE: Traits.VENGEANCE_BONUS})
+
+	var oath := _battle(T.OATH)
+	oath.add_unit(K.SHROOM, Unit.Side.NEUTRAL, Vector2i(1, 2))
+	var foe := oath.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 3))
+	var knight := oath.add_unit(K.PALADIN, P1, Vector2i(3, 2))
+	var mate := oath.add_unit(K.SPELLBLADE, P1, Vector2i(2, 3))
+	Traits.bind(knight, mate)
+	_attack(oath, knight, foe)
+	hit = Combat.hit(oath, mate, foe)
+	assert_eq(hit.amount, mate.power() + Traits.OATH_BONUS - Monsters.SPORE_PENALTY)
+	assert_eq(hit.traits, {T.OATH: Traits.OATH_BONUS})
+
+
+## 離れた所から殻蟹を狙えないときは、特徴が効く印があっても、攻撃の相手にも予測にも出ない。隣から叩く味方には、ふつうに効く。
+func test_a_crab_out_of_reach_shows_no_trait_part() -> void:
+	var battle := _battle(T.FOCUS)
+	var crab := battle.add_unit(K.CRAB, Unit.Side.NEUTRAL, Vector2i(3, 3))
+	var commando := battle.add_unit(K.COMMANDO, P1, Vector2i(2, 3))
+	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(3, 0))
+	var trooper := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(3, 4))
+	_attack(battle, commando, crab)
+	assert_true(Traits.focus_marked(battle, crab, P1), "印は殻蟹にも付く")
+	assert_false(Combat.targets(battle, sniper).has(crab))
+	var forecast := Forecast.of(battle, AttackAction.new(sniper.id, crab.id))
+	assert_false(forecast.accepted)
+	assert_eq(forecast.outcome(crab.id), null)
+	var outcome := Forecast.of(battle, AttackAction.new(trooper.id, crab.id)).outcome(crab.id)
+	assert_eq(outcome.traits, {T.FOCUS: Traits.FOCUS_BONUS} as Dictionary[int, int])
+	assert_eq(outcome.damage, trooper.power() + Traits.FOCUS_BONUS)
+
+
 # --- CPU ---
 
 
