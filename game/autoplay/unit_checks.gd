@@ -227,6 +227,10 @@ func _queue_inspection_scene() -> void:
 		_scene.cancel()
 		_expect(_scene.inspected_unit() == null and _scene.selected_unit() == trooper and _scene.threat_painted_cells().is_empty(),
 			"右クリックで、選んだ駒へ戻らなかった")
+		# 兵を選んでいる途中は、敵の兵のダブルクリックで範囲を留めない（ふつうのクリック 2 回: 見て、見るのをやめる）。
+		_double_click(sniper.cell)
+		_expect(_scene.pinned_ids().is_empty() and _scene.selected_unit() == trooper and _scene.inspected_unit() == null,
+			"兵を選んでいる途中に、ダブルクリックで範囲を留めた（か、選んだ兵から外れた）")
 		# 敵の全員の脅威範囲は、出したままでも、移動のマスを選べる。
 		_scene.toggle_threat()
 		var all: Array[Vector2i] = Threat.against(battle, Unit.Side.PLAYER1).cells()
@@ -277,7 +281,17 @@ func _queue_inspection_scene() -> void:
 		# 自分の駒には出さない。
 		_scene.click_cell(trooper.cell)
 		_expect(not _scene.pin_switch_state()[0], "自分の駒に「範囲を表示したまま」が出た")
-		_scene.cancel())
+		_scene.cancel()
+		# 敵の兵のダブルクリックでも、留める・外す（スイッチと同じ。見たまま）。自分の兵では留めない。
+		_double_click(neutral.cell)
+		_expect(_scene.pinned_ids() == ([sniper.id] as Array[int]) and _scene.inspected_unit() == neutral, "ダブルクリックで、留めた範囲を外せない")
+		_double_click(neutral.cell)
+		_expect(_scene.pinned_ids() == ([sniper.id, neutral.id] as Array[int]) and _scene.pin_switch_state() == ([true, true] as Array[bool]),
+			"ダブルクリックで、範囲を表示したままにできない")
+		_scene.cancel()
+		_double_click(trooper.cell)
+		_expect(_scene.pinned_ids() == ([sniper.id, neutral.id] as Array[int]) and _scene.inspected_unit() == null,
+			"自分の兵のダブルクリックで、留めた範囲が変わった（か、ふつうのクリック 2 回にならない）"))
 	_scripted.append(_end_turn)
 	_scripted.append(func() -> void:
 		# 留めた駒が動くと、範囲も付いていく。
