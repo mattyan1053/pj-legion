@@ -79,6 +79,8 @@ static func can_attack(battle: Battle, attacker: Unit, target: Unit) -> bool:
 		return false
 	if Monsters.shell_turns_away(attacker.cell, target):
 		return false
+	if battle.spares(attacker.side, target):
+		return false
 	return reaches(battle, attacker.cell, target.cell, attacker.attack_range())
 
 

@@ -187,5 +187,7 @@ static func scenario_of(of_episode: Episode) -> Scenario:
 	defined.signs = of_episode.signs.duplicate()
 	# 部隊の特徴（[ally] / [enemy] の trait。docs/troop-traits.md）。書いた陣営だけが持つ（部隊編成で選んだ特徴は使わない）。
 	defined.deck_traits = false
+	# 敵の側が番人を狙わない話（[enemy] の spare_boss = yes）。
+	defined.spares_bosses[Unit.Side.PLAYER2] = of_episode.enemy_spares_boss
 	defined.traits = of_episode.traits.duplicate()
 	return defined

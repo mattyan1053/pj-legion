@@ -70,11 +70,12 @@ static func blast_cells(board: Board, cell: Vector2i) -> Array[Vector2i]:
 
 
 ## cell の樽が爆発したときに巻き込まれる駒（陣営を問わない）。上の行から、左の列から。
-static func blast_victims(battle: Battle, cell: Vector2i) -> Array[Unit]:
+## by_side は爆発を起こした陣営（-1 なら無し）。番人を狙わない陣営（Battle.spares）なら、番人を巻き込まない。
+static func blast_victims(battle: Battle, cell: Vector2i, by_side := -1) -> Array[Unit]:
 	var result: Array[Unit] = []
 	for near in blast_cells(battle.board, cell):
 		var unit := battle.unit_at(near)
-		if unit != null:
+		if unit != null and not battle.spares(by_side, unit):
 			result.append(unit)
 	return result
 
