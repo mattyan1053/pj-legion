@@ -9,7 +9,7 @@ extends RefCounted
 ## - 殻蟹: Quaternius の Cute Animated Monsters の Crab（assets/quaternius/cute/Crab.fbx。CC0）。殻の赤を陣営の色に塗り替える
 ## - 糸茸: 同じパックの Mushroom（Mushroom.fbx）。笠の茶色を陣営の色に塗り替える。素材の動きは立つだけ（ほかは unit_body.gd の代わりの動き）
 ## 絵が 1 枚で面を分けられない素材は、絵の決まった色合いの所を陣営の色に塗り替える（"recolor"。team_recolor.gdshader）。
-## - 骸骨旗手: 「人物」の組の骸骨（quaternius_skeleton.gd）に、陣営の色の旗を持たせたもの
+## - 骸骨旗手: Quaternius の骸骨（quaternius_skeleton.gd）に、陣営の色の旗を持たせたもの
 ## 動きは素材の 4〜5 つ（立つ・走る・殴る・倒れる。大蝙蝠は被弾も）。糸針は unit_body.gd の代わりの動き。
 
 const UnitBody := preload("res://game/unit_body.gd")

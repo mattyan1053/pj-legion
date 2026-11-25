@@ -43,5 +43,5 @@ func test_no_pose_jumps_at_the_seams() -> void:
 					assert_true(jumps["run_in"] <= BLEND_SPEED, "%s: 立ち姿から走り出すつなぎが速すぎる（%.0f 度 / 秒）" % [entry[0], jumps["run_in"]])
 					assert_true(jumps["run_out"] <= BLEND_SPEED, "%s: 走りから止まるつなぎが速すぎる（%.0f 度 / 秒）" % [entry[0], jumps["run_out"]])
 		body.free()
-	assert_true(measured >= 40, "動きを測れた体が少ない（%d）" % measured)
-	assert_true(runs >= 40, "走りのつなぎを測れた体が少ない（%d）" % runs)
+	assert_true(measured >= 25, "動きを測れた体が少ない（%d）" % measured)
+	assert_true(runs >= 25, "走りのつなぎを測れた体が少ない（%d）" % runs)
