@@ -138,11 +138,9 @@ func test_no_barrel_targets_for_units_that_cannot_attack() -> void:
 		"......",
 	])
 	var enemy := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(0, 0))
-	var healer := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(1, 1))
 	var runner := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(5, 1))
 	assert_eq(Queries.barrel_targets(battle, null).size(), 0)
 	assert_eq(Queries.barrel_targets(battle, enemy).size(), 0, "相手の番の駒")
-	assert_eq(Queries.barrel_targets(battle, healer).size(), 0, "回復役")
 	battle.apply(MoveAction.new(runner.id, Vector2i(2, 1), true))
 	assert_eq(Queries.barrel_targets(battle, runner).size(), 0, "巡航で動いた駒")
 

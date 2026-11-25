@@ -85,6 +85,7 @@ deck.sheet.level,Lv {level}
 deck.sheet.level_max,最大
 deck.sheet.experience,経験 {experience} / {needed}
 deck.sheet.cost,コスト {cost}
+deck.sheet.strike,攻撃 {power}
 deck.sheet.skill,スキル
 deck.sheet.ult,必殺技
 deck.sheet.no_skill,スキルなし

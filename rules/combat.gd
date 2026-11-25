@@ -10,7 +10,7 @@ extends RefCounted
 ## - 煙幕の中の持ち主の駒への、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃は、ダメージが 0 になる（FieldEffects.smoke_covering）
 ## - 殻蟹は、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃では狙えない（Monsters.shell_turns_away）
 ## - 糸茸の周り 8 マスにいる駒の攻撃は、ダメージが減る（Monsters.spore_penalty。森の軽減と肩並べのあと）
-## - 回復役（衛生兵・プリースト）は攻撃しない（かわりに味方を回復する。Healing）
+## - 回復役（衛生兵・プリースト）も攻撃できる。強さは回復量でなく UnitKind.HEALER_STRIKE（と一時的な補正）。射程は回復と同じ
 
 const FOREST_DAMAGE_RATE_PERCENT := 80
 ## この距離から先の攻撃が「離れたところからの攻撃」。煙幕が防ぐ。
@@ -75,8 +75,6 @@ static func _segment_crosses(from: Vector2i, d: Vector2i, cell: Vector2i) -> boo
 static func can_attack(battle: Battle, attacker: Unit, target: Unit) -> bool:
 	if attacker == null or target == null or not attacker.is_enemy_of(target):
 		return false
-	if UnitKind.role(attacker.kind) == UnitKind.Role.HEALER:
-		return false
 	if not battle.units.has(target):
 		return false
 	if Monsters.shell_turns_away(attacker.cell, target):
@@ -98,8 +96,11 @@ static func targets(battle: Battle, attacker: Unit) -> Array[Unit]:
 ## attacker の、いまの攻撃 1 回の攻撃力。確定クリティカルの状態（照準）なら、その倍率を掛けた値。
 ## 倍率は一時的な補正（突撃・注射。Unit の層 3）の前の攻撃力に掛け、一時的な補正はそのあとに足す
 ## （突撃と照準を重ねても、満タンの将を 1 発で倒せないように。docs/tactical-ult.md）。
+## 回復役は、回復量（power）でなく回復役の攻撃の強さ（UnitKind.healer_strike）に一時的な補正を足した値。
 ## 駒への攻撃と、盾への攻撃が使う。
 static func attack_power(attacker: Unit) -> int:
+	if UnitKind.role(attacker.kind) == UnitKind.Role.HEALER:
+		return maxi(UnitKind.healer_strike(attacker.kind) + attacker.temporary_bonus.get(Unit.Stat.POWER, 0), 0)
 	var percent := Statuses.critical_percent(attacker)
 	if percent == Status.NORMAL_PERCENT:
 		return attacker.power()

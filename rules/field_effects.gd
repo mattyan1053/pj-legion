@@ -95,13 +95,11 @@ static func _place_area(
 # ---- 盾への攻撃 ----
 
 
-## attacker がいまの位置から cell の盾を攻撃できるか。盾の持ち主の駒と回復役は攻撃できない。
+## attacker がいまの位置から cell の盾を攻撃できるか。盾の持ち主の駒は攻撃できない。
 ## 届くかどうかは駒への攻撃と同じ（射程と、間の盾。Combat.reaches）。
 static func can_attack_barricade(battle: Battle, attacker: Unit, cell: Vector2i) -> bool:
 	var barricade := battle.board.barricade_at(cell)
 	if attacker == null or barricade == null or attacker.side == barricade.side:
-		return false
-	if UnitKind.role(attacker.kind) == UnitKind.Role.HEALER:
 		return false
 	return Combat.reaches(battle, attacker.cell, cell, attacker.attack_range())
 

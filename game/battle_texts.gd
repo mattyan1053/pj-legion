@@ -66,7 +66,9 @@ static func guide(
 		parts.append(_right_click("battle.guide.undo"))
 		return parts
 	parts = [_mark(&"move", "battle.guide.move"), _mark(&"cruise", "battle.guide.cruise")]
-	parts.append(_mark(&"heal", "battle.guide.heal") if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else _mark(&"attack", "battle.guide.attack"))
+	if UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
+		parts.append(_mark(&"heal", "battle.guide.heal"))
+	parts.append(_mark(&"attack", "battle.guide.attack"))
 	return parts
 
 
