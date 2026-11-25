@@ -186,7 +186,8 @@ func _build_hunts() -> void:
 				home_threat = true
 	var width := _board.size.x
 	for boss in _battle.units:
-		if boss.kind != UnitKind.Id.ELITE_MINION:
+		# 番人を狙わない陣営（Battle.spares。話の spare_boss）は、狩らない。
+		if boss.kind != UnitKind.Id.ELITE_MINION or _battle.spares(_me, boss):
 			continue
 		var steps := _steps_from(boss.cell)
 		# 狩りに加われる自分の駒の [着くまでのターン数, 攻撃力]。全部と、手の空いている駒だけ。
@@ -200,11 +201,12 @@ func _build_hunts() -> void:
 				continue
 			if other.side == _foe:
 				var apart := Combat.distance(other.cell, boss.cell)
-				if apart <= other.move_range() + other.attack_range():
+				# 番人を狙わない相手は、番人を削らない（止めを取られる心配も、狩られる心配も無い）。
+				if apart <= other.move_range() + other.attack_range() and not _battle.spares(_foe, boss):
 					strike += other.power()
 				if other.kind != UnitKind.Id.KING:
 					foes.append(other)
-					if apart <= HUNT_RIVAL_RADIUS:
+					if apart <= HUNT_RIVAL_RADIUS and not _battle.spares(_foe, boss):
 						near_rivals += other.power()
 			elif other.kind != UnitKind.Id.KING:
 				var away := steps[other.cell.y * width + other.cell.x]

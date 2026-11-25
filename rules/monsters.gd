@@ -106,16 +106,17 @@ static func _touches(a: Vector2i, b: Vector2i) -> bool:
 
 ## 糸喰い fallen が倒れて弾けたとき、巻き込まれる駒（周り 8 マス。陣営を問わない。上の行から、左の列から）。fallen はもう盤にいなくてよい。
 ## 同じ爆発やスキルで HP が 0 になり、取り除かれるのを待っている駒は含まない（2 度当てない）。
-static func burst_victims(battle: Battle, fallen: Unit) -> Array[Unit]:
+## by_side は糸喰いを倒した陣営（-1 なら無し）。番人を狙わない陣営なら、番人を巻き込まない（Battle.spares）。
+static func burst_victims(battle: Battle, fallen: Unit, by_side := -1) -> Array[Unit]:
 	var result: Array[Unit] = []
-	for unit in MapObject.blast_victims(battle, fallen.cell):
+	for unit in MapObject.blast_victims(battle, fallen.cell, by_side):
 		if unit != fallen and unit.hp > 0:
 			result.append(unit)
 	return result
 
 
 static func _burst(battle: Battle, fallen: Unit, by: Unit) -> Array[BattleEvent]:
-	var victims := burst_victims(battle, fallen)
+	var victims := burst_victims(battle, fallen, by.side if by != null else -1)
 	var victim_ids: Array[int] = []
 	for victim in victims:
 		victim_ids.append(victim.id)

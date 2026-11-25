@@ -154,16 +154,20 @@ func _set_goal(unit: Unit) -> void:
 			goal = _board.stronghold_cell
 			_goal_reach = 0
 			_stand_off = false
-	if _battle.turn >= STALL_TURN and unit.kind != UnitKind.Id.KING and not _holding and not _rushing:
+	# 将は加わらない。ただし、将のいない群れとの中ボスの撃破で勝つ戦いで、戦える駒が残っていなければ、将も中ボスへ（_break_stall）。
+	var stalled_king := unit.kind == UnitKind.Id.KING and not (_slays_bosses and _lone_king)
+	if _battle.turn >= STALL_TURN and not stalled_king and not _holding and not _rushing:
 		goal = _break_stall(unit, role, goal)
-	if _foe_hq != Board.NO_CELL and role != UnitKind.Role.HEALER and not _foes_left() and (unit.kind != UnitKind.Id.KING or _lone_king):
+	if _foe_hq != Board.NO_CELL and role != UnitKind.Role.HEALER and not _foes_left() and (unit.kind != UnitKind.Id.KING or _lone_king) and not _slays_bosses:
 		# 相手の駒が残っていなくても終わらない（占拠でしか勝てない）: 追う敵がいないので、敵の本陣へ向かう。
+		# 中ボスの撃破で勝つ戦いは、中ボスへ（_break_stall）。
 		goal = _foe_hq
 		_goal_reach = 0
 	_goal_steps = _steps_from(goal)
 
 
-## 長引いた（STALL_TURN から）ときの目標。拠点の受け持ちのほかの戦う駒は、敵の将を攻撃できるところまで。
+## 長引いた（STALL_TURN から）ときの目標。拠点の受け持ちのほかの戦う駒は、敵の将を攻撃できるところまで
+## （将のいない群れと、中ボスの撃破で勝つ戦いなら、狩る中ボスを攻撃できるところまで）。
 ## 戦える駒の残っていない軍の回復役は、敵の本陣（治しても勝てないので、占拠を狙う）。変えなければ goal のまま返す。
 ## _set_goal の終わり近くで呼ぶ（_goal_reach、_stand_off、_support も置く）。
 func _break_stall(unit: Unit, role: UnitKind.Role, goal: Vector2i) -> Vector2i:
@@ -174,6 +178,9 @@ func _break_stall(unit: Unit, role: UnitKind.Role, goal: Vector2i) -> Vector2i:
 		_goal_weight *= STALL_GOAL_RATE
 		return _foe_hq
 	var king := _foe_king()
+	if king == null and _slays_bosses:
+		# 将のいない群れとの、中ボスの撃破で勝つ戦い: 傷んだまま中ボスのそばで待ち続けない。
+		king = _boss_to_hunt(unit)
 	if king == null:
 		return goal
 	if _takes_stronghold and _fighter_count() > 1:

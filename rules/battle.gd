@@ -67,6 +67,9 @@ var struck: Dictionary[int, Array] = {}
 
 ## この対戦でめくられた縫い目の様子の札（Seam.Sign の並び。選べる決まり OptionalRules.SEAM）。対戦を作るとき（MatchSetup.create_battle）に決まる。空なら札は無い。
 var signs: Array[int] = []
+## プレイヤーごとの、番人（中ボス）を狙わない陣営か（ストーリーの話の [enemy] の spare_boss。docs/scenario.md）。
+## 真の陣営の駒は、番人を攻撃の相手にできず、その陣営が起こした爆発・弾ける糸は番人に当たらない（spares）。
+var spares_bosses: Array[bool] = [false, false]
 
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
@@ -89,6 +92,11 @@ func clone() -> Battle:
 	copy.rng.seed = rng.seed
 	copy.rng.state = rng.state
 	return copy
+
+
+## 陣営 side が起こすダメージを、unit が受けないか（side が番人を狙わない陣営で、unit が番人）。side が -1 か中立なら偽。
+func spares(side: int, unit: Unit) -> bool:
+	return side >= 0 and side < spares_bosses.size() and spares_bosses[side] and unit.kind == UnitKind.Id.ELITE_MINION
 
 
 ## 駒を置く（対戦の準備用）。置けないマスなら null。

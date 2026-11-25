@@ -184,6 +184,7 @@ func create_battle() -> Battle:
 			battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
 	battle.hold_turns = scenario.hold_turns
+	battle.spares_bosses = scenario.spares_bosses.duplicate()
 	return battle
 
 
