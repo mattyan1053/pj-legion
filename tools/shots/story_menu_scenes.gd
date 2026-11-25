@@ -504,6 +504,32 @@ func _sortie_to_battle() -> bool:
 	return _app.current_id() == SceneFlow.BATTLE
 
 
+## 出撃準備（ストーリー用の部隊を 5 つ取っておいて、2 つ目を選んだところ。選べる部隊の並びに 3 部隊ぶんが見え、続きは欄の中で送る）。
+func _scene_story_sortie_squads() -> bool:
+	_app.context.decks.load_data({"decks": []})
+	var chosen: RefCounted = null
+	var lineups := {
+		"狙撃の小隊": [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.SNIPER],
+		"盾の壁": [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER],
+		"速攻": [UnitKind.Id.SNIPER, UnitKind.Id.SNIPER],
+		"守りの小隊": [UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SHIELD_TROOPER],
+		"試し": [UnitKind.Id.SNIPER],
+	}
+	for name: String in lineups:
+		var deck := Deck.new(Story.military().army, _app.context.story.deck_rules())
+		for kind: UnitKind.Id in lineups[name]:
+			deck.add(kind)
+		var saved: RefCounted = _app.context.decks.add(name, deck)
+		if name == "盾の壁":
+			chosen = saved
+	if not await _start_story():
+		return false
+	if not _at_sortie():
+		return false
+	_app.current_scene().choose(chosen.id)
+	return _app.current_scene().chosen_id() == chosen.id and _app.current_scene().options_fully_shown() >= 3
+
+
 ## 出撃準備（ストーリー用の部隊を 1 つ取っておいて、それを選んだところ）。
 func _scene_story_sortie() -> bool:
 	_app.context.decks.load_data({"decks": []})

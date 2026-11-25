@@ -20,6 +20,19 @@ static func mark(frame: Control, what: String, kind: StringName = SIZE) -> void:
 	frame.set_meta(META, [what, kind])
 
 
+## 枠の中の部品 part を、わざと枠の外へ出していることの印（角に掛ける札、枠をまたぐ飾りなど）。
+## 見張りは、印の付いた枠の中身が枠からはみ出していないかも見る（steady_probe.gd の spilled）。この印の部品と、その中は見ない。
+const LET_OUT := &"steady_let_out"
+
+
+static func let_out(part: Control) -> void:
+	part.set_meta(LET_OUT, true)
+
+
+static func is_let_out(part: Control) -> bool:
+	return part.has_meta(LET_OUT)
+
+
 static func name_of(frame: Control) -> String:
 	return String(frame.get_meta(META)[0])
 
