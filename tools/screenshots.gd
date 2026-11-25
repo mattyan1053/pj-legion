@@ -1,4 +1,4 @@
-extends "res://tools/shots/story_battle_scenes.gd"
+extends "res://tools/shots/story_patrol_scenes.gd"
 ## ゲームの決まった場面を画像に撮る（PR に貼るため）。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
 ## アプリ（app.gd）が、タイトル → 対戦設定 → 対戦 と人と同じ道で対戦に入ったところで、このノードを足す。
 ## 撮り終えたら終わる。使い方は docs/screenshots.md。

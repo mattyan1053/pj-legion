@@ -25,6 +25,8 @@ const NOT_SHOWN := [
 	"res://game/autoplay_sweeps.gd",  # 自動の対戦の通しの点検が、くい違いを知らせる文（開発用）
 	"res://game/story_file.gd",  # 話・物語・マップのファイルの書き間違いの文（開発用。ファイルを書く人が読む）
 	"res://game/episode.gd",
+	"res://game/episode/episode_sides.gd",  # 同じく（話のファイルの節ごとに分けたもの）
+	"res://game/episode/episode_talks.gd",
 	"res://game/campaign.gd",
 	"res://game/maps.gd",
 	"res://game/text_wrap.gd",  # 折り返しの決まり（行頭・行末に置かない文字の並び。画面の文ではない）

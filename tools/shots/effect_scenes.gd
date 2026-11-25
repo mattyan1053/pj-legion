@@ -1,4 +1,4 @@
-extends "res://tools/shots/battle_scenes.gd"
+extends "res://tools/shots/battle_info_scenes.gd"
 ## スクリーンショットの場面: 演出の途中（攻撃が当たる瞬間、スキル、必殺技）と、相手の番の見え方。
 
 
