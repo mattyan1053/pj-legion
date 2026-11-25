@@ -9,6 +9,7 @@ func _leave_battle(app: Node) -> void:
 	var menu: Node = app.system_menu()
 	_scene.set_opponent(false)
 	_scene.start_on_field(VersusFields.PLAIN, _scene.map_seed + 1)
+	_scene.hide_notice()
 	_scene.set_opponent(true)
 	_end_turn()
 	_expect(_scene.is_busy(), "ターンを終えても、相手の番に入らない")
