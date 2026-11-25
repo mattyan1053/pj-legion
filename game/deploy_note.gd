@@ -97,7 +97,8 @@ func show_unit(unit: Unit, selected := false) -> void:
 	_name.visible = has_unit
 	_role_tag.visible = has_unit
 	_stats.visible = has_unit
-	_state.visible = has_unit
+	# 選んでいる駒にだけ「選択中」。マウスを乗せただけの駒は、額の縁（金でない）で見分ける。
+	_state.visible = has_unit and selected
 	_hint.visible = not has_unit
 	if not has_unit:
 		_shown_id = -1
@@ -117,7 +118,7 @@ func show_unit(unit: Unit, selected := false) -> void:
 		"hp": unit.max_hp(), "power": unit.power(), "move": unit.move_range(), "range": unit.attack_range(),
 		"strike": Combat.attack_power(unit),
 	}))
-	_state.text = Text.t("deploy.note.selected") if selected else Text.t("deploy.note.hovered")
+	_state.text = Text.t("deploy.note.selected")
 
 
 ## 出している駒の番号（無ければ -1。検査用）。
