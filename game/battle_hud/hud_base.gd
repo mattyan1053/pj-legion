@@ -122,7 +122,6 @@ const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
 const COLOR_STATUS := Palette.INFO
 const COLOR_TRAIT := Palette.ACCENT
-## 組み方（分隊・誓い）の行。
 ## 勝ち方の札の地と枠（いつもと、最後のターンのように急ぐとき）。
 const COLOR_GOAL := Palette.GOAL
 const COLOR_GOAL_BORDER := Palette.GOAL_BORDER

@@ -238,3 +238,45 @@ func test_placement_fields_from_older_files_are_ignored() -> void:
 	assert_true(library.items()[0].playable(), "%s" % [library.items()[0].issues()])
 	assert_eq(library.items()[0].deck.entries.size(), 2)
 	assert_false(JSON.stringify(library.to_data()).contains("placement"), "書き直すときは、配置の欄を残さない")
+
+
+func test_trait_and_oaths_read_back_the_same() -> void:
+	var library := _library()
+	var knights := Deck.new(FANTASY)
+	var a := knights.add(UnitKind.Id.PALADIN)
+	var b := knights.add(UnitKind.Id.SPELLBLADE)
+	knights.add(UnitKind.Id.PRIEST)
+	knights.trait_id = Traits.Id.OATH
+	assert_true(knights.bind(a, b))
+	library.add("誓いの隊", knights)
+	var ranks := _deck()
+	ranks.trait_id = Traits.Id.RANKS
+	library.add("隊列の隊", ranks)
+	var items := _loaded().items()
+	assert_eq(items[0].deck.trait_id, Traits.Id.OATH)
+	assert_eq(items[0].deck.oath_pairs(), [Vector2i(0, 1)] as Array[Vector2i])
+	assert_eq(items[1].deck.trait_id, Traits.Id.RANKS)
+	_cleanup()
+
+
+## 部隊の特徴の前の形（組み方の頃。特徴の鍵が無く、騎士領の部隊に誓いの組だけがある）と、読めない特徴の鍵。
+## どれも落ちずに読め、特徴は軍の既定になり、出撃できる。誓いの組は残る（誓いを選べば、また効く）。
+func test_decks_from_before_troop_traits_load_with_the_army_default() -> void:
+	var library := _library()
+	var units := [{"kind": "PALADIN", "equipment": []}, {"kind": "SPELLBLADE", "equipment": []}, {"kind": "PRIEST", "equipment": []}]
+	library.load_data({"decks": [
+		{"id": "1", "name": "前の誓い", "rules": "versus", "army": "FANTASY", "units": units, "oaths": [[0, 1]]},
+		{"id": "2", "name": "組み方の鍵", "rules": "versus", "army": "FANTASY", "units": units, "trait": "formation"},
+		{"id": "3", "name": "よその軍の特徴", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": "vengeance"},
+		{"id": "4", "name": "数の特徴", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": 3, "oaths": "broken"},
+	]})
+	var items := library.items()
+	assert_eq(items.size(), 4)
+	assert_eq(items[0].deck.trait_id, Traits.Id.VENGEANCE)
+	assert_eq(items[0].deck.oath_pairs(), [Vector2i(0, 1)] as Array[Vector2i], "誓いの組は残る")
+	assert_eq(items[1].deck.trait_id, Traits.Id.VENGEANCE)
+	assert_eq(items[2].deck.trait_id, Traits.Id.FOCUS)
+	assert_eq(items[3].deck.trait_id, Traits.Id.FOCUS)
+	assert_true(items[3].deck.oaths.is_empty())
+	for item in items:
+		assert_true(item.playable(), "%s: %s" % [item.name, item.issues()])

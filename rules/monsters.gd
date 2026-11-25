@@ -151,7 +151,7 @@ static func _rally(battle: Battle, fallen: Unit) -> Array[BattleEvent]:
 	if friends.is_empty():
 		return events
 	events.append(RallyEvent.new(fallen, friends))
-	# 誓いの果てと同じ長さ: 次の自分のフェーズの終わりまで（自分のフェーズの途中なら、このフェーズの終わりまで）。
+	# 次の自分のフェーズの終わりまで（自分のフェーズの途中なら、このフェーズの終わりまで）。
 	var turns := 1 if battle.phase == fallen.side else 2
 	for friend in friends:
 		events.append(Statuses.add(friend, Status.Type.RESOLVE, turns))

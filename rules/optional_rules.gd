@@ -19,7 +19,7 @@ const SEAM := &"seam"
 const ALL: Array[StringName] = [STRONGHOLD, SEAM]
 ## 対戦モードの対戦設定の既定（拠点は、将の撃破・本陣の占拠と並ぶ勝ち方として入。縫い目の様子はランダム = 入）。
 const DEFAULTS: Array[StringName] = [STRONGHOLD, SEAM]
-## 休眠の決まり: ルールと CPU は残すが、画面からは入にできない（対戦設定に行が無く、部隊編成にも組み方の欄を出さない）。
+## 休眠の決まり: ルールと CPU は残すが、画面からは入にできない（対戦設定に行が無い）。
 ## いまは無い（決まりを試すときの置き場所として残す）。
 const DORMANT: Array[StringName] = []
 
