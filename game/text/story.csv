@@ -22,16 +22,15 @@ sortie.heading,出撃準備　　第 {number} 話「{title}」
 sortie.map,初期位置　マップ「{map}」
 sortie.auto_place,おまかせ
 sortie.place_fixed,初期位置: 固定
-sortie.lesson,この話で\n覚えること
+sortie.lesson,覚えること
 sortie.goal,勝利条件
-sortie.enemy,敵の部隊（{army}）
+sortie.enemy,敵の部隊　{army}
 sortie.troops,出撃する部隊
 sortie.go,出撃
 sortie.level,Lv{level}
 sortie.option.fixed,この話の部隊
-sortie.option.fixed.note,固定（この話では変更不可）
+sortie.option.fixed.note,固定
 sortie.option.default,既定の編成
-sortie.option.default.note,自動編成
 sortie.option.saved.note,{count} 体・コスト {cost} / {budget}
 sortie.option,{name}　　{note}
 talk.skip,スキップ

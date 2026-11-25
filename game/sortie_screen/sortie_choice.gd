@@ -179,11 +179,15 @@ func _build_options() -> void:
 	if is_squad_fixed():
 		_add_option(FIXED_ID, Text.t("sortie.option.fixed"), Text.t("sortie.option.fixed.note"), true)
 		return
-	_add_option(DEFAULT_ID, Text.t("sortie.option.default"), Text.t("sortie.option.default.note"), true)
+	_add_option(DEFAULT_ID, Text.t("sortie.option.default"), _deck_note(Story.default_deck(context.story.unlocked())), true)
 	for item in context.decks.for_rules(context.story.campaign.rules_id, context.story.campaign.army):
 		var issues: Array[String] = item.issues()
-		var note := Text.t("sortie.option.saved.note", {"count": item.deck.entries.size(), "cost": item.deck.total_cost(), "budget": item.deck.budget()})
-		_add_option(item.id, item.name, note if issues.is_empty() else Text.t("sortie.option.unplayable", {"issue": issues[0]}), issues.is_empty())
+		_add_option(item.id, item.name, _deck_note(item.deck) if issues.is_empty() else Text.t("sortie.option.unplayable", {"issue": issues[0]}), issues.is_empty())
+
+
+## 選択肢の行の右の文: 部隊の数とコスト。
+func _deck_note(deck: Deck) -> String:
+	return Text.t("sortie.option.saved.note", {"count": deck.entries.size(), "cost": deck.total_cost(), "budget": deck.budget()})
 
 
 func _add_option(id: String, name: String, note: String, enabled: bool) -> void:

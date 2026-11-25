@@ -158,7 +158,7 @@ func test_buttons_that_end_the_battle_ask_twice_in_a_battle() -> void:
 		panel.open(MatchChoice.new(), true, true)
 		panel.call(press)
 		assert_eq(count[0], 0, "%s の 1 回目で進んだ" % press)
-		assert_true(panel.confirming_text().contains("もう一度押すと"), panel.confirming_text())
+		assert_true(panel.confirming_text().contains("いまの対戦を終えて"), panel.confirming_text())
 		panel.call(press)
 		assert_eq(count[0], 0, "%s の確かめの直後の 2 回目で進んだ" % press)
 		panel.choose_opponent(false)
