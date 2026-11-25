@@ -17,6 +17,8 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 			value += HQ_HOLD_VALUE * _battle.capture_turns[_me]
 	if cell == _my_hq and _hq_in_danger and UnitKind.role(unit.kind) != UnitKind.Role.RAIDER:
 		value += HQ_GUARD_VALUE * (1.0 - _bold)
+	if cell == _my_hq and _keeps_hq and unit.kind == UnitKind.Id.KING and not _lone_king and _threat_at(unit, cell, ignored_id) * 2 < unit.hp:
+		value += KING_HQ_VALUE
 	if not _support.is_empty():
 		var apart := _FAR
 		for friend_cell in _support:

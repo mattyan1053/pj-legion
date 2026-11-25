@@ -142,6 +142,7 @@ func _begin(battle: Battle) -> void:
 		if unit.side == _foe and unit.kind == UnitKind.Id.KING:
 			_slays_bosses = false
 	_hq_in_danger = false
+	_keeps_hq = has_hqs and CpuWinPlan.guards_hq(battle, _me) and battle.armies[_foe] == UnitKind.Army.NONE
 	var keeper := battle.unit_at(_my_hq) if has_hqs else null
 	if has_hqs and CpuWinPlan.guards_hq(battle, _me) and (keeper == null or keeper.kind != UnitKind.Id.KING):
 		for unit in battle.units:
