@@ -156,6 +156,7 @@ func click_cell(cell: Vector2i) -> void:
 		return
 	_hud.hide_notice()  # 盤を触ったら、対戦の始めの知らせは読んだものとする
 	_hud.hide_sign_note()  # 縫い目の様子の札の窓も閉じる
+	_hud.hide_trait_note()  # 部隊の特徴の窓も
 	if _ui.confirming_ult or _ui.confirming_auto:
 		# 必殺技・おまかせを確かめている途中のクリックは、確かめるのをやめるだけ（移動や攻撃はしない）。
 		_ui.confirming_ult = false

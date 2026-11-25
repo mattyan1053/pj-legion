@@ -127,6 +127,7 @@ const SCENES := {
 	"rules_notice": "対戦モードの対戦の始めの「対戦ルール」（勝利条件 3 つの札。縫い目の様子の無い対戦）",
 	"sign_note": "対戦中に、上の帯の下の縫い目の様子の名前をクリックしたところ（札 1 枚の窓）",
 	"signs_start": "縫い目の様子が 2 つ付いた対戦の始め（始めの知らせに様子の名前。上の帯の下の左に、2 つの印と名前）",
+	"trait_note": "対戦中に、上の帯の部隊の特徴の札（集中砲火）をクリックしたところ（特徴 1 つの窓）",
 	"trait_start": "部隊の特徴の線（補給線の連邦と、誓いの騎士領）が出ている対戦の始め",
 	"trait_focus": "集中砲火: 味方が当てた敵の頭の上の札（+2）と足元の輪、2 人目の攻撃の予測（集中砲火 +2）",
 	"trait_vengeance": "仇討ち: 味方を倒した敵の頭の上の札（+4）と足元の輪、その敵への攻撃の予測（仇討ち +4）",
@@ -343,6 +344,7 @@ func _reset(seed: int) -> void:
 	_scene.unit_detail().close_detail()
 	_scene.setup_panel().visible = false
 	_scene.hide_sign_note()  # 前の場面（sign_note）の札の窓を閉じる
+	_scene.toggle_trait_note(-1)  # 前の場面（trait_note）の特徴の窓も閉じる
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
 	_scene.hover_menu_item(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）

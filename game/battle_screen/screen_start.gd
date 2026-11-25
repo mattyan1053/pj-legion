@@ -34,6 +34,20 @@ func sign_note_text() -> String:
 	return _hud.sign_note_text()
 
 
+## 上の帯の、陣営 player の部隊の特徴の札をクリックする（特徴の窓を開く・閉じる）。
+func toggle_trait_note(player: int) -> void:
+	_hud.toggle_trait_note(player)
+
+
+## 開いている特徴の窓の文（名前・効果・効く相手。開いていなければ空。検査用）と、その四角。
+func trait_note_text() -> String:
+	return _hud.trait_note_text()
+
+
+func trait_note_rect() -> Rect2:
+	return _hud.trait_note_rect()
+
+
 ## 対戦の始めの知らせを閉じる（閉じるボタンと同じ）。
 func hide_notice() -> void:
 	_hud.hide_notice()
@@ -154,6 +168,7 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_hud.show_signs(battle.signs)
 	_cues = source.talk_cues()
 	_talk.clear()
+	_hud.hide_trait_note()
 	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
 	_say(_cues.on_start(battle))
 	# 対戦の始め（ターン 1）に 1 回だけ、「対戦ルール」（勝利条件と縫い目の様子）を出す。どのモードも（ストーリーは前の会話のあと）。
