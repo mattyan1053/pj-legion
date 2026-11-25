@@ -189,6 +189,17 @@ func _portal_paint(unit: Unit) -> Dictionary:
 	return result
 
 
+## 拠点の札に、決めた確保の数 holds と拠点ごとの持ち主 owners を出す（スクリーンショットの道具用。拠点が複数のときの札の形を見る。
+## いまの決まりでは拠点は盤に 1 つなので、対戦からは作れない）。次に画面を描き直すと、対戦の中身に戻る。
+func show_stronghold_sample(holds: Array[int], owners: Array[int]) -> void:
+	_hud.set_stronghold(holds, Stronghold.HOLDS_TO_WIN, -1, WinText.stronghold_note(battle), owners)
+
+
+## 拠点の札の旗の並びが見せている、拠点ごとの持ち主（道具と検査用）。
+func stronghold_sample_owners() -> Array[int]:
+	return _hud.stronghold_owners()
+
+
 ## 塗りの色の見本を出す（スクリーンショットの道具用。景色ごとに、範囲の色が地面に沈まないかを並べて比べる）。
 ## samples: 種類（&"move" 移動、&"target" 攻撃の相手、&"heal" 回復、&"skill" スキル、&"path" 道、&"portal" ポータルの対、
 ## &"threat" 敵の全員の脅威範囲）-> マスの列。前に塗ったものは消える。
@@ -287,7 +298,7 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		WinText.goal_tag(battle, turn, _viewer_side()), WinText.goal_note(battle, _viewer_side()),
 		WinText.goal_tag_marks(battle, _viewer_side()),
 	)
-	_hud.set_stronghold(battle.stronghold_holds, WinText.stronghold_goal(battle), WinText.stronghold_near(battle), WinText.stronghold_note(battle))
+	_hud.set_stronghold(battle.stronghold_holds, WinText.stronghold_goal(battle), WinText.stronghold_near(battle), WinText.stronghold_note(battle), WinText.stronghold_owners(battle))
 	var percents: Array[int] = []
 	var names: Array[String] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:

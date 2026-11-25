@@ -5,24 +5,27 @@ extends Node
 ## 毎コマ、印の付いた枠（steady.gd）の四角を控え、同じ枠が前と違う大きさ（RECT の印なら置き場所も）で出たら、moved に積む。
 ## 同じ名前の枠は、作り直されても同じ大きさで出ること（並んだ札もそろう）。
 ## 窓の大きさが変わったときと、場面（scene_flow.gd）が替わったときは、控えを捨てる（画面が変われば枠も変わってよい）。
-## 枠の中の文も見る: 印の付いた枠の中の Label が、入っている箱（枠、ボタン、板）からはみ出していないか、
-## 字を切る Label（clip_text）が、字を切っていないか。はみ出し・切れを spilled に積む（大きさが動かなくても、文があふれていれば拾う）。
+## 枠の中の文も見る: 印の付いた枠の中の Label が、入っている箱（ボタン、板）からはみ出していないか、
+## 字を切る Label（clip_text）が字を切っていないか。cut_texts に積む（枠の中に収まっていても、ボタンからあふれた文を拾う）。
 ## `-- --frames` を付けると、洗い出し: 印の無い板（PanelContainer、Panel、ScrollContainer）も全部控え、終わりに動いたものを並べる。
 
 const Steady := preload("res://game/steady.gd")
 
 ## これより小さい差は、同じとみなす（端数の丸め）。
 const SLACK := 0.75
+## 中身のはみ出しは、これより大きいものを数える（px。縁取りや丸めの分）。何コマに 1 度見るか。
+const SPILL_SLACK := 1.0
+const SPILL_EVERY := 6
 
 ## 印の付いた枠のうち、動いたもの。名前 -> 「前の四角 → あとの四角」。
 var moved := {}
-## 印の付いた枠の中で、文がはみ出した・切れたもの。「枠の名前「文」」 -> どうなったか。
+## 印の付いた枠のうち、中身が枠の外へはみ出したもの。名前 -> 「はみ出した部品 はみ出した向きと px」。
 var spilled := {}
-## 文のはみ出しを見る間隔（コマ）。毎コマは重いので間引く。
-const SPILL_EVERY := 10
-## 前に見たときにはみ出していた文（並べ直しの途中の 1 回は数えない。続けて 2 回はみ出していたら、spilled に積む）。キー -> 見た回。
-var _spill_odd := {}
-var _spill_round := 0
+## 印の付いた枠の中で、文が箱からはみ出した・切れたもの。「枠の名前「文」」 -> どうなったか。
+var cut_texts := {}
+## 前に見たときにあふれていた文（並べ直しの途中の 1 回は数えない。続けて 2 回なら cut_texts に積む）。キー -> 見た回。
+var _cut_before := {}
+var _cut_round := 0
 ## 洗い出しで、印の無い板のうち大きさが変わったもの。名前 -> 見た大きさの列。
 var found := {}
 
@@ -32,6 +35,8 @@ var _seen := {}
 ## 枠（instance id）-> [前のコマに見た、控えと違う四角, そのコマ]
 var _odd := {}
 var _hooked := {}
+## 枠の名前 -> 前に見たときのはみ出し（無ければ ""）
+var _spill_before := {}
 var _screen := Vector2.ZERO
 
 
@@ -48,11 +53,13 @@ func _process(_delta: float) -> void:
 		return
 	var spill_check := Engine.get_process_frames() % SPILL_EVERY == 0
 	if spill_check:
-		_spill_round += 1
+		_cut_round += 1
 	for frame: Node in get_tree().get_nodes_in_group(Steady.GROUP):
 		_sample(frame as Control, true)
-		if spill_check and (frame as Control).is_visible_in_tree():
-			_check_spill(frame as Control, frame as Control, [frame as Control])
+		if spill_check:
+			_check_spill(frame as Control)
+			if (frame as Control).is_visible_in_tree():
+				_check_texts(frame as Control, frame, [frame as Control])
 	if _everything:
 		_walk(get_tree().root)
 
@@ -61,7 +68,105 @@ func _process(_delta: float) -> void:
 func forget_all() -> void:
 	_seen.clear()
 	_odd.clear()
-	_spill_odd.clear()
+	_spill_before.clear()
+	_cut_before.clear()
+
+
+## 印の付いた枠 frame の中身（見えている部品）が、枠の四角からはみ出していたら spilled に積む。
+## 枠が中身より小さいのに伸びない作り（ボタンのカードの中に、四隅を留めた並びを置く、など）は、枠の大きさが変わらないので、
+## 大きさの見張りには掛からない。ここで拾う。
+## 見ないもの: 枠の中で送る欄（ScrollContainer）と切り抜く部品（clip_contents）の中、大きさの無い部品、
+## わざと枠の外へ出す部品（Steady.let_out）、拡大・回転している途中の部品。
+func _check_spill(frame: Control) -> void:
+	if frame == null or not frame.is_visible_in_tree() or frame.clip_contents or frame is ScrollContainer:
+		return
+	var name := Steady.name_of(frame)
+	if spilled.has(name) or frame.size.x <= 0.0 or frame.size.y <= 0.0:
+		return
+	var inverse := frame.get_global_transform().affine_inverse()
+	var out := _spill_in(frame, Rect2(Vector2.ZERO, frame.size).grow(SPILL_SLACK), inverse)
+	# 並べ直しの途中（行を作り直した直後など）は数えない。続けて 2 度、同じはみ出しを見たら積む。
+	if out != "" and _spill_before.get(name, "") == out:
+		spilled[name] = out
+	_spill_before[name] = out
+
+
+## 枠 frame の中身のはみ出し（「部品 が N px」。無ければ ""）。テスト用にも（木に入れて 1 コマ待ってから）。
+static func spill_of(frame: Control) -> String:
+	var probe: Node = (load("res://game/steady_probe.gd") as GDScript).new()
+	var out: String = probe._spill_in(frame, Rect2(Vector2.ZERO, frame.size).grow(SPILL_SLACK), frame.get_global_transform().affine_inverse())
+	probe.free()
+	return out
+
+
+func _spill_in(node: Node, bounds: Rect2, inverse: Transform2D) -> String:
+	for child in node.get_children():
+		var control := child as Control
+		if control == null:
+			continue  # 3D の枠・重なる窓など。中は別の座標なので見ない
+		if not control.visible or control.top_level or Steady.is_let_out(control):
+			continue
+		var local := inverse * control.get_global_transform()
+		if not local.get_scale().is_equal_approx(Vector2.ONE) or not is_zero_approx(local.get_rotation()):
+			continue  # 浮く演出の途中
+		var rect := Rect2(local.origin, control.size)
+		if rect.size.x > 0.0 and rect.size.y > 0.0 and not bounds.encloses(rect):
+			var over := maxf(maxf(bounds.position.x - rect.position.x, rect.end.x - bounds.end.x), maxf(bounds.position.y - rect.position.y, rect.end.y - bounds.end.y))
+			return "%s が %d px" % [_describe(control) if is_inside_tree() else control.get_class(), ceili(over - SPILL_SLACK)]
+		if control.clip_contents or control is ScrollContainer:
+			continue
+		var inner := _spill_in(control, bounds, inverse)
+		if inner != "":
+			return inner
+	return ""
+
+
+## 枠 frame の中の Label を見る。boxes は、いま見ている Label を入れている箱（枠、ボタン、板）の並び。
+## 中身が動く入れ物（ScrollContainer）の中は見ない（見える所の外に出るのが当たり前なので）。
+func _check_texts(frame: Control, node: Node, boxes: Array) -> void:
+	for child in node.get_children():
+		if not child is Control or not (child as Control).visible or child is ScrollContainer or Steady.is_let_out(child as Control):
+			continue
+		var control := child as Control
+		if control is Label:
+			_check_label(frame, control as Label, boxes)
+		var inner := boxes
+		if control is Button or control is PanelContainer or control is Panel:
+			inner = boxes + [control]
+		_check_texts(frame, control, inner)
+
+
+func _check_label(frame: Control, label: Label, boxes: Array) -> void:
+	if label.text == "" or label.get_global_transform().get_scale() != Vector2.ONE:
+		return
+	var rect := label.get_global_rect()
+	var problem := ""
+	for box: Control in boxes:
+		if box.get_global_transform().get_scale() != Vector2.ONE:
+			return  # 拡大の演出の途中（マウスを乗せたカード）は見ない
+		if not box.get_global_rect().grow(SLACK).encloses(rect):
+			var what := "枠" if box == frame else ("ボタン" if box is Button else "板")
+			problem = "%sの外へはみ出した: 文 %s、%s %s" % [what, _text(rect), what, _text(box.get_global_rect())]
+			break
+	if problem == "" and label.clip_text and label.autowrap_mode == TextServer.AUTOWRAP_OFF \
+			and label.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING:
+		var font := label.get_theme_font(&"font")
+		var font_size := label.get_theme_font_size(&"font_size")
+		var shown_lines := label.text.split("\n")
+		if label.max_lines_visible > 0:
+			shown_lines = shown_lines.slice(0, label.max_lines_visible)
+		for line: String in shown_lines:
+			if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > label.size.x + SLACK:
+				problem = "字が切れた"
+				break
+	if problem == "":
+		return
+	var key := "%s「%s」" % [Steady.name_of(frame), label.text.replace("\n", " ").left(16)]
+	if _cut_before.get(key, -10) != _cut_round - 1:
+		_cut_before[key] = _cut_round
+		return
+	if not cut_texts.has(key):
+		cut_texts[key] = problem
 
 
 func _walk(node: Node) -> void:
@@ -108,59 +213,6 @@ func _sample(frame: Control, marked: bool) -> void:
 		if not sizes.has(_size_text(rect)) and sizes.size() < 6:
 			sizes.append(_size_text(rect))
 		entry[0] = rect
-
-
-## 枠 frame の中の Label を見る。boxes は、いま見ている Label を入れている箱（枠、ボタン、板）の並び。
-## 中身が動く入れ物（ScrollContainer）の中は見ない（見える所の外に出るのが当たり前なので）。
-func _check_spill(frame: Control, node: Node, boxes: Array) -> void:
-	for child in node.get_children():
-		if not child is Control or not (child as Control).visible or child is ScrollContainer:
-			continue
-		var control := child as Control
-		if control is Label:
-			_check_label(frame, control as Label, boxes)
-		var inner := boxes
-		if control is Button or control is PanelContainer or control is Panel:
-			inner = boxes + [control]
-		_check_spill(frame, control, inner)
-
-
-func _check_label(frame: Control, label: Label, boxes: Array) -> void:
-	if label.text == "" or label.get_global_transform().get_scale() != Vector2.ONE:
-		return
-	var rect := label.get_global_rect()
-	var problem := ""
-	for box: Control in boxes:
-		if box.get_global_transform().get_scale() != Vector2.ONE:
-			return  # 拡大の演出の途中（マウスを乗せたカード）は見ない
-		if not box.get_global_rect().grow(SLACK).encloses(rect):
-			problem = "%sの外へはみ出した: 文 %s、%s %s" % [_box_name(box, frame), _text(rect), _box_name(box, frame), _text(box.get_global_rect())]
-			break
-	if problem == "" and label.clip_text and label.autowrap_mode == TextServer.AUTOWRAP_OFF \
-			and label.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING:
-		var font := label.get_theme_font(&"font")
-		var font_size := label.get_theme_font_size(&"font_size")
-		var shown_lines := label.text.split("\n")
-		if label.max_lines_visible > 0:
-			shown_lines = shown_lines.slice(0, label.max_lines_visible)
-		for line: String in shown_lines:
-			if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > label.size.x + SLACK:
-				problem = "字が切れた"
-				break
-	if problem == "":
-		return
-	var key := "%s「%s」" % [Steady.name_of(frame), label.text.replace("\n", " ").left(16)]
-	if _spill_odd.get(key, -10) != _spill_round - 1:
-		_spill_odd[key] = _spill_round
-		return
-	if not spilled.has(key):
-		spilled[key] = problem
-
-
-func _box_name(box: Control, frame: Control) -> String:
-	if box == frame:
-		return "枠"
-	return "ボタン" if box is Button else "板"
 
 
 ## 枠の四角（画面の上の置き場所と大きさ）。枠そのものの拡大（マウスを乗せたカードが浮く演出。scale）は、並びを動かさないので数えない。
@@ -222,7 +274,9 @@ func report() -> String:
 	for what: String in moved:
 		lines.append("枠が動いた: %s（%s）" % [what, moved[what]])
 	for what: String in spilled:
-		lines.append("文があふれた: %s（%s）" % [what, spilled[what]])
+		lines.append("枠から中身がはみ出した: %s（%s）" % [what, spilled[what]])
+	for what: String in cut_texts:
+		lines.append("文があふれた: %s（%s）" % [what, cut_texts[what]])
 	return "\n  ".join(lines)
 
 
