@@ -83,46 +83,45 @@ setup.confirm.map,もう一度押して変更
 setup.confirm.start,もう一度押して開始
 setup.map,マップ変更
 setup.warning,マップ変更・新しい対戦で、いまの対戦は終わります。
-setup.confirm_map,もう一度押すと、いまの対戦を終えてマップ選択へ（右クリック: キャンセル）
-setup.confirm_start,もう一度押すと、いまの対戦を終えて新しい対戦へ（右クリック: キャンセル）
+setup.confirm_map,いまの対戦を終えてマップ選択へ
+setup.confirm_start,いまの対戦を終えて新しい対戦へ
 setup.title,対戦設定
 setup.caption.map,マップ
 setup.caption.opponent,相手
-setup.opponent.human,人（2 人で交代）
+setup.opponent.human,人
 setup.caption.side,手番
 setup.side.first,先手（青）
 setup.side.second,後手（赤）
 setup.side.random,ランダム
-setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から開始
+setup.side.first_gauge,先手: 必殺技のゲージ\n{percent}% から
 setup.caption.deck,部隊
 setup.caption.stronghold,拠点
 setup.rule.on,あり
 setup.rule.off,なし
-setup.rule.stronghold.note,拠点に乗ったまま {holds} 回番を終えると勝ち。隣に敵がいる間は止まる
+setup.rule.stronghold.note,拠点の上で {holds} 回番を終えると勝利。隣に敵がいる間は数えない
 setup.deck_preview,編成確認
 setup.edit_deck,部隊編成
 setup.placement,初期位置
 setup.placement_set,初期位置 ✓
 setup.placement.title,初期位置　{who}
-setup.placement.generated,ランダム生成のマップは、対戦のたびに形が変わる。入れないマスに当たった兵は、おまかせの位置へ
+setup.placement.generated,形は対戦ごとに変化。入れないマスの兵は、おまかせの位置へ
 setup.back_to_battle,対戦へ戻る
 setup.start,対戦開始
 setup.start_new,新しい対戦
 setup.who.you,あなた
 setup.who_side,{who}・{turn}
-setup.deck.default,既定の編成（コスト {cost} / {budget}）
-setup.deck.cpu,CPU の編成（コスト {cost} / {budget}）
-setup.deck.random,ランダム編成（毎回ちがう部隊）
+setup.deck.default,既定の編成　コスト {cost} / {budget}
+setup.deck.cpu,CPU の編成　コスト {cost} / {budget}
+setup.deck.random,ランダム編成
 setup.deck.random_note,対戦開始で決まる
-setup.deck.saved,{name}（コスト {cost} / {budget}）
-setup.deck.unplayable,{name}（出撃不可: {issue}）
+setup.deck.saved,{name}　コスト {cost} / {budget}
+setup.deck.unplayable,{name}　出撃不可: {issue}
 menu.saved,オートセーブ完了
 menu.last_saved,最後のオートセーブ: {when}
 menu.never_saved,なし
 menu.quit.note,セーブしていない内容は失われます。
 deploy.note.none,未選択
 deploy.note.selected,選択中
-deploy.note.hovered,表示中
 deploy.note.role_level,{role}　レベル {level}
 setup.caption.seam,縫い目の様子
 setup.rule.seam.on,ランダム

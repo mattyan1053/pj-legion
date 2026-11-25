@@ -12,7 +12,7 @@ deck.title,部隊編成
 deck.list.empty,編成なし
 deck.list.new,新規編成
 deck.list.detail,{army}　{count} 体　コスト {cost} / {budget}
-deck.army.title,軍を選ぶ
+deck.army.title,軍選択
 deck.army.budget,コスト上限 {budget}
 deck.army.unit,{unit}（{role}）
 deck.ult,"必殺技: {name}
@@ -30,7 +30,7 @@ deck.edit.roster_unit,"{unit}　{role}　コスト {cost}
 deck.edit.full,{max} 体まで
 deck.edit.no_units,兵なし
 deck.edit.king,将　{stats}
-deck.detail.borrowed,{origin} の兵（この部隊では {army} として戦う）
+deck.detail.borrowed,{origin} の兵・{army} として出撃
 deck.edit.items,持ち物　{count} / {max}
 deck.edit.item,{name}　コスト {cost}
 deck.edit.item_locked,未解放
@@ -54,9 +54,9 @@ deck.edit.no_items,持ち物なし
 deck.detail.click,クリック: 詳細
 deck.edit.remove,外す
 deck.problem.no_units,兵なし
-deck.problem.too_many_units,兵の数が上限超過（{max} 体まで）
+deck.problem.too_many_units,兵が {max} 体を超過
 deck.problem.over_budget,コスト上限を {over} 超過
-deck.problem.too_much_equipment,持ち物の数が上限超過の兵あり（1 体 {max} 個まで）
+deck.problem.too_much_equipment,持ち物が {max} 個を超える兵あり
 deck.problem.not_in_roster,この軍で雇えない兵あり
 deck.problem.item_not_allowed,未解放の持ち物あり
 deck.problem.item_not_fit,持てない持ち物を持つ兵あり
@@ -97,8 +97,8 @@ deck.sheet.evolved,進化済み
 deck.trait.title,軍略
 deck.trait.pair,{a}・{b}
 deck.trait.oaths,誓い {count} / {max}: {pairs}
-deck.trait.no_oath,誓いなし（{max} 組まで）
-deck.trait.binding,誓い: {unit}と結ぶ兵を選択中
+deck.trait.no_oath,誓い 0 / {max}
+deck.trait.binding,誓い: {unit}の相手を選択
 deck.trait.oath_tag,誓い
 deck.trait.oath_tag_bound,誓い {number}
 deck.trait.partner,誓いの相手: {unit}
