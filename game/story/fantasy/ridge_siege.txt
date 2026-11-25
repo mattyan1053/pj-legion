@@ -60,6 +60,9 @@ army = military
 unit = shield_trooper + iron_shield
 unit = sniper
 unit = sniper
+# スナイパーは左右の道の奥に分ける。本陣の前に 3 体固めると、スペルブレードが遠くから跳び込めない（歩いて 3 まで）ぶん、
+# 人の側が崩しにくくなった（人の側も CPU、部隊を変えて 96 局で 82 → 71%。分けると 86%。docs/cpu-ai.md の「スペルブレードの歩いてから跳ぶ」）。
+deploy = 8,1  3,2  13,2
 
 [unlock]
 item = regen_charm
