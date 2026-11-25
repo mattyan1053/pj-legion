@@ -121,6 +121,7 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 	# 前の会話のあと、対戦の始めに「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。
 	_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
 	_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
+	screen.hide_notice()  # 閉じると、対戦が始まる
 	await _read_cues(app, screen, episode)
 	await _lose(app, screen, episode)
 
@@ -174,6 +175,7 @@ func _lose(app: Node, screen: Node, episode: RefCounted) -> void:
 	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, board.hq_cells[1])
 	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER2, board.hq_cells[0] + Vector2i(2, 0))
 	screen.start_with(battle, episode.look, 1, episode.map_title)
+	screen.hide_notice()
 	screen.press_end_turn()
 	screen.pass_confirm_guard()
 	screen.press_end_turn()
@@ -235,6 +237,7 @@ func _versus(app: Node, field: StringName, rules: Array[StringName]) -> void:
 	# 対戦の始めに「対戦ルール」（勝利条件と、あれば縫い目の様子）が出て、札の文は切れない。
 	_expect(screen.notice_text().contains(Text.t("battle.goal.name.king_defeated")), "対戦の始めに「対戦ルール」が出ない")
 	_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
+	screen.hide_notice()  # 閉じると、対戦が始まる
 	# 縫い目の様子は、対戦設定の「ランダム」なら種で 0〜2 つ（窓は出さず、そのまま始まる）。「なし」なら付かない。
 	var signs: Array[int] = screen.battle.signs
 	_expect(signs.size() <= Seam.DRAWN and (rules.has(OptionalRules.SEAM) or signs.is_empty()), "縫い目の様子が、決まりの入・切どおりでない: %s" % [signs])

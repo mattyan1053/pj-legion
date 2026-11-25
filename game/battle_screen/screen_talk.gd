@@ -14,6 +14,8 @@ func _say(lines: Array[BattleCues.Line]) -> void:
 	_talk.say(lines)
 	if not _talk.hold:
 		return
+	_hud.hide_sign_note()  # 縫い目の様子の札の窓・部隊の特徴の窓と、台詞の札を重ねない（送るまで帯は押せない）
+	_hud.hide_trait_note()
 	_talk_catcher.visible = true
 	_refresh()
 	while _talk.is_holding() and is_inside_tree():

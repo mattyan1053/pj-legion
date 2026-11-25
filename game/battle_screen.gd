@@ -133,8 +133,8 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	# カメラが動くとマウスの下のマスも変わるので、マウスの動きではなく毎フレーム追う（メニューの後ろでは追わない）。
-	if not context.overlays.pauses():
-		_update_hover()
+	if not context.overlays.pauses() and not _hud.notice_open():
+		_update_hover()  # 「対戦ルール」の後ろでも追わない（札の下に予測やマスの説明を出さない）
 	var focus_cells: Array[Vector2i] = []
 	for view: UnitView in _views.values():
 		focus_cells.append(BoardView.cell_of(view.position))
