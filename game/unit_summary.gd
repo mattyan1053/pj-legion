@@ -112,6 +112,8 @@ func show_sheet(sheet: UnitSheet, title := "") -> void:
 	_clear(_tags)
 	for words in sheet.tags():
 		_tags.add_child(SheetParts.tag(words, Palette.TEXT))
+	if sheet.strike > 0:
+		_tags.add_child(SheetParts.tag(Text.t("deck.sheet.strike", {"power": sheet.strike}), Palette.TEXT))
 	if sheet.cost() > 0:
 		var cost := SheetParts.text(12, Palette.TEXT_DIM)
 		cost.text = Text.t("deck.sheet.cost", {"cost": sheet.cost()})

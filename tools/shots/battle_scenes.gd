@@ -471,6 +471,22 @@ func _scene_info_status() -> bool:
 	return not Statuses.types_of(best).is_empty()
 
 
+## 自分の回復役にマウスを乗せた、駒の情報（名前の右に「攻撃 4」）。
+func _scene_info_healer() -> bool:
+	var healer := func() -> Unit:
+		for unit in _own_units():
+			if UnitKind.role(unit.kind) == UnitKind.Role.HEALER:
+				return unit
+		return null
+	if not _advance(func() -> bool: return _battle.turn >= 2 and healer.call() != null):
+		return false
+	_show()
+	var unit: Unit = healer.call()
+	_look_at(BoardView.cell_center(unit.cell))
+	_scene.hover(unit.cell)
+	return true
+
+
 func _scene_skill() -> bool:
 	var ready := func() -> Unit:
 		for unit in _own_units():

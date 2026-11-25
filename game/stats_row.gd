@@ -3,9 +3,13 @@ extends HBoxContainer
 ## 名前は補足の色で小さく、数は本文の色で太く。札を縦に並べたとき、数が同じ所にそろって読める。
 ## 文は渡された 1 行（DeckText.stats_line など）をそのまま使い、全角の空白で項目に、最後の半角の空白で名前と数に分ける
 ## （分けられない項目は、そのまま出す）。
+## 欄の幅を決めたときは、行の幅を ITEMS 項目ぶんに決め、項目の多い行（回復役の 5 項目）は、その幅を項目で割る（行の幅は中身で変えない）。
 
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+
+## 欄の幅を決めたときの、行の幅の項目数（「HP　攻撃　移動　射程」）。
+const ITEMS := 4
 
 var _font_size: int
 var _cell_width: float
@@ -34,11 +38,13 @@ func set_line(text: String) -> void:
 		child.queue_free()
 	if text == "":
 		return
-	for part: String in text.split(char(0x3000), false):
+	var parts := text.split(char(0x3000), false)
+	var width := _cell_width * ITEMS / maxi(parts.size(), ITEMS)
+	for part: String in parts:
 		var cell := HBoxContainer.new()
 		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.add_theme_constant_override("separation", 4)
-		cell.custom_minimum_size = Vector2(_cell_width, 0.0)
+		cell.add_theme_constant_override("separation", 4 if parts.size() <= ITEMS else 2)
+		cell.custom_minimum_size = Vector2(width, 0.0)
 		add_child(cell)
 		var cut := part.rfind(" ")
 		if cut <= 0:

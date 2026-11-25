@@ -217,6 +217,9 @@ func open_sheet(sheet: UnitSheet) -> void:
 	_clear(_tags)
 	for tag in sheet.tags():
 		_tags.add_child(_tag(tag, Palette.TEXT))
+	if sheet.strike > 0:
+		# 回復役の攻撃（能力値の棒は回復の値なので、名前の右に札で）。
+		_tags.add_child(_tag(Text.t("deck.sheet.strike", {"power": sheet.strike}), Palette.TEXT))
 	var note := Names.role_summary(role)
 	if sheet.borrowed:
 		note = Text.t("deck.detail.borrowed", {"origin": Names.army(UnitKind.army(sheet.kind)), "army": Names.army(sheet.army)})
