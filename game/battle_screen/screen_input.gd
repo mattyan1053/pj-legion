@@ -32,9 +32,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			# 押しただけでは何もしない。離すまでに動かなければクリック、動けば視点を回す・傾ける（駒の上で押したときは、いつもクリック）。
 			var cell := _cell_under_mouse()
-			_ui.press(event.position, battle.board.in_bounds(cell) and battle.unit_at(cell) != null)
-		elif _ui.release():
-			click_cell(_cell_at(_ui.press_position))
+			_ui.press(event.position, battle.board.in_bounds(cell) and battle.unit_at(cell) != null, event.double_click)
+		else:
+			var double := _ui.press_double
+			if _ui.release() and not (double and double_click_cell(_cell_at(_ui.press_position))):
+				click_cell(_cell_at(_ui.press_position))
 	elif event is InputEventMouseMotion and _ui.pressing:
 		if not event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 			# ボタンを、帯やメニューの上で離した（離したことが、ここへは届かない）。押していないのに回り続けないよう、やめる。
@@ -215,6 +217,23 @@ func _can_select(unit: Unit) -> bool:
 func _inspect(unit_id: int) -> void:
 	_ui.inspect(unit_id)
 	_refresh()
+
+
+## 盤面のマスをダブルクリックする（2 回目の押しを離したとき）。敵の兵（相手と中立。_can_pin）なら、その兵の範囲を表示したままにする・やめる
+## （情報の枠のスイッチと同じ。1 回目のクリックで見ている兵は、見たまま）。何体でも留められ、右クリック（Esc）で全部外す。
+## 駒を選んでいる・対象を選んでいる・確かめている途中は効かない（ふつうのクリックとして扱う）。扱ったかを返す。
+func double_click_cell(cell: Vector2i) -> bool:
+	if is_busy() or battle.is_over() or not battle.board.in_bounds(cell):
+		return false
+	if _ui.selected_id != 0 or _ui.mode != Mode.NONE or battle.acting_unit_id != 0 or _ui.confirming_ult or _ui.confirming_auto:
+		return false
+	var unit := battle.unit_at(cell)
+	if unit == null or not _can_pin(unit):
+		return false
+	_ui.inspect(unit.id)  # 1 回目のクリックで見た兵を、見たままにする（スイッチの入・切も見える）
+	toggle_pin(unit.id)
+	_refresh()
+	return true
 
 
 ## 敵の全員の脅威範囲を出す・消す（下の帯の切り替え、T）。いつでも切り替えられ、出したままにできる。
