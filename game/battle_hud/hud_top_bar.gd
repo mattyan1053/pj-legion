@@ -94,6 +94,8 @@ func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
 
 ## 陣営ごとの部隊の特徴（上の帯の陣営の欄の下の段: 印と名前。添字がプレイヤー番号。Traits.NONE なら出さない）。notes は乗せると出る文。
 func set_traits(ids: Array[int], notes: Array[String]) -> void:
+	if _trait_note_player >= 0 and _trait_note_player < ids.size() and ids[_trait_note_player] == Traits.NONE:
+		hide_trait_note()
 	for player in _trait_icons.size():
 		var mark := _trait_icons[player]
 		mark.set(&"trait_id", ids[player])
@@ -180,6 +182,7 @@ func toggle_sign_note(i: int) -> void:
 	if i == _sign_note_index or i < 0 or i >= _sign_slots.size() or not _sign_slots[i].visible:
 		hide_sign_note()
 		return
+	hide_trait_note()  # 窓は 1 つずつ
 	_sign_note_index = i
 	_sign_note_card.show_sign(_sign_marks[i].sign)
 	_sign_note.visible = true
@@ -190,6 +193,47 @@ func hide_sign_note() -> void:
 	_sign_note_index = -1
 	if _sign_note != null:
 		_sign_note.visible = false
+
+
+## 陣営 player の部隊の特徴の窓を、上の帯の札の真下に開く（開いていれば閉じる）。特徴の札が出ていなければ何もしない。
+## 窓は、いま効いている特徴だけ（選ばなかった 2 つは出さない）: 印・名前・効果（数）・効く相手。
+func toggle_trait_note(player: int) -> void:
+	if player == _trait_note_player or player < 0 or player >= _trait_icons.size() or not _trait_icons[player].visible:
+		hide_trait_note()
+		return
+	hide_sign_note()  # 窓は 1 つずつ
+	_trait_note_player = player
+	_trait_note_card.show_trait(_trait_icons[player].get(&"trait_id"))
+	_trait_note.visible = true
+	place_trait_note()
+
+
+func hide_trait_note() -> void:
+	_trait_note_player = -1
+	if _trait_note != null:
+		_trait_note.visible = false
+
+
+## 開いている特徴の窓の文（名前・効果・効く相手。開いていなければ空。検査用）。
+func trait_note_text() -> String:
+	return _trait_note_card.shown_text() if _trait_note.visible else ""
+
+
+## 特徴の窓の四角（開いていなければ大きさ 0。検査用）。
+func trait_note_rect() -> Rect2:
+	return _trait_note.get_global_rect() if _trait_note.visible else Rect2()
+
+
+## 特徴の窓を、その陣営の札の真下に置く（真ん中をそろえ、画面の端からはみ出さない）。開いていなければ何もしない。
+## 上の帯の欄は窓の幅で伸び縮みするので、場面が毎コマ呼んで置き直す。
+func place_trait_note() -> void:
+	if _trait_note_player < 0:
+		return
+	var tag := (_trait_icons[_trait_note_player] as Control).get_global_rect()
+	var width := _trait_note.get_combined_minimum_size().x
+	var screen := get_viewport().get_visible_rect().size.x if is_inside_tree() else tag.end.x + width
+	var left := clampf(tag.get_center().x - width / 2.0, 6.0, maxf(6.0, screen - width - 6.0))
+	_trait_note.position = Vector2(left, TOP_BAR_HEIGHT + 4.0)
 
 
 ## 開いている札の窓の文（名前と効果。開いていなければ空。検査用）。
@@ -286,7 +330,13 @@ func _build_top_bar() -> void:
 		# 部隊の特徴の札（幅は、いちばん長い名前で決める）。効果の数と効く相手は、乗せると出る。
 		var mark := TraitTag.new(TRAIT_MARK_SIDE, TRAIT_NAME_FONT, 4)
 		mark.size_flags_horizontal = Control.SIZE_SHRINK_END
-		mark.mouse_filter = Control.MOUSE_FILTER_STOP
+		mark.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると 2 行の文、クリックで特徴の窓
+		mark.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var side := player
+		mark.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				toggle_trait_note(side)
+				mark.accept_event())
 		mark.visible = false
 		Steady.mark(mark, "battle.top_band.trait")
 		column.add_child(mark)
@@ -460,6 +510,20 @@ func _build_top_bar() -> void:
 			hide_sign_note()
 			_sign_note.accept_event())
 	Steady.mark(_sign_note, "battle.sign_note", Steady.RECT)
+	# 部隊の特徴の札をクリックすると出す、特徴 1 つの窓（決まった大きさ。札の真下に出すので、置き場所は陣営で違う）。
+	_trait_note = PanelContainer.new()
+	_trait_note.add_theme_stylebox_override("panel", UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 4.0, 6))
+	_trait_note.mouse_filter = Control.MOUSE_FILTER_STOP
+	_trait_note.visible = false
+	add_child(_trait_note)
+	_trait_note_card = TraitCard.new()
+	_trait_note_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_trait_note.add_child(_trait_note_card)
+	_trait_note.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed:
+			hide_trait_note()
+			_trait_note.accept_event())
+	Steady.mark(_trait_note, "battle.trait_note")
 
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。キーの印と一語を、小さく 1 行だけ。
 	var help_panel := _panel()

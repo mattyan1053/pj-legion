@@ -60,7 +60,9 @@ const TROOP_WIDTH := 420.0
 const LIST_DETAIL_BODY_WIDTH := 262.0
 const TRAIT_BOX_HEIGHT := 96.0
 const TRAIT_CARD_HEIGHT := 32.0
-const TRAIT_MARK_SIDE := 28.0
+## 特徴の札の印と名前の字の大きさ。札 3 枚が欄の幅を分けるので、いちばん長い名前（「集中砲火」）が札に収まる大きさ。
+const TRAIT_MARK_SIDE := 24.0
+const TRAIT_NAME_FONT := 12
 ## 部隊の行の、誓いのボタン（特徴が誓いの部隊だけ）の幅（px）。
 const OATH_TAG_WIDTH := 64.0
 ## 一覧の右の、駒の札を並べる数（1 行）。
