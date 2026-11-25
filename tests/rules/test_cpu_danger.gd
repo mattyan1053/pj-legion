@@ -35,11 +35,12 @@ func test_counts_enemies_that_can_move_and_attack() -> void:
 	assert_eq(_danger(battle, Vector2i(0, 0)), 0, "移動力 + 射程の外")
 
 
-func test_healers_and_own_units_are_no_danger() -> void:
+func test_own_units_are_no_danger_and_healers_count_their_strike() -> void:
 	var battle := _battle()
-	battle.add_unit(UnitKind.Id.PRIEST, P2, Vector2i(3, 2))
 	battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(1, 2))
 	assert_eq(_danger(battle), 0)
+	battle.add_unit(UnitKind.Id.PRIEST, P2, Vector2i(3, 2))
+	assert_eq(_danger(battle), UnitKind.healer_strike(UnitKind.Id.PRIEST), "回復役は、回復役の攻撃の強さ")
 
 
 func test_barrier_takes_off_the_weakest_hit() -> void:

@@ -115,6 +115,7 @@ func show_unit(unit: Unit, selected := false) -> void:
 	_role_tag.visible = _role.text != ""
 	_stats.set_line(Text.t("deck.stats_healer" if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else "deck.stats", {
 		"hp": unit.max_hp(), "power": unit.power(), "move": unit.move_range(), "range": unit.attack_range(),
+		"strike": Combat.attack_power(unit),
 	}))
 	_state.text = Text.t("deploy.note.selected") if selected else Text.t("deploy.note.hovered")
 

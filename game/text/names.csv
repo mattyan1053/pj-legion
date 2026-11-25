@@ -163,7 +163,7 @@ relic.courage.effect,攻撃力・回復量 +{amount}
 role.vanguard.summary,前に立って受け止める。周り 8 マスに支配領域を作り、敵はそこで止まる
 role.rearguard.summary,離れたところから撃つ
 role.raider.summary,よく動き、弱った相手や本陣を狙う
-role.healer.summary,味方の HP を回復する（攻撃のかわりに回復）
+role.healer.summary,味方の HP を回復する。弱い攻撃もできる
 sign.haze,天裂の名残り
 sign.brim,糸の満ち
 sign.loose,糸のゆるみ

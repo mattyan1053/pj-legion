@@ -86,7 +86,7 @@ func test_guide_follows_the_state() -> void:
 	assert_eq(_guide(battle, null, null, Mode.NONE, false, false, 0, 1), "* 表示中  [右クリック] 解除")
 	assert_eq(_guide(battle, sniper, null, Mode.NONE), "* 移動  * 巡航  * 攻撃")
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(0, 2))
-	assert_eq(_guide(battle, priest, null, Mode.NONE), "* 移動  * 巡航  * 回復")
+	assert_eq(_guide(battle, priest, null, Mode.NONE), "* 移動  * 巡航  * 回復  * 攻撃", "回復役も攻撃できる")
 	assert_eq(_guide(battle, paladin, null, Mode.NONE), "* 移動  * 攻撃", "相手の駒を選んでいる")
 	sniper.has_moved = true
 	sniper.move_origin = Vector2i(0, 0)

@@ -42,7 +42,7 @@ static func problem_text(problem: Deck.Problem, deck: Deck) -> String:
 	return Text.t("deck.problem.other")
 
 
-## 能力値の 1 行（「HP 44　攻撃 6　移動 3　射程 1」）。回復役は「攻撃」のかわりに「回復」。
+## 能力値の 1 行（「HP 44　攻撃 6　移動 3　射程 1」）。回復役は「回復」と、回復役の攻撃（「HP 20　回復 15　攻撃 4　移動 4　射程 1」）。
 ## bonus（Unit.Stat -> 足す量）を渡すと、足したあとの値を出す。
 static func stats_line(kind: UnitKind.Id, bonus := {}) -> String:
 	var key := "deck.stats_healer" if UnitKind.role(kind) == UnitKind.Role.HEALER else "deck.stats"
@@ -51,6 +51,7 @@ static func stats_line(kind: UnitKind.Id, bonus := {}) -> String:
 		"power": UnitKind.power(kind) + int(bonus.get(Unit.Stat.POWER, 0)),
 		"move": UnitKind.move_range(kind) + int(bonus.get(Unit.Stat.MOVE_RANGE, 0)),
 		"range": UnitKind.attack_range(kind) + int(bonus.get(Unit.Stat.ATTACK_RANGE, 0)),
+		"strike": UnitKind.healer_strike(kind),
 	})
 
 

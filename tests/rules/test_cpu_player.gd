@@ -302,13 +302,27 @@ func test_reaches_a_target_through_a_portal() -> void:
 	assert_eq(battle.winner, P1)
 
 
-func test_healer_never_attacks() -> void:
+func test_healer_strikes_only_when_no_friend_needs_healing() -> void:
+	var battle := _battle_with_kings()
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(3, 2))
+	var enemy := battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(5, 2))
+	for action in _play_phase(battle):
+		if action is AttackAction:
+			assert_eq((action as AttackAction).unit_id, priest.id)
+	assert_eq(enemy.hp, enemy.max_hp() - UnitKind.healer_strike(UnitKind.Id.PRIEST), "治す相手がいなければ撃つ")
+
+
+func test_healer_heals_rather_than_strikes() -> void:
 	var battle := _battle_with_kings()
 	battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(3, 2))
 	var enemy := battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(5, 2))
+	var wounded := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(3, 3))
+	wounded.acted = true
+	wounded.hp = 20
 	for action in _play_phase(battle):
-		assert_false(action is AttackAction)
+		assert_false(action is AttackAction, "治せる味方がいるのに撃った")
 	assert_eq(enemy.hp, enemy.max_hp())
+	assert_true(wounded.hp > 20, "治していない")
 
 
 func test_does_not_blow_up_a_barrel_next_to_own_king() -> void:

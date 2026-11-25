@@ -183,6 +183,10 @@ func show_unit(
 		_tags.add(_level_chip(level_tag, experience))
 		tag_texts.append(level_tag)
 	_clear(_action)
+	if sheet.strike > 0:
+		var strike := Text.t("deck.sheet.strike", {"power": sheet.strike})
+		_action.add_child(SheetParts.tag(strike, Palette.TEXT))
+		tag_texts.append(strike)
 	if action != "":
 		_action.add_child(SheetParts.tag(action, Palette.TEXT_DIM))
 		tag_texts.append(action)

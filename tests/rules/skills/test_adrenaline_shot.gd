@@ -225,7 +225,7 @@ func test_cpu_shoots_a_friend_who_can_finish_an_enemy() -> void:
 	# スナイパーが 1 発撃ったあと。もう 1 発で倒せる敵が、射程の中に残っている。
 	var battle := _cpu_battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(5, 2))
-	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(4, 2))
+	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(1, 2))  # 歩いて打てるが、自分の攻撃は届かない
 	var enemy := battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(9, 2))
 	enemy.hp = sniper.power() + 1
 	var actions := _play_phase(battle)

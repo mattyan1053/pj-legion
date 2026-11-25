@@ -236,8 +236,12 @@ func _follow_up(unit: Unit) -> BattleAction:
 	var wanted := _wanted_skill_targets(unit, here)
 	var skill := Skills.of(unit)
 	var limited := skill != null and CpuSkillEstimate.of(skill.id()) != null
-	for action in _battle.options(unit.id).actions():
+	var options := _battle.options(unit.id)
+	var healer := UnitKind.role(unit.kind) == UnitKind.Role.HEALER
+	for action in options.actions():
 		if action is MoveAction or action is WarpAction or action is WaitAction or action is UndoMoveAction:
+			continue
+		if healer and _healer_holds_fire(action, options):
 			continue
 		var skill_use := action as UseSkillAction
 		if skill_use != null and limited and not wanted.has(skill_use.target):
@@ -248,6 +252,13 @@ func _follow_up(unit: Unit) -> BattleAction:
 			best = action
 			best_value = value
 	return best
+
+
+## 回復役が、この攻撃の手を見送るか。治せる味方がいれば攻撃しない。樽と盾は撃たない（_candidates と同じ）。
+func _healer_holds_fire(action: BattleAction, options: UnitOptions) -> bool:
+	if action is AttackBarrelAction or action is AttackBarricadeAction:
+		return true
+	return action is AttackAction and not options.heal_target_ids.is_empty()
 
 
 ## まだ動いていない駒の、次の行動。「どこへ動くか」と「そこで何をするか」の組をすべて比べて、最初の 1 手を返す。
@@ -408,21 +419,27 @@ func _wanted_skill_targets(unit: Unit, cells: Dictionary[Vector2i, float]) -> Di
 func _candidates(unit: Unit, cells: Dictionary[Vector2i, float]) -> Array[Array]:
 	var result: Array[Array] = []
 	var healer := UnitKind.role(unit.kind) == UnitKind.Role.HEALER
+	var attacks: Array[Array] = []
 	for other in _battle.units:
 		if other == unit or not _in_reach(unit, cells, other.cell):
 			continue
-		if healer:
-			if other.side == _me and other.hp < other.max_hp():
+		if healer and other.side == _me:
+			if other.hp < other.max_hp():
 				result.append([HealAction.new(unit.id, other.id), other.cell, other.id])
 		elif other.side != _me:
-			result.append([AttackAction.new(unit.id, other.id), other.cell, other.id])
-	if not healer:
-		for cell in _battle.board.barrel_cells:
-			if _in_reach(unit, cells, cell):
-				result.append([AttackBarrelAction.new(unit.id, cell), cell, 0])
-		for effect in _battle.board.field_effects:
-			if effect.type == FieldEffect.Type.BARRICADE and effect.side != _me and _in_reach(unit, cells, effect.center):
-				result.append([AttackBarricadeAction.new(unit.id, effect.center), effect.center, 0])
+			attacks.append([AttackAction.new(unit.id, other.id), other.cell, other.id])
+	# 回復役は、このターンに治せる味方がいないときだけ攻撃する（駒だけ。樽と盾は撃たない）。
+	if healer:
+		if result.is_empty():
+			result.append_array(attacks)
+		return result
+	result.append_array(attacks)
+	for cell in _battle.board.barrel_cells:
+		if _in_reach(unit, cells, cell):
+			result.append([AttackBarrelAction.new(unit.id, cell), cell, 0])
+	for effect in _battle.board.field_effects:
+		if effect.type == FieldEffect.Type.BARRICADE and effect.side != _me and _in_reach(unit, cells, effect.center):
+			result.append([AttackBarricadeAction.new(unit.id, effect.center), effect.center, 0])
 	return result
 
 
@@ -448,13 +465,13 @@ func _reach_from(unit: Unit, cell: Vector2i) -> int:
 func _best_cell_in_reach(
 	unit: Unit, cells: Dictionary[Vector2i, float], at: Vector2i, target_id: int, ignored_id: int, avoid_blast: bool
 ) -> Vector2i:
-	var healer := UnitKind.role(unit.kind) == UnitKind.Role.HEALER
 	var target := _battle.unit_by_id(target_id)
+	var healing := UnitKind.role(unit.kind) == UnitKind.Role.HEALER and target != null and target.side == _me
 	var best := Board.NO_CELL
 	var best_value := -INF
 	for cell in cells:
 		var reach := _reach_from(unit, cell)
-		if healer:
+		if healing:
 			if Combat.distance(cell, at) > reach:
 				continue
 		elif not Combat.reaches(_battle, cell, at, reach):

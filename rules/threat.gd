@@ -25,7 +25,7 @@ class Map:
 	var hits: Dictionary[Vector2i, Dictionary] = {}
 	## hits のうち、煙幕に防がれないもの（隣からの攻撃、樽の爆発、スキルのダメージ）。
 	var close: Dictionary[Vector2i, Dictionary] = {}
-	## 攻撃のために止まれるマス（プレイヤーの駒のうち、回復役を除く。中立の駒は含まない）。
+	## 攻撃のために止まれるマス（プレイヤーの駒。中立の駒は含まない）。
 	var stops: Dictionary[Vector2i, bool] = {}
 
 	func has(cell: Vector2i) -> bool:
@@ -154,26 +154,24 @@ static func _stops(sim: Battle, unit: Unit, starts: Array[Vector2i]) -> Array[Ve
 static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool, map: Map) -> void:
 	var stay := _probe(unit, unit.cell, tired)
 	var moved := _probe(unit, Board.NO_CELL, tired)
-	var attacks := UnitKind.role(unit.kind) != UnitKind.Role.HEALER
-	if attacks:
-		for cell in stops:
-			map.stops[cell] = true
-		if Combat.attack_power(stay) == Combat.attack_power(moved) and stay.attack_range() == moved.attack_range():
-			_attacks(sim, unit.id, moved, stops, map)
-		else:
-			var away := stops.duplicate()
-			away.erase(unit.cell)
-			_attacks(sim, unit.id, moved, away, map)
-			if stops.has(unit.cell):
-				_attacks(sim, unit.id, stay, [unit.cell], map)
-		_barrels(sim, unit.id, stay, moved, stops, map)
-		for cell in stops:
-			var bonus := MapObject.battery_bonus(sim.board, unit, cell)
-			if bonus > 0 and cell != unit.cell:
-				var gunner := moved.copy()
-				gunner.site_range = bonus
-				_attacks(sim, unit.id, gunner, [cell], map)
-				_barrels(sim, unit.id, gunner, gunner, [cell], map)  # 伸びた射程で撃てる樽の爆発も
+	for cell in stops:
+		map.stops[cell] = true
+	if Combat.attack_power(stay) == Combat.attack_power(moved) and stay.attack_range() == moved.attack_range():
+		_attacks(sim, unit.id, moved, stops, map)
+	else:
+		var away := stops.duplicate()
+		away.erase(unit.cell)
+		_attacks(sim, unit.id, moved, away, map)
+		if stops.has(unit.cell):
+			_attacks(sim, unit.id, stay, [unit.cell], map)
+	_barrels(sim, unit.id, stay, moved, stops, map)
+	for cell in stops:
+		var bonus := MapObject.battery_bonus(sim.board, unit, cell)
+		if bonus > 0 and cell != unit.cell:
+			var gunner := moved.copy()
+			gunner.site_range = bonus
+			_attacks(sim, unit.id, gunner, [cell], map)
+			_barrels(sim, unit.id, gunner, gunner, [cell], map)  # 伸びた射程で撃てる樽の爆発も
 	var skill := Skills.of(unit)
 	if skill == null or not Skills.can_use(sim, unit):
 		return
@@ -192,7 +190,7 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 	stay.cell = unit.cell
 	for target: Vector2i in damage:
 		map.note(target, unit.id, damage[target], true)
-	if attacks and not origins.is_empty():
+	if not origins.is_empty():
 		var from: Array[Vector2i] = []
 		from.assign(origins.keys())
 		_attacks(sim, unit.id, moved, from, map)

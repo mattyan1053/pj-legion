@@ -38,7 +38,7 @@ enum Id {
 enum Role { NONE, VANGUARD, REARGUARD, RAIDER, HEALER }
 enum Army { NONE, MILITARY, FANTASY }
 
-## power は攻撃力。回復役（衛生兵・プリースト）だけは回復量。
+## power は攻撃力。回復役（衛生兵・プリースト）だけは回復量（回復役の攻撃の強さは HEALER_STRIKE。別の値）。
 ## [役割, 軍, コスト, 最大 HP, power, 移動力, 射程]。名前は画面の文の表（game/text/names.csv の unit.<id>）。
 const _TABLE := {
 	Id.KING: [Role.NONE, Army.NONE, 0, 30, 8, 4, 1],
@@ -68,6 +68,15 @@ const _TABLE := {
 }
 
 
+## 回復役の攻撃の強さ（回復量とは別の値。docs/healer-role.md の「回復役の攻撃」）。射程は回復と同じ。
+const MEDIC_STRIKE := 4
+const PRIEST_STRIKE := 4
+const HEALER_STRIKE := {
+	Id.MEDIC: MEDIC_STRIKE,
+	Id.PRIEST: PRIEST_STRIKE,
+}
+
+
 static func role(id: Id) -> Role:
 	return _TABLE[id][0]
 
@@ -86,6 +95,11 @@ static func max_hp(id: Id) -> int:
 
 static func power(id: Id) -> int:
 	return _TABLE[id][4]
+
+
+## 回復役の攻撃の強さ（HEALER_STRIKE）。回復役でなければ 0。
+static func healer_strike(id: Id) -> int:
+	return HEALER_STRIKE.get(id, 0)
 
 
 static func move_range(id: Id) -> int:

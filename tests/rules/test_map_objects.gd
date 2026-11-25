@@ -91,10 +91,10 @@ func test_barrels_are_attacked_within_manhattan_range() -> void:
 	var battle := _barrel_battle()
 	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(4, 3))  # 射程 4、距離 4
 	var paladin := battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(3, 2))  # 射程 1、斜め隣は距離 2
-	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(2, 2))  # 回復役は攻撃しない
+	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(2, 2))  # 回復役も、射程の中なら撃てる
 	assert_true(MapObject.can_attack_barrel(battle, sniper, BARREL))
 	assert_false(MapObject.can_attack_barrel(battle, paladin, BARREL))
-	assert_false(MapObject.can_attack_barrel(battle, medic, BARREL))
+	assert_true(MapObject.can_attack_barrel(battle, medic, BARREL))
 	assert_false(MapObject.can_attack_barrel(battle, sniper, Vector2i(3, 3)), "樽の無いマス")
 	assert_eq(MapObject.barrel_targets(battle, sniper), [BARREL] as Array[Vector2i])
 	assert_eq(MapObject.barrel_targets(battle, paladin), [] as Array[Vector2i])

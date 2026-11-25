@@ -127,3 +127,12 @@ func test_the_hp_frame_keeps_a_readable_length() -> void:
 	assert_true(large > small, "最大 HP が大きい駒の枠のほうが長い")
 	assert_eq(StatMeter.Meter.hp_frame_ratio(scale, scale), 1.0)
 	assert_eq(StatMeter.Meter.hp_frame_ratio(scale * 2, scale), 1.0, "端を超えても、欄からはみ出さない")
+
+
+## 回復役は、回復量とは別に、回復役の攻撃の強さを持つ（情報の札の名前の右に「攻撃 4」）。ほかの駒は 0。
+func test_healers_carry_their_strike() -> void:
+	assert_eq(UnitSheet.of_kind(UnitKind.Id.MEDIC).strike, UnitKind.healer_strike(UnitKind.Id.MEDIC))
+	assert_eq(UnitSheet.of_kind(UnitKind.Id.SNIPER).strike, 0)
+	var priest := Unit.new(1, UnitKind.Id.PRIEST, Unit.Side.PLAYER1, Vector2i.ZERO)
+	priest.temporary_bonus[Unit.Stat.POWER] = 3
+	assert_eq(UnitSheet.of_unit(priest).strike, UnitKind.healer_strike(UnitKind.Id.PRIEST) + 3, "一時的な補正は乗る")

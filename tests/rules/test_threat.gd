@@ -219,10 +219,12 @@ func test_close_table_holds_only_what_smoke_cannot_stop() -> void:
 	assert_eq(map.at(Vector2i(1, 2), true), {}, "離れたところからだけ")
 
 
-func test_healers_have_no_threat() -> void:
+func test_healers_threaten_with_their_strike() -> void:
 	var battle := _open()
 	var priest := battle.add_unit(UnitKind.Id.PRIEST, P2, Vector2i(8, 2))
-	assert_true(Threat.of(battle, priest.id).cells().is_empty())
+	var map := Threat.of(battle, priest.id)
+	assert_eq(map.cells().size(), _diamond(battle, priest.cell, priest.move_range() + priest.attack_range()).size())
+	assert_eq(map.at(Vector2i(8, 0))[priest.id], UnitKind.healer_strike(UnitKind.Id.PRIEST))
 
 
 func test_neutral_stays_in_its_territory() -> void:

@@ -10,7 +10,7 @@
 - 地形は射程を遮らない（壁越しに撃てる）。
 - ただし、攻撃する駒と相手の間のマスに盾があると届かない（`docs/field-effects.md`。隣からの攻撃は遮られない）。
 - 攻撃できるのは敵の駒だけ。中立の駒は両プレイヤーの敵。味方は攻撃できない。
-- 回復役（衛生兵・プリースト）は攻撃しない。かわりに味方を回復する（`docs/healer-role.md`）。
+- 回復役（衛生兵・プリースト）の攻撃は、回復量でなく回復役の攻撃の強さで当たる（`docs/healer-role.md` の「回復役の攻撃」）。
 - 魔物の殻蟹は、距離 2（`RANGED_DISTANCE`）以上からの攻撃では狙えない（`docs/monsters.md`）。
 - 射程内の起爆樽も攻撃できる。行動は別（`AttackBarrelAction`）で、爆発のダメージの決まりも別（`docs/map-objects.md`）。
 - 射程内の相手の盾も攻撃できる。行動は別（`AttackBarricadeAction`。`docs/field-effects.md`）。

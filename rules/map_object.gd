@@ -45,8 +45,6 @@ static func is_walkable(type: Type) -> bool:
 static func can_attack_barrel(battle: Battle, attacker: Unit, cell: Vector2i) -> bool:
 	if attacker == null or battle.board.object_at(cell) != Type.BARREL:
 		return false
-	if UnitKind.role(attacker.kind) == UnitKind.Role.HEALER:
-		return false
 	return Combat.reaches(battle, attacker.cell, cell, attacker.attack_range())
 
 

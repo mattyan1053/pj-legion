@@ -79,3 +79,6 @@ unit = skeleton
 unit = skeleton
 unit = skeleton_caller
 unit = skeleton_drummer
+# 骸骨兵 4 体は、墓守の左右の翼に分かれて始まる。いつもの初期位置（本陣の前に固める）では、回復役が撃てるようになって、人の側が易しくなりすぎた
+# （人の側も CPU、部隊を変えて 144 局で 87 → 91%。翼に分けて 96 局で 79%。docs/cpu-ai.md の「回復役の攻撃」）。
+deploy = 9,1  11,1  10,2  1,2  19,2  4,2  16,2  9,2  11,2

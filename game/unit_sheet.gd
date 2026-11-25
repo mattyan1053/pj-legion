@@ -57,6 +57,8 @@ var evolutions: Array[Evolution.Id] = []
 var evolved := Evolution.Id.NONE
 ## 付いている状態（[種類, 残りのターン数]。対戦中だけ）。
 var statuses: Array = []
+## 回復役の攻撃の強さ（回復役でなければ 0）。情報の札の名前の右に「攻撃 4」と出す（info_card.gd）。
+var strike := 0
 
 
 ## 編成の駒。equipment は持ち物、deck_army は部隊の軍（-1 なら駒の種類の軍）、start_level は始めのレベル。
@@ -75,6 +77,7 @@ static func of_kind(of: UnitKind.Id, equipment: Array[Equipment.Id] = [], side_ 
 		var plain := _kind_value(of, stat) + int(grown.get(stat, 0))
 		sheet._add_stat(stat, plain, maxi(plain + Equipment.total_bonus(equipment, stat), 1 if stat == Unit.Stat.MAX_HP else 0))
 	sheet.hp = sheet.stats[0].value
+	sheet.strike = UnitKind.healer_strike(of)
 	sheet._hold(equipment)
 	sheet.evolutions = Evolution.options_for(of)
 	return sheet
@@ -92,6 +95,7 @@ static func of_unit(unit: Unit, side_army := UnitKind.Army.NONE, skill_state_ :=
 		var plain := _kind_value(unit.kind, stat) + int(unit.growth_bonus.get(stat, 0)) + Evolution.bonus(unit.evolution, stat)
 		sheet._add_stat(stat, plain, unit.stat(stat))
 	sheet.hp = unit.hp
+	sheet.strike = Combat.attack_power(unit) if UnitKind.role(unit.kind) == UnitKind.Role.HEALER else 0
 	sheet._hold(unit.equipment)
 	sheet.skill_state = skill_state_ if sheet.skill != null else ""
 	sheet.evolved = unit.evolution

@@ -54,11 +54,25 @@ func test_neutrals_can_be_attacked() -> void:
 	assert_true(Combat.can_attack(battle, sniper, minion))
 
 
-func test_healers_do_not_attack() -> void:
+func test_healers_strike_with_their_own_power() -> void:
 	var battle := _battle()
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 0))
-	var enemy := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(1, 0))
-	assert_false(Combat.can_attack(battle, medic, enemy))
+	var priest := battle.add_unit(UnitKind.Id.PRIEST, P1, Vector2i(5, 0))
+	var enemy := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(1, 0))
+	var far := battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(5, 2))
+	assert_true(Combat.can_attack(battle, medic, enemy))
+	assert_true(Combat.can_attack(battle, priest, far), "射程は回復と同じ（プリーストは 2）")
+	assert_false(Combat.can_attack(battle, medic, far))
+	# 回復量（power）ではなく、回復役の攻撃の強さで当たる。
+	assert_eq(Combat.damage(battle, medic, enemy), UnitKind.healer_strike(UnitKind.Id.MEDIC))
+	assert_eq(Combat.damage(battle, priest, far), UnitKind.healer_strike(UnitKind.Id.PRIEST))
+	assert_true(UnitKind.healer_strike(UnitKind.Id.MEDIC) < medic.power(), "回復量より弱い")
+	assert_eq(UnitKind.healer_strike(UnitKind.Id.SNIPER), 0, "回復役でなければ 0")
+	# 成長で増えるのは回復量だけ。一時的な補正（突撃など）は乗る。
+	medic.growth_bonus[Unit.Stat.POWER] = 4
+	assert_eq(Combat.attack_power(medic), UnitKind.healer_strike(UnitKind.Id.MEDIC))
+	medic.temporary_bonus[Unit.Stat.POWER] = 2
+	assert_eq(Combat.attack_power(medic), UnitKind.healer_strike(UnitKind.Id.MEDIC) + 2)
 
 
 func test_targets_lists_attackable_units_in_board_order() -> void:

@@ -201,6 +201,25 @@ func _scene_deck_unit_detail() -> bool:
 	return screen.unit_detail() != null and screen.unit_detail().visible
 
 
+## 衛生兵（部隊に無ければ、先頭の駒と入れ替えて雇う）の「詳細」。回復役の攻撃が、窓の名前の右と、雇える駒の札の能力の行に出る。
+func _scene_deck_healer_detail() -> bool:
+	var screen: Node = await _deck_editor()
+	if screen == null:
+		return false
+	var deck: Deck = screen.editing_deck()
+	var index := -1
+	for i in deck.entries.size():
+		if deck.entries[i].kind == UnitKind.Id.MEDIC:
+			index = i
+	if index < 0:
+		screen.remove_entry(0)
+		screen.hire(UnitKind.Id.MEDIC)
+		index = deck.entries.size() - 1
+	screen.select_entry(index)
+	screen.press_unit_detail()
+	return deck.entries[index].kind == UnitKind.Id.MEDIC and screen.unit_detail() != null and screen.unit_detail().visible
+
+
 func _scene_deck_over() -> bool:
 	var screen: Node = await _deck_editor()
 	if screen == null:
