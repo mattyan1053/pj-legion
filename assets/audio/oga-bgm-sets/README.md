@@ -1,19 +1,20 @@
-# BGM の組の候補（OpenGameArt の CC0 の曲を、何人かから集めた）
+# BGM の組の候補と、そこから選んだ曲（OpenGameArt の CC0 の曲を、何人かから集めた）
 
 オプションの「BGM の組」（`game/sound_catalog.gd` の `MUSIC_SETS`）で、いまの曲と聴き比べるための曲。既定（いまの組）では鳴らない。
+タイトルの 3 曲は人間が聴いて役が決まり、いつも鳴る曲（`MUSIC`）になった（表の「役」）。
 
 - 配布元: OpenGameArt（下の表のページ。どれも試聴できる）
 - ライセンス: どれも CC0 1.0（`LICENSE.txt`）。各曲のページの「License(s)」が CC0。ライセンスの文の入ったファイルは、どの曲にも付いていない
 - 取ってきた日・ライセンスを確かめた日: 2026-11-24（各ページを開いて確かめた）
 - 改変: Ogg Vorbis（品質 4、約 128 kbps、ステレオ、44.1 kHz）にし、メタデータを落とした（`some_militaristic_tune.ogg` だけは元のファイルのまま）。
   音量は変えていない（大きさは `sound_catalog.gd` の `volume_db` でそろえる）。頭と終わりの無音を切ったもの、端にフェードを付けたものがある（表の「改変」）
-- 曲は聴いていない。選んだ根拠は、作者の説明とタグ、スペクトルの見立て（生楽器ふうか）、つなぎ目の測り（下）
+- 曲は聴いていない（タイトルの 3 曲は、人間が聴いた）。選んだ根拠は、作者の説明とタグ、スペクトルの見立て（生楽器ふうか）、つなぎ目の測り（下）
 
-| ファイル | 組と役（`MUSIC_SETS`） | 元の曲（作者）— 配布元のページ | 元のファイル | 改変 |
+| ファイル | 役（`MUSIC`）か、組と役（`MUSIC_SETS`） | 元の曲（作者）— 配布元のページ | 元のファイル | 改変 |
 | --- | --- | --- | --- | --- |
-| `a_legend_will_rise.ogg` | A: タイトル（`title`） | A Legend Will Rise (Orchestral)（CodeManu）— https://opengameart.org/content/a-legend-will-rise-orchestral | `A Legend Will Rise.mp3`（1:10） | なし |
-| `the_last_horn.ogg` | B: タイトル（`title`） | The Last Horn（redFireMeat）— https://opengameart.org/content/the-last-horn | `the_last_horn.mp3`（3:47） | 終わりの無音を 1 秒残して切った（3:46） |
-| `last_journey.ogg` | C: タイトル（`title`） | Last Journey（Crocdent）— https://opengameart.org/content/last-journey | `last_journey_0.mp3`（1:06） | 終わりの無音を 1 秒残して切った（1:03） |
+| `a_legend_will_rise.ogg` | 決まった: 物語の締めの戦い（`battle_last`）。もとは A のタイトル | A Legend Will Rise (Orchestral)（CodeManu）— https://opengameart.org/content/a-legend-will-rise-orchestral | `A Legend Will Rise.mp3`（1:10） | なし |
+| `the_last_horn.ogg` | 決まった: タイトル（`title`）。もとは B のタイトル | The Last Horn（redFireMeat）— https://opengameart.org/content/the-last-horn | `the_last_horn.mp3`（3:47） | 終わりの無音を 1 秒残して切った（3:46） |
+| `last_journey.ogg` | 決まった: 締めの 1 つ手前の戦い（`battle_eve`）。もとは C のタイトル | Last Journey（Crocdent）— https://opengameart.org/content/last-journey | `last_journey_0.mp3`（1:06） | 終わりの無音を 1 秒残して切った（1:03） |
 | `beautiful_forest.ogg` | A: 落ち着いた会話（`talk_calm`） | Beautiful Forest [Orchestra]（nene）— https://opengameart.org/content/beautiful-forest-orchestra | `beautiful_forest_16bit_44.1khz_1.wav`（1:10） | なし |
 | `prologue_theme.ogg` | B: 落ち着いた会話（`talk_calm`） | Prologue Theme（CleytonKauffman）— https://opengameart.org/content/prologue-theme | `Prologue Theme.zip` の `Prologue Theme.wav`（1:22） | なし |
 | `kings_feast_loop.ogg` | C: 軽い会話（`talk`） | Medieval: King's Feast（RandomMind）— https://opengameart.org/content/medieval-kings-feast | `Loop_Kings_Feast_0.wav`（ループ版。1:21） | なし |
@@ -34,7 +35,7 @@
 終わりと頭のつなぎ目の、隣り合う標本の差を、まわりの差（99.5 パーセンタイル）と比べた。
 
 - そのままつながる: Hope（作者が「ループできる」）、Some Militaristic Tune、King's Feast（ループ版）。Prologue Theme（作者が「つなぎ目なし」）は差がまわりの 2 倍ほどで、小さな音が出るかもしれない。
-- 静かに終わって頭へ戻る（いまのタイトルの曲と同じ）: A Legend Will Rise、The Last Horn、Last Journey、Beautiful Forest、Epic Endgame Cinematic、Col Legno。
+- 静かに終わって頭へ戻る: A Legend Will Rise、The Last Horn、Last Journey、Beautiful Forest、Epic Endgame Cinematic、Col Legno。
 - 段差があった: Final Stand（作者が「ループできる」。64 秒ちょうど）は端に 0.03 秒のフェードを付けた。Duel of the Dungeons は終わりと頭の大きさも合わないので、終わり 2 秒をフェードで消した。
 
 ## 見送ったもの

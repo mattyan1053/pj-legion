@@ -15,9 +15,11 @@ extends RefCounted
 ## - メニューと会話は落ち着いた曲（RandomMind の中世の連作）、対戦は戦いの曲（オーケストラ。assets/audio/oga-battle/）。
 ##   対戦の曲を差し替えるときは、path を替えるだけ（次点の曲は assets/audio/oga-battle/README.md）。
 const StageLook := preload("res://game/stage_look.gd")
+## 聴き比べの候補の曲の置き場所（MUSIC_SETS）。選ばれた曲も、ここに置いたまま鳴らす。
+const BGM_SETS_DIR := "res://assets/audio/oga-bgm-sets/"
 const MUSIC := {
-	## タイトル（主題歌。静かに始まり、弦と金管が高まって、静かに終わる。オーケストラ）。
-	&"title": {"path": "res://assets/audio/joth/fantasy_orchestral_theme.ogg", "loop": true, "volume_db": -4.0},
+	## タイトル（主題歌。The Last Horn。BGM の組の候補から、人間が聴いて選んだ）。
+	&"title": {"path": BGM_SETS_DIR + "the_last_horn.ogg", "loop": true, "volume_db": -3.0},
 	## 選んでいる間（セーブデータ選択・物語選択・話の一覧・出撃準備・部隊編成・マップ選択・対戦設定）。
 	&"menu": {"path": "res://assets/audio/randommind/medieval_exploration.ogg", "loop": true, "volume_db": -8.0},
 	## 対戦（草原。弦と金管の勇ましい戦いの曲）。盤の見た目が分からないときの対戦の曲も、これ。
@@ -40,6 +42,10 @@ const MUSIC := {
 	&"battle_boss": {"path": "res://assets/audio/oga-battle/the_fire_dragon_loop.ogg", "loop": true, "volume_db": -8.0},
 	## 敵を全滅させる戦い（攻め込む行進の曲。4 分あり、途中で形が変わる）。
 	&"battle_rout": {"path": "res://assets/audio/oga-battle/qazijamjam.ogg", "loop": true, "volume_db": -8.5},
+	## 物語の締めの戦い（A Legend Will Rise。人間の感想は「ストーリーが佳境に入ったラストダンジョンのような曲」）。話のファイルの music で選ぶ。
+	&"battle_last": {"path": BGM_SETS_DIR + "a_legend_will_rise.ogg", "loop": true, "volume_db": -11.5},
+	## 締めの 1 つ手前の戦い（Last Journey。人間の感想は「ラストダンジョン手前くらい」）。
+	&"battle_eve": {"path": BGM_SETS_DIR + "last_journey.ogg", "loop": true, "volume_db": -8.5},
 	## 魔物（骸骨の軍）との戦い（不気味な行進の曲）。
 	&"battle_undead": {"path": "res://assets/audio/oga-battle/the_march_of_devils_dome.ogg", "loop": true, "volume_db": -10.0},
 	## 終盤（どちらかの将の HP が半分を切った）。対戦の途中で、この曲へフェードで替わる（CLIMAX_MUSIC）。
@@ -146,15 +152,14 @@ const EFFECTS := {
 
 
 ## BGM の組（オプションの「BGM の組」。settings.gd の MUSIC_SET の値が番号）。聴き比べのための候補の曲。
+## タイトルは候補 B に決まったので、組に無い（MUSIC の title）。
 ## 組は「曲の名前 -> 差し替える曲（MUSIC と同じ形）」。組に無い曲は、いまの組（MUSIC）のまま鳴る。0 番がいまの組（何も差し替えない。既定）。
 ## 候補の曲は assets/audio/oga-bgm-sets/（どれも CC0。聴いていない）。大きさは MUSIC と同じねらい（LUFS）にそろえた
-## （タイトル -19.5、会話 -20、対戦・終盤 -21.5、勝ち -16、負け -18。Lose Game Short は頭打ちのため -22）。
-const BGM_SETS_DIR := "res://assets/audio/oga-bgm-sets/"
+## （会話 -20、対戦・終盤 -21.5、勝ち -16、負け -18。Lose Game Short は頭打ちのため -22）。
 const MUSIC_SETS: Array[Dictionary] = [
 	{},
 	## 候補 A
 	{
-		&"title": {"path": BGM_SETS_DIR + "a_legend_will_rise.ogg", "loop": true, "volume_db": -9.5},
 		&"talk_calm": {"path": BGM_SETS_DIR + "beautiful_forest.ogg", "loop": true, "volume_db": -5.0},
 		&"battle": {"path": BGM_SETS_DIR + "hope_orchestral_battle.ogg", "loop": true, "volume_db": -11.5},
 		&"battle_march": {"path": BGM_SETS_DIR + "some_militaristic_tune.ogg", "loop": true, "volume_db": -5.5},
@@ -165,7 +170,6 @@ const MUSIC_SETS: Array[Dictionary] = [
 	},
 	## 候補 B
 	{
-		&"title": {"path": BGM_SETS_DIR + "the_last_horn.ogg", "loop": true, "volume_db": -3.0},
 		&"talk_calm": {"path": BGM_SETS_DIR + "prologue_theme.ogg", "loop": true, "volume_db": -0.5},
 		&"battle": {"path": BGM_SETS_DIR + "final_stand.ogg", "loop": true, "volume_db": -7.0},
 		&"battle_march": {"path": BGM_SETS_DIR + "col_legno.ogg", "loop": true, "volume_db": -7.5},
@@ -176,7 +180,6 @@ const MUSIC_SETS: Array[Dictionary] = [
 	},
 	## 候補 C（3 曲目のある役だけ。ほかは、いまの組のまま）
 	{
-		&"title": {"path": BGM_SETS_DIR + "last_journey.ogg", "loop": true, "volume_db": -6.5},
 		&"talk": {"path": BGM_SETS_DIR + "kings_feast_loop.ogg", "loop": true, "volume_db": 1.0},
 		&"defeat": {"path": BGM_SETS_DIR + "lose_game_short.ogg", "loop": false, "volume_db": 0.0},
 	},
