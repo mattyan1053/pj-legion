@@ -93,7 +93,7 @@ deck.sheet.items,持ち物 {count} / {max}
 deck.sheet.no_item,空き
 deck.sheet.evolution,進化先（レベル {level}）
 deck.sheet.evolved,進化済み
-deck.trait.title,特徴
+deck.trait.title,軍略
 deck.trait.pair,{a}・{b}
 deck.trait.oaths,誓い {count} / {max}: {pairs}
 deck.trait.no_oath,誓いなし（{max} 組まで）

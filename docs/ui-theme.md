@@ -133,7 +133,7 @@ UI の見た目（ボタン、板、帯、札、文字、色）は、1 つのテ
   Label が、枠の中のボタン・板からはみ出していないか、字を切る Label（`clip_text`。`…` で省くものは除く）が字を切っていないか
   （`autoplay: 文があふれた: decks.trait「集中砲火」（字が切れた）`）。枠に収まっていても、並んだ札のボタンから名前があふれるのを拾う。
   自動の対戦が出さない文（選んでいない札の文など）は拾えないので、そういう欄は画面の側に「切れている文」を返す関数を置き、自動の対戦で全部の中身を当てて確かめる
-  （部隊編成の特徴の欄の `trait_cut_texts`、一覧の駒の札の `list_card_cut_texts`）。
+  （部隊編成の軍略の欄の `trait_cut_texts`、一覧の駒の札の `list_card_cut_texts`）。
 - 自動の対戦が中身を替えない枠は、見張りに掛からない。枠を足したら、自動の対戦（`game/autoplay.gd`）で中身を替える手（マウスを乗せる、選び替える）を通すか、
   `tests/game/test_steady_frames.gd` に、中身を次々当てて大きさを比べるテストを足す（大きさは、木に入れて 1 コマ待って測る。`docs/README.md`）。
 - **洗い出し**: `godot --headless --path . --fixed-fps 60 -- --autoplay --only ui --frames`（`--story-all`、`--versus-all` でも）。
