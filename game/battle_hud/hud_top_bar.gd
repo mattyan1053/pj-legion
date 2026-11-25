@@ -92,7 +92,7 @@ func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
 		_ult_bars[player].tooltip_text = names[player]
 
 
-## 陣営ごとの部隊の特徴（上の帯の陣営の欄の下の段: 印と名前。添字がプレイヤー番号。Traits.NONE なら出さない）。notes は乗せると出る文。
+## 陣営ごとの軍略（上の帯の陣営の欄の下の段: 印と名前。添字がプレイヤー番号。Traits.NONE なら出さない）。notes は乗せると出る文。
 func set_traits(ids: Array[int], notes: Array[String]) -> void:
 	if _trait_note_player >= 0 and _trait_note_player < ids.size() and ids[_trait_note_player] == Traits.NONE:
 		hide_trait_note()
@@ -101,16 +101,16 @@ func set_traits(ids: Array[int], notes: Array[String]) -> void:
 		mark.set(&"trait_id", ids[player])
 		mark.visible = ids[player] != Traits.NONE
 		mark.tooltip_text = notes[player]
-		# 特徴の段があるときは、上の段の字を 1 回り小さくして 2 段を帯の高さに収める（帯の高さは変えない）。
+		# 軍略の段があるときは、上の段の字を 1 回り小さくして 2 段を帯の高さに収める（帯の高さは変えない）。
 		_side_labels[player].add_theme_font_size_override("font_size", SIDE_FONT_STACKED if mark.visible else SIDE_FONT)
 
 
-## 上の帯に出ている、陣営の部隊の特徴の印の文（乗せると出る文。出ていなければ空）。検査用。
+## 上の帯に出ている、陣営の軍略の印の文（乗せると出る文。出ていなければ空）。検査用。
 func trait_note(player: int) -> String:
 	return _trait_icons[player].tooltip_text if _trait_icons[player].visible else ""
 
 
-## 上の帯に出ている、陣営の部隊の特徴の名前（出ていなければ空）。検査用。
+## 上の帯に出ている、陣営の軍略の名前（出ていなければ空）。検査用。
 func trait_name(player: int) -> String:
 	return (_trait_icons[player] as TraitTag).shown_name() if _trait_icons[player].visible else ""
 
@@ -195,8 +195,8 @@ func hide_sign_note() -> void:
 		_sign_note.visible = false
 
 
-## 陣営 player の部隊の特徴の窓を、上の帯の札の真下に開く（開いていれば閉じる）。特徴の札が出ていなければ何もしない。
-## 窓は、いま効いている特徴だけ（選ばなかった 2 つは出さない）: 印・名前・効果（数）・効く相手。
+## 陣営 player の軍略の窓を、上の帯の札の真下に開く（開いていれば閉じる）。軍略の札が出ていなければ何もしない。
+## 窓は、いま効いている軍略だけ（選ばなかった 2 つは出さない）: 印・名前・効果（数）・効く相手。
 func toggle_trait_note(player: int) -> void:
 	if player == _trait_note_player or player < 0 or player >= _trait_icons.size() or not _trait_icons[player].visible:
 		hide_trait_note()
@@ -214,17 +214,17 @@ func hide_trait_note() -> void:
 		_trait_note.visible = false
 
 
-## 開いている特徴の窓の文（名前・効果・効く相手。開いていなければ空。検査用）。
+## 開いている軍略の窓の文（名前・効果・効く相手。開いていなければ空。検査用）。
 func trait_note_text() -> String:
 	return _trait_note_card.shown_text() if _trait_note.visible else ""
 
 
-## 特徴の窓の四角（開いていなければ大きさ 0。検査用）。
+## 軍略の窓の四角（開いていなければ大きさ 0。検査用）。
 func trait_note_rect() -> Rect2:
 	return _trait_note.get_global_rect() if _trait_note.visible else Rect2()
 
 
-## 特徴の窓を、その陣営の札の真下に置く（真ん中をそろえ、画面の端からはみ出さない）。開いていなければ何もしない。
+## 軍略の窓を、その陣営の札の真下に置く（真ん中をそろえ、画面の端からはみ出さない）。開いていなければ何もしない。
 ## 上の帯の欄は窓の幅で伸び縮みするので、場面が毎コマ呼んで置き直す。
 func place_trait_note() -> void:
 	if _trait_note_player < 0:
@@ -288,7 +288,7 @@ func stronghold_urgent() -> bool:
 func _build_top_bar() -> void:
 	var panel := _panel()
 	_top_style = UiTheme.band_box(true)
-	# 上下の余白を詰めて、陣営の欄を 2 段（兵の数と占拠 / 部隊の特徴）にできる高さを取る。帯の高さは変えない（row の高さで決める）。
+	# 上下の余白を詰めて、陣営の欄を 2 段（兵の数と占拠 / 軍略）にできる高さを取る。帯の高さは変えない（row の高さで決める）。
 	_top_style.content_margin_top = TOP_BAND_PAD
 	_top_style.content_margin_bottom = TOP_BAND_PAD
 	panel.add_theme_stylebox_override("panel", _top_style)
@@ -313,7 +313,7 @@ func _build_top_bar() -> void:
 	_phase_label.add_theme_stylebox_override("normal", _phase_chip_style)
 	for player in 2:
 		# 陣営の欄は、残った幅を分け合う。足りなければ「…」で省く（帯が画面の幅を超えて、右端のボタンが切れないように）。
-		# 欄は 2 段: 上に兵の数と占拠、下に部隊の特徴（印と名前。特徴の無い対戦では下の段を出さず、上の段が真ん中に来る）。
+		# 欄は 2 段: 上に兵の数と占拠、下に軍略（印と名前。軍略の無い対戦では下の段を出さず、上の段が真ん中に来る）。
 		var column := VBoxContainer.new()
 		column.add_theme_constant_override("separation", -4)
 		column.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -327,10 +327,10 @@ func _build_top_bar() -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		column.add_child(label)
 		_side_labels.append(label)
-		# 部隊の特徴の札（幅は、いちばん長い名前で決める）。効果の数と効く相手は、乗せると出る。
+		# 軍略の札（幅は、いちばん長い名前で決める）。効果の数と効く相手は、乗せると出る。
 		var mark := TraitTag.new(TRAIT_MARK_SIDE, TRAIT_NAME_FONT, 4)
 		mark.size_flags_horizontal = Control.SIZE_SHRINK_END
-		mark.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると 2 行の文、クリックで特徴の窓
+		mark.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると 2 行の文、クリックで軍略の窓
 		mark.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var side := player
 		mark.gui_input.connect(func(event: InputEvent) -> void:
@@ -510,7 +510,7 @@ func _build_top_bar() -> void:
 			hide_sign_note()
 			_sign_note.accept_event())
 	Steady.mark(_sign_note, "battle.sign_note", Steady.RECT)
-	# 部隊の特徴の札をクリックすると出す、特徴 1 つの窓（決まった大きさ。札の真下に出すので、置き場所は陣営で違う）。
+	# 軍略の札をクリックすると出す、軍略 1 つの窓（決まった大きさ。札の真下に出すので、置き場所は陣営で違う）。
 	_trait_note = PanelContainer.new()
 	_trait_note.add_theme_stylebox_override("panel", UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 4.0, 6))
 	_trait_note.mouse_filter = Control.MOUSE_FILTER_STOP

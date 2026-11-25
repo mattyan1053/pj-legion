@@ -1,5 +1,5 @@
 extends "res://tools/shots/title_scenes.gd"
-## スクリーンショットの場面: 対戦設定（部隊・初期位置・手番）と、選べる決まり（砲台・縫い目の様子・拠点）と、部隊の特徴。
+## スクリーンショットの場面: 対戦設定（部隊・初期位置・手番）と、選べる決まり（砲台・縫い目の様子・拠点）と、軍略。
 
 
 func _scene_setup_ridge() -> bool:
@@ -214,7 +214,7 @@ func _scene_sign_note() -> bool:
 	return _scene.sign_note_text() != ""
 
 
-## 部隊の特徴の線（誓いの 2 人、補給線の衛生兵と隣り合う兵）が出ている、対戦の始め。
+## 軍略の線（誓いの 2 人、補給線の衛生兵と隣り合う兵）が出ている、対戦の始め。
 func _scene_trait_start() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.SUPPLY, Traits.Id.OATH])
@@ -228,7 +228,7 @@ func _scene_trait_start() -> bool:
 	return _scene.trait_link_count() > 0
 
 
-## 対戦中に、上の帯の部隊の特徴の札（集中砲火）をクリックしたところ（特徴 1 つの窓に、印・名前・効果・効く相手）。
+## 対戦中に、上の帯の軍略の札（集中砲火）をクリックしたところ（軍略 1 つの窓に、印・名前・効果・効く相手）。
 func _scene_trait_note() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.OATH])
@@ -239,7 +239,7 @@ func _scene_trait_note() -> bool:
 	return _scene.trait_note_text() != ""
 
 
-## 特徴の札が、ほかの表示と重なる所: 集中砲火の効く敵が拠点の上（竿と数の札）とバリアの中（泡と水色の輪）にいて、
+## 軍略の札が、ほかの表示と重なる所: 集中砲火の効く敵が拠点の上（竿と数の札）とバリアの中（泡と水色の輪）にいて、
 ## 仇討ちの効く自分の兵（敵の兵を倒した）を選んでいる（選択の黄色い輪、移動範囲）。場面は手で並べる（CPU の対戦では、そろわない）。
 func _scene_trait_marks() -> bool:
 	_field = VersusFields.PLAIN
@@ -272,7 +272,7 @@ func _scene_trait_marks() -> bool:
 	return _scene.trait_mark_count() == 3
 
 
-## 行動できる自分の駒が、部隊の特徴の乗る攻撃をできる相手（[駒, 相手]）。無ければ空。
+## 行動できる自分の駒が、軍略の乗る攻撃をできる相手（[駒, 相手]）。無ければ空。
 func _trait_attack() -> Array:
 	for unit in _own_units():
 		if not _battle.can_act(unit):

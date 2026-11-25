@@ -155,7 +155,7 @@ func test_boss_name_reads_from_the_episode_or_the_map() -> void:
 	assert_eq(long.problems.size(), 1)
 
 
-## 部隊の特徴（docs/troop-traits.md）: 話のファイルの trait と oath。書いた陣営だけが持ち、部隊編成で選んだ特徴は使わない。
+## 軍略（docs/troop-traits.md）: 話のファイルの trait と oath。書いた陣営だけが持ち、部隊編成で選んだ軍略は使わない。
 func test_traits_read_and_reach_the_battle() -> void:
 	var plain: Episode = Episode.parse(PROBE)
 	var mine := MatchSetup.default_deck(UnitKind.Army.MILITARY).copy()

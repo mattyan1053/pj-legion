@@ -1,7 +1,7 @@
 extends HBoxContainer
-## 部隊の特徴の札: 印（trait_icon.gd）と名前（「集中砲火」）。対戦の上の帯、部隊の一覧、「編成を確認」が同じ形で出す。
-## 幅は、いちばん長い名前で決める（特徴を替えても、札の幅も、隣の部品の位置も動かない。docs/ui-theme.md の「枠の大きさ」）。
-## 名前の色は特徴の軍の色（盤の上の札・輪・線と同じ色）。
+## 軍略の札: 印（trait_icon.gd）と名前（「集中砲火」）。対戦の上の帯、部隊の一覧、「編成を確認」が同じ形で出す。
+## 幅は、いちばん長い名前で決める（軍略を替えても、札の幅も、隣の部品の位置も動かない。docs/ui-theme.md の「枠の大きさ」）。
+## 名前の色は軍略の軍の色（盤の上の札・輪・線と同じ色）。
 
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -36,7 +36,7 @@ func _init(icon_side := 24.0, font_size := 14, outline := 0) -> void:
 	add_child(_name)
 
 
-## いちばん長い特徴の名前の幅（px）。
+## いちばん長い軍略の名前の幅（px）。
 static func name_width(font_size: int) -> float:
 	var widest := 0.0
 	for id: int in Traits.Id.values():

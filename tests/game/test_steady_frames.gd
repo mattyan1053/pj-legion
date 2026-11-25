@@ -337,7 +337,7 @@ func test_result_stats_keep_their_size_whatever_the_lines() -> void:
 	screen.free()
 
 
-## 部隊の特徴の札（印と名前。上の帯、部隊の一覧、「編成を確認」）は、どの特徴でも、特徴が無くても同じ大きさ。
+## 軍略の札（印と名前。上の帯、部隊の一覧、「編成を確認」）は、どの軍略でも、軍略が無くても同じ大きさ。
 func test_trait_tag_keeps_its_size_for_every_trait() -> void:
 	var tag := TraitTag.new(22.0, 14)
 	await settle(tag)
@@ -346,7 +346,7 @@ func test_trait_tag_keeps_its_size_for_every_trait() -> void:
 		tag.trait_id = id
 		await settle(tag)
 		assert_eq(tag.shown_name(), Names.troop_trait(id))
-		assert_eq(tag.get_combined_minimum_size(), empty, "特徴の札の大きさが名前で変わる: %s" % Names.troop_trait(id))
+		assert_eq(tag.get_combined_minimum_size(), empty, "軍略の札の大きさが名前で変わる: %s" % Names.troop_trait(id))
 		var name_width: float = UiTheme.FONT_BOLD.get_string_size(Names.troop_trait(id), HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		assert_true(name_width <= TraitTag.name_width(14), "名前が欄に収まらない: %s" % Names.troop_trait(id))
 	tag.free()

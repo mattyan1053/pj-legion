@@ -34,12 +34,12 @@ func sign_note_text() -> String:
 	return _hud.sign_note_text()
 
 
-## 上の帯の、陣営 player の部隊の特徴の札をクリックする（特徴の窓を開く・閉じる）。
+## 上の帯の、陣営 player の軍略の札をクリックする（軍略の窓を開く・閉じる）。
 func toggle_trait_note(player: int) -> void:
 	_hud.toggle_trait_note(player)
 
 
-## 開いている特徴の窓の文（名前・効果・効く相手。開いていなければ空。検査用）と、その四角。
+## 開いている軍略の窓の文（名前・効果・効く相手。開いていなければ空。検査用）と、その四角。
 func trait_note_text() -> String:
 	return _hud.trait_note_text()
 

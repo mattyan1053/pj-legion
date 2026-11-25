@@ -90,7 +90,7 @@ static func summarize(battle: Battle, forecast: Forecast, actor: Unit) -> Summar
 				row.notes.append(Text.t("battle.log.note.forest"))
 			if outcome.spores:
 				row.notes.append(Text.t("battle.log.note.spores"))
-			for id: int in outcome.traits:  # 部隊の特徴で増える・減るぶん（docs/troop-traits.md）
+			for id: int in outcome.traits:  # 軍略で増える・減るぶん（docs/troop-traits.md）
 				var down := id == Traits.Id.RANKS
 				row.notes.append(Text.t("battle.pop.trait_down" if down else "battle.pop.trait_up",
 					{"effect": Names.troop_trait(id), "amount": outcome.traits[id]}))

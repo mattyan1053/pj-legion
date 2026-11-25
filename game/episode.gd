@@ -75,9 +75,9 @@ var enemy_king := true
 ## 敵の側が番人（中ボス）を狙わないか（[enemy] の spare_boss = yes。Battle.spares_bosses。docs/story.md）。
 var enemy_spares_boss := false
 var enemy: Array = []
-## 陣営ごとの部隊の特徴（Traits.Id。書かなければ Traits.NONE = 特徴なし。docs/troop-traits.md）。[ally] / [enemy] の trait。
+## 陣営ごとの軍略（Traits.Id。書かなければ Traits.NONE = 軍略なし。docs/troop-traits.md）。[ally] / [enemy] の trait。
 var traits: Array[int] = [Traits.NONE, Traits.NONE]
-## 陣営ごとの誓いの組（その陣営の unit の行の、1 から数えた番号の組を、0 からの Vector2i で。特徴が誓いの陣営だけ）。[ally] / [enemy] の oath。
+## 陣営ごとの誓いの組（その陣営の unit の行の、1 から数えた番号の組を、0 からの Vector2i で。軍略が誓いの陣営だけ）。[ally] / [enemy] の oath。
 var oaths: Array[Array] = [[], []]
 ## 初期位置: [プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」。
 var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
@@ -143,7 +143,7 @@ func enemy_deck() -> Deck:
 	return _bound(_deck_of(enemy_army, enemy), 1)
 
 
-## 決め打ちの部隊 deck に、陣営 side の誓いの組を結ぶ（特徴が誓いの陣営だけ）。
+## 決め打ちの部隊 deck に、陣営 side の誓いの組を結ぶ（軍略が誓いの陣営だけ）。
 func _bound(deck: Deck, side: int) -> Deck:
 	if traits[side] == Traits.Id.OATH:
 		for pair: Vector2i in oaths[side]:
@@ -382,7 +382,7 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
 
 
-## 陣営の部隊の特徴（trait）と誓いの組（oath。trait = oath のときだけ。「1, 2」の形で、unit の行を 1 から数えた番号）。
+## 陣営の軍略（trait）と誓いの組（oath。trait = oath のときだけ。「1, 2」の形で、unit の行を 1 から数えた番号）。
 ## 軍に合うかは、両方の陣営を読んだあと（_check_traits）に確かめる。
 func _read_trait(file: RefCounted, values: Dictionary, side: int) -> void:
 	if values.has("trait"):
@@ -417,7 +417,7 @@ func _read_trait(file: RefCounted, values: Dictionary, side: int) -> void:
 	oaths[side] = pairs
 
 
-## 陣営の特徴が、その陣営の軍のものか（人の側は、部隊が決まっている話なら、その部隊の軍。決まっていなければ物語の軍で、ここでは見ない）。
+## 陣営の軍略が、その陣営の軍のものか（人の側は、部隊が決まっている話なら、その部隊の軍。決まっていなければ物語の軍で、ここでは見ない）。
 ## 両方の陣営の節を読んだあとに読む。
 func _check_traits(file: RefCounted) -> void:
 	var armies: Array = [UnitKind.army(squad[0][0]) if not squad.is_empty() else -1, enemy_army]

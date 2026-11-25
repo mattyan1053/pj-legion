@@ -61,7 +61,7 @@ var move_locked := false
 var skill_cooldown := 0
 ## この対戦でスキルを使った回数。回数に上限のあるスキル（Skill.max_uses）が見る。
 var skill_uses := 0
-## 誓い（部隊の特徴。Traits）の相手の番号。結んでいなければ 0。
+## 誓い（軍略。Traits）の相手の番号。結んでいなければ 0。
 var oath_partner := 0
 ## この駒が倒した駒の陣営（1 << 陣営 のビットの和。仇討ち。Traits）。倒していなければ 0。
 var slew_sides := 0

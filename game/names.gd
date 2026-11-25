@@ -143,7 +143,7 @@ static func status_summary(type: Status.Type) -> String:
 	return Text.t("status.%s.summary" % word(Status.Type, type), args)
 
 
-## 部隊の特徴（Traits.Id）の名前と、1 行の文（docs/troop-traits.md）。
+## 軍略（Traits.Id）の名前と、1 行の文（docs/troop-traits.md）。
 static func troop_trait(id: int) -> String:
 	return Text.t("troop_trait." + Traits.key(id)) if id != Traits.NONE else ""
 
@@ -155,7 +155,7 @@ static func troop_trait_text(id: int) -> String:
 	return Text.t("troop_trait.line", {"effect": troop_trait_effect(id), "when": troop_trait_when(id)})
 
 
-## 特徴の効果（数。「ダメージ +2」）と、効く相手（「このターンに味方が攻撃した敵に」）。画面は、効果を目立つ色で先に出す。
+## 軍略の効果（数。「ダメージ +2」）と、効く相手（「このターンに味方が攻撃した敵に」）。画面は、効果を目立つ色で先に出す。
 static func troop_trait_effect(id: int) -> String:
 	return "" if id == Traits.NONE else Text.t("troop_trait.%s.effect" % Traits.key(id), {"amount": troop_trait_amount(id)})
 
@@ -164,7 +164,7 @@ static func troop_trait_when(id: int) -> String:
 	return "" if id == Traits.NONE else Text.t("troop_trait.%s.when" % Traits.key(id), {"medic": kind(UnitKind.Id.MEDIC)})
 
 
-## 特徴の数（増減するダメージ、回復する HP）。文と、盤の上の札に差し込む。
+## 軍略の数（増減するダメージ、回復する HP）。文と、盤の上の札に差し込む。
 static func troop_trait_amount(id: int) -> int:
 	var amounts := {
 		Traits.Id.FOCUS: Traits.FOCUS_BONUS, Traits.Id.RANKS: Traits.RANKS_GUARD, Traits.Id.SUPPLY: Traits.SUPPLY_HEAL,

@@ -259,16 +259,16 @@ func test_trait_and_oaths_read_back_the_same() -> void:
 	_cleanup()
 
 
-## 部隊の特徴の前の形（組み方の頃。特徴の鍵が無く、騎士領の部隊に誓いの組だけがある）と、読めない特徴の鍵。
-## どれも落ちずに読め、特徴は軍の既定になり、出撃できる。誓いの組は残る（誓いを選べば、また効く）。
+## 軍略の前の形（組み方の頃。軍略の鍵が無く、騎士領の部隊に誓いの組だけがある）と、読めない軍略の鍵。
+## どれも落ちずに読め、軍略は軍の既定になり、出撃できる。誓いの組は残る（誓いを選べば、また効く）。
 func test_decks_from_before_troop_traits_load_with_the_army_default() -> void:
 	var library := _library()
 	var units := [{"kind": "PALADIN", "equipment": []}, {"kind": "SPELLBLADE", "equipment": []}, {"kind": "PRIEST", "equipment": []}]
 	library.load_data({"decks": [
 		{"id": "1", "name": "前の誓い", "rules": "versus", "army": "FANTASY", "units": units, "oaths": [[0, 1]]},
 		{"id": "2", "name": "組み方の鍵", "rules": "versus", "army": "FANTASY", "units": units, "trait": "formation"},
-		{"id": "3", "name": "よその軍の特徴", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": "vengeance"},
-		{"id": "4", "name": "数の特徴", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": 3, "oaths": "broken"},
+		{"id": "3", "name": "よその軍の軍略", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": "vengeance"},
+		{"id": "4", "name": "数の軍略", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": 3, "oaths": "broken"},
 	]})
 	var items := library.items()
 	assert_eq(items.size(), 4)

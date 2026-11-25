@@ -265,10 +265,10 @@ func test_matches_tool_sorts_a_squad_by_what_is_in_it() -> void:
 func test_matches_tool_sorts_a_squad_by_its_trait() -> void:
 	var tool := load("res://tools/cpu_matches.gd")
 	var federation := CpuDeck.build(UnitKind.Army.MILITARY)
-	assert_false(str(tool._squad_keys(federation, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY)).contains("特徴"), "特徴が無ければ鍵も無い")
+	assert_false(str(tool._squad_keys(federation, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY)).contains("軍略"), "軍略が無ければ鍵も無い")
 	var keys: Array[String] = tool._squad_keys(federation, UnitKind.Army.MILITARY, UnitKind.Army.FANTASY, Traits.Id.RANKS)
-	assert_true(keys.has("MILITARY 対 FANTASY 特徴 隊列"), str(keys))
-	assert_true(keys.has("MILITARY 対 FANTASY 特徴 隊列・駒 スナイパー 2 体"), str(keys))
+	assert_true(keys.has("MILITARY 対 FANTASY 軍略 隊列"), str(keys))
+	assert_true(keys.has("MILITARY 対 FANTASY 軍略 隊列・駒 スナイパー 2 体"), str(keys))
 
 
 func test_matches_tool_can_override_the_traits() -> void:
@@ -292,10 +292,10 @@ func test_trait_effects_are_counted() -> void:
 	battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(5, 2))
 	var outcome := CpuMatch.play(battle, 3)
 	assert_true(outcome.traits.get(Traits.Id.FOCUS, 0) >= 1, str(outcome.traits))
-	assert_eq(outcome.trait_hits, [outcome.traits[Traits.Id.FOCUS], 0] as Array[int], "効いた回数は、その特徴の陣営に数える")
+	assert_eq(outcome.trait_hits, [outcome.traits[Traits.Id.FOCUS], 0] as Array[int], "効いた回数は、その軍略の陣営に数える")
 
 
-## 両方の部隊が同じ特徴の局は、効いた回数を陣営ごとに分けて数える（合計を 2 回数えない）。
+## 両方の部隊が同じ軍略の局は、効いた回数を陣営ごとに分けて数える（合計を 2 回数えない）。
 func test_mirror_trait_hits_are_counted_per_side() -> void:
 	var battle := Maps.battle([".........", ".........", ".........", ".........", "........."])
 	battle.traits = [Traits.Id.FOCUS, Traits.Id.FOCUS]

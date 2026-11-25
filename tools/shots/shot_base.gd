@@ -78,7 +78,7 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 
 
-## traits を渡すと、両方の部隊の特徴をそれにする（Traits.Id。誓いなら CPU の決め方で誓いを結ぶ）。
+## traits を渡すと、両方の軍略をそれにする（Traits.Id。誓いなら CPU の決め方で誓いを結ぶ）。
 func _new_battle(rules: Array[StringName] = [], traits: Array[int] = []) -> void:
 	var choice: RefCounted = MatchChoice.new()
 	choice.field = _field

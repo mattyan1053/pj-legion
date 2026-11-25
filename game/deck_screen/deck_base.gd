@@ -52,18 +52,18 @@ const DETAIL_MIN_HEIGHT := 200.0
 const RIGHT_GAP := 10
 const EQUIP_MIN_HEIGHT := 80.0
 const ROSTER_WIDTH := 320.0
-## 雇える兵の札の高さ（下に必殺技と特徴の欄を収めるため、720 の高さで 4 枚がこれ）。
+## 雇える兵の札の高さ（下に必殺技と軍略の欄を収めるため、720 の高さで 4 枚がこれ）。
 const ROSTER_CARD_HEIGHT := 63.0
 const TROOP_WIDTH := 420.0
-## 部隊の特徴の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。札の高さと、札の印の大きさ。
-## 一覧で選んだ部隊の「軍・兵の数・コスト」の文の欄の幅（いちばん長い文が入る。ゲージと特徴の札の位置をそろえる）。
+## 軍略の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。札の高さと、札の印の大きさ。
+## 一覧で選んだ部隊の「軍・兵の数・コスト」の文の欄の幅（いちばん長い文が入る。ゲージと軍略の札の位置をそろえる）。
 const LIST_DETAIL_BODY_WIDTH := 262.0
 const TRAIT_BOX_HEIGHT := 96.0
 const TRAIT_CARD_HEIGHT := 32.0
-## 特徴の札の印と名前の字の大きさ。札 3 枚が欄の幅を分けるので、いちばん長い名前（「集中砲火」）が札に収まる大きさ。
+## 軍略の札の印と名前の字の大きさ。札 3 枚が欄の幅を分けるので、いちばん長い名前（「集中砲火」）が札に収まる大きさ。
 const TRAIT_MARK_SIDE := 24.0
 const TRAIT_NAME_FONT := 12
-## 部隊の行の、誓いのボタン（特徴が誓いの部隊だけ）の幅（px）。
+## 部隊の行の、誓いのボタン（軍略が誓いの部隊だけ）の幅（px）。
 const OATH_TAG_WIDTH := 64.0
 ## 一覧の右の、駒の札を並べる数（1 行）。
 const LIST_CARD_COLUMNS := 3
@@ -120,16 +120,16 @@ var _deck: Deck
 var _deck_name := ""
 var _dirty := false
 var _selected := -1
-## 誓い（部隊の特徴）で結ぶ相手を選んでいる駒の番号（部隊の並びの添字）。選んでいなければ -1。
+## 誓い（軍略）で結ぶ相手を選んでいる駒の番号（部隊の並びの添字）。選んでいなければ -1。
 var _binding := -1
-## 部隊の特徴の欄（対戦用の部隊だけ。必殺技の欄の下。決まった大きさ）: 札 3 枚と、選んだ（乗せた）特徴の文。
+## 軍略の欄（対戦用の部隊だけ。必殺技の欄の下。決まった大きさ）: 札 3 枚と、選んだ（乗せた）軍略の文。
 var _trait_box: PanelContainer
 var _trait_buttons: Array[Button] = []
 var _trait_label: Label
 var _trait_effect: Label
-## 文の欄に出している特徴。
+## 文の欄に出している軍略。
 var _trait_shown := Traits.NONE
-## 特徴の札にマウスを乗せている特徴（無ければ Traits.NONE。文の欄に、その特徴の文を出す）。
+## 軍略の札にマウスを乗せている軍略（無ければ Traits.NONE。文の欄に、その軍略の文を出す）。
 var _hover_trait := Traits.NONE
 ## マウスを乗せている雇える駒（無ければ -1）。
 var _hover_kind := -1

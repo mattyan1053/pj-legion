@@ -60,7 +60,7 @@ var mid_boss_slayers: Dictionary[int, int] = {}
 ## 足すのは Relics.grant だけ（駒の聖遺物の層と、そろえて変える）。
 var relics: Array[Array] = [[], []]
 
-## プレイヤーごとの部隊の特徴（Traits.Id。無ければ Traits.NONE）。添字がプレイヤー番号。対戦を作るとき（MatchSetup.create_battle）に決まる。
+## プレイヤーごとの軍略（Traits.Id。無ければ Traits.NONE）。添字がプレイヤー番号。対戦を作るとき（MatchSetup.create_battle）に決まる。
 var traits: Array[int] = [Traits.NONE, Traits.NONE]
 ## このフェーズに攻撃された駒（駒の番号 -> 攻撃した駒の (番号, 陣営) の並び）。集中砲火と誓い（Traits）が読む。フェーズの始めに空になる。
 var struck: Dictionary[int, Array] = {}

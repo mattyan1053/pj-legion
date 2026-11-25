@@ -1,5 +1,5 @@
 extends "res://game/deck_screen/deck_list.gd"
-## 部隊編成の、1 つの部隊を組む画面（雇う・並べ替える・外す、部隊の特徴と誓い、持ち物、予算と出せない理由、取っておく）。
+## 部隊編成の、1 つの部隊を組む画面（雇う・並べ替える・外す、軍略と誓い、持ち物、予算と出せない理由、取っておく）。
 
 
 func _open_editor(id: String, name: String, deck: Deck) -> void:
@@ -69,7 +69,7 @@ func remove_entry(index: int) -> void:
 	_refresh_editor()
 
 
-## 部隊の特徴を id にする（その軍の特徴だけ。docs/troop-traits.md）。誓いから替えても、結んだ組は残す（誓いに戻すと、また効く）。
+## 軍略を id にする（その軍の軍略だけ。docs/troop-traits.md）。誓いから替えても、結んだ組は残す（誓いに戻すと、また効く）。
 func choose_trait(id: int) -> void:
 	if not shows_traits() or not Traits.of_army(_deck.army).has(id) or _deck.trait_id == id:
 		return
@@ -79,12 +79,12 @@ func choose_trait(id: int) -> void:
 	_refresh_editor()
 
 
-## 部隊の特徴の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊は、話のファイルが特徴を決める）。
+## 軍略の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊は、話のファイルが軍略を決める）。
 func shows_traits() -> bool:
 	return _deck != null and _deck.rules.id == DeckRules.VERSUS and not Traits.of_army(_deck.army).is_empty()
 
 
-## 特徴の札の index 番目にマウスを乗せたことにする（-1 で離す。検査とスクリーンショットの道具用）。
+## 軍略の札の index 番目にマウスを乗せたことにする（-1 で離す。検査とスクリーンショットの道具用）。
 func hover_trait_card(index: int) -> void:
 	if index < 0:
 		_on_trait_card(0, &"exit")
@@ -92,17 +92,17 @@ func hover_trait_card(index: int) -> void:
 		_on_trait_card(index, &"enter")
 
 
-## 部隊の特徴の欄の文（検査用。出ていなければ空）。
+## 軍略の欄の文（検査用。出ていなければ空）。
 func trait_text() -> String:
 	return Names.troop_trait_text(_trait_shown) if _trait_box.visible else ""
 
 
-## 誓いを結ぶ操作が出ているか（特徴が誓いの部隊だけ）。
+## 誓いを結ぶ操作が出ているか（軍略が誓いの部隊だけ）。
 func shows_oaths() -> bool:
 	return shows_traits() and _deck.trait_id == Traits.Id.OATH
 
 
-## 部隊の index 番目の駒の「誓い」を押した（特徴が誓いの、対戦用の部隊だけ。docs/troop-traits.md）。
+## 部隊の index 番目の駒の「誓い」を押した（軍略が誓いの、対戦用の部隊だけ。docs/troop-traits.md）。
 ## 結んでいれば、ほどく。結んでいなければ、結ぶ相手を選び始める。選んでいる間に、ほかの駒の「誓い」を押すと、2 体を結ぶ（同じ駒なら、やめる）。
 func press_oath(index: int) -> void:
 	if not shows_oaths() or index < 0 or index >= _deck.entries.size():
@@ -570,7 +570,7 @@ func _troop_row(index: int) -> Control:
 	return row
 
 
-## 部隊の行の「誓い」のボタン（特徴が誓いの部隊だけ。結んでいれば何組目か。結ぶ相手を選んでいる駒は明るく）。
+## 部隊の行の「誓い」のボタン（軍略が誓いの部隊だけ。結んでいれば何組目か。結ぶ相手を選んでいる駒は明るく）。
 func _oath_tag(index: int) -> Control:
 	var entry := _deck.entries[index]
 	var button := _button(TraitText.oath_tag(_deck, entry), 13)
@@ -585,7 +585,7 @@ func _oath_tag(index: int) -> Control:
 	return button
 
 
-## 部隊の特徴の欄（必殺技の欄の下。決まった大きさ）: 見出し「特徴」と札 3 枚（印と名前）、下に選んだ特徴の効果（数）と効く相手の 2 行
+## 軍略の欄（必殺技の欄の下。決まった大きさ）: 見出し「軍略」と札 3 枚（印と名前）、下に選んだ軍略の効果（数）と効く相手の 2 行
 ## （札に乗せている間は、その札のもの。札に別のツールチップは付けない）。
 func _build_trait_box() -> Control:
 	_trait_box = _card()
@@ -645,7 +645,7 @@ func _build_trait_box() -> Control:
 	return _trait_box
 
 
-## 特徴の欄で、切れている・札からはみ出している文（検査用）。札 3 枚それぞれに乗せて、どの特徴の文も見る（終わったら外す）。
+## 軍略の欄で、切れている・札からはみ出している文（検査用）。札 3 枚それぞれに乗せて、どの軍略の文も見る（終わったら外す）。
 ## 名前の欄・文の欄の大きさは中身で変わらないので、文を替えるたびに待たなくてよい（はじめに 1 コマ待ってから呼ぶ）。
 func trait_cut_texts() -> Array[String]:
 	var cut: Array[String] = []
@@ -664,7 +664,7 @@ func trait_cut_texts() -> Array[String]:
 	return cut
 
 
-## 特徴の札の i 番目が押された・マウスが乗った・離れた。
+## 軍略の札の i 番目が押された・マウスが乗った・離れた。
 func _on_trait_card(index: int, what: StringName) -> void:
 	var choices := Traits.of_army(_deck.army) if _deck != null else ([] as Array[Traits.Id])
 	if index >= choices.size():
@@ -681,7 +681,7 @@ func _on_trait_card(index: int, what: StringName) -> void:
 			_refresh_traits()
 
 
-## 部隊の特徴の欄を、いまの部隊から直す（札の印と名前、選んだ札、文）。
+## 軍略の欄を、いまの部隊から直す（札の印と名前、選んだ札、文）。
 func _refresh_traits() -> void:
 	_trait_box.visible = shows_traits()
 	if not shows_traits():

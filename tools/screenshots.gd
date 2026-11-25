@@ -350,7 +350,7 @@ func _reset(seed: int) -> void:
 	_scene.unit_detail().close_detail()
 	_scene.setup_panel().visible = false
 	_scene.hide_sign_note()  # 前の場面（sign_note）の札の窓を閉じる
-	_scene.toggle_trait_note(-1)  # 前の場面（trait_note）の特徴の窓も閉じる
+	_scene.toggle_trait_note(-1)  # 前の場面（trait_note）の軍略の窓も閉じる
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
 	_scene.hover_menu_item(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）

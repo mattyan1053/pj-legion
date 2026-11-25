@@ -61,12 +61,12 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 		kinds.append(entry.kind)
 	assert_eq(panel.preview().shown_kinds(), kinds, "選んだ部隊の駒を、将から並べる")
 	var chosen := Names.troop_trait(TraitText.of_deck(deck))
-	assert_true(panel.preview().trait_text().begins_with(chosen + " " + Names.troop_trait_effect(TraitText.of_deck(deck))), "部隊の特徴の名前と文を出す: %s" % panel.preview().trait_text())
+	assert_true(panel.preview().trait_text().begins_with(chosen + " " + Names.troop_trait_effect(TraitText.of_deck(deck))), "軍略の名前と文を出す: %s" % panel.preview().trait_text())
 	panel.choose_opponent(true)
 	panel.choose_deck(Unit.Side.PLAYER2, "")
 	panel.open_preview(Unit.Side.PLAYER2)
 	assert_eq(panel.preview().shown_kinds().size(), CpuDeck.build(UnitKind.Army.MILITARY).entries.size() + 1, "CPU の編成も同じ見え方で開く")
-	assert_true(panel.preview().trait_text().begins_with(Names.troop_trait(CpuDeck.build(UnitKind.Army.MILITARY).trait_id) + " "), "CPU の部隊の特徴も出す（相手の特徴を、対戦の前に見られる）")
+	assert_true(panel.preview().trait_text().begins_with(Names.troop_trait(CpuDeck.build(UnitKind.Army.MILITARY).trait_id) + " "), "CPU の軍略も出す（相手の軍略を、対戦の前に見られる）")
 	holder.free()
 
 
@@ -209,7 +209,7 @@ func test_the_rule_rows_switch_and_keep_their_note_size() -> void:
 	await settle(panel)
 	assert_true(panel.current_choice().has_rule(OptionalRules.STRONGHOLD), "拠点は既定であり")
 	assert_true(panel.current_choice().has_rule(OptionalRules.SEAM), "縫い目の様子は既定でランダム")
-	assert_false(MatchSetupPanel.RULE_ROWS.has(&"formation"), "部隊の特徴は決まりの行に無い（部隊が持つ）")
+	assert_false(MatchSetupPanel.RULE_ROWS.has(&"formation"), "軍略は決まりの行に無い（部隊が持つ）")
 	for rule: StringName in MatchSetupPanel.RULE_ROWS:
 		var note: Label = panel._rule_notes[rule]
 		var before := note.size

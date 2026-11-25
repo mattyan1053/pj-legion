@@ -105,7 +105,7 @@ func _deck(army: UnitKind.Army, mode: String, rules: DeckRules) -> Deck:
 
 ## 部隊の中身を分ける鍵（--squads の「部隊の中身ごとの勝率」）。軍の並びを頭に付ける。
 ## 駒の種類（入っている部隊）、駒の種類の数、駒の数、装備の数、役割の組み合わせ（前衛・後衛・奇襲・回復の数）、CPU の編成と同じか。
-## 部隊の特徴（trait_id。無ければ Traits.NONE）と、その特徴と兵種の数の組も。
+## 軍略（trait_id。無ければ Traits.NONE）と、その軍略と兵種の数の組も。
 static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Army, trait_id := Traits.NONE) -> Array[String]:
 	var head := "%s 対 %s " % [Names.army(army), Names.army(rival_army)]
 	var keys: Array[String] = []
@@ -129,9 +129,9 @@ static func _squad_keys(deck: Deck, army: UnitKind.Army, rival_army: UnitKind.Ar
 		keys.append(head + "CPU の編成と同じ")
 	if trait_id != Traits.NONE:
 		var name := Names.troop_trait(trait_id)
-		keys.append(head + "特徴 %s" % name)
+		keys.append(head + "軍略 %s" % name)
 		for kind: UnitKind.Id in counts:
-			keys.append(head + "特徴 %s・駒 %s %d 体" % [name, Names.kind(kind), counts[kind]])
+			keys.append(head + "軍略 %s・駒 %s %d 体" % [name, Names.kind(kind), counts[kind]])
 	return keys
 
 
