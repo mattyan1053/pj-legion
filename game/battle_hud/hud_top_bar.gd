@@ -119,12 +119,14 @@ func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> 
 	if needed <= 0:
 		return
 	_stronghold_caption.text = Text.t("battle.hud.stronghold")
+	var urgent := near >= 0
 	for player in 2:
 		var held := mini(holds[player], needed)
 		# 色と数だけ（「青 3 / 8」）。印を勝つ数だけ並べると、札が長くなる（11/23「色と 1/8 で十分」）。
 		_stronghold_marks[player].text = Text.t("battle.hud.stronghold_marks", {"side": Names.side_word(player), "holds": held, "needed": needed})
-		_stronghold_marks[player].add_theme_color_override("font_color", _side_color(player).lightened(0.45 if held > 0 else 0.3))
-	var urgent := near >= 0
+		# 急ぎの赤い地の上では、陣営の色のままだと沈む（青も赤も）。白に寄せる。
+		var lighten := STRONGHOLD_URGENT_LIGHTEN if urgent else (0.45 if held > 0 else 0.3)
+		_stronghold_marks[player].add_theme_color_override("font_color", _side_color(player).lightened(lighten))
 	_stronghold_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
 	_stronghold_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
 	_stronghold_caption.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)

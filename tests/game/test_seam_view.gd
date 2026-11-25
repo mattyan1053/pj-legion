@@ -22,7 +22,10 @@ func test_the_versus_default_is_random_and_needs_no_window() -> void:
 	var choice := MatchChoice.new()
 	assert_true(choice.has_rule(OptionalRules.SEAM), "対戦モードの既定は「ランダム」")
 	var counts := {}
-	for battle_seed in range(1, 40):
+	var battle_seed := 0
+	# 0〜2 つのどれも出るまで（多くても 40 局）。対戦を作るのに時間が掛かるので、出揃ったら止める（少なくとも 8 局は見る）。
+	while battle_seed < 40 and (battle_seed < 8 or counts.size() < Seam.DRAWN + 1):
+		battle_seed += 1
 		var setup: MatchSetup = choice.to_setup(battle_seed)
 		var signs := setup.signs()
 		assert_true(signs.size() <= Seam.DRAWN)

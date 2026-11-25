@@ -88,17 +88,24 @@ started=$SECONDS
 run import --import || { cat "$logs/import.log"; exit 1; }
 cat "$logs/import.log"
 # テストと自動の対戦は互いに関わらないので、並べて回す。
-# `test_long_` でないテストは 2 つのまとまりに分ける（1 つだと、CI でいちばん長いまとまりになる）。
-# TESTS_APART に挙げたファイル（時間の掛かるもの）を別に回し、残りを全部 tests で回す（足したテストが漏れない）。
-TESTS_APART="test_hand_map.gd,test_battle_log.gd,test_horde.gd,test_board_generator.gd,test_monsters.gd,test_stronghold.gd"
-start tests -s res://tools/run_tests.gd -- --except="$TESTS_APART"
-start tests_apart -s res://tools/run_tests.gd -- --only="$TESTS_APART"
+# `test_long_` でないテストは 3 つのまとまりに分ける（1 つだと、CI でいちばん長いまとまりになる）。
+# TESTS_A と TESTS_B に挙げたファイル（時間の掛かるもの）を別に回し、残りを全部 tests で回す（足したテストが漏れない）。
+# 控えた CPU どうしの 1 局（tests/support/cpu_game.gd）はプロセスごとに 1 回回すので、それを読むファイルは TESTS_A にまとめる。
+# 釣り合いは、終わりに出る「（ファイル）」の秒数を見て直す。
+TESTS_A="test_battle_log.gd,test_steady_frames.gd,test_cpu_player.gd,test_battle_stats.gd,test_cpu_match.gd,test_hand_map.gd,test_monsters.gd,test_horde.gd,test_seam.gd"
+TESTS_B="test_seam_view.gd,test_unit_looks.gd,test_unit_motion.gd,test_stronghold.gd,test_board_generator.gd,test_episode_data.gd,test_board_ground.gd"
+start tests -s res://tools/run_tests.gd -- --except="$TESTS_A,$TESTS_B"
+start tests_a -s res://tools/run_tests.gd -- --only="$TESTS_A"
+start tests_b -s res://tools/run_tests.gd -- --only="$TESTS_B"
 # 自動の対戦。画面の描画を待たずに進める（--fixed-fps）。終わらなければ、コマ数で打ち切る。
 # 場面を 2 つのまとまり（イベントを再生する場面と、操作の決まりの場面。game/autoplay.gd の GROUPS）に分けて、並べて回す。
 start autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay --only events $full
 start autoplay_ui --fixed-fps 60 --quit-after 20000 -- --autoplay --only ui
 # 操作の決まりの場面は、横長の画面（3440x1440 の窓。docs/screen-size.md）でも回す（部品が重ならない・はみ出さないこと）。
-start autoplay_ui_wide --fixed-fps 60 --quit-after 20000 -- --autoplay --only ui --size 3440x1440
+# PR ごとの検査では、対戦の画面と対戦設定の場面（UI_WIDE）だけ。ほかの場面（CPU の手番、タイトル、部隊編成、ストーリーの 1 話の通し）の横長は、
+# 長い検査で回す（Godot を起動するだけで 4 秒ほど掛かり、場面を足すほど PR ごとの検査が伸びるため）。
+UI_WIDE="inspection,setup,system_menu,minimap"
+start autoplay_ui_wide --fixed-fps 60 --quit-after 20000 -- --autoplay --only "$([ -n "$full" ] && echo ui || echo "$UI_WIDE")" --size 3440x1440
 if [ -n "$full" ]; then
   # 長いテスト（`test_long_`）は 3 つのまとまりに分ける。全マップで CPU どうしが最後まで進むテストは、
   # 軍の並びごとに 1 つずつ（マップが増えると、この 2 つが伸びる）。残りは、ほかの長いテスト全部。
