@@ -21,17 +21,27 @@ const Story := preload("res://game/story.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const CardKeys := preload("res://game/card_keys.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const Steady := preload("res://game/steady.gd")
 
 signal finished(outcome: StringName)
 
 ## カードの大きさ。紹介の 1 行（物語のファイルの intro。40 字まで）が INTRO_MAX_LINES 行に折り返しても収まる高さ。
-const CARD_SIZE := Vector2(320.0, 300.0)
+const CARD_SIZE := Vector2(320.0, 316.0)
+## カードの中身の余白（px）: 左右、上（国の色の帯の下から）、下。中身は、この内側の真ん中に置く。
+const CARD_PAD_SIDE := 14.0
+const CARD_PAD_TOP := 20.0
+const CARD_PAD_BOTTOM := 14.0
 ## 紹介の 1 行の文字の大きさ（px）と、折り返す幅（カードの幅から、左右の余白を引いたもの）。
+## 行の数が少ない物語でも INTRO_MAX_LINES 行ぶんの高さを取る（カードの中の並びが、物語でそろう）。
 const INTRO_FONT := 15
-const INTRO_WIDTH := CARD_SIZE.x - 28.0 - 8.0
+const INTRO_WIDTH := CARD_SIZE.x - CARD_PAD_SIDE * 2.0 - 8.0
 const INTRO_MAX_LINES := 3
 ## カードの顔（その物語の軍の、将と最初から雇える駒のアイコン）の大きさ（px）と、準備中のカードの暗さ。
+## 顔の並びは、決まった幅（FACES_WIDTH）の欄に収める: 入らなければ重ねを深くし、FACES_MAX より多ければ「ほか N」にまとめる。
 const FACE_SIZE := 72.0
+const FACES_WIDTH := CARD_SIZE.x - CARD_PAD_SIDE * 2.0
+const FACES_MAX := 5
+const FACES_OVERLAP := 8.0
 const LOCKED_SHADE := Color(0.4, 0.4, 0.45)
 
 ## 色は話の一覧（episode_list_screen.gd）とそろえる。
@@ -254,15 +264,16 @@ func _build_card(campaign: Campaign) -> Button:
 		card.mouse_entered.connect(focus.bind(campaign))
 		card.mouse_exited.connect(func() -> void: _backdrop.cancel_queued())
 
+	Steady.mark(card, "campaigns.card")
 	card.add_child(CardDecor.new(campaign.army, ready))
 	var column := VBoxContainer.new()
 	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	column.offset_left = 14.0
-	column.offset_right = -14.0
-	column.offset_top = 18.0
-	column.offset_bottom = -14.0
+	column.offset_left = CARD_PAD_SIDE
+	column.offset_right = -CARD_PAD_SIDE
+	column.offset_top = CARD_PAD_TOP
+	column.offset_bottom = -CARD_PAD_BOTTOM
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_theme_constant_override("separation", 10)
+	column.add_theme_constant_override("separation", 8)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(column)
 	column.add_child(faces_row(campaign, ready))
@@ -281,6 +292,8 @@ func _build_card(campaign: Campaign) -> Button:
 		intro.text = TextWrap.fold(campaign.intro, INTRO_WIDTH,
 			func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, INTRO_FONT).x)
 		intro.add_theme_color_override("font_color", COLOR_TEXT_DIM if ready else COLOR_LOCKED)
+		intro.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		intro.custom_minimum_size.y = font.get_height(INTRO_FONT) * INTRO_MAX_LINES + intro.get_theme_constant("line_spacing") * (INTRO_MAX_LINES - 1)
 		column.add_child(intro)
 	var status := _label(status_text(campaign), 18)
 	var all_cleared: bool = ready and context.story.cleared_count(campaign) == campaign.episodes.size()
@@ -290,19 +303,59 @@ func _build_card(campaign: Campaign) -> Button:
 
 
 ## カードの顔: その物語で人が使う軍の、将と最初から雇える駒（人の軍の青）。文字だけの札にしない。
+## 並びは決まった幅（FACES_WIDTH）の欄の真ん中: 入らなければ重ねを深くし、FACES_MAX より多い駒は「ほか N」にまとめる。
 static func faces_row(campaign: Campaign, ready := true) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", -8)  # 少し重ねて、隊のように並べる
+	row.custom_minimum_size = Vector2(FACES_WIDTH, FACE_SIZE)
+	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var kinds: Array[UnitKind.Id] = [UnitKind.Id.KING]
 	kinds.append_array(campaign.starting_kinds)
-	for kind in kinds:
-		var face := UnitIcons.rect(kind, 0, false, FACE_SIZE)
+	var shown := mini(kinds.size(), FACES_MAX)
+	var rest := kinds.size() - shown
+	var more: Label = null
+	var room := FACES_WIDTH
+	if rest > 0:
+		more = Label.new()
+		more.text = Text.t("story.campaigns.more_faces", {"count": rest})
+		more.add_theme_font_size_override("font_size", 14)
+		more.add_theme_color_override("font_color", COLOR_TEXT_DIM)
+		more.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		more.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		room -= more.get_minimum_size().x + FACES_OVERLAP
+	# 少し重ねて、隊のように並べる。欄に入らない数なら、入るまで重ねを深くする。
+	var gap := -FACES_OVERLAP
+	if shown > 1:
+		gap = minf(gap, floorf((room - FACE_SIZE * shown) / (shown - 1)))
+	row.add_theme_constant_override("separation", int(gap))
+	for i in shown:
+		var face := UnitIcons.rect(kinds[i], 0, false, FACE_SIZE)
 		if not ready:
 			face.modulate = LOCKED_SHADE
 		row.add_child(face)
+	if more != null:
+		# 「ほか N」は重ねない: 顔の並びとの間を、重ねたぶんだけ戻して空ける。
+		var pad := MarginContainer.new()
+		pad.add_theme_constant_override("margin_left", int(FACES_OVERLAP - gap))
+		pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pad.add_child(more)
+		row.add_child(pad)
 	return row
+
+
+## 顔の並び row に並んだ顔の数（「ほか N」は数えない。検査用）。
+static func faces_shown(row: HBoxContainer) -> int:
+	var count := 0
+	for child in row.get_children():
+		if child is TextureRect:
+			count += 1
+	return count
+
+
+## 物語 campaign のカード（検査用）。
+func card_of(campaign: Campaign) -> Button:
+	return _cards[campaign]
 
 
 func _label(text: String, font_size: int) -> Label:

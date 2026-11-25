@@ -14,7 +14,6 @@ const DeployMap := preload("res://game/deploy_map.gd")
 const CardKeys := preload("res://game/card_keys.gd")
 const DeployNote := preload("res://game/deploy_note.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
-const SteadyBox := preload("res://game/steady_box.gd")
 const Steady := preload("res://game/steady.gd")
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
@@ -63,9 +62,29 @@ const LESSON_HEAD_WIDTH := 72.0
 const LESSON_WIDTH := LESSON_SIZE.x - LESSON_HEAD_WIDTH - 36.0
 const LESSON_MAX_LINES := 2
 ## 見出しの段（題と飾りの線、右に覚えることの札）の高さ（px）。
-const HEADER_HEIGHT := 60.0
-## 敵の部隊の文の行の数（いちばん敵の多い話で 2 行。行の数ぶんの高さを、いつも取っておく）。
+const HEADER_HEIGHT := 56.0
+## 敵の部隊の文の行の数（いちばん敵の多い話で 2 行。行の数ぶんの高さを、いつも取っておく）と、字の大きさ。
 const ENEMY_LINES := 2
+const ENEMY_FONT := 14
+## 選んだ部隊の中身の文の行の数（いつも、この行の数ぶんの高さを取る。部隊で欄の割り振りを変えない）と、字の大きさ（収まらなければ下限まで小さくする）。
+const DECK_LINES := 2
+const DECK_FONT := 14
+const DECK_FONT_MIN := 12
+## 選べる部隊の並び: 1 行の高さ、行の間、いつも丸ごと見えている行の数、その下にのぞく次の行（px。下に続きがあることを見せる）。
+## 並びの欄の高さは、この行の数ぶんに決めてある（画面の高さが足りなくても、これより縮めない）。
+const OPTION_HEIGHT := 36.0
+const OPTION_GAP := 4.0
+const OPTIONS_SHOWN := 3
+const OPTIONS_PEEK := 8.0
+const OPTIONS_HEIGHT := (OPTION_HEIGHT + OPTION_GAP) * OPTIONS_SHOWN + OPTIONS_PEEK
+## 部隊の駒の額の大きさ（px）。
+const FACE_SIZE := 40.0
+## 送りの棒のつまみの太さ（px。つかみやすい太さ）。
+const SCROLL_BAR_WIDTH := 14.0
+## 画面の上下の端からの余白（px）。
+const MARGIN_Y := 12.0
+## 欄の縁の内側の余白（px。左右、上下）。
+const PANEL_PAD := Vector2(14.0, 10.0)
 ## 縮図の高さの上限（px）。下に駒の欄（deploy_note.gd）を置いても、下のボタンが画面に収まるように。縦に長いマップは、1 マスを小さく描く。
 const MAP_MAX_HEIGHT := 380.0
 ## 右の欄の幅（px）。勝利条件の札 3 枚と、欄の縁の内側の余白（左右 14）。
@@ -101,6 +120,8 @@ var _deck_line: Label
 var _deck_faces: HFlowContainer
 var _sortie: Button
 var _lesson_label: Label
+var _options_scroll: ScrollContainer
+var _root: VBoxContainer
 
 
 func _ready() -> void:
@@ -123,10 +144,11 @@ func _ready() -> void:
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# 縦長・横長の画面では、枠を広げすぎず、真ん中にまとめる（中身の無い枠が伸びるだけになるため。docs/screen-size.md）。
-	ScreenSize.cap(root, MAX_SIZE, Vector4(40.0, 24.0, 40.0, 24.0))
+	ScreenSize.cap(root, MAX_SIZE, Vector4(40.0, MARGIN_Y, 40.0, MARGIN_Y))
 	root.add_theme_constant_override("separation", 6)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
+	_root = root
 	_layer = layer
 	# 見出しの段: 左に題と飾りの線、右に「この話で覚えること」の札（演習だけ）。段の高さは、札の有る無しで変えない。
 	var header := HBoxContainer.new()
@@ -204,11 +226,11 @@ func _ready() -> void:
 
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(RIGHT_WIDTH, 0.0)
-	right.add_theme_constant_override("separation", 8)
+	right.add_theme_constant_override("separation", 6)
 	body.add_child(right)
 	# 勝利条件の欄は、対戦の上の帯の勝利条件の札と同じ色（金を混ぜた地と縁）。札の数で高さは変わらない（どの札も同じ大きさ）。
 	var goal := _panel()
-	goal.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.GOAL.lerp(Palette.PANEL, 0.55), 0.94), Palette.GOAL_BORDER, 1, 8, 14.0))
+	goal.add_theme_stylebox_override("panel", _padded(UiTheme.box(Color(Palette.GOAL.lerp(Palette.PANEL, 0.55), 0.94), Palette.GOAL_BORDER, 1, 8, PANEL_PAD.x)))
 	Steady.mark(goal, "sortie.goal", Steady.RECT)
 	right.add_child(goal)
 	var goal_column := VBoxContainer.new()
@@ -236,6 +258,7 @@ func _ready() -> void:
 	right.add_child(enemy)
 	_decorate(enemy, episode.enemy_army, Palette.TEAM_RED)
 	var enemy_column := VBoxContainer.new()
+	enemy_column.add_theme_constant_override("separation", 2)
 	enemy.add_child(enemy_column)
 	enemy_column.add_child(_army_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)}), episode.enemy_army))
 	# 敵の駒のアイコン（押すと詳しい説明。魔物も）。
@@ -247,12 +270,9 @@ func _ready() -> void:
 	_fill_faces(enemy_faces, battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], Unit.Side.PLAYER2, start_levels(Unit.Side.PLAYER2))
 	var enemy_line := _wrapped(DeckText.deck_summary(
 		battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], start_levels(Unit.Side.PLAYER2),
-		battle_source.scenario().has_king(Unit.Side.PLAYER2)), 16, COLOR_TEXT)
+		battle_source.scenario().has_king(Unit.Side.PLAYER2)), ENEMY_FONT, COLOR_TEXT)
 	# 敵の数で欄の高さを変えない: 文は、いつも ENEMY_LINES 行ぶんの高さを取る。
-	var tallest := _text(16, COLOR_TEXT)
-	tallest.text = "0" + "\n0".repeat(ENEMY_LINES - 1)
-	enemy_line.custom_minimum_size.y = tallest.get_minimum_size().y
-	tallest.free()
+	enemy_line.custom_minimum_size.y = _lines_height(ENEMY_FONT, ENEMY_LINES)
 	enemy_line.clip_text = true
 	enemy_column.add_child(enemy_line)
 
@@ -262,7 +282,7 @@ func _ready() -> void:
 	right.add_child(troops)
 	_decorate(troops, context.story.campaign.army, Palette.TEAM_BLUE)
 	var troops_column := VBoxContainer.new()
-	troops_column.add_theme_constant_override("separation", 6)
+	troops_column.add_theme_constant_override("separation", 4)
 	troops.add_child(troops_column)
 	var troops_head := HBoxContainer.new()
 	troops_head.add_theme_constant_override("separation", 12)
@@ -278,21 +298,34 @@ func _ready() -> void:
 	edit.visible = context.run != null and not is_squad_fixed()
 	troops_head.add_child(edit)
 	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。見出しのすぐ下に置く（出撃する部隊が、まず目に入る）。
-	# 部隊によって文の行の数が違うので、文の高さは、いちばん長い部隊に合わせて固定する（_build_options のあと）。
+	# 部隊によって文の行の数が違うので、文の高さは、いつも DECK_LINES 行ぶん（収まらない部隊は、字を小さくする）。
 	_deck_faces = HFlowContainer.new()
 	_deck_faces.add_theme_constant_override("h_separation", 4)
 	_deck_faces.add_theme_constant_override("v_separation", 4)
 	troops_column.add_child(_deck_faces)
-	_deck_line = _wrapped("", 15, COLOR_DIM)
+	_deck_line = _wrapped("", DECK_FONT, COLOR_DIM)
+	_deck_line.custom_minimum_size.y = _lines_height(DECK_FONT, DECK_LINES)
+	_deck_line.clip_text = true
+	_deck_line.mouse_filter = Control.MOUSE_FILTER_PASS  # 切れた文の全部を、マウスを乗せると出す
 	troops_column.add_child(_deck_line)
-	# 選べる部隊の並び（部隊が決まっている話は 1 行）。残りの高さを使い、多ければ欄の中で送る。
+	# 選べる部隊の並び（部隊が決まっている話は 1 行）。いつも OPTIONS_SHOWN 行ぶんが見える高さを取り、多ければ欄の中で送る。
+	# ホイールは 1 目盛りで 1 行ぶん送る（そのままだと、欄の高さの 1/8 ずつしか動かない）。送りの棒は、つかみやすい太さにする。
 	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0.0, OPTIONS_HEIGHT)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.get_v_scroll_bar().custom_minimum_size.x = SCROLL_BAR_WIDTH
+	scroll.gui_input.connect(func(event: InputEvent) -> void:
+		var wheel := event as InputEventMouseButton
+		if wheel != null and wheel.pressed and wheel.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			scroll_options(-1 if wheel.button_index == MOUSE_BUTTON_WHEEL_UP else 1)
+			scroll.accept_event())
+	Steady.mark(scroll, "sortie.options", Steady.RECT)
 	troops_column.add_child(scroll)
+	_options_scroll = scroll
 	_options = VBoxContainer.new()
 	_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_options.add_theme_constant_override("separation", 4)
+	_options.add_theme_constant_override("separation", int(OPTION_GAP))
 	scroll.add_child(_options)
 
 	var footer := HBoxContainer.new()
@@ -307,7 +340,7 @@ func _ready() -> void:
 	back.pressed.connect(press_back)
 	footer.add_child(back)
 	_sortie = _button(Text.t("sortie.go"), 24)
-	_sortie.custom_minimum_size = Vector2(300.0, 54.0)
+	_sortie.custom_minimum_size = Vector2(300.0, 48.0)
 	_sortie.set_meta(&"sound", &"ui_confirm")
 	_sortie.theme_type_variation = UiTheme.BUTTON_PRIMARY
 	_sortie.add_theme_font_override("font", UiTheme.FONT_HEADING)
@@ -317,11 +350,6 @@ func _ready() -> void:
 
 	var kept_placement: Array = battle_source.placement.duplicate()
 	_build_options()
-	var summaries: Array[Callable] = []
-	for id: String in _option_buttons:
-		if not (_option_buttons[id] as Button).disabled:
-			summaries.append(choose.bind(id))
-	SteadyBox.fit_largest(_deck_line, summaries)
 	if is_squad_fixed():
 		choose(FIXED_ID)
 	else:
@@ -358,7 +386,7 @@ func choose(id: String) -> void:
 		(_option_buttons[key] as Button).set_pressed_no_signal(key == id)
 	var deck := chosen_deck()
 	var levels := start_levels(Unit.Side.PLAYER1)
-	_fold(_deck_line, DeckText.deck_summary(deck, levels))
+	_fold_deck_line(DeckText.deck_summary(deck, levels))
 	_fill_faces(_deck_faces, deck, Unit.Side.PLAYER1, levels)
 	# 部隊を替えたら、初期位置はおまかせに戻す。
 	battle_source.placement.clear()
@@ -415,7 +443,7 @@ func _fill_faces(faces: Container, deck: Deck, side: Unit.Side, levels: Array) -
 
 func _face(kind: UnitKind.Id, equipment: Array[Equipment.Id], side: Unit.Side, army: UnitKind.Army, level: int, look := &"") -> Control:
 	# 駒の額（役割の印つき）。縁は陣営の色。
-	var face := UnitFrame.new(kind, side, 44.0, true, false, look)
+	var face := UnitFrame.new(kind, side, FACE_SIZE, true, false, look)
 	face.edge = Color(BattleScreen.TEAM_COLORS[side], 0.85)
 	face.mouse_filter = Control.MOUSE_FILTER_STOP
 	face.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -547,7 +575,7 @@ func _add_option(id: String, name: String, note: String, enabled: bool) -> void:
 	var button := _button(Text.t("sortie.option", {"name": name, "note": note}), 16)
 	button.toggle_mode = true
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.custom_minimum_size = Vector2(0.0, 40.0)
+	button.custom_minimum_size = Vector2(0.0, OPTION_HEIGHT)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.disabled = not enabled
 	if not enabled:
@@ -557,8 +585,76 @@ func _add_option(id: String, name: String, note: String, enabled: bool) -> void:
 	_option_buttons[id] = button
 
 
+## 選べる部隊の並びを、行の数 rows だけ送る（負で上へ。ホイールの 1 目盛りが 1 行）。
+func scroll_options(rows: int) -> void:
+	_options_scroll.scroll_vertical += int((OPTION_HEIGHT + OPTION_GAP) * rows)
+
+
+## 画面に収めるのに要る高さ（px。上下の余白を含む。検査用。いちばん低い画面の 720 を超えないこと）。
+func needed_height() -> float:
+	return _root.get_combined_minimum_size().y + MARGIN_Y * 2.0
+
+
+## 選べる部隊の並びの欄（検査用）と、その中でいま丸ごと見えている行の数。
+func options_scroll() -> ScrollContainer:
+	return _options_scroll
+
+
+func options_fully_shown() -> int:
+	var view := _options_scroll.get_global_rect()
+	var shown := 0
+	for id: String in _option_buttons:
+		if view.grow(0.5).encloses((_option_buttons[id] as Button).get_global_rect()):
+			shown += 1
+	return shown
+
+
+## 選んだ部隊の中身の文を、DECK_LINES 行に収める（収まらなければ、字を DECK_FONT_MIN まで小さくする）。欄の高さは変えない。
+func _fold_deck_line(text: String) -> void:
+	var font := _deck_line.get_theme_font("font")
+	for font_size in range(DECK_FONT, DECK_FONT_MIN - 1, -1):
+		_deck_line.add_theme_font_size_override("font_size", font_size)
+		_deck_line.text = TextWrap.fold(text, WRAP_WIDTH, func(character: String) -> float:
+			return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+		if _deck_line.text.count("\n") < DECK_LINES:
+			_deck_line.tooltip_text = ""
+			return
+	# いちばん小さい字でも収まらない部隊（持ち物の多い大きな部隊）: DECK_LINES 行で切って「…」を付け、全部はマウスを乗せると出す。
+	var lines := _deck_line.text.split("\n").slice(0, DECK_LINES)
+	lines[DECK_LINES - 1] = lines[DECK_LINES - 1].left(-1) + "…"
+	_deck_line.text = "\n".join(lines)
+	_deck_line.tooltip_text = text
+
+
+## 選んだ部隊の中身の文（折り返したもの。検査用）。
+func deck_line_text() -> String:
+	return _deck_line.text
+
+
+## 選んだ部隊の中身の文にマウスを乗せると出る文（切れた文の全部。切れていなければ空。検査用）。
+func deck_line_tooltip() -> String:
+	return _deck_line.tooltip_text
+
+
+## 字の大きさ font_size の文の、lines 行ぶんの高さ（px）。
+func _lines_height(font_size: int, lines: int) -> float:
+	var probe := _text(font_size, COLOR_TEXT)
+	probe.add_theme_constant_override("line_spacing", 0)
+	probe.text = "0" + "\n0".repeat(lines - 1)
+	var height := probe.get_minimum_size().y
+	probe.free()
+	return height
+
+
+## 板の形 style の上下の余白を、欄の決まった余白（PANEL_PAD.y）にする。
+func _padded(style: StyleBoxFlat) -> StyleBoxFlat:
+	style.content_margin_top = PANEL_PAD.y
+	style.content_margin_bottom = PANEL_PAD.y
+	return style
+
+
 func _panel() -> PanelContainer:
-	var style := UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 8, 14.0)
+	var style := _padded(UiTheme.box(COLOR_PANEL, Color(Palette.BORDER, 0.9), 1, 8, PANEL_PAD.x))
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", style)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -650,6 +746,7 @@ func _footer_line() -> Control:
 func _wrapped(text: String, font_size: int, color: Color) -> Label:
 	var label := _text(font_size, color)
 	label.custom_minimum_size = Vector2(WRAP_WIDTH, 0.0)
+	label.add_theme_constant_override("line_spacing", 0)
 	_fold(label, text)
 	return label
 

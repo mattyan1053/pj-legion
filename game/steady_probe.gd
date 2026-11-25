@@ -11,9 +11,14 @@ const Steady := preload("res://game/steady.gd")
 
 ## これより小さい差は、同じとみなす（端数の丸め）。
 const SLACK := 0.75
+## 中身のはみ出しは、これより大きいものを数える（px。縁取りや丸めの分）。何コマに 1 度見るか。
+const SPILL_SLACK := 1.0
+const SPILL_EVERY := 6
 
 ## 印の付いた枠のうち、動いたもの。名前 -> 「前の四角 → あとの四角」。
 var moved := {}
+## 印の付いた枠のうち、中身が枠の外へはみ出したもの。名前 -> 「はみ出した部品 はみ出した向きと px」。
+var spilled := {}
 ## 洗い出しで、印の無い板のうち大きさが変わったもの。名前 -> 見た大きさの列。
 var found := {}
 
@@ -23,6 +28,8 @@ var _seen := {}
 ## 枠（instance id）-> [前のコマに見た、控えと違う四角, そのコマ]
 var _odd := {}
 var _hooked := {}
+## 枠の名前 -> 前に見たときのはみ出し（無ければ ""）
+var _spill_before := {}
 var _screen := Vector2.ZERO
 
 
@@ -39,6 +46,8 @@ func _process(_delta: float) -> void:
 		return
 	for frame: Node in get_tree().get_nodes_in_group(Steady.GROUP):
 		_sample(frame as Control, true)
+		if Engine.get_process_frames() % SPILL_EVERY == 0:
+			_check_spill(frame as Control)
 	if _everything:
 		_walk(get_tree().root)
 
@@ -47,6 +56,56 @@ func _process(_delta: float) -> void:
 func forget_all() -> void:
 	_seen.clear()
 	_odd.clear()
+	_spill_before.clear()
+
+
+## 印の付いた枠 frame の中身（見えている部品）が、枠の四角からはみ出していたら spilled に積む。
+## 枠が中身より小さいのに伸びない作り（ボタンのカードの中に、四隅を留めた並びを置く、など）は、枠の大きさが変わらないので、
+## 大きさの見張りには掛からない。ここで拾う。
+## 見ないもの: 枠の中で送る欄（ScrollContainer）と切り抜く部品（clip_contents）の中、大きさの無い部品、
+## わざと枠の外へ出す部品（Steady.let_out）、拡大・回転している途中の部品。
+func _check_spill(frame: Control) -> void:
+	if frame == null or not frame.is_visible_in_tree() or frame.clip_contents or frame is ScrollContainer:
+		return
+	var name := Steady.name_of(frame)
+	if spilled.has(name) or frame.size.x <= 0.0 or frame.size.y <= 0.0:
+		return
+	var inverse := frame.get_global_transform().affine_inverse()
+	var out := _spill_in(frame, Rect2(Vector2.ZERO, frame.size).grow(SPILL_SLACK), inverse)
+	# 並べ直しの途中（行を作り直した直後など）は数えない。続けて 2 度、同じはみ出しを見たら積む。
+	if out != "" and _spill_before.get(name, "") == out:
+		spilled[name] = out
+	_spill_before[name] = out
+
+
+## 枠 frame の中身のはみ出し（「部品 が N px」。無ければ ""）。テスト用にも（木に入れて 1 コマ待ってから）。
+static func spill_of(frame: Control) -> String:
+	var probe: Node = (load("res://game/steady_probe.gd") as GDScript).new()
+	var out: String = probe._spill_in(frame, Rect2(Vector2.ZERO, frame.size).grow(SPILL_SLACK), frame.get_global_transform().affine_inverse())
+	probe.free()
+	return out
+
+
+func _spill_in(node: Node, bounds: Rect2, inverse: Transform2D) -> String:
+	for child in node.get_children():
+		var control := child as Control
+		if control == null:
+			continue  # 3D の枠・重なる窓など。中は別の座標なので見ない
+		if not control.visible or control.top_level or Steady.is_let_out(control):
+			continue
+		var local := inverse * control.get_global_transform()
+		if not local.get_scale().is_equal_approx(Vector2.ONE) or not is_zero_approx(local.get_rotation()):
+			continue  # 浮く演出の途中
+		var rect := Rect2(local.origin, control.size)
+		if rect.size.x > 0.0 and rect.size.y > 0.0 and not bounds.encloses(rect):
+			var over := maxf(maxf(bounds.position.x - rect.position.x, rect.end.x - bounds.end.x), maxf(bounds.position.y - rect.position.y, rect.end.y - bounds.end.y))
+			return "%s が %d px" % [_describe(control) if is_inside_tree() else control.get_class(), ceili(over - SPILL_SLACK)]
+		if control.clip_contents or control is ScrollContainer:
+			continue
+		var inner := _spill_in(control, bounds, inverse)
+		if inner != "":
+			return inner
+	return ""
 
 
 func _walk(node: Node) -> void:
@@ -153,6 +212,8 @@ func report() -> String:
 	var lines: Array[String] = []
 	for what: String in moved:
 		lines.append("枠が動いた: %s（%s）" % [what, moved[what]])
+	for what: String in spilled:
+		lines.append("枠から中身がはみ出した: %s（%s）" % [what, spilled[what]])
 	return "\n  ".join(lines)
 
 
