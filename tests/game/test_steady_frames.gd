@@ -429,6 +429,11 @@ func test_sortie_shows_three_squads_and_scrolls_by_a_row() -> void:
 		assert_true(sortie.needed_height() <= 720.0, "部隊を選ぶと、720 の高さに収まらない")
 	sortie.choose(heavy_saved.id)
 	assert_true(sortie.deck_line_text().ends_with("…"), "収まらない部隊の文は、切って「…」")
+	assert_eq(sortie.deck_line_text().count("\n"), SortieScreen.DECK_LINES - 1, "切った文は、決まった行の数")
+	assert_eq(sortie.deck_line_tooltip().count(Names.item(Equipment.Id.IRON_SHIELD)), 6, "切れた文の全部は、マウスを乗せると出る")
+	assert_eq(sortie.frame_rects(), rects, "収まらない部隊を選んでも、枠は動かない")
+	sortie.choose(SortieScreen.DEFAULT_ID)
+	assert_eq(sortie.deck_line_tooltip(), "", "収まる部隊では、乗せても何も出さない")
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	wheel.pressed = true

@@ -631,6 +631,11 @@ func deck_line_text() -> String:
 	return _deck_line.text
 
 
+## 選んだ部隊の中身の文にマウスを乗せると出る文（切れた文の全部。切れていなければ空。検査用）。
+func deck_line_tooltip() -> String:
+	return _deck_line.tooltip_text
+
+
 ## 字の大きさ font_size の文の、lines 行ぶんの高さ（px）。
 func _lines_height(font_size: int, lines: int) -> float:
 	var probe := _text(font_size, COLOR_TEXT)
