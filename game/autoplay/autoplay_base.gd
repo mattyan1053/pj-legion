@@ -103,6 +103,8 @@ func _expect_forecast(words: Array, what: String) -> void:
 	_expect(area.grow(1.0).encloses(rect), "%sの予測のパネルが画面からはみ出した: %s" % [what, rect])
 	_expect(rect.size.y <= area.size.y * 0.6, "%sの予測のパネルが高すぎる: %s" % [what, rect])
 	_expect(not rect.intersects(menu), "%sの予測のパネルが、メニューに重なった: %s と %s" % [what, rect, menu])
+	for tag: Rect2 in _scene.top_tag_rects():
+		_expect(not (tag.has_area() and tag.intersects(rect)), "%sの予測のパネルが、上の帯の下の札に重なった: %s と %s" % [what, rect, tag])
 
 
 func _small_board(size: Vector2i) -> Board:
@@ -202,6 +204,9 @@ func _menu_problem() -> String:
 	var area: Rect2 = _scene.menu_area()
 	if not area.grow(0.5).encloses(rect):
 		return "メニューが画面からはみ出した（%s が %s の外）" % [rect, area]
+	for tag: Rect2 in _scene.top_tag_rects():
+		if tag.has_area() and tag.intersects(rect):
+			return "メニューが上の帯の下の札に重なった（%s と %s）" % [rect, tag]
 	return ""
 
 

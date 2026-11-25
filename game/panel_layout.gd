@@ -1,7 +1,7 @@
 extends RefCounted
 ## 駒のそばのメニューと、戦闘予測のパネルの置き場所（docs/battle-view.md の「駒のそばのメニュー」「戦闘予測のパネル」）。
 ## 盤面の上のものを画面に投影し、隠したくないもの（相手、届くマス、ほかの駒、情報の枠）を避ける側を選ぶ（menu_placement.gd）。
-## ミニマップには重ねない（重ねてはいけない四角として渡す）。
+## ミニマップと、上の帯のすぐ下の札には重ねない（重ねてはいけない四角として渡す）。
 ## カメラが動いたら置き直すので、回しても動かしても付いてくる。対戦の場面（battle_screen.gd）が 1 つ持ち、毎フレーム place_* を呼ぶ。
 
 const MenuPlacement := preload("res://game/menu_placement.gd")
@@ -115,8 +115,11 @@ func place_menu(unit: Unit, painted: Dictionary) -> void:
 			obstacles.append([screen_rect(other.position, 0.35, other.height()), MENU_WEIGHT_UNIT])
 	if _hud.info_rect().has_area():
 		obstacles.append([_hud.info_rect(), MENU_WEIGHT_PANEL])
-	# ミニマップには重ねない（押せる場所を隠さない）。
-	var keep_clear: Array = [minimap] if minimap.has_area() else []
+	# ミニマップと、上の帯のすぐ下の札（勝ち方・拠点・縫い目の様子・視点の動かし方）には重ねない（押せる場所と、読む文を隠さない）。
+	var keep_clear: Array = []
+	for clear: Rect2 in [minimap] + _hud.top_tag_rects():
+		if clear.has_area():
+			keep_clear.append(clear)
 	_hud.place_menu(_menu_placement.place(anchor, size, _hud.menu_area(), obstacles, keep_clear, region), anchor.get_center())
 	# それでも届くマス（青・黄）に掛かるときは、マウスが乗っていない間、メニューを薄くする（下のマスが読める）。
 	var menu := _hud.menu_rect()
@@ -172,7 +175,7 @@ func place_forecast(battle: Battle, actor: Unit) -> void:
 	var obstacles: Array = []
 	# メニューとミニマップには重ねない（重みでなく、決まり。その周りに逃がしてでも避ける）。
 	var keep_clear: Array = []
-	for clear: Rect2 in [menu, minimap]:
+	for clear: Rect2 in [menu, minimap] + _hud.top_tag_rects():
 		if clear.has_area():
 			keep_clear.append(clear)
 	if _hud.info_rect().has_area():

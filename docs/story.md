@@ -1,7 +1,7 @@
 # ストーリー
 
 コード: `game/story.gd`（物語と話の並び、進み具合、話の流れ）、`game/story_battle.gd`（話の対戦。`docs/battle-source.md`）、
-`game/story/`（物語ごとのフォルダに、物語と話のファイル。下の「物語を 1 つ足す」「物語のファイル」「話のファイル」）、`game/campaign.gd`・`game/episode.gd`・`game/story_file.gd`（ファイルを読む）、`game/campaign_list_screen.gd`（物語を選ぶ）、`game/episode_list_screen.gd`（話の一覧）、`game/sortie_screen.gd`（出撃準備）、`game/talk_screen.gd`・`game/talk_figure.gd`（会話の場面と、話し手の姿）、`game/talk_log.gd`（会話のログ）、`game/deploy_map.gd`・`game/deploy_note.gd`（出撃準備の初期位置と駒の欄）、`game/open_all_key.gd`（確かめ用の解放）、`game/card_keys.gd`（物語・話のカードをキーボードで選ぶ決まり）。
+`game/story/`（物語ごとのフォルダに、物語と話のファイル。下の「物語を 1 つ足す」「物語のファイル」「話のファイル」）、`game/campaign.gd`・`game/episode.gd`・`game/story_file.gd`（ファイルを読む）、`game/campaign_list_screen.gd`（物語を選ぶ）、`game/episode_list_screen.gd`（話の一覧）、`game/sortie_screen.gd` と `game/sortie_screen/`（出撃準備。役割ごとのファイル）、`game/talk_screen.gd`・`game/talk_figure.gd`（会話の場面と、話し手の姿）、`game/talk_log.gd`（会話のログ）、`game/deploy_map.gd`・`game/deploy_note.gd`（出撃準備の初期位置と駒の欄）、`game/open_all_key.gd`（確かめ用の解放）、`game/card_keys.gd`（物語・話のカードをキーボードで選ぶ決まり）。
 テスト: `tests/game/test_story.gd`、`tests/game/test_episode_data.gd`（物語と話のファイルの書き間違い）、`tests/game/test_battle_cues.gd`（対戦の途中の会話）、`tests/game/test_placement_choice.gd`（出撃準備で決めた初期位置）、`tests/game/test_card_keys.gd`、`tests/tools/test_story_script.gd`（目次）、自動の対戦の `story`（下の「検査」）。
 
 タイトルの「ストーリー」から物語を選び、その物語の話の一覧へ進み、選んだ話を「出撃準備 → 会話 → 対戦 → 会話」と通す。
