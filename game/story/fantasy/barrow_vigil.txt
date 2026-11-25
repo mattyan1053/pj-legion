@@ -68,6 +68,10 @@ unit = skeleton_archer
 unit = skeleton_archer
 unit = commando
 unit = skeleton_brute
+# 敵は本陣の前の 2 行目に、左右へ広く分かれて始まる（骸骨重兵だけ将の前）。いつもの初期位置（本陣の前に固める）では、
+# 回復役が撃てるようになって（守りながら削れる）、人の側が易しくなりすぎた（人の側も CPU、部隊を変えて 96 局で 88 → 81%。
+# 骸骨重兵を脇から前に出すと、既定の編成が大きく負け越す。docs/cpu-ai.md の「回復役の攻撃」）。
+deploy = 1,2  2,2  4,2  5,2  11,2  12,2  14,2  15,2  2,1  8,1
 
 [unlock]
 item = trail_map
