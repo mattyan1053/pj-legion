@@ -22,6 +22,8 @@ extends RefCounted
 
 ## 骸骨旗手が倒れたとき、奮起が付く広さ（マンハッタン距離）。
 const RALLY_RADIUS := 2
+## 奮起（Status.Type.RESOLVE）の攻撃力（回復役は回復量）の上がり幅。
+const RESOLVE_POWER := 4
 ## 結び目が立ち直るまでの、持ち主のフェーズの数（残したときの残りのターン数）。
 const KNOT_TURNS := 2
 ## 糸喰いが倒れて弾けたとき、周りの駒が受けるダメージ（固定。起爆樽の爆発と同じく、攻撃力にも地形にもよらない）。
@@ -149,7 +151,7 @@ static func _rally(battle: Battle, fallen: Unit) -> Array[BattleEvent]:
 	if friends.is_empty():
 		return events
 	events.append(RallyEvent.new(fallen, friends))
-	# 誓いの果てと同じ長さ: 次の自分のフェーズの終わりまで（自分のフェーズの途中なら、このフェーズの終わりまで）。
+	# 次の自分のフェーズの終わりまで（自分のフェーズの途中なら、このフェーズの終わりまで）。
 	var turns := 1 if battle.phase == fallen.side else 2
 	for friend in friends:
 		events.append(Statuses.add(friend, Status.Type.RESOLVE, turns))

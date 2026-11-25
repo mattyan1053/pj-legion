@@ -9,7 +9,7 @@ const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Names := preload("res://game/names.gd")
-const FormationText := preload("res://game/formation_text.gd")
+const TraitText := preload("res://game/trait_text.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
 const Steady := preload("res://game/steady.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
@@ -20,6 +20,7 @@ const GoalMark := preload("res://game/goal_mark.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
+const TraitIcon := preload("res://game/trait_icon.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const Minimap := preload("res://game/minimap.gd")
 const MinimapGeometry := preload("res://game/minimap_geometry.gd")
@@ -98,6 +99,8 @@ const SIGN_SLOT_WIDTH := 205.0
 const SIGN_MARK_SIDE := 26.0
 ## 上の帯の勝ち方の札・拠点の札の印の大きさ（px）と、勝ち方の札に並べる印の数の上限。
 const GOAL_MARK_SIDE := 24.0
+## 上の帯の、部隊の特徴の印の大きさ。
+const TRAIT_MARK_SIDE := 26.0
 const GOAL_TAG_MARKS := 3
 ## 対戦の始めの「対戦ルール」の枠の大きさ（px）。札の数で変えない（勝利条件の段と縫い目の様子の段が入る高さ）。
 const NOTICE_SIZE := Vector2(720.0, 400.0)
@@ -119,8 +122,6 @@ const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
 const COLOR_STATUS := Palette.INFO
 const COLOR_TRAIT := Palette.ACCENT
-## 組み方（分隊・誓い）の行。
-const COLOR_FORMATION := Palette.WARN
 ## 勝ち方の札の地と枠（いつもと、最後のターンのように急ぐとき）。
 const COLOR_GOAL := Palette.GOAL
 const COLOR_GOAL_BORDER := Palette.GOAL_BORDER
@@ -189,6 +190,8 @@ var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
 ## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
 var _relic_icons: Array[Array] = []
+## 陣営ごとの部隊の特徴の印（上の帯。乗せると名前と文。docs/troop-traits.md）。
+var _trait_icons: Array[Control] = []
 var _relic_notes: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []
 var _ult_labels: Array[Label] = []

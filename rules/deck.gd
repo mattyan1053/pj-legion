@@ -26,8 +26,12 @@ var army: UnitKind.Army
 var entries: Array[DeckEntry] = []
 ## この編成の決まり（ロスター、予算、数の上限）。
 var rules: DeckRules
-## 誓い（組み方。Formation）で結んだ 2 体の組（[DeckEntry, DeckEntry] の並び）。騎士領だけ。組み方が入の対戦で効く。
-## 結ぶ・ほどくのは bind / unbind（1 体は 1 組まで、Formation.MAX_OATHS 組まで）。駒を外すと、その組もほどける。
+## 部隊の特徴（Traits.Id。docs/troop-traits.md）。その軍の 3 つから 1 つ。作ったときは軍の既定（Traits.default_of）。
+## 対戦モードで使う（ストーリーの話は、話のファイルが決める）。
+var trait_id := Traits.NONE
+## 誓い（部隊の特徴の「誓い」。Traits）で結んだ 2 体の組（[DeckEntry, DeckEntry] の並び）。騎士領だけ。特徴が誓いの部隊で効く。
+## 結ぶ・ほどくのは bind / unbind（1 体は 1 組まで、Traits.MAX_OATHS 組まで）。駒を外すと、その組もほどける。
+## 特徴を替えても、結んだ組は残る（誓いに戻すと、また効く）。
 var oaths: Array[Array] = []
 
 
@@ -35,6 +39,7 @@ var oaths: Array[Array] = []
 func _init(deck_army: UnitKind.Army, deck_rules: DeckRules = null) -> void:
 	army = deck_army
 	rules = deck_rules if deck_rules != null else DeckRules.versus()
+	trait_id = Traits.default_of(army)
 
 
 ## 対戦の決まりで、その軍が雇える駒の種類。並びは 前衛・後衛・奇襲・回復。
@@ -77,7 +82,7 @@ func remove(entry: DeckEntry) -> bool:
 	return true
 
 
-## 2 体を誓いで結ぶ（docs/formation.md）。結べなければ（騎士領でない、どちらかがこの編成に無い、同じ駒、もう誓いを結んでいる、組の数が上限）何もせず false。
+## 2 体を誓いで結ぶ（docs/troop-traits.md）。結べなければ（騎士領でない、どちらかがこの編成に無い、同じ駒、もう誓いを結んでいる、組の数が上限）何もせず false。
 func bind(a: DeckEntry, b: DeckEntry) -> bool:
 	if not can_bind(a, b):
 		return false
@@ -87,11 +92,11 @@ func bind(a: DeckEntry, b: DeckEntry) -> bool:
 
 ## 2 体を誓いで結べるか。
 func can_bind(a: DeckEntry, b: DeckEntry) -> bool:
-	if not Formation.binds_oaths(army) or a == b or not entries.has(a) or not entries.has(b):
+	if army != UnitKind.Army.FANTASY or a == b or not entries.has(a) or not entries.has(b):
 		return false
 	if partner_of(a) != null or partner_of(b) != null:
 		return false
-	return oaths.size() < Formation.MAX_OATHS
+	return oaths.size() < Traits.MAX_OATHS
 
 
 ## entry の誓いをほどく。結んでいなければ何もせず false。
@@ -168,9 +173,10 @@ func is_valid() -> bool:
 	return problems().is_empty()
 
 
-## 同じ決まり・軍・駒・装備・誓いの、別の編成（片方を変えても、もう片方は変わらない）。
+## 同じ決まり・軍・駒・装備・特徴・誓いの、別の編成（片方を変えても、もう片方は変わらない）。
 func copy() -> Deck:
 	var other := Deck.new(army, rules)
+	other.trait_id = trait_id
 	for entry in entries:
 		var twin := DeckEntry.new(entry.kind)
 		twin.equipment = entry.equipment.duplicate()

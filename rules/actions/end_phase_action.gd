@@ -8,6 +8,7 @@ extends BattleAction
 ## 中立のフェーズで決着したら、そこで止まる。中立のフェーズのあと、ターンの終わりに決まること（守り切る。Battle.end_turn）で
 ## 決着しても、そこで止まる（次のターンへは進まない）。
 ## プレイヤーのフェーズの始めに、回復の泉に乗っているそのプレイヤーの駒が回復し、続けて再生の特性の駒が回復する。
+## 続けて、このターンの攻撃の覚え（集中砲火・誓い）を消し、補給線の陣営なら、回復役と隣り合う駒が回復する（Traits.start_phase）。
 ## そのあと、そのプレイヤーの盤の上の効果が働き、期間が進む（聖域の回復、結び目の立ち直り、煙幕・聖域の残りのターン数。FieldEffects.start_phase）。
 ## 続けて、そのプレイヤーの駒の状態の残りのターン数が 1 減り、0 になった状態は外れる（Statuses.start_phase）。
 ## 続けて、そのプレイヤーの駒のスキルのクールダウンが 1 減る（Skills.start_phase）。
@@ -50,7 +51,6 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 		if unit.side == side:
 			unit.reset_action()
 	var events: Array[BattleEvent] = [PhaseStartedEvent.new(battle.turn, side)]
-	Formation.start_phase(battle)
 	for unit in MapObject.spring_targets(battle, side):
 		var amount := MapObject.spring_heal(unit)
 		unit.hp += amount
@@ -59,6 +59,7 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 		var amount := Evolution.regeneration_heal(unit)
 		unit.hp += amount
 		events.append(RegenerationHealedEvent.new(unit.id, amount, unit.hp))
+	events.append_array(Traits.start_phase(battle, side))
 	events.append_array(FieldEffects.start_phase(battle, side))
 	events.append_array(Statuses.start_phase(battle, side))
 	events.append_array(Skills.start_phase(battle, side))

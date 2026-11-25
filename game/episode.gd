@@ -73,6 +73,10 @@ var enemy_army := UnitKind.Army.FANTASY
 ## 敵に将を置くか（[enemy] の king = none で偽。将のいない群れ。docs/scenario.md）。
 var enemy_king := true
 var enemy: Array = []
+## 陣営ごとの部隊の特徴（Traits.Id。書かなければ Traits.NONE = 特徴なし。docs/troop-traits.md）。[ally] / [enemy] の trait。
+var traits: Array[int] = [Traits.NONE, Traits.NONE]
+## 陣営ごとの誓いの組（その陣営の unit の行の、1 から数えた番号の組を、0 からの Vector2i で。特徴が誓いの陣営だけ）。[ally] / [enemy] の oath。
+var oaths: Array[Array] = [[], []]
 ## 初期位置: [プレイヤー1 のマスの列, プレイヤー2 のマスの列]。空の列は、いつもの「本陣の前」。
 var deploy: Array = [[] as Array[Vector2i], [] as Array[Vector2i]]
 ## 駒の始めのレベルと経験値: [人の部隊の列, 敵の部隊の列]。どちらも [レベル, 経験値] の列で、部隊（squad、enemy）と同じ並び。
@@ -129,12 +133,21 @@ func has_squad() -> bool:
 
 ## 決まっている人の部隊（無ければ null）。軍は、最初の駒の軍（話の物語の軍の駒で書く。story.gd の読み込みが確かめる）。
 func squad_deck() -> Deck:
-	return null if squad.is_empty() else _deck_of(UnitKind.army(squad[0][0]), squad)
+	return null if squad.is_empty() else _bound(_deck_of(UnitKind.army(squad[0][0]), squad), 0)
 
 
 ## 敵の部隊（決め打ち。編成の決まりの検査は通さない。docs/scenario.md）。
 func enemy_deck() -> Deck:
-	return _deck_of(enemy_army, enemy)
+	return _bound(_deck_of(enemy_army, enemy), 1)
+
+
+## 決め打ちの部隊 deck に、陣営 side の誓いの組を結ぶ（特徴が誓いの陣営だけ）。
+func _bound(deck: Deck, side: int) -> Deck:
+	if traits[side] == Traits.Id.OATH:
+		for pair: Vector2i in oaths[side]:
+			if pair.x < deck.entries.size() and pair.y < deck.entries.size():
+				deck.oaths.append([deck.entries[pair.x], deck.entries[pair.y]])
+	return deck
 
 
 ## 対戦の曲（無ければ、盤の見た目の曲）。
@@ -173,6 +186,7 @@ func _read(file: RefCounted) -> void:
 	_read_unlock(file)
 	_read_side(file, "ally", 0)
 	_read_side(file, "enemy", 1)
+	_check_traits(file)
 	_read_cast(file)
 	_read_talks(file)
 	_read_cues(file)
@@ -297,9 +311,10 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 		if side == 1:
 			file.problem(1, "[enemy] の節が無い（敵の軍 army と、部隊 unit を書く）")
 		return
-	var keys := ["unit", "deploy"]
+	var keys := ["unit", "deploy", "trait", "oath"]
 	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure", "king"])
-	var values: Dictionary = file.values(section, keys, ["unit", "deploy"])
+	var values: Dictionary = file.values(section, keys, ["unit", "deploy", "oath"])
+	_read_trait(file, values, side)
 	if values.has("king_figure"):
 		var entry: Dictionary = values["king_figure"][0]
 		var king_look := StringName(entry["value"])
@@ -357,6 +372,52 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 					var kind := StoryFile.enum_value(UnitKind.Id, (unit_entry["value"] as String).split(",")[0].split("+")[0])
 					if kind >= 0 and UnitKind.army(kind as UnitKind.Id) != UnitKind.Army.NONE:
 						file.problem(unit_entry["line"], "軍の無い敵（army = none）に、軍の駒は置けない: %s" % UnitKind.Id.keys()[kind].to_lower())
+
+
+## 陣営の部隊の特徴（trait）と誓いの組（oath。trait = oath のときだけ。「1, 2」の形で、unit の行を 1 から数えた番号）。
+## 軍に合うかは、両方の陣営を読んだあと（_check_traits）に確かめる。
+func _read_trait(file: RefCounted, values: Dictionary, side: int) -> void:
+	if values.has("trait"):
+		var entry: Dictionary = values["trait"][0]
+		var chosen := Traits.from_key(entry["value"])
+		if chosen == Traits.NONE:
+			file.problem(entry["line"], "知らない特徴「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(Traits.Id)])
+		else:
+			traits[side] = chosen
+	var pairs: Array = []
+	for entry: Dictionary in values.get("oath", []):
+		if traits[side] != Traits.Id.OATH:
+			file.problem(entry["line"], "oath は trait = oath の陣営だけ")
+			continue
+		var parts := (entry["value"] as String).split(",")
+		if parts.size() != 2 or not parts[0].strip_edges().is_valid_int() or not parts[1].strip_edges().is_valid_int():
+			file.problem(entry["line"], "oath は「1, 2」の形（unit の行を 1 から数えた番号）")
+			continue
+		var a := parts[0].strip_edges().to_int() - 1
+		var b := parts[1].strip_edges().to_int() - 1
+		var rows := values.get("unit", []).size() as int
+		if a < 0 or b < 0 or a >= rows or b >= rows or a == b:
+			file.problem(entry["line"], "oath の番号が unit の行に無い（1〜%d の、違う 2 つ）" % rows)
+			continue
+		if pairs.any(func(pair: Vector2i) -> bool: return pair.x in [a, b] or pair.y in [a, b]):
+			file.problem(entry["line"], "1 体は 1 組まで")
+			continue
+		pairs.append(Vector2i(mini(a, b), maxi(a, b)))
+	if pairs.size() > Traits.MAX_OATHS:
+		file.problem(values["oath"][0]["line"], "誓いは %d 組まで" % Traits.MAX_OATHS)
+		pairs.resize(Traits.MAX_OATHS)
+	oaths[side] = pairs
+
+
+## 陣営の特徴が、その陣営の軍のものか（人の側は、部隊が決まっている話なら、その部隊の軍。決まっていなければ物語の軍で、ここでは見ない）。
+## 両方の陣営の節を読んだあとに読む。
+func _check_traits(file: RefCounted) -> void:
+	var armies: Array = [UnitKind.army(squad[0][0]) if not squad.is_empty() else -1, enemy_army]
+	for side in 2:
+		if traits[side] != Traits.NONE and armies[side] != -1 and not Traits.of_army(armies[side]).has(traits[side]):
+			file.problem(file.line_of("ally" if side == 0 else "enemy"), "特徴「%s」はこの陣営の軍の特徴ではない" % Traits.key(traits[side]))
+	if traits[0] == Traits.Id.OATH and squad.is_empty():
+		file.problem(file.line_of("ally"), "人の側の誓いは、部隊が決まっている話（unit を書いた [ally]）だけ")
 
 
 ## 話し手（[cast] の「名前 = 陣営, 姿」。陣営は ally（人の軍）か enemy（敵の軍）。姿は無くてよく、無ければその陣営の将）。

@@ -120,6 +120,17 @@ func deck_of(side: Unit.Side) -> Deck:
 	return scenario.fixed_decks[side] if scenario.is_fixed(side) else decks[side]
 
 
+## side の部隊の特徴（Traits.Id。docs/troop-traits.md）。戦いの定義が決めていればそれ（ストーリーの話）、
+## 部隊の特徴を使う戦い（対戦モード）なら部隊が選んだ特徴（その軍のものでなければ、軍の既定）、どちらでもなければ Traits.NONE。
+func trait_of(side: Unit.Side) -> int:
+	if scenario.traits[side] != Traits.NONE:
+		return scenario.traits[side]
+	var deck := deck_of(side)
+	if not scenario.deck_traits or deck == null:
+		return Traits.NONE
+	return deck.trait_id if Traits.of_army(deck.army).has(deck.trait_id) else Traits.default_of(deck.army)
+
+
 ## そのプレイヤーの軍。編成が無ければ Army.NONE。
 func army_of(side: Unit.Side) -> UnitKind.Army:
 	var deck := deck_of(side)
@@ -158,7 +169,6 @@ func create_battle() -> Battle:
 	if rules.has(OptionalRules.STRONGHOLD):
 		Stronghold.arm(board, battle_seed)
 	var battle := Battle.new(board, battle_seed)
-	battle.formation = rules.has(OptionalRules.FORMATION)
 	if not drawn.is_empty():
 		Seam.arm(battle, drawn)  # 拠点を置いたあと（ポータルの対を替えても、拠点のマスは動かない）。駒を置く前
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
@@ -168,7 +178,7 @@ func create_battle() -> Battle:
 			battle, side, deck_of(side), scenario.deploy_cells_of(side), placement, scenario.has_king(side)
 		)
 		_apply_start_growth(placed, scenario.start_growth[side])
-		Formation.arm(battle, deck_of(side), placed)
+		Traits.arm(battle, side, trait_of(side), deck_of(side), placed)
 		battle.win_conditions[side] = scenario.win_conditions_of(side)
 		if board.stronghold_cell != Board.NO_CELL:
 			battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)

@@ -132,7 +132,7 @@ func _refresh() -> void:
 	for shown in battle.units:
 		if _views.has(shown.id):
 			_view(shown.id).set_status_mark(not Statuses.types_of(shown).is_empty())
-	_refresh_formation()
+	_refresh_traits()
 	_refresh_status(battle.turn, battle.phase)
 	var guide: Array[Dictionary] = []
 	if not _auto_running() and not (_talk != null and _talk.is_holding()):
@@ -273,6 +273,12 @@ func _refresh_status(turn: int, phase: Unit.Side) -> void:
 		relic_notes.append("
 ".join(notes))
 	_hud.set_relics(relics, relic_notes, held)
+	var trait_ids: Array[int] = []
+	var trait_notes: Array[String] = []
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		trait_ids.append(Traits.of_side(battle, side))
+		trait_notes.append(TraitText.band_tooltip(battle, side))
+	_hud.set_traits(trait_ids, trait_notes)
 	var shown: Array[bool] = []
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		shown.append(battle.wins_by(side, GameWonEvent.Reason.HQ_CAPTURED))

@@ -55,14 +55,13 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 ## 選べる決まり
 
-コード: `rules/optional_rules.gd`（`OptionalRules`）。テスト: `tests/rules/test_stronghold.gd`、`tests/rules/test_formation.gd`、`tests/rules/test_seam.gd`、`tests/game/test_match_choice.gd`。
+コード: `rules/optional_rules.gd`（`OptionalRules`）。テスト: `tests/rules/test_stronghold.gd`、`tests/rules/test_seam.gd`、`tests/game/test_match_choice.gd`。
 
 対戦モードで、対戦設定から入・切できる決まり（Issue #47）。
 
-- **対戦モードの既定は、拠点あり・縫い目の様子はランダム・組み方なし**（`OptionalRules.DEFAULTS`。`game/match_choice.gd` の `rules` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。縫い目の様子は、マップに付く気候のような効果で、対戦ごとにランダム（人間の決定。Issue #47 の 11/23）。
+- **対戦モードの既定は、拠点あり・縫い目の様子はランダム**（`OptionalRules.DEFAULTS`。`game/match_choice.gd` の `rules` の始め）。拠点は、将の撃破・本陣の占拠と並ぶ勝ち方（人間の決定。Issue #47 の 11/22）。縫い目の様子は、マップに付く気候のような効果で、対戦ごとにランダム（人間の決定。Issue #47 の 11/23）。
 - **砲台は決まりでなく、マップの物**（回復の泉やポータルと同じ。人間の決定。Issue #47 の 11/23）。盤の出どころが置く（`docs/map-objects.md` の「砲台」）。
-- **組み方は休眠**（`OptionalRules.DORMANT`）。ルールと CPU は残すが、画面からは入にできない（対戦設定に行が無く、`MatchChoice.set_rule` も入にしない。部隊編成にも組み方の欄を出さない）。
-  軍の特徴を ON/OFF できるのはおかしく、名前も効果も分かりづらいので、作り直すまで休ませる（人間の決定。Issue #47 の 11/23）。入にできるのは集計の道具の `--rules=formation` とテストだけ。
+- 部隊の特徴（`docs/troop-traits.md`）は決まりではなく、部隊が持つ（入・切は無い。対戦設定に行は無い）。前の「組み方」（入・切できる決まり）は、これに作り直した（人間の言葉。Issue #47 の 11/23）。
 - `MatchSetup` の既定は空（どれも切）。**ストーリーの話は、入にしない**（縫い目の様子は、話のファイルが決めた様子を `Scenario.signs` で持つ。`docs/seam-signs.md`）。切のとき、対戦は 1 局も変わらない（盤も、駒も、CPU の手も）。
 - 入にするのは、`MatchSetup.rules` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
 - 画面では、対戦設定のパネルの「拠点」の行の「あり」「なし」、「縫い目の様子」の行の「ランダム」「なし」で入・切する（`game/match_choice.gd` の `rules`、`set_rule`）。
@@ -71,7 +70,6 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 | 名前 | 中身 | 入のときの準備 |
 | --- | --- | --- |
-| `formation`（`OptionalRules.FORMATION`） | 組み方（休眠。画面からは入にできない）。連邦は同じ兵種をそろえた分隊、騎士領は編成で結んだ誓いに、効果が付く（`docs/formation.md`） | 組み方を入にし（`Battle.formation`）、編成の誓いを駒に写す（`Formation.arm`） |
 | `seam`（`OptionalRules.SEAM`） | 縫い目の様子のランダム。対戦ごとに、マップに付く効果が 0〜2 つめくられ、対戦のあいだずっと効く（`docs/seam-signs.md`） | 戦いの定義が様子を決めていなければ（`Scenario.signs`）、盤と種で札を引き（`Seam.draw`。対戦を作る前に `signs()` でも引ける）、対戦に入れる（`Seam.arm`。仮縫いのずれなら、拠点を置いたあとにポータルを組み直す） |
 | `stronghold`（`OptionalRules.STRONGHOLD`） | 拠点。盤ごとに決めたマス（両方の本陣から同じくらいの道のり）で、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤ごとに決めたマスに拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
 
@@ -91,6 +89,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 
 - 対戦を作るたびに、対戦の決まりの中でランダムに組む（`RandomSquad.for_battle(軍, 対戦の種, プレイヤー)`）。
   その軍のロスターから、種で決まる順に、数の上限まで予算の中で雇い、余った予算で、種で決まる駒に種で決まる持ち物を持たせる。並びは役割の順。
+  部隊の特徴は、CPU の選び方（`CpuDeck.choose_trait`。`docs/cpu-ai.md` の「部隊の特徴」）で選ぶ（乱数は引かない）。
 - 種は対戦の種から引く（`対戦の種 × 2 + プレイヤー番号`）。同じ種なら同じ部隊（「同じマップで再戦」は同じ部隊、「新しいマップ」は新しい部隊）。
   手番がランダムなら、引いた側（実際に動かすプレイヤー）の番号で組む。
 - CPU どうしの集計の道具の `--squads=random`（対戦モード）も、同じ組み方を使う（`docs/cpu-ai.md`）。
