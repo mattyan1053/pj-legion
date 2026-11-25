@@ -118,7 +118,7 @@ start tests_b -s res://tools/run_tests.gd -- --only="$TESTS_B"
 # 自動の対戦。画面の描画を待たずに進める（--fixed-fps）。終わらなければ、コマ数で打ち切る。
 # 場面を 2 つのまとまり（イベントを再生する場面と、操作の決まりの場面。game/autoplay.gd の GROUPS）に分けて、並べて回す。
 start autoplay --fixed-fps 60 --quit-after 20000 -- --autoplay --only events $full
-start autoplay_ui --fixed-fps 60 --quit-after 20000 -- --autoplay --only ui
+start autoplay_ui --fixed-fps 60 --quit-after 20000 -- --autoplay --only ui $full
 # 操作の決まりの場面は、横長の画面（3440x1440 の窓。docs/screen-size.md）でも回す（部品が重ならない・はみ出さないこと）。
 # PR ごとの検査では、対戦の画面と対戦設定の場面（UI_WIDE）だけ。ほかの場面（CPU の手番、タイトル、部隊編成、ストーリーの 1 話の通し）の横長は、
 # 長い検査で回す（Godot を起動するだけで 4 秒ほど掛かり、場面を足すほど PR ごとの検査が伸びるため）。
