@@ -178,6 +178,18 @@ func test_oath_ends_when_a_partner_falls() -> void:
 # --- 単騎 ---
 
 
+func test_lone_marks_a_healer_alone_on_its_turn() -> void:
+	var battle := _battle(T.LONE)
+	var priest := battle.add_unit(K.PRIEST, P1, Vector2i(2, 3))
+	var target := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 3))
+	assert_true(Traits.lone_marked(battle, priest), "回復役も攻撃するので、単騎の印が付く")
+	assert_false(Traits.lone_marked(battle, target), "相手の番の兵には付けない")
+	var events := _attack(battle, priest, target)
+	assert_eq(_effects(events), [[T.LONE, priest.id, target.id, Traits.LONE_BONUS]], "回復役の攻撃にも単騎が効く")
+	assert_false(Traits.lone_marked(battle, priest), "行動を終えたら付けない")
+	var mate := battle.add_unit(K.SPELLBLADE, P1, Vector2i(2, 4))
+	assert_false(Traits.lone_marked(battle, mate), "隣に味方がいる")
+
 func test_lone_adds_damage_without_an_ally_next_to_the_attacker() -> void:
 	var battle := _battle(T.LONE)
 	var blade := battle.add_unit(K.SPELLBLADE, P1, Vector2i(2, 3))
