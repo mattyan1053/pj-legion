@@ -373,7 +373,13 @@ func test_sortie_frames_are_the_same_for_every_episode() -> void:
 		await settle(sortie)
 		await _frames(1)
 		var rects: Dictionary = sortie.frame_rects()
-		assert_eq(rects.size(), 5, "%s: 枠が足りない: %s" % [id, rects.keys()])
+		assert_eq(rects.size(), 6, "%s: 枠が足りない: %s" % [id, rects.keys()])
+		for frame: Control in sortie.get_tree().get_nodes_in_group(Steady.GROUP):
+			if sortie.is_ancestor_of(frame):
+				assert_eq(SteadyProbe.spill_of(frame), "", "%s: %s の中身が枠からはみ出す" % [id, Steady.name_of(frame)])
+		assert_true(sortie.options_scroll().size.y >= (SortieScreen.OPTION_HEIGHT + SortieScreen.OPTION_GAP) * SortieScreen.OPTIONS_SHOWN - SortieScreen.OPTION_GAP,
+				"%s: 選べる部隊の並びに、%d 行ぶんの高さが無い" % [id, SortieScreen.OPTIONS_SHOWN])
+		assert_true(sortie.needed_height() <= 720.0, "%s: 720 の高さに収まらない（%s）" % [id, sortie.needed_height()])
 		assert_eq(sortie.lesson_text(), episode.lesson, "%s: 覚えることの札の文" % id)
 		if first.is_empty():
 			first = rects
@@ -382,3 +388,103 @@ func test_sortie_frames_are_the_same_for_every_episode() -> void:
 			for what: String in rects:
 				assert_eq(rects[what], first.get(what), "%s の枠が、話で違う（%s と %s）" % [what, first_id, id])
 		sortie.free()
+
+
+## 出撃準備の選べる部隊の並び: 取っておいた部隊が多くても、3 部隊ぶんが丸ごと見え、ホイールの 1 目盛りで 1 行送る。
+## 選んだ部隊の中身の文は、長い部隊でも決まった行の数に収まる（欄の割り振りは部隊で変わらない）。
+func test_sortie_shows_three_squads_and_scrolls_by_a_row() -> void:
+	var episode: RefCounted = Story.military().find_episode(&"ridge_hold")
+	var context := preload("res://game/app_context.gd").new()
+	context.story.open_all = true
+	context.decks.load_data({"decks": []})
+	var long_deck := Deck.new(Story.military().army, context.story.deck_rules())
+	for kind: UnitKind.Id in context.story.unlocked().kinds:
+		for n in 3:
+			if long_deck.total_cost() + UnitKind.cost(kind) <= long_deck.budget():
+				long_deck.add(kind)
+	var saved: Array = []
+	for i in 6:
+		saved.append(context.decks.add("部隊 %d" % (i + 1), long_deck))
+	# いちばん小さい字でも 2 行に収まらない部隊（盾持ち 6 体に、みなアイアンシールド）: 切って、全部はマウスを乗せると出る。
+	var heavy := Deck.new(Story.military().army, context.story.deck_rules())
+	for n in 6:
+		heavy.add(UnitKind.Id.SHIELD_TROOPER).equipment.append(Equipment.Id.IRON_SHIELD)
+	assert_true(heavy.is_valid(), "見本の部隊が出撃できない: %s" % [heavy.problems()])
+	var heavy_saved: RefCounted = context.decks.add("重い部隊", heavy)
+	context.run = context.story.run_now(episode)
+	context.scene = Story.SORTIE
+	var sortie := SortieScreen.new()
+	sortie.context = context
+	await settle(sortie)
+	await _frames(1)
+	assert_eq(sortie.option_ids().size(), 8)
+	assert_true(sortie.is_option_enabled(heavy_saved.id))
+	assert_true(sortie.options_fully_shown() >= SortieScreen.OPTIONS_SHOWN, "丸ごと見える部隊が %d つ" % sortie.options_fully_shown())
+	var rects: Dictionary = sortie.frame_rects()
+	for id: String in sortie.option_ids():
+		sortie.choose(id)
+		await settle(sortie)
+		assert_true(sortie.deck_line_text().count("\n") < SortieScreen.DECK_LINES, "部隊の中身の文が %d 行に収まらない: %s" % [SortieScreen.DECK_LINES, sortie.deck_line_text()])
+		assert_eq(sortie.frame_rects(), rects, "部隊を選び替えると、枠が動く")
+		assert_true(sortie.needed_height() <= 720.0, "部隊を選ぶと、720 の高さに収まらない")
+	sortie.choose(heavy_saved.id)
+	assert_true(sortie.deck_line_text().ends_with("…"), "収まらない部隊の文は、切って「…」")
+	assert_eq(sortie.deck_line_text().count("\n"), SortieScreen.DECK_LINES - 1, "切った文は、決まった行の数")
+	assert_eq(sortie.deck_line_tooltip().count(Names.item(Equipment.Id.IRON_SHIELD)), 6, "切れた文の全部は、マウスを乗せると出る")
+	assert_eq(sortie.frame_rects(), rects, "収まらない部隊を選んでも、枠は動かない")
+	sortie.choose(SortieScreen.DEFAULT_ID)
+	assert_eq(sortie.deck_line_tooltip(), "", "収まる部隊では、乗せても何も出さない")
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	sortie.options_scroll().gui_input.emit(wheel)
+	await _frames(1)
+	assert_eq(sortie.options_scroll().scroll_vertical, int(SortieScreen.OPTION_HEIGHT + SortieScreen.OPTION_GAP), "ホイールの 1 目盛りで 1 行")
+	sortie.free()
+
+
+## 見張りは、印の付いた枠の中身が枠からはみ出したことも拾う（枠は伸びないのに、中の並びのほうが大きい）。
+func test_probe_catches_contents_that_stick_out_of_a_frame() -> void:
+	var probe := SteadyProbe.new()
+	await settle(probe)
+	var card := Button.new()
+	card.custom_minimum_size = Vector2(200.0, 80.0)
+	Steady.mark(card, "試し: 中身の大きいカード")
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.add_child(row)
+	var part := ColorRect.new()
+	part.custom_minimum_size = Vector2(120.0, 40.0)
+	row.add_child(part)
+	await settle(card)
+	await _frames(SteadyProbe.SPILL_EVERY * 3)
+	assert_eq(probe.report(), "", "収まっているのに拾った")
+	part.custom_minimum_size.x = 260.0
+	await _frames(SteadyProbe.SPILL_EVERY * 3)
+	assert_true(probe.report().contains("試し: 中身の大きいカード"), "はみ出しを拾わない: %s" % probe.report())
+	probe.spilled.clear()
+	Steady.let_out(row)
+	await _frames(SteadyProbe.SPILL_EVERY * 3)
+	assert_eq(probe.report(), "", "わざと外へ出した部品（let_out）を拾った")
+	card.free()
+	probe.free()
+
+
+## 物語のカード: 顔の並びは、駒の数がいくつでも決まった幅の欄に収まり、カードの中身はカードからはみ出さない。
+func test_campaign_cards_hold_any_number_of_faces() -> void:
+	var CampaignList: GDScript = load("res://game/campaign_list_screen.gd")
+	var screen: Node = CampaignList.new()
+	await settle(screen)
+	await _frames(1)
+	for campaign: RefCounted in Story.campaigns():
+		assert_eq(SteadyProbe.spill_of(screen.card_of(campaign)), "", "%s のカードの中身がはみ出す" % campaign.title)
+	screen.free()
+	var crowded: RefCounted = Story.military().get_script().new()
+	crowded.army = UnitKind.Army.MILITARY
+	for count in range(0, 10):
+		var row: HBoxContainer = CampaignList.faces_row(crowded)
+		await settle(row)
+		assert_true(row.get_minimum_size().x <= CampaignList.FACES_WIDTH + 0.5, "顔 %d つの並びが欄より広い: %s" % [count + 1, row.get_minimum_size().x])
+		assert_eq(CampaignList.faces_shown(row), mini(count + 1, CampaignList.FACES_MAX))
+		row.free()
+		crowded.starting_kinds.append(UnitKind.Id.SNIPER)

@@ -8,6 +8,7 @@ story.campaigns.total,全 {total} 話
 story.campaigns.all_cleared,全 {total} 話クリア
 story.campaigns.cleared,{cleared} / {total} 話クリア
 story.campaigns.army,軍: {army}
+story.campaigns.more_faces,ほか {count} 体
 story.episodes.sub,話の選択
 story.episodes.back,物語選択へ戻る
 story.episodes.resume,話の一覧へ戻る

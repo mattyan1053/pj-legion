@@ -233,6 +233,16 @@ func _scene_stronghold() -> bool:
 	return true
 
 
+## 拠点が 3 つあるときの拠点の札（手で作った見本。いまの決まりでは拠点は盤に 1 つ）: 青が 1 つ、だれのものでもない 1 つ、赤が 1 つ。
+func _scene_stronghold_three() -> bool:
+	_field = VersusFields.LABYRINTH
+	_new_battle([OptionalRules.STRONGHOLD])
+	_show()
+	_scene.focus_camera(_battle.board.stronghold_cell)
+	_scene.show_stronghold_sample([3, 2] as Array[int], [0, -1, 1] as Array[int])
+	return _scene.stronghold_sample_owners().size() == 3
+
+
 func _scene_portal_cell() -> bool:
 	_field = VersusFields.TWIN_SPRINGS
 	_new_battle()
