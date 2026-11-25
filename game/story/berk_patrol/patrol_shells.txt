@@ -63,6 +63,8 @@ king = none
 unit = crab
 unit = crab
 unit = crab
+unit = crab
+unit = shroom
 unit = shroom
 unit = shroom
 unit = shroom
@@ -70,3 +72,5 @@ unit = spider
 unit = spider
 unit = bat
 unit = bat
+# 群れは谷の上の段（いつもの本陣の前より 3 行、人の側へ寄った所）から始まる。
+deploy = 7,5  9,5  11,5  13,5  5,5  8,4  10,4  12,4  14,4  6,4  15,4  4,5
