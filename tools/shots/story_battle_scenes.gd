@@ -631,6 +631,7 @@ func _scene_story_battle_talk() -> bool:
 		if Story.military().episodes[i].cues.any(func(cue: Array) -> bool: return cue[0] == BattleCues.TURN and cue[1] == 1):
 			if not await _story_battle(i):
 				return false
+			_scene.hide_notice()  # 始めの台詞は、対戦ルールの知らせを閉じてから出る
 			return _scene.talk_line() != null
 	return false
 
