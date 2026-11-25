@@ -196,20 +196,30 @@ func _build_minimap() -> void:
 	add_child(_minimap)
 
 
-## 対戦の始めの「対戦ルール」（docs/battle-view.md の「対戦ルール」）。盤の上寄りの真ん中に、決まった大きさで出す。
+## 対戦の始めの「対戦ルール」（docs/battle-view.md の「対戦ルール」）。画面の真ん中に、決まった大きさで出す（ほかの物を避けない。
+## 出ている間は、手番の知らせも台詞も出さない。閉じてから手番が始まる: notice_closed）。
 ## 勝利条件の札の段（NOTICE_GOALS 枚まで。多い分は出さない）と、縫い目の様子の札の段（あれば）。札は決まった大きさで、真ん中に寄せて並べる（少なくても間延びしない）。
 ## 閉じるボタン、枠のクリック、盤のクリック、Enter・Space・Esc で閉じる（screen_input.gd）。
 func _build_notice() -> void:
+	_notice_catcher = Control.new()
+	_notice_catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_notice_catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	_notice_catcher.visible = false
+	_notice_catcher.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			hide_notice()
+			_notice_catcher.accept_event())
+	add_child(_notice_catcher)
 	_notice = PanelContainer.new()
 	var plate := UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 14.0, 6)
 	plate.border_width_top = 3
 	_notice.add_theme_stylebox_override("panel", plate)
-	_notice.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_notice.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_notice.custom_minimum_size = NOTICE_SIZE
 	_notice.offset_left = -NOTICE_SIZE.x / 2.0
 	_notice.offset_right = NOTICE_SIZE.x / 2.0
-	_notice.offset_top = BANNER_TOP + BannerBand.HEIGHT + 12.0
-	_notice.offset_bottom = _notice.offset_top + NOTICE_SIZE.y
+	_notice.offset_top = -NOTICE_SIZE.y / 2.0
+	_notice.offset_bottom = NOTICE_SIZE.y / 2.0
 	_notice.clip_contents = true
 	_notice.mouse_filter = Control.MOUSE_FILTER_STOP
 	_notice.visible = false
@@ -291,10 +301,16 @@ func show_notice(cards: Array[Array]) -> void:
 	_notice_signs_caption.visible = not signs.is_empty()
 	_notice_signs_row.visible = not signs.is_empty()
 	_notice.visible = not cards.is_empty()
+	_notice_catcher.visible = _notice.visible
 
 
+## 「対戦ルール」を閉じる。出ていたなら notice_closed を送る（対戦の場面が手番を始める）。
 func hide_notice() -> void:
+	var was_open := _notice.visible
 	_notice.visible = false
+	_notice_catcher.visible = false
+	if was_open:
+		notice_closed.emit()
 
 
 func notice_open() -> bool:

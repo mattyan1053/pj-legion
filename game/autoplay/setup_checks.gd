@@ -18,6 +18,11 @@ func _queue_setup_scene() -> void:
 		panel.choose_field(VersusFields.TWIN_SPRINGS)
 		seen["actions"] = _scene.cpu_actions
 		panel.confirm()
+		# 「対戦ルール」を閉じるまでは、先手の CPU も番の知らせも始まらない。閉じると始まる。
+		_expect(_scene.notice_text() != "" and not _scene.is_cpu_running() and _scene.cpu_actions == seen["actions"] and not _scene.is_banner_shown(),
+			"「対戦ルール」を閉じる前に、先手の CPU か番の知らせが始まった: %s" % [[_scene.notice_text() != "", _scene.is_cpu_running(), _scene.cpu_actions - seen["actions"], _scene.is_banner_shown()]])
+		_scene.hide_notice()
+		_expect(_scene.is_cpu_running(), "「対戦ルール」を閉じても、先手の CPU が動き出さない")
 		# CPU（先手）の番の間も、必殺技のボタンは人（後手。MILITARY）のもの。
 		_expect(_scene.ult_button_text().contains(Names.ult(Ults.of_army(UnitKind.Army.MILITARY))), "CPU の番に、必殺技のボタンが CPU のものになった: %s" % _scene.ult_button_text()))
 	_scripted.append(func() -> void:

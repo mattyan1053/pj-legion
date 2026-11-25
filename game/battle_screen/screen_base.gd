@@ -190,6 +190,8 @@ var _battle_started := false
 ## 終盤の曲（sound_catalog.gd の CLIMAX_MUSIC）: 対戦の初めの将の番号と、もう替えたか。
 var _climax_kings: Array[int] = []
 var _climax := false
+## 対戦の始まりの続き（_open_battle）の番号。待つ間に新しい対戦を始めたら、古いほうの続きをやめる。
+var _opening_serial := 0
 ## カメラが追いかけた駒の番号 -> 回数。検査用。
 var camera_follows := {}
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
