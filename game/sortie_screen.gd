@@ -27,6 +27,7 @@ const DeckText := preload("res://game/deck_text.gd")
 const Run := preload("res://game/run.gd")
 const MapCard := preload("res://game/map_card.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const SystemMenu := preload("res://game/system_menu.gd")
 const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
@@ -53,8 +54,18 @@ const MAP_CELL := 20
 ## （いつもの 2 つに守り切るを足したもの）。札は横に 1 列に並べ、右の欄の幅は 3 枚が入る幅にする。
 const GOAL_CARDS := 3
 const GOAL_CARD_GAP := 6.0
-## この話で覚えること（演習の lesson）の字の大きさ。勝利条件の札と同じ欄に入れても、下の出撃する部隊の欄が詰まらない大きさ。
+## この話で覚えること（演習の lesson）の札: 見出しの右（右の欄の上）に、決まった大きさで出す。演習でない話では出さない。
+## 見出しの段に置くので、下の枠（勝利条件・敵の部隊・出撃する部隊）は、どの話でも同じ大きさ・同じ場所になる。
+## 字の大きさ、文の幅（札の幅から、見出しの語の欄と余白を引いたもの）、行の数の上限。
 const LESSON_FONT := 15
+const LESSON_SIZE := Vector2(590.0, 56.0)
+const LESSON_HEAD_WIDTH := 72.0
+const LESSON_WIDTH := LESSON_SIZE.x - LESSON_HEAD_WIDTH - 36.0
+const LESSON_MAX_LINES := 2
+## 見出しの段（題と飾りの線、右に覚えることの札）の高さ（px）。
+const HEADER_HEIGHT := 60.0
+## 敵の部隊の文の行の数（いちばん敵の多い話で 2 行。行の数ぶんの高さを、いつも取っておく）。
+const ENEMY_LINES := 2
 ## 縮図の高さの上限（px）。下に駒の欄（deploy_note.gd）を置いても、下のボタンが画面に収まるように。縦に長いマップは、1 マスを小さく描く。
 const MAP_MAX_HEIGHT := 380.0
 ## 右の欄の幅（px）。勝利条件の札 3 枚と、欄の縁の内側の余白（左右 14）。
@@ -89,6 +100,7 @@ var _option_buttons := {}  # id -> Button
 var _deck_line: Label
 var _deck_faces: HFlowContainer
 var _sortie: Button
+var _lesson_label: Label
 
 
 func _ready() -> void:
@@ -116,16 +128,33 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
 	_layer = layer
+	# 見出しの段: 左に題と飾りの線、右に「この話で覚えること」の札（演習だけ）。段の高さは、札の有る無しで変えない。
+	var header := HBoxContainer.new()
+	header.custom_minimum_size = Vector2(0.0, HEADER_HEIGHT)
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(header)
+	var title_column := VBoxContainer.new()
+	title_column.add_theme_constant_override("separation", 6)
+	title_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(title_column)
 	var heading := _text(30, COLOR_TEXT)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	heading.text = Text.t("sortie.heading", {"number": Story.number_of(episode), "title": episode.title})
-	root.add_child(heading)
+	title_column.add_child(heading)
 	# 見出しの下の飾りの線は、人の軍の国の色（話の一覧と同じ）。
 	var heading_line := Ornament.new(520.0, 8.0)
 	heading_line.color = NationDecor.color_of(context.story.campaign.army)
 	heading_line.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	root.add_child(heading_line)
+	title_column.add_child(heading_line)
+	if episode.lesson != "":
+		header.add_child(_build_lesson(episode.lesson))
+		# 右上のシステムメニューのボタンに掛からないよう、札の右を空けておく。
+		var corner := Control.new()
+		corner.custom_minimum_size = Vector2(SystemMenu.CORNER_BUTTON_SIZE.x + SystemMenu.CORNER_MARGIN - 40.0, 0.0)
+		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		header.add_child(corner)
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -163,7 +192,11 @@ func _ready() -> void:
 		var map_hint := _text(14, COLOR_DIM)
 		map_hint.text = Text.t("sortie.place_fixed")
 		left_column.add_child(map_hint)
-	# 選んでいる駒（マウスを乗せている駒）の名前・役割・能力値（deploy_note.gd）。
+	# 選んでいる駒（マウスを乗せている駒）の名前・役割・能力値（deploy_note.gd）。欄の下の端に置く（マップの大きさで場所が変わらない）。
+	var map_rest := Control.new()
+	map_rest.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_rest.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left_column.add_child(map_rest)
 	_deploy_note = DeployNote.new()
 	Steady.mark(_deploy_note, "sortie.unit_note", Steady.RECT)
 	left_column.add_child(_deploy_note)
@@ -181,14 +214,12 @@ func _ready() -> void:
 	var goal_column := VBoxContainer.new()
 	goal_column.add_theme_constant_override("separation", 2)
 	goal.add_child(goal_column)
-	var lesson := episode.lesson
-	if lesson != "":
-		goal_column.add_child(_caption(Text.t("sortie.lesson")))
-		goal_column.add_child(_wrapped(lesson, LESSON_FONT, COLOR_TEXT))
 	# 勝利条件の札（対戦の始めの「対戦ルール」と同じ札。rule_card.gd）。
 	Names.set_boss(battle_source.boss_name())  # 札の中ボスの名前（話のファイルの boss）
 	goal_column.add_child(_caption(Text.t("sortie.goal")))
+	# 札は欄の真ん中に寄せる（対戦の始めの「対戦ルール」と同じ。1 枚でも 3 枚でも、左右の空きが同じ）。
 	var goal_row := HBoxContainer.new()
+	goal_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	goal_row.add_theme_constant_override("separation", int(GOAL_CARD_GAP))
 	goal_column.add_child(goal_row)
 	_goal_cards.clear()
@@ -214,9 +245,16 @@ func _ready() -> void:
 	enemy_column.add_child(enemy_faces)
 	_enemy_faces = enemy_faces
 	_fill_faces(enemy_faces, battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], Unit.Side.PLAYER2, start_levels(Unit.Side.PLAYER2))
-	enemy_column.add_child(_wrapped(DeckText.deck_summary(
+	var enemy_line := _wrapped(DeckText.deck_summary(
 		battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], start_levels(Unit.Side.PLAYER2),
-		battle_source.scenario().has_king(Unit.Side.PLAYER2)), 17, COLOR_TEXT))
+		battle_source.scenario().has_king(Unit.Side.PLAYER2)), 16, COLOR_TEXT)
+	# 敵の数で欄の高さを変えない: 文は、いつも ENEMY_LINES 行ぶんの高さを取る。
+	var tallest := _text(16, COLOR_TEXT)
+	tallest.text = "0" + "\n0".repeat(ENEMY_LINES - 1)
+	enemy_line.custom_minimum_size.y = tallest.get_minimum_size().y
+	tallest.free()
+	enemy_line.clip_text = true
+	enemy_column.add_child(enemy_line)
 
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -228,6 +266,7 @@ func _ready() -> void:
 	troops.add_child(troops_column)
 	var troops_head := HBoxContainer.new()
 	troops_head.add_theme_constant_override("separation", 12)
+	troops_head.custom_minimum_size = Vector2(0.0, 36.0)  # 「部隊編成」のボタンの無い話（部隊が決まっている話）でも、同じ高さ
 	troops_column.add_child(troops_head)
 	var troops_caption := _army_caption(Text.t("sortie.troops"), context.story.campaign.army)
 	troops_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -238,6 +277,15 @@ func _ready() -> void:
 	# 流れの外から置いたとき（検査）は、戻る先が無いので出さない。部隊が決まっている話も出さない。
 	edit.visible = context.run != null and not is_squad_fixed()
 	troops_head.add_child(edit)
+	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。見出しのすぐ下に置く（出撃する部隊が、まず目に入る）。
+	# 部隊によって文の行の数が違うので、文の高さは、いちばん長い部隊に合わせて固定する（_build_options のあと）。
+	_deck_faces = HFlowContainer.new()
+	_deck_faces.add_theme_constant_override("h_separation", 4)
+	_deck_faces.add_theme_constant_override("v_separation", 4)
+	troops_column.add_child(_deck_faces)
+	_deck_line = _wrapped("", 15, COLOR_DIM)
+	troops_column.add_child(_deck_line)
+	# 選べる部隊の並び（部隊が決まっている話は 1 行）。残りの高さを使い、多ければ欄の中で送る。
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -246,14 +294,6 @@ func _ready() -> void:
 	_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_options.add_theme_constant_override("separation", 4)
 	scroll.add_child(_options)
-	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。
-	# 部隊によって文の行の数が違うので、文の高さは、いちばん長い部隊に合わせて固定する（_build_options のあと）。
-	_deck_faces = HFlowContainer.new()
-	_deck_faces.add_theme_constant_override("h_separation", 4)
-	_deck_faces.add_theme_constant_override("v_separation", 4)
-	troops_column.add_child(_deck_faces)
-	_deck_line = _wrapped("", 15, COLOR_DIM)
-	troops_column.add_child(_deck_line)
 
 	var footer := HBoxContainer.new()
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -530,6 +570,50 @@ func _caption(text: String) -> Label:
 	label.add_theme_font_override("font", UiTheme.FONT_BOLD)
 	label.text = text
 	return label
+
+
+## 「この話で覚えること」の札（決まった大きさ）: 左に見出しの語、右に文（LESSON_MAX_LINES 行まで）。勝利条件の欄と同じ金を混ぜた地。
+func _build_lesson(lesson: String) -> Control:
+	var panel := _panel()
+	panel.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.GOAL.lerp(Palette.PANEL, 0.55), 0.94), Palette.GOAL_BORDER, 1, 8, 6.0))
+	panel.custom_minimum_size = LESSON_SIZE
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.clip_contents = true
+	Steady.mark(panel, "sortie.lesson", Steady.RECT)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	panel.add_child(row)
+	var head := _text(13, COLOR_ACCENT)
+	head.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	head.add_theme_constant_override("line_spacing", 0)
+	head.custom_minimum_size = Vector2(LESSON_HEAD_WIDTH, 0.0)
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	head.text = Text.t("sortie.lesson")
+	row.add_child(head)
+	_lesson_label = _text(LESSON_FONT, COLOR_TEXT)
+	_lesson_label.custom_minimum_size = Vector2(LESSON_WIDTH, 0.0)
+	_lesson_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_lesson_label.add_theme_constant_override("line_spacing", 0)
+	var font := _lesson_label.get_theme_font("font")
+	_lesson_label.text = TextWrap.fold(lesson, LESSON_WIDTH, func(character: String) -> float:
+		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, LESSON_FONT).x)
+	row.add_child(_lesson_label)
+	return panel
+
+
+## 「この話で覚えること」の札の文（出ていなければ空。検査用）。
+func lesson_text() -> String:
+	return _lesson_label.text.replace("\n", "") if _lesson_label != null else ""
+
+
+## 枠の大きさ（勝利条件・敵の部隊・出撃する部隊・初期位置。検査用。どの話でも同じ）。
+func frame_rects() -> Dictionary:
+	var rects := {}
+	for frame: Control in get_tree().get_nodes_in_group(Steady.GROUP):
+		if is_ancestor_of(frame) and Steady.kind_of(frame) == Steady.RECT and Steady.name_of(frame) != "sortie.lesson":
+			rects[Steady.name_of(frame)] = frame.get_global_rect()
+	return rects
 
 
 ## 部隊の欄の飾り: 上の縁にその軍の国の色の帯（軍なしは陣営の色）と、その下の淡い光。
