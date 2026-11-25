@@ -5,6 +5,8 @@ extends Node
 ## 毎コマ、印の付いた枠（steady.gd）の四角を控え、同じ枠が前と違う大きさ（RECT の印なら置き場所も）で出たら、moved に積む。
 ## 同じ名前の枠は、作り直されても同じ大きさで出ること（並んだ札もそろう）。
 ## 窓の大きさが変わったときと、場面（scene_flow.gd）が替わったときは、控えを捨てる（画面が変われば枠も変わってよい）。
+## 枠の中の文も見る: 印の付いた枠の中の Label が、入っている箱（ボタン、板）からはみ出していないか、
+## 字を切る Label（clip_text）が字を切っていないか。cut_texts に積む（枠の中に収まっていても、ボタンからあふれた文を拾う）。
 ## `-- --frames` を付けると、洗い出し: 印の無い板（PanelContainer、Panel、ScrollContainer）も全部控え、終わりに動いたものを並べる。
 
 const Steady := preload("res://game/steady.gd")
@@ -19,6 +21,11 @@ const SPILL_EVERY := 6
 var moved := {}
 ## 印の付いた枠のうち、中身が枠の外へはみ出したもの。名前 -> 「はみ出した部品 はみ出した向きと px」。
 var spilled := {}
+## 印の付いた枠の中で、文が箱からはみ出した・切れたもの。「枠の名前「文」」 -> どうなったか。
+var cut_texts := {}
+## 前に見たときにあふれていた文（並べ直しの途中の 1 回は数えない。続けて 2 回なら cut_texts に積む）。キー -> 見た回。
+var _cut_before := {}
+var _cut_round := 0
 ## 洗い出しで、印の無い板のうち大きさが変わったもの。名前 -> 見た大きさの列。
 var found := {}
 
@@ -44,10 +51,15 @@ func _process(_delta: float) -> void:
 		_screen = screen
 		forget_all()
 		return
+	var spill_check := Engine.get_process_frames() % SPILL_EVERY == 0
+	if spill_check:
+		_cut_round += 1
 	for frame: Node in get_tree().get_nodes_in_group(Steady.GROUP):
 		_sample(frame as Control, true)
-		if Engine.get_process_frames() % SPILL_EVERY == 0:
+		if spill_check:
 			_check_spill(frame as Control)
+			if (frame as Control).is_visible_in_tree():
+				_check_texts(frame as Control, frame, [frame as Control])
 	if _everything:
 		_walk(get_tree().root)
 
@@ -57,6 +69,7 @@ func forget_all() -> void:
 	_seen.clear()
 	_odd.clear()
 	_spill_before.clear()
+	_cut_before.clear()
 
 
 ## 印の付いた枠 frame の中身（見えている部品）が、枠の四角からはみ出していたら spilled に積む。
@@ -106,6 +119,54 @@ func _spill_in(node: Node, bounds: Rect2, inverse: Transform2D) -> String:
 		if inner != "":
 			return inner
 	return ""
+
+
+## 枠 frame の中の Label を見る。boxes は、いま見ている Label を入れている箱（枠、ボタン、板）の並び。
+## 中身が動く入れ物（ScrollContainer）の中は見ない（見える所の外に出るのが当たり前なので）。
+func _check_texts(frame: Control, node: Node, boxes: Array) -> void:
+	for child in node.get_children():
+		if not child is Control or not (child as Control).visible or child is ScrollContainer or Steady.is_let_out(child as Control):
+			continue
+		var control := child as Control
+		if control is Label:
+			_check_label(frame, control as Label, boxes)
+		var inner := boxes
+		if control is Button or control is PanelContainer or control is Panel:
+			inner = boxes + [control]
+		_check_texts(frame, control, inner)
+
+
+func _check_label(frame: Control, label: Label, boxes: Array) -> void:
+	if label.text == "" or label.get_global_transform().get_scale() != Vector2.ONE:
+		return
+	var rect := label.get_global_rect()
+	var problem := ""
+	for box: Control in boxes:
+		if box.get_global_transform().get_scale() != Vector2.ONE:
+			return  # 拡大の演出の途中（マウスを乗せたカード）は見ない
+		if not box.get_global_rect().grow(SLACK).encloses(rect):
+			var what := "枠" if box == frame else ("ボタン" if box is Button else "板")
+			problem = "%sの外へはみ出した: 文 %s、%s %s" % [what, _text(rect), what, _text(box.get_global_rect())]
+			break
+	if problem == "" and label.clip_text and label.autowrap_mode == TextServer.AUTOWRAP_OFF \
+			and label.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING:
+		var font := label.get_theme_font(&"font")
+		var font_size := label.get_theme_font_size(&"font_size")
+		var shown_lines := label.text.split("\n")
+		if label.max_lines_visible > 0:
+			shown_lines = shown_lines.slice(0, label.max_lines_visible)
+		for line: String in shown_lines:
+			if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > label.size.x + SLACK:
+				problem = "字が切れた"
+				break
+	if problem == "":
+		return
+	var key := "%s「%s」" % [Steady.name_of(frame), label.text.replace("\n", " ").left(16)]
+	if _cut_before.get(key, -10) != _cut_round - 1:
+		_cut_before[key] = _cut_round
+		return
+	if not cut_texts.has(key):
+		cut_texts[key] = problem
 
 
 func _walk(node: Node) -> void:
@@ -214,6 +275,8 @@ func report() -> String:
 		lines.append("枠が動いた: %s（%s）" % [what, moved[what]])
 	for what: String in spilled:
 		lines.append("枠から中身がはみ出した: %s（%s）" % [what, spilled[what]])
+	for what: String in cut_texts:
+		lines.append("文があふれた: %s（%s）" % [what, cut_texts[what]])
 	return "\n  ".join(lines)
 
 

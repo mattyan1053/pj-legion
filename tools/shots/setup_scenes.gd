@@ -228,6 +228,17 @@ func _scene_trait_start() -> bool:
 	return _scene.trait_link_count() > 0
 
 
+## 対戦中に、上の帯の部隊の特徴の札（集中砲火）をクリックしたところ（特徴 1 つの窓に、印・名前・効果・効く相手）。
+func _scene_trait_note() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.OATH])
+	_show()
+	_scene.hide_notice()
+	_scene.toggle_trait_note(0)
+	_park_mouse()
+	return _scene.trait_note_text() != ""
+
+
 ## 特徴の札が、ほかの表示と重なる所: 集中砲火の効く敵が拠点の上（竿と数の札）とバリアの中（泡と水色の輪）にいて、
 ## 仇討ちの効く自分の兵（敵の兵を倒した）を選んでいる（選択の黄色い輪、移動範囲）。場面は手で並べる（CPU の対戦では、そろわない）。
 func _scene_trait_marks() -> bool:

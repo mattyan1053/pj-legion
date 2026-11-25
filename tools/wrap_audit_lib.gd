@@ -20,6 +20,7 @@ const CampaignList := preload("res://game/campaign_list_screen.gd")
 const SortieScreen := preload("res://game/sortie_screen.gd")
 const RuleCard := preload("res://game/rule_card.gd")
 const SignCard := preload("res://game/sign_card.gd")
+const TraitCard := preload("res://game/trait_card.gd")
 const InfoCard := preload("res://game/info_card.gd")
 const HudBase := preload("res://game/battle_hud/hud_base.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
@@ -128,6 +129,9 @@ static func card_sites() -> Array[Dictionary]:
 	var signs: Array[Array] = []
 	for sign in Seam.KEYS.size():
 		signs.append([String(Seam.KEYS[sign]), Names.sign_summary(sign)])
+	var troop_traits: Array[Array] = []
+	for id: int in Traits.Id.values():
+		troop_traits.append([Names.troop_trait(id), Names.troop_trait_when(id)])
 	var abilities: Array[Array] = []
 	for skill in Skills.ALL:
 		abilities.append([Names.skill(skill), Names.skill_summary(skill)])
@@ -144,6 +148,7 @@ static func card_sites() -> Array[Dictionary]:
 		{"name": "対戦ルールの札", "width": RuleCard.TEXT_WIDTH, "max_lines": RuleCard.LINE_MAX_LINES, "texts": goals + signs,
 			"sizer": func(text: String) -> int: return RuleCard.fold_line(text, UiTheme.FONT_BODY)[0]},
 		{"name": "縫い目の様子の札", "width": SignCard.SUMMARY_WIDTH, "size": SignCard.SUMMARY_FONT, "max_lines": SignCard.SUMMARY_MAX_LINES, "texts": signs},
+		{"name": "部隊の特徴の窓", "width": TraitCard.WHEN_WIDTH, "size": TraitCard.WHEN_FONT, "max_lines": TraitCard.WHEN_MAX_LINES, "texts": troop_traits},
 		{"name": "兵の情報の札", "width": HudBase.INFO_WIDTH - InfoCard.SUMMARY_INSET, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": abilities},
 		{"name": "兵の情報の札の状態", "width": HudBase.INFO_WIDTH - 22.0, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": statuses},
 		{"name": "兵の詳しい窓", "width": detail_card - SheetParts.SUMMARY_INSET, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": abilities},

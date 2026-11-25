@@ -15,6 +15,7 @@ const Steady := preload("res://game/steady.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
 const SignMark := preload("res://game/sign_mark.gd")
 const SignCard := preload("res://game/sign_card.gd")
+const TraitCard := preload("res://game/trait_card.gd")
 const RuleCard := preload("res://game/rule_card.gd")
 const GoalMark := preload("res://game/goal_mark.gd")
 const StrongholdFlags := preload("res://game/stronghold_flags.gd")
@@ -188,6 +189,10 @@ var _sign_names: Array[Label] = []
 var _sign_note: PanelContainer
 var _sign_note_card: SignCard
 var _sign_note_index := -1
+## 上の帯の部隊の特徴の札をクリックすると出す、特徴 1 つの窓（trait_card.gd）と、どちらの陣営のものを出しているか（出していなければ -1）。
+var _trait_note: PanelContainer
+var _trait_note_card: TraitCard
+var _trait_note_player := -1
 ## 対戦の始めの知らせ（選べる決まり。見出し、決まりごとの行、閉じるボタン）。
 ## 上の帯の勝ち方の札の印（goal_mark.gd）。
 var _goal_marks: Array[GoalMark] = []
