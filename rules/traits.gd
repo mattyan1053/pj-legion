@@ -158,6 +158,11 @@ static func struck_by_side(battle: Battle, target: Unit, side: Unit.Side, except
 	return false
 
 
+## 単騎の印: unit が、その陣営の番に、まだ動けて、隣に味方がいない将でない兵か（攻撃すれば単騎が効く。回復役も攻撃するので入る）。
+static func lone_marked(battle: Battle, unit: Unit) -> bool:
+	return battle.phase == unit.side and unit.kind != UnitKind.Id.KING and battle.can_act(unit) and alone_at(battle, unit, unit.cell)
+
+
 ## 集中砲火の印: target が、このターンに陣営 side（集中砲火の陣営）の駒に攻撃されているか。
 static func focus_marked(battle: Battle, target: Unit, side: Unit.Side) -> bool:
 	return of_side(battle, side) == Id.FOCUS and target.side != side and struck_by_side(battle, target, side)

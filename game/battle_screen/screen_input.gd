@@ -420,6 +420,11 @@ func menu_rect() -> Rect2:
 	return _hud.menu_rect()
 
 
+## 上の帯のすぐ下の札（勝ち方・視点の案内・拠点・縫い目の様子）の四角（battle_hud.gd の top_tag_rects）。検査用。
+func top_tag_rects() -> Array[Rect2]:
+	return _hud.top_tag_rects()
+
+
 ## メニューが届くマス（青・黄）に掛かっているか。検査用。
 func menu_covers_move() -> bool:
 	_layout.place_menu(selected_unit(), _painted)
