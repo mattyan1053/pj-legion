@@ -397,6 +397,7 @@ func test_music_sets_replace_tracks_of_the_same_kind() -> void:
 			assert_true(Catalog.has_music(track), "組が差し替えるのは表の曲（%s）" % track)
 			assert_eq(of_set[track]["loop"], Catalog.MUSIC[track]["loop"], "ループかどうかは元の曲と同じ（%s）" % track)
 			assert_ne(of_set[track]["path"], Catalog.MUSIC[track]["path"], "組の曲は、いまの曲と別（%s）" % track)
+			assert_true(ResourceLoader.exists(of_set[track]["path"]), "組の曲の素材がある（%s）" % of_set[track]["path"])
 		assert_false(of_set.has(&"title"), "タイトルの曲は決まった（組で差し替えない）")
 	assert_eq(Catalog.MUSIC[&"title"]["path"], Catalog.BGM_SETS_DIR + "the_last_horn.ogg", "タイトルは The Last Horn")
 	# 選ばれなかったタイトルの候補は、物語の終わりの 2 話の戦いに使う。

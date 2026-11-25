@@ -17,6 +17,8 @@ extends RefCounted
 const StageLook := preload("res://game/stage_look.gd")
 ## 聴き比べの候補の曲の置き場所（MUSIC_SETS）。選ばれた曲も、ここに置いたまま鳴らす。
 const BGM_SETS_DIR := "res://assets/audio/oga-bgm-sets/"
+## クラシックの編曲の曲の置き場所（MUSIC_SETS の「クラシック」の組）。楽譜のデータから tools/classical_bgm/ で作った。
+const CLASSICAL_DIR := "res://assets/audio/classical/"
 const MUSIC := {
 	## タイトル（主題歌。The Last Horn。BGM の組の候補から、人間が聴いて選んだ）。
 	&"title": {"path": BGM_SETS_DIR + "the_last_horn.ogg", "loop": true, "volume_db": -3.0},
@@ -182,6 +184,30 @@ const MUSIC_SETS: Array[Dictionary] = [
 	{
 		&"talk": {"path": BGM_SETS_DIR + "kings_feast_loop.ogg", "loop": true, "volume_db": 1.0},
 		&"defeat": {"path": BGM_SETS_DIR + "lose_game_short.ogg", "loop": false, "volume_db": 0.0},
+	},
+	## クラシック 1〜3（ヴィヴァルディ「冬」第 1 楽章の編曲。1: 原曲に近い弦、2: ボス戦、3: 重い）。
+	## 終盤・中ボス・物語の終わりの 2 話の戦い（と、締めの話の終盤）だけ。ほかは、いまの組のまま。
+	## 大きさは、書き出しで -16 LUFS にそろえてある（tools/classical_bgm/finish.py）ので、対戦のねらい -21.5 LUFS との差。
+	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
+	},
+	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
+	},
+	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
 	},
 ]
 ## いまの BGM の組の番号（sound.gd の apply_settings が設定から入れる）。

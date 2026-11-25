@@ -20,11 +20,14 @@ settings.effects_volume.note,スライダーを離すと試聴
 settings.mute,音を消す
 settings.mute.note,すべての音を停止（音量の設定は保持）
 settings.music_set,BGM の組
-settings.music_set.note,聴き比べ用。候補 C はタイトル・軽い会話・負けだけ
-settings.music_set.current,いまの組
-settings.music_set.a,候補 A
-settings.music_set.b,候補 B
-settings.music_set.c,候補 C
+settings.music_set.note,C は軽い会話と負け、冬はヴィヴァルディの編曲でボス戦と最後の戦いだけ
+settings.music_set.current,いま
+settings.music_set.a,A
+settings.music_set.b,B
+settings.music_set.c,C
+settings.music_set.classical_1,冬 1
+settings.music_set.classical_2,冬 2
+settings.music_set.classical_3,冬 3
 settings.section.screen,画面
 settings.fullscreen,全画面
 settings.fullscreen.note,オフ: ウィンドウ表示　Alt+Enter: 切り替え
