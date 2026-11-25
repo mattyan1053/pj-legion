@@ -26,7 +26,7 @@ func kind() -> UnitKind.Id:
 
 ## 説明の文（game/text/names.csv の skill.shadow_step.summary）に差し込む値。
 func summary_args() -> Dictionary:
-	return {"range": RANGE, "walk": WALK_LIMIT}
+	return {"range": RANGE, "over": WALK_LIMIT + 1}
 
 
 func cooldown() -> int:
@@ -39,7 +39,12 @@ func ends_action() -> bool:
 
 ## 歩いていないか、このターンに使った移動力が WALK_LIMIT までであること。
 func is_ready(_battle: Battle, unit: Unit) -> bool:
-	return not unit.has_moved or unit.move_spent <= WALK_LIMIT
+	return not walked_too_far(unit)
+
+
+## このターンに WALK_LIMIT より多く歩いて、もう跳べないか（画面は、使えない理由を「歩きすぎ」と出す）。
+static func walked_too_far(unit: Unit) -> bool:
+	return unit.has_moved and unit.move_spent > WALK_LIMIT
 
 
 func target_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:

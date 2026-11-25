@@ -6,6 +6,7 @@ const BattleTexts := preload("res://game/battle_texts.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const Names := preload("res://game/names.gd")
 const Mode := BattleTexts.Mode
 
 const P1 := Unit.Side.PLAYER1
@@ -145,6 +146,20 @@ func test_skill_button_gives_the_reason_it_cannot_be_used() -> void:
 	assert_eq(BattleTexts.skill_button_text(sniper, false), "スキル（使用不可）")
 	sniper.skill_cooldown = 2
 	assert_eq(BattleTexts.skill_button_text(sniper, true), "スキル（あと 2 ターン）")
+
+
+## スペルブレードが歩きすぎて跳べないときは、理由を「歩きすぎ」と出す（シャドウステップ。ShadowStepSkill.WALK_LIMIT）。
+func test_shadow_step_says_it_walked_too_far() -> void:
+	var battle := _battle()
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 0))
+	blade.has_moved = true
+	blade.move_origin = Vector2i(0, 0)
+	blade.move_spent = ShadowStepSkill.WALK_LIMIT
+	assert_eq(BattleHud.skill_state_text(blade, battle), "使用可", "%d マスまでなら跳べる" % ShadowStepSkill.WALK_LIMIT)
+	blade.move_spent = ShadowStepSkill.WALK_LIMIT + 1
+	assert_eq(BattleHud.skill_state_text(blade, battle), "歩きすぎ")
+	assert_eq(BattleTexts.skill_button_text(blade, Skills.can_use(battle, blade)), "スキル（歩きすぎ）")
+	assert_true(Names.skill_summary(Skills.of(blade)).contains("%d マス以上歩いたら跳べない" % (ShadowStepSkill.WALK_LIMIT + 1)))
 
 
 func test_unit_state_only_for_the_side_to_move() -> void:

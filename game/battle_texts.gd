@@ -148,7 +148,7 @@ static func skill_button_text(unit: Unit, can_use: bool) -> String:
 	if uses == 0:
 		return Text.t("battle.menu.skill.used_up")
 	if not can_use:
-		return Text.t("battle.menu.skill.unusable")
+		return Text.t("battle.menu.skill.walked" if skill is ShadowStepSkill and ShadowStepSkill.walked_too_far(unit) else "battle.menu.skill.unusable")
 	if uses > 0:
 		return Text.t("battle.menu.skill.uses_left", {"skill": Names.skill(skill), "uses": uses})
 	return Names.skill(skill)

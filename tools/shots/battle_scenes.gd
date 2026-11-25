@@ -167,6 +167,32 @@ func _scene_menu_moved() -> bool:
 	return _scene.menu_ids().has(&"attack") and _scene.menu_ids().has(&"undo")
 
 
+## スペルブレードと、歩くと使った移動力が ShadowStepSkill.WALK_LIMIT を超えるマス。
+func _walk_too_far() -> Array:
+	for unit in _own_units():
+		if unit.kind != UnitKind.Id.SPELLBLADE or not _battle.can_act(unit) or not Skills.can_use(_battle, unit):
+			continue
+		for cell: Vector2i in _battle.options(unit.id).move_cells:
+			var trial := _battle.clone()
+			trial.apply(MoveAction.new(unit.id, cell, false))
+			if trial.unit_by_id(unit.id).move_spent > ShadowStepSkill.WALK_LIMIT:
+				return [unit, cell]
+	return []
+
+
+func _scene_skill_walked() -> bool:
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _walk_too_far().is_empty()):
+		return false
+	var found := _walk_too_far()
+	var unit: Unit = found[0]
+	_show()
+	_scene.click_cell(unit.cell)
+	await _scene.act(MoveAction.new(unit.id, found[1], false))
+	_scene.focus_camera(unit.cell)
+	_scene.hover(unit.cell)
+	return unit.move_spent > ShadowStepSkill.WALK_LIMIT and _scene.menu_ids().has(&"undo")
+
+
 func _scene_menu_attack() -> bool:
 	if not await _scene_menu_moved():
 		return false

@@ -153,7 +153,8 @@ static func skill_state_text(unit: Unit, in_battle: Battle = null) -> String:
 	if unit.skill_cooldown > 0:
 		state = Text.t("battle.hud.skill_state.cooldown", {"turns": unit.skill_cooldown})
 	elif in_battle != null and in_battle.phase == unit.side and not Skills.can_use(in_battle, unit):
-		state = Text.t("battle.hud.skill_state.unusable")
+		var walked := Skills.of(unit) is ShadowStepSkill and ShadowStepSkill.walked_too_far(unit)
+		state = Text.t("battle.hud.skill_state.walked" if walked else "battle.hud.skill_state.unusable")
 	return state if uses < 0 else Text.t("battle.hud.skill_state.uses_left", {"state": state, "uses": uses})
 
 

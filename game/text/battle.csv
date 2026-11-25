@@ -114,6 +114,7 @@ battle.menu.warp.note,同じ色のポータルへ移る。移動力は使わな�
 battle.menu.skill.cooldown,スキル（あと {turns} ターン）
 battle.menu.skill.used_up,スキル（使用済み）
 battle.menu.skill.unusable,スキル（使用不可）
+battle.menu.skill.walked,スキル（歩きすぎ）
 battle.menu.skill.uses_left,{skill}（あと {uses} 回）
 battle.ult_button.none,必殺技（なし）
 battle.ult_button.confirm,もう一度押して発動
@@ -199,6 +200,7 @@ battle.hud.detail,詳細
 battle.hud.skill_state.used_up,使用済み
 battle.hud.skill_state.ready,使用可
 battle.hud.skill_state.unusable,使用不可
+battle.hud.skill_state.walked,歩きすぎ
 battle.hud.skill_state.cooldown,あと {turns} ターン
 battle.hud.skill_state.uses_left,{state}。残り {uses} 回
 battle.pop.blocked,{status}が防いだ

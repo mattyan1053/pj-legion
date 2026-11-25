@@ -109,7 +109,7 @@ skill.precision_aim.summary,動かずに構える。次の自分の番、この�
 skill.saint_place,セイントプレイス
 skill.saint_place.summary,{range} マス以内を中心に聖域（3 x 3。{turns} ターン。自分の番の始めに中の味方が HP {heal} 回復）を置く
 skill.shadow_step,シャドウステップ
-skill.shadow_step.summary,縦・横・斜め {range} マス以内へ跳ぶ（壁も兵も越え、敵とは入れ替わる）。続けて攻撃できる。歩いたあとは {walk} マスまで
+skill.shadow_step.summary,縦・横・斜め {range} マス以内へ跳ぶ（壁も兵も越え、敵とは入れ替わる）。続けて攻撃できる。{over} マス以上歩いたら跳べない
 skill.smoke_grenade,スモークグレネード
 skill.smoke_grenade.summary,{range} マス以内を中心に煙幕（3 x 3。{turns} ターン。中の味方への、離れたところからの攻撃を無効にする）を置く
 skill.tactical_barricade,戦術バリケード
