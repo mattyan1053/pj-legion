@@ -163,6 +163,23 @@ func _scene_deck_built() -> bool:
 	return true
 
 
+## 騎士領の部隊で、特徴の「誓い」を選び、2 人を結んだところ（単騎の札にマウスを乗せて、文を読んでいる）。
+func _scene_deck_trait() -> bool:
+	var screen: Node = await _deck_scene()
+	if screen == null:
+		return false
+	screen.press_new()
+	screen.choose_new_army(UnitKind.Army.FANTASY)
+	for kind: UnitKind.Id in [UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.SPELLBLADE, UnitKind.Id.PRIEST]:
+		screen.hire(kind)
+	screen.select_entry(-1)
+	screen.choose_trait(Traits.Id.OATH)
+	screen.press_oath(0)
+	screen.press_oath(1)
+	screen.hover_trait_card(2)
+	return screen.shows_oaths() and not screen.editing_deck().oaths.is_empty()
+
+
 func _scene_deck_equip() -> bool:
 	var screen: Node = await _deck_editor()
 	if screen == null:

@@ -94,16 +94,11 @@ deck.sheet.items,持ち物 {count} / {max}
 deck.sheet.no_item,空き
 deck.sheet.evolution,進化先（レベル {level}）
 deck.sheet.evolved,進化済み
-deck.formation.title,組み方（「組み方: あり」の対戦のみ）
-deck.formation.squad_tag,分隊
-deck.formation.squad,{kind} {count} 体
-deck.formation.squads,分隊: {squads}
-deck.formation.no_squad,分隊なし（同じ兵種 {size} 体で分隊）
-deck.formation.pair,{a}・{b}
-deck.formation.oaths,誓い {count} / {max}: {pairs}
-deck.formation.no_oath,誓いなし（{max} 組まで）
-deck.formation.binding,誓い: {unit}と結ぶ兵を選択中
-deck.formation.effect,{effect}: {summary}
-deck.formation.oath_tag,誓い
-deck.formation.oath_tag_bound,誓い {number}
-deck.formation.partner,誓いの相手: {unit}
+deck.trait.title,特徴
+deck.trait.pair,{a}・{b}
+deck.trait.oaths,誓い {count} / {max}: {pairs}
+deck.trait.no_oath,誓いなし（{max} 組まで）
+deck.trait.binding,誓い: {unit}と結ぶ兵を選択中
+deck.trait.oath_tag,誓い
+deck.trait.oath_tag_bound,誓い {number}
+deck.trait.partner,誓いの相手: {unit}

@@ -78,7 +78,8 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 
 
-func _new_battle(rules: Array[StringName] = []) -> void:
+## traits を渡すと、両方の部隊の特徴をそれにする（Traits.Id。誓いなら CPU の決め方で誓いを結ぶ）。
+func _new_battle(rules: Array[StringName] = [], traits: Array[int] = []) -> void:
 	var choice: RefCounted = MatchChoice.new()
 	choice.field = _field
 	choice.cpu_opponent = false
@@ -87,11 +88,12 @@ func _new_battle(rules: Array[StringName] = []) -> void:
 		choice.set_rule(rule, true)
 	_scene.source = choice
 	var setup: MatchSetup = choice.to_setup(_seed)
-	# 休眠の決まり（OptionalRules.DORMANT。組み方）は、画面からは入にできない（choice が受け付けない）。
-	# 集計の道具の --rules= と同じく、道具の入口から直に入にする（作り直すときの見比べ用）。
-	for rule in rules:
-		if OptionalRules.DORMANT.has(rule) and not setup.rules.has(rule):
-			setup.rules.append(rule)
+	for side in traits.size():
+		var deck: Deck = setup.decks[side].copy()
+		deck.trait_id = traits[side]
+		if deck.trait_id == Traits.Id.OATH:
+			CpuDeck.bind_oaths(deck)
+		setup.decks[side] = deck
 	_battle = setup.create_battle()
 	_stats = BattleStats.new(_battle)
 	_log = BattleLog.new(_battle, ["プレイヤー1（青）", "CPU（赤）"] as Array[String])

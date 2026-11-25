@@ -1,5 +1,5 @@
 extends "res://game/deck_screen/deck_list.gd"
-## 部隊編成の、1 つの部隊を組む画面（雇う・並べ替える・外す、誓い、持ち物、予算と出せない理由、取っておく）。
+## 部隊編成の、1 つの部隊を組む画面（雇う・並べ替える・外す、部隊の特徴と誓い、持ち物、予算と出せない理由、取っておく）。
 
 
 func _open_editor(id: String, name: String, deck: Deck) -> void:
@@ -10,6 +10,7 @@ func _open_editor(id: String, name: String, deck: Deck) -> void:
 	_selected = -1
 	_binding = -1
 	_hover_kind = -1
+	_hover_trait = Traits.NONE
 	_list_view.visible = false
 	_army_view.visible = false  # 軍を選んだあとの組む画面の後ろに、軍の札を透かして残さない
 	_edit_view.visible = true
@@ -68,16 +69,49 @@ func remove_entry(index: int) -> void:
 	_refresh_editor()
 
 
-## 部隊の index 番目の駒の「誓い」を押した（組み方。騎士領の対戦用の部隊だけ。docs/formation.md）。
+## 部隊の特徴を id にする（その軍の特徴だけ。docs/troop-traits.md）。誓いから替えても、結んだ組は残す（誓いに戻すと、また効く）。
+func choose_trait(id: int) -> void:
+	if not shows_traits() or not Traits.of_army(_deck.army).has(id) or _deck.trait_id == id:
+		return
+	_deck.trait_id = id
+	_binding = -1
+	_dirty = true
+	_refresh_editor()
+
+
+## 部隊の特徴の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊は、話のファイルが特徴を決める）。
+func shows_traits() -> bool:
+	return _deck != null and _deck.rules.id == DeckRules.VERSUS and not Traits.of_army(_deck.army).is_empty()
+
+
+## 特徴の札の index 番目にマウスを乗せたことにする（-1 で離す。検査とスクリーンショットの道具用）。
+func hover_trait_card(index: int) -> void:
+	if index < 0:
+		_on_trait_card(0, &"exit")
+	else:
+		_on_trait_card(index, &"enter")
+
+
+## 部隊の特徴の欄の文（検査用。出ていなければ空）。
+func trait_text() -> String:
+	return _trait_label.text if _trait_box.visible else ""
+
+
+## 誓いを結ぶ操作が出ているか（特徴が誓いの部隊だけ）。
+func shows_oaths() -> bool:
+	return shows_traits() and _deck.trait_id == Traits.Id.OATH
+
+
+## 部隊の index 番目の駒の「誓い」を押した（特徴が誓いの、対戦用の部隊だけ。docs/troop-traits.md）。
 ## 結んでいれば、ほどく。結んでいなければ、結ぶ相手を選び始める。選んでいる間に、ほかの駒の「誓い」を押すと、2 体を結ぶ（同じ駒なら、やめる）。
 func press_oath(index: int) -> void:
-	if not shows_formation() or not Formation.binds_oaths(_deck.army) or index < 0 or index >= _deck.entries.size():
+	if not shows_oaths() or index < 0 or index >= _deck.entries.size():
 		return
 	var entry := _deck.entries[index]
 	if _binding == -1:
 		if _deck.unbind(entry):
 			_dirty = true
-		elif _deck.oaths.size() < Formation.MAX_OATHS:
+		elif _deck.oaths.size() < Traits.MAX_OATHS:
 			_binding = index
 	elif _binding == index:
 		_binding = -1
@@ -91,17 +125,6 @@ func press_oath(index: int) -> void:
 ## 誓いで結ぶ相手を選んでいるか（その駒の番号。選んでいなければ -1）。検査用。
 func binding_entry() -> int:
 	return _binding
-
-
-## 組み方の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊には出さない）。
-## 組み方が休眠の間（OptionalRules.DORMANT）は、どの部隊にも出さない（誓いを結ぶ操作も、分隊の印も）。
-func shows_formation() -> bool:
-	return _deck != null and _deck.rules.id == DeckRules.VERSUS and OptionalRules.is_choosable(OptionalRules.FORMATION)
-
-
-## 組み方の欄の文（検査用）。
-func formation_text() -> String:
-	return _formation_label.text if _formation_box.visible else ""
 
 
 ## 選んでいる駒に装備を 1 個持たせる。
@@ -214,7 +237,7 @@ func _build_editor() -> Control:
 	roster.add_child(_caption(Text.t("deck.edit.roster")))
 	for i in 4:
 		var button := _card_button("", 15)
-		button.custom_minimum_size = Vector2(ROSTER_WIDTH, 66.0)
+		button.custom_minimum_size = Vector2(ROSTER_WIDTH, ROSTER_CARD_HEIGHT)
 		_fill_roster_button(button)
 		button.pressed.connect(func() -> void: _on_roster(i, &"press"))
 		button.mouse_entered.connect(func() -> void: _on_roster(i, &"enter"))
@@ -225,6 +248,7 @@ func _build_editor() -> Control:
 	roster.add_child(ult_card)
 	_ult_box = VBoxContainer.new()
 	ult_card.add_child(_ult_box)
+	roster.add_child(_build_trait_box())
 
 	var troop := VBoxContainer.new()
 	troop.custom_minimum_size = Vector2(TROOP_WIDTH, 0.0)
@@ -241,17 +265,6 @@ func _build_editor() -> Control:
 	_troop_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_troop_rows.add_theme_constant_override("separation", 4)
 	troop_scroll.add_child(_troop_rows)
-	# 組み方の欄（対戦用の部隊だけ）: 分隊・誓いの組と、軍の組み方の効果。中身で大きさを変えない。
-	_formation_box = _card()
-	_formation_box.custom_minimum_size = Vector2(TROOP_WIDTH, FORMATION_HEIGHT)
-	_formation_box.clip_contents = true
-	Steady.mark(_formation_box, "decks.formation", Steady.RECT)
-	troop.add_child(_formation_box)
-	_formation_label = _text(13, COLOR_TEXT)
-	_formation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_formation_label.max_lines_visible = FORMATION_LINES
-	_formation_label.custom_minimum_size = Vector2(TROOP_WIDTH - 24.0, 0.0)
-	_formation_box.add_child(_formation_label)
 	# 初期位置は部隊では決めない（マップを選んだあと、出撃準備・対戦設定で決める）。部隊は駒と持ち物の組だけ。
 
 	# 右: 選んだ駒の札（上）と、その駒の持ち物の欄（下）。別々の枠に分ける。
@@ -444,10 +457,13 @@ func _refresh_editor() -> void:
 		var empty := _text(16, COLOR_DIM)
 		empty.text = Text.t("deck.edit.no_units")
 		_troop_rows.add_child(empty)
+	if shows_oaths() and count > 0:
+		# 誓いの組（か、結ぶ相手を選んでいること）を、部隊の並びの下に 1 行。
+		var oaths := _text(13, Palette.NATION_FANTASY.lightened(0.3))
+		oaths.text = TraitText.oath_text(_deck, _binding)
+		_troop_rows.add_child(oaths)
 
-	_formation_box.visible = shows_formation()
-	if shows_formation():
-		_formation_label.text = FormationText.deck_text(_deck, _binding)
+	_refresh_traits()
 	_refresh_detail()
 	_save_button.disabled = not can_save()
 
@@ -543,8 +559,8 @@ func _troop_row(index: int) -> Control:
 	main.set_pressed_no_signal(chosen)
 	main.pressed.connect(func() -> void: select_entry(-1 if _selected == index else index))
 	row.add_child(main)
-	if shows_formation():
-		row.add_child(_formation_tag(index))
+	if shows_oaths():
+		row.add_child(_oath_tag(index))
 	var remove := _button(Text.t("deck.edit.remove"), 14)
 	remove.custom_minimum_size = Vector2(52.0, 50.0)
 	remove.theme_type_variation = UiTheme.BUTTON_ROW  # 札より軽く見せる（枠の無い行のボタン。乗ると薄く塗る）
@@ -554,27 +570,107 @@ func _troop_row(index: int) -> Control:
 	return row
 
 
-## 部隊の行の、組み方の札。騎士領は「誓い」のボタン（結んでいれば何組目か。結ぶ相手を選んでいる駒は明るく）、
-## 連邦は、分隊の駒なら「分隊」の印。どちらでもなければ空（幅は同じ）。
-func _formation_tag(index: int) -> Control:
+## 部隊の行の「誓い」のボタン（特徴が誓いの部隊だけ。結んでいれば何組目か。結ぶ相手を選んでいる駒は明るく）。
+func _oath_tag(index: int) -> Control:
 	var entry := _deck.entries[index]
-	if Formation.binds_oaths(_deck.army):
-		var button := _button(FormationText.oath_tag(_deck, entry), 13)
-		button.custom_minimum_size = Vector2(FORMATION_TAG_WIDTH, 50.0)
-		button.theme_type_variation = UiTheme.BUTTON_ROW
-		var bound := _deck.partner_of(entry) != null
-		button.add_theme_color_override("font_color", Palette.NATION_FANTASY.lightened(0.3) if bound or _binding == index else COLOR_DIM)
+	var button := _button(TraitText.oath_tag(_deck, entry), 13)
+	button.custom_minimum_size = Vector2(OATH_TAG_WIDTH, 50.0)
+	button.theme_type_variation = UiTheme.BUTTON_ROW
+	var bound := _deck.partner_of(entry) != null
+	button.add_theme_color_override("font_color", Palette.NATION_FANTASY.lightened(0.3) if bound or _binding == index else COLOR_DIM)
+	button.toggle_mode = true
+	button.set_pressed_no_signal(_binding == index)
+	button.tooltip_text = TraitText.oath_tooltip(_deck, entry)
+	button.pressed.connect(func() -> void: press_oath(index))
+	return button
+
+
+## 部隊の特徴の欄（必殺技の欄の下。決まった大きさ）: 見出し「特徴」と札 3 枚（印と名前）、下に選んだ特徴の文（札に乗せている間は、その札の文）。
+func _build_trait_box() -> Control:
+	_trait_box = _card()
+	_trait_box.custom_minimum_size = Vector2(ROSTER_WIDTH, TRAIT_BOX_HEIGHT)
+	_trait_box.clip_contents = true
+	Steady.mark(_trait_box, "decks.trait", Steady.RECT)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 4)
+	_trait_box.add_child(column)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	column.add_child(row)
+	var head := _text(14, COLOR_ACCENT)
+	head.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	head.text = Text.t("deck.trait.title")
+	head.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(head)
+	_trait_buttons.clear()
+	for i in 3:
+		var button := _card_button("", 13)
 		button.toggle_mode = true
-		button.set_pressed_no_signal(_binding == index)
-		button.tooltip_text = FormationText.oath_tooltip(_deck, entry)
-		button.pressed.connect(func() -> void: press_oath(index))
-		return button
-	var tag := _text(13, Palette.NATION_MILITARY.lightened(0.2))
-	tag.custom_minimum_size = Vector2(FORMATION_TAG_WIDTH, 50.0)
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	tag.text = Text.t("deck.formation.squad_tag") if Formation.squad_kinds(_deck).has(entry.kind) else ""
-	return tag
+		button.custom_minimum_size = Vector2(0.0, TRAIT_CARD_HEIGHT)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var inside := HBoxContainer.new()
+		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inside.offset_left = 4.0
+		inside.add_theme_constant_override("separation", 4)
+		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(inside)
+		var mark := TraitIcon.new(Traits.NONE, TRAIT_MARK_SIDE)
+		inside.add_child(mark)
+		var name := _text(13, COLOR_TEXT)
+		name.add_theme_font_override("font", UiTheme.FONT_BOLD)
+		name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		name.size_flags_vertical = Control.SIZE_FILL
+		inside.add_child(name)
+		button.set_meta(&"mark", mark)
+		button.set_meta(&"name", name)
+		button.pressed.connect(func() -> void: _on_trait_card(i, &"press"))
+		button.mouse_entered.connect(func() -> void: _on_trait_card(i, &"enter"))
+		button.mouse_exited.connect(func() -> void: _on_trait_card(i, &"exit"))
+		row.add_child(button)
+		_trait_buttons.append(button)
+	_trait_label = _text(12, COLOR_DIM)
+	_trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_trait_label.max_lines_visible = TRAIT_LINES
+	_trait_label.custom_minimum_size = Vector2(ROSTER_WIDTH - 24.0, 0.0)
+	column.add_child(_trait_label)
+	return _trait_box
+
+
+## 特徴の札の i 番目が押された・マウスが乗った・離れた。
+func _on_trait_card(index: int, what: StringName) -> void:
+	var choices := Traits.of_army(_deck.army) if _deck != null else ([] as Array[Traits.Id])
+	if index >= choices.size():
+		return
+	match what:
+		&"press":
+			choose_trait(choices[index])
+			_refresh_traits()  # 同じ札をもう一度押しても、押した形のまま
+		&"enter":
+			_hover_trait = choices[index]
+			_refresh_traits()
+		&"exit":
+			_hover_trait = Traits.NONE
+			_refresh_traits()
+
+
+## 部隊の特徴の欄を、いまの部隊から直す（札の印と名前、選んだ札、文）。
+func _refresh_traits() -> void:
+	_trait_box.visible = shows_traits()
+	if not shows_traits():
+		return
+	var choices := Traits.of_army(_deck.army)
+	for i in _trait_buttons.size():
+		var button := _trait_buttons[i]
+		var id: int = choices[i] if i < choices.size() else Traits.NONE
+		var chosen := id == _deck.trait_id
+		(button.get_meta(&"mark") as Control).set(&"trait_id", id)
+		(button.get_meta(&"mark") as Control).set(&"dim", not chosen)
+		(button.get_meta(&"name") as Label).text = Names.troop_trait(id)
+		(button.get_meta(&"name") as Label).add_theme_color_override("font_color", COLOR_TEXT if chosen else COLOR_DIM)
+		button.set_pressed_no_signal(chosen)
+		button.tooltip_text = Names.troop_trait_text(id)
+	var shown := _hover_trait if choices.has(_hover_trait) else _deck.trait_id
+	_trait_label.text = Names.troop_trait_text(shown)
 
 
 ## 雇える駒の i 番目のボタンが押された・マウスが乗った・離れた。

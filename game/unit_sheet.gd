@@ -57,8 +57,6 @@ var evolutions: Array[Evolution.Id] = []
 var evolved := Evolution.Id.NONE
 ## 付いている状態（[種類, 残りのターン数]。対戦中だけ）。
 var statuses: Array = []
-## 組み方（分隊・誓い）の行（対戦中で、組み方が入のときだけ。呼ぶ側が入れる。game/formation_text.gd）。
-var formation: Array[String] = []
 ## 回復役の攻撃の強さ（回復役でなければ 0）。情報の札の名前の右に「攻撃 4」と出す（info_card.gd）。
 var strike := 0
 

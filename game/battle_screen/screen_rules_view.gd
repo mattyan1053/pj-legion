@@ -1,29 +1,67 @@
 extends "res://game/battle_screen/screen_base.gd"
-## 対戦の場面の、選べる決まりの見え方: 縫い目の様子の札、組み方の線、拠点の旗。
+## 対戦の場面の、選べる決まりと部隊の特徴の見え方: 縫い目の様子の札、特徴の輪と線、拠点の旗。
 
 
-## 組み方の印（docs/formation.md）: 分隊と誓いの駒の足元の輪と、誓いの 2 体・肩並べの仲間どうしの線。組み方が切なら、何も出さない。
-func _refresh_formation() -> void:
+## 部隊の特徴の印（docs/troop-traits.md の「画面」）: 効く相手の足元の輪と、組む兵どうしの線。色は特徴の軍の色。相手の特徴も同じに出す。
+## - 輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵、
+##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない攻撃する兵（増えるのは攻撃する側なので、番の間だけ）
+## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種、補給線で隣り合う回復役
+func _refresh_traits() -> void:
 	var links: Array = []
+	var marked: Dictionary[int, Color] = {}
 	for shown in battle.units:
 		if not _views.has(shown.id):
 			continue
-		var squad := Formation.squad_of(battle, shown)
-		var partner := Formation.partner_of(battle, shown)
-		var color := Palette.NATION_MILITARY if not squad.is_empty() else Palette.NATION_FANTASY
-		_view(shown.id).set_formation_mark(not squad.is_empty() or partner != null, color)
+		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+			var id := Traits.of_side(battle, side)
+			if id == Traits.NONE:
+				continue
+			var color := _trait_color(id)
+			if Traits.focus_marked(battle, shown, side) or Traits.vengeance_marked(battle, shown, side):
+				marked[shown.id] = color
+			if shown.side == side and battle.phase == side and Traits.alone_at(battle, shown, shown.cell) and battle.can_act(shown) and shown.kind != UnitKind.Id.KING and UnitKind.role(shown.kind) != UnitKind.Role.HEALER:
+				marked[shown.id] = color
+			if shown.side != side and id == Traits.Id.OATH:
+				for mate in battle.units:
+					if mate.side == side and Traits.oath_marked(battle, mate, shown):
+						marked[shown.id] = color
+		if shown.side == Unit.Side.NEUTRAL:
+			continue
+		var own := Traits.of_side(battle, shown.side)
+		var tint := _trait_color(own)
+		var partner := Traits.partner_of(battle, shown)
 		if partner != null and shown.id < partner.id and _views.has(partner.id):
-			var near := Formation.oath_near(battle, shown)
-			links.append([_view(shown.id), _view(partner.id), Color(Palette.NATION_FANTASY, 1.0 if near else FormationLinks.FAR_ALPHA)])
-		for mate in squad:
-			if mate.id > shown.id and _views.has(mate.id) and maxi(absi(mate.cell.x - shown.cell.x), absi(mate.cell.y - shown.cell.y)) == 1:
-				links.append([_view(shown.id), _view(mate.id), Palette.NATION_MILITARY])
-	_formation_links.set_links(links)
+			links.append([_view(shown.id), _view(partner.id), tint])
+		for mate in Traits.neighbors_at(battle, shown, shown.cell):
+			if mate.id <= shown.id or not _views.has(mate.id):
+				continue
+			var ranks := own == Traits.Id.RANKS and mate.kind == shown.kind
+			var supply := own == Traits.Id.SUPPLY and (UnitKind.role(mate.kind) == UnitKind.Role.HEALER) != (UnitKind.role(shown.kind) == UnitKind.Role.HEALER)
+			if ranks or supply:
+				links.append([_view(shown.id), _view(mate.id), Color(tint, TraitLinks.FAR_ALPHA if supply else 1.0)])
+	for shown in battle.units:
+		if _views.has(shown.id):
+			_view(shown.id).set_trait_mark(marked.has(shown.id), marked.get(shown.id, Color.WHITE))
+	_trait_links.set_links(links)
 
 
-## 組み方の線の数（検査用）。
-func formation_link_count() -> int:
-	return _formation_links.link_count() if _formation_links != null else 0
+## 特徴の印の色（その特徴の軍の色）。
+static func _trait_color(id: int) -> Color:
+	return Palette.NATION_MILITARY if Traits.army_of(id) == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
+
+
+## 特徴の線の数（検査用）。
+func trait_link_count() -> int:
+	return _trait_links.link_count() if _trait_links != null else 0
+
+
+## 特徴の輪が出ている駒の数（検査用）。
+func trait_mark_count() -> int:
+	var count := 0
+	for shown in battle.units:
+		if _views.has(shown.id) and _view(shown.id).has_trait_mark():
+			count += 1
+	return count
 
 
 ## 拠点の旗の色（検査用。拠点が無ければ透明）。

@@ -1,5 +1,5 @@
 extends "res://game/battle_playback/playback_board.gd"
-## スキルと必殺技、組み方、状態のイベントの再生。
+## スキルと必殺技、部隊の特徴、状態のイベントの再生。
 
 
 ## スキルを使った。対象のほうを向いて手を振り、スキルの名前をスキルの色で出す。足元にスキルの色の輪が広がり、
@@ -56,22 +56,27 @@ func _play_ult_ready(_event: UltReadyEvent) -> void:
 	_sound(&"ult_ready")
 
 
-## 組み方の効果が攻撃に効いた（docs/formation.md）。効果を受けた駒の上に、効果の名前と増減を出す（ダメージの数の手前）。
-func _play_formation_triggered(event: FormationTriggeredEvent) -> void:
-	var down := event.effect == Formation.Effect.SQUAD_GUARD
-	var text := Text.t("battle.pop.formation_down" if down else "battle.pop.formation_up",
-		{"effect": Names.formation_effect(event.effect), "amount": event.amount})
-	var color := Palette.NATION_MILITARY if Formation.forms_squads(_kind_of(event.unit_id)) else Palette.NATION_FANTASY
-	_pop_number(_view(event.unit_id).position + Vector3(0.0, 0.35, 0.0), text, color.lightened(0.3))
+## 部隊の特徴が攻撃に効いた（docs/troop-traits.md）。特徴を持つ側の駒の上に、特徴の名前と増減の札を出す（ダメージの数の手前）。
+func _play_trait_triggered(event: TraitTriggeredEvent) -> void:
+	var down := event.trait_id == Traits.Id.RANKS
+	var text := Text.t("battle.pop.trait_down" if down else "battle.pop.trait_up",
+		{"effect": Names.troop_trait(event.trait_id), "amount": event.amount})
+	_pop_number(_view(event.unit_id).position + Vector3(0.0, 0.35, 0.0), text, _trait_color(event.trait_id).lightened(0.3))
 	await after(0.3)
 
 
-## 誓いの片方が倒れ、誓いが切れた。残った駒の上に「誓いの果て」を出す（続く奮起は、状態が付いたことの再生が出す）。
-func _play_oath_broken(event: OathBrokenEvent) -> void:
-	if not _views.has(event.survivor_id):
+## 補給線で回復した（docs/troop-traits.md）。回復した駒の上に、特徴の名前と回復の量を出す。
+func _play_supply_healed(event: SupplyHealedEvent) -> void:
+	if not _views.has(event.unit_id):
 		return
-	_pop_number(_view(event.survivor_id).position + Vector3(0.0, 0.6, 0.0), Names.formation_effect(Formation.Effect.OATH_RESOLVE), Palette.NATION_FANTASY.lightened(0.3))
-	await after(0.3)
+	var text := Text.t("battle.pop.trait_up", {"effect": Names.troop_trait(Traits.Id.SUPPLY), "amount": event.amount})
+	_pop_number(_view(event.unit_id).position + Vector3(0.0, 0.6, 0.0), text, _trait_color(Traits.Id.SUPPLY).lightened(0.3))
+	await _play_heal(event, true)
+
+
+## 特徴の札の色（その特徴の軍の色）。
+static func _trait_color(id: int) -> Color:
+	return Palette.NATION_MILITARY if Traits.army_of(id) == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
 
 
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。

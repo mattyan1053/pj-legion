@@ -41,7 +41,7 @@ var _bar: Sprite3D
 var _evolved_ring: MeshInstance3D
 var _crowned := false
 var _status_ring: MeshInstance3D
-var _formation_ring: MeshInstance3D
+var _trait_ring: MeshInstance3D
 
 
 ## look は将の別の姿（unit_looks.gd の KING_LOOKS の名前。将でない駒には効かない）か、名前のある人物の形（PERSONS の名前。
@@ -159,18 +159,18 @@ func set_status_mark(marked: bool) -> void:
 		_status_ring.visible = marked
 
 
-## 組み方（分隊・誓い）の駒を、足元の外側の輪で見せる（色は軍の色。何の組み方かは、駒の情報に出る）。marked が偽なら消す。
-func set_formation_mark(marked: bool, color := Color.WHITE) -> void:
-	if marked and _formation_ring == null:
-		_formation_ring = _add_ring(0.6, 0.65, color)
-	if _formation_ring != null:
-		_formation_ring.visible = marked
-		(_formation_ring.material_override as StandardMaterial3D).albedo_color = color
+## 部隊の特徴が効く駒を、足元の外側の輪で見せる（色は特徴の軍の色。docs/troop-traits.md の「画面」）。marked が偽なら消す。
+func set_trait_mark(marked: bool, color := Color.WHITE) -> void:
+	if marked and _trait_ring == null:
+		_trait_ring = _add_ring(0.58, 0.72, color)
+	if _trait_ring != null:
+		_trait_ring.visible = marked
+		(_trait_ring.material_override as StandardMaterial3D).albedo_color = color
 
 
-## 組み方の輪が出ているか（検査用）。
-func has_formation_mark() -> bool:
-	return _formation_ring != null and _formation_ring.visible
+## 特徴の輪が出ているか（検査用）。
+func has_trait_mark() -> bool:
+	return _trait_ring != null and _trait_ring.visible
 
 
 ## 足元の輪（平たい輪。光に左右されない色）。

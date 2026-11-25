@@ -112,10 +112,10 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 
 	_board_view = BoardView.new()
 	add_child(_board_view)
-	if _formation_links != null:
-		_formation_links.queue_free()
-	_formation_links = FormationLinks.new()
-	add_child(_formation_links)
+	if _trait_links != null:
+		_trait_links.queue_free()
+	_trait_links = TraitLinks.new()
+	add_child(_trait_links)
 	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
 	_sync_stronghold_flag()  # 途中から見せる対戦でも、旗は確保を進めた陣営の色
 	_hud.minimap().show_board(battle.board, look)

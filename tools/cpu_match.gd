@@ -63,8 +63,10 @@ class Outcome:
 	var first_ult_turn: Array[int] = [0, 0]
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
-	## 組み方の効果が効いた回数（Formation.Effect -> 回数。誓いの果ては、誓いが切れた回数）。
-	var formation: Dictionary[int, int] = {}
+	## 部隊の特徴が効いた回数（Traits.Id -> 回数。補給線は回復した回数）。両方の部隊が同じ特徴なら、2 つの合計。
+	var traits: Dictionary[int, int] = {}
+	## 陣営ごとの、その部隊の特徴が効いた回数（添字がプレイヤー番号）。
+	var trait_hits: Array[int] = [0, 0]
 	## 倒されたプレイヤーの駒（将を除く）の倒され方。1 体につき 1 つ（Fall）。
 	var falls: Array[Fall] = []
 	## 駒の番号 -> ダメージを受けた回数（防がれたものは数えない）。
@@ -328,16 +330,38 @@ static func _copy_stats(outcome: Outcome, stats: BattleStats) -> void:
 				sum[i] += row[i]
 
 
+## 特徴 id が効いた陣営に 1 を足す。その特徴の陣営が 1 つならその陣営、両方なら、特徴を持つ側の駒（倒れていれば相手の駒の反対）の陣営。
+static func _count_trait_side(outcome: Outcome, battle: Battle, id: int, unit_id: int, other_id: int) -> void:
+	var sides: Array[int] = []
+	for side in 2:
+		if battle.traits[side] == id:
+			sides.append(side)
+	if sides.size() == 2:
+		var unit := battle.unit_by_id(unit_id)
+		var other := battle.unit_by_id(other_id)
+		if unit != null and unit.side != Unit.Side.NEUTRAL:
+			sides = [int(unit.side)]
+		elif other != null and other.side != Unit.Side.NEUTRAL:
+			sides = [1 - int(other.side)]
+		else:
+			sides = [sides[0]]
+	if sides.size() == 1:
+		outcome.trait_hits[sides[0]] += 1
+
+
 ## 戦績に無いもの（イベントの数、スキルごとの回数、経験値の入り方）を数える。
 ## battle は、その行動を適用したあとの対戦。mover は、その行動をしたフェーズ。
 static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: Unit.Side) -> void:
 	var kind: Script = event.get_script()
 	outcome.events[kind] = outcome.events.get(kind, 0) + 1
-	if event is FormationTriggeredEvent:
-		var effect: int = (event as FormationTriggeredEvent).effect
-		outcome.formation[effect] = outcome.formation.get(effect, 0) + 1
-	elif event is OathBrokenEvent:
-		outcome.formation[Formation.Effect.OATH_RESOLVE] = outcome.formation.get(Formation.Effect.OATH_RESOLVE, 0) + 1
+	if event is TraitTriggeredEvent:
+		var triggered := event as TraitTriggeredEvent
+		outcome.traits[triggered.trait_id] = outcome.traits.get(triggered.trait_id, 0) + 1
+		_count_trait_side(outcome, battle, triggered.trait_id, triggered.unit_id, triggered.other_id)
+	elif event is SupplyHealedEvent:
+		var healed := event as SupplyHealedEvent
+		outcome.traits[Traits.Id.SUPPLY] = outcome.traits.get(Traits.Id.SUPPLY, 0) + 1
+		_count_trait_side(outcome, battle, Traits.Id.SUPPLY, healed.unit_id, healed.medic_id)
 	if event is UnitDamagedEvent:
 		var hit := event as UnitDamagedEvent
 		if hit.amount > 0:
