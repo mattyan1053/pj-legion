@@ -1,8 +1,8 @@
-# 回復役の回復
+# 回復役
 
-コード: `rules/healing.gd`（対象・回復量）、`rules/actions/heal_action.gd`（回復の行動）、
+コード: `rules/healing.gd`（対象・回復量）、`rules/unit_kind.gd`（`healer_strike`。攻撃の強さ）、`rules/combat.gd`（`attack_power`）、`rules/actions/heal_action.gd`（回復の行動）、
 `rules/events/healer_healed_event.gd`（親は `rules/events/unit_healed_event.gd`）。
-テスト: `tests/rules/test_healing.gd`。
+テスト: `tests/rules/test_healing.gd`、`tests/rules/test_combat.gd`、`tests/rules/test_cpu_player.gd`、`tests/rules/test_threat.gd`、`tests/game/test_unit_sheet.gd`、`tests/game/test_ui_parts.gd`。
 
 回復役（衛生兵・プリースト）は味方を回復する。治す相手がいないときのために、弱い攻撃も持つ（下の「回復役の攻撃」）。
 
@@ -46,12 +46,12 @@
   攻撃の強さには、一時的な補正（必殺技の総員突撃など。`Unit` の層 3）だけが乗る（`Combat.attack_power`）。
 - ほかの攻撃と同じに、森の軽減、煙幕、バリア、経験値（当たり・撃破）が効く。
 
-| 種類 | 攻撃の強さ（いま） | 定数 |
+| 種類 | いま | 定数 |
 | --- | --- | --- |
 | 衛生兵 | 4 | `UnitKind.MEDIC_STRIKE` |
 | プリースト | 4 | `UnitKind.PRIEST_STRIKE` |
 
-- 前衛（シールドトルーパー 6、パラディン 8）の半分ほど。2 体目からの回復役が、治す相手のいない番に何もできない（手番の 7 割ほど）のを埋める。
+- 前衛（シールドトルーパー 6、パラディン 8）の半分ほど。2 体目からの回復役が、治す相手のいない番に何もできないのを埋める（実測は `docs/cpu-ai.md` の「回復役の攻撃」）。
   強くすると、回復役を並べた部隊が攻める部隊と同じになるので、弱いままにする。数を選んだ実測は `docs/cpu-ai.md` の「いまの集計」。
 - CPU は、その番に治せる味方がいないときだけ撃つ（`docs/cpu-ai.md` の「役割ごとの目標」）。
 
