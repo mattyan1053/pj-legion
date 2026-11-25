@@ -2,13 +2,14 @@ extends "res://game/battle_screen/screen_base.gd"
 ## 対戦の場面の、選べる決まりと部隊の特徴の見え方: 縫い目の様子の札、特徴の輪と線、拠点の旗。
 
 
-## 部隊の特徴の印（docs/troop-traits.md の「画面」）: 効く相手の足元の輪と、組む兵どうしの線。色は特徴の軍の色。相手の特徴も同じに出す。
-## - 輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵、
-##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない攻撃する兵（増えるのは攻撃する側なので、番の間だけ）
-## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種、補給線で隣り合う回復役
+## 部隊の特徴の印（docs/troop-traits.md の「対戦の画面」）: 効く相手の頭の上の札（増える数）と足元の輪、組む兵どうしの線。
+## 色は特徴の軍の色。相手の特徴も同じに出す。
+## - 札と輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵（どれも照準の印）、
+##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない攻撃する兵（増えるのは攻撃する側なので、番の間だけ。上向きの印）
+## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種（結び目は菱形）、補給線で隣り合う回復役（結び目は十字）
 func _refresh_traits() -> void:
 	var links: Array = []
-	var marked: Dictionary[int, Color] = {}
+	var marked: Dictionary[int, Array] = {}  # 駒の id → [色, 札の文, 札の役]
 	for shown in battle.units:
 		if not _views.has(shown.id):
 			continue
@@ -16,32 +17,33 @@ func _refresh_traits() -> void:
 			var id := Traits.of_side(battle, side)
 			if id == Traits.NONE:
 				continue
-			var color := _trait_color(id)
+			var mark := [_trait_color(id), Text.t("battle.board.trait_mark", {"amount": Names.troop_trait_amount(id)}), TraitMark.Kind.TARGET]
 			if Traits.focus_marked(battle, shown, side) or Traits.vengeance_marked(battle, shown, side):
-				marked[shown.id] = color
+				marked[shown.id] = mark
 			if shown.side == side and battle.phase == side and Traits.alone_at(battle, shown, shown.cell) and battle.can_act(shown) and shown.kind != UnitKind.Id.KING and UnitKind.role(shown.kind) != UnitKind.Role.HEALER:
-				marked[shown.id] = color
+				marked[shown.id] = [mark[0], mark[1], TraitMark.Kind.ATTACKER]
 			if shown.side != side and id == Traits.Id.OATH:
 				for mate in battle.units:
 					if mate.side == side and Traits.oath_marked(battle, mate, shown):
-						marked[shown.id] = color
+						marked[shown.id] = mark
 		if shown.side == Unit.Side.NEUTRAL:
 			continue
 		var own := Traits.of_side(battle, shown.side)
 		var tint := _trait_color(own)
 		var partner := Traits.partner_of(battle, shown)
 		if partner != null and shown.id < partner.id and _views.has(partner.id):
-			links.append([_view(shown.id), _view(partner.id), tint])
+			links.append([_view(shown.id), _view(partner.id), tint, TraitLinks.Knot.DIAMOND])
 		for mate in Traits.neighbors_at(battle, shown, shown.cell):
 			if mate.id <= shown.id or not _views.has(mate.id):
 				continue
 			var ranks := own == Traits.Id.RANKS and mate.kind == shown.kind
 			var supply := own == Traits.Id.SUPPLY and (UnitKind.role(mate.kind) == UnitKind.Role.HEALER) != (UnitKind.role(shown.kind) == UnitKind.Role.HEALER)
 			if ranks or supply:
-				links.append([_view(shown.id), _view(mate.id), Color(tint, TraitLinks.FAR_ALPHA if supply else 1.0)])
+				links.append([_view(shown.id), _view(mate.id), tint, TraitLinks.Knot.CROSS if supply else TraitLinks.Knot.DIAMOND])
 	for shown in battle.units:
 		if _views.has(shown.id):
-			_view(shown.id).set_trait_mark(marked.has(shown.id), marked.get(shown.id, Color.WHITE))
+			var mark: Array = marked.get(shown.id, [Color.WHITE, "", TraitMark.Kind.TARGET])
+			_view(shown.id).set_trait_mark(marked.has(shown.id), mark[0], mark[1], mark[2])
 	_trait_links.set_links(links)
 
 
@@ -62,6 +64,20 @@ func trait_mark_count() -> int:
 		if _views.has(shown.id) and _view(shown.id).has_trait_mark():
 			count += 1
 	return count
+
+
+## 上の帯に出ている、陣営の部隊の特徴の名前（出ていなければ空。検査用）。
+func trait_name(player: int) -> String:
+	return _hud.trait_name(player)
+
+
+## 特徴の札（頭の上）の文の並び（札の出ている駒の順。検査用）。
+func trait_mark_texts() -> Array[String]:
+	var texts: Array[String] = []
+	for shown in battle.units:
+		if _views.has(shown.id) and _view(shown.id).trait_mark_text() != "":
+			texts.append(_view(shown.id).trait_mark_text())
+	return texts
 
 
 ## 拠点の旗の色（検査用。拠点が無ければ透明）。

@@ -47,13 +47,13 @@ func set_status(
 ## 上の帯の陣営の欄のうち、幅が足りずに「…」で省かれる文。検査用。
 ## 並べ直しを待たずに測れるよう、帯の幅から、ほかの部品の幅と間を引いた残りを、2 つの欄で分けた幅と比べる。
 func top_bar_cut_texts() -> Array[String]:
-	var row := _side_labels[0].get_parent() as HBoxContainer
+	var row := _side_labels[0].get_parent().get_parent() as HBoxContainer
 	var panel := row.get_parent() as Control
 	var room := panel.get_viewport_rect().size.x - panel.get_theme_stylebox(&"panel").get_minimum_size().x
 	var shown := row.get_children().filter(func(child: Node) -> bool: return (child as Control).visible)
 	room -= row.get_theme_constant(&"separation") * (shown.size() - 1)
 	for child: Control in shown:
-		if not (child is Label and _side_labels.has(child as Label)):
+		if not _side_labels.any(func(label: Label) -> bool: return label.get_parent() == child):
 			room -= child.get_combined_minimum_size().x
 	var cut: Array[String] = []
 	for label in _side_labels:
@@ -92,18 +92,25 @@ func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
 		_ult_bars[player].tooltip_text = names[player]
 
 
-## 陣営ごとの部隊の特徴（上の帯の印。添字がプレイヤー番号。Traits.NONE なら出さない）。notes は印に乗せると出る文。
+## 陣営ごとの部隊の特徴（上の帯の陣営の欄の下の段: 印と名前。添字がプレイヤー番号。Traits.NONE なら出さない）。notes は乗せると出る文。
 func set_traits(ids: Array[int], notes: Array[String]) -> void:
 	for player in _trait_icons.size():
 		var mark := _trait_icons[player]
 		mark.set(&"trait_id", ids[player])
 		mark.visible = ids[player] != Traits.NONE
 		mark.tooltip_text = notes[player]
+		# 特徴の段があるときは、上の段の字を 1 回り小さくして 2 段を帯の高さに収める（帯の高さは変えない）。
+		_side_labels[player].add_theme_font_size_override("font_size", SIDE_FONT_STACKED if mark.visible else SIDE_FONT)
 
 
 ## 上の帯に出ている、陣営の部隊の特徴の印の文（乗せると出る文。出ていなければ空）。検査用。
 func trait_note(player: int) -> String:
 	return _trait_icons[player].tooltip_text if _trait_icons[player].visible else ""
+
+
+## 上の帯に出ている、陣営の部隊の特徴の名前（出ていなければ空）。検査用。
+func trait_name(player: int) -> String:
+	return (_trait_icons[player] as TraitTag).shown_name() if _trait_icons[player].visible else ""
 
 
 ## いちばん上の帯に出ている、必殺技のゲージの文字（"62%" か "READY"。出ていなければ空）。検査用。
@@ -228,6 +235,9 @@ func stronghold_urgent() -> bool:
 func _build_top_bar() -> void:
 	var panel := _panel()
 	_top_style = UiTheme.band_box(true)
+	# 上下の余白を詰めて、陣営の欄を 2 段（兵の数と占拠 / 部隊の特徴）にできる高さを取る。帯の高さは変えない（row の高さで決める）。
+	_top_style.content_margin_top = TOP_BAND_PAD
+	_top_style.content_margin_bottom = TOP_BAND_PAD
 	panel.add_theme_stylebox_override("panel", _top_style)
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	Steady.mark(panel, "battle.top_band", Steady.RECT)
@@ -235,10 +245,13 @@ func _build_top_bar() -> void:
 	var row := HBoxContainer.new()
 	# 間とゲージの幅は、相手が CPU（「相手: CPU」）で、ターンが 2 桁でも、陣営の欄（駒の数と占拠の印）が省かれずに収まる大きさ。
 	row.add_theme_constant_override("separation", 10)
+	row.custom_minimum_size = Vector2(0.0, TOP_BAND_ROW)
 	panel.add_child(row)
 	_turn_label = _label(20)
+	_turn_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_turn_label)
 	_phase_label = _label(20)
+	_phase_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_phase_label)
 	# 番の文字の後ろに、番の陣営の色の札を敷く（札は文字の枠の外へはみ出させて描く。並びの幅は変えない）。
 	_phase_chip_style = UiTheme.box(Palette.RAISED, Palette.BORDER, 1, 4, 0.0)
@@ -247,19 +260,27 @@ func _build_top_bar() -> void:
 	_phase_label.add_theme_stylebox_override("normal", _phase_chip_style)
 	for player in 2:
 		# 陣営の欄は、残った幅を分け合う。足りなければ「…」で省く（帯が画面の幅を超えて、右端のボタンが切れないように）。
-		var label := _label(16)
+		# 欄は 2 段: 上に兵の数と占拠、下に部隊の特徴（印と名前。特徴の無い対戦では下の段を出さず、上の段が真ん中に来る）。
+		var column := VBoxContainer.new()
+		column.add_theme_constant_override("separation", -4)
+		column.alignment = BoxContainer.ALIGNMENT_CENTER
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(column)
+		var label := _label(SIDE_FONT)
 		label.add_theme_color_override("font_color", _team_colors[player].lightened(0.4))
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
-		row.add_child(label)
+		column.add_child(label)
 		_side_labels.append(label)
-		# 部隊の特徴の印（特徴が無ければ出さない）。名前と文は、印にマウスを乗せると出る。
-		var mark := TraitIcon.new(Traits.NONE, TRAIT_MARK_SIDE)
+		# 部隊の特徴の札（幅は、いちばん長い名前で決める）。効果の数と効く相手は、乗せると出る。
+		var mark := TraitTag.new(TRAIT_MARK_SIDE, TRAIT_NAME_FONT, 4)
+		mark.size_flags_horizontal = Control.SIZE_SHRINK_END
 		mark.mouse_filter = Control.MOUSE_FILTER_STOP
 		mark.visible = false
-		row.add_child(mark)
+		Steady.mark(mark, "battle.top_band.trait")
+		column.add_child(mark)
 		_trait_icons.append(mark)
 		# 聖遺物のアイコン（持っていなければ暗い輪郭、持っていれば点く）。名前と効果は、アイコンにマウスを乗せると出る。
 		var icons: Array = []
@@ -286,12 +307,14 @@ func _build_top_bar() -> void:
 		_ult_labels.append(percent)
 	_opponent_button = _button("", opponent_pressed)
 	_opponent_button.custom_minimum_size = Vector2(0.0, 30.0)
+	_opponent_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_opponent_button.add_theme_font_size_override("font_size", 15)
 	_opponent_button.tooltip_text = Text.t("battle.hud.opponent.tooltip")
 	row.add_child(_opponent_button)
 	# ログは、いつでも開ける（相手の番や中立のフェーズで起きたことを、あとから確かめる）。
 	var log_button := _button(Text.t("battle.hud.log"), log_pressed)
 	log_button.custom_minimum_size = Vector2(64.0, 30.0)
+	log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	log_button.add_theme_font_size_override("font_size", 15)
 	log_button.tooltip_text = Text.t("battle.hud.log.tooltip")
 	row.add_child(log_button)

@@ -85,7 +85,25 @@ SHOTS_IN_FULL_A="mid_boss,forecast_skill,forecast_defeat,phase_camera,story_open
 SHOTS_IN_FULL_B="skill_fireball,skill_shadow,ult_eruption,result,trait_focus"
 
 started=$SECONDS
-run import --import || { cat "$logs/import.log"; exit 1; }
+# 取り込み。前半で素材を取り込み直し、クラスの名前の控えなど（.godot/）を書き終えて、印（loading_editor_layout の DONE）を出す。
+# 後半はエディタの立ち上げ（メインのシーンを読む、エディタの設定を書く）だけで、.godot/ はもう変わらず、手元で 3〜4 秒、CI で 5 秒ほど掛かる。
+# 後半で確かめられること（メインのシーンが読めること）は、下の自動の対戦が確かめるので、印が出たら取り込みを止めて先へ進む
+# （止めるのは、後半が何かを書くより前。エディタの設定は、後半の終わりにしか書かない）。印が出ずに終わったら、取り込みの成否で決める。
+timeout "$RUN_TIMEOUT" "$GODOT" --headless --path . --import >"$logs/import.log" 2>&1 &
+import_pid=$!
+until grep -q "DONE.*loading_editor_layout" "$logs/import.log" || ! kill -0 "$import_pid" 2>/dev/null; do
+  sleep 0.1
+done
+if grep -q "DONE.*loading_editor_layout" "$logs/import.log" && kill -0 "$import_pid" 2>/dev/null; then
+  kill -TERM "$import_pid" 2>/dev/null || true
+  wait "$import_pid" || true
+  echo "import: $((SECONDS - started)) 秒（前半が済んだので止めた）" >"$logs/import.time"
+else
+  import_code=0
+  wait "$import_pid" || import_code=$?
+  echo "import: $((SECONDS - started)) 秒" >"$logs/import.time"
+  [ "$import_code" = 0 ] || { cat "$logs/import.log"; exit 1; }
+fi
 cat "$logs/import.log"
 # テストと自動の対戦は互いに関わらないので、並べて回す。
 # `test_long_` でないテストは 3 つのまとまりに分ける（1 つだと、CI でいちばん長いまとまりになる）。
