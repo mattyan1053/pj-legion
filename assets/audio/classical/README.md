@@ -13,7 +13,8 @@
 - 音色: サウンドフォント FluidR3_GM（Frank Wen。**MIT**。Debian / Ubuntu の `fluid-soundfont-gm` の `copyright` の条文を 2026-11-25 に確かめた）。
   サウンドフォントはリポジトリに入れていない（140MB あまり）。作った音の再配布は MIT の範囲（`LICENSE.txt` に条文を写した）
 - **この曲のライセンス: CC BY-SA 3.0**（楽譜のデータの改変物として、同じ条件で出す。`LICENSE.txt`）。
-  表記（Mutopia Project、浄書者、ライセンス）が要る。ゲームの中にクレジットの画面はまだ無い
+  表記（Mutopia Project、浄書者、ライセンス）が要る。ゲームの中にクレジットの画面はまだ無い。
+  表記とライセンスの文（`LICENSE.txt`）は、`export_presets.cfg` の `include_filter` で exe にも入れる
 - 作り方: `tools/classical_bgm/build.sh`（`README.md`）。楽譜 → LilyPond で MIDI → `arrange.py` で編曲 → FluidSynth で音 → `finish.py` でループと大きさ → Ogg Vorbis（品質 4）
 
 | ファイル | 組（オプション） | 版 | テンポ | 小節 | 長さ |

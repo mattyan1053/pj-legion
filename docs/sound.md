@@ -192,3 +192,4 @@
   画面なしの音のドライバは音を流さないので、止めた再生が片付かずに残り、終わるときにエラーになるため。
 - アプリを終えるときは、音を止めて手放してから終える（`context.quit`）。鳴らしたまま終えると、再生が残ったと言われる。
 - Windows の書き出し（CI の `windows`）は、すべての資源を入れる（`export_presets.cfg` の `all_resources`）ので、`assets/audio/` の音も入る。
+  クラシックの編曲の曲は CC BY-SA 3.0 で表記が要るので、その文（`assets/audio/classical/LICENSE.txt`）も `include_filter` で exe に入れる（フォントのライセンスの文と同じ）。
