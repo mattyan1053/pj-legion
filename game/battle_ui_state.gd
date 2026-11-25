@@ -56,6 +56,8 @@ var menu_hover_id := &""
 var press_position := Vector2.ZERO
 var pressing := false
 var press_on_unit := false
+## いま押しているのが、ダブルクリックの 2 回目か（離したときに、クリックの代わりにダブルクリックとして扱う）。
+var press_double := false
 var dragging := false
 
 ## イベントを再生している途中か。この間は、操作を受け付けない。
@@ -244,11 +246,13 @@ func reconcile(
 
 
 ## 左ボタンを押した。押しただけでは何もしない（離すまでに動かなければクリック、動けばドラッグ。駒の上で押したときは、いつもクリック）。
-func press(position: Vector2, on_unit: bool) -> void:
+## double はダブルクリックの 2 回目の押し（OS の間隔で決まる）。
+func press(position: Vector2, on_unit: bool, double := false) -> void:
 	pressing = true
 	dragging = false
 	press_position = position
 	press_on_unit = on_unit
+	press_double = double
 
 
 ## 左ボタンを離した。押している途中で、ドラッグにならなかったなら、クリックとして真を返す。

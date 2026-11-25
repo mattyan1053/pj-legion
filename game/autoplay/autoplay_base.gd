@@ -261,10 +261,21 @@ func _click(cell: Vector2i) -> void:
 	_mouse_button(at, false)
 
 
-func _mouse_button(at: Vector2, pressed: bool) -> void:
+## マスを、マウスでダブルクリックする（押して離し、2 回目の押しはダブルクリックの印つき。OS が送るのと同じ並び）。
+func _double_click(cell: Vector2i) -> void:
+	_scene.hide_notice()
+	var at: Vector2 = _scene.cell_screen_position(cell)
+	_mouse_button(at, true)
+	_mouse_button(at, false)
+	_mouse_button(at, true, true)
+	_mouse_button(at, false)
+
+
+func _mouse_button(at: Vector2, pressed: bool, double := false) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = pressed
+	event.double_click = double
 	event.position = at
 	_scene.feed_input(event)
 
