@@ -4,7 +4,7 @@
 - 元の素材（組 `kaykit`）: KayKit : Adventurers Character Pack 1.0 と KayKit Character Pack : Skeletons 1.0（Kay Lousberg、CC0 1.0。`assets/kaykit/adventurers/`、`assets/kaykit/skeletons/`）。中立の駒は、素材を使わずコードで組んだ形。
 - ライセンス: 元の素材と同じ CC0 1.0（`LICENSE.txt`）。
 
-ファイル名は `<種類>_<陣営>[_evolved].png`（陣営は `blue`・`red`・`neutral`）。名前のある人物の形（`game/unit_looks.gd` の `PERSONS`。組 `kaykit` と `kaykit2` だけ）は `person_<人物>_<陣営>[_evolved].png`。読み出すのは `game/unit_icons.gd`。
+ファイル名は `<種類>_<陣営>[_evolved].png`（陣営は `blue`・`red`・`neutral`）。名前のある人物の形（`game/unit_looks.gd` の `PERSONS`）は `person_<人物>_<陣営>[_evolved].png`。読み出すのは `game/unit_icons.gd`。
 ここに直に置いてあるのは組 `kaykit` の絵。`tokens/` は組 `tokens`（コードで組んだ形。元の素材なし）、
 `quaternius/` は組 `quaternius`（Quaternius の CC0 の素材。`assets/quaternius/`）の絵、
 `mini/` は組 `mini`（Kenney の CC0 の素材。`assets/kenney/mini-characters/`）の絵、

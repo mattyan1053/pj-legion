@@ -31,9 +31,9 @@ const Episode := preload("res://game/episode.gd")
 const Story := preload("res://game/story.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
-const WinText := preload("res://game/win_text.gd")
 const Names := preload("res://game/names.gd")
-const GoalMark := preload("res://game/goal_mark.gd")
+const RuleCard := preload("res://game/rule_card.gd")
+const BattleTexts := preload("res://game/battle_texts.gd")
 const Crest := preload("res://game/crest.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
@@ -49,11 +49,16 @@ const DEFAULT_ID := ""
 const FIXED_ID := "fixed"
 ## 縮図の 1 マスの大きさ（px）。
 const MAP_CELL := 20
-## 勝ち方の欄の見出しに並べる印の大きさ（px）。
-const GOAL_MARK_SIDE := 22.0
+## 勝利条件の札（rule_card.gd。対戦の始めの「対戦ルール」と同じ札）の数と、札の間（px）。話の人の勝ち方は 3 つまで
+## （いつもの 2 つに守り切るを足したもの）。札は横に 1 列に並べ、右の欄の幅は 3 枚が入る幅にする。
+const GOAL_CARDS := 3
+const GOAL_CARD_GAP := 6.0
+## この話で覚えること（演習の lesson）の字の大きさ。勝利条件の札と同じ欄に入れても、下の出撃する部隊の欄が詰まらない大きさ。
+const LESSON_FONT := 15
 ## 縮図の高さの上限（px）。下に駒の欄（deploy_note.gd）を置いても、下のボタンが画面に収まるように。縦に長いマップは、1 マスを小さく描く。
 const MAP_MAX_HEIGHT := 380.0
-const RIGHT_WIDTH := 600.0
+## 右の欄の幅（px）。勝利条件の札 3 枚と、欄の縁の内側の余白（左右 14）。
+const RIGHT_WIDTH := RuleCard.SIZE.x * GOAL_CARDS + GOAL_CARD_GAP * (GOAL_CARDS - 1) + 28.0
 ## 中身の大きさの上限（論理の px）。縦長・横長の画面では、これより広げずに真ん中に置く（docs/screen-size.md）。
 const MAX_SIZE := Vector2(1560.0, 820.0)
 ## 右の欄の文を折り返す幅（px）。
@@ -77,6 +82,8 @@ var _chosen := DEFAULT_ID
 var _deploy: DeployMap
 var _deploy_note: DeployNote
 var _auto_button: Button
+## 勝利条件の欄の札（rule_card.gd）。
+var _goal_cards: Array = []
 var _options: VBoxContainer
 var _option_buttons := {}  # id -> Button
 var _deck_line: Label
@@ -166,32 +173,33 @@ func _ready() -> void:
 	right.custom_minimum_size = Vector2(RIGHT_WIDTH, 0.0)
 	right.add_theme_constant_override("separation", 8)
 	body.add_child(right)
-	# 勝ち方の欄は、対戦の上の帯の勝ち方の札と同じ色（金を混ぜた地と縁）。
+	# 勝利条件の欄は、対戦の上の帯の勝利条件の札と同じ色（金を混ぜた地と縁）。札の数で高さは変わらない（どの札も同じ大きさ）。
 	var goal := _panel()
 	goal.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.GOAL.lerp(Palette.PANEL, 0.55), 0.94), Palette.GOAL_BORDER, 1, 8, 14.0))
 	Steady.mark(goal, "sortie.goal", Steady.RECT)
 	right.add_child(goal)
 	var goal_column := VBoxContainer.new()
+	goal_column.add_theme_constant_override("separation", 2)
 	goal.add_child(goal_column)
 	var lesson := episode.lesson
 	if lesson != "":
 		goal_column.add_child(_caption(Text.t("sortie.lesson")))
-		goal_column.add_child(_wrapped(lesson, 17, COLOR_TEXT))
-	# 見出しの右に、勝ち方の印と短い名前（対戦の始めの「対戦ルール」・上の帯の札と同じ印。goal_mark.gd）。
-	Names.set_boss(battle_source.boss_name())  # 勝ち方の文の中ボスの名前（話のファイルの boss）
-	var goal_head := HBoxContainer.new()
-	goal_head.add_theme_constant_override("separation", 6)
-	goal_column.add_child(goal_head)
-	goal_head.add_child(_caption(Text.t("sortie.goal")))
-	for reason: int in goal_reasons():
-		goal_head.add_child(GoalMark.new(reason, GOAL_MARK_SIDE))
-		var name := Label.new()
-		name.text = Text.t("battle.goal.name." + String(GameWonEvent.Reason.find_key(reason)).to_lower())
-		name.add_theme_font_size_override("font_size", 14)
-		name.add_theme_color_override("font_color", Palette.GOLD)
-		name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		goal_head.add_child(name)
-	goal_column.add_child(_wrapped(win_text(), 17, COLOR_TEXT))
+		goal_column.add_child(_wrapped(lesson, LESSON_FONT, COLOR_TEXT))
+	# 勝利条件の札（対戦の始めの「対戦ルール」と同じ札。rule_card.gd）。
+	Names.set_boss(battle_source.boss_name())  # 札の中ボスの名前（話のファイルの boss）
+	goal_column.add_child(_caption(Text.t("sortie.goal")))
+	var goal_row := HBoxContainer.new()
+	goal_row.add_theme_constant_override("separation", int(GOAL_CARD_GAP))
+	goal_column.add_child(goal_row)
+	_goal_cards.clear()
+	for card: Array in goal_cards():
+		if _goal_cards.size() >= GOAL_CARDS:
+			break
+		var shown := RuleCard.new()
+		shown.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		goal_row.add_child(shown)
+		shown.show_goal(card[1], card[2], card[3])
+		_goal_cards.append(shown)
 	var enemy := _panel()
 	Steady.mark(enemy, "sortie.enemy", Steady.RECT)
 	right.add_child(enemy)
@@ -289,19 +297,16 @@ func resume_label() -> String:
 	return Text.t("sortie.back")
 
 
-## 勝ち方の文（話の戦いの定義の勝ちの条件から。人はプレイヤー1。win_text.gd、docs/win-conditions.md）。
-func win_text() -> String:
-	return WinText.of_scenario(battle_source.scenario(), Unit.Side.PLAYER1)
+## 勝利条件の札（[&"goal", 勝ち方, 短い名前, 1 行]。話の戦いの定義の勝ちの条件から。人はプレイヤー1。BattleTexts.goal_cards）。
+func goal_cards() -> Array[Array]:
+	var scenario: Scenario = battle_source.scenario()
+	var conditions: Array = [scenario.win_conditions_of(Unit.Side.PLAYER1), scenario.win_conditions_of(Unit.Side.PLAYER2)]
+	return BattleTexts.goal_cards(conditions, scenario.hold_turns, Unit.Side.PLAYER1)
 
 
-## 勝ち方の欄に印を並べる勝ち方（人の勝ちの条件。WinText.ORDER の順）。
-func goal_reasons() -> Array[int]:
-	var conditions: Array = battle_source.scenario().win_conditions_of(Unit.Side.PLAYER1)
-	var reasons: Array[int] = []
-	for reason: GameWonEvent.Reason in WinText.ORDER:
-		if conditions.has(reason):
-			reasons.append(reason)
-	return reasons
+## 勝利条件の欄に出している札（検査用）。
+func shown_goal_cards() -> Array:
+	return _goal_cards
 
 
 ## 部隊 id（DEFAULT_ID なら既定の編成）を選ぶ。出せない部隊なら何もしない。

@@ -22,7 +22,7 @@ sortie.map,初期位置　マップ「{map}」
 sortie.auto_place,おまかせ
 sortie.place_fixed,初期位置: 固定
 sortie.lesson,この話で覚えること
-sortie.goal,勝ち方
+sortie.goal,勝利条件
 sortie.enemy,敵の部隊（{army}）
 sortie.troops,出撃する部隊
 sortie.go,出撃

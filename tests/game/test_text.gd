@@ -134,8 +134,6 @@ func test_the_table_has_unique_keys_with_text() -> void:
 
 
 ## 画面の文は、どのモードでも「駒」「コマ」「ユニット」と言わない（docs/wording.md の「兵と呼ぶ」）。
-## 見た目の組の名前「盤の駒」（ボードゲームの駒のような形）だけは、物の名前なので見ない。
-const PIECE_NAMES: Array[String] = ["settings.unit_look.tokens"]
 
 
 func test_texts_do_not_say_piece() -> void:
@@ -143,8 +141,6 @@ func test_texts_do_not_say_piece() -> void:
 	var checked := 0
 	for file: String in _table():
 		for key: String in _table()[file]:
-			if PIECE_NAMES.has(key):
-				continue
 			checked += 1
 			assert_true(piece.search(Text.t(key)) == null, "%s の %s: 「駒」と言っている（%s）" % [file, key, Text.t(key)])
 	assert_true(checked > 600)

@@ -53,10 +53,10 @@ func test_no_king_note_against_a_kingless_horde() -> void:
 	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 1))
 	battle.add_unit(UnitKind.Id.SKELETON, P2, Vector2i(3, 0))
 	battle.win_conditions[P1] = [GameWonEvent.Reason.ROUTED]
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 敵の全滅", false])
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝利条件: 敵の全滅", false])
 	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "敵を全滅させれば勝ち。")
 	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 番人の撃破", false])
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝利条件: 番人の撃破", false])
 
 
 func test_turn_text_is_only_the_turn() -> void:
@@ -85,7 +85,7 @@ func test_goal_tag_says_the_king_does_not_end_a_rout() -> void:
 	var battle := Maps.battle(["....."])
 	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(4, 0))
 	battle.win_conditions[P1] = [GameWonEvent.Reason.ROUTED]
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 敵の全滅（将を倒しても終わらない）", false])
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝利条件: 敵の全滅のみ", false])
 	assert_eq(WinText.goal_tag(battle, 1, P2), ["全滅すると負け", false])
 	assert_true(WinText.goal_note(battle, P1).contains("敵の将を倒しても"))
 
@@ -94,7 +94,7 @@ func test_boss_hunt_reads_as_a_boss_hunt() -> void:
 	var battle := Maps.battle(["....."])
 	battle.add_unit(UnitKind.Id.KING, P2, Vector2i(4, 0))
 	battle.win_conditions[P1] = [GameWonEvent.Reason.BOSS_SLAIN]
-	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝ち: 番人の撃破（将を倒しても終わらない）", false])
+	assert_eq(WinText.goal_tag(battle, 1, P1), ["勝利条件: 番人の撃破のみ", false])
 	assert_eq(WinText.goal_note(battle, P1).get_slice("\n", 0), "番人を倒せば勝ち。敵の将を倒しても終わらない。")
 
 

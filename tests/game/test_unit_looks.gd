@@ -21,7 +21,7 @@ func test_every_set_builds_every_kind() -> void:
 			body.free()
 
 
-## 名前のある人物の形: 「人形」の組は、人物ごとに部品を付け替えた形を作る。ほかの組（人物の形を持たない）は、駒の種類の形のまま。
+## 名前のある人物の形: 「人形」の組は、人物ごとに部品を付け替えた形を作る。
 func test_people_have_their_own_shapes() -> void:
 	for person: StringName in UnitLooks.PERSONS:
 		var kind: UnitKind.Id = UnitLooks.PERSONS[person]
@@ -34,7 +34,6 @@ func test_people_have_their_own_shapes() -> void:
 			assert_true(view.play_attack() > 0.0, "%s: %s の攻撃" % [name, person])
 			view.free()
 	var kaykit := UnitLooks.of(&"kaykit")
-	assert_true(not UnitLooks.of(&"mini").has_person(&"ul"))
 	# ウル: 衣の魔法使いの頭を、禿げ頭にひげの頭に替え、帽子を脱ぐ。杖と本を持つ。
 	var ul := kaykit.build(UnitKind.Id.PRIEST, Color.RED, &"ul", Vector3.ZERO)
 	assert_eq(_shown_meshes(ul).filter(func(each: String) -> bool: return each.ends_with("_Head")), ["Barbarian_Head"])
@@ -48,19 +47,8 @@ func test_people_have_their_own_shapes() -> void:
 	var yelda := kaykit.build(UnitKind.Id.KING, Color.RED, &"yelda", Vector3.ZERO)
 	assert_true(_shown_meshes(yelda).has("Rogue_Head") and _shown_meshes(yelda).has("Badge_Shield"), "%s" % [_shown_meshes(yelda)])
 	yelda.free()
-	# 「人形 2」の組: 頭を別の人物の頭に替え、頭に合わせた帽子・兜は外す。
-	var kaykit2 := UnitLooks.of(&"kaykit2")
-	var ul2 := kaykit2.build(UnitKind.Id.PRIEST, Color.RED, &"ul", Vector3.ZERO)
-	var ul2_shown := _shown_meshes(ul2)
-	assert_eq(ul2_shown.filter(func(each: String) -> bool: return each.ends_with("_Head")), ["Barbarian_Head"])
-	assert_true(not ul2_shown.has("Mage_Hat") and ul2_shown.has("Mage_Body") and ul2_shown.has("Mage_Cape"), "%s" % [ul2_shown])
-	ul2.free()
-	var dawson2 := kaykit2.build(UnitKind.Id.SHIELD_TROOPER, Color.RED, &"dawson", Vector3.ZERO)
-	var dawson2_shown := _shown_meshes(dawson2)
-	assert_true(dawson2_shown.has("Engineer_Head") and not dawson2_shown.has("Knight_Helmet") and dawson2_shown.has("Knight_Body"), "%s" % [dawson2_shown])
-	dawson2.free()
-	# 将の別の姿（骸骨の将）は、「人形」の組の骸骨の将（騎士にならない）。
-	var skeleton_king := kaykit2.build(UnitKind.Id.KING, Color.RED, &"skeleton_mage", Vector3.ZERO)
+	# 将の別の姿（骸骨の将）は、騎士にならない。
+	var skeleton_king := kaykit.build(UnitKind.Id.KING, Color.RED, &"skeleton_mage", Vector3.ZERO)
 	assert_true(not _shown_meshes(skeleton_king).has("Knight_Body"), "%s" % [_shown_meshes(skeleton_king)])
 	skeleton_king.free()
 
@@ -89,10 +77,11 @@ func test_every_set_has_every_icon() -> void:
 			assert_true(ResourceLoader.exists("%s/%s" % [dir, file]), "%s: アイコンが無い: %s" % [name, file])
 
 
-## 組を替えると、アイコンもその組の絵になる。知らない名前は既定の組。
+## 組を替えると、アイコンもその組の絵になる。知らない名前（前にあって外した組の名前も）は既定の組。
 func test_use_switches_icons() -> void:
-	UnitLooks.use(&"no_such_set")
-	assert_eq(UnitLooks.active_name(), UnitLooks.DEFAULT)
+	for name: StringName in [&"no_such_set", &"tokens", &"quaternius", &"mini", &"kaykit2"]:
+		UnitLooks.use(name)
+		assert_eq(UnitLooks.active_name(), UnitLooks.DEFAULT)
 	for name: StringName in UnitLooks.SETS:
 		UnitLooks.use(name)
 		var texture := UnitIcons.texture(UnitKind.Id.SNIPER, 0)
@@ -111,17 +100,17 @@ func test_view_uses_the_body_height() -> void:
 		view.free()
 
 
-## オプションの「駒の見た目」の選択肢は、組の並び（ORDER）と同じ数で、どの組も選べる。既定は既定の組。
-func test_settings_choices_match_the_sets() -> void:
-	var entry := Settings.item(Settings.UNIT_LOOK)
-	assert_eq(entry["choices"].size(), UnitLooks.ORDER.size())
-	for index in UnitLooks.ORDER.size():
-		assert_eq(entry["choices"][index][0], index)
-		assert_true(UnitLooks.SETS.has(UnitLooks.ORDER[index]), "ORDER の %s" % UnitLooks.ORDER[index])
-	assert_eq(UnitLooks.SETS.size(), UnitLooks.ORDER.size())
-	assert_eq(UnitLooks.name_at(entry["default"]), UnitLooks.DEFAULT)
-	assert_eq(UnitLooks.name_at(-1), UnitLooks.DEFAULT)
-	assert_eq(UnitLooks.name_at(UnitLooks.ORDER.size()), UnitLooks.DEFAULT)
+## 組が 1 つのいまは、オプションに「兵の見た目」の行を出さない。前の版の設定（"unit_look" に外した組の番号）を読んでも落ちず、
+## 盤の兵は既定の組（「人形」）のまま。
+func test_old_unit_look_setting_is_ignored() -> void:
+	if UnitLooks.SETS.size() == 1:
+		assert_false(Settings.keys().has(&"unit_look"))
+	for old: Variant in [0, 1, 2, 3, 4, 99, "mini"]:
+		var settings := Settings.new()
+		settings.from_dict({"unit_look": old, "piece_outline": true})
+		assert_false(settings.to_dict().has("unit_look"))
+		assert_eq(settings.value(Settings.PIECE_OUTLINE), true)
+	assert_eq(UnitLooks.active_name(), UnitLooks.DEFAULT)
 
 
 ## どの組の体も、攻撃・被弾・倒れる・走る・身ぶりの動きを、エラー無く始められる（動きの無い組は代わりの動き）。
