@@ -2,6 +2,7 @@ extends "res://tests/base_test.gd"
 ## ストーリー（game/story.gd、game/story_battle.gd、game/story/）: 話の流れ、話の対戦、クリアの記録。
 
 const Names := preload("res://game/names.gd")
+const Text := preload("res://game/text.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
@@ -713,3 +714,30 @@ func test_opening_everything_for_checks_never_touches_the_record() -> void:
 	story.clear(last.id)
 	assert_true(story.is_cleared(last.id), "前のスロットで開いて始めた話を、別のスロットで勝ってもクリアにしない")
 	_cleanup()
+
+
+## 出撃準備の勝利条件の欄は、対戦の始めの「対戦ルール」と同じ札（rule_card.gd）を、話の勝ちの条件の数だけ 1 列に並べる。
+## 守り切る話は、守り切る・将の撃破・本陣の占拠の 3 枚。どの話も札は GOAL_CARDS 枚までで、右の欄の幅に収まる。
+func test_the_sortie_shows_the_goals_as_rule_cards() -> void:
+	var SortieScreen := preload("res://game/sortie_screen.gd")
+	var context := preload("res://game/app_context.gd").new()
+	context.run = context.story.run_now(_episode(&"ridge_hold"))
+	context.scene = Story.SORTIE
+	var sortie := SortieScreen.new()
+	sortie.context = context
+	await settle(sortie)
+	var cards: Array = sortie.shown_goal_cards()
+	assert_eq(cards.size(), 3)
+	assert_true(cards[0].shown_text().begins_with(Text.t("battle.goal.name.turns_held")), cards[0].shown_text())
+	assert_true(cards[1].shown_text().begins_with(Text.t("battle.goal.name.king_defeated")), cards[1].shown_text())
+	for card: Control in cards:
+		assert_eq(card.size, preload("res://game/rule_card.gd").SIZE)
+		assert_true(card.fits(), card.shown_text())
+	sortie.free()
+	Names.set_boss("")  # 出撃準備が入れた話の中ボスの名前を戻す（ほかのテストの文に混ざらないように）
+	for campaign in Story.campaigns():
+		for episode: Episode in campaign.episodes:
+			var scenario: Scenario = StoryBattle.scenario_of(episode)
+			var conditions: Array = [scenario.win_conditions_of(Unit.Side.PLAYER1), scenario.win_conditions_of(Unit.Side.PLAYER2)]
+			var shown := preload("res://game/battle_texts.gd").goal_cards(conditions, scenario.hold_turns, Unit.Side.PLAYER1)
+			assert_true(shown.size() >= 1 and shown.size() <= SortieScreen.GOAL_CARDS, "%s: 勝利条件の札が %d 枚" % [episode.id, shown.size()])

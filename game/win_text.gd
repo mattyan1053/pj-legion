@@ -1,5 +1,5 @@
 extends RefCounted
-## 勝ち方の文（出撃準備の「勝ち方」、上の帯の勝ち方の札）。勝ちの条件の列（docs/win-conditions.md）から作る。
+## 勝ち方の文（上の帯の勝利条件の札と、札にマウスを乗せると出る文）。出撃準備と「対戦ルール」の札は battle_texts.gd の goal_cards。勝ちの条件の列（docs/win-conditions.md）から作る。
 ## ノードに依存しない（テストから呼べる）。
 
 const Names := preload("res://game/names.gd")
@@ -66,8 +66,8 @@ static func turn_text(turn: int) -> String:
 ## 詳しい文は goal_note（札にマウスを乗せると出す）。
 ## - 守り切る: 守る側は「あと 8 ターン守り切れば勝ち」、攻める側は「あと 8 ターンで決着しなければ負け」（いまのターンを含めて数える）。
 ##   最後のターンは「最後のターン: …」にして目立たせる。
-## - 全滅させる: 「勝ち: 敵の全滅（将を倒しても終わらない）」。敵の将が盤にいなければ（将のいない群れ）、「勝ち: 敵の全滅」。
-## - 中ボスの撃破: 「勝ち: 中ボスの撃破（将を倒しても終わらない）」。
+## - 全滅させる: 「勝利条件: 敵の全滅のみ」（「のみ」は将を倒しても終わらないこと）。敵の将が盤にいなければ（将のいない群れ）、「勝利条件: 敵の全滅」。
+## - 中ボスの撃破: 「勝利条件: 番人の撃破のみ」。
 ## - 拠点の確保（選べる決まり）: 「拠点の確保 6 回で勝ち　青 ●●○○○○　赤 ○○○○○○」（両方の陣営の確保の数）。
 ##   どちらかがあと 1 回で勝つなら、頭を「あと 1 回の確保で青の勝ち」にして目立たせる（自分の側を先に見る）。
 static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
@@ -102,7 +102,7 @@ static func goal_tag(battle: Battle, turn: int, side: Unit.Side) -> Array:
 
 
 ## 上の帯の勝ち方の札に並べる印（GameWonEvent.Reason の並び。goal_mark.gd）: 札の文が言う勝ち方（守り切る・全滅・中ボスの撃破）。
-## 「対戦ルール」と出撃準備の勝ち方の欄と同じ印で、同じものだと分かるようにする。札を出さない対戦（goal_tag の文が空）では空。
+## 「対戦ルール」と出撃準備の勝利条件の札と同じ印で、同じものだと分かるようにする。札を出さない対戦（goal_tag の文が空）では空。
 static func goal_tag_marks(battle: Battle, side: Unit.Side) -> Array[int]:
 	var marks: Array[int] = []
 	if battle.turns_left() != -1:

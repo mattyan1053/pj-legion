@@ -258,17 +258,24 @@ static func cell_items(battle: Battle, cell: Vector2i) -> Array[Array]:
 ## 札は [種類（&"goal" か &"sign"）, 印の値（GameWonEvent.Reason か Seam.Sign）, 名前, 1 行の説明] の列。勝利条件が先、縫い目の様子があとで、それぞれの並びの順。
 ## 相手が守り切る戦い（side が攻める側）は、勝利条件に「時間の限り」の札を足す（守り切るの印）。
 static func rule_cards(battle: Battle, side: Unit.Side) -> Array[Array]:
+	var cards := goal_cards(battle.win_conditions, battle.hold_turns, side)
+	for sign in battle.signs:
+		cards.append([&"sign", sign, Names.sign_name(sign), Names.sign_summary(sign)])
+	return cards
+
+
+## 勝利条件の札（[&"goal", 勝ち方, 短い名前, 1 行]）だけ。conditions はプレイヤーごとの勝ちの条件の列、hold_turns は守り切るのターン数。
+## 「対戦ルール」と出撃準備の勝利条件の欄が使う（同じ札）。並びは WinText.ORDER。相手が守り切る戦いは「時間の限り」を足す。
+static func goal_cards(conditions: Array, hold_turns: int, side: Unit.Side) -> Array[Array]:
 	var cards: Array[Array] = []
-	var args := {"turns": battle.hold_turns, "capture": Battle.CAPTURE_TURNS_TO_WIN, "holds": Stronghold.HOLDS_TO_WIN}
+	var args := {"turns": hold_turns, "capture": Battle.CAPTURE_TURNS_TO_WIN, "holds": Stronghold.HOLDS_TO_WIN}
 	for reason: GameWonEvent.Reason in WinText.ORDER:
-		if battle.win_conditions[side].has(reason):
+		if conditions[side].has(reason):
 			var word := String(GameWonEvent.Reason.find_key(reason)).to_lower()
 			cards.append([&"goal", reason, Text.t("battle.goal.name." + word), Text.t("battle.goal.win." + word, args)])
 	var foe := (1 - side) as Unit.Side
-	if battle.win_conditions[foe].has(GameWonEvent.Reason.TURNS_HELD) and not battle.win_conditions[side].has(GameWonEvent.Reason.TURNS_HELD):
+	if conditions[foe].has(GameWonEvent.Reason.TURNS_HELD) and not conditions[side].has(GameWonEvent.Reason.TURNS_HELD):
 		cards.append([&"goal", GameWonEvent.Reason.TURNS_HELD, Text.t("battle.goal.name.deadline"), Text.t("battle.goal.deadline", args)])
-	for sign in battle.signs:
-		cards.append([&"sign", sign, Names.sign_name(sign), Names.sign_summary(sign)])
 	return cards
 
 
