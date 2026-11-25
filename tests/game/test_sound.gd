@@ -397,24 +397,31 @@ func test_music_sets_replace_tracks_of_the_same_kind() -> void:
 			assert_true(Catalog.has_music(track), "組が差し替えるのは表の曲（%s）" % track)
 			assert_eq(of_set[track]["loop"], Catalog.MUSIC[track]["loop"], "ループかどうかは元の曲と同じ（%s）" % track)
 			assert_ne(of_set[track]["path"], Catalog.MUSIC[track]["path"], "組の曲は、いまの曲と別（%s）" % track)
+		assert_false(of_set.has(&"title"), "タイトルの曲は決まった（組で差し替えない）")
+	assert_eq(Catalog.MUSIC[&"title"]["path"], Catalog.BGM_SETS_DIR + "the_last_horn.ogg", "タイトルは The Last Horn")
+	# 選ばれなかったタイトルの候補は、物語の終わりの 2 話の戦いに使う。
+	assert_eq(StoryBattle.new(Story.military().find_episode(&"quarry_blast"), null).music(), &"battle_eve")
+	assert_eq(StoryBattle.new(Story.campaign_by_id(&"fantasy").find_episode(&"vale_keeper"), null).music(), &"battle_last")
 
 
 func test_music_set_changes_what_plays() -> void:
 	var settings := Settings.new()
 	var sound := _sound()
 	Sound.apply_settings(settings)
-	sound.play_scene_music(&"title")
+	sound.play_scene_music(&"talk_calm")
 	var player: AudioStreamPlayer = sound._music[sound._active]
-	assert_eq(player.stream.resource_path, Catalog.MUSIC[&"title"]["path"], "既定は、いまの曲")
+	assert_eq(player.stream.resource_path, Catalog.MUSIC[&"talk_calm"]["path"], "既定は、いまの曲")
 	settings.set_value(Settings.MUSIC_SET, 1)
 	Sound.apply_settings(settings)
 	sound.refresh_music()
 	assert_true(sound._music[sound._active] != player, "組を替えると、同じ場面のまま新しい曲へつなぎ直す")
-	assert_eq(sound._music[sound._active].stream.resource_path, Catalog.MUSIC_SETS[1][&"title"]["path"])
-	assert_eq(sound.current_track(), &"title")
+	assert_eq(sound._music[sound._active].stream.resource_path, Catalog.MUSIC_SETS[1][&"talk_calm"]["path"])
+	assert_eq(sound.current_track(), &"talk_calm")
 	var again: AudioStreamPlayer = sound._music[sound._active]
-	sound.play_scene_music(&"title")
+	sound.play_scene_music(&"talk_calm")
 	assert_true(sound._music[sound._active] == again, "同じ組の同じ曲なら、鳴らし直さない")
+	sound.play_scene_music(&"title")
+	assert_eq(sound._music[sound._active].stream.resource_path, Catalog.MUSIC[&"title"]["path"], "タイトルは、どの組でも同じ曲")
 	sound.play_scene_music(&"menu")
 	assert_eq(sound._music[sound._active].stream.resource_path, Catalog.MUSIC[&"menu"]["path"], "組に無い曲は、いまの曲のまま")
 	settings.set_value(Settings.MUSIC_SET, 0)
