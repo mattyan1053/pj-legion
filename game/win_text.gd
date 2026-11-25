@@ -123,6 +123,20 @@ static func stronghold_goal(battle: Battle) -> int:
 	return 0
 
 
+## 拠点ごとの持ち主（確保を進めている陣営。だれも進めていなければ -1）。拠点の札の旗の並びに渡す。
+## いまの決まりでは拠点は盤に 1 つで、確保は陣営ごとに数える（相手が進めると 0 に戻る）ので、数を持っている陣営が持ち主。拠点が無ければ空。
+static func stronghold_owners(battle: Battle) -> Array[int]:
+	var owners: Array[int] = []
+	if battle.board.stronghold_cell == Board.NO_CELL:
+		return owners
+	var owner_side := -1
+	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		if battle.stronghold_holds[player] > 0:
+			owner_side = player
+	owners.append(owner_side)
+	return owners
+
+
 ## あと 1 回の確保で勝つ陣営（いなければ -1）。
 static func stronghold_near(battle: Battle) -> int:
 	for player: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:

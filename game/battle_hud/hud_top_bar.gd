@@ -118,10 +118,11 @@ func ult_gauge_text(player: int) -> String:
 	return _ult_labels[player].text if _ult_labels[player].visible else ""
 
 
-## 拠点の札を出す（選べる決まり「拠点」）。holds は陣営ごとの確保の数（添字がプレイヤー番号）、needed は勝つ数（0 以下なら札を出さない）。
+## 拠点の札を出す（選べる決まり「拠点」）。holds は陣営ごとの確保の数（陣営の合計。添字がプレイヤー番号）、needed は勝つ数（0 以下なら札を出さない）。
 ## near は、あと 1 回の確保で勝つ陣営（いなければ -1。札を急ぎの色にする）。note は札にマウスを乗せると出る決まりの文。
-## 大きさは中身で変えない。勝ち方の札が出ていれば、その下に並べる。
-func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> void:
+## owners は、拠点ごとの持ち主（確保を進めている陣営。だれもいなければ -1）。拠点 1 つにつき旗 1 本を、決まった幅の欄に並べる。
+## 大きさは中身で変えない（拠点が 1 つでも 3 つでも同じ枠）。勝ち方の札が出ていれば、その下に並べる。
+func set_stronghold(holds: Array[int], needed: int, near: int, note: String, owners: Array[int] = []) -> void:
 	_stronghold_panel.visible = needed > 0
 	if needed <= 0:
 		return
@@ -134,6 +135,9 @@ func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> 
 		# 急ぎの赤い地の上では、陣営の色のままだと沈む（青も赤も）。白に寄せる。
 		var lighten := STRONGHOLD_URGENT_LIGHTEN if urgent else (0.45 if held > 0 else 0.3)
 		_stronghold_marks[player].add_theme_color_override("font_color", _side_color(player).lightened(lighten))
+	_stronghold_flags.team_colors = _team_colors
+	_stronghold_flags.lighten = STRONGHOLD_URGENT_LIGHTEN if urgent else 0.3
+	_stronghold_flags.owners = owners
 	_stronghold_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
 	_stronghold_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
 	_stronghold_caption.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
@@ -223,6 +227,11 @@ func stronghold_text() -> String:
 
 
 ## 拠点の札の大きさ（検査用）。
+## 拠点の札の旗の並びが見せている、拠点ごとの持ち主（検査用）。
+func stronghold_owners() -> Array[int]:
+	return _stronghold_flags.owners
+
+
 func stronghold_chip_size() -> Vector2:
 	return _stronghold_panel.size
 
@@ -381,6 +390,8 @@ func _build_top_bar() -> void:
 	_stronghold_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stronghold_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	stronghold_row.add_child(_stronghold_caption)
+	_stronghold_flags = StrongholdFlags.new()
+	stronghold_row.add_child(_stronghold_flags)
 	for player in 2:
 		var marks := _label(17)
 		marks.custom_minimum_size.x = STRONGHOLD_SIDE_WIDTH  # 数の桁で、隣の欄を動かさない
