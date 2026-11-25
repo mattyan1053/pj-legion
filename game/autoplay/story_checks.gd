@@ -502,6 +502,11 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 		var first: Array = screen.battle.units.filter(func(unit: Unit) -> bool: return unit.side == Unit.Side.PLAYER1 and unit.kind != UnitKind.Id.KING)
 		_expect(not first.is_empty() and first[0].cell == first_at, "出撃準備で決めた初期位置から始まらない: %s（決めたのは %s）" % [first[0].cell if not first.is_empty() else null, first_at])
 	_expect(screen.cpu_opponent and screen.battle.armies[Unit.Side.PLAYER2] == episode.enemy_army, "話の敵を CPU が動かしていない")
+	# 始まりは 1 つずつ: 「対戦ルール」が出ている間は、番の知らせも始めの台詞も出ない。閉じると番の知らせから始まる。
+	_expect(screen.notice_text() != "" and not screen.is_banner_shown() and screen.talk_line() == null,
+		"「対戦ルール」と、番の知らせか始めの台詞が同時に出ている")
+	screen.hide_notice()
+	_expect(screen.is_banner_shown(), "「対戦ルール」を閉じても、番の知らせが出ない")
 	# 対戦の途中の会話の札は、上の帯のすぐ下で、勝ち方の札・視点の案内・ミニマップと重ならない（いちばん長い台詞で確かめる）。
 	var longest := ""
 	for each: RefCounted in Story.all_episodes():

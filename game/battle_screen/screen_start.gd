@@ -1,5 +1,5 @@
 extends "res://game/battle_screen/screen_sides.gd"
-## 対戦の場面の始まり: 対戦を作って盤と駒を出す、マップの替え・やり直し、対戦設定のパネル、決着の曲。
+## 対戦の場面の始まり: 対戦を作って盤と駒を出す、始まりの順（対戦ルール → 番の知らせ → 台詞 → CPU）、マップの替え・やり直し、対戦設定のパネル、決着の曲。
 
 
 ## 渡されたもの（source）が作る種 battle_seed の対戦設定で、盤面を作り、軍を置いて、最初から始める。
@@ -34,7 +34,21 @@ func sign_note_text() -> String:
 	return _hud.sign_note_text()
 
 
-## 対戦の始めの知らせを閉じる（閉じるボタンと同じ）。
+## 上の帯の、陣営 player の部隊の特徴の札をクリックする（特徴の窓を開く・閉じる）。
+func toggle_trait_note(player: int) -> void:
+	_hud.toggle_trait_note(player)
+
+
+## 開いている特徴の窓の文（名前・効果・効く相手。開いていなければ空。検査用）と、その四角。
+func trait_note_text() -> String:
+	return _hud.trait_note_text()
+
+
+func trait_note_rect() -> Rect2:
+	return _hud.trait_note_rect()
+
+
+## 対戦の始めの知らせを閉じる（閉じるボタンと同じ）。閉じると、手番が始まる（_open_battle）。
 func hide_notice() -> void:
 	_hud.hide_notice()
 
@@ -154,14 +168,33 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_hud.show_signs(battle.signs)
 	_cues = source.talk_cues()
 	_talk.clear()
-	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
-	_say(_cues.on_start(battle))
+	_hud.hide_sign_note()
+	_hud.hide_trait_note()
+	_hud.hide_banner()  # 前の対戦の番の知らせを、「対戦ルール」に重ねない
 	# 対戦の始め（ターン 1）に 1 回だけ、「対戦ルール」（勝利条件と縫い目の様子）を出す。どのモードも（ストーリーは前の会話のあと）。
 	# 人が動かす側から見る（人どうしは先手から。対戦モードは両方とも同じ勝ち方）。途中から見せる対戦では出さない。
 	var notice: Array[Array] = []
 	if battle.turn == 1:
 		notice = BattleTexts.rule_cards(battle, _human_side() if cpu_opponent else Unit.Side.PLAYER1)
 	_hud.show_notice(notice)
+	_refresh()
+	_open_battle()
+
+
+## 対戦の始まりを、1 つずつ順に進める（前のものが閉じるまで、次を出さない）:
+## 「対戦ルール」（出ていれば、閉じるまで待つ）→ 番の知らせの帯 → 始めの台詞（話の [cues]。送られるまで待つ）→ CPU の番。
+## 待つ間に新しい対戦を始めたら、古いほうの続きはやめる。
+func _open_battle() -> void:
+	_opening_serial += 1
+	var serial := _opening_serial
+	if _hud.notice_open():
+		await _hud.notice_closed
+		if serial != _opening_serial or not is_inside_tree():
+			return
+	_hud.show_banner(Text.t("battle.banner.phase", {"turn": battle.turn, "side": _side_name(battle.phase)}), TEAM_COLORS[battle.phase])
+	await _say(_cues.on_start(battle))
+	if serial != _opening_serial or not is_inside_tree():
+		return
 	_refresh()
 	_run_cpu()
 

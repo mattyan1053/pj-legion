@@ -609,18 +609,22 @@ func _build_trait_box() -> Control:
 		button.toggle_mode = true
 		button.custom_minimum_size = Vector2(0.0, TRAIT_CARD_HEIGHT)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# 中身は札の内側に収める（名前は札の幅で切る。切れていないことは枠の見張り（steady_probe.gd）が見る）。
 		var inside := HBoxContainer.new()
 		inside.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		inside.offset_left = 4.0
+		inside.offset_right = -4.0
 		inside.add_theme_constant_override("separation", 4)
 		inside.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(inside)
 		var mark := TraitIcon.new(Traits.NONE, TRAIT_MARK_SIDE)
 		inside.add_child(mark)
-		var name := _text(13, COLOR_TEXT)
+		var name := _text(TRAIT_NAME_FONT, COLOR_TEXT)
 		name.add_theme_font_override("font", UiTheme.FONT_BOLD)
 		name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		name.size_flags_vertical = Control.SIZE_FILL
+		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name.clip_text = true
 		inside.add_child(name)
 		button.set_meta(&"mark", mark)
 		button.set_meta(&"name", name)
@@ -639,6 +643,25 @@ func _build_trait_box() -> Control:
 	_trait_label.custom_minimum_size = Vector2(ROSTER_WIDTH - 24.0, 0.0)
 	column.add_child(_trait_label)
 	return _trait_box
+
+
+## 特徴の欄で、切れている・札からはみ出している文（検査用）。札 3 枚それぞれに乗せて、どの特徴の文も見る（終わったら外す）。
+## 名前の欄・文の欄の大きさは中身で変わらないので、文を替えるたびに待たなくてよい（はじめに 1 コマ待ってから呼ぶ）。
+func trait_cut_texts() -> Array[String]:
+	var cut: Array[String] = []
+	if not shows_traits():
+		return cut
+	for i in _trait_buttons.size():
+		_on_trait_card(i, &"enter")
+		var name: Label = _trait_buttons[i].get_meta(&"name")
+		var room := _trait_buttons[i].get_global_rect().grow(0.5)
+		if _text_width(name, name.text) > name.size.x + 0.5 or not room.encloses(name.get_global_rect()):
+			cut.append(name.text)
+		for line: Label in [_trait_effect, _trait_label]:
+			if _text_width(line, line.text) > line.size.x + 0.5:
+				cut.append(line.text)
+		_on_trait_card(i, &"exit")
+	return cut
 
 
 ## 特徴の札の i 番目が押された・マウスが乗った・離れた。

@@ -18,6 +18,11 @@ func _queue_setup_scene() -> void:
 		panel.choose_field(VersusFields.TWIN_SPRINGS)
 		seen["actions"] = _scene.cpu_actions
 		panel.confirm()
+		# 「対戦ルール」を閉じるまでは、先手の CPU も番の知らせも始まらない。閉じると始まる。
+		_expect(_scene.notice_text() != "" and not _scene.is_cpu_running() and _scene.cpu_actions == seen["actions"] and not _scene.is_banner_shown(),
+			"「対戦ルール」を閉じる前に、先手の CPU か番の知らせが始まった: %s" % [[_scene.notice_text() != "", _scene.is_cpu_running(), _scene.cpu_actions - seen["actions"], _scene.is_banner_shown()]])
+		_scene.hide_notice()
+		_expect(_scene.is_cpu_running(), "「対戦ルール」を閉じても、先手の CPU が動き出さない")
 		# CPU（先手）の番の間も、必殺技のボタンは人（後手。MILITARY）のもの。
 		_expect(_scene.ult_button_text().contains(Names.ult(Ults.of_army(UnitKind.Army.MILITARY))), "CPU の番に、必殺技のボタンが CPU のものになった: %s" % _scene.ult_button_text()))
 	_scripted.append(func() -> void:
@@ -245,6 +250,23 @@ func _queue_minimap_scene() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
 		_expect(_scene.top_bar_cut_texts().is_empty(), "上の帯の陣営の欄（駒の数と占拠）が切れている: %s" % [_scene.top_bar_cut_texts()])
+		# 上の帯の特徴の札をクリックすると、その陣営の特徴 1 つの窓（名前・効果・効く相手。選ばなかった特徴は出さない）。
+		# もう一度クリックか、盤のクリックで閉じる。相手の札を押すと、相手のものに替わる。
+		_scene.toggle_trait_note(0)
+		var note: String = _scene.trait_note_text()
+		_expect(note.contains(Names.troop_trait(Traits.Id.FOCUS)) and note.contains(Names.troop_trait_effect(Traits.Id.FOCUS))
+			and note.contains(Names.troop_trait_when(Traits.Id.FOCUS)) and not note.contains(Names.troop_trait(Traits.Id.RANKS)),
+			"上の帯の特徴の札で、特徴の窓が開かない（か、中身が違う）: %s" % note)
+		var screen_rect: Rect2 = _scene.get_viewport().get_visible_rect()
+		_expect(screen_rect.encloses(_scene.trait_note_rect()) and _scene.trait_note_rect().position.y >= BattleHud.TOP_BAR_HEIGHT,
+			"特徴の窓が、画面からはみ出すか上の帯に重なる: %s" % _scene.trait_note_rect())
+		_scene.toggle_trait_note(1)
+		_expect(_scene.trait_note_text().contains(Names.troop_trait(Traits.Id.VENGEANCE)), "相手の特徴の札で、相手の特徴の窓に替わらない")
+		_scene.toggle_trait_note(1)
+		_expect(_scene.trait_note_text() == "", "特徴の札をもう一度押しても、窓が閉じない")
+		_scene.toggle_trait_note(0)
+		_scene.click_cell(Vector2i(5, 5))
+		_expect(_scene.trait_note_text() == "", "盤をクリックしても、特徴の窓が閉じない")
 		_scene.set_opponent(false)
 		var rect: Rect2 = _scene.minimap_rect()
 		var screen: Rect2 = _scene.get_viewport().get_visible_rect()

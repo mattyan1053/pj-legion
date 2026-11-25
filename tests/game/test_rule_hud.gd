@@ -6,6 +6,8 @@ const BattleHud := preload("res://game/battle_hud.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const Text := preload("res://game/text.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
+const StrongholdFlags := preload("res://game/stronghold_flags.gd")
+const WinText := preload("res://game/win_text.gd")
 
 
 func _hud() -> BattleHud:
@@ -31,6 +33,42 @@ func test_stronghold_chip_keeps_its_size_whatever_the_holds() -> void:
 	hud.set_stronghold([0, 0] as Array[int], 0, -1, "")
 	assert_eq(hud.stronghold_text(), "", "拠点の無い対戦では出さない")
 	hud.free()
+
+
+## 拠点が 1 つでも 3 つでも、もっと多くても、札は同じ大きさで、旗の並びは決まった幅の欄に収まる。
+func test_stronghold_chip_is_the_same_for_any_number_of_bases() -> void:
+	var hud := _hud()
+	await settle(hud)
+	var needed := Stronghold.HOLDS_TO_WIN
+	for owners: Array in [[], [-1], [0], [0, -1, 1], [0, 1, 1, -1, 0, 1]]:
+		var typed: Array[int] = []
+		typed.assign(owners)
+		hud.set_stronghold([3, 2] as Array[int], needed, -1, "", typed)
+		await settle(hud)
+		assert_eq(hud.stronghold_chip_size(), BattleHud.STRONGHOLD_CHIP_SIZE, "拠点 %d つで札の大きさが変わる" % owners.size())
+		assert_eq(hud.stronghold_owners(), typed)
+		assert_eq(hud.stronghold_text(), "拠点 青 3 / %d 赤 2 / %d" % [needed, needed], "陣営ごとの数は、拠点の数に依らない")
+		var flags := hud._stronghold_flags
+		assert_eq(flags.size.x, StrongholdFlags.WIDTH, "旗の欄の幅")
+		for index in owners.size():
+			var at: Vector2 = flags.flag_position(index)
+			assert_true(at.x >= 0.0 and at.x + StrongholdFlags.FLAG.x <= StrongholdFlags.WIDTH + 0.01, "旗 %d が欄からはみ出す（拠点 %d つ）" % [index, owners.size()])
+	hud.free()
+
+
+## 拠点の持ち主は、確保を進めている陣営（いまの決まりでは、拠点は盤に 1 つ）。
+func test_stronghold_owner_is_the_side_that_holds() -> void:
+	var setup := MatchSetup.versus_human(
+		BoardGenerator.Stage.PLAIN, 1, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY))
+	assert_eq(WinText.stronghold_owners(setup.create_battle()), [] as Array[int], "拠点の無い対戦")
+	setup.rules = [OptionalRules.STRONGHOLD] as Array[StringName]
+	var battle := setup.create_battle()
+	assert_eq(WinText.stronghold_owners(battle), [-1] as Array[int], "だれも確保していない")
+	battle.stronghold_holds[1] = 2
+	assert_eq(WinText.stronghold_owners(battle), [1] as Array[int])
+	battle.stronghold_holds[1] = 0
+	battle.stronghold_holds[0] = 1
+	assert_eq(WinText.stronghold_owners(battle), [0] as Array[int])
 
 
 ## 中身が枠に収まる（はみ出して切れない）。

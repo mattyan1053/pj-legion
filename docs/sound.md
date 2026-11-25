@@ -19,7 +19,7 @@
 
 | 場面 | 曲の名前 | 鳴らし方 |
 | --- | --- | --- |
-| タイトル | `title`（主題歌） | ループ（曲が静かに終わって、頭へ戻る） |
+| タイトル | `title`（主題歌。The Last Horn） | ループ（曲が静かに終わって、頭へ戻る） |
 | セーブデータ選択・物語選択・話の一覧・出撃準備・部隊編成・マップ選択・対戦設定 | `menu` | ループ。これらの場面を行き来しても途切れない |
 | ストーリーの会話（対戦の前） | 話のファイルの `before_music`。無ければ、その話の対戦の曲 | ループ。対戦の曲は小さく鳴らし（`TALK_BATTLE_DB`）、対戦へは同じ曲のまま大きさだけ戻す |
 | ストーリーの会話（対戦の後） | 話のファイルの `after_music`。無ければ `talk_calm` | ループ |
@@ -65,6 +65,8 @@
 | 守り切る | `battle_tense` | 弦の速い刻みと金管。時間に追われる曲（Determined Pursuit） |
 | 中ボスの撃破 | `battle_boss` | 巨大な魔物に挑む曲（The Fire Dragon） |
 | 全滅させる | `battle_rout` | 攻め込む行進の曲。4 分あり、途中で形が変わる（QaziJamJam） |
+| 物語の締めの 1 つ手前（ベルク連邦の物語の最後の話） | `battle_eve` | 決戦へ向かう旅の曲（Last Journey） |
+| 物語の締め（リュエル騎士領の物語の最後の話。2 つの物語の締め） | `battle_last` | 物語が佳境に入った、最後の戦いの曲（A Legend Will Rise） |
 | 魔物（骸骨の軍） | `battle_undead` | 不気味な軍の行進（The March of Devils Dome）。古戦場の見た目の曲 `battle_lament` も、骸骨の軍の話に使う |
 
 話は、景色の曲（上の表）と特別な話の曲（この表）から選び、**物語の並びで隣り合う話が同じ対戦の曲にならないようにする**（テストが確かめる）。
@@ -100,10 +102,11 @@
 
 オプションの「BGM の組」で、曲を候補の組に差し替えられる（`sound_catalog.gd` の `MUSIC_SETS`。既定は「いまの組」で、上の表のまま）。
 候補の曲は人間が耳で選ぶためのもの（どれも CC0、`assets/audio/oga-bgm-sets/`）。聴いて決まったら、選んだ曲を `MUSIC` へ移し、組は畳む。
+タイトルは候補 B（The Last Horn）に決まり、`MUSIC` の `title` へ移した（組では替わらない）。選ばれなかったタイトルの候補 2 曲は、
+物語の終わりの 2 話の対戦の曲（`battle_last`・`battle_eve`。上の「ストーリーの特別な話」）にした。残りの役は、まだ聴き比べの途中。
 
 | 曲の名前（鳴る場面） | 候補 A | 候補 B | 候補 C |
 | --- | --- | --- | --- |
-| `title`（タイトル） | A Legend Will Rise（CodeManu） | The Last Horn（redFireMeat） | Last Journey（Crocdent） |
 | `talk_calm`（あとの会話の既定、対戦モードの決着のあと） | Beautiful Forest（nene） | Prologue Theme（CleytonKauffman） | — |
 | `talk`（軽い会話） | — | — | King's Feast（RandomMind） |
 | `battle`（対戦: 草原。中央平原） | Hope（MintoDog） | Final Stand（iamoneabe） | — |

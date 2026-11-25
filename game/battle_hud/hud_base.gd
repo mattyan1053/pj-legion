@@ -15,8 +15,10 @@ const Steady := preload("res://game/steady.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
 const SignMark := preload("res://game/sign_mark.gd")
 const SignCard := preload("res://game/sign_card.gd")
+const TraitCard := preload("res://game/trait_card.gd")
 const RuleCard := preload("res://game/rule_card.gd")
 const GoalMark := preload("res://game/goal_mark.gd")
+const StrongholdFlags := preload("res://game/stronghold_flags.gd")
 const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
@@ -63,6 +65,8 @@ signal title_pressed
 signal restart_pressed(field: StringName, new_board: bool)
 ## 決着の画面を出した（draw なら引き分けで、winner は使わない）。決着の曲を鳴らす合図。
 signal result_shown(draw: bool, winner: Unit.Side)
+## 対戦の始めの「対戦ルール」を閉じた（出ていたものを閉じたときだけ）。対戦の場面は、ここから手番を始める。
+signal notice_closed
 
 
 const COLOR_PANEL := Palette.OVERLAY
@@ -89,8 +93,8 @@ const MENU_ITEM_WIDTH := 210.0
 const MENU_FONT_SIZE := 17
 const MENU_FONT_FLOOR := 13
 ## 拠点の札の大きさ（px）。確保の数が変わっても、あと 1 回で勝つときも、この大きさのまま。
-## 陣営ごとの数の欄（「青 3 / 8」）は、決まった幅。
-const STRONGHOLD_CHIP_SIZE := Vector2(270.0, 30.0)
+## 陣営ごとの数の欄（「青 3 / 8」）は、決まった幅。拠点ごとの持ち主の旗の欄（stronghold_flags.gd）も決まった幅で、拠点がいくつでも同じ。
+const STRONGHOLD_CHIP_SIZE := Vector2(316.0, 30.0)
 const STRONGHOLD_SIDE_WIDTH := 76.0
 ## あと 1 回で勝つ（急ぎの赤い地の）ときの、陣営ごとの数の字を白に寄せる割合。
 const STRONGHOLD_URGENT_LIGHTEN := 0.7
@@ -175,6 +179,7 @@ var _stronghold_panel: PanelContainer
 var _stronghold_style: StyleBoxFlat
 var _stronghold_caption: Label
 var _stronghold_marks: Array[Label] = []
+var _stronghold_flags: StrongholdFlags
 ## 縫い目の様子の札の帯と、札ごとの欄（印と名前。マウスを乗せると効果の文）。
 var _signs_panel: PanelContainer
 var _sign_slots: Array[Control] = []
@@ -184,10 +189,16 @@ var _sign_names: Array[Label] = []
 var _sign_note: PanelContainer
 var _sign_note_card: SignCard
 var _sign_note_index := -1
+## 上の帯の部隊の特徴の札をクリックすると出す、特徴 1 つの窓（trait_card.gd）と、どちらの陣営のものを出しているか（出していなければ -1）。
+var _trait_note: PanelContainer
+var _trait_note_card: TraitCard
+var _trait_note_player := -1
 ## 対戦の始めの知らせ（選べる決まり。見出し、決まりごとの行、閉じるボタン）。
 ## 上の帯の勝ち方の札の印（goal_mark.gd）。
 var _goal_marks: Array[GoalMark] = []
 var _notice: PanelContainer
+## 「対戦ルール」を出している間、盤と帯へのクリックを受け止めて、札を閉じる（札の後ろで何も押せない）。
+var _notice_catcher: Control
 ## 「対戦ルール」の札（勝利条件と縫い目の様子）と、縫い目の様子の段の見出し・段。
 var _notice_goals: Array[RuleCard] = []
 var _notice_signs: Array[RuleCard] = []

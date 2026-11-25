@@ -94,6 +94,8 @@ func set_ult_gauges(percents: Array[int], names: Array[String]) -> void:
 
 ## 陣営ごとの部隊の特徴（上の帯の陣営の欄の下の段: 印と名前。添字がプレイヤー番号。Traits.NONE なら出さない）。notes は乗せると出る文。
 func set_traits(ids: Array[int], notes: Array[String]) -> void:
+	if _trait_note_player >= 0 and _trait_note_player < ids.size() and ids[_trait_note_player] == Traits.NONE:
+		hide_trait_note()
 	for player in _trait_icons.size():
 		var mark := _trait_icons[player]
 		mark.set(&"trait_id", ids[player])
@@ -118,10 +120,11 @@ func ult_gauge_text(player: int) -> String:
 	return _ult_labels[player].text if _ult_labels[player].visible else ""
 
 
-## 拠点の札を出す（選べる決まり「拠点」）。holds は陣営ごとの確保の数（添字がプレイヤー番号）、needed は勝つ数（0 以下なら札を出さない）。
+## 拠点の札を出す（選べる決まり「拠点」）。holds は陣営ごとの確保の数（陣営の合計。添字がプレイヤー番号）、needed は勝つ数（0 以下なら札を出さない）。
 ## near は、あと 1 回の確保で勝つ陣営（いなければ -1。札を急ぎの色にする）。note は札にマウスを乗せると出る決まりの文。
-## 大きさは中身で変えない。勝ち方の札が出ていれば、その下に並べる。
-func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> void:
+## owners は、拠点ごとの持ち主（確保を進めている陣営。だれもいなければ -1）。拠点 1 つにつき旗 1 本を、決まった幅の欄に並べる。
+## 大きさは中身で変えない（拠点が 1 つでも 3 つでも同じ枠）。勝ち方の札が出ていれば、その下に並べる。
+func set_stronghold(holds: Array[int], needed: int, near: int, note: String, owners: Array[int] = []) -> void:
 	_stronghold_panel.visible = needed > 0
 	if needed <= 0:
 		return
@@ -134,6 +137,9 @@ func set_stronghold(holds: Array[int], needed: int, near: int, note: String) -> 
 		# 急ぎの赤い地の上では、陣営の色のままだと沈む（青も赤も）。白に寄せる。
 		var lighten := STRONGHOLD_URGENT_LIGHTEN if urgent else (0.45 if held > 0 else 0.3)
 		_stronghold_marks[player].add_theme_color_override("font_color", _side_color(player).lightened(lighten))
+	_stronghold_flags.team_colors = _team_colors
+	_stronghold_flags.lighten = STRONGHOLD_URGENT_LIGHTEN if urgent else 0.3
+	_stronghold_flags.owners = owners
 	_stronghold_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
 	_stronghold_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
 	_stronghold_caption.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
@@ -176,6 +182,7 @@ func toggle_sign_note(i: int) -> void:
 	if i == _sign_note_index or i < 0 or i >= _sign_slots.size() or not _sign_slots[i].visible:
 		hide_sign_note()
 		return
+	hide_trait_note()  # 窓は 1 つずつ
 	_sign_note_index = i
 	_sign_note_card.show_sign(_sign_marks[i].sign)
 	_sign_note.visible = true
@@ -186,6 +193,47 @@ func hide_sign_note() -> void:
 	_sign_note_index = -1
 	if _sign_note != null:
 		_sign_note.visible = false
+
+
+## 陣営 player の部隊の特徴の窓を、上の帯の札の真下に開く（開いていれば閉じる）。特徴の札が出ていなければ何もしない。
+## 窓は、いま効いている特徴だけ（選ばなかった 2 つは出さない）: 印・名前・効果（数）・効く相手。
+func toggle_trait_note(player: int) -> void:
+	if player == _trait_note_player or player < 0 or player >= _trait_icons.size() or not _trait_icons[player].visible:
+		hide_trait_note()
+		return
+	hide_sign_note()  # 窓は 1 つずつ
+	_trait_note_player = player
+	_trait_note_card.show_trait(_trait_icons[player].get(&"trait_id"))
+	_trait_note.visible = true
+	place_trait_note()
+
+
+func hide_trait_note() -> void:
+	_trait_note_player = -1
+	if _trait_note != null:
+		_trait_note.visible = false
+
+
+## 開いている特徴の窓の文（名前・効果・効く相手。開いていなければ空。検査用）。
+func trait_note_text() -> String:
+	return _trait_note_card.shown_text() if _trait_note.visible else ""
+
+
+## 特徴の窓の四角（開いていなければ大きさ 0。検査用）。
+func trait_note_rect() -> Rect2:
+	return _trait_note.get_global_rect() if _trait_note.visible else Rect2()
+
+
+## 特徴の窓を、その陣営の札の真下に置く（真ん中をそろえ、画面の端からはみ出さない）。開いていなければ何もしない。
+## 上の帯の欄は窓の幅で伸び縮みするので、場面が毎コマ呼んで置き直す。
+func place_trait_note() -> void:
+	if _trait_note_player < 0:
+		return
+	var tag := (_trait_icons[_trait_note_player] as Control).get_global_rect()
+	var width := _trait_note.get_combined_minimum_size().x
+	var screen := get_viewport().get_visible_rect().size.x if is_inside_tree() else tag.end.x + width
+	var left := clampf(tag.get_center().x - width / 2.0, 6.0, maxf(6.0, screen - width - 6.0))
+	_trait_note.position = Vector2(left, TOP_BAR_HEIGHT + 4.0)
 
 
 ## 開いている札の窓の文（名前と効果。開いていなければ空。検査用）。
@@ -223,6 +271,11 @@ func stronghold_text() -> String:
 
 
 ## 拠点の札の大きさ（検査用）。
+## 拠点の札の旗の並びが見せている、拠点ごとの持ち主（検査用）。
+func stronghold_owners() -> Array[int]:
+	return _stronghold_flags.owners
+
+
 func stronghold_chip_size() -> Vector2:
 	return _stronghold_panel.size
 
@@ -277,7 +330,13 @@ func _build_top_bar() -> void:
 		# 部隊の特徴の札（幅は、いちばん長い名前で決める）。効果の数と効く相手は、乗せると出る。
 		var mark := TraitTag.new(TRAIT_MARK_SIDE, TRAIT_NAME_FONT, 4)
 		mark.size_flags_horizontal = Control.SIZE_SHRINK_END
-		mark.mouse_filter = Control.MOUSE_FILTER_STOP
+		mark.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると 2 行の文、クリックで特徴の窓
+		mark.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var side := player
+		mark.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				toggle_trait_note(side)
+				mark.accept_event())
 		mark.visible = false
 		Steady.mark(mark, "battle.top_band.trait")
 		column.add_child(mark)
@@ -381,6 +440,8 @@ func _build_top_bar() -> void:
 	_stronghold_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stronghold_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	stronghold_row.add_child(_stronghold_caption)
+	_stronghold_flags = StrongholdFlags.new()
+	stronghold_row.add_child(_stronghold_flags)
 	for player in 2:
 		var marks := _label(17)
 		marks.custom_minimum_size.x = STRONGHOLD_SIDE_WIDTH  # 数の桁で、隣の欄を動かさない
@@ -449,6 +510,20 @@ func _build_top_bar() -> void:
 			hide_sign_note()
 			_sign_note.accept_event())
 	Steady.mark(_sign_note, "battle.sign_note", Steady.RECT)
+	# 部隊の特徴の札をクリックすると出す、特徴 1 つの窓（決まった大きさ。札の真下に出すので、置き場所は陣営で違う）。
+	_trait_note = PanelContainer.new()
+	_trait_note.add_theme_stylebox_override("panel", UiTheme.box(COLOR_PANEL_SOLID, Palette.BORDER_BRIGHT, 1, 8, 4.0, 6))
+	_trait_note.mouse_filter = Control.MOUSE_FILTER_STOP
+	_trait_note.visible = false
+	add_child(_trait_note)
+	_trait_note_card = TraitCard.new()
+	_trait_note_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_trait_note.add_child(_trait_note_card)
+	_trait_note.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed:
+			hide_trait_note()
+			_trait_note.accept_event())
+	Steady.mark(_trait_note, "battle.trait_note")
 
 	# 視点の動かし方（マウスに割り当てていない平行移動を含む）。キーの印と一語を、小さく 1 行だけ。
 	var help_panel := _panel()

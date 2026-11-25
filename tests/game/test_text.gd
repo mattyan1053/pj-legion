@@ -151,6 +151,19 @@ func test_texts_do_not_say_piece() -> void:
 				assert_true(piece.search(text) == null, "%s の話 %s: 「駒」と言っている（%s）" % [campaign.id, episode.id, text])
 
 
+## 部隊が選ぶ戦い方の効果は、画面で「軍略」と呼ぶ。「特徴」「組み方」「戦法」と言わない（docs/wording.md の表。人間の 11/25 の決定）。
+func test_texts_call_troop_traits_gunryaku() -> void:
+	var old_word := RegEx.create_from_string("特徴|組み方|戦法")
+	for file: String in _table():
+		for key: String in _table()[file]:
+			assert_true(old_word.search(Text.t(key)) == null, "%s の %s: 「軍略」を古い言葉で呼んでいる（%s）" % [file, key, Text.t(key)])
+	assert_eq(Text.t("deck.trait.title"), "軍略")
+	for campaign in Story.campaigns():
+		for episode: Episode in campaign.episodes:
+			for text: String in [episode.title, episode.lesson]:
+				assert_true(old_word.search(text) == null, "%s の話 %s: 「軍略」を古い言葉で呼んでいる（%s）" % [campaign.id, episode.id, text])
+
+
 ## 差し込んだ名前（駒・陣営・スキルなど）と、前後の かな・漢字 の間に空白を置かない（docs/wording.md の 8。「スペルブレード を表示中」にしない）。
 ## 英字や数で終わりうる名前（軍の名前 {army}・{origin}、部隊の名前 {name}）と、数・マスの座標は見ない。
 func test_no_space_between_a_name_and_kana() -> void:

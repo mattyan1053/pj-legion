@@ -202,8 +202,8 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 ## 何をしたか追えるように、駒が動き出す前にカメラを寄せ、1 体の行動が終わるたびに間を置く。
 ## 動かずに待機するだけの駒は、見せるものが無いので間を置かない。
 func _run_cpu() -> void:
-	if _ui.cpu_running or _ui.busy or not _is_cpu_turn():
-		return
+	if _ui.cpu_running or _ui.busy or not _is_cpu_turn() or _hud.notice_open():
+		return  # 「対戦ルール」を閉じるまでは動かない（閉じたら _open_battle が呼ぶ）
 	_ui.cpu_running = true
 	_refresh()
 	var played_battle := battle

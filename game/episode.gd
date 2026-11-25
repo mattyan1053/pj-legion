@@ -389,7 +389,7 @@ func _read_trait(file: RefCounted, values: Dictionary, side: int) -> void:
 		var entry: Dictionary = values["trait"][0]
 		var chosen := Traits.from_key(entry["value"])
 		if chosen == Traits.NONE:
-			file.problem(entry["line"], "知らない特徴「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(Traits.Id)])
+			file.problem(entry["line"], "知らない軍略「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(Traits.Id)])
 		else:
 			traits[side] = chosen
 	var pairs: Array = []
@@ -423,7 +423,7 @@ func _check_traits(file: RefCounted) -> void:
 	var armies: Array = [UnitKind.army(squad[0][0]) if not squad.is_empty() else -1, enemy_army]
 	for side in 2:
 		if traits[side] != Traits.NONE and armies[side] != -1 and not Traits.of_army(armies[side]).has(traits[side]):
-			file.problem(file.line_of("ally" if side == 0 else "enemy"), "特徴「%s」はこの陣営の軍の特徴ではない" % Traits.key(traits[side]))
+			file.problem(file.line_of("ally" if side == 0 else "enemy"), "軍略「%s」はこの陣営の軍の軍略ではない" % Traits.key(traits[side]))
 	if traits[0] == Traits.Id.OATH and squad.is_empty():
 		file.problem(file.line_of("ally"), "人の側の誓いは、部隊が決まっている話（unit を書いた [ally]）だけ")
 

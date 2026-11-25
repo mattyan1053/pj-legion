@@ -190,6 +190,8 @@ var _battle_started := false
 ## 終盤の曲（sound_catalog.gd の CLIMAX_MUSIC）: 対戦の初めの将の番号と、もう替えたか。
 var _climax_kings: Array[int] = []
 var _climax := false
+## 対戦の始まりの続き（_open_battle）の番号。待つ間に新しい対戦を始めたら、古いほうの続きをやめる。
+var _opening_serial := 0
 ## カメラが追いかけた駒の番号 -> 回数。検査用。
 var camera_follows := {}
 ## 再生したイベントの数（イベントのスクリプト -> 回数）。検査用。
@@ -203,11 +205,12 @@ var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる�
 signal frame_passed
 
 
-## ミニマップを置き、盤の上の駒と見ている範囲を描き直す。
+## ミニマップを置き、盤の上の駒と見ている範囲を描き直す（毎コマ）。開いている特徴の窓も、札の真下に置き直す（窓の大きさが変わっても付いていく）。
 func _place_minimap() -> void:
 	if battle == null or not is_inside_tree():
 		return
 	_hud.place_minimap()
+	_hud.place_trait_note()
 	if _hud.minimap().visible:
 		_hud.minimap().refresh(battle, _views, _rig.camera, get_viewport().get_visible_rect().size)
 

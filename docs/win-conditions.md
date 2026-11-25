@@ -92,6 +92,9 @@
 対戦モードの勝ち方（対戦設定の既定で「拠点: あり」。`OptionalRules.STRONGHOLD`。`docs/map-objects.md` の「拠点」）。ストーリーの話には無い。理由は `GameWonEvent.Reason.STRONGHOLD_HELD`。
 テスト: `tests/rules/test_stronghold.gd`。
 
+- **拠点は盤に 1 つ**（`Board.stronghold_cell`）。確保は**陣営ごとに 1 つの数**で数える（`Battle.stronghold_holds`）。
+  拠点を 2 つ以上置く決まりは無い（置くなら、数え方（拠点ごとか、陣営の合計か）と、上書きで 0 に戻る範囲を決める必要がある）。
+  画面の拠点の札は、拠点がいくつでも同じ枠で読める形にしてある（`docs/battle-view.md` の「画面に出るもの」）。
 - 自分のフェーズの終わり（ターン終了。敵の本陣の占拠を数えたあと）に、拠点に自分の駒（将でない）が乗っていて、拠点の隣（上下左右。
   拠点から 1（`Stronghold.CONTEST_RADIUS`）マス以内、マンハッタン距離）に相手のプレイヤーの駒がいなければ、そのプレイヤーの確保が 1 進む（`Stronghold.count`）。中立の駒は数えない。
 - 確保が **8**（`Stronghold.HOLDS_TO_WIN`）に届いたら、そのプレイヤーの勝ち。そのフェーズのあとへは進まない。

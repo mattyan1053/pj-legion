@@ -111,6 +111,11 @@ func _sweep(args: PackedStringArray) -> void:
 func _process(_delta: float) -> void:
 	if _finished or _leaving or _scene.is_busy():
 		return
+	if _scene.notice_text() != "":
+		# 対戦の始めの「対戦ルール」は、閉じるまで手番が始まらない（人が閉じるもの）。自動の対戦は、ここで閉じる
+		# （札を見る場面の手は、始めたその手の中で見終えている）。閉じると番の知らせ・台詞・CPU の番が始まるので、次のコマから進める。
+		_scene.hide_notice()
+		return
 	var battle: Battle = _scene.battle
 	if _phase != Phase.END and (_phase != Phase.SCENES or not _scripted.is_empty()) and not _failed_scenes.has(_current):
 		var problem := _mismatch(battle)
