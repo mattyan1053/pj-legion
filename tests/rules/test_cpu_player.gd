@@ -136,6 +136,18 @@ func test_king_stays_on_its_hq_under_a_threat_it_survives() -> void:
 	assert_eq(commando.hp, commando.max_hp() - UnitKind.power(UnitKind.Id.KING))
 
 
+## 相手が魔物の群れ（軍なし）なら、受けるダメージが少し減るくらいでは、将は本陣を降りない（降りると、寄ってくる群れに乗られる）。
+func test_king_keeps_its_hq_from_a_horde_while_it_survives() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.KING, P1, HQ1)
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(8, 0)).acted = true
+	battle.add_unit(UnitKind.Id.SKELETON_BRUTE, P2, Vector2i(3, 4))  # 本陣に届く。1 つ上のマスには届かない
+	battle.add_unit(UnitKind.Id.SKELETON_ARCHER, P2, Vector2i(6, 4))  # 同じ
+	assert_eq(battle.armies[P2], UnitKind.Army.NONE)
+	_play_phase(battle)
+	assert_eq(battle.unit_at(HQ1).kind, UnitKind.Id.KING, "倒されないのに、群れの前で本陣を降りた")
+
+
 func test_attacks_the_enemy_standing_on_own_hq_first() -> void:
 	var battle := _battle()
 	battle.add_unit(UnitKind.Id.KING, P1, Vector2i(0, 0))
