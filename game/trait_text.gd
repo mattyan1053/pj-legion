@@ -44,7 +44,7 @@ static func band_text(battle: Battle, side: Unit.Side) -> String:
 	return Names.troop_trait(id)
 
 
-## 札に乗ると出る文（名前と 1 行の文）。
+## 札に乗ると出る文（1 行目に名前と効果の数、2 行目に効く相手）。
 static func band_tooltip(battle: Battle, side: Unit.Side) -> String:
 	var id := Traits.of_side(battle, side) if battle != null else Traits.NONE
-	return "" if id == Traits.NONE else Text.t("battle.hud.troop_trait", {"name": Names.troop_trait(id), "text": Names.troop_trait_text(id)})
+	return "" if id == Traits.NONE else Text.t("battle.hud.troop_trait", {"name": Names.troop_trait(id), "effect": Names.troop_trait_effect(id), "when": Names.troop_trait_when(id)})

@@ -416,6 +416,8 @@ func _queue_traits_scene() -> void:
 	_scripted.append(func() -> void:
 		_expect(paladin.hp == Traits.FOCUS_BONUS + 1, "1 発目が当たらなかった")
 		_expect(_scene.trait_mark_count() == 1, "攻撃された敵の足元に、集中砲火の輪が出ない")
+		_expect(_scene.trait_mark_texts() == ["+%d" % Traits.FOCUS_BONUS], "攻撃された敵の頭の上に、集中砲火の札（増える数）が出ない: %s" % [_scene.trait_mark_texts()])
+		_expect(_scene.trait_name(0) == Names.troop_trait(Traits.Id.FOCUS) and _scene.trait_name(1) == Names.troop_trait(Traits.Id.SUPPLY), "上の帯に、部隊の特徴の名前が出ない")
 		_scene.played.erase(triggered)
 		_scene.click_cell(second.cell))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))

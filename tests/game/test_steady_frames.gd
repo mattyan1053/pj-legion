@@ -19,6 +19,8 @@ const TalkScreen := preload("res://game/talk_screen.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
+const TraitTag := preload("res://game/trait_tag.gd")
+const SortieScreen := preload("res://game/sortie_screen.gd")
 
 
 func _frames(count: int) -> void:
@@ -333,3 +335,50 @@ func test_result_stats_keep_their_size_whatever_the_lines() -> void:
 	assert_eq(sizes[1], sizes[0], "戦績の行が増えると、枠が伸びた")
 	assert_eq(sizes[2], sizes[0], "戦績の行が減ると、枠が縮んだ")
 	screen.free()
+
+
+## 部隊の特徴の札（印と名前。上の帯、部隊の一覧、「編成を確認」）は、どの特徴でも、特徴が無くても同じ大きさ。
+func test_trait_tag_keeps_its_size_for_every_trait() -> void:
+	var tag := TraitTag.new(22.0, 14)
+	await settle(tag)
+	var empty := tag.get_combined_minimum_size()
+	for id: int in Traits.Id.values():
+		tag.trait_id = id
+		await settle(tag)
+		assert_eq(tag.shown_name(), Names.troop_trait(id))
+		assert_eq(tag.get_combined_minimum_size(), empty, "特徴の札の大きさが名前で変わる: %s" % Names.troop_trait(id))
+		var name_width: float = UiTheme.FONT_BOLD.get_string_size(Names.troop_trait(id), HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		assert_true(name_width <= TraitTag.name_width(14), "名前が欄に収まらない: %s" % Names.troop_trait(id))
+	tag.free()
+
+
+## 出撃準備の枠（初期位置・勝利条件・敵の部隊・出撃する部隊）は、どの話でも同じ場所・同じ大きさ。
+## 演習（覚えることの札が出る、部隊が決まっている）、ふつうの話、勝利条件の札が 3 枚で敵の多い話、敵のいちばん多い話で比べる。
+func test_sortie_frames_are_the_same_for_every_episode() -> void:
+	var first := {}
+	var first_id := ""
+	for id: StringName in [&"ridge_path", &"drill_sniper", &"ridge_hold", &"ridge_bones"]:
+		var episode: RefCounted = null
+		for found: RefCounted in Story.all_episodes():
+			if found.id == id:
+				episode = found
+		assert_true(episode != null, "話が無い: %s" % id)
+		if episode == null:
+			continue
+		var context := preload("res://game/app_context.gd").new()
+		context.run = context.story.run_now(episode)
+		context.scene = Story.SORTIE
+		var sortie := SortieScreen.new()
+		sortie.context = context
+		await settle(sortie)
+		await _frames(1)
+		var rects: Dictionary = sortie.frame_rects()
+		assert_eq(rects.size(), 5, "%s: 枠が足りない: %s" % [id, rects.keys()])
+		assert_eq(sortie.lesson_text(), episode.lesson, "%s: 覚えることの札の文" % id)
+		if first.is_empty():
+			first = rects
+			first_id = id
+		else:
+			for what: String in rects:
+				assert_eq(rects[what], first.get(what), "%s の枠が、話で違う（%s と %s）" % [what, first_id, id])
+		sortie.free()

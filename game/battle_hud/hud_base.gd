@@ -21,6 +21,7 @@ const ForecastPanel := preload("res://game/forecast_panel.gd")
 const ForecastText := preload("res://game/forecast_text.gd")
 const RelicIcon := preload("res://game/relic_icon.gd")
 const TraitIcon := preload("res://game/trait_icon.gd")
+const TraitTag := preload("res://game/trait_tag.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const Minimap := preload("res://game/minimap.gd")
 const MinimapGeometry := preload("res://game/minimap_geometry.gd")
@@ -99,8 +100,14 @@ const SIGN_SLOT_WIDTH := 205.0
 const SIGN_MARK_SIDE := 26.0
 ## 上の帯の勝ち方の札・拠点の札の印の大きさ（px）と、勝ち方の札に並べる印の数の上限。
 const GOAL_MARK_SIDE := 24.0
-## 上の帯の、部隊の特徴の印の大きさ。
-const TRAIT_MARK_SIDE := 26.0
+## 上の帯の、部隊の特徴の札の印の大きさと、名前の字の大きさ。
+const TRAIT_MARK_SIDE := 20.0
+const TRAIT_NAME_FONT := 14
+## 上の帯の中身の高さと、上下の余白（合わせて、もとの帯の高さ）。陣営の欄の字の大きさ（1 段のときと、特徴の段を足した 2 段のとき）。
+const TOP_BAND_ROW := 42.0
+const TOP_BAND_PAD := 4.0
+const SIDE_FONT := 16
+const SIDE_FONT_STACKED := 15
 const GOAL_TAG_MARKS := 3
 ## 対戦の始めの「対戦ルール」の枠の大きさ（px）。札の数で変えない（勝利条件の段と縫い目の様子の段が入る高さ）。
 const NOTICE_SIZE := Vector2(720.0, 400.0)
@@ -190,7 +197,7 @@ var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
 ## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
 var _relic_icons: Array[Array] = []
-## 陣営ごとの部隊の特徴の印（上の帯。乗せると名前と文。docs/troop-traits.md）。
+## 陣営ごとの部隊の特徴の札（上の帯。印と名前。乗せると効果と効く相手。docs/troop-traits.md）。
 var _trait_icons: Array[Control] = []
 var _relic_notes: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []

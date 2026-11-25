@@ -228,6 +228,39 @@ func _scene_trait_start() -> bool:
 	return _scene.trait_link_count() > 0
 
 
+## 特徴の札が、ほかの表示と重なる所: 集中砲火の効く敵が拠点の上（竿と数の札）とバリアの中（泡と水色の輪）にいて、
+## 仇討ちの効く自分の兵（敵の兵を倒した）を選んでいる（選択の黄色い輪、移動範囲）。場面は手で並べる（CPU の対戦では、そろわない）。
+func _scene_trait_marks() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.VENGEANCE])
+	var hold := _battle.board.stronghold_cell
+	var foes: Array[Unit] = []
+	var mine: Array[Unit] = []
+	for unit in _battle.units:
+		if unit.kind != UnitKind.Id.KING and unit.side != Unit.Side.NEUTRAL:
+			(mine if unit.side == Unit.Side.PLAYER1 else foes).append(unit)
+	var spots: Array[Vector2i] = [hold, hold + Vector2i(1, 0), hold + Vector2i(-1, 1), hold + Vector2i(1, 2)]
+	for spot in spots:
+		if not _battle.board.is_walkable(spot) or _battle.unit_at(spot) != null:
+			return false
+	if foes.size() < 2 or mine.size() < 2:
+		return false
+	foes[0].cell = spots[0]
+	foes[1].cell = spots[1]
+	mine[0].cell = spots[2]
+	mine[1].cell = spots[3]
+	Statuses.add(foes[1], Status.Type.BARRIER, DivineShieldSkill.BARRIER_TURNS)
+	for foe: Unit in [foes[0], foes[1]]:
+		Traits.note_attack(_battle, mine[1], foe)
+	mine[0].slew_sides |= 1 << int(Unit.Side.PLAYER2)
+	_show()
+	_scene.hide_notice()
+	_scene.click_cell(mine[0].cell)
+	_look_at(BoardView.cell_center(hold))
+	_park_mouse()
+	return _scene.trait_mark_count() == 3
+
+
 ## 行動できる自分の駒が、部隊の特徴の乗る攻撃をできる相手（[駒, 相手]）。無ければ空。
 func _trait_attack() -> Array:
 	for unit in _own_units():
@@ -240,7 +273,7 @@ func _trait_attack() -> Array:
 	return []
 
 
-## 集中砲火: 味方が当てた敵の足元に輪が出ていて、2 人目の攻撃の予測に「集中砲火 +2」。
+## 集中砲火: 味方が当てた敵の頭の上に札（+2）が出ていて、2 人目の攻撃の予測に「集中砲火 +2」。
 func _scene_trait_focus() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.LONE])
@@ -254,7 +287,7 @@ func _scene_trait_focus() -> bool:
 	return _scene.trait_mark_count() > 0
 
 
-## 仇討ち: 味方を倒した敵の足元に輪が出ていて、その敵への攻撃の予測に「仇討ち +4」。
+## 仇討ち: 味方を倒した敵の頭の上に札（+4）が出ていて、その敵への攻撃の予測に「仇討ち +4」。
 func _scene_trait_vengeance() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.RANKS, Traits.Id.VENGEANCE])
