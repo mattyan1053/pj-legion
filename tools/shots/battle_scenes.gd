@@ -435,6 +435,54 @@ func _scene_forecast_heal() -> bool:
 	return _scene.forecast_text() != ""
 
 
+## 行動できる自分の回復役と、動けば敵を攻撃できるマス（[回復役, マス]。その場でもよい）。回復もできるマスを先に選ぶ。無ければ空。
+func _healer_strike() -> Array:
+	var fallback := []
+	for unit in _own_units():
+		if not _battle.can_act(unit) or UnitKind.role(unit.kind) != UnitKind.Role.HEALER:
+			continue
+		for cell: Vector2i in _battle.options(unit.id).move_cells:
+			var trial := _battle.clone()
+			if cell != unit.cell:
+				trial.apply(MoveAction.new(unit.id, cell, false))
+			var options := trial.options(unit.id)
+			if options.attack_target_ids.is_empty():
+				continue
+			if not options.heal_target_ids.is_empty():
+				return [unit, cell]
+			if fallback.is_empty():
+				fallback = [unit, cell]
+	return fallback
+
+
+## 回復役を敵の届くマスへ動かし、メニュー（攻撃・回復）を出す。動かした回復役を返す（作れなければ null）。
+func _healer_menu() -> Unit:
+	if not _advance(func() -> bool: return _battle.phase != Unit.Side.NEUTRAL and not _healer_strike().is_empty()):
+		return null
+	var found := _healer_strike()
+	var unit: Unit = found[0]
+	_show()
+	_scene.click_cell(unit.cell)
+	if found[1] != unit.cell:
+		await _scene.act(MoveAction.new(unit.id, found[1], false))
+	_scene.focus_camera(unit.cell)
+	return unit if _scene.menu_ids().has(&"attack") else null
+
+
+func _scene_healer_menu() -> bool:
+	return await _healer_menu() != null
+
+
+func _scene_healer_attack() -> bool:
+	var unit: Unit = await _healer_menu()
+	if unit == null or not (_scene.press_menu(&"attack") and _scene.is_choosing_target()):
+		return false
+	var target: Unit = _battle.unit_by_id(_battle.options(unit.id).attack_target_ids[0])
+	_look_at(BoardView.cell_center(target.cell))
+	_scene.hover(target.cell)
+	return _scene.forecast_text() != ""
+
+
 func _scene_battle_unit_detail() -> bool:
 	# 傷ついていて、経験値も入っている、人の軍の駒。
 	var hurt := func() -> Unit:

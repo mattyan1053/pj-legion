@@ -5,7 +5,7 @@ extends "res://game/battle_screen/screen_base.gd"
 ## 部隊の特徴の印（docs/troop-traits.md の「対戦の画面」）: 効く相手の頭の上の札（増える数）と足元の輪、組む兵どうしの線。
 ## 色は特徴の軍の色。相手の特徴も同じに出す。
 ## - 札と輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵（どれも照準の印）、
-##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない攻撃する兵（増えるのは攻撃する側なので、番の間だけ。上向きの印）
+##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない将でない兵（回復役も。増えるのは攻撃する側なので、番の間だけ。上向きの印）
 ## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種（結び目は菱形）、補給線で隣り合う回復役（結び目は十字）
 func _refresh_traits() -> void:
 	var links: Array = []
@@ -20,7 +20,7 @@ func _refresh_traits() -> void:
 			var mark := [_trait_color(id), Text.t("battle.board.trait_mark", {"amount": Names.troop_trait_amount(id)}), TraitMark.Kind.TARGET]
 			if Traits.focus_marked(battle, shown, side) or Traits.vengeance_marked(battle, shown, side):
 				marked[shown.id] = mark
-			if shown.side == side and battle.phase == side and Traits.alone_at(battle, shown, shown.cell) and battle.can_act(shown) and shown.kind != UnitKind.Id.KING and UnitKind.role(shown.kind) != UnitKind.Role.HEALER:
+			if shown.side == side and Traits.lone_marked(battle, shown):
 				marked[shown.id] = [mark[0], mark[1], TraitMark.Kind.ATTACKER]
 			if shown.side != side and id == Traits.Id.OATH:
 				for mate in battle.units:

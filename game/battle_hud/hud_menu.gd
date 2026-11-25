@@ -84,7 +84,7 @@ func add_talk_card(card: Control) -> void:
 	card.obstacles = func() -> Array[Rect2]: return [menu_rect(), forecast_rect(), evolution_rect()]
 
 
-## 上の帯のすぐ下に出す、決まった枠（左の勝ち方の札、右の視点の案内）の四角（出ていなければ大きさ 0）。検査用。
+## 上の帯のすぐ下に出す、決まった枠（左の勝ち方の札、右の視点の案内）の四角（出ていなければ大きさ 0）。駒のそばのメニューと予測のパネルは、ここに重ねない。
 func top_tag_rects() -> Array[Rect2]:
 	return [
 		_goal_panel.get_global_rect() if _goal_panel.visible else Rect2(),
