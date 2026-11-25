@@ -12,6 +12,7 @@ deck.title,部隊編成
 deck.list.empty,編成なし
 deck.list.new,新規編成
 deck.list.detail,{army}　{count} 体　コスト {cost} / {budget}
+deck.list.trait,{detail}　特徴: {trait}
 deck.army.title,軍を選ぶ
 deck.army.budget,コスト上限 {budget}
 deck.army.unit,{unit}（{role}）
@@ -76,6 +77,7 @@ deck.load.unknown_unit,未対応の兵（{name}）を除外
 deck.load.unknown_item,未対応の持ち物（{name}）を除外
 deck.load.none,無し
 deck.preview.title,{who}　{army}　コスト {cost} / {budget}
+deck.preview.trait,{name}: {text}
 deck.card.king,本陣に配置
 deck.sheet.hp,HP
 deck.sheet.hp_value,{hp} / {max}

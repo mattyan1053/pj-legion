@@ -11,12 +11,22 @@ const DeckText := preload("res://game/deck_text.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
+const TraitIcon := preload("res://game/trait_icon.gd")
+const TraitText := preload("res://game/trait_text.gd")
+const Names := preload("res://game/names.gd")
+const Steady := preload("res://game/steady.gd")
 
 ## 1 行に並べる札の数。
 const COLUMNS := 4
+## 部隊の特徴の行の高さと、印の大きさ。
+const TRAIT_ROW_HEIGHT := 30.0
+const TRAIT_MARK_SIDE := 26.0
 
 var _overlays: RefCounted
 var _title: Label
+## 部隊の特徴の行（印と、名前と 1 行の文。docs/troop-traits.md）。
+var _trait_mark: TraitIcon
+var _trait_label: Label
 var _cards: GridContainer
 var _detail: UnitDetail
 ## いま出している部隊と、アイコンの陣営の色。
@@ -48,6 +58,7 @@ func setup(overlays: RefCounted) -> void:
 	UiTheme.style_window_title(_title)
 	column.add_child(_title)
 	column.add_child(UiTheme.window_rule())
+	column.add_child(_build_trait_row())
 	var hint := Label.new()
 	hint.text = Text.t("deck.detail.click")
 	hint.add_theme_font_size_override("font_size", 14)
@@ -84,10 +95,35 @@ func open(who: String, deck: Deck, side := 0) -> void:
 		child.queue_free()
 	_deck = deck
 	_side = side
+	var trait_id := TraitText.of_deck(deck)
+	_trait_mark.trait_id = trait_id
+	_trait_label.text = "" if trait_id == Traits.NONE else Text.t("deck.preview.trait", {"name": Names.troop_trait(trait_id), "text": Names.troop_trait_text(trait_id)})
 	_add_card(UnitCard.build(UnitKind.Id.KING, [], side), -1)
 	for index in deck.entries.size():
 		_add_card(UnitCard.build(deck.entries[index].kind, deck.entries[index].equipment, side), index)
 	visible = true
+
+
+## 部隊の特徴の行（決まった高さ。特徴の無い部隊は空のまま）。
+func _build_trait_row() -> Control:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	row.custom_minimum_size = Vector2(0.0, TRAIT_ROW_HEIGHT)
+	Steady.mark(row, "deck_preview.trait")
+	_trait_mark = TraitIcon.new(Traits.NONE, TRAIT_MARK_SIDE)
+	row.add_child(_trait_mark)
+	_trait_label = Label.new()
+	_trait_label.add_theme_font_size_override("font_size", 15)
+	_trait_label.add_theme_color_override("font_color", Palette.TEXT)
+	_trait_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(_trait_label)
+	return row
+
+
+## いまの部隊の特徴の行の文（検査用）。
+func trait_text() -> String:
+	return _trait_label.text
 
 
 ## 札を押せるようにして並べる（index は部隊の並びの番号。将は -1）。

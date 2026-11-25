@@ -101,6 +101,9 @@ func _refresh_list() -> void:
 	_list_detail_body.add_theme_color_override("font_color", COLOR_DIM if chosen.deck.total_cost() <= chosen.deck.budget() else COLOR_BAD)
 	_list_detail_title.text = chosen.name
 	_list_detail_body.text = Text.t("deck.list.detail", {"army": DeckText.army_name(chosen.deck.army), "count": chosen.deck.entries.size(), "cost": chosen.deck.total_cost(), "budget": chosen.deck.budget()})
+	var trait_id := TraitText.of_deck(chosen.deck)
+	if trait_id != Traits.NONE:
+		_list_detail_body.text = Text.t("deck.list.trait", {"detail": _list_detail_body.text, "trait": Names.troop_trait(trait_id)})
 	_list_detail_cards.add_child(UnitCard.build(UnitKind.Id.KING))
 	for entry in chosen.deck.entries:
 		_list_detail_cards.add_child(UnitCard.build(entry.kind, entry.equipment))
