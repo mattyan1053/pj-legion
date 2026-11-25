@@ -23,7 +23,7 @@ func is_valid(battle: Battle) -> bool:
 
 func execute(battle: Battle) -> Array[BattleEvent]:
 	var attacker := battle.unit_by_id(unit_id)
-	var victims := MapObject.blast_victims(battle, cell)
+	var victims := MapObject.blast_victims(battle, cell, attacker.side)
 	var victim_ids: Array[int] = []
 	for victim in victims:
 		victim_ids.append(victim.id)

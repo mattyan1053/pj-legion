@@ -49,6 +49,8 @@ var signs: Array[int] = []
 var traits: Array[int] = [Traits.NONE, Traits.NONE]
 ## 部隊が選んだ特徴（Deck.trait_id）を使うか。対戦モード（versus、on_map）は真。ストーリーの話は偽（書いた陣営だけが特徴を持つ）。
 var deck_traits := false
+## プレイヤーごとの、番人（中ボス）を狙わない陣営か（Battle.spares_bosses。ストーリーの話の [enemy] の spare_boss）。
+var spares_bosses: Array[bool] = [false, false]
 
 ## いまの対戦モードの勝ち方: 敵の将を倒す、敵の本陣を占拠し続ける。
 const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [

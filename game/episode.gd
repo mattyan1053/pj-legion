@@ -72,6 +72,8 @@ var start_gauge := 0
 var enemy_army := UnitKind.Army.FANTASY
 ## 敵に将を置くか（[enemy] の king = none で偽。将のいない群れ。docs/scenario.md）。
 var enemy_king := true
+## 敵の側が番人（中ボス）を狙わないか（[enemy] の spare_boss = yes。Battle.spares_bosses。docs/story.md）。
+var enemy_spares_boss := false
 var enemy: Array = []
 ## 陣営ごとの部隊の特徴（Traits.Id。書かなければ Traits.NONE = 特徴なし。docs/troop-traits.md）。[ally] / [enemy] の trait。
 var traits: Array[int] = [Traits.NONE, Traits.NONE]
@@ -312,7 +314,7 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 			file.problem(1, "[enemy] の節が無い（敵の軍 army と、部隊 unit を書く）")
 		return
 	var keys := ["unit", "deploy", "trait", "oath"]
-	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure", "king"])
+	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure", "king", "spare_boss"])
 	var values: Dictionary = file.values(section, keys, ["unit", "deploy", "oath"])
 	_read_trait(file, values, side)
 	if values.has("king_figure"):
@@ -355,6 +357,12 @@ func _read_side(file: RefCounted, section: String, side: int) -> void:
 			enemy_king = false
 			if values.has("king_figure"):
 				file.problem(values["king_figure"][0]["line"], "将のいない敵（king = none）に、将の姿（king_figure）は書けない")
+	if values.has("spare_boss"):
+		var entry: Dictionary = values["spare_boss"][0]
+		if entry["value"] != "yes":
+			file.problem(entry["line"], "spare_boss に書けるのは yes（敵の側は番人を狙わない）だけ")
+		else:
+			enemy_spares_boss = true
 	if rows.is_empty():
 		file.problem(file.line_of(section), "敵の部隊（unit）が無い")
 	if not values.has("army"):
