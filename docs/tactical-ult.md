@@ -61,7 +61,7 @@
 **軍の全員の移動力 +2（`AllOutAssaultUlt.MOVE_BONUS`）、攻撃力 +5（`AllOutAssaultUlt.POWER_BONUS`）。効くのは、このフェーズの間だけ。** 数で押す軍が、一斉に届いて、一斉に殴る。
 
 - 軍の駒すべて（将、回復役も）に、状態「突撃」（`Status.Type.ASSAULT`。`docs/unit-statuses.md`）が付く
-  （駒の番号の順に `StatusAppliedEvent`）。回復役は回復量が上がる。
+  （駒の番号の順に `StatusAppliedEvent`）。回復役は回復量と回復役の攻撃が上がる。
 - 補正は「一時的な補正」の層（`docs/player-loadout.md`）に入るので、動けるマス、ダメージ、予測、CPU の読みに、そのまま効く。もとの値は書き換えない。
 - 突撃は、次の自分の番の始めに外れる（`StatusRemovedEvent`、`EXPIRED`）。相手の番の間も付いているが、移動力と攻撃力は守りには効かない。
 - もう行動を終えた駒にも付くが、このフェーズにはもう動けないので、得をしない。**フェーズの始めに使うのがいちばん得**。

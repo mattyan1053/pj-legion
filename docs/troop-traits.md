@@ -1,7 +1,7 @@
 # 軍略
 
-コード: `rules/traits.gd`（`Traits`）。テスト: `tests/rules/test_traits.gd`。
-画面: `game/deck_screen/deck_editor.gd`（部隊編成の欄）、`game/trait_icon.gd`（印）、`game/trait_tag.gd`（印と名前の札）、`game/trait_card.gd`（対戦中の軍略の窓）、`game/trait_text.gd`（文）、
+コード: `rules/traits.gd`（`Traits`）。テスト: `tests/rules/test_traits.gd`、`tests/game/test_steady_frames.gd`（札の大きさ）、`tests/game/test_match_setup_panel.gd`（編成確認）、`tests/game/test_text.gd`（文）、`tests/game/test_deck_library.gd`（保存）。
+画面: `game/deck_screen/deck_editor.gd`（部隊編成の欄）、`game/deck_screen/deck_list.gd`（一覧の行）、`game/deck_preview.gd`（編成確認）、`game/battle_hud/hud_top_bar.gd`（上の帯の札と窓）、`game/unit_view.gd`（`set_trait_mark`）、`game/trait_icon.gd`（印）、`game/trait_tag.gd`（印と名前の札）、`game/trait_card.gd`（対戦中の軍略の窓）、`game/trait_text.gd`（文）、
 `game/trait_mark.gd`（盤の、頭の上の札）、`game/trait_links.gd` と `game/battle_screen/screen_rules_view.gd`（盤の輪と線）、
 `game/battle_playback/playback_skills.gd`（効いたときの札）。
 
@@ -41,8 +41,8 @@
 | 単騎で足すダメージ | 1 | `LONE_BONUS` |
 | 1 部隊で結べる誓いの数 | 2 | `MAX_OATHS` |
 
-数の決め方は CPU どうしの実測（`docs/cpu-ai.md` の「軍略」）。隊列は、選ぶ部隊（同じ兵種 4 体以上）がもともと弱いので -4 から -6 に強めた。
-補給線の回復は 6〜12 にしても補給線の部隊の勝ちが動かず、長引く局が増えるので 4 のまま。単騎の部隊が強いのは、軍略でなくスペルブレードの多い部隊の強さ。
+数の決め方は CPU どうしの実測（`docs/cpu-ai.md` の「軍略」）。隊列は、選ぶ部隊（同じ兵種 4 体以上）がもともと弱いので強めにしてある。
+補給線の回復は、増やしても補給線の部隊の勝ちが動かず、長引く局が増えるので小さいまま。単騎の部隊が強いのは、軍略でなくスペルブレードの多い部隊の強さ。
 
 - 集中砲火: 自分の攻撃は数えない（アドレナリン注射でもう一度動いて同じ敵を撃っても伸びない）。だれが先に当てても、2 発目から伸びる。
 - 隊列: 森の軽減のあとに引く。0 より下にはならない。
@@ -77,12 +77,12 @@
 札の名前の字は、いちばん長い名前（「集中砲火」）が札に収まる大きさ（`deck_base.gd` の `TRAIT_NAME_FONT`）。誓いを選んだ部隊だけ、部隊の行に「誓い」のボタンが出る。
 保存は `trait` の鍵（`docs/deck-screen.md` の「取っておく形」）。
 一覧で選んだ部隊の「軍・駒の数・コスト」の行（コストのゲージの後ろに、印と名前の札。文の欄とゲージの位置は、どの部隊でも同じ）と、
-対戦設定の「編成を確認」の見出しの下（印と名前、効果、効く相手）にも、その軍略を出す
+対戦設定の「編成確認」の見出しの下（印と名前、効果、効く相手）にも、その軍略を出す
 （`TraitText.of_deck`。CPU の軍略も、対戦の前にここで分かる）。
 
 ## 対戦の画面
 
-- **盤の上**（`_refresh_traits`）: 効く相手の**頭の上に札**（`game/trait_mark.gd`。増える数「+2」。暗い地に軍略の軍の色。いつもカメラを向き、
+- **盤の上**（`game/battle_screen/screen_rules_view.gd` の `_refresh_traits`）: 効く相手の**頭の上に札**（`game/trait_mark.gd`。増える数「+2」。暗い地に軍略の軍の色。いつもカメラを向き、
   駒・木・拠点の竿に隠れず、画面の上で同じ大きさ）と、足元に軍略の軍の色の外側の輪（`UnitView.set_trait_mark`）。
   足元の輪だけだと、拠点の竿・バリア・選択の輪に埋もれるので、札を主にする。札の左の印で役を分ける: 狙うと増える敵（集中砲火・仇討ち・誓い）は照準、
   攻撃が増える味方（単騎）は上向きの矢。誓い・隊列・補給線は、組む兵どうしに線（`game/trait_links.gd`。軍の色に暗い縁、真ん中に結び目。
