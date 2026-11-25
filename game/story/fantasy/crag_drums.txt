@@ -57,7 +57,7 @@ wins = routed
 [enemy]
 army = none
 king = none
-unit = skeleton
+unit = skeleton_brute
 unit = skeleton
 unit = skeleton
 unit = skeleton

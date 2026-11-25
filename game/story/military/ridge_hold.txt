@@ -4,7 +4,7 @@
 #
 # 1・2 話と同じマップ「尾根の小道」（game/maps/ridge_path.txt）を、勝ち方を変えて使い回す（Issue #49 の「マップの使い回し」）。
 # 人は守る側: 決められたターンが終わるまで、将と本陣を守り切れば勝ち（hold_turns。docs/win-conditions.md の「守り切る」）。
-# 敵は数で押す。尾根の中ほどから始まり、いつもの勝ち方（将の撃破、本陣の占拠）で攻めてくる。
+# 敵は数で押す。尾根の奥（敵の本陣の前）から始まり、いつもの勝ち方（将の撃破、本陣の占拠）で攻めてくる。
 # 書き方は docs/story.md の「話のファイル」（書き方の見本は game/story/_template/）。
 #
 # 仕上げの書き手へ（この話の背骨。docs/story-outline.md の写し。台詞をどう直しても、ここは崩さない）
@@ -69,8 +69,8 @@ unit = sorcerer
 unit = sorcerer
 unit = spellblade
 unit = priest
-deploy = 8,9  5,9  11,9  3,11  13,11
-deploy = 8,7  6,7  10,7  8,5
+deploy = 8,4  6,4  10,4  3,4  13,4
+deploy = 8,2  6,2  10,2  8,1
 
 [unlock]
 item = long_scope
