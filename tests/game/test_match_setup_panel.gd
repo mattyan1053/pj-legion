@@ -7,6 +7,7 @@ const DeckLibrary := preload("res://game/deck_library.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const OverlayStack := preload("res://game/overlay_stack.gd")
 const Names := preload("res://game/names.gd")
+const TraitText := preload("res://game/trait_text.gd")
 
 
 ## 予算ぎりぎりで、装備をいちばん多く持たせた部隊（コマンドー 4 体に 3 つずつ）。
@@ -59,10 +60,13 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 	for entry in deck.entries:
 		kinds.append(entry.kind)
 	assert_eq(panel.preview().shown_kinds(), kinds, "選んだ部隊の駒を、将から並べる")
+	var chosen := Names.troop_trait(TraitText.of_deck(deck))
+	assert_true(panel.preview().trait_text().begins_with(chosen + ": "), "部隊の特徴の名前と文を出す: %s" % panel.preview().trait_text())
 	panel.choose_opponent(true)
 	panel.choose_deck(Unit.Side.PLAYER2, "")
 	panel.open_preview(Unit.Side.PLAYER2)
 	assert_eq(panel.preview().shown_kinds().size(), CpuDeck.build(UnitKind.Army.MILITARY).entries.size() + 1, "CPU の編成も同じ見え方で開く")
+	assert_true(panel.preview().trait_text().begins_with(Names.troop_trait(CpuDeck.build(UnitKind.Army.MILITARY).trait_id) + ": "), "CPU の部隊の特徴も出す（相手の特徴を、対戦の前に見られる）")
 	holder.free()
 
 
