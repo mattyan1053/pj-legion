@@ -7,7 +7,7 @@ extends RefCounted
 ## 1. 4 つの役割（前衛・後衛・奇襲・回復）を 1 体ずつ雇う
 ## 2. 予算と数の上限が許すかぎり、前衛、後衛、奇襲の順にもう 1 体ずつ足す
 ## 3. 余った予算で装備を持たせる。前衛にアイアンシールド、奇襲にスピードブーツを、1 個ずつ順に配る
-## 4. 部隊の特徴を選ぶ（choose_trait。docs/troop-traits.md）。誓いなら、誓いを結ぶ（bind_oaths）
+## 4. 軍略を選ぶ（choose_trait。docs/troop-traits.md）。誓いなら、誓いを結ぶ（bind_oaths）
 
 
 
@@ -38,7 +38,7 @@ static func build(army: UnitKind.Army, rules: DeckRules = null) -> Deck:
 	return deck
 
 
-## 部隊 deck に、CPU の決め方で特徴を選んで付け（choose_trait）、誓いなら誓いを結ぶ（bind_oaths）。
+## 部隊 deck に、CPU の決め方で軍略を選んで付け（choose_trait）、誓いなら誓いを結ぶ（bind_oaths）。
 static func pick_trait(deck: Deck) -> void:
 	deck.trait_id = choose_trait(deck)
 	if deck.trait_id == Traits.Id.OATH:
@@ -47,7 +47,7 @@ static func pick_trait(deck: Deck) -> void:
 		deck.oaths.clear()
 
 
-## 部隊の中身に合う特徴（docs/cpu-ai.md の「部隊の特徴」）。軍でなければ Traits.NONE。
+## 部隊の中身に合う軍略（docs/cpu-ai.md の「軍略」）。軍でなければ Traits.NONE。
 ## 連邦: 回復役が SUPPLY_MEDICS 体以上なら補給線、同じ兵種（回復役を除く）が RANKS_KIND 体以上なら隊列、ほかは集中砲火。
 ## 騎士領: 奇襲が LONE_RAIDERS 体以上なら単騎、攻撃する駒（回復役を除く）が OATH_FIGHTERS 体以上なら誓い、ほかは仇討ち。
 static func choose_trait(deck: Deck) -> int:

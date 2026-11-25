@@ -1,5 +1,5 @@
 extends "res://game/autoplay/autoplay_base.gd"
-## 自動の対戦の場面: 盤の上のこと（ポータルと泉、占拠と拠点、樽の引き分け、リザルト、盤の上の効果、スキル、状態、部隊の特徴、行動を終えないスキル）。
+## 自動の対戦の場面: 盤の上のこと（ポータルと泉、占拠と拠点、樽の引き分け、リザルト、盤の上の効果、スキル、状態、軍略、行動を終えないスキル）。
 
 
 ## ポータルを通る移動（ポータルへ歩く → メニューの「転移」→ 残りで続けて歩く）と、その取り消し、回復の泉の回復。
@@ -388,7 +388,7 @@ func _queue_status_scene() -> void:
 		_expect(not Statuses.has(sniper, Status.Type.AIM), "照準が残っている"))
 
 
-## 部隊の特徴（docs/troop-traits.md）。集中砲火の連邦のスナイパーが 1 発当てると、敵の足元に輪が出て、2 人目のスナイパーの攻撃に集中砲火が乗る。
+## 軍略（docs/troop-traits.md）。集中砲火の連邦のスナイパーが 1 発当てると、敵の足元に輪が出て、2 人目のスナイパーの攻撃に集中砲火が乗る。
 ## ターンを終えると、補給線の相手の番の始めに、衛生兵と隣り合う兵が回復する。
 func _queue_traits_scene() -> void:
 	var board := _small_board(Vector2i(7, 3))
@@ -410,14 +410,14 @@ func _queue_traits_scene() -> void:
 		_scene.set_opponent(false)
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
-		_expect(_scene.trait_mark_count() == 0, "まだ誰も攻撃していないのに、特徴の輪が出ている")
+		_expect(_scene.trait_mark_count() == 0, "まだ誰も攻撃していないのに、軍略の輪が出ている")
 		_scene.click_cell(first.cell))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
 	_scripted.append(func() -> void:
 		_expect(paladin.hp == Traits.FOCUS_BONUS + 1, "1 発目が当たらなかった")
 		_expect(_scene.trait_mark_count() == 1, "攻撃された敵の足元に、集中砲火の輪が出ない")
 		_expect(_scene.trait_mark_texts() == ["+%d" % Traits.FOCUS_BONUS], "攻撃された敵の頭の上に、集中砲火の札（増える数）が出ない: %s" % [_scene.trait_mark_texts()])
-		_expect(_scene.trait_name(0) == Names.troop_trait(Traits.Id.FOCUS) and _scene.trait_name(1) == Names.troop_trait(Traits.Id.SUPPLY), "上の帯に、部隊の特徴の名前が出ない")
+		_expect(_scene.trait_name(0) == Names.troop_trait(Traits.Id.FOCUS) and _scene.trait_name(1) == Names.troop_trait(Traits.Id.SUPPLY), "上の帯に、軍略の名前が出ない")
 		_scene.played.erase(triggered)
 		_scene.click_cell(second.cell))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))

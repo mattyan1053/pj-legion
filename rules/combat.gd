@@ -112,8 +112,8 @@ static func attack_power(attacker: Unit) -> int:
 
 
 ## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
-## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、部隊の特徴で足すもの（集中砲火・仇討ち・誓い・単騎）、森の軽減、
-## 部隊の特徴で引くもの（隊列）、胞子（糸茸）、受ける側の状態（バリア）。
+## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、軍略で足すもの（集中砲火・仇討ち・誓い・単騎）、森の軽減、
+## 軍略で引くもの（隊列）、胞子（糸茸）、受ける側の状態（バリア）。
 ## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
 static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
@@ -135,7 +135,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 		amount = maxi(0, amount - spores)
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
 	if result.blocked_by == -1:
-		result.traits = boosts  # バリアに防がれたら、特徴の増減も出さない
+		result.traits = boosts  # バリアに防がれたら、軍略の増減も出さない
 	result.critical = Statuses.critical_percent(attacker) != Status.NORMAL_PERCENT
 	result.forest = forest
 	result.spores = spores > 0 and result.blocked_by == -1
@@ -148,7 +148,7 @@ static func damage(battle: Battle, attacker: Unit, target: Unit) -> int:
 
 
 ## attacker が target を攻撃する（届くかどうかは呼ぶ側が確かめる）。起きたことを返す。
-## 煙幕に阻まれたら SmokeBlockedEvent。そうでなければ、部隊の特徴が効いたぶんの TraitTriggeredEvent、AttackDamagedEvent と、防いだ状態（バリア）が外れる StatusRemovedEvent。
+## 煙幕に阻まれたら SmokeBlockedEvent。そうでなければ、軍略が効いたぶんの TraitTriggeredEvent、AttackDamagedEvent と、防いだ状態（バリア）が外れる StatusRemovedEvent。
 ## 続けて、攻撃で外れる攻撃側の状態（照準）の StatusRemovedEvent、倒れたら UnitDefeatedEvent。
 ## プレイヤーの駒の攻撃（AttackAction）と中立の駒の攻撃（Neutral）が同じものを使う。経験値と行動の終わりは呼ぶ側。
 static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[BattleEvent]:

@@ -3,7 +3,7 @@ extends RefCounted
 ## 対戦モードで、対戦設定から入・切できる決まり（docs/match-setup.md の「選べる決まり」）の名前。
 ## 入にするのは MatchSetup.rules に名前を並べること（MatchSetup の既定は空 = どれも切。ストーリーの話は入にしない）。
 ## 対戦モードの対戦設定の既定は DEFAULTS（拠点と縫い目の様子は入）。
-## 部隊の特徴（Traits）は決まりではなく、部隊が持つもの（入・切は無い。docs/troop-traits.md）。
+## 軍略（Traits）は決まりではなく、部隊が持つもの（入・切は無い。docs/troop-traits.md）。
 ## 砲台は決まりではなく、マップの物（docs/map-objects.md の「砲台」。盤の出どころが置く）。
 ## 休眠の決まり（DORMANT）は、画面からは入にできない（集計の道具の --rules= とテストだけが入にする）。
 ## 決まりを 1 つ足すには、ここに名前を足し、MatchSetup.create_battle に入のときの準備を書く。

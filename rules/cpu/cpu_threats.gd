@@ -6,8 +6,8 @@ extends "res://rules/cpu/cpu_player_base.gd"
 ## ignored_id の敵は数えない。_build_threats のあとに呼ぶ。
 ## - 自分の煙幕の中のマスと、殻蟹（離れた所からは狙えない。Monsters）では、近くからの攻撃だけを数える
 ## - unit にバリアが付いていれば、いちばん弱い 1 回ぶんを引く（相手は、弱い攻撃で先にはがす）
-## - unit が cell で隊列（部隊の特徴）になるなら、1 回ごとに隊列のぶんを引く
-## - 敵の部隊の特徴で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら、単騎はいま隣に味方のいない敵）
+## - unit が cell で隊列（軍略）になるなら、1 回ごとに隊列のぶんを引く
+## - 敵の軍略で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら、単騎はいま隣に味方のいない敵）
 func _threat_at(unit: Unit, cell: Vector2i, ignored_id: int) -> int:
 	return _danger_in(_threats, _close_threats, unit, cell, ignored_id)
 

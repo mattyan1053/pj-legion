@@ -137,7 +137,7 @@ const STRONGHOLD_KILL_BONUS := 40.0
 ## 相手の駒が拠点に乗っている間、拠点の周り（確保を止められる所。Stronghold.CONTEST_RADIUS 以内）に立って行動を終える価値。
 const STRONGHOLD_BLOCK_VALUE := 60.0
 const HEALER_SEARCH_STEPS := 12
-## 部隊の特徴（docs/troop-traits.md。docs/cpu-ai.md の「部隊の特徴」）。その特徴の部隊でだけ効く。
+## 軍略（docs/troop-traits.md。docs/cpu-ai.md の「軍略」）。その軍略の部隊でだけ効く。
 ## 隊列: 同じ兵種の味方の隣に立って行動を終える価値（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）。
 const RANKS_HUDDLE_VALUE := 2.0
 ## 補給線: HP の減った駒が回復役の隣に立って行動を終える価値（回復する HP 1 あたり）。
@@ -149,7 +149,7 @@ const OATH_NEAR_VALUE := 4.0
 const LONE_STAND_VALUE := 2.0
 ## 集中砲火・誓い: 敵を倒しきらずに攻撃し、このあとに動ける味方（誓いなら誓いの相手）が届きそうなら、続けて当てる見込みとして足す価値。
 const FOLLOW_UP_VALUE := 3.0
-## 仇討ち（相手の特徴）: 相手の駒を倒して、倒した駒が新しく仇になる減点（その駒は、これから余計に狙われる）。
+## 仇討ち（相手の軍略）: 相手の駒を倒して、倒した駒が新しく仇になる減点（その駒は、これから余計に狙われる）。
 const AVENGER_PENALTY := 3.0
 
 ## 倒れると何か起きる魔物（docs/monsters.md）。

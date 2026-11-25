@@ -25,7 +25,7 @@ class UnitOutcome:
 	var spores := false
 	var blocked_by := -1
 	var smoked := false
-	## 部隊の特徴（Traits）で増える・減るダメージ（Traits.Id -> 量。隊列は減る量）。
+	## 軍略（Traits）で増える・減るダメージ（Traits.Id -> 量。隊列は減る量）。
 	var traits: Dictionary[int, int] = {}
 	## 倒れた骸骨旗手の周りにいて、奮起するか（Monsters。付く奮起は statuses_applied にも入る）。
 	var rallied := false

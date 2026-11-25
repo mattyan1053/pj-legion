@@ -30,7 +30,7 @@ var spores := false
 ## ダメージを 0 にした、受けた駒の状態（Status.Type。バリア）。防がれていなければ -1。
 ## 防がれたときは amount が 0 で、このあとに、その状態が外れる StatusRemovedEvent が続く。
 var blocked_by := -1
-## 部隊の特徴（Traits）で増えた・減った量（Traits.Id -> 量。駒の攻撃だけ）。無ければ空。
+## 軍略（Traits）で増えた・減った量（Traits.Id -> 量。駒の攻撃だけ）。無ければ空。
 var traits := {}
 
 

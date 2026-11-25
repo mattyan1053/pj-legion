@@ -1,7 +1,7 @@
 class_name TraitTriggeredEvent
 extends BattleEvent
-## 部隊の特徴（Traits）のダメージの増減が、駒の攻撃 1 回に効いた。AttackDamagedEvent の直前に出る。
-## unit_id は特徴を持つ側の駒（集中砲火・仇討ち・誓い・単騎は攻撃した駒、隊列は攻撃された駒）、other_id は相手。
+## 軍略（Traits）のダメージの増減が、駒の攻撃 1 回に効いた。AttackDamagedEvent の直前に出る。
+## unit_id は軍略を持つ側の駒（集中砲火・仇討ち・誓い・単騎は攻撃した駒、隊列は攻撃された駒）、other_id は相手。
 ## amount は増えた（隊列は減った）ダメージの量。補給線の回復は SupplyHealedEvent。
 
 var trait_id: Traits.Id

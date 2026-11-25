@@ -146,7 +146,7 @@ func _build_list() -> Control:
 	var detail_line := HBoxContainer.new()
 	detail_line.add_theme_constant_override("separation", 12)
 	detail_names.add_child(detail_line)
-	# 軍・兵の数・コストの文は決まった幅の欄に入れ、ゲージと特徴の札の位置をどの部隊でもそろえる。
+	# 軍・兵の数・コストの文は決まった幅の欄に入れ、ゲージと軍略の札の位置をどの部隊でもそろえる。
 	_list_detail_body = _text(16, COLOR_DIM)
 	_list_detail_body.custom_minimum_size = Vector2(LIST_DETAIL_BODY_WIDTH, 0.0)
 	_list_detail_body.clip_text = true

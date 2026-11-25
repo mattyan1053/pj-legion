@@ -148,7 +148,7 @@ static func card_sites() -> Array[Dictionary]:
 		{"name": "対戦ルールの札", "width": RuleCard.TEXT_WIDTH, "max_lines": RuleCard.LINE_MAX_LINES, "texts": goals + signs,
 			"sizer": func(text: String) -> int: return RuleCard.fold_line(text, UiTheme.FONT_BODY)[0]},
 		{"name": "縫い目の様子の札", "width": SignCard.SUMMARY_WIDTH, "size": SignCard.SUMMARY_FONT, "max_lines": SignCard.SUMMARY_MAX_LINES, "texts": signs},
-		{"name": "部隊の特徴の窓", "width": TraitCard.WHEN_WIDTH, "size": TraitCard.WHEN_FONT, "max_lines": TraitCard.WHEN_MAX_LINES, "texts": troop_traits},
+		{"name": "軍略の窓", "width": TraitCard.WHEN_WIDTH, "size": TraitCard.WHEN_FONT, "max_lines": TraitCard.WHEN_MAX_LINES, "texts": troop_traits},
 		{"name": "兵の情報の札", "width": HudBase.INFO_WIDTH - InfoCard.SUMMARY_INSET, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": abilities},
 		{"name": "兵の情報の札の状態", "width": HudBase.INFO_WIDTH - 22.0, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": statuses},
 		{"name": "兵の詳しい窓", "width": detail_card - SheetParts.SUMMARY_INSET, "size": SheetParts.NOTE_SIZE, "max_lines": 99, "texts": abilities},

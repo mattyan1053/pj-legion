@@ -1,6 +1,6 @@
 class_name SupplyHealedEvent
 extends UnitHealedEvent
-## 補給線（部隊の特徴。Traits）: 駒が、自分のフェーズの始めに、隣り合う回復役（medic_id）のそばで回復した。
+## 補給線（軍略。Traits）: 駒が、自分のフェーズの始めに、隣り合う回復役（medic_id）のそばで回復した。
 
 var medic_id: int
 

@@ -1,7 +1,7 @@
 class_name Traits
 extends RefCounted
-## 部隊の特徴（docs/troop-traits.md）。軍ごとに 3 つあり、部隊編成で部隊ごとに 1 つ選ぶ。入・切は無い。
-## 対戦モードでは、両方の部隊がいつも特徴を 1 つ持つ（MatchSetup.create_battle が部隊から写す）。
+## 軍略（docs/troop-traits.md）。軍ごとに 3 つあり、部隊編成で部隊ごとに 1 つ選ぶ。入・切は無い。
+## 対戦モードでは、両方の部隊がいつも軍略を 1 つ持つ（MatchSetup.create_battle が部隊から写す）。
 ## ストーリーの話は、話のファイルが書いたときだけ持つ（Scenario.traits）。
 ##
 ## 連邦（MILITARY）
@@ -25,7 +25,7 @@ enum Id {
 	LONE,  ## 単騎（騎士領）
 }
 
-## 特徴が無い（ストーリーの話で書いていない陣営、中立）。
+## 軍略が無い（ストーリーの話で書いていない陣営、中立）。
 const NONE := -1
 
 ## 集中砲火で、与えるダメージに足す量。
@@ -49,20 +49,20 @@ const _BY_ARMY := {
 }
 
 
-## その軍の特徴（選べる 3 つ。並びは部隊編成の札の順）。軍でなければ空。
+## その軍の軍略（選べる 3 つ。並びは部隊編成の札の順）。軍でなければ空。
 static func of_army(army: UnitKind.Army) -> Array[Id]:
 	var result: Array[Id] = []
 	result.assign(_BY_ARMY.get(army, []))
 	return result
 
 
-## その軍の既定の特徴（並びの最初。新しい部隊と、特徴を書いていない取っておいた部隊）。軍でなければ NONE。
+## その軍の既定の軍略（並びの最初。新しい部隊と、軍略を書いていない取っておいた部隊）。軍でなければ NONE。
 static func default_of(army: UnitKind.Army) -> int:
 	var all := of_army(army)
 	return all[0] if not all.is_empty() else NONE
 
 
-## その特徴の軍。
+## その軍略の軍。
 static func army_of(id: int) -> UnitKind.Army:
 	for army: UnitKind.Army in _BY_ARMY:
 		if (_BY_ARMY[army] as Array).has(id):
@@ -75,7 +75,7 @@ static func key(id: int) -> String:
 	return Id.keys()[id].to_lower() if id >= 0 and id < Id.size() else ""
 
 
-## 鍵から特徴。知らない鍵なら NONE。
+## 鍵から軍略。知らない鍵なら NONE。
 static func from_key(word: String) -> int:
 	var index := Id.keys().find(word.strip_edges().to_upper())
 	return index
@@ -84,7 +84,7 @@ static func from_key(word: String) -> int:
 # ---- 対戦の準備 ----
 
 
-## 陣営 side の特徴を id にし、誓いなら、部隊 deck の誓いを置いた駒 placed（将が先頭、あとは部隊の並びの順）に写す。
+## 陣営 side の軍略を id にし、誓いなら、部隊 deck の誓いを置いた駒 placed（将が先頭、あとは部隊の並びの順）に写す。
 static func arm(battle: Battle, side: Unit.Side, id: int, deck: Deck, placed: Array[Unit]) -> void:
 	battle.traits[side] = id
 	if id != Id.OATH or deck == null:
@@ -104,12 +104,12 @@ static func bind(a: Unit, b: Unit) -> void:
 # ---- 対戦中に読むもの ----
 
 
-## 陣営 side の特徴。中立なら NONE。
+## 陣営 side の軍略。中立なら NONE。
 static func of_side(battle: Battle, side: Unit.Side) -> int:
 	return battle.traits[side] if side != Unit.Side.NEUTRAL else NONE
 
 
-## unit の陣営が、特徴 id を持っているか。
+## unit の陣営が、軍略 id を持っているか。
 static func has(battle: Battle, unit: Unit, id: Id) -> bool:
 	return unit != null and of_side(battle, unit.side) == id
 
@@ -197,12 +197,12 @@ static func oath_marked(battle: Battle, unit: Unit, target: Unit) -> bool:
 	return false
 
 
-## attacker がいまの位置から target を攻撃するときに足すダメージ（特徴 -> 量）。無ければ空。
+## attacker がいまの位置から target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。
 static func attack_boosts(battle: Battle, attacker: Unit, target: Unit) -> Dictionary:
 	return attack_boosts_at(battle, attacker, attacker.cell, target)
 
 
-## attacker が cell から target を攻撃するときに足すダメージ（特徴 -> 量）。無ければ空。
+## attacker が cell から target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。
 static func attack_boosts_at(battle: Battle, attacker: Unit, cell: Vector2i, target: Unit) -> Dictionary:
 	var result := {}
 	if attacker.side == Unit.Side.NEUTRAL or target.side == attacker.side:

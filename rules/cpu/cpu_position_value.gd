@@ -360,7 +360,7 @@ func _choose_stronghold_taker() -> void:
 			_stronghold_taker = other.id
 
 
-## 部隊の特徴（docs/troop-traits.md。docs/cpu-ai.md の「部隊の特徴」）で、unit が cell に立って行動を終える価値。
+## 軍略（docs/troop-traits.md。docs/cpu-ai.md の「軍略」）で、unit が cell に立って行動を終える価値。
 ## - 隊列: 同じ兵種の味方の隣なら RANKS_HUDDLE_VALUE（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）
 ## - 補給線: HP の減った駒が回復役の隣なら、回復する量（次のターンの始め）に SUPPLY_STAND_VALUE を掛けたもの
 ## - 誓い: 誓いの相手から OATH_NEAR マス以内なら OATH_NEAR_VALUE（同じ敵を 2 人で攻撃できる所にいる）

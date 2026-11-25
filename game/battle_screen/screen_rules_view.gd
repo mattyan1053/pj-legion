@@ -1,9 +1,9 @@
 extends "res://game/battle_screen/screen_base.gd"
-## 対戦の場面の、選べる決まりと部隊の特徴の見え方: 縫い目の様子の札、特徴の輪と線、拠点の旗。
+## 対戦の場面の、選べる決まりと軍略の見え方: 縫い目の様子の札、軍略の輪と線、拠点の旗。
 
 
-## 部隊の特徴の印（docs/troop-traits.md の「対戦の画面」）: 効く相手の頭の上の札（増える数）と足元の輪、組む兵どうしの線。
-## 色は特徴の軍の色。相手の特徴も同じに出す。
+## 軍略の印（docs/troop-traits.md の「対戦の画面」）: 効く相手の頭の上の札（増える数）と足元の輪、組む兵どうしの線。
+## 色は軍略の軍の色。相手の軍略も同じに出す。
 ## - 札と輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵（どれも照準の印）、
 ##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない将でない兵（回復役も。増えるのは攻撃する側なので、番の間だけ。上向きの印）
 ## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種（結び目は菱形）、補給線で隣り合う回復役（結び目は十字）
@@ -47,17 +47,17 @@ func _refresh_traits() -> void:
 	_trait_links.set_links(links)
 
 
-## 特徴の印の色（その特徴の軍の色）。
+## 軍略の印の色（その軍略の軍の色）。
 static func _trait_color(id: int) -> Color:
 	return Palette.NATION_MILITARY if Traits.army_of(id) == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
 
 
-## 特徴の線の数（検査用）。
+## 軍略の線の数（検査用）。
 func trait_link_count() -> int:
 	return _trait_links.link_count() if _trait_links != null else 0
 
 
-## 特徴の輪が出ている駒の数（検査用）。
+## 軍略の輪が出ている駒の数（検査用）。
 func trait_mark_count() -> int:
 	var count := 0
 	for shown in battle.units:
@@ -66,12 +66,12 @@ func trait_mark_count() -> int:
 	return count
 
 
-## 上の帯に出ている、陣営の部隊の特徴の名前（出ていなければ空。検査用）。
+## 上の帯に出ている、陣営の軍略の名前（出ていなければ空。検査用）。
 func trait_name(player: int) -> String:
 	return _hud.trait_name(player)
 
 
-## 特徴の札（頭の上）の文の並び（札の出ている駒の順。検査用）。
+## 軍略の札（頭の上）の文の並び（札の出ている駒の順。検査用）。
 func trait_mark_texts() -> Array[String]:
 	var texts: Array[String] = []
 	for shown in battle.units:
