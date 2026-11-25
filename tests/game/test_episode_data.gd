@@ -685,3 +685,19 @@ func test_the_map_decides_the_look_unless_the_episode_names_one() -> void:
 	var unnamed: Episode = Episode.parse(KINGLESS_PROBE.replace("look = stone_walls\n", ""))
 	assert_eq(Array(unnamed.problems), [])
 	assert_eq(unnamed.look, Maps.find("old_battlefield")["look"])
+
+
+## 敵の側は番人を狙わない（[enemy] の spare_boss = yes。docs/story.md の「話のファイル」）。書いた話だけ、対戦へ写る。
+func test_spare_boss_reads_and_reaches_the_battle() -> void:
+	var mine := MatchSetup.default_deck(UnitKind.Army.MILITARY)
+	var plain: Episode = Episode.parse(KINGLESS_PROBE)
+	assert_false(plain.enemy_spares_boss)
+	assert_eq(StoryBattle.new(plain, mine).make_setup(3).create_battle().spares_bosses, [false, false] as Array[bool])
+	var sparing: Episode = Episode.parse(KINGLESS_PROBE.replace("king = none\n", "king = none\nspare_boss = yes\n"))
+	assert_eq(sparing.problems, PackedStringArray())
+	assert_true(sparing.enemy_spares_boss)
+	assert_eq(StoryBattle.new(sparing, mine).make_setup(3).create_battle().spares_bosses, [false, true] as Array[bool])
+	var wrong: Episode = Episode.parse(KINGLESS_PROBE.replace("king = none\n", "king = none\nspare_boss = no\n"))
+	assert_eq(wrong.problems.size(), 1, "%s" % [wrong.problems])
+	var on_ally: Episode = Episode.parse(PROBE.replace("[enemy]\n", "[ally]\nspare_boss = yes\n\n[enemy]\n"))
+	assert_eq(on_ally.problems.size(), 1, "人の側には書けない: %s" % [on_ally.problems])
