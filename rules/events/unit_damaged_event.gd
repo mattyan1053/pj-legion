@@ -30,8 +30,8 @@ var spores := false
 ## ダメージを 0 にした、受けた駒の状態（Status.Type。バリア）。防がれていなければ -1。
 ## 防がれたときは amount が 0 で、このあとに、その状態が外れる StatusRemovedEvent が続く。
 var blocked_by := -1
-## 組み方（Formation）で増えた・減った量（Formation.Effect -> 量。駒の攻撃だけ）。無ければ空。
-var formation := {}
+## 部隊の特徴（Traits）で増えた・減った量（Traits.Id -> 量。駒の攻撃だけ）。無ければ空。
+var traits := {}
 
 
 ## 解決したダメージ（適用したあとの Hit）の中身を写す。子のクラスの _init が呼ぶ。
@@ -44,7 +44,7 @@ func _fill(hit: Hit) -> void:
 	forest = hit.forest
 	spores = hit.spores
 	blocked_by = hit.blocked_by
-	formation = hit.formation.duplicate()
+	traits = hit.traits.duplicate()
 
 
 ## 受けた駒の状態に防がれて、ダメージが 0 になったか。

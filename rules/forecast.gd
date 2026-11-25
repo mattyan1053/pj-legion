@@ -25,10 +25,8 @@ class UnitOutcome:
 	var spores := false
 	var blocked_by := -1
 	var smoked := false
-	## 組み方（Formation）で増える・減るダメージ（Formation.Effect -> 量。肩並べは減る量）。
-	var formation: Dictionary[int, int] = {}
-	## 誓いの相手が倒れて、誓いが切れるか（残る側に付く）。
-	var oath_broken := false
+	## 部隊の特徴（Traits）で増える・減るダメージ（Traits.Id -> 量。隊列は減る量）。
+	var traits: Dictionary[int, int] = {}
 	## 倒れた骸骨旗手の周りにいて、奮起するか（Monsters。付く奮起は statuses_applied にも入る）。
 	var rallied := false
 	## 樽の爆発に巻き込まれるか。
@@ -140,8 +138,8 @@ func _read(battle: Battle) -> void:
 			unit.exploded = unit.exploded or damaged.cause == UnitDamagedEvent.Cause.EXPLOSION
 			if damaged.is_blocked():
 				unit.blocked_by = damaged.blocked_by
-			for effect: int in damaged.formation:
-				unit.formation[effect] = unit.formation.get(effect, 0) + int(damaged.formation[effect])
+			for id: int in damaged.traits:
+				unit.traits[id] = unit.traits.get(id, 0) + int(damaged.traits[id])
 		elif event is SmokeBlockedEvent:
 			var smoked := _unit(battle, (event as SmokeBlockedEvent).target_id)
 			smoked.smoked = true
@@ -174,8 +172,6 @@ func _read(battle: Battle) -> void:
 		elif event is RallyEvent:
 			for rallied_id in (event as RallyEvent).rallied_ids:
 				_unit(battle, rallied_id).rallied = true
-		elif event is OathBrokenEvent:
-			_unit(battle, (event as OathBrokenEvent).survivor_id).oath_broken = true
 		elif event is UnitReactivatedEvent:
 			_unit(battle, (event as UnitReactivatedEvent).unit_id).reactivated = true
 		elif event is BarricadeDamagedEvent:

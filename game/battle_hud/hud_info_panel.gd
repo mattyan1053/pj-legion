@@ -7,7 +7,7 @@ extends "res://game/battle_hud/hud_menu.gd"
 ## skill_note が真なら、スキルの札に説明も出す（note のほうにスキルの説明を出すときは、偽にして重ねない）。
 ##
 ## 中身は、ステータスの札（info_card.gd）: 額・名前・札（所属・役割・軍・レベル）→ 能力値の行（HP・攻撃・移動・射程の棒と粒）と経験値 →
-## 状態・組み方・特性の札 → スキルの札 → 持ち物の枠 → 行動の状態 → note の札。「詳細」で開くステータスの窓と同じ部品。
+## 状態・特性の札 → スキルの札 → 持ち物の枠 → 行動の状態 → note の札。「詳細」で開くステータスの窓と同じ部品。
 func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
 	_info_pin.visible = false  # 出すときは、このあとに set_pin_switch
@@ -28,9 +28,6 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 			level = Text.t("deck.sheet.level", {"level": unit.level})
 			experience = [unit.experience, Growth.EXPERIENCE_PER_LEVEL]
 	var chips: Array = []
-	# 組み方（分隊・誓い）は、見出しだけを札にする（効果は「詳細」の窓で読める）。相手の駒も同じように出す（docs/formation.md）。
-	for line in FormationText.unit_lines(battle, unit):
-		chips.append([line.get_slice(": ", 0), COLOR_FORMATION])
 	for which: Evolution.Trait in Evolution.Trait.values():  # 進化先と持ち物の、どちらが与えた特性も（重ねても 1 つ）
 		if unit.has_trait(which):
 			chips.append([Text.t("battle.hud.trait", {"trait": Names.trait_text(which)}), COLOR_TRAIT])

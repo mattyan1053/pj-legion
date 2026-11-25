@@ -44,6 +44,12 @@ var start_growth: Array[Array] = [[], []]
 ## 空なら、対戦設定の決まり（OptionalRules.SEAM。対戦モードのランダム）に任せる。対戦を作るとき、対戦（Battle.signs）へ写す。
 var signs: Array[int] = []
 
+## プレイヤーごとの部隊の特徴（Traits.Id。docs/troop-traits.md）。Traits.NONE なら、deck_traits に任せる。
+## ストーリーの話のファイルが書いたときだけ入る。対戦を作るとき、対戦（Battle.traits）へ写す（MatchSetup.trait_of）。
+var traits: Array[int] = [Traits.NONE, Traits.NONE]
+## 部隊が選んだ特徴（Deck.trait_id）を使うか。対戦モード（versus、on_map）は真。ストーリーの話は偽（書いた陣営だけが特徴を持つ）。
+var deck_traits := false
+
 ## いまの対戦モードの勝ち方: 敵の将を倒す、敵の本陣を占拠し続ける。
 const STANDARD_WIN_CONDITIONS: Array[GameWonEvent.Reason] = [
 	GameWonEvent.Reason.KING_DEFEATED, GameWonEvent.Reason.HQ_CAPTURED
@@ -55,6 +61,7 @@ static func versus(at_stage: BoardGenerator.Stage) -> Scenario:
 	var scenario := Scenario.new()
 	scenario.stage = at_stage
 	scenario.start_gauge[Unit.Side.PLAYER1] = Ults.FIRST_PLAYER_START_GAUGE
+	scenario.deck_traits = true
 	return scenario
 
 
@@ -66,6 +73,7 @@ static func on_map(map: HandMap, map_title: String, in_versus := false) -> Scena
 	scenario.hand_map = map
 	scenario.for_versus = in_versus
 	scenario.start_gauge[Unit.Side.PLAYER1] = Ults.FIRST_PLAYER_START_GAUGE
+	scenario.deck_traits = true
 	return scenario
 
 

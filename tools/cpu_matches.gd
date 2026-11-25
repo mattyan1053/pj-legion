@@ -36,7 +36,10 @@ extends "res://tools/cpu_matches_base.gd"
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、formation = 組み方（休眠）、seam = 縫い目の様子のランダム。`,` で並べられる）をそれだけ入にして回す。none で全部切。
+##   --traits=X     部隊の特徴（docs/troop-traits.md）を置き換える（測るためだけ）。none = 両軍とも無し、random = 局ごとに種で決まる 1 つ（その軍の 3 つから）、
+##                   鍵を並べる（focus,vengeance のように）= その軍の鍵の特徴。付けなければ、部隊が選んだ特徴（CPU の編成もランダムの部隊も CpuDeck.choose_trait）。
+##                   特徴ごとの勝率・選ばれた数・効いた回数と、--list=1 の TRAIT の行も出す
+##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、seam = 縫い目の様子のランダム。`,` で並べられる）をそれだけ入にして回す。none で全部切。
 ##                   縫い目の様子のある局があれば、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す
 ##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり・縫い目の様子はランダム）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
 ##   --stronghold=X,Y  拠点を、マス (X, Y) に置いて回す（測るためだけ。拠点が入の対戦だけ）。lean:K なら、道のりの寄せ K（Board.stronghold_lean。
@@ -147,7 +150,9 @@ func _initialize() -> void:
 		return
 	# 部隊の中身ごとの勝ち負け（--squads のとき。決着した局の、部隊 1 つずつ）。鍵 -> [部隊の数, 勝った数]。
 	var squad_rows: Dictionary[String, Array] = {}
-	var formation_counts: Dictionary[int, int] = {}  # 組み方の効果が効いた回数（全部の局の合計）
+	var trait_arg := args.get("traits", "") as String
+	# 部隊の特徴ごと: 鍵（Traits.Id）-> [部隊の数, 決着した局, 勝った数, 効いた回数, 軍の違う対戦の決着した局, その勝った数]。
+	var trait_rows: Dictionary[int, Array] = {}
 	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
 	var one_versus: Dictionary[String, Array] = {}
 	var started := Time.get_ticks_msec()
@@ -184,6 +189,8 @@ func _initialize() -> void:
 			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
+		if episode == null and trait_arg != "":
+			_override_traits(setup, trait_arg, first_seed + game)
 		# 対戦モードは、対戦設定の既定の決まり（拠点あり）で回す。--rules=none で全部切、--rules=名前,… でそれだけ入。
 		var rule_arg := args.get("rules", "default") as String
 		if episode == null and rule_arg == "default":
@@ -197,6 +204,7 @@ func _initialize() -> void:
 		if args.has("signs"):
 			_fix_signs(setup, args["signs"])
 		var battle := setup.create_battle()
+		var traits: Array[int] = battle.traits.duplicate()
 		var signs: Array[int] = battle.signs.duplicate()  # この局の縫い目の様子（札ごとの集計と SIGNS の行）
 		if trial_stronghold:
 			if not _arm_trial_stronghold(battle, args["stronghold"], setup.battle_seed):
@@ -237,6 +245,10 @@ func _initialize() -> void:
 				outcome.turns, outcome.ult_uses[0], outcome.ult_uses[1], ",".join(kills), rival_side,
 				outcome.first_hit_side, outcome.first_hit_turn, outcome.first_kill_side, outcome.first_kill_turn,
 			])
+			if traits != [Traits.NONE, Traits.NONE]:
+				print("TRAIT seed=%d p1=%s p2=%s hits=%d,%d" % [
+					first_seed + game, Traits.key(traits[0]), Traits.key(traits[1]), outcome.trait_hits[0], outcome.trait_hits[1],
+				])
 			if not signs.is_empty():
 				print("SIGNS seed=%d signs=%s" % [first_seed + game, ",".join(signs.map(func(sign: int) -> String: return Seam.key(sign)))])
 			if random_squads or one_squad:
@@ -261,14 +273,24 @@ func _initialize() -> void:
 					first_seed + game, fall.kind, fall.turn, fall.damage, fall.hits_taken, fall.killer_kind, fall.killer_level,
 					1 if fall.after_step else 0,
 				])
-		for effect: int in outcome.formation:
-			formation_counts[effect] = formation_counts.get(effect, 0) + outcome.formation[effect]
+		for side in 2:
+			if traits[side] == Traits.NONE:
+				continue
+			var row: Array = trait_rows.get_or_add(traits[side], [0, 0, 0, 0, 0, 0])
+			row[0] += 1
+			row[3] += outcome.trait_hits[side]
+			if outcome.winner >= 0:
+				row[1] += 1
+				row[2] += 1 if outcome.winner == side else 0
+				if armies[0] != armies[1]:
+					row[4] += 1
+					row[5] += 1 if outcome.winner == side else 0
 		if (random_squads or one_squad) and episode == null and outcome.winner >= 0:
 			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 				if one_squad and side != squad_side:
 					continue
 				var won := 1 if outcome.winner == side else 0
-				for key in _squad_keys(setup.deck_of(side), armies[side], armies[1 - side], setup.rules.has(OptionalRules.FORMATION)):
+				for key in _squad_keys(setup.deck_of(side), armies[side], armies[1 - side], traits[side]):
 					var row: Array = squad_rows.get_or_add(key, [0, 0])
 					row[0] += 1
 					row[1] += won
@@ -405,11 +427,22 @@ func _initialize() -> void:
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]), row[7], row[6], 100.0 * row[7] / maxi(1, row[6]),
 		])
 	print("")
-	if not formation_counts.is_empty():
-		var parts: Array[String] = []
-		for effect: Formation.Effect in Formation.Effect.values():
-			parts.append("%s %.2f" % [Names.formation_effect(effect), float(formation_counts.get(effect, 0)) / maxi(1, games)])
-		print("組み方の効果が効いた回数（1 局あたり。誓いの果ては誓いが切れた回数）: %s" % "  ".join(parts))
+	if not trait_rows.is_empty():
+		print("部隊の特徴（部隊 1 つずつ。勝率は決着した局だけ。効いた回数は、その特徴の部隊 1 つ・1 局あたり。補給線は回復した回数）")
+		for id: int in Traits.Id.values():
+			if not trait_rows.has(id):
+				continue
+			var row: Array = trait_rows[id]
+			var army := Traits.army_of(id)
+			var of_army := 0
+			for other: int in trait_rows:
+				if Traits.army_of(other) == army:
+					of_army += trait_rows[other][0]
+			print("  %-9s %-6s 選ばれた %4d（軍の %3.0f%%）  勝率 %4d / %4d（%5.1f%%）  軍の違う対戦 %4d / %4d（%5.1f%%）  効いた回数 %5.2f" % [
+				Names.army(army), Names.troop_trait(id), row[0], 100.0 * row[0] / maxi(1, of_army),
+				row[2], row[1], 100.0 * row[2] / maxi(1, row[1]), row[5], row[4], 100.0 * row[5] / maxi(1, row[4]),
+				float(row[3]) / maxi(1, row[0]),
+			])
 		print("")
 	if not by_sign.is_empty():
 		print("縫い目の様子（札ごと、札の組ごと。先手と MILITARY の勝率は決着した局だけ。MILITARY は軍の違う対戦だけ）")
@@ -514,3 +547,27 @@ func _initialize() -> void:
 	if rejected > 0:
 		printerr("断られた行動が %d 回あった（CPU の不具合）" % rejected)
 	quit(1 if rejected > 0 else 0)
+
+
+## --traits の置き換え（測るためだけ）。none = 両軍とも無し、random = 種で決まる 1 つ、鍵の並び = その軍の鍵の特徴。
+## 誓いになった部隊は、CPU の決め方で誓いを結ぶ。部隊は写して替える（ほかの局と共有しない）。
+static func _override_traits(setup: MatchSetup, how: String, game_seed: int) -> void:
+	if how == "none":
+		setup.scenario.deck_traits = false
+		return
+	var rng := RandomNumberGenerator.new()
+	# 近い種で同じ並びにならないよう、種を混ぜる（そのままだと、軍どうしの特徴の組み合わせが片寄る）。
+	rng.seed = hash(game_seed * 7919 + 13)
+	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+		var deck := setup.deck_of(side).copy()
+		var choices := Traits.of_army(deck.army)
+		if how == "random":
+			deck.trait_id = choices[rng.randi_range(0, choices.size() - 1)]
+		else:
+			for word in how.split(",", false):
+				var id := Traits.from_key(word)
+				if choices.has(id):
+					deck.trait_id = id
+		if deck.trait_id == Traits.Id.OATH:
+			CpuDeck.bind_oaths(deck)
+		setup.decks[side] = deck

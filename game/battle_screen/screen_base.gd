@@ -27,8 +27,8 @@ const UnitDetail := preload("res://game/unit_detail.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
 const BattleUiState := preload("res://game/battle_ui_state.gd")
 const BattleTexts := preload("res://game/battle_texts.gd")
-const FormationText := preload("res://game/formation_text.gd")
-const FormationLinks := preload("res://game/formation_links.gd")
+const TraitLinks := preload("res://game/trait_links.gd")
+const TraitText := preload("res://game/trait_text.gd")
 const BattlePlayback := preload("res://game/battle_playback.gd")
 const PanelLayout := preload("res://game/panel_layout.gd")
 const BattleEffects := preload("res://game/battle_effects.gd")
@@ -113,7 +113,7 @@ var map_seed := 0
 
 
 var _board_view: BoardView
-var _formation_links: FormationLinks
+var _trait_links: TraitLinks
 var _effects: BattleEffects
 var _views := {}  # 駒の番号 -> UnitView
 ## 名前のある人物の形の付いた駒（駒の番号 -> unit_looks.gd の PERSONS の名前。話の [cast]。start_with で決める）。

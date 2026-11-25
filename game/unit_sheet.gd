@@ -57,8 +57,6 @@ var evolutions: Array[Evolution.Id] = []
 var evolved := Evolution.Id.NONE
 ## 付いている状態（[種類, 残りのターン数]。対戦中だけ）。
 var statuses: Array = []
-## 組み方（分隊・誓い）の行（対戦中で、組み方が入のときだけ。呼ぶ側が入れる。game/formation_text.gd）。
-var formation: Array[String] = []
 
 
 ## 編成の駒。equipment は持ち物、deck_army は部隊の軍（-1 なら駒の種類の軍）、start_level は始めのレベル。

@@ -23,7 +23,6 @@ battle.log.damage.left,{amount} ダメージ、残り HP {hp}
 battle.log.note.critical,クリティカル
 battle.log.note.forest,森で軽減
 battle.log.note.spores,胞子で弱まる
-battle.forecast.oath_broken,誓いが切れる
 battle.log.phase,ターン {turn}　{side}の番
 battle.log.note.cruise,巡航
 battle.log.note.portal,ポータル経由
@@ -60,10 +59,10 @@ battle.log.heal,{healer}が{target}を {amount} 回復（HP {hp}）
 battle.log.healed.sanctuary,{unit}が聖域で {amount} 回復（HP {hp}）
 battle.log.healed.spring,{unit}が回復の泉で {amount} 回復（HP {hp}）
 battle.log.healed.regeneration,{unit}が再生で {amount} 回復（HP {hp}）
+battle.log.healed.supply,{unit}が{effect}で {amount} 回復（HP {hp}）
 battle.log.status,{unit}に{status}（{turns} ターン）
-battle.log.formation_up,{unit}の{effect}: ダメージ +{amount}
-battle.log.formation_down,{unit}の{effect}: ダメージ -{amount}
-battle.log.oath_broken,{fallen}が倒れ、{unit}の誓いが切れた
+battle.log.trait_up,{unit}の{effect}: ダメージ +{amount}
+battle.log.trait_down,{unit}の{effect}: ダメージ -{amount}
 battle.log.status_group,{status}（{turns} ターン）: {units}
 battle.log.status_self,{status}が付いた（{turns} ターン）
 battle.log.ult,{side}が必殺技「{ult}」を使った
@@ -245,8 +244,8 @@ battle.forecast.defeats_one,倒せる！
 battle.forecast.defeats,{count} 体を倒せる！
 battle.forecast.self_named,自分（{unit}）
 battle.pop.status_broken,{status}が解けた
-battle.pop.formation_up,{effect} +{amount}
-battle.pop.formation_down,{effect} -{amount}
+battle.pop.trait_up,{effect} +{amount}
+battle.pop.trait_down,{effect} -{amount}
 battle.pop.status_expired,{status}が消えた
 battle.pop.capture,占拠 {turns} / {needed}
 battle.pop.capture_broken,占拠が途切れた
@@ -260,11 +259,7 @@ battle.notice.title,対戦ルール
 battle.notice.goals,勝利条件
 battle.notice.signs,縫い目の様子
 battle.notice.close,閉じる
-battle.hud.squad,分隊（{kind} {count} 体）: 隣に仲間がいると受けるダメージ -{guard}、仲間が撃った相手へ +{focus}
-battle.hud.squad_guarded,分隊（{kind} {count} 体）: 肩並べ中（受けるダメージ -{guard}）、仲間が撃った相手へ +{focus}
-battle.hud.oath,誓い（{unit}）: {range} マス以内で仇討ち（離れている）
-battle.hud.oath_near,誓い（{unit}）: {range} マス以内で仇討ち（届く）
-battle.hud.oath_foe,仇: {unit}（攻撃 +{vengeance}）
+battle.hud.troop_trait,{name}: {text}
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
 battle.hud.relic_missing,{relic}（持っていない）: {effect}

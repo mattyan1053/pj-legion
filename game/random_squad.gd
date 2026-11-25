@@ -37,18 +37,5 @@ static func build(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Dec
 			items.erase(item)  # この装備を持てる駒がもういない（役割の限り、重ねられない）。ほかの装備で続ける
 			continue
 		(open[rng.randi_range(0, open.size() - 1)] as DeckEntry).equip(item)
-	_bind_oaths(deck, rng)
+	CpuDeck.pick_trait(deck)  # 乱数は引かない（駒と装備は、特徴の無かったときと同じ）
 	return deck
-
-
-## 誓いを結べる軍（騎士領）なら、種で決まる 1〜Formation.MAX_OATHS 組を、種で決まる 2 体ずつで結ぶ（組み方が入の対戦で効く。docs/formation.md）。
-## 駒と装備を決めたあとに引くので、誓いを結んでも、駒と装備は結ばない場合と同じ。
-static func _bind_oaths(deck: Deck, rng: RandomNumberGenerator) -> void:
-	if not Formation.binds_oaths(deck.army) or deck.entries.size() < 2:
-		return
-	var free := deck.entries.duplicate()
-	var wanted := rng.randi_range(1, Formation.MAX_OATHS)
-	while deck.oaths.size() < wanted and free.size() >= 2:
-		var a: DeckEntry = free.pop_at(rng.randi_range(0, free.size() - 1))
-		var b: DeckEntry = free.pop_at(rng.randi_range(0, free.size() - 1))
-		deck.bind(a, b)

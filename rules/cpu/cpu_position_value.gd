@@ -31,12 +31,7 @@ func _position_value(unit: Unit, cell: Vector2i, ignored_id: int, acting: bool) 
 		var holder := _battle.unit_at(_board.stronghold_cell)
 		if holder != null and holder.side == _foe and Stronghold.counts(holder):
 			value += STRONGHOLD_BLOCK_VALUE
-	if _battle.formation:
-		if Formation.guarded_at(_battle, unit, cell):
-			value += SQUAD_HUDDLE_VALUE
-		var partner := Formation.partner_of(_battle, unit)
-		if partner != null and Combat.distance(partner.cell, cell) <= Formation.OATH_RANGE:
-			value += OATH_NEAR_VALUE
+	value += _trait_position_value(unit, cell)
 	var knot := Monsters.knot_at(_battle, cell)
 	if knot != null and knot.side != _me:
 		value += KNOT_STEP_VALUE
@@ -181,7 +176,8 @@ func _break_stall(unit: Unit, role: UnitKind.Role, goal: Vector2i) -> Vector2i:
 	var king := _foe_king()
 	if king == null:
 		return goal
-	if _takes_stronghold:
+	if _takes_stronghold and _fighter_count() > 1:
+		# 拠点の受け持ちは残る。ただし戦う駒がその 1 体だけなら、残しても、拠点の隣で治し合うまま決着しないので、将へ向かう。
 		_choose_stronghold_taker()
 		if unit.id == _stronghold_taker:
 			return goal
@@ -225,6 +221,15 @@ func _foes_left() -> bool:
 		if other.side == _foe:
 			return true
 	return false
+
+
+## 自分の軍の、戦える駒（前衛・後衛・奇襲）の数。
+func _fighter_count() -> int:
+	var count := 0
+	for other in _battle.units:
+		if other.side == _me and other.kind != UnitKind.Id.KING and UnitKind.role(other.kind) != UnitKind.Role.HEALER:
+			count += 1
+	return count
 
 
 ## 自分の軍に、戦える駒（前衛・後衛・奇襲）が残っているか。
@@ -344,3 +349,27 @@ func _choose_stronghold_taker() -> void:
 		if far >= 0 and far < best:
 			best = far
 			_stronghold_taker = other.id
+
+
+## 部隊の特徴（docs/troop-traits.md。docs/cpu-ai.md の「部隊の特徴」）で、unit が cell に立って行動を終える価値。
+## - 隊列: 同じ兵種の味方の隣なら RANKS_HUDDLE_VALUE（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）
+## - 補給線: HP の減った駒が回復役の隣なら、回復する量（次のターンの始め）に SUPPLY_STAND_VALUE を掛けたもの
+## - 誓い: 誓いの相手から OATH_NEAR マス以内なら OATH_NEAR_VALUE（同じ敵を 2 人で攻撃できる所にいる）
+## - 単騎: 攻撃する駒が、隣に味方のいないマスなら LONE_STAND_VALUE
+func _trait_position_value(unit: Unit, cell: Vector2i) -> float:
+	match Traits.of_side(_battle, unit.side):
+		Traits.Id.RANKS:
+			if Traits.ranked_at(_battle, unit, cell):
+				return RANKS_HUDDLE_VALUE
+		Traits.Id.SUPPLY:
+			var missing := unit.max_hp() - unit.hp
+			if missing > 0 and Traits.supplier_at(_battle, unit, cell) != null:
+				return SUPPLY_STAND_VALUE * mini(missing, Traits.SUPPLY_HEAL)
+		Traits.Id.OATH:
+			var partner := Traits.partner_of(_battle, unit)
+			if partner != null and Combat.distance(partner.cell, cell) <= OATH_NEAR:
+				return OATH_NEAR_VALUE
+		Traits.Id.LONE:
+			if UnitKind.role(unit.kind) != UnitKind.Role.HEALER and unit.kind != UnitKind.Id.KING and Traits.alone_at(_battle, unit, cell):
+				return LONE_STAND_VALUE
+	return 0.0

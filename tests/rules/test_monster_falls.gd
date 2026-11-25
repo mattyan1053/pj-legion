@@ -94,7 +94,7 @@ func test_banner_rallies_friends_when_it_falls() -> void:
 	var rally: RallyEvent = rallies[0]
 	assert_eq(rally.fallen_id, banner.id)
 	assert_eq(rally.rallied_ids, [near.id, edge.id] as Array[int], "2 マス以内の味方（上の行から）")
-	assert_eq(near.power(), power + Formation.RESOLVE_POWER)
+	assert_eq(near.power(), power + Monsters.RESOLVE_POWER)
 	assert_false(Statuses.has(far, RESOLVE))
 	assert_false(Statuses.has(killer, RESOLVE))
 	var defeated := result.events.find_custom(func(event: BattleEvent) -> bool: return event is UnitDefeatedEvent)
