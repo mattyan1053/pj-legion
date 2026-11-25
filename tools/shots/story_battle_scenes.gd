@@ -322,7 +322,7 @@ func _scene_story_monster_king() -> bool:
 			king = unit
 	if king == null:
 		return false
-	# 骸骨の将は背が高い（quaternius_skeleton.gd の KING_LOOKS の scale）。頭が上の帯と途中の台詞の帯に隠れないよう、
+	# 骸骨の将は背が高い（kaykit_look.gd の KING_LOOKS の scale）。頭が上の帯と途中の台詞の帯に隠れないよう、
 	# 少し引いて、見る点を将の向こう側（カメラから遠い側）へずらし、将を画面の真ん中より下に置く。
 	_look_at(BoardView.cell_center(king.cell) + KING_FRAME_SHIFT.rotated(Vector3.UP, deg_to_rad(KING_FRAME_YAW)))
 	_aim(KING_FRAME_DISTANCE, KING_FRAME_YAW, 38.0)
