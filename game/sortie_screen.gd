@@ -306,6 +306,7 @@ func _ready() -> void:
 	_deck_line = _wrapped("", DECK_FONT, COLOR_DIM)
 	_deck_line.custom_minimum_size.y = _lines_height(DECK_FONT, DECK_LINES)
 	_deck_line.clip_text = true
+	_deck_line.mouse_filter = Control.MOUSE_FILTER_PASS  # 切れた文の全部を、マウスを乗せると出す
 	troops_column.add_child(_deck_line)
 	# 選べる部隊の並び（部隊が決まっている話は 1 行）。いつも OPTIONS_SHOWN 行ぶんが見える高さを取り、多ければ欄の中で送る。
 	# ホイールは 1 目盛りで 1 行ぶん送る（そのままだと、欄の高さの 1/8 ずつしか動かない）。送りの棒は、つかみやすい太さにする。
@@ -616,7 +617,13 @@ func _fold_deck_line(text: String) -> void:
 		_deck_line.text = TextWrap.fold(text, WRAP_WIDTH, func(character: String) -> float:
 			return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
 		if _deck_line.text.count("\n") < DECK_LINES:
+			_deck_line.tooltip_text = ""
 			return
+	# いちばん小さい字でも収まらない部隊（持ち物の多い大きな部隊）: DECK_LINES 行で切って「…」を付け、全部はマウスを乗せると出す。
+	var lines := _deck_line.text.split("\n").slice(0, DECK_LINES)
+	lines[DECK_LINES - 1] = lines[DECK_LINES - 1].left(-1) + "…"
+	_deck_line.text = "\n".join(lines)
+	_deck_line.tooltip_text = text
 
 
 ## 選んだ部隊の中身の文（折り返したもの。検査用）。

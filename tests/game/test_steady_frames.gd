@@ -405,13 +405,20 @@ func test_sortie_shows_three_squads_and_scrolls_by_a_row() -> void:
 	var saved: Array = []
 	for i in 6:
 		saved.append(context.decks.add("部隊 %d" % (i + 1), long_deck))
+	# いちばん小さい字でも 2 行に収まらない部隊（盾持ち 6 体に、みなアイアンシールド）: 切って、全部はマウスを乗せると出る。
+	var heavy := Deck.new(Story.military().army, context.story.deck_rules())
+	for n in 6:
+		heavy.add(UnitKind.Id.SHIELD_TROOPER).equipment.append(Equipment.Id.IRON_SHIELD)
+	assert_true(heavy.is_valid(), "見本の部隊が出撃できない: %s" % [heavy.problems()])
+	var heavy_saved: RefCounted = context.decks.add("重い部隊", heavy)
 	context.run = context.story.run_now(episode)
 	context.scene = Story.SORTIE
 	var sortie := SortieScreen.new()
 	sortie.context = context
 	await settle(sortie)
 	await _frames(1)
-	assert_eq(sortie.option_ids().size(), 7)
+	assert_eq(sortie.option_ids().size(), 8)
+	assert_true(sortie.is_option_enabled(heavy_saved.id))
 	assert_true(sortie.options_fully_shown() >= SortieScreen.OPTIONS_SHOWN, "丸ごと見える部隊が %d つ" % sortie.options_fully_shown())
 	var rects: Dictionary = sortie.frame_rects()
 	for id: String in sortie.option_ids():
@@ -419,6 +426,9 @@ func test_sortie_shows_three_squads_and_scrolls_by_a_row() -> void:
 		await settle(sortie)
 		assert_true(sortie.deck_line_text().count("\n") < SortieScreen.DECK_LINES, "部隊の中身の文が %d 行に収まらない: %s" % [SortieScreen.DECK_LINES, sortie.deck_line_text()])
 		assert_eq(sortie.frame_rects(), rects, "部隊を選び替えると、枠が動く")
+		assert_true(sortie.needed_height() <= 720.0, "部隊を選ぶと、720 の高さに収まらない")
+	sortie.choose(heavy_saved.id)
+	assert_true(sortie.deck_line_text().ends_with("…"), "収まらない部隊の文は、切って「…」")
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	wheel.pressed = true
