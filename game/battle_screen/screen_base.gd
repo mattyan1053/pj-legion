@@ -205,11 +205,12 @@ var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる�
 signal frame_passed
 
 
-## ミニマップを置き、盤の上の駒と見ている範囲を描き直す。
+## ミニマップを置き、盤の上の駒と見ている範囲を描き直す（毎コマ）。開いている特徴の窓も、札の真下に置き直す（窓の大きさが変わっても付いていく）。
 func _place_minimap() -> void:
 	if battle == null or not is_inside_tree():
 		return
 	_hud.place_minimap()
+	_hud.place_trait_note()
 	if _hud.minimap().visible:
 		_hud.minimap().refresh(battle, _views, _rig.camera, get_viewport().get_visible_rect().size)
 

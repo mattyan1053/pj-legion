@@ -201,7 +201,7 @@ func toggle_trait_note(player: int) -> void:
 	_trait_note_player = player
 	_trait_note_card.show_trait(_trait_icons[player].get(&"trait_id"))
 	_trait_note.visible = true
-	_place_trait_note()
+	place_trait_note()
 
 
 func hide_trait_note() -> void:
@@ -220,8 +220,9 @@ func trait_note_rect() -> Rect2:
 	return _trait_note.get_global_rect() if _trait_note.visible else Rect2()
 
 
-## 特徴の窓を、その陣営の札の真下に置く（真ん中をそろえ、画面の端からはみ出さない）。
-func _place_trait_note() -> void:
+## 特徴の窓を、その陣営の札の真下に置く（真ん中をそろえ、画面の端からはみ出さない）。開いていなければ何もしない。
+## 上の帯の欄は窓の幅で伸び縮みするので、場面が毎コマ呼んで置き直す。
+func place_trait_note() -> void:
 	if _trait_note_player < 0:
 		return
 	var tag := (_trait_icons[_trait_note_player] as Control).get_global_rect()
