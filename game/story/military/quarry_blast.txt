@@ -18,9 +18,9 @@
 [episode]
 title = 縫い目の発破
 map = crystal_quarry
-music = battle_tense
+music = battle_eve
 climax_music = battle_final
-before_music = battle_tense
+before_music = battle_eve
 after_music = talk_calm
 
 [cast]
