@@ -140,7 +140,7 @@ static func card_sites() -> Array[Dictionary]:
 	var detail_card := (UnitDetail.RIGHT_WIDTH - UnitDetail.GAP) / 2.0
 	return [
 		{"name": "物語の選択のカード", "width": CampaignList.INTRO_WIDTH, "size": CampaignList.INTRO_FONT, "max_lines": CampaignList.INTRO_MAX_LINES, "texts": intros},
-		{"name": "出撃準備の手ほどき", "width": SortieScreen.WRAP_WIDTH, "size": 17, "max_lines": 3, "texts": lessons},
+		{"name": "出撃準備の手ほどき", "width": SortieScreen.WRAP_WIDTH, "size": SortieScreen.LESSON_FONT, "max_lines": 3, "texts": lessons},
 		{"name": "対戦ルールの札", "width": RuleCard.TEXT_WIDTH, "max_lines": RuleCard.LINE_MAX_LINES, "texts": goals + signs,
 			"sizer": func(text: String) -> int: return RuleCard.fold_line(text, UiTheme.FONT_BODY)[0]},
 		{"name": "縫い目の様子の札", "width": SignCard.SUMMARY_WIDTH, "size": SignCard.SUMMARY_FONT, "max_lines": SignCard.SUMMARY_MAX_LINES, "texts": signs},
