@@ -164,10 +164,17 @@ func test_mana_eruption_readies_the_fireball() -> void:
 
 
 func test_shadow_step_attacks_from_where_it_lands() -> void:
-	var battle := _open()
-	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(12, 2))
-	var far := Vector2i(2, 2)  # 移動 6 + 跳ぶ 3 + 射程 1
+	var battle := Maps.battle([
+		"........#.......",
+		"........#.......",
+		"........#.......",
+		"........#.......",
+		"........#.......",
+	])
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(11, 2))
+	var far := Vector2i(5, 2)  # 壁のそばまで歩いて（3 まで）、壁を跳び越えて (6, 2)、射程 1
 	assert_true(Threat.of(battle, blade.id).has(far))
+	assert_false(Threat.of(battle, blade.id).has(Vector2i(4, 2)), "歩いてから跳べるのは WALK_LIMIT まで")
 	blade.skill_cooldown = 2
 	assert_false(Threat.of(battle, blade.id).has(far))
 
@@ -279,10 +286,10 @@ func test_threat_does_not_change_the_battle() -> void:
 
 
 func test_barrel_shot_after_shadow_step_is_in_the_threat() -> void:
-	var battle := Maps.battle(["................"])
-	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(15, 0))
-	battle.board.add_barrel(Vector2i(5, 0))
-	# 歩いて (9, 0)、跳んで (6, 0)、樽を撃てば (4, 0) まで爆発が届く。
-	assert_eq(Threat.of(battle, blade.id).at(Vector2i(4, 0)), {blade.id: MapObject.BLAST_DAMAGE})
+	var battle := Maps.battle(["......#........."])
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(10, 0))
+	battle.board.add_barrel(Vector2i(4, 0))
+	# 歩いて (7, 0)、壁を跳び越えて (5, 0)、樽を撃てば (3, 0) まで爆発が届く。
+	assert_eq(Threat.of(battle, blade.id).at(Vector2i(3, 0)), {blade.id: MapObject.BLAST_DAMAGE})
 	blade.skill_cooldown = 2
-	assert_false(Threat.of(battle, blade.id).has(Vector2i(4, 0)), "跳べなければ届かない")
+	assert_false(Threat.of(battle, blade.id).has(Vector2i(3, 0)), "跳べなければ届かない")

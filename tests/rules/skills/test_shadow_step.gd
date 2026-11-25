@@ -148,6 +148,18 @@ func test_step_after_a_walk_locks_the_undo() -> void:
 	assert_eq(blade.cell, CENTER + Vector2i(1, -RANGE))
 
 
+func test_step_only_after_a_short_walk() -> void:
+	# 歩いたあとに跳べるのは、このターンに使った移動力が WALK_LIMIT までのとき。
+	var battle := _open()
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, CENTER)
+	battle.apply(MoveAction.new(blade.id, CENTER + Vector2i(ShadowStepSkill.WALK_LIMIT, 0)))
+	assert_eq(battle.options(blade.id).skill_cells.size() > 0, true, "WALK_LIMIT まで歩いたなら跳べる")
+	battle.apply(UndoMoveAction.new(blade.id))
+	battle.apply(MoveAction.new(blade.id, CENTER + Vector2i(ShadowStepSkill.WALK_LIMIT, 1)))
+	assert_true(battle.options(blade.id).skill_cells.is_empty(), "WALK_LIMIT より多く歩いたら跳べない")
+	assert_false(battle.can_apply(UseSkillAction.new(blade.id, blade.cell + Vector2i(0, -1))))
+
+
 func test_no_step_after_a_cruise() -> void:
 	var battle := _open()
 	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 0))
@@ -315,12 +327,11 @@ func test_cpu_steps_through_a_wall_to_finish_an_enemy() -> void:
 
 
 func test_cpu_walks_and_then_steps_to_reach_a_far_sniper() -> void:
-	# 歩いて 6 + 攻撃 1 では届かない。歩いた先から跳べば届く（スキルを使うために立つマスを探す）。
+	# 壁を回って歩くと届かない。少し歩いた先から壁を跳び越えれば届く（スキルを使うために立つマスを探す）。
 	var battle := _cpu_battle()
-	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 1))
-	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(10, 1))
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(2, 3))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(8, 3))
 	sniper.hp = blade.power()  # 削れたスナイパー。無傷（HP 13）なら、一撃（12）では倒れない
-	assert_true(Combat.distance(blade.cell, sniper.cell) > blade.move_range() + blade.attack_range())
 	var cpu := CpuPlayer.new()
 	var kinds: Array[String] = []
 	while battle.phase == P1 and not battle.is_over() and kinds.size() < 10:
@@ -330,6 +341,21 @@ func test_cpu_walks_and_then_steps_to_reach_a_far_sniper() -> void:
 			kinds.append(action.get_script().resource_path.get_file())
 	assert_eq(kinds, ["move_action.gd", "use_skill_action.gd", "attack_action.gd"] as Array[String])
 	assert_eq(battle.unit_by_id(sniper.id), null, "倒せなかった")
+
+
+func test_cpu_does_not_walk_far_and_then_step() -> void:
+	# 歩いて 6 + 跳んで 3 + 攻撃 1 なら届くが、歩いてから跳べるのは WALK_LIMIT まで。届かないので跳ばない。
+	var battle := _cpu_battle()
+	var blade := battle.add_unit(UnitKind.Id.SPELLBLADE, P1, Vector2i(0, 1))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, P2, Vector2i(10, 1))
+	sniper.hp = blade.power()
+	assert_true(Combat.distance(blade.cell, sniper.cell) > ShadowStepSkill.WALK_LIMIT + RANGE + blade.attack_range())
+	var cpu := CpuPlayer.new()
+	while battle.phase == P1 and not battle.is_over():
+		var action := cpu.next_action(battle)
+		assert_false(action is UseSkillAction, "届かないのに跳んだ")
+		assert_true(battle.apply(action).accepted)
+	assert_eq(sniper.hp, blade.power())
 
 
 func test_cpu_does_not_step_when_there_is_nothing_to_attack() -> void:

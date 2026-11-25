@@ -265,6 +265,7 @@ func _plan(unit: Unit) -> BattleAction:
 	var best_action: BattleAction = null
 	var best_value := _position_value(unit, unit.cell, 0, false)
 	var positions: Dictionary[Vector2i, float] = {}
+	_spent = reach[0]
 	for cell: Vector2i in reach[0]:
 		var value := _position_value(unit, cell, 0, false)
 		positions[cell] = value
@@ -373,6 +374,7 @@ func _skill_candidates(unit: Unit, options: UnitOptions, positions: Dictionary[V
 		var targets := options.skill_cells
 		if cell != unit.cell:
 			probe.cell = cell
+			probe.move_spent = _spent.get(cell, 0)
 			if not skill.is_ready(_battle, probe):
 				continue
 			targets = skill.target_cells(_battle, probe)

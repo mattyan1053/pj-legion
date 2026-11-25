@@ -5,13 +5,15 @@ extends Skill
 ## - 間のマス（壁、駒、盾、樽、敵の支配領域）は見ない。見るのは、着くマスだけ
 ## - 着くマスが空いていれば、そこへ移る。敵（相手の陣営の駒と中立の駒）がいれば、その駒と位置を入れ替える
 ## - **使っても行動を終えない**（Skill.ends_action）。続けて攻撃か待機ができる。もう動けず、移動の取り消しもできない
-## - 動いたあとでも使える（歩いてから跳ぶ）。跳んでから歩くことはできない
+## - 歩いたあとでも使える。ただし、このターンに使った移動力が WALK_LIMIT までのときだけ（遠くから歩いて跳び込む手を 1 手で届かせない）。跳んでから歩くことはできない
 
 # ---- 調整値 ----
 
 const COOLDOWN := 3
 ## 跳べる距離（縦・横・斜めの 8 方向に、このマス数まで）。
 const RANGE := 3
+## 歩いてから跳べるのは、このターンに使った移動力（Unit.move_spent）がこの値までのとき。
+const WALK_LIMIT := 3
 
 
 func id() -> Skill.Id:
@@ -24,7 +26,7 @@ func kind() -> UnitKind.Id:
 
 ## 説明の文（game/text/names.csv の skill.shadow_step.summary）に差し込む値。
 func summary_args() -> Dictionary:
-	return {"range": RANGE}
+	return {"range": RANGE, "walk": WALK_LIMIT}
 
 
 func cooldown() -> int:
@@ -33,6 +35,11 @@ func cooldown() -> int:
 
 func ends_action() -> bool:
 	return false
+
+
+## 歩いていないか、このターンに使った移動力が WALK_LIMIT までであること。
+func is_ready(_battle: Battle, unit: Unit) -> bool:
+	return not unit.has_moved or unit.move_spent <= WALK_LIMIT
 
 
 func target_cells(battle: Battle, unit: Unit) -> Array[Vector2i]:

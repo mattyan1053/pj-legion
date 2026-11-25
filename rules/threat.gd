@@ -128,8 +128,10 @@ static func next_phase(battle: Battle, side: Unit.Side) -> Battle:
 static func _player(sim: Battle, unit: Unit, map: Map) -> void:
 	if unit == null:
 		return
-	var first := _stops(sim, unit, [unit.cell])
-	_action(sim, unit, first, false, map)
+	var spent := Movement.reachable_from_any(sim, unit, [unit.cell], false, true)
+	var first: Array[Vector2i] = []
+	first.assign(spent.keys())
+	_action(sim, unit, first, false, map, spent)
 	if not _can_be_reactivated(sim, unit):
 		return
 	# アドレナリン注射: 1 度目の行動を終えたマスのうち、衛生兵の注射が届くマスから、反動の付いたもう一度の行動。
@@ -139,19 +141,15 @@ static func _player(sim: Battle, unit: Unit, map: Map) -> void:
 		if shot.has(cell):
 			starts.append(cell)
 	if not starts.is_empty():
-		_action(sim, unit, _stops(sim, unit, starts), true, map)
-
-
-## unit が starts のどれかのマスから、通常の移動で止まれるマス（starts も含む）。
-static func _stops(sim: Battle, unit: Unit, starts: Array[Vector2i]) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	result.assign(Movement.reachable_from_any(sim, unit, starts, false, true).keys())
-	return result
+		var again := Movement.reachable_from_any(sim, unit, starts, false, true)
+		var stops: Array[Vector2i] = []
+		stops.assign(again.keys())
+		_action(sim, unit, stops, true, map, again)
 
 
 ## unit が stops のどれかに止まって、攻撃か、スキルを使ったら届くマスを map に書く。tired なら反動の付いた写しで数える。
-## 動くと外れる状態は、いまのマス（unit.cell）からだけ効く。
-static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool, map: Map) -> void:
+## 動くと外れる状態は、いまのマス（unit.cell）からだけ効く。spent は、止まれるマスまでに使う移動力（スキルが使えるかを、そのマスに歩いた駒で聞く）。
+static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool, map: Map, spent: Dictionary) -> void:
 	var stay := _probe(unit, unit.cell, tired)
 	var moved := _probe(unit, Board.NO_CELL, tired)
 	var attacks := UnitKind.role(unit.kind) != UnitKind.Role.HEALER
@@ -182,6 +180,7 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 	for cell in stops:
 		var user := stay if cell == unit.cell else moved
 		user.cell = cell
+		user.move_spent = spent.get(cell, 0)
 		if not skill.is_ready(sim, user):
 			continue
 		var reached := skill.threat_damage(sim, user)

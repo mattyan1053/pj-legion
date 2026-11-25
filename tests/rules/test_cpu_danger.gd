@@ -85,11 +85,25 @@ func test_counts_a_ready_fireball() -> void:
 
 
 func test_counts_a_ready_shadow_step() -> void:
-	var battle := _battle()
-	var spellblade := battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(10, 2))
-	# 移動 6 + 射程 1 では届かないが、跳べば（3）届く。
+	var battle := Maps.battle([
+		"...#........",
+		"...#........",
+		"...#........",
+		"...#........",
+		"...#........",
+	])
+	battle.add_unit(UnitKind.Id.KING, P1, HERE)
+	var spellblade := battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(6, 2))
+	# 壁で歩いては届かないが、壁のそばまで歩いて跳べば届く。
 	assert_eq(_danger(battle), spellblade.power())
 	spellblade.skill_cooldown = 2
+	assert_eq(_danger(battle), 0)
+
+
+func test_a_long_walk_and_a_step_are_no_danger() -> void:
+	var battle := _battle()
+	battle.add_unit(UnitKind.Id.SPELLBLADE, P2, Vector2i(10, 2))
+	# 歩いて 6 + 跳んで 3 + 射程 1 なら届く距離。歩いてから跳べるのは WALK_LIMIT までなので、届かない。
 	assert_eq(_danger(battle), 0)
 
 
