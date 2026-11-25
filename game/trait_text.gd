@@ -31,13 +31,20 @@ static func oath_tooltip(deck: Deck, entry: DeckEntry) -> String:
 	return "" if partner == null else Text.t("deck.trait.partner", {"unit": Names.kind(partner.kind)})
 
 
+## 部隊 deck が対戦で持つ特徴（対戦用の部隊だけ。ほかは Traits.NONE）。その軍の特徴でなければ軍の既定（MatchSetup.trait_of と同じ）。
+static func of_deck(deck: Deck) -> int:
+	if deck == null or deck.rules == null or deck.rules.id != DeckRules.VERSUS or Traits.of_army(deck.army).is_empty():
+		return Traits.NONE
+	return deck.trait_id if Traits.of_army(deck.army).has(deck.trait_id) else Traits.default_of(deck.army)
+
+
 ## 対戦の上の帯の、陣営 side の特徴の札の文（名前だけ）。特徴が無ければ空。
 static func band_text(battle: Battle, side: Unit.Side) -> String:
 	var id := Traits.of_side(battle, side) if battle != null else Traits.NONE
 	return Names.troop_trait(id)
 
 
-## 札に乗ると出る文（名前と 1 行の文）。
+## 札に乗ると出る文（1 行目に名前と効果の数、2 行目に効く相手）。
 static func band_tooltip(battle: Battle, side: Unit.Side) -> String:
 	var id := Traits.of_side(battle, side) if battle != null else Traits.NONE
-	return "" if id == Traits.NONE else Text.t("battle.hud.troop_trait", {"name": Names.troop_trait(id), "text": Names.troop_trait_text(id)})
+	return "" if id == Traits.NONE else Text.t("battle.hud.troop_trait", {"name": Names.troop_trait(id), "effect": Names.troop_trait_effect(id), "when": Names.troop_trait_when(id)})

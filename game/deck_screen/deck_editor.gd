@@ -94,7 +94,7 @@ func hover_trait_card(index: int) -> void:
 
 ## 部隊の特徴の欄の文（検査用。出ていなければ空）。
 func trait_text() -> String:
-	return _trait_label.text if _trait_box.visible else ""
+	return Names.troop_trait_text(_trait_shown) if _trait_box.visible else ""
 
 
 ## 誓いを結ぶ操作が出ているか（特徴が誓いの部隊だけ）。
@@ -585,7 +585,8 @@ func _oath_tag(index: int) -> Control:
 	return button
 
 
-## 部隊の特徴の欄（必殺技の欄の下。決まった大きさ）: 見出し「特徴」と札 3 枚（印と名前）、下に選んだ特徴の文（札に乗せている間は、その札の文）。
+## 部隊の特徴の欄（必殺技の欄の下。決まった大きさ）: 見出し「特徴」と札 3 枚（印と名前）、下に選んだ特徴の効果（数）と効く相手の 2 行
+## （札に乗せている間は、その札のもの。札に別のツールチップは付けない）。
 func _build_trait_box() -> Control:
 	_trait_box = _card()
 	_trait_box.custom_minimum_size = Vector2(ROSTER_WIDTH, TRAIT_BOX_HEIGHT)
@@ -628,9 +629,13 @@ func _build_trait_box() -> Control:
 		button.mouse_exited.connect(func() -> void: _on_trait_card(i, &"exit"))
 		row.add_child(button)
 		_trait_buttons.append(button)
+	# 文は 2 行: 効果（数。目立つ色）と、効く相手。
+	_trait_effect = _text(14, COLOR_ACCENT)
+	_trait_effect.add_theme_font_override("font", UiTheme.FONT_BOLD)
+	_trait_effect.clip_text = true
+	column.add_child(_trait_effect)
 	_trait_label = _text(12, COLOR_DIM)
-	_trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_trait_label.max_lines_visible = TRAIT_LINES
+	_trait_label.clip_text = true
 	_trait_label.custom_minimum_size = Vector2(ROSTER_WIDTH - 24.0, 0.0)
 	column.add_child(_trait_label)
 	return _trait_box
@@ -668,9 +673,10 @@ func _refresh_traits() -> void:
 		(button.get_meta(&"name") as Label).text = Names.troop_trait(id)
 		(button.get_meta(&"name") as Label).add_theme_color_override("font_color", COLOR_TEXT if chosen else COLOR_DIM)
 		button.set_pressed_no_signal(chosen)
-		button.tooltip_text = Names.troop_trait_text(id)
 	var shown := _hover_trait if choices.has(_hover_trait) else _deck.trait_id
-	_trait_label.text = Names.troop_trait_text(shown)
+	_trait_effect.text = Names.troop_trait_effect(shown)
+	_trait_label.text = Names.troop_trait_when(shown)
+	_trait_shown = shown
 
 
 ## 雇える駒の i 番目のボタンが押された・マウスが乗った・離れた。

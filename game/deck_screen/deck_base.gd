@@ -31,6 +31,7 @@ const UnitSheet := preload("res://game/unit_sheet.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 const TraitText := preload("res://game/trait_text.gd")
 const TraitIcon := preload("res://game/trait_icon.gd")
+const TraitTag := preload("res://game/trait_tag.gd")
 
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
@@ -55,8 +56,9 @@ const ROSTER_WIDTH := 320.0
 const ROSTER_CARD_HEIGHT := 63.0
 const TROOP_WIDTH := 420.0
 ## 部隊の特徴の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。札の高さと、札の印の大きさ。
+## 一覧で選んだ部隊の「軍・兵の数・コスト」の文の欄の幅（いちばん長い文が入る。ゲージと特徴の札の位置をそろえる）。
+const LIST_DETAIL_BODY_WIDTH := 262.0
 const TRAIT_BOX_HEIGHT := 96.0
-const TRAIT_LINES := 2
 const TRAIT_CARD_HEIGHT := 32.0
 const TRAIT_MARK_SIDE := 28.0
 ## 部隊の行の、誓いのボタン（特徴が誓いの部隊だけ）の幅（px）。
@@ -85,6 +87,7 @@ var _list_rows: VBoxContainer
 var _list_empty: Label
 var _list_detail_title: Label
 var _list_detail_body: Label
+var _list_detail_trait: TraitTag
 var _list_detail_crest: Crest
 var _list_detail_gauge: CostGems
 var _list_detail_decor: NationDecor
@@ -121,6 +124,9 @@ var _binding := -1
 var _trait_box: PanelContainer
 var _trait_buttons: Array[Button] = []
 var _trait_label: Label
+var _trait_effect: Label
+## 文の欄に出している特徴。
+var _trait_shown := Traits.NONE
 ## 特徴の札にマウスを乗せている特徴（無ければ Traits.NONE。文の欄に、その特徴の文を出す）。
 var _hover_trait := Traits.NONE
 ## マウスを乗せている雇える駒（無ければ -1）。

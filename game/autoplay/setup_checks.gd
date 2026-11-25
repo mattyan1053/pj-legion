@@ -239,6 +239,7 @@ func _queue_minimap_scene() -> void:
 	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 9))
 	battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(10, 0))
 	battle.turn = 99  # 上の帯のターンの文がいちばん長いとき
+	battle.traits = [Traits.Id.FOCUS, Traits.Id.VENGEANCE]  # 部隊の特徴の札（印と名前）も出す
 	_scripted.append(func() -> void:
 		_scene.set_opponent(true)  # 「相手: CPU」（「相手: 人」より幅を取る）。プレイヤー1 の番なので、CPU は動かない
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))

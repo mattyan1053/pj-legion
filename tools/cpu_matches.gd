@@ -38,6 +38,7 @@ extends "res://tools/cpu_matches_base.gd"
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
 ##   --traits=X     部隊の特徴（docs/troop-traits.md）を置き換える（測るためだけ）。none = 両軍とも無し、random = 局ごとに種で決まる 1 つ（その軍の 3 つから）、
 ##                   鍵を並べる（focus,vengeance のように）= その軍の鍵の特徴。付けなければ、部隊が選んだ特徴（CPU の編成もランダムの部隊も CpuDeck.choose_trait）。
+##                   --episode では army だけを使える（軍の陣営に、その軍の既定の特徴を持たせる。話に特徴を入れたら、を測る）。
 ##                   特徴ごとの勝率・選ばれた数・効いた回数と、--list=1 の TRAIT の行も出す
 ##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、seam = 縫い目の様子のランダム。`,` で並べられる）をそれだけ入にして回す。none で全部切。
 ##                   縫い目の様子のある局があれば、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す
@@ -189,6 +190,10 @@ func _initialize() -> void:
 			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
+		if episode != null and trait_arg == "army":
+			# 話に軍の既定の特徴を入れたら、を測る（話のファイルは書いていない。軍でない魔物の群れは特徴を持たない）。
+			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
+				setup.scenario.traits[side] = Traits.default_of(setup.army_of(side))
 		if episode == null and trait_arg != "":
 			_override_traits(setup, trait_arg, first_seed + game)
 		# 対戦モードは、対戦設定の既定の決まり（拠点あり）で回す。--rules=none で全部切、--rules=名前,… でそれだけ入。

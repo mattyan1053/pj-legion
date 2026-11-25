@@ -246,6 +246,7 @@ battle.forecast.self_named,自分（{unit}）
 battle.pop.status_broken,{status}が解けた
 battle.pop.trait_up,{effect} +{amount}
 battle.pop.trait_down,{effect} -{amount}
+battle.board.trait_mark,+{amount}
 battle.pop.status_expired,{status}が消えた
 battle.pop.capture,占拠 {turns} / {needed}
 battle.pop.capture_broken,占拠が途切れた
@@ -259,7 +260,7 @@ battle.notice.title,対戦ルール
 battle.notice.goals,勝利条件
 battle.notice.signs,縫い目の様子
 battle.notice.close,閉じる
-battle.hud.troop_trait,{name}: {text}
+battle.hud.troop_trait,{name}　{effect}\n{when}
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
 battle.hud.relic_missing,{relic}（持っていない）: {effect}
