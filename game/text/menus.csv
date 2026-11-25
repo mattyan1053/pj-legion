@@ -34,13 +34,6 @@ settings.screen_effects,画面の効果
 settings.screen_effects.note,光のにじみ・陰・色の調子。重いときはオフ
 settings.piece_outline,兵の縁取り
 settings.piece_outline.note,盤の兵と会話の姿に暗い縁。次の画面から反映
-settings.unit_look,兵の見た目
-settings.unit_look.note,盤の兵・アイコン・会話の姿。次の画面から反映（対戦中は次の対戦から）
-settings.unit_look.kaykit,人形
-settings.unit_look.tokens,盤の駒
-settings.unit_look.quaternius,人物
-settings.unit_look.mini,ミニ
-settings.unit_look.kaykit2,人形 2
 settings.on,オン
 settings.off,オフ
 settings.title,オプション

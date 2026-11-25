@@ -28,7 +28,6 @@ const MUTE := &"mute"
 const MUSIC_SET := &"music_set"
 const SHOW_MINIMAP := &"show_minimap"
 const FULLSCREEN := &"fullscreen"
-const UNIT_LOOK := &"unit_look"
 const SCREEN_EFFECTS := &"screen_effects"
 const PIECE_OUTLINE := &"piece_outline"
 
@@ -101,12 +100,6 @@ const ITEMS: Array[Dictionary] = [
 		"key": PIECE_OUTLINE, "section": "settings.section.screen", "label": "settings.piece_outline",
 		"note": "settings.piece_outline.note",
 		"kind": Kind.TOGGLE, "default": false,
-	},
-	{
-		# 値は unit_looks.gd の ORDER の番号（組の名前ではなく番号で取っておく。CHOICE は数の値だけを持つ）。
-		"key": UNIT_LOOK, "section": "settings.section.screen", "label": "settings.unit_look",
-		"note": "settings.unit_look.note",
-		"kind": Kind.CHOICE, "choices": [[0, "settings.unit_look.kaykit"], [1, "settings.unit_look.tokens"], [2, "settings.unit_look.quaternius"], [3, "settings.unit_look.mini"], [4, "settings.unit_look.kaykit2"]], "default": 0,
 	},
 ]
 

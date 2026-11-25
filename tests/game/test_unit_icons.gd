@@ -33,12 +33,10 @@ func test_colors_match_the_battle_teams() -> void:
 	assert_eq(UnitIcons.COLORS, BattleScreen.TEAM_COLORS)
 
 
-## 名前のある人物は、形を持つ組（「人形」）では自分の絵。持たない組では、その駒の種類の絵。
+## 名前のある人物は、形を持つ組（「人形」）では自分の絵。
 func test_people_have_their_own_picture() -> void:
 	UnitLooks.use(&"kaykit")
 	var ul := UnitIcons.texture(UnitKind.Id.PRIEST, 0, true, &"ul")
 	assert_true(ul != null and ul != UnitIcons.texture(UnitKind.Id.PRIEST, 0, true), "ウルの絵")
 	assert_true(UnitIcons.texture(UnitKind.Id.KING, 1, false, &"yelda") != UnitIcons.texture(UnitKind.Id.KING, 1), "将の駒のイェルダの絵")
-	UnitLooks.use(&"mini")
-	assert_eq(UnitIcons.texture(UnitKind.Id.PRIEST, 0, true, &"ul"), UnitIcons.texture(UnitKind.Id.PRIEST, 0, true))
 	UnitLooks.use(UnitLooks.DEFAULT)

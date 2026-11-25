@@ -317,21 +317,12 @@ func _run() -> void:
 	_quit("screenshots: OK", 0)
 
 
-## 設定を既定に戻したあとも、`--unit-look <組の名前>` で選んだ駒の見た目の組は保つ（tools/screenshots.sh の --unit-look=）。
-func _keep_unit_look() -> void:
-	var args := OS.get_cmdline_user_args()
-	var at := args.find("--unit-look")
-	if at != -1 and at + 1 < args.size():
-		_app.context.settings.set_value(&"unit_look", UnitLooks.ORDER.find(StringName(args[at + 1])))
-
-
 ## 場面を作る前に、前の場面の状態を戻し、種 seed の新しい対戦を用意する。
 func _reset(seed: int) -> void:
 	_app.system_menu().close()
 	if _app.quit_window.is_open():
 		_app.quit_window.close()  # 前の場面（window_close）の × の確かめを閉じる（開いたままだと時間が止まり、次の場面が進まない）
 	_app.context.settings.reset_all()
-	_keep_unit_look()
 	if OS.get_cmdline_user_args().has("--no-effects"):
 		_app.context.settings.set_value(&"screen_effects", false)  # tools/screenshots.sh の --no-effects（画面の効果を切って撮る）
 	for number in range(1, 4):
