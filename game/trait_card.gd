@@ -1,5 +1,5 @@
 extends PanelContainer
-## 軍略の札 1 枚（docs/troop-traits.md）: 印（trait_icon.gd）、名前、効果（数。目立つ色で先に）、効く相手（2 行まで）。
+## 軍略の札 1 枚（docs/troop-traits.md）: 印（trait_icon.gd）、名前、文（条件 → 効果の 1 文。効果の所は目立つ色。2 行まで。trait_sentence.gd）。
 ## 対戦中、上の帯の軍略の札をクリックすると出す窓（hud_top_bar.gd）に使う。縫い目の様子の札の窓（sign_card.gd）と同じ作り。
 ## 大きさは中身（軍略）に依らず同じ（SIZE。docs/ui-theme.md の「枠の大きさ」）。
 
@@ -8,25 +8,21 @@ const Steady := preload("res://game/steady.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const TraitIcon := preload("res://game/trait_icon.gd")
-const TextWrap := preload("res://game/text_wrap.gd")
+const TraitSentence := preload("res://game/trait_sentence.gd")
 
 ## 札の大きさ（px）と、印の大きさ。
 const SIZE := Vector2(380.0, 132.0)
 const MARK_SIDE := 64.0
-## 名前と効果の字の大きさ。
+## 名前の字の大きさ。
 const NAME_FONT := 22
-const EFFECT_FONT := 17
-## 効く相手の文の字の大きさ・折り返す幅・行の数の上限。文は語の途中で切らずに折り返す（text_wrap.gd。tools/wrap_audit.gd が全部の札を見る）。
-const WHEN_FONT := 14
-const WHEN_WIDTH := SIZE.x - MARK_SIDE - 50.0
-const WHEN_MAX_LINES := 2
+## 文の字の大きさ・折り返す幅・行の数の上限。文は語の途中で切らずに折り返す（text_wrap.gd。tools/wrap_audit.gd が全部の札を見る）。
+const TEXT_FONT := 16
+const TEXT_WIDTH := SIZE.x - MARK_SIDE - 50.0
+const TEXT_MAX_LINES := 2
 
 var _mark: TraitIcon
 var _name: Label
-var _effect: Label
-var _when: Label
-## 効く相手の文の、折り返す前の文（検査用）。
-var _when_plain := ""
+var _sentence: TraitSentence
 
 
 func _init() -> void:
@@ -49,31 +45,17 @@ func _init() -> void:
 	_name.add_theme_font_size_override("font_size", NAME_FONT)
 	_name.clip_text = true
 	column.add_child(_name)
-	_effect = Label.new()
-	_effect.add_theme_font_override("font", UiTheme.FONT_BOLD)
-	_effect.add_theme_font_size_override("font_size", EFFECT_FONT)
-	_effect.add_theme_color_override("font_color", Palette.GOLD)
-	_effect.clip_text = true
-	column.add_child(_effect)
-	_when = Label.new()
-	_when.add_theme_font_override("font", UiTheme.FONT_BODY)  # 折り返しを測る字と同じに
-	_when.add_theme_font_size_override("font_size", WHEN_FONT)
-	_when.add_theme_color_override("font_color", Palette.TEXT_DIM)
-	_when.max_lines_visible = WHEN_MAX_LINES
-	_when.custom_minimum_size = Vector2(WHEN_WIDTH, 0.0)
-	column.add_child(_when)
+	_sentence = TraitSentence.new(TEXT_WIDTH, TEXT_FONT, TEXT_MAX_LINES, Palette.TEXT, Palette.GOLD)
+	column.add_child(_sentence)
 
 
 ## 軍略 id（Traits.Id の値）を見せる。
 func show_trait(id: int) -> void:
 	_mark.trait_id = id
 	_name.text = Names.troop_trait(id)
-	_effect.text = Names.troop_trait_effect(id)
-	_when_plain = Names.troop_trait_when(id)
-	_when.text = TextWrap.fold(_when_plain, WHEN_WIDTH, func(character: String) -> float:
-		return UiTheme.FONT_BODY.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, WHEN_FONT).x)
+	_sentence.trait_id = id
 
 
-## 見せている文（名前、効果、効く相手。検査用）。
+## 見せている文（名前と文。検査用）。
 func shown_text() -> String:
-	return "%s %s %s" % [_name.text, _effect.text, _when_plain]
+	return "%s %s" % [_name.text, _sentence.shown_text()]
