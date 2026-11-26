@@ -250,12 +250,11 @@ func _queue_minimap_scene() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
 		_expect(_scene.top_bar_cut_texts().is_empty(), "上の帯の陣営の欄（駒の数と占拠）が切れている: %s" % [_scene.top_bar_cut_texts()])
-		# 上の帯の軍略の札をクリックすると、その陣営の軍略 1 つの窓（名前・効果・効く相手。選ばなかった軍略は出さない）。
+		# 上の帯の軍略の札をクリックすると、その陣営の軍略 1 つの窓（名前と文。選ばなかった軍略は出さない）。
 		# もう一度クリックか、盤のクリックで閉じる。相手の札を押すと、相手のものに替わる。
 		_scene.toggle_trait_note(0)
 		var note: String = _scene.trait_note_text()
-		_expect(note.contains(Names.troop_trait(Traits.Id.FOCUS)) and note.contains(Names.troop_trait_effect(Traits.Id.FOCUS))
-			and note.contains(Names.troop_trait_when(Traits.Id.FOCUS)) and not note.contains(Names.troop_trait(Traits.Id.RANKS)),
+		_expect(note.contains(Names.troop_trait(Traits.Id.FOCUS)) and note.contains(Names.troop_trait_text(Traits.Id.FOCUS)) and not note.contains(Names.troop_trait(Traits.Id.RANKS)),
 			"上の帯の軍略の札で、軍略の窓が開かない（か、中身が違う）: %s" % note)
 		var screen_rect: Rect2 = _scene.get_viewport().get_visible_rect()
 		_expect(screen_rect.encloses(_scene.trait_note_rect()) and _scene.trait_note_rect().position.y >= BattleHud.TOP_BAR_HEIGHT,

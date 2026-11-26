@@ -32,6 +32,7 @@ const Ornament := preload("res://game/ui_ornament.gd")
 const TraitText := preload("res://game/trait_text.gd")
 const TraitIcon := preload("res://game/trait_icon.gd")
 const TraitTag := preload("res://game/trait_tag.gd")
+const TraitSentence := preload("res://game/trait_sentence.gd")
 
 
 ## 「タイトルへ戻る」で &"back"（流れの中なら Run.NEXT）。
@@ -63,6 +64,8 @@ const TRAIT_CARD_HEIGHT := 32.0
 ## 軍略の札の印と名前の字の大きさ。札 3 枚が欄の幅を分けるので、いちばん長い名前（「集中砲火」）が札に収まる大きさ。
 const TRAIT_MARK_SIDE := 24.0
 const TRAIT_NAME_FONT := 12
+## 軍略の欄の文の字の大きさ。
+const TRAIT_TEXT_FONT := 13
 ## 部隊の行の、誓いのボタン（軍略が誓いの部隊だけ）の幅（px）。
 const OATH_TAG_WIDTH := 64.0
 ## 一覧の右の、駒の札を並べる数（1 行）。
@@ -125,8 +128,7 @@ var _binding := -1
 ## 軍略の欄（対戦用の部隊だけ。必殺技の欄の下。決まった大きさ）: 札 3 枚と、選んだ（乗せた）軍略の文。
 var _trait_box: PanelContainer
 var _trait_buttons: Array[Button] = []
-var _trait_label: Label
-var _trait_effect: Label
+var _trait_sentence: TraitSentence
 ## 文の欄に出している軍略。
 var _trait_shown := Traits.NONE
 ## 軍略の札にマウスを乗せている軍略（無ければ Traits.NONE。文の欄に、その軍略の文を出す）。

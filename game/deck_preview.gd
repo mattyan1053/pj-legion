@@ -13,6 +13,7 @@ const Palette := preload("res://game/ui_palette.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
 const TraitTag := preload("res://game/trait_tag.gd")
 const TraitText := preload("res://game/trait_text.gd")
+const TraitSentence := preload("res://game/trait_sentence.gd")
 const Names := preload("res://game/names.gd")
 const Steady := preload("res://game/steady.gd")
 
@@ -21,13 +22,14 @@ const COLUMNS := 4
 ## 軍略の行の高さと、印の大きさ。
 const TRAIT_ROW_HEIGHT := 30.0
 const TRAIT_MARK_SIDE := 26.0
+## 軍略の文の欄の幅（いちばん長い文が 1 行に収まる。tests/game/test_traits_text.gd）。
+const TRAIT_TEXT_WIDTH := 400.0
 
 var _overlays: RefCounted
 var _title: Label
 ## 軍略の行（印と、名前と 1 行の文。docs/troop-traits.md）。
 var _trait_mark: TraitTag
-var _trait_effect: Label
-var _trait_label: Label
+var _trait_sentence: TraitSentence
 var _cards: GridContainer
 var _detail: UnitDetail
 ## いま出している部隊と、アイコンの陣営の色。
@@ -99,8 +101,7 @@ func open(who: String, deck: Deck, side := 0) -> void:
 	var trait_id := TraitText.of_deck(deck)
 	_trait_mark.trait_id = trait_id
 	_trait_mark.modulate.a = 0.0 if trait_id == Traits.NONE else 1.0
-	_trait_effect.text = Names.troop_trait_effect(trait_id)
-	_trait_label.text = Names.troop_trait_when(trait_id)
+	_trait_sentence.trait_id = trait_id
 	_add_card(UnitCard.build(UnitKind.Id.KING, [], side), -1)
 	for index in deck.entries.size():
 		_add_card(UnitCard.build(deck.entries[index].kind, deck.entries[index].equipment, side), index)
@@ -114,26 +115,17 @@ func _build_trait_row() -> Control:
 	row.add_theme_constant_override("separation", 8)
 	row.custom_minimum_size = Vector2(0.0, TRAIT_ROW_HEIGHT)
 	Steady.mark(row, "deck_preview.trait")
-	# 印と名前（軍の色）、効果（数。目立つ色）、効く相手の順。
+	# 印と名前（軍の色）、文（条件 → 効果。効果の所は目立つ色）。
 	_trait_mark = TraitTag.new(TRAIT_MARK_SIDE, 16)
 	row.add_child(_trait_mark)
-	_trait_effect = Label.new()
-	_trait_effect.add_theme_font_override("font", UiTheme.FONT_BOLD)
-	_trait_effect.add_theme_font_size_override("font_size", 16)
-	_trait_effect.add_theme_color_override("font_color", Palette.ACCENT)
-	_trait_effect.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(_trait_effect)
-	_trait_label = Label.new()
-	_trait_label.add_theme_font_size_override("font_size", 14)
-	_trait_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
-	_trait_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(_trait_label)
+	_trait_sentence = TraitSentence.new(TRAIT_TEXT_WIDTH, 15, 1, Palette.TEXT, Palette.ACCENT)
+	row.add_child(_trait_sentence)
 	return row
 
 
-## いまの軍略の行の文（名前、効果、効く相手。軍略が無ければ空。検査用）。
+## いまの軍略の行の文（名前と文。軍略が無ければ空。検査用）。
 func trait_text() -> String:
-	return "" if _trait_mark.trait_id == Traits.NONE else "%s %s %s" % [_trait_mark.shown_name(), _trait_effect.text, _trait_label.text]
+	return "" if _trait_mark.trait_id == Traits.NONE else "%s %s" % [_trait_mark.shown_name(), _trait_sentence.shown_text()]
 
 
 ## 札を押せるようにして並べる（index は部隊の並びの番号。将は -1）。
