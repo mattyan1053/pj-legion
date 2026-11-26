@@ -48,7 +48,7 @@ const FAMILIES := {
 	"skill": [Skill.Id, ["", ".summary"]],
 	"ult": [Ult.Id, ["", ".summary"]],
 	"status": [Status.Type, ["", ".summary"]],
-	"troop_trait": [Traits.Id, ["", ".effect", ".when"]],
+	"troop_trait": [Traits.Id, ["", ".effect", ".text"]],
 	"sign": [Seam.Sign, ["", ".summary"]],
 	"relic": [Relics.Id, ["", ".summary", ".short", ".effect"]],
 	"stage": [BoardGenerator.Stage, [""]],

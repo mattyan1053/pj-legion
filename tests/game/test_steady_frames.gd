@@ -20,6 +20,10 @@ const BattleTalk := preload("res://game/battle_talk.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const ResultSummary := preload("res://game/result_summary.gd")
 const TraitTag := preload("res://game/trait_tag.gd")
+const TraitSentence := preload("res://game/trait_sentence.gd")
+const TraitCard := preload("res://game/trait_card.gd")
+const DeckPreview := preload("res://game/deck_preview.gd")
+const DeckBase := preload("res://game/deck_screen/deck_base.gd")
 const SortieScreen := preload("res://game/sortie_screen.gd")
 
 
@@ -351,6 +355,26 @@ func test_trait_tag_keeps_its_size_for_every_trait() -> void:
 		assert_true(name_width <= TraitTag.name_width(14), "名前が欄に収まらない: %s" % Names.troop_trait(id))
 	tag.free()
 
+
+
+## 軍略の文（条件 → 効果の 1 文）は、出る所の欄（部隊編成の欄・編成確認・対戦中の窓）に、どの軍略でも収まり、欄の大きさは変わらない。
+## 効果（数のある所）は、文の中にそのまま入っている（色を変える所が見つかる）。
+func test_trait_sentence_fits_every_place_for_every_trait() -> void:
+	var places := [
+		TraitSentence.new(DeckBase.ROSTER_WIDTH - 24.0, DeckBase.TRAIT_TEXT_FONT, 2),
+		TraitSentence.new(DeckPreview.TRAIT_TEXT_WIDTH, 15, 1),
+		TraitSentence.new(TraitCard.TEXT_WIDTH, TraitCard.TEXT_FONT, TraitCard.TEXT_MAX_LINES),
+	]
+	for sentence: Control in places:
+		await settle(sentence)
+		var empty: Vector2 = sentence.get_combined_minimum_size()
+		for id: int in Traits.Id.values():
+			sentence.trait_id = id
+			await settle(sentence)
+			assert_true(Names.troop_trait_text(id).contains(Names.troop_trait_effect(id)), "文に効果が入っていない: %s" % Names.troop_trait_text(id))
+			assert_false(sentence.overflows(), "軍略の文が欄に収まらない（%d 行）: %s" % [sentence.line_count(), sentence.shown_text()])
+			assert_eq(sentence.get_combined_minimum_size(), empty, "軍略の文の欄の大きさが中身で変わる")
+		sentence.free()
 
 ## 出撃準備の枠（初期位置・勝利条件・敵の部隊・出撃する部隊）は、どの話でも同じ場所・同じ大きさ。
 ## 演習（覚えることの札が出る、部隊が決まっている）、ふつうの話、勝利条件の札が 3 枚で敵の多い話、敵のいちばん多い話で比べる。
