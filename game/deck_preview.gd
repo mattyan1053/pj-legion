@@ -18,13 +18,13 @@ const Steady := preload("res://game/steady.gd")
 
 ## 1 行に並べる札の数。
 const COLUMNS := 4
-## 部隊の特徴の行の高さと、印の大きさ。
+## 軍略の行の高さと、印の大きさ。
 const TRAIT_ROW_HEIGHT := 30.0
 const TRAIT_MARK_SIDE := 26.0
 
 var _overlays: RefCounted
 var _title: Label
-## 部隊の特徴の行（印と、名前と 1 行の文。docs/troop-traits.md）。
+## 軍略の行（印と、名前と 1 行の文。docs/troop-traits.md）。
 var _trait_mark: TraitTag
 var _trait_effect: Label
 var _trait_label: Label
@@ -107,7 +107,7 @@ func open(who: String, deck: Deck, side := 0) -> void:
 	visible = true
 
 
-## 部隊の特徴の行（決まった高さ。特徴の無い部隊は空のまま）。
+## 軍略の行（決まった高さ。軍略の無い部隊は空のまま）。
 func _build_trait_row() -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -131,7 +131,7 @@ func _build_trait_row() -> Control:
 	return row
 
 
-## いまの部隊の特徴の行の文（名前、効果、効く相手。特徴が無ければ空。検査用）。
+## いまの軍略の行の文（名前、効果、効く相手。軍略が無ければ空。検査用）。
 func trait_text() -> String:
 	return "" if _trait_mark.trait_id == Traits.NONE else "%s %s %s" % [_trait_mark.shown_name(), _trait_effect.text, _trait_label.text]
 

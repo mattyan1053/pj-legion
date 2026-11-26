@@ -63,9 +63,9 @@ class Outcome:
 	var first_ult_turn: Array[int] = [0, 0]
 	## 起きたイベントの種類（スクリプト）-> 回数。
 	var events: Dictionary[Script, int] = {}
-	## 部隊の特徴が効いた回数（Traits.Id -> 回数。補給線は回復した回数）。両方の部隊が同じ特徴なら、2 つの合計。
+	## 軍略が効いた回数（Traits.Id -> 回数。補給線は回復した回数）。両方の部隊が同じ軍略なら、2 つの合計。
 	var traits: Dictionary[int, int] = {}
-	## 陣営ごとの、その部隊の特徴が効いた回数（添字がプレイヤー番号）。
+	## 陣営ごとの、その軍略が効いた回数（添字がプレイヤー番号）。
 	var trait_hits: Array[int] = [0, 0]
 	## 倒されたプレイヤーの駒（将を除く）の倒され方。1 体につき 1 つ（Fall）。
 	var falls: Array[Fall] = []
@@ -330,7 +330,7 @@ static func _copy_stats(outcome: Outcome, stats: BattleStats) -> void:
 				sum[i] += row[i]
 
 
-## 特徴 id が効いた陣営に 1 を足す。その特徴の陣営が 1 つならその陣営、両方なら、特徴を持つ側の駒（倒れていれば相手の駒の反対）の陣営。
+## 軍略 id が効いた陣営に 1 を足す。その軍略の陣営が 1 つならその陣営、両方なら、軍略を持つ側の駒（倒れていれば相手の駒の反対）の陣営。
 static func _count_trait_side(outcome: Outcome, battle: Battle, id: int, unit_id: int, other_id: int) -> void:
 	var sides: Array[int] = []
 	for side in 2:

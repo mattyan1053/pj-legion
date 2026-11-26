@@ -288,9 +288,9 @@ static func deck_to_record(deck: Deck) -> Dictionary:
 		units.append({"kind": UnitKind.Id.keys()[entry.kind], "equipment": equipment})
 	var record := {"rules": String(deck.rules.id), "army": UnitKind.Army.keys()[deck.army], "units": units}
 	if deck.trait_id != Traits.NONE:
-		record["trait"] = Traits.key(deck.trait_id)  # 部隊の特徴（docs/troop-traits.md）。鍵で書く
+		record["trait"] = Traits.key(deck.trait_id)  # 軍略（docs/troop-traits.md）。鍵で書く
 	if not deck.oaths.is_empty():
-		# 誓い（部隊の特徴の誓い。docs/troop-traits.md）は、駒の並びの添字の組で書く。
+		# 誓い（軍略の誓い。docs/troop-traits.md）は、駒の並びの添字の組で書く。
 		var oaths: Array = []
 		for pair in deck.oath_pairs():
 			oaths.append([pair.x, pair.y])
@@ -323,7 +323,7 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 	if army == UnitKind.Army.NONE:
 		item.load_issues.append(Text.t("deck.load.unknown_army", {"name": _shown(army_name)}))
 	item.deck = Deck.new(army, rules)
-	# 部隊の特徴（無いか、その軍のものでなければ、軍の既定のまま。理由には書かない: 部隊は出撃できる）。
+	# 軍略（無いか、その軍のものでなければ、軍の既定のまま。理由には書かない: 部隊は出撃できる）。
 	var trait_name: Variant = record.get("trait")
 	if typeof(trait_name) == TYPE_STRING and Traits.of_army(army).has(Traits.from_key(trait_name)):
 		item.deck.trait_id = Traits.from_key(trait_name)

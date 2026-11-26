@@ -1,5 +1,5 @@
 extends "res://game/battle_playback/playback_board.gd"
-## スキルと必殺技、部隊の特徴、状態のイベントの再生。
+## スキルと必殺技、軍略、状態のイベントの再生。
 
 
 ## スキルを使った。対象のほうを向いて手を振り、スキルの名前をスキルの色で出す。足元にスキルの色の輪が広がり、
@@ -56,7 +56,7 @@ func _play_ult_ready(_event: UltReadyEvent) -> void:
 	_sound(&"ult_ready")
 
 
-## 部隊の特徴が攻撃に効いた（docs/troop-traits.md）。特徴を持つ側の駒の上に、特徴の名前と増減の札を出す（ダメージの数の手前）。
+## 軍略が攻撃に効いた（docs/troop-traits.md）。軍略を持つ側の駒の上に、軍略の名前と増減の札を出す（ダメージの数の手前）。
 func _play_trait_triggered(event: TraitTriggeredEvent) -> void:
 	var down := event.trait_id == Traits.Id.RANKS
 	var text := Text.t("battle.pop.trait_down" if down else "battle.pop.trait_up",
@@ -65,7 +65,7 @@ func _play_trait_triggered(event: TraitTriggeredEvent) -> void:
 	await after(0.3)
 
 
-## 補給線で回復した（docs/troop-traits.md）。回復した駒の上に、特徴の名前と回復の量を出す。
+## 補給線で回復した（docs/troop-traits.md）。回復した駒の上に、軍略の名前と回復の量を出す。
 func _play_supply_healed(event: SupplyHealedEvent) -> void:
 	if not _views.has(event.unit_id):
 		return
@@ -74,7 +74,7 @@ func _play_supply_healed(event: SupplyHealedEvent) -> void:
 	await _play_heal(event, true)
 
 
-## 特徴の札の色（その特徴の軍の色）。
+## 軍略の札の色（その軍略の軍の色）。
 static func _trait_color(id: int) -> Color:
 	return Palette.NATION_MILITARY if Traits.army_of(id) == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
 

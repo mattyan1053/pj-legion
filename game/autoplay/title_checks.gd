@@ -203,12 +203,12 @@ func _visit_decks(app: Node) -> void:
 	for i in 4:
 		screen.hire(UnitKind.Id.SHIELD_TROOPER)
 	screen.equip(Equipment.Id.SPEED_BOOTS)  # 予算 24 を 1 超える
-	_expect(screen.trait_text() == Names.troop_trait_text(Traits.Id.FOCUS), "特徴の欄に、連邦の既定の特徴の文が出ない: %s" % screen.trait_text())
+	_expect(screen.trait_text() == Names.troop_trait_text(Traits.Id.FOCUS), "軍略の欄に、連邦の既定の軍略の文が出ない: %s" % screen.trait_text())
 	var trait_moves: Array[Callable] = [screen.choose_trait.bind(Traits.Id.SUPPLY), screen.choose_trait.bind(Traits.Id.RANKS), screen.choose_trait.bind(Traits.Id.FOCUS)]
-	await _expect_steady(screen, [], trait_moves, "部隊編成で特徴を選ぶ")
-	_expect(screen.trait_cut_texts().is_empty(), "部隊編成の特徴の欄の文が、切れているか札からはみ出している（連邦）: %s" % [screen.trait_cut_texts()])
-	screen.choose_trait(Traits.Id.VENGEANCE)  # 騎士領の特徴は選べない
-	_expect(deck.trait_id == Traits.Id.FOCUS, "連邦の部隊に、騎士領の特徴が付いた")
+	await _expect_steady(screen, [], trait_moves, "部隊編成で軍略を選ぶ")
+	_expect(screen.trait_cut_texts().is_empty(), "部隊編成の軍略の欄の文が、切れているか札からはみ出している（連邦）: %s" % [screen.trait_cut_texts()])
+	screen.choose_trait(Traits.Id.VENGEANCE)  # 騎士領の軍略は選べない
+	_expect(deck.trait_id == Traits.Id.FOCUS, "連邦の部隊に、騎士領の軍略が付いた")
 	_expect(not screen.can_save() and deck.problems() == ([Deck.Problem.OVER_BUDGET] as Array[Deck.Problem]), "予算を超えた部隊を取っておけた")
 	await screen.get_tree().process_frame
 	await screen.get_tree().process_frame
@@ -247,13 +247,13 @@ func _visit_decks(app: Node) -> void:
 	_expect(screen.is_dialog_open(), "変えたところがあるのに、確かめずに一覧へ戻った")
 	screen.accept_dialog()
 	_expect(not screen.is_editing() and library.find(id).deck.entries.size() == 5, "取っておかずに戻ったのに、部隊が変わった")
-	# 部隊の特徴（docs/troop-traits.md）: 騎士領の部隊は仇討ちから始まる。誓いを選んだときだけ、2 人を結ぶ操作が出る。
+	# 軍略（docs/troop-traits.md）: 騎士領の部隊は仇討ちから始まる。誓いを選んだときだけ、2 人を結ぶ操作が出る。
 	screen.press_new()
 	screen.choose_new_army(UnitKind.Army.FANTASY)
 	for kind: UnitKind.Id in [UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.SPELLBLADE]:
 		screen.hire(kind)
 	screen.select_entry(-1)
-	_expect(screen.editing_deck().trait_id == Traits.Id.VENGEANCE and not screen.shows_oaths(), "騎士領の既定の特徴が仇討ちでない")
+	_expect(screen.editing_deck().trait_id == Traits.Id.VENGEANCE and not screen.shows_oaths(), "騎士領の既定の軍略が仇討ちでない")
 	screen.press_oath(0)
 	_expect(screen.binding_entry() == -1, "誓いを選んでいないのに、結ぶ相手を選び始めた")
 	screen.choose_trait(Traits.Id.OATH)
@@ -262,9 +262,9 @@ func _visit_decks(app: Node) -> void:
 	screen.press_oath(1)
 	_expect(screen.editing_deck().oath_pairs() == ([Vector2i(0, 1)] as Array[Vector2i]), "誓いを結べない")
 	screen.choose_trait(Traits.Id.LONE)
-	_expect(not screen.shows_oaths() and screen.editing_deck().oath_pairs().size() == 1, "特徴を替えたら、結んだ組が消えた")
+	_expect(not screen.shows_oaths() and screen.editing_deck().oath_pairs().size() == 1, "軍略を替えたら、結んだ組が消えた")
 	await screen.get_tree().process_frame
-	_expect(screen.trait_cut_texts().is_empty(), "部隊編成の特徴の欄の文が、切れているか札からはみ出している（騎士領）: %s" % [screen.trait_cut_texts()])
+	_expect(screen.trait_cut_texts().is_empty(), "部隊編成の軍略の欄の文が、切れているか札からはみ出している（騎士領）: %s" % [screen.trait_cut_texts()])
 	screen.press_back()
 	if screen.is_dialog_open():
 		screen.accept_dialog()

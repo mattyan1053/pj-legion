@@ -24,7 +24,7 @@ var critical := false
 var forest := false
 ## 糸茸の胞子で弱まったか（駒の攻撃だけ。amount は引いたあとの量。Monsters.spore_penalty）。
 var spores := false
-## 部隊の特徴（Traits）で増えた・減った量（Traits.Id -> 量。減ったもの（隊列）も正の量で持つ）。駒の攻撃だけ。
+## 軍略（Traits）で増えた・減った量（Traits.Id -> 量。減ったもの（隊列）も正の量で持つ）。駒の攻撃だけ。
 var traits := {}
 ## ダメージを 0 にした、受ける側の状態（Status.Type）。無ければ -1。
 var blocked_by := -1

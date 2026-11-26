@@ -1,7 +1,7 @@
 extends PanelContainer
-## 部隊の特徴の札 1 枚（docs/troop-traits.md）: 印（trait_icon.gd）、名前、効果（数。目立つ色で先に）、効く相手（2 行まで）。
-## 対戦中、上の帯の特徴の札をクリックすると出す窓（hud_top_bar.gd）に使う。縫い目の様子の札の窓（sign_card.gd）と同じ作り。
-## 大きさは中身（特徴）に依らず同じ（SIZE。docs/ui-theme.md の「枠の大きさ」）。
+## 軍略の札 1 枚（docs/troop-traits.md）: 印（trait_icon.gd）、名前、効果（数。目立つ色で先に）、効く相手（2 行まで）。
+## 対戦中、上の帯の軍略の札をクリックすると出す窓（hud_top_bar.gd）に使う。縫い目の様子の札の窓（sign_card.gd）と同じ作り。
+## 大きさは中身（軍略）に依らず同じ（SIZE。docs/ui-theme.md の「枠の大きさ」）。
 
 const Names := preload("res://game/names.gd")
 const Steady := preload("res://game/steady.gd")
@@ -64,7 +64,7 @@ func _init() -> void:
 	column.add_child(_when)
 
 
-## 特徴 id（Traits.Id の値）を見せる。
+## 軍略 id（Traits.Id の値）を見せる。
 func show_trait(id: int) -> void:
 	_mark.trait_id = id
 	_name.text = Names.troop_trait(id)

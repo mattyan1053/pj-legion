@@ -4,7 +4,7 @@ extends Node3D
 ## 駒そのものの形と動き（体。unit_body.gd）は、いま使っている駒の見た目の組（unit_looks.gd）が作る。
 ## ここは、どの組でも同じに付けるもの（足元の円盤・HP の棒・進化と状態の輪・将の冠）と、行動済みの暗さ、倒れて消えるところを持つ。
 ## 陣営の色は、足元の円盤と、組が決める体の色の付け方で出す。
-## 頭の上には、部隊の特徴の札（trait_mark.gd）のほかは何も出さない（駒の情報は、クリックかマウスを乗せて、画面の枠で確かめる）。
+## 頭の上には、軍略の札（trait_mark.gd）のほかは何も出さない（駒の情報は、クリックかマウスを乗せて、画面の枠で確かめる）。
 ## 盤の上で分かるのは、足元だけ: 行動済みの駒は暗い。HP が減っている駒は、足元に小さい棒が出る（減っていなければ出ない）。
 ## 進化した駒は、足元の円盤を金の輪が囲む。状態（バリア、照準など）が付いている駒は、その外に水色の細い輪が出る。
 ##
@@ -25,7 +25,7 @@ const BASE_EDGE := 0.035
 const BASE_RIM_DARK := Color(0.06, 0.05, 0.08)
 const BASE_EDGE_LIGHTEN := 0.55
 const COLOR_STATUS := Color("7fe3ff")
-## 部隊の特徴の輪（状態の輪の外。隣のマスの円盤には掛からない太さ）と、頭の上の札の高さ（頭の上から）。
+## 軍略の輪（状態の輪の外。隣のマスの円盤には掛からない太さ）と、頭の上の札の高さ（頭の上から）。
 const TRAIT_RING_INNER := 0.58
 const TRAIT_RING_OUTER := 0.68
 const TRAIT_TAG_LIFT := 0.12
@@ -167,7 +167,7 @@ func set_status_mark(marked: bool) -> void:
 		_status_ring.visible = marked
 
 
-## 部隊の特徴が効く駒を、頭の上の札（増える数。trait_mark.gd）と、足元の外側の輪で見せる（色は特徴の軍の色。
+## 軍略が効く駒を、頭の上の札（増える数。trait_mark.gd）と、足元の外側の輪で見せる（色は軍略の軍の色。
 ## docs/troop-traits.md の「対戦の画面」）。marked が偽なら消す。text は札の文（「+2」）、kind は札の役（TraitMark.Kind）。
 ## 足元の輪は、拠点の竿・盾・選択の輪に埋もれることがある。札は頭の上で、いつも手前に描く。
 func set_trait_mark(marked: bool, color := Color.WHITE, text := "", kind := TraitMark.Kind.TARGET) -> void:
@@ -184,17 +184,17 @@ func set_trait_mark(marked: bool, color := Color.WHITE, text := "", kind := Trai
 			_trait_tag.show_mark(text, color, kind)
 
 
-## 特徴の輪が出ているか（検査用）。
+## 軍略の輪が出ているか（検査用）。
 func has_trait_mark() -> bool:
 	return _trait_ring != null and _trait_ring.visible
 
 
-## 頭の上の特徴の札の文（出ていなければ空。検査用）。
+## 頭の上の軍略の札の文（出ていなければ空。検査用）。
 func trait_mark_text() -> String:
 	return _trait_tag.text if _trait_tag != null and _trait_tag.visible else ""
 
 
-## 頭の上の特徴の札の役（TraitMark.Kind。出ていなければ -1。検査用）。
+## 頭の上の軍略の札の役（TraitMark.Kind。出ていなければ -1。検査用）。
 func trait_mark_kind() -> int:
 	return _trait_tag.kind if _trait_tag != null and _trait_tag.visible else -1
 

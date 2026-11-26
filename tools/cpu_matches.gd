@@ -36,10 +36,10 @@ extends "res://tools/cpu_matches_base.gd"
 ##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
-##   --traits=X     部隊の特徴（docs/troop-traits.md）を置き換える（測るためだけ）。none = 両軍とも無し、random = 局ごとに種で決まる 1 つ（その軍の 3 つから）、
-##                   鍵を並べる（focus,vengeance のように）= その軍の鍵の特徴。付けなければ、部隊が選んだ特徴（CPU の編成もランダムの部隊も CpuDeck.choose_trait）。
-##                   --episode では army だけを使える（軍の陣営に、その軍の既定の特徴を持たせる。話に特徴を入れたら、を測る）。
-##                   特徴ごとの勝率・選ばれた数・効いた回数と、--list=1 の TRAIT の行も出す
+##   --traits=X     軍略（docs/troop-traits.md）を置き換える（測るためだけ）。none = 両軍とも無し、random = 局ごとに種で決まる 1 つ（その軍の 3 つから）、
+##                   鍵を並べる（focus,vengeance のように）= その軍の鍵の軍略。付けなければ、部隊が選んだ軍略（CPU の編成もランダムの部隊も CpuDeck.choose_trait）。
+##                   --episode では army だけを使える（軍の陣営に、その軍の既定の軍略を持たせる。話に軍略を入れたら、を測る）。
+##                   軍略ごとの勝率・選ばれた数・効いた回数と、--list=1 の TRAIT の行も出す
 ##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、seam = 縫い目の様子のランダム。`,` で並べられる）をそれだけ入にして回す。none で全部切。
 ##                   縫い目の様子のある局があれば、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す
 ##                   付けなければ、対戦モードの既定（OptionalRules.DEFAULTS = 拠点あり・縫い目の様子はランダム）。話（--episode）は、付けなければ切（docs/match-setup.md の「選べる決まり」）
@@ -152,7 +152,7 @@ func _initialize() -> void:
 	# 部隊の中身ごとの勝ち負け（--squads のとき。決着した局の、部隊 1 つずつ）。鍵 -> [部隊の数, 勝った数]。
 	var squad_rows: Dictionary[String, Array] = {}
 	var trait_arg := args.get("traits", "") as String
-	# 部隊の特徴ごと: 鍵（Traits.Id）-> [部隊の数, 決着した局, 勝った数, 効いた回数, 軍の違う対戦の決着した局, その勝った数]。
+	# 軍略ごと: 鍵（Traits.Id）-> [部隊の数, 決着した局, 勝った数, 効いた回数, 軍の違う対戦の決着した局, その勝った数]。
 	var trait_rows: Dictionary[int, Array] = {}
 	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
 	var one_versus: Dictionary[String, Array] = {}
@@ -191,7 +191,7 @@ func _initialize() -> void:
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU
 		if episode != null and trait_arg == "army":
-			# 話に軍の既定の特徴を入れたら、を測る（話のファイルは書いていない。軍でない魔物の群れは特徴を持たない）。
+			# 話に軍の既定の軍略を入れたら、を測る（話のファイルは書いていない。軍でない魔物の群れは軍略を持たない）。
 			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 				setup.scenario.traits[side] = Traits.default_of(setup.army_of(side))
 		if episode == null and trait_arg != "":
@@ -433,7 +433,7 @@ func _initialize() -> void:
 		])
 	print("")
 	if not trait_rows.is_empty():
-		print("部隊の特徴（部隊 1 つずつ。勝率は決着した局だけ。効いた回数は、その特徴の部隊 1 つ・1 局あたり。補給線は回復した回数）")
+		print("軍略（部隊 1 つずつ。勝率は決着した局だけ。効いた回数は、その軍略の部隊 1 つ・1 局あたり。補給線は回復した回数）")
 		for id: int in Traits.Id.values():
 			if not trait_rows.has(id):
 				continue
@@ -554,14 +554,14 @@ func _initialize() -> void:
 	quit(1 if rejected > 0 else 0)
 
 
-## --traits の置き換え（測るためだけ）。none = 両軍とも無し、random = 種で決まる 1 つ、鍵の並び = その軍の鍵の特徴。
+## --traits の置き換え（測るためだけ）。none = 両軍とも無し、random = 種で決まる 1 つ、鍵の並び = その軍の鍵の軍略。
 ## 誓いになった部隊は、CPU の決め方で誓いを結ぶ。部隊は写して替える（ほかの局と共有しない）。
 static func _override_traits(setup: MatchSetup, how: String, game_seed: int) -> void:
 	if how == "none":
 		setup.scenario.deck_traits = false
 		return
 	var rng := RandomNumberGenerator.new()
-	# 近い種で同じ並びにならないよう、種を混ぜる（そのままだと、軍どうしの特徴の組み合わせが片寄る）。
+	# 近い種で同じ並びにならないよう、種を混ぜる（そのままだと、軍どうしの軍略の組み合わせが片寄る）。
 	rng.seed = hash(game_seed * 7919 + 13)
 	for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 		var deck := setup.deck_of(side).copy()

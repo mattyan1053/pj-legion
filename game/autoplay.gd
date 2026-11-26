@@ -27,7 +27,7 @@ const SCENES := {
 	"field_effect": "盤の上の効果（盾・煙幕・聖域）",
 	"skill": "スキルのボタンと対象選び、クールダウン",
 	"status": "自分に使うスキルと、駒に付く状態",
-	"traits": "部隊の特徴（集中砲火の輪と、効いたときの札）",
+	"traits": "軍略（集中砲火の輪と、効いたときの札）",
 	"monster_falls": "倒れると何か起きる魔物（骸骨旗手の奮起、ほつれの結び目）",
 	"extra_action": "行動を終えないスキルと、行動済みの駒を戻すスキル",
 	"ult": "必殺技",
@@ -222,7 +222,9 @@ func _end() -> void:
 				await app.go(SceneFlow.TITLE)
 			await _visit_story(app)
 			await _visit_second_campaign(app)
-			await _visit_item_rows(app)
+			# 全部の兵 × 全部の持ち物で持ち物の欄を見るのは、長い検査だけ（3〜4 秒掛かる。docs/README.md の「検査の分け方」）。
+			if _full:
+				await _visit_item_rows(app)
 		await _nudge_screen_size()
 	if _failures.is_empty():
 		_finish("autoplay: OK", 0)

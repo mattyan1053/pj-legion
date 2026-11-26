@@ -120,8 +120,8 @@ func deck_of(side: Unit.Side) -> Deck:
 	return scenario.fixed_decks[side] if scenario.is_fixed(side) else decks[side]
 
 
-## side の部隊の特徴（Traits.Id。docs/troop-traits.md）。戦いの定義が決めていればそれ（ストーリーの話）、
-## 部隊の特徴を使う戦い（対戦モード）なら部隊が選んだ特徴（その軍のものでなければ、軍の既定）、どちらでもなければ Traits.NONE。
+## side の軍略（Traits.Id。docs/troop-traits.md）。戦いの定義が決めていればそれ（ストーリーの話）、
+## 軍略を使う戦い（対戦モード）なら部隊が選んだ軍略（その軍のものでなければ、軍の既定）、どちらでもなければ Traits.NONE。
 func trait_of(side: Unit.Side) -> int:
 	if scenario.traits[side] != Traits.NONE:
 		return scenario.traits[side]

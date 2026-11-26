@@ -244,29 +244,29 @@ func _queue_minimap_scene() -> void:
 	battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 9))
 	battle.add_unit(UnitKind.Id.SORCERER, Unit.Side.PLAYER2, Vector2i(10, 0))
 	battle.turn = 99  # 上の帯のターンの文がいちばん長いとき
-	battle.traits = [Traits.Id.FOCUS, Traits.Id.VENGEANCE]  # 部隊の特徴の札（印と名前）も出す
+	battle.traits = [Traits.Id.FOCUS, Traits.Id.VENGEANCE]  # 軍略の札（印と名前）も出す
 	_scripted.append(func() -> void:
 		_scene.set_opponent(true)  # 「相手: CPU」（「相手: 人」より幅を取る）。プレイヤー1 の番なので、CPU は動かない
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
 		_expect(_scene.top_bar_cut_texts().is_empty(), "上の帯の陣営の欄（駒の数と占拠）が切れている: %s" % [_scene.top_bar_cut_texts()])
-		# 上の帯の特徴の札をクリックすると、その陣営の特徴 1 つの窓（名前・効果・効く相手。選ばなかった特徴は出さない）。
+		# 上の帯の軍略の札をクリックすると、その陣営の軍略 1 つの窓（名前・効果・効く相手。選ばなかった軍略は出さない）。
 		# もう一度クリックか、盤のクリックで閉じる。相手の札を押すと、相手のものに替わる。
 		_scene.toggle_trait_note(0)
 		var note: String = _scene.trait_note_text()
 		_expect(note.contains(Names.troop_trait(Traits.Id.FOCUS)) and note.contains(Names.troop_trait_effect(Traits.Id.FOCUS))
 			and note.contains(Names.troop_trait_when(Traits.Id.FOCUS)) and not note.contains(Names.troop_trait(Traits.Id.RANKS)),
-			"上の帯の特徴の札で、特徴の窓が開かない（か、中身が違う）: %s" % note)
+			"上の帯の軍略の札で、軍略の窓が開かない（か、中身が違う）: %s" % note)
 		var screen_rect: Rect2 = _scene.get_viewport().get_visible_rect()
 		_expect(screen_rect.encloses(_scene.trait_note_rect()) and _scene.trait_note_rect().position.y >= BattleHud.TOP_BAR_HEIGHT,
-			"特徴の窓が、画面からはみ出すか上の帯に重なる: %s" % _scene.trait_note_rect())
+			"軍略の窓が、画面からはみ出すか上の帯に重なる: %s" % _scene.trait_note_rect())
 		_scene.toggle_trait_note(1)
-		_expect(_scene.trait_note_text().contains(Names.troop_trait(Traits.Id.VENGEANCE)), "相手の特徴の札で、相手の特徴の窓に替わらない")
+		_expect(_scene.trait_note_text().contains(Names.troop_trait(Traits.Id.VENGEANCE)), "相手の軍略の札で、相手の軍略の窓に替わらない")
 		_scene.toggle_trait_note(1)
-		_expect(_scene.trait_note_text() == "", "特徴の札をもう一度押しても、窓が閉じない")
+		_expect(_scene.trait_note_text() == "", "軍略の札をもう一度押しても、窓が閉じない")
 		_scene.toggle_trait_note(0)
 		_scene.click_cell(Vector2i(5, 5))
-		_expect(_scene.trait_note_text() == "", "盤をクリックしても、特徴の窓が閉じない")
+		_expect(_scene.trait_note_text() == "", "盤をクリックしても、軍略の窓が閉じない")
 		_scene.set_opponent(false)
 		var rect: Rect2 = _scene.minimap_rect()
 		var screen: Rect2 = _scene.get_viewport().get_visible_rect()

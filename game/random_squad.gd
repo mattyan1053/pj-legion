@@ -37,5 +37,5 @@ static func build(army: UnitKind.Army, rules: DeckRules, squad_seed: int) -> Dec
 			items.erase(item)  # この装備を持てる駒がもういない（役割の限り、重ねられない）。ほかの装備で続ける
 			continue
 		(open[rng.randi_range(0, open.size() - 1)] as DeckEntry).equip(item)
-	CpuDeck.pick_trait(deck)  # 乱数は引かない（駒と装備は、特徴の無かったときと同じ）
+	CpuDeck.pick_trait(deck)  # 乱数は引かない（駒と装備は、軍略の無かったときと同じ）
 	return deck

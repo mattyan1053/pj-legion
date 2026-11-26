@@ -1,5 +1,5 @@
 extends "res://tests/base_test.gd"
-## 部隊の特徴（docs/troop-traits.md）: 6 つの特徴の効き方、特徴の無い陣営では何も変わらないこと、部隊の特徴と誓い、
+## 軍略（docs/troop-traits.md）: 6 つの軍略の効き方、軍略の無い陣営では何も変わらないこと、軍略と誓い、
 ## 対戦を作るときの写し方（対戦モードは部隊から、ストーリーは話から）、予測、CPU の選び方。
 
 const Maps := preload("res://tests/support/maps.gd")
@@ -11,7 +11,7 @@ const K := UnitKind.Id
 const T := Traits.Id
 
 
-## 7 x 7 の平地。先手の特徴は mine、後手は theirs。
+## 7 x 7 の平地。先手の軍略は mine、後手は theirs。
 func _battle(mine: int, theirs := Traits.NONE) -> Battle:
 	var battle := Maps.battle([".......", ".......", ".......", ".......", ".......", ".......", "......."])
 	battle.traits = [mine, theirs]
@@ -178,6 +178,18 @@ func test_oath_ends_when_a_partner_falls() -> void:
 # --- 単騎 ---
 
 
+func test_lone_marks_a_healer_alone_on_its_turn() -> void:
+	var battle := _battle(T.LONE)
+	var priest := battle.add_unit(K.PRIEST, P1, Vector2i(2, 3))
+	var target := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 3))
+	assert_true(Traits.lone_marked(battle, priest), "回復役も攻撃するので、単騎の印が付く")
+	assert_false(Traits.lone_marked(battle, target), "相手の番の兵には付けない")
+	var events := _attack(battle, priest, target)
+	assert_eq(_effects(events), [[T.LONE, priest.id, target.id, Traits.LONE_BONUS]], "回復役の攻撃にも単騎が効く")
+	assert_false(Traits.lone_marked(battle, priest), "行動を終えたら付けない")
+	var mate := battle.add_unit(K.SPELLBLADE, P1, Vector2i(2, 4))
+	assert_false(Traits.lone_marked(battle, mate), "隣に味方がいる")
+
 func test_lone_adds_damage_without_an_ally_next_to_the_attacker() -> void:
 	var battle := _battle(T.LONE)
 	var blade := battle.add_unit(K.SPELLBLADE, P1, Vector2i(2, 3))
@@ -190,7 +202,7 @@ func test_lone_adds_damage_without_an_ally_next_to_the_attacker() -> void:
 	assert_eq(_effects(events), [[T.LONE, blade.id, target.id, Traits.LONE_BONUS]])
 
 
-# --- 特徴の無い陣営 ---
+# --- 軍略の無い陣営 ---
 
 
 func test_nothing_happens_without_a_trait() -> void:
@@ -213,7 +225,7 @@ func test_traits_belong_to_one_side_only() -> void:
 	var target := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(3, 3))
 	battle.phase = P2
 	_attack(battle, first, target)
-	assert_eq(_effects(_attack(battle, second, target)), [], "相手の陣営の特徴は、自分の攻撃に乗らない")
+	assert_eq(_effects(_attack(battle, second, target)), [], "相手の陣営の軍略は、自分の攻撃に乗らない")
 
 
 # --- 糸の魔物と一緒に（docs/monsters.md） ---
@@ -232,7 +244,7 @@ func test_ranks_do_not_cut_an_eater_burst() -> void:
 	assert_false(battle.units.has(eater))
 	assert_eq(front.hp, front.max_hp() - Monsters.BURST_DAMAGE)
 	assert_eq(back.hp, back.max_hp() - Monsters.BURST_DAMAGE)
-	assert_eq(_effects(events), [], "弾けたダメージに特徴は掛からない")
+	assert_eq(_effects(events), [], "弾けたダメージに軍略は掛からない")
 
 
 ## 糸喰いが弾けて倒れた駒は、糸喰いを倒した駒が倒したことにする。だから、その駒は倒れた駒の陣営の仇になる（味方を巻き込んでも仇にはならない）。
@@ -324,7 +336,7 @@ func test_a_trait_of_the_other_army_falls_back_to_the_default() -> void:
 func test_story_battles_have_traits_only_where_the_episode_sets_them() -> void:
 	var defined := Scenario.new()
 	var setup := MatchSetup.humans_on(defined, 1, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY))
-	assert_eq(setup.create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "話は部隊の特徴を使わない")
+	assert_eq(setup.create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "話は軍略を使わない")
 	defined.traits[P2] = T.LONE
 	assert_eq(setup.create_battle().traits, [Traits.NONE, T.LONE] as Array[int])
 
@@ -407,7 +419,7 @@ func test_trait_bonuses_come_before_spores() -> void:
 	assert_eq(hit.traits, {T.OATH: Traits.OATH_BONUS})
 
 
-## 離れた所から殻蟹を狙えないときは、特徴が効く印があっても、攻撃の相手にも予測にも出ない。隣から叩く味方には、ふつうに効く。
+## 離れた所から殻蟹を狙えないときは、軍略が効く印があっても、攻撃の相手にも予測にも出ない。隣から叩く味方には、ふつうに効く。
 func test_a_crab_out_of_reach_shows_no_trait_part() -> void:
 	var battle := _battle(T.FOCUS)
 	var crab := battle.add_unit(K.CRAB, Unit.Side.NEUTRAL, Vector2i(3, 3))

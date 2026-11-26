@@ -185,7 +185,7 @@ static func scenario_of(of_episode: Episode) -> Scenario:
 		defined.set_win_conditions(Unit.Side.PLAYER1, of_episode.wins)
 	# 縫い目の様子（[episode] の signs）。書けば、その話にいつも付く。
 	defined.signs = of_episode.signs.duplicate()
-	# 部隊の特徴（[ally] / [enemy] の trait。docs/troop-traits.md）。書いた陣営だけが持つ（部隊編成で選んだ特徴は使わない）。
+	# 軍略（[ally] / [enemy] の trait。docs/troop-traits.md）。書いた陣営だけが持つ（部隊編成で選んだ軍略は使わない）。
 	defined.deck_traits = false
 	# 敵の側が番人を狙わない話（[enemy] の spare_boss = yes）。
 	defined.spares_bosses[Unit.Side.PLAYER2] = of_episode.enemy_spares_boss
