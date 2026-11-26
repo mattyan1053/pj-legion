@@ -17,7 +17,7 @@ extends RefCounted
 const StageLook := preload("res://game/stage_look.gd")
 ## 聴き比べの候補の曲の置き場所（MUSIC_SETS）。選ばれた曲も、ここに置いたまま鳴らす。
 const BGM_SETS_DIR := "res://assets/audio/oga-bgm-sets/"
-## クラシックの編曲の曲の置き場所（MUSIC_SETS の「クラシック」の組）。楽譜のデータから tools/classical_bgm/ で作った。
+## クラシックの編曲の曲の置き場所（ARRANGEMENT_SETS）。楽譜のデータから tools/classical_bgm/ で作った。
 const CLASSICAL_DIR := "res://assets/audio/classical/"
 const MUSIC := {
 	## タイトル（主題歌。The Last Horn。BGM の組の候補から、人間が聴いて選んだ）。
@@ -185,22 +185,45 @@ const MUSIC_SETS: Array[Dictionary] = [
 		&"talk": {"path": BGM_SETS_DIR + "kings_feast_loop.ogg", "loop": true, "volume_db": 1.0},
 		&"defeat": {"path": BGM_SETS_DIR + "lose_game_short.ogg", "loop": false, "volume_db": 0.0},
 	},
-	## クラシック 1〜3（ヴィヴァルディ「冬」第 1 楽章の編曲。1: 原曲に近い弦、2: ボス戦、3: 重い）。
-	## 終盤・中ボス・物語の終わりの 2 話の戦い（と、締めの話の終盤）だけ。ほかは、いまの組のまま。
-	## 大きさは、書き出しで -16 LUFS にそろえてある（tools/classical_bgm/finish.py）ので、対戦のねらい -21.5 LUFS との差。
+	## 編曲（ヴィヴァルディの編曲。どの版を鳴らすかは ARRANGEMENT_SETS と、オプションの「編曲の版」）。
+	{},
+]
+## BGM の組の「編曲」の番号（MUSIC_SETS の中で、ARRANGEMENT_SETS から中身を取る組）。
+const ARRANGEMENT_SET := 4
+## 編曲の版（オプションの「編曲の版」。settings.gd の ARRANGEMENT の値が番号）。BGM の組が「編曲」のときだけ鳴る。
+## ヴィヴァルディの編曲。原曲の強い所を切り出し、戦闘曲の型に組み直した（assets/audio/classical/README.md）。
+## 管: 「冬」をオーケストラの打楽器と金管で、電: 「冬」をドラムキットとシンセベースで、重: 「冬」を遅く重く、
+## 夏: 「夏」第 3 楽章 Presto を、旧: 前の版の「冬 3」（比べ用）。
+## 終盤・中ボス・物語の終わりの 2 話の戦い（と、締めの話の終盤）だけ。ほかは、いまの組のまま。
+## 大きさは、書き出しで -16 LUFS にそろえてある（tools/classical_bgm/finish.py）ので、対戦のねらい -21.5 LUFS との差。
+const ARRANGEMENT_SETS: Array[Dictionary] = [
 	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_strings.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_boss.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
+	},
+	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_grave.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_grave.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_grave.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_grave.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_grave.ogg", "loop": true, "volume_db": -5.5},
+	},
+	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
 		&"battle_climax": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
@@ -212,6 +235,8 @@ const MUSIC_SETS: Array[Dictionary] = [
 ]
 ## いまの BGM の組の番号（sound.gd の apply_settings が設定から入れる）。
 static var music_set := 0
+## いまの編曲の版の番号（同じく）。
+static var arrangement := 0
 
 ## 盤の見た目（stage_look.gd の THEMES の鍵）-> 対戦の曲。表に無い見た目は battle。
 const LOOK_MUSIC := {
@@ -274,6 +299,8 @@ static func has_music(track: StringName) -> bool:
 ## 曲 track の、いまの BGM の組（music_set）での中身（path・loop・volume_db）。組が差し替えていなければ MUSIC のまま。
 static func music_entry(track: StringName) -> Dictionary:
 	var of_set: Dictionary = MUSIC_SETS[music_set] if music_set >= 0 and music_set < MUSIC_SETS.size() else {}
+	if music_set == ARRANGEMENT_SET:
+		of_set = ARRANGEMENT_SETS[arrangement] if arrangement >= 0 and arrangement < ARRANGEMENT_SETS.size() else {}
 	return of_set.get(track, MUSIC.get(track, {}))
 
 
@@ -284,7 +311,7 @@ static func has_effect(name: StringName) -> bool:
 ## 表の曲・効果音のうち、素材のファイルが無いもの（res:// の道）。検査用。
 static func missing_files() -> Array[String]:
 	var missing: Array[String] = []
-	for table: Dictionary in [MUSIC, EFFECTS] + MUSIC_SETS:
+	for table: Dictionary in [MUSIC, EFFECTS] + MUSIC_SETS + ARRANGEMENT_SETS:
 		for entry: Dictionary in table.values():
 			if not ResourceLoader.exists(entry["path"]):
 				missing.append(entry["path"])

@@ -14,14 +14,21 @@ trap 'rm -rf "$work"' EXIT
 mkdir -p "$out"
 
 # 1. 楽譜（Mutopia の LilyPond 2.12 の原稿）を 2.24 の書き方に直し、パートごとの MIDI にする。
-cp "$here"/winter/*.ly "$work"/
-convert-ly -e -f 2.12.3 "$work"/winter1*.ly "$work"/winter-header.ly >/dev/null 2>&1
-sed -i 's/^\\version "2.12.3"/\\version "2.24.0"/' "$work"/winter1*.ly
-(cd "$work" && lilypond -s -dmidi-extension=mid -o winter1 winter1-midi.ly)
+#    winter: 「冬」第 1 楽章、summer: 「夏」第 3 楽章 Presto。
+for piece in winter:winter1 summer:summer3; do
+	dir="${piece%%:*}"; name="${piece##*:}"
+	cp "$here/$dir"/*.ly "$work"/
+	# 「夏」の原稿の頭の old-relative（2.24 に無い）は消す。和音は \relative の外にだけあるので、音の高さは変わらない。
+	sed -i "/ly:set-option 'old-relative/d" "$work/$name"*.ly
+	convert-ly -e -f 2.12.3 "$work/$name"*.ly "$work/$dir-header.ly" >/dev/null 2>&1
+	sed -i 's/^\\version "2.12.3"/\\version "2.24.0"/' "$work/$name"*.ly
+	(cd "$work" && lilypond -s -dmidi-extension=mid -o "$name" "$name-midi.ly")
+done
 
-# 2. 版ごとに編曲し、音にして、ループする ogg にする。
-for version in winter_strings winter_boss winter_heavy; do
-	python3 "$here/arrange.py" "$work/winter1.mid" "$version" "$work/$version.mid"
+# 2. 版ごとに編曲し、音にして、ループする ogg にする（版 -> 楽譜）。
+for pair in winter_brass:winter1 winter_drive:winter1 winter_grave:winter1 summer_storm:summer3; do
+	version="${pair%%:*}"; score="${pair##*:}"
+	python3 "$here/arrange.py" "$work/$score.mid" "$version" "$work/$version.mid"
 	fluidsynth -ni -q -g 0.6 -r 44100 -R 1 -C 0 -T wav -F "$work/$version.wav" "$sf2" "$work/$version.mid" >/dev/null
 	python3 "$here/finish.py" "$work/$version.wav" "$(cat "$work/$version.mid.loop")" "$out/$version.ogg"
 	rm -f "$out/$version.loop.wav"

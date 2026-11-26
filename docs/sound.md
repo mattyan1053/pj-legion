@@ -114,8 +114,10 @@
 | `victory`（勝ち） | Victory（Umplix） | Victory Fanfare Short（cynicmusic） | — |
 | `defeat`（負け） | Game Over（Kistol） | Bittersweet（Emma_MA） | Lose Game Short Music Clip（Robin Lamb） |
 
-- 「クラシック 1〜3」の組（オプションの文では「冬 1〜3」。7 つの選択肢を行の幅に収めるため、どの組も短く書く）は、ヴィヴァルディ「冬」第 1 楽章を楽譜のデータから編曲した曲（`assets/audio/classical/`。CC BY-SA 3.0。作り方は `tools/classical_bgm/`）。
-  1 は原曲に近い弦、2 はボス戦の形（ティンパニ・金管）、3 は重い形（遅く、合唱）。どれも `battle_climax`・`battle_boss`・`battle_eve`・`battle_last`・`battle_final` だけを差し替える。
+- 「編曲」の組は、ヴィヴァルディの「冬」第 1 楽章と「夏」第 3 楽章を楽譜のデータから編曲した曲（`assets/audio/classical/`。CC BY-SA 3.0。作り方は `tools/classical_bgm/`）。
+  原曲の強い所を切り出して戦闘曲の型に組み直した。版はオプションの「編曲の版」で選ぶ（`sound_catalog.gd` の `ARRANGEMENT_SETS`。選択肢は短く書く）:
+  管はオーケストラの打楽器と金管、電はドラムキットとシンセベース（DTM 調）、重は遅く重い形、夏は「夏」Presto、旧は前の版の冬 3（比べ用）。
+  どれも `battle_climax`・`battle_boss`・`battle_eve`・`battle_last`・`battle_final` だけを差し替える。
   締めの話は `battle_last` から終盤の `battle_final` へ替わるとき、同じ曲でも頭から鳴らし直す。
 - 組に無い曲（「—」と、表に無い曲）は、いまの組のまま鳴る。ループかどうかは、差し替える前の曲と同じ（テストが確かめる）。
 - 組を替えると、いま鳴っている曲もその組の曲へフェードでつなぎ直す（決着の曲の間は替えない）。

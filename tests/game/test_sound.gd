@@ -392,7 +392,10 @@ func test_music_sets_replace_tracks_of_the_same_kind() -> void:
 	assert_eq(choices.size(), Catalog.MUSIC_SETS.size(), "オプションの選択肢は、組の数だけ")
 	assert_eq(Settings.item(Settings.MUSIC_SET)["default"], 0, "既定は、いまの組")
 	assert_true(Catalog.MUSIC_SETS[0].is_empty(), "0 番（いまの組）は何も差し替えない")
-	for of_set: Dictionary in Catalog.MUSIC_SETS:
+	assert_true(Catalog.MUSIC_SETS[Catalog.ARRANGEMENT_SET].is_empty(), "「編曲」の組の中身は ARRANGEMENT_SETS から取る")
+	var arrangements: Array = Settings.item(Settings.ARRANGEMENT)["choices"]
+	assert_eq(arrangements.size(), Catalog.ARRANGEMENT_SETS.size(), "編曲の版の選択肢は、版の数だけ")
+	for of_set: Dictionary in Catalog.MUSIC_SETS + Catalog.ARRANGEMENT_SETS:
 		for track: StringName in of_set:
 			assert_true(Catalog.has_music(track), "組が差し替えるのは表の曲（%s）" % track)
 			assert_eq(of_set[track]["loop"], Catalog.MUSIC[track]["loop"], "ループかどうかは元の曲と同じ（%s）" % track)
@@ -429,3 +432,24 @@ func test_music_set_changes_what_plays() -> void:
 	Sound.apply_settings(settings)
 	assert_eq(Catalog.music_set, 0)
 	_drop(sound)
+
+
+## 編曲の版（オプション）: BGM の組が「編曲」のときだけ効き、版ごとに別の曲が鳴る。
+func test_arrangement_picks_the_version_only_in_the_arrangement_set() -> void:
+	var settings := Settings.new()
+	settings.set_value(Settings.ARRANGEMENT, 3)
+	Sound.apply_settings(settings)
+	assert_eq(Catalog.music_entry(&"battle_boss")["path"], Catalog.MUSIC[&"battle_boss"]["path"], "組が「いま」なら、版を選んでも、いまの曲")
+	settings.set_value(Settings.MUSIC_SET, Catalog.ARRANGEMENT_SET)
+	var paths := {}
+	for version in Catalog.ARRANGEMENT_SETS.size():
+		settings.set_value(Settings.ARRANGEMENT, version)
+		Sound.apply_settings(settings)
+		var path: String = Catalog.music_entry(&"battle_boss")["path"]
+		assert_eq(path, Catalog.ARRANGEMENT_SETS[version][&"battle_boss"]["path"])
+		paths[path] = true
+		assert_eq(Catalog.music_entry(&"menu")["path"], Catalog.MUSIC[&"menu"]["path"], "編曲が差し替えない曲は、いまの曲のまま")
+	assert_eq(paths.size(), Catalog.ARRANGEMENT_SETS.size(), "版ごとに別の曲")
+	settings.set_value(Settings.MUSIC_SET, 0)
+	settings.set_value(Settings.ARRANGEMENT, 0)
+	Sound.apply_settings(settings)

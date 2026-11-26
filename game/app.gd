@@ -106,7 +106,7 @@ func _ready() -> void:
 	Sound.apply_settings(context.settings)
 	context.settings.changed.connect(func(key: StringName) -> void:
 		Sound.apply_settings(context.settings)
-		if key == AppContext.Settings.MUSIC_SET:
+		if key in [AppContext.Settings.MUSIC_SET, AppContext.Settings.ARRANGEMENT]:
 			sound.refresh_music())
 
 	var menu := SystemMenu.new()

@@ -1,7 +1,9 @@
-Music in this directory (winter_strings.ogg, winter_boss.ogg, winter_heavy.ogg)
+Music in this directory (winter_brass.ogg, winter_drive.ogg, winter_grave.ogg, winter_heavy.ogg, summer_storm.ogg)
 
-These are arrangements of Antonio Vivaldi, "L'Inverno" (Winter), Concerto Op. 8 No. 4, RV 297,
-1st movement (Allegro non molto). The composition is in the public domain.
+winter_brass.ogg, winter_drive.ogg, winter_grave.ogg and winter_heavy.ogg are arrangements of
+Antonio Vivaldi, "L'Inverno" (Winter), Concerto Op. 8 No. 4, RV 297, 1st movement (Allegro non molto).
+summer_storm.ogg is an arrangement of Antonio Vivaldi, "L'Estate" (Summer), Concerto Op. 8 No. 2, RV 315,
+3rd movement (Presto). The compositions are in the public domain.
 
 They were made by a script in this repository (tools/classical_bgm/) from the engraving data
 (LilyPond source) published by the Mutopia Project:
@@ -12,8 +14,15 @@ They were made by a script in this repository (tools/classical_bgm/) from the en
   Licensed under Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
   https://creativecommons.org/licenses/by-sa/3.0/
 
-Changes: re-orchestrated (instruments added and reassigned), tempo changed, bars cut (winter_heavy),
-rendered to audio with FluidSynth and the FluidR3_GM SoundFont, loudness normalised.
+  "Estate / Summer", Op. 8, No. 2 -- Mutopia Project, reference Mutopia-2010/02/08-336
+  Typeset by "Anonymous" (maintainer as given in the source), source: Performers' Facsimiles
+  https://github.com/MutopiaProject/MutopiaProject/tree/2144afd6f52d56c5b6995b8b589ef1268b3139f0/ftp/VivaldiA/O8/summer/summer-lys
+  Licensed under Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
+  https://creativecommons.org/licenses/by-sa/3.0/
+
+Changes: bars selected, reordered and looped; re-orchestrated (instruments added and reassigned:
+strings re-articulated, bass ostinato, timpani, percussion and drum kit, brass stabs, pads, doubled lead);
+tempo changed; rendered to audio with FluidSynth and the FluidR3_GM SoundFont; loudness normalised.
 
 The arrangements and the audio files are released under the same licence,
 Creative Commons Attribution-ShareAlike 3.0 Unported (full legal code below).
