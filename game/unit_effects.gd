@@ -48,7 +48,7 @@ static func of(battle: Battle, unit: Unit) -> Array[Effect]:
 	_signs(battle, unit, found)
 	var spores := Monsters.spore_penalty(battle, unit)
 	if spores > 0:
-		found.append(Effect.new(Text.t("battle.effect.spores"), _stat(Unit.Stat.POWER, -spores), false))
+		found.append(Effect.new(Text.t("battle.effect.spores"), _damage(-spores), false))
 	_ground(battle, unit, found)
 	_relics(battle, unit, found)
 	for which: Evolution.Trait in Evolution.Trait.values():  # 進化先と持ち物の、どちらが与えた特性も（重ねても 1 つ）
@@ -131,7 +131,9 @@ static func _ground(battle: Battle, unit: Unit, found: Array[Effect]) -> void:
 				found.append(Effect.new(Text.t("battle.cell.spring"), _heal(MapObject.SPRING_HEAL), true))
 		MapObject.Type.STRONGHOLD:
 			if Stronghold.counts(unit):
-				found.append(Effect.new(Text.t("battle.cell.stronghold"), Text.t("battle.effect.hold"), true))
+				# 隣に相手の駒がいる間は、確保が進まない（Stronghold.count）。
+				var stopped := Stronghold.contested(battle, unit.side)
+				found.append(Effect.new(Text.t("battle.cell.stronghold"), Text.t("battle.effect.hold_stopped" if stopped else "battle.effect.hold"), not stopped))
 	if unit.site_range > 0:
 		found.append(Effect.new(Text.t("battle.cell.battery"), _stat(Unit.Stat.ATTACK_RANGE, unit.site_range), true, true))
 	if FieldEffects.smoke_of(battle, unit) != null:
@@ -157,7 +159,7 @@ static func _taken(amount: int) -> String:
 	return Text.t("battle.effect.taken", {"amount": _signed(amount)})
 
 
-## 「ダメージ +1」（与えるダメージの増減）。
+## 「ダメージ +1」（与えるダメージの増減。胞子のように、攻撃の能力値でなくダメージから引くものも）。
 static func _damage(amount: int) -> String:
 	return Text.t("battle.effect.damage", {"amount": _signed(amount)})
 

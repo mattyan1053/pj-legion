@@ -206,6 +206,7 @@ battle.effect.heal,HP +{amount}
 battle.effect.blocks,被ダメージ 0
 battle.effect.partner,{unit}と
 battle.effect.hold,確保中
+battle.effect.hold_stopped,確保が止まる
 battle.effect.smoke,遠くからの攻撃 0
 battle.effect.spores,胞子
 battle.hud.detail,詳細
