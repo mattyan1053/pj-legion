@@ -39,7 +39,7 @@ wins = king_defeated
 
 [cues]
 (turn 1) セリス: 紫に光る所へ跳べるよ。跳んだあとでも、まだ斬れる。
-(king_half enemy) セリス: 将が弱った。もう 1 回跳び込んで、とどめ。
+(king_half enemy) ティオ: 将がぐらついてる！ セリスねえさん、もう 1 回！
 
 [after]
 セリス: ね、簡単。
