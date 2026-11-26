@@ -19,6 +19,10 @@
   - power: 根音と 5 度の刻み（歪んだギター）。
 - 弦は短く切る（伸ばす音は、刻みの細かさ grid で刻み直す）。弱い所を作らない（どの小節も f）。
 - 区切り（section）ごとに level（1〜3）を持ち、上がるほど打楽器と打ち込みが細かくなる（積み上げ）。
+- dark（濁り）: 区切りの頭の小節で、低音の 8 分の裏を根音の半音上にし（短 2 度のぶつかり）、1 拍目の打ち込みに
+  金管の短 2 度のクラスターと増 4 度、弦の高い短 2 度を足す。原曲の和声はそのまま残す。
+- hits（ダダダンッ）: 区切りの終わりの小節の後ろ 2 拍を、総奏の短く切った 16 分 3 つ + 強打 1 つにし、強打のあとは無音（溜め）。
+  和音は、次の区切りの頭の根音の半音下に立てた減七（次の頭へ解決する）。ループの継ぎ目（最後の区切りの終わり）も同じ。
 """
 import sys
 
@@ -47,7 +51,8 @@ PIECES = {
 
 # 版。form は鳴らす区切りの並び: (始めの小節, 終わりの小節（含まない）, level)。小節は 0 始まり。並びの終わりから頭へループする。
 # layers は層の名前 -> 楽器（CHANNELS の名前）や型。
-VERSIONS = {
+VERSIONS = {}
+VERSIONS.update({
     # (a) オーケストラで圧を足した版: 低弦とティンパニのオスティナート、金管の打ち込み、スネアの刻み、シンバル。
     "winter_brass": {
         "piece": "winter1", "tempo": 144, "grid": 0.5,
@@ -101,7 +106,10 @@ VERSIONS = {
         "pad": {"voice": "synth_strings"},
         "lead": {"voice": "saw_lead", "shift": 0},
     },
-}
+})
+# (a2)・(b2): (a)・(b) と同じ素材と楽器に、濁り（dark）と「ダダダンッ」（hits）を足す。足さない版と聴き比べるため、別の版にする。
+VERSIONS["winter_brass2"] = dict(VERSIONS["winter_brass"], dark=True, hits=True)
+VERSIONS["winter_drive2"] = dict(VERSIONS["winter_drive"], dark=True, hits=True)
 
 # 楽器: 名前 -> (音色, 音量 CC7, 左右 CC10, 残響 CC91)。チャンネルは版ごとに、使う楽器にだけ割り当てる。
 CHANNELS = {
@@ -357,6 +365,8 @@ def arrange(parts, version):
                 p = into_range(root, bass["low"], bass["high"])
                 if pattern == "8oct" and k % 2 == 1:
                     p += 12
+                if spec.get("dark") and first and k % 2 == 1:
+                    p = into_range(root, bass["low"], bass["high"]) + 1  # 濁り: 裏の音を根音の半音上に。
                 vel = 124 if off == 0 else 112 if off == int(off) else 96
                 score.add(bass["voice"], out * beats + off, min(step * 0.8, 0.5), p, vel)
 
@@ -437,6 +447,68 @@ def arrange(parts, version):
                 p = into_range(root, 40, 52)
                 for q in (p, p + 7, p + 12):
                     score.add("power", out * beats + off, 0.35, q, 112 if off == int(off) else 96)
+
+    if spec.get("dark"):
+        # 濁り: 区切りの頭の 1 拍目に、金管の短 2 度のクラスター（根音と半音上）と増 4 度、弦の高い短 2 度。
+        brass = [v for v in ("trombone", "horns", "trumpet", "brass") if v in score.notes]
+        for (out, bar, level, first, end) in placed:
+            root = root_at(out, 0.0)
+            if not first or root is None:
+                continue
+            at = out * beats
+            low = into_range(root, 48, 59)
+            for v in brass:
+                for p in (low, low + 1, low + 6):
+                    score.add(v, at, 0.38, p, 124)
+            high = into_range(root, 72, 83)
+            for v in ("violin1", "violin2"):
+                score.add(v, at, 0.3, high + 1, 118)
+
+    if spec.get("hits"):
+        heads = [out for (out, bar, level, first, end) in placed if first]
+        for (out, bar, level, first, end) in placed:
+            if not end:
+                continue
+            bar_start = out * beats
+            start = bar_start + beats - 2 + 0.25
+            bar_end = bar_start + beats
+            # その区切りの終わりの後ろを空ける（ほかの層の音を消し、かかる音は切る）。
+            for layer, notes in score.notes.items():
+                kept = []
+                for (st, ln, p, v) in notes:
+                    if start - 1e-6 <= st < bar_end:
+                        continue
+                    if st < start < st + ln:
+                        ln = start - st
+                    kept.append((st, ln, p, v))
+                score.notes[layer] = kept
+            # 次の区切りの頭（終わりならループの頭）の根音の半音下に、減七を立てる。
+            nxt = next((h for h in heads if h > out), heads[0])
+            target = root_at(nxt, 0.0) or root_at(out, 0.0)
+            lead = (target - 1) % 12
+            dim = [lead, lead + 3, lead + 6, lead + 9]
+            times = [(start, 0.14, 112), (start + 0.25, 0.14, 112), (start + 0.5, 0.14, 116), (start + 0.75, 0.3, 127)]
+            for (t, ln, vel) in times:
+                for v, (lo, hi) in (("violin1", (72, 84)), ("violin1b", (72, 84)), ("violin2", (64, 76)), ("viola", (55, 67))):
+                    for pc in dim:
+                        score.add(v, t, ln, into_range(pc, lo, hi), vel)
+                score.add("cello", t, ln, into_range(lead, 36, 47), vel)
+                for v in ("contrabass", "synth_bass", "finger_bass", "synth_bass_2", "tuba"):
+                    if v in score.notes:
+                        score.add(v, t, ln, into_range(lead, 28, 39), vel)
+                for v in ("trombone", "horns", "trumpet", "brass"):
+                    if v in score.notes:
+                        for pc in dim:
+                            score.add(v, t, ln, into_range(pc, 52, 70), vel)
+                if "timpani" in score.notes:
+                    score.add("timpani", t, ln, into_range(lead, 41, 53), vel)
+                if "power" in score.notes:
+                    p = into_range(lead, 40, 52)
+                    for q in (p, p + 6, p + 12):
+                        score.add("power", t, ln, q, vel)
+                score.add("drums", t, 0.1, SNARE, vel)
+                score.add("drums", t, 0.1, KICK if spec.get("drums") == "kit" else BASS_DRUM, vel)
+            score.add("drums", times[-1][0], 0.2, CRASH, 127)
 
     return score, total_bars * beats, spec["tempo"], beats
 

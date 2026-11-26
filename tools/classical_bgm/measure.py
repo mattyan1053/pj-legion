@@ -12,6 +12,8 @@
   - 幅: 95 パーセンタイル − 10 パーセンタイル（LU）。大きいほど、弱い所と強い所の差がある（なだらかに大きくなる・静かな所がある）。
   - 谷: 中央値 − 最小（LU）。曲の中でいちばん弱まる所が、ふだんからどれだけ下がるか。
 - 頭の強さ: 初めの 3 秒の短期ラウドネス − 曲全体の中央値（LU）。0 に近いほど、頭からいきなり強い。
+- 切れ / 分: 50 ms ごとの大きさ（RMS）が、直前の 0.5 秒の平均より 10 dB 以上下がった所（強打のあとの一瞬の無音、溜め）の 1 分あたりの数。
+  3 秒の窓では見えない短い「間」を数える。
 """
 import sys
 
@@ -48,6 +50,21 @@ def onsets(mono, rate):
     return len(peaks) / seconds, strength
 
 
+def cuts(mono, rate):
+    """強打のあとの一瞬の無音（溜め）の数（1 分あたり）。"""
+    frame = int(0.05 * rate)
+    rms = np.array([np.sqrt(np.mean(mono[i:i + frame] ** 2)) + 1e-9 for i in range(0, len(mono) - frame, frame)])
+    db = 20 * np.log10(rms)
+    count, i = 0, 10
+    while i < len(db):
+        if db[i] < 10 * np.log10(np.mean(rms[i - 10:i] ** 2)) - 10:
+            count += 1
+            i += 10  # 同じ溜めを 2 度数えない
+        else:
+            i += 1
+    return count / (len(mono) / rate / 60)
+
+
 def measure(path):
     audio, rate = soundfile.read(path, always_2d=True)
     mono = audio.mean(axis=1)
@@ -69,6 +86,7 @@ def measure(path):
         "幅": f"{np.percentile(st, 95) - np.percentile(st, 10):.1f} LU",
         "谷": f"{np.median(st) - st.min():.1f} LU",
         "頭の強さ": f"{head:+.1f} LU",
+        "切れ/分": f"{cuts(mono, rate):.1f}",
     }
 
 

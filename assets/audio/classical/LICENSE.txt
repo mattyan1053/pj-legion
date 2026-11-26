@@ -1,6 +1,6 @@
-Music in this directory (winter_brass.ogg, winter_drive.ogg, winter_grave.ogg, winter_heavy.ogg, summer_storm.ogg)
+Music in this directory (winter_brass.ogg, winter_brass2.ogg, winter_drive.ogg, winter_drive2.ogg, winter_grave.ogg, winter_heavy.ogg, summer_storm.ogg)
 
-winter_brass.ogg, winter_drive.ogg, winter_grave.ogg and winter_heavy.ogg are arrangements of
+winter_brass.ogg, winter_brass2.ogg, winter_drive.ogg, winter_drive2.ogg, winter_grave.ogg and winter_heavy.ogg are arrangements of
 Antonio Vivaldi, "L'Inverno" (Winter), Concerto Op. 8 No. 4, RV 297, 1st movement (Allegro non molto).
 summer_storm.ogg is an arrangement of Antonio Vivaldi, "L'Estate" (Summer), Concerto Op. 8 No. 2, RV 315,
 3rd movement (Presto). The compositions are in the public domain.
@@ -21,7 +21,8 @@ They were made by a script in this repository (tools/classical_bgm/) from the en
   https://creativecommons.org/licenses/by-sa/3.0/
 
 Changes: bars selected, reordered and looped; re-orchestrated (instruments added and reassigned:
-strings re-articulated, bass ostinato, timpani, percussion and drum kit, brass stabs, pads, doubled lead);
+strings re-articulated, bass ostinato, timpani, percussion and drum kit, brass stabs, pads, doubled lead,
+added dissonant clusters and staccato tutti hits in winter_brass2 and winter_drive2);
 tempo changed; rendered to audio with FluidSynth and the FluidR3_GM SoundFont; loudness normalised.
 
 The arrangements and the audio files are released under the same licence,

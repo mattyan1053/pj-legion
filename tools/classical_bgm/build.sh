@@ -26,7 +26,7 @@ for piece in winter:winter1 summer:summer3; do
 done
 
 # 2. 版ごとに編曲し、音にして、ループする ogg にする（版 -> 楽譜）。
-for pair in winter_brass:winter1 winter_drive:winter1 winter_grave:winter1 summer_storm:summer3; do
+for pair in winter_brass:winter1 winter_brass2:winter1 winter_drive:winter1 winter_drive2:winter1 winter_grave:winter1 summer_storm:summer3; do
 	version="${pair%%:*}"; score="${pair##*:}"
 	python3 "$here/arrange.py" "$work/$score.mid" "$version" "$work/$version.mid"
 	fluidsynth -ni -q -g 0.6 -r 44100 -R 1 -C 0 -T wav -F "$work/$version.wav" "$sf2" "$work/$version.mid" >/dev/null

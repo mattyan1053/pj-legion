@@ -194,6 +194,7 @@ const ARRANGEMENT_SET := 4
 ## ヴィヴァルディの編曲。原曲の強い所を切り出し、戦闘曲の型に組み直した（assets/audio/classical/README.md）。
 ## 管: 「冬」をオーケストラの打楽器と金管で、電: 「冬」をドラムキットとシンセベースで、重: 「冬」を遅く重く、
 ## 夏: 「夏」第 3 楽章 Presto を、旧: 前の版の「冬 3」（比べ用）。
+## 管 2・電 2: 管・電に、区切りの頭の不協和音と、区切りの終わりのスタッカートの「ダダダンッ」と溜めを足した版。
 ## 終盤・中ボス・物語の終わりの 2 話の戦い（と、締めの話の終盤）だけ。ほかは、いまの組のまま。
 ## 大きさは、書き出しで -16 LUFS にそろえてある（tools/classical_bgm/finish.py）ので、対戦のねらい -21.5 LUFS との差。
 const ARRANGEMENT_SETS: Array[Dictionary] = [
@@ -205,11 +206,25 @@ const ARRANGEMENT_SETS: Array[Dictionary] = [
 		&"battle_final": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
+	},
+	{
 		&"battle_climax": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_boss": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_eve": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_last": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_final": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
+	},
+	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_drive2.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
 		&"battle_climax": {"path": CLASSICAL_DIR + "winter_grave.ogg", "loop": true, "volume_db": -5.5},
