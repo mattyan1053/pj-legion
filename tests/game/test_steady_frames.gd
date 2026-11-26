@@ -195,7 +195,7 @@ func test_info_panel_keeps_its_size_whatever_it_shows() -> void:
 			assert_true(hud.info_overflow() <= 0.5, "中身を積んだ駒で、札が枠の幅からはみ出す（%.1f px）: %s %s" % [hud.info_overflow(), Names.kind(kind), id])
 			if id == &"":
 				assert_eq(hud.info_dropped(), 0, "駒を見ているだけで、欄が省かれる: %s" % Names.kind(kind))
-	# 札が込み合うと（状態 3 つ、いるマスの行、スイッチ）、後で読めるものから省いて、枠に収める。スキルの名前は残す。
+	# 札が込み合っても（状態 3 つと特性、いるマスの行、スイッチ）、乗っている効果は 1 行で「ほか N」にまとめ、足りなければ後で読めるものから省いて、枠に収める。スキルの名前は残す。
 	var crowded := Unit.new(3, UnitKind.Id.MEDIC, Unit.Side.PLAYER2, Vector2i.ZERO, items)
 	for type: int in Status.Type.values().slice(0, 3):
 		crowded.statuses[type] = 2
@@ -204,7 +204,8 @@ func test_info_panel_keeps_its_size_whatever_it_shows() -> void:
 	hud.set_detail_button(true)
 	await settle(hud)
 	assert_eq(panel.size, size, "込み合った駒")
-	assert_true(hud.info_dropped() > 0 and not hud.is_info_cut(), "込み合った駒を、省いて収めていない（省いた数 %d）" % hud.info_dropped())
+	assert_false(hud.is_info_cut(), "込み合った駒を、枠に収めていない（省いた数 %d）" % hud.info_dropped())
+	assert_true(hud.info_text().contains(Text.t("battle.effect.more", {"count": 0}).trim_suffix("0")), "乗っている効果が多いと、「ほか N」にまとめる: %s" % hud.info_text())
 	assert_true(hud.info_text().contains(Names.skill(Skills.of(crowded))), "スキルの名前まで省いた")
 	hud.show_cell_info("マス (12, 15)　平地", "拠点\n　将でない駒が乗ったまま番を終えると、確保 +1\n　6 で勝ち")
 	await settle(hud)
@@ -229,7 +230,7 @@ func test_info_panel_is_a_status_card() -> void:
 	assert_eq(hud.info_title(), Names.kind(UnitKind.Id.SHIELD_TROOPER))
 	assert_eq(lines[0], "自軍　%s　%s　Lv 1　未行動" % [Names.role(UnitKind.role(trooper.kind)), Names.army(UnitKind.army(trooper.kind))], "札の並び")
 	assert_true(lines[1].begins_with("HP 40 / %d" % trooper.max_hp()), "HP の行: %s" % lines[1])
-	assert_true(lines.has("%s（あと 2）" % Names.status(Status.Type.values()[0])), "状態の札: %s" % hud.info_text())
+	assert_true(lines.has("%s　%s（あと 2）" % [Names.status(Status.Type.values()[0]), Text.t("battle.effect.blocks")]), "状態の札: %s" % hud.info_text())
 	assert_true(lines.has("持ち物: アイアンシールド ×2"), "持ち物の枠: %s" % hud.info_text())
 	for line in lines:
 		assert_false(line.contains("。") and line.length() > 60, "長い文の段落が残っている: %s" % line)

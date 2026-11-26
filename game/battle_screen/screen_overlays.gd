@@ -30,6 +30,7 @@ func open_unit_detail() -> void:
 		return
 	var army: UnitKind.Army = battle.armies[unit.side] if unit.side < battle.armies.size() else UnitKind.Army.NONE
 	var sheet: UnitSheet = UnitSheet.of_unit(unit, army, BattleHud.skill_state_text(unit, battle), _look_of(unit))
+	sheet.effects = UnitEffects.of(battle, unit)
 	_unit_detail.open_sheet(sheet)
 	context.play_sound(&"menu_open")
 	_on_overlay_opened()

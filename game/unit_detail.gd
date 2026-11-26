@@ -21,12 +21,15 @@ const ItemIcon := preload("res://game/item_icon.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
+const EffectChips := preload("res://game/effect_chips.gd")
 
 ## 左の列（姿）と右の列（欄）の幅。合わせて、1280×720 の論理の画面に余白を持って収まる。
 const LEFT_WIDTH := 216.0
 const RIGHT_WIDTH := 600.0
 const PORTRAIT_SIZE := Vector2(LEFT_WIDTH, 236.0)
 const GAP := 10.0
+## いま乗っている効果の札の欄の行の数。
+const EFFECT_ROWS := 2
 ## 札の中の説明の文字の大きさ。
 const NOTE_SIZE := SheetParts.NOTE_SIZE
 
@@ -53,6 +56,8 @@ var _cost: Label
 var _gems: CostGems
 var _meters: Array[StatMeter] = []
 var _statuses: VBoxContainer
+## いま乗っている効果の札（対戦中の駒だけ。決まった大きさ）。
+var _effects: EffectChips
 var _abilities: HBoxContainer
 var _items_head: Label
 var _items_box: VBoxContainer
@@ -180,6 +185,8 @@ func _build_right() -> Control:
 		var meter := StatMeter.new()
 		_meters.append(meter)
 		rows.add_child(meter)
+	_effects = EffectChips.new(RIGHT_WIDTH, EFFECT_ROWS, "unit_detail.effects")
+	right.add_child(_effects)
 	_statuses = VBoxContainer.new()
 	_statuses.add_theme_constant_override("separation", 2)
 	right.add_child(_statuses)
@@ -252,6 +259,8 @@ func _show_level(sheet: UnitSheet) -> void:
 
 
 func _show_statuses(sheet: UnitSheet) -> void:
+	_effects.visible = sheet.in_battle
+	_effects.show_effects(sheet.effects)
 	_clear(_statuses)
 	_statuses.visible = not sheet.statuses.is_empty()
 	for status: Array in sheet.statuses:
@@ -377,6 +386,11 @@ func title_text() -> String:
 
 func body_text() -> String:
 	return _sheet.text() if _sheet != null else ""
+
+
+## 出している、乗っている効果の札の文（検査用）。
+func effect_lines() -> Array[String]:
+	return _effects.lines() if _effects.visible else ([] as Array[String])
 
 
 ## いま出している中身（検査用）。
