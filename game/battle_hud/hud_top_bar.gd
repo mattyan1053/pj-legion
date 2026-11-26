@@ -196,7 +196,7 @@ func hide_sign_note() -> void:
 
 
 ## 陣営 player の軍略の窓を、上の帯の札の真下に開く（開いていれば閉じる）。軍略の札が出ていなければ何もしない。
-## 窓は、いま効いている軍略だけ（選ばなかった 2 つは出さない）: 印・名前・効果（数）・効く相手。
+## 窓は、いま効いている軍略だけ（選ばなかった 2 つは出さない）: 印・名前・文（効果の所は目立つ色）。
 func toggle_trait_note(player: int) -> void:
 	if player == _trait_note_player or player < 0 or player >= _trait_icons.size() or not _trait_icons[player].visible:
 		hide_trait_note()
@@ -214,7 +214,7 @@ func hide_trait_note() -> void:
 		_trait_note.visible = false
 
 
-## 開いている軍略の窓の文（名前・効果・効く相手。開いていなければ空。検査用）。
+## 開いている軍略の窓の文（名前と文。開いていなければ空。検査用）。
 func trait_note_text() -> String:
 	return _trait_note_card.shown_text() if _trait_note.visible else ""
 
@@ -327,7 +327,7 @@ func _build_top_bar() -> void:
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		column.add_child(label)
 		_side_labels.append(label)
-		# 軍略の札（幅は、いちばん長い名前で決める）。効果の数と効く相手は、乗せると出る。
+		# 軍略の札（幅は、いちばん長い名前で決める）。文は、乗せると出る。
 		var mark := TraitTag.new(TRAIT_MARK_SIDE, TRAIT_NAME_FONT, 4)
 		mark.size_flags_horizontal = Control.SIZE_SHRINK_END
 		mark.mouse_filter = Control.MOUSE_FILTER_STOP  # 乗せると 2 行の文、クリックで軍略の窓

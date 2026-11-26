@@ -585,7 +585,7 @@ func _oath_tag(index: int) -> Control:
 	return button
 
 
-## 軍略の欄（必殺技の欄の下。決まった大きさ）: 見出し「軍略」と札 3 枚（印と名前）、下に選んだ軍略の効果（数）と効く相手の 2 行
+## 軍略の欄（必殺技の欄の下。決まった大きさ）: 見出し「軍略」と札 3 枚（印と名前）、下に選んだ軍略の文（条件 → 効果。2 行まで）
 ## （札に乗せている間は、その札のもの。札に別のツールチップは付けない）。
 func _build_trait_box() -> Control:
 	_trait_box = _card()
@@ -633,15 +633,9 @@ func _build_trait_box() -> Control:
 		button.mouse_exited.connect(func() -> void: _on_trait_card(i, &"exit"))
 		row.add_child(button)
 		_trait_buttons.append(button)
-	# 文は 2 行: 効果（数。目立つ色）と、効く相手。
-	_trait_effect = _text(14, COLOR_ACCENT)
-	_trait_effect.add_theme_font_override("font", UiTheme.FONT_BOLD)
-	_trait_effect.clip_text = true
-	column.add_child(_trait_effect)
-	_trait_label = _text(12, COLOR_DIM)
-	_trait_label.clip_text = true
-	_trait_label.custom_minimum_size = Vector2(ROSTER_WIDTH - 24.0, 0.0)
-	column.add_child(_trait_label)
+	# 文は 1 文（2 行まで）: 条件 → 効果。効果の所は目立つ色。
+	_trait_sentence = TraitSentence.new(ROSTER_WIDTH - 24.0, TRAIT_TEXT_FONT, 2, COLOR_TEXT, COLOR_ACCENT)
+	column.add_child(_trait_sentence)
 	return _trait_box
 
 
@@ -657,9 +651,8 @@ func trait_cut_texts() -> Array[String]:
 		var room := _trait_buttons[i].get_global_rect().grow(0.5)
 		if _text_width(name, name.text) > name.size.x + 0.5 or not room.encloses(name.get_global_rect()):
 			cut.append(name.text)
-		for line: Label in [_trait_effect, _trait_label]:
-			if _text_width(line, line.text) > line.size.x + 0.5:
-				cut.append(line.text)
+		if _trait_sentence.overflows():
+			cut.append(_trait_sentence.shown_text())
 		_on_trait_card(i, &"exit")
 	return cut
 
@@ -697,8 +690,7 @@ func _refresh_traits() -> void:
 		(button.get_meta(&"name") as Label).add_theme_color_override("font_color", COLOR_TEXT if chosen else COLOR_DIM)
 		button.set_pressed_no_signal(chosen)
 	var shown := _hover_trait if choices.has(_hover_trait) else _deck.trait_id
-	_trait_effect.text = Names.troop_trait_effect(shown)
-	_trait_label.text = Names.troop_trait_when(shown)
+	_trait_sentence.trait_id = shown
 	_trait_shown = shown
 
 

@@ -61,7 +61,7 @@ func test_the_panel_keeps_its_size_and_previews_decks() -> void:
 		kinds.append(entry.kind)
 	assert_eq(panel.preview().shown_kinds(), kinds, "選んだ部隊の駒を、将から並べる")
 	var chosen := Names.troop_trait(TraitText.of_deck(deck))
-	assert_true(panel.preview().trait_text().begins_with(chosen + " " + Names.troop_trait_effect(TraitText.of_deck(deck))), "軍略の名前と文を出す: %s" % panel.preview().trait_text())
+	assert_true(panel.preview().trait_text().begins_with(chosen + " " + Names.troop_trait_text(TraitText.of_deck(deck))), "軍略の名前と文を出す: %s" % panel.preview().trait_text())
 	panel.choose_opponent(true)
 	panel.choose_deck(Unit.Side.PLAYER2, "")
 	panel.open_preview(Unit.Side.PLAYER2)

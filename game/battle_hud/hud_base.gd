@@ -208,7 +208,7 @@ var _side_labels: Array[Label] = []
 var _relic_texts: Array[String] = ["", ""]
 ## 陣営ごとの聖遺物のアイコン（添字がプレイヤー番号。中は Relics.Id の順）。
 var _relic_icons: Array[Array] = []
-## 陣営ごとの軍略の札（上の帯。印と名前。乗せると効果と効く相手。docs/troop-traits.md）。
+## 陣営ごとの軍略の札（上の帯。印と名前。乗せると文。docs/troop-traits.md）。
 var _trait_icons: Array[Control] = []
 var _relic_notes: Array[String] = ["", ""]
 var _ult_bars: Array[ProgressBar] = []
