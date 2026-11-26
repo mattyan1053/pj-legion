@@ -260,7 +260,7 @@ battle.notice.title,対戦ルール
 battle.notice.goals,勝利条件
 battle.notice.signs,縫い目の様子
 battle.notice.close,閉じる
-battle.hud.troop_trait,{name}　{effect}\n{when}
+battle.hud.troop_trait,{name}\n{text}
 battle.hud.relic_note,{relic}: {effect}
 battle.hud.relic_held,{relic}（持っている）: {effect}
 battle.hud.relic_missing,{relic}（持っていない）: {effect}

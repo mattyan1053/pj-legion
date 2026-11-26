@@ -39,7 +39,7 @@ func toggle_trait_note(player: int) -> void:
 	_hud.toggle_trait_note(player)
 
 
-## 開いている軍略の窓の文（名前・効果・効く相手。開いていなければ空。検査用）と、その四角。
+## 開いている軍略の窓の文（名前と文。開いていなければ空。検査用）と、その四角。
 func trait_note_text() -> String:
 	return _hud.trait_note_text()
 
