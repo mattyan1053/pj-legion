@@ -228,7 +228,7 @@ func _scene_trait_start() -> bool:
 	return _scene.trait_link_count() > 0
 
 
-## 対戦中に、上の帯の軍略の札（集中砲火）をクリックしたところ（軍略 1 つの窓に、印・名前・効果・効く相手）。
+## 対戦中に、上の帯の軍略の札（集中砲火）をクリックしたところ（軍略 1 つの窓に、印・名前・文）。
 func _scene_trait_note() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.OATH])
