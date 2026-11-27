@@ -4,7 +4,7 @@ extends "res://game/talk_screen/talk_choice.gd"
 ##
 ## - 答えは、クリックか、上下の矢印（W/S）で選んで Enter・Space、数字のキー（1〜3）。選ぶまで、先へ進まない（「スキップ」も止まる）。
 ## - 右クリックで前の文へ戻れる。選んだあとに問いの行へ戻れば、選び直せる。
-## - 枠は、いつも答え 3 つぶんの大きさで、舞台の真ん中（答えの数と長さで変えない）。
+## - 枠は、いつも答え 3 つぶんの大きさで、舞台の真ん中（答えの数と長さで変えない）。左右の話し手の姿とは重ならない（姿が、枠の幅を空けて立つ）。
 
 
 ## 選択肢 choice の、いま覚えている答えの鍵（この場面で選んだもの、無ければ記録。まだ選んでいなければ空）。
@@ -54,7 +54,7 @@ func _build_options() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.add_child(center)
 	_options = PanelContainer.new()
-	_options.add_theme_stylebox_override("panel", UiTheme.solid_box(18.0))
+	_options.add_theme_stylebox_override("panel", UiTheme.solid_box(OPTION_MARGIN))
 	_options.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 枠の上の右クリックも、前の文へ戻る入力へ通す（ボタンは押せる）
 	_options.visible = false
 	Steady.mark(_options, "talk.options", Steady.SIZE)

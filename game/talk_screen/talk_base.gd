@@ -30,10 +30,13 @@ const PLATE_WIDTH := 152.0
 const CHOICE_WIDTH := 260.0
 const BOX_BOTTOM := 40.0
 ## 選択肢の枠（docs/story.md の「選択肢」）: 答えのボタンの大きさ（px）と間、字の大きさ。枠は、いつも答え 3 つぶんの大きさ（答えの数と長さで変えない）。
-const OPTION_SIZE := Vector2(500.0, 48.0)
+const OPTION_SIZE := Vector2(464.0, 48.0)
 const OPTION_GAP := 10
 const OPTION_FONT := 20
 const OPTION_SLOTS := 3
+## 選択肢の枠の余白（px）と、枠の幅。左右の話し手の姿は、この幅を真ん中に空けて立つ（枠と姿が重ならない。talk_figures.gd の _place_figures）。
+const OPTION_MARGIN := 12.0
+const OPTIONS_WIDTH := OPTION_SIZE.x + OPTION_MARGIN * 2.0
 ## 背景の盤に重ねる幕の濃さ（Palette.SHADE の色）。
 const BACKDROP_SHADE := 0.3
 ## 足元を沈める幕の、下の端の濃さ。
@@ -42,11 +45,14 @@ const FLOOR_SHADE := 0.7
 const CUT_SHADE := 0.12
 const CUT_BAR := 56.0
 const CUT_BUTTONS := 0.55
+## 名前の札と文の枠の間（px）、「ログ」「スキップ」の大きさ（px）。
+const PLATE_GAP := 6.0
+const BUTTON_SIZE := Vector2(110.0, 36.0)
 const CUT_COLORS := {&"black": Palette.OUTLINE, &"night": Palette.INK}
 ## 画面の端から見出しまでの余白。
 const MARGIN := Vector2(32.0, 24.0)
-## 話し手の姿の枠の横幅の上限（文の枠の幅に対する割合。左右の姿が真ん中で重ならない）。
-const FIGURE_MAX_WIDTH := 0.42
+## 話し手の姿の枠の横幅の上限（px）。左右の姿の間に、選択肢の枠（OPTIONS_WIDTH）がちょうど入る。縦長の窓でも、これより広げない。
+const FIGURE_MAX_WIDTH := (BOX_WIDTH - OPTIONS_WIDTH) / 2.0
 ## 送りの印の明滅の周期（秒）。
 const BLINK_PERIOD := 1.2
 ## 名前の札の色（0 = 人の軍、1 = 敵の軍は battle_screen.gd の TEAM_COLORS と同じ。2 = 知らせ）。

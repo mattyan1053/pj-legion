@@ -14,6 +14,7 @@ func test_talk_without_a_battle_opens() -> void:
 	screen.talk = Story.talk_of(episode, [Story.Episode.TalkLine.speech(0, "はじめの台詞", 0)] as Array[Story.Episode.TalkLine])
 	await settle(screen)
 	assert_eq(screen.speaker(), episode.speakers[0], "最初の行の話し手が出ない（_ready が途中で止まった）")
+	assert_true(screen.is_scenery_only(), "兵を立たせない背景に、マス目の線が出ている")
 	screen.free()
 
 
@@ -21,10 +22,10 @@ func test_talk_without_a_battle_opens() -> void:
 func _asking_talk() -> Dictionary:
 	var when_a := {"choice": &"way", "answer": &"a", "not": false}
 	var when_b := {"choice": &"way", "answer": &"b", "not": false}
-	return {"title": "", "lines": [
+	return {"title": "", "figures": [{"kind": UnitKind.Id.KING}, {"kind": UnitKind.Id.KING}], "lines": [
 		{"side": 0, "name": "新兵", "text": "どちらへ？", "choice": {"name": &"way", "options": [{"key": &"a", "text": "左"}, {"key": &"b", "text": "右へ急ぐ"}]}},
-		{"side": 0, "name": "少尉", "text": "左だ。", "when": when_a},
-		{"side": 0, "name": "少尉", "text": "右だ。", "when": when_b},
+		{"side": 0, "who": 1, "name": "少尉", "text": "左だ。", "when": when_a},
+		{"side": 0, "who": 1, "name": "少尉", "text": "右だ。", "when": when_b},
 		{"side": 0, "name": "新兵", "text": "走るんですね。", "when": when_b},
 		{"side": 0, "name": "少尉", "text": "行くぞ。"},
 		{"side": 0, "name": "新兵", "text": "左で正解でした。", "when": when_a},
@@ -115,6 +116,10 @@ func test_the_options_frame_keeps_its_size() -> void:
 	assert_true(screen.get_viewport().get_visible_rect().encloses(small), "枠が画面からはみ出す: %s" % small)
 	var width := UiTheme.FONT_BODY.get_string_size(longest, HORIZONTAL_ALIGNMENT_LEFT, -1, TalkScreen.OPTION_FONT).x
 	assert_true(width + 24.0 <= TalkScreen.OPTION_SIZE.x, "いちばん長い答えが、ボタンに 1 行で入らない（要る幅 %d）" % width)
+	# 問われている人（答えを選ぶまで、行がどれも出ない）も、選ぶ前から立っている。枠は、左右の姿と重ならない。
+	assert_eq(screen.figures().size(), 2, "問われている人が、選ぶ前に立っていない")
+	for figure: Control in screen.figures():
+		assert_false(figure.get_global_rect().intersects(small), "選択肢の枠が、話し手の姿に重なる: %s / %s" % [figure.get_global_rect(), small])
 	screen.free()
 
 
@@ -153,6 +158,11 @@ func test_a_cutscene_shows_narration_without_figures() -> void:
 	var bottom: Rect2 = screen.bottom_rect()
 	var view: Rect2 = screen.get_viewport().get_visible_rect()
 	assert_true(view.encloses(bottom) and absf(bottom.get_center().y - view.get_center().y) < 40.0, "文が画面の真ん中の高さに無い: %s" % bottom)
+	# 「ログ」「スキップ」は、会話の場面と同じ所（下の文の枠があるはずの所の右上）。真ん中の文の枠に重ならない。
+	var buttons: Rect2 = screen.buttons_rect()
+	assert_false(buttons.intersects(bottom), "カットシーンのボタンが、文に重なる: %s / %s" % [buttons, bottom])
+	var corner := Vector2(view.get_center().x + TalkScreen.BOX_WIDTH / 2.0, view.end.y - TalkScreen.BOX_BOTTOM - TalkScreen.BOX_HEIGHT - TalkScreen.PLATE_GAP)
+	assert_true(buttons.end.distance_to(corner) < 1.5, "カットシーンのボタンが、会話の場面と同じ所に無い: %s / %s" % [buttons.end, corner])  # 半端な高さの窓では 1px 丸まる
 	var ended := [0]
 	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
 	for i in 4:
