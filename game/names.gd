@@ -184,7 +184,15 @@ static func troop_trait(id: int) -> String:
 static func troop_trait_text(id: int) -> String:
 	if id == Traits.NONE:
 		return ""
-	return Text.t("troop_trait.%s.text" % Traits.key(id), {"gain": troop_trait_effect(id), "medic": kind(UnitKind.Id.MEDIC), "paladin": kind(UnitKind.Id.PALADIN)})
+	return Text.t("troop_trait.%s.text" % Traits.key(id), {"gain": troop_trait_effect(id), "medic": kind(_healer_of(Traits.army_of(Traits.Id.SUPPLY))), "paladin": kind(Traits.GUARDIAN)})
+
+
+## 補給線の文の {medic}: その軍の、最初の回復役（ルールは回復役なら誰でも。Traits.supplier_at。いまは衛生兵）。
+static func _healer_of(of_army: UnitKind.Army) -> UnitKind.Id:
+	for each in Armies.roster(of_army):
+		if UnitKind.role(each) == UnitKind.Role.HEALER:
+			return each
+	return UnitKind.Id.MEDIC
 
 
 ## 軍略の効果（数のある所。「ダメージ +2」）。文の中で色を変える所。

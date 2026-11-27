@@ -37,7 +37,7 @@ func _refresh_traits() -> void:
 				continue
 			var ranks := own == Traits.Id.RANKS and mate.kind == shown.kind
 			var supply := own == Traits.Id.SUPPLY and (UnitKind.role(mate.kind) == UnitKind.Role.HEALER) != (UnitKind.role(shown.kind) == UnitKind.Role.HEALER)
-			var guard := own == Traits.Id.GUARD and (mate.kind == UnitKind.Id.PALADIN or shown.kind == UnitKind.Id.PALADIN)
+			var guard := own == Traits.Id.GUARD and (mate.kind == Traits.GUARDIAN or shown.kind == Traits.GUARDIAN)
 			if ranks or supply:
 				links.append([_view(shown.id), _view(mate.id), tint, TraitLinks.Knot.CROSS if supply else TraitLinks.Knot.DIAMOND])
 			elif guard:
