@@ -46,6 +46,7 @@
    「読まないと決めた出来事」（`skipped_events`）の表がある。読むなら、コードに `is` / `as` で書き、読む表に足す。
    読まないなら、読まない表に理由と足す。どちらにも無いか、読む表がコードの `is` / `as` とずれると、`tests/game/test_event_readers.gd` が落ちる。
    親（`UnitDamagedEvent` など）を読んでいれば、子は読むほうに数える。
+   台本の出来事（`game/cut_events/`。カットシーンの台本だけが出す。`docs/battle-view.md` の「盤のカットシーン」）を足すときは、再生の表と再生の盤の表だけ。
    - 戦績・MVP: `rules/battle_stats.gd`（`docs/battle-stats.md`）
    - 予測のまとめ: `rules/forecast.gd`（`docs/battle-forecast.md`）
    - CPU の手の価値: `rules/cpu/cpu_outcome_value.gd`（`docs/cpu-ai.md`）

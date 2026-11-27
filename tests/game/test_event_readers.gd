@@ -7,6 +7,9 @@ extends "res://tests/base_test.gd"
 ## - 読む表が、そのファイルが実際に `is` / `as` で名前を出す出来事と同じであること（表とコードがずれない）
 
 const EVENTS_DIR := "res://rules/events"
+## 台本の出来事（カットシーンの台本だけが出す。docs/battle-view.md の「盤のカットシーン」）。これを見る読む所は SCRIPT_READERS だけ。
+const SCRIPT_EVENTS_DIR := "res://game/cut_events"
+const SCRIPT_READERS: Array[String] = ["res://game/replay_board.gd"]
 const READERS: Array[String] = [
 	"res://rules/battle_stats.gd",
 	"res://rules/forecast.gd",
@@ -17,12 +20,12 @@ const READERS: Array[String] = [
 ]
 
 
-## 出来事の種類（抽象の親を除く）。
-func _event_scripts() -> Array[Script]:
+## 出来事の種類（抽象の親を除く）。dir を渡せば、そのディレクトリの出来事。
+func _event_scripts(dir := EVENTS_DIR) -> Array[Script]:
 	var scripts: Array[Script] = []
-	for file in DirAccess.get_files_at(EVENTS_DIR):
+	for file in DirAccess.get_files_at(dir):
 		if file.ends_with(".gd"):
-			var script: Script = load(EVENTS_DIR.path_join(file))
+			var script: Script = load(dir.path_join(file))
 			if not script.is_abstract():
 				scripts.append(script)
 	return scripts
@@ -60,9 +63,12 @@ func _class_names(scripts: Array) -> Array[String]:
 
 
 func test_every_event_is_read_or_skipped_by_each_reader() -> void:
-	var events := _event_scripts()
-	assert_true(events.size() >= 40, "出来事のスクリプトを見つけられていない")
+	var rule_events := _event_scripts()
+	assert_true(rule_events.size() >= 40, "出来事のスクリプトを見つけられていない")
+	var script_events := _event_scripts(SCRIPT_EVENTS_DIR)
+	assert_true(script_events.size() >= 6, "台本の出来事のスクリプトを見つけられていない")
 	for path in READERS:
+		var events := rule_events + script_events if SCRIPT_READERS.has(path) else rule_events
 		var reader: GDScript = load(path)
 		var read: Array = reader.call(&"read_events")
 		var skipped: Array = reader.call(&"skipped_events")
