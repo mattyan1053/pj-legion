@@ -203,6 +203,8 @@ func _end() -> void:
 		_current = "events"
 		var players: Dictionary = BattlePlayback.event_players()
 		for kind: Script in players:
+			if kind.resource_path.begins_with(BattlePlayback.CUT_EVENTS_DIR):
+				continue  # 台本の出来事は、対戦では起きない（カットシーンの再生は tests/game/test_cut_script.gd が見る）
 			if _scene.played.get(kind, 0) == 0:
 				_fail("1 回も再生しなかったイベント: %s" % kind.resource_path)
 	var app := _scene.get_parent()

@@ -11,7 +11,8 @@ army = military
 rules = berk_patrol
 budget = 22
 order = 3
-intro = ハーデン少尉の偵察隊として、縫い代の見回りで名も無い戦いをくぐる。
+intro = {hero}少尉の偵察隊として、縫い代の見回りで名も無い戦いをくぐる。
+hero = ハーデン
 
 [start]
 unit = shield_trooper

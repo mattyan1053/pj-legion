@@ -213,7 +213,7 @@ func test_story_victory_mood_comes_from_the_episode() -> void:
 	for episode: RefCounted in Story.all_episodes():
 		var battle := StoryBattle.new(episode, null)
 		assert_true(Catalog.MOODS.has(battle.victory_mood()), "%s の勝ったときの調子" % episode.id)
-		assert_eq(battle.after_result_music(), episode.after_talk_music(), "%s: 決着の曲のあとは、あとの会話の曲（そのまま会話へ）" % episode.id)
+		assert_eq(battle.after_result_music(), episode.scene_after_battle().music, "%s: 決着の曲のあとは、あとの会話の曲（そのまま会話へ）" % episode.id)
 		if battle.victory_mood() == Catalog.MOOD_QUIET:
 			quiet += 1
 	assert_true(quiet > 0, "静かに勝つ話がある")

@@ -27,7 +27,8 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 			level = Text.t("battle.hud.level_max", {"level": unit.level})
 		else:
 			level = Text.t("deck.sheet.level", {"level": unit.level})
-			experience = [unit.experience, Growth.EXPERIENCE_PER_LEVEL]
+			# 魔物は進化しないので、経験値は出さない（レベルは上がるので Lv だけ。unit_detail.gd と同じ）。棒の場所は空けたまま。
+			experience = InfoCard.HIDDEN_EXPERIENCE if UnitKind.is_monster(unit.kind) else [unit.experience, Growth.EXPERIENCE_PER_LEVEL]
 	var chips: Array = []  # 特性は、乗っている効果の札の最後に並ぶ（unit_effects.gd）
 	# 行動の状態（「未行動」など。state の 1 行目）は名前の右の札に、いるマスなどの残りは、札の下の小さな行に。
 	var lines := state.split("\n", false)
@@ -159,6 +160,11 @@ func info_overflow() -> float:
 
 
 ## 駒の情報の枠に出している文（見出しを除く。欄ごとに 1 行。出ていなければ空）。検査用。
+## 情報の枠の駒の札が、経験値（棒と文）を出しているか（検査用。魔物は出さない）。
+func info_shows_experience() -> bool:
+	return _info_is_unit and _info_card.shows_experience()
+
+
 func info_text() -> String:
 	return _info_card.text() if _info_panel.visible else ""
 

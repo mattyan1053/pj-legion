@@ -1,6 +1,6 @@
 extends Node
 ## 会話の場面（game/talk_screen.gd）の土台: 読み込み、調整値、状態の変数と、どこからも使う小さな道具（行の読み方、幕、文字）。
-## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ game/talk_screen.gd（組み立て・入力・文の送り）。
+## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ game/talk_screen.gd（組み立て・入力・文の送り）。
 
 const Text := preload("res://game/text.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
@@ -29,14 +29,30 @@ const PLATE_WIDTH := 152.0
 ## あとの会話の「次の話へ」「話の一覧へ」のボタンの幅（px。縦に積んで、左右の話し手の間に収める）。
 const CHOICE_WIDTH := 260.0
 const BOX_BOTTOM := 40.0
+## 選択肢の枠（docs/story.md の「選択肢」）: 答えのボタンの大きさ（px）と間、字の大きさ。枠は、いつも答え 3 つぶんの大きさ（答えの数と長さで変えない）。
+const OPTION_SIZE := Vector2(464.0, 48.0)
+const OPTION_GAP := 10
+const OPTION_FONT := 20
+const OPTION_SLOTS := 3
+## 選択肢の枠の余白（px）と、枠の幅。左右の話し手の姿は、この幅を真ん中に空けて立つ（枠と姿が重ならない。talk_figures.gd の _place_figures）。
+const OPTION_MARGIN := 12.0
+const OPTIONS_WIDTH := OPTION_SIZE.x + OPTION_MARGIN * 2.0
 ## 背景の盤に重ねる幕の濃さ（Palette.SHADE の色）。
 const BACKDROP_SHADE := 0.3
 ## 足元を沈める幕の、下の端の濃さ。
 const FLOOR_SHADE := 0.7
+## カットシーン（docs/story.md の「カットシーン」）: 背景に重ねる幕の濃さ（景色を見せるので薄い）、上下の黒い帯の高さ（px）、「ログ」「スキップ」の濃さ、色の幕の色。
+const CUT_SHADE := 0.12
+const CUT_BAR := 56.0
+const CUT_BUTTONS := 0.55
+## 名前の札と文の枠の間（px）、「ログ」「スキップ」の大きさ（px）。
+const PLATE_GAP := 6.0
+const BUTTON_SIZE := Vector2(110.0, 36.0)
+const CUT_COLORS := {&"black": Palette.OUTLINE, &"night": Palette.INK}
 ## 画面の端から見出しまでの余白。
 const MARGIN := Vector2(32.0, 24.0)
-## 話し手の姿の枠の横幅の上限（文の枠の幅に対する割合。左右の姿が真ん中で重ならない）。
-const FIGURE_MAX_WIDTH := 0.42
+## 話し手の姿の枠の横幅の上限（px）。左右の姿の間に、選択肢の枠（OPTIONS_WIDTH）がちょうど入る。縦長の窓でも、これより広げない。
+const FIGURE_MAX_WIDTH := (BOX_WIDTH - OPTIONS_WIDTH) / 2.0
 ## 送りの印の明滅の周期（秒）。
 const BLINK_PERIOD := 1.2
 ## 名前の札の色（0 = 人の軍、1 = 敵の軍は battle_screen.gd の TEAM_COLORS と同じ。2 = 知らせ）。
@@ -61,6 +77,16 @@ var context: AppContext
 ## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目,
 ## "figures": 話し手の姿（行の "who" の番号の並び）}。story.gd の talk_of）。行に "who" が無ければ、陣営（"side"）の番号。
 var talk := {}
+## いま出す行の列: 渡された行（talk の "lines"）のうち、出す条件（"when"）の合うもの。答えを選ぶたびに作り直す（talk_ask.gd の _refresh_lines）。
+var _lines: Array = []
+## この場面で選んだ答え（選択肢の名前 -> 答えの鍵）。記録（story.gd の answer_of）より先に見る。
+var _answers := {}
+## 選択肢の枠と、答えのボタン（OPTION_SLOTS 個。使わない分は隠す）、キーで選んでいる答え（-1 = まだ選んでいない）。
+var _options: PanelContainer
+var _option_buttons: Array[Button] = []
+var _option_at := -1
+## 会話の最後の行で答えを選び終えたか（選ぶと会話が終わる。行き先の選択の間に、また選ばせない）。
+var _answered_last := false
 var _index := 0
 var _shown := 0.0  # いまの文の、出した文字数
 var _elapsed := 0.0

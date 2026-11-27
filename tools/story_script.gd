@@ -104,7 +104,7 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	for scene: Episode.StoryScene in episode.scenes:
 		if scene.is_talk():
 			if scene.name != "":
-				lines.append("### 場面「%s」" % scene.name)
+				lines.append(("### カットシーン「%s」" if scene.cut else "### 盤のカットシーン「%s」" if scene.board_cut != null else "### 場面「%s」") % scene.name)
 			else:
 				lines.append("### 対戦のあと" if fought else "### 対戦の前")
 			lines.append("")
@@ -136,11 +136,28 @@ static func _battle_lines(lines: PackedStringArray, episode: Episode) -> void:
 
 
 static func _talk(lines: PackedStringArray, episode: Episode, rows: Array[Episode.TalkLine]) -> void:
+	var texts := {}  # 選択肢の名前 -> {答えの鍵: 画面の文}（この会話で選ばせるもの）
+	var answered := ""  # いま並べている答え（"名前=鍵"）
 	for row in rows:
+		# 出す条件のある行は、条件を頭に添える（選択肢の答えの中の行は、答えの見出しの下に字下げ）。
+		var indent := ""
+		if row.when_choice != &"":
+			var shown: String = texts.get(row.when_choice, {}).get(row.when_answer, "")
+			if shown != "" and not row.when_not:
+				indent = "  "
+				if answered != "%s=%s" % [row.when_choice, row.when_answer]:
+					answered = "%s=%s" % [row.when_choice, row.when_answer]
+					lines.append("- 〔選ぶ: %s〕" % shown)
+			else:
+				indent = "〔%s %s %s のとき〕" % [row.when_choice, "≠" if row.when_not else "=", row.when_answer]
 		if row.is_narration():
-			lines.append("- *%s*" % row.shown_text())
+			lines.append("%s- %s*%s*" % ["  " if indent == "  " else "", "" if indent == "  " else indent, row.shown_text()])
 		else:
-			lines.append("- **%s**　%s" % [row.speaker_in(episode.speakers), row.shown_text()])
+			lines.append("%s- %s**%s**　%s" % ["  " if indent == "  " else "", "" if indent == "  " else indent, row.speaker_in(episode.speakers), row.shown_text()])
+		if row.asks():
+			texts[row.choice] = {}
+			for option: Dictionary in row.options:
+				texts[row.choice][option["key"]] = option["text"]
 	lines.append("")
 
 

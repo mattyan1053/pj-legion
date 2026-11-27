@@ -68,7 +68,7 @@ PR と push で回す検査は 1 分以内に収める（`CLAUDE.md`）。時間
   - 名前が `test_long_` で始まるテスト（同じ CPU どうしの対戦を何度も回して比べる、など）。
     テストだけなら `run_tests.gd -- --full`（`--long-only`、`--only=<語>`、`--except=<語>` で絞れる）。
   - 自動の対戦のほかのマップ（`-- --autoplay --full`）。
-  - 通しの点検の長い道（`-- --autoplay --story-all` と `--versus-all`。`game/autoplay_sweeps.gd`）: すべての物語（本編の 2 つと番外）の全部の話を画面の道で通す
+  - 通しの点検の長い道（`-- --autoplay --story-all` と `--versus-all`。`game/autoplay_sweeps.gd`）: すべての物語（本編の 2 つと番外）を、物語ごとに頭から `STORY_EPISODES` 話（いまは 15）まで画面の道で通す
     （会話・途中の台詞・わざと負けて負けの台詞）と、対戦モードの全部のマップ × 選べる決まりの入・切を数ターン。手で回すときは `tools/sweep.sh <godot> [story|versus|all]`。
   - 横長の画面（3440×1440）での、操作の決まりの場面の全部。PR ごとの検査は `UI_WIDE`（対戦の画面と対戦設定の場面）だけで、
     CPU の手番（`cpu`）・タイトル（`title`）・部隊編成（`decks`）・ストーリーの 1 話の通し（`story`）の横長は、長い検査だけで見る

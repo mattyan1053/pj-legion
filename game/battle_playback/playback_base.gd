@@ -96,6 +96,10 @@ var _after_skill := false
 var skipping := false
 ## 見せずに済ませたものがあって、盤の見た目をまだ作り直していないか。
 var _unsynced := false
+## カットシーン（docs/battle-view.md の「盤のカットシーン」）の、歩く 1 マスの秒数（台本の CutPaceEvent。0 ならいつもの速さ）。
+var cut_step_time := 0.0
+## 湧いた・置いた駒の、人物の形（駒の番号 -> unit_looks.gd の PERSONS の名前）。カットシーンの名前のある兵。無ければ空。
+var unit_looks := {}
 
 
 ## 場面が持つものを受け取る。views・played・follows は場面と同じ辞書を渡す。
@@ -138,15 +142,19 @@ func after(seconds: float) -> Signal:
 
 ## CPU の番を進めている途中で、side が CPU の動かす陣営か（その駒は、自分で動かしていない駒として、カメラが追う）。
 func _cpu_moving(side: Unit.Side) -> bool:
-	return _ui.cpu_running and side == cpu_side.call()
+	return _ui != null and _ui.cpu_running and side == cpu_side.call()
 
 
 func _view(unit_id: int) -> UnitView:
 	return _views[unit_id]
 
 
+## 台本の出来事（カットシーンの台本だけが出す。対戦では起きない）を置く所。
+const CUT_EVENTS_DIR := "res://game/cut_events/"
+
+
 ## イベントの種類（スクリプト）-> 再生するメソッドの名前。
-## rules/events/ のイベントは、すべてここに載せる（載っていない種類があると、テストが落ちる）。
+## rules/events/ のイベントと、台本の出来事（game/cut_events/）は、すべてここに載せる（載っていない種類があると、テストが落ちる）。
 static func event_players() -> Dictionary:
 	return {
 		UnitMovedEvent: &"_play_moved",
@@ -194,6 +202,13 @@ static func event_players() -> Dictionary:
 		StrongholdProgressEvent: &"_play_stronghold",
 		GameWonEvent: &"_play_won",
 		GameDrawnEvent: &"_play_drawn",
+		# 台本の出来事（カットシーンの台本だけが出す。game/cut_events/。再生は playback_cut.gd）
+		CutPlacedEvent: &"_play_cut_placed",
+		CutLeftEvent: &"_play_cut_left",
+		CutTurnedEvent: &"_play_cut_turned",
+		CutCameraEvent: &"_play_cut_camera",
+		CutPaceEvent: &"_play_cut_pace",
+		CutWaitEvent: &"_play_cut_wait",
 	}
 
 
@@ -226,6 +241,9 @@ func _settle(event: BattleEvent) -> void:
 	var undone := event as MoveUndoneEvent
 	if moved != null and not moved.path.is_empty() and _views.has(moved.unit_id):
 		_view(moved.unit_id).position = BoardView.cell_center(moved.path[-1])
+	elif event is CutLeftEvent and _views.has(event.unit_id):
+		(_views[event.unit_id] as Node).queue_free()
+		_views.erase(event.unit_id)
 	elif undone != null and _views.has(undone.unit_id):
 		_view(undone.unit_id).position = BoardView.cell_center(undone.to)
 
@@ -318,7 +336,8 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	var camera := _rig.camera if _rig != null else null
 	label.position = Vector3(at.x, at.y + POP_HEIGHT, at.z)
 	if camera != null and camera.is_inside_tree():
-		label.position = pop_place(label.position, text.length(), live, _hud.banner_rect(), camera.unproject_position, camera.global_basis.y)
+		var band := _hud.banner_rect() if _hud != null else Rect2()  # カットシーンには上の帯も知らせも無い
+		label.position = pop_place(label.position, text.length(), live, band, camera.unproject_position, camera.global_basis.y)
 	_stage.add_child(label)
 	_pops.append(label)
 	var tween := create_tween()

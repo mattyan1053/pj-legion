@@ -44,6 +44,11 @@ talk.guide.back,戻る
 talk.guide.log,ログ
 talk.resume,会話へ戻る
 talk.next_episode,次の話へ
+talk.answer.plate,選択
+hero.window.title,名前
+hero.window.note,全角 {max} 文字まで
+hero.window.ok,決定
+hero.rename,名前を変える
 story.episodes.roster,"雇える兵種: {kinds}
 持ち物: {items}　　コスト上限: {budget}"
 story.episodes.rewards,"クリア報酬:
