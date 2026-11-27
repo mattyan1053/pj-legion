@@ -116,3 +116,26 @@ func test_the_options_frame_keeps_its_size() -> void:
 	var width := UiTheme.FONT_BODY.get_string_size(longest, HORIZONTAL_ALIGNMENT_LEFT, -1, TalkScreen.OPTION_FONT).x
 	assert_true(width + 24.0 <= TalkScreen.OPTION_SIZE.x, "いちばん長い答えが、ボタンに 1 行で入らない（要る幅 %d）" % width)
 	screen.free()
+
+
+## 答えを Enter で決めても、次の文は 1 文字ずつ出る（決めたキーで、次の文まで送らない）。
+## 最後の行で答えを選ぶと会話が終わり、答えの枠は出し直さない。ログには、選んだ答えが残る。
+func test_the_key_that_picks_an_answer_does_not_also_advance_and_a_last_question_ends_the_talk() -> void:
+	var screen: Node = await _asking_screen()
+	screen.press_next()
+	_key(screen, KEY_DOWN)
+	_key(screen, KEY_ENTER)
+	assert_true(screen.line_index() == 1 and not screen.is_line_shown(), "答えを決めたキーで、次の文を出しきった")
+	screen.free()
+	screen = await _asking_screen()
+	screen.talk["lines"] = [screen.talk["lines"][0]]
+	screen._refresh_lines()
+	screen._show_line(0)
+	var ended := [0]
+	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
+	screen.press_next()
+	screen.press_option(0)
+	await settle(screen)
+	assert_true(ended[0] == 1 and not screen.is_asking(), "最後の行で選ぶと、会話が終わる（答えの枠を出し直さない）")
+	assert_eq(screen._log_lines().size(), 2, "ログに、選んだ答えが残る")
+	screen.free()

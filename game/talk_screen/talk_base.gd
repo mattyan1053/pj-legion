@@ -73,6 +73,8 @@ var _answers := {}
 var _options: PanelContainer
 var _option_buttons: Array[Button] = []
 var _option_at := -1
+## 会話の最後の行で答えを選び終えたか（選ぶと会話が終わる。行き先の選択の間に、また選ばせない）。
+var _answered_last := false
 var _index := 0
 var _shown := 0.0  # いまの文の、出した文字数
 var _elapsed := 0.0

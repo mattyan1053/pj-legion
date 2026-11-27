@@ -225,7 +225,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_choosing():
 		_choice_input(event)
 		return
-	if is_asking():
+	var asking := is_asking()
+	if asking:
 		_options_input(event)
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
@@ -234,8 +235,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_RIGHT:
 				press_back()
 	elif event is InputEventKey and event.pressed and not event.echo:
-		if is_asking():
-			return  # 選ぶ間のキーは、_options_input が受けた
+		if asking:
+			return  # 選ぶ間のキーは、_options_input が受けた（答えを決めたキーで、次の文まで送らない）
 		match event.physical_keycode:
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				press_next()
@@ -307,6 +308,7 @@ func press_option(at: int) -> void:
 	if _index + 1 < _lines.size():
 		_show_line(_index + 1)
 	else:
+		_answered_last = true  # 最後の行で選んだ: もう選ばせない（行き先の選択の下に、答えの枠を出し直さない）
 		_end()
 
 
@@ -385,6 +387,7 @@ func line_text() -> String:
 func _show_line(index: int) -> void:
 	_index = index
 	_shown = 0.0
+	_answered_last = false
 	_close_options()
 	if index >= line_count():
 		_name.text = ""

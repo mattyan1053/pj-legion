@@ -81,7 +81,7 @@ func _build_options() -> void:
 ## いまの行が選ばせる行で、文が出きっていれば、答えを出す。
 func _ask_if_due() -> void:
 	var choice := _choice_here()
-	if choice.is_empty() or _ended or is_asking() or _shown < float(_text.get_total_character_count()):
+	if choice.is_empty() or _ended or _answered_last or is_asking() or _shown < float(_text.get_total_character_count()):
 		return
 	var options: Array = choice["options"]
 	var chosen := _answer_of(choice["name"])
@@ -130,7 +130,7 @@ func _log_lines() -> Array:
 	for i in mini(_index + 1, _lines.size()):
 		rows.append(_lines[i])
 		var choice: Dictionary = _lines[i].get("choice", {})
-		if i < _index and not choice.is_empty():
+		if (i < _index or _answered_last) and not choice.is_empty():
 			for option: Dictionary in choice["options"]:
 				if String(option["key"]) == _answer_of(choice["name"]):
 					rows.append({"side": 0, "name": Text.t("talk.answer.plate"), "text": option["text"]})
