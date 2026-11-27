@@ -148,6 +148,10 @@ func _ready() -> void:
 	_skip.size_flags_vertical = Control.SIZE_SHRINK_END
 	_skip.pressed.connect(press_skip)
 	top_row.add_child(_skip)
+	if cut:
+		# 文だけを見せる場面なので、ボタンは控えめに。
+		_log_button.modulate.a = CUT_BUTTONS
+		_skip.modulate.a = CUT_BUTTONS
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0.0, 6.0)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
