@@ -99,6 +99,10 @@ func test_the_run_of_a_scenes_episode_gives_each_talk_its_place() -> void:
 	assert_false(run.data().has("cut"))
 	assert_eq(run.advance(), &"talk")
 	assert_true(run.data()["cut"] and run.data()["color"] == &"night" and not run.data().has("battle"), "カットシーンは、会話の場面に cut の印を付けて渡す")
+	assert_eq(run.advance(), &"talk")
+	assert_true(run.data().has("cut_board") and run.data()["beats"].size() == run.data()["lines"].size() + 1 and not run.data().has("battle"),
+		"盤のカットシーンは、台本と出来事の塊を渡す（話の盤の兵は立たせない）")
+	assert_eq(run.data()["look"], episode.look, "place が無ければ、話の盤の景色")
 	assert_eq([run.advance(), run.advance(), run.advance()], [&"talk", Story.SORTIE, &"talk"])
 	assert_true(run.data().has("battle") and not run.data()["after"] and run.data()["look"] == episode.look, "話の盤の会話は、初期位置の兵")
 	assert_eq([run.advance(), run.advance()], [&"battle", &"talk"])

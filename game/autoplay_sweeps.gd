@@ -148,6 +148,8 @@ func _read_talk(app: Node, episode: RefCounted, scene: RefCounted) -> void:
 	for row: RefCounted in scene.lines:
 		if not row.holds(story.answer_of):
 			continue
+		while talk.is_beat_playing():  # 盤のカットシーン: 兵が動き終えるまで、文は出ない
+			await app.get_tree().process_frame
 		_expect(talk.line_index() == at and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [at + 1, talk.line_text()])
 		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [at + 1, talk.speaker()])
 		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）

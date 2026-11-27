@@ -1,4 +1,4 @@
-extends "res://game/talk_screen/talk_ask.gd"
+extends "res://game/talk_screen/talk_board.gd"
 ## 会話の場面（docs/story.md）。話し手の姿（駒の 3D の形。talk_figure.gd）を左右に立たせ、下に話し手の名前の札（陣営の色）と文の枠。
 ## 人の軍の話し手は左、敵の軍の話し手は右。話している側を明るく大きく、話していない側を暗く小さく。背景は対戦と同じ景色（backdrop.gd）。
 ## 立つ所は左右に 1 つずつ。同じ所に立つ話し手が何人かいれば、いちばん近くに話した人（まだ誰も話していなければ、次に話す人）が立つ。
@@ -13,7 +13,12 @@ extends "res://game/talk_screen/talk_ask.gd"
 ##   「次の話へ」（その話の流れを始める。Enter でも）か「話の一覧へ」（Run.NEXT。流れの行き先）。右クリックで最後の文へ戻る。
 ##
 ## ここは、組み立て（_ready）、入力、文の送り。役割ごとのファイル（game/talk_screen/）を、次の順に継ぐ:
-## talk_base.gd（調整値・変数・小さな道具）→ talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ ここ。
+## talk_base.gd（調整値・変数・小さな道具）→ talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）
+## → talk_board.gd（盤のカットシーンの舞台と出来事の塊）→ ここ。
+##
+## 盤のカットシーン（"cut_board"。docs/story.md の「盤のカットシーン」）: 背景は舞台（台本の兵が動く盤）。話し手の姿と見出しは出さない。
+## 文の前に出来事の塊があれば、それを再生してから文を出す（再生の間は文の枠を消し、クリックで進めない）。最後の文のあとの塊は、再生してから終える。
+## 「スキップ」は、残りの塊を見せずに終わりの盤まで済ませてから終える。盤の動きをまたいで、右クリックで前の文へは戻れない。
 
 
 func _ready() -> void:
@@ -33,10 +38,13 @@ func _ready() -> void:
 	var people: Dictionary = UnitLooks.assign_people(shown.units, story_battle.cast_looks()) if shown != null else {}
 	# カットシーン（docs/story.md の「カットシーン」）: 文の枠も話し手も出さず、背景（景色か、色の幕）の上に、地の文を真ん中に出す。
 	var cut: bool = talk.get("cut", false)
+	var on_board := is_board_cut()
 	var curtain: StringName = talk.get("color", &"")
 	var layer := CanvasLayer.new()
 	_layer = layer
-	if CUT_COLORS.has(curtain):
+	if on_board:
+		_make_cut_stage()
+	elif CUT_COLORS.has(curtain):
 		var fill := ColorRect.new()
 		fill.color = CUT_COLORS[curtain]
 		fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -49,7 +57,7 @@ func _ready() -> void:
 	add_child(layer)
 	# 背景の盤を少し沈め、話し手の姿と文を浮かせる。
 	var shade := ColorRect.new()
-	shade.color = Color(Palette.SHADE, CUT_SHADE if cut else BACKDROP_SHADE)
+	shade.color = Color(Palette.SHADE, CUT_SHADE if cut or on_board else BACKDROP_SHADE)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -71,7 +79,7 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	heading.text = talk.get("title", "")
-	heading.modulate.a = 0.0 if cut else 1.0  # カットシーンは見出しを出さない（場所は取ったまま）
+	heading.modulate.a = 0.0 if cut or on_board else 1.0  # カットシーンは見出しを出さない（場所は取ったまま）
 	root.add_child(heading)
 
 	_stage = Control.new()
@@ -79,7 +87,8 @@ func _ready() -> void:
 	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stage.resized.connect(_place_figures)
 	root.add_child(_stage)
-	_make_figures()
+	if not on_board:
+		_make_figures()  # 盤のカットシーンは、盤の兵が話し手（姿は立たせない）
 	_build_options()
 
 	var bottom := VBoxContainer.new()
@@ -193,6 +202,7 @@ func _ready() -> void:
 	box_style.content_margin_top = 18.0
 	box_style.content_margin_bottom = 12.0
 	var box := PanelContainer.new()
+	_box = box
 	box.add_theme_stylebox_override("panel", box_style)
 	box.custom_minimum_size = Vector2(BOX_WIDTH, BOX_HEIGHT)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -249,7 +259,28 @@ func _ready() -> void:
 	_log.opened.connect(func() -> void: context.play_sound(&"menu_open"))
 	_log.closed.connect(func() -> void: context.play_sound(&"menu_close"))
 
-	_show_line(0)
+	if on_board:
+		_go_to_line(0)
+	else:
+		_show_line(0)
+
+
+## 盤のカットシーン: 文 index の前の塊を再生してから（無ければすぐ）、文 index を出す。最後の文のあと（index が文の数）なら、終える。
+func _go_to_line(index: int) -> void:
+	if index >= _beat_at and not _beat_before(index).is_empty():
+		_beat_playing = index
+		_set_text_shown(false)
+		await _cut_stage.play(_beat_before(index))
+		_beat_playing = -1
+		_beat_at = index + 1
+		if _board_skipped:
+			return  # スキップが、残りを済ませて終える
+	_beat_at = maxi(_beat_at, index + 1)
+	if index >= line_count():
+		_end()
+		return
+	_show_line(index)
+	_set_text_shown(true)
 
 
 ## 会話のログを開く（これまでに出した文。いまの文まで）。
@@ -311,6 +342,8 @@ func resume_label() -> String:
 
 ## 次へ: 文が出きる前なら出しきる。出ていたら次の文へ。最後の文のあとは、会話を終える。
 func press_next() -> void:
+	if is_beat_playing() or _board_skipped:
+		return  # 兵が動いている間は、文を進めない
 	if not is_line_shown():
 		_shown = _line_length()
 		_text.visible_characters = -1
@@ -319,7 +352,11 @@ func press_next() -> void:
 	if not _choice_here().is_empty():
 		_ask_if_due()  # 選ばせる行は、答えを選ぶまで進まない
 		return
-	if _index + 1 < line_count():
+	if is_board_cut():
+		if _index + 1 < line_count():
+			context.play_sound(&"ui_click")
+		_go_to_line(_index + 1)
+	elif _index + 1 < line_count():
 		context.play_sound(&"ui_click")
 		_show_line(_index + 1)
 	else:
@@ -328,7 +365,7 @@ func press_next() -> void:
 
 ## 1 つ前の文へ戻る（最初の文なら何もしない）。戻った文は出しきって見せる。
 func press_back() -> void:
-	if _index == 0:
+	if _index == 0 or is_beat_playing() or _board_skipped or _moves_before(_index):
 		return
 	context.play_sound(&"ui_back")
 	_show_line(_index - 1)
@@ -340,6 +377,14 @@ func press_back() -> void:
 ## 「飛ばす」: 残りを読まずに会話を終える。この先に知らせの行か、選ばせる行があれば、そこへ飛ぶ（知らせは読ませ、答えは選ばせる）。
 func press_skip() -> void:
 	if is_asking():
+		return
+	if is_board_cut():
+		if _board_skipped:
+			return
+		_board_skipped = true
+		context.play_sound(&"ui_click")
+		await _cut_stage.finish(_unplayed_events())
+		_end()
 		return
 	for index in range(_index, line_count()):
 		var asks: bool = not (_lines[index] as Dictionary).get("choice", {}).is_empty()

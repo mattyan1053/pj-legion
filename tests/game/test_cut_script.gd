@@ -77,7 +77,7 @@ func test_script_rows_become_events_cut_by_lines() -> void:
 
 func test_feeding_the_events_reaches_the_end_board() -> void:
 	var cut := CutScript.read(_board(), _rows(SCRIPT))
-	var replay: ReplayBoard = cut.start
+	var replay: ReplayBoard = cut.fresh_start()
 	for event in cut.all_events():
 		replay.feed(event)
 	var left: Array = []
@@ -88,6 +88,8 @@ func test_feeding_the_events_reaches_the_end_board() -> void:
 	var scout: ReplayBoard.Piece = replay.piece(cut.names["斥候"])
 	assert_eq([scout.cell, scout.hp], [Vector2i(5, 1), scout.max_hp - 3], "歩いた先のマスと、残りの HP")
 	assert_true(replay.piece(cut.names["隊長"]).statuses.has(Status.Type.BARRIER), "状態が付く")
+	var again: ReplayBoard = cut.fresh_start()
+	assert_true(again != replay and again.pieces.size() == 3 and again.piece(cut.names["斥候"]).cell == Vector2i(9, 1), "再生のたびに、新しい始めの盤を組める")
 
 
 func test_mistakes_are_reported_with_the_line() -> void:

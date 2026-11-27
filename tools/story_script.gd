@@ -103,7 +103,7 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	for scene: Episode.StoryScene in episode.scenes:
 		if scene.is_talk():
 			if scene.name != "":
-				lines.append(("### カットシーン「%s」" if scene.cut else "### 場面「%s」") % scene.name)
+				lines.append(("### カットシーン「%s」" if scene.cut else "### 盤のカットシーン「%s」" if scene.board_cut != null else "### 場面「%s」") % scene.name)
 			else:
 				lines.append("### 対戦のあと" if fought else "### 対戦の前")
 			lines.append("")

@@ -668,7 +668,13 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 				if scene.cut:
 					talk["cut"] = true  # カットシーン: 文の枠も話し手も出さず、背景の上に文を出す（talk_screen.gd）
 					talk["color"] = scene.color
-				if scene.place != null:
+				if scene.board_cut != null:
+					# 盤のカットシーン: 背景は台本の盤（place か話の盤）で、台本の兵だけが立って動く（talk_screen.gd）。
+					talk["cut_board"] = scene.board_cut
+					talk["beats"] = scene.beats
+					talk["look"] = scene.look if scene.place != null else episode.look
+					talk["looks"] = person_looks(episode)
+				elif scene.place != null:
 					# 別の場所の会話: 背景はその場所の景色（兵は立たせない）。
 					talk["board"] = scene.place.make_board()
 					talk["look"] = scene.look
@@ -696,6 +702,17 @@ static func deck_run(of_campaign: Campaign, back_to: StringName, back_label: Str
 	detour.add(SceneFlow.DECKS, {"rules": of_campaign.rules_id, "back_label": back_label})
 	detour.add(back_to)
 	return detour
+
+
+## 話し手の名前 -> 人物の形（unit_looks.gd の PERSONS の名前。[cast] の姿に人物の形があるか、将の姿のある陣営の将）。
+## 盤のカットシーンで、話し手と同じ名前の兵を、その人の形で立たせる。
+static func person_looks(episode: Episode) -> Dictionary:
+	var looks := {}
+	for i in mini(episode.speakers.size(), episode.figures.size()):
+		var look: StringName = (episode.figures[i] as Dictionary).get("look", &"")
+		if look != &"":
+			looks[episode.speakers[i]] = look
+	return looks
 
 
 ## 物語の並びで episode の次の話（物語の最後なら null）。

@@ -32,6 +32,10 @@ var look := &""
 var cut := false
 ## カットシーンの背景を、景色でなく色の幕にするなら、その名前（COLORS の鍵。空なら景色）。
 var color := &""
+## 盤のカットシーン（[board 名前]）なら、読んだ台本（cut_script.gd）。ほかは null。背景は place か話の盤で、兵は台本の兵だけ。
+var board_cut: RefCounted
+## 盤のカットシーンの出来事の塊: [i] は lines[i] の前に、最後（lines の数）は最後の文のあとに再生する（文の行の数 + 1）。
+var beats: Array[Array] = []
 ## 曲を、話のファイルが選んで書いたか（検査が、どの会話にも曲を選んであることを確かめる）。
 var music_written := false
 ## 会話の行（TALK だけ）。
