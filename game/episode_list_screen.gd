@@ -391,8 +391,9 @@ func _build_card(episode: Episode) -> Button:
 		# 伏せた縮図: 封をした札（暗い地に斜めの細い線、薄い国の紋）の上に「？？？」。後ろの景色は透かさない。
 		map.add_child(Sealed.new(context.story.campaign.army))
 	map.add_child(MapFrame.new())  # 真鍮の縁と四隅の鉤（選べない話は、縮図ごと沈む）
-	if available and episode.has_battle():  # 対戦の無い話に、敵の顔は無い
-		map.add_child(face_of(episode))
+	if available:
+		if episode.has_battle():  # 対戦の無い話に、敵の顔は無い（景色だけ）
+			map.add_child(face_of(episode))
 	else:
 		var hidden := _label(Text.t("story.episodes.hidden"), 30)
 		hidden.add_theme_font_override("font", UiTheme.FONT_HEADING)
