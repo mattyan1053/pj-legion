@@ -47,7 +47,7 @@ func _read_cast(file: RefCounted) -> void:
 			speaker_sides.append(side)
 			figures.append(figure)
 	for side: int in [0, 1]:
-		if not main_found[side]:
+		if not main_found[side] and (side == 0 or _fights):  # 対戦の無い話は、敵の軍の話し手がいなくてよい
 			var word: String = SIDE_WORDS.find_key(side)
 			file.problem(file.line_of("cast"), "[cast] に、%s の話し手が 1 人もいない（「名前 = %s」）" % ["人の軍" if side == 0 else "敵の軍", word])
 
@@ -90,6 +90,8 @@ static func read_figure(file: RefCounted, line: int, value: String) -> Dictionar
 func _read_talks(file: RefCounted) -> void:
 	for section: String in ["before", "after", "lost"]:
 		var optional := section == "lost"
+		if written_as_scenes and not optional:
+			continue  # 場面の節で書く話の会話は、[talk 名前]（episode_scenes.gd）
 		var max_lines := LOST_MAX_LINES if optional else TALK_MAX_LINES
 		var max_chars := LOST_MAX_CHARS if optional else TALK_MAX_CHARS
 		var rows: Array[TalkLine] = []

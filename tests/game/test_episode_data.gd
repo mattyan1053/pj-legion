@@ -53,7 +53,10 @@ func test_a_dropped_folder_becomes_a_campaign() -> void:
 	var episode := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
 	_write(dir.path_join("zeta/story.txt"), story.replace("rules = template", "rules = zeta").replace("order = 9", "order = 1"))
 	_write(dir.path_join("zeta/first_battle.txt"), episode)
-	_write(dir.path_join("alpha/story.txt"), story.replace("rules = template", "rules = alpha").replace("first_battle", "second_battle"))
+	var scenes := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("scenes.txt"))
+	_write(dir.path_join("zeta/scenes.txt"), scenes)
+	_write(dir.path_join("alpha/more_scenes.txt"), scenes)
+	_write(dir.path_join("alpha/story.txt"), story.replace("rules = template", "rules = alpha").replace("first_battle", "second_battle").replace("\nscenes", "\nmore_scenes"))
 	_write(dir.path_join("alpha/second_battle.txt"), episode)
 	_write(dir.path_join("_draft/story.txt"), "壊れた下書き")
 	var found: Dictionary = Campaign.load_all(dir)
@@ -61,7 +64,7 @@ func test_a_dropped_folder_becomes_a_campaign() -> void:
 	assert_eq(campaigns.map(func(each: Campaign) -> String: return String(each.id)), ["zeta", "alpha"], "order の小さい順。_ で始まるフォルダは読まない")
 	for each: Campaign in campaigns:
 		assert_eq(each.problems, PackedStringArray(), String(each.id))
-		assert_eq(each.episodes.size(), 1)
+		assert_eq(each.episodes.size(), 2)
 	assert_eq(found["problems"].size(), 1, "story.txt の無いフォルダ: %s" % found["problems"])
 	assert_true((found["problems"][0] as String).contains("empty"))
 	for folder: String in ["zeta", "alpha", "_draft", "empty"]:
@@ -81,7 +84,7 @@ func test_the_template_reads_without_problems() -> void:
 	var campaign: Campaign = Campaign.load_file(TEMPLATE)
 	assert_eq(campaign.problems, PackedStringArray(), "見本の物語")
 	assert_eq(campaign.id, &"_template", "物語の id はフォルダの名前")
-	assert_eq(campaign.episodes.size(), 1)
+	assert_eq(campaign.episodes.size(), 2, "見本の話は 2 つ（[before]・[after] の書き方と、場面の節の書き方）")
 	var episode: Episode = campaign.episodes[0]
 	assert_ne(episode.title, "")
 	assert_false(episode.before.is_empty())
@@ -94,6 +97,54 @@ func test_the_template_reads_without_problems() -> void:
 		if UnitKind.is_monster(kind as UnitKind.Id):
 			assert_true(RegEx.create_from_string("#   魔物:.*\\b%s\\b" % String(UnitKind.Id.keys()[kind]).to_lower()).search(text) != null,
 				"見本の魔物の一覧に %s が無い" % String(UnitKind.Id.keys()[kind]).to_lower())
+
+
+## 場面の節の書き方（[talk 名前]・[sortie]・[battle]）: 書いた順が場面の順。会話の場面ごとに、背景の場所と曲。
+func test_the_scenes_template_reads_as_a_list_of_scenes() -> void:
+	var Kind := Episode.StoryScene.Kind
+	var episode: Episode = Campaign.load_file(TEMPLATE).episodes[1]
+	assert_true(episode.written_as_scenes and episode.has_battle())
+	assert_eq(episode.scenes.map(func(scene: RefCounted) -> int: return scene.kind), [Kind.TALK, Kind.TALK, Kind.SORTIE, Kind.TALK, Kind.BATTLE, Kind.TALK])
+	var talks := episode.talk_scenes()
+	assert_eq(talks.map(func(scene: RefCounted) -> String: return scene.name), ["練兵場", "尾根の下", "盤の前", "勝ったあと"])
+	assert_eq(talks.map(func(scene: RefCounted) -> bool: return scene.once), [true, true, true, false], "対戦より前の会話は 1 度だけ")
+	assert_eq(talks.map(func(scene: RefCounted) -> StringName: return scene.music), [&"talk", &"talk_calm", &"talk", &"talk_bright"])
+	assert_true(talks[0].place != null and talks[0].look == &"drill_yard", "place の場所の景色")
+	assert_eq(talks[1].look, &"crystal_night", "look で景色を替える")
+	assert_true(talks[2].place == null and talks[2].look == &"", "place が無ければ、話の盤")
+	assert_true(talks[0].lines[0].is_narration())
+	assert_eq(episode.all_lines().size(), 3 + 2 + 2 + 1 + 2 + 1, "会話の行、途中の台詞、負けの台詞")
+
+
+## 場面の節の書き方の書き間違いを、行で弾く。
+func test_scene_sections_are_checked() -> void:
+	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("scenes.txt"))
+	var cases := {
+		"[before] と混ぜる": [text + "\n[before]\n少尉: あ\n", "[before] は書かない"],
+		"before_music": [text.replace("map = ridge_path", "map = ridge_path\nbefore_music = talk"), "before_music は書かない"],
+		"知らない場所": [text.replace("place = drill_field", "place = nowhere"), "マップ「nowhere」"],
+		"知らない設定": [text.replace("place = drill_field", "plase = drill_field"), "知らない設定「plase」"],
+		"設定があと": [text.replace("少尉: ああ。今夜は早く寝ておけ。", "少尉: ああ。\nmusic = talk_calm"), "会話の行より前"],
+		"place の無い look": [text.replace("[talk 盤の前]", "[talk 盤の前]\nlook = ridge"), "look は place と組"],
+		"あとの会話に対戦の曲": [text.replace("music = talk_bright", "music = battle"), "対戦の曲"],
+		"対戦のあとの出撃準備": [text.replace("[sortie]", "").replace("[cues]", "[sortie]\n[cues]"), "[sortie] は [battle] より前"],
+		"印の中身": [text.replace("[battle]", "[battle]\n少尉: あ"), "場面の順の印"],
+		"名前の無い会話": [text.replace("[talk 盤の前]", "[talk]"), "知らない節 [talk]"],
+		"空の会話": [text.replace("[sortie]", "[talk 空]\nmusic = talk\n[sortie]"), "[talk 空] の会話が無い"],
+		"対戦が無いのに敵": [text.replace("[battle]", "").replace("[sortie]", ""), "対戦の無い話"],
+	}
+	for name: String in cases:
+		var problems: PackedStringArray = Episode.parse(cases[name][0]).problems
+		assert_true(problems.size() >= 1 and "\n".join(problems).contains(cases[name][1]), "%s: %s" % [name, problems])
+
+
+## 対戦の無い話: [battle] を書かない。敵の軍も、敵の話し手も要らない。
+func test_an_episode_without_a_battle_reads() -> void:
+	var episode: Episode = Episode.parse("[episode]\ntitle = 読むだけの話\nmap = ridge_path\n[cast]\n少尉 = ally\n[talk 夜]\nmusic = talk\n少尉: 静かだ。\n[talk 朝]\nplace = drill_field\nmusic = talk_calm\n> 朝になった。\n")
+	assert_eq(episode.problems, PackedStringArray())
+	assert_false(episode.has_battle())
+	assert_eq(episode.scenes.size(), 2, "出撃準備も対戦も無い")
+	assert_false(episode.scenes[0].once)
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
