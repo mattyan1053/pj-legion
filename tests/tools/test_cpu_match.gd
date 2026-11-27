@@ -322,3 +322,15 @@ func test_a_stronghold_win_is_counted_as_its_own_ending() -> void:
 	var outcome := CpuMatch.play(battle, 5)
 	assert_eq(outcome.ending, "point")
 	assert_eq(outcome.winner, Unit.Side.PLAYER1)
+
+
+func test_tool_counts_the_cards_each_side_played() -> void:
+	# 手札が入の対戦（docs/hand-cards.md）: 使った札を陣営ごとに数え、--list=1 の CARDS の行にする。
+	var outcome := CpuMatch.Outcome.new()
+	var battle := Battle.new(Board.new(Vector2i(3, 3)))
+	for card: Card.Id in [Card.Id.WARD, Card.Id.MARCH, Card.Id.WARD]:
+		CpuMatch._count(outcome, CardPlayedEvent.new(Unit.Side.PLAYER2, card, 0, Board.NO_CELL, Board.NO_CELL, 2), battle, Unit.Side.PLAYER2)
+	assert_eq(outcome.cards, [{}, {Card.Id.WARD: 2, Card.Id.MARCH: 1}] as Array[Dictionary])
+	var tool := load("res://tools/cpu_matches.gd")
+	assert_eq(tool._cards_text(outcome.cards[1]), "march:1,ward:2")
+	assert_eq(tool._cards_text(outcome.cards[0]), "-")

@@ -62,6 +62,7 @@
 | 持ち物 | `docs/player-loadout.md` の「持ち物を足すとき」 |
 | スキル | `docs/active-skills.md` の「スキルを足すとき」 |
 | 必殺技 | `docs/tactical-ult.md` の「必殺技を足すとき」 |
+| 手札の札（試し） | `docs/hand-cards.md` の「札を足すとき」 |
 | 出来事 | 読む側の見張りと一緒に、手順が入る（`docs/code-health.md` の「直す順のおすすめ」の 2）。それまでは、上の「対戦の 1 手」の 4 と 5 の読む側を全部見る（再生 `docs/battle-view.md` の「ルールとのつなぎ方」、ログ `docs/battle-log.md`） |
 | 話・物語 | `docs/story.md` の「話を 1 つ足す」「物語を 1 つ足す」 |
 | マップ | `docs/hand-map.md` の「マップを足すとき」 |
