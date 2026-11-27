@@ -436,9 +436,10 @@ func test_the_sortie_shows_start_levels_above_one() -> void:
 	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
 	assert_eq(sortie.start_levels(Unit.Side.PLAYER1), [2, 2, 1])
 	assert_eq(sortie.start_levels(Unit.Side.PLAYER2), [], "敵は始めのレベルを決めていない")
-	var line := DeckText.deck_summary(sortie.chosen_deck(), sortie.start_levels(Unit.Side.PLAYER1))
-	assert_true(line.contains("%s Lv2" % Names.kind(UnitKind.Id.PALADIN)), line)
-	assert_false(line.contains("Lv1"), "レベル 1 の駒には出さない: %s" % line)
+	sortie.choose(sortie.chosen_id())
+	var tips := "\n".join(sortie.face_tips(Unit.Side.PLAYER1))
+	assert_true(tips.contains("%s Lv2" % Names.kind(UnitKind.Id.PALADIN)), tips)
+	assert_false(tips.contains("Lv1"), "レベル 1 の駒には出さない: %s" % tips)
 	root.free()
 
 
