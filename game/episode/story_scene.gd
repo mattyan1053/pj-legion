@@ -2,7 +2,8 @@ extends RefCounted
 ## 話の場面 1 つ（話は、場面の列 episode.gd の scenes を順に通す。docs/story.md の「場面の列」）。ノードに依存しない。
 ## 話の流れ（story.gd の run_of）、台本・声・折り返しの道具、自動の対戦、テストは、この列を順に読む。
 ##
-## いまの話のファイルからは、どの話も 出撃準備 → 会話（[before]）→ 対戦 → 会話（[after]）の 4 つ（episode.gd の _build_scenes）。
+## 話のファイルの書き方は 2 つ（episode.gd の _build_scenes）: [before]・[after] の話は 出撃準備 → 会話 → 対戦 → 会話 の 4 つ。
+## 場面の節（[talk 名前]・[sortie]・[battle]）で書いた話は、書いた順（game/episode/episode_scenes.gd）。
 ## 場面の種類を足すときは、Kind に足し、run_of がその種類を流れ（run.gd）のどの場面にするかを足す（docs/story.md）。
 
 const TalkLine := preload("res://game/episode/talk_line.gd")
@@ -16,8 +17,16 @@ enum Kind {
 }
 
 var kind := Kind.TALK
-## 話のファイルのどの節から来たか（"before"・"after" など。道具が見出しと書き間違いの場所に使う。対戦・出撃準備は空）。
+## 話のファイルのどの節から来たか（"before"・"after"・"talk 兵舎" など。道具が見出しと書き間違いの場所に使う。対戦・出撃準備は空）。
 var part := ""
+## 場面の名前（[talk 名前] の名前。台本の見出しに出す。[before]・[after] の会話は空）。
+var name := ""
+## 背景にする別の場所（手で作ったマップ。[talk 名前] の place）。null なら、話の盤（兵を立たせる）。
+var place: HandMap
+## 背景の見た目（place のマップの見た目か、場面の look。place が無ければ空 = 話の盤の見た目）。
+var look := &""
+## 曲を、話のファイルが選んで書いたか（検査が、どの会話にも曲を選んであることを確かめる）。
+var music_written := false
 ## 会話の行（TALK だけ）。
 var lines: Array[TalkLine] = []
 ## 曲（TALK だけ。空なら場面の表の曲）。

@@ -6,7 +6,7 @@ extends "res://game/episode/episode_base.gd"
 func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if not file.has(section):
 		# 人の側は、書かなければ「出撃準備で選んだ部隊を、いつもの初期位置に」。敵の側は、軍と部隊が要る。
-		if side == 1:
+		if side == 1 and _fights:
 			file.problem(1, "[enemy] の節が無い（敵の軍 army と、部隊 unit を書く）")
 		return
 	var keys := ["unit", "deploy", "trait", "oath", "name", "short"]

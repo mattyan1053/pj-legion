@@ -10,6 +10,9 @@ const Episode := preload("res://game/episode.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const Run := preload("res://game/run.gd")
+const Campaign := preload("res://game/campaign.gd")
+const AppContext := preload("res://game/app_context.gd")
+const TalkScreen := preload("res://game/talk_screen.gd")
 const Catalog := preload("res://game/sound_catalog.gd")
 const Scene := Episode.StoryScene
 
@@ -49,6 +52,8 @@ func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
 func test_every_episode_is_a_list_of_scenes_built_from_its_sections() -> void:
 	var Kind := Episode.StoryScene.Kind
 	for episode: Episode in Story.all_episodes():
+		if episode.written_as_scenes:
+			continue  # 場面の節で書いた話は、書いた順（test_episode_data.gd）
 		assert_eq(episode.scenes.map(func(scene: RefCounted) -> int: return scene.kind), [Kind.SORTIE, Kind.TALK, Kind.BATTLE, Kind.TALK], episode.id)
 		assert_true(episode.talk_before_battle().lines == episode.before and episode.talk_before_battle().once, episode.id)
 		assert_eq(episode.talk_before_battle().music, episode.before_talk_music())
@@ -68,8 +73,8 @@ func test_the_run_follows_the_list_of_scenes() -> void:
 	assert_eq(run.scene(), &"talk", "出撃準備も対戦も無い話は、会話から始まる")
 	assert_eq(run.data()["lines"].size(), episode.before.size())
 	assert_eq(run.data()["music"], &"talk")
-	assert_false(run.data()["after"], "対戦の前の会話は、初期位置の駒を背景に立たせる")
-	assert_false(run.data().has("next_episode"), "「次の話へ」は最後の会話だけ")
+	assert_false(run.data().has("battle"), "対戦の無い話の会話は、背景に兵を立たせない")
+	assert_false(run.data().has("next_episode") or run.data().has("clears"), "「次の話へ」と、読み終えたときのクリアは、最後の会話だけ")
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["lines"].size(), episode.after.size())
 	assert_eq(run.data()["next_episode"], Story.military().episodes[2])
@@ -81,6 +86,47 @@ func test_the_run_follows_the_list_of_scenes() -> void:
 	assert_eq([run.scene(), run.advance(), run.advance(), run.advance()], [Story.SORTIE, &"talk", &"battle", Story.EPISODE_LIST])
 	assert_eq(StoryBattle.new(episode, null).after_result_music(), Catalog.AFTER_TALK_MUSIC)
 	episode.scenes = kept
+
+
+## 場面の節で書いた話の流れ: 別の場所の会話は、その場所の景色を背景にする（兵は立たせない）。話の盤の会話は、兵を立たせる。
+func test_the_run_of_a_scenes_episode_gives_each_talk_its_place() -> void:
+	var episode: Episode = Campaign.load_file("res://game/story/_template/story.txt").episodes[1]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	assert_eq(run.scene(), &"talk")
+	assert_false(run.data().has("battle"), "別の場所の会話に、盤の兵は立たせない")
+	assert_eq(run.data()["look"], &"drill_yard")
+	assert_eq(run.data()["board"].size, episode.scenes[0].place.make_board().size)
+	assert_eq([run.advance(), run.advance(), run.advance()], [&"talk", Story.SORTIE, &"talk"])
+	assert_true(run.data().has("battle") and not run.data()["after"] and run.data()["look"] == episode.look, "話の盤の会話は、初期位置の兵")
+	assert_eq([run.advance(), run.advance()], [&"battle", &"talk"])
+	assert_true(run.data()["after"] and not run.data().has("clears"), "対戦のある話は、対戦に勝ったときにクリア")
+	# 決着の画面の「部隊変更」で戻るのは出撃準備（対戦より前の会話は、もう出さない）。
+	run.back()
+	assert_eq(run.back(), Story.SORTIE)
+	assert_eq(run.advance(), &"battle")
+
+
+## 対戦の無い話: 最後の会話に、クリアにする話の id を渡す（talk_screen.gd が、読み終えたときにクリアと書く）。
+func test_an_episode_without_a_battle_clears_at_the_end_of_its_last_talk() -> void:
+	var episode: Episode = Episode.parse("[episode]\ntitle = 読むだけの話\nmap = ridge_path\n[cast]\n少尉 = ally\n[talk 夜]\nmusic = talk\n少尉: 静かだ。\n[talk 朝]\nmusic = talk_calm\n> 朝になった。\n", "res://probe/quiet_night.txt")
+	var run := Story.run_of(episode, null)
+	assert_eq(run.scene(), &"talk", "出撃準備は無い")
+	assert_false(run.data().has("clears") or run.data().has("battle"))
+	assert_eq(run.advance(), &"talk")
+	assert_eq(run.data()["clears"], &"quiet_night")
+	assert_eq(run.advance(), Story.EPISODE_LIST)
+	# 会話の場面が、読み終えたときにクリアと書く。
+	var context := AppContext.new()
+	context.story = Story.new()
+	var talk: Node = TalkScreen.new()
+	talk.context = context
+	talk.talk = {"title": "", "lines": [{"side": 0, "name": "少尉", "text": "静かだ。"}], "clears": &"quiet_night"}
+	await settle(talk)
+	assert_false(context.story.is_cleared(&"quiet_night"))
+	talk.press_next()
+	talk.press_next()
+	assert_true(context.story.is_cleared(&"quiet_night"), "最後の文を送ると、クリア")
+	talk.free()
 
 
 func test_changing_the_squad_after_a_battle_skips_the_talk_before() -> void:

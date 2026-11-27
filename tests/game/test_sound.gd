@@ -91,14 +91,19 @@ func test_story_music_comes_from_the_episode() -> void:
 		assert_true(Catalog.has_music(track), "%s の対戦の曲 %s が表にある" % [episode.id, track])
 		if episode.music == &"":
 			assert_eq(track, Catalog.battle_music(episode.look), "%s: music が無ければ、盤の見た目の曲" % episode.id)
-		var before := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.talk_before_battle().lines, episode.talk_before_battle().music))
-		var after := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.talk_after_battle().lines, episode.talk_after_battle().music))
-		assert_true(Catalog.has_music(before), "%s の前の会話の曲 %s が表にある" % [episode.id, before])
-		assert_true(Catalog.has_music(after), "%s のあとの会話の曲 %s が表にある" % [episode.id, after])
-		assert_true(episode.before_music != &"" and episode.after_music != &"", "%s: 前の会話とあとの会話の曲を、話のファイルが選んでいる" % episode.id)
-		if Catalog.is_battle_music(before):
-			assert_eq(before, track, "%s: 前の会話の対戦の曲は、その話の対戦の曲（そのまま対戦へつながる）" % episode.id)
-		assert_false(Catalog.is_battle_music(after), "%s: あとの会話に戦いの曲を鳴らさない" % episode.id)
+		# 会話の場面ごとに: 曲が表にある、話のファイルが選んである、対戦より前の対戦の曲はその話の対戦の曲、対戦のあとに戦いの曲は鳴らさない。
+		var fought := false
+		for scene: RefCounted in episode.scenes:
+			fought = fought or scene.is_battle()
+			if not scene.is_talk():
+				continue
+			var played := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, scene.lines, scene.music))
+			assert_true(Catalog.has_music(played), "%s [%s] の曲 %s が表にある" % [episode.id, scene.part, played])
+			assert_true(scene.music_written, "%s [%s]: 会話の曲を、話のファイルが選んでいる" % [episode.id, scene.part])
+			if fought:
+				assert_false(Catalog.is_battle_music(played), "%s [%s]: 対戦のあとの会話に戦いの曲を鳴らさない" % [episode.id, scene.part])
+			elif Catalog.is_battle_music(played):
+				assert_eq(played, track, "%s [%s]: 対戦より前の会話の対戦の曲は、その話の対戦の曲（そのまま対戦へつながる）" % [episode.id, scene.part])
 	var hold: RefCounted = Story.military().find_episode(&"ridge_hold")
 	assert_eq(StoryBattle.new(hold, null).music(), &"battle_tense", "守り切る話は、緊迫した曲")
 

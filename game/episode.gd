@@ -1,4 +1,4 @@
-extends "res://game/episode/episode_talks.gd"
+extends "res://game/episode/episode_scenes.gd"
 ## ストーリーの話 1 つ（docs/story.md の「話のファイル」）。game/story/<物語>/ の 1 ファイルを読んだもの。ノードに依存しない。
 ##
 ## 読むときに、書き間違い（知らないキー、無い駒・装備・マップ・見た目・曲、置けないマス、勝ち方の矛盾、会話の話し手、
@@ -6,7 +6,8 @@ extends "res://game/episode/episode_talks.gd"
 ## 読む側（画面、道具、テスト）は、ここの値をそのまま使う（無い欄の値も、ここで決めてある）。
 ##
 ## ここは、読む入口と、節 [episode]・[unlock]。話のファイルの節ごとのファイル（game/episode/）を、次の順に継ぐ:
-## episode_base.gd（調整値・読んだ値・部隊と曲）→ episode_sides.gd（[ally]・[enemy]）→ episode_talks.gd（[cast]・[before]・[after]・[lost]・[cues]）→ ここ。
+## episode_base.gd（調整値・読んだ値・部隊と曲）→ episode_sides.gd（[ally]・[enemy]）→ episode_talks.gd（[cast]・[before]・[after]・[lost]・[cues]）→
+## episode_scenes.gd（場面の列。[talk 名前]・[sortie]・[battle]）→ ここ。
 
 
 ## ファイル file_path を読む。
@@ -28,7 +29,8 @@ static func read(file: RefCounted) -> RefCounted:
 func _read(file: RefCounted) -> void:
 	path = file.path
 	id = StringName(path.get_file().get_basename())
-	file.check_sections(SECTIONS)
+	_find_format(file)
+	_check_sections(file)
 	_read_episode(file)
 	_read_unlock(file)
 	_read_side(file, "ally", 0)
@@ -39,18 +41,8 @@ func _read(file: RefCounted) -> void:
 	_read_cues(file)
 	_check_kingless(file)
 	_check_deploy(file)
-	_build_scenes()
+	_build_scenes(file)
 	problems.append_array(file.problems)
-
-
-## 場面の列: いまの話のファイルの欄（[before]・対戦・[after]）から組む。並べ替え・場面の種類を足すときは、ここ（と story_scene.gd）。
-func _build_scenes() -> void:
-	scenes = [
-		StoryScene.sortie(),
-		StoryScene.talk("before", before, before_talk_music(), true),
-		StoryScene.battle(),
-		StoryScene.talk("after", after, after_talk_music()),
-	]
 
 
 func _read_episode(file: RefCounted) -> void:

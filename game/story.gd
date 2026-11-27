@@ -562,7 +562,8 @@ func run_now(episode: Episode) -> Run:
 	return run_of(episode, default_deck(now), news)
 
 
-## 話 episode の流れ（run.gd）: 話の場面の列（episode.gd の scenes。いまは 出撃準備 → 会話（前）→ 対戦 → 会話（後））を順に並べ、終えたら話の一覧。
+## 話 episode の流れ（run.gd）: 話の場面の列（episode.gd の scenes。[before]・[after] の話は 出撃準備 → 会話（前）→ 対戦 → 会話（後））を順に並べ、終えたら話の一覧。
+## クリアの記録は、対戦のある話は対戦に勝ったとき（story_battle.gd の record_win）、対戦の無い話は最後の会話を読み終えたとき（会話に渡す "clears"）。
 ## 人の部隊は human_deck（出撃準備で選び直せる）。場面の種類ごとに、流れのどの場面にして何を渡すかは、ここだけで決める。
 ## 会話（前）は、出撃してから対戦の前に 1 度だけ出す（場面の once。決着の画面の「部隊変更」で出撃準備へ戻って出撃し直しても、もう出さない）。
 ## 対戦で負けたら、決着の画面から「同じマップで再戦」「部隊変更」（出撃準備へ）か「話の一覧へ」。勝ったら「次へ」で、あとの会話へ。
@@ -586,8 +587,13 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 				fought = true
 			Episode.StoryScene.Kind.TALK:
 				var talk := talk_of(episode, scene.lines, scene.music)
-				talk["battle"] = battle  # 背景の盤に、初期位置の駒か、決着したときの駒を立たせる（talk_screen.gd）
-				talk["after"] = fought
+				if scene.place != null:
+					# 別の場所の会話: 背景はその場所の景色（兵は立たせない）。
+					talk["board"] = scene.place.make_board()
+					talk["look"] = scene.look
+				elif episode.has_battle():
+					talk["battle"] = battle  # 背景の盤に、初期位置の駒か、決着したときの駒を立たせる（talk_screen.gd）
+					talk["after"] = fought
 				run.add(TALK, talk, scene.once)
 				last_talk = talk
 	if not last_talk.is_empty():
@@ -596,6 +602,8 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 			line.merge(news_line)
 			last_talk["lines"].append(line)
 		last_talk["next_episode"] = episode_after(episode)
+		if not episode.has_battle():
+			last_talk["clears"] = episode.id  # 対戦の無い話は、最後の会話を読み終えたらクリア（talk_screen.gd の _end）
 	return run
 
 
