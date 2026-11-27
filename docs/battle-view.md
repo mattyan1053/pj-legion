@@ -138,7 +138,7 @@
   画面は計算を持たず、それを予測のパネル（下の「戦闘予測のパネル」）に並べるだけ。樽の爆発が届くマスは `MapObject.blast_cells` で塗る。
 - 相手の駒（中立の駒も）を見ると、脅威範囲（`docs/threat-range.md`。`Threat.of()`）を薄い赤で塗る。
   敵の全員の脅威範囲（`Threat.against()`）は、スイッチで斜線を重ねる（上の「敵の攻撃範囲」）。
-- イベントの種類と再生するメソッドの対応は `battle_playback.gd` の `event_players()` に並べる。
+- イベントの種類と再生するメソッドの対応は `battle_playback/playback_base.gd` の `event_players()` に並べる。
   `rules/events/` にあるのに載っていない種類があると、テスト（`tests/game/test_event_playback.gd`）が落ちる。
 
 | イベント | 再生 |
@@ -159,9 +159,11 @@
 | `EvolutionOfferedEvent` | 紫の光と「進化できる！」。選択肢は、再生が終わってから出す |
 | `UnitEvolvedEvent` | 最大 HP を新しくし、足元に金の輪を付ける。紫の光と、進化先の名前（進化先は左下の駒の情報に出る） |
 | `BarrelExplodedEvent` | 攻撃の動きと当たり方 → 樽を消し、爆発の届いたマスを橙に塗る（続くダメージの再生の間も塗ったまま） |
-| `BarricadePlacedEvent`、`AreaEffectPlacedEvent` | 盤の上の効果を描き（下の「画面に出るもの」）、中心に持ち主の色の光と効果の名前を出す（スキルで置いたときは、名前は出さない。スキルの名前と形が見せている） |
+| `BarricadePlacedEvent`、`AreaEffectPlacedEvent`、`KnotPlacedEvent` | 盤の上の効果を描き（下の「画面に出るもの」）、中心に持ち主の色の光と効果の名前を出す（スキルで置いたときは、名前は出さない。スキルの名前と形が見せている） |
+| `RallyEvent` | 倒れた骸骨旗手のマスに、魔物の色の光と「旗が倒れた」（続く奮起は `StatusAppliedEvent` が見せる。`docs/monsters.md`） |
+| `BurstEvent` | 倒れた糸喰いの糸が弾けて届いたマスを橙に塗り、魔物の色の爆発と「弾けた」（続くダメージの再生の間も塗ったまま。`docs/monsters.md`） |
 | `FieldEffectTickedEvent` | 何も出さない（残りはマスの説明に出る） |
-| `FieldEffectRemovedEvent` | 効果を消す。盾が壊れたときは「盾が壊れた」と光 |
+| `FieldEffectRemovedEvent` | 効果を消す。盾が壊れたときは「盾が壊れた」、結び目が踏まれたときは「ほどけた」、結び目から魔物が戻ったときは「立ち直った」と光 |
 | `BarricadeDamagedEvent` | 攻撃の動きと当たり方 → 盾の上に「耐久 -N」 |
 | `SmokeBlockedEvent` | 攻撃の動きと当たり方 → 相手に灰色の光と「煙幕で防いだ」（HP は変わらない） |
 | `SanctuaryHealedEvent` | 泉と同じ（回復の数、HP の更新、光） |
@@ -173,6 +175,8 @@
 | `SkillReadyEvent` | 魔力解放のときだけ、駒の上に「スキル使用可」。クールダウンが明けただけのときは何も出さない（残りは、左下の駒の情報とメニューのスキルの項目に出る） |
 | `UltUsedEvent` | 上の帯のゲージを空にし、画面の全体を必殺技の色で一瞬光らせ、中央に「必殺技: 名前!!」を大きく出す（軍ごとの色）。続く効果（状態が付いた・スキルが使えるようになった）は、**駒ごとに順にではなく全員に同時に**見せる: 効果の掛かった駒に陣営の色の光の柱が立ち、それぞれの知らせが一度に出る（待つのは駒の数に依らず 1 回） |
 | `UltReadyEvent` | 上の帯のゲージを「READY」にする（ゲージは、READY の間ゆっくり金色に明滅する） |
+| `TraitTriggeredEvent` | 軍略を持つ側の兵の上に、軍略の名前と増減の札（ダメージの数の手前。隊列は減る向き。`docs/troop-traits.md`） |
+| `SupplyHealedEvent` | 回復した兵の上に補給線の名前と回復の量 → 泉と同じ回復の再生（`docs/troop-traits.md`） |
 | `StatusAppliedEvent` | 駒の上に状態の名前を出す（スキルで付いたバリア・照準は出さない。スキルの名前と形が見せている）。状態が付いている間、足元に水色の細い輪が出る（何の状態かと残りのターン数は、左下の駒の情報に出る） |
 | `StatusRemovedEvent` | 期限なら「〜が消えた」、動いたなら「〜が解けた」。使い切ったときは何も出さない（ダメージや攻撃の再生が見せている） |
 | `UnitActedEvent` | 駒を暗くする（行動済み）。攻撃・回復・スキルをせずに終えた（待機した。動いてから・巡航のあと・動いたままターンを終えたときも）なら、待機のサイン（足元の輪が縮み、小さく「待機」が出て消える） |
