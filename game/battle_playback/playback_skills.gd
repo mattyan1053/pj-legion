@@ -58,7 +58,7 @@ func _play_ult_ready(_event: UltReadyEvent) -> void:
 
 ## 軍略が攻撃に効いた（docs/troop-traits.md）。軍略を持つ側の駒の上に、軍略の名前と増減の札を出す（ダメージの数の手前）。
 func _play_trait_triggered(event: TraitTriggeredEvent) -> void:
-	var down := event.trait_id == Traits.Id.RANKS
+	var down := Traits.shields(event.trait_id)
 	var text := Text.t("battle.pop.trait_down" if down else "battle.pop.trait_up",
 		{"effect": Names.troop_trait(event.trait_id), "amount": event.amount})
 	_pop_number(_view(event.unit_id).position + Vector3(0.0, 0.35, 0.0), text, _trait_color(event.trait_id).lightened(0.3))
