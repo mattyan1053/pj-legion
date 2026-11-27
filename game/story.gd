@@ -26,10 +26,11 @@ signal changed
 ## save_store.gd で置くまとまりの名前と、中身の形の版（欄を足したら上げる。決まりは save_format.gd）。
 ## 版 1 は物語が 1 つだったころの形（{"cleared", "squad"}）。読むときは MILITARY の物語の記録として引き継ぐ（_migrate）。
 const STORE_NAME := "story"
-const FORMAT_VERSION := 2
+## 版 3 で、物語ごとの記録に「answers」（選択肢で選んだ答え）を足した。
+const FORMAT_VERSION := 3
 ## 記録の中身の、いまの版が知っている欄（ほかの欄は、新しい版の exe が書いたものとして残す）。
 const KNOWN_KEYS := ["campaigns", "campaign"]
-const RECORD_KEYS := ["cleared", "squad"]
+const RECORD_KEYS := ["cleared", "squad", "answers"]
 ## 会話の場面と、対戦の場面と、話の一覧の場面の名前（scene_flow.gd）。
 const TALK := SceneFlow.TALK
 const BATTLE := SceneFlow.BATTLE
@@ -149,11 +150,19 @@ static func _read_record(data: Dictionary, version: int) -> Dictionary:
 			if typeof(id) in [TYPE_STRING, TYPE_STRING_NAME] and String(id) != "" and not cleared.has(String(id)):
 				cleared.append(String(id))
 	var squad: Variant = data.get("squad")
-	return {"cleared": cleared, "squad": String(squad) if typeof(squad) in [TYPE_STRING, TYPE_STRING_NAME] else "",
+	var answers := {}
+	var saved_answers: Variant = data.get("answers")
+	if typeof(saved_answers) == TYPE_DICTIONARY:
+		for name: Variant in saved_answers:
+			var key: Variant = saved_answers[name]
+			if typeof(name) in [TYPE_STRING, TYPE_STRING_NAME] and typeof(key) in [TYPE_STRING, TYPE_STRING_NAME] and String(name) != "" and String(key) != "":
+				answers[String(name)] = String(key)
+	return {"cleared": cleared, "squad": String(squad) if typeof(squad) in [TYPE_STRING, TYPE_STRING_NAME] else "", "answers": answers,
 			"kept": SaveFormat.unknown(data, RECORD_KEYS, version, FORMAT_VERSION)}
 
 
-## ファイルに書く中身: {"campaigns": {物語の id: {"cleared": [話の id, …], "squad": 部隊の id（既定の編成なら書かない）}}}。
+## ファイルに書く中身: {"campaigns": {物語の id: {"cleared": [話の id, …], "squad": 部隊の id（既定の編成なら書かない）,
+## "answers": {選択肢の名前: 選んだ答えの鍵}（選んでいなければ書かない）}}}。
 ## クリアも部隊も無い物語は書かない。
 func to_data() -> Dictionary:
 	var written_campaigns := {}
@@ -162,8 +171,10 @@ func to_data() -> Dictionary:
 		var written := {"cleared": (record["cleared"] as Array).duplicate()}
 		if record["squad"] != "":
 			written["squad"] = record["squad"]
+		if not (record.get("answers", {}) as Dictionary).is_empty():
+			written["answers"] = (record["answers"] as Dictionary).duplicate()
 		var kept: Dictionary = record.get("kept", {})
-		if not (written["cleared"] as Array).is_empty() or written.has("squad") or not kept.is_empty():
+		if not (written["cleared"] as Array).is_empty() or written.has("squad") or written.has("answers") or not kept.is_empty():
 			written_campaigns[id] = SaveFormat.with_unknown(written, kept)
 	var written_data := {"campaigns": written_campaigns}
 	if _last_campaign != "":
@@ -175,7 +186,7 @@ func to_data() -> Dictionary:
 func _record(of_campaign: Campaign) -> Dictionary:
 	var id := String(of_campaign.id)
 	if not _records.has(id):
-		_records[id] = {"cleared": [] as Array[String], "squad": "", "kept": {}}
+		_records[id] = {"cleared": [] as Array[String], "squad": "", "answers": {}, "kept": {}}
 	return _records[id]
 
 
@@ -287,6 +298,21 @@ func choose_squad(id: String) -> void:
 		return
 	_record(campaign)["squad"] = id
 	_save()
+
+
+## 選択肢 choice で選んだ答えの鍵（いまの物語で。まだ選んでいなければ空）。あとの話の「(if 名前 = 鍵)」の行が読む（docs/story.md の「選択肢」）。
+func answer_of(choice: StringName) -> String:
+	return _record(campaign)["answers"].get(String(choice), "")
+
+
+## 選択肢 choice で答え key を選んだと覚える（いまの物語に。選び直せば上書き）。
+## 確かめ用に開いている間は、記録のファイルに触らない（次に書くときに、いっしょに書く）。
+func choose_answer(choice: StringName, key: StringName) -> void:
+	if answer_of(choice) == String(key):
+		return
+	_record(campaign)["answers"][String(choice)] = String(key)
+	if not open_all:
+		_save()
 
 
 func _save() -> void:
@@ -626,7 +652,8 @@ static func episode_after(episode: Episode) -> Episode:
 	return of_campaign.episodes[at + 1] if at >= 0 and at + 1 < of_campaign.episodes.size() else null
 
 
-## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文}, …],
+## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文,
+## "choice": この行のあとに選ばせる選択肢 {"name", "options": [{"key", "text"}]}（あれば）, "when": この行を出す条件 {"choice", "answer", "not"}（あれば）}, …],
 ## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲 track（前の会話・あとの会話の曲。episode.gd の before_talk_music・after_talk_music。空なら場面の表の曲）,
 ## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
 ## 話の流れ（run_of）は、さらに "battle"（話の対戦。story_battle.gd。背景の盤に駒を立たせる）と "after"（場面の列で対戦のあとの会話か。背景の盤に、決着したときの駒を立たせる）を足す。
@@ -634,6 +661,12 @@ static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"
 	var lines: Array[Dictionary] = []
 	for row in rows:
 		# 地の文（話し手が -1）は、名前の無い行（talk_screen.gd が、札を出さずに真ん中へ出す）。
-		lines.append({"side": row.side, "who": row.who, "name": row.speaker_in(episode.speakers), "text": row.shown_text()})
+		var line := {"side": row.side, "who": row.who, "name": row.speaker_in(episode.speakers), "text": row.shown_text()}
+		# 選択肢（docs/story.md の「選択肢」）: この行のあとに選ばせるものと、この行を出す条件。
+		if row.asks():
+			line["choice"] = {"name": row.choice, "options": row.options}
+		if row.when_choice != &"":
+			line["when"] = {"choice": row.when_choice, "answer": row.when_answer, "not": row.when_not}
+		lines.append(line)
 	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
 			"music": track, "figures": episode.figures}

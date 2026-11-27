@@ -44,6 +44,7 @@ talk.guide.back,戻る
 talk.guide.log,ログ
 talk.resume,会話へ戻る
 talk.next_episode,次の話へ
+talk.answer.plate,選択
 story.episodes.roster,"雇える兵種: {kinds}
 持ち物: {items}　　コスト上限: {budget}"
 story.episodes.rewards,"クリア報酬:

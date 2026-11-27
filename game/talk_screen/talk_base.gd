@@ -1,6 +1,6 @@
 extends Node
 ## 会話の場面（game/talk_screen.gd）の土台: 読み込み、調整値、状態の変数と、どこからも使う小さな道具（行の読み方、幕、文字）。
-## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ game/talk_screen.gd（組み立て・入力・文の送り）。
+## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ game/talk_screen.gd（組み立て・入力・文の送り）。
 
 const Text := preload("res://game/text.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
@@ -28,6 +28,11 @@ const PLATE_WIDTH := 152.0
 ## あとの会話の「次の話へ」「話の一覧へ」のボタンの幅（px。縦に積んで、左右の話し手の間に収める）。
 const CHOICE_WIDTH := 260.0
 const BOX_BOTTOM := 40.0
+## 選択肢の枠（docs/story.md の「選択肢」）: 答えのボタンの大きさ（px）と間、字の大きさ。枠は、いつも答え 3 つぶんの大きさ（答えの数と長さで変えない）。
+const OPTION_SIZE := Vector2(500.0, 48.0)
+const OPTION_GAP := 10
+const OPTION_FONT := 20
+const OPTION_SLOTS := 3
 ## 背景の盤に重ねる幕の濃さ（Palette.SHADE の色）。
 const BACKDROP_SHADE := 0.3
 ## 足元を沈める幕の、下の端の濃さ。
@@ -60,6 +65,14 @@ var context: AppContext
 ## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目,
 ## "figures": 話し手の姿（行の "who" の番号の並び）}。story.gd の talk_of）。行に "who" が無ければ、陣営（"side"）の番号。
 var talk := {}
+## いま出す行の列: 渡された行（talk の "lines"）のうち、出す条件（"when"）の合うもの。答えを選ぶたびに作り直す（talk_ask.gd の _refresh_lines）。
+var _lines: Array = []
+## この場面で選んだ答え（選択肢の名前 -> 答えの鍵）。記録（story.gd の answer_of）より先に見る。
+var _answers := {}
+## 選択肢の枠と、答えのボタン（OPTION_SLOTS 個。使わない分は隠す）、キーで選んでいる答え（-1 = まだ選んでいない）。
+var _options: PanelContainer
+var _option_buttons: Array[Button] = []
+var _option_at := -1
 var _index := 0
 var _shown := 0.0  # いまの文の、出した文字数
 var _elapsed := 0.0

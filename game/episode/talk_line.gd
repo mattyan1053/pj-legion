@@ -2,7 +2,9 @@ extends RefCounted
 ## 会話の 1 行（話のファイルの [before]・[after]・[lost] の 1 行と、[cues] の台詞の中身）。ノードに依存しない。
 ## 読む側は、欄を名前で読む（kind・side・text・who）。並びの位置で読まない。
 ##
-## 行の種類を足すとき（選択肢の行など）は、Kind に足し、作る関数（speech・narration のような）を 1 つ足す。
+## 行の種類を足すときは、Kind に足し、作る関数（speech・narration のような）を 1 つ足す。
+## 選択肢は、行の種類ではなく、行に付くもの: 問いの行（選ばせる前の最後の行）が choice と options を持ち、
+## 答えごとの行と「(if 名前 = 答え)」の行が、出す条件（when_choice・when_answer・when_not）を持つ（docs/story.md の「選択肢」）。
 ## 文に差し込むもの（主人公の名前など）は shown_text に足す。文を画面・道具へ出す所は、どこも shown_text を通す。
 
 ## 行の種類。
@@ -22,6 +24,27 @@ var side := 0
 var text := ""
 ## 話し手（話の speakers の番号）。地の文は -1。
 var who := -1
+
+
+## この行のあとに選ばせる選択肢の名前（答えを覚える名前。無ければ空）と、答えの列（{"key": 答えの鍵, "text": 画面の文}。2〜3 つ）。
+var choice := &""
+var options: Array[Dictionary] = []
+## この行を出す条件（無ければ when_choice が空 = いつも出す）: 選択肢 when_choice の答えが when_answer のとき（when_not なら、そうでないとき）。
+var when_choice := &""
+var when_answer := &""
+var when_not := false
+
+
+## 選ばせる行か。
+func asks() -> bool:
+	return choice != &""
+
+
+## この行を出すか。answer_of は「選択肢の名前 → 覚えている答えの鍵（まだ選んでいなければ空）」を返す関数。
+func holds(answer_of: Callable) -> bool:
+	if when_choice == &"":
+		return true
+	return (StringName(answer_of.call(when_choice)) == when_answer) != when_not
 
 
 ## 話し手 who（陣営 side）の台詞 said。
@@ -60,7 +83,13 @@ func shown_text() -> String:
 
 ## 比べる・控えるための形（テスト用。読む側はこれを使わず、欄を名前で読む）。
 func as_dict() -> Dictionary:
-	return {"kind": kind, "side": side, "text": text, "who": who}
+	var found := {"kind": kind, "side": side, "text": text, "who": who}
+	if asks():
+		found["choice"] = choice
+		found["options"] = options
+	if when_choice != &"":
+		found["when"] = [when_choice, when_answer, when_not]
+	return found
 
 
 func _to_string() -> String:

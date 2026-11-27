@@ -192,6 +192,7 @@ func _read_cast(file: RefCounted) -> void:
 func _read_episodes(file: RefCounted) -> void:
 	var kinds: Array = starting_kinds.duplicate()
 	var items: Array = starting_items.duplicate()
+	var asked := {}  # ここまでの話が選ばせた選択肢: 名前 -> 答えの鍵の列
 	for row: Dictionary in file.rows("episodes"):
 		var episode_id: String = row["text"]
 		var where := "%s:%d" % [path, row["line"]]
@@ -203,6 +204,17 @@ func _read_episodes(file: RefCounted) -> void:
 		if find_episode(loaded.id) != null:
 			problems.append("%s: 話「%s」が 2 度ある" % [where, episode_id])
 			continue
+		# 選択肢（docs/story.md の「選択肢」）: 名前は物語の中で重ねない。条件の行は、この話までに選ばせた選択肢と答えを指す。
+		for condition: Dictionary in loaded.conditions:
+			var answers: Variant = loaded.choices[condition["choice"]] if condition["here"] else asked.get(condition["choice"])
+			if answers == null:
+				loaded.problems.append("%s:%d: 条件の選択肢「%s」を、この行までに選ばせていない" % [loaded.path, condition["line"], condition["choice"]])
+			elif not (answers as Array).has(condition["answer"]):
+				loaded.problems.append("%s:%d: 選択肢「%s」に、答え「%s」は無い" % [loaded.path, condition["line"], condition["choice"], condition["answer"]])
+		for choice: StringName in loaded.choices:
+			if asked.has(choice):
+				loaded.problems.append("%s: 選択肢「%s」は、前の話にもある（名前は、物語の中で重ねない）" % [loaded.path, choice])
+			asked[choice] = loaded.choices[choice]
 		for kind: UnitKind.Id in loaded.unlock_kinds:
 			if UnitKind.army(kind) != army:
 				loaded.problems.append("%s: 解放するのは、物語の軍（%s）の駒: %s" % [loaded.path, UnitKind.Army.keys()[army].to_lower(), UnitKind.Id.keys()[kind].to_lower()])

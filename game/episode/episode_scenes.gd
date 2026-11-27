@@ -76,7 +76,7 @@ func _build_scenes(file: RefCounted) -> void:
 ## before_battle: 対戦より前の会話か（1 度だけ出す。対戦の曲を書くなら、その話の対戦の曲）。
 func _read_talk_scene(file: RefCounted, section: String, before_battle: bool) -> StoryScene:
 	var settings := {}
-	var rows: Array[TalkLine] = []
+	var talk_rows: Array = []
 	for row: Dictionary in file.rows(section):
 		var text: String = row["text"]
 		if _is_setting(text):
@@ -84,22 +84,15 @@ func _read_talk_scene(file: RefCounted, section: String, before_battle: bool) ->
 			var value := text.substr(text.find("=") + 1).strip_edges()
 			if not TALK_KEYS.has(key):
 				file.problem(row["line"], "[%s] の知らない設定「%s」（書けるのは %s）" % [section, key, ", ".join(TALK_KEYS)])
-			elif not rows.is_empty():
+			elif not talk_rows.is_empty():
 				file.problem(row["line"], "設定「%s」は、会話の行より前に書く" % key)
 			elif settings.has(key):
 				file.problem(row["line"], "「%s」が 2 度ある" % key)
 			else:
 				settings[key] = {"line": row["line"], "value": value}
 			continue
-		var line := _speech(file, row["line"], text)
-		if line != null:
-			rows.append(line)
-			if line.text.length() > TALK_MAX_CHARS:
-				file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.text.length()])
-	if rows.is_empty():
-		file.problem(file.line_of(section), "[%s] の会話が無い" % section)
-	elif rows.size() > TALK_MAX_LINES:
-		file.problem(file.line_of(section), "[%s] の会話は %d 行まで（いま %d 行）" % [section, TALK_MAX_LINES, rows.size()])
+		talk_rows.append(row)
+	var rows := _talk_rows(file, section, talk_rows)
 	var scene := StoryScene.talk(section, rows, &"", before_battle)
 	scene.name = section.substr(TALK_SECTION.length()).strip_edges()
 	if settings.has("place"):
@@ -137,7 +130,7 @@ func _read_talk_scene(file: RefCounted, section: String, before_battle: bool) ->
 ## 会話の場面の行 text が、設定の行（「キー = 値」）か。会話の行（「話し手: 文」）と地の文（「> 文」）は、設定でない。
 static func _is_setting(text: String) -> bool:
 	var at := text.find("=")
-	if at < 0 or text.begins_with(NARRATION_MARK) or text.begins_with("＞"):
+	if at < 0 or text.begins_with(NARRATION_MARK) or text.begins_with("＞") or text.begins_with("("):
 		return false
 	var head := text.substr(0, at)
 	return not head.contains(":") and not head.contains("：")

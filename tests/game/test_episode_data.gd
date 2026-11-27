@@ -113,7 +113,54 @@ func test_the_scenes_template_reads_as_a_list_of_scenes() -> void:
 	assert_eq(talks[1].look, &"crystal_night", "look で景色を替える")
 	assert_true(talks[2].place == null and talks[2].look == &"", "place が無ければ、話の盤")
 	assert_true(talks[0].lines[0].is_narration())
-	assert_eq(episode.all_lines().size(), 3 + 2 + 2 + 1 + 2 + 1, "会話の行、途中の台詞、負けの台詞")
+	assert_eq(episode.all_lines().size(), 3 + 6 + 2 + 1 + 3 + 1, "会話の行、途中の台詞、負けの台詞")
+	# 選択肢: 問いの行が、名前と答えを持つ。答えごとの行と (if …) の行は、出す条件を持つ。
+	var asking: Episode.TalkLine = talks[1].lines[1]
+	assert_true(asking.asks() and asking.choice == &"template_route")
+	assert_eq(asking.options, [{"key": &"left", "text": "左の岩場から行く"}, {"key": &"right", "text": "右の坂を急ぐ"}] as Array[Dictionary])
+	assert_eq(talks[1].lines.map(func(line: Episode.TalkLine) -> StringName: return line.when_answer), [&"", &"", &"left", &"right", &"right", &""])
+	assert_eq(episode.choices, {&"template_route": [&"left", &"right"]})
+	var answers := {&"template_route": "right"}
+	var read := talks[1].lines.filter(func(line: Episode.TalkLine) -> bool: return line.holds(func(choice: StringName) -> String: return answers.get(choice, "")))
+	assert_eq(read.size(), 5, "右を選ぶと、右の 2 行だけ")
+	var later: Episode.TalkLine = talks[3].lines[1]
+	assert_true(later.when_choice == &"template_route" and not later.holds(func(_choice: StringName) -> String: return ""), "選んでいなければ、(if 名前 = 鍵) の行は出ない")
+	assert_eq(episode.conditions.size(), 1)
+
+
+## 選択肢の書き間違いを、行で弾く。物語の読み込みは、名前の重なりと、選ばせていない選択肢の条件を弾く。
+func test_choices_are_checked() -> void:
+	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("scenes.txt"))
+	var cases := {
+		"答えが 1 つ": [text.replace("(answer right) 右の坂を急ぐ", ""), "答えは 2 から 3 つ"],
+		"長い答え": [text.replace("右の坂を急ぐ", "右の坂を急ぐ".repeat(5)), "答えの文は 1 から 22 字"],
+		"閉じていない": [text.replace("(end)", ""), "(end) で閉じていない"],
+		"問いが無い": [text.replace("新兵: 少尉、どちらから登りますか。\n", "").replace("> 翌朝、隊は尾根の下に着いた。\n", ""), "問いになる行が要る"],
+		"答えの前の行": [text.replace("(answer left) 左の岩場から行く", "少尉: ふむ。\n(answer left) 左の岩場から行く"), "(answer 鍵) の行から書く"],
+		"名前の字": [text.replace("(choice template_route)", "(choice 道)"), "名前は英小文字"],
+		"同じ答え": [text.replace("(answer right)", "(answer left)"), "答え「left」が 2 度"],
+		"知らない指示": [text.replace("(end)", "(done)"), "知らない指示"],
+		"条件の形": [text.replace("(if template_route = left)", "(if template_route left)"), "条件の行は"],
+		"途中の台詞に選択肢": [text.replace("(turn 1) 少尉: 前へ出すぎるな。", "(choice x) 少尉: あ"), "知らないきっかけ"],
+		"長い会話": [text.replace("少尉: 右だ。日が高くなる前に登りきる。", "少尉: 右だ。\n".repeat(8)), "会話は 10 行まで"],
+	}
+	for name: String in cases:
+		var problems: PackedStringArray = Episode.parse(cases[name][0]).problems
+		assert_true(problems.size() >= 1 and "\n".join(problems).contains(cases[name][1]), "%s: %s" % [name, problems])
+	# 物語の中での決まり。
+	var dir := "user://test_choices_%d" % randi()
+	DirAccess.make_dir_recursive_absolute(dir)
+	_write(dir.path_join("story.txt"), FileAccess.get_file_as_string(TEMPLATE))
+	_write(dir.path_join("first_battle.txt"), FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
+		.replace("少尉: 見本の話だ。ここに会話を書く。", "(if template_route = left) 少尉: 見本の話だ。").replace("敵将: ……見事だ。", "敵将: ……見事だ。\n(choice template_route)\n(answer a) あ\n(answer b) い\n(end)"))
+	_write(dir.path_join("scenes.txt"), text.replace("template_route = left", "template_route = up"))
+	var joined := "\n".join(Campaign.load_file(dir.path_join("story.txt")).problems)
+	assert_true(joined.contains("first_battle.txt:") and joined.contains("この行までに選ばせていない"), "あとの話の選択肢を、条件に書けない: %s" % joined)
+	assert_true(joined.contains("は、前の話にもある"), "名前の重なり: %s" % joined)
+	assert_true(joined.contains("答え「up」は無い"), "無い答え: %s" % joined)
+	for file: String in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(file))
+	DirAccess.remove_absolute(dir)
 
 
 ## 場面の節の書き方の書き間違いを、行で弾く。
