@@ -1,5 +1,7 @@
 # KayKit : Medieval Hexagon Pack 1.0
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 - 作者: Kay Lousberg（https://www.kaylousberg.com）
 - 入手元: https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 （`main`、`addons/kaykit_medieval_hexagon_pack/Assets/gltf/decoration/nature/`）
 - ライセンス: CC0 1.0（`LICENSE.txt`）。商用・改変・再配布が自由で、クレジット表記は任意

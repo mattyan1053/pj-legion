@@ -28,6 +28,10 @@ gdscript/warnings/unused_variable=2
 gdscript/warnings/unused_parameter=2
 gdscript/warnings/shadowed_variable=2
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/credits_export/plugin.cfg")
+
 [internationalization]
 
 locale/fallback="ja"

@@ -1,5 +1,7 @@
 # 150 Combat Sound Effects（Untamed Pixels がまとめたもの）の効果音
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 - まとめた人: Untamed Pixels（OpenGameArt のユーザー。https://opengameart.org/users/untamedpixels ）
 - 配布元: 150 Combat Sound Effects — https://opengameart.org/content/150-combat-sound-effects （`150gameeffectsounds.zip`）
 - ライセンス: CC0 1.0（`LICENSE.txt`）。配布元のページの「License(s)」が CC0。zip の `LICENSES.txt` が、入っている 150 の音すべてを CC0 とし、元の作者ごとに出どころを書いている（使った分を `LICENSE.txt` に写した）

@@ -1,5 +1,7 @@
 # rubberduck の効果音
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 - 作者: rubberduck（OpenGameArt のユーザー。https://opengameart.org/users/rubberduck ）
 - ライセンス: CC0 1.0（`LICENSE.txt`）。配布元のページの「License(s)」が CC0（zip にはライセンスの文が入っていないので、ページの表記を写した）
 - 取ってきた日・ライセンスを確かめた日: 2026-11-15
