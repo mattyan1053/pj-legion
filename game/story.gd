@@ -537,31 +537,40 @@ func run_now(episode: Episode) -> Run:
 	return run_of(episode, default_deck(now), news)
 
 
-## 話 episode の流れ（run.gd）: 出撃準備 → 会話（前）→ 対戦 → 会話（後）→ 話の一覧。人の部隊は human_deck（出撃準備で選び直せる）。
-## 会話（前）は、出撃してから対戦の前に 1 度だけ出す（決着の画面の「部隊変更」で出撃準備へ戻って出撃し直しても、もう出さない）。
+## 話 episode の流れ（run.gd）: 話の場面の列（episode.gd の scenes。いまは 出撃準備 → 会話（前）→ 対戦 → 会話（後））を順に並べ、終えたら話の一覧。
+## 人の部隊は human_deck（出撃準備で選び直せる）。場面の種類ごとに、流れのどの場面にして何を渡すかは、ここだけで決める。
+## 会話（前）は、出撃してから対戦の前に 1 度だけ出す（場面の once。決着の画面の「部隊変更」で出撃準備へ戻って出撃し直しても、もう出さない）。
 ## 対戦で負けたら、決着の画面から「同じマップで再戦」「部隊変更」（出撃準備へ）か「話の一覧へ」。勝ったら「次へ」で、あとの会話へ。
 ## あとの会話を読み終えたら「次の話へ」（物語の次の話の流れを始める）か「話の一覧へ」。次の話が無ければ、話の一覧へ。
 ## システムメニューからは、いつでも「話の一覧へ」（menu_exits）。
-## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。あとの会話の最後に、知らせの行で出す。
+## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。最後の場面が会話なら、その最後に知らせの行で出し、「次の話へ」を選ばせる。
 static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = []) -> Run:
 	var run := Run.new()
 	run.exit = EPISODE_LIST
 	run.menu_exits = [[EPISODE_LIST, "story.episodes.resume", "menu.to_episodes.confirm"]]
 	var battle := StoryBattle.new(episode, human_deck)
-	run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃準備で、battle の人の部隊を選び直す
-	var before := talk_of(episode, episode.before, episode.before_talk_music())
-	before["battle"] = battle  # 背景の盤に、出撃準備で決めた初期位置の駒を立たせる（talk_screen.gd）
-	run.add(TALK, before, true)
-	run.add(BATTLE, battle)
-	var after := talk_of(episode, episode.after, episode.after_talk_music())
-	after["battle"] = battle  # 背景の盤に、決着したときの駒を立たせる
-	after["after"] = true
-	for news_line: Dictionary in news:
-		var line := {"side": NOTICE_SIDE, "name": notice_name()}
-		line.merge(news_line)
-		after["lines"].append(line)
-	after["next_episode"] = episode_after(episode)
-	run.add(TALK, after)
+	var fought := false  # 対戦の場面を過ぎたか（会話の背景の盤に、決着したときの駒を立たせる）
+	var last_talk := {}
+	for scene in episode.scenes:
+		last_talk = {}
+		match scene.kind:
+			Episode.StoryScene.Kind.SORTIE:
+				run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃準備で、battle の人の部隊を選び直す
+			Episode.StoryScene.Kind.BATTLE:
+				run.add(BATTLE, battle)
+				fought = true
+			Episode.StoryScene.Kind.TALK:
+				var talk := talk_of(episode, scene.lines, scene.music)
+				talk["battle"] = battle  # 背景の盤に、初期位置の駒か、決着したときの駒を立たせる（talk_screen.gd）
+				talk["after"] = fought
+				run.add(TALK, talk, scene.once)
+				last_talk = talk
+	if not last_talk.is_empty():
+		for news_line: Dictionary in news:
+			var line := {"side": NOTICE_SIDE, "name": notice_name()}
+			line.merge(news_line)
+			last_talk["lines"].append(line)
+		last_talk["next_episode"] = episode_after(episode)
 	return run
 
 
@@ -587,7 +596,7 @@ static func episode_after(episode: Episode) -> Episode:
 ## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文}, …],
 ## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲 track（前の会話・あとの会話の曲。episode.gd の before_talk_music・after_talk_music。空なら場面の表の曲）,
 ## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
-## 話の流れ（run_of）は、さらに "battle"（話の対戦。story_battle.gd。背景の盤に駒を立たせる）と "after"（あとの会話か）を足す。
+## 話の流れ（run_of）は、さらに "battle"（話の対戦。story_battle.gd。背景の盤に駒を立たせる）と "after"（場面の列で対戦のあとの会話か。背景の盤に、決着したときの駒を立たせる）を足す。
 static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"") -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row in rows:

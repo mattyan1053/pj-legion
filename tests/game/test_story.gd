@@ -10,6 +10,8 @@ const Episode := preload("res://game/episode.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const Run := preload("res://game/run.gd")
+const Catalog := preload("res://game/sound_catalog.gd")
+const Scene := Episode.StoryScene
 
 
 func test_every_episode_has_a_unique_id_and_short_talks() -> void:
@@ -18,8 +20,8 @@ func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 	for episode in Story.military().episodes:
 		assert_false(ids.has(episode.id), "話の id が重なっている: %s" % episode.id)
 		ids.append(episode.id)
-		for rows: Array in [episode.before, episode.after]:
-			assert_between(rows.size(), 1, Episode.TALK_MAX_LINES, "会話は短く（%d 行まで）: %s" % [Episode.TALK_MAX_LINES, episode.id])
+		for scene: RefCounted in episode.talk_scenes():
+			assert_between(scene.lines.size(), 1, Episode.TALK_MAX_LINES, "会話は短く（%d 行まで）: %s" % [Episode.TALK_MAX_LINES, episode.id])
 
 
 func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
@@ -41,6 +43,44 @@ func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
 	for scene: StringName in [&"talk", Story.SORTIE, &"battle", Story.EPISODE_LIST, &"title"]:
 		assert_true(SceneFlow.has(scene), "場面の表に無い: %s" % scene)
 	assert_eq(run.menu_exits.map(func(exit: Array) -> StringName: return exit[0]), [Story.EPISODE_LIST], "システムメニューから話の一覧へ戻れる")
+
+
+## 話は場面の列（episode.gd の scenes）で持つ。いまの話のファイルからは、どの話も 出撃準備 → 会話（[before]。1 度だけ）→ 対戦 → 会話（[after]）。
+func test_every_episode_is_a_list_of_scenes_built_from_its_sections() -> void:
+	var Kind := Episode.StoryScene.Kind
+	for episode: Episode in Story.all_episodes():
+		assert_eq(episode.scenes.map(func(scene: RefCounted) -> int: return scene.kind), [Kind.SORTIE, Kind.TALK, Kind.BATTLE, Kind.TALK], episode.id)
+		assert_true(episode.talk_before_battle().lines == episode.before and episode.talk_before_battle().once, episode.id)
+		assert_eq(episode.talk_before_battle().music, episode.before_talk_music())
+		assert_true(episode.talk_after_battle().lines == episode.after and not episode.talk_after_battle().once, episode.id)
+		assert_eq(episode.talk_after_battle().music, episode.after_talk_music())
+		assert_eq(episode.scene_after_battle(), episode.talk_after_battle())
+
+
+## 話の流れ（run_of）は、場面の列を順に回すだけ。列を変えれば、流れも変わる（対戦の無い話、会話の場面がいくつもある話）。
+func test_the_run_follows_the_list_of_scenes() -> void:
+	var episode: Episode = Story.military().episodes[1]
+	var kept := episode.scenes  # 読み込んだ話を借りるので、終わりに戻す
+	var first := Scene.talk("before", episode.before, &"talk")
+	var second := Scene.talk("after", episode.after, &"")
+	episode.scenes = [first, second] as Array[Scene]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	assert_eq(run.scene(), &"talk", "出撃準備も対戦も無い話は、会話から始まる")
+	assert_eq(run.data()["lines"].size(), episode.before.size())
+	assert_eq(run.data()["music"], &"talk")
+	assert_false(run.data()["after"], "対戦の前の会話は、初期位置の駒を背景に立たせる")
+	assert_false(run.data().has("next_episode"), "「次の話へ」は最後の会話だけ")
+	assert_eq(run.advance(), &"talk")
+	assert_eq(run.data()["lines"].size(), episode.after.size())
+	assert_eq(run.data()["next_episode"], Story.military().episodes[2])
+	assert_eq(run.advance(), Story.EPISODE_LIST)
+	assert_eq(StoryBattle.new(episode, null).after_result_music(), Catalog.AFTER_TALK_MUSIC, "対戦の無い話は、決着のあとの曲を会話から取らない")
+	# 対戦で終わる話（あとの会話が無い）: 「次の話へ」を選ばせる会話が無いので、そのまま話の一覧へ。
+	episode.scenes = [Scene.sortie(), first, Scene.battle()] as Array[Scene]
+	run = Story.run_of(episode, Story.default_deck(Story.starting()))
+	assert_eq([run.scene(), run.advance(), run.advance(), run.advance()], [Story.SORTIE, &"talk", &"battle", Story.EPISODE_LIST])
+	assert_eq(StoryBattle.new(episode, null).after_result_music(), Catalog.AFTER_TALK_MUSIC)
+	episode.scenes = kept
 
 
 func test_changing_the_squad_after_a_battle_skips_the_talk_before() -> void:

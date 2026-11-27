@@ -96,18 +96,15 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 		lines.append("- 覚えること: %s" % episode.lesson)
 	lines.append("- 話し手: %s" % "、".join(_cast(episode)))
 	lines.append("")
-	lines.append("### 対戦の前")
-	lines.append("")
-	_talk(lines, episode, episode.before)
-	if not episode.cues.is_empty():
-		lines.append("### 対戦の途中")
-		lines.append("")
-		for cue: Episode.TalkCue in episode.cues:
-			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), cue.line.speaker_in(episode.speakers), cue.line.shown_text()])
-		lines.append("")
-	lines.append("### 対戦のあと")
-	lines.append("")
-	_talk(lines, episode, episode.after)
+	var fought := false
+	for scene: Episode.StoryScene in episode.scenes:
+		if scene.is_talk():
+			lines.append("### 対戦のあと" if fought else "### 対戦の前")
+			lines.append("")
+			_talk(lines, episode, scene.lines)
+		elif scene.is_battle():
+			fought = true
+			_battle_lines(lines, episode)
 	if not episode.lost.is_empty():
 		lines.append("### 負けたとき（決着の画面）")
 		lines.append("")
@@ -118,6 +115,16 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 		lines.append("")
 		for row: Dictionary in news:
 			lines.append("- %s" % row["text"])
+		lines.append("")
+
+
+## 対戦の場面の、途中の台詞（負けたときの台詞は、台本の読みやすさから、話の最後にまとめる）。
+static func _battle_lines(lines: PackedStringArray, episode: Episode) -> void:
+	if not episode.cues.is_empty():
+		lines.append("### 対戦の途中")
+		lines.append("")
+		for cue: Episode.TalkCue in episode.cues:
+			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), cue.line.speaker_in(episode.speakers), cue.line.shown_text()])
 		lines.append("")
 
 
@@ -133,10 +140,8 @@ static func _talk(lines: PackedStringArray, episode: Episode, rows: Array[Episod
 ## 話し手の一覧（「隊長（味方・将）」。味方が先。姿は駒の名前、進化後の形なら「進化後」を添える）。台詞の無い話し手は並べない。
 static func _cast(episode: Episode) -> PackedStringArray:
 	var talks := {}
-	for row: Episode.TalkLine in episode.before + episode.after + episode.lost:
+	for row: Episode.TalkLine in episode.all_lines():
 		talks[row.who] = true
-	for cue: Episode.TalkCue in episode.cues:
-		talks[cue.line.who] = true
 	var cast: PackedStringArray = []
 	for side in 2:
 		for who in episode.speakers.size():
