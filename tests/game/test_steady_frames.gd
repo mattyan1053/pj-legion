@@ -195,6 +195,7 @@ func test_info_panel_keeps_its_size_whatever_it_shows() -> void:
 		await settle(hud)
 		assert_eq(panel.size, size, "素の駒: %s" % Names.kind(kind))
 		assert_eq(hud.info_dropped(), 0, "素の駒で、欄が省かれる: %s" % Names.kind(kind))
+		assert_eq(hud.info_shows_experience(), Growth.can_grow(plain) and not UnitKind.is_monster(kind), "経験値（魔物は Lv だけ）: %s" % Names.kind(kind))
 		assert_true(hud.info_overflow() <= 0.5, "素の駒で、札が枠の幅からはみ出す（%.1f px）: %s" % [hud.info_overflow(), Names.kind(kind)])
 		var loaded := Unit.new(2, kind, Unit.Side.PLAYER2, Vector2i.ZERO, items if Equipment.can_equip(kind) else ([] as Array[Equipment.Id]))
 		loaded.statuses[Status.Type.values()[0]] = 2
