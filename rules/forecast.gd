@@ -186,3 +186,59 @@ func _read(battle: Battle) -> void:
 			placed.append(event as FieldEffectPlacedEvent)
 		elif event is RelicGainedEvent:
 			relics.append(event as RelicGainedEvent)
+
+
+# ---- 出来事の表（tests/game/test_event_readers.gd が見張る。docs/battle.md の「出来事を 1 つ足すとき」） ----
+
+
+## 予測のまとめが名前で読む出来事（このファイルの `is` / `as` に出てくるもの。親を読めば子も読む）。
+static func read_events() -> Array[Script]:
+	return [
+		UnitDamagedEvent,
+		SmokeBlockedEvent,
+		UnitHealedEvent,
+		UnitDefeatedEvent,
+		ExperienceGainedEvent,
+		LevelUpEvent,
+		EvolutionOfferedEvent,
+		StatusAppliedEvent,
+		StatusRemovedEvent,
+		UnitTeleportedEvent,
+		UnitsSwappedEvent,
+		RallyEvent,
+		UnitReactivatedEvent,
+		BarricadeDamagedEvent,
+		FieldEffectPlacedEvent,
+		RelicGainedEvent,
+	]
+
+
+## 予測のまとめが読まないと決めた出来事（新しい出来事を足したら、読むか、ここに理由と足す）。
+static func skipped_events() -> Array[Script]:
+	return [
+		# 決着・ゲージは、あとの状態（after）から読む
+		GameWonEvent,
+		GameDrawnEvent,
+		UltReadyEvent,
+		UltUsedEvent,
+		CaptureProgressEvent,
+		StrongholdProgressEvent,
+		# ダメージの出来事に入っている（軍略の増減、爆発、倒れた中ボスの聖遺物）
+		TraitTriggeredEvent,
+		BarrelExplodedEvent,
+		BurstEvent,
+		MidBossDefeatedEvent,
+		# 盾が壊れたことは、削れた出来事の耐久 0 で分かる
+		FieldEffectRemovedEvent,
+		# 予測を出す行動（攻撃・回復・スキル・必殺技）では起きないか、まとめに出さない
+		PhaseStartedEvent,
+		UnitMovedEvent,
+		UnitWarpedEvent,
+		MoveUndoneEvent,
+		UnitActedEvent,
+		UnitSpawnedEvent,
+		UnitEvolvedEvent,
+		SkillUsedEvent,
+		SkillReadyEvent,
+		FieldEffectTickedEvent,
+	]

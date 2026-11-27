@@ -527,3 +527,64 @@ static func _defeat_experience(column: int) -> int:
 		4:
 			return Growth.MID_BOSS_DEFEAT_EXPERIENCE
 	return 0
+
+
+# ---- 出来事の表（tests/game/test_event_readers.gd が見張る。docs/battle.md の「出来事を 1 つ足すとき」） ----
+
+
+## 実測の道具が名前で読む出来事（このファイルの `is` / `as` に出てくるもの。親を読めば子も読む）。
+static func read_events() -> Array[Script]:
+	return [
+		UnitDamagedEvent,
+		AttackDamagedEvent,
+		SkillDamagedEvent,
+		UnitDefeatedEvent,
+		TraitTriggeredEvent,
+		SupplyHealedEvent,
+		ExperienceGainedEvent,
+		UnitActedEvent,
+		SkillUsedEvent,
+		MidBossDefeatedEvent,
+		RelicGainedEvent,
+	]
+
+
+## 実測の道具が読まないと決めた出来事（新しい出来事を足したら、読むか、ここに理由と足す）。
+static func skipped_events() -> Array[Script]:
+	return [
+		# 種類ごとの数（Outcome.events）だけ数える。中身は戦績（BattleStats）が数える
+		PhaseStartedEvent,
+		UnitMovedEvent,
+		UnitWarpedEvent,
+		UnitTeleportedEvent,
+		UnitsSwappedEvent,
+		MoveUndoneEvent,
+		UnitReactivatedEvent,
+		SmokeBlockedEvent,
+		BarrelExplodedEvent,
+		BurstEvent,
+		RallyEvent,
+		BarricadeDamagedEvent,
+		AreaEffectPlacedEvent,
+		BarricadePlacedEvent,
+		KnotPlacedEvent,
+		FieldEffectRemovedEvent,
+		FieldEffectTickedEvent,
+		HealerHealedEvent,
+		SanctuaryHealedEvent,
+		SpringHealedEvent,
+		RegenerationHealedEvent,
+		StatusAppliedEvent,
+		StatusRemovedEvent,
+		LevelUpEvent,
+		EvolutionOfferedEvent,
+		UnitEvolvedEvent,
+		SkillReadyEvent,
+		UltReadyEvent,
+		UltUsedEvent,
+		UnitSpawnedEvent,
+		CaptureProgressEvent,
+		StrongholdProgressEvent,
+		GameWonEvent,
+		GameDrawnEvent,
+	]
