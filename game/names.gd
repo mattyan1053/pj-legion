@@ -14,7 +14,8 @@ const STATS: Array[Unit.Stat] = [Unit.Stat.MAX_HP, Unit.Stat.POWER, Unit.Stat.MO
 
 ## 列挙 names の値 value の、鍵に使う名前（小文字）。
 static func word(names: Dictionary, value: int) -> String:
-	return String(names.find_key(value)).to_lower()
+	var found: Variant = names.find_key(value)
+	return "" if found == null else String(found).to_lower()
 
 
 ## ストーリーの呼び方にするか。真なら、陣営を遊ぶ人の側から「味方」「敵」と呼ぶ（色と「プレイヤー1」で呼ばない。中立はそのまま）。
