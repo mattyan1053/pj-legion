@@ -39,7 +39,18 @@ func _read(file: RefCounted) -> void:
 	_read_cues(file)
 	_check_kingless(file)
 	_check_deploy(file)
+	_build_scenes()
 	problems.append_array(file.problems)
+
+
+## 場面の列: いまの話のファイルの欄（[before]・対戦・[after]）から組む。並べ替え・場面の種類を足すときは、ここ（と story_scene.gd）。
+func _build_scenes() -> void:
+	scenes = [
+		StoryScene.sortie(),
+		StoryScene.talk("before", before, before_talk_music(), true),
+		StoryScene.battle(),
+		StoryScene.talk("after", after, after_talk_music()),
+	]
 
 
 func _read_episode(file: RefCounted) -> void:
