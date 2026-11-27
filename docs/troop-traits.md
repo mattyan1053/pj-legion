@@ -96,9 +96,51 @@
   **クリックすると、軍略 1 つの窓**（`game/trait_card.gd`。印・名前・文。決まった大きさ）が、その札の真下に開く。
   縫い目の様子の札の窓（`docs/battle-view.md` の「縫い目の様子」）と同じ作りで、窓は 1 つずつ（片方を開くと、もう片方は閉じる）。
   出すのは、いま効いている軍略だけ（選ばなかった 2 つは出さない）。自分の側も相手の側も。もう一度クリックか、窓のクリックか、盤のクリックで閉じる。
-- 兵の情報の札と「対戦ルール」には出さない。
+- 兵の情報の札と「詳細」の窓には、その兵に乗っている効果の札として出す（「集中砲火　被ダメージ +2」。`docs/battle-view.md` の「兵に乗っている効果」）。「対戦ルール」には出さない。
 
 ## CPU
 
 - 編成（`CpuDeck.choose_trait`。`docs/cpu-ai.md` の「軍略」）: 部隊の中身から選ぶ。ランダム編成（`game/random_squad.gd`）も同じ選び方（乱数は引かない）。
 - 対戦中: 増減は複製の上で手を進めて読むので、そのまま見積もりに入る。立ち位置と、続けて当てる見込みと、仇になる損を足す（`docs/cpu-ai.md` の「軍略」）。
+
+## 軍略を足すとき
+
+いまの軍に、軍略を 1 つ足す（差し替えるときも、触る所は同じ）。ダメージの計算の順は `docs/combat.md`。
+
+### 触るファイル
+
+1. `rules/traits.gd`: `Id` に 1 つ（保存と話のファイルは、列挙の名前の小文字の鍵で持つ）、調整値の定数、`_BY_ARMY`（並びが札の並び。先頭が既定）。
+   効き目は、形ごとに:
+   - 段の順は `tests/rules/test_damage_order.gd` が固定している。新しい段に入れるなら、そこに場面を足す（予測 = 実際 は `tests/game/test_forecast_matches.gd`）。
+   - **攻撃のダメージに足す**: `attack_boosts_at` に枝と、効く相手を決める関数（`focus_marked`・`lone_marked` と同じ形）。
+   - **攻撃のダメージを引く**: `guard_of` は隊列だけを返す。`rules/combat.gd` の `hit` が `boosts[Traits.Id.RANKS]` に書き、「助けられた側」を隊列かどうかで決めている。ここを直す。
+   - **ターンの始めに効く**: `start_phase`（補給線のほかは、すぐ戻る）。呼ぶのは `rules/actions/end_phase_action.gd`（泉 → 再生 → 軍略 → 盤の上の効果 → 状態 → スキルの順）。
+     新しい出来事が要る。回復なら `SupplyHealedEvent` と同じく `UnitHealedEvent` の子にすると、戦績・予測・CPU の手の価値が、そのまま数える。
+2. CPU: `rules/cpu/cpu_threats.gd`（相手の軍略で増えるダメージの `match`、隊列で減るぶん）、`rules/cpu/cpu_position_value.gd` の `_trait_position_value`、
+   `rules/cpu/cpu_outcome_value.gd` の `_trait_value`、`rules/cpu_deck.gd` の `choose_trait`（部隊の中身から選ぶ）。
+3. 文: `game/text/names.csv` の `troop_trait.<鍵>`（名前）・`.effect`（`{amount}`）・`.text`（`{gain}`）。文の形は上の「軍略」。
+4. 数: `game/names.gd` の `troop_trait_amount` の表に 1 行。
+5. 印: `game/trait_icon.gd` の `_draw` の `match` に 1 つ。
+6. 盤の上: `game/battle_screen/screen_rules_view.gd` の `_refresh_traits`（頭の上の札と、組む兵どうしの線）。
+7. 引く形なら、「引くのは隊列」の決め打ち 4 か所: `rules/combat.gd`（上）、`game/forecast_text.gd`、`game/battle_log/log_fights.gd`、`game/battle_playback/playback_skills.gd`（`down := … == Traits.Id.RANKS`）。
+8. ターンの始めの形で出来事を足したら、`tools/cpu_match.gd` の数える所（補給線は `SupplyHealedEvent` を名指しで数えている）。
+9. この文書の表と調整値、`docs/cpu-ai.md` の「軍略」。`tests/rules/test_traits.gd` の `test_each_army_has_three_traits_and_a_default` の一覧。
+
+話のファイル（`[ally]`・`[enemy]` の `trait`）は `Traits.from_key` で読むので、足すものは無い。
+
+### 足し忘れても検査が落ちない所
+
+- **4 つ目の軍略**: 部隊編成の軍略の札は 3 枚の決め打ち（`game/deck_screen/deck_editor.gd` の `for i in 3`）。4 つ目は出ず、選べない。
+- `_BY_ARMY` に無い: どの軍のものでもなくなり、選べない（色は騎士領の色になる）。
+- **CPU の 4 つ**（上の 2）: どれもテストが無い。危険の読みが外れ、立ち位置を取らず、CPU が選ばない。`measure-balance` でしか分からない。
+- `troop_trait_amount` に無い: 文と盤の札が「+0」。
+- `troop_trait.<鍵>` の名前が無い: 鍵の文字がそのまま出る（名前を見るテストは無い）。
+- 印の枝が無い: 中が空の暗い丸。盤の上の枝が無い: 札も輪も線も出ない。
+- 引く形で、隊列の決め打ちを直さない: 減ったのに「+N」と出る。
+
+### 確かめ方
+
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_traits,test_steady_frames,test_wrap_audit,test_text,test_doc_values,test_combat,test_damage_order,test_forecast`
+  （`test_steady_frames` は、全部の軍略の文が枠に収まるか、名前の札が同じ大きさかを見る）。
+- スクリーンショットの `trait_focus`（盤の上の札と線）。
+- 釣り合い: `tools/cpu_matches.gd -- --traits=<鍵>` と `--traits=random`（`measure-balance`）。

@@ -110,7 +110,7 @@ cat "$logs/import.log"
 # TESTS_A と TESTS_B に挙げたファイル（時間の掛かるもの）を別に回し、残りを全部 tests で回す（足したテストが漏れない）。
 # 控えた CPU どうしの 1 局（tests/support/cpu_game.gd）はプロセスごとに 1 回回すので、それを読むファイルは TESTS_A にまとめる。
 # 釣り合いは、終わりに出る「（ファイル）」の秒数を見て直す。
-TESTS_A="test_battle_log.gd,test_steady_frames.gd,test_cpu_player.gd,test_battle_stats.gd,test_cpu_match.gd,test_hand_map.gd,test_monsters.gd,test_horde.gd,test_seam.gd"
+TESTS_A="test_battle_log.gd,test_steady_frames.gd,test_cpu_player.gd,test_battle_stats.gd,test_cpu_match.gd,test_hand_map.gd,test_monsters.gd,test_horde.gd,test_seam.gd,test_forecast_matches.gd"
 TESTS_B="test_seam_view.gd,test_unit_looks.gd,test_unit_motion.gd,test_stronghold.gd,test_board_generator.gd,test_episode_data.gd,test_board_ground.gd"
 start tests -s res://tools/run_tests.gd -- --except="$TESTS_A,$TESTS_B"
 start tests_a -s res://tools/run_tests.gd -- --only="$TESTS_A"
