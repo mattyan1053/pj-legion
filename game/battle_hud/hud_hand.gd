@@ -131,9 +131,10 @@ func _hand_side_label(row: HBoxContainer, text: String) -> Label:
 
 ## 手札の帯を出す。shown が偽なら隠す（手札の無い対戦）。cards は札ごとの辞書の列（引いた順。HAND_SLOTS 枚まで）:
 ## card（Card.Id）、usable（押せるか）、off（押せない理由の短い文。押せれば空）、chosen（相手を選んでいる途中の札か）、
-## confirming（もう一度押すと使う札か）。pile は山の残り、foe は相手の手札の枚数。
-func set_hand(shown: bool, cards: Array[Dictionary] = [], pile := 0, foe := 0) -> void:
+## confirming（もう一度押すと使う札か）。pile は山の残り、foe は相手の手札の枚数。side は手札の持ち主（帯の縁を、その陣営の色にする）。
+func set_hand(shown: bool, cards: Array[Dictionary] = [], pile := 0, foe := 0, side := Unit.Side.PLAYER1) -> void:
 	_hand_panel.visible = shown
+	(_hand_panel.get_theme_stylebox("panel") as StyleBoxFlat).border_color = _side_color(side).lerp(Palette.BORDER, 0.35)
 	bottom_reserved = HAND_SIZE.y + HAND_GAP if shown else 0.0
 	_ult_panel.offset_top = -BOTTOM_BAR_HEIGHT - 8.0 - bottom_reserved
 	_ult_panel.offset_bottom = _ult_panel.offset_top

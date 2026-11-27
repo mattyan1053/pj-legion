@@ -218,7 +218,7 @@ func _refresh_hand(cpu_turn: bool) -> void:
 			"card": id, "usable": usable, "off": off, "chosen": chosen,
 			"confirming": chosen and Card.aim(card) == Card.Aim.NONE,
 		})
-	_hud.set_hand(true, cards, Hand.pile_left(battle, side), Hand.of(battle, (1 - side) as Unit.Side).size())
+	_hud.set_hand(true, cards, Hand.pile_left(battle, side), Hand.of(battle, (1 - side) as Unit.Side).size(), side)
 
 
 ## 動ける範囲に重ねる、ポータルの塗り（マス -> 色）。範囲の中の、転移に使えるポータル（止まると「転移」を選べる）と、

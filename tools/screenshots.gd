@@ -374,6 +374,7 @@ func _reset(seed: int) -> void:
 	_scene.toggle_trait_note(-1)  # 前の場面（trait_note）の軍略の窓も閉じる
 	_scene.set_opponent(false)  # 撮る間は CPU に番を進めさせない
 	_scene.hover(Vector2i(-1, -1))  # 前の場面で乗せたことにしたマウスを戻す
+	_scene.hover_hand(-1)  # 手札の札に乗せたことも戻す
 	_scene.hover_menu_item(&"")  # 前の場面（menu_note）でメニューの項目に乗せたことにしたマウスも戻す（残ると予測のパネルが出ない）
 	if _scene.is_threat_shown():
 		_scene.toggle_threat()  # 前の場面で出した、敵の全員の脅威範囲を消す
