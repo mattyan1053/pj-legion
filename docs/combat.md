@@ -2,7 +2,8 @@
 
 コード: `rules/combat.gd`（射程・ダメージ）、`rules/hit.gd`（ダメージの解決）、`rules/actions/attack_action.gd`（攻撃の行動）、
 `rules/events/unit_damaged_event.gd`、`rules/events/attack_damaged_event.gd`、`rules/events/smoke_blocked_event.gd`、`rules/events/unit_defeated_event.gd`。
-テスト: `tests/rules/test_combat.gd`、`tests/rules/test_statuses.gd`（解決への割り込み）。
+テスト: `tests/rules/test_combat.gd`、`tests/rules/test_statuses.gd`（解決への割り込み）、`tests/rules/test_damage_order.gd`（段の順。順を入れ替えると落ちる）、
+`tests/game/test_forecast_matches.gd`（効果を重ねた場面と CPU どうしの 1 局で、予測 = 実際）。
 
 ## 攻撃できる相手
 
@@ -17,15 +18,22 @@
 
 ## ダメージ
 
-- 攻撃側の攻撃力がそのままダメージになる。
-- **確定クリティカル**: 攻撃側に照準（`docs/unit-statuses.md`）が付いていれば、攻撃力に照準の倍率を掛ける
-  （倍率は `docs/skills/precision-aim.md`）。倍率を掛けるのは一時的な補正（突撃・注射）の前の攻撃力で、一時的な補正はそのあとに足す。
-  攻撃を 1 回すると、照準は消える。
-- 守る側が森にいれば 80%（`FOREST_DAMAGE_RATE_PERCENT`）にする（端数切り捨て。クリティカルの倍率を掛けたあと）。
-- 攻撃側が、敵の糸茸の周り 8 マスにいれば、隊列（軍略）のあとに胞子のぶんを引く（0 より下にはならない。`docs/monsters.md`）。
-- 守る側が自分の陣営の煙幕の中にいて、距離 2（`RANGED_DISTANCE`）以上から攻撃されたら 0（`docs/field-effects.md`）。
-- **バリア**: 守る側にバリア（`docs/unit-statuses.md`）が付いていれば 0。バリアは、その 1 回で消える。
-  煙幕に阻まれた攻撃は、バリアまで届かない（バリアは残る）。
+上から順に当てる（`Combat.hit`。下の「ダメージの解決」の表と同じ順）。
+
+1. **煙幕**: 守る側が自分の陣営の煙幕の中にいて、距離 2（`RANGED_DISTANCE`）以上から攻撃されたら 0。ここで終わり（`docs/field-effects.md`）。
+   バリアまで届かない（バリアは残る）。
+2. **攻撃力**: 攻撃側の攻撃力。攻撃側に照準（`docs/unit-statuses.md`）が付いていれば**確定クリティカル**で、攻撃力に照準の倍率を掛ける
+   （倍率は `docs/skills/precision-aim.md`）。倍率を掛けるのは一時的な補正（突撃・注射）の前の攻撃力で、一時的な補正はそのあとに足す。
+   攻撃を 1 回すると、照準は消える。
+3. **軍略で足すもの**（集中砲火・仇討ち・誓い・単騎。`docs/troop-traits.md`）を足す。
+4. **森**: 守る側が森にいれば、割合（`Seam.forest_rate_percent`。ふだんは `FOREST_DAMAGE_RATE_PERCENT`、深い茂み（`docs/seam-signs.md`）では `Seam.THICKET_RATE_PERCENT`）を掛ける。
+   端数は切り捨て。クリティカルの倍率と、軍略で足したぶんにも掛かる。
+5. **軍略で引くもの**（隊列）を引く。0 より下にはならない（引いた量として出るのは、残っていた量まで）。
+6. **胞子**: 攻撃側が、敵の糸茸の周り 8 マスにいれば、胞子のぶんを引く（0 より下にはならない。`docs/monsters.md`）。
+   隊列で 0 になっていたら、胞子は効かない（引くものが無い）。
+7. **バリア**: 守る側にバリア（`docs/unit-statuses.md`）が付いていれば 0。バリアは、その 1 回で消える。
+   防がれたら、軍略の増減と胞子は出さない（森とクリティカルの印は残る）。
+
 - HP は 0 より下がらない。HP が 0 になった駒は倒れ、盤から取り除かれる。
 - 反撃は無い。
 
