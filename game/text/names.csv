@@ -7,6 +7,12 @@ side.player2.short,赤
 side.neutral.short,中立
 side.story.player1,味方
 side.story.player2,敵
+side.story.army.military,ベルク連邦
+side.story.army.fantasy,リュエル騎士領
+side.story.army.none,亡者の群れ
+side.story.army.military.short,連邦
+side.story.army.fantasy.short,騎士領
+side.story.army.none.short,亡者
 army.none,軍なし
 army.military,MILITARY
 army.fantasy,FANTASY

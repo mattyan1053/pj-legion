@@ -53,7 +53,7 @@ static func side_tag(unit: Unit, viewer: Unit.Side) -> String:
 	if unit.side == Unit.Side.NEUTRAL:
 		return Text.t("battle.hud.tag.neutral")
 	if Names.story_sides:
-		return Names.side(unit.side)
+		return Names.side_relation(unit.side)
 	return Text.t("battle.hud.tag.own" if unit.side == viewer else "battle.hud.tag.foe")
 
 

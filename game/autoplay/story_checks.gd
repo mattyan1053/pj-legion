@@ -490,8 +490,11 @@ func _win_story_battle(app: Node, sortie: Node, episode: RefCounted, talk_first 
 	screen.set_time_scale_base(8.0)
 	var source: RefCounted = screen.source
 	_expect(source.new_board_fields().is_empty() and not source.can_open_setup() and screen.menu_items().is_empty(), "話の対戦に、選び直す入口がある")
-	# ストーリーの間は、陣営を「味方」「敵」と呼ぶ（「CPU（赤）」「プレイヤー1」と呼ばない）。
-	_expect(Names.side(Unit.Side.PLAYER2) == "敵" and Names.side_word(Unit.Side.PLAYER1) == "味方", "話の対戦で、陣営が「味方」「敵」と呼ばれない")
+	# ストーリーの間は、陣営を話の呼び名で呼ぶ（「CPU（赤）」「プレイヤー1」と呼ばない）。駒の所属の札は「味方」「敵」。
+	var names: Array[String] = source.side_names()
+	_expect(Names.side(Unit.Side.PLAYER2) == names[1] and Names.side_word(Unit.Side.PLAYER1) == source.side_shorts()[0] and names[1] != "",
+		"話の対戦で、陣営が話の呼び名で呼ばれない: %s" % [names])
+	_expect(Names.side_relation(Unit.Side.PLAYER2) == "敵", "駒の所属の札が「敵」でない")
 	_expect(screen.battle.board.size == episode.map.make_board().size, "話の対戦が、話のマップで始まらない")
 	var placed := 0
 	for unit: Unit in screen.battle.units:

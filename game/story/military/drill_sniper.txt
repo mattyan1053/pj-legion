@@ -57,5 +57,7 @@ unit = sniper
 unit = sniper
 
 [enemy]
+name = ベルク連邦 教導隊
+short = 教導隊
 army = fantasy
 unit = paladin
