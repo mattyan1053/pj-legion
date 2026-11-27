@@ -1,5 +1,7 @@
 # Quaternius
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 骸骨でない魔物（`monsters/` の Bat・Slime・Dragon と、`cute/` の Crab・Mushroom）と骸骨旗手（`monsters/` の Skeleton）の素材（`game/looks/monster_body.gd`、`game/looks/quaternius_skeleton.gd`）。
 2026-11-25 に、駒の見た目の組「人物」を外したので、その組だけが使っていた `characters/`（Ultimate Animated Character Pack）と `weapons/`（RPG Characters の武器）を消した。
 

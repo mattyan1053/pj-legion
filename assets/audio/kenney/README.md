@@ -1,5 +1,7 @@
 # Kenney の効果音（操作の音）
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 - 作者: Kenney（https://www.kenney.nl）
 - ライセンス: CC0 1.0（`LICENSE.txt` と `LICENSE-rpg.txt`。それぞれのパックの zip に入っていたライセンスの文を、そのまま写した）。クレジットは任意
 - 取ってきた日・ライセンスを確かめた日: 2026-11-15（OpenGameArt の各ページの「License(s)」が CC0 で、zip の中の文も CC0）
