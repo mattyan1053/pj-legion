@@ -14,6 +14,8 @@ extends "res://tools/shots/story_patrol_scenes.gd"
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
+	"credits": "タイトルの「クレジット」で、素材の名前・作者・ライセンスの窓を開いたところ",
+	"credits_end": "クレジットの窓を、いちばん下（フォントのライセンスの文）まで送ったところ",
 	"title_scape_ruins": "タイトルの場面の背景を、石の遺跡の景色にしたところ（景色は起動のたびと時間ごとに替わる）",
 	"title_scape_night": "タイトルの場面の背景を、月夜の結晶の岩山の景色にしたところ",
 	"title_scape_barrow": "タイトルの場面の背景を、古戦場の景色にしたところ",

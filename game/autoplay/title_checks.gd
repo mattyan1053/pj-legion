@@ -100,8 +100,12 @@ func _leave_battle(app: Node) -> void:
 ## 出せない部隊は取っておけない。取っておいた部隊を、対戦設定で選べる（出せない部隊は選べない）。
 func _visit_decks(app: Node) -> void:
 	var library: RefCounted = app.context.decks
-	_expect(app.current_scene().button_texts() == (["ストーリー", "対戦", "オプション", "終了"] as Array[String]),
+	_expect(app.current_scene().button_texts() == (["ストーリー", "対戦", "オプション", "クレジット", "終了"] as Array[String]),
 		"タイトルのメニューの並びが違う: %s" % [app.current_scene().button_texts()])
+	# 「クレジット」は、素材の名前・作者・ライセンスの窓を開く（閉じると、タイトルのまま）。
+	var credits: Control = app.current_scene().press_credits()
+	_expect(credits.visible and credits.shown_lines().size() > Credits.rows().size(), "クレジットの窓が開かない（か、中身が無い）")
+	credits.close_credits()
 	# 部隊編成は、対戦設定の「部隊編成」から開く（タイトルには無い）。
 	app.current_scene().press_start()
 	await app.scene_changed
