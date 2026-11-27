@@ -168,7 +168,7 @@ func test_traits_read_and_reach_the_battle() -> void:
 	var battle := StoryBattle.new(episode, mine).make_setup(3).create_battle()
 	assert_eq(battle.traits, [Traits.NONE, Traits.Id.OATH] as Array[int])
 	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.oath_partner != 0).size(), 2, "誓いを駒に写す")
-	for wrong: String in ["trait = focus", "trait = shout", "trait = oath\noath = 1, 3", "trait = lone\noath = 1, 2"]:
+	for wrong: String in ["trait = focus", "trait = shout", "trait = oath\noath = 1, 3", "trait = guard\noath = 1, 2"]:
 		var bad: Episode = Episode.parse(PROBE.replace("army = fantasy\n", "army = fantasy\n" + wrong + "\n"))
 		assert_eq(bad.problems.size(), 1, "%s: %s" % [wrong, bad.problems])
 

@@ -11,7 +11,7 @@ extends RefCounted
 ## 騎士領（FANTASY）
 ## - 仇討ち（VENGEANCE）: 味方を倒した敵を攻撃すると、ダメージ +VENGEANCE_BONUS
 ## - 誓い（OATH）: 誓いを結んだ 2 人（編成で結ぶ。MAX_OATHS 組まで）が同じターンに同じ敵を攻撃すると、2 人目のダメージ +OATH_BONUS
-## - 単騎（LONE）: 隣に味方がいない兵は、攻撃のダメージ +LONE_BONUS
+## - 守護（GUARD）: パラディンと隣り合う兵（パラディンどうしも）は、攻撃で受けるダメージ -GUARD_SHIELD
 ##
 ## 「隣」は上下左右の 1 マス（マンハッタン距離 1）。数えるのは将も含めた、同じ陣営の駒。
 ## ダメージの増減は駒の攻撃（Combat.hit）にだけ掛かる。スキルのダメージと樽の爆発には掛からない。
@@ -22,7 +22,7 @@ enum Id {
 	SUPPLY,  ## 補給線（連邦）
 	VENGEANCE,  ## 仇討ち（騎士領）
 	OATH,  ## 誓い（騎士領）
-	LONE,  ## 単騎（騎士領）
+	GUARD,  ## 守護（騎士領）
 }
 
 ## 軍略が無い（ストーリーの話で書いていない陣営、中立）。
@@ -38,14 +38,14 @@ const SUPPLY_HEAL := 4
 const VENGEANCE_BONUS := 4
 ## 誓いで、2 人目のダメージに足す量。
 const OATH_BONUS := 5
-## 単騎で、与えるダメージに足す量。
-const LONE_BONUS := 1
+## 守護で、攻撃で受けるダメージから引く量。
+const GUARD_SHIELD := 3
 ## 1 部隊で結べる誓いの数。
 const MAX_OATHS := 2
 
 const _BY_ARMY := {
 	UnitKind.Army.MILITARY: [Id.FOCUS, Id.RANKS, Id.SUPPLY],
-	UnitKind.Army.FANTASY: [Id.VENGEANCE, Id.OATH, Id.LONE],
+	UnitKind.Army.FANTASY: [Id.VENGEANCE, Id.OATH, Id.GUARD],
 }
 
 
@@ -135,9 +135,14 @@ static func ranked_at(battle: Battle, unit: Unit, cell: Vector2i) -> bool:
 	return neighbors_at(battle, unit, cell).any(func(other: Unit) -> bool: return other.kind == unit.kind)
 
 
-## 単騎: unit が cell に立ったら、隣に味方がいないか（単騎の陣営の駒だけ）。
-static func alone_at(battle: Battle, unit: Unit, cell: Vector2i) -> bool:
-	return has(battle, unit, Id.LONE) and neighbors_at(battle, unit, cell).is_empty()
+## 守護: unit が cell に立ったら、隣り合うパラディン（守護の陣営の駒だけ。unit 自身は除く）。いなければ null。
+static func guardian_at(battle: Battle, unit: Unit, cell: Vector2i) -> Unit:
+	if not has(battle, unit, Id.GUARD):
+		return null
+	for other in neighbors_at(battle, unit, cell):
+		if other.kind == UnitKind.Id.PALADIN:
+			return other
+	return null
 
 
 ## 補給線: unit が cell に立ったら、隣り合う回復役（補給線の陣営の駒だけ。unit 自身は除く）。いなければ null。
@@ -156,11 +161,6 @@ static func struck_by_side(battle: Battle, target: Unit, side: Unit.Side, except
 		if mark.y == int(side) and (except == null or mark.x != except.id):
 			return true
 	return false
-
-
-## 単騎の印: unit が、その陣営の番に、まだ動けて、隣に味方がいない将でない兵か（攻撃すれば単騎が効く。回復役も攻撃するので入る）。
-static func lone_marked(battle: Battle, unit: Unit) -> bool:
-	return battle.phase == unit.side and unit.kind != UnitKind.Id.KING and battle.can_act(unit) and alone_at(battle, unit, unit.cell)
 
 
 ## 集中砲火の印: target が、このターンに陣営 side（集中砲火の陣営）の駒に攻撃されているか。
@@ -197,13 +197,8 @@ static func oath_marked(battle: Battle, unit: Unit, target: Unit) -> bool:
 	return false
 
 
-## attacker がいまの位置から target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。
+## attacker が target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。
 static func attack_boosts(battle: Battle, attacker: Unit, target: Unit) -> Dictionary:
-	return attack_boosts_at(battle, attacker, attacker.cell, target)
-
-
-## attacker が cell から target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。
-static func attack_boosts_at(battle: Battle, attacker: Unit, cell: Vector2i, target: Unit) -> Dictionary:
 	var result := {}
 	if attacker.side == Unit.Side.NEUTRAL or target.side == attacker.side:
 		return result
@@ -217,15 +212,26 @@ static func attack_boosts_at(battle: Battle, attacker: Unit, cell: Vector2i, tar
 		Id.OATH:
 			if oath_marked(battle, attacker, target):
 				result[Id.OATH] = OATH_BONUS
-		Id.LONE:
-			if alone_at(battle, attacker, cell):
-				result[Id.LONE] = LONE_BONUS
 	return result
 
 
-## target が攻撃で受けるダメージから引く量（隊列）。
+## target が攻撃で受けるダメージから引く量（隊列か守護）。
 static func guard_of(battle: Battle, target: Unit) -> int:
-	return RANKS_GUARD if ranked_at(battle, target, target.cell) else 0
+	return guard_at(battle, target, target.cell)
+
+
+## unit が cell に立ったら、攻撃で受けるダメージから引く量（隊列か守護。CPU は動いた先で読む）。
+static func guard_at(battle: Battle, unit: Unit, cell: Vector2i) -> int:
+	if ranked_at(battle, unit, cell):
+		return RANKS_GUARD
+	if guardian_at(battle, unit, cell) != null:
+		return GUARD_SHIELD
+	return 0
+
+
+## 受けるダメージを減らす軍略か（隊列・守護。効いたときの「軍略を持つ側の駒」は攻撃された駒）。
+static func shields(id: int) -> bool:
+	return id == Id.RANKS or id == Id.GUARD
 
 
 # ---- 起きたこと ----

@@ -112,8 +112,8 @@ static func attack_power(attacker: Unit) -> int:
 
 
 ## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
-## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、軍略で足すもの（集中砲火・仇討ち・誓い・単騎）、森の軽減、
-## 軍略で引くもの（隊列）、胞子（糸茸）、受ける側の状態（バリア）。
+## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、軍略で足すもの（集中砲火・仇討ち・誓い）、森の軽減、
+## 軍略で引くもの（隊列・守護）、胞子（糸茸）、受ける側の状態（バリア）。
 ## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
 static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
@@ -128,7 +128,7 @@ static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
 		amount = amount * Seam.forest_rate_percent(battle) / 100
 	var guard := Traits.guard_of(battle, target)
 	if guard > 0 and amount > 0:
-		boosts[Traits.Id.RANKS] = mini(guard, amount)
+		boosts[Traits.of_side(battle, target.side)] = mini(guard, amount)
 		amount = maxi(0, amount - guard)
 	var spores := Monsters.spore_penalty(battle, attacker) if amount > 0 else 0  # 隊列で 0 になったら、胞子は引くものが無い
 	if spores > 0:
@@ -160,8 +160,8 @@ static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[Battle
 		events.append(SmokeBlockedEvent.new(attacker.id, target.id, resolved.smoke.id))
 	else:
 		for id: int in resolved.traits:
-			var helped := target if id == Traits.Id.RANKS else attacker
-			var other := attacker if id == Traits.Id.RANKS else target
+			var helped := target if Traits.shields(id) else attacker
+			var other := attacker if Traits.shields(id) else target
 			events.append(TraitTriggeredEvent.new(id as Traits.Id, helped.id, other.id, resolved.traits[id]))
 		events.append(AttackDamagedEvent.new(resolved))
 		Traits.note_attack(battle, attacker, target)

@@ -261,7 +261,7 @@ func _visit_decks(app: Node) -> void:
 	screen.press_oath(0)
 	screen.press_oath(1)
 	_expect(screen.editing_deck().oath_pairs() == ([Vector2i(0, 1)] as Array[Vector2i]), "誓いを結べない")
-	screen.choose_trait(Traits.Id.LONE)
+	screen.choose_trait(Traits.Id.GUARD)
 	_expect(not screen.shows_oaths() and screen.editing_deck().oath_pairs().size() == 1, "軍略を替えたら、結んだ組が消えた")
 	await screen.get_tree().process_frame
 	_expect(screen.trait_cut_texts().is_empty(), "部隊編成の軍略の欄の文が、切れているか札からはみ出している（騎士領）: %s" % [screen.trait_cut_texts()])

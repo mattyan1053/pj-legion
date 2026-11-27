@@ -153,7 +153,7 @@ static func troop_trait(id: int) -> String:
 static func troop_trait_text(id: int) -> String:
 	if id == Traits.NONE:
 		return ""
-	return Text.t("troop_trait.%s.text" % Traits.key(id), {"gain": troop_trait_effect(id), "medic": kind(UnitKind.Id.MEDIC)})
+	return Text.t("troop_trait.%s.text" % Traits.key(id), {"gain": troop_trait_effect(id), "medic": kind(UnitKind.Id.MEDIC), "paladin": kind(UnitKind.Id.PALADIN)})
 
 
 ## 軍略の効果（数のある所。「ダメージ +2」）。文の中で色を変える所。
@@ -165,7 +165,7 @@ static func troop_trait_effect(id: int) -> String:
 static func troop_trait_amount(id: int) -> int:
 	var amounts := {
 		Traits.Id.FOCUS: Traits.FOCUS_BONUS, Traits.Id.RANKS: Traits.RANKS_GUARD, Traits.Id.SUPPLY: Traits.SUPPLY_HEAL,
-		Traits.Id.VENGEANCE: Traits.VENGEANCE_BONUS, Traits.Id.OATH: Traits.OATH_BONUS, Traits.Id.LONE: Traits.LONE_BONUS,
+		Traits.Id.VENGEANCE: Traits.VENGEANCE_BONUS, Traits.Id.OATH: Traits.OATH_BONUS, Traits.Id.GUARD: Traits.GUARD_SHIELD,
 	}
 	return amounts.get(id, 0)
 
