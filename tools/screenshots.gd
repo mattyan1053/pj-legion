@@ -308,7 +308,7 @@ func _run() -> void:
 			continue
 		if _dry_run:
 			print("screenshots: 場面 %s を作れた" % name)
-			if _mid_animation:
+			if _mid_animation and _app.current_id() == SceneFlow.BATTLE:  # 対戦の外の演出なら、対戦の場面はもう木に無い
 				_scene.set_time_scale_base(1.0)
 			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
