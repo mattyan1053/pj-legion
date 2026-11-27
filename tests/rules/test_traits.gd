@@ -370,15 +370,15 @@ func test_spores_come_after_ranks_and_stop_at_zero() -> void:
 	assert_eq(hit.amount, commando.power() - Traits.RANKS_GUARD - Monsters.SPORE_PENALTY)
 	assert_eq(hit.traits, {T.RANKS: Traits.RANKS_GUARD})
 	assert_true(hit.spores)
-	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 3))  # 7 - 6 = 1 から 4 を引く
+	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 3))  # 7 - 4 = 3 から 4 を引く
 	hit = Combat.hit(battle, sniper, target)
 	assert_eq(hit.amount, 0)
 	assert_eq(hit.traits, {T.RANKS: Traits.RANKS_GUARD})
 	assert_true(hit.spores)
-	sniper.temporary_bonus[Unit.Stat.POWER] = -2  # 5 は隊列だけで 0
+	sniper.temporary_bonus[Unit.Stat.POWER] = -4  # 3 は隊列だけで 0
 	hit = Combat.hit(battle, sniper, target)
 	assert_eq(hit.amount, 0)
-	assert_eq(hit.traits, {T.RANKS: 5}, "隊列は、引けたぶんだけ")
+	assert_eq(hit.traits, {T.RANKS: 3}, "隊列は、引けたぶんだけ")
 	assert_false(hit.spores, "胞子は引くものが無い")
 
 
