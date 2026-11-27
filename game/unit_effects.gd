@@ -98,12 +98,11 @@ static func _traits(battle: Battle, unit: Unit, found: Array[Effect]) -> void:
 	if unit.side == Unit.Side.NEUTRAL:
 		return
 	# 自分の軍略。
-	if Traits.guard_of(battle, unit) > 0:
-		found.append(Effect.new(Names.troop_trait(Traits.Id.RANKS), _taken(-Traits.RANKS_GUARD), true))
+	var guard := Traits.guard_of(battle, unit)  # 隊列か守護
+	if guard > 0:
+		found.append(Effect.new(Names.troop_trait(Traits.of_side(battle, unit.side)), _taken(-guard), true))
 	if Traits.supplier_at(battle, unit, unit.cell) != null:
 		found.append(Effect.new(Names.troop_trait(Traits.Id.SUPPLY), _heal(Traits.SUPPLY_HEAL), true))
-	if unit.kind != UnitKind.Id.KING and Traits.alone_at(battle, unit, unit.cell):
-		found.append(Effect.new(Names.troop_trait(Traits.Id.LONE), _damage(Traits.LONE_BONUS), true))
 	var partner := Traits.partner_of(battle, unit)
 	if partner != null:
 		found.append(Effect.new(Names.troop_trait(Traits.Id.OATH), Text.t("battle.effect.partner", {"unit": Names.unit(partner)}), true))

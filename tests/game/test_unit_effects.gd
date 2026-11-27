@@ -44,14 +44,17 @@ func test_focus_mark_shows_on_the_struck_enemy_with_the_same_number_as_the_forec
 	assert_false(focus.in_stats, "ダメージの増減は能力値の行に入らない")
 
 
-func test_ranks_and_lone_show_on_own_units() -> void:
-	var battle := _battle([".......", ".......", "......."], T.RANKS, T.LONE)
+func test_ranks_and_guard_show_on_own_units() -> void:
+	var battle := _battle([".......", ".......", "......."], T.RANKS, T.GUARD)
 	var a := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(1, 1))
 	battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(2, 1))
 	var knight := battle.add_unit(K.PALADIN, P2, Vector2i(5, 1))
 	var ranks := _find(UnitEffects.of(battle, a), Names.troop_trait(T.RANKS))
 	assert_true(ranks != null and ranks.good and ranks.value.contains("-%d" % Traits.RANKS_GUARD), "隊列が出ない")
-	assert_true(_find(UnitEffects.of(battle, knight), Names.troop_trait(T.LONE)) != null, "単騎が出ない")
+	assert_true(_find(UnitEffects.of(battle, knight), Names.troop_trait(T.GUARD)) == null, "ひとりのパラディンは守られない")
+	var priest := battle.add_unit(K.PRIEST, P2, Vector2i(5, 2))
+	var guard := _find(UnitEffects.of(battle, priest), Names.troop_trait(T.GUARD))
+	assert_true(guard != null and guard.good and guard.value.contains("-%d" % Traits.GUARD_SHIELD), "守護が出ない")
 
 
 func test_a_status_shows_its_number_and_turns_and_is_in_the_stat_line() -> void:
