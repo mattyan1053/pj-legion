@@ -27,6 +27,7 @@ const NOT_SHOWN := [
 	"res://game/episode.gd",
 	"res://game/episode/episode_sides.gd",  # 同じく（話のファイルの節ごとに分けたもの）
 	"res://game/episode/episode_talks.gd",
+	"res://game/episode/episode_scenes.gd",
 	"res://game/campaign.gd",
 	"res://game/maps.gd",
 	"res://game/text_wrap.gd",  # 折り返しの決まり（行頭・行末に置かない文字の並び。画面の文ではない）

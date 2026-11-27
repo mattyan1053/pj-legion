@@ -17,6 +17,12 @@ const Names := preload("res://game/names.gd")
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 ## 書ける節。
 const SECTIONS := ["episode", "cast", "before", "cues", "after", "lost", "ally", "enemy", "unlock"]
+## 場面の節（書いた順が、場面の順。game/episode/episode_scenes.gd）: 「[talk 名前]」（会話。名前は話の中で重ならない）、[sortie]（出撃準備）、[battle]（対戦）。
+## 1 つでも書いた話は、[before]・[after] を書かない。
+const TALK_SECTION := "talk "
+const SCENE_MARKS := ["sortie", "battle"]
+## 場面の節で書く話の、会話の場面の数の上限。
+const TALK_SCENES_MAX := 8
 ## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃準備に出す覚えることの長さの上限。
 const TALK_MAX_LINES := 10
 ## 会話（前と後）の 1 行の文の長さの上限（会話の場面の文の枠に 2 行で収まる）。
@@ -112,6 +118,10 @@ var cues: Array[TalkCue] = []
 ## 場面の列（story_scene.gd）。話の流れ（story.gd の run_of）と、台本などの道具は、これを順に読む。
 ## いまは、どの話も 出撃準備 → 会話（before）→ 対戦 → 会話（after）（episode.gd の _build_scenes）。
 var scenes: Array[StoryScene] = []
+## 場面の節（[talk 名前]・[sortie]・[battle]）で書いた話か（偽なら [before]・[after] の話）。
+var written_as_scenes := false
+## 対戦のある話か（読む間に使う。読んだあとは has_battle()）。
+var _fights := true
 ## 読んだファイルのパスと、書き間違い（空なら正しい）。
 var path := ""
 var problems: PackedStringArray = []
@@ -141,6 +151,11 @@ func _bound(deck: Deck, side: int) -> Deck:
 			if pair.x < deck.entries.size() and pair.y < deck.entries.size():
 				deck.oaths.append([deck.entries[pair.x], deck.entries[pair.y]])
 	return deck
+
+
+## 対戦のある話か（場面の節で書いた話は、[battle] を書かなければ、読むだけの話。読み終えたらクリア）。
+func has_battle() -> bool:
+	return scenes.any(func(scene: StoryScene) -> bool: return scene.is_battle())
 
 
 ## 対戦の曲（無ければ、盤の見た目の曲）。

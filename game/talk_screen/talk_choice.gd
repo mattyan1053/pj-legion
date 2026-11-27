@@ -5,6 +5,9 @@ extends "res://game/talk_screen/talk_figures.gd"
 func _end() -> void:
 	if _ended:
 		return
+	# 対戦の無い話の最後の会話は、読み終えたらクリア（story.gd の run_of が "clears" に話の id を入れる）。行き先を選ぶ前に書く（次の話が開く）。
+	if talk.has("clears") and context.story != null:
+		context.story.clear(talk["clears"])
 	if next_episode() != null:
 		_open_choice()
 		return
