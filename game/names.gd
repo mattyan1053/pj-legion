@@ -20,20 +20,51 @@ static func word(names: Dictionary, value: int) -> String:
 ## ストーリーの呼び方にするか。真なら、陣営を遊ぶ人の側から「味方」「敵」と呼ぶ（色と「プレイヤー1」で呼ばない。中立はそのまま）。
 ## ストーリーの間の画面（出撃準備・対戦）が、入るときに真にし、出るときに偽に戻す（docs/wording.md の「陣営の呼び方」）。
 static var story_sides := false
+## ストーリーの陣営の呼び名（[人の軍, 敵の軍]。話のファイルの [ally] / [enemy] の name か、軍の既定の呼び名。story_battle.gd の side_names）。
+## 空なら「味方」「敵」。story_sides が真の間だけ使う。
+static var story_names: Array[String] = ["", ""]
+## 陣営の短い呼び名（[人の軍, 敵の軍]。上の帯の陣営の欄と、ログの駒の名前の前。話のファイルの short か、軍の既定の短い呼び名）。
+static var story_shorts: Array[String] = ["", ""]
+## 呼び名と短い呼び名の字数の上限（番の札・上の帯の陣営の欄に収まる長さ。話のファイルの検査が見る）。
+const STORY_NAME_MAX := 9
+const STORY_SHORT_MAX := 5
 
 
 ## 陣営の名前（見出し、番の知らせ、決着、本陣のマス）。
 static func side(of_side: Unit.Side) -> String:
 	if story_sides and of_side != Unit.Side.NEUTRAL:
-		return Text.t("side.story." + word(Unit.Side, of_side))
+		return _story_name(of_side)
 	return Text.t("side." + word(Unit.Side, of_side))
 
 
 ## 陣営の短い名前（ログの駒の名前の前、上の帯の陣営ごとの欄）。
 static func side_word(of_side: Unit.Side) -> String:
 	if story_sides and of_side != Unit.Side.NEUTRAL:
-		return Text.t("side.story." + word(Unit.Side, of_side))
+		var short: String = story_shorts[of_side] if int(of_side) < story_shorts.size() else ""
+		return short if short != "" else _story_name(of_side)
 	return Text.t("side.%s.short" % word(Unit.Side, of_side))
+
+
+## ストーリーの陣営の、遊ぶ人から見た間柄（「味方」「敵」）。駒の情報の所属の札。
+static func side_relation(of_side: Unit.Side) -> String:
+	if of_side == Unit.Side.NEUTRAL:
+		return Text.t("side.neutral")
+	return Text.t("side.story." + word(Unit.Side, of_side))
+
+
+## 軍 of_army の、ストーリーでの既定の呼び名（「ベルク連邦」「リュエル騎士領」。軍の無い群れは「亡者の群れ」）。
+static func story_army_name(of_army: UnitKind.Army) -> String:
+	return Text.t("side.story.army." + word(UnitKind.Army, of_army))
+
+
+## 軍 of_army の、ストーリーでの既定の短い呼び名（「連邦」「騎士領」「亡者」）。
+static func story_army_short(of_army: UnitKind.Army) -> String:
+	return Text.t("side.story.army.%s.short" % word(UnitKind.Army, of_army))
+
+
+static func _story_name(of_side: Unit.Side) -> String:
+	var name: String = story_names[of_side] if int(of_side) < story_names.size() else ""
+	return name if name != "" else side_relation(of_side)
 
 
 ## 軍の名前。軍を持たない駒（将、中立）は「軍なし」。

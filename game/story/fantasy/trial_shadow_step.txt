@@ -61,6 +61,7 @@ unit = spellblade
 unit = spellblade
 
 [enemy]
+name = 幻の兵
 army = military
 unit = shield_trooper
 unit = shield_trooper

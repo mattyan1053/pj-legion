@@ -504,7 +504,7 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"= の無い話し手": ["敵将 = enemy", "敵将 = enemy\n新兵", 15],
 		"敵の話し手がいない": ["敵将 = enemy", "副長 = ally", 12],
 		"話し手の節が無い": ["[cast]\n隊長 = ally\n敵将 = enemy\n", "", 1],
-		"前の書き方の話し手": ["army = fantasy", "army = fantasy\nname = 敵将", 18],
+		"呼び名が長い": ["army = fantasy", "army = fantasy\nname = " + "あ".repeat(Episode.Names.STORY_NAME_MAX + 1), 18],
 		"知らないきっかけ": ["(turn 2)", "(turn_end 2)", 30],
 		"きっかけの陣営": ["(king_half enemy)", "(king_half 1)", 31],
 		"ターン 0": ["(turn 2)", "(turn 0)", 30],

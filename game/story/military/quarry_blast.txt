@@ -69,6 +69,8 @@ after_music = talk_calm
 deploy = 8,19  0,12  10,19  2,12  7,19  1,13  11,19  1,12  9,19  3,12  6,19  0,13
 
 [enemy]
+name = ヴァルト少佐の隊
+short = 少佐の隊
 army = military
 unit = shield_trooper + iron_shield
 unit = sniper
