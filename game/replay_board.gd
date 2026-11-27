@@ -2,7 +2,7 @@ extends RefCounted
 ## 再生の盤: 再生（battle_playback.gd）が見せている盤の、いまの姿。始めの盤の写し（of）と、出来事の列（feed）だけから作る。
 ## ルールを動かさず、対戦（Battle）の進んだあとの状態も読まない（docs/battle-view.md の「再生の盤」）。
 ## 対戦の場面では、行動をルールに渡す前に写しを取り直し（場面の外で盤が変わっても、ずれを持ち越さない）、再生しながら出来事を食わせる。
-## リプレイやカットシーンでは、始めの写しを 1 度だけ取り、あとは出来事だけで進める。
+## リプレイやカットシーンでは、始めの写しを 1 度だけ取り、あとは出来事だけで進める（カットシーンは、対戦を作らずに of_pieces で組む）。
 ##
 ## 持つのは、盤の上で目に見えるもの（駒の位置・HP・最大 HP・レベル・進化・行動済み・状態の種類、樽、盤の上の効果、
 ## 本陣の占拠と拠点の確保の数、聖遺物、いまのターンと番、決着）。目に見えないもの（経験値、クールダウン、必殺技のゲージ）は持たない。
@@ -108,6 +108,31 @@ func is_over() -> bool:
 	return winner >= 0
 
 
+## 対戦を作らずに、盤 on_board と、置く兵の列 units から組む（カットシーン。docs/battle-view.md の「盤のカットシーン」）。
+## 盤は写して持つ（樽と盤の上の効果は、盤に書いてあるまま）。ターンは 1、番は人の陣営、決着していない。
+static func of_pieces(on_board: Board, units: Array[Unit]) -> RefCounted:
+	var result := new()
+	result.board = on_board.copy()
+	for unit in units:
+		result._add_piece(unit.id, unit.side, unit.kind, unit.cell, unit.hp, unit.max_hp())
+	result.barrels.assign(on_board.barrel_cells)
+	for effect in on_board.field_effects:
+		result.field_effects[effect.id] = [effect.type, effect.side, effect.cells.duplicate(), effect.durability]
+	return result
+
+
+func _add_piece(id: int, side: Unit.Side, kind: UnitKind.Id, cell: Vector2i, hp: int, max_hp: int) -> Piece:
+	var found := Piece.new()
+	found.id = id
+	found.side = side
+	found.kind = kind
+	found.cell = cell
+	found.hp = hp
+	found.max_hp = max_hp
+	pieces[id] = found
+	return found
+
+
 ## 起きたことを 1 つ、盤に映す（親の種類で読むものは、子もそこで読む）。
 func feed(event: BattleEvent) -> void:
 	if event is UnitMovedEvent:
@@ -134,6 +159,10 @@ func feed(event: BattleEvent) -> void:
 		_defeated(event)
 	elif event is UnitSpawnedEvent:
 		_spawned(event)
+	elif event is CutPlacedEvent:
+		_placed(event)
+	elif event is CutLeftEvent:
+		_left(event)
 	elif event is StatusAppliedEvent:
 		_status_applied(event)
 	elif event is StatusRemovedEvent:
@@ -228,15 +257,17 @@ func _defeated(event: UnitDefeatedEvent) -> void:
 
 
 func _spawned(event: UnitSpawnedEvent) -> void:
-	var found := Piece.new()
-	found.id = event.unit_id
-	found.side = event.side
-	found.kind = event.kind
-	found.cell = event.cell
-	found.hp = event.hp
-	found.max_hp = event.max_hp
-	found.acted = event.acted
-	pieces[event.unit_id] = found
+	_add_piece(event.unit_id, event.side, event.kind, event.cell, event.hp, event.max_hp).acted = event.acted
+
+
+## 台本の出来事（カットシーン）: 光を出さずに置いた兵。
+func _placed(event: CutPlacedEvent) -> void:
+	_add_piece(event.unit_id, event.side, event.kind, event.cell, event.hp, event.max_hp)
+
+
+## 台本の出来事（カットシーン）: 倒れずに去った兵は、盤から消える。
+func _left(event: CutLeftEvent) -> void:
+	pieces.erase(event.unit_id)
 
 
 func _status_applied(event: StatusAppliedEvent) -> void:
@@ -320,6 +351,8 @@ static func read_events() -> Array[Script]:
 		RelicGainedEvent,
 		UnitDefeatedEvent,
 		UnitSpawnedEvent,
+		CutPlacedEvent,
+		CutLeftEvent,
 		StatusAppliedEvent,
 		StatusRemovedEvent,
 		UnitActedEvent,
@@ -354,4 +387,9 @@ static func skipped_events() -> Array[Script]:
 		FieldEffectTickedEvent,
 		SkillReadyEvent,
 		UltReadyEvent,
+		# 台本の出来事（カットシーン。game/cut_events/）のうち、盤の見え方（駒の出入り・マス・HP・状態）を変えないもの
+		CutTurnedEvent,
+		CutCameraEvent,
+		CutPaceEvent,
+		CutWaitEvent,
 	]

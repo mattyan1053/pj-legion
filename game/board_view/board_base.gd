@@ -122,6 +122,9 @@ var _danger_cells: Array[Vector2i] = []
 var _pin_fill: MultiMesh
 var _pin_edges: MultiMesh
 var _pinned_sets: Array = []
+## 景色だけを見せるか（setup の前に決める）。真なら、盤としての印（マス目の線、本陣の旗と地面の陣営の色、拠点の旗と数の札）を作らない。
+## 地形と置物、環境オブジェクトはそのまま（その場所にある物）。会話の場面の、兵を立たせない背景（backdrop.gd）。
+var scenery_only := false
 var _grid: ShaderMaterial
 var _grid_instance: MeshInstance3D
 var _grid_emphasis := 0.0

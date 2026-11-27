@@ -16,8 +16,6 @@
 title = 尾根の待ち伏せ
 map = ridge_path
 music = battle
-before_music = battle
-after_music = talk_calm
 
 [cast]
 ハーデン = ally
@@ -27,23 +25,56 @@ after_music = talk_calm
 ピップ = ally, commando pip
 イェルダ = enemy, paladin evolved crown yelda
 
-[before]
+[sortie]
+
+# 盤のカットシーン（docs/story.md の「盤のカットシーン」）: 偵察に出たピップが、尾根の中ほどの敵を見つけて戻る。
+# 盤は対戦の始めの配置とはつながらない（見せるための別の盤）。
+[board 尾根の中ほど]
+music = battle
+unit ハーデン ally king 8,19
+unit ドーソン ally shield_trooper 7,19
+unit ノエ ally sniper 10,19
+unit ピップ ally commando 9,17
+unit イェルダ enemy paladin 8,9
+unit 騎士 enemy paladin 5,9
+unit 術師 enemy sorcerer 11,9
+unit 司祭 enemy priest 8,7
+camera 8,16
+pace slow
+camera 7,13
+move ピップ 6,13 6,12
+wait 0.6
+face イェルダ ピップ
+wait 0.8
+pace fast
+move ピップ 6,14 9,17
+face ピップ ハーデン
+camera 8,18
 ピップ: ほら〜、言ったでしょ。まだいるって。しかも尾根の真ん中まで出てきてるっす。
+camera 7,11
+move イェルダ 6,10
+face イェルダ 8,19
 イェルダ: 待っていたぞ、連邦の将。今度は、こちらから迎え撃つ。
+
+[talk 迎え撃つ]
+music = battle
 ノエ: 距離が近いです。左右どちらの道にも、すぐ出てこられます。
 ハーデン: 全員で前に出れば、本陣が空く。
 ドーソン: 少尉、旗の番を決めときましょう。脇を抜かれたら、それで終わりです。
 イェルダ: 前のようにはいかぬ。
+
+[battle]
 
 [cues]
 (turn 1) イェルダ: かかったな。尾根の上から挟み込め。
 (fallen ally) ピップ: うわ、脇から来たっす！ 旗のほう、見てくるっす！
 (king_half enemy) イェルダ: 前へ出たのは私だ。ここで膝は突かぬ。
 
-[after]
+[talk 名を知る]
+music = talk_calm
 イェルダ: ……2 度まで。貴公、名は。
-ハーデン: ベルク連邦、偵察隊。少尉のハーデンだ。
-イェルダ: 覚えておこう、ハーデン。……ひとつ忠告を。あの谷は、どちらの国の土でもない。眠る者たちの土だ。
+ハーデン: ベルク連邦、偵察隊。少尉の{hero}だ。
+イェルダ: 覚えておこう、{hero}。……ひとつ忠告を。あの谷は、どちらの国の土でもない。眠る者たちの土だ。
 ハーデン: ……眠る者たちの土。
 ピップ: 何すかね〜、今の。あ、補給が追い付いたっすよ。スピードブーツ、入ってるっす。
 ドーソン: 足が速くなりゃ、お前の遅刻も減るな。

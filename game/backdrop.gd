@@ -30,6 +30,10 @@ var _people := {}
 ## 立たせた駒の見た目（検査用）。
 var unit_views: Array[UnitView] = []
 var unit_sides: Array[int] = []
+## 景色だけを見せるか（木に入れる前に決める）。真なら、マス目の線と、本陣の旗・地面の陣営の色・拠点の印を出さない
+## （別の場所の会話とカットシーンの背景。盤ではなく、その場所として見せる）。
+var scenery_only := false
+var _view: BoardView
 
 
 ## shown: 駒を立たせる対戦（盤は shown の盤を使う）。king_looks: 陣営ごとの将の姿（battle_source.gd の king_looks）。
@@ -46,7 +50,9 @@ func _ready() -> void:
 	StageLook.build_environment(self)
 	var board := _board if _board != null else BoardGenerator.generate(BoardGenerator.Stage.PLAIN, LOOK_SEED)
 	var view := BoardView.new()
+	_view = view
 	add_child(view)
+	view.scenery_only = scenery_only
 	view.setup(board, LOOK_SEED, BattleScreen.TEAM_COLORS, _look)
 	StageLook.apply(self, view.look)
 	if _shown != null:
@@ -81,3 +87,8 @@ func _add_unit(unit: Unit) -> void:
 
 func _process(delta: float) -> void:
 	_rig._target_yaw += TURN_SPEED * delta
+
+
+## 背景の盤の見た目（検査用）。
+func board_view() -> BoardView:
+	return _view

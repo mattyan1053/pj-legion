@@ -39,20 +39,24 @@ var _cues: Array[TalkCue] = []
 var _names: Array = []
 ## 話し手の姿（_names と同じ並び。episode.gd の figures）。
 var _figures: Array = []
+## 遊ぶ人の付けた主人公の名前（空なら既定の名前。game/hero_name.gd）。
+var hero := ""
 ## 出した台詞（[cues] の何番目か）。
 var _said := {}
 
 
-func _init(cues: Array[TalkCue] = [], speakers: Array = [], figures: Array = []) -> void:
+func _init(cues: Array[TalkCue] = [], speakers: Array = [], figures: Array = [], hero_name := "") -> void:
 	_cues = cues
 	_names = speakers
 	_figures = figures
+	hero = hero_name
 
 
 ## 会話の行 talk（game/episode/talk_line.gd）を、出す台詞に。speakers・figures は話の speakers・figures。
-static func line_of(talk: TalkCue.TalkLine, speakers: Array, figures: Array) -> Line:
+## named は、遊ぶ人の付けた主人公の名前（空なら既定の名前）。
+static func line_of(talk: TalkCue.TalkLine, speakers: Array, figures: Array, named := "") -> Line:
 	var who := talk.who
-	return Line.new(talk.side, talk.speaker_in(speakers), talk.shown_text(), figures[who] if who >= 0 and who < figures.size() else {})
+	return Line.new(talk.side, talk.speaker_in(speakers, named), talk.shown_text(named), figures[who] if who >= 0 and who < figures.size() else {})
 
 
 func is_empty() -> bool:
@@ -79,7 +83,7 @@ func _take(battle: Battle, events: Array[BattleEvent], at_start: bool) -> Array[
 		var cue := _cues[i]
 		if _fires(battle, events, at_start, cue.trigger, cue.value):
 			_said[i] = true
-			lines.append(line_of(cue.line, _names, _figures))
+			lines.append(line_of(cue.line, _names, _figures, hero))
 	return lines
 
 

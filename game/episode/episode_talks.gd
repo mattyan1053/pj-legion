@@ -92,22 +92,142 @@ func _read_talks(file: RefCounted) -> void:
 		var optional := section == "lost"
 		if written_as_scenes and not optional:
 			continue  # 場面の節で書く話の会話は、[talk 名前]（episode_scenes.gd）
-		var max_lines := LOST_MAX_LINES if optional else TALK_MAX_LINES
-		var max_chars := LOST_MAX_CHARS if optional else TALK_MAX_CHARS
-		var rows: Array[TalkLine] = []
-		for row: Dictionary in file.rows(section):
-			var line := _speech(file, row["line"], row["text"])
-			if line != null and optional and line.is_narration():
-				file.problem(row["line"], "[%s] に地の文は書けない（決着の画面に、話し手のひとことで出す）" % section)
-			elif line != null:
-				rows.append(line)
-				if line.text.length() > max_chars:
-					file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, max_chars, line.text.length()])
-		if rows.is_empty() and (not optional or file.has(section)):
-			file.problem(maxi(file.line_of(section), 1), "[%s] の会話が無い" % section)
-		elif rows.size() > max_lines:
-			file.problem(file.line_of(section), "[%s] の会話は %d 行まで（いま %d 行）" % [section, max_lines, rows.size()])
-		set(section, rows)
+		if optional:
+			var rows: Array[TalkLine] = []
+			for row: Dictionary in file.rows(section):
+				var line := _speech(file, row["line"], row["text"])
+				if line != null and line.is_narration():
+					file.problem(row["line"], "[%s] に地の文は書けない（決着の画面に、話し手のひとことで出す）" % section)
+				elif line != null:
+					rows.append(line)
+					if line.longest() > LOST_MAX_CHARS:
+						file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, LOST_MAX_CHARS, line.longest()])
+			if rows.is_empty() and file.has(section):
+				file.problem(maxi(file.line_of(section), 1), "[%s] の会話が無い" % section)
+			elif rows.size() > LOST_MAX_LINES:
+				file.problem(file.line_of(section), "[%s] の会話は %d 行まで（いま %d 行）" % [section, LOST_MAX_LINES, rows.size()])
+			set(section, rows)
+		else:
+			if not file.has(section):
+				file.problem(1, "[%s] の会話が無い" % section)
+			set(section, _talk_rows(file, section, file.rows(section)))
+
+
+## 会話の節 section の行 source（{"line", "text"} の列）を、会話の行の列に読む（[before]・[after]・[talk 名前] が使う）。
+## 「話し手: 文」「> 地の文」のほかに、括弧で始まる指示の行が書ける（docs/story.md の「選択肢」）:
+##   (choice 名前)        ここで選ばせる（すぐ前の行が問い。名前で答えを覚える）
+##   (answer 鍵) 画面の文  答え。次の (answer)・(end) までの行は、この答えを選んだときだけ出す
+##   (end)                選択肢の終わり（ここから元の流れ）
+##   (if 名前 = 鍵) 行     その選択肢でその答えを選んでいたときだけ出す行（「!=」なら、選んでいなかったとき）
+## 行の数は、1 度に読む数で数える（選択肢は、いちばん長い答えの行の数）。
+func _talk_rows(file: RefCounted, section: String, source: Array) -> Array[TalkLine]:
+	var rows: Array[TalkLine] = []
+	var word := RegEx.create_from_string(CHOICE_WORD)
+	var asking: TalkLine = null  # いま読んでいる選択肢の、問いの行
+	var answer := &""  # いま読んでいる答えの鍵
+	var read := 0  # 1 度に読む行の数
+	var branch := 0  # いまの答えの行の数
+	var longest := 0  # いまの選択肢の、いちばん長い答えの行の数
+	for row: Dictionary in source:
+		var at: int = row["line"]
+		var text: String = row["text"]
+		var mark := _mark_of(text)
+		if mark.is_empty():
+			var line := _speech(file, at, text)
+			if line == null:
+				continue
+			if line.longest() > TALK_MAX_CHARS:
+				file.problem(at, "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.longest()])
+			if asking != null and answer == &"":
+				file.problem(at, "(choice %s) のあとは (answer 鍵) の行から書く" % asking.choice)
+			elif asking != null:
+				line.when_choice = asking.choice
+				line.when_answer = answer
+				branch += 1
+			else:
+				read += 1
+			rows.append(line)
+			continue
+		var words: PackedStringArray = mark["words"]
+		match words[0] if not words.is_empty() else "":
+			"choice":
+				if asking != null:
+					file.problem(at, "選択肢の中に選択肢は書けない（先に (end) で閉じる）")
+				elif words.size() != 2 or word.search(words[1]) == null or mark["rest"] != "":
+					file.problem(at, "選択肢は「(choice 名前)」（名前は英小文字・数字・_）: %s" % text)
+				elif rows.is_empty() or rows.back().asks() or rows.back().when_choice != &"":
+					file.problem(at, "(choice %s) の前に、問いになる行が要る（いつも出る行のすぐあとに書く）" % words[1])
+				elif choices.has(StringName(words[1])):
+					file.problem(at, "選択肢「%s」が 2 度ある（名前は、物語の中で重ねない）" % words[1])
+				else:
+					asking = rows.back()
+					asking.choice = StringName(words[1])
+					choices[asking.choice] = []
+					answer = &""
+					branch = 0
+					longest = 0
+			"answer":
+				if asking == null:
+					file.problem(at, "(answer 鍵) は (choice 名前) のあとに書く")
+				elif words.size() != 2 or word.search(words[1]) == null:
+					file.problem(at, "答えは「(answer 鍵) 画面の文」（鍵は英小文字・数字・_）: %s" % text)
+				elif (choices[asking.choice] as Array).has(StringName(words[1])):
+					file.problem(at, "答え「%s」が 2 度ある" % words[1])
+				elif mark["rest"] == "" or HeroName.longest_length(mark["rest"]) > OPTION_MAX_CHARS:
+					file.problem(at, "答えの文は 1 から %d 字（いま %d 字）" % [OPTION_MAX_CHARS, HeroName.longest_length(mark["rest"])])
+				else:
+					longest = maxi(longest, branch)
+					branch = 0
+					answer = StringName(words[1])
+					choices[asking.choice].append(answer)
+					asking.options.append({"key": answer, "text": mark["rest"]})
+			"end":
+				if asking == null:
+					file.problem(at, "(end) は (choice 名前) のあとに書く")
+				else:
+					if asking.options.size() < OPTIONS_MIN or asking.options.size() > OPTIONS_MAX:
+						file.problem(at, "選択肢「%s」の答えは %d から %d つ（いま %d）" % [asking.choice, OPTIONS_MIN, OPTIONS_MAX, asking.options.size()])
+					read += maxi(longest, branch)
+					asking = null
+			"if":
+				# (if 名前 = 鍵) か (if 名前 != 鍵)
+				var negate := words.size() == 4 and words[2] == "!="
+				var line := _speech(file, at, mark["rest"]) if mark["rest"] != "" else null
+				if words.size() != 4 or not (negate or words[2] == "=") or word.search(words[1]) == null or word.search(words[3]) == null:
+					file.problem(at, "条件の行は「(if 名前 = 鍵) 話し手: 文」（「!=」なら、選んでいなかったとき）: %s" % text)
+				elif asking != null:
+					file.problem(at, "選択肢の答えの中に、(if …) の行は書けない")
+				elif line == null:
+					if mark["rest"] == "":
+						file.problem(at, "条件のあとに、行が無い: %s" % text)
+				else:
+					if line.longest() > TALK_MAX_CHARS:
+						file.problem(at, "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.longest()])
+					line.when_choice = StringName(words[1])
+					line.when_answer = StringName(words[3])
+					line.when_not = negate
+					conditions.append({"line": at, "choice": line.when_choice, "answer": line.when_answer, "here": choices.has(line.when_choice)})
+					read += 1
+					rows.append(line)
+			_:
+				file.problem(at, "知らない指示「%s」（書けるのは (choice 名前)、(answer 鍵) 文、(end)、(if 名前 = 鍵) 行）" % text)
+	if asking != null:
+		file.problem(file.line_of(section), "選択肢「%s」を (end) で閉じていない" % asking.choice)
+	if rows.is_empty() and file.has(section):
+		file.problem(maxi(file.line_of(section), 1), "[%s] の会話が無い" % section)
+	elif read > TALK_MAX_LINES:
+		file.problem(file.line_of(section), "[%s] の会話は %d 行まで（いま %d 行。選択肢は、いちばん長い答えで数える）" % [section, TALK_MAX_LINES, read])
+	return rows
+
+
+## 行 text が括弧で始まる指示の行なら {"words": 括弧の中の語, "rest": 括弧のあとの文}。そうでなければ空。
+static func _mark_of(text: String) -> Dictionary:
+	if not text.begins_with("("):
+		return {}
+	var close := text.find(")")
+	if close < 0:
+		return {"words": PackedStringArray(), "rest": ""}
+	return {"words": text.substr(1, close - 1).split(" ", false), "rest": text.substr(close + 1).strip_edges()}
 
 
 ## 会話の行「話し手: 文」（全角の「：」でもよい）を、会話の行（talk_line.gd の speech）に。
@@ -171,8 +291,8 @@ func _read_cues(file: RefCounted) -> void:
 			if value < 0:
 				file.problem(row["line"], "陣営は ally か enemy: %s" % words[1])
 				continue
-		if speech.text.length() > CUE_MAX_CHARS:
-			file.problem(row["line"], "途中の台詞は %d 字まで（いま %d 字）" % [CUE_MAX_CHARS, speech.text.length()])
+		if speech.longest() > CUE_MAX_CHARS:
+			file.problem(row["line"], "途中の台詞は %d 字まで（いま %d 字）" % [CUE_MAX_CHARS, speech.longest()])
 		cues.append(TalkCue.new(kind, value, speech))
 	if cues.size() > CUES_MAX:
 		file.problem(file.line_of("cues"), "途中の台詞は %d つまで（いま %d）" % [CUES_MAX, cues.size()])

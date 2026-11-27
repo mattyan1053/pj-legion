@@ -10,6 +10,8 @@ func _play_moved(event: UnitMovedEvent) -> void:
 	var step_time := CRUISE_STEP_TIME if event.cruise else STEP_TIME
 	if side == Unit.Side.NEUTRAL:
 		step_time = NEUTRAL_STEP_TIME
+	if cut_step_time > 0.0:
+		step_time = cut_step_time
 	# 自分で動かしていない駒（CPU の駒、中立の駒）は、歩いている間、カメラが追いかける（長く歩いても、画面の外へ出ていかない）。
 	var followed := _camera_follows(side)
 	if followed:
@@ -231,7 +233,7 @@ func _play_spawned(event: UnitSpawnedEvent) -> void:
 	var view: UnitView = UnitView.new()
 	view.position = at
 	_stage.add_child(view)
-	view.setup(event.kind, team_colors[event.side], event.hp, event.max_hp)
+	view.setup(event.kind, team_colors[event.side], event.hp, event.max_hp, unit_looks.get(event.unit_id, &""))
 	view.face(BoardView.cell_center(event.cell + Vector2i.DOWN) - at)
 	if event.acted:
 		view.set_acted(true)

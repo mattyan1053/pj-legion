@@ -40,7 +40,7 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 			var terrain := board.terrain_at(cell)
 			var center := cell_center(cell)
 			var hq_owner := board.hq_owner(cell)
-			if hq_owner >= 0:
+			if hq_owner >= 0 and not scenery_only:
 				_add_flag(center, team_colors[hq_owner])
 
 			match terrain:
@@ -61,7 +61,7 @@ func setup(battle_board: Board, look_seed: int, team_colors: Array[Color], look_
 	_stronghold_cloth = null
 	_stronghold_flag.clear()
 	_stronghold_label = null
-	if board.stronghold_cell != Board.NO_CELL:
+	if board.stronghold_cell != Board.NO_CELL and not scenery_only:
 		_add_stronghold(board.stronghold_cell)
 	for cell: Vector2i in board.portal_exits:
 		_add_portal(cell, portal_color(board, cell))
@@ -79,6 +79,11 @@ func set_grid_emphasis(on: bool) -> void:
 ## マス目の線を出す・隠す（盤を景色として見せるだけの背景では隠す）。
 func set_grid_visible(on: bool) -> void:
 	_grid_instance.visible = on
+
+
+## マス目の線を出しているか（検査用）。
+func is_grid_visible() -> bool:
+	return _grid_instance.visible
 
 
 func _process(delta: float) -> void:

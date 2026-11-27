@@ -151,7 +151,8 @@ func _build_cell() -> void:
 
 ## 駒の札を出す。sheet は対戦中の駒のステータス（UnitSheet.of_unit）、tint は陣営の色。
 ## side_tag は所属の札の文（「自軍」「敵」など）、level_tag はレベルの札の文（育たない駒は空）、
-## experience は [いまの経験値, 次のレベルまで]（出さないなら空の列）。
+## experience は [いまの経験値, 次のレベルまで]（出さないなら空の列）。いまの経験値が負なら、棒の場所だけ空けて、棒も文も出さない
+## （HIDDEN_EXPERIENCE。進化しない魔物。Lv だけを見せ、札の並びは動かさない）。
 ## chips は札にする短い文の列（[文, 色] の列。特性）。action は行動の状態（名前の右の札。「未行動」）、
 ## state はそのほかの状態（いるマスなど。札の下の小さな行）、note はいま要る説明（無ければ空）。
 ## skill_note が偽なら、スキルの札に説明を出さない（note のほうに出しているとき）。
@@ -200,7 +201,8 @@ func show_unit(
 		var pips := line.stat == Unit.Stat.MOVE_RANGE or line.stat == Unit.Stat.ATTACK_RANGE
 		_meters[i].show_stat(line.name, line.value, line.plain, sheet.scale_of(line.stat), pips, sheet.hp if line.stat == Unit.Stat.MAX_HP else -1)
 		_texts.append(" ".join(_meters[i].texts()).strip_edges())
-	if not experience.is_empty():
+	_experience_shown = level_tag != "" and not experience.is_empty() and experience[0] >= 0
+	if _experience_shown:
 		_texts.append(Text.t("deck.sheet.experience", {"experience": experience[0], "needed": experience[1]}))
 	_effects.show_effects(sheet.effects)
 	_chips.clear()
@@ -386,6 +388,16 @@ func _slot(filled: bool) -> PanelContainer:
 	return slot
 
 
+## 経験値を出さない駒の experience（棒の場所だけ空ける）。
+const HIDDEN_EXPERIENCE: Array = [-1, 1]
+var _experience_shown := false
+
+
+## 経験値の棒と文を出しているか（検査用。魔物は出さない）。
+func shows_experience() -> bool:
+	return _experience_shown
+
+
 ## レベルの札: 「Lv 2」と、次のレベルまでの経験値の小さな棒（experience が [いま, 次まで]。空なら棒は出さない）。
 func _level_chip(words: String, experience: Array) -> Control:
 	var plate := SheetParts.tag(words, Palette.ACCENT) as PanelContainer
@@ -404,7 +416,8 @@ func _level_chip(words: String, experience: Array) -> Control:
 	bar.show_percentage = false
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.max_value = maxf(experience[1], 1.0)
-	bar.value = experience[0]
+	bar.value = maxf(experience[0], 0.0)
+	bar.modulate.a = 0.0 if experience[0] < 0 else 1.0  # 出さない棒も、場所は空けたまま
 	bar.add_theme_stylebox_override("background", UiTheme.box(Palette.INK, Palette.BORDER, 1, 2, 0.0))
 	bar.add_theme_stylebox_override("fill", UiTheme.box(Palette.GOLD, Palette.INK, 1, 2, 0.0))
 	row.add_child(bar)
