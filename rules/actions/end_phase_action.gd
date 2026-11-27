@@ -52,13 +52,9 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 			unit.reset_action()
 	var events: Array[BattleEvent] = [PhaseStartedEvent.new(battle.turn, side)]
 	for unit in MapObject.spring_targets(battle, side):
-		var amount := MapObject.spring_heal(unit)
-		unit.hp += amount
-		events.append(SpringHealedEvent.new(unit.cell, unit.id, amount, unit.hp))
+		events.append(Mend.give(unit, MapObject.SPRING_HEAL, SpringHealedEvent.new(unit.cell)))
 	for unit in Evolution.regeneration_targets(battle, side):
-		var amount := Evolution.regeneration_heal(unit)
-		unit.hp += amount
-		events.append(RegenerationHealedEvent.new(unit.id, amount, unit.hp))
+		events.append(Mend.give(unit, Evolution.REGENERATION_HEAL, RegenerationHealedEvent.new()))
 	events.append_array(Traits.start_phase(battle, side))
 	events.append_array(FieldEffects.start_phase(battle, side))
 	events.append_array(Statuses.start_phase(battle, side))

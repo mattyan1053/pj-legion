@@ -167,7 +167,7 @@ static func sanctuary_targets(battle: Battle, side: Unit.Side) -> Array[Unit]:
 
 ## 聖域で unit の HP が実際に増える量。最大 HP を超えるぶんは切り捨てる。
 static func sanctuary_heal(unit: Unit) -> int:
-	return clampi(unit.max_hp() - unit.hp, 0, SANCTUARY_HEAL)
+	return Mend.amount(unit, SANCTUARY_HEAL)
 
 
 # ---- フェーズの始め ----
@@ -183,9 +183,7 @@ static func start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	if side == Unit.Side.NEUTRAL:
 		return events
 	for unit in sanctuary_targets(battle, side):
-		var amount := sanctuary_heal(unit)
-		unit.hp += amount
-		events.append(SanctuaryHealedEvent.new(sanctuary_of(battle, unit).id, unit.id, amount, unit.hp))
+		events.append(Mend.give(unit, SANCTUARY_HEAL, SanctuaryHealedEvent.new(sanctuary_of(battle, unit).id)))
 	events.append_array(Monsters.start_phase(battle, side))
 	for effect: FieldEffect in battle.board.field_effects.duplicate():
 		if effect.side != side or not effect.is_timed() or effect.type == FieldEffect.Type.KNOT:

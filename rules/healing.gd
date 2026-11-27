@@ -33,4 +33,9 @@ static func targets(battle: Battle, healer: Unit) -> Array[Unit]:
 ## healer が target を回復したときに、実際に増える HP（予測にも使う）。
 ## 最大 HP を超えるぶんは切り捨てる。
 static func amount(healer: Unit, target: Unit) -> int:
-	return clampi(target.max_hp() - target.hp, 0, healer.power())
+	return Mend.amount(target, limit(healer))
+
+
+## healer が 1 回で戻せる HP の上限（回復役の Unit.power()）。
+static func limit(healer: Unit) -> int:
+	return healer.power()
