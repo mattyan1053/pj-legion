@@ -27,7 +27,7 @@ var entries: Array[DeckEntry] = []
 ## この編成の決まり（ロスター、予算、数の上限）。
 var rules: DeckRules
 ## 軍略（Traits.Id。docs/troop-traits.md）。その軍の 3 つから 1 つ。作ったときは軍の既定（Traits.default_of）。
-## 対戦モードで使う（ストーリーの話は、話のファイルが決める）。
+## 対戦モードで使う。ストーリーの話は、自分で部隊を選ぶ話だけ、教わった軍略から（DeckRules.trait_for。部隊が決まっている話は、話のファイルが決める）。
 var trait_id := Traits.NONE
 ## 誓い（軍略の「誓い」。Traits）で結んだ 2 体の組（[DeckEntry, DeckEntry] の並び）。騎士領だけ。軍略が誓いの部隊で効く。
 ## 結ぶ・ほどくのは bind / unbind（1 体は 1 組まで、Traits.MAX_OATHS 組まで）。駒を外すと、その組もほどける。

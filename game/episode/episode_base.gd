@@ -69,6 +69,8 @@ var lesson := ""
 ## クリアで増えるもの: 雇える駒、持たせられる装備、部隊のコストの上限の上がり幅。
 var unlock_kinds: Array[UnitKind.Id] = []
 var unlock_items: Array[Equipment.Id] = []
+## クリアで選べるようになる軍略（Traits.Id。ストーリー用の部隊が出撃準備で持てる。docs/story.md の「解放」）。
+var unlock_traits: Array[int] = []
 var budget_up := 0
 ## 人（プレイヤー1）の勝ち方: 守り切るターン数（0 なら無し）と、勝ち方の列（空ならいつもの勝ち方）。
 var hold_turns := 0

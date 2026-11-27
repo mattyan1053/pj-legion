@@ -212,3 +212,23 @@ func _all_items() -> Array[Equipment.Id]:
 	var items: Array[Equipment.Id] = []
 	items.assign(Equipment.Id.values())
 	return items
+
+
+# --- 軍略 ---
+
+
+## 対戦の決まりは、どの軍略も選べる。軍略を絞った決まりは、選んだ軍略を選べなければ、既定、それも無ければ選べる最初の 1 つ、どれも無ければ無し。
+func test_trait_for_keeps_to_the_allowed_traits() -> void:
+	var deck := Deck.new(MILITARY)
+	deck.trait_id = Traits.Id.SUPPLY
+	assert_eq(DeckRules.versus().trait_for(deck), Traits.Id.SUPPLY)
+	assert_eq(DeckRules.versus().traits_of(MILITARY), Traits.of_army(MILITARY))
+	var rosters := {MILITARY: DeckRules.versus().roster(MILITARY)}
+	var cases := [[[], Traits.NONE], [[Traits.Id.SUPPLY], Traits.Id.SUPPLY], [[Traits.Id.RANKS, Traits.Id.FOCUS], Traits.Id.FOCUS], [[Traits.Id.RANKS], Traits.Id.RANKS]]
+	for case: Array in cases:
+		var rules := DeckRules.new(&"story", 6, rosters, {MILITARY: 24}, null, null, case[0])
+		var mine := Deck.new(MILITARY, rules)
+		mine.trait_id = Traits.Id.SUPPLY
+		assert_eq(rules.trait_for(mine), case[1], "%s" % [case[0]])
+		CpuDeck.pick_trait(mine)
+		assert_true(mine.trait_id == Traits.NONE or rules.allows_trait(mine.trait_id), "CPU の選び方も、選べる軍略から")
