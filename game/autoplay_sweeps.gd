@@ -138,14 +138,24 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 func _read_talk(app: Node, episode: RefCounted, scene: RefCounted) -> void:
 	var talk: Node = app.current_scene()
 	var last: bool = episode.scenes.back() == scene
-	_expect(last or talk.line_count() == scene.lines.size(), "会話の文の数が違う: %s" % scene.part)
-	for i: int in scene.lines.size():
-		var row: RefCounted = scene.lines[i]
-		_expect(talk.line_index() == i and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [i + 1, talk.line_text()])
-		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [i + 1, talk.speaker()])
+	var story: RefCounted = app.context.story
+	var at := 0  # 画面の行の番号（出す条件の合わない行は、数えない）
+	for row: RefCounted in scene.lines:
+		if not row.holds(story.answer_of):
+			continue
+		_expect(talk.line_index() == at and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [at + 1, talk.line_text()])
+		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [at + 1, talk.speaker()])
 		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）
-		if talk.line_index() == i and app.current_id() == SceneFlow.TALK and not talk.is_choosing():
+		if row.asks():
+			# 選ばせる行: 答えが出て、選ぶまで進まない。1 つ目の答えを選ぶ。
+			_expect(talk.is_asking() and talk.option_texts().size() == row.options.size(), "選択肢「%s」の答えが出ない" % row.choice)
 			talk.press_next()
+			_expect(talk.line_index() == at, "答えを選ぶ前に、次の文へ進んだ")
+			talk.press_option(0)
+			_expect(story.answer_of(row.choice) == String(row.options[0]["key"]), "選んだ答えを覚えていない: %s" % row.choice)
+		elif talk.line_index() == at and app.current_id() == SceneFlow.TALK and not talk.is_choosing():
+			talk.press_next()
+		at += 1
 		await app.get_tree().process_frame
 		if app.current_id() != SceneFlow.TALK:
 			return
