@@ -137,3 +137,5 @@ credits.line,{name}　{author}　{license}
 credits.license_files,ライセンスの文（この文書の隣の licenses/ にある）
 credits.license_text,{name} のライセンスの文
 credits.thanks,素材を作り、使えるように公開してくださった方々に感謝します。
+setup.caption.hand,手札
+setup.rule.hand.note,毎ターン札を 1 枚引き、1 枚使える（試し）

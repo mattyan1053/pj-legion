@@ -130,6 +130,8 @@ status.fatigue,反動
 status.assault,突撃
 status.resolve,奮起
 status.snare,絡み
+status.haste,進軍
+status.might,強打
 relic.wisdom,英知の聖遺物
 relic.wisdom.summary,軍の全員の最大 HP +{amount}
 relic.courage,勇気の聖遺物
@@ -143,6 +145,8 @@ status.fatigue.summary,攻撃 -{penalty}
 status.assault.summary,移動 +{move}・攻撃 +{power}
 status.resolve.summary,攻撃 +{resolve}（骸骨旗手が倒れた）
 status.snare.summary,動けない（攻撃はできる）
+status.haste.summary,移動 +{haste}
+status.might.summary,攻撃 +{might}
 troop_trait.focus,集中砲火
 troop_trait.ranks,隊列
 troop_trait.supply,補給線
@@ -187,3 +191,19 @@ sign.gale.summary,巡航の移動力 +{gale}
 sign.gleam.summary,後衛の射程 +{gleam}
 sign.thicket.summary,森にいる兵が受けるダメージ {thicket_times} 倍
 sign.taut.summary,スキルのクールダウン -{taut} ターン
+card.march,進軍
+card.march.summary,味方 1 体の移動力 +{move}（このターンの間）
+card.might,強打
+card.might.summary,味方 1 体の攻撃力・回復量 +{power}（このターンの間）
+card.mend,手当て
+card.mend.summary,味方 1 体の HP を {heal} 回復
+card.shove,押し出し
+card.shove.summary,味方の隣にいる敵 1 体を、隣の空いたマスへ動かす
+card.encore,号令
+card.encore.summary,行動済みの味方 1 体が、もう一度行動できる。その味方は次の自分の番の終わりまで、攻撃力 -{penalty}
+card.resupply,補給
+card.resupply.summary,味方の全員の HP を {heal} 回復
+card.ward,加護
+card.ward.summary,味方 1 体にバリア。次に受けるダメージを 1 回だけ防ぐ
+card.blink,転移
+card.blink.summary,味方 1 体を、{range} マス以内の空いたマスへ移す

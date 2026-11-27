@@ -82,6 +82,8 @@ const TOP_BAR_HEIGHT := 50.0
 const BOTTOM_BAR_HEIGHT := 92.0
 ## 下の帯の上下の余白（px）。ほかの帯より詰める。
 const BOTTOM_BAR_MARGIN := 6.0
+## 下の帯のすぐ上で、メニューと予測のパネルを置かない高さ（手札の帯が出ている間。hud_hand.gd）。
+var bottom_reserved := 0.0
 ## 下の帯の案内の欄の高さと、マスの説明の欄の高さ・行の数。出すものが無くても、この高さのまま。
 const GUIDE_HEIGHT := 24.0
 const CELL_HEIGHT := 46.0

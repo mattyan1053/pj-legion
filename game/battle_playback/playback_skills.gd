@@ -50,6 +50,44 @@ func _play_ult_effects(side: Unit.Side, effects: Array[BattleEvent]) -> void:
 	await after(ULT_EFFECTS_TIME)
 
 
+## 札を使った（手札。docs/hand-cards.md）。相手の兵がいれば、カメラを寄せて、兵の上に札の名前を出す。
+## 相手を選ばない札は、画面の中央に知らせる。効果は、続くイベントが見せる。
+func _play_card_played(event: CardPlayedEvent) -> void:
+	refresh_status.call(replay.turn, replay.phase)
+	_sound(&"ui_confirm")
+	_after_skill = false
+	var name := Names.card(event.card)
+	if event.unit_id != 0 and _views.has(event.unit_id):
+		var view := _view(event.unit_id)
+		_rig.focus_on(view.position)
+		_flash(view.position, COLOR_CARD, 1.1)
+		_pop_number(view.position + Vector3(0.0, 0.7, 0.0), Text.t("battle.pop.card", {"card": name}), COLOR_CARD)
+	else:
+		_hud.show_banner(Text.t("battle.banner.card", {"side": side_name.call(event.side), "card": name}), COLOR_CARD)
+	await after(0.45)
+
+
+## 札を引いた。下の手札の帯が増えるので、ここは音だけ（帯は refresh_status が描き直す）。
+func _play_card_drawn(_event: CardDrawnEvent) -> void:
+	refresh_status.call(replay.turn, replay.phase)
+
+
+## 札で回復した。光と数を出す。
+func _play_card_healed(event: CardHealedEvent) -> void:
+	if _views.has(event.unit_id):
+		await _play_heal(event, true)
+
+
+## 札で押し出された。隣のマスへ滑る。
+func _play_pushed(event: UnitPushedEvent) -> void:
+	var view := _view(event.unit_id)
+	_flash(view.position, COLOR_CARD, 0.9)
+	var slide := create_tween()
+	slide.tween_property(view, "position", BoardView.cell_center(event.to), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_rig.focus_on(BoardView.cell_center(event.to))
+	await slide.finished
+
+
 ## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
 func _play_ult_ready(_event: UltReadyEvent) -> void:
 	refresh_status.call(replay.turn, replay.phase)

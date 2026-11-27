@@ -353,6 +353,10 @@ static func skipped_events() -> Array[Script]:
 		# 使えるようになっただけ（使ったら数える）
 		SkillReadyEvent,
 		UltReadyEvent,
+		# 札（試しの決まり）は戦績に入れない。札の回復は、誰の回復量にも数えない（_count_heal）
+		CardDrawnEvent,
+		CardPlayedEvent,
+		UnitPushedEvent,
 		# 占拠と拠点の数は、決着の理由（GameWonEvent）で足りる
 		CaptureProgressEvent,
 		StrongholdProgressEvent,

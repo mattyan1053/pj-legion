@@ -15,8 +15,11 @@ const STRONGHOLD := &"stronghold"
 ## 対戦設定では「ランダム」「なし」。ストーリーの話は、話のファイルが決めた様子（Scenario.signs）を使う。
 const SEAM := &"seam"
 
+## 手札（試し）: 軍ごとの札の山から、自分の番の始めに 1 枚引き、1 つの番に 1 枚使える（Hand。docs/hand-cards.md）。既定は切。
+const HAND := &"hand"
+
 ## 名前の一覧。
-const ALL: Array[StringName] = [STRONGHOLD, SEAM]
+const ALL: Array[StringName] = [STRONGHOLD, SEAM, HAND]
 ## 対戦モードの対戦設定の既定（拠点は、将の撃破・本陣の占拠と並ぶ勝ち方として入。縫い目の様子はランダム = 入）。
 const DEFAULTS: Array[StringName] = [STRONGHOLD, SEAM]
 ## 休眠の決まり: ルールと CPU は残すが、画面からは入にできない（対戦設定に行が無い）。

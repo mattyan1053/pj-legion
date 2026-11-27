@@ -126,6 +126,10 @@ static func skipped_events() -> Array[Script]:
 		SpringHealedEvent,
 		RegenerationHealedEvent,
 		SupplyHealedEvent,
+		CardHealedEvent,
+		CardDrawnEvent,
+		CardPlayedEvent,
+		UnitPushedEvent,
 		CaptureProgressEvent,
 		StrongholdProgressEvent,
 	]

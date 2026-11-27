@@ -64,7 +64,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 - 軍略（`docs/troop-traits.md`）は決まりではなく、部隊が持つ（軍・部隊のものであって、対戦の決まりではない。入・切は無く、対戦設定に行は無い）。
 - `MatchSetup` の既定は空（どれも切）。**ストーリーの話は、入にしない**（縫い目の様子は、話のファイルが決めた様子を `Scenario.signs` で持つ。`docs/seam-signs.md`）。切のとき、対戦は 1 局も変わらない（盤も、駒も、CPU の手も）。
 - 入にするのは、`MatchSetup.rules` に名前を並べること。`create_battle()` が、入の決まりの準備をする。
-- 画面では、対戦設定のパネルの「拠点」の行の「あり」「なし」、「縫い目の様子」の行の「ランダム」「なし」で入・切する（`game/match_choice.gd` の `rules`、`set_rule`）。
+- 画面では、対戦設定のパネルの「拠点」の行の「あり」「なし」、「縫い目の様子」の行の「ランダム」「なし」、「手札」の行の「あり」「なし」で入・切する（`game/match_choice.gd` の `rules`、`set_rule`）。
   集計の道具は、付けなければ対戦モードの既定で回し、`--rules=<名前>` でそれだけ入、`--rules=none` で全部切（`docs/cpu-ai.md`）。
 - CPU は、入の決まりを知って打つ。
 
@@ -72,6 +72,7 @@ CPU どうしの集計の道具（`tools/cpu_matches.gd`）が同じ入口を通
 | --- | --- | --- |
 | `seam`（`OptionalRules.SEAM`） | 縫い目の様子のランダム。対戦ごとに、マップに付く効果が 0〜2 つめくられ、対戦のあいだずっと効く（`docs/seam-signs.md`） | 戦いの定義が様子を決めていなければ（`Scenario.signs`）、盤と種で札を引き（`Seam.draw`。対戦を作る前に `signs()` でも引ける）、対戦に入れる（`Seam.arm`。仮縫いのずれなら、拠点を置いたあとにポータルを組み直す） |
 | `stronghold`（`OptionalRules.STRONGHOLD`） | 拠点。盤ごとに決めたマス（両方の本陣から同じくらいの道のり）で、乗ったまま番を終えると確保が進み、決まった数で勝つ（`docs/map-objects.md` の「拠点」、`docs/win-conditions.md` の「拠点を確保し続ける」） | 盤ごとに決めたマスに拠点を置き（`Stronghold.arm`）、両方の勝ちの条件に拠点の確保を足す |
+| `hand`（`OptionalRules.HAND`） | 手札（試し。既定は切）。軍ごとの札の山から、自分の番の始めに 1 枚引き、1 つの番に 1 枚使える（`docs/hand-cards.md`） | 軍を置いたあと、山を対戦の種で混ぜ、始めの手札を配る（`Hand.arm`。対戦の乱数は進めない） |
 
 決まりを足すとき: `OptionalRules` に名前、`create_battle()` に準備、対戦設定のパネルに行、ここの表に 1 行。
 

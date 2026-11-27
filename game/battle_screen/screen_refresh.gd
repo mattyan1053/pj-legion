@@ -77,10 +77,19 @@ func _refresh() -> void:
 		unit != null, unit != null and battle.can_act(unit), inspected_unit() != null, battle.is_over(), cpu_turn,
 		battle.can_apply(UseUltAction.new()), _can_attack(), not _heal_targets.is_empty(), not _skill_cells.is_empty()
 	)
+	if _ui.card != -1 and (cpu_turn or battle.is_over() or battle.evolving_unit() != null or not Hand.can_play(battle, _ui.card as Card.Id)):
+		_ui.clear_card()
+	_card_cells = []
+	if _ui.card != -1:
+		_card_cells = Hand.targets(battle, _ui.card as Card.Id) if _ui.card_target == NO_CELL \
+			else Hand.spots(battle, _ui.card as Card.Id, _ui.card_target)
 	var inspected := inspected_unit()
 
 	_painted = {}
-	if inspected != null:
+	if _ui.card != -1:
+		for cell in _card_cells:
+			_painted[cell] = COLOR_SKILL
+	elif inspected != null:
 		_paint_view(inspected)  # 見ている間は、見ている駒の範囲だけを塗る（選んでいる駒の範囲は、見終わると戻る）
 	elif unit != null and not battle.is_over():
 		if _ui.mode == Mode.SKILL:
@@ -127,6 +136,9 @@ func _refresh() -> void:
 	if inspected != null:
 		_inspect_ring.position = BoardView.cell_center(inspected.cell) + Vector3(0.0, 0.04, 0.0)
 
+	if _ui.card_target != NO_CELL:
+		_inspect_ring.visible = true
+		_inspect_ring.position = BoardView.cell_center(_ui.card_target) + Vector3(0.0, 0.04, 0.0)
 	_board_view.set_marked(_ui.inspected_cell)
 	# 状態（バリア、照準など）が付いている駒は、足元の輪で分かるようにする。
 	for shown in battle.units:
@@ -140,7 +152,10 @@ func _refresh() -> void:
 			battle, unit, inspected_unit(), _ui.mode, cpu_turn, _ui.confirming_ult or _ui.confirming_auto,
 			Queries.unacted_count(battle) if _ui.confirming_end else 0, _ui.pinned_ids.size()
 		)
+	if _ui.card != -1 and Card.aim(_ui.card as Card.Id) != Card.Aim.NONE:
+		guide = BattleTexts.card_guide(_ui.card_target != NO_CELL)
 	_hud.set_guide(guide)
+	_refresh_hand(cpu_turn)
 	var evolving := battle.evolving_unit()
 	if evolving != null and not battle.is_over() and not cpu_turn:
 		var healer := UnitKind.role(evolving.kind) == UnitKind.Role.HEALER
@@ -176,6 +191,34 @@ func _refresh() -> void:
 	)
 	_show_watch_controls()
 	_update_info()
+
+
+## 手札の帯（試しの決まり。docs/hand-cards.md）を、見ている側（_viewer_side）の手札で作り直す。手札の無い対戦では隠す。
+func _refresh_hand(cpu_turn: bool) -> void:
+	if not battle.hand_on or battle.is_over():
+		_hud.set_hand(false)
+		return
+	var side := _viewer_side()
+	var mine := not cpu_turn and battle.phase == side and battle.evolving_unit() == null
+	var cards: Array[Dictionary] = []
+	for id in Hand.of(battle, side):
+		var card := id as Card.Id
+		var usable := mine and Hand.can_play(battle, card)
+		var off := ""
+		if not mine:
+			off = Text.t("battle.hand.off.turn")
+		elif battle.card_plays[side] >= Hand.PLAYS_PER_PHASE:
+			off = Text.t("battle.hand.off.played")
+		elif battle.acting_unit_id != 0:
+			off = Text.t("battle.hand.off.acting")
+		elif not usable:
+			off = Text.t("battle.hand.off.target")
+		var chosen := _ui.card == id and cards.all(func(other: Dictionary) -> bool: return not other["chosen"])
+		cards.append({
+			"card": id, "usable": usable, "off": off, "chosen": chosen,
+			"confirming": chosen and Card.aim(card) == Card.Aim.NONE,
+		})
+	_hud.set_hand(true, cards, Hand.pile_left(battle, side), Hand.of(battle, (1 - side) as Unit.Side).size(), side)
 
 
 ## 動ける範囲に重ねる、ポータルの塗り（マス -> 色）。範囲の中の、転移に使えるポータル（止まると「転移」を選べる）と、
@@ -418,6 +461,8 @@ func _update_info_panel() -> void:
 ## いまマウスを乗せている対象への行動（攻撃・樽・盾・回復・スキル）と、予測のパネルの見出し。無ければ空の列。
 ## 自分に使うスキルは、対象が 1 つなので、マウスを乗せなくても出す。
 func _hovered_action() -> Array:
+	if _ui.card != -1 and not _ui.busy and not battle.is_over():
+		return _hovered_card_action()
 	var actor := selected_unit()
 	if actor == null or _ui.inspected_id != 0 or _ui.busy or battle.is_over() or _ui.menu_hover_id != &"":
 		return []
@@ -440,6 +485,24 @@ func _hovered_action() -> Array:
 	return []
 
 
+## 手札の札の相手にマウスを乗せているときの行動（_hovered_action と同じ形）。相手を選ばない札は、使うかを確かめている間ずっと出す。
+func _hovered_card_action() -> Array:
+	var card := _ui.card as Card.Id
+	var title := Text.t("battle.forecast.card", {"card": Names.card(card)})
+	if Card.aim(card) == Card.Aim.NONE:
+		for unit in battle.units:
+			if unit.side == battle.phase:
+				return [PlayCardAction.new(card), title, unit.cell]
+		return []
+	if not _card_cells.has(_hover_cell):
+		return []
+	if _ui.card_target != NO_CELL:
+		return [PlayCardAction.new(card, _ui.card_target, _hover_cell), title, _hover_cell]
+	if Card.aim(card) == Card.Aim.UNIT:
+		return [PlayCardAction.new(card, _hover_cell), title, _hover_cell]
+	return []
+
+
 ## 戦闘予測のパネルを、いまの対象で作り直す（中身は Forecast.of をそのまま読む）。対象が無ければ消す。
 func _update_forecast() -> void:
 	var found := _hovered_action()
@@ -457,7 +520,9 @@ func _update_forecast() -> void:
 		var unit := battle.unit_by_id(row.unit_id)
 		if unit != null:
 			avoid.append(unit.cell)
-	if action is UseSkillAction:
+	if action is PlayCardAction:
+		pass
+	elif action is UseSkillAction:
 		avoid.append_array(Skills.of(actor).affected_cells(battle, actor, found[2]))
 	elif action is AttackBarrelAction:
 		avoid.append_array(MapObject.blast_cells(battle.board, found[2]))

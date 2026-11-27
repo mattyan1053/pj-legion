@@ -72,6 +72,11 @@ static func guide(
 	return parts
 
 
+## 手札の札の相手を選んでいる途中の案内（駒を動かす札で、動かす先を選ぶ段なら to_spot）。
+static func card_guide(to_spot: bool) -> Array[Dictionary]:
+	return [KeyMarks.phrase(Text.t("battle.guide.spot" if to_spot else "battle.guide.target")), _right_click("battle.guide.back" if to_spot else "battle.guide.cancel")]
+
+
 ## 見ている駒の範囲の色の印: 動ける範囲と、相手の駒なら次の番に攻撃が届く範囲、留めた範囲があればその枠。
 static func _seen_ranges(battle: Battle, seen: Unit, pinned: int) -> Array[Dictionary]:
 	var parts: Array[Dictionary] = [_mark(&"reach", "battle.guide.move")]

@@ -423,3 +423,20 @@ result.prompt_title,Enter: タイトルへ
 battle.hud.monster,魔物
 battle.hud.sign_note,{name}: {summary}
 default.boss,番人
+battle.hand.title,手札
+battle.hand.pile,山 {count}
+battle.hand.foe,相手 {count} 枚
+battle.hand.confirm,もう一度押して使用
+battle.hand.off.turn,相手の番
+battle.hand.off.played,このターンは使用済み
+battle.hand.off.acting,行動中の兵あり
+battle.hand.off.target,対象なし
+battle.guide.spot,移動先を選択
+battle.log.card,{side}が札「{card}」を使った
+battle.log.card_on,{side}が{unit}に札「{card}」を使った
+battle.log.card_drawn,{side}が札を引いた（手札 {count} 枚）
+battle.log.healed.card,{unit}が {amount} 回復（HP {hp}）
+battle.log.pushed,{unit}が {from} → {to} へ押し出された
+battle.pop.card,札: {card}
+battle.banner.card,{side}　札: {card}
+battle.forecast.card,札: {card}

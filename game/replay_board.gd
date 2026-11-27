@@ -141,6 +141,8 @@ func feed(event: BattleEvent) -> void:
 		_warped(event)
 	elif event is UnitTeleportedEvent:
 		_teleported(event)
+	elif event is UnitPushedEvent:
+		_pushed(event)
 	elif event is UnitsSwappedEvent:
 		_swapped(event)
 	elif event is MoveUndoneEvent:
@@ -201,6 +203,10 @@ func _warped(event: UnitWarpedEvent) -> void:
 
 
 func _teleported(event: UnitTeleportedEvent) -> void:
+	_place(event.unit_id, event.to)
+
+
+func _pushed(event: UnitPushedEvent) -> void:
 	_place(event.unit_id, event.to)
 
 
@@ -342,6 +348,7 @@ static func read_events() -> Array[Script]:
 		UnitMovedEvent,
 		UnitWarpedEvent,
 		UnitTeleportedEvent,
+		UnitPushedEvent,
 		UnitsSwappedEvent,
 		MoveUndoneEvent,
 		UnitDamagedEvent,
@@ -383,6 +390,9 @@ static func skipped_events() -> Array[Script]:
 		TraitTriggeredEvent,
 		SkillUsedEvent,
 		UltUsedEvent,
+		CardPlayedEvent,
+		# 手札は盤の上に無い（画面の帯が、対戦から読む）
+		CardDrawnEvent,
 		# 目に見えない数（残りのターン数・クールダウン・必殺技のゲージ）だけを運ぶ。再生の盤は持たない
 		FieldEffectTickedEvent,
 		SkillReadyEvent,

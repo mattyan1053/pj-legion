@@ -51,6 +51,7 @@ func _ready() -> void:
 	_hud.menu_pressed.connect(_on_menu_pressed)
 	_hud.menu_hovered.connect(_on_menu_hovered)
 	_hud.ult_pressed.connect(press_ult)
+	_hud.card_pressed.connect(press_card)
 	_hud.end_turn_pressed.connect(press_end_turn)
 	_hud.restart_pressed.connect(_on_restart_pressed)
 	_hud.evolution_chosen.connect(choose_evolution)

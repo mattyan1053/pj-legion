@@ -35,6 +35,8 @@ const COLOR_EXPERIENCE := Color("9fd8ff")
 const COLOR_LEVEL_UP := Color("ffd34a")
 const COLOR_EVOLUTION := Color("d9a6ff")
 const COLOR_RELIC := Color("ffe08a")
+## 札（手札）を使ったときの光と、札の名前の色。
+const COLOR_CARD := Color("ffd76a")
 
 
 # ---- 場面から受け取るもの（setup で入る。対戦ごとに変わるものは、場面が入れ替える） ----
@@ -191,6 +193,10 @@ static func event_players() -> Dictionary:
 		SkillUsedEvent: &"_play_skill_used",
 		SkillReadyEvent: &"_play_skill_ready",
 		UltUsedEvent: &"_play_ult_used",
+		CardPlayedEvent: &"_play_card_played",
+		CardDrawnEvent: &"_play_card_drawn",
+		CardHealedEvent: &"_play_card_healed",
+		UnitPushedEvent: &"_play_pushed",
 		UltReadyEvent: &"_play_ult_ready",
 		TraitTriggeredEvent: &"_play_trait_triggered",
 		SupplyHealedEvent: &"_play_supply_healed",

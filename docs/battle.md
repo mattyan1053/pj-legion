@@ -27,6 +27,7 @@
   | | `RegenerationHealedEvent`（進化先の特性の再生） | - |
   | | `SanctuaryHealedEvent`（聖域） | `effect_id` |
   | | `SupplyHealedEvent`（軍略の補給線） | `medic_id` |
+  | | `CardHealedEvent`（手札の札。`docs/hand-cards.md`） | `card` |
   | `FieldEffectPlacedEvent` | `BarricadePlacedEvent`（盾） | `durability` |
   | | `AreaEffectPlacedEvent`（煙幕・聖域） | `turns_left` |
 

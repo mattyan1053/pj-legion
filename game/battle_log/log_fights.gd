@@ -49,6 +49,10 @@ func _read_healed(event: UnitHealedEvent) -> void:
 		key = "battle.log.healed.regeneration"
 	elif event is SupplyHealedEvent:
 		key = "battle.log.healed.supply"
+	elif event is CardHealedEvent:
+		_detail(Text.t("battle.log.healed.card", {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp}),
+			_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
+		return
 	_line(Text.t(key, {"unit": unit_name(event.unit_id), "amount": event.amount, "hp": event.hp, "effect": Names.troop_trait(Traits.Id.SUPPLY)}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id])
 
@@ -98,6 +102,21 @@ func _read_status_applied(event: StatusAppliedEvent) -> void:
 func _read_ult_used(event: UltUsedEvent) -> void:
 	var text := Text.t("battle.log.ult", {"side": Names.side_word(event.side), "ult": Names.ult(Ults.by_id(event.ult))})
 	_begin_group(_line(text, event.side))
+
+
+## 札を使った（手札。docs/hand-cards.md）。続く効果（状態・回復・移った）は、この行にまとめる。
+func _read_card_played(event: CardPlayedEvent) -> void:
+	var args := {"side": Names.side_word(event.side), "card": Names.card(event.card), "unit": unit_name(event.unit_id) if event.unit_id != 0 else ""}
+	var ids: Array[int] = []
+	if event.unit_id != 0:
+		ids.append(event.unit_id)
+	_begin_group(_line(Text.t("battle.log.card_on" if event.unit_id != 0 else "battle.log.card", args), event.side,
+		event.target if event.unit_id != 0 else NO_CELL, ids))
+
+
+## 札を引いた。どの札かは書かない（相手に見えないもの）。
+func _read_card_drawn(event: CardDrawnEvent) -> void:
+	_line(Text.t("battle.log.card_drawn", {"side": Names.side_word(event.side), "count": event.hand_size}), event.side)
 
 
 func _read_ult_ready(event: UltReadyEvent) -> void:

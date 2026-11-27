@@ -92,6 +92,15 @@ func _experience(tally: Array, hit: int) -> int:
 	)
 
 
+## 使った札の並び（「鍵:回数」を `,` で。無ければ -）。
+static func _cards_text(used: Dictionary) -> String:
+	var parts: Array[String] = []
+	for id: int in Card.Id.values():
+		if used.has(id):
+			parts.append("%s:%d" % [Card.key(id as Card.Id), used[id]])
+	return ",".join(parts) if not parts.is_empty() else "-"
+
+
 func _deck(army: UnitKind.Army, mode: String, rules: DeckRules) -> Deck:
 	if mode != "even":
 		return CpuDeck.build(army, rules)

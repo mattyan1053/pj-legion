@@ -11,6 +11,7 @@ extends BattleEvent
 ## - RegenerationHealedEvent: 進化先の特性の再生（固有の値は無い）
 ## - SanctuaryHealedEvent: 聖域（effect_id）
 ## - SupplyHealedEvent: 軍略の補給線（medic_id）
+## - CardHealedEvent: 札の手当て・補給（card）
 
 enum Cause {
 	HEAL,  ## 回復役の回復
@@ -18,6 +19,7 @@ enum Cause {
 	REGENERATION,  ## 進化先の特性の再生
 	SANCTUARY,  ## 聖域
 	SUPPLY,  ## 軍略の補給線
+	CARD,  ## 札（手当て・補給）
 }
 
 var unit_id: int

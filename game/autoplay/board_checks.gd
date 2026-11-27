@@ -430,6 +430,68 @@ func _queue_traits_scene() -> void:
 		_expect(_scene.played.get(supplied, 0) == 1, "補給線の回復を再生しなかった"))
 
 
+## 手札（試しの決まり。docs/hand-cards.md）。手当てを選んで味方に使い（予測が出る）、番を回して札を引き、押し出しを 2 段（敵 → 動かす先）で使う。
+## 帯の大きさは、枚数が変わっても同じ。
+func _queue_hand_scene() -> void:
+	var board := _small_board(Vector2i(7, 3))
+	var battle := Battle.new(board)
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER1, Vector2i(0, 2))
+	battle.add_unit(UnitKind.Id.KING, Unit.Side.PLAYER2, Vector2i(6, 0))
+	var sniper := battle.add_unit(UnitKind.Id.SNIPER, Unit.Side.PLAYER1, Vector2i(1, 0))
+	sniper.hp -= 10
+	battle.add_unit(UnitKind.Id.SHIELD_TROOPER, Unit.Side.PLAYER1, Vector2i(3, 1))
+	var paladin := battle.add_unit(UnitKind.Id.PALADIN, Unit.Side.PLAYER2, Vector2i(4, 1))
+	battle.hand_on = true
+	battle.hands = [[Card.Id.MEND, Card.Id.SHOVE], []]
+	battle.piles = [[Card.Id.MIGHT], [Card.Id.WARD]]
+	var played: Script = CardPlayedEvent
+	var drawn: Script = CardDrawnEvent
+	var healed: Script = CardHealedEvent
+	var pushed: Script = UnitPushedEvent
+	var frame := [Rect2()]
+
+	_scripted.append(func() -> void:
+		_scene.set_opponent(false)
+		_scene.start_with(battle, StageLook.GRASSLAND, 1))
+	_scripted.append(func() -> void:
+		frame[0] = _scene.hand_rect()
+		_expect(frame[0].has_area(), "手札の帯が出ない")
+		_expect(_scene.hand_texts().slice(0, 3) == [Names.card(Card.Id.MEND), Names.card(Card.Id.SHOVE), ""], "手札の帯の札が違う: %s" % [_scene.hand_texts()])
+		_expect(_scene.hand_usable().slice(0, 2) == [true, true], "使える札が押せない: %s" % [_scene.hand_usable()])
+		_scene.hover_hand(0)
+		_expect(_scene.hand_note_text().contains(Names.card_summary(Card.Id.MEND)), "札に乗せても、効果の文が出ない: %s" % _scene.hand_note_text())
+		_scene.hover_hand(-1)
+		_scene.press_card(0))
+	_scripted.append(func() -> void:
+		_expect(_scene.chosen_card() == Card.Id.MEND, "札を押しても、相手を選び始めない")
+		_expect(_scene.painted_color(sniper.cell) != Color.TRANSPARENT, "札の相手のマスを塗っていない")
+		_scene.hover(sniper.cell)
+		_expect(_scene.forecast_text() != "", "札の相手に乗せても、予測が出ない")
+		_scene.hover(Vector2i(-1, -1))
+		_scene.click_cell(sniper.cell))
+	_scripted.append(func() -> void:
+		_expect(sniper.hp == sniper.max_hp() - 10 + Card.MEND_HEAL, "手当てで回復しなかった")
+		_expect(_scene.played.get(played, 0) == 1 and _scene.played.get(healed, 0) == 1, "札を使ったこと・札の回復を再生しなかった")
+		_expect(_scene.hand_usable().slice(0, 1) == [false], "この番にもう 1 枚使ったのに、札が押せる")
+		_expect(_scene.hand_rect() == frame[0], "手札の帯の大きさが、枚数で変わった"))
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		_expect(_scene.played.get(drawn, 0) == 1 and Hand.of(battle, Unit.Side.PLAYER2) == [Card.Id.WARD], "後手が、番の始めに札を引かなかった"))
+	_scripted.append(_end_turn)
+	_scripted.append(func() -> void:
+		_expect(Hand.of(battle, Unit.Side.PLAYER1) == [Card.Id.SHOVE, Card.Id.MIGHT], "先手が、番の始めに札を引かなかった")
+		_scene.press_card(0))
+	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
+	_scripted.append(func() -> void:
+		_expect(_scene.chosen_card() == Card.Id.SHOVE and _scene.painted_color(Vector2i(4, 0)) != Color.TRANSPARENT, "押し出しの動かす先を塗っていない")
+		_scene.click_cell(Vector2i(4, 0)))
+	_scripted.append(func() -> void:
+		_expect(paladin.cell == Vector2i(4, 0), "押し出しで動かなかった")
+		_expect(_scene.view_cells()[paladin.id] == Vector2i(4, 0), "押し出された兵の見た目が、動いていない")
+		_expect(_scene.played.get(pushed, 0) == 1, "押し出しを再生しなかった")
+		_expect(_scene.hand_rect() == frame[0], "手札の帯の大きさが、枚数で変わった"))
+
+
 ## 倒れると何か起きる魔物（docs/monsters.md）。スナイパーが骸骨旗手を倒し（隣の骸骨兵が奮起）、もう 1 体がほつれを倒し（結び目が残る）、
 ## 3 体目が糸喰いを倒す（弾けて、隣の骸骨兵を巻き込む）。
 func _queue_monster_falls_scene() -> void:

@@ -19,6 +19,8 @@ enum Type {
 	ASSAULT,  ## 突撃。移動力と攻撃力が上がる（必殺技の総員突撃）
 	RESOLVE,  ## 奮起。攻撃力が上がる（骸骨旗手が倒れたときの、周りの味方。Monsters）
 	SNARE,  ## 絡み。動けない（糸蜘蛛に攻撃された駒。Monsters）
+	HASTE,  ## 進軍。移動力が上がる（札の進軍。Card）
+	MIGHT,  ## 強打。攻撃力が上がる（札の強打。Card）
 }
 
 ## クリティカルでない攻撃の倍率（%）。
@@ -35,6 +37,10 @@ static func bonus(type: Type) -> Dictionary:
 		return {Unit.Stat.MOVE_RANGE: AllOutAssaultUlt.MOVE_BONUS, Unit.Stat.POWER: AllOutAssaultUlt.POWER_BONUS}
 	if type == Type.RESOLVE:
 		return {Unit.Stat.POWER: Monsters.RESOLVE_POWER}
+	if type == Type.HASTE:
+		return {Unit.Stat.MOVE_RANGE: Card.MARCH_MOVE}
+	if type == Type.MIGHT:
+		return {Unit.Stat.POWER: Card.MIGHT_POWER}
 	return {}
 
 

@@ -12,7 +12,7 @@ extends BattleAction
 ## そのあと、そのプレイヤーの盤の上の効果が働き、期間が進む（聖域の回復、結び目の立ち直り、煙幕・聖域の残りのターン数。FieldEffects.start_phase）。
 ## 続けて、そのプレイヤーの駒の状態の残りのターン数が 1 減り、0 になった状態は外れる（Statuses.start_phase）。
 ## 続けて、そのプレイヤーの駒のスキルのクールダウンが 1 減る（Skills.start_phase）。
-## 最後に、そのプレイヤーの必殺技のゲージがたまる（Ults.charge_phase）。
+## 最後に、そのプレイヤーの必殺技のゲージがたまる（Ults.charge_phase）。手札が入なら、続けて札を 1 枚引く（Hand.start_phase）。
 ## フェーズを終える前に、敵の本陣の占拠を数え、続けて拠点の確保を数える（Stronghold.count。拠点の無い盤では何もしない）。
 ## それで勝ちが決まれば、次のフェーズへは進まない。
 
@@ -60,4 +60,5 @@ static func _start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 	events.append_array(Statuses.start_phase(battle, side))
 	events.append_array(Skills.start_phase(battle, side))
 	Ults.charge_phase(battle, side)
+	events.append_array(Hand.start_phase(battle, side))
 	return events

@@ -154,6 +154,8 @@ func _initialize() -> void:
 	var trait_arg := args.get("traits", "") as String
 	# 軍略ごと: 鍵（Traits.Id）-> [部隊の数, 決着した局, 勝った数, 効いた回数, 軍の違う対戦の決着した局, その勝った数]。
 	var trait_rows: Dictionary[int, Array] = {}
+	## 札（Card.Id）-> [使った回数, 使った部隊の数, そのうち決着した数, そのうち勝った数]（手札が入の対戦だけ）。
+	var card_rows: Dictionary[int, Array] = {}
 	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
 	var one_versus: Dictionary[String, Array] = {}
 	var started := Time.get_ticks_msec()
@@ -254,6 +256,11 @@ func _initialize() -> void:
 				print("TRAIT seed=%d p1=%s p2=%s hits=%d,%d" % [
 					first_seed + game, Traits.key(traits[0]), Traits.key(traits[1]), outcome.trait_hits[0], outcome.trait_hits[1],
 				])
+			if battle.hand_on:
+				print("CARDS seed=%d p1=%s p2=%s left=%d,%d" % [
+					first_seed + game, _cards_text(outcome.cards[0]), _cards_text(outcome.cards[1]),
+					Hand.of(battle, Unit.Side.PLAYER1).size(), Hand.of(battle, Unit.Side.PLAYER2).size(),
+				])
 			if not signs.is_empty():
 				print("SIGNS seed=%d signs=%s" % [first_seed + game, ",".join(signs.map(func(sign: int) -> String: return Seam.key(sign)))])
 			if random_squads or one_squad:
@@ -290,6 +297,14 @@ func _initialize() -> void:
 				if armies[0] != armies[1]:
 					row[4] += 1
 					row[5] += 1 if outcome.winner == side else 0
+		for side in 2:
+			for card: int in outcome.cards[side]:
+				var row: Array = card_rows.get_or_add(card, [0, 0, 0, 0])
+				row[0] += outcome.cards[side][card]
+				row[1] += 1
+				if outcome.winner >= 0:
+					row[2] += 1
+					row[3] += 1 if outcome.winner == side else 0
 		if (random_squads or one_squad) and episode == null and outcome.winner >= 0:
 			for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 				if one_squad and side != squad_side:
@@ -432,6 +447,15 @@ func _initialize() -> void:
 			row[5], row[4], 100.0 * row[5] / maxi(1, row[4]), row[7], row[6], 100.0 * row[7] / maxi(1, row[6]),
 		])
 	print("")
+	if not card_rows.is_empty():
+		print("\n札ごと（手札が入の局。使った部隊 = その札を 1 回は使った側。勝率は、決着した局のうち、使った側が勝った割合）")
+		for id: int in Card.Id.values():
+			if not card_rows.has(id):
+				continue
+			var row: Array = card_rows[id]
+			print("  %-10s 使った回数 %4d（1 局あたり %.2f）  使った部隊 %4d  勝率 %4d / %4d（%5.1f%%）" % [
+				Card.key(id as Card.Id), row[0], float(row[0]) / maxi(1, games), row[1], row[3], row[2], 100.0 * row[3] / maxi(1, row[2]),
+			])
 	if not trait_rows.is_empty():
 		print("軍略（部隊 1 つずつ。勝率は決着した局だけ。効いた回数は、その軍略の部隊 1 つ・1 局あたり。補給線は回復した回数）")
 		for id: int in Traits.Id.values():

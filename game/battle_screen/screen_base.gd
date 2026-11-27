@@ -178,6 +178,8 @@ var _barrel_targets: Array[Vector2i] = []
 var _barricade_targets: Array[Vector2i] = []
 var _heal_targets: Array[Unit] = []
 var _skill_cells: Array[Vector2i] = []
+## 手札の札の相手を選んでいる途中の、選べるマス（駒を選ぶ段なら駒のマス、動かす先を選ぶ段ならその先）。
+var _card_cells: Array[Vector2i] = []
 ## 選んでいる駒が、いまのポータルから転移できるなら行き先（Queries.warp_exit）。できなければ NO_CELL。
 var _warp := NO_CELL
 ## 選んでいる駒の移動の範囲にある、転移に使えるポータル（入る -> 出る。Queries.reachable_portals）。
