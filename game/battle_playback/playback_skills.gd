@@ -27,7 +27,7 @@ func _play_skill_ready(event: SkillReadyEvent) -> void:
 ## 必殺技を使った。画面が必殺技の色に一瞬光り、必殺技の名前を大きく出す。
 ## 効果（駒ごとの状態など）は、続くイベントを _play_all がまとめて同時に見せる（_play_ult_effects）。
 func _play_ult_used(event: UltUsedEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
+	refresh_status.call(replay.turn, replay.phase)
 	var color: Color = BattleHud.ULT_COLORS[event.ult]
 	_hud.flash_screen(color)
 	_sound(&"ult")  # 音の山が、続く光の柱（_play_ult_effects）に重なる
@@ -52,7 +52,7 @@ func _play_ult_effects(side: Unit.Side, effects: Array[BattleEvent]) -> void:
 
 ## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
 func _play_ult_ready(_event: UltReadyEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
+	refresh_status.call(replay.turn, replay.phase)
 	_sound(&"ult_ready")
 
 
