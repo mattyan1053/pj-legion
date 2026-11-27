@@ -88,6 +88,20 @@
 | `saved_at`・`played_seconds` が数でない、負 | 0 |
 | まとまり（`story`・`decks`）が読めない | 無いものとして読む（進み具合なし、部隊なし） |
 
+### 版と、知らない欄
+
+新しい exe で書いたセーブを古い exe で開いて保存しても、新しい exe の欄を落とさない（`game/save_format.gd`。話の記録・部隊・設定が使う）。
+
+- **欄を足すときは、そのまとまりの版（`Story.FORMAT_VERSION`・`DeckLibrary.FORMAT_VERSION`・`Settings.FORMAT_VERSION`）を上げる。**
+  古い exe は、版が自分より新しいまとまりの知らない欄を、読んだまま残して書き戻し、版も読んだ版のまま書く。
+  残すのは、まとまりの一番上の欄と、記録 1 つの欄（話の記録の物語ごと、部隊 1 つ）。部隊の駒 1 体の欄（`units` の中）は残さない。
+- 版が同じか古いまとまりの知らない欄は、やめた欄として捨てる（前の版の配置の欄、など）。
+- いまある欄の意味や形は変えない。変えたいときは別の名前の欄を足す。どうしても変えるなら、読み替え（そのまとまりの `_migrate`）を足して版を上げ、
+  スロットの版（`SaveSlots.FORMAT_VERSION`）も上げる（古い exe は、版の新しいスロットを開かない。上の「読めないとき」）。
+- 古い版のまとまりは、新しい exe が**版の番号で**読み替える（形で見分けない）。話の記録の版 1（物語が 1 つだったころ）は、MILITARY の物語の記録として読む（`Story._migrate`）。
+- 知らないまとまり（`sections` の中の、知らない名前）も、そのまま残す。
+- テスト: `tests/game/test_save_slots.gd` の `test_a_newer_section_keeps_its_unknown_fields_and_version_when_saved_again`・`test_an_old_story_section_is_read_by_its_version`、`tests/game/test_settings.gd`。
+
 ### 前の置き方からの移し替え
 
 スロットの前は、ストーリーの進み具合が `user://story.json`、ストーリー用の部隊が `user://decks.json` の中（対戦用と同じファイル）にあった。

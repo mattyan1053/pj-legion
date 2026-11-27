@@ -149,6 +149,15 @@ func test_older_or_newer_files_keep_the_known_items() -> void:
 	settings.load_saved()
 	assert_eq(settings.value(SENSITIVITY), 60, "知っている項目を読まない")
 	assert_eq(settings.value(SPEED), 1, "ファイルに無い項目が、既定の値にならない")
+	# 新しい版のファイルの、知らない項目と版は、書き戻しても落とさない（save_format.gd）。
+	_write_raw(store, JSON.stringify({"version": 99, "data": {"mouse_sensitivity": 60, "future_item": "on"}}))
+	settings.load_saved()
+	settings.set_value(SPEED, 3)
+	assert_true(settings.save())
+	var saved: Dictionary = store.read(Settings.STORE_NAME)
+	assert_eq(saved["version"], 99, "版を下げない")
+	assert_eq(saved["data"]["future_item"], "on", "知らない項目を落とさない")
+	assert_eq(saved["data"][String(SPEED)], 3)
 	_clean(store)
 
 

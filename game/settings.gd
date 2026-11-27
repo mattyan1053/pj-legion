@@ -8,6 +8,7 @@ extends RefCounted
 ## 既定の値に戻すか、範囲に収める（起動を止めない）。
 
 const Text := preload("res://game/text.gd")
+const SaveFormat := preload("res://game/save_format.gd")
 
 ## 値が変わった（key は項目の名前）。
 signal changed(key: StringName)
@@ -104,6 +105,9 @@ const ITEMS: Array[Dictionary] = [
 ]
 
 var _values := {}
+## 読んだファイルの版と、知らない名前の設定（新しい版の exe が足したもの。書くときに戻す。save_format.gd）。
+var _read_version := FORMAT_VERSION
+var _kept := {}
 ## 取っておく先（null なら取っておかない。検査・自動の対戦・スクリーンショットでは null にする）。
 var store: RefCounted
 
@@ -202,11 +206,15 @@ func to_dict() -> Dictionary:
 	var data := {}
 	for entry in ITEMS:
 		data[String(entry["key"])] = _values[entry["key"]]
-	return data
+	return SaveFormat.with_unknown(data, _kept)
 
 
-## ファイルから読んだ形（名前 -> 値）を入れる。知らない名前は捨て、無い・直せない値は既定の値にする。
+## ファイルから読んだ形（名前 -> 値）を入れる。無い・直せない値は既定の値にする。
+## 知らない名前は、読んだファイルの版が新しければ（新しい版の exe が足した設定）使わずに残し、書くときに戻す。
+## 版が同じか古ければ、やめた設定なので捨てる（save_format.gd）。
 func from_dict(data: Dictionary) -> void:
+	var known := ITEMS.map(func(entry: Dictionary) -> String: return String(entry["key"]))
+	_kept = SaveFormat.unknown(data, known, _read_version, FORMAT_VERSION)
 	for entry in ITEMS:
 		var raw: Variant = data.get(String(entry["key"]))
 		var normalized: Variant = normalize(entry, raw) if raw != null else null
@@ -220,15 +228,16 @@ func load_saved() -> void:
 	var saved: Dictionary = store.read(STORE_NAME)
 	if saved.is_empty():
 		return
+	_read_version = saved["version"]  # from_dict が、知らない名前を残すかを決める
 	from_dict(_migrate(saved["version"], saved["data"]))
 
 
-## store へ書く。書けたかを返す（store が無ければ偽）。
+## store へ書く。書けたかを返す（store が無ければ偽）。新しい版のファイルを読んでいたら、その版のまま書く。
 func save() -> bool:
-	return store != null and store.write(STORE_NAME, FORMAT_VERSION, to_dict())
+	return store != null and store.write(STORE_NAME, SaveFormat.written_version(_read_version, FORMAT_VERSION), to_dict())
 
 
 ## 版 version の中身を、いまの形に読み替える。いまは版 1 だけなので、そのまま返す。
-## 新しい版（この版より後のもので書かれた）でも、知っている名前は読む（from_dict が知らない名前を捨てる）。
+## 新しい版（この版より後のもので書かれた）でも、知っている名前は読み、知らない名前は残す（from_dict）。
 static func _migrate(_version: int, data: Dictionary) -> Dictionary:
 	return data
