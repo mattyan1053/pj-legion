@@ -19,7 +19,7 @@ const DeckText := preload("res://game/deck_text.gd")
 const Campaign := preload("res://game/campaign.gd")
 const Story := preload("res://game/story.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
-const CardKeys := preload("res://game/card_keys.gd")
+const CardPicker := preload("res://game/card_picker.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Steady := preload("res://game/steady.gd")
 
@@ -55,6 +55,8 @@ var context: AppContext
 var _cards := {}
 ## 左右の矢印で選んでいるカードの番号（物語の並びの順。選んでいなければ -1）。
 var _key_index := -1
+## キーとマウスの受け方（card_picker.gd）。
+var _keys: CardPicker
 var _backdrop: TitleBackdrop
 
 
@@ -129,6 +131,13 @@ func _ready() -> void:
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
 	root.add_child(back)
+	_keys = CardPicker.new(context.overlays, context.play_sound)
+	_keys.count = func() -> int: return Story.campaigns().size()
+	_keys.enabled = func(i: int) -> bool: return Story.is_ready(Story.campaigns()[i])
+	_keys.current = func() -> int: return _key_index
+	_keys.selected = select_by_key
+	_keys.chosen = func(i: int) -> void: choose(Story.campaigns()[i])
+	_keys.back = press_back
 
 
 func resume_label() -> String:
@@ -179,54 +188,23 @@ func status_text(campaign: Campaign) -> String:
 	return Text.t("story.campaigns.cleared", {"cleared": cleared, "total": total})
 
 
-## 右クリックと Esc は 1 つ戻る（タイトルへ）。カードの上でも効くよう、ボタンより先に受ける。
-## 重なる画面（システムメニュー）が開いている間は、そちらが受ける。
 func _input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	if _key_index >= 0 and CardKeys.is_pointer_move(event):
-		select_by_key(-1)  # マウスに持ち替えた（キーで送ってカードがマウスの下へ来ただけでは、やめない）
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_back")
-		press_back()
+	_keys.input(event, get_viewport())
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	var listed := Story.campaigns()
-	var step := CardKeys.direction(event)
-	if step != 0:
-		get_viewport().set_input_as_handled()
-		select_by_key(CardKeys.next(_key_index, step, listed.size(), func(i: int) -> bool: return Story.is_ready(listed[i])))
-		return
-	if CardKeys.is_accept(event) and _key_index >= 0:
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_confirm")
-		choose(listed[_key_index])
-		return
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	var number := -1
-	if event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
-		number = event.physical_keycode - KEY_1
-	elif event.physical_keycode >= KEY_KP_1 and event.physical_keycode <= KEY_KP_9:
-		number = event.physical_keycode - KEY_KP_1
-	if number >= 0 and number < Story.campaigns().size() and Story.is_ready(Story.campaigns()[number]):
-		context.play_sound(&"ui_confirm")
-		choose(Story.campaigns()[number])
+	_keys.unhandled_input(event, get_viewport())
 
 
 ## キーボードで index 番目の物語のカードを選ぶ（マウスを乗せたときと同じ見た目にする）。-1 で選ぶのをやめる。
 func select_by_key(index: int) -> void:
 	var listed := Story.campaigns()
 	if _key_index >= 0:
-		(_cards[listed[_key_index]] as Button).remove_theme_stylebox_override("normal")
+		CardPicker.light(_cards[listed[_key_index]], false)
 	_key_index = index
 	if index >= 0:
 		var card: Button = _cards[listed[index]]
-		card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+		CardPicker.light(card, true)
 		focus(listed[index])
 
 

@@ -64,3 +64,39 @@ func test_right_click_and_escape_go_back() -> void:
 	held.echo = true
 	assert_false(CardKeys.is_back(held), "押しっぱなしの繰り返しは数えない")
 	assert_false(CardKeys.is_back(_key(KEY_ENTER)))
+
+
+## 一覧の画面のキーとマウスの受け方（game/card_picker.gd）: 矢印で選べるカードだけを選び、Enter と数字キーで決め、Esc で戻る。
+## 重なる画面が開いている間は、何も受けない。マウスを動かしたら、キーでの選びをやめる。
+func test_the_card_picker_selects_chooses_and_goes_back() -> void:
+	var overlays := preload("res://game/overlay_stack.gd").new()
+	var log: Array[String] = []
+	var state := {"index": -1}
+	var picker := preload("res://game/card_picker.gd").new(overlays, func(sound: StringName) -> void: log.append(String(sound)))
+	picker.count = func() -> int: return 4
+	picker.enabled = func(i: int) -> bool: return i != 1
+	picker.current = func() -> int: return state["index"]
+	picker.selected = func(i: int) -> void: state["index"] = i
+	picker.chosen = func(i: int) -> void: log.append("choose %d" % i)
+	picker.back = func() -> void: log.append("back")
+	var viewport: Viewport = (Engine.get_main_loop() as SceneTree).root
+	picker.unhandled_input(_key(KEY_RIGHT), viewport)
+	assert_eq(state["index"], 0, "まだ選んでいなければ、始めのカード")
+	picker.unhandled_input(_key(KEY_RIGHT), viewport)
+	assert_eq(state["index"], 2, "選べないカードは飛ばす")
+	picker.unhandled_input(_key(KEY_ENTER), viewport)
+	picker.unhandled_input(_key(KEY_2), viewport)
+	picker.unhandled_input(_key(KEY_4), viewport)
+	assert_eq(log, ["ui_confirm", "choose 2", "ui_confirm", "choose 3"] as Array[String], "Enter はいまのカード、数字キーはその番号（選べないカードは決めない）")
+	var motion := InputEventMouseMotion.new()
+	motion.relative = Vector2(3.0, 0.0)
+	picker.input(motion, viewport)
+	assert_eq(state["index"], -1, "マウスを動かしたら、キーでの選びをやめる")
+	var holder := RefCounted.new()
+	overlays.open(holder)
+	picker.input(_key(KEY_ESCAPE), viewport)
+	picker.unhandled_input(_key(KEY_RIGHT), viewport)
+	assert_eq(state["index"], -1, "重なる画面が開いている間は受けない")
+	overlays.close(holder)
+	picker.input(_key(KEY_ESCAPE), viewport)
+	assert_eq(log.slice(-2), ["ui_back", "back"] as Array[String])
