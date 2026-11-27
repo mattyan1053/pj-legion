@@ -74,16 +74,16 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {"military": {"cleared": [], "squad": "3"}}})
 	again.choose_squad("")
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {}}, "既定の編成に戻したら、書かない")
-	story.load_data({"cleared": [], "squad": 4})
+	story.load_data({"cleared": [], "squad": 4}, 1)
 	assert_eq(story.squad_id, "", "形の違う部隊の記録は、既定の編成として読む")
 	_cleanup()
 
 
 func test_broken_or_unknown_records_do_not_stop_loading() -> void:
 	var story := Story.new()
-	story.load_data({"cleared": "ridge_path"})
+	story.load_data({"cleared": "ridge_path"}, 1)
 	assert_eq(story.cleared_count(), 0)
-	story.load_data({"cleared": [3, "", "future_episode", "future_episode"]})
+	story.load_data({"cleared": [3, "", "future_episode", "future_episode"]}, 1)
 	assert_eq(story.cleared_count(), 0)
 	assert_eq(story.to_data(), {"campaigns": {"military": {"cleared": ["future_episode"]}}}, "知らない話の記録は、消さずに残す")
 	story.load_data({"campaigns": {"future": {"cleared": ["far"], "squad": "2"}, "": {"cleared": ["x"]}, "military": "broken"}})
@@ -102,9 +102,9 @@ func test_story_starts_from_the_first_episode_not_cleared() -> void:
 ## 2 つ目の物語の記録が無い古いセーブ（版 1 の形、版 2 で MILITARY の物語だけ）からも、2 つ目の物語を頭から遊べる。
 func test_an_old_save_without_the_second_campaign_starts_it_from_the_top() -> void:
 	var other: RefCounted = Story.campaigns()[1]
-	for data: Dictionary in [{"cleared": ["ridge_path"], "squad": "5"}, {"campaigns": {"military": {"cleared": ["ridge_path"]}}}]:
+	for saved: Array in [[1, {"cleared": ["ridge_path"], "squad": "5"}], [2, {"campaigns": {"military": {"cleared": ["ridge_path"]}}}]]:
 		var story := Story.new()
-		story.load_data(data)
+		story.load_data(saved[1], saved[0])
 		assert_true(story.is_cleared(&"ridge_path"), "MILITARY の物語の記録は、そのまま読む")
 		story.choose_campaign(other)
 		assert_eq(story.cleared_count(), 0)
@@ -120,7 +120,7 @@ func test_an_old_save_without_the_second_campaign_starts_it_from_the_top() -> vo
 func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loading() -> void:
 	# パラディン（FANTASY の駒）を解放していたころに取っておいた、ストーリー用の部隊。
 	var context := preload("res://game/app_context.gd").new()
-	context.story.load_data({"cleared": ["ridge_path", "ridge_ambush"], "squad": "1"})
+	context.story.load_data({"cleared": ["ridge_path", "ridge_ambush"], "squad": "1"}, 1)
 	context.decks.load_data({"next_id": 2, "decks": [{"id": "1", "name": "パラディン入り", "rules": "story", "army": "MILITARY",
 			"units": [{"kind": "PALADIN", "equipment": ["IRON_SHIELD"]}, {"kind": "SNIPER", "equipment": []}]}]})
 	var saved: RefCounted = context.decks.items()[0]
@@ -161,7 +161,7 @@ func test_an_old_single_story_record_is_read_as_the_military_campaign() -> void:
 	assert_eq(story.squad_id, "5")
 	story.clear(&"ridge_hold")
 	var written: Dictionary = _store().read(Story.STORE_NAME)
-	assert_eq(written["version"], 2)
+	assert_eq(written["version"], Story.FORMAT_VERSION)
 	assert_eq(written["data"]["campaigns"]["military"]["squad"], "5", "書くときは、物語ごとの形")
 	assert_true((written["data"]["campaigns"]["military"]["cleared"] as Array).has("ridge_hold"))
 	_cleanup()
@@ -289,3 +289,25 @@ func test_opening_everything_for_checks_never_touches_the_record() -> void:
 	story.clear(last.id)
 	assert_true(story.is_cleared(last.id), "前のスロットで開いて始めた話を、別のスロットで勝ってもクリアにしない")
 	_cleanup()
+
+
+## 選択肢で選んだ答えは、物語ごとに覚えて、書いて読み戻せる（版 3 の欄 answers）。版 2 の記録は、答えが無いだけ。
+func test_answers_are_kept_per_campaign_and_read_back() -> void:
+	var story := Story.new()
+	story.store = _store()
+	story.choose_campaign(Story.military())
+	assert_eq(story.answer_of(&"greeting"), "", "まだ選んでいない")
+	story.choose_answer(&"greeting", &"warm")
+	story.choose_answer(&"greeting", &"cool")
+	story.choose_campaign(Story.campaigns()[1])
+	assert_eq(story.answer_of(&"greeting"), "", "ほかの物語の答えは見えない")
+	var written: Dictionary = _store().read(Story.STORE_NAME)
+	assert_eq(written["version"], Story.FORMAT_VERSION)
+	assert_eq(written["data"]["campaigns"]["military"]["answers"], {"greeting": "cool"})
+	var again := Story.new()
+	again.store = _store()
+	again.load_saved()
+	again.choose_campaign(Story.military())
+	assert_eq(again.answer_of(&"greeting"), "cool")
+	again.load_data({"campaigns": {"military": {"cleared": ["ridge_path"], "answers": {"a": 3, "": "x", "ok": "yes"}}}}, 2)
+	assert_eq([again.answer_of(&"a"), again.answer_of(&"ok")], ["", "yes"], "形の違う答えは読み飛ばす")

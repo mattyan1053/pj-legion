@@ -63,9 +63,6 @@ deck.problem.item_not_fit,持てない持ち物を持つ兵あり
 deck.problem.other,出撃不可
 deck.stats,HP {hp}　攻撃 {power}　移動 {move}　射程 {range}
 deck.stats_healer,HP {hp}　回復 {power}　攻撃 {strike}　移動 {move}　射程 {range}
-deck.summary.item,+{item}
-deck.summary.level,{kind} Lv{level}
-deck.summary.item_many,+{item}×{count}
 deck.name.copy,{name} の写し
 deck.name.default,部隊 {number}
 deck.name.unnamed,名前の無い部隊

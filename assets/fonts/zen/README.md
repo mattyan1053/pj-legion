@@ -1,5 +1,7 @@
 # Zen Kaku Gothic New / Zen Old Mincho（UI の文字）
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 - 作者: 大平善道（Yoshimichi Ohira）、The Zen Kaku Gothic Project Authors / The Zen Old Mincho Project Authors
 - 入手元: Google Fonts のリポジトリ（https://github.com/google/fonts の `ofl/zenkakugothicnew/` と `ofl/zenoldmincho/`。
   main ブランチ、取ってきた日のコミットは 7af0d90）

@@ -1,4 +1,4 @@
-extends "res://game/battle_playback/playback_skills.gd"
+extends "res://game/battle_playback/playback_cut.gd"
 ## 対戦のイベントの再生（docs/battle-view.md の「行動と再生」）。対戦の場面（battle_screen.gd）の子に置く。
 ## ルール（Battle.apply）が返した起きたこと（BattleEvent）の列を、起きた順に、駒の動き・光・文字・音・カメラで見せる。
 ## ここはルールを持たない。場面が持つもの（駒の見た目、カメラ、帯、演出の起点、盤）を受け取り、それを動かすだけ。
@@ -7,7 +7,7 @@ extends "res://game/battle_playback/playback_skills.gd"
 ## 待っている再生や CPU の番は続きを走らない（消えた場面に触れない）。
 ##
 ## ここは、列を順に再生する流れ（play_all、飛ばす、中立のフェーズ）と、番・行動済み・決着のイベントだけ。
-## イベントの種類ごとのファイル（game/battle_playback/playback_*.gd）: 駒（playback_units）、盤（playback_board）、スキルと必殺技・軍略・状態（playback_skills）。
+## イベントの種類ごとのファイル（game/battle_playback/playback_*.gd）: 駒（playback_units）、盤（playback_board）、スキルと必殺技・軍略・状態（playback_skills）、台本の出来事（playback_cut。カットシーン）。
 ## 読み込み・調整値・受け取るものと状態、イベントと再生するメソッドの表（event_players）、見せる道具は playback_base。
 ## ファイルは playback_base.gd からこの順に継いで積み重なり、このファイルが最後（前のファイルは、後のファイルの関数を呼べない）。
 ## イベントの種類を足すときは、event_players に載せ、_play_<名前> をその種類のファイルに書く。
@@ -49,6 +49,15 @@ func play_all(events: Array[BattleEvent]) -> void:
 		await _play_neutral_phase(phase)
 	if _unsynced:
 		_sync()
+	_show_status_marks()
+
+
+## 状態の付いている駒の足元の輪を、再生の盤に合わせる（状態の名前は、付いた・外れたときに浮かぶ文字で見せた）。
+func _show_status_marks() -> void:
+	for unit_id: int in _views:
+		var piece := replay.piece(unit_id)
+		if piece != null:
+			_view(unit_id).set_status_mark(not piece.statuses.is_empty())
 
 
 ## スキップした: 残り（rest）を見せずに済ませ、盤の見た目を作り直してから、決着だけを見せる。
@@ -60,17 +69,14 @@ func _finish_skipped(rest: Array[BattleEvent]) -> void:
 		else:
 			_settle(event)
 	_sync()
+	_show_status_marks()
 	for event in finals:
 		await _play(event)
 
 
-## いま盤にいる中立の駒の番号。
+## いま（再生の盤で）盤にいる中立の駒の番号。
 func _neutral_ids() -> Array[int]:
-	var ids: Array[int] = []
-	for unit in battle.units:
-		if unit.side == Unit.Side.NEUTRAL:
-			ids.append(unit.id)
-	return ids
+	return replay.ids_of(Unit.Side.NEUTRAL)
 
 
 func _sync() -> void:
@@ -148,9 +154,9 @@ func _play_phase_started(event: PhaseStartedEvent) -> void:
 		_hud.show_banner(Text.t("battle.banner.phase", {"turn": event.turn, "side": side_name.call(event.side)}), team_colors[event.side])
 		await after(0.5)
 		return
-	for unit in battle.units:
-		if unit.side == event.side:
-			_view(unit.id).set_acted(false)
+	for unit_id in replay.ids_of(event.side):
+		if _views.has(unit_id):
+			_view(unit_id).set_acted(false)
 	_sound(&"phase")
 	_hud.show_banner(Text.t("battle.banner.phase", {"turn": event.turn, "side": side_name.call(event.side)}), team_colors[event.side])
 	_rig.focus_on(camera_point.call(event.side))

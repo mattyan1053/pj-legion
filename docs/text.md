@@ -21,7 +21,7 @@
 | `common.csv` | どの画面でも使う形（括弧、「・」「、」のつなぎ、マスの座標、キーの印の名前 `common.key`） |
 | `names.csv` | ゲームの中のものの名前と説明（陣営、軍、役割、能力、特性、盤の上の効果、駒、進化先、持ち物、スキル、必殺技、状態、聖遺物、マップ） |
 | `battle.csv` | 対戦の画面（上の帯 `battle.hud`、下の帯の案内 `battle.guide`、駒のそばのメニュー `battle.menu`、マスの説明 `battle.cell`、予測 `battle.forecast`、勝ち方 `battle.goal`、ログ `battle.log`、盤の上の文字 `battle.pop`、知らせ `battle.banner`）、決着の画面 `result`、戦績 `stats` |
-| `menus.csv` | タイトル `title`、システムメニュー `menu`、オプション `settings`、マップ選択 `stage`、対戦モードの盤の説明 `field`、対戦設定 `setup`、初期位置の駒の欄 `deploy` |
+| `menus.csv` | タイトル `title`、システムメニュー `menu`、オプション `settings`、マップ選択 `stage`、対戦モードの盤の説明 `field`、対戦設定 `setup`、初期位置の駒の欄 `deploy`、クレジット `credits` |
 | `deck.csv` | 部隊編成 `deck`（一覧、組む画面、出せない理由 `deck.problem`、読めなかった部隊 `deck.load`） |
 | `story.csv` | セーブデータ選択 `slots`、物語を選ぶ・話の一覧 `story`、出撃準備 `sortie`、会話の場面 `talk`、解放の知らせ `story.news` |
 
@@ -51,3 +51,23 @@
   コメント、開発用の出力（`push_error`、`push_warning`、`printerr`、`print`、`assert`）、画面に出さない文だけのファイル（`NOT_SHOWN`。自動の対戦の知らせ、物語・話・マップのファイルの書き間違いの文、折り返しの決まり）は数えない。
   表へ移しきれないファイルがあれば、`PENDING` に、いま残っている数を書く（増えたら落ちる。減ったら数を直す）。いまは空。
 - 定数の表に置きたい文（設定の項目の名前、盤の説明など）は、文ではなく鍵を置き、出すときに `Text.t` で引く（定数の中では `Text.t` を呼べない）。
+
+## 文を足すとき
+
+1. 置く表を上の「表」で選び、鍵を「鍵の名付け」の形で付ける。ゲームの中のものの名前なら、列挙に足すと `names.gd` が鍵を作る。
+2. 言葉は `docs/wording.md` に合わせる（「兵」「勝利条件」「軍略」。説明書の調子にしない）。
+3. コードは `Text.t("鍵", {…})` で引く。定数の表に置くなら、文ではなく鍵を置く。
+4. 文を入れる枠を足したなら、決まった大きさにして `Steady.mark` で印を付ける（`docs/ui-theme.md` の「枠の大きさ」）。
+
+### 足し忘れても検査が落ちない所
+
+- **鍵を定数や変数に置いてから引く**と、表に無くてもテストは拾わない（拾うのは `Text.t("…")` と直に書いた鍵だけ）。画面に鍵の文字がそのまま出る。
+- 折り返しの点検（`test_wrap_audit.gd`）は、表の文を決まった幅で語の途中で切らないかを見るだけ。実際の枠の行の数を超えるかは、札の文（`test_card_texts_wrap_cleanly` に載せたもの）しか見ない。
+- `Steady.mark` の印は、自動の対戦が中身を替えた枠しか見張らない。印を付けたら、中身を替える手を自動の対戦に通すか、`tests/game/test_steady_frames.gd` にテストを足す。
+- 言葉の決まりのうち、テストが見るのは「駒」「ユニット」と言わない・軍略の呼び方・名前の前後の空白・括弧の重ねだけ。調子は読んで確かめる。
+
+### 確かめ方
+
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_text,test_names,test_wrap_audit,test_steady_frames`。
+- 折り返しを見る: `godot --headless --path . -s res://tools/wrap_audit.gd`。枠が動かないかの洗い出し: `godot --headless --path . --fixed-fps 60 -- --autoplay --only ui --frames`。
+- 文の入った画面のスクリーンショットを、自分で見る。

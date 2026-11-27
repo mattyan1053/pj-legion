@@ -1,8 +1,8 @@
-extends Control
+extends "res://game/window_base.gd"
 ## 確かめの窓（窓の部品。docs/ui-theme.md の「窓」）。取り返しのつかないこと（削除、上書き）の前に挟む。
 ## 画面の全体を幕で沈め、真ん中に板を出す: 1 行目（何をするか）が窓の見出し、その下に危険の色の飾りの線、
 ## 失われるものの文（注意の色）、「キャンセル」と、するボタン（危険の色）。
-## 右クリック・Esc は「キャンセル」。開いている間は、重なる画面の積み上げ（overlay_stack.gd）に積む。
+## 右クリック・Esc は「キャンセル」。殻（幕・板・積み上げ・右クリックと Esc）は窓の土台（window_base.gd）が持つ。
 ##
 ##   var window := ConfirmWindow.new()
 ##   window.overlays = context.overlays
@@ -10,18 +10,16 @@ extends Control
 ##   window.ask("データ 1 を削除しますか？", "削除したデータは元に戻せません。", "削除", func() -> void: ...)
 
 const Text := preload("res://game/text.gd")
-const CardKeys := preload("res://game/card_keys.gd")
-const Steady := preload("res://game/steady.gd")
-const UiTheme := preload("res://game/ui_theme.gd")
-const Palette := preload("res://game/ui_palette.gd")
 
 ## 板の中の幅（px）。
 const WIDTH := 440.0
 
-## 重なる画面の積み上げ（無くてもよい）。
-var overlays: RefCounted
-## 開いている間、後ろの場面の時間を止めるか（overlay_stack.gd の pausing）。
-var pausing := false
+## 重なる画面の積み上げ（無くてもよい。開く前に渡す）。
+var overlays: RefCounted:
+	set(value):
+		_overlays = value
+	get:
+		return _overlays
 
 var _title: Label
 var _note: Label
@@ -30,22 +28,7 @@ var _action: Callable
 
 
 func _init() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	visible = false
-	var shade := ColorRect.new()
-	shade.color = Palette.SHADE
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(center)
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = UiTheme.PANEL_SOLID
-	Steady.mark(panel, "confirm.window", Steady.RECT)
-	center.add_child(panel)
+	var panel := build_window(null, "confirm.window")
 	var column := VBoxContainer.new()
 	column.custom_minimum_size = Vector2(WIDTH, 0.0)
 	column.add_theme_constant_override("separation", 14)
@@ -84,8 +67,6 @@ func ask(title: String, note: String, ok_label: String, action: Callable) -> voi
 	_ok.text = ok_label
 	_action = action
 	visible = true
-	if overlays != null:
-		overlays.open(self, pausing)
 
 
 func is_open() -> bool:
@@ -120,21 +101,10 @@ func cancel() -> void:
 func close() -> void:
 	visible = false
 	_action = Callable()
-	if overlays != null:
-		overlays.close(self)
 
 
-func _input(event: InputEvent) -> void:
-	if not visible or (overlays != null and not overlays.is_top(self)):
-		return
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		cancel()
-
-
-func _exit_tree() -> void:
-	if overlays != null:
-		overlays.close(self)
+func _on_back() -> void:
+	cancel()
 
 
 func _button(text: String) -> Button:

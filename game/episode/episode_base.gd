@@ -9,10 +9,32 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const Maps := preload("res://game/maps.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
+const TalkLine := preload("res://game/episode/talk_line.gd")
+const TalkCue := preload("res://game/episode/talk_cue.gd")
+const StoryScene := preload("res://game/episode/story_scene.gd")
+const Names := preload("res://game/names.gd")
+const HeroName := preload("res://game/hero_name.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 ## 書ける節。
 const SECTIONS := ["episode", "cast", "before", "cues", "after", "lost", "ally", "enemy", "unlock"]
+## 場面の節（書いた順が、場面の順。game/episode/episode_scenes.gd）: 「[talk 名前]」（会話。名前は話の中で重ならない）、[sortie]（出撃準備）、[battle]（対戦）。
+## 1 つでも書いた話は、[before]・[after] を書かない。
+const TALK_SECTION := "talk "
+## カットシーンの節「[cut 名前]」（地の文だけの場面）と、その行の数の上限。
+const CUT_SECTION := "cut "
+## 盤のカットシーンの節「[board 名前]」（盤の上で兵が台本どおりに動く。docs/story.md の「盤のカットシーン」）。
+const BOARD_SECTION := "board "
+const CutScript := preload("res://game/cut_script.gd")
+const CUT_MAX_LINES := 6
+const SCENE_MARKS := ["sortie", "battle"]
+## 選択肢（docs/story.md の「選択肢」）: 答えの数、答えの文の長さの上限（選ぶ枠のボタンに 1 行で収まる）、名前と鍵に使える字。
+const OPTIONS_MIN := 2
+const OPTIONS_MAX := 3
+const OPTION_MAX_CHARS := 22
+const CHOICE_WORD := "^[a-z][a-z0-9_]*$"
+## 場面の節で書く話の、会話の場面の数の上限。
+const TALK_SCENES_MAX := 8
 ## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃準備に出す覚えることの長さの上限。
 const TALK_MAX_LINES := 10
 ## 会話（前と後）の 1 行の文の長さの上限（会話の場面の文の枠に 2 行で収まる）。
@@ -27,7 +49,7 @@ const LESSON_MAX_CHARS := 48
 const SIDE_WORDS := {"ally": 0, "enemy": 1}
 ## 地の文（話し手のいない行。場面の説明や時間の経過）の陣営。話し手の番号は -1。会話の行の頭に NARRATION_MARK（全角の「＞」でもよい）を付けて書く。
 ## 会話の場面では、名前の札を出さず、文を真ん中に明朝で出す（talk_screen.gd）。
-const NARRATION_SIDE := 3
+const NARRATION_SIDE := TalkLine.NARRATION_SIDE
 const NARRATION_MARK := ">"
 
 ## 話の id（クリアの記録に書く。変えると記録が外れる）。ファイルの名前と同じ。
@@ -53,6 +75,8 @@ var lesson := ""
 ## クリアで増えるもの: 雇える駒、持たせられる装備、部隊のコストの上限の上がり幅。
 var unlock_kinds: Array[UnitKind.Id] = []
 var unlock_items: Array[Equipment.Id] = []
+## クリアで選べるようになる軍略（Traits.Id。ストーリー用の部隊が出撃準備で持てる。docs/story.md の「解放」）。
+var unlock_traits: Array[int] = []
 var budget_up := 0
 ## 人（プレイヤー1）の勝ち方: 守り切るターン数（0 なら無し）と、勝ち方の列（空ならいつもの勝ち方）。
 var hold_turns := 0
@@ -72,6 +96,10 @@ var enemy_king := true
 ## 敵の側が番人（中ボス）を狙わないか（[enemy] の spare_boss = yes。Battle.spares_bosses。docs/story.md）。
 var enemy_spares_boss := false
 var enemy: Array = []
+## 陣営の呼び名: [人の軍, 敵の軍]（[ally] / [enemy] の name。Names.STORY_NAME_MAX 字まで）。空なら軍の既定の呼び名（story_battle.gd の side_names）。
+var side_names: Array[String] = ["", ""]
+## 陣営の短い呼び名（[ally] / [enemy] の short。上の帯の陣営の欄とログ。Names.STORY_SHORT_MAX 字まで）。空なら、呼び名が短ければ呼び名、長ければ軍の既定。
+var side_shorts: Array[String] = ["", ""]
 ## 陣営ごとの軍略（Traits.Id。書かなければ Traits.NONE = 軍略なし。docs/troop-traits.md）。[ally] / [enemy] の trait。
 var traits: Array[int] = [Traits.NONE, Traits.NONE]
 ## 陣営ごとの誓いの組（その陣営の unit の行の、1 から数えた番号の組を、0 からの Vector2i で。軍略が誓いの陣営だけ）。[ally] / [enemy] の oath。
@@ -94,14 +122,27 @@ var figures: Array[Dictionary] = [{"kind": UnitKind.Id.KING, "evolved": false, "
 ## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [人の軍, 敵の軍]。敵の将だけ書ける（[enemy] の king_figure）。
 ## 盤の将、駒の情報・決着の画面のアイコン、話し手の姿が king のときの姿に使う。ルールの上では将のまま。
 var king_looks: Array[StringName] = [&"", &""]
-## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文, 話し手（speakers の番号）] の列。
-## 地の文の行は [NARRATION_SIDE, 文, -1]。
-var before: Array = []
-var after: Array = []
-## 負けたときの台詞（無ければ空。決着の画面の見出しの下に出す）。形は before・after と同じ。
-var lost: Array = []
-## 対戦の途中の会話: [きっかけ, 値, 話し手の陣営, 文, 話し手（speakers の番号）] の列（battle_cues.gd）。
-var cues: Array = []
+## 対戦の前と後の会話: 会話の行（talk_line.gd。話し手の陣営・文・話し手の番号を名前で読む）の列。
+var before: Array[TalkLine] = []
+var after: Array[TalkLine] = []
+## 負けたときの台詞（無ければ空。決着の画面の見出しの下に出す）。地の文は無い。
+var lost: Array[TalkLine] = []
+## 対戦の途中の会話: 途中の台詞（talk_cue.gd。きっかけ・値・会話の行）の列（battle_cues.gd）。
+var cues: Array[TalkCue] = []
+## 場面の列（story_scene.gd）。話の流れ（story.gd の run_of）と、台本などの道具は、これを順に読む。
+## いまは、どの話も 出撃準備 → 会話（before）→ 対戦 → 会話（after）（episode.gd の _build_scenes）。
+var scenes: Array[StoryScene] = []
+## 場面の節（[talk 名前]・[sortie]・[battle]）で書いた話か（偽なら [before]・[after] の話）。
+var written_as_scenes := false
+## 対戦のある話か（読む間に使う。読んだあとは has_battle()）。
+var _fights := true
+## 主人公の既定の名前（物語のファイルの hero。物語の読み込みが set_hero で入れる。話のファイルだけを読んだときは空）。
+var hero := ""
+## この話が選ばせる選択肢: 名前 -> 答えの鍵の列（書いた順）。
+var choices := {}
+## この話の行が条件に使う選択肢: [{"line": 行, "choice": 名前, "answer": 答えの鍵, "here": この話の、その行より前で選ばせた選択肢か}, …]。
+## 物語の読み込み（campaign.gd）が、前の話までに選ばせた選択肢と答えかを確かめる。
+var conditions: Array[Dictionary] = []
 ## 読んだファイルのパスと、書き間違い（空なら正しい）。
 var path := ""
 var problems: PackedStringArray = []
@@ -133,9 +174,78 @@ func _bound(deck: Deck, side: int) -> Deck:
 	return deck
 
 
+## 対戦のある話か（場面の節で書いた話は、[battle] を書かなければ、読むだけの話。読み終えたらクリア）。
+func has_battle() -> bool:
+	return scenes.any(func(scene: StoryScene) -> bool: return scene.is_battle())
+
+
 ## 対戦の曲（無ければ、盤の見た目の曲）。
 func battle_music() -> StringName:
 	return music if music != &"" else SoundCatalog.battle_music(look)
+
+
+## 会話の場面（場面の列の順）。
+func talk_scenes() -> Array[StoryScene]:
+	var found: Array[StoryScene] = []
+	for scene in scenes:
+		if scene.is_talk():
+			found.append(scene)
+	return found
+
+
+## 対戦の場面の前の最後の会話の場面と、対戦の場面のあとの最後の会話の場面（無ければ null）。検査と道具が、どちらの会話かを見分けるのに使う。
+func talk_before_battle() -> StoryScene:
+	var found: StoryScene = null
+	for scene in scenes:
+		if scene.is_battle():
+			return found
+		if scene.is_talk():
+			found = scene
+	return found
+
+
+func talk_after_battle() -> StoryScene:
+	var fought := false
+	var found: StoryScene = null
+	for scene in scenes:
+		fought = fought or scene.is_battle()
+		if fought and scene.is_talk():
+			found = scene
+	return found
+
+
+## 対戦の場面のすぐあとの場面（無ければ null。対戦の無い話や、対戦で終わる話）。
+func scene_after_battle() -> StoryScene:
+	for i in scenes.size() - 1:
+		if scenes[i].is_battle():
+			return scenes[i + 1]
+	return null
+
+
+## 話の台詞の全部: 場面の列の順に、会話の場面の行と、対戦の場面の途中の台詞。最後に、負けたときの台詞（台本もこの順）。
+## 台本・声・文の検査が読む。
+func all_lines() -> Array[TalkLine]:
+	var found: Array[TalkLine] = []
+	for scene in scenes:
+		if scene.is_talk():
+			found.append_array(scene.lines)
+		elif scene.is_battle():
+			for cue in cues:
+				found.append(cue.line)
+	found.append_array(lost)
+	return found
+
+
+## 主人公の既定の名前を、話と、話の全部の行に入れる（物語の読み込み campaign.gd が呼ぶ）。
+func set_hero(name: String) -> void:
+	hero = name
+	for line in all_lines():
+		line.hero = name
+
+
+## 差し込みの印（HeroName.MARK）を使っている行があるか（主人公のいない物語の話には書けない）。
+func uses_hero_mark() -> bool:
+	return all_lines().any(func(line: TalkLine) -> bool: return line.text.contains(HeroName.MARK))
 
 
 ## 前の会話の曲（無ければ、対戦の曲。会話の間は小さく鳴らし、そのまま対戦へつながる。docs/sound.md）。

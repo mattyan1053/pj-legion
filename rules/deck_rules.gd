@@ -23,6 +23,9 @@ var _budgets: Dictionary = {}
 var _items: Array[Equipment.Id] = []
 ## 編成の画面に並べる装備の種類（持たせられる装備と、まだ持たせられないが、この決まりでいずれ持たせられる装備。並びは Equipment.Id の順）。
 var _shown_items: Array[Equipment.Id] = []
+## 選べる軍略（Traits.Id。docs/troop-traits.md）。null なら、どの軍の軍略も選べる（対戦の決まり）。
+## ストーリーの決まりは、教わった軍略だけ（docs/story.md の「解放」）。
+var _traits: Variant = null
 
 ## 対戦の決まりで持たせられる装備。ほかの装備はストーリー専用（docs/player-loadout.md の「装備」）。
 const VERSUS_ITEMS: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS, Equipment.Id.IRON_SHIELD]
@@ -33,11 +36,16 @@ static var _versus: DeckRules
 ## allowed_items: 持たせられる装備の種類。省けば（null）、どの装備も持たせられる。
 ## listed_items: 編成の画面に並べる装備の種類（まだ持たせられない装備は「未解放」で並ぶ）。省けば、持たせられる装備だけ。
 ## 持たせられる装備は、渡さなくても並ぶ。
+## allowed_traits: 選べる軍略（Traits.Id の列）。省けば（null）、どの軍略も選べる。
 func _init(
 	rules_id: StringName, unit_limit: int, rosters: Dictionary, budgets: Dictionary,
-	allowed_items: Variant = null, listed_items: Variant = null,
+	allowed_items: Variant = null, listed_items: Variant = null, allowed_traits: Variant = null,
 ) -> void:
 	id = rules_id
+	if allowed_traits != null:
+		var chosen: Array[int] = []
+		chosen.assign(allowed_traits)
+		_traits = chosen
 	max_units = unit_limit
 	_rosters = rosters
 	_budgets = budgets
@@ -105,6 +113,31 @@ func shown_items() -> Array[Equipment.Id]:
 ## その装備を持たせられるか。
 func allows_item(item: Equipment.Id) -> bool:
 	return _items.has(item)
+
+
+## その軍略を選べるか（その軍の軍略かは見ない）。
+func allows_trait(trait_id: int) -> bool:
+	return trait_id != Traits.NONE and (_traits == null or (_traits as Array).has(trait_id))
+
+
+## その軍で選べる軍略（並びは Traits.of_army の順）。
+func traits_of(army: UnitKind.Army) -> Array[int]:
+	var result: Array[int] = []
+	for each: int in Traits.of_army(army):
+		if allows_trait(each):
+			result.append(each)
+	return result
+
+
+## 部隊 deck が対戦で持つ軍略: 選んだ軍略を選べればそれ、選べなければ、その軍の既定、それも選べなければ、選べる最初の 1 つ。
+## どれも選べなければ（軍略をまだ教わっていない）Traits.NONE。
+func trait_for(deck: Deck) -> int:
+	var choices := traits_of(deck.army)
+	if choices.has(deck.trait_id):
+		return deck.trait_id
+	if choices.has(Traits.default_of(deck.army)):
+		return Traits.default_of(deck.army)
+	return choices[0] if not choices.is_empty() else Traits.NONE
 
 
 ## その軍で、その種類の駒を雇えるか。

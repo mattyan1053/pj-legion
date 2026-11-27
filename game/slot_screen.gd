@@ -19,7 +19,7 @@ const AppContext := preload("res://game/app_context.gd")
 const TitleBackdrop := preload("res://game/title_backdrop.gd")
 const Story := preload("res://game/story.gd")
 const SaveSlots := preload("res://game/save_slots.gd")
-const CardKeys := preload("res://game/card_keys.gd")
+const CardPicker := preload("res://game/card_picker.gd")
 const ConfirmWindow := preload("res://game/confirm_window.gd")
 const CampaignList := preload("res://game/campaign_list_screen.gd")
 
@@ -39,6 +39,8 @@ var _confirm: ConfirmWindow
 ## コピーの元のスロット（コピー先を選んでいなければ 0）。
 var _copy_from := 0
 var _key_index := -1
+## キーとマウスの受け方（card_picker.gd）。
+var _keys: CardPicker
 var _backdrop: TitleBackdrop
 
 
@@ -96,6 +98,14 @@ func _ready() -> void:
 	_confirm.overlays = context.overlays
 	layer.add_child(_confirm)
 	_rebuild()
+	_keys = CardPicker.new(context.overlays, context.play_sound)
+	_keys.count = func() -> int: return SaveSlots.COUNT
+	_keys.enabled = func(i: int) -> bool: return is_card_enabled(i + 1)
+	_keys.current = func() -> int: return _key_index
+	_keys.selected = select_by_key
+	_keys.chosen = func(i: int) -> void: choose(i + 1)
+	_keys.back = press_back
+	_keys.number_keys = false
 
 
 func resume_label() -> String:
@@ -207,7 +217,7 @@ static func card_lines(info: Dictionary, number: int) -> PackedStringArray:
 		_:
 			var story_section: Variant = (info["sections"] as Dictionary).get(Story.STORE_NAME)
 			var data: Dictionary = story_section.get("data", {}) if typeof(story_section) == TYPE_DICTIONARY and typeof(story_section.get("data")) == TYPE_DICTIONARY else {}
-			var summary := Story.summary_of(data)
+			var summary := Story.summary_of(data, _version_of(story_section))
 			if summary["campaign"] == null:
 				lines.append(Text.t("slots.no_campaign"))
 				lines.append(Text.t("slots.not_cleared"))
@@ -239,38 +249,21 @@ static func played_text(seconds: int) -> String:
 
 
 func _input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	if _key_index >= 0 and CardKeys.is_pointer_move(event):
-		select_by_key(-1)
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_back")
-		press_back()
+	_keys.input(event, get_viewport())
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	var step := CardKeys.direction(event)
-	if step != 0:
-		get_viewport().set_input_as_handled()
-		select_by_key(CardKeys.next(_key_index, step, SaveSlots.COUNT, func(i: int) -> bool: return is_card_enabled(i + 1)))
-		return
-	if CardKeys.is_accept(event) and _key_index >= 0:
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_confirm")
-		choose(_key_index + 1)
+	_keys.unhandled_input(event, get_viewport())
 
 
 ## キーボードで index 番目（0 から）のカードを選ぶ。-1 で選ぶのをやめる。
 func select_by_key(index: int) -> void:
 	if _key_index >= 0 and _cards.has(_key_index + 1):
-		(_cards[_key_index + 1] as Button).remove_theme_stylebox_override("normal")
+		CardPicker.light(_cards[_key_index + 1], false)
 	_key_index = index
 	if index >= 0:
 		var card: Button = _cards[index + 1]
-		card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+		CardPicker.light(card, true)
 		focus(index + 1)
 
 
@@ -284,7 +277,7 @@ func scape_of(number: int) -> Array:
 	var story_section: Variant = (info["sections"] as Dictionary).get(Story.STORE_NAME)
 	if typeof(story_section) != TYPE_DICTIONARY or typeof(story_section.get("data")) != TYPE_DICTIONARY:
 		return []
-	var summary := Story.summary_of(story_section["data"])
+	var summary := Story.summary_of(story_section["data"], _version_of(story_section))
 	if summary["campaign"] == null:
 		return []
 	var episode := Story.scape_episode(summary["campaign"], summary["last"])
@@ -369,7 +362,7 @@ func _build_card(info: Dictionary, number: int) -> Button:
 	if state == SaveSlots.READY:
 		var story_section: Variant = (info["sections"] as Dictionary).get(Story.STORE_NAME)
 		if typeof(story_section) == TYPE_DICTIONARY and typeof(story_section.get("data")) == TYPE_DICTIONARY:
-			summary_campaign = Story.summary_of(story_section["data"])["campaign"]
+			summary_campaign = Story.summary_of(story_section["data"], _version_of(story_section))["campaign"]
 	if summary_campaign != null:
 		card.add_child(CampaignList.CardDecor.new(summary_campaign.army, true))
 	var column := VBoxContainer.new()
@@ -426,3 +419,9 @@ func _label(text: String, font_size: int) -> Label:
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
+
+
+## スロットのまとまり section（{"version", "data"}）の版（読めなければ、いまの版）。
+static func _version_of(section: Variant) -> int:
+	var version: Variant = section.get("version") if typeof(section) == TYPE_DICTIONARY else null
+	return int(version) if typeof(version) in [TYPE_INT, TYPE_FLOAT] else Story.FORMAT_VERSION

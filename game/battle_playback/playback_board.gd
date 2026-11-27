@@ -102,7 +102,7 @@ func _play_smoke_blocked(event: SmokeBlockedEvent) -> void:
 ## 中ボスが倒れた（駒が消えるのは UnitDefeatedEvent が見せた）。倒した陣営を、その色で知らせる。
 func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 	var at := BoardView.cell_center(event.cell)
-	var side := BattleLog.mid_boss_place(battle.board, event.boss_index)
+	var side := BattleLog.mid_boss_place(replay.board, event.boss_index)
 	if event.slayer_side < 0:
 		_pop_number(at, Text.t("battle.log.boss_fell", {"place": side}))
 		return
@@ -115,7 +115,7 @@ func _play_mid_boss_defeated(event: MidBossDefeatedEvent) -> void:
 ## 陣営が聖遺物を受け取った。控えめに見せる: 上の帯に聖遺物の名前を出し、効果の掛かった駒の HP のバーを描き直し、
 ## 駒の上に小さい光と、効果（最大 HP +N など）を出す。画面を覆う演出はしない。
 func _play_relic_gained(event: RelicGainedEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
+	refresh_status.call(replay.turn, replay.phase)
 	var color: Color = team_colors[event.side]
 	var text := Names.relic_effect(event.relic)
 	_sound(&"relic")
@@ -132,8 +132,8 @@ func _play_relic_gained(event: RelicGainedEvent) -> void:
 
 
 func _play_capture(event: CaptureProgressEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
-	var hq := battle.board.hq_cells[1 - event.player]
+	refresh_status.call(replay.turn, replay.phase)
+	var hq := replay.board.hq_cells[1 - event.player]
 	var text := Text.t("battle.pop.capture", {"turns": event.turns, "needed": Battle.CAPTURE_TURNS_TO_WIN}) if event.turns > 0 else Text.t("battle.pop.capture_broken")
 	if event.turns > 0:
 		_sound(&"capture")
@@ -143,12 +143,12 @@ func _play_capture(event: CaptureProgressEvent) -> void:
 ## 拠点の確保が進んだ・途切れた（選べる決まり）。拠点のマスに数を出し、旗をその陣営の色にする。
 ## あと 1 回で勝つところまで来たら、画面の中央にも知らせる。
 func _play_stronghold(event: StrongholdProgressEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
-	var cell := battle.board.stronghold_cell
+	refresh_status.call(replay.turn, replay.phase)
+	var cell := replay.board.stronghold_cell
 	var color: Color = team_colors[event.player]
 	if event.holds == 0:
 		_pop_number(BoardView.cell_center(cell), Text.t("battle.pop.stronghold_lost", {"side": side_name.call(event.player)}), color.lightened(0.4))
-		if battle.stronghold_holds[1 - event.player] == 0:
+		if replay.stronghold_holds[1 - event.player] == 0:
 			_board_view.set_stronghold_progress(0, Stronghold.HOLDS_TO_WIN, BoardView.COLOR_STRONGHOLD_FLAG)
 		return
 	_board_view.set_stronghold_progress(event.holds, Stronghold.HOLDS_TO_WIN, color)

@@ -42,7 +42,7 @@ func _attack(battle: Battle, attacker: Unit, target: Unit) -> Array[BattleEvent]
 
 func test_each_army_has_three_traits_and_a_default() -> void:
 	assert_eq(Traits.of_army(UnitKind.Army.MILITARY), [T.FOCUS, T.RANKS, T.SUPPLY] as Array[Traits.Id])
-	assert_eq(Traits.of_army(UnitKind.Army.FANTASY), [T.VENGEANCE, T.OATH, T.LONE] as Array[Traits.Id])
+	assert_eq(Traits.of_army(UnitKind.Army.FANTASY), [T.VENGEANCE, T.OATH, T.GUARD] as Array[Traits.Id])
 	assert_eq(Traits.default_of(UnitKind.Army.MILITARY), T.FOCUS)
 	assert_eq(Traits.default_of(UnitKind.Army.FANTASY), T.VENGEANCE)
 	assert_eq(Traits.default_of(UnitKind.Army.NONE), Traits.NONE)
@@ -175,31 +175,32 @@ func test_oath_ends_when_a_partner_falls() -> void:
 	assert_eq(mage.oath_partner, 0)
 
 
-# --- 単騎 ---
+# --- 守護 ---
 
 
-func test_lone_marks_a_healer_alone_on_its_turn() -> void:
-	var battle := _battle(T.LONE)
-	var priest := battle.add_unit(K.PRIEST, P1, Vector2i(2, 3))
-	var target := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 3))
-	assert_true(Traits.lone_marked(battle, priest), "回復役も攻撃するので、単騎の印が付く")
-	assert_false(Traits.lone_marked(battle, target), "相手の番の兵には付けない")
-	var events := _attack(battle, priest, target)
-	assert_eq(_effects(events), [[T.LONE, priest.id, target.id, Traits.LONE_BONUS]], "回復役の攻撃にも単騎が効く")
-	assert_false(Traits.lone_marked(battle, priest), "行動を終えたら付けない")
-	var mate := battle.add_unit(K.SPELLBLADE, P1, Vector2i(2, 4))
-	assert_false(Traits.lone_marked(battle, mate), "隣に味方がいる")
+func test_guard_cuts_damage_next_to_a_paladin() -> void:
+	var battle := _battle(Traits.NONE, T.GUARD)
+	var foe := battle.add_unit(K.COMMANDO, P1, Vector2i(0, 3))
+	var guarded := battle.add_unit(K.SORCERER, P2, Vector2i(1, 3))
+	var paladin := battle.add_unit(K.PALADIN, P2, Vector2i(1, 4))
+	assert_eq(Traits.guardian_at(battle, guarded, guarded.cell), paladin)
+	var events := _attack(battle, foe, guarded)
+	assert_eq(_damage(events), foe.power() - Traits.GUARD_SHIELD)
+	assert_eq(_effects(events), [[T.GUARD, guarded.id, foe.id, Traits.GUARD_SHIELD]], "守護は、攻撃された駒の軍略")
 
-func test_lone_adds_damage_without_an_ally_next_to_the_attacker() -> void:
-	var battle := _battle(T.LONE)
-	var blade := battle.add_unit(K.SPELLBLADE, P1, Vector2i(2, 3))
-	var target := battle.add_unit(K.SHIELD_TROOPER, P2, Vector2i(3, 3))
-	var mate := battle.add_unit(K.PRIEST, P1, Vector2i(2, 4))
-	assert_eq(Traits.attack_boosts(battle, blade, target), {}, "隣に味方がいる")
-	mate.cell = Vector2i(1, 4)
-	var events := _attack(battle, blade, target)
-	assert_eq(_damage(events), blade.power() + Traits.LONE_BONUS, "斜めは隣ではない")
-	assert_eq(_effects(events), [[T.LONE, blade.id, target.id, Traits.LONE_BONUS]])
+
+func test_guard_needs_a_paladin_side_by_side() -> void:
+	var battle := _battle(Traits.NONE, T.GUARD)
+	var paladin := battle.add_unit(K.PALADIN, P2, Vector2i(2, 3))
+	var diagonal := battle.add_unit(K.SPELLBLADE, P2, Vector2i(3, 4))
+	assert_eq(Traits.guard_of(battle, paladin), 0, "ひとりのパラディンは守られない")
+	assert_eq(Traits.guard_of(battle, diagonal), 0, "斜めは隣ではない")
+	assert_eq(Traits.guard_at(battle, diagonal, Vector2i(3, 3)), Traits.GUARD_SHIELD, "動いた先で読める（CPU）")
+	var other := battle.add_unit(K.PALADIN, P2, Vector2i(2, 2))
+	assert_eq(Traits.guard_of(battle, paladin), Traits.GUARD_SHIELD, "パラディンどうしも守り合う")
+	assert_eq(Traits.guard_of(battle, other), Traits.GUARD_SHIELD)
+	battle.traits[P2] = T.VENGEANCE
+	assert_eq(Traits.guard_of(battle, other), 0, "守護の陣営だけ")
 
 
 # --- 軍略の無い陣営 ---
@@ -320,15 +321,15 @@ func test_versus_takes_each_trait_from_the_squad_and_binds_oaths_for_the_oath_tr
 	assert_eq(battle.traits, [T.RANKS, T.OATH] as Array[int])
 	var bound := battle.units.filter(func(unit: Unit) -> bool: return unit.oath_partner != 0)
 	assert_eq(bound.size(), 2)
-	knights.trait_id = T.LONE
+	knights.trait_id = T.GUARD
 	battle = setup.create_battle()
-	assert_eq(battle.traits, [T.RANKS, T.LONE] as Array[int])
+	assert_eq(battle.traits, [T.RANKS, T.GUARD] as Array[int])
 	assert_true(battle.units.all(func(unit: Unit) -> bool: return unit.oath_partner == 0), "誓いでなければ結ばない")
 
 
 func test_a_trait_of_the_other_army_falls_back_to_the_default() -> void:
 	var federation := MatchSetup.default_deck(UnitKind.Army.MILITARY).copy()
-	federation.trait_id = T.LONE
+	federation.trait_id = T.GUARD
 	var setup := MatchSetup.versus_human(BoardGenerator.Stage.PLAIN, 1, federation, MatchSetup.default_deck(UnitKind.Army.FANTASY))
 	assert_eq(setup.trait_of(P1), T.FOCUS)
 
@@ -337,8 +338,8 @@ func test_story_battles_have_traits_only_where_the_episode_sets_them() -> void:
 	var defined := Scenario.new()
 	var setup := MatchSetup.humans_on(defined, 1, MatchSetup.default_deck(UnitKind.Army.MILITARY), MatchSetup.default_deck(UnitKind.Army.FANTASY))
 	assert_eq(setup.create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "話は軍略を使わない")
-	defined.traits[P2] = T.LONE
-	assert_eq(setup.create_battle().traits, [Traits.NONE, T.LONE] as Array[int])
+	defined.traits[P2] = T.GUARD
+	assert_eq(setup.create_battle().traits, [Traits.NONE, T.GUARD] as Array[int])
 
 
 # --- 予測 ---
@@ -370,15 +371,15 @@ func test_spores_come_after_ranks_and_stop_at_zero() -> void:
 	assert_eq(hit.amount, commando.power() - Traits.RANKS_GUARD - Monsters.SPORE_PENALTY)
 	assert_eq(hit.traits, {T.RANKS: Traits.RANKS_GUARD})
 	assert_true(hit.spores)
-	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 3))  # 7 - 6 = 1 から 4 を引く
+	var sniper := battle.add_unit(K.SNIPER, P1, Vector2i(0, 3))  # 7 - 4 = 3 から 4 を引く
 	hit = Combat.hit(battle, sniper, target)
 	assert_eq(hit.amount, 0)
 	assert_eq(hit.traits, {T.RANKS: Traits.RANKS_GUARD})
 	assert_true(hit.spores)
-	sniper.temporary_bonus[Unit.Stat.POWER] = -2  # 5 は隊列だけで 0
+	sniper.temporary_bonus[Unit.Stat.POWER] = -4  # 3 は隊列だけで 0
 	hit = Combat.hit(battle, sniper, target)
 	assert_eq(hit.amount, 0)
-	assert_eq(hit.traits, {T.RANKS: 5}, "隊列は、引けたぶんだけ")
+	assert_eq(hit.traits, {T.RANKS: 3}, "隊列は、引けたぶんだけ")
 	assert_false(hit.spores, "胞子は引くものが無い")
 
 
@@ -450,7 +451,9 @@ func test_cpu_picks_a_trait_that_fits_the_squad() -> void:
 	var knights := Deck.new(UnitKind.Army.FANTASY)
 	for kind: UnitKind.Id in [K.PALADIN, K.SPELLBLADE, K.SPELLBLADE, K.SPELLBLADE]:
 		knights.add(kind)
-	assert_eq(CpuDeck.choose_trait(knights), T.LONE, "奇襲が 3 体")
+	assert_eq(CpuDeck.choose_trait(knights), T.VENGEANCE, "奇襲が多くても、選ぶ軍略は無い")
+	knights.add(K.PALADIN)
+	assert_eq(CpuDeck.choose_trait(knights), T.GUARD, "パラディンが 2 体")
 	var built := CpuDeck.build(UnitKind.Army.FANTASY)
 	assert_eq(built.trait_id, CpuDeck.choose_trait(built))
 	assert_eq(built.oaths.is_empty(), built.trait_id != T.OATH, "誓いのときだけ結ぶ")

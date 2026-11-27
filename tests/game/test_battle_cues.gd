@@ -11,6 +11,7 @@ const Maps := preload("res://tests/support/maps.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 
 const NAMES := ["隊長", "敵将"]
+const TalkCue := BattleCues.TalkCue
 
 
 func _battle() -> Battle:
@@ -36,7 +37,7 @@ func _texts(lines: Array[BattleCues.Line]) -> Array[String]:
 
 func test_turn_cue_fires_at_the_start_of_the_human_turn_once() -> void:
 	var battle := _battle()
-	var cues := BattleCues.new([[BattleCues.TURN, 1, 0, "はじめ"], [BattleCues.TURN, 2, 1, "ふたつめ"]], NAMES)
+	var cues := BattleCues.new([_cue(BattleCues.TURN, 1, 0, "はじめ"), _cue(BattleCues.TURN, 2, 1, "ふたつめ")], NAMES)
 	var first := cues.on_start(battle)
 	assert_eq(_texts(first), ["はじめ"] as Array[String], "ターン 1 は、対戦の始めに出す")
 	assert_eq(first[0].name, "隊長")
@@ -50,7 +51,7 @@ func test_turn_cue_fires_at_the_start_of_the_human_turn_once() -> void:
 
 func test_king_half_fires_when_the_king_drops_below_half() -> void:
 	var battle := _battle()
-	var cues := BattleCues.new([[BattleCues.KING_HALF, 1, 1, "まだだ"]], NAMES)
+	var cues := BattleCues.new([_cue(BattleCues.KING_HALF, 1, 1, "まだだ")], NAMES)
 	var king := _king(battle, Unit.Side.PLAYER2)
 	king.hp = king.max_hp() / 2 + (king.max_hp() % 2)
 	assert_eq(cues.on_events(battle, []).size(), 0, "半分ちょうどでは、まだ")
@@ -61,7 +62,7 @@ func test_king_half_fires_when_the_king_drops_below_half() -> void:
 
 func test_fallen_fires_on_the_first_defeated_unit_of_that_side_but_not_the_king() -> void:
 	var battle := _battle()
-	var cues := BattleCues.new([[BattleCues.FALLEN, 0, 0, "やられた"]], NAMES)
+	var cues := BattleCues.new([_cue(BattleCues.FALLEN, 0, 0, "やられた")], NAMES)
 	var foe: Unit = battle.units.filter(func(u: Unit) -> bool: return u.side == Unit.Side.PLAYER2 and u.kind != UnitKind.Id.KING)[0]
 	var mine: Unit = battle.units.filter(func(u: Unit) -> bool: return u.side == Unit.Side.PLAYER1 and u.kind != UnitKind.Id.KING)[0]
 	var events: Array[BattleEvent] = [UnitDefeatedEvent.new(foe), UnitDefeatedEvent.new(_king(battle, Unit.Side.PLAYER1))]
@@ -72,7 +73,7 @@ func test_fallen_fires_on_the_first_defeated_unit_of_that_side_but_not_the_king(
 
 func test_nothing_is_said_once_the_battle_is_over() -> void:
 	var battle := _battle()
-	var cues := BattleCues.new([[BattleCues.TURN, 1, 0, "はじめ"], [BattleCues.KING_HALF, 1, 1, "まだだ"]], NAMES)
+	var cues := BattleCues.new([_cue(BattleCues.TURN, 1, 0, "はじめ"), _cue(BattleCues.KING_HALF, 1, 1, "まだだ")], NAMES)
 	_king(battle, Unit.Side.PLAYER2).hp = 1
 	battle.winner = Unit.Side.PLAYER1
 	assert_true(battle.is_over())
@@ -82,7 +83,7 @@ func test_nothing_is_said_once_the_battle_is_over() -> void:
 
 func test_several_cues_at_once_keep_their_order() -> void:
 	var battle := _battle()
-	var cues := BattleCues.new([[BattleCues.KING_HALF, 1, 1, "二"], [BattleCues.TURN, 1, 0, "一"]], NAMES)
+	var cues := BattleCues.new([_cue(BattleCues.KING_HALF, 1, 1, "二"), _cue(BattleCues.TURN, 1, 0, "一")], NAMES)
 	_king(battle, Unit.Side.PLAYER2).hp = 1
 	assert_eq(_texts(cues.on_start(battle)), ["二", "一"] as Array[String], "[cues] の並びの順")
 
@@ -95,15 +96,14 @@ func test_every_episode_cue_is_well_formed() -> void:
 			continue
 		with_cues += 1
 		assert_between(cues.size(), 1, 3, "%s: 途中の会話は少なく" % episode.id)
-		for cue: Array in cues:
-			assert_eq(cue.size(), 5, episode.id)
-			assert_true(BattleCues.KINDS.has(cue[0]), "%s: 知らないきっかけ %s" % [episode.id, cue[0]])
-			assert_true(cue[2] in [0, 1], "話し手の陣営は 0 か 1")
-			assert_eq(episode.speaker_sides[cue[4]], cue[2], "%s: 話し手の番号と陣営が合う" % episode.id)
-			assert_ne(cue[3], "")
-			assert_true(String(cue[3]).length() <= 40, "%s: 札に収まる短さ（1〜2 行）" % episode.id)
-			if cue[0] == BattleCues.TURN and episode.hold_turns > 0:
-				assert_true(cue[1] <= episode.hold_turns, "守り切るターンの中")
+		for cue: TalkCue in cues:
+			assert_true(BattleCues.KINDS.has(cue.trigger), "%s: 知らないきっかけ %s" % [episode.id, cue.trigger])
+			assert_true(cue.line.side in [0, 1], "話し手の陣営は 0 か 1")
+			assert_eq(episode.speaker_sides[cue.line.who], cue.line.side, "%s: 話し手の番号と陣営が合う" % episode.id)
+			assert_ne(cue.line.text, "")
+			assert_true(cue.line.text.length() <= 40, "%s: 札に収まる短さ（1〜2 行）" % episode.id)
+			if cue.trigger == BattleCues.TURN and episode.hold_turns > 0:
+				assert_true(cue.value <= episode.hold_turns, "守り切るターンの中")
 	assert_true(with_cues >= Story.military().episodes.size(), "どの話にも、使い方の例を 1 つ以上")
 
 
@@ -117,7 +117,7 @@ func test_story_battles_hand_their_cues_to_the_battle_screen() -> void:
 ## 台詞は、話し手の姿（話のファイルの figure）を持ち、札は名前の左にその姿のアイコン（胸から上）を出す。
 func test_lines_carry_the_speaker_figure_and_the_card_shows_its_icon() -> void:
 	var figures := [{"kind": UnitKind.Id.SNIPER, "evolved": true}, {"kind": UnitKind.Id.SKELETON, "evolved": false}]
-	var cues := BattleCues.new([[BattleCues.TURN, 1, 1, "来たか"]], NAMES, figures)
+	var cues := BattleCues.new([_cue(BattleCues.TURN, 1, 1, "来たか")], NAMES, figures)
 	var lines := cues.on_start(_battle())
 	assert_eq(lines[0].figure, figures[1])
 	var talk := BattleTalk.new()
@@ -127,7 +127,7 @@ func test_lines_carry_the_speaker_figure_and_the_card_shows_its_icon() -> void:
 	# 話し手の番号（5 つ目）があれば、その話し手の名前と姿（同じ陣営に何人いてもよい）。
 	var more_names := ["隊長", "敵将", "新兵"]
 	var more_figures := figures + [{"kind": UnitKind.Id.MEDIC, "evolved": false}]
-	var by_who := BattleCues.new([[BattleCues.TURN, 1, 0, "はい", 2]], more_names, more_figures).on_start(_battle())
+	var by_who := BattleCues.new([_cue(BattleCues.TURN, 1, 0, "はい", 2)], more_names, more_figures).on_start(_battle())
 	assert_eq([by_who[0].side, by_who[0].name, by_who[0].figure], [0, "新兵", more_figures[2]])
 	talk.say([BattleCues.Line.new(0, "隊長", "一")] as Array[BattleCues.Line])
 	assert_eq(talk.face(), null, "姿の無い台詞は、アイコンを出さない")
@@ -222,3 +222,8 @@ func test_talk_card_is_drawn_under_the_rest_of_the_hud() -> void:
 	assert_eq(card.get_index(), 0, "札が、ほかの帯や枠より上に描かれる")
 	assert_true(hud.get_child_count() > 1)
 	hud.free()
+
+
+## 途中の台詞 1 つ（話し手の番号 who を書かなければ、陣営の主な話し手）。
+static func _cue(trigger: StringName, value: int, side: int, text: String, who := -1) -> TalkCue:
+	return TalkCue.new(trigger, value, TalkCue.TalkLine.speech(side, text, side if who < 0 else who))

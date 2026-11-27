@@ -1,5 +1,5 @@
 extends Node
-## タイトルの場面。題名と、ストーリー・対戦・オプション・終了。背景は、裂けた空の下の、いろいろな話のマップの景色（title_backdrop.gd）。
+## タイトルの場面。題名と、ストーリー・対戦・オプション・クレジット・終了。背景は、裂けた空の下の、いろいろな話のマップの景色（title_backdrop.gd）。
 ## 景色は、起動のたびと SCAPE_SECONDS 秒ごとに、13 の景色（stage_look.gd の THEMES）から選ぶ（title_scapes）。裂けた空と題字はそのまま。
 ## 題字とメニューは、板に載せずに景色の上へ直に置く。
 ## 部隊編成は、各モードに入ったところから開く（対戦設定の「部隊編成」、出撃準備の「部隊編成」）。
@@ -16,6 +16,7 @@ const TITLE_GOLD := preload("res://game/title_gold.gdshader")
 const StageLook := preload("res://game/stage_look.gd")
 const Story := preload("res://game/story.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
+const CreditsPanel := preload("res://game/credits_panel.gd")
 
 ## 「対戦」で &"start"、「ストーリー」で &"story"（話の一覧へ）。
 signal finished(outcome: StringName)
@@ -41,6 +42,9 @@ var _backdrop: TitleBackdrop
 var _scapes: Array = []
 var _scape_index := 0
 var _scape_time := 0.0
+## クレジットの窓（「クレジット」で開く。開くまで作らない）。
+var _credits: CreditsPanel
+var _layer: CanvasLayer
 
 
 func _ready() -> void:
@@ -53,6 +57,7 @@ func _ready() -> void:
 	add_child(_backdrop)
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	_layer = layer
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -107,6 +112,7 @@ func _ready() -> void:
 	_add_button(menu, &"start", Text.t("title.button.versus"), press_start)
 	(_buttons[&"start"] as Button).set_meta(&"sound", &"ui_confirm")
 	_add_button(menu, &"settings", Text.t("title.button.options"), press_settings)
+	_add_button(menu, &"credits", Text.t("title.button.credits"), press_credits)
 	_add_button(menu, &"quit", Text.t("title.button.quit"), press_quit)
 	_enter([top_row, title], ornament)
 
@@ -205,6 +211,16 @@ func story_label() -> String:
 ## 「オプション」: オプションの画面だけを開く（システムメニューと同じ画面）。
 func press_settings() -> void:
 	context.open_settings()
+
+
+## 「クレジット」: 入れた素材の名前・作者・ライセンスの窓（credits_panel.gd）を開き、それを返す。
+func press_credits() -> CreditsPanel:
+	if _credits == null:
+		_credits = CreditsPanel.new()
+		_layer.add_child(_credits)
+		_credits.setup(context.overlays if context != null else null)
+	_credits.open_credits()
+	return _credits
 
 
 ## 「終了」: ウィンドウの × と同じく、確かめてから終える。

@@ -12,6 +12,7 @@ extends RefCounted
 const Text := preload("res://game/text.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const DeckText := preload("res://game/deck_text.gd")
+const SaveFormat := preload("res://game/save_format.gd")
 
 ## 一覧が変わった。
 signal changed
@@ -19,6 +20,9 @@ signal changed
 ## save_store.gd で置くまとまりの名前と、中身の形の版（形を変えたら上げ、_migrate に読み替えを足す）。
 const STORE_NAME := "decks"
 const FORMAT_VERSION := 1
+## いまの版が知っている欄（ファイルの中身と、部隊 1 つの記録）。ほかの欄は、新しい版の exe が書いたものとして残す（save_format.gd）。
+const KNOWN_KEYS := ["next_id", "decks"]
+const RECORD_KEYS := ["id", "name", "rules", "army", "units", "trait", "oaths", "load_issues"]
 ## 名前の長さの上限（文字）。
 const MAX_NAME_LENGTH := 20
 
@@ -34,6 +38,8 @@ class Saved:
 	var load_issues: Array[String] = []
 	## セーブのスロットに書くか（ストーリー用の部隊）。
 	var in_slot := false
+	## 読んだ記録の知らない欄（新しい版の exe が書いたもの。書くときに戻す）。
+	var kept := {}
 
 	## 対戦に出せない理由の文（空なら出せる）。
 	func issues() -> Array[String]:
@@ -56,6 +62,9 @@ var slot_store: RefCounted
 var is_slot_rules: Callable = func(_id: StringName) -> bool: return false
 var _items: Array[Saved] = []
 var _next_id := 1
+## 読んだファイルの版と知らない欄: [対戦用（store）, ストーリー用（slot_store）]。書くときに、版は下げず、欄は戻す。
+var _read_versions := [FORMAT_VERSION, FORMAT_VERSION]
+var _kept := [{}, {}]
 
 
 ## 取っておいた部隊を読む（いまの一覧は捨てる）。
@@ -64,15 +73,22 @@ var _next_id := 1
 func load_saved() -> void:
 	_items.clear()
 	_next_id = 1
+	_read_versions = [FORMAT_VERSION, FORMAT_VERSION]
+	_kept = [{}, {}]
 	var data := {}
 	if store != null:
 		var saved: Dictionary = store.read(STORE_NAME)
 		if not saved.is_empty():
 			data = _migrate(saved["version"], saved["data"])
+			_read_versions[0] = saved["version"]
+			_kept[0] = SaveFormat.unknown(data, KNOWN_KEYS, saved["version"], FORMAT_VERSION)
 	var moved := false
 	if slot_store != null:
 		var in_slot: Dictionary = slot_store.read(STORE_NAME)
 		var slot_data := {} if in_slot.is_empty() else _migrate(in_slot["version"], in_slot["data"])
+		if not in_slot.is_empty():
+			_read_versions[1] = in_slot["version"]
+			_kept[1] = SaveFormat.unknown(slot_data, KNOWN_KEYS, in_slot["version"], FORMAT_VERSION)
 		var records: Array = []
 		var global_records: Variant = data.get("decks")
 		if typeof(global_records) == TYPE_ARRAY:
@@ -96,6 +112,7 @@ func load_saved() -> void:
 
 
 ## 中身（ファイルの data）から一覧を作る。形の違うところは読み飛ばす。
+## 部隊の記録の知らない欄は、読んだファイル（対戦用・ストーリー用）の版が新しければ残す（_read_versions。save_format.gd）。
 ## first_slot より後ろ（番号がそれ以上）の部隊は、セーブのスロットから読んだもの（in_slot）。前の部隊は、決まりで分ける。
 func load_data(data: Dictionary, first_slot := -1) -> void:
 	_items.clear()
@@ -112,7 +129,9 @@ func load_data(data: Dictionary, first_slot := -1) -> void:
 				continue
 			var item := _from_record(record, rules_lookup)
 			var rules_name: Variant = record.get("rules")
-			item.in_slot = (first_slot >= 0 and index >= first_slot) or (typeof(rules_name) == TYPE_STRING and is_slot_rules.call(StringName(rules_name)))
+			var from_slot := first_slot >= 0 and index >= first_slot
+			item.in_slot = from_slot or (typeof(rules_name) == TYPE_STRING and is_slot_rules.call(StringName(rules_name)))
+			item.kept = SaveFormat.unknown(record, RECORD_KEYS, _read_versions[1 if from_slot else 0], FORMAT_VERSION)
 			if item.id == "" or find(item.id) != null:
 				item.id = _take_id()
 			elif item.id.is_valid_int():
@@ -124,7 +143,7 @@ func load_data(data: Dictionary, first_slot := -1) -> void:
 ## いまの一覧を書く（対戦用とストーリー用の両方）。書けたか（書く先が無ければ偽）。
 func save() -> bool:
 	if slot_store == null:
-		return store != null and store.write(STORE_NAME, FORMAT_VERSION, to_data())
+		return store != null and store.write(STORE_NAME, SaveFormat.written_version(_read_versions[0], FORMAT_VERSION), to_data())
 	# ストーリー用を先に書く。書けなければ（スロットが壊れている、など）、対戦用のファイルも書き直さない
 	# （前の置き方で対戦用のファイルに残っていたストーリー用の部隊を、どこにも書かずに落とさないため）。
 	# ストーリー用の部隊が無く、スロットもまだ始めていなければ、スロットは書かない（対戦用の部隊を取っておいただけで、
@@ -143,7 +162,8 @@ func _save_part(in_slot: bool) -> bool:
 	var target: RefCounted = slot_store if in_slot else store
 	if target == null:
 		return false
-	return target.write(STORE_NAME, FORMAT_VERSION, to_data(1 if in_slot else 0))
+	var at := 1 if in_slot else 0
+	return target.write(STORE_NAME, SaveFormat.written_version(_read_versions[at], FORMAT_VERSION), to_data(at))
 
 
 ## ファイルの data に書く中身。part が -1 なら全部、0 なら対戦用（スロットの外）、1 ならストーリー用（スロット）の部隊だけ。
@@ -158,8 +178,8 @@ func to_data(part := -1) -> Dictionary:
 		if not item.load_issues.is_empty():
 			# 読み込みで外した・読み替えたものの理由は、組み直して取っておくまで残す（書き直しで出せるようにならない）。
 			record["load_issues"] = item.load_issues.duplicate()
-		records.append(record)
-	return {"next_id": _next_id, "decks": records}
+		records.append(SaveFormat.with_unknown(record, item.kept))
+	return SaveFormat.with_unknown({"next_id": _next_id, "decks": records}, _kept[maxi(part, 0)])
 
 
 ## 取っておいた部隊（並びは一覧の順）。
@@ -367,10 +387,9 @@ static func _from_record(record: Dictionary, lookup: Callable = DeckRules.by_id)
 	return item
 
 
-## 古い形の中身を、いまの形に読み替える。いまは版 1 だけ。新しい版（後の版で書いたもの）は、同じ形として読めるところだけ読む。
-static func _migrate(version: int, data: Dictionary) -> Dictionary:
-	if version > FORMAT_VERSION:
-		push_warning("deck_library: 新しい版（%d）のファイルを、版 %d として読む" % [version, FORMAT_VERSION])
+## 古い形の中身を、いまの形に読み替える。いまは版 1 だけ。新しい版（後の版で書いたもの）は、知っている欄だけ読み、
+## 知らない欄は残す（load_saved・_from_record。save_format.gd）。
+static func _migrate(_version: int, data: Dictionary) -> Dictionary:
 	return data
 
 

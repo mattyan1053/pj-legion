@@ -5,6 +5,7 @@ extends "res://tests/base_test.gd"
 
 const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
+const TalkLine := Episode.TalkLine
 const Campaign := preload("res://game/campaign.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const BattleSource := preload("res://game/battle_source.gd")
@@ -52,7 +53,10 @@ func test_a_dropped_folder_becomes_a_campaign() -> void:
 	var episode := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
 	_write(dir.path_join("zeta/story.txt"), story.replace("rules = template", "rules = zeta").replace("order = 9", "order = 1"))
 	_write(dir.path_join("zeta/first_battle.txt"), episode)
-	_write(dir.path_join("alpha/story.txt"), story.replace("rules = template", "rules = alpha").replace("first_battle", "second_battle"))
+	var scenes := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("scenes.txt"))
+	_write(dir.path_join("zeta/scenes.txt"), scenes)
+	_write(dir.path_join("alpha/more_scenes.txt"), scenes)
+	_write(dir.path_join("alpha/story.txt"), story.replace("rules = template", "rules = alpha").replace("first_battle", "second_battle").replace("\nscenes", "\nmore_scenes"))
 	_write(dir.path_join("alpha/second_battle.txt"), episode)
 	_write(dir.path_join("_draft/story.txt"), "壊れた下書き")
 	var found: Dictionary = Campaign.load_all(dir)
@@ -60,7 +64,7 @@ func test_a_dropped_folder_becomes_a_campaign() -> void:
 	assert_eq(campaigns.map(func(each: Campaign) -> String: return String(each.id)), ["zeta", "alpha"], "order の小さい順。_ で始まるフォルダは読まない")
 	for each: Campaign in campaigns:
 		assert_eq(each.problems, PackedStringArray(), String(each.id))
-		assert_eq(each.episodes.size(), 1)
+		assert_eq(each.episodes.size(), 2)
 	assert_eq(found["problems"].size(), 1, "story.txt の無いフォルダ: %s" % found["problems"])
 	assert_true((found["problems"][0] as String).contains("empty"))
 	for folder: String in ["zeta", "alpha", "_draft", "empty"]:
@@ -80,12 +84,140 @@ func test_the_template_reads_without_problems() -> void:
 	var campaign: Campaign = Campaign.load_file(TEMPLATE)
 	assert_eq(campaign.problems, PackedStringArray(), "見本の物語")
 	assert_eq(campaign.id, &"_template", "物語の id はフォルダの名前")
-	assert_eq(campaign.episodes.size(), 1)
+	assert_eq(campaign.episodes.size(), 2, "見本の話は 2 つ（[before]・[after] の書き方と、場面の節の書き方）")
 	var episode: Episode = campaign.episodes[0]
 	assert_ne(episode.title, "")
 	assert_false(episode.before.is_empty())
 	assert_false(episode.cues.is_empty())
-	assert_eq(episode.speakers, PackedStringArray(["少尉", "敵将", "新兵"]))
+	assert_eq(episode.speakers, PackedStringArray(["レオ", "敵将", "新兵"]))
+	assert_true(episode.before_music != &"" and episode.after_music != &"", "見本を写した話も、会話の曲を選んである（test_sound.gd が、どの話にも求める）")
+	# 見本の魔物の一覧に、話のファイルに書ける魔物が全部ある。
+	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
+	for kind: int in UnitKind.Id.values():
+		if UnitKind.is_monster(kind as UnitKind.Id):
+			assert_true(RegEx.create_from_string("#   魔物:.*\\b%s\\b" % String(UnitKind.Id.keys()[kind]).to_lower()).search(text) != null,
+				"見本の魔物の一覧に %s が無い" % String(UnitKind.Id.keys()[kind]).to_lower())
+
+
+## 場面の節の書き方（[talk 名前]・[sortie]・[battle]）: 書いた順が場面の順。会話の場面ごとに、背景の場所と曲。
+func test_the_scenes_template_reads_as_a_list_of_scenes() -> void:
+	var Kind := Episode.StoryScene.Kind
+	var episode: Episode = Campaign.load_file(TEMPLATE).episodes[1]
+	assert_true(episode.written_as_scenes and episode.has_battle())
+	assert_eq(episode.scenes.map(func(scene: RefCounted) -> int: return scene.kind), [Kind.TALK, Kind.TALK, Kind.TALK, Kind.TALK, Kind.SORTIE, Kind.TALK, Kind.BATTLE, Kind.TALK])
+	var talks := episode.talk_scenes()
+	assert_eq(talks.map(func(scene: RefCounted) -> String: return scene.name), ["練兵場", "夜の行軍", "尾根の朝", "尾根の下", "盤の前", "勝ったあと"])
+	assert_eq(talks.map(func(scene: RefCounted) -> bool: return scene.once), [true, true, true, true, true, false], "対戦より前の会話は 1 度だけ")
+	assert_eq(talks.map(func(scene: RefCounted) -> StringName: return scene.music), [&"talk", &"talk_calm", &"talk_calm", &"talk_calm", &"talk", &"talk_bright"])
+	# 盤のカットシーン: 台本の兵と出来事の塊（文の行の数 + 1。[i] は i 番目の文の前）。
+	var board: RefCounted = talks[2]
+	assert_true(board.board_cut != null and not board.cut and board.lines.size() == 4)
+	assert_eq(board.beats.map(func(beat: Array) -> int: return beat.size()), [0, 3, 0, 2, 2], "文の前ごとの、出来事の数（攻撃は当たる・倒れる）")
+	assert_eq(board.board_cut.start.pieces.size(), 3)
+	talks.remove_at(2)
+	# カットシーン: 地の文だけの場面（会話の場面の型の 1 つ）。色の幕か、場所の景色。
+	var cut: RefCounted = talks[1]
+	assert_true(cut.cut and cut.color == &"night" and cut.place == null and cut.lines.size() == 2)
+	assert_true(cut.lines.all(func(line: Episode.TalkLine) -> bool: return line.is_narration()))
+	assert_false(talks[0].cut)
+	talks.remove_at(1)
+	assert_true(talks[0].place != null and talks[0].look == &"drill_yard", "place の場所の景色")
+	assert_eq(talks[1].look, &"crystal_night", "look で景色を替える")
+	assert_true(talks[2].place == null and talks[2].look == &"", "place が無ければ、話の盤")
+	assert_true(talks[0].lines[0].is_narration())
+	assert_eq(episode.all_lines().size(), 3 + 2 + 4 + 6 + 2 + 1 + 3 + 1, "会話の行（カットシーンの文も）、途中の台詞、負けの台詞")
+	# 選択肢: 問いの行が、名前と答えを持つ。答えごとの行と (if …) の行は、出す条件を持つ。
+	var asking: Episode.TalkLine = talks[1].lines[1]
+	assert_true(asking.asks() and asking.choice == &"template_route")
+	assert_eq(asking.options, [{"key": &"left", "text": "左の岩場から行く"}, {"key": &"right", "text": "右の坂を急ぐ"}] as Array[Dictionary])
+	assert_eq(talks[1].lines.map(func(line: Episode.TalkLine) -> StringName: return line.when_answer), [&"", &"", &"left", &"right", &"right", &""])
+	assert_eq(episode.choices, {&"template_route": [&"left", &"right"]})
+	var answers := {&"template_route": "right"}
+	var read := talks[1].lines.filter(func(line: Episode.TalkLine) -> bool: return line.holds(func(choice: StringName) -> String: return answers.get(choice, "")))
+	assert_eq(read.size(), 5, "右を選ぶと、右の 2 行だけ")
+	var later: Episode.TalkLine = talks[3].lines[1]
+	assert_true(later.when_choice == &"template_route" and not later.holds(func(_choice: StringName) -> String: return ""), "選んでいなければ、(if 名前 = 鍵) の行は出ない")
+	assert_eq(episode.conditions.size(), 1)
+
+
+## 選択肢の書き間違いを、行で弾く。物語の読み込みは、名前の重なりと、選ばせていない選択肢の条件を弾く。
+func test_choices_are_checked() -> void:
+	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("scenes.txt"))
+	var cases := {
+		"答えが 1 つ": [text.replace("(answer right) 右の坂を急ぐ", ""), "答えは 2 から 3 つ"],
+		"長い答え": [text.replace("右の坂を急ぐ", "右の坂を急ぐ".repeat(5)), "答えの文は 1 から 22 字"],
+		"閉じていない": [text.replace("(end)", ""), "(end) で閉じていない"],
+		"問いが無い": [text.replace("新兵: {hero}少尉、どちらから登りますか。\n", "").replace("> 翌朝、隊は尾根の下に着いた。\n", ""), "問いになる行が要る"],
+		"答えの前の行": [text.replace("(answer left) 左の岩場から行く", "レオ: ふむ。\n(answer left) 左の岩場から行く"), "(answer 鍵) の行から書く"],
+		"名前の字": [text.replace("(choice template_route)", "(choice 道)"), "名前は英小文字"],
+		"同じ答え": [text.replace("(answer right)", "(answer left)"), "答え「left」が 2 度"],
+		"知らない指示": [text.replace("(end)", "(done)"), "知らない指示"],
+		"条件の形": [text.replace("(if template_route = left)", "(if template_route left)"), "条件の行は"],
+		"途中の台詞に選択肢": [text.replace("(turn 1) レオ: 前へ出すぎるな。", "(choice x) レオ: あ"), "知らないきっかけ"],
+		"長い会話": [text.replace("レオ: 右だ。日が高くなる前に登りきる。", "レオ: 右だ。\n".repeat(8)), "会話は 10 行まで"],
+	}
+	for name: String in cases:
+		var problems: PackedStringArray = Episode.parse(cases[name][0]).problems
+		assert_true(problems.size() >= 1 and "\n".join(problems).contains(cases[name][1]), "%s: %s" % [name, problems])
+	# 物語の中での決まり。
+	var dir := "user://test_choices_%d" % randi()
+	DirAccess.make_dir_recursive_absolute(dir)
+	_write(dir.path_join("story.txt"), FileAccess.get_file_as_string(TEMPLATE))
+	_write(dir.path_join("first_battle.txt"), FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
+		.replace("レオ: 見本の話だ。ここに会話を書く。", "(if template_route = left) レオ: 見本の話だ。").replace("敵将: ……見事だ。", "敵将: ……見事だ。\n(choice template_route)\n(answer a) あ\n(answer b) い\n(end)"))
+	_write(dir.path_join("scenes.txt"), text.replace("template_route = left", "template_route = up"))
+	var joined := "\n".join(Campaign.load_file(dir.path_join("story.txt")).problems)
+	assert_true(joined.contains("first_battle.txt:") and joined.contains("この行までに選ばせていない"), "あとの話の選択肢を、条件に書けない: %s" % joined)
+	assert_true(joined.contains("は、前の話にもある"), "名前の重なり: %s" % joined)
+	assert_true(joined.contains("答え「up」は無い"), "無い答え: %s" % joined)
+	for file: String in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(file))
+	DirAccess.remove_absolute(dir)
+
+
+## 場面の節の書き方の書き間違いを、行で弾く。
+func test_scene_sections_are_checked() -> void:
+	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("scenes.txt"))
+	var cases := {
+		"[before] と混ぜる": [text + "\n[before]\nレオ: あ\n", "[before] は書かない"],
+		"before_music": [text.replace("map = ridge_path", "map = ridge_path\nbefore_music = talk"), "before_music は書かない"],
+		"知らない場所": [text.replace("place = drill_field", "place = nowhere"), "マップ「nowhere」"],
+		"知らない設定": [text.replace("place = drill_field", "plase = drill_field"), "知らない設定「plase」"],
+		"設定があと": [text.replace("レオ: ああ。今夜は早く寝ておけ。", "レオ: ああ。\nmusic = talk_calm"), "会話の行より前"],
+		"place の無い look": [text.replace("[talk 盤の前]", "[talk 盤の前]\nlook = ridge"), "look は place と組"],
+		"あとの会話に対戦の曲": [text.replace("music = talk_bright", "music = battle"), "対戦の曲"],
+		"対戦のあとの出撃準備": [text.replace("[sortie]", "").replace("[cues]", "[sortie]\n[cues]"), "[sortie] は [battle] より前"],
+		"印の中身": [text.replace("[battle]", "[battle]\nレオ: あ"), "場面の順の印"],
+		"名前の無い会話": [text.replace("[talk 盤の前]", "[talk]"), "知らない節 [talk]"],
+		"空の会話": [text.replace("[sortie]", "[talk 空]\nmusic = talk\n[sortie]"), "[talk 空] の会話が無い"],
+		"カットシーンに台詞": [text.replace("だれも、口をきかなかった。", "新兵: 眠いです。"), "書けるのは地の文だけ"],
+		"カットシーンに選択肢": [text.replace("だれも、口をきかなかった。", "(choice x)"), "書けるのは地の文だけ"],
+		"知らない色": [text.replace("color = night", "color = pink"), "知らない色"],
+		"色と場所": [text.replace("color = night", "color = night\nplace = drill_field"), "どちらかだけ"],
+		"会話に色": [text.replace("[talk 盤の前]", "[talk 盤の前]\ncolor = night"), "知らない設定「color」"],
+		"長いカットシーン": [text.replace("だれも、口をきかなかった。", "夜。\n".repeat(7)), "文は 6 行まで"],
+		"最後がカットシーン": [text + "\n[cut 終わり]\nmusic = talk_calm\n終わり。\n", "話の最後の場面にしない"],
+		"対戦が無いのに敵": [text.replace("[battle]", "").replace("[sortie]", ""), "対戦の無い話"],
+		"盤のカットシーンの書き損じ": [text.replace("move 骸骨 7,16", "mvoe 骸骨 7,16"), "[board 尾根の朝] 知らない台本の行"],
+		"盤のカットシーンの知らない兵": [text.replace("attack 新兵 骸骨", "attack 新兵 骸骨兵"), "知らない兵「骸骨兵」"],
+		"盤のカットシーンの知らない話し手": [text.replace("レオ: 撃て。", "隊長: 撃て。"), "知らない話し手「隊長」"],
+		"盤のカットシーンに選択肢": [text.replace("レオ: 撃て。", "レオ: 撃て。\n(choice shoot)"), "選択肢・条件は書けない"],
+		"盤のカットシーンに色": [text.replace("[board 尾根の朝]", "[board 尾根の朝]\ncolor = night"), "知らない設定「color」"],
+		"動きの無い盤のカットシーン": [text.replace("[sortie]", "[board 空]\nmusic = talk\nレオ: 行くぞ。\n[sortie]"), "兵の動き"],
+		"最後が盤のカットシーン": [text + "\n[board 終わり]\nmusic = talk_calm\nunit レオ ally king 8,19\nmove レオ 8,18\n> 終わり。\n", "話の最後の場面にしない"],
+	}
+	for name: String in cases:
+		var problems: PackedStringArray = Episode.parse(cases[name][0]).problems
+		assert_true(problems.size() >= 1 and "\n".join(problems).contains(cases[name][1]), "%s: %s" % [name, problems])
+
+
+## 対戦の無い話: [battle] を書かない。敵の軍も、敵の話し手も要らない。
+func test_an_episode_without_a_battle_reads() -> void:
+	var episode: Episode = Episode.parse("[episode]\ntitle = 読むだけの話\nmap = ridge_path\n[cast]\n少尉 = ally\n[talk 夜]\nmusic = talk\n少尉: 静かだ。\n[talk 朝]\nplace = drill_field\nmusic = talk_calm\n> 朝になった。\n")
+	assert_eq(episode.problems, PackedStringArray())
+	assert_false(episode.has_battle())
+	assert_eq(episode.scenes.size(), 2, "出撃準備も対戦も無い")
+	assert_false(episode.scenes[0].once)
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
@@ -137,9 +269,9 @@ func test_the_probe_reads_every_field() -> void:
 	assert_eq(episode.enemy, [[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD, Equipment.Id.IRON_SHIELD]], [UnitKind.Id.PRIEST, []]])
 	assert_eq(episode.deploy[1], [Vector2i(8, 9), Vector2i(5, 9)] as Array[Vector2i])
 	assert_true(episode.deploy[0].is_empty())
-	assert_eq(episode.before, [[0, "いくぞ", 0], [1, "来い：ここだ", 1]], "全角の「：」でもよい。文の中の「：」はそのまま")
-	assert_eq(episode.after, [[1, "退け", 1]])
-	assert_eq(episode.cues, [[&"turn", 2, 0, "進め", 0], [&"king_half", 1, 1, "まだだ", 1]])
+	assert_eq(_dicts(episode.before), [Episode.TalkLine.speech(0, "いくぞ", 0).as_dict(), Episode.TalkLine.speech(1, "来い：ここだ", 1).as_dict()], "全角の「：」でもよい。文の中の「：」はそのまま")
+	assert_eq(_dicts(episode.after), [Episode.TalkLine.speech(1, "退け", 1).as_dict()])
+	assert_eq(_dicts(episode.cues), [Episode.TalkCue.new(&"turn", 2, TalkLine.speech(0, "進め", 0)).as_dict(), Episode.TalkCue.new(&"king_half", 1, TalkLine.speech(1, "まだだ", 1)).as_dict()])
 	assert_false(episode.has_squad())
 
 
@@ -158,9 +290,15 @@ func test_boss_name_reads_from_the_episode_or_the_map() -> void:
 ## 軍略（docs/troop-traits.md）: 話のファイルの trait と oath。書いた陣営だけが持ち、部隊編成で選んだ軍略は使わない。
 func test_traits_read_and_reach_the_battle() -> void:
 	var plain: Episode = Episode.parse(PROBE)
-	var mine := MatchSetup.default_deck(UnitKind.Army.MILITARY).copy()
+	var mine := _story_deck([])
 	mine.trait_id = Traits.Id.SUPPLY
-	assert_eq(StoryBattle.new(plain, mine).make_setup(3).create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "書かなければ、どちらも無い")
+	assert_eq(StoryBattle.new(plain, mine).make_setup(3).create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "書かず、まだ教わっていなければ、どちらも無い")
+	# 自分で選ぶ部隊は、教わった軍略から（選んだ軍略を教わっていなければ、教わったものの最初）。
+	var taught := _story_deck([Traits.Id.SUPPLY, Traits.Id.RANKS])
+	taught.trait_id = Traits.Id.SUPPLY
+	assert_eq(StoryBattle.new(plain, taught).make_setup(3).create_battle().traits[0], Traits.Id.SUPPLY)
+	taught.trait_id = Traits.Id.FOCUS
+	assert_eq(StoryBattle.new(plain, taught).make_setup(3).create_battle().traits[0], Traits.Id.RANKS, "教わっていない軍略は持たない")
 	var text := PROBE.replace("army = fantasy\n", "army = fantasy\ntrait = oath\noath = 1, 2\n")
 	var episode: Episode = Episode.parse(text)
 	assert_eq(episode.problems, PackedStringArray())
@@ -168,9 +306,25 @@ func test_traits_read_and_reach_the_battle() -> void:
 	var battle := StoryBattle.new(episode, mine).make_setup(3).create_battle()
 	assert_eq(battle.traits, [Traits.NONE, Traits.Id.OATH] as Array[int])
 	assert_eq(battle.units.filter(func(unit: Unit) -> bool: return unit.oath_partner != 0).size(), 2, "誓いを駒に写す")
-	for wrong: String in ["trait = focus", "trait = shout", "trait = oath\noath = 1, 3", "trait = lone\noath = 1, 2"]:
+	for wrong: String in ["trait = focus", "trait = shout", "trait = oath\noath = 1, 3", "trait = guard\noath = 1, 2"]:
 		var bad: Episode = Episode.parse(PROBE.replace("army = fantasy\n", "army = fantasy\n" + wrong + "\n"))
 		assert_eq(bad.problems.size(), 1, "%s: %s" % [wrong, bad.problems])
+	# クリアで教わる軍略（[unlock] の trait。何行でも）。物語の軍のものかは、物語を読むときに見る（campaign.gd）。
+	var teaching: Episode = Episode.parse(PROBE.replace("budget = 2", "budget = 2\ntrait = ranks\ntrait = supply"))
+	assert_eq(teaching.problems, PackedStringArray())
+	assert_eq(teaching.unlock_traits, [Traits.Id.RANKS, Traits.Id.SUPPLY] as Array[int])
+	assert_eq(Episode.parse(PROBE.replace("budget = 2", "budget = 2\ntrait = shout")).problems.size(), 1)
+
+
+## 教わった軍略 traits だけを選べる、ストーリーの決まりの連邦の部隊（駒は既定の編成と同じ）。
+func _story_deck(traits: Array) -> Deck:
+	var versus := DeckRules.versus()
+	var rules := DeckRules.new(&"probe", versus.max_units, {UnitKind.Army.MILITARY: versus.roster(UnitKind.Army.MILITARY)},
+		{UnitKind.Army.MILITARY: 30}, null, null, traits)
+	var deck := Deck.new(UnitKind.Army.MILITARY, rules)
+	for entry in MatchSetup.default_deck(UnitKind.Army.MILITARY).entries:
+		deck.add(entry.kind)
+	return deck
 
 
 func test_signs_read_and_reach_the_battle() -> void:
@@ -190,8 +344,9 @@ func test_signs_read_and_reach_the_battle() -> void:
 func test_narration_lines_read() -> void:
 	var episode: Episode = Episode.parse(PROBE.replace("隊長: いくぞ", "> 尾根に着いた。\n隊長: いくぞ").replace("敵将: 退け", "敵将: 退け\n＞ 日が暮れた。"))
 	assert_eq(episode.problems, PackedStringArray())
-	assert_eq(episode.before[0], [Episode.NARRATION_SIDE, "尾根に着いた。", -1])
-	assert_eq(episode.after[1], [Episode.NARRATION_SIDE, "日が暮れた。", -1])
+	assert_eq(episode.before[0].as_dict(), TalkLine.narration("尾根に着いた。").as_dict())
+	assert_true(episode.before[0].is_narration() and episode.before[0].side == Episode.NARRATION_SIDE and episode.before[0].who == -1)
+	assert_eq(episode.after[1].as_dict(), TalkLine.narration("日が暮れた。").as_dict())
 	var talk := Story.talk_of(episode, episode.before)
 	assert_eq(talk["lines"][0]["name"], "", "地の文は名前の無い行")
 	assert_eq(talk["lines"][0]["side"], Episode.NARRATION_SIDE)
@@ -203,11 +358,11 @@ func test_narration_lines_read() -> void:
 ## 負けたときの台詞（[lost]）は無くてよい。書けば、話し手と文を読み、話の対戦が決着の画面へ渡す（battle_source.gd の lost_lines）。
 func test_lost_lines_read() -> void:
 	var plain: Episode = Episode.parse(PROBE)
-	assert_eq(plain.lost, [], "書かなければ無し")
+	assert_true(plain.lost.is_empty(), "書かなければ無し")
 	assert_true(StoryBattle.new(plain, null).lost_lines().is_empty())
 	var episode: Episode = Episode.parse(PROBE.replace("敵将: 退け", "敵将: 退け\n\n[lost]\n敵将: 甘い\n隊長：旗を空けすぎた"))
 	assert_eq(episode.problems, PackedStringArray())
-	assert_eq(episode.lost, [[1, "甘い", 1], [0, "旗を空けすぎた", 0]])
+	assert_eq(_dicts(episode.lost), [Episode.TalkLine.speech(1, "甘い", 1).as_dict(), Episode.TalkLine.speech(0, "旗を空けすぎた", 0).as_dict()])
 	var lines := StoryBattle.new(episode, null).lost_lines()
 	assert_eq(lines.map(func(line: BattleCues.Line) -> Array: return [line.side, line.name, line.text]), [[1, "敵将", "甘い"], [0, "隊長", "旗を空けすぎた"]])
 	assert_eq(lines[1].figure, episode.figures[0], "話し手の姿も渡す（決着の画面のアイコン）")
@@ -257,8 +412,8 @@ func test_more_speakers_read() -> void:
 	assert_eq(episode.figures[2], {"kind": UnitKind.Id.MEDIC, "evolved": false, "look": &""})
 	assert_eq(episode.figures[3], {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, "姿を書かなければ将")
 	assert_eq(episode.figures[4], {"kind": UnitKind.Id.SORCERER, "evolved": true, "look": &""})
-	assert_eq(episode.before, [[0, "いきます", 2], [1, "来ます", 4], [1, "来い：ここだ", 1]])
-	assert_eq(episode.cues[0], [&"turn", 1, 0, "進め", 3])
+	assert_eq(_dicts(episode.before), [Episode.TalkLine.speech(0, "いきます", 2).as_dict(), Episode.TalkLine.speech(1, "来ます", 4).as_dict(), Episode.TalkLine.speech(1, "来い：ここだ", 1).as_dict()])
+	assert_eq(episode.cues[0].as_dict(), Episode.TalkCue.new(&"turn", 1, TalkLine.speech(0, "進め", 3)).as_dict())
 	var lines: Array = Story.talk_of(episode, episode.before)["lines"]
 	assert_eq([lines[0]["side"], lines[0]["who"], lines[0]["name"]], [0, 2, "新兵"])
 	assert_eq([lines[1]["side"], lines[1]["who"], lines[1]["name"]], [1, 4, "副官"])
@@ -430,10 +585,8 @@ func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 	var quoted := RegEx.create_from_string("「([^」]*)」")
 	for episode: Episode in Story.all_episodes():
 		var texts: Array[String] = [episode.lesson]
-		for line: Array in episode.before + episode.after + episode.lost:
-			texts.append(line[1])
-		for cue: Array in episode.cues:
-			texts.append(cue[3])
+		for line: TalkLine in episode.all_lines():
+			texts.append(line.text)
 		for text in texts:
 			for found in quoted.search_all(text):
 				assert_true(shown.has(found.get_string(1)), "%s: 画面に無い呼び方「%s」: %s" % [episode.id, found.get_string(1), text])
@@ -504,7 +657,7 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 		"= の無い話し手": ["敵将 = enemy", "敵将 = enemy\n新兵", 15],
 		"敵の話し手がいない": ["敵将 = enemy", "副長 = ally", 12],
 		"話し手の節が無い": ["[cast]\n隊長 = ally\n敵将 = enemy\n", "", 1],
-		"前の書き方の話し手": ["army = fantasy", "army = fantasy\nname = 敵将", 18],
+		"呼び名が長い": ["army = fantasy", "army = fantasy\nname = " + "あ".repeat(Episode.Names.STORY_NAME_MAX + 1), 18],
 		"知らないきっかけ": ["(turn 2)", "(turn_end 2)", 30],
 		"きっかけの陣営": ["(king_half enemy)", "(king_half 1)", 31],
 		"ターン 0": ["(turn 2)", "(turn 0)", 30],
@@ -607,6 +760,11 @@ func test_campaigns_introduce_their_cast() -> void:
 # ---- 見本 ----
 
 ## 正しい話の見本（行の番号を、上の壊し方の表が使う。行を足したら表も直す）。
+## 会話の行・途中の台詞の列を、比べられる形に。
+static func _dicts(rows: Array) -> Array:
+	return rows.map(func(row: RefCounted) -> Dictionary: return row.as_dict())
+
+
 const PROBE := """# 見本
 [episode]
 title = 見本

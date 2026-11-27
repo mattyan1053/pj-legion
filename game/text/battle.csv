@@ -182,7 +182,6 @@ battle.hud.capture_on,●
 battle.hud.capture_off,○
 battle.hud.name_evolved,{unit}（{kind}）
 battle.hud.level_max,Lv {level} 最大
-battle.hud.status_chip,{status}（あと {turns}）
 battle.hud.status_turns,あと {turns}
 battle.hud.origin,{origin} 出身
 battle.hud.equipment,持ち物: {items}
@@ -195,6 +194,21 @@ battle.hud.separator,　
 battle.hud.item_count,{item} ×{count}
 battle.hud.no_items,なし
 battle.hud.status,{status}（あと {turns} ターン）: {effect}
+battle.effect.line,{name}　{value}
+battle.effect.line_turns,{line}（あと {turns}）
+battle.effect.more,ほか {count}
+battle.effect.joiner,・
+battle.effect.stat,{stat} {amount}
+battle.effect.taken,被ダメージ {amount}
+battle.effect.taken_rate,被ダメージ {amount}%
+battle.effect.damage,ダメージ {amount}
+battle.effect.heal,HP +{amount}
+battle.effect.blocks,被ダメージ 0
+battle.effect.partner,{unit}と
+battle.effect.hold,確保中
+battle.effect.hold_stopped,確保が止まる
+battle.effect.smoke,遠くからの攻撃 0
+battle.effect.spores,胞子
 battle.hud.detail,詳細
 battle.hud.skill_state.used_up,使用済み
 battle.hud.skill_state.ready,使用可

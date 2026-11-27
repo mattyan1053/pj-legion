@@ -6,8 +6,8 @@ extends "res://rules/cpu/cpu_player_base.gd"
 ## ignored_id の敵は数えない。_build_threats のあとに呼ぶ。
 ## - 自分の煙幕の中のマスと、殻蟹（離れた所からは狙えない。Monsters）では、近くからの攻撃だけを数える
 ## - unit にバリアが付いていれば、いちばん弱い 1 回ぶんを引く（相手は、弱い攻撃で先にはがす）
-## - unit が cell で隊列（軍略）になるなら、1 回ごとに隊列のぶんを引く
-## - 敵の軍略で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら、単騎はいま隣に味方のいない敵）
+## - unit が cell で隊列か守護（軍略）になるなら、1 回ごとにそのぶんを引く
+## - 敵の軍略で伸びるぶんを足す（集中砲火は 2 体目から、誓いは 2 人そろえば 2 人目、仇討ちは unit が仇なら）
 func _threat_at(unit: Unit, cell: Vector2i, ignored_id: int) -> int:
 	return _danger_in(_threats, _close_threats, unit, cell, ignored_id)
 
@@ -21,7 +21,7 @@ func _danger_in(
 	var by: Dictionary = (close if near_only else threats).get(cell, {})
 	var total := 0
 	var weakest := _FAR
-	var guard := Traits.RANKS_GUARD if Traits.ranked_at(_battle, unit, cell) else 0  # 隊列
+	var guard := Traits.guard_at(_battle, unit, cell)  # 隊列・守護
 	var foe_trait := Traits.of_side(_battle, _foe)
 	var focusers := 0
 	for enemy_id: int in by:
@@ -41,9 +41,6 @@ func _danger_in(
 						Traits.Id.OATH:
 							if enemy.oath_partner != 0 and enemy.oath_partner < enemy_id and by.has(enemy.oath_partner) and enemy.oath_partner != ignored_id:
 								hurt += Traits.OATH_BONUS
-						Traits.Id.LONE:
-							if Traits.alone_at(_battle, enemy, enemy.cell):  # いま隣に味方がいない敵（動いた先は読まない）
-								hurt += Traits.LONE_BONUS
 			hurt = maxi(0, hurt - guard)
 			total += hurt
 			weakest = mini(weakest, hurt)

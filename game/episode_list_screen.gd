@@ -31,9 +31,10 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
-const CardKeys := preload("res://game/card_keys.gd")
+const CardPicker := preload("res://game/card_picker.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
 const App := preload("res://game/app.gd")
+const HeroNameWindow := preload("res://game/hero_name_window.gd")
 
 signal finished(outcome: StringName)
 
@@ -64,6 +65,11 @@ var _scroll: ScrollContainer
 var _backdrop: TitleBackdrop
 ## 左右の矢印で選んでいるカードの番号（話の並びの順。選んでいなければ -1）。
 var _key_index := -1
+## キーとマウスの受け方（card_picker.gd）。
+var _keys: CardPicker
+## 主人公の名前を付ける窓と、主な人物の欄の主人公の名前の字。
+var _hero_window: HeroNameWindow
+var _hero_label: Label
 
 
 func _ready() -> void:
@@ -184,6 +190,17 @@ func _ready() -> void:
 	_saved.offset_right = -18.0
 	_saved.offset_bottom = -10.0
 	layer.add_child(_saved)
+	_hero_window = HeroNameWindow.new()
+	_hero_window.setup(context.overlays)
+	layer.add_child(_hero_window)
+	_keys = CardPicker.new(context.overlays, context.play_sound)
+	_keys.count = func() -> int: return context.story.campaign.episodes.size()
+	_keys.enabled = func(i: int) -> bool: return context.story.is_available(context.story.campaign.episodes[i])
+	_keys.start = func() -> int: return context.story.campaign.episodes.find(context.story.next_episode())
+	_keys.current = func() -> int: return _key_index
+	_keys.selected = select_by_key
+	_keys.chosen = func(i: int) -> void: choose(context.story.campaign.episodes[i])
+	_keys.back = press_back
 
 
 func resume_label() -> String:
@@ -266,56 +283,24 @@ func status_text(episode: Episode) -> String:
 	return Text.t("story.episodes.not_cleared")
 
 
-## 右クリックと Esc は 1 つ戻る（物語を選ぶ場面へ）。カードの上でも効くよう、ボタンより先に受ける。
-## 重なる画面（システムメニュー）が開いている間は、そちらが受ける。
 func _input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	if _key_index >= 0 and CardKeys.is_pointer_move(event):
-		select_by_key(-1)  # マウスに持ち替えた（キーで送ってカードがマウスの下へ来ただけでは、やめない）
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_back")
-		press_back()
+	_keys.input(event, get_viewport())
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	var listed: Array[Episode] = context.story.campaign.episodes
-	var step := CardKeys.direction(event)
-	if step != 0:
-		get_viewport().set_input_as_handled()
-		var start := listed.find(context.story.next_episode())
-		select_by_key(CardKeys.next(_key_index, step, listed.size(), func(i: int) -> bool: return context.story.is_available(listed[i]), start))
-		return
-	if CardKeys.is_accept(event) and _key_index >= 0:
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_confirm")
-		choose(listed[_key_index])
-		return
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	var number := -1
-	if event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
-		number = event.physical_keycode - KEY_1
-	elif event.physical_keycode >= KEY_KP_1 and event.physical_keycode <= KEY_KP_9:
-		number = event.physical_keycode - KEY_KP_1
-	if number >= 0 and number < listed.size() and context.story.is_available(listed[number]):
-		context.play_sound(&"ui_confirm")
-		choose(listed[number])
+	_keys.unhandled_input(event, get_viewport())
 
 
 ## キーボードで index 番目の話のカードを選ぶ（マウスを乗せたときと同じ見た目にし、見える所まで送る）。-1 で選ぶのをやめる。
 func select_by_key(index: int) -> void:
 	var listed: Array[Episode] = context.story.campaign.episodes
 	if _key_index >= 0:
-		(_cards[listed[_key_index]] as Button).remove_theme_stylebox_override("normal")
+		CardPicker.light(_cards[listed[_key_index]], false)
 	_key_index = index
 	if index < 0:
 		return
 	var card: Button = _cards[listed[index]]
-	card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+	CardPicker.light(card, true)
 	_scroll.ensure_control_visible(card)
 	focus(listed[index])
 
@@ -392,7 +377,8 @@ func _build_card(episode: Episode) -> Button:
 		map.add_child(Sealed.new(context.story.campaign.army))
 	map.add_child(MapFrame.new())  # 真鍮の縁と四隅の鉤（選べない話は、縮図ごと沈む）
 	if available:
-		map.add_child(face_of(episode))
+		if episode.has_battle():  # 対戦の無い話に、敵の顔は無い（景色だけ）
+			map.add_child(face_of(episode))
 	else:
 		var hidden := _label(Text.t("story.episodes.hidden"), 30)
 		hidden.add_theme_font_override("font", UiTheme.FONT_HEADING)
@@ -438,6 +424,8 @@ static func face_of(episode: Episode) -> TextureRect:
 
 ## 話 episode の盤の縮図。両軍の駒の初期位置（初めて遊ぶときの既定の編成で置いたもの）に、陣営の色の点を打つ。
 static func map_image(episode: Episode) -> Image:
+	if not episode.has_battle():
+		return MapCard.draw(episode.map.make_board(), episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)  # 対戦の無い話は、景色だけ
 	var battle := Story.first_battle(episode).make_setup(1).create_battle()
 	var image := MapCard.draw(battle.board, episode.look, BattleScreen.TEAM_COLORS, MAP_CELL)
 	for unit in battle.units:
@@ -478,15 +466,48 @@ func cast_row(campaign: RefCounted) -> HBoxContainer:
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		entry.add_child(words)
-		var name_label := _label(person["name"], 16)
+		var name_label := _label(campaign.cast_name(person, context.story.hero_name(campaign)), 16)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
 		words.add_child(name_label)
+		if campaign.hero != "" and person["name"] == campaign.hero:
+			_hero_label = name_label
 		var role := _label(person["role"], 13)
 		role.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		role.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 		words.add_child(role)
+		if campaign.hero != "" and person["name"] == campaign.hero:
+			# 主人公の名前は、ここで変えられる（docs/story.md の「主人公の名前」）。
+			var rename := Button.new()
+			rename.text = Text.t("hero.rename")
+			rename.theme_type_variation = UiTheme.BUTTON_GHOST
+			rename.focus_mode = Control.FOCUS_NONE
+			rename.add_theme_font_size_override("font_size", 13)
+			rename.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			rename.pressed.connect(press_rename)
+			entry.add_child(rename)
 	return row
+
+
+## 主な人物の欄の「名前を変える」: 主人公の名前の窓を出す。決めたら、欄の名前を替える。
+func press_rename() -> void:
+	var campaign: RefCounted = context.story.campaign
+	if campaign.hero == "" or _hero_window.is_open():
+		return
+	context.play_sound(&"menu_open")
+	_hero_window.ask(context.story.hero_name(), campaign.hero, campaign.hero_role(), func(named: String) -> void:
+		context.story.name_hero(campaign, named)
+		if _hero_label != null:
+			_hero_label.text = context.story.hero_name())
+
+
+## 主人公の名前の窓と、主な人物の欄の主人公の名前（検査用）。
+func hero_window() -> HeroNameWindow:
+	return _hero_window
+
+
+func hero_label_text() -> String:
+	return _hero_label.text if _hero_label != null else ""
 
 
 func _label(text: String, font_size: int) -> Label:

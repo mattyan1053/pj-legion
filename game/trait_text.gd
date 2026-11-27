@@ -31,11 +31,12 @@ static func oath_tooltip(deck: Deck, entry: DeckEntry) -> String:
 	return "" if partner == null else Text.t("deck.trait.partner", {"unit": Names.kind(partner.kind)})
 
 
-## 部隊 deck が対戦で持つ軍略（対戦用の部隊だけ。ほかは Traits.NONE）。その軍の軍略でなければ軍の既定（MatchSetup.trait_of と同じ）。
+## 部隊 deck が対戦で持つ軍略。対戦用の部隊は、その軍の軍略でなければ軍の既定（MatchSetup.trait_of と同じ）。
+## ストーリー用の部隊は、教わった軍略から（DeckRules.trait_for。まだ教わっていなければ Traits.NONE）。
 static func of_deck(deck: Deck) -> int:
-	if deck == null or deck.rules == null or deck.rules.id != DeckRules.VERSUS or Traits.of_army(deck.army).is_empty():
+	if deck == null or deck.rules == null or Traits.of_army(deck.army).is_empty():
 		return Traits.NONE
-	return deck.trait_id if Traits.of_army(deck.army).has(deck.trait_id) else Traits.default_of(deck.army)
+	return deck.rules.trait_for(deck)
 
 
 ## 対戦の上の帯の、陣営 side の軍略の札の文（名前だけ）。軍略が無ければ空。

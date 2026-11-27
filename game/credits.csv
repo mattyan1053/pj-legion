@@ -1,0 +1,57 @@
+group,name,author,source,license,license_file
+font,Zen Kaku Gothic New,"Yoshimichi Ohira, The Zen Kaku Gothic Project Authors",https://github.com/googlefonts/zen-kakugothic,SIL Open Font License 1.1,assets/fonts/zen/LICENSE-ZenKakuGothicNew.txt
+font,Zen Old Mincho,"Yoshimichi Ohira, The Zen Old Mincho Project Authors",https://github.com/googlefonts/zen-oldmincho,SIL Open Font License 1.1,assets/fonts/zen/LICENSE-ZenOldMincho.txt
+unit,KayKit Adventurers Character Pack 1.0,Kay Lousberg,https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0,CC0 1.0,assets/kaykit/adventurers/LICENSE.txt
+unit,KayKit Character Pack: Skeletons 1.0,Kay Lousberg,https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0,CC0 1.0,assets/kaykit/skeletons/LICENSE.txt
+unit,Animated Monster Pack,Quaternius,https://opengameart.org/content/lowpoly-animated-monsters,CC0 1.0,assets/quaternius/monsters/LICENSE.txt
+unit,Textured Cute Monster Pack,Quaternius,https://opengameart.org/content/textured-cute-monster-pack,CC0 1.0,assets/quaternius/LICENSE.txt
+unit,Alien Bug Animated,CDmir,https://opengameart.org/content/alien-bug-animated,CC0 1.0,assets/cdmir/LICENSE.txt
+board,KayKit Dungeon Remastered 1.0,Kay Lousberg,https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0,CC0 1.0,assets/kaykit/dungeon-remastered/LICENSE.txt
+board,KayKit Medieval Hexagon Pack 1.0,Kay Lousberg,https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0,CC0 1.0,assets/kaykit/medieval-hexagon/LICENSE.txt
+sound,The Last Horn,redFireMeat,https://opengameart.org/content/the-last-horn,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,A Legend Will Rise (Orchestral),CodeManu,https://opengameart.org/content/a-legend-will-rise-orchestral,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Last Journey,Crocdent,https://opengameart.org/content/last-journey,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Beautiful Forest [Orchestra],nene,https://opengameart.org/content/beautiful-forest-orchestra,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Prologue Theme,CleytonKauffman,https://opengameart.org/content/prologue-theme,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Medieval: King's Feast,RandomMind,https://opengameart.org/content/medieval-kings-feast,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Hope (Orchestral battle music),MintoDog,https://opengameart.org/content/hopeorchestral-battle-music,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Some Militaristic Tune,Spring Spring,https://opengameart.org/content/some-militaristic-tune,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Final Stand,iamoneabe,https://opengameart.org/content/final-stand,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Col Legno,Vehicle,https://opengameart.org/content/col-legno,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Epic Endgame Cinematic,cynicmusic,https://opengameart.org/content/epic-endgame-cinematic,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Duel of the Dungeons,Umplix,https://opengameart.org/content/duel-of-the-dungeons,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Victory,Umplix,https://opengameart.org/content/victory-4,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Victory Fanfare Short,cynicmusic,https://opengameart.org/content/victory-fanfare-short,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Game Over,Kistol,https://opengameart.org/content/game-over,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Bittersweet,Emma_MA,https://opengameart.org/content/bittersweet,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Lose Game Short Music Clip,Robin Lamb,https://opengameart.org/content/lose-game-short-music-clip,CC0 1.0,assets/audio/oga-bgm-sets/LICENSE.txt
+sound,Cynic Battle Loop,"Ferk, cynicmusic",https://opengameart.org/content/cynic-battle-loop,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,Great Labyrinth,MintoDog,https://opengameart.org/content/great-labyrinthorchestral-dungeon-music,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,Sigil,Kistol,https://opengameart.org/content/sigil,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,Determined Pursuit,Emma_MA,https://opengameart.org/content/determined-pursuit-epic-orchestra-loop,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,The Fire Dragon,Umplix,https://opengameart.org/content/the-fire-dragon,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,QaziJamJam,Emma_MA,https://opengameart.org/content/qazijamjam-orchestral-battle-theme,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,The March of Devils Dome,Eldritch Grim,https://opengameart.org/content/the-march-of-devils-dome,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,Epic Boss Battle [Seamlessly Looping],Juhani Junkala (SubspaceAudio),https://opengameart.org/content/boss-battle-music,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,Fantasy - Battlegrounds,doge,https://opengameart.org/content/fantasy-battlegrounds,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,The Battlefield,Umplix,https://opengameart.org/content/the-battlefield,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,A Knight's Challenge,Umplix,https://opengameart.org/content/a-knights-challenge,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,Laments of the War,cethiel,https://opengameart.org/content/laments-of-the-war,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,The Final Battle,skrjablin,https://opengameart.org/content/the-final-battle,CC0 1.0,assets/audio/oga-battle/LICENSE.txt
+sound,Waiting II,Kistol,https://opengameart.org/content/waiting-ii,CC0 1.0,assets/audio/oga-talk/LICENSE.txt
+sound,The Confrontation,Umplix,https://opengameart.org/content/the-confrontation,CC0 1.0,assets/audio/oga-talk/LICENSE.txt
+sound,Aftermath,indieteur,https://opengameart.org/content/aftermath,CC0 1.0,assets/audio/oga-talk/LICENSE.txt
+sound,Medieval: Exploration,RandomMind,https://opengameart.org/content/medieval-exploration,CC0 1.0,assets/audio/randommind/LICENSE.txt
+sound,Medieval: Victory Theme,RandomMind,https://opengameart.org/content/medieval-victory-theme,CC0 1.0,assets/audio/randommind/LICENSE.txt
+sound,Medieval: Defeat Theme,RandomMind,https://opengameart.org/content/medieval-defeat-theme,CC0 1.0,assets/audio/randommind/LICENSE.txt
+sound,Medieval: The Old Tower Inn,RandomMind,https://opengameart.org/content/medieval-the-old-tower-inn,CC0 1.0,assets/audio/randommind/LICENSE.txt
+sound,Medieval: Rejoicing,RandomMind,https://opengameart.org/content/medieval-rejoicing,CC0 1.0,assets/audio/randommind/LICENSE.txt
+sound,Fantasy: Lament for a Warrior's Soul,RandomMind,https://opengameart.org/content/fantasy-lament-for-a-warriors-soul,CC0 1.0,assets/audio/randommind/LICENSE.txt
+sound,Interface Sounds,Kenney,https://opengameart.org/content/interface-sounds,CC0 1.0,assets/audio/kenney/LICENSE.txt
+sound,50 RPG sound effects,Kenney,https://opengameart.org/content/50-rpg-sound-effects,CC0 1.0,assets/audio/kenney/LICENSE-rpg.txt
+sound,80 CC0 RPG SFX,rubberduck,https://opengameart.org/content/80-cc0-rpg-sfx,CC0 1.0,assets/audio/rubberduck/LICENSE.txt
+sound,75 CC0 breaking / falling / hit sfx,rubberduck,https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx,CC0 1.0,assets/audio/rubberduck/LICENSE.txt
+sound,100 CC0 SFX,rubberduck,https://opengameart.org/content/100-cc0-sfx,CC0 1.0,assets/audio/rubberduck/LICENSE.txt
+sound,150 Combat Sound Effects,"Untamed Pixels (compiled), Kenney, lentikula",https://opengameart.org/content/150-combat-sound-effects,CC0 1.0,assets/audio/untamedpixels/LICENSE.txt
+sound,Fantasy Sound Effects (Tinysized SFX),Jan Schupke,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,CC0 1.0,assets/audio/janschupke/LICENSE.txt
+sound,Magic Words + Healing Sound Effect,spring-spring,https://opengameart.org/content/magic-words-healing-sound-effect,CC0 1.0,assets/audio/spring-spring/LICENSE.txt

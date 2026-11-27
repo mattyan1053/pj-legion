@@ -7,7 +7,7 @@ extends "res://game/battle_hud/hud_menu.gd"
 ## skill_note が真なら、スキルの札に説明も出す（note のほうにスキルの説明を出すときは、偽にして重ねない）。
 ##
 ## 中身は、ステータスの札（info_card.gd）: 額・名前・札（所属・役割・軍・レベル）→ 能力値の行（HP・攻撃・移動・射程の棒と粒）と経験値 →
-## 状態・特性の札 → スキルの札 → 持ち物の枠 → 行動の状態 → note の札。「詳細」で開くステータスの窓と同じ部品。
+## 乗っている効果の札（状態も。unit_effects.gd）→ 特性の札 → スキルの札 → 持ち物の枠 → 行動の状態 → note の札。「詳細」で開くステータスの窓と同じ部品。
 func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> void:
 	_info_panel.visible = unit != null
 	_info_pin.visible = false  # 出すときは、このあとに set_pin_switch
@@ -19,6 +19,7 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 	var army: UnitKind.Army = side_armies[unit.side] if unit.side >= 0 and unit.side < side_armies.size() else UnitKind.Army.NONE
 	var sheet: UnitSheet = UnitSheet.of_unit(unit, army, skill_state_text(unit, battle),
 			unit_looks.get(unit.id, king_looks[unit.side] if unit.side < king_looks.size() else &""))
+	sheet.effects = UnitEffects.of(battle, unit)
 	var level := ""
 	var experience: Array = []
 	if Growth.can_grow(unit):
@@ -26,11 +27,9 @@ func show_unit(unit: Unit, state: String, note: String, skill_note := true) -> v
 			level = Text.t("battle.hud.level_max", {"level": unit.level})
 		else:
 			level = Text.t("deck.sheet.level", {"level": unit.level})
-			experience = [unit.experience, Growth.EXPERIENCE_PER_LEVEL]
-	var chips: Array = []
-	for which: Evolution.Trait in Evolution.Trait.values():  # 進化先と持ち物の、どちらが与えた特性も（重ねても 1 つ）
-		if unit.has_trait(which):
-			chips.append([Text.t("battle.hud.trait", {"trait": Names.trait_text(which)}), COLOR_TRAIT])
+			# 魔物は進化しないので、経験値は出さない（レベルは上がるので Lv だけ。unit_detail.gd と同じ）。棒の場所は空けたまま。
+			experience = InfoCard.HIDDEN_EXPERIENCE if UnitKind.is_monster(unit.kind) else [unit.experience, Growth.EXPERIENCE_PER_LEVEL]
+	var chips: Array = []  # 特性は、乗っている効果の札の最後に並ぶ（unit_effects.gd）
 	# 行動の状態（「未行動」など。state の 1 行目）は名前の右の札に、いるマスなどの残りは、札の下の小さな行に。
 	var lines := state.split("\n", false)
 	var action := ""
@@ -55,7 +54,7 @@ static func side_tag(unit: Unit, viewer: Unit.Side) -> String:
 	if unit.side == Unit.Side.NEUTRAL:
 		return Text.t("battle.hud.tag.neutral")
 	if Names.story_sides:
-		return Names.side(unit.side)
+		return Names.side_relation(unit.side)
 	return Text.t("battle.hud.tag.own" if unit.side == viewer else "battle.hud.tag.foe")
 
 
@@ -161,6 +160,11 @@ func info_overflow() -> float:
 
 
 ## 駒の情報の枠に出している文（見出しを除く。欄ごとに 1 行。出ていなければ空）。検査用。
+## 情報の枠の駒の札が、経験値（棒と文）を出しているか（検査用。魔物は出さない）。
+func info_shows_experience() -> bool:
+	return _info_is_unit and _info_card.shows_experience()
+
+
 func info_text() -> String:
 	return _info_card.text() if _info_panel.visible else ""
 

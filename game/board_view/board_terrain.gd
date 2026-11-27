@@ -3,10 +3,11 @@ extends "res://game/board_view/board_base.gd"
 
 
 ## マスの地面の色（本陣は陣営の色）。palette はマップの見た目（stage_look.gd。省けば中央平原）。
-static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color], palette: Dictionary = {}) -> Color:
+## mark_hq が偽なら、本陣も地形の色のまま（景色だけを見せる背景）。
+static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array[Color], palette: Dictionary = {}, mark_hq := true) -> Color:
 	if palette.is_empty():
 		palette = StageLook.of(StageLook.DEFAULT)
-	var hq_owner := battle_board.hq_owner(cell)
+	var hq_owner := battle_board.hq_owner(cell) if mark_hq else -1
 	if hq_owner >= 0:
 		return team_colors[hq_owner].lightened(0.3)
 	match battle_board.terrain_at(cell):
@@ -20,7 +21,7 @@ static func ground_color(battle_board: Board, cell: Vector2i, team_colors: Array
 
 
 ## 地形の色の地図。1 マスが MAP_SCALE ピクセルで、周りに MAP_PAD マスぶんの平地が付く（盤の外は平地の色で続く）。
-static func terrain_image(battle_board: Board, team_colors: Array[Color], palette: Dictionary = {}) -> Image:
+static func terrain_image(battle_board: Board, team_colors: Array[Color], palette: Dictionary = {}, mark_hq := true) -> Image:
 	if palette.is_empty():
 		palette = StageLook.of(StageLook.DEFAULT)
 	var normal: Color = palette[StageLook.NORMAL]
@@ -29,7 +30,7 @@ static func terrain_image(battle_board: Board, team_colors: Array[Color], palett
 	image.fill(normal)
 	for y in battle_board.size.y:
 		for x in battle_board.size.x:
-			var color := ground_color(battle_board, Vector2i(x, y), team_colors, palette)
+			var color := ground_color(battle_board, Vector2i(x, y), team_colors, palette, mark_hq)
 			if color != normal:
 				image.fill_rect(Rect2i((Vector2i(x, y) + Vector2i.ONE * MAP_PAD) * MAP_SCALE, Vector2i.ONE * MAP_SCALE), color)
 	return image
@@ -42,7 +43,7 @@ func _add_ground() -> void:
 
 	var ground := ShaderMaterial.new()
 	ground.shader = GROUND_SHADER
-	ground.set_shader_parameter(&"terrain_map", ImageTexture.create_from_image(terrain_image(board, _team_colors, look)))
+	ground.set_shader_parameter(&"terrain_map", ImageTexture.create_from_image(terrain_image(board, _team_colors, look, not scenery_only)))
 	ground.set_shader_parameter(&"noise_map", _noise_texture())
 	ground.set_shader_parameter(&"board_size", size)
 	ground.set_shader_parameter(&"map_pad", float(MAP_PAD))
@@ -73,6 +74,7 @@ func _add_ground() -> void:
 	grid_mesh.size = size + Vector2.ONE * 0.2
 	_grid_instance = _add_mesh(grid_mesh, _grid, center + Vector3(0.0, 0.006, 0.0))
 	_grid_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_grid_instance.visible = not scenery_only
 
 
 ## つなぎ目の無い白黒のノイズ（地面のむらと、地形の境目の揺れに使う）。作るのは 1 回だけ。

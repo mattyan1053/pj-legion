@@ -37,6 +37,8 @@ func _ready() -> void:
 	_playback = BattlePlayback.new()
 	add_child(_playback)
 	_playback.setup(self, _views, _rig, _hud, _effects, _ui, TEAM_COLORS, played, camera_follows)
+	if battle != null:
+		_playback.take(battle)
 	_playback.refresh_status = _refresh_status
 	_playback.side_name = _side_name
 	_playback.result_summary = _result_summary
@@ -129,6 +131,8 @@ func _exit_tree() -> void:
 	# メニューで止めた時間や、CPU の番の速さを、ほかの場面へ持ち越さない。
 	Engine.time_scale = 1.0
 	Names.story_sides = false
+	Names.story_names = ["", ""]
+	Names.story_shorts = ["", ""]
 
 
 func _process(delta: float) -> void:
