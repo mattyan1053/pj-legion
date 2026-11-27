@@ -46,6 +46,10 @@ var confirming_end := false
 var confirming_ult := false
 ## このターンの残りを CPU に任せる（おまかせ）かを、もう一度押して確かめている途中か（取り消せないので、1 回では任せない）。
 var confirming_auto := false
+## 相手を選んでいる途中の手札の札（Card.Id。無ければ -1。docs/hand-cards.md）と、駒を動かす札で、もう選んだ駒のマス。
+## 相手を選ばない札は、card に入っている間が「もう一度押すと使う」の確かめ。
+var card := -1
+var card_target := NO_CELL
 ## いまの確かめを始めた時刻（ミリ秒。場面が渡す時計の値）。
 var confirm_started_msec := 0
 ## マウスが乗っているメニューの項目（乗っていなければ空の名前）。その項目の説明を、左下の枠に出す。
@@ -80,11 +84,13 @@ func clear_for_new_battle() -> void:
 	confirming_ult = false
 	confirming_auto = false
 	pinned_ids.clear()
+	clear_card()
 	cancel_press()
 
 
 ## 行動をルールに渡した: 閲覧・マスの情報・対象を選ぶ途中・確かめをやめる（盤が変わるので）。選んでいる駒は、再生のあとに決める（settle_after_action）。
 func clear_after_action() -> void:
+	clear_card()
 	mode = Mode.NONE
 	inspected_id = 0
 	inspected_cell = NO_CELL
@@ -112,6 +118,7 @@ func settle_after_action(cpu_turn: bool, evolving_id: int, acting_id: int, keeps
 ## 駒を選ぶ（0 なら選ぶのをやめる）。閲覧・マスの情報・対象を選ぶ途中・確かめはやめる。選ぶ駒が変わったかを返す。
 func select(unit_id: int) -> bool:
 	var changed := unit_id != selected_id
+	clear_card()
 	selected_id = unit_id
 	inspected_id = 0
 	inspected_cell = NO_CELL
@@ -120,6 +127,19 @@ func select(unit_id: int) -> bool:
 	confirming_ult = false
 	confirming_auto = false
 	return changed
+
+
+## 手札の札を選び、相手を選び始める（選択・閲覧・ほかの確かめはやめる）。now_msec は、いまの時刻（ミリ秒）。
+func choose_card(id: int, now_msec: int) -> void:
+	select(0)
+	card = id
+	confirm_started_msec = now_msec
+
+
+## 札の相手を選ぶのをやめる。
+func clear_card() -> void:
+	card = -1
+	card_target = NO_CELL
 
 
 ## 駒を見る（閲覧）。選んでいる駒、動いたあとの状態、対象を選ぶ途中は、そのまま残す。0 なら見るのをやめる。
@@ -136,6 +156,7 @@ func focus_selected() -> void:
 
 ## 必殺技を使うかを確かめ始める（ほかの確かめと、対象を選ぶ途中はやめる）。now_msec は、いまの時刻（ミリ秒）。
 func start_confirming_ult(now_msec: int) -> void:
+	clear_card()
 	confirming_ult = true
 	confirming_end = false
 	confirming_auto = false
@@ -145,6 +166,7 @@ func start_confirming_ult(now_msec: int) -> void:
 
 ## このターンの残りを CPU に任せるかを、確かめ始める（ほかの確かめと、対象を選ぶ途中はやめる）。now_msec は、いまの時刻（ミリ秒）。
 func start_confirming_auto(now_msec: int) -> void:
+	clear_card()
 	confirming_auto = true
 	confirming_end = false
 	confirming_ult = false
@@ -154,6 +176,7 @@ func start_confirming_auto(now_msec: int) -> void:
 
 ## 未行動の駒を残したままターンを終えるかを、確かめ始める（ほかの確かめはやめる）。now_msec は、いまの時刻（ミリ秒）。
 func start_confirming_end(now_msec: int) -> void:
+	clear_card()
 	confirming_end = true
 	confirming_ult = false
 	confirming_auto = false
@@ -175,6 +198,12 @@ func back(moving: bool) -> Back:
 		return Back.DONE
 	if confirming_auto:
 		confirming_auto = false
+		return Back.DONE
+	if card != -1:
+		if card_target != NO_CELL:
+			card_target = NO_CELL  # 動かす先を選ぶ途中なら、駒を選ぶ所へ戻る
+		else:
+			clear_card()
 		return Back.DONE
 	if inspected_id != 0:
 		inspect(0)  # 見るのをやめて、元の行動の途中へ戻る

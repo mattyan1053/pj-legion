@@ -17,7 +17,7 @@ const DeployDialog := preload("res://game/deploy_dialog.gd")
 ## 初期位置の窓で見せる盤の種（生成のマップは、マップ選択のカードと同じ代表の形）。
 const PLACEMENT_SEED := 3
 ## 選べる決まりの行（並び）、「あり」「なし」のボタンの大きさ、右の説明の欄の大きさ（px。1 行）。
-const RULE_ROWS: Array[StringName] = [OptionalRules.STRONGHOLD, OptionalRules.SEAM]
+const RULE_ROWS: Array[StringName] = [OptionalRules.STRONGHOLD, OptionalRules.SEAM, OptionalRules.HAND]
 ## 入のボタンの文の鍵を、いつもの「あり」から替える決まり（縫い目の様子は、対戦ごとにランダム）。
 const RULE_ON_KEYS: Dictionary[StringName, String] = {OptionalRules.SEAM: "setup.rule.seam.on"}
 const TRIAL_BUTTON_WIDTH := 110.0

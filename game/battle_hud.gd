@@ -1,4 +1,4 @@
-extends "res://game/battle_hud/hud_info_panel.gd"
+extends "res://game/battle_hud/hud_hand.gd"
 ## 対戦の画面の文字とボタン（ターン、番、駒とマスの情報、駒のそばのメニュー、決着）。
 ##
 ## 何を出すかは呼ぶ側が決める。ここはルールを持たず、押されたことを signal で知らせるだけ。
@@ -7,7 +7,7 @@ extends "res://game/battle_hud/hud_info_panel.gd"
 ##
 ## ここは、組み立ての順と、毎コマの明滅だけ。部品は帯・枠ごとのファイル（game/battle_hud/hud_*.gd）にある:
 ## 上の帯（hud_top_bar）、下の帯（hud_bottom_bar）、重ねて出すもの（hud_overlays）、駒のそばのメニューと予測（hud_menu）、
-## 左下の駒とマスの情報（hud_info_panel）。知らせ・調整値・部品の変数と、部品を作る道具は hud_base。
+## 左下の駒とマスの情報（hud_info_panel）、手札の帯（hud_hand）。知らせ・調整値・部品の変数と、部品を作る道具は hud_base。
 ## ファイルは hud_base.gd からこの順に継いで積み重なり、このファイルが最後（前のファイルは、後のファイルの関数を呼べない）。
 
 
@@ -17,6 +17,7 @@ func setup(team_colors: Array[Color]) -> void:
 	_build_top_bar()
 	_build_info_panel()
 	_build_bottom()
+	_build_hand()
 	_build_flash()
 	_build_banner()
 	_build_notice()

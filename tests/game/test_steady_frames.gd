@@ -254,6 +254,41 @@ func test_info_panel_is_a_status_card() -> void:
 	hud.free()
 
 
+## 手札の帯（試しの決まり）: 枚数が 0〜5 枚のどれでも、どの札でも、押せても押せなくても、同じ大きさ。札の名前は欄に収まり、効果の文は説明の枠の 2 行に収まる。
+func test_hand_band_keeps_its_size_for_any_hand() -> void:
+	var hud := _hud()
+	hud.set_hand(true, [], 20, 0)
+	await settle(hud)
+	var band := _frame(hud, "battle.hand")
+	var note := _frame(hud, "battle.hand_note")
+	assert_eq(band.size, BattleHud.HAND_SIZE)
+	var place := band.get_global_rect()
+	var font := UiTheme.FONT_BOLD
+	for count in BattleHud.HAND_SLOTS + 1:
+		for id: int in Card.Id.values():
+			for usable: bool in [true, false]:
+				var cards: Array[Dictionary] = []
+				for i in count:
+					cards.append({"card": id, "usable": usable, "off": "" if usable else Text.t("battle.hand.off.played"),
+						"chosen": i == 0 and usable, "confirming": i == 0 and usable and Card.aim(id as Card.Id) == Card.Aim.NONE})
+				hud.set_hand(true, cards, 20 - count, count)
+				hud.hover_hand(count - 1)
+				await settle(hud)
+				assert_eq(band.get_global_rect(), place, "%d 枚の %s" % [count, Names.card(id)])
+				if count > 0:
+					assert_eq(note.size, BattleHud.HAND_NOTE_SIZE, "説明の枠: %s" % Names.card(id))
+					assert_false(hud.hand_note_cut(), "効果の文が、説明の枠の行に収まらない: %s" % Names.card_summary(id))
+				assert_eq(hud.hand_note_text() != "", count > 0)
+		hud.hover_hand(-1)
+	for id: int in Card.Id.values():
+		assert_true(font.get_string_size(Names.card(id), HORIZONTAL_ALIGNMENT_LEFT, -1, BattleHud.HAND_FONT).x <= BattleHud.HAND_SLOT_SIZE.x - 10.0,
+			"札の名前が欄に収まらない: %s" % Names.card(id))
+	hud.set_hand(false)
+	await settle(hud)
+	assert_false(band.visible)
+	hud.free()
+
+
 ## 下の帯: 案内（句と印の並び）とマスの説明を替えても、同じ大きさ。案内は使える幅に収まり、長いマスの説明は 2 行に折り返して、切れない。
 func test_bottom_band_keeps_its_size_and_wraps_the_cell_line() -> void:
 	var hud := _hud()

@@ -102,7 +102,7 @@ func menu_rect() -> Rect2:
 ## メニューを置いてよい範囲（画面から上の帯と下の帯を除いたところ）。
 func menu_area() -> Rect2:
 	var screen := _menu.get_viewport_rect().size
-	return Rect2(4.0, TOP_BAR_HEIGHT + 4.0, screen.x - 8.0, screen.y - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - 8.0)
+	return Rect2(4.0, TOP_BAR_HEIGHT + 4.0, screen.x - 8.0, screen.y - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT - bottom_reserved - 8.0)
 
 
 ## メニューが隠したくない、画面の決まった枠（駒とマスの情報）。出ていなければ大きさ 0。

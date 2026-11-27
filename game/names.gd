@@ -170,8 +170,18 @@ static func status_summary(type: Status.Type) -> String:
 	var args := {
 		"range": PrecisionAimSkill.RANGE_BONUS, "penalty": AdrenalineShotSkill.POWER_PENALTY,
 		"move": AllOutAssaultUlt.MOVE_BONUS, "power": AllOutAssaultUlt.POWER_BONUS, "resolve": Monsters.RESOLVE_POWER,
+		"haste": Card.MARCH_MOVE, "might": Card.MIGHT_POWER,
 	}
 	return Text.t("status.%s.summary" % word(Status.Type, type), args)
+
+
+## 手札の札（Card.Id）の名前と、効果の 1 文（docs/hand-cards.md）。
+static func card(id: int) -> String:
+	return Text.t("card." + Card.key(id as Card.Id))
+
+
+static func card_summary(id: int) -> String:
+	return Text.t("card.%s.summary" % Card.key(id as Card.Id), Card.summary_args(id as Card.Id))
 
 
 ## 軍略（Traits.Id）の名前と、1 行の文（docs/troop-traits.md）。

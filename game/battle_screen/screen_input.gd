@@ -166,6 +166,9 @@ func click_cell(cell: Vector2i) -> void:
 		_ui.confirming_auto = false
 		_refresh()
 		return
+	if _ui.card != -1:
+		_click_for_card(cell)
+		return
 	var clicked := battle.unit_at(cell)
 	if _ui.inspected_id != 0:
 		if clicked == null or clicked.id == _ui.inspected_id or clicked.id == _ui.selected_id:
@@ -206,6 +209,76 @@ func click_cell(cell: Vector2i) -> void:
 		if clicked == null:
 			_ui.inspected_cell = cell
 			_refresh()
+
+
+## 手札の札の相手を選んでいる途中のクリック。選べる駒なら使う（駒を動かす札は、続けて動かす先を選ぶ）。ほかのマスなら、1 段戻る。
+func _click_for_card(cell: Vector2i) -> void:
+	var card := _ui.card as Card.Id
+	if Card.aim(card) == Card.Aim.NONE:
+		_ui.clear_card()
+	elif _ui.card_target == NO_CELL:
+		if not _card_cells.has(cell):
+			_ui.clear_card()
+		elif Card.aim(card) == Card.Aim.UNIT:
+			_do(PlayCardAction.new(card, cell))
+			return
+		else:
+			_ui.card_target = cell
+	elif _card_cells.has(cell):
+		_do(PlayCardAction.new(card, _ui.card_target, cell))
+		return
+	elif Hand.targets(battle, card).has(cell):
+		_ui.card_target = cell
+	else:
+		_ui.card_target = NO_CELL
+	_refresh()
+
+
+## 手札の札（index 枚目）を押す。相手を選ぶ札は、相手を選び始める（もう一度押すと、やめる）。
+## 相手を選ばない札は、1 回目は確かめるだけで、もう一度押すと使う。使えない札は何もしない。
+func press_card(index: int) -> void:
+	if is_busy() or battle.is_over() or _is_cpu_turn() or battle.phase != _viewer_side():
+		return
+	var hand := Hand.of(battle, battle.phase)
+	if index < 0 or index >= hand.size() or not Hand.can_play(battle, hand[index] as Card.Id):
+		return
+	var card := hand[index] as Card.Id
+	if _ui.card == card:
+		if Card.aim(card) == Card.Aim.NONE:
+			if not _ui.confirm_guarded(Time.get_ticks_msec()):
+				_do(PlayCardAction.new(card))
+			return
+		_ui.clear_card()
+	else:
+		_ui.choose_card(card, Time.get_ticks_msec())
+		_layout.reset_menu()
+		context.play_sound(&"ui_confirm")
+	_refresh()
+
+
+## 相手を選んでいる途中の手札の札（Card.Id。無ければ -1）と、手札の帯の中身。検査とスクリーンショットの道具用。
+func chosen_card() -> int:
+	return _ui.card
+
+
+func hand_texts() -> Array[String]:
+	return _hud.hand_texts()
+
+
+func hand_usable() -> Array[bool]:
+	return _hud.hand_usable()
+
+
+func hand_rect() -> Rect2:
+	return _hud.hand_rect() if _hud.hand_shown() else Rect2()
+
+
+func hand_note_text() -> String:
+	return _hud.hand_note_text()
+
+
+func hover_hand(index: int) -> void:
+	_hud.hover_hand(index)
 
 
 ## その駒を、行動させる駒として選べるか（いまの番の人のプレイヤーの、行動できる駒）。選べない駒は、クリックすると見るだけ。

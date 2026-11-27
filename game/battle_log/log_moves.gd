@@ -145,6 +145,12 @@ func _read_teleported(event: UnitTeleportedEvent) -> void:
 		_side_of(event.unit_id), event.to, [event.unit_id])
 
 
+func _read_pushed(event: UnitPushedEvent) -> void:
+	_set_cell(event.unit_id, event.to)
+	_detail(Text.t("battle.log.pushed", {"unit": unit_name(event.unit_id), "from": cell_text(event.from), "to": cell_text(event.to)}),
+		_side_of(event.unit_id), event.to, [event.unit_id])
+
+
 func _read_swapped(event: UnitsSwappedEvent) -> void:
 	_set_cell(event.unit_id, event.other_from)
 	_set_cell(event.other_id, event.from)

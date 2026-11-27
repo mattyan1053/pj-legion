@@ -250,6 +250,72 @@ func _scene_skill() -> bool:
 	return _scene.is_choosing_skill_target()
 
 
+## 手札（試しの決まり）が入の対戦を作り、先手の番で、ready（札 -> 使いたい札か）の札を使える所まで進める。その札が手札の何枚目かを返す（無ければ -1）。
+func _hand_battle(ready: Callable) -> int:
+	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.HAND])
+	var find := func() -> int:
+		if _battle.phase != Unit.Side.PLAYER1 or _battle.turn < 3:
+			return -1
+		var hand := Hand.of(_battle, Unit.Side.PLAYER1)
+		for index in hand.size():
+			if Hand.can_play(_battle, hand[index] as Card.Id) and ready.call(hand[index]):
+				return index
+		return -1
+	if not _advance(func() -> bool: return find.call() >= 0):
+		return -1
+	_show()
+	return find.call()
+
+
+func _scene_setup_hand() -> bool:
+	_app.context.match_choice = MatchChoice.new()
+	await _app.go(SceneFlow.SETUP)
+	if _app.current_id() != SceneFlow.SETUP:
+		return false
+	_app.current_scene().setup_panel().choose_rule(OptionalRules.HAND, true)
+	_park_mouse()
+	return _app.current_scene().setup_panel().current_choice().has_rule(OptionalRules.HAND)
+
+
+func _scene_hand() -> bool:
+	var index := _hand_battle(func(card: int) -> bool: return Hand.of(_battle, Unit.Side.PLAYER1).size() >= 4 and card == Card.Id.ENCORE)
+	if index < 0:
+		return false
+	_scene.hover_hand(index)
+	return _scene.hand_note_text() != ""
+
+
+func _scene_hand_target() -> bool:
+	var index := _hand_battle(func(card: int) -> bool: return card == Card.Id.MEND)
+	if index < 0:
+		return false
+	_scene.press_card(index)
+	var cells := Hand.targets(_battle, Card.Id.MEND)
+	_scene.focus_camera(cells[0])
+	_scene.hover(cells[0])
+	return _scene.chosen_card() == Card.Id.MEND and _scene.forecast_text() != ""
+
+
+func _scene_hand_shove() -> bool:
+	var index := _hand_battle(func(card: int) -> bool: return card == Card.Id.SHOVE)
+	if index < 0:
+		return false
+	_scene.press_card(index)
+	var cell := Hand.targets(_battle, Card.Id.SHOVE)[0]
+	_scene.click_cell(cell)
+	_scene.focus_camera(cell)
+	_scene.hover(Hand.spots(_battle, Card.Id.SHOVE, cell)[0])
+	return _scene.chosen_card() == Card.Id.SHOVE and _scene.forecast_text() != ""
+
+
+func _scene_hand_foe() -> bool:
+	_new_battle([OptionalRules.STRONGHOLD, OptionalRules.HAND])
+	if not _advance(func() -> bool: return _battle.turn >= 4 and _battle.phase == Unit.Side.PLAYER2 and _battle.card_plays[1] > 0):
+		return false
+	_show()
+	return _scene.hand_rect().has_area()
+
+
 func _scene_ult() -> bool:
 	if not _advance(func() -> bool: return Ults.can_use(_battle)):
 		return false

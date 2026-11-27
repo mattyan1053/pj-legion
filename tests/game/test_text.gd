@@ -52,6 +52,7 @@ const FAMILIES := {
 	"status": [Status.Type, ["", ".summary"]],
 	"troop_trait": [Traits.Id, ["", ".effect", ".text"]],
 	"sign": [Seam.Sign, ["", ".summary"]],
+	"card": [Card.Id, ["", ".summary"]],
 	"relic": [Relics.Id, ["", ".summary", ".short", ".effect"]],
 	"stage": [BoardGenerator.Stage, [""]],
 }
@@ -64,8 +65,8 @@ const SCREEN_FAMILIES := {
 	"credits.group": [{"FONT": 0, "UNIT": 1, "BOARD": 2, "SOUND": 3}, [""]],
 	"side.story.army": [UnitKind.Army, ["", ".short"]],
 	"side.story": [{"PLAYER1": 0, "PLAYER2": 1}, [""]],
-	"setup.rule": [{"STRONGHOLD": 1, "SEAM": 3}, [".note"]],
-	"setup.caption": [{"STRONGHOLD": 1, "SEAM": 3}, [""]],
+	"setup.rule": [{"STRONGHOLD": 1, "SEAM": 3, "HAND": 4}, [".note"]],
+	"setup.caption": [{"STRONGHOLD": 1, "SEAM": 3, "HAND": 4}, [""]],
 }
 
 
