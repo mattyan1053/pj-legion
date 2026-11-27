@@ -9,6 +9,9 @@ extends RefCounted
 const TalkLine := preload("res://game/episode/talk_line.gd")
 const StoryScene := preload("res://game/episode/story_scene.gd")
 
+## カットシーンの色の幕に書ける名前（色は talk_screen.gd が決める）。
+const COLORS: Array[StringName] = [&"black", &"night"]
+
 ## 場面の種類。
 enum Kind {
 	SORTIE,  ## 出撃準備（部隊と初期位置を決める。sortie_screen.gd）
@@ -25,6 +28,10 @@ var name := ""
 var place: HandMap
 ## 背景の見た目（place のマップの見た目か、場面の look。place が無ければ空 = 話の盤の見た目）。
 var look := &""
+## カットシーンか（[cut 名前]。地の文だけの場面。話し手も文の枠も出さず、背景の上に文を真ん中に出す。docs/story.md の「カットシーン」）。
+var cut := false
+## カットシーンの背景を、景色でなく色の幕にするなら、その名前（COLORS の鍵。空なら景色）。
+var color := &""
 ## 曲を、話のファイルが選んで書いたか（検査が、どの会話にも曲を選んであることを確かめる）。
 var music_written := false
 ## 会話の行（TALK だけ）。

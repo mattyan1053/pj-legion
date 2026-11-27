@@ -139,3 +139,23 @@ func test_the_key_that_picks_an_answer_does_not_also_advance_and_a_last_question
 	assert_true(ended[0] == 1 and not screen.is_asking(), "最後の行で選ぶと、会話が終わる（答えの枠を出し直さない）")
 	assert_eq(screen._log_lines().size(), 2, "ログに、選んだ答えが残る")
 	screen.free()
+
+
+## カットシーン: 話し手の姿を立てず、地の文を出す。色の幕なら、背景の盤を作らない。クリックで送れて、最後で終わる。
+func test_a_cutscene_shows_narration_without_figures() -> void:
+	var screen := TalkScreen.new()
+	screen.talk = {"title": "見出し", "cut": true, "color": &"night", "lines": [
+		{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "隊は、夜のうちに谷を抜けた。"},
+		{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "だれも、口をきかなかった。"}]}
+	await settle(screen)
+	assert_true(screen.is_cut() and screen.is_narrating() and screen.figures().is_empty())
+	assert_eq(screen.backdrop_units(), [0, 0, 0] as Array[int])
+	var bottom: Rect2 = screen.bottom_rect()
+	var view: Rect2 = screen.get_viewport().get_visible_rect()
+	assert_true(view.encloses(bottom) and absf(bottom.get_center().y - view.get_center().y) < 40.0, "文が画面の真ん中の高さに無い: %s" % bottom)
+	var ended := [0]
+	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
+	for i in 4:
+		screen.press_next()
+	assert_eq(ended[0], 1)
+	screen.free()

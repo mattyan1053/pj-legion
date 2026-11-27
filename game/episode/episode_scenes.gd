@@ -6,21 +6,24 @@ extends "res://game/episode/episode_talks.gd"
 
 ## 会話の場面の頭に書ける設定（「キー = 値」。会話の行より前に書く）。
 const TALK_KEYS := ["place", "look", "music"]
+## カットシーンの頭に書ける設定（color は、景色のかわりの色の幕）。
+const CUT_KEYS := ["place", "look", "music", "color"]
 
 
 ## 場面の節で書いた話か（_read の最初に決める。ほかの節の読み方が変わる）。
 func _find_format(file: RefCounted) -> void:
 	for section: String in file.sections:
-		if section.begins_with(TALK_SECTION) or SCENE_MARKS.has(section):
+		if section.begins_with(TALK_SECTION) or section.begins_with(CUT_SECTION) or SCENE_MARKS.has(section):
 			written_as_scenes = true
 	_fights = not written_as_scenes or file.has("battle")
 
 
 ## 節の名前が、この話に書いてよいものか（知らない節は書き間違い）。
 func _check_sections(file: RefCounted) -> void:
-	var listed: Array = SECTIONS + SCENE_MARKS + ["talk 名前"]
+	var listed: Array = SECTIONS + SCENE_MARKS + ["talk 名前", "cut 名前"]
 	for section: String in file.sections:
-		var is_talk := section.begins_with(TALK_SECTION) and section.substr(TALK_SECTION.length()).strip_edges() != ""
+		var is_talk := (section.begins_with(TALK_SECTION) and section.substr(TALK_SECTION.length()).strip_edges() != "") \
+				or (section.begins_with(CUT_SECTION) and section.substr(CUT_SECTION.length()).strip_edges() != "")
 		if not is_talk and not SECTIONS.has(section) and not SCENE_MARKS.has(section):
 			file.problem(file.sections[section]["line"], "知らない節 [%s]（書けるのは %s）" % [section, ", ".join(listed.map(func(each: String) -> String: return "[%s]" % each))])
 
@@ -57,9 +60,11 @@ func _build_scenes(file: RefCounted) -> void:
 			else:
 				fought = true
 				scenes.append(StoryScene.battle())
-		elif section.begins_with(TALK_SECTION):
+		elif section.begins_with(TALK_SECTION) or section.begins_with(CUT_SECTION):
 			talks += 1
 			scenes.append(_read_talk_scene(file, section, not fought and _fights))
+	if not scenes.is_empty() and scenes.back().cut:
+		file.problem(file.line_of(scenes.back().part), "カットシーンは、話の最後の場面にしない（最後は会話か対戦。クリアの知らせと「次の話へ」が、最後の会話に出る）")
 	if _fights and sortie_at < 0:
 		scenes.insert(0, StoryScene.sortie())
 	if talks == 0:
@@ -75,6 +80,8 @@ func _build_scenes(file: RefCounted) -> void:
 ## 会話の場面の節「[talk 名前]」: 頭に設定（place・look・music）、そのあとに会話の行。
 ## before_battle: 対戦より前の会話か（1 度だけ出す。対戦の曲を書くなら、その話の対戦の曲）。
 func _read_talk_scene(file: RefCounted, section: String, before_battle: bool) -> StoryScene:
+	var cut := section.begins_with(CUT_SECTION)
+	var keys := CUT_KEYS if cut else TALK_KEYS
 	var settings := {}
 	var talk_rows: Array = []
 	for row: Dictionary in file.rows(section):
@@ -82,8 +89,8 @@ func _read_talk_scene(file: RefCounted, section: String, before_battle: bool) ->
 		if _is_setting(text):
 			var key := text.substr(0, text.find("=")).strip_edges()
 			var value := text.substr(text.find("=") + 1).strip_edges()
-			if not TALK_KEYS.has(key):
-				file.problem(row["line"], "[%s] の知らない設定「%s」（書けるのは %s）" % [section, key, ", ".join(TALK_KEYS)])
+			if not keys.has(key):
+				file.problem(row["line"], "[%s] の知らない設定「%s」（書けるのは %s）" % [section, key, ", ".join(keys)])
 			elif not talk_rows.is_empty():
 				file.problem(row["line"], "設定「%s」は、会話の行より前に書く" % key)
 			elif settings.has(key):
@@ -92,9 +99,18 @@ func _read_talk_scene(file: RefCounted, section: String, before_battle: bool) ->
 				settings[key] = {"line": row["line"], "value": value}
 			continue
 		talk_rows.append(row)
-	var rows := _talk_rows(file, section, talk_rows)
+	var rows := _cut_rows(file, section, talk_rows) if cut else _talk_rows(file, section, talk_rows)
 	var scene := StoryScene.talk(section, rows, &"", before_battle)
-	scene.name = section.substr(TALK_SECTION.length()).strip_edges()
+	scene.name = section.substr((CUT_SECTION if cut else TALK_SECTION).length()).strip_edges()
+	scene.cut = cut
+	if settings.has("color"):
+		var entry: Dictionary = settings["color"]
+		if not StoryScene.COLORS.has(StringName(entry["value"])):
+			file.problem(entry["line"], "知らない色「%s」（書けるのは %s）" % [entry["value"], ", ".join(StoryScene.COLORS)])
+		elif settings.has("place"):
+			file.problem(entry["line"], "color と place は、どちらかだけ（色の幕か、場所の景色）")
+		else:
+			scene.color = StringName(entry["value"])
 	if settings.has("place"):
 		var entry: Dictionary = settings["place"]
 		var found: Dictionary = Maps.find(entry["value"])
@@ -125,6 +141,31 @@ func _read_talk_scene(file: RefCounted, section: String, before_battle: bool) ->
 		# 書かなければ: 対戦より前で、話の盤を前にした会話は対戦の曲（そのまま対戦へつながる）。ほかは落ち着いた曲。
 		scene.music = battle_music() if before_battle and scene.place == null else SoundCatalog.AFTER_TALK_MUSIC
 	return scene
+
+
+## カットシーンの行: どの行も地の文（頭の「>」は、あっても無くてもよい）。台詞・選択肢・条件は書けない。
+func _cut_rows(file: RefCounted, section: String, source: Array) -> Array[TalkLine]:
+	var rows: Array[TalkLine] = []
+	for row: Dictionary in source:
+		var text: String = row["text"]
+		if text.begins_with(NARRATION_MARK) or text.begins_with("＞"):
+			text = text.substr(1).strip_edges()
+		var colon := maxi(text.find(":"), text.find("："))
+		if text.begins_with("(") or (colon > 0 and speakers.has(text.substr(0, colon).strip_edges())):
+			file.problem(row["line"], "[%s] に書けるのは地の文だけ（台詞・選択肢・条件は [talk 名前] に書く）: %s" % [section, text])
+			continue
+		if text == "":
+			file.problem(row["line"], "地の文が空")
+			continue
+		var line := TalkLine.narration(text)
+		if line.longest() > TALK_MAX_CHARS:
+			file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.longest()])
+		rows.append(line)
+	if rows.is_empty():
+		file.problem(file.line_of(section), "[%s] の文が無い" % section)
+	elif rows.size() > CUT_MAX_LINES:
+		file.problem(file.line_of(section), "[%s] の文は %d 行まで（いま %d 行）" % [section, CUT_MAX_LINES, rows.size()])
+	return rows
 
 
 ## 会話の場面の行 text が、設定の行（「キー = 値」）か。会話の行（「話し手: 文」）と地の文（「> 文」）は、設定でない。

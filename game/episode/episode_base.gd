@@ -21,6 +21,9 @@ const SECTIONS := ["episode", "cast", "before", "cues", "after", "lost", "ally",
 ## 場面の節（書いた順が、場面の順。game/episode/episode_scenes.gd）: 「[talk 名前]」（会話。名前は話の中で重ならない）、[sortie]（出撃準備）、[battle]（対戦）。
 ## 1 つでも書いた話は、[before]・[after] を書かない。
 const TALK_SECTION := "talk "
+## カットシーンの節「[cut 名前]」（地の文だけの場面）と、その行の数の上限。
+const CUT_SECTION := "cut "
+const CUT_MAX_LINES := 6
 const SCENE_MARKS := ["sortie", "battle"]
 ## 選択肢（docs/story.md の「選択肢」）: 答えの数、答えの文の長さの上限（選ぶ枠のボタンに 1 行で収まる）、名前と鍵に使える字。
 const OPTIONS_MIN := 2
