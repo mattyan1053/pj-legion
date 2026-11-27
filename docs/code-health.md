@@ -23,7 +23,7 @@
 
 | # | 何が | どこに | 放っておくと | 手間 | 急ぎ |
 | --- | --- | --- | --- | --- | --- |
-| 1 | CPU の「ここに立つと、どれだけ受けるか」が、本物のダメージの計算と別に書いてある。軍略の足し引きを手で書き写していて、森と胞子は入っていない | `rules/cpu/cpu_threats.gd` 24〜51 行、`rules/threat.gd` 215〜218 行。本物は `rules/combat.gd` の `hit` | 軍略や効果を足す・順を変えるたびに、ここを直し忘れる。CPU が新しい効果を知らずに危ないマスへ出る。検査は落ちない | 中 | 次の大きい機能の前（手札・軍略の追加） |
+| 1 | CPU の「ここに立つと、どれだけ受けるか」が、本物のダメージの計算と別に書いてある。軍略の足し引きを手で書き写していて、森と胞子は入っていない | `rules/cpu/cpu_threats.gd` 24〜51 行、`rules/threat.gd` 215〜218 行。本物は `rules/combat.gd` の `hit` | 軍略や効果を足す・順を変えるたびに、ここを直し忘れる。CPU が新しい効果を知らずに危ないマスへ出る。検査は落ちない | 中 | 済（危険の量はダメージの解決 `Combat.hit_from` に聞く。見張りは `tests/rules/test_cpu_danger.gd`。届くマスは脅威範囲のまま。直す順の 10） |
 | 2 | 出来事を種類ごとに読む所のうち、5 か所が足し忘れても黙って通る | `rules/battle_stats.gd` 129 行〜（戦績・MVP）、`rules/forecast.gd` 130 行〜（予測のまとめ）、`rules/cpu/cpu_outcome_value.gd` 14 行〜（CPU の手の価値）、`tools/cpu_match.gd` 354 行〜（実測）、`game/neutral_playback.gd` 48 行〜 | 新しい出来事が、戦績に数えられない・CPU に価値 0 と読まれる・実測の集計から漏れる。再生とログは検査が守っている（下の「健康な所」） | 小 | 済（#494） |
 | 3 | 話の流れが 4 段の決め打ち | `game/story.gd` 546〜565 行（`run_of`）。話のファイルの欄は 9 つで固定（`game/episode/episode_base.gd` 15 行）、`[before]`・`[after]`・`[enemy]`・マップは必須。クリアは対戦に勝ったときだけ記録（`game/story_battle.gd` 148〜150 行） | 場面の列・戦闘の無い話・カットシーンが足せない。無理に足すと、28 ほどのファイル（画面 11、自動の点検 2、道具 4、テスト 6 など）に場合分けが散る | 大 | 一部済（場面の列は #499。ファイルの新しい書き方はこれから） |
 | 4 | 会話の 1 行が「位置で読む並び」（`[陣営, 文, 話し手]`） | `game/episode/episode_talks.gd` 113〜136 行で作り、12 ほどのファイルが `row[0]`〜`row[2]` で読む | 選択肢・分かれ・名前の差し込みで欄が増えると、読む側を全部直すことになり、直し漏れは実行するまで分からない | 中 | 済（#496） |
@@ -49,7 +49,7 @@
 - **ダメージは 1 本の道。** 駒の HP を減らすものは、原因が何でも `rules/hit.gd` を通る。段の順は `rules/combat.gd` の `hit` 1 か所と、`docs/combat.md` の表にある。
   能力値（最大 HP・攻撃・移動・射程）も、層を重ねる 1 つの関数（`rules/unit.gd` の `stat`）。
 - **予測と CPU の手読みは二重実装でない。** 予測（`rules/forecast.gd`）は対戦の写しに同じ行動を当てて、出た出来事を読むだけ。CPU の手選びも同じ（`rules/cpu_player.gd`）。
-  別の計算を持つのは、上の表の 1（危険の読み）だけ。
+  別の計算を持っていた上の表の 1（危険の読み）は、ダメージの解決に聞く形にした。
 - **再生とログは足し忘れを検査が拾う。** 出来事は 45 種類。再生もログも「種類 → 処理」の表で、表に無い種類があるとテストが落ちる
   （`tests/game/test_event_playback.gd` 19〜31 行、`tests/game/test_battle_log.gd` 39〜50 行）。1 度も再生されなかった種類があると自動の対戦が落ちる（`game/autoplay.gd` 200〜207 行）。
 - **スキルは 1 つ 1 ファイルで、足す手順が文書にあり、書き忘れは検査が拾う**（`docs/active-skills.md`）。状態も、種類の定義 1 ファイルで済む。
@@ -65,7 +65,7 @@
 | 足すもの | 触るファイル | 黙って漏れる所 |
 | --- | --- | --- |
 | 新しい状態（能力値の上げ下げ、1 回で外れる、動けない、など） | 2〜3（`rules/status.gd`、`game/text/names.csv`、数字を文に出すなら `game/names.gd`）+ 付けるルール | 種類ごとの決まりの関数は、書かなければ「効果なし」になる |
-| 新しい軍略（攻撃のダメージに足す形） | 9 ほど: `rules/traits.gd`、`rules/cpu/cpu_threats.gd`、`rules/cpu/cpu_position_value.gd`、`rules/cpu/cpu_outcome_value.gd`、`rules/cpu_deck.gd`、`game/names.gd`、`game/trait_icon.gd`、`game/battle_screen/screen_rules_view.gd`、文の表 | CPU の 4 つと、印・量の表（上の表の 1・6）。（4 つ目の軍略の札が出ない決め打ちは、#525 で無くした） |
+| 新しい軍略（攻撃のダメージに足す形） | 8 ほど: `rules/traits.gd`、`rules/cpu/cpu_position_value.gd`、`rules/cpu/cpu_outcome_value.gd`、`rules/cpu_deck.gd`、`game/names.gd`、`game/trait_icon.gd`、`game/battle_screen/screen_rules_view.gd`、文の表 | CPU の 3 つ（使い方の見積もり）と、印・量の表（上の表の 6）。（4 つ目の軍略の札が出ない決め打ちは、#525 で無くした） |
 | 新しい軍略（引く形・ターンの始めに効く形） | 上に加えて `rules/combat.gd` か `rules/actions/end_phase_action.gd`。「引くのは隊列」の決め打ちが 4 か所（`rules/combat.gd` 163〜164 行、`game/forecast_text.gd` 94 行、`game/battle_log/log_fights.gd` 58 行、`game/battle_playback/playback_skills.gd` 61 行） | 同じ |
 | ダメージを増減する新しい段（内訳を予測に出す） | 7: `rules/combat.gd`、`rules/hit.gd`、`rules/events/unit_damaged_event.gd`、`rules/forecast.gd`、`game/forecast_text.gd`、`game/battle_log/log_base.gd`、`game/names.gd` | 予測とログの内訳（数字そのものは合う） |
 | 新しい出来事 1 つ | 4 は検査が拾う（出来事、再生の表と処理、ログの表と処理、自動の対戦の場面）。5 は拾わない（上の表の 2） | 戦績、予測のまとめ、CPU の価値、実測 |
@@ -145,7 +145,12 @@
 
 ### ふるまいを変える仕事
 
-10. **CPU の危険の読みを、本物の計算に聞く形にする。** CPU の手が変わるので、`measure-balance` で前後を測る。1 と 2 のあと。
+10. **（済）CPU の危険の読みを、本物の計算に聞く形にする。** 危険の量は、脅威範囲の攻撃の候補（攻撃力と攻撃するマス）ごとに `Combat.hit_from` に聞く（`Combat.hit` もこれを呼ぶ）。
+    食い違っていた所: 森の軽減と胞子を読んでいなかった。スキルのダメージと樽の爆発にも守護・隊列を引き、集中砲火・仇討ちを足していた。集中砲火の「2 体目」はスキルだけで届く敵も数えていた。
+    煙幕を置く価値は、防げる量を素の攻撃力で数えていた。盾で射線が切れる味方の攻撃は、素の攻撃力で引いていた。バリアをはがした後の見込みも素の攻撃力だった。
+    見張りは、効果を重ねた場面で実際に攻撃したダメージと比べるテスト（`tests/rules/test_cpu_danger.gd`。前の CPU では 4 つのうち 3 つが落ちる）。
+    CPU の手は変わったが、864 局で先手 49.1%・MILITARY 48.7%、古い読みの CPU と 48.4%（`docs/cpu-ai.md` の「いまの集計」）。1 手の時間は 5% ほど延びた。
+    残り: 位置の価値・手の価値・編成の軍略の読み（`_trait_position_value`、`_trait_value`、`CpuDeck._fits`）は「得になる使い方」の見積もりで、軍略を足すときは書く（ダメージの計算ではない）。
 11. **（済。#500）セーブの版を使う。** 話の記録の読み替えを版の番号で分け、形を変えたら版を上げる（新しい版のセーブを古い exe が上書きしない仕組みは、スロットにもうある）。
     選んだ答え・名前を足す仕事の直前に。
 12. **（済。#507）再生を出来事だけで動かす。** 再生は、始めの盤の写し（再生の盤）と出来事だけを読む（`docs/battle-view.md` の「再生の盤」）。

@@ -33,7 +33,8 @@
    - 終わると、ルールに聞き直して画面を作り直し（`_refresh`）、CPU の番なら次の手へ。
 5. **写しの上で同じ道を走るもの**: 予測 `rules/forecast.gd`（`Battle.clone()` に同じ行動を当てて、出た出来事を読む。`docs/battle-forecast.md`）と、
    CPU `rules/cpu_player.gd`（候補ごとに写しへ当てて、出来事に値を付ける。`docs/cpu-ai.md`）。写しは `rules/state_copy.gd` が変数を名前で拾う。
-   別の計算を持つのは、CPU の危険の読み（`rules/cpu/cpu_threats.gd`）と脅威範囲（`rules/threat.gd`）だけ。
+   別の計算を持つのは脅威範囲（`rules/threat.gd`。届くマス）だけ。CPU の危険の読み（`rules/cpu/cpu_threats.gd`）は、脅威範囲の攻撃の候補を
+   ダメージの解決（`Combat.hit_from`）に聞く。
 6. **自動の対戦** `game/autoplay.gd`: 人と同じ入口を通して全部の場面を回す。1 度も再生されなかった出来事があると落ちる。
 
 出来事を種類ごとに読む所は、どれも足し忘れをテストが拾う（再生・ログ・戦績・予測・CPU の手の価値・実測の道具・中立の再生・再生の盤。`docs/battle.md` の「出来事を 1 つ足すとき」）。
