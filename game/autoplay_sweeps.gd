@@ -108,7 +108,7 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 		return
 	app.current_scene().press_sortie()
 	await app.scene_changed
-	if not episode.before.is_empty():
+	if episode.talk_before_battle() != null and not episode.talk_before_battle().lines.is_empty():
 		_expect(app.current_id() == SceneFlow.TALK, "出撃しても、対戦の前の会話へ進まない")
 		if app.current_id() == SceneFlow.TALK:
 			await _read_talk(app, episode)
@@ -129,9 +129,9 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 ## 対戦の前の会話を、1 文ずつ送る（文と話し手が話のファイルのとおりか）。最後の文のあとで、対戦へ進む。
 func _read_talk(app: Node, episode: RefCounted) -> void:
 	var talk: Node = app.current_scene()
-	_expect(talk.line_count() == episode.before.size(), "前の会話の文の数が違う")
-	for i: int in episode.before.size():
-		var row: RefCounted = episode.before[i]
+	_expect(talk.line_count() == episode.talk_before_battle().lines.size(), "前の会話の文の数が違う")
+	for i: int in episode.talk_before_battle().lines.size():
+		var row: RefCounted = episode.talk_before_battle().lines[i]
 		_expect(talk.line_index() == i and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [i + 1, talk.line_text()])
 		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [i + 1, talk.speaker()])
 		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）

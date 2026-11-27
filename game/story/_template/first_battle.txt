@@ -13,15 +13,16 @@ title = 見本の話
 #   drill_field（練兵場。小さい）, shrine_hollow（結晶の祠。小さい）, ridge_path（尾根の小道）, crystal_gorge（結晶の岩山）,
 #   old_battlefield（古戦場）, boulder_pass（大岩の峠）, mist_forest（リュエルの森）, crystal_quarry（結晶の採掘場）, seam_vale（縫い目の谷）
 map = ridge_path
+# 前の会話の曲と、あとの会話の曲（sound_catalog.gd の MUSIC の名前。docs/sound.md）。どの話も書く（テストが、話ごとに選んであることを確かめる）。
+# 書かなければ、対戦の曲（会話の間は小さく鳴らし、そのまま対戦へつながる）と、落ち着いた曲（talk_calm）になる。
+# 前の会話に対戦の曲（battle で始まる名前）を書くなら、その話の対戦の曲と同じにする（検査が確かめる）。
+before_music = talk
+after_music = talk_bright
 # ここから下の欄は、どれも無くてよい（使うときに、頭の # を外す）。
 # この話だけ、マップと別の景色にする（stage_look.gd の見た目の名前）。
 # look = stone_walls
-# 対戦の曲、前の会話の曲、あとの会話の曲（sound_catalog.gd の MUSIC の名前。docs/sound.md）。
-# 書かなければ、マップの曲、対戦の曲（会話の間は小さく鳴らし、そのまま対戦へつながる）、落ち着いた曲（talk_calm）。
-# 前の会話に対戦の曲（battle で始まる名前）を書くなら、その話の対戦の曲と同じにする（検査が確かめる）。
+# 対戦の曲（書かなければ、マップの曲）。
 # music = battle_tense
-# before_music = battle_tense
-# after_music = talk_bright
 # 終盤の曲（どちらかの将の HP が半分を切ったら替わる）。書かなければ battle_climax。
 # climax_music = battle_final
 # 勝ったときの調子。bright（明るい。ファンファーレのあと静かな曲）か quiet（静か。ファンファーレを鳴らさない）。書かなければ bright。
@@ -112,7 +113,7 @@ deploy = 8,20  7,20  9,20  6,19  10,19  8,18
 # 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない魔物の群れ（必殺技が無い。魔物だけを置く）。
 army = fantasy
 # 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。将は書かない（いつも本陣に立つ）。持ち物は「+」でつなぐ（魔物は持てない）。
-#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer, skeleton_banner, bat, fray, needle（docs/unit-roster.md の「魔物」）
+#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer, skeleton_banner, bat, fray, needle, spider, eater, crab, shroom（docs/unit-roster.md の「魔物」）
 #   始めのレベルも書ける（unit = paladin, level 2）。
 unit = paladin + iron_shield
 unit = sorcerer

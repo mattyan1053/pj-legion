@@ -64,9 +64,10 @@ func victory_mood() -> StringName:
 	return episode.victory_mood
 
 
-## 決着の曲のあとは、その話のあとの会話の曲（「次へ」で、そのまま会話へつながる）。
+## 決着の曲のあとは、場面の列で対戦の次の会話の曲（「次へ」で、そのまま会話へつながる）。次が会話でなければ、落ち着いた曲。
 func after_result_music() -> StringName:
-	return episode.after_talk_music()
+	var next := episode.scene_after_battle()
+	return next.music if next != null and next.is_talk() and next.music != &"" else SoundCatalog.AFTER_TALK_MUSIC
 
 
 func can_continue(won: bool) -> bool:

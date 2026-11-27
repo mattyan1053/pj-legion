@@ -11,6 +11,7 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
 const TalkLine := preload("res://game/episode/talk_line.gd")
 const TalkCue := preload("res://game/episode/talk_cue.gd")
+const StoryScene := preload("res://game/episode/story_scene.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 ## 書ける節。
@@ -103,6 +104,9 @@ var after: Array[TalkLine] = []
 var lost: Array[TalkLine] = []
 ## 対戦の途中の会話: 途中の台詞（talk_cue.gd。きっかけ・値・会話の行）の列（battle_cues.gd）。
 var cues: Array[TalkCue] = []
+## 場面の列（story_scene.gd）。話の流れ（story.gd の run_of）と、台本などの道具は、これを順に読む。
+## いまは、どの話も 出撃準備 → 会話（before）→ 対戦 → 会話（after）（episode.gd の _build_scenes）。
+var scenes: Array[StoryScene] = []
 ## 読んだファイルのパスと、書き間違い（空なら正しい）。
 var path := ""
 var problems: PackedStringArray = []
@@ -137,6 +141,58 @@ func _bound(deck: Deck, side: int) -> Deck:
 ## 対戦の曲（無ければ、盤の見た目の曲）。
 func battle_music() -> StringName:
 	return music if music != &"" else SoundCatalog.battle_music(look)
+
+
+## 会話の場面（場面の列の順）。
+func talk_scenes() -> Array[StoryScene]:
+	var found: Array[StoryScene] = []
+	for scene in scenes:
+		if scene.is_talk():
+			found.append(scene)
+	return found
+
+
+## 対戦の場面の前の最後の会話の場面と、対戦の場面のあとの最後の会話の場面（無ければ null）。検査と道具が、どちらの会話かを見分けるのに使う。
+func talk_before_battle() -> StoryScene:
+	var found: StoryScene = null
+	for scene in scenes:
+		if scene.is_battle():
+			return found
+		if scene.is_talk():
+			found = scene
+	return found
+
+
+func talk_after_battle() -> StoryScene:
+	var fought := false
+	var found: StoryScene = null
+	for scene in scenes:
+		fought = fought or scene.is_battle()
+		if fought and scene.is_talk():
+			found = scene
+	return found
+
+
+## 対戦の場面のすぐあとの場面（無ければ null。対戦の無い話や、対戦で終わる話）。
+func scene_after_battle() -> StoryScene:
+	for i in scenes.size() - 1:
+		if scenes[i].is_battle():
+			return scenes[i + 1]
+	return null
+
+
+## 話の台詞の全部: 場面の列の順に、会話の場面の行と、対戦の場面の途中の台詞。最後に、負けたときの台詞（台本もこの順）。
+## 台本・声・文の検査が読む。
+func all_lines() -> Array[TalkLine]:
+	var found: Array[TalkLine] = []
+	for scene in scenes:
+		if scene.is_talk():
+			found.append_array(scene.lines)
+		elif scene.is_battle():
+			for cue in cues:
+				found.append(cue.line)
+	found.append_array(lost)
+	return found
 
 
 ## 前の会話の曲（無ければ、対戦の曲。会話の間は小さく鳴らし、そのまま対戦へつながる。docs/sound.md）。
