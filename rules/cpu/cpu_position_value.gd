@@ -364,7 +364,7 @@ func _choose_stronghold_taker() -> void:
 ## - 隊列: 同じ兵種の味方の隣なら RANKS_HUDDLE_VALUE（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）
 ## - 補給線: HP の減った駒が回復役の隣なら、回復する量（次のターンの始め）に SUPPLY_STAND_VALUE を掛けたもの
 ## - 誓い: 誓いの相手から OATH_NEAR マス以内なら OATH_NEAR_VALUE（同じ敵を 2 人で攻撃できる所にいる）
-## - 単騎: 攻撃する駒が、隣に味方のいないマスなら LONE_STAND_VALUE
+## - 守護: パラディンの隣なら GUARD_STAND_VALUE（受けうるダメージの見積もりも、守護のぶんだけ減らして読む）
 func _trait_position_value(unit: Unit, cell: Vector2i) -> float:
 	match Traits.of_side(_battle, unit.side):
 		Traits.Id.RANKS:
@@ -378,7 +378,7 @@ func _trait_position_value(unit: Unit, cell: Vector2i) -> float:
 			var partner := Traits.partner_of(_battle, unit)
 			if partner != null and Combat.distance(partner.cell, cell) <= OATH_NEAR:
 				return OATH_NEAR_VALUE
-		Traits.Id.LONE:
-			if UnitKind.role(unit.kind) != UnitKind.Role.HEALER and unit.kind != UnitKind.Id.KING and Traits.alone_at(_battle, unit, cell):
-				return LONE_STAND_VALUE
+		Traits.Id.GUARD:
+			if Traits.guardian_at(_battle, unit, cell) != null:
+				return GUARD_STAND_VALUE
 	return 0.0

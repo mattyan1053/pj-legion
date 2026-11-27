@@ -1,4 +1,4 @@
-extends Control
+extends "res://game/window_base.gd"
 ## 駒 1 体のステータスの重なる画面（docs/deck-screen.md の「駒の詳細」）。編成確認（deck_preview.gd）・出撃準備（sortie_screen.gd）・
 ## 部隊編成（deck_screen.gd）・対戦の駒の情報の枠（battle_hud.gd）から開く。中身は unit_sheet.gd が欄ごとの値で持ち、ここは並べるだけ。
 ##
@@ -7,7 +7,6 @@ extends Control
 ## 「閉じる」・右クリック・Esc・枠の外のクリックで閉じる。色や枠は UI のテーマ（ui_theme.gd。板は PANEL_SOLID）が当たる。
 
 const Text := preload("res://game/text.gd")
-const CardKeys := preload("res://game/card_keys.gd")
 const Names := preload("res://game/names.gd")
 const DeckText := preload("res://game/deck_text.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
@@ -19,13 +18,12 @@ const AbilityMark := preload("res://game/ability_mark.gd")
 const CostGems := preload("res://game/cost_gems.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
-const UiTheme := preload("res://game/ui_theme.gd")
-const Palette := preload("res://game/ui_palette.gd")
 const EffectChips := preload("res://game/effect_chips.gd")
 
 ## 左の列（姿）と右の列（欄）の幅。合わせて、1280×720 の論理の画面に余白を持って収まる。
+## 右の列は、スキルの名前と札がいちばん長い札（スモークグレネード・クールダウン 3 ターン）が、2 枚並べて収まる幅。
 const LEFT_WIDTH := 216.0
-const RIGHT_WIDTH := 600.0
+const RIGHT_WIDTH := 710.0
 const PORTRAIT_SIZE := Vector2(LEFT_WIDTH, 236.0)
 const GAP := 10.0
 ## いま乗っている効果の札の欄の行の数。
@@ -36,10 +34,6 @@ const NOTE_SIZE := SheetParts.NOTE_SIZE
 ## 閉じた（対戦の画面が、止めていた時間と視点の操作を戻す）。
 signal closed
 
-## 開いている間、後ろの場面の時間を止めるか（対戦の画面から開くとき）。setup の前に決める。
-var pausing := false
-
-var _overlays: RefCounted
 var _sheet: UnitSheet
 var _decor: NationDecor
 var _portrait: UnitPortrait
@@ -69,25 +63,9 @@ var _evolutions: HBoxContainer
 
 ## overlays は、開いている重なる画面の積み上げ（AppContext.overlays）。
 func setup(overlays: RefCounted) -> void:
-	_overlays = overlays
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	visible = false
-	visibility_changed.connect(_track_overlay)
-	var shade := ColorRect.new()
-	shade.color = Color(Palette.SHADE, 0.5)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			close_detail())
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(center)
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = UiTheme.PANEL_SOLID
-	center.add_child(panel)
+	var panel := build_window(overlays, "", Vector2.ZERO, 0.5, true)
+	# 幅は駒に依らず同じ。高さは、持ち物と進化先の行の数で変わってよい（docs/ui-theme.md の「枠の大きさ」）。
+	Steady.mark(panel, "unit_detail.window", Steady.WIDTH)
 	# 上の縁に、軍の国の色の帯（軍なしの駒は出さない）。
 	_decor = NationDecor.new(UnitKind.Army.NONE, 0.0, 70.0)
 	panel.add_child(_decor)
@@ -405,28 +383,8 @@ func stat_meters() -> Array[StatMeter]:
 
 ## 窓の板の大きさ（検査用。論理の画面に収まるか）。
 func panel_size() -> Vector2:
-	var panel: Control = get_child(1).get_child(0)
-	return panel.get_combined_minimum_size()
+	return window_panel().get_combined_minimum_size()
 
 
-func _track_overlay() -> void:
-	if _overlays == null:
-		return
-	if visible and is_inside_tree():
-		_overlays.open(self, pausing)
-	else:
-		_overlays.close(self)
-		closed.emit()
-
-
-func _exit_tree() -> void:
-	if _overlays != null:
-		_overlays.close(self)
-
-
-func _input(event: InputEvent) -> void:
-	if not visible or _overlays == null or not _overlays.is_top(self):
-		return
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		close_detail()
+func _on_hidden() -> void:
+	closed.emit()

@@ -4,9 +4,8 @@ extends "res://game/battle_screen/screen_base.gd"
 
 ## 軍略の印（docs/troop-traits.md の「対戦の画面」）: 効く相手の頭の上の札（増える数）と足元の輪、組む兵どうしの線。
 ## 色は軍略の軍の色。相手の軍略も同じに出す。
-## - 札と輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵（どれも照準の印）、
-##   単騎は、その陣営の番に、まだ動ける、隣に味方のいない将でない兵（回復役も。増えるのは攻撃する側なので、番の間だけ。上向きの印）
-## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種（結び目は菱形）、補給線で隣り合う回復役（結び目は十字）
+## - 札と輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵（どれも照準の印）
+## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種（結び目は菱形）、補給線で隣り合う回復役（結び目は十字）、守護で隣り合うパラディン（結び目は横棒）
 func _refresh_traits() -> void:
 	var links: Array = []
 	var marked: Dictionary[int, Array] = {}  # 駒の id → [色, 札の文, 札の役]
@@ -17,11 +16,9 @@ func _refresh_traits() -> void:
 			var id := Traits.of_side(battle, side)
 			if id == Traits.NONE:
 				continue
-			var mark := [_trait_color(id), Text.t("battle.board.trait_mark", {"amount": Names.troop_trait_amount(id)}), TraitMark.Kind.TARGET]
+			var mark := [_trait_color(id), Text.t("battle.board.trait_mark", {"amount": Names.troop_trait_amount(id)})]
 			if Traits.focus_marked(battle, shown, side) or Traits.vengeance_marked(battle, shown, side):
 				marked[shown.id] = mark
-			if shown.side == side and Traits.lone_marked(battle, shown):
-				marked[shown.id] = [mark[0], mark[1], TraitMark.Kind.ATTACKER]
 			if shown.side != side and id == Traits.Id.OATH:
 				for mate in battle.units:
 					if mate.side == side and Traits.oath_marked(battle, mate, shown):
@@ -38,12 +35,15 @@ func _refresh_traits() -> void:
 				continue
 			var ranks := own == Traits.Id.RANKS and mate.kind == shown.kind
 			var supply := own == Traits.Id.SUPPLY and (UnitKind.role(mate.kind) == UnitKind.Role.HEALER) != (UnitKind.role(shown.kind) == UnitKind.Role.HEALER)
+			var guard := own == Traits.Id.GUARD and (mate.kind == UnitKind.Id.PALADIN or shown.kind == UnitKind.Id.PALADIN)
 			if ranks or supply:
 				links.append([_view(shown.id), _view(mate.id), tint, TraitLinks.Knot.CROSS if supply else TraitLinks.Knot.DIAMOND])
+			elif guard:
+				links.append([_view(shown.id), _view(mate.id), tint, TraitLinks.Knot.BAR])
 	for shown in battle.units:
 		if _views.has(shown.id):
-			var mark: Array = marked.get(shown.id, [Color.WHITE, "", TraitMark.Kind.TARGET])
-			_view(shown.id).set_trait_mark(marked.has(shown.id), mark[0], mark[1], mark[2])
+			var mark: Array = marked.get(shown.id, [Color.WHITE, ""])
+			_view(shown.id).set_trait_mark(marked.has(shown.id), mark[0], mark[1])
 	_trait_links.set_links(links)
 
 

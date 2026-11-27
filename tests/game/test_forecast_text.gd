@@ -93,3 +93,19 @@ func test_summary_heal_row_and_level_up() -> void:
 	assert_eq(ForecastText.hp_text(summary.rows[0]), "+%d → HP %d / %d" % [medic.power(), 10 + medic.power(), trooper.max_hp()])
 	var growth := "\n".join(summary.rows[1].effects)
 	assert_true(growth.contains("レベルアップ（Lv2）"), growth)
+
+
+## 受けるダメージを減らす軍略（隊列・守護）は、注に「-」で出る。
+func test_shield_traits_show_as_a_cut() -> void:
+	var battle := Maps.battle([
+		".....",
+		".....",
+		".....",
+	])
+	battle.traits[P2] = Traits.Id.GUARD
+	var commando := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(0, 1))
+	var target := battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(1, 1))
+	battle.add_unit(UnitKind.Id.PALADIN, P2, Vector2i(1, 2))
+	var text := _text(battle, AttackAction.new(commando.id, target.id), commando)
+	var cut := "%s -%d" % [Names.troop_trait(Traits.Id.GUARD), Traits.GUARD_SHIELD]
+	assert_true(text.contains(cut), text)
