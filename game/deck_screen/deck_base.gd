@@ -58,6 +58,11 @@ const ROSTER_WIDTH := 320.0
 const ARMY_CARD_WIDTH := 400.0
 ## 雇える兵の札の高さ（下に必殺技と軍略の欄を収めるため、720 の高さで 4 枚がこれ）。
 const ROSTER_CARD_HEIGHT := 63.0
+## 雇う欄の数の下限と、札の間（px。雇う欄の列の separation）。欄が多ければ、4 枚ぶんの高さを等分する（roster_card_height）。
+const ROSTER_SLOTS := 4
+const ROSTER_GAP := 6
+## 軍略の札の数の下限（軍略が多い軍があれば、その数だけ並べて欄の幅を等分する）。
+const TRAIT_SLOTS := 3
 const TROOP_WIDTH := 420.0
 ## 軍略の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。札の高さと、札の印の大きさ。
 ## 一覧で選んだ部隊の「軍・兵の数・コスト」の文の欄の幅（いちばん長い文が入る。ゲージと軍略の札の位置をそろえる）。
