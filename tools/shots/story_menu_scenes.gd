@@ -1,6 +1,9 @@
 extends "res://tools/shots/stage_scenes.gd"
 ## スクリーンショットの場面: ストーリーの画面（物語とセーブデータの選択、話の一覧、出撃準備まで、会話）。
 
+## 主人公に付ける、いちばん長い名前（全角 5 字。hero_name.gd の MAX_CHARS）。
+const LONG_HERO := "アルベルト"
+
 
 ## タイトルの「ストーリー」で話の一覧へ進み、number 番目（0 から）の話を始める（出撃準備の場面に入る）。
 ## 前の話は、クリアしたことにする。number が負なら、部隊を選ぶ最初の話（チュートリアルのあとの本編の 1 話目）。
@@ -32,8 +35,11 @@ func _skip_to_sortie() -> bool:
 
 
 ## 連邦の第 1 話（場面の節で書いた厚い版）を始めて、会話の場面を index 個（0 から）送ったところ。選ばせる行は 1 つ目の答え。
-func _first_episode_scene(index: int) -> bool:
+## hero が空でなければ、主人公にその名前を付けておく（札と文の名前が替わる）。
+func _first_episode_scene(index: int, hero := "") -> bool:
 	_app.context.story.choose_campaign(Story.military())
+	if hero != "":
+		_app.context.story.name_hero(Story.military(), hero)
 	if not await _scene_story_list():
 		return false
 	_app.current_scene().choose(Story.military().episodes[0])
@@ -65,17 +71,39 @@ func _scene_story_place_talk() -> bool:
 	return not talk.is_cut()
 
 
+## いちばん長い名前（全角 5 字）を付けた主人公が話している会話（名前の札と、文の中の名前）。
+func _scene_story_long_name_talk() -> bool:
+	if not await _first_episode_scene(1, LONG_HERO):
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < 2:
+		talk.press_next()
+	return talk.speaker() == LONG_HERO
+
+
+## いちばん長い名前を付けたときの、選んだあとの会話のログ（札と、文の中の名前）。
+func _scene_story_long_name_log() -> bool:
+	return await _scene_story_choice_log(LONG_HERO)
+
+
+## いちばん長い名前を付けたときの、話の一覧の主な人物の欄。
+func _scene_story_long_name_list() -> bool:
+	_app.context.story.choose_campaign(Story.military())
+	_app.context.story.name_hero(Story.military(), LONG_HERO)
+	return await _scene_story_list() and _app.current_scene().hero_label_text() == LONG_HERO
+
+
 ## 連邦の第 1 話の選択肢（問いの行の上に、答えの枠）。
-func _scene_story_choice() -> bool:
-	if not await _first_episode_scene(2):
+func _scene_story_choice(hero := "") -> bool:
+	if not await _first_episode_scene(2, hero):
 		return false
 	_app.current_scene().press_next()
 	return _app.current_scene().is_asking()
 
 
 ## 選択肢を選んだあとの会話のログ（問いのあとに、選んだ答えが 1 行）。
-func _scene_story_choice_log() -> bool:
-	if not await _scene_story_choice():
+func _scene_story_choice_log(hero := "") -> bool:
+	if not await _scene_story_choice(hero):
 		return false
 	var talk: Node = _app.current_scene()
 	talk.press_option(1)
