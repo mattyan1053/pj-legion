@@ -268,15 +268,29 @@ budget = 2
 ### 話を 1 つ足す
 
 1. `game/story/_template/first_battle.txt` を、物語のフォルダに `<id>.txt` の名前で写す（`<id>` は英小文字と `_`。クリアの記録に書くので、配ったあとは変えない。ほかの物語の話とも重ねない）。
-2. 欄を直す（使わない欄は消す）。上の半分（話の名前、話し手、会話）から書き、線より下（敵の部隊など）をあとで埋めてよい。
-3. 物語のファイル（同じフォルダの `story.txt`）の `[episodes]` の、遊ばせたい位置に `<id>` を 1 行足す。
-4. `tools/check.sh` か、テストだけ（`godot --headless --path . -s res://tools/run_tests.gd`）を回す。書き間違いは「ファイル:行: 何がおかしいか」で出る。
-5. 目次を作り直す（`tools/write_story_script.sh <godot>`。下の「台本」）。
-6. 敵の強さを測る（`tools/cpu_matches.gd -- --episode=<id>`。下の「敵の強さ」）。
+2. 筋（`docs/story-outline.md`）に、その話の見出しと背骨の 3 行を書き、同じ 3 行を話のファイルの頭に写す（上の「話のファイル」。テストが同じ文かを確かめる）。
+3. 欄を直す（使わない欄は消す）。上の半分（話の名前、話し手、会話）から書き、線より下（敵の部隊など）をあとで埋めてよい。
+   読み込みは無くてよいとしているが、**検査が求める欄**がある: `[lost]`（1〜3 行）、`before_music` と `after_music`（あとの会話に戦いの曲は置かない）。
+   対戦の曲は、同じ物語の隣の話と変える。MILITARY の物語の最後の話にするなら、`climax_music` も既定から変える。
+4. 新しい話し手を出すなら、口調の表（`game/story/voices.txt`）に節を足す。
+5. 物語のファイル（同じフォルダの `story.txt`）の `[episodes]` の、遊ばせたい位置に `<id>` を 1 行足す（話のファイルはフォルダから探さない。ここに書いた順に並ぶ）。
+6. `tools/check.sh` か、テストだけ（`godot --headless --path . -s res://tools/run_tests.gd -- --only=test_episode_data,test_sound,test_story,test_voice_check,test_wrap_audit`）を回す。
+   書き間違いは「ファイル:行: 何がおかしいか」で出る。
+7. 目次を作り直す（`tools/write_story_script.sh <godot>`。下の「台本」）。
+8. 敵の強さを測る（`tools/cpu_matches.gd -- --episode=<id>`、部隊を変えるなら `--squads=random`。下の「敵の強さ」）。
+
+足し忘れても検査が落ちない所:
+
+- 書き間違いのある話は、画面では話の一覧から消えるだけ（検査では落ちる）。
+- 口調の表に節の無い話し手は、口調を見られない。会話に仕組みの言葉（マス、ターン、コストなど。下の「会話の書き方」）を書いても、話し手の `avoid` に入れた語のほかは拾わない。
+- 通しの点検（`--story-all`。`game/autoplay_sweeps.gd`）は、物語ごとに頭から `STORY_EPISODES` 話まで。それより後ろに足した話は通らない。
+- 敵の強さは、検査では測らない。
 
 ### 物語を 1 つ足す
 
 ほかの人が書いた物語を、コードを知らずに組み込めるようにしてある。**物語のフォルダを `game/story/` に置けば、物語を選ぶ場面に並ぶ**（どこにも登録しない）。
+ただし、検査のいくつかが、いまの 3 つの物語の並びを決め打ちしている（`test_episode_data.gd` の `test_story_folders_are_found_in_order`、
+2 つ目の物語を FANTASY として読む `test_story_records.gd`・`test_scene_flow.gd`・`tools/shots/story_menu_scenes.gd`）。物語を足したら直す。`order` は、いまの物語の後ろにする。
 
 1. `game/story/_template/` を、`game/story/<物語の id>/` に写す（英小文字と `_`。フォルダの名前が物語の id で、クリアの記録に書く。配ったあとは変えない）。
    `_` で始まるフォルダはゲームが読まない（見本と、書きかけの下書きを置ける）。
