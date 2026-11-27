@@ -92,12 +92,12 @@ const CPU_PAUSE := 0.45
 const FAST_FORWARD_SCALE := 4.0
 
 
-## いまの対戦。再生（battle_playback.gd）にも渡す。
+## いまの対戦。再生（battle_playback.gd）には渡さない。再生は、写した盤（再生の盤）と出来事だけで動く。
 var battle: Battle:
 	set(value):
 		battle = value
-		if _playback != null:
-			_playback.battle = value
+		if _playback != null and value != null:
+			_playback.take(value)
 ## フェーズの始めにカメラが寄る駒を決める（phase_focus.gd）。行動のたびに、起きたことを食わせる。
 var _phase_focus := PhaseFocus.new()
 ## いまの対戦の戦績。行動のたびに、起きたことを食わせる（決着の画面に要点を出す）。

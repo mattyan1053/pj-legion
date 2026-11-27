@@ -132,6 +132,7 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 	var events: Array[BattleEvent] = []
 	var accepted := true
 	var was_watching := _watching_other()
+	_playback.take(battle)  # 再生の盤を、ルールに渡す前の盤から写す（再生は、これと出来事だけで動く）
 	for i in actions.size():
 		var result := battle.apply(actions[i])
 		if not result.accepted:
