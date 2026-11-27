@@ -7,7 +7,7 @@ extends Node3D
 ## 線の組は、盤の状態が変わったあと（対戦の画面の _refresh）に set_links で置き直す。
 
 ## 結び目の形。
-enum Knot { DIAMOND, CROSS }
+enum Knot { DIAMOND, CROSS, BAR }
 
 ## 線の太さと高さ（盤の上の m）、暗い縁の幅。
 const WIDTH := 0.1
@@ -17,6 +17,9 @@ const RIM := 0.035
 const KNOT_SIDE := 0.2
 const CROSS_ARM := 0.3
 const CROSS_WIDTH := 0.1
+## 横棒（守護。線を横切る盾の形）の長さと太さ。
+const BAR_LENGTH := 0.36
+const BAR_WIDTH := 0.1
 const COLOR_RIM := Color(0.06, 0.05, 0.08)
 
 var _links: Array = []  # [見た目 a, 見た目 b, 線の Node3D, 線の胴（長さに合わせて伸ばす）, 結び目の形]
@@ -41,6 +44,9 @@ func set_links(links: Array) -> void:
 				_box(line, Vector3(CROSS_WIDTH + RIM * 2.0, 0.02, CROSS_ARM + RIM * 2.0), COLOR_RIM, 3).rotation.y = turn
 			for turn: float in [PI / 4.0, -PI / 4.0]:
 				_box(line, Vector3(CROSS_WIDTH, 0.02, CROSS_ARM), color.lightened(0.3), 4).rotation.y = turn
+		elif knot == Knot.BAR:
+			_box(line, Vector3(BAR_LENGTH + RIM * 2.0, 0.02, BAR_WIDTH + RIM * 2.0), COLOR_RIM, 3)
+			_box(line, Vector3(BAR_LENGTH, 0.02, BAR_WIDTH), color.lightened(0.3), 4)
 		else:
 			_box(line, Vector3(KNOT_SIDE + RIM * 2.0, 0.02, KNOT_SIDE + RIM * 2.0), COLOR_RIM, 3).rotation.y = PI / 4.0
 			_box(line, Vector3(KNOT_SIDE, 0.02, KNOT_SIDE), color.lightened(0.3), 4).rotation.y = PI / 4.0

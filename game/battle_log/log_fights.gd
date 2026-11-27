@@ -55,7 +55,7 @@ func _read_healed(event: UnitHealedEvent) -> void:
 
 ## 軍略が攻撃に効いた（「青のスナイパーの集中砲火: ダメージ +2」）。
 func _read_trait(event: TraitTriggeredEvent) -> void:
-	var key := "battle.log.trait_down" if event.trait_id == Traits.Id.RANKS else "battle.log.trait_up"
+	var key := "battle.log.trait_down" if Traits.shields(event.trait_id) else "battle.log.trait_up"
 	_line(Text.t(key, {"unit": unit_name(event.unit_id), "effect": Names.troop_trait(event.trait_id), "amount": event.amount}),
 		_side_of(event.unit_id), _cell_of(event.unit_id), [event.unit_id, event.other_id])
 

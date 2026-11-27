@@ -207,7 +207,7 @@ static func card_lines(info: Dictionary, number: int) -> PackedStringArray:
 		_:
 			var story_section: Variant = (info["sections"] as Dictionary).get(Story.STORE_NAME)
 			var data: Dictionary = story_section.get("data", {}) if typeof(story_section) == TYPE_DICTIONARY and typeof(story_section.get("data")) == TYPE_DICTIONARY else {}
-			var summary := Story.summary_of(data)
+			var summary := Story.summary_of(data, _version_of(story_section))
 			if summary["campaign"] == null:
 				lines.append(Text.t("slots.no_campaign"))
 				lines.append(Text.t("slots.not_cleared"))
@@ -284,7 +284,7 @@ func scape_of(number: int) -> Array:
 	var story_section: Variant = (info["sections"] as Dictionary).get(Story.STORE_NAME)
 	if typeof(story_section) != TYPE_DICTIONARY or typeof(story_section.get("data")) != TYPE_DICTIONARY:
 		return []
-	var summary := Story.summary_of(story_section["data"])
+	var summary := Story.summary_of(story_section["data"], _version_of(story_section))
 	if summary["campaign"] == null:
 		return []
 	var episode := Story.scape_episode(summary["campaign"], summary["last"])
@@ -369,7 +369,7 @@ func _build_card(info: Dictionary, number: int) -> Button:
 	if state == SaveSlots.READY:
 		var story_section: Variant = (info["sections"] as Dictionary).get(Story.STORE_NAME)
 		if typeof(story_section) == TYPE_DICTIONARY and typeof(story_section.get("data")) == TYPE_DICTIONARY:
-			summary_campaign = Story.summary_of(story_section["data"])["campaign"]
+			summary_campaign = Story.summary_of(story_section["data"], _version_of(story_section))["campaign"]
 	if summary_campaign != null:
 		card.add_child(CampaignList.CardDecor.new(summary_campaign.army, true))
 	var column := VBoxContainer.new()
@@ -426,3 +426,9 @@ func _label(text: String, font_size: int) -> Label:
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
+
+
+## スロットのまとまり section（{"version", "data"}）の版（読めなければ、いまの版）。
+static func _version_of(section: Variant) -> int:
+	var version: Variant = section.get("version") if typeof(section) == TYPE_DICTIONARY else null
+	return int(version) if typeof(version) in [TYPE_INT, TYPE_FLOAT] else Story.FORMAT_VERSION

@@ -148,19 +148,19 @@ troop_trait.ranks,隊列
 troop_trait.supply,補給線
 troop_trait.vengeance,仇討ち
 troop_trait.oath,誓い
-troop_trait.lone,単騎
+troop_trait.guard,守護
 troop_trait.focus.effect,ダメージ +{amount}
 troop_trait.ranks.effect,被ダメージ -{amount}
 troop_trait.supply.effect,HP +{amount}
 troop_trait.vengeance.effect,ダメージ +{amount}
 troop_trait.oath.effect,ダメージ +{amount}
-troop_trait.lone.effect,ダメージ +{amount}
+troop_trait.guard.effect,被ダメージ -{amount}
 troop_trait.focus.text,このターン味方が攻撃した敵に{gain}
 troop_trait.ranks.text,同じ兵種の味方が隣にいる兵は{gain}
 troop_trait.supply.text,{medic}の隣にいる兵はターンの始めに {gain}
 troop_trait.vengeance.text,味方を倒した敵に{gain}
 troop_trait.oath.text,誓いの相手がこのターン攻撃した敵に{gain}
-troop_trait.lone.text,隣に味方がいない兵の攻撃は{gain}
+troop_trait.guard.text,{paladin}の隣にいる兵は{gain}
 relic.wisdom.short,英知
 relic.wisdom.effect,最大 HP +{amount}
 relic.courage.short,勇気
