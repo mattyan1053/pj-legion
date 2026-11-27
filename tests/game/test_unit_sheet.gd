@@ -68,32 +68,47 @@ func test_kings_and_monsters_have_no_cost_items_or_army_of_their_own() -> void:
 
 
 ## 窓の大きさは、木に入れて 1 コマ待ってから測る（base_test.gd の settle）。遊ぶときの字（UI のテーマ）で測る。
-## 幅は、どの駒でも同じ（スキルの名前と札が長い駒で、札が列からはみ出して窓が広がらない）。高さは、持ち物と進化先の行の数で変わってよい。
-func test_the_window_fits_the_screen_for_every_unit() -> void:
+## 窓の大きさは、どの駒・持ち物・開く場所でも同じ（UnitDetail.WINDOW_SIZE）。開く場所は、編成の駒（部隊編成・編成確認・出撃準備）と、
+## 対戦中の駒（状態 3 つと、乗っている効果の札）。持ち物の枠は、持っていても空きでも同じ高さ。魔物は経験値を出さない。
+func test_the_window_keeps_one_size_for_every_unit_and_place() -> void:
 	preload("res://game/ui_theme.gd").install()
 	var detail := UnitDetail.new()
 	detail.setup(OverlayStack.new())
 	await settle(detail)
 	var loads: Array = [
 		[] as Array[Equipment.Id],
+		[Equipment.Id.JET_PACK] as Array[Equipment.Id],
 		[Equipment.Id.JET_PACK, Equipment.Id.DRAGON_SCALE, Equipment.Id.WAR_BANNER] as Array[Equipment.Id],
 	]
-	var width := 0.0
+	var battle := Maps.battle(["..."])
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		for held: Array[Equipment.Id] in loads:
 			if not held.is_empty() and not Equipment.can_equip(kind):
 				continue
-			detail.open(kind, held, 0, UnitKind.Army.MILITARY, 2)
-			assert_eq(detail.title_text(), Names.kind(kind))
-			await settle(detail)
-			var size := detail.panel_size()
-			assert_true(size.x <= 1240.0 and size.y <= 700.0, "%s の窓が 1280×720 に収まらない: %s" % [Names.kind(kind), size])
-			if width == 0.0:
-				width = size.x
-			assert_eq(size.x, width, "%s の窓の幅が、ほかの駒と違う" % Names.kind(kind))
-			var texts := detail.stat_meters()[0].texts()
-			assert_eq(texts[0], "HP")
-			assert_eq(texts[2] != "", not held.is_empty(), "持ち物で HP が増えた駒にだけ、増減が出る")
+			# 編成の駒（出撃準備の始めのレベル 2 で。値が変わるだけで、欄の並びはレベル 1 と同じ）と、対戦中の駒。
+			var sheets: Array = [UnitSheet.of_kind(kind, held, 0, UnitKind.Army.MILITARY, 2)]
+			var unit := Unit.new(1, kind, Unit.Side.PLAYER1, Vector2i.ZERO)
+			unit.equipment.assign(held)
+			Statuses.add(unit, Status.Type.FATIGUE, 2)
+			Statuses.add(unit, Status.Type.SNARE, 1)
+			Statuses.add(unit, Status.Type.AIM, 1)
+			var in_battle: UnitSheet = UnitSheet.of_unit(unit, UnitKind.Army.MILITARY, "state")
+			in_battle.effects = preload("res://game/unit_effects.gd").of(battle, unit)
+			sheets.append(in_battle)
+			for sheet: UnitSheet in sheets:
+				detail.open_sheet(sheet)
+				assert_eq(detail.title_text(), Names.kind(kind))
+				await settle(detail)
+				var where := "%s（%s）" % [Names.kind(kind), "対戦中" if sheet.in_battle else "Lv %d" % sheet.level]
+				assert_eq(detail.panel_size(), UnitDetail.WINDOW_SIZE, "%s の窓の大きさが、ほかと違う" % where)
+				assert_eq(detail.window_panel().size, UnitDetail.WINDOW_SIZE, "%s の窓が、中身で広がった" % where)
+				for slot in detail.item_slot_sizes():
+					assert_eq(slot, Vector2(UnitDetail.LEFT_WIDTH, UnitDetail.SLOT_HEIGHT), "%s の持ち物の枠の大きさが、ほかと違う" % where)
+				assert_eq(detail.item_slot_sizes().size(), Equipment.MAX_PER_UNIT if Equipment.can_equip(kind) else 0)
+				assert_eq(detail.shows_experience(), sheet.grows and not UnitKind.is_monster(kind), "%s の経験値（魔物は出さない）" % where)
+				var texts := detail.stat_meters()[0].texts()
+				assert_eq(texts[0], "HP")
+	assert_true(UnitDetail.WINDOW_SIZE.x <= 1240.0 and UnitDetail.WINDOW_SIZE.y <= 700.0, "窓が 1280×720 に収まらない")
 	detail.free()
 
 
