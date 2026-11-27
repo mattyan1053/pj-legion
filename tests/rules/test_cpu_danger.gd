@@ -241,3 +241,14 @@ func test_guard_does_not_soften_skill_damage() -> void:
 	battle.add_unit(UnitKind.Id.PALADIN, P1, HERE + Vector2i(0, 1))
 	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(7, 2))
 	assert_eq(CpuPlayer.new().danger(battle, defender.id, HERE), FireballSkill.DAMAGE)
+
+
+func test_a_moving_shroom_takes_its_spores_along() -> void:
+	# 糸茸が動いた先で読むときは、胞子もその先から（いまのマスの周りの敵は、もう弱まらない）。
+	var battle := Maps.battle(OPEN_ROWS)
+	var shroom := battle.add_unit(UnitKind.Id.SHROOM, P1, Vector2i(2, 2))
+	var sniper := _fixed(battle, UnitKind.Id.SNIPER, P2, Vector2i(2, 1))
+	var away := Vector2i(5, 2)
+	assert_eq(CpuPlayer.new().danger(battle, shroom.id, away), sniper.power(), "動いた先は、狙撃手の周りでない")
+	shroom.cell = away
+	assert_eq(CpuPlayer.new().danger(battle, shroom.id, away), _real(battle, shroom, [sniper]))
