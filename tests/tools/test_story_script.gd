@@ -39,7 +39,7 @@ func test_a_script_holds_every_line_in_order() -> void:
 			if episode.lesson != "":
 				texts.append(episode.lesson)
 			for row: Episode.TalkLine in episode.all_lines():
-				texts.append(row.text)
+				texts.append(row.shown_text())
 			for each in texts:
 				var found := text.find(each, at)
 				assert_true(found >= 0, "%s の台本に、%s の文が順に並んでいない: %s" % [campaign.id, episode.id, each])

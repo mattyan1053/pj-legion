@@ -8,6 +8,7 @@ extends RefCounted
 
 const StoryFile := preload("res://game/story_file.gd")
 const Episode := preload("res://game/episode.gd")
+const HeroName := preload("res://game/hero_name.gd")
 
 ## 物語のフォルダを置く所（フォルダの名前が物語の id）と、フォルダの中の物語のファイルの名前。
 const DIR := "res://game/story/"
@@ -27,6 +28,8 @@ var id := &""
 var title := ""
 ## 物語の紹介の 1 行（無ければ空）。誰として、何をする物語か。
 var intro := ""
+## 主人公の既定の名前（[campaign] の hero。遊ぶ人が入る人物。話の [cast] の同じ名前の話し手が主人公）。空なら、名前を変えられる主人公はいない。
+var hero := ""
 ## 主な人物（無ければ空）: {"name": 名前, "role": 立ち位置, "figure": 姿（episode.gd の figures と同じ形）} の列。書いた順。
 var cast: Array[Dictionary] = []
 ## 人が使う軍。
@@ -116,7 +119,7 @@ func _read(file: RefCounted) -> void:
 	if not file.has("campaign"):
 		file.problem(1, "[campaign] の節が無い")
 	var at: int = file.line_of("campaign")
-	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget", "order", "intro"])
+	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget", "order", "intro", "hero"])
 	for key: String in ["title", "army", "rules", "budget"]:
 		if file.has("campaign") and not values.has(key):
 			file.problem(at, "[campaign] に「%s」が無い" % key)
@@ -136,8 +139,16 @@ func _read(file: RefCounted) -> void:
 	if values.has("intro"):
 		var entry: Dictionary = values["intro"][0]
 		intro = entry["value"]
-		if intro == "" or intro.length() > INTRO_MAX_CHARS:
-			file.problem(entry["line"], "intro は 1 から %d 字（いま %d 字）" % [INTRO_MAX_CHARS, intro.length()])
+		if intro == "" or HeroName.longest_length(intro) > INTRO_MAX_CHARS:
+			file.problem(entry["line"], "intro は 1 から %d 字（いま %d 字。{hero} は %d 字で数える）" % [INTRO_MAX_CHARS, HeroName.longest_length(intro), HeroName.MAX_CHARS])
+	if values.has("hero"):
+		var entry: Dictionary = values["hero"][0]
+		hero = entry["value"]
+		if not HeroName.is_valid(hero):
+			file.problem(entry["line"], "hero（主人公の既定の名前）は、全角 %d 字ぶんまでの、画面の字にある文字: %s" % [HeroName.MAX_CHARS, hero])
+			hero = ""
+	if hero == "" and intro.contains(HeroName.MARK):
+		file.problem(file.line_of("campaign"), "intro の {hero} は、hero（主人公の既定の名前）を書いた物語だけ")
 	_read_cast(file)
 	if values.has("budget"):
 		starting_budget = file.integer(values["budget"][0])
@@ -214,6 +225,9 @@ func _read_episodes(file: RefCounted) -> void:
 			problems.append("%s: 話「%s」が 2 度ある" % [where, episode_id])
 			continue
 		# 選択肢（docs/story.md の「選択肢」）: 名前は物語の中で重ねない。条件の行は、この話までに選ばせた選択肢と答えを指す。
+		loaded.set_hero(hero)
+		if hero == "" and loaded.uses_hero_mark():
+			loaded.problems.append("%s: 文の {hero} は、hero（主人公の既定の名前）を書いた物語の話だけ" % loaded.path)
 		for condition: Dictionary in loaded.conditions:
 			var answers: Variant = loaded.choices[condition["choice"]] if condition["here"] else asked.get(condition["choice"])
 			if answers == null:
@@ -248,3 +262,21 @@ func _read_episodes(file: RefCounted) -> void:
 			problems.append_array(loaded.problems)
 			continue  # 書き間違いのある話は並べない（遊べない）
 		episodes.append(loaded)
+
+
+## 紹介の 1 行（主人公の名前 named を差し込んだもの。named が空なら既定の名前）。
+func intro_for(named := "") -> String:
+	return HeroName.fill(intro, named if named != "" else hero)
+
+
+## 主な人物 person（cast の 1 人）の、画面に出す名前（主人公なら、遊ぶ人の付けた名前 named）。
+func cast_name(person: Dictionary, named := "") -> String:
+	return named if named != "" and hero != "" and person["name"] == hero else person["name"]
+
+
+## 主人公の立ち位置の文（[cast] の、hero と同じ名前の人の立ち位置。いなければ空）。名前の窓に出す。
+func hero_role() -> String:
+	for person: Dictionary in cast:
+		if person["name"] == hero:
+			return person["role"]
+	return ""

@@ -11,7 +11,8 @@ army = fantasy
 rules = story_fantasy
 budget = 14
 order = 2
-intro = 森の騎士領の新任騎士長イェルダとして、少ない隊で土地の縫い目を預かる。
+intro = 森の騎士領の新任騎士長{hero}として、少ない隊で土地の縫い目を預かる。
+hero = イェルダ
 
 [start]
 unit = paladin

@@ -12,6 +12,7 @@ extends RefCounted
 const Text := preload("res://game/text.gd")
 const Names := preload("res://game/names.gd")
 const DeckText := preload("res://game/deck_text.gd")
+const HeroName := preload("res://game/hero_name.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const Run := preload("res://game/run.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
@@ -26,10 +27,10 @@ signal changed
 ## save_store.gd で置くまとまりの名前と、中身の形の版（欄を足したら上げる。決まりは save_format.gd）。
 ## 版 1 は物語が 1 つだったころの形（{"cleared", "squad"}）。読むときは MILITARY の物語の記録として引き継ぐ（_migrate）。
 const STORE_NAME := "story"
-## 版 3 で、物語ごとの記録に「answers」（選択肢で選んだ答え）を足した。
-const FORMAT_VERSION := 3
+## 版 3 で、物語ごとの記録に「answers」（選択肢で選んだ答え）を足した。版 4 で、「heroes」（主人公に付けた名前）を足した。
+const FORMAT_VERSION := 4
 ## 記録の中身の、いまの版が知っている欄（ほかの欄は、新しい版の exe が書いたものとして残す）。
-const KNOWN_KEYS := ["campaigns", "campaign"]
+const KNOWN_KEYS := ["campaigns", "campaign", "heroes"]
 const RECORD_KEYS := ["cleared", "squad", "answers"]
 ## 会話の場面と、対戦の場面と、話の一覧の場面の名前（scene_flow.gd）。
 const TALK := SceneFlow.TALK
@@ -63,6 +64,9 @@ var _records := {}
 ## 読んだ記録の版と、記録の知らない欄（新しい exe が書いた欄。書き戻すときに残す。save_format.gd）。
 var _read_version := FORMAT_VERSION
 var _kept := {}
+## 主人公に付けた名前: 既定の名前（物語のファイルの hero）-> 付けた名前。同じ主人公の物語（本編と番外）で 1 つ。
+## 鍵があれば、名前を決めたことがある（既定のままでも入れる。物語を始めるときの名前の窓を、もう出さない）。
+var _heroes := {}
 ## 最後に選んだ物語の id（空なら、まだ選んでいない）。記録に書く。
 var _last_campaign := ""
 ## 確かめ用に、全部の話と解放を開いているか（docs/story.md の「確かめ用の解放」。F5）。その起動のあいだだけで、記録には書かない。
@@ -85,6 +89,7 @@ var squad_id: String:
 ## 記録を読む（いまの記録は捨てる）。
 func load_saved() -> void:
 	_records.clear()
+	_heroes.clear()
 	_last_campaign = ""
 	_read_version = FORMAT_VERSION
 	_kept = {}
@@ -108,6 +113,14 @@ func load_data(source: Dictionary, version := FORMAT_VERSION) -> void:
 	_opened_runs.clear()
 	var last: Variant = data.get("campaign")
 	_last_campaign = String(last) if typeof(last) in [TYPE_STRING, TYPE_STRING_NAME] else ""
+	_heroes.clear()
+	var saved_heroes: Variant = data.get("heroes")
+	if typeof(saved_heroes) == TYPE_DICTIONARY:
+		for hero: Variant in saved_heroes:
+			var named: Variant = saved_heroes[hero]
+			# 使えない名前（長すぎる、画面の字に無い文字。手で書き換えたファイル）は、読み飛ばす（既定の名前に戻る）。
+			if typeof(hero) in [TYPE_STRING, TYPE_STRING_NAME] and typeof(named) in [TYPE_STRING, TYPE_STRING_NAME] and HeroName.is_valid(String(named)):
+				_heroes[String(hero)] = String(named)
 	var saved_campaigns: Variant = data.get("campaigns")
 	if typeof(saved_campaigns) != TYPE_DICTIONARY:
 		saved_campaigns = {}
@@ -179,6 +192,8 @@ func to_data() -> Dictionary:
 	var written_data := {"campaigns": written_campaigns}
 	if _last_campaign != "":
 		written_data["campaign"] = _last_campaign
+	if not _heroes.is_empty():
+		written_data["heroes"] = _heroes.duplicate()
 	return SaveFormat.with_unknown(written_data, _kept)
 
 
@@ -298,6 +313,31 @@ func choose_squad(id: String) -> void:
 		return
 	_record(campaign)["squad"] = id
 	_save()
+
+
+## 物語 of_campaign（省けば、いまの物語）の主人公の名前（遊ぶ人が付けた名前。付けていなければ既定の名前。主人公のいない物語は空）。
+func hero_name(of_campaign: Campaign = null) -> String:
+	var at: Campaign = campaign if of_campaign == null else of_campaign
+	return String(_heroes.get(at.hero, at.hero)) if at.hero != "" else ""
+
+
+## 物語 of_campaign の主人公の名前を、決めたことがあるか（無ければ、物語を始めるときに名前の窓を出す。主人公のいない物語は真）。
+func is_hero_named(of_campaign: Campaign) -> bool:
+	return of_campaign.hero == "" or _heroes.has(of_campaign.hero)
+
+
+## 物語 of_campaign の主人公に名前 typed を付ける（使えない文字と長すぎる分は落とす。空なら既定の名前）。付いた名前を返す。
+func name_hero(of_campaign: Campaign, typed: String) -> String:
+	if of_campaign.hero == "":
+		return ""
+	var named := HeroName.clean(typed)
+	if named == "":
+		named = of_campaign.hero
+	if _heroes.get(of_campaign.hero, "") != named:
+		_heroes[of_campaign.hero] = named
+		_save()
+		changed.emit()
+	return named
 
 
 ## 選択肢 choice で選んだ答えの鍵（いまの物語で。まだ選んでいなければ空）。あとの話の「(if 名前 = 鍵)」の行が読む（docs/story.md の「選択肢」）。
@@ -595,7 +635,7 @@ func run_now(episode: Episode) -> Run:
 	if not is_cleared(episode.id):
 		# 知らせは記録どおりの進み具合から（確かめ用に開いていても、あとの会話の知らせを確かめられる）。
 		news = _unlocked_in(campaign, true).news_of(episode)
-	return run_of(episode, default_deck(now), news)
+	return run_of(episode, default_deck(now), news, hero_name())
 
 
 ## 話 episode の流れ（run.gd）: 話の場面の列（episode.gd の scenes。[before]・[after] の話は 出撃準備 → 会話（前）→ 対戦 → 会話（後））を順に並べ、終えたら話の一覧。
@@ -606,11 +646,13 @@ func run_now(episode: Episode) -> Run:
 ## あとの会話を読み終えたら「次の話へ」（物語の次の話の流れを始める）か「話の一覧へ」。次の話が無ければ、話の一覧へ。
 ## システムメニューからは、いつでも「話の一覧へ」（menu_exits）。
 ## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。最後の場面が会話なら、その最後に知らせの行で出し、「次の話へ」を選ばせる。
-static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = []) -> Run:
+## hero: 遊ぶ人の付けた主人公の名前（空なら既定の名前）。会話・途中の台詞・負けの台詞に差し込む。
+static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = [], hero := "") -> Run:
 	var run := Run.new()
 	run.exit = EPISODE_LIST
 	run.menu_exits = [[EPISODE_LIST, "story.episodes.resume", "menu.to_episodes.confirm"]]
 	var battle := StoryBattle.new(episode, human_deck)
+	battle.hero = hero
 	var fought := false  # 対戦の場面を過ぎたか（会話の背景の盤に、決着したときの駒を立たせる）
 	var last_talk := {}
 	for scene in episode.scenes:
@@ -622,7 +664,7 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 				run.add(BATTLE, battle)
 				fought = true
 			Episode.StoryScene.Kind.TALK:
-				var talk := talk_of(episode, scene.lines, scene.music)
+				var talk := talk_of(episode, scene.lines, scene.music, hero)
 				if scene.place != null:
 					# 別の場所の会話: 背景はその場所の景色（兵は立たせない）。
 					talk["board"] = scene.place.make_board()
@@ -667,14 +709,17 @@ static func episode_after(episode: Episode) -> Episode:
 ## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲 track（前の会話・あとの会話の曲。episode.gd の before_talk_music・after_talk_music。空なら場面の表の曲）,
 ## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
 ## 話の流れ（run_of）は、さらに "battle"（話の対戦。story_battle.gd。背景の盤に駒を立たせる）と "after"（場面の列で対戦のあとの会話か。背景の盤に、決着したときの駒を立たせる）を足す。
-static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"") -> Dictionary:
+static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"", hero := "") -> Dictionary:
 	var lines: Array[Dictionary] = []
 	for row in rows:
 		# 地の文（話し手が -1）は、名前の無い行（talk_screen.gd が、札を出さずに真ん中へ出す）。
-		var line := {"side": row.side, "who": row.who, "name": row.speaker_in(episode.speakers), "text": row.shown_text()}
+		var line := {"side": row.side, "who": row.who, "name": row.speaker_in(episode.speakers, hero), "text": row.shown_text(hero)}
 		# 選択肢（docs/story.md の「選択肢」）: この行のあとに選ばせるものと、この行を出す条件。
 		if row.asks():
-			line["choice"] = {"name": row.choice, "options": row.options}
+			var options: Array[Dictionary] = []
+			for option: Dictionary in row.options:
+				options.append({"key": option["key"], "text": HeroName.fill(option["text"], hero if hero != "" else row.hero)})
+			line["choice"] = {"name": row.choice, "options": options}
 		if row.when_choice != &"":
 			line["when"] = {"choice": row.when_choice, "answer": row.when_answer, "not": row.when_not}
 		lines.append(line)

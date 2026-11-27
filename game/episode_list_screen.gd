@@ -34,6 +34,7 @@ const TextWrap := preload("res://game/text_wrap.gd")
 const CardPicker := preload("res://game/card_picker.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
 const App := preload("res://game/app.gd")
+const HeroNameWindow := preload("res://game/hero_name_window.gd")
 
 signal finished(outcome: StringName)
 
@@ -66,6 +67,9 @@ var _backdrop: TitleBackdrop
 var _key_index := -1
 ## キーとマウスの受け方（card_picker.gd）。
 var _keys: CardPicker
+## 主人公の名前を付ける窓と、主な人物の欄の主人公の名前の字。
+var _hero_window: HeroNameWindow
+var _hero_label: Label
 
 
 func _ready() -> void:
@@ -186,6 +190,9 @@ func _ready() -> void:
 	_saved.offset_right = -18.0
 	_saved.offset_bottom = -10.0
 	layer.add_child(_saved)
+	_hero_window = HeroNameWindow.new()
+	_hero_window.setup(context.overlays)
+	layer.add_child(_hero_window)
 	_keys = CardPicker.new(context.overlays, context.play_sound)
 	_keys.count = func() -> int: return context.story.campaign.episodes.size()
 	_keys.enabled = func(i: int) -> bool: return context.story.is_available(context.story.campaign.episodes[i])
@@ -459,15 +466,48 @@ func cast_row(campaign: RefCounted) -> HBoxContainer:
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
 		words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		entry.add_child(words)
-		var name_label := _label(person["name"], 16)
+		var name_label := _label(campaign.cast_name(person, context.story.hero_name(campaign)), 16)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
 		words.add_child(name_label)
+		if campaign.hero != "" and person["name"] == campaign.hero:
+			_hero_label = name_label
 		var role := _label(person["role"], 13)
 		role.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		role.add_theme_color_override("font_color", COLOR_TEXT_DIM)
 		words.add_child(role)
+		if campaign.hero != "" and person["name"] == campaign.hero:
+			# 主人公の名前は、ここで変えられる（docs/story.md の「主人公の名前」）。
+			var rename := Button.new()
+			rename.text = Text.t("hero.rename")
+			rename.theme_type_variation = UiTheme.BUTTON_GHOST
+			rename.focus_mode = Control.FOCUS_NONE
+			rename.add_theme_font_size_override("font_size", 13)
+			rename.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			rename.pressed.connect(press_rename)
+			entry.add_child(rename)
 	return row
+
+
+## 主な人物の欄の「名前を変える」: 主人公の名前の窓を出す。決めたら、欄の名前を替える。
+func press_rename() -> void:
+	var campaign: RefCounted = context.story.campaign
+	if campaign.hero == "" or _hero_window.is_open():
+		return
+	context.play_sound(&"menu_open")
+	_hero_window.ask(context.story.hero_name(), campaign.hero, campaign.hero_role(), func(named: String) -> void:
+		context.story.name_hero(campaign, named)
+		if _hero_label != null:
+			_hero_label.text = context.story.hero_name())
+
+
+## 主人公の名前の窓と、主な人物の欄の主人公の名前（検査用）。
+func hero_window() -> HeroNameWindow:
+	return _hero_window
+
+
+func hero_label_text() -> String:
+	return _hero_label.text if _hero_label != null else ""
 
 
 func _label(text: String, font_size: int) -> Label:
