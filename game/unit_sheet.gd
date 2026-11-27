@@ -57,6 +57,10 @@ var evolutions: Array[Evolution.Id] = []
 var evolved := Evolution.Id.NONE
 ## 付いている状態（[種類, 残りのターン数]。対戦中だけ）。
 var statuses: Array = []
+## いま乗っている効果（unit_effects.gd の Effect の並び。対戦中だけ。画面が UnitEffects.of で入れる）。
+var effects: Array = []
+## 対戦中の駒か（of_unit）。
+var in_battle := false
 ## 回復役の攻撃の強さ（回復役でなければ 0）。情報の札の名前の右に「攻撃 4」と出す（info_card.gd）。
 var strike := 0
 
@@ -86,6 +90,7 @@ static func of_kind(of: UnitKind.Id, equipment: Array[Equipment.Id] = [], side_ 
 ## 対戦中の駒。side_army は陣営の軍（Battle.armies）、skill_state_ はスキルのいまの状態の文（battle_hud.gd の skill_state_text）。
 static func of_unit(unit: Unit, side_army := UnitKind.Army.NONE, skill_state_ := "", look_ := &"") -> RefCounted:
 	var sheet := new()
+	sheet.in_battle = true
 	sheet._identify(unit.kind, unit.side, side_army if side_army != UnitKind.Army.NONE else -1, look_)
 	sheet.name = Names.unit(unit)
 	sheet.grows = Growth.can_grow(unit)
