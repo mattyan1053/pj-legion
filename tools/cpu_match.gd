@@ -67,6 +67,8 @@ class Outcome:
 	var traits: Dictionary[int, int] = {}
 	## 陣営ごとの、その軍略が効いた回数（添字がプレイヤー番号）。
 	var trait_hits: Array[int] = [0, 0]
+	## 陣営ごとの、使った札（Card.Id -> 回数。手札が入の対戦だけ。docs/hand-cards.md）。
+	var cards: Array[Dictionary] = [{}, {}]
 	## 倒されたプレイヤーの駒（将を除く）の倒され方。1 体につき 1 つ（Fall）。
 	var falls: Array[Fall] = []
 	## 駒の番号 -> ダメージを受けた回数（防がれたものは数えない）。
@@ -362,6 +364,9 @@ static func _count(outcome: Outcome, event: BattleEvent, battle: Battle, mover: 
 		var healed := event as SupplyHealedEvent
 		outcome.traits[Traits.Id.SUPPLY] = outcome.traits.get(Traits.Id.SUPPLY, 0) + 1
 		_count_trait_side(outcome, battle, Traits.Id.SUPPLY, healed.unit_id, healed.medic_id)
+	if event is CardPlayedEvent:
+		var played := event as CardPlayedEvent
+		outcome.cards[played.side][played.card] = outcome.cards[played.side].get(played.card, 0) + 1
 	if event is UnitDamagedEvent:
 		var hit := event as UnitDamagedEvent
 		if hit.amount > 0:
@@ -546,6 +551,7 @@ static func read_events() -> Array[Script]:
 		SkillUsedEvent,
 		MidBossDefeatedEvent,
 		RelicGainedEvent,
+		CardPlayedEvent,
 	]
 
 
@@ -587,4 +593,7 @@ static func skipped_events() -> Array[Script]:
 		StrongholdProgressEvent,
 		GameWonEvent,
 		GameDrawnEvent,
+		CardDrawnEvent,
+		CardHealedEvent,
+		UnitPushedEvent,
 	]

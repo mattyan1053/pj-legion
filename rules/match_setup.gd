@@ -183,6 +183,8 @@ func create_battle() -> Battle:
 		if board.stronghold_cell != Board.NO_CELL:
 			battle.win_conditions[side].append(GameWonEvent.Reason.STRONGHOLD_HELD)
 		battle.ult_gauge[side] = scenario.start_gauge[side]
+	if rules.has(OptionalRules.HAND):
+		Hand.arm(battle, battle_seed)
 	battle.hold_turns = scenario.hold_turns
 	battle.spares_bosses = scenario.spares_bosses.duplicate()
 	return battle

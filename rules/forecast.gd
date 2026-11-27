@@ -165,6 +165,9 @@ func _read(battle: Battle) -> void:
 		elif event is UnitTeleportedEvent:
 			var teleported := event as UnitTeleportedEvent
 			_unit(battle, teleported.unit_id).moved_to = teleported.to
+		elif event is UnitPushedEvent:
+			var pushed := event as UnitPushedEvent
+			_unit(battle, pushed.unit_id).moved_to = pushed.to
 		elif event is UnitsSwappedEvent:
 			var swapped := event as UnitsSwappedEvent
 			_unit(battle, swapped.unit_id).moved_to = swapped.other_from
@@ -204,6 +207,7 @@ static func read_events() -> Array[Script]:
 		StatusAppliedEvent,
 		StatusRemovedEvent,
 		UnitTeleportedEvent,
+		UnitPushedEvent,
 		UnitsSwappedEvent,
 		RallyEvent,
 		UnitReactivatedEvent,
@@ -221,6 +225,8 @@ static func skipped_events() -> Array[Script]:
 		GameDrawnEvent,
 		UltReadyEvent,
 		UltUsedEvent,
+		CardPlayedEvent,
+		CardDrawnEvent,
 		CaptureProgressEvent,
 		StrongholdProgressEvent,
 		# ダメージの出来事に入っている（軍略の増減、爆発、倒れた中ボスの聖遺物）

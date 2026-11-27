@@ -360,6 +360,10 @@ static func skipped_events() -> Array[Script]:
 		UnitsSwappedEvent,
 		UnitReactivatedEvent,
 		UltUsedEvent,
+		# 札は、札ごとの選び方（rules/cpu/cpu_cards.gd）で決める
+		CardPlayedEvent,
+		CardDrawnEvent,
+		UnitPushedEvent,
 		# 動いた先の価値は、位置の価値（cpu_position_value.gd）で読む
 		UnitMovedEvent,
 		UnitWarpedEvent,

@@ -71,6 +71,14 @@ var signs: Array[int] = []
 ## 真の陣営の駒は、番人を攻撃の相手にできず、その陣営が起こした爆発・弾ける糸は番人に当たらない（spares）。
 var spares_bosses: Array[bool] = [false, false]
 
+## 手札（試しの決まり OptionalRules.HAND。docs/hand-cards.md）が入か。入にするのは Hand.arm だけ。
+var hand_on := false
+## プレイヤーごとの手札（Card.Id の並び。引いた順）と、札の山（並びの最後が、次に引く札）。添字がプレイヤー番号。配る・引く・使うのは Hand だけ。
+var hands: Array[Array] = [[], []]
+var piles: Array[Array] = [[], []]
+## プレイヤーごとの、この番に使った札の数（自分の番の始めに 0 に戻る）。
+var card_plays: Array[int] = [0, 0]
+
 ## ルールが使う、ただ 1 つの乱数。ほかの乱数を使うと、シードを固定しても結果がそろわない。
 var rng := RandomNumberGenerator.new()
 

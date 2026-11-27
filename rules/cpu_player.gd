@@ -59,6 +59,9 @@ func _decide() -> BattleAction:
 		return UseUltAction.new()
 	if acting != null:
 		return _follow_up(acting)
+	var card := CpuCards.pick(_battle)  # 手札（試しの決まり）。入でなければ、いつも null
+	if card != null:
+		return card
 	var unit := _next_unit()
 	if unit == null:
 		return EndPhaseAction.new()
