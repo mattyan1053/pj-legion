@@ -25,7 +25,7 @@ const MapFrame := preload("res://game/map_frame.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const SteadyBox := preload("res://game/steady_box.gd")
-const CardKeys := preload("res://game/card_keys.gd")
+const CardPicker := preload("res://game/card_picker.gd")
 
 ## 背景の景色の盤の種（いつも同じ景色）、カードに乗せてから景色を替え始めるまでの秒数、幕を沈める・戻す秒数と、沈めたときの濃さ。
 const SCAPE_SEED := 7
@@ -74,6 +74,8 @@ var _scape_next: StringName = &""
 var _scape_tween: Tween
 ## 左右の矢印で選んでいる間か（マウスを動かすまで）。
 var _by_key := false
+## キーとマウスの受け方（card_picker.gd）。
+var _keys: CardPicker
 
 
 func _ready() -> void:
@@ -168,6 +170,18 @@ func _ready() -> void:
 		notes.append(_show_note.bind(field))
 	notes.append(_show_note.bind(&""))
 	SteadyBox.fit_largest(note_panel, notes)
+	_keys = CardPicker.new(context.overlays, context.play_sound)
+	_keys.count = func() -> int: return VersusFields.ids().size()
+	_keys.current = func() -> int: return VersusFields.ids().find(_hovered)
+	_keys.selected = func(i: int) -> void:
+		_by_key = true
+		hover(VersusFields.ids()[i])
+	_keys.chosen = func(i: int) -> void: choose(VersusFields.ids()[i])
+	_keys.back = press_back
+	_keys.pointer_moved = func(event: InputEventMouseMotion) -> void:
+		if _by_key:  # マウスに持ち替えた: マウスの下のカードに乗ったことにする（無ければ、選びをやめる）
+			_by_key = false
+			hover(_field_at(event.global_position))
 
 
 ## 1 段ぶんのカード。幅に収まらなければ、横に送れる（収まれば真ん中に寄せる）。
@@ -309,51 +323,12 @@ func card_center(field: StringName) -> Vector2:
 	return (_cards[field] as Control).get_global_rect().get_center()
 
 
-## 右クリックと Esc は 1 つ戻る（タイトルへ）。カードの上でも効くよう、ボタンより先に受ける。
-## 重なる画面（システムメニュー）が開いている間は、そちらが受ける。
 func _input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	if _by_key and CardKeys.is_pointer_move(event):
-		# マウスに持ち替えた: マウスの下のカードに乗ったことにする（無ければ、選びをやめる）。
-		_by_key = false
-		hover(_field_at((event as InputEventMouseMotion).global_position))
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_back")
-		press_back()
+	_keys.input(event, get_viewport())
 
 
-## 左右の矢印で選んで Enter で決める。1〜9 のキー（テンキーでも）なら、その番号のカードを選ぶ。
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	var listed := VersusFields.ids()
-	var step := CardKeys.direction(event)
-	if step != 0:
-		get_viewport().set_input_as_handled()
-		var index := CardKeys.next(listed.find(_hovered), step, listed.size(), func(_i: int) -> bool: return true)
-		if index >= 0:
-			_by_key = true
-			hover(listed[index])
-		return
-	if CardKeys.is_accept(event) and _hovered != &"":
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_confirm")
-		choose(_hovered)
-		return
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	var key: Key = event.physical_keycode
-	var number := -1
-	if key >= KEY_1 and key <= KEY_9:
-		number = key - KEY_1 + 1
-	elif key >= KEY_KP_1 and key <= KEY_KP_9:
-		number = key - KEY_KP_1 + 1
-	var fields := VersusFields.ids()
-	if number >= 1 and number <= fields.size():
-		context.play_sound(&"ui_confirm")
-		choose(fields[number - 1])
+	_keys.unhandled_input(event, get_viewport())
 
 
 ## 画面の点 at の下のカードのマップ（無ければ空）。
