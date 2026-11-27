@@ -13,6 +13,7 @@ const TalkLine := preload("res://game/episode/talk_line.gd")
 const TalkCue := preload("res://game/episode/talk_cue.gd")
 const StoryScene := preload("res://game/episode/story_scene.gd")
 const Names := preload("res://game/names.gd")
+const HeroName := preload("res://game/hero_name.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 ## 書ける節。
@@ -127,6 +128,8 @@ var scenes: Array[StoryScene] = []
 var written_as_scenes := false
 ## 対戦のある話か（読む間に使う。読んだあとは has_battle()）。
 var _fights := true
+## 主人公の既定の名前（物語のファイルの hero。物語の読み込みが set_hero で入れる。話のファイルだけを読んだときは空）。
+var hero := ""
 ## この話が選ばせる選択肢: 名前 -> 答えの鍵の列（書いた順）。
 var choices := {}
 ## この話の行が条件に使う選択肢: [{"line": 行, "choice": 名前, "answer": 答えの鍵, "here": この話の、その行より前で選ばせた選択肢か}, …]。
@@ -223,6 +226,18 @@ func all_lines() -> Array[TalkLine]:
 				found.append(cue.line)
 	found.append_array(lost)
 	return found
+
+
+## 主人公の既定の名前を、話と、話の全部の行に入れる（物語の読み込み campaign.gd が呼ぶ）。
+func set_hero(name: String) -> void:
+	hero = name
+	for line in all_lines():
+		line.hero = name
+
+
+## 差し込みの印（HeroName.MARK）を使っている行があるか（主人公のいない物語の話には書けない）。
+func uses_hero_mark() -> bool:
+	return all_lines().any(func(line: TalkLine) -> bool: return line.text.contains(HeroName.MARK))
 
 
 ## 前の会話の曲（無ければ、対戦の曲。会話の間は小さく鳴らし、そのまま対戦へつながる。docs/sound.md）。

@@ -100,8 +100,8 @@ func _read_talks(file: RefCounted) -> void:
 					file.problem(row["line"], "[%s] に地の文は書けない（決着の画面に、話し手のひとことで出す）" % section)
 				elif line != null:
 					rows.append(line)
-					if line.text.length() > LOST_MAX_CHARS:
-						file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, LOST_MAX_CHARS, line.text.length()])
+					if line.longest() > LOST_MAX_CHARS:
+						file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, LOST_MAX_CHARS, line.longest()])
 			if rows.is_empty() and file.has(section):
 				file.problem(maxi(file.line_of(section), 1), "[%s] の会話が無い" % section)
 			elif rows.size() > LOST_MAX_LINES:
@@ -136,8 +136,8 @@ func _talk_rows(file: RefCounted, section: String, source: Array) -> Array[TalkL
 			var line := _speech(file, at, text)
 			if line == null:
 				continue
-			if line.text.length() > TALK_MAX_CHARS:
-				file.problem(at, "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.text.length()])
+			if line.longest() > TALK_MAX_CHARS:
+				file.problem(at, "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.longest()])
 			if asking != null and answer == &"":
 				file.problem(at, "(choice %s) のあとは (answer 鍵) の行から書く" % asking.choice)
 			elif asking != null:
@@ -173,8 +173,8 @@ func _talk_rows(file: RefCounted, section: String, source: Array) -> Array[TalkL
 					file.problem(at, "答えは「(answer 鍵) 画面の文」（鍵は英小文字・数字・_）: %s" % text)
 				elif (choices[asking.choice] as Array).has(StringName(words[1])):
 					file.problem(at, "答え「%s」が 2 度ある" % words[1])
-				elif mark["rest"] == "" or (mark["rest"] as String).length() > OPTION_MAX_CHARS:
-					file.problem(at, "答えの文は 1 から %d 字（いま %d 字）" % [OPTION_MAX_CHARS, (mark["rest"] as String).length()])
+				elif mark["rest"] == "" or HeroName.longest_length(mark["rest"]) > OPTION_MAX_CHARS:
+					file.problem(at, "答えの文は 1 から %d 字（いま %d 字）" % [OPTION_MAX_CHARS, HeroName.longest_length(mark["rest"])])
 				else:
 					longest = maxi(longest, branch)
 					branch = 0
@@ -201,8 +201,8 @@ func _talk_rows(file: RefCounted, section: String, source: Array) -> Array[TalkL
 					if mark["rest"] == "":
 						file.problem(at, "条件のあとに、行が無い: %s" % text)
 				else:
-					if line.text.length() > TALK_MAX_CHARS:
-						file.problem(at, "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.text.length()])
+					if line.longest() > TALK_MAX_CHARS:
+						file.problem(at, "[%s] の文は %d 字まで（いま %d 字）" % [section, TALK_MAX_CHARS, line.longest()])
 					line.when_choice = StringName(words[1])
 					line.when_answer = StringName(words[3])
 					line.when_not = negate
@@ -291,8 +291,8 @@ func _read_cues(file: RefCounted) -> void:
 			if value < 0:
 				file.problem(row["line"], "陣営は ally か enemy: %s" % words[1])
 				continue
-		if speech.text.length() > CUE_MAX_CHARS:
-			file.problem(row["line"], "途中の台詞は %d 字まで（いま %d 字）" % [CUE_MAX_CHARS, speech.text.length()])
+		if speech.longest() > CUE_MAX_CHARS:
+			file.problem(row["line"], "途中の台詞は %d 字まで（いま %d 字）" % [CUE_MAX_CHARS, speech.longest()])
 		cues.append(TalkCue.new(kind, value, speech))
 	if cues.size() > CUES_MAX:
 		file.problem(file.line_of("cues"), "途中の台詞は %d つまで（いま %d）" % [CUES_MAX, cues.size()])

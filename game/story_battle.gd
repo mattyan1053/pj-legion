@@ -19,6 +19,8 @@ var episode: Episode
 var human_deck: Deck
 ## 人が出撃準備で決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
 var placement: Array[Vector2i] = []
+## 遊ぶ人の付けた主人公の名前（空なら既定の名前。story.gd の run_of が入れる。途中の台詞と負けの台詞に差し込む）。
+var hero := ""
 ## いちばん最近に決着した対戦（record_end）。あとの会話の背景に、この盤の様子（生き残った駒）を映す。
 var ended_battle: Battle
 
@@ -161,14 +163,14 @@ func cast_looks() -> Array:
 func talk_cues() -> RefCounted:
 	if episode.cues.is_empty():
 		return BattleCues.new()
-	return BattleCues.new(episode.cues, episode.speakers, episode.figures)
+	return BattleCues.new(episode.cues, episode.speakers, episode.figures, hero)
 
 
 ## 話のファイルの [lost]（負けたときの台詞）。無い話は無し。
 func lost_lines() -> Array[BattleCues.Line]:
 	var lines: Array[BattleCues.Line] = []
 	for row in episode.lost:
-		lines.append(BattleCues.line_of(row, episode.speakers, episode.figures))
+		lines.append(BattleCues.line_of(row, episode.speakers, episode.figures, hero))
 	return lines
 
 
@@ -180,6 +182,7 @@ func record_win(context: RefCounted) -> void:
 func copy() -> RefCounted:
 	var other: RefCounted = get_script().new(episode, human_deck)
 	other.placement = placement.duplicate()
+	other.hero = hero
 	return other
 
 

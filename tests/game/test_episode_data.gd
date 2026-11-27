@@ -89,7 +89,7 @@ func test_the_template_reads_without_problems() -> void:
 	assert_ne(episode.title, "")
 	assert_false(episode.before.is_empty())
 	assert_false(episode.cues.is_empty())
-	assert_eq(episode.speakers, PackedStringArray(["少尉", "敵将", "新兵"]))
+	assert_eq(episode.speakers, PackedStringArray(["レオ", "敵将", "新兵"]))
 	assert_true(episode.before_music != &"" and episode.after_music != &"", "見本を写した話も、会話の曲を選んである（test_sound.gd が、どの話にも求める）")
 	# 見本の魔物の一覧に、話のファイルに書ける魔物が全部ある。
 	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
@@ -135,14 +135,14 @@ func test_choices_are_checked() -> void:
 		"答えが 1 つ": [text.replace("(answer right) 右の坂を急ぐ", ""), "答えは 2 から 3 つ"],
 		"長い答え": [text.replace("右の坂を急ぐ", "右の坂を急ぐ".repeat(5)), "答えの文は 1 から 22 字"],
 		"閉じていない": [text.replace("(end)", ""), "(end) で閉じていない"],
-		"問いが無い": [text.replace("新兵: 少尉、どちらから登りますか。\n", "").replace("> 翌朝、隊は尾根の下に着いた。\n", ""), "問いになる行が要る"],
-		"答えの前の行": [text.replace("(answer left) 左の岩場から行く", "少尉: ふむ。\n(answer left) 左の岩場から行く"), "(answer 鍵) の行から書く"],
+		"問いが無い": [text.replace("新兵: {hero}少尉、どちらから登りますか。\n", "").replace("> 翌朝、隊は尾根の下に着いた。\n", ""), "問いになる行が要る"],
+		"答えの前の行": [text.replace("(answer left) 左の岩場から行く", "レオ: ふむ。\n(answer left) 左の岩場から行く"), "(answer 鍵) の行から書く"],
 		"名前の字": [text.replace("(choice template_route)", "(choice 道)"), "名前は英小文字"],
 		"同じ答え": [text.replace("(answer right)", "(answer left)"), "答え「left」が 2 度"],
 		"知らない指示": [text.replace("(end)", "(done)"), "知らない指示"],
 		"条件の形": [text.replace("(if template_route = left)", "(if template_route left)"), "条件の行は"],
-		"途中の台詞に選択肢": [text.replace("(turn 1) 少尉: 前へ出すぎるな。", "(choice x) 少尉: あ"), "知らないきっかけ"],
-		"長い会話": [text.replace("少尉: 右だ。日が高くなる前に登りきる。", "少尉: 右だ。\n".repeat(8)), "会話は 10 行まで"],
+		"途中の台詞に選択肢": [text.replace("(turn 1) レオ: 前へ出すぎるな。", "(choice x) レオ: あ"), "知らないきっかけ"],
+		"長い会話": [text.replace("レオ: 右だ。日が高くなる前に登りきる。", "レオ: 右だ。\n".repeat(8)), "会話は 10 行まで"],
 	}
 	for name: String in cases:
 		var problems: PackedStringArray = Episode.parse(cases[name][0]).problems
@@ -152,7 +152,7 @@ func test_choices_are_checked() -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	_write(dir.path_join("story.txt"), FileAccess.get_file_as_string(TEMPLATE))
 	_write(dir.path_join("first_battle.txt"), FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
-		.replace("少尉: 見本の話だ。ここに会話を書く。", "(if template_route = left) 少尉: 見本の話だ。").replace("敵将: ……見事だ。", "敵将: ……見事だ。\n(choice template_route)\n(answer a) あ\n(answer b) い\n(end)"))
+		.replace("レオ: 見本の話だ。ここに会話を書く。", "(if template_route = left) レオ: 見本の話だ。").replace("敵将: ……見事だ。", "敵将: ……見事だ。\n(choice template_route)\n(answer a) あ\n(answer b) い\n(end)"))
 	_write(dir.path_join("scenes.txt"), text.replace("template_route = left", "template_route = up"))
 	var joined := "\n".join(Campaign.load_file(dir.path_join("story.txt")).problems)
 	assert_true(joined.contains("first_battle.txt:") and joined.contains("この行までに選ばせていない"), "あとの話の選択肢を、条件に書けない: %s" % joined)
@@ -167,15 +167,15 @@ func test_choices_are_checked() -> void:
 func test_scene_sections_are_checked() -> void:
 	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("scenes.txt"))
 	var cases := {
-		"[before] と混ぜる": [text + "\n[before]\n少尉: あ\n", "[before] は書かない"],
+		"[before] と混ぜる": [text + "\n[before]\nレオ: あ\n", "[before] は書かない"],
 		"before_music": [text.replace("map = ridge_path", "map = ridge_path\nbefore_music = talk"), "before_music は書かない"],
 		"知らない場所": [text.replace("place = drill_field", "place = nowhere"), "マップ「nowhere」"],
 		"知らない設定": [text.replace("place = drill_field", "plase = drill_field"), "知らない設定「plase」"],
-		"設定があと": [text.replace("少尉: ああ。今夜は早く寝ておけ。", "少尉: ああ。\nmusic = talk_calm"), "会話の行より前"],
+		"設定があと": [text.replace("レオ: ああ。今夜は早く寝ておけ。", "レオ: ああ。\nmusic = talk_calm"), "会話の行より前"],
 		"place の無い look": [text.replace("[talk 盤の前]", "[talk 盤の前]\nlook = ridge"), "look は place と組"],
 		"あとの会話に対戦の曲": [text.replace("music = talk_bright", "music = battle"), "対戦の曲"],
 		"対戦のあとの出撃準備": [text.replace("[sortie]", "").replace("[cues]", "[sortie]\n[cues]"), "[sortie] は [battle] より前"],
-		"印の中身": [text.replace("[battle]", "[battle]\n少尉: あ"), "場面の順の印"],
+		"印の中身": [text.replace("[battle]", "[battle]\nレオ: あ"), "場面の順の印"],
 		"名前の無い会話": [text.replace("[talk 盤の前]", "[talk]"), "知らない節 [talk]"],
 		"空の会話": [text.replace("[sortie]", "[talk 空]\nmusic = talk\n[sortie]"), "[talk 空] の会話が無い"],
 		"対戦が無いのに敵": [text.replace("[battle]", "").replace("[sortie]", ""), "対戦の無い話"],

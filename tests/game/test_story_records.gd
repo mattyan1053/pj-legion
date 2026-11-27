@@ -302,7 +302,7 @@ func test_answers_are_kept_per_campaign_and_read_back() -> void:
 	story.choose_campaign(Story.campaigns()[1])
 	assert_eq(story.answer_of(&"greeting"), "", "ほかの物語の答えは見えない")
 	var written: Dictionary = _store().read(Story.STORE_NAME)
-	assert_eq(written["version"], 3)
+	assert_eq(written["version"], Story.FORMAT_VERSION)
 	assert_eq(written["data"]["campaigns"]["military"]["answers"], {"greeting": "cool"})
 	var again := Story.new()
 	again.store = _store()

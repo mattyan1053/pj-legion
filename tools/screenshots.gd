@@ -165,6 +165,7 @@ const SCENES := {
 	"story_slots_copy": "ストーリー: セーブデータ選択で、1 番のコピー先を選んでいるところ",
 	"story_slots_delete": "ストーリー: セーブデータ選択で、2 番の削除を確かめているところ",
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
+	"story_hero_name": "ストーリー: 物語を初めて選んだときの、主人公の名前を付ける窓（既定の名前が入っている。そのまま「決定」で進める）",
 	"story_campaigns_berg": "ストーリー: 物語を選ぶ場面で、MILITARY の物語のカードを選んだところ（背景がその物語の景色）",
 	"story_campaigns_ruel": "ストーリー: 物語を選ぶ場面で、FANTASY の物語のカードを選んだところ（背景がその物語の景色）",
 	"story_slots_fantasy": "ストーリー: セーブデータ選択で、FANTASY の物語のデータ（2 番）を選んだところ（背景がその物語の景色）",
