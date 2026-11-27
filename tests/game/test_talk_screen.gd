@@ -3,6 +3,8 @@ extends "res://tests/base_test.gd"
 
 const TalkScreen := preload("res://game/talk_screen.gd")
 const Story := preload("res://game/story.gd")
+const Episode := preload("res://game/episode.gd")
+const Campaign := preload("res://game/campaign.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 
 
@@ -169,3 +171,51 @@ func test_a_cutscene_shows_narration_without_figures() -> void:
 		screen.press_next()
 	assert_eq(ended[0], 1)
 	screen.free()
+
+
+## 盤のカットシーン（docs/story.md の「盤のカットシーン」）: 兵が動いている間は文を進めず、文の間は盤が止まる。
+## 盤の動きをまたいで前の文へは戻れない。スキップで、終わりの盤まで済ませて終える。舞台を作って再生するので、長い検査。
+func test_long_board_cutscene_alternates_moves_and_lines() -> void:
+	var episode: Episode = Campaign.load_file("res://game/story/_template/story.txt").episodes[1]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	while not run.data().has("cut_board"):
+		run.advance()
+	var screen := TalkScreen.new()
+	screen.talk = run.data()
+	await settle(screen)
+	assert_true(screen.is_board_cut() and screen.figures().is_empty(), "盤のカットシーンは、話し手の姿を立たせない")
+	assert_eq(screen.cut_stage().views().size(), 3, "台本の兵が立つ")
+	assert_false(screen.is_beat_playing(), "最初の文の前に動きが無ければ、すぐ文")
+	var scale := Engine.time_scale
+	Engine.time_scale = 50.0
+	_next_line(screen)
+	assert_true(screen.is_beat_playing(), "次の文の前の動きを再生する")
+	screen.press_next()
+	assert_eq(screen.line_index(), 0, "動いている間は、文を進めない")
+	assert_eq(screen._log_lines().size(), 1, "動いている間のログは、動きの前の文まで")
+	while screen.is_beat_playing():
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_eq(screen.line_index(), 1, "動き終えたら、次の文")
+	screen.press_back()
+	assert_eq(screen.line_index(), 1, "盤の動きをまたいで、前の文へは戻らない")
+	_next_line(screen)
+	assert_eq(screen.line_index(), 2, "動きの無い文の間は、そのまま進む")
+	screen.press_back()
+	assert_eq(screen.line_index(), 1, "動きの無い文の間は、戻れる")
+	var ended := [0]
+	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
+	await screen.press_skip()
+	Engine.time_scale = scale
+	assert_eq(ended[0], 1, "スキップで終える")
+	var replay: RefCounted = screen.cut_stage().replay()
+	var names: Dictionary = run.data()["cut_board"].names
+	assert_true(replay.piece(names["骸骨"]) == null and replay.piece(names["新兵"]).cell == Vector2i(9, 17), "スキップで、終わりの盤まで済ませる")
+	assert_eq(screen.cut_stage().views().size(), 2, "見た目も、終わりの盤")
+	screen.free()
+
+
+## 次の文へ（文が出きる前なら、出しきってから）。
+func _next_line(screen: Node) -> void:
+	if not screen.is_line_shown():
+		screen.press_next()
+	screen.press_next()

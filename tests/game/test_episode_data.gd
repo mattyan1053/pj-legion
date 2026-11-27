@@ -104,11 +104,17 @@ func test_the_scenes_template_reads_as_a_list_of_scenes() -> void:
 	var Kind := Episode.StoryScene.Kind
 	var episode: Episode = Campaign.load_file(TEMPLATE).episodes[1]
 	assert_true(episode.written_as_scenes and episode.has_battle())
-	assert_eq(episode.scenes.map(func(scene: RefCounted) -> int: return scene.kind), [Kind.TALK, Kind.TALK, Kind.TALK, Kind.SORTIE, Kind.TALK, Kind.BATTLE, Kind.TALK])
+	assert_eq(episode.scenes.map(func(scene: RefCounted) -> int: return scene.kind), [Kind.TALK, Kind.TALK, Kind.TALK, Kind.TALK, Kind.SORTIE, Kind.TALK, Kind.BATTLE, Kind.TALK])
 	var talks := episode.talk_scenes()
-	assert_eq(talks.map(func(scene: RefCounted) -> String: return scene.name), ["練兵場", "夜の行軍", "尾根の下", "盤の前", "勝ったあと"])
-	assert_eq(talks.map(func(scene: RefCounted) -> bool: return scene.once), [true, true, true, true, false], "対戦より前の会話は 1 度だけ")
-	assert_eq(talks.map(func(scene: RefCounted) -> StringName: return scene.music), [&"talk", &"talk_calm", &"talk_calm", &"talk", &"talk_bright"])
+	assert_eq(talks.map(func(scene: RefCounted) -> String: return scene.name), ["練兵場", "夜の行軍", "尾根の朝", "尾根の下", "盤の前", "勝ったあと"])
+	assert_eq(talks.map(func(scene: RefCounted) -> bool: return scene.once), [true, true, true, true, true, false], "対戦より前の会話は 1 度だけ")
+	assert_eq(talks.map(func(scene: RefCounted) -> StringName: return scene.music), [&"talk", &"talk_calm", &"talk_calm", &"talk_calm", &"talk", &"talk_bright"])
+	# 盤のカットシーン: 台本の兵と出来事の塊（文の行の数 + 1。[i] は i 番目の文の前）。
+	var board: RefCounted = talks[2]
+	assert_true(board.board_cut != null and not board.cut and board.lines.size() == 4)
+	assert_eq(board.beats.map(func(beat: Array) -> int: return beat.size()), [0, 3, 0, 2, 2], "文の前ごとの、出来事の数（攻撃は当たる・倒れる）")
+	assert_eq(board.board_cut.start.pieces.size(), 3)
+	talks.remove_at(2)
 	# カットシーン: 地の文だけの場面（会話の場面の型の 1 つ）。色の幕か、場所の景色。
 	var cut: RefCounted = talks[1]
 	assert_true(cut.cut and cut.color == &"night" and cut.place == null and cut.lines.size() == 2)
@@ -119,7 +125,7 @@ func test_the_scenes_template_reads_as_a_list_of_scenes() -> void:
 	assert_eq(talks[1].look, &"crystal_night", "look で景色を替える")
 	assert_true(talks[2].place == null and talks[2].look == &"", "place が無ければ、話の盤")
 	assert_true(talks[0].lines[0].is_narration())
-	assert_eq(episode.all_lines().size(), 3 + 2 + 6 + 2 + 1 + 3 + 1, "会話の行（カットシーンの文も）、途中の台詞、負けの台詞")
+	assert_eq(episode.all_lines().size(), 3 + 2 + 4 + 6 + 2 + 1 + 3 + 1, "会話の行（カットシーンの文も）、途中の台詞、負けの台詞")
 	# 選択肢: 問いの行が、名前と答えを持つ。答えごとの行と (if …) の行は、出す条件を持つ。
 	var asking: Episode.TalkLine = talks[1].lines[1]
 	assert_true(asking.asks() and asking.choice == &"template_route")
@@ -192,6 +198,13 @@ func test_scene_sections_are_checked() -> void:
 		"長いカットシーン": [text.replace("だれも、口をきかなかった。", "夜。\n".repeat(7)), "文は 6 行まで"],
 		"最後がカットシーン": [text + "\n[cut 終わり]\nmusic = talk_calm\n終わり。\n", "話の最後の場面にしない"],
 		"対戦が無いのに敵": [text.replace("[battle]", "").replace("[sortie]", ""), "対戦の無い話"],
+		"盤のカットシーンの書き損じ": [text.replace("move 骸骨 7,16", "mvoe 骸骨 7,16"), "[board 尾根の朝] 知らない台本の行"],
+		"盤のカットシーンの知らない兵": [text.replace("attack 新兵 骸骨", "attack 新兵 骸骨兵"), "知らない兵「骸骨兵」"],
+		"盤のカットシーンの知らない話し手": [text.replace("レオ: 撃て。", "隊長: 撃て。"), "知らない話し手「隊長」"],
+		"盤のカットシーンに選択肢": [text.replace("レオ: 撃て。", "レオ: 撃て。\n(choice shoot)"), "選択肢・条件は書けない"],
+		"盤のカットシーンに色": [text.replace("[board 尾根の朝]", "[board 尾根の朝]\ncolor = night"), "知らない設定「color」"],
+		"動きの無い盤のカットシーン": [text.replace("[sortie]", "[board 空]\nmusic = talk\nレオ: 行くぞ。\n[sortie]"), "兵の動き"],
+		"最後が盤のカットシーン": [text + "\n[board 終わり]\nmusic = talk_calm\nunit レオ ally king 8,19\nmove レオ 8,18\n> 終わり。\n", "話の最後の場面にしない"],
 	}
 	for name: String in cases:
 		var problems: PackedStringArray = Episode.parse(cases[name][0]).problems

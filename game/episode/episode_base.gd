@@ -23,6 +23,9 @@ const SECTIONS := ["episode", "cast", "before", "cues", "after", "lost", "ally",
 const TALK_SECTION := "talk "
 ## カットシーンの節「[cut 名前]」（地の文だけの場面）と、その行の数の上限。
 const CUT_SECTION := "cut "
+## 盤のカットシーンの節「[board 名前]」（盤の上で兵が台本どおりに動く。docs/story.md の「盤のカットシーン」）。
+const BOARD_SECTION := "board "
+const CutScript := preload("res://game/cut_script.gd")
 const CUT_MAX_LINES := 6
 const SCENE_MARKS := ["sortie", "battle"]
 ## 選択肢（docs/story.md の「選択肢」）: 答えの数、答えの文の長さの上限（選ぶ枠のボタンに 1 行で収まる）、名前と鍵に使える字。
