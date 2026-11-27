@@ -167,6 +167,11 @@ func set_status_mark(marked: bool) -> void:
 		_status_ring.visible = marked
 
 
+## 状態の輪が出ているか（検査用）。
+func has_status_mark() -> bool:
+	return _status_ring != null and _status_ring.visible
+
+
 ## 軍略が効く駒を、頭の上の札（増える数。trait_mark.gd）と、足元の外側の輪で見せる（色は軍略の軍の色。
 ## docs/troop-traits.md の「対戦の画面」）。marked が偽なら消す。text は札の文（「+2」）。
 ## 足元の輪は、拠点の竿・盾・選択の輪に埋もれることがある。札は頭の上で、いつも手前に描く。

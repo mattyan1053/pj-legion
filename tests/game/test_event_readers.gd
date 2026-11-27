@@ -1,7 +1,7 @@
 extends "res://tests/base_test.gd"
 ## 出来事（rules/events/）を種類ごとに読む所の見張り（docs/battle.md の「出来事を 1 つ足すとき」）。
 ##
-## 再生（test_event_playback.gd）とログ（test_battle_log.gd）と同じ作りで、戦績・予測のまとめ・CPU の手の価値・実測の道具・中立の再生の 5 か所を見る。
+## 再生（test_event_playback.gd）とログ（test_battle_log.gd）と同じ作りで、戦績・予測のまとめ・CPU の手の価値・実測の道具・中立の再生・再生の盤の 6 か所を見る。
 ## どこも「読む出来事」（read_events）と「読まないと決めた出来事」（skipped_events）の表を持つ。
 ## - 出来事の種類の全部が、どちらか一方に入っていること（親を読めば子も読む）。新しい出来事を足すと、ここで落ちる
 ## - 読む表が、そのファイルが実際に `is` / `as` で名前を出す出来事と同じであること（表とコードがずれない）
@@ -13,6 +13,7 @@ const READERS: Array[String] = [
 	"res://rules/cpu/cpu_outcome_value.gd",
 	"res://tools/cpu_match.gd",
 	"res://game/neutral_playback.gd",
+	"res://game/replay_board.gd",
 ]
 
 

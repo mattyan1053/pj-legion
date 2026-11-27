@@ -25,6 +25,7 @@
 4. **読む側**（`_do_all` が順に渡す）:
    - 戦績 `rules/battle_stats.gd`（`docs/battle-stats.md`）
    - 再生 `game/battle_playback.gd` の `play_all` → `battle_playback/playback_base.gd` の `event_players()`（種類 → 再生の関数）。再生と同時にログ `game/battle_log.gd` の `readers()` へ（`docs/battle-log.md`）。
+     再生は対戦を読まない。行動をルールに渡す前に写した盤（再生の盤 `game/replay_board.gd`）に、再生しながら出来事を食わせて読む（`docs/battle-view.md` の「再生の盤」）。
      音は再生の関数から鳴らす（`docs/sound.md`）。中立の番は `game/neutral_playback.gd` がまとめる。
    - 話の途中の台詞 `game/battle_cues.gd`（ストーリーだけ）
    - 終わると、ルールに聞き直して画面を作り直し（`_refresh`）、CPU の番なら次の手へ。
@@ -33,7 +34,7 @@
    別の計算を持つのは、CPU の危険の読み（`rules/cpu/cpu_threats.gd`）と脅威範囲（`rules/threat.gd`）だけ。
 6. **自動の対戦** `game/autoplay.gd`: 人と同じ入口を通して全部の場面を回す。1 度も再生されなかった出来事があると落ちる。
 
-出来事を種類ごとに読む所のうち、再生とログは足し忘れをテストが拾う。戦績・予測・CPU の手の価値・実測の道具・中立の再生は拾わない（`docs/code-health.md` の表の 2）。
+出来事を種類ごとに読む所は、どれも足し忘れをテストが拾う（再生・ログ・戦績・予測・CPU の手の価値・実測の道具・中立の再生・再生の盤。`docs/battle.md` の「出来事を 1 つ足すとき」）。
 
 ## 話の 1 話
 
