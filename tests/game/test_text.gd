@@ -30,6 +30,7 @@ const NOT_SHOWN := [
 	"res://game/episode/episode_scenes.gd",
 	"res://game/campaign.gd",
 	"res://game/maps.gd",
+	"res://game/cut_script.gd",  # 盤のカットシーンの台本の書き間違いの文（話のファイルを書く人が読む）
 	"res://game/text_wrap.gd",  # 折り返しの決まり（行頭・行末に置かない文字の並び。画面の文ではない）
 ]
 ## まだ表へ移していないファイルと、そこに残っている直書きの日本語の数（これより増えたら落ちる）。移したら行を消す。
