@@ -30,12 +30,9 @@ const BattleTexts := preload("res://game/battle_texts.gd")
 const Crest := preload("res://game/crest.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
-<<<<<<< HEAD
 const TraitTag := preload("res://game/trait_tag.gd")
-=======
 const ItemIcon := preload("res://game/item_icon.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
->>>>>>> origin/main
 const Ornament := preload("res://game/ui_ornament.gd")
 
 signal finished(outcome: StringName)
