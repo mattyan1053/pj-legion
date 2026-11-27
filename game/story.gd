@@ -18,14 +18,18 @@ const SceneFlow := preload("res://game/scene_flow.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const Campaign := preload("res://game/campaign.gd")
 const Episode := preload("res://game/episode.gd")
+const SaveFormat := preload("res://game/save_format.gd")
 
 ## クリアした話が増えた。
 signal changed
 
-## save_store.gd で置くまとまりの名前と、中身の形の版。
-## 版 1 は物語が 1 つだったころの形（{"cleared", "squad"}）。読むときは MILITARY の物語の記録として引き継ぐ。
+## save_store.gd で置くまとまりの名前と、中身の形の版（欄を足したら上げる。決まりは save_format.gd）。
+## 版 1 は物語が 1 つだったころの形（{"cleared", "squad"}）。読むときは MILITARY の物語の記録として引き継ぐ（_migrate）。
 const STORE_NAME := "story"
 const FORMAT_VERSION := 2
+## 記録の中身の、いまの版が知っている欄（ほかの欄は、新しい版の exe が書いたものとして残す）。
+const KNOWN_KEYS := ["campaigns", "campaign"]
+const RECORD_KEYS := ["cleared", "squad"]
 ## 会話の場面と、対戦の場面と、話の一覧の場面の名前（scene_flow.gd）。
 const TALK := SceneFlow.TALK
 const BATTLE := SceneFlow.BATTLE
@@ -53,8 +57,11 @@ static func notice_name() -> String:
 var store: RefCounted
 ## いま選んでいる物語（物語を選ぶ画面で選ぶ。記録には書かない）。
 var campaign: Campaign = military()
-## 物語の id（String）-> {"cleared": [話の id（String）, …], "squad": 部隊の id（空なら既定の編成）}。知らない物語の記録も残す。
+## 物語の id（String）-> {"cleared": [話の id（String）, …], "squad": 部隊の id（空なら既定の編成）, "kept": 知らない欄}。知らない物語の記録も残す。
 var _records := {}
+## 読んだ記録の版と、記録の知らない欄（新しい exe が書いた欄。書き戻すときに残す。save_format.gd）。
+var _read_version := FORMAT_VERSION
+var _kept := {}
 ## 最後に選んだ物語の id（空なら、まだ選んでいない）。記録に書く。
 var _last_campaign := ""
 ## 確かめ用に、全部の話と解放を開いているか（docs/story.md の「確かめ用の解放」。F5）。その起動のあいだだけで、記録には書かない。
@@ -78,17 +85,22 @@ var squad_id: String:
 func load_saved() -> void:
 	_records.clear()
 	_last_campaign = ""
+	_read_version = FORMAT_VERSION
+	_kept = {}
 	if store == null:
 		return
 	var saved: Dictionary = store.read(STORE_NAME)
 	if not saved.is_empty():
-		load_data(saved["data"])
+		load_data(saved["data"], saved["version"])
 
 
-## 中身（ファイルの data）から記録を作る。形の違うところは読み飛ばす。
-## 版 1 の形（{"cleared", "squad"}。物語が 1 つだったころ）は、MILITARY の物語の記録として読む。
-func load_data(data: Dictionary) -> void:
+## 中身（ファイルの data。版 version）から記録を作る。形の違うところは読み飛ばす。古い版は _migrate で読み替える。
+## 知らない欄（新しい版の exe が書いたもの）は、書き戻すときのために残す。
+func load_data(source: Dictionary, version := FORMAT_VERSION) -> void:
+	var data := _migrate(version, source)
 	_records.clear()
+	_read_version = version
+	_kept = SaveFormat.unknown(data, KNOWN_KEYS, version, FORMAT_VERSION)
 	# 確かめ用に開いている間のクリアと、開いて始めた話は、そのとき遊んでいたスロットのもの。ほかのスロットへ持ち越さない
 	# （持ち越すと、ほかのスロットで記録どおりに遊べるようになった話に勝っても、記録に書かない）。
 	_open_cleared.clear()
@@ -97,12 +109,10 @@ func load_data(data: Dictionary) -> void:
 	_last_campaign = String(last) if typeof(last) in [TYPE_STRING, TYPE_STRING_NAME] else ""
 	var saved_campaigns: Variant = data.get("campaigns")
 	if typeof(saved_campaigns) != TYPE_DICTIONARY:
-		_records[String(MILITARY_ID)] = _read_record(data)
-		_fill_earlier_clears()
-		return
+		saved_campaigns = {}
 	for id: Variant in saved_campaigns:
 		if typeof(id) in [TYPE_STRING, TYPE_STRING_NAME] and String(id) != "" and typeof(saved_campaigns[id]) == TYPE_DICTIONARY:
-			_records[String(id)] = _read_record(saved_campaigns[id])
+			_records[String(id)] = _read_record(saved_campaigns[id], version)
 	_fill_earlier_clears()
 
 
@@ -123,7 +133,15 @@ func _fill_earlier_clears() -> void:
 				cleared.append(String(each.episodes[i].id))
 
 
-static func _read_record(data: Dictionary) -> Dictionary:
+## 版 version の中身を、いまの形に読み替える。
+## 版 1（物語が 1 つだったころの {"cleared", "squad"}）は、MILITARY の物語の記録にする。
+static func _migrate(version: int, data: Dictionary) -> Dictionary:
+	if version <= 1:
+		return {"campaigns": {String(MILITARY_ID): data}}
+	return data
+
+
+static func _read_record(data: Dictionary, version: int) -> Dictionary:
 	var cleared: Array[String] = []
 	var ids: Variant = data.get("cleared")
 	if typeof(ids) == TYPE_ARRAY:
@@ -131,7 +149,8 @@ static func _read_record(data: Dictionary) -> Dictionary:
 			if typeof(id) in [TYPE_STRING, TYPE_STRING_NAME] and String(id) != "" and not cleared.has(String(id)):
 				cleared.append(String(id))
 	var squad: Variant = data.get("squad")
-	return {"cleared": cleared, "squad": String(squad) if typeof(squad) in [TYPE_STRING, TYPE_STRING_NAME] else ""}
+	return {"cleared": cleared, "squad": String(squad) if typeof(squad) in [TYPE_STRING, TYPE_STRING_NAME] else "",
+			"kept": SaveFormat.unknown(data, RECORD_KEYS, version, FORMAT_VERSION)}
 
 
 ## ファイルに書く中身: {"campaigns": {物語の id: {"cleared": [話の id, …], "squad": 部隊の id（既定の編成なら書かない）}}}。
@@ -143,19 +162,20 @@ func to_data() -> Dictionary:
 		var written := {"cleared": (record["cleared"] as Array).duplicate()}
 		if record["squad"] != "":
 			written["squad"] = record["squad"]
-		if not (written["cleared"] as Array).is_empty() or written.has("squad"):
-			written_campaigns[id] = written
+		var kept: Dictionary = record.get("kept", {})
+		if not (written["cleared"] as Array).is_empty() or written.has("squad") or not kept.is_empty():
+			written_campaigns[id] = SaveFormat.with_unknown(written, kept)
 	var written_data := {"campaigns": written_campaigns}
 	if _last_campaign != "":
 		written_data["campaign"] = _last_campaign
-	return written_data
+	return SaveFormat.with_unknown(written_data, _kept)
 
 
 ## 物語 of_campaign の記録（無ければ空の記録を作る）。
 func _record(of_campaign: Campaign) -> Dictionary:
 	var id := String(of_campaign.id)
 	if not _records.has(id):
-		_records[id] = {"cleared": [] as Array[String], "squad": ""}
+		_records[id] = {"cleared": [] as Array[String], "squad": "", "kept": {}}
 	return _records[id]
 
 
@@ -271,14 +291,19 @@ func choose_squad(id: String) -> void:
 
 func _save() -> void:
 	if store != null:
-		store.write(STORE_NAME, FORMAT_VERSION, to_data())
+		store.write(STORE_NAME, written_version(), to_data())
+
+
+## 書くときの版（新しい版の記録を読んでいたら、その版のまま。save_format.gd）。
+func written_version() -> int:
+	return SaveFormat.written_version(_read_version, FORMAT_VERSION)
 
 
 ## 記録の中身 data（ファイルの data）の要約（セーブのスロットの札）: {"campaign": 最後に選んだ物語（無ければ、クリアのある最初の物語。どちらも無ければ null）,
 ## "cleared": その物語でクリアした話の数, "total": その物語の話の数, "last": その物語でクリアしたいちばん先の話（無ければ null）}。
-static func summary_of(data: Dictionary) -> Dictionary:
+static func summary_of(data: Dictionary, version := FORMAT_VERSION) -> Dictionary:
 	var reader := new()
-	reader.load_data(data)
+	reader.load_data(data, version)
 	var chosen: Campaign = campaign_by_id(StringName(reader._last_campaign)) if reader._last_campaign != "" else null
 	if chosen == null:
 		for each: Campaign in campaigns():
