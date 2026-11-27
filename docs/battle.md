@@ -2,7 +2,7 @@
 
 コード: `rules/battle.gd`（`apply`、`can_apply`、`options`、`clone`、`rng`）、`rules/action_result.gd`、
 `rules/unit_options.gd`、`rules/actions/battle_action.gd`、`rules/events/battle_event.gd`、`rules/state_copy.gd`。
-テスト: `tests/rules/test_battle.gd`、`tests/rules/test_unit_options.gd`。
+テスト: `tests/rules/test_battle.gd`、`tests/rules/test_unit_options.gd`、`tests/game/test_event_readers.gd`（出来事を種類ごとに読む所の表）。
 
 1 回の対戦の状態は `Battle` が持つ。状態を変えるのは `Battle.apply(行動)` だけ
 （対戦の準備で駒を置く `add_unit` は除く）。
@@ -31,6 +31,27 @@
 
   HP の変化だけを追う側（戦闘予測、CPU）は、親として読めば足りる。
 - `apply` は `BattleAction` しか受け取らない。イベントや駒を渡すと、スクリプトの読み込みの時点でエラーになる。
+
+### 出来事を 1 つ足すとき
+
+`rules/events/` に新しい出来事（`BattleEvent` の子）を足したら、次の所を触る。**どれも、触り忘れるとテストか自動の対戦が落ちる。**
+
+1. 出来事のスクリプト（`rules/events/`）と、それを返すルール。返す順を、その機能の文書に書く。
+2. 再生: `game/battle_playback.gd` の `event_players()` に載せ、再生するメソッドを書く（`docs/battle-view.md`）。
+   表に無いと `tests/game/test_event_playback.gd` が、自動の対戦で 1 度も再生されないと `game/autoplay.gd` が落ちる。
+   1 度も起きない出来事なら、起きる場面を自動の対戦（`game/autoplay/`）に足す。
+3. ログ: `game/battle_log.gd` の `readers()` に載せる。行にしないなら `_skip` に理由を添えて載せる（`docs/battle-log.md`）。
+   表に無いと `tests/game/test_battle_log.gd` が落ちる。
+4. 種類ごとに読む 5 か所で、**読むか、読まないかを決める**。どこも、ファイルの終わりに「読む出来事」（`read_events`）と
+   「読まないと決めた出来事」（`skipped_events`）の表がある。読むなら、コードに `is` / `as` で書き、読む表に足す。
+   読まないなら、読まない表に理由と足す。どちらにも無いか、読む表がコードの `is` / `as` とずれると、`tests/game/test_event_readers.gd` が落ちる。
+   親（`UnitDamagedEvent` など）を読んでいれば、子は読むほうに数える。
+   - 戦績・MVP: `rules/battle_stats.gd`（`docs/battle-stats.md`）
+   - 予測のまとめ: `rules/forecast.gd`（`docs/battle-forecast.md`）
+   - CPU の手の価値: `rules/cpu/cpu_outcome_value.gd`（`docs/cpu-ai.md`）
+   - 実測の道具: `tools/cpu_match.gd`（種類ごとの数は、読まなくても数える）
+   - 中立の再生の場面分け: `game/neutral_playback.gd`（主役になる出来事か）
+5. 予測のパネル・ログ・戦績で数字や文を出すなら、文の表（`game/text/`。`docs/text.md`）に足す。
 
 ## apply の結果
 

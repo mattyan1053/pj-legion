@@ -9,6 +9,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const Maps := preload("res://game/maps.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
+const Names := preload("res://game/names.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 ## 書ける節。
@@ -72,6 +73,10 @@ var enemy_king := true
 ## 敵の側が番人（中ボス）を狙わないか（[enemy] の spare_boss = yes。Battle.spares_bosses。docs/story.md）。
 var enemy_spares_boss := false
 var enemy: Array = []
+## 陣営の呼び名: [人の軍, 敵の軍]（[ally] / [enemy] の name。Names.STORY_NAME_MAX 字まで）。空なら軍の既定の呼び名（story_battle.gd の side_names）。
+var side_names: Array[String] = ["", ""]
+## 陣営の短い呼び名（[ally] / [enemy] の short。上の帯の陣営の欄とログ。Names.STORY_SHORT_MAX 字まで）。空なら、呼び名が短ければ呼び名、長ければ軍の既定。
+var side_shorts: Array[String] = ["", ""]
 ## 陣営ごとの軍略（Traits.Id。書かなければ Traits.NONE = 軍略なし。docs/troop-traits.md）。[ally] / [enemy] の trait。
 var traits: Array[int] = [Traits.NONE, Traits.NONE]
 ## 陣営ごとの誓いの組（その陣営の unit の行の、1 から数えた番号の組を、0 からの Vector2i で。軍略が誓いの陣営だけ）。[ally] / [enemy] の oath。

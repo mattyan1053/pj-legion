@@ -59,6 +59,7 @@ unit = paladin
 unit = priest
 
 [enemy]
+name = 幻の兵
 army = military
 unit = shield_trooper
 unit = sniper

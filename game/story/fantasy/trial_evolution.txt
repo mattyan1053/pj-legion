@@ -62,6 +62,7 @@ unit = priest
 deploy = 4,10  3,11  5,11
 
 [enemy]
+name = 幻の兵
 army = military
 unit = shield_trooper
 unit = commando

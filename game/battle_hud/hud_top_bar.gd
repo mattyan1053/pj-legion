@@ -24,7 +24,8 @@ func set_status(
 	_goal_style.bg_color = COLOR_GOAL_URGENT if urgent else COLOR_GOAL
 	_goal_style.border_color = COLOR_PULSE if urgent else COLOR_GOAL_BORDER
 	_goal_label.add_theme_color_override("font_color", Color.WHITE if urgent else COLOR_FORECAST)
-	_phase_label.text = Text.t("battle.hud.phase", {"side": Names.side(phase)})
+	# ストーリーは、帯の幅に収まる短い呼び名（番の知らせと決着は、長い呼び名）。
+	_phase_label.text = Text.t("battle.hud.phase", {"side": Names.side_word(phase) if Names.story_sides else Names.side(phase)})
 	# 番の陣営の色: 文字の後ろの札と、上の帯の下の縁。
 	var phase_color := _side_color(phase)
 	_phase_label.add_theme_color_override("font_color", phase_color.lightened(0.62))

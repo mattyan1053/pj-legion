@@ -423,6 +423,28 @@ func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sorti
 	root.free()
 
 
+## 出撃準備の敵の部隊の見出しは、話の呼び名（「敵の部隊　ベルク連邦 教導隊」）。話のファイルに軍略を書いた陣営は、見出しの後ろに軍略の札。
+func test_the_sortie_names_the_enemy_and_shows_episode_traits() -> void:
+	var context := preload("res://game/app_context.gd").new()
+	context.story.choose_campaign(Story.campaigns()[0])
+	var episode: RefCounted = _episode(&"drill_sniper")
+	var before: Array[int] = episode.traits.duplicate()
+	episode.traits[1] = Traits.Id.FOCUS
+	context.run = context.story.run_now(episode)
+	context.scene = Story.SORTIE
+	var sortie := preload("res://game/sortie_screen.gd").new()
+	sortie.context = context
+	var root := Node.new()
+	root.add_child(sortie)
+	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
+	assert_eq(sortie.battle_source.side_names()[1], "ベルク連邦 教導隊")
+	assert_eq(sortie.battle_source.side_shorts()[1], "教導隊")
+	assert_eq(sortie.trait_tag_text(1), Names.troop_trait(Traits.Id.FOCUS), "敵の軍略の札")
+	assert_eq(sortie.trait_tag_text(0), "", "軍略の無い陣営は、札を見せない")
+	episode.traits.assign(before)
+	root.free()
+
+
 ## 始めのレベルが 1 でない駒（「分かれ道」のパラディンとソーサラー）は、出撃準備の部隊の並びにレベルが出る。
 func test_the_sortie_shows_start_levels_above_one() -> void:
 	var context := preload("res://game/app_context.gd").new()

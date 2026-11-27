@@ -62,6 +62,7 @@ unit = priest
 start_gauge = 800
 
 [enemy]
+name = 幻の兵
 army = military
 unit = shield_trooper + iron_shield
 unit = sniper
