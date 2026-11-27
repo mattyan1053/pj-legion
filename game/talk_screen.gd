@@ -31,14 +31,24 @@ func _ready() -> void:
 		king_looks = story_battle.king_looks()
 	# 名前のある人物は、盤と同じく、その人の乗る駒をその人の形で立たせる（unit_looks.gd の assign_people）。
 	var people: Dictionary = UnitLooks.assign_people(shown.units, story_battle.cast_looks()) if shown != null else {}
-	_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
-	add_child(_backdrop)
+	# カットシーン（docs/story.md の「カットシーン」）: 文の枠も話し手も出さず、背景（景色か、色の幕）の上に、地の文を真ん中に出す。
+	var cut: bool = talk.get("cut", false)
+	var curtain: StringName = talk.get("color", &"")
 	var layer := CanvasLayer.new()
-	add_child(layer)
 	_layer = layer
+	if CUT_COLORS.has(curtain):
+		var fill := ColorRect.new()
+		fill.color = CUT_COLORS[curtain]
+		fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(fill)
+	else:
+		_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
+		add_child(_backdrop)
+	add_child(layer)
 	# 背景の盤を少し沈め、話し手の姿と文を浮かせる。
 	var shade := ColorRect.new()
-	shade.color = Color(Palette.SHADE, BACKDROP_SHADE)
+	shade.color = Color(Palette.SHADE, CUT_SHADE if cut else BACKDROP_SHADE)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -60,6 +70,7 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	heading.text = talk.get("title", "")
+	heading.modulate.a = 0.0 if cut else 1.0  # カットシーンは見出しを出さない（場所は取ったまま）
 	root.add_child(heading)
 
 	_stage = Control.new()
@@ -77,6 +88,20 @@ func _ready() -> void:
 	bottom.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(bottom)
 	_bottom = bottom
+	if cut:
+		# 文を画面の真ん中の高さへ（下にも、舞台と同じだけ伸びる余白を置く）。上下に黒い帯。
+		var below := Control.new()
+		below.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		below.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(below)
+		for preset: Control.LayoutPreset in [Control.PRESET_TOP_WIDE, Control.PRESET_BOTTOM_WIDE]:
+			var bar := ColorRect.new()
+			bar.color = Palette.OUTLINE
+			bar.custom_minimum_size = Vector2(0.0, CUT_BAR)
+			bar.set_anchors_and_offsets_preset(preset, Control.PRESET_MODE_MINSIZE)
+			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			layer.add_child(bar)
+			layer.move_child(bar, shade.get_index() + 1)
 
 	var top_row := HBoxContainer.new()
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -123,6 +148,10 @@ func _ready() -> void:
 	_skip.size_flags_vertical = Control.SIZE_SHRINK_END
 	_skip.pressed.connect(press_skip)
 	top_row.add_child(_skip)
+	if cut:
+		# 文だけを見せる場面なので、ボタンは控えめに。
+		_log_button.modulate.a = CUT_BUTTONS
+		_skip.modulate.a = CUT_BUTTONS
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0.0, 6.0)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -132,6 +161,11 @@ func _ready() -> void:
 	var box_style := UiTheme.box(COLOR_BOX, COLOR_BORDER, 1, 8, 12.0, 10)
 	box_style.border_width_top = 3
 	_box_style = box_style
+	if cut:
+		# 枠は見せない（地も縁も影も無し。大きさと置き方は同じ）。
+		box_style.bg_color = Color(Palette.INK, 0.0)
+		box_style.set_border_width_all(0)
+		box_style.shadow_size = 0
 	box_style.content_margin_left = BOX_MARGIN_X
 	box_style.content_margin_right = BOX_MARGIN_X
 	box_style.content_margin_top = 18.0
@@ -168,6 +202,8 @@ func _ready() -> void:
 	_item_frame.add_child(_trait_face)
 	# 折り返しは、文を出すときに text_wrap.gd で入れる（自動の折り返しは、ひらがなの語の途中や句読点の前で切る）。
 	_text = _label(TEXT_FONT, COLOR_TEXT)
+	if cut:
+		_text.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_row.add_child(_text)
@@ -356,6 +392,8 @@ func is_line_shown() -> bool:
 ## 背景の盤に立たせた駒の数（陣営ごと: [味方, 敵, 中立]。検査用）。
 func backdrop_units() -> Array[int]:
 	var counts: Array[int] = [0, 0, 0]
+	if _backdrop == null:
+		return counts
 	for view in _backdrop.unit_views:
 		counts[_backdrop.unit_sides[_backdrop.unit_views.find(view)]] += 1
 	return counts
@@ -369,6 +407,11 @@ func figures() -> Array[TalkFigure]:
 ## 下の名前の札・「飛ばす」・文の枠が画面に占める四角（検査用。姿はこれと重ねない）。
 func bottom_rect() -> Rect2:
 	return _bottom.get_global_rect()
+
+
+## カットシーンか（検査用）。
+func is_cut() -> bool:
+	return talk.get("cut", false)
 
 
 ## いまの文が地の文か（検査用）。

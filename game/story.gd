@@ -665,11 +665,14 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 				fought = true
 			Episode.StoryScene.Kind.TALK:
 				var talk := talk_of(episode, scene.lines, scene.music, hero)
+				if scene.cut:
+					talk["cut"] = true  # カットシーン: 文の枠も話し手も出さず、背景の上に文を出す（talk_screen.gd）
+					talk["color"] = scene.color
 				if scene.place != null:
 					# 別の場所の会話: 背景はその場所の景色（兵は立たせない）。
 					talk["board"] = scene.place.make_board()
 					talk["look"] = scene.look
-				elif episode.has_battle():
+				elif episode.has_battle() and not scene.cut:
 					talk["battle"] = battle  # 背景の盤に、初期位置の駒か、決着したときの駒を立たせる（talk_screen.gd）
 					talk["after"] = fought
 				run.add(TALK, talk, scene.once)

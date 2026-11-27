@@ -38,6 +38,11 @@ const OPTION_SLOTS := 3
 const BACKDROP_SHADE := 0.3
 ## 足元を沈める幕の、下の端の濃さ。
 const FLOOR_SHADE := 0.7
+## カットシーン（docs/story.md の「カットシーン」）: 背景に重ねる幕の濃さ（景色を見せるので薄い）、上下の黒い帯の高さ（px）、「ログ」「スキップ」の濃さ、色の幕の色。
+const CUT_SHADE := 0.12
+const CUT_BAR := 56.0
+const CUT_BUTTONS := 0.55
+const CUT_COLORS := {&"black": Palette.OUTLINE, &"night": Palette.INK}
 ## 画面の端から見出しまでの余白。
 const MARGIN := Vector2(32.0, 24.0)
 ## 話し手の姿の枠の横幅の上限（文の枠の幅に対する割合。左右の姿が真ん中で重ならない）。
