@@ -56,7 +56,7 @@ wins = routed
 
 [enemy]
 army = fantasy
-trait = vengeance
+trait = guard
 unit = paladin
 unit = sorcerer
 unit = priest
