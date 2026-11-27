@@ -85,6 +85,7 @@
 4. ダメージの解決への新しい割り込み方が要るなら、段を足す。順は `docs/combat.md` の「ダメージの解決」。
    - 攻撃にだけ掛かるなら、`rules/combat.gd` の `hit` の、合う段の位置に。
    - 原因を問わず（攻撃・爆発・スキル）掛かるなら、`rules/hit.gd` の `resolve` の、バリアの前に。
+   - 段の順は `tests/rules/test_damage_order.gd` が固定し、予測 = 実際 は `tests/game/test_forecast_matches.gd` が重ねた場面で比べる。新しい段は、両方に場面を足す。
    - 内訳を予測とログに出すなら: `Hit` の欄、`rules/events/unit_damaged_event.gd` の欄と `_fill`、`rules/forecast.gd` の `UnitOutcome` の欄と写す所、
      `game/forecast_text.gd` の注、`game/battle_log/log_base.gd` の `_damage_text` と `battle.csv` の `battle.log.note.<x>`。
 5. 回復の量を変える状態なら、HP を増やす 5 か所（泉・再生・回復役・聖域・補給線）をどれも直す（共通の道が無い。`docs/code-health.md` の表の 9）。
@@ -98,10 +99,10 @@
 - **CPU の危険の読み**（`rules/cpu/cpu_threats.gd`）: 守る側の状態はバリアしか知らない。ダメージを減らす状態を足しても、CPU はそのマスを危ないと読んだまま。
   攻める側は攻撃力（`bonus` の `POWER`）なら数える（脅威範囲も同じ）。それ以外の増え方は数えない。
 - CPU の手の価値（`rules/cpu/cpu_outcome_value.gd`）は、攻撃で付ける状態のうち絡みにしか値を付けない。ほかは 0。
-- 内訳の欄を写し忘れても、数そのものは合う。予測とログの注だけが出ない。予測 = 実際 のテスト（`tests/rules/test_forecast.gd`）は出来事の数と HP しか比べない。
+- 内訳の欄を写し忘れても、数そのものは合う。予測とログの注だけが出ない。予測 = 実際 のテスト（`test_forecast_matches.gd`）は、比べる欄（いまはダメージ・HP・状態・軍略の増減）に足さないと、新しい内訳の食い違いを拾わない。
 
 ### 確かめ方
 
-- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_statuses,test_names,test_unit_info_text,test_wrap_audit,test_combat,test_forecast`。
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_statuses,test_names,test_unit_info_text,test_wrap_audit,test_combat,test_damage_order,test_forecast`。
 - 付けた兵の情報の札（スクリーンショットの `battle_unit_detail`）。
 - 釣り合いが動くなら `measure-balance`。

@@ -111,6 +111,7 @@
 
 1. `rules/traits.gd`: `Id` に 1 つ（保存と話のファイルは、列挙の名前の小文字の鍵で持つ）、調整値の定数、`_BY_ARMY`（並びが札の並び。先頭が既定）。
    効き目は、形ごとに:
+   - 段の順は `tests/rules/test_damage_order.gd` が固定している。新しい段に入れるなら、そこに場面を足す（予測 = 実際 は `tests/game/test_forecast_matches.gd`）。
    - **攻撃のダメージに足す**: `attack_boosts_at` に枝と、効く相手を決める関数（`focus_marked`・`lone_marked` と同じ形）。
    - **攻撃のダメージを引く**: `guard_of` は隊列だけを返す。`rules/combat.gd` の `hit` が `boosts[Traits.Id.RANKS]` に書き、「助けられた側」を隊列かどうかで決めている。ここを直す。
    - **ターンの始めに効く**: `start_phase`（補給線のほかは、すぐ戻る）。呼ぶのは `rules/actions/end_phase_action.gd`（泉 → 再生 → 軍略 → 盤の上の効果 → 状態 → スキルの順）。
@@ -136,11 +137,10 @@
 - `troop_trait.<鍵>` の名前が無い: 鍵の文字がそのまま出る（名前を見るテストは無い）。
 - 印の枝が無い: 中が空の暗い丸。盤の上の枝が無い: 札も輪も線も出ない。
 - 引く形で、隊列の決め打ちを直さない: 減ったのに「+N」と出る。
-- ダメージの順: 軍略で足す → 森、の順を固定するテストは無い（`docs/code-health.md` の表の 8）。
 
 ### 確かめ方
 
-- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_traits,test_steady_frames,test_wrap_audit,test_text,test_doc_values,test_combat,test_forecast`
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_traits,test_steady_frames,test_wrap_audit,test_text,test_doc_values,test_combat,test_damage_order,test_forecast`
   （`test_steady_frames` は、全部の軍略の文が枠に収まるか、名前の札が同じ大きさかを見る）。
 - スクリーンショットの `trait_focus`（盤の上の札と線）。
 - 釣り合い: `tools/cpu_matches.gd -- --traits=<鍵>` と `--traits=random`（`measure-balance`）。
