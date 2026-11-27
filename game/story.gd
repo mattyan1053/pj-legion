@@ -588,10 +588,10 @@ static func episode_after(episode: Episode) -> Episode:
 ## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲 track（前の会話・あとの会話の曲。episode.gd の before_talk_music・after_talk_music。空なら場面の表の曲）,
 ## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
 ## 話の流れ（run_of）は、さらに "battle"（話の対戦。story_battle.gd。背景の盤に駒を立たせる）と "after"（あとの会話か）を足す。
-static func talk_of(episode: Episode, rows: Array, track := &"") -> Dictionary:
+static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"") -> Dictionary:
 	var lines: Array[Dictionary] = []
-	for row: Array in rows:
+	for row in rows:
 		# 地の文（話し手が -1）は、名前の無い行（talk_screen.gd が、札を出さずに真ん中へ出す）。
-		lines.append({"side": row[0], "who": row[2], "name": episode.speakers[row[2]] if row[2] >= 0 else "", "text": row[1]})
+		lines.append({"side": row.side, "who": row.who, "name": row.speaker_in(episode.speakers), "text": row.shown_text()})
 	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
 			"music": track, "figures": episode.figures}

@@ -214,8 +214,8 @@ func _check_kingless(file: RefCounted) -> void:
 	for i in speakers.size():
 		if speaker_sides[i] == 1 and figures[i]["kind"] == UnitKind.Id.KING:
 			file.problem(line, "将のいない敵（king = none）の話し手「%s」に、[cast] で将でない姿を書く（「名前 = enemy, skeleton_caller」など）" % speakers[i])
-	for cue: Array in cues:
-		if cue[0] == BattleCues.KING_HALF and cue[1] == 1:
+	for cue in cues:
+		if cue.trigger == BattleCues.KING_HALF and cue.value == 1:
 			file.problem(file.line_of("cues"), "将のいない敵（king = none）に、敵の将の HP のきっかけ（king_half enemy）は書けない")
 
 

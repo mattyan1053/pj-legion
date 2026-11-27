@@ -92,15 +92,15 @@ func _read_talks(file: RefCounted) -> void:
 		var optional := section == "lost"
 		var max_lines := LOST_MAX_LINES if optional else TALK_MAX_LINES
 		var max_chars := LOST_MAX_CHARS if optional else TALK_MAX_CHARS
-		var rows: Array = []
+		var rows: Array[TalkLine] = []
 		for row: Dictionary in file.rows(section):
 			var line := _speech(file, row["line"], row["text"])
-			if not line.is_empty() and optional and line[0] == NARRATION_SIDE:
+			if line != null and optional and line.is_narration():
 				file.problem(row["line"], "[%s] に地の文は書けない（決着の画面に、話し手のひとことで出す）" % section)
-			elif not line.is_empty():
+			elif line != null:
 				rows.append(line)
-				if (line[1] as String).length() > max_chars:
-					file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, max_chars, (line[1] as String).length()])
+				if line.text.length() > max_chars:
+					file.problem(row["line"], "[%s] の文は %d 字まで（いま %d 字）" % [section, max_chars, line.text.length()])
 		if rows.is_empty() and (not optional or file.has(section)):
 			file.problem(maxi(file.line_of(section), 1), "[%s] の会話が無い" % section)
 		elif rows.size() > max_lines:
@@ -108,32 +108,32 @@ func _read_talks(file: RefCounted) -> void:
 		set(section, rows)
 
 
-## 会話の行「話し手: 文」（全角の「：」でもよい）を [陣営, 文, 話し手（speakers の番号）] に。
-## 話し手は [cast] に書いた名前。頭が「>」（全角の「＞」でもよい）の行は地の文（[NARRATION_SIDE, 文, -1]）。読めなければ空。
-func _speech(file: RefCounted, line: int, text: String) -> Array:
+## 会話の行「話し手: 文」（全角の「：」でもよい）を、会話の行（talk_line.gd の speech）に。
+## 話し手は [cast] に書いた名前。頭が「>」（全角の「＞」でもよい）の行は地の文（talk_line.gd の narration）。読めなければ null。
+func _speech(file: RefCounted, line: int, text: String) -> TalkLine:
 	if text.begins_with(NARRATION_MARK) or text.begins_with("＞"):
 		var told := text.substr(1).strip_edges()
 		if told == "":
 			file.problem(line, "地の文が空（「> 文」）")
-			return []
-		return [NARRATION_SIDE, told, -1]
+			return null
+		return TalkLine.narration(told)
 	var at := text.find(":")
 	var wide := text.find("：")
 	if at < 0 or (wide >= 0 and wide < at):
 		at = wide
 	if at < 0:
 		file.problem(line, "会話の行は「話し手: 文」: %s" % text)
-		return []
+		return null
 	var name := text.substr(0, at).strip_edges()
 	var said := text.substr(at + 1).strip_edges()
 	var who := speakers.find(name)
 	if name == "" or who < 0:
 		file.problem(line, "知らない話し手「%s」（[cast] に書いた名前: %s）" % [name, " / ".join(speakers)])
-		return []
+		return null
 	if said == "":
 		file.problem(line, "文が空")
-		return []
-	return [speaker_sides[who], said, who]
+		return null
+	return TalkLine.speech(speaker_sides[who], said, who)
 
 
 ## 対戦の途中の会話の行「(きっかけ 値) 話し手: 文」。
@@ -146,9 +146,9 @@ func _read_cues(file: RefCounted) -> void:
 			continue
 		var words := text.substr(1, close - 1).split(" ", false)
 		var speech := _speech(file, row["line"], text.substr(close + 1).strip_edges())
-		if speech.is_empty():
+		if speech == null:
 			continue
-		if speech[0] == NARRATION_SIDE:
+		if speech.is_narration():
 			file.problem(row["line"], "[cues] に地の文は書けない（対戦の途中の台詞は、話し手の札で出す）")
 			continue
 		if words.size() != 2 or not BattleCues.KINDS.has(StringName(words[0])):
@@ -169,8 +169,8 @@ func _read_cues(file: RefCounted) -> void:
 			if value < 0:
 				file.problem(row["line"], "陣営は ally か enemy: %s" % words[1])
 				continue
-		if (speech[1] as String).length() > CUE_MAX_CHARS:
-			file.problem(row["line"], "途中の台詞は %d 字まで（いま %d 字）" % [CUE_MAX_CHARS, (speech[1] as String).length()])
-		cues.append([kind, value, speech[0], speech[1], speech[2]])
+		if speech.text.length() > CUE_MAX_CHARS:
+			file.problem(row["line"], "途中の台詞は %d 字まで（いま %d 字）" % [CUE_MAX_CHARS, speech.text.length()])
+		cues.append(TalkCue.new(kind, value, speech))
 	if cues.size() > CUES_MAX:
 		file.problem(file.line_of("cues"), "途中の台詞は %d つまで（いま %d）" % [CUES_MAX, cues.size()])
