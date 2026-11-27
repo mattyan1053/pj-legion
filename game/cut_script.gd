@@ -35,8 +35,10 @@ const UNITS_MAX := 24
 
 ## 盤（台本の兵は、ここの歩けるマスに置き、歩かせる）。
 var board: Board
-## 始めの盤（再生の盤）。
+## 始めの盤（再生の盤）。読んだ台本は話が持ち回るので、再生には fresh_start の新しい盤を使う（これに食わせない）。
 var start: ReplayBoard
+## 始めの盤の兵（台本の行で動かす前の写し）。
+var start_units: Array[Unit] = []
 ## 兵の名前 -> 駒の番号（台本に出てきた全部の兵。倒れた・去った兵も）。
 var names := {}
 ## 台本を出来事と文に直したもの。{"events": Array[BattleEvent]}（出来事の塊）か {"row": 文の行 {"line", "text"}} の列（書いた順）。
@@ -67,6 +69,11 @@ static func is_text_row(text: String) -> bool:
 	if not words.is_empty() and COMMANDS.has(words[0]):
 		return false
 	return text.begins_with(">") or text.begins_with("＞") or text.begins_with("(") or text.contains(":") or text.contains("：")
+
+
+## 始めの盤を、新しく組む（再生するたびに。再生は盤に出来事を食わせて書き換える）。
+func fresh_start() -> ReplayBoard:
+	return ReplayBoard.of_pieces(board, start_units)
 
 
 ## 出来事の数（全部の塊を合わせて）。
@@ -122,7 +129,8 @@ func _read(rows: Array) -> void:
 		heading = false
 		call("_read_" + command, at, args, text)
 	_flush()
-	start = ReplayBoard.of_pieces(board, units)
+	start_units = units
+	start = fresh_start()
 	if not _camera_written:
 		camera_cell = _middle(units)
 
