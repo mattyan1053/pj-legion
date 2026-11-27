@@ -30,6 +30,8 @@ const BattleTexts := preload("res://game/battle_texts.gd")
 const Crest := preload("res://game/crest.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
+const ItemIcon := preload("res://game/item_icon.gd")
+const BattleHud := preload("res://game/battle_hud.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 signal finished(outcome: StringName)
@@ -56,13 +58,10 @@ const LESSON_WIDTH := LESSON_SIZE.x - LESSON_HEAD_WIDTH - 36.0
 const LESSON_MAX_LINES := 2
 ## 見出しの段（題と飾りの線、右に覚えることの札）の高さ（px）。
 const HEADER_HEIGHT := 56.0
-## 敵の部隊の文の行の数（いちばん敵の多い話で 2 行。行の数ぶんの高さを、いつも取っておく）と、字の大きさ。
-const ENEMY_LINES := 2
-const ENEMY_FONT := 14
-## 選んだ部隊の中身の文の行の数（いつも、この行の数ぶんの高さを取る。部隊で欄の割り振りを変えない）と、字の大きさ（収まらなければ下限まで小さくする）。
-const DECK_LINES := 2
-const DECK_FONT := 14
-const DECK_FONT_MIN := 12
+## 敵の部隊・出撃する部隊の、駒の額の並びの行の数（いつも、この行の数ぶんの高さを取る。部隊で欄の割り振りを変えない）。
+## 中身は文で並べず、額で並べる（Issue #46 の 11/26「文字が羅列するのすんごいダサい」から）。名前と持ち物は額に乗せると出る。
+const ENEMY_FACE_ROWS := 1
+const DECK_FACE_ROWS := 1
 ## 選べる部隊の並び: 1 行の高さ、行の間、いつも丸ごと見えている行の数、その下にのぞく次の行（px。下に続きがあることを見せる）。
 ## 並びの欄の高さは、この行の数ぶんに決めてある（画面の高さが足りなくても、これより縮めない）。
 const OPTION_HEIGHT := 36.0
@@ -70,8 +69,10 @@ const OPTION_GAP := 4.0
 const OPTIONS_SHOWN := 3
 const OPTIONS_PEEK := 8.0
 const OPTIONS_HEIGHT := (OPTION_HEIGHT + OPTION_GAP) * OPTIONS_SHOWN + OPTIONS_PEEK
-## 部隊の駒の額の大きさ（px）。
-const FACE_SIZE := 40.0
+## 部隊の駒の額の大きさ（px）と、額の下の持ち物の印の大きさ（px。持ち物の無い駒も、この高さを取る）、額の間（px）。
+const FACE_SIZE := 48.0
+const FACE_ITEM := 13.0
+const FACE_GAP := 4.0
 ## 送りの棒のつまみの太さ（px。つかみやすい太さ）。
 const SCROLL_BAR_WIDTH := 14.0
 ## 画面の上下の端からの余白（px）。
@@ -109,7 +110,6 @@ var _auto_button: Button
 var _goal_cards: Array = []
 var _options: VBoxContainer
 var _option_buttons := {}  # id -> Button
-var _deck_line: Label
 var _deck_faces: HFlowContainer
 var _sortie: Button
 var _lesson_label: Label
@@ -229,6 +229,15 @@ func _fold(label: Label, text: String) -> void:
 	var font_size := label.get_theme_font_size("font_size")
 	label.text = TextWrap.fold(text, WRAP_WIDTH, func(character: String) -> float:
 		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+
+
+## 駒の額の並び（決まった高さ: rows 行ぶん）。
+func _faces_row(rows: int) -> HFlowContainer:
+	var faces := HFlowContainer.new()
+	faces.add_theme_constant_override("h_separation", int(FACE_GAP))
+	faces.add_theme_constant_override("v_separation", int(FACE_GAP))
+	faces.custom_minimum_size = Vector2(WRAP_WIDTH, (FACE_SIZE + FACE_ITEM + 2.0) * rows + FACE_GAP * (rows - 1))
+	return faces
 
 
 func _text(font_size: int, color: Color) -> Label:
