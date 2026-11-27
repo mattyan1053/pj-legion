@@ -166,8 +166,8 @@ func talk_cues() -> RefCounted:
 ## 話のファイルの [lost]（負けたときの台詞）。無い話は無し。
 func lost_lines() -> Array[BattleCues.Line]:
 	var lines: Array[BattleCues.Line] = []
-	for row: Array in episode.lost:
-		lines.append(BattleCues.Line.new(row[0], episode.speakers[row[2]], row[1], episode.figures[row[2]]))
+	for row in episode.lost:
+		lines.append(BattleCues.line_of(row, episode.speakers, episode.figures))
 	return lines
 
 

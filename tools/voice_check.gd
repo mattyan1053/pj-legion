@@ -110,19 +110,19 @@ func check_campaign(campaign: Campaign) -> PackedStringArray:
 	var introduced := {}
 	for episode: Episode in campaign.episodes:
 		var where := "%s/%s" % [campaign.id, episode.id]
-		var lines := []
-		for row: Array in episode.before:
-			lines.append(["before", row[2], row[1]])
-		for cue: Array in episode.cues:
-			lines.append(["cues", cue[4], cue[3]])
-		for row: Array in episode.after:
-			lines.append(["after", row[2], row[1]])
-		for row: Array in episode.lost:
-			lines.append(["lost", row[2], row[1]])
-		for line: Array in lines:
-			var speaker := "" if line[1] < 0 or line[1] >= episode.speakers.size() else episode.speakers[line[1]]
-			for what: String in check_line(speaker, line[2], introduced):
-				found.append("%s [%s] %s: %s — %s" % [where, line[0], speaker if speaker != "" else ">", line[2], what])
+		var lines: Array[Dictionary] = []  # {"part": 節, "line": 会話の行}
+		for row: Episode.TalkLine in episode.before:
+			lines.append({"part": "before", "line": row})
+		for cue: Episode.TalkCue in episode.cues:
+			lines.append({"part": "cues", "line": cue.line})
+		for part: String in ["after", "lost"]:
+			for row: Episode.TalkLine in episode.get(part):
+				lines.append({"part": part, "line": row})
+		for each: Dictionary in lines:
+			var line: Episode.TalkLine = each["line"]
+			var speaker := line.speaker_in(episode.speakers)
+			for what: String in check_line(speaker, line.text, introduced):
+				found.append("%s [%s] %s: %s — %s" % [where, each["part"], speaker if speaker != "" else ">", line.text, what])
 	return found
 
 
