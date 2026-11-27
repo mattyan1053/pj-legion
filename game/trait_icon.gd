@@ -8,6 +8,7 @@ extends Control
 ## - 誓い: 糸で結んだ 2 人が、同じ敵へ矢
 ## - 守護: 大きな兵（パラディン）の隣の兵に、敵の矢が盾で止まる
 
+const ArmyLook := preload("res://game/army_look.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
 var trait_id := Traits.NONE:
@@ -36,7 +37,7 @@ func _draw() -> void:
 	draw_circle(size / 2.0, s * 0.5, Palette.INK)
 	draw_arc(size / 2.0, s * 0.5 - 0.5, 0.0, TAU, 32, Palette.BORDER, 1.0, true)
 	var army := Traits.army_of(trait_id)
-	var key := Palette.NATION_MILITARY if army == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
+	var key := ArmyLook.color(army)
 	var ally := Palette.TEXT
 	var foe := Palette.TEAM_RED.darkened(0.1)
 	if dim:

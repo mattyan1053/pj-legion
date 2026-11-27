@@ -30,7 +30,7 @@ func _init(frame_size := Vector2(220.0, 260.0)) -> void:
 	custom_minimum_size = frame_size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
-	_crest = Crest.new(UnitKind.Army.MILITARY, frame_size.x * 0.95)
+	_crest = Crest.new(UnitKind.Army.NONE, frame_size.x * 0.95)
 	_crest.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
 	_crest.visible = false
 	add_child(_crest)

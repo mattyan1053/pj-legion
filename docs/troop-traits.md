@@ -111,7 +111,8 @@
 
 ### 触るファイル
 
-1. `rules/traits.gd`: `Id` に 1 つ（保存と話のファイルは、列挙の名前の小文字の鍵で持つ）、調整値の定数、`_BY_ARMY`（並びが札の並び。先頭が既定）。
+1. `rules/traits.gd`: `Id` に 1 つ（保存と話のファイルは、列挙の名前の小文字の鍵で持つ）、調整値の定数。
+   軍の表 `rules/armies.gd` の、その軍の `traits`（並びが札の並び。先頭が既定）と `cpu_traits`（CPU が合うかを見る順）に足す。
    効き目は、形ごとに:
    - 段の順は `tests/rules/test_damage_order.gd` が固定している。新しい段に入れるなら、そこに場面を足す（予測 = 実際 は `tests/game/test_forecast_matches.gd`）。
    - **攻撃のダメージに足す**: `attack_boosts` に枝と、効く相手を決める関数（`focus_marked`・`vengeance_marked` と同じ形）。
@@ -119,7 +120,7 @@
    - **ターンの始めに効く**: `start_phase`（補給線のほかは、すぐ戻る）。呼ぶのは `rules/actions/end_phase_action.gd`（泉 → 再生 → 軍略 → 盤の上の効果 → 状態 → スキルの順）。
      新しい出来事が要る。回復なら `SupplyHealedEvent` と同じく `UnitHealedEvent` の子にすると、戦績・予測・CPU の手の価値が、そのまま数える。
 2. CPU: `rules/cpu/cpu_threats.gd`（相手の軍略で増えるダメージの `match`、`guard_at` で減るぶん）、`rules/cpu/cpu_position_value.gd` の `_trait_position_value`、
-   `rules/cpu/cpu_outcome_value.gd` の `_trait_value`、`rules/cpu_deck.gd` の `choose_trait`（部隊の中身から選ぶ）。
+   `rules/cpu/cpu_outcome_value.gd` の `_trait_value`、`rules/cpu_deck.gd` の `_fits`（部隊の中身に合うか。書かなければ、いつも合う = `cpu_traits` のその位置より後ろは選ばれない）。
 3. 文: `game/text/names.csv` の `troop_trait.<鍵>`（名前）・`.effect`（`{amount}`）・`.text`（`{gain}`）。文の形は上の「軍略」。
 4. 数: `game/names.gd` の `troop_trait_amount` の表に 1 行。
 5. 印: `game/trait_icon.gd` の `_draw` の `match` に 1 つ。
@@ -133,7 +134,7 @@
 ### 足し忘れても検査が落ちない所
 
 - **4 つ目の軍略**: 部隊編成の軍略の札は 3 枚の決め打ち（`game/deck_screen/deck_editor.gd` の `for i in 3`）。4 つ目は出ず、選べない。
-- `_BY_ARMY` に無い: どの軍のものでもなくなり、選べない（色は騎士領の色になる）。
+- 軍の表の `traits` に無い: どの軍のものでもなくなり、選べない（色は表の最初の軍の色になる）。`cpu_traits` だけに無いのは `tests/game/test_armies.gd` が拾う。
 - **CPU の 4 つ**（上の 2）: どれもテストが無い。危険の読みが外れ、立ち位置を取らず、CPU が選ばない。`measure-balance` でしか分からない。
 - `troop_trait_amount` に無い: 文と盤の札が「+0」。
 - `troop_trait.<鍵>` の名前が無い: 鍵の文字がそのまま出る（名前を見るテストは無い）。

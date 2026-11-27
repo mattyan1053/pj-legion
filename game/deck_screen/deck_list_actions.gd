@@ -131,7 +131,7 @@ func _build_list() -> Control:
 	var detail_head := HBoxContainer.new()
 	detail_head.add_theme_constant_override("separation", 10)
 	detail.add_child(detail_head)
-	_list_detail_crest = Crest.new(UnitKind.Army.MILITARY, 40.0)
+	_list_detail_crest = Crest.new(UnitKind.Army.NONE, 40.0)
 	_list_detail_crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	detail_head.add_child(_list_detail_crest)
 	var detail_names := VBoxContainer.new()
@@ -201,9 +201,12 @@ func _build_army_picker() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
 	center.add_child(row)
-	for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
+	# 軍のカードは、2 枚の並びの幅（400 × 2 と間）に収める。軍が 3 つ以上なら、その幅を等分して細くする（docs/deck-screen.md）。
+	var armies := Armies.all()
+	var card_width := (ARMY_CARD_WIDTH * 2.0 + 24.0 - 24.0 * (armies.size() - 1)) / maxi(2, armies.size())
+	for army in armies:
 		var card := _card_button("", 18)
-		card.custom_minimum_size = Vector2(400.0, 380.0)
+		card.custom_minimum_size = Vector2(card_width, 380.0)
 		card.pressed.connect(func() -> void: choose_new_army(army))
 		# その国の色の帯と、薄く大きな紋（物語のカードと同じ向き）。
 		var decor := NationDecor.new(army, 230.0, 120.0)

@@ -120,7 +120,10 @@ func test_the_story_backdrop_faces_the_sky_of_the_nation() -> void:
 	assert_eq(TitleBackdrop.map_view_of(UnitKind.Army.FANTASY), TitleBackdrop.VIEW_RUEL_MAP)
 	# 琥珀の空は縫い目の左、菫の空は右（rift_sky.gdshader）。左を向くのは、向きが正。
 	assert_true(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_BERG_MAP][0] > 0.0 and TitleBackdrop.VIEWS[TitleBackdrop.VIEW_RUEL_MAP][0] < 0.0)
-	assert_eq(TitleBackdrop.NATION_SKY.size(), UnitKind.Army.size() - 1, "空の色は、軍なし以外の国ごとに 1 つ")
+	var ArmyLook := load("res://game/army_look.gd")
+	for army in Armies.all():
+		assert_true(TitleBackdrop.VIEWS.has(TitleBackdrop.map_view_of(army)), "物語の景色の構えが、景色の表に無い: %s" % army)
+		assert_true(ArmyLook.sky(army).a > 0.0, "空の色が無い: %s" % army)
 	assert_eq(TitleBackdrop.VIEWS[TitleBackdrop.VIEW_STORY][0], 0.0, "物語選択は、縫い目が真ん中")
 
 
@@ -151,7 +154,7 @@ func test_the_title_shows_every_look_and_has_its_own_theme() -> void:
 ## 物語選択で、いま選んでいない物語のカードに乗せたときも、その物語の記録で「まだクリアしていない最初の話」を選ぶ。
 func test_the_campaign_backdrop_reads_the_hovered_campaigns_record() -> void:
 	var story: RefCounted = Story.new()
-	var fantasy: RefCounted = Story.campaigns()[1]
+	var fantasy: RefCounted = Story.campaign_of_army(UnitKind.Army.FANTASY)
 	story.choose_campaign(Story.military())
 	story.clear(Story.military().episodes[0].id)
 	story.choose_campaign(fantasy)

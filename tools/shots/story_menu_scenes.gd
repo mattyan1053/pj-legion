@@ -208,9 +208,9 @@ func _scene_story_open_all() -> bool:
 	return _app.current_id() == SceneFlow.EPISODES and _app.context.story.open_all
 
 
-## 2 つ目の物語（FANTASY の物語）。
+## FANTASY の物語。
 func _fantasy() -> RefCounted:
-	return Story.campaigns()[1]
+	return Story.campaign_of_army(UnitKind.Army.FANTASY)
 
 
 ## FANTASY の物語の話の一覧（何もクリアしていない。頭の演習）。

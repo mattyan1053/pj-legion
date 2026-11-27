@@ -90,7 +90,7 @@ var squad: Array = []
 var start_gauge := 0
 ## 敵の軍と部隊（将を除く。[駒の種類, [装備, …]] の列。並びの順に初期位置へ置く）。
 ## 軍が none（Army.NONE）なら、敵は軍に属さない（必殺技もゲージも無い）。魔物の群れの話に使う（docs/story.md）。
-var enemy_army := UnitKind.Army.FANTASY
+var enemy_army := UnitKind.Army.NONE
 ## 敵に将を置くか（[enemy] の king = none で偽。将のいない群れ。docs/scenario.md）。
 var enemy_king := true
 ## 敵の側が番人（中ボス）を狙わないか（[enemy] の spare_boss = yes。Battle.spares_bosses。docs/story.md）。

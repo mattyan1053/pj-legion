@@ -33,7 +33,7 @@ var hero := ""
 ## 主な人物（無ければ空）: {"name": 名前, "role": 立ち位置, "figure": 姿（episode.gd の figures と同じ形）} の列。書いた順。
 var cast: Array[Dictionary] = []
 ## 人が使う軍。
-var army := UnitKind.Army.MILITARY
+var army := UnitKind.Army.NONE
 ## この物語の編成の決まりの名前（取っておく部隊に書く。物語ごとに違う）。
 var rules_id := &""
 ## 最初から雇える駒・持たせられる装備・部隊のコストの上限（話のクリアで増える。docs/story.md の「解放」）。

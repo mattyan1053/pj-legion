@@ -11,7 +11,8 @@ const VersusFields := preload("res://game/versus_fields.gd")
 const Maps := preload("res://game/maps.gd")
 const RandomSquad := preload("res://game/random_squad.gd")  # --squads=random の、対戦の部隊（両軍）
 
-const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
+## 測る軍（軍の表の順）。
+static var ARMIES: Array[UnitKind.Army] = Armies.all()
 const STAGE_NAMES := {
 	BoardGenerator.Stage.PLAIN: "1 中央平原",
 	BoardGenerator.Stage.LABYRINTH: "2 迷宮回廊",
@@ -154,12 +155,26 @@ static func _rules_without(names: String, budget_text: String = "") -> DeckRules
 		budgets[army] = versus.budget(army)
 	if not budget_text.is_empty():
 		var parts := budget_text.split(",")
-		if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int():
+		if parts.size() != ARMIES.size() or Array(parts).any(func(part: String) -> bool: return not part.is_valid_int()):
 			return null
-		budgets[UnitKind.Army.MILITARY] = parts[0].to_int()
-		budgets[UnitKind.Army.FANTASY] = parts[1].to_int()
+		for i in ARMIES.size():
+			budgets[ARMIES[i]] = parts[i].to_int()
 	return DeckRules.new(&"without", versus.max_units, rosters, budgets, versus.items())
 
+
+
+## 軍の組み合わせ（[先手の軍, 後手の軍] の並び）。軍の違う組（表の順に、a 対 b、b 対 a）が先、そのあとに同じ軍どうし。
+## 2 軍なら [M, F]、[F, M]、[M, M]、[F, F]。mixed_only なら、軍の違う組だけ。
+static func _pairings(mixed_only: bool) -> Array[Array]:
+	var result: Array[Array] = []
+	for i in ARMIES.size():
+		for j in range(i + 1, ARMIES.size()):
+			result.append([ARMIES[i], ARMIES[j]])
+			result.append([ARMIES[j], ARMIES[i]])
+	if not mixed_only:
+		for army in ARMIES:
+			result.append([army, army])
+	return result
 
 ## --map のファイルの、文字の格子の行（空の行は飛ばす）。マップのファイルの書式（[rows] の節がある）なら、その節の行。
 func _map_rows(path: String) -> PackedStringArray:

@@ -35,7 +35,6 @@ const MapCard := preload("res://game/map_card.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 
-const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 ## パネルの中身の幅（px）。選んだものに依らず、この幅に固定する。
 const PANEL_WIDTH := 900.0
 ## 見出しの列の幅と、部隊を選ぶ欄の幅（px）。

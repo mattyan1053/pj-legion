@@ -362,7 +362,7 @@ func _scape(name: String) -> bool:
 	else:
 		var found: Dictionary = Maps.find(parts[0])
 		defined = Scenario.on_map(found["map"], found["title"])
-	var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
+	var armies: Array[UnitKind.Army] = Armies.all()
 	var setup := MatchSetup.humans_on(defined, _seed, MatchSetup.default_deck(armies[0]), MatchSetup.default_deck(armies[1]))
 	_battle = setup.create_battle()
 	if parts[2] == "paint" and VersusFields.has(StringName(parts[0])) and VersusFields.is_generated(StringName(parts[0])):

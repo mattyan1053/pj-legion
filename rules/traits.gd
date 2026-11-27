@@ -43,16 +43,14 @@ const GUARD_SHIELD := 3
 ## 1 部隊で結べる誓いの数。
 const MAX_OATHS := 2
 
-const _BY_ARMY := {
-	UnitKind.Army.MILITARY: [Id.FOCUS, Id.RANKS, Id.SUPPLY],
-	UnitKind.Army.FANTASY: [Id.VENGEANCE, Id.OATH, Id.GUARD],
-}
+## 守護で、隣の味方を守る兵の種類。
+const GUARDIAN := UnitKind.Id.PALADIN
 
 
-## その軍の軍略（選べる 3 つ。並びは部隊編成の札の順）。軍でなければ空。
+## その軍の軍略（並びは部隊編成の札の順。軍の表 Armies の traits）。軍でなければ空。
 static func of_army(army: UnitKind.Army) -> Array[Id]:
 	var result: Array[Id] = []
-	result.assign(_BY_ARMY.get(army, []))
+	result.assign(Armies.traits(army))
 	return result
 
 
@@ -64,8 +62,8 @@ static func default_of(army: UnitKind.Army) -> int:
 
 ## その軍略の軍。
 static func army_of(id: int) -> UnitKind.Army:
-	for army: UnitKind.Army in _BY_ARMY:
-		if (_BY_ARMY[army] as Array).has(id):
+	for army in Armies.all():
+		if Armies.traits(army).has(id):
 			return army
 	return UnitKind.Army.NONE
 
@@ -140,7 +138,7 @@ static func guardian_at(battle: Battle, unit: Unit, cell: Vector2i) -> Unit:
 	if not has(battle, unit, Id.GUARD):
 		return null
 	for other in neighbors_at(battle, unit, cell):
-		if other.kind == UnitKind.Id.PALADIN:
+		if other.kind == GUARDIAN:
 			return other
 	return null
 
