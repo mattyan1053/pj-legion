@@ -20,7 +20,7 @@ look = trial_court
 music = battle_fields
 before_music = battle_fields
 after_music = talk_bright
-lesson = 必殺技「魔力解放」で全員のスキルの待ち時間が消える。味方を動かす前に使う。
+lesson = 「魔力解放」でスキルの待ち時間が消える。動かす前に使う。仲間を倒した敵には深く入る。
 
 [cast]
 イェルダ = ally, paladin evolved crown yelda
@@ -37,10 +37,12 @@ lesson = 必殺技「魔力解放」で全員のスキルの待ち時間が消�
 セリス: つまり、撃ってから解放すれば、すぐもう 1 回。
 ウル: うむ。ただし、動く前にな。済んだ動きまでは戻らぬ。
 ティオ: 2 回撃てる……！
+イェルダ: それと、倒れた者の仇は、隊の全員で討つ。仲間を倒した敵には、刃が深く入る。
 
 [cues]
 (turn 1) セリス: 出し惜しみは無しだよ。使うほど、糸は寄ってくるんだろ。
 (ult_ready ally) ティオ: 満ちた！ 騎士長、動く前に「魔力解放」です！
+(trait ally) イェルダ: 仇は討った。これが「仇討ち」だ。倒れた者を無駄にするな。
 
 [after]
 ティオ: 2 回撃てた！！ 騎士長、2 回ですよ、2 回！
@@ -55,6 +57,7 @@ lesson = 必殺技「魔力解放」で全員のスキルの待ち時間が消�
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [ally]
+trait = vengeance
 unit = paladin
 unit = sorcerer
 unit = spellblade
@@ -67,7 +70,10 @@ army = military
 unit = shield_trooper + iron_shield
 unit = sniper
 unit = sniper
+unit = sniper
 unit = medic
+deploy = 4,3  2,5  6,5  4,5  4,2
 
 [unlock]
+trait = vengeance
 item = iron_shield

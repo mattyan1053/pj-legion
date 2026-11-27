@@ -22,6 +22,9 @@ item = iron_shield
 item = speed_boots
 item = long_scope
 item = power_gauntlet
+trait = focus
+trait = ranks
+trait = supply
 
 [cast]
 ハーデン = king, 偵察隊の新任少尉

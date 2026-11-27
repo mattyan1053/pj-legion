@@ -57,6 +57,7 @@ wins = hq_captured, routed
 
 [enemy]
 army = military
+trait = focus
 unit = shield_trooper + iron_shield
 unit = sniper
 unit = sniper
