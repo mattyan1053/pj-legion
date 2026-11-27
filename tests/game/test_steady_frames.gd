@@ -428,9 +428,9 @@ func test_sortie_shows_three_squads_and_scrolls_by_a_row() -> void:
 			if long_deck.total_cost() + UnitKind.cost(kind) <= long_deck.budget():
 				long_deck.add(kind)
 	var saved: Array = []
-	for i in 6:
+	for i in 9:
 		saved.append(context.decks.add("部隊 %d" % (i + 1), long_deck))
-	# いちばん小さい字でも 2 行に収まらない部隊（盾持ち 6 体に、みなアイアンシールド）: 切って、全部はマウスを乗せると出る。
+	# 大きな部隊（盾持ち 6 体に、みなアイアンシールド）。
 	var heavy := Deck.new(Story.military().army, context.story.deck_rules())
 	for n in 6:
 		heavy.add(UnitKind.Id.SHIELD_TROOPER).equipment.append(Equipment.Id.IRON_SHIELD)
@@ -442,23 +442,22 @@ func test_sortie_shows_three_squads_and_scrolls_by_a_row() -> void:
 	sortie.context = context
 	await settle(sortie)
 	await _frames(1)
-	assert_eq(sortie.option_ids().size(), 8)
+	assert_eq(sortie.option_ids().size(), 11)
 	assert_true(sortie.is_option_enabled(heavy_saved.id))
 	assert_true(sortie.options_fully_shown() >= SortieScreen.OPTIONS_SHOWN, "丸ごと見える部隊が %d つ" % sortie.options_fully_shown())
 	var rects: Dictionary = sortie.frame_rects()
 	for id: String in sortie.option_ids():
 		sortie.choose(id)
 		await settle(sortie)
-		assert_true(sortie.deck_line_text().count("\n") < SortieScreen.DECK_LINES, "部隊の中身の文が %d 行に収まらない: %s" % [SortieScreen.DECK_LINES, sortie.deck_line_text()])
 		assert_eq(sortie.frame_rects(), rects, "部隊を選び替えると、枠が動く")
 		assert_true(sortie.needed_height() <= 720.0, "部隊を選ぶと、720 の高さに収まらない")
+	# 中身は文で並べず額で並べる: 額の下に持ち物の印（持ち物の数だけ）、名前と持ち物は額に乗せると出る。
 	sortie.choose(heavy_saved.id)
-	assert_true(sortie.deck_line_text().ends_with("…"), "収まらない部隊の文は、切って「…」")
-	assert_eq(sortie.deck_line_text().count("\n"), SortieScreen.DECK_LINES - 1, "切った文は、決まった行の数")
-	assert_eq(sortie.deck_line_tooltip().count(Names.item(Equipment.Id.IRON_SHIELD)), 6, "切れた文の全部は、マウスを乗せると出る")
-	assert_eq(sortie.frame_rects(), rects, "収まらない部隊を選んでも、枠は動かない")
+	await settle(sortie)
+	assert_eq(sortie.face_item_marks(Unit.Side.PLAYER1), [0, 1, 1, 1, 1, 1, 1] as Array[int], "持ち物の印")
+	assert_true(sortie.face_tips(Unit.Side.PLAYER1)[1].contains(Names.item(Equipment.Id.IRON_SHIELD)), "額に乗せると、持ち物が出る: %s" % sortie.face_tips(Unit.Side.PLAYER1)[1])
+	assert_eq(sortie.frame_rects(), rects, "持ち物の多い部隊を選んでも、枠は動かない")
 	sortie.choose(SortieScreen.DEFAULT_ID)
-	assert_eq(sortie.deck_line_tooltip(), "", "収まる部隊では、乗せても何も出さない")
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	wheel.pressed = true
