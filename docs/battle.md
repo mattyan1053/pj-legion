@@ -42,7 +42,7 @@
    1 度も起きない出来事なら、起きる場面を自動の対戦（`game/autoplay/`）に足す。
 3. ログ: `game/battle_log.gd` の `readers()` に載せる。行にしないなら `_skip` に理由を添えて載せる（`docs/battle-log.md`）。
    表に無いと `tests/game/test_battle_log.gd` が落ちる。
-4. 種類ごとに読む 5 か所で、**読むか、読まないかを決める**。どこも、ファイルの終わりに「読む出来事」（`read_events`）と
+4. 種類ごとに読む 6 か所で、**読むか、読まないかを決める**。どこも、ファイルの終わりに「読む出来事」（`read_events`）と
    「読まないと決めた出来事」（`skipped_events`）の表がある。読むなら、コードに `is` / `as` で書き、読む表に足す。
    読まないなら、読まない表に理由と足す。どちらにも無いか、読む表がコードの `is` / `as` とずれると、`tests/game/test_event_readers.gd` が落ちる。
    親（`UnitDamagedEvent` など）を読んでいれば、子は読むほうに数える。
@@ -51,6 +51,7 @@
    - CPU の手の価値: `rules/cpu/cpu_outcome_value.gd`（`docs/cpu-ai.md`）
    - 実測の道具: `tools/cpu_match.gd`（種類ごとの数は、読まなくても数える）
    - 中立の再生の場面分け: `game/neutral_playback.gd`（主役になる出来事か）
+   - 再生の盤: `game/replay_board.gd`（盤の見え方（駒の位置・HP・状態など）を変える出来事か。`docs/battle-view.md` の「再生の盤」）
 5. 予測のパネル・ログ・戦績で数字や文を出すなら、文の表（`game/text/`。`docs/text.md`）に足す。
 
 ## apply の結果

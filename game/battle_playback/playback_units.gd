@@ -6,12 +6,12 @@ func _play_moved(event: UnitMovedEvent) -> void:
 	if event.path.size() < 2:
 		return
 	var view := _view(event.unit_id)
-	var unit := battle.unit_by_id(event.unit_id)
+	var side := replay.side_of(event.unit_id)
 	var step_time := CRUISE_STEP_TIME if event.cruise else STEP_TIME
-	if unit != null and unit.side == Unit.Side.NEUTRAL:
+	if side == Unit.Side.NEUTRAL:
 		step_time = NEUTRAL_STEP_TIME
 	# 自分で動かしていない駒（CPU の駒、中立の駒）は、歩いている間、カメラが追いかける（長く歩いても、画面の外へ出ていかない）。
-	var followed := _camera_follows(unit)
+	var followed := _camera_follows(side)
 	if followed:
 		camera_follows[event.unit_id] = camera_follows.get(event.unit_id, 0) + 1
 		_rig.follow(view)
@@ -55,7 +55,7 @@ func _play_undone(event: MoveUndoneEvent) -> void:
 ## 道順どおりに歩いたあとの、ポータルの転移。入ったポータルで縮んで消え、出たポータルに現れる。
 func _play_warped(event: UnitWarpedEvent) -> void:
 	var view := _view(event.unit_id)
-	var color := BoardView.portal_color(battle.board, event.from)
+	var color := BoardView.portal_color(replay.board, event.from)
 	var to := BoardView.cell_center(event.to)
 	_flash(BoardView.cell_center(event.from), color, 0.9)
 	_sound(&"portal")
