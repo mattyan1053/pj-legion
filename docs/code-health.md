@@ -65,7 +65,7 @@
 | 足すもの | 触るファイル | 黙って漏れる所 |
 | --- | --- | --- |
 | 新しい状態（能力値の上げ下げ、1 回で外れる、動けない、など） | 2〜3（`rules/status.gd`、`game/text/names.csv`、数字を文に出すなら `game/names.gd`）+ 付けるルール | 種類ごとの決まりの関数は、書かなければ「効果なし」になる |
-| 新しい軍略（攻撃のダメージに足す形） | 9 ほど: `rules/traits.gd`、`rules/cpu/cpu_threats.gd`、`rules/cpu/cpu_position_value.gd`、`rules/cpu/cpu_outcome_value.gd`、`rules/cpu_deck.gd`、`game/names.gd`、`game/trait_icon.gd`、`game/battle_screen/screen_rules_view.gd`、文の表 | CPU の 4 つと、印・量の表（上の表の 1・6）。4 つ目の軍略は、部隊編成の札が 3 枚の決め打ち（`game/deck_screen/deck_editor.gd` の `for i in 3`）で出ない |
+| 新しい軍略（攻撃のダメージに足す形） | 9 ほど: `rules/traits.gd`、`rules/cpu/cpu_threats.gd`、`rules/cpu/cpu_position_value.gd`、`rules/cpu/cpu_outcome_value.gd`、`rules/cpu_deck.gd`、`game/names.gd`、`game/trait_icon.gd`、`game/battle_screen/screen_rules_view.gd`、文の表 | CPU の 4 つと、印・量の表（上の表の 1・6）。（4 つ目の軍略の札が出ない決め打ちは、#PR2 で無くした） |
 | 新しい軍略（引く形・ターンの始めに効く形） | 上に加えて `rules/combat.gd` か `rules/actions/end_phase_action.gd`。「引くのは隊列」の決め打ちが 4 か所（`rules/combat.gd` 163〜164 行、`game/forecast_text.gd` 94 行、`game/battle_log/log_fights.gd` 58 行、`game/battle_playback/playback_skills.gd` 61 行） | 同じ |
 | ダメージを増減する新しい段（内訳を予測に出す） | 7: `rules/combat.gd`、`rules/hit.gd`、`rules/events/unit_damaged_event.gd`、`rules/forecast.gd`、`game/forecast_text.gd`、`game/battle_log/log_base.gd`、`game/names.gd` | 予測とログの内訳（数字そのものは合う） |
 | 新しい出来事 1 つ | 4 は検査が拾う（出来事、再生の表と処理、ログの表と処理、自動の対戦の場面）。5 は拾わない（上の表の 2） | 戦績、予測のまとめ、CPU の価値、実測 |
@@ -131,6 +131,9 @@
 5. **（済。#524）軍の表を 1 か所に。** ルールの値は `rules/armies.gd`、見た目は `game/army_look.gd`。二択と直書きの並びを無くし、軍ごとにそろっているか・表の外で軍の名前を書いていないかの検査（`tests/game/test_armies.gd`）を足した。
    見立てとの違い: 色と紋章の二択は 6 か所のほかに、軍略の CPU の選び方（`CpuDeck.choose_trait` の軍の `match`）と誓いを結べる軍（`Deck.can_bind`、`CpuDeck.bind_oaths`）にもあった。
    `campaigns()[1]` を騎士領として読む所は、遊ぶときの道には無く、スクリーンショットの道具とテストだけだった（`Story.campaign_of_army` に替えた）。
+   数の決め打ち（#PR2）: 部隊編成の雇う欄（4）と軍略の札（3）は、軍の表のいちばん大きい数だけ並べる（`docs/deck-screen.md`）。
+   CPU の軍略選びは回復役を役割で、守護の兵を `Traits.GUARDIAN` で数え、補給線の文の兵は軍の最初の回復役、実測の `--decks=even` は役割で雇う。
+   見立てとの違い: CPU の軍略選びが名前で数えていたのは衛生兵とパラディン（スペルブレードではなかった）。
 6. **（済。#496）会話の 1 行を、名前で読む形に。** 位置の並びをやめる。話のファイルも画面も変えない。
 7. **（済。#499）話を場面の列で持つ。** いまの欄から同じ流れを組み立てて回す。話のファイルも画面も変えない。6 のあと。
 8. **（済。#520）回復の共通の道。** HP を増やす 5 か所を 1 つの関数に通す（出来事は、いまのまま原因ごと）。
