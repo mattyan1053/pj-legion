@@ -10,7 +10,7 @@ const Story := preload("res://game/story.gd")
 func test_talk_without_a_battle_opens() -> void:
 	var episode: RefCounted = Story.military().episodes[0]
 	var screen := TalkScreen.new()
-	screen.talk = Story.talk_of(episode, [[0, "はじめの台詞", 0]])
+	screen.talk = Story.talk_of(episode, [Story.Episode.TalkLine.speech(0, "はじめの台詞", 0)] as Array[Story.Episode.TalkLine])
 	await settle(screen)
 	assert_eq(screen.speaker(), episode.speakers[0], "最初の行の話し手が出ない（_ready が途中で止まった）")
 	screen.free()

@@ -343,7 +343,7 @@ func _first_unit_of(kind: UnitKind.Id) -> Unit:
 ## 対戦の途中の会話の札（ターン 1 の台詞を持つ最初の話の、対戦の始め）。
 func _scene_story_battle_talk() -> bool:
 	for i in Story.military().episodes.size():
-		if Story.military().episodes[i].cues.any(func(cue: Array) -> bool: return cue[0] == BattleCues.TURN and cue[1] == 1):
+		if Story.military().episodes[i].cues.any(func(cue: RefCounted) -> bool: return cue.trigger == BattleCues.TURN and cue.value == 1):
 			if not await _story_battle(i):
 				return false
 			_scene.hide_notice()  # 始めの台詞は、対戦ルールの知らせを閉じてから出る

@@ -9,6 +9,8 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const Maps := preload("res://game/maps.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
+const TalkLine := preload("res://game/episode/talk_line.gd")
+const TalkCue := preload("res://game/episode/talk_cue.gd")
 const Names := preload("res://game/names.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
@@ -28,7 +30,7 @@ const LESSON_MAX_CHARS := 48
 const SIDE_WORDS := {"ally": 0, "enemy": 1}
 ## 地の文（話し手のいない行。場面の説明や時間の経過）の陣営。話し手の番号は -1。会話の行の頭に NARRATION_MARK（全角の「＞」でもよい）を付けて書く。
 ## 会話の場面では、名前の札を出さず、文を真ん中に明朝で出す（talk_screen.gd）。
-const NARRATION_SIDE := 3
+const NARRATION_SIDE := TalkLine.NARRATION_SIDE
 const NARRATION_MARK := ">"
 
 ## 話の id（クリアの記録に書く。変えると記録が外れる）。ファイルの名前と同じ。
@@ -99,14 +101,13 @@ var figures: Array[Dictionary] = [{"kind": UnitKind.Id.KING, "evolved": false, "
 ## 将の姿（見た目だけ。unit_looks.gd の KING_LOOKS の名前。空ならいつもの将）: [人の軍, 敵の軍]。敵の将だけ書ける（[enemy] の king_figure）。
 ## 盤の将、駒の情報・決着の画面のアイコン、話し手の姿が king のときの姿に使う。ルールの上では将のまま。
 var king_looks: Array[StringName] = [&"", &""]
-## 対戦の前と後の会話: [話し手の陣営（0 か 1）, 文, 話し手（speakers の番号）] の列。
-## 地の文の行は [NARRATION_SIDE, 文, -1]。
-var before: Array = []
-var after: Array = []
-## 負けたときの台詞（無ければ空。決着の画面の見出しの下に出す）。形は before・after と同じ。
-var lost: Array = []
-## 対戦の途中の会話: [きっかけ, 値, 話し手の陣営, 文, 話し手（speakers の番号）] の列（battle_cues.gd）。
-var cues: Array = []
+## 対戦の前と後の会話: 会話の行（talk_line.gd。話し手の陣営・文・話し手の番号を名前で読む）の列。
+var before: Array[TalkLine] = []
+var after: Array[TalkLine] = []
+## 負けたときの台詞（無ければ空。決着の画面の見出しの下に出す）。地の文は無い。
+var lost: Array[TalkLine] = []
+## 対戦の途中の会話: 途中の台詞（talk_cue.gd。きっかけ・値・会話の行）の列（battle_cues.gd）。
+var cues: Array[TalkCue] = []
 ## 読んだファイルのパスと、書き間違い（空なら正しい）。
 var path := ""
 var problems: PackedStringArray = []

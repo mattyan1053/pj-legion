@@ -131,9 +131,9 @@ func _read_talk(app: Node, episode: RefCounted) -> void:
 	var talk: Node = app.current_scene()
 	_expect(talk.line_count() == episode.before.size(), "前の会話の文の数が違う")
 	for i: int in episode.before.size():
-		var row: Array = episode.before[i]
-		_expect(talk.line_index() == i and talk.line_text() == row[1], "会話の %d 文目が違う: %s" % [i + 1, talk.line_text()])
-		_expect(talk.speaker() == (episode.speakers[row[2]] if row[2] >= 0 else ""), "会話の %d 文目の話し手が違う: %s" % [i + 1, talk.speaker()])
+		var row: RefCounted = episode.before[i]
+		_expect(talk.line_index() == i and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [i + 1, talk.line_text()])
+		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [i + 1, talk.speaker()])
 		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）
 		if talk.line_index() == i and app.current_id() == SceneFlow.TALK:
 			talk.press_next()
@@ -148,19 +148,18 @@ func _read_talk(app: Node, episode: RefCounted) -> void:
 func _read_cues(app: Node, screen: Node, episode: RefCounted) -> void:
 	screen.clear_talk_for_check()
 	screen.set_talk_hold(true)
-	for cue: Array in episode.cues:
-		screen.say_for_check([BattleCues.Line.new(cue[2], episode.speakers[cue[4]] if cue[4] >= 0 else "", cue[3],
-			episode.figures[cue[4]] if cue[4] >= 0 and cue[4] < episode.figures.size() else {})] as Array[BattleCues.Line])
+	for cue: RefCounted in episode.cues:
+		screen.say_for_check([BattleCues.line_of(cue.line, episode.speakers, episode.figures)] as Array[BattleCues.Line])
 		await app.get_tree().process_frame
 		await app.get_tree().process_frame
 		var card: Rect2 = screen.talk_card_rect()
 		_expect(card.has_area() and card.position.y >= BattleHud.TOP_BAR_HEIGHT and card.size.y <= 64.0,
-			"途中の台詞の帯が出ないか、上の帯に重なるか、2 行を超える: %s（%s）" % [cue[3], card])
+			"途中の台詞の帯が出ないか、上の帯に重なるか、2 行を超える: %s（%s）" % [cue.line.text, card])
 		for i: int in WAIT_FRAMES:
 			if screen.advance_talk():
 				break
 			await app.get_tree().process_frame
-		_expect(not screen.is_talk_holding(), "途中の台詞を送れない: %s" % cue[3])
+		_expect(not screen.is_talk_holding(), "途中の台詞を送れない: %s" % cue.line.text)
 	screen.set_talk_hold(false)
 	screen.clear_talk_for_check()
 
@@ -190,8 +189,8 @@ func _lose(app: Node, screen: Node, episode: RefCounted) -> void:
 	var reason: String = result.shown_summary().reason
 	_expect(reason == "敗北　将が倒れた", "話で負けた決着の文が、遊ぶ人の側から書かれていない: %s" % reason)
 	var lost: Array[String] = []
-	for row: Array in episode.lost:
-		lost.append("%s: %s" % [episode.speakers[row[2]] if row[2] >= 0 else "", row[1]])
+	for row: RefCounted in episode.lost:
+		lost.append("%s: %s" % [row.speaker_in(episode.speakers), row.shown_text()])
 	_expect(result.remark_texts() == lost, "負けの台詞が、話のファイルのとおりに出ない: %s" % [result.remark_texts()])
 	if not lost.is_empty():
 		var rect: Rect2 = result.remark_rect()
