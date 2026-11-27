@@ -188,6 +188,21 @@ func leave_editor() -> void:
 		show_list(_editing_id))
 
 
+## 雇う欄の、見えている札の画面の上の矩形（上から順。検査用）。
+func roster_slot_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for i: int in _roster_buttons:
+		var button: Button = _roster_buttons[i]
+		if button.is_visible_in_tree():
+			rects.append(button.get_global_rect())
+	return rects
+
+
+## 軍略の札の数と、押せる札の数（検査用）。
+func trait_card_counts() -> Vector2i:
+	return Vector2i(_trait_buttons.size(), _trait_buttons.filter(func(button: Button) -> bool: return not button.disabled).size())
+
+
 ## 雇う欄が slots 枚のときの、札の高さ（4 枚までは ROSTER_CARD_HEIGHT。それより多ければ、4 枚ぶんの高さ（間を含む）を等分する）。
 static func roster_card_height(slots: int) -> float:
 	if slots <= ROSTER_SLOTS:
