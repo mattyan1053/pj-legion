@@ -1039,6 +1039,7 @@ FANTASY の物語の本編の敵の形と、その理由:
   | `FALLEN` | 陣営（`ally` か `enemy`） | その陣営の駒（将を除く）が初めて倒れた |
   | `ULT_READY` | 陣営（`ally` か `enemy`） | その陣営の必殺技のゲージがたまった（`UltReadyEvent`） |
   | `RELIC` | 陣営（`ally` か `enemy`） | その陣営が聖遺物を受け取った（中ボスを倒した。`RelicGainedEvent`） |
+  | `TRAIT` | 陣営（`ally` か `enemy`） | その陣営の軍略が初めて効いた（`TraitTriggeredEvent`。補給線は `SupplyHealedEvent`）。軍略を教える演習が、効いた瞬間に名前を言うのに使う |
 
 - ルール（`rules/`）には入れない。画面が、行動ごとにルールが返した出来事の列（`BattleEvent`）と盤の状態を `BattleCues` に渡して、出す台詞を聞く。
   聞くのは、その行動の演出を見せ終えたあと（演出と重ねない）。

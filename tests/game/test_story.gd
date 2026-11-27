@@ -529,7 +529,7 @@ func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sorti
 func test_the_sortie_names_the_enemy_and_shows_episode_traits() -> void:
 	var context := preload("res://game/app_context.gd").new()
 	context.story.choose_campaign(Story.campaigns()[0])
-	var episode: RefCounted = _episode(&"drill_sniper")
+	var episode: RefCounted = _episode(&"drill_first_steps")
 	var before: Array[int] = episode.traits.duplicate()
 	episode.traits[1] = Traits.Id.FOCUS
 	context.run = context.story.run_now(episode)
