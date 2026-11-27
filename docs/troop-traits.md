@@ -112,17 +112,17 @@
 1. `rules/traits.gd`: `Id` に 1 つ（保存と話のファイルは、列挙の名前の小文字の鍵で持つ）、調整値の定数、`_BY_ARMY`（並びが札の並び。先頭が既定）。
    効き目は、形ごとに:
    - 段の順は `tests/rules/test_damage_order.gd` が固定している。新しい段に入れるなら、そこに場面を足す（予測 = 実際 は `tests/game/test_forecast_matches.gd`）。
-   - **攻撃のダメージに足す**: `attack_boosts_at` に枝と、効く相手を決める関数（`focus_marked`・`lone_marked` と同じ形）。
-   - **攻撃のダメージを引く**: `guard_of` は隊列だけを返す。`rules/combat.gd` の `hit` が `boosts[Traits.Id.RANKS]` に書き、「助けられた側」を隊列かどうかで決めている。ここを直す。
+   - **攻撃のダメージに足す**: `attack_boosts` に枝と、効く相手を決める関数（`focus_marked`・`vengeance_marked` と同じ形）。
+   - **攻撃のダメージを引く**: `guard_at`（隊列・守護。CPU は動いた先で読む）に枝を足し、`shields` に id を足す。`rules/combat.gd` の `hit` は、受ける側の陣営の軍略に引いた量を書き、「助けられた側」は `shields` で決める。
    - **ターンの始めに効く**: `start_phase`（補給線のほかは、すぐ戻る）。呼ぶのは `rules/actions/end_phase_action.gd`（泉 → 再生 → 軍略 → 盤の上の効果 → 状態 → スキルの順）。
      新しい出来事が要る。回復なら `SupplyHealedEvent` と同じく `UnitHealedEvent` の子にすると、戦績・予測・CPU の手の価値が、そのまま数える。
-2. CPU: `rules/cpu/cpu_threats.gd`（相手の軍略で増えるダメージの `match`、隊列で減るぶん）、`rules/cpu/cpu_position_value.gd` の `_trait_position_value`、
+2. CPU: `rules/cpu/cpu_threats.gd`（相手の軍略で増えるダメージの `match`、`guard_at` で減るぶん）、`rules/cpu/cpu_position_value.gd` の `_trait_position_value`、
    `rules/cpu/cpu_outcome_value.gd` の `_trait_value`、`rules/cpu_deck.gd` の `choose_trait`（部隊の中身から選ぶ）。
 3. 文: `game/text/names.csv` の `troop_trait.<鍵>`（名前）・`.effect`（`{amount}`）・`.text`（`{gain}`）。文の形は上の「軍略」。
 4. 数: `game/names.gd` の `troop_trait_amount` の表に 1 行。
 5. 印: `game/trait_icon.gd` の `_draw` の `match` に 1 つ。
 6. 盤の上: `game/battle_screen/screen_rules_view.gd` の `_refresh_traits`（頭の上の札と、組む兵どうしの線）。
-7. 引く形なら、「引くのは隊列」の決め打ち 4 か所: `rules/combat.gd`（上）、`game/forecast_text.gd`、`game/battle_log/log_fights.gd`、`game/battle_playback/playback_skills.gd`（`down := … == Traits.Id.RANKS`）。
+7. 引く形なら、`Traits.shields` に足せば、予測（`game/forecast_text.gd`）・ログ（`game/battle_log/log_fights.gd`）・効いた瞬間の札（`game/battle_playback/playback_skills.gd`）が「-」で出す。
 8. ターンの始めの形で出来事を足したら、`tools/cpu_match.gd` の数える所（補給線は `SupplyHealedEvent` を名指しで数えている）。
 9. この文書の表と調整値、`docs/cpu-ai.md` の「軍略」。`tests/rules/test_traits.gd` の `test_each_army_has_three_traits_and_a_default` の一覧。
 

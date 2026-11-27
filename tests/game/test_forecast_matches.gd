@@ -3,7 +3,7 @@ extends "res://tests/base_test.gd"
 ## 直後に同じ行動を battle.apply したときに起きた出来事と一致すること。
 ## 効果を重ねた場面（軍略 + 状態 + 地形 + 魔物）と、控えた CPU どうしの 1 局（tests/support/cpu_game.gd）の全部の手で比べる。
 ## 比べるのは、出来事の並び（種類と、中の値の全部）、行ごとのダメージ・あとの HP・倒れるか・付く状態と外れる状態・軍略の増減。
-## 軍略の量は定数から読む。単騎には頼らない。
+## 軍略の量は定数から読む。
 
 const Maps := preload("res://tests/support/maps.gd")
 const CpuGame := preload("res://tests/support/cpu_game.gd")
