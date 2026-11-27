@@ -69,9 +69,9 @@ func remove_entry(index: int) -> void:
 	_refresh_editor()
 
 
-## 軍略を id にする（その軍の軍略だけ。docs/troop-traits.md）。誓いから替えても、結んだ組は残す（誓いに戻すと、また効く）。
+## 軍略を id にする（その軍の、決まりで選べる軍略だけ。docs/troop-traits.md）。誓いから替えても、結んだ組は残す（誓いに戻すと、また効く）。
 func choose_trait(id: int) -> void:
-	if not shows_traits() or not Traits.of_army(_deck.army).has(id) or _deck.trait_id == id:
+	if not shows_traits() or not _deck.rules.traits_of(_deck.army).has(id) or _deck.trait_id == id:
 		return
 	_deck.trait_id = id
 	_binding = -1
@@ -79,9 +79,14 @@ func choose_trait(id: int) -> void:
 	_refresh_editor()
 
 
-## 軍略の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊は、話のファイルが軍略を決める）。
+## 軍略の欄を出す部隊か（選べる軍略がある部隊。ストーリー用の部隊は、軍略を 1 つでも教わってから。docs/story.md の「解放」）。
 func shows_traits() -> bool:
-	return _deck != null and _deck.rules.id == DeckRules.VERSUS and not Traits.of_army(_deck.army).is_empty()
+	return _deck != null and not _deck.rules.traits_of(_deck.army).is_empty()
+
+
+## 部隊が対戦で持つ軍略（選べない軍略を選んでいたら、決まりの選び方。DeckRules.trait_for）。
+func _held_trait() -> int:
+	return _deck.rules.trait_for(_deck)
 
 
 ## 軍略の札の index 番目にマウスを乗せたことにする（-1 で離す。検査とスクリーンショットの道具用）。
@@ -99,7 +104,7 @@ func trait_text() -> String:
 
 ## 誓いを結ぶ操作が出ているか（軍略が誓いの部隊だけ）。
 func shows_oaths() -> bool:
-	return shows_traits() and _deck.trait_id == Traits.Id.OATH
+	return shows_traits() and _held_trait() == Traits.Id.OATH
 
 
 ## 部隊の index 番目の駒の「誓い」を押した（軍略が誓いの、対戦用の部隊だけ。docs/troop-traits.md）。
@@ -683,13 +688,15 @@ func _refresh_traits() -> void:
 	for i in _trait_buttons.size():
 		var button := _trait_buttons[i]
 		var id: int = choices[i] if i < choices.size() else Traits.NONE
-		var chosen := id == _deck.trait_id
+		var chosen := id == _held_trait()
+		# まだ教わっていない軍略（ストーリー用の部隊）は、札を薄くして押せなくする（持ち物の「未解放」と同じ扱い）。
+		button.disabled = not _deck.rules.allows_trait(id)
 		(button.get_meta(&"mark") as Control).set(&"trait_id", id)
 		(button.get_meta(&"mark") as Control).set(&"dim", not chosen)
 		(button.get_meta(&"name") as Label).text = Names.troop_trait(id)
 		(button.get_meta(&"name") as Label).add_theme_color_override("font_color", COLOR_TEXT if chosen else COLOR_DIM)
 		button.set_pressed_no_signal(chosen)
-	var shown := _hover_trait if choices.has(_hover_trait) else _deck.trait_id
+	var shown := _hover_trait if choices.has(_hover_trait) else _held_trait()
 	_trait_sentence.trait_id = shown
 	_trait_shown = shown
 

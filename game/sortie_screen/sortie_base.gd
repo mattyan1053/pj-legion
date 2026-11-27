@@ -208,16 +208,24 @@ func _army_caption(text: String, army: UnitKind.Army, side := -1) -> Control:
 		row.add_child(crest)
 	row.add_child(_caption(text))
 	if side >= 0:
-		var id: int = episode.traits[side] if side < episode.traits.size() else Traits.NONE
 		var tag := TraitTag.new(20.0, 14)
 		tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		tag.trait_id = id
-		tag.modulate.a = 1.0 if id != Traits.NONE else 0.0
-		tag.mouse_filter = Control.MOUSE_FILTER_STOP if id != Traits.NONE else Control.MOUSE_FILTER_IGNORE
-		tag.tooltip_text = Names.troop_trait_text(id)
 		_trait_tags[side] = tag
 		row.add_child(tag)
+		_show_trait(side, episode.traits[side] if side < episode.traits.size() else Traits.NONE)
 	return row
+
+
+## 見出しの後ろの軍略の札（陣営 side）を、軍略 id にする（Traits.NONE なら、場所は取ったまま見せない）。
+## 人の側は、自分で部隊を選ぶ話なら、選んだ部隊の軍略（sortie_choice.gd の choose）。
+func _show_trait(side: int, id: int) -> void:
+	var tag := _trait_tags[side] as TraitTag
+	if tag == null:
+		return
+	tag.trait_id = id
+	tag.modulate.a = 1.0 if id != Traits.NONE else 0.0
+	tag.mouse_filter = Control.MOUSE_FILTER_STOP if id != Traits.NONE else Control.MOUSE_FILTER_IGNORE
+	tag.tooltip_text = Names.troop_trait_text(id)
 
 
 ## 見出しの後ろの軍略の札の名前（陣営 side。見せていなければ空。検査用）。

@@ -162,6 +162,8 @@ func _ready() -> void:
 	text_row.add_child(_item_frame)
 	_item_face = ItemIcon.new(Equipment.Id.IRON_SHIELD, NOTICE_FRAME - 16.0)
 	_item_frame.add_child(_item_face)
+	_trait_face = TraitIcon.new(Traits.NONE, NOTICE_FRAME - 16.0)
+	_item_frame.add_child(_trait_face)
 	# 折り返しは、文を出すときに text_wrap.gd で入れる（自動の折り返しは、ひらがなの語の途中や句読点の前で切る）。
 	_text = _label(TEXT_FONT, COLOR_TEXT)
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -359,10 +361,13 @@ func _show_line(index: int) -> void:
 	_face.visible = line.has("kind")
 	if _face.visible:
 		_face.set_kind(line["kind"])
-	_item_frame.visible = line.has("item")
-	if _item_frame.visible:
+	_item_frame.visible = line.has("item") or line.has("trait")
+	_item_face.visible = line.has("item")
+	if _item_face.visible:
 		_item_face.item = line["item"]
 		_item_face.queue_redraw()
+	_trait_face.visible = line.has("trait")
+	_trait_face.set(&"trait_id", line.get("trait", Traits.NONE))
 	_count.text = "%d / %d" % [index + 1, line_count()]
 	var standing := _standing_at(index)
 	for view in _figures:

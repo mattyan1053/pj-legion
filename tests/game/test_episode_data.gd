@@ -166,9 +166,15 @@ func test_boss_name_reads_from_the_episode_or_the_map() -> void:
 ## 軍略（docs/troop-traits.md）: 話のファイルの trait と oath。書いた陣営だけが持ち、部隊編成で選んだ軍略は使わない。
 func test_traits_read_and_reach_the_battle() -> void:
 	var plain: Episode = Episode.parse(PROBE)
-	var mine := MatchSetup.default_deck(UnitKind.Army.MILITARY).copy()
+	var mine := _story_deck([])
 	mine.trait_id = Traits.Id.SUPPLY
-	assert_eq(StoryBattle.new(plain, mine).make_setup(3).create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "書かなければ、どちらも無い")
+	assert_eq(StoryBattle.new(plain, mine).make_setup(3).create_battle().traits, [Traits.NONE, Traits.NONE] as Array[int], "書かず、まだ教わっていなければ、どちらも無い")
+	# 自分で選ぶ部隊は、教わった軍略から（選んだ軍略を教わっていなければ、教わったものの最初）。
+	var taught := _story_deck([Traits.Id.SUPPLY, Traits.Id.RANKS])
+	taught.trait_id = Traits.Id.SUPPLY
+	assert_eq(StoryBattle.new(plain, taught).make_setup(3).create_battle().traits[0], Traits.Id.SUPPLY)
+	taught.trait_id = Traits.Id.FOCUS
+	assert_eq(StoryBattle.new(plain, taught).make_setup(3).create_battle().traits[0], Traits.Id.RANKS, "教わっていない軍略は持たない")
 	var text := PROBE.replace("army = fantasy\n", "army = fantasy\ntrait = oath\noath = 1, 2\n")
 	var episode: Episode = Episode.parse(text)
 	assert_eq(episode.problems, PackedStringArray())
@@ -179,6 +185,22 @@ func test_traits_read_and_reach_the_battle() -> void:
 	for wrong: String in ["trait = focus", "trait = shout", "trait = oath\noath = 1, 3", "trait = guard\noath = 1, 2"]:
 		var bad: Episode = Episode.parse(PROBE.replace("army = fantasy\n", "army = fantasy\n" + wrong + "\n"))
 		assert_eq(bad.problems.size(), 1, "%s: %s" % [wrong, bad.problems])
+	# クリアで教わる軍略（[unlock] の trait。何行でも）。物語の軍のものかは、物語を読むときに見る（campaign.gd）。
+	var teaching: Episode = Episode.parse(PROBE.replace("budget = 2", "budget = 2\ntrait = ranks\ntrait = supply"))
+	assert_eq(teaching.problems, PackedStringArray())
+	assert_eq(teaching.unlock_traits, [Traits.Id.RANKS, Traits.Id.SUPPLY] as Array[int])
+	assert_eq(Episode.parse(PROBE.replace("budget = 2", "budget = 2\ntrait = shout")).problems.size(), 1)
+
+
+## 教わった軍略 traits だけを選べる、ストーリーの決まりの連邦の部隊（駒は既定の編成と同じ）。
+func _story_deck(traits: Array) -> Deck:
+	var versus := DeckRules.versus()
+	var rules := DeckRules.new(&"probe", versus.max_units, {UnitKind.Army.MILITARY: versus.roster(UnitKind.Army.MILITARY)},
+		{UnitKind.Army.MILITARY: 30}, null, null, traits)
+	var deck := Deck.new(UnitKind.Army.MILITARY, rules)
+	for entry in MatchSetup.default_deck(UnitKind.Army.MILITARY).entries:
+		deck.add(entry.kind)
+	return deck
 
 
 func test_signs_read_and_reach_the_battle() -> void:
