@@ -137,7 +137,7 @@ func _read_episode(file: RefCounted) -> void:
 
 
 func _read_unlock(file: RefCounted) -> void:
-	var values: Dictionary = file.values("unlock", ["unit", "item", "budget"], ["unit", "item"])
+	var values: Dictionary = file.values("unlock", ["unit", "item", "budget", "trait"], ["unit", "item", "trait"])
 	for entry: Dictionary in values.get("unit", []):
 		var kind := _kind(file, entry, entry["value"])
 		if kind >= 0 and not unlock_kinds.has(kind):
@@ -146,6 +146,12 @@ func _read_unlock(file: RefCounted) -> void:
 		var item := _item(file, entry, entry["value"])
 		if item >= 0 and not unlock_items.has(item):
 			unlock_items.append(item as Equipment.Id)
+	for entry: Dictionary in values.get("trait", []):
+		var taught := Traits.from_key(entry["value"])
+		if taught == Traits.NONE:
+			file.problem(entry["line"], "知らない軍略「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(Traits.Id)])
+		elif not unlock_traits.has(taught):
+			unlock_traits.append(taught)
 	if values.has("budget"):
 		var entry: Dictionary = values["budget"][0]
 		budget_up = file.integer(entry)

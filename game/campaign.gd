@@ -37,6 +37,8 @@ var rules_id := &""
 var starting_kinds: Array[UnitKind.Id] = []
 var starting_items: Array[Equipment.Id] = []
 var starting_budget := 0
+## 最初から選べる軍略（[start] の trait。Traits.Id）。
+var starting_traits: Array[int] = []
 ## 物語の一覧での並びの順（小さいほうが先。[campaign] の order。書かなければ ORDER_LAST）。
 var order := ORDER_LAST
 ## 話の並び（一本道）。
@@ -141,7 +143,7 @@ func _read(file: RefCounted) -> void:
 		starting_budget = file.integer(values["budget"][0])
 		if starting_budget < 1:
 			file.problem(values["budget"][0]["line"], "budget は 1 以上")
-	var start: Dictionary = file.values("start", ["unit", "item"], ["unit", "item"])
+	var start: Dictionary = file.values("start", ["unit", "item", "trait"], ["unit", "item", "trait"])
 	for entry: Dictionary in start.get("unit", []):
 		var kind := StoryFile.enum_value(UnitKind.Id, entry["value"])
 		if kind < 0 or UnitKind.army(kind as UnitKind.Id) != army:
@@ -156,6 +158,12 @@ func _read(file: RefCounted) -> void:
 			file.problem(entry["line"], "知らない持ち物「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(Equipment.Id)])
 		elif not starting_items.has(item):
 			starting_items.append(item as Equipment.Id)
+	for entry: Dictionary in start.get("trait", []):
+		var chosen := Traits.from_key(entry["value"])
+		if not Traits.of_army(army).has(chosen):
+			file.problem(entry["line"], "最初から選べる軍略は、物語の軍の軍略: %s" % entry["value"])
+		elif not starting_traits.has(chosen):
+			starting_traits.append(chosen)
 	problems.append_array(file.problems)
 	_read_episodes(file)
 
@@ -192,6 +200,7 @@ func _read_cast(file: RefCounted) -> void:
 func _read_episodes(file: RefCounted) -> void:
 	var kinds: Array = starting_kinds.duplicate()
 	var items: Array = starting_items.duplicate()
+	var traits: Array = starting_traits.duplicate()
 	for row: Dictionary in file.rows("episodes"):
 		var episode_id: String = row["text"]
 		var where := "%s:%d" % [path, row["line"]]
@@ -213,6 +222,12 @@ func _read_episodes(file: RefCounted) -> void:
 			if items.has(item):
 				loaded.problems.append("%s: %s は、この話の前から持たせられる" % [loaded.path, Equipment.Id.keys()[item].to_lower()])
 			items.append(item)
+		for taught: int in loaded.unlock_traits:
+			if not Traits.of_army(army).has(taught):
+				loaded.problems.append("%s: 解放するのは、物語の軍の軍略: %s" % [loaded.path, Traits.key(taught)])
+			elif traits.has(taught):
+				loaded.problems.append("%s: 軍略 %s は、この話の前から選べる" % [loaded.path, Traits.key(taught)])
+			traits.append(taught)
 		for squad_row: Array in loaded.squad:
 			if UnitKind.army(squad_row[0]) != army:
 				loaded.problems.append("%s: 決まっている部隊は、物語の軍（%s）の駒" % [loaded.path, UnitKind.Army.keys()[army].to_lower()])

@@ -393,11 +393,14 @@ class Unlocked:
 	var kinds: Array[UnitKind.Id] = []
 	var items: Array[Equipment.Id] = []
 	var budget := 0
+	## 選べる軍略（Traits.Id。教わった軍略）。
+	var traits: Array[int] = []
 
 	func _init(of_campaign: Campaign) -> void:
 		campaign = of_campaign
 		kinds.assign(of_campaign.starting_kinds)
 		items.assign(of_campaign.starting_items)
+		traits.assign(of_campaign.starting_traits)
 		budget = of_campaign.starting_budget
 
 	## 話 episode のクリアで増えるものを足す。
@@ -408,6 +411,9 @@ class Unlocked:
 		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
 				items.append(item)
+		for id: int in episode.unlock_traits:
+			if not traits.has(id):
+				traits.append(id)
 		budget += episode.budget_up
 
 	## 話 episode のクリアで、これより新しく増えるものの知らせ（増えるものが無ければ空）。
@@ -420,6 +426,9 @@ class Unlocked:
 		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
 				lines.append({"text": Text.t("story.news.item", {"item": Names.item(item), "effect": DeckText.equipment_effect(item)}), "item": item})
+		for id: int in episode.unlock_traits:
+			if not traits.has(id):
+				lines.append({"text": Text.t("story.news.trait", {"name": Names.troop_trait(id), "text": Names.troop_trait_text(id)}), "trait": id})
 		var more := episode.budget_up
 		if more > 0:
 			lines.append({"text": Text.t("story.news.budget", {"budget": budget + more})})
@@ -484,7 +493,7 @@ static func rules_of(given: Unlocked) -> DeckRules:
 	roster.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
 		return UnitKind.role(a) < UnitKind.role(b) or (UnitKind.role(a) == UnitKind.role(b) and a < b))
 	var army: UnitKind.Army = given.campaign.army
-	return DeckRules.new(given.campaign.rules_id, Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items, offered_items(given.campaign))
+	return DeckRules.new(given.campaign.rules_id, Deck.MAX_UNITS, {army: roster}, {army: given.budget}, given.items, offered_items(given.campaign), given.traits)
 
 
 ## 物語 of_campaign で持たせられるようになる持ち物の全部（最初から持たせられるものと、どれかの話の解放で増えるもの）。
@@ -521,6 +530,7 @@ static func default_deck(given: Unlocked) -> Deck:
 	for kind in hired:
 		deck.add(kind)
 	equip_defaults(deck)
+	CpuDeck.pick_trait(deck)  # 教わった軍略から、部隊の中身に合うもの（まだ教わっていなければ、持たない）
 	return deck
 
 
