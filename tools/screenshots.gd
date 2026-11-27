@@ -1,4 +1,4 @@
-extends "res://tools/shots/story_patrol_scenes.gd"
+extends "res://tools/shots/story_cut_scenes.gd"
 ## ゲームの決まった場面を画像に撮る（PR に貼るため）。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
 ## アプリ（app.gd）が、タイトル → 対戦設定 → 対戦 と人と同じ道で対戦に入ったところで、このノードを足す。
 ## 撮り終えたら終わる。使い方は docs/screenshots.md。
@@ -167,6 +167,9 @@ const SCENES := {
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
 	"story_hero_name": "ストーリー: 物語を初めて選んだときの、主人公の名前を付ける窓（既定の名前が入っている。そのまま「決定」で進める）",
 	"story_cut": "ストーリー: 連邦の第 1 話の頭のカットシーン（色の幕の上に、地の文を真ん中に明朝で。上下に黒い帯。文の枠も話し手も出さない）",
+	"story_board_walk": "ストーリー: 盤のカットシーン（尾根の待ち伏せ）。偵察のピップが、尾根の中ほどの敵の前まで歩いている途中（文の枠は消えている）",
+	"story_board_line": "ストーリー: 盤のカットシーン（尾根の待ち伏せ）。ピップが戻って、最初の台詞（盤は止まっている）",
+	"story_board_reply": "ストーリー: 盤のカットシーン（尾根の待ち伏せ）。イェルダの台詞",
 	"story_place_talk": "ストーリー: 連邦の第 1 話の、別の場所の会話（峠の駐屯地の景色。兵は立たない。主人公が話している）",
 	"story_choice": "ストーリー: 連邦の第 1 話の選択肢（問いの行を出したまま、舞台の真ん中に答えの枠。枠は答え 3 つぶんの大きさ）",
 	"story_long_name_talk": "ストーリー: 主人公にいちばん長い名前（全角 5 字）を付けたときの会話（名前の札に収まる。文の中の名前も替わる）",
@@ -305,7 +308,7 @@ func _run() -> void:
 			continue
 		if _dry_run:
 			print("screenshots: 場面 %s を作れた" % name)
-			if _mid_animation:
+			if _mid_animation and _app.current_id() == SceneFlow.BATTLE:  # 対戦の外の演出なら、対戦の場面はもう木に無い
 				_scene.set_time_scale_base(1.0)
 			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
@@ -313,6 +316,8 @@ func _run() -> void:
 		if _mid_animation:
 			if not await _capture(name):
 				return
+			if _app.current_id() != SceneFlow.BATTLE:
+				continue  # 対戦の外の演出（盤のカットシーン）。対戦の場面は、もう木に無い
 			_scene.set_time_scale_base(1.0)
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame
