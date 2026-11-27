@@ -1,6 +1,8 @@
 extends "res://game/deck_screen/deck_list.gd"
 ## 部隊編成の、1 つの部隊を組む画面（雇う・並べ替える・外す、軍略と誓い、持ち物、予算と出せない理由、取っておく）。
 
+const ArmyLook := preload("res://game/army_look.gd")
+
 
 func _open_editor(id: String, name: String, deck: Deck) -> void:
 	_editing_id = id
@@ -197,7 +199,7 @@ func _build_editor() -> Control:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
-	_army_crest = Crest.new(UnitKind.Army.MILITARY, 36.0)
+	_army_crest = Crest.new(UnitKind.Army.NONE, 36.0)
 	_army_crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(_army_crest)
 	_name_label = _text(24, COLOR_ACCENT)
@@ -464,7 +466,7 @@ func _refresh_editor() -> void:
 		_troop_rows.add_child(empty)
 	if shows_oaths() and count > 0:
 		# 誓いの組（か、結ぶ相手を選んでいること）を、部隊の並びの下に 1 行。
-		var oaths := _text(13, Palette.NATION_FANTASY.lightened(0.3))
+		var oaths := _text(13, ArmyLook.color(Traits.army_of(Traits.Id.OATH)).lightened(0.3))
 		oaths.text = TraitText.oath_text(_deck, _binding)
 		_troop_rows.add_child(oaths)
 
@@ -582,7 +584,7 @@ func _oath_tag(index: int) -> Control:
 	button.custom_minimum_size = Vector2(OATH_TAG_WIDTH, 50.0)
 	button.theme_type_variation = UiTheme.BUTTON_ROW
 	var bound := _deck.partner_of(entry) != null
-	button.add_theme_color_override("font_color", Palette.NATION_FANTASY.lightened(0.3) if bound or _binding == index else COLOR_DIM)
+	button.add_theme_color_override("font_color", ArmyLook.color(Traits.army_of(Traits.Id.OATH)).lightened(0.3) if bound or _binding == index else COLOR_DIM)
 	button.toggle_mode = true
 	button.set_pressed_no_signal(_binding == index)
 	button.tooltip_text = TraitText.oath_tooltip(_deck, entry)

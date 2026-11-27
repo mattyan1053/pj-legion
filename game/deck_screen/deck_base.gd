@@ -54,6 +54,8 @@ const DETAIL_MIN_HEIGHT := 200.0
 const RIGHT_GAP := 10
 const EQUIP_MIN_HEIGHT := 80.0
 const ROSTER_WIDTH := 320.0
+## 新しい部隊の軍を選ぶ場面の、軍のカードの幅（2 枚のとき。軍が増えたら、2 枚ぶんの幅を等分する）。
+const ARMY_CARD_WIDTH := 400.0
 ## 雇える兵の札の高さ（下に必殺技と軍略の欄を収めるため、720 の高さで 4 枚がこれ）。
 const ROSTER_CARD_HEIGHT := 63.0
 const TROOP_WIDTH := 420.0

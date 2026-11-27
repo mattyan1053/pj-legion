@@ -8,11 +8,12 @@ extends Node3D
 ## - VIEW_STORY: 縫い目を真ん中に、少し高く、空を広く見上げる（左のカードが琥珀の空、右のカードが菫の空の下に来る）。
 ##
 ## 物語の景色（show_story / queue_story。物語選択・話の一覧・セーブデータ選択）: その物語の国の側の空へ向き（VIEW_BERG_MAP / VIEW_RUEL_MAP）、
-## 空の色をその国の色へ寄せ（NATION_SKY）、地面は、その物語の話のマップの景色。物語ごとの違いが、空・地面・遠景で分かるようにする。
+## 空の色をその国の色へ寄せ（軍の見た目の表 game/army_look.gd の sky）、地面は、その物語の話のマップの景色。物語ごとの違いが、空・地面・遠景で分かるようにする。
 ##
 ## 対戦モードのマップ選択と対戦設定も、同じ裂けた空の下に置く（VIEW_VERSUS）。地面と景色は、選んでいるマップのもの（show_scape で替える）。
 ## 高く構えて少し見下ろし、マップの地面と置物が、カードのまわりに見えるようにする。光は同じ裂け目の光で、霞にだけマップの空気の色を少し残す。
 
+const ArmyLook := preload("res://game/army_look.gd")
 const RenderTone := preload("res://game/render_tone.gd")
 const BattleScreen := preload("res://game/battle_screen.gd")
 const BoardView := preload("res://game/board_view.gd")
@@ -54,7 +55,9 @@ const VIEWS := {
 }
 
 ## 国の空の色（裂けた空の左右の色。rift_sky.gdshader の left_tint / right_tint の既定と同じ）。物語の景色では、両側をその国の色へ寄せる。
-const NATION_SKY := {UnitKind.Army.MILITARY: Color(0.80, 0.50, 0.28), UnitKind.Army.FANTASY: Color(0.50, 0.36, 0.86)}
+## 裂けた空の、縫い目の左（ベルク連邦の側）と右（リュエル騎士領の側）の色。物語の景色では、これを国の空の色（ArmyLook.sky）へ寄せる。
+const RIFT_LEFT := Color(0.80, 0.50, 0.28)
+const RIFT_RIGHT := Color(0.50, 0.36, 0.86)
 const NATION_SKY_SHARE := 0.7
 ## 物語の景色を替えるとき（queue_story）: とどまってから替えるまで（秒）、幕を沈める・明ける長さ、幕の濃さ（マップ選択とそろえる）。
 const SWAP_DELAY := 0.25
@@ -98,10 +101,10 @@ func _init(which := VIEW_TITLE, board: Board = null, look_name := StageLook.CRYS
 	_army = army
 
 
-## 物語の景色の構え（軍 army の国の側の空へ向き、話のマップを見下ろす。MILITARY はベルク連邦の琥珀 = 縫い目の左、
-## FANTASY はリュエル騎士領の菫 = 右。縫い目は画面の端に見える）。
+## 物語の景色の構え（軍 army の国の側の空へ向き、話のマップを見下ろす。軍の見た目の表の view。
+## ベルク連邦は琥珀 = 縫い目の左（VIEW_BERG_MAP）、リュエル騎士領は菫 = 右（VIEW_RUEL_MAP）。縫い目は画面の端に見える）。
 static func map_view_of(army: UnitKind.Army) -> StringName:
-	return VIEW_RUEL_MAP if army == UnitKind.Army.FANTASY else VIEW_BERG_MAP
+	return ArmyLook.view(army)
 
 
 func _ready() -> void:
@@ -282,11 +285,11 @@ func _build_scape() -> void:
 
 ## 空の左右の色を、国（_army）の色へ寄せる（寄せないなら、もとの琥珀と菫）。
 func _tint_sky() -> void:
-	var left: Color = NATION_SKY[UnitKind.Army.MILITARY]
-	var right: Color = NATION_SKY[UnitKind.Army.FANTASY]
-	if NATION_SKY.has(_army):
-		left = left.lerp(NATION_SKY[_army], NATION_SKY_SHARE)
-		right = right.lerp(NATION_SKY[_army], NATION_SKY_SHARE)
+	var left := RIFT_LEFT
+	var right := RIFT_RIGHT
+	if ArmyLook.has(_army):
+		left = left.lerp(ArmyLook.sky(_army), NATION_SKY_SHARE)
+		right = right.lerp(ArmyLook.sky(_army), NATION_SKY_SHARE)
 	_sky.set_shader_parameter(&"left_tint", left)
 	_sky.set_shader_parameter(&"right_tint", right)
 

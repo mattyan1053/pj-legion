@@ -85,7 +85,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		side_column.add_theme_constant_override("separation", 3)
 		side_box.add_child(side_column)
 		var names := {}
-		for army in ARMIES:
+		for army in Armies.all():  # 軍の表の順
 			names[army] = Names.army(army)
 		var row := _add_row(side_column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)

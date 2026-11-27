@@ -8,7 +8,7 @@ extends "res://tools/cpu_matches_base.gd"
 ##   --seed=S        最初の局のシード（既定 1）。局ごとに 1 ずつ増える
 ##   --max-turns=T   このターンを超えたら打ち切る（既定 60）
 ##   --decks=auto    編成。auto = CPU の編成（CpuDeck。予算に収まる）、even = 両軍とも同じ役割の 6 体・装備なし（予算は見ない）
-##   --pairings=all  軍の組み合わせ。all = 4 通りを順に、mixed = 軍の違う 2 通り（先手を入れ替える）だけ
+##   --pairings=all  軍の組み合わせ。all = 4 通り（軍が n なら n × n）を順に、mixed = 軍の違う 2 通り（n × (n - 1)。先手を入れ替える）だけ
 ##   --rival=REV     別の版の CPU（git のリビジョンか、スクリプトのパス）と対戦させる。先手・後手は、マップと軍の組み合わせを一巡するごとに入れ替わる
 ##   --list=1        1 局ごとに 1 行（GAME ...）も出す。シード、マップ、軍、勝ったプレイヤー、終わり方、ターン、必殺技の回数、
 ##                   倒れた中ボス（ターン:倒した陣営:中ボスの番号）、最初に当てた・倒したプレイヤーとターン（first_hit、first_kill。無ければ -1:0）。局を何本かに分けて並べて回し、あとで合わせるときに使う
@@ -33,7 +33,7 @@ extends "res://tools/cpu_matches_base.gd"
 ##   --squads=one    両軍のうち片方だけ、部隊を局ごとに変える（もう片方は CPU の編成）。変える側は、マップと軍の組み合わせを
 ##                   一巡するごとに入れ替わる（24 の倍数。mixed なら 12 の倍数）。人が自分で組んだ部隊で CPU と戦うときの見え方を測る。
 ##                   --episode とは一緒に使えない
-##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
+##   --budget=M,F    予算を MILITARY M、FANTASY F に置き換える（軍の表の順に、軍の数だけ並べる）（測るためだけ。CPU の編成もランダムの部隊も、この予算で組む）
 ##   --without=KIND  両軍のロスターから、その種類の駒を抜く（UnitKind.Id の名前を小文字で。sniper,sorcerer のように並べられる）。
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
 ##   --traits=X     軍略（docs/troop-traits.md）を置き換える（測るためだけ）。none = 両軍とも無し、random = 局ごとに種で決まる 1 つ（その軍の 3 つから）、
@@ -75,7 +75,10 @@ func _initialize() -> void:
 	var by_match: Dictionary[String, Tally] = {}
 	## 縫い目の様子（--rules=seam）の、札ごと・札の組ごとの集計。鍵は札の名前、組は「名前+名前」（Seam.Sign の順）。
 	var by_sign: Dictionary[String, Tally] = {}
-	var army_wins := {UnitKind.Army.MILITARY: 0, UnitKind.Army.FANTASY: 0}
+	var army_wins := {}
+	for army in ARMIES:
+		army_wins[army] = 0
+	var pairings := _pairings(mixed_only)
 	var mixed_games := 0
 	var hired := 0
 	var gains: Array[int] = [0, 0, 0, 0, 0]  # 当てた、倒した、中立を倒した、回復した、中ボスを倒した 回数
@@ -163,10 +166,9 @@ func _initialize() -> void:
 		if args.has("stage") or trial_map != null:
 			stage = fixed_stage as BoardGenerator.Stage
 		@warning_ignore("integer_division")
-		var pairing := (game / CpuMatch.STAGES.size()) % 4
-		if mixed_only:
-			pairing %= 2
-		var armies: Array[UnitKind.Army] = [ARMIES[pairing % 2], ARMIES[(pairing % 2) ^ (0 if pairing >= 2 else 1)]]
+		var pairing := (game / CpuMatch.STAGES.size()) % pairings.size()
+		var armies: Array[UnitKind.Army] = []
+		armies.assign(pairings[pairing])
 		var setup := MatchSetup.new()
 		if trial_map != null:
 			setup.scenario = Scenario.on_map(trial_map, _map_title, true)
@@ -175,7 +177,7 @@ func _initialize() -> void:
 		setup.battle_seed = first_seed + game
 		setup.ignore_budget = deck_mode == "even"
 		@warning_ignore("integer_division")
-		var squad_side := (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2 if one_squad else -1
+		var squad_side := (game / (CpuMatch.STAGES.size() * pairings.size())) % 2 if one_squad else -1
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			if random_squads or side == squad_side:
 				setup.decks[side] = RandomSquad.build(armies[side], rules, (first_seed + game) * 2 + side)
@@ -229,7 +231,7 @@ func _initialize() -> void:
 		else:
 			# 別の版が動かす側。マップと軍の組み合わせを一巡するごとに入れ替える。
 			@warning_ignore("integer_division")
-			rival_side = (game / (CpuMatch.STAGES.size() * (2 if mixed_only else 4))) % 2
+			rival_side = (game / (CpuMatch.STAGES.size() * pairings.size())) % 2
 			outcome = CpuMatch.play(battle, max_turns, cpu if rival_side == 1 else rival, rival if rival_side == 1 else cpu, no_reward)
 			var slot := 2 if outcome.winner < 0 else (1 if outcome.winner == rival_side else 0)
 			versus[slot] += 1
@@ -450,7 +452,8 @@ func _initialize() -> void:
 			])
 		print("")
 	if not by_sign.is_empty():
-		print("縫い目の様子（札ごと、札の組ごと。先手と MILITARY の勝率は決着した局だけ。MILITARY は軍の違う対戦だけ）")
+		var first_key: String = UnitKind.Army.keys()[ARMIES[0]]
+		print("縫い目の様子（札ごと、札の組ごと。先手と %s の勝率は決着した局だけ。%s は軍の違う対戦だけ）" % [first_key, first_key])
 		var sign_names := by_sign.keys()
 		sign_names.sort_custom(func(a: String, b: String) -> bool: return (a.contains("+")) == (b.contains("+")) and a < b or (not a.contains("+") and b.contains("+")))
 		for sign_key: String in sign_names:
@@ -459,9 +462,9 @@ func _initialize() -> void:
 			var turn_total := 0
 			for value: int in sorted_turns:
 				turn_total += value
-			print("  %-16s %3d 局  先手 %5.1f%%  MILITARY %5.1f%%  ターン 平均 %4.1f  打切 %2d" % [
-				sign_key, tally.games, 100.0 * tally.wins[0] / maxi(1, tally.wins[0] + tally.wins[1]),
-				100.0 * tally.army_wins[0] / maxi(1, tally.army_wins[0] + tally.army_wins[1]),
+			print("  %-16s %3d 局  先手 %5.1f%%  %s %5.1f%%  ターン 平均 %4.1f  打切 %2d" % [
+				sign_key, tally.games, 100.0 * tally.wins[0] / maxi(1, tally.wins[0] + tally.wins[1]), first_key,
+				100.0 * tally.army_wins[0] / maxi(1, tally.army_wins.reduce(func(sum: int, value: int) -> int: return sum + value, 0)),
 				float(turn_total) / maxi(1, tally.games), tally.endings["cutoff"],
 			])
 		print("")
@@ -471,10 +474,14 @@ func _initialize() -> void:
 	print(all.first_line("全体"))
 	for stage in by_stage:
 		print(by_stage[stage].first_line("マップ " + _map_name(stage)))
-	var mixed_decided: int = army_wins[UnitKind.Army.MILITARY] + army_wins[UnitKind.Army.FANTASY]
-	print("軍の違う対戦 %d 局: MILITARY %d 勝、FANTASY %d 勝（MILITARY の勝率 %.1f%%）" % [
-		mixed_games, army_wins[UnitKind.Army.MILITARY], army_wins[UnitKind.Army.FANTASY],
-		100.0 * army_wins[UnitKind.Army.MILITARY] / maxi(1, mixed_decided),
+	var mixed_decided := 0
+	var army_counts: Array[String] = []
+	for army in ARMIES:
+		mixed_decided += army_wins[army]
+		army_counts.append("%s %d 勝" % [UnitKind.Army.keys()[army], army_wins[army]])
+	print("軍の違う対戦 %d 局: %s（%s の勝率 %.1f%%）" % [
+		mixed_games, "、".join(army_counts), UnitKind.Army.keys()[ARMIES[0]],
+		100.0 * army_wins[ARMIES[0]] / maxi(1, mixed_decided),
 	])
 	if one_squad:
 		print("")
