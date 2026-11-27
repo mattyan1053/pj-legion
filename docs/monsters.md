@@ -162,8 +162,9 @@
 
 - **姿**: `MODELS` に無いと、陣営の色のカプセルで出る。アイコンもカプセルを撮るので、アイコンと姿のテストは通る。**撮ったアイコンを自分で見る。**
 - **特性の表**（`_KIND_TRAITS`）: 無いと、特性の無いただの兵として動き、情報の札にも出ない。種類ごとの特性を見るテストは無い。
-- **新しい特性を CPU が知ること**: 危険の読み（`rules/cpu/cpu_threats.gd`）と手の価値（`rules/cpu/cpu_outcome_value.gd`）は、書かなければ知らないまま動く（上の「CPU」）。
-  脅威範囲（`rules/threat.gd`）も、本物の計算と別に持っている（`docs/code-health.md` の表の 1）。
+- **新しい特性を CPU が知ること**: ダメージを変える特性は、ダメージの解決（`Combat.hit_from`）に足せば、危険の読みも知る。
+  届き方を変える特性（殻蟹のような）は、脅威範囲（`rules/threat.gd`）と危険の読み（`rules/cpu/cpu_threats.gd`）に書かなければ知らない。
+  手の価値（`rules/cpu/cpu_outcome_value.gd`）の「得になる使い方」も、書かなければ知らないまま動く（上の「CPU」）。
 - `trait.<x>.short` が無いと、鍵の文字がそのまま出る（持ち物の文だけが読む）。
 - CPU が魔物を動かす通しのテスト（`test_monsters.gd` の `test_cpu_moves_monsters_through_a_game`）は決まった部隊なので、新しい魔物は通らない。
 - 話の見本（`game/story/_template/first_battle.txt`）の魔物の一覧はコメントで、誰も見ていない。

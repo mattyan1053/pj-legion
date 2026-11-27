@@ -119,7 +119,8 @@
    - **攻撃のダメージを引く**: `guard_at`（隊列・守護。CPU は動いた先で読む）に枝を足し、`shields` に id を足す。`rules/combat.gd` の `hit` は、受ける側の陣営の軍略に引いた量を書き、「助けられた側」は `shields` で決める。
    - **ターンの始めに効く**: `start_phase`（補給線のほかは、すぐ戻る）。呼ぶのは `rules/actions/end_phase_action.gd`（泉 → 再生 → 軍略 → 盤の上の効果 → 状態 → スキルの順）。
      新しい出来事が要る。回復なら `SupplyHealedEvent` と同じく `UnitHealedEvent` の子にすると、戦績・予測・CPU の手の価値が、そのまま数える。
-2. CPU: `rules/cpu/cpu_threats.gd`（相手の軍略で増えるダメージの `match`、`guard_at` で減るぶん）、`rules/cpu/cpu_position_value.gd` の `_trait_position_value`、
+2. CPU: 危険の読みは、ダメージの解決（`Combat.hit_from`）が軍略の増減を入れるので、書かなくてよい（`attack_boosts` の覚えは `marks` で渡せる形にする）。
+   得になる使い方は、`rules/cpu/cpu_position_value.gd` の `_trait_position_value`、
    `rules/cpu/cpu_outcome_value.gd` の `_trait_value`、`rules/cpu_deck.gd` の `_fits`（部隊の中身に合うか。書かなければ、いつも合う = `cpu_traits` のその位置より後ろは選ばれない）。
 3. 文: `game/text/names.csv` の `troop_trait.<鍵>`（名前）・`.effect`（`{amount}`）・`.text`（`{gain}`）。文の形は上の「軍略」。
 4. 数: `game/names.gd` の `troop_trait_amount` の表に 1 行。
