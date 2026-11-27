@@ -123,7 +123,7 @@ func check_campaign(campaign: Campaign) -> PackedStringArray:
 		for each: Dictionary in lines:
 			var line: Episode.TalkLine = each["line"]
 			var speaker := line.speaker_in(episode.speakers)
-			for what: String in check_line(speaker, line.text, introduced):
+			for what: String in check_line(speaker, line.shown_text(), introduced):
 				found.append("%s [%s] %s: %s — %s" % [where, each["part"], speaker if speaker != "" else ">", line.text, what])
 	return found
 

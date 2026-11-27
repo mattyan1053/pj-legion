@@ -1,4 +1,4 @@
-extends "res://game/talk_screen/talk_choice.gd"
+extends "res://game/talk_screen/talk_ask.gd"
 ## 会話の場面（docs/story.md）。話し手の姿（駒の 3D の形。talk_figure.gd）を左右に立たせ、下に話し手の名前の札（陣営の色）と文の枠。
 ## 人の軍の話し手は左、敵の軍の話し手は右。話している側を明るく大きく、話していない側を暗く小さく。背景は対戦と同じ景色（backdrop.gd）。
 ## 立つ所は左右に 1 つずつ。同じ所に立つ話し手が何人かいれば、いちばん近くに話した人（まだ誰も話していなければ、次に話す人）が立つ。
@@ -13,7 +13,7 @@ extends "res://game/talk_screen/talk_choice.gd"
 ##   「次の話へ」（その話の流れを始める。Enter でも）か「話の一覧へ」（Run.NEXT。流れの行き先）。右クリックで最後の文へ戻る。
 ##
 ## ここは、組み立て（_ready）、入力、文の送り。役割ごとのファイル（game/talk_screen/）を、次の順に継ぐ:
-## talk_base.gd（調整値・変数・小さな道具）→ talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ ここ。
+## talk_base.gd（調整値・変数・小さな道具）→ talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ ここ。
 
 
 func _ready() -> void:
@@ -22,6 +22,7 @@ func _ready() -> void:
 	var given: Variant = context.run_data()
 	if given != null:
 		talk = given
+	_refresh_lines()
 	# 話の流れの会話なら、背景の盤に駒を立たせる（前の会話は初期位置、あとの会話は決着したときの駒。story_battle.gd の talk_battle）。
 	var story_battle: RefCounted = talk.get("battle")
 	var shown: Battle = story_battle.talk_battle(talk.get("after", false)) if story_battle != null else null
@@ -30,14 +31,24 @@ func _ready() -> void:
 		king_looks = story_battle.king_looks()
 	# 名前のある人物は、盤と同じく、その人の乗る駒をその人の形で立たせる（unit_looks.gd の assign_people）。
 	var people: Dictionary = UnitLooks.assign_people(shown.units, story_battle.cast_looks()) if shown != null else {}
-	_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
-	add_child(_backdrop)
+	# カットシーン（docs/story.md の「カットシーン」）: 文の枠も話し手も出さず、背景（景色か、色の幕）の上に、地の文を真ん中に出す。
+	var cut: bool = talk.get("cut", false)
+	var curtain: StringName = talk.get("color", &"")
 	var layer := CanvasLayer.new()
-	add_child(layer)
 	_layer = layer
+	if CUT_COLORS.has(curtain):
+		var fill := ColorRect.new()
+		fill.color = CUT_COLORS[curtain]
+		fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(fill)
+	else:
+		_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
+		add_child(_backdrop)
+	add_child(layer)
 	# 背景の盤を少し沈め、話し手の姿と文を浮かせる。
 	var shade := ColorRect.new()
-	shade.color = Color(Palette.SHADE, BACKDROP_SHADE)
+	shade.color = Color(Palette.SHADE, CUT_SHADE if cut else BACKDROP_SHADE)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -59,6 +70,7 @@ func _ready() -> void:
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	heading.text = talk.get("title", "")
+	heading.modulate.a = 0.0 if cut else 1.0  # カットシーンは見出しを出さない（場所は取ったまま）
 	root.add_child(heading)
 
 	_stage = Control.new()
@@ -67,6 +79,7 @@ func _ready() -> void:
 	_stage.resized.connect(_place_figures)
 	root.add_child(_stage)
 	_make_figures()
+	_build_options()
 
 	var bottom := VBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 0)
@@ -75,6 +88,20 @@ func _ready() -> void:
 	bottom.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	root.add_child(bottom)
 	_bottom = bottom
+	if cut:
+		# 文を画面の真ん中の高さへ（下にも、舞台と同じだけ伸びる余白を置く）。上下に黒い帯。
+		var below := Control.new()
+		below.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		below.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(below)
+		for preset: Control.LayoutPreset in [Control.PRESET_TOP_WIDE, Control.PRESET_BOTTOM_WIDE]:
+			var bar := ColorRect.new()
+			bar.color = Palette.OUTLINE
+			bar.custom_minimum_size = Vector2(0.0, CUT_BAR)
+			bar.set_anchors_and_offsets_preset(preset, Control.PRESET_MODE_MINSIZE)
+			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			layer.add_child(bar)
+			layer.move_child(bar, shade.get_index() + 1)
 
 	var top_row := HBoxContainer.new()
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -121,6 +148,10 @@ func _ready() -> void:
 	_skip.size_flags_vertical = Control.SIZE_SHRINK_END
 	_skip.pressed.connect(press_skip)
 	top_row.add_child(_skip)
+	if cut:
+		# 文だけを見せる場面なので、ボタンは控えめに。
+		_log_button.modulate.a = CUT_BUTTONS
+		_skip.modulate.a = CUT_BUTTONS
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0.0, 6.0)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -130,6 +161,11 @@ func _ready() -> void:
 	var box_style := UiTheme.box(COLOR_BOX, COLOR_BORDER, 1, 8, 12.0, 10)
 	box_style.border_width_top = 3
 	_box_style = box_style
+	if cut:
+		# 枠は見せない（地も縁も影も無し。大きさと置き方は同じ）。
+		box_style.bg_color = Color(Palette.INK, 0.0)
+		box_style.set_border_width_all(0)
+		box_style.shadow_size = 0
 	box_style.content_margin_left = BOX_MARGIN_X
 	box_style.content_margin_right = BOX_MARGIN_X
 	box_style.content_margin_top = 18.0
@@ -162,8 +198,12 @@ func _ready() -> void:
 	text_row.add_child(_item_frame)
 	_item_face = ItemIcon.new(Equipment.Id.IRON_SHIELD, NOTICE_FRAME - 16.0)
 	_item_frame.add_child(_item_face)
+	_trait_face = TraitIcon.new(Traits.NONE, NOTICE_FRAME - 16.0)
+	_item_frame.add_child(_trait_face)
 	# 折り返しは、文を出すときに text_wrap.gd で入れる（自動の折り返しは、ひらがなの語の途中や句読点の前で切る）。
 	_text = _label(TEXT_FONT, COLOR_TEXT)
+	if cut:
+		_text.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_row.add_child(_text)
@@ -194,8 +234,7 @@ func _ready() -> void:
 func open_log() -> void:
 	if _log.is_open() or context.overlays.is_open():
 		return
-	var lines: Array = talk.get("lines", [])
-	_log.open(lines.slice(0, mini(_index + 1, lines.size())))
+	_log.open(_log_lines())
 
 
 ## 会話のログの窓（検査用）。
@@ -208,6 +247,7 @@ func _process(delta: float) -> void:
 	if _index < line_count() and _shown < _line_length():
 		_shown = minf(_shown + delta * CHARS_PER_SECOND, _line_length())
 		_text.visible_characters = int(_shown)
+	_ask_if_due()
 	_hint.modulate.a = 1.0 if not is_line_shown() else 0.5 + 0.5 * (0.5 + 0.5 * cos(_elapsed * TAU / BLINK_PERIOD))
 
 
@@ -223,6 +263,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_choosing():
 		_choice_input(event)
 		return
+	var asking := is_asking()
+	if asking:
+		_options_input(event)
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -230,6 +273,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_RIGHT:
 				press_back()
 	elif event is InputEventKey and event.pressed and not event.echo:
+		if asking:
+			return  # 選ぶ間のキーは、_options_input が受けた（答えを決めたキーで、次の文まで送らない）
 		match event.physical_keycode:
 			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				press_next()
@@ -247,6 +292,10 @@ func press_next() -> void:
 	if not is_line_shown():
 		_shown = _line_length()
 		_text.visible_characters = -1
+		_ask_if_due()
+		return
+	if not _choice_here().is_empty():
+		_ask_if_due()  # 選ばせる行は、答えを選ぶまで進まない
 		return
 	if _index + 1 < line_count():
 		context.play_sound(&"ui_click")
@@ -263,20 +312,71 @@ func press_back() -> void:
 	_show_line(_index - 1)
 	_shown = _line_length()
 	_text.visible_characters = -1
+	_ask_if_due()
 
 
-## 「飛ばす」: 残りを読まずに会話を終える。この先に知らせの行があれば、そこへ飛ぶ（知らせは読ませる）。
+## 「飛ばす」: 残りを読まずに会話を終える。この先に知らせの行か、選ばせる行があれば、そこへ飛ぶ（知らせは読ませ、答えは選ばせる）。
 func press_skip() -> void:
-	for index in range(_index + 1, line_count()):
-		if int(talk["lines"][index].get("side", 0)) == NOTICE_SIDE:
+	if is_asking():
+		return
+	for index in range(_index, line_count()):
+		var asks: bool = not (_lines[index] as Dictionary).get("choice", {}).is_empty()
+		if (index > _index and int(_lines[index].get("side", 0)) == NOTICE_SIDE) or asks:
 			context.play_sound(&"ui_click")
-			_show_line(index)
+			if index != _index:
+				_show_line(index)
+			_shown = _line_length()
+			_text.visible_characters = -1
+			_ask_if_due()
 			return
 	_end()
 
 
+## 答え at（0 から）を選ぶ: 覚えて、その答えに続く行へ進む。
+func press_option(at: int) -> void:
+	var choice := _choice_here()
+	if not is_asking() or choice.is_empty() or at < 0 or at >= (choice["options"] as Array).size():
+		return
+	var key: StringName = choice["options"][at]["key"]
+	_answers[choice["name"]] = String(key)
+	if context.story != null:
+		context.story.choose_answer(choice["name"], key)
+	_close_options()
+	_refresh_lines()
+	if _index + 1 < _lines.size():
+		_show_line(_index + 1)
+	else:
+		_answered_last = true  # 最後の行で選んだ: もう選ばせない（行き先の選択の下に、答えの枠を出し直さない）
+		_end()
+
+
+## 選ぶ間のキー: 上下（W/S）で印を動かし、Enter・Space で決める。数字のキーは、その番号の答え。Esc はシステムメニュー。
+func _options_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var count := option_texts().size()
+	match event.physical_keycode:
+		KEY_UP, KEY_W:
+			_mark_option(count - 1 if _option_at <= 0 else _option_at - 1)
+			context.play_sound(&"ui_click")
+		KEY_DOWN, KEY_S:
+			_mark_option(0 if _option_at < 0 or _option_at >= count - 1 else _option_at + 1)
+			context.play_sound(&"ui_click")
+		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+			if _option_at >= 0:
+				context.play_sound(&"ui_confirm")
+				press_option(_option_at)
+		KEY_1, KEY_2, KEY_3, KEY_KP_1, KEY_KP_2, KEY_KP_3:
+			var at: int = [KEY_1, KEY_2, KEY_3, KEY_KP_1, KEY_KP_2, KEY_KP_3].find(event.physical_keycode) % 3
+			if at < count:
+				context.play_sound(&"ui_confirm")
+				press_option(at)
+		KEY_ESCAPE:
+			context.open_menu()
+
+
 func line_count() -> int:
-	return talk.get("lines", []).size()
+	return _lines.size()
 
 
 ## いま出している文の番号（0 から）。
@@ -292,6 +392,8 @@ func is_line_shown() -> bool:
 ## 背景の盤に立たせた駒の数（陣営ごと: [味方, 敵, 中立]。検査用）。
 func backdrop_units() -> Array[int]:
 	var counts: Array[int] = [0, 0, 0]
+	if _backdrop == null:
+		return counts
 	for view in _backdrop.unit_views:
 		counts[_backdrop.unit_sides[_backdrop.unit_views.find(view)]] += 1
 	return counts
@@ -307,9 +409,14 @@ func bottom_rect() -> Rect2:
 	return _bottom.get_global_rect()
 
 
+## カットシーンか（検査用）。
+func is_cut() -> bool:
+	return talk.get("cut", false)
+
+
 ## いまの文が地の文か（検査用）。
 func is_narrating() -> bool:
-	return _index < line_count() and is_narration(talk["lines"][_index])
+	return _index < line_count() and is_narration(_lines[_index])
 
 
 ## いまの話し手の名前と文（検査用）。
@@ -325,6 +432,8 @@ func line_text() -> String:
 func _show_line(index: int) -> void:
 	_index = index
 	_shown = 0.0
+	_answered_last = false
+	_close_options()
 	if index >= line_count():
 		_name.text = ""
 		_text.text = ""
@@ -334,7 +443,7 @@ func _show_line(index: int) -> void:
 		_count.text = ""
 		_plate.visible = false
 		return
-	var line: Dictionary = talk["lines"][index]
+	var line: Dictionary = _lines[index]
 	var narration := is_narration(line)
 	_plate.visible = true
 	_plate.modulate.a = 0.0 if narration else 1.0  # 地の文は札を出さない（場所は取ったまま。文の枠が上下に動かないように）
@@ -359,10 +468,13 @@ func _show_line(index: int) -> void:
 	_face.visible = line.has("kind")
 	if _face.visible:
 		_face.set_kind(line["kind"])
-	_item_frame.visible = line.has("item")
-	if _item_frame.visible:
+	_item_frame.visible = line.has("item") or line.has("trait")
+	_item_face.visible = line.has("item")
+	if _item_face.visible:
 		_item_face.item = line["item"]
 		_item_face.queue_redraw()
+	_trait_face.visible = line.has("trait")
+	_trait_face.set(&"trait_id", line.get("trait", Traits.NONE))
 	_count.text = "%d / %d" % [index + 1, line_count()]
 	var standing := _standing_at(index)
 	for view in _figures:
@@ -373,6 +485,7 @@ func _show_line(index: int) -> void:
 	if context.checking != &"":
 		_shown = _line_length()  # 検査とスクリーンショットは、文を出しきって始める
 	_text.visible_characters = -1 if is_line_shown() else 0
+	_ask_if_due()
 
 
 func _line_length() -> float:

@@ -13,6 +13,7 @@ const TalkLine := preload("res://game/episode/talk_line.gd")
 const TalkCue := preload("res://game/episode/talk_cue.gd")
 const StoryScene := preload("res://game/episode/story_scene.gd")
 const Names := preload("res://game/names.gd")
+const HeroName := preload("res://game/hero_name.gd")
 
 ## 話のファイルを置く所（ファイルの名前が話の id）。
 ## 書ける節。
@@ -20,7 +21,15 @@ const SECTIONS := ["episode", "cast", "before", "cues", "after", "lost", "ally",
 ## 場面の節（書いた順が、場面の順。game/episode/episode_scenes.gd）: 「[talk 名前]」（会話。名前は話の中で重ならない）、[sortie]（出撃準備）、[battle]（対戦）。
 ## 1 つでも書いた話は、[before]・[after] を書かない。
 const TALK_SECTION := "talk "
+## カットシーンの節「[cut 名前]」（地の文だけの場面）と、その行の数の上限。
+const CUT_SECTION := "cut "
+const CUT_MAX_LINES := 6
 const SCENE_MARKS := ["sortie", "battle"]
+## 選択肢（docs/story.md の「選択肢」）: 答えの数、答えの文の長さの上限（選ぶ枠のボタンに 1 行で収まる）、名前と鍵に使える字。
+const OPTIONS_MIN := 2
+const OPTIONS_MAX := 3
+const OPTION_MAX_CHARS := 22
+const CHOICE_WORD := "^[a-z][a-z0-9_]*$"
 ## 場面の節で書く話の、会話の場面の数の上限。
 const TALK_SCENES_MAX := 8
 ## 会話（前と後）の行の数の上限、対戦の途中の台詞の数と文の長さの上限、出撃準備に出す覚えることの長さの上限。
@@ -63,6 +72,8 @@ var lesson := ""
 ## クリアで増えるもの: 雇える駒、持たせられる装備、部隊のコストの上限の上がり幅。
 var unlock_kinds: Array[UnitKind.Id] = []
 var unlock_items: Array[Equipment.Id] = []
+## クリアで選べるようになる軍略（Traits.Id。ストーリー用の部隊が出撃準備で持てる。docs/story.md の「解放」）。
+var unlock_traits: Array[int] = []
 var budget_up := 0
 ## 人（プレイヤー1）の勝ち方: 守り切るターン数（0 なら無し）と、勝ち方の列（空ならいつもの勝ち方）。
 var hold_turns := 0
@@ -122,6 +133,13 @@ var scenes: Array[StoryScene] = []
 var written_as_scenes := false
 ## 対戦のある話か（読む間に使う。読んだあとは has_battle()）。
 var _fights := true
+## 主人公の既定の名前（物語のファイルの hero。物語の読み込みが set_hero で入れる。話のファイルだけを読んだときは空）。
+var hero := ""
+## この話が選ばせる選択肢: 名前 -> 答えの鍵の列（書いた順）。
+var choices := {}
+## この話の行が条件に使う選択肢: [{"line": 行, "choice": 名前, "answer": 答えの鍵, "here": この話の、その行より前で選ばせた選択肢か}, …]。
+## 物語の読み込み（campaign.gd）が、前の話までに選ばせた選択肢と答えかを確かめる。
+var conditions: Array[Dictionary] = []
 ## 読んだファイルのパスと、書き間違い（空なら正しい）。
 var path := ""
 var problems: PackedStringArray = []
@@ -213,6 +231,18 @@ func all_lines() -> Array[TalkLine]:
 				found.append(cue.line)
 	found.append_array(lost)
 	return found
+
+
+## 主人公の既定の名前を、話と、話の全部の行に入れる（物語の読み込み campaign.gd が呼ぶ）。
+func set_hero(name: String) -> void:
+	hero = name
+	for line in all_lines():
+		line.hero = name
+
+
+## 差し込みの印（HeroName.MARK）を使っている行があるか（主人公のいない物語の話には書けない）。
+func uses_hero_mark() -> bool:
+	return all_lines().any(func(line: TalkLine) -> bool: return line.text.contains(HeroName.MARK))
 
 
 ## 前の会話の曲（無ければ、対戦の曲。会話の間は小さく鳴らし、そのまま対戦へつながる。docs/sound.md）。

@@ -19,6 +19,8 @@ var episode: Episode
 var human_deck: Deck
 ## 人が出撃準備で決めた初期位置（本陣からのずれ。部隊の並びの順。空ならいつもの置き方。MatchSetup.placements）。
 var placement: Array[Vector2i] = []
+## 遊ぶ人の付けた主人公の名前（空なら既定の名前。story.gd の run_of が入れる。途中の台詞と負けの台詞に差し込む）。
+var hero := ""
 ## いちばん最近に決着した対戦（record_end）。あとの会話の背景に、この盤の様子（生き残った駒）を映す。
 var ended_battle: Battle
 
@@ -36,8 +38,17 @@ func make_setup(battle_seed: int) -> MatchSetup:
 
 
 ## 話の戦いの定義（種に依らない。マップ、決め打ちの敵、初期位置、勝ち方）。出撃準備も、勝ち方と敵の部隊をここから読む。
+## 人の軍略は、話のファイルが書いていればそれ。書いていなくて、自分で部隊を選ぶ話なら、部隊の軍略（教わった軍略から。trait_of_deck）。
 func scenario() -> Scenario:
-	return scenario_of(episode)
+	var defined := scenario_of(episode)
+	if defined.traits[Unit.Side.PLAYER1] == Traits.NONE and not episode.has_squad():
+		defined.traits[Unit.Side.PLAYER1] = trait_of_deck(human_deck)
+	return defined
+
+
+## 自分で選んだ部隊 deck が、話で持つ軍略（部隊の決まりで選べる軍略から。DeckRules.trait_for）。部隊が無ければ Traits.NONE。
+static func trait_of_deck(deck: Deck) -> int:
+	return deck.rules.trait_for(deck) if deck != null and deck.rules != null else Traits.NONE
 
 
 func look() -> StringName:
@@ -161,14 +172,14 @@ func cast_looks() -> Array:
 func talk_cues() -> RefCounted:
 	if episode.cues.is_empty():
 		return BattleCues.new()
-	return BattleCues.new(episode.cues, episode.speakers, episode.figures)
+	return BattleCues.new(episode.cues, episode.speakers, episode.figures, hero)
 
 
 ## 話のファイルの [lost]（負けたときの台詞）。無い話は無し。
 func lost_lines() -> Array[BattleCues.Line]:
 	var lines: Array[BattleCues.Line] = []
 	for row in episode.lost:
-		lines.append(BattleCues.line_of(row, episode.speakers, episode.figures))
+		lines.append(BattleCues.line_of(row, episode.speakers, episode.figures, hero))
 	return lines
 
 
@@ -180,6 +191,7 @@ func record_win(context: RefCounted) -> void:
 func copy() -> RefCounted:
 	var other: RefCounted = get_script().new(episode, human_deck)
 	other.placement = placement.duplicate()
+	other.hero = hero
 	return other
 
 
@@ -212,7 +224,7 @@ static func scenario_of(of_episode: Episode) -> Scenario:
 		defined.set_win_conditions(Unit.Side.PLAYER1, of_episode.wins)
 	# 縫い目の様子（[episode] の signs）。書けば、その話にいつも付く。
 	defined.signs = of_episode.signs.duplicate()
-	# 軍略（[ally] / [enemy] の trait。docs/troop-traits.md）。書いた陣営だけが持つ（部隊編成で選んだ軍略は使わない）。
+	# 軍略（[ally] / [enemy] の trait。docs/troop-traits.md）。書いた陣営だけが持つ（自分で部隊を選ぶ話の人の側は、scenario() が部隊の軍略を足す）。
 	defined.deck_traits = false
 	# 敵の側が番人を狙わない話（[enemy] の spare_boss = yes）。
 	defined.spares_bosses[Unit.Side.PLAYER2] = of_episode.enemy_spares_boss

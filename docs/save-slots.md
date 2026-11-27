@@ -67,7 +67,7 @@
   "saved_at": 1795000000,
   "played_seconds": 9000,
   "sections": {
-    "story": {"version": 2, "data": {"campaign": "military", "campaigns": {"military": {"cleared": ["..."], "squad": "3"}}}},
+    "story": {"version": 4, "data": {"campaign": "military", "heroes": {"ハーデン": "ノエル"}, "campaigns": {"military": {"cleared": ["..."], "squad": "3", "answers": {"first_order": "faces"}}}}},
     "decks": {"version": 1, "data": {"next_id": 5, "decks": ["..."]}}
   }
 }
@@ -98,6 +98,8 @@
 - 版が同じか古いまとまりの知らない欄は、やめた欄として捨てる（前の版の配置の欄、など）。
 - いまある欄の意味や形は変えない。変えたいときは別の名前の欄を足す。どうしても変えるなら、読み替え（そのまとまりの `_migrate`）を足して版を上げ、
   スロットの版（`SaveSlots.FORMAT_VERSION`）も上げる（古い exe は、版の新しいスロットを開かない。上の「読めないとき」）。
+- 話の記録の版 3 で、物語ごとの記録に `answers`（会話の選択肢で選んだ答え。選択肢の名前 → 答えの鍵。`docs/story.md` の「選択肢」）を足した。版 2 の記録は、答えが無いだけで、そのまま読む。
+- 話の記録の版 4 で、一番上に `heroes`（主人公に付けた名前。既定の名前 → 付けた名前。`docs/story.md` の「主人公の名前」）を足した。
 - 古い版のまとまりは、新しい exe が**版の番号で**読み替える（形で見分けない）。話の記録の版 1（物語が 1 つだったころ）は、MILITARY の物語の記録として読む（`Story._migrate`）。
 - 知らないまとまり（`sections` の中の、知らない名前）も、そのまま残す。
 - テスト: `tests/game/test_save_slots.gd` の `test_a_newer_section_keeps_its_unknown_fields_and_version_when_saved_again`・`test_an_old_story_section_is_read_by_its_version`、`tests/game/test_settings.gd`。

@@ -3,6 +3,7 @@ extends "res://tests/base_test.gd"
 
 const TalkScreen := preload("res://game/talk_screen.gd")
 const Story := preload("res://game/story.gd")
+const UiTheme := preload("res://game/ui_theme.gd")
 
 
 ## 話の流れの外の会話（"battle" の無いもの。物語の解放の知らせを出すときなど）も、開いて最初の行を出す。
@@ -13,4 +14,148 @@ func test_talk_without_a_battle_opens() -> void:
 	screen.talk = Story.talk_of(episode, [Story.Episode.TalkLine.speech(0, "はじめの台詞", 0)] as Array[Story.Episode.TalkLine])
 	await settle(screen)
 	assert_eq(screen.speaker(), episode.speakers[0], "最初の行の話し手が出ない（_ready が途中で止まった）")
+	screen.free()
+
+
+## 選択肢（docs/story.md の「選択肢」）の会話: 問い → 答え 2 つ（それぞれに続く行）→ 元の流れ → 条件の行。
+func _asking_talk() -> Dictionary:
+	var when_a := {"choice": &"way", "answer": &"a", "not": false}
+	var when_b := {"choice": &"way", "answer": &"b", "not": false}
+	return {"title": "", "lines": [
+		{"side": 0, "name": "新兵", "text": "どちらへ？", "choice": {"name": &"way", "options": [{"key": &"a", "text": "左"}, {"key": &"b", "text": "右へ急ぐ"}]}},
+		{"side": 0, "name": "少尉", "text": "左だ。", "when": when_a},
+		{"side": 0, "name": "少尉", "text": "右だ。", "when": when_b},
+		{"side": 0, "name": "新兵", "text": "走るんですね。", "when": when_b},
+		{"side": 0, "name": "少尉", "text": "行くぞ。"},
+		{"side": 0, "name": "新兵", "text": "左で正解でした。", "when": when_a},
+	]}
+
+
+func _asking_screen() -> Node:
+	var context := preload("res://game/app_context.gd").new()
+	context.story = Story.new()
+	var screen := TalkScreen.new()
+	screen.context = context
+	screen.talk = _asking_talk()
+	await settle(screen)
+	return screen
+
+
+func test_a_choice_asks_and_branches_then_returns_to_the_flow() -> void:
+	var screen: Node = await _asking_screen()
+	screen.press_next()  # 文を出しきる
+	assert_true(screen.is_asking(), "問いの行を出しきると、答えが出る")
+	assert_eq(screen.option_texts(), ["左", "右へ急ぐ"] as Array[String])
+	screen.press_next()
+	screen.press_skip()
+	assert_true(screen.line_index() == 0 and screen.is_asking(), "選ぶまで、クリックでも「スキップ」でも進まない")
+	screen.press_option(1)
+	assert_false(screen.is_asking())
+	assert_eq([screen.line_index(), screen.line_text()], [1, "右だ。"], "選んだ答えに続く行へ")
+	assert_eq(screen.context.story.answer_of(&"way"), "b", "選んだ答えを覚える")
+	assert_eq(screen.line_count(), 4, "右の 2 行と、元の流れの 1 行（左を選んだときだけの行は出ない）")
+	screen.press_next()
+	screen.press_next()
+	screen.press_next()
+	screen.press_next()
+	assert_eq(screen.line_text(), "行くぞ。", "元の流れに戻る")
+	# ログに、選んだ答えが 1 行で残る。
+	screen.open_log()
+	await settle(screen)
+	assert_eq(screen.talk_log().row_texts(), [["新兵", "どちらへ？"], ["選択", "右へ急ぐ"], ["少尉", "右だ。"], ["新兵", "走るんですね。"], ["少尉", "行くぞ。"]])
+	screen.talk_log().close()
+	# 問いの行まで戻れば、選び直せる。
+	for i in 3:
+		screen.press_back()
+	assert_true(screen.line_index() == 0 and screen.is_asking(), "問いの行へ戻ると、また選ばせる")
+	screen.press_option(0)
+	assert_eq([screen.line_text(), screen.line_count(), screen.context.story.answer_of(&"way")], ["左だ。", 4, "a"])
+	screen.free()
+
+
+func test_a_choice_is_picked_with_keys_and_skip_stops_at_it() -> void:
+	var screen: Node = await _asking_screen()
+	screen.talk["lines"].push_front({"side": 0, "name": "少尉", "text": "着いた。"})
+	screen._refresh_lines()
+	screen._show_line(0)
+	screen.press_skip()
+	assert_true(screen.line_index() == 1 and screen.is_asking(), "「スキップ」は、選ばせる行で止まる")
+	for code: Key in [KEY_ENTER, KEY_DOWN, KEY_DOWN, KEY_DOWN, KEY_UP]:
+		_key(screen, code)
+	assert_true(screen.is_asking() and screen._option_at == 1, "Enter だけでは選ばない。上下の矢印で印が動く（端で回る）")
+	_key(screen, KEY_ENTER)
+	assert_eq(screen.context.story.answer_of(&"way"), "b")
+	screen.press_back()
+	_key(screen, KEY_1)
+	assert_eq(screen.context.story.answer_of(&"way"), "a", "数字のキーでも選べる")
+	screen.free()
+
+
+func _key(screen: Node, code: Key) -> void:
+	var event := InputEventKey.new()
+	event.physical_keycode = code
+	event.pressed = true
+	screen._unhandled_input(event)
+
+
+## 選択肢の枠は、答えの数や長さで大きさを変えない。いちばん長い答え（22 字）もボタンに収まり、画面からはみ出さない。
+func test_the_options_frame_keeps_its_size() -> void:
+	var screen: Node = await _asking_screen()
+	screen.press_next()
+	await settle(screen)
+	var small: Rect2 = screen.options_rect()
+	var longest := "あ".repeat(Story.Episode.OPTION_MAX_CHARS)
+	screen.talk["lines"][0]["choice"]["options"] = [{"key": &"a", "text": longest}, {"key": &"b", "text": longest}, {"key": &"c", "text": longest}]
+	screen._refresh_lines()
+	screen._show_line(0)
+	screen.press_next()
+	await settle(screen)
+	assert_eq(screen.option_texts().size(), 3)
+	assert_eq(screen.options_rect(), small, "答えが 2 つでも 3 つでも、短くても長くても、枠は同じ")
+	assert_true(screen.get_viewport().get_visible_rect().encloses(small), "枠が画面からはみ出す: %s" % small)
+	var width := UiTheme.FONT_BODY.get_string_size(longest, HORIZONTAL_ALIGNMENT_LEFT, -1, TalkScreen.OPTION_FONT).x
+	assert_true(width + 24.0 <= TalkScreen.OPTION_SIZE.x, "いちばん長い答えが、ボタンに 1 行で入らない（要る幅 %d）" % width)
+	screen.free()
+
+
+## 答えを Enter で決めても、次の文は 1 文字ずつ出る（決めたキーで、次の文まで送らない）。
+## 最後の行で答えを選ぶと会話が終わり、答えの枠は出し直さない。ログには、選んだ答えが残る。
+func test_the_key_that_picks_an_answer_does_not_also_advance_and_a_last_question_ends_the_talk() -> void:
+	var screen: Node = await _asking_screen()
+	screen.press_next()
+	_key(screen, KEY_DOWN)
+	_key(screen, KEY_ENTER)
+	assert_true(screen.line_index() == 1 and not screen.is_line_shown(), "答えを決めたキーで、次の文を出しきった")
+	screen.free()
+	screen = await _asking_screen()
+	screen.talk["lines"] = [screen.talk["lines"][0]]
+	screen._refresh_lines()
+	screen._show_line(0)
+	var ended := [0]
+	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
+	screen.press_next()
+	screen.press_option(0)
+	await settle(screen)
+	assert_true(ended[0] == 1 and not screen.is_asking(), "最後の行で選ぶと、会話が終わる（答えの枠を出し直さない）")
+	assert_eq(screen._log_lines().size(), 2, "ログに、選んだ答えが残る")
+	screen.free()
+
+
+## カットシーン: 話し手の姿を立てず、地の文を出す。色の幕なら、背景の盤を作らない。クリックで送れて、最後で終わる。
+func test_a_cutscene_shows_narration_without_figures() -> void:
+	var screen := TalkScreen.new()
+	screen.talk = {"title": "見出し", "cut": true, "color": &"night", "lines": [
+		{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "隊は、夜のうちに谷を抜けた。"},
+		{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "だれも、口をきかなかった。"}]}
+	await settle(screen)
+	assert_true(screen.is_cut() and screen.is_narrating() and screen.figures().is_empty())
+	assert_eq(screen.backdrop_units(), [0, 0, 0] as Array[int])
+	var bottom: Rect2 = screen.bottom_rect()
+	var view: Rect2 = screen.get_viewport().get_visible_rect()
+	assert_true(view.encloses(bottom) and absf(bottom.get_center().y - view.get_center().y) < 40.0, "文が画面の真ん中の高さに無い: %s" % bottom)
+	var ended := [0]
+	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
+	for i in 4:
+		screen.press_next()
+	assert_eq(ended[0], 1)
 	screen.free()

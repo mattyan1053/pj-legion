@@ -39,8 +39,11 @@ static func build(army: UnitKind.Army, rules: DeckRules = null) -> Deck:
 
 
 ## 部隊 deck に、CPU の決め方で軍略を選んで付け（choose_trait）、誓いなら誓いを結ぶ（bind_oaths）。
+## 決まりで選べない軍略なら、決まりの選び方（DeckRules.trait_for。ストーリーで、まだ教わっていない軍略）。
 static func pick_trait(deck: Deck) -> void:
 	deck.trait_id = choose_trait(deck)
+	if deck.rules != null and deck.trait_id != Traits.NONE and not deck.rules.allows_trait(deck.trait_id):
+		deck.trait_id = deck.rules.trait_for(deck)
 	if deck.trait_id == Traits.Id.OATH:
 		bind_oaths(deck)
 	else:

@@ -38,6 +38,14 @@ func _campaign_focused(index: int) -> bool:
 	return true
 
 
+## 物語を初めて選んだときの、主人公の名前の窓（既定の名前が入っている）。
+func _scene_story_hero_name() -> bool:
+	if not await _scene_story_campaigns():
+		return false
+	_app.current_scene().ask_hero_name(Story.campaigns()[0])
+	return _app.current_scene().hero_window().is_open()
+
+
 func _scene_story_campaigns_berg() -> bool:
 	return await _campaign_focused(0)
 

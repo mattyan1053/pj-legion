@@ -96,6 +96,9 @@ func test_the_run_of_a_scenes_episode_gives_each_talk_its_place() -> void:
 	assert_false(run.data().has("battle"), "別の場所の会話に、盤の兵は立たせない")
 	assert_eq(run.data()["look"], &"drill_yard")
 	assert_eq(run.data()["board"].size, episode.scenes[0].place.make_board().size)
+	assert_false(run.data().has("cut"))
+	assert_eq(run.advance(), &"talk")
+	assert_true(run.data()["cut"] and run.data()["color"] == &"night" and not run.data().has("battle"), "カットシーンは、会話の場面に cut の印を付けて渡す")
 	assert_eq([run.advance(), run.advance(), run.advance()], [&"talk", Story.SORTIE, &"talk"])
 	assert_true(run.data().has("battle") and not run.data()["after"] and run.data()["look"] == episode.look, "話の盤の会話は、初期位置の兵")
 	assert_eq([run.advance(), run.advance()], [&"battle", &"talk"])
@@ -477,6 +480,22 @@ func test_news_tell_each_new_kind_item_and_the_new_budget() -> void:
 		{"text": "新しい持ち物「スピードブーツ」を持たせられるようになりました。効果: 移動 +2", "item": Equipment.Id.SPEED_BOOTS},
 		{"text": "コスト上限が %d に上がりました。" % (Story.military().starting_budget + 3)},
 	] as Array[Dictionary], "もう使えるもの（スナイパー、アイアンシールド）は知らせない。駒・持ち物の知らせはアイコンを出す（kind、item）。持ち物は効果も")
+
+
+## 軍略の解放（[unlock] の trait）: 知らせ（印つき）を出し、足したあとは選べる。まだ教わっていなければ、既定の編成は軍略を持たない。
+func test_taught_traits_are_told_and_then_chosen() -> void:
+	var episode := Episode.new()
+	episode.unlock_traits.assign([Traits.Id.SUPPLY])
+	var given := Story.starting()
+	assert_eq(given.traits, [] as Array[int])
+	assert_eq(Story.default_deck(given).trait_id, Traits.NONE, "教わる前は、軍略を持たない")
+	var news := given.news_of(episode)
+	assert_eq(news.size(), 1)
+	assert_eq(news[0]["trait"], Traits.Id.SUPPLY)
+	given.add(episode)
+	assert_eq(given.traits, [Traits.Id.SUPPLY] as Array[int])
+	assert_true(given.news_of(episode).is_empty(), "教わった軍略は、もう知らせない")
+	assert_eq(StoryBattle.trait_of_deck(Story.default_deck(given)), Traits.Id.SUPPLY)
 
 
 ## MILITARY の物語の、id の話。
