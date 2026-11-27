@@ -1,4 +1,4 @@
-extends Control
+extends "res://game/window_base.gd"
 ## クレジットの窓（docs/credits.md）。タイトルの「クレジット」で開く重なる画面。
 ## 中身は game/credits.csv（credits.gd）から作る: 種類ごと（フォント、兵と魔物、盤、音）に、素材名・作者・ライセンス・出どころ。
 ## 最後に、文の同梱を求めるライセンス（SIL OFL）の文をそのまま載せる。
@@ -6,10 +6,6 @@ extends Control
 ## 「閉じる」・右クリック・Esc・窓の外のクリックで閉じる。
 
 const Text := preload("res://game/text.gd")
-const CardKeys := preload("res://game/card_keys.gd")
-const UiTheme := preload("res://game/ui_theme.gd")
-const Palette := preload("res://game/ui_palette.gd")
-const Steady := preload("res://game/steady.gd")
 const Credits := preload("res://game/credits.gd")
 
 ## 窓の板の大きさ（px。1280×720 の論理の画面に余白を持って収まる）と、中身の欄の幅。
@@ -23,7 +19,6 @@ const WHEEL_STEP := 48
 ## 閉じた。
 signal closed
 
-var _overlays: RefCounted
 var _scroll: ScrollContainer
 var _body: VBoxContainer
 ## 載せている文（検査用。1 行ずつ）。
@@ -32,27 +27,7 @@ var _lines: Array[String] = []
 
 ## overlays は、開いている重なる画面の積み上げ（AppContext.overlays）。
 func setup(overlays: RefCounted) -> void:
-	_overlays = overlays
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	visible = false
-	visibility_changed.connect(_track_overlay)
-	var shade := ColorRect.new()
-	shade.color = Color(Palette.SHADE, 0.5)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			close_credits())
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(center)
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = UiTheme.PANEL_SOLID
-	panel.custom_minimum_size = SIZE
-	Steady.mark(panel, "credits.window")
-	center.add_child(panel)
+	var panel := build_window(overlays, "credits.window", SIZE, 0.5, true)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	panel.add_child(column)
@@ -160,24 +135,5 @@ func _label(words: String, font_size: int, color: Color, bold: bool) -> Label:
 	return label
 
 
-func _track_overlay() -> void:
-	if _overlays == null:
-		return
-	if visible and is_inside_tree():
-		_overlays.open(self)
-	else:
-		_overlays.close(self)
-		closed.emit()
-
-
-func _exit_tree() -> void:
-	if _overlays != null:
-		_overlays.close(self)
-
-
-func _input(event: InputEvent) -> void:
-	if not visible or _overlays == null or not _overlays.is_top(self):
-		return
-	if CardKeys.is_back(event):
-		close_credits()
-		get_viewport().set_input_as_handled()
+func _on_hidden() -> void:
+	closed.emit()

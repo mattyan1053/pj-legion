@@ -68,6 +68,7 @@ func test_kings_and_monsters_have_no_cost_items_or_army_of_their_own() -> void:
 
 
 ## 窓の大きさは、木に入れて 1 コマ待ってから測る（base_test.gd の settle）。遊ぶときの字（UI のテーマ）で測る。
+## 幅は、どの駒でも同じ（スキルの名前と札が長い駒で、札が列からはみ出して窓が広がらない）。高さは、持ち物と進化先の行の数で変わってよい。
 func test_the_window_fits_the_screen_for_every_unit() -> void:
 	preload("res://game/ui_theme.gd").install()
 	var detail := UnitDetail.new()
@@ -77,6 +78,7 @@ func test_the_window_fits_the_screen_for_every_unit() -> void:
 		[] as Array[Equipment.Id],
 		[Equipment.Id.JET_PACK, Equipment.Id.DRAGON_SCALE, Equipment.Id.WAR_BANNER] as Array[Equipment.Id],
 	]
+	var width := 0.0
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		for held: Array[Equipment.Id] in loads:
 			if not held.is_empty() and not Equipment.can_equip(kind):
@@ -86,6 +88,9 @@ func test_the_window_fits_the_screen_for_every_unit() -> void:
 			await settle(detail)
 			var size := detail.panel_size()
 			assert_true(size.x <= 1240.0 and size.y <= 700.0, "%s の窓が 1280×720 に収まらない: %s" % [Names.kind(kind), size])
+			if width == 0.0:
+				width = size.x
+			assert_eq(size.x, width, "%s の窓の幅が、ほかの駒と違う" % Names.kind(kind))
 			var texts := detail.stat_meters()[0].texts()
 			assert_eq(texts[0], "HP")
 			assert_eq(texts[2] != "", not held.is_empty(), "持ち物で HP が増えた駒にだけ、増減が出る")

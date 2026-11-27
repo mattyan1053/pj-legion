@@ -11,6 +11,7 @@ const Text := preload("res://game/text.gd")
 const CardKeys := preload("res://game/card_keys.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const WindowBase := preload("res://game/window_base.gd")
 const Settings := preload("res://game/settings.gd")
 const SettingsPanel := preload("res://game/settings_panel.gd")
 
@@ -83,15 +84,7 @@ func setup(settings: Settings, overlays: RefCounted) -> void:
 	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	_overlay.visible = false
 	add_child(_overlay)
-	var shade := ColorRect.new()
-	shade.color = Palette.SHADE
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(center)
+	var center := WindowBase.add_shell(_overlay)
 
 	_menu = _panel()
 	center.add_child(_menu)

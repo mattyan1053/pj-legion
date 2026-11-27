@@ -1,21 +1,17 @@
-extends Control
+extends "res://game/window_base.gd"
 ## 編成の確認（対戦設定の「編成を確認」）。1 つの部隊の駒を、札（unit_card.gd）にして並べる重なる画面。
 ## 自分の部隊も、CPU の部隊も、同じ見え方。「閉じる」・右クリック・Esc で閉じる。
 ## 札を押すと、その駒の詳しい説明（unit_detail.gd）を上に重ねて開く。
 ## 色や枠は UI のテーマ（ui_theme.gd。板は PANEL_SOLID、札は PANEL_CARD）が当たる。
 
 const Text := preload("res://game/text.gd")
-const CardKeys := preload("res://game/card_keys.gd")
 const UnitCard := preload("res://game/unit_card.gd")
 const DeckText := preload("res://game/deck_text.gd")
-const UiTheme := preload("res://game/ui_theme.gd")
-const Palette := preload("res://game/ui_palette.gd")
 const UnitDetail := preload("res://game/unit_detail.gd")
 const TraitTag := preload("res://game/trait_tag.gd")
 const TraitText := preload("res://game/trait_text.gd")
 const TraitSentence := preload("res://game/trait_sentence.gd")
 const Names := preload("res://game/names.gd")
-const Steady := preload("res://game/steady.gd")
 
 ## 1 行に並べる札の数。
 const COLUMNS := 4
@@ -25,7 +21,6 @@ const TRAIT_MARK_SIDE := 26.0
 ## 軍略の文の欄の幅（いちばん長い文が 1 行に収まる。tests/game/test_traits_text.gd）。
 const TRAIT_TEXT_WIDTH := 400.0
 
-var _overlays: RefCounted
 var _title: Label
 ## 軍略の行（印と、名前と 1 行の文。docs/troop-traits.md）。
 var _trait_mark: TraitTag
@@ -39,21 +34,7 @@ var _side := 0
 
 ## overlays は、開いている重なる画面の積み上げ（AppContext.overlays）。
 func setup(overlays: RefCounted) -> void:
-	_overlays = overlays
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	visible = false
-	visibility_changed.connect(_track_overlay)
-	var shade := ColorRect.new()
-	shade.color = Palette.SHADE
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = UiTheme.PANEL_SOLID
-	center.add_child(panel)
+	var panel := build_window(overlays)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)
 	panel.add_child(column)
@@ -173,23 +154,5 @@ func title_text() -> String:
 	return _title.text
 
 
-func _track_overlay() -> void:
-	if _overlays == null:
-		return
-	if visible and is_inside_tree():
-		_overlays.open(self)
-	else:
-		_overlays.close(self)
-
-
-func _exit_tree() -> void:
-	if _overlays != null:
-		_overlays.close(self)
-
-
-func _input(event: InputEvent) -> void:
-	if not visible or not _overlays.is_top(self):
-		return
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		close_preview()
+func _on_back() -> void:
+	close_preview()
