@@ -91,8 +91,8 @@ func test_story_music_comes_from_the_episode() -> void:
 		assert_true(Catalog.has_music(track), "%s の対戦の曲 %s が表にある" % [episode.id, track])
 		if episode.music == &"":
 			assert_eq(track, Catalog.battle_music(episode.look), "%s: music が無ければ、盤の見た目の曲" % episode.id)
-		var before := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.before, episode.before_talk_music()))
-		var after := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.after, episode.after_talk_music()))
+		var before := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.talk_before_battle().lines, episode.talk_before_battle().music))
+		var after := SceneFlow.music_for(SceneFlow.TALK, Story.talk_of(episode, episode.talk_after_battle().lines, episode.talk_after_battle().music))
 		assert_true(Catalog.has_music(before), "%s の前の会話の曲 %s が表にある" % [episode.id, before])
 		assert_true(Catalog.has_music(after), "%s のあとの会話の曲 %s が表にある" % [episode.id, after])
 		assert_true(episode.before_music != &"" and episode.after_music != &"", "%s: 前の会話とあとの会話の曲を、話のファイルが選んでいる" % episode.id)

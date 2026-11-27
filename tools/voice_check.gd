@@ -110,14 +110,16 @@ func check_campaign(campaign: Campaign) -> PackedStringArray:
 	var introduced := {}
 	for episode: Episode in campaign.episodes:
 		var where := "%s/%s" % [campaign.id, episode.id]
-		var lines: Array[Dictionary] = []  # {"part": 節, "line": 会話の行}
-		for row: Episode.TalkLine in episode.before:
-			lines.append({"part": "before", "line": row})
-		for cue: Episode.TalkCue in episode.cues:
-			lines.append({"part": "cues", "line": cue.line})
-		for part: String in ["after", "lost"]:
-			for row: Episode.TalkLine in episode.get(part):
-				lines.append({"part": part, "line": row})
+		var lines: Array[Dictionary] = []  # {"part": 節, "line": 会話の行}。場面の列の順（episode.gd の all_lines と同じ順）
+		for scene: Episode.StoryScene in episode.scenes:
+			if scene.is_talk():
+				for row: Episode.TalkLine in scene.lines:
+					lines.append({"part": scene.part, "line": row})
+			elif scene.is_battle():
+				for cue: Episode.TalkCue in episode.cues:
+					lines.append({"part": "cues", "line": cue.line})
+		for row: Episode.TalkLine in episode.lost:
+			lines.append({"part": "lost", "line": row})
 		for each: Dictionary in lines:
 			var line: Episode.TalkLine = each["line"]
 			var speaker := line.speaker_in(episode.speakers)

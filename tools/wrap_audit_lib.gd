@@ -41,12 +41,15 @@ static func story_lines() -> Array[Dictionary]:
 	var lines: Array[Dictionary] = []
 	for episode in Story.all_episodes():
 		var where := episode.path.get_file()
-		for part: String in ["before", "after", "lost"]:
-			var rows: Array = episode.get(part)
-			for i in rows.size():
-				var row: Episode.TalkLine = rows[i]
-				lines.append({"where": "%s [%s] %d" % [where, part, i + 1], "site": &"remark" if part == "lost" else &"talk",
+		for scene: Episode.StoryScene in episode.talk_scenes():
+			for i in scene.lines.size():
+				var row: Episode.TalkLine = scene.lines[i]
+				lines.append({"where": "%s [%s] %d" % [where, scene.part, i + 1], "site": &"talk",
 					"text": row.shown_text(), "name": row.speaker_in(episode.speakers), "narration": row.is_narration()})
+		for i in episode.lost.size():
+			var row: Episode.TalkLine = episode.lost[i]
+			lines.append({"where": "%s [lost] %d" % [where, i + 1], "site": &"remark",
+				"text": row.shown_text(), "name": row.speaker_in(episode.speakers), "narration": row.is_narration()})
 		for i in episode.cues.size():
 			var cue: Episode.TalkCue = episode.cues[i]
 			lines.append({"where": "%s [cues] %d" % [where, i + 1], "site": &"cue", "text": cue.line.shown_text(),

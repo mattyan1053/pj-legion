@@ -38,11 +38,7 @@ func test_a_script_holds_every_line_in_order() -> void:
 			var texts: Array[String] = [episode.title]
 			if episode.lesson != "":
 				texts.append(episode.lesson)
-			for row: Episode.TalkLine in episode.before:
-				texts.append(row.text)
-			for cue: Episode.TalkCue in episode.cues:
-				texts.append(cue.line.text)
-			for row: Episode.TalkLine in episode.after + episode.lost:
+			for row: Episode.TalkLine in episode.all_lines():
 				texts.append(row.text)
 			for each in texts:
 				var found := text.find(each, at)

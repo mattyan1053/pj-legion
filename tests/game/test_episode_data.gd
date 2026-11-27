@@ -87,6 +87,13 @@ func test_the_template_reads_without_problems() -> void:
 	assert_false(episode.before.is_empty())
 	assert_false(episode.cues.is_empty())
 	assert_eq(episode.speakers, PackedStringArray(["少尉", "敵将", "新兵"]))
+	assert_true(episode.before_music != &"" and episode.after_music != &"", "見本を写した話も、会話の曲を選んである（test_sound.gd が、どの話にも求める）")
+	# 見本の魔物の一覧に、話のファイルに書ける魔物が全部ある。
+	var text := FileAccess.get_file_as_string(TEMPLATE.get_base_dir().path_join("first_battle.txt"))
+	for kind: int in UnitKind.Id.values():
+		if UnitKind.is_monster(kind as UnitKind.Id):
+			assert_true(RegEx.create_from_string("#   魔物:.*\\b%s\\b" % String(UnitKind.Id.keys()[kind]).to_lower()).search(text) != null,
+				"見本の魔物の一覧に %s が無い" % String(UnitKind.Id.keys()[kind]).to_lower())
 
 
 func test_a_full_squad_is_placed_on_every_episode_map() -> void:
@@ -432,10 +439,8 @@ func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 	var quoted := RegEx.create_from_string("「([^」]*)」")
 	for episode: Episode in Story.all_episodes():
 		var texts: Array[String] = [episode.lesson]
-		for line: TalkLine in episode.before + episode.after + episode.lost:
+		for line: TalkLine in episode.all_lines():
 			texts.append(line.text)
-		for cue: Episode.TalkCue in episode.cues:
-			texts.append(cue.line.text)
 		for text in texts:
 			for found in quoted.search_all(text):
 				assert_true(shown.has(found.get_string(1)), "%s: 画面に無い呼び方「%s」: %s" % [episode.id, found.get_string(1), text])

@@ -39,7 +39,8 @@
 
 1. **話のファイル** `game/story/<物語>/<話>.txt`。物語のフォルダは置くだけで並び、話は `story.txt` の `[episodes]` で並ぶ（`game/campaign.gd`、`game/episode.gd`。書き方は `docs/story.md`）。
    会話の 1 行は `game/episode/talk_line.gd`、対戦の途中の台詞は `game/episode/talk_cue.gd`（欄を名前で読む。`docs/story.md` の「会話の 1 行（コードの形）」）。
-2. **流れを組む** 話の一覧で選ぶと、`Story.run_now` → `run_of` が 出撃準備 → 会話（前）→ 対戦 → 会話（後）の流れ（`game/run.gd`）を組み、`app.gd` が順に場面を出す。
+2. **流れを組む** 話は場面の列（`Episode.scenes`、`game/episode/story_scene.gd`。いまは 出撃準備 → 会話（前）→ 対戦 → 会話（後））で持つ。
+   話の一覧で選ぶと、`Story.run_now` → `run_of` がその列を順に流れ（`game/run.gd`）へ並べ、`app.gd` が順に場面を出す（`docs/story.md` の「場面の列」）。
 3. **出撃準備** `game/sortie_screen.gd`: 部隊を選ぶ（部隊編成への寄り道あり）。戦いの定義は `game/story_battle.gd`（`docs/scenario.md`）。
 4. **会話** `game/talk_screen.gd`（前と後で同じ画面）。
 5. **対戦** 上の「対戦の 1 手」と同じ。勝つと `StoryBattle.record_win` → `Story.clear` が記録する。
