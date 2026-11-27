@@ -104,3 +104,46 @@ CPU どうしの対戦（`docs/cpu-ai.md` の「集計の道具」）で見る�
   射程と数（2 体）はそのまま。
 - 移動力は下げない（「下がる」ができなくなる）。
 - 聖遺物の効き方の、軍による差は `docs/relic-buff.md` の「強さ」。
+
+## 兵を足すとき
+
+いまの軍（MILITARY か FANTASY）に、雇える兵を 1 種足す。魔物は `docs/monsters.md` の「魔物を足すとき」。
+
+**先に: いまの軍は「役割ごとに 1 種で 4 種」の前提で作ってある。** 5 種目は、次を直してからでないと、エラーも出ずに崩れる。
+
+- 部隊編成の雇う欄は 4 つ決め打ち（`game/deck_screen/deck_editor.gd` の `for i in 4`）。5 種目は欄が無く、雇えない。
+- CPU の軍略選び（`rules/cpu_deck.gd` の `choose_trait`）は、衛生兵とスペルブレードを種類の名前で数える。同じ役割の 2 種目は数えない。
+- 補給線の文は「衛生兵の隣」（`game/names.gd` の `troop_trait_text` が `{medic}` に差し込む）。ルールは回復役なら誰でも（`Traits.supplier_at`）。
+- 実測の道具の `--decks=even` は、ロスターの何番目を雇うかで部隊を組む（`tools/cpu_matches_base.gd` の `EVEN_SLOTS`）。並びがずれて、黙って別の部隊を測る。
+- 文書の検査がロスターを役割ごとに 1 マスで読む（`tests/docs/test_doc_values.gd` の `test_rosters_and_budgets_match_deck`）。同じ役割が 2 種あると、表もテストも直す。
+- 回復役の表の検査は衛生兵とプリーストの決め打ち（`docs/healer-role.md`）。
+
+### 触るファイル
+
+1. `rules/unit_kind.gd`: `Id` に 1 つ、`_TABLE` に 1 行（役割、軍、コスト、能力値）。軍を書けば、その軍のロスターに入り（`DeckRules`）、対戦モードにもすぐ出る。
+   セーブは種類を列挙の名前で持つので、並びの位置は自由。**回復役なら `HEALER_STRIKE` にも 1 行**（無いと攻撃が 0）。
+2. 上の表（この文書）に 1 行。
+3. スキル: 雇える兵は必ず 1 つ持つ。`docs/active-skills.md` の「スキルを足すとき」をそのまま。
+   `tests/rules/test_skills.gd` はスキルの数を決め打ちしているので、数を直す。必殺技は軍のものなので足さない。
+4. 進化先を 2 つ: `rules/evolution.gd` の `Id` と `_TABLE`（A、B の順）、`game/text/names.csv` の `evolution.<id>`、`docs/branch-evolution.md` の表。
+5. 名前: `game/text/names.csv` の `unit.<id>`（鍵は列挙の名前の小文字）。
+6. 姿: `game/looks/kaykit_look.gd` の `KINDS` に 1 項目（モデル、見せる部品、立ち・攻撃の動き）。アイコンは `tools/unit_icons.sh <godot>` で撮り直す（両陣営 × 進化の前後）。
+7. 当たり方（`game/battle_effects.gd` の `hit_style`）: 役割の既定と違うなら書く。`tests/game/test_battle_effects.gd` の期待の表に 1 行足す。
+8. 文書の表: `docs/player-loadout.md` のロスター、`docs/cpu-ai.md` の CPU の部隊（CPU の部隊の中身が変わるので、検査が落ちて分かる）。
+9. ストーリーで雇わせるなら、`story.txt` の `[start]` か話の `[unlock]` に `unit = <id>`（その物語の軍の兵だけ書ける。`docs/story.md`）。
+
+成長・支配領域・CPU の動き方・持ち物の欄は、役割から決まるので足さない。
+
+### 足し忘れても検査が落ちない所
+
+- **姿**: `KINDS` に無いと、陣営の色のカプセルで出る。アイコンもカプセルを撮るので、アイコンと姿のテストは通る。**撮ったアイコンを自分で見る。**
+- **進化先**: 無くてもどのテストも落ちない。レベル 3 で止まり、進化を選ぶ場面が出ない。
+- **回復役の `HEALER_STRIKE`**: 無いと攻撃 0。札に「攻撃 0」と出るだけ。
+- 上の「先に」の 6 つ（5 種目のとき）。
+- CPU の釣り合い: どのテストも測らない。`measure-balance` で測る。
+
+### 確かめ方
+
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_unit_kind,test_names,test_unit_icons,test_unit_looks,test_battle_effects,test_enum_tables,test_skills,test_doc_values,test_deck_rules,test_cpu_deck,test_evolution`。
+- スクリーンショット（`tools/screenshots.sh`。`docs/screenshots.md`）で `deck_army`・`deck_built`（雇う欄）・`deck_unit_detail`・`battle_unit_detail` を見る。
+- 釣り合い: `tools/cpu_matches.gd -- --squads=random`（`measure-balance`）。

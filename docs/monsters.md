@@ -139,3 +139,37 @@
 | 旗手を倒して奮起する相手 1 体の減点（CPU） | 15 | `CpuPlayer.RALLY_PENALTY` |
 | 結び目を残す減点（CPU） | 40 | `CpuPlayer.KNOT_PENALTY` |
 | 相手の結び目に立つ価値（CPU） | 45 | `CpuPlayer.KNOT_STEP_VALUE` |
+
+## 魔物を足すとき
+
+### 触るファイル
+
+1. `rules/unit_kind.gd`: `Id` に 1 つ、`_TABLE` に 1 行。軍は `Army.NONE`、役割は NONE 以外。これで魔物になる（`is_monster`）: どのロスターにも入らず、持ち物を持てず、進化しない。
+2. `docs/unit-roster.md`: 種類の表に 1 行と、「魔物」の種類ごとの特徴に 1 つ。
+3. `tests/rules/test_unit_kind.gd`: 魔物の一覧（`test_monsters_have_a_role_but_no_army`）に足す。前衛なら支配領域の一覧（`test_only_vanguards_exert_zoc`）にも。
+4. 名前: `game/text/names.csv` の `unit.<id>`。
+5. 姿: `game/looks/monster_body.gd` の `MODELS`（骸骨なら `game/looks/kaykit_look.gd` の `KINDS`）。新しいモデルは `add-asset` のスキルで入れる。
+   アイコンは `tools/unit_icons.sh <godot>`（魔物は両陣営だけ。進化の後は無い）。
+6. 当たり方: `tests/game/test_battle_effects.gd` の期待の表に 1 行（役割の既定と違うなら `game/battle_effects.gd` の `hit_style` にも）。
+7. 特性（この文書の上の表）: いまある特性を持たせるなら、`rules/monsters.gd` の `_KIND_TRAITS` に 1 行と、上の表に 1 行。
+   **新しい特性**なら、`Evolution.Trait` に 1 つ（`rules/evolution.gd`）、`names.csv` の `trait.<x>` と `trait.<x>.short`、
+   数を差し込むなら `game/names.gd` の `_trait_args`、効き目を `Monsters` の関数（`on_defeated`・`after_hit` など）と、それを呼ぶルール
+   （`rules/combat.gd`・`rules/hit.gd`・予測）に書く。新しい出来事が要れば、出来事を足す手順も（`docs/code-map.md` の表）。
+8. スキルを持たせるなら、`docs/active-skills.md` の「スキルを足すとき」と、`tests/rules/test_monsters.gd` の `test_only_the_skilled_monsters_hold_a_skill` の一覧。
+9. 話で使う: `[enemy]` の `unit = <id>`（`docs/story.md`）。CPU は役割と射程で動かすので、足すものは無い。
+
+### 足し忘れても検査が落ちない所
+
+- **姿**: `MODELS` に無いと、陣営の色のカプセルで出る。アイコンもカプセルを撮るので、アイコンと姿のテストは通る。**撮ったアイコンを自分で見る。**
+- **特性の表**（`_KIND_TRAITS`）: 無いと、特性の無いただの兵として動き、情報の札にも出ない。種類ごとの特性を見るテストは無い。
+- **新しい特性を CPU が知ること**: 危険の読み（`rules/cpu/cpu_threats.gd`）と手の価値（`rules/cpu/cpu_outcome_value.gd`）は、書かなければ知らないまま動く（上の「CPU」）。
+  脅威範囲（`rules/threat.gd`）も、本物の計算と別に持っている（`docs/code-health.md` の表の 1）。
+- `trait.<x>.short` が無いと、鍵の文字がそのまま出る（持ち物の文だけが読む）。
+- CPU が魔物を動かす通しのテスト（`test_monsters.gd` の `test_cpu_moves_monsters_through_a_game`）は決まった部隊なので、新しい魔物は通らない。
+- 話の見本（`game/story/_template/first_battle.txt`）の魔物の一覧はコメントで、誰も見ていない。
+
+### 確かめ方
+
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_unit_kind,test_names,test_unit_icons,test_unit_looks,test_battle_effects,test_enum_tables,test_doc_values,test_monsters`。
+- スクリーンショットの `story_monster_sortie`・`story_monster_detail`・`story_monster_info`（無い魔物は `tools/shots/` に場面を足す）。
+- 話の敵の強さ: `tools/cpu_matches.gd -- --episode=<id>`（`measure-balance`）。

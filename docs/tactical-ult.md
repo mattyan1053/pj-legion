@@ -116,7 +116,7 @@
 ## 必殺技を足すとき
 
 1. `Ult.Id` に 1 つ足し、`rules/ults/` に `Ult` の子のクラスを書く（調整値は、そのファイルの先頭）。`Ults.ALL` に並べる。
-2. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`battle_playback.gd` の `event_players()`）に載せる。
+2. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`battle_playback/playback_base.gd` の `event_players()`）とログ（`battle_log.gd` の `readers()`）に載せる。
 3. `CpuPlayer.ULT_USES` に 1 行と、いま使うかを決めるメソッドを足す。
 
 画面の操作（ボタン、ゲージ）、複製、予測は、足した必殺技にそのまま効く。
