@@ -74,16 +74,16 @@ func test_the_chosen_squad_is_saved_with_the_clears() -> void:
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {"military": {"cleared": [], "squad": "3"}}})
 	again.choose_squad("")
 	assert_eq(_store().read(Story.STORE_NAME)["data"], {"campaigns": {}}, "既定の編成に戻したら、書かない")
-	story.load_data({"cleared": [], "squad": 4})
+	story.load_data({"cleared": [], "squad": 4}, 1)
 	assert_eq(story.squad_id, "", "形の違う部隊の記録は、既定の編成として読む")
 	_cleanup()
 
 
 func test_broken_or_unknown_records_do_not_stop_loading() -> void:
 	var story := Story.new()
-	story.load_data({"cleared": "ridge_path"})
+	story.load_data({"cleared": "ridge_path"}, 1)
 	assert_eq(story.cleared_count(), 0)
-	story.load_data({"cleared": [3, "", "future_episode", "future_episode"]})
+	story.load_data({"cleared": [3, "", "future_episode", "future_episode"]}, 1)
 	assert_eq(story.cleared_count(), 0)
 	assert_eq(story.to_data(), {"campaigns": {"military": {"cleared": ["future_episode"]}}}, "知らない話の記録は、消さずに残す")
 	story.load_data({"campaigns": {"future": {"cleared": ["far"], "squad": "2"}, "": {"cleared": ["x"]}, "military": "broken"}})
@@ -102,9 +102,9 @@ func test_story_starts_from_the_first_episode_not_cleared() -> void:
 ## 2 つ目の物語の記録が無い古いセーブ（版 1 の形、版 2 で MILITARY の物語だけ）からも、2 つ目の物語を頭から遊べる。
 func test_an_old_save_without_the_second_campaign_starts_it_from_the_top() -> void:
 	var other: RefCounted = Story.campaigns()[1]
-	for data: Dictionary in [{"cleared": ["ridge_path"], "squad": "5"}, {"campaigns": {"military": {"cleared": ["ridge_path"]}}}]:
+	for saved: Array in [[1, {"cleared": ["ridge_path"], "squad": "5"}], [2, {"campaigns": {"military": {"cleared": ["ridge_path"]}}}]]:
 		var story := Story.new()
-		story.load_data(data)
+		story.load_data(saved[1], saved[0])
 		assert_true(story.is_cleared(&"ridge_path"), "MILITARY の物語の記録は、そのまま読む")
 		story.choose_campaign(other)
 		assert_eq(story.cleared_count(), 0)
@@ -120,7 +120,7 @@ func test_an_old_save_without_the_second_campaign_starts_it_from_the_top() -> vo
 func test_a_saved_squad_with_a_kind_the_campaign_cannot_hire_does_not_stop_loading() -> void:
 	# パラディン（FANTASY の駒）を解放していたころに取っておいた、ストーリー用の部隊。
 	var context := preload("res://game/app_context.gd").new()
-	context.story.load_data({"cleared": ["ridge_path", "ridge_ambush"], "squad": "1"})
+	context.story.load_data({"cleared": ["ridge_path", "ridge_ambush"], "squad": "1"}, 1)
 	context.decks.load_data({"next_id": 2, "decks": [{"id": "1", "name": "パラディン入り", "rules": "story", "army": "MILITARY",
 			"units": [{"kind": "PALADIN", "equipment": ["IRON_SHIELD"]}, {"kind": "SNIPER", "equipment": []}]}]})
 	var saved: RefCounted = context.decks.items()[0]
