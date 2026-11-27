@@ -58,6 +58,7 @@ hold_turns = 8
 [enemy]
 king_figure = skeleton_mage
 army = military
+trait = ranks
 unit = skeleton
 unit = skeleton
 unit = skeleton

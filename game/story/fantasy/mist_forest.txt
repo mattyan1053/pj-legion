@@ -56,6 +56,7 @@ after_music = talk_calm
 
 [enemy]
 army = military
+trait = ranks
 unit = shield_trooper
 unit = shield_trooper
 unit = sniper

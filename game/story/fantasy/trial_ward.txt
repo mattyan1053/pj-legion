@@ -19,7 +19,7 @@ look = trial_court
 music = battle_tense
 before_music = battle_tense
 after_music = talk_bright
-lesson = パラディンのバリアは次の 1 撃を防ぐ。プリーストは 2 マス先の味方を回復できる。
+lesson = パラディンのバリアは 1 撃を防ぎ、隣の味方の傷を減らす。プリーストは 2 マス先を治す。
 hold_turns = 6
 wins = turns_held
 
@@ -34,13 +34,14 @@ wins = turns_held
 ティオ: えー！ 先生、ぼくの出番は？
 ウル: 無い。見ておれ。倒れぬことも、強さのうちじゃ。
 イェルダ: パラディンには「ディバインシールド」がある。次の 1 撃は、あれで防げる。
+イェルダ: 私の隣に立つ者の傷も、浅くしてみせる。騎士は盾になるものだ。
 ウル: そして、わしが祈る。離れた者の傷も癒やせるし、「セイントプレイス」で聖域も敷ける。
 イェルダ: 導師みずから前に……。倒れるわけには、まいりません。
 
 [cues]
 (turn 1) イェルダ: 狙われているな。「ディバインシールド」を張る。
 (king_half ally) ウル: これ、{hero}、下がらんか。わしの祈りが届く所へ。
-(fallen ally) ティオ: ああっ、倒れちゃった！ 先生、聖域、聖域！
+(trait ally) ウル: 騎士の隣は傷が浅い。それが「守護」じゃ。
 
 [after]
 ウル: よう耐えた。少ない者は、倒れぬことで勝つ。
@@ -54,6 +55,7 @@ wins = turns_held
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [ally]
+trait = guard
 unit = paladin
 unit = paladin
 unit = priest
@@ -66,4 +68,5 @@ unit = sniper
 unit = sniper
 
 [unlock]
+trait = guard
 unit = priest
