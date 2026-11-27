@@ -111,6 +111,17 @@ func test_one_fireball_can_kill_several_units() -> void:
 	assert_true(stats.units[sorcerer.id].damage >= 2)
 
 
+func test_supply_healing_counts_for_the_medic() -> void:
+	var battle := Maps.battle(["....."])
+	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 0))
+	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(1, 0))
+	var stats := BattleStats.new(battle)
+	stats.feed_all([SupplyHealedEvent.new(medic.id, trooper.id, 4, 20)] as Array[BattleEvent])
+	assert_eq(stats.units[medic.id].healing, 4)
+	assert_eq(stats.units[trooper.id].healing, 0)
+	assert_eq(stats.sides[P1].healing, 4)
+
+
 func test_healing_counts_for_the_healer_and_the_sanctuary_owner() -> void:
 	var battle := Maps.battle([".....", ".....", "....."])
 	var medic := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 0))

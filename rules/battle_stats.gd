@@ -264,6 +264,8 @@ func _count_heal(healed: UnitHealedEvent) -> void:
 		healer_id = (healed as HealerHealedEvent).healer_id
 	elif healed is SanctuaryHealedEvent:
 		healer_id = _sanctuary_owners.get((healed as SanctuaryHealedEvent).effect_id, 0)
+	elif healed is SupplyHealedEvent:
+		healer_id = (healed as SupplyHealedEvent).medic_id
 	var healer := _record(healer_id)
 	if healer == null or not _is_player(healer.side):
 		return
@@ -310,6 +312,7 @@ static func read_events() -> Array[Script]:
 		UnitHealedEvent,
 		HealerHealedEvent,
 		SanctuaryHealedEvent,
+		SupplyHealedEvent,
 		SkillUsedEvent,
 		FieldEffectPlacedEvent,
 		LevelUpEvent,
