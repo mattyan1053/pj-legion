@@ -12,7 +12,6 @@ func choose(id: String) -> void:
 		(_option_buttons[key] as Button).set_pressed_no_signal(key == id)
 	var deck := chosen_deck()
 	var levels := start_levels(Unit.Side.PLAYER1)
-	_fold_deck_line(DeckText.deck_summary(deck, levels))
 	_fill_faces(_deck_faces, deck, Unit.Side.PLAYER1, levels)
 	# 部隊を替えたら、初期位置はおまかせに戻す。
 	battle_source.placement.clear()
@@ -68,28 +67,50 @@ func _fill_faces(faces: Container, deck: Deck, side: Unit.Side, levels: Array) -
 
 
 func _face(kind: UnitKind.Id, equipment: Array[Equipment.Id], side: Unit.Side, army: UnitKind.Army, level: int, look := &"") -> Control:
-	# 駒の額（役割の印つき）。縁は陣営の色。
-	var face := UnitFrame.new(kind, side, FACE_SIZE, true, false, look)
-	face.edge = Color(BattleScreen.TEAM_COLORS[side], 0.85)
+	# 額（役割の印つき。縁は陣営の色）と、その下の持ち物の印。全体を押すと詳しい説明、乗せると名前と持ち物。
+	var face := VBoxContainer.new()
+	face.add_theme_constant_override("separation", 2)
 	face.mouse_filter = Control.MOUSE_FILTER_STOP
 	face.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	face.tooltip_text = Text.t("deck.detail.click")
+	face.tooltip_text = _face_tip(kind, equipment, level)
 	face.set_meta(&"detail", [kind, equipment, side, army, level, look])
 	face.gui_input.connect(func(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_open_detail(face))
+	var frame := UnitFrame.new(kind, side, FACE_SIZE, true, false, look)
+	frame.edge = Color(BattleScreen.TEAM_COLORS[side], 0.85)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	face.add_child(frame)
+	var items := HBoxContainer.new()
+	items.alignment = BoxContainer.ALIGNMENT_CENTER
+	items.add_theme_constant_override("separation", 1)
+	items.custom_minimum_size = Vector2(FACE_SIZE, FACE_ITEM)
+	items.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for item in equipment:
+		var mark := ItemIcon.new(item, FACE_ITEM)
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		items.add_child(mark)
+	face.add_child(items)
+	face.set_meta(&"items", items)
 	if level > 1:
-		# 始めのレベルが 1 でない駒（進化を教える話など）は、アイコンの右下にレベル。
+		# 始めのレベルが 1 でない駒（進化を教える話など）は、額の左上にレベル（右下は役割の印）。
 		var tag := _text(13, COLOR_ACCENT)
 		tag.text = Text.t("sortie.level", {"level": level})
 		tag.add_theme_constant_override("outline_size", 4)
 		tag.add_theme_color_override("font_outline_color", Palette.OUTLINE)
-		# 右下は役割の印なので、レベルは左上に置く。
 		tag.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT, Control.PRESET_MODE_MINSIZE)
 		tag.offset_left = 3.0
-		face.add_child(tag)
+		frame.add_child(tag)
 	return face
 
+
+## 額に乗せると出る文: 名前（始めのレベルが 1 でなければレベルも）、持ち物、「クリック: 詳細」。
+static func _face_tip(kind: UnitKind.Id, equipment: Array[Equipment.Id], level: int) -> String:
+	var lines: Array[String] = [Names.kind(kind) if level <= 1 else Text.t("sortie.face.level", {"unit": Names.kind(kind), "level": level})]
+	if not equipment.is_empty():
+		lines.append(BattleHud.equipment_text(equipment))
+	lines.append(Text.t("deck.detail.click"))
+	return "\n".join(lines)
 
 func _open_detail(face: Control) -> void:
 	if _detail == null:
@@ -223,28 +244,19 @@ func options_fully_shown() -> int:
 	return shown
 
 
-## 選んだ部隊の中身の文を、DECK_LINES 行に収める（収まらなければ、字を DECK_FONT_MIN まで小さくする）。欄の高さは変えない。
-func _fold_deck_line(text: String) -> void:
-	var font := _deck_line.get_theme_font("font")
-	for font_size in range(DECK_FONT, DECK_FONT_MIN - 1, -1):
-		_deck_line.add_theme_font_size_override("font_size", font_size)
-		_deck_line.text = TextWrap.fold(text, WRAP_WIDTH, func(character: String) -> float:
-			return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
-		if _deck_line.text.count("\n") < DECK_LINES:
-			_deck_line.tooltip_text = ""
-			return
-	# いちばん小さい字でも収まらない部隊（持ち物の多い大きな部隊）: DECK_LINES 行で切って「…」を付け、全部はマウスを乗せると出す。
-	var lines := _deck_line.text.split("\n").slice(0, DECK_LINES)
-	lines[DECK_LINES - 1] = lines[DECK_LINES - 1].left(-1) + "…"
-	_deck_line.text = "\n".join(lines)
-	_deck_line.tooltip_text = text
+## 部隊の駒の額の並び（side の陣営）の、額に乗せると出る文（将から並びの順。検査用）。
+func face_tips(side: Unit.Side) -> Array[String]:
+	var tips: Array[String] = []
+	for face in (_deck_faces if side == Unit.Side.PLAYER1 else _enemy_faces).get_children():
+		if not face.is_queued_for_deletion():
+			tips.append((face as Control).tooltip_text)
+	return tips
 
 
-## 選んだ部隊の中身の文（折り返したもの。検査用）。
-func deck_line_text() -> String:
-	return _deck_line.text
-
-
-## 選んだ部隊の中身の文にマウスを乗せると出る文（切れた文の全部。切れていなければ空。検査用）。
-func deck_line_tooltip() -> String:
-	return _deck_line.tooltip_text
+## 部隊の駒の額の並び（side の陣営）の、持ち物の印の数（将から並びの順。検査用）。
+func face_item_marks(side: Unit.Side) -> Array[int]:
+	var counts: Array[int] = []
+	for face in (_deck_faces if side == Unit.Side.PLAYER1 else _enemy_faces).get_children():
+		if not face.is_queued_for_deletion():
+			counts.append((face.get_meta(&"items") as Control).get_child_count())
+	return counts

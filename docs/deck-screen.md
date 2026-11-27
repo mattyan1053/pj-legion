@@ -1,7 +1,7 @@
 # 部隊編成（画面と、取っておく部隊）
 
 コード: `game/deck_screen.gd`（編成の場面。一覧・組む画面・駒の札などは `game/deck_screen/` に分けてある）、`game/deck_library.gd`（取っておく部隊の一覧と、ファイルの読み書き）、
-`game/deck_text.gd`（出せない理由、駒と持ち物の中身の文）、`game/unit_card.gd`（駒の札）、`game/deck_preview.gd`（編成確認）、`game/match_choice.gd` と `game/match_setup_panel.gd`（対戦設定で選ぶ）。
+`game/deck_text.gd`（出せない理由、持ち物の文）、`game/unit_card.gd`（駒の札）、`game/deck_preview.gd`（編成確認）、`game/match_choice.gd` と `game/match_setup_panel.gd`（対戦設定で選ぶ）。
 テスト: `tests/game/test_deck_library.gd`、`tests/game/test_match_choice.gd`、`tests/game/test_match_setup_panel.gd`、`tests/game/test_unit_sheet.gd`（駒の詳細）、自動の対戦（`game/autoplay/title_checks.gd` の `_visit_decks`）。
 
 編成のルール（軍、ロスター、持ち物、コスト上限）は `docs/player-loadout.md`。
@@ -39,7 +39,7 @@
 駒 1 体のステータスの窓。文の段落では並べず、欄で見せる。開く所:
 
 - 編成確認（対戦設定と、対戦の途中の設定パネルの「編成確認」。`game/deck_preview.gd`）の札。見出しの下に「クリック: 詳細」。
-- 出撃準備の部隊の駒のアイコン（味方も敵も。魔物も）。マウスを乗せると「クリック: 詳細」。
+- 出撃準備の部隊の駒の額（味方も敵も。魔物も）。マウスを乗せると名前・持ち物と「クリック: 詳細」。
 - 部隊編成で、部隊の駒を選んでいるときの右の札の「詳細」（雇える駒にマウスを乗せている間は出さない。場所は保つ）。
 - 対戦の、左下の情報の枠の「詳細」（クリックして見ている駒か、選んでいる駒がいるときだけ出る。開いている間は時間を止める）。
 

@@ -318,3 +318,64 @@ func _barrier_strip_value(victim_id: int, sim: Battle) -> float:
 			strongest = maxi(strongest, Combat.attack_power(friend))
 	var rate := KING_DAMAGE_VALUE if victim.kind == UnitKind.Id.KING else DAMAGE_VALUE
 	return BARRIER_STRIP_VALUE + BARRIER_STRIP_RATE * rate * mini(strongest, victim.hp)
+
+
+# ---- 出来事の表（tests/game/test_event_readers.gd が見張る。docs/battle.md の「出来事を 1 つ足すとき」） ----
+
+
+## CPU の手の価値が名前で読む出来事（このファイルの `is` / `as` に出てくるもの。親を読めば子も読む）。
+static func read_events() -> Array[Script]:
+	return [
+		UnitDamagedEvent,
+		AttackDamagedEvent,
+		UnitHealedEvent,
+		SkillUsedEvent,
+		BarricadeDamagedEvent,
+		StatusRemovedEvent,
+		FieldEffectRemovedEvent,
+		RallyEvent,
+		StatusAppliedEvent,
+		KnotPlacedEvent,
+		ExperienceGainedEvent,
+		LevelUpEvent,
+	]
+
+
+## CPU の手の価値が読まないと決めた出来事（新しい出来事を足したら、読むか、ここに理由と足す）。
+static func skipped_events() -> Array[Script]:
+	return [
+		# ダメージの出来事の価値に入っている（倒す、軍略の増減、爆発、中ボスと聖遺物）
+		UnitDefeatedEvent,
+		TraitTriggeredEvent,
+		BarrelExplodedEvent,
+		BurstEvent,
+		MidBossDefeatedEvent,
+		RelicGainedEvent,
+		# 煙幕に阻まれた攻撃は、価値 0（ダメージが無い）
+		SmokeBlockedEvent,
+		# スキル・必殺技の効果は、スキルの見込み（CpuSkillEstimate）と、複製の上の状態で読む
+		AreaEffectPlacedEvent,
+		BarricadePlacedEvent,
+		UnitTeleportedEvent,
+		UnitsSwappedEvent,
+		UnitReactivatedEvent,
+		UltUsedEvent,
+		# 動いた先の価値は、位置の価値（cpu_position_value.gd）で読む
+		UnitMovedEvent,
+		UnitWarpedEvent,
+		MoveUndoneEvent,
+		UnitActedEvent,
+		# 決着は、複製の状態（is_over）で読む
+		GameWonEvent,
+		GameDrawnEvent,
+		CaptureProgressEvent,
+		StrongholdProgressEvent,
+		# 手番の中では価値を付けない（番の移り・使えるようになった・進化の選び）
+		PhaseStartedEvent,
+		SkillReadyEvent,
+		UltReadyEvent,
+		FieldEffectTickedEvent,
+		EvolutionOfferedEvent,
+		UnitEvolvedEvent,
+		UnitSpawnedEvent,
+	]

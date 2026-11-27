@@ -32,6 +32,7 @@ const UnitFrame := preload("res://game/unit_frame.gd")
 const StatsRow := preload("res://game/stats_row.gd")
 const InfoCard := preload("res://game/info_card.gd")
 const UnitSheet := preload("res://game/unit_sheet.gd")
+const UnitEffects := preload("res://game/unit_effects.gd")
 
 
 signal menu_pressed(id: StringName)
@@ -132,7 +133,6 @@ const ULT_SUMMARY_WIDTH := 480.0
 const COLOR_TEXT_DIM := Palette.TEXT_DIM
 const COLOR_FORECAST := Palette.ACCENT
 const COLOR_STATUS := Palette.INFO
-const COLOR_TRAIT := Palette.ACCENT
 ## 勝ち方の札の地と枠（いつもと、最後のターンのように急ぐとき）。
 const COLOR_GOAL := Palette.GOAL
 const COLOR_GOAL_BORDER := Palette.GOAL_BORDER

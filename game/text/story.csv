@@ -28,6 +28,7 @@ sortie.enemy,敵の部隊　{army}
 sortie.troops,出撃する部隊
 sortie.go,出撃
 sortie.level,Lv{level}
+sortie.face.level,{unit} Lv{level}
 sortie.option.fixed,この話の部隊
 sortie.option.fixed.note,固定
 sortie.option.default,既定の編成

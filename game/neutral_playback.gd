@@ -81,3 +81,65 @@ static func phase_has_neutrals(events: Array[BattleEvent], at: int, neutral_ids_
 		if not spawned_later.has(id):
 			return true
 	return false
+
+
+# ---- 出来事の表（tests/game/test_event_readers.gd が見張る。docs/battle.md の「出来事を 1 つ足すとき」） ----
+
+
+## 中立の再生の場面分けが名前で読む出来事（このファイルの `is` / `as` に出てくるもの。親を読めば子も読む）。
+static func read_events() -> Array[Script]:
+	return [
+		UnitMovedEvent,
+		UnitWarpedEvent,
+		UnitSpawnedEvent,
+		AttackDamagedEvent,
+		SmokeBlockedEvent,
+		UnitDefeatedEvent,
+		PhaseStartedEvent,
+		GameWonEvent,
+		GameDrawnEvent,
+	]
+
+
+## 中立の再生の場面分けが読まないと決めた出来事（新しい出来事を足したら、読むか、ここに理由と足す）。
+static func skipped_events() -> Array[Script]:
+	return [
+		# 主役のいない出来事。いまの場面に続け、見せる場面にする（攻撃のあとに起きるもの）
+		StatusAppliedEvent,
+		StatusRemovedEvent,
+		RallyEvent,
+		BurstEvent,
+		ExplosionDamagedEvent,
+		KnotPlacedEvent,
+		ExperienceGainedEvent,
+		LevelUpEvent,
+		EvolutionOfferedEvent,
+		MidBossDefeatedEvent,
+		RelicGainedEvent,
+		TraitTriggeredEvent,
+		# 同じ扱い（主役がいない）。中立のフェーズには、ふつう起きないもの
+		MoveUndoneEvent,
+		UnitActedEvent,
+		UnitTeleportedEvent,
+		UnitsSwappedEvent,
+		UnitReactivatedEvent,
+		UnitEvolvedEvent,
+		SkillUsedEvent,
+		SkillDamagedEvent,
+		SkillReadyEvent,
+		UltUsedEvent,
+		UltReadyEvent,
+		BarrelExplodedEvent,
+		BarricadeDamagedEvent,
+		BarricadePlacedEvent,
+		AreaEffectPlacedEvent,
+		FieldEffectRemovedEvent,
+		FieldEffectTickedEvent,
+		HealerHealedEvent,
+		SanctuaryHealedEvent,
+		SpringHealedEvent,
+		RegenerationHealedEvent,
+		SupplyHealedEvent,
+		CaptureProgressEvent,
+		StrongholdProgressEvent,
+	]
