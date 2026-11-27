@@ -141,7 +141,7 @@
    名前と 1 行の説明は、画面の文の表（`game/text/names.csv`）に `skill.<id>` と `skill.<id>.summary` の 2 行を足す（調整値は `summary_args` で `{名前}` に差し込む）。
 3. `Skills.ALL` に 1 つ並べる。
 4. 行動を終えないなら `ends_action` を、回数に上限があるなら `max_uses` を書く（面倒は `Skills` が見る）。
-5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`battle_playback.gd` の `event_players()`）に載せる。
+5. 効果に新しいイベントが要れば `rules/events/` に足し、画面の再生（`battle_playback/playback_base.gd` の `event_players()`）とログ（`battle_log.gd` の `readers()`）に載せる。
    駒へのダメージは `Skills.deal_damage` を呼べば足り、イベントを足さなくてよい。
 6. CPU の見積もりを `rules/cpu/<スキル>_cpu.gd` に書き、`CpuSkillEstimate.ESTIMATES` に 1 行足す（`targets` は必ず。
    イベントだけで価値が決まらなければ `value` も）。
