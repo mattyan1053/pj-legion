@@ -571,7 +571,7 @@ func test_monsters_are_not_for_the_player() -> void:
 
 
 ## 会話・台詞・覚えることで「」に括った言葉は、いまの画面に出る名前（駒・スキル・必殺技・持ち物・進化先の名前、
-## 駒のそばのメニューの項目、必殺技のボタン）のどれか。言葉を直したあとに、演習の台詞が古い呼び方のまま残らないように。
+## 軍略の名前、駒のそばのメニューの項目、必殺技のボタン）のどれか。言葉を直したあとに、演習の台詞が古い呼び方のまま残らないように。
 ## （メニューのスキルの項目は、スキルの名前で出る。「スキル」という項目は無い）
 func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 	var shown := {Text.t("battle.hud.ult"): true}
@@ -580,7 +580,7 @@ func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 	var names := FileAccess.get_file_as_string("res://game/text/names.csv")
 	for row: String in names.split("\n"):
 		var cells := row.split(",", true, 1)
-		if cells.size() == 2 and cells[0].get_slice_count(".") == 2 and cells[0].get_slice(".", 0) in ["unit", "skill", "ult", "item", "evolution"]:
+		if cells.size() == 2 and cells[0].get_slice_count(".") == 2 and cells[0].get_slice(".", 0) in ["unit", "skill", "ult", "item", "evolution", "troop_trait"]:
 			shown[cells[1].strip_edges()] = true
 	var quoted := RegEx.create_from_string("「([^」]*)」")
 	for episode: Episode in Story.all_episodes():

@@ -53,6 +53,7 @@ wins = boss_slain
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [ally]
+trait = focus
 unit = shield_trooper
 unit = shield_trooper
 unit = sniper

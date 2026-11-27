@@ -52,6 +52,7 @@ lesson = 兵種ごとのスキルと、ゲージをためて使う軍の必殺�
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [ally]
+trait = focus
 unit = shield_trooper
 unit = sniper
 unit = sniper
