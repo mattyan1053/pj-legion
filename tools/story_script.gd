@@ -89,9 +89,12 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	lines.append("- 話のファイル: `%s`" % episode.path.trim_prefix("res://"))
 	lines.append("- マップ: %s" % episode.map_title)
 	# 勝ち方の文（出撃準備と同じ）の 1 行目。2 行目は負け方で、どの話も同じ。
-	var goal := WinText.of_scenario(StoryBattle.scenario_of(episode), Unit.Side.PLAYER1)
-	lines.append("- 勝ち方: %s" % goal.get_slice("\n", 0))
-	lines.append("- 敵: %s" % _enemy(episode))
+	if episode.has_battle():
+		var goal := WinText.of_scenario(StoryBattle.scenario_of(episode), Unit.Side.PLAYER1)
+		lines.append("- 勝ち方: %s" % goal.get_slice("\n", 0))
+		lines.append("- 敵: %s" % _enemy(episode))
+	else:
+		lines.append("- 対戦の無い話（読み終えたらクリア）")
 	if episode.lesson != "":
 		lines.append("- 覚えること: %s" % episode.lesson)
 	lines.append("- 話し手: %s" % "、".join(_cast(episode)))
@@ -99,7 +102,10 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	var fought := false
 	for scene: Episode.StoryScene in episode.scenes:
 		if scene.is_talk():
-			lines.append("### 対戦のあと" if fought else "### 対戦の前")
+			if scene.name != "":
+				lines.append("### 場面「%s」" % scene.name)
+			else:
+				lines.append("### 対戦のあと" if fought else "### 対戦の前")
 			lines.append("")
 			_talk(lines, episode, scene.lines)
 		elif scene.is_battle():

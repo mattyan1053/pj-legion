@@ -44,3 +44,4 @@ unit = sniper
 # 話の並び（一本道）。1 行に 1 つ、話のファイルの名前（.txt を除く）。上から順に遊ぶ。
 [episodes]
 first_battle
+scenes
