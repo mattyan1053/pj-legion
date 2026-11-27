@@ -14,7 +14,75 @@ func _start_story(number := -1) -> bool:
 		return false
 	_app.current_scene().choose(Story.military().episodes[number])
 	await _app.scene_changed
+	return await _skip_to_sortie()
+
+
+## 出撃準備より前の場面（場面の節で書いた話の、カットシーンや会話）を飛ばして、出撃準備へ。選ばせる行は、1 つ目の答えを選ぶ。
+func _skip_to_sortie() -> bool:
+	for i in 12:
+		if _app.current_id() != SceneFlow.TALK:
+			break
+		var talk: Node = _app.current_scene()
+		talk.press_skip()
+		if talk.is_asking():
+			talk.press_option(0)
+			continue
+		await _app.scene_changed
 	return _app.current_id() == SceneFlow.SORTIE
+
+
+## 連邦の第 1 話（場面の節で書いた厚い版）を始めて、会話の場面を index 個（0 から）送ったところ。選ばせる行は 1 つ目の答え。
+func _first_episode_scene(index: int) -> bool:
+	_app.context.story.choose_campaign(Story.military())
+	if not await _scene_story_list():
+		return false
+	_app.current_scene().choose(Story.military().episodes[0])
+	await _app.scene_changed
+	for i in index:
+		if _app.current_id() != SceneFlow.TALK:
+			return false
+		var talk: Node = _app.current_scene()
+		talk.press_skip()
+		if talk.is_asking():
+			talk.press_option(0)
+			talk.press_skip()
+		await _app.scene_changed
+	return _app.current_id() == SceneFlow.TALK
+
+
+## 連邦の第 1 話の頭のカットシーン（色の幕の上に、地の文を真ん中に。上下に黒い帯）。
+func _scene_story_cut() -> bool:
+	return await _first_episode_scene(0) and _app.current_scene().is_cut()
+
+
+## 連邦の第 1 話の、別の場所の会話（峠の駐屯地。背景はその場所の景色で、兵は立たない）。話し手は主人公。
+func _scene_story_place_talk() -> bool:
+	if not await _first_episode_scene(1):
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < 2:
+		talk.press_next()
+	return not talk.is_cut()
+
+
+## 連邦の第 1 話の選択肢（問いの行の上に、答えの枠）。
+func _scene_story_choice() -> bool:
+	if not await _first_episode_scene(2):
+		return false
+	_app.current_scene().press_next()
+	return _app.current_scene().is_asking()
+
+
+## 選択肢を選んだあとの会話のログ（問いのあとに、選んだ答えが 1 行）。
+func _scene_story_choice_log() -> bool:
+	if not await _scene_story_choice():
+		return false
+	var talk: Node = _app.current_scene()
+	talk.press_option(1)
+	talk.press_next()
+	talk.press_next()
+	talk.open_log()
+	return talk.talk_log().is_open()
 
 
 ## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。セーブデータ選択は、いまのスロットで通る。
