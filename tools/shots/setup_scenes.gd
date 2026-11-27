@@ -287,7 +287,7 @@ func _trait_attack() -> Array:
 ## 集中砲火: 味方が当てた敵の頭の上に札（+2）が出ていて、2 人目の攻撃の予測に「集中砲火 +2」。
 func _scene_trait_focus() -> bool:
 	_field = VersusFields.PLAIN
-	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.LONE])
+	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.GUARD])
 	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _trait_attack().is_empty()):
 		return false
 	var found := _trait_attack()
@@ -299,6 +299,32 @@ func _scene_trait_focus() -> bool:
 
 
 ## 仇討ち: 味方を倒した敵の頭の上に札（+4）が出ていて、その敵への攻撃の予測に「仇討ち +4」。
+## 守護: パラディンと隣り合う兵の間に線（横棒の結び目）。守られた兵を狙う攻撃の予測に「守護 -3」。
+func _scene_trait_guard() -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.GUARD])
+	if not _advance(func() -> bool: return _battle.phase == Unit.Side.PLAYER1 and not _guarded_attack().is_empty()):
+		return false
+	var found := _guarded_attack()
+	_show()
+	_scene.click_cell(found[0].cell)
+	_look_at(BoardView.cell_center(found[1].cell))
+	_scene.hover(found[1].cell)
+	return _scene.trait_link_count() > 0
+
+
+## いまの陣営の駒で、守護に守られた敵を攻撃できるもの（[攻撃する駒, 守られた敵]）。無ければ空。
+func _guarded_attack() -> Array:
+	for unit in _battle.units:
+		if unit.side != _battle.phase or not _battle.can_act(unit):
+			continue
+		for target_id in _battle.options(unit.id).attack_target_ids:
+			var outcome := Forecast.of(_battle, AttackAction.new(unit.id, target_id)).outcome(target_id)
+			if outcome != null and outcome.traits.has(Traits.Id.GUARD):
+				return [unit, _battle.unit_by_id(target_id)]
+	return []
+
+
 func _scene_trait_vengeance() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.RANKS, Traits.Id.VENGEANCE])

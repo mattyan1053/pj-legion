@@ -181,7 +181,7 @@ func _scene_deck_built() -> bool:
 	return true
 
 
-## 騎士領の部隊で、軍略の「誓い」を選び、2 人を結んだところ（単騎の札にマウスを乗せて、文を読んでいる）。
+## 騎士領の部隊で、軍略の「誓い」を選び、2 人を結んだところ（守護の札にマウスを乗せて、文を読んでいる）。
 func _scene_deck_trait() -> bool:
 	var screen: Node = await _deck_scene()
 	if screen == null:

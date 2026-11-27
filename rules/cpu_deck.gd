@@ -49,7 +49,7 @@ static func pick_trait(deck: Deck) -> void:
 
 ## 部隊の中身に合う軍略（docs/cpu-ai.md の「軍略」）。軍でなければ Traits.NONE。
 ## 連邦: 回復役が SUPPLY_MEDICS 体以上なら補給線、同じ兵種（回復役を除く）が RANKS_KIND 体以上なら隊列、ほかは集中砲火。
-## 騎士領: 奇襲が LONE_RAIDERS 体以上なら単騎、攻撃する駒（回復役を除く）が OATH_FIGHTERS 体以上なら誓い、ほかは仇討ち。
+## 騎士領: パラディンが GUARD_PALADINS 体以上なら守護、攻撃する駒（回復役を除く）が OATH_FIGHTERS 体以上なら誓い、ほかは仇討ち。
 static func choose_trait(deck: Deck) -> int:
 	var counts := {}
 	var fighters := 0
@@ -66,8 +66,8 @@ static func choose_trait(deck: Deck) -> int:
 					return Traits.Id.RANKS
 			return Traits.Id.FOCUS
 		UnitKind.Army.FANTASY:
-			if counts.get(UnitKind.Id.SPELLBLADE, 0) >= LONE_RAIDERS:
-				return Traits.Id.LONE
+			if counts.get(UnitKind.Id.PALADIN, 0) >= GUARD_PALADINS:
+				return Traits.Id.GUARD
 			if fighters >= OATH_FIGHTERS:
 				return Traits.Id.OATH
 			return Traits.Id.VENGEANCE
@@ -77,7 +77,7 @@ static func choose_trait(deck: Deck) -> int:
 ## choose_trait の数（部隊の中身の目安）。
 const SUPPLY_MEDICS := 2
 const RANKS_KIND := 4
-const LONE_RAIDERS := 3
+const GUARD_PALADINS := 2
 const OATH_FIGHTERS := 5
 
 

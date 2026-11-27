@@ -1,15 +1,11 @@
-extends Control
+extends "res://game/window_base.gd"
 ## 初期位置の窓（対戦設定の「初期位置」。docs/battle-view.md の「対戦設定」）。盤の縮図（deploy_map.gd）で、1 つの行の初期位置を決める。
 ## 生成のマップは対戦ごとに形が変わるので、代表の形（マップ選択のカードと同じ種）で見せ、本陣からのずれで覚える。
 ## 「おまかせ」でいつもの置き方へ戻す。「決定」・右クリック・Esc で閉じる（右クリックは、駒を選んでいれば選ぶのをやめるだけ）。
 
 const Text := preload("res://game/text.gd")
-const CardKeys := preload("res://game/card_keys.gd")
-const UiTheme := preload("res://game/ui_theme.gd")
-const Palette := preload("res://game/ui_palette.gd")
 const DeployMap := preload("res://game/deploy_map.gd")
 const DeployNote := preload("res://game/deploy_note.gd")
-const Steady := preload("res://game/steady.gd")
 
 ## 閉じた（決めた置き方は offsets()）。
 signal closed
@@ -18,7 +14,6 @@ signal closed
 const CELL_PX := 22.0
 const MAP_MAX := Vector2(560.0, 440.0)
 
-var _overlays: RefCounted
 var _title: Label
 var _map: DeployMap
 var _note: DeployNote
@@ -26,22 +21,7 @@ var _auto: Button
 
 
 func setup(overlays: RefCounted) -> void:
-	_overlays = overlays
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	visible = false
-	visibility_changed.connect(_track_overlay)
-	var shade := ColorRect.new()
-	shade.color = Palette.SHADE
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(center)
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = UiTheme.PANEL_SOLID
-	center.add_child(panel)
+	var panel := build_window(overlays)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	panel.add_child(column)
@@ -130,24 +110,7 @@ func deploy_note() -> DeployNote:
 	return _note
 
 
-func _track_overlay() -> void:
-	if _overlays == null:
-		return
-	if visible and is_inside_tree():
-		_overlays.open(self)
-	else:
-		_overlays.close(self)
-
-
-func _exit_tree() -> void:
-	if _overlays != null:
-		_overlays.close(self)
-
-
-func _input(event: InputEvent) -> void:
-	if not visible or _overlays == null or not _overlays.is_top(self):
-		return
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		if not _map.cancel():
-			close_dialog()
+## 右クリック・Esc: 駒を選んでいれば選ぶのをやめるだけ。選んでいなければ閉じる。
+func _on_back() -> void:
+	if not _map.cancel():
+		close_dialog()

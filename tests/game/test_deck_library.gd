@@ -269,14 +269,16 @@ func test_decks_from_before_troop_traits_load_with_the_army_default() -> void:
 		{"id": "2", "name": "組み方の鍵", "rules": "versus", "army": "FANTASY", "units": units, "trait": "formation"},
 		{"id": "3", "name": "よその軍の軍略", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": "vengeance"},
 		{"id": "4", "name": "数の軍略", "rules": "versus", "army": "MILITARY", "units": [{"kind": "SNIPER", "equipment": []}], "trait": 3, "oaths": "broken"},
+		{"id": "5", "name": "単騎（差し替えた軍略）", "rules": "versus", "army": "FANTASY", "units": units, "trait": "lone"},
 	]})
 	var items := library.items()
-	assert_eq(items.size(), 4)
+	assert_eq(items.size(), 5)
 	assert_eq(items[0].deck.trait_id, Traits.Id.VENGEANCE)
 	assert_eq(items[0].deck.oath_pairs(), [Vector2i(0, 1)] as Array[Vector2i], "誓いの組は残る")
 	assert_eq(items[1].deck.trait_id, Traits.Id.VENGEANCE)
 	assert_eq(items[2].deck.trait_id, Traits.Id.FOCUS)
 	assert_eq(items[3].deck.trait_id, Traits.Id.FOCUS)
 	assert_true(items[3].deck.oaths.is_empty())
+	assert_eq(items[4].deck.trait_id, Traits.Id.VENGEANCE, "単騎を選んでいた部隊は、軍の既定")
 	for item in items:
 		assert_true(item.playable(), "%s: %s" % [item.name, item.issues()])
