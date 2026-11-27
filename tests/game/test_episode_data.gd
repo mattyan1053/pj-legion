@@ -5,6 +5,7 @@ extends "res://tests/base_test.gd"
 
 const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
+const TalkLine := Episode.TalkLine
 const Campaign := preload("res://game/campaign.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const BattleSource := preload("res://game/battle_source.gd")
@@ -137,9 +138,9 @@ func test_the_probe_reads_every_field() -> void:
 	assert_eq(episode.enemy, [[UnitKind.Id.PALADIN, [Equipment.Id.IRON_SHIELD, Equipment.Id.IRON_SHIELD]], [UnitKind.Id.PRIEST, []]])
 	assert_eq(episode.deploy[1], [Vector2i(8, 9), Vector2i(5, 9)] as Array[Vector2i])
 	assert_true(episode.deploy[0].is_empty())
-	assert_eq(episode.before, [[0, "いくぞ", 0], [1, "来い：ここだ", 1]], "全角の「：」でもよい。文の中の「：」はそのまま")
-	assert_eq(episode.after, [[1, "退け", 1]])
-	assert_eq(episode.cues, [[&"turn", 2, 0, "進め", 0], [&"king_half", 1, 1, "まだだ", 1]])
+	assert_eq(_dicts(episode.before), [Episode.TalkLine.speech(0, "いくぞ", 0).as_dict(), Episode.TalkLine.speech(1, "来い：ここだ", 1).as_dict()], "全角の「：」でもよい。文の中の「：」はそのまま")
+	assert_eq(_dicts(episode.after), [Episode.TalkLine.speech(1, "退け", 1).as_dict()])
+	assert_eq(_dicts(episode.cues), [Episode.TalkCue.new(&"turn", 2, TalkLine.speech(0, "進め", 0)).as_dict(), Episode.TalkCue.new(&"king_half", 1, TalkLine.speech(1, "まだだ", 1)).as_dict()])
 	assert_false(episode.has_squad())
 
 
@@ -190,8 +191,9 @@ func test_signs_read_and_reach_the_battle() -> void:
 func test_narration_lines_read() -> void:
 	var episode: Episode = Episode.parse(PROBE.replace("隊長: いくぞ", "> 尾根に着いた。\n隊長: いくぞ").replace("敵将: 退け", "敵将: 退け\n＞ 日が暮れた。"))
 	assert_eq(episode.problems, PackedStringArray())
-	assert_eq(episode.before[0], [Episode.NARRATION_SIDE, "尾根に着いた。", -1])
-	assert_eq(episode.after[1], [Episode.NARRATION_SIDE, "日が暮れた。", -1])
+	assert_eq(episode.before[0].as_dict(), TalkLine.narration("尾根に着いた。").as_dict())
+	assert_true(episode.before[0].is_narration() and episode.before[0].side == Episode.NARRATION_SIDE and episode.before[0].who == -1)
+	assert_eq(episode.after[1].as_dict(), TalkLine.narration("日が暮れた。").as_dict())
 	var talk := Story.talk_of(episode, episode.before)
 	assert_eq(talk["lines"][0]["name"], "", "地の文は名前の無い行")
 	assert_eq(talk["lines"][0]["side"], Episode.NARRATION_SIDE)
@@ -203,11 +205,11 @@ func test_narration_lines_read() -> void:
 ## 負けたときの台詞（[lost]）は無くてよい。書けば、話し手と文を読み、話の対戦が決着の画面へ渡す（battle_source.gd の lost_lines）。
 func test_lost_lines_read() -> void:
 	var plain: Episode = Episode.parse(PROBE)
-	assert_eq(plain.lost, [], "書かなければ無し")
+	assert_true(plain.lost.is_empty(), "書かなければ無し")
 	assert_true(StoryBattle.new(plain, null).lost_lines().is_empty())
 	var episode: Episode = Episode.parse(PROBE.replace("敵将: 退け", "敵将: 退け\n\n[lost]\n敵将: 甘い\n隊長：旗を空けすぎた"))
 	assert_eq(episode.problems, PackedStringArray())
-	assert_eq(episode.lost, [[1, "甘い", 1], [0, "旗を空けすぎた", 0]])
+	assert_eq(_dicts(episode.lost), [Episode.TalkLine.speech(1, "甘い", 1).as_dict(), Episode.TalkLine.speech(0, "旗を空けすぎた", 0).as_dict()])
 	var lines := StoryBattle.new(episode, null).lost_lines()
 	assert_eq(lines.map(func(line: BattleCues.Line) -> Array: return [line.side, line.name, line.text]), [[1, "敵将", "甘い"], [0, "隊長", "旗を空けすぎた"]])
 	assert_eq(lines[1].figure, episode.figures[0], "話し手の姿も渡す（決着の画面のアイコン）")
@@ -257,8 +259,8 @@ func test_more_speakers_read() -> void:
 	assert_eq(episode.figures[2], {"kind": UnitKind.Id.MEDIC, "evolved": false, "look": &""})
 	assert_eq(episode.figures[3], {"kind": UnitKind.Id.KING, "evolved": false, "look": &""}, "姿を書かなければ将")
 	assert_eq(episode.figures[4], {"kind": UnitKind.Id.SORCERER, "evolved": true, "look": &""})
-	assert_eq(episode.before, [[0, "いきます", 2], [1, "来ます", 4], [1, "来い：ここだ", 1]])
-	assert_eq(episode.cues[0], [&"turn", 1, 0, "進め", 3])
+	assert_eq(_dicts(episode.before), [Episode.TalkLine.speech(0, "いきます", 2).as_dict(), Episode.TalkLine.speech(1, "来ます", 4).as_dict(), Episode.TalkLine.speech(1, "来い：ここだ", 1).as_dict()])
+	assert_eq(episode.cues[0].as_dict(), Episode.TalkCue.new(&"turn", 1, TalkLine.speech(0, "進め", 3)).as_dict())
 	var lines: Array = Story.talk_of(episode, episode.before)["lines"]
 	assert_eq([lines[0]["side"], lines[0]["who"], lines[0]["name"]], [0, 2, "新兵"])
 	assert_eq([lines[1]["side"], lines[1]["who"], lines[1]["name"]], [1, 4, "副官"])
@@ -430,10 +432,10 @@ func test_quoted_words_in_story_lines_are_on_the_screen() -> void:
 	var quoted := RegEx.create_from_string("「([^」]*)」")
 	for episode: Episode in Story.all_episodes():
 		var texts: Array[String] = [episode.lesson]
-		for line: Array in episode.before + episode.after + episode.lost:
-			texts.append(line[1])
-		for cue: Array in episode.cues:
-			texts.append(cue[3])
+		for line: TalkLine in episode.before + episode.after + episode.lost:
+			texts.append(line.text)
+		for cue: Episode.TalkCue in episode.cues:
+			texts.append(cue.line.text)
 		for text in texts:
 			for found in quoted.search_all(text):
 				assert_true(shown.has(found.get_string(1)), "%s: 画面に無い呼び方「%s」: %s" % [episode.id, found.get_string(1), text])
@@ -607,6 +609,11 @@ func test_campaigns_introduce_their_cast() -> void:
 # ---- 見本 ----
 
 ## 正しい話の見本（行の番号を、上の壊し方の表が使う。行を足したら表も直す）。
+## 会話の行・途中の台詞の列を、比べられる形に。
+static func _dicts(rows: Array) -> Array:
+	return rows.map(func(row: RefCounted) -> Dictionary: return row.as_dict())
+
+
 const PROBE := """# 見本
 [episode]
 title = 見本

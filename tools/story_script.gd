@@ -102,8 +102,8 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	if not episode.cues.is_empty():
 		lines.append("### 対戦の途中")
 		lines.append("")
-		for cue: Array in episode.cues:
-			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), episode.speakers[cue[4]], cue[3]])
+		for cue: Episode.TalkCue in episode.cues:
+			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), cue.line.speaker_in(episode.speakers), cue.line.shown_text()])
 		lines.append("")
 	lines.append("### 対戦のあと")
 	lines.append("")
@@ -121,22 +121,22 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 		lines.append("")
 
 
-static func _talk(lines: PackedStringArray, episode: Episode, rows: Array) -> void:
-	for row: Array in rows:
-		if row[2] < 0:
-			lines.append("- *%s*" % row[1])  # 地の文
+static func _talk(lines: PackedStringArray, episode: Episode, rows: Array[Episode.TalkLine]) -> void:
+	for row in rows:
+		if row.is_narration():
+			lines.append("- *%s*" % row.shown_text())
 		else:
-			lines.append("- **%s**　%s" % [episode.speakers[row[2]], row[1]])
+			lines.append("- **%s**　%s" % [row.speaker_in(episode.speakers), row.shown_text()])
 	lines.append("")
 
 
 ## 話し手の一覧（「隊長（味方・将）」。味方が先。姿は駒の名前、進化後の形なら「進化後」を添える）。台詞の無い話し手は並べない。
 static func _cast(episode: Episode) -> PackedStringArray:
 	var talks := {}
-	for row: Array in episode.before + episode.after + episode.lost:
-		talks[row[2]] = true
-	for cue: Array in episode.cues:
-		talks[cue[4]] = true
+	for row: Episode.TalkLine in episode.before + episode.after + episode.lost:
+		talks[row.who] = true
+	for cue: Episode.TalkCue in episode.cues:
+		talks[cue.line.who] = true
 	var cast: PackedStringArray = []
 	for side in 2:
 		for who in episode.speakers.size():
@@ -159,7 +159,7 @@ static func _enemy(episode: Episode) -> String:
 	return "%s（%s%d 体: %s）" % [Names.army(episode.enemy_army), leader, episode.enemy.size(), "、".join(parts)]
 
 
-static func _cue_word(cue: Array) -> String:
-	if cue[0] == BattleCues.TURN:
-		return "対戦の始め" if cue[1] == 1 else "ターン %d の始め" % cue[1]
-	return CUE_WORDS[cue[0]][cue[1]]
+static func _cue_word(cue: Episode.TalkCue) -> String:
+	if cue.trigger == BattleCues.TURN:
+		return "対戦の始め" if cue.value == 1 else "ターン %d の始め" % cue.value
+	return CUE_WORDS[cue.trigger][cue.value]

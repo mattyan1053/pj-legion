@@ -13,6 +13,7 @@ const FALLEN := &"fallen"  ## 値 = 陣営（0 か 1）。その陣営の駒（�
 const ULT_READY := &"ult_ready"  ## 値 = 陣営（0 か 1）。その陣営の必殺技のゲージがたまった（UltReadyEvent）
 const RELIC := &"relic"  ## 値 = 陣営（0 か 1）。その陣営が聖遺物を受け取った（中ボスを倒した。RelicGainedEvent）
 const KINDS: Array[StringName] = [TURN, KING_HALF, FALLEN, ULT_READY, RELIC]
+const TalkCue := preload("res://game/episode/talk_cue.gd")
 
 
 ## 出す台詞 1 つ。
@@ -31,8 +32,8 @@ class Line:
 		figure = figure_
 
 
-## [きっかけ, 値, 話し手の陣営（0 か 1）, 文, 話し手（_names の番号。無ければ陣営と同じ）] の列。
-var _cues: Array = []
+## 途中の台詞（game/episode/talk_cue.gd。きっかけ・値・会話の行）の列。
+var _cues: Array[TalkCue] = []
 ## 話し手の名前（0 = 人の軍の主な話し手、1 = 敵の軍の主な話し手、2 から = ほかの話し手。episode.gd の speakers）。
 var _names: Array = []
 ## 話し手の姿（_names と同じ並び。episode.gd の figures）。
@@ -41,10 +42,16 @@ var _figures: Array = []
 var _said := {}
 
 
-func _init(cues: Array = [], speakers: Array = [], figures: Array = []) -> void:
+func _init(cues: Array[TalkCue] = [], speakers: Array = [], figures: Array = []) -> void:
 	_cues = cues
 	_names = speakers
 	_figures = figures
+
+
+## 会話の行 talk（game/episode/talk_line.gd）を、出す台詞に。speakers・figures は話の speakers・figures。
+static func line_of(talk: TalkCue.TalkLine, speakers: Array, figures: Array) -> Line:
+	var who := talk.who
+	return Line.new(talk.side, talk.speaker_in(speakers), talk.shown_text(), figures[who] if who >= 0 and who < figures.size() else {})
 
 
 func is_empty() -> bool:
@@ -68,13 +75,10 @@ func _take(battle: Battle, events: Array[BattleEvent], at_start: bool) -> Array[
 	for i in _cues.size():
 		if _said.has(i):
 			continue
-		var cue: Array = _cues[i]
-		if _fires(battle, events, at_start, cue[0], cue[1]):
+		var cue := _cues[i]
+		if _fires(battle, events, at_start, cue.trigger, cue.value):
 			_said[i] = true
-			var side: int = cue[2]
-			var who: int = cue[4] if cue.size() > 4 else side
-			lines.append(Line.new(side, _names[who] if who < _names.size() else "", cue[3],
-					_figures[who] if who < _figures.size() else {}))
+			lines.append(line_of(cue.line, _names, _figures))
 	return lines
 
 

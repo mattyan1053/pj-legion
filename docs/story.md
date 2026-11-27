@@ -265,6 +265,23 @@ budget = 2
 - 出撃準備では、始めのレベルが 1 でない駒に、レベルを出す（部隊の中身の文の名前の後ろ「パラディン Lv2」と、駒のアイコンの右下。敵の部隊の文も）。
   人の側は部隊が決まっている話だけ（選んだ部隊には当てないので）。
 
+### 会話の 1 行（コードの形）
+
+読んだ会話の 1 行は `game/episode/talk_line.gd`（`Episode.TalkLine`）。`[before]`・`[after]`・`[lost]` は、その列。
+`[cues]` の 1 行は `game/episode/talk_cue.gd`（`Episode.TalkCue`。きっかけ `trigger`・値 `value`・言うこと `line`）。
+
+| 欄 | 中身 |
+| --- | --- |
+| `kind` | 行の種類（`SPEECH` 台詞、`NARRATION` 地の文） |
+| `side` | 話し手の陣営（0 人の軍、1 敵の軍。地の文は `NARRATION_SIDE`） |
+| `text` | 文（ファイルに書いたまま） |
+| `who` | 話し手（`speakers` の番号。地の文は -1） |
+
+- 読む側（会話の場面へ渡す `Story.talk_of`、途中の台詞 `BattleCues.line_of`、台本・声・折り返しの道具、自動の対戦、テスト）は欄を名前で読み、
+  話し手の名前は `speaker_in(speakers)`、画面に出す文は `shown_text()` で取る。
+- 行の種類を足すとき（選択肢の行など）は、`Kind` に足し、作る関数（`speech`・`narration` と同じ形）を足し、読む側で `kind` を見る。
+- 文に差し込むもの（主人公の名前など）は `shown_text()` に足す。文の長さの検査（`TALK_MAX_CHARS` など）は `text`（書いたまま）で測っている。
+
 ### 話を 1 つ足す
 
 1. `game/story/_template/first_battle.txt` を、物語のフォルダに `<id>.txt` の名前で写す（`<id>` は英小文字と `_`。クリアの記録に書くので、配ったあとは変えない。ほかの物語の話とも重ねない）。
