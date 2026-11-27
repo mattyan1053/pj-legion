@@ -13,6 +13,8 @@ func choose(id: String) -> void:
 	var deck := chosen_deck()
 	var levels := start_levels(Unit.Side.PLAYER1)
 	_fill_faces(_deck_faces, deck, Unit.Side.PLAYER1, levels)
+	if not is_squad_fixed() and episode.traits[Unit.Side.PLAYER1] == Traits.NONE:
+		_show_trait(Unit.Side.PLAYER1, StoryBattle.trait_of_deck(deck))
 	# 部隊を替えたら、初期位置はおまかせに戻す。
 	battle_source.placement.clear()
 	_refresh_deploy(deck)

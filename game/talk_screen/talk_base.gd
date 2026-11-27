@@ -8,6 +8,7 @@ const Palette := preload("res://game/ui_palette.gd")
 const AppContext := preload("res://game/app_context.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
+const TraitIcon := preload("res://game/trait_icon.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const Run := preload("res://game/run.gd")
 const TalkFigure := preload("res://game/talk_figure.gd")
@@ -87,6 +88,7 @@ var _raw_text := ""
 var _face: UnitFrame
 var _item_face: Control  # item_icon.gd
 var _item_frame: PanelContainer
+var _trait_face: Control  # trait_icon.gd（軍略の知らせ。持ち物と同じ額に入れる）
 var _hint: KeyMarks
 var _count: Label
 var _skip: Button
@@ -121,7 +123,7 @@ static func is_narration(line: Dictionary) -> bool:
 ## 行 line の文を折り返す幅（px）。知らせの行は、アイコンのぶん狭い。
 static func text_width(line: Dictionary) -> float:
 	var width := BOX_WIDTH - BOX_MARGIN_X * 2.0
-	if line.has("kind") or line.has("item"):
+	if line.has("kind") or line.has("item") or line.has("trait"):
 		width -= NOTICE_FRAME + NOTICE_GAP
 	return width
 
