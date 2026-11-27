@@ -27,7 +27,7 @@ func _make_figures() -> void:
 ## 話し手の姿を、舞台の高さいっぱいに、文の枠の左端と右端にそろえて置く。
 func _place_figures() -> void:
 	var height := _stage.size.y
-	var width := minf(height * TalkFigure.ASPECT, BOX_WIDTH * FIGURE_MAX_WIDTH)
+	var width := minf(height * TalkFigure.ASPECT, FIGURE_MAX_WIDTH)
 	var left := (_stage.size.x - BOX_WIDTH) / 2.0
 	for view in _figures:
 		view.size = Vector2(width, height)
@@ -36,6 +36,7 @@ func _place_figures() -> void:
 
 ## 行 index のときに、左右それぞれの所に立つ話し手の番号（[左, 右]。誰もいなければ -1）。
 ## いちばん近くに話した人。まだ誰も話していない所は、次に話す人。
+## いま出す行に話す人がいない所（答えを選ぶまで、その人の行がどれも出ない）は、渡された行の全部から探す（問われている人が、選ぶ前から立っている）。
 func _standing_at(index: int) -> Array[int]:
 	var place_of := {}
 	for view in _figures:
@@ -48,6 +49,10 @@ func _standing_at(index: int) -> Array[int]:
 			standing[place_of[who]] = who
 	for i in range(index + 1, lines.size()):
 		var who := _who(lines[i])
+		if place_of.has(who) and standing[place_of[who]] < 0:
+			standing[place_of[who]] = who
+	for line: Dictionary in talk.get("lines", []):
+		var who := _who(line)
 		if place_of.has(who) and standing[place_of[who]] < 0:
 			standing[place_of[who]] = who
 	return standing

@@ -44,6 +44,7 @@ func _ready() -> void:
 		layer.add_child(fill)
 	else:
 		_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
+		_backdrop.scenery_only = shown == null  # 兵を立たせない背景（別の場所の会話、カットシーン）は、景色だけ。マス目も本陣の旗も出さない
 		add_child(_backdrop)
 	add_child(layer)
 	# 背景の盤を少し沈め、話し手の姿と文を浮かせる。
@@ -127,33 +128,54 @@ func _ready() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(spacer)
+	# 「ログ」「スキップ」の置き先: ふだんは名前の札の行の右端。
+	var corner: HBoxContainer = top_row
+	if cut:
+		# カットシーンも、置き場所は会話の場面と同じ（下の文の枠があるはずの所の、右上。真ん中の文には重ならず、場面が替わってもボタンが動かない）。
+		# 行の中には、同じ高さの空きを残す（文の高さを変えない）。
+		var held := Control.new()
+		held.custom_minimum_size = Vector2(0.0, BUTTON_SIZE.y)
+		held.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		top_row.add_child(held)
+		corner = HBoxContainer.new()
+		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		corner.alignment = BoxContainer.ALIGNMENT_END
+		corner.anchor_left = 0.5
+		corner.anchor_right = 0.5
+		corner.anchor_top = 1.0
+		corner.anchor_bottom = 1.0
+		corner.offset_left = -BOX_WIDTH / 2.0
+		corner.offset_right = BOX_WIDTH / 2.0
+		corner.offset_bottom = -(BOX_BOTTOM + BOX_HEIGHT + PLATE_GAP)
+		corner.offset_top = corner.offset_bottom - BUTTON_SIZE.y
+		layer.add_child(corner)
 	_log_button = Button.new()
 	_log_button.text = Text.t("talk.log")
 	_log_button.tooltip_text = Text.t("talk.log.tooltip")
 	_log_button.focus_mode = Control.FOCUS_NONE
 	_log_button.add_theme_font_size_override("font_size", 17)
-	_log_button.custom_minimum_size = Vector2(110.0, 36.0)
+	_log_button.custom_minimum_size = BUTTON_SIZE
 	_log_button.size_flags_vertical = Control.SIZE_SHRINK_END
 	_log_button.pressed.connect(open_log)
-	top_row.add_child(_log_button)
+	corner.add_child(_log_button)
 	var buttons_gap := Control.new()
 	buttons_gap.custom_minimum_size = Vector2(8.0, 0.0)
 	buttons_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top_row.add_child(buttons_gap)
+	corner.add_child(buttons_gap)
 	_skip = Button.new()
 	_skip.text = Text.t("talk.skip")
 	_skip.focus_mode = Control.FOCUS_NONE
 	_skip.add_theme_font_size_override("font_size", 17)
-	_skip.custom_minimum_size = Vector2(110.0, 36.0)
+	_skip.custom_minimum_size = BUTTON_SIZE
 	_skip.size_flags_vertical = Control.SIZE_SHRINK_END
 	_skip.pressed.connect(press_skip)
-	top_row.add_child(_skip)
+	corner.add_child(_skip)
 	if cut:
 		# 文だけを見せる場面なので、ボタンは控えめに。
 		_log_button.modulate.a = CUT_BUTTONS
 		_skip.modulate.a = CUT_BUTTONS
 	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0.0, 6.0)
+	gap.custom_minimum_size = Vector2(0.0, PLATE_GAP)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(gap)
 
@@ -407,6 +429,16 @@ func figures() -> Array[TalkFigure]:
 ## 下の名前の札・「飛ばす」・文の枠が画面に占める四角（検査用。姿はこれと重ねない）。
 func bottom_rect() -> Rect2:
 	return _bottom.get_global_rect()
+
+
+## 背景が景色だけか（検査用。マス目も本陣の旗も出さない。色の幕なら偽）。
+func is_scenery_only() -> bool:
+	return _backdrop != null and _backdrop.scenery_only and not _backdrop.board_view().is_grid_visible()
+
+
+## 「ログ」と「スキップ」が画面に占める四角（検査用）。
+func buttons_rect() -> Rect2:
+	return _log_button.get_global_rect().merge(_skip.get_global_rect())
 
 
 ## カットシーンか（検査用）。
