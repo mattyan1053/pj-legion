@@ -155,3 +155,89 @@ func test_danger_does_not_change_the_battle() -> void:
 	assert_eq(battle.phase, before.phase)
 	assert_eq(battle.units[1].skill_cooldown, before.units[1].skill_cooldown)
 	assert_eq(battle.rng.state, before.rng.state)
+
+
+# ---- 本物のダメージと同じ（見張り） ----
+# CPU の読むダメージが、同じ場面で実際に攻撃したときのダメージと同じになること。効果を重ねた場面で見る。
+# 攻撃する駒は動けなくして（移動力 0）、いまのマスから攻撃させる（CPU が見込む攻撃するマスと同じになる）。
+# 新しい効果をダメージの解決（Combat.hit_from）の外に足したり、CPU の側に別の計算を書いたりすると、ここが落ちる。
+
+
+## 動けない駒を置く。
+func _fixed(battle: Battle, kind: UnitKind.Id, side: Unit.Side, cell: Vector2i) -> Unit:
+	var unit := battle.add_unit(kind, side, cell)
+	unit.relic_bonus[Unit.Stat.MOVE_RANGE] = -99
+	return unit
+
+
+## battle（P1 の番）を相手の番まで進めて、attackers の順に defender を攻撃させたときのダメージの合計（実際の攻撃）。
+func _real(battle: Battle, defender: Unit, attackers: Array[Unit]) -> int:
+	var sim := battle.clone()
+	for i in 3:
+		if sim.phase == P2:
+			break
+		assert_true(sim.apply(EndPhaseAction.new()).accepted)
+	var total := 0
+	for attacker in attackers:
+		var result := sim.apply(AttackAction.new(attacker.id, defender.id))
+		assert_true(result.accepted, "%s が攻撃できる" % attacker.kind)
+		for event in result.events:
+			if event is AttackDamagedEvent:
+				total += (event as AttackDamagedEvent).amount
+	return total
+
+
+func test_reads_the_real_damage_with_forest_guard_spores_and_focus() -> void:
+	# 守る側は森に立ち、パラディンの隣（守護）。近くの敵は胞子（守る側の糸茸）の中から殴る。遠くの敵は 2 体目なので集中砲火。
+	var rows: Array[String] = [".......", ".......", "...F...", ".......", "......."]
+	var battle := Maps.battle(rows)
+	battle.traits = [Traits.Id.GUARD, Traits.Id.FOCUS]
+	var defender := battle.add_unit(UnitKind.Id.COMMANDO, P1, Vector2i(3, 2))
+	battle.add_unit(UnitKind.Id.PALADIN, P1, Vector2i(3, 1))
+	battle.add_unit(UnitKind.Id.SHROOM, P1, Vector2i(5, 3))
+	var near := _fixed(battle, UnitKind.Id.COMMANDO, P2, Vector2i(4, 2))
+	var far := _fixed(battle, UnitKind.Id.SNIPER, P2, Vector2i(3, 4))
+	var real := _real(battle, defender, [near, far])
+	assert_true(Combat.hit(battle, near, defender).spores, "胞子が効く場面")
+	assert_eq(CpuPlayer.new().danger(battle, defender.id, defender.cell), real)
+
+
+func test_reads_the_real_damage_with_ranks_vengeance_and_smoke() -> void:
+	# 守る側は隊列（同じ兵種の隣）で、相手の仇。自分の煙幕の中なので、離れた敵の攻撃は 0。
+	var battle := Maps.battle(OPEN_ROWS)
+	battle.traits = [Traits.Id.RANKS, Traits.Id.VENGEANCE]
+	var defender := battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(5, 2))
+	battle.add_unit(UnitKind.Id.SNIPER, P1, Vector2i(5, 1))
+	defender.slew_sides = 1 << int(P2)
+	FieldEffects.place_smoke(battle, P1, defender.cell)
+	var near := _fixed(battle, UnitKind.Id.SPELLBLADE, P2, Vector2i(6, 2))
+	var far := _fixed(battle, UnitKind.Id.SORCERER, P2, Vector2i(5, 4))
+	far.skill_cooldown = 2  # ファイアボールは煙幕に防がれないので、ここでは数えない
+	var real := _real(battle, defender, [near, far])
+	assert_eq(Combat.damage(battle, far, defender), 0, "煙幕が防ぐ場面")
+	assert_eq(CpuPlayer.new().danger(battle, defender.id, defender.cell), real)
+
+
+func test_reads_the_real_damage_of_an_oath_pair_in_the_forest() -> void:
+	# 誓いの 2 人が同じ敵を攻撃すると、2 人目が伸びる。守る側は森。
+	var rows: Array[String] = ["........", "........", "...F....", "........", "........"]
+	var battle := Maps.battle(rows)
+	battle.traits = [Traits.NONE, Traits.Id.OATH]
+	var defender := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(3, 2))
+	var first := _fixed(battle, UnitKind.Id.PALADIN, P2, Vector2i(4, 2))
+	var second := _fixed(battle, UnitKind.Id.SORCERER, P2, Vector2i(3, 4))
+	Traits.bind(first, second)
+	var real := _real(battle, defender, [first, second])
+	assert_true(real > Combat.damage(battle, first, defender) + Combat.damage(battle, second, defender), "誓いが効く場面")
+	assert_eq(CpuPlayer.new().danger(battle, defender.id, defender.cell), real)
+
+
+func test_guard_does_not_soften_skill_damage() -> void:
+	# 守護・隊列・森は駒の攻撃にだけ掛かる。ファイアボールの量はそのまま（Hit.resolve）。
+	var rows: Array[String] = ["................", "................", "F...............", "................", "................"]
+	var battle := Maps.battle(rows)
+	battle.traits = [Traits.Id.GUARD, Traits.NONE]
+	var defender := battle.add_unit(UnitKind.Id.COMMANDO, P1, HERE)
+	battle.add_unit(UnitKind.Id.PALADIN, P1, HERE + Vector2i(0, 1))
+	battle.add_unit(UnitKind.Id.SORCERER, P2, Vector2i(7, 2))
+	assert_eq(CpuPlayer.new().danger(battle, defender.id, HERE), FireballSkill.DAMAGE)

@@ -124,19 +124,21 @@ static func barricade_damage(attacker: Unit) -> int:
 
 ## from から target を攻撃したときに、そのダメージを 0 にする煙幕。無ければ null。
 ## 守るのは、煙幕の中にいる、煙幕の持ち主の駒だけ。離れたところ（距離 Combat.RANGED_DISTANCE 以上）からの攻撃だけを防ぐ。
-## いくつも重なっていれば、番号のいちばん小さいもの。
-static func smoke_covering(battle: Battle, from: Vector2i, target: Unit) -> FieldEffect:
+## いくつも重なっていれば、番号のいちばん小さいもの。at を渡すと、target がそのマスに立っているとして見る（CPU の見積もり。Combat.hit_from）。
+static func smoke_covering(battle: Battle, from: Vector2i, target: Unit, at := Board.NO_CELL) -> FieldEffect:
 	if target == null or target.side == Unit.Side.NEUTRAL:
 		return null
-	if Combat.distance(from, target.cell) < Combat.RANGED_DISTANCE:
+	var cell := target.cell if at == Board.NO_CELL else at
+	if Combat.distance(from, cell) < Combat.RANGED_DISTANCE:
 		return null
-	return smoke_of(battle, target)
+	return smoke_of(battle, target, cell)
 
 
-## unit のいるマスにある、unit の陣営の煙幕。いくつも重なっていれば番号のいちばん小さいもの。無ければ null。
-static func smoke_of(battle: Battle, unit: Unit) -> FieldEffect:
+## unit のいるマス（at を渡せば、そのマス）にある、unit の陣営の煙幕。いくつも重なっていれば番号のいちばん小さいもの。無ければ null。
+static func smoke_of(battle: Battle, unit: Unit, at := Board.NO_CELL) -> FieldEffect:
+	var cell := unit.cell if at == Board.NO_CELL else at
 	for effect in battle.board.field_effects:
-		if effect.type == FieldEffect.Type.SMOKE and effect.side == unit.side and effect.cells.has(unit.cell):
+		if effect.type == FieldEffect.Type.SMOKE and effect.side == unit.side and effect.cells.has(cell):
 			return effect
 	return null
 

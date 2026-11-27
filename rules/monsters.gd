@@ -82,9 +82,11 @@ static func shell_turns_away(from: Vector2i, target: Unit) -> bool:
 
 
 ## attacker の攻撃が、胞子で弱まる量（attacker の周り 8 マスに、attacker の敵の糸茸がいれば SPORE_PENALTY。いなければ 0）。
-static func spore_penalty(battle: Battle, attacker: Unit) -> int:
+## from を渡すと、attacker がそのマスから攻撃するとして見る（CPU の見積もりと脅威範囲。Combat.hit_from）。
+static func spore_penalty(battle: Battle, attacker: Unit, from := Board.NO_CELL) -> int:
+	var cell := attacker.cell if from == Board.NO_CELL else from
 	for unit in battle.units:
-		if unit != attacker and unit.has_trait(Evolution.Trait.SPORES) and unit.is_enemy_of(attacker) and _touches(unit.cell, attacker.cell):
+		if unit != attacker and unit.has_trait(Evolution.Trait.SPORES) and unit.is_enemy_of(attacker) and _touches(unit.cell, cell):
 			return SPORE_PENALTY
 	return 0
 

@@ -121,6 +121,8 @@ func _begin(battle: Battle) -> void:
 	_foe = (1 - _me) as Unit.Side
 	_threats = {}
 	_close_threats = {}
+	_threat_map = Threat.Map.new()
+	_danger_memo = {}
 	_smoked = {}
 	_foe_stops = {}
 	_moved_threats = {}

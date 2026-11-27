@@ -154,8 +154,9 @@ static func supplier_at(battle: Battle, unit: Unit, cell: Vector2i) -> Unit:
 
 
 ## このターンに、陣営 side の駒が target を攻撃したか（except の駒の攻撃は数えない）。
-static func struck_by_side(battle: Battle, target: Unit, side: Unit.Side, except: Unit = null) -> bool:
-	for mark: Vector2i in battle.struck.get(target.id, []):
+## marks を渡すと、対戦の覚え（Battle.struck）の代わりに、それを target の覚えとして読む（CPU の見積もり。Combat.hit_from）。
+static func struck_by_side(battle: Battle, target: Unit, side: Unit.Side, except: Unit = null, marks: Variant = null) -> bool:
+	for mark: Vector2i in _marks_of(battle, target, marks):
 		if mark.y == int(side) and (except == null or mark.x != except.id):
 			return true
 	return false
@@ -184,31 +185,36 @@ static func partner_of(battle: Battle, unit: Unit) -> Unit:
 	return partner if partner != null and partner.oath_partner == unit.id else null
 
 
-## 誓いの印: target が、このターンに unit の誓いの相手に攻撃されているか（unit が攻撃すると誓いが効く）。
-static func oath_marked(battle: Battle, unit: Unit, target: Unit) -> bool:
+## 誓いの印: target が、このターンに unit の誓いの相手に攻撃されているか（unit が攻撃すると誓いが効く）。marks は struck_by_side と同じ。
+static func oath_marked(battle: Battle, unit: Unit, target: Unit, marks: Variant = null) -> bool:
 	var partner := partner_of(battle, unit)
 	if partner == null:
 		return false
-	for mark: Vector2i in battle.struck.get(target.id, []):
+	for mark: Vector2i in _marks_of(battle, target, marks):
 		if mark.x == partner.id:
 			return true
 	return false
 
 
-## attacker が target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。
-static func attack_boosts(battle: Battle, attacker: Unit, target: Unit) -> Dictionary:
+## target がこのターンに攻撃された覚え（Vector2i(攻撃した駒の番号, 陣営) の並び）。marks を渡せば、それ。
+static func _marks_of(battle: Battle, target: Unit, marks: Variant) -> Array:
+	return battle.struck.get(target.id, []) if marks == null else marks
+
+
+## attacker が target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。marks は struck_by_side と同じ。
+static func attack_boosts(battle: Battle, attacker: Unit, target: Unit, marks: Variant = null) -> Dictionary:
 	var result := {}
 	if attacker.side == Unit.Side.NEUTRAL or target.side == attacker.side:
 		return result
 	match of_side(battle, attacker.side):
 		Id.FOCUS:
-			if struck_by_side(battle, target, attacker.side, attacker):
+			if struck_by_side(battle, target, attacker.side, attacker, marks):
 				result[Id.FOCUS] = FOCUS_BONUS
 		Id.VENGEANCE:
 			if slew(target, attacker.side):
 				result[Id.VENGEANCE] = VENGEANCE_BONUS
 		Id.OATH:
-			if oath_marked(battle, attacker, target):
+			if oath_marked(battle, attacker, target, marks):
 				result[Id.OATH] = OATH_BONUS
 	return result
 

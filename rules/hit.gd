@@ -18,6 +18,8 @@ var target: Unit
 var cause: UnitDamagedEvent.Cause
 ## 実際に減らす量（残りの HP より多くてもそのまま）。防がれたら 0。
 var amount := 0
+## 受ける側の状態（バリア）に防がれる前の量（防がれなければ amount と同じ）。CPU の危険の見積もりが、バリアを別に数えるのに読む。
+var unblocked := 0
 ## 確定クリティカルの攻撃か。
 var critical := false
 ## 森の軽減が掛かったか（駒の攻撃だけ。amount は軽減したあとの量）。
@@ -43,6 +45,7 @@ static func resolve(source_unit: Unit, target_unit: Unit, base_amount: int, why:
 	hit.target = target_unit
 	hit.cause = why
 	hit.amount = base_amount
+	hit.unblocked = base_amount
 	hit.hp_after = maxi(0, target_unit.hp - base_amount)
 	hit.blocked_by = Statuses.blocking(target_unit)
 	if hit.blocked_by != -1:

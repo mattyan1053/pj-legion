@@ -65,30 +65,26 @@ func targets(cpu: Variant, unit: Unit, _cells: Dictionary[Vector2i, float]) -> D
 ## いま届いている味方の離れた攻撃が、盾で届かなくなるぶんは引く（置く前と置いたあとのルールの答えを比べる）。
 func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	cpu._build_threats()
-	var threats: Dictionary[Vector2i, Dictionary] = {}
-	var close: Dictionary[Vector2i, Dictionary] = {}
-	cpu._fill_threats(sim, threats, close, {} as Dictionary[Vector2i, bool])
+	var after_map: Threat.Map = cpu._threats_of(sim)
 	# 比べる相手は「同じマスに立って、盾を置かなかったとき」。動いてから置く手では、動いただけの盤面で数え直す
 	# （前衛は、立つだけでも道をふさぐ。そのぶんを盾の手柄にしない）。
-	var threats_before: Dictionary[Vector2i, Dictionary] = cpu._threats
-	var close_before: Dictionary[Vector2i, Dictionary] = cpu._close_threats
+	var before_state: Battle = cpu._battle
+	var before_map: Threat.Map = cpu._threat_map
 	var user: Unit = cpu._battle.unit_by_id(used.unit_id)
 	if cpu._stand != Board.NO_CELL and cpu._stand != user.cell:
 		if not cpu._moved_threats.has(cpu._stand):
 			var moved_state: Battle = cpu._battle.clone()
 			CpuPlayer._move_in(moved_state, user.id, cpu._stand)
-			var moved_threats: Dictionary[Vector2i, Dictionary] = {}
-			var moved_close: Dictionary[Vector2i, Dictionary] = {}
-			cpu._fill_threats(moved_state, moved_threats, moved_close, {} as Dictionary[Vector2i, bool])
-			cpu._moved_threats[cpu._stand] = [moved_threats, moved_close]
-		threats_before = cpu._moved_threats[cpu._stand][0]
-		close_before = cpu._moved_threats[cpu._stand][1]
+			cpu._moved_threats[cpu._stand] = [moved_state, cpu._threats_of(moved_state)]
+		before_state = cpu._moved_threats[cpu._stand][0]
+		before_map = cpu._moved_threats[cpu._stand][1]
 	var worth := 0.0
 	for friend in sim.units:
 		if friend.side != cpu._me:
 			continue
-		var before := mini(friend.hp, cpu._danger_in(threats_before, close_before, friend, friend.cell, 0))
-		var after := mini(friend.hp, cpu._danger_in(threats, close, friend, friend.cell, 0))
+		var was: Unit = before_state.unit_by_id(friend.id)
+		var before := mini(friend.hp, cpu._danger_in(before_map, was, was.cell, 0, before_state))
+		var after := mini(friend.hp, cpu._danger_in(after_map, friend, friend.cell, 0, sim))
 		var rate := CpuPlayer.KING_DAMAGE_VALUE if friend.kind == UnitKind.Id.KING else CpuPlayer.DAMAGE_VALUE
 		worth += COVER_RATE * rate * (before - after)
 		if before >= friend.hp and after < friend.hp and friend.kind != UnitKind.Id.KING:
@@ -105,5 +101,5 @@ func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 				continue
 			if not Combat.can_attack(sim, moved, sim.unit_by_id(target.id)):
 				var rate := CpuPlayer.KING_DAMAGE_VALUE if target.kind == UnitKind.Id.KING else CpuPlayer.DAMAGE_VALUE
-				worth -= COVER_RATE * rate * shooter.power()
+				worth -= COVER_RATE * rate * Combat.damage(cpu._battle, shooter, target)
 	return worth
