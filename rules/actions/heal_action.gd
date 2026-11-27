@@ -24,9 +24,7 @@ func is_valid(battle: Battle) -> bool:
 func execute(battle: Battle) -> Array[BattleEvent]:
 	var healer := battle.unit_by_id(unit_id)
 	var target := battle.unit_by_id(target_id)
-	var amount := Healing.amount(healer, target)
-	target.hp += amount
-	var events: Array[BattleEvent] = [HealerHealedEvent.new(healer.id, target.id, amount, target.hp)]
+	var events: Array[BattleEvent] = [Mend.give(target, Healing.limit(healer), HealerHealedEvent.new(healer.id))]
 	events.append_array(Growth.gain(healer, Growth.heal_experience(), ExperienceGainedEvent.Reason.HEAL))
 	events.append(battle.finish_action(healer))
 	return events

@@ -274,7 +274,5 @@ static func start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 		var medic := supplier_at(battle, unit, unit.cell)
 		if medic == null:
 			continue
-		var amount := mini(SUPPLY_HEAL, unit.max_hp() - unit.hp)
-		unit.hp += amount
-		events.append(SupplyHealedEvent.new(medic.id, unit.id, amount, unit.hp))
+		events.append(Mend.give(unit, SUPPLY_HEAL, SupplyHealedEvent.new(medic.id)))
 	return events
