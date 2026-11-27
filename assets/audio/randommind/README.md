@@ -1,5 +1,7 @@
 # RandomMind の曲（BGM と決着の曲）
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 - 作者: RandomMind（OpenGameArt のユーザー。https://opengameart.org/users/randommind ）
 - ライセンス: CC0 1.0（`LICENSE.txt`）。各曲のページの「License(s)」が CC0。作者は「クレジットはうれしいが要らない」と書いている
 - 取ってきた日・ライセンスを確かめた日: 2026-11-15（各ページを開いて確かめた）。The Old Tower Inn は 2026-11-16

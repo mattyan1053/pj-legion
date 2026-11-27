@@ -4,6 +4,7 @@ extends Node
 
 
 const Names := preload("res://game/names.gd")
+const Credits := preload("res://game/credits.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const Queries := preload("res://game/battle_queries.gd")
 const Story := preload("res://game/story.gd")

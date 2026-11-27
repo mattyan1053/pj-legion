@@ -7,6 +7,24 @@ func _scene_title() -> bool:
 	return _app.current_id() == SceneFlow.TITLE
 
 
+## タイトルの「クレジット」の窓。
+func _scene_credits() -> bool:
+	if not await _scene_title():
+		return false
+	var credits: Control = _app.current_scene().press_credits()
+	return credits.visible
+
+
+## クレジットの窓を、いちばん下まで送ったところ。
+func _scene_credits_end() -> bool:
+	if not await _scene_credits():
+		return false
+	var credits: Control = _app.current_scene().press_credits()
+	await get_tree().process_frame
+	credits.scroll_to_end()
+	return true
+
+
 ## タイトルの背景を、景色 look にしたところ。
 func _title_scape(look: StringName) -> bool:
 	if not await _scene_title():
