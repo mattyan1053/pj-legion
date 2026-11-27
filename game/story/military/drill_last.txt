@@ -62,6 +62,8 @@ after_music = talk_calm
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [enemy]
+name = ベルク連邦 教導隊
+short = 教導隊
 army = fantasy
 unit = paladin, level 2
 unit = sorcerer, level 2

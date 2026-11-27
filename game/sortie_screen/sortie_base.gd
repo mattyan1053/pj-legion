@@ -30,6 +30,7 @@ const BattleTexts := preload("res://game/battle_texts.gd")
 const Crest := preload("res://game/crest.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
+const TraitTag := preload("res://game/trait_tag.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 signal finished(outcome: StringName)
@@ -97,6 +98,8 @@ var context: AppContext
 ## 話（episode.gd。game/story/<物語>/ の 1 ファイル）と、その対戦（story_battle.gd）。
 var episode: Episode
 var _layer: CanvasLayer
+## 見出しの後ろの、陣営ごとの軍略の札（_army_caption）。
+var _trait_tags: Array[Control] = [null, null]
 var _enemy_faces: HFlowContainer
 var _detail: UnitDetail
 var battle_source: RefCounted
@@ -193,7 +196,9 @@ func _decorate(panel: PanelContainer, army: UnitKind.Army, team: Color) -> void:
 
 
 ## 部隊の欄の小見出し: 軍の国の紋（軍なしは出さない）と、文。高さは小見出しの文と同じ（紋で行を高くしない）。
-func _army_caption(text: String, army: UnitKind.Army) -> Control:
+## side が 0 以上なら、見出しの後ろに、その陣営の軍略の札（印と名前。話のファイルの trait。乗せると文）の場所を取る。
+## 軍略が無い話でも場所は取ったまま見せないので、軍略のある話と枠が変わらない。
+func _army_caption(text: String, army: UnitKind.Army, side := -1) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -202,7 +207,23 @@ func _army_caption(text: String, army: UnitKind.Army) -> Control:
 		crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(crest)
 	row.add_child(_caption(text))
+	if side >= 0:
+		var id: int = episode.traits[side] if side < episode.traits.size() else Traits.NONE
+		var tag := TraitTag.new(20.0, 14)
+		tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tag.trait_id = id
+		tag.modulate.a = 1.0 if id != Traits.NONE else 0.0
+		tag.mouse_filter = Control.MOUSE_FILTER_STOP if id != Traits.NONE else Control.MOUSE_FILTER_IGNORE
+		tag.tooltip_text = Names.troop_trait_text(id)
+		_trait_tags[side] = tag
+		row.add_child(tag)
 	return row
+
+
+## 見出しの後ろの軍略の札の名前（陣営 side。見せていなければ空。検査用）。
+func trait_tag_text(side: int) -> String:
+	var tag: Control = _trait_tags[side]
+	return (tag as TraitTag).shown_name() if tag != null and tag.modulate.a > 0.0 else ""
 
 
 ## 下のボタンの左右へ伸びる飾りの線。
