@@ -156,6 +156,22 @@ func _hud() -> BattleHud:
 	return hud
 
 
+
+## ストーリーの陣営の呼び名（話のファイルの name と short）は、いちばん長いもの（STORY_NAME_MAX 字・STORY_SHORT_MAX 字）でも、上の帯の番の札と陣営の欄に収まる。
+func test_the_longest_story_side_name_fits_the_top_band() -> void:
+	var hud := _hud()
+	await settle(hud)
+	Names.story_sides = true
+	Names.story_names = ["縫".repeat(Names.STORY_NAME_MAX), "縫".repeat(Names.STORY_NAME_MAX)] as Array[String]
+	Names.story_shorts = ["縫".repeat(Names.STORY_SHORT_MAX), "縫".repeat(Names.STORY_SHORT_MAX)] as Array[String]
+	hud.set_status("ターン 12", Unit.Side.PLAYER2, [12, 12] as Array[int], [2, 2] as Array[int], 3, [true, true] as Array[bool], ["勝利条件: 敵の全滅", false])
+	await settle(hud)
+	assert_eq(hud.top_bar_cut_texts(), [] as Array[String], "長い呼び名で、上の帯の陣営の欄が切れる")
+	Names.story_sides = false
+	Names.story_names = ["", ""] as Array[String]
+	Names.story_shorts = ["", ""] as Array[String]
+	hud.free()
+
 ## 印の付いた枠（名前 what）を、node の下から探す。
 func _frame(node: Node, what: String) -> Control:
 	for frame: Node in (Engine.get_main_loop() as SceneTree).get_nodes_in_group(Steady.GROUP):

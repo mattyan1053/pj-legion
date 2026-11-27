@@ -114,7 +114,7 @@ func _build_enemy_panel(right: VBoxContainer) -> void:
 	var enemy_column := VBoxContainer.new()
 	enemy_column.add_theme_constant_override("separation", 2)
 	enemy.add_child(enemy_column)
-	enemy_column.add_child(_army_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)}), episode.enemy_army))
+	enemy_column.add_child(_army_caption(Text.t("sortie.enemy", {"name": battle_source.side_names()[1]}), episode.enemy_army, 1))
 	# 敵の駒の額（押すと詳しい説明。魔物も）。名前と持ち物は、額に乗せると出る。
 	_enemy_faces = _faces_row(ENEMY_FACE_ROWS)
 	enemy_column.add_child(_enemy_faces)
@@ -134,7 +134,7 @@ func _build_troops_panel(right: VBoxContainer) -> void:
 	troops_head.add_theme_constant_override("separation", 12)
 	troops_head.custom_minimum_size = Vector2(0.0, 36.0)  # 「部隊編成」のボタンの無い話（部隊が決まっている話）でも、同じ高さ
 	troops_column.add_child(troops_head)
-	var troops_caption := _army_caption(Text.t("sortie.troops"), context.story.campaign.army)
+	var troops_caption := _army_caption(Text.t("sortie.troops"), context.story.campaign.army, 0)
 	troops_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	troops_head.add_child(troops_caption)
 	var edit := _button(Text.t("setup.edit_deck"), 16)

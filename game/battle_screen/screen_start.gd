@@ -111,6 +111,8 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_log_panel.close()
 	# ストーリーなら、陣営を「味方」「敵」と呼ぶ（ログ・上の帯・番の知らせ・マスの説明・決着。names.gd）。
 	Names.story_sides = source != null and source.story_sides()
+	Names.story_names = source.side_names() if Names.story_sides else (["", ""] as Array[String])
+	Names.story_shorts = source.side_shorts() if Names.story_sides else (["", ""] as Array[String])
 	# 中ボスの名前（話・マップのファイルの boss。無ければ「番人」）。ログ・勝ち方・決着の文の {boss} に入る。
 	Names.set_boss(source.boss_name() if source != null else "")
 	var names: Array[String] = []

@@ -106,6 +106,12 @@ deploy = 8,20  7,20  9,20  6,19  10,19  8,18
 
 # 敵の軍（CPU が動かす）。
 [enemy]
+# 陣営の呼び名（9 字まで。出撃準備の敵の部隊の見出し、上の帯、番の知らせ、決着、ログに出る）。
+# 書かなければ軍の既定の呼び名（military: ベルク連邦 / fantasy: リュエル騎士領 / none: 亡者の群れ）。[ally] にも同じに書ける。
+# 呼び名は docs/world.md・docs/story-outline.md にある言葉から選ぶ。
+# name = ベルク連邦 教導隊
+# 短い呼び名（5 字まで。上の帯の陣営の欄と、ログの駒の名前の前）。書かなければ、呼び名が 5 字までなら呼び名、長ければ軍の既定（連邦 / 騎士領 / 亡者）。
+# short = 教導隊
 # 軍略（docs/troop-traits.md）。書かなければ軍略なし。軍の軍略だけ（military: focus, ranks, supply / fantasy: vengeance, oath, lone）。
 # trait = vengeance
 # 誓い（trait = oath）なら、結ぶ 2 体を unit の行の番号（1 から）で。2 組まで。[ally] にも同じに書ける（人の側の誓いは unit を書いた話だけ）。

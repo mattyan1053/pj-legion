@@ -98,9 +98,35 @@ func talk_battle(after: bool) -> Battle:
 	return shown
 
 
-## 陣営は「味方」「敵」と呼ぶ（敵を「CPU（赤）」と呼ばない）。
+## 陣営は遊ぶ人の側から呼ぶ（敵を「CPU（赤）」と呼ばない）。
 func story_sides() -> bool:
 	return true
+
+
+## 陣営の呼び名 [人の軍, 敵の軍]: 話のファイルの name、書いていなければ軍の既定の呼び名（「ベルク連邦」「リュエル騎士領」「亡者の群れ」）。
+func side_names() -> Array[String]:
+	var names: Array[String] = ["", ""]
+	var armies := [human_deck.army if human_deck != null else UnitKind.Army.NONE, episode.enemy_army if episode != null else UnitKind.Army.NONE]
+	for side in 2:
+		var written: String = episode.side_names[side] if episode != null else ""
+		names[side] = written if written != "" else Names.story_army_name(armies[side])
+	return names
+
+
+## 陣営の短い呼び名 [人の軍, 敵の軍]（上の帯の陣営の欄とログ）: 話のファイルの short、無ければ呼び名が短ければ呼び名、長ければ軍の既定の短い呼び名。
+func side_shorts() -> Array[String]:
+	var names := side_names()
+	var shorts: Array[String] = ["", ""]
+	var armies := [human_deck.army if human_deck != null else UnitKind.Army.NONE, episode.enemy_army if episode != null else UnitKind.Army.NONE]
+	for side in 2:
+		var written: String = episode.side_shorts[side] if episode != null else ""
+		if written != "":
+			shorts[side] = written
+		elif names[side].length() <= Names.STORY_SHORT_MAX:
+			shorts[side] = names[side]
+		else:
+			shorts[side] = Names.story_army_short(armies[side])
+	return shorts
 
 
 ## 決着の画面の、流れの外への行き先は話の一覧。

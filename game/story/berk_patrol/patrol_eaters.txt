@@ -57,6 +57,8 @@ wins = routed
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [enemy]
+name = 縫い代の魔物
+short = 魔物
 army = none
 king = none
 unit = eater

@@ -129,6 +129,8 @@ func _exit_tree() -> void:
 	# メニューで止めた時間や、CPU の番の速さを、ほかの場面へ持ち越さない。
 	Engine.time_scale = 1.0
 	Names.story_sides = false
+	Names.story_names = ["", ""]
+	Names.story_shorts = ["", ""]
 
 
 func _process(delta: float) -> void:
