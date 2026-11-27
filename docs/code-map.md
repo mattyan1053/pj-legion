@@ -22,6 +22,7 @@
 2. **ルール** `screen_sides.gd` の `_do_all` が `battle.apply(action)` を呼ぶ。遊ぶときの道で対戦の状態を変えるのはここだけ。
    `Battle.apply`（`rules/battle.gd`）: `can_apply` → `action.execute` → 勝ち負けの判定 → `ActionResult`（受け付けたか、出来事の列）。
 3. **出来事** `rules/events/`: 起きた時点の値を持つ。ダメージは原因が何でも `rules/hit.gd` を通り、段の順は `rules/combat.gd` の `hit`（`docs/combat.md`）。
+   回復は原因が何でも `rules/mend.gd` を通る（`docs/battle.md` の「回復を 1 つ足すとき」）。
 4. **読む側**（`_do_all` が順に渡す）:
    - 戦績 `rules/battle_stats.gd`（`docs/battle-stats.md`）
    - 再生 `game/battle_playback.gd` の `play_all` → `battle_playback/playback_base.gd` の `event_players()`（種類 → 再生の関数）。再生と同時にログ `game/battle_log.gd` の `readers()` へ（`docs/battle-log.md`）。
