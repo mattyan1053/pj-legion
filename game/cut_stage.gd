@@ -67,7 +67,7 @@ func _ready() -> void:
 	add_child(_playback)
 	_playback.setup(self, _views, _rig, null, effects, null, BattleScreen.TEAM_COLORS, {}, {})
 	_playback.set_board_view(_board_view)
-	_playback.replay = _script.start
+	_playback.replay = _script.fresh_start()  # 台本は話が持ち回るので、再生のたびに新しい始めの盤
 	_playback.unit_looks = _looks
 	_playback.refresh_status = func(_turn: int, _phase: Unit.Side) -> void: pass
 	_playback.side_name = func(_side: Unit.Side) -> String: return ""
