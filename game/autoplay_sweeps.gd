@@ -104,6 +104,9 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 	await app.scene_changed
 	# 話の場面の列（episode.gd の scenes）を順に通す。対戦はわざと負けるので、対戦のあとの会話へは進まない。
 	for scene: RefCounted in episode.scenes:
+		# 前の場面からの切り替え（幕が明ける）が済んでから、次の場面を見る。
+		while app.get(&"_changing"):
+			await app.get_tree().process_frame
 		if scene.is_battle():
 			_expect(app.current_id() == SceneFlow.BATTLE, "対戦へ進まない")
 			if app.current_id() != SceneFlow.BATTLE:
@@ -118,7 +121,7 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 			await _lose(app, screen, episode)
 			return
 		elif scene.is_talk():
-			_expect(app.current_id() == SceneFlow.TALK, "会話の場面「%s」へ進まない" % scene.part)
+			_expect(app.current_id() == SceneFlow.TALK, "会話の場面「%s」へ進まない（いまは %s）" % [scene.part, app.current_id()])
 			if app.current_id() != SceneFlow.TALK:
 				break
 			await _read_talk(app, episode, scene)
@@ -128,6 +131,8 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 				break
 			app.current_scene().press_sortie()
 			await app.scene_changed
+	while app.get(&"_changing"):
+		await app.get_tree().process_frame
 	# 対戦の無い話は、最後の会話を読み終えたら話の一覧へ。途中で外れたときも、話の一覧へ戻す。
 	_expect(app.current_id() == SceneFlow.EPISODES, "話を終えても、話の一覧へ戻らない")
 	await _go(app, SceneFlow.EPISODES)

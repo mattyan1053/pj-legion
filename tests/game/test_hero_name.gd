@@ -60,7 +60,7 @@ func test_the_name_reaches_talk_lines_cues_and_lost_lines() -> void:
 	var episode: Episode = Story.military().episodes[0]
 	var with_default := Story.run_of(episode, Story.default_deck(Story.starting()))
 	var named := Story.run_of(episode, Story.default_deck(Story.starting()), [], "ノエル")
-	with_default.advance()
+	with_default.advance()  # カットシーンの次の、最初の会話
 	named.advance()
 	var before: Array = with_default.data()["lines"]
 	var after: Array = named.data()["lines"]
@@ -70,8 +70,9 @@ func test_the_name_reaches_talk_lines_cues_and_lost_lines() -> void:
 		assert_eq(after[i]["text"], (before[i]["text"] as String).replace("ハーデン", "ノエル"))
 		assert_eq(after[i]["name"], (before[i]["name"] as String).replace("ハーデン", "ノエル"))
 		swapped += 1 if after[i] != before[i] else 0
-	assert_true(swapped >= 3, "第 1 話の前の会話で、名前が替わる行が少ない（%d）" % swapped)
-	named.advance()
+	assert_true(swapped >= 3, "第 1 話の最初の会話で、名前が替わる行が少ない（%d）" % swapped)
+	while named.scene() != &"battle":
+		named.advance()
 	var battle: RefCounted = named.data()
 	assert_eq(battle.hero, "ノエル")
 	assert_eq(battle.copy().hero, "ノエル", "再戦でも同じ名前")

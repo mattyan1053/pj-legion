@@ -419,8 +419,12 @@ music = talk_calm
 - 話の台詞の全部は `Episode.all_lines()`（場面の順に会話の行と途中の台詞、最後に負けたときの台詞）。
 - **場面の種類を足すとき**（カットシーンなど）: `StoryScene.Kind` に足し、作る関数を足し、`episode_scenes.gd` に節の読み方を、`Story.run_of` の `match` に流れの場面を足す。
   台本・声・折り返しの道具は、会話の場面と対戦の場面しか見ないので、台詞を持つ種類なら道具にも足す。
+- **試しの 1 話**: 連邦の第 1 話「はじめの一歩」（`game/story/military/drill_first_steps.txt`）は、場面の節で書いた厚い版。
+  カットシーン（色の幕）→ 会話（峠の駐屯地）→ 会話（ふもとへの道。選択肢 `military_first_wish`）→ 出撃準備 → 会話（盤の前）→ 対戦 → あとの会話（選んだ答えで 1 行替わる）。
+  ほかの話は `[before]`・`[after]` のまま。書き方の実例として読める。
 - 列にまだ寄っていない所:
-  - 自動の対戦の `story`（`game/autoplay/story_checks.gd`）とスクリーンショットの場面（`tools/shots/`）は、選んだ話が 出撃準備 → 会話 → 対戦 → 会話 の順である前提で画面を押す。
+  - 自動の対戦の `story`（`game/autoplay/story_checks.gd`）は、通す話（本編の最初の話・2 つ目の物語の最初の話）が 出撃準備 → 会話 → 対戦 → 会話 の順である前提で画面を押す。
+    スクリーンショットの場面（`tools/shots/`）は、話を始めたら出撃準備より前の場面を飛ばす（`_skip_to_sortie`）。通しの点検（`autoplay_sweeps.gd`）は列を順に通す。
   - 実測（`tools/cpu_matches.gd`）と出撃準備は、対戦のある話だけを相手にする（`Story.first_battle`）。対戦は 1 つの話に 1 つまで。
 
 ### 会話の 1 行（コードの形）

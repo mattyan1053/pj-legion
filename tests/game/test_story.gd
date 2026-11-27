@@ -28,7 +28,7 @@ func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 
 
 func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
-	var episode: RefCounted = Story.military().episodes[0]
+	var episode: RefCounted = Story.military().episodes[1]  # [before]・[after] で書いた話
 	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
 	assert_eq(run.scene(), Story.SORTIE, "出撃準備から始める（会話は出撃してから）")
 	assert_eq(run.data()["episode"], episode)
@@ -41,7 +41,7 @@ func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
 	assert_true(run.data() == battle, "出撃準備は、対戦に渡すものの部隊を選び直す")
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["lines"].size(), episode.after.size())
-	assert_eq(run.data()["next_episode"], Story.military().episodes[1], "あとの会話のあとに、次の話を選べる")
+	assert_eq(run.data()["next_episode"], Story.military().episodes[2], "あとの会話のあとに、次の話を選べる")
 	assert_eq(run.advance(), Story.EPISODE_LIST, "話を終えたら、話の一覧へ戻る")
 	for scene: StringName in [&"talk", Story.SORTIE, &"battle", Story.EPISODE_LIST, &"title"]:
 		assert_true(SceneFlow.has(scene), "場面の表に無い: %s" % scene)
@@ -132,8 +132,30 @@ func test_an_episode_without_a_battle_clears_at_the_end_of_its_last_talk() -> vo
 	talk.free()
 
 
+## 連邦の第 1 話は、場面の節で書いた厚い版: カットシーン → 会話 2 つ（2 つ目に選択肢）→ 出撃準備 → 盤の前の会話 → 対戦 → あとの会話。
+func test_the_first_military_episode_runs_its_written_scenes() -> void:
+	var episode: Episode = Story.military().episodes[0]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	var seen: Array[StringName] = [run.scene()]
+	assert_true(run.data()["cut"] and run.data()["color"] == &"night", "頭はカットシーン")
+	while not run.is_done():
+		var next := run.advance()
+		if not run.is_done():
+			seen.append(next)
+			if seen.size() == 3:
+				assert_true(run.data()["lines"].any(func(line: Dictionary) -> bool: return line.has("choice")), "2 つ目の会話に選択肢")
+				assert_false(run.data().has("battle"), "別の場所の会話")
+	assert_eq(seen, [&"talk", &"talk", &"talk", Story.SORTIE, &"talk", &"battle", &"talk"] as Array[StringName])
+	assert_eq(episode.choices.keys(), [&"military_first_wish"])
+	# 決着の画面の「部隊変更」で戻る先は出撃準備（前の場面は読み直さない）。
+	run = Story.run_of(episode, Story.default_deck(Story.starting()))
+	for i in 5:
+		run.advance()
+	assert_eq([run.scene(), run.back(), run.advance()], [&"battle", Story.SORTIE, &"battle"])
+
+
 func test_changing_the_squad_after_a_battle_skips_the_talk_before() -> void:
-	var episode: RefCounted = Story.military().episodes[0]
+	var episode: RefCounted = Story.military().episodes[1]
 	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
 	run.advance()  # 会話（前）
 	run.advance()  # 対戦
