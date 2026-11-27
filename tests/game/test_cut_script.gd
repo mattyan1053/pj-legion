@@ -56,6 +56,9 @@ func test_script_rows_become_events_cut_by_lines() -> void:
 	assert_eq(cut.problems, [], "書き損じが無いのに、問題が出た")
 	assert_eq(cut.camera_cell, Vector2i(8, 2), "台本の頭の camera で、始めのカメラが決まる")
 	assert_eq(cut.start.pieces.size(), 3, "始めの盤に、unit の兵が立つ")
+	var scout: ReplayBoard.Piece = cut.start.piece(cut.names["斥候"])
+	assert_eq([scout.cell, scout.hp], [Vector2i(9, 1), scout.max_hp], "始めの盤は、台本の行で動かす前（読んだあとの位置と HP ではない）")
+	assert_true(cut.start.piece(cut.names["骸骨"]).hp > 0, "あとで倒れる兵も、始めの盤では立っている")
 	var kinds: Array = []
 	for step in cut.steps:
 		kinds.append("row" if step.has("row") else "events")

@@ -110,7 +110,7 @@ func _read(rows: Array) -> void:
 				continue
 			var unit := _new_unit(at, args, text)
 			if unit != null:
-				units.append(unit)
+				units.append(unit.copy())  # 始めの盤は、台本の行で動かす前の写し
 			continue
 		if command == "camera" and heading and not _camera_written:
 			var cell := _cell_or_unit(at, args, text, "camera x,y か camera 名前")
