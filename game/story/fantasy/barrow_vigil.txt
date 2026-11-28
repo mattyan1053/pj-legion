@@ -42,7 +42,7 @@ unit イェルダ ally king 8,18
 unit ウル ally priest 8,19
 unit ティオ ally sorcerer 7,19
 unit セリス ally spellblade 9,19
-unit 亡者の軍曹 enemy skeleton_caller 8,2
+unit 亡者の軍曹 enemy king 8,2 skeleton_mage
 unit 亡者一 enemy skeleton 5,4
 unit 亡者二 enemy skeleton 6,4
 unit 亡者三 enemy skeleton 10,4
