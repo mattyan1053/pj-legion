@@ -17,6 +17,8 @@ var _replay_index := 0
 var _replay_paused := false
 ## 飛ぶ先（行動の数）。行動を見せている途中に押されたら、その行動を見せずに済ませてから飛ぶ。無ければ -1。
 var _replay_target := -1
+## 行動を見せている途中に「リザルトへ」を押されたか（見せ終えてから戻す。_replay_loop）。
+var _replay_leaving := false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -47,6 +49,7 @@ func start_replay() -> void:
 	_hud.result_screen().hide_result()
 	_replaying = true
 	_replay_paused = false
+	_replay_leaving = false
 	_playback.announce_result = false
 	_hud.show_replay_bar(true)
 	_seek(0)
@@ -94,9 +97,15 @@ func _turn_target(step: int) -> int:
 
 
 ## リプレイをやめて、終えた対戦とリザルトの画面へ戻る（リプレイの帯の「リザルトへ」、終わりまで見せたとき）。
+## 行動を見せている途中なら、その行動を見せずに済ませ、再生が終わってから戻す（再生の続きが、作り直した盤やログに触らないように）。
 func stop_replay() -> void:
 	if not _replaying:
 		return
+	if _ui.busy:
+		_replay_leaving = true
+		_playback.skipping = true
+		return
+	_replay_leaving = false
 	_stop_replay_state()
 	battle = _ended[0]
 	stats = _ended[1]
@@ -154,8 +163,11 @@ func _replay_loop() -> void:
 			continue
 		if _replay_index >= _record.size():
 			await _playback.after(CPU_PAUSE)
-			if serial == _replay_serial and not _replay_paused:
-				stop_replay()
+			if serial != _replay_serial or not _replaying:
+				return
+			if _replay_paused:
+				continue  # 終わりの間に止めたら、再生を押すまで待ってから戻す
+			stop_replay()
 			return
 		var action: BattleAction = _record.actions[_replay_index]
 		var unit: Unit = battle.unit_by_id(action.get(&"unit_id")) if &"unit_id" in action else null
@@ -169,6 +181,9 @@ func _replay_loop() -> void:
 		_show_replay_state()
 		await _do(action)
 		if serial != _replay_serial or not _replaying:
+			return
+		if _replay_leaving:
+			stop_replay()  # 見せている途中に「リザルトへ」を押された
 			return
 		if _replay_target >= 0:
 			_seek(_replay_target)  # 見せている途中に飛ぶと決めた
@@ -207,3 +222,8 @@ func use_record(start: Battle, actions: Array[BattleAction]) -> void:
 	_record = BattleRecord.of(start)
 	for action in actions:
 		_record.add(action)
+
+
+## リプレイで、行動を見せている途中か。検査用。
+func replay_showing_action() -> bool:
+	return _replaying and _ui.busy

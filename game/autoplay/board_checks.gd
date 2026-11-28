@@ -253,6 +253,16 @@ func _queue_replay_scene() -> void:
 			_scene.replay_turn(1)
 			await _scene.get_tree().process_frame
 		_expect(_scene.battle.turn == record.last_turn(), "いちばん後のターンへ飛べない")
+		# 終わりまで見せ、最後の行動を見せ終えた直後（リザルトへ戻る前の間）に止める。止めている間は戻らず、再生で戻る。
+		_scene.set_replay_speed(1)
+		_scene.toggle_replay_pause()
+		while _scene.is_replaying() and (_scene.replay_position()[0] < record.size() or _scene.replay_showing_action()):
+			await _scene.get_tree().process_frame
+		_expect(_scene.is_replaying(), "終わりの間に止める前に、リザルトへ戻った")
+		_scene.toggle_replay_pause()
+		for i in 60:
+			await _scene.get_tree().process_frame
+		_expect(_scene.is_replaying(), "終わりの間に止めても、リザルトへ戻った")
 		_scene.toggle_replay_pause())
 	_scripted.append(func() -> void:
 		_expect(not _scene.is_replaying() and not _scene.replay_controls()[0], "リプレイが終わっても、帯が残っている")
@@ -264,7 +274,16 @@ func _queue_replay_scene() -> void:
 		# もう一度見て、すぐ「リザルトへ」。
 		_scene.result_screen().press_replay()
 		_scene.stop_replay()
-		_expect(not _scene.is_replaying() and _scene.battle == ended[0] and _scene.result_title() != "", "「リザルトへ」で、リザルトへ戻らない"))
+		_expect(not _scene.is_replaying() and _scene.battle == ended[0] and _scene.result_title() != "", "「リザルトへ」で、リザルトへ戻らない")
+		# もう一度見て、行動を見せている途中に「リザルトへ」（見せ終えてから戻る。戻るまで、次の手は待つ）。
+		_scene.result_screen().press_replay()
+		while not _scene.replay_showing_action():
+			await _scene.get_tree().process_frame
+		_scene.stop_replay())
+	_scripted.append(func() -> void:
+		_expect(not _scene.is_replaying() and _scene.battle == ended[0] and _scene.result_title() != "", "行動の途中の「リザルトへ」で、リザルトへ戻らない")
+		_expect(_scene.view_cells() == ended[1] and _scene.view_hps() == ended[2], "行動の途中の「リザルトへ」のあと、盤の兵が決着したときと違う")
+		_expect(_scene.battle_log.entries.size() == ended[3], "行動の途中の「リザルトへ」のあと、ログに出来事が足された"))
 
 
 ## 盤の上の効果。ルールの入口（FieldEffects.place_*）で盾・煙幕・聖域を置いて再生し、
