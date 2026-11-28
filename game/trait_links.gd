@@ -64,6 +64,12 @@ func set_spots(cells: Array[Vector2i], kind: int, color: Color) -> void:
 			_spots[index].position = BoardView.cell_center(cells[index]) + Vector3(0.0, SPOT_LIFT, 0.0)
 
 
+## 線とマスの印を、どちらも消す（行動の再生が始まるとき。選択が外れるので）。
+func clear() -> void:
+	set_links([])
+	set_spots([] as Array[Vector2i], TraitPip.Kind.NONE, Color.WHITE)
+
+
 ## いま印を置いているマス（検査用）。
 func spot_cells() -> Array[Vector2i]:
 	return _spot_cells
