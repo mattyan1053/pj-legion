@@ -20,6 +20,9 @@ const CutScript := preload("res://game/cut_script.gd")
 const LOOK_SEED := 7
 const DISTANCE := 19.0
 const PITCH := 44.0
+## 寄せたマスを、画面の真ん中より手前（下）へずらして見せる長さ（マス）。下の文の枠が画面の下の 3 割ほどを覆うので、
+## 寄せたマスが枠の上の見える所の真ん中に来るようにする（寄せたマスの手前に立つ兵が、枠に隠れない）。
+const VIEW_SHIFT := 2.0
 ## 話し手の印（頭の上の下向きの三角）の絵の大きさ（px。2 倍で描いて半分で出す）、縁の太さ、1 px の大きさ（trait_mark.gd と同じ）、頭の上からの高さ。
 ## 対戦の盤の印（足元の輪、頭の上の軍略の札）と紛れないよう、輪にも札にもしない。
 const SPEAKER_MARK := Vector2i(48, 38)
@@ -67,7 +70,8 @@ func _ready() -> void:
 	_rig = OrbitCamera.new()
 	add_child(_rig)
 	_rig.controls_enabled = false
-	_rig.bounds = Rect2(Vector2.ZERO, Vector2(_script.start.board.size))
+	_rig.bounds = Rect2(Vector2.ZERO, Vector2(_script.start.board.size) + Vector2(0.0, VIEW_SHIFT))  # 手前の端のマスも、ずらしたぶん寄せられる
+	_rig.view_shift = VIEW_SHIFT
 	_rig._target_distance = DISTANCE
 	_rig.set_pitch(PITCH)
 	_rig.jump_to(BoardView.cell_center(_script.camera_cell))
