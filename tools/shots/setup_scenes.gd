@@ -214,7 +214,7 @@ func _scene_sign_note() -> bool:
 	return _scene.sign_note_text() != ""
 
 
-## 軍略の線（誓いの 2 人、補給線の衛生兵と隣り合う兵）が出ている、対戦の始め。
+## 対戦の始めの軍略の印: 補給線の効いている兵の足元の十字と、誓いを結んだ兵を見ている間の線。
 func _scene_trait_start() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.SUPPLY, Traits.Id.OATH])
@@ -223,6 +223,7 @@ func _scene_trait_start() -> bool:
 	for unit in _battle.units:
 		if Traits.partner_of(_battle, unit) != null:
 			_scene.focus_camera(unit.cell)  # 誓いの線の見える騎士領の側
+			_scene.click_cell(unit.cell)  # 誓いの線は、結んだ兵を見ている間だけ出る
 			break
 	_park_mouse()
 	return _scene.trait_link_count() > 0
@@ -299,7 +300,7 @@ func _scene_trait_focus() -> bool:
 
 
 ## 仇討ち: 味方を倒した敵の頭の上に札（+4）が出ていて、その敵への攻撃の予測に「仇討ち +4」。
-## 守護: パラディンと隣り合う兵の間に線（横棒の結び目）。守られた兵を狙う攻撃の予測に「守護 -3」。
+## 守護: パラディンと隣り合う兵の足元に盾の印。守られた兵を狙う攻撃の予測に「守護 -3」。
 func _scene_trait_guard() -> bool:
 	_field = VersusFields.PLAIN
 	_new_battle([OptionalRules.STRONGHOLD], [Traits.Id.FOCUS, Traits.Id.GUARD])
@@ -310,7 +311,7 @@ func _scene_trait_guard() -> bool:
 	_scene.click_cell(found[0].cell)
 	_look_at(BoardView.cell_center(found[1].cell))
 	_scene.hover(found[1].cell)
-	return _scene.trait_link_count() > 0
+	return _scene.trait_pip_ids().has(found[1].id)
 
 
 ## いまの陣営の駒で、守護に守られた敵を攻撃できるもの（[攻撃する駒, 守られた敵]）。無ければ空。
@@ -323,6 +324,92 @@ func _guarded_attack() -> Array:
 			if outcome != null and outcome.traits.has(Traits.Id.GUARD):
 				return [unit, _battle.unit_by_id(target_id)]
 	return []
+
+
+## 軍略の印を見比べる場面: 陣営 side の駒を、盤の真ん中あたりに layout（[真ん中からのずれ, 兵種] の並び。将は動かさない）で並べる。
+## 並べられる所が無ければ偽。場面は手で並べる（CPU の対戦では、決まった形にそろわない）。
+func _huddle(side: Unit.Side, traits: Array[int], layout: Array) -> bool:
+	_field = VersusFields.PLAIN
+	_new_battle([], traits)
+	var movers: Array[Unit] = []
+	for unit in _battle.units:
+		if unit.side == side and unit.kind != UnitKind.Id.KING:
+			movers.append(unit)
+	layout = layout.slice(0, movers.size())
+	var middle := _battle.board.size / 2
+	var anchor := Board.NO_CELL
+	for shift: Vector2i in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(-1, -1), Vector2i(2, 0), Vector2i(-2, 0)]:
+		var fits := true
+		for spot: Array in layout:
+			var cell: Vector2i = middle + shift + spot[0]
+			var there := _battle.unit_at(cell)
+			fits = fits and _battle.board.is_walkable(cell) and _battle.board.terrain_at(cell) == Terrain.Type.NORMAL and (there == null or movers.has(there))
+		if fits:
+			anchor = middle + shift
+			break
+	if anchor == Board.NO_CELL:
+		return false
+	for index in movers.size():
+		if index < layout.size():
+			movers[index].kind = layout[index][1]
+			movers[index].hp = UnitKind.max_hp(movers[index].kind)
+			movers[index].cell = anchor + layout[index][0]
+	_show()
+	_scene.hide_notice()
+	_look_at(BoardView.cell_center(anchor))
+	_park_mouse()
+	return true
+
+
+## 守護: パラディン 1 体と、隣の 3 体。
+func _scene_guard_one() -> bool:
+	return _huddle(Unit.Side.PLAYER2, [Traits.Id.FOCUS, Traits.Id.GUARD], [
+		[Vector2i(0, 0), UnitKind.Id.PALADIN], [Vector2i(1, 0), UnitKind.Id.SORCERER],
+		[Vector2i(0, 1), UnitKind.Id.PRIEST], [Vector2i(-1, 0), UnitKind.Id.SPELLBLADE]])
+
+
+## 守護: パラディン 2 体が並び、それぞれの隣に 1 体。
+func _scene_guard_pair() -> bool:
+	return _huddle(Unit.Side.PLAYER2, [Traits.Id.FOCUS, Traits.Id.GUARD], [
+		[Vector2i(0, 0), UnitKind.Id.PALADIN], [Vector2i(1, 0), UnitKind.Id.PALADIN],
+		[Vector2i(0, 1), UnitKind.Id.PRIEST], [Vector2i(2, 0), UnitKind.Id.SORCERER]])
+
+
+## 守護: 部隊が密集する（パラディン 2 体を真ん中に、6 体）。
+func _scene_guard_crowd() -> bool:
+	return _huddle(Unit.Side.PLAYER2, [Traits.Id.FOCUS, Traits.Id.GUARD], [
+		[Vector2i(0, 0), UnitKind.Id.PALADIN], [Vector2i(1, 1), UnitKind.Id.PALADIN],
+		[Vector2i(1, 0), UnitKind.Id.SORCERER], [Vector2i(0, 1), UnitKind.Id.PRIEST],
+		[Vector2i(-1, 0), UnitKind.Id.SPELLBLADE], [Vector2i(2, 1), UnitKind.Id.SORCERER]])
+
+
+## 守護: 密集した部隊の兵を選び、動かす先を選んでいる（動けば守られるマスに、薄い盾）。
+func _scene_guard_move() -> bool:
+	if not _scene_guard_pair():
+		return false
+	_battle.phase = Unit.Side.PLAYER2
+	for unit in _battle.units:
+		if unit.side == Unit.Side.PLAYER2 and unit.kind == UnitKind.Id.SORCERER and _scene.trait_pip_ids().has(unit.id):
+			_scene.click_cell(unit.cell)
+			_park_mouse()
+			return not _scene.trait_spot_cells().is_empty()
+	return false
+
+
+## 隊列: 同じ兵種が並んで密集する（盾兵 3 体と狙撃兵 2 体、衛生兵）。
+func _scene_ranks_crowd() -> bool:
+	return _huddle(Unit.Side.PLAYER1, [Traits.Id.RANKS, Traits.Id.GUARD], [
+		[Vector2i(0, 0), UnitKind.Id.SHIELD_TROOPER], [Vector2i(1, 0), UnitKind.Id.SHIELD_TROOPER],
+		[Vector2i(-1, 0), UnitKind.Id.SHIELD_TROOPER], [Vector2i(0, 1), UnitKind.Id.SNIPER],
+		[Vector2i(1, 1), UnitKind.Id.SNIPER], [Vector2i(-1, 1), UnitKind.Id.MEDIC]])
+
+
+## 補給線: 衛生兵の周りに密集する。
+func _scene_supply_crowd() -> bool:
+	return _huddle(Unit.Side.PLAYER1, [Traits.Id.SUPPLY, Traits.Id.GUARD], [
+		[Vector2i(0, 0), UnitKind.Id.MEDIC], [Vector2i(1, 0), UnitKind.Id.SHIELD_TROOPER],
+		[Vector2i(-1, 0), UnitKind.Id.SHIELD_TROOPER], [Vector2i(0, 1), UnitKind.Id.SNIPER],
+		[Vector2i(1, 1), UnitKind.Id.MEDIC], [Vector2i(0, -1), UnitKind.Id.COMMANDO]])
 
 
 func _scene_trait_vengeance() -> bool:
