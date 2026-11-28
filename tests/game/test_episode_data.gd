@@ -125,7 +125,7 @@ func test_the_scenes_template_reads_as_a_list_of_scenes() -> void:
 	assert_eq(talks[1].look, &"crystal_night", "look で景色を替える")
 	assert_true(talks[2].place == null and talks[2].look == &"", "place が無ければ、話の盤")
 	assert_true(talks[0].lines[0].is_narration())
-	assert_eq(episode.all_lines().size(), 3 + 2 + 4 + 6 + 2 + 1 + 3 + 1, "会話の行（カットシーンの文も）、途中の台詞、負けの台詞")
+	assert_eq(episode.all_lines().size(), 5 + 2 + 4 + 6 + 2 + 1 + 3 + 1, "会話の行（カットシーンの文も）、途中の台詞、負けの台詞")
 	# 選択肢: 問いの行が、名前と答えを持つ。答えごとの行と (if …) の行は、出す条件を持つ。
 	var asking: Episode.TalkLine = talks[1].lines[1]
 	assert_true(asking.asks() and asking.choice == &"template_route")
@@ -152,6 +152,9 @@ func test_choices_are_checked() -> void:
 		"名前の字": [text.replace("(choice template_route)", "(choice 道)"), "名前は英小文字"],
 		"同じ答え": [text.replace("(answer right)", "(answer left)"), "答え「left」が 2 度"],
 		"知らない指示": [text.replace("(end)", "(done)"), "知らない指示"],
+		"名前を聞く行に余計な語": [text.replace("(name)", "(name レオ)"), "名前を聞く行は"],
+		"名を問う行が無い": [text.replace("新兵: 少尉。お名前を、まだ聞いていませんでした。\n", "").replace("> 出発の前の晩。練兵場には、まだ灯りが残っていた。\n", ""), "名を問う行が要る"],
+		"答えの中で名前を聞く": [text.replace("新兵: 走るんですね……。", "新兵: 走るんですね……。\n(name)"), "答えの中に、(name) は書けない"],
 		"条件の形": [text.replace("(if template_route = left)", "(if template_route left)"), "条件の行は"],
 		"途中の台詞に選択肢": [text.replace("(turn 1) レオ: 前へ出すぎるな。", "(choice x) レオ: あ"), "知らないきっかけ"],
 		"長い会話": [text.replace("レオ: 右だ。日が高くなる前に登りきる。", "レオ: 右だ。\n".repeat(8)), "会話は 10 行まで"],

@@ -31,6 +31,11 @@ func add(step_scene: StringName, step_data: Variant = null, once := false) -> vo
 	_steps.append({"scene": step_scene, "data": step_data, "once": once, "seen": false, "detour": false})
 
 
+## 列の全部の場面に渡すもの（並びの順。ストーリーが、途中で決まった主人公の名前を、先の場面へ入れ直すのに使う）。
+func all_data() -> Array:
+	return _steps.map(func(step: Dictionary) -> Variant: return step["data"])
+
+
 ## いまの場面の名前。列を終えていたら空。
 func scene() -> StringName:
 	return _steps[index]["scene"] if index < _steps.size() else &""
