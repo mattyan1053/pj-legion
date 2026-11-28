@@ -113,6 +113,85 @@ func test_the_run_of_a_scenes_episode_gives_each_talk_its_place() -> void:
 	assert_eq(run.advance(), &"battle")
 
 
+## 戦闘のあとにも、場面をいくつでも並べられる（Issue #49 の 11/28「これが戦闘後でもできてほしい」）: 盤の前の会話（決着したときの兵）→ カットシーン → 別の場所の会話。
+## クリアで増えるものの知らせと「次の話へ」は、最後の場面だけ。
+func test_scenes_after_the_battle_run_in_the_written_order() -> void:
+	var episode: Episode = Campaign.load_file("res://game/story/_template/story.txt").episodes[1]
+	var news: Array[Dictionary] = [{"text": "知らせ"}]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()), news)
+	while run.scene() != &"battle":
+		run.advance()
+	var battle: RefCounted = run.data()
+	assert_eq(battle.after_result_music(), &"talk_bright", "決着の画面のあとの曲は、対戦のすぐあとの場面の曲")
+	assert_eq(run.advance(), &"talk")
+	var first: Dictionary = run.data()
+	assert_true(first["battle"] == battle and first["after"] and not first.has("cut") and not first.has("next_episode"), "対戦のすぐあとは、盤の前の会話")
+	assert_false(first["lines"].any(func(line: Dictionary) -> bool: return line["side"] == Story.NOTICE_SIDE), "知らせは、最後の場面だけ")
+	assert_eq(run.advance(), &"talk")
+	assert_true(run.data()["cut"] and not run.data().has("battle") and not run.data().has("next_episode"), "あとのカットシーン")
+	assert_eq(run.advance(), &"talk")
+	var last: Dictionary = run.data()
+	assert_true(not last.has("battle") and last["look"] == &"drill_yard" and last.has("next_episode"), "最後は別の場所の会話。行き先は、ここで選ぶ")
+	assert_eq(last["lines"].back()["text"], "知らせ")
+	assert_eq(run.advance(), Story.EPISODE_LIST)
+
+
+## カットシーン（[cut 名前]・[board 名前]）で終わる話も書ける。「次の話へ」は、そのカットシーンを読み終えた所で選ぶ。
+## クリアで増えるものの知らせがあるときだけ、知らせだけの会話の場面（文の枠のある場面。背景は決着したときの盤）を、あとに足す。
+func test_an_episode_may_end_with_a_cutscene() -> void:
+	var text := FileAccess.get_file_as_string("res://game/story/_template/scenes.txt")
+	var endings := {
+		"cut": "\n[cut 終わり]\ncolor = black\nmusic = talk_sad\n終わり。\n",
+		"cut_board": "\n[board 終わり]\nmusic = talk_sad\nunit レオ ally king 8,19\nmove レオ 8,18\n> 終わり。\n",
+	}
+	for key: String in endings:
+		# 場面は 8 つまでなので、見本の「帰り道」を外してから足す。
+		var episode: Episode = Episode.parse(text.replace("[cut 帰り道]\ncolor = night\nmusic = talk_calm\n隊は、日のあるうちに尾根を下りた。\n", "") + endings[key], "res://probe/ends_with_%s.txt" % key)
+		assert_eq(episode.problems, PackedStringArray(), key)
+		assert_true(episode.talk_after_battle().name == "終わり")
+		var plain := Story.run_of(episode, Story.default_deck(Story.starting()))
+		var scenes: Array = plain.all_data()
+		assert_true(scenes.back().has(key) and scenes.back().has("next_episode"), "%s: 知らせが無ければ、カットシーンが最後の場面" % key)
+		var news: Array[Dictionary] = [{"text": "知らせ"}]
+		var run := Story.run_of(episode, Story.default_deck(Story.starting()), news)
+		scenes = run.all_data()
+		assert_eq(scenes.size(), plain.all_data().size() + 1, "%s: 知らせだけの場面を足す" % key)
+		var cut: Dictionary = scenes[scenes.size() - 2]
+		var closing: Dictionary = scenes.back()
+		assert_true(cut.has(key) and not cut.has("next_episode") and cut["lines"].size() == 1, "%s: カットシーンに知らせを混ぜない" % key)
+		assert_true(not closing.has("cut") and not closing.has("cut_board") and closing.has("next_episode") and closing["after"] and closing["music"] == &"talk_sad",
+			"%s: 知らせの場面は、ふつうの会話の場面（決着したときの盤、カットシーンの曲のまま）" % key)
+		assert_eq(closing["lines"].map(func(line: Dictionary) -> String: return line["text"]), ["知らせ"])
+		# 盤のカットシーンで終わる話をスキップして、行き先の選択を右クリックでやめても、「次へ」「スキップ」でまた選べる（止まらない）。
+		if key == "cut_board":
+			var context := preload("res://game/app_context.gd").new()
+			var ending: Dictionary = plain.all_data().back().duplicate()
+			ending["next_episode"] = Story.military().episodes[0]
+			var board: Node = preload("res://game/talk_screen.gd").new()
+			board.context = context
+			board.talk = ending
+			await settle(board)
+			await board.press_skip()
+			await (Engine.get_main_loop() as SceneTree).process_frame  # 舞台の合図の中から抜ける（その中で、場面を片付けない）
+			assert_true(board.is_choosing(), "スキップのあと、行き先を選ばせない")
+			for again: Callable in [board.press_next, board.press_skip]:
+				var right := InputEventMouseButton.new()
+				right.button_index = MOUSE_BUTTON_RIGHT
+				right.pressed = true
+				board._choice_input(right)
+				assert_false(board.is_choosing())
+				await again.call()
+				assert_true(board.is_choosing(), "行き先の選択をやめたあと、もう一度選べない")
+			board.free()
+		# 知らせだけの場面も、会話の場面で開ける。
+		var screen: Node = preload("res://game/talk_screen.gd").new()
+		screen.talk = closing.duplicate()
+		screen.talk.erase("battle")
+		await settle(screen)
+		assert_true(screen.line_count() == 1 and screen.line_text() == "知らせ" and screen.figures().is_empty())
+		screen.free()
+
+
 ## 対戦の無い話: 最後の会話に、クリアにする話の id を渡す（talk_screen.gd が、読み終えたときにクリアと書く）。
 func test_an_episode_without_a_battle_clears_at_the_end_of_its_last_talk() -> void:
 	var episode: Episode = Episode.parse("[episode]\ntitle = 読むだけの話\nmap = ridge_path\n[cast]\n少尉 = ally\n[talk 夜]\nmusic = talk\n少尉: 静かだ。\n[talk 朝]\nmusic = talk_calm\n> 朝になった。\n", "res://probe/quiet_night.txt")
@@ -149,7 +228,7 @@ func test_the_first_military_episode_runs_its_written_scenes() -> void:
 			if seen.size() == 3:
 				assert_true(run.data()["lines"].any(func(line: Dictionary) -> bool: return line.has("choice")), "2 つ目の会話に選択肢")
 				assert_false(run.data().has("battle"), "別の場所の会話")
-	assert_eq(seen, [&"talk", &"talk", &"talk", Story.SORTIE, &"talk", &"battle", &"talk"] as Array[StringName])
+	assert_eq(seen, [&"talk", &"talk", &"talk", Story.SORTIE, &"talk", &"battle", &"talk", &"talk"] as Array[StringName], "戦闘のあとも、場面が 2 つ（盤の前 → 峠の駐屯地）")
 	assert_eq(episode.choices.keys(), [&"military_first_wish"])
 	# 決着の画面の「部隊変更」で戻る先は出撃準備（前の場面は読み直さない）。
 	run = Story.run_of(episode, Story.default_deck(Story.starting()))
@@ -176,8 +255,8 @@ func test_the_last_episode_has_no_next_episode() -> void:
 		var last: RefCounted = campaign.episodes[-1]
 		assert_eq(Story.episode_after(last), null, "%s: 物語の最後の話の次は無い" % last.id)
 		var run := Story.run_of(last, Story.default_deck(Story.starting(campaign)))
-		for i in 3:
-			run.advance()
+		while run.index < run.size() - 1:
+			run.advance()  # 最後の場面まで（場面の節で書いた話は、場面の数が話ごとに違う）
 		assert_eq(run.data()["next_episode"], null)
 
 

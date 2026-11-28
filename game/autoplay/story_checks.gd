@@ -322,14 +322,16 @@ func _visit_second_campaign(app: Node) -> void:
 	_expect(app.current_id() == SceneFlow.TALK and talk.line_count() == episode.talk_after_battle().lines.size() + Story.unlocked_before(episode).news_of(episode).size(), "2 つ目の物語の、あとの会話の文の数が違う")
 	for i: int in talk.line_count() - talk.line_index():
 		talk.press_next()
-	# 「次の話へ」で、次の話の出撃準備へ。そこからシステムメニューの「話の一覧へ戻る」で、話の一覧へ。
+	# 「次の話へ」で、次の話の最初の場面へ（出撃準備か、その前の会話・カットシーン）。そこからシステムメニューの「話の一覧へ戻る」で、話の一覧へ。
 	_expect(talk.is_choosing() and campaign.episodes.size() >= 2, "2 つ目の物語の、あとの会話のあとに「次の話へ」が無い")
 	talk.press_next_episode()
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE and app.current_scene().episode == campaign.episodes[1], "「次の話へ」で、次の話の出撃準備へ進まない")
+	var opens_with_sortie: bool = campaign.episodes[1].scenes[0].kind == Episode.StoryScene.Kind.SORTIE
+	_expect(app.context.run != null and app.current_id() == (SceneFlow.SORTIE if opens_with_sortie else SceneFlow.TALK)
+			and (not opens_with_sortie or app.current_scene().episode == campaign.episodes[1]), "「次の話へ」で、次の話の最初の場面へ進まない")
 	var menu: Node = app.system_menu()
 	app.open_menu()
-	_expect(menu.item_ids().has(&"exit:episodes"), "出撃準備のシステムメニューに「話の一覧へ戻る」が無い: %s" % [menu.item_ids()])
+	_expect(menu.item_ids().has(&"exit:episodes"), "次の話の最初の場面のシステムメニューに「話の一覧へ戻る」が無い: %s" % [menu.item_ids()])
 	menu.press(&"exit:episodes")
 	await app.scene_changed
 	_expect(app.current_id() == SceneFlow.EPISODES and app.context.run == null, "システムメニューの「話の一覧へ戻る」で、話の一覧へ戻らない")

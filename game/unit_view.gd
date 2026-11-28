@@ -15,6 +15,7 @@ const UnitBody := preload("res://game/unit_body.gd")
 const PieceStyle := preload("res://game/piece_style.gd")
 const GaugeSprite := preload("res://game/gauge_sprite.gd")
 const TraitMark := preload("res://game/trait_mark.gd")
+const TraitPip := preload("res://game/trait_pip.gd")
 
 ## 行動済みの駒は、この明るさまで暗くする。
 const ACTED_SHADE := 0.42
@@ -48,6 +49,8 @@ var _crowned := false
 var _status_ring: MeshInstance3D
 var _trait_ring: MeshInstance3D
 var _trait_tag: TraitMark
+var _trait_pip: Sprite3D
+var _trait_pip_kind := TraitPip.Kind.NONE
 
 
 ## look は将の別の姿（unit_looks.gd の KING_LOOKS の名前。将でない駒には効かない）か、名前のある人物の形（PERSONS の名前。
@@ -101,6 +104,8 @@ func play_death() -> void:
 	_bar.visible = false
 	if _trait_tag != null:
 		_trait_tag.visible = false
+	if _trait_pip != null:
+		_trait_pip.visible = false
 	var wait := _body.play_death()
 	if wait > 0.0:
 		# 木の時計ではなく自分の子の Timer で待つ（場面を抜けてこの駒が消えたら、続きを走らない）。
@@ -187,6 +192,26 @@ func set_trait_mark(marked: bool, color := Color.WHITE, text := "") -> void:
 		_trait_tag.visible = marked and not _dying
 		if marked:
 			_trait_tag.show_mark(text, color)
+
+
+## 隣り合うことで効く軍略（隊列・補給線・守護）が、いま効いている駒の足元に、小さな印を出す（trait_pip.gd。盾か十字）。
+## kind が NONE なら消す。兵どうしを線では結ばない。
+func set_trait_pip(kind: TraitPip.Kind, color := Color.WHITE) -> void:
+	_trait_pip_kind = kind
+	if kind != TraitPip.Kind.NONE and _trait_pip == null:
+		_trait_pip = TraitPip.make()
+		_trait_pip.offset = TraitPip.FOOT_OFFSET
+		_trait_pip.position.y = TraitPip.FOOT_LIFT
+		add_child(_trait_pip)
+	if _trait_pip != null:
+		_trait_pip.visible = kind != TraitPip.Kind.NONE and not _dying
+		if kind != TraitPip.Kind.NONE:
+			_trait_pip.texture = TraitPip.texture(kind, color)
+
+
+## 足元の軍略の印（出ていなければ NONE。検査用）。
+func trait_pip() -> TraitPip.Kind:
+	return _trait_pip_kind if _trait_pip != null and _trait_pip.visible else TraitPip.Kind.NONE
 
 
 ## 軍略の輪が出ているか（検査用）。

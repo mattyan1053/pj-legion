@@ -143,14 +143,14 @@ func test_climax_starts_when_either_king_is_down_to_half() -> void:
 
 
 func test_talk_music_defaults() -> void:
-	var path := "res://game/story/military/ridge_hold.txt"
+	var path := "res://game/story/military/gorge_rout.txt"
 	var text := FileAccess.get_file_as_string(path)
-	var Episode: GDScript = Story.military().find_episode(&"ridge_hold").get_script()
-	var plain: RefCounted = Episode.parse(text.replace("before_music = battle_tense\n", "").replace("after_music = talk_bright\n", ""), path)
+	var Episode: GDScript = Story.military().find_episode(&"gorge_rout").get_script()
+	var plain: RefCounted = Episode.parse(text.replace("before_music = battle_rout\n", "").replace("after_music = talk_dark\n", ""), path)
 	assert_eq(plain.problems, PackedStringArray())
-	assert_eq(plain.before_talk_music(), &"battle_tense", "前の会話は、書かなければ、その話の対戦の曲")
+	assert_eq(plain.before_talk_music(), &"battle_rout", "前の会話は、書かなければ、その話の対戦の曲")
 	assert_eq(plain.after_talk_music(), Catalog.AFTER_TALK_MUSIC, "あとの会話は、書かなければ、落ち着いた曲")
-	var wrong: RefCounted = Episode.parse(text.replace("before_music = battle_tense", "before_music = battle_boss"), path)
+	var wrong: RefCounted = Episode.parse(text.replace("before_music = battle_rout", "before_music = battle_boss"), path)
 	assert_eq(wrong.problems.size(), 1, "前の会話に、対戦と違う戦いの曲は書けない")
 
 

@@ -411,6 +411,9 @@ func _queue_traits_scene() -> void:
 		_scene.start_with(battle, StageLook.GRASSLAND, 1))
 	_scripted.append(func() -> void:
 		_expect(_scene.trait_mark_count() == 0, "まだ誰も攻撃していないのに、軍略の輪が出ている")
+		_expect(_scene.trait_pip_ids() == [trooper.id], "補給線の効いている兵（衛生兵の隣）の足元にだけ、印が出るはず: %s" % [_scene.trait_pip_ids()])
+		_expect(_scene.trait_link_count() == 0, "隣り合うことで効く軍略で、兵どうしを線で結んでいる")
+		_expect(_scene.trait_spot_cells().is_empty(), "駒を選んでいないのに、動けば軍略が効くマスの印が出ている")
 		_scene.click_cell(first.cell))
 	_scripted.append(func() -> void: _scene.click_cell(paladin.cell))
 	_scripted.append(func() -> void:
@@ -427,7 +430,14 @@ func _queue_traits_scene() -> void:
 	_scripted.append(_end_turn)  # 後手（補給線）の番の始めに、衛生兵と隣り合う兵が回復する
 	_scripted.append(func() -> void:
 		_expect(trooper.hp == trooper.max_hp() - 10 + Traits.SUPPLY_HEAL, "補給線で回復しなかった")
-		_expect(_scene.played.get(supplied, 0) == 1, "補給線の回復を再生しなかった"))
+		_expect(_scene.played.get(supplied, 0) == 1, "補給線の回復を再生しなかった")
+		_scene.click_cell(trooper.cell))
+	_scripted.append(func() -> void:
+		# 動かす先を選んでいる間は、動いても補給線が効くマス（衛生兵の隣）に印が出る。
+		var spots: Array[Vector2i] = _scene.trait_spot_cells()
+		_expect(spots.has(Vector2i(6, 1)), "動けば補給線が効くマスに、印が出ない: %s" % [spots])
+		_expect(spots.all(func(cell: Vector2i) -> bool: return Traits.adjacent(cell, Vector2i(6, 2))), "補給線の効かないマスに、印が出ている: %s" % [spots])
+		_scene.click_cell(trooper.cell))
 
 
 ## 倒れると何か起きる魔物（docs/monsters.md）。スナイパーが骸骨旗手を倒し（隣の骸骨兵が奮起）、もう 1 体がほつれを倒し（結び目が残る）、

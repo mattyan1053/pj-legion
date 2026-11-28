@@ -6,6 +6,8 @@ const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
 const Campaign := preload("res://game/campaign.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const BattleHud := preload("res://game/battle_hud.gd")
+const SystemMenu := preload("res://game/system_menu.gd")
 
 
 ## 話の流れの外の会話（"battle" の無いもの。物語の解放の知らせを出すときなど）も、開いて最初の行を出す。
@@ -160,11 +162,8 @@ func test_a_cutscene_shows_narration_without_figures() -> void:
 	var bottom: Rect2 = screen.bottom_rect()
 	var view: Rect2 = screen.get_viewport().get_visible_rect()
 	assert_true(view.encloses(bottom) and absf(bottom.get_center().y - view.get_center().y) < 40.0, "文が画面の真ん中の高さに無い: %s" % bottom)
-	# 「ログ」「スキップ」は、会話の場面と同じ所（下の文の枠があるはずの所の右上）。真ん中の文の枠に重ならない。
-	var buttons: Rect2 = screen.buttons_rect()
-	assert_false(buttons.intersects(bottom), "カットシーンのボタンが、文に重なる: %s / %s" % [buttons, bottom])
-	var corner := Vector2(view.get_center().x + TalkScreen.BOX_WIDTH / 2.0, view.end.y - TalkScreen.BOX_BOTTOM - TalkScreen.BOX_HEIGHT - TalkScreen.PLATE_GAP)
-	assert_true(buttons.end.distance_to(corner) < 1.5, "カットシーンのボタンが、会話の場面と同じ所に無い: %s / %s" % [buttons.end, corner])  # 半端な高さの窓では 1px 丸まる
+	# 「ログ」「スキップ」は、画面の右上の角。真ん中の文に重ならない。
+	assert_false(screen.corner_rect().intersects(bottom), "カットシーンのボタンが、文に重なる: %s / %s" % [screen.corner_rect(), bottom])
 	var ended := [0]
 	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
 	for i in 4:
@@ -222,3 +221,42 @@ func _next_line(screen: Node) -> void:
 	if not screen.is_line_shown():
 		screen.press_next()
 	screen.press_next()
+
+
+## 「スキップ」「ログ」とホイールの案内は、画面の右上の角（Issue #46 の 11/28）。会話・地の文・カットシーン・盤のカットシーンのどれでも同じ所で、
+## 文の長さや話し手、行き先の選択で動かない。「ログ」は、対戦の上の帯の「ログ」と同じ所（対戦の途中の台詞の間も、そこにある）。
+func test_log_and_skip_sit_in_the_same_corner_in_every_kind_of_scene() -> void:
+	var template: Episode = Campaign.load_file("res://game/story/_template/story.txt").episodes[1]
+	var run := Story.run_of(template, Story.default_deck(Story.starting()))
+	var talks: Array[Dictionary] = [_asking_talk(),
+		{"title": "見出し", "lines": [{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "地の文。"}]},
+		{"title": "見出し", "cut": true, "color": &"night", "lines": [{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "幕の上の文。"}]}]
+	while not run.data().has("cut_board"):
+		run.advance()
+	talks.append(run.data())
+	var hud := BattleHud.new()
+	hud.setup([Color.BLUE, Color.RED, Color.GRAY] as Array[Color])
+	await settle(hud)
+	var battle_log: Rect2 = hud.log_button_rect()
+	var view: Rect2 = hud.get_viewport().get_visible_rect()
+	hud.free()
+	assert_true(battle_log.has_area() and battle_log.end.x < view.end.x - SystemMenu.CORNER_BUTTON_SIZE.x, "対戦の「ログ」が、右上のボタンに掛かる: %s" % battle_log)
+	var corner := Rect2()
+	for talk in talks:
+		var screen := TalkScreen.new()
+		screen.talk = talk
+		await settle(screen)
+		if not corner.has_area():
+			corner = screen.corner_rect()
+		assert_eq(screen.corner_rect(), corner, "右上の角が、場面で動く")
+		assert_true(screen.corner_rect().encloses(screen.buttons_rect()), "ボタンが角からはみ出す")
+		var hint: Rect2 = (screen._log_hint.get_parent() as Control).get_global_rect()
+		assert_true(hint.has_area() and screen.corner_rect().encloses(hint) and not hint.intersects(screen.buttons_rect()), "ホイールの案内が、角からはみ出すかボタンに掛かる: %s" % hint)
+		assert_true(screen.log_button_rect().position.distance_to(battle_log.position) < 0.6 and screen.log_button_rect().size == battle_log.size,
+			"「ログ」が、対戦の帯の「ログ」と同じ所に無い: %s / %s" % [screen.log_button_rect(), battle_log])
+		assert_true(corner.position.y >= 0.0 and corner.end.y <= SystemMenu.BAND_HEIGHT and corner.end.x <= view.end.x - SystemMenu.CORNER_BUTTON_SIZE.x - SystemMenu.CORNER_MARGIN,
+			"角が、右上のボタンに掛かるか、帯の高さからはみ出す: %s" % corner)
+		assert_false(corner.intersects(screen.bottom_rect()), "角が、文の枠に重なる")
+		for figure in screen.figures():
+			assert_false(corner.intersects(figure.get_global_rect()), "角が、話し手の姿に重なる")
+		screen.free()

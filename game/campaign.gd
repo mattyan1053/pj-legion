@@ -228,6 +228,8 @@ func _read_episodes(file: RefCounted) -> void:
 		loaded.set_hero(hero)
 		if hero == "" and loaded.uses_hero_mark():
 			loaded.problems.append("%s: 文の {hero} は、hero（主人公の既定の名前）を書いた物語の話だけ" % loaded.path)
+		if hero == "" and loaded.asks_hero_name():
+			loaded.problems.append("%s: (name) は、hero（主人公の既定の名前）を書いた物語の話だけ" % loaded.path)
 		for condition: Dictionary in loaded.conditions:
 			var answers: Variant = loaded.choices[condition["choice"]] if condition["here"] else asked.get(condition["choice"])
 			if answers == null:

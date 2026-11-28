@@ -152,6 +152,7 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 	_ui.busy = true
 	_ui.clear_after_action()
 	_board_view.show_cells({})
+	_trait_links.clear()  # 駒を選んでいる間だけの印（誓いの線、動かす先の印）は、再生の間は出さない
 	_board_view.show_danger([])
 	_board_view.show_pinned([])
 	_board_view.set_marked(NO_CELL)

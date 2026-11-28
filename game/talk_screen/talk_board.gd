@@ -1,4 +1,4 @@
-extends "res://game/talk_screen/talk_ask.gd"
+extends "res://game/talk_screen/talk_naming.gd"
 ## 会話の場面の、盤のカットシーン（渡された会話に "cut_board" がある。docs/story.md の「盤のカットシーン」）の部品:
 ## 背景の舞台（cut_stage.gd。台本の兵が盤の上で動く）と、出来事の塊（"beats"。[i] は i 番目の文の前、最後は最後の文のあと）。
 ## 再生と文は交互に回す（talk_screen.gd の _go_to_line）。塊を再生している間は、文の枠と名前の札を消し、文を進めない。
@@ -15,6 +15,8 @@ var _beat_at := 0
 var _beat_playing := -1
 ## スキップした（残りを終わりの盤まで済ませている）。
 var _board_skipped := false
+## スキップが、残りを終わりの盤まで済ませ終えた（このあとの「次へ」「スキップ」は、終わり方へ回す）。
+var _board_finished := false
 ## 文の枠（盤のカットシーンでは、塊を再生している間だけ消す）。
 var _box: Control
 

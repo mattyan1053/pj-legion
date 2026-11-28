@@ -120,23 +120,28 @@ func check_campaign(campaign: Campaign) -> PackedStringArray:
 					lines.append({"part": "cues", "line": cue.line})
 		for row: Episode.TalkLine in episode.lost:
 			lines.append({"part": "lost", "line": row})
+		# 話の中で名乗る話（「(name)」。docs/story.md の「主人公の名前」）は、名を問う行までは、主人公を肩書きだけで呼ぶ（まだ名前が無い）。
+		var unnamed := campaign.hero if episode.asks_hero_name() else ""
 		for each: Dictionary in lines:
 			var line: Episode.TalkLine = each["line"]
 			var speaker := line.speaker_in(episode.speakers)
-			for what: String in check_line(speaker, line.shown_text(), introduced):
+			for what: String in check_line(speaker, line.shown_text(), introduced, unnamed):
 				found.append("%s [%s] %s: %s — %s" % [where, each["part"], speaker if speaker != "" else ">", line.text, what])
+			if line.asks_name:
+				unnamed = ""
 	return found
 
 
 ## 話し手 speaker の台詞 text を見る（speaker が "" なら地の文）。introduced は、名前と結びついた肩書き（物語ごとに 1 つ渡し、続けて使う）。
-func check_line(speaker: String, text: String, introduced: Dictionary) -> PackedStringArray:
+## unnamed は、まだ名乗っていない人の名前（その人の肩書きは、名前と結びつく前でも出てよい）。
+func check_line(speaker: String, text: String, introduced: Dictionary, unnamed := "") -> PackedStringArray:
 	var found := PackedStringArray()
 	for title: String in titles:
 		if not text.contains(title):
 			continue
 		if text.contains(titles[title]):
 			introduced[title] = true
-		elif not introduced.has(title):
+		elif not introduced.has(title) and titles[title] != unnamed:
 			found.append("「%s」が、%s の名前と結びつく前に出ている（初めは名前と一緒に）" % [title, titles[title]])
 	if not speakers.has(speaker):
 		return found

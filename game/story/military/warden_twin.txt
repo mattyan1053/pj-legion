@@ -19,8 +19,6 @@
 title = もう一人の番人
 map = boulder_pass
 music = battle_boss
-before_music = battle_boss
-after_music = talk_dark
 victory_mood = quiet
 wins = boss_slain
 
@@ -32,24 +30,69 @@ wins = boss_slain
 ピップ = ally, commando pip
 亡者の鼓手 = enemy, skeleton_drummer
 
-[before]
-> リュエルの森で騎士に退けられ、偵察隊は大岩の峠へ回った。
+# 場面の節（docs/story.md）: カットシーン（森のあと。章の変わり目）→ 会話（森のはずれ）→ 出撃準備 → 盤のカットシーン（番人が 2 体とも立っている）→ 盤の前の会話 → 対戦 → あとの会話。
+[cut 森のあと]
+place = mist_forest
+music = talk_calm
+リュエルの森で、偵察隊は騎士に退けられた。
+退く隊を、騎士長イェルダは呼び止めた。
+
+[talk 森のはずれ]
+place = mist_forest
+music = talk_calm
 ピップ: 森は散々だったっすね〜。木の陰から騎士、騎士、また騎士。
-ドーソン: 押し入ったのはこっちだ。文句は言えん。……で、少尉。騎士長は何と言ってました。
+ドーソン: 押し入ったのはこっちだ。文句は言えん。……少尉。騎士長の話を、皆にも聞かせてやってください。
 ハーデン: 峠の番人は 2 体いる。もう 1 体に会って、自分の目で見ろ、と。
-ピップ: 片方は騎士が倒したって聞いたっすよ？ ……あれ。大岩の脇、2 体とも立ってるっす。
+(if military_forest_order = know) ハーデン: 騎士は、やはり知っていた。だが、語るより見せると言う。
+(if military_forest_order != know) ハーデン: 語るより見せる、と言われた。倒す前に、今度は見る。
+マルタ: 見ろ、ねえ。……行くんでしょ、少尉さん。
+ハーデン: 行く。大岩の峠だ。少佐への報告は、見てからにする。
+
+[sortie]
+
+# 盤のカットシーン（docs/story.md の「盤のカットシーン」）: 騎士が倒したはずの番人も、結び直って立つ。まわりに亡者。
+# 盤は対戦の始めの配置とはつながらない（見せるための別の盤）。
+[board 二体の番人]
+music = battle_boss
+unit ハーデン ally king 9,21
+unit ドーソン ally shield_trooper 8,21
+unit ピップ ally commando 9,20
+unit 番人 neutral elite_minion 7,15
+camera 9,19
+pace slow
+move ピップ 9,17
+camera 8,15
+ピップ: 片方は騎士が倒したって聞いたっすよ？ 近いほうは、立ってるっすね。
+camera 11,9
+wait 0.6
+appear もう一人の番人 neutral elite_minion 11,8
+wait 0.8
+ピップ: ……あれ。奥のも、いま、立ったっす。
+camera 9,20
+face ドーソン 番人
 ドーソン: おいおい……番人が、2 体とも立ってやがる。倒しても、また立つのか。
-ノエ: 亡者もいます。番人のまわりに……杖の骸骨と、太鼓を叩く骸骨が。
+camera 6,13
+appear 亡者の鼓手 enemy skeleton_drummer 5,12
+appear 骸骨 enemy skeleton 6,13
 亡者の鼓手: 進め……進め……。尾根は……この先だ……。
+pace fast
+move ピップ 9,20
+
+[talk 大岩の峠]
+music = battle_boss
+ノエ: 亡者もいます。番人のまわりに……杖の骸骨と、太鼓を叩く骸骨が。
 マルタ: 全部の相手はしてられないわよ、少尉さん。
 ハーデン: 亡者は払うだけでいい。番人を倒す。この目で見て、少佐に持ち帰る。
+
+[battle]
 
 [cues]
 (turn 1) ハーデン: 近いほうの番人へ向かう。亡者は、道の分だけ払う。
 (turn 3) ノエ: 太鼓です！ 亡者の足が、そろって速くなりました！
 (fallen ally) ドーソン: 構うな、進め！ 倒れた分は、番人で取り返す！
 
-[after]
+[talk 番人の記憶]
+music = talk_dark
 ノエ: ……見えました。番人の覚えていること。天裂の日と、そのあとの 20 年です。
 ノエ: 石は、降ってきたんじゃありません。土地と土地の重なりを留めて、生えたんです。
 マルタ: 縫い糸、ってこと？ ……騎士の言う縫い目って、地名じゃなかったのね。

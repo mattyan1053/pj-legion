@@ -17,8 +17,6 @@
 title = 古戦場の亡者
 map = old_battlefield
 music = battle_undead
-before_music = battle_undead
-after_music = talk_dark
 victory_mood = quiet
 wins = routed
 
@@ -30,21 +28,63 @@ wins = routed
 ピップ = ally, commando pip
 亡者の術師 = enemy, skeleton_caller
 
-[before]
-ノエ: 少尉。あの石壁の陰……骸骨です。骸骨が、立ち上がっています。
-ピップ: うへぇ、数えたくないっすねぇ。10 はいるっす。
+# 場面の節（docs/story.md）: カットシーン（谷へ下りる。章の変わり目）→ 出撃準備 → 盤のカットシーン（亡者が立ち上がる）→ 盤の前の会話 → 対戦 → あとの会話。
+[cut 谷へ下りる]
+place = old_battlefield
+music = talk_dark
+岩山を越えると、道は谷へ下りはじめた。
+崩れた石壁と、折れた柱。20 年前の戦の跡が、片付けられないまま残っている。
+
+[sortie]
+
+# 盤のカットシーン（docs/story.md の「盤のカットシーン」）: 先に出たピップの前で、亡者が立ち上がる。
+# 盤は対戦の始めの配置とはつながらない（見せるための別の盤）。
+[board 立ち上がる者]
+music = battle_undead
+unit ハーデン ally king 8,19
+unit ドーソン ally shield_trooper 7,18
+unit ノエ ally sniper 10,19
+unit ピップ ally commando 8,15
+camera 8,16
+pace slow
+move ピップ 8,13
+wait 0.5
+camera 8,13
+appear 骸骨 enemy skeleton 6,11
+appear 弓の骸骨 enemy skeleton_archer 10,11
+wait 0.4
+appear 亡者の術師 enemy skeleton_caller 8,11
+face ピップ 亡者の術師
+ピップ: う、うへぇ……。しょ〜い〜、骸骨っす！ 地面から、骸骨が立ったっす！
+pace fast
+move ピップ 8,17
+face ピップ ハーデン
+camera 8,17
+ハーデン: ……骸骨が、立つのか。ピップ、下がれ。ノエ、数を見ろ。
+camera 8,11
+appear 盾の骸骨 enemy skeleton_brute 4,9
+appear 奥の骸骨 enemy skeleton 12,9
 亡者の術師: 立て……立て……。戦は……まだ……終わって、おらん……。
+
+[talk 亡者の群れ]
+music = battle_undead
 ノエ: 杖の骸骨が、ほかの骸骨を起こしています。……率いる者が見当たりません。ばらばらに来ます。
+ピップ: うへぇ、数えたくないっすねぇ。10 はいるっす。
 ドーソン: 頭の無い亡者の群れか。なら杖持ちから黙らせろ。放っておけば増えるぞ。
 マルタ: 見て、あの盾。連邦の古い紋よ。隣のは騎士領の。……塗りが、昨日まで使ってたみたいに新しいわ。
+(if military_valley_fear = afraid) ノエ: ……少尉。こわい、です。でも、備えてきました。撃てます。
+(if military_valley_fear = see) ノエ: ……見ました、少尉。見たものを、撃つだけです。
 ハーデン: ……考えるのは後だ。率いる者がいないなら、退きもしない。立っている者は全部倒す。
+
+[battle]
 
 [cues]
 (turn 1) ピップ: うう、こっち見てるっす……。おれ、亡者だけは苦手っす。
 (turn 3) ノエ: 杖の骸骨が、また起こしています！ 先にあれを！
 (fallen enemy) ドーソン: ……脆い。殴れば崩れる。数に呑まれるなよ。
 
-[after]
+[talk 墓守の名]
+music = talk_dark
 亡者の術師: ……尾根へ……戻らねば……。墓守さまが……行かせて、くれぬ……。
 ノエ: 墓守……。亡者を起こして、従えている者が、別にいるんでしょうか。
 ドーソン: いるんだろうよ。そいつを倒さんかぎり、きりが無いってことだ。

@@ -427,8 +427,8 @@ func _scene_story_defeat() -> bool:
 
 
 ## 話の対戦を、CPU どうしで決着の手前まで進め、最後の手を画面で指して勝つ（人の側 = プレイヤー1 が勝つ種だけ）。
-func _story_win() -> bool:
-	if not await _story_battle():
+func _story_win(number := -1) -> bool:
+	if not await _story_battle(number):
 		return false
 	var setup: MatchSetup = _scene.source.make_setup(_seed)
 	_battle = setup.create_battle()
@@ -461,6 +461,32 @@ func _scene_story_after() -> bool:
 	screen.press_continue()
 	await _app.scene_changed
 	return _app.current_id() == SceneFlow.TALK
+
+
+## 連邦の第 1 話に勝って、決着の画面の「次へ」で、戦闘のあとの 1 つ目の場面（盤の前の会話）へ。
+func _first_episode_after() -> bool:
+	if not await _story_win(0):
+		return false
+	var screen: Control = _scene.result_screen()
+	while screen.enabled_buttons().is_empty():
+		await get_tree().process_frame
+	screen.press_continue()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.TALK
+
+
+## 戦闘のあとの 1 つ目の場面: 盤の前の会話（生き残った兵が立つ）。
+func _scene_story_after_board() -> bool:
+	return await _first_episode_after() and _app.current_scene().backdrop_units()[0] > 0
+
+
+## 戦闘のあとの 2 つ目の場面: 別の場所（峠の駐屯地）の会話。頭の地の文。
+func _scene_story_after_place() -> bool:
+	if not await _first_episode_after():
+		return false
+	_app.current_scene().press_skip()
+	await _app.scene_changed
+	return _app.current_id() == SceneFlow.TALK and _app.current_scene().is_scenery_only() and _app.current_scene().is_narrating()
 
 
 func _scene_story_next_choice() -> bool:
