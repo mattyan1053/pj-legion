@@ -250,7 +250,7 @@ func _start_fantasy(number: int) -> bool:
 		return false
 	_app.current_scene().choose(episodes[number])
 	await _app.scene_changed
-	return _app.current_id() == SceneFlow.SORTIE
+	return await _skip_to_sortie()
 
 
 func _scene_story_fantasy_evolve_sortie() -> bool:
