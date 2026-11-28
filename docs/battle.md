@@ -59,14 +59,16 @@
 ### 回復を 1 つ足すとき
 
 駒の HP を増やすものは、原因が何でも `rules/mend.gd`（`Mend`）を通す（ダメージの `rules/hit.gd` と対になる）。
-`rules/` の中で `hp +=` と書けるのは `Mend` だけ（`tests/rules/test_mend.gd` が見張る）。
+`rules/` の中で駒の HP を書き換える所は、`tests/rules/test_mend.gd` の表（`HP_WRITERS`）にあるものだけ: 増やすのは `Mend.give`、減らすのは `Hit.apply`、
+ほかは駒を作るときと、最大 HP が変わったときに合わせる所（`Unit.follow_max_hp`）。`hp = hp + n`・`hp -=`・`set("hp", …)` の形も、表に無い所なら落ちる。
 
 - 戻す量は `Mend.amount(駒, 上限)`。最大 HP の実効値で止める。予測や CPU が「どれだけ戻るか」を聞くのもこれ（`Healing.amount` などは、ここを呼ぶ）。
   回復量を増やす・封じる効果は、ここに段として足す。
 - 実際に戻すのは `Mend.give(駒, 上限, 出来事)`。出来事は原因ごとの子（`UnitHealedEvent` の子）を、原因の値（回復した駒など）だけ入れて作って渡す。
   駒・増えた量・あとの HP は `give` が書き込む。例: `Mend.give(unit, SUPPLY_HEAL, SupplyHealedEvent.new(medic.id))`。
 - 新しい原因なら、`UnitHealedEvent` の子と `Cause` を足し、上の「出来事を 1 つ足すとき」をたどる。
-  戦績で誰かの回復量に数えるなら、`rules/battle_stats.gd` の `_count_heal` に、その子から回復した駒を読む行を足す。
+  戦績で誰かの回復量に数えるかを、`tests/rules/test_battle_stats.gd` の `HEAL_COUNTED` に書く（書かないと落ちる）。
+  数えるなら、`rules/battle_stats.gd` の `_count_heal` に、その子から回復した駒を読む行を足す（足し忘れると落ちる）。
 
 ## apply の結果
 
