@@ -1,57 +1,46 @@
 extends Node3D
-## 軍略の線（docs/troop-traits.md の「画面」）: 誓いの 2 人、隊列で隣り合う同じ兵種、補給線で隣り合う回復役の間に、盤の上で線を引く。
-## 線は軍略の軍の色に暗い縁を付け（明るい地面でも範囲の塗りの上でも切れて見える）、真ん中に結び目を置く。
-## 隣どうしの線は足元の円盤にほとんど隠れるので、円盤の間（マスの境）に来る結び目が目印になる。
-## 結び目の形で見分ける: 隊列と誓いは菱形、補給線は十字（回復の印）。
-## 線の端は駒の見た目の位置を毎フレーム追う（再生で駒が歩いても、線がついて行く）。
-## 線の組は、盤の状態が変わったあと（対戦の画面の _refresh）に set_links で置き直す。
+## 軍略の、盤の上の控えめな印（docs/troop-traits.md の「対戦の画面」）。どちらも、駒を選んでいる間だけ出す。
+## - 線: 誓いの 2 人を結ぶ（離れた相手が誰かは、線でないと分からない）。細く、暗く、動かない。駒の後ろに隠れる（駒の上に被せない）。
+##   真ん中の小さな菱形が結び目（隣どうしの線は足元の円盤に隠れるので、マスの境に来る結び目が目印）。
+## - マスの印: 選んだ兵が、そこへ動けば軍略が効くマス（隊列・守護の盾、補給線の十字。trait_pip.gd の印を薄くしたもの）。
+## 隣り合うことで効く軍略（隊列・補給線・守護）は、兵どうしを線で結ばない（効いている兵の足元の印で見せる。unit_view.gd の set_trait_pip）。
+## 線の端は駒の見た目の位置を毎フレーム追う。線とマスの印は、盤の状態が変わったあと（対戦の画面の _refresh）に置き直す。
 
-## 結び目の形。
-enum Knot { DIAMOND, CROSS, BAR }
+const TraitPip := preload("res://game/trait_pip.gd")
+const BoardView := preload("res://game/board_view.gd")
 
-## 線の太さと高さ（盤の上の m）、暗い縁の幅。
-const WIDTH := 0.1
-const LIFT := 0.12
-const RIM := 0.035
-## 結び目の大きさ（菱形の辺、十字の腕の長さと太さ）。
-const KNOT_SIDE := 0.2
-const CROSS_ARM := 0.3
-const CROSS_WIDTH := 0.1
-## 横棒（守護。線を横切る盾の形）の長さと太さ。
-const BAR_LENGTH := 0.36
-const BAR_WIDTH := 0.1
+## 線の太さと高さ（盤の上の m）、暗い縁の幅、結び目の菱形の辺。
+const WIDTH := 0.045
+const LIFT := 0.09
+const RIM := 0.02
+const KNOT_SIDE := 0.13
 const COLOR_RIM := Color(0.06, 0.05, 0.08)
+## マスの印の高さと濃さ。
+const SPOT_LIFT := 0.16
+const SPOT_ALPHA := 0.6
 
-var _links: Array = []  # [見た目 a, 見た目 b, 線の Node3D, 線の胴（長さに合わせて伸ばす）, 結び目の形]
+var _links: Array = []  # [見た目 a, 見た目 b, 線の Node3D, 線の胴（長さに合わせて伸ばす）]
+var _spots: Array[Sprite3D] = []
+var _spot_cells: Array[Vector2i] = []
 
 
-## links は [見た目 a（Node3D）, 見た目 b, 色, 結び目の形（Knot。省けば菱形）] の並び。前の線は消える。
+## links は [見た目 a（Node3D）, 見た目 b, 色] の並び。前の線は消える。
 func set_links(links: Array) -> void:
 	for link: Array in _links:
 		(link[2] as Node).queue_free()
 	_links = []
 	for link: Array in links:
 		var color: Color = link[2]
-		var knot: Knot = link[3] if link.size() > 3 else Knot.DIAMOND
 		var line := Node3D.new()
 		var body := Node3D.new()
 		line.add_child(body)
-		_box(body, Vector3(WIDTH + RIM * 2.0, 0.02, 1.0), COLOR_RIM, 1)
-		_box(body, Vector3(WIDTH, 0.02, 1.0), color, 2)
-		if knot == Knot.CROSS:
-			# 十字は、線に対して 45 度に置く（線と重なって棒に見えないように）。
-			for turn: float in [PI / 4.0, -PI / 4.0]:
-				_box(line, Vector3(CROSS_WIDTH + RIM * 2.0, 0.02, CROSS_ARM + RIM * 2.0), COLOR_RIM, 3).rotation.y = turn
-			for turn: float in [PI / 4.0, -PI / 4.0]:
-				_box(line, Vector3(CROSS_WIDTH, 0.02, CROSS_ARM), color.lightened(0.3), 4).rotation.y = turn
-		elif knot == Knot.BAR:
-			_box(line, Vector3(BAR_LENGTH + RIM * 2.0, 0.02, BAR_WIDTH + RIM * 2.0), COLOR_RIM, 3)
-			_box(line, Vector3(BAR_LENGTH, 0.02, BAR_WIDTH), color.lightened(0.3), 4)
-		else:
-			_box(line, Vector3(KNOT_SIDE + RIM * 2.0, 0.02, KNOT_SIDE + RIM * 2.0), COLOR_RIM, 3).rotation.y = PI / 4.0
-			_box(line, Vector3(KNOT_SIDE, 0.02, KNOT_SIDE), color.lightened(0.3), 4).rotation.y = PI / 4.0
+		# 縁 → 線 → 結び目の順に、少しずつ高くする（同じ高さに重ねると、ちらつく）。
+		_box(body, Vector3(WIDTH + RIM * 2.0, 0.01, 1.0), COLOR_RIM, 0.0)
+		_box(body, Vector3(WIDTH, 0.01, 1.0), color.darkened(0.1), 0.006)
+		_box(line, Vector3(KNOT_SIDE + RIM * 2.0, 0.01, KNOT_SIDE + RIM * 2.0), COLOR_RIM, 0.012).rotation.y = PI / 4.0
+		_box(line, Vector3(KNOT_SIDE, 0.01, KNOT_SIDE), color.lightened(0.2), 0.018).rotation.y = PI / 4.0
 		add_child(line)
-		_links.append([link[0], link[1], line, body, knot])
+		_links.append([link[0], link[1], line, body])
 	_place()
 
 
@@ -60,22 +49,42 @@ func link_count() -> int:
 	return _links.size()
 
 
-## いま引いている線の結び目の形（検査用）。
-func knots() -> Array:
-	return _links.map(func(link: Array) -> Knot: return link[4])
+## 動けば軍略が効くマスに、印を置く（前の印は消える）。kind は TraitPip.Kind、color は軍略の軍の色。
+func set_spots(cells: Array[Vector2i], kind: int, color: Color) -> void:
+	_spot_cells = cells
+	while _spots.size() < cells.size():
+		var spot := TraitPip.make()
+		spot.modulate.a = SPOT_ALPHA
+		add_child(spot)
+		_spots.append(spot)
+	for index in _spots.size():
+		_spots[index].visible = index < cells.size()
+		if index < cells.size():
+			_spots[index].texture = TraitPip.texture(kind, color)
+			_spots[index].position = BoardView.cell_center(cells[index]) + Vector3(0.0, SPOT_LIFT, 0.0)
 
 
-func _box(parent: Node3D, size: Vector3, color: Color, priority: int) -> MeshInstance3D:
+## 線とマスの印を、どちらも消す（行動の再生が始まるとき。選択が外れるので）。
+func clear() -> void:
+	set_links([])
+	set_spots([] as Array[Vector2i], TraitPip.Kind.NONE, Color.WHITE)
+
+
+## いま印を置いているマス（検査用）。
+func spot_cells() -> Array[Vector2i]:
+	return _spot_cells
+
+
+func _box(parent: Node3D, size: Vector3, color: Color, lift: float) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.no_depth_test = true  # マスの塗り（範囲の色）と足元の円盤より上に見せる
-	material.render_priority = priority
 	var box := MeshInstance3D.new()
 	box.mesh = mesh
 	box.material_override = material
+	box.position.y = lift
 	box.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(box)
 	return box
