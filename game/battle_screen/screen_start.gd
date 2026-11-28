@@ -100,12 +100,14 @@ func _on_setup_chosen(chosen: RefCounted) -> void:
 ## 用意した対戦を、最初から始める（検査では、小さな盤面を作って渡す）。再生の途中と CPU の番の間は何もしない。
 ## battle_look は盤の見た目の名前（stage_look.gd）、battle_area は決着の画面の「マップ」（空なら出さない）。
 func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, battle_area := "") -> void:
+	if _replaying and not _ui.busy:
+		_stop_replay_state()  # 止めているリプレイの上から始める（検査と撮る道具）。リプレイはやめる
 	if is_busy():
 		return
 	look = battle_look
 	area_name = battle_area
 	map_seed = battle_seed
-	_stop_replay_state()  # リプレイの途中で新しい対戦を始めたら、リプレイはやめる（記録も新しい対戦のものにする）
+	_replay_serial += 1  # 前の対戦のリプレイの続きを止める（記録も新しい対戦のものにする）
 	battle = new_battle
 	_record = BattleRecord.of(battle) if source != null and source.can_replay() else null
 	stats = BattleStats.new(battle)
