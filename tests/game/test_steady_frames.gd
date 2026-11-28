@@ -409,8 +409,6 @@ func test_sortie_frames_are_the_same_for_every_episode() -> void:
 			continue
 		var context := preload("res://game/app_context.gd").new()
 		context.run = context.story.run_now(episode)
-		while context.run.scene() != Story.SORTIE:
-			context.run.advance()  # 場面の節で書いた話は、出撃準備の前にカットシーンや会話があることがある
 		context.scene = Story.SORTIE
 		var sortie := SortieScreen.new()
 		sortie.context = context
