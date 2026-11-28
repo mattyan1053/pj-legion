@@ -204,6 +204,69 @@ func _queue_result_scene() -> void:
 	_scripted.append(wait_full.bind(wait_full))
 
 
+## リザルトの「もう一度見る」: game の 1 局を頭から見せ直す。帯が出て遊ぶボタンが隠れる、止める・速さ・ターンの頭へ飛ぶ、
+## 見ている間は行動できない、終わりまで見せるとリザルトへ戻り、盤が決着したときと同じ（ほかの場面の前に回す。リザルトが出ている間だけ押せる）。
+func _queue_replay_scene() -> void:
+	var ended := []
+	_scripted.append(func() -> void:
+		var screen: Node = _scene.result_screen()
+		_expect(screen.can_replay(), "対戦モードのリザルトに「もう一度見る」が無い")
+		ended.append_array([_scene.battle, _scene.view_cells(), _scene.view_hps(), _scene.battle_log.entries.size()])
+		var record: RefCounted = _scene.battle_record()
+		var replayed: Battle = record.battle_at(record.size())
+		_expect(replayed.winner == _scene.battle.winner and replayed.turn == _scene.battle.turn, "記録を当て直しても、同じ決着にならない")
+		screen.press_replay()
+		await _scene.get_tree().process_frame
+		var controls: Array = _scene.replay_controls()
+		_expect(_scene.is_replaying() and controls[0], "「もう一度見る」でリプレイの帯が出ない")
+		_expect(not controls[5], "リプレイの間も、ターン終了のボタンが出ている")
+		_expect(_scene.result_title() == "", "リプレイの間も、リザルトが出ている")
+		_expect(_scene.battle != ended[0] and _scene.battle.turn == record.turn_at(0), "リプレイが頭から始まらない")
+		_expect(_scene.battle.units.size() == record.battle_at(0).units.size(), "リプレイの始めの盤の兵の数が違う")
+		_expect(not controls[2] and controls[3], "始めのターンで、前のターンへ飛べる（か、次のターンへ飛べない）: %s" % [controls])
+		_expect(not _scene.in_progress(), "リプレイの間に、タイトルへ戻る前の確かめが出る")
+		_scene.press_end_turn()  # 見ているだけ（行動はできない）
+		_expect(_scene.replay_position()[0] <= 1, "リプレイの間に、ターン終了を受け付けた")
+		_scene.set_replay_speed(4)
+		_expect(_scene.replay_controls()[4] == 4, "速さを 4 倍にできない")
+		# 次のターンの頭へ 2 回飛ぶ（行動を見せている途中でも、見せずに済ませてから飛ぶ）。
+		for i in 2:
+			_scene.replay_turn(1)
+			while _scene.replay_position()[0] != record.head_of(record.turn_at(0) + i + 1) or _scene.battle.turn != record.turn_at(0) + i + 1:
+				await _scene.get_tree().process_frame
+		_expect(_scene.battle_log.entries.size() > 0, "飛んだ先までのログが無い")
+		_expect(_scene.replay_controls()[2], "ターン 3 から前のターンへ飛べない")
+		_scene.toggle_replay_pause()
+		_expect(_scene.replay_controls()[1] == "再生", "止めても、ボタンが「再生」にならない")
+		var stopped: int = _scene.replay_position()[0]
+		for i in 120:
+			await _scene.get_tree().process_frame
+		_expect(_scene.replay_position()[0] <= stopped + 1, "止めても、次の行動へ進む")
+		_scene.replay_turn(-1)
+		while _scene.battle.turn != record.turn_at(0) + 1:
+			await _scene.get_tree().process_frame
+		_expect(_scene.replay_position()[0] == record.head_of(record.turn_at(0) + 1), "前のターンの頭へ飛ばない")
+		_expect(_scene.replay_controls()[1] == "再生", "飛んでも、止めたまま")
+		# 終わりの 1 つ前のターンへ飛んで、終わりまで見せる（終わるとリザルトへ戻る。終わるまで、次の手は待つ）。
+		_scene.replay_turn(1)
+		while _scene.replay_controls()[3]:
+			_scene.replay_turn(1)
+			await _scene.get_tree().process_frame
+		_expect(_scene.battle.turn == record.last_turn(), "いちばん後のターンへ飛べない")
+		_scene.toggle_replay_pause())
+	_scripted.append(func() -> void:
+		_expect(not _scene.is_replaying() and not _scene.replay_controls()[0], "リプレイが終わっても、帯が残っている")
+		_expect(_scene.battle == ended[0] and _scene.battle.is_over(), "リプレイのあと、終えた対戦へ戻らない")
+		_expect(_scene.view_cells() == ended[1] and _scene.view_hps() == ended[2], "リプレイのあと、盤の兵が決着したときと違う")
+		_expect(_scene.battle_log.entries.size() == ended[3], "リプレイのあと、ログが終えた対戦のものでない")
+		_expect(_scene.result_title() != "" and _scene.result_screen().can_replay(), "リプレイのあと、リザルトへ戻らない")
+		_expect(_scene.replay_controls()[5], "リプレイのあと、ターン終了のボタンが隠れたまま")
+		# もう一度見て、すぐ「リザルトへ」。
+		_scene.result_screen().press_replay()
+		_scene.stop_replay()
+		_expect(not _scene.is_replaying() and _scene.battle == ended[0] and _scene.result_title() != "", "「リザルトへ」で、リザルトへ戻らない"))
+
+
 ## 盤の上の効果。ルールの入口（FieldEffects.place_*）で盾・煙幕・聖域を置いて再生し、
 ## 盾越しには撃てないこと、盾を壊せること、煙幕が離れたところからの攻撃を防ぐこと、聖域の回復と期間の進みを通す。
 func _queue_field_effect_scene() -> void:

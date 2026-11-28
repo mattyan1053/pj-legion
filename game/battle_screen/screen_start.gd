@@ -105,7 +105,9 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	look = battle_look
 	area_name = battle_area
 	map_seed = battle_seed
+	_stop_replay_state()  # リプレイの途中で新しい対戦を始めたら、リプレイはやめる（記録も新しい対戦のものにする）
 	battle = new_battle
+	_record = BattleRecord.of(battle) if source != null and source.can_replay() else null
 	stats = BattleStats.new(battle)
 	_phase_focus.clear()
 	_log_panel.close()
@@ -120,28 +122,8 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 		names.append(_side_name(side))
 	battle_log = BattleLog.new(battle, names)
 
-	if _board_view != null:
-		_board_view.queue_free()
-	for view: UnitView in _views.values():
-		view.queue_free()
-	_views.clear()
-
-	_board_view = BoardView.new()
-	add_child(_board_view)
-	if _trait_links != null:
-		_trait_links.queue_free()
-	_trait_links = TraitLinks.new()
-	add_child(_trait_links)
-	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
-	_sync_stronghold_flag()  # 途中から見せる対戦でも、旗は確保を進めた陣営の色
-	_hud.minimap().show_board(battle.board, look)
-	# 場面に入る幕が明けるまでは _process が回らないので、ミニマップの置き場所を先に決めておく（左上に出てから跳ばない）。
-	_place_minimap.call_deferred()
-	_playback.set_board_view(_board_view)
-	StageLook.apply(self, _board_view.look)
 	_people = UnitLooks.assign_people(battle.units, source.cast_looks() if source != null else [])
-	for unit in battle.units:
-		_add_view(unit)
+	_build_stage()
 
 	_rig.fit_board(battle.board.size)  # 見てよい範囲と、引きの上限（小さい盤ほど寄せる）
 	_rig.position = _camera_point(Unit.Side.PLAYER1)
@@ -183,6 +165,43 @@ func start_with(new_battle: Battle, battle_look: StringName, battle_seed: int, b
 	_open_battle()
 
 
+## 盤と駒の見た目を、いまの対戦（battle）から作り直す（対戦を始めたとき、リプレイで飛んだとき）。人物の形（_people）は決めてあるものを使う。
+func _build_stage() -> void:
+	if _board_view != null:
+		_board_view.queue_free()
+	for view: UnitView in _views.values():
+		view.queue_free()
+	_views.clear()
+
+	_board_view = BoardView.new()
+	add_child(_board_view)
+	if _trait_links != null:
+		_trait_links.queue_free()
+	_trait_links = TraitLinks.new()
+	add_child(_trait_links)
+	_board_view.setup(battle.board, map_seed, TEAM_COLORS, look)
+	_sync_stronghold_flag()  # 途中から見せる対戦でも、旗は確保を進めた陣営の色
+	_hud.minimap().show_board(battle.board, look)
+	# 場面に入る幕が明けるまでは _process が回らないので、ミニマップの置き場所を先に決めておく（左上に出てから跳ばない）。
+	_place_minimap.call_deferred()
+	_playback.set_board_view(_board_view)
+	StageLook.apply(self, _board_view.look)
+	for unit in battle.units:
+		_add_view(unit)
+
+
+## リプレイの状態を下ろす（帯を隠し、続きを止める）。対戦はそのまま（戻すのは screen_replay.gd の stop_replay）。
+func _stop_replay_state() -> void:
+	_replay_serial += 1
+	if not _replaying:
+		return
+	_replaying = false
+	_playback.announce_result = true
+	_playback.skipping = false
+	_hud.show_replay_bar(false)
+	_update_time_scale()
+
+
 ## 対戦の始まりを、1 つずつ順に進める（前のものが閉じるまで、次を出さない）:
 ## 「対戦ルール」（出ていれば、閉じるまで待つ）→ 番の知らせの帯 → 始めの台詞（話の [cues]。送られるまで待つ）→ CPU の番。
 ## 待つ間に新しい対戦を始めたら、古いほうの続きはやめる。
@@ -210,6 +229,7 @@ func _on_result_shown(draw: bool, winner: Unit.Side) -> void:
 	context.play_jingle(result_music(draw, winner, cpu_opponent, _human_side(), source.victory_mood()), source.after_result_music())
 	var won := cpu_opponent and not draw and winner == _human_side()
 	_hud.result_screen().set_continue(source.can_continue(won), source.retries_on_enter(won))
+	_hud.result_screen().set_replay(_record != null)
 	# 負けた話は、見出しの下に、話し手のひとこと（話のファイルの [lost]。再戦の手間は増やさない）。
 	_hud.result_screen().set_remark([] if won or not cpu_opponent else source.lost_lines())
 	source.record_end(battle)

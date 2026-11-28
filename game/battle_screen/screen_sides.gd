@@ -6,6 +6,8 @@ func _update_time_scale() -> void:
 	var scale := time_scale_base
 	if context.overlays.pauses():
 		scale = 0.0
+	elif _replaying:
+		scale *= _replay_speed  # リプレイは、リプレイの帯の速さだけ（CPU の番の速さ・早送りは掛けない）
 	else:
 		if _cpu_fast:
 			scale *= float(settings.value(Settings.CPU_PLAYBACK_SPEED))
@@ -142,6 +144,8 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 			accepted = false
 			break
 		events.append_array(result.events)
+		if _record != null and not _replaying:
+			_record.add(actions[i])
 	var action: BattleAction = actions[-1]
 	_watch_playback = was_watching or _watching_other()
 	if _auto_side >= 0 and battle.phase != _auto_side:
@@ -186,7 +190,8 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 	_update_time_scale()
 	# 対戦の途中の会話: 起きたことを見せ終えてから出す（演出と重ねない）。決着した行動のあとは出さない（BattleCues が見る）。
 	# 送られるまで待つ（その間、次の行動へ進まない）。
-	await _say(_cues.on_events(battle, events))
+	if not _replaying:  # リプレイは、途中の台詞を出さない
+		await _say(_cues.on_events(battle, events))
 
 	var evolving := battle.evolving_unit()
 	_ui.settle_after_action(
@@ -204,6 +209,8 @@ func _do_all(actions: Array[BattleAction]) -> bool:
 ## 何をしたか追えるように、駒が動き出す前にカメラを寄せ、1 体の行動が終わるたびに間を置く。
 ## 動かずに待機するだけの駒は、見せるものが無いので間を置かない。
 func _run_cpu() -> void:
+	if _replaying:
+		return  # リプレイは、記録した行動を流すだけ（screen_replay.gd）
 	if _ui.cpu_running or _ui.busy or not _is_cpu_turn() or _hud.notice_open():
 		return  # 「対戦ルール」を閉じるまでは動かない（閉じたら _open_battle が呼ぶ）
 	_ui.cpu_running = true

@@ -137,12 +137,14 @@ func _play_acted(event: UnitActedEvent) -> void:
 
 func _play_won(event: GameWonEvent) -> void:
 	await after(0.4)
-	_hud.show_result(result_summary.call(false, event.winner, Text.t(BattleLog.WIN_TEXTS[event.reason]), event.reason))
+	if announce_result:
+		_hud.show_result(result_summary.call(false, event.winner, Text.t(BattleLog.WIN_TEXTS[event.reason]), event.reason))
 
 
 func _play_drawn(event: GameDrawnEvent) -> void:
 	await after(0.4)
-	_hud.show_result(result_summary.call(true, Unit.Side.NEUTRAL, Text.t(BattleLog.DRAW_TEXTS[event.reason]), -1))
+	if announce_result:
+		_hud.show_result(result_summary.call(true, Unit.Side.NEUTRAL, Text.t(BattleLog.DRAW_TEXTS[event.reason]), -1))
 
 
 func _play_phase_started(event: PhaseStartedEvent) -> void:

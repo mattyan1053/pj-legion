@@ -130,8 +130,8 @@ func set_end_turn(enabled: bool, text: String, ready := false) -> void:
 ## can_skip はスキップを押せるか（スキップの途中は「スキップ中…」にして押せない）。
 func set_watch_controls(shown: bool, fast: bool, can_skip: bool) -> void:
 	_watch_box.visible = shown
-	_ult_button.visible = not shown
-	_auto_button.visible = not shown
+	_ult_button.visible = not shown and not _replay_bar.visible
+	_auto_button.visible = not shown and not _replay_bar.visible
 	_fast_button.set_pressed_no_signal(fast)
 	_skip_button.disabled = not can_skip
 	_skip_button.text = Text.t("battle.hud.skip") if can_skip else Text.t("battle.hud.skipping")
@@ -178,6 +178,33 @@ func set_opponent(text: String) -> void:
 	_opponent_button.text = text
 	_opponent_button.visible = text != ""
 	_fold_cell()
+
+
+## リプレイの帯（replay_bar.gd）を出すか。出している間は、遊ぶためのボタン（必殺技・おまかせ・ターン終了・相手）を隠す。
+## 脅威範囲のスイッチは残す（リプレイでも、どちらの側の脅威範囲も見られる）。
+func show_replay_bar(shown: bool) -> void:
+	_replay_bar.visible = shown
+	_ult_button.visible = not shown and not _watch_box.visible
+	_auto_button.visible = not shown and not _watch_box.visible
+	_end_turn_button.visible = not shown
+	if shown:
+		_opponent_button.visible = false
+		_ult_panel.visible = false
+	_fold_cell()
+
+
+func replay_bar() -> ReplayBar:
+	return _replay_bar
+
+
+## ターン終了のボタンを出しているか。検査用。
+func end_turn_shown() -> bool:
+	return _end_turn_button.visible
+
+
+## リプレイの帯を出しているか。検査用。
+func replay_bar_shown() -> bool:
+	return _replay_bar.visible
 
 
 ## 相手を切り替えるボタンを出しているか。検査用。
@@ -300,3 +327,13 @@ func _build_bottom() -> void:
 	add_child(_ult_panel)
 	_ult_summary = _label(15)
 	_ult_panel.add_child(_ult_summary)
+
+	# リプレイの帯: 下の帯のすぐ上の右（左下の駒の情報の枠に重ねない。右下の必殺技とターン終了は、リプレイの間は隠れている）。
+	_replay_bar = ReplayBar.new()
+	_replay_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_replay_bar.offset_left = -REPLAY_BAR_GAP - 10.0 - ReplayBar.SIZE.x
+	_replay_bar.offset_right = -REPLAY_BAR_GAP - 10.0
+	_replay_bar.offset_top = -BOTTOM_BAR_HEIGHT - REPLAY_BAR_GAP - ReplayBar.SIZE.y
+	_replay_bar.offset_bottom = -BOTTOM_BAR_HEIGHT - REPLAY_BAR_GAP
+	_replay_bar.visible = false
+	add_child(_replay_bar)

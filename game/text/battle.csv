@@ -158,6 +158,14 @@ battle.cell.line,{title}　{notes}
 battle.cell.separator,　
 battle.hud.phase,{side}の番
 battle.hud.skip,スキップ
+battle.replay.prev,前のターン
+battle.replay.next,次のターン
+battle.replay.pause,止める
+battle.replay.play,再生
+battle.replay.speed.1,等倍
+battle.replay.speed.2,2 倍
+battle.replay.speed.4,4 倍
+battle.replay.leave,リザルトへ
 battle.hud.skipping,スキップ中…
 battle.hud.auto_confirm,もう一度押して実行
 battle.hud.auto,おまかせ
@@ -419,6 +427,7 @@ result.next,次へ
 result.again,同じマップで再戦
 result.setup,対戦設定へ
 result.squad,部隊変更
+result.replay,もう一度見る
 result.prompt_title,Enter: タイトルへ
 battle.hud.monster,魔物
 battle.hud.sign_note,{name}: {summary}

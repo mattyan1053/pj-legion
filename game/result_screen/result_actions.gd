@@ -90,6 +90,22 @@ func press_again() -> void:
 	restart_pressed.emit(&"", false)
 
 
+## 「もう一度見る」を出すか（対戦の画面が、記録を取っているか（対戦モード）で決める。決着の画面を出すたびに決める）。
+func set_replay(shown: bool) -> void:
+	_replay_button.visible = shown
+
+
+## 「もう一度見る」を出しているか。検査用。
+func can_replay() -> bool:
+	return _replay_button.visible
+
+
+## 「もう一度見る」を押す（出していなければ何もしない）。
+func press_replay() -> void:
+	if _replay_button.visible:
+		replay_pressed.emit()
+
+
 ## 「次へ」を出しているか。検査用。
 func can_continue() -> bool:
 	return _continue_button.visible
@@ -166,6 +182,10 @@ func _build_actions() -> void:
 	_squad_button.pressed.connect(press_choose_squad)
 	_squad_button.visible = false
 	leave.add_child(_squad_button)
+	_replay_button = _button(Text.t("result.replay"), 180.0)
+	_replay_button.pressed.connect(press_replay)
+	_replay_button.visible = false
+	leave.add_child(_replay_button)
 	_leave_button = _button(Text.t("result.to_title"), 180.0)
 	_leave_button.pressed.connect(title_pressed.emit)
 	leave.add_child(_leave_button)

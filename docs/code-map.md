@@ -28,6 +28,7 @@
    - 再生 `game/battle_playback.gd` の `play_all` → `battle_playback/playback_base.gd` の `event_players()`（種類 → 再生の関数）。再生と同時にログ `game/battle_log.gd` の `readers()` へ（`docs/battle-log.md`）。
      再生は対戦を読まない。行動をルールに渡す前に写した盤（再生の盤 `game/replay_board.gd`）に、再生しながら出来事を食わせて読む（`docs/battle-view.md` の「再生の盤」）。
      音は再生の関数から鳴らす（`docs/sound.md`）。中立の番は `game/neutral_playback.gd` がまとめる。
+     対戦モードのリプレイは、記録（`game/battle_record.gd`。始めの写しと受け付けられた行動）を見えない対戦へ当て直して、同じ道で見せる（`game/battle_screen/screen_replay.gd`。`docs/battle-view.md` の「リプレイ」）。
      盤のカットシーンは、対戦なしで同じ再生を回す（台本 `game/cut_script.gd` → 台本の出来事 `game/cut_events/` → 舞台 `game/cut_stage.gd`。`docs/battle-view.md` の「盤のカットシーン」）。
    - 話の途中の台詞 `game/battle_cues.gd`（ストーリーだけ）
    - 終わると、ルールに聞き直して画面を作り直し（`_refresh`）、CPU の番なら次の手へ。

@@ -352,6 +352,41 @@ func _scene_result_defeat() -> bool:
 	return await _cpu_result(false)
 
 
+## 終えた 1 局のリプレイ。CPU どうしで決着まで進めて（行動を控える）、決着の画面の「もう一度見る」から、ターン 4 の頭まで飛んで止める。
+func _scene_replay() -> bool:
+	var start := _battle.clone()
+	var actions: Array[BattleAction] = []
+	for i in MAX_ACTIONS:
+		var action := _cpu.next_action(_battle)
+		if action == null:
+			return false
+		var trial := _battle.clone()
+		trial.apply(action)
+		actions.append(action)
+		if trial.is_over():
+			break
+		var result := _battle.apply(action)
+		_stats.feed_all(result.events)
+		_log.feed_all(result.events)
+	if not await _finish_battle(-1.0):
+		return false
+	_scene.use_record(start, actions)
+	_scene.start_replay()
+	_scene.toggle_replay_pause()
+	for i in 3:
+		_scene.replay_turn(1)
+		await get_tree().process_frame
+	if _scene.battle.turn != 4:
+		return false
+	_scene.toggle_threat()
+	for unit: Unit in _scene.battle.units:
+		if unit.side == Unit.Side.PLAYER2 and unit.kind != UnitKind.Id.KING:
+			_scene.hover(unit.cell)
+			break
+	await _camera_still()
+	return _scene.is_replaying()
+
+
 ## 相手（CPU）の番と中立のフェーズのあと（ターン 5 の自分の番の始め）。始めからのログを画面に渡す。
 func _after_cpu_turn() -> bool:
 	if not _advance(func() -> bool: return _battle.turn >= 5 and _battle.phase == Unit.Side.PLAYER1):

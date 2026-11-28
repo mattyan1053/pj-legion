@@ -91,6 +91,10 @@ func set_cpu_opponent(cpu: bool) -> void:
 	cpu_opponent = cpu
 
 
+func can_replay() -> bool:
+	return true
+
+
 ## 「新しいマップ」で選べるマップ: 生成のマップ（マップ選択のカードと同じ並び）。
 ## 手で作ったマップは、種を替えても同じ形なので入れない（同じマップは「同じマップで再戦」、ほかのマップは対戦設定から）。
 func new_board_fields() -> Array[StringName]:

@@ -27,6 +27,8 @@ signal title_pressed
 signal continue_pressed
 ## 「部隊を選び直す」（set_destinations で出したときだけ。ストーリーで、出撃準備へ戻る）。
 signal squad_pressed
+## 「もう一度見る」（set_replay で出したときだけ。いま終えた対戦のリプレイ）。
+signal replay_pressed
 ## 全部が出そろった（行き先を選べるようになった）。
 signal revealed
 
@@ -133,6 +135,7 @@ var _board_buttons: Array[Button] = []  # 新しいマップ（ボタンの meta
 var _setup_button: Button
 var _leave_button: Button
 var _squad_button: Button
+var _replay_button: Button
 var _continue_button: Button
 var _again_button: Button
 ## Enter で「同じマップで再戦」を選ぶか（set_continue）。

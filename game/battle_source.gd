@@ -80,6 +80,11 @@ func set_cpu_opponent(_cpu: bool) -> void:
 	pass
 
 
+## 対戦の記録を取り、決着の画面から「もう一度見る」（リプレイ。docs/battle-view.md の「リプレイ」）を出すか。記録はその場かぎり。
+func can_replay() -> bool:
+	return false
+
+
 ## 新しい盤面でやり直すときに選べるマップ（versus_fields.gd の鍵の並び。F1〜F3、決着の画面の「新しいマップ」）。
 ## 空なら、やり直しは「同じマップで再戦」だけ。
 func new_board_fields() -> Array[StringName]:
