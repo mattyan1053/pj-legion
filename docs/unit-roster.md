@@ -110,7 +110,8 @@ CPU どうしの対戦（`docs/cpu-ai.md` の「集計の道具」）で見る�
 
 軍で決まるものは、2 つの表から読む。ルールの値は `rules/armies.gd`（`Armies`）、見た目は `game/army_look.gd`。
 どちらも軍ごとに 1 行で、選べる軍の並び（対戦設定・部隊編成・実測の道具）は表の順（`Armies.all()`）。
-軍の名前で二択にしている所は無い（`tests/game/test_armies.gd` が、表の外で `Army.MILITARY`・`Army.FANTASY` を書くと落ちる）。
+軍を直に指して二択にしている所は無い（`tests/game/test_armies.gd` が、`rules/`・`game/`・`tools/` の表の外で、軍を名前・名前の文字・番号との比べ・表の並びの 2 つ目より後の添え字・「軍の数が 2」の比べで指すと落ちる）。
+見張りの外: 自動の対戦（`game/autoplay/`）とスクリーンショットの道具（`tools/shots/`）、テスト、`match` の枝に番号を書く形、番号を変数に入れてから比べる形、話の鍵（`&"fantasy"`）で物語を引く形。
 
 | 何が | どこに |
 | --- | --- |
