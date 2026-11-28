@@ -15,8 +15,6 @@
 [episode]
 title = 尾根の小道
 map = ridge_path
-before_music = battle_march
-after_music = talk_bright
 
 [cast]
 ハーデン = ally
@@ -26,9 +24,21 @@ after_music = talk_bright
 ピップ = ally, commando pip
 イェルダ = enemy, paladin evolved crown yelda
 
-[before]
-> 演習を終えた偵察隊は、縫い目の土地の尾根に着いた。
+# 頭のカットシーン: 駐屯地を発って、尾根に着くまで（章の変わり目。演習の話から、尾根の話へ）。
+[cut 尾根へ]
+place = ridge_path
+music = talk_calm
+> 演習を終えた偵察隊は、峠の駐屯地を発った。
+> 昼すぎ。隊は、縫い目の土地の尾根に着いた。20 年前、戦の場だった所だ。
+
+[sortie]
+
+# 盤の前の会話。ノエの 1 行が、第 6 話の答え（military_valley_fear）で替わる。
+[talk 尾根の入り口]
+music = battle_march
 ハーデン: 偵察隊の初仕事だ。この尾根を越えて、谷へ下りる道を確かめる。
+(if military_valley_fear = afraid) ノエ: 荷は、出る前に 2 度確かめました。……少尉の真似です。
+(if military_valley_fear != afraid) ノエ: 見るまでは分からない、ですよね。……見てきます。
 ノエ: 前方に騎士。数は 3。旗を立てて、動きません。
 イェルダ: リュエル騎士領、騎士長イェルダである。縫い代を踏み荒らす者は、この尾根を通さぬ。
 ノエ: ぬいしろ……？
@@ -37,12 +47,15 @@ after_music = talk_bright
 ハーデン: 騎士長を倒すか、あの旗を取る。どちらでもいい。通るぞ。
 イェルダ: ならば剣で答えよう。
 
+[battle]
+
 [cues]
 (turn 1) ノエ: 道の脇に、樽があります。撃たれたら、周りごと……。
 (fallen enemy) ドーソン: 騎士が 1 人欠けた。向こうは替えがいないぞ、押せ。
 (king_half enemy) イェルダ: まだだ。この程度で道は譲らぬ。
 
-[after]
+[talk 尾根のあと]
+music = talk_bright
 イェルダ: ……見事だ。今日のところは、道を空けよう。
 ドーソン: 退きますよ。追いますか、少尉。
 ハーデン: 追わない。退く者は追うな、と士官学校で教わった。

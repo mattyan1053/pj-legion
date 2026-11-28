@@ -144,9 +144,14 @@ static func _first_scene_id(episode: RefCounted) -> StringName:
 	return SceneFlow.TALK
 
 
-## 会話の場面 scene の行に、選択肢・出す条件・名を問う行があるか（あれば、行の数と並びは答えで変わる）。
+## 会話の場面 scene の行に、選択肢か名を問う行があるか（あれば、行の数と並びは、その場で選ぶ答えで変わる）。
 static func _branches(scene: RefCounted) -> bool:
-	return scene.lines.any(func(row: RefCounted) -> bool: return row.asks() or row.asks_name or row.when_choice != &"")
+	return scene.lines.any(func(row: RefCounted) -> bool: return row.asks() or row.asks_name)
+
+
+## 会話の場面 scene のうち、画面に出る行（出す条件 (if 名前 = 鍵) が、記録 story のいまの答えに合う行）。
+static func _shown_rows(scene: RefCounted, story: RefCounted) -> Array:
+	return scene.lines.filter(func(row: RefCounted) -> bool: return row.holds(story.answer_of))
 
 
 ## 会話の場面 scene が、話の盤を前にした会話か（カットシーンでも、別の場所でもない。背景の盤に兵が立つ）。
@@ -241,7 +246,7 @@ func _check_story_talk(talk: Node, scene: RefCounted, last: bool, app: Node, epi
 			# 背景の盤に、初期位置の味方と、話の並びの敵が立つ。
 			var standing: Array[int] = talk.backdrop_units()
 			_expect(standing[0] == (shared["chosen"] as Deck).entries.size() + 1 and standing[1] > 0, "対戦の前の会話の背景に、初期位置の駒が立たない: %s" % [standing])
-		if not scene.cut and scene.board_cut == null and not _branches(scene) and scene.lines.size() >= 3:
+		if not scene.cut and scene.board_cut == null and not _branches(scene) and _shown_rows(scene, story).size() >= 3:
 			await _check_talk_before(talk, episode, scene)
 			shared["talks"] += 1
 		return
@@ -254,10 +259,10 @@ func _check_story_talk(talk: Node, scene: RefCounted, last: bool, app: Node, epi
 		_expect(talk.backdrop_units()[0] == survivors, "あとの会話の背景に、生き残った味方が立たない: %s / %d" % [talk.backdrop_units(), survivors])
 	if not last or scene.cut or scene.board_cut != null or _branches(scene):
 		return
-	_expect(talk.line_count() == scene.lines.size() + news.size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
+	_expect(talk.line_count() == _shown_rows(scene, story).size() + news.size(), "あとの会話の文の数が違う（最後に、増えたものの知らせ）")
 	if not episode.unlock_kinds.is_empty():
 		talk.press_skip()
-		_expect(talk.line_index() == scene.lines.size() and talk.speaker() == Story.notice_name()
+		_expect(talk.line_index() == _shown_rows(scene, story).size() and talk.speaker() == Story.notice_name()
 				and talk.line_text().contains(Names.kind(episode.unlock_kinds[0])), "「飛ばす」が、解放した駒の知らせまで飛ばしている")
 	_expect(story.is_cleared(episode.id), "あとの会話の間に、クリアの記録が無い")
 
@@ -398,7 +403,7 @@ func _visit_second_campaign(app: Node) -> void:
 			return result,
 		"talk": func(talk: Node, scene: RefCounted, last: bool) -> void:
 			if last and not scene.cut and scene.board_cut == null and not _branches(scene):
-				_expect(talk.line_count() == scene.lines.size() + Story.unlocked_before(episode).news_of(episode).size(), "2 つ目の物語の、あとの会話の文の数が違う"),
+				_expect(talk.line_count() == _shown_rows(scene, story).size() + Story.unlocked_before(episode).news_of(episode).size(), "2 つ目の物語の、あとの会話の文の数が違う"),
 		# 「次の話へ」で、次の話の最初の場面へ（出撃準備か、その前の会話・カットシーン）。
 		"choose": func(talk: Node) -> void:
 			next_chosen[0] = true
@@ -476,13 +481,14 @@ static func _speaker_of(episode: RefCounted, row: RefCounted) -> String:
 
 ## 対戦の前の会話の場面 talk（話 episode の会話の場面 scene。選択肢・条件の無い、3 文以上の会話）: 文の数、最初の文、話し手の姿、送りと戻り。
 func _check_talk_before(talk: Node, episode: RefCounted, scene: RefCounted) -> void:
-	_expect(talk.line_count() == scene.lines.size() and talk.line_index() == 0, "前の会話の文の数が違う")
-	_expect(talk.speaker() == _speaker_of(episode, scene.lines[0]) and talk.line_text() == scene.lines[0].shown_text(), "最初の文が出ていない")
+	var rows := _shown_rows(scene, talk.context.story)
+	_expect(talk.line_count() == rows.size() and talk.line_index() == 0, "前の会話の文の数が違う")
+	_expect(talk.speaker() == _speaker_of(episode, rows[0]) and talk.line_text() == rows[0].shown_text(), "最初の文が出ていない")
 	_expect(not talk.has_method(&"next_episode") or talk.next_episode() == null, "対戦の前の会話に「次の話へ」がある")
 	await get_tree().process_frame
 	# 立つ所は左右に 1 つずつ。両軍が出てくるか、同じ軍の話し手が 2 人以上いれば、両方に立つ。
 	var talkers := {}
-	for row: RefCounted in scene.lines:
+	for row: RefCounted in rows:
 		if not row.is_narration():  # 地の文は、話し手がいない
 			talkers[row.who] = true
 	_expect(talk.figures().size() == mini(talkers.size(), 2), "会話に出てくる話し手の姿が立っていない")
@@ -491,7 +497,7 @@ func _check_talk_before(talk: Node, episode: RefCounted, scene: RefCounted) -> v
 		var rect: Rect2 = figure.get_global_rect()
 		_expect(rect.has_area() and screen_rect.encloses(rect), "話し手の姿が画面からはみ出す: %s" % rect)
 		_expect(not rect.intersects(talk.bottom_rect()), "話し手の姿が、名前の札・文の枠・「飛ばす」に重なる: %s と %s" % [rect, talk.bottom_rect()])
-		_expect(figure.is_speaking() == (figure.who == scene.lines[0].who), "話している人の姿だけが明るく大きくなっていない")
+		_expect(figure.is_speaking() == (figure.who == rows[0].who), "話している人の姿だけが明るく大きくなっていない")
 	talk.press_next()
 	_expect(talk.line_index() == 1, "クリックで、次の文へ進まない")
 	talk.press_back()
@@ -502,6 +508,7 @@ func _check_talk_before(talk: Node, episode: RefCounted, scene: RefCounted) -> v
 ## 会話のログ: ホイールを上へ回すと開き、これまでの文（いまの文まで）を話し手と文で並べる。開いている間、会話は送らない。
 ## 右クリックで閉じる（会話の文は戻らない）。L で開いて、Esc で閉じる。
 func _check_talk_log(talk: Node, episode: RefCounted, scene: RefCounted) -> void:
+	var rows := _shown_rows(scene, talk.context.story)
 	talk.press_next()
 	talk.press_next()
 	var at: int = talk.line_index()
@@ -514,7 +521,7 @@ func _check_talk_log(talk: Node, episode: RefCounted, scene: RefCounted) -> void
 	_expect(log.is_open(), "会話の画面でホイールを上へ回しても、会話のログが開かない")
 	var expected := []
 	for i in at + 1:
-		expected.append([_speaker_of(episode, scene.lines[i]), scene.lines[i].shown_text()])
+		expected.append([_speaker_of(episode, rows[i]), rows[i].shown_text()])
 	_expect(log.row_texts() == expected, "会話のログに、これまでの文が並んでいない: %s" % [log.row_texts()])
 	var enter := InputEventKey.new()
 	enter.physical_keycode = KEY_ENTER
