@@ -135,7 +135,7 @@ func menu_items() -> Array:
 
 ## 抜けると失われるもの（決着していない対戦）があるか。あれば、タイトルへ戻る・ゲームを終える前に確かめる。
 func in_progress() -> bool:
-	return battle != null and not battle.is_over()
+	return battle != null and not battle.is_over() and not _replaying  # リプレイは、終えた対戦を見ているだけ
 
 
 func on_menu_item(id: StringName) -> void:

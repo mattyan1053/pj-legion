@@ -1,4 +1,4 @@
-extends "res://game/battle_screen/screen_overlays.gd"
+extends "res://game/battle_screen/screen_replay.gd"
 ## 対戦の場面（俯瞰 3D の盤面と、操作・演出）。ルール（rules/）につないで、1 人で CPU と、または 2 人が 1 台で交代しながら対戦する。
 ## 場面の決まり（context、finished、システムメニューの項目）は scene_flow.gd。
 ## 対戦は、渡された「対戦設定を作ってくれるもの」（battle_source.gd。流れ（run.gd）が渡す。無ければ context.match_choice）から作る。
@@ -11,7 +11,8 @@ extends "res://game/battle_screen/screen_overlays.gd"
 ##
 ## ここは、組み立て（_ready）と、毎フレームのこと（_process）だけ。役割ごとのファイル（game/battle_screen/screen_*.gd）:
 ## 選べる決まりの見え方（screen_rules_view）、表示の作り直し（screen_refresh）、途中の会話（screen_talk）、
-## 誰が動かすかと行動の再生（screen_sides）、対戦の始まり（screen_start）、操作（screen_input）、重なる画面（screen_overlays）。
+## 誰が動かすかと行動の再生（screen_sides）、対戦の始まり（screen_start）、操作（screen_input）、重なる画面（screen_overlays）、
+## 終えた対戦のリプレイ（screen_replay）。
 ## 読み込み・調整値・状態の変数と小さな道具は screen_base。ファイルは screen_base.gd からこの順に継いで積み重なり、
 ## このファイルが最後（前のファイルは、後のファイルの関数を呼べない。呼ばれる側を前に置く）。
 
@@ -66,6 +67,11 @@ func _ready() -> void:
 	_hud.title_pressed.connect(func() -> void: finished.emit(source.leave()[0]))  # 決着の画面の、流れの外への行き先
 	_hud.result_screen().continue_pressed.connect(func() -> void: finished.emit(Run.NEXT))
 	_hud.result_screen().squad_pressed.connect(func() -> void: finished.emit(Run.PREVIOUS))
+	_hud.result_screen().replay_pressed.connect(start_replay)
+	_hud.replay_bar().turn_pressed.connect(replay_turn)
+	_hud.replay_bar().pause_pressed.connect(toggle_replay_pause)
+	_hud.replay_bar().speed_chosen.connect(set_replay_speed)
+	_hud.replay_bar().leave_pressed.connect(stop_replay)
 	_hud.result_shown.connect(_on_result_shown)
 	_hud.minimap().pointed.connect(_on_minimap_pointed)
 	_hud.result_screen().overlays = context.overlays

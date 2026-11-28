@@ -94,6 +94,8 @@ var _after_skill := false
 ## 見せずに済ませる途中か（相手の番のスキップ）。真の間に再生するものは、見せずに数えてログに食わせるだけ（_settle）。
 ## 決着（GameWonEvent・GameDrawnEvent）だけは、盤の見た目を作り直してから、ふつうに見せる。場面が立て、場面が下ろす。
 var skipping := false
+## 決着（GameWonEvent・GameDrawnEvent）で、リザルトの画面を出すか。リプレイは出さない（終わりは、リプレイの側がリザルトへ戻す）。
+var announce_result := true
 ## 見せずに済ませたものがあって、盤の見た目をまだ作り直していないか。
 var _unsynced := false
 ## カットシーン（docs/battle-view.md の「盤のカットシーン」）の、歩く 1 マスの秒数（台本の CutPaceEvent。0 ならいつもの速さ）。

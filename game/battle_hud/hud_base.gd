@@ -7,6 +7,7 @@ extends CanvasLayer
 const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const ReplayBar := preload("res://game/replay_bar.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Names := preload("res://game/names.gd")
 const TraitText := preload("res://game/trait_text.gd")
@@ -80,6 +81,8 @@ const TOP_BAR_HEIGHT := 50.0
 ## 下の帯の高さは、中身で伸び縮みしない（docs/ui-theme.md の「枠の大きさ」）。左の欄に、案内（句と印の小さな並び。1 行）と、
 ## マスの説明（CELL_LINES 行まで）が入る。
 const BOTTOM_BAR_HEIGHT := 92.0
+## リプレイの帯（replay_bar.gd）と下の帯の間（px）。
+const REPLAY_BAR_GAP := 8.0
 ## 下の帯の上下の余白（px）。ほかの帯より詰める。
 const BOTTOM_BAR_MARGIN := 6.0
 ## 下の帯の案内の欄の高さと、マスの説明の欄の高さ・行の数。出すものが無くても、この高さのまま。
@@ -246,6 +249,7 @@ var _opponent_button: Button
 var _threat_button: CheckButton
 ## 相手の番（見ているだけの番）に、必殺技のボタンの代わりに出す「早送り」「スキップ」（set_watch_controls）。
 var _watch_box: HBoxContainer
+var _replay_bar: ReplayBar
 var _fast_button: Button
 var _skip_button: Button
 ## 自分の番の残りを CPU に任せるボタン（ターン終了の左。set_auto_button）。

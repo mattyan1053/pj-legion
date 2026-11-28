@@ -42,6 +42,7 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const SoundCatalog := preload("res://game/sound_catalog.gd")
+const BattleRecord := preload("res://game/battle_record.gd")
 
 
 ## 場面が終わった（scene_flow.gd の行き先の名前: 決着の画面の「対戦設定へ」は &"setup"、「タイトルへ」は &"title"。
@@ -203,6 +204,17 @@ var _playback: BattlePlayback
 var _painted := {}  # 塗っているマス -> Color（道の表示を重ねる前のもの）
 
 
+## いまの対戦の記録（battle_record.gd。リプレイの元）。渡されたものが許すときだけ取る（source.can_replay。対戦モード）。取らなければ null。
+var _record: RefCounted
+## リプレイを見せている途中か（screen_replay.gd）。この間は、対戦（battle）が、記録を当て直している対戦になる。
+## 行動は受け付けない（is_busy）。CPU は動かさない。見ている陣営は、いまの番の陣営（_viewer_side）。
+var _replaying := false
+## リプレイの続き（screen_replay.gd の _replay_loop）の番号。リプレイをやめたり飛んだりしたら上げて、古い続きを止める。
+var _replay_serial := 0
+## リプレイの速さ（1・2・4 倍。リプレイの帯で選ぶ）。
+var _replay_speed := 1
+
+
 ## 毎フレームの終わり（_process の終わり）。再生の途中で、次のフレームまで待つのに使う。
 signal frame_passed
 
@@ -228,9 +240,9 @@ func _look_of(unit: Unit) -> StringName:
 	return _people.get(unit.id, _king_look(unit.side))
 
 
-## 操作を受け付けない間か（イベントの再生の途中か、CPU の番を進めている途中か、重なる画面（対戦設定画面・システムメニュー・ログ）を開いている間）。
+## 操作を受け付けない間か（リプレイを見せている間、イベントの再生の途中か、CPU の番を進めている途中か、重なる画面（対戦設定画面・システムメニュー・ログ）を開いている間）。
 func is_busy() -> bool:
-	return _ui.busy or _ui.cpu_running or context.overlays.is_open() or _talk.is_holding()
+	return _replaying or _ui.busy or _ui.cpu_running or context.overlays.is_open() or _talk.is_holding()
 
 
 ## 「詳細」で開く駒（見ている駒が先、無ければ選んでいる駒）。
@@ -246,7 +258,7 @@ func minimap_rect() -> Rect2:
 
 ## 人が見ているだけの番か（相手が CPU で、CPU の番か、中立のフェーズ）。早送りとスキップが効くのは、この間だけ。
 func _watching_other() -> bool:
-	if battle == null or battle.is_over():
+	if battle == null or battle.is_over() or _replaying:
 		return false
 	return _watch_playback or (cpu_opponent and battle.phase != _human_side()) or _auto_running()
 
@@ -255,6 +267,8 @@ func _watching_other() -> bool:
 func _is_cpu_turn() -> bool:
 	if battle.is_over():
 		return false
+	if _replaying:
+		return true  # 見るだけ（メニュー・必殺技・ターン終了を出さない）
 	return (cpu_opponent and battle.phase == source.cpu_side()) or _auto_running()
 
 
@@ -308,6 +322,8 @@ func _view(unit_id: int) -> UnitView:
 ## 盤を見ている人のプレイヤー。CPU と対戦するときは、いつも人のプレイヤー（CPU の番の間も）。
 ## 人どうしでは、いまの番のプレイヤー（中立の番では、プレイヤー1）。必殺技のボタンと、敵の全員の脅威範囲が、このプレイヤーのもの。
 func _viewer_side() -> Unit.Side:
+	if _replaying:
+		return Unit.Side.PLAYER1 if battle.phase == Unit.Side.NEUTRAL else battle.phase  # リプレイは、どちらの側からも見る
 	if cpu_opponent:
 		return _human_side()
 	if battle.phase == Unit.Side.NEUTRAL:

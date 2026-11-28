@@ -21,6 +21,7 @@ extends "res://game/autoplay/story_checks.gd"
 const SCENES := {
 	"game": "人の操作で、対戦を最後まで進める（決着と戦績とログ）",
 	"result": "リザルトの画面（game の決着のあと）",
+	"replay": "リザルトの「もう一度見る」（game の 1 局のリプレイ。止める・速さ・ターンの頭へ飛ぶ・終わってリザルトへ戻る）",
 	"portal_and_spring": "ポータルに止まってメニューの「転移」、転移のあと続けて動く、取り消し、ふさがったポータル、回復の泉",
 	"capture": "敵の本陣の占拠と、拠点の確保（選べる決まり）",
 	"barrel_draw": "樽の爆発で両方の将が倒れて引き分け",
@@ -50,7 +51,7 @@ const SCENES := {
 ## まとめて選べる名前。tools/check.sh は、この 2 つを別のプロセスで並べて回す。
 ## events はイベントを再生する場面（全部を回すと、全種類のイベントを 1 回は再生したかを確かめる）。ui は操作の決まりを確かめる場面。
 const GROUPS := {
-	"events": ["game", "result", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "traits", "monster_falls", "extra_action",
+	"events": ["game", "result", "replay", "portal_and_spring", "capture", "barrel_draw", "field_effect", "skill", "status", "traits", "monster_falls", "extra_action",
 		"ult", "neutral", "mid_boss", "level_up", "evolution", "heal", "cpu_skip", "auto_turn"],
 	"ui": ["inspection", "setup", "system_menu", "minimap", "cpu", "title", "decks", "story"],
 }
@@ -76,7 +77,7 @@ static func _choose_scenes(args: PackedStringArray) -> Array[String]:
 				wanted.append(name)
 			else:
 				return []
-		if wanted.has("result") and not wanted.has("game"):
+		if (wanted.has("result") or wanted.has("replay")) and not wanted.has("game"):
 			wanted.append("game")  # リザルトは、対戦の決着のあと
 	var result: Array[String] = []
 	for name: String in SCENES:
@@ -183,8 +184,8 @@ func _queue_scenes() -> void:
 	for name in _selected:
 		if name == "game" or name == "title" or name == "decks" or name == "story":
 			continue
-		if name == "result" and not _scene.battle.is_over():
-			_failures.append("result: 対戦が決着しなかったので、リザルトを確かめられなかった")
+		if (name == "result" or name == "replay") and not _scene.battle.is_over():
+			_failures.append("%s: 対戦が決着しなかったので、リザルトを確かめられなかった" % name)
 			continue
 		_current = name
 		call("_queue_%s_scene" % name)
