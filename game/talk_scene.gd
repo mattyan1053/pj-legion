@@ -129,8 +129,8 @@ var lines: Array[Line] = []
 ## 背景の盤（話のマップか、別の場所のマップ）と、その見た目。盤のカットシーンでは、台本の盤の見た目。
 var board: Board
 var look := &""
-## 曲（空なら場面の表の曲）。
-var music := &""
+## 曲（空なら場面の表の曲。アプリが music() で聞く。scene_flow.gd の music_for）。
+var track := &""
 ## 話し手の姿（Line の who の番号の並び。episode.gd の figures）。
 var figures: Array[Dictionary] = []
 ## 話の主人公の、既定の名前（主人公のいない話は空。名前が決まったら、行の文と札を入れ直す）。
@@ -158,6 +158,11 @@ static func make(scene_shape: Shape, heading := "") -> TalkScene:
 	scene.shape = scene_shape
 	scene.title = heading
 	return scene
+
+
+## この場面で鳴らす曲（空なら場面の表の曲。流れが渡すもの共通の聞き方。scene_flow.gd の music_for）。
+func music() -> StringName:
+	return track
 
 
 ## 見出しと話し手の姿を出す型か（カットシーンと盤のカットシーンは出さない）。

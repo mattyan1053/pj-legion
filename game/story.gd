@@ -809,7 +809,7 @@ static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"
 		talk.lines.append(line)
 	talk.board = episode.map.make_board()
 	talk.look = episode.look
-	talk.music = track
+	talk.track = track
 	talk.figures = episode.figures
 	talk.hero = episode.hero
 	return talk

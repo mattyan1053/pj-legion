@@ -514,7 +514,7 @@ attack レオ 骸骨 20
 - **クリアの記録**: 対戦のある話は、対戦に勝ったとき（`StoryBattle.record_win`。決着の画面が出た時点）。対戦の無い話（`Episode.has_battle()` が偽）は、
   最後の会話を読み終えたとき（流れが会話の `clears` に話の id を入れ、`talk_screen/talk_choice.gd` の `_end` が書く）。
 - 話の台詞の全部は `Episode.all_lines()`（場面の順に会話の行と途中の台詞、最後に負けたときの台詞）。
-- **会話の場面に渡すもの**は `game/talk_scene.gd`（`TalkScene`。名前の付いた欄の値）。場面の型 `shape`（`MAP` 盤の前の会話・`PLACE` 別の場所の会話・
+- **会話の場面に渡すもの**は `game/talk_scene.gd`（`TalkScene`。名前の付いた欄の値。曲は `track`、アプリは対戦と同じく `music()` で聞く）。場面の型 `shape`（`MAP` 盤の前の会話・`PLACE` 別の場所の会話・
   `CUT` カットシーン・`BOARD_CUT` 盤のカットシーン）を 1 つの値で持ち、型ごとに背景と読む欄が決まる（ファイルの頭の表）。行は `TalkScene.Line`（選択肢 `choice`、出す条件 `when`、
   名前の入れ直しの `raw`・`hero_line`、名前を聞く `naming`、知らせのアイコン `unit_kind`・`item`・`troop_trait`）。
   型は話のファイルの節で決まる（`StoryScene.talk_shape()`）。流れ（`Story.run_of`）が型ごとの欄を足し、最後の会話に `closes`・`next_episode`・`clears` を入れる。

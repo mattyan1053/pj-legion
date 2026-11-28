@@ -73,7 +73,7 @@ func test_the_run_follows_the_list_of_scenes() -> void:
 	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
 	assert_eq(run.scene(), &"talk", "出撃準備も対戦も無い話は、会話から始まる")
 	assert_eq(run.data().lines.size(), episode.before.size())
-	assert_eq(run.data().music, &"talk")
+	assert_eq(run.data().music(), &"talk")
 	assert_true(run.data().battle == null, "対戦の無い話の会話は、背景に兵を立たせない")
 	assert_true(not run.data().closes and run.data().clears == &"", "「次の話へ」と、読み終えたときのクリアは、最後の会話だけ")
 	assert_eq(run.advance(), &"talk")
@@ -159,9 +159,10 @@ func test_an_episode_may_end_with_a_cutscene() -> void:
 		var cut: TalkScene = scenes[scenes.size() - 2]
 		var closing: TalkScene = scenes.back()
 		assert_true(cut.shape == key and not cut.closes and cut.lines.size() == 1, "%s: カットシーンに知らせを混ぜない" % key)
-		assert_true(closing.shape == TalkScene.Shape.MAP and closing.closes and closing.after and closing.music == &"talk_sad",
+		assert_true(closing.shape == TalkScene.Shape.MAP and closing.closes and closing.after and closing.music() == &"talk_sad",
 			"%s: 知らせの場面は、ふつうの会話の場面（決着したときの盤、カットシーンの曲のまま）" % key)
 		assert_eq(closing.lines.map(func(line: TalkScene.Line) -> String: return line.text), ["知らせ"])
+		assert_eq(SceneFlow.music_for(SceneFlow.TALK, closing), &"talk_sad", "%s: アプリが聞く曲（music()）が、場面の曲でない" % key)
 		# 盤のカットシーンで終わる話をスキップして、行き先の選択を右クリックでやめても、「次へ」「スキップ」でまた選べる（止まらない）。
 		if key == TalkScene.Shape.BOARD_CUT:
 			var context := preload("res://game/app_context.gd").new()
