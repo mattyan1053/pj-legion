@@ -18,8 +18,6 @@
 title = 亡者の太鼓
 map = crystal_gorge
 music = battle_undead
-before_music = battle_undead
-after_music = talk_sad
 victory_mood = quiet
 wins = routed
 
@@ -30,19 +28,27 @@ wins = routed
 セリス = ally, spellblade seris
 亡者の鼓手 = enemy, skeleton_drummer
 
-[before]
+[sortie]
+
+[talk 太鼓の隊列]
+music = battle_undead
 亡者の鼓手: 進め……進め……。尾根へ……旗のもとへ……。
 セリス: 太鼓だ。岩山の向こうから、亡者が隊列で来る。率いてる者はいないね。
 ティオ: 足音がそろってる……。太鼓に合わせて歩いてるんだ。
 ウル: 太鼓が鳴るたび、亡者の足が速うなる。鳴らす者を先に、のう。
 ティオ: ……騎士長。ぼく、今度は兵隊さんとして送ります。
-イェルダ: それでよい、ティオ。峠への道だ。1 体残らず、送ってやれ。
+(if fantasy_old_soldiers = duty) イェルダ: それでよい、ティオ。務めの終わりを、告げてやれ。
+(if fantasy_old_soldiers = ours) イェルダ: それでよい、ティオ。今日は、われらが交代だ。
+イェルダ: 峠への道だ。1 体残らず、送ってやれ。
+
+[battle]
 
 [cues]
 (turn 2) セリス: 太鼓持ちは後ろだね。斬ってこようか。
 (fallen enemy) ティオ: ……倒したんじゃない。送ったんだ。次も、ちゃんと。
 
-[after]
+[talk 太鼓のあと]
+music = talk_sad
 亡者の鼓手: ……止まれ、か……。ようやく……。
 ティオ: 太鼓、止んだね。
 セリス: 誰の号令でもなかった。亡者が、自分であの日を続けてる。
