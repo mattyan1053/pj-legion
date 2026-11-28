@@ -41,6 +41,17 @@ func option_texts() -> Array[String]:
 	return texts
 
 
+## 出している答えのうち、ボタンの幅に収まらず切れている文（検査用）。
+func cut_option_texts() -> Array[String]:
+	var cut: Array[String] = []
+	for button in _option_buttons:
+		var font := button.get_theme_font(&"font")
+		var room := button.size.x - button.get_theme_stylebox(&"normal").get_minimum_size().x
+		if button.visible and font.get_string_size(button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, OPTION_FONT).x > room + 0.5:
+			cut.append(button.text)
+	return cut
+
+
 ## 選択肢の枠が画面に占める四角（検査用）。
 func options_rect() -> Rect2:
 	return _options.get_global_rect()

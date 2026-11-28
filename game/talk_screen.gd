@@ -624,5 +624,11 @@ func _show_line(index: int) -> void:
 	_ask_name_if_due()
 
 
+## いまの文が、文の枠からはみ出しているか（検査用）。文の欄より文が大きいか、文に押されて枠が決まった大きさ（BOX_WIDTH × BOX_HEIGHT）を超えたか。
+func is_text_cut() -> bool:
+	var need := _text.get_theme_font(&"font").get_multiline_string_size(_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text.get_theme_font_size(&"font_size"))
+	return need.x > _text.size.x + 0.5 or need.y > _text.size.y + 0.5 or _box.size.x > BOX_WIDTH + 0.5 or _box.size.y > BOX_HEIGHT + 0.5
+
+
 func _line_length() -> float:
 	return float(_text.get_total_character_count())
