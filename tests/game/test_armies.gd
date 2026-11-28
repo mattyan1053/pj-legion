@@ -6,14 +6,28 @@ const ArmyLook := preload("res://game/army_look.gd")
 const Names := preload("res://game/names.gd")
 const Text := preload("res://game/text.gd")
 
-## 軍の名前（Army.MILITARY / Army.FANTASY）を直に書いてよいファイル。
-## 表そのもの、兵と必殺技（軍を名乗る側）、自動の対戦（いまの 2 軍の中身を確かめる）。
+## 軍を直に指してよいファイル。
+## 表そのもの、兵と必殺技（軍を名乗る側）、自動の対戦とスクリーンショットの道具（いまの 2 軍の中身を確かめる・撮る）。
 const LITERAL_OK: Array[String] = [
 	"res://rules/unit_kind.gd",
 	"res://rules/armies.gd",
 	"res://rules/ults/",
 	"res://game/army_look.gd",
 	"res://game/autoplay/",
+	"res://tools/shots/",
+]
+
+## 軍を直に指す書き方（コメントを除いた行で探す）。
+## 名前（Army.MILITARY）、名前の文字（"FANTASY"）、番号との比べ（army == 2）、表の並びの 2 つ目より後を添え字で（Armies.all()[1]、campaigns()[1]）、
+## 軍の数が 2 だという比べ（armies.size() == 2）。
+## 拾わない形（見張りの外）: match の枝に番号を書く、番号を変数に入れてから比べる、話の鍵（&"fantasy"）で物語を引く。
+const ARMY_PATTERNS: Array[String] = [
+	"\\bArmy\\.(?:MILITARY|FANTASY)\\b",
+	"[\"'](?:MILITARY|FANTASY)[\"']",
+	"(?i)\\w*arm(?:y|ies)\\w*(?:\\[[^\\]]*\\]|\\.(?!size\\b)\\w+|\\(\\))*\\s*[!=]=\\s*[1-9]\\b",
+	"(?i)\\b[1-9]\\s*[!=]=\\s*[\\w.]*arm(?:y|ies)",
+	"(?:Armies\\.all\\(\\)|Army\\.values\\(\\)|Army\\.keys\\(\\)|campaigns\\(\\))\\[\\s*[1-9]\\d*\\s*\\]",
+	"(?i)arm(?:y|ies)\\w*(?:\\.\\w+\\(\\))*\\.size\\(\\)\\s*[!=<>]=?\\s*2\\b",
 ]
 
 
@@ -66,17 +80,20 @@ func test_every_army_has_its_look_and_words() -> void:
 			assert_true(Text.has(key % name), "画面の文の表に %s が無い" % (key % name))
 
 
-## 軍の名前を直に書いた二択（「FANTASY なら、さもなくば」）が、表の外に戻っていないこと。
+## 軍を直に指す二択（「FANTASY なら、さもなくば」。名前でも番号でも並びの添え字でも）が、表の外に戻っていないこと。
 func test_no_army_is_named_outside_the_tables() -> void:
 	var found: Array[String] = []
-	for root: String in ["res://rules/", "res://game/"]:
-		_scan(root, found)
-	assert_eq(found, [] as Array[String], "軍の名前を表の外で書いている（軍の表 rules/armies.gd・game/army_look.gd から読む）")
+	var patterns: Array[RegEx] = []
+	for pattern in ARMY_PATTERNS:
+		patterns.append(RegEx.create_from_string(pattern))
+	for root: String in ["res://rules/", "res://game/", "res://tools/"]:
+		_scan(root, patterns, found)
+	assert_eq(found, [] as Array[String], "軍を表の外で直に指している（軍の表 rules/armies.gd・game/army_look.gd から読む）")
 
 
-func _scan(dir: String, found: Array[String]) -> void:
+func _scan(dir: String, patterns: Array[RegEx], found: Array[String]) -> void:
 	for sub in DirAccess.get_directories_at(dir):
-		_scan(dir + sub + "/", found)
+		_scan(dir + sub + "/", patterns, found)
 	for file in DirAccess.get_files_at(dir):
 		var path := dir + file
 		if not file.ends_with(".gd") or LITERAL_OK.any(func(ok: String) -> bool: return path.begins_with(ok)):
@@ -84,5 +101,5 @@ func _scan(dir: String, found: Array[String]) -> void:
 		var lines := FileAccess.get_file_as_string(path).split("\n")
 		for i in lines.size():
 			var code := lines[i].split("#")[0]
-			if code.contains("Army.MILITARY") or code.contains("Army.FANTASY"):
-				found.append("%s:%d" % [path, i + 1])
+			if patterns.any(func(pattern: RegEx) -> bool: return pattern.search(code) != null):
+				found.append("%s:%d: %s" % [path, i + 1, code.strip_edges()])
