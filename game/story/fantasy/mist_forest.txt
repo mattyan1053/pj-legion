@@ -59,8 +59,9 @@ army = military
 trait = ranks
 unit = shield_trooper
 unit = shield_trooper
-unit = sniper
-unit = sniper
+unit = sniper, level 2
+unit = sniper, level 2
+# 狙撃は 2 体ともレベル 2 から始まる。CPU の危険の読みが変わって（#527）、人の側が勝ちすぎた（部隊を変えて 192 局で 92 → 80%）。
 unit = medic
 
 [unlock]
