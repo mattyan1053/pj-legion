@@ -248,6 +248,11 @@ func uses_hero_mark() -> bool:
 	return all_lines().any(func(line: TalkLine) -> bool: return line.text.contains(HeroName.MARK))
 
 
+## 主人公の名前を聞く行（「(name)」）があるか（主人公のいない物語の話には書けない）。
+func asks_hero_name() -> bool:
+	return all_lines().any(func(line: TalkLine) -> bool: return line.asks_name)
+
+
 ## 前の会話の曲（無ければ、対戦の曲。会話の間は小さく鳴らし、そのまま対戦へつながる。docs/sound.md）。
 func before_talk_music() -> StringName:
 	return before_music if before_music != &"" else battle_music()
