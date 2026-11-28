@@ -15,15 +15,15 @@
 | 決まり（`DeckRules.id`） | 使うところ | 中身 |
 | --- | --- | --- |
 | `versus`（`DeckRules.versus()`） | 対戦。全員が同じ決まりで組む | 軍ごとのロスター 4 種と予算（`docs/player-loadout.md` の表）、6 体まで、対戦モードに出る装備（`DeckRules.VERSUS_ITEMS`。`docs/player-loadout.md` の「装備」）を持たせられる |
-| 物語ごと（`story` など。`game/story.gd` の `deck_rules()`） | ストーリーの物語。人だけが使う | 物語の軍のロスターは、その物語でいま雇える駒（進み具合で増える。`docs/story.md` の「駒の解放」）。予算と数の上限は対戦と同じ |
+| 物語ごと（`story` など。`game/story_parts/story_unlocks.gd` の `deck_rules()`） | ストーリーの物語。人だけが使う | 物語の軍のロスターは、その物語でいま雇える駒（進み具合で増える。`docs/story.md` の「駒の解放」）。予算と数の上限は対戦と同じ |
 
 - 持たせられる装備（`DeckRules.items()`、`allows_item`）は、決まりを作るときに渡す。渡さなければ、どの装備も持たせられる。
 - 編成の画面に並べる装備（`DeckRules.shown_items()`）も、決まりを作るときに渡せる。持たせられる装備はいつも並び、渡した装備のうち持たせられないものは「未解放」で並ぶ。
-  対戦の決まりは、持たせられる装備だけを並べる。ストーリーの決まりは、その物語でいずれ持たせられる装備を全部並べる（`story.gd` の `offered_items`）。
+  対戦の決まりは、持たせられる装備だけを並べる。ストーリーの決まりは、その物語でいずれ持たせられる装備を全部並べる（`story_unlocks.gd` の `offered_items`）。
 - 決まりを渡さずに組んだ編成（`Deck.new(軍)`、`CpuDeck.build(軍)`）は、対戦の決まりで組む。
 - 取っておく部隊は、どの決まりで組んだか（`id`）を持つ。読み込むときに `DeckRules.by_id` で引き直す（知らない名前なら `null`）。
 - 決まりは組んだら変えない。
-- ストーリーの決まりは進み具合で変わるので、`rules/` ではなく画面の側（`game/story.gd`）が作る。`DeckRules.by_id` は知らない（取っておいた部隊の読み方は `docs/deck-screen.md`）。
+- ストーリーの決まりは進み具合で変わるので、`rules/` ではなく画面の側（`game/story_parts/story_unlocks.gd`）が作る。`DeckRules.by_id` は知らない（取っておいた部隊の読み方は `docs/deck-screen.md`）。
   対戦用とストーリー用の部隊は、決まりの名前で分ける。
 
 ## 対戦に出せる編成
