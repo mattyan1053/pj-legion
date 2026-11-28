@@ -282,6 +282,10 @@ func _ready() -> void:
 			if not _scape_known(name):
 				_quit("screenshots: 知らない景色の場面: %s（%s）" % [name, SCAPE_USAGE], 1)
 				return
+		elif name.begins_with(TALK_SHOT):
+			if not _talk_shot_known(name):
+				_quit("screenshots: 知らない会話の場面: %s（%s）" % [name, TALK_SHOT_USAGE], 1)
+				return
 		elif not SCENES.has(name):
 			_quit("screenshots: 知らない場面: %s（場面: %s）" % [name, ", ".join(SCENES.keys())], 1)
 			return
@@ -297,7 +301,12 @@ func _run() -> void:
 		var ok := false
 		for i in MORE_SEEDS + 1:
 			await _reset(SEED + i)
-			ok = _scape(name) if name.begins_with(SCAPE) else await call("_scene_" + name)
+			if name.begins_with(SCAPE):
+				ok = _scape(name)
+			elif name.begins_with(TALK_SHOT):
+				ok = await _talk_shot(name)
+			else:
+				ok = await call("_scene_" + name)
 			if ok:
 				if i > 0:
 					print("screenshots: 場面 %s は種 %d で作れた" % [name, _seed])
