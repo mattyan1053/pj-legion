@@ -21,8 +21,8 @@
    行動は兵を番号で指すので、写しにもそのまま当てられる。
 2. **ルール** `screen_sides.gd` の `_do_all` が `battle.apply(action)` を呼ぶ。遊ぶときの道で対戦の状態を変えるのはここだけ。
    `Battle.apply`（`rules/battle.gd`）: `can_apply` → `action.execute` → 勝ち負けの判定 → `ActionResult`（受け付けたか、出来事の列）。
-3. **出来事** `rules/events/`: 起きた時点の値を持つ。ダメージは原因が何でも `rules/hit.gd` を通り、段の順は `rules/combat.gd` の `hit`（`docs/combat.md`）。
-   回復は原因が何でも `rules/mend.gd` を通る（`docs/battle.md` の「回復を 1 つ足すとき」）。
+3. **出来事** `rules/events/`: 起きた時点の値を持つ。ダメージは原因が何でも `rules/hit.gd` を通り、段の順は `rules/combat.gd` の `hit_from`（`docs/combat.md`）。
+   回復は原因が何でも `rules/mend.gd` を通る（`docs/battle.md` の「回復を 1 つ足すとき」）。駒の HP を書き換えるのは、この 2 つと駒を作る所・最大 HP に合わせる所だけ（`tests/rules/test_mend.gd` が見張る）。
 4. **読む側**（`_do_all` が順に渡す）:
    - 戦績 `rules/battle_stats.gd`（`docs/battle-stats.md`）
    - 再生 `game/battle_playback.gd` の `play_all` → `battle_playback/playback_base.gd` の `event_players()`（種類 → 再生の関数）。再生と同時にログ `game/battle_log.gd` の `readers()` へ（`docs/battle-log.md`）。
@@ -48,6 +48,9 @@
 3. **出撃準備** `game/sortie_screen.gd`: 部隊を選ぶ（部隊編成への寄り道あり）。戦いの定義は `game/story_battle.gd`（`docs/scenario.md`）。
 4. **会話** `game/talk_screen.gd`（前と後で同じ画面）。流れが渡すのは `game/talk_scene.gd`（`TalkScene`。名前の付いた欄と、場面の型 `shape`。
    型は話のファイルの節で決まる `StoryScene.talk_shape()`。型を読む所は `tests/game/test_talk_shapes.gd` が見張る）。
+   画面の部品は `game/talk_screen/` に、継ぐ順で並ぶ（順は `talk_base.gd` の頭）: 話し手の姿 `talk_figures.gd`、終わり方と行き先 `talk_choice.gd`、
+   選択肢 `talk_ask.gd`、主人公の名前を聞く行 `talk_naming.gd`、盤のカットシーン `talk_board.gd`。選んだ答えと名前は記録（`game/story_parts/story_record.gd`）に覚える。
+   足し方は、下の「何かを足すとき」の「話の場面の型」「会話の行の種類」「盤のカットシーンの台本の行」。
 5. **対戦** 上の「対戦の 1 手」と同じ。勝つと `StoryBattle.record_win` → `Story.clear` が記録する（対戦の無い話は、最後の会話を読み終えたとき）。
 6. **記録** `game/story_parts/story_record.gd`（`Story` が継ぐ）の記録は、流れの場面を抜けたときにまとめてスロットへ書く（`docs/save-slots.md`）。あとの会話から次の話へ進める。
 
@@ -65,7 +68,8 @@
 | 持ち物 | `docs/player-loadout.md` の「持ち物を足すとき」 |
 | スキル | `docs/active-skills.md` の「スキルを足すとき」 |
 | 必殺技 | `docs/tactical-ult.md` の「必殺技を足すとき」 |
-| 出来事 | 読む側の見張りと一緒に、手順が入る（`docs/code-health.md` の「直す順のおすすめ」の 2）。それまでは、上の「対戦の 1 手」の 4 と 5 の読む側を全部見る（再生 `docs/battle-view.md` の「ルールとのつなぎ方」、ログ `docs/battle-log.md`） |
+| 出来事 | `docs/battle.md` の「出来事を 1 つ足すとき」（読む所 8 つの足し忘れは見張りが拾う） |
+| 回復の原因 | `docs/battle.md` の「回復を 1 つ足すとき」（戦績で数えるかは `tests/rules/test_battle_stats.gd` の `HEAL_COUNTED`） |
 | 話・物語 | `docs/story.md` の「話を 1 つ足す」「物語を 1 つ足す」 |
 | 話の場面の型（カットシーンのようなもの） | `docs/story.md` の「場面の型を 1 つ足すとき」 |
 | 盤のカットシーンの台本の行 | `docs/story.md` の「台本の行を 1 つ足すとき」 |
