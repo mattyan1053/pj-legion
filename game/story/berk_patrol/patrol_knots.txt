@@ -70,8 +70,9 @@ unit = skeleton_banner
 unit = skeleton
 unit = skeleton
 unit = skeleton
-unit = skeleton_archer
-unit = skeleton_archer
+unit = skeleton_archer, level 2
+unit = skeleton_archer, level 2
+# 骸骨射手は 2 体ともレベル 2 から始まる。CPU の危険の読みが変わって（#527）、人の側が勝ちすぎた（部隊を変えて 192 局で 95 → 92%。まだめやすの上）。
 
 [unlock]
 budget = 2

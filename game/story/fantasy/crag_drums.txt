@@ -57,13 +57,14 @@ wins = routed
 [enemy]
 army = none
 king = none
-unit = skeleton_brute
+unit = skeleton_brute, level 2
+# 骸骨重兵は 2 体ともレベル 2 から始まる。CPU の危険の読みが変わって（#527）、人の側が勝ちすぎた（部隊を変えて 192 局で 94 → 85%）。
 unit = skeleton
 unit = skeleton
 unit = skeleton
 unit = skeleton
 unit = skeleton
-unit = skeleton_brute
+unit = skeleton_brute, level 2
 unit = skeleton_archer
 unit = skeleton_archer
 unit = skeleton_drummer
