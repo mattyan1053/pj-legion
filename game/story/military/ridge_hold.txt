@@ -16,8 +16,6 @@
 title = 尾根の籠城
 map = ridge_path
 music = battle_tense
-before_music = battle_tense
-after_music = talk_bright
 hold_turns = 10
 
 [cast]
@@ -29,30 +27,67 @@ hold_turns = 10
 ヴァルト = ally, sniper evolved valt
 セリス = enemy, spellblade seris
 
-[before]
+# 場面の節（docs/story.md）: 出撃準備 → 盤の前の会話 → 対戦 → 盤のカットシーン（本隊が尾根に上がる）→ あとの会話。
+[sortie]
+
+[talk 囲まれた尾根]
+music = battle_tense
 セリス: やあ、鉄の人たち。影刃のセリスだよ。うちの騎士長を 2 度も退かせたって？ 顔を見に来た。
 ピップ: か、囲まれてるっす！ 騎士が 7 人はいるっすよ！
 ノエ: 多すぎます……。撃ち切れません。
 ハーデン: ヴァルト少佐の本隊へ伝令は出した。着くまで、ここで持たせる。
 ドーソン: よし、聞いたな。勝たなくていい。少尉と旗を守って、立ってろ。
-マルタ: 倒れなきゃいいのね。それなら得意よ。
+(if military_marta_ask = all) マルタ: 全員連れて帰るんでしょ、少尉さん。倒れなきゃいいのね。それなら得意よ。
+(if military_marta_ask != all) マルタ: 倒れなきゃいいのね。それなら得意よ。
 セリス: 尾根ごと、押しつぶしてあげる。
+
+[battle]
 
 [cues]
 (turn 8) ノエ: 尾根の下に、土煙が見えます。……本隊です、きっと！
 (turn 10) セリス: これで最後。全員で押し込みな！
 (fallen ally) ドーソン: 穴は俺が埋める。ノエ、下を向くな。撃ち続けろ。
 
-[after]
+# 盤のカットシーン（docs/story.md の「盤のカットシーン」）: 少佐の本隊が、尾根の下から上がってくる。影刃の隊は退く。
+# 盤は対戦の終わりの配置とはつながらない（見せるための別の盤）。
+[board 本隊が着く]
+music = talk_bright
+unit ハーデン ally king 8,17
+unit ドーソン ally shield_trooper 7,16
+unit ノエ ally sniper 9,18
+unit セリス enemy spellblade 8,12
+unit 騎士 enemy paladin 6,12
+unit 術師 enemy sorcerer 10,12
+camera 8,15
 ノエ: ……旗です。連邦の旗が見えます！ 本隊です！
+camera 8,20
+put ヴァルト ally sniper 8,21
+put 本隊の盾 ally shield_trooper 6,21
+put 本隊の銃 ally sniper 10,21
+pace slow
+move 本隊の盾 6,19
+move 本隊の銃 10,20
+move ヴァルト 8,20
+camera 8,13
+face セリス ヴァルト
 セリス: ちぇっ、時間切れ。……仮縫いの尾根に、本隊を上げたの？ 正気かい、鉄の人。退くよ。
+pace fast
+leave 騎士 6,9
+leave 術師 10,9
+leave セリス 8,9
+camera 8,19
+face ハーデン ヴァルト
 ヴァルト: 遅くなったわね、{hero}少尉。尾根は本隊が預かるわ。この石壁は、今日から連邦の砦よ。
+
+[talk 石壁の砦]
+music = talk_calm
 マルタ: ……ドーソン。本隊が、尾根に上がってるわよ。あの日から 20 年、だれも上げなかったのに。
 ドーソン: 見えてる。……相変わらずだな、少佐どのは。
 ハーデン: 少佐。騎士は、岩山のほうへ退きました。
 ヴァルト: なら追いなさい。結晶は連邦の燃料よ。騎士には、ひとかけらも渡さないこと。
-ドーソン: ノエ。よく立ってた。もう、ひよっこじゃないな。
-ノエ: 曹長……！
+ハーデン: 了解しました、少佐。……ノエ、よく持たせた。
+ドーソン: ええ。よく立ってた、ノエ。もう、ひよっこじゃないな。
+ノエ: 少尉、曹長……！
 マルタ: 本隊の荷に遠眼鏡があったわ。ノエ、あなた向きね。
 
 [lost]
