@@ -13,7 +13,7 @@ extends "res://game/talk_screen/talk_board.gd"
 ##   「次の話へ」（その話の流れを始める。Enter でも）か「話の一覧へ」（Run.NEXT。流れの行き先）。右クリックで最後の文へ戻る。
 ##
 ## ここは、組み立て（_ready）、入力、文の送り。役割ごとのファイル（game/talk_screen/）を、次の順に継ぐ:
-## talk_base.gd（調整値・変数・小さな道具）→ talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）
+## talk_base.gd（調整値・変数・小さな道具）→ talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ talk_naming.gd（主人公の名前を聞く行）
 ## → talk_board.gd（盤のカットシーンの舞台と出来事の塊）→ ここ。
 ##
 ## 盤のカットシーン（"cut_board"。docs/story.md の「盤のカットシーン」）: 背景は舞台（台本の兵が動く盤）。話し手の姿と見出しは出さない。
@@ -315,6 +315,7 @@ func _process(delta: float) -> void:
 		_shown = minf(_shown + delta * CHARS_PER_SECOND, _line_length())
 		_text.visible_characters = int(_shown)
 	_ask_if_due()
+	_ask_name_if_due()
 	_hint.modulate.a = 1.0 if not is_line_shown() else 0.5 + 0.5 * (0.5 + 0.5 * cos(_elapsed * TAU / BLINK_PERIOD))
 
 
@@ -362,9 +363,13 @@ func press_next() -> void:
 		_shown = _line_length()
 		_text.visible_characters = -1
 		_ask_if_due()
+		_ask_name_if_due()
 		return
 	if not _choice_here().is_empty():
 		_ask_if_due()  # 選ばせる行は、答えを選ぶまで進まない
+		return
+	if _names_at(_index):
+		_ask_name_if_due()  # 名前を聞く行は、決めるまで進まない
 		return
 	if is_board_cut():
 		if _index + 1 < line_count():
@@ -388,7 +393,7 @@ func press_back() -> void:
 	_ask_if_due()
 
 
-## 「飛ばす」: 残りを読まずに会話を終える。この先に知らせの行か、選ばせる行があれば、そこへ飛ぶ（知らせは読ませ、答えは選ばせる）。
+## 「飛ばす」: 残りを読まずに会話を終える。この先に知らせの行か、選ばせる行、名前を聞く行があれば、そこへ飛ぶ（知らせは読ませ、答えは選ばせ、名前は聞く）。
 func press_skip() -> void:
 	if is_asking():
 		return
@@ -402,13 +407,14 @@ func press_skip() -> void:
 		return
 	for index in range(_index, line_count()):
 		var asks: bool = not (_lines[index] as Dictionary).get("choice", {}).is_empty()
-		if (index > _index and int(_lines[index].get("side", 0)) == NOTICE_SIDE) or asks:
+		if (index > _index and int(_lines[index].get("side", 0)) == NOTICE_SIDE) or asks or _names_at(index):
 			context.play_sound(&"ui_click")
 			if index != _index:
 				_show_line(index)
 			_shown = _line_length()
 			_text.visible_characters = -1
 			_ask_if_due()
+			_ask_name_if_due()
 			return
 	_end()
 
@@ -428,6 +434,14 @@ func press_option(at: int) -> void:
 		_show_line(_index + 1)
 	else:
 		_answered_last = true  # 最後の行で選んだ: もう選ばせない（行き先の選択の下に、答えの枠を出し直さない）
+		_end()
+
+
+## 名前を決めたあと: 次の行へ（名を問う行が最後なら、会話を終える）。
+func _after_naming() -> void:
+	if _index + 1 < _lines.size():
+		_show_line(_index + 1)
+	else:
 		_end()
 
 
@@ -591,6 +605,7 @@ func _show_line(index: int) -> void:
 		_shown = _line_length()  # 検査とスクリーンショットは、文を出しきって始める
 	_text.visible_characters = -1 if is_line_shown() else 0
 	_ask_if_due()
+	_ask_name_if_due()
 
 
 func _line_length() -> float:

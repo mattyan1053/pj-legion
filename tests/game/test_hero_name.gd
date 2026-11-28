@@ -70,7 +70,7 @@ func test_the_name_reaches_talk_lines_cues_and_lost_lines() -> void:
 		assert_eq(after[i]["text"], (before[i]["text"] as String).replace("ハーデン", "ノエル"))
 		assert_eq(after[i]["name"], (before[i]["name"] as String).replace("ハーデン", "ノエル"))
 		swapped += 1 if after[i] != before[i] else 0
-	assert_true(swapped >= 3, "第 1 話の最初の会話で、名前が替わる行が少ない（%d）" % swapped)
+	assert_true(swapped >= 2, "第 1 話の最初の会話で、名前が替わる行が少ない（%d）" % swapped)
 	while named.scene() != &"battle":
 		named.advance()
 	var battle: RefCounted = named.data()
@@ -139,8 +139,8 @@ func test_the_window_cleans_what_is_typed_and_reports_the_name() -> void:
 	window.free()
 
 
-## 物語を初めて選ぶと、名前の窓が出る。決めると、話の一覧へ進む。2 度目は出ない。
-func test_choosing_a_campaign_for_the_first_time_asks_the_name() -> void:
+## 物語を選んでも、名前の窓は出ない（話の中で名乗る）。新しいセーブデータで、物語を選ぶ → 話の一覧、の道。
+func test_choosing_a_campaign_does_not_ask_the_name() -> void:
 	var context := preload("res://game/app_context.gd").new()
 	var screen: Node = preload("res://game/campaign_list_screen.gd").new()
 	screen.context = context
@@ -149,15 +149,10 @@ func test_choosing_a_campaign_for_the_first_time_asks_the_name() -> void:
 	screen.finished.connect(func(outcome: StringName) -> void: outcomes.append(outcome))
 	var military := Story.military()
 	screen.choose(military)
-	assert_true(screen.hero_window().is_open() and outcomes.is_empty(), "名前を決めるまで、進まない")
-	assert_eq(screen.hero_window().typed(), "ハーデン", "既定の名前が入っている")
-	screen.hero_window().type("ノエル")
-	screen.hero_window().accept()
-	assert_eq(outcomes, [&"open"] as Array[StringName])
-	assert_true(context.story.hero_name(military) == "ノエル" and context.story.campaign == military)
-	screen.choose(military)
-	assert_true(not screen.hero_window().is_open() and outcomes.size() == 2, "2 度目は訊かない")
+	assert_eq(outcomes, [&"open"] as Array[StringName], "物語を選んだら、すぐ話の一覧へ")
+	assert_true(not context.overlays.is_open() and not context.story.is_hero_named(military) and context.story.campaign == military)
 	screen.free()
+	context.story.name_hero(military, "ノエル")
 	# 話の一覧の「名前を変える」で、あとから変えられる。主な人物の欄の名前が替わる。
 	var list: Node = preload("res://game/episode_list_screen.gd").new()
 	list.context = context
@@ -169,3 +164,106 @@ func test_choosing_a_campaign_for_the_first_time_asks_the_name() -> void:
 	list.hero_window().accept()
 	assert_eq([list.hero_label_text(), context.story.hero_name()], ["リタ", "リタ"])
 	list.free()
+
+
+## 第 1 話の、名を問う行のある会話の場面（流れの中の番号も返す）。
+func _naming_talk(context: RefCounted, campaign: RefCounted) -> Array:
+	var run: RefCounted = context.story.run_now(campaign.episodes[0])
+	while not (run.data() is Dictionary and (run.data() as Dictionary).get("lines", []).any(func(line: Dictionary) -> bool: return line.get("naming", false))):
+		run.advance()
+	var screen := TalkScreen.new()
+	screen.context = context
+	screen.talk = run.data()
+	await settle(screen)
+	return [screen, run]
+
+
+## 話の中で名乗る（docs/story.md の「主人公の名前」）: 名を問う行を出しきると名前の窓。決めると、次の行から先（この場面と、流れの先の場面・途中の台詞）に入る。
+## どちらの物語の第 1 話にも、名を問う行がある。それより前の行は、主人公を名前で呼ばない。
+func test_the_hero_is_named_inside_the_story() -> void:
+	for campaign: RefCounted in [Story.military(), Story.campaign_by_id(&"fantasy")]:
+		var context := preload("res://game/app_context.gd").new()
+		var made: Array = await _naming_talk(context, campaign)
+		var screen: Node = made[0]
+		var run: RefCounted = made[1]
+		var at := 0
+		while not (screen.talk["lines"][at] as Dictionary).get("naming", false):
+			var before: Dictionary = screen.talk["lines"][at]
+			assert_false(before.has("raw") or before.get("hero_line", false), "%s: 名乗る前の行に、主人公の名前が出る: %s" % [campaign.id, before["text"]])
+			at += 1
+		for scene_data: Variant in run.all_data().slice(0, run.index):
+			if scene_data is Dictionary and scene_data.has("lines"):
+				assert_false((scene_data["lines"] as Array).any(func(line: Dictionary) -> bool: return line.has("raw") or line.get("hero_line", false)), "%s: 名乗る場面より前に、主人公の名前が出る" % campaign.id)
+		while screen.line_index() < at:
+			screen.press_next()
+			screen.press_next()
+		assert_eq(screen.line_index(), at)
+		screen.press_next()  # 出しきる → 名前の窓
+		assert_true(screen.is_naming() and context.overlays.is_open(), "%s: 名を問う行を出しきっても、名前の窓が出ない" % campaign.id)
+		assert_eq(screen.name_window().typed(), campaign.hero, "既定の名前が入っている")
+		screen.press_next()
+		assert_eq(screen.line_index(), at, "決めるまで、進まない")
+		screen.name_window().type("ノエル")
+		screen.name_window().accept()
+		assert_true(not screen.is_naming() and screen.line_index() == at + 1 and context.story.hero_name(campaign) == "ノエル")
+		assert_true(screen.speaker() == "ノエル" and screen.line_text().contains("ノエル") and not screen.line_text().contains("{hero}"),
+			"%s: 名乗った次の行に、名前が入らない: %s「%s」" % [campaign.id, screen.speaker(), screen.line_text()])
+		# 流れの先の場面（会話の文と札、話の対戦の途中の台詞）にも入る。
+		var later_names := 0
+		for scene_data: Variant in run.all_data():
+			if scene_data is Dictionary and scene_data.has("lines"):
+				for line: Dictionary in scene_data["lines"]:
+					assert_false(line.has("raw") and not (line["text"] as String).contains("ノエル"), "先の場面の文に入らない: %s" % line["text"])
+					assert_false(line.get("hero_line", false) and line["name"] != "ノエル", "先の場面の札に入らない")
+					later_names += 1 if line.has("raw") or line.get("hero_line", false) else 0
+			elif scene_data is Story.StoryBattle:
+				assert_eq(scene_data.hero, "ノエル", "話の対戦（途中の台詞・負けの台詞）に入らない")
+		assert_true(later_names >= 2)
+		# 戻って読み直しても、もう聞かない。
+		screen.press_back()
+		screen.press_next()
+		assert_true(not screen.is_naming() and screen.line_index() == at + 1, "名乗ったあとに戻っても、聞き直さない")
+		screen.free()
+		# 見直し（同じ話をもう一度）でも聞かない。スキップは止まらずに終わる。
+		made = await _naming_talk(context, campaign)
+		screen = made[0]
+		var ended := [0]
+		screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
+		screen.press_skip()
+		assert_true(not screen.is_naming() and ended[0] == 1, "名乗ったあとの見直しで、聞き直す")
+		screen.free()
+
+
+## まだ名乗っていなければ、「スキップ」は名を問う行で止まって聞く。右クリック・Esc で閉じると、既定の名前で名乗ったことになる。
+## 途中でやめた（名乗る前に抜けた）なら、次に同じ話を読むときに聞く。検査とスクリーンショットでは聞かず、名乗ったことにもしない。
+func test_skip_stops_to_ask_the_name_and_checks_never_ask() -> void:
+	var military := Story.military()
+	var context := preload("res://game/app_context.gd").new()
+	var made: Array = await _naming_talk(context, military)
+	var screen: Node = made[0]
+	screen.free()  # 名乗る前に抜けた
+	assert_false(context.story.is_hero_named(military))
+	made = await _naming_talk(context, military)
+	screen = made[0]
+	var ended := [0]
+	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
+	screen.press_skip()
+	assert_true(screen.is_naming() and ended[0] == 0, "スキップが、名を問う行で止まらない")
+	screen.name_window().type("べつ")
+	screen.name_window().close_window()
+	assert_true(context.story.is_hero_named(military) and context.story.hero_name(military) == "ハーデン", "閉じたら、既定の名前で名乗ったことになる")
+	assert_false(screen.is_naming())
+	screen.press_skip()
+	assert_eq(ended[0], 1, "名乗ったあとは、スキップで終わる")
+	screen.free()
+	var checking := preload("res://game/app_context.gd").new()
+	checking.checking = checking.CHECK_AUTOPLAY
+	made = await _naming_talk(checking, military)
+	screen = made[0]
+	for i in 40:
+		screen.press_next()
+	assert_true(not screen.is_naming() and not checking.story.is_hero_named(military), "検査で、名前を聞く（か、名乗ったことにする）")
+	screen.free()
+	# 番外の物語は、名を問う行が無い（既定の名前のまま。本編で名乗っていれば、その名前）。
+	for episode: RefCounted in Story.campaign_by_id(&"berk_patrol").episodes:
+		assert_false(episode.asks_hero_name())

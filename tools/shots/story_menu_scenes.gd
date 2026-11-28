@@ -134,12 +134,15 @@ func _campaign_focused(index: int) -> bool:
 	return true
 
 
-## 物語を初めて選んだときの、主人公の名前の窓（既定の名前が入っている）。
+## 話の中で名を問われたときの、主人公の名前の窓（連邦の第 1 話の、峠の駐屯地の会話。既定の名前が入っている）。
 func _scene_story_hero_name() -> bool:
-	if not await _scene_story_campaigns():
+	if not await _first_episode_scene(1):
 		return false
-	_app.current_scene().ask_hero_name(Story.campaigns()[0])
-	return _app.current_scene().hero_window().is_open()
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < 1:
+		talk.press_next()
+	talk.ask_name()
+	return talk.is_naming()
 
 
 func _scene_story_campaigns_berg() -> bool:
