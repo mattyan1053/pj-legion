@@ -48,7 +48,7 @@
 3. **出撃準備** `game/sortie_screen.gd`: 部隊を選ぶ（部隊編成への寄り道あり）。戦いの定義は `game/story_battle.gd`（`docs/scenario.md`）。
 4. **会話** `game/talk_screen.gd`（前と後で同じ画面）。
 5. **対戦** 上の「対戦の 1 手」と同じ。勝つと `StoryBattle.record_win` → `Story.clear` が記録する（対戦の無い話は、最後の会話を読み終えたとき）。
-6. **記録** `game/story.gd` の記録は、流れの場面を抜けたときにまとめてスロットへ書く（`docs/save-slots.md`）。あとの会話から次の話へ進める。
+6. **記録** `game/story_parts/story_record.gd`（`Story` が継ぐ）の記録は、流れの場面を抜けたときにまとめてスロットへ書く（`docs/save-slots.md`）。あとの会話から次の話へ進める。
 
 ## 何かを足すとき
 

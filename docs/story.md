@@ -1,6 +1,6 @@
 # ストーリー
 
-コード: `game/story.gd`（物語と話の並び、進み具合、話の流れ）、`game/story_battle.gd`（話の対戦。`docs/battle-source.md`）、
+コード: `game/story.gd`（話の流れ。外からは `Story.xxx` で、継いだ `game/story_parts/` の 3 つも呼ぶ: `story_catalog.gd` 物語と話の並び、`story_record.gd` 記録と進み具合、`story_unlocks.gd` 解放と既定の編成）、`game/story_battle.gd`（話の対戦。`docs/battle-source.md`）、
 `game/story/`（物語ごとのフォルダに、物語と話のファイル。下の「物語を 1 つ足す」「物語のファイル」「話のファイル」）、`game/campaign.gd`・`game/episode.gd`・`game/story_file.gd`（ファイルを読む）、`game/campaign_list_screen.gd`（物語を選ぶ）、`game/episode_list_screen.gd`（話の一覧）、`game/card_picker.gd`（一覧の画面のキーとマウスの受け方。`docs/ui-theme.md` の「一覧の画面」）、`game/sortie_screen.gd` と `game/sortie_screen/`（出撃準備。役割ごとのファイル）、`game/talk_screen.gd`・`game/talk_figure.gd`（会話の場面と、話し手の姿）、`game/talk_log.gd`（会話のログ）、`game/deploy_map.gd`・`game/deploy_note.gd`（出撃準備の初期位置と駒の欄）、`game/open_all_key.gd`（確かめ用の解放）、`game/card_keys.gd`（物語・話のカードをキーボードで選ぶ決まり）。
 テスト: `tests/game/test_story.gd`、`tests/game/test_episode_data.gd`（物語と話のファイルの書き間違い）、`tests/game/test_battle_cues.gd`（対戦の途中の会話）、`tests/game/test_placement_choice.gd`（出撃準備で決めた初期位置）、`tests/game/test_card_keys.gd`、`tests/tools/test_story_script.gd`（目次）、自動の対戦の `story`（下の「検査」）。
 
@@ -108,7 +108,7 @@
 
 ### 既定の編成
 
-初めて遊ぶ人が出撃準備で見て納得できる、素直な形にする（`story.gd` の `default_deck`）。CPU の編成の組み方（`CpuDeck`）は使わない
+初めて遊ぶ人が出撃準備で見て納得できる、素直な形にする（`story_unlocks.gd` の `default_deck`）。CPU の編成の組み方（`CpuDeck`）は使わない
 （余ったコストを前衛の盾に積むので、「シールドトルーパーに盾 3 つ ×2」のように偏る）。
 
 1. いま雇える駒を、役割の順（前衛・後衛・奇襲・回復）に 1 体ずつ、数の上限まで繰り返して雇う（コスト上限に収まるかぎり）。
@@ -1151,7 +1151,7 @@ FANTASY の物語の頭の 6 話（`trial_` で始まる話）。基本の操作
 | 本編の 2 話目 | 85% 前後 |
 | 本編の 3 話目から | 75〜85% |
 
-- 人の側は 2 通りで測り、両方を見る: その話を初めて遊ぶときの既定の編成（`story.gd` の `first_battle`）と、局ごとに変えた部隊（`--squads=random`）。
+- 人の側は 2 通りで測り、両方を見る: その話を初めて遊ぶときの既定の編成（`story_unlocks.gd` の `first_battle`）と、局ごとに変えた部隊（`--squads=random`）。
   手で作ったマップは盤の上の乱数が少なく、既定の編成だけでは同じような局を数えることになる（`docs/hand-map.md` の「マップを作るときのめやす」）。
 - 最後は人間が遊んで決める（CPU どうしの勝率は、人が遊んだときの手応えとは違う。勝ち方が話ごとに違うので、話どうしの勝率を並べて比べることもしない）。
 
@@ -1331,7 +1331,7 @@ FANTASY の物語の本編の敵の形と、その理由:
   選んだ軍略をまだ教わっていなければ、その軍の既定、それも教わっていなければ教わった最初の 1 つ。1 つも教わっていなければ、軍略なし（出撃準備の見出しの札も出ない）。
   既定の編成は、教わった軍略から CPU の選び方で選ぶ（`CpuDeck.pick_trait`）。
 
-- いま使えるものは、クリアの記録から、その場で求める（`story.gd` の `Unlocked`、`unlocked()`。記録には書かない）。
+- いま使えるものは、クリアの記録から、その場で求める（`story_unlocks.gd` の `Unlocked`、`unlocked()`。記録には書かない）。
   話を初めて遊ぶときに使えるもの（並びで前の話の解放まで）は `unlocked_before(話)`。
 - ストーリーの編成の決まり（`DeckRules`。名前は物語の `rules`）は、いま使えるものから作る（`deck_rules()`、`rules_of(使えるもの)`）。
   数の上限は対戦と同じ。まだ持たせられない持ち物を持った部隊は出せない（`Deck.Problem.ITEM_NOT_ALLOWED`。`docs/deck-building.md`）。

@@ -110,7 +110,7 @@
 | `sound` | 音を鳴らすところ（`game/sound.gd`。場面をまたいで 1 つ。`docs/sound.md`）。アプリを通さずに置いた場面では無い |
 | `match_choice` | 対戦設定の場面で選んだもの。次に対戦設定を開いたときも、これを出す。流れの外から置かれた対戦の場面は、これで始める |
 | `run` | いま進めている流れ（`run.gd`）。流れの外の場面にいるときは null |
-| `story` | ストーリーの進み具合（`game/story.gd`。クリアした話。`docs/story.md`）。検査とスクリーンショットでは、ファイルを読み書きしない |
+| `story` | ストーリーの進み具合（`game/story.gd`。記録は `game/story_parts/story_record.gd`。クリアした話。`docs/story.md`）。検査とスクリーンショットでは、ファイルを読み書きしない |
 | `decks` | 取っておいた部隊（`game/deck_library.gd`。`docs/deck-screen.md`）。検査とスクリーンショットでは、ファイルを読み書きしない |
 | `overlays` | 開いている重なる画面（システムメニュー、ログ、対戦設定のパネル）の積み上げ（`game/overlay_stack.gd`）。Esc と右クリックは、いちばん上だけが受ける |
 | `checking` | 検査（`autoplay`）か、スクリーンショットの道具（`shots`）として動いているか |
