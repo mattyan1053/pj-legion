@@ -20,8 +20,6 @@
 title = 尾根の亡者
 map = ridge_path
 music = battle_undead
-before_music = battle_undead
-after_music = talk_aftermath
 victory_mood = quiet
 hold_turns = 10
 wins = turns_held
@@ -34,7 +32,18 @@ wins = turns_held
 教導隊員 = ally, paladin drill_sergeant
 亡者の鼓手 = enemy, skeleton_drummer
 
-[before]
+# カットシーン: 森の守りのあと（連邦の物語の第 13〜15 話と同じ時）。少佐の発破へ。
+[cut 知らせ]
+color = night
+music = talk_dark
+森を出た{hero}の隊に、ハーデンの知らせが届いた。もう 1 体の番人も、同じ日を見せたという。
+連邦の少佐は、谷の採掘場に樽を並べている。山ごと崩して、糸を一度に掘り出すつもりだ。
+{hero}の隊が尾根に着いたとき、谷の向こうで、地が揺れた。
+
+[sortie]
+
+[talk 砦の前]
+music = battle_undead
 イェルダ: いまの揺れは……谷の向こうか。
 教導隊員: 発破ですよ。うちの少佐が、採掘場で試しの 1 発をやりました。ハーデン少尉が止めに向かっています。
 ウル: ハーデンの知らせのとおりじゃ。向こうの番人も、同じ日を見せた。掘るのも引くのも、同じことよ。
@@ -46,12 +55,15 @@ wins = turns_held
 イェルダ: 発破はハーデンに任せる。亡者は、われらが止める。奪った砦だが、今日は連邦のために守る。
 セリス: 頭のいない群れか。斬っても終わらないね。旗だけは渡さないよ。
 
+[battle]
+
 [cues]
 (turn 1) イェルダ: 太鼓と杖の骸骨から送れ。増える前にだ。
 (turn 8) 教導隊員: もう少しですよ、騎士長どの！ 旗はまだ立っています！
 (fallen ally) ウル: 無理をするでない。旗の下まで退いて、祈りを受けよ。
 
-[after]
+[talk 太鼓が止んで]
+music = talk_aftermath
 ティオ: 太鼓が……止まった。亡者も、止まった。
 教導隊員: 伝令です。ハーデン少尉が少佐を止めました。樽は全部、下ろされたそうですよ。
 セリス: やるじゃない、鉄の人。……あんたもね、にせもの騎士。
