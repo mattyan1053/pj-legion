@@ -496,11 +496,11 @@ func _scene_story_talk() -> bool:
 ## いまの会話を、陣営 side の、at 人目（0 から。同じ人は 1 度だけ数える）の話し手が話す文まで送る。その人が出てこなければ偽。
 func _talk_until(side: int, at := 0) -> bool:
 	var talk: Node = _app.current_scene()
-	var lines: Array = talk.talk["lines"]
+	var lines: Array = talk.talk.lines
 	var seen := []
 	for index in lines.size():
-		var who: int = lines[index].get("who", -1)
-		if int(lines[index]["side"]) != side or seen.has(who):
+		var who: int = lines[index].who
+		if lines[index].side != side or seen.has(who):
 			continue
 		seen.append(who)
 		if seen.size() == at + 1:

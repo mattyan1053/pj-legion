@@ -4,10 +4,12 @@ extends RefCounted
 ##
 ## 話のファイルの書き方は 2 つ（episode.gd の _build_scenes）: [before]・[after] の話は 出撃準備 → 会話 → 対戦 → 会話 の 4 つ。
 ## 場面の節（[talk 名前]・[sortie]・[battle]）で書いた話は、書いた順（game/episode/episode_scenes.gd）。
-## 場面の種類を足すときは、Kind に足し、run_of がその種類を流れ（run.gd）のどの場面にするかを足す（docs/story.md）。
+## 流れの場面の種類（出撃準備・会話・対戦）は Kind。会話の場面の型（盤の前の会話・別の場所・カットシーン・盤のカットシーン）は talk_shape()（talk_scene.gd の Shape）。
+## 型を足す・種類を足すときの手順は docs/story.md の「場面の型を 1 つ足すとき」。
 
 const TalkLine := preload("res://game/episode/talk_line.gd")
 const StoryScene := preload("res://game/episode/story_scene.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
 
 ## カットシーンの色の幕に書ける名前（色は talk_screen.gd が決める）。
 const COLORS: Array[StringName] = [&"black", &"night"]
@@ -71,6 +73,17 @@ static func talk(from_part: String, talk_lines: Array[TalkLine], track: StringNa
 
 func is_talk() -> bool:
 	return kind == Kind.TALK
+
+
+## 会話の場面（TALK）の型。節で決まる: [board 名前] は盤のカットシーン、[cut 名前] はカットシーン、place のある [talk 名前] は別の場所、ほかは盤の前の会話。
+func talk_shape() -> TalkScene.Shape:
+	if board_cut != null:
+		return TalkScene.Shape.BOARD_CUT
+	if cut:
+		return TalkScene.Shape.CUT
+	if place != null:
+		return TalkScene.Shape.PLACE
+	return TalkScene.Shape.MAP
 
 
 func is_battle() -> bool:

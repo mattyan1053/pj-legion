@@ -526,10 +526,7 @@ func _scene_story_item_unlock() -> bool:
 	if episode == null:
 		return false
 	var talk := Story.talk_of(episode, [])
-	for news: Dictionary in Story.unlocked_before(episode).news_of(episode):
-		var line := {"side": Story.NOTICE_SIDE, "name": Story.notice_name()}
-		line.merge(news)
-		talk["lines"].append(line)
+	talk.lines.append_array(Story.unlocked_before(episode).news_of(episode))
 	var run := Run.new()
 	run.exit = SceneFlow.TITLE
 	run.add(Story.TALK, talk)

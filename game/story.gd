@@ -20,6 +20,7 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const Campaign := preload("res://game/campaign.gd")
 const Episode := preload("res://game/episode.gd")
 const SaveFormat := preload("res://game/save_format.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
 
 ## クリアした話が増えた。
 signal changed
@@ -48,7 +49,7 @@ const DEFAULT_ITEMS := {
 	UnitKind.Role.RAIDER: [Equipment.Id.JET_PACK, Equipment.Id.SPEED_BOOTS],
 }
 ## 会話の行の、知らせ（話し手の名前の札を金の縁にする。「飛ばす」でも飛ばさない。talk_screen.gd）。名前は notice_name()。
-const NOTICE_SIDE := 2
+const NOTICE_SIDE := TalkScene.NOTICE_SIDE
 
 ## 知らせの行の話し手の名前。
 static func notice_name() -> String:
@@ -360,22 +361,22 @@ static func rename_run(run: Run, default_name: String, named: String) -> void:
 		if data is StoryBattle:
 			if (data as StoryBattle).episode.hero == default_name:
 				(data as StoryBattle).hero = named
-		elif typeof(data) == TYPE_DICTIONARY and (data as Dictionary).has("lines"):
+		elif data is TalkScene:
 			rename_talk(data, default_name, named)
 
 
-## 会話（talk_of の形）の文と札に、主人公（既定の名前 default_name）の名前 named を入れ直す（書いたままの文 "raw" から作り直す）。
-static func rename_talk(talk: Dictionary, default_name: String, named: String) -> void:
-	if talk.get("hero", "") != default_name or default_name == "":
+## 会話 talk の文と札に、主人公（既定の名前 default_name）の名前 named を入れ直す（書いたままの文から作り直す）。
+static func rename_talk(talk: TalkScene, default_name: String, named: String) -> void:
+	if talk.hero != default_name or default_name == "":
 		return
-	for line: Dictionary in talk.get("lines", []):
-		if line.has("raw"):
-			line["text"] = HeroName.fill(line["raw"], named)
-		if line.get("hero_line", false):
-			line["name"] = named
-		for option: Dictionary in (line.get("choice", {}) as Dictionary).get("options", []):
-			if option.has("raw"):
-				option["text"] = HeroName.fill(option["raw"], named)
+	for line in talk.lines:
+		if line.raw != "":
+			line.text = HeroName.fill(line.raw, named)
+		if line.hero_line:
+			line.name = named
+		if line.choice != null:
+			for option in line.choice.options:
+				option.text = HeroName.fill(option.raw, named)
 
 
 ## 選択肢 choice で選んだ答えの鍵（いまの物語で。まだ選んでいなければ空）。あとの話の「(if 名前 = 鍵)」の行が読む（docs/story.md の「選択肢」）。
@@ -520,23 +521,29 @@ class Unlocked:
 				traits.append(id)
 		budget += episode.budget_up
 
-	## 話 episode のクリアで、これより新しく増えるものの知らせ（増えるものが無ければ空）。
-	## 1 つが {"text": 文} で、駒なら "kind"、持ち物なら "item" も持つ（会話の場面が、文の左に駒・持ち物のアイコンを出す）。
-	func news_of(episode: Episode) -> Array[Dictionary]:
-		var lines: Array[Dictionary] = []
+	## 話 episode のクリアで、これより新しく増えるものの知らせの行（会話の、知らせの行。増えるものが無ければ空）。
+	## 駒・持ち物・軍略の知らせは、文の左に、そのアイコンを出す（行の unit_kind・item・troop_trait）。
+	func news_of(episode: Episode) -> Array[TalkScene.Line]:
+		var lines: Array[TalkScene.Line] = []
 		for kind: UnitKind.Id in episode.unlock_kinds:
 			if not kinds.has(kind):
-				lines.append({"text": Text.t("story.news.unit", {"unit": Names.kind(kind)}), "kind": kind})
+				lines.append(_notice(Text.t("story.news.unit", {"unit": Names.kind(kind)})))
+				lines.back().unit_kind = kind
 		for item: Equipment.Id in episode.unlock_items:
 			if not items.has(item):
-				lines.append({"text": Text.t("story.news.item", {"item": Names.item(item), "effect": DeckText.equipment_effect(item)}), "item": item})
+				lines.append(_notice(Text.t("story.news.item", {"item": Names.item(item), "effect": DeckText.equipment_effect(item)})))
+				lines.back().item = item
 		for id: int in episode.unlock_traits:
 			if not traits.has(id):
-				lines.append({"text": Text.t("story.news.trait", {"name": Names.troop_trait(id), "text": Names.troop_trait_text(id)}), "trait": id})
+				lines.append(_notice(Text.t("story.news.trait", {"name": Names.troop_trait(id), "text": Names.troop_trait_text(id)})))
+				lines.back().troop_trait = id
 		var more := episode.budget_up
 		if more > 0:
-			lines.append({"text": Text.t("story.news.budget", {"budget": budget + more})})
+			lines.append(_notice(Text.t("story.news.budget", {"budget": budget + more})))
 		return lines
+
+	static func _notice(said: String) -> TalkScene.Line:
+		return TalkScene.Line.new(TalkScene.NOTICE_SIDE, Text.t("story.news.speaker"), said)
 
 
 ## いまの物語で、いま使えるもの（クリアした話から求める）。
@@ -669,7 +676,7 @@ func run_now(episode: Episode) -> Run:
 	if open_all and not _reachable(episode.id) and not _opened_runs.has(String(episode.id)):
 		_opened_runs.append(String(episode.id))
 	var now := unlocked()
-	var news: Array[Dictionary] = []
+	var news: Array[TalkScene.Line] = []
 	if not is_cleared(episode.id):
 		# 知らせは記録どおりの進み具合から（確かめ用に開いていても、あとの会話の知らせを確かめられる）。
 		news = _unlocked_in(campaign, true).news_of(episode)
@@ -679,7 +686,7 @@ func run_now(episode: Episode) -> Run:
 
 
 ## 話 episode の流れ（run.gd）: 話の場面の列（episode.gd の scenes。[before]・[after] の話は 出撃準備 → 会話（前）→ 対戦 → 会話（後））を順に並べ、終えたら話の一覧。
-## クリアの記録は、対戦のある話は対戦に勝ったとき（story_battle.gd の record_win）、対戦の無い話は最後の会話を読み終えたとき（会話に渡す "clears"）。
+## クリアの記録は、対戦のある話は対戦に勝ったとき（story_battle.gd の record_win）、対戦の無い話は最後の会話を読み終えたとき（会話に渡す clears）。
 ## 人の部隊は human_deck（出撃準備で選び直せる）。場面の種類ごとに、流れのどの場面にして何を渡すかは、ここだけで決める。
 ## 会話（前）は、出撃してから対戦の前に 1 度だけ出す（場面の once。決着の画面の「部隊変更」で出撃準備へ戻って出撃し直しても、もう出さない）。
 ## 対戦で負けたら、決着の画面から「同じマップで再戦」「部隊変更」（出撃準備へ）か「話の一覧へ」。勝ったら「次へ」で、あとの会話へ。
@@ -688,17 +695,17 @@ func run_now(episode: Episode) -> Run:
 ## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。最後の場面が会話なら、その最後に知らせの行で出し、「次の話へ」を選ばせる。
 ## 最後の場面がカットシーンなら、「次の話へ」はそこで選ばせ、知らせがあるときだけ、知らせだけの会話の場面をあとに足す。
 ## hero: 遊ぶ人の付けた主人公の名前（空なら既定の名前）。会話・途中の台詞・負けの台詞に差し込む。
-static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = [], hero := "") -> Run:
+static func run_of(episode: Episode, human_deck: Deck, news: Array[TalkScene.Line] = [], hero := "") -> Run:
 	var run := Run.new()
 	run.exit = EPISODE_LIST
 	run.menu_exits = [[EPISODE_LIST, "story.episodes.resume", "menu.to_episodes.confirm"]]
 	var battle := StoryBattle.new(episode, human_deck)
 	battle.hero = hero
 	var fought := false  # 対戦の場面を過ぎたか（会話の背景の盤に、決着したときの駒を立たせる）
-	var last_talk := {}
+	var last_talk: TalkScene = null
 	var last_music := &""
 	for scene in episode.scenes:
-		last_talk = {}
+		last_talk = null
 		match scene.kind:
 			Episode.StoryScene.Kind.SORTIE:
 				run.add(SORTIE, {"episode": episode, "battle": battle})  # 出撃準備で、battle の人の部隊を選び直す
@@ -707,41 +714,45 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 				fought = true
 			Episode.StoryScene.Kind.TALK:
 				var talk := talk_of(episode, scene.lines, scene.music, hero)
-				if scene.cut:
-					talk["cut"] = true  # カットシーン: 文の枠も話し手も出さず、背景の上に文を出す（talk_screen.gd）
-					talk["color"] = scene.color
-				if scene.board_cut != null:
-					# 盤のカットシーン: 背景は台本の盤（place か話の盤）で、台本の兵だけが立って動く（talk_screen.gd）。
-					talk["cut_board"] = scene.board_cut
-					talk["beats"] = scene.beats
-					talk["look"] = scene.look if scene.place != null else episode.look
-					talk["looks"] = person_looks(episode)
-				elif scene.place != null:
-					# 別の場所の会話: 背景はその場所の景色（兵は立たせない）。
-					talk["board"] = scene.place.make_board()
-					talk["look"] = scene.look
-				elif episode.has_battle() and not scene.cut:
-					talk["battle"] = battle  # 背景の盤に、初期位置の駒か、決着したときの駒を立たせる（talk_screen.gd）
-					talk["after"] = fought
+				talk.shape = scene.talk_shape()
+				match talk.shape:
+					TalkScene.Shape.MAP:
+						if episode.has_battle():
+							talk.battle = battle  # 背景の盤に、初期位置の駒か、決着したときの駒を立たせる（talk_screen.gd）
+							talk.after = fought
+					TalkScene.Shape.PLACE:
+						# 別の場所の会話: 背景はその場所の景色（兵は立たせない）。
+						talk.board = scene.place.make_board()
+						talk.look = scene.look
+					TalkScene.Shape.CUT:
+						# カットシーン: 文の枠も話し手も出さず、背景（景色か、色の幕）の上に文を出す（talk_screen.gd）。
+						talk.color = scene.color
+						if scene.place != null:
+							talk.board = scene.place.make_board()
+							talk.look = scene.look
+					TalkScene.Shape.BOARD_CUT:
+						# 盤のカットシーン: 背景は台本の盤（place か話の盤）で、台本の兵だけが立って動く（talk_screen.gd）。
+						talk.cut_board = scene.board_cut
+						talk.beats = scene.beats
+						talk.look = scene.look if scene.place != null else episode.look
+						talk.looks = person_looks(episode)
 				run.add(TALK, talk, scene.once)
 				last_talk = talk
 				last_music = scene.music
-	if not last_talk.is_empty():
-		if (last_talk.get("cut", false) or last_talk.has("cut_board")) and not news.is_empty():
+	if last_talk != null:
+		if not last_talk.shows_speakers() and not news.is_empty():
 			# カットシーンで終わる話: 知らせは、文の枠のある場面で出す（カットシーンには枠が無い）。知らせだけの会話の場面を、あとに 1 つ足す。
 			# 背景は話の盤（対戦のある話なら、決着したときの兵）。曲は、カットシーンのものを続ける。
 			last_talk = talk_of(episode, [], last_music, hero)
 			if episode.has_battle():
-				last_talk["battle"] = battle
-				last_talk["after"] = fought
+				last_talk.battle = battle
+				last_talk.after = fought
 			run.add(TALK, last_talk)
-		for news_line: Dictionary in news:
-			var line := {"side": NOTICE_SIDE, "name": notice_name()}
-			line.merge(news_line)
-			last_talk["lines"].append(line)
-		last_talk["next_episode"] = episode_after(episode)
+		last_talk.lines.append_array(news)
+		last_talk.closes = true
+		last_talk.next_episode = episode_after(episode)
 		if not episode.has_battle():
-			last_talk["clears"] = episode.id  # 対戦の無い話は、最後の会話を読み終えたらクリア（talk_screen.gd の _end）
+			last_talk.clears = episode.id  # 対戦の無い話は、最後の会話を読み終えたらクリア（talk_screen.gd の _end）
 	return run
 
 
@@ -775,31 +786,30 @@ static func episode_after(episode: Episode) -> Episode:
 	return of_campaign.episodes[at + 1] if at >= 0 and at + 1 < of_campaign.episodes.size() else null
 
 
-## 会話の場面（talk_screen.gd）に渡すもの: {"title": 見出し, "lines": [{"side": 0 か 1, "who": 話し手の番号, "name": 話し手, "text": 文,
-## "choice": この行のあとに選ばせる選択肢 {"name", "options": [{"key", "text"}]}（あれば）, "when": この行を出す条件 {"choice", "answer", "not"}（あれば）}, …],
-## "board": 背景の盤（話のマップ）, "look": 盤の見た目, "music": 曲 track（前の会話・あとの会話の曲。episode.gd の before_talk_music・after_talk_music。空なら場面の表の曲）,
-## "figures": 話し手の姿（話し手の番号の並び。episode.gd の figures）}。
-## 話の流れ（run_of）は、さらに "battle"（話の対戦。story_battle.gd。背景の盤に駒を立たせる）と "after"（場面の列で対戦のあとの会話か。背景の盤に、決着したときの駒を立たせる）を足す。
-static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"", hero := "") -> Dictionary:
-	var lines: Array[Dictionary] = []
+## 会話の場面（talk_screen.gd）に渡すもの（talk_scene.gd。型は MAP）: 話 episode の行 rows を、曲 track で。背景は話の盤。
+## 主人公の名前 hero（空なら既定の名前）を、文と札に入れる。話の流れ（run_of）が、場面の型と、型ごとの欄を足す。
+static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"", hero := "") -> TalkScene:
+	var talk := TalkScene.make(TalkScene.Shape.MAP, episode.title)
 	for row in rows:
 		# 地の文（話し手が -1）は、名前の無い行（talk_screen.gd が、札を出さずに真ん中へ出す）。
-		var line := {"side": row.side, "who": row.who, "name": row.speaker_in(episode.speakers, hero), "text": row.shown_text(hero)}
+		var line := TalkScene.Line.new(row.side, row.speaker_in(episode.speakers, hero), row.shown_text(hero), row.who)
 		# 主人公の名前が話の途中で決まったら、入れ直せるように（rename_talk）: 印のある文は書いたままの文も、主人公の行は印を持つ。
 		if row.text.contains(HeroName.MARK):
-			line["raw"] = row.text
-		if row.hero != "" and row.speaker_in(episode.speakers) == row.hero:
-			line["hero_line"] = true
-		if row.asks_name:
-			line["naming"] = true  # この行のあとで、名前を聞く（まだ名乗っていなければ。talk_screen/talk_naming.gd）
+			line.raw = row.text
+		line.hero_line = row.hero != "" and row.speaker_in(episode.speakers) == row.hero
+		line.naming = row.asks_name  # この行のあとで、名前を聞く（まだ名乗っていなければ。talk_screen/talk_naming.gd）
 		# 選択肢（docs/story.md の「選択肢」）: この行のあとに選ばせるものと、この行を出す条件。
 		if row.asks():
-			var options: Array[Dictionary] = []
+			var options: Array[TalkScene.Option] = []
 			for option: Dictionary in row.options:
-				options.append({"key": option["key"], "raw": option["text"], "text": HeroName.fill(option["text"], hero if hero != "" else row.hero)})
-			line["choice"] = {"name": row.choice, "options": options}
+				options.append(TalkScene.Option.new(option["key"], HeroName.fill(option["text"], hero if hero != "" else row.hero), option["text"]))
+			line.choice = TalkScene.Choice.new(row.choice, options)
 		if row.when_choice != &"":
-			line["when"] = {"choice": row.when_choice, "answer": row.when_answer, "not": row.when_not}
-		lines.append(line)
-	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
-			"music": track, "figures": episode.figures, "hero": episode.hero}
+			line.when = TalkScene.When.new(row.when_choice, row.when_answer, row.when_not)
+		talk.lines.append(line)
+	talk.board = episode.map.make_board()
+	talk.look = episode.look
+	talk.music = track
+	talk.figures = episode.figures
+	talk.hero = episode.hero
+	return talk
