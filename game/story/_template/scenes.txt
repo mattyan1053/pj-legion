@@ -59,6 +59,7 @@ music = talk_calm
 #   place / look / music: [talk 名前] と同じ（書かなければ、この話の盤の景色。立つのは台本の兵だけ）。
 # 台本の行（座標は「x,y」。左上が 0,0。名前は兵の名前で、[cast] の話し手と同じ名前なら、その人の形で立つ）:
 #   unit 名前 陣営 種類 x,y      始めの盤に置く兵（台本の頭に）。陣営は ally・enemy・neutral、種類は駒の種類（king、sniper、skeleton など）
+#                              最後に形を書ける（king に将の姿 skeleton_mage、人物の形 noe など。appear・put も同じ）
 #   camera x,y | camera 名前    カメラを寄せる（unit のすぐあとなら、始めからそこを映す）
 #   move 名前 x,y [x,y …]       歩く（書いたマスを順に通る。間は近い道を埋める）
 #   attack 名前 相手 [量]       攻撃する（量を書かなければ、その兵の攻撃力。HP が 0 になれば倒れる）
