@@ -4,13 +4,14 @@ extends "res://game/battle_screen/screen_base.gd"
 const ArmyLook := preload("res://game/army_look.gd")
 
 
-## 軍略の印（docs/troop-traits.md の「対戦の画面」）: 効く相手の頭の上の札（増える数）と足元の輪、組む兵どうしの線。
-## 色は軍略の軍の色。相手の軍略も同じに出す。
-## - 札と輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵（どれも照準の印）
-## - 線: 誓いの 2 人、隊列で隣り合う同じ兵種（結び目は菱形）、補給線で隣り合う回復役（結び目は十字）、守護で隣り合うパラディン（結び目は横棒）
+## 軍略の印（docs/troop-traits.md の「対戦の画面」）。色は軍略の軍の色。相手の軍略も同じに出す。
+## - 頭の上の札（増える数）と足元の輪: 集中砲火・仇討ちは効く敵（このターンに攻撃された敵、味方を倒した敵）、誓いは誓いの相手が攻撃した敵（どれも照準の印）
+## - 足元の小さな印: 隊列・守護がいま効いている兵（盾）、補給線がいま効いている兵（十字）。兵どうしを線では結ばない
+## - 駒を選んでいる間だけ: 誓いの相手との細い線。動かす先を選んでいるなら、そこへ動けば効くマスに、薄い印
 func _refresh_traits() -> void:
 	var links: Array = []
 	var marked: Dictionary[int, Array] = {}  # 駒の id → [色, 札の文, 札の役]
+	var focus := _detail_unit()
 	for shown in battle.units:
 		if not _views.has(shown.id):
 			continue
@@ -25,28 +26,32 @@ func _refresh_traits() -> void:
 				for mate in battle.units:
 					if mate.side == side and Traits.oath_marked(battle, mate, shown):
 						marked[shown.id] = mark
-		if shown.side == Unit.Side.NEUTRAL:
-			continue
-		var own := Traits.of_side(battle, shown.side)
-		var tint := _trait_color(own)
-		var partner := Traits.partner_of(battle, shown)
-		if partner != null and shown.id < partner.id and _views.has(partner.id):
-			links.append([_view(shown.id), _view(partner.id), tint, TraitLinks.Knot.DIAMOND])
-		for mate in Traits.neighbors_at(battle, shown, shown.cell):
-			if mate.id <= shown.id or not _views.has(mate.id):
-				continue
-			var ranks := own == Traits.Id.RANKS and mate.kind == shown.kind
-			var supply := own == Traits.Id.SUPPLY and (UnitKind.role(mate.kind) == UnitKind.Role.HEALER) != (UnitKind.role(shown.kind) == UnitKind.Role.HEALER)
-			var guard := own == Traits.Id.GUARD and (mate.kind == Traits.GUARDIAN or shown.kind == Traits.GUARDIAN)
-			if ranks or supply:
-				links.append([_view(shown.id), _view(mate.id), tint, TraitLinks.Knot.CROSS if supply else TraitLinks.Knot.DIAMOND])
-			elif guard:
-				links.append([_view(shown.id), _view(mate.id), tint, TraitLinks.Knot.BAR])
+		var own := Traits.of_side(battle, shown.side) if shown.side != Unit.Side.NEUTRAL else Traits.NONE
+		_view(shown.id).set_trait_pip(TraitPip.kind_of(own) if _trait_covers(shown, shown.cell) else TraitPip.Kind.NONE, _trait_color(own))
+		var partner := Traits.partner_of(battle, shown) if shown.side != Unit.Side.NEUTRAL else null
+		if partner != null and shown.id < partner.id and _views.has(partner.id) and (focus == shown or focus == partner):
+			links.append([_view(shown.id), _view(partner.id), _trait_color(own)])
 	for shown in battle.units:
 		if _views.has(shown.id):
 			var mark: Array = marked.get(shown.id, [Color.WHITE, ""])
 			_view(shown.id).set_trait_mark(marked.has(shown.id), mark[0], mark[1])
 	_trait_links.set_links(links)
+	# 動かす先を選んでいる間（移動範囲を塗っている間）だけ、そこへ動けば軍略が効くマスに印を置く。
+	var spots: Array[Vector2i] = []
+	var mover := selected_unit()
+	if mover != null and inspected_unit() == null and not battle.is_over() and battle.can_act(mover) and _ui.mode == Mode.NONE and not _ui.busy:
+		for cell: Vector2i in _move_cells:
+			if _trait_covers(mover, cell):
+				spots.append(cell)
+	var trait_id := Traits.of_side(battle, mover.side) if mover != null else Traits.NONE
+	_trait_links.set_spots(spots, TraitPip.kind_of(trait_id), _trait_color(trait_id))
+
+
+## unit が cell に立ったら、隣り合うことで効く軍略（隊列・守護・補給線）が効くか。
+func _trait_covers(unit: Unit, cell: Vector2i) -> bool:
+	if unit.side == Unit.Side.NEUTRAL:
+		return false
+	return Traits.guard_at(battle, unit, cell) > 0 or Traits.supplier_at(battle, unit, cell) != null
 
 
 ## 軍略の印の色（その軍略の軍の色）。
@@ -57,6 +62,20 @@ static func _trait_color(id: int) -> Color:
 ## 軍略の線の数（検査用）。
 func trait_link_count() -> int:
 	return _trait_links.link_count() if _trait_links != null else 0
+
+
+## 足元に軍略の印（盾・十字）が出ている駒の id（検査用）。
+func trait_pip_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for shown in battle.units:
+		if _views.has(shown.id) and _view(shown.id).trait_pip() != TraitPip.Kind.NONE:
+			ids.append(shown.id)
+	return ids
+
+
+## 動けば軍略が効く印を置いているマス（検査用）。
+func trait_spot_cells() -> Array[Vector2i]:
+	return _trait_links.spot_cells() if _trait_links != null else ([] as Array[Vector2i])
 
 
 ## 軍略の輪が出ている駒の数（検査用）。
