@@ -20,6 +20,7 @@ const NOT_SHOWN := [
 	"res://game/autoplay/setup_checks.gd",
 	"res://game/autoplay/cpu_checks.gd",
 	"res://game/autoplay/title_checks.gd",
+	"res://game/autoplay/scene_walk.gd",
 	"res://game/autoplay/story_checks.gd",
 	"res://game/steady_probe.gd",  # 枠の見張りが、動いた枠を知らせる文（開発用）
 	"res://game/autoplay_sweeps.gd",  # 自動の対戦の通しの点検が、くい違いを知らせる文（開発用）
