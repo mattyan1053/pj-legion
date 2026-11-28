@@ -5,6 +5,7 @@
   measure.py <音のファイル>...（ogg・wav）            圧と明るさ（1 曲 1 行）
   measure.py --motif <音> <.motifs> [<音> <.motifs>]...   動機の所の打ち方（音は書き出したままの WAV。arrange.py が .motifs を書く）
   measure.py --wobble <MIDI>...                       伸ばす音の揺れ（楽器ごとに書き出して測る。SF2 にサウンドフォント）
+                                                      STEMS=<場所> を付けると、書き出さずに、そこの <楽器>.wav を測る（tones.py の --stems）
 
 出す値（1 曲 1 行）:
 - 長さ（秒）
@@ -169,6 +170,7 @@ def wobble(midi_path):
     import mido
     from scipy.signal import butter, sosfiltfilt, hilbert
     sf2 = os.environ.get("SF2", "/usr/share/sounds/sf2/FluidR3_GM.sf2")
+    stems = os.environ.get("STEMS")
     mid = mido.MidiFile(midi_path)
     tempo = next(msg.tempo for msg in mid.tracks[0] if msg.type == "set_tempo")
     per_tick = tempo / 1e6 / mid.ticks_per_beat
@@ -194,10 +196,13 @@ def wobble(midi_path):
             one.tracks.append(mid.tracks[0])
             one.tracks.append(track)
             one.save(f"{work}/one.mid")
-            subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.6", "-r", "44100", "-R", "0", "-C", "0", "-T", "wav",
-                            "-F", f"{work}/one.wav", sf2, f"{work}/one.mid"], check=True, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL)
-            audio, rate = soundfile.read(f"{work}/one.wav", always_2d=True)
+            if stems:  # 音色の組（tones.py）で鳴らした、楽器ごとの音。
+                audio, rate = soundfile.read(os.path.join(stems, track.name + ".wav"), always_2d=True)
+            else:
+                subprocess.run(["fluidsynth", "-ni", "-q", "-g", "0.6", "-r", "44100", "-R", "0", "-C", "0", "-T", "wav",
+                                "-F", f"{work}/one.wav", sf2, f"{work}/one.mid"], check=True, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
+                audio, rate = soundfile.read(f"{work}/one.wav", always_2d=True)
             mono = audio.mean(axis=1)
             mine = []
             filtered = {}

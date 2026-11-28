@@ -131,6 +131,12 @@ VERSIONS.update({
                                    (32, 38, "mid"), (55, 62, "peak")],
                           "dark": True, "mix": DARK_MIX},
 })
+# 新重・新電: 暗重・暗電と同じ編曲（音符は 1 つも変えない）を、別の音色で鳴らす版。"tone" は tones.py の音色の組。
+# build.sh が、MIDI がもとの版と同じことを確かめてから、tones.py で音にする。
+VERSIONS.update({
+    "winter_dark_grave2": dict(VERSIONS["winter_dark_grave"], tone="blend", same_as="winter_dark_grave"),
+    "winter_dark_drive2": dict(VERSIONS["winter_dark_drive"], tone="blend", same_as="winter_dark_drive"),
+})
 
 # 楽器: 名前 -> (音色, 音量 CC7, 左右 CC10, 残響 CC91)。チャンネルは版ごとに、使う楽器にだけ割り当てる。
 CHANNELS = {
@@ -688,6 +694,10 @@ def main():
     seconds = total_beats * 60.0 / tempo
     with open(out + ".loop", "w") as f:
         f.write(f"{seconds:.6f}\n")
+    # 音色の組（tones.py）で鳴らす版は、その名前と、同じ編曲のもとの版を書き出す（build.sh が読む）。
+    if VERSIONS[version].get("tone"):
+        with open(out + ".tone", "w") as f:
+            f.write(f"{VERSIONS[version]['tone']} {VERSIONS[version]['same_as']}\n")
     print(f"{version}: ♩={tempo}, {total_beats // beats} 小節, ループ {seconds:.2f} 秒")
 
 

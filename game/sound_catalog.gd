@@ -192,9 +192,10 @@ const MUSIC_SETS: Array[Dictionary] = [
 const ARRANGEMENT_SET := 4
 ## 編曲の版（オプションの「編曲の版」。settings.gd の ARRANGEMENT の値が番号）。BGM の組が「編曲」のときだけ鳴る。
 ## ヴィヴァルディの編曲（assets/audio/classical/README.md）。
-## 暗重・暗中・暗電: 「冬」を暗く重く（tools/classical_bgm/dark.py）。重と電2 を土台に、伸ばす音に揺れを付け、旋律を低い所で鳴らし、
-## 合奏の動機を全部の層のユニゾンで 1 音ずつ区切って打つ。暗重は ♩=88、暗中は ♩=108、暗電は ♩=138（電2 の並び）。
-## 電2・重・夏・電重: 前の版（比べ用）。電2・重・夏は強い所だけを切り出して全部 f、電重は緩急つき。
+## 暗重・暗電: 「冬」を暗く重く（tools/classical_bgm/dark.py）。重と電2 を土台に、伸ばす音に揺れを付け、旋律を低い所で鳴らし、
+## 合奏の動機を全部の層のユニゾンで 1 音ずつ区切って打つ。暗重は ♩=88、暗電は ♩=138（電2 の並び）。
+## 新重・新電: 暗重・暗電と同じ編曲（音符は同じ）を、別の音色で鳴らした版（tools/classical_bgm/tones.py）。
+## 電2・重・夏: 前の版（比べ用）。強い所だけを切り出して全部 f。
 ## 終盤・中ボス・物語の終わりの 2 話の戦い（と、締めの話の終盤）だけ。ほかは、いまの組のまま。
 ## 大きさは、書き出しで -16 LUFS にそろえてある（tools/classical_bgm/finish.py）ので、対戦のねらい -21.5 LUFS との差。
 const ARRANGEMENT_SETS: Array[Dictionary] = [
@@ -206,11 +207,11 @@ const ARRANGEMENT_SETS: Array[Dictionary] = [
 		&"battle_final": {"path": CLASSICAL_DIR + "winter_dark_grave.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_dark_mid.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_dark_mid.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_dark_mid.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_dark_mid.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_dark_mid.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_dark_grave2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_dark_grave2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_dark_grave2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_dark_grave2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_dark_grave2.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
 		&"battle_climax": {"path": CLASSICAL_DIR + "winter_dark_drive.ogg", "loop": true, "volume_db": -5.5},
@@ -218,6 +219,13 @@ const ARRANGEMENT_SETS: Array[Dictionary] = [
 		&"battle_eve": {"path": CLASSICAL_DIR + "winter_dark_drive.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_last": {"path": CLASSICAL_DIR + "winter_dark_drive.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_final": {"path": CLASSICAL_DIR + "winter_dark_drive.ogg", "loop": true, "volume_db": -5.5},
+	},
+	{
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_dark_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_dark_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_dark_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_dark_drive2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_dark_drive2.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
 		&"battle_climax": {"path": CLASSICAL_DIR + "winter_drive2.ogg", "loop": true, "volume_db": -5.5},
@@ -239,13 +247,6 @@ const ARRANGEMENT_SETS: Array[Dictionary] = [
 		&"battle_eve": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_last": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_final": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
-	},
-	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
 	},
 ]
 ## いまの BGM の組の番号（sound.gd の apply_settings が設定から入れる）。

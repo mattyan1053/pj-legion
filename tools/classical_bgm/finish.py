@@ -40,6 +40,62 @@ def limit(loop, rate, ceiling):
     return loop * gain[:, None]
 
 
+# ---------- 音作りの部品（tones.py が楽器ごとと全体に使う） ----------
+
+def band(audio, rate, hp=None, lp=None):
+    """帯域の整理: hp（Hz）より下と lp（Hz）より上を落とす（2 次のバターワース）。楽器どうしが同じ帯域でぶつからないように。"""
+    from scipy.signal import butter, sosfilt
+    if hp:
+        audio = sosfilt(butter(2, hp, "highpass", fs=rate, output="sos"), audio, axis=0)
+    if lp:
+        audio = sosfilt(butter(2, lp, "lowpass", fs=rate, output="sos"), audio, axis=0)
+    return audio
+
+
+def saturate(audio, drive):
+    """あとから掛ける歪み（サチュレーション）: 山を丸めて倍音を足す。drive が大きいほど深い（0 で素通し）。
+    大きい所（99.9 パーセンタイル）を基準に掛けるので、もとの音量によらず同じ深さになる。全体の大きさは変えない。"""
+    if not drive:
+        return audio
+    level = np.percentile(np.abs(audio), 99.9) + 1e-12
+    before = np.sqrt(np.mean(audio ** 2)) + 1e-12
+    shaped = np.tanh(audio / level * (0.6 + 1.4 * drive))
+    return shaped * (before / (np.sqrt(np.mean(shaped ** 2)) + 1e-12))
+
+
+def widen(audio, width):
+    """左右の広がり: 左右の差（サイド）を width 倍にする。0 で真ん中（モノラル）、1 でそのまま、1 より大きいと広がる。
+    差がほとんど無い音（モノラルの音色）は、広げる前に、片側を 11 ms 遅らせた音を少し混ぜて差を作る。"""
+    mid = audio.mean(axis=1)
+    side = (audio[:, 0] - audio[:, 1]) / 2.0
+    if width > 1.0 and np.sqrt(np.mean(side ** 2)) < 0.1 * np.sqrt(np.mean(mid ** 2)) + 1e-12:
+        delay = 485  # 44.1 kHz で 11 ms
+        late = np.concatenate([np.zeros(delay), mid[:-delay]])
+        side = side + 0.35 * (mid - late) / 2.0
+    side = side * width
+    return np.stack([mid + side, mid - side], axis=1)
+
+
+def reverb(audio, rate, seconds=1.7, seed=7):
+    """1 つの残響（全部の楽器を同じ部屋に入れる）: 左右で別の、減っていく雑音を畳み込む。高い所ほど早く減り、
+    250 Hz より下は残さない（低音が濁らないように）。返すのは残響の音だけ（もとの音は含まない）。"""
+    from scipy.signal import butter, fftconvolve, sosfilt
+    rng = np.random.default_rng(seed)
+    n = int(seconds * 1.3 * rate)
+    t = np.arange(n) / rate
+    out = np.zeros_like(audio)
+    for c in range(audio.shape[1]):
+        noise = rng.standard_normal(n)
+        bright = sosfilt(butter(2, [250, 6000], "bandpass", fs=rate, output="sos"), noise)
+        dark = sosfilt(butter(2, [250, 1800], "bandpass", fs=rate, output="sos"), noise)
+        # 60 dB 減るまで: 暗い成分は seconds 秒、明るい成分はその半分。
+        impulse = dark * 10 ** (-3.0 * t / seconds) + 0.7 * bright * 10 ** (-3.0 * t / (seconds * 0.5))
+        impulse *= np.minimum(1.0, t / 0.012)  # 頭の 12 ms は立ち上げる（もとの音の頭をぼかさない）
+        impulse /= np.sqrt(np.sum(impulse ** 2))
+        out[:, c] = fftconvolve(audio[:, c], impulse)[: len(audio)]
+    return out
+
+
 def main():
     if len(sys.argv) not in (4, 5) or (len(sys.argv) == 5 and sys.argv[4] != "limit"):
         raise SystemExit("使い方: finish.py <WAV> <ループの秒数> <書き出す ogg> [limit]")
