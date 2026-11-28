@@ -101,12 +101,19 @@ func _ready() -> void:
 		below.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		below.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.add_child(below)
-		for preset: Control.LayoutPreset in [Control.PRESET_TOP_WIDE, Control.PRESET_BOTTOM_WIDE]:
+		for edge: float in [0.0, 1.0]:
+			# 上の端（0）か下の端（1）に、高さ CUT_BAR の帯。木に入る前は親の大きさが 0 なので、
+			# 大きさを預ける置き方（set_anchors_and_offsets_preset）だと、下の帯が画面の外にずれる。端と高さで直に置く。
 			var bar := ColorRect.new()
 			bar.color = Palette.OUTLINE
-			bar.custom_minimum_size = Vector2(0.0, CUT_BAR)
-			bar.set_anchors_and_offsets_preset(preset, Control.PRESET_MODE_MINSIZE)
+			bar.anchor_left = 0.0
+			bar.anchor_right = 1.0
+			bar.anchor_top = edge
+			bar.anchor_bottom = edge
+			bar.offset_top = -CUT_BAR * edge
+			bar.offset_bottom = CUT_BAR * (1.0 - edge)
 			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_cut_bars.append(bar)
 			layer.add_child(bar)
 			layer.move_child(bar, shade.get_index() + 1)
 
@@ -528,6 +535,14 @@ func is_scenery_only() -> bool:
 ## 「ログ」と「スキップ」が画面に占める四角（検査用）。
 func buttons_rect() -> Rect2:
 	return _log_button.get_global_rect().merge(_skip.get_global_rect())
+
+
+## カットシーンの上下の黒い帯が画面に占める四角（検査用。カットシーンでなければ空）。
+func cut_bar_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for bar in _cut_bars:
+		rects.append(bar.get_global_rect())
+	return rects
 
 
 ## 「ログ」のボタンが画面に占める四角（検査用。対戦の上の帯の「ログ」と同じ所）。
