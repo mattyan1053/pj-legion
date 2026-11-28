@@ -20,11 +20,21 @@ settings.effects_volume.note,スライダーを離すと試聴
 settings.mute,音を消す
 settings.mute.note,すべての音を停止（音量の設定は保持）
 settings.music_set,BGM の組
-settings.music_set.note,聴き比べ用。候補 C はタイトル・軽い会話・負けだけ
-settings.music_set.current,いまの組
-settings.music_set.a,候補 A
-settings.music_set.b,候補 B
-settings.music_set.c,候補 C
+settings.music_set.note,C は軽い会話と負け。編曲はボス戦と最後の戦いだけ（版は下で選ぶ）
+settings.music_set.current,いま
+settings.music_set.a,A
+settings.music_set.b,B
+settings.music_set.c,C
+settings.music_set.arrangement,編曲
+settings.arrangement,編曲の版
+settings.arrangement.note,暗重・暗電は暗く重い「冬」（遅い・速い）、新重・新電はその音色ちがい、ほかは前の版
+settings.arrangement.winter_dark_grave,暗重
+settings.arrangement.winter_dark_grave2,新重
+settings.arrangement.winter_dark_drive,暗電
+settings.arrangement.winter_dark_drive2,新電
+settings.arrangement.winter_drive2,電2
+settings.arrangement.winter_grave,重
+settings.arrangement.summer_storm,夏
 settings.section.screen,画面
 settings.fullscreen,全画面
 settings.fullscreen.note,オフ: ウィンドウ表示　Alt+Enter: 切り替え

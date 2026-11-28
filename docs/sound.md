@@ -114,6 +114,14 @@
 | `victory`（勝ち） | Victory（Umplix） | Victory Fanfare Short（cynicmusic） | — |
 | `defeat`（負け） | Game Over（Kistol） | Bittersweet（Emma_MA） | Lose Game Short Music Clip（Robin Lamb） |
 
+- 「編曲」の組は、ヴィヴァルディの「冬」第 1 楽章と「夏」第 3 楽章を楽譜のデータから編曲した曲（`assets/audio/classical/`。CC BY-SA 3.0。作り方は `tools/classical_bgm/`）。
+  版はオプションの「編曲の版」で選ぶ（`sound_catalog.gd` の `ARRANGEMENT_SETS`。選択肢は短く書く）:
+  暗重・暗電は、「冬」を暗く重く組んだ版（重と電2 を土台に、伸ばす音にビブラートと強さの動きを付け、旋律を 1 オクターブ下のシンセで鳴らし、
+  合奏の動機を全部の層のユニゾンで 1 音ずつ区切って打つ。暗重は ♩=88、暗電は ♩=138）。
+  新重・新電 は、暗重・暗電と同じ編曲（音符は同じ）を、楽器ごとに別の音源で鳴らした版（音色の比べ用。`assets/audio/classical/README.md` の「音色を替えた版」）。
+  電2・重・夏は前の版（比べ用。強い所だけを切り出して全部 f）。表記はクレジットの表（`game/credits.csv`）にある。
+  どれも `battle_climax`・`battle_boss`・`battle_eve`・`battle_last`・`battle_final` だけを差し替える。
+  締めの話は `battle_last` から終盤の `battle_final` へ替わるとき、同じ曲でも頭から鳴らし直す。
 - 組に無い曲（「—」と、表に無い曲）は、いまの組のまま鳴る。ループかどうかは、差し替える前の曲と同じ（テストが確かめる）。
 - 組を替えると、いま鳴っている曲もその組の曲へフェードでつなぎ直す（決着の曲の間は替えない）。
 - 大きさは、上と同じねらいの積分ラウドネスにそろえた（`volume_db`）。
@@ -188,3 +196,4 @@
   画面なしの音のドライバは音を流さないので、止めた再生が片付かずに残り、終わるときにエラーになるため。
 - アプリを終えるときは、音を止めて手放してから終える（`context.quit`）。鳴らしたまま終えると、再生が残ったと言われる。
 - Windows の書き出し（CI の `windows`）は、すべての資源を入れる（`export_presets.cfg` の `all_resources`）ので、`assets/audio/` の音も入る。
+  クラシックの編曲の曲は CC BY-SA 3.0 で表記が要るので、その文（`assets/audio/classical/LICENSE.txt`）も `include_filter` で exe に入れる（フォントのライセンスの文と同じ）。

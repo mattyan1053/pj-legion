@@ -1,0 +1,705 @@
+#!/usr/bin/env python3
+"""楽譜の MIDI（パートごと。LilyPond の書き出し）を、戦闘曲の型に組み直した MIDI にする。
+
+使い方: arrange.py <楽譜の MIDI> <版の名前> <書き出す MIDI>
+版は VERSIONS。手順の全体は build.sh と README.md。緩急つきの版（"wave"）の中身は swell.py。ここは前の版（電2・重・夏）の作り。
+
+原曲の流れを頭から追わない。楽譜から強い所（同音の刻みの合奏、独奏の速い走句、終わりの総奏）を小節の単位で切り出し、
+並べ直して（繰り返しも可）、その上に戦闘曲の型の層を足す。
+
+- 楽譜の MIDI は、トラックの名前でパートを見分ける（solo / violinone / violintwo / viola / cello）。
+- 和声は拍ごとに楽譜から取る: 根音 = チェロ（休みならほかの下の声）のいちばん低い音、和音 = 独奏を除く声の音。
+- 足す層（どれも楽譜の和声と音から機械的に作る）:
+  - bass: 根音のオスティナート（4 分・8 分・16 分・オクターブの跳ね）。シンセベース／エレキベース／コントラバス／チューバ。
+  - timpani: 根音を拍で。区切りの前に連打。
+  - drums: 打楽器（チャンネル 10）。orchestra（大太鼓・スネア・シンバル）か kit（ドラムキット）。
+  - stabs: 金管の和音の短い打ち込み（決まった拍の型で）。
+  - pad: 和音の持続（シンセのパッド・合唱）。小節の頭で鳴らし直す。
+  - lead: 独奏の走句を別の楽器で重ねる（トリルの続く小節は第 1 ヴァイオリンの線を重ねる）。
+  - power: 根音と 5 度の刻み（歪んだギター）。
+- 弦は短く切る（伸ばす音は、刻みの細かさ grid で刻み直す）。弱い所を作らない（どの小節も f）。
+- 区切り（section）ごとに level（1〜3）を持ち、上がるほど打楽器と打ち込みが細かくなる（積み上げ）。
+- dark（濁り）: 区切りの頭の小節で、低音の 8 分の裏を根音の半音上にし（短 2 度のぶつかり）、1 拍目の打ち込みに
+  金管の短 2 度のクラスターと増 4 度、弦の高い短 2 度を足す。原曲の和声はそのまま残す。
+- hits（ダダダンッ。前の版の電2 だけ。緩急つきの版の強打は swell.py）: 区切りの終わりの小節の後ろ 2 拍を、総奏の短く切った 16 分 3 つ + 強打 1 つにし、強打のあとは無音（溜め）。
+  和音は、次の区切りの頭の根音の半音下に立てた減七（次の頭へ解決する）。ループの継ぎ目（最後の区切りの終わり）も同じ。
+"""
+import math
+import sys
+
+import mido
+
+PARTS = ["solo", "violinone", "violintwo", "viola", "cello"]
+OUT_TPB = 480
+DRUM_CH = 9
+
+# GM の音色の番号（0 始まり）。
+VIOLIN, VIOLA, CELLO, CONTRABASS, TIMPANI, STRINGS = 40, 41, 42, 43, 47, 48
+SYNTH_STRINGS, CHOIR, TRUMPET, TROMBONE, TUBA, HORN, BRASS = 50, 52, 56, 57, 58, 60, 61
+FINGER_BASS, SYNTH_BASS, SYNTH_BASS_2, DIST_GUITAR = 33, 38, 39, 30
+FLUTE, PICCOLO, SAW_LEAD, POLY_PAD, WARM_PAD, SYNTH_BRASS = 73, 72, 81, 90, 89, 62
+
+# 打楽器（GM のキーの番号）。
+KICK, BASS_DRUM, SNARE, SNARE2, HAT, HAT_OPEN, CRASH, CRASH2, RIDE = 36, 35, 38, 40, 42, 46, 49, 57, 51
+TOMS = [50, 48, 47, 45, 43, 41]
+
+PIECES = {
+    # ヴィヴァルディ「冬」第 1 楽章（ヘ短調、4/4）。
+    "winter1": {"beats": 4},
+    # ヴィヴァルディ「夏」第 3 楽章 Presto（ト短調、3/4）。
+    "summer3": {"beats": 3},
+}
+
+# 版。form は鳴らす区切りの並び: (始めの小節, 終わりの小節（含まない）, level)。小節は 0 始まり。並びの終わりから頭へループする。
+# layers は層の名前 -> 楽器（CHANNELS の名前）や型。
+VERSIONS = {}
+VERSIONS.update({
+    # (b2) DTM 調（前の「電2」）: ドラムキット、太いシンセベースの 16 分、歪んだギターの刻み、シンセのパッドとリードを弦に重ねる。
+    # 濁り（dark）と「ダダダンッ」（hits）つき。比べ用に残す。
+    "winter_drive2": {
+        "piece": "winter1", "tempo": 152, "grid": 0.5,
+        "form": [(3, 11, 2), (19, 26, 2), (46, 55, 3), (26, 32, 1), (32, 38, 2), (55, 62, 3)],
+        "strings": True, "solo": True,
+        "bass": {"voice": "synth_bass", "pattern": "16", "low": 28, "high": 40},
+        "bass2": {"voice": "finger_bass", "pattern": "8oct", "low": 28, "high": 40},
+        "power": {"min_level": 2},
+        "drums": "kit",
+        "pad": {"voice": "poly_pad"},
+        "stabs": {"voices": ["brass"], "rhythm": [0, 1.5, 3], "min_level": 3},
+        "lead": {"voice": "saw_lead", "shift": 0},
+        "dark": True, "hits": True,
+    },
+    # (c) 遅く重い版: ♩=96。低音の 8 分とティンパニ、大太鼓の毎拍、低い金管、合唱。弦は 16 分で刻む。
+    "winter_grave": {
+        "piece": "winter1", "tempo": 96, "grid": 0.25,
+        "form": [(3, 11, 2), (19, 26, 3), (46, 55, 2), (55, 62, 3)],
+        "strings": True, "solo": True,
+        "bass": {"voice": "contrabass", "pattern": "8oct", "low": 28, "high": 40},
+        "bass2": {"voice": "synth_bass_2", "pattern": "8", "low": 28, "high": 40},
+        "timpani": {"pattern": "8"},
+        "drums": "heavy",
+        "stabs": {"voices": ["trombone", "tuba", "horns"], "rhythm": [0, 2, 2.5], "min_level": 2},
+        "pad": {"voice": "choir"},
+        "low_brass": True,
+    },
+    # (d) 「夏」Presto: バロックの速い走句に、ドラムキットと太いベースと金管を重ねる（オーケストラと DTM の間）。
+    "summer_storm": {
+        "piece": "summer3", "tempo": 144, "grid": 0.5,
+        "form": [(0, 4, 3), (5, 9, 3), (10, 19, 2), (19, 28, 2), (31, 39, 3), (54, 63, 2), (84, 96, 3), (119, 129, 3)],
+        "strings": True, "solo": True,
+        "bass": {"voice": "synth_bass", "pattern": "8oct", "low": 28, "high": 40},
+        "bass2": {"voice": "contrabass", "pattern": "8", "low": 28, "high": 43},
+        "timpani": {"pattern": "beat"},
+        "drums": "kit",
+        "stabs": {"voices": ["trumpet", "trombone", "horns"], "rhythm": [0, 1.5], "min_level": 2},
+        "pad": {"voice": "synth_strings"},
+        "lead": {"voice": "saw_lead", "shift": 0},
+    },
+})
+# 緩急のある版（swell.py）。楽器は電の系統。原曲の流れに沿って「落ち着き → 溜め → 盛り上がり」を 1 周に 2 回。
+# form の 3 つ目は区切りの役（calm / solo / build / mid / peak）。mix は楽器の音量（CC7）の上書き。
+WAVE_MIX = {"solo": 127, "saw_lead": 110, "violin1": 96, "violin1b": 84, "violin2": 88, "viola": 86, "cello": 96,
+            "synth_bass": 104, "finger_bass": 92, "power": 60, "warm_pad": 64, "brass": 84, "drums": 112}
+WAVE_SHORT = [(1, 11, "calm"), (11, 15, "solo"), (17, 18, "solo"), (18, 19, "build"), (19, 26, "peak"),
+              (26, 32, "solo"), (46, 55, "build"), (55, 62, "peak")]
+VERSIONS.update({
+    # 電重: 遅く重い（♩=96）。盛り上がりは 2・4 拍のスネアと 16 分のキック。
+    "winter_wave_heavy": {"piece": "winter1", "wave": True, "tempo": 96, "form": WAVE_SHORT, "peak_drums": "full",
+                          "dark": True, "mix": WAVE_MIX},
+})
+
+# 暗く重い版（dark.py）。重（圧）と電2（戦闘曲らしさ）を土台に、伸ばす音の揺れ・暗さ・動機の打ち方を直したもの。
+# form の 3 つ目は区切りの役（low / solo / build / mid / peak）。motif は動機の 32 分の扱い、snare は盛り上がりのスネアの拍。
+DARK_MIX = {"solo": 114, "violin1": 92, "violin2": 90, "viola": 98, "cello": 108, "low_strings": 104,
+            "lead": 124, "lead2": 96, "synth_bass": 104, "sub_bass": 82, "power": 90, "choir": 106, "warm_pad": 92,
+            "trombone": 108, "tuba": 104, "drums": 108}
+VERSIONS.update({
+    # 暗重: 重の並び（強い所）に独奏の走句を 1 つ挟む。遅い（♩=88）。動機は 32 分のまま、1 音ずつ打つ。
+    "winter_dark_grave": {"piece": "winter1", "dark_arrangement": True, "tempo": 88, "motif": "32", "snare": (1, 3),
+                          "form": [(3, 11, "low"), (18, 19, "build"), (19, 26, "peak"), (26, 32, "solo"),
+                                   (46, 55, "build"), (55, 62, "peak")],
+                          "dark": True, "mix": DARK_MIX},
+    # 暗中: 電重の並び（原曲の流れ。出だしと独奏あり）。♩=108。動機は、低い層が 32 分、高い層は 16 分 3 つ。
+    "winter_dark_mid": {"piece": "winter1", "dark_arrangement": True, "tempo": 108, "motif": "split", "snare": (1, 3),
+                        "form": [(1, 11, "low"), (11, 15, "solo"), (17, 18, "solo"), (18, 19, "build"), (19, 26, "peak"),
+                                 (26, 32, "solo"), (46, 55, "build"), (55, 62, "peak")],
+                        "dark": True, "mix": DARK_MIX},
+    # 暗電: 電2 の並び（全部強め）。♩=138。動機は 32 分 6 つを 16 分 3 つに間引く。スネアは 3 拍目（ハーフタイム）。
+    # リードは伸ばさず、旋律のリズムで打つ（hold: False）。
+    "winter_dark_drive": {"piece": "winter1", "dark_arrangement": True, "tempo": 138, "motif": "16", "snare": (2,), "hold": False,
+                          "form": [(3, 11, "mid"), (19, 26, "peak"), (46, 55, "build"), (26, 32, "solo"),
+                                   (32, 38, "mid"), (55, 62, "peak")],
+                          "dark": True, "mix": DARK_MIX},
+})
+# 新重・新電: 暗重・暗電と同じ編曲（音符は 1 つも変えない）を、別の音色で鳴らす版。"tone" は tones.py の音色の組。
+# build.sh が、MIDI がもとの版と同じことを確かめてから、tones.py で音にする。
+VERSIONS.update({
+    "winter_dark_grave2": dict(VERSIONS["winter_dark_grave"], tone="blend", same_as="winter_dark_grave"),
+    "winter_dark_drive2": dict(VERSIONS["winter_dark_drive"], tone="blend", same_as="winter_dark_drive"),
+})
+
+# 楽器: 名前 -> (音色, 音量 CC7, 左右 CC10, 残響 CC91)。チャンネルは版ごとに、使う楽器にだけ割り当てる。
+CHANNELS = {
+    "solo": (VIOLIN, 112, 60, 40),
+    "violin1": (STRINGS, 104, 40, 45),
+    "violin1b": (VIOLIN, 92, 34, 40),
+    "violin2": (STRINGS, 100, 52, 45),
+    "viola": (STRINGS, 96, 76, 45),
+    "cello": (CELLO, 108, 86, 40),
+    "contrabass": (CONTRABASS, 112, 70, 35),
+    "cello_ost": (CELLO, 100, 92, 35),
+    "synth_bass": (SYNTH_BASS, 108, 64, 15),
+    "synth_bass_2": (SYNTH_BASS_2, 104, 64, 15),
+    "finger_bass": (FINGER_BASS, 104, 64, 15),
+    "timpani": (TIMPANI, 116, 64, 50),
+    "trumpet": (TRUMPET, 96, 50, 50),
+    "trombone": (TROMBONE, 100, 80, 50),
+    "tuba": (TUBA, 100, 72, 45),
+    "horns": (HORN, 98, 30, 60),
+    "brass": (BRASS, 96, 64, 50),
+    "piccolo": (PICCOLO, 80, 46, 50),
+    "saw_lead": (SAW_LEAD, 74, 58, 35),
+    "poly_pad": (POLY_PAD, 70, 64, 60),
+    "warm_pad": (WARM_PAD, 70, 64, 60),
+    "synth_strings": (SYNTH_STRINGS, 74, 64, 60),
+    "choir": (CHOIR, 84, 64, 70),
+    "power": (DIST_GUITAR, 74, 96, 25),
+    "drums": (0, 118, 64, 30),
+    # 暗く重い版（dark.py）の楽器。lead はシンセブラス（暗い音色）、lead2 は少しずらして重ねるノコギリ波。
+    "lead": (SYNTH_BRASS, 110, 58, 35),
+    "lead2": (SAW_LEAD, 78, 70, 35),
+    "low_strings": (STRINGS, 96, 46, 45),
+    "sub_bass": (SYNTH_BASS_2, 108, 64, 10),
+}
+
+
+def read_parts(path):
+    """パートの名前 -> [(始まり, 終わり, 音の高さ)]（拍の単位、小数）。"""
+    mid = mido.MidiFile(path)
+    tpb = mid.ticks_per_beat
+    parts = {}
+    for track in mid.tracks:
+        name = track.name.rstrip(":")
+        if name not in PARTS:
+            continue
+        now, sounding, notes = 0, {}, []
+        for msg in track:
+            now += msg.time
+            if msg.type == "note_on" and msg.velocity > 0:
+                sounding.setdefault(msg.note, []).append(now)
+            elif msg.type in ("note_off", "note_on"):
+                starts = sounding.get(msg.note)
+                if starts:
+                    start = starts.pop(0)
+                    notes.append((start / tpb, now / tpb, msg.note))
+        parts[name] = sorted(notes)
+    missing = [p for p in PARTS if p not in parts]
+    if missing:
+        raise SystemExit(f"楽譜の MIDI にパートが無い: {missing}")
+    return parts
+
+
+def into_range(pitch, low, high):
+    while pitch < low:
+        pitch += 12
+    while pitch > high:
+        pitch -= 12
+    return pitch
+
+
+class Score:
+    """書き出す音の列。楽器ごとに (始まり（拍）, 長さ（拍）, 高さ, 強さ)。"""
+
+    def __init__(self):
+        self.notes = {}
+        self.controls = {}  # 楽器 -> [(拍, "bend"（セント）か "cc11"（0〜1）, 値)]。shape() が書く。
+
+    def add(self, layer, start, length, pitch, velocity):
+        if length <= 0 or not 0 <= pitch <= 127:
+            return
+        velocity = max(1, min(127, int(velocity)))
+        self.notes.setdefault(layer, []).append((start, length, pitch, velocity))
+
+
+    def shape(self, layer, tempo, vibrato=0.0, swell=None, detune=0.0, rate=5.5, phase=0.0, min_seconds=0.3, delay=0.15):
+        """伸ばす音（min_seconds より長い音）に揺れを付ける。GM の音色は伸ばすと止まって聞こえるので。
+
+        - vibrato: ビブラートの深さ（セント）。音の頭から delay 秒は掛けず、そこから 0.25 秒で深くする（遅れて掛かる）。
+          ピッチベンドの細かい揺れで書く（速さ rate Hz。少しゆらぐ）。
+        - swell: 強さの動き (始め, 山, 終わり)（0〜1。エクスプレッション CC11）。音の 55% の所を山にして膨らみ、しぼむ。
+        - detune: 楽器ごとの高さのずれ（セント。同じ旋律を 2 つの音色で重ねて、うなりを作る）。
+        ピッチベンドと CC11 はチャンネルごとなので、同じ楽器の短い音にも掛かる（伸ばす音が終わったら戻す）。
+        """
+        notes = self.notes.get(layer)
+        if not notes:
+            return
+        per_beat = 60.0 / tempo
+        step = 0.012 / per_beat
+        long_notes = sorted((s, ln) for (s, ln, _p, _v) in notes if ln * per_beat >= min_seconds)
+        starts = sorted({s for (s, _ln) in long_notes})
+        events = {}
+        for (start, length) in long_notes:
+            k = 0
+            while k * step < length:
+                t = start + k * step
+                sec = k * step * per_beat
+                depth = vibrato * min(1.0, max(0.0, (sec - delay) / 0.25))
+                abs_sec = t * per_beat
+                wobble = math.sin(2 * math.pi * rate * abs_sec + phase + 0.6 * math.sin(0.9 * abs_sec))
+                x = k * step / length
+                level = None
+                if swell:
+                    a, top, b = swell
+                    level = a + (top - a) * x / 0.55 if x < 0.55 else top + (b - top) * (x - 0.55) / 0.45
+                events[round(t, 5)] = (detune + depth * wobble, level)
+                k += 1
+            end = round(start + length, 5)
+            if not any(0 <= s2 - end < 0.1 for s2 in starts) and end not in events:
+                events[end] = (detune, 1.0 if swell else None)
+        out = [(0.0, "bend", detune)]
+        if swell:
+            out.append((0.0, "cc11", 1.0))
+        for t in sorted(events):
+            bend, level = events[t]
+            out.append((t, "bend", bend))
+            if level is not None:
+                out.append((t, "cc11", level))
+        self.controls[layer] = out
+
+
+class Source:
+    """楽譜を小節で引く。"""
+
+    def __init__(self, parts, beats):
+        self.parts, self.beats = parts, beats
+
+    def bar_notes(self, part, bar):
+        """小節の中の音: [(小節の中の拍, 長さ（小節の終わりで切る）, 高さ)]。"""
+        lo, hi = bar * self.beats, (bar + 1) * self.beats
+        return [(s - lo, min(e, hi) - s, n) for (s, e, n) in self.parts[part] if lo <= s < hi]
+
+    def sounding(self, part, beat):
+        return [n for (s, e, n) in self.parts[part] if s <= beat + 1e-6 < e]
+
+    def harmony(self, beat):
+        """(根音, 和音の音の高さの組)。鳴っていなければ (None, [])。"""
+        for part in ["cello", "viola", "violintwo", "violinone"]:
+            low = self.sounding(part, beat)
+            if low:
+                root = min(low)
+                break
+        else:
+            root = None
+        upper = set()
+        for part in ["violinone", "violintwo", "viola", "cello"]:
+            upper.update(self.sounding(part, beat))
+        return root, sorted(upper)
+
+    def density(self, part, bar):
+        """小節の 1 拍あたりの音の数。"""
+        return len(self.bar_notes(part, bar)) / self.beats
+
+
+def drum_bar(score, kind, at, beats, level, first, last):
+    """打楽器の 1 小節。first: 区切りの頭（シンバル）、last: 区切りの終わり（フィル）。"""
+    d = lambda off, key, vel: score.add("drums", at + off, 0.2, key, vel)
+    fill_from = beats - 1 if last else beats
+    if first:
+        d(0, CRASH, 122)
+        if kind != "orchestra":
+            d(0, CRASH2, 110)
+    if kind == "kit":
+        for k in range(int(fill_from * 2)):
+            off = k * 0.5
+            if level >= 3:
+                d(off, KICK, 120 if off == int(off) else 100)
+            elif off in (0, 1.5 if beats == 4 else 1.5, 2) and off < beats:
+                d(off, KICK, 122)
+            # ハイハット（level 3 は 16 分）。
+            if level >= 3:
+                d(off, HAT, 96 if off == int(off) else 76)
+                d(off + 0.25, HAT, 64)
+            else:
+                d(off, HAT if off % 1 else HAT_OPEN if off == 0 and not first else HAT, 92 if off == int(off) else 70)
+        for b in range(int(fill_from)):
+            if (beats == 4 and b in (1, 3)) or (beats == 3 and b in (1, 2)):
+                d(b, SNARE, 124)
+            if b == 0:
+                d(b, KICK, 127)
+    elif kind == "orchestra":
+        for b in range(int(fill_from)):
+            if b == 0 or level >= 2 or (beats == 4 and b == 2):
+                d(b, BASS_DRUM, 124 if b == 0 else 108)
+            # スネアの刻み: 8 分（level 3 は「タタタ・タ」の 16 分）。拍の頭を強く。
+            if level >= 3:
+                for off, vel in ((0, 118), (0.25, 72), (0.5, 92), (0.75, 72)):
+                    d(b + off, SNARE, vel)
+            else:
+                d(b, SNARE, 110)
+                d(b + 0.5, SNARE, 80)
+        if level >= 3 and not first:
+            d(0, CRASH, 96)
+    elif kind == "heavy":
+        for b in range(int(fill_from)):
+            d(b, BASS_DRUM, 127 if b in (0, 2) else 112)
+            d(b, KICK, 110)
+            if b in (1, 3):
+                d(b, SNARE, 118)
+            if level >= 3:
+                d(b + 0.5, SNARE, 70)
+                d(b + 0.75, BASS_DRUM, 96)
+    if last:
+        # フィル: 最後の拍を 16 分で（キットはタム、オーケストラはスネアと大太鼓）。
+        base = beats - 1
+        for k in range(4):
+            if kind == "kit":
+                d(base + 0.25 * k, TOMS[k + 1], 104 + 6 * k)
+                d(base + 0.25 * k, KICK, 110)
+            else:
+                d(base + 0.25 * k, SNARE, 96 + 8 * k)
+                d(base + 0.25 * k, BASS_DRUM, 100 + 6 * k)
+
+
+def arrange(parts, version):
+    """(音の列, 全体の拍の数, テンポ, 拍子, 区切り [(始めの出す小節, 終わり, 役, 元の小節の範囲)])。"""
+    spec = VERSIONS[version]
+    beats = PIECES[spec["piece"]]["beats"]
+    if spec.get("wave"):
+        from swell import arrange_wave
+        score, total, sections = arrange_wave(parts, spec, beats)
+        return score, total, spec["tempo"], beats, sections
+    if spec.get("dark_arrangement"):
+        from dark import arrange_dark
+        score, total, sections = arrange_dark(parts, spec, beats)
+        return score, total, spec["tempo"], beats, sections
+    src = Source(parts, beats)
+    grid = spec["grid"]
+    score = Score()
+
+    # 区切りを並べ、鳴らす位置（小節）を決める。
+    placed = []  # (出す小節, 元の小節, level, 区切りの頭か, 区切りの終わりか)
+    at = 0
+    for (start, end, level) in spec["form"]:
+        for bar in range(start, end):
+            placed.append((at, bar, level, bar == start, bar == end - 1))
+            at += 1
+    total_bars = at
+
+    def strings_copy(part, layer, vel, shift=0):
+        """弦: 伸ばす音は grid で刻み直し、短い音は短く切る。拍の頭を強く。"""
+        for (out, bar, level, _, _) in placed:
+            base = out * beats
+            for (off, length, n) in src.bar_notes(part, bar):
+                accent = 14 if abs(off - round(off)) < 1e-6 else 0
+                if length > grid * 1.5:
+                    k = 0
+                    while off + k * grid < off + length - 1e-6:
+                        o = off + k * grid
+                        a = 14 if abs(o - round(o)) < 1e-6 else 0
+                        score.add(layer, base + o, grid * 0.7, n + shift, vel + a)
+                        k += 1
+                else:
+                    score.add(layer, base + off, min(length * 0.8, 0.4), n + shift, vel + accent)
+
+    if spec.get("strings"):
+        strings_copy("violinone", "violin1", 96)
+        strings_copy("violinone", "violin1b", 84)
+        strings_copy("violintwo", "violin2", 92)
+        strings_copy("viola", "viola", 90)
+        strings_copy("cello", "cello", 100)
+
+    if spec.get("solo"):
+        for (out, bar, level, _, _) in placed:
+            for (off, length, n) in src.bar_notes("solo", bar):
+                score.add("solo", out * beats + off, min(length, 0.5) * 0.9, n, 108 + (10 if off == int(off) else 0))
+
+    lead = spec.get("lead")
+    if lead:
+        for (out, bar, level, _, _) in placed:
+            # トリル（1 拍に 8 つより多い）や、独奏の休みの小節は、第 1 ヴァイオリンの線を重ねる。
+            part = "solo" if 0 < src.density("solo", bar) <= 8 else "violinone"
+            notes = src.bar_notes(part, bar)
+            for (off, length, n) in notes:
+                score.add(lead["voice"], out * beats + off, min(length * 0.85, 0.45), n + lead["shift"],
+                          100 + (12 if off == int(off) else 0))
+
+    # 拍ごとの和声（足す層が使う）。休みの拍は前の和声を引き継ぐ。
+    harmony = {}
+    last = (None, [])
+    for (out, bar, level, first, end) in placed:
+        for b in range(beats):
+            for half in (0, 0.5):
+                root, upper = src.harmony(bar * beats + b + half)
+                if root is None:
+                    root, upper = last
+                else:
+                    last = (root, upper)
+                harmony[(out, b + half)] = (root, upper)
+
+    def root_at(out, off):
+        return harmony[(out, off)][0]
+
+    for key in ("bass", "bass2", "bass3"):
+        bass = spec.get(key)
+        if not bass:
+            continue
+        pattern = bass["pattern"]
+        step = {"16": 0.25, "4": 1.0}.get(pattern, 0.5)
+        for (out, bar, level, first, end) in placed:
+            for k in range(int(beats / step)):
+                off = k * step
+                root = root_at(out, float(int(off)) + (0.5 if off % 1 >= 0.5 else 0))
+                if root is None:
+                    continue
+                p = into_range(root, bass["low"], bass["high"])
+                if pattern == "8oct" and k % 2 == 1:
+                    p += 12
+                if spec.get("dark") and first and k % 2 == 1:
+                    p = into_range(root, bass["low"], bass["high"]) + 1  # 濁り: 裏の音を根音の半音上に。
+                vel = 124 if off == 0 else 112 if off == int(off) else 96
+                score.add(bass["voice"], out * beats + off, min(step * 0.8, 0.5), p, vel)
+
+    timp = spec.get("timpani")
+    if timp:
+        for (out, bar, level, first, end) in placed:
+            for b in range(beats):
+                root = root_at(out, float(b))
+                if root is None:
+                    continue
+                p = into_range(root, 41, 53)
+                if end and b == beats - 1:
+                    for k in range(8):  # 区切りの前の連打（強めていく）。
+                        score.add("timpani", out * beats + b + 0.125 * k, 0.12, p, 80 + 6 * k)
+                elif timp["pattern"] == "8" or level >= 3:
+                    score.add("timpani", out * beats + b, 0.45, p, 122 if b == 0 else 104)
+                    score.add("timpani", out * beats + b + 0.5, 0.45, p, 88)
+                elif b == 0 or level >= 2:
+                    score.add("timpani", out * beats + b, 0.9, p, 124 if b == 0 else 106)
+
+    kind = spec.get("drums")
+    if kind:
+        for (out, bar, level, first, end) in placed:
+            drum_bar(score, kind, out * beats, beats, level, first, end)
+
+    stabs = spec.get("stabs")
+    if stabs:
+        for (out, bar, level, first, end) in placed:
+            if level < stabs["min_level"] and not first:
+                continue
+            for off in stabs["rhythm"]:
+                if off >= beats:
+                    continue
+                root, upper = harmony[(out, float(int(off)) + (0.5 if off % 1 else 0))]
+                if root is None:
+                    continue
+                pcs = sorted({into_range(p, 55, 70) for p in upper})
+                for voice in stabs["voices"]:
+                    if voice in ("trombone", "tuba"):
+                        lo = into_range(root, 40, 52) - (12 if voice == "tuba" else 0)
+                        tones = [lo, lo + 7]
+                    elif voice == "trumpet":
+                        tones = [into_range(p, 62, 76) for p in upper[-2:]] if upper else []
+                    else:
+                        tones = pcs
+                    for p in tones:
+                        score.add(voice, out * beats + off, 0.38, p, 122 if off == 0 else 110)
+
+    if spec.get("low_brass"):
+        # 低い金管: 区切りの頭の小節に、根音をオクターブで 1 拍（打ち込みの土台）。
+        for (out, bar, level, first, end) in placed:
+            if first or level >= 3:
+                root = root_at(out, 0.0)
+                if root is not None:
+                    p = into_range(root, 36, 48)
+                    score.add("tuba", out * beats, 0.9, p, 118)
+                    score.add("trombone", out * beats, 0.9, p + 12, 112)
+
+    pad = spec.get("pad")
+    if pad:
+        for (out, bar, level, first, end) in placed:
+            for half in range(0, beats, 2 if beats == 4 else 3):
+                root, upper = harmony[(out, float(half))]
+                low, high = (55, 72) if pad["voice"] == "choir" else (52, 72)
+                for p in sorted({into_range(p, low, high) for p in upper}):
+                    score.add(pad["voice"], out * beats + half, (2 if beats == 4 else 3) * 0.95, p, 96)
+
+    power = spec.get("power")
+    if power:
+        for (out, bar, level, first, end) in placed:
+            if level < power["min_level"]:
+                continue
+            for k in range(beats * 2):
+                off = k * 0.5
+                root = root_at(out, float(int(off)) + (0.5 if off % 1 else 0))
+                if root is None:
+                    continue
+                p = into_range(root, 40, 52)
+                for q in (p, p + 7, p + 12):
+                    score.add("power", out * beats + off, 0.35, q, 112 if off == int(off) else 96)
+
+    if spec.get("dark"):
+        # 濁り: 区切りの頭の 1 拍目に、金管の短 2 度のクラスター（根音と半音上）と増 4 度、弦の高い短 2 度。
+        brass = [v for v in ("trombone", "horns", "trumpet", "brass") if v in score.notes]
+        for (out, bar, level, first, end) in placed:
+            root = root_at(out, 0.0)
+            if not first or root is None:
+                continue
+            at = out * beats
+            low = into_range(root, 48, 59)
+            for v in brass:
+                for p in (low, low + 1, low + 6):
+                    score.add(v, at, 0.38, p, 124)
+            high = into_range(root, 72, 83)
+            for v in ("violin1", "violin2"):
+                score.add(v, at, 0.3, high + 1, 118)
+
+    if spec.get("hits"):
+        heads = [out for (out, bar, level, first, end) in placed if first]
+        for (out, bar, level, first, end) in placed:
+            if not end:
+                continue
+            bar_start = out * beats
+            start = bar_start + beats - 2 + 0.25
+            bar_end = bar_start + beats
+            # その区切りの終わりの後ろを空ける（ほかの層の音を消し、かかる音は切る）。
+            for layer, notes in score.notes.items():
+                kept = []
+                for (st, ln, p, v) in notes:
+                    if start - 1e-6 <= st < bar_end:
+                        continue
+                    if st < start < st + ln:
+                        ln = start - st
+                    kept.append((st, ln, p, v))
+                score.notes[layer] = kept
+            # 次の区切りの頭（終わりならループの頭）の根音の半音下に、減七を立てる。
+            nxt = next((h for h in heads if h > out), heads[0])
+            target = root_at(nxt, 0.0) or root_at(out, 0.0)
+            lead = (target - 1) % 12
+            dim = [lead, lead + 3, lead + 6, lead + 9]
+            times = [(start, 0.14, 112), (start + 0.25, 0.14, 112), (start + 0.5, 0.14, 116), (start + 0.75, 0.3, 127)]
+            for (t, ln, vel) in times:
+                for v, (lo, hi) in (("violin1", (72, 84)), ("violin1b", (72, 84)), ("violin2", (64, 76)), ("viola", (55, 67))):
+                    for pc in dim:
+                        score.add(v, t, ln, into_range(pc, lo, hi), vel)
+                score.add("cello", t, ln, into_range(lead, 36, 47), vel)
+                for v in ("contrabass", "synth_bass", "finger_bass", "synth_bass_2", "tuba"):
+                    if v in score.notes:
+                        score.add(v, t, ln, into_range(lead, 28, 39), vel)
+                for v in ("trombone", "horns", "trumpet", "brass"):
+                    if v in score.notes:
+                        for pc in dim:
+                            score.add(v, t, ln, into_range(pc, 52, 70), vel)
+                if "timpani" in score.notes:
+                    score.add("timpani", t, ln, into_range(lead, 41, 53), vel)
+                if "power" in score.notes:
+                    p = into_range(lead, 40, 52)
+                    for q in (p, p + 6, p + 12):
+                        score.add("power", t, ln, q, vel)
+                score.add("drums", t, 0.1, SNARE, vel)
+                score.add("drums", t, 0.1, KICK if spec.get("drums") == "kit" else BASS_DRUM, vel)
+            score.add("drums", times[-1][0], 0.2, CRASH, 127)
+
+    sections, at = [], 0
+    for (start, end, level) in spec["form"]:
+        sections.append((at, at + end - start, f"level{level}", (start, end)))
+        at += end - start
+    return score, total_bars * beats, spec["tempo"], beats, sections
+
+
+def write_midi(score, total_beats, tempo, beats, path, mix=None, only=None):
+    """only: 書き出す楽器の名前の組（測り用。旋律だけ・伴奏だけ）。チャンネルの割り当ては全部のときと同じ。"""
+    mid = mido.MidiFile(type=1, ticks_per_beat=OUT_TPB)
+    meta = mido.MidiTrack()
+    meta.append(mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(tempo), time=0))
+    meta.append(mido.MetaMessage("time_signature", numerator=beats, denominator=4, time=0))
+    # ループの終わりのあとに 2 小節、何も鳴らさない間を置く（書き出しで残響の尾まで録るため。finish.py が頭に重ねる）。
+    meta.append(mido.MetaMessage("marker", text="loop_end", time=int(total_beats * OUT_TPB)))
+    meta.append(mido.MetaMessage("end_of_track", time=int(2 * beats * OUT_TPB)))
+    mid.tracks.append(meta)
+    free = [c for c in range(16) if c != DRUM_CH]
+    for layer in CHANNELS:
+        notes = score.notes.get(layer)
+        if not notes:
+            continue
+        program, volume, pan, reverb = CHANNELS[layer]
+        volume = (mix or {}).get(layer, volume)
+        if layer == "drums":
+            ch = DRUM_CH
+        else:
+            if not free:
+                raise SystemExit("チャンネルが足りない（15 楽器まで）")
+            ch = free.pop(0)
+        if only is not None and layer not in only:
+            continue
+        track = mido.MidiTrack()
+        track.append(mido.MetaMessage("track_name", name=layer, time=0))
+        events = [(0, 0, mido.Message("program_change", channel=ch, program=program)),
+                  (0, 0, mido.Message("control_change", channel=ch, control=7, value=volume)),
+                  (0, 0, mido.Message("control_change", channel=ch, control=10, value=pan)),
+                  (0, 0, mido.Message("control_change", channel=ch, control=91, value=reverb)),
+                  (0, 0, mido.Message("control_change", channel=ch, control=93, value=0))]
+        for (start, length, pitch, vel) in notes:
+            on = int(round(start * OUT_TPB))
+            off = max(on + 1, int(round((start + length) * OUT_TPB)) - 4)
+            events.append((on, 2, mido.Message("note_on", channel=ch, note=pitch, velocity=vel)))
+            events.append((off, 1, mido.Message("note_off", channel=ch, note=pitch, velocity=0)))
+        last = {}
+        for (beat, kind, value) in score.controls.get(layer, []):
+            if kind == "bend":  # ピッチベンドの幅は既定の ±2 半音（200 セント）。
+                msg = mido.Message("pitchwheel", channel=ch, pitch=max(-8192, min(8191, int(round(value / 200.0 * 8192)))))
+                key = msg.pitch
+            else:
+                msg = mido.Message("control_change", channel=ch, control=11, value=max(0, min(127, int(round(value * 127)))))
+                key = msg.value
+            if last.get(kind) != key:
+                last[kind] = key
+                events.append((int(round(beat * OUT_TPB)), 1.5, msg))
+        events.sort(key=lambda e: (e[0], e[1]))
+        now = 0
+        for (tick, _, msg) in events:
+            track.append(msg.copy(time=tick - now))
+            now = tick
+        mid.tracks.append(track)
+    mid.save(path)
+
+
+MELODY_LAYERS = ("solo", "saw_lead", "lead", "lead2")  # 主旋律を運ぶ楽器（独奏ヴァイオリンとリード）。測りで「旋律」と「伴奏」に分ける。
+
+
+def main():
+    if len(sys.argv) != 4 or sys.argv[2] not in VERSIONS:
+        raise SystemExit(f"使い方: arrange.py <楽譜の MIDI> <{'|'.join(VERSIONS)}> <書き出す MIDI>")
+    parts = read_parts(sys.argv[1])
+    version, out = sys.argv[2], sys.argv[3]
+    score, total_beats, tempo, beats, sections = arrange(parts, version)
+    mix = VERSIONS[version].get("mix")
+    write_midi(score, total_beats, tempo, beats, out, mix)
+    # 測り用: 旋律だけ・伴奏だけの MIDI と、区切りの秒数。
+    stem = out.rsplit(".", 1)[0]
+    write_midi(score, total_beats, tempo, beats, stem + ".melody.mid", mix, only=MELODY_LAYERS)
+    write_midi(score, total_beats, tempo, beats, stem + ".backing.mid", mix,
+               only=[layer for layer in score.notes if layer not in MELODY_LAYERS])
+    bar = beats * 60.0 / tempo
+    with open(out + ".sections", "w") as f:
+        for (a, b, mode, (start, end)) in sections:
+            f.write(f"{a * bar:.4f} {b * bar:.4f} {mode} {start}-{end - 1}\n")
+    # 測り用: 動機「タッ タラララララ タンッ×4」の始まる秒と、1 拍の秒数（measure.py の --motif が読む）。
+    from swell import motif_halves
+    src = Source(parts, beats)
+    with open(out + ".motifs", "w") as f:
+        for (a, b, mode, (start, end)) in sections:
+            for i, src_bar in enumerate(range(start, end)):
+                for h in sorted(motif_halves(src.bar_notes("violinone", src_bar))):
+                    f.write(f"{((a + i) * beats + h) * 60.0 / tempo:.4f} {60.0 / tempo:.5f}\n")
+    seconds = total_beats * 60.0 / tempo
+    with open(out + ".loop", "w") as f:
+        f.write(f"{seconds:.6f}\n")
+    # 音色の組（tones.py）で鳴らす版は、その名前と、同じ編曲のもとの版を書き出す（build.sh が読む）。
+    if VERSIONS[version].get("tone"):
+        with open(out + ".tone", "w") as f:
+            f.write(f"{VERSIONS[version]['tone']} {VERSIONS[version]['same_as']}\n")
+    print(f"{version}: ♩={tempo}, {total_beats // beats} 小節, ループ {seconds:.2f} 秒")
+
+
+if __name__ == "__main__":
+    main()

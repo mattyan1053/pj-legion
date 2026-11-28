@@ -102,6 +102,7 @@ static func apply_settings(settings: Settings) -> void:
 	ensure_buses()
 	var muted: bool = settings.value(Settings.MUTE)
 	Catalog.music_set = settings.value(Settings.MUSIC_SET)
+	Catalog.arrangement = settings.value(Settings.ARRANGEMENT)
 	_set_bus(BUS_MASTER, settings.value(Settings.MASTER_VOLUME), muted)
 	_set_bus(BUS_MUSIC, settings.value(Settings.MUSIC_VOLUME), false)
 	_set_bus(BUS_EFFECTS, settings.value(Settings.EFFECTS_VOLUME), false)

@@ -27,6 +27,7 @@ const MUSIC_VOLUME := &"music_volume"
 const EFFECTS_VOLUME := &"effects_volume"
 const MUTE := &"mute"
 const MUSIC_SET := &"music_set"
+const ARRANGEMENT := &"arrangement"
 const SHOW_MINIMAP := &"show_minimap"
 const FULLSCREEN := &"fullscreen"
 const SCREEN_EFFECTS := &"screen_effects"
@@ -78,7 +79,14 @@ const ITEMS: Array[Dictionary] = [
 		# 値は sound_catalog.gd の MUSIC_SETS の番号。聴き比べのための候補の曲（docs/sound.md の「BGM の組」）。
 		"key": MUSIC_SET, "section": "settings.section.sound", "label": "settings.music_set",
 		"note": "settings.music_set.note",
-		"kind": Kind.CHOICE, "choices": [[0, "settings.music_set.current"], [1, "settings.music_set.a"], [2, "settings.music_set.b"], [3, "settings.music_set.c"]], "default": 0,
+		"kind": Kind.CHOICE, "choices": [[0, "settings.music_set.current"], [1, "settings.music_set.a"], [2, "settings.music_set.b"], [3, "settings.music_set.c"], [4, "settings.music_set.arrangement"]], "default": 0,
+	},
+	{
+		# 値は sound_catalog.gd の ARRANGEMENT_SETS の番号。BGM の組が「編曲」のときに鳴らす版（docs/sound.md の「BGM の組」）。
+		# 選択肢は 1 行に 7 つまでしか収まらないので、組とは別の行にした。
+		"key": ARRANGEMENT, "section": "settings.section.sound", "label": "settings.arrangement",
+		"note": "settings.arrangement.note",
+		"kind": Kind.CHOICE, "choices": [[0, "settings.arrangement.winter_dark_grave"], [1, "settings.arrangement.winter_dark_grave2"], [2, "settings.arrangement.winter_dark_drive"], [3, "settings.arrangement.winter_dark_drive2"], [4, "settings.arrangement.winter_drive2"], [5, "settings.arrangement.winter_grave"], [6, "settings.arrangement.summer_storm"]], "default": 0,
 	},
 	{
 		"key": FULLSCREEN, "section": "settings.section.screen", "label": "settings.fullscreen",

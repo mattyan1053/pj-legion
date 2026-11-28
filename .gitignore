@@ -10,3 +10,6 @@
 .DS_Store
 Thumbs.db
 *.tmp
+
+# Python のキャッシュ（tools/ のスクリプトを回すと出来る）
+__pycache__/
