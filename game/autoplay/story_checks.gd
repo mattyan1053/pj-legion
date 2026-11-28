@@ -266,7 +266,7 @@ func _check_story_talk(talk: Node, scene: RefCounted, last: bool, app: Node, epi
 ## （対戦の前の会話は 1 度だけなので、もう出ない）。2 度目の決着の画面を返す。
 func _story_battle_twice(screen: Node, app: Node, episode: RefCounted, shared: Dictionary) -> Node:
 	var chosen: Deck = shared["chosen"] if shared["chosen"] != null else screen.source.human_deck
-	var result: Node = await _win_story_battle(app, screen, episode, chosen, shared["first_at"])
+	var result: Node = await _win_story_battle(app, screen, episode, chosen, shared["first_at"], true)
 	_expect(result.leave_text() == "話の一覧へ" and not result.enabled_buttons().has("タイトルへ"), "話の決着の画面の行き先が「話の一覧へ」でない: %s" % result.leave_text())
 	_expect(result.remark_texts().is_empty(), "勝った話の決着の画面に、負けたときの台詞が出る")
 	_expect(result.can_choose_squad(), "話の決着の画面に「部隊を選び直す」が無い")
@@ -282,7 +282,7 @@ func _story_battle_twice(screen: Node, app: Node, episode: RefCounted, shared: D
 	_expect(app.current_id() == SceneFlow.BATTLE, "「部隊を選び直す」のあとの「出撃」で、対戦の前の会話を出さずに対戦へ進まない（いまは %s）" % app.current_id())
 	if app.current_id() != SceneFlow.BATTLE:
 		return null
-	result = await _win_story_battle(app, app.current_scene(), episode, chosen)
+	result = await _win_story_battle(app, app.current_scene(), episode, chosen, Vector2i(-1, -1), true)
 	shared["won"] = true
 	return result
 
@@ -546,7 +546,8 @@ func _check_talk_log(talk: Node, episode: RefCounted, scene: RefCounted) -> void
 
 ## 話 episode の対戦の場面 screen（出撃したところ。部隊 chosen）を確かめて、小さな盤で 1 手で勝つ。決着の画面を返す。
 ## first_at が盤の中なら、部隊の最初の駒がそのマスから始まることも確かめる（出撃準備で決めた初期位置）。
-func _win_story_battle(app: Node, screen: Node, episode: RefCounted, chosen: Deck, first_at := Vector2i(-1, -1)) -> Node:
+## longest_of_all なら、途中の台詞の札を、全部の話でいちばん長い台詞で確かめる（偽なら、この話のいちばん長い台詞。この話に無ければ、全部の話の）。
+func _win_story_battle(app: Node, screen: Node, episode: RefCounted, chosen: Deck, first_at := Vector2i(-1, -1), longest_of_all := false) -> Node:
 	var story: RefCounted = app.context.story
 	# 幕が明けた時点（場面の _process がまだ回っていない）で、ミニマップはもう右上にある（左上に出てから跳ばない）。
 	var minimap: Rect2 = screen.minimap_rect()
@@ -577,10 +578,13 @@ func _win_story_battle(app: Node, screen: Node, episode: RefCounted, chosen: Dec
 	_expect(screen.is_banner_shown(), "「対戦ルール」を閉じても、番の知らせが出ない")
 	# 対戦の途中の会話の札は、上の帯のすぐ下で、勝ち方の札・視点の案内・ミニマップと重ならない（いちばん長い台詞で確かめる）。
 	var longest := ""
-	for each: RefCounted in Story.all_episodes():
-		for cue: RefCounted in each.cues:
-			if cue.line.text.length() > longest.length():
-				longest = cue.line.shown_text()
+	for of_all: bool in [longest_of_all, true]:
+		for each: RefCounted in (Story.all_episodes() if of_all else [episode]):
+			for cue: RefCounted in each.cues:
+				if cue.line.text.length() > longest.length():
+					longest = cue.line.shown_text()
+		if longest != "":
+			break
 	screen.say_for_check([BattleCues.Line.new(1, episode.speakers[1], longest, episode.figures[1])] as Array[BattleCues.Line])
 	await get_tree().process_frame
 	await get_tree().process_frame
