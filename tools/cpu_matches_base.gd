@@ -191,7 +191,7 @@ func _map_rows(path: String) -> PackedStringArray:
 
 
 ## 話 id（ファイルのパスなら、その名前）の話。物語に並んでいなければ null。
-func _find_episode(given: String) -> RefCounted:
+static func _find_episode(given: String) -> RefCounted:
 	var id := StringName(given.get_file().get_basename())
 	for each: RefCounted in Story.all_episodes():
 		if each.id == id:
@@ -202,7 +202,8 @@ func _find_episode(given: String) -> RefCounted:
 ## --squads=random の、人の側の部隊。その話を初めて遊ぶときに雇える駒から、種で決まる順に、数の上限まで予算の中で雇う。
 ## 予算と持たせられる装備も、その話を初めて遊ぶときのもの（story.gd の unlocked_before）。
 ## 並びは役割の順（既定の編成と同じく、前衛が前に置かれる）。装備は既定の編成の決まり（Story.equip_defaults）。
-func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
+## 軍略は、その話までに教わった軍略から CPU の選び方（CpuDeck.pick_trait。まだ何も教わっていなければ持たない）。
+static func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = squad_seed
 	var given := Story.unlocked_before(episode)
@@ -221,7 +222,38 @@ func _random_squad(episode: RefCounted, squad_seed: int) -> Deck:
 	for kind in hired:
 		deck.add(kind)
 	Story.equip_defaults(deck)
+	CpuDeck.pick_trait(deck)  # 乱数は引かない（駒と装備は、軍略を選ぶ前と同じ）
 	return deck
+
+
+## --episode の、人の側の部隊: --squads=random なら局ごとに変える部隊（_random_squad）、そうでなければ既定の編成。
+## trait_id が Traits.NONE でなければ、その軍略にする（--traits=<鍵>。測るためだけ。誓いなら CPU の決め方で結ぶ）。
+static func _episode_squad(episode: RefCounted, random: bool, squad_seed: int, trait_id: int = Traits.NONE) -> Deck:
+	var deck := _random_squad(episode, squad_seed) if random else Story.default_deck(Story.unlocked_before(episode))
+	if trait_id != Traits.NONE:
+		deck.trait_id = trait_id
+		if trait_id == Traits.Id.OATH:
+			CpuDeck.bind_oaths(deck)
+		else:
+			deck.oaths.clear()
+	return deck
+
+
+## --episode と一緒の --traits の鍵（army と空を除く）を、人の側の軍略に読む。自分で部隊を選ぶ話で、その話までに教わった軍略だけ。
+## 読めなければ、理由を problems に足して Traits.NONE。
+static func _episode_trait(episode: RefCounted, word: String, problems: Array[String]) -> int:
+	if episode.has_squad():
+		problems.append("部隊が決まっている話（%s）は、人の側の軍略を替えられない" % episode.id)
+		return Traits.NONE
+	var id := Traits.from_key(word)
+	var taught: Array[int] = Story.unlocked_before(episode).traits
+	if id < 0 or id == Traits.NONE or not taught.has(id):
+		var names: Array[String] = []
+		for each in taught:
+			names.append(Traits.key(each))
+		problems.append("--traits=%s は、この話までに教わった軍略でない（教わったのは %s）" % [word, ", ".join(names) if not names.is_empty() else "無し"])
+		return Traits.NONE
+	return id
 
 
 func _map_name(stage: int) -> String:

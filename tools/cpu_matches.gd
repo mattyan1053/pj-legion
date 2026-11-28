@@ -38,7 +38,8 @@ extends "res://tools/cpu_matches_base.gd"
 ##                   その種類の駒が釣り合いを動かしているかを、抜いて確かめる（docs/hand-map.md の「マップを作るときのめやす」）
 ##   --traits=X     軍略（docs/troop-traits.md）を置き換える（測るためだけ）。none = 両軍とも無し、random = 局ごとに種で決まる 1 つ（その軍の 3 つから）、
 ##                   鍵を並べる（focus,vengeance のように）= その軍の鍵の軍略。付けなければ、部隊が選んだ軍略（CPU の編成もランダムの部隊も CpuDeck.choose_trait）。
-##                   --episode では army だけを使える（軍の陣営に、その軍の既定の軍略を持たせる。話に軍略を入れたら、を測る）。
+##                   --episode では army（軍の陣営に、その軍の既定の軍略を持たせる。話に軍略を入れたら、を測る）か、鍵 1 つ（人の側の軍略。
+##                   自分で部隊を選ぶ話で、その話までに教わった軍略だけ。付けなければ、教わった軍略から CpuDeck.choose_trait）。
 ##                   軍略ごとの勝率・選ばれた数・効いた回数と、--list=1 の TRAIT の行も出す
 ##   --rules=NAME   選べる決まり（OptionalRules の名前。stronghold = 拠点、seam = 縫い目の様子のランダム。`,` で並べられる）をそれだけ入にして回す。none で全部切。
 ##                   縫い目の様子のある局があれば、札ごと・札の組ごとの集計と、--list=1 の SIGNS の行（めくった札）も出す
@@ -155,6 +156,15 @@ func _initialize() -> void:
 	# 部隊の中身ごとの勝ち負け（--squads のとき。決着した局の、部隊 1 つずつ）。鍵 -> [部隊の数, 勝った数]。
 	var squad_rows: Dictionary[String, Array] = {}
 	var trait_arg := args.get("traits", "") as String
+	# --episode の --traits=<鍵>: 人の側の軍略（教わった軍略だけ）。
+	var episode_trait := Traits.NONE
+	if episode != null and trait_arg != "" and trait_arg != "army":
+		var problems: Array[String] = []
+		episode_trait = _episode_trait(episode, trait_arg, problems)
+		if not problems.is_empty():
+			printerr("; ".join(problems))
+			quit(1)
+			return
 	# 軍略ごと: 鍵（Traits.Id）-> [部隊の数, 決着した局, 勝った数, 効いた回数, 軍の違う対戦の決着した局, その勝った数]。
 	var trait_rows: Dictionary[int, Array] = {}
 	# --squads=one の、[部隊を変えた側の勝ち, CPU の編成の勝ち, 決着なし]。軍の並び（変えた側 対 CPU の編成）ごとにも。
@@ -185,10 +195,8 @@ func _initialize() -> void:
 				setup.decks[side] = _deck(armies[side], deck_mode, rules)
 		if episode != null:
 			stage = EPISODE_STAGE as BoardGenerator.Stage
-			if random_squads:
-				setup = StoryBattle.new(episode, _random_squad(episode, first_seed + game)).make_setup(first_seed + game)
-			else:
-				setup = Story.first_battle(episode).make_setup(first_seed + game)
+			var squad := _episode_squad(episode, random_squads, first_seed + game, episode_trait)
+			setup = StoryBattle.new(episode, squad).make_setup(first_seed + game)
 			armies = [setup.army_of(Unit.Side.PLAYER1), setup.army_of(Unit.Side.PLAYER2)]
 		for side: Unit.Side in [Unit.Side.PLAYER1, Unit.Side.PLAYER2]:
 			setup.controllers[side] = MatchSetup.Controller.CPU

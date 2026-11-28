@@ -8,6 +8,8 @@ const CpuMatch := preload("res://tools/cpu_match.gd")
 const CpuGame := preload("res://tests/support/cpu_game.gd")
 const Maps := preload("res://tests/support/maps.gd")
 const RandomSquad := preload("res://game/random_squad.gd")
+const Story := preload("res://game/story.gd")
+const StoryBattle := preload("res://game/story_battle.gd")
 
 
 ## 長い検査の 2 つのテストが比べる元の 1 局（種 3。1 回だけ回して控える）。
@@ -322,3 +324,38 @@ func test_a_stronghold_win_is_counted_as_its_own_ending() -> void:
 	var outcome := CpuMatch.play(battle, 5)
 	assert_eq(outcome.ending, "point")
 	assert_eq(outcome.winner, Unit.Side.PLAYER1)
+
+
+## 話の集計（--episode --squads=random）の人の側の部隊は、その話までに教わった軍略から、CPU の選び方で軍略を持つ（教わっていない軍略を持たない）。
+func test_episode_squads_pick_a_taught_trait_the_cpu_way() -> void:
+	var tool := load("res://tools/cpu_matches.gd")
+	var picked := {}
+	for episode: RefCounted in Story.all_episodes():
+		if episode.has_squad():
+			continue
+		var taught: Array[int] = Story.unlocked_before(episode).traits
+		for squad_seed: int in [1, 2, 3, 4]:
+			var deck: Deck = tool._random_squad(episode, squad_seed)
+			var held := StoryBattle.new(episode, deck).scenario().traits[Unit.Side.PLAYER1]
+			if taught.is_empty():
+				assert_eq(held, Traits.NONE, "%s: 教わっていなければ軍略なし" % episode.id)
+				continue
+			assert_true(taught.has(held), "%s: 教わっていない軍略 %s" % [episode.id, Traits.key(held)])
+			if taught.has(CpuDeck.choose_trait(deck)):
+				assert_eq(held, CpuDeck.choose_trait(deck), "%s: CPU の選び方でない" % episode.id)
+			picked[held] = true
+	assert_true(picked.size() >= 3, "部隊の中身で軍略が変わらない: %s" % str(picked.keys()))
+
+
+## --episode の --traits=<鍵> は、教わった軍略だけ、自分で部隊を選ぶ話だけ。
+func test_episode_trait_override_takes_only_a_taught_trait() -> void:
+	var tool := load("res://tools/cpu_matches.gd")
+	var problems: Array[String] = []
+	var episode: RefCounted = tool._find_episode("ridge_ambush")
+	assert_eq(tool._episode_trait(episode, "supply", problems), Traits.Id.SUPPLY)
+	assert_true(problems.is_empty(), str(problems))
+	assert_eq(tool._episode_trait(episode, "guard", problems), Traits.NONE, "騎士領の軍略は教わっていない")
+	assert_eq(tool._episode_trait(tool._find_episode("drill_sniper"), "focus", problems), Traits.NONE, "部隊が決まっている話")
+	assert_eq(problems.size(), 2, str(problems))
+	var deck: Deck = tool._episode_squad(episode, true, 5, Traits.Id.FOCUS)
+	assert_eq(StoryBattle.new(episode, deck).scenario().traits[Unit.Side.PLAYER1], Traits.Id.FOCUS)
