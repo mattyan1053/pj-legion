@@ -372,7 +372,7 @@ music = talk_calm
 - 行は、どれも地の文（頭の `>` は、あっても無くてもよい）。1 から 6 行（`episode_base.gd` の `CUT_MAX_LINES`）、1 行は 60 字まで。`{hero}` は書ける。台詞・選択肢・条件は書けない。
 - 話の最後の場面にしてもよい（下の「戦闘のあとの場面」）。会話の場面と合わせて 8 つまで。
 - 操作は会話と同じ（クリックで次へ、右クリックで戻る、ログ、スキップ）。曲は `music`（どの場面にも書く）。
-- コードの形: 会話の場面の型の 1 つ（`StoryScene.cut` が真、`color`）。流れは、会話の場面（`talk_screen.gd`）に `"cut"`・`"color"` を渡す。
+- コードの形: 会話の場面の型の 1 つ（`StoryScene.cut` が真、`color`）。流れは、会話の場面（`talk_screen.gd`）に型 `CUT` の会話（`talk_scene.gd`。`color`）を渡す。
   台本・声・折り返しの道具、通しの点検は、会話の場面として読む（台本の見出しは「カットシーン「名前」」）。
 - 盤の上で兵が動く型は、次の「盤のカットシーン」。
 
@@ -407,7 +407,7 @@ attack レオ 骸骨 20
   話の最後の場面にしてもよい（`[cut 名前]` と同じ）。会話の場面と合わせて 8 つまで。
 - 書き損じ（知らない行・兵・種類・状態・話し手、行けないマス、もういない兵）は、読み込みが行の番号と直し方の文で弾く。
 - 対戦の前のカットシーンの盤は、対戦の始めの配置とはつながらない（別の盤。兵の位置も数も、対戦とは関係が無い）。
-- コードの形: 会話の場面の型の 1 つ（`StoryScene.board_cut` に読んだ台本、`beats` に文の前ごとの出来事の塊）。流れは、会話の場面に `"cut_board"`・`"beats"`・`"looks"` を渡す（`talk_screen.gd` と `talk_screen/talk_board.gd`）。
+- コードの形: 会話の場面の型の 1 つ（`StoryScene.board_cut` に読んだ台本、`beats` に文の前ごとの出来事の塊）。流れは、会話の場面に型 `BOARD_CUT` の会話（`talk_scene.gd`。`cut_board`・`beats`・`looks`）を渡す（`talk_screen.gd` と `talk_screen/talk_board.gd`）。
   台本・声・折り返しの道具、通しの点検は、会話の場面として読む（文の行だけ）。
   作るときは、`[cut 名前]` に台本の行（兵の動き）を足す形にできる（場面の列・流れ・道具は、いまの `cut` の口をそのまま使える）。
 
@@ -447,7 +447,7 @@ attack レオ 骸骨 20
 - **セーブ**: 選んだ答えは、物語ごとの記録の `answers`（選択肢の名前 → 答えの鍵。`Story.choose_answer`・`answer_of`。版 3。`docs/save-slots.md`）。
   確かめ用の解放（F5）の間に選んだ答えは、覚えるが、その場ではファイルに書かない。
 - コードの形: 問いの行（`TalkLine`）が `choice`（名前）と `options`（`{"key", "text"}` の列）を持ち、答えごとの行と `(if …)` の行が、出す条件
-  `when_choice`・`when_answer`・`when_not` を持つ（`TalkLine.holds(答えを返す関数)` で、出すかを決める）。会話の場面へは、行の `"choice"` と `"when"` で渡る（`Story.talk_of`）。
+  `when_choice`・`when_answer`・`when_not` を持つ（`TalkLine.holds(答えを返す関数)` で、出すかを決める）。会話の場面へは、行（`TalkScene.Line`）の `choice` と `when` で渡る（`Story.talk_of`）。
 
 ### 主人公の名前
 
@@ -515,10 +515,13 @@ attack レオ 骸骨 20
 - 対戦のあとの会話かどうかは、列の位置で決まる（対戦の場面より後ろで、`place` の無い会話は、背景の盤に決着したときの兵を立たせる）。
   最後の場面が会話なら、その最後にクリアで増えるものの知らせを足し、「次の話へ」を選ばせる（カットシーンで終わる話は、上の「戦闘のあとの場面」）。最後が対戦なら、そのまま話の一覧へ。
 - **クリアの記録**: 対戦のある話は、対戦に勝ったとき（`StoryBattle.record_win`。決着の画面が出た時点）。対戦の無い話（`Episode.has_battle()` が偽）は、
-  最後の会話を読み終えたとき（流れが会話に `"clears"` で話の id を渡し、`talk_screen/talk_choice.gd` の `_end` が書く）。
+  最後の会話を読み終えたとき（流れが会話の `clears` に話の id を入れ、`talk_screen/talk_choice.gd` の `_end` が書く）。
 - 話の台詞の全部は `Episode.all_lines()`（場面の順に会話の行と途中の台詞、最後に負けたときの台詞）。
-- **場面の種類を足すとき**（カットシーンなど）: `StoryScene.Kind` に足し、作る関数を足し、`episode_scenes.gd` に節の読み方を、`Story.run_of` の `match` に流れの場面を足す。
-  台本・声・折り返しの道具は、会話の場面と対戦の場面しか見ないので、台詞を持つ種類なら道具にも足す。
+- **会話の場面に渡すもの**は `game/talk_scene.gd`（`TalkScene`。名前の付いた欄の値。曲は `track`、アプリは対戦と同じく `music()` で聞く）。場面の型 `shape`（`MAP` 盤の前の会話・`PLACE` 別の場所の会話・
+  `CUT` カットシーン・`BOARD_CUT` 盤のカットシーン）を 1 つの値で持ち、型ごとに背景と読む欄が決まる（ファイルの頭の表）。行は `TalkScene.Line`（選択肢 `choice`、出す条件 `when`、
+  名前の入れ直しの `raw`・`hero_line`、名前を聞く `naming`、知らせのアイコン `unit_kind`・`item`・`troop_trait`）。
+  型は話のファイルの節で決まる（`StoryScene.talk_shape()`）。流れ（`Story.run_of`）が型ごとの欄を足し、最後の会話に `closes`・`next_episode`・`clears` を入れる。
+- 場面の型を足すときの手順は、下の「場面の型を 1 つ足すとき」。
 - **試しの 1 話**: 連邦の第 1 話「はじめの一歩」（`game/story/military/drill_first_steps.txt`）は、場面の節で書いた厚い版。
   カットシーン（色の幕）→ 会話（峠の駐屯地。名を問われて名乗る `(name)`）→ 会話（ふもとへの道。選択肢 `military_first_wish`）→ 出撃準備 → 会話（盤の前）→ 対戦 → あとの会話 2 つ（盤の前 → 峠の駐屯地。選んだ答えで 1 行替わる）。
   書き方の実例として読める。
@@ -529,6 +532,29 @@ attack レオ 骸骨 20
 - 列にまだ寄っていない所:
   - スクリーンショットの場面（`tools/shots/`）は、話を始めたら出撃準備より前の場面を飛ばす（`_skip_to_sortie`）。
   - 実測（`tools/cpu_matches.gd`）と出撃準備は、対戦のある話だけを相手にする（`Story.first_battle`）。対戦は 1 つの話に 1 つまで。
+
+### 場面の型を 1 つ足すとき
+
+会話の場面の型（`TalkScene.Shape`）を 1 つ足す（例: 絵の 1 枚を見せる場面）。対戦・出撃準備のような、流れの別の場面にするものは `StoryScene.Kind` に足す（下の終わり）。
+
+| 触る所 | 何を足すか | 足し忘れたら |
+| --- | --- | --- |
+| `game/talk_scene.gd` | `Shape` に足す。頭の表に、背景・出すもの・読む欄。その型だけが読む欄 | — |
+| `game/episode/episode_scenes.gd` | 節の読み方（`[talk 名前]`・`[cut 名前]`・`[board 名前]` と同じ形。頭に書ける設定の表 `*_KEYS`） | 書いても「知らない節」 |
+| `game/episode/story_scene.gd` | 読んだものの欄と、`talk_shape()` がその型を返す所 | `test_talk_shapes.gd` が落ちる |
+| `game/story.gd` の `run_of` | `match talk.shape` に、型の欄を足す所 | `test_talk_shapes.gd` が落ちる |
+| `game/talk_screen.gd` の `_ready` | `match talk.shape` に背景。文の枠・見出し・姿を出すかは `TalkScene.shows_speakers()` | `test_talk_shapes.gd` が落ちる |
+| `tools/story_script.gd` | 台本の見出し `SCENE_HEADINGS` | `test_talk_shapes.gd` が落ちる。台本の道具は、鍵が無くて止まる |
+| `game/story/_template/` | 見本の話に、その型の場面を 1 つ | `test_talk_shapes.gd` が落ちる |
+| この文書の「場面の節」と、型の節（「カットシーン」など） | 書き方 | — |
+
+**黙って漏れる所**（検査が拾わない）:
+- 最後の場面になったとき（`run_of` の終わり）: 文の枠を出さない型（`shows_speakers()` が偽）なら、知らせだけの会話の場面をあとに足す。枠を出す型なら、その場面に知らせを足す。
+- 撮る道具（`tools/shots/`）の場面の一覧と、通しの点検（`game/autoplay_sweeps.gd`）の進め方（画面を押して進める所）。新しい型の場面で押し方が違えば、そこで止まる。
+- 声・折り返しの点検（`tools/voice_check.gd`、`tools/wrap_audit_lib.gd`）は場面の `lines` を読む。文の幅や字が違う型なら、出る所を足す。
+
+流れの別の場面（会話の場面でないもの）にするなら、`StoryScene.Kind` に足し、作る関数（`sortie()`・`battle()` と同じ形）と、`run_of` の `match scene.kind` に流れの場面を足す。
+`Kind` を見る所（`is_talk()`・`is_battle()` で拾う道具と点検）は、その種類を黙って飛ばす。
 
 ### 会話の 1 行（コードの形）
 

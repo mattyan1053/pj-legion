@@ -16,7 +16,15 @@ const StoryBattle := preload("res://game/story_battle.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
 const WinText := preload("res://game/win_text.gd")
 const Names := preload("res://game/names.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
 
+## 名前のある会話の場面の見出し（会話の場面の型ごと。型を足したら、ここにも足す。tests/game/test_talk_shapes.gd が見る）。
+const SCENE_HEADINGS := {
+	TalkScene.Shape.MAP: "### 場面「%s」",
+	TalkScene.Shape.PLACE: "### 場面「%s」",
+	TalkScene.Shape.CUT: "### カットシーン「%s」",
+	TalkScene.Shape.BOARD_CUT: "### 盤のカットシーン「%s」",
+}
 ## 通しの台本を書き出す所（物語の id が、ファイルの名前）。コミットしない（.gitignore の /build/）。
 const DIR := "res://build/story-script/"
 ## 目次を置く所（GitHub で game/story/ を開くと、下に出る）。
@@ -104,7 +112,7 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	for scene: Episode.StoryScene in episode.scenes:
 		if scene.is_talk():
 			if scene.name != "":
-				lines.append(("### カットシーン「%s」" if scene.cut else "### 盤のカットシーン「%s」" if scene.board_cut != null else "### 場面「%s」") % scene.name)
+				lines.append(SCENE_HEADINGS[scene.talk_shape()] % scene.name)
 			else:
 				lines.append("### 対戦のあと" if fought else "### 対戦の前")
 			lines.append("")
@@ -120,8 +128,8 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	if not news.is_empty():
 		lines.append("クリアで増えるもの:")
 		lines.append("")
-		for row: Dictionary in news:
-			lines.append("- %s" % row["text"])
+		for row: TalkScene.Line in news:
+			lines.append("- %s" % row.text)
 		lines.append("")
 
 

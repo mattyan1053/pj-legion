@@ -1,6 +1,6 @@
 extends "res://game/talk_screen/talk_choice.gd"
-## 会話の場面（game/talk_screen.gd）の選択肢（docs/story.md の「選択肢」）: 問いの行（"choice" を持つ行）を出しきったら、答えを選ばせる。
-## 選んだ答えは、記録（story.gd の choose_answer）に覚える。出す条件（"when"）を持つ行は、答えに合うものだけを出す。
+## 会話の場面（game/talk_screen.gd）の選択肢（docs/story.md の「選択肢」）: 問いの行（choice を持つ行）を出しきったら、答えを選ばせる。
+## 選んだ答えは、記録（story.gd の choose_answer）に覚える。出す条件（when）を持つ行は、答えに合うものだけを出す。
 ##
 ## - 答えは、クリックか、上下の矢印（W/S）で選んで Enter・Space、数字のキー（1〜3）。選ぶまで、先へ進まない（「スキップ」も止まる）。
 ## - 右クリックで前の文へ戻れる。選んだあとに問いの行へ戻れば、選び直せる。
@@ -17,15 +17,14 @@ func _answer_of(choice: StringName) -> String:
 ## いま出す行の列を作り直す（渡された行のうち、出す条件の合うもの）。
 func _refresh_lines() -> void:
 	_lines = []
-	for line: Dictionary in talk.get("lines", []):
-		var when: Dictionary = line.get("when", {})
-		if when.is_empty() or (_answer_of(when["choice"]) == String(when["answer"])) != bool(when.get("not", false)):
+	for line in talk.lines:
+		if line.when == null or line.when.holds(_answer_of(line.when.choice)):
 			_lines.append(line)
 
 
-## いまの行の選択肢（{"name", "options"}。選ばせる行でなければ空）。
-func _choice_here() -> Dictionary:
-	return _lines[_index].get("choice", {}) if _index < _lines.size() else {}
+## いまの行の選択肢（選ばせる行でなければ null）。
+func _choice_here() -> TalkScene.Choice:
+	return _lines[_index].choice if _index < _lines.size() and _lines[_index].asks() else null
 
 
 ## 答えを選ばせているか。
@@ -81,16 +80,16 @@ func _build_options() -> void:
 ## いまの行が選ばせる行で、文が出きっていれば、答えを出す。
 func _ask_if_due() -> void:
 	var choice := _choice_here()
-	if choice.is_empty() or _ended or _answered_last or is_asking() or _shown < float(_text.get_total_character_count()):
+	if choice == null or _ended or _answered_last or is_asking() or _shown < float(_text.get_total_character_count()):
 		return
-	var options: Array = choice["options"]
-	var chosen := _answer_of(choice["name"])
+	var options := choice.options
+	var chosen := _answer_of(choice.name)
 	_option_at = -1
 	for i in _option_buttons.size():
 		_option_buttons[i].visible = i < options.size()
 		if i < options.size():
-			_option_buttons[i].text = options[i]["text"]
-			if String(options[i]["key"]) == chosen:
+			_option_buttons[i].text = options[i].text
+			if String(options[i].key) == chosen:
 				_option_at = i  # 選び直しに戻ってきたときは、前に選んだ答えに印
 	_mark_option(_option_at)
 	_options.visible = true
@@ -125,13 +124,13 @@ func _set_guide(asking: bool) -> void:
 
 
 ## 会話のログに並べる行: これまでに出した行（いまの行まで）。選んだ答えは、問いの行のあとに 1 行で残す。
-func _log_lines() -> Array:
-	var rows: Array = []
+func _log_lines() -> Array[TalkScene.Line]:
+	var rows: Array[TalkScene.Line] = []
 	for i in mini(_index + 1, _lines.size()):
 		rows.append(_lines[i])
-		var choice: Dictionary = _lines[i].get("choice", {})
-		if (i < _index or _answered_last) and not choice.is_empty():
-			for option: Dictionary in choice["options"]:
-				if String(option["key"]) == _answer_of(choice["name"]):
-					rows.append({"side": 0, "name": Text.t("talk.answer.plate"), "text": option["text"]})
+		var choice := _lines[i].choice
+		if (i < _index or _answered_last) and _lines[i].asks():
+			for option in choice.options:
+				if String(option.key) == _answer_of(choice.name):
+					rows.append(TalkScene.Line.new(0, Text.t("talk.answer.plate"), option.text))
 	return rows

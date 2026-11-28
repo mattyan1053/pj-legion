@@ -18,6 +18,7 @@ const TalkLog := preload("res://game/talk_log.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
 
 signal finished(outcome: StringName)
 
@@ -63,10 +64,10 @@ const FIGURE_MAX_WIDTH := (BOX_WIDTH - OPTIONS_WIDTH) / 2.0
 const BLINK_PERIOD := 1.2
 ## 名前の札の色（0 = 人の軍、1 = 敵の軍は battle_screen.gd の TEAM_COLORS と同じ。2 = 知らせ）。
 const TEAM_COLORS: Array[Color] = [Palette.TEAM_BLUE, Palette.TEAM_RED, Palette.TEXT_OFF]
-## 知らせの行の side（story.gd の NOTICE_SIDE）。
-const NOTICE_SIDE := 2
-## 地の文の行の side（episode.gd の NARRATION_SIDE）。名前の札を出さず、文を真ん中に明朝で出す。話し手の姿は、両方とも暗い。
-const NARRATION_SIDE := 3
+## 知らせの行の side（talk_scene.gd の NOTICE_SIDE）。
+const NOTICE_SIDE := TalkScene.NOTICE_SIDE
+## 地の文の行の side（talk_scene.gd の NARRATION_SIDE）。名前の札を出さず、文を真ん中に明朝で出す。話し手の姿は、両方とも暗い。
+const NARRATION_SIDE := TalkScene.NARRATION_SIDE
 ## 知らせの行の、駒・持ち物の額の辺（px）。
 const NOTICE_FRAME := 72.0
 ## 文の大きさと、文の枠の左右の余白（px）、知らせのアイコンと文の間（px）。文の幅は text_width で決まる。
@@ -80,11 +81,10 @@ const COLOR_TEXT := Palette.TEXT
 const COLOR_DIM := Palette.TEXT_DIM
 
 var context: AppContext
-## 渡された会話（{"title": 見出し, "lines": [{"side", "name", "text"}, …], "board": 背景の盤, "look": 盤の見た目,
-## "figures": 話し手の姿（行の "who" の番号の並び）}。story.gd の talk_of）。行に "who" が無ければ、陣営（"side"）の番号。
-var talk := {}
-## いま出す行の列: 渡された行（talk の "lines"）のうち、出す条件（"when"）の合うもの。答えを選ぶたびに作り直す（talk_ask.gd の _refresh_lines）。
-var _lines: Array = []
+## 渡された会話（talk_scene.gd。流れが渡す。story.gd の run_of）。
+var talk: TalkScene = TalkScene.new()
+## いま出す行の列: 渡された行（talk.lines）のうち、出す条件（when）の合うもの。答えを選ぶたびに作り直す（talk_ask.gd の _refresh_lines）。
+var _lines: Array[TalkScene.Line] = []
 ## この場面で選んだ答え（選択肢の名前 -> 答えの鍵）。記録（story.gd の answer_of）より先に見る。
 var _answers := {}
 ## 選択肢の枠と、答えのボタン（OPTION_SLOTS 個。使わない分は隠す）、キーで選んでいる答え（-1 = まだ選んでいない）。
@@ -129,29 +129,18 @@ var _backdrop: Backdrop
 var _ended := false
 
 
-## 行 line の話し手の番号（"who"。無ければ陣営の番号）。知らせの行は -1。
-static func _who(line: Dictionary) -> int:
-	var side := int(line.get("side", 0))
-	return -1 if side >= NOTICE_SIDE else int(line.get("who", side))
-
-
-## 行 line が地の文か（話し手のいない行）。
-static func is_narration(line: Dictionary) -> bool:
-	return int(line.get("side", 0)) == NARRATION_SIDE
-
-
 ## 行 line の文を折り返す幅（px）。知らせの行は、アイコンのぶん狭い。
-static func text_width(line: Dictionary) -> float:
+static func text_width(line: TalkScene.Line) -> float:
 	var width := BOX_WIDTH - BOX_MARGIN_X * 2.0
-	if line.has("kind") or line.has("item") or line.has("trait"):
+	if line.has_icon():
 		width -= NOTICE_FRAME + NOTICE_GAP
 	return width
 
 
 ## 行 line の文を、text_width で折り返したもの（地の文は見出しの字）。
-static func fold_line(line: Dictionary) -> String:
-	var font := UiTheme.FONT_HEADING if is_narration(line) else UiTheme.FONT_BODY
-	return TextWrap.fold(line.get("text", ""), text_width(line),
+static func fold_line(line: TalkScene.Line) -> String:
+	var font := UiTheme.FONT_HEADING if line.is_narration() else UiTheme.FONT_BODY
+	return TextWrap.fold(line.text, text_width(line),
 		func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_FONT).x)
 
 
