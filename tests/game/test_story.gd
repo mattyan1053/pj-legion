@@ -255,8 +255,8 @@ func test_the_last_episode_has_no_next_episode() -> void:
 		var last: RefCounted = campaign.episodes[-1]
 		assert_eq(Story.episode_after(last), null, "%s: 物語の最後の話の次は無い" % last.id)
 		var run := Story.run_of(last, Story.default_deck(Story.starting(campaign)))
-		for i in 3:
-			run.advance()
+		while run.index < run.size() - 1:
+			run.advance()  # 最後の場面まで（場面の節で書いた話は、場面の数が話ごとに違う）
 		assert_eq(run.data()["next_episode"], null)
 
 
