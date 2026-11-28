@@ -568,7 +568,7 @@ unit = skeleton
 
 ## 人の側（決まった部隊、解放）に魔物は書けない（物語の軍の駒だけ。campaign.gd が確かめる）。
 func test_monsters_are_not_for_the_player() -> void:
-	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
+	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\ndrill_capture\nridge_path\n"
 	var campaign: Campaign = Campaign.parse(good.replace("unit = shield_trooper", "unit = skeleton"), PROBE_STORY)
 	assert_false(campaign.problems.is_empty(), "最初から雇える駒に魔物")
 
@@ -702,9 +702,9 @@ func test_broken_episodes_are_caught_on_their_line() -> void:
 
 ## わざと壊した物語を弾くこと。
 func test_broken_campaigns_are_caught() -> void:
-	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
+	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\ndrill_capture\nridge_path\n"
 	assert_eq(Campaign.parse(good, PROBE_STORY).problems, PackedStringArray(), "見本そのものは正しい")
-	assert_eq(Campaign.parse(good, PROBE_STORY).episodes.size(), 1)
+	assert_eq(Campaign.parse(good, PROBE_STORY).episodes.size(), 2)
 	var cases := {
 		"ほかの軍の駒から始める": ["unit = shield_trooper", "unit = paladin"],
 		"知らない軍": ["army = military", "army = elves"],
@@ -731,7 +731,7 @@ func test_broken_campaigns_are_caught() -> void:
 
 ## 物語の紹介の 1 行（intro）と主な人物（[cast]）は無くてよい。書けば、そのまま読む（姿の書き方は話の [cast] と同じ）。
 func test_campaign_intro_and_cast_read() -> void:
-	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\nridge_path\n"
+	var good := "[campaign]\ntitle = 見本の物語\narmy = military\nrules = probe\nbudget = 20\n\n[start]\nunit = shield_trooper\n\n[episodes]\ndrill_capture\nridge_path\n"
 	var plain: Campaign = Campaign.parse(good, PROBE_STORY)
 	assert_eq(plain.intro, "")
 	assert_true(plain.cast.is_empty())
