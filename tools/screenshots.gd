@@ -1,4 +1,4 @@
-extends "res://tools/shots/story_cut_scenes.gd"
+extends "res://tools/shots/story_after_scenes.gd"
 ## ゲームの決まった場面を画像に撮る（PR に貼るため）。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
 ## アプリ（app.gd）が、タイトル → 対戦設定 → 対戦 と人と同じ道で対戦に入ったところで、このノードを足す。
 ## 撮り終えたら終わる。使い方は docs/screenshots.md。
@@ -295,6 +295,10 @@ func _ready() -> void:
 			if not _talk_shot_known(name):
 				_quit("screenshots: 知らない会話の場面: %s（%s）" % [name, TALK_SHOT_USAGE], 1)
 				return
+		elif name.begins_with(AFTER_SHOT):
+			if not _after_shot_known(name):
+				_quit("screenshots: 知らない対戦のあとの場面: %s（%s）" % [name, AFTER_SHOT_USAGE], 1)
+				return
 		elif not SCENES.has(name):
 			_quit("screenshots: 知らない場面: %s（場面: %s）" % [name, ", ".join(SCENES.keys())], 1)
 			return
@@ -314,6 +318,8 @@ func _run() -> void:
 				ok = _scape(name)
 			elif name.begins_with(TALK_SHOT):
 				ok = await _talk_shot(name)
+			elif name.begins_with(AFTER_SHOT):
+				ok = await _after_shot(name)
 			else:
 				ok = await call("_scene_" + name)
 			if ok:
