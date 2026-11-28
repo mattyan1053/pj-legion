@@ -137,52 +137,12 @@ func _ready() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(spacer)
-	# 「ログ」「スキップ」の置き先: ふだんは名前の札の行の右端。
-	var corner: HBoxContainer = top_row
-	if cut:
-		# カットシーンも、置き場所は会話の場面と同じ（下の文の枠があるはずの所の、右上。真ん中の文には重ならず、場面が替わってもボタンが動かない）。
-		# 行の中には、同じ高さの空きを残す（文の高さを変えない）。
-		var held := Control.new()
-		held.custom_minimum_size = Vector2(0.0, BUTTON_SIZE.y)
-		held.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		top_row.add_child(held)
-		corner = HBoxContainer.new()
-		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		corner.alignment = BoxContainer.ALIGNMENT_END
-		corner.anchor_left = 0.5
-		corner.anchor_right = 0.5
-		corner.anchor_top = 1.0
-		corner.anchor_bottom = 1.0
-		corner.offset_left = -BOX_WIDTH / 2.0
-		corner.offset_right = BOX_WIDTH / 2.0
-		corner.offset_bottom = -(BOX_BOTTOM + BOX_HEIGHT + PLATE_GAP)
-		corner.offset_top = corner.offset_bottom - BUTTON_SIZE.y
-		layer.add_child(corner)
-	_log_button = Button.new()
-	_log_button.text = Text.t("talk.log")
-	_log_button.tooltip_text = Text.t("talk.log.tooltip")
-	_log_button.focus_mode = Control.FOCUS_NONE
-	_log_button.add_theme_font_size_override("font_size", 17)
-	_log_button.custom_minimum_size = BUTTON_SIZE
-	_log_button.size_flags_vertical = Control.SIZE_SHRINK_END
-	_log_button.pressed.connect(open_log)
-	corner.add_child(_log_button)
-	var buttons_gap := Control.new()
-	buttons_gap.custom_minimum_size = Vector2(8.0, 0.0)
-	buttons_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	corner.add_child(buttons_gap)
-	_skip = Button.new()
-	_skip.text = Text.t("talk.skip")
-	_skip.focus_mode = Control.FOCUS_NONE
-	_skip.add_theme_font_size_override("font_size", 17)
-	_skip.custom_minimum_size = BUTTON_SIZE
-	_skip.size_flags_vertical = Control.SIZE_SHRINK_END
-	_skip.pressed.connect(press_skip)
-	corner.add_child(_skip)
-	if cut:
-		# 文だけを見せる場面なので、ボタンは控えめに。
-		_log_button.modulate.a = CUT_BUTTONS
-		_skip.modulate.a = CUT_BUTTONS
+	# 行の高さは、前に「ログ」「スキップ」を置いていたときのまま（文の枠の場所を変えない）。
+	var held := Control.new()
+	held.custom_minimum_size = Vector2(0.0, ROW_HEIGHT)
+	held.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.add_child(held)
+	_build_corner(layer, cut)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0.0, PLATE_GAP)
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -249,7 +209,6 @@ func _ready() -> void:
 	_hint.set_parts([
 		KeyMarks.key(Text.t("common.key.click"), Text.t("talk.guide.next")),
 		KeyMarks.key(Text.t("common.key.right_click"), Text.t("talk.guide.back")),
-		KeyMarks.key(Text.t("common.key.wheel"), Text.t("talk.guide.log")),
 	])
 	foot.add_child(_hint)
 
@@ -263,6 +222,61 @@ func _ready() -> void:
 		_go_to_line(0)
 	else:
 		_show_line(0)
+
+
+## 「スキップ」「ログ」とホイールの案内: 画面の右上の角（システムメニューのボタンの左）。会話・カットシーン・盤のカットシーンのどれでも同じ所で、
+## 「ログ」は対戦の上の帯の「ログ」と同じ所（system_menu.gd の BESIDE_*）。文や話し手で動かない。文のそばに置くのは「次へ」「戻る」の案内だけ。
+func _build_corner(layer: CanvasLayer, cut: bool) -> void:
+	var corner := Control.new()
+	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	corner.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	corner.offset_right = -SystemMenu.BESIDE_RIGHT
+	corner.offset_left = corner.offset_right - CORNER_WIDTH
+	corner.offset_top = 0.0
+	corner.offset_bottom = SystemMenu.BAND_HEIGHT
+	Steady.mark(corner, "talk.corner", Steady.RECT)
+	layer.add_child(corner)
+	_corner = corner
+	_log_button = Button.new()
+	_log_button.text = Text.t("talk.log")
+	_log_button.tooltip_text = Text.t("talk.log.tooltip")
+	_log_button.focus_mode = Control.FOCUS_NONE
+	_log_button.add_theme_font_size_override("font_size", 15)
+	_log_button.pressed.connect(open_log)
+	corner.add_child(_log_button)
+	_place_in_band(_log_button, CORNER_WIDTH, SystemMenu.BESIDE_SIZE)
+	_skip = Button.new()
+	_skip.text = Text.t("talk.skip")
+	_skip.focus_mode = Control.FOCUS_NONE
+	_skip.add_theme_font_size_override("font_size", 15)
+	_skip.pressed.connect(press_skip)
+	corner.add_child(_skip)
+	_place_in_band(_skip, _log_button.position.x - CORNER_GAP, SKIP_SIZE)
+	# ホイールでログ、の案内は、ボタンの左に小さく（右の端を決めて、左へ伸ばす）。景色の上でも読めるよう、沈んだ地の札に入れる。
+	var hint_plate := PanelContainer.new()
+	hint_plate.add_theme_stylebox_override("panel", UiTheme.box(Color(Palette.INK, 0.6), Color(Palette.BORDER, 0.0), 0, 4, 5.0))
+	hint_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint_plate.anchor_top = 0.5
+	hint_plate.anchor_bottom = 0.5
+	hint_plate.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	hint_plate.grow_vertical = Control.GROW_DIRECTION_BOTH
+	corner.add_child(hint_plate)
+	hint_plate.offset_left = _skip.position.x - CORNER_GAP
+	hint_plate.offset_right = hint_plate.offset_left
+	_log_hint = KeyMarks.new()
+	_log_hint.set_parts([KeyMarks.key(Text.t("common.key.wheel"), Text.t("talk.guide.log"))])
+	_log_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint_plate.add_child(_log_hint)
+	if cut:
+		# 文だけを見せる場面なので、控えめに。
+		corner.modulate.a = CUT_BUTTONS
+
+
+## 右上の角のボタン button を、右の端 right・大きさ wanted（テーマの字と余白のぶん高くなれば、その高さ）で、帯の高さの真ん中に置く
+## （対戦の上の帯の並びと同じ寄せ方）。木に入れてから呼ぶ（入れる前は、字の大きさが効かない）。
+static func _place_in_band(button: Button, right: float, wanted: Vector2) -> void:
+	button.size = wanted.max(button.get_combined_minimum_size())
+	button.position = Vector2(right - button.size.x, floorf((SystemMenu.BAND_HEIGHT - button.size.y) / 2.0))
 
 
 ## 盤のカットシーン: 文 index の前の塊を再生してから（無ければすぐ）、文 index を出す。最後の文のあと（index が文の数）なら、終える。
@@ -484,6 +498,16 @@ func is_scenery_only() -> bool:
 ## 「ログ」と「スキップ」が画面に占める四角（検査用）。
 func buttons_rect() -> Rect2:
 	return _log_button.get_global_rect().merge(_skip.get_global_rect())
+
+
+## 「ログ」のボタンが画面に占める四角（検査用。対戦の上の帯の「ログ」と同じ所）。
+func log_button_rect() -> Rect2:
+	return _log_button.get_global_rect()
+
+
+## 右上の角（「スキップ」「ログ」とホイールの案内）が画面に占める四角（検査用）。
+func corner_rect() -> Rect2:
+	return _corner.get_global_rect()
 
 
 ## カットシーンか（検査用）。
