@@ -67,6 +67,10 @@ func test_a_wrong_address_is_found() -> void:
 	assert_eq(table.check_line("ドーソン", "行きますよ、隊長さん。", known).size(), 1, "表に無い敬称")
 	assert_eq(table.check_line("ドーソン", "隊長どの、こちらへ。", known).size(), 2, "言わないことにした言葉（呼び方としても表に無い）")
 	assert_eq(Array(table.check_line("ドーソン", "ドーソン曹長、着任しました。それも曹長の仕事です。", known)), [], "名乗りと自分の肩書きは見ない")
+	# 話の中で名乗る話（「(name)」）: 名を問う行までは、主人公を肩書きだけで呼んでよい。ほかの人の肩書きは、いつもどおり。
+	assert_eq(table.check_line("", "新任の隊長は、初めての隊を預かった。", {}).size(), 1, "名前と結びつく前の肩書き")
+	assert_eq(Array(table.check_line("", "新任の隊長は、初めての隊を預かった。", {}, "ハーデン")), [], "まだ名乗っていない主人公の肩書き")
+	assert_eq(table.check_line("", "曹長は、もう来ていた。", {}, "ハーデン").size(), 1, "ほかの人の肩書きは、名前と一緒に")
 	assert_eq(Array(table.check_line("", "ハーデンが行く。あんたも来い。", known)), [], "地の文の呼び方は見ない")
 
 
