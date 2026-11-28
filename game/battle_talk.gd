@@ -4,6 +4,7 @@ extends Control
 ##
 ## 盤を隠しにくくするため、地は半透明にし、マウスが乗っている間と、駒のそばのメニュー・予測のパネル・進化先の選択肢が重なっている間は薄くする
 ## （obstacles）。左の勝ち方の札、右の視点の案内・ミニマップとは重ならない幅にしてある。
+## 左上の札がそれより広い（縫い目の様子の札など）ときは、避ける（avoid。右へずらし、右にも収まらなければ、その札の下へ）。
 ##
 ## 台詞が重なったら、順に出す（前の台詞が消えてから次）。出す長さは実際の時間で測る（CPU の番の早送りや、
 ## 自動の対戦の速さ（Engine.time_scale）で縮めない。メニューを開いて止めている間は進めない）。
@@ -33,6 +34,8 @@ const WIDTH := 500.0
 const HEIGHT := 61.0
 const PLATE_WIDTH := 96.0
 const TOP := 54.0
+## 避ける札との間（px。keep_clear）。
+const AVOID_GAP := 8.0
 ## 薄くしたときの濃さと、濃さが変わる速さ（1 秒あたり）。
 const DIMMED := 0.18
 const DIM_SPEED := 6.0
@@ -75,6 +78,8 @@ var _face_style: StyleBoxFlat
 var _box_style: StyleBoxFlat
 var _more: Label
 var _blink := 0.0
+## 避ける四角（画面の座標。左上の勝ち方・拠点・縫い目の様子の札、右上の視点の案内・ミニマップ）。keep_clear で替える。
+var avoid: Array[Rect2] = []
 
 
 ## 札の部品は、木に入れる前に作っておく（テストから木に入れずに使える）。
@@ -147,7 +152,30 @@ func _ready() -> void:
 
 
 func _center() -> void:
-	position.x = roundf((get_viewport_rect().size.x - WIDTH) / 2.0)
+	var width := get_viewport_rect().size.x
+	var centered := Vector2(roundf((width - WIDTH) / 2.0), TOP)
+	var at := centered
+	var below := TOP
+	for rect in avoid:
+		if _beside(rect, centered) and rect.get_center().x < width / 2.0:
+			at.x = maxf(at.x, rect.end.x + AVOID_GAP)  # 左の札を避けて、右へ
+			below = maxf(below, rect.end.y + AVOID_GAP)
+	for rect in avoid:
+		if _beside(rect, centered) and rect.get_center().x >= width / 2.0 and at.x + WIDTH + AVOID_GAP > rect.position.x:
+			at = Vector2(centered.x, below)  # 右にも収まらない: 真ん中のまま、左の札の下へ
+	position = at
+
+
+## 四角 rect が、帯を at に置いたときの高さの範囲にかかるか。
+func _beside(rect: Rect2, at: Vector2) -> bool:
+	return rect.has_area() and rect.position.y < at.y + HEIGHT and rect.end.y > at.y
+
+
+## 避ける四角（画面の座標）を替えて、置き直す。
+func keep_clear(rects: Array[Rect2]) -> void:
+	avoid = rects
+	if is_inside_tree():
+		_center()
 
 
 ## 札が画面に占める四角（出していなければ大きさ 0）。検査用。

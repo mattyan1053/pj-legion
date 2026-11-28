@@ -2,6 +2,12 @@ extends "res://game/battle_screen/screen_refresh.gd"
 ## 対戦の場面の、途中の会話の札（台詞を出す・送る・止める）と、終盤の曲。
 
 
+## 途中の会話の札に、上の帯の下の札（左上の勝ち方・拠点・縫い目の様子、右上の視点の案内）とミニマップを避けさせる（battle_talk.gd の keep_clear）。
+func _keep_talk_clear() -> void:
+	var rects := talk_card_neighbors()
+	_talk.keep_clear(rects)
+
+
 ## 対戦の途中の会話の台詞を、上の帯のすぐ下の札に順に出し、ログにも書く。
 ## 札が台詞を送られるまで出したままにする（hold）ときは、送り終えるまで待つ（その間、盤は止まる。CPU の番の早送り・スキップ・おまかせの途中でも）。
 func _say(lines: Array[BattleCues.Line]) -> void:
@@ -11,6 +17,7 @@ func _say(lines: Array[BattleCues.Line]) -> void:
 		battle_log.say(line.name, line.text, line.side)
 	if _playback.skipping and not _talk.hold:
 		return  # 検査とスクリーンショットでは、スキップの途中の台詞は、ログにだけ残す
+	_keep_talk_clear()
 	_talk.say(lines)
 	if not _talk.hold:
 		return
@@ -66,6 +73,7 @@ func talk_card_neighbors() -> Array[Rect2]:
 
 ## 対戦の途中の会話の札に、台詞を出す（検査用。ふだんは話の [cues] から出す）。hold なら、送られるまで盤を止める。
 func say_for_check(lines: Array[BattleCues.Line]) -> void:
+	_keep_talk_clear()
 	if _talk.hold:
 		_say(lines)
 	else:
