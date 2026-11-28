@@ -33,6 +33,8 @@ var hero := ""
 ## この行のあとに選ばせる選択肢の名前（答えを覚える名前。無ければ空）と、答えの列（{"key": 答えの鍵, "text": 画面の文}。2〜3 つ）。
 var choice := &""
 var options: Array[Dictionary] = []
+## この行のあとで、主人公の名前を聞くか（話のファイルの「(name)」。docs/story.md の「主人公の名前」。まだ名乗っていないときだけ、名前の窓を出す）。
+var asks_name := false
 ## この行を出す条件（無ければ when_choice が空 = いつも出す）: 選択肢 when_choice の答えが when_answer のとき（when_not なら、そうでないとき）。
 var when_choice := &""
 var when_answer := &""
@@ -100,6 +102,8 @@ func as_dict() -> Dictionary:
 		found["options"] = options
 	if when_choice != &"":
 		found["when"] = [when_choice, when_answer, when_not]
+	if asks_name:
+		found["asks_name"] = true
 	return found
 
 

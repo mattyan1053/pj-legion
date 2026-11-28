@@ -1,6 +1,6 @@
 extends Node
 ## 会話の場面（game/talk_screen.gd）の土台: 読み込み、調整値、状態の変数と、どこからも使う小さな道具（行の読み方、幕、文字）。
-## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ game/talk_screen.gd（組み立て・入力・文の送り）。
+## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ talk_naming.gd（主人公の名前を聞く行）→ talk_board.gd（盤のカットシーン）→ game/talk_screen.gd（組み立て・入力・文の送り）。
 
 const Text := preload("res://game/text.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
