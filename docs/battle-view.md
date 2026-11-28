@@ -223,7 +223,7 @@
 
 - **始めの盤**: 対戦を作らずに、盤と置く兵の列から組む（`replay_board.gd` の `of_pieces`）。
 - **台本の行を出来事に直す**（`cut_script.gd` の `read`。ノードに依存しない）。行の書き方はファイルの頭にある。
-  - 台本の頭に書く、始めの盤の兵 `unit`（出来事にしない。始めの盤に入る）
+  - 台本の頭に書く、始めの盤の兵 `unit`（出来事にしない。始めの盤に入る）。`unit`・`appear`・`put` の最後に形を書ける（将の姿 `skeleton_mage` など（`unit_looks.gd` の `KING_LOOKS`。種類が `king` のとき）か、人物の形（`PERSONS`。種類はその人の種類）。`looks` に入る）。書かなければ、名前が話し手と同じならその人の形、ほかは種類の形
   - 動く `move` → `UnitMovedEvent`（書いたマスを順に通る。間は、歩けるマスで近い道を埋める。ほかの兵のいるマスは通らない）
   - 攻撃する `attack` → `AttackDamagedEvent`（量を書かなければ攻撃力。バリアは防ぐ。HP が 0 なら続けて `UnitDefeatedEvent`）、倒れる `fall` → `UnitDefeatedEvent`
   - 光とともに現れる `appear` → `UnitSpawnedEvent`、状態が付く `status` → `StatusAppliedEvent`

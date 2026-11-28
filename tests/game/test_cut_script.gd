@@ -105,6 +105,9 @@ func test_mistakes_are_reported_with_the_line() -> void:
 		"appear 斥候 enemy skeleton 1,1": "1 度だけ",
 		"appear 骨 enemy dragon 1,1": "知らない種類",
 		"camera 99,1": "盤の外",
+		"appear 骨 enemy skeleton 1,1 skeleton_mage": "付けられない",
+		"appear 骨 enemy sniper 1,1 marta": "付けられない",
+		"appear 骨 enemy king 1,1 wizard": "付けられない",
 	}
 	for wrong: String in cases:
 		var cut := CutScript.read(_board(), _rows(["unit 斥候 ally commando 9,1", "隊長: よし。", wrong]))
@@ -114,6 +117,16 @@ func test_mistakes_are_reported_with_the_line() -> void:
 			assert_true(String(cut.problems[0][1]).contains(cases[wrong]), "%s: 「%s」の文 → %s" % [wrong, cases[wrong], cut.problems[0][1]])
 	var gone := CutScript.read(_board(), _rows(["unit 斥候 ally commando 9,1", "fall 斥候", "move 斥候 5,1"]))
 	assert_true(gone.problems.size() == 1 and String(gone.problems[0][1]).contains("もう盤にいない"), "倒れた兵は動かせない")
+
+
+## 兵の行の最後に書いた形（将の姿・人物の形）を覚える。書かない兵は覚えない（話し手の形か、種類の形）。
+func test_unit_rows_can_choose_the_look() -> void:
+	var cut := CutScript.read(_board(), _rows([
+		"unit 墓守 enemy king 8,2 skeleton_mage", "unit 狙撃手 ally sniper 9,1 noe", "unit 骸骨 enemy skeleton 3,1",
+		"> 夜が明けた。", "appear 隊長 ally king 1,1 harden",
+	]))
+	assert_eq(cut.problems, [], "書ける形なら、問題は出ない")
+	assert_eq(cut.looks, {cut.names["墓守"]: &"skeleton_mage", cut.names["狙撃手"]: &"noe", cut.names["隊長"]: &"harden"}, "書いた形を、駒の番号で覚える")
 
 
 func test_text_rows_and_script_rows_are_told_apart() -> void:

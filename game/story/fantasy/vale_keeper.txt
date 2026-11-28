@@ -41,7 +41,7 @@ unit イェルダ ally king 10,16
 unit ウル ally priest 9,17
 unit ティオ ally sorcerer 11,17
 unit セリス ally spellblade 8,16
-unit 墓守 enemy skeleton_caller 10,2
+unit 墓守 enemy king 10,2 skeleton_mage
 camera 10,15
 > 縫い目の谷。糸を抜かれて、いちばん傷んだ所。
 put ハーデン ally king 14,18

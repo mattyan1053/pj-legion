@@ -5,13 +5,15 @@ extends RefCounted
 ## 出来事の塊を再生し、文を読ませ、また再生する、を交互に回す（同時に 2 つは進めない）。
 ##
 ## 台本の行（座標は「x,y」。左上が 0,0。名前は兵の名前で、空白を含まない。ほかは英小文字）:
-##   unit 名前 陣営 種類 x,y      始めの盤に置く兵（台本の頭にだけ書ける）。陣営は ally・enemy・neutral、種類は駒の種類（king、sniper、skeleton など）
+##   unit 名前 陣営 種類 x,y [形] 始めの盤に置く兵（台本の頭にだけ書ける）。陣営は ally・enemy・neutral、種類は駒の種類（king、sniper、skeleton など）
+##                              形は無くてよい。将の姿（king のとき。unit_looks.gd の KING_LOOKS。skeleton_mage など）か、
+##                              人物の形（PERSONS。種類はその人の種類）。書かなければ、名前が [cast] の話し手と同じならその人の形、ほかは種類の形
 ##   camera x,y | camera 名前    カメラを寄せる（台本の頭、unit のすぐあとに書けば、始めからそこを映す）
 ##   move 名前 x,y [x,y …]       歩く。書いたマスを順に通る（間のマスは、歩けるマスで近い道を埋める）
 ##   attack 名前 相手 [量]       攻撃する（量を書かなければ、その兵の攻撃力）。HP が 0 になれば倒れる
 ##   fall 名前                   倒れる
-##   appear 名前 陣営 種類 x,y    光とともに現れる
-##   put 名前 陣営 種類 x,y       光を出さずに置く（盤の端から歩いて入ってくる兵など）
+##   appear 名前 陣営 種類 x,y [形]  光とともに現れる（形は unit と同じ）
+##   put 名前 陣営 種類 x,y [形]     光を出さずに置く（盤の端から歩いて入ってくる兵など）
 ##   leave 名前 [x,y …]          歩いてから（書かなければ、その場で）、倒れずに去る
 ##   face 名前 x,y | face 名前 相手   向きを変える
 ##   status 名前 状態            状態が付く（状態は、画面の名前（バリア）か英語の名前（barrier））
@@ -23,6 +25,7 @@ const ReplayBoard := preload("res://game/replay_board.gd")
 const StoryFile := preload("res://game/story_file.gd")
 const Names := preload("res://game/names.gd")
 const CutScript := preload("res://game/cut_script.gd")
+const UnitLooks := preload("res://game/unit_looks.gd")
 
 const COMMANDS := ["unit", "camera", "move", "attack", "fall", "appear", "put", "leave", "face", "status", "pace", "wait"]
 const SIDES := {"ally": Unit.Side.PLAYER1, "enemy": Unit.Side.PLAYER2, "neutral": Unit.Side.NEUTRAL}
@@ -41,6 +44,8 @@ var start: ReplayBoard
 var start_units: Array[Unit] = []
 ## 兵の名前 -> 駒の番号（台本に出てきた全部の兵。倒れた・去った兵も）。
 var names := {}
+## 駒の番号 -> 台本の行に書いた形（unit_looks.gd の KING_LOOKS か PERSONS の名前。書いた兵だけ）。
+var looks := {}
 ## 台本を出来事と文に直したもの。{"events": Array[BattleEvent]}（出来事の塊）か {"row": 文の行 {"line", "text"}} の列（書いた順）。
 var steps: Array[Dictionary] = []
 ## 始めにカメラを寄せるマス（台本の頭の camera。書かなければ、始めの兵の真ん中）。
@@ -163,10 +168,10 @@ static func parse_cell(word: String) -> Vector2i:
 	return Vector2i(int(parts[0]), int(parts[1]))
 
 
-## 「名前 陣営 種類 x,y」の兵を作って盤に入れる（unit・appear・put）。書き損じなら null。
+## 「名前 陣営 種類 x,y [形]」の兵を作って盤に入れる（unit・appear・put）。書き損じなら null。
 func _new_unit(at: int, args: Array, text: String) -> Unit:
-	if args.size() != 4:
-		_problem(at, "兵は「名前 陣営 種類 x,y」: %s" % text)
+	if args.size() != 4 and args.size() != 5:
+		_problem(at, "兵は「名前 陣営 種類 x,y [形]」: %s" % text)
 		return null
 	var name: String = args[0]
 	if names.has(name) or SIDES.has(name) or COMMANDS.has(name):
@@ -179,6 +184,11 @@ func _new_unit(at: int, args: Array, text: String) -> Unit:
 	if kind < 0:
 		_problem(at, "知らない種類「%s」（書けるのは %s）" % [args[2], StoryFile.enum_words(UnitKind.Id)])
 		return null
+	var look := StringName(args[4]) if args.size() == 5 else &""
+	if look != &"" and not _look_fits(look, kind as UnitKind.Id):
+		_problem(at, "形「%s」は、この種類に付けられない（将（king）には %s、ほかは種類の合う人物の %s）: %s"
+				% [look, ", ".join(UnitLooks.KING_LOOKS), ", ".join(UnitLooks.PERSONS.keys()), text])
+		return null
 	var cell := parse_cell(args[3])
 	if not _free(cell, -1):
 		_problem(at, "兵「%s」を %s に置けない（盤の外、歩けないマス、ほかの兵がいる）" % [name, args[3]])
@@ -190,7 +200,16 @@ func _new_unit(at: int, args: Array, text: String) -> Unit:
 	_next_id += 1
 	names[name] = unit.id
 	_live[unit.id] = unit
+	if look != &"":
+		looks[unit.id] = look
 	return unit
+
+
+## 形 look を、種類 kind の兵に付けられるか（将の姿は将だけ、人物の形はその人の種類だけ）。
+static func _look_fits(look: StringName, kind: UnitKind.Id) -> bool:
+	if UnitLooks.KING_LOOKS.has(look):
+		return kind == UnitKind.Id.KING
+	return UnitLooks.PERSONS.has(look) and UnitLooks.PERSONS[look] == kind
 
 
 ## cell に兵を置けるか（盤の中の歩けるマスで、駒 except のほかに兵がいない）。

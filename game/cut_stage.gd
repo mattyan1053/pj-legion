@@ -57,6 +57,7 @@ func _init(cut: CutScript, look := StageLook.DEFAULT, looks := {}, play_sound :=
 	for name: String in looks:
 		if cut.names.has(name):
 			_looks[cut.names[name]] = looks[name]
+	_looks.merge(cut.looks, true)  # 台本の行に書いた形が、話し手の形より先
 	_sound = play_sound
 
 
