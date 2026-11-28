@@ -17,8 +17,6 @@
 title = ほつれた野
 map = old_battlefield
 music = battle_undead
-before_music = battle_undead
-after_music = talk_dark
 victory_mood = quiet
 wins = routed
 signs = haze
@@ -31,25 +29,69 @@ signs = haze
 ピップ = ally, commando pip
 亡者の旗手 = enemy, skeleton_banner
 
-[before]
+# 場面の節（docs/story.md）: 出撃準備 → 盤のカットシーン（塊が湧き、旗持ちが亡者を集める）→ 盤の前の会話 → 対戦 → あとの会話（選択肢）。
+[sortie]
+
+# 盤のカットシーンの盤は、対戦の配置とは別（塊が湧いて、撃たれて、また膨らむ所だけを見せる）。
+[board 古戦場の外れ]
+music = talk_dark
+unit ハーデン ally king 8,19
+unit ドーソン ally shield_trooper 7,19
+unit ノエ ally sniper 9,19
+unit ピップ ally commando 8,17
+unit 亡者の旗手 enemy skeleton_banner 8,13
+unit 骸骨兵 enemy skeleton 4,13
+unit 骸骨射手 enemy skeleton_archer 12,12
+camera 8,17
 > 偵察隊は、古戦場の外れまで見回りの足を延ばした。
 ピップ: うへぇ、骸骨っす……。墓守は退けたのに、まだ出るんすか。
-マルタ: 空がかすんでるわね。ノエ、今日は遠くまで届かないでしょ。寄って撃ちなさい。
-ノエ: はい。……青白い塊を撃ちました。跡に結び目が残って、また膨らんできます。
-ハーデン: 膨らむ前に、踏んで潰す。近くの者が上に立て。
+camera 8,15
+appear 塊 enemy fray 8,15
+wait 0.6
+face ピップ 塊
+pace fast
+move ピップ 7,18
+pace normal
+move ノエ 9,17
+face ノエ 塊
+attack ノエ 塊 99
+wait 0.8
+appear 起きた塊 enemy fray 8,15
+ノエ: 青白い塊を撃ちました。……跡に結び目が残って、また膨らんできます。
+camera 8,13
 亡者の旗手: 旗の……下へ……。集まれ……集まれ……。
+pace slow
+move 骸骨兵 7,13
+move 骸骨射手 9,13
+
+[talk 野の前]
+music = battle_undead
+マルタ: 空がかすんでるわね。ノエ、今日は遠くまで届かないでしょ。寄って撃ちなさい。
+ノエ: はい。……塊は、わたしが離れて撃ちます。
+ハーデン: 膨らむ前に、踏んで潰す。近くの者が上に立て。
 ドーソン: ……旗持ちは、群れの中で倒さんことです。周りが奮い立ちますから。
+
+[battle]
 
 [cues]
 (turn 1) ハーデン: 塊は離れて撃て。跡は俺たちで踏む。
 (fallen enemy) ノエ: 結び目が……。だれか、上に立ってください！
 (turn 6) ピップ: 旗が倒れたら周りが騒ぐっす。離れたやつからっす！
 
-[after]
+[talk 旗のあと]
+music = talk_dark
 ノエ: 旗の骸骨の旗……。連邦の、古い紋でした。
 マルタ: ……ドーソン。
 ドーソン: {hero}少尉、旗のことは報告に書かんでいいでしょう。数だけで。
+(choice patrol_banner)
+(answer plain) 数も、旗も書く
 ハーデン: 数も、旗も書く。見たものは、そのまま報告する。
+ドーソン: ……そうですか。少尉がそう決めたなら、それで。
+(answer ask) 書く。曹長、あの旗を知っているのか
+ハーデン: 書く。……曹長は、あの旗を知っているのか。
+ドーソン: ……古い紋ですな。それだけです。
+ハーデン: そうか。見たものは、そのまま報告する。
+(end)
 マルタ: ……ほら、ドーソン。置いていくわよ。
 
 [lost]

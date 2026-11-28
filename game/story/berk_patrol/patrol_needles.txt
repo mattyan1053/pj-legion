@@ -17,8 +17,6 @@
 title = 針の峠
 map = boulder_pass
 music = battle_boss
-before_music = battle_boss
-after_music = talk_calm
 wins = boss_slain
 boss = 針の番人
 
@@ -30,24 +28,53 @@ boss = 針の番人
 ピップ = ally, commando pip
 亡者の射手 = enemy, skeleton_archer
 
-[before]
+# 場面の節（docs/story.md）: 出撃準備 → 盤のカットシーン（先に出たピップが、針に撃たれて戻る）→ 盤の前の会話 → 対戦 → あとの会話。
+[sortie]
+
+# 盤のカットシーンの盤は、対戦の配置とは別（針の場所は、対戦でいちばん手前の右の 1 本と、その奥の 1 本に合わせた）。
+[board 峠の手前]
+music = talk
+unit ハーデン ally king 9,22
+unit ドーソン ally shield_trooper 8,21
+unit ノエ ally sniper 10,21
+unit マルタ ally medic 11,22
+unit ピップ ally commando 10,20
+unit 針 enemy needle 12,17
+unit 奥の針 enemy needle 14,11
+camera 10,20
 > 見回りの道は、名も無い峠に行き当たった。
+ピップ: しょ〜い〜、先を見てくるっす。岩の向こうまで、ひとっ走りっすよ。
+pace fast
+move ピップ 9,19 10,18
+wait 0.4
+attack 針 ピップ 8
+wait 0.3
+move ピップ 9,19 10,20
+face ピップ マルタ
 ピップ: いてて……。あの光る針、近づいただけで石を飛ばしてくるっす。
+face マルタ ピップ
 マルタ: また一人で先に行ったのね。腕を出しなさい。……かすり傷よ。
+
+[talk 峠の前]
+music = battle_boss
 ノエ: 針は動きません。大岩の脇の番人を、囲むように生えています。
 亡者の射手: 峠を……守れ……。通すな……。
 ドーソン: 回り込むか、盾で寄って叩くか。どっちでも付き合いますよ、少尉。
 ハーデン: 針を全部折ることはない。番人を倒せば、峠は開く。
+
+[battle]
 
 [cues]
 (turn 1) ピップ: あそこっす、おれが撃たれたの。止まったら的っすよ！
 (turn 4) ノエ: 蝙蝠です！ 針の間を抜けて、後ろへ回ります！
 (fallen ally) ドーソン: 一人やられたか。止まるな、番人まで押すぞ！
 
-[after]
+[talk 峠のあと]
+music = talk_calm
 ノエ: 針は、番人のまわりにだけ生えていました。……番人を、守っているみたいです。
 ピップ: 石が番人を守るんすか？ 何のためっすかね。
-ドーソン: 分からんものは、分からんと書くんでしょう、少尉。
+(if patrol_banner != ask) ドーソン: 分からんものは、分からんと書くんでしょう、少尉。旗のときと同じに。
+(if patrol_banner = ask) ドーソン: 分からんものは、分からんと書くんでしょう、少尉。今度は、私に聞いても出ませんよ。
 ハーデン: ああ。針の数と、生えていた場所も書く。
 マルタ: ピップ、腕を見せて。……次に一人で先へ出たら、手当てしないわよ。
 
