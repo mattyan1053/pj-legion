@@ -49,11 +49,11 @@ camera 8,16
 pace slow
 move ピップ 8,13
 wait 0.5
-camera 8,11
+camera 8,13
 appear 骸骨 enemy skeleton 6,11
 appear 弓の骸骨 enemy skeleton_archer 10,11
 wait 0.4
-appear 亡者の術師 enemy skeleton_caller 8,9
+appear 亡者の術師 enemy skeleton_caller 8,11
 face ピップ 亡者の術師
 ピップ: う、うへぇ……。しょ〜い〜、骸骨っす！ 地面から、骸骨が立ったっす！
 pace fast
@@ -61,7 +61,7 @@ move ピップ 8,17
 face ピップ ハーデン
 camera 8,17
 ハーデン: ……骸骨が、立つのか。ピップ、下がれ。ノエ、数を見ろ。
-camera 8,10
+camera 8,11
 appear 盾の骸骨 enemy skeleton_brute 4,9
 appear 奥の骸骨 enemy skeleton 12,9
 亡者の術師: 立て……立て……。戦は……まだ……終わって、おらん……。
