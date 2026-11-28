@@ -27,13 +27,14 @@ settings.music_set.b,B
 settings.music_set.c,C
 settings.music_set.arrangement,編曲
 settings.arrangement,編曲の版
-settings.arrangement.note,電重・電中・電全は緩急つきの「冬」（遅い・中くらい・通し）、電2・重・夏は前の版
-settings.arrangement.winter_wave_heavy,電重
-settings.arrangement.winter_wave_mid,電中
-settings.arrangement.winter_wave_full,電全
+settings.arrangement.note,暗重・暗中・暗電は暗く重い「冬」（遅い・中くらい・速い）、ほかは前の版
+settings.arrangement.winter_dark_grave,暗重
+settings.arrangement.winter_dark_mid,暗中
+settings.arrangement.winter_dark_drive,暗電
 settings.arrangement.winter_drive2,電2
 settings.arrangement.winter_grave,重
 settings.arrangement.summer_storm,夏
+settings.arrangement.winter_wave_heavy,電重
 settings.section.screen,画面
 settings.fullscreen,全画面
 settings.fullscreen.note,オフ: ウィンドウ表示　Alt+Enter: 切り替え

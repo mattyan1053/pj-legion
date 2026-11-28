@@ -86,7 +86,7 @@ const ITEMS: Array[Dictionary] = [
 		# 選択肢は 1 行に 7 つまでしか収まらないので、組とは別の行にした。
 		"key": ARRANGEMENT, "section": "settings.section.sound", "label": "settings.arrangement",
 		"note": "settings.arrangement.note",
-		"kind": Kind.CHOICE, "choices": [[0, "settings.arrangement.winter_wave_heavy"], [1, "settings.arrangement.winter_wave_mid"], [2, "settings.arrangement.winter_wave_full"], [3, "settings.arrangement.winter_drive2"], [4, "settings.arrangement.winter_grave"], [5, "settings.arrangement.summer_storm"]], "default": 0,
+		"kind": Kind.CHOICE, "choices": [[0, "settings.arrangement.winter_dark_grave"], [1, "settings.arrangement.winter_dark_mid"], [2, "settings.arrangement.winter_dark_drive"], [3, "settings.arrangement.winter_drive2"], [4, "settings.arrangement.winter_grave"], [5, "settings.arrangement.summer_storm"], [6, "settings.arrangement.winter_wave_heavy"]], "default": 0,
 	},
 	{
 		"key": FULLSCREEN, "section": "settings.section.screen", "label": "settings.fullscreen",

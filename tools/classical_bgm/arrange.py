@@ -24,6 +24,7 @@
 - hits（ダダダンッ。前の版の電2 だけ。緩急つきの版の強打は swell.py）: 区切りの終わりの小節の後ろ 2 拍を、総奏の短く切った 16 分 3 つ + 強打 1 つにし、強打のあとは無音（溜め）。
   和音は、次の区切りの頭の根音の半音下に立てた減七（次の頭へ解決する）。ループの継ぎ目（最後の区切りの終わり）も同じ。
 """
+import math
 import sys
 
 import mido
@@ -36,7 +37,7 @@ DRUM_CH = 9
 VIOLIN, VIOLA, CELLO, CONTRABASS, TIMPANI, STRINGS = 40, 41, 42, 43, 47, 48
 SYNTH_STRINGS, CHOIR, TRUMPET, TROMBONE, TUBA, HORN, BRASS = 50, 52, 56, 57, 58, 60, 61
 FINGER_BASS, SYNTH_BASS, SYNTH_BASS_2, DIST_GUITAR = 33, 38, 39, 30
-FLUTE, PICCOLO, SAW_LEAD, POLY_PAD, WARM_PAD = 73, 72, 81, 90, 89
+FLUTE, PICCOLO, SAW_LEAD, POLY_PAD, WARM_PAD, SYNTH_BRASS = 73, 72, 81, 90, 89, 62
 
 # 打楽器（GM のキーの番号）。
 KICK, BASS_DRUM, SNARE, SNARE2, HAT, HAT_OPEN, CRASH, CRASH2, RIDE = 36, 35, 38, 40, 42, 46, 49, 57, 51
@@ -101,18 +102,34 @@ WAVE_MIX = {"solo": 127, "saw_lead": 110, "violin1": 96, "violin1b": 84, "violin
             "synth_bass": 104, "finger_bass": 92, "power": 60, "warm_pad": 64, "brass": 84, "drums": 112}
 WAVE_SHORT = [(1, 11, "calm"), (11, 15, "solo"), (17, 18, "solo"), (18, 19, "build"), (19, 26, "peak"),
               (26, 32, "solo"), (46, 55, "build"), (55, 62, "peak")]
-WAVE_FULL = [(1, 11, "calm"), (11, 18, "solo"), (18, 19, "build"), (19, 26, "peak"),
-             (26, 32, "solo"), (32, 38, "mid"), (38, 43, "calm"), (43, 46, "solo"), (46, 55, "build"), (55, 62, "peak")]
 VERSIONS.update({
     # 電重: 遅く重い（♩=96）。盛り上がりは 2・4 拍のスネアと 16 分のキック。
     "winter_wave_heavy": {"piece": "winter1", "wave": True, "tempo": 96, "form": WAVE_SHORT, "peak_drums": "full",
                           "dark": True, "mix": WAVE_MIX},
-    # 電中: 中くらい（♩=116）。作りは電重と同じ。
-    "winter_wave_mid": {"piece": "winter1", "wave": True, "tempo": 116, "form": WAVE_SHORT, "peak_drums": "full",
-                        "dark": True, "mix": WAVE_MIX},
-    # 電全: 原曲をほぼ通しで（♩=126）。盛り上がりもハーフタイム（3 拍目のスネア）で、速さのわりに重く。
-    "winter_wave_full": {"piece": "winter1", "wave": True, "tempo": 126, "form": WAVE_FULL, "peak_drums": "half",
-                         "dark": True, "mix": WAVE_MIX},
+})
+
+# 暗く重い版（dark.py）。重（圧）と電2（戦闘曲らしさ）を土台に、伸ばす音の揺れ・暗さ・動機の打ち方を直したもの。
+# form の 3 つ目は区切りの役（low / solo / build / mid / peak）。motif は動機の 32 分の扱い、snare は盛り上がりのスネアの拍。
+DARK_MIX = {"solo": 114, "violin1": 92, "violin2": 90, "viola": 98, "cello": 108, "low_strings": 104,
+            "lead": 124, "lead2": 96, "synth_bass": 104, "sub_bass": 82, "power": 90, "choir": 106, "warm_pad": 92,
+            "trombone": 108, "tuba": 104, "drums": 108}
+VERSIONS.update({
+    # 暗重: 重の並び（強い所）に独奏の走句を 1 つ挟む。遅い（♩=88）。動機は 32 分のまま、1 音ずつ打つ。
+    "winter_dark_grave": {"piece": "winter1", "dark_arrangement": True, "tempo": 88, "motif": "32", "snare": (1, 3),
+                          "form": [(3, 11, "low"), (18, 19, "build"), (19, 26, "peak"), (26, 32, "solo"),
+                                   (46, 55, "build"), (55, 62, "peak")],
+                          "dark": True, "mix": DARK_MIX},
+    # 暗中: 電重の並び（原曲の流れ。出だしと独奏あり）。♩=108。動機は、低い層が 32 分、高い層は 16 分 3 つ。
+    "winter_dark_mid": {"piece": "winter1", "dark_arrangement": True, "tempo": 108, "motif": "split", "snare": (1, 3),
+                        "form": [(1, 11, "low"), (11, 15, "solo"), (17, 18, "solo"), (18, 19, "build"), (19, 26, "peak"),
+                                 (26, 32, "solo"), (46, 55, "build"), (55, 62, "peak")],
+                        "dark": True, "mix": DARK_MIX},
+    # 暗電: 電2 の並び（全部強め）。♩=138。動機は 32 分 6 つを 16 分 3 つに間引く。スネアは 3 拍目（ハーフタイム）。
+    # リードは伸ばさず、旋律のリズムで打つ（hold: False）。
+    "winter_dark_drive": {"piece": "winter1", "dark_arrangement": True, "tempo": 138, "motif": "16", "snare": (2,), "hold": False,
+                          "form": [(3, 11, "mid"), (19, 26, "peak"), (46, 55, "build"), (26, 32, "solo"),
+                                   (32, 38, "mid"), (55, 62, "peak")],
+                          "dark": True, "mix": DARK_MIX},
 })
 
 # 楽器: 名前 -> (音色, 音量 CC7, 左右 CC10, 残響 CC91)。チャンネルは版ごとに、使う楽器にだけ割り当てる。
@@ -142,6 +159,11 @@ CHANNELS = {
     "choir": (CHOIR, 84, 64, 70),
     "power": (DIST_GUITAR, 74, 96, 25),
     "drums": (0, 118, 64, 30),
+    # 暗く重い版（dark.py）の楽器。lead はシンセブラス（暗い音色）、lead2 は少しずらして重ねるノコギリ波。
+    "lead": (SYNTH_BRASS, 110, 58, 35),
+    "lead2": (SAW_LEAD, 78, 70, 35),
+    "low_strings": (STRINGS, 96, 46, 45),
+    "sub_bass": (SYNTH_BASS_2, 108, 64, 10),
 }
 
 
@@ -184,12 +206,59 @@ class Score:
 
     def __init__(self):
         self.notes = {}
+        self.controls = {}  # 楽器 -> [(拍, "bend"（セント）か "cc11"（0〜1）, 値)]。shape() が書く。
 
     def add(self, layer, start, length, pitch, velocity):
         if length <= 0 or not 0 <= pitch <= 127:
             return
         velocity = max(1, min(127, int(velocity)))
         self.notes.setdefault(layer, []).append((start, length, pitch, velocity))
+
+
+    def shape(self, layer, tempo, vibrato=0.0, swell=None, detune=0.0, rate=5.5, phase=0.0, min_seconds=0.3, delay=0.15):
+        """伸ばす音（min_seconds より長い音）に揺れを付ける。GM の音色は伸ばすと止まって聞こえるので。
+
+        - vibrato: ビブラートの深さ（セント）。音の頭から delay 秒は掛けず、そこから 0.25 秒で深くする（遅れて掛かる）。
+          ピッチベンドの細かい揺れで書く（速さ rate Hz。少しゆらぐ）。
+        - swell: 強さの動き (始め, 山, 終わり)（0〜1。エクスプレッション CC11）。音の 55% の所を山にして膨らみ、しぼむ。
+        - detune: 楽器ごとの高さのずれ（セント。同じ旋律を 2 つの音色で重ねて、うなりを作る）。
+        ピッチベンドと CC11 はチャンネルごとなので、同じ楽器の短い音にも掛かる（伸ばす音が終わったら戻す）。
+        """
+        notes = self.notes.get(layer)
+        if not notes:
+            return
+        per_beat = 60.0 / tempo
+        step = 0.012 / per_beat
+        long_notes = sorted((s, ln) for (s, ln, _p, _v) in notes if ln * per_beat >= min_seconds)
+        starts = sorted({s for (s, _ln) in long_notes})
+        events = {}
+        for (start, length) in long_notes:
+            k = 0
+            while k * step < length:
+                t = start + k * step
+                sec = k * step * per_beat
+                depth = vibrato * min(1.0, max(0.0, (sec - delay) / 0.25))
+                abs_sec = t * per_beat
+                wobble = math.sin(2 * math.pi * rate * abs_sec + phase + 0.6 * math.sin(0.9 * abs_sec))
+                x = k * step / length
+                level = None
+                if swell:
+                    a, top, b = swell
+                    level = a + (top - a) * x / 0.55 if x < 0.55 else top + (b - top) * (x - 0.55) / 0.45
+                events[round(t, 5)] = (detune + depth * wobble, level)
+                k += 1
+            end = round(start + length, 5)
+            if not any(0 <= s2 - end < 0.1 for s2 in starts) and end not in events:
+                events[end] = (detune, 1.0 if swell else None)
+        out = [(0.0, "bend", detune)]
+        if swell:
+            out.append((0.0, "cc11", 1.0))
+        for t in sorted(events):
+            bend, level = events[t]
+            out.append((t, "bend", bend))
+            if level is not None:
+                out.append((t, "cc11", level))
+        self.controls[layer] = out
 
 
 class Source:
@@ -292,6 +361,10 @@ def arrange(parts, version):
     if spec.get("wave"):
         from swell import arrange_wave
         score, total, sections = arrange_wave(parts, spec, beats)
+        return score, total, spec["tempo"], beats, sections
+    if spec.get("dark_arrangement"):
+        from dark import arrange_dark
+        score, total, sections = arrange_dark(parts, spec, beats)
         return score, total, spec["tempo"], beats, sections
     src = Source(parts, beats)
     grid = spec["grid"]
@@ -564,6 +637,17 @@ def write_midi(score, total_beats, tempo, beats, path, mix=None, only=None):
             off = max(on + 1, int(round((start + length) * OUT_TPB)) - 4)
             events.append((on, 2, mido.Message("note_on", channel=ch, note=pitch, velocity=vel)))
             events.append((off, 1, mido.Message("note_off", channel=ch, note=pitch, velocity=0)))
+        last = {}
+        for (beat, kind, value) in score.controls.get(layer, []):
+            if kind == "bend":  # ピッチベンドの幅は既定の ±2 半音（200 セント）。
+                msg = mido.Message("pitchwheel", channel=ch, pitch=max(-8192, min(8191, int(round(value / 200.0 * 8192)))))
+                key = msg.pitch
+            else:
+                msg = mido.Message("control_change", channel=ch, control=11, value=max(0, min(127, int(round(value * 127)))))
+                key = msg.value
+            if last.get(kind) != key:
+                last[kind] = key
+                events.append((int(round(beat * OUT_TPB)), 1.5, msg))
         events.sort(key=lambda e: (e[0], e[1]))
         now = 0
         for (tick, _, msg) in events:
@@ -573,7 +657,7 @@ def write_midi(score, total_beats, tempo, beats, path, mix=None, only=None):
     mid.save(path)
 
 
-MELODY_LAYERS = ("solo", "saw_lead")  # 主旋律を運ぶ楽器（独奏ヴァイオリンとリード）。測りで「旋律」と「伴奏」に分ける。
+MELODY_LAYERS = ("solo", "saw_lead", "lead", "lead2")  # 主旋律を運ぶ楽器（独奏ヴァイオリンとリード）。測りで「旋律」と「伴奏」に分ける。
 
 
 def main():
@@ -593,6 +677,14 @@ def main():
     with open(out + ".sections", "w") as f:
         for (a, b, mode, (start, end)) in sections:
             f.write(f"{a * bar:.4f} {b * bar:.4f} {mode} {start}-{end - 1}\n")
+    # 測り用: 動機「タッ タラララララ タンッ×4」の始まる秒と、1 拍の秒数（measure.py の --motif が読む）。
+    from swell import motif_halves
+    src = Source(parts, beats)
+    with open(out + ".motifs", "w") as f:
+        for (a, b, mode, (start, end)) in sections:
+            for i, src_bar in enumerate(range(start, end)):
+                for h in sorted(motif_halves(src.bar_notes("violinone", src_bar))):
+                    f.write(f"{((a + i) * beats + h) * 60.0 / tempo:.4f} {60.0 / tempo:.5f}\n")
     seconds = total_beats * 60.0 / tempo
     with open(out + ".loop", "w") as f:
         f.write(f"{seconds:.6f}\n")

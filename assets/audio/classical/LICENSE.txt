@@ -1,6 +1,8 @@
-Music in this directory (winter_wave_heavy.ogg, winter_wave_mid.ogg, winter_wave_full.ogg, winter_drive2.ogg, winter_grave.ogg, summer_storm.ogg)
+Music in this directory (winter_dark_grave.ogg, winter_dark_mid.ogg, winter_dark_drive.ogg, winter_wave_heavy.ogg, winter_drive2.ogg, winter_grave.ogg,
+summer_storm.ogg)
 
-winter_wave_heavy.ogg, winter_wave_mid.ogg, winter_wave_full.ogg, winter_drive2.ogg and winter_grave.ogg are arrangements of
+winter_dark_grave.ogg, winter_dark_mid.ogg, winter_dark_drive.ogg, winter_wave_heavy.ogg, winter_drive2.ogg and winter_grave.ogg
+are arrangements of
 Antonio Vivaldi, "L'Inverno" (Winter), Concerto Op. 8 No. 4, RV 297, 1st movement (Allegro non molto).
 summer_storm.ogg is an arrangement of Antonio Vivaldi, "L'Estate" (Summer), Concerto Op. 8 No. 2, RV 315,
 3rd movement (Presto). The compositions are in the public domain.
