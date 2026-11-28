@@ -1,7 +1,7 @@
 extends CanvasLayer
 ## 会話のログの窓（docs/story.md の「会話のログ」）。会話の場面で、これまでに出した文を、話し手の名前の札（陣営の色）と文で並べる。
 ##
-## 何を並べるかは開く側が渡す（会話の行の列。story.gd の talk_of の "lines"）。ここはルールを持たない。
+## 何を並べるかは開く側が渡す（会話の行の列。talk_scene.gd の Line）。ここはルールを持たない。
 ## - 窓の見た目は、ほかの窓と同じ（docs/ui-theme.md の「窓」）: 後ろを幕で沈め、板は PANEL_SOLID、見出しは明朝で真ん中、その下に飾りの線、
 ##   閉じるボタンは下の真ん中。
 ## - 開いている間は、画面の全体を覆って、クリック・ホイール・キーを後ろ（会話）へ通さない。
@@ -12,6 +12,7 @@ const Text := preload("res://game/text.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
 
 ## 開いた・閉じた。
 signal opened
@@ -102,13 +103,13 @@ func setup(overlays: RefCounted) -> void:
 	foot.add_child(close_button)
 
 
-## ログを開く。lines は会話の行の列（{"side", "name", "text"}。story.gd の talk_of の "lines"）のうち、これまでに出したもの。
+## ログを開く。lines は会話の行の列（talk_scene.gd の Line）のうち、これまでに出したもの。
 func open(lines: Array) -> void:
 	for child in _rows_box.get_children():
 		_rows_box.remove_child(child)
 		child.queue_free()
 	_count = 0
-	for line: Dictionary in lines:
+	for line: TalkScene.Line in lines:
 		_rows_box.add_child(_row(line))
 		_count += 1
 	_overlay.visible = true
@@ -160,14 +161,14 @@ func panel_rect() -> Rect2:
 	return _panel.get_global_rect()
 
 
-func _row(line: Dictionary) -> Control:
-	var narration := int(line.get("side", 0)) == NARRATION_SIDE
-	var side := clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)
+func _row(line: TalkScene.Line) -> Control:
+	var narration := line.is_narration()
+	var side := clampi(line.side, 0, TEAM_COLORS.size() - 1)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.set_meta(&"name", line.get("name", ""))
-	row.set_meta(&"text", line.get("text", ""))
+	row.set_meta(&"name", line.name)
+	row.set_meta(&"text", line.text)
 	# 名前の札（会話の場面の札と同じ色の決まり。知らせは金）。
 	var plate_style := StyleBoxFlat.new()
 	plate_style.set_corner_radius_all(4)
@@ -192,7 +193,7 @@ func _row(line: Dictionary) -> Control:
 	row.add_child(plate)
 	var name_label := _label(NAME_FONT, Color.WHITE)
 	name_label.add_theme_font_override("font", UiTheme.FONT_BOLD)
-	name_label.text = line.get("name", "")
+	name_label.text = line.name
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_label.clip_text = true
 	plate.add_child(name_label)
@@ -200,7 +201,7 @@ func _row(line: Dictionary) -> Control:
 	if narration:
 		text.add_theme_font_override("font", UiTheme.FONT_HEADING)
 	var font := UiTheme.FONT_HEADING if narration else UiTheme.FONT_BODY
-	text.text = TextWrap.fold(line.get("text", ""), TEXT_WIDTH,
+	text.text = TextWrap.fold(line.text, TEXT_WIDTH,
 		func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, TEXT_FONT).x)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(text)

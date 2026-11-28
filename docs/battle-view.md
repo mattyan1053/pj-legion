@@ -223,12 +223,14 @@
 
 - **始めの盤**: 対戦を作らずに、盤と置く兵の列から組む（`replay_board.gd` の `of_pieces`）。
 - **台本の行を出来事に直す**（`cut_script.gd` の `read`。ノードに依存しない）。行の書き方はファイルの頭にある。
+  - 台本の頭に書く、始めの盤の兵 `unit`（出来事にしない。始めの盤に入る）
   - 動く `move` → `UnitMovedEvent`（書いたマスを順に通る。間は、歩けるマスで近い道を埋める。ほかの兵のいるマスは通らない）
   - 攻撃する `attack` → `AttackDamagedEvent`（量を書かなければ攻撃力。バリアは防ぐ。HP が 0 なら続けて `UnitDefeatedEvent`）、倒れる `fall` → `UnitDefeatedEvent`
   - 光とともに現れる `appear` → `UnitSpawnedEvent`、状態が付く `status` → `StatusAppliedEvent`
   - ルールの出来事に無いものは、**台本の出来事**（`game/cut_events/`。ルールは出さない）: 光を出さずに置く `put`（`CutPlacedEvent`）、
     倒れずに去る `leave`（`CutLeftEvent`。歩いてから薄れて消える）、向きを変える `face`（`CutTurnedEvent`）、
     カメラ `camera`（`CutCameraEvent`）、歩く速さ `pace`（`CutPaceEvent`。`slow`・`normal`・`fast`。`normal` は対戦と同じ）、待つ `wait`（`CutWaitEvent`。5 秒まで）。
+  - 語を足すときは、`COMMANDS` と読む関数 `_read_<語>`、ファイルの頭の書き方、ここの一覧に足す（`tests/game/test_talk_shapes.gd` が見る）。
   - 書き損じ（知らない行・兵・種類・状態、行けないマス、もういない兵）は、行の番号と直し方の文で `problems` に返す。
 - **台詞・地の文は出来事にしない**。台本を文の行で切り（`steps`。出来事の塊と文の行を、書いた順に）、見せる側が再生と文を交互に回す。
   兵が動いている間は文を進めず、文を読んでいる間は盤を止める（同時に 2 つは進めない）。

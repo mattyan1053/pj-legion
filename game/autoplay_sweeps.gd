@@ -3,7 +3,7 @@ extends RefCounted
 ##
 ## - `-- --autoplay --story-all`: すべての物語（本編の 2 つと番外）を、第 1〜STORY_EPISODES 話まで、画面の道で通す。
 ##   タイトル →「ストーリー」→ セーブデータ選択 → 物語を選ぶ → 話の一覧（確かめ用の解放 F5 で全部を開く）→ 話を選ぶ →
-##   出撃準備 →「出撃」→ 対戦の前の会話を 1 文ずつ送る → 対戦の途中の台詞（[cues]）を 1 つずつ出して送る →
+##   話の場面の列のとおりに（autoplay/scene_walk.gd。会話・カットシーンは 1 文ずつ送り、出撃準備は「出撃」）→ 対戦の途中の台詞（[cues]）を 1 つずつ出して送る →
 ##   小さな盤でわざと負けて、決着の画面の負けの台詞（[lost]）を見る →「話の一覧へ」で戻り、次の話へ。
 ## - `-- --autoplay --versus-all`: 対戦モードの全部のマップを、選べる決まり（OptionalRules.choosable()。休眠の決まりは画面から入にできない）を全部切ったものと全部入れたもので、
 ##   タイトル →「対戦」→ マップ選択 → 対戦設定（相手は CPU）→ 対戦を VERSUS_TURNS ターンまで（自分の番は「おまかせ」）→ タイトル。
@@ -96,87 +96,27 @@ func _story_campaign(app: Node, campaign: RefCounted) -> void:
 		await app.scene_changed
 
 
-## 話の一覧から、話 episode を選んで、会話・途中の台詞・負けの台詞を通し、話の一覧へ戻る。
+## 話の一覧から、話 episode を選んで、場面の列（episode.gd の scenes）を話の形のとおりに通し（autoplay/scene_walk.gd）、話の一覧へ戻る。
+## 対戦では、途中の台詞を送ってから、わざと負けて負けの台詞を見る（対戦のあとの場面へは進まない）。
 func _story_episode(app: Node, episode: RefCounted) -> void:
 	var list: Node = app.current_scene()
 	_expect(list.is_card_enabled(episode), "話の一覧で選べない")
 	list.choose(episode)
 	await app.scene_changed
-	# 話の場面の列（episode.gd の scenes）を順に通す。対戦はわざと負けるので、対戦のあとの会話へは進まない。
-	for scene: RefCounted in episode.scenes:
-		# 前の場面からの切り替え（幕が明ける）が済んでから、次の場面を見る。
-		while app.get(&"_changing"):
-			await app.get_tree().process_frame
-		if scene.is_battle():
-			_expect(app.current_id() == SceneFlow.BATTLE, "対戦へ進まない")
-			if app.current_id() != SceneFlow.BATTLE:
-				break
-			var screen: Node = app.current_scene()
-			screen.set_time_scale_base(8.0)
-			# 対戦の始めに「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。
-			_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
-			_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
-			screen.hide_notice()  # 閉じると、対戦が始まる
-			await _read_cues(app, screen, episode)
-			await _lose(app, screen, episode)
-			return
-		elif scene.is_talk():
-			_expect(app.current_id() == SceneFlow.TALK, "会話の場面「%s」へ進まない（いまは %s）" % [scene.part, app.current_id()])
-			if app.current_id() != SceneFlow.TALK:
-				break
-			await _read_talk(app, episode, scene)
-		else:
-			_expect(app.current_id() == SceneFlow.SORTIE, "出撃準備へ進まない")
-			if app.current_id() != SceneFlow.SORTIE:
-				break
-			app.current_scene().press_sortie()
-			await app.scene_changed
-	while app.get(&"_changing"):
-		await app.get_tree().process_frame
+	var steps := {"battle": func(screen: Node) -> Node:
+		screen.set_time_scale_base(8.0)
+		# 対戦の始めに「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。
+		_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
+		_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
+		screen.hide_notice()  # 閉じると、対戦が始まる
+		await _read_cues(app, screen, episode)
+		await _lose(app, screen, episode)
+		return null}
+	await _autoplay._walk_scenes(app, episode, steps)
+	await _autoplay._settle_scene(app)
 	# 対戦の無い話は、最後の会話を読み終えたら話の一覧へ。途中で外れたときも、話の一覧へ戻す。
 	_expect(app.current_id() == SceneFlow.EPISODES, "話を終えても、話の一覧へ戻らない")
 	await _go(app, SceneFlow.EPISODES)
-
-
-## 会話の場面 scene を、1 文ずつ送る（文と話し手が話のファイルのとおりか）。最後の文のあとで、次の場面へ進む。
-## 話の最後の会話なら、「次の話へ」「話の一覧へ」を選ぶ所で「話の一覧へ」。
-func _read_talk(app: Node, episode: RefCounted, scene: RefCounted) -> void:
-	var talk: Node = app.current_scene()
-	var last: bool = episode.scenes.back() == scene
-	var story: RefCounted = app.context.story
-	var at := 0  # 画面の行の番号（出す条件の合わない行は、数えない）
-	for row: RefCounted in scene.lines:
-		if not row.holds(story.answer_of):
-			continue
-		while talk.is_beat_playing():  # 盤のカットシーン: 兵が動き終えるまで、文は出ない
-			await app.get_tree().process_frame
-		_expect(talk.line_index() == at and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [at + 1, talk.line_text()])
-		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [at + 1, talk.speaker()])
-		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）
-		if row.asks():
-			# 選ばせる行: 答えが出て、選ぶまで進まない。1 つ目の答えを選ぶ。
-			_expect(talk.is_asking() and talk.option_texts().size() == row.options.size(), "選択肢「%s」の答えが出ない" % row.choice)
-			talk.press_next()
-			_expect(talk.line_index() == at, "答えを選ぶ前に、次の文へ進んだ")
-			talk.press_option(0)
-			_expect(story.answer_of(row.choice) == String(row.options[0]["key"]), "選んだ答えを覚えていない: %s" % row.choice)
-		elif talk.line_index() == at and app.current_id() == SceneFlow.TALK and not talk.is_choosing():
-			talk.press_next()
-		at += 1
-		await app.get_tree().process_frame
-		if app.current_id() != SceneFlow.TALK:
-			return
-	# 最後の会話の後ろの知らせ（クリアで増えるもの）を送る。
-	while last and not talk.is_choosing() and talk.line_index() < talk.line_count() - 1:
-		talk.press_next()
-	if last and not talk.is_choosing():
-		talk.press_next()
-		await app.get_tree().process_frame
-	if app.current_id() != SceneFlow.TALK:
-		return
-	if talk.is_choosing():
-		talk.press_to_episodes()
-	await app.scene_changed
 
 
 ## 対戦の途中の台詞を、1 つずつ出して送る（遊ぶときと同じに、送られるまで出したまま）。帯は 2 行の高さまでで、上の帯に重ならない。
