@@ -5,6 +5,8 @@ extends "res://tests/base_test.gd"
 ## どこも「読む出来事」（read_events）と「読まないと決めた出来事」（skipped_events）の表を持つ。
 ## - 出来事の種類の全部が、どちらか一方に入っていること（親を読めば子も読む）。新しい出来事を足すと、ここで落ちる
 ## - 読む表が、そのファイルが実際に `is` / `as` で名前を出す出来事と同じであること（表とコードがずれない）
+## 親を読めば子も読んだことにするので、回復の原因（UnitHealedEvent の子）を足しても戦績はここでは落ちない。
+## 戦績が原因ごとに数えるかは tests/rules/test_battle_stats.gd の HEAL_COUNTED が見る。
 
 const EVENTS_DIR := "res://rules/events"
 ## 台本の出来事（カットシーンの台本だけが出す。docs/battle-view.md の「盤のカットシーン」）。これを見る読む所は SCRIPT_READERS だけ。
