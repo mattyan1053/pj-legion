@@ -121,6 +121,8 @@ var _stage: Control
 var _figures: Array[TalkFigure] = []
 ## 下の名前の札・「飛ばす」・文の枠をまとめたもの（姿と重ねない）。
 var _bottom: Control
+## カットシーンの上下の黒い帯（カットシーンでなければ空）。
+var _cut_bars: Array[ColorRect] = []
 ## 会話を終えるときの行き先の選択（次の話があるときだけ。_end で出す）。
 var _choice: Control
 var _layer: CanvasLayer

@@ -185,6 +185,14 @@ func test_a_cutscene_shows_narration_without_figures() -> void:
 	assert_true(view.encloses(bottom) and absf(bottom.get_center().y - view.get_center().y) < 40.0, "文が画面の真ん中の高さに無い: %s" % bottom)
 	# 「ログ」「スキップ」は、画面の右上の角。真ん中の文に重ならない。
 	assert_false(screen.corner_rect().intersects(bottom), "カットシーンのボタンが、文に重なる: %s / %s" % [screen.corner_rect(), bottom])
+	# 上下の黒い帯は、画面の上の端と下の端に、どちらも画面の中に収まる（下の帯が画面の外にずれていた）。
+	var bars: Array[Rect2] = screen.cut_bar_rects()
+	assert_eq(bars.size(), 2, "カットシーンの帯は上下の 2 本")
+	if bars.size() == 2:
+		var height := TalkScreen.CUT_BAR
+		assert_eq(bars[0], Rect2(view.position.x, view.position.y, view.size.x, height), "上の帯が、画面の上の端に無い")
+		assert_eq(bars[1], Rect2(view.position.x, view.end.y - height, view.size.x, height), "下の帯が、画面の下の端に無い")
+		assert_false(bars[1].intersects(bottom), "下の帯が、真ん中の文に重なる: %s / %s" % [bars[1], bottom])
 	var ended := [0]
 	screen.finished.connect(func(_outcome: StringName) -> void: ended[0] += 1)
 	for i in 4:
