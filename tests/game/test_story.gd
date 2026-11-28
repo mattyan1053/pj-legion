@@ -162,6 +162,27 @@ func test_an_episode_may_end_with_a_cutscene() -> void:
 		assert_true(not closing.has("cut") and not closing.has("cut_board") and closing.has("next_episode") and closing["after"] and closing["music"] == &"talk_sad",
 			"%s: 知らせの場面は、ふつうの会話の場面（決着したときの盤、カットシーンの曲のまま）" % key)
 		assert_eq(closing["lines"].map(func(line: Dictionary) -> String: return line["text"]), ["知らせ"])
+		# 盤のカットシーンで終わる話をスキップして、行き先の選択を右クリックでやめても、「次へ」「スキップ」でまた選べる（止まらない）。
+		if key == "cut_board":
+			var context := preload("res://game/app_context.gd").new()
+			var ending: Dictionary = plain.all_data().back().duplicate()
+			ending["next_episode"] = Story.military().episodes[0]
+			var board: Node = preload("res://game/talk_screen.gd").new()
+			board.context = context
+			board.talk = ending
+			await settle(board)
+			await board.press_skip()
+			await (Engine.get_main_loop() as SceneTree).process_frame  # 舞台の合図の中から抜ける（その中で、場面を片付けない）
+			assert_true(board.is_choosing(), "スキップのあと、行き先を選ばせない")
+			for again: Callable in [board.press_next, board.press_skip]:
+				var right := InputEventMouseButton.new()
+				right.button_index = MOUSE_BUTTON_RIGHT
+				right.pressed = true
+				board._choice_input(right)
+				assert_false(board.is_choosing())
+				await again.call()
+				assert_true(board.is_choosing(), "行き先の選択をやめたあと、もう一度選べない")
+			board.free()
 		# 知らせだけの場面も、会話の場面で開ける。
 		var screen: Node = preload("res://game/talk_screen.gd").new()
 		screen.talk = closing.duplicate()
