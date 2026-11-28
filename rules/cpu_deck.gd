@@ -52,7 +52,7 @@ static func pick_trait(deck: Deck) -> void:
 
 ## 部隊の中身に合う軍略（docs/cpu-ai.md の「軍略」）。軍でなければ Traits.NONE。
 ## 軍の表の cpu_traits の順に、部隊の中身に合うかを見て、最初に合ったもの（_fits）。どれも合わなければ、その軍の既定。
-## 連邦: 回復役が SUPPLY_MEDICS 体以上なら補給線、同じ兵種（回復役を除く）が RANKS_KIND 体以上なら隊列、ほかは集中砲火。
+## 連邦: 回復役が SUPPLY_MEDICS 体以上なら補給線、同じ兵種（回復役を除く）の 2 体の組が RANKS_PAIRS 以上なら隊列、ほかは集中砲火。
 ## 騎士領: 守護の兵（Traits.GUARDIAN）が GUARD_PALADINS 体以上なら守護、攻撃する駒（回復役を除く）が OATH_FIGHTERS 体以上なら誓い、ほかは仇討ち。
 static func choose_trait(deck: Deck) -> int:
 	for each in Armies.cpu_traits(deck.army):
