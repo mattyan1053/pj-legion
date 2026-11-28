@@ -1,6 +1,8 @@
 extends "res://game/deck_screen/deck_list.gd"
 ## 部隊編成の、1 つの部隊を組む画面（雇う・並べ替える・外す、軍略と誓い、持ち物、予算と出せない理由、取っておく）。
 
+const ArmyLook := preload("res://game/army_look.gd")
+
 
 func _open_editor(id: String, name: String, deck: Deck) -> void:
 	_editing_id = id
@@ -69,9 +71,9 @@ func remove_entry(index: int) -> void:
 	_refresh_editor()
 
 
-## 軍略を id にする（その軍の軍略だけ。docs/troop-traits.md）。誓いから替えても、結んだ組は残す（誓いに戻すと、また効く）。
+## 軍略を id にする（その軍の、決まりで選べる軍略だけ。docs/troop-traits.md）。誓いから替えても、結んだ組は残す（誓いに戻すと、また効く）。
 func choose_trait(id: int) -> void:
-	if not shows_traits() or not Traits.of_army(_deck.army).has(id) or _deck.trait_id == id:
+	if not shows_traits() or not _deck.rules.traits_of(_deck.army).has(id) or _deck.trait_id == id:
 		return
 	_deck.trait_id = id
 	_binding = -1
@@ -79,9 +81,14 @@ func choose_trait(id: int) -> void:
 	_refresh_editor()
 
 
-## 軍略の欄を出す部隊か（対戦用の部隊だけ。ストーリー用の部隊は、話のファイルが軍略を決める）。
+## 軍略の欄を出す部隊か（選べる軍略がある部隊。ストーリー用の部隊は、軍略を 1 つでも教わってから。docs/story.md の「解放」）。
 func shows_traits() -> bool:
-	return _deck != null and _deck.rules.id == DeckRules.VERSUS and not Traits.of_army(_deck.army).is_empty()
+	return _deck != null and not _deck.rules.traits_of(_deck.army).is_empty()
+
+
+## 部隊が対戦で持つ軍略（選べない軍略を選んでいたら、決まりの選び方。DeckRules.trait_for）。
+func _held_trait() -> int:
+	return _deck.rules.trait_for(_deck)
 
 
 ## 軍略の札の index 番目にマウスを乗せたことにする（-1 で離す。検査とスクリーンショットの道具用）。
@@ -99,7 +106,7 @@ func trait_text() -> String:
 
 ## 誓いを結ぶ操作が出ているか（軍略が誓いの部隊だけ）。
 func shows_oaths() -> bool:
-	return shows_traits() and _deck.trait_id == Traits.Id.OATH
+	return shows_traits() and _held_trait() == Traits.Id.OATH
 
 
 ## 部隊の index 番目の駒の「誓い」を押した（軍略が誓いの、対戦用の部隊だけ。docs/troop-traits.md）。
@@ -181,6 +188,28 @@ func leave_editor() -> void:
 		show_list(_editing_id))
 
 
+## 雇う欄の、見えている札の画面の上の矩形（上から順。検査用）。
+func roster_slot_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for i: int in _roster_buttons:
+		var button: Button = _roster_buttons[i]
+		if button.is_visible_in_tree():
+			rects.append(button.get_global_rect())
+	return rects
+
+
+## 軍略の札の数と、押せる札の数（検査用）。
+func trait_card_counts() -> Vector2i:
+	return Vector2i(_trait_buttons.size(), _trait_buttons.filter(func(button: Button) -> bool: return not button.disabled).size())
+
+
+## 雇う欄が slots 枚のときの、札の高さ（4 枚までは ROSTER_CARD_HEIGHT。それより多ければ、4 枚ぶんの高さ（間を含む）を等分する）。
+static func roster_card_height(slots: int) -> float:
+	if slots <= ROSTER_SLOTS:
+		return ROSTER_CARD_HEIGHT
+	return floorf((ROSTER_CARD_HEIGHT * ROSTER_SLOTS + ROSTER_GAP * (ROSTER_SLOTS - slots)) / slots)
+
+
 func _build_editor() -> Control:
 	var root := _frame()
 	var column := root.get_child(0).get_child(0) as VBoxContainer
@@ -192,7 +221,7 @@ func _build_editor() -> Control:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
-	_army_crest = Crest.new(UnitKind.Army.MILITARY, 36.0)
+	_army_crest = Crest.new(UnitKind.Army.NONE, 36.0)
 	_army_crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(_army_crest)
 	_name_label = _text(24, COLOR_ACCENT)
@@ -232,12 +261,15 @@ func _build_editor() -> Control:
 
 	var roster := VBoxContainer.new()
 	roster.custom_minimum_size = Vector2(ROSTER_WIDTH, 0.0)
-	roster.add_theme_constant_override("separation", 6)
+	roster.add_theme_constant_override("separation", ROSTER_GAP)
 	body.add_child(roster)
 	roster.add_child(_caption(Text.t("deck.edit.roster")))
-	for i in 4:
+	# 雇う欄は、いちばん大きいロスターの数だけ並べる（軍を替えても、欄の数と位置は動かない。使わない欄は隠す）。
+	# 欄の列の高さは 4 枚ぶんで決まっている。5 種以上なら、札を低くして同じ高さに収める（docs/deck-screen.md）。
+	var slots := maxi(ROSTER_SLOTS, Armies.most_kinds())
+	for i in slots:
 		var button := _card_button("", 15)
-		button.custom_minimum_size = Vector2(ROSTER_WIDTH, ROSTER_CARD_HEIGHT)
+		button.custom_minimum_size = Vector2(ROSTER_WIDTH, roster_card_height(slots))
 		_fill_roster_button(button)
 		button.pressed.connect(func() -> void: _on_roster(i, &"press"))
 		button.mouse_entered.connect(func() -> void: _on_roster(i, &"enter"))
@@ -459,7 +491,7 @@ func _refresh_editor() -> void:
 		_troop_rows.add_child(empty)
 	if shows_oaths() and count > 0:
 		# 誓いの組（か、結ぶ相手を選んでいること）を、部隊の並びの下に 1 行。
-		var oaths := _text(13, Palette.NATION_FANTASY.lightened(0.3))
+		var oaths := _text(13, ArmyLook.color(Traits.army_of(Traits.Id.OATH)).lightened(0.3))
 		oaths.text = TraitText.oath_text(_deck, _binding)
 		_troop_rows.add_child(oaths)
 
@@ -577,7 +609,7 @@ func _oath_tag(index: int) -> Control:
 	button.custom_minimum_size = Vector2(OATH_TAG_WIDTH, 50.0)
 	button.theme_type_variation = UiTheme.BUTTON_ROW
 	var bound := _deck.partner_of(entry) != null
-	button.add_theme_color_override("font_color", Palette.NATION_FANTASY.lightened(0.3) if bound or _binding == index else COLOR_DIM)
+	button.add_theme_color_override("font_color", ArmyLook.color(Traits.army_of(Traits.Id.OATH)).lightened(0.3) if bound or _binding == index else COLOR_DIM)
 	button.toggle_mode = true
 	button.set_pressed_no_signal(_binding == index)
 	button.tooltip_text = TraitText.oath_tooltip(_deck, entry)
@@ -604,7 +636,8 @@ func _build_trait_box() -> Control:
 	head.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(head)
 	_trait_buttons.clear()
-	for i in 3:
+	# 軍略の札は、いちばん多い軍の数だけ並べ、欄の幅を等分する（いまは 3 枚。docs/deck-screen.md）。
+	for i in maxi(TRAIT_SLOTS, Armies.most_traits()):
 		var button := _card_button("", 13)
 		button.toggle_mode = true
 		button.custom_minimum_size = Vector2(0.0, TRAIT_CARD_HEIGHT)
@@ -683,13 +716,15 @@ func _refresh_traits() -> void:
 	for i in _trait_buttons.size():
 		var button := _trait_buttons[i]
 		var id: int = choices[i] if i < choices.size() else Traits.NONE
-		var chosen := id == _deck.trait_id
+		var chosen := id == _held_trait()
+		# まだ教わっていない軍略（ストーリー用の部隊）は、札を薄くして押せなくする（持ち物の「未解放」と同じ扱い）。
+		button.disabled = not _deck.rules.allows_trait(id)
 		(button.get_meta(&"mark") as Control).set(&"trait_id", id)
 		(button.get_meta(&"mark") as Control).set(&"dim", not chosen)
 		(button.get_meta(&"name") as Label).text = Names.troop_trait(id)
 		(button.get_meta(&"name") as Label).add_theme_color_override("font_color", COLOR_TEXT if chosen else COLOR_DIM)
 		button.set_pressed_no_signal(chosen)
-	var shown := _hover_trait if choices.has(_hover_trait) else _deck.trait_id
+	var shown := _hover_trait if choices.has(_hover_trait) else _held_trait()
 	_trait_sentence.trait_id = shown
 	_trait_shown = shown
 

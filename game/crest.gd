@@ -1,36 +1,38 @@
 extends Control
-## 国の紋。絵は使わず、ここで描く（世界は docs/story.md の「世界と登場人物」）。
-## - 機械の国ベルク連邦（MILITARY）: 歯車と、その中の山形（階級章）。色は琥珀。
-## - 魔法の国リュエル騎士領（FANTASY）: 結晶の菱形と、その中の四つの光の星。色は菫。
+## 国の紋。絵は使わず、ここで描く（世界は docs/story.md の「世界と登場人物」）。形と色は軍の見た目の表（game/army_look.gd）から読む（軍なしは、表の最初の軍の紋と色）。
+## - gear（機械の国ベルク連邦）: 歯車と、その中の山形（階級章）。色は琥珀。
+## - crystal（魔法の国リュエル騎士領）: 結晶の菱形と、その中の四つの光の星。色は菫。
 ## 物語のカードの地紋（薄く大きく）や、見出しの脇に置く。色と濃さは渡せる（既定は国の色）。
 
+const ArmyLook := preload("res://game/army_look.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
-var army := UnitKind.Army.MILITARY
+var army := UnitKind.Army.NONE
 ## 描く色（透明なら、国の色）。
 var tint := Color(0, 0, 0, 0)
 
 
-func _init(army_ := UnitKind.Army.MILITARY, size_ := 64.0, tint_ := Color(0, 0, 0, 0)) -> void:
+func _init(army_ := UnitKind.Army.NONE, size_ := 64.0, tint_ := Color(0, 0, 0, 0)) -> void:
 	army = army_
 	tint = tint_
 	custom_minimum_size = Vector2.ONE * size_
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-## 国の色（軍ごと）。
+## 国の色（軍ごと。軍の見た目の表）。
 static func color_of(army_: UnitKind.Army) -> Color:
-	return Palette.NATION_FANTASY if army_ == UnitKind.Army.FANTASY else Palette.NATION_MILITARY
+	return ArmyLook.color(army_)
 
 
 func _draw() -> void:
 	var color := tint if tint.a > 0.0 else color_of(army)
 	var center := size / 2.0
 	var radius := minf(size.x, size.y) / 2.0
-	if army == UnitKind.Army.FANTASY:
-		_draw_crystal(center, radius, color)
-	else:
-		_draw_gear(center, radius, color)
+	match ArmyLook.crest(army):
+		&"crystal":
+			_draw_crystal(center, radius, color)
+		_:
+			_draw_gear(center, radius, color)
 
 
 ## 歯車（8 枚の歯の輪）と、中の山形 2 本。

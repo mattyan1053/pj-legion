@@ -56,12 +56,14 @@ lesson = レベル 3 に上がった味方は、進化先を 2 つから選ぶ�
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [ally]
+trait = guard
 unit = paladin, level 2, exp 110
 unit = sorcerer, level 2, exp 110
 unit = priest
 deploy = 4,10  3,11  5,11
 
 [enemy]
+name = 幻の兵
 army = military
 unit = shield_trooper
 unit = commando

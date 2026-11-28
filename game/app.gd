@@ -46,6 +46,8 @@ var context := AppContext.new()
 var _current: Node
 var _current_id := &""
 var _changing := false
+## 話の流れの場面から、別の流れを始めたところ（あとの会話の「次の話へ」。start_run が立て、_track_story_time が読んで下ろす）。
+var _run_replaced := false
 var _fade: ColorRect
 var _wipe: ShaderMaterial
 ## 幕がどこまで覆っているか（0 = 明けている、1 = 覆っている）。
@@ -245,7 +247,8 @@ func _track_story_time(scene: StringName) -> void:
 		slots.counting = scene == SceneFlow.CAMPAIGNS
 		return
 	var left_run: bool = from in STORY_RUN_SCENES and scene not in STORY_RUN_SCENES
-	var next_episode: bool = from == SceneFlow.TALK and scene == SceneFlow.SORTIE
+	var next_episode := _run_replaced  # 話の流れの中から、別の流れ（次の話）を始めた。次の話がどの場面から始まっても同じ
+	_run_replaced = false
 	if left_run or next_episode:
 		slots.flush_if_started()
 	if scene in [SceneFlow.TITLE, SceneFlow.SLOTS, SceneFlow.MAP_SELECT]:
@@ -284,6 +287,7 @@ static func quit_note() -> String:
 func start_run(run: Run) -> void:
 	if _changing or run.is_done():
 		return
+	_run_replaced = run != context.run and _current_id in STORY_RUN_SCENES
 	context.run = run
 	go(run.scene())
 

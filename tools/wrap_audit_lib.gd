@@ -9,6 +9,7 @@ extends RefCounted
 
 const TextWrap := preload("res://game/text_wrap.gd")
 const Story := preload("res://game/story.gd")
+const Episode := preload("res://game/episode.gd")
 const TalkScreen := preload("res://game/talk_screen.gd")
 const TalkLog := preload("res://game/talk_log.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
@@ -40,16 +41,19 @@ static func story_lines() -> Array[Dictionary]:
 	var lines: Array[Dictionary] = []
 	for episode in Story.all_episodes():
 		var where := episode.path.get_file()
-		for part: String in ["before", "after", "lost"]:
-			var rows: Array = episode.get(part)
-			for i in rows.size():
-				var row: Array = rows[i]
-				lines.append({"where": "%s [%s] %d" % [where, part, i + 1], "site": &"remark" if part == "lost" else &"talk",
-					"text": row[1], "name": episode.speakers[row[2]] if row[2] >= 0 else "", "narration": int(row[0]) == TalkScreen.NARRATION_SIDE})
+		for scene: Episode.StoryScene in episode.talk_scenes():
+			for i in scene.lines.size():
+				var row: Episode.TalkLine = scene.lines[i]
+				lines.append({"where": "%s [%s] %d" % [where, scene.part, i + 1], "site": &"talk",
+					"text": row.shown_text(), "name": row.speaker_in(episode.speakers), "narration": row.is_narration()})
+		for i in episode.lost.size():
+			var row: Episode.TalkLine = episode.lost[i]
+			lines.append({"where": "%s [lost] %d" % [where, i + 1], "site": &"remark",
+				"text": row.shown_text(), "name": row.speaker_in(episode.speakers), "narration": row.is_narration()})
 		for i in episode.cues.size():
-			var cue: Array = episode.cues[i]
-			lines.append({"where": "%s [cues] %d" % [where, i + 1], "site": &"cue", "text": cue[3],
-				"name": episode.speakers[cue[4]] if cue[4] >= 0 else "", "narration": false})
+			var cue: Episode.TalkCue = episode.cues[i]
+			lines.append({"where": "%s [cues] %d" % [where, i + 1], "site": &"cue", "text": cue.line.shown_text(),
+				"name": cue.line.speaker_in(episode.speakers), "narration": false})
 	return lines
 
 

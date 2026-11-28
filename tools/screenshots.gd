@@ -1,4 +1,4 @@
-extends "res://tools/shots/story_patrol_scenes.gd"
+extends "res://tools/shots/story_cut_scenes.gd"
 ## ゲームの決まった場面を画像に撮る（PR に貼るため）。`-- --shots <場面,…|all> --out <ディレクトリ>` を付けて起動すると、
 ## アプリ（app.gd）が、タイトル → 対戦設定 → 対戦 と人と同じ道で対戦に入ったところで、このノードを足す。
 ## 撮り終えたら終わる。使い方は docs/screenshots.md。
@@ -14,6 +14,8 @@ extends "res://tools/shots/story_patrol_scenes.gd"
 ## 場面の名前 -> 説明（撮る順）。
 const SCENES := {
 	"title": "タイトルの場面（起動した直後）",
+	"credits": "タイトルの「クレジット」で、素材の名前・作者・ライセンスの窓を開いたところ",
+	"credits_end": "クレジットの窓を、いちばん下（フォントのライセンスの文）まで送ったところ",
 	"title_scape_ruins": "タイトルの場面の背景を、石の遺跡の景色にしたところ（景色は起動のたびと時間ごとに替わる）",
 	"title_scape_night": "タイトルの場面の背景を、月夜の結晶の岩山の景色にしたところ",
 	"title_scape_barrow": "タイトルの場面の背景を、古戦場の景色にしたところ",
@@ -44,7 +46,7 @@ const SCENES := {
 	"deck_army": "部隊編成: 「新しい部隊」で、まず軍を選ぶ",
 	"deck_empty": "部隊編成: 軍を選んで組み始めた、空の部隊",
 	"deck_built": "部隊編成: 組んだ部隊（雇える駒にマウスを乗せて、中身を読んでいる）",
-	"deck_trait": "部隊編成: 騎士領の部隊で軍略の「誓い」を選び、2 人を結んだところ（単騎の札に乗せて、文を読んでいる）",
+	"deck_trait": "部隊編成: 騎士領の部隊で軍略の「誓い」を選び、2 人を結んだところ（守護の札に乗せて、文を読んでいる）",
 	"deck_equip": "部隊編成: 部隊の駒を選んで、装備を持たせている",
 	"deck_over": "部隊編成: 予算を超えて、取っておけない",
 	"system_menu": "対戦の途中で開いたシステムメニュー（Esc か右上のボタン）",
@@ -135,6 +137,7 @@ const SCENES := {
 	"trait_note": "対戦中に、上の帯の軍略の札（集中砲火）をクリックしたところ（軍略 1 つの窓）",
 	"trait_start": "軍略の線（補給線の連邦と、誓いの騎士領）が出ている対戦の始め",
 	"trait_focus": "集中砲火: 味方が当てた敵の頭の上の札（+2）と足元の輪、2 人目の攻撃の予測（集中砲火 +2）",
+	"trait_guard": "守護: パラディンと隣り合う兵の間の線（結び目は横棒）と、守られた兵への攻撃の予測（守護 -3）",
 	"trait_vengeance": "仇討ち: 味方を倒した敵の頭の上の札（+4）と足元の輪、その敵への攻撃の予測（仇討ち +4）",
 	"trait_marks": "軍略の札が、ほかの表示と重なる所（拠点の上の敵、バリアの中の敵に集中砲火の札。仇討ちの札の付いた自分の兵を選んでいる）",
 	"portal_cell": "ポータルのマスをクリックして、行き先と転送の説明が出ている（双子結晶）",
@@ -162,6 +165,17 @@ const SCENES := {
 	"story_slots_copy": "ストーリー: セーブデータ選択で、1 番のコピー先を選んでいるところ",
 	"story_slots_delete": "ストーリー: セーブデータ選択で、2 番の削除を確かめているところ",
 	"story_campaigns": "ストーリー: タイトルの「ストーリー」のあとの、物語を選ぶ場面（MILITARY の物語と FANTASY の物語が並ぶ）",
+	"story_hero_name": "ストーリー: 物語を初めて選んだときの、主人公の名前を付ける窓（既定の名前が入っている。そのまま「決定」で進める）",
+	"story_cut": "ストーリー: 連邦の第 1 話の頭のカットシーン（色の幕の上に、地の文を真ん中に明朝で。上下に黒い帯。文の枠も話し手も出さない）",
+	"story_board_walk": "ストーリー: 盤のカットシーン（尾根の待ち伏せ）。偵察のピップが、尾根の中ほどの敵の前まで歩いている途中（文の枠は消えている）",
+	"story_board_line": "ストーリー: 盤のカットシーン（尾根の待ち伏せ）。ピップが戻って、最初の台詞（盤は止まっている）",
+	"story_board_reply": "ストーリー: 盤のカットシーン（尾根の待ち伏せ）。イェルダの台詞",
+	"story_place_talk": "ストーリー: 連邦の第 1 話の、別の場所の会話（峠の駐屯地の景色。兵は立たない。主人公が話している）",
+	"story_choice": "ストーリー: 連邦の第 1 話の選択肢（問いの行を出したまま、舞台の真ん中に答えの枠。枠は答え 3 つぶんの大きさ）",
+	"story_long_name_talk": "ストーリー: 主人公にいちばん長い名前（全角 5 字）を付けたときの会話（名前の札に収まる。文の中の名前も替わる）",
+	"story_long_name_log": "ストーリー: いちばん長い名前を付けたときの、選んだあとの会話のログ（札に収まる）",
+	"story_long_name_list": "ストーリー: いちばん長い名前を付けたときの、話の一覧の主な人物の欄（「名前を変える」が隣の人物に掛からない）",
+	"story_choice_log": "ストーリー: 選択肢を選んだあとの会話のログ（問いの行のあとに、選んだ答えが「選択」の札で 1 行）",
 	"story_campaigns_berg": "ストーリー: 物語を選ぶ場面で、MILITARY の物語のカードを選んだところ（背景がその物語の景色）",
 	"story_campaigns_ruel": "ストーリー: 物語を選ぶ場面で、FANTASY の物語のカードを選んだところ（背景がその物語の景色）",
 	"story_slots_fantasy": "ストーリー: セーブデータ選択で、FANTASY の物語のデータ（2 番）を選んだところ（背景がその物語の景色）",
@@ -193,7 +207,7 @@ const SCENES := {
 	"decks_story": "部隊編成の「ストーリー用」で組んでいるところ（雇える駒は、いま解放した駒だけ。まだ持たせられない持ち物は「未解放」）",
 	"story_talk_log": "ストーリー: 対戦の前の会話の途中で開いた会話のログ（これまでの文を、話し手の札と文で並べる。ホイールと矢印で遡る）",
 	"story_talk": "ストーリー: 話の一覧で選んで始まる、対戦の前の会話（敵の話し手が話している。右の姿が明るく大きく、左の人の軍の話し手は暗く小さい）",
-	"story_talk_drill": "ストーリー: チュートリアルの最初の話の前の会話（人の軍の曹長が話している。左の姿は進化後のシールドトルーパー）",
+	"story_talk_drill": "ストーリー: チュートリアルの最初の話の、出撃のあとの盤の前の会話（敵の話し手の教導隊員が話している。左は進化後のシールドトルーパーの曹長）",
 	"story_fantasy_talk": "ストーリー: FANTASY の物語の最初の話の前の会話（人の話し手「導師」。進化後のプリーストの姿）",
 	"story_talk_squad": "ストーリー: 部隊の中の人が話している対戦の前の会話（岩山の掃討。左の所の姿が、話した人に入れ替わる。右は敵の話し手）",
 	"story_rivals_ridge": "ストーリー: MILITARY の物語「尾根の小道」の前の会話（左にハーデン、右にイェルダ。見分けが付くか）",
@@ -294,7 +308,7 @@ func _run() -> void:
 			continue
 		if _dry_run:
 			print("screenshots: 場面 %s を作れた" % name)
-			if _mid_animation:
+			if _mid_animation and _app.current_id() == SceneFlow.BATTLE:  # 対戦の外の演出なら、対戦の場面はもう木に無い
 				_scene.set_time_scale_base(1.0)
 			while _app.current_id() == SceneFlow.BATTLE and _scene.is_busy() and not _scene.setup_panel().visible and not _app.system_menu().is_open() and not _app.quit_window.is_open() and not _scene.log_panel().is_open() and not _scene.is_talk_holding() and not _scene.unit_detail().visible:
 				await get_tree().process_frame
@@ -302,6 +316,8 @@ func _run() -> void:
 		if _mid_animation:
 			if not await _capture(name):
 				return
+			if _app.current_id() != SceneFlow.BATTLE:
+				continue  # 対戦の外の演出（盤のカットシーン）。対戦の場面は、もう木に無い
 			_scene.set_time_scale_base(1.0)
 			while _scene.is_busy():  # 次の場面を作る前に、再生を終わらせる
 				await get_tree().process_frame

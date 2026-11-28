@@ -6,8 +6,9 @@ extends Control
 ## - 補給線: 十字（回復役）の隣の兵に、上向きの矢
 ## - 仇討ち: 倒れた兵（×）から、敵へ太い矢
 ## - 誓い: 糸で結んだ 2 人が、同じ敵へ矢
-## - 単騎: 周りの空いた兵が 1 体、敵へ太い矢
+## - 守護: 大きな兵（パラディン）の隣の兵に、敵の矢が盾で止まる
 
+const ArmyLook := preload("res://game/army_look.gd")
 const Palette := preload("res://game/ui_palette.gd")
 
 var trait_id := Traits.NONE:
@@ -36,7 +37,7 @@ func _draw() -> void:
 	draw_circle(size / 2.0, s * 0.5, Palette.INK)
 	draw_arc(size / 2.0, s * 0.5 - 0.5, 0.0, TAU, 32, Palette.BORDER, 1.0, true)
 	var army := Traits.army_of(trait_id)
-	var key := Palette.NATION_MILITARY if army == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
+	var key := ArmyLook.color(army)
 	var ally := Palette.TEXT
 	var foe := Palette.TEAM_RED.darkened(0.1)
 	if dim:
@@ -80,12 +81,12 @@ func _draw() -> void:
 			_foe(p.call(0.72, 0.5), s, foe)
 			_arrow(p.call(0.33, 0.33), p.call(0.6, 0.46), ally, line)
 			_arrow(p.call(0.33, 0.67), p.call(0.6, 0.54), key, line * 1.6)
-		Traits.Id.LONE:
-			var c: Vector2 = p.call(0.3, 0.5)
-			draw_arc(c, s * 0.2, 0.0, TAU, 24, key, line * 0.8, true)
-			_ally(c, s, ally)
-			_foe(p.call(0.78, 0.5), s, foe)
-			_arrow(p.call(0.42, 0.5), p.call(0.66, 0.5), key, line * 1.6)
+		Traits.Id.GUARD:
+			draw_circle(p.call(0.24, 0.36), s * 0.11, ally)
+			_ally(p.call(0.24, 0.66), s, ally)
+			draw_line(p.call(0.42, 0.44), p.call(0.42, 0.84), key, line * 1.8, true)
+			_foe(p.call(0.8, 0.64), s, foe)
+			_arrow(p.call(0.7, 0.64), p.call(0.5, 0.64), foe, line)
 
 
 func _ally(at: Vector2, s: float, color: Color) -> void:

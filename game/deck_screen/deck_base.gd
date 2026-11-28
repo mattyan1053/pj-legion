@@ -8,6 +8,7 @@ const CardKeys := preload("res://game/card_keys.gd")
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
+const WindowBase := preload("res://game/window_base.gd")
 const AppContext := preload("res://game/app_context.gd")
 const Backdrop := preload("res://game/backdrop.gd")
 const ScreenSize := preload("res://game/screen_size.gd")
@@ -53,8 +54,15 @@ const DETAIL_MIN_HEIGHT := 200.0
 const RIGHT_GAP := 10
 const EQUIP_MIN_HEIGHT := 80.0
 const ROSTER_WIDTH := 320.0
+## 新しい部隊の軍を選ぶ場面の、軍のカードの幅（2 枚のとき。軍が増えたら、2 枚ぶんの幅を等分する）。
+const ARMY_CARD_WIDTH := 400.0
 ## 雇える兵の札の高さ（下に必殺技と軍略の欄を収めるため、720 の高さで 4 枚がこれ）。
 const ROSTER_CARD_HEIGHT := 63.0
+## 雇う欄の数の下限と、札の間（px。雇う欄の列の separation）。欄が多ければ、4 枚ぶんの高さを等分する（roster_card_height）。
+const ROSTER_SLOTS := 4
+const ROSTER_GAP := 6
+## 軍略の札の数の下限（軍略が多い軍があれば、その数だけ並べて欄の幅を等分する）。
+const TRAIT_SLOTS := 3
 const TROOP_WIDTH := 420.0
 ## 軍略の欄の高さ（px）と、文の行数の上限（折り返した行も数える）。札の高さと、札の印の大きさ。
 ## 一覧で選んだ部隊の「軍・兵の数・コスト」の文の欄の幅（いちばん長い文が入る。ゲージと軍略の札の位置をそろえる）。
@@ -232,13 +240,7 @@ func _build_dialog() -> Control:
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.visible = false
-	var shade := ColorRect.new()
-	shade.color = Palette.SHADE
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(center)
+	var center := WindowBase.add_shell(overlay)
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = UiTheme.PANEL_SOLID
 	center.add_child(panel)

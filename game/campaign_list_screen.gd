@@ -19,9 +19,10 @@ const DeckText := preload("res://game/deck_text.gd")
 const Campaign := preload("res://game/campaign.gd")
 const Story := preload("res://game/story.gd")
 const UnitIcons := preload("res://game/unit_icons.gd")
-const CardKeys := preload("res://game/card_keys.gd")
+const CardPicker := preload("res://game/card_picker.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Steady := preload("res://game/steady.gd")
+const HeroNameWindow := preload("res://game/hero_name_window.gd")
 
 signal finished(outcome: StringName)
 
@@ -55,6 +56,10 @@ var context: AppContext
 var _cards := {}
 ## 左右の矢印で選んでいるカードの番号（物語の並びの順。選んでいなければ -1）。
 var _key_index := -1
+## キーとマウスの受け方（card_picker.gd）。
+var _keys: CardPicker
+## 主人公の名前を付ける窓（物語を初めて選んだとき）。
+var _hero_window: HeroNameWindow
 var _backdrop: TitleBackdrop
 
 
@@ -129,6 +134,16 @@ func _ready() -> void:
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
 	root.add_child(back)
+	_hero_window = HeroNameWindow.new()
+	_hero_window.setup(context.overlays)
+	layer.add_child(_hero_window)
+	_keys = CardPicker.new(context.overlays, context.play_sound)
+	_keys.count = func() -> int: return Story.campaigns().size()
+	_keys.enabled = func(i: int) -> bool: return Story.is_ready(Story.campaigns()[i])
+	_keys.current = func() -> int: return _key_index
+	_keys.selected = select_by_key
+	_keys.chosen = func(i: int) -> void: choose(Story.campaigns()[i])
+	_keys.back = press_back
 
 
 func resume_label() -> String:
@@ -136,11 +151,31 @@ func resume_label() -> String:
 
 
 ## 物語 campaign を選んで、その話の一覧へ。準備中の物語なら何もしない。
+## 主人公の名前をまだ決めていない物語なら、先に名前の窓を出す（docs/story.md の「主人公の名前」。検査とスクリーンショットでは出さず、既定の名前のまま進む）。
 func choose(campaign: Campaign) -> void:
 	if not Story.is_ready(campaign):
 		return
+	if not context.story.is_hero_named(campaign) and context.checking == &"":
+		ask_hero_name(campaign)
+		return
 	context.story.choose_campaign(campaign)
 	finished.emit(&"open")
+
+
+## 物語 campaign の主人公の名前を訊き、決まったら、その物語の話の一覧へ。
+func ask_hero_name(campaign: Campaign) -> void:
+	if _hero_window.is_open():
+		return
+	context.play_sound(&"menu_open")
+	_hero_window.ask(context.story.hero_name(campaign), campaign.hero, campaign.hero_role(), func(named: String) -> void:
+		context.story.name_hero(campaign, named)
+		context.story.choose_campaign(campaign)
+		finished.emit(&"open"))
+
+
+## 主人公の名前の窓（検査用）。
+func hero_window() -> HeroNameWindow:
+	return _hero_window
 
 
 ## 物語 campaign の「部隊編成」: その物語のストーリー用の部隊を組む（寄り道。編成の「物語選択へ戻る」で、ここへ戻る）。
@@ -179,54 +214,23 @@ func status_text(campaign: Campaign) -> String:
 	return Text.t("story.campaigns.cleared", {"cleared": cleared, "total": total})
 
 
-## 右クリックと Esc は 1 つ戻る（タイトルへ）。カードの上でも効くよう、ボタンより先に受ける。
-## 重なる画面（システムメニュー）が開いている間は、そちらが受ける。
 func _input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	if _key_index >= 0 and CardKeys.is_pointer_move(event):
-		select_by_key(-1)  # マウスに持ち替えた（キーで送ってカードがマウスの下へ来ただけでは、やめない）
-	if CardKeys.is_back(event):
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_back")
-		press_back()
+	_keys.input(event, get_viewport())
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if context.overlays.is_open():
-		return
-	var listed := Story.campaigns()
-	var step := CardKeys.direction(event)
-	if step != 0:
-		get_viewport().set_input_as_handled()
-		select_by_key(CardKeys.next(_key_index, step, listed.size(), func(i: int) -> bool: return Story.is_ready(listed[i])))
-		return
-	if CardKeys.is_accept(event) and _key_index >= 0:
-		get_viewport().set_input_as_handled()
-		context.play_sound(&"ui_confirm")
-		choose(listed[_key_index])
-		return
-	if not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	var number := -1
-	if event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_9:
-		number = event.physical_keycode - KEY_1
-	elif event.physical_keycode >= KEY_KP_1 and event.physical_keycode <= KEY_KP_9:
-		number = event.physical_keycode - KEY_KP_1
-	if number >= 0 and number < Story.campaigns().size() and Story.is_ready(Story.campaigns()[number]):
-		context.play_sound(&"ui_confirm")
-		choose(Story.campaigns()[number])
+	_keys.unhandled_input(event, get_viewport())
 
 
 ## キーボードで index 番目の物語のカードを選ぶ（マウスを乗せたときと同じ見た目にする）。-1 で選ぶのをやめる。
 func select_by_key(index: int) -> void:
 	var listed := Story.campaigns()
 	if _key_index >= 0:
-		(_cards[listed[_key_index]] as Button).remove_theme_stylebox_override("normal")
+		CardPicker.light(_cards[listed[_key_index]], false)
 	_key_index = index
 	if index >= 0:
 		var card: Button = _cards[listed[index]]
-		card.add_theme_stylebox_override("normal", card.get_theme_stylebox("hover"))
+		CardPicker.light(card, true)
 		focus(listed[index])
 
 
@@ -289,7 +293,7 @@ func _build_card(campaign: Campaign) -> Button:
 		# 紹介の 1 行: 遊ぶ人が誰として、何をする物語か（物語のファイルの intro）。カードの幅で、語の途中で切らずに折り返す。
 		var intro := _label("", INTRO_FONT)
 		var font := UiTheme.FONT_BODY
-		intro.text = TextWrap.fold(campaign.intro, INTRO_WIDTH,
+		intro.text = TextWrap.fold(campaign.intro_for(context.story.hero_name(campaign)), INTRO_WIDTH,
 			func(character: String) -> float: return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, INTRO_FONT).x)
 		intro.add_theme_color_override("font_color", COLOR_TEXT_DIM if ready else COLOR_LOCKED)
 		intro.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

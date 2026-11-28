@@ -117,3 +117,32 @@
 `Battle.add_unit(種類, 陣営, マス, 装備)` でも装備を持った駒を置ける。その陣営がもう聖遺物を持っていれば、置いた駒にも効果が掛かる。
 入れないマスか駒のいるマス、その種類が持てない装備の並び（将・中立に持たせる、数の上限、重ねられない装備の 2 個目、役割の限り。`Equipment.is_valid_for`）なら、置かずに `null` を返す。
 その陣営の軍がまだ決まっていなければ、置いた駒の軍を控える。
+
+## 持ち物を足すとき
+
+いまある仕組み（能力値を足す、進化の特性を与える）で書ける持ち物を 1 つ足す。新しい特性が要るなら、先に進化の特性として足す（`docs/branch-evolution.md`）。
+
+### 触るファイル
+
+1. `rules/equipment.gd`: `Id` に 1 つ（保存は列挙の名前で持つ。並びは部隊編成の並び）、`_TABLE` に 1 行（コスト、能力値、特性、持てる役割、重ねられるか）。
+2. 名前: `game/text/names.csv` の `item.<id>`。
+3. 印: `game/item_icon.gd` の `COLORS` と、`_draw` の `match` に 1 つ（頭のコメントの一覧も）。
+4. 上の装備の表に 1 行（名前は画面の名前と同じに。検査が突き合わせる）。
+5. 手に入る所:
+   - 対戦モード: `DeckRules.VERSUS_ITEMS`。いまの 2 つの上に釣り合いが立っているので（上）、出すなら `measure-balance` で測ってから。
+   - ストーリー: `story.txt` の `item = <id>`（最初から）か、話の `[unlock]` の `item = <id>`。話の兵に持たせるなら `paladin + <id>` の形（`docs/story.md`）。
+6. 必要なら、CPU の部隊（`rules/cpu_deck.gd` の `_item_for`）と、ストーリーの最初の部隊（`game/story.gd` の `DEFAULT_ITEMS`）。
+
+ランダム編成、部隊編成の欄、上の帯の文、解放の知らせは、足した持ち物にそのまま効く。
+
+### 足し忘れても検査が落ちない所
+
+- `_draw` の枝が無い: 印が空（色のテストは通る）。
+- どこでも手に入らない: 対戦モードにも、どの物語の解放にも無いと、どこにも出ない（全部の持ち物がどこかで手に入るかを見るテストは無い）。
+- CPU の部隊と最初の部隊は、書かなければ持たない。
+
+### 確かめ方
+
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_enum_tables,test_names,test_item_text,test_loadout,test_doc_values,test_deck_rules,test_story`。
+- 部隊編成の持ち物の欄（長い検査が、全部の兵 × 全部の持ち物で文が切れないかを見る。`docs/README.md` の「検査の分け方」）。印は自分で見る（スクリーンショットの `deck_built` など）。
+- 対戦モードに出すなら `tools/cpu_matches.gd -- --squads=random`（`measure-balance`）。

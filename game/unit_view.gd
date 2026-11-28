@@ -167,10 +167,15 @@ func set_status_mark(marked: bool) -> void:
 		_status_ring.visible = marked
 
 
+## 状態の輪が出ているか（検査用）。
+func has_status_mark() -> bool:
+	return _status_ring != null and _status_ring.visible
+
+
 ## 軍略が効く駒を、頭の上の札（増える数。trait_mark.gd）と、足元の外側の輪で見せる（色は軍略の軍の色。
-## docs/troop-traits.md の「対戦の画面」）。marked が偽なら消す。text は札の文（「+2」）、kind は札の役（TraitMark.Kind）。
+## docs/troop-traits.md の「対戦の画面」）。marked が偽なら消す。text は札の文（「+2」）。
 ## 足元の輪は、拠点の竿・盾・選択の輪に埋もれることがある。札は頭の上で、いつも手前に描く。
-func set_trait_mark(marked: bool, color := Color.WHITE, text := "", kind := TraitMark.Kind.TARGET) -> void:
+func set_trait_mark(marked: bool, color := Color.WHITE, text := "") -> void:
 	if marked and _trait_ring == null:
 		_trait_ring = _add_ring(TRAIT_RING_INNER, TRAIT_RING_OUTER, color)
 		_trait_tag = TraitMark.new()
@@ -181,7 +186,7 @@ func set_trait_mark(marked: bool, color := Color.WHITE, text := "", kind := Trai
 		(_trait_ring.material_override as StandardMaterial3D).albedo_color = color
 		_trait_tag.visible = marked and not _dying
 		if marked:
-			_trait_tag.show_mark(text, color, kind)
+			_trait_tag.show_mark(text, color)
 
 
 ## 軍略の輪が出ているか（検査用）。
@@ -192,11 +197,6 @@ func has_trait_mark() -> bool:
 ## 頭の上の軍略の札の文（出ていなければ空。検査用）。
 func trait_mark_text() -> String:
 	return _trait_tag.text if _trait_tag != null and _trait_tag.visible else ""
-
-
-## 頭の上の軍略の札の役（TraitMark.Kind。出ていなければ -1。検査用）。
-func trait_mark_kind() -> int:
-	return _trait_tag.kind if _trait_tag != null and _trait_tag.visible else -1
 
 
 ## 足元の輪（平たい輪。光に左右されない色）。

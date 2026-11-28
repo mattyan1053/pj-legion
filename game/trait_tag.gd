@@ -3,6 +3,7 @@ extends HBoxContainer
 ## 幅は、いちばん長い名前で決める（軍略を替えても、札の幅も、隣の部品の位置も動かない。docs/ui-theme.md の「枠の大きさ」）。
 ## 名前の色は軍略の軍の色（盤の上の札・輪・線と同じ色）。
 
+const ArmyLook := preload("res://game/army_look.gd")
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -14,7 +15,7 @@ var trait_id := Traits.NONE:
 		_mark.trait_id = value
 		_name.text = Names.troop_trait(value)
 		var army := Traits.army_of(value) if value != Traits.NONE else UnitKind.Army.NONE
-		_name.add_theme_color_override("font_color", (Palette.NATION_MILITARY if army == UnitKind.Army.MILITARY else Palette.NATION_FANTASY).lightened(0.3))
+		_name.add_theme_color_override("font_color", ArmyLook.color(army).lightened(0.3))
 
 var _mark: TraitIcon
 var _name: Label

@@ -52,6 +52,7 @@ lesson = 兵種ごとのスキルと、ゲージをためて使う軍の必殺�
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [ally]
+trait = focus
 unit = shield_trooper
 unit = sniper
 unit = sniper
@@ -59,6 +60,8 @@ unit = medic
 start_gauge = 800
 
 [enemy]
+name = ベルク連邦 教導隊
+short = 教導隊
 army = fantasy
 unit = paladin + iron_shield
 unit = sorcerer

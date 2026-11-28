@@ -18,8 +18,8 @@ const RANDOM := "@random"
 
 ## マップ（対戦モードで選べる盤の鍵。versus_fields.gd）。
 var field: StringName = VersusFields.DEFAULT
-## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。
-var armies: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
+## プレイヤー番号（0 が先手）ごとの軍。部隊を選んだら、その部隊の軍になる。既定は、先手が軍の表の 1 番目、後手が 2 番目。
+var armies: Array[UnitKind.Army] = [Armies.all()[0], Armies.all()[1 % Armies.all().size()]]
 ## プレイヤー番号（行）ごとの、選んだ部隊の id（空なら既定の編成、RANDOM ならランダム編成）と、その中身（写し。選んだときのもの。既定とランダム編成は null）。
 var deck_ids: Array[String] = ["", ""]
 var decks: Array[Deck] = [null, null]

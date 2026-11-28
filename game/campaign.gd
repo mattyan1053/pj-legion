@@ -8,6 +8,7 @@ extends RefCounted
 
 const StoryFile := preload("res://game/story_file.gd")
 const Episode := preload("res://game/episode.gd")
+const HeroName := preload("res://game/hero_name.gd")
 
 ## 物語のフォルダを置く所（フォルダの名前が物語の id）と、フォルダの中の物語のファイルの名前。
 const DIR := "res://game/story/"
@@ -27,16 +28,20 @@ var id := &""
 var title := ""
 ## 物語の紹介の 1 行（無ければ空）。誰として、何をする物語か。
 var intro := ""
+## 主人公の既定の名前（[campaign] の hero。遊ぶ人が入る人物。話の [cast] の同じ名前の話し手が主人公）。空なら、名前を変えられる主人公はいない。
+var hero := ""
 ## 主な人物（無ければ空）: {"name": 名前, "role": 立ち位置, "figure": 姿（episode.gd の figures と同じ形）} の列。書いた順。
 var cast: Array[Dictionary] = []
 ## 人が使う軍。
-var army := UnitKind.Army.MILITARY
+var army := UnitKind.Army.NONE
 ## この物語の編成の決まりの名前（取っておく部隊に書く。物語ごとに違う）。
 var rules_id := &""
 ## 最初から雇える駒・持たせられる装備・部隊のコストの上限（話のクリアで増える。docs/story.md の「解放」）。
 var starting_kinds: Array[UnitKind.Id] = []
 var starting_items: Array[Equipment.Id] = []
 var starting_budget := 0
+## 最初から選べる軍略（[start] の trait。Traits.Id）。
+var starting_traits: Array[int] = []
 ## 物語の一覧での並びの順（小さいほうが先。[campaign] の order。書かなければ ORDER_LAST）。
 var order := ORDER_LAST
 ## 話の並び（一本道）。
@@ -114,7 +119,7 @@ func _read(file: RefCounted) -> void:
 	if not file.has("campaign"):
 		file.problem(1, "[campaign] の節が無い")
 	var at: int = file.line_of("campaign")
-	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget", "order", "intro"])
+	var values: Dictionary = file.values("campaign", ["title", "army", "rules", "budget", "order", "intro", "hero"])
 	for key: String in ["title", "army", "rules", "budget"]:
 		if file.has("campaign") and not values.has(key):
 			file.problem(at, "[campaign] に「%s」が無い" % key)
@@ -134,14 +139,22 @@ func _read(file: RefCounted) -> void:
 	if values.has("intro"):
 		var entry: Dictionary = values["intro"][0]
 		intro = entry["value"]
-		if intro == "" or intro.length() > INTRO_MAX_CHARS:
-			file.problem(entry["line"], "intro は 1 から %d 字（いま %d 字）" % [INTRO_MAX_CHARS, intro.length()])
+		if intro == "" or HeroName.longest_length(intro) > INTRO_MAX_CHARS:
+			file.problem(entry["line"], "intro は 1 から %d 字（いま %d 字。{hero} は %d 字で数える）" % [INTRO_MAX_CHARS, HeroName.longest_length(intro), HeroName.MAX_CHARS])
+	if values.has("hero"):
+		var entry: Dictionary = values["hero"][0]
+		hero = entry["value"]
+		if not HeroName.is_valid(hero):
+			file.problem(entry["line"], "hero（主人公の既定の名前）は、全角 %d 字ぶんまでの、画面の字にある文字: %s" % [HeroName.MAX_CHARS, hero])
+			hero = ""
+	if hero == "" and intro.contains(HeroName.MARK):
+		file.problem(file.line_of("campaign"), "intro の {hero} は、hero（主人公の既定の名前）を書いた物語だけ")
 	_read_cast(file)
 	if values.has("budget"):
 		starting_budget = file.integer(values["budget"][0])
 		if starting_budget < 1:
 			file.problem(values["budget"][0]["line"], "budget は 1 以上")
-	var start: Dictionary = file.values("start", ["unit", "item"], ["unit", "item"])
+	var start: Dictionary = file.values("start", ["unit", "item", "trait"], ["unit", "item", "trait"])
 	for entry: Dictionary in start.get("unit", []):
 		var kind := StoryFile.enum_value(UnitKind.Id, entry["value"])
 		if kind < 0 or UnitKind.army(kind as UnitKind.Id) != army:
@@ -156,6 +169,12 @@ func _read(file: RefCounted) -> void:
 			file.problem(entry["line"], "知らない持ち物「%s」（書けるのは %s）" % [entry["value"], StoryFile.enum_words(Equipment.Id)])
 		elif not starting_items.has(item):
 			starting_items.append(item as Equipment.Id)
+	for entry: Dictionary in start.get("trait", []):
+		var chosen := Traits.from_key(entry["value"])
+		if not Traits.of_army(army).has(chosen):
+			file.problem(entry["line"], "最初から選べる軍略は、物語の軍の軍略: %s" % entry["value"])
+		elif not starting_traits.has(chosen):
+			starting_traits.append(chosen)
 	problems.append_array(file.problems)
 	_read_episodes(file)
 
@@ -192,6 +211,8 @@ func _read_cast(file: RefCounted) -> void:
 func _read_episodes(file: RefCounted) -> void:
 	var kinds: Array = starting_kinds.duplicate()
 	var items: Array = starting_items.duplicate()
+	var asked := {}  # ここまでの話が選ばせた選択肢: 名前 -> 答えの鍵の列
+	var traits: Array = starting_traits.duplicate()
 	for row: Dictionary in file.rows("episodes"):
 		var episode_id: String = row["text"]
 		var where := "%s:%d" % [path, row["line"]]
@@ -203,6 +224,20 @@ func _read_episodes(file: RefCounted) -> void:
 		if find_episode(loaded.id) != null:
 			problems.append("%s: 話「%s」が 2 度ある" % [where, episode_id])
 			continue
+		# 選択肢（docs/story.md の「選択肢」）: 名前は物語の中で重ねない。条件の行は、この話までに選ばせた選択肢と答えを指す。
+		loaded.set_hero(hero)
+		if hero == "" and loaded.uses_hero_mark():
+			loaded.problems.append("%s: 文の {hero} は、hero（主人公の既定の名前）を書いた物語の話だけ" % loaded.path)
+		for condition: Dictionary in loaded.conditions:
+			var answers: Variant = loaded.choices[condition["choice"]] if condition["here"] else asked.get(condition["choice"])
+			if answers == null:
+				loaded.problems.append("%s:%d: 条件の選択肢「%s」を、この行までに選ばせていない" % [loaded.path, condition["line"], condition["choice"]])
+			elif not (answers as Array).has(condition["answer"]):
+				loaded.problems.append("%s:%d: 選択肢「%s」に、答え「%s」は無い" % [loaded.path, condition["line"], condition["choice"], condition["answer"]])
+		for choice: StringName in loaded.choices:
+			if asked.has(choice):
+				loaded.problems.append("%s: 選択肢「%s」は、前の話にもある（名前は、物語の中で重ねない）" % [loaded.path, choice])
+			asked[choice] = loaded.choices[choice]
 		for kind: UnitKind.Id in loaded.unlock_kinds:
 			if UnitKind.army(kind) != army:
 				loaded.problems.append("%s: 解放するのは、物語の軍（%s）の駒: %s" % [loaded.path, UnitKind.Army.keys()[army].to_lower(), UnitKind.Id.keys()[kind].to_lower()])
@@ -213,6 +248,12 @@ func _read_episodes(file: RefCounted) -> void:
 			if items.has(item):
 				loaded.problems.append("%s: %s は、この話の前から持たせられる" % [loaded.path, Equipment.Id.keys()[item].to_lower()])
 			items.append(item)
+		for taught: int in loaded.unlock_traits:
+			if not Traits.of_army(army).has(taught):
+				loaded.problems.append("%s: 解放するのは、物語の軍の軍略: %s" % [loaded.path, Traits.key(taught)])
+			elif traits.has(taught):
+				loaded.problems.append("%s: 軍略 %s は、この話の前から選べる" % [loaded.path, Traits.key(taught)])
+			traits.append(taught)
 		for squad_row: Array in loaded.squad:
 			if UnitKind.army(squad_row[0]) != army:
 				loaded.problems.append("%s: 決まっている部隊は、物語の軍（%s）の駒" % [loaded.path, UnitKind.Army.keys()[army].to_lower()])
@@ -221,3 +262,21 @@ func _read_episodes(file: RefCounted) -> void:
 			problems.append_array(loaded.problems)
 			continue  # 書き間違いのある話は並べない（遊べない）
 		episodes.append(loaded)
+
+
+## 紹介の 1 行（主人公の名前 named を差し込んだもの。named が空なら既定の名前）。
+func intro_for(named := "") -> String:
+	return HeroName.fill(intro, named if named != "" else hero)
+
+
+## 主な人物 person（cast の 1 人）の、画面に出す名前（主人公なら、遊ぶ人の付けた名前 named）。
+func cast_name(person: Dictionary, named := "") -> String:
+	return named if named != "" and hero != "" and person["name"] == hero else person["name"]
+
+
+## 主人公の立ち位置の文（[cast] の、hero と同じ名前の人の立ち位置。いなければ空）。名前の窓に出す。
+func hero_role() -> String:
+	for person: Dictionary in cast:
+		if person["name"] == hero:
+			return person["role"]
+	return ""

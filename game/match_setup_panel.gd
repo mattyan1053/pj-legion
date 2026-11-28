@@ -19,29 +19,12 @@ extends "res://game/match_setup_panel/setup_panel_choices.gd"
 func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted) -> void:
 	_team_colors = team_colors
 	_library = library
-	_overlays = overlays
-	visibility_changed.connect(_track_overlay)
-	_track_overlay()
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	var shade := ColorRect.new()
-	shade.color = Palette.SHADE
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-	var style := UiTheme.solid_box(14.0)
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", style)
-	center.add_child(panel)
+	var panel := build_window(overlays, "setup.panel", Vector2(PANEL_WIDTH, 0.0), -1.0, false, UiTheme.solid_box(14.0))
 	var column := VBoxContainer.new()
 	# 対戦の途中で開くと「マップ変更」のボタンと注意の文が増える。そのときも 1280×720 に収まるよう、余白と行の間を詰めてある。
 	column.add_theme_constant_override("separation", 3)
 	panel.add_child(column)
 
-	panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0.0)
-	Steady.mark(panel, "setup.panel", Steady.RECT)
 	_panel = panel
 	var title := _label(28)
 	title.theme_type_variation = UiTheme.LABEL_HEADING
@@ -102,7 +85,7 @@ func setup(team_colors: Array[Color], library: RefCounted, overlays: RefCounted)
 		side_column.add_theme_constant_override("separation", 3)
 		side_box.add_child(side_column)
 		var names := {}
-		for army in ARMIES:
+		for army in Armies.all():  # 軍の表の順
 			names[army] = Names.army(army)
 		var row := _add_row(side_column, "", StringName("army%d" % side), names)
 		_who_labels.append(row.get_child(0) as Label)
@@ -198,19 +181,6 @@ func cancel() -> void:
 	cancelled.emit()
 
 
-## 見えているかに合わせて、重なる画面の積み上げに積む・降ろす（開く・閉じるのどの道でも、見えなくなれば降ろす）。
-func _track_overlay() -> void:
-	if visible and is_inside_tree():
-		_overlays.open(self)
-	else:
-		_overlays.close(self)
-
-
-func _exit_tree() -> void:
-	if _overlays != null:
-		_overlays.close(self)
-
-
 ## 閉じられるか。検査用。
 func is_cancellable() -> bool:
 	return _cancellable
@@ -219,9 +189,7 @@ func is_cancellable() -> bool:
 ## 右クリックと Esc は、ほかの画面と同じに「戻す」（閉じられるときだけ）。開いている間は、盤面へ通さない。
 ## 確かめの途中なら、閉じずに確かめだけをやめる。
 ## 閉じられないとき（起動した直後）の Esc は受けない（戻すものが無いので、持ち主がシステムメニューを開く）。
-func _input(event: InputEvent) -> void:
-	if not visible or not _overlays.is_top(self):
-		return
+func _on_window_input(event: InputEvent) -> void:
 	var right: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT
 	var escape: bool = event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE
 	if (right or escape) and _confirming != null:

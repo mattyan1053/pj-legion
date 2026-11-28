@@ -16,17 +16,26 @@ extends RefCounted
 ## - 次の番の始めに結び目から立ち直るほつれ（Monsters）も、立ち直ったマスから動いて届くマスを数える（against だけ）
 ##
 ## 量は、その駒の 1 回ぶんのいちばん強い値（受ける側の森とバリアは引かない。受ける駒で変わるので、読む側が見る）。
+## 駒の攻撃は、攻撃力と攻撃するマスも持つ（Map.blows）。受ける駒が決まったら、ダメージの解決（Combat.hit_from）に聞ける。
 ## 確率で決まるルール（中立の駒の同点）は複製の上で引くので、元の Battle.rng は進まない。
 
 ## 届くマスの表。of / against が返す。
 class Map:
 	extends RefCounted
+	const _NONE := {}
 	## マス -> {駒の番号: その駒の 1 回ぶんのいちばん強いダメージ}。
 	var hits: Dictionary[Vector2i, Dictionary] = {}
 	## hits のうち、煙幕に防がれないもの（隣からの攻撃、樽の爆発、スキルのダメージ）。
 	var close: Dictionary[Vector2i, Dictionary] = {}
 	## 攻撃のために止まれるマス（プレイヤーの駒。中立の駒は含まない）。
 	var stops: Dictionary[Vector2i, bool] = {}
+	## 駒の攻撃: マス -> {駒の番号 * 4 + 組: 攻撃力 << 16 | 攻撃するマスの行 << 8 | 列}。組は近くからか（+1）・胞子で弱まるか（+2）。blow が書く。
+	## 同じ組ではいちばん強いもの（同じ強さなら、番号の大きいマス）。
+	var blows: Dictionary[Vector2i, Dictionary] = {}
+	## 駒の番号 -> 攻撃する駒の写し（陣営・誓いの相手を、ダメージの解決が読む）。
+	var attackers: Dictionary[int, Unit] = {}
+	## 駒の攻撃でないダメージ: マス -> {駒の番号: いちばん強い量}。flat が書く。
+	var flats: Dictionary[Vector2i, Dictionary] = {}
 
 	func has(cell: Vector2i) -> bool:
 		return hits.has(cell)
@@ -42,14 +51,59 @@ class Map:
 	func at(cell: Vector2i, smoked := false) -> Dictionary:
 		return (close if smoked else hits).get(cell, {})
 
-	func note(cell: Vector2i, unit_id: int, amount: int, unsmokable: bool) -> void:
-		_note(hits, cell, unit_id, amount)
-		if unsmokable:
-			_note(close, cell, unit_id, amount)
+	## 駒の攻撃でないダメージ（スキルのダメージ、樽の爆発。煙幕に防がれず、軍略・森・胞子も掛からない。Hit.resolve）。
+	func flat(cell: Vector2i, unit_id: int, amount: int) -> void:
+		_note(flats, cell, unit_id, amount)
+
+	## 攻撃の表（blows）と攻撃でないダメージ（flats）から、届くマスの表（hits・close）を作る。of と against の終わりに 1 度。
+	func _finish() -> void:
+		for cell: Vector2i in blows:
+			var by: Dictionary = blows[cell]
+			var all := {}
+			var near := {}
+			for key: int in by:
+				var unit_id := key >> 2
+				var power: int = by[key] >> 16
+				if power > all.get(unit_id, -1):
+					all[unit_id] = power
+				if key & 1 and power > near.get(unit_id, -1):
+					near[unit_id] = power
+			hits[cell] = all
+			if not near.is_empty():
+				close[cell] = near
+		for cell: Vector2i in flats:
+			var by: Dictionary = flats[cell]
+			for unit_id: int in by:
+				_note(hits, cell, unit_id, by[unit_id])
+				_note(close, cell, unit_id, by[unit_id])
+
+	## cell に届く駒の番号（駒の攻撃か、攻撃でないダメージで）。
+	func reachers(cell: Vector2i) -> Array[int]:
+		var result: Array[int] = []
+		var by: Dictionary = hits.get(cell, _NONE)
+		result.assign(by.keys())
+		return result
+
+	## cell に立つ駒への、駒 unit_id の攻撃の候補（[攻撃力, 攻撃するマス, 攻撃する駒の写し, 近くからか] の並び）。
+	func blows_at(cell: Vector2i, unit_id: int) -> Array[Array]:
+		var result: Array[Array] = []
+		var by: Dictionary = blows.get(cell, _NONE)
+		for kind in 4:
+			var packed: int = by.get(unit_id * 4 + kind, -1)
+			if packed != -1:
+				result.append([packed >> 16, Vector2i(packed & 0xff, (packed >> 8) & 0xff), attackers[unit_id], kind % 2 == 1])
+		return result
+
+	## cell に立つ駒への、駒 unit_id の攻撃でないダメージ（無ければ 0）。
+	func flat_at(cell: Vector2i, unit_id: int) -> int:
+		return flats.get(cell, _NONE).get(unit_id, 0)
 
 	func _note(table: Dictionary[Vector2i, Dictionary], cell: Vector2i, unit_id: int, amount: int) -> void:
-		var by: Dictionary = table.get_or_add(cell, {})
-		by[unit_id] = maxi(amount, by.get(unit_id, 0))
+		var by: Variant = table.get(cell)
+		if by == null:
+			table[cell] = {unit_id: amount}
+		elif amount > by.get(unit_id, -1):
+			by[unit_id] = amount
 
 
 ## 駒 unit_id の脅威範囲。いない駒では空。
@@ -60,10 +114,12 @@ static func of(battle: Battle, unit_id: int) -> Map:
 		return map
 	if unit.side == Unit.Side.NEUTRAL:
 		_neutral(battle, unit, map)
+		map._finish()
 		return map
 	var sim := next_phase(battle, unit.side)
 	if sim != null:
 		_player(sim, sim.unit_by_id(unit_id), map)
+	map._finish()
 	return map
 
 
@@ -95,6 +151,7 @@ static func against(battle: Battle, side: Unit.Side) -> Map:
 		for unit in sim.units:
 			if unit.side == enemy and battle.unit_by_id(unit.id) == null:
 				_player(sim, unit, map)
+	map._finish()
 	return map
 
 
@@ -157,20 +214,20 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 	for cell in stops:
 		map.stops[cell] = true
 	if Combat.attack_power(stay) == Combat.attack_power(moved) and stay.attack_range() == moved.attack_range():
-		_attacks(sim, unit.id, moved, stops, map)
+		_attacks(sim, moved, stops, map)
 	else:
 		var away := stops.duplicate()
 		away.erase(unit.cell)
-		_attacks(sim, unit.id, moved, away, map)
+		_attacks(sim, moved, away, map)
 		if stops.has(unit.cell):
-			_attacks(sim, unit.id, stay, [unit.cell], map)
+			_attacks(sim, stay, [unit.cell], map)
 	_barrels(sim, unit.id, stay, moved, stops, map)
 	for cell in stops:
 		var bonus := MapObject.battery_bonus(sim.board, unit, cell)
 		if bonus > 0 and cell != unit.cell:
 			var gunner := moved.copy()
 			gunner.site_range = bonus
-			_attacks(sim, unit.id, gunner, [cell], map)
+			_attacks(sim, gunner, [cell], map)
 			_barrels(sim, unit.id, gunner, gunner, [cell], map)  # 伸びた射程で撃てる樽の爆発も
 	var skill := Skills.of(unit)
 	if skill == null or not Skills.can_use(sim, unit):
@@ -189,11 +246,11 @@ static func _action(sim: Battle, unit: Unit, stops: Array[Vector2i], tired: bool
 			origins[origin] = true
 	stay.cell = unit.cell
 	for target: Vector2i in damage:
-		map.note(target, unit.id, damage[target], true)
+		map.flat(target, unit.id, damage[target])
 	if not origins.is_empty():
 		var from: Array[Vector2i] = []
 		from.assign(origins.keys())
-		_attacks(sim, unit.id, moved, from, map)
+		_attacks(sim, moved, from, map)
 		_barrels(sim, unit.id, moved, moved, from, map)  # 跳んだ先から樽も撃てる
 
 
@@ -212,27 +269,66 @@ static func _probe(unit: Unit, at: Vector2i, tired: bool) -> Unit:
 
 ## attacker（写し）が from のどれかのマスから攻撃して届くマスを map に書く。
 ## from から射程の歩数まで広げ（地形は射程を遮らない）、盤に盾があれば、離れたマスは間の盾をルールに聞く（Combat.reaches）。
-static func _attacks(sim: Battle, unit_id: int, attacker: Unit, from: Array[Vector2i], map: Map) -> void:
-	var reach := attacker.attack_range()
+## 届いたマスには、いちばん近い攻撃するマスを添える（Map.blow）。胞子で弱まるマス（Monsters.spore_penalty）とそうでないマスは、分けて広げる。
+static func _attacks(sim: Battle, attacker: Unit, from: Array[Vector2i], map: Map) -> void:
 	var power := Combat.attack_power(attacker)
+	if not _has_spores(sim):
+		_spread(sim, attacker, power, from, false, map)
+		return
+	var clean: Array[Vector2i] = []
+	var spored: Array[Vector2i] = []
+	for cell in from:
+		if Monsters.spore_penalty(sim, attacker, cell) > 0:
+			spored.append(cell)
+		else:
+			clean.append(cell)
+	if not clean.is_empty():
+		_spread(sim, attacker, power, clean, false, map)
+	if not spored.is_empty():
+		_spread(sim, attacker, power, spored, true, map)
+
+
+static func _has_spores(sim: Battle) -> bool:
+	for unit in sim.units:
+		if unit.has_trait(Evolution.Trait.SPORES):
+			return true
+	return false
+
+
+## _attacks の中身: from から広げて、届いたマスに、いちばん近い攻撃するマスを添えて書く（Map.blow と同じことを、速さのために中で書く）。
+static func _spread(sim: Battle, attacker: Unit, power: int, from: Array[Vector2i], spored: bool, map: Map) -> void:
+	var reach := attacker.attack_range()
 	var check_lines := reach >= Combat.RANGED_DISTANCE and sim.board.has_barricades()
-	var seen: Dictionary[Vector2i, bool] = {}
+	var unit_id := attacker.id
+	var key_far := unit_id * 4 + (2 if spored else 0)
+	var blows := map.blows
+	map.attackers[unit_id] = attacker
+	var seen: Dictionary[Vector2i, Vector2i] = {}  # マス -> いちばん近い攻撃するマス
 	var frontier: Array[Vector2i] = []
 	for cell in from:
 		if not seen.has(cell):
-			seen[cell] = true
+			seen[cell] = cell
 			frontier.append(cell)
 	for step in reach + 1:
+		var near_step := step < Combat.RANGED_DISTANCE
+		var key := key_far + (1 if near_step else 0)
 		var next: Array[Vector2i] = []
 		for cell in frontier:
-			if step < Combat.RANGED_DISTANCE or not check_lines or _reaches_from_any(sim, from, cell, reach):
-				map.note(cell, unit_id, power, step < Combat.RANGED_DISTANCE)
+			if near_step or not check_lines or _reaches_from_any(sim, from, cell, reach):
+				var origin := seen[cell]
+				var packed := (power << 16) | (origin.y << 8) | origin.x
+				var by: Variant = blows.get(cell)
+				if by == null:
+					blows[cell] = {key: packed}
+				elif packed > by.get(key, -1):
+					by[key] = packed
 			if step == reach:
 				continue
+			var origin := seen[cell]
 			for direction in Board.DIRECTIONS:
 				var near := cell + direction
 				if not seen.has(near) and sim.board.in_bounds(near):
-					seen[near] = true
+					seen[near] = origin
 					next.append(near)
 		frontier = next
 
@@ -251,7 +347,7 @@ static func _barrels(sim: Battle, unit_id: int, stay: Unit, moved: Unit, stops: 
 			var attacker := stay if cell == stay.cell else moved
 			if Combat.reaches(sim, cell, barrel, attacker.attack_range()):
 				for near in MapObject.blast_cells(sim.board, barrel):
-					map.note(near, unit_id, MapObject.BLAST_DAMAGE, true)
+					map.flat(near, unit_id, MapObject.BLAST_DAMAGE)
 				break
 
 
@@ -290,4 +386,4 @@ static func _neutral(battle: Battle, unit: Unit, map: Map) -> void:
 	for cell: Vector2i in Movement.reachable(battle, unit, false, true):
 		if cell != unit.cell and Neutral.in_territory(unit, cell):
 			posts.append(cell)
-	_attacks(battle, unit.id, unit, posts, map)
+	_attacks(battle, unit, posts, map)

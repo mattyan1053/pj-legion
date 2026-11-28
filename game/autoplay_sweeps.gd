@@ -102,65 +102,99 @@ func _story_episode(app: Node, episode: RefCounted) -> void:
 	_expect(list.is_card_enabled(episode), "話の一覧で選べない")
 	list.choose(episode)
 	await app.scene_changed
-	_expect(app.current_id() == SceneFlow.SORTIE, "話を選んでも、出撃準備へ進まない")
-	if app.current_id() != SceneFlow.SORTIE:
-		await _go(app, SceneFlow.EPISODES)
-		return
-	app.current_scene().press_sortie()
-	await app.scene_changed
-	if not episode.before.is_empty():
-		_expect(app.current_id() == SceneFlow.TALK, "出撃しても、対戦の前の会話へ進まない")
-		if app.current_id() == SceneFlow.TALK:
-			await _read_talk(app, episode)
-	_expect(app.current_id() == SceneFlow.BATTLE, "会話を終えても、対戦へ進まない")
-	if app.current_id() != SceneFlow.BATTLE:
-		await _go(app, SceneFlow.EPISODES)
-		return
-	var screen: Node = app.current_scene()
-	screen.set_time_scale_base(8.0)
-	# 前の会話のあと、対戦の始めに「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。
-	_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
-	_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
-	screen.hide_notice()  # 閉じると、対戦が始まる
-	await _read_cues(app, screen, episode)
-	await _lose(app, screen, episode)
+	# 話の場面の列（episode.gd の scenes）を順に通す。対戦はわざと負けるので、対戦のあとの会話へは進まない。
+	for scene: RefCounted in episode.scenes:
+		# 前の場面からの切り替え（幕が明ける）が済んでから、次の場面を見る。
+		while app.get(&"_changing"):
+			await app.get_tree().process_frame
+		if scene.is_battle():
+			_expect(app.current_id() == SceneFlow.BATTLE, "対戦へ進まない")
+			if app.current_id() != SceneFlow.BATTLE:
+				break
+			var screen: Node = app.current_scene()
+			screen.set_time_scale_base(8.0)
+			# 対戦の始めに「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。
+			_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
+			_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
+			screen.hide_notice()  # 閉じると、対戦が始まる
+			await _read_cues(app, screen, episode)
+			await _lose(app, screen, episode)
+			return
+		elif scene.is_talk():
+			_expect(app.current_id() == SceneFlow.TALK, "会話の場面「%s」へ進まない（いまは %s）" % [scene.part, app.current_id()])
+			if app.current_id() != SceneFlow.TALK:
+				break
+			await _read_talk(app, episode, scene)
+		else:
+			_expect(app.current_id() == SceneFlow.SORTIE, "出撃準備へ進まない")
+			if app.current_id() != SceneFlow.SORTIE:
+				break
+			app.current_scene().press_sortie()
+			await app.scene_changed
+	while app.get(&"_changing"):
+		await app.get_tree().process_frame
+	# 対戦の無い話は、最後の会話を読み終えたら話の一覧へ。途中で外れたときも、話の一覧へ戻す。
+	_expect(app.current_id() == SceneFlow.EPISODES, "話を終えても、話の一覧へ戻らない")
+	await _go(app, SceneFlow.EPISODES)
 
 
-## 対戦の前の会話を、1 文ずつ送る（文と話し手が話のファイルのとおりか）。最後の文のあとで、対戦へ進む。
-func _read_talk(app: Node, episode: RefCounted) -> void:
+## 会話の場面 scene を、1 文ずつ送る（文と話し手が話のファイルのとおりか）。最後の文のあとで、次の場面へ進む。
+## 話の最後の会話なら、「次の話へ」「話の一覧へ」を選ぶ所で「話の一覧へ」。
+func _read_talk(app: Node, episode: RefCounted, scene: RefCounted) -> void:
 	var talk: Node = app.current_scene()
-	_expect(talk.line_count() == episode.before.size(), "前の会話の文の数が違う")
-	for i: int in episode.before.size():
-		var row: Array = episode.before[i]
-		_expect(talk.line_index() == i and talk.line_text() == row[1], "会話の %d 文目が違う: %s" % [i + 1, talk.line_text()])
-		_expect(talk.speaker() == (episode.speakers[row[2]] if row[2] >= 0 else ""), "会話の %d 文目の話し手が違う: %s" % [i + 1, talk.speaker()])
+	var last: bool = episode.scenes.back() == scene
+	var story: RefCounted = app.context.story
+	var at := 0  # 画面の行の番号（出す条件の合わない行は、数えない）
+	for row: RefCounted in scene.lines:
+		if not row.holds(story.answer_of):
+			continue
+		while talk.is_beat_playing():  # 盤のカットシーン: 兵が動き終えるまで、文は出ない
+			await app.get_tree().process_frame
+		_expect(talk.line_index() == at and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [at + 1, talk.line_text()])
+		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [at + 1, talk.speaker()])
 		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）
-		if talk.line_index() == i and app.current_id() == SceneFlow.TALK:
+		if row.asks():
+			# 選ばせる行: 答えが出て、選ぶまで進まない。1 つ目の答えを選ぶ。
+			_expect(talk.is_asking() and talk.option_texts().size() == row.options.size(), "選択肢「%s」の答えが出ない" % row.choice)
 			talk.press_next()
+			_expect(talk.line_index() == at, "答えを選ぶ前に、次の文へ進んだ")
+			talk.press_option(0)
+			_expect(story.answer_of(row.choice) == String(row.options[0]["key"]), "選んだ答えを覚えていない: %s" % row.choice)
+		elif talk.line_index() == at and app.current_id() == SceneFlow.TALK and not talk.is_choosing():
+			talk.press_next()
+		at += 1
 		await app.get_tree().process_frame
 		if app.current_id() != SceneFlow.TALK:
-			break
-	if app.current_id() == SceneFlow.TALK:
-		await app.scene_changed
+			return
+	# 最後の会話の後ろの知らせ（クリアで増えるもの）を送る。
+	while last and not talk.is_choosing() and talk.line_index() < talk.line_count() - 1:
+		talk.press_next()
+	if last and not talk.is_choosing():
+		talk.press_next()
+		await app.get_tree().process_frame
+	if app.current_id() != SceneFlow.TALK:
+		return
+	if talk.is_choosing():
+		talk.press_to_episodes()
+	await app.scene_changed
 
 
 ## 対戦の途中の台詞を、1 つずつ出して送る（遊ぶときと同じに、送られるまで出したまま）。帯は 2 行の高さまでで、上の帯に重ならない。
 func _read_cues(app: Node, screen: Node, episode: RefCounted) -> void:
 	screen.clear_talk_for_check()
 	screen.set_talk_hold(true)
-	for cue: Array in episode.cues:
-		screen.say_for_check([BattleCues.Line.new(cue[2], episode.speakers[cue[4]] if cue[4] >= 0 else "", cue[3],
-			episode.figures[cue[4]] if cue[4] >= 0 and cue[4] < episode.figures.size() else {})] as Array[BattleCues.Line])
+	for cue: RefCounted in episode.cues:
+		screen.say_for_check([BattleCues.line_of(cue.line, episode.speakers, episode.figures)] as Array[BattleCues.Line])
 		await app.get_tree().process_frame
 		await app.get_tree().process_frame
 		var card: Rect2 = screen.talk_card_rect()
 		_expect(card.has_area() and card.position.y >= BattleHud.TOP_BAR_HEIGHT and card.size.y <= 64.0,
-			"途中の台詞の帯が出ないか、上の帯に重なるか、2 行を超える: %s（%s）" % [cue[3], card])
+			"途中の台詞の帯が出ないか、上の帯に重なるか、2 行を超える: %s（%s）" % [cue.line.text, card])
 		for i: int in WAIT_FRAMES:
 			if screen.advance_talk():
 				break
 			await app.get_tree().process_frame
-		_expect(not screen.is_talk_holding(), "途中の台詞を送れない: %s" % cue[3])
+		_expect(not screen.is_talk_holding(), "途中の台詞を送れない: %s" % cue.line.text)
 	screen.set_talk_hold(false)
 	screen.clear_talk_for_check()
 
@@ -190,8 +224,8 @@ func _lose(app: Node, screen: Node, episode: RefCounted) -> void:
 	var reason: String = result.shown_summary().reason
 	_expect(reason == "敗北　将が倒れた", "話で負けた決着の文が、遊ぶ人の側から書かれていない: %s" % reason)
 	var lost: Array[String] = []
-	for row: Array in episode.lost:
-		lost.append("%s: %s" % [episode.speakers[row[2]] if row[2] >= 0 else "", row[1]])
+	for row: RefCounted in episode.lost:
+		lost.append("%s: %s" % [row.speaker_in(episode.speakers), row.shown_text()])
 	_expect(result.remark_texts() == lost, "負けの台詞が、話のファイルのとおりに出ない: %s" % [result.remark_texts()])
 	if not lost.is_empty():
 		var rect: Rect2 = result.remark_rect()

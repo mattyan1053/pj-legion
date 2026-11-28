@@ -10,7 +10,8 @@ army = military
 rules = story
 budget = 20
 order = 1
-intro = 山の国の新任少尉ハーデンとして偵察隊を率い、縫い目の土地の尾根を越える。
+intro = 山の国の新任少尉{hero}として偵察隊を率い、縫い目の土地の尾根を越える。
+hero = ハーデン
 
 [start]
 unit = shield_trooper

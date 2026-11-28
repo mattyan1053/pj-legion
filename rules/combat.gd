@@ -5,7 +5,7 @@ extends RefCounted
 ## - 射程はマンハッタン距離（上下左右の歩数）。地形は射程を遮らない（壁越しに撃てる）
 ## - ただし、攻撃する駒と相手の間のマス（cells_between）に盾があると届かない（docs/field-effects.md）
 ## - 攻撃できるのは敵（違う陣営）の駒だけ。中立の駒は両プレイヤーの敵
-## - ダメージは攻撃側の攻撃力（確定クリティカルなら倍率を掛ける）。守る側が森にいれば 0.8 倍（端数切り捨て）
+## - ダメージは攻撃側の攻撃力（確定クリティカルなら倍率を掛ける）に軍略で足すものを足し、守る側が森にいれば森の割合を掛ける（Seam.forest_rate_percent。端数切り捨て）
 ## - 受ける側にバリアがあれば 0（Hit。駒の HP を減らすものは、どれも Hit を通す）
 ## - 煙幕の中の持ち主の駒への、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃は、ダメージが 0 になる（FieldEffects.smoke_covering）
 ## - 殻蟹は、離れたところ（距離 RANGED_DISTANCE 以上）からの攻撃では狙えない（Monsters.shell_turns_away）
@@ -111,26 +111,34 @@ static func attack_power(attacker: Unit) -> int:
 	return maxi(maxi(steady, 0) * percent / Status.NORMAL_PERCENT + temporary, 0)
 
 
-## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
-## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、軍略で足すもの（集中砲火・仇討ち・誓い・単騎）、森の軽減、
-## 軍略で引くもの（隊列）、胞子（糸茸）、受ける側の状態（バリア）。
-## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
+## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。中身は hit_from。
+## 予測と CPU は、これ（か damage、hit_from）を読む。実際の攻撃（strike）も同じ結果を適用する。
 static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
-	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
+	return hit_from(battle, attacker, attacker.cell, attack_power(attacker), target, target.cell)
+
+
+## attacker が from から、攻撃力 power で、at に立つ target を攻撃したら、どうなるか。状態も盤も変えない。
+## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力、軍略で足すもの（集中砲火・仇討ち・誓い）、森の軽減、
+## 軍略で引くもの（隊列・守護）、胞子（糸茸）、受ける側の状態（バリア）。
+## marks を渡すと、このターンに target を攻撃した覚え（Battle.struck の形）をそれに置き換える（集中砲火・誓い）。
+## hit はいまの位置といまの覚えでこれを呼ぶ。CPU の危険の見積もりは、動いた先・次の相手の番の覚えでこれを呼ぶ
+## （ダメージの決まりを CPU の側に書き写さない。tests/rules/test_cpu_danger.gd が、同じ場面の実際の攻撃と比べる）。
+static func hit_from(battle: Battle, attacker: Unit, from: Vector2i, power: int, target: Unit, at: Vector2i, marks: Variant = null) -> Hit:
+	var smoke := FieldEffects.smoke_covering(battle, from, target, at)
 	if smoke != null:
 		return Hit.smoked(attacker, target, smoke)
-	var amount := attack_power(attacker)
-	var boosts := Traits.attack_boosts(battle, attacker, target)
+	var amount := power
+	var boosts := Traits.attack_boosts(battle, attacker, target, marks)
 	for id: int in boosts:
 		amount += boosts[id]
-	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
+	var forest := battle.board.terrain_at(at) == Terrain.Type.FOREST
 	if forest:
 		amount = amount * Seam.forest_rate_percent(battle) / 100
-	var guard := Traits.guard_of(battle, target)
+	var guard := Traits.guard_at(battle, target, at)
 	if guard > 0 and amount > 0:
-		boosts[Traits.Id.RANKS] = mini(guard, amount)
+		boosts[Traits.of_side(battle, target.side)] = mini(guard, amount)
 		amount = maxi(0, amount - guard)
-	var spores := Monsters.spore_penalty(battle, attacker) if amount > 0 else 0  # 隊列で 0 になったら、胞子は引くものが無い
+	var spores := Monsters.spore_penalty(battle, attacker, from, target, at) if amount > 0 else 0  # 隊列で 0 になったら、胞子は引くものが無い
 	if spores > 0:
 		amount = maxi(0, amount - spores)
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)
@@ -160,8 +168,8 @@ static func strike(battle: Battle, attacker: Unit, target: Unit) -> Array[Battle
 		events.append(SmokeBlockedEvent.new(attacker.id, target.id, resolved.smoke.id))
 	else:
 		for id: int in resolved.traits:
-			var helped := target if id == Traits.Id.RANKS else attacker
-			var other := attacker if id == Traits.Id.RANKS else target
+			var helped := target if Traits.shields(id) else attacker
+			var other := attacker if Traits.shields(id) else target
 			events.append(TraitTriggeredEvent.new(id as Traits.Id, helped.id, other.id, resolved.traits[id]))
 		events.append(AttackDamagedEvent.new(resolved))
 		Traits.note_attack(battle, attacker, target)

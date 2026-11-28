@@ -223,6 +223,55 @@ func test_a_slot_of_a_newer_version_is_kept_as_it_is() -> void:
 	_cleanup()
 
 
+## 新しい exe が欄を足して版を上げたまとまりを、古い exe（いまの exe）で開いて保存しても、知らない欄と版を落とさない（save_format.gd）。
+## 版を上げた新しい exe も、それをそのまま読める（スロットごと読み直して、足した欄が残っている）。
+func test_a_newer_section_keeps_its_unknown_fields_and_version_when_saved_again() -> void:
+	var episodes: Array = Story.military().episodes
+	var first := String(episodes[0].id)
+	var story_data := {"campaigns": {"military": {"cleared": [first], "choices": {first: "左"}}}, "hero": "ノア"}
+	var deck_data := {"next_id": 2, "shelf": "上の段", "decks": [{"id": "1", "name": "新しい部隊", "rules": "story", "army": "MILITARY",
+		"units": [{"kind": "SNIPER", "equipment": []}], "badge": "gold"}]}
+	_store().write(SaveSlots.store_name(1), SaveSlots.FORMAT_VERSION, {"saved_at": 5, "played_seconds": 0, "sections": {
+		"story": {"version": Story.FORMAT_VERSION + 1, "data": story_data},
+		"decks": {"version": DeckLibrary.FORMAT_VERSION + 1, "data": deck_data},
+		"later": {"version": 1, "data": {"x": "y"}}}})
+	var context := _context()
+	assert_eq(context.slots.current, 1)
+	assert_true(context.story.is_cleared(episodes[0].id), "知っている欄は読む")
+	assert_eq(context.decks.items()[0].name, "新しい部隊")
+	context.story.clear(episodes[1].id)
+	context.decks.rename(context.decks.items()[0].id, "名前を替えた")
+	context.slots.flush()
+	var sections: Dictionary = _store().read(SaveSlots.store_name(1))["data"]["sections"]
+	assert_eq(sections["story"]["version"], Story.FORMAT_VERSION + 1, "話の記録の版を下げない")
+	assert_eq(sections["story"]["data"]["hero"], "ノア", "話の記録の知らない欄を落とさない")
+	assert_eq(sections["story"]["data"]["campaigns"]["military"]["choices"], {first: "左"}, "物語ごとの記録の知らない欄を落とさない")
+	assert_true((sections["story"]["data"]["campaigns"]["military"]["cleared"] as Array).has(String(episodes[1].id)), "知っている欄は書く")
+	assert_eq(sections["decks"]["version"], DeckLibrary.FORMAT_VERSION + 1, "部隊の版を下げない")
+	assert_eq(sections["decks"]["data"]["shelf"], "上の段", "部隊の一覧の知らない欄を落とさない")
+	assert_eq(sections["decks"]["data"]["decks"][0]["badge"], "gold", "部隊 1 つの知らない欄を落とさない")
+	assert_eq(sections["decks"]["data"]["decks"][0]["name"], "名前を替えた")
+	assert_eq(sections["later"]["data"], {"x": "y"}, "知らないまとまりも落とさない")
+	_cleanup()
+
+
+## 古い版のまとまり（物語が 1 つだったころの話の記録。版 1）は、版の番号で読み替え、書くときはいまの版と形にする。
+func test_an_old_story_section_is_read_by_its_version() -> void:
+	var first := String(Story.military().episodes[0].id)
+	_store().write(SaveSlots.store_name(1), SaveSlots.FORMAT_VERSION, {"saved_at": 5, "played_seconds": 0, "sections": {
+		"story": {"version": 1, "data": {"cleared": [first], "squad": "5"}}}})
+	var context := _context()
+	assert_true(context.story.is_cleared(Story.military().episodes[0].id))
+	assert_eq(context.story.squad_id, "5")
+	assert_eq(Story.summary_of({"cleared": [first]}, 1)["cleared"], 1, "スロットの札も、版で読み替える")
+	context.story.clear(Story.military().episodes[1].id)
+	context.slots.flush()
+	var section: Dictionary = _store().read(SaveSlots.store_name(1))["data"]["sections"]["story"]
+	assert_eq(section["version"], Story.FORMAT_VERSION)
+	assert_eq(section["data"]["campaigns"]["military"]["squad"], "5")
+	_cleanup()
+
+
 func test_odd_values_in_a_slot_do_not_stop_loading() -> void:
 	_write_raw(SaveSlots.store_name(1), JSON.stringify({"name": "slot_1", "version": 1, "data": {"sections": {"story": "x", "decks": {"version": "a"}}, "saved_at": "?", "played_seconds": -5}}))
 	var context := _context()

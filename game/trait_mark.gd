@@ -1,13 +1,10 @@
 extends Node3D
 ## 軍略が効く兵の、頭の上の札（docs/troop-traits.md の「対戦の画面」）。増える数（「+2」）を、軍略の軍の色で出す。
 ## 足元の輪だけだと、拠点の竿・盾・選択の輪に埋もれる。札は頭の上で、いつもカメラを向き、駒や木に隠れず、画面の上で同じ大きさ。
-## 形で役を分ける: 狙うと増える敵（集中砲火・仇討ち・誓い）は照準の印、攻撃が増える味方（単騎）は上向きの印。
+## 札の左は照準の印（狙うとダメージが増える敵。集中砲火・仇討ち・誓い）。
 ## 色と形は、ほかの盤の表示（拠点の白い数、HP の棒、状態の水色の輪、選択の黄色い輪、範囲の塗り）と重ならない: 暗い地の札 + 軍の色の縁。
 
 const Palette := preload("res://game/ui_palette.gd")
-
-## 札の役（印の形）。
-enum Kind { TARGET, ATTACKER }
 
 ## 札の絵の大きさ（px。2 倍で描いて半分で出す）と、下の尖りの高さ、印の欄の幅。
 const PLATE := Vector2i(92, 46)
@@ -23,9 +20,8 @@ static var _textures: Dictionary = {}
 
 var _plate: Sprite3D
 var _label: Label3D
-## いま出している文と役（検査用）。
+## いま出している文（検査用）。
 var text := ""
-var kind := Kind.TARGET
 
 
 func _init() -> void:
@@ -51,23 +47,22 @@ func _init() -> void:
 
 
 ## 札の中身を替える。shown は増える数の文（「+2」）、color は軍略の軍の色。
-func show_mark(shown: String, color: Color, mark_kind: Kind) -> void:
+func show_mark(shown: String, color: Color) -> void:
 	text = shown
-	kind = mark_kind
 	_label.text = shown
 	_label.modulate = color.lightened(0.55)
-	_plate.texture = _texture(color, mark_kind)
+	_plate.texture = _texture(color)
 
 
-static func _texture(color: Color, mark_kind: Kind) -> Texture2D:
-	var key := "%s/%d" % [color.to_html(), mark_kind]
+static func _texture(color: Color) -> Texture2D:
+	var key := color.to_html()
 	if not _textures.has(key):
-		_textures[key] = ImageTexture.create_from_image(_draw(color, mark_kind))
+		_textures[key] = ImageTexture.create_from_image(_draw(color))
 	return _textures[key]
 
 
 ## 札の絵: 角の丸い暗い地、軍の色の縁、下の尖り、左に役の印。
-static func _draw(color: Color, mark_kind: Kind) -> Image:
+static func _draw(color: Color) -> Image:
 	var image := Image.create_empty(PLATE.x, PLATE.y + TIP, false, Image.FORMAT_RGBA8)
 	var edge := color.lightened(0.1)
 	var bright := color.lightened(0.55)
@@ -85,18 +80,14 @@ static func _draw(color: Color, mark_kind: Kind) -> Image:
 			if d > 0.0:
 				continue
 			var pixel := edge if d > -3.0 else fill
-			if d <= -3.0 and _in_icon(p - icon, mark_kind):
+			if d <= -3.0 and _in_icon(p - icon):
 				pixel = bright
 			image.set_pixel(x, y, pixel)
 	return image
 
 
 ## 役の印の中か（p は印の中心からの位置）。
-static func _in_icon(p: Vector2, mark_kind: Kind) -> bool:
-	if mark_kind == Kind.ATTACKER:
-		# 上向きの矢（三角と軸）。
-		var head := p.y >= -12.0 and p.y <= 0.0 and absf(p.x) <= (p.y + 12.0) * 0.9
-		return head or (p.y > 0.0 and p.y <= 11.0 and absf(p.x) <= 3.5)
+static func _in_icon(p: Vector2) -> bool:
 	# 照準: 輪と、4 方の短い線、真ん中の点。
 	var r := p.length()
 	if absf(r - 10.0) <= 1.8 or r <= 2.6:

@@ -30,6 +30,9 @@ const BattleTexts := preload("res://game/battle_texts.gd")
 const Crest := preload("res://game/crest.gd")
 const NationDecor := preload("res://game/nation_decor.gd")
 const UnitFrame := preload("res://game/unit_frame.gd")
+const TraitTag := preload("res://game/trait_tag.gd")
+const ItemIcon := preload("res://game/item_icon.gd")
+const BattleHud := preload("res://game/battle_hud.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 signal finished(outcome: StringName)
@@ -56,13 +59,10 @@ const LESSON_WIDTH := LESSON_SIZE.x - LESSON_HEAD_WIDTH - 36.0
 const LESSON_MAX_LINES := 2
 ## 見出しの段（題と飾りの線、右に覚えることの札）の高さ（px）。
 const HEADER_HEIGHT := 56.0
-## 敵の部隊の文の行の数（いちばん敵の多い話で 2 行。行の数ぶんの高さを、いつも取っておく）と、字の大きさ。
-const ENEMY_LINES := 2
-const ENEMY_FONT := 14
-## 選んだ部隊の中身の文の行の数（いつも、この行の数ぶんの高さを取る。部隊で欄の割り振りを変えない）と、字の大きさ（収まらなければ下限まで小さくする）。
-const DECK_LINES := 2
-const DECK_FONT := 14
-const DECK_FONT_MIN := 12
+## 敵の部隊・出撃する部隊の、駒の額の並びの行の数（いつも、この行の数ぶんの高さを取る。部隊で欄の割り振りを変えない）。
+## 中身は文で並べず、額で並べる（Issue #46 の 11/26「文字が羅列するのすんごいダサい」から）。名前と持ち物は額に乗せると出る。
+const ENEMY_FACE_ROWS := 1
+const DECK_FACE_ROWS := 1
 ## 選べる部隊の並び: 1 行の高さ、行の間、いつも丸ごと見えている行の数、その下にのぞく次の行（px。下に続きがあることを見せる）。
 ## 並びの欄の高さは、この行の数ぶんに決めてある（画面の高さが足りなくても、これより縮めない）。
 const OPTION_HEIGHT := 36.0
@@ -70,8 +70,10 @@ const OPTION_GAP := 4.0
 const OPTIONS_SHOWN := 3
 const OPTIONS_PEEK := 8.0
 const OPTIONS_HEIGHT := (OPTION_HEIGHT + OPTION_GAP) * OPTIONS_SHOWN + OPTIONS_PEEK
-## 部隊の駒の額の大きさ（px）。
-const FACE_SIZE := 40.0
+## 部隊の駒の額の大きさ（px）と、額の下の持ち物の印の大きさ（px。持ち物の無い駒も、この高さを取る）、額の間（px）。
+const FACE_SIZE := 48.0
+const FACE_ITEM := 13.0
+const FACE_GAP := 4.0
 ## 送りの棒のつまみの太さ（px。つかみやすい太さ）。
 const SCROLL_BAR_WIDTH := 14.0
 ## 画面の上下の端からの余白（px）。
@@ -97,6 +99,8 @@ var context: AppContext
 ## 話（episode.gd。game/story/<物語>/ の 1 ファイル）と、その対戦（story_battle.gd）。
 var episode: Episode
 var _layer: CanvasLayer
+## 見出しの後ろの、陣営ごとの軍略の札（_army_caption）。
+var _trait_tags: Array[Control] = [null, null]
 var _enemy_faces: HFlowContainer
 var _detail: UnitDetail
 var battle_source: RefCounted
@@ -109,7 +113,6 @@ var _auto_button: Button
 var _goal_cards: Array = []
 var _options: VBoxContainer
 var _option_buttons := {}  # id -> Button
-var _deck_line: Label
 var _deck_faces: HFlowContainer
 var _sortie: Button
 var _lesson_label: Label
@@ -193,7 +196,9 @@ func _decorate(panel: PanelContainer, army: UnitKind.Army, team: Color) -> void:
 
 
 ## 部隊の欄の小見出し: 軍の国の紋（軍なしは出さない）と、文。高さは小見出しの文と同じ（紋で行を高くしない）。
-func _army_caption(text: String, army: UnitKind.Army) -> Control:
+## side が 0 以上なら、見出しの後ろに、その陣営の軍略の札（印と名前。話のファイルの trait。乗せると文）の場所を取る。
+## 軍略が無い話でも場所は取ったまま見せないので、軍略のある話と枠が変わらない。
+func _army_caption(text: String, army: UnitKind.Army, side := -1) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -202,7 +207,31 @@ func _army_caption(text: String, army: UnitKind.Army) -> Control:
 		crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(crest)
 	row.add_child(_caption(text))
+	if side >= 0:
+		var tag := TraitTag.new(20.0, 14)
+		tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_trait_tags[side] = tag
+		row.add_child(tag)
+		_show_trait(side, episode.traits[side] if side < episode.traits.size() else Traits.NONE)
 	return row
+
+
+## 見出しの後ろの軍略の札（陣営 side）を、軍略 id にする（Traits.NONE なら、場所は取ったまま見せない）。
+## 人の側は、自分で部隊を選ぶ話なら、選んだ部隊の軍略（sortie_choice.gd の choose）。
+func _show_trait(side: int, id: int) -> void:
+	var tag := _trait_tags[side] as TraitTag
+	if tag == null:
+		return
+	tag.trait_id = id
+	tag.modulate.a = 1.0 if id != Traits.NONE else 0.0
+	tag.mouse_filter = Control.MOUSE_FILTER_STOP if id != Traits.NONE else Control.MOUSE_FILTER_IGNORE
+	tag.tooltip_text = Names.troop_trait_text(id)
+
+
+## 見出しの後ろの軍略の札の名前（陣営 side。見せていなければ空。検査用）。
+func trait_tag_text(side: int) -> String:
+	var tag: Control = _trait_tags[side]
+	return (tag as TraitTag).shown_name() if tag != null and tag.modulate.a > 0.0 else ""
 
 
 ## 下のボタンの左右へ伸びる飾りの線。
@@ -229,6 +258,15 @@ func _fold(label: Label, text: String) -> void:
 	var font_size := label.get_theme_font_size("font_size")
 	label.text = TextWrap.fold(text, WRAP_WIDTH, func(character: String) -> float:
 		return font.get_string_size(character, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+
+
+## 駒の額の並び（決まった高さ: rows 行ぶん）。
+func _faces_row(rows: int) -> HFlowContainer:
+	var faces := HFlowContainer.new()
+	faces.add_theme_constant_override("h_separation", int(FACE_GAP))
+	faces.add_theme_constant_override("v_separation", int(FACE_GAP))
+	faces.custom_minimum_size = Vector2(WRAP_WIDTH, (FACE_SIZE + FACE_ITEM + 2.0) * rows + FACE_GAP * (rows - 1))
+	return faces
 
 
 func _text(font_size: int, color: Color) -> Label:

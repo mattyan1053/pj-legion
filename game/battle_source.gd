@@ -8,6 +8,7 @@ extends RefCounted
 
 const StageLook := preload("res://game/stage_look.gd")
 const BattleCues := preload("res://game/battle_cues.gd")
+const Names := preload("res://game/names.gd")
 const SoundCatalog := preload("res://game/sound_catalog.gd")
 
 
@@ -57,6 +58,16 @@ func cpu_side() -> Unit.Side:
 ## 真なら、決着の画面の理由も遊ぶ人の側から書く（「敗北　将が倒れた」。result_summary.gd）。
 func story_sides() -> bool:
 	return false
+
+
+## ストーリーの陣営の呼び名 [プレイヤー1, プレイヤー2]（空なら「味方」「敵」。story_sides が真のときだけ使う）。
+func side_names() -> Array[String]:
+	return ["", ""]
+
+
+## ストーリーの陣営の短い呼び名 [プレイヤー1, プレイヤー2]（上の帯の陣営の欄とログ。空なら呼び名）。
+func side_shorts() -> Array[String]:
+	return ["", ""]
 
 
 ## 対戦の途中で、相手を人と CPU で切り替えられるか（F4、下の帯の「相手」のボタン）。

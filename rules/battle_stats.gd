@@ -264,6 +264,8 @@ func _count_heal(healed: UnitHealedEvent) -> void:
 		healer_id = (healed as HealerHealedEvent).healer_id
 	elif healed is SanctuaryHealedEvent:
 		healer_id = _sanctuary_owners.get((healed as SanctuaryHealedEvent).effect_id, 0)
+	elif healed is SupplyHealedEvent:
+		healer_id = (healed as SupplyHealedEvent).medic_id
 	var healer := _record(healer_id)
 	if healer == null or not _is_player(healer.side):
 		return
@@ -291,3 +293,67 @@ static func _beats(a: UnitRecord, b: UnitRecord) -> bool:
 	if a.neutral_kills != b.neutral_kills:
 		return a.neutral_kills > b.neutral_kills
 	return a.unit_id < b.unit_id
+
+
+# ---- 出来事の表（tests/game/test_event_readers.gd が見張る。docs/battle.md の「出来事を 1 つ足すとき」） ----
+
+
+## 戦績が名前で読む出来事（このファイルの `is` / `as` に出てくるもの。親を読めば子も読む）。
+static func read_events() -> Array[Script]:
+	return [
+		UnitDamagedEvent,
+		AttackDamagedEvent,
+		SkillDamagedEvent,
+		ExplosionDamagedEvent,
+		BarrelExplodedEvent,
+		BurstEvent,
+		UnitDefeatedEvent,
+		MidBossDefeatedEvent,
+		UnitHealedEvent,
+		HealerHealedEvent,
+		SanctuaryHealedEvent,
+		SupplyHealedEvent,
+		SkillUsedEvent,
+		FieldEffectPlacedEvent,
+		LevelUpEvent,
+		UnitEvolvedEvent,
+		UltUsedEvent,
+		RelicGainedEvent,
+		UnitSpawnedEvent,
+		GameWonEvent,
+		GameDrawnEvent,
+	]
+
+
+## 戦績が読まないと決めた出来事（新しい出来事を足したら、読むか、ここに理由と足す）。
+static func skipped_events() -> Array[Script]:
+	return [
+		# 数えるものが無い（動き・番・行動済み・取り消し）
+		PhaseStartedEvent,
+		UnitMovedEvent,
+		UnitWarpedEvent,
+		UnitTeleportedEvent,
+		UnitsSwappedEvent,
+		MoveUndoneEvent,
+		UnitActedEvent,
+		UnitReactivatedEvent,
+		# ダメージと回復の数に入るぶんは、ダメージ・回復の出来事で数える
+		TraitTriggeredEvent,
+		SmokeBlockedEvent,
+		StatusAppliedEvent,
+		StatusRemovedEvent,
+		RallyEvent,
+		# 盤の効果と盾は、駒の戦績に入れない
+		BarricadeDamagedEvent,
+		FieldEffectRemovedEvent,
+		FieldEffectTickedEvent,
+		# レベルと進化は、上がった・選んだ出来事で数える
+		ExperienceGainedEvent,
+		EvolutionOfferedEvent,
+		# 使えるようになっただけ（使ったら数える）
+		SkillReadyEvent,
+		UltReadyEvent,
+		# 占拠と拠点の数は、決着の理由（GameWonEvent）で足りる
+		CaptureProgressEvent,
+		StrongholdProgressEvent,
+	]

@@ -10,6 +10,11 @@ const Episode := preload("res://game/episode.gd")
 const StoryBattle := preload("res://game/story_battle.gd")
 const SceneFlow := preload("res://game/scene_flow.gd")
 const Run := preload("res://game/run.gd")
+const Campaign := preload("res://game/campaign.gd")
+const AppContext := preload("res://game/app_context.gd")
+const TalkScreen := preload("res://game/talk_screen.gd")
+const Catalog := preload("res://game/sound_catalog.gd")
+const Scene := Episode.StoryScene
 
 
 func test_every_episode_has_a_unique_id_and_short_talks() -> void:
@@ -18,12 +23,12 @@ func test_every_episode_has_a_unique_id_and_short_talks() -> void:
 	for episode in Story.military().episodes:
 		assert_false(ids.has(episode.id), "話の id が重なっている: %s" % episode.id)
 		ids.append(episode.id)
-		for rows: Array in [episode.before, episode.after]:
-			assert_between(rows.size(), 1, Episode.TALK_MAX_LINES, "会話は短く（%d 行まで）: %s" % [Episode.TALK_MAX_LINES, episode.id])
+		for scene: RefCounted in episode.talk_scenes():
+			assert_between(scene.lines.size(), 1, Episode.TALK_MAX_LINES, "会話は短く（%d 行まで）: %s" % [Episode.TALK_MAX_LINES, episode.id])
 
 
 func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
-	var episode: RefCounted = Story.military().episodes[0]
+	var episode: RefCounted = Story.military().episodes[1]  # [before]・[after] で書いた話
 	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
 	assert_eq(run.scene(), Story.SORTIE, "出撃準備から始める（会話は出撃してから）")
 	assert_eq(run.data()["episode"], episode)
@@ -31,20 +36,130 @@ func test_run_is_sortie_talk_battle_talk_then_the_episode_list() -> void:
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["title"], episode.title)
 	assert_eq(run.data()["lines"].size(), episode.before.size())
-	assert_eq(run.data()["lines"][0]["name"], episode.speakers[episode.before[0][2]] if episode.before[0][2] >= 0 else "")
+	assert_eq(run.data()["lines"][0]["name"], episode.before[0].speaker_in(episode.speakers))
 	assert_eq(run.advance(), &"battle")
 	assert_true(run.data() == battle, "出撃準備は、対戦に渡すものの部隊を選び直す")
 	assert_eq(run.advance(), &"talk")
 	assert_eq(run.data()["lines"].size(), episode.after.size())
-	assert_eq(run.data()["next_episode"], Story.military().episodes[1], "あとの会話のあとに、次の話を選べる")
+	assert_eq(run.data()["next_episode"], Story.military().episodes[2], "あとの会話のあとに、次の話を選べる")
 	assert_eq(run.advance(), Story.EPISODE_LIST, "話を終えたら、話の一覧へ戻る")
 	for scene: StringName in [&"talk", Story.SORTIE, &"battle", Story.EPISODE_LIST, &"title"]:
 		assert_true(SceneFlow.has(scene), "場面の表に無い: %s" % scene)
 	assert_eq(run.menu_exits.map(func(exit: Array) -> StringName: return exit[0]), [Story.EPISODE_LIST], "システムメニューから話の一覧へ戻れる")
 
 
+## 話は場面の列（episode.gd の scenes）で持つ。いまの話のファイルからは、どの話も 出撃準備 → 会話（[before]。1 度だけ）→ 対戦 → 会話（[after]）。
+func test_every_episode_is_a_list_of_scenes_built_from_its_sections() -> void:
+	var Kind := Episode.StoryScene.Kind
+	for episode: Episode in Story.all_episodes():
+		if episode.written_as_scenes:
+			continue  # 場面の節で書いた話は、書いた順（test_episode_data.gd）
+		assert_eq(episode.scenes.map(func(scene: RefCounted) -> int: return scene.kind), [Kind.SORTIE, Kind.TALK, Kind.BATTLE, Kind.TALK], episode.id)
+		assert_true(episode.talk_before_battle().lines == episode.before and episode.talk_before_battle().once, episode.id)
+		assert_eq(episode.talk_before_battle().music, episode.before_talk_music())
+		assert_true(episode.talk_after_battle().lines == episode.after and not episode.talk_after_battle().once, episode.id)
+		assert_eq(episode.talk_after_battle().music, episode.after_talk_music())
+		assert_eq(episode.scene_after_battle(), episode.talk_after_battle())
+
+
+## 話の流れ（run_of）は、場面の列を順に回すだけ。列を変えれば、流れも変わる（対戦の無い話、会話の場面がいくつもある話）。
+func test_the_run_follows_the_list_of_scenes() -> void:
+	var episode: Episode = Story.military().episodes[1]
+	var kept := episode.scenes  # 読み込んだ話を借りるので、終わりに戻す
+	var first := Scene.talk("before", episode.before, &"talk")
+	var second := Scene.talk("after", episode.after, &"")
+	episode.scenes = [first, second] as Array[Scene]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	assert_eq(run.scene(), &"talk", "出撃準備も対戦も無い話は、会話から始まる")
+	assert_eq(run.data()["lines"].size(), episode.before.size())
+	assert_eq(run.data()["music"], &"talk")
+	assert_false(run.data().has("battle"), "対戦の無い話の会話は、背景に兵を立たせない")
+	assert_false(run.data().has("next_episode") or run.data().has("clears"), "「次の話へ」と、読み終えたときのクリアは、最後の会話だけ")
+	assert_eq(run.advance(), &"talk")
+	assert_eq(run.data()["lines"].size(), episode.after.size())
+	assert_eq(run.data()["next_episode"], Story.military().episodes[2])
+	assert_eq(run.advance(), Story.EPISODE_LIST)
+	assert_eq(StoryBattle.new(episode, null).after_result_music(), Catalog.AFTER_TALK_MUSIC, "対戦の無い話は、決着のあとの曲を会話から取らない")
+	# 対戦で終わる話（あとの会話が無い）: 「次の話へ」を選ばせる会話が無いので、そのまま話の一覧へ。
+	episode.scenes = [Scene.sortie(), first, Scene.battle()] as Array[Scene]
+	run = Story.run_of(episode, Story.default_deck(Story.starting()))
+	assert_eq([run.scene(), run.advance(), run.advance(), run.advance()], [Story.SORTIE, &"talk", &"battle", Story.EPISODE_LIST])
+	assert_eq(StoryBattle.new(episode, null).after_result_music(), Catalog.AFTER_TALK_MUSIC)
+	episode.scenes = kept
+
+
+## 場面の節で書いた話の流れ: 別の場所の会話は、その場所の景色を背景にする（兵は立たせない）。話の盤の会話は、兵を立たせる。
+func test_the_run_of_a_scenes_episode_gives_each_talk_its_place() -> void:
+	var episode: Episode = Campaign.load_file("res://game/story/_template/story.txt").episodes[1]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	assert_eq(run.scene(), &"talk")
+	assert_false(run.data().has("battle"), "別の場所の会話に、盤の兵は立たせない")
+	assert_eq(run.data()["look"], &"drill_yard")
+	assert_eq(run.data()["board"].size, episode.scenes[0].place.make_board().size)
+	assert_false(run.data().has("cut"))
+	assert_eq(run.advance(), &"talk")
+	assert_true(run.data()["cut"] and run.data()["color"] == &"night" and not run.data().has("battle"), "カットシーンは、会話の場面に cut の印を付けて渡す")
+	assert_eq(run.advance(), &"talk")
+	assert_true(run.data().has("cut_board") and run.data()["beats"].size() == run.data()["lines"].size() + 1 and not run.data().has("battle"),
+		"盤のカットシーンは、台本と出来事の塊を渡す（話の盤の兵は立たせない）")
+	assert_eq(run.data()["look"], episode.look, "place が無ければ、話の盤の景色")
+	assert_eq([run.advance(), run.advance(), run.advance()], [&"talk", Story.SORTIE, &"talk"])
+	assert_true(run.data().has("battle") and not run.data()["after"] and run.data()["look"] == episode.look, "話の盤の会話は、初期位置の兵")
+	assert_eq([run.advance(), run.advance()], [&"battle", &"talk"])
+	assert_true(run.data()["after"] and not run.data().has("clears"), "対戦のある話は、対戦に勝ったときにクリア")
+	# 決着の画面の「部隊変更」で戻るのは出撃準備（対戦より前の会話は、もう出さない）。
+	run.back()
+	assert_eq(run.back(), Story.SORTIE)
+	assert_eq(run.advance(), &"battle")
+
+
+## 対戦の無い話: 最後の会話に、クリアにする話の id を渡す（talk_screen.gd が、読み終えたときにクリアと書く）。
+func test_an_episode_without_a_battle_clears_at_the_end_of_its_last_talk() -> void:
+	var episode: Episode = Episode.parse("[episode]\ntitle = 読むだけの話\nmap = ridge_path\n[cast]\n少尉 = ally\n[talk 夜]\nmusic = talk\n少尉: 静かだ。\n[talk 朝]\nmusic = talk_calm\n> 朝になった。\n", "res://probe/quiet_night.txt")
+	var run := Story.run_of(episode, null)
+	assert_eq(run.scene(), &"talk", "出撃準備は無い")
+	assert_false(run.data().has("clears") or run.data().has("battle"))
+	assert_eq(run.advance(), &"talk")
+	assert_eq(run.data()["clears"], &"quiet_night")
+	assert_eq(run.advance(), Story.EPISODE_LIST)
+	# 会話の場面が、読み終えたときにクリアと書く。
+	var context := AppContext.new()
+	context.story = Story.new()
+	var talk: Node = TalkScreen.new()
+	talk.context = context
+	talk.talk = {"title": "", "lines": [{"side": 0, "name": "少尉", "text": "静かだ。"}], "clears": &"quiet_night"}
+	await settle(talk)
+	assert_false(context.story.is_cleared(&"quiet_night"))
+	talk.press_next()
+	talk.press_next()
+	assert_true(context.story.is_cleared(&"quiet_night"), "最後の文を送ると、クリア")
+	talk.free()
+
+
+## 連邦の第 1 話は、場面の節で書いた厚い版: カットシーン → 会話 2 つ（2 つ目に選択肢）→ 出撃準備 → 盤の前の会話 → 対戦 → あとの会話。
+func test_the_first_military_episode_runs_its_written_scenes() -> void:
+	var episode: Episode = Story.military().episodes[0]
+	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
+	var seen: Array[StringName] = [run.scene()]
+	assert_true(run.data()["cut"] and run.data()["color"] == &"night", "頭はカットシーン")
+	while not run.is_done():
+		var next := run.advance()
+		if not run.is_done():
+			seen.append(next)
+			if seen.size() == 3:
+				assert_true(run.data()["lines"].any(func(line: Dictionary) -> bool: return line.has("choice")), "2 つ目の会話に選択肢")
+				assert_false(run.data().has("battle"), "別の場所の会話")
+	assert_eq(seen, [&"talk", &"talk", &"talk", Story.SORTIE, &"talk", &"battle", &"talk"] as Array[StringName])
+	assert_eq(episode.choices.keys(), [&"military_first_wish"])
+	# 決着の画面の「部隊変更」で戻る先は出撃準備（前の場面は読み直さない）。
+	run = Story.run_of(episode, Story.default_deck(Story.starting()))
+	for i in 5:
+		run.advance()
+	assert_eq([run.scene(), run.back(), run.advance()], [&"battle", Story.SORTIE, &"battle"])
+
+
 func test_changing_the_squad_after_a_battle_skips_the_talk_before() -> void:
-	var episode: RefCounted = Story.military().episodes[0]
+	var episode: RefCounted = Story.military().episodes[1]
 	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
 	run.advance()  # 会話（前）
 	run.advance()  # 対戦
@@ -393,6 +508,22 @@ func test_news_tell_each_new_kind_item_and_the_new_budget() -> void:
 	] as Array[Dictionary], "もう使えるもの（スナイパー、アイアンシールド）は知らせない。駒・持ち物の知らせはアイコンを出す（kind、item）。持ち物は効果も")
 
 
+## 軍略の解放（[unlock] の trait）: 知らせ（印つき）を出し、足したあとは選べる。まだ教わっていなければ、既定の編成は軍略を持たない。
+func test_taught_traits_are_told_and_then_chosen() -> void:
+	var episode := Episode.new()
+	episode.unlock_traits.assign([Traits.Id.SUPPLY])
+	var given := Story.starting()
+	assert_eq(given.traits, [] as Array[int])
+	assert_eq(Story.default_deck(given).trait_id, Traits.NONE, "教わる前は、軍略を持たない")
+	var news := given.news_of(episode)
+	assert_eq(news.size(), 1)
+	assert_eq(news[0]["trait"], Traits.Id.SUPPLY)
+	given.add(episode)
+	assert_eq(given.traits, [Traits.Id.SUPPLY] as Array[int])
+	assert_true(given.news_of(episode).is_empty(), "教わった軍略は、もう知らせない")
+	assert_eq(StoryBattle.trait_of_deck(Story.default_deck(given)), Traits.Id.SUPPLY)
+
+
 ## MILITARY の物語の、id の話。
 func _episode(id: StringName) -> RefCounted:
 	for campaign: RefCounted in Story.campaigns():
@@ -423,6 +554,28 @@ func test_a_fixed_squad_episode_shows_only_its_squad_and_the_lesson_at_the_sorti
 	root.free()
 
 
+## 出撃準備の敵の部隊の見出しは、話の呼び名（「敵の部隊　ベルク連邦 教導隊」）。話のファイルに軍略を書いた陣営は、見出しの後ろに軍略の札。
+func test_the_sortie_names_the_enemy_and_shows_episode_traits() -> void:
+	var context := preload("res://game/app_context.gd").new()
+	context.story.choose_campaign(Story.campaigns()[0])
+	var episode: RefCounted = _episode(&"drill_first_steps")
+	var before: Array[int] = episode.traits.duplicate()
+	episode.traits[1] = Traits.Id.FOCUS
+	context.run = context.story.run_now(episode)
+	context.scene = Story.SORTIE
+	var sortie := preload("res://game/sortie_screen.gd").new()
+	sortie.context = context
+	var root := Node.new()
+	root.add_child(sortie)
+	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
+	assert_eq(sortie.battle_source.side_names()[1], "ベルク連邦 教導隊")
+	assert_eq(sortie.battle_source.side_shorts()[1], "教導隊")
+	assert_eq(sortie.trait_tag_text(1), Names.troop_trait(Traits.Id.FOCUS), "敵の軍略の札")
+	assert_eq(sortie.trait_tag_text(0), "", "軍略の無い陣営は、札を見せない")
+	episode.traits.assign(before)
+	root.free()
+
+
 ## 始めのレベルが 1 でない駒（「分かれ道」のパラディンとソーサラー）は、出撃準備の部隊の並びにレベルが出る。
 func test_the_sortie_shows_start_levels_above_one() -> void:
 	var context := preload("res://game/app_context.gd").new()
@@ -436,9 +589,10 @@ func test_the_sortie_shows_start_levels_above_one() -> void:
 	sortie._ready()  # 木に入れずに組み立てる（root は SceneTree の外）
 	assert_eq(sortie.start_levels(Unit.Side.PLAYER1), [2, 2, 1])
 	assert_eq(sortie.start_levels(Unit.Side.PLAYER2), [], "敵は始めのレベルを決めていない")
-	var line := DeckText.deck_summary(sortie.chosen_deck(), sortie.start_levels(Unit.Side.PLAYER1))
-	assert_true(line.contains("%s Lv2" % Names.kind(UnitKind.Id.PALADIN)), line)
-	assert_false(line.contains("Lv1"), "レベル 1 の駒には出さない: %s" % line)
+	sortie.choose(sortie.chosen_id())
+	var tips := "\n".join(sortie.face_tips(Unit.Side.PLAYER1))
+	assert_true(tips.contains("%s Lv2" % Names.kind(UnitKind.Id.PALADIN)), tips)
+	assert_false(tips.contains("Lv1"), "レベル 1 の駒には出さない: %s" % tips)
 	root.free()
 
 

@@ -27,7 +27,7 @@ var entries: Array[DeckEntry] = []
 ## この編成の決まり（ロスター、予算、数の上限）。
 var rules: DeckRules
 ## 軍略（Traits.Id。docs/troop-traits.md）。その軍の 3 つから 1 つ。作ったときは軍の既定（Traits.default_of）。
-## 対戦モードで使う（ストーリーの話は、話のファイルが決める）。
+## 対戦モードで使う。ストーリーの話は、自分で部隊を選ぶ話だけ、教わった軍略から（DeckRules.trait_for。部隊が決まっている話は、話のファイルが決める）。
 var trait_id := Traits.NONE
 ## 誓い（軍略の「誓い」。Traits）で結んだ 2 体の組（[DeckEntry, DeckEntry] の並び）。騎士領だけ。軍略が誓いの部隊で効く。
 ## 結ぶ・ほどくのは bind / unbind（1 体は 1 組まで、Traits.MAX_OATHS 組まで）。駒を外すと、その組もほどける。
@@ -82,7 +82,7 @@ func remove(entry: DeckEntry) -> bool:
 	return true
 
 
-## 2 体を誓いで結ぶ（docs/troop-traits.md）。結べなければ（騎士領でない、どちらかがこの編成に無い、同じ駒、もう誓いを結んでいる、組の数が上限）何もせず false。
+## 2 体を誓いで結ぶ（docs/troop-traits.md）。結べなければ（誓いを持てる軍（騎士領）でない、どちらかがこの編成に無い、同じ駒、もう誓いを結んでいる、組の数が上限）何もせず false。
 func bind(a: DeckEntry, b: DeckEntry) -> bool:
 	if not can_bind(a, b):
 		return false
@@ -92,7 +92,7 @@ func bind(a: DeckEntry, b: DeckEntry) -> bool:
 
 ## 2 体を誓いで結べるか。
 func can_bind(a: DeckEntry, b: DeckEntry) -> bool:
-	if army != UnitKind.Army.FANTASY or a == b or not entries.has(a) or not entries.has(b):
+	if not Traits.of_army(army).has(Traits.Id.OATH) or a == b or not entries.has(a) or not entries.has(b):
 		return false
 	if partner_of(a) != null or partner_of(b) != null:
 		return false

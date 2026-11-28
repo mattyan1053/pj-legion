@@ -76,9 +76,34 @@
 
 ## 状態を足すとき
 
-1. `Status.Type` に 1 つ足し、名前を画面の文の表（`game/text/names.csv` の `status.<id>`）に書き、当てはまる決まり（`bonus`、`blocks_damage`、`critical_percent`、
-   `ends_on_attack`、`breaks_on_move`）に書く。数値は、付けるスキルのファイルの調整値を読む。
-2. 付けるスキルの効果（`Skill.apply`）で `Statuses.add` を呼ぶ。
-3. ダメージの解決への新しい割り込み方が要るなら、`Hit`（`docs/combat.md` の「ダメージの解決」）に段を足す。
+### 触るファイル
 
-期限、複製、移動の取り消し、画面の再生（状態の名前を出す）と駒の情報は、足した状態にそのまま効く。
+1. `rules/status.gd`: `Type` に 1 つ（数の小さい順に期限が切れる）。当てはまる決まりの関数に書く（`bonus`、`blocks_damage`、`critical_percent`、
+   `ends_on_attack`、`breaks_on_move`、`roots`）。数値は、付ける側（スキル・必殺技・`Monsters`）のファイルの調整値を読む。`rules/statuses.gd` は直さない。
+2. 付ける所で `Statuses.add` を呼ぶ（スキルの `apply`、必殺技、`rules/monsters.gd` など）。
+3. 文: `game/text/names.csv` の `status.<id>` と `status.<id>.summary`。説明に数を差し込むなら、`game/names.gd` の `status_summary` の表に値を足す。
+4. ダメージの解決への新しい割り込み方が要るなら、段を足す。順は `docs/combat.md` の「ダメージの解決」。
+   - 攻撃にだけ掛かるなら、`rules/combat.gd` の `hit` の、合う段の位置に。
+   - 原因を問わず（攻撃・爆発・スキル）掛かるなら、`rules/hit.gd` の `resolve` の、バリアの前に。
+   - 段の順は `tests/rules/test_damage_order.gd` が固定し、予測 = 実際 は `tests/game/test_forecast_matches.gd` が重ねた場面で比べる。新しい段は、両方に場面を足す。
+   - 内訳を予測とログに出すなら: `Hit` の欄、`rules/events/unit_damaged_event.gd` の欄と `_fill`、`rules/forecast.gd` の `UnitOutcome` の欄と写す所、
+     `game/forecast_text.gd` の注、`game/battle_log/log_base.gd` の `_damage_text` と `battle.csv` の `battle.log.note.<x>`。
+5. 回復の量を変える状態なら、HP を増やす 5 か所（泉・再生・回復役・聖域・補給線）をどれも直す（共通の道が無い。`docs/code-health.md` の表の 9）。
+
+期限、複製、移動の取り消し、駒の情報の札は、足した状態にそのまま効く。
+付いたときの再生は状態の名前を出す（スキルで付いたものは、反動のほかは出さない。`docs/battle-view.md` の出来事の表）。
+
+### 足し忘れても検査が落ちない所
+
+- `status_summary` の値が無い: 説明に `{x}` がそのまま出る（`{` が残らないかを見るのは、スキル・必殺技・聖遺物だけ）。
+- **CPU の危険の読み**（`rules/cpu/cpu_threats.gd`）は、駒の攻撃の量をダメージの解決（`Combat.hit_from`）に聞くので、`Hit.resolve` か `Combat.hit_from` の段に足した状態は知る。
+  ただし、0 にする状態（バリア）は「いちばん弱い 1 回を防ぐ」と別に数えるので、`Hit.unblocked`（防がれる前の量）には、減らす段を入れ、0 にする段は入れない。
+  攻める側は攻撃力（`bonus` の `POWER`）なら数える（脅威範囲も同じ）。それ以外の増え方は数えない。
+- CPU の手の価値（`rules/cpu/cpu_outcome_value.gd`）は、攻撃で付ける状態のうち絡みにしか値を付けない。ほかは 0。
+- 内訳の欄を写し忘れても、数そのものは合う。予測とログの注だけが出ない。予測 = 実際 のテスト（`test_forecast_matches.gd`）は、比べる欄（いまはダメージ・HP・状態・軍略の増減）に足さないと、新しい内訳の食い違いを拾わない。
+
+### 確かめ方
+
+- `tools/check.sh <godot>`。テストだけなら `run_tests.gd -- --only=test_statuses,test_names,test_unit_info_text,test_wrap_audit,test_combat,test_damage_order,test_forecast`。
+- 付けた兵の情報の札（スクリーンショットの `battle_unit_detail`）。
+- 釣り合いが動くなら `measure-balance`。

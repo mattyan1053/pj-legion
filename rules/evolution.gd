@@ -140,4 +140,4 @@ static func regeneration_targets(battle: Battle, side: Unit.Side) -> Array[Unit]
 static func regeneration_heal(unit: Unit) -> int:
 	if not unit.has_trait(Trait.REGENERATION):
 		return 0
-	return clampi(unit.max_hp() - unit.hp, 0, REGENERATION_HEAL)
+	return Mend.amount(unit, REGENERATION_HEAL)

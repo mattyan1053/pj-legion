@@ -105,7 +105,7 @@ func _build_goal_panel(right: VBoxContainer) -> void:
 		_goal_cards.append(shown)
 
 
-## 右の欄の敵の部隊（駒のアイコンと中身の文）を right に足す。
+## 右の欄の敵の部隊（駒の額）を right に足す。
 func _build_enemy_panel(right: VBoxContainer) -> void:
 	var enemy := _panel()
 	Steady.mark(enemy, "sortie.enemy", Steady.RECT)
@@ -114,24 +114,13 @@ func _build_enemy_panel(right: VBoxContainer) -> void:
 	var enemy_column := VBoxContainer.new()
 	enemy_column.add_theme_constant_override("separation", 2)
 	enemy.add_child(enemy_column)
-	enemy_column.add_child(_army_caption(Text.t("sortie.enemy", {"army": DeckText.army_name(episode.enemy_army)}), episode.enemy_army))
-	# 敵の駒のアイコン（押すと詳しい説明。魔物も）。
-	var enemy_faces := HFlowContainer.new()
-	enemy_faces.add_theme_constant_override("h_separation", 4)
-	enemy_faces.add_theme_constant_override("v_separation", 4)
-	enemy_column.add_child(enemy_faces)
-	_enemy_faces = enemy_faces
-	_fill_faces(enemy_faces, battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], Unit.Side.PLAYER2, start_levels(Unit.Side.PLAYER2))
-	var enemy_line := _wrapped(DeckText.deck_summary(
-		battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], start_levels(Unit.Side.PLAYER2),
-		battle_source.scenario().has_king(Unit.Side.PLAYER2)), ENEMY_FONT, COLOR_TEXT)
-	# 敵の数で欄の高さを変えない: 文は、いつも ENEMY_LINES 行ぶんの高さを取る。
-	enemy_line.custom_minimum_size.y = _lines_height(ENEMY_FONT, ENEMY_LINES)
-	enemy_line.clip_text = true
-	enemy_column.add_child(enemy_line)
+	enemy_column.add_child(_army_caption(Text.t("sortie.enemy", {"name": battle_source.side_names()[1]}), episode.enemy_army, 1))
+	# 敵の駒の額（押すと詳しい説明。魔物も）。名前と持ち物は、額に乗せると出る。
+	_enemy_faces = _faces_row(ENEMY_FACE_ROWS)
+	enemy_column.add_child(_enemy_faces)
+	_fill_faces(_enemy_faces, battle_source.scenario().fixed_decks[Unit.Side.PLAYER2], Unit.Side.PLAYER2, start_levels(Unit.Side.PLAYER2))
 
-
-## 右の欄の出撃する部隊（見出しと「部隊編成」、駒のアイコン、中身の文、選べる部隊の並び）を right に足す。
+## 右の欄の出撃する部隊（見出しと「部隊編成」、駒の額、選べる部隊の並び）を right に足す。
 func _build_troops_panel(right: VBoxContainer) -> void:
 	var troops := _panel()
 	troops.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -145,7 +134,7 @@ func _build_troops_panel(right: VBoxContainer) -> void:
 	troops_head.add_theme_constant_override("separation", 12)
 	troops_head.custom_minimum_size = Vector2(0.0, 36.0)  # 「部隊編成」のボタンの無い話（部隊が決まっている話）でも、同じ高さ
 	troops_column.add_child(troops_head)
-	var troops_caption := _army_caption(Text.t("sortie.troops"), context.story.campaign.army)
+	var troops_caption := _army_caption(Text.t("sortie.troops"), context.story.campaign.army, 0)
 	troops_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	troops_head.add_child(troops_caption)
 	var edit := _button(Text.t("setup.edit_deck"), 16)
@@ -154,17 +143,10 @@ func _build_troops_panel(right: VBoxContainer) -> void:
 	# 流れの外から置いたとき（検査）は、戻る先が無いので出さない。部隊が決まっている話も出さない。
 	edit.visible = context.run != null and not is_squad_fixed()
 	troops_head.add_child(edit)
-	# 選んだ部隊の駒のアイコン（将から並びの順。unit_icons.gd）と、中身の文。見出しのすぐ下に置く（出撃する部隊が、まず目に入る）。
-	# 部隊によって文の行の数が違うので、文の高さは、いつも DECK_LINES 行ぶん（収まらない部隊は、字を小さくする）。
-	_deck_faces = HFlowContainer.new()
-	_deck_faces.add_theme_constant_override("h_separation", 4)
-	_deck_faces.add_theme_constant_override("v_separation", 4)
+	# 選んだ部隊の駒の額（将から並びの順。unit_icons.gd）。見出しのすぐ下に置く（出撃する部隊が、まず目に入る）。
+	# 中身は文で並べない。額の下に持ち物の印、名前と持ち物は額に乗せると出る。
+	_deck_faces = _faces_row(DECK_FACE_ROWS)
 	troops_column.add_child(_deck_faces)
-	_deck_line = _wrapped("", DECK_FONT, COLOR_DIM)
-	_deck_line.custom_minimum_size.y = _lines_height(DECK_FONT, DECK_LINES)
-	_deck_line.clip_text = true
-	_deck_line.mouse_filter = Control.MOUSE_FILTER_PASS  # 切れた文の全部を、マウスを乗せると出す
-	troops_column.add_child(_deck_line)
 	# 選べる部隊の並び（部隊が決まっている話は 1 行）。いつも OPTIONS_SHOWN 行ぶんが見える高さを取り、多ければ欄の中で送る。
 	# ホイールは 1 目盛りで 1 行ぶん送る（そのままだと、欄の高さの 1/8 ずつしか動かない）。送りの棒は、つかみやすい太さにする。
 	var scroll := ScrollContainer.new()

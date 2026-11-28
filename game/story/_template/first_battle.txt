@@ -4,6 +4,7 @@
 # - 話を足すには、このファイルを物語のフォルダに別の名前で写して直し、物語のファイル（story.txt）の [episodes] に id を 1 行足す。
 # - # で始まる行と空の行は読み飛ばす。[名前] の行で節を始める。
 # - 上の半分が台本（話の名前、話し手、会話）、下の半分が戦いの設定（部隊、初期位置、クリアで増えるもの）。
+# - 会話の場面をいくつも並べる（別の場所の会話、対戦の無い話）なら、同じフォルダの scenes.txt の書き方。
 # - 書き間違いは、起動したときと検査（tools/check.sh）が「ファイル:行: 何がおかしいか」で知らせる。書き間違いのある話は、話の一覧に並ばない。
 
 [episode]
@@ -13,15 +14,16 @@ title = 見本の話
 #   drill_field（練兵場。小さい）, shrine_hollow（結晶の祠。小さい）, ridge_path（尾根の小道）, crystal_gorge（結晶の岩山）,
 #   old_battlefield（古戦場）, boulder_pass（大岩の峠）, mist_forest（リュエルの森）, crystal_quarry（結晶の採掘場）, seam_vale（縫い目の谷）
 map = ridge_path
+# 前の会話の曲と、あとの会話の曲（sound_catalog.gd の MUSIC の名前。docs/sound.md）。どの話も書く（テストが、話ごとに選んであることを確かめる）。
+# 書かなければ、対戦の曲（会話の間は小さく鳴らし、そのまま対戦へつながる）と、落ち着いた曲（talk_calm）になる。
+# 前の会話に対戦の曲（battle で始まる名前）を書くなら、その話の対戦の曲と同じにする（検査が確かめる）。
+before_music = talk
+after_music = talk_bright
 # ここから下の欄は、どれも無くてよい（使うときに、頭の # を外す）。
 # この話だけ、マップと別の景色にする（stage_look.gd の見た目の名前）。
 # look = stone_walls
-# 対戦の曲、前の会話の曲、あとの会話の曲（sound_catalog.gd の MUSIC の名前。docs/sound.md）。
-# 書かなければ、マップの曲、対戦の曲（会話の間は小さく鳴らし、そのまま対戦へつながる）、落ち着いた曲（talk_calm）。
-# 前の会話に対戦の曲（battle で始まる名前）を書くなら、その話の対戦の曲と同じにする（検査が確かめる）。
+# 対戦の曲（書かなければ、マップの曲）。
 # music = battle_tense
-# before_music = battle_tense
-# after_music = talk_bright
 # 終盤の曲（どちらかの将の HP が半分を切ったら替わる）。書かなければ battle_climax。
 # climax_music = battle_final
 # 勝ったときの調子。bright（明るい。ファンファーレのあと静かな曲）か quiet（静か。ファンファーレを鳴らさない）。書かなければ bright。
@@ -53,7 +55,7 @@ map = ridge_path
 #   部隊の中の人でも、部隊の外の人（教官、伝令）でもよい。それぞれの陣営で最初に書いた人が主な話し手
 #   （敵の主な話し手の姿は、話の一覧のカードの顔になる）。同じ側に何人いても、話した人に入れ替わって立つ。
 [cast]
-少尉 = ally
+レオ = ally
 新兵 = ally, sniper
 敵将 = enemy, paladin evolved
 
@@ -63,8 +65,8 @@ map = ridge_path
 # 話の頭の場面や、物語の最後の締めに 1 行だけ。入れすぎない。
 [before]
 > 夜明け前、隊は尾根の下に着いた。
-新兵: 少尉、前に騎士がいます。旗を立てて、動きません。
-少尉: 見本の話だ。ここに会話を書く。
+新兵: {hero}少尉、前に騎士がいます。旗を立てて、動きません。
+レオ: 見本の話だ。ここに会話を書く。
 敵将: かかってこい。
 
 # 無くてよい節: 対戦の途中の台詞（盤の上の札に出す）。「(きっかけ) 話し手: 文」。3 つまで、文は 40 字まで。地の文は書けない。
@@ -74,19 +76,19 @@ map = ridge_path
 #   (ult_ready ally)   人の軍の必殺技が使えるようになった
 #   (relic ally)       人の軍が聖遺物を受け取った（中ボスを倒した）
 [cues]
-(turn 1) 少尉: 前へ出すぎるな。
+(turn 1) レオ: 前へ出すぎるな。
 (king_half enemy) 敵将: まだだ。
 
 # 対戦に勝ったあとの会話（書き方は [before] と同じ）。クリアで増えたものの知らせは、この後ろに自動で出る。
 [after]
 敵将: ……見事だ。
-少尉: 見本の話は、ここまで。
+レオ: 見本の話は、ここまで。
 
 # 無くてよい節: 負けたときの台詞（書き方は [before] と同じ。1 から 3 行、1 行は 40 字まで）。
 # 決着の画面の見出しの下に、戦績と並べて出す（会話の場面は挟まない）。次にどうすればよいかを、世界の中の言葉で。
 [lost]
 新兵: 旗のそばが、空いていました……。
-少尉: 旗の番を残して、もう一度だ。
+レオ: 旗の番を残して、もう一度だ。
 
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
@@ -105,14 +107,20 @@ deploy = 8,20  7,20  9,20  6,19  10,19  8,18
 
 # 敵の軍（CPU が動かす）。
 [enemy]
-# 軍略（docs/troop-traits.md）。書かなければ軍略なし。軍の軍略だけ（military: focus, ranks, supply / fantasy: vengeance, oath, lone）。
+# 陣営の呼び名（9 字まで。出撃準備の敵の部隊の見出し、上の帯、番の知らせ、決着、ログに出る）。
+# 書かなければ軍の既定の呼び名（military: ベルク連邦 / fantasy: リュエル騎士領 / none: 亡者の群れ）。[ally] にも同じに書ける。
+# 呼び名は docs/world.md・docs/story-outline.md にある言葉から選ぶ。
+# name = ベルク連邦 教導隊
+# 短い呼び名（5 字まで。上の帯の陣営の欄と、ログの駒の名前の前）。書かなければ、呼び名が 5 字までなら呼び名、長ければ軍の既定（連邦 / 騎士領 / 亡者）。
+# short = 教導隊
+# 軍略（docs/troop-traits.md）。書かなければ軍略なし。軍の軍略だけ（military: focus, ranks, supply / fantasy: vengeance, oath, guard）。
 # trait = vengeance
 # 誓い（trait = oath）なら、結ぶ 2 体を unit の行の番号（1 から）で。2 組まで。[ally] にも同じに書ける（人の側の誓いは unit を書いた話だけ）。
 # oath = 1, 2
 # 敵の軍（military, fantasy, none）。必殺技はこの軍のもの。none は軍に属さない魔物の群れ（必殺技が無い。魔物だけを置く）。
 army = fantasy
 # 敵の部隊。1 行に 1 体、並びの順に初期位置へ置く。将は書かない（いつも本陣に立つ）。持ち物は「+」でつなぐ（魔物は持てない）。
-#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer, skeleton_banner, bat, fray, needle（docs/unit-roster.md の「魔物」）
+#   魔物: skeleton, skeleton_archer, skeleton_brute, skeleton_caller, skeleton_drummer, skeleton_banner, bat, fray, needle, spider, eater, crab, shroom（docs/unit-roster.md の「魔物」）
 #   始めのレベルも書ける（unit = paladin, level 2）。
 unit = paladin + iron_shield
 unit = sorcerer

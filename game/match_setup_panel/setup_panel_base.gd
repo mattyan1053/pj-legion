@@ -1,5 +1,5 @@
-extends Control
-## 対戦設定のパネル（game/match_setup_panel.gd）の土台: 読み込み、知らせ（signal）、調整値、部品の変数と、部品を作る小さな道具。
+extends "res://game/window_base.gd"
+## 対戦設定のパネル（game/match_setup_panel.gd）の土台: 窓の土台（game/window_base.gd）を継ぐ。読み込み、知らせ（signal）、調整値、部品の変数と、部品を作る小さな道具。
 ## 部分ごとのファイル（setup_panel_*.gd）は、これを継いで順に積み重なる（match_setup_panel.gd が最後）。
 
 
@@ -24,9 +24,6 @@ const TRIAL_BUTTON_WIDTH := 110.0
 const TRIAL_BUTTON_HEIGHT := 26.0
 const TRIAL_NOTE_SIZE := Vector2(440.0, 26.0)
 const Text := preload("res://game/text.gd")
-const Steady := preload("res://game/steady.gd")
-const Palette := preload("res://game/ui_palette.gd")
-const UiTheme := preload("res://game/ui_theme.gd")
 const MatchChoice := preload("res://game/match_choice.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 const DeckText := preload("res://game/deck_text.gd")
@@ -38,7 +35,6 @@ const MapCard := preload("res://game/map_card.gd")
 const Ornament := preload("res://game/ui_ornament.gd")
 
 
-const ARMIES: Array[UnitKind.Army] = [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]
 ## パネルの中身の幅（px）。選んだものに依らず、この幅に固定する。
 const PANEL_WIDTH := 900.0
 ## 見出しの列の幅と、部隊を選ぶ欄の幅（px）。
@@ -99,10 +95,6 @@ var _confirming: Button
 var _confirm_started_msec := 0
 ## 始めるボタンのいまの文字（確かめをやめたら戻す）。
 var _start_text := ""
-
-
-## 開いている重なる画面の積み上げ（overlay_stack.gd。AppContext.overlays）。見えている間は積んでおく。
-var _overlays: RefCounted
 
 
 ## プレイヤーの 2 行を囲む板の形: 薄い地と、左の縁の太い線（陣営の色。tint が透明なら枠の真鍮）。大きさは色で変わらない。

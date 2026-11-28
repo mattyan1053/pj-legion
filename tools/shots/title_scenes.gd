@@ -7,6 +7,24 @@ func _scene_title() -> bool:
 	return _app.current_id() == SceneFlow.TITLE
 
 
+## タイトルの「クレジット」の窓。
+func _scene_credits() -> bool:
+	if not await _scene_title():
+		return false
+	var credits: Control = _app.current_scene().press_credits()
+	return credits.visible
+
+
+## クレジットの窓を、いちばん下まで送ったところ。
+func _scene_credits_end() -> bool:
+	if not await _scene_credits():
+		return false
+	var credits: Control = _app.current_scene().press_credits()
+	await get_tree().process_frame
+	credits.scroll_to_end()
+	return true
+
+
 ## タイトルの背景を、景色 look にしたところ。
 func _title_scape(look: StringName) -> bool:
 	if not await _scene_title():
@@ -163,7 +181,7 @@ func _scene_deck_built() -> bool:
 	return true
 
 
-## 騎士領の部隊で、軍略の「誓い」を選び、2 人を結んだところ（単騎の札にマウスを乗せて、文を読んでいる）。
+## 騎士領の部隊で、軍略の「誓い」を選び、2 人を結んだところ（守護の札にマウスを乗せて、文を読んでいる）。
 func _scene_deck_trait() -> bool:
 	var screen: Node = await _deck_scene()
 	if screen == null:

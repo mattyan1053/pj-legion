@@ -1,6 +1,8 @@
 extends "res://game/battle_playback/playback_board.gd"
 ## スキルと必殺技、軍略、状態のイベントの再生。
 
+const ArmyLook := preload("res://game/army_look.gd")
+
 
 ## スキルを使った。対象のほうを向いて手を振り、スキルの名前をスキルの色で出す。足元にスキルの色の輪が広がり、
 ## スキルごとの形が対象に届く（battle_effects.gd の skill_flash）。届いてから、続くイベントが効果を見せる。
@@ -27,7 +29,7 @@ func _play_skill_ready(event: SkillReadyEvent) -> void:
 ## 必殺技を使った。画面が必殺技の色に一瞬光り、必殺技の名前を大きく出す。
 ## 効果（駒ごとの状態など）は、続くイベントを _play_all がまとめて同時に見せる（_play_ult_effects）。
 func _play_ult_used(event: UltUsedEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
+	refresh_status.call(replay.turn, replay.phase)
 	var color: Color = BattleHud.ULT_COLORS[event.ult]
 	_hud.flash_screen(color)
 	_sound(&"ult")  # 音の山が、続く光の柱（_play_ult_effects）に重なる
@@ -52,13 +54,13 @@ func _play_ult_effects(side: Unit.Side, effects: Array[BattleEvent]) -> void:
 
 ## 必殺技のゲージがいっぱいになった。上の帯のゲージを「READY」にする（ボタンは、自分の番に押せるようになる）。
 func _play_ult_ready(_event: UltReadyEvent) -> void:
-	refresh_status.call(battle.turn, battle.phase)
+	refresh_status.call(replay.turn, replay.phase)
 	_sound(&"ult_ready")
 
 
 ## 軍略が攻撃に効いた（docs/troop-traits.md）。軍略を持つ側の駒の上に、軍略の名前と増減の札を出す（ダメージの数の手前）。
 func _play_trait_triggered(event: TraitTriggeredEvent) -> void:
-	var down := event.trait_id == Traits.Id.RANKS
+	var down := Traits.shields(event.trait_id)
 	var text := Text.t("battle.pop.trait_down" if down else "battle.pop.trait_up",
 		{"effect": Names.troop_trait(event.trait_id), "amount": event.amount})
 	_pop_number(_view(event.unit_id).position + Vector3(0.0, 0.35, 0.0), text, _trait_color(event.trait_id).lightened(0.3))
@@ -76,7 +78,7 @@ func _play_supply_healed(event: SupplyHealedEvent) -> void:
 
 ## 軍略の札の色（その軍略の軍の色）。
 static func _trait_color(id: int) -> Color:
-	return Palette.NATION_MILITARY if Traits.army_of(id) == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
+	return ArmyLook.color(Traits.army_of(id))
 
 
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。

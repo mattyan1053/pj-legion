@@ -11,12 +11,6 @@ const POWER := Unit.Stat.POWER
 const MOVE := Unit.Stat.MOVE_RANGE
 const RANGE := Unit.Stat.ATTACK_RANGE
 
-const HIREABLE: Array[UnitKind.Id] = [
-	UnitKind.Id.SHIELD_TROOPER, UnitKind.Id.SNIPER, UnitKind.Id.COMMANDO, UnitKind.Id.MEDIC,
-	UnitKind.Id.PALADIN, UnitKind.Id.SORCERER, UnitKind.Id.SPELLBLADE, UnitKind.Id.PRIEST,
-]
-
-
 func _battle() -> Battle:
 	return Maps.battle([
 		"........",
@@ -61,13 +55,18 @@ func _waiting() -> Dictionary:
 
 func test_every_hireable_kind_has_two_evolutions() -> void:
 	var names := {}
-	for kind in HIREABLE:
+	# 雇える兵は軍の表のロスターから読む（兵を足したのに進化先を書き忘れると、ここで落ちる）。
+	var hireable: Array[UnitKind.Id] = []
+	for army in Armies.all():
+		hireable.append_array(Armies.roster(army))
+	assert_eq(hireable.size(), 8, "雇える兵の数（兵を足したら、この数も直す）")
+	for kind in hireable:
 		var options := Evolution.options_for(kind)
 		assert_eq(options.size(), 2, str(UnitKind.Id.find_key(kind)))
 		for id in options:
 			assert_eq(Evolution.origin(id), kind)
 			names[str(Evolution.Id.find_key(id))] = true
-	assert_eq(names.size(), 16, "名前が重なっている")
+	assert_eq(names.size(), 2 * hireable.size(), "名前が重なっている")
 	for kind: UnitKind.Id in UnitKind.Id.values():
 		assert_false(names.has(str(UnitKind.Id.find_key(kind))), "種類の名前と同じ: %s" % str(UnitKind.Id.find_key(kind)))
 	assert_eq(Evolution.Id.size(), 17)  # NONE + 16

@@ -54,6 +54,7 @@ after_music = talk_bright
 
 [enemy]
 army = military
+trait = focus
 unit = shield_trooper
 unit = sniper
 

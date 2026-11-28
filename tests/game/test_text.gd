@@ -27,8 +27,10 @@ const NOT_SHOWN := [
 	"res://game/episode.gd",
 	"res://game/episode/episode_sides.gd",  # 同じく（話のファイルの節ごとに分けたもの）
 	"res://game/episode/episode_talks.gd",
+	"res://game/episode/episode_scenes.gd",
 	"res://game/campaign.gd",
 	"res://game/maps.gd",
+	"res://game/cut_script.gd",  # 盤のカットシーンの台本の書き間違いの文（話のファイルを書く人が読む）
 	"res://game/text_wrap.gd",  # 折り返しの決まり（行頭・行末に置かない文字の並び。画面の文ではない）
 ]
 ## まだ表へ移していないファイルと、そこに残っている直書きの日本語の数（これより増えたら落ちる）。移したら行を消す。
@@ -59,6 +61,8 @@ const SCREEN_FAMILIES := {
 	"battle.goal.lose": [GameWonEvent.Reason, ["", ".last"]],
 	"battle.goal.name": [GameWonEvent.Reason, [""]],
 	"stats.ending": [BattleStats.Ending, [""]],
+	"credits.group": [{"FONT": 0, "UNIT": 1, "BOARD": 2, "SOUND": 3}, [""]],
+	"side.story.army": [UnitKind.Army, ["", ".short"]],
 	"side.story": [{"PLAYER1": 0, "PLAYER2": 1}, [""]],
 	"setup.rule": [{"STRONGHOLD": 1, "SEAM": 3}, [".note"]],
 	"setup.caption": [{"STRONGHOLD": 1, "SEAM": 3}, [""]],

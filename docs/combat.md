@@ -2,7 +2,8 @@
 
 コード: `rules/combat.gd`（射程・ダメージ）、`rules/hit.gd`（ダメージの解決）、`rules/actions/attack_action.gd`（攻撃の行動）、
 `rules/events/unit_damaged_event.gd`、`rules/events/attack_damaged_event.gd`、`rules/events/smoke_blocked_event.gd`、`rules/events/unit_defeated_event.gd`。
-テスト: `tests/rules/test_combat.gd`、`tests/rules/test_statuses.gd`（解決への割り込み）。
+テスト: `tests/rules/test_combat.gd`、`tests/rules/test_statuses.gd`（解決への割り込み）、`tests/rules/test_damage_order.gd`（段の順。順を入れ替えると落ちる）、
+`tests/game/test_forecast_matches.gd`（効果を重ねた場面と CPU どうしの 1 局で、予測 = 実際）。
 
 ## 攻撃できる相手
 
@@ -17,15 +18,22 @@
 
 ## ダメージ
 
-- 攻撃側の攻撃力がそのままダメージになる。
-- **確定クリティカル**: 攻撃側に照準（`docs/unit-statuses.md`）が付いていれば、攻撃力に照準の倍率を掛ける
-  （倍率は `docs/skills/precision-aim.md`）。倍率を掛けるのは一時的な補正（突撃・注射）の前の攻撃力で、一時的な補正はそのあとに足す。
-  攻撃を 1 回すると、照準は消える。
-- 守る側が森にいれば 80%（`FOREST_DAMAGE_RATE_PERCENT`）にする（端数切り捨て。クリティカルの倍率を掛けたあと）。
-- 攻撃側が、敵の糸茸の周り 8 マスにいれば、隊列（軍略）のあとに胞子のぶんを引く（0 より下にはならない。`docs/monsters.md`）。
-- 守る側が自分の陣営の煙幕の中にいて、距離 2（`RANGED_DISTANCE`）以上から攻撃されたら 0（`docs/field-effects.md`）。
-- **バリア**: 守る側にバリア（`docs/unit-statuses.md`）が付いていれば 0。バリアは、その 1 回で消える。
-  煙幕に阻まれた攻撃は、バリアまで届かない（バリアは残る）。
+上から順に当てる（`Combat.hit`。下の「ダメージの解決」の表と同じ順）。
+
+1. **煙幕**: 守る側が自分の陣営の煙幕の中にいて、距離 2（`RANGED_DISTANCE`）以上から攻撃されたら 0。ここで終わり（`docs/field-effects.md`）。
+   バリアまで届かない（バリアは残る）。
+2. **攻撃力**: 攻撃側の攻撃力。攻撃側に照準（`docs/unit-statuses.md`）が付いていれば**確定クリティカル**で、攻撃力に照準の倍率を掛ける
+   （倍率は `docs/skills/precision-aim.md`）。倍率を掛けるのは一時的な補正（突撃・注射）の前の攻撃力で、一時的な補正はそのあとに足す。
+   攻撃を 1 回すると、照準は消える。
+3. **軍略で足すもの**（集中砲火・仇討ち・誓い。`docs/troop-traits.md`）を足す。
+4. **森**: 守る側が森にいれば、割合（`Seam.forest_rate_percent`。ふだんは `FOREST_DAMAGE_RATE_PERCENT`、深い茂み（`docs/seam-signs.md`）では `Seam.THICKET_RATE_PERCENT`）を掛ける。
+   端数は切り捨て。クリティカルの倍率と、軍略で足したぶんにも掛かる。
+5. **軍略で引くもの**（隊列・守護）を引く。0 より下にはならない（引いた量として出るのは、残っていた量まで）。
+6. **胞子**: 攻撃側が、敵の糸茸の周り 8 マスにいれば、胞子のぶんを引く（0 より下にはならない。`docs/monsters.md`）。
+   隊列で 0 になっていたら、胞子は効かない（引くものが無い）。
+7. **バリア**: 守る側にバリア（`docs/unit-statuses.md`）が付いていれば 0。バリアは、その 1 回で消える。
+   防がれたら、軍略の増減と胞子は出さない（森とクリティカルの印は残る）。
+
 - HP は 0 より下がらない。HP が 0 になった駒は倒れ、盤から取り除かれる。
 - 反撃は無い。
 
@@ -49,7 +57,7 @@
 
 **駒の HP を減らすものは、原因が何でも、1 回ぶんずつ `Hit`（`rules/hit.gd`）を通す。** 計算と適用に分かれている。
 
-- 計算（状態を変えない）: `Combat.hit(対戦, 攻撃する駒, 相手)`、`MapObject.blast_hit(駒)`、`Hit.resolve(与えた駒, 受ける駒, 量, 原因)`。
+- 計算（状態を変えない）: `Combat.hit(対戦, 攻撃する駒, 相手)`（中身は `Combat.hit_from`。下）、`MapObject.blast_hit(駒)`、`Hit.resolve(与えた駒, 受ける駒, 量, 原因)`。
   返ってくる `Hit` に、実際に減る量（`amount`）、あとの HP（`hp_after`）、確定クリティカルか（`critical`）、
   防いだ状態（`blocked_by`）、阻んだ煙幕（`smoke`）が入っている。
 - 適用: `Hit.apply()`。HP を減らし、防いだ状態を外す。ダメージのイベントは、適用した `Hit` から作る。
@@ -57,7 +65,7 @@
 
 | 原因 | 入口 | 通る段（上から順に） |
 | --- | --- | --- |
-| 駒の攻撃（プレイヤーの駒、中立の駒） | `Combat.hit` / `Combat.strike` | 煙幕 → 攻撃力（確定クリティカル）→ 軍略で足すもの（集中砲火・仇討ち・誓い・単騎。`docs/troop-traits.md`）→ 森 → 軍略で引くもの（隊列）→ 胞子（糸茸）→ 受ける側の状態 |
+| 駒の攻撃（プレイヤーの駒、中立の駒） | `Combat.hit` / `Combat.strike` | 煙幕 → 攻撃力（確定クリティカル）→ 軍略で足すもの（集中砲火・仇討ち・誓い。`docs/troop-traits.md`）→ 森 → 軍略で引くもの（隊列・守護）→ 胞子（糸茸）→ 受ける側の状態 |
 | 起爆樽の爆発 | `MapObject.blast_hit` | 固定の量 → 受ける側の状態 |
 | スキルのダメージ | `Skills.deal_damage` | スキルが決めた量 → 受ける側の状態 |
 
@@ -67,6 +75,11 @@
 - **予測と CPU** は、計算だけを呼ぶ（`Combat.damage`、`MapObject.blast_damage` は `Hit` の `amount`）か、
   複製の上で適用まで走らせる（戦闘予測 `Forecast`。`docs/battle-forecast.md`。CPU の先読み）。どちらも同じ `Hit` を通るので、
   実際と同じ結果になる。`Hit`（とダメージのイベント）は、クリティカルか・森で減ったか・胞子で減ったか・何に防がれたかを持つ。
+- **動いた先・次の番を問う口** `Combat.hit_from(対戦, 攻撃する駒, 攻撃するマス, 攻撃力, 相手, 相手のマス, 覚え)`: 盤を書き換えずに、
+  「この駒がこのマスからこの攻撃力で、あのマスに立つ相手を攻撃したら」を同じ段で解く。覚え（`Battle.struck` の形）を渡すと、
+  「このターンに攻撃された」を置き換える（集中砲火・誓い）。`Combat.hit` は、いまのマス・いまの攻撃力・いまの覚えでこれを呼ぶだけ。
+  CPU の危険の見積もり（`docs/cpu-ai.md`）は、これを読む。段を足すときは、ここに足せば CPU も知る（`tests/rules/test_cpu_danger.gd` が、
+  同じ場面の実際の攻撃と比べる）。
 - 同時に当たるダメージ（爆発、スキル）は、全員ぶんのダメージのイベントを並べたあとに、状態が外れるイベント、倒れた駒、の順。
 
 ### 後で足すものの置き場所

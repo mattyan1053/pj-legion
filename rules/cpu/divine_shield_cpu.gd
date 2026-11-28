@@ -37,5 +37,5 @@ func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	if Statuses.blocking(unit) != -1:
 		return 0.0
 	var shielded := sim.unit_by_id(used.unit_id)
-	var saved: int = cpu._threat_at(unit, shielded.cell, 0) - cpu._threat_at(shielded, shielded.cell, 0)
+	var saved: int = cpu._barrier_saves(unit, shielded.cell)
 	return COVER_RATE * CpuPlayer.DAMAGE_VALUE * mini(saved, unit.hp)

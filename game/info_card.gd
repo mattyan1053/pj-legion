@@ -2,7 +2,7 @@ extends VBoxContainer
 ## 対戦の左下の情報の枠の中身（battle_hud.gd の情報の枠が持つ）: 駒のステータスの札と、マスの札。
 ## 部隊編成の右の札（unit_summary.gd）・ステータスの窓（unit_detail.gd）と同じ部品で組む（文の段落で並べない）:
 ## 額、役割の印と名前、札（所属・役割・軍・レベル）、能力値の行（HP・攻撃・移動・射程の棒と粒。stat_meter.gd）、経験値の棒、
-## 状態の札（印と残りのターン）、特性の札、スキルの札（使える / あと N ターン）、持ち物の枠、行動の状態、いま要る説明の札。
+## いま乗っている効果の札（effect_chips.gd。状態は残りのターンも）、特性の札、スキルの札（使える / あと N ターン）、持ち物の枠、行動の状態、いま要る説明の札。
 ## 幅は渡した幅で決まり、中身では変わらない。高さは fit で、渡した高さに収める（入りきらなければ、後で読めるものから省く）。
 
 const Text := preload("res://game/text.gd")
@@ -16,6 +16,7 @@ const AbilityMark := preload("res://game/ability_mark.gd")
 const ItemIcon := preload("res://game/item_icon.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const Palette := preload("res://game/ui_palette.gd")
+const EffectChips := preload("res://game/effect_chips.gd")
 
 ## 額の辺（px）、欄の間（px）、札の並びの間（px）。
 const FRAME_SIZE := 56.0
@@ -29,8 +30,8 @@ const ITEM_ICON := 20.0
 const EXPERIENCE_BAR := Vector2(44.0, 6.0)
 ## スキルの札の説明を折り返す幅を、札の幅から狭めるぶん（px。札の左右の余白と縁）。
 const SUMMARY_INSET := 22.0
-## 状態の札の印（丸）の辺（px）。
-const STATUS_DOT := 9.0
+## いま乗っている効果の札の欄の行の数（決まった高さ。effect_chips.gd）。
+const EFFECT_ROWS := 1
 
 var _width: float
 ## 駒の札の欄。
@@ -42,6 +43,7 @@ var _tags: ChipRows
 var _meters: Array[StatMeter] = []
 ## 行動の状態の札（名前の右）。
 var _action: HBoxContainer
+var _effects: EffectChips
 var _chips: ChipRows
 var _skill: VBoxContainer
 var _items: HBoxContainer
@@ -58,7 +60,7 @@ var _texts: Array[String] = []
 var _heading := ""
 ## 入りきらずに省いた欄の数。
 var _dropped := 0
-## 欄ごとの文（検査用の text が、出している欄だけを並べる）: 状態の行、いま要る説明、スキル、持ち物、札。
+## 欄ごとの文（検査用の text が、出している欄だけを並べる）: 状態の行、いま要る説明、スキル、持ち物、特性の札。
 var _state_plain := ""
 var _note_plain := ""
 var _skill_line := ""
@@ -116,6 +118,8 @@ func _build_unit() -> void:
 		var meter := StatMeter.new(true)
 		_meters.append(meter)
 		rows.add_child(meter)
+	_effects = EffectChips.new(_width, EFFECT_ROWS, "battle.info.effects")
+	_unit_box.add_child(_effects)
 	_chips = _flow(_unit_box, _width)
 	_skill = _column(_unit_box)
 	_items = HBoxContainer.new()
@@ -147,7 +151,8 @@ func _build_cell() -> void:
 
 ## 駒の札を出す。sheet は対戦中の駒のステータス（UnitSheet.of_unit）、tint は陣営の色。
 ## side_tag は所属の札の文（「自軍」「敵」など）、level_tag はレベルの札の文（育たない駒は空）、
-## experience は [いまの経験値, 次のレベルまで]（出さないなら空の列）。
+## experience は [いまの経験値, 次のレベルまで]（出さないなら空の列）。いまの経験値が負なら、棒の場所だけ空けて、棒も文も出さない
+## （HIDDEN_EXPERIENCE。進化しない魔物。Lv だけを見せ、札の並びは動かさない）。
 ## chips は札にする短い文の列（[文, 色] の列。特性）。action は行動の状態（名前の右の札。「未行動」）、
 ## state はそのほかの状態（いるマスなど。札の下の小さな行）、note はいま要る説明（無ければ空）。
 ## skill_note が偽なら、スキルの札に説明を出さない（note のほうに出しているとき）。
@@ -196,13 +201,12 @@ func show_unit(
 		var pips := line.stat == Unit.Stat.MOVE_RANGE or line.stat == Unit.Stat.ATTACK_RANGE
 		_meters[i].show_stat(line.name, line.value, line.plain, sheet.scale_of(line.stat), pips, sheet.hp if line.stat == Unit.Stat.MAX_HP else -1)
 		_texts.append(" ".join(_meters[i].texts()).strip_edges())
-	if not experience.is_empty():
+	_experience_shown = level_tag != "" and not experience.is_empty() and experience[0] >= 0
+	if _experience_shown:
 		_texts.append(Text.t("deck.sheet.experience", {"experience": experience[0], "needed": experience[1]}))
+	_effects.show_effects(sheet.effects)
 	_chips.clear()
 	_chip_lines.clear()
-	for status: Array in sheet.statuses:
-		_chips.add(_status_chip(status[0], status[1]))
-		_chip_lines.append(Text.t("battle.hud.status_chip", {"status": Names.status(status[0]), "turns": status[1]}))
 	for chip: Array in chips:
 		_chips.add(SheetParts.tag(chip[0], chip[1]))
 		_chip_lines.append(chip[0])
@@ -249,7 +253,7 @@ func show_cell(title: String, tags: Array[String], entries: Array) -> void:
 
 
 ## 中身を、高さ height（px）に収める。入りきらなければ、後で読めるものから順に省く
-## （いるマスなどの状態の行 → スキルの説明 → 持ち物 → 状態・特性の札。「詳細」の窓と、マスを押した札で読める）。
+## （いるマスなどの状態の行 → スキルの説明 → 持ち物 → 特性の札 → 乗っている効果の札。「詳細」の窓と、マスを押した札で読める）。
 ## スキルの名前と、いま要る説明は省かない。何度呼んでも同じ結果（省いたものを戻してから、測り直す）。並べ直しを待たずに、いまの中身から求める。
 func fit(height: float) -> void:
 	_dropped = 0
@@ -258,6 +262,7 @@ func fit(height: float) -> void:
 	_state.visible = _state_plain != ""
 	_items.visible = _items_line != ""
 	_chips.visible = not _chips.is_empty()
+	_effects.visible = true
 	if _skill_summary != "" and not _skill_summary_shown:
 		_clear(_skill)
 		_add_skill_card(_skill_summary)
@@ -268,7 +273,7 @@ func fit(height: float) -> void:
 		_clear(_skill)
 		_add_skill_card("")
 		_dropped += 1
-	for part: Control in [_items, _chips]:
+	for part: Control in [_items, _chips, _effects]:
 		if _over(height) <= 0.0:
 			break
 		if part.visible:
@@ -301,6 +306,8 @@ func text() -> String:
 	var shown := _texts.duplicate()
 	if not _unit_box.visible:
 		return "\n".join(shown)
+	if _effects.visible:
+		shown.append_array(_effects.lines())
 	if _chips.visible:
 		shown.append_array(_chip_lines)
 	if _skill_line != "":
@@ -381,6 +388,16 @@ func _slot(filled: bool) -> PanelContainer:
 	return slot
 
 
+## 経験値を出さない駒の experience（棒の場所だけ空ける）。
+const HIDDEN_EXPERIENCE: Array = [-1, 1]
+var _experience_shown := false
+
+
+## 経験値の棒と文を出しているか（検査用。魔物は出さない）。
+func shows_experience() -> bool:
+	return _experience_shown
+
+
 ## レベルの札: 「Lv 2」と、次のレベルまでの経験値の小さな棒（experience が [いま, 次まで]。空なら棒は出さない）。
 func _level_chip(words: String, experience: Array) -> Control:
 	var plate := SheetParts.tag(words, Palette.ACCENT) as PanelContainer
@@ -399,40 +416,11 @@ func _level_chip(words: String, experience: Array) -> Control:
 	bar.show_percentage = false
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.max_value = maxf(experience[1], 1.0)
-	bar.value = experience[0]
+	bar.value = maxf(experience[0], 0.0)
+	bar.modulate.a = 0.0 if experience[0] < 0 else 1.0  # 出さない棒も、場所は空けたまま
 	bar.add_theme_stylebox_override("background", UiTheme.box(Palette.INK, Palette.BORDER, 1, 2, 0.0))
 	bar.add_theme_stylebox_override("fill", UiTheme.box(Palette.GOLD, Palette.INK, 1, 2, 0.0))
 	row.add_child(bar)
-	return plate
-
-
-## 状態の札: 印（丸）、名前、残りのターン数。
-func _status_chip(type: Status.Type, turns: int) -> Control:
-	var plate := PanelContainer.new()
-	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var box := UiTheme.box(Color(Palette.INFO, 0.12), Color(Palette.INFO, 0.7), 1, 9, 0.0)
-	box.content_margin_left = 7.0
-	box.content_margin_right = 4.0
-	box.content_margin_top = 1.0
-	box.content_margin_bottom = 2.0
-	plate.add_theme_stylebox_override("panel", box)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 5)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	plate.add_child(row)
-	var dot := Panel.new()
-	dot.custom_minimum_size = Vector2(STATUS_DOT, STATUS_DOT)
-	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dot.add_theme_stylebox_override("panel", UiTheme.box(Palette.INFO, Palette.INK, 1, int(STATUS_DOT), 0.0))
-	row.add_child(dot)
-	var name_label := SheetParts.text(12, Palette.INFO, true)
-	name_label.text = Names.status(type)
-	row.add_child(name_label)
-	var turns_label := SheetParts.text(11, Palette.TEXT)
-	turns_label.text = Text.t("battle.hud.status_turns", {"turns": turns})
-	turns_label.add_theme_stylebox_override("normal", UiTheme.box(Color(Palette.INK, 0.8), Color(Palette.INK, 0.0), 0, 7, 5.0))
-	row.add_child(turns_label)
 	return plate
 
 

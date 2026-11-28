@@ -72,7 +72,8 @@ king_figure = skeleton_mage
 army = none
 unit = skeleton_brute
 unit = skeleton_brute
-unit = skeleton_archer
+unit = skeleton_archer, level 2
+# 骸骨射手はレベル 2 から始まる。軍略を入れたあと人の側の軍略で勝ちすぎた（部隊を変えて 192 局で 87 → 78%）。
 unit = skeleton
 unit = skeleton
 unit = skeleton

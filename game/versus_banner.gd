@@ -33,7 +33,7 @@ func _init() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	for side in 2:
-		var crest := Crest.new(UnitKind.Army.MILITARY, CREST_SIZE)
+		var crest := Crest.new(UnitKind.Army.NONE, CREST_SIZE)
 		crest.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var names := VBoxContainer.new()
 		names.alignment = BoxContainer.ALIGNMENT_CENTER

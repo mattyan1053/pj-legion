@@ -30,7 +30,7 @@ after_music = talk_calm
 ヴァルト = enemy, sniper evolved valt
 
 [before]
-ヴァルト: 縫い糸ですって？ 聖遺物ひとつで本隊を止めろと言うの、ハーデン少尉。
+ヴァルト: 縫い糸ですって？ 聖遺物ひとつで本隊を止めろと言うの、{hero}少尉。
 ハーデン: 発破をやれば、谷じゅうの亡者が起きます、少佐。
 ヴァルト: あの石が無ければ、最初の冬に、連邦は半分も残らなかったのよ。世迷い言はたくさん。
 ヴァルト: 命令違反ね。教導隊、少尉の隊を取り押さえなさい。私は採掘場へ戻るわ。
@@ -62,7 +62,10 @@ after_music = talk_calm
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [enemy]
+name = ベルク連邦 教導隊
+short = 教導隊
 army = fantasy
+trait = vengeance
 unit = paladin, level 2
 unit = sorcerer, level 2
 unit = priest

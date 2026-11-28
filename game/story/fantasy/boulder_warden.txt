@@ -57,6 +57,7 @@ wins = boss_slain
 
 [enemy]
 army = military
+trait = focus
 unit = shield_trooper
 unit = sniper
 unit = sniper

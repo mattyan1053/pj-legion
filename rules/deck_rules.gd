@@ -23,6 +23,9 @@ var _budgets: Dictionary = {}
 var _items: Array[Equipment.Id] = []
 ## 編成の画面に並べる装備の種類（持たせられる装備と、まだ持たせられないが、この決まりでいずれ持たせられる装備。並びは Equipment.Id の順）。
 var _shown_items: Array[Equipment.Id] = []
+## 選べる軍略（Traits.Id。docs/troop-traits.md）。null なら、どの軍の軍略も選べる（対戦の決まり）。
+## ストーリーの決まりは、教わった軍略だけ（docs/story.md の「解放」）。
+var _traits: Variant = null
 
 ## 対戦の決まりで持たせられる装備。ほかの装備はストーリー専用（docs/player-loadout.md の「装備」）。
 const VERSUS_ITEMS: Array[Equipment.Id] = [Equipment.Id.SPEED_BOOTS, Equipment.Id.IRON_SHIELD]
@@ -33,11 +36,16 @@ static var _versus: DeckRules
 ## allowed_items: 持たせられる装備の種類。省けば（null）、どの装備も持たせられる。
 ## listed_items: 編成の画面に並べる装備の種類（まだ持たせられない装備は「未解放」で並ぶ）。省けば、持たせられる装備だけ。
 ## 持たせられる装備は、渡さなくても並ぶ。
+## allowed_traits: 選べる軍略（Traits.Id の列）。省けば（null）、どの軍略も選べる。
 func _init(
 	rules_id: StringName, unit_limit: int, rosters: Dictionary, budgets: Dictionary,
-	allowed_items: Variant = null, listed_items: Variant = null,
+	allowed_items: Variant = null, listed_items: Variant = null, allowed_traits: Variant = null,
 ) -> void:
 	id = rules_id
+	if allowed_traits != null:
+		var chosen: Array[int] = []
+		chosen.assign(allowed_traits)
+		_traits = chosen
 	max_units = unit_limit
 	_rosters = rosters
 	_budgets = budgets
@@ -48,18 +56,22 @@ func _init(
 			_shown_items.append(item)
 
 
-## 対戦の決まり。軍ごとに、その軍の 4 種を雇える。予算は軍ごとの値（MILITARY 24、FANTASY 18。docs/player-loadout.md）。
+## 対戦の決まり。軍の表（Armies）の軍ごとに、その軍の兵（Armies.roster）を雇える。予算は軍の表の値（docs/player-loadout.md）。
 ## 持たせられる装備は VERSUS_ITEMS だけ。
 static func versus() -> DeckRules:
 	if _versus == null:
 		var rosters := {}
-		for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
-			rosters[army] = _army_kinds(army)
-		_versus = DeckRules.new(VERSUS, Deck.MAX_UNITS, rosters, {
-			UnitKind.Army.MILITARY: 24,
-			UnitKind.Army.FANTASY: 18,
-		}, VERSUS_ITEMS)
+		var budgets := {}
+		for army in Armies.all():
+			rosters[army] = Armies.roster(army)
+			budgets[army] = Armies.budget(army)
+		_versus = DeckRules.new(VERSUS, Deck.MAX_UNITS, rosters, budgets, VERSUS_ITEMS)
 	return _versus
+
+
+## versus() の控えを捨てる（軍の表を替えたテストが、組み直させる）。
+static func forget_versus() -> void:
+	_versus = null
 
 
 ## 名前から決まりを引く。知らない名前なら null。
@@ -70,11 +82,14 @@ static func by_id(rules_id: StringName) -> DeckRules:
 	return null
 
 
-## 選べる軍（並びは Army の順）。
+## 選べる軍（並びは軍の表の順。表に無い軍は、そのあとに渡された順）。
 func armies() -> Array[UnitKind.Army]:
 	var result: Array[UnitKind.Army] = []
-	for army: UnitKind.Army in UnitKind.Army.values():
+	for army in Armies.all():
 		if _rosters.has(army):
+			result.append(army)
+	for army: UnitKind.Army in _rosters:
+		if not result.has(army):
 			result.append(army)
 	return result
 
@@ -107,17 +122,31 @@ func allows_item(item: Equipment.Id) -> bool:
 	return _items.has(item)
 
 
+## その軍略を選べるか（その軍の軍略かは見ない）。
+func allows_trait(trait_id: int) -> bool:
+	return trait_id != Traits.NONE and (_traits == null or (_traits as Array).has(trait_id))
+
+
+## その軍で選べる軍略（並びは Traits.of_army の順）。
+func traits_of(army: UnitKind.Army) -> Array[int]:
+	var result: Array[int] = []
+	for each: int in Traits.of_army(army):
+		if allows_trait(each):
+			result.append(each)
+	return result
+
+
+## 部隊 deck が対戦で持つ軍略: 選んだ軍略を選べればそれ、選べなければ、その軍の既定、それも選べなければ、選べる最初の 1 つ。
+## どれも選べなければ（軍略をまだ教わっていない）Traits.NONE。
+func trait_for(deck: Deck) -> int:
+	var choices := traits_of(deck.army)
+	if choices.has(deck.trait_id):
+		return deck.trait_id
+	if choices.has(Traits.default_of(deck.army)):
+		return Traits.default_of(deck.army)
+	return choices[0] if not choices.is_empty() else Traits.NONE
+
+
 ## その軍で、その種類の駒を雇えるか。
 func allows(army: UnitKind.Army, kind: UnitKind.Id) -> bool:
 	return _rosters.has(army) and (_rosters[army] as Array).has(kind)
-
-
-## その軍に属する駒の種類。並びは 前衛・後衛・奇襲・回復。
-static func _army_kinds(army: UnitKind.Army) -> Array[UnitKind.Id]:
-	var result: Array[UnitKind.Id] = []
-	for kind: UnitKind.Id in UnitKind.Id.values():
-		if UnitKind.army(kind) == army:
-			result.append(kind)
-	result.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
-		return UnitKind.role(a) < UnitKind.role(b))
-	return result

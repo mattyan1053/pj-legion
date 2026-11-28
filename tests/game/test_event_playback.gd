@@ -1,18 +1,21 @@
 extends "res://tests/base_test.gd"
 ## ルールのイベント（rules/events/）のどの種類にも、画面の側に再生するメソッドがあること。
 ## イベントを足したのに画面が再生しない、という状態を、ここで気付けるようにする。
+## 台本の出来事（game/cut_events/。カットシーンの台本だけが出す）も、同じく再生するメソッドを持つ。
 
 const EVENTS_DIR := "res://rules/events"
 const SCENE_SCRIPT := "res://game/battle_playback.gd"
+const SCRIPT_EVENTS_DIR := "res://game/cut_events"
 
 
 func _event_scripts() -> Array[Script]:
 	var scripts: Array[Script] = []
-	for file in DirAccess.get_files_at(EVENTS_DIR):
-		if file.ends_with(".gd"):
-			var script: Script = load(EVENTS_DIR.path_join(file))
-			if not script.is_abstract():
-				scripts.append(script)
+	for dir: String in [EVENTS_DIR, SCRIPT_EVENTS_DIR]:
+		for file in DirAccess.get_files_at(dir):
+			if file.ends_with(".gd"):
+				var script: Script = load(dir.path_join(file))
+				if not script.is_abstract():
+					scripts.append(script)
 	return scripts
 
 

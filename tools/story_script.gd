@@ -27,6 +27,7 @@ const CUE_WORDS := {
 	BattleCues.FALLEN: ["味方の駒が初めて倒れたら", "敵の駒が初めて倒れたら"],
 	BattleCues.ULT_READY: ["味方の必殺技のゲージがたまったら", "敵の必殺技のゲージがたまったら"],
 	BattleCues.RELIC: ["味方が聖遺物を受け取ったら", "敵が聖遺物を受け取ったら"],
+	BattleCues.TRAIT: ["味方の軍略が初めて効いたら", "敵の軍略が初めて効いたら"],
 }
 const SIDE_WORDS := ["味方", "敵"]
 
@@ -89,25 +90,28 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 	lines.append("- 話のファイル: `%s`" % episode.path.trim_prefix("res://"))
 	lines.append("- マップ: %s" % episode.map_title)
 	# 勝ち方の文（出撃準備と同じ）の 1 行目。2 行目は負け方で、どの話も同じ。
-	var goal := WinText.of_scenario(StoryBattle.scenario_of(episode), Unit.Side.PLAYER1)
-	lines.append("- 勝ち方: %s" % goal.get_slice("\n", 0))
-	lines.append("- 敵: %s" % _enemy(episode))
+	if episode.has_battle():
+		var goal := WinText.of_scenario(StoryBattle.scenario_of(episode), Unit.Side.PLAYER1)
+		lines.append("- 勝ち方: %s" % goal.get_slice("\n", 0))
+		lines.append("- 敵: %s" % _enemy(episode))
+	else:
+		lines.append("- 対戦の無い話（読み終えたらクリア）")
 	if episode.lesson != "":
 		lines.append("- 覚えること: %s" % episode.lesson)
 	lines.append("- 話し手: %s" % "、".join(_cast(episode)))
 	lines.append("")
-	lines.append("### 対戦の前")
-	lines.append("")
-	_talk(lines, episode, episode.before)
-	if not episode.cues.is_empty():
-		lines.append("### 対戦の途中")
-		lines.append("")
-		for cue: Array in episode.cues:
-			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), episode.speakers[cue[4]], cue[3]])
-		lines.append("")
-	lines.append("### 対戦のあと")
-	lines.append("")
-	_talk(lines, episode, episode.after)
+	var fought := false
+	for scene: Episode.StoryScene in episode.scenes:
+		if scene.is_talk():
+			if scene.name != "":
+				lines.append(("### カットシーン「%s」" if scene.cut else "### 盤のカットシーン「%s」" if scene.board_cut != null else "### 場面「%s」") % scene.name)
+			else:
+				lines.append("### 対戦のあと" if fought else "### 対戦の前")
+			lines.append("")
+			_talk(lines, episode, scene.lines)
+		elif scene.is_battle():
+			fought = true
+			_battle_lines(lines, episode)
 	if not episode.lost.is_empty():
 		lines.append("### 負けたとき（決着の画面）")
 		lines.append("")
@@ -121,22 +125,47 @@ static func _episode(lines: PackedStringArray, campaign: Campaign, episode: Epis
 		lines.append("")
 
 
-static func _talk(lines: PackedStringArray, episode: Episode, rows: Array) -> void:
-	for row: Array in rows:
-		if row[2] < 0:
-			lines.append("- *%s*" % row[1])  # 地の文
+## 対戦の場面の、途中の台詞（負けたときの台詞は、台本の読みやすさから、話の最後にまとめる）。
+static func _battle_lines(lines: PackedStringArray, episode: Episode) -> void:
+	if not episode.cues.is_empty():
+		lines.append("### 対戦の途中")
+		lines.append("")
+		for cue: Episode.TalkCue in episode.cues:
+			lines.append("- （%s）**%s**　%s" % [_cue_word(cue), cue.line.speaker_in(episode.speakers), cue.line.shown_text()])
+		lines.append("")
+
+
+static func _talk(lines: PackedStringArray, episode: Episode, rows: Array[Episode.TalkLine]) -> void:
+	var texts := {}  # 選択肢の名前 -> {答えの鍵: 画面の文}（この会話で選ばせるもの）
+	var answered := ""  # いま並べている答え（"名前=鍵"）
+	for row in rows:
+		# 出す条件のある行は、条件を頭に添える（選択肢の答えの中の行は、答えの見出しの下に字下げ）。
+		var indent := ""
+		if row.when_choice != &"":
+			var shown: String = texts.get(row.when_choice, {}).get(row.when_answer, "")
+			if shown != "" and not row.when_not:
+				indent = "  "
+				if answered != "%s=%s" % [row.when_choice, row.when_answer]:
+					answered = "%s=%s" % [row.when_choice, row.when_answer]
+					lines.append("- 〔選ぶ: %s〕" % shown)
+			else:
+				indent = "〔%s %s %s のとき〕" % [row.when_choice, "≠" if row.when_not else "=", row.when_answer]
+		if row.is_narration():
+			lines.append("%s- %s*%s*" % ["  " if indent == "  " else "", "" if indent == "  " else indent, row.shown_text()])
 		else:
-			lines.append("- **%s**　%s" % [episode.speakers[row[2]], row[1]])
+			lines.append("%s- %s**%s**　%s" % ["  " if indent == "  " else "", "" if indent == "  " else indent, row.speaker_in(episode.speakers), row.shown_text()])
+		if row.asks():
+			texts[row.choice] = {}
+			for option: Dictionary in row.options:
+				texts[row.choice][option["key"]] = option["text"]
 	lines.append("")
 
 
 ## 話し手の一覧（「隊長（味方・将）」。味方が先。姿は駒の名前、進化後の形なら「進化後」を添える）。台詞の無い話し手は並べない。
 static func _cast(episode: Episode) -> PackedStringArray:
 	var talks := {}
-	for row: Array in episode.before + episode.after + episode.lost:
-		talks[row[2]] = true
-	for cue: Array in episode.cues:
-		talks[cue[4]] = true
+	for row: Episode.TalkLine in episode.all_lines():
+		talks[row.who] = true
 	var cast: PackedStringArray = []
 	for side in 2:
 		for who in episode.speakers.size():
@@ -159,7 +188,7 @@ static func _enemy(episode: Episode) -> String:
 	return "%s（%s%d 体: %s）" % [Names.army(episode.enemy_army), leader, episode.enemy.size(), "、".join(parts)]
 
 
-static func _cue_word(cue: Array) -> String:
-	if cue[0] == BattleCues.TURN:
-		return "対戦の始め" if cue[1] == 1 else "ターン %d の始め" % cue[1]
-	return CUE_WORDS[cue[0]][cue[1]]
+static func _cue_word(cue: Episode.TalkCue) -> String:
+	if cue.trigger == BattleCues.TURN:
+		return "対戦の始め" if cue.value == 1 else "ターン %d の始め" % cue.value
+	return CUE_WORDS[cue.trigger][cue.value]

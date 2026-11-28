@@ -52,32 +52,80 @@ static func _actor_of(event: BattleEvent) -> int:
 	return 0
 
 
-## events[at] が中立の PhaseStartedEvent のとき、そのフェーズの始めに盤に中立の駒がいたか（いれば、番の知らせを出す）。
+## events[at] が中立の PhaseStartedEvent のとき、そのフェーズに盤に中立の駒がいたか（いれば、番の知らせを出す）。
 ## 中立の駒のいない番は、番の知らせも上の帯の「中立の番」も出さずに飛ばす（毎回、一瞬だけ中立の番が挟まるのは落ち着かない）。
-## 再生のときの対戦の状態は events の終わりまで進んでいるので、イベントから戻して数える:
-## - そのフェーズの中で湧いた中立の駒がいる（途中で現れたマップでは、現れた番から出す）
-## - あとで倒れる中立の駒がいる（そのときは盤にいた。ただし、このあとで湧いた駒は除く）
-## - いま（events の終わり）盤にいる中立の駒が、このあとで湧いた駒でない
-## neutral_ids_now は、いま盤にいる中立の駒の番号。
-static func phase_has_neutrals(events: Array[BattleEvent], at: int, neutral_ids_now: Array[int]) -> bool:
-	var spawned_later := {}
-	var defeated_later := {}
-	var in_phase := true
+## neutral_ids_at_start は、そのフェーズの始めに盤にいた中立の駒の番号（再生の盤 replay_board.gd から。対戦の進んだあとの状態は読まない）。
+## いなくても、そのフェーズの中で湧けば出す（途中で現れたマップでは、現れた番から出す）。
+static func phase_has_neutrals(events: Array[BattleEvent], at: int, neutral_ids_at_start: Array[int]) -> bool:
+	if not neutral_ids_at_start.is_empty():
+		return true
 	for i in range(at + 1, events.size()):
 		var event := events[i]
 		if event is PhaseStartedEvent or event is GameWonEvent or event is GameDrawnEvent:
-			in_phase = false
+			return false
 		var spawned := event as UnitSpawnedEvent
 		if spawned != null and spawned.side == Unit.Side.NEUTRAL:
-			if in_phase:
-				return true
-			spawned_later[spawned.unit_id] = true
-		var defeated := event as UnitDefeatedEvent
-		if defeated != null and defeated.side == Unit.Side.NEUTRAL and not spawned_later.has(defeated.unit_id):
-			defeated_later[defeated.unit_id] = true
-	if not defeated_later.is_empty():
-		return true
-	for id in neutral_ids_now:
-		if not spawned_later.has(id):
 			return true
 	return false
+
+
+# ---- 出来事の表（tests/game/test_event_readers.gd が見張る。docs/battle.md の「出来事を 1 つ足すとき」） ----
+
+
+## 中立の再生の場面分けが名前で読む出来事（このファイルの `is` / `as` に出てくるもの。親を読めば子も読む）。
+static func read_events() -> Array[Script]:
+	return [
+		UnitMovedEvent,
+		UnitWarpedEvent,
+		UnitSpawnedEvent,
+		AttackDamagedEvent,
+		SmokeBlockedEvent,
+		PhaseStartedEvent,
+		GameWonEvent,
+		GameDrawnEvent,
+	]
+
+
+## 中立の再生の場面分けが読まないと決めた出来事（新しい出来事を足したら、読むか、ここに理由と足す）。
+static func skipped_events() -> Array[Script]:
+	return [
+		# 主役のいない出来事。いまの場面に続け、見せる場面にする（攻撃のあとに起きるもの）
+		StatusAppliedEvent,
+		StatusRemovedEvent,
+		UnitDefeatedEvent,
+		RallyEvent,
+		BurstEvent,
+		ExplosionDamagedEvent,
+		KnotPlacedEvent,
+		ExperienceGainedEvent,
+		LevelUpEvent,
+		EvolutionOfferedEvent,
+		MidBossDefeatedEvent,
+		RelicGainedEvent,
+		TraitTriggeredEvent,
+		# 同じ扱い（主役がいない）。中立のフェーズには、ふつう起きないもの
+		MoveUndoneEvent,
+		UnitActedEvent,
+		UnitTeleportedEvent,
+		UnitsSwappedEvent,
+		UnitReactivatedEvent,
+		UnitEvolvedEvent,
+		SkillUsedEvent,
+		SkillDamagedEvent,
+		SkillReadyEvent,
+		UltUsedEvent,
+		UltReadyEvent,
+		BarrelExplodedEvent,
+		BarricadeDamagedEvent,
+		BarricadePlacedEvent,
+		AreaEffectPlacedEvent,
+		FieldEffectRemovedEvent,
+		FieldEffectTickedEvent,
+		HealerHealedEvent,
+		SanctuaryHealedEvent,
+		SpringHealedEvent,
+		RegenerationHealedEvent,
+		SupplyHealedEvent,
+		CaptureProgressEvent,
+		StrongholdProgressEvent,
+	]

@@ -14,6 +14,7 @@ const BattleUiState := preload("res://game/battle_ui_state.gd")
 const NeutralPlayback := preload("res://game/neutral_playback.gd")
 const Names := preload("res://game/names.gd")
 const Palette := preload("res://game/ui_palette.gd")
+const ReplayBoard := preload("res://game/replay_board.gd")
 
 
 ## 1 マス歩くのにかける秒数（巡航は速く走る）。中立の駒は、目で追えるよう、ゆっくり歩かせる。
@@ -39,8 +40,11 @@ const COLOR_RELIC := Color("ffe08a")
 # ---- 場面から受け取るもの（setup で入る。対戦ごとに変わるものは、場面が入れ替える） ----
 
 
-## いまの対戦と、そのログ（再生したイベントを、再生した順に食わせる）と、盤。
-var battle: Battle
+## 再生の盤（replay_board.gd）: 再生が見せている盤のいま。再生は対戦（Battle）を読まず、駒の陣営・種類、盤の形、
+## 上の帯に渡すターンと番は、ここから読む。再生したイベントを、再生した順に食わせる（見せる前に）。
+## 対戦の場面では、行動をルールに渡す前に、場面が対戦から写し直す（take）。リプレイでは、始めの写しのまま出来事だけで進める。
+var replay: ReplayBoard
+## 対戦のログ（再生したイベントを、再生した順に食わせる）。無ければ食わせない。
 var battle_log: BattleLog
 var _board_view: BoardView
 ## 駒の番号 -> 駒の見た目（UnitView）。場面と同じ辞書を持つ（倒れた駒は消し、湧いた駒は足す）。
@@ -92,6 +96,10 @@ var _after_skill := false
 var skipping := false
 ## 見せずに済ませたものがあって、盤の見た目をまだ作り直していないか。
 var _unsynced := false
+## カットシーン（docs/battle-view.md の「盤のカットシーン」）の、歩く 1 マスの秒数（台本の CutPaceEvent。0 ならいつもの速さ）。
+var cut_step_time := 0.0
+## 湧いた・置いた駒の、人物の形（駒の番号 -> unit_looks.gd の PERSONS の名前）。カットシーンの名前のある兵。無ければ空。
+var unit_looks := {}
 
 
 ## 場面が持つものを受け取る。views・played・follows は場面と同じ辞書を渡す。
@@ -108,6 +116,11 @@ func setup(
 	team_colors = colors
 	played = played_counts
 	camera_follows = follows
+
+
+## 再生の盤を、battle のいまから写し直す（場面が、行動をルールに渡す前と、対戦を替えたときに呼ぶ）。
+func take(battle: Battle) -> void:
+	replay = ReplayBoard.of(battle)
 
 
 ## 新しい対戦の盤を受け取る（場面が対戦を始めるたび）。
@@ -129,15 +142,19 @@ func after(seconds: float) -> Signal:
 
 ## CPU の番を進めている途中で、side が CPU の動かす陣営か（その駒は、自分で動かしていない駒として、カメラが追う）。
 func _cpu_moving(side: Unit.Side) -> bool:
-	return _ui.cpu_running and side == cpu_side.call()
+	return _ui != null and _ui.cpu_running and side == cpu_side.call()
 
 
 func _view(unit_id: int) -> UnitView:
 	return _views[unit_id]
 
 
+## 台本の出来事（カットシーンの台本だけが出す。対戦では起きない）を置く所。
+const CUT_EVENTS_DIR := "res://game/cut_events/"
+
+
 ## イベントの種類（スクリプト）-> 再生するメソッドの名前。
-## rules/events/ のイベントは、すべてここに載せる（載っていない種類があると、テストが落ちる）。
+## rules/events/ のイベントと、台本の出来事（game/cut_events/）は、すべてここに載せる（載っていない種類があると、テストが落ちる）。
 static func event_players() -> Dictionary:
 	return {
 		UnitMovedEvent: &"_play_moved",
@@ -185,6 +202,13 @@ static func event_players() -> Dictionary:
 		StrongholdProgressEvent: &"_play_stronghold",
 		GameWonEvent: &"_play_won",
 		GameDrawnEvent: &"_play_drawn",
+		# 台本の出来事（カットシーンの台本だけが出す。game/cut_events/。再生は playback_cut.gd）
+		CutPlacedEvent: &"_play_cut_placed",
+		CutLeftEvent: &"_play_cut_left",
+		CutTurnedEvent: &"_play_cut_turned",
+		CutCameraEvent: &"_play_cut_camera",
+		CutPaceEvent: &"_play_cut_pace",
+		CutWaitEvent: &"_play_cut_wait",
 	}
 
 
@@ -194,15 +218,22 @@ func _play(event: BattleEvent) -> void:
 		push_error("再生できないイベント: %s" % kind.resource_path)
 		return
 	played[kind] = played.get(kind, 0) + 1
-	battle_log.feed(event)
+	_feed(event)
 	await call(_players[kind], event)
+
+
+## 再生の盤とログに、イベントを食わせる。
+func _feed(event: BattleEvent) -> void:
+	replay.feed(event)
+	if battle_log != null:
+		battle_log.feed(event)
 
 
 ## 見せずに済ませる（飛ばしている間など）。数えてログに食わせ、動いた駒は行き着いたマスへすぐ置く。
 ## そのほかの見た目（状態の印、上の帯）は、再生のあとの作り直しが今の盤から描く。
 func _settle(event: BattleEvent) -> void:
 	played[event.get_script()] = played.get(event.get_script(), 0) + 1
-	battle_log.feed(event)
+	_feed(event)
 	if skipping:
 		_unsynced = true  # 駒の見た目は、まとめて作り直す
 		return
@@ -210,22 +241,25 @@ func _settle(event: BattleEvent) -> void:
 	var undone := event as MoveUndoneEvent
 	if moved != null and not moved.path.is_empty() and _views.has(moved.unit_id):
 		_view(moved.unit_id).position = BoardView.cell_center(moved.path[-1])
+	elif event is CutLeftEvent and _views.has(event.unit_id):
+		(_views[event.unit_id] as Node).queue_free()
+		_views.erase(event.unit_id)
 	elif undone != null and _views.has(undone.unit_id):
 		_view(undone.unit_id).position = BoardView.cell_center(undone.to)
 
 
 ## 駒 unit_id の種類（盤から消えていれば、見た目の種類）。
 func _kind_of(unit_id: int) -> UnitKind.Id:
-	var unit := battle.unit_by_id(unit_id)
-	return unit.kind if unit != null else _view(unit_id).unit_kind()
+	var piece := replay.piece(unit_id)
+	return piece.kind if piece != null else _view(unit_id).unit_kind()
 
 
-## 駒が歩く間、カメラが追いかけるか。自分で動かしていない駒（CPU の番の駒、中立の駒）だけ。
+## 陣営 side（盤にいない駒は -1）の駒が歩く間、カメラが追いかけるか。自分で動かしていない駒（CPU の番の駒、中立の駒）だけ。
 ## 中立のフェーズの静かな場面をまとめて流している間は、追わない（何体も同時に動く）。
-func _camera_follows(unit: Unit) -> bool:
-	if unit == null or _quiet_playback:
+func _camera_follows(side: int) -> bool:
+	if side < 0 or _quiet_playback:
 		return false
-	return unit.side == Unit.Side.NEUTRAL or _cpu_moving(unit.side)
+	return side == Unit.Side.NEUTRAL or _cpu_moving(side as Unit.Side)
 
 
 ## 攻撃の動きと、当たる形（駒の種類ごと。battle_effects.gd）を出し、当たる瞬間まで待つ。
@@ -238,8 +272,8 @@ func _strike(attacker: UnitView, at: Vector3) -> void:
 
 ## 自分で動かしていない駒（CPU の番の駒、中立の駒）の攻撃は、攻撃する駒と相手の間へカメラを寄せる（どちらも見えるように）。
 func _show_strike(attacker_id: int, attacker: UnitView, target: UnitView) -> void:
-	var unit := battle.unit_by_id(attacker_id)
-	if unit != null and (unit.side == Unit.Side.NEUTRAL or _cpu_moving(unit.side)):
+	var side := replay.side_of(attacker_id)
+	if side == Unit.Side.NEUTRAL or (side >= 0 and _cpu_moving(side as Unit.Side)):
 		_rig.focus_on((attacker.position + target.position) / 2.0)
 
 
@@ -302,7 +336,8 @@ func _pop_number(at: Vector3, text: String, color := Color("ffe9a8")) -> void:
 	var camera := _rig.camera if _rig != null else null
 	label.position = Vector3(at.x, at.y + POP_HEIGHT, at.z)
 	if camera != null and camera.is_inside_tree():
-		label.position = pop_place(label.position, text.length(), live, _hud.banner_rect(), camera.unproject_position, camera.global_basis.y)
+		var band := _hud.banner_rect() if _hud != null else Rect2()  # カットシーンには上の帯も知らせも無い
+		label.position = pop_place(label.position, text.length(), live, band, camera.unproject_position, camera.global_basis.y)
 	_stage.add_child(label)
 	_pops.append(label)
 	var tween := create_tween()

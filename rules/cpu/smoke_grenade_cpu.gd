@@ -24,7 +24,8 @@ func targets(cpu: Variant, unit: Unit, _cells: Dictionary[Vector2i, float]) -> D
 
 ## 煙幕を置いた価値。中にいる味方（もう自分の煙幕の中にいる駒は除く）のうち、次の相手の番に、煙幕が防ぐ攻撃
 ## （離れたところからしか届かない攻撃）に狙われうる駒を数え、防げるダメージを見込む。
-## 隣まで寄れる敵の攻撃と、スキルのダメージは防げないので数えない（CpuPlayer の _close_threats）。
+## 防げるダメージは、煙幕を置いたあとの盤面（sim）でダメージの解決に聞き直した危険と、置く前の危険の差
+## （隣まで寄れる敵の攻撃と、スキルのダメージは防げないので、差に入らない）。
 ## 狙われている味方が MIN_UNITS 体に満たなければ 0。
 func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	cpu._build_threats()
@@ -34,7 +35,8 @@ func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	for unit in sim.units:
 		if unit.side != cpu._me or not cells.has(unit.cell) or cpu._smoked.has(unit.cell):
 			continue
-		var saved := _smoke_saves(cpu, unit.cell)
+		var was: Unit = cpu._battle.unit_by_id(unit.id)
+		var saved: int = cpu._danger_in(cpu._threat_map, was, unit.cell, 0) - cpu._danger_in(cpu._threat_map, unit, unit.cell, 0, sim)
 		if saved > 0:
 			var rate := CpuPlayer.KING_DAMAGE_VALUE if unit.kind == UnitKind.Id.KING else CpuPlayer.DAMAGE_VALUE
 			covered += 1
@@ -42,7 +44,7 @@ func value(cpu: Variant, used: SkillUsedEvent, sim: Battle) -> float:
 	return worth if covered >= MIN_UNITS or worth >= MIN_VALUE else 0.0
 
 
-## cell に立つ味方について、煙幕が防げるダメージ（離れたところからしか届かない攻撃のぶん）。
+## cell に立つ味方について、煙幕が防げそうなダメージ（離れたところからしか届かない攻撃のぶん。候補を絞る目安）。
 static func _smoke_saves(cpu: Variant, cell: Vector2i) -> int:
 	var by: Dictionary = cpu._threats.get(cell, {})
 	var close: Dictionary = cpu._close_threats.get(cell, {})

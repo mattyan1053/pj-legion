@@ -110,19 +110,21 @@ func check_campaign(campaign: Campaign) -> PackedStringArray:
 	var introduced := {}
 	for episode: Episode in campaign.episodes:
 		var where := "%s/%s" % [campaign.id, episode.id]
-		var lines := []
-		for row: Array in episode.before:
-			lines.append(["before", row[2], row[1]])
-		for cue: Array in episode.cues:
-			lines.append(["cues", cue[4], cue[3]])
-		for row: Array in episode.after:
-			lines.append(["after", row[2], row[1]])
-		for row: Array in episode.lost:
-			lines.append(["lost", row[2], row[1]])
-		for line: Array in lines:
-			var speaker := "" if line[1] < 0 or line[1] >= episode.speakers.size() else episode.speakers[line[1]]
-			for what: String in check_line(speaker, line[2], introduced):
-				found.append("%s [%s] %s: %s — %s" % [where, line[0], speaker if speaker != "" else ">", line[2], what])
+		var lines: Array[Dictionary] = []  # {"part": 節, "line": 会話の行}。場面の列の順（episode.gd の all_lines と同じ順）
+		for scene: Episode.StoryScene in episode.scenes:
+			if scene.is_talk():
+				for row: Episode.TalkLine in scene.lines:
+					lines.append({"part": scene.part, "line": row})
+			elif scene.is_battle():
+				for cue: Episode.TalkCue in episode.cues:
+					lines.append({"part": "cues", "line": cue.line})
+		for row: Episode.TalkLine in episode.lost:
+			lines.append({"part": "lost", "line": row})
+		for each: Dictionary in lines:
+			var line: Episode.TalkLine = each["line"]
+			var speaker := line.speaker_in(episode.speakers)
+			for what: String in check_line(speaker, line.shown_text(), introduced):
+				found.append("%s [%s] %s: %s — %s" % [where, each["part"], speaker if speaker != "" else ">", line.text, what])
 	return found
 
 

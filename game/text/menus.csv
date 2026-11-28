@@ -136,3 +136,14 @@ deploy.note.role_level,{role}　レベル {level}
 setup.caption.seam,縫い目の様子
 setup.rule.seam.on,ランダム
 setup.rule.seam.note,マップに付く効果が、対戦ごとに 0〜2 つ
+title.button.credits,クレジット
+credits.title,クレジット
+credits.group_head,■ {group}
+credits.group.font,フォント
+credits.group.unit,兵と魔物
+credits.group.board,盤
+credits.group.sound,音
+credits.line,{name}　{author}　{license}
+credits.license_files,ライセンスの文（この文書の隣の licenses/ にある）
+credits.license_text,{name} のライセンスの文
+credits.thanks,素材を作り、使えるように公開してくださった方々に感謝します。

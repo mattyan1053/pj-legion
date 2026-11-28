@@ -98,20 +98,20 @@ func test_moving_only_is_quiet() -> void:
 # ---- 中立の駒のいない番を飛ばす ----
 
 
-## P2 のフェーズを終えたときに起きたことと、そのうちの中立の PhaseStartedEvent の位置と、いま盤にいる中立の駒の番号。
+## P2 のフェーズを終えたときに起きたことと、そのうちの中立の PhaseStartedEvent の位置と、中立のフェーズの始めに盤にいた中立の駒の番号。
 func _ending_p2(battle: Battle) -> Array:
 	if battle.phase == Unit.Side.PLAYER1:
 		battle.apply(EndPhaseAction.new())
+	var ids: Array[int] = []
+	for unit in battle.units:
+		if unit.side == NEUTRAL:
+			ids.append(unit.id)
 	var events := battle.apply(EndPhaseAction.new()).events
 	var at := -1
 	for i in events.size():
 		var started := events[i] as PhaseStartedEvent
 		if started != null and started.side == NEUTRAL:
 			at = i
-	var ids: Array[int] = []
-	for unit in battle.units:
-		if unit.side == NEUTRAL:
-			ids.append(unit.id)
 	return [events, at, ids]
 
 
@@ -133,12 +133,12 @@ func test_a_phase_where_a_neutral_unit_appears_is_shown() -> void:
 	assert_true(NeutralPlayback.phase_has_neutrals(found[0], found[1], found[2]), "湧いた番から出す")
 
 
-func test_a_neutral_unit_defeated_later_was_on_the_board() -> void:
+func test_a_neutral_unit_on_the_board_at_the_start_counts_even_if_defeated_later() -> void:
 	var core := Unit.new(9, UnitKind.Id.MINION, NEUTRAL, Vector2i(1, 0))
 	var events: Array[BattleEvent] = [
 		PhaseStartedEvent.new(1, NEUTRAL), PhaseStartedEvent.new(2, Unit.Side.PLAYER1), UnitDefeatedEvent.new(core),
 	]
-	assert_true(NeutralPlayback.phase_has_neutrals(events, 0, [] as Array[int]), "いまはいないが、その番には盤にいた")
+	assert_true(NeutralPlayback.phase_has_neutrals(events, 0, [9] as Array[int]), "あとで倒れても、その番の始めには盤にいた")
 
 
 func test_a_neutral_unit_that_appears_in_a_later_phase_does_not_count() -> void:
@@ -147,5 +147,5 @@ func test_a_neutral_unit_that_appears_in_a_later_phase_does_not_count() -> void:
 		PhaseStartedEvent.new(1, NEUTRAL), PhaseStartedEvent.new(2, Unit.Side.PLAYER1), PhaseStartedEvent.new(2, NEUTRAL),
 		UnitSpawnedEvent.new(core),
 	]
-	assert_false(NeutralPlayback.phase_has_neutrals(events, 0, [9] as Array[int]), "あとの番で湧いた駒は、その番にはいなかった")
-	assert_true(NeutralPlayback.phase_has_neutrals(events, 2, [9] as Array[int]), "湧いた番は出す")
+	assert_false(NeutralPlayback.phase_has_neutrals(events, 0, [] as Array[int]), "あとの番で湧いた駒は、その番にはいなかった")
+	assert_true(NeutralPlayback.phase_has_neutrals(events, 2, [] as Array[int]), "湧いた番は出す")

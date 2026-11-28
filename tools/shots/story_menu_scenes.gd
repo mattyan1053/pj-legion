@@ -1,6 +1,9 @@
 extends "res://tools/shots/stage_scenes.gd"
 ## スクリーンショットの場面: ストーリーの画面（物語とセーブデータの選択、話の一覧、出撃準備まで、会話）。
 
+## 主人公に付ける、いちばん長い名前（全角 5 字。hero_name.gd の MAX_CHARS）。
+const LONG_HERO := "アルベルト"
+
 
 ## タイトルの「ストーリー」で話の一覧へ進み、number 番目（0 から）の話を始める（出撃準備の場面に入る）。
 ## 前の話は、クリアしたことにする。number が負なら、部隊を選ぶ最初の話（チュートリアルのあとの本編の 1 話目）。
@@ -14,7 +17,100 @@ func _start_story(number := -1) -> bool:
 		return false
 	_app.current_scene().choose(Story.military().episodes[number])
 	await _app.scene_changed
+	return await _skip_to_sortie()
+
+
+## 出撃準備より前の場面（場面の節で書いた話の、カットシーンや会話）を飛ばして、出撃準備へ。選ばせる行は、1 つ目の答えを選ぶ。
+func _skip_to_sortie() -> bool:
+	for i in 12:
+		if _app.current_id() != SceneFlow.TALK:
+			break
+		var talk: Node = _app.current_scene()
+		talk.press_skip()
+		if talk.is_asking():
+			talk.press_option(0)
+			continue
+		await _app.scene_changed
 	return _app.current_id() == SceneFlow.SORTIE
+
+
+## 連邦の第 1 話（場面の節で書いた厚い版）を始めて、会話の場面を index 個（0 から）送ったところ。選ばせる行は 1 つ目の答え。
+## hero が空でなければ、主人公にその名前を付けておく（札と文の名前が替わる）。
+func _first_episode_scene(index: int, hero := "") -> bool:
+	_app.context.story.choose_campaign(Story.military())
+	if hero != "":
+		_app.context.story.name_hero(Story.military(), hero)
+	if not await _scene_story_list():
+		return false
+	_app.current_scene().choose(Story.military().episodes[0])
+	await _app.scene_changed
+	for i in index:
+		if _app.current_id() != SceneFlow.TALK:
+			return false
+		var talk: Node = _app.current_scene()
+		talk.press_skip()
+		if talk.is_asking():
+			talk.press_option(0)
+			talk.press_skip()
+		await _app.scene_changed
+	return _app.current_id() == SceneFlow.TALK
+
+
+## 連邦の第 1 話の頭のカットシーン（色の幕の上に、地の文を真ん中に。上下に黒い帯）。
+func _scene_story_cut() -> bool:
+	return await _first_episode_scene(0) and _app.current_scene().is_cut()
+
+
+## 連邦の第 1 話の、別の場所の会話（峠の駐屯地。背景はその場所の景色で、兵は立たない）。話し手は主人公。
+func _scene_story_place_talk() -> bool:
+	if not await _first_episode_scene(1):
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < 2:
+		talk.press_next()
+	return not talk.is_cut()
+
+
+## いちばん長い名前（全角 5 字）を付けた主人公が話している会話（名前の札と、文の中の名前）。
+func _scene_story_long_name_talk() -> bool:
+	if not await _first_episode_scene(1, LONG_HERO):
+		return false
+	var talk: Node = _app.current_scene()
+	while talk.line_index() < 2:
+		talk.press_next()
+	return talk.speaker() == LONG_HERO
+
+
+## いちばん長い名前を付けたときの、選んだあとの会話のログ（札と、文の中の名前）。
+func _scene_story_long_name_log() -> bool:
+	return await _scene_story_choice_log(LONG_HERO)
+
+
+## いちばん長い名前を付けたときの、話の一覧の主な人物の欄。
+func _scene_story_long_name_list() -> bool:
+	_app.context.story.choose_campaign(Story.military())
+	_app.context.story.name_hero(Story.military(), LONG_HERO)
+	return await _scene_story_list() and _app.current_scene().hero_label_text() == LONG_HERO
+
+
+## 連邦の第 1 話の選択肢（問いの行の上に、答えの枠）。
+func _scene_story_choice(hero := "") -> bool:
+	if not await _first_episode_scene(2, hero):
+		return false
+	_app.current_scene().press_next()
+	return _app.current_scene().is_asking()
+
+
+## 選択肢を選んだあとの会話のログ（問いのあとに、選んだ答えが 1 行）。
+func _scene_story_choice_log(hero := "") -> bool:
+	if not await _scene_story_choice(hero):
+		return false
+	var talk: Node = _app.current_scene()
+	talk.press_option(1)
+	talk.press_next()
+	talk.press_next()
+	talk.open_log()
+	return talk.talk_log().is_open()
 
 
 ## タイトルの「ストーリー」のあとの、物語を選ぶ場面（話の無い物語は準備中）。セーブデータ選択は、いまのスロットで通る。
@@ -36,6 +132,14 @@ func _campaign_focused(index: int) -> bool:
 	_app.current_scene().select_by_key(index)
 	_app.current_scene().backdrop().swap_now()
 	return true
+
+
+## 物語を初めて選んだときの、主人公の名前の窓（既定の名前が入っている）。
+func _scene_story_hero_name() -> bool:
+	if not await _scene_story_campaigns():
+		return false
+	_app.current_scene().ask_hero_name(Story.campaigns()[0])
+	return _app.current_scene().hero_window().is_open()
 
 
 func _scene_story_campaigns_berg() -> bool:
@@ -104,9 +208,9 @@ func _scene_story_open_all() -> bool:
 	return _app.current_id() == SceneFlow.EPISODES and _app.context.story.open_all
 
 
-## 2 つ目の物語（FANTASY の物語）。
+## FANTASY の物語。
 func _fantasy() -> RefCounted:
-	return Story.campaigns()[1]
+	return Story.campaign_of_army(UnitKind.Army.FANTASY)
 
 
 ## FANTASY の物語の話の一覧（何もクリアしていない。頭の演習）。

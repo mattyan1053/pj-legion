@@ -1,5 +1,7 @@
 # CDmir
 
+クレジット（タイトルの「クレジット」の窓と、書き出しに添える CREDITS.txt）に出す名前・作者・出どころ・ライセンスは、`game/credits.csv` に 1 行ずつ置いてある（`docs/credits.md`）。ここの素材を足したら、そこにも足す。
+
 魔物の糸蜘蛛の体（`game/looks/monster_body.gd` の `MODELS`）の素材。どの見た目の組でも同じ形。
 
 - 作者: CDmir（OpenGameArt の投稿者。作者と投稿者が同じ）

@@ -6,13 +6,27 @@ extends "res://game/episode/episode_base.gd"
 func _read_side(file: RefCounted, section: String, side: int) -> void:
 	if not file.has(section):
 		# 人の側は、書かなければ「出撃準備で選んだ部隊を、いつもの初期位置に」。敵の側は、軍と部隊が要る。
-		if side == 1:
+		if side == 1 and _fights:
 			file.problem(1, "[enemy] の節が無い（敵の軍 army と、部隊 unit を書く）")
 		return
-	var keys := ["unit", "deploy", "trait", "oath"]
+	var keys := ["unit", "deploy", "trait", "oath", "name", "short"]
 	keys.append_array(["start_gauge"] if side == 0 else ["army", "king_figure", "king", "spare_boss"])
 	var values: Dictionary = file.values(section, keys, ["unit", "deploy", "oath"])
 	_read_trait(file, values, side)
+	if values.has("name"):
+		var entry: Dictionary = values["name"][0]
+		var name: String = entry["value"]
+		if name == "" or name.length() > Names.STORY_NAME_MAX:
+			file.problem(entry["line"], "name は 1 から %d 字（いま %d 字）" % [Names.STORY_NAME_MAX, name.length()])
+		else:
+			side_names[side] = name
+	if values.has("short"):
+		var entry: Dictionary = values["short"][0]
+		var short: String = entry["value"]
+		if short == "" or short.length() > Names.STORY_SHORT_MAX:
+			file.problem(entry["line"], "short は 1 から %d 字（いま %d 字）" % [Names.STORY_SHORT_MAX, short.length()])
+		else:
+			side_shorts[side] = short
 	if values.has("king_figure"):
 		var entry: Dictionary = values["king_figure"][0]
 		var king_look := StringName(entry["value"])
@@ -200,8 +214,8 @@ func _check_kingless(file: RefCounted) -> void:
 	for i in speakers.size():
 		if speaker_sides[i] == 1 and figures[i]["kind"] == UnitKind.Id.KING:
 			file.problem(line, "将のいない敵（king = none）の話し手「%s」に、[cast] で将でない姿を書く（「名前 = enemy, skeleton_caller」など）" % speakers[i])
-	for cue: Array in cues:
-		if cue[0] == BattleCues.KING_HALF and cue[1] == 1:
+	for cue in cues:
+		if cue.trigger == BattleCues.KING_HALF and cue.value == 1:
 			file.problem(file.line_of("cues"), "将のいない敵（king = none）に、敵の将の HP のきっかけ（king_half enemy）は書けない")
 
 
