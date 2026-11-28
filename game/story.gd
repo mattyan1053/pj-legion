@@ -686,6 +686,7 @@ func run_now(episode: Episode) -> Run:
 ## あとの会話を読み終えたら「次の話へ」（物語の次の話の流れを始める）か「話の一覧へ」。次の話が無ければ、話の一覧へ。
 ## システムメニューからは、いつでも「話の一覧へ」（menu_exits）。
 ## news: この話のクリアで増えるものの知らせ（Unlocked.news_of）。最後の場面が会話なら、その最後に知らせの行で出し、「次の話へ」を選ばせる。
+## 最後の場面がカットシーンなら、「次の話へ」はそこで選ばせ、知らせがあるときだけ、知らせだけの会話の場面をあとに足す。
 ## hero: 遊ぶ人の付けた主人公の名前（空なら既定の名前）。会話・途中の台詞・負けの台詞に差し込む。
 static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] = [], hero := "") -> Run:
 	var run := Run.new()
@@ -695,6 +696,7 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 	battle.hero = hero
 	var fought := false  # 対戦の場面を過ぎたか（会話の背景の盤に、決着したときの駒を立たせる）
 	var last_talk := {}
+	var last_music := &""
 	for scene in episode.scenes:
 		last_talk = {}
 		match scene.kind:
@@ -723,7 +725,16 @@ static func run_of(episode: Episode, human_deck: Deck, news: Array[Dictionary] =
 					talk["after"] = fought
 				run.add(TALK, talk, scene.once)
 				last_talk = talk
+				last_music = scene.music
 	if not last_talk.is_empty():
+		if (last_talk.get("cut", false) or last_talk.has("cut_board")) and not news.is_empty():
+			# カットシーンで終わる話: 知らせは、文の枠のある場面で出す（カットシーンには枠が無い）。知らせだけの会話の場面を、あとに 1 つ足す。
+			# 背景は話の盤（対戦のある話なら、決着したときの兵）。曲は、カットシーンのものを続ける。
+			last_talk = talk_of(episode, [], last_music, hero)
+			if episode.has_battle():
+				last_talk["battle"] = battle
+				last_talk["after"] = fought
+			run.add(TALK, last_talk)
 		for news_line: Dictionary in news:
 			var line := {"side": NOTICE_SIDE, "name": notice_name()}
 			line.merge(news_line)
