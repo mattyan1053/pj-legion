@@ -26,6 +26,9 @@ const DEFAULT_DRAG_SENSITIVITY := 0.008
 
 ## カメラが見てよい範囲（盤面の x / z）。
 var bounds := Rect2(0.0, 0.0, 30.0, 30.0)
+## 寄せる点を、画面の真ん中より上に見せるずらし（盤の上の長さ。いまの向きで、画面の下の方向へ足した所を真ん中にする）。
+## 盤のカットシーンが、寄せたマスを文の枠の上の見える所の真ん中に置くのに使う（cut_stage.gd）。ふだんは 0。
+var view_shift := 0.0
 ## ホイールで引ける上限（fit_board で、盤の大きさに合わせる）。
 var max_distance := MAX_DISTANCE
 var camera: Camera3D
@@ -133,12 +136,14 @@ static func next_pitch_preset(pitch: float) -> float:
 
 ## point が画面の中央に来るよう、なめらかに寄る。
 func focus_on(point: Vector3) -> void:
-	_focus = Vector3(point.x, 0.0, point.z)
+	var shifted := _shifted(point)
+	_focus = Vector3(shifted.x, 0.0, shifted.z)
 	_focusing = true
 
 
 ## point が画面の中央に来るよう、すぐに移る（時間を止めている間にも使える。ログの行を選んだとき）。
 func jump_to(point: Vector3) -> void:
+	point = _shifted(point)
 	position.x = clampf(point.x, bounds.position.x, bounds.end.x)
 	position.z = clampf(point.z, bounds.position.y, bounds.end.y)
 	_focusing = false
@@ -164,7 +169,12 @@ func set_view(distance: float, yaw_degrees: float) -> void:
 
 ## 寄っていく先（追いかけている間は、相手のいるところ）。寄っていなければ、いまの位置。検査用。
 func focus_point() -> Vector3:
-	return _focus if _focusing else position
+	return (_focus if _focusing else position) - _shifted(Vector3.ZERO)
+
+
+## point に、画面の下の方向への view_shift を足した所。
+func _shifted(point: Vector3) -> Vector3:
+	return point + Vector3(0.0, 0.0, view_shift).rotated(Vector3.UP, _target_yaw)
 
 
 func _process(delta: float) -> void:

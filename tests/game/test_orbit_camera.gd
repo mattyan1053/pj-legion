@@ -148,3 +148,17 @@ func test_the_farthest_view_follows_the_board_size() -> void:
 	_step(rig, 600)
 	assert_between(rig.camera.position.z, rig.max_distance - 0.05, rig.max_distance + 0.05, "ホイールで、盤に合わせた上限より引けた")
 	rig.free()
+
+
+## ずらし（view_shift）: 寄せた点の手前（画面の下の方向）を真ん中にする。寄せた先（focus_point）は、寄せた点のまま。
+func test_view_shift_puts_the_focus_above_the_middle() -> void:
+	var rig := _make_rig()
+	rig.view_shift = 2.0
+	rig.jump_to(Vector3(5.0, 0.0, 5.0))
+	assert_eq(rig.position, Vector3(5.0, 0.0, 7.0), "すぐに移るときも、手前へずらした所が真ん中")
+	assert_eq(rig.focus_point(), Vector3(5.0, 0.0, 5.0), "寄せた先は、寄せた点")
+	rig.focus_on(Vector3(8.0, 0.0, 3.0))
+	assert_eq(rig.focus_point(), Vector3(8.0, 0.0, 3.0), "寄っている途中も、寄せた先は寄せた点")
+	_step(rig, 120)
+	assert_true(rig.position.distance_to(Vector3(8.0, 0.0, 5.0)) < 0.05, "寄り終わると、手前へずらした所が真ん中: %s" % rig.position)
+	rig.free()
