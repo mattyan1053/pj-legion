@@ -74,8 +74,6 @@ func _build_scenes(file: RefCounted) -> void:
 		elif _is_scene_section(section):
 			talks += 1
 			scenes.append(_read_talk_scene(file, section, not fought and _fights))
-	if not scenes.is_empty() and (scenes.back().cut or scenes.back().board_cut != null):
-		file.problem(file.line_of(scenes.back().part), "カットシーンは、話の最後の場面にしない（最後は会話か対戦。クリアの知らせと「次の話へ」が、最後の会話に出る）")
 	if _fights and sortie_at < 0:
 		scenes.insert(0, StoryScene.sortie())
 	if talks == 0:
