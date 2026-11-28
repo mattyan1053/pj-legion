@@ -90,16 +90,17 @@ func _talk_shot(name: String) -> bool:
 	_app.start_run(run)
 	await _app.scene_changed
 	var talk: Node = _app.current_scene()
-	for i in 40:
+	for i in 80:
 		await _until_line(talk)
 		if talk.line_index() >= parts[2]:
 			break
 		if talk.is_asking():
 			talk.press_option(0)
 		else:
-			talk.press_next()
-			talk.press_next()
+			talk.press_next()  # 出しきるか、次の文へ（1 度に 1 つ。文が出きっていると、2 度押せば 2 行進む）
 	await _until_line(talk)
 	if not talk.is_line_shown():
 		talk.press_next()  # 文を出しきる（選ばせる行なら、答えの枠も出る）
+	if talk.line_index() != parts[2]:
+		print("talk shot: 行 %d で止まった（%s / 全 %d 行）" % [talk.line_index(), _app.current_id(), talk.line_count()])
 	return _app.current_id() == SceneFlow.TALK and talk.line_index() == parts[2]
