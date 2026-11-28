@@ -198,7 +198,13 @@ func test_the_hero_is_named_inside_the_story() -> void:
 			screen.press_next()
 			screen.press_next()
 		assert_eq(screen.line_index(), at)
-		screen.press_next()  # 出しきる → 名前の窓
+		# ログを開いている間は、名前の窓を出さない（ログの下に出て、ログを閉じる Esc を名前の窓が受けてしまう）。閉じたら出す。
+		screen.open_log()
+		screen.press_next()
+		screen._process(10.0)
+		assert_true(screen.talk_log().is_open() and not screen.is_naming(), "%s: ログの下に、名前の窓が出る" % campaign.id)
+		screen.talk_log().close()
+		screen._process(0.0)
 		assert_true(screen.is_naming() and context.overlays.is_open(), "%s: 名を問う行を出しきっても、名前の窓が出ない" % campaign.id)
 		assert_eq(screen.name_window().typed(), campaign.hero, "既定の名前が入っている")
 		screen.press_next()

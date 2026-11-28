@@ -37,6 +37,8 @@ func name_window() -> HeroNameWindow:
 func _ask_name_if_due() -> void:
 	if not _names_at(_index) or _ended or is_naming() or _shown < float(_text.get_total_character_count()):
 		return
+	if context.overlays.is_open():
+		return  # ログやシステムメニューが開いている間は出さない（その下に出て、閉じる Esc を名前の窓が受けてしまう）。閉じたあとの _process で出す
 	ask_name()
 
 
