@@ -51,46 +51,55 @@ static func pick_trait(deck: Deck) -> void:
 
 
 ## 部隊の中身に合う軍略（docs/cpu-ai.md の「軍略」）。軍でなければ Traits.NONE。
-## 連邦: 回復役が SUPPLY_MEDICS 体以上なら補給線、同じ兵種（回復役を除く）が RANKS_KIND 体以上なら隊列、ほかは集中砲火。
-## 騎士領: パラディンが GUARD_PALADINS 体以上なら守護、攻撃する駒（回復役を除く）が OATH_FIGHTERS 体以上なら誓い、ほかは仇討ち。
+## 軍の表の cpu_traits の順に、部隊の中身に合うかを見て、最初に合ったもの（_fits）。どれも合わなければ、その軍の既定。
+## 連邦: 回復役が SUPPLY_MEDICS 体以上なら補給線、同じ兵種（回復役を除く）の 2 体の組が RANKS_PAIRS 以上なら隊列、ほかは集中砲火。
+## 騎士領: 守護の兵（Traits.GUARDIAN）が GUARD_PALADINS 体以上なら守護、攻撃する駒（回復役を除く）が OATH_FIGHTERS 体以上なら誓い、ほかは仇討ち。
 static func choose_trait(deck: Deck) -> int:
+	for each in Armies.cpu_traits(deck.army):
+		if Traits.of_army(deck.army).has(each) and _fits(each, deck):
+			return each
+	return Traits.default_of(deck.army)
+
+
+## 軍略 trait_id が、部隊 deck の中身に合うか（choose_trait）。中身を問わない軍略（集中砲火・仇討ち）は、いつも合う。
+static func _fits(trait_id: int, deck: Deck) -> bool:
 	var counts := {}
-	var fighters := 0
+	var healers := 0
 	for entry in deck.entries:
 		counts[entry.kind] = counts.get(entry.kind, 0) + 1
-		if UnitKind.role(entry.kind) != UnitKind.Role.HEALER:
-			fighters += 1
-	match deck.army:
-		UnitKind.Army.MILITARY:
-			if counts.get(UnitKind.Id.MEDIC, 0) >= SUPPLY_MEDICS:
-				return Traits.Id.SUPPLY
+		if UnitKind.role(entry.kind) == UnitKind.Role.HEALER:
+			healers += 1
+	match trait_id:
+		Traits.Id.SUPPLY:
+			return healers >= SUPPLY_MEDICS
+		Traits.Id.RANKS:
+			var pairs := 0
 			for kind: UnitKind.Id in counts:
-				if UnitKind.role(kind) != UnitKind.Role.HEALER and counts[kind] >= RANKS_KIND:
-					return Traits.Id.RANKS
-			return Traits.Id.FOCUS
-		UnitKind.Army.FANTASY:
-			if counts.get(UnitKind.Id.PALADIN, 0) >= GUARD_PALADINS:
-				return Traits.Id.GUARD
-			if fighters >= OATH_FIGHTERS:
-				return Traits.Id.OATH
-			return Traits.Id.VENGEANCE
-	return Traits.default_of(deck.army)
+				if UnitKind.role(kind) != UnitKind.Role.HEALER:
+					@warning_ignore("integer_division")
+					pairs += counts[kind] / 2
+			return pairs >= RANKS_PAIRS
+		Traits.Id.GUARD:
+			return counts.get(Traits.GUARDIAN, 0) >= GUARD_PALADINS
+		Traits.Id.OATH:
+			return deck.entries.size() - healers >= OATH_FIGHTERS
+	return true
 
 
 ## choose_trait の数（部隊の中身の目安）。
 const SUPPLY_MEDICS := 2
-const RANKS_KIND := 4
+const RANKS_PAIRS := 2
 const GUARD_PALADINS := 2
 const OATH_FIGHTERS := 5
 
 
-## 騎士領の編成に、CPU の決め方で誓いを結ぶ（もう結んである誓いはほどく）。騎士領でなければ何もしない。
+## 誓いを持てる軍（騎士領）の編成に、CPU の決め方で誓いを結ぶ（もう結んである誓いはほどく）。持てない軍なら何もしない。
 ## 誓いは、近くで戦う 2 人で結ぶ（同じ敵を、同じターンに 2 人で攻撃できる組）。
 ## 1 組目は前衛と後衛（前衛が受けた敵を、後ろから撃ち返す）。2 組目は、残りの前衛か奇襲と、残りの後衛か前衛。
 ## 回復役は結ばない（攻撃しないので、誓いが効かない）。
 static func bind_oaths(deck: Deck) -> void:
 	deck.oaths.clear()
-	if deck.army != UnitKind.Army.FANTASY:
+	if not Traits.of_army(deck.army).has(Traits.Id.OATH):
 		return
 	var free := deck.entries.filter(func(entry: DeckEntry) -> bool: return UnitKind.role(entry.kind) != UnitKind.Role.HEALER)
 	for wanted: Array in OATH_PLAN:

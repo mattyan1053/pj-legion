@@ -86,6 +86,7 @@ music = talk_calm
 
 [enemy]
 army = fantasy
+trait = guard
 unit = paladin + iron_shield + iron_shield
 unit = sorcerer
 unit = priest

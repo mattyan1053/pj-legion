@@ -207,7 +207,7 @@ func test_a_save_from_before_the_tutorial_keeps_its_unlocks_and_its_place() -> v
 ## 物語の途中に演習を足した（FANTASY の「分かれ道」）: 足す前の記録で、その演習より後ろの話をクリアしていた人は、
 ## 足した演習もクリアしたものとして読み、本編の続きをそのまま遊べる。演習の手前までの人は、足した演習から続ける。
 func test_a_save_from_before_an_inserted_trial_keeps_its_place() -> void:
-	var fantasy: RefCounted = Story.campaigns()[1]
+	var fantasy: RefCounted = Story.campaign_of_army(UnitKind.Army.FANTASY)
 	var before_trial := ["trial_first_steps", "trial_fireball", "trial_ward", "trial_shadow_step", "trial_eruption"]
 	var story := Story.new()
 	story.load_data({"campaigns": {"fantasy": {"cleared": before_trial + ["gorge_crossing"]}}})
@@ -226,7 +226,7 @@ func test_a_save_from_before_an_inserted_trial_keeps_its_place() -> void:
 ## 本編の間に話を足した（FANTASY の「岩山の合流」）: 足す前の記録で、それより後ろの話をクリアしていた人は、
 ## 足した話もクリアしたものとして読み、続きをそのまま遊べる。足した話の手前までの人は、足した話から続ける。
 func test_a_save_from_before_the_inserted_rejoin_keeps_its_place() -> void:
-	var fantasy: RefCounted = Story.campaigns()[1]
+	var fantasy: RefCounted = Story.campaign_of_army(UnitKind.Army.FANTASY)
 	var trials := ["trial_first_steps", "trial_fireball", "trial_ward", "trial_shadow_step", "trial_eruption", "trial_evolution"]
 	var story := Story.new()
 	story.load_data({"campaigns": {"fantasy": {"cleared": trials + ["gorge_crossing", "ridge_siege"]}}})

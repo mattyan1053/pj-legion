@@ -77,8 +77,9 @@ unit = skeleton_archer
 unit = skeleton_archer
 unit = skeleton_caller
 unit = skeleton_drummer
+unit = skeleton
 # 群れは近いほうの番人のまわりから始まる。骸骨兵の 1 体（9,18）は人の本陣に近く、狩りに出た隊の背中を突く。
-deploy = 6,13  4,14  6,16  9,16  12,15  9,18  5,12  13,12  3,11  14,10
+deploy = 6,13  4,14  6,16  9,16  12,15  9,18  5,12  13,12  3,11  14,10  5,9
 
 [unlock]
 item = trail_map

@@ -111,26 +111,34 @@ static func attack_power(attacker: Unit) -> int:
 	return maxi(maxi(steady, 0) * percent / Status.NORMAL_PERCENT + temporary, 0)
 
 
-## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。
-## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力（確定クリティカルなら倍率を掛ける）、軍略で足すもの（集中砲火・仇討ち・誓い）、森の軽減、
-## 軍略で引くもの（隊列・守護）、胞子（糸茸）、受ける側の状態（バリア）。
-## 予測と CPU は、これ（か damage）を読む。実際の攻撃（strike）も同じ結果を適用する。
+## attacker がいまの位置から target を攻撃したら、どうなるか（ダメージの解決。Hit）。状態は変えない。中身は hit_from。
+## 予測と CPU は、これ（か damage、hit_from）を読む。実際の攻撃（strike）も同じ結果を適用する。
 static func hit(battle: Battle, attacker: Unit, target: Unit) -> Hit:
-	var smoke := FieldEffects.smoke_covering(battle, attacker.cell, target)
+	return hit_from(battle, attacker, attacker.cell, attack_power(attacker), target, target.cell)
+
+
+## attacker が from から、攻撃力 power で、at に立つ target を攻撃したら、どうなるか。状態も盤も変えない。
+## 順に、煙幕（阻まれたら 0。ここで終わり）、攻撃力、軍略で足すもの（集中砲火・仇討ち・誓い）、森の軽減、
+## 軍略で引くもの（隊列・守護）、胞子（糸茸）、受ける側の状態（バリア）。
+## marks を渡すと、このターンに target を攻撃した覚え（Battle.struck の形）をそれに置き換える（集中砲火・誓い）。
+## hit はいまの位置といまの覚えでこれを呼ぶ。CPU の危険の見積もりは、動いた先・次の相手の番の覚えでこれを呼ぶ
+## （ダメージの決まりを CPU の側に書き写さない。tests/rules/test_cpu_danger.gd が、同じ場面の実際の攻撃と比べる）。
+static func hit_from(battle: Battle, attacker: Unit, from: Vector2i, power: int, target: Unit, at: Vector2i, marks: Variant = null) -> Hit:
+	var smoke := FieldEffects.smoke_covering(battle, from, target, at)
 	if smoke != null:
 		return Hit.smoked(attacker, target, smoke)
-	var amount := attack_power(attacker)
-	var boosts := Traits.attack_boosts(battle, attacker, target)
+	var amount := power
+	var boosts := Traits.attack_boosts(battle, attacker, target, marks)
 	for id: int in boosts:
 		amount += boosts[id]
-	var forest := battle.board.terrain_at(target.cell) == Terrain.Type.FOREST
+	var forest := battle.board.terrain_at(at) == Terrain.Type.FOREST
 	if forest:
 		amount = amount * Seam.forest_rate_percent(battle) / 100
-	var guard := Traits.guard_of(battle, target)
+	var guard := Traits.guard_at(battle, target, at)
 	if guard > 0 and amount > 0:
 		boosts[Traits.of_side(battle, target.side)] = mini(guard, amount)
 		amount = maxi(0, amount - guard)
-	var spores := Monsters.spore_penalty(battle, attacker) if amount > 0 else 0  # 隊列で 0 になったら、胞子は引くものが無い
+	var spores := Monsters.spore_penalty(battle, attacker, from, target, at) if amount > 0 else 0  # 隊列で 0 になったら、胞子は引くものが無い
 	if spores > 0:
 		amount = maxi(0, amount - spores)
 	var result := Hit.resolve(attacker, target, amount, UnitDamagedEvent.Cause.ATTACK)

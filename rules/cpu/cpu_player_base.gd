@@ -138,8 +138,8 @@ const STRONGHOLD_KILL_BONUS := 40.0
 const STRONGHOLD_BLOCK_VALUE := 60.0
 const HEALER_SEARCH_STEPS := 12
 ## 軍略（docs/troop-traits.md。docs/cpu-ai.md の「軍略」）。その軍略の部隊でだけ効く。
-## 隊列: 同じ兵種の味方の隣に立って行動を終える価値（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）。
-const RANKS_HUDDLE_VALUE := 2.0
+## 隊列: 行動を終えたときに隊列の効く、同じ兵種の駒 1 体あたりの価値（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）。
+const RANKS_HUDDLE_VALUE := 6.0
 ## 補給線: HP の減った駒が回復役の隣に立って行動を終える価値（回復する HP 1 あたり）。
 const SUPPLY_STAND_VALUE := 1.0
 ## 誓い: 誓いの相手からこの距離（マンハッタン距離）以内に立って行動を終える価値（同じ敵を 2 人で攻撃できる所にいる）。
@@ -221,6 +221,10 @@ var _foe_hq := Board.NO_CELL
 var _threats: Dictionary[Vector2i, Dictionary] = {}
 ## 同じ形で、煙幕に防がれない攻撃だけ（隣まで寄っての攻撃と、スキルのダメージ）。自分の煙幕の中のマスは、こちらで見る。
 var _close_threats: Dictionary[Vector2i, Dictionary] = {}
+## 次の相手の番の脅威範囲（Threat.against）。危険の見積もりは、ここの攻撃の候補をダメージの解決（Combat.hit_from）に聞く。
+var _threat_map := Threat.Map.new()
+## 危険の見積もりの控え: 駒の番号 * 盤の幅 * 盤の高さ + マス の添字 -> [バリアを数えない合計, いちばん弱い 1 回]（無視する敵が無く、いまの対戦の駒のときだけ）。
+var _danger_memo: Dictionary[int, Vector2i] = {}
 ## 自分の煙幕の中のマス。
 var _smoked: Dictionary[Vector2i, bool] = {}
 ## 次の相手の番に、敵の駒（回復役を除く）が止まれるマス。
@@ -228,7 +232,7 @@ var _foe_stops: Dictionary[Vector2i, bool] = {}
 ## スキルを使う手を複製の上で試している間の、使う前に立っているマス（動いてから使う手では、いまのマスと違う）。
 var _stand := Board.NO_CELL
 var _threats_ready := false
-## 立つマス -> いま考えている駒がそこへ動いただけの盤面の、危険の表 [threats, close]（盾の見積もりが使う）。
+## 立つマス -> いま考えている駒がそこへ動いただけの盤面の、[盤面, 脅威範囲]（盾の見積もりが使う）。
 var _moved_threats: Dictionary[Vector2i, Array] = {}
 ## いま考えている駒の目標までの歩数の表、そこまで近づけば足りる歩数、役割ごとの重み、離れて立つか。
 var _goal_steps := PackedInt32Array()

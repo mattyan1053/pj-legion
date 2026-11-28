@@ -71,6 +71,24 @@ func test_fallen_fires_on_the_first_defeated_unit_of_that_side_but_not_the_king(
 	assert_eq(_texts(cues.on_events(battle, events)), ["やられた"] as Array[String])
 
 
+## 軍略が初めて効いた: その陣営の軍略の出来事（補給線は回復）が来たら、1 度だけ。相手の陣営の軍略では出ない。
+func test_trait_fires_when_that_side_trait_first_works() -> void:
+	var battle := _battle()
+	battle.traits = [Traits.Id.FOCUS, Traits.Id.VENGEANCE] as Array[int]
+	var mine := _king(battle, Unit.Side.PLAYER1)
+	var theirs := _king(battle, Unit.Side.PLAYER2)
+	var cues := BattleCues.new([_cue(BattleCues.TRAIT, 0, 0, "効いた")], NAMES)
+	var other: Array[BattleEvent] = [TraitTriggeredEvent.new(Traits.Id.VENGEANCE, theirs.id, mine.id, 4)]
+	assert_eq(_texts(cues.on_events(battle, other)), [] as Array[String], "相手の軍略では出ない")
+	var hit: Array[BattleEvent] = [TraitTriggeredEvent.new(Traits.Id.FOCUS, mine.id, theirs.id, 2)]
+	assert_eq(_texts(cues.on_events(battle, hit)), ["効いた"] as Array[String])
+	assert_eq(_texts(cues.on_events(battle, hit)), [] as Array[String], "1 度だけ")
+	battle.traits[0] = Traits.Id.SUPPLY
+	var supply := BattleCues.new([_cue(BattleCues.TRAIT, 0, 0, "治った")], NAMES)
+	var healed: Array[BattleEvent] = [SupplyHealedEvent.new(mine.id, mine.id, 4, 10)]
+	assert_eq(_texts(supply.on_events(battle, healed)), ["治った"] as Array[String], "補給線は回復で")
+
+
 func test_nothing_is_said_once_the_battle_is_over() -> void:
 	var battle := _battle()
 	var cues := BattleCues.new([_cue(BattleCues.TURN, 1, 0, "はじめ"), _cue(BattleCues.KING_HALF, 1, 1, "まだだ")], NAMES)

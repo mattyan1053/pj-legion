@@ -27,6 +27,7 @@ const CUE_WORDS := {
 	BattleCues.FALLEN: ["味方の駒が初めて倒れたら", "敵の駒が初めて倒れたら"],
 	BattleCues.ULT_READY: ["味方の必殺技のゲージがたまったら", "敵の必殺技のゲージがたまったら"],
 	BattleCues.RELIC: ["味方が聖遺物を受け取ったら", "敵が聖遺物を受け取ったら"],
+	BattleCues.TRAIT: ["味方の軍略が初めて効いたら", "敵の軍略が初めて効いたら"],
 }
 const SIDE_WORDS := ["味方", "敵"]
 

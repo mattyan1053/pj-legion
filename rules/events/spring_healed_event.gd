@@ -5,7 +5,7 @@ extends UnitHealedEvent
 var cell: Vector2i
 
 
-func _init(spring_cell: Vector2i, healed_unit_id: int, healed: int, hp_after: int) -> void:
+func _init(spring_cell := Vector2i.ZERO, healed_unit_id := 0, healed := 0, hp_after := 0) -> void:
 	cell = spring_cell
 	unit_id = healed_unit_id
 	amount = healed

@@ -17,7 +17,7 @@ map = drill_field
 music = battle_ruins
 before_music = battle_ruins
 after_music = talk_bright
-lesson = 敵の本陣のマスに 3 ターン乗り続ければ勝ち。この演習は、将を倒しても終わらない。
+lesson = 敵の本陣に 3 ターン乗り続ければ勝ち。同じ兵種を隣に並べると、受ける傷が減る。
 wins = hq_captured
 
 [cast]
@@ -33,11 +33,13 @@ wins = hq_captured
 ドーソン: そうだ。あそこへ踏み込んで居座る。旗を引き倒すまで、どかされるなよ。
 教導隊員: 言っておきますが、私を倒しても旗は渡しませんよ。今日はそういう演習です。
 ハーデン: 周りを片付けて、乗り込む。
+ドーソン: 盾は 2 枚並べて。隣に同じ盾がいれば、受け止める重さは半分です。
 マルタ: 居座ってる間も殴られるんだから。痛くなったら、ちゃんと呼びなさいよ。
 
 [cues]
 (turn 1) マルタ: 乗り込む人は決めた？ 私、その隣に付くわよ。
 (king_half enemy) 教導隊員: 私を追い回しても、旗は倒れませんよ。
+(trait ally) ドーソン: 並んでいれば崩れません。これが「隊列」です、少尉。
 
 [after]
 ドーソン: 演習はここまでです、少尉。少佐どのには、もう谷へ出せる少尉だと報告しておきますよ。
@@ -54,6 +56,7 @@ wins = hq_captured
 # ---- ここから下は、戦いの設定（部隊・初期位置・クリアで増えるもの） ----
 
 [ally]
+trait = ranks
 unit = shield_trooper
 unit = shield_trooper
 unit = sniper
@@ -66,3 +69,6 @@ short = 教導隊
 army = fantasy
 unit = paladin
 unit = sorcerer
+
+[unlock]
+trait = ranks

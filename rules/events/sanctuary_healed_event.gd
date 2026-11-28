@@ -5,7 +5,7 @@ extends UnitHealedEvent
 var effect_id: int
 
 
-func _init(sanctuary_id: int, healed_unit_id: int, healed: int, hp_after: int) -> void:
+func _init(sanctuary_id := 0, healed_unit_id := 0, healed := 0, hp_after := 0) -> void:
 	effect_id = sanctuary_id
 	unit_id = healed_unit_id
 	amount = healed

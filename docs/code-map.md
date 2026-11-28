@@ -22,6 +22,7 @@
 2. **ルール** `screen_sides.gd` の `_do_all` が `battle.apply(action)` を呼ぶ。遊ぶときの道で対戦の状態を変えるのはここだけ。
    `Battle.apply`（`rules/battle.gd`）: `can_apply` → `action.execute` → 勝ち負けの判定 → `ActionResult`（受け付けたか、出来事の列）。
 3. **出来事** `rules/events/`: 起きた時点の値を持つ。ダメージは原因が何でも `rules/hit.gd` を通り、段の順は `rules/combat.gd` の `hit`（`docs/combat.md`）。
+   回復は原因が何でも `rules/mend.gd` を通る（`docs/battle.md` の「回復を 1 つ足すとき」）。
 4. **読む側**（`_do_all` が順に渡す）:
    - 戦績 `rules/battle_stats.gd`（`docs/battle-stats.md`）
    - 再生 `game/battle_playback.gd` の `play_all` → `battle_playback/playback_base.gd` の `event_players()`（種類 → 再生の関数）。再生と同時にログ `game/battle_log.gd` の `readers()` へ（`docs/battle-log.md`）。
@@ -32,7 +33,8 @@
    - 終わると、ルールに聞き直して画面を作り直し（`_refresh`）、CPU の番なら次の手へ。
 5. **写しの上で同じ道を走るもの**: 予測 `rules/forecast.gd`（`Battle.clone()` に同じ行動を当てて、出た出来事を読む。`docs/battle-forecast.md`）と、
    CPU `rules/cpu_player.gd`（候補ごとに写しへ当てて、出来事に値を付ける。`docs/cpu-ai.md`）。写しは `rules/state_copy.gd` が変数を名前で拾う。
-   別の計算を持つのは、CPU の危険の読み（`rules/cpu/cpu_threats.gd`）と脅威範囲（`rules/threat.gd`）だけ。
+   別の計算を持つのは脅威範囲（`rules/threat.gd`。届くマス）だけ。CPU の危険の読み（`rules/cpu/cpu_threats.gd`）は、脅威範囲の攻撃の候補を
+   ダメージの解決（`Combat.hit_from`）に聞く。
 6. **自動の対戦** `game/autoplay.gd`: 人と同じ入口を通して全部の場面を回す。1 度も再生されなかった出来事があると落ちる。
 
 出来事を種類ごとに読む所は、どれも足し忘れをテストが拾う（再生・ログ・戦績・予測・CPU の手の価値・実測の道具・中立の再生・再生の盤。`docs/battle.md` の「出来事を 1 つ足すとき」）。
@@ -54,6 +56,7 @@
 
 | 足すもの | 手順 |
 | --- | --- |
+| 軍 | `docs/unit-roster.md` の「軍を足すとき」 |
 | 兵（いまの軍に） | `docs/unit-roster.md` の「兵を足すとき」 |
 | 魔物 | `docs/monsters.md` の「魔物を足すとき」 |
 | 軍略 | `docs/troop-traits.md` の「軍略を足すとき」 |
@@ -72,9 +75,9 @@
 **どれを足しても、最後は `tools/check.sh <godot>`。** ルールや数値に触ったら、釣り合いを `measure-balance` で測る
 （CPU の読みは検査が守っていない所が多く、実測でしか分からない）。
 
-## いまの前提（3 つ目の軍は、まだ足せない）
+## いまの前提
 
 - 軍は 2 つ（`UnitKind.Army` の MILITARY と FANTASY）。それぞれ役割ごとに 1 種で 4 種、軍略 3 つ、必殺技 1 つ。
-- この前提を、黙って使っている所がある。軍の色・紋章の二択が 6 か所、軍の並びの直書きが 4 か所、実測の道具の組み合わせが 2 軍の決め打ち
-  （場所は `docs/code-health.md` の表の 5・6）。3 つ目の軍は、先に軍の表を 1 か所にまとめてから（同じ文書の「直す順のおすすめ」）。
-- 同じ軍に 5 種目の兵を足すのも、この前提の外（`docs/unit-roster.md` の「兵を足すとき」）。
+- 軍で決まるものは、軍の表（ルールは `rules/armies.gd`、見た目は `game/army_look.gd`）から読む。軍を足す手順は `docs/unit-roster.md` の「軍を足すとき」。
+  まだ 2 軍のままの所も、そこに書いてある。
+- 同じ軍に 5 種目の兵を足すのは、この前提の外（`docs/unit-roster.md` の「兵を足すとき」）。

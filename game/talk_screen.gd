@@ -519,6 +519,8 @@ func _show_line(index: int) -> void:
 		_item_frame.visible = false
 		_count.text = ""
 		_plate.visible = false
+		if is_board_cut():
+			_cut_stage.show_speaker("")
 		return
 	var line: Dictionary = _lines[index]
 	var narration := is_narration(line)
@@ -540,6 +542,8 @@ func _show_line(index: int) -> void:
 		_plate_style.bg_color = team.darkened(0.15)
 		_plate_style.border_color = team.lightened(0.35)
 		_box_style.border_color = COLOR_BORDER.lerp(team.lightened(0.2), 0.85)
+	if is_board_cut():
+		_cut_stage.show_speaker("" if narration else str(line.get("name", "")), team)  # 盤にいる話し手の頭の上に印
 	_raw_text = line.get("text", "")
 	_text.text = fold_line(line)
 	_face.visible = line.has("kind")

@@ -251,6 +251,14 @@ static func military() -> Campaign:
 	return campaign_by_id(MILITARY_ID)
 
 
+## 軍 army の物語（並びの最初のもの。無ければ null）。
+static func campaign_of_army(army: UnitKind.Army) -> Campaign:
+	for each: Campaign in campaigns():
+		if each.army == army:
+			return each
+	return null
+
+
 ## 物語 of_campaign を選ぶ（話の一覧・出撃準備・選んだ部隊・雇える駒は、この物語のものになる）。
 ## 最後に選んだ物語は記録に書く（セーブのスロットの札に出す。save_slots.gd）。
 func choose_campaign(of_campaign: Campaign) -> void:

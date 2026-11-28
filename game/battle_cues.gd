@@ -12,7 +12,8 @@ const KING_HALF := &"king_half"  ## 値 = 陣営（0 か 1）。その陣営の�
 const FALLEN := &"fallen"  ## 値 = 陣営（0 か 1）。その陣営の駒（将を除く）が初めて倒れた
 const ULT_READY := &"ult_ready"  ## 値 = 陣営（0 か 1）。その陣営の必殺技のゲージがたまった（UltReadyEvent）
 const RELIC := &"relic"  ## 値 = 陣営（0 か 1）。その陣営が聖遺物を受け取った（中ボスを倒した。RelicGainedEvent）
-const KINDS: Array[StringName] = [TURN, KING_HALF, FALLEN, ULT_READY, RELIC]
+const TRAIT := &"trait"  ## 値 = 陣営（0 か 1）。その陣営の軍略が初めて効いた（TraitTriggeredEvent か、補給線の SupplyHealedEvent）
+const KINDS: Array[StringName] = [TURN, KING_HALF, FALLEN, ULT_READY, RELIC, TRAIT]
 const TalkCue := preload("res://game/episode/talk_cue.gd")
 
 
@@ -105,4 +106,15 @@ func _fires(battle: Battle, events: Array[BattleEvent], at_start: bool, kind: St
 			return events.any(func(e: BattleEvent) -> bool: return e is UltReadyEvent and e.side == value)
 		RELIC:
 			return events.any(func(e: BattleEvent) -> bool: return e is RelicGainedEvent and e.side == value)
+		TRAIT:
+			var held := battle.traits[value] if value < battle.traits.size() else Traits.NONE
+			return held != Traits.NONE and events.any(func(e: BattleEvent) -> bool:
+				return (e is TraitTriggeredEvent and e.trait_id == held and _side_of(battle, e.unit_id, value) == value) \
+					or (e is SupplyHealedEvent and held == Traits.Id.SUPPLY and _side_of(battle, e.unit_id, value) == value))
 	return false
+
+
+## 駒 unit_id の陣営（もう盤にいなければ fallback）。
+static func _side_of(battle: Battle, unit_id: int, fallback: int) -> int:
+	var unit := battle.unit_by_id(unit_id)
+	return unit.side if unit != null else fallback

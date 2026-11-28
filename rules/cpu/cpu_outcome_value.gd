@@ -301,7 +301,8 @@ func _boss_to_steal(unit: Unit) -> Unit:
 
 
 ## 駒 victim_id のバリアが外れた価値（sim は、外れたあとの複製）。敵のバリアをはがしたなら、このあとに動ける味方のうち、
-## その敵に届きそうな駒（移動力 + 射程の歩数の中。目安）のいちばん強い攻撃 1 回ぶんを見込む。味方のバリアなら、同じだけ引く。
+## その敵に届きそうな駒（移動力 + 射程の歩数の中。目安）のいちばん強い攻撃 1 回ぶん（ダメージの解決 Combat.hit_from に聞く。軍略・森・煙幕も入る）を見込む。
+## 味方のバリアなら、同じだけ引く。
 func _barrier_strip_value(victim_id: int, sim: Battle) -> float:
 	var victim := sim.unit_by_id(victim_id)
 	if victim == null or victim.side == Unit.Side.NEUTRAL:
@@ -314,8 +315,11 @@ func _barrier_strip_value(victim_id: int, sim: Battle) -> float:
 			continue
 		if UnitKind.role(friend.kind) == UnitKind.Role.HEALER:
 			continue
-		if Combat.distance(friend.cell, victim.cell) <= friend.move_range() + friend.attack_range():
-			strongest = maxi(strongest, Combat.attack_power(friend))
+		var apart := Combat.distance(friend.cell, victim.cell)
+		if apart <= friend.move_range() + friend.attack_range():
+			# どこから撃つかは分からないので、いまのマスから届くならそこから、届かなければ隣まで寄ったとして、ダメージの解決に聞く。
+			var from := friend.cell if apart <= friend.attack_range() else victim.cell
+			strongest = maxi(strongest, Combat.hit_from(sim, friend, from, Combat.attack_power(friend), victim, victim.cell).amount)
 	var rate := KING_DAMAGE_VALUE if victim.kind == UnitKind.Id.KING else DAMAGE_VALUE
 	return BARRIER_STRIP_VALUE + BARRIER_STRIP_RATE * rate * mini(strongest, victim.hp)
 

@@ -1,8 +1,8 @@
 # 対戦の状態と行動の受け付け
 
-コード: `rules/battle.gd`（`apply`、`can_apply`、`options`、`clone`、`rng`）、`rules/action_result.gd`、
+コード: `rules/battle.gd`（`apply`、`can_apply`、`options`、`clone`、`rng`）、`rules/action_result.gd`、`rules/mend.gd`（回復の道）、
 `rules/unit_options.gd`、`rules/actions/battle_action.gd`、`rules/events/battle_event.gd`、`rules/state_copy.gd`。
-テスト: `tests/rules/test_battle.gd`、`tests/rules/test_unit_options.gd`、`tests/game/test_event_readers.gd`（出来事を種類ごとに読む所の表）。
+テスト: `tests/rules/test_battle.gd`、`tests/rules/test_mend.gd`、`tests/rules/test_unit_options.gd`、`tests/game/test_event_readers.gd`（出来事を種類ごとに読む所の表）。
 
 1 回の対戦の状態は `Battle` が持つ。状態を変えるのは `Battle.apply(行動)` だけ
 （対戦の準備で駒を置く `add_unit` は除く）。
@@ -26,6 +26,7 @@
   | | `SpringHealedEvent`（回復の泉） | `cell` |
   | | `RegenerationHealedEvent`（進化先の特性の再生） | - |
   | | `SanctuaryHealedEvent`（聖域） | `effect_id` |
+  | | `SupplyHealedEvent`（軍略の補給線） | `medic_id` |
   | `FieldEffectPlacedEvent` | `BarricadePlacedEvent`（盾） | `durability` |
   | | `AreaEffectPlacedEvent`（煙幕・聖域） | `turns_left` |
 
@@ -54,6 +55,18 @@
    - 中立の再生の場面分け: `game/neutral_playback.gd`（主役になる出来事か）
    - 再生の盤: `game/replay_board.gd`（盤の見え方（駒の位置・HP・状態など）を変える出来事か。`docs/battle-view.md` の「再生の盤」）
 5. 予測のパネル・ログ・戦績で数字や文を出すなら、文の表（`game/text/`。`docs/text.md`）に足す。
+
+### 回復を 1 つ足すとき
+
+駒の HP を増やすものは、原因が何でも `rules/mend.gd`（`Mend`）を通す（ダメージの `rules/hit.gd` と対になる）。
+`rules/` の中で `hp +=` と書けるのは `Mend` だけ（`tests/rules/test_mend.gd` が見張る）。
+
+- 戻す量は `Mend.amount(駒, 上限)`。最大 HP の実効値で止める。予測や CPU が「どれだけ戻るか」を聞くのもこれ（`Healing.amount` などは、ここを呼ぶ）。
+  回復量を増やす・封じる効果は、ここに段として足す。
+- 実際に戻すのは `Mend.give(駒, 上限, 出来事)`。出来事は原因ごとの子（`UnitHealedEvent` の子）を、原因の値（回復した駒など）だけ入れて作って渡す。
+  駒・増えた量・あとの HP は `give` が書き込む。例: `Mend.give(unit, SUPPLY_HEAL, SupplyHealedEvent.new(medic.id))`。
+- 新しい原因なら、`UnitHealedEvent` の子と `Cause` を足し、上の「出来事を 1 つ足すとき」をたどる。
+  戦績で誰かの回復量に数えるなら、`rules/battle_stats.gd` の `_count_heal` に、その子から回復した駒を読む行を足す。
 
 ## apply の結果
 

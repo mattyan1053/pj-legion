@@ -1,6 +1,8 @@
 extends "res://game/battle_playback/playback_board.gd"
 ## スキルと必殺技、軍略、状態のイベントの再生。
 
+const ArmyLook := preload("res://game/army_look.gd")
+
 
 ## スキルを使った。対象のほうを向いて手を振り、スキルの名前をスキルの色で出す。足元にスキルの色の輪が広がり、
 ## スキルごとの形が対象に届く（battle_effects.gd の skill_flash）。届いてから、続くイベントが効果を見せる。
@@ -76,7 +78,7 @@ func _play_supply_healed(event: SupplyHealedEvent) -> void:
 
 ## 軍略の札の色（その軍略の軍の色）。
 static func _trait_color(id: int) -> Color:
-	return Palette.NATION_MILITARY if Traits.army_of(id) == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
+	return ArmyLook.color(Traits.army_of(id))
 
 
 ## 駒に状態が付いた。状態の名前を出す（付いている状態は、駒の情報に出る）。

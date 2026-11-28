@@ -56,18 +56,22 @@ func _init(
 			_shown_items.append(item)
 
 
-## 対戦の決まり。軍ごとに、その軍の 4 種を雇える。予算は軍ごとの値（MILITARY 24、FANTASY 18。docs/player-loadout.md）。
+## 対戦の決まり。軍の表（Armies）の軍ごとに、その軍の兵（Armies.roster）を雇える。予算は軍の表の値（docs/player-loadout.md）。
 ## 持たせられる装備は VERSUS_ITEMS だけ。
 static func versus() -> DeckRules:
 	if _versus == null:
 		var rosters := {}
-		for army: UnitKind.Army in [UnitKind.Army.MILITARY, UnitKind.Army.FANTASY]:
-			rosters[army] = _army_kinds(army)
-		_versus = DeckRules.new(VERSUS, Deck.MAX_UNITS, rosters, {
-			UnitKind.Army.MILITARY: 24,
-			UnitKind.Army.FANTASY: 18,
-		}, VERSUS_ITEMS)
+		var budgets := {}
+		for army in Armies.all():
+			rosters[army] = Armies.roster(army)
+			budgets[army] = Armies.budget(army)
+		_versus = DeckRules.new(VERSUS, Deck.MAX_UNITS, rosters, budgets, VERSUS_ITEMS)
 	return _versus
+
+
+## versus() の控えを捨てる（軍の表を替えたテストが、組み直させる）。
+static func forget_versus() -> void:
+	_versus = null
 
 
 ## 名前から決まりを引く。知らない名前なら null。
@@ -78,11 +82,14 @@ static func by_id(rules_id: StringName) -> DeckRules:
 	return null
 
 
-## 選べる軍（並びは Army の順）。
+## 選べる軍（並びは軍の表の順。表に無い軍は、そのあとに渡された順）。
 func armies() -> Array[UnitKind.Army]:
 	var result: Array[UnitKind.Army] = []
-	for army: UnitKind.Army in UnitKind.Army.values():
+	for army in Armies.all():
 		if _rosters.has(army):
+			result.append(army)
+	for army: UnitKind.Army in _rosters:
+		if not result.has(army):
 			result.append(army)
 	return result
 
@@ -143,14 +150,3 @@ func trait_for(deck: Deck) -> int:
 ## その軍で、その種類の駒を雇えるか。
 func allows(army: UnitKind.Army, kind: UnitKind.Id) -> bool:
 	return _rosters.has(army) and (_rosters[army] as Array).has(kind)
-
-
-## その軍に属する駒の種類。並びは 前衛・後衛・奇襲・回復。
-static func _army_kinds(army: UnitKind.Army) -> Array[UnitKind.Id]:
-	var result: Array[UnitKind.Id] = []
-	for kind: UnitKind.Id in UnitKind.Id.values():
-		if UnitKind.army(kind) == army:
-			result.append(kind)
-	result.sort_custom(func(a: UnitKind.Id, b: UnitKind.Id) -> bool:
-		return UnitKind.role(a) < UnitKind.role(b))
-	return result

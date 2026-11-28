@@ -105,16 +105,53 @@ CPU どうしの対戦（`docs/cpu-ai.md` の「集計の道具」）で見る�
 - 移動力は下げない（「下がる」ができなくなる）。
 - 聖遺物の効き方の、軍による差は `docs/relic-buff.md` の「強さ」。
 
+## 軍を足すとき
+
+軍で決まるものは、2 つの表から読む。ルールの値は `rules/armies.gd`（`Armies`）、見た目は `game/army_look.gd`。
+どちらも軍ごとに 1 行で、選べる軍の並び（対戦設定・部隊編成・実測の道具）は表の順（`Armies.all()`）。
+軍の名前で二択にしている所は無い（`tests/game/test_armies.gd` が、表の外で `Army.MILITARY`・`Army.FANTASY` を書くと落ちる）。
+
+| 何が | どこに |
+| --- | --- |
+| 軍そのもの | `rules/unit_kind.gd` の `Army` に 1 つ（表の順と列挙の順は同じにする。テストが見る） |
+| 予算・軍略（札の並び。先頭が既定）・CPU が軍略を選ぶ順 | `rules/armies.gd` の表に 1 行（`budget`、`traits`、`cpu_traits`） |
+| 雇える兵 | 兵の側が軍を名乗る（`rules/unit_kind.gd` の `_TABLE`。下の「兵を足すとき」）。ロスターは役割の順（同じ役割なら `Id` の順）に並ぶ |
+| 必殺技 | 必殺技の側が軍を名乗る（`Ult.army`。`docs/tactical-ult.md` の「必殺技を足すとき」） |
+| 色・紋の形・物語の景色の空の色と構え | `game/army_look.gd` の表に 1 行（`color`、`crest`、`sky`、`view`）。新しい紋の形なら `game/crest.gd` に描く関数、新しい構えなら `game/title_backdrop.gd` の `VIEWS` に 1 つ |
+| 名前・短い名前・ストーリーでの呼び名 | `game/text/names.csv` の `army.<鍵>`、`side.story.army.<鍵>`、`side.story.army.<鍵>.short` |
+| 軍略の中身 | `docs/troop-traits.md` の「軍略を足すとき」 |
+| 物語 | `docs/story.md` の「物語を 1 つ足す」 |
+
+足し忘れは `tests/game/test_armies.gd` が拾う（軍ごとに、予算・軍略・CPU の順・必殺技・役割ごとの兵・色・紋・空・文がそろっているか）。
+拾わないもの: 兵の姿と CPU の釣り合い（下の「兵を足すとき」の「足し忘れても検査が落ちない所」）。
+
+**見張り**: `tests/game/test_army_watch.gd` が、テストの中だけで仮の 3 つ目の軍（前衛が 2 種で 5 種、軍略が 4 つ）を表に足し、
+ロスター・予算・軍略・CPU の編成と軍略選び・誓い・対戦の作成・色と紋が、表の値で動くこと（黙って 2 軍のどちらかにならないこと）を見る。
+部隊編成の欄の並び（雇う欄 5 つが 4 枚ぶんの高さに収まる、軍略の札 4 枚）は、画面を作るので長い検査（`tests/game/test_army_watch_screen.gd`）。
+仮の軍は `Armies.add_for_test`・`ArmyLook.add_for_test` で足し、テストの終わりに戻す（ゲームには出ない）。
+仮の軍は列挙に無い数なので、名前は鍵のまま出る（`Names.word` は、列挙に無い値で空を返す）。
+
+**まだ 2 軍のままの所**（3 つ目の軍を入れるときに決める。どれも、いまの 2 軍の見た目を変えないために残した）:
+
+- タイトルの裂けた空は、縫い目の左がベルク連邦の琥珀、右がリュエル騎士領の菫（`game/title_backdrop.gd` の `RIFT_LEFT`・`RIFT_RIGHT`。世界の形）。
+  3 つ目の国の空の色は、物語の景色で空を寄せる色（`sky`）としては使えるが、裂けた空の左右には出ない。
+- 対戦設定の既定の軍は、先手が表の 1 番目、後手が 2 番目（`game/match_choice.gd`）。
+- 実測の道具の出力のうち、縫い目の札ごとの行と全体の行は、表の 1 番目の軍の勝率を出す（2 軍の釣り合いの見方のまま）。
+
 ## 兵を足すとき
 
 いまの軍（MILITARY か FANTASY）に、雇える兵を 1 種足す。魔物は `docs/monsters.md` の「魔物を足すとき」。
 
-**先に: いまの軍は「役割ごとに 1 種で 4 種」の前提で作ってある。** 5 種目は、次を直してからでないと、エラーも出ずに崩れる。
+**同じ役割の 2 種目・5 種目も足せる。** 雇う欄の数・CPU の軍略選び・補給線の文・実測の `--decks=even` は、役割と軍の表から読む:
 
-- 部隊編成の雇う欄は 4 つ決め打ち（`game/deck_screen/deck_editor.gd` の `for i in 4`）。5 種目は欄が無く、雇えない。
-- CPU の軍略選び（`rules/cpu_deck.gd` の `choose_trait`）は、衛生兵とスペルブレードを種類の名前で数える。同じ役割の 2 種目は数えない。
-- 補給線の文は「衛生兵の隣」（`game/names.gd` の `troop_trait_text` が `{medic}` に差し込む）。ルールは回復役なら誰でも（`Traits.supplier_at`）。
-- 実測の道具の `--decks=even` は、ロスターの何番目を雇うかで部隊を組む（`tools/cpu_matches_base.gd` の `EVEN_SLOTS`）。並びがずれて、黙って別の部隊を測る。
+- 部隊編成の雇う欄は、いちばん大きいロスターの数だけ並ぶ（5 種以上なら札を低くして同じ高さに収める。`docs/deck-screen.md`）。
+- CPU の軍略選び（`rules/cpu_deck.gd` の `_fits`）は、回復役を役割で、守護の兵を `Traits.GUARDIAN` で数える。
+- 補給線の文の「衛生兵」は、その軍の最初の回復役（`game/names.gd` の `_healer_of`）。ルールは回復役なら誰でも（`Traits.supplier_at`）。
+- 実測の道具の `--decks=even` は、役割ごとに、その役割の最初の兵を雇う（`tools/cpu_matches_base.gd` の `EVEN_ROLES`）。
+
+まだ「役割ごとに 1 種」を前提にしている所（2 種目を足すときに直す）:
+
+- CPU の編成（`rules/cpu_deck.gd` の `build`）は、ロスターの全種を 1 体ずつ雇い、回復役でない種をもう 1 体ずつ足す。同じ役割が 2 種あると、その役割が多い部隊になる。
 - 文書の検査がロスターを役割ごとに 1 マスで読む（`tests/docs/test_doc_values.gd` の `test_rosters_and_budgets_match_deck`）。同じ役割が 2 種あると、表もテストも直す。
 - 回復役の表の検査は衛生兵とプリーストの決め打ち（`docs/healer-role.md`）。
 
@@ -137,9 +174,8 @@ CPU どうしの対戦（`docs/cpu-ai.md` の「集計の道具」）で見る�
 ### 足し忘れても検査が落ちない所
 
 - **姿**: `KINDS` に無いと、陣営の色のカプセルで出る。アイコンもカプセルを撮るので、アイコンと姿のテストは通る。**撮ったアイコンを自分で見る。**
-- **進化先**: 無くてもどのテストも落ちない。レベル 3 で止まり、進化を選ぶ場面が出ない。
-- **回復役の `HEALER_STRIKE`**: 無いと攻撃 0。札に「攻撃 0」と出るだけ。
-- 上の「先に」の 6 つ（5 種目のとき）。
+- （進化先と、回復役の `HEALER_STRIKE` は、いまはテストが拾う: `tests/rules/test_evolution.gd` が軍の表のロスターの全種に進化先 2 つを、`tests/game/test_army_watch.gd` が回復役の攻撃の強さを見る。）
+- 上の「まだ『役割ごとに 1 種』を前提にしている所」（同じ役割の 2 種目のとき）。
 - CPU の釣り合い: どのテストも測らない。`measure-balance` で測る。
 
 ### 確かめ方

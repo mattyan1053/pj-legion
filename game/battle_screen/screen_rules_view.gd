@@ -1,6 +1,8 @@
 extends "res://game/battle_screen/screen_base.gd"
 ## 対戦の場面の、選べる決まりと軍略の見え方: 縫い目の様子の札、軍略の輪と線、拠点の旗。
 
+const ArmyLook := preload("res://game/army_look.gd")
+
 
 ## 軍略の印（docs/troop-traits.md の「対戦の画面」）: 効く相手の頭の上の札（増える数）と足元の輪、組む兵どうしの線。
 ## 色は軍略の軍の色。相手の軍略も同じに出す。
@@ -35,7 +37,7 @@ func _refresh_traits() -> void:
 				continue
 			var ranks := own == Traits.Id.RANKS and mate.kind == shown.kind
 			var supply := own == Traits.Id.SUPPLY and (UnitKind.role(mate.kind) == UnitKind.Role.HEALER) != (UnitKind.role(shown.kind) == UnitKind.Role.HEALER)
-			var guard := own == Traits.Id.GUARD and (mate.kind == UnitKind.Id.PALADIN or shown.kind == UnitKind.Id.PALADIN)
+			var guard := own == Traits.Id.GUARD and (mate.kind == Traits.GUARDIAN or shown.kind == Traits.GUARDIAN)
 			if ranks or supply:
 				links.append([_view(shown.id), _view(mate.id), tint, TraitLinks.Knot.CROSS if supply else TraitLinks.Knot.DIAMOND])
 			elif guard:
@@ -49,7 +51,7 @@ func _refresh_traits() -> void:
 
 ## 軍略の印の色（その軍略の軍の色）。
 static func _trait_color(id: int) -> Color:
-	return Palette.NATION_MILITARY if Traits.army_of(id) == UnitKind.Army.MILITARY else Palette.NATION_FANTASY
+	return ArmyLook.color(Traits.army_of(id))
 
 
 ## 軍略の線の数（検査用）。

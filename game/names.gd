@@ -14,7 +14,8 @@ const STATS: Array[Unit.Stat] = [Unit.Stat.MAX_HP, Unit.Stat.POWER, Unit.Stat.MO
 
 ## 列挙 names の値 value の、鍵に使う名前（小文字）。
 static func word(names: Dictionary, value: int) -> String:
-	return String(names.find_key(value)).to_lower()
+	var found: Variant = names.find_key(value)
+	return "" if found == null else String(found).to_lower()
 
 
 ## ストーリーの呼び方にするか。真なら、陣営を遊ぶ人の側から「味方」「敵」と呼ぶ（色と「プレイヤー1」で呼ばない。中立はそのまま）。
@@ -184,7 +185,15 @@ static func troop_trait(id: int) -> String:
 static func troop_trait_text(id: int) -> String:
 	if id == Traits.NONE:
 		return ""
-	return Text.t("troop_trait.%s.text" % Traits.key(id), {"gain": troop_trait_effect(id), "medic": kind(UnitKind.Id.MEDIC), "paladin": kind(UnitKind.Id.PALADIN)})
+	return Text.t("troop_trait.%s.text" % Traits.key(id), {"gain": troop_trait_effect(id), "medic": kind(_healer_of(Traits.army_of(Traits.Id.SUPPLY))), "paladin": kind(Traits.GUARDIAN)})
+
+
+## 補給線の文の {medic}: その軍の、最初の回復役（ルールは回復役なら誰でも。Traits.supplier_at。いまは衛生兵）。
+static func _healer_of(of_army: UnitKind.Army) -> UnitKind.Id:
+	for each in Armies.roster(of_army):
+		if UnitKind.role(each) == UnitKind.Role.HEALER:
+			return each
+	return UnitKind.Id.MEDIC
 
 
 ## 軍略の効果（数のある所。「ダメージ +2」）。文の中で色を変える所。

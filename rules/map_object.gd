@@ -105,4 +105,4 @@ static func spring_targets(battle: Battle, side: Unit.Side) -> Array[Unit]:
 
 ## 回復の泉で unit の HP が実際に増える量。最大 HP を超えるぶんは切り捨てる。
 static func spring_heal(unit: Unit) -> int:
-	return clampi(unit.max_hp() - unit.hp, 0, SPRING_HEAL)
+	return Mend.amount(unit, SPRING_HEAL)

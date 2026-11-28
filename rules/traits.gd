@@ -43,16 +43,14 @@ const GUARD_SHIELD := 3
 ## 1 部隊で結べる誓いの数。
 const MAX_OATHS := 2
 
-const _BY_ARMY := {
-	UnitKind.Army.MILITARY: [Id.FOCUS, Id.RANKS, Id.SUPPLY],
-	UnitKind.Army.FANTASY: [Id.VENGEANCE, Id.OATH, Id.GUARD],
-}
+## 守護で、隣の味方を守る兵の種類。
+const GUARDIAN := UnitKind.Id.PALADIN
 
 
-## その軍の軍略（選べる 3 つ。並びは部隊編成の札の順）。軍でなければ空。
+## その軍の軍略（並びは部隊編成の札の順。軍の表 Armies の traits）。軍でなければ空。
 static func of_army(army: UnitKind.Army) -> Array[Id]:
 	var result: Array[Id] = []
-	result.assign(_BY_ARMY.get(army, []))
+	result.assign(Armies.traits(army))
 	return result
 
 
@@ -64,8 +62,8 @@ static func default_of(army: UnitKind.Army) -> int:
 
 ## その軍略の軍。
 static func army_of(id: int) -> UnitKind.Army:
-	for army: UnitKind.Army in _BY_ARMY:
-		if (_BY_ARMY[army] as Array).has(id):
+	for army in Armies.all():
+		if Armies.traits(army).has(id):
 			return army
 	return UnitKind.Army.NONE
 
@@ -140,7 +138,7 @@ static func guardian_at(battle: Battle, unit: Unit, cell: Vector2i) -> Unit:
 	if not has(battle, unit, Id.GUARD):
 		return null
 	for other in neighbors_at(battle, unit, cell):
-		if other.kind == UnitKind.Id.PALADIN:
+		if other.kind == GUARDIAN:
 			return other
 	return null
 
@@ -156,8 +154,9 @@ static func supplier_at(battle: Battle, unit: Unit, cell: Vector2i) -> Unit:
 
 
 ## このターンに、陣営 side の駒が target を攻撃したか（except の駒の攻撃は数えない）。
-static func struck_by_side(battle: Battle, target: Unit, side: Unit.Side, except: Unit = null) -> bool:
-	for mark: Vector2i in battle.struck.get(target.id, []):
+## marks を渡すと、対戦の覚え（Battle.struck）の代わりに、それを target の覚えとして読む（CPU の見積もり。Combat.hit_from）。
+static func struck_by_side(battle: Battle, target: Unit, side: Unit.Side, except: Unit = null, marks: Variant = null) -> bool:
+	for mark: Vector2i in _marks_of(battle, target, marks):
 		if mark.y == int(side) and (except == null or mark.x != except.id):
 			return true
 	return false
@@ -186,31 +185,36 @@ static func partner_of(battle: Battle, unit: Unit) -> Unit:
 	return partner if partner != null and partner.oath_partner == unit.id else null
 
 
-## 誓いの印: target が、このターンに unit の誓いの相手に攻撃されているか（unit が攻撃すると誓いが効く）。
-static func oath_marked(battle: Battle, unit: Unit, target: Unit) -> bool:
+## 誓いの印: target が、このターンに unit の誓いの相手に攻撃されているか（unit が攻撃すると誓いが効く）。marks は struck_by_side と同じ。
+static func oath_marked(battle: Battle, unit: Unit, target: Unit, marks: Variant = null) -> bool:
 	var partner := partner_of(battle, unit)
 	if partner == null:
 		return false
-	for mark: Vector2i in battle.struck.get(target.id, []):
+	for mark: Vector2i in _marks_of(battle, target, marks):
 		if mark.x == partner.id:
 			return true
 	return false
 
 
-## attacker が target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。
-static func attack_boosts(battle: Battle, attacker: Unit, target: Unit) -> Dictionary:
+## target がこのターンに攻撃された覚え（Vector2i(攻撃した駒の番号, 陣営) の並び）。marks を渡せば、それ。
+static func _marks_of(battle: Battle, target: Unit, marks: Variant) -> Array:
+	return battle.struck.get(target.id, []) if marks == null else marks
+
+
+## attacker が target を攻撃するときに足すダメージ（軍略 -> 量）。無ければ空。marks は struck_by_side と同じ。
+static func attack_boosts(battle: Battle, attacker: Unit, target: Unit, marks: Variant = null) -> Dictionary:
 	var result := {}
 	if attacker.side == Unit.Side.NEUTRAL or target.side == attacker.side:
 		return result
 	match of_side(battle, attacker.side):
 		Id.FOCUS:
-			if struck_by_side(battle, target, attacker.side, attacker):
+			if struck_by_side(battle, target, attacker.side, attacker, marks):
 				result[Id.FOCUS] = FOCUS_BONUS
 		Id.VENGEANCE:
 			if slew(target, attacker.side):
 				result[Id.VENGEANCE] = VENGEANCE_BONUS
 		Id.OATH:
-			if oath_marked(battle, attacker, target):
+			if oath_marked(battle, attacker, target, marks):
 				result[Id.OATH] = OATH_BONUS
 	return result
 
@@ -274,7 +278,5 @@ static func start_phase(battle: Battle, side: Unit.Side) -> Array[BattleEvent]:
 		var medic := supplier_at(battle, unit, unit.cell)
 		if medic == null:
 			continue
-		var amount := mini(SUPPLY_HEAL, unit.max_hp() - unit.hp)
-		unit.hp += amount
-		events.append(SupplyHealedEvent.new(medic.id, unit.id, amount, unit.hp))
+		events.append(Mend.give(unit, SUPPLY_HEAL, SupplyHealedEvent.new(medic.id)))
 	return events

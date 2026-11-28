@@ -454,9 +454,30 @@ func test_cpu_picks_a_trait_that_fits_the_squad() -> void:
 	assert_eq(CpuDeck.choose_trait(knights), T.VENGEANCE, "奇襲が多くても、選ぶ軍略は無い")
 	knights.add(K.PALADIN)
 	assert_eq(CpuDeck.choose_trait(knights), T.GUARD, "パラディンが 2 体")
+	var ranks := Deck.new(UnitKind.Army.MILITARY)
+	for kind: UnitKind.Id in [K.SHIELD_TROOPER, K.SHIELD_TROOPER, K.SNIPER, K.COMMANDO]:
+		ranks.add(kind)
+	assert_eq(CpuDeck.choose_trait(ranks), T.FOCUS, "同じ兵種の組が 1 つ")
+	ranks.add(K.SNIPER)
+	assert_eq(CpuDeck.choose_trait(ranks), T.RANKS, "同じ兵種の組が 2 つ")
 	var built := CpuDeck.build(UnitKind.Army.FANTASY)
 	assert_eq(built.trait_id, CpuDeck.choose_trait(built))
 	assert_eq(built.oaths.is_empty(), built.trait_id != T.OATH, "誓いのときだけ結ぶ")
+
+
+## 隊列の CPU は、行動を終えたときに隊列の効く同じ兵種の駒を数える（並びを作れば相手のぶんも、離れれば残された味方のぶんが減る）。
+func test_cpu_counts_the_ranks_a_move_makes_or_breaks() -> void:
+	var battle := _battle(T.RANKS)
+	var mover := battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(1, 1))
+	battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(1, 2))
+	battle.add_unit(K.SHIELD_TROOPER, P1, Vector2i(4, 4))
+	battle.add_unit(K.SNIPER, P1, Vector2i(5, 1))
+	var cpu := CpuPlayer.new()
+	cpu._battle = battle
+	assert_eq(cpu._ranked_count(mover, Vector2i(1, 1)), 2, "いまの並び")
+	assert_eq(cpu._ranked_count(mover, Vector2i(4, 3)), 2, "離れた盾と並ぶ（残された盾は外れる）")
+	assert_eq(cpu._ranked_count(mover, Vector2i(5, 2)), 0, "兵種の違う味方の隣")
+	assert_eq(cpu._ranked_count(mover, Vector2i(2, 2)), 2, "並びのまま隣へ")
 
 
 func test_random_squad_picks_a_trait_without_changing_the_units() -> void:

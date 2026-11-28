@@ -12,8 +12,8 @@ var level_ups := 0
 var evolutions := 0
 var games_with_evolution := 0
 var first_evolution_turns: Array[int] = []
-## 軍の違う対戦で、[MILITARY の勝ち, FANTASY の勝ち]。
-var army_wins: Array[int] = [0, 0]
+## 軍の違う対戦で、軍ごとの勝ち（並びは軍の表の順。2 軍なら [MILITARY の勝ち, FANTASY の勝ち]）。
+var army_wins: Array[int] = _zeros(Armies.all().size())
 var neutral_kills := 0
 var losses := 0
 ## 中ボス: 1 体でも倒れた局の数、倒れた数、倒れたターン、倒した側が勝った数・負けた数（決着した局だけ）。
@@ -207,6 +207,22 @@ func line(name: String) -> String:
 		text += "  中ボス %d" % endings["boss"]
 	if endings["point"] > 0:
 		text += "  拠点 %d" % endings["point"]
-	if army_wins[0] + army_wins[1] > 0:
-		text += "  M %d 勝 F %d 勝（M %.0f%%）" % [army_wins[0], army_wins[1], 100.0 * army_wins[0] / (army_wins[0] + army_wins[1])]
+	var army_total: int = army_wins.reduce(func(sum: int, value: int) -> int: return sum + value, 0)
+	if army_total > 0:
+		var parts: Array[String] = []
+		for i in army_wins.size():
+			parts.append("%s %d 勝" % [_initial(i), army_wins[i]])
+		text += "  %s（%s %.0f%%）" % [" ".join(parts), _initial(0), 100.0 * army_wins[0] / army_total]
 	return text
+
+
+static func _zeros(count: int) -> Array[int]:
+	var result: Array[int] = []
+	result.resize(count)
+	result.fill(0)
+	return result
+
+
+## 軍の表の i 番目の軍の頭文字（M、F）。
+static func _initial(i: int) -> String:
+	return String(UnitKind.Army.keys()[Armies.all()[i]]).left(1)
