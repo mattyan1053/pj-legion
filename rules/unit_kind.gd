@@ -48,7 +48,7 @@ const _TABLE := {
 	Id.MEDIC: [Role.HEALER, Army.MILITARY, 3, 20, 15, 4, 1],
 	Id.PALADIN: [Role.VANGUARD, Army.FANTASY, 4, 52, 8, 3, 1],
 	Id.SORCERER: [Role.REARGUARD, Army.FANTASY, 3, 20, 11, 3, 2],
-	Id.SPELLBLADE: [Role.RAIDER, Army.FANTASY, 3, 22, 12, 6, 1],
+	Id.SPELLBLADE: [Role.RAIDER, Army.FANTASY, 3, 21, 12, 6, 1],
 	Id.PRIEST: [Role.HEALER, Army.FANTASY, 3, 22, 14, 4, 2],
 	Id.MINION: [Role.NONE, Army.NONE, 0, 12, 4, 2, 1],
 	Id.ELITE_MINION: [Role.NONE, Army.NONE, 0, 50, 10, 2, 2],
