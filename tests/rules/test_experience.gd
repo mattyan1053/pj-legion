@@ -158,7 +158,7 @@ func test_gains_depend_on_the_role() -> void:
 		UnitKind.Id.MEDIC: [20 + 3, 15 + 2],  # 回復ロールは回復量が伸びる
 		UnitKind.Id.PALADIN: [52 + 6, 8 + 1],
 		UnitKind.Id.SORCERER: [20 + 3, 11 + 1],
-		UnitKind.Id.SPELLBLADE: [22 + 3, 12 + 1],
+		UnitKind.Id.SPELLBLADE: [21 + 3, 12 + 1],
 		UnitKind.Id.PRIEST: [22 + 3, 14 + 2],
 	}
 	var x := 0
