@@ -42,6 +42,8 @@ func _make_cut_stage() -> void:
 
 ## 文の枠・名前の札・下の案内を、出すか消すか（大きさと場所は変えない）。
 func _set_text_shown(shown: bool) -> void:
+	if not shown and _cut_stage != null:
+		_cut_stage.show_speaker("")  # 兵が動いている間は、話し手の印も出さない
 	for part: CanvasItem in [_box, _plate, _hint]:
 		if part != null:
 			part.self_modulate.a = 1.0 if shown else 0.0

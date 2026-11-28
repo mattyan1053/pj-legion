@@ -186,16 +186,19 @@ func test_long_board_cutscene_alternates_moves_and_lines() -> void:
 	assert_true(screen.is_board_cut() and screen.figures().is_empty(), "盤のカットシーンは、話し手の姿を立たせない")
 	assert_eq(screen.cut_stage().views().size(), 3, "台本の兵が立つ")
 	assert_false(screen.is_beat_playing(), "最初の文の前に動きが無ければ、すぐ文")
+	assert_eq(screen.cut_stage().speaker, "", "地の文では、話し手の印を出さない")
 	var scale := Engine.time_scale
 	Engine.time_scale = 50.0
 	_next_line(screen)
 	assert_true(screen.is_beat_playing(), "次の文の前の動きを再生する")
+	assert_eq(screen.cut_stage().speaker, "", "兵が動いている間は、話し手の印を出さない")
 	screen.press_next()
 	assert_eq(screen.line_index(), 0, "動いている間は、文を進めない")
 	assert_eq(screen._log_lines().size(), 1, "動いている間のログは、動きの前の文まで")
 	while screen.is_beat_playing():
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_eq(screen.line_index(), 1, "動き終えたら、次の文")
+	assert_eq(screen.cut_stage().speaker, "新兵", "盤にいる話し手の頭の上に印")
 	screen.press_back()
 	assert_eq(screen.line_index(), 1, "盤の動きをまたいで、前の文へは戻らない")
 	_next_line(screen)
