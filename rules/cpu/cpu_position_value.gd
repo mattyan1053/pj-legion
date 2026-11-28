@@ -361,15 +361,15 @@ func _choose_stronghold_taker() -> void:
 
 
 ## 軍略（docs/troop-traits.md。docs/cpu-ai.md の「軍略」）で、unit が cell に立って行動を終える価値。
-## - 隊列: 同じ兵種の味方の隣なら RANKS_HUDDLE_VALUE（受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）
+## - 隊列: unit が cell に立ったときに隊列の効く、unit と同じ兵種の駒の数（unit 自身も。_ranked_count）に RANKS_HUDDLE_VALUE を掛けたもの
+##   （並びを作れば、隣の味方にも効く。離れれば、残された味方の隊列が切れる。受けうるダメージの見積もりも、隊列のぶんだけ減らして読む）
 ## - 補給線: HP の減った駒が回復役の隣なら、回復する量（次のターンの始め）に SUPPLY_STAND_VALUE を掛けたもの
 ## - 誓い: 誓いの相手から OATH_NEAR マス以内なら OATH_NEAR_VALUE（同じ敵を 2 人で攻撃できる所にいる）
 ## - 守護: パラディンの隣なら GUARD_STAND_VALUE（受けうるダメージの見積もりも、守護のぶんだけ減らして読む）
 func _trait_position_value(unit: Unit, cell: Vector2i) -> float:
 	match Traits.of_side(_battle, unit.side):
 		Traits.Id.RANKS:
-			if Traits.ranked_at(_battle, unit, cell):
-				return RANKS_HUDDLE_VALUE
+			return RANKS_HUDDLE_VALUE * _ranked_count(unit, cell)
 		Traits.Id.SUPPLY:
 			var missing := unit.max_hp() - unit.hp
 			if missing > 0 and Traits.supplier_at(_battle, unit, cell) != null:
@@ -382,3 +382,24 @@ func _trait_position_value(unit: Unit, cell: Vector2i) -> float:
 			if Traits.guardian_at(_battle, unit, cell) != null:
 				return GUARD_STAND_VALUE
 	return 0.0
+
+
+## 隊列: unit が cell に立ったら、unit と、unit と同じ兵種の味方のうち、同じ兵種の味方と隣り合う（隊列の効く）ものの数。
+## ほかの味方は、いまのマスにいるものとして数える。
+func _ranked_count(unit: Unit, cell: Vector2i) -> int:
+	var mates: Array[Unit] = []
+	for other in _battle.units:
+		if other != unit and other.side == unit.side and other.kind == unit.kind:
+			mates.append(other)
+	var count := 0
+	var beside := false  # unit 自身に効くか
+	for mate in mates:
+		if Traits.adjacent(mate.cell, cell):
+			beside = true
+			count += 1
+			continue
+		for other in mates:
+			if other != mate and Traits.adjacent(other.cell, mate.cell):
+				count += 1
+				break
+	return count + (1 if beside else 0)

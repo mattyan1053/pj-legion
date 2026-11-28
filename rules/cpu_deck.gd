@@ -73,10 +73,12 @@ static func _fits(trait_id: int, deck: Deck) -> bool:
 		Traits.Id.SUPPLY:
 			return healers >= SUPPLY_MEDICS
 		Traits.Id.RANKS:
+			var pairs := 0
 			for kind: UnitKind.Id in counts:
-				if UnitKind.role(kind) != UnitKind.Role.HEALER and counts[kind] >= RANKS_KIND:
-					return true
-			return false
+				if UnitKind.role(kind) != UnitKind.Role.HEALER:
+					@warning_ignore("integer_division")
+					pairs += counts[kind] / 2
+			return pairs >= RANKS_PAIRS
 		Traits.Id.GUARD:
 			return counts.get(Traits.GUARDIAN, 0) >= GUARD_PALADINS
 		Traits.Id.OATH:
@@ -86,7 +88,7 @@ static func _fits(trait_id: int, deck: Deck) -> bool:
 
 ## choose_trait の数（部隊の中身の目安）。
 const SUPPLY_MEDICS := 2
-const RANKS_KIND := 4
+const RANKS_PAIRS := 2
 const GUARD_PALADINS := 2
 const OATH_FIGHTERS := 5
 
