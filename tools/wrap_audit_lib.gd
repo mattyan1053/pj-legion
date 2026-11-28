@@ -12,6 +12,7 @@ const Story := preload("res://game/story.gd")
 const Episode := preload("res://game/episode.gd")
 const TalkScreen := preload("res://game/talk_screen.gd")
 const TalkLog := preload("res://game/talk_log.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
 const BattleTalk := preload("res://game/battle_talk.gd")
 const ResultScreen := preload("res://game/result_screen.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -165,7 +166,7 @@ static func _sites_of(line: Dictionary) -> Array[Dictionary]:
 	var body := UiTheme.FONT_HEADING if line["narration"] else UiTheme.FONT_BODY
 	match line["site"]:
 		&"talk":
-			var talk_line := {"text": line["text"], "side": TalkScreen.NARRATION_SIDE if line["narration"] else 0}
+			var talk_line := TalkScene.Line.new(TalkScene.NARRATION_SIDE if line["narration"] else 0, "", line["text"])
 			sites.append({"name": "会話の枠", "width": TalkScreen.text_width(talk_line), "measure": _measure(body, TalkScreen.TEXT_FONT), "max_lines": talk_max_lines()})
 			sites.append({"name": "会話のログ", "width": TalkLog.TEXT_WIDTH, "measure": _measure(body, TalkLog.TEXT_FONT), "max_lines": 99})
 		&"cue":

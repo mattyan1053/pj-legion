@@ -131,7 +131,9 @@ if [ -n "$full" ]; then
   start tests_long_maps_fantasy -s res://tools/run_tests.gd -- --long-only --only=on_every_map_finish_fantasy_first
   start tests_long_rest -s res://tools/run_tests.gd -- --long-only --except=on_every_map_finish_
   # 通しの点検の長い道（game/autoplay_sweeps.gd。tools/sweep.sh と同じもの）。話を全部と、対戦モードの全部のマップ × 選べる決まりの入・切。
-  start sweep_story --fixed-fps 60 -- --autoplay --story-all
+  # 話は物語を 2 つのまとまりに分ける（--story-part。全部の話を勝ち負けと全部の答えで通すと、1 つでは 3 分を超える）。
+  start sweep_story_1 --fixed-fps 60 -- --autoplay --story-all --story-part=1/2
+  start sweep_story_2 --fixed-fps 60 -- --autoplay --story-all --story-part=2/2
   start sweep_versus --fixed-fps 60 -- --autoplay --versus-all
   start shots_a -- --shots "$SHOTS_IN_FULL_A" --dry-run
   start shots_b -- --shots "$SHOTS_IN_FULL_B" --dry-run
@@ -161,7 +163,7 @@ for name in autoplay autoplay_ui autoplay_ui_wide; do
   fi
 done
 if [ -n "$full" ]; then
-  for name in sweep_story sweep_versus; do
+  for name in sweep_story_1 sweep_story_2 sweep_versus; do
     if ! grep -Fx "autoplay: OK" "$logs/$name.log" >/dev/null; then
       echo "check: 通しの点検の長い道が最後まで進まなかった（$name）" >&2
       exit 1

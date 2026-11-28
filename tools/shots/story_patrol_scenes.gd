@@ -67,6 +67,18 @@ func _scene_story_patrol_knot() -> bool:
 	return true
 
 
+## 番外の話「ほつれた野」（縫い目の様子の札のある話）の始めの台詞（左上に勝ち方の札と縫い目の様子の札。途中の台詞の帯と重ならない）。
+func _scene_story_patrol_talk_signs() -> bool:
+	if not await _patrol_battle(1):
+		return false
+	_scene.hide_notice()  # 始めの台詞は、対戦ルールの知らせを閉じてから出る
+	for i in 120:
+		if _scene.talk_line() != null and not _scene.is_banner_shown():
+			break
+		await get_tree().process_frame
+	return _scene.talk_line() != null and not _scene.battle.signs.is_empty()
+
+
 func _scene_story_patrol_needles() -> bool:
 	if not await _patrol_battle(2):
 		return false

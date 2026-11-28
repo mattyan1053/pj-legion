@@ -8,6 +8,8 @@ const Campaign := preload("res://game/campaign.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 const SystemMenu := preload("res://game/system_menu.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
+const Line := TalkScene.Line
 
 
 ## 話の流れの外の会話（"battle" の無いもの。物語の解放の知らせを出すときなど）も、開いて最初の行を出す。
@@ -23,17 +25,38 @@ func test_talk_without_a_battle_opens() -> void:
 
 
 ## 選択肢（docs/story.md の「選択肢」）の会話: 問い → 答え 2 つ（それぞれに続く行）→ 元の流れ → 条件の行。
-func _asking_talk() -> Dictionary:
-	var when_a := {"choice": &"way", "answer": &"a", "not": false}
-	var when_b := {"choice": &"way", "answer": &"b", "not": false}
-	return {"title": "", "figures": [{"kind": UnitKind.Id.KING}, {"kind": UnitKind.Id.KING}], "lines": [
-		{"side": 0, "name": "新兵", "text": "どちらへ？", "choice": {"name": &"way", "options": [{"key": &"a", "text": "左"}, {"key": &"b", "text": "右へ急ぐ"}]}},
-		{"side": 0, "who": 1, "name": "少尉", "text": "左だ。", "when": when_a},
-		{"side": 0, "who": 1, "name": "少尉", "text": "右だ。", "when": when_b},
-		{"side": 0, "name": "新兵", "text": "走るんですね。", "when": when_b},
-		{"side": 0, "name": "少尉", "text": "行くぞ。"},
-		{"side": 0, "name": "新兵", "text": "左で正解でした。", "when": when_a},
-	]}
+func _asking_talk() -> TalkScene:
+	var talk := TalkScene.make(TalkScene.Shape.MAP)
+	talk.figures.assign([{"kind": UnitKind.Id.KING}, {"kind": UnitKind.Id.KING}])
+	var ask := Line.new(0, "新兵", "どちらへ？")
+	ask.choice = _choice(&"way", {&"a": "左", &"b": "右へ急ぐ"})
+	talk.lines = [ask, _when(Line.new(0, "少尉", "左だ。", 1), &"a"), _when(Line.new(0, "少尉", "右だ。", 1), &"b"),
+		_when(Line.new(0, "新兵", "走るんですね。"), &"b"), Line.new(0, "少尉", "行くぞ。"), _when(Line.new(0, "新兵", "左で正解でした。"), &"a")]
+	return talk
+
+
+## 選択肢 name（答えの鍵 -> 文）。
+static func _choice(name: StringName, answers: Dictionary) -> TalkScene.Choice:
+	var options: Array[TalkScene.Option] = []
+	for key: StringName in answers:
+		options.append(TalkScene.Option.new(key, answers[key]))
+	return TalkScene.Choice.new(name, options)
+
+
+## 行 line に、選択肢 way で answer を選んでいるときだけ出す条件を付ける。
+static func _when(line: Line, answer: StringName) -> Line:
+	line.when = TalkScene.When.new(&"way", answer)
+	return line
+
+
+## 地の文だけの会話（型 shape。カットシーンなら色の幕 night）。
+static func _narration_talk(shape: TalkScene.Shape, texts: Array[String]) -> TalkScene:
+	var talk := TalkScene.make(shape, "見出し")
+	if shape == TalkScene.Shape.CUT:
+		talk.color = &"night"
+	for text in texts:
+		talk.lines.append(Line.new(TalkScreen.NARRATION_SIDE, "", text, -1))
+	return talk
 
 
 func _asking_screen() -> Node:
@@ -80,7 +103,7 @@ func test_a_choice_asks_and_branches_then_returns_to_the_flow() -> void:
 
 func test_a_choice_is_picked_with_keys_and_skip_stops_at_it() -> void:
 	var screen: Node = await _asking_screen()
-	screen.talk["lines"].push_front({"side": 0, "name": "少尉", "text": "着いた。"})
+	screen.talk.lines.push_front(Line.new(0, "少尉", "着いた。"))
 	screen._refresh_lines()
 	screen._show_line(0)
 	screen.press_skip()
@@ -110,7 +133,7 @@ func test_the_options_frame_keeps_its_size() -> void:
 	await settle(screen)
 	var small: Rect2 = screen.options_rect()
 	var longest := "あ".repeat(Story.Episode.OPTION_MAX_CHARS)
-	screen.talk["lines"][0]["choice"]["options"] = [{"key": &"a", "text": longest}, {"key": &"b", "text": longest}, {"key": &"c", "text": longest}]
+	screen.talk.lines[0].choice = _choice(&"way", {&"a": longest, &"b": longest, &"c": longest})
 	screen._refresh_lines()
 	screen._show_line(0)
 	screen.press_next()
@@ -137,7 +160,7 @@ func test_the_key_that_picks_an_answer_does_not_also_advance_and_a_last_question
 	assert_true(screen.line_index() == 1 and not screen.is_line_shown(), "答えを決めたキーで、次の文を出しきった")
 	screen.free()
 	screen = await _asking_screen()
-	screen.talk["lines"] = [screen.talk["lines"][0]]
+	screen.talk.lines.assign([screen.talk.lines[0]])
 	screen._refresh_lines()
 	screen._show_line(0)
 	var ended := [0]
@@ -153,9 +176,7 @@ func test_the_key_that_picks_an_answer_does_not_also_advance_and_a_last_question
 ## カットシーン: 話し手の姿を立てず、地の文を出す。色の幕なら、背景の盤を作らない。クリックで送れて、最後で終わる。
 func test_a_cutscene_shows_narration_without_figures() -> void:
 	var screen := TalkScreen.new()
-	screen.talk = {"title": "見出し", "cut": true, "color": &"night", "lines": [
-		{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "隊は、夜のうちに谷を抜けた。"},
-		{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "だれも、口をきかなかった。"}]}
+	screen.talk = _narration_talk(TalkScene.Shape.CUT, ["隊は、夜のうちに谷を抜けた。", "だれも、口をきかなかった。"])
 	await settle(screen)
 	assert_true(screen.is_cut() and screen.is_narrating() and screen.figures().is_empty())
 	assert_eq(screen.backdrop_units(), [0, 0, 0] as Array[int])
@@ -177,7 +198,7 @@ func test_a_cutscene_shows_narration_without_figures() -> void:
 func test_long_board_cutscene_alternates_moves_and_lines() -> void:
 	var episode: Episode = Campaign.load_file("res://game/story/_template/story.txt").episodes[1]
 	var run := Story.run_of(episode, Story.default_deck(Story.starting()))
-	while not run.data().has("cut_board"):
+	while not (run.data() is TalkScene and run.data().shape == TalkScene.Shape.BOARD_CUT):
 		run.advance()
 	var screen := TalkScreen.new()
 	screen.talk = run.data()
@@ -210,7 +231,7 @@ func test_long_board_cutscene_alternates_moves_and_lines() -> void:
 	Engine.time_scale = scale
 	assert_eq(ended[0], 1, "スキップで終える")
 	var replay: RefCounted = screen.cut_stage().replay()
-	var names: Dictionary = run.data()["cut_board"].names
+	var names: Dictionary = run.data().cut_board.names
 	assert_true(replay.piece(names["骸骨"]) == null and replay.piece(names["新兵"]).cell == Vector2i(9, 17), "スキップで、終わりの盤まで済ませる")
 	assert_eq(screen.cut_stage().views().size(), 2, "見た目も、終わりの盤")
 	screen.free()
@@ -228,10 +249,8 @@ func _next_line(screen: Node) -> void:
 func test_log_and_skip_sit_in_the_same_corner_in_every_kind_of_scene() -> void:
 	var template: Episode = Campaign.load_file("res://game/story/_template/story.txt").episodes[1]
 	var run := Story.run_of(template, Story.default_deck(Story.starting()))
-	var talks: Array[Dictionary] = [_asking_talk(),
-		{"title": "見出し", "lines": [{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "地の文。"}]},
-		{"title": "見出し", "cut": true, "color": &"night", "lines": [{"side": TalkScreen.NARRATION_SIDE, "who": -1, "name": "", "text": "幕の上の文。"}]}]
-	while not run.data().has("cut_board"):
+	var talks: Array[TalkScene] = [_asking_talk(), _narration_talk(TalkScene.Shape.MAP, ["地の文。"]), _narration_talk(TalkScene.Shape.CUT, ["幕の上の文。"])]
+	while not (run.data() is TalkScene and run.data().shape == TalkScene.Shape.BOARD_CUT):
 		run.advance()
 	talks.append(run.data())
 	var hud := BattleHud.new()

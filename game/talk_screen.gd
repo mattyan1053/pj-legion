@@ -3,20 +3,21 @@ extends "res://game/talk_screen/talk_board.gd"
 ## 人の軍の話し手は左、敵の軍の話し手は右。話している側を明るく大きく、話していない側を暗く小さく。背景は対戦と同じ景色（backdrop.gd）。
 ## 立つ所は左右に 1 つずつ。同じ所に立つ話し手が何人かいれば、いちばん近くに話した人（まだ誰も話していなければ、次に話す人）が立つ。
 ## 敵の軍が出てこない会話は、最初に話す人が左、ほかの人が右（味方どうしが向き合って話す）。
-## 背景は、話の盤（渡されなければ、タイトルと同じ景色）。場面の決まりは scene_flow.gd。流れ（run.gd）が、会話（story.gd の talk_of）を渡す。
+## 背景は、話の盤（渡されなければ、タイトルと同じ景色）。場面の決まりは scene_flow.gd。流れ（run.gd）が、会話（talk_scene.gd。story.gd の run_of）を渡す。
+## 背景と出すものは、会話の型（talk.shape）で決まる（talk_scene.gd の表）。
 ##
 ## - クリック・Enter・Space で次の文へ。文が出きる前なら、出しきるだけ。最後の文のあとは Run.NEXT で終える（流れの次の場面へ）。
 ## - 右クリックで 1 つ前の文へ戻る。Esc はシステムメニュー（ほかの場面と同じ）。
 ## - 「ログ」・ホイールを上へ・L で、これまでの文を遡って読む窓（talk_log.gd）を開く。
 ## - 「飛ばす」で、残りを読まずに Run.NEXT で終える。知らせの行（side 2。駒の解放など）は飛ばさず、そこで止まる。
-## - 渡された会話に次の話（"next_episode"。ストーリーの、あとの会話）があれば、終えるときに行き先を選ばせる:
+## - 渡された会話に次の話（next_episode。ストーリーの、あとの会話）があれば、終えるときに行き先を選ばせる:
 ##   「次の話へ」（その話の流れを始める。Enter でも）か「話の一覧へ」（Run.NEXT。流れの行き先）。右クリックで最後の文へ戻る。
 ##
 ## ここは、組み立て（_ready）、入力、文の送り。役割ごとのファイル（game/talk_screen/）を、次の順に継ぐ:
 ## talk_base.gd（調整値・変数・小さな道具）→ talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ talk_naming.gd（主人公の名前を聞く行）
 ## → talk_board.gd（盤のカットシーンの舞台と出来事の塊）→ ここ。
 ##
-## 盤のカットシーン（"cut_board"。docs/story.md の「盤のカットシーン」）: 背景は舞台（台本の兵が動く盤）。話し手の姿と見出しは出さない。
+## 盤のカットシーン（型が BOARD_CUT。docs/story.md の「盤のカットシーン」）: 背景は舞台（台本の兵が動く盤）。話し手の姿と見出しは出さない。
 ## 文の前に出来事の塊があれば、それを再生してから文を出す（再生の間は文の枠を消し、クリックで進めない）。最後の文のあとの塊は、再生してから終える。
 ## 「スキップ」は、残りの塊を見せずに終わりの盤まで済ませてから終える。盤の動きをまたいで、右クリックで前の文へは戻れない。
 
@@ -28,36 +29,32 @@ func _ready() -> void:
 	if given != null:
 		talk = given
 	_refresh_lines()
-	# 話の流れの会話なら、背景の盤に駒を立たせる（前の会話は初期位置、あとの会話は決着したときの駒。story_battle.gd の talk_battle）。
-	var story_battle: RefCounted = talk.get("battle")
-	var shown: Battle = story_battle.talk_battle(talk.get("after", false)) if story_battle != null else null
-	var king_looks: Array[StringName] = []  # 三項の式で型の付いた空の配列を返すと、型の無い配列になって入らない
-	if story_battle != null:
-		king_looks = story_battle.king_looks()
-	# 名前のある人物は、盤と同じく、その人の乗る駒をその人の形で立たせる（unit_looks.gd の assign_people）。
-	var people: Dictionary = UnitLooks.assign_people(shown.units, story_battle.cast_looks()) if shown != null else {}
 	# カットシーン（docs/story.md の「カットシーン」）: 文の枠も話し手も出さず、背景（景色か、色の幕）の上に、地の文を真ん中に出す。
-	var cut: bool = talk.get("cut", false)
+	var cut := talk.shape == TalkScene.Shape.CUT
 	var on_board := is_board_cut()
-	var curtain: StringName = talk.get("color", &"")
 	var layer := CanvasLayer.new()
 	_layer = layer
-	if on_board:
-		_make_cut_stage()
-	elif CUT_COLORS.has(curtain):
-		var fill := ColorRect.new()
-		fill.color = CUT_COLORS[curtain]
-		fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(fill)
-	else:
-		_backdrop = Backdrop.new(talk.get("board"), talk.get("look", &""), shown, king_looks, people)
-		_backdrop.scenery_only = shown == null  # 兵を立たせない背景（別の場所の会話、カットシーン）は、景色だけ。マス目も本陣の旗も出さない
-		add_child(_backdrop)
+	# 背景は、会話の型で決まる（talk_scene.gd の表）。
+	match talk.shape:
+		TalkScene.Shape.MAP:
+			_make_backdrop(talk.battle)  # 対戦のある話なら、背景の盤に駒を立たせる
+		TalkScene.Shape.PLACE:
+			_make_backdrop(null)
+		TalkScene.Shape.CUT:
+			if CUT_COLORS.has(talk.color):
+				var fill := ColorRect.new()
+				fill.color = CUT_COLORS[talk.color]
+				fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+				fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				layer.add_child(fill)
+			else:
+				_make_backdrop(null)
+		TalkScene.Shape.BOARD_CUT:
+			_make_cut_stage()
 	add_child(layer)
 	# 背景の盤を少し沈め、話し手の姿と文を浮かせる。
 	var shade := ColorRect.new()
-	shade.color = Color(Palette.SHADE, CUT_SHADE if cut or on_board else BACKDROP_SHADE)
+	shade.color = Color(Palette.SHADE, BACKDROP_SHADE if talk.shows_speakers() else CUT_SHADE)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(shade)
@@ -78,8 +75,8 @@ func _ready() -> void:
 	var heading := _label(28, COLOR_TEXT)
 	heading.theme_type_variation = UiTheme.LABEL_HEADING
 	heading.add_theme_constant_override("outline_size", 10)  # 景色の上に直に置くので、縁取りを太くする
-	heading.text = talk.get("title", "")
-	heading.modulate.a = 0.0 if cut or on_board else 1.0  # カットシーンは見出しを出さない（場所は取ったまま）
+	heading.text = talk.title
+	heading.modulate.a = 1.0 if talk.shows_speakers() else 0.0  # カットシーンは見出しを出さない（場所は取ったまま）
 	root.add_child(heading)
 
 	_stage = Control.new()
@@ -170,7 +167,7 @@ func _ready() -> void:
 	var column := VBoxContainer.new()
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(column)
-	# 駒の解放の知らせ（行に "kind" がある）は、文の左に、その駒のアイコンを出す（unit_icons.gd）。持ち物（"item"）は持ち物の印（item_icon.gd）。
+	# 駒の解放の知らせ（行の unit_kind）は、文の左に、その駒のアイコンを出す（unit_icons.gd）。持ち物（item）は持ち物の印（item_icon.gd）、軍略（troop_trait）は軍略の印。
 	var text_row := HBoxContainer.new()
 	text_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -222,6 +219,20 @@ func _ready() -> void:
 		_go_to_line(0)
 	else:
 		_show_line(0)
+
+
+## 背景の盤（話の盤か、別の場所の景色）。story_battle（story_battle.gd）があれば、その駒を立たせる
+## （前の会話は初期位置、あとの会話は決着したときの駒。story_battle.gd の talk_battle）。無ければ景色だけ（マス目も本陣の旗も出さない）。
+func _make_backdrop(story_battle: RefCounted) -> void:
+	var shown: Battle = story_battle.talk_battle(talk.after) if story_battle != null else null
+	var king_looks: Array[StringName] = []  # 三項の式で型の付いた空の配列を返すと、型の無い配列になって入らない
+	if story_battle != null:
+		king_looks = story_battle.king_looks()
+	# 名前のある人物は、盤と同じく、その人の乗る駒をその人の形で立たせる（unit_looks.gd の assign_people）。
+	var people: Dictionary = UnitLooks.assign_people(shown.units, story_battle.cast_looks()) if shown != null else {}
+	_backdrop = Backdrop.new(talk.board, talk.look, shown, king_looks, people)
+	_backdrop.scenery_only = shown == null
+	add_child(_backdrop)
 
 
 ## 「スキップ」「ログ」とホイールの案内: 画面の右上の角（システムメニューのボタンの左）。会話・カットシーン・盤のカットシーンのどれでも同じ所で、
@@ -368,7 +379,7 @@ func press_next() -> void:
 		_ask_if_due()
 		_ask_name_if_due()
 		return
-	if not _choice_here().is_empty():
+	if _choice_here() != null:
 		_ask_if_due()  # 選ばせる行は、答えを選ぶまで進まない
 		return
 	if _names_at(_index):
@@ -412,8 +423,7 @@ func press_skip() -> void:
 		_end()
 		return
 	for index in range(_index, line_count()):
-		var asks: bool = not (_lines[index] as Dictionary).get("choice", {}).is_empty()
-		if (index > _index and int(_lines[index].get("side", 0)) == NOTICE_SIDE) or asks or _names_at(index):
+		if (index > _index and _lines[index].is_notice()) or _lines[index].asks() or _names_at(index):
 			context.play_sound(&"ui_click")
 			if index != _index:
 				_show_line(index)
@@ -428,12 +438,12 @@ func press_skip() -> void:
 ## 答え at（0 から）を選ぶ: 覚えて、その答えに続く行へ進む。
 func press_option(at: int) -> void:
 	var choice := _choice_here()
-	if not is_asking() or choice.is_empty() or at < 0 or at >= (choice["options"] as Array).size():
+	if not is_asking() or choice == null or at < 0 or at >= choice.options.size():
 		return
-	var key: StringName = choice["options"][at]["key"]
-	_answers[choice["name"]] = String(key)
+	var key := choice.options[at].key
+	_answers[choice.name] = String(key)
 	if context.story != null:
-		context.story.choose_answer(choice["name"], key)
+		context.story.choose_answer(choice.name, key)
 	_close_options()
 	_refresh_lines()
 	if _index + 1 < _lines.size():
@@ -530,14 +540,14 @@ func corner_rect() -> Rect2:
 	return _corner.get_global_rect()
 
 
-## カットシーンか（検査用）。
+## カットシーンか（検査用。盤のカットシーンは is_board_cut）。
 func is_cut() -> bool:
-	return talk.get("cut", false)
+	return talk.shape == TalkScene.Shape.CUT
 
 
 ## いまの文が地の文か（検査用）。
 func is_narrating() -> bool:
-	return _index < line_count() and is_narration(_lines[_index])
+	return _index < line_count() and _lines[_index].is_narration()
 
 
 ## いまの話し手の名前と文（検査用）。
@@ -566,18 +576,18 @@ func _show_line(index: int) -> void:
 		if is_board_cut():
 			_cut_stage.show_speaker("")
 		return
-	var line: Dictionary = _lines[index]
-	var narration := is_narration(line)
+	var line := _lines[index]
+	var narration := line.is_narration()
 	_plate.visible = true
 	_plate.modulate.a = 0.0 if narration else 1.0  # 地の文は札を出さない（場所は取ったまま。文の枠が上下に動かないように）
-	_name.text = line.get("name", "")
+	_name.text = line.name
 	_text.add_theme_font_override("font", UiTheme.FONT_HEADING if narration else UiTheme.FONT_BODY)
 	_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if narration else HORIZONTAL_ALIGNMENT_LEFT
 	_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER if narration else VERTICAL_ALIGNMENT_TOP
-	var team := TEAM_COLORS[clampi(int(line.get("side", 0)), 0, TEAM_COLORS.size() - 1)]
+	var team := TEAM_COLORS[clampi(line.side, 0, TEAM_COLORS.size() - 1)]
 	if narration:
 		_box_style.border_color = COLOR_BORDER
-	elif int(line.get("side", 0)) >= NOTICE_SIDE:
+	elif line.side >= NOTICE_SIDE:
 		# 知らせ（手に入れたもの）は、陣営の色ではなく金: 選ばれている地の札と、金の縁。
 		_plate_style.bg_color = Palette.CHOSEN
 		_plate_style.border_color = Palette.BORDER_BRIGHT
@@ -587,31 +597,37 @@ func _show_line(index: int) -> void:
 		_plate_style.border_color = team.lightened(0.35)
 		_box_style.border_color = COLOR_BORDER.lerp(team.lightened(0.2), 0.85)
 	if is_board_cut():
-		_cut_stage.show_speaker("" if narration else str(line.get("name", "")), team)  # 盤にいる話し手の頭の上に印
-	_raw_text = line.get("text", "")
+		_cut_stage.show_speaker("" if narration else line.name, team)  # 盤にいる話し手の頭の上に印
+	_raw_text = line.text
 	_text.text = fold_line(line)
-	_face.visible = line.has("kind")
+	_face.visible = line.unit_kind >= 0
 	if _face.visible:
-		_face.set_kind(line["kind"])
-	_item_frame.visible = line.has("item") or line.has("trait")
-	_item_face.visible = line.has("item")
+		_face.set_kind(line.unit_kind as UnitKind.Id)
+	_item_frame.visible = line.item >= 0 or line.troop_trait >= 0
+	_item_face.visible = line.item >= 0
 	if _item_face.visible:
-		_item_face.item = line["item"]
+		_item_face.item = line.item
 		_item_face.queue_redraw()
-	_trait_face.visible = line.has("trait")
-	_trait_face.set(&"trait_id", line.get("trait", Traits.NONE))
+	_trait_face.visible = line.troop_trait >= 0
+	_trait_face.set(&"trait_id", line.troop_trait if line.troop_trait >= 0 else Traits.NONE)
 	_count.text = "%d / %d" % [index + 1, line_count()]
 	var standing := _standing_at(index)
 	for view in _figures:
 		var stands := standing[view.place] == view.who
 		# 立ったばかりの姿は、動きを挟まずに明るさを決める（暗いまま出てきて、あとから明るくならない）。
-		view.set_speaking(view.who == _who(line), context.checking != &"" or not view.visible or not stands)
+		view.set_speaking(view.who == line.speaker_no(), context.checking != &"" or not view.visible or not stands)
 		view.visible = stands
 	if context.checking != &"":
 		_shown = _line_length()  # 検査とスクリーンショットは、文を出しきって始める
 	_text.visible_characters = -1 if is_line_shown() else 0
 	_ask_if_due()
 	_ask_name_if_due()
+
+
+## いまの文が、文の枠からはみ出しているか（検査用）。文の欄より文が大きいか、文に押されて枠が決まった大きさ（BOX_WIDTH × BOX_HEIGHT）を超えたか。
+func is_text_cut() -> bool:
+	var need := _text.get_theme_font(&"font").get_multiline_string_size(_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _text.get_theme_font_size(&"font_size"))
+	return need.x > _text.size.x + 0.5 or need.y > _text.size.y + 0.5 or _box.size.x > BOX_WIDTH + 0.5 or _box.size.y > BOX_HEIGHT + 0.5
 
 
 func _line_length() -> float:

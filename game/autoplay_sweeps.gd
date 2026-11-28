@@ -1,10 +1,11 @@
 extends RefCounted
-## 自動の対戦（autoplay.gd）の、通しの点検（playtest-sweep）のための長い道。PR ごとの検査（tools/check.sh）には入れない。
+## 自動の対戦（autoplay.gd）の、通しの点検（playtest-sweep）のための長い道。PR ごとの検査（tools/check.sh）には、形の違う話の 3 つだけ（story_shapes）。
 ##
-## - `-- --autoplay --story-all`: すべての物語（本編の 2 つと番外）を、第 1〜STORY_EPISODES 話まで、画面の道で通す。
+## - `-- --autoplay --story-all`: すべての物語（本編の 2 つと番外）の全部の話を、画面の道で通す（`--story-part=<k>/<n>` で、物語を n 組に分けた k 組目だけ）。
 ##   タイトル →「ストーリー」→ セーブデータ選択 → 物語を選ぶ → 話の一覧（確かめ用の解放 F5 で全部を開く）→ 話を選ぶ →
-##   出撃準備 →「出撃」→ 対戦の前の会話を 1 文ずつ送る → 対戦の途中の台詞（[cues]）を 1 つずつ出して送る →
-##   小さな盤でわざと負けて、決着の画面の負けの台詞（[lost]）を見る →「話の一覧へ」で戻り、次の話へ。
+##   話の場面の列のとおりに（autoplay/scene_walk.gd。会話・カットシーンは 1 文ずつ送り、出撃準備は「出撃」）→ 対戦の途中の台詞（[cues]）を 1 つずつ出して送る →
+##   小さな盤でわざと負けて、決着の画面の負けの台詞（[lost]）を見る →「話の一覧へ」で戻る →
+##   もう一度選んで、勝って対戦のあとの場面を最後まで読む（選択肢と、答えで替わる行があれば、答えの番号ごとに 1 度ずつ）→ 次の話へ。
 ## - `-- --autoplay --versus-all`: 対戦モードの全部のマップを、選べる決まり（OptionalRules.choosable()。休眠の決まりは画面から入にできない）を全部切ったものと全部入れたもので、
 ##   タイトル →「対戦」→ マップ選択 → 対戦設定（相手は CPU）→ 対戦を VERSUS_TURNS ターンまで（自分の番は「おまかせ」）→ タイトル。
 ##   選べる決まりが増えても、OptionalRules.choosable() から取るので、ここは変えなくてよい。
@@ -19,8 +20,6 @@ const BattleCues := preload("res://game/battle_cues.gd")
 const BattleHud := preload("res://game/battle_hud.gd")
 const VersusFields := preload("res://game/versus_fields.gd")
 
-## 物語ごとに通す話の数（頭から）。
-const STORY_EPISODES := 15
 ## 対戦モードの 1 局を、このターンまで進める。
 const VERSUS_TURNS := 4
 ## 待つ上限（コマ）。
@@ -28,6 +27,8 @@ const WAIT_FRAMES := 3000
 
 ## 呼んだ自動の対戦（autoplay.gd。_expect と、キーを押す道具を借りる）。
 var _autoplay: Node
+## 選択肢を最初の答えだけで通すか（PR ごとの点検の story_shapes）。
+var _first_answers_only := false
 
 
 func _init(autoplay: Node) -> void:
@@ -42,13 +43,56 @@ func run(app: Node, args: PackedStringArray) -> void:
 	await app.go(SceneFlow.TITLE)
 	_expect(app.current_id() == SceneFlow.TITLE, "タイトルへ戻れない")
 	if args.has("--story-all"):
-		for campaign in Story.campaigns():
-			if Story.is_ready(campaign):
-				await _story_campaign(app, campaign)
+		var part := _story_part(args)
+		var campaigns := Story.campaigns().filter(func(campaign: RefCounted) -> bool: return Story.is_ready(campaign))
+		for i: int in campaigns.size():
+			if i % part.y == part.x - 1:
+				await _story_campaign(app, campaigns[i])
 	if args.has("--versus-all"):
 		for field in VersusFields.ids():
 			for rules: Array[StringName] in [[] as Array[StringName], OptionalRules.choosable()]:
 				await _versus(app, field, rules)
+
+
+## PR ごとの点検（autoplay.gd の story）: 形の違う話を 1 つずつ（shape_episodes）、長い検査と同じ道で通して、タイトルへ戻る。
+## 選択肢は最初の答えだけ（全部の答えは、長い検査）。
+func story_shapes(app: Node) -> void:
+	_first_answers_only = true
+	var picked := shape_episodes()
+	for campaign: RefCounted in Story.campaigns():
+		var mine := picked.filter(func(episode: RefCounted) -> bool: return Story.campaign_of(episode) == campaign)
+		if not mine.is_empty():
+			await _story_campaign(app, campaign, mine)
+	_first_answers_only = false
+	await _go(app, SceneFlow.TITLE)
+
+
+## 形の違う話（どれも対戦のある話。物語の並びで最初に見つかったもの）: [before]・[after] で書いた話 / 場面の節で書き、対戦のあとの場面が 2 つ以上ある話 /
+## 盤のカットシーンのある話。話の形が変わっても、そのときの話から選び直す。
+static func shape_episodes() -> Array:
+	var picked: Array = [null, null, null]
+	for episode: RefCounted in Story.all_episodes():
+		if not episode.has_battle():
+			continue
+		var boards: bool = episode.scenes.any(func(scene: RefCounted) -> bool: return scene.board_cut != null)
+		var after: int = episode.scenes.size() - 1 - episode.scenes.find(episode.scenes.filter(func(scene: RefCounted) -> bool: return scene.is_battle())[0])
+		if picked[0] == null and not episode.written_as_scenes:
+			picked[0] = episode
+		elif picked[1] == null and episode.written_as_scenes and after >= 2 and not boards:
+			picked[1] = episode
+		elif picked[2] == null and boards:
+			picked[2] = episode
+	return picked.filter(func(episode: RefCounted) -> bool: return episode != null)
+
+
+## 引数 `--story-part=<k>/<n>`: 遊べる物語を並びの順に n 組へ配り（k 組目は k, k + n, … 番目）、k 組目だけを通す。無ければ全部（1/1）。
+static func _story_part(args: PackedStringArray) -> Vector2i:
+	for arg: String in args:
+		if arg.begins_with("--story-part="):
+			var pair := arg.trim_prefix("--story-part=").split("/")
+			if pair.size() == 2 and pair[0].is_valid_int() and pair[1].is_valid_int() and int(pair[0]) >= 1 and int(pair[0]) <= int(pair[1]):
+				return Vector2i(int(pair[0]), int(pair[1]))
+	return Vector2i(1, 1)
 
 
 func _expect(ok: bool, message: String) -> void:
@@ -60,8 +104,8 @@ func _go(app: Node, id: StringName) -> void:
 		await app.go(id)
 
 
-## 物語 campaign の頭の STORY_EPISODES 話を通す。
-func _story_campaign(app: Node, campaign: RefCounted) -> void:
+## 物語 campaign の話を通す（only が空なら全部の話。空でなければ、その話だけ）。
+func _story_campaign(app: Node, campaign: RefCounted, only: Array = []) -> void:
 	_autoplay._current = "story-all %s" % campaign.title
 	await _go(app, SceneFlow.TITLE)
 	app.current_scene().press_story()
@@ -83,8 +127,10 @@ func _story_campaign(app: Node, campaign: RefCounted) -> void:
 		_autoplay._push_key(app, KEY_F5)
 		await app.scene_changed
 	_expect(app.context.story.open_all, "F5 で、全部の話を開かない")
-	for i: int in mini(STORY_EPISODES, campaign.episodes.size()):
+	for i: int in campaign.episodes.size():
 		var episode: RefCounted = campaign.episodes[i]
+		if not only.is_empty() and not only.has(episode):
+			continue
 		_autoplay._current = "story-all %s 第 %d 話「%s」" % [campaign.title, i + 1, episode.title]
 		print("autoplay: %s" % _autoplay._current)
 		if app.current_id() != SceneFlow.EPISODES:
@@ -96,87 +142,72 @@ func _story_campaign(app: Node, campaign: RefCounted) -> void:
 		await app.scene_changed
 
 
-## 話の一覧から、話 episode を選んで、会話・途中の台詞・負けの台詞を通し、話の一覧へ戻る。
+## 話の一覧から、話 episode を通す（場面の列のとおりに。autoplay/scene_walk.gd）。対戦のある話は 2 度以上:
+## 1. 途中の台詞を送ってから、わざと負けて負けの台詞を見る（対戦のあとの場面へは進まない）。
+## 2. 勝って、対戦のあとの場面を最後まで読む。選択肢か、答えで替わる行（(if 名前 = 鍵)。前の話の選択肢を拾う行も）があれば、
+##    答えの番号ごとに 1 度ずつ（どの選択肢も、その番号の答え。答えの少ない選択肢は最後の答え）。どの答えでも、行が読めて枠からはみ出さないこと。
 func _story_episode(app: Node, episode: RefCounted) -> void:
+	if episode.has_battle():
+		await _walk_from_list(app, episode, {"battle": func(screen: Node) -> Node:
+			await _start_battle(screen, episode)
+			await _read_cues(app, screen, episode)
+			await _lose(app, screen, episode)
+			return null})
+	var branches: Dictionary = _branches_of(episode)
+	var ways := 1
+	for keys: Array in branches.values():
+		ways = maxi(ways, keys.size())
+	for way: int in (1 if _first_answers_only else ways):
+		if not branches.is_empty():
+			print("autoplay:   答え %d（%s）" % [way + 1, ", ".join(branches.keys())])
+		# 前の話の選択肢は、話を始める前に答えを置いておく（この話で選ぶものは、画面で選ぶ）。
+		var answers := {}
+		for choice: StringName in branches:
+			var keys: Array = branches[choice]
+			var pick := mini(way, keys.size() - 1)
+			answers[choice] = pick
+			app.context.story.choose_answer(choice, keys[pick])
+		# 勝つのは、PR ごとの点検と同じ道（小さな盤で 1 手。対戦の画面の決まりも見る。story_checks.gd）。
+		await _walk_from_list(app, episode, {"battle": func(screen: Node) -> Node:
+			return await _autoplay._win_story_battle(app, screen, episode, screen.source.human_deck)}, answers)
+
+
+## 話の一覧から話 episode を選び、場面の列を手順 steps・答え answers で通して、話の一覧へ戻る。
+func _walk_from_list(app: Node, episode: RefCounted, steps: Dictionary, answers := {}) -> void:
 	var list: Node = app.current_scene()
 	_expect(list.is_card_enabled(episode), "話の一覧で選べない")
 	list.choose(episode)
 	await app.scene_changed
-	# 話の場面の列（episode.gd の scenes）を順に通す。対戦はわざと負けるので、対戦のあとの会話へは進まない。
-	for scene: RefCounted in episode.scenes:
-		# 前の場面からの切り替え（幕が明ける）が済んでから、次の場面を見る。
-		while app.get(&"_changing"):
-			await app.get_tree().process_frame
-		if scene.is_battle():
-			_expect(app.current_id() == SceneFlow.BATTLE, "対戦へ進まない")
-			if app.current_id() != SceneFlow.BATTLE:
-				break
-			var screen: Node = app.current_scene()
-			screen.set_time_scale_base(8.0)
-			# 対戦の始めに「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。
-			_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
-			_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
-			screen.hide_notice()  # 閉じると、対戦が始まる
-			await _read_cues(app, screen, episode)
-			await _lose(app, screen, episode)
-			return
-		elif scene.is_talk():
-			_expect(app.current_id() == SceneFlow.TALK, "会話の場面「%s」へ進まない（いまは %s）" % [scene.part, app.current_id()])
-			if app.current_id() != SceneFlow.TALK:
-				break
-			await _read_talk(app, episode, scene)
-		else:
-			_expect(app.current_id() == SceneFlow.SORTIE, "出撃準備へ進まない")
-			if app.current_id() != SceneFlow.SORTIE:
-				break
-			app.current_scene().press_sortie()
-			await app.scene_changed
-	while app.get(&"_changing"):
-		await app.get_tree().process_frame
-	# 対戦の無い話は、最後の会話を読み終えたら話の一覧へ。途中で外れたときも、話の一覧へ戻す。
+	await _autoplay._walk_scenes(app, episode, steps, answers)
+	await _autoplay._settle_scene(app)
+	# 最後の場面を読み終えるか、負けたら話の一覧へ。途中で外れたときも、話の一覧へ戻す。
 	_expect(app.current_id() == SceneFlow.EPISODES, "話を終えても、話の一覧へ戻らない")
 	await _go(app, SceneFlow.EPISODES)
 
 
-## 会話の場面 scene を、1 文ずつ送る（文と話し手が話のファイルのとおりか）。最後の文のあとで、次の場面へ進む。
-## 話の最後の会話なら、「次の話へ」「話の一覧へ」を選ぶ所で「話の一覧へ」。
-func _read_talk(app: Node, episode: RefCounted, scene: RefCounted) -> void:
-	var talk: Node = app.current_scene()
-	var last: bool = episode.scenes.back() == scene
-	var story: RefCounted = app.context.story
-	var at := 0  # 画面の行の番号（出す条件の合わない行は、数えない）
-	for row: RefCounted in scene.lines:
-		if not row.holds(story.answer_of):
-			continue
-		while talk.is_beat_playing():  # 盤のカットシーン: 兵が動き終えるまで、文は出ない
-			await app.get_tree().process_frame
-		_expect(talk.line_index() == at and talk.line_text() == row.shown_text(), "会話の %d 文目が違う: %s" % [at + 1, talk.line_text()])
-		_expect(talk.speaker() == row.speaker_in(episode.speakers), "会話の %d 文目の話し手が違う: %s" % [at + 1, talk.speaker()])
-		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）
-		if row.asks():
-			# 選ばせる行: 答えが出て、選ぶまで進まない。1 つ目の答えを選ぶ。
-			_expect(talk.is_asking() and talk.option_texts().size() == row.options.size(), "選択肢「%s」の答えが出ない" % row.choice)
-			talk.press_next()
-			_expect(talk.line_index() == at, "答えを選ぶ前に、次の文へ進んだ")
-			talk.press_option(0)
-			_expect(story.answer_of(row.choice) == String(row.options[0]["key"]), "選んだ答えを覚えていない: %s" % row.choice)
-		elif talk.line_index() == at and app.current_id() == SceneFlow.TALK and not talk.is_choosing():
-			talk.press_next()
-		at += 1
-		await app.get_tree().process_frame
-		if app.current_id() != SceneFlow.TALK:
-			return
-	# 最後の会話の後ろの知らせ（クリアで増えるもの）を送る。
-	while last and not talk.is_choosing() and talk.line_index() < talk.line_count() - 1:
-		talk.press_next()
-	if last and not talk.is_choosing():
-		talk.press_next()
-		await app.get_tree().process_frame
-	if app.current_id() != SceneFlow.TALK:
-		return
-	if talk.is_choosing():
-		talk.press_to_episodes()
-	await app.scene_changed
+## 話 episode の会話の行が答えで替わる選択肢: 名前 -> 答えの鍵の列（この話で選ぶものと、出す条件 (if 名前 = 鍵) に書いたもの。前の話の選択肢も）。
+static func _branches_of(episode: RefCounted) -> Dictionary:
+	var keys_of := {}  # 選択肢の名前 -> 答えの鍵（物語のどの話で選ぶものでも）
+	for each: RefCounted in Story.campaign_of(episode).episodes:
+		for scene: RefCounted in each.scenes:
+			for row: RefCounted in scene.lines:
+				if row.asks():
+					keys_of[row.choice] = row.options.map(func(option: Dictionary) -> StringName: return StringName(option["key"]))
+	var found := {}
+	for scene: RefCounted in episode.scenes:
+		for row: RefCounted in scene.lines:
+			for choice: StringName in [row.choice if row.asks() else &"", row.when_choice]:
+				if choice != &"" and keys_of.has(choice):
+					found[choice] = keys_of[choice]
+	return found
+
+
+## 話の対戦の始め: 「対戦ルール」（その話の勝利条件）が出て、札の文は切れない。閉じると、対戦が始まる。
+func _start_battle(screen: Node, episode: RefCounted) -> void:
+	screen.set_time_scale_base(8.0)
+	_expect(screen.notice_text() != "", "話の対戦の始めに「対戦ルール」が出ない: %s" % episode.id)
+	_expect(screen.notice_cut_texts().is_empty(), "「対戦ルール」の札の文が切れている: %s" % [screen.notice_cut_texts()])
+	screen.hide_notice()
 
 
 ## 対戦の途中の台詞を、1 つずつ出して送る（遊ぶときと同じに、送られるまで出したまま）。帯は 2 行の高さまでで、上の帯に重ならない。
@@ -190,6 +221,8 @@ func _read_cues(app: Node, screen: Node, episode: RefCounted) -> void:
 		var card: Rect2 = screen.talk_card_rect()
 		_expect(card.has_area() and card.position.y >= BattleHud.TOP_BAR_HEIGHT and card.size.y <= 64.0,
 			"途中の台詞の帯が出ないか、上の帯に重なるか、2 行を超える: %s（%s）" % [cue.line.text, card])
+		for other: Rect2 in screen.talk_card_neighbors():
+			_expect(not card.intersects(other), "途中の台詞の帯が、勝ち方の札・視点の案内・ミニマップに重なる: %s（%s と %s）" % [cue.line.text, card, other])
 		for i: int in WAIT_FRAMES:
 			if screen.advance_talk():
 				break

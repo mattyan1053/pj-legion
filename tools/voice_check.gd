@@ -127,6 +127,10 @@ func check_campaign(campaign: Campaign) -> PackedStringArray:
 			var speaker := line.speaker_in(episode.speakers)
 			for what: String in check_line(speaker, line.shown_text(), introduced, unnamed):
 				found.append("%s [%s] %s: %s — %s" % [where, each["part"], speaker if speaker != "" else ">", line.text, what])
+			# 選択肢の答えは、主人公の言うこと（会話の場面の答えの枠に出る）。主人公の台詞として見る。
+			for option: Dictionary in line.options:
+				for what: String in check_line(campaign.hero, String(option["text"]), introduced, unnamed):
+					found.append("%s [%s] %s（答え）: %s — %s" % [where, each["part"], campaign.hero, option["text"], what])
 			if line.asks_name:
 				unnamed = ""
 	return found

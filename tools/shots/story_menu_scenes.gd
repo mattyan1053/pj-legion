@@ -496,11 +496,11 @@ func _scene_story_talk() -> bool:
 ## いまの会話を、陣営 side の、at 人目（0 から。同じ人は 1 度だけ数える）の話し手が話す文まで送る。その人が出てこなければ偽。
 func _talk_until(side: int, at := 0) -> bool:
 	var talk: Node = _app.current_scene()
-	var lines: Array = talk.talk["lines"]
+	var lines: Array = talk.talk.lines
 	var seen := []
 	for index in lines.size():
-		var who: int = lines[index].get("who", -1)
-		if int(lines[index]["side"]) != side or seen.has(who):
+		var who: int = lines[index].who
+		if lines[index].side != side or seen.has(who):
 			continue
 		seen.append(who)
 		if seen.size() == at + 1:
@@ -601,11 +601,13 @@ func _talk_from_sortie() -> bool:
 	return _app.current_id() == SceneFlow.TALK
 
 
-## 出撃準備の「出撃」のあと、対戦の前の会話を飛ばして、話の対戦の場面に入る（会話を通り過ぎていれば、そのまま対戦へ）。
+## 出撃準備の「出撃」のあと、対戦の前の会話（いくつでも。盤のカットシーンも）を飛ばして、話の対戦の場面に入る（会話を通り過ぎていれば、そのまま対戦へ）。
 func _sortie_to_battle() -> bool:
 	_app.current_scene().press_sortie()
 	await _app.scene_changed
-	if _app.current_id() == SceneFlow.TALK:
+	for i in 12:
+		if _app.current_id() != SceneFlow.TALK:
+			break
 		_app.current_scene().press_skip()
 		await _app.scene_changed
 	return _app.current_id() == SceneFlow.BATTLE

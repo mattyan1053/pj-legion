@@ -5,9 +5,9 @@ extends "res://game/talk_screen/talk_figures.gd"
 func _end() -> void:
 	if _ended:
 		return
-	# 対戦の無い話の最後の会話は、読み終えたらクリア（story.gd の run_of が "clears" に話の id を入れる）。行き先を選ぶ前に書く（次の話が開く）。
-	if talk.has("clears") and context.story != null:
-		context.story.clear(talk["clears"])
+	# 対戦の無い話の最後の会話は、読み終えたらクリア（story.gd の run_of が clears に話の id を入れる）。行き先を選ぶ前に書く（次の話が開く）。
+	if talk.clears != &"" and context.story != null:
+		context.story.clear(talk.clears)
 	if next_episode() != null:
 		_open_choice()
 		return
@@ -16,9 +16,9 @@ func _end() -> void:
 	finished.emit(Run.NEXT)
 
 
-## 会話を終えたあとに始められる次の話（渡された会話の "next_episode" が、いま遊べるときだけ。無ければ null）。
+## 会話を終えたあとに始められる次の話（渡された会話の next_episode が、いま遊べるときだけ。無ければ null）。
 func next_episode() -> RefCounted:
-	var next: RefCounted = talk.get("next_episode")
+	var next: RefCounted = talk.next_episode
 	if next == null or context.story == null or not context.story.is_available(next):
 		return null
 	return next

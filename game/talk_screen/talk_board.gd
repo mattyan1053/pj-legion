@@ -1,13 +1,13 @@
 extends "res://game/talk_screen/talk_naming.gd"
-## 会話の場面の、盤のカットシーン（渡された会話に "cut_board" がある。docs/story.md の「盤のカットシーン」）の部品:
-## 背景の舞台（cut_stage.gd。台本の兵が盤の上で動く）と、出来事の塊（"beats"。[i] は i 番目の文の前、最後は最後の文のあと）。
+## 会話の場面の、盤のカットシーン（渡された会話の型が BOARD_CUT。docs/story.md の「盤のカットシーン」）の部品:
+## 背景の舞台（cut_stage.gd。台本の兵が盤の上で動く）と、出来事の塊（beats。[i] は i 番目の文の前、最後は最後の文のあと）。
 ## 再生と文は交互に回す（talk_screen.gd の _go_to_line）。塊を再生している間は、文の枠と名前の札を消し、文を進めない。
 
 const CutStage := preload("res://game/cut_stage.gd")
 
 ## 舞台（盤のカットシーンでなければ null）。
 var _cut_stage: CutStage
-## 出来事の塊（talk の "beats"）。
+## 出来事の塊（talk.beats）。
 var _beats: Array = []
 ## 再生し終えた塊の数（次に再生する塊の番号）。
 var _beat_at := 0
@@ -23,7 +23,7 @@ var _box: Control
 
 ## 盤のカットシーンか。
 func is_board_cut() -> bool:
-	return talk.has("cut_board")
+	return talk.shape == TalkScene.Shape.BOARD_CUT
 
 
 ## 塊を再生している途中か（検査用）。
@@ -37,8 +37,8 @@ func cut_stage() -> CutStage:
 
 
 func _make_cut_stage() -> void:
-	_beats = talk.get("beats", [])
-	_cut_stage = CutStage.new(talk["cut_board"], talk.get("look", &""), talk.get("looks", {}), context.play_sound)
+	_beats = talk.beats
+	_cut_stage = CutStage.new(talk.cut_board, talk.look, talk.looks, context.play_sound)
 	add_child(_cut_stage)
 
 
@@ -74,7 +74,7 @@ func _unplayed_events() -> Array:
 
 
 ## ログ: 塊を再生している間は、その塊より前の文まで。
-func _log_lines() -> Array:
+func _log_lines() -> Array[TalkScene.Line]:
 	var rows := super()
 	if _beat_playing >= 0:
 		return rows.slice(0, _beat_playing)
