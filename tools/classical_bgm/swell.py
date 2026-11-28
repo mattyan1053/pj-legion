@@ -11,9 +11,10 @@
 - 主旋律（melody_line）: 拍ごとに、独奏が旋律を弾いていれば独奏、トリルか休みならいちばん上の合奏の声。
   リードがこれをなぞる（calm は伸ばした音で弱く、build は同じ高さ、peak は同じ高さ + 1 オクターブ上）。
   独奏ヴァイオリンは楽譜のまま、どの区切りでも前に出す。足す層（ギター・低音・パッド）は旋律より下の音域に置く。
-- 強打（figure）: 区切りの終わりの小節で、ドラム・低音・ギターがそろって打つ型。小節の拍に乗せ、最後の強打は
-  次の小節の 1 拍目に置く（前の版は 4 拍目に強打 + 無音で、拍が 1 つ欠けて聞こえた）。旋律と弦は止めない。
-  拍ごとにハイハットを踏み続ける。和音はその小節のまま（調を外さない）。型は区切りのつなぎ方ごとに変える（FIGURES）。
+- 動機（motif_halves）: 盛り上がりの合奏の「16 分 1 つ + 32 分 6 つ + 16 分 4 つ」は、ドラムとギターも同じリズムで打つ。
+- 強打（figure）: 区切りの終わりの小節で、ドラム・低音・ギターがそろって打つ型。小節の拍に乗せ、終わりのあとの 1 拍目に
+  シンバルを置く（前の版は 4 拍目に強打 + 無音で、拍が 1 つ欠けて聞こえた）。旋律と弦は止めない。拍ごとにハイハットを踏む。
+  和音はその小節のまま（調を外さない）。型は場所ごとに、その小節の旋律のリズムに合わせる（FIGURES・BAR_FIGURES）。
 - 濁り（dark）: build / mid / peak の頭の 1 拍目に、短 2 度 + 増 4 度のクラスター。その小節の低音の裏を半音上に。
 """
 from arrange import (CRASH, CRASH2, HAT, HAT_OPEN, KICK, RIDE, SNARE, TOMS, Score, Source, into_range)
@@ -23,33 +24,41 @@ RIM, HAT_PEDAL = 37, 44
 # 区切りの役 -> 強さ（始まり, 終わり）。弦と独奏の強さの倍率になる（区切りの中でまっすぐ変える）。
 INTENSITY = {"calm": (0.0, 0.25), "solo": (0.1, 0.1), "mid": (0.6, 0.6), "build": (0.45, 0.9), "peak": (1.0, 1.0)}
 
-# 強打の型: 小節の中の (拍, 種類)。q = 4 分の強打、e = 8 分、s = 16 分の連打。型の始まりより後ろは、ふだんの型を止める。
-# 最後の強打は、どれも次の小節の 1 拍目（シンバルとキック）。
+# 強打の型: 小節の中の (拍, 種類)。q = 4 分の強打、e = 8 分、s = 16 分の連打、p = 弱い 16 分（タム）。
+# 型の始まりより後ろは、ふだんの型を止める。最後の強打は、どれも次の小節の 1 拍目（シンバルとキック）。
+# 型は場所（元の小節）ごとに、その小節の旋律のリズムに合わせて選ぶ（BAR_FIGURES）。
 FIGURES = {
-    # ダンッ ダンッ ダッ ダダダダ | ダン（溜め → 盛り上がり）
-    "long": [(0, "q"), (1, "q"), (2, "e"), (3, "s"), (3.25, "s"), (3.5, "s"), (3.75, "s")],
-    # （ふだんの型のまま 4 拍目まで）ダダダ | ダン（盛り上がり → 落ち着き）
-    "short": [(3.25, "s"), (3.5, "s"), (3.75, "s")],
-    # ダッ ダッ ダダ | ダン（落ち着き → 次へ。弱め、タム）
-    "soft": [(2, "e"), (3, "e"), (3.5, "s"), (3.75, "s")],
-    # ダンッ ダンッ ダダダダダダダダ | ダン（ループの終わり）
-    "roll": [(0, "q"), (1, "q")] + [(2 + 0.25 * k, "s") for k in range(8)],
+    # 8 分の同音が 4 つずつ（レ♭ → ミ）で上がる小節: 4 分 2 つ、そのあと旋律と同じ 8 分で 4 つ。
+    "eighths": [(0, "q"), (1, "q"), (2, "e"), (2.5, "e"), (3, "e"), (3.5, "e")],
+    # 拍ごとに 1 段ずつ下りる 16 分の連打の小節: 拍の頭を 4 つ打ち、最後の拍は旋律と同じ 16 分で。
+    "steps": [(0, "q"), (1, "q"), (2, "q"), (3, "s"), (3.25, "s"), (3.5, "s"), (3.75, "s")],
+    # 3 拍目で合奏が止まり、独奏の走句だけが次へ上がっていく小節: 3 拍目に 1 つ打って空け、終わりにタムの弱い 2 つ。
+    "cadence": [(2, "q"), (3.5, "p"), (3.75, "p")],
+    # 落ち着き・独奏の終わり（8 分の連打や走句の上）: タムで弱く、8 分 2 つと 16 分 2 つ。
+    "soft": [(2, "p8"), (3, "p8"), (3.5, "p"), (3.75, "p")],
+    # 合奏の 16 分の連打で終わる小節: 4 拍目だけ 16 分で。
+    "tail": [(3, "s"), (3.25, "s"), (3.5, "s"), (3.75, "s")],
 }
+# 元の小節 -> 型。ここに無い区切りの終わりは、落ち着き・独奏なら soft、ほかは tail。
+# 盛り上がりの終わりの 61 小節（ループの終わり）は、小節まるごと動機（下の MOTIF）なので、型を足さない。
+BAR_FIGURES = {18: "eighths", 54: "steps", 25: "cadence", 61: None, 17: None, 14: None}
 
 
-def figure_for(mode, next_mode, next_bars, last_of_loop):
-    if last_of_loop:
-        return "roll"
-    if mode == "build":
-        return "long" if next_mode == "peak" else None
-    if mode in ("peak", "mid"):
-        return "short"
-    if mode == "calm":
-        return "soft"
-    if mode == "solo":
-        # 独奏のあとが 1 小節だけの溜め（その小節がまるごと強打）なら、独奏の終わりには足さない。
-        return None if (next_mode == "build" and next_bars == 1) else "soft"
-    return None
+def figure_for(bar, mode):
+    if bar in BAR_FIGURES:
+        return BAR_FIGURES[bar]
+    return "soft" if mode in ("calm", "solo") else "tail"
+
+
+def motif_halves(line):
+    """小節の主旋律の中で、合奏の動機「タッ タラララララ タンッタンッタンッタンッ」（16 分 1 つ、32 分 6 つ、16 分 4 つ。2 拍）が
+    始まる拍（0 か 2）の組。楽譜の書き込みは「Correre, e batter li piedi per il freddo」（寒さに走り、足を踏み鳴らす）。"""
+    found = set()
+    for h in (0, 2):
+        offs = sorted(round(o - h, 3) for (o, l, n) in line if h <= o < h + 2)
+        if offs == [0, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.25, 1.5, 1.75]:
+            found.add(h)
+    return found
 
 
 def melody_line(src, bar):
@@ -95,14 +104,18 @@ def arrange_wave(parts, spec, beats):
     # 強打を置く小節: 出す小節 -> 型。
     figures = {}
     for (out, bar, mode, level, first, end, index) in placed:
-        if not end:
-            continue
-        last_of_loop = out == total_bars - 1
-        (n_start, n_end, next_mode) = spec["form"][(index + 1) % len(spec["form"])]
-        name = figure_for(mode, next_mode, n_end - n_start, last_of_loop)
-        if name:
-            figures[out] = name
-    accents = {(out + 1) % total_bars for out in figures}  # 強打のあとの 1 拍目
+        if end:
+            name = figure_for(bar, mode)
+            if name:
+                figures[out] = name
+    accents = {(out + 1) % total_bars for (out, bar, mode, level, first, end, index) in placed if end and mode != "solo"}
+    accents |= {(out + 1) % total_bars for out in figures}  # 区切りの終わりのあとの 1 拍目
+    # 動機（盛り上がりの中）: 出す小節 -> 始まる拍の組。そこは、ドラムとギターが旋律と同じリズムで打つ。
+    motifs = {out: motif_halves(melody_line(src, bar)) for (out, bar, mode, *_r) in placed if mode == "peak"}
+
+    def groove(out, off):
+        """ふだんのドラムとギターの型を鳴らしてよいか（強打の型にも、動機にも取られていない）。"""
+        return free(out, off) and (2 if off >= 2 else 0) not in motifs.get(out, ())
 
     def free(out, off):
         """その拍が、強打の型に取られていないか（ふだんの型を鳴らしてよいか）。"""
@@ -247,7 +260,7 @@ def arrange_wave(parts, spec, beats):
             for b in range(beats):
                 for (o, ln, vel) in ((0, 0.4, 114), (0.5, 0.2, 98), (0.75, 0.2, 98)):
                     off = b + o
-                    if not free(out, off):
+                    if not groove(out, off):
                         break
                     p = into_range(root_at(out, off), 40, 52)
                     for q in (p, p + 7, p + 12):
@@ -262,7 +275,7 @@ def arrange_wave(parts, spec, beats):
 
     # --- ドラム ---
     def drum(out, off, key, vel, force=False):
-        if force or free(out, off):
+        if force or (groove(out, off) if placed[out][2] == "peak" else free(out, off)):
             score.add("drums", out * beats + off, 0.2, key, vel)
 
     for (out, bar, mode, level, first, end, index) in placed:
@@ -317,11 +330,35 @@ def arrange_wave(parts, spec, beats):
                 for k in range(16):
                     drum(out, k * 0.25, HAT, (94, 60, 78, 60)[k % 4])
 
-    # --- 強打 ---
+    # --- 動機: 盛り上がりの「タッ タラララララ タンッタンッタンッタンッ」を、ドラム・ギターが旋律と同じリズムで打つ ---
+    for out, halves in motifs.items():
+        base = out * beats
+        for h in sorted(halves):
+            if not free(out, h):
+                continue
+            drum(out, h, KICK, 124, True)
+            drum(out, h, SNARE, 112, True)
+            drum(out, h, HAT_PEDAL, 84, True)
+            drum(out, h + 1, HAT_PEDAL, 84, True)
+            for k in range(6):  # 32 分 6 つ: スネアを弱くから強めていく。
+                drum(out, h + 0.25 + 0.125 * k, SNARE, 66 + 7 * k, True)
+            drum(out, h + 0.5, KICK, 104, True)
+            p = into_range(root_at(out, h), 40, 52)
+            for q in (p, p + 7, p + 12):
+                score.add("power", base + h, 0.2, q, 112)
+                score.add("power", base + h + 0.25, 0.7, q, 104)
+            for k in range(4):  # 16 分 4 つ: そろって強く。
+                off = h + 1 + 0.25 * k
+                drum(out, off, SNARE, 122, True)
+                drum(out, off, KICK, 118, True)
+                p = into_range(root_at(out, off), 40, 52)
+                for q in (p, p + 7, p + 12):
+                    score.add("power", base + off, 0.2, q, 118)
+            for p in sorted({into_range(p, 55, 70) for p in chord_at(out, h + 1)}):
+                score.add("brass", base + h + 1, 0.2, p, 100)
+
+    # --- 強打（区切りの終わり） ---
     for out, name in figures.items():
-        mode, level = placed[out][2], placed[out][3]
-        soft = name == "soft"
-        scale = 0.78 if soft else 1.0
         fig = FIGURES[name]
         rolls = [off for (off, kind) in fig if kind == "s"]
         base = out * beats
@@ -329,18 +366,21 @@ def arrange_wave(parts, spec, beats):
             if b >= fig[0][0] - 1e-6:
                 drum(out, b, HAT_PEDAL, 84, True)
         for (off, kind) in fig:
+            soft = kind in ("p", "p8")
             if kind == "s":
                 i = rolls.index(off)
-                vel = (96 + 28 * (i + 1) / len(rolls)) * scale
-                # 連打: スネアからタムへ下りる。8 分の頭にキック。
-                key = SNARE if (not soft and i < len(rolls) / 2) else TOMS[min(5, 1 + (i * 4) // len(rolls))]
-                drum(out, off, key, vel, True)
+                vel = 100 + 24 * (i + 1) / len(rolls)
+                drum(out, off, SNARE if i < len(rolls) / 2 else TOMS[2 + i], vel, True)
                 if off % 0.5 == 0:
                     drum(out, off, KICK, vel, True)
                 length = 0.2
+            elif soft:
+                vel = 88 if kind == "p8" else 94
+                drum(out, off, TOMS[3 if kind == "p8" else 4], vel, True)
+                length = 0.3 if kind == "p8" else 0.2
             else:
-                vel = (124 if kind == "q" else 114) * scale
-                drum(out, off, TOMS[3] if soft else SNARE, vel, True)
+                vel = 124 if kind == "q" else 114
+                drum(out, off, SNARE, vel, True)
                 drum(out, off, KICK, vel, True)
                 if kind == "q":
                     drum(out, off, CRASH2, 110, True)
