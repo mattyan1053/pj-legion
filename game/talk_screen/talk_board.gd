@@ -15,6 +15,8 @@ var _beat_at := 0
 var _beat_playing := -1
 ## スキップした（残りを終わりの盤まで済ませている）。
 var _board_skipped := false
+## スキップが、残りを終わりの盤まで済ませ終えた（このあとの「次へ」「スキップ」は、終わり方へ回す）。
+var _board_finished := false
 ## 文の枠（盤のカットシーンでは、塊を再生している間だけ消す）。
 var _box: Control
 
