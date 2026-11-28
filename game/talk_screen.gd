@@ -357,6 +357,9 @@ func resume_label() -> String:
 
 ## 次へ: 文が出きる前なら出しきる。出ていたら次の文へ。最後の文のあとは、会話を終える。
 func press_next() -> void:
+	if _board_finished:
+		_end()  # スキップで終えたあと、行き先の選択をやめて戻ってきた: もう一度、行き先を選ばせる
+		return
 	if is_beat_playing() or _board_skipped:
 		return  # 兵が動いている間は、文を進めない
 	if not is_line_shown():
@@ -399,10 +402,13 @@ func press_skip() -> void:
 		return
 	if is_board_cut():
 		if _board_skipped:
+			if _board_finished:
+				_end()  # 行き先の選択をやめて戻ってきた（話の最後の場面が盤のカットシーンのとき）: もう一度選ばせる
 			return
 		_board_skipped = true
 		context.play_sound(&"ui_click")
 		await _cut_stage.finish(_unplayed_events())
+		_board_finished = true
 		_end()
 		return
 	for index in range(_index, line_count()):
