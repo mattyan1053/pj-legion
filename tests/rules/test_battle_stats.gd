@@ -144,6 +144,65 @@ func test_healing_counts_for_the_healer_and_the_sanctuary_owner() -> void:
 	assert_eq(stats.sides[P1].healing, healed.amount + by_sanctuary)
 
 
+## 回復の原因（UnitHealedEvent.Cause）ごとに、戦績が「回復した量」に数えるか。原因を足したら、ここに足す（#522 の漏れを繰り返さない）。
+## 数えるなら、rules/battle_stats.gd の _count_heal に、その子から回復した駒を読む行を足す（docs/battle.md の「回復を 1 つ足すとき」）。
+const HEAL_COUNTED := {
+	UnitHealedEvent.Cause.HEAL: true,  # 回復役
+	UnitHealedEvent.Cause.SPRING: false,  # 回復の泉（回復させた駒がいない）
+	UnitHealedEvent.Cause.REGENERATION: false,  # 再生（自分で戻る）
+	UnitHealedEvent.Cause.SANCTUARY: true,  # 聖域を置いた駒
+	UnitHealedEvent.Cause.SUPPLY: true,  # 補給線の衛生兵
+}
+
+
+func test_every_heal_cause_is_counted_or_not_on_purpose() -> void:
+	var causes := {}
+	for file in DirAccess.get_files_at("res://rules/events"):
+		if not file.ends_with(".gd"):
+			continue
+		var script: Script = load("res://rules/events".path_join(file))
+		if script.is_abstract() or not _extends(script, UnitHealedEvent):
+			continue
+		var event: UnitHealedEvent = script.new()
+		var where := file.get_basename()
+		assert_false(causes.has(event.cause), "%s と %s が同じ原因" % [where, causes.get(event.cause, "")])
+		causes[event.cause] = where
+		assert_true(HEAL_COUNTED.has(event.cause), "%s: 戦績で数えるかを HEAL_COUNTED に書く" % where)
+		assert_eq(_healing_counted(event), 4 if HEAL_COUNTED.get(event.cause, false) else 0,
+			"%s: 戦績の回復した量が HEAL_COUNTED と違う（rules/battle_stats.gd の _count_heal）" % where)
+	assert_eq(causes.size(), UnitHealedEvent.Cause.size(), "原因（Cause）に、出来事の子が無いものがある")
+	assert_eq(HEAL_COUNTED.size(), UnitHealedEvent.Cause.size(), "HEAL_COUNTED の原因が、Cause と合わない")
+
+
+## event（原因の値は、回復させた駒の番号で埋める）を戦績に食わせて、回復させた駒に付いた量。
+func _healing_counted(event: UnitHealedEvent) -> int:
+	var battle := Maps.battle(["....."])
+	var giver := battle.add_unit(UnitKind.Id.MEDIC, P1, Vector2i(0, 0))
+	var wounded := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(1, 0))
+	var stats := BattleStats.new(battle)
+	stats._sanctuary_owners[giver.id] = giver.id  # 聖域の番号 = 回復させた駒の番号（置いたことにする）
+	for property in event.get_property_list():
+		var name: String = property["name"]
+		if property["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE and property["type"] == TYPE_INT \
+				and not ["unit_id", "amount", "hp", "cause"].has(name):
+			event.set(name, giver.id)
+	event.unit_id = wounded.id
+	event.amount = 4
+	event.hp = 20
+	stats.feed(event)
+	assert_eq(stats.units[wounded.id].healing, 0)
+	return stats.units[giver.id].healing
+
+
+static func _extends(script: Script, base: Script) -> bool:
+	var current := script
+	while current != null:
+		if current == base:
+			return true
+		current = current.get_base_script()
+	return false
+
+
 func test_level_evolution_ult_relic_and_mid_boss() -> void:
 	var battle := Maps.battle(["......"])
 	var trooper := battle.add_unit(UnitKind.Id.SHIELD_TROOPER, P1, Vector2i(0, 0))
