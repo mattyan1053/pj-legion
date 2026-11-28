@@ -97,6 +97,8 @@ func _talk_shot(name: String) -> bool:
 	var talk: Node = _app.current_scene()
 	await _until_line(talk)
 	for i: int in parts[2]:
+		if talk.line_index() + 1 >= talk.line_count() and not talk.is_asking():
+			return false  # 送る回数が、場面の文の数より多い（送りきると、次の場面へ出てしまう）
 		talk.press_next()
 		if talk.is_asking():
 			talk.press_option(0)
