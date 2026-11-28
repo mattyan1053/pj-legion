@@ -2,7 +2,7 @@
 """楽譜の MIDI（パートごと。LilyPond の書き出し）を、戦闘曲の型に組み直した MIDI にする。
 
 使い方: arrange.py <楽譜の MIDI> <版の名前> <書き出す MIDI>
-版は VERSIONS。手順の全体は build.sh と README.md。
+版は VERSIONS。手順の全体は build.sh と README.md。緩急つきの版（"wave"）の中身は swell.py。ここは前の版（電2・重・夏）の作り。
 
 原曲の流れを頭から追わない。楽譜から強い所（同音の刻みの合奏、独奏の速い走句、終わりの総奏）を小節の単位で切り出し、
 並べ直して（繰り返しも可）、その上に戦闘曲の型の層を足す。
@@ -21,7 +21,7 @@
 - 区切り（section）ごとに level（1〜3）を持ち、上がるほど打楽器と打ち込みが細かくなる（積み上げ）。
 - dark（濁り）: 区切りの頭の小節で、低音の 8 分の裏を根音の半音上にし（短 2 度のぶつかり）、1 拍目の打ち込みに
   金管の短 2 度のクラスターと増 4 度、弦の高い短 2 度を足す。原曲の和声はそのまま残す。
-- hits（ダダダンッ）: 区切りの終わりの小節の後ろ 2 拍を、総奏の短く切った 16 分 3 つ + 強打 1 つにし、強打のあとは無音（溜め）。
+- hits（ダダダンッ。前の版の電2 だけ。緩急つきの版の強打は swell.py）: 区切りの終わりの小節の後ろ 2 拍を、総奏の短く切った 16 分 3 つ + 強打 1 つにし、強打のあとは無音（溜め）。
   和音は、次の区切りの頭の根音の半音下に立てた減七（次の頭へ解決する）。ループの継ぎ目（最後の区切りの終わり）も同じ。
 """
 import sys
@@ -53,22 +53,9 @@ PIECES = {
 # layers は層の名前 -> 楽器（CHANNELS の名前）や型。
 VERSIONS = {}
 VERSIONS.update({
-    # (a) オーケストラで圧を足した版: 低弦とティンパニのオスティナート、金管の打ち込み、スネアの刻み、シンバル。
-    "winter_brass": {
-        "piece": "winter1", "tempo": 144, "grid": 0.5,
-        "form": [(3, 11, 2), (19, 26, 2), (26, 32, 2), (32, 38, 2), (46, 55, 3), (55, 62, 3)],
-        "strings": True, "solo": True,
-        "bass": {"voice": "contrabass", "pattern": "8oct", "low": 28, "high": 40},
-        "bass2": {"voice": "cello_ost", "pattern": "8", "low": 36, "high": 50},
-        "timpani": {"pattern": "beat"},
-        "drums": "orchestra",
-        "stabs": {"voices": ["trumpet", "trombone", "horns"], "rhythm": [0, 1.5, 3], "min_level": 2},
-        "bass3": {"voice": "tuba", "pattern": "4", "low": 29, "high": 41},
-        "low_brass": True,
-        "lead": {"voice": "piccolo", "shift": 0},
-    },
-    # (b) DTM 調: ドラムキット、太いシンセベースの 16 分、歪んだギターの刻み、シンセのパッドとリードを弦に重ねる。
-    "winter_drive": {
+    # (b2) DTM 調（前の「電2」）: ドラムキット、太いシンセベースの 16 分、歪んだギターの刻み、シンセのパッドとリードを弦に重ねる。
+    # 濁り（dark）と「ダダダンッ」（hits）つき。比べ用に残す。
+    "winter_drive2": {
         "piece": "winter1", "tempo": 152, "grid": 0.5,
         "form": [(3, 11, 2), (19, 26, 2), (46, 55, 3), (26, 32, 1), (32, 38, 2), (55, 62, 3)],
         "strings": True, "solo": True,
@@ -79,6 +66,7 @@ VERSIONS.update({
         "pad": {"voice": "poly_pad"},
         "stabs": {"voices": ["brass"], "rhythm": [0, 1.5, 3], "min_level": 3},
         "lead": {"voice": "saw_lead", "shift": 0},
+        "dark": True, "hits": True,
     },
     # (c) 遅く重い版: ♩=96。低音の 8 分とティンパニ、大太鼓の毎拍、低い金管、合唱。弦は 16 分で刻む。
     "winter_grave": {
@@ -107,9 +95,25 @@ VERSIONS.update({
         "lead": {"voice": "saw_lead", "shift": 0},
     },
 })
-# (a2)・(b2): (a)・(b) と同じ素材と楽器に、濁り（dark）と「ダダダンッ」（hits）を足す。足さない版と聴き比べるため、別の版にする。
-VERSIONS["winter_brass2"] = dict(VERSIONS["winter_brass"], dark=True, hits=True)
-VERSIONS["winter_drive2"] = dict(VERSIONS["winter_drive"], dark=True, hits=True)
+# 緩急のある版（swell.py）。楽器は電の系統。原曲の流れに沿って「落ち着き → 溜め → 盛り上がり」を 1 周に 2 回。
+# form の 3 つ目は区切りの役（calm / solo / build / mid / peak）。mix は楽器の音量（CC7）の上書き。
+WAVE_MIX = {"solo": 127, "saw_lead": 110, "violin1": 96, "violin1b": 84, "violin2": 88, "viola": 86, "cello": 96,
+            "synth_bass": 104, "finger_bass": 92, "power": 60, "warm_pad": 64, "brass": 84, "drums": 112}
+WAVE_SHORT = [(1, 11, "calm"), (11, 15, "solo"), (17, 18, "solo"), (18, 19, "build"), (19, 26, "peak"),
+              (26, 32, "solo"), (46, 55, "build"), (55, 62, "peak")]
+WAVE_FULL = [(1, 11, "calm"), (11, 18, "solo"), (18, 19, "build"), (19, 26, "peak"),
+             (26, 32, "solo"), (32, 38, "mid"), (38, 43, "calm"), (43, 46, "solo"), (46, 55, "build"), (55, 62, "peak")]
+VERSIONS.update({
+    # 電重: 遅く重い（♩=96）。盛り上がりは 2・4 拍のスネアと 16 分のキック。
+    "winter_wave_heavy": {"piece": "winter1", "wave": True, "tempo": 96, "form": WAVE_SHORT, "peak_drums": "full",
+                          "dark": True, "mix": WAVE_MIX},
+    # 電中: 中くらい（♩=116）。作りは電重と同じ。
+    "winter_wave_mid": {"piece": "winter1", "wave": True, "tempo": 116, "form": WAVE_SHORT, "peak_drums": "full",
+                        "dark": True, "mix": WAVE_MIX},
+    # 電全: 原曲をほぼ通しで（♩=126）。盛り上がりもハーフタイム（3 拍目のスネア）で、速さのわりに重く。
+    "winter_wave_full": {"piece": "winter1", "wave": True, "tempo": 126, "form": WAVE_FULL, "peak_drums": "half",
+                         "dark": True, "mix": WAVE_MIX},
+})
 
 # 楽器: 名前 -> (音色, 音量 CC7, 左右 CC10, 残響 CC91)。チャンネルは版ごとに、使う楽器にだけ割り当てる。
 CHANNELS = {
@@ -133,6 +137,7 @@ CHANNELS = {
     "piccolo": (PICCOLO, 80, 46, 50),
     "saw_lead": (SAW_LEAD, 74, 58, 35),
     "poly_pad": (POLY_PAD, 70, 64, 60),
+    "warm_pad": (WARM_PAD, 70, 64, 60),
     "synth_strings": (SYNTH_STRINGS, 74, 64, 60),
     "choir": (CHOIR, 84, 64, 70),
     "power": (DIST_GUITAR, 74, 96, 25),
@@ -281,8 +286,13 @@ def drum_bar(score, kind, at, beats, level, first, last):
 
 
 def arrange(parts, version):
+    """(音の列, 全体の拍の数, テンポ, 拍子, 区切り [(始めの出す小節, 終わり, 役, 元の小節の範囲)])。"""
     spec = VERSIONS[version]
     beats = PIECES[spec["piece"]]["beats"]
+    if spec.get("wave"):
+        from swell import arrange_wave
+        score, total, sections = arrange_wave(parts, spec, beats)
+        return score, total, spec["tempo"], beats, sections
     src = Source(parts, beats)
     grid = spec["grid"]
     score = Score()
@@ -510,10 +520,15 @@ def arrange(parts, version):
                 score.add("drums", t, 0.1, KICK if spec.get("drums") == "kit" else BASS_DRUM, vel)
             score.add("drums", times[-1][0], 0.2, CRASH, 127)
 
-    return score, total_bars * beats, spec["tempo"], beats
+    sections, at = [], 0
+    for (start, end, level) in spec["form"]:
+        sections.append((at, at + end - start, f"level{level}", (start, end)))
+        at += end - start
+    return score, total_bars * beats, spec["tempo"], beats, sections
 
 
-def write_midi(score, total_beats, tempo, beats, path):
+def write_midi(score, total_beats, tempo, beats, path, mix=None, only=None):
+    """only: 書き出す楽器の名前の組（測り用。旋律だけ・伴奏だけ）。チャンネルの割り当ては全部のときと同じ。"""
     mid = mido.MidiFile(type=1, ticks_per_beat=OUT_TPB)
     meta = mido.MidiTrack()
     meta.append(mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(tempo), time=0))
@@ -528,12 +543,15 @@ def write_midi(score, total_beats, tempo, beats, path):
         if not notes:
             continue
         program, volume, pan, reverb = CHANNELS[layer]
+        volume = (mix or {}).get(layer, volume)
         if layer == "drums":
             ch = DRUM_CH
         else:
             if not free:
                 raise SystemExit("チャンネルが足りない（15 楽器まで）")
             ch = free.pop(0)
+        if only is not None and layer not in only:
+            continue
         track = mido.MidiTrack()
         track.append(mido.MetaMessage("track_name", name=layer, time=0))
         events = [(0, 0, mido.Message("program_change", channel=ch, program=program)),
@@ -555,16 +573,30 @@ def write_midi(score, total_beats, tempo, beats, path):
     mid.save(path)
 
 
+MELODY_LAYERS = ("solo", "saw_lead")  # 主旋律を運ぶ楽器（独奏ヴァイオリンとリード）。測りで「旋律」と「伴奏」に分ける。
+
+
 def main():
     if len(sys.argv) != 4 or sys.argv[2] not in VERSIONS:
         raise SystemExit(f"使い方: arrange.py <楽譜の MIDI> <{'|'.join(VERSIONS)}> <書き出す MIDI>")
     parts = read_parts(sys.argv[1])
-    score, total_beats, tempo, beats = arrange(parts, sys.argv[2])
-    write_midi(score, total_beats, tempo, beats, sys.argv[3])
+    version, out = sys.argv[2], sys.argv[3]
+    score, total_beats, tempo, beats, sections = arrange(parts, version)
+    mix = VERSIONS[version].get("mix")
+    write_midi(score, total_beats, tempo, beats, out, mix)
+    # 測り用: 旋律だけ・伴奏だけの MIDI と、区切りの秒数。
+    stem = out.rsplit(".", 1)[0]
+    write_midi(score, total_beats, tempo, beats, stem + ".melody.mid", mix, only=MELODY_LAYERS)
+    write_midi(score, total_beats, tempo, beats, stem + ".backing.mid", mix,
+               only=[layer for layer in score.notes if layer not in MELODY_LAYERS])
+    bar = beats * 60.0 / tempo
+    with open(out + ".sections", "w") as f:
+        for (a, b, mode, (start, end)) in sections:
+            f.write(f"{a * bar:.4f} {b * bar:.4f} {mode} {start}-{end - 1}\n")
     seconds = total_beats * 60.0 / tempo
-    with open(sys.argv[3] + ".loop", "w") as f:
+    with open(out + ".loop", "w") as f:
         f.write(f"{seconds:.6f}\n")
-    print(f"{sys.argv[2]}: ♩={tempo}, {total_beats // beats} 小節, ループ {seconds:.2f} 秒")
+    print(f"{version}: ♩={tempo}, {total_beats // beats} 小節, ループ {seconds:.2f} 秒")
 
 
 if __name__ == "__main__":

@@ -191,33 +191,33 @@ const MUSIC_SETS: Array[Dictionary] = [
 ## BGM の組の「編曲」の番号（MUSIC_SETS の中で、ARRANGEMENT_SETS から中身を取る組）。
 const ARRANGEMENT_SET := 4
 ## 編曲の版（オプションの「編曲の版」。settings.gd の ARRANGEMENT の値が番号）。BGM の組が「編曲」のときだけ鳴る。
-## ヴィヴァルディの編曲。原曲の強い所を切り出し、戦闘曲の型に組み直した（assets/audio/classical/README.md）。
-## 管: 「冬」をオーケストラの打楽器と金管で、電: 「冬」をドラムキットとシンセベースで、重: 「冬」を遅く重く、
-## 夏: 「夏」第 3 楽章 Presto を、旧: 前の版の「冬 3」（比べ用）。
-## 管 2・電 2: 管・電に、区切りの頭の不協和音と、区切りの終わりのスタッカートの「ダダダンッ」と溜めを足した版。
+## ヴィヴァルディの編曲（assets/audio/classical/README.md）。
+## 電重・電中・電全: 「冬」を、原曲の流れに沿って「落ち着き → 溜め → 盛り上がり」の緩急つきで。楽器は電の系統（シンセベース・
+## 歪んだギター・ドラムキット・リード + 弦と独奏ヴァイオリン）。電重は ♩=96、電中は ♩=116、電全は原曲をほぼ通しで ♩=126。
+## 電2・重・夏: 前の版（強い所だけを切り出して全部 f）。比べ用。
 ## 終盤・中ボス・物語の終わりの 2 話の戦い（と、締めの話の終盤）だけ。ほかは、いまの組のまま。
 ## 大きさは、書き出しで -16 LUFS にそろえてある（tools/classical_bgm/finish.py）ので、対戦のねらい -21.5 LUFS との差。
 const ARRANGEMENT_SETS: Array[Dictionary] = [
 	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_brass.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_wave_heavy.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_brass2.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_wave_mid.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_wave_mid.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_wave_mid.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_wave_mid.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_wave_mid.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_drive.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_climax": {"path": CLASSICAL_DIR + "winter_wave_full.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_boss": {"path": CLASSICAL_DIR + "winter_wave_full.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_eve": {"path": CLASSICAL_DIR + "winter_wave_full.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_last": {"path": CLASSICAL_DIR + "winter_wave_full.ogg", "loop": true, "volume_db": -5.5},
+		&"battle_final": {"path": CLASSICAL_DIR + "winter_wave_full.ogg", "loop": true, "volume_db": -5.5},
 	},
 	{
 		&"battle_climax": {"path": CLASSICAL_DIR + "winter_drive2.ogg", "loop": true, "volume_db": -5.5},
@@ -239,13 +239,6 @@ const ARRANGEMENT_SETS: Array[Dictionary] = [
 		&"battle_eve": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_last": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
 		&"battle_final": {"path": CLASSICAL_DIR + "summer_storm.ogg", "loop": true, "volume_db": -5.5},
-	},
-	{
-		&"battle_climax": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_boss": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_eve": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_last": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
-		&"battle_final": {"path": CLASSICAL_DIR + "winter_heavy.ogg", "loop": true, "volume_db": -5.5},
 	},
 ]
 ## いまの BGM の組の番号（sound.gd の apply_settings が設定から入れる）。

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # クラシックの編曲の BGM を、楽譜のデータから ogg まで作る（README.md）。
 #   tools/classical_bgm/build.sh [書き出す先（既定: assets/audio/classical）]
-# 要るもの: lilypond（2.24）、fluidsynth、ffmpeg（libvorbis）、Python の mido・numpy・soundfile・pyloudnorm、
+# 要るもの: lilypond（2.24）、fluidsynth、ffmpeg（libvorbis）、Python の mido・numpy・scipy・soundfile・pyloudnorm、
 # サウンドフォント FluidR3_GM（MIT。apt の fluid-soundfont-gm）。別のものを使うなら SF2 にパスを入れる。
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -26,10 +26,19 @@ for piece in winter:winter1 summer:summer3; do
 done
 
 # 2. 版ごとに編曲し、音にして、ループする ogg にする（版 -> 楽譜）。
-for pair in winter_brass:winter1 winter_brass2:winter1 winter_drive:winter1 winter_drive2:winter1 winter_grave:winter1 summer_storm:summer3; do
+#    緩急のある版（winter_wave_*）は、強い所の山を抑えて大きさをそろえ（finish.py の limit）、
+#    旋律だけ・伴奏だけの音も書き出して、区切りごとの緩急と主旋律を測る（sections.py）。MEASURE=1 なら、ほかの版も測る。
+render() { fluidsynth -ni -q -g 0.6 -r 44100 -R 1 -C 0 -T wav -F "$2" "$sf2" "$1" >/dev/null; }
+for pair in winter_wave_heavy:winter1 winter_wave_mid:winter1 winter_wave_full:winter1 winter_drive2:winter1 winter_grave:winter1 summer_storm:summer3; do
 	version="${pair%%:*}"; score="${pair##*:}"
 	python3 "$here/arrange.py" "$work/$score.mid" "$version" "$work/$version.mid"
-	fluidsynth -ni -q -g 0.6 -r 44100 -R 1 -C 0 -T wav -F "$work/$version.wav" "$sf2" "$work/$version.mid" >/dev/null
-	python3 "$here/finish.py" "$work/$version.wav" "$(cat "$work/$version.mid.loop")" "$out/$version.ogg"
+	render "$work/$version.mid" "$work/$version.wav"
+	mode=""; case "$version" in winter_wave_*) mode="limit";; esac
+	python3 "$here/finish.py" "$work/$version.wav" "$(cat "$work/$version.mid.loop")" "$out/$version.ogg" $mode
 	rm -f "$out/$version.loop.wav"
+	if [ -n "$mode" ] || [ -n "${MEASURE:-}" ]; then
+		render "$work/$version.melody.mid" "$work/$version.melody.wav"
+		render "$work/$version.backing.mid" "$work/$version.backing.wav"
+		python3 "$here/sections.py" "$work/$version.wav" "$work/$version.melody.wav" "$work/$version.backing.wav" "$work/$version.mid.sections"
+	fi
 done

@@ -27,14 +27,13 @@ settings.music_set.b,B
 settings.music_set.c,C
 settings.music_set.arrangement,編曲
 settings.arrangement,編曲の版
-settings.arrangement.note,管・電・重は「冬」、2 は不協和音と強打入り、夏は「夏」、旧は前の冬 3
-settings.arrangement.winter_brass,管
-settings.arrangement.winter_brass2,管2
-settings.arrangement.winter_drive,電
+settings.arrangement.note,電重・電中・電全は緩急つきの「冬」（遅い・中くらい・通し）、電2・重・夏は前の版
+settings.arrangement.winter_wave_heavy,電重
+settings.arrangement.winter_wave_mid,電中
+settings.arrangement.winter_wave_full,電全
 settings.arrangement.winter_drive2,電2
 settings.arrangement.winter_grave,重
 settings.arrangement.summer_storm,夏
-settings.arrangement.winter_old,旧
 settings.section.screen,画面
 settings.fullscreen,全画面
 settings.fullscreen.note,オフ: ウィンドウ表示　Alt+Enter: 切り替え
