@@ -119,6 +119,7 @@ func _read_talks(file: RefCounted) -> void:
 ##   (answer 鍵) 画面の文  答え。次の (answer)・(end) までの行は、この答えを選んだときだけ出す
 ##   (end)                選択肢の終わり（ここから元の流れ）
 ##   (if 名前 = 鍵) 行     その選択肢でその答えを選んでいたときだけ出す行（「!=」なら、選んでいなかったとき）
+##   (name)               ここで主人公の名前を聞く（すぐ前の行が問い。docs/story.md の「主人公の名前」）
 ## 行の数は、1 度に読む数で数える（選択肢は、いちばん長い答えの行の数）。
 func _talk_rows(file: RefCounted, section: String, source: Array) -> Array[TalkLine]:
 	var rows: Array[TalkLine] = []
@@ -209,8 +210,17 @@ func _talk_rows(file: RefCounted, section: String, source: Array) -> Array[TalkL
 					conditions.append({"line": at, "choice": line.when_choice, "answer": line.when_answer, "here": choices.has(line.when_choice)})
 					read += 1
 					rows.append(line)
+			"name":
+				if words.size() != 1 or mark["rest"] != "":
+					file.problem(at, "名前を聞く行は「(name)」だけ: %s" % text)
+				elif asking != null:
+					file.problem(at, "選択肢の答えの中に、(name) は書けない")
+				elif rows.is_empty() or rows.back().asks() or rows.back().when_choice != &"" or rows.back().asks_name:
+					file.problem(at, "(name) の前に、名を問う行が要る（いつも出る行のすぐあとに書く）")
+				else:
+					rows.back().asks_name = true
 			_:
-				file.problem(at, "知らない指示「%s」（書けるのは (choice 名前)、(answer 鍵) 文、(end)、(if 名前 = 鍵) 行）" % text)
+				file.problem(at, "知らない指示「%s」（書けるのは (choice 名前)、(answer 鍵) 文、(end)、(if 名前 = 鍵) 行、(name)）" % text)
 	if asking != null:
 		file.problem(file.line_of(section), "選択肢「%s」を (end) で閉じていない" % asking.choice)
 	if rows.is_empty() and file.has(section):

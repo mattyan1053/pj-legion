@@ -52,53 +52,55 @@ func _scene_story_board_reply() -> bool:
 	return talk.line_index() == 1 and talk.speaker() == "イェルダ"
 
 
-## 話の会話の場面（SCENES に並べない。話と場面を、名前で作る）:
-##   talk.<話の id>.<場面>.<行>
-## 場面は、その話の会話の場面（[talk 名前]・[cut 名前]・[board 名前]。[before]・[after] も）の番号（0 から、書いた順）。
-## 行は、その場面で送る回数（0 なら最初の文。選ばせる行は 1 つ目の答えを選び、盤のカットシーンは動きの終わりを待ってから送る）。
-## 対戦は通さない（対戦のあとの、話の盤を前にした会話には、始めの配置の兵が立つ）。
+## 話の会話の場面を、名前で撮る（SCENES には並べない。`scape.` と同じ）: `talk.<物語の id>.<話の id>.<場面の番号>[.<行の番号>]`。
+## 場面の番号は、その話の会話の場面（会話・カットシーン・盤のカットシーン）を 0 から数えたもの。行の番号（0 から。書かなければ 0）まで送る。
+## 選ばせる行は 1 つ目の答え。盤のカットシーンは、動きの再生が終わるのを待ってから送る。
+## 前の場面は通らずに、その場面から始める（対戦のあとの会話の背景は、初期位置の味方だけ）。場面を足した話の絵を PR に貼るときに使う。
 const TALK_SHOT := "talk."
-const TALK_SHOT_USAGE := "talk.<話の id>.<場面の番号>.<送る回数>"
+const TALK_SHOT_USAGE := "talk.<物語の id>.<話の id>.<場面の番号>[.<行の番号>]"
 
 
-## 会話の場面の名前 name を [話, 場面の番号, 送る回数] に分ける（書き間違いなら空）。
 func _talk_shot_parts(name: String) -> Array:
-	var parts := name.substr(TALK_SHOT.length()).split(".")
-	if parts.size() != 3 or not parts[1].is_valid_int() or not parts[2].is_valid_int():
+	var parts := name.trim_prefix(TALK_SHOT).split(".")
+	if parts.size() < 3 or parts.size() > 4 or not parts[2].is_valid_int() or (parts.size() == 4 and not parts[3].is_valid_int()):
 		return []
-	for episode: RefCounted in Story.all_episodes():
-		if String(episode.id) == parts[0] and int(parts[1]) >= 0 and int(parts[1]) < episode.talk_scenes().size():
-			return [episode, int(parts[1]), int(parts[2])]
-	return []
+	var campaign := Story.campaign_by_id(StringName(parts[0]))
+	var episode: RefCounted = campaign.find_episode(StringName(parts[1])) if campaign != null else null
+	if episode == null:
+		return []
+	return [episode, int(parts[2]), int(parts[3]) if parts.size() == 4 else 0]
 
 
 func _talk_shot_known(name: String) -> bool:
 	return not _talk_shot_parts(name).is_empty()
 
 
-## 話の会話の場面を、流れ（Story.run_now）のその場面から始めて、決めた回数だけ送ったところ。
 func _talk_shot(name: String) -> bool:
 	var parts := _talk_shot_parts(name)
-	var episode: RefCounted = parts[0]
-	var story: RefCounted = _app.context.story
-	story.choose_campaign(Story.campaign_of(episode))
-	var run: RefCounted = story.run_now(episode)
+	var run: Run = _app.context.story.run_now(parts[0])
 	var seen := -1
-	while run.scene() != &"":
+	while not run.is_done():
 		if run.scene() == SceneFlow.TALK:
 			seen += 1
 			if seen == parts[1]:
 				break
 		run.index += 1
-	if run.scene() != SceneFlow.TALK:
+	if run.is_done():
 		return false
-	_app.context.run = run
-	await _app.go(SceneFlow.TALK)
+	_app.start_run(run)
+	await _app.scene_changed
 	var talk: Node = _app.current_scene()
-	await _until_line(talk)
-	for i: int in parts[2]:
-		talk.press_next()
+	for i in 80:
+		await _until_line(talk)
+		if talk.line_index() >= parts[2]:
+			break
 		if talk.is_asking():
 			talk.press_option(0)
-		await _until_line(talk)
-	return _app.current_id() == SceneFlow.TALK
+		else:
+			talk.press_next()  # 出しきるか、次の文へ（1 度に 1 つ。文が出きっていると、2 度押せば 2 行進む）
+	await _until_line(talk)
+	if not talk.is_line_shown():
+		talk.press_next()  # 文を出しきる（選ばせる行なら、答えの枠も出る）
+	if talk.line_index() != parts[2]:
+		print("talk shot: 行 %d で止まった（%s / 全 %d 行）" % [talk.line_index(), _app.current_id(), talk.line_count()])
+	return _app.current_id() == SceneFlow.TALK and talk.line_index() == parts[2]

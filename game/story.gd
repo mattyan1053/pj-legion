@@ -67,6 +67,8 @@ var _kept := {}
 ## 主人公に付けた名前: 既定の名前（物語のファイルの hero）-> 付けた名前。同じ主人公の物語（本編と番外）で 1 つ。
 ## 鍵があれば、名前を決めたことがある（既定のままでも入れる。物語を始めるときの名前の窓を、もう出さない）。
 var _heroes := {}
+## いま遊んでいる話の流れ（run_now が作ったもの。弱い参照）。話の途中で名乗ったとき、先の場面へ名前を入れ直す。
+var _run: WeakRef
 ## 最後に選んだ物語の id（空なら、まだ選んでいない）。記録に書く。
 var _last_campaign := ""
 ## 確かめ用に、全部の話と解放を開いているか（docs/story.md の「確かめ用の解放」。F5）。その起動のあいだだけで、記録には書かない。
@@ -345,7 +347,35 @@ func name_hero(of_campaign: Campaign, typed: String) -> String:
 		_heroes[of_campaign.hero] = named
 		_save()
 		changed.emit()
+	# 話の途中で名乗ったとき（会話の「(name)」）: いまの流れの、先の場面の文と札にも入れる。
+	var run: Run = _run.get_ref() if _run != null else null
+	if run != null:
+		rename_run(run, of_campaign.hero, named)
 	return named
+
+
+## 流れ run の場面（会話、話の対戦）に、主人公（既定の名前 default_name）の名前 named を入れ直す。
+static func rename_run(run: Run, default_name: String, named: String) -> void:
+	for data: Variant in run.all_data():
+		if data is StoryBattle:
+			if (data as StoryBattle).episode.hero == default_name:
+				(data as StoryBattle).hero = named
+		elif typeof(data) == TYPE_DICTIONARY and (data as Dictionary).has("lines"):
+			rename_talk(data, default_name, named)
+
+
+## 会話（talk_of の形）の文と札に、主人公（既定の名前 default_name）の名前 named を入れ直す（書いたままの文 "raw" から作り直す）。
+static func rename_talk(talk: Dictionary, default_name: String, named: String) -> void:
+	if talk.get("hero", "") != default_name or default_name == "":
+		return
+	for line: Dictionary in talk.get("lines", []):
+		if line.has("raw"):
+			line["text"] = HeroName.fill(line["raw"], named)
+		if line.get("hero_line", false):
+			line["name"] = named
+		for option: Dictionary in (line.get("choice", {}) as Dictionary).get("options", []):
+			if option.has("raw"):
+				option["text"] = HeroName.fill(option["raw"], named)
 
 
 ## 選択肢 choice で選んだ答えの鍵（いまの物語で。まだ選んでいなければ空）。あとの話の「(if 名前 = 鍵)」の行が読む（docs/story.md の「選択肢」）。
@@ -643,7 +673,9 @@ func run_now(episode: Episode) -> Run:
 	if not is_cleared(episode.id):
 		# 知らせは記録どおりの進み具合から（確かめ用に開いていても、あとの会話の知らせを確かめられる）。
 		news = _unlocked_in(campaign, true).news_of(episode)
-	return run_of(episode, default_deck(now), news, hero_name())
+	var run := run_of(episode, default_deck(now), news, hero_name())
+	_run = weakref(run)
+	return run
 
 
 ## 話 episode の流れ（run.gd）: 話の場面の列（episode.gd の scenes。[before]・[after] の話は 出撃準備 → 会話（前）→ 対戦 → 会話（後））を順に並べ、終えたら話の一覧。
@@ -742,14 +774,21 @@ static func talk_of(episode: Episode, rows: Array[Episode.TalkLine], track := &"
 	for row in rows:
 		# 地の文（話し手が -1）は、名前の無い行（talk_screen.gd が、札を出さずに真ん中へ出す）。
 		var line := {"side": row.side, "who": row.who, "name": row.speaker_in(episode.speakers, hero), "text": row.shown_text(hero)}
+		# 主人公の名前が話の途中で決まったら、入れ直せるように（rename_talk）: 印のある文は書いたままの文も、主人公の行は印を持つ。
+		if row.text.contains(HeroName.MARK):
+			line["raw"] = row.text
+		if row.hero != "" and row.speaker_in(episode.speakers) == row.hero:
+			line["hero_line"] = true
+		if row.asks_name:
+			line["naming"] = true  # この行のあとで、名前を聞く（まだ名乗っていなければ。talk_screen/talk_naming.gd）
 		# 選択肢（docs/story.md の「選択肢」）: この行のあとに選ばせるものと、この行を出す条件。
 		if row.asks():
 			var options: Array[Dictionary] = []
 			for option: Dictionary in row.options:
-				options.append({"key": option["key"], "text": HeroName.fill(option["text"], hero if hero != "" else row.hero)})
+				options.append({"key": option["key"], "raw": option["text"], "text": HeroName.fill(option["text"], hero if hero != "" else row.hero)})
 			line["choice"] = {"name": row.choice, "options": options}
 		if row.when_choice != &"":
 			line["when"] = {"choice": row.when_choice, "answer": row.when_answer, "not": row.when_not}
 		lines.append(line)
 	return {"title": episode.title, "lines": lines, "board": episode.map.make_board(), "look": episode.look,
-			"music": track, "figures": episode.figures}
+			"music": track, "figures": episode.figures, "hero": episode.hero}

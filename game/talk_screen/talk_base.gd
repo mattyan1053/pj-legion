@@ -1,6 +1,6 @@
 extends Node
 ## 会話の場面（game/talk_screen.gd）の土台: 読み込み、調整値、状態の変数と、どこからも使う小さな道具（行の読み方、幕、文字）。
-## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ game/talk_screen.gd（組み立て・入力・文の送り）。
+## 継ぐ順: talk_base.gd → talk_figures.gd（話し手の姿）→ talk_choice.gd（終わり方と行き先の選択）→ talk_ask.gd（選択肢）→ talk_naming.gd（主人公の名前を聞く行）→ talk_board.gd（盤のカットシーン）→ game/talk_screen.gd（組み立て・入力・文の送り）。
 
 const Text := preload("res://game/text.gd")
 const KeyMarks := preload("res://game/key_marks.gd")
@@ -17,6 +17,7 @@ const Steady := preload("res://game/steady.gd")
 const TalkLog := preload("res://game/talk_log.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const UnitLooks := preload("res://game/unit_looks.gd")
+const SystemMenu := preload("res://game/system_menu.gd")
 
 signal finished(outcome: StringName)
 
@@ -45,9 +46,14 @@ const FLOOR_SHADE := 0.7
 const CUT_SHADE := 0.12
 const CUT_BAR := 56.0
 const CUT_BUTTONS := 0.55
-## 名前の札と文の枠の間（px）、「ログ」「スキップ」の大きさ（px）。
+## 名前の札と文の枠の間（px）、名前の札の行の高さ（px）。
 const PLATE_GAP := 6.0
-const BUTTON_SIZE := Vector2(110.0, 36.0)
+const ROW_HEIGHT := 36.0
+## 右上の角（「スキップ」「ログ」とホイールの案内。talk_screen.gd の _build_corner）: 全体の幅、「スキップ」の大きさ、間（px）。
+## 「ログ」の大きさと場所は、対戦の上の帯の「ログ」と同じ（system_menu.gd の BESIDE_*）。
+const CORNER_WIDTH := 300.0
+const SKIP_SIZE := Vector2(88.0, 30.0)
+const CORNER_GAP := 8.0
 const CUT_COLORS := {&"black": Palette.OUTLINE, &"night": Palette.INK}
 ## 画面の端から見出しまでの余白。
 const MARGIN := Vector2(32.0, 24.0)
@@ -104,6 +110,9 @@ var _hint: KeyMarks
 var _count: Label
 var _skip: Button
 var _log_button: Button
+## 右上の角（「スキップ」「ログ」とホイールの案内）と、ホイールの案内。
+var _corner: Control
+var _log_hint: KeyMarks
 ## 会話のログの窓（talk_log.gd）。
 var _log: TalkLog
 ## 話し手の姿を立たせる所（見出しと、下の名前の札・文の枠の間）と、話し手の姿（会話に出てくる話し手ごとに 1 つ。

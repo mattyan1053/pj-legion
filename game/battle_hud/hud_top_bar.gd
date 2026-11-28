@@ -286,6 +286,11 @@ func stronghold_urgent() -> bool:
 	return _stronghold_panel.visible and _stronghold_style.border_color == COLOR_PULSE
 
 
+## 上の帯の「ログ」のボタンが画面に占める四角（検査用。会話の場面の「ログ」と同じ所）。
+func log_button_rect() -> Rect2:
+	return _log_button.get_global_rect()
+
+
 func _build_top_bar() -> void:
 	var panel := _panel()
 	_top_style = UiTheme.band_box(true)
@@ -373,7 +378,8 @@ func _build_top_bar() -> void:
 	row.add_child(_opponent_button)
 	# ログは、いつでも開ける（相手の番や中立のフェーズで起きたことを、あとから確かめる）。
 	var log_button := _button(Text.t("battle.hud.log"), log_pressed)
-	log_button.custom_minimum_size = Vector2(64.0, 30.0)
+	_log_button = log_button
+	log_button.custom_minimum_size = SystemMenu.BESIDE_SIZE  # 会話の場面の「ログ」も同じ大きさ・同じ所
 	log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	log_button.add_theme_font_size_override("font_size", 15)
 	log_button.tooltip_text = Text.t("battle.hud.log.tooltip")

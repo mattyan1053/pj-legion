@@ -41,6 +41,12 @@ const CONFIRM_WIDTH := 400.0
 ## 右上のボタンの大きさ。上の帯（battle_hud.gd）は、このぶんを右端に空けておく。
 const CORNER_BUTTON_SIZE := Vector2(104.0, 34.0)
 const CORNER_MARGIN := 8.0
+## 右上のボタンのすぐ左に置くボタン（対戦の上の帯の「ログ」、会話の場面の「ログ」）: 帯の高さ、ボタンの大きさ、右端から画面の右端まで（px）。
+## 対戦の上の帯（battle_hud/hud_top_bar.gd）の並びから決まる: 帯の右の余白 10 + 右上のボタンのぶんの空き + 並びの間 10。
+## 会話の場面は、これを読んで同じ所に置く（場面が替わっても「ログ」が動かない。tests/game/test_talk_screen.gd が対戦の帯と比べる）。
+const BAND_HEIGHT := 50.0
+const BESIDE_SIZE := Vector2(64.0, 30.0)
+const BESIDE_RIGHT := 10.0 + CORNER_BUTTON_SIZE.x + CORNER_MARGIN + 10.0
 
 var _corner: Button
 var _overlay: Control

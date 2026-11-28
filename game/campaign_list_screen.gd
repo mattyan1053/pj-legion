@@ -22,7 +22,6 @@ const UnitIcons := preload("res://game/unit_icons.gd")
 const CardPicker := preload("res://game/card_picker.gd")
 const TextWrap := preload("res://game/text_wrap.gd")
 const Steady := preload("res://game/steady.gd")
-const HeroNameWindow := preload("res://game/hero_name_window.gd")
 
 signal finished(outcome: StringName)
 
@@ -58,8 +57,6 @@ var _cards := {}
 var _key_index := -1
 ## キーとマウスの受け方（card_picker.gd）。
 var _keys: CardPicker
-## 主人公の名前を付ける窓（物語を初めて選んだとき）。
-var _hero_window: HeroNameWindow
 var _backdrop: TitleBackdrop
 
 
@@ -134,9 +131,6 @@ func _ready() -> void:
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(press_back)
 	root.add_child(back)
-	_hero_window = HeroNameWindow.new()
-	_hero_window.setup(context.overlays)
-	layer.add_child(_hero_window)
 	_keys = CardPicker.new(context.overlays, context.play_sound)
 	_keys.count = func() -> int: return Story.campaigns().size()
 	_keys.enabled = func(i: int) -> bool: return Story.is_ready(Story.campaigns()[i])
@@ -151,31 +145,12 @@ func resume_label() -> String:
 
 
 ## 物語 campaign を選んで、その話の一覧へ。準備中の物語なら何もしない。
-## 主人公の名前をまだ決めていない物語なら、先に名前の窓を出す（docs/story.md の「主人公の名前」。検査とスクリーンショットでは出さず、既定の名前のまま進む）。
+## 主人公の名前は、ここでは聞かない（話の中で名乗る。docs/story.md の「主人公の名前」）。
 func choose(campaign: Campaign) -> void:
 	if not Story.is_ready(campaign):
 		return
-	if not context.story.is_hero_named(campaign) and context.checking == &"":
-		ask_hero_name(campaign)
-		return
 	context.story.choose_campaign(campaign)
 	finished.emit(&"open")
-
-
-## 物語 campaign の主人公の名前を訊き、決まったら、その物語の話の一覧へ。
-func ask_hero_name(campaign: Campaign) -> void:
-	if _hero_window.is_open():
-		return
-	context.play_sound(&"menu_open")
-	_hero_window.ask(context.story.hero_name(campaign), campaign.hero, campaign.hero_role(), func(named: String) -> void:
-		context.story.name_hero(campaign, named)
-		context.story.choose_campaign(campaign)
-		finished.emit(&"open"))
-
-
-## 主人公の名前の窓（検査用）。
-func hero_window() -> HeroNameWindow:
-	return _hero_window
 
 
 ## 物語 campaign の「部隊編成」: その物語のストーリー用の部隊を組む（寄り道。編成の「物語選択へ戻る」で、ここへ戻る）。
