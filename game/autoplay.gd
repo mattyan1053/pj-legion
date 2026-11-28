@@ -224,6 +224,8 @@ func _end() -> void:
 				await app.go(SceneFlow.TITLE)
 			await _visit_story(app)
 			await _visit_second_campaign(app)
+			# 形の違う話を 1 つずつ（[before]・[after] の話、場面の節の話、盤のカットシーンのある話）、長い検査の通しの点検と同じ道で（autoplay_sweeps.gd）。
+			await AutoplaySweeps.new(self).story_shapes(app)
 			# 全部の兵 × 全部の持ち物で持ち物の欄を見るのは、長い検査だけ（3〜4 秒掛かる。docs/README.md の「検査の分け方」）。
 			if _full:
 				await _visit_item_rows(app)

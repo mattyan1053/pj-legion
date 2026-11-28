@@ -4,6 +4,7 @@ extends "res://game/autoplay/title_checks.gd"
 ##
 ## - 会話・カットシーン・盤のカットシーン: 1 文ずつ送る（文と話し手が話のファイルのとおりか）。盤のカットシーンは、兵が動き終えるのを待つ。
 ## - 選択肢: 決めた答え（answers。無ければ最初の答え）を選び、覚えたことを確かめる。出す条件の行（(if 名前 = 鍵)）は、選んだ答えで拾う。
+## - どの文も、文の枠からはみ出さない。答えの枠は画面に収まり、答えの文は切れない。
 ## - 名を問う行（(name)）: 検査の間は窓を出さない（talk_naming.gd）。既定の名前のまま通る。
 ## - 出撃準備・対戦: 呼ぶ側の手順（steps）で通す。手順が無ければ、出撃準備はそのまま「出撃」、対戦は通せない（失敗）。
 ## - 対戦のあとの場面をいくつでも。最後の場面で「次の話へ」「話の一覧へ」を選ぶ（カットシーンで終わる話は、知らせだけの会話の場面が後ろに付く）。
@@ -108,11 +109,15 @@ func _read_scene(app: Node, episode: RefCounted, scene: RefCounted, answers: Dic
 			await app.get_tree().process_frame
 		_expect(talk.line_index() == at and talk.line_text() == row.shown_text(), "%s の %d 文目が違う: %s" % [title, at + 1, talk.line_text()])
 		_expect(talk.speaker() == row.speaker_in(episode.speakers), "%s の %d 文目の話し手が違う: %s" % [title, at + 1, talk.speaker()])
+		_expect(not talk.is_text_cut(), "%s の %d 文目が、文の枠からはみ出す: %s" % [title, at + 1, talk.line_text()])
 		talk.press_next()  # 1 回目は、文を出しきる（出しきっていれば、次の文へ）
 		if row.asks():
 			# 選ばせる行: 答えが出て、選ぶまで進まない。決めた答えを選ぶ。
 			var pick: int = answers.get(row.choice, 0)
 			_expect(talk.is_asking() and talk.option_texts().size() == row.options.size(), "%s: 選択肢「%s」の答えが出ない" % [title, row.choice])
+			await app.get_tree().process_frame  # 答えの枠の大きさが決まってから
+			_expect(app.get_viewport().get_visible_rect().encloses(talk.options_rect()) and talk.cut_option_texts().is_empty(),
+				"%s: 選択肢「%s」の答えの枠が画面からはみ出すか、答えの文が切れる: %s %s" % [title, row.choice, talk.options_rect(), talk.cut_option_texts()])
 			talk.press_next()
 			_expect(talk.line_index() == at, "%s: 答えを選ぶ前に、次の文へ進んだ" % title)
 			talk.press_option(pick)

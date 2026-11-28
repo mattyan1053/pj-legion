@@ -46,9 +46,10 @@
 2. **流れを組む** 話は場面の列（`Episode.scenes`、`game/episode/story_scene.gd`。`[before]`・`[after]` の話は 出撃準備 → 会話（前）→ 対戦 → 会話（後）、場面の節 `[talk 名前]`・`[sortie]`・`[battle]` の話は書いた順。`game/episode/episode_scenes.gd`）で持つ。
    話の一覧で選ぶと、`Story.run_now` → `run_of` がその列を順に流れ（`game/run.gd`）へ並べ、`app.gd` が順に場面を出す（`docs/story.md` の「場面の列」）。
 3. **出撃準備** `game/sortie_screen.gd`: 部隊を選ぶ（部隊編成への寄り道あり）。戦いの定義は `game/story_battle.gd`（`docs/scenario.md`）。
-4. **会話** `game/talk_screen.gd`（前と後で同じ画面）。
+4. **会話** `game/talk_screen.gd`（前と後で同じ画面）。流れが渡すのは `game/talk_scene.gd`（`TalkScene`。名前の付いた欄と、場面の型 `shape`。
+   型は話のファイルの節で決まる `StoryScene.talk_shape()`。型を読む所は `tests/game/test_talk_shapes.gd` が見張る）。
 5. **対戦** 上の「対戦の 1 手」と同じ。勝つと `StoryBattle.record_win` → `Story.clear` が記録する（対戦の無い話は、最後の会話を読み終えたとき）。
-6. **記録** `game/story.gd` の記録は、流れの場面を抜けたときにまとめてスロットへ書く（`docs/save-slots.md`）。あとの会話から次の話へ進める。
+6. **記録** `game/story_parts/story_record.gd`（`Story` が継ぐ）の記録は、流れの場面を抜けたときにまとめてスロットへ書く（`docs/save-slots.md`）。あとの会話から次の話へ進める。
 
 ## 何かを足すとき
 
@@ -66,6 +67,10 @@
 | 必殺技 | `docs/tactical-ult.md` の「必殺技を足すとき」 |
 | 出来事 | 読む側の見張りと一緒に、手順が入る（`docs/code-health.md` の「直す順のおすすめ」の 2）。それまでは、上の「対戦の 1 手」の 4 と 5 の読む側を全部見る（再生 `docs/battle-view.md` の「ルールとのつなぎ方」、ログ `docs/battle-log.md`） |
 | 話・物語 | `docs/story.md` の「話を 1 つ足す」「物語を 1 つ足す」 |
+| 話の場面の型（カットシーンのようなもの） | `docs/story.md` の「場面の型を 1 つ足すとき」 |
+| 盤のカットシーンの台本の行 | `docs/story.md` の「台本の行を 1 つ足すとき」 |
+| 会話の行の種類（台詞・地の文のようなもの） | `docs/story.md` の「会話の行の種類を 1 つ足すとき」 |
+| 話の分かれ（次の話が替わる） | まだ入っていない。前提の 5 か所は `docs/story.md` の「話の一本道」 |
 | マップ | `docs/hand-map.md` の「マップを足すとき」 |
 | 画面の文 | `docs/text.md` の「文を足すとき」（言葉は `docs/wording.md`、枠は `docs/ui-theme.md` の「枠の大きさ」） |
 | 対戦モードの場面・画面 | `docs/scene-flow.md`、`docs/battle-source.md` の「モードを足すとき」 |
@@ -81,3 +86,4 @@
 - 軍で決まるものは、軍の表（ルールは `rules/armies.gd`、見た目は `game/army_look.gd`）から読む。軍を足す手順は `docs/unit-roster.md` の「軍を足すとき」。
   まだ 2 軍のままの所も、そこに書いてある。
 - 同じ軍に 5 種目の兵を足すのは、この前提の外（`docs/unit-roster.md` の「兵を足すとき」）。
+- 話は物語の中で一本道（次の話が 1 つに決まっている）。前提の 5 か所と、分かれる話を入れるときに要ることは `docs/story.md` の「話の一本道」。

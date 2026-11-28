@@ -131,7 +131,7 @@
 5. 手に入る所:
    - 対戦モード: `DeckRules.VERSUS_ITEMS`。いまの 2 つの上に釣り合いが立っているので（上）、出すなら `measure-balance` で測ってから。
    - ストーリー: `story.txt` の `item = <id>`（最初から）か、話の `[unlock]` の `item = <id>`。話の兵に持たせるなら `paladin + <id>` の形（`docs/story.md`）。
-6. 必要なら、CPU の部隊（`rules/cpu_deck.gd` の `_item_for`）と、ストーリーの最初の部隊（`game/story.gd` の `DEFAULT_ITEMS`）。
+6. 必要なら、CPU の部隊（`rules/cpu_deck.gd` の `_item_for`）と、ストーリーの最初の部隊（`game/story_parts/story_unlocks.gd` の `DEFAULT_ITEMS`）。
 
 ランダム編成、部隊編成の欄、上の帯の文、解放の知らせは、足した持ち物にそのまま効く。
 
