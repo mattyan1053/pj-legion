@@ -536,26 +536,72 @@ attack レオ 骸骨 20
 ### 場面の型を 1 つ足すとき
 
 会話の場面の型（`TalkScene.Shape`）を 1 つ足す（例: 絵の 1 枚を見せる場面）。対戦・出撃準備のような、流れの別の場面にするものは `StoryScene.Kind` に足す（下の終わり）。
+前は旗の組み合わせで足していた（カットシーン #510 は 8 ファイル、盤のカットシーン #516 は 11 ファイル。文書とテストを除く）。いまは下の 7 つ（文書とテストを除く）で、5 つは足し忘れを検査が拾う。
 
 | 触る所 | 何を足すか | 足し忘れたら |
 | --- | --- | --- |
 | `game/talk_scene.gd` | `Shape` に足す。頭の表に、背景・出すもの・読む欄。その型だけが読む欄 | — |
-| `game/episode/episode_scenes.gd` | 節の読み方（`[talk 名前]`・`[cut 名前]`・`[board 名前]` と同じ形。頭に書ける設定の表 `*_KEYS`） | 書いても「知らない節」 |
+| `game/episode/episode_base.gd`・`episode_scenes.gd` | 節の名前（`*_SECTION`）と読み方（`[talk 名前]`・`[cut 名前]`・`[board 名前]` と同じ形。頭に書ける設定の表 `*_KEYS`。`_is_scene_section`・`_check_sections`） | 書いても「知らない節」 |
 | `game/episode/story_scene.gd` | 読んだものの欄と、`talk_shape()` がその型を返す所 | `test_talk_shapes.gd` が落ちる |
 | `game/story.gd` の `run_of` | `match talk.shape` に、型の欄を足す所 | `test_talk_shapes.gd` が落ちる |
-| `game/talk_screen.gd` の `_ready` | `match talk.shape` に背景。文の枠・見出し・姿を出すかは `TalkScene.shows_speakers()` | `test_talk_shapes.gd` が落ちる |
+| `game/talk_screen.gd` の `_ready` | `match talk.shape` に背景。文の枠・見出し・姿を出すかは `TalkScene.shows_speakers()`。盤のように動くものは `game/talk_screen/` に部品を 1 つ | `test_talk_shapes.gd` が落ちる |
 | `tools/story_script.gd` | 台本の見出し `SCENE_HEADINGS` | `test_talk_shapes.gd` が落ちる。台本の道具は、鍵が無くて止まる |
 | `game/story/_template/` | 見本の話に、その型の場面を 1 つ | `test_talk_shapes.gd` が落ちる |
 | この文書の「場面の節」と、型の節（「カットシーン」など） | 書き方 | — |
 
 **黙って漏れる所**（検査が拾わない）:
-- 最後の場面になったとき（`run_of` の終わり）: 文の枠を出さない型（`shows_speakers()` が偽）なら、知らせだけの会話の場面をあとに足す。枠を出す型なら、その場面に知らせを足す。
+- 最後の場面になったとき（`run_of` の終わり）: 文の枠を出さない型（`shows_speakers()` が偽）なら、知らせだけの会話の場面をあとに足す。枠を出す型なら、その場面に知らせを足す。新しい型が枠を出すかを、`shows_speakers()` で決め忘れると、知らせが枠の無い場面に混ざる。
 - 撮る道具（`tools/shots/`）の場面の一覧と、通しの点検（`game/autoplay_sweeps.gd`）の進め方（画面を押して進める所）。新しい型の場面で押し方が違えば、そこで止まる。
 - 声・折り返しの点検（`tools/voice_check.gd`、`tools/wrap_audit_lib.gd`）は場面の `lines` を読む。文の幅や字が違う型なら、出る所を足す。
+- 会話のログ（`talk_log.gd`）は型を見ない（どの型の文も、同じに並べる）。
 
 流れの別の場面（会話の場面でないもの）にするなら、`StoryScene.Kind` に足し、作る関数（`sortie()`・`battle()` と同じ形）と、`run_of` の `match scene.kind` に流れの場面を足す。
-`Kind` を見る所（`is_talk()`・`is_battle()` で拾う道具と点検）は、その種類を黙って飛ばす。
+`Kind` を見る所（`is_talk()`・`is_battle()` で拾う道具と点検、決着のあとの曲 `StoryBattle.after_result_music`）は、その種類を黙って飛ばす。
 
+### 台本の行を 1 つ足すとき
+
+盤のカットシーンの台本の行（`game/cut_script.gd` の `COMMANDS`。`move`・`attack` など）を 1 つ足す。
+
+| 触る所 | 何を足すか | 足し忘れたら |
+| --- | --- | --- |
+| `game/cut_script.gd` | `COMMANDS` に語、読む関数 `_read_<語>`（引数を確かめ、書き損じは `_problem`、出来事を `_events` へ）、ファイルの頭の書き方 | 語が無ければ「知らない台本の行」。関数・頭の説明が無ければ `test_talk_shapes.gd` が落ちる |
+| ルールの出来事で足りなければ `game/cut_events/` | 台本の出来事（`Cut<名前>Event`） | — |
+| `game/replay_board.gd`（再生の盤）と `game/battle_playback/playback_cut.gd`（再生） | 新しい台本の出来事を読む所と、見せる所 | `test_event_readers.gd`・`test_event_playback.gd` が落ちる |
+| `docs/battle-view.md` の「盤のカットシーン」 | 書き方の一覧 | `test_talk_shapes.gd` が落ちる |
+| `tests/game/test_cut_script.gd` | 読んだ出来事と、書き損じ | — |
+
+**黙って漏れる所**: 舞台のスキップ（`cut_stage.gd` の `finish`。終わりの盤まで済ませる）が、新しい出来事の見た目を終わりの盤にそろえるか（長い検査の `test_cut_script.gd` が、全部を再生した見た目と終わりの盤を比べる）。
+台本・声・折り返しの道具は、台本の行を読まない（文の行だけ）。
+
+### 会話の行の種類を 1 つ足すとき
+
+会話の行の種類（`Episode.TalkLine.Kind`。いまは台詞 `SPEECH` と地の文 `NARRATION`）を 1 つ足す（例: 心の声）。選択肢・名前を聞く行・出す条件は、行の種類ではなく行に付くもの（下の表の 3 行目から）。
+
+| 触る所 | 何を足すか | 足し忘れたら |
+| --- | --- | --- |
+| `game/episode/talk_line.gd` | `Kind` に足し、作る関数（`speech`・`narration` と同じ形）と、問う関数（`is_narration()` と同じ形） | — |
+| `game/episode/episode_talks.gd` | 行の読み方（頭の印。`>` が地の文） | 書いても台詞か書き間違い |
+| `game/talk_scene.gd` の `Line` と、`game/story.gd` の `talk_of` | 画面へ渡す欄（地の文は `side` の `NARRATION_SIDE`）。行に付くものを足すときも、ここで写す | **黙って漏れる**（写し忘れると、画面に届かない） |
+| `game/talk_screen.gd` の `_show_line`・`game/talk_log.gd` の `_row` | 出し方（札・字・寄せ） | **黙って漏れる**（台詞として出る） |
+| `tools/story_script.gd` の `_talk`、`tools/voice_check.gd`、`tools/wrap_audit_lib.gd` | 台本の書き方、声の点検（話し手の口調を見るか）、折り返しの字と幅 | **黙って漏れる**（台詞として扱う） |
+| `game/battle_cues.gd` の `line_of` | 対戦の途中の台詞に使えるか | **黙って漏れる** |
+
+`Kind` を直に見る所は無く、どこも `is_narration()` の真偽で分けている。3 つ目の種類は、問う関数を足さないかぎり、どこでも台詞として扱われる。
+確かめ方: 見本の話（`game/story/_template/`）に 1 行書き、`tools/write_story_script.sh` の台本と、スクリーンショット・ログで見る。
+
+### 話の一本道
+
+話は物語の中で一本道（次の話が 1 つに決まっている）。この前提は 5 か所にある（直していない。分かれる話を入れるかは、まだ決めていない）。
+
+| どこ | いまの前提 | 分かれる話を入れるときに要ること |
+| --- | --- | --- |
+| 記録の読み方（`game/story_parts/story_record.gd` の `_fill_earlier_clears`） | クリアした話より前の話は、全部クリアしたものとして読む（物語の頭に話を足したとき、前の記録で先へ進んでいた人が、足された話のぶんを失わないため） | 「前」が 1 本に決まらない。通らなかった側の話までクリアになる。足された話を埋めるのは、記録の版を上げる読み替え（`_migrate`）に移す |
+| 遊べるか（同じファイルの `is_available`・`_reachable`） | 並びの最初の話か、1 つ前の話をクリアしている | 話ごとに「開く条件」（どの話をクリアしたか、どの答えを選んだか）を持つ。物語のファイルの `[episodes]` に書けるようにする |
+| 次の話（`game/story_parts/story_catalog.gd` の `episode_after`。`run_of` があとの会話の `next_episode` に入れる。ほかに `next_episode()`・`scape_episode`） | 並びの次の話 | 次の話を、遊んだ結果（答え）から決める。いまは流れを組むときに決めているので、**最後の会話で選んだ答えでは替えられない**（会話を終えるときに決める形にする） |
+| 解放（`game/story_parts/story_unlocks.gd` の `unlocked_before`） | 並びでその話より前の話の解放を、全部足す（話の敵の強さを測る道具 `--episode` の既定の編成も、これで組む） | 通ってきた話だけを足す。測る道具は、どちらの道から来たかで部隊が替わる（道ごとに測る） |
+| 話の一覧（`game/episode_list_screen.gd`） | カードを横 1 列に並べ、「第 N 話をクリアすると遊べる」 | 分かれを見せる並べ方と、開く条件の文 |
+
+答えは物語ごとに覚えている（`answer_of`）ので、「選んだ答えで、あとの話の行が替わる」までは、いまの作りで足りる。
 ### 会話の 1 行（コードの形）
 
 読んだ会話の 1 行は `game/episode/talk_line.gd`（`Episode.TalkLine`）。`[before]`・`[after]`・`[lost]` は、その列。
