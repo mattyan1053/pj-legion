@@ -48,6 +48,8 @@ const MAP_HEIGHT := 180.0
 const FACE_SIZE := 72.0
 ## 主な人物の欄（物語のファイルの [cast]）: 姿の額の大きさと、人と人の間（px）。
 const CAST_FACE := 40.0
+## 主な人物の欄の「名前を変える」の大きさ（px）。
+const RENAME_SIZE := Vector2(104.0, 30.0)
 const CAST_GAP := 22
 
 const COLOR_PANEL := Palette.OVERLAY
@@ -480,9 +482,10 @@ func cast_row(campaign: RefCounted) -> HBoxContainer:
 			# 主人公の名前は、ここで変えられる（docs/story.md の「主人公の名前」）。
 			var rename := Button.new()
 			rename.text = Text.t("hero.rename")
-			rename.theme_type_variation = UiTheme.BUTTON_GHOST
+			# ふつうのボタンの濃さにする（控えめなボタンの薄さだと、押せないボタンに見えた）。
 			rename.focus_mode = Control.FOCUS_NONE
-			rename.add_theme_font_size_override("font_size", 13)
+			rename.add_theme_font_size_override("font_size", 14)
+			rename.custom_minimum_size = RENAME_SIZE
 			rename.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			rename.pressed.connect(press_rename)
 			entry.add_child(rename)

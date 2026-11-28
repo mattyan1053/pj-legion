@@ -1,4 +1,4 @@
-extends "res://game/talk_screen/talk_ask.gd"
+extends "res://game/talk_screen/talk_naming.gd"
 ## 会話の場面の、盤のカットシーン（渡された会話に "cut_board" がある。docs/story.md の「盤のカットシーン」）の部品:
 ## 背景の舞台（cut_stage.gd。台本の兵が盤の上で動く）と、出来事の塊（"beats"。[i] は i 番目の文の前、最後は最後の文のあと）。
 ## 再生と文は交互に回す（talk_screen.gd の _go_to_line）。塊を再生している間は、文の枠と名前の札を消し、文を進めない。

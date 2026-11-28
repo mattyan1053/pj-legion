@@ -252,6 +252,8 @@ var _skip_button: Button
 var _auto_button: Button
 var _ult_panel: PanelContainer
 var _ult_pinned := false
+## 上の帯の「ログ」のボタン。
+var _log_button: Button
 var _menu: PanelContainer
 var _forecast: ForecastPanel
 var _menu_line: Line2D
