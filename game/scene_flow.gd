@@ -72,7 +72,7 @@ const SCENES := {
 	TALK: {
 		"script": "res://game/talk_screen.gd",
 		"next": {},  # 流れの中でだけ使う（ストーリーの会話。Run.NEXT で次へ）
-		"music": &"talk",  # ふつうは渡すもの（story.gd の talk_of: 話のファイルの before_music・after_music）が決める
+		"music": &"talk",  # ふつうは渡すもの（talk_scene.gd の music()。話のファイルが場面ごとに選んだ曲）が決める
 	},
 	SORTIE: {
 		"script": "res://game/sortie_screen.gd",

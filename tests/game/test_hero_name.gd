@@ -4,6 +4,7 @@ extends "res://tests/base_test.gd"
 const HeroName := preload("res://game/hero_name.gd")
 const HeroNameWindow := preload("res://game/hero_name_window.gd")
 const Story := preload("res://game/story.gd")
+const TalkScene := preload("res://game/talk_scene.gd")
 const Episode := preload("res://game/episode.gd")
 const SaveStore := preload("res://game/save_store.gd")
 const UiTheme := preload("res://game/ui_theme.gd")
@@ -62,14 +63,14 @@ func test_the_name_reaches_talk_lines_cues_and_lost_lines() -> void:
 	var named := Story.run_of(episode, Story.default_deck(Story.starting()), [], "ノエル")
 	with_default.advance()  # カットシーンの次の、最初の会話
 	named.advance()
-	var before: Array = with_default.data()["lines"]
-	var after: Array = named.data()["lines"]
+	var before: Array[TalkScene.Line] = with_default.data().lines
+	var after: Array[TalkScene.Line] = named.data().lines
 	var swapped := 0
 	for i in before.size():
-		assert_false((after[i]["text"] as String).contains("{hero}") or (before[i]["text"] as String).contains("{hero}"), "印が残った")
-		assert_eq(after[i]["text"], (before[i]["text"] as String).replace("ハーデン", "ノエル"))
-		assert_eq(after[i]["name"], (before[i]["name"] as String).replace("ハーデン", "ノエル"))
-		swapped += 1 if after[i] != before[i] else 0
+		assert_false(after[i].text.contains("{hero}") or before[i].text.contains("{hero}"), "印が残った")
+		assert_eq(after[i].text, before[i].text.replace("ハーデン", "ノエル"))
+		assert_eq(after[i].name, before[i].name.replace("ハーデン", "ノエル"))
+		swapped += 1 if [after[i].name, after[i].text] != [before[i].name, before[i].text] else 0
 	assert_true(swapped >= 2, "第 1 話の最初の会話で、名前が替わる行が少ない（%d）" % swapped)
 	while named.scene() != &"battle":
 		named.advance()
@@ -169,7 +170,7 @@ func test_choosing_a_campaign_does_not_ask_the_name() -> void:
 ## 第 1 話の、名を問う行のある会話の場面（流れの中の番号も返す）。
 func _naming_talk(context: RefCounted, campaign: RefCounted) -> Array:
 	var run: RefCounted = context.story.run_now(campaign.episodes[0])
-	while not (run.data() is Dictionary and (run.data() as Dictionary).get("lines", []).any(func(line: Dictionary) -> bool: return line.get("naming", false))):
+	while not (run.data() is TalkScene and (run.data() as TalkScene).lines.any(func(line: TalkScene.Line) -> bool: return line.naming)):
 		run.advance()
 	var screen := TalkScreen.new()
 	screen.context = context
@@ -187,13 +188,13 @@ func test_the_hero_is_named_inside_the_story() -> void:
 		var screen: Node = made[0]
 		var run: RefCounted = made[1]
 		var at := 0
-		while not (screen.talk["lines"][at] as Dictionary).get("naming", false):
-			var before: Dictionary = screen.talk["lines"][at]
-			assert_false(before.has("raw") or before.get("hero_line", false), "%s: 名乗る前の行に、主人公の名前が出る: %s" % [campaign.id, before["text"]])
+		while not screen.talk.lines[at].naming:
+			var before: TalkScene.Line = screen.talk.lines[at]
+			assert_false(before.raw != "" or before.hero_line, "%s: 名乗る前の行に、主人公の名前が出る: %s" % [campaign.id, before.text])
 			at += 1
 		for scene_data: Variant in run.all_data().slice(0, run.index):
-			if scene_data is Dictionary and scene_data.has("lines"):
-				assert_false((scene_data["lines"] as Array).any(func(line: Dictionary) -> bool: return line.has("raw") or line.get("hero_line", false)), "%s: 名乗る場面より前に、主人公の名前が出る" % campaign.id)
+			if scene_data is TalkScene:
+				assert_false((scene_data as TalkScene).lines.any(func(line: TalkScene.Line) -> bool: return line.raw != "" or line.hero_line), "%s: 名乗る場面より前に、主人公の名前が出る" % campaign.id)
 		while screen.line_index() < at:
 			screen.press_next()
 			screen.press_next()
@@ -217,11 +218,11 @@ func test_the_hero_is_named_inside_the_story() -> void:
 		# 流れの先の場面（会話の文と札、話の対戦の途中の台詞）にも入る。
 		var later_names := 0
 		for scene_data: Variant in run.all_data():
-			if scene_data is Dictionary and scene_data.has("lines"):
-				for line: Dictionary in scene_data["lines"]:
-					assert_false(line.has("raw") and not (line["text"] as String).contains("ノエル"), "先の場面の文に入らない: %s" % line["text"])
-					assert_false(line.get("hero_line", false) and line["name"] != "ノエル", "先の場面の札に入らない")
-					later_names += 1 if line.has("raw") or line.get("hero_line", false) else 0
+			if scene_data is TalkScene:
+				for line in (scene_data as TalkScene).lines:
+					assert_false(line.raw != "" and not line.text.contains("ノエル"), "先の場面の文に入らない: %s" % line.text)
+					assert_false(line.hero_line and line.name != "ノエル", "先の場面の札に入らない")
+					later_names += 1 if line.raw != "" or line.hero_line else 0
 			elif scene_data is Story.StoryBattle:
 				assert_eq(scene_data.hero, "ノエル", "話の対戦（途中の台詞・負けの台詞）に入らない")
 		assert_true(later_names >= 2)

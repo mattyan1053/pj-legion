@@ -1,5 +1,5 @@
 extends "res://game/talk_screen/talk_ask.gd"
-## 会話の場面（game/talk_screen.gd）の、主人公の名前を聞く行（行に "naming" がある。話のファイルの「(name)」。docs/story.md の「主人公の名前」）:
+## 会話の場面（game/talk_screen.gd）の、主人公の名前を聞く行（行の naming が真。話のファイルの「(name)」。docs/story.md の「主人公の名前」）:
 ## 名を問う行を出しきったら、名前の窓（hero_name_window.gd）を出す。決めた名前は記録（story.gd の name_hero）に覚え、
 ## この先の文と札（この場面と、流れの先の場面）に入る。決めたら、次の行へ進む。
 ##
@@ -20,7 +20,7 @@ func _naming_due() -> bool:
 
 ## 行 index が、いま名前を聞く行か。
 func _names_at(index: int) -> bool:
-	return index < _lines.size() and (_lines[index] as Dictionary).get("naming", false) and _naming_due()
+	return index < _lines.size() and _lines[index].naming and _naming_due()
 
 
 ## 名前を聞いているか（窓が開いている）。

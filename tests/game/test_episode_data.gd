@@ -351,9 +351,9 @@ func test_narration_lines_read() -> void:
 	assert_true(episode.before[0].is_narration() and episode.before[0].side == Episode.NARRATION_SIDE and episode.before[0].who == -1)
 	assert_eq(episode.after[1].as_dict(), TalkLine.narration("日が暮れた。").as_dict())
 	var talk := Story.talk_of(episode, episode.before)
-	assert_eq(talk["lines"][0]["name"], "", "地の文は名前の無い行")
-	assert_eq(talk["lines"][0]["side"], Episode.NARRATION_SIDE)
-	assert_eq(talk["lines"][1]["name"], "隊長")
+	assert_eq(talk.lines[0].name, "", "地の文は名前の無い行")
+	assert_eq(talk.lines[0].side, Episode.NARRATION_SIDE)
+	assert_eq(talk.lines[1].name, "隊長")
 	assert_eq(preload("res://game/talk_screen.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話の場面も、同じ陣営の番号で地の文と見る")
 	assert_eq(preload("res://game/talk_log.gd").NARRATION_SIDE, Episode.NARRATION_SIDE, "会話のログも、同じ陣営の番号で地の文と見る")
 
@@ -417,9 +417,9 @@ func test_more_speakers_read() -> void:
 	assert_eq(episode.figures[4], {"kind": UnitKind.Id.SORCERER, "evolved": true, "look": &""})
 	assert_eq(_dicts(episode.before), [Episode.TalkLine.speech(0, "いきます", 2).as_dict(), Episode.TalkLine.speech(1, "来ます", 4).as_dict(), Episode.TalkLine.speech(1, "来い：ここだ", 1).as_dict()])
 	assert_eq(episode.cues[0].as_dict(), Episode.TalkCue.new(&"turn", 1, TalkLine.speech(0, "進め", 3)).as_dict())
-	var lines: Array = Story.talk_of(episode, episode.before)["lines"]
-	assert_eq([lines[0]["side"], lines[0]["who"], lines[0]["name"]], [0, 2, "新兵"])
-	assert_eq([lines[1]["side"], lines[1]["who"], lines[1]["name"]], [1, 4, "副官"])
+	var lines := Story.talk_of(episode, episode.before).lines
+	assert_eq([lines[0].side, lines[0].who, lines[0].name], [0, 2, "新兵"])
+	assert_eq([lines[1].side, lines[1].who, lines[1].name], [1, 4, "副官"])
 	var source := StoryBattle.new(episode, null)
 	var said: Array = source.talk_cues().on_start(source.make_setup(1).create_battle())
 	assert_eq([said[0].side, said[0].name, said[0].figure], [0, "伝令", episode.figures[3]])
